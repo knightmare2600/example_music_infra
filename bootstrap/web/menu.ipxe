@@ -1,0 +1,343 @@
+#!ipxe
+
+# ===========================================================================
+# Example Music Limited -- Enterprise Network Boot
+# Provisioning server: http://192.168.139.50
+# Safe default: boot local disk after 30 seconds
+# ===========================================================================
+# Version history:
+#   v1.7 -- Switch Ubuntu Alpine helper from virt to lts kernel. Add storage
+#            drivers to modules= kernel parameter so initramfs loads them
+#            before the local service runs. Fix apkovl to use depmod -a
+#            instead of apk add linux-virt (which caused ENOSPC). Add GB
+#            keymap via 00-keymap.start. Fix rm -rf to unlink symlink first.
+#   v1.6 -- Pin alpine_repo= to v3.23 in Ubuntu entries. latest-stable caused
+#            kernel version mismatch between running kernel and available modules.
+#            Rebuild apkovl to pin /etc/apk/repositories to v3.23 and install
+#            linux-virt inside writer script to get matching storage modules.
+#   v1.5 -- Replace Ubuntu Subiquity live installer approach with Alpine
+#            dd-writer pattern. Alpine virt netboot (~50 MB) streams the
+#            Ubuntu 24.04 minimal cloud image (~247 MB) onto disk via
+#            wget|dd, avoiding the 1.1 GB Subiquity squashfs entirely.
+#            cloud-init nocloud seed served from ${boot-url}/ubuntu/.
+#            Add alpine-arch remap (arm64->aarch64) matching rocky-arch pattern.
+#   v1.4 -- Restore inst.stage2= in Rocky entries, pointing at minimal
+#            boot.iso images/install.img on Rocky CDN (~200 MB, not ~700 MB).
+#            Add per-entry rocky-arch remap (iPXE uses arm64, Rocky mirror
+#            uses aarch64) so the CDN URL resolves correctly on both arches.
+#   v1.3 -- Rename file from boot.ipxe to menu.ipxe to match server layout
+#   v1.2 -- Remove inst.stage2= from all Rocky entries; stage2 now resolved
+#            from url= in install.ks, preventing ramdisk overflow at boot
+#   v1.1 -- Fix missing Ubuntu and OpenBSD menu items; OpenBSD placed after
+#            Arch Linux (before Hypervisors); Ubuntu placed after Debian
+#   v1.0 -- Initial release
+# ===========================================================================
+
+set boot-url http://192.168.139.50
+
+# ---------------------------------------------------------------------------
+# Architecture normalisation
+#   iPXE buildarch values:  i386 (BIOS x86)  x86_64 (UEFI x86)  arm64 (UEFI ARM)
+#   We normalise i386 -> x86_64 so payload paths are consistent.
+#   Result: ${arch} is always either x86_64 or arm64.
+# ---------------------------------------------------------------------------
+iseq ${buildarch} arm64 && set arch arm64 || set arch x86_64
+echo Detected: ${buildarch} -- payload arch: ${arch}
+
+# ---------------------------------------------------------------------------
+# Auto-deploy: chain to a MAC-specific script if one exists, else menu
+# ---------------------------------------------------------------------------
+chain --autofree ${boot-url}/autodeploy/${mac:hexhyp}.ipxe || goto main
+
+# ===========================================================================
+# MAIN MENU
+# ===========================================================================
+:main
+menu Example Music: Enterprise Network Boot  [ ${arch} ]
+item --gap --         ${hostname}  /  ${mac}
+item --gap --
+item localboot        Boot local disk  (default, 30s timeout)
+item --gap --         -- Debian --
+item debian-auto      Debian  Auto install
+item debian-ssh       Debian  Auto install  (SSH console)
+item debian-auto-s    Debian  Auto install  (ttyS0 serial)
+item debian-ssh-s     Debian  Auto install  (SSH + ttyS0 serial)
+item --gap --         -- Ubuntu --
+item ubuntu-auto      Ubuntu  Auto install
+item ubuntu-auto-s    Ubuntu  Auto install  (ttyS0 serial)
+item ubuntu-ssh-s     Ubuntu  Auto install  (SSH + ttyS0 serial)
+item --gap --         -- Rocky Linux --
+item rocky-auto       Rocky   Auto install
+item rocky-ssh        Rocky   Auto install  (SSH console)
+item rocky-auto-s     Rocky   Auto install  (ttyS0 serial)
+item rocky-ssh-s      Rocky   Auto install  (SSH + ttyS0 serial)
+item --gap --         -- Arch Linux --
+item arch-auto        Arch    Auto install
+item arch-ssh         Arch    Install  (SSH console)
+item arch-auto-s      Arch    Auto install  (ttyS0 serial)
+item arch-ssh-s       Arch    Install  (SSH + ttyS0 serial)
+item --gap --         -- OpenBSD --
+item openbsd-auto     OpenBSD 7.5  Auto install
+item openbsd-auto-s   OpenBSD 7.5  Auto install  (ttyS0 serial)
+item openbsd-inter-s  OpenBSD 7.5  Interactive   (ttyS0 serial)
+item --gap --         -- Hypervisors --
+item proxmox-ve       Proxmox VE 9   (x86_64 only)
+item proxmox-dcm      Proxmox DCM 9  (x86_64 only)
+item --gap --         -- Utilities --
+item gparted          GParted Live
+item phoenixpe        PhoenixPE WinPE environment  (x86_64 only)
+item hdt              Hardware Detection Tool  (x86_64 only)
+item --gap --         -- System --
+item shell            iPXE shell
+item reboot           Reboot
+item shutdown         Shutdown
+
+choose --default localboot --timeout 30000 target || goto localboot
+goto ${target}
+
+# ===========================================================================
+# LOCAL BOOT
+# ===========================================================================
+:localboot
+sanboot --no-describe --drive 0x80 || exit
+
+# ===========================================================================
+# DEBIAN
+# Common kernel parameters factored into comments for reference:
+#   auto=true url=... priority=high locale=en_GB.UTF-8 keymap=gb
+#   domain=jukebox.internal theme=dark lowmem/low=false
+#   timezone=Europe/London time/zone=Europe/London
+#   netcfg/choose_interface=auto
+# ===========================================================================
+:debian-auto
+kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
+initrd ${boot-url}/debian/${arch}/initrd.gz
+boot
+
+:debian-ssh
+kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
+initrd ${boot-url}/debian/${arch}/initrd.gz
+boot
+
+:debian-auto-s
+kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
+initrd ${boot-url}/debian/${arch}/initrd.gz
+boot
+
+:debian-ssh-s
+kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
+initrd ${boot-url}/debian/${arch}/initrd.gz
+boot
+
+# ===========================================================================
+# UBUNTU
+# Approach: Alpine Linux lts netboot acts as a thin write-to-disk helper.
+# It boots into RAM, streams the Ubuntu 24.04 minimal cloud image
+# (~247 MB amd64 / ~216 MB arm64) via wget|dd onto the target disk, then
+# reboots. Ubuntu boots from disk; cloud-init reads user-data/meta-data from
+# the nocloud seed at ${boot-url}/ubuntu/ on first boot.
+#
+# This avoids the Subiquity live installer (~1.1 GB squashfs) entirely.
+# The Ubuntu minimal cloud image is a pre-installed system, not an installer.
+#
+# Storage drivers passed via modules= so the Alpine initramfs loads them
+# before the local service runs -- no depmod or apk install needed at runtime.
+#   mptspi      -- VMware Workstation / Fusion (LSI Logic emulated SCSI)
+#   virtio_scsi -- Proxmox virtio-scsi
+#   virtio_blk  -- Proxmox virtio-blk
+#   ata_piix    -- IDE fallback
+#
+# Files required on provisioning server:
+#   alpine/x86_64/vmlinuz-lts        -- Alpine lts kernel (amd64)
+#   alpine/x86_64/initramfs-lts      -- Alpine lts initramfs (amd64)
+#   alpine/x86_64/modloop-lts        -- Alpine lts kernel modules (amd64)
+#   alpine/aarch64/vmlinuz-lts       -- Alpine lts kernel (arm64)
+#   alpine/aarch64/initramfs-lts     -- Alpine lts initramfs (arm64)
+#   alpine/aarch64/modloop-lts       -- Alpine lts kernel modules (arm64)
+#   alpine/ubuntu-writer.apkovl.tar.gz  -- dd-writer apkovl (arch-neutral)
+#   ubuntu/ubuntu-24.04-minimal-cloudimg-amd64.img
+#   ubuntu/ubuntu-24.04-minimal-cloudimg-arm64.img
+#   ubuntu/user-data                 -- cloud-init #cloud-config seed
+#   ubuntu/meta-data                 -- cloud-init nocloud metadata
+#
+# Alpine netboot files (pin to v3.23):
+#   https://dl-cdn.alpinelinux.org/alpine/v3.23/releases/x86_64/netboot/
+#   https://dl-cdn.alpinelinux.org/alpine/v3.23/releases/aarch64/netboot/
+# Ubuntu minimal images:
+#   https://cloud-images.ubuntu.com/minimal/releases/noble/release/
+#
+# Ref -- Alpine PXE boot:        https://wiki.alpinelinux.org/wiki/PXE_boot
+# Ref -- apkovl format:          https://wiki.alpinelinux.org/wiki/Alpine_local_backup
+# Ref -- cloud-init nocloud:     https://cloudinit.readthedocs.io/en/latest/reference/datasources/nocloud.html
+# ===========================================================================
+
+# Alpine arch path: iPXE uses x86_64/arm64; Alpine releases use x86_64/aarch64
+:ubuntu-auto
+set alpine-arch ${arch}
+iseq ${arch} arm64 && set alpine-arch aarch64 ||
+
+kernel ${boot-url}/alpine/${alpine-arch}/vmlinuz-virt ip=dhcp root=/dev/ram0 modules=loop,squashfs,virtio_scsi,virtio_blk alpine_repo=https://dl-cdn.alpinelinux.org/alpine/v3.23/main modloop=${boot-url}/alpine/${alpine-arch}/modloop-virt apkovl=${boot-url}/alpine/ubuntu-writer.apkovl.tar.gz quiet
+initrd ${boot-url}/alpine/${alpine-arch}/initramfs-virt
+boot
+
+:ubuntu-auto-s
+set alpine-arch ${arch}
+iseq ${arch} arm64 && set alpine-arch aarch64 ||
+kernel ${boot-url}/alpine/${alpine-arch}/vmlinuz-lts ip=dhcp modules=loop,squashfs,mptspi,virtio_scsi,virtio_blk,ata_piix quiet nomodeset alpine_repo=https://dl-cdn.alpinelinux.org/alpine/v3.23/main modloop=${boot-url}/alpine/${alpine-arch}/modloop-lts apkovl=${boot-url}/alpine/ubuntu-writer.apkovl.tar.gz initrd=initramfs-lts console=ttyS0,115200n8
+initrd ${boot-url}/alpine/${alpine-arch}/initramfs-lts
+boot
+
+:ubuntu-ssh-s
+set alpine-arch ${arch}
+iseq ${arch} arm64 && set alpine-arch aarch64 ||
+kernel ${boot-url}/alpine/${alpine-arch}/vmlinuz-lts ip=dhcp modules=loop,squashfs,mptspi,virtio_scsi,virtio_blk,ata_piix quiet nomodeset alpine_repo=https://dl-cdn.alpinelinux.org/alpine/v3.23/main modloop=${boot-url}/alpine/${alpine-arch}/modloop-lts apkovl=${boot-url}/alpine/ubuntu-writer.apkovl.tar.gz initrd=initramfs-lts console=tty0 console=ttyS0,115200n8
+initrd ${boot-url}/alpine/${alpine-arch}/initramfs-lts
+boot
+
+# ===========================================================================
+# ROCKY LINUX
+# inst.stage2 points at the minimal boot.iso images/install.img on the Rocky
+# CDN (~200 MB squashfs) rather than the full DVD tree (~700 MB).  This is
+# fetched into RAM once at boot; url= in install.ks handles package retrieval
+# separately.  ${arch} resolves to x86_64 or arm64 (normalised at top of file)
+# but Rocky mirrors use aarch64, so the set below remaps before the kernel line.
+# ===========================================================================
+:rocky-auto
+set rocky-arch ${arch}
+iseq ${arch} arm64 && set rocky-arch aarch64 ||
+kernel ${boot-url}/rockylinux/${arch}/vmlinuz inst.ks=${boot-url}/rockylinux/install.ks inst.stage2=https://download.rockylinux.org/pub/rocky/9/BaseOS/${rocky-arch}/os/images/install.img inst.lang=en_GB.UTF-8 inst.keymap=uk inst.timezone=Europe/London ip=dhcp quiet
+initrd ${boot-url}/rockylinux/${arch}/initrd.img
+boot
+
+:rocky-ssh
+set rocky-arch ${arch}
+iseq ${arch} arm64 && set rocky-arch aarch64 ||
+kernel ${boot-url}/rockylinux/${arch}/vmlinuz inst.ks=${boot-url}/rockylinux/install.ks inst.stage2=https://download.rockylinux.org/pub/rocky/9/BaseOS/${rocky-arch}/os/images/install.img inst.lang=en_GB.UTF-8 inst.keymap=uk inst.timezone=Europe/London ip=dhcp inst.sshd inst.sshd.password=install
+initrd ${boot-url}/rockylinux/${arch}/initrd.img
+boot
+
+:rocky-auto-s
+set rocky-arch ${arch}
+iseq ${arch} arm64 && set rocky-arch aarch64 ||
+kernel ${boot-url}/rockylinux/${arch}/vmlinuz inst.ks=${boot-url}/rockylinux/install.ks inst.stage2=https://download.rockylinux.org/pub/rocky/9/BaseOS/${rocky-arch}/os/images/install.img inst.lang=en_GB.UTF-8 inst.keymap=uk inst.timezone=Europe/London ip=dhcp console=ttyS0,115200n8 console=tty0 quiet
+initrd ${boot-url}/rockylinux/${arch}/initrd.img
+boot
+
+:rocky-ssh-s
+set rocky-arch ${arch}
+iseq ${arch} arm64 && set rocky-arch aarch64 ||
+kernel ${boot-url}/rockylinux/${arch}/vmlinuz inst.ks=${boot-url}/rockylinux/install.ks inst.stage2=https://download.rockylinux.org/pub/rocky/9/BaseOS/${rocky-arch}/os/images/install.img inst.lang=en_GB.UTF-8 inst.keymap=uk inst.timezone=Europe/London ip=dhcp inst.sshd inst.sshd.password=install console=ttyS0,115200n8 console=tty0
+initrd ${boot-url}/rockylinux/${arch}/initrd.img
+boot
+
+# ===========================================================================
+# ARCH LINUX
+# Requires a custom airootfs with the arch-autoinstall systemd service baked
+# in for the auto entries. See arch-pxe-setup.md for build instructions.
+# SSH entries use the standard upstream airootfs -- no custom build needed.
+# Label is :arch-linux (not :arch) to avoid shadowing the ${arch} variable.
+# ===========================================================================
+:arch-auto
+kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=http://192.168.139.50/ copytoram arch-autoinstall locale=en_GB.UTF-8 keymap=uk timezone=Europe/London
+initrd ${boot-url}/arch/${arch}/initramfs-linux.img
+boot
+
+:arch-ssh
+kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=http://192.168.139.50/ copytoram locale=en_GB.UTF-8 keymap=uk timezone=Europe/London systemd.unit=multi-user.target
+initrd ${boot-url}/arch/${arch}/initramfs-linux.img
+boot
+
+:arch-auto-s
+kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=http://192.168.139.50/ copytoram arch-autoinstall locale=en_GB.UTF-8 keymap=uk timezone=Europe/London console=ttyS0,115200n8
+initrd ${boot-url}/arch/${arch}/initramfs-linux.img
+boot
+
+:arch-ssh-s
+kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=http://192.168.139.50/ copytoram locale=en_GB.UTF-8 keymap=uk timezone=Europe/London systemd.unit=multi-user.target console=tty0 console=ttyS0,115200n8
+initrd ${boot-url}/arch/${arch}/initramfs-linux.img
+boot
+
+# ===========================================================================
+# OPENBSD
+# ===========================================================================
+:openbsd-auto
+set base ${boot-url}/openbsd/7.5/${arch}
+echo OpenBSD AUTO (${arch}) from ${base}
+kernel ${base}/bsd.rd
+boot
+
+:openbsd-auto-s
+set base ${boot-url}/openbsd/7.5/${arch}
+echo OpenBSD AUTO SERIAL (${arch}) from ${base}
+kernel ${base}/bsd.rd
+boot
+
+:openbsd-inter-s
+set base ${boot-url}/openbsd/7.5/${arch}
+echo OpenBSD INTERACTIVE SERIAL (${arch}) from ${base}
+kernel ${base}/bsd.rd
+boot
+
+# ===========================================================================
+# PROXMOX VE
+# x86_64 only -- Proxmox does not publish arm64 installer ISOs
+# ===========================================================================
+:proxmox-ve
+iseq ${arch} arm64 && goto noarch-msg ||
+kernel ${boot-url}/proxmox/x86_64/boot/linux26 vga=791 video=vesafb:ywrap,mtrr ramdisk_size=16777216 proxmox-start-auto-installer=1 proxmox-auto-install-mode=http proxmox-auto-install-url=${boot-url}/proxmox/answer.toml
+initrd ${boot-url}/proxmox/x86_64/boot/initrd
+boot
+
+# ===========================================================================
+# PROXMOX DCM
+# ===========================================================================
+:proxmox-dcm
+echo Proxmox DCM boot not yet configured
+prompt Press any key to return to menu...
+goto main
+
+# ===========================================================================
+# GPARTED
+# ===========================================================================
+:gparted
+kernel ${boot-url}/gparted/${arch}/vmlinuz boot=live union=overlay components ip=dhcp noswap fetch=${boot-url}/gparted/${arch}/filesystem.squashfs
+initrd ${boot-url}/gparted/${arch}/initrd.img
+boot
+
+# ===========================================================================
+# PHOENIXPE  (x86_64 only)
+# ===========================================================================
+:phoenixpe
+iseq ${arch} arm64 && goto noarch-msg ||
+kernel ${boot-url}/phoenixpe/wimboot
+initrd ${boot-url}/phoenixpe/bootmgr.exe  bootmgr.exe
+initrd ${boot-url}/phoenixpe/boot.sdi     boot.sdi
+initrd ${boot-url}/phoenixpe/Boot.wim     Boot.wim
+boot
+
+# ===========================================================================
+# HDT  (x86_64 only)
+# ===========================================================================
+:hdt
+iseq ${arch} arm64 && goto noarch-msg ||
+chain ${boot-url}/hdt/pxelinux.0
+
+# ===========================================================================
+# SYSTEM
+# ===========================================================================
+:shell
+shell
+
+:reboot
+reboot
+
+:shutdown
+poweroff
+
+# ---------------------------------------------------------------------------
+# Shared: architecture not supported message
+# ---------------------------------------------------------------------------
+:noarch-msg
+echo ${arch} is not supported for this option
+prompt Press any key to return to menu...
+goto main

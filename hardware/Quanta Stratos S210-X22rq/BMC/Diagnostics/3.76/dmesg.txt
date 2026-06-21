@@ -1,0 +1,206 @@
+<5>Linux version 2.6.28.10-ami (root@monster) (gcc version 4.5.1 (Sourcery G++ Lite 2010.09-50) ) #1 Wed Nov 18 10:18:17 CST 2015
+<4>CPU: ARM926EJ-S [41069265] revision 5 (ARMv5TEJ), cr=00053177
+<4>CPU: VIVT data cache, VIVT instruction cache
+<4>Machine: AST2300EVB
+<4>Memory policy: ECC disabled, Data cache writeback
+<7>On node 0 totalpages: 28672
+<7>free_area_init_node: node 0, pgdat c0346e18, node_mem_map c0369000
+<7>  Normal zone: 224 pages used for memmap
+<7>  Normal zone: 0 pages reserved
+<7>  Normal zone: 28448 pages, LIFO batch:7
+<7>  Movable zone: 0 pages used for memmap
+<4>Built 1 zonelists in Zone order, mobility grouping on.  Total pages: 28448
+<5>Kernel command line: root=/dev/ramdisk ro ip=none ramdisk_blocksize=4096 console=ttyS2,38400 rootfstype=cramfs bigphysarea=6144
+<4>AST2300 Interrupt Controller Enabled
+<4>PID hash table entries: 512 (order: 9, 2048 bytes)
+<4>AST2300 Timer Enabled
+<4>Console: colour dummy device 80x30
+<6>console [ttyS2] enabled
+<6>Dentry cache hash table entries: 16384 (order: 4, 65536 bytes)
+<6>Inode-cache hash table entries: 8192 (order: 3, 32768 bytes)
+<6>Memory: 112MB = 112MB total
+<5>Memory: 74764KB available (3068K code, 260K data, 124K init)                      
+<6>SLUB: Genslabs=12, HWalign=32, Order=0-3, MinObjects=0, CPUs=1, Nodes=1           
+<6>Calibrating delay loop... 179.81 BogoMIPS (lpj=899072)                            
+<4>Mount-cache hash table entries: 512
+<6>CPU: Testing write buffer coherency: ok
+<6>net_namespace: 636 bytes  
+<6>NET: Registered protocol family 16
+<6>NET: Registered protocol family 2
+<6>IP route cache hash table entries: 1024 (order: 0, 4096 bytes)                    
+<6>TCP established hash table entries: 4096 (order: 3, 32768 bytes)                  
+<6>TCP bind hash table entries: 4096 (order: 2, 16384 bytes)                         
+<6>TCP: Hash tables configured (established 4096 bind 4096)                          
+<6>TCP reno registered       
+<6>NET: Registered protocol family 1
+<6>checking if image is initramfs...it isn't (bad gzip magic numbers); looks like an initrd
+<6>Freeing initrd memory: 10696K
+<6>bigphysarea: Allocated 6144 pages at 0xc1a73000.
+<6>JFFS2 version 2.2. (NAND) © 2001-2006 Red Hat, Inc.
+<6>msgmni has been set to 167
+<6>alg: No test for stdrng (krng)
+<6>io scheduler noop registered (default)
+<6>Serial: 8250/16550 driver5 ports, IRQ sharing disabled                            
+<6>serial8250: ttyS0 at MMIO 0x1e784000 (irq = 10) is a 16550A                       
+<6>serial8250: ttyS2 at MMIO 0x1e78e000 (irq = 33) is a 16550A                       
+<6>serial8250: ttyS3 at MMIO 0x1e78f000 (irq = 34) is a 16550A                       
+<6>brd: module loaded        
+<6>loop: module loaded       
+<6>Ethernet Channel Bonding Driver: v3.3.0 (June 10, 2008)                           
+<4>bonding: Warning: either miimon or arp_interval and arp_ip_target module parameters must be specified, otherwise bonding will not detect link failures! see bonding.txt for details.              
+<5>Ractrends Flash mapping: 0x1000000 at 0x14000000
+<4>Probing for Flash at Bank # 0
+<4>SPI: probing for winbond devices ...
+<4>SPI: probing for intel s33 devices ...
+<4>SPI: probing for atmel devices ...
+<4>SPI: probing for macronix devices ...
+<6>Found SPI Chip Macronix MX25L25635E 
+<4>MTD Partition 0 : fullpart @ 0x0 of Size 0x2000000
+<4>MTD Partition 1 : conf @ 0x50000 of Size 0x70000
+<4>MTD Partition 2 : bkupconf @ 0xd0000 of Size 0x70000
+<4>MTD Partition 3 : root @ 0x150000 of Size 0xa80000
+<4>MTD Partition 4 : www @ 0xd80000 of Size 0x270000
+<5>Creating 5 MTD partitions on "Ractrends":
+<5>0x00000000-0x02000000 : "fullpart"
+<5>0x00050000-0x000c0000 : "conf"
+<5>0x000d0000-0x00140000 : "bkupconf"
+<5>0x00150000-0x00bd0000 : "root"
+<5>0x00d80000-0x00ff0000 : "www"
+<6>i2c /dev entries driver   
+<4>Netfilter messages via NETLINK v0.30.
+<6>ip_tables: (C) 2000-2006 Netfilter Core Team
+<6>arp_tables: (C) 2002 David S. Miller
+<6>TCP cubic registered      
+<6>NET: Registered protocol family 10
+<6>lo: Disabled Privacy Extensions
+<6>ip6_tables: (C) 2000-2006 Netfilter Core Team
+<6>IPv6 over IPv4 tunneling driver
+<6>sit0: Disabled Privacy Extensions
+<6>ip6tnl0: Disabled Privacy Extensions
+<6>NET: Registered protocol family 17
+<6>RPC: Registered udp transport module.
+<6>RPC: Registered tcp transport module.
+<6>802.1Q VLAN Support v1.8 Ben Greear <greearb@candelatech.com>                     
+<6>All bugs added by David S. Miller <davem@redhat.com>
+<5>RAMDISK: cramfs filesystem found at block 0
+<5>RAMDISK: Loading 10696KiB [1 disk] into ram disk... done.                         
+<4>VFS: Mounted root (cramfs filesystem) readonly.
+<3>Root-NFS: No NFS server available, giving up.
+<3>VFS: Unable to mount root fs via NFS, trying floppy.
+<4>VFS: Mounted root (cramfs filesystem) readonly.
+<5>Trying to move old root to /initrd ... okay
+<6>Freeing init memory: 124K 
+<4>Network Interface Monitor Version 1.14.0
+<4>Copyright (c) 2009 American Megatrends Inc.
+<1>Helper Module Driver Version 1.2
+<1>Copyright (c) 2006 American Megatrends Inc.
+<4>Initializing USB Devices  
+<4>USB Device Endpoint Driver 
+<4>Copyright 2006 American Megatrends Inc.
+<4>USB Driver is Successfully Initialized
+<6>Reset Common Driver, (c) 2009 American Megatrends Inc.                            
+<6>KCS Common Driver, (c) 2009 American Megatrends Inc.
+<4>The GPIO Driver is loaded successfully.
+<4>AST Video Capture Driver, (c) 2009 American Megatrends Inc.                       
+<4>Loading iUSB Module...    
+<4>dev 0 does not connect to host
+<4>dev 1 does not connect to host
+<4>dev 2 does not connect to host
+<4>dev 3 does not connect to host
+<4>Loading HID Device Module...
+<4>Loading CDROM Device Module...
+<4>Loading Floppy Device Module...
+<4>Loading Hdisk Device Module...
+<4>ADC Driver Version 1.0    
+<4>Copyright (c) 2009 American Megatrends Inc.
+<4>AST2300 adc hw module loaded
+<4>The Cipher coprocessor driver loaded successfully
+<4>GPIO HW Driver, (c) 2009 American Megatrends Inc.
+<4>I2C0: Hardware routines registered
+<6>Registered bus id: i2c-0  
+<4>I2C1: Hardware routines registered
+<6>Registered bus id: i2c-1  
+<4>I2C2: Hardware routines registered
+<6>Registered bus id: i2c-2  
+<4>I2C3: Hardware routines registered
+<6>Registered bus id: i2c-3  
+<4>I2C4: Hardware routines registered
+<6>Registered bus id: i2c-4  
+<4>I2C5: Hardware routines registered
+<6>Registered bus id: i2c-5  
+<4>I2C6: Hardware routines registered
+<6>Registered bus id: i2c-6  
+<4>I2C7: Hardware routines registered
+<6>Registered bus id: i2c-7  
+<4>I2C8: Hardware routines registered
+<6>Registered bus id: i2c-8  
+<4>AST2300 LPCUART Driver Version 103.0
+<4>Copyright (c) 2010 American Megatrends Inc.
+<4>NCSI Interface Driver Version 1.1
+<4>Copyright (c) 2007 American Megatrends Inc.
+<4>joey ast_ether_open       
+<4>>>>>> phy_oui= 0          
+<4>NCSI(eth0): MAC Addr = C4:54:44:44:DF:21
+<4>NCSI(eth0):Found NC-SI at Package:Channel (0:0)
+<4>NCSI(eth0):Found NC-SI at Package:Channel (0:1)
+<4>ncsi 1G                   
+<4>ncsi 1G                   
+<4>NCSI(eth0): Channel 0.0 Enabled
+<4>joey ast_ether_open       
+<4>>>>>> phy_oui= 732        
+<6>ADDRCONF(NETDEV_UP): eth1: link is not ready
+<4>NCSI(eth1): MAC Addr = C4:54:44:44:DF:21
+<6>ADDRCONF(NETDEV_CHANGE): eth1: link becomes ready
+<7>eth0: no IPv6 routers present
+<4>NCSI(eth1): No NCSI Interfaces detected
+<6>PWMTACH Common Driver, (c) 2009 American Megatrends Inc.                          
+<6>Watchdog Common Driver, (c) 2010 American Megatrends Inc.                         
+<6>bonding: bond0 is being deleted...
+<4>NCSI(eth0):0.0 Select Package (Hw Arbit Enable)Failed
+<4>NCSI(eth0): Setting User Config Failed
+<4>>>> setting debounce for C6
+<3>bonding: unable to delete non-existent bond bond0
+<6>bonding: bond0 is being created...
+<6>bonding: bond0: setting mode to balance-rr (0).
+<6>bonding: bond0: Setting MII monitoring interval to 100.                           
+<6>bonding: bond0: Setting use_carrier to 0.
+<4>bonding: bond0: doing slave updates when interface is down.                       
+<6>bonding: bond0: Adding slave eth0.
+<4>bonding: bond0: Warning: no link monitoring support for eth0                      
+<4>bonding bond0: master_dev is not up in bond_enslave
+<4>NCSI(eth0): Changing MAC Addr to  C4:54:44:44:DF:21
+<4>joey ast_ether_open       
+<4>>>>>> phy_oui= 0          
+<4>NCSI(eth0): Change  Mac Address(0.0) Passed 
+<4>joey ast_ether_open       
+<4>>>>>> phy_oui= 0          
+<4>bonding: bond0: Warning: MII and ETHTOOL support not available for interface eth0, and arp_interval/arp_ip_target module parameters not specified, thus bonding will not detect link failures! see bonding.txt for details.
+<4>bonding: bond0: Warning: failed to get speed and duplex from eth0, assumed to be 100Mb/sec and Full.
+<6>bonding: bond0: enslaving eth0 as an active interface with an up link.            
+<4>bonding: bond0: doing slave updates when interface is down.                       
+<6>bonding: bond0: Adding slave eth1.
+<4>bonding: bond0: Warning: no link monitoring support for eth1                      
+<4>bonding bond0: master_dev is not up in bond_enslave
+<4>joey ast_ether_open       
+<4>>>>>> phy_oui= 732        
+<4>bonding: bond0: Warning: MII and ETHTOOL support not available for interface eth1, and arp_interval/arp_ip_target module parameters not specified, thus bonding will not detect link failures! see bonding.txt for details.
+<4>bonding: bond0: Warning: failed to get speed and duplex from eth1, assumed to be 100Mb/sec and Full.
+<6>bonding: bond0: enslaving eth1 as an active interface with an up link.            
+<4>dev 1 does not connect to host
+<4>dev 2 does not connect to host
+<4>dev 3 does not connect to host
+<4>dev 0 does not connect to host
+<4>dev 0 already connect to host
+<4>I2C8: Resetting the controller
+<4>process `sysctl' is using deprecated sysctl (syscall) net.ipv6.neigh.default.retrans_time; Use net.ipv6.neigh.default.retrans_time_ms instead.
+<4>test                      
+<4>test                      
+<4>NCSI(eth0):0.0 Select Package (Hw Arbit Enable)Failed
+<4>NCSI(eth0): Setting User Config Failed
+<4>NCSI(eth0):0.0 Select Package (Hw Arbit Enable)Failed
+<4>NCSI(eth0): Setting User Config Failed
+<4>NCSI(eth0):0.0 Select Package (Hw Arbit Enable)Failed
+<4>NCSI(eth0): Setting User Config Failed
+<4>NCSI(eth0):0.0 Select Package (Hw Arbit Enable)Failed
+<4>NCSI(eth0): Setting User Config Failed
+<4>ISR_RPKT_LOST

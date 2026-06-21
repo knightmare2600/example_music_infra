@@ -1,0 +1,885 @@
+RACK-MIB DEFINITIONS ::=BEGIN
+
+IMPORTS
+	OBJECT-TYPE				FROM RFC-1212
+	mib-2, DisplayString, PhysAddress      	FROM RFC1213-MIB
+	Counter, Gauge, IpAddress, enterprises 	FROM RFC1155-SMI
+	TRAP-TYPE                               FROM RFC-1215;
+
+-- Version:	1.03
+-- Date:	2014/6/30
+-- note:	
+ 
+
+-- BMC MIB nodes
+-- quanta:				1.3.6.1.4.1.7244
+-- server:				1.3.6.1.4.1.7244.1
+-- RACK:				1.3.6.1.4.1.7244.1.2
+-- BMC:					1.3.6.1.4.1.7244.1.2.1
+
+-- Trap enterprise is "quanta".
+-- quanta BMC Trap IDs MIB:		1601-1651  (this MIB)
+
+quanta					OBJECT IDENTIFIER ::= { enterprises 7244 }
+server					OBJECT IDENTIFIER ::= { quanta 1 }
+RACK					OBJECT IDENTIFIER ::= { server 2 }
+BMC					OBJECT IDENTIFIER ::= { RACK 1 }
+	agentInfo			OBJECT IDENTIFIER ::= { BMC 1 }
+	systemStatus			OBJECT IDENTIFIER ::= { BMC 2 }
+	trapInfo			OBJECT IDENTIFIER ::= { BMC 3 }
+
+-- *************************************************************
+-- agentInfo
+-- *************************************************************
+ agentBMCVersion OBJECT-TYPE
+ SYNTAX DisplayString (SIZE (0..64))
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "BMC Version Number"
+ ::= { agentInfo 1 }
+
+ agentBMCGuid OBJECT-TYPE
+ SYNTAX OCTET STRING (SIZE(16))
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "BMC GUID"
+ ::= { agentInfo 2 }
+
+ agentServerIdentify OBJECT-TYPE
+ SYNTAX INTEGER {
+    -- If 0 (zero), there are no Chassis Identify Control settings
+    off(1),
+    ON(2),
+    blinking(3)
+ }
+ ACCESS read-write
+ STATUS mandatory
+ DESCRIPTION
+ "Server Identify"
+ ::= { agentInfo 3 }
+
+ agentChassisStatus OBJECT-TYPE
+ SYNTAX INTEGER {
+    -- Note: These values are bit masks.
+    powerIsON(1),
+    powerOverLoad(2),
+    interlock(4),		--chassis is presently shut down because 
+				--a chassis panel interlock switch is active
+    powerFault(8),            
+    powerControlFault(16)    
+ }
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "Chassis Status"
+ ::= { agentInfo 4 }
+
+ agentPowerControl OBJECT-TYPE
+ SYNTAX INTEGER {
+    off(1),
+    on(2),
+    reset(3),
+    cycle(4)
+ }
+ ACCESS read-write
+ STATUS mandatory
+ DESCRIPTION
+ "Power Control"
+ ::= { agentInfo 5 }
+
+
+ agentSystemMAC OBJECT-TYPE
+ SYNTAX OCTET STRING (SIZE(1..128))
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "System MAC address"
+ ::= { agentInfo 6 }
+
+-- *************************************************************
+-- SystemStatus
+-- *************************************************************
+
+ voltageStatusOverall OBJECT-TYPE
+ SYNTAX INTEGER {
+    other(1),				
+    unknown(2),	
+    ok(3),	
+    nonCritical(4),
+    critical(5),
+    nonRecoverable(6)	
+ }
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "Voltage Status Overall"
+ ::= { systemStatus 1 }
+
+ voltageStatusList OBJECT-TYPE
+ SYNTAX OCTET STRING (SIZE(1..128))
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "Voltage Status detail information"
+ ::= { systemStatus 2 }
+
+ fanStatusOverall OBJECT-TYPE
+ SYNTAX INTEGER {
+    other(1),		
+    unknown(2),		
+    ok(3),	
+    nonCritical(4),	
+    critical(5),	
+    nonRecoverable(6)
+ }
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "Fan Status Overall"
+ ::= { systemStatus 3 }
+
+ fanStatusList OBJECT-TYPE
+ SYNTAX OCTET STRING (SIZE(1..128))
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "Fan Status detail information"
+ ::= { systemStatus 4 }
+
+ temperatureStatusOverall OBJECT-TYPE
+ SYNTAX INTEGER {
+    other(1),	
+    unknown(2),	
+    ok(3),	
+    nonCritical(4),
+    critical(5),
+    nonRecoverable(6)
+ }
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "Temperature Status Overall"
+ ::= { systemStatus 5 }
+
+ temperatureStatusList OBJECT-TYPE
+ SYNTAX OCTET STRING (SIZE(1..128))
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "Temperature Status detail information"
+ ::= { systemStatus 6 }
+
+ 
+ powerSupplyRedundancy OBJECT-TYPE
+ SYNTAX INTEGER {
+    other(1),				
+    full(2),				-- fully redundant
+    lost(3)				-- lost
+ }
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "Power Supply Redundancy Status"
+ ::= { systemStatus 7 }
+ 
+ 
+ powerSupply0Status OBJECT-TYPE
+ SYNTAX INTEGER {
+    -- Note: These values are bit masks.
+    IsPresence(1),
+    FailDectect(2),
+    PredictiveFail(4),
+    InputLost(8),	     -- AC/DC lost		
+    LostOrOutOfRange(16),    
+    OutOfRange(32)           -- Out of range but present
+ }
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "Power SUPPLY 0 Status"
+ ::= { systemStatus 8 }
+ 
+  powerSupply1Status OBJECT-TYPE
+ SYNTAX INTEGER {
+    -- Note: These values are bit masks.
+    IsPresence(1),
+    FailDectect(2),
+    PredictiveFail(4),
+    InputLost(8),	     -- AC/DC lost		
+    LostOrOutOfRange(16),    
+    OutOfRange(32)           -- Out of range but present
+ }
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "Power SUPPLY 1 Status"
+ ::= { systemStatus 9 }
+
+ hddStatusList OBJECT-TYPE
+ SYNTAX OCTET STRING (SIZE(1..256))
+ ACCESS read-only
+ STATUS mandatory
+ DESCRIPTION
+ "HDD Status detail information. The list display as e20001e30000 ..... The fist 2 chacracter means IPMI sensor number, the next 4 chacrater means status. then repeat. It is bit masks. bit0 is presence, bit1 is drive fault, bit2 is predictive failure, bit3 is hot spare, bit5 is In critical array, bit6 is in failed array, bit7 is Rebuild/remap in progress and bit8 is Rebuild/remap  abort."
+ ::= { systemStatus 10 }
+
+
+-- *************************************************************
+-- trapInfo
+-- *************************************************************
+
+bMCTrapTime OBJECT-TYPE
+	SYNTAX	DisplayString
+	ACCESS	read-only
+	STATUS	mandatory
+	DESCRIPTION
+		"Time the trap occured"
+	::={ trapInfo 1 }
+
+bMCTrapSensorName OBJECT-TYPE
+	SYNTAX	DisplayString
+	ACCESS	read-only
+	STATUS	mandatory
+	DESCRIPTION
+		"Event sensor name the trap occured"
+	::={ trapInfo 2 }
+
+bMCTrapDesc OBJECT-TYPE
+	SYNTAX	DisplayString
+	ACCESS	read-only
+	STATUS	mandatory
+	DESCRIPTION
+		"Event description the trap occured"
+	::={ trapInfo 3 }
+
+-- **********************************************************************************************
+--
+-- TRAP definitions
+--
+--      Trap ID range:       1601..1651
+--      Trap enterprise:     BMC (1.3.6.1.4.1.7244.1.2.1)
+--
+-- **********************************************************************************************
+
+bMCTemperatureStatusWarningAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some temperature sensor warning event asserted."
+	--#TYPE         "Temperature sensor"
+	--#SUMMARY      "Temperature sensor %s warning asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     MAJOR
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1601
+
+bMCTemperatureStatusWarningDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some temperature sensor warning event deasserted."
+	--#TYPE         "Temperature sensor"
+	--#SUMMARY      "Temperature sensor %s warning deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1602
+
+bMCTemperatureStatusCriticalAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some temperature sensor critical event asserted."
+	--#TYPE         "Temperature sensor"
+	--#SUMMARY      "Temperature sensor %s critical asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1603
+
+bMCTemperatureStatusCriticalDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some temperature sensor critical event deasserted."
+	--#TYPE         "Temperature sensor"
+	--#SUMMARY      "Temperature sensor %s critical deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1604
+
+bMCTemperatureStatusNonRecovearableAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some temperature sensor Non-Recovearable event asserted."
+	--#TYPE         "Temperature sensor"
+	--#SUMMARY      "Temperature sensor %s Non-Recovearable asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1605
+
+bMCTemperatureStatusNonRecovearableDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some temperature sensor Non-Recovearable event deasserted."
+	--#TYPE         "Temperature sensor"
+	--#SUMMARY      "Temperature sensor %s Non-Recovearable deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1606
+
+bMCVoltageStatusWarningAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some voltage sensor warning event asserted."
+	--#TYPE         "Voltage sensor"
+	--#SUMMARY      "Voltage sensor %s warning asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     MAJOR
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1607
+
+bMCVoltageStatusWarningDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some voltage sensor warning event deasserted."
+	--#TYPE         "Voltage sensor"
+	--#SUMMARY      "Voltage sensor %s warning deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1608
+
+bMCVoltageStatusCriticalAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some voltage sensor critical event asserted."
+	--#TYPE         "Voltage sensor"
+	--#SUMMARY      "Voltage sensor %s critical asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1609
+
+bMCVoltageStatusCriticalDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some voltage sensor critical event deasserted."
+	--#TYPE         "Voltage sensor"
+	--#SUMMARY      "Voltage sensor %s critical deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1610
+
+bMCVoltageStatusNonRecovearableAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some voltage sensor Non-Recovearable event asserted."
+	--#TYPE         "Voltage sensor"
+	--#SUMMARY      "Voltage sensor %s Non-Recovearable asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1611
+
+bMCVoltageStatusNonRecovearableDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some voltage sensor Non-Recovearable event deasserted."
+	--#TYPE         "Voltage sensor"
+	--#SUMMARY      "Voltage sensor %s Non-Recovearable deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1612
+
+bMCFanStatusWarningAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some fan sensor warning event asserted."
+	--#TYPE         "Fan sensor"
+	--#SUMMARY      "Fan sensor %s warning asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     MAJOR
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1613
+
+bMCFanStatusWarningDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some fan sensor warning event deasserted."
+	--#TYPE         "Fan sensor"
+	--#SUMMARY      "Fan sensor %s warning deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1614
+
+bMCFanStatusCriticalAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some fan sensor critical event asserted."
+	--#TYPE         "Fan sensor"
+	--#SUMMARY      "Fan sensor %s critical asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1615
+
+bMCFanStatusCriticalDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some fan sensor critical event deasserted."
+	--#TYPE         "Fan sensor"
+	--#SUMMARY      "Fan sensor %s critical deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1616
+
+bMCFanStatusNonRecovearableAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some fan sensor Non-Recovearable event asserted."
+	--#TYPE         "Fan sensor"
+	--#SUMMARY      "Fan sensor %s Non-Recovearable asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1617
+
+bMCFanStatusNonRecovearableDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some fan sensor Non-Recovearable event deasserted."
+	--#TYPE         "Fan sensor"
+	--#SUMMARY      "Fan sensor %s Non-Recovearable deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1618
+
+bMCPSURedundancyLostAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Power supply redundancy lost event asserted."
+	--#TYPE         "Power supply sensor"
+	--#SUMMARY      "%s redundancy lost asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     MAJOR
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1619
+
+bMCPSURedundancyLostDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Power supply redundancy lost event deasserted."
+	--#TYPE         "Power supply sensor"
+	--#SUMMARY      "%s redundancy lost deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1620
+
+bMCPSUStatusPresenceDetectAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some PSU inserted."
+	--#TYPE         "Power supply sensor"
+	--#SUMMARY      "PSU %s inserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1621
+
+bMCPSUStatusPresenceDetectDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some PSU removed."
+	--#TYPE         "Power supply sensor"
+	--#SUMMARY      "PSU %s removed."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     MAJOR
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1622
+
+bMCPSUStatusFailDetectAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some PSU fail asserted."
+	--#TYPE         "Power supply sensor"
+	--#SUMMARY      "PSU %s fail asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1623
+
+bMCPSUStatusFailDetectDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some PSU fail deasserted."
+	--#TYPE         "Power supply sensor"
+	--#SUMMARY      "PSU %s fail deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1624
+
+bMCPSUStatusPredictiveFailAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some PSU predictive fail asserted."
+	--#TYPE         "Power supply sensor"
+	--#SUMMARY      "PSU %s predictive fail asserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1625
+
+bMCPSUStatusPredictiveFailDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some PSU predictive fail deasserted."
+	--#TYPE         "Power supply sensor"
+	--#SUMMARY      "PSU %s predictive fail deasserted."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1626
+
+bMCPSUStatusInputLostAsserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some PSU input lost."
+	--#TYPE         "Power supply sensor"
+	--#SUMMARY      "PSU %s input lost."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     MAJOR
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1627
+
+bMCPSUStatusInputLostDeasserted  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some PSU inout lost recover."
+	--#TYPE         "Power supply sensor"
+	--#SUMMARY      "PSU %s input lost recover."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1628
+
+bMCSELStatusClear  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "System event log cleared."
+	--#TYPE         "System event log sensor"
+	--#SUMMARY      "%s SEL cleared."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1629
+
+bMCSELStatusFull  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "System event log full."
+	--#TYPE         "System event log sensor"
+	--#SUMMARY      "%s SEL full."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1630
+
+bMCSELStatusAlmostFull  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "System event log almost full."
+	--#TYPE         "System event log sensor"
+	--#SUMMARY      "%s SEL almost full."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1631
+
+bMCSystemsPowerDown  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "System power down"
+	--#TYPE         "Power unit sensor"
+	--#SUMMARY      "System power down."
+	--#SEVERITY     INFORMATIONAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1632
+	
+bMCCPUStatusProcessorHot  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some CPU processor hot asserted."
+	--#TYPE         "Processor sensor"
+	--#SUMMARY      "%s processor hot."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1633
+
+bMCCPUStatusIERR  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some CPU IERR asserted."
+	--#TYPE         "Processor sensor"
+	--#SUMMARY      "%s processor IERR."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1634
+	
+bMCCPUStatusThermalTrip  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some CPU thermal trip asserted."
+	--#TYPE         "Processor sensor"
+	--#SUMMARY      "%s thermal trip."
+	--#ARGUMENTS    { 1 }
+	--#SEVERITY     CRITICAL
+	--#TIMEINDEX    1
+	--#STATE        OPERATIONAL
+	::= 1635
+	
+bMCMiscellanyStatus  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapTime,
+		bMCTrapSensorName,
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Some miscellany sensor has event."
+	--#TYPE         "Miscellany sensor"
+	--#SUMMARY      "Micellany sensor %s has event %s."
+	--#ARGUMENTS    { 1, 2 }
+	::= 1650
+
+bMCTestTrap  TRAP-TYPE
+	ENTERPRISE BMC
+	VARIABLES {
+		bMCTrapDesc
+	}
+	DESCRIPTION
+	    "Test Trap."
+	--#TYPE         "Test Trap"
+	--#SUMMARY      "Test Trap"
+	::= 1651
+
+END

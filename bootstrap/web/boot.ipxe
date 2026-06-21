@@ -1,0 +1,150 @@
+#!ipxe
+
+# ============================================================
+# Example Music - Enterprise Network Boot
+# Safe default: boot local disk after 30s
+# ============================================================
+
+set boot-url http://192.168.139.50
+
+# ============================================================
+# AUTO DEPLOY — MAC based
+# chain to a MAC-specific script if one exists, else show menu
+# ============================================================
+chain --autofree ${boot-url}/autodeploy/${mac:hexhyp}.ipxe || goto main
+
+# ============================================================
+# MAIN MENU
+# ============================================================
+:main
+menu Example Music: Enterprise Network Boot
+item --gap --                      [ ${hostname} / ${mac} ]
+item --gap --
+item --gap --                      ***** SAFE DEFAULT *****
+item localboot                     Boot from local disk (default)
+item --gap --
+item --gap --                      ***** INSTALLERS *****
+item debian-auto                   Debian  - Automated Install
+item debian-ssh                    Debian  - Install (SSH console)
+item debian-auto-serial            Debian  - Automated Install Serial Console (ttyS0)
+item debian-ssh-serial             Debian  - Automated Install SSH install Serial Console TTY (ttyS0)
+item arch                          Arch Linux Install
+item proxmox-ve                    Proxmox VE  9 (Hypervisor)
+item proxmox-dcm                   Proxmox DCM 9 (Datacentre Manager)
+item --gap --
+item --gap --                      ***** UTILITIES *****
+item gparted                       GParted Live
+item phoenixpe                     PhoenixPE Environment
+item hdt                           Hardware Detection Tool
+item --gap --
+item --gap --                      ***** SYSTEM *****
+item shell                         iPXE shell
+item reboot                        Reboot
+item shutdown                      Shutdown
+
+choose --default localboot --timeout 30000 target && goto ${target} || goto localboot
+
+# ============================================================
+# LOCAL BOOT
+# ============================================================
+:localboot
+sanboot --no-describe --drive 0x80 || exit
+
+# ============================================================
+# DEBIAN — AUTOMATED
+# ============================================================
+:debian-auto
+kernel ${boot-url}/debian/linux auto=true url=${boot-url}/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.example theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
+initrd ${boot-url}/debian/initrd.gz
+boot
+
+# ============================================================
+# DEBIAN — SSH CONSOLE INSTALL
+# ============================================================
+:debian-ssh
+kernel ${boot-url}/debian/linux auto=true url=${boot-url}/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.example theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
+initrd ${boot-url}/debian/initrd.gz
+boot
+
+# ============================================================
+# DEBIAN — AUTOMATED (serial console)
+# ============================================================
+:debian-auto-serial
+kernel ${boot-url}/debian/linux auto=true url=${boot-url}/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.example theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
+initrd ${boot-url}/debian/initrd.gz
+boot
+
+# ============================================================
+# DEBIAN — SSH CONSOLE INSTALL (serial console)
+# ============================================================
+:debian-ssh-serial
+kernel ${boot-url}/debian/linux auto=true url=${boot-url}/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.example theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
+initrd ${boot-url}/debian/initrd.gz
+boot
+
+# ============================================================
+# PROXMOX VE
+# ============================================================
+:proxmox-ve
+kernel ${boot-url}/proxmox/boot/linux26 \
+    vga=791 \
+    video=vesafb:ywrap,mtrr \
+    ramdisk_size=16777216 \
+    proxmox-start-auto-installer=1 \
+    proxmox-auto-install-mode=http \
+    proxmox-auto-install-url=${boot-url}/proxmox/answer.toml
+initrd ${boot-url}/proxmox/boot/initrd
+boot
+
+# ============================================================
+# PROXMOX DCM
+# ============================================================
+:proxmox-dcm
+echo Proxmox DCM boot not yet configured
+prompt Press any key to return to menu...
+goto main
+
+# ============================================================
+# Arch Linux
+# ============================================================
+:arch
+echo Booting Arch Linux Installer...
+kernel http://192.168.1.10/arch/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=http://geo.mirror.pkgbuild.com/iso/latest/
+initrd http://192.168.1.10/arch/initramfs-linux.img
+boot
+
+# ============================================================
+# GPARTED
+# ============================================================
+:gparted
+kernel ${boot-url}/gparted/vmlinuz boot=live union=overlay components ip=dhcp noswap fetch=${boot-url}/gparted/filesystem.squashfs
+initrd ${boot-url}/gparted/initrd.img
+boot
+
+# ============================================================
+# PHOENIXPE
+# ============================================================
+:phoenixpe
+kernel ${boot-url}/phoenixpe/wimboot
+initrd ${boot-url}/phoenixpe/bootmgr.exe  bootmgr.exe
+initrd ${boot-url}/phoenixpe/boot.sdi     boot.sdi
+initrd ${boot-url}/phoenixpe/Boot.wim     Boot.wim
+boot
+
+# ============================================================
+# HDT
+# ============================================================
+:hdt
+chain ${boot-url}/hdt/pxelinux.0
+
+# ============================================================
+# SYSTEM
+# ============================================================
+:shell
+shell
+
+:reboot
+reboot
+
+:shutdown
+poweroff

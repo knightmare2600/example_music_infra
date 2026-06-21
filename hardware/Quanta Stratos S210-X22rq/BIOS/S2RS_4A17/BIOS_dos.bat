@@ -1,0 +1,1 @@
+afudos\Afudos 4A17.BIN /P /B /K /X /N

@@ -1,0 +1,1 @@
+afuwin64\AFUWINx64 4A17.BIN /P /B /K /X /N

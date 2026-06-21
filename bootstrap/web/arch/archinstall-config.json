@@ -1,0 +1,56 @@
+{
+  "_comment": "archinstall config for Example Music infrastructure nodes. Place alongside archinstall on PXE server. Run with: archinstall --config config.json --creds creds.json",
+  "_version": "1.0 -- 2026-03-19",
+  "locale_config": {
+    "kb_layout": "uk",
+    "sys_enc": "UTF-8",
+    "sys_lang": "en_GB.UTF-8"
+  },
+  "timezone": "Europe/London",
+  "bootloader": "grub-install",
+  "uki": false,
+  "kernels": [
+    "linux"
+  ],
+  "disk_config": {
+    "config_type": "default_layout",
+    "device_modifications": []
+  },
+  "swap": true,
+  "packages": [
+    "openssh",
+    "sudo",
+    "wget",
+    "vim",
+    "bash-completion",
+    "net-tools",
+    "python3"
+  ],
+  "services": [
+    "sshd",
+    "systemd-resolved",
+    "systemd-networkd"
+  ],
+  "network_config": {
+    "type": "nm"
+  },
+  "audio_config": null,
+  "profile_config": {
+    "profile": {
+      "classtype": "Profile",
+      "details": [],
+      "custom_settings": {}
+    },
+    "gfx_driver": null,
+    "greeter": null
+  },
+  "post_install": "#!/bin/bash\nset -euo pipefail\n\nANSIBLE_USER=ansible\nSSH_KEY_URL=http://192.168.139.50/ansible_sshkey.pub\nHOME_DIR=/home/${ANSIBLE_USER}\n\necho '>>> Adding ansible user to wheel group (sudo equivalent on Arch)...'\nusermod -aG wheel ${ANSIBLE_USER}\n\necho '>>> Enabling wheel group NOPASSWD sudo...'\ncat > /etc/sudoers.d/ansible <<'SUDOEOF'\n# Ansible automation - full passwordless sudo\nansible ALL=(ALL) NOPASSWD: ALL\nSUDOEOF\nchmod 0440 /etc/sudoers.d/ansible\nvisudo -c -f /etc/sudoers.d/ansible || {\n  echo 'ERROR: sudoers syntax check failed -- removing bad file'\n  rm -f /etc/sudoers.d/ansible\n  exit 1\n}\n\necho '>>> Creating .ssh directory...'\nmkdir -p ${HOME_DIR}/.ssh\n\necho '>>> Fetching Ansible SSH public key...'\ncurl -fsSL -o ${HOME_DIR}/.ssh/authorized_keys ${SSH_KEY_URL} || {\n  echo 'WARNING: Could not fetch SSH key from ${SSH_KEY_URL}'\n  echo 'Place the Ansible public key manually at ${HOME_DIR}/.ssh/authorized_keys'\n}\n\necho '>>> Setting permissions...'\nchown -R ${ANSIBLE_USER}:${ANSIBLE_USER} ${HOME_DIR}\nchmod 700 ${HOME_DIR}/.ssh\n[ -f ${HOME_DIR}/.ssh/authorized_keys ] && chmod 600 ${HOME_DIR}/.ssh/authorized_keys\n\necho '>>> Writing .vimrc...'\nprintf 'set ruler\\nset bg=dark\\nsyntax on\\n' > ${HOME_DIR}/.vimrc\nchown ${ANSIBLE_USER}:${ANSIBLE_USER} ${HOME_DIR}/.vimrc\n\necho '>>> Hardening sshd...'\n# Disable root login and password auth -- key-only, non-root only\nsed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config\nsed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config\nsed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config\n# Ensure the directives exist even if sed found nothing to replace\ngrep -q '^PermitRootLogin' /etc/ssh/sshd_config || echo 'PermitRootLogin no' >> /etc/ssh/sshd_config\ngrep -q '^PasswordAuthentication' /etc/ssh/sshd_config || echo 'PasswordAuthentication no' >> /etc/ssh/sshd_config\ngrep -q '^PubkeyAuthentication' /etc/ssh/sshd_config || echo 'PubkeyAuthentication yes' >> /etc/ssh/sshd_config\n\necho '>>> Verifying...'\necho '--- passwd entry:'\ngrep ^${ANSIBLE_USER}: /etc/passwd\necho '--- authorized_keys:'\ncat ${HOME_DIR}/.ssh/authorized_keys 2>/dev/null || echo '(not present -- fetch manually)'\necho '--- permissions:'\nls -la ${HOME_DIR}/\nls -la ${HOME_DIR}/.ssh/ 2>/dev/null || true\necho '--- sshd root login:'\ngrep PermitRootLogin /etc/ssh/sshd_config\n\necho '>>> post_install complete.'",
+  "!users": [
+    {
+      "username": "ansible",
+      "!password": null,
+      "sudo": true
+    }
+  ],
+  "!root-password": null
+}

@@ -1,0 +1,1 @@
+afudos\Afudos S2RS4B12.BIN /FDR /GBER /MER /OPR

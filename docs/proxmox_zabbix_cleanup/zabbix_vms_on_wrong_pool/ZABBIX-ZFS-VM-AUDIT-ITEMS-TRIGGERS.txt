@@ -1,0 +1,297 @@
+# Zabbix 7.0 Monitoring Configuration — Proxmox ZFS VM Placement Audit
+#
+# Architecture:
+#   One master item reads /tmp/zfs-vm-audit.json via vfs.file.contents.
+#   All other items are Dependent Items using JSONPath preprocessing.
+#   No UserParameter, no system.run[], no agent scripts required.
+#
+# The audit script runs every 10 minutes via systemd timer.
+# Zabbix polls every 5 minutes — any given poll reads the most recent output.
+#
+# Placement logic (blacklist / failsafe model):
+#   A disk is ACCEPTABLE by default on any pool.
+#   A disk is FLAGGED if its pool matches an excluded pattern.
+#   The system/boot pool is always excluded by the script regardless of config.
+#
+# Excluded pool patterns are glob-based and case-insensitive:
+#   pbs*    → pbs, PBS, pbs-fast, PBS-BACKUPS
+#   rpool   → rpool exactly
+#   Backup* → Backups, backup-pool, BACKUP2
+#
+# Severity integer mapping:
+#   0 = OK       — all disks on acceptable pools
+#   1 = FLAGGED  — one or more disks on an excluded pool
+#  -1 = UNKNOWN  — pvesh config query failed for that guest
+#
+# Stale file alert: if generated_unix has not advanced in 2 hours,
+# the timer or script has failed and Zabbix alerts on that independently.
+#
+# Host macro: {$ZFS_AUDIT_STALE_SECONDS}  default 7200 (2 hours)
+# Override per host if a different stale window is needed.
+#
+# ============================================================================
+# MASTER ITEM
+# ============================================================================
+
+Name: PVE - ZFS VM Placement Audit Report (master)
+Type: Zabbix agent
+Key: vfs.file.contents[/tmp/zfs-vm-audit.json]
+Type of information: Text
+Update interval: 5m
+History: 7d
+Description: >
+  Reads the full JSON report written by proxmox-zfs-vm-audit.py.
+  All other ZFS audit items depend on this master item.
+  Script runs every 10 minutes via systemd timer; Zabbix polls every 5 minutes.
+
+---
+
+# ============================================================================
+# DEPENDENT ITEMS  (all depend on the master item above)
+# Preprocessing type: JSONPath
+# ============================================================================
+
+Name: PVE - ZFS Audit Flagged VM Count
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/zfs-vm-audit.json]
+Key: pve.zfs.flagged.count
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.flagged_count
+Description: >
+  Number of VMs or LXC containers with at least one disk on an excluded ZFS pool.
+  Use this item in trigger expressions.
+
+---
+
+Name: PVE - ZFS Audit Flagged VM IDs
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/zfs-vm-audit.json]
+Key: pve.zfs.flagged.vmids
+Type of information: Text
+Preprocessing: JSONPath  $.summary.flagged_vmids
+Description: JSON array of VMIDs flagged for incorrect pool placement. For display in alert messages.
+
+---
+
+Name: PVE - ZFS Audit Flagged VM Detail
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/zfs-vm-audit.json]
+Key: pve.zfs.flagged.detail
+Type of information: Text
+Preprocessing: JSONPath  $.summary.flagged_detail
+Description: >
+  JSON array of objects containing vmid, name, and flagged_disks for each
+  affected guest. Useful as alert message context — shows which disk on
+  which pool caused the flag.
+
+---
+
+Name: PVE - ZFS Audit Unknown Count
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/zfs-vm-audit.json]
+Key: pve.zfs.unknown.count
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.unknown_count
+Description: >
+  Number of guests where pvesh config query failed.
+  Non-zero indicates a Proxmox API problem or permissions issue.
+
+---
+
+Name: PVE - ZFS Audit Total VMs Checked
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/zfs-vm-audit.json]
+Key: pve.zfs.total.vms.checked
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.total_vms_checked
+Description: Total QEMU VMs enumerated on this node during last audit.
+
+---
+
+Name: PVE - ZFS Audit Total LXC Checked
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/zfs-vm-audit.json]
+Key: pve.zfs.total.lxc.checked
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.total_lxc_checked
+Description: Total LXC containers enumerated on this node during last audit.
+
+---
+
+Name: PVE - ZFS Audit Excluded Patterns
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/zfs-vm-audit.json]
+Key: pve.zfs.excluded.patterns
+Type of information: Text
+Preprocessing: JSONPath  $.summary.excluded_patterns
+Description: >
+  The glob patterns the script ran with. Useful for confirming the systemd
+  ExecStart arguments are being picked up correctly.
+
+---
+
+Name: PVE - ZFS Audit System Pool
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/zfs-vm-audit.json]
+Key: pve.zfs.system.pool
+Type of information: Text
+Preprocessing: JSONPath  $.summary.system_pool
+Description: >
+  The ZFS pool that mounts / as detected at runtime.
+  Always excluded regardless of the patterns list.
+  Useful for confirming auto-detection is working on a new node.
+
+---
+
+Name: PVE - ZFS Audit Report Generated (Unix timestamp)
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/zfs-vm-audit.json]
+Key: pve.zfs.generated.unix
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.generated_unix
+Description: >
+  Unix timestamp of when the audit report was generated.
+  Used to detect a stale report (timer or script failure).
+
+---
+
+# ============================================================================
+# FILE / SERVICE EXISTENCE ITEMS  (direct Zabbix agent items, not dependent)
+# ============================================================================
+
+Name: PVE - ZFS Audit Script Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/usr/local/bin/proxmox-zfs-vm-audit.py]
+Type of information: Numeric (unsigned)
+Update interval: 1h
+Description: 1 = script present, 0 = missing.
+
+---
+
+Name: PVE - ZFS Audit Service File Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/etc/systemd/system/proxmox-zfs-vm-audit.service]
+Type of information: Numeric (unsigned)
+Update interval: 1h
+Description: 1 = service file present, 0 = missing.
+
+---
+
+Name: PVE - ZFS Audit Timer File Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/etc/systemd/system/proxmox-zfs-vm-audit.timer]
+Type of information: Numeric (unsigned)
+Update interval: 1h
+Description: 1 = timer file present, 0 = missing.
+
+---
+
+Name: PVE - ZFS Audit Report File Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/tmp/zfs-vm-audit.json]
+Type of information: Numeric (unsigned)
+Update interval: 15m
+Description: >
+  1 = report file present, 0 = missing.
+  File lives in /tmp so is absent after a fresh reboot until the timer fires
+  (5 minutes post-boot). If missing beyond 15 minutes after boot, investigate.
+
+---
+
+# ============================================================================
+# TRIGGERS
+# ============================================================================
+
+Name: PVE - ZFS placement: VMs on excluded pool on {HOST.NAME}
+Expression: last(/pve-host/pve.zfs.flagged.count) > 0
+Severity: Warning
+Manual close: Yes
+Description: >
+  One or more VMs or LXC containers on {HOST.NAME} have at least one disk
+  residing on an excluded ZFS pool (system/boot pool or a pool matching the
+  configured exclusion patterns such as pbs*, backup*, rpool).
+  These disks risk filling the system pool or a backup pool.
+  Review pve.zfs.flagged.detail on this host for affected VMIDs, names, and
+  which disk is on which pool.
+  Migrate the affected disk(s) to a dedicated VM storage pool.
+  DO NOT delete data without confirming with a senior admin.
+
+---
+
+Name: PVE - ZFS audit: UNKNOWN guests on {HOST.NAME}
+Expression: last(/pve-host/pve.zfs.unknown.count) > 0
+Severity: Average
+Manual close: Yes
+Description: >
+  One or more guests on {HOST.NAME} could not be queried by pvesh.
+  This may indicate pveproxy is down, a guest is in an inconsistent state,
+  or the script does not have sufficient permissions.
+  Check: journalctl -u proxmox-zfs-vm-audit.service -n 50
+
+---
+
+Name: PVE - ZFS audit report is stale on {HOST.NAME}
+Expression: (now() - last(/pve-host/pve.zfs.generated.unix)) > {$ZFS_AUDIT_STALE_SECONDS}
+Severity: High
+Manual close: No
+Description: >
+  The ZFS VM placement audit report on {HOST.NAME} has not been updated within
+  {$ZFS_AUDIT_STALE_SECONDS} seconds (default 7200 = 2 hours).
+  This means proxmox-zfs-vm-audit.timer has likely failed, or the script
+  crashed without writing output.
+  Check: systemctl status proxmox-zfs-vm-audit.timer
+  Check: journalctl -u proxmox-zfs-vm-audit.service -n 30
+
+---
+
+Name: PVE - ZFS audit report file missing on {HOST.NAME}
+Expression: last(/pve-host/vfs.file.exists[/tmp/zfs-vm-audit.json]) = 0
+Severity: High
+Manual close: No
+Description: >
+  /tmp/zfs-vm-audit.json does not exist on {HOST.NAME}.
+  Normal immediately after a reboot — /tmp is volatile and the file is
+  recreated when the timer fires (5 minutes post-boot).
+  If this persists beyond 15 minutes after boot, investigate:
+  Check: systemctl status proxmox-zfs-vm-audit.timer
+  Check: journalctl -u proxmox-zfs-vm-audit.service -n 30
+
+---
+
+Name: PVE - ZFS audit script missing on {HOST.NAME}
+Expression: last(/pve-host/vfs.file.exists[/usr/local/bin/proxmox-zfs-vm-audit.py]) = 0
+Severity: High
+Manual close: No
+Description: >
+  /usr/local/bin/proxmox-zfs-vm-audit.py has been removed from {HOST.NAME}.
+  No ZFS placement auditing is occurring on this node.
+
+---
+
+Name: PVE - ZFS audit total guests is zero on {HOST.NAME}
+Expression: >
+  last(/pve-host/pve.zfs.total.vms.checked) = 0
+  and last(/pve-host/pve.zfs.total.lxc.checked) = 0
+  and (now() - last(/pve-host/pve.zfs.generated.unix)) < {$ZFS_AUDIT_STALE_SECONDS}
+Severity: Warning
+Manual close: Yes
+Description: >
+  The audit script ran (report is recent) but found zero VMs and zero LXC
+  containers on {HOST.NAME}. On a node with running guests this indicates a
+  pvesh permissions problem or a script error.
+  Check: journalctl -u proxmox-zfs-vm-audit.service -n 50
+
+---
+
+# ============================================================================
+# HOST MACRO
+# ============================================================================
+
+Macro: {$ZFS_AUDIT_STALE_SECONDS}
+Default value: 7200
+Description: >
+  Maximum acceptable age of /tmp/zfs-vm-audit.json in seconds before the
+  staleness trigger fires. Default is 2 hours (7200 seconds).
+  Override at the host level for nodes with different maintenance windows.
+
+---
