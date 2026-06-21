@@ -1,0 +1,30 @@
+[Unit]
+Description=Proxmox VE — ZFS VM Placement Audit
+Documentation=man:pvesh(1) man:pvesm(1)
+After=pve-cluster.service pveproxy.service
+Wants=pve-cluster.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/proxmox-zfs-vm-audit.py
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=proxmox-zfs-vm-audit
+User=root
+Group=root
+
+# PrivateTmp MUST be 'no' — the JSON report is written to /tmp and must be
+# readable by the Zabbix agent. PrivateTmp=yes would isolate /tmp from
+# all other processes including Zabbix.
+PrivateTmp=no
+
+# ProtectSystem=strict makes the filesystem read-only except for paths in
+# ReadWritePaths. /tmp is the only path this service writes to.
+ProtectSystem=strict
+ReadWritePaths=/tmp
+
+ProtectHome=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

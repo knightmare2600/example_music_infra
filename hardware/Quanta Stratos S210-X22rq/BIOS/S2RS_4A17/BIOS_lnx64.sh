@@ -1,0 +1,1 @@
+./afulnx64/afulnx_64 4A17.BIN /P /B /K /X /N

@@ -1,0 +1,3 @@
+cd dosflash
+dosflash.bat
+

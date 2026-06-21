@@ -1,0 +1,26 @@
+Projects that spin off form this exaple1-music repo
+
+https://github.com/knightmare2600/Spejder
+https://github.com/knightmare2600/fyrtaarn
+https://github.com/knightmare2600/pe_tools
+https://github.com/knightmare2600/example_music_infra
+https://github.com/knightmare2600/wintools/tree/master/pwsh
+
+Updated Repos
+
+https://github.com/knightmare2600/zabbix_templates FLOSSED my PVE templates for finding snapshots and wrong zpools for VMs if oyu used my VMware versions, this is where to go now
+https://github.com/knightmare2600/dotfiles turbo-charged zsh and finally made midnight commander honour solarized dark
+
+Porting Fun
+
+https://github.com/knightmare2600/dua-cli Additional ports to arm64 I didn't write the original
+https://github.com/knightmare2600/jq I was annoyed there wasn't an arm64 native binary, so made one
+https://github.com/knightmare2600/NTop likewise for ntop, native arm binaries
+https://github.com/knightmare2600/ColorEcho same for colorecho sent patches upstream which the author kindly merged
+https://github.com/knightmare2600/proxmoxbmc forked and added in debina deb file packaging which was missing for some reason
+https://github.com/knightmare2600/ScreenRes once again, I wanted a WinPE native arm64 binary when travelling with a MacBook M1 laptop
+
+Silly season stuff, because the pointy wee guy with heating problems downstairs makes work for idle hands, and my town's motto is:
+"Touch Ane, Touch Aw – Better meddle wi the Deil than the bairns o Fawkirk (Strike one, strike all – easier fight with the devil than the children of Falkirk..."
+
+https://github.com/knightmare2600/putty-win32s Made the psftp tool more ike WinSCP for wnidows 3.11. Why...? Because my first OS was WFW 3.11 and I liked this chap's work

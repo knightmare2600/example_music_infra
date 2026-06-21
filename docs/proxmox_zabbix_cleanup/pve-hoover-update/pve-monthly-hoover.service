@@ -1,0 +1,29 @@
+[Unit]
+Description=Proxmox VE Monthly Hoover - Clean Journals, Temps, Coredumps, Old PVE Kernels
+Documentation=man:journalctl(1) man:systemd-journal(8) man:apt-get(8)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/pve-monthly-hoover.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pve-monthly-hoover
+User=root
+Group=root
+
+# ProtectSystem=full: mounts /usr and /boot read-only.
+# /etc and /var remain writable, which is required by this service:
+#   - journalctl vacuum writes to /var/log/journal
+#   - apt-get writes to /var/cache/apt and /var/lib/dpkg
+#   - coredump cleanup writes to /var/lib/systemd/coredump
+# NOTE: ProtectSystem=strict (previous value) made /var read-only and
+#       silently prevented all of the above from working.
+ProtectSystem=full
+ProtectHome=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

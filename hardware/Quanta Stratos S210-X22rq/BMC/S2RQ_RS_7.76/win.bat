@@ -1,0 +1,2 @@
+cd winflash
+winflash.bat

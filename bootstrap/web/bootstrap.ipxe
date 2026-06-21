@@ -1,0 +1,113 @@
+#!ipxe
+################################################
+## Example Music — iPXE embedded bootstrap
+## This script is embedded into the iPXE binary.
+## It kicks off DHCP, then chains to the full
+## boot menu served by the Ansible node.
+##
+## Embed into ISO with:
+##   make bin/ipxe.iso EMBED=bootstrap.ipxe
+## or for a USB image:
+##   make bin/ipxe.usb EMBED=bootstrap.ipxe
+## or for a PXE ROM:
+##   make bin/undionly.kpxe EMBED=bootstrap.ipxe
+################################################
+
+## ------------------------------------------------------------
+## Boot server configuration: update these as needed
+## ------------------------------------------------------------
+set boot-domain   jukebox.internal
+set boot-ansible  ansible.${boot-domain}
+set boot-www      www.${boot-domain}
+set boot-ip       192.168.139.50
+set boot-path     /menu.ipxe
+
+echo
+echo ============================================================
+echo   Example Music Infrastructure: iPXE Boot
+echo ============================================================
+echo
+
+## ------------------------------------------------------------
+## Ctrl-B shell escape — 5 second window
+## If the prompt times out, execution falls through to DHCP.
+## ------------------------------------------------------------
+prompt --key 0x02 --timeout 5000 Press Ctrl-B for iPXE shell... && shell ||
+
+## ------------------------------------------------------------
+## DHCP — try all interfaces
+## ifconf attempts DHCP on every available NIC.
+## To pin to a specific interface replace with: dhcp net0
+## ------------------------------------------------------------
+echo
+echo Requesting DHCP lease...
+ifconf --timeout 15000 || goto dhcp_failed
+echo Got address: ${net0/ip}
+echo Gateway:     ${net0/gateway}
+echo
+goto fetch_menu
+
+:dhcp_failed
+echo
+echo DHCP failed on all interfaces.
+echo Dropping to shell — check cabling and DHCP server.
+echo
+shell
+goto end
+
+## ------------------------------------------------------------
+## Fetch remote boot menu
+## Try ansible → www → direct IP, using nslookup first
+## to skip the chain timeout if DNS is broken
+## ------------------------------------------------------------
+:fetch_menu
+echo Attempting to locate boot server...
+echo
+
+## Step 1 — try ansible.jukebox.internal
+nslookup ${boot-ansible} && goto try_ansible || goto try_www
+
+:try_ansible
+echo Trying ${boot-ansible}...
+chain --timeout 30000 http://${boot-ansible}${boot-path} && goto end || goto try_www
+
+## Step 2 — try www.jukebox.internal
+:try_www
+echo ${boot-ansible} unreachable, trying ${boot-www}...
+nslookup ${boot-www} && goto do_www || goto try_ip
+
+:do_www
+echo Trying ${boot-www}...
+chain --timeout 30000 http://${boot-www}${boot-path} && goto end || goto try_ip
+
+## Step 3 — try direct IP
+:try_ip
+echo DNS failed, trying ${boot-ip} directly...
+chain --timeout 30000 http://${boot-ip}${boot-path} && goto end || goto fetch_failed
+
+## ------------------------------------------------------------
+## All methods failed
+## ------------------------------------------------------------
+:fetch_failed
+echo
+echo *** Could not reach boot server by any method ***
+echo
+echo Tried:
+echo   1. http://${boot-ansible}${boot-path}
+echo   2. http://${boot-www}${boot-path}
+echo   3. http://${boot-ip}${boot-path}
+echo
+echo Possible causes:
+echo   - No network / DHCP lease lost
+echo   - DNS not resolving ${boot-domain}
+echo   - HTTP server not running on boot server
+echo
+echo Useful recovery commands:
+echo   dhcp net0                              -- retry DHCP
+echo   nslookup ${boot-ansible}               -- test DNS
+echo   chain http://${boot-ip}${boot-path}    -- retry by IP
+echo
+shell
+
+:end
+

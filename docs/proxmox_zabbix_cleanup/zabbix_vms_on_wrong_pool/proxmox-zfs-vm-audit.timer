@@ -1,0 +1,19 @@
+[Unit]
+Description=Proxmox VE — ZFS VM Placement Audit Timer (every 10 minutes)
+Documentation=man:systemd.timer(5)
+Requires=proxmox-zfs-vm-audit.service
+
+[Timer]
+# Run every 10 minutes — short enough to catch a newly-placed VM quickly
+OnCalendar=*:0/10
+Persistent=true
+Accuracy=30s
+
+# Run 5 minutes after boot (allows pveproxy to be fully up first)
+OnBootSec=5min
+
+# Small jitter to avoid thundering herd on clusters
+RandomizedDelaySec=60s
+
+[Install]
+WantedBy=timers.target

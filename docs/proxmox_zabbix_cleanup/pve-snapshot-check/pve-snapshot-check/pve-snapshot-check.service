@@ -1,0 +1,31 @@
+[Unit]
+Description=Proxmox VE Snapshot Check - Report VM and LXC snapshot state to JSON
+Documentation=man:pvesh(1)
+After=pve-cluster.service pveproxy.service
+Wants=pve-cluster.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/pve-snapshot-check.py
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pve-snapshot-check
+User=root
+Group=root
+
+# PrivateTmp MUST be 'no' — the JSON report is written to /tmp and must be
+# readable by the Zabbix agent. PrivateTmp=yes would give this service its own
+# private /tmp namespace, invisible to all other processes including Zabbix.
+PrivateTmp=no
+
+# ProtectSystem=strict makes the entire filesystem read-only except for paths
+# explicitly listed in ReadWritePaths. /tmp is the only path this service
+# writes to, so it is listed here. /usr, /boot, and /etc are read-only.
+ProtectSystem=strict
+ReadWritePaths=/tmp
+
+ProtectHome=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

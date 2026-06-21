@@ -1,0 +1,20 @@
+[global]
+keyboard = "en-gb"
+country = "gb"
+fqdn = "pve-install.jukebox.internal"
+mailto = "root@jukebox.internal"
+timezone = "Europe/London"
+root-password-hashed = "$6$AHl84jrZ7PWHZKfM$q4POMoxXoRb6M6Up2uKDnzJjr4EntVfPI4/KndRu.Z45lwuZoGrxkW2o5EAAC0O8Vyr9qGClpIL/TdYjRWURk/"
+
+[network]
+source = "from-dhcp"
+
+[disk-setup]
+filesystem = "zfs"
+zfs.raid = "raid1"
+disk-list = ["sda", "sdb"]
+
+[first-boot]
+source = "from-url"
+ordering = "fully-up"
+url = "http://192.168.139.50/proxmox/first-boot.sh"

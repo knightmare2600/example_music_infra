@@ -1,0 +1,1 @@
+./afulnx64/afulnx_64 S2RS4B12.BIN /FDR /GBER /MER /OPR

@@ -1,0 +1,19 @@
+[Unit]
+Description=Proxmox VE Snapshot Check Timer — hourly
+Documentation=man:systemd.timer(5)
+Requires=pve-snapshot-check.service
+
+[Timer]
+# Run once per hour, on the hour
+OnCalendar=hourly
+Persistent=true
+Accuracy=1min
+
+# Run 10 minutes after boot (allows pveproxy to be fully up first)
+OnBootSec=10min
+
+# Jitter up to 3 minutes to avoid thundering herd on clusters
+RandomizedDelaySec=3min
+
+[Install]
+WantedBy=timers.target

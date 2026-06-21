@@ -1,0 +1,266 @@
+#--------------------------------------------------------------------------------#
+#                                                                                #
+# Example Virtual PXE Install Preseed File                                       #
+#                                                                                #
+# This file will allow one to deploy an Ubuntu 12.04 VM so that it deploys a     #
+# virtual server.  With UK keyboard and puppet which will then attempt to        #
+# check into {puppet|ansible}.example.com.                                       #
+#                                                                                #
+# Pretty please with sugar on top, comment lines to explain what they do, and    #
+# also put altenatives in if they might be useful.  E.g: ubuntu-minimal below.   #
+#                                                                                #
+# Variant: EFI/ARM64 (VMware Fusion on Apple Silicon and EFI x86_64 VMs)         #
+# Served to arm64 arch by menu.ipxe via ${seed} variable.                        #
+# For BIOS/x86_64 use lvm-bios.seed                                              #
+#                                                                                #
+#--------------------------------------------------------------------------------#
+# Created: 24/09/2012 v1.0 knightmare    Initial Version mod of alternate seed   #
+# Updated: 25/09/2012 v1.1 knightmare    tasksel puppet & apt-cacher config GB   #
+#                                        TZ, added penguinf user & grub          #
+# Updated: 25/09/2012 v1.2 knightmare    Added Graham's start puppet with wget   #
+# Updated: 25/09/2012 v1.3 knightmare    FIX: use GB keyboard with layoutcode    #
+# Updated: 26/09/2012 v1.4 knightmare    Auto partition & enable backports       #
+# Updated: 09/10/2012 v1.5 knightmare    Install ubuntu-desktop & GB keyboard    #
+# Updated: 12/10/2012 v1.6 knightmare    Let's make this preseed generic again   #
+# Updated: 13/05/2012 v1.7 knightmare    Late command for final tweaks           #
+# Updated: 10/06/2012 v1.8 knightmare    Install openssh server for ease of use  #
+# Updated: 27/06/2013 v1.9 knightmare    Kernel changed to virtual               #
+# Updated: 26/11/2013 v2.0 knightmare    LVM and RAID 1 partitioning             #
+# Updated: 15/01/2014 v2.1 knightmare    LVM on a single disk                    #
+# Updated: 19/02/2026 v2.2 knightmare    LVM on a single disk & / partition      #
+# Updated: 19/02/2026 v2.3 knightmare    Debian refresh/update, fix tasksel and  #
+#                                        pakage names, Add hostname prompt       #
+# Updated: 22/02/2026 v2.4 knightmare    Install virtual/cloud kernel & zsh      #
+# Updated: 04/05/2026 v2.5 knightmare    Dual BIOS/EFI support via early_command #
+#                                        detection; ARM64/VMware Fusion support  #
+# Updated: 04/05/2026 v2.6 knightmare    Fix recipe injection - fetch recipe     #
+#                                        files from webserver instead of inline  #
+#                                        debconf-set to avoid escaping failures  #
+# Updated: 04/05/2026 v2.7 knightmare    Fix mirror for Trixie - switch to       #
+#                                        deb.debian.org CDN and force suite and  #
+#                                        codename to trixie explicitly           #
+# Updated: 05/05/2026 v2.8 knightmare    Detect boot server by gateway IP -      #
+#                                        Edinburgh (139.254) or Fredericia       #
+#                                        (172.16.124.2) - removes hardcoded IPs  #
+#                                        from partman and late_command           #
+# Updated: 05/05/2026 v2.9 knightmare    Disable choose-mirror suite symlink     #
+#                                        validation. choose-mirror udeb probes   #
+#                                        for HTTP symlinks (stable->trixie) on   #
+#                                        the mirror which deb.debian.org doesn't #
+#                                        expose via HTTP, causing a false "does  #
+#                                        not support trixie" failure despite the #
+#                                        release being present and accessible.   #
+# Updated: 05/05/2026 v2.10 knightmare   choose-mirror v2.133 ignores check-     #
+#                                        -mirror=false & still probes for suite  #
+#                                        symlinks unconditionally. Workaround by #
+#                                        setting suite to stable, which has a    #
+#                                        symlink choose-mirror can find, while   #
+#                                        codename remains correct for pkg fetch  #
+# Updated: 05/05/2026 v2.11 knightmare   Switch mirror back to ftp.uk.debian.org #
+#                                        deb.debian.org uses GeoDNS/CDN routing  #
+#                                        which returns nothing for dists/stable/ #
+#                                        from inside the arm64 installer - CDN   #
+#                                        node either lacks arm64 sync or can't   #
+#                                        handle choose-mirror's validation       #
+#                                        requests. ftp.uk.debian.org is a direct #
+#                                        mirror that responds correctly. Static  #
+#                                        preseed fetches worked via CDN because  #
+#                                        they use full paths; choose-mirror's    #
+#                                        suite probing does not.                 #
+# Updated: 06/05/2026 v2.12 knightmare   Split into lvm-bios.seed/lvm-efi.seed   #
+#                                        iPXE detects arch and serves correct    #
+#                                        seed via ${seed} variable in menu.ipxe  #
+#                                        Removes all runtime EFI/BIOS detection  #
+#                                        logic - static recipes per file         #
+# Updated: 06/05/2026 v2.13 knightmare   EFI: detect target disk dynamically     #
+#                                        via early_command - handles NVMe        #
+#                                        (/dev/nvme0n1) and SCSI (/dev/sda)      #
+#                                        grub-installer/bootdev set to default   #
+#                                        so grub installs to whichever disk      #
+#                                        the installer used                      #
+#--------------------------------------------------------------------------------#
+
+### Locale (language + country)
+d-i debian-installer/locale string en_GB.UTF-8
+d-i debian-installer/language string en
+d-i debian-installer/country string GB
+d-i localechooser/supported-locales multiselect en_GB.UTF-8, en_US.UTF-8
+
+## cloud kernels don't seem to play nice with LVM
+## if you want to try and get LVM going on cloud kernel, here's a good starting point
+#d-i preseed/early_command string mkdir -p /target/etc/initramfs-tools && printf "dm_mod\ndm_snapshot\ndm_mirror\ndm_cache\ndm_thin_pool\n" > /target/etc/initramfs-tools/modules && . /usr/share/debconf/confmodule && db_get debconf/priority && case $RET in low|medium) db_fset tasksel/first seen false; echo 'tasksel tasksel/first seen false' >>/var/lib/preseed/log ;; esac
+
+### Keyboard (modern Debian method)
+d-i keyboard-configuration/xkb-keymap select gb
+d-i keyboard-configuration/layoutcode string gb
+d-i keyboard-configuration/modelcode string pc105
+d-i console-setup/ask_detect boolean false
+
+## Prompt for a hostname
+d-i netcfg/get_hostname seen false
+d-i netcfg/get_hostname string
+d-i netcfg/hostname seen false
+d-i netcfg/get_domain string jukebox.internal
+d-i netcfg/get_domain seen true
+
+## ftp.uk.debian.org is a direct mirror that responds correctly to all queries.
+## deb.debian.org CDN returns nothing for dists/stable/Release from inside the
+## arm64 installer - confirmed via vt4 syslog.
+##
+## choose-mirror v2.133 ignores check-mirror=false and unconditionally probes
+## for suite symlinks. suite=stable has a symlink choose-mirror can find;
+## codename=trixie ensures correct package fetching.
+## check-mirror=false kept as belt-and-braces.
+d-i mirror/country string manual
+d-i mirror/http/hostname string ftp.uk.debian.org
+d-i mirror/http/directory string /debian
+d-i mirror/suite string stable
+d-i mirror/codename string trixie
+d-i choose-mirror/check-mirror boolean false
+#d-i mirror/http/proxy string http://proxy.example.com:3142
+## Don't use a proxy - yes really this is how to do it
+d-i mirror/http/proxy string
+
+## Kernel to install - arm64 server kernel
+#d-i base-installer/kernel/image string linux-image-cloud-arm64
+d-i base-installer/kernel/image string linux-image-arm64
+
+## Don't ask about additional CDs
+d-i apt-setup/cdrom/set-first boolean false
+d-i apt-setup/disable-cdrom-entries boolean true
+
+## (dis|en)able root account
+## create a password with `echo "r00tme" | mkpasswd -s -m md5`
+d-i passwd/root-login boolean false
+
+## Create generic user account
+d-i passwd/user-fullname string Ansible User
+d-i passwd/username string ansible
+d-i passwd/user-default-groups string adm cdrom sudo dip
+d-i user-setup/encrypt-home boolean false
+d-i user-setup/allow-password-weak boolean true
+
+## Do not use gb.mirror.example.com mirror in /etc/apt/sources.list
+## DOES NOT WORK -- Will replace sources.list using puppet/ansible
+#d-i apt-setup/use_mirror boolean false
+
+## Clock Options - Prompt on geographically disperate networks
+#d-i time/zone string Europe/London
+d-i clock-setup/ntp boolean true
+
+## Controls whether or not the hardware clock is set to UTC.
+d-i clock-setup/utc boolean true
+
+## Partitioning method and disk
+## /dev/sda is a fallback default - overridden dynamically by early_command
+## below using lsblk. Handles NVMe (/dev/nvme0n1), SCSI/SATA (/dev/sda),
+## and virtio (/dev/vda) without hardcoding.
+d-i partman-auto/disk string /dev/sda
+d-i partman-auto/method string lvm
+d-i partman-lvm/device_remove_lvm boolean true
+d-i partman-auto/purge_lvm_from_device boolean true
+d-i partman-md/device_remove_md boolean true
+d-i partman-md/confirm_nochanges boolean true
+d-i partman-lvm/confirm boolean true
+d-i partman-auto/choose_recipe select boot-root
+d-i partman-auto-lvm/guided_size string 100%
+
+## GPT required for EFI
+d-i partman-basicfilesystems/choose_label select gpt
+d-i partman-partitioning/default_label string gpt
+
+## Set VG name to hostname and detect target disk dynamically.
+## lsblk lists non-removable disks; we pick the first one found.
+## This handles NVMe (/dev/nvme0n1), SCSI/SATA (/dev/sda), virtio (/dev/vda).
+## partman-auto/disk is then set to whatever disk is found.
+d-i partman/early_command string \
+  VGHOSTNAME=$(hostname); \
+  debconf-set partman-auto-lvm/new_vg_name "$VGHOSTNAME"; \
+  DISK=$(lsblk -d -n -o NAME,RM | awk '$2==0 {print "/dev/" $1; exit}'); \
+  debconf-set partman-auto/disk "$DISK"
+
+## EFI recipe - 512MB ESP, /boot, swap, root LV
+## No biosgrub partition - ARM64 is EFI only, BIOS does not apply
+d-i partman-auto/expert_recipe string        \
+     boot-root ::                            \
+       512 10 512 fat32                      \
+         $primary{ }                         \
+         method{ efi }                       \
+         format{ }                           \
+       .                                     \
+       768 20 1536 ext3                      \
+         $primary{ }                         \
+         $bootable{ }                        \
+         method{ format }                    \
+         format{ }                           \
+         use_filesystem{ }                   \
+         filesystem{ ext3 }                  \
+         reserved_blocks{ 0 }               \
+         mountpoint{ /boot }                 \
+       .                                     \
+       512 30 512 swap                       \
+         $defaultignore{ }                   \
+         $lvmok{ }                           \
+         lv_name{ lv_swap }                  \
+         method{ swap }                      \
+         format{ }                           \
+       .                                     \
+       5192 40 4096 ext4                     \
+         $defaultignore{ }                   \
+         $lvmok{ }                           \
+         lv_name{ root }                     \
+         method{ format }                    \
+         format{ }                           \
+         use_filesystem{ }                   \
+         filesystem{ ext4 }                  \
+         reserved_blocks{ 1 }               \
+         mountpoint{ / }                     \
+       .
+
+## Don't prompt to write changes to disk... Just do it
+d-i partman-lvm/confirm boolean true
+d-i partman-lvm/confirm_nooverwrite boolean true
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/choose_partition select Finish partitioning and write changes to disk
+d-i partman/confirm boolean true
+d-i partman-md/confirm_nooverwrite boolean true
+d-i partman/confirm_nooverwrite boolean true
+
+## Never been a fan of popularity contests ;)
+popularity-contest popularity-contest/participate boolean false
+
+## Install extra apps too
+d-i pkgsel/include string vim tofrodos gpm tmux openssh-server net-tools tree sudo zsh zsh-autosuggestions zsh-common zsh-syntax-highlighting
+
+## Updates policy (install security updates automatically)
+d-i pkgsel/update-policy select unattended-upgrades
+d-i preseed/early_command string . /usr/share/debconf/confmodule; db_get debconf/priority; case $RET in low|medium) db_fset tasksel/first seen false; echo 'tasksel tasksel/first seen false' >>/var/lib/preseed/log ;; esac
+
+## Basic server with OpenSSH installed
+tasksel tasksel/first multiselect standard
+
+## Install Grub - grub-efi is selected automatically on EFI systems
+## bootdev=default tells the installer to use whichever disk it installed to
+## rather than hardcoding /dev/sda which breaks on NVMe systems
+d-i grub-installer/only_debian boolean true
+d-i grub-installer/bootdev string default
+
+## Set a Grub password
+## (DOES NOT WORK WITH GRUB2)
+#d-i grub-installer/password password
+#d-i grub-installer/password-again password
+
+## Avoid that last message about the install being complete.
+d-i finish-install/reboot_in_progress note
+
+## Retrieve ansible/puppet config
+## Gateway detection: Edinburgh (139.254) or Fredericia (172.16.124.2)
+d-i preseed/late_command string \
+  GW=$(ip route | awk '/default/ {print $3}'); \
+  if [ "$GW" = "172.16.124.2" ]; then \
+    BOOT_SERVER=http://172.16.124.1:8000; \
+  else \
+    BOOT_SERVER=http://192.168.139.50; \
+  fi; \
+  wget -O /tmp/late_command.sh ${BOOT_SERVER}/debian/late_command.sh; \
+  sh /tmp/late_command.sh

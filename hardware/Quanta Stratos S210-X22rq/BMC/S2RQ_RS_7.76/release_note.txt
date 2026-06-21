@@ -1,0 +1,6285 @@
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.76 release note
+===============================================================
+BMC FW Version	 : 	v7.76
+Date             :	2015/11/18
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 7E3B4DBC
+   rom.ima with MD5 5fbd7a12411186e5bdce2825698a341c
+   rom.ima_enc with checksum 7E3B8B40
+   rom.ima_enc with MD5 8f7293730f290744c221b7036eda0a01
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix Java update 60 fail for rKVM via HTTPs
+  
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.75 release note
+===============================================================
+BMC FW Version	 : 	v7.75
+Date             :	2015/7/31
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 7E3688E4
+   rom.ima with MD5 7c3935b3b7a1fb6a919f1e9ad0381b77
+   rom.ima_enc with checksum 7E36CA23
+   rom.ima_enc with MD5 a551fab0ead16614297937bf4530225e
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix incorrect system up time in SNMP trap
+	2. Fix Java certification for rKVM
+	3. Always HTTPs
+	4. Add Web login info in SEL
+	5. Fix FRB2 don't clear after DC off(etrack 162044)  
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.74 release note
+===============================================================
+BMC FW Version	 : 	v7.74
+Date             :	2015/3/6
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 7E719EF2
+   rom.ima with MD5 651488b986c5ee9a3fa87179dec84cf2
+   rom.ima_enc with checksum 7E71E726
+   rom.ima_enc with MD5 78f614d981185d3bea54bce20caaa7f3
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Change QCT logo in Web UI
+	2. Support preserve BIOS NVRAM for Yafu update BIOS(eTrack156936 & 157776)
+	3. Fix GHOST vulnerability
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.73 release note
+===============================================================
+BMC FW Version	 : 	v7.73
+Date             :	2014/11/24
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 8012A13E
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix similar username will get incorrect password(eTrack153607)
+	2. Fix BMC hange in AC cycle test(eTrack153485)  
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.72 release note
+===============================================================
+BMC FW Version	 : 	v7.72
+Date             :	2014/10/24
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 800F1982
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add BMC support for board part number 3AS99FB0030 in front panel FRU in
+	   S2RS 2.5" chassis.  
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.71 release note
+===============================================================
+BMC FW Version	 : 	v7.71
+Date             :	2014/10/6
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 800E8A48
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix BMC cannot read BP_temp on 12G backplane 
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.70 release note
+===============================================================
+BMC FW Version	 : 	v7.70
+Date             :	2014/9/4
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 800C3897
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix the P5V upper critical threshold for 2U 2.5" SKU 
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.69 release note
+===============================================================
+BMC FW Version	 : 	v7.69
+Date             :	2014/8/29
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 80129B64
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add temperature sensor for PCIe SSD for S2RS 2.5 SKU
+	2. Change to single COM mode
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.68 release note
+===============================================================
+BMC FW Version	 : 	v7.68
+Date             :	2014/8/11
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 800b686e
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix incorrect DIMM index in SEL string.
+	2. Change I2C frequency as 93K.
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.67 release note
+===============================================================
+BMC FW Version	 : 	v7.67
+Date             :	2014/7/21
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 800c10dc
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Increase the retry number to launch rKVM by QDCM.
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.66 release note
+===============================================================
+BMC FW Version	 : 	v7.66
+Date             :	2014/7/3
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 800f8078
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add HDD status in SNMP. Change MIB file as V1.03.
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.65 release note
+===============================================================
+BMC FW Version	 : 	v7.65
+Date             :	2014/6/10
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 800b80ae
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add QDCM support.
+	2. Add remote BIOS configuration.
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.64 release note
+===============================================================
+BMC FW Version	 : 	v7.64
+Date             :	2014/5/19
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 80269e1a
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix rKVM fail in Safari on Mac.
+	2. Change the SOL port to COM1 and set as enable by default.
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.63 release note
+===============================================================
+BMC FW Version	 : 	v7.63
+Date             :	2014/5/8
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 8024401D
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add service configuration page in web(To active/unactive
+	   some service like SSH...)
+	
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.62 release note
+===============================================================
+BMC FW Version	 : 	v7.62
+Date             :	2014/4/7
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 8E0D
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix BMC hang when BMC get reboot command in boot up step
+	2. Add permission attribute in Java jnlp file for 7u51 requirement
+ 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.61 release note
+===============================================================
+BMC FW Version	 : 	v7.61
+Date             :	2014/3/4
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 17F8
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix abnormal SEL for fan speed fall down to 0(Etrack 143712)
+	2. Fix abnormal SEL for thermal trip and memory hot.
+	3. Fix rKVM fail in HTTPS.
+	4. Fix CMOS clear log don't be parsed in SEL alert window.
+	5. Change the SDR type for some sensor log from BIOS
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.60 release note
+===============================================================
+BMC FW Version	 : 	v7.60
+Date             :	2014/1/27
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 4059
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix incorrect LUN number for "QPI Error" and "CPI IIO Error".
+	   It makes IPMITOOL 1.8.13 malfunction.(Etrack 142422)
+	2. Add Japanese keyboard support in rKVM.
+	3. Fix abnormal DIMM and CPU log in V7.59.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.59 release note
+===============================================================
+BMC FW Version	 : 	v7.59
+Date             :	2014/1/9
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum C547
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Modify the ambient temperature sensor to display negative value.
+	2. Modify PEF as disable in default configuration.
+	3. Fix ME fall in recovery mode for VMware 5.1(etrack 142087)
+	4. Disable Telnet port.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.58 release note
+===============================================================
+BMC FW Version	 : 	v7.58
+Date             :	2013/11/27
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum DBB8
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix TrckID 140952 Onboard 10G NIC1's LAN speed would change as 
+           1Gb/s during POST and 100Mb/s under OS after pressed power button 
+           4 seconds to shut down system.
+	
+	We change the "Keep PHY link up" mechanism to be switch by users. And provide
+	OEM commands to enable or disable the "Keep PHY link up" as follow
+	
+	ipmitool -H xxx -U .... raw 0x30 0x8f 0x01 --> Enable "Keep PHY link up"
+	ipmitool -H xxx -U .... raw 0x30 0x8f 0x00 --> Disanable "Keep PHY link up"
+
+	Default value is Disable. In some network environment, the BMC network link will be 
+	broken too long to break  the BMC network session like SOL or rKVM during system boot 
+	up in share NIC. User could enable the ¡§Keep PHY Link up¡¨ to avoid the problem. But 
+	enable ¡§Keep PHY Link up¡¨ will make system share NIC incorrect speed mode for 
+	auto-negotiation after DC off.	
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.57 release note
+===============================================================
+BMC FW Version	 : 	v7.57
+Date             :	2013/11/11
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum A837
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix incorrect HDD description for SNMP trap and mail alert
+	2. Add OEM command to set SNMP configuration
+	3. Fix alert LED flash for PSU presence assert
+	4. Fix incorrect OID for SNMP trap.
+	5. Remove PMBus alert SEL
+		 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.56 release note
+===============================================================
+BMC FW Version	 : 	v7.56
+Date             :	2013/10/7
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum A490
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix BMC log PSU fail on 1200W PSU.
+	2. Fix Web cannot parse the SEL for DIMM error from BIOS
+		 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.55 release note
+===============================================================
+BMC FW Version	 : 	v7.55
+Date             :	2013/9/26
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 35BF
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix BIOS display the incorrect share/dedicate NIC setting
+	   after cancel BMC update in Web UI.
+		 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.54 release note
+===============================================================
+BMC FW Version	 : 	v7.54
+Date             :	2013/9/3
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 8B9E
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix BMC cannot send SNMP trap in VLAN.
+	2. Fix BMC network unstable when expander crash.
+		 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.53 release note
+===============================================================
+BMC FW Version	 : 	v7.53
+Date             :	2013/8/16
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 9C30
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Workaroud the incorrect PMBus alert for PSU with PMBus V1.0.
+	2. Add PMBuse alert log in SEL.
+		 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.52 release note
+===============================================================
+BMC FW Version	 : 	v7.52
+Date             :	2013/8/9
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 9743
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add test trap feature in Web UI(Configuration-->SNMP).
+	2. Add test trap OID the MIB file(Quanta_RAC_SI_1_02.mib).
+	3. Add power supply status support for PMBus V1.0
+		 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.51 release note
+===============================================================
+BMC FW Version	 : 	v7.51
+Date             :	2013/7/29
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum D918
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix ETrack 137597 Enable SNMP trap and trigger SBE MBE, the 
+	   BMC will crash.
+		 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.50 release note
+===============================================================
+BMC FW Version	 : 	v7.50
+Date             :	2013/7/25
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum FCD5
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix incorrect alert string for MCERR in mail and SNMP trap.
+		 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.49 release note
+===============================================================
+BMC FW Version	 : 	v7.49
+Date             :	2013/7/22
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum DCB3
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.09.02
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add alert when update incorrect BIOS image on web
+	2. Update socflash to V.1.09.02
+	3. Fix BMC update fail by Yafuflash(work on BMC with V7.49 or above)
+		 
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.48 release note
+===============================================================
+BMC FW Version	 : 	v7.48
+Date             :	2012/5/10
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum E3C8	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.08.00
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix SSL https accesses have access issue. From AMI
+	2. Add SNMP trap feature and it's setup UI in Web.
+	3. Add Mib file is release folder.
+
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.47 release note
+===============================================================
+BMC FW Version	 : 	v7.47
+Date             :	2012/4/12
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum BA86	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.08.00
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Update Java certification, postpond valid date to May 3 2017
+	2. Add random delay to turn on chassis
+	3. Remove the HID fail message in debug console
+
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.46 release note
+===============================================================
+BMC FW Version	 : 	v7.46
+Date             :	2012/3/11
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum BC92	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.08.00
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Update SOL default as disable
+	2. Fix PSU redundacy sensor status as follow
+	     A. 2 PSUs inside chassis at BMC bring up
+		 a.Lost 1 PSU later or 1 PSU without AC in
+		 „³ PSU Redundancy sensor display ¡§Redundancy lost¡¨,
+		    Have redundancy Lost log
+		 b.All 2 PSU with AC in „³ 
+	           PSU Redundancy sensor display ¡§Full Redundant¡¨, 
+	           No log
+	     B. 1 PSU inside chassis at BMC bring up
+		  PSU Redundancy sensor  always display ¡§All deasserted¡¨, 
+		  No log
+
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.45 release note
+===============================================================
+BMC FW Version	 : 	v7.45
+Date             :	2012/2/25
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 12A9	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.08.00
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix SEL description for sensor type "OS Stop"
+	2. Fix release package to support Win64 to update ROM image 
+	3. Fix IPMI command can be executed by admin without password
+	4. Set default SNMP RO/RW community as public/private
+	5. Fix i2c stress test fail on bus4
+	6. Fix Web SEL download without 909 entries.(since 7.44)
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.44 release note
+===============================================================
+BMC FW Version	 : 	v7.44
+Date             :	2012/2/18
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 4BD2	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.08.00
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix incorrect filename when download SEL in Firefox.
+	2. Fix SEL log incorrect HD presentation deassert log with expander. 
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.43 release note
+===============================================================
+BMC FW Version	 : 	v7.43
+Date             :	2012/2/4
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 9AD6	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.08.00
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Update socflash to update MX25635F 2nd source
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.42 release note
+===============================================================
+BMC FW Version	 : 	v7.42
+Date             :	2012/2/4
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum DB77	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix Web crash when 2PSUs insert but one without AC in
+	2. Add retry for MG9086 slot presentation.
+	3. Add BMC fault LED blink when drive slot fault
+	   (Drive Fault, Predictive Fail and In Critical Array)
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.41 release note
+===============================================================
+BMC FW Version	 : 	v7.41
+Date             :	2012/1/17
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 182B	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add OEM command SetSysNicInfo and GetSysNicInfo(0x30 0xa1/0x30 0xa2)
+	2. Add detail description for PCI-E error in SEL
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.40 release note
+===============================================================
+BMC FW Version	 : 	v7.40
+Date             :	2012/1/8
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum B208	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix the date time for AC lost SEL out of order
+	2. Add HW watchdog for BMC
+	3. Add OEM command to get PSU F/W version(0x30 0xa0 <0|1 PSU slot>)
+	4. Sort the SDR record
+	5. Modify threshold for x540 as 0x71 and 0x73
+	6. Remove power consumption in PSU information of the CLI
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.39 release note
+===============================================================
+BMC FW Version	 : 	v7.39
+Date             :	2012/12/21
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 7805	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Remove PMBus alert SEL
+	2. Remove FRU item in configuration reservation page
+	3. Fix incorrect HD presentation log 
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.38 release note
+===============================================================
+BMC FW Version	 : 	v7.38
+Date             :	2012/12/13
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum CC63	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix user configuration fail after BMC update with reserving configuration.
+	2. Add CPU presentation sensor and power consumption sensor
+	3. Fix win key problem in rKVM. 
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.37 release note
+===============================================================
+BMC FW Version	 : 	v7.37
+Date             :	2012/11/15
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 4D98	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix incorrect sensor threshold value in WebUI since V3.34.
+	2. Add description for BIOS update of Web UI
+	3. Fix Battery voltage sometime to log SEL. 
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.36 release note
+===============================================================
+BMC FW Version	 : 	v7.36
+Date             :	2012/11/7
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 0205	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Modify the SEL log string for NMI
+	2. Add SEL for HDD remove
+	3. Remove warm reset support.
+	4. Change the UART initial for SOL
+	5. Fix SSH login problem, it jusy allow sysadmin(pw:superuser) to 
+	   login.
+	6. Fix chassis status in SSH.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.35 release note
+===============================================================
+BMC FW Version	 : 	v7.35
+Date             :	2012/10/23
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum P8EC	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Modify Username as "User Name" in user configuration page
+	2. Fix mouser cursor always out of rKVM screen with other mode and 
+	   client resolution > 2*host resolution.
+	3. Update video record button image
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.34 release note
+===============================================================
+BMC FW Version	 : 	v7.34
+Date             :	2012/10/11
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum EA95	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix BMC update 16MB BIOS fail via Web UI.
+	2. Filter some IPv6 address space reserved by IETF
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.33 release note
+===============================================================
+BMC FW Version	 : 	v7.33
+Date             :	2012/9/25
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 4494	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix fan speed to change by GPGPU temperature.
+	2. Modify SEL alert to filter AC lost
+	3. Fix SEL description for DIMM ECC error
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.32 release note
+===============================================================
+BMC FW Version	 : 	v7.32
+Date             :	2012/9/13
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum CAF2	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 128252 [BMC 32MB] Help string in WebUI [Advanced SOL Settings] is incorrect.
+	2. 128132 [BMC 32MB] - [WEBUI]Set Serial Over LAN Advanced characters over than 255, the error
+   		  message show ''Undefined''.
+	3. Add SNMP community setting page
+	4. Add CLI feature.
+	5. Remove SEL log for HD presence
+	6. Modify rKVM procedure to disconnect USB HUB when rKVM not be launch.
+ 
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.31 release note
+===============================================================
+BMC FW Version	 : 	v7.31
+Date             :	2012/8/31
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 4004	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 127713 BMC WebUI didn't define ''Enter Preserve Configuration'' action in help information.
+	2. 127668 BMC WebUI didn't define ''Download All Event Logs'' in help information.
+	3. 127300 System pop up message '' request to proceed '' but system still verify image at the 
+		  moment when update BIOS via BMC WebUI .
+	4. Display the hostname in dashboard.
+ 
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.30 release note
+===============================================================
+BMC FW Version	 : 	v7.30
+Date             :	2012/8/28
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 09A5	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 127499 [@IDC - 10.64.176.19] BMC ''mc selftest'' fail when do ''sel elist'' loops.
+	2. 127354 [IDC] 10.64.176.9 can display on local monitor , but can not display via 
+		  rKVM duing '' power on/off ''
+	3. 126025 SoftKeyboard does not hold down after Ctrl/Alt/Windows Key hold down checked
+		  in RKVM. (Refer to DF125992)
+	4. 127693 Can't login WEBUI with account ''Username12345678''
+ 
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+	
+	5. Don't use WebUI update with reserving configuration on original BMC Version
+	   before V3.22. 
+	a) We change the ROM image partition after V3.22.
+	b) If some feature abnormal after Web UI update. Please update again without 
+	   reserving configuration.
+	c) If BMC cannot work, please refer Notice 1.e to update again with BMC disable.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.29 release note
+===============================================================
+BMC FW Version	 : 	v7.29
+Date             :	2012/8/20
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 2B74	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 127347 Open rKVM and try to type word, the word will show twice.
+	2. 127300 System pop up message '' request to proceed '' but system 
+	          still verify image at the moment when update BIOS via BMC WebUI .
+	3. 127038 It shows ''Harddisk devices'' in WebUI [Virtual Media] page, it 
+		  should be ''Hard disk devices''.
+	4. 125972 The result of ipmi user summary command is incorrect.
+	5. 121988 Press ''Ctrl-I'' function key via RKVM for IRST OPROM during POST 
+		  is not working with laptop keyboard
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.28 release note
+===============================================================
+BMC FW Version	 : 	v7.28
+Date             :	2012/8/9
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A15
+
+Firmware Images:
+   rom.ima with checksum 5F3E	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 126313 Abnormal HDD assert/deassert events received.
+	2. 126034 Nomatter how the SUT reboot, the restart cause 
+	          always shows: OEM
+ 
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v7.27 release note
+===============================================================
+BMC FW Version	 : 	v7.27
+Date             :	2012/7/26
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A15
+
+Firmware Images:
+   rom.ima with checksum C66B	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+It is BMC image with SNMP support for 32MB flash. 
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.27 release note
+===============================================================
+BMC FW Version	 : 	v3.27
+Date             :	2012/7/26
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A15
+
+Firmware Images:
+   rom.ima with checksum 4C38	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 126671 There is [Local Media] page in WebUI Configuration menu, it doesn't consist 
+	          with ESMS spec, and other project doesn't have it
+	2. Fix Ctrl-I problem in physical keyboard via RKVM.
+ 
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.26 release note
+===============================================================
+BMC FW Version	 : 	v3.26
+Date             :	2012/7/20
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A15
+
+Firmware Images:
+   rom.ima with checksum 442	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix system stop at PXE step when system boot up at BMC V3.25. 
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.25 release note
+===============================================================
+BMC FW Version	 : 	v3.25
+Date             :	2012/7/20
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A15
+
+Firmware Images:
+   rom.ima with checksum BC22	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix BIOS update fail via Web UI.
+	2. Fix remote OS install fail for CentOS
+	3. Fix MG9086 status check error
+	4. Fix chassis resetfail
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.24 release note
+===============================================================
+BMC FW Version	 : 	v3.24
+Date             :	2012/7/16
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A15
+
+Firmware Images:
+   rom.ima with checksum BE31	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Reset I2C channel 8 when DC off.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.23 release note
+===============================================================
+BMC FW Version	 : 	v3.23
+Date             :	2012/7/12
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A15
+
+Firmware Images:
+   rom.ima with checksum 11D6	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 126150 [Rack in IDC] There is one Server in IDC failed to be powered on by remote 
+	          power control from BMC WebUI
+	2. 126024 Hold Ctrl/Alt/Windows Key still Hold Down even if RKVM has been closed
+	3. 125784 BMC and WebUI network IP configuration should not accept invalid IP such 
+		  as 240.0.0.1
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.22 release note
+===============================================================
+BMC FW Version	 : 	v3.22
+Date             :	2012/7/5
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A15
+
+Firmware Images:
+   rom.ima with checksum 31CA	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.05.01
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 126085 WebUI Maintenance Preserve Configuraion should not present NTP and Services
+	    	  which are removed on WebUI Configuration for user setup. 
+	2. 126034 Nomatter how the SUT reboot, the restart cause always shows: OEM
+	3. 126032 Set Server Identify Timeout to be ''255'' and Server Identify Operation to be 	    	  ''blinking'' on BMC WebUI, Server Identify Operation will be ''off'' on BMC WebUI 
+		  after 255 seconds. (But ID LED is still blinking)
+	4. 125945 BMC PEF Mail alert shows BMC IP address 0.0.0.0
+	5. 125942 IPv6 DNS Server IP address could not be set in manual or get IP from DHCPv6 server
+	
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.21 release note
+===============================================================
+BMC FW Version	 : 	v3.21
+Date             :	2012/6/28
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A13
+
+Firmware Images:
+   rom.ima with checksum 8166	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 125781  Auto detection bandwidth in the rKVM is incorrect.
+	2. 125757  WebUI HDD sensor count shows incorrect 23 less than HDD*24
+	3. 125755  SEL will log ''Platform Alert'' event when add to managed entity in DataCenterManager.
+	4. 125737  BMC WebUI RKVM will always be ''Connection failed!'' after change Network 
+		   Configuration and open RKVM again.
+	5. 125723  BMC WebUI Help ''Network Privilege'' has no ''OEM'' level different from S2RQ ESMS
+		   Func. Spec. v0.06 ''User Privilege''
+	6. 125602  Wrong sensor HDD15 presented when BMC SEL clear
+	7. 124815  [Rack in IDC] After doing ''open rKVM --> close rKVM window'' many times, the rKVM
+		   window has no display 
+	
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.20 release note
+===============================================================
+BMC FW Version	 : 	v3.20
+Date             :	2012/6/18
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A13
+
+Firmware Images:
+   rom.ima with checksum 814C	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Remove some virtual device when remote OS install is not enable.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.19 release note
+===============================================================
+BMC FW Version	 : 	v3.19
+Date             :	2012/6/14
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A13
+
+Firmware Images:
+   rom.ima with checksum CD93	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix the active users display problem when multiple user connect
+	2. Add "Other mouse mode" to fix rKVM on SLES11
+	3. Add display system MAC address on dashboard.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.17 release note
+===============================================================
+BMC FW Version	 : 	v3.17
+Date             :	2012/6/7
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 32a8	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add remote OS install
+	2. Modify BIOS update alert string on web
+	3. Fix SPS health events after BIOS update on Web
+	4. remove Request... string on Web
+
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.16 release note
+===============================================================
+BMC FW Version	 : 	v3.16
+Date             :	2012/5/31
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A10
+
+Firmware Images:
+   rom.ima with checksum 9154	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix BMC cannot get dhcpv6 after update BMC
+	2. Fix DCT Quantization problem in JViewer, if user 
+	   launch JViewer before VGA start to send frame.
+	3. Add temporature sensor for GPU card in 2U chassis.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.15 release note
+===============================================================
+BMC FW Version	 : 	v3.15
+Date             :	2012/5/24
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A10
+
+Firmware Images:
+   rom.ima with checksum 2445	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Update session number as 15
+	2. Add PM Bus alert log and disable the other log when PM Bus alert
+	3. Add backplane fw version in dashboard of web ui
+	4. Add HD status from expander.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.14 release note
+===============================================================
+BMC FW Version	 : 	v3.14
+Date             :	2012/5/17
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A10
+
+Firmware Images:
+   rom.ima with checksum 1569	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Modify the voltage threshold for Battery
+	2. Add "TSOD CMOS Sts" sensor for 0x6e event log
+	3. Fix IPv6 to release DHCP when submit the network configuration
+	4. Update SSL certification as Quanta
+	5. Decrese the rKVM session timeout as 10 sec
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.13 release note
+===============================================================
+BMC FW Version	 : 	v3.13
+Date             :	2012/5/10
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A10
+
+Firmware Images:
+   rom.ima with checksum 760B	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Avoid user upload encrypted SSL private key
+	2. Fix SOL failed after BMC reset without system reset.
+	3. Fix the 1969 year in SEL.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.12 release note
+===============================================================
+BMC FW Version	 : 	v3.12
+Date             :	2012/5/3
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A09
+
+Firmware Images:
+   rom.ima with checksum 0C12	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix IPv4 mapped IPv6 IP check error in web
+	2. Add BIOS name check when update BIOS by Web UI
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.10 release note
+===============================================================
+BMC FW Version	 : 	v3.10
+Date             :	2012/4/19
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A09
+
+Firmware Images:
+   rom.ima with checksum BC48	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Modify max session that can be allocate as 16
+	2. Modify the timeout to wait power good for immediate power off as 5 sec
+	3. Update string "Firmware Update" to be "BMC Update" in Web UI
+	4. Make MG9086 update successful by AMI update tool
+	5. Update 3V Batt poll delay
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.09 release note
+===============================================================
+BMC FW Version	 : 	v3.09
+Date             :	2012/4/12
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A09
+
+Firmware Images:
+   rom.ima with checksum 232E	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix Keep phy link up procedure
+	2. Mark PCH temperature alert from ME
+	3. Change threshold for 3V battery
+	4. Fix KCS error for 9086 F/W update
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.08 release note
+===============================================================
+BMC FW Version	 : 	v3.08
+Date             :	2012/4/5
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:3A07
+  BIOS Version:	5D3F
+
+Firmware Images:
+   rom.ima with checksum 6D23	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add BIOS update via Web UI
+	2. Fix 123551 - Should not be able to set invalid IPv6 address. 
+	3. Fix 123548 - The sensor ''status'' and ''Current Reading'' 
+	   should be shown ''Not present'' if the devices are not available.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.07 release note
+===============================================================
+BMC FW Version	 : 	v3.07
+Date             :	2012/3/28
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:3A07
+  BIOS Version:	5D3F
+
+Firmware Images:
+   rom.ima with checksum 5D3F	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix the issue IPMI daemon will hang up while issuing IPMI session info with lanplus.
+	2. Fix system cannot ping BMC in dedicate NIC at the same chassis.
+	3. Fix PSU sensor status. It just works with NM2.0 BIOS release.  
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.06 release note
+===============================================================
+BMC FW Version	 : 	v3.06
+Date             :	2012/3/22
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A07
+
+Firmware Images:
+   rom.ima with checksum EB44	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add save SEL feature in web
+	2, 123026 fix Sensor ''Temp_DIMM_#'' will not be hidden in Dashboard of 
+	   BMC WebUI when DIMM is unavailable.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.05 release note
+===============================================================
+BMC FW Version	 : 	v3.05
+Date             :	2012/3/15
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A07
+
+Firmware Images:
+   rom.ima with checksum 654C	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add memory voltage mode in web UI --> Server Component  --> Memory Information. It is work after BIOS 3A07.
+	2. Add retry for FRU checksum when FRU init
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.04 release note
+===============================================================
+BMC FW Version	 : 	v3.04
+Date             :	2012/3/14
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A06
+
+Firmware Images:
+   rom.ima with checksum 53C1	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Support MG9086 for HDD status 
+	2. Add temperature sensor for 10G NIC
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.03 release note
+===============================================================
+BMC FW Version	 : 	v3.03
+Date             :	2012/3/8
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A06
+
+Firmware Images:
+   rom.ima with checksum 161C	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix rKVM fail for multi session
+	2. Fix Web cannot login
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.02 release note
+===============================================================
+BMC FW Version	 : 	v3.02
+Date             :	2012/3/6
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A06
+
+Firmware Images:
+   rom.ima with checksum A5A5	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Change the SEL amount as 909
+	2. Fix KVM screen flash problem after re-launch console redirection
+	3. Add NIC calibration feature to fix mac margin problem.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v3.01 release note
+===============================================================
+BMC FW Version	 : 	v3.01
+Date             :	2012/3/2
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A06
+
+Firmware Images:
+   rom.ima with checksum 6D44	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Modify PSU sensor number to follow ME setting
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	0. This version is for ME which get power consumption from PSU directly.
+	a) BMC will not issue PSU predictive fail SEL by itself.
+	b) ME will issue PSU related log if PSU support PMBus V1.2
+
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.17 release note
+===============================================================
+BMC FW Version	 : 	v2.17
+Date             :	2012/3/1
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A05
+
+Firmware Images:
+   rom.ima with checksum 8B78	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Remove some debug log
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.16 release note
+===============================================================
+BMC FW Version	 : 	v2.16
+Date             :	2012/2/23
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A05
+
+Firmware Images:
+   rom.ima with checksum 2AD7	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix 122027 The event description in popped up window of
+	   WebUI is not match with in ''Server Health -> Event Log''
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.15 release note
+===============================================================
+BMC FW Version	 : 	v2.15
+Date             :	2012/2/21
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A05
+
+Firmware Images:
+   rom.ima with checksum BA2F	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix 122135 change the manufacture ID as 0x1c4c
+	2. Fix 122134 modify "Provide SDRs" as yes in ipmitool
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.14 release note
+===============================================================
+BMC FW Version	 : 	v2.14
+Date             :	2012/2/15
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A05
+
+Firmware Images:
+   rom.ima with checksum 0476	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix 122027 The event description in popped up window of
+	   WebUI is not match with in ''Server Health -> Event Log''
+	2. Fix 122049 Press ID identify button on Front panel but webUI shows ''identity 
+	   status is currently off''
+	
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.13 release note
+===============================================================
+BMC FW Version	 : 	v2.13
+Date             :	2012/2/9
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A05
+
+Firmware Images:
+   rom.ima with checksum 0E84	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix 122027 The event description in popped up window of WebUI is not match with in ''Server Health -> Event Log''
+	2. Fix 121911 BMC FW from different platform can be flashed via WebUI
+	3. Fix 122008 There should not be ''Power Off/Power Down - Asserted'' events when doing AC lost test
+	4. Fix 121927 [VMware cert.]The Power Supply test items got an invalid log '' this could indicate that the server is a blade and the test does not apply''
+	5. Fix 121551 I can ping BMC ipv6 IP although I've enable the vlan function on webUI
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	1. Update BMC FW via command line: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+
+	2. Update BMC FW via Web UI
+	Please selsect rom.ima_enc as image file and don't upload Signimage key.
+	
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.12 release note
+===============================================================
+BMC FW Version	 : 	v2.12
+Date             :	2012/2/3
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A05
+
+Firmware Images:
+   rom.ima with checksum 4A36	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add change fan speed to the lowest when PSU error for Liteon new PSU
+	2. Cheange Unknow sensor as Others in pie graph of web UI dashboard. And remove the link to SEL filter.
+	3. Add the check for issue the PSU redundant error. The SEL will be issue when 2 PSU is plug in BMC boot time.
+	4. 121786, Fix POST error SEL for clear password and CMOS.
+	5. 121821, Fix WebUI can't be opened if I change the network setting
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.11 release note
+===============================================================
+BMC FW Version	 : 	v2.11
+Date             :	2012/1/31
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A04
+
+Firmware Images:
+   rom.ima with checksum 316F	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 121764, Without BIOS version and chipset type in web dashboard.
+	2. 121741, 121733, P5V and P1V1_STBY_SSB log error
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.10 release note
+===============================================================
+BMC FW Version	 : 	v2.10
+Date             :	2012/1/19
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A04
+
+Firmware Images:
+   rom.ima with checksum 1136	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 121550, Fix IPV6 Vlan enable but still can ping it.
+	2. 121681, Fix power button fail in rKVM. It need some time 
+	   for AMI to fix the function. We remove the button and power
+	   control in the UI. User could take power control in Web UI. 
+	   You need clear Java cache before the test if you got old 
+	   rKVM UI.
+	3. 121675, Fix no NMI SEL.
+	4. 121677, Fix web display 16 dimm not 24 dimm.
+	5. 121676, Fix CPU socket information still display in dimm 
+	   component page.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.09 release note
+===============================================================
+BMC FW Version	 : 	v2.09
+Date             :	2012/1/18
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A04
+
+Firmware Images:
+   rom.ima with checksum CAD5	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. 121654, Fix IPV6 cannot work on share NIC
+	2. 121519, Fix SOL looptest error
+	3. 121615, Fix user previledge will become administrator if I set ser as OEM previledge.
+	4. Filter out OEM SEL.
+	5. Fix CPU temperature become 0 when thermal trip.
+	6. Add retry if PSU report power consumption is 0.
+
+On-Going item:
+
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.08 release note
+===============================================================
+BMC FW Version	 : 	v2.08
+Date             :	2012/1/13
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A04
+
+Firmware Images:
+   rom.ima with checksum C619	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix power control action fail after reset server by command or web.
+	2. Add OEM command for soft power cycle. (ipmitool -H xxx.xxx.xxx.xxx -U admin -P admin raw 0x00 0x02 0x0f)
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.07 release note
+===============================================================
+BMC FW Version	 : 	v2.07
+Date             :	2012/1/12
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A03
+
+Firmware Images:
+   rom.ima with checksum E494	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add retry 2 times when fan speed retun under 1000 rpm
+	2. Modify CPU 2 presentation on web, it will disappear if CPU 2 does not mount.
+	3. Fix PCH temperature sensor to be unavailable when DC off  
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.06 release note
+===============================================================
+BMC FW Version	 : 	v2.06
+Date             :	2012/1/10
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A03
+
+Firmware Images:
+   rom.ima with checksum 9021	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Modify ME OEM command for "OEM Get Reading" to get ambient temperature.
+	2. Fix SOL mass character problem.
+	3. Add retry for power comsumption sensor.
+	4. 121462, Modify CPU temperature sensor to return value less than 150.
+	5. 121362, Fix SEL filter error when link from sensor reading page.
+	6. 121411, Fix timestamp can not display "Pre-init Timestamp" in web alert SEL frame.
+	7. Fix fan speed abnormal before get CPU temperature after AC cycle.
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.05 release note
+===============================================================
+BMC FW Version	 : 	v2.05
+Date             :	2012/1/6
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A03
+
+Firmware Images:
+   rom.ima with checksum B22C	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix NCSI 1G on board low performance.
+	2. Fix NIC switch setting error after AC re-cycle.
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.03 release note
+===============================================================
+BMC FW Version	 : 	v2.03
+Date             :	2011/12/28
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A02
+
+Firmware Images:
+   rom.ima with checksum CF79	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix CPU and dimm temperature sensor reading fail.
+	2. Fix F/W version display format in web
+	3. Update some temperature sensors readable mask in SDR
+	4. Fix 3V battery and processor hot log when device boot.
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "dos" or "update_all.bat" in DOS
+	c) run "win" or "win_x64" in Window
+	d) run "linux" in Linux
+	e) run "socflash if=rom.ima cs=0 flashtype=2" in DOS with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.02 release note
+===============================================================
+BMC FW Version	 : 	v2.02
+Date             :	2011/12/23
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A02
+
+Firmware Images:
+   rom.ima with checksum 86F1	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix max fan speed for s2rs 2.5 inch HD SKU
+	2. Modify fan speed as 0 when fan is removed
+	3. Add PSU fail log when PSU fail.
+	4. Add IPV6 address setting from BIOS
+	5. Fix web log in Firefox when reload the page.
+	6. Fix rKVM launch fail
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) run "socflash if=rom.ima cs=0 flashtype=2" with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.01 release note
+===============================================================
+BMC FW Version	 : 	v2.01
+Date             :	2011/12/16
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A01
+
+Firmware Images:
+   rom.ima with checksum 3CD9	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Update fan speed control
+	2. Add S2L workaround for AC/DC cycle test
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) run "socflash if=rom.ima cs=0 flashtype=2" with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v2.00 release note
+===============================================================
+BMC FW Version	 : 	v2.00
+Date             :	2011/12/13
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q3
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A01
+
+Firmware Images:
+   rom.ima with checksum 03FA	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Update fan speed control
+	2. Update dashboard page
+	3. Change code base to AMI Q3 release
+	4. Update sensor threshold related to thermo.
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) run "socflash if=rom.ima cs=0 flashtype=2" with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.47 release note
+===============================================================
+BMC FW Version	 : 	v1.47
+Date             :	2011/12/9
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	3A01
+
+Firmware Images:
+   rom.ima with checksum 2B54	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix Web fail in IE
+	2. Add post error sensor
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) run "socflash if=rom.ima cs=0 flashtype=2" with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.46 release note
+===============================================================
+BMC FW Version	 : 	v1.46
+Date             :	2011/12/8
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A07
+
+Firmware Images:
+   rom.ima with checksum E3FB	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix PSU redundant SEL error problem
+	2. Add ME SEL string.
+	3. Fix S2RS and S2RQ fan control
+	4. Fix NCSI for 10G NIC.
+	5. Add S2RQ 3.5 inch HD chassis detect.
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) run "socflash if=rom.ima cs=0 flashtype=2" with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.45 release note
+===============================================================
+BMC FW Version	 : 	v1.45
+Date             :	2011/12/1
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A06
+
+Firmware Images:
+   rom.ima with checksum 69AD	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Add SDRAM firmware to fix video memory problem.
+	2. Modify CPU temerature threashod to refer TjMax.
+	3. Fix sensor name regards with processor.
+	4. Add PROC_CAT_ERR sensor to check CPU mismatch problem.
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) run "socflash if=rom.ima cs=0 flashtype=2" with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.44.1 release note
+===============================================================
+BMC FW Version	 : 	v1.44.1
+Date             :	2011/11/28
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A06
+
+Firmware Images:
+   rom.ima with checksum 00E7	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Remove P1V1_STBY_SSB assert and deassert SEL
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) run "socflash if=rom.ima cs=0 flashtype=2" with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.44 release note
+===============================================================
+BMC FW Version	 : 	v1.44
+Date             :	2011/11/28
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A06
+
+Firmware Images:
+   rom.ima with checksum F6EC	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Modify CPU1/2 Temp,DIM temp threshhold 
+	2. Modify P3V_BAT and P1V1_STBY_SSB threshhold
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) run "socflash if=rom.ima cs=0 flashtype=2" with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.43 release note
+===============================================================
+BMC FW Version	 : 	v1.43
+Date             :	2011/11/25
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A06
+
+Firmware Images:
+   rom.ima with checksum F85A	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Modify S2RS fan speed control as 1.42.1
+	2. Remove Networl Bonding setting page in web
+	3. Fix S2RQ fan speed control to follow its spec 
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) run "socflash if=rom.ima cs=0 flashtype=2" with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.42 release note
+===============================================================
+BMC FW Version	 : 	v1.42
+Date             :	2011/11/24
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A06
+
+Firmware Images:
+   rom.ima with checksum 3745	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix response slow by command "ipmitool sdr list"
+	2. Modify fan speed control to follow "S2RS 3.5" & 2.5" SKU Fan Speed Control Algorithm ver0.1" 
+
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) run "socflash if=rom.ima cs=0 flashtype=2" with BMC disable.
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.41 release note
+===============================================================
+BMC FW Version	 : 	v1.41
+Date             :	2011/11/23
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A06
+
+Firmware Images:
+   rom.ima with checksum 2204	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix Quanta logo in web
+	2. Fix FRU data corrupt problem 
+	
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.40 release note
+===============================================================
+BMC FW Version	 : 	v1.40
+Date             :	2011/11/23
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A05.01
+
+Firmware Images:
+   rom.ima with checksum 5EB	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+	1. Fix fan speed control in S2RS SKU
+	2. Set default SKU as S2RS when FRU data is lost 
+	
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.39 release note
+===============================================================
+BMC FW Version	 : 	v1.39
+Date             :	2011/11/17
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A05.01
+
+Firmware Images:
+   rom.ima with checksum 507A	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+New Functions/Function Changes:
+	1. Modify NIC as single NIC to fix NIC problem
+	2. 120420  Extra fileds of FRU infomation are empty in WebUI
+	3. 120264  The MB FRU data is empty after upgraded FP/MB FRU.
+	4. 120461  SMTP setting page has wrong behavior
+	5. 120481  Write FP FRU to S2RQ3.5 SCU will fail
+	6. 120483  User can login WebUI with password more than 20 characters,
+	7. 120532  BMC SDR Fan sensor name difference with BP. PCI Fan (system fan0)
+	8. Decrease SEL number to 500.
+	
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	2. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	3. Single NIC enable in this version. Default NIC is dedicated NIC.
+===============================================================
+    S2RQ/RS AST2300 BMC FW v1.38 release note
+===============================================================
+BMC FW Version	 : 	v1.38
+Date             :	2011/11/11
+Hardware Platform:	S2RQ/S2RS (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A05.01
+
+Firmware Images:
+   rom.ima with checksum 414	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+New Functions/Function Changes:
+	1. Modify NIC as single NIC
+	2. 120177  SEL will not log a event when clear SEL.
+	3. 120167  BMC SEL won't generate ''SEL Almost Full'' and '' SEL Full '' log
+	4. 120116  ''Invalid IPv4 Subnet mask'' warning window popped up even the IP format is correct
+	5. 120112 ¡§Making proccessor hot will generate "Invalid Offset for this Sensor Type." event.¡¨
+	
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	2. update BMC's MAC address in DOS
+		a) NIC : yafukcs -MAC <mac address>
+		c) MAC update is slow, about 60 seconds
+
+	3. login account: 
+		1) web and ipmitool 
+			username: admin 
+			password: admin
+		2) SMASH
+			username: sysadmin
+			password: superuser
+	4. Single NIC enable in this version. Default NIC is dedicated NIC.
+
+===============================================================
+    S2RQ AST2300 BMC FW v1.37 release note
+===============================================================
+BMC FW Version	 : 	v1.37
+Date             :	2011/10/25
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	2A02
+
+Firmware Images:
+   rom.ima with checksum 0167	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+New Functions/Function Changes:
+	1. Fix 3V3 wrong reading value.
+	2. Fix user can't use IPMI command to control system power policy.
+	
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	3. update BMC's MAC address in DOS
+		a) shared-NIC : yafukcs -MAC <mac address>
+		b) dedicated-NIC : yafukcs -MAC1 <mac address>
+		c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+	username: admin 
+	password: admin
+2) SMASH
+	username: sysadmin
+	password: superuser
+===============================================================
+    S2RQ AST2300 BMC FW v1.36 release note
+===============================================================
+BMC FW Version	 : 	v1.36
+Date             :	2011/09/29
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	1A10
+
+Firmware Images:
+   rom.ima with checksum 4E86	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+New Functions/Function Changes:
+	1. Fix 1.35 BMC_READY_PIN failed to initial issue.
+	
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	3. update BMC's MAC address in DOS
+		a) shared-NIC : yafukcs -MAC <mac address>
+		b) dedicated-NIC : yafukcs -MAC1 <mac address>
+		c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+	username: admin 
+	password: admin
+2) SMASH
+	username: sysadmin
+	password: superuser
+===============================================================
+    S2RQ AST2300 BMC FW v1.35 release note
+===============================================================
+BMC FW Version	 : 	v1.35
+Date             :	2011/09/13
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	1A09
+
+Firmware Images:
+   rom.ima with checksum 5923	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+		
+New Functions/Function Changes:
+	1. Change FM_BMC_READY_N from GPIO C7 to GPIO Q4 for DVT hardware change.
+	
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	3. update BMC's MAC address in DOS
+		a) shared-NIC : yafukcs -MAC <mac address>
+		b) dedicated-NIC : yafukcs -MAC1 <mac address>
+		c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+	username: admin 
+	password: admin
+2) SMASH
+	username: sysadmin
+	password: superuser
+===============================================================
+    S2RQ AST2300 BMC FW v1.30 release note
+===============================================================
+BMC FW Version	 : 	v1.30
+Date             :	2011/09/13
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN18291
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	1A09
+
+Firmware Images:
+   rom.ima with checksum 8012	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+	1. SOL function.
+	2. 119327-The warning LED light won't light if the SEL logs are full by things happend should be tip and alert.
+	3. 119436-Many of BMC event logs are abnormal by WebUI.
+		
+New Functions/Function Changes:
+	1. Support BIOS SEL events.
+	
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	3. update BMC's MAC address in DOS
+		a) shared-NIC : yafukcs -MAC <mac address>
+		b) dedicated-NIC : yafukcs -MAC1 <mac address>
+		c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+	username: admin 
+	password: admin
+2) SMASH
+	username: sysadmin
+	password: superuser
+===============================================================
+    S2RQ AST2300 BMC FW v1.29 release note
+===============================================================
+BMC FW Version	 : 	v1.29
+Date             :	2011/08/04
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN17004
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	1A08
+
+Firmware Images:
+   rom.ima with checksum 1018	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+	1. Power cycle failed to power on chassis again.
+	2. Use wrong slave address for PMBus.
+	3. FP FRU device type is wrong in SDR. 
+	
+New Functions/Function Changes:
+	1. Support Mutiple platfrom in single image. 
+	2. Following AST2300 SDK version 0.22 to modify AST2300 DRAM parameters for 396Mh.	
+On-Going item:
+- SDR.
+- OEM SEL log string. 
+Known Issues:
+	1. 119327-The warning LED light won't light if the SEL logs are full by things happend should be tip and alert.
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	3. update BMC's MAC address in DOS
+		a) shared-NIC : yafukcs -MAC <mac address>
+		b) dedicated-NIC : yafukcs -MAC1 <mac address>
+		c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+	username: admin 
+	password: admin
+2) SMASH
+	username: sysadmin
+	password: superuser
+===============================================================
+    S2RQ AST2300 BMC FW v1.28 release note
+===============================================================
+BMC FW Version	 : 	v1.28
+Date             :	2011/07/28
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2011_Q2-SVN16677
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	1A07
+
+Firmware Images:
+   rom.ima with checksum 1FE0	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+  	1. 118936-FRU information abnormal in BIOS setup menu.
+  	2. Cannot locate FRU data on mainboard EEPROM.
+  	3. Cannot show FRU information in BMC Web UI.
+  	4. 
+	
+New Functions/Function Changes:
+	
+		
+On-Going item:
+- SDR.
+
+Known Issues:
+	1. 119327-The warning LED light won't light if the SEL logs are full by things happend should be tip and alert.
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	3. update BMC's MAC address in DOS
+		a) shared-NIC : yafukcs -MAC <mac address>
+		b) dedicated-NIC : yafukcs -MAC1 <mac address>
+		c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+	username: admin 
+	password: admin
+2) SMASH
+	username: sysadmin
+	password: superuser
+===============================================================
+    S2RQ AST2300 BMC FW v1.27 release note
+===============================================================
+BMC FW Version	 : v1.27
+Date             :	2011/07/15
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision: 2010Q4
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	1A06
+
+Firmware Images:
+   rom.ima with checksum 8381	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+  	1. 118795-BMC sometimes will failed to ACK all the packets from ME after system idle for 2-3 hours. 
+  	2. 118946-BMC_WebUI hang up while POPULATING Event Log.
+	3. Fix some fan control function mechanism error(Fan speed cannot decrease in some condition).
+	
+New Functions/Function Changes:
+	
+		
+On-Going item:
+- SDR.
+
+Known Issues:
+	1. Cannot locate FRU data on mainboard EEPROM.
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	3. update BMC's MAC address in DOS
+		a) shared-NIC : yafukcs -MAC <mac address>
+		b) dedicated-NIC : yafukcs -MAC1 <mac address>
+		c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+	username: admin 
+	password: admin
+2) SMASH
+	username: root
+	password: superuser
+===============================================================
+    S2RQ AST2300 BMC FW v1.26 release note
+===============================================================
+BMC FW Version: v1.26
+Date:			2011/06/30
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision:2010Q4
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	1A05
+
+Firmware Images:
+   rom.ima with checksum E8C3	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+  
+
+New Functions/Function Changes:
+	1. Add following sensors in the sensor table and SDR:
+		1) PCH Temp.
+
+	2. Add PCH temperature as new candidate for Fan control function.
+		
+	3. Change SMLIK0(SMBus 4) frequency to 400kHz. 
+	4. Add CPU Thermal trip, SSB Thermal trip, wacthdog event.
+		
+On-Going item:
+- SDR.
+
+Known Issues:
+	1. Failed to set BMC's MAC address via AMI tool yafukcs.exe.
+	  [Temporary solution] Please use MACGUID.exe. User can use "MACGUID -m" under DOS prompt to set BMC mac address.
+	2. etrack[118946] BMC_WebUI hang up while POPULATING Event Log.
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=rom.ima" or "update_all.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000" or "update.bat"
+	
+	3. update BMC's MAC address in DOS
+		a) shared-NIC : yafukcs -MAC <mac address>
+		b) dedicated-NIC : yafukcs -MAC1 <mac address>
+		c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+	username: admin 
+	password: admin
+2) SMASH
+	username: root
+	password: superuser
+===============================================================
+    S2RQ AST2300 BMC FW v1.25 release note
+===============================================================
+BMC FW Version: v1.25
+Date:			2011/06/17
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision:2010Q4
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	1A04
+
+Firmware Images:
+   rom.ima with checksum E583	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+  
+
+New Functions/Function Changes:
+	1. Add following sensors in the sensor table and SDR:
+		1) DIMM sesnors.
+
+	2. Support following OEM commands for BIOS:
+		1) Set BIOS Start
+		2) Set Post End
+		3) Set Processor Information
+		4) Set DIMM Information
+		
+	3. Fan control function.
+	4. Reset ME when ME response completion code : 0xC1.
+	5. Response correct power consumption value to ME when it send "OEM Get Reading" to BMC. 
+		
+On-Going item:
+- SDR.
+
+Known Issues:
+	1. Failed to set BMC's MAC address via AMI tool yafukcs.exe.
+	  [Temporary solution] Please use MACGUID.exe. User can use "MACGUID -m" under DOS prompt to set BMC mac address.
+
+Notice:
+	1. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=srom.ima" or "update.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000"
+	
+	3. update BMC's MAC address in DOS
+		a) shared-NIC : yafukcs -MAC <mac address>
+		b) dedicated-NIC : yafukcs -MAC1 <mac address>
+		c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+	username: admin 
+	password: admin
+2) SMASH
+	username: root
+	password: superuser
+===============================================================
+    S2RQ AST2300 BMC FW v1.24 release note
+===============================================================
+BMC FW Version: v1.24
+Date:			2011/06/02
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision:2010Q4
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	1A03
+
+Firmware Images:
+   rom.ima with checksum A608	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+  MACGUID.exe
+
+Bug Fix:
+  
+
+New Functions/Function Changes:
+	1. Add following sensors in the sensor table and SDR:
+		1) System Fan sensors.
+		2) Ambient Sensor.
+	2. Rearrange the sensor table sequence by following the sensor number.
+	3. Add new QCI OEM command enable user to control system fan via IPMI.(0x30(LUN=0) 0xF9 <fan_id> <fan duty>)
+	4. Add new QCI OEM command enable user to control system COM source. (0x30(LUN=0) 0xFA <COM_SELSECT>)		
+	5. Change BMC debug console to the external COM port(BMC UART3).
+	
+On-Going item:
+- Sensor table, SDR.
+
+Known Issues:
+	1. Failed to set BMC's MAC address via AMI tool yafukcs.exe.
+	  [Temporary solution] Please use MACGUID.exe. User can use "MACGUID -m" under DOS prompt to set BMC mac address.
+
+Notice:
+	1. All major features are not completed yet.
+	
+	2. Update BMC FW in DOS: 
+	a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+	b) run "socflash if=srom.ima" or "update.bat"
+	c) if the MAC address is set before and want to preserve it,
+	   use "socflash if=rom.ima skip=40000 offset=40000"
+	
+	3. update BMC's MAC address in DOS
+		a) shared-NIC : yafukcs -MAC <mac address>
+		b) dedicated-NIC : yafukcs -MAC1 <mac address>
+		c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+	username: admin 
+	password: admin
+2) SMASH
+	username: root
+	password: superuser
+
+===============================================================
+    S2RQ AST2300 BMC FW v1.23 release note
+===============================================================
+BMC FW Version: v1.23
+Date:			2011/05/12
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision:2010Q4
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	1A02
+
+Firmware Images:
+   rom.ima with checksum 4788	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+
+Bug Fix:
+1. Dedicated LAN is not accessible.
+2. Fix chassis power command behavior issue.  
+
+New Function:
+1. Console command to configure H/W IC W83793G on the BP.
+2. Set default power on fan duty to 40 (MAX:63).
+
+
+On-Going item:
+- Sensore table, SDR.
+
+Known Issues:
+
+
+Notice:
+1. All major features are not completed yet.
+
+2. Update BMC FW in DOS: 
+a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+b) run "socflash if=srom.ima" or "update.bat"
+c) if the MAC address is set before and want to preserve it,
+   use "socflash if=rom.ima skip=40000 offset=40000"
+
+3. update BMC's MAC address in DOS
+a) shared-NIC : yafukcs -MAC <mac address>
+b) dedicated-NIC : yafukcs -MAC1 <mac address>
+c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+username: admin 
+password: admin
+2) SMASH
+username: root
+password: superuser
+===============================================================
+    S2RQ AST2300 BMC FW v1.22 release note
+===============================================================
+BMC FW Version: v1.21
+Date:			2011/05/12
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision:2010Q4
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum D488	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+
+Bug Fix:
+1. Fix cannot set GPIO group C issue.
+2. Fix BMC will kernel panic when ROMA[2:3] is not 0x00.
+3. Fix speaker will beep when DC on.
+
+New Function:
+
+On-Going item:
+- Everything
+
+Known Issues:
+
+
+Notice:
+1. All major features are not completed yet.
+
+2. Update BMC FW in DOS: 
+a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+b) run "socflash if=srom.ima" or "update.bat"
+c) if the MAC address is set before and want to preserve it,
+   use "socflash if=rom.ima skip=40000 offset=40000"
+
+3. update BMC's MAC address in DOS
+a) shared-NIC : yafukcs -MAC <mac address>
+b) dedicated-NIC : yafukcs -MAC1 <mac address>
+c) MAC update is slow, about 60 seconds
+
+4. login account: 
+
+4. login account: 
+1) web and ipmitool 
+username: admin 
+password: admin
+2) SMASH
+username: root
+password: superuser
+
+===============================================================
+    S2RQ AST2300 BMC FW v1.21 release note
+===============================================================
+BMC FW Version: v1.21
+Date:			2011/04/07
+Hardware Platform:	S2RQ (AST2300 ver. A0, A1)
+AMI Subversion Revision:2010Q4
+Quanta Subversion Revision:
+Associate Platform:
+  BIOS Version:	
+
+Firmware Images:
+   rom.ima with checksum 93F9	
+
+Utility version:
+  dos4gw.exe
+  socflash.exe v1.03.03
+
+Bug Fix:
+
+New Function:
+
+On-Going item:
+- Everything
+
+Known Issues:
+
+
+Notice:
+1. All major features are not completed yet.
+
+2. Update BMC FW in DOS: 
+a) put dos4gw.exe, socflash.exe, and rom.ima in same directory.
+b) run "socflash if=srom.ima" or "update.bat"
+c) if the MAC address is set before and want to preserve it,
+   use "socflash if=rom.ima skip=40000 offset=40000"
+
+3. update BMC's MAC address in DOS
+a) shared-NIC : yafukcs -MAC <mac address>
+b) dedicated-NIC : yafukcs -MAC1 <mac address>
+c) MAC update is slow, about 60 seconds
+
+4. login account: 
+1) web and ipmitool 
+username: admin 
+password: admin
+2) SMASH
+username: root
+password: superuser
+

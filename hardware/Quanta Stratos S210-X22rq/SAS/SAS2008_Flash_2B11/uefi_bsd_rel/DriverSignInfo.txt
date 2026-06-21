@@ -1,0 +1,4 @@
+The driver binary x64sas2.efi in the folder "Signed" and the x64sas2.efi file embedded inside the x64sas2.rom file in this "Signed" folder are signed with Microsoft UEFI Driver sign keys to enable secure boot on supported platforms.
+
+The *.efi and *.rom files in this folder are unsigned.
+
