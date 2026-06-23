@@ -1,0 +1,56 @@
+---
+# =============================================================================
+# playbooks/20-registry.yml
+# Example Music Limited — Windows registry hardening (all hosts)
+# =============================================================================
+# Applies registry_common from group_vars/windows/vars.yml.
+# Safe to re-run — all tasks are idempotent.
+#
+# Usage:
+#   ansible-playbook -i inventory/<site>.ini playbooks/20-registry.yml
+#   ansible-playbook -i inventory/<site>.ini playbooks/20-registry.yml --check
+#
+# Tags: registry
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Windows — Registry hardening
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  handlers:
+    - import_tasks: ../handlers/main.yml
+  tasks:
+
+    - name: Apply common registry keys
+      ansible.windows.win_regedit:
+        path:  "{{ item.path }}"
+        name:  "{{ item.name }}"
+        data:  "{{ item.data }}"
+        type:  "{{ item.type }}"
+      loop: "{{ registry_common }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: registry
+
+    - name: Ensure RDP service is running
+      ansible.windows.win_service:
+        name: TermService
+        start_mode: auto
+        state: started
+      tags: registry
+
+    - name: Enable RDP firewall rule
+      community.windows.win_firewall_rule:
+        name: "Remote Desktop"
+        group: "Remote Desktop"
+        enabled: true
+        state: present
+      tags: registry
+
+    - name: Disable SMBv1 feature
+      ansible.windows.win_optional_feature:
+        name: SMB1Protocol
+        state: absent
+      tags: registry

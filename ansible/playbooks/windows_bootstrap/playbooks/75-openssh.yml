@@ -1,0 +1,108 @@
+---
+# =============================================================================
+# playbooks/75-openssh.yml
+# Example Music Limited — OpenSSH configuration and Ansible key deployment
+# =============================================================================
+# Ensures OpenSSH Server is installed, running, and set to Automatic.
+# Writes the Ansible public key to administrators_authorized_keys with
+# correct ACLs (matches Join-DomainAndBootstrap.ps1 Stage 16).
+# Sets PS7 as the default SSH shell (falls back to PS5 if PS7 absent).
+#
+# Safe to re-run — key file is overwritten with the canonical value,
+# ACLs are re-applied, service state is confirmed.
+#
+# Usage:
+#   ansible-playbook -i inventory/<site>.ini playbooks/75-openssh.yml
+#
+# Tags: openssh
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Windows — OpenSSH configuration
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  handlers:
+    - import_tasks: ../handlers/main.yml
+  tasks:
+
+    - name: Install OpenSSH Server capability
+      ansible.windows.win_optional_feature:
+        name: OpenSSH.Server~~~~0.0.1.0
+        state: present
+      notify: restart sshd
+      tags: openssh
+
+    - name: Ensure sshd service is running and set to Automatic
+      ansible.windows.win_service:
+        name: sshd
+        start_mode: auto
+        state: started
+      tags: openssh
+
+    - name: Ensure SSH ProgramData directory exists
+      ansible.windows.win_file:
+        path: 'C:\ProgramData\ssh'
+        state: directory
+      tags: openssh
+
+    - name: Write Ansible public key to administrators_authorized_keys
+      ansible.windows.win_copy:
+        content: "{{ exa_ansible_pub_key }}\n"
+        dest:    "{{ exa_ansible_key_path }}"
+      notify: restart sshd
+      tags: openssh
+
+    - name: Set ACLs on administrators_authorized_keys (remove inheritance)
+      ansible.windows.win_shell: |
+        icacls "{{ exa_ansible_key_path }}" /inheritance:r
+        icacls "{{ exa_ansible_key_path }}" /grant "SYSTEM:(F)"
+        icacls "{{ exa_ansible_key_path }}" /grant "BUILTIN\Administrators:(F)"
+      changed_when: true
+      tags: openssh
+
+    - name: Add OpenSSH firewall rule
+      community.windows.win_firewall_rule:
+        name:      "OpenSSH-Server-In-TCP"
+        localport: 22
+        protocol:  tcp
+        direction: in
+        action:    allow
+        enabled:   true
+        state:     present
+      tags: openssh
+
+    - name: Check if PS7 is installed
+      ansible.windows.win_stat:
+        path: 'C:\Program Files\PowerShell\7\pwsh.exe'
+      register: ps7_stat
+      tags: openssh
+
+    - name: Set PS7 as default SSH shell
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\OpenSSH'
+        name: DefaultShell
+        data: 'C:\Program Files\PowerShell\7\pwsh.exe'
+        type: string
+      when: ps7_stat.stat.exists
+      notify: restart sshd
+      tags: openssh
+
+    - name: Set PS5 as default SSH shell (PS7 not installed)
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\OpenSSH'
+        name: DefaultShell
+        data: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        type: string
+      when: not ps7_stat.stat.exists
+      notify: restart sshd
+      tags: openssh
+
+    - name: Set DefaultShellCommandOption
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\OpenSSH'
+        name: DefaultShellCommandOption
+        data: '-NoLogo'
+        type: string
+      tags: openssh

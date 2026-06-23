@@ -1,0 +1,84 @@
+---
+# =============================================================================
+# tasks/site_detection.yml
+# Example Music Limited — Hypervisor detection (Stage 1) and site
+# detection from IP third octet (Stage 2)
+# Replicates Join-DomainAndBootstrap.ps1 Stages 1 and 2
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# ── Stage 1 — Hypervisor detection ───────────────────────────────────────────
+
+- name: "[Stage 1] Detect hypervisor via WMI manufacturer"
+  ansible.windows.win_shell: |
+    (Get-WmiObject Win32_ComputerSystem).Manufacturer
+  register: stage1_manufacturer
+  changed_when: false
+
+- name: "[Stage 1] Detect loaded drivers (stronger signal than SMBIOS)"
+  ansible.windows.win_shell: |
+    driverquery /FO CSV | ConvertFrom-Csv | Select-Object -ExpandProperty 'Module Name'
+  register: stage1_drivers
+  changed_when: false
+
+- name: "[Stage 1] Set hypervisor fact"
+  set_fact:
+    hypervisor: >-
+      {%- set mfr = stage1_manufacturer.stdout | trim | lower -%}
+      {%- set drv = stage1_drivers.stdout | lower -%}
+      {%- if 'vmxnet' in drv or 'vmware' in drv -%}VMware
+      {%- elif 'vioscsi' in drv or 'balloon' in drv or 'viostor' in drv -%}KVM
+      {%- elif 'hvboot' in drv or 'vmbus' in drv -%}HyperV
+      {%- elif 'vmware' in mfr -%}VMware
+      {%- elif 'qemu' in mfr or 'kvm' in mfr -%}KVM
+      {%- elif 'microsoft' in mfr -%}HyperV
+      {%- else -%}Physical
+      {%- endif -%}
+
+- name: "[Stage 1] Show hypervisor detection result"
+  debug:
+    msg: "Hypervisor detected: {{ hypervisor }}"
+
+# ── Stage 2 — Site detection from IP third octet ─────────────────────────────
+
+- name: "[Stage 2] Get local IP address via ipconfig"
+  ansible.windows.win_shell: |
+    $ip = (Get-NetIPAddress -AddressFamily IPv4 |
+           Where-Object { $_.IPAddress -notmatch '^(127\.|169\.254\.)' } |
+           Select-Object -First 1).IPAddress
+    $ip
+  register: stage2_ip
+  changed_when: false
+
+- name: "[Stage 2] Parse subnet octet from IP"
+  set_fact:
+    host_ip:            "{{ stage2_ip.stdout | trim }}"
+    host_subnet_octet:  "{{ stage2_ip.stdout | trim | regex_replace('^(\\d+\\.\\d+\\.)(\\d+)(\\.\\d+)$', '\\2') }}"
+
+- name: "[Stage 2] Match octet to site code"
+  set_fact:
+    detected_site: >-
+      {%- set octet_map = {
+        '76':  'FAL', '231': 'CPH', '126': 'ODE', '136': 'BRK',
+        '161': 'MCR', '151': 'LIV', '141': 'GLA', '191': 'NEW',
+        '65':  'KGE', '246': 'FAX', '164': 'TOR', '154': 'MTL',
+        '29':  'SYD', '139': 'CLD', '33':  'ATL'
+      } -%}
+      {{ octet_map.get(host_subnet_octet, 'UNKNOWN') }}
+
+- name: "[Stage 2] WARN — subnet octet not in known site map"
+  debug:
+    msg: >
+      WARN: Subnet octet {{ host_subnet_octet }} not found in site map.
+      host_site will be used from hostname instead.
+  when: detected_site == 'UNKNOWN'
+
+- name: "[Stage 2] Show site detection result"
+  debug:
+    msg: >
+      IP: {{ host_ip }}  |  Octet: {{ host_subnet_octet }}  |
+      Detected site: {{ detected_site }}  |
+      Hostname site: {{ host_site }}
+      {{ '(match)' if detected_site == host_site else '(MISMATCH — using hostname-derived site: ' + host_site + ')' }}

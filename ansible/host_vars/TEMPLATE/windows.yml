@@ -1,0 +1,51 @@
+---
+# host_vars/EXAWKSFAL001/windows.yml
+# ============================================================================
+# Example Music — Windows node host variables template
+# Copy to host_vars/<hostname>/windows.yml and fill in values.
+#
+# Variables defined here drive the windows_bootstrap.yml playbook.
+# The inventory hostname IS the target computer name — the playbook
+# will rename the machine to match if they differ.
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# SITE — auto-detected from IP if not set, but explicit is better
+# ----------------------------------------------------------------------------
+win_site: FAL
+
+# ----------------------------------------------------------------------------
+# DOMAIN — auto-detected from subnet map if not set
+# Allowed values: example.com / example.net / example.org
+# ----------------------------------------------------------------------------
+win_domain: example.net
+
+# ----------------------------------------------------------------------------
+# DOMAIN JOIN — REQUIRED
+# OU path in distinguishedName format.
+# Find valid OUs with:
+#   Get-ADOrganizationalUnit -Filter * | Select-Object DistinguishedName
+# ----------------------------------------------------------------------------
+win_ou_path: "OU=Workstations,OU=FAL,DC=example,DC=net"
+
+# Domain account authorised to join machines to this domain.
+# Default is JUKEBOX\Administrator (forest DA — works across all child domains).
+# Override here only if using a delegated join account.
+win_domain_join_user: Administrator
+
+# Domain join password — store in ansible-vault, never in plaintext.
+# Encrypt with: ansible-vault encrypt_string 'thepassword' --name win_domain_join_password
+win_domain_join_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  <replace with encrypted value>
+
+# ----------------------------------------------------------------------------
+# OPTIONAL OVERRIDES
+# ----------------------------------------------------------------------------
+# Override the WinRM connection user if the local Administrator account
+# has a non-standard name on this machine.
+# ansible_user: Administrator
+
+# Override the ansible SSH public key path if this host should use a
+# different key than the group default.
+# ansible_ssh_public_key_file: ~/ansible/configs/ansible-id_rsa.pub

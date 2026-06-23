@@ -1,0 +1,83 @@
+---
+# =============================================================================
+# tasks/ou_selection.yml
+# Example Music Limited — LDAP OU enumeration and selection (Stage 4)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 4
+# =============================================================================
+# Queries the DC at .10 of the local subnet for all OUs, presents a
+# numbered list via pause, and sets bootstrap_ou_path for use in Stage 5.
+#
+# Override: pass -e bootstrap_ou_path="OU=Servers,OU=MCR,DC=jukebox,DC=internal"
+# to skip the interactive selection entirely.
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: "[Stage 4] Skip OU selection — bootstrap_ou_path already set"
+  debug:
+    msg: "Using supplied OU: {{ bootstrap_ou_path }}"
+  when: bootstrap_ou_path is defined and bootstrap_ou_path != ""
+
+- name: "[Stage 4] Query OUs from DC at .10"
+  ansible.windows.win_shell: |
+    $dc = "192.168.{{ host_subnet_octet }}.10"
+    $searcher = New-Object System.DirectoryServices.DirectorySearcher
+    $searcher.SearchRoot = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$dc")
+    $searcher.Filter = "(objectClass=organizationalUnit)"
+    $searcher.SearchScope = "Subtree"
+    $searcher.PropertiesToLoad.Add("distinguishedName") | Out-Null
+    $results = $searcher.FindAll()
+    $i = 1
+    foreach ($r in $results) {
+      $dn = $r.Properties["distinguishedname"][0]
+      Write-Output "$i`t$dn"
+      $i++
+    }
+  register: stage4_ou_list
+  changed_when: false
+  when: bootstrap_ou_path is not defined or bootstrap_ou_path == ""
+
+- name: "[Stage 4] Display OU list"
+  debug:
+    msg: "{{ stage4_ou_list.stdout_lines }}"
+  when: bootstrap_ou_path is not defined or bootstrap_ou_path == ""
+
+- name: "[Stage 4] Prompt operator to select OU"
+  pause:
+    prompt: |
+
+      ── OU Selection ──────────────────────────────────────────────────────────
+      OUs listed above. Enter the NUMBER of the target OU for this host.
+
+      Suggested for role {{ host_role }}:
+        Workstations  → find OU=Workstations,OU={{ host_site }},...
+        Laptops       → find OU=Laptops,OU={{ host_site }},...
+        Servers       → find OU=Servers,OU={{ host_site }},...
+        DomainCtrlrs  → find OU=DomainControllers,OU={{ host_site }},...
+
+      Enter OU number
+  register: stage4_ou_choice
+  when: bootstrap_ou_path is not defined or bootstrap_ou_path == ""
+
+- name: "[Stage 4] Parse selected OU from numbered list"
+  set_fact:
+    bootstrap_ou_path: >-
+      {{
+        stage4_ou_list.stdout_lines
+        | select('match', '^' + stage4_ou_choice.user_input | trim + '\t')
+        | list | first
+        | regex_replace('^\d+\t', '')
+      }}
+  when: bootstrap_ou_path is not defined or bootstrap_ou_path == ""
+
+- name: "[Stage 4] Confirm selected OU"
+  pause:
+    prompt: |
+
+      Selected OU: {{ bootstrap_ou_path }}
+
+      Press Enter to confirm, or Ctrl+C then A to abort and re-run with
+      -e bootstrap_ou_path="<OU path>" to override.
+
+  when: bootstrap_ou_path is defined

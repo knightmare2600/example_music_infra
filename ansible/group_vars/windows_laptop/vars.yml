@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# group_vars/windows_laptop/vars.yml
+# Example Music Limited — Variables for Windows laptop/tablet hosts (LAP, SUR)
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# Hibernation — ENABLED on laptops and tablets
+exa_hibernation_enabled: true
+
+# Advertising suppression — on for laptops
+exa_deadvertise_enabled: true
+
+# Laptop-specific Chocolatey packages (added to choco_packages_common)
+choco_packages_extra:
+  - firefox
+  - windirstat
+  - windows-terminal
+
+# Laptop-specific arch-aware binaries (added to binaries_common)
+binaries_extra:
+  - { src_amd64: "busybox64.exe",         src_arm64: "busybox64a.exe",         dest: "busybox.exe" }
+  - { src_amd64: "jq-windows-amd64.exe",  src_arm64: "jq-windows-arm64.exe",   dest: "jq.exe" }
+  - { src_amd64: "ScreenRes-x64.exe",     src_arm64: "ScreenRes-arm64.exe",     dest: "ScreenRes.exe" }
+  - { src_amd64: "WinDirStat.exe",        src_arm64: "WinDirStat_arm64.exe",    dest: "WinDirStat.exe" }
+
+# Same deadvertise keys as desktop
+registry_deadvertise:
+  - { path: 'HKCU:\Software\Policies\Microsoft\Windows\Explorer',                              name: DisableSearchBoxSuggestions,           data: 1,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SystemPaneSuggestionsEnabled,          data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SubscribedContent-338388Enabled,       data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SubscribedContent-338389Enabled,       data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SoftLandingEnabled,                    data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced',               name: Start_TrackProgs,                      data: 0,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent',                         name: DisableWindowsConsumerFeatures,        data: 1,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection',                       name: AllowTelemetry,                        data: 0,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection',                       name: DisableOneSettingsDownloads,           data: 1,  type: dword }
+
+domain_ou_role: "Laptops"

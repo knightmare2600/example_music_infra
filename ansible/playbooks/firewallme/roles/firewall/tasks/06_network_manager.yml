@@ -1,0 +1,139 @@
+---
+# =============================================================================
+# roles/firewall/tasks/06_network_manager.yml
+# Example Music Limited — NetworkManager connection profiles
+# =============================================================================
+# Mirrors firewallme.sh: nmcli con delete existing, write WAN (DHCP or
+# static) and LAN profiles, set DNS, bring up LAN, optionally bring up WAN.
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# ── Remove existing NM connections for our interfaces ─────────────────────────
+
+- name: "[NM] List existing NM connections on WAN interface"
+  ansible.builtin.shell: |
+    nmcli -t -f NAME,DEVICE con show | grep ':{{ fw_wan_iface }}' | cut -d: -f1 || true
+  register: nm_wan_existing
+  changed_when: false
+
+- name: "[NM] Delete existing WAN connections"
+  ansible.builtin.shell: "nmcli con delete '{{ item }}'"
+  loop: "{{ nm_wan_existing.stdout_lines }}"
+  when: nm_wan_existing.stdout_lines | length > 0
+  notify: restart NetworkManager
+
+- name: "[NM] List existing NM connections on LAN interface"
+  ansible.builtin.shell: |
+    nmcli -t -f NAME,DEVICE con show | grep ':{{ fw_lan_iface }}' | cut -d: -f1 || true
+  register: nm_lan_existing
+  changed_when: false
+
+- name: "[NM] Delete existing LAN connections"
+  ansible.builtin.shell: "nmcli con delete '{{ item }}'"
+  loop: "{{ nm_lan_existing.stdout_lines }}"
+  when: nm_lan_existing.stdout_lines | length > 0
+  notify: restart NetworkManager
+
+- name: "[NM] Flush handlers (restart NM before adding new profiles)"
+  ansible.builtin.meta: flush_handlers
+
+# ── WAN profile — static ──────────────────────────────────────────────────────
+
+- name: "[NM] Create static WAN connection profile"
+  ansible.builtin.shell: |
+    nmcli con add \
+      type ethernet \
+      con-name wan \
+      ifname {{ fw_wan_iface }} \
+      ipv4.method manual \
+      ipv4.addresses {{ fw_wan_static_ip }}/{{ fw_wan_static_prefix }} \
+      ipv4.gateway {{ fw_wan_static_gw }} \
+      ipv4.dns "1.1.1.1 9.9.9.9{{ ' ' + fw_internal_dns if fw_internal_dns else '' }}" \
+      ipv4.dns-search "jukebox.internal" \
+      connection.autoconnect yes
+  when: fw_wan_mode == 'static'
+  notify: restart NetworkManager
+
+# ── WAN profile — DHCP ────────────────────────────────────────────────────────
+
+- name: "[NM] Create DHCP WAN connection profile"
+  ansible.builtin.shell: |
+    nmcli con add \
+      type ethernet \
+      con-name wan \
+      ifname {{ fw_wan_iface }} \
+      ipv4.method auto \
+      ipv4.dns "1.1.1.1 9.9.9.9{{ ' ' + fw_internal_dns if fw_internal_dns else '' }}" \
+      ipv4.dns-search "jukebox.internal" \
+      connection.autoconnect yes
+  when: fw_wan_mode == 'dhcp'
+  notify: restart NetworkManager
+
+# ── LAN profile ───────────────────────────────────────────────────────────────
+
+- name: "[NM] Create LAN connection profile"
+  ansible.builtin.shell: |
+    nmcli con add \
+      type ethernet \
+      con-name lan \
+      ifname {{ fw_lan_iface }} \
+      ipv4.method manual \
+      ipv4.addresses {{ fw_lan_ip }}/24 \
+      ipv4.never-default yes \
+      ipv4.dns "" \
+      connection.autoconnect yes
+  notify: restart NetworkManager
+
+- name: "[NM] Flush handlers (apply NM profiles)"
+  ansible.builtin.meta: flush_handlers
+
+# ── Bring up interfaces ───────────────────────────────────────────────────────
+
+- name: "[NM] Bring up LAN interface"
+  ansible.builtin.shell: nmcli con up lan
+  register: nm_lan_up
+  changed_when: nm_lan_up.rc == 0
+  failed_when: nm_lan_up.rc != 0
+
+- name: "[NM] Bring up WAN interface"
+  ansible.builtin.shell: nmcli con up wan
+  register: nm_wan_up
+  changed_when: nm_wan_up.rc == 0
+  failed_when: false
+  when: fw_wan_activate
+
+- name: "[NM] NOTE — WAN activation skipped"
+  ansible.builtin.debug:
+    msg: >
+      WAN interface not activated (fw_wan_activate=false).
+      Bring it up manually after this run:  nmcli con up wan
+  when: not fw_wan_activate
+
+# ── Enable IP forwarding ──────────────────────────────────────────────────────
+
+- name: "[NM] Enable IPv4 forwarding"
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+
+- name: "[NM] Enable IPv6 forwarding"
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+
+- name: "[NM] Persist sysctl settings"
+  ansible.builtin.blockinfile:
+    path: /etc/sysctl.d/99-exa-forward.conf
+    create: true
+    mode: '0644'
+    block: |
+      # Example Music — IP forwarding
+      net.ipv4.ip_forward = 1
+      net.ipv6.conf.all.forwarding = 1

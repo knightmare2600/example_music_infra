@@ -1,0 +1,137 @@
+---
+# =============================================================================
+# tasks/preflight.yml
+# Example Music Limited — Bootstrap preflight checks (Stage 0b)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 0b
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: "[Preflight] Gather facts"
+  ansible.windows.setup:
+
+- name: "[Preflight] Detect OS product type (1=Workstation 2=DC 3=Server)"
+  ansible.windows.win_shell: |
+    (Get-WmiObject Win32_OperatingSystem).ProductType
+  register: preflight_product_type
+  changed_when: false
+
+- name: "[Preflight] Set OS type facts"
+  set_fact:
+    is_server:      "{{ preflight_product_type.stdout | trim in ['2', '3'] }}"
+    is_workstation: "{{ preflight_product_type.stdout | trim == '1' }}"
+    product_type:   "{{ preflight_product_type.stdout | trim }}"
+
+- name: "[Preflight] Detect chassis type"
+  ansible.windows.win_shell: |
+    (Get-WmiObject Win32_SystemEnclosure).ChassisTypes[0]
+  register: preflight_chassis
+  changed_when: false
+
+- name: "[Preflight] Set chassis facts"
+  set_fact:
+    is_laptop: >-
+      {{ preflight_chassis.stdout | trim in ['9','10','14','30','31','32'] }}
+
+- name: "[Preflight] Check primary DC reachable"
+  ansible.windows.win_shell: |
+    $dc = "192.168.{{ host_subnet_octet }}.10"
+    if (Test-Connection -ComputerName $dc -Count 1 -Quiet) { "ok" } else { "fail" }
+  register: preflight_dc
+  changed_when: false
+
+- name: "[Preflight] FAIL — Primary DC unreachable"
+  fail:
+    msg: >
+      Primary DC 192.168.{{ host_subnet_octet }}.10 is unreachable.
+      Domain join will fail. Check networking before proceeding.
+  when: preflight_dc.stdout | trim == "fail"
+
+- name: "[Preflight] Check jukebox.internal DNS resolves"
+  ansible.windows.win_shell: |
+    try {
+      [System.Net.Dns]::GetHostAddresses("jukebox.internal") | Out-Null
+      "ok"
+    } catch { "fail" }
+  register: preflight_dns
+  changed_when: false
+
+- name: "[Preflight] FAIL — jukebox.internal does not resolve"
+  fail:
+    msg: >
+      jukebox.internal does not resolve on {{ inventory_hostname }}.
+      Check DNS configuration before proceeding.
+  when: preflight_dns.stdout | trim == "fail"
+
+- name: "[Preflight] Check wallpaper URL reachable"
+  ansible.windows.win_shell: |
+    try {
+      $r = Invoke-WebRequest -Uri "{{ exa_wallpaper_url }}" -Method Head -UseBasicParsing -TimeoutSec 5
+      "ok"
+    } catch { "warn" }
+  register: preflight_wallpaper
+  changed_when: false
+
+- name: "[Preflight] WARN — wallpaper URL unreachable (wallpaper stage will be skipped)"
+  debug:
+    msg: "WARN: {{ exa_wallpaper_url }} unreachable — wallpaper stage will be skipped."
+  when: preflight_wallpaper.stdout | trim == "warn"
+
+- name: "[Preflight] Set wallpaper available fact"
+  set_fact:
+    wallpaper_available: "{{ preflight_wallpaper.stdout | trim == 'ok' }}"
+
+- name: "[Preflight] Check chocolatey.org reachable"
+  ansible.windows.win_shell: |
+    try {
+      Invoke-WebRequest -Uri "https://community.chocolatey.org" -Method Head -UseBasicParsing -TimeoutSec 5 | Out-Null
+      "ok"
+    } catch { "warn" }
+  register: preflight_choco
+  changed_when: false
+
+- name: "[Preflight] WARN — chocolatey.org unreachable (package installs will fail)"
+  debug:
+    msg: "WARN: community.chocolatey.org unreachable — package installation stages will fail."
+  when: preflight_choco.stdout | trim == "warn"
+
+- name: "[Preflight] Check GitHub reachable (font download)"
+  ansible.windows.win_shell: |
+    try {
+      Invoke-WebRequest -Uri "https://github.com" -Method Head -UseBasicParsing -TimeoutSec 5 | Out-Null
+      "ok"
+    } catch { "warn" }
+  register: preflight_github
+  changed_when: false
+
+- name: "[Preflight] WARN — GitHub unreachable (font download may fall back to asset server)"
+  debug:
+    msg: "WARN: github.com unreachable — font stage will use asset server only."
+  when: preflight_github.stdout | trim == "warn"
+
+- name: "[Preflight] Check not already domain-joined"
+  ansible.windows.win_shell: |
+    (Get-WmiObject Win32_ComputerSystem).PartOfDomain
+  register: preflight_domain
+  changed_when: false
+
+- name: "[Preflight] NOTE — host is already domain-joined (domain join stage will skip)"
+  debug:
+    msg: "NOTE: {{ inventory_hostname }} is already domain-joined — Stage 5 will skip."
+  when: preflight_domain.stdout | trim | lower == "true"
+
+- name: "[Preflight] Set domain joined fact"
+  set_fact:
+    already_domain_joined: "{{ preflight_domain.stdout | trim | lower == 'true' }}"
+
+- name: "[Preflight] Summary"
+  debug:
+    msg:
+      - "OS product type : {{ product_type }} ({{ 'Server/DC' if is_server else 'Workstation' }})"
+      - "Chassis         : {{ preflight_chassis.stdout | trim }} ({{ 'Laptop/Tablet' if is_laptop else 'Desktop/Server' }})"
+      - "Primary DC      : 192.168.{{ host_subnet_octet }}.10 [OK]"
+      - "DNS jukebox     : [OK]"
+      - "Wallpaper URL   : {{ '[OK]' if wallpaper_available else '[WARN — will skip]' }}"
+      - "Chocolatey.org  : {{ '[OK]' if preflight_choco.stdout | trim == 'ok' else '[WARN]' }}"
+      - "Domain joined   : {{ 'YES — join stage will skip' if already_domain_joined else 'No' }}"

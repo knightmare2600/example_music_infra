@@ -1,0 +1,85 @@
+---
+# =============================================================================
+# playbooks/80-domainjoin.yml
+# Example Music Limited — Domain join
+# =============================================================================
+# Joins the host to jukebox.internal. OU is derived from:
+#   - domain_ou_role  (from group_vars — Workstations/Laptops/Servers/DomainControllers)
+#   - host_site       (parsed from hostname via tasks/hostname_facts.yml)
+#
+# Resulting OU: OU=<role>,OU=<SITE>,DC=jukebox,DC=internal
+#
+# Domain join account: JUKEBOX\Administrator (forest-level DA — valid across
+# all child domains via forest trust). Stored in vault as vault_domain_join_password.
+#
+# The host reboots after joining. Ansible will wait and reconnect.
+#
+# Usage:
+#   ansible-playbook -i inventory/<site>.ini playbooks/80-domainjoin.yml \
+#     --ask-vault-pass
+#
+# Tags: domainjoin
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Windows — Domain join
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+  handlers:
+    - import_tasks: ../handlers/main.yml
+  tasks:
+
+    - name: Include hostname facts
+      include_tasks: ../tasks/hostname_facts.yml
+      tags: domainjoin
+
+    - name: Check if already domain-joined
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_ComputerSystem).PartOfDomain
+      register: domain_check
+      changed_when: false
+      tags: domainjoin
+
+    - name: Skip if already domain-joined
+      debug:
+        msg: "{{ inventory_hostname }} is already domain-joined — skipping."
+      when: domain_check.stdout | trim | lower == 'true'
+      tags: domainjoin
+
+    - name: Build target OU path
+      set_fact:
+        domain_ou_path: "OU={{ domain_ou_role }},OU={{ host_site }},DC=jukebox,DC=internal"
+      when: domain_check.stdout | trim | lower != 'true'
+      tags: domainjoin
+
+    - name: Show domain join target
+      debug:
+        msg: >
+          Joining {{ inventory_hostname }} to {{ exa_domain }}
+          OU: {{ domain_ou_path }}
+      when: domain_check.stdout | trim | lower != 'true'
+      tags: domainjoin
+
+    - name: Join domain
+      microsoft.ad.membership:
+        dns_domain_name:    "{{ exa_domain }}"
+        domain_admin_user:  "{{ exa_domain_join_user }}"
+        domain_admin_password: "{{ vault_domain_join_password }}"
+        domain_ou_path:     "{{ domain_ou_path }}"
+        state:              domain
+        reboot:             false
+      register: join_result
+      when: domain_check.stdout | trim | lower != 'true'
+      tags: domainjoin
+
+    - name: Reboot after domain join
+      ansible.windows.win_reboot:
+        reboot_timeout:    600
+        post_reboot_delay: 60
+        msg: "Rebooting after domain join"
+      when:
+        - join_result is defined
+        - join_result.changed
+      tags: domainjoin

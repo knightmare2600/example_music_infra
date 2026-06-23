@@ -1,0 +1,35 @@
+---
+# =============================================================================
+# tasks/arch_facts.yml
+# Example Music Limited — CPU architecture detection
+# Included by playbooks that need host_arch or binary_base_url.
+# =============================================================================
+# Maps ansible_architecture (AMD64/ARM64/32-bit) to the WINDOWS\ folder
+# convention used by detect_cpu.ps1 and detect_cpu.cmd:
+#   AMD64  -> x86_64
+#   ARM64  -> arm64
+#   32-bit -> x86
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Gather facts (arch detection)
+  ansible.windows.setup:
+  when: ansible_architecture is not defined
+
+- name: Set host_arch fact
+  set_fact:
+    host_arch: >-
+      {{ 'arm64'  if ansible_architecture == 'ARM64' else
+         'x86_64' if ansible_architecture == 'AMD64' else
+         'x86' }}
+
+- name: Set binary base URL
+  set_fact:
+    binary_base_url: "{{ exa_asset_base }}/{{ host_arch }}"
+
+- name: Debug — arch detection result
+  debug:
+    msg: "Architecture: {{ ansible_architecture }} -> host_arch: {{ host_arch }} -> {{ binary_base_url }}"
+  tags: [never, debug]

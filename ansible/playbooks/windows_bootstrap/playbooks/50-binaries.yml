@@ -1,0 +1,105 @@
+---
+# =============================================================================
+# playbooks/50-binaries.yml
+# Example Music Limited — Arch-aware binary deployment
+# =============================================================================
+# Pulls binaries from http://192.168.139.50/WINDOWS/<arch>/ and deploys
+# them to C:\Windows\ (globally on PATH).
+#
+# Arch detection maps ansible_architecture to the folder convention used
+# by detect_cpu.ps1 and detect_cpu.cmd:
+#   AMD64  -> x86_64
+#   ARM64  -> arm64
+#   32-bit -> x86
+#
+# binaries_common (group_vars/windows) applies to all hosts.
+# binaries_extra  (group_vars/windows_server/desktop/laptop) is host-type
+# specific. Each entry in binaries_extra specifies src_amd64 and src_arm64
+# separately since filenames are not consistent across arches.
+#
+# Usage:
+#   ansible-playbook -i inventory/<site>.ini playbooks/50-binaries.yml
+#
+# Tags: binaries, fonts
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Windows — Binary and font deployment
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+  handlers:
+    - import_tasks: ../handlers/main.yml
+  tasks:
+
+    # ── Arch detection ────────────────────────────────────────────────────────
+
+    - name: Include arch facts
+      include_tasks: ../tasks/arch_facts.yml
+      tags: [binaries, fonts]
+
+    # ── Common binaries (same filename across arches) ─────────────────────────
+
+    - name: Create C:\Windows if missing (safety)
+      ansible.windows.win_file:
+        path: C:\Windows
+        state: directory
+      tags: binaries
+
+    - name: Deploy common binaries
+      ansible.windows.win_get_url:
+        url:  "{{ binary_base_url }}/{{ item.src }}"
+        dest: "C:\\Windows\\{{ item.dest }}"
+      loop: "{{ binaries_common }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      tags: binaries
+
+    # ── Host-type-specific binaries (arch-aware, different filenames) ─────────
+
+    - name: Deploy arch-specific binaries (AMD64)
+      ansible.windows.win_get_url:
+        url:  "{{ exa_asset_base }}/x86_64/{{ item.src_amd64 }}"
+        dest: "C:\\Windows\\{{ item.dest }}"
+      loop: "{{ binaries_extra | default([]) }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      when:
+        - binaries_extra is defined
+        - host_arch == 'x86_64'
+      tags: binaries
+
+    - name: Deploy arch-specific binaries (ARM64)
+      ansible.windows.win_get_url:
+        url:  "{{ exa_asset_base }}/arm64/{{ item.src_arm64 }}"
+        dest: "C:\\Windows\\{{ item.dest }}"
+      loop: "{{ binaries_extra | default([]) }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      when:
+        - binaries_extra is defined
+        - host_arch == 'arm64'
+      tags: binaries
+
+    # ── Fonts ─────────────────────────────────────────────────────────────────
+
+    - name: Deploy JetBrainsMono Nerd Font files
+      ansible.windows.win_get_url:
+        url:  "{{ exa_asset_base }}/fonts/{{ item }}"
+        dest: "C:\\Windows\\Fonts\\{{ item }}"
+      loop: "{{ exa_font_files }}"
+      loop_control:
+        label: "{{ item }}"
+      tags: fonts
+
+    - name: Register fonts in registry
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+        name: "{{ item | regex_replace('\\.ttf$', '') }} (TrueType)"
+        data: "{{ item }}"
+        type: string
+      loop: "{{ exa_font_files }}"
+      loop_control:
+        label: "{{ item }}"
+      tags: fonts

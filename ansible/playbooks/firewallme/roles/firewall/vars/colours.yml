@@ -1,0 +1,14 @@
+---
+# =============================================================================
+# roles/firewall/vars/colours.yml
+# Example Music Limited — STUB — colour constants have moved
+# =============================================================================
+# Colour constants (_c.*) are now in group_vars/all/colours.yml and are
+# loaded automatically for every host in every play.
+# This file is kept as a reference stub only — do not add vars here.
+#
+# See: group_vars/all/colours.yml
+# Changelog:
+#   2026-06-20  Initial file — was the primary location
+#   2026-06-20  Moved to group_vars/all/colours.yml
+# =============================================================================

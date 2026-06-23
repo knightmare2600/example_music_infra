@@ -1,0 +1,32 @@
+---
+# =============================================================================
+# playbooks/90-firewall.yml
+# Example Music Limited — Firewall configuration
+# =============================================================================
+# Ansible port of firewallme.sh — colourised output via exa_pretty callback
+# and ANSI codes embedded in all pause prompts.
+#
+# Usage:
+#   ansible-playbook -i inventory/kge.ini  playbooks/90-firewall.yml -e target=EXAFWLKGE001 --ask-vault-pass
+#   ansible-playbook -i inventory/cld.ini  playbooks/90-firewall.yml -e target=EXAFWLCLD001 --ask-vault-pass
+#   ansible-playbook -i inventory/kge.ini  playbooks/90-firewall.yml -e target=EXAFWLKGE001 --tags nftables --ask-vault-pass
+#   ansible-playbook -i inventory/kge.ini  playbooks/90-firewall.yml -e target=EXAFWLKGE001 --check --ask-vault-pass
+#
+# Tags: firewall, preflight, interfaces, wan, wireguard, confirm,
+#       packages, network, nftables, dnsmasq, ssh, cockpit, finish
+#
+# Changelog:
+#   2026-06-20  Initial file
+#   2026-06-20  Added vars_files for colour constants and wireguard hub data
+# =============================================================================
+
+- name: Example Music — Firewall configuration
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+  become: true
+  vars_files:
+    - ../vars/wireguard_hubs.yml
+    # colours.yml is in group_vars/all/ — loaded automatically, no reference needed here
+
+  roles:
+    - firewall

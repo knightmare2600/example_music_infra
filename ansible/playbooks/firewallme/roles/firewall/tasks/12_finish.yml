@@ -1,0 +1,82 @@
+---
+# =============================================================================
+# roles/firewall/tasks/12_finish.yml
+# Example Music Limited — Final summary and optional reboot
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+#   2026-06-20  Colourised — replicates firewallme.sh finish block exactly
+#               including the ASCII art header
+# =============================================================================
+
+- name: "[Finish] Re-read WG public key"
+  ansible.builtin.slurp:
+    src: /etc/wireguard/public.key
+  register: fw_wg_pubkey_final
+  failed_when: false
+  when: fw_wg_role != 'none' and not fw_is_black_site
+
+- name: "[Finish] Final summary — mirrors firewallme.sh finish block"
+  ansible.builtin.debug:
+    msg:
+      - ""
+      - "{{ _c.C }}  ███████╗██╗  ██╗ █████╗ {{ _c.NC }}"
+      - "{{ _c.C }}  ██╔════╝╚██╗██╔╝██╔══██╗{{ _c.NC }}"
+      - "{{ _c.C }}  █████╗   ╚███╔╝ ███████║{{ _c.NC }}"
+      - "{{ _c.C }}  ██╔══╝   ██╔██╗ ██╔══██║{{ _c.NC }}"
+      - "{{ _c.C }}  ███████╗██╔╝ ██╗██║  ██║{{ _c.NC }}"
+      - "{{ _c.C }}  ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝{{ _c.NC }}"
+      - ""
+      - "{{ _c.G }}╔══════════════════════════════════════════════════════════════╗{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}{{ _c.W }}         FIREWALL CONFIGURATION COMPLETE                    {{ _c.NC }}{{ _c.G }}║{{ _c.NC }}"
+      - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  Host         : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  Site         : {{ _c.G }}{{ fw_site_code }}{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  Environment  : {{ _c.G }}{{ fw_environment }}{{ _c.NC }}"
+      - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  WAN          : {{ _c.G }}{{ fw_wan_iface }}{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  WAN mode     : {{ _c.G }}{{ fw_wan_mode }}{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  WAN IP       : {{ _c.G }}{{ fw_wan_static_ip + '/24' if fw_wan_mode == 'static' else 'DHCP' }}{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  WAN SSH      : {{ (_c.R + 'ENABLED' + (' src:' + fw_wan_ssh_src if fw_wan_ssh_src else ' open') + _c.NC) if fw_wan_ssh_enabled else (_c.Y + 'disabled' + _c.NC) }}"
+      - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  LAN          : {{ _c.G }}{{ fw_lan_iface }}{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  LAN IP       : {{ _c.G }}{{ fw_lan_ip }}/24{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  DHCP range   : {{ _c.G }}{{ fw_dhcp_start }} – {{ fw_dhcp_end }}{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  Internal DNS : {{ _c.G }}{{ fw_internal_dns if fw_internal_dns else 'none (1.1.1.1, 9.9.9.9)' }}{{ _c.NC }}"
+      - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  WireGuard    : {{ _c.O }}{{ fw_wg_role }}{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  WG pubkey    : {{ _c.O }}{{ fw_wg_pubkey_final.content | b64decode | trim if (fw_wg_pubkey_final.content is defined) else 'N/A' }}{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  WG hub       : {{ _c.O }}{{ fw_wg_hub_endpoint | default('N/A') }}{{ _c.NC }}"
+      - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  Cockpit      : {{ _c.C }}https://{{ fw_lan_ip }}:9090{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  SSH (LAN)    : {{ _c.C }}ssh ansible@{{ fw_lan_ip }}{{ _c.NC }}"
+      - "{{ _c.G }}╚══════════════════════════════════════════════════════════════╝{{ _c.NC }}"
+      - ""
+      - "{{ _c.Y }}[!]{{ _c.NC }} If WG role is spoke, register this node as a peer on {{ _c.W }}{{ fw_wg_hub_site | default('the hub') }}{{ _c.NC }}:"
+      - "{{ _c.G }}    wg set wg0 peer {{ fw_wg_pubkey_final.content | b64decode | trim if (fw_wg_pubkey_final.content is defined) else '<pubkey>' }} allowed-ips {{ fw_wg_tunnel_ip | default('10.0.x.y') }}/32,{{ fw_subnet }}.0/24{{ _c.NC }}"
+      - ""
+
+- name: "[Finish] Prompt for reboot"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.Y }}[!]{{ _c.NC }} A reboot is recommended to ensure interface pinning (.link files),
+      {{ _c.Y }}[!]{{ _c.NC }} initramfs changes, and sysctl settings all take effect cleanly.
+
+      Reboot now? [y/N]
+  register: fw_reboot_prompt
+
+- name: "[Finish] Reboot host"
+  ansible.builtin.reboot:
+    reboot_timeout:    300
+    post_reboot_delay: 30
+    msg: "Ansible firewall role — post-config reboot"
+  when: fw_reboot_prompt.user_input | default('n') | lower | trim == 'y'
+
+- name: "[Finish] Reboot skipped"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.Y }}[!]{{ _c.NC }} Reboot skipped."
+      - "{{ _c.C }}[*]{{ _c.NC }} When ready:  {{ _c.G }}reboot{{ _c.NC }}"
+      - "{{ _c.C }}[*]{{ _c.NC }} Interface name pinning (.link files) takes effect after reboot."
+      - "{{ _c.C }}[*]{{ _c.NC }} If WAN was not activated:  {{ _c.G }}nmcli con up wan{{ _c.NC }}"
+  when: fw_reboot_prompt.user_input | default('n') | lower | trim != 'y'
