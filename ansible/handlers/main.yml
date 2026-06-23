@@ -1,0 +1,48 @@
+---
+# =============================================================================
+# handlers/main.yml
+# Example Music Limited — Ansible handlers for Windows host management
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: reboot host
+  ansible.windows.win_reboot:
+    reboot_timeout: 600
+    post_reboot_delay: 30
+    msg: "Ansible-initiated reboot"
+
+- name: restart winrm
+  ansible.windows.win_service:
+    name: WinRM
+    state: restarted
+
+- name: restart sshd
+  ansible.windows.win_service:
+    name: sshd
+    state: restarted
+
+- name: restart rdp
+  ansible.windows.win_service:
+    name: TermService
+    state: restarted
+
+- name: restart spooler
+  ansible.windows.win_service:
+    name: Spooler
+    state: restarted
+
+- name: refresh group policy
+  ansible.windows.win_shell: gpupdate /force
+
+- name: apply wallpaper
+  ansible.windows.win_shell: |
+    Add-Type -TypeDefinition @"
+    using System.Runtime.InteropServices;
+    public class Wallpaper {
+      [DllImport("user32.dll")]
+      public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+    }
+"@
+    [Wallpaper]::SystemParametersInfo(20, 0, '{{ exa_wallpaper_dest }}', 3)

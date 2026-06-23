@@ -1,0 +1,72 @@
+---
+# =============================================================================
+# roles/firewall/defaults/main.yml
+# Example Music Limited — Firewall role default variables
+# =============================================================================
+# Override any of these in group_vars, host_vars, or -e at runtime.
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# WAN mode — dhcp or static. 'static' derives IP from site octet convention.
+fw_wan_mode: "dhcp"
+
+# Whether to activate WAN during the playbook run.
+# Set false when running over SSH on the WAN interface to avoid dropping session.
+fw_wan_activate: false
+
+# WireGuard role — hub-primary, hub-regional, spoke, none
+# Derived from SITE_DEFAULT_ROLE in sites.csv where possible; override here.
+fw_wg_role: "spoke"
+
+# WireGuard listen port (hubs only)
+fw_wg_port: 51820
+
+# Whether WAN SSH (port 22) is permitted through nftables
+fw_wan_ssh_enabled: false
+
+# Source IP restriction for WAN SSH (empty = allow all)
+fw_wan_ssh_src: ""
+
+# Internal DNS server last octet or full IP (empty = use public DNS only)
+fw_internal_dns: ""
+
+# Ansible/PXE server last octet on the LAN subnet (default: 15)
+fw_ansible_octet: 15
+
+# Environment (production / staging / development)
+# Read from /etc/.environment on the host if present; prompted if not.
+fw_environment: "production"
+
+# Black-site flag — set automatically when site code is CLD.
+# Adds extra confirmation prompts and disables WireGuard.
+fw_is_black_site: false
+
+# Package list — mirrors firewallme.sh BOOTSTRAP_PKGS logic
+fw_packages:
+  - network-manager
+  - nftables
+  - iproute2
+  - procps
+  - conntrack
+  - net-tools
+  - tmux
+  - dnsmasq
+  - curl
+  - wget
+  - wireguard
+  - grc
+  - gpm
+  - nmap
+  - tcpdump
+  - bc
+  - vim
+  - bash-completion
+  - zsh
+  - zsh-syntax-highlighting
+  - zsh-autosuggestions
+  - localepurge
+  - cockpit
+  - cockpit-networkmanager
+  - cockpit-storaged
+  - cockpit-packagekit

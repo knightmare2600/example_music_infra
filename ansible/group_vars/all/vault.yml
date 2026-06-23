@@ -1,0 +1,17 @@
+---
+# =============================================================================
+# group_vars/all/vault.yml
+# Example Music Limited — Encrypted secrets (ansible-vault)
+# =============================================================================
+# Encrypt this file:
+#   ansible-vault encrypt group_vars/all/vault.yml
+# Edit:
+#   ansible-vault edit group_vars/all/vault.yml
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+vault_local_admin_password:   "CHANGEME"
+vault_domain_join_password:   "CHANGEME"
+vault_winrm_password:         "CHANGEME"

@@ -1,0 +1,56 @@
+---
+# =============================================================================
+# roles/firewall/tasks/04_summary_confirm.yml
+# Example Music Limited — Pre-apply summary and operator confirmation
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+#   2026-06-20  Colourised — replicates firewallme.sh final summary block
+# =============================================================================
+
+- name: "[Summary] Display full configuration summary"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.C }}╔══════════════════════════════════════════════════════════════╗{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}{{ _c.W }}             Configuration Summary                       {{ _c.NC }}{{ _c.C }}║{{ _c.NC }}"
+      - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  Hostname      : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  Site          : {{ _c.G }}{{ fw_site_code }}{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  Environment   : {{ _c.G }}{{ fw_environment }}{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  Black-site    : {{ (_c.R + 'YES' + _c.NC) if fw_is_black_site else (_c.G + 'no' + _c.NC) }}"
+      - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  WAN iface     : {{ _c.G }}{{ fw_wan_iface }}{{ _c.NC }} (MAC: {{ fw_wan_mac }})"
+      - "{{ _c.C }}║{{ _c.NC }}  WAN mode      : {{ _c.G }}{{ fw_wan_mode }}{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  WAN IP        : {{ _c.G }}{{ fw_wan_static_ip + '/24 gw ' + fw_wan_static_gw if fw_wan_mode == 'static' else 'DHCP' }}{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  WAN activate  : {{ _c.G }}{{ fw_wan_activate }}{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  WAN SSH       : {{ (_c.R + 'ENABLED' + (' src:' + fw_wan_ssh_src if fw_wan_ssh_src else ' open') + _c.NC) if fw_wan_ssh_enabled else (_c.Y + 'disabled' + _c.NC) }}"
+      - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  LAN iface     : {{ _c.G }}{{ fw_lan_iface }}{{ _c.NC }} (MAC: {{ fw_lan_mac }})"
+      - "{{ _c.C }}║{{ _c.NC }}  LAN IP        : {{ _c.G }}{{ fw_lan_ip }}/24{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  DHCP range    : {{ _c.G }}{{ fw_dhcp_start }} – {{ fw_dhcp_end }}{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  Ansible IP    : {{ _c.G }}{{ fw_ansible_ip }}{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  Internal DNS  : {{ _c.G }}{{ fw_internal_dns if fw_internal_dns else 'none (1.1.1.1, 9.9.9.9)' }}{{ _c.NC }}"
+      - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  WireGuard     : {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  WG tunnel     : {{ _c.O }}{{ fw_wg_tunnel_ip + '/24 (' + fw_wg_tunnel_net + ')' if fw_wg_role != 'none' else 'N/A' }}{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  WG hub        : {{ _c.O }}{{ fw_wg_hub_endpoint | default('N/A') }}{{ _c.NC }}"
+      - "{{ _c.C }}╚══════════════════════════════════════════════════════════════╝{{ _c.NC }}"
+
+- name: "[Summary] Operator confirmation"
+  ansible.builtin.pause:
+    prompt: |
+
+      {{ _c.Y }}[!]{{ _c.NC }} Review the configuration above carefully.
+      {{ _c.Y }}[!]{{ _c.NC }} Nothing has been written to disk yet.
+
+      Type {{ _c.G }}yes{{ _c.NC }} to apply all changes, anything else to abort
+  register: fw_summary_confirm
+
+- name: "[Summary] ABORT — operator did not confirm"
+  ansible.builtin.fail:
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Aborted by operator."
+  when: fw_summary_confirm.user_input | trim | lower != 'yes'
+
+- name: "[Summary] Applying configuration"
+  ansible.builtin.debug:
+    msg: "{{ _c.G }}[+]{{ _c.NC }} Confirmed — applying configuration to {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"

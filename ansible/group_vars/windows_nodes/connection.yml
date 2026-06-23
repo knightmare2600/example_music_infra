@@ -1,0 +1,26 @@
+---
+# group_vars/windows_nodes/connection.yml
+# ============================================================================
+# SSH connection settings for all Windows nodes.
+# OpenSSH is installed by autounattend.xml at build time, so Ansible connects
+# via SSH from the very first run — no WinRM required.
+#
+# FIRST RUN: ansible_password is prompted interactively (masked) by the
+#            playbook's vars_prompt. After the Ansible SSH key is deployed
+#            by the playbook, the password is never needed again.
+#
+# SUBSEQUENT RUNS: ansible_password can be left unset — Ansible will use the
+#            key at ansible_ssh_private_key_file automatically.
+# ============================================================================
+
+ansible_connection: ssh
+ansible_shell_type: powershell     # OpenSSH default shell is set to pwsh by unattend
+ansible_user: Administrator
+
+# Private key used for all runs after the first bootstrap.
+# The corresponding public key is deployed to administrators_authorized_keys.
+ansible_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa"
+ansible_ssh_public_key_file:  "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa.pub"
+
+# Accept the host key on first connection without prompting.
+ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'

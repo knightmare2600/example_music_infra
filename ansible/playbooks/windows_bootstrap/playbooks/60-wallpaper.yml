@@ -1,0 +1,77 @@
+---
+# =============================================================================
+# playbooks/60-wallpaper.yml
+# Example Music Limited — Corporate wallpaper deployment
+# =============================================================================
+# Downloads ExampleMusicWallpaper.png from the asset server and sets it
+# via PersonalizationCSP (all users) + Policies\System (locked).
+#
+# Key paths match Join-DomainAndBootstrap.ps1 Stage 9 exactly so this
+# playbook can re-apply after drift without conflict.
+#
+# Usage:
+#   ansible-playbook -i inventory/<site>.ini playbooks/60-wallpaper.yml
+#
+# Tags: wallpaper
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Windows — Corporate wallpaper
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  handlers:
+    - import_tasks: ../handlers/main.yml
+  tasks:
+
+    - name: Create wallpaper directory
+      ansible.windows.win_file:
+        path: 'C:\Windows\Web\Wallpaper\ExampleMusic'
+        state: directory
+      tags: wallpaper
+
+    - name: Download corporate wallpaper
+      ansible.windows.win_get_url:
+        url:  "{{ exa_wallpaper_url }}"
+        dest: "{{ exa_wallpaper_dest }}"
+      notify: apply wallpaper
+      tags: wallpaper
+
+    - name: Set wallpaper via PersonalizationCSP (applies to all users)
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP'
+        name: "{{ item.name }}"
+        data: "{{ item.data }}"
+        type: "{{ item.type }}"
+      loop:
+        - { name: DesktopImagePath,   data: "{{ exa_wallpaper_dest }}", type: string }
+        - { name: DesktopImageUrl,    data: "{{ exa_wallpaper_dest }}", type: string }
+        - { name: DesktopImageStatus, data: 1,                          type: dword  }
+      loop_control:
+        label: "{{ item.name }}"
+      tags: wallpaper
+
+    - name: Lock wallpaper via policy
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+        name: "{{ item.name }}"
+        data: "{{ item.data }}"
+        type: "{{ item.type }}"
+      loop:
+        - { name: Wallpaper,      data: "{{ exa_wallpaper_dest }}", type: string }
+        - { name: WallpaperStyle, data: "10",                       type: string }
+      loop_control:
+        label: "{{ item.name }}"
+      tags: wallpaper
+
+    - name: Disable themes tab (prevent user override in UI)
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+        name: NoThemesTab
+        data: 1
+        type: dword
+      tags: wallpaper
+
+    - name: Flush handlers (apply wallpaper change immediately)
+      meta: flush_handlers

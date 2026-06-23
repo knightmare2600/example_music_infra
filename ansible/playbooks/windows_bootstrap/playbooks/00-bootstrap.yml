@@ -1,0 +1,702 @@
+---
+# =============================================================================
+# playbooks/00-bootstrap.yml
+# Example Music Limited — Windows PostOOBE Bootstrap
+# =============================================================================
+# Ansible port of Join-DomainAndBootstrap.ps1, Stages 0b–23.
+# Runs once on a freshly installed host (post-UNATTEND.CMD / post-PXE boot).
+# All stages are idempotent — safe to re-run if interrupted.
+#
+# Prerequisites:
+#   - Host has completed WinPE unattended install (UNATTEND.CMD)
+#   - OpenSSH is running (installed by UNATTEND.CMD)
+#   - Host is in inventory under its DHCP address (update after rename)
+#
+# Usage:
+#   # Full bootstrap
+#   ansible-playbook -i inventory/<site>.ini playbooks/00-bootstrap.yml \
+#     -e target=<hostname-or-ip> --ask-vault-pass
+#
+#   # With pre-supplied OU (skips interactive LDAP selection)
+#   ansible-playbook -i inventory/<site>.ini playbooks/00-bootstrap.yml \
+#     -e target=<host> \
+#     -e bootstrap_ou_path="OU=Servers,OU=MCR,DC=jukebox,DC=internal" \
+#     --ask-vault-pass
+#
+#   # Dry run
+#   ansible-playbook -i inventory/<site>.ini playbooks/00-bootstrap.yml \
+#     -e target=<host> --check --ask-vault-pass
+#
+# Stage map (mirrors Join-DomainAndBootstrap.ps1):
+#   0b  Preflight checks
+#   1   Hypervisor detection
+#   2   Site detection from IP
+#   3   Hostname confirm / rename  [interactive — pause]
+#   4   OU selection via LDAP      [interactive — pause]
+#   5   Rename + domain join
+#   6   Power & pagefile
+#   7   Locale & timezone
+#   8   Screen lock
+#   9   Corporate wallpaper
+#   10  Dark mode
+#   11  Chocolatey
+#   12  Guest tools
+#   13  RustDesk
+#   14  Baseline Chocolatey packages
+#   15  RSAT
+#   16  OpenSSH + Ansible key
+#   17  RDP
+#   17b SAC/EMS serial console (Server OS only)
+#   18  PSWindowsUpdate module
+#   19  PS7 modules (AllUsers)
+#   20  JetBrainsMono Nerd Font
+#   21  PS7 AllUsersAllHosts profile
+#   22  Hyper terminal config
+#   22b Windows Terminal settings.json
+#   23  Finish — summary + reboot
+#
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file — Ansible port of Join-DomainAndBootstrap.ps1
+# =============================================================================
+
+- name: Windows — PostOOBE Bootstrap (replaces Join-DomainAndBootstrap.ps1)
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+  handlers:
+    - import_tasks: ../handlers/main.yml
+
+  tasks:
+
+    # ── Hostname facts (needed throughout) ────────────────────────────────────
+
+    - name: Include hostname facts
+      include_tasks: ../tasks/hostname_facts.yml
+
+    # =========================================================================
+    # Stage 0b — Preflight
+    # =========================================================================
+
+    - name: "── Stage 0b — Preflight checks ──"
+      debug:
+        msg: "Running preflight checks..."
+
+    - name: Include arch facts
+      include_tasks: ../tasks/arch_facts.yml
+
+    - name: Include preflight checks
+      include_tasks: ../tasks/preflight.yml
+
+    # =========================================================================
+    # Stage 1 — Hypervisor detection
+    # Stage 2 — Site detection from IP
+    # =========================================================================
+
+    - name: "── Stages 1 & 2 — Hypervisor and site detection ──"
+      debug:
+        msg: "Detecting hypervisor and site..."
+
+    - name: Include site and hypervisor detection
+      include_tasks: ../tasks/site_detection.yml
+
+    # =========================================================================
+    # Stage 3 — Hostname confirm / rename
+    # =========================================================================
+
+    - name: "── Stage 3 — Hostname ──"
+      debug:
+        msg: "Current hostname: {{ ansible_hostname }} | Parsed: role={{ host_role }} site={{ host_site }}"
+
+    - name: "[Stage 3] Prompt operator to confirm or override hostname"
+      pause:
+        prompt: |
+
+          ── Hostname Confirmation ─────────────────────────────────────────────
+          Current hostname : {{ ansible_hostname }}
+          Detected site    : {{ detected_site }} (from IP {{ host_ip }})
+          Hostname site    : {{ host_site }} (from hostname)
+          Role             : {{ host_role }}
+          OS type          : {{ 'Server/DC' if is_server else 'Workstation' }}
+          Chassis          : {{ 'Laptop/Tablet' if is_laptop else 'Desktop/Tower' }}
+
+          Press Enter to keep '{{ ansible_hostname }}'
+          Or type a new hostname (EXA[ROLE][SITE][NNN]) and press Enter
+      register: stage3_hostname_input
+
+    - name: "[Stage 3] Set target hostname"
+      set_fact:
+        target_hostname: >-
+          {{ stage3_hostname_input.user_input | trim
+             if stage3_hostname_input.user_input | trim != ''
+             else ansible_hostname }}
+
+    - name: "[Stage 3] Validate supplied hostname format"
+      assert:
+        that:
+          - target_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$')
+        fail_msg: >
+          '{{ target_hostname }}' is not a valid EXA hostname.
+          Format: EXA[ROLE][SITE][NNN] — e.g. EXAWKSGLA001, EXASRVCLD002.
+      when: target_hostname != ansible_hostname
+
+    - name: "[Stage 3] Re-parse facts from new hostname"
+      set_fact:
+        host_role: "{{ target_hostname | upper | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\\1') | first }}"
+        host_site: "{{ target_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first }}"
+      when: target_hostname != ansible_hostname
+
+    # =========================================================================
+    # Stage 4 — OU selection
+    # =========================================================================
+
+    - name: "── Stage 4 — OU selection ──"
+      debug:
+        msg: "Querying OUs from DC at 192.168.{{ host_subnet_octet }}.10..."
+
+    - name: Include OU selection
+      include_tasks: ../tasks/ou_selection.yml
+      when: not already_domain_joined
+
+    - name: "[Stage 4] Skip OU selection (already domain-joined)"
+      debug:
+        msg: "Already domain-joined — skipping OU selection."
+      when: already_domain_joined
+
+    # =========================================================================
+    # Stage 5 — Rename + domain join
+    # =========================================================================
+
+    - name: "── Stage 5 — Rename and domain join ──"
+      debug:
+        msg: "Target hostname: {{ target_hostname }} | OU: {{ bootstrap_ou_path | default('N/A — already joined') }}"
+
+    - name: "[Stage 5] Rename computer"
+      ansible.windows.win_shell: |
+        Rename-Computer -NewName "{{ target_hostname | upper }}" -Force
+      when: ansible_hostname | upper != target_hostname | upper
+      register: stage5_rename
+
+    - name: "[Stage 5] Reboot after rename (before domain join)"
+      ansible.windows.win_reboot:
+        reboot_timeout:    600
+        post_reboot_delay: 30
+        msg: "Rebooting after rename before domain join"
+      when:
+        - stage5_rename is defined
+        - stage5_rename.changed | default(false)
+
+    - name: "[Stage 5] Join domain"
+      microsoft.ad.membership:
+        dns_domain_name:       "{{ exa_domain }}"
+        domain_admin_user:     "{{ exa_domain_join_user }}"
+        domain_admin_password: "{{ vault_domain_join_password }}"
+        domain_ou_path:        "{{ bootstrap_ou_path }}"
+        state:                 domain
+        reboot:                false
+      register: stage5_join
+      when: not already_domain_joined
+
+    - name: "[Stage 5] Reboot after domain join"
+      ansible.windows.win_reboot:
+        reboot_timeout:    600
+        post_reboot_delay: 60
+        msg: "Rebooting after domain join"
+      when:
+        - stage5_join is defined
+        - stage5_join.changed | default(false)
+
+    # =========================================================================
+    # Stage 6 — Power & pagefile
+    # =========================================================================
+
+    - name: "── Stage 6 — Power and pagefile ──"
+      debug:
+        msg: "Configuring power policy and pagefile..."
+
+    - name: "[Stage 6] Disable hibernation (unconditional at bootstrap)"
+      ansible.windows.win_shell: powercfg /hibernate off
+      changed_when: true
+
+    - name: "[Stage 6] Clear page file at shutdown"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'
+        name: ClearPageFileAtShutdown
+        data: 1
+        type: dword
+
+    # =========================================================================
+    # Stage 7 — Locale & timezone
+    # =========================================================================
+
+    - name: "── Stage 7 — Locale and timezone ──"
+      debug:
+        msg: "Setting locale to en-GB, timezone to GMT Standard Time..."
+
+    - name: "[Stage 7] Set timezone to GMT Standard Time"
+      community.windows.win_timezone:
+        timezone: "GMT Standard Time"
+
+    - name: "[Stage 7] Set locale and UI language to en-GB"
+      ansible.windows.win_shell: |
+        Set-WinUILanguageOverride -Language en-GB
+        Set-WinUserLanguageList en-GB -Force
+        Set-WinHomeLocation -GeoId 242
+        Set-Culture en-GB
+      changed_when: true
+
+    # =========================================================================
+    # Stage 8 — Screen lock
+    # =========================================================================
+
+    - name: "── Stage 8 — Screen lock ──"
+      debug:
+        msg: "Configuring screen lock and timeout..."
+
+    - name: "[Stage 8] Set machine-level inactivity timeout (60 min)"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+        name: InactivityTimeoutSecs
+        data: "{{ exa_lock_timeout_secs }}"
+        type: dword
+
+    - name: "[Stage 8] Set screensaver to blank with password"
+      ansible.windows.win_regedit:
+        path: 'HKCU:\Control Panel\Desktop'
+        name: "{{ item.name }}"
+        data: "{{ item.data }}"
+        type: "{{ item.type }}"
+      loop:
+        - { name: SCRNSAVE.EXE,         data: 'C:\Windows\system32\scrnsave.scr', type: string }
+        - { name: ScreenSaveActive,      data: "1",                                type: string }
+        - { name: ScreenSaverIsSecure,   data: "1",                                type: string }
+        - { name: ScreenSaveTimeOut,     data: "3600",                             type: string }
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "[Stage 8] Set monitor timeout (plugged in and on battery)"
+      ansible.windows.win_shell: |
+        powercfg /change monitor-timeout-ac 60
+        powercfg /change monitor-timeout-dc 30
+      changed_when: true
+
+    # =========================================================================
+    # Stage 9 — Corporate wallpaper
+    # =========================================================================
+
+    - name: "── Stage 9 — Corporate wallpaper ──"
+      debug:
+        msg: "{{ 'Deploying wallpaper...' if wallpaper_available else 'Wallpaper URL unreachable — skipping.' }}"
+
+    - name: "[Stage 9] Create wallpaper directory"
+      ansible.windows.win_file:
+        path: 'C:\Windows\Web\Wallpaper\ExampleMusic'
+        state: directory
+      when: wallpaper_available
+
+    - name: "[Stage 9] Download corporate wallpaper"
+      ansible.windows.win_get_url:
+        url:  "{{ exa_wallpaper_url }}"
+        dest: "{{ exa_wallpaper_dest }}"
+      when: wallpaper_available
+      notify: apply wallpaper
+
+    - name: "[Stage 9] Set wallpaper via PersonalizationCSP"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP'
+        name: "{{ item.name }}"
+        data: "{{ item.data }}"
+        type: "{{ item.type }}"
+      loop:
+        - { name: DesktopImagePath,   data: "{{ exa_wallpaper_dest }}", type: string }
+        - { name: DesktopImageUrl,    data: "{{ exa_wallpaper_dest }}", type: string }
+        - { name: DesktopImageStatus, data: 1,                          type: dword  }
+      loop_control:
+        label: "{{ item.name }}"
+      when: wallpaper_available
+
+    - name: "[Stage 9] Lock wallpaper via policy"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+        name: "{{ item.name }}"
+        data: "{{ item.data }}"
+        type: "{{ item.type }}"
+      loop:
+        - { name: Wallpaper,      data: "{{ exa_wallpaper_dest }}", type: string }
+        - { name: WallpaperStyle, data: "10",                       type: string }
+      loop_control:
+        label: "{{ item.name }}"
+      when: wallpaper_available
+
+    - name: "[Stage 9] Disable themes tab (prevent user override)"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+        name: NoThemesTab
+        data: 1
+        type: dword
+      when: wallpaper_available
+
+    - name: "[Stage 9] Flush handlers (apply wallpaper now)"
+      meta: flush_handlers
+
+    # =========================================================================
+    # Stage 10 — Dark mode
+    # =========================================================================
+
+    - name: "── Stage 10 — Dark mode ──"
+      debug:
+        msg: "Enabling dark mode system-wide..."
+
+    - name: "[Stage 10] Set dark mode (HKLM)"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        name: "{{ item.name }}"
+        data: 0
+        type: dword
+      loop:
+        - { name: AppsUseLightTheme   }
+        - { name: SystemUsesLightTheme }
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "[Stage 10] Set dark mode in Default user hive"
+      ansible.windows.win_shell: |
+        reg load HKU\DefaultUser C:\Users\Default\NTUSER.DAT
+        reg add "HKU\DefaultUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" `
+          /v AppsUseLightTheme    /t REG_DWORD /d 0 /f
+        reg add "HKU\DefaultUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" `
+          /v SystemUsesLightTheme /t REG_DWORD /d 0 /f
+        reg unload HKU\DefaultUser
+      changed_when: true
+
+    # =========================================================================
+    # Stage 11 — Chocolatey
+    # =========================================================================
+
+    - name: "── Stage 11 — Chocolatey ──"
+      debug:
+        msg: "Installing Chocolatey if not present..."
+
+    - name: "[Stage 11] Check Chocolatey"
+      ansible.windows.win_shell: |
+        if (Get-Command choco.exe -ErrorAction SilentlyContinue) { "present" } else { "absent" }
+      register: stage11_choco
+      changed_when: false
+
+    - name: "[Stage 11] Install Chocolatey"
+      ansible.windows.win_shell: |
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+      when: stage11_choco.stdout | trim == "absent"
+
+    # =========================================================================
+    # Stage 12 — Guest tools
+    # =========================================================================
+
+    - name: "── Stage 12 — Guest tools ──"
+      debug:
+        msg: "Installing guest tools for {{ hypervisor }}..."
+
+    - name: Include guest tools
+      include_tasks: ../tasks/guest_tools.yml
+
+    # =========================================================================
+    # Stage 13 — RustDesk
+    # =========================================================================
+
+    - name: "── Stage 13 — RustDesk ──"
+      debug:
+        msg: "Installing RustDesk..."
+
+    - name: "[Stage 13] Check RustDesk installer on asset server"
+      ansible.windows.win_uri:
+        url: "{{ exa_asset_base }}/x86_64/rustdesk-1.4.5-x86_64.exe"
+        method: HEAD
+        status_code: [200, 404]
+      register: rustdesk_asset_check
+      failed_when: false
+
+    - name: "[Stage 13] Install RustDesk from asset server"
+      ansible.windows.win_package:
+        path: "{{ exa_asset_base }}/x86_64/rustdesk-1.4.5-x86_64.exe"
+        arguments: "--silent-install"
+        state: present
+      when:
+        - host_arch == 'x86_64'
+        - rustdesk_asset_check.status_code | default(404) == 200
+
+    - name: "[Stage 13] Install RustDesk via Chocolatey (fallback)"
+      chocolatey.chocolatey.win_chocolatey:
+        name:  rustdesk
+        state: present
+      when: rustdesk_asset_check.status_code | default(404) != 200
+
+    # =========================================================================
+    # Stage 14 — Baseline Chocolatey packages
+    # =========================================================================
+
+    - name: "── Stage 14 — Baseline packages ──"
+      debug:
+        msg: "Installing baseline Chocolatey packages..."
+
+    - name: "[Stage 14] Install common baseline packages"
+      chocolatey.chocolatey.win_chocolatey:
+        name:   "{{ item }}"
+        state:  present
+        source: "{{ exa_choco_source }}"
+      loop: "{{ choco_packages_common }}"
+      loop_control:
+        label: "{{ item }}"
+
+    - name: "[Stage 14] Install host-type-specific packages"
+      chocolatey.chocolatey.win_chocolatey:
+        name:   "{{ item }}"
+        state:  present
+        source: "{{ exa_choco_source }}"
+      loop: "{{ choco_packages_extra | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      when: choco_packages_extra is defined and choco_packages_extra | length > 0
+
+    # =========================================================================
+    # Stage 15 — RSAT
+    # =========================================================================
+
+    - name: "── Stage 15 — RSAT ──"
+      debug:
+        msg: "Installing RSAT ({{ 'Server features' if is_server else 'Desktop capabilities' }})..."
+
+    - name: "[Stage 15] Install RSAT via Server Manager (Server OS)"
+      ansible.windows.win_feature:
+        name:
+          - RSAT-AD-PowerShell
+          - RSAT-AD-AdminCenter
+          - RSAT-ADDS-Tools
+          - RSAT-DNS-Server
+          - GPMC
+        state: present
+      when: is_server
+
+    - name: "[Stage 15] Install RSAT via Windows Capabilities (Desktop OS)"
+      ansible.windows.win_optional_feature:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
+        - Rsat.Dns.Tools~~~~0.0.1.0
+        - Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0
+      when: is_workstation
+
+    # =========================================================================
+    # Stage 16 — OpenSSH + Ansible key
+    # =========================================================================
+
+    - name: "── Stage 16 — OpenSSH and Ansible key ──"
+      debug:
+        msg: "Configuring OpenSSH and writing Ansible public key..."
+
+    - name: "[Stage 16] Ensure OpenSSH Server is installed"
+      ansible.windows.win_optional_feature:
+        name: OpenSSH.Server~~~~0.0.1.0
+        state: present
+      notify: restart sshd
+
+    - name: "[Stage 16] Ensure sshd is running and Automatic"
+      ansible.windows.win_service:
+        name: sshd
+        start_mode: auto
+        state: started
+
+    - name: "[Stage 16] Ensure SSH ProgramData directory exists"
+      ansible.windows.win_file:
+        path: 'C:\ProgramData\ssh'
+        state: directory
+
+    - name: "[Stage 16] Write Ansible public key"
+      ansible.windows.win_copy:
+        content: "{{ exa_ansible_pub_key }}\n"
+        dest:    "{{ exa_ansible_key_path }}"
+      notify: restart sshd
+
+    - name: "[Stage 16] Set ACLs on administrators_authorized_keys"
+      ansible.windows.win_shell: |
+        icacls "{{ exa_ansible_key_path }}" /inheritance:r
+        icacls "{{ exa_ansible_key_path }}" /grant "SYSTEM:(F)"
+        icacls "{{ exa_ansible_key_path }}" /grant "BUILTIN\Administrators:(F)"
+      changed_when: true
+
+    - name: "[Stage 16] Check PS7 installed"
+      ansible.windows.win_stat:
+        path: 'C:\Program Files\PowerShell\7\pwsh.exe'
+      register: stage16_ps7
+
+    - name: "[Stage 16] Set PS7 as default SSH shell"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\OpenSSH'
+        name: DefaultShell
+        data: 'C:\Program Files\PowerShell\7\pwsh.exe'
+        type: string
+      when: stage16_ps7.stat.exists
+      notify: restart sshd
+
+    - name: "[Stage 16] Set PS5 as default SSH shell (PS7 not yet installed)"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\OpenSSH'
+        name: DefaultShell
+        data: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        type: string
+      when: not stage16_ps7.stat.exists
+      notify: restart sshd
+
+    - name: "[Stage 16] Open SSH firewall rule"
+      community.windows.win_firewall_rule:
+        name:      "OpenSSH-Server-In-TCP"
+        localport: 22
+        protocol:  tcp
+        direction: in
+        action:    allow
+        enabled:   true
+        state:     present
+
+    - name: "[Stage 16] Flush handlers (restart sshd now)"
+      meta: flush_handlers
+
+    # =========================================================================
+    # Stage 17 — RDP
+    # =========================================================================
+
+    - name: "── Stage 17 — RDP ──"
+      debug:
+        msg: "Configuring RDP with NLA..."
+
+    - name: "[Stage 17] Enable RDP"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server'
+        name: fDenyTSConnections
+        data: 0
+        type: dword
+      notify: restart rdp
+
+    - name: "[Stage 17] Enforce NLA"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp'
+        name: UserAuthentication
+        data: 1
+        type: dword
+
+    - name: "[Stage 17] Ensure TermService is Automatic"
+      ansible.windows.win_service:
+        name: TermService
+        start_mode: auto
+        state: started
+
+    - name: "[Stage 17] Open RDP firewall rule"
+      community.windows.win_firewall_rule:
+        name:      "Remote Desktop"
+        group:     "Remote Desktop"
+        enabled:   true
+        state:     present
+
+    # =========================================================================
+    # Stage 17b — SAC/EMS serial console (Server OS only)
+    # =========================================================================
+
+    - name: "── Stage 17b — SAC/EMS serial console ──"
+      debug:
+        msg: "{{ 'Configuring SAC/EMS...' if is_server else 'Workstation OS — skipping SAC/EMS.' }}"
+
+    - name: "[Stage 17b] Configure Windows EMS / SAC via bcdedit"
+      ansible.windows.win_shell: |
+        bcdedit /set '{bootmgr}' displaybootmenu yes
+        bcdedit /set '{bootmgr}' timeout 10
+        bcdedit /set '{bootmgr}' bootems yes
+        bcdedit /ems '{current}' on
+        bcdedit /emssettings EMSPORT:1 EMSBAUDRATE:115200
+      changed_when: true
+      when: is_server
+
+    - name: "[Stage 17b] Enable SAC service (sacsvr)"
+      ansible.windows.win_service:
+        name:       sacsvr
+        start_mode: auto
+        state:      started
+      when: is_server
+      failed_when: false  # sacsvr not present on all SKUs
+
+    - name: "[Stage 17b] Prompt operator — confirm SAC is visible via SOL"
+      pause:
+        prompt: |
+
+          ── SAC/EMS Configured ────────────────────────────────────────────────
+          EMS has been enabled on COM1 at 115200 8N1.
+          Requires a serial0 socket in the Proxmox VM config.
+
+          To verify, connect via SOL:
+            ipmitool -I lanplus -H <pve-ip> -U admin -P <pass> sol activate
+
+          You should see the SAC prompt after boot.
+
+          Press Enter to continue.
+      when: is_server
+
+    # =========================================================================
+    # Stage 18 — PSWindowsUpdate module
+    # =========================================================================
+
+    - name: "── Stage 18 — PSWindowsUpdate ──"
+      debug:
+        msg: "Installing PSWindowsUpdate module..."
+
+    - name: "[Stage 18] Install PSWindowsUpdate from PSGallery"
+      ansible.windows.win_shell: |
+        if (-not (Get-Module -ListAvailable PSWindowsUpdate)) {
+          Install-Module PSWindowsUpdate -Scope AllUsers -Force -SkipPublisherCheck
+          Write-Output "installed"
+        } else {
+          Write-Output "present"
+        }
+      register: stage18_result
+      changed_when: "'installed' in stage18_result.stdout"
+
+    # =========================================================================
+    # Stages 19–22b — PS7 modules, fonts, profile, terminal config
+    # =========================================================================
+
+    - name: "── Stages 19–22b — PS7 setup, fonts, terminal config ──"
+      debug:
+        msg: "Configuring PS7, fonts, and terminal emulators..."
+
+    - name: Include PS7 setup tasks
+      include_tasks: ../tasks/ps7_setup.yml
+
+    # =========================================================================
+    # Stage 23 — Finish
+    # =========================================================================
+
+    - name: "── Stage 23 — Finish ──"
+      debug:
+        msg: "Bootstrap complete. Printing summary..."
+
+    - name: "[Stage 23] Remote access summary"
+      debug:
+        msg:
+          - "══════════════════════════════════════════════════════════"
+          - " Bootstrap complete: {{ target_hostname | upper }}"
+          - "══════════════════════════════════════════════════════════"
+          - " SSH   : ssh Administrator@{{ host_ip }} (port 22)"
+          - " RDP   : {{ host_ip }}:3389"
+          - " SAC   : {{ 'Enabled on COM1/115200 (SOL)' if is_server else 'N/A (not a server OS)' }}"
+          - " Domain: {{ exa_domain }} / OU: {{ bootstrap_ou_path | default('already joined') }}"
+          - " Site  : {{ host_site }}"
+          - " Arch  : {{ host_arch }}"
+          - " Hyper : {{ hypervisor }}"
+          - "══════════════════════════════════════════════════════════"
+          - " NOTE: Run playbook 70-hibernation.yml on LAP/SUR devices"
+          - " to re-enable hibernation (disabled unconditionally here)."
+          - "══════════════════════════════════════════════════════════"
+
+    - name: "[Stage 23] Final reboot"
+      ansible.windows.win_reboot:
+        reboot_timeout:    600
+        post_reboot_delay: 30
+        msg:               "Ansible bootstrap complete — final reboot"

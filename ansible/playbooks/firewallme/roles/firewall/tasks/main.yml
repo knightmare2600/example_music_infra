@@ -1,0 +1,66 @@
+---
+# =============================================================================
+# roles/firewall/tasks/main.yml
+# Example Music Limited — Firewall role entry point
+# =============================================================================
+# Imports task files in order. Each mirrors a section of firewallme.sh.
+# Colour constants (_c.*) are loaded via vars_files in 90-firewall.yml.
+#
+# Stage map:
+#   00_preflight         — hostname parse, site detection, CLD black-site gate
+#   01_interfaces        — WAN/LAN detection, .link file pinning by MAC
+#   02_wan_config        — WAN mode (DHCP/static), SSH, Ansible IP, activation gate
+#   03_wireguard_config  — WG role prompt, hub pubkey SSH fetch + cross-check
+#   04_summary_confirm   — full summary, 'yes' required before any writes
+#   05_packages          — apt, localepurge, initramfs, ansible user, zsh
+#   06_network_manager   — nmcli profiles, LAN up, optional WAN up, forwarding
+#   07_nftables          — ruleset generation and load
+#   08_dnsmasq           — DNS/DHCP config, systemd-resolved disabled
+#   09_wireguard_deploy  — keygen (preserve existing), wg0.conf, wg-quick
+#   10_ssh_hardening     — sshd_config, banners, authorized_keys
+#   11_cockpit           — cockpit.socket, self-signed cert
+#   12_finish            — ASCII art header, final summary, reboot prompt
+#
+# Changelog:
+#   2026-06-20  Initial file
+#   2026-06-20  Colour constants loaded via play vars_files in 90-firewall.yml
+# =============================================================================
+
+- import_tasks: 00_preflight.yml
+  tags: [firewall, preflight]
+
+- import_tasks: 01_interfaces.yml
+  tags: [firewall, interfaces]
+
+- import_tasks: 02_wan_config.yml
+  tags: [firewall, wan]
+
+- import_tasks: 03_wireguard_config.yml
+  tags: [firewall, wireguard]
+
+- import_tasks: 04_summary_confirm.yml
+  tags: [firewall, confirm]
+
+- import_tasks: 05_packages.yml
+  tags: [firewall, packages]
+
+- import_tasks: 06_network_manager.yml
+  tags: [firewall, network]
+
+- import_tasks: 07_nftables.yml
+  tags: [firewall, nftables]
+
+- import_tasks: 08_dnsmasq.yml
+  tags: [firewall, dnsmasq]
+
+- import_tasks: 09_wireguard_deploy.yml
+  tags: [firewall, wireguard]
+
+- import_tasks: 10_ssh_hardening.yml
+  tags: [firewall, ssh]
+
+- import_tasks: 11_cockpit.yml
+  tags: [firewall, cockpit]
+
+- import_tasks: 12_finish.yml
+  tags: [firewall, finish]

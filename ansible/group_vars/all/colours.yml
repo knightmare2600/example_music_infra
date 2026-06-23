@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# group_vars/all/colours.yml
+# Example Music Limited — ANSI colour constants
+# =============================================================================
+# Available in ALL playbooks, roles, and task files as {{ _c.G }}, {{ _c.R }}
+# etc. — no vars_files reference needed anywhere.
+#
+# Because this file is in group_vars/all/, Ansible loads it automatically for
+# every host in every play. This mirrors the colour scheme used in:
+#   firewallme.sh (line 128)
+#   ansibleme.sh  (line 128)
+#
+# Mapping:
+#   RED    \033[0;31m  → _c.R  — errors, warnings that need action
+#   GREEN  \033[0;32m  → _c.G  — success, [+], confirmed values
+#   YELLOW \033[1;33m  → _c.Y  — cautions, [!], prompts
+#   ORANGE \033[38;5;208m → _c.O — WireGuard details, tunnel info
+#   CYAN   \033[0;36m  → _c.C  — info, [*], section headers, box borders
+#   WHITE  \033[1;37m  → _c.W  — box top-lines, hostnames, emphasis
+#   NC     \033[0m     → _c.NC — reset (always close colour with this)
+#
+# Usage in debug tasks:
+#   msg: "{{ _c.G }}[+]{{ _c.NC }} Done on {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
+#
+# Usage in pause prompts:
+#   prompt: "{{ _c.Y }}[!]{{ _c.NC }} Are you sure? [y/N]"
+#
+# Changelog:
+#   2026-06-20  Initial file — in roles/firewall/vars/colours.yml
+#   2026-06-20  Moved to group_vars/all/ — now available to all playbooks
+# =============================================================================
+
+_c:
+  R:  "\e[0;31m"
+  G:  "\e[0;32m"
+  Y:  "\e[1;33m"
+  O:  "\e[38;5;208m"
+  C:  "\e[0;36m"
+  W:  "\e[1;37m"
+  NC: "\e[0m"

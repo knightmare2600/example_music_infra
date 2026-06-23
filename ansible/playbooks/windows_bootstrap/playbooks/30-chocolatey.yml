@@ -1,0 +1,50 @@
+---
+# =============================================================================
+# playbooks/30-chocolatey.yml
+# Example Music Limited — Chocolatey installation
+# =============================================================================
+# Installs Chocolatey if not already present. Safe to re-run.
+# Join-DomainAndBootstrap.ps1 Stage 11 handles this at build time —
+# this playbook is for drift correction or non-PXE-built machines.
+#
+# Usage:
+#   ansible-playbook -i inventory/<site>.ini playbooks/30-chocolatey.yml
+#
+# Tags: chocolatey
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Windows — Chocolatey installation
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  handlers:
+    - import_tasks: ../handlers/main.yml
+  tasks:
+
+    - name: Check if Chocolatey is installed
+      ansible.windows.win_shell: |
+        if (Get-Command choco.exe -ErrorAction SilentlyContinue) { "present" } else { "absent" }
+      register: choco_check
+      changed_when: false
+      tags: chocolatey
+
+    - name: Install Chocolatey
+      ansible.windows.win_shell: |
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+      when: choco_check.stdout | trim != "present"
+      tags: chocolatey
+
+    - name: Confirm Chocolatey version
+      ansible.windows.win_shell: choco --version
+      register: choco_version
+      changed_when: false
+      tags: chocolatey
+
+    - name: Show Chocolatey version
+      debug:
+        msg: "Chocolatey {{ choco_version.stdout | trim }} is installed."
+      tags: chocolatey

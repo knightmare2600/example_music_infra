@@ -1,0 +1,92 @@
+---
+# =============================================================================
+# roles/firewall/tasks/10_ssh_hardening.yml
+# Example Music Limited — SSH hardening and banner
+# =============================================================================
+# Mirrors firewallme.sh SSH section: sshd_config hardening, banner,
+# ansible user authorized_keys.
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: "[SSH] Write ansible user authorized_keys"
+  ansible.posix.authorized_key:
+    user:  ansible
+    key:   "{{ exa_ansible_pub_key }}"
+    state: present
+    exclusive: true
+
+- name: "[SSH] Harden /etc/ssh/sshd_config"
+  ansible.builtin.blockinfile:
+    path: /etc/ssh/sshd_config
+    marker: "# {mark} EXAMPLE MUSIC ANSIBLE MANAGED"
+    block: |
+      # Example Music Limited — {{ inventory_hostname }}
+      PermitRootLogin              no
+      PasswordAuthentication       no
+      ChallengeResponseAuthentication no
+      PubkeyAuthentication         yes
+      AuthorizedKeysFile           .ssh/authorized_keys
+      PermitEmptyPasswords         no
+      X11Forwarding                no
+      PrintMotd                    no
+      PrintLastLog                 yes
+      UsePAM                       yes
+      AllowUsers                   ansible
+      MaxAuthTries                 3
+      LoginGraceTime               30
+      ClientAliveInterval          300
+      ClientAliveCountMax          2
+      TCPKeepAlive                 yes
+      UseDNS                       no
+      # Restrict ciphers/MACs (disable weak legacy)
+      Ciphers     chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+      MACs        hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+      KexAlgorithms curve25519-sha256,diffie-hellman-group14-sha256
+  notify: reload ssh
+
+- name: "[SSH] Write /etc/issue (pre-login banner)"
+  ansible.builtin.copy:
+    dest: /etc/issue
+    mode: '0644'
+    content: |
+
+      ╔══════════════════════════════════════════════════════════════════╗
+      ║   EXAMPLE MUSIC LIMITED — AUTHORISED ACCESS ONLY                ║
+      ║                                                                  ║
+      ║   Host        : {{ inventory_hostname }}                         ║
+      ║   Site        : {{ fw_site_code }}                               ║
+      ║   Environment : {{ fw_environment }}                             ║
+      ║                                                                  ║
+      ║   Unauthorised access to this system is a criminal offence.     ║
+      ║   All connections are logged and monitored.                     ║
+      ╚══════════════════════════════════════════════════════════════════╝
+
+- name: "[SSH] Write /etc/issue.net (SSH pre-auth banner)"
+  ansible.builtin.copy:
+    dest: /etc/issue.net
+    mode: '0644'
+    src: /etc/issue
+  delegate_to: "{{ inventory_hostname }}"
+
+- name: "[SSH] Enable SSH banner in sshd_config"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Banner'
+    line: 'Banner /etc/issue.net'
+  notify: reload ssh
+
+- name: "[SSH] Write /etc/motd (post-login banner)"
+  ansible.builtin.copy:
+    dest: /etc/motd
+    mode: '0644'
+    content: |
+
+      ┌─────────────────────────────────────────────────────────────────┐
+      │  {{ inventory_hostname }}  │  {{ fw_site_code }}  │  {{ fw_environment }}
+      │  LAN: {{ fw_lan_ip }}/24   WAN: {{ fw_wan_static_ip if fw_wan_mode == 'static' else 'DHCP' }}
+      │  WireGuard: {{ fw_wg_role }}
+      └─────────────────────────────────────────────────────────────────┘
+
+- name: "[SSH] Flush handlers (reload sshd)"
+  ansible.builtin.meta: flush_handlers

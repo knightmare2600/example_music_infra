@@ -1,0 +1,77 @@
+---
+# =============================================================================
+# tasks/guest_tools.yml
+# Example Music Limited — Guest tools installation (Stage 12)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 12
+# =============================================================================
+# Installs VMware Tools or QEMU guest agent depending on detected hypervisor.
+# Pulls from asset server; falls back to Chocolatey if not found.
+# Skipped on Physical hosts.
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# ── VMware ────────────────────────────────────────────────────────────────────
+
+- name: "[Stage 12] Check VMware Tools installer on asset server"
+  ansible.windows.win_uri:
+    url: "{{ exa_asset_base }}/{{ host_arch }}/VMware-tools-13.0.10-25056151-{{ 'arm' if host_arch == 'arm64' else 'x64' }}.exe"
+    method: HEAD
+    status_code: [200, 404]
+  register: vmware_asset_check
+  when: hypervisor == "VMware"
+  failed_when: false
+
+- name: "[Stage 12] Install VMware Tools from asset server"
+  ansible.windows.win_package:
+    path: "{{ exa_asset_base }}/{{ host_arch }}/VMware-tools-13.0.10-25056151-{{ 'arm' if host_arch == 'arm64' else 'x64' }}.exe"
+    arguments: "/S /v /qn REBOOT=ReallySuppress"
+    state: present
+  when:
+    - hypervisor == "VMware"
+    - vmware_asset_check.status_code | default(404) == 200
+  notify: reboot host
+
+- name: "[Stage 12] Install VMware Tools via Chocolatey (asset server fallback)"
+  chocolatey.chocolatey.win_chocolatey:
+    name: vmware-tools
+    state: present
+  when:
+    - hypervisor == "VMware"
+    - vmware_asset_check.status_code | default(404) != 200
+  notify: reboot host
+
+# ── KVM / Proxmox ─────────────────────────────────────────────────────────────
+
+- name: "[Stage 12] Check QEMU guest agent installer on asset server"
+  ansible.windows.win_uri:
+    url: "{{ exa_asset_base }}/x86_64/qemu-ga-x86_64.msi"
+    method: HEAD
+    status_code: [200, 404]
+  register: qemu_asset_check
+  when: hypervisor == "KVM"
+  failed_when: false
+
+- name: "[Stage 12] Install QEMU guest agent from asset server"
+  ansible.windows.win_package:
+    path: "{{ exa_asset_base }}/x86_64/qemu-ga-x86_64.msi"
+    state: present
+  when:
+    - hypervisor == "KVM"
+    - qemu_asset_check.status_code | default(404) == 200
+
+- name: "[Stage 12] Install QEMU guest agent via Chocolatey (asset server fallback)"
+  chocolatey.chocolatey.win_chocolatey:
+    name: qemu-guest-agent
+    state: present
+  when:
+    - hypervisor == "KVM"
+    - qemu_asset_check.status_code | default(404) != 200
+
+# ── Physical / Hyper-V ────────────────────────────────────────────────────────
+
+- name: "[Stage 12] Skip guest tools (Physical or Hyper-V)"
+  debug:
+    msg: "Hypervisor is {{ hypervisor }} — no guest tools to install."
+  when: hypervisor in ["Physical", "HyperV"]

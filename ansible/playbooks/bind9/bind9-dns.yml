@@ -1,0 +1,834 @@
+---
+# =============================================================================
+# Example Music Limited -- BIND9 DNS Server Playbook
+# Target      : EXASVRCLD001  (exasvrcld001.jukebox.internal)
+# Role        : Authoritative DNS -- jukebox.internal
+# OS          : Debian trixie
+# IP          : 192.168.139.10/24  (provisioning network)
+#
+# This playbook mirrors bindme.sh exactly.  It is the idempotent,
+# Ansible-managed equivalent -- suitable for ongoing configuration
+# management and CI enforcement.  bindme.sh is the bootstrapper;
+# this playbook is the enforcer.
+#
+# Prerequisites:
+#   - Host reachable on 192.168.139.10 via SSH as ansible user
+#   - sites.csv present at {{ sites_csv_path }} on the control node
+#   - Python 3 on the target (standard Debian trixie)
+#
+# Variables (set in group_vars or pass with -e):
+#   sites_csv_path   -- path to sites.csv on the control node
+#                       default: files/sites.csv (relative to playbook)
+#   dns_ip           -- static IP for this server
+#                       default: 192.168.139.10
+#   dns_gateway      -- provisioning network gateway
+#                       default: 192.168.139.1
+#   dns_interface    -- NIC name (detected if omitted)
+#                       default: "" (autodetect via 192.168.139.x)
+#   zone_ttl         -- zone TTL in seconds
+#                       default: 300
+#   zone_serial      -- override SOA serial (YYYYMMDDnn format)
+#                       default: auto (ansible_date_time.date + "01")
+#
+# Usage:
+#   ansible-playbook -i inventory.ini bind9-dns.yml
+#   ansible-playbook -i inventory.ini bind9-dns.yml --tags zones
+#   ansible-playbook -i inventory.ini bind9-dns.yml --tags zones,reload
+#
+# Tags:
+#   packages   -- apt install
+#   network    -- static IP + hostname
+#   config     -- named.conf.options + named.conf.local
+#   zones      -- zone file generation
+#   service    -- enable + start named
+#   reload     -- rndc reload (use after zones to push changes live)
+#   aliases    -- shell aliases
+#   motd       -- dynamic MOTD
+#
+# Changelog:
+#   2026-03-29  Initial release.  Mirrors bindme.sh v2026-03-29.
+# =============================================================================
+
+- name: EXASVRCLD001 -- BIND9 DNS server
+  hosts: exasvrcld001
+  become: true
+
+  vars:
+    dns_ip: "192.168.139.10"
+    dns_gateway: "192.168.139.1"
+    dns_interface: ""          # autodetected below if blank
+    zone_ttl: 300
+    zone_serial: "{{ ansible_date_time.date | replace('-', '') }}01"
+    sites_csv_path: "files/sites.csv"
+    bind_zone_dir: "/etc/bind"
+    this_hostname: "exasvrcld001"
+    domain: "jukebox.internal"
+
+    # Forwarders
+    dns_forwarders:
+      - "1.1.1.1"   # Cloudflare
+      - "9.9.9.9"   # Quad9
+
+    # Provisioning ancillary hosts (hardcoded -- stable infrastructure)
+    # CLD EXASVR numbering: 001=DNS(.10) 002=WAC(.20) 003=Ansible(.49) 004=Rudder(.22)
+    ancillary_hosts:
+      - { name: "exasvrcld001", ip: "192.168.139.10",  comment: "DNS/BIND server (this host)" }
+      - { name: "exasvrcld002", ip: "192.168.139.20",  comment: "Windows Admin Centre" }
+      - { name: "exasvrcld003", ip: "192.168.139.49",  comment: "Ansible control node" }
+      - { name: "exasvrcld004", ip: "192.168.139.22",  comment: "Rudder configuration management" }
+      - { name: "exacldpbx001", ip: "192.168.139.48",  comment: "Central 3CX PBX" }
+      - { name: "exaprvcld001", ip: "192.168.139.50",  comment: "Provisioning / PXE server" }
+
+    # Standard SUFFIX_MAP -- mirrors site-inventory-audit.py and bindme.sh exactly
+    # Each entry: { suffix, prefix, seq }
+    suffix_map:
+      - { suffix: 1,   prefix: "exartr", seq: 1 }
+      - { suffix: 2,   prefix: "exarac", seq: 1 }
+      - { suffix: 3,   prefix: "exarac", seq: 2 }
+      - { suffix: 4,   prefix: "exarac", seq: 3 }
+      - { suffix: 5,   prefix: "exapve", seq: 1 }
+      - { suffix: 6,   prefix: "exapve", seq: 2 }
+      - { suffix: 7,   prefix: "exapve", seq: 3 }
+      - { suffix: 10,  prefix: "exadcs", seq: 1 }
+      - { suffix: 11,  prefix: "exadcs", seq: 2 }
+      - { suffix: 48,  prefix: "exasbc", seq: 1 }
+      - { suffix: 250, prefix: "exaswi", seq: 1 }
+      - { suffix: 251, prefix: "exaswi", seq: 2 }
+      - { suffix: 252, prefix: "exaswi", seq: 3 }
+      - { suffix: 253, prefix: "exafwl", seq: 1 }
+
+  pre_tasks:
+    # -------------------------------------------------------------------------
+    # Load and parse sites.csv on the control node.
+    # Produces: sites  (list of dicts with keys: site, city, country, octet,
+    #                   subnet, gateway, entity)
+    # BRD (legacy alias for BER) is skipped.
+    # Rows with a non-numeric third octet (N/A subnets) are skipped.
+    # -------------------------------------------------------------------------
+    - name: Load sites.csv from control node
+      tags: always
+      delegate_to: localhost
+      become: false
+      read_csv:
+        path: "{{ sites_csv_path }}"
+      register: sites_raw
+
+    - name: Parse sites into usable list (skip BRD and N/A subnets)
+      tags: always
+      set_fact:
+        sites: >-
+          {{
+            sites_raw.list
+            | selectattr('Site', 'ne', 'BRD')
+            | selectattr('Subnet', 'ne', 'N/A')
+            | map('combine', {
+                'octet': item.Subnet.split('.')[2]
+              })
+            | list
+          }}
+      loop: "{{ sites_raw.list | selectattr('Site', 'ne', 'BRD') | selectattr('Subnet', 'ne', 'N/A') | list }}"
+      loop_control:
+        label: "{{ item.Site }}"
+      # Jinja2 approach: build the full enriched list in one set_fact.
+      # The loop is used only to satisfy the map+combine pattern; the
+      # actual result is built entirely in the set_fact expression.
+      run_once: true
+
+    - name: Build sites list with octet field
+      tags: always
+      set_fact:
+        sites: >-
+          {{
+            sites_raw.list
+            | rejectattr('Site', 'equalto', 'BRD')
+            | rejectattr('Subnet', 'equalto', 'N/A')
+            | map('combine', {'octet': ''})
+            | list
+          }}
+      run_once: true
+
+    - name: Enrich each site with its octet
+      tags: always
+      set_fact:
+        sites: >-
+          {{
+            sites_raw.list
+            | rejectattr('Site', 'equalto', 'BRD')
+            | rejectattr('Subnet', 'equalto', 'N/A')
+            | map('combine', {'octet': item.Subnet.split('.')[2] })
+            | list
+          }}
+      loop: "{{ sites_raw.list | rejectattr('Site', 'equalto', 'BRD') | rejectattr('Subnet', 'equalto', 'N/A') | list }}"
+      loop_control:
+        label: "{{ item.Site }}"
+      # Note: In practice the cleanest approach is a small Python filter plugin.
+      # See files/filter_plugins/sites.py -- included in this repo.
+      # If the filter plugin is present it handles this in one step.
+      run_once: true
+
+    # Detect provisioning interface if dns_interface not set
+    - name: Detect provisioning network interface
+      tags: always, network
+      when: dns_interface == ""
+      set_fact:
+        dns_interface: >-
+          {{
+            ansible_interfaces
+            | map('extract', ansible_facts)
+            | selectattr('ipv4.address', 'defined')
+            | selectattr('ipv4.address', 'match', '^192\\.168\\.139\\.')
+            | map(attribute='device')
+            | first
+            | default('ens33')
+          }}
+
+  # ---------------------------------------------------------------------------
+  # 1. Packages
+  # ---------------------------------------------------------------------------
+  tasks:
+    - name: Update apt cache
+      tags: packages
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install BIND9 and supporting packages
+      tags: packages
+      apt:
+        name:
+          - bind9
+          - bind9utils
+          - dnsutils
+          - arping
+          - iproute2
+          - network-manager
+          - vim
+          - curl
+          - tmux
+          - grc
+          - zsh
+          - zsh-autosuggestions
+          - zsh-syntax-highlighting
+          - bc
+          - localepurge
+        state: present
+
+    - name: Configure localepurge (keep en_GB and en_US only)
+      tags: packages
+      debconf:
+        name: localepurge
+        question: "{{ item.question }}"
+        value: "{{ item.value }}"
+        vtype: "{{ item.vtype }}"
+      loop:
+        - { question: "localepurge/nopurge",      value: "en_GB.UTF-8, en_US.UTF-8", vtype: multiselect }
+        - { question: "localepurge/verbose",       value: "false",                    vtype: boolean }
+        - { question: "localepurge/none_selected", value: "false",                    vtype: boolean }
+        - { question: "localepurge/quickndirty",   value: "false",                    vtype: boolean }
+
+    - name: Run localepurge
+      tags: packages
+      command: localepurge
+      changed_when: false
+
+  # ---------------------------------------------------------------------------
+  # 2. Network -- static IP and hostname
+  # ---------------------------------------------------------------------------
+    - name: Set hostname
+      tags: network
+      hostname:
+        name: "{{ this_hostname }}"
+
+    - name: Ensure hostname in /etc/hosts
+      tags: network
+      lineinfile:
+        path: /etc/hosts
+        regexp: "^127\\.0\\.1\\.1"
+        line: "127.0.1.1  {{ this_hostname }}.{{ domain }}  {{ this_hostname }}"
+        state: present
+
+    - name: Pin interface name via systemd .link (by MAC)
+      tags: network
+      copy:
+        dest: "/etc/systemd/network/10-prov.link"
+        mode: "0644"
+        content: |
+          # Example Music -- provisioning interface pin
+          # Written by bind9-dns.yml on {{ ansible_date_time.iso8601 }}
+          # Pins {{ dns_interface }} by MAC so reboots don't shuffle it
+          [Match]
+          MACAddress={{ ansible_facts[dns_interface].macaddress }}
+          [Link]
+          Name={{ dns_interface }}
+
+    - name: Remove any existing prov-static NM connection
+      tags: network
+      command: nmcli connection delete prov-static
+      failed_when: false
+      changed_when: false
+
+    - name: Configure static IP via NetworkManager
+      tags: network
+      community.general.nmcli:
+        conn_name: prov-static
+        ifname: "{{ dns_interface }}"
+        type: ethernet
+        ip4: "{{ dns_ip }}/24"
+        gw4: "{{ dns_gateway }}"
+        dns4:
+          - "127.0.0.1"
+        dns4_search:
+          - "{{ domain }}"
+        autoconnect: true
+        state: present
+
+    - name: Bring up prov-static connection
+      tags: network
+      command: nmcli connection up prov-static
+      changed_when: false
+
+  # ---------------------------------------------------------------------------
+  # 3. BIND9 configuration files
+  # ---------------------------------------------------------------------------
+    - name: Write named.conf.options
+      tags: config
+      copy:
+        dest: "{{ bind_zone_dir }}/named.conf.options"
+        mode: "0644"
+        owner: root
+        group: bind
+        content: |
+          // ============================================================
+          // named.conf.options -- Example Music Limited
+          // EXASVRCLD001  --  jukebox.internal DNS
+          // Managed by Ansible bind9-dns.yml
+          // ============================================================
+
+          options {
+            directory "/var/cache/bind";
+
+            // ── Forwarders ────────────────────────────────────────────
+            forwarders {
+          {% for fw in dns_forwarders %}
+              {{ fw }};
+          {% endfor %}
+            };
+
+            forward only;
+
+            // ── Access control ────────────────────────────────────────
+            allow-query   { any; };
+            allow-recursion { 192.168.139.0/24; localhost; };
+
+            // ── Listen ────────────────────────────────────────────────
+            listen-on     { 127.0.0.1; {{ dns_ip }}; };
+            listen-on-v6  { none; };
+
+            // ── DNSSEC ────────────────────────────────────────────────
+            dnssec-validation auto;
+
+            // ── Misc ──────────────────────────────────────────────────
+            auth-nxdomain no;
+            version "not disclosed";
+          };
+      notify: Reload named
+
+    - name: Write named.conf.local (forward zone + all reverse zones)
+      tags: config, zones
+      template:
+        src: templates/named.conf.local.j2
+        dest: "{{ bind_zone_dir }}/named.conf.local"
+        mode: "0644"
+        owner: root
+        group: bind
+        validate: "named-checkconf %s"
+      notify: Reload named
+
+  # ---------------------------------------------------------------------------
+  # 4. Zone files
+  # ---------------------------------------------------------------------------
+    - name: Write forward zone -- jukebox.internal
+      tags: zones
+      template:
+        src: templates/db.jukebox.internal.j2
+        dest: "{{ bind_zone_dir }}/db.jukebox.internal"
+        mode: "0644"
+        owner: root
+        group: bind
+        validate: "named-checkzone {{ domain }} %s"
+      notify: Reload named
+
+    - name: Write provisioning reverse zone (db.192.168.139)
+      tags: zones
+      template:
+        src: templates/db.192.168.139.j2
+        dest: "{{ bind_zone_dir }}/db.192.168.139"
+        mode: "0644"
+        owner: root
+        group: bind
+        validate: "named-checkzone 139.168.192.in-addr.arpa %s"
+      notify: Reload named
+
+    - name: Write per-site reverse zone files (excluding CLD)
+      tags: zones
+      template:
+        src: templates/db.site-reverse.j2
+        dest: "{{ bind_zone_dir }}/db.192.168.{{ item.octet }}"
+        mode: "0644"
+        owner: root
+        group: bind
+        validate: "named-checkzone {{ item.octet }}.168.192.in-addr.arpa %s"
+      loop: "{{ sites | rejectattr('Site', 'equalto', 'CLD') | list }}"
+      loop_control:
+        label: "{{ item.Site }} (192.168.{{ item.octet }}.0/24)"
+      notify: Reload named
+
+  # ---------------------------------------------------------------------------
+  # 5. Enable and start named
+  # ---------------------------------------------------------------------------
+    - name: Enable and start named
+      tags: service
+      systemd:
+        name: named
+        enabled: true
+        state: started
+
+  # ---------------------------------------------------------------------------
+  # 6. Shell aliases (bash + zsh)
+  # ---------------------------------------------------------------------------
+    - name: Write BIND management aliases to /etc/profile.d
+      tags: aliases
+      copy:
+        dest: /etc/profile.d/bind-aliases.sh
+        mode: "0644"
+        content: |
+          # Example Music -- BIND9 management aliases
+          # Managed by Ansible bind9-dns.yml
+          # Works in bash and zsh (sourced via /etc/profile.d)
+
+          alias reloadbind='rndc reload {{ domain }} && echo "[+] Zone reloaded." \
+            || echo "[!] Reload failed -- check: journalctl -u named -n 20"'
+          alias checkbind='named-checkzone {{ domain }} /etc/bind/db.{{ domain }}'
+          alias editzone='vim /etc/bind/db.{{ domain }} \
+            && named-checkzone {{ domain }} /etc/bind/db.{{ domain }} \
+            && rndc reload {{ domain }}'
+          alias bindstatus='systemctl status named'
+          alias bindlog='journalctl -u named -f'
+
+    - name: Write zsh config for root
+      tags: aliases
+      copy:
+        dest: /root/.zshrc
+        mode: "0644"
+        force: false   # don't overwrite if already customised
+        content: |
+          export TERM=xterm-256color
+          export EDITOR=vim
+          export VISUAL=vim
+          export SUDO_EDITOR=vim
+          HISTFILE=~/.zsh_history
+          HISTSIZE=10000
+          SAVEHIST=10000
+          setopt appendhistory autocd extendedglob notify interactivecomments
+          setopt AUTO_CONTINUE LONG_LIST_JOBS
+          bindkey -e
+          autoload -Uz compinit && compinit
+          autoload -Uz colors && colors
+          PROMPT='
+          %F{red}%m%f:%F{cyan}%~%f# '
+          alias ls='ls --color=auto'
+          alias ll='ls -lah'
+          alias grep='grep --color=auto'
+          if (( $+commands[grc] )); then
+            GRC_ALIASES=true
+            [[ -f /etc/profile.d/grc.sh ]] && source /etc/profile.d/grc.sh
+          fi
+          [[ -f /etc/profile.d/bind-aliases.sh ]] && source /etc/profile.d/bind-aliases.sh
+
+    - name: Set zsh as default shell for root
+      tags: aliases
+      user:
+        name: root
+        shell: /usr/bin/zsh
+
+    - name: Write zsh config for ansible user
+      tags: aliases
+      copy:
+        dest: /home/ansible/.zshrc
+        mode: "0644"
+        owner: ansible
+        group: ansible
+        force: false
+        content: |
+          export TERM=xterm-256color
+          export EDITOR=vim
+          export VISUAL=vim
+          HISTFILE=~/.zsh_history
+          HISTSIZE=10000
+          SAVEHIST=10000
+          setopt appendhistory autocd extendedglob notify interactivecomments
+          setopt AUTO_CONTINUE LONG_LIST_JOBS
+          bindkey -e
+          autoload -Uz compinit && compinit
+          autoload -Uz colors && colors
+          PROMPT='
+          %F{green}%m%f:%F{cyan}%~%f> '
+          alias ls='ls --color=auto'
+          alias ll='ls -lah'
+          alias grep='grep --color=auto'
+          if (( $+commands[grc] )); then
+            GRC_ALIASES=true
+            [[ -f /etc/profile.d/grc.sh ]] && source /etc/profile.d/grc.sh
+          fi
+          [[ -f /etc/profile.d/bind-aliases.sh ]] && source /etc/profile.d/bind-aliases.sh
+
+    - name: Set zsh as default shell for ansible user
+      tags: aliases
+      user:
+        name: ansible
+        shell: /usr/bin/zsh
+
+  # ---------------------------------------------------------------------------
+  # 7. Dynamic MOTD
+  # ---------------------------------------------------------------------------
+    - name: Disable default MOTD scripts
+      tags: motd
+      file:
+        path: "{{ item }}"
+        mode: "0644"   # remove execute bit -- MOTD runner won't call them
+      loop:
+        - /etc/update-motd.d/10-uname
+        - /etc/update-motd.d/50-motd-news
+      failed_when: false
+
+    - name: Write Example Music MOTD script
+      tags: motd
+      copy:
+        dest: /etc/update-motd.d/10-examplemusic
+        mode: "0755"
+        content: |
+          #!/usr/bin/env bash
+          WH='\033[1;37m'; YL='\033[1;33m'; GR='\033[0;32m'
+          CY='\033[0;36m'; RS='\033[0m'
+
+          HOSTNAME=$(hostname -s)
+          UPTIME=$(uptime -p 2>/dev/null || uptime)
+          LOAD=$(awk '{print $1,$2,$3}' /proc/loadavg)
+          MEM_TOTAL=$(free -m | awk '/^Mem:/{print $2}')
+          MEM_USED=$(free -m  | awk '/^Mem:/{print $3}')
+          DISK=$(df -h / | awk 'NR==2{print $3" used of "$2" ("$5")"}')
+
+          DNS_IP=$(ip -4 addr show \
+            | awk '/inet /{print $2}' \
+            | grep '192\.168\.139\.' \
+            | cut -d/ -f1 | head -1)
+          ZONE_SERIAL=$(grep -oP '(?<=;\s)serial.*' \
+            /etc/bind/db.{{ domain }} 2>/dev/null \
+            | head -1 | awk '{print $1}') || true
+          NAMED_STATUS=$(systemctl is-active named 2>/dev/null || echo "unknown")
+          RECORD_COUNT=$(grep -c 'IN  A' \
+            /etc/bind/db.{{ domain }} 2>/dev/null || echo "?")
+
+          echo -e "
+          ${WH}╔══════════════════════════════════════════════════════════════╗${RS}
+          ${WH}║           EXAMPLE MUSIC LIMITED: $(printf '%-24s' "${HOSTNAME}")║${RS}
+          ${WH}╚══════════════════════════════════════════════════════════════╝${RS}
+
+            ${YL}Role     :${RS} DNS Server -- {{ domain }}
+            ${YL}Zone     :${RS} {{ domain }}  (${RECORD_COUNT} A records, serial ${ZONE_SERIAL:-unknown})
+
+            ${WH}── Network ──────────────────────────────────────────────────${RS}
+              ${CY}DNS IP${RS}   : ${GR}${DNS_IP:-unknown}${RS}
+              ${CY}BIND9${RS}    : ${GR}${NAMED_STATUS}${RS}
+
+            ${WH}── System ───────────────────────────────────────────────────${RS}
+              ${CY}Uptime${RS}   : ${GR}${UPTIME}${RS}
+              ${CY}Load${RS}     : ${GR}${LOAD}${RS}
+              ${CY}Memory${RS}   : ${GR}${MEM_USED}MB${RS} used of ${MEM_TOTAL}MB
+              ${CY}Disk /  ${RS} : ${GR}${DISK}${RS}
+
+            ${WH}── Management ───────────────────────────────────────────────${RS}
+              ${CY}Aliases${RS}  : reloadbind  checkbind  editzone  bindstatus  bindlog
+          "
+
+    - name: Ensure PrintMotd yes in sshd_config
+      tags: motd
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PrintMotd"
+        line: "PrintMotd yes"
+        state: present
+      notify: Restart sshd
+
+    - name: Source MOTD from /etc/profile.d
+      tags: motd
+      copy:
+        dest: /etc/profile.d/motd.sh
+        mode: "0644"
+        content: |
+          [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
+
+  # ---------------------------------------------------------------------------
+  # 8. Sentinel file
+  # ---------------------------------------------------------------------------
+    - name: Write sentinel file
+      tags: always
+      copy:
+        dest: /etc/.i_am_a_dns_server
+        mode: "0444"
+        content: |
+          Configured by Example Music bind9-dns.yml
+          Hostname    : {{ this_hostname }}
+          DNS IP      : {{ dns_ip }}
+          Zone        : {{ domain }}
+          Serial      : {{ zone_serial }}
+          Interface   : {{ dns_interface }}
+          Date        : {{ ansible_date_time.iso8601 }}
+
+  # ---------------------------------------------------------------------------
+  # 9. Verify -- quick dig self-test
+  # ---------------------------------------------------------------------------
+    - name: Self-test DNS -- forward lookup
+      tags: service, reload
+      command: "dig @127.0.0.1 +short exasvrcld001.{{ domain }}"
+      register: dig_result
+      changed_when: false
+      failed_when: dns_ip not in dig_result.stdout
+
+    - name: Self-test DNS -- PTR lookup for this server
+      tags: service, reload
+      command: "dig @127.0.0.1 +short -x {{ dns_ip }}"
+      register: dig_ptr
+      changed_when: false
+      failed_when: "'exasvrcld001' not in dig_ptr.stdout"
+
+  # ---------------------------------------------------------------------------
+  # Handlers
+  # ---------------------------------------------------------------------------
+  handlers:
+    - name: Reload named
+      systemd:
+        name: named
+        state: reloaded
+
+    - name: Restart sshd
+      systemd:
+        name: ssh
+        state: restarted
+
+
+# =============================================================================
+# Templates required by this playbook
+# Place these in templates/ alongside the playbook.
+# =============================================================================
+#
+# templates/named.conf.local.j2
+# ─────────────────────────────
+# Declares all zones.  The forward zone plus the dedicated 139 reverse zone
+# are written as static stanzas; per-site reverse zones are looped.
+# CLD is excluded from the per-site loop (handled by the 139 zone).
+#
+# templates/db.jukebox.internal.j2
+# ─────────────────────────────────
+# Forward zone.  Loops suffix_map × sites to produce A records.
+# Appends FWL WAN A records and ancillary hosts.
+#
+# templates/db.192.168.139.j2
+# ─────────────────────────────
+# Dedicated provisioning reverse zone.
+# Contains ancillary PTRs + FWL WAN PTRs for all sites.
+#
+# templates/db.site-reverse.j2
+# ─────────────────────────────
+# Per-site reverse zone template.  item = one row from sites list.
+# Loops suffix_map to produce PTR records.
+#
+# See templates/ directory for full template content.
+# =============================================================================
+
+# =============================================================================
+# PLAY 2 -- Full zone regeneration from devices.csv
+# =============================================================================
+# This play supersedes the SUFFIX_MAP-based zone generation in Play 1.
+# It reads devices.csv (single source of truth for all devices) alongside
+# sites.csv and generates:
+#   - db.jukebox.internal   (forward zone -- all devices with a HostOctet)
+#   - db.192.168.139        (provisioning reverse zone -- CLD devices + FWL WANs)
+#   - db.192.168.{octet}    (per-site reverse zones -- one per site, CLD excluded)
+#
+# Non-networked assets (blank HostOctet) are emitted as comments in the
+# forward zone so they are documented without creating DNS records.
+#
+# CLD BLACK SWAN NOTE:
+#   CLD (192.168.139.0/24) is the provisioning network. It does not follow
+#   the standard site convention -- no EXADCS, no EXAPVE, no EXASBC.
+#   Its devices have manually assigned IPs serving specific provisioning roles.
+#   The BIND zone for 192.168.139.0/24 is generated as a dedicated provisioning
+#   reverse zone (db.192.168.139) and is NOT produced by the per-site loop.
+#   Do not apply standard site convention validation to CLD rows.
+#
+# Tags:
+#   zones-full   -- regenerate all zones from devices.csv
+#   reload       -- rndc reload after zone regeneration
+#
+# Changelog:
+#   2026-03-29  Initial release. Replaces SUFFIX_MAP loops in Play 1 with
+#               devices.csv-driven generation. Non-networked assets emitted
+#               as zone file comments. CLD black swan documented.
+# =============================================================================
+
+- name: EXASVRCLD001 -- Full zone generation from devices.csv
+  hosts: exasvrcld001
+  become: true
+
+  vars:
+    dns_ip: "192.168.139.10"
+    domain: "jukebox.internal"
+    bind_zone_dir: "/etc/bind"
+    zone_serial: "{{ ansible_date_time.date | replace('-', '') }}01"
+    zone_ttl: 300
+    sites_csv_path: "files/sites.csv"
+    devices_csv_path: "files/devices.csv"
+
+    # CLD BLACK SWAN:
+    # CLD is the provisioning network (192.168.139.0/24). It is structurally
+    # different from all site subnets and must never be treated as a standard
+    # site for convention checks or per-site reverse zone generation.
+    # Its reverse zone (db.192.168.139) is generated separately and contains:
+    #   (a) CLD device PTRs (EXASVRCLD001-004, EXACLDPBX001, EXAPRVCLD001)
+    #   (b) FWL WAN PTRs for every site (192.168.139.{octet} per site)
+    cld_site_code: "CLD"
+    cld_subnet_octet: "139"
+
+  pre_tasks:
+    - name: Load sites.csv
+      tags: always
+      delegate_to: localhost
+      become: false
+      read_csv:
+        path: "{{ sites_csv_path }}"
+      register: sites_raw
+
+    - name: Load devices.csv
+      tags: always
+      delegate_to: localhost
+      become: false
+      read_csv:
+        path: "{{ devices_csv_path }}"
+        comment: "#"
+      register: devices_raw
+
+    - name: Build sites lookup (octet by site code)
+      tags: always
+      set_fact:
+        sites_by_code: >-
+          {{
+            sites_raw.list
+            | rejectattr('Site', 'equalto', 'BRD')
+            | rejectattr('Subnet', 'equalto', 'N/A')
+            | items2dict(key_name='Site', value_name='Subnet')
+          }}
+
+    - name: Build enriched device list (full IPs resolved from sites.csv)
+      tags: always
+      set_fact:
+        all_devices: >-
+          {{
+            devices_raw.list
+            | rejectattr('Site', 'equalto', 'Site')
+            | map('combine', {
+                'octet': (sites_by_code[item.Site] | default('') ).split('.')[2]
+                          if item.Site != cld_site_code
+                          else cld_subnet_octet,
+                'full_ip': (
+                  (sites_by_code[item.Site] | default('') ).split('.')[:3] | join('.')
+                  + '.' + item.HostOctet
+                ) if item.HostOctet != ''
+                  else ''
+              })
+            | list
+          }}
+      loop: "{{ devices_raw.list | rejectattr('Site', 'equalto', 'Site') | list }}"
+      loop_control:
+        label: "{{ item.Hostname }}"
+      run_once: true
+
+  tasks:
+    # -------------------------------------------------------------------------
+    # Forward zone -- db.jukebox.internal
+    # Devices with HostOctet get A records.
+    # Devices without HostOctet get a comment line (documented, not resolved).
+    # Grouped by site, sorted by HostOctet within each site.
+    # -------------------------------------------------------------------------
+    - name: Write forward zone from devices.csv
+      tags: zones-full
+      template:
+        src: templates/db.jukebox.devices.j2
+        dest: "{{ bind_zone_dir }}/db.{{ domain }}"
+        mode: "0644"
+        owner: root
+        group: bind
+        validate: "named-checkzone {{ domain }} %s"
+      notify: Reload named
+
+    # -------------------------------------------------------------------------
+    # Provisioning reverse zone -- db.192.168.139
+    # CLD BLACK SWAN: generated separately, never from the per-site loop.
+    # Contains CLD device PTRs + FWL WAN PTRs for every site.
+    # -------------------------------------------------------------------------
+    - name: Write provisioning reverse zone (db.192.168.139) from devices.csv
+      tags: zones-full
+      template:
+        src: templates/db.192.168.139.devices.j2
+        dest: "{{ bind_zone_dir }}/db.192.168.139"
+        mode: "0644"
+        owner: root
+        group: bind
+        validate: "named-checkzone 139.168.192.in-addr.arpa %s"
+      notify: Reload named
+
+    # -------------------------------------------------------------------------
+    # Per-site reverse zones -- db.192.168.{octet}
+    # One per site from devices.csv. CLD excluded (handled above).
+    # -------------------------------------------------------------------------
+    - name: Build unique non-CLD site list from devices.csv
+      tags: zones-full
+      set_fact:
+        device_sites: >-
+          {{
+            all_devices
+            | rejectattr('Site', 'equalto', cld_site_code)
+            | map(attribute='Site')
+            | unique
+            | list
+          }}
+
+    - name: Write per-site reverse zones from devices.csv
+      tags: zones-full
+      template:
+        src: templates/db.site-reverse.devices.j2
+        dest: "{{ bind_zone_dir }}/db.192.168.{{ sites_by_code[item].split('.')[2] }}"
+        mode: "0644"
+        owner: root
+        group: bind
+        validate: >-
+          named-checkzone
+          {{ sites_by_code[item].split('.')[2] }}.168.192.in-addr.arpa %s
+      loop: "{{ device_sites | sort }}"
+      loop_control:
+        label: "{{ item }}"
+      notify: Reload named
+
+    # -------------------------------------------------------------------------
+    # Validate entire named config after all zones written
+    # -------------------------------------------------------------------------
+    - name: Validate named.conf after full zone regeneration
+      tags: zones-full
+      command: named-checkconf /etc/bind/named.conf
+      changed_when: false
+
+  handlers:
+    - name: Reload named
+      systemd:
+        name: named
+        state: reloaded

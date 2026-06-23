@@ -1,0 +1,212 @@
+---
+# =============================================================================
+# tasks/ps7_setup.yml
+# Example Music Limited — PS7 modules, profile, and terminal config
+# Replicates Join-DomainAndBootstrap.ps1 Stages 19, 20, 21, 22, 22b
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# ── Stage 19 — PS7 modules (AllUsers) ────────────────────────────────────────
+
+- name: "[Stage 19] Check PS7 is installed"
+  ansible.windows.win_stat:
+    path: 'C:\Program Files\PowerShell\7\pwsh.exe'
+  register: ps7_check
+
+- name: "[Stage 19] Install PS7 console modules (AllUsers scope)"
+  ansible.windows.win_shell: |
+    & "C:\Program Files\PowerShell\7\pwsh.exe" -NonInteractive -Command {
+      $modules = @(
+        'PSConsoleTools',
+        'PSWindowsUpdate',
+        'PSWriteColor',
+        'PSReadLine',
+        'Terminal-Icons',
+        'CompletionPredictor',
+        'NerdFonts'
+      )
+      foreach ($m in $modules) {
+        if (-not (Get-Module -ListAvailable -Name $m)) {
+          Install-Module $m -Scope AllUsers -Force -SkipPublisherCheck -ErrorAction SilentlyContinue
+          Write-Output "Installed: $m"
+        } else {
+          Write-Output "Already present: $m"
+        }
+      }
+    }
+  register: stage19_result
+  changed_when: "'Installed:' in stage19_result.stdout"
+  when: ps7_check.stat.exists
+
+- name: "[Stage 19] Show module install results"
+  debug:
+    msg: "{{ stage19_result.stdout_lines }}"
+  when: ps7_check.stat.exists
+
+# ── Stage 20 — JetBrainsMono Nerd Font ───────────────────────────────────────
+
+- name: "[Stage 20] Deploy JetBrainsMono Nerd Font files from asset server"
+  ansible.windows.win_get_url:
+    url:  "{{ exa_asset_base }}/fonts/{{ item }}"
+    dest: "C:\\Windows\\Fonts\\{{ item }}"
+  loop: "{{ exa_font_files }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[Stage 20] Register fonts in registry"
+  ansible.windows.win_regedit:
+    path: 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+    name: "{{ item | regex_replace('\\.ttf$', '') }} (TrueType)"
+    data: "{{ item }}"
+    type: string
+  loop: "{{ exa_font_files }}"
+  loop_control:
+    label: "{{ item }}"
+
+# ── Stage 21 — PS7 AllUsersAllHosts profile ───────────────────────────────────
+
+- name: "[Stage 21] Write PS7 AllUsersAllHosts profile"
+  ansible.windows.win_copy:
+    dest: 'C:\Program Files\PowerShell\7\profile.ps1'
+    content: |
+      # Example Music Limited — PS7 AllUsersAllHosts profile
+      # Written by Ansible bootstrap playbook
+
+      # PSReadLine — Emacs mode required for correct paste behaviour over SSH
+      if (Get-Module -ListAvailable PSReadLine) {
+          Import-Module PSReadLine
+          Set-PSReadLineOption -EditMode Emacs
+          Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+          Set-PSReadLineOption -PredictionViewStyle ListView
+          Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
+      }
+
+      # Terminal-Icons
+      if (Get-Module -ListAvailable Terminal-Icons) {
+          Import-Module Terminal-Icons
+      }
+
+      # CompletionPredictor
+      if (Get-Module -ListAvailable CompletionPredictor) {
+          Import-Module CompletionPredictor
+      }
+
+      # NerdFonts
+      if (Get-Module -ListAvailable NerdFonts) {
+          Import-Module NerdFonts
+      }
+  when: ps7_check.stat.exists
+
+# ── Stage 22 — Hyper terminal config ─────────────────────────────────────────
+
+- name: "[Stage 22] Check Hyper is installed"
+  ansible.windows.win_stat:
+    path: 'C:\Program Files\Hyper\Hyper.exe'
+  register: hyper_check
+
+- name: "[Stage 22] Create Hyper config directory"
+  ansible.windows.win_file:
+    path: 'C:\Users\Administrator\AppData\Roaming\Hyper'
+    state: directory
+  when: hyper_check.stat.exists
+
+- name: "[Stage 22] Write Hyper .hyper.js config"
+  ansible.windows.win_copy:
+    dest: 'C:\Users\Administrator\AppData\Roaming\Hyper\.hyper.js'
+    content: |
+      // Example Music Limited — Hyper terminal config
+      // Written by Ansible bootstrap playbook
+      module.exports = {
+        config: {
+          updateChannel: 'stable',
+          fontSize: 16,
+          fontFamily: '"JetBrainsMono Nerd Font Mono", "JetBrainsMono NF", Menlo, monospace',
+          shell: 'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+          shellArgs: ['--login', '--nologo'],
+          env: {},
+          theme: 'hyper-solarized-dark',
+          colors: {
+            black:   '#002b36', red:     '#dc322f', green:  '#859900',
+            yellow:  '#b58900', blue:    '#268bd2', magenta:'#d33682',
+            cyan:    '#2aa198', white:   '#eee8d5',
+            lightBlack:   '#657b83', lightRed:   '#dc322f',
+            lightGreen:   '#859900', lightYellow:'#b58900',
+            lightBlue:    '#268bd2', lightMagenta:'#6c71c4',
+            lightCyan:    '#2aa198', lightWhite: '#fdf6e3',
+          },
+          cursorColor: '#839496',
+          cursorShape: 'BEAM',
+          padding: '8px 12px',
+          scrollback: 5000,
+        },
+        plugins: [
+          'hyper-search',
+          'hyper-pane',
+          'hypercwd',
+          'hyper-tabs-enhanced',
+          'hyper-rename-tab',
+          'hyper-tab-icons-plus',
+          'hyper-solarized-dark',
+        ],
+        localPlugins: [],
+        keymaps: {},
+      };
+  when: hyper_check.stat.exists
+
+# ── Stage 22b — Windows Terminal config ──────────────────────────────────────
+
+- name: "[Stage 22b] Detect Windows Terminal install paths"
+  ansible.windows.win_shell: |
+    $paths = @()
+    # Chocolatey path
+    $choco = "$env:ProgramFiles\WindowsApps"
+    # Store / MSIX path
+    $store = Get-ChildItem "$env:LOCALAPPDATA\Packages" -Filter "Microsoft.WindowsTerminal*" `
+             -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($store) { $paths += "$($store.FullName)\LocalState" }
+    # Chocolatey stable
+    $chocoStable = "$env:APPDATA\Microsoft\Windows Terminal"
+    if (Test-Path $chocoStable) { $paths += $chocoStable }
+    $paths -join "`n"
+  register: wt_paths
+  changed_when: false
+
+- name: "[Stage 22b] Write Windows Terminal settings.json to detected paths"
+  ansible.windows.win_copy:
+    dest: "{{ item }}\\settings.json"
+    content: |
+      {
+        "$help": "https://aka.ms/terminal-documentation",
+        "$schema": "https://aka.ms/terminal-profiles-schema",
+        "defaultProfile": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+        "copyOnSelect": false,
+        "profiles": {
+          "defaults": {
+            "font": {
+              "face": "JetBrainsMono Nerd Font Mono",
+              "size": 14
+            },
+            "colorScheme": "Solarized Dark",
+            "scrollbarState": "visible",
+            "padding": "8, 8",
+            "cursorShape": "bar"
+          },
+          "list": [
+            {
+              "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+              "name": "PowerShell 7",
+              "commandline": "C:\\\\Program Files\\\\PowerShell\\\\7\\\\pwsh.exe -NoLogo",
+              "hidden": false,
+              "icon": "ms-appx:///ProfileIcons/{574e775e-4f2a-5b96-ac1e-a2962a402336}.png"
+            }
+          ]
+        },
+        "schemes": [],
+        "actions": []
+      }
+  loop: "{{ wt_paths.stdout_lines | select('ne', '') | list }}"
+  loop_control:
+    label: "{{ item }}"
+  when: wt_paths.stdout_lines | select('ne', '') | list | length > 0

@@ -1,0 +1,53 @@
+---
+# =============================================================================
+# playbooks/40-choco-packages.yml
+# Example Music Limited — Chocolatey package deployment
+# =============================================================================
+# Installs choco_packages_common (all hosts) + choco_packages_extra
+# (set per group in group_vars). Safe to re-run — choco install is
+# idempotent when packages are already present.
+#
+# Usage:
+#   ansible-playbook -i inventory/<site>.ini playbooks/40-choco-packages.yml
+#   ansible-playbook -i inventory/<site>.ini playbooks/40-choco-packages.yml \
+#     --tags choco_packages
+#
+# Tags: choco_packages
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Windows — Chocolatey package deployment
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  handlers:
+    - import_tasks: ../handlers/main.yml
+  tasks:
+
+    - name: Install common Chocolatey packages
+      chocolatey.chocolatey.win_chocolatey:
+        name:   "{{ item }}"
+        state:  present
+        source: "{{ exa_choco_source }}"
+      loop: "{{ choco_packages_common }}"
+      loop_control:
+        label: "{{ item }}"
+      tags: choco_packages
+
+    - name: Install host-type-specific Chocolatey packages
+      chocolatey.chocolatey.win_chocolatey:
+        name:   "{{ item }}"
+        state:  present
+        source: "{{ exa_choco_source }}"
+      loop: "{{ choco_packages_extra | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      when: choco_packages_extra is defined and choco_packages_extra | length > 0
+      tags: choco_packages
+
+    - name: Upgrade all Chocolatey packages
+      chocolatey.chocolatey.win_chocolatey:
+        name:  all
+        state: latest
+      tags: [never, choco_upgrade]

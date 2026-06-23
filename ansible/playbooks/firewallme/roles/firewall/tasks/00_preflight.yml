@@ -1,0 +1,141 @@
+---
+# =============================================================================
+# roles/firewall/tasks/00_preflight.yml
+# Example Music Limited — Firewall preflight checks and site detection
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+#   2026-06-20  Colourised prompts — matches firewallme.sh colour scheme
+# =============================================================================
+
+# ── Parse hostname ────────────────────────────────────────────────────────────
+
+- name: "[Preflight] Parse site code from hostname"
+  ansible.builtin.set_fact:
+    fw_site_code: >-
+      {{ inventory_hostname | upper
+         | regex_search('^EXAFWL([A-Z]{3})[0-9]{3}$', '\1')
+         | first | default('') }}
+
+- name: "[Preflight] FAIL — hostname does not match EXAFWL<SITE><NNN>"
+  ansible.builtin.fail:
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Hostname '{{ inventory_hostname }}' does not match EXAFWL<SITE><NNN>."
+  when: fw_site_code == ''
+
+- name: "[Preflight] Set black-site flag for CLD"
+  ansible.builtin.set_fact:
+    fw_is_black_site: "{{ fw_site_code == 'CLD' }}"
+
+- name: "[Preflight] Look up site octet"
+  ansible.builtin.set_fact:
+    fw_site_octet: "{{ wg_site_octets[fw_site_code] | default('') }}"
+
+- name: "[Preflight] FAIL — site code not in known site map"
+  ansible.builtin.fail:
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Site code '{{ fw_site_code }}' not found in wg_site_octets."
+  when: fw_site_octet == '' and fw_site_octet_override is not defined
+
+- name: "[Preflight] Use site octet override if provided"
+  ansible.builtin.set_fact:
+    fw_site_octet: "{{ fw_site_octet_override }}"
+  when: fw_site_octet_override is defined
+
+- name: "[Preflight] Derive subnet facts"
+  ansible.builtin.set_fact:
+    fw_subnet:         "192.168.{{ fw_site_octet }}"
+    fw_lan_ip_1:       "192.168.{{ fw_site_octet }}.1"
+    fw_lan_ip_253:     "192.168.{{ fw_site_octet }}.253"
+    fw_wan_static_ip:  "192.168.139.{{ fw_site_octet }}"
+    fw_ansible_ip:     "192.168.{{ fw_site_octet }}.{{ fw_ansible_octet }}"
+    fw_dhcp_start:     "192.168.{{ fw_site_octet }}.150"
+    fw_dhcp_end:       "192.168.{{ fw_site_octet }}.250"
+    fw_wg_tunnel_net:  "10.0.{{ fw_site_octet }}.0/24"
+
+# ── Environment detection ─────────────────────────────────────────────────────
+
+- name: "[Preflight] Check /etc/.environment on host"
+  ansible.builtin.stat:
+    path: /etc/.environment
+  register: fw_env_file
+
+- name: "[Preflight] Read environment from file"
+  ansible.builtin.slurp:
+    src: /etc/.environment
+  register: fw_env_content
+  when: fw_env_file.stat.exists and fw_env_file.stat.size > 0
+
+- name: "[Preflight] Set environment from file"
+  ansible.builtin.set_fact:
+    fw_environment: "{{ fw_env_content.content | b64decode | trim }}"
+  when: fw_env_file.stat.exists and fw_env_file.stat.size > 0
+
+- name: "[Preflight] Show loaded environment"
+  ansible.builtin.debug:
+    msg: "{{ _c.C }}[*]{{ _c.NC }} Environment loaded from file: {{ _c.G }}{{ fw_environment }}{{ _c.NC }}"
+  when: fw_env_file.stat.exists and fw_env_file.stat.size > 0
+
+- name: "[Preflight] Prompt for environment (not set on host)"
+  ansible.builtin.pause:
+    prompt: "{{ _c.C }}Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]{{ _c.NC }}"
+  register: fw_env_prompt
+  when: not fw_env_file.stat.exists
+
+- name: "[Preflight] Set environment from prompt"
+  ansible.builtin.set_fact:
+    fw_environment: >-
+      {%- set e = fw_env_prompt.user_input | default('p') | lower | trim -%}
+      {%- if e == 's' -%}staging
+      {%- elif e == 'd' -%}development
+      {%- else -%}production
+      {%- endif -%}
+  when: not fw_env_file.stat.exists
+
+- name: "[Preflight] Write environment to /etc/.environment"
+  ansible.builtin.copy:
+    content: "{{ fw_environment }}\n"
+    dest: /etc/.environment
+    mode: '0644'
+  when: not fw_env_file.stat.exists
+
+# ── Black-site extra confirmation ─────────────────────────────────────────────
+
+- name: "[Preflight] BLACK SITE — CLD extra confirmation"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.R }}
+      ╔══════════════════════════════════════════════════════════════╗
+      ║  *** BLACK SITE — CLD PROVISIONING NETWORK ***               ║
+      ║                                                              ║
+      ║  This is EXAFWLCLD001 — the bootstrap/provisioning firewall. ║
+      ║  This device carries ALL site provisioning traffic.          ║
+      ║                                                              ║
+      ║  Extra precautions apply:                                    ║
+      ║    - WireGuard will NOT be configured (CLD has no WG)        ║
+      ║    - Static WAN IP is mandatory                              ║
+      ║    - All changes require explicit confirmation               ║
+      ╚══════════════════════════════════════════════════════════════╝
+      {{ _c.NC }}
+      Type CONFIRM to proceed, anything else to abort
+  register: fw_black_site_confirm
+  when: fw_is_black_site
+
+- name: "[Preflight] ABORT — black-site confirmation not given"
+  ansible.builtin.fail:
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} CLD black-site setup aborted."
+  when:
+    - fw_is_black_site
+    - fw_black_site_confirm.user_input | trim | upper != 'CONFIRM'
+
+- name: "[Preflight] Force WG role to none for CLD"
+  ansible.builtin.set_fact:
+    fw_wg_role: "none"
+  when: fw_is_black_site
+
+- name: "[Preflight] Summary"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.G }}[+]{{ _c.NC }} Hostname    : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} Site code   : {{ _c.G }}{{ fw_site_code }}{{ _c.NC }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} Subnet      : {{ _c.G }}{{ fw_subnet }}.0/24{{ _c.NC }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} Environment : {{ _c.G }}{{ fw_environment }}{{ _c.NC }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} Black-site  : {{ _c.R if fw_is_black_site else _c.G }}{{ fw_is_black_site }}{{ _c.NC }}"

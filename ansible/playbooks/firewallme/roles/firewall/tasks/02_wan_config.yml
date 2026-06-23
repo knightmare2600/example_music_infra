@@ -1,0 +1,240 @@
+---
+# =============================================================================
+# roles/firewall/tasks/02_wan_config.yml
+# Example Music Limited — WAN mode, SSH policy, and activation prompts
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+#   2026-06-20  Colourised prompts — matches firewallme.sh colour scheme
+# =============================================================================
+
+- name: "[WAN] BLACK SITE — force static WAN for CLD"
+  ansible.builtin.set_fact:
+    fw_wan_mode: "static"
+  when: fw_is_black_site
+
+- name: "[WAN] Show WAN IP convention"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.C }}[*]{{ _c.NC }} WAN IP convention: {{ _c.C }}192.168.139.<site-octet>{{ _c.NC }}"
+      - "{{ _c.C }}[*]{{ _c.NC }} Derived for {{ fw_site_code }}: {{ _c.G }}192.168.139.{{ fw_site_octet }}{{ _c.NC }}"
+      - "{{ _c.C }}[*]{{ _c.NC }} Default: DHCP (use static if this node has a reserved provisioning IP){{ _c.NC }}"
+
+- name: "[WAN] Prompt for WAN mode (non-CLD)"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
+      {{ _c.C }}║              WAN Interface Configuration             ║{{ _c.NC }}
+      {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
+
+      WAN mode — {{ _c.G }}DHCP{{ _c.NC }} or {{ _c.G }}static{{ _c.NC }}? [DHCP/static] (default: DHCP)
+  register: fw_wan_mode_prompt
+  when: not fw_is_black_site
+
+- name: "[WAN] Set WAN mode from prompt"
+  ansible.builtin.set_fact:
+    fw_wan_mode: "{{ 'static' if fw_wan_mode_prompt.user_input | default('') | lower | trim == 'static' else 'dhcp' }}"
+  when: not fw_is_black_site
+
+- name: "[WAN] Log DHCP selection"
+  ansible.builtin.debug:
+    msg: "{{ _c.G }}[+]{{ _c.NC }} WAN: DHCP"
+  when: fw_wan_mode == 'dhcp'
+
+# ── Static WAN ────────────────────────────────────────────────────────────────
+
+- name: "[WAN] Set static WAN defaults"
+  ansible.builtin.set_fact:
+    fw_wan_static_gw:     "192.168.139.254"
+    fw_wan_static_prefix: "24"
+  when: fw_wan_mode == 'static'
+
+- name: "[WAN] Show derived static WAN IP"
+  ansible.builtin.debug:
+    msg: "{{ _c.C }}[*]{{ _c.NC }} Derived static WAN IP: {{ _c.G }}{{ fw_wan_static_ip }}/24{{ _c.NC }} gw {{ _c.G }}{{ fw_wan_static_gw }}{{ _c.NC }}"
+  when: fw_wan_mode == 'static'
+
+- name: "[WAN] Check if static IP already in use"
+  ansible.builtin.shell: |
+    if ping -c1 -W1 {{ fw_wan_static_ip }} &>/dev/null 2>&1; then echo "in_use"
+    else echo "free"; fi
+  register: fw_wan_ip_check
+  changed_when: false
+  when: fw_wan_mode == 'static'
+
+- name: "[WAN] Report IP free"
+  ansible.builtin.debug:
+    msg: "{{ _c.G }}[+]{{ _c.NC }} {{ fw_wan_static_ip }} is free."
+  when:
+    - fw_wan_mode == 'static'
+    - fw_wan_ip_check.stdout | trim == 'free'
+
+- name: "[WAN] Prompt — static IP already responding"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.Y }}[!]{{ _c.NC }} {{ fw_wan_static_ip }} is already responding on the network.
+      {{ _c.Y }}[!]{{ _c.NC }} This is expected if this node already has this IP (re-running the playbook).
+      {{ _c.Y }}[!]{{ _c.NC }} If this is a NEW node, the IP may be taken — check the provisioning network.
+
+      Use {{ fw_wan_static_ip }} anyway? [y/N]
+  register: fw_wan_collision_confirm
+  when:
+    - fw_wan_mode == 'static'
+    - fw_wan_ip_check.stdout | trim == 'in_use'
+    - not fw_is_black_site
+
+- name: "[WAN] Fall back to DHCP if collision not accepted"
+  ansible.builtin.set_fact:
+    fw_wan_mode: "dhcp"
+  when:
+    - fw_wan_mode == 'static'
+    - fw_wan_ip_check is defined
+    - fw_wan_ip_check.stdout | default('') | trim == 'in_use'
+    - not fw_is_black_site
+    - fw_wan_collision_confirm.user_input | default('') | lower | trim != 'y'
+
+- name: "[WAN] Prompt to override static WAN IP"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.C }}[*]{{ _c.NC }} WAN IP [{{ _c.G }}{{ fw_wan_static_ip }}{{ _c.NC }}] — press Enter to accept or type a different IP
+  register: fw_wan_ip_override
+  when: fw_wan_mode == 'static'
+
+- name: "[WAN] Prompt to override static WAN gateway"
+  ansible.builtin.pause:
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} WAN gateway [{{ _c.G }}{{ fw_wan_static_gw }}{{ _c.NC }}]"
+  register: fw_wan_gw_override
+  when: fw_wan_mode == 'static'
+
+- name: "[WAN] Set final static WAN IP and GW"
+  ansible.builtin.set_fact:
+    fw_wan_static_ip: >-
+      {%- set ov = fw_wan_ip_override.user_input | default('') | trim -%}
+      {{ ov if ov != '' else fw_wan_static_ip }}
+    fw_wan_static_gw: >-
+      {%- set ov = fw_wan_gw_override.user_input | default('') | trim -%}
+      {{ ov if ov != '' else fw_wan_static_gw }}
+  when: fw_wan_mode == 'static'
+
+- name: "[WAN] Log static WAN confirmed"
+  ansible.builtin.debug:
+    msg: "{{ _c.G }}[+]{{ _c.NC }} WAN: static {{ fw_wan_static_ip }}/24 gw {{ fw_wan_static_gw }}"
+  when: fw_wan_mode == 'static'
+
+# ── LAN IP (.1 / .253) ────────────────────────────────────────────────────────
+
+- name: "[WAN] Prompt — .1 or .253 for LAN IP"
+  ansible.builtin.pause:
+    prompt: "Use {{ _c.G }}.1{{ _c.NC }} or {{ _c.G }}.253{{ _c.NC }} for LAN IP?"
+  register: fw_lan_octet_prompt_wan
+
+- name: "[WAN] Validate LAN IP choice"
+  ansible.builtin.assert:
+    that:
+      - fw_lan_octet_prompt_wan.user_input | trim in ['1', '253']
+    fail_msg: "{{ _c.Y }}[!]{{ _c.NC }} Invalid choice. Enter 1 or 253."
+
+- name: "[WAN] Set LAN IP"
+  ansible.builtin.set_fact:
+    fw_lan_ip: "{{ fw_subnet }}.{{ fw_lan_octet_prompt_wan.user_input | trim }}"
+
+# ── Ansible/PXE server ────────────────────────────────────────────────────────
+
+- name: "[WAN] Prompt for Ansible/PXE server octet"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.C }}[*]{{ _c.NC }} Ansible/PXE server IP (last octet or full IP)
+          Derived: {{ _c.G }}{{ fw_ansible_ip }}{{ _c.NC }} — press Enter to accept
+  register: fw_ansible_prompt
+
+- name: "[WAN] Set Ansible IP"
+  ansible.builtin.set_fact:
+    fw_ansible_ip: >-
+      {%- set inp = fw_ansible_prompt.user_input | default('') | trim -%}
+      {%- if inp == '' -%}{{ fw_ansible_ip }}
+      {%- elif inp | regex_search('^\d{1,3}$') -%}{{ fw_subnet }}.{{ inp }}
+      {%- else -%}{{ inp }}
+      {%- endif -%}
+
+# ── Internal DNS ──────────────────────────────────────────────────────────────
+
+- name: "[WAN] Prompt for internal DNS server"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.C }}[*]{{ _c.NC }} Internal DNS server last octet (e.g. {{ _c.G }}10{{ _c.NC }} → {{ fw_subnet }}.10)
+          or full IP, or press Enter to skip (use public DNS only: 1.1.1.1, 9.9.9.9)
+  register: fw_dns_prompt
+
+- name: "[WAN] Set internal DNS IP"
+  ansible.builtin.set_fact:
+    fw_internal_dns: >-
+      {%- set inp = fw_dns_prompt.user_input | default('') | trim -%}
+      {%- if inp == '' -%}
+      {%- elif inp | regex_search('^\d{1,3}$') -%}{{ fw_subnet }}.{{ inp }}
+      {%- else -%}{{ inp }}
+      {%- endif -%}
+
+# ── WAN SSH ───────────────────────────────────────────────────────────────────
+
+- name: "[WAN] Prompt for WAN SSH"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.Y }}[!]{{ _c.NC }} SSH on WAN (port 22 open to the internet) is a security risk.
+      {{ _c.Y }}[!]{{ _c.NC }} LAN SSH is always enabled. WAN SSH defaults to OFF.
+
+      Enable SSH on WAN interface? [y/N]
+  register: fw_wan_ssh_prompt
+
+- name: "[WAN] Set WAN SSH flag"
+  ansible.builtin.set_fact:
+    fw_wan_ssh_enabled: "{{ fw_wan_ssh_prompt.user_input | default('n') | lower | trim == 'y' }}"
+
+- name: "[WAN] Prompt for WAN SSH source restriction"
+  ansible.builtin.pause:
+    prompt: "Restrict WAN SSH to a specific source IP? (leave blank to allow all)"
+  register: fw_wan_ssh_src_prompt
+  when: fw_wan_ssh_enabled
+
+- name: "[WAN] Set WAN SSH source"
+  ansible.builtin.set_fact:
+    fw_wan_ssh_src: "{{ fw_wan_ssh_src_prompt.user_input | default('') | trim }}"
+  when: fw_wan_ssh_enabled
+
+# ── WAN activation gate ───────────────────────────────────────────────────────
+
+- name: "[WAN] Prompt for WAN activation"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
+      {{ _c.C }}║              WAN Activation                          ║{{ _c.NC }}
+      {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
+
+      {{ _c.Y }}[!]{{ _c.NC }} If you are connected via SSH over the WAN interface, bringing it
+      {{ _c.Y }}[!]{{ _c.NC }} up via nmcli mid-run may drop your session.
+      {{ _c.Y }}[!]{{ _c.NC }} All configs will be written regardless. If you say N, bring the
+      {{ _c.Y }}[!]{{ _c.NC }} WAN up yourself afterwards with:  {{ _c.G }}nmcli con up wan{{ _c.NC }}
+
+      Activate WAN interface now? [y/N]
+  register: fw_wan_activate_prompt
+
+- name: "[WAN] Set WAN activation flag"
+  ansible.builtin.set_fact:
+    fw_wan_activate: "{{ fw_wan_activate_prompt.user_input | default('n') | lower | trim == 'y' }}"
+
+- name: "[WAN] Log WAN activation state"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _c.G }}[+]{{ _c.NC }} WAN will be activated during setup.
+      if fw_wan_activate else
+      _c.Y + '[!]' + _c.NC + ' WAN activation skipped — bring it up manually after the playbook completes.'
+  when: true
+
+- name: "[WAN] Summary"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.G }}[+]{{ _c.NC }} WAN mode     : {{ _c.G }}{{ fw_wan_mode }}{{ _c.NC }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} WAN IP       : {{ _c.G }}{{ fw_wan_static_ip + '/24 gw ' + fw_wan_static_gw if fw_wan_mode == 'static' else 'DHCP' }}{{ _c.NC }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} WAN activate : {{ _c.G }}{{ fw_wan_activate }}{{ _c.NC }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} WAN SSH      : {{ (_c.R + 'ENABLED' + (' src:' + fw_wan_ssh_src if fw_wan_ssh_src else ' open') + _c.NC) if fw_wan_ssh_enabled else (_c.Y + 'disabled' + _c.NC) }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} Ansible IP   : {{ _c.G }}{{ fw_ansible_ip }}{{ _c.NC }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} Internal DNS : {{ _c.G }}{{ fw_internal_dns if fw_internal_dns else 'none (1.1.1.1, 9.9.9.9)' }}{{ _c.NC }}"

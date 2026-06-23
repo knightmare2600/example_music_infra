@@ -1,0 +1,74 @@
+---
+# =============================================================================
+# site.yml
+# Example Music Limited — Windows host entry point
+# =============================================================================
+# Bootstrap runs first (once, on a fresh PXE build).
+# Subsequent runs skip stages that are already complete (idempotent).
+#
+# Usage — full run including bootstrap:
+#   ansible-playbook -i inventory/<site>.ini site.yml \
+#     -e target=<host> --ask-vault-pass
+#
+# Usage — skip bootstrap (host already onboarded):
+#   ansible-playbook -i inventory/<site>.ini site.yml \
+#     -e target=<host> --skip-tags bootstrap --ask-vault-pass
+#
+# Usage — bootstrap only:
+#   ansible-playbook -i inventory/<site>.ini site.yml \
+#     -e target=<host> --tags bootstrap --ask-vault-pass
+#
+# Usage — single playbook via tag:
+#   ansible-playbook -i inventory/<site>.ini site.yml \
+#     -e target=<host> --tags registry --ask-vault-pass
+#
+# Playbook order:
+#   00-bootstrap    Full PostOOBE bootstrap (replaces Join-DomainAndBootstrap.ps1)
+#   10-rename       Rename (standalone — also runs inside bootstrap)
+#   20-registry     Registry hardening
+#   25-deadvertise  Advertising/telemetry suppression (desktop + laptop only)
+#   30-chocolatey   Chocolatey installation
+#   40-choco-pkgs   Chocolatey packages
+#   50-binaries     Arch-aware binary + font deployment
+#   60-wallpaper    Corporate wallpaper
+#   70-hibernation  Hibernation policy by host type
+#   75-openssh      OpenSSH + Ansible key (standalone — also runs inside bootstrap)
+#   80-domainjoin   Domain join (standalone — also runs inside bootstrap)
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+#   2026-06-20  Bootstrap added as entry point replacing Join-DomainAndBootstrap.ps1
+# =============================================================================
+
+- import_playbook: playbooks/00-bootstrap.yml
+  tags: bootstrap
+
+- import_playbook: playbooks/10-rename.yml
+  tags: rename
+
+- import_playbook: playbooks/20-registry.yml
+  tags: registry
+
+- import_playbook: playbooks/25-deadvertise.yml
+  tags: deadvertise
+
+- import_playbook: playbooks/30-chocolatey.yml
+  tags: chocolatey
+
+- import_playbook: playbooks/40-choco-packages.yml
+  tags: choco_packages
+
+- import_playbook: playbooks/50-binaries.yml
+  tags: binaries
+
+- import_playbook: playbooks/60-wallpaper.yml
+  tags: wallpaper
+
+- import_playbook: playbooks/70-hibernation.yml
+  tags: hibernation
+
+- import_playbook: playbooks/75-openssh.yml
+  tags: openssh
+
+- import_playbook: playbooks/80-domainjoin.yml
+  tags: domainjoin

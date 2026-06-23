@@ -1,0 +1,48 @@
+---
+# =============================================================================
+# playbooks/70-hibernation.yml
+# Example Music Limited — Hibernation policy
+# =============================================================================
+# Applies the correct hibernation policy based on exa_hibernation_enabled
+# from group_vars:
+#   windows_server:  false  (disabled)
+#   windows_desktop: false  (disabled)
+#   windows_laptop:  true   (enabled)
+#
+# Join-DomainAndBootstrap.ps1 Stage 6 disables hibernation unconditionally.
+# Run this playbook after bootstrap on LAP/SUR devices to re-enable it.
+#
+# Usage:
+#   ansible-playbook -i inventory/<site>.ini playbooks/70-hibernation.yml
+#
+# Tags: hibernation
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Windows — Hibernation policy
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  handlers:
+    - import_tasks: ../handlers/main.yml
+  tasks:
+
+    - name: Disable hibernation (servers and desktops)
+      ansible.windows.win_shell: powercfg /hibernate off
+      when: not (exa_hibernation_enabled | default(false) | bool)
+      changed_when: true
+      tags: hibernation
+
+    - name: Enable hibernation (laptops and tablets)
+      ansible.windows.win_shell: powercfg /hibernate on
+      when: exa_hibernation_enabled | default(false) | bool
+      changed_when: true
+      tags: hibernation
+
+    - name: Show hibernation state
+      debug:
+        msg: >
+          Hibernation {{ 'ENABLED' if exa_hibernation_enabled | default(false) | bool else 'DISABLED' }}
+          on {{ inventory_hostname }}
+      tags: hibernation

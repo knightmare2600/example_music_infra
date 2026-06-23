@@ -1,0 +1,56 @@
+---
+# =============================================================================
+# roles/firewall/tasks/11_cockpit.yml
+# Example Music Limited — Cockpit web management console
+# =============================================================================
+# Mirrors firewallme.sh Cockpit section: enable socket, write self-signed
+# cert, restrict to LAN only (nftables already covers this).
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: "[Cockpit] Enable cockpit.socket"
+  ansible.builtin.systemd:
+    name: cockpit.socket
+    enabled: true
+    state: started
+
+- name: "[Cockpit] Write cockpit.conf (no TLS redirect, LAN only)"
+  ansible.builtin.copy:
+    dest: /etc/cockpit/cockpit.conf
+    mode: '0644'
+    content: |
+      # Example Music Limited — Cockpit config
+      # Written by Ansible firewall role
+      [WebService]
+      Origins = https://{{ inventory_hostname }}:9090 https://{{ fw_lan_ip }}:9090
+      ProtocolHeader = X-Forwarded-Proto
+      LoginTitle = Example Music — {{ inventory_hostname }}
+      [Session]
+      IdleTimeout = 30
+  notify: restart cockpit
+
+- name: "[Cockpit] Generate self-signed cert for Cockpit"
+  ansible.builtin.shell: |
+    mkdir -p /etc/cockpit/ws-certs.d
+    openssl req -newkey rsa:4096 -nodes -keyout /etc/cockpit/ws-certs.d/0-self-signed.key \
+      -x509 -days 3650 \
+      -subj "/CN={{ inventory_hostname }}/O=Example Music Limited/C=GB" \
+      -out /etc/cockpit/ws-certs.d/0-self-signed.cert
+    chmod 0640 /etc/cockpit/ws-certs.d/0-self-signed.key
+    chmod 0644 /etc/cockpit/ws-certs.d/0-self-signed.cert
+  args:
+    creates: /etc/cockpit/ws-certs.d/0-self-signed.cert
+
+- name: "[Cockpit] Flush handlers"
+  ansible.builtin.meta: flush_handlers
+
+- name: "[Cockpit] Verify Cockpit is listening"
+  ansible.builtin.shell: ss -tlnp | grep ':9090'
+  register: cockpit_listen
+  changed_when: false
+  failed_when: false
+
+- name: "[Cockpit] Show Cockpit status"
+  ansible.builtin.debug:
+    msg: "{{ cockpit_listen.stdout_lines if cockpit_listen.stdout_lines else ['Cockpit not yet listening — may need a moment'] }}"

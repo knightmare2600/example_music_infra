@@ -1,0 +1,42 @@
+---
+# =============================================================================
+# roles/firewall/handlers/main.yml
+# Example Music Limited — Firewall role handlers
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: reload nftables
+  ansible.builtin.systemd:
+    name: nftables
+    state: reloaded
+
+- name: restart dnsmasq
+  ansible.builtin.systemd:
+    name: dnsmasq
+    state: restarted
+
+- name: restart NetworkManager
+  ansible.builtin.systemd:
+    name: NetworkManager
+    state: restarted
+
+- name: reload ssh
+  ansible.builtin.systemd:
+    name: ssh
+    state: reloaded
+
+- name: restart wireguard
+  ansible.builtin.systemd:
+    name: wg-quick@wg0
+    state: restarted
+
+- name: reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: restart cockpit
+  ansible.builtin.systemd:
+    name: cockpit.socket
+    state: restarted

@@ -1,0 +1,50 @@
+---
+# =============================================================================
+# playbooks/25-deadvertise.yml
+# Example Music Limited — Advertising & telemetry suppression
+# =============================================================================
+# Applies registry_deadvertise from group_vars/windows_desktop or
+# windows_laptop. Skipped automatically on windows_server group
+# (exa_deadvertise_enabled: false).
+#
+# Usage:
+#   ansible-playbook -i inventory/<site>.ini playbooks/25-deadvertise.yml
+#
+# Tags: deadvertise
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Windows — Advertising & telemetry suppression
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  handlers:
+    - import_tasks: ../handlers/main.yml
+  tasks:
+
+    - name: Skip if not applicable for this host type
+      debug:
+        msg: "exa_deadvertise_enabled is false for {{ inventory_hostname }} — skipping."
+      when: not (exa_deadvertise_enabled | default(false) | bool)
+
+    - name: Apply deadvertise registry keys
+      ansible.windows.win_regedit:
+        path: "{{ item.path }}"
+        name: "{{ item.name }}"
+        data: "{{ item.data }}"
+        type: "{{ item.type }}"
+      loop: "{{ registry_deadvertise }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: exa_deadvertise_enabled | default(false) | bool
+      tags: deadvertise
+
+    - name: Disable Windows Consumer Experience via policy
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent
+        name: DisableWindowsConsumerFeatures
+        data: 1
+        type: dword
+      when: exa_deadvertise_enabled | default(false) | bool
+      tags: deadvertise

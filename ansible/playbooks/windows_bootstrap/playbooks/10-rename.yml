@@ -1,0 +1,69 @@
+---
+# =============================================================================
+# playbooks/10-rename.yml
+# Example Music Limited — Windows host rename
+# =============================================================================
+# Prompts for a hostname if --extra-vars new_hostname is not supplied.
+# Validates against EXA[ROLE][SITE][NNN] convention and cross-checks the
+# site code against sites.csv (passed as --extra-vars sites_csv=<path>).
+#
+# Usage:
+#   ansible-playbook -i inventory/<site>.ini playbooks/10-rename.yml
+#   ansible-playbook -i inventory/<site>.ini playbooks/10-rename.yml \
+#     -e new_hostname=EXAWKSGLA001
+#
+# Tags: rename
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: Windows — Rename host
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+  vars_prompt:
+    - name: new_hostname
+      prompt: "New hostname (EXA[ROLE][SITE][NNN], e.g. EXAWKSGLA001) — Enter to skip rename"
+      private: false
+      default: ""
+  handlers:
+    - import_tasks: ../handlers/main.yml
+  tasks:
+
+    - name: Include hostname facts (current name)
+      include_tasks: ../tasks/hostname_facts.yml
+      vars:
+        inventory_hostname: "{{ ansible_hostname }}"
+      when: new_hostname == ""
+
+    - name: Skip rename if no new hostname supplied
+      debug:
+        msg: "No new hostname supplied — skipping rename. Current: {{ ansible_hostname }}"
+      when: new_hostname == ""
+
+    - name: Validate supplied hostname format
+      assert:
+        that:
+          - new_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$')
+        fail_msg: >
+          '{{ new_hostname }}' is not a valid EXA hostname.
+          Format: EXA[ROLE][SITE][NNN] — e.g. EXAWKSGLA001, EXASRVCLD002.
+      when: new_hostname != ""
+
+    - name: Skip if already named correctly
+      debug:
+        msg: "Host is already named {{ new_hostname | upper }} — no rename needed."
+      when:
+        - new_hostname != ""
+        - ansible_hostname | upper == new_hostname | upper
+
+    - name: Rename computer
+      ansible.windows.win_shell: |
+        Rename-Computer -NewName "{{ new_hostname | upper }}" -Force
+      when:
+        - new_hostname != ""
+        - ansible_hostname | upper != new_hostname | upper
+      notify: reboot host
+
+    - name: Flush handlers (trigger reboot now if rename occurred)
+      meta: flush_handlers

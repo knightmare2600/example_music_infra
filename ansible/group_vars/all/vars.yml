@@ -1,0 +1,35 @@
+---
+# =============================================================================
+# group_vars/all/vars.yml
+# Example Music Limited — Variables common to all managed hosts
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# Binary / asset server
+exa_asset_base:      "http://192.168.139.50/WINDOWS"
+exa_wallpaper_url:   "http://192.168.139.50/ExampleMusicWallpaper.png"
+exa_wallpaper_dest:  'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.png'
+
+# Domain
+exa_domain:          "jukebox.internal"
+exa_domain_join_user: "JUKEBOX\\Administrator"
+
+# Chocolatey
+exa_choco_source:    "https://community.chocolatey.org/api/v2/"
+
+# Screen lock timeout (seconds)
+exa_lock_timeout_secs: 3600
+
+# SSH / Ansible
+exa_ansible_pub_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCyEVQgZP5f3dSLQ/cK7CV1tjN152BhZGQ7evsOTARTG5o9AmMzn4xFurdvmkFli4dEr7HZ3Dp83jxAMbHJ7d0eVuYNHG1n7ktm4FwYPhzBS3Kni3UvM91TeB6kvNZU1jFVE3oaDlft/C104M5S72zUx9SIzI5XH3fUyssAQEGoEoLzW1u4Tj84pxdXoIdGAGJCZ/gZJJFoPGLNkn3m19ML5EQzIpD4sO6yhODVu7gc9RckFGJpTD1CgKa5q4RPWPMN2y3Xw/J95VTHV8+NCBNKGzoVGdxu1E94+aCV5UCaxvgtLGcjJfv4D8Yrnxd//ZTjFYmT+DdIc6XsgYDYvr7Eoanv+bg8mtVVKxhwsxD3XOoxVdLhvCfYlg9IjXPG65GoTDrZuRfkUA6e1YnEaC4wvyXtwcnMV5NaklwAiIH5VLLo6laK1lyxr1tZEVpYx0F0S9S+oVDRPdpoVH98zE8JkPGWI6xSwaekMUMrAu5fZ/7Dfw2LAwAG7dixMroAj3c= knightmare@ansible"
+exa_ansible_key_path: 'C:\ProgramData\ssh\administrators_authorized_keys'
+
+# Fonts
+exa_font_files:
+  - JetBrainsMonoNerdFont-Regular.ttf
+  - JetBrainsMonoNerdFont-Bold.ttf
+  - JetBrainsMonoNerdFont-BoldItalic.ttf
+  - JetBrainsMonoNerdFont-Italic.ttf
+  - JetBrainsMonoNerdFontMono-Regular.ttf

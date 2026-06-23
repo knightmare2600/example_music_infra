@@ -1,0 +1,15 @@
+---
+# requirements.yml
+# Install with: ansible-galaxy collection install -r requirements.yml
+#
+# These collections provide the Windows modules used by windows_bootstrap.yml.
+
+collections:
+  - name: ansible.windows        # win_regedit, win_copy, win_get_url, win_reboot, etc.
+    version: ">=2.0.0"
+  - name: community.windows      # win_timezone, win_firewall_rule, win_unzip
+    version: ">=2.0.0"
+  - name: microsoft.ad           # membership (domain join)
+    version: ">=1.0.0"
+  - name: chocolatey.chocolatey  # win_chocolatey
+    version: ">=1.5.0"

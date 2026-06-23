@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# group_vars/windows_desktop/vars.yml
+# Example Music Limited — Variables for Windows desktop hosts (WKS)
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# Hibernation — off on desktops
+exa_hibernation_enabled: false
+
+# Advertising suppression — on for desktops
+exa_deadvertise_enabled: true
+
+# Desktop-specific Chocolatey packages (added to choco_packages_common)
+choco_packages_extra:
+  - firefox
+  - windirstat
+  - windows-terminal
+
+# Desktop-specific arch-aware binaries (added to binaries_common)
+binaries_extra:
+  - { src_amd64: "busybox64.exe",         src_arm64: "busybox64a.exe",         dest: "busybox.exe" }
+  - { src_amd64: "jq-windows-amd64.exe",  src_arm64: "jq-windows-arm64.exe",   dest: "jq.exe" }
+  - { src_amd64: "ScreenRes-x64.exe",     src_arm64: "ScreenRes-arm64.exe",     dest: "ScreenRes.exe" }
+  - { src_amd64: "WinDirStat.exe",        src_arm64: "WinDirStat_arm64.exe",    dest: "WinDirStat.exe" }
+
+# Advertising suppression registry keys (HKCU — applied to Administrator context via Ansible)
+registry_deadvertise:
+  - { path: 'HKCU:\Software\Policies\Microsoft\Windows\Explorer',                              name: DisableSearchBoxSuggestions,           data: 1,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SystemPaneSuggestionsEnabled,          data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SubscribedContent-338388Enabled,       data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SubscribedContent-338389Enabled,       data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SoftLandingEnabled,                    data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced',               name: Start_TrackProgs,                      data: 0,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent',                         name: DisableWindowsConsumerFeatures,        data: 1,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection',                       name: AllowTelemetry,                        data: 0,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection',                       name: DisableOneSettingsDownloads,           data: 1,  type: dword }
+
+domain_ou_role: "Workstations"

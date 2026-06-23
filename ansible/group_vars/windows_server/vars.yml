@@ -1,0 +1,30 @@
+---
+# =============================================================================
+# group_vars/windows_server/vars.yml
+# Example Music Limited — Variables for Windows Server hosts (SRV, DCS)
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# Hibernation — always off on servers
+exa_hibernation_enabled: false
+
+# Advertising suppression — not applicable on servers
+exa_deadvertise_enabled: false
+
+# Server-specific Chocolatey packages (added to choco_packages_common)
+choco_packages_extra:
+  - sysinternals
+  - nmap
+
+# Server-specific arch-aware binaries (added to binaries_common)
+binaries_extra:
+  - { src_amd64: "ADExplorer64.exe",  src_arm64: "ADExplorer64a.exe",  dest: "ADExplorer64.exe" }
+  - { src_amd64: "procexp64.exe",     src_arm64: "Procmon64a.exe",     dest: "procexp64.exe" }
+  - { src_amd64: "busybox64.exe",     src_arm64: "busybox64a.exe",     dest: "busybox.exe" }
+  - { src_amd64: "jq-windows-amd64.exe", src_arm64: "jq-windows-arm64.exe", dest: "jq.exe" }
+  - { src_amd64: "ScreenRes-x64.exe", src_arm64: "ScreenRes-arm64.exe", dest: "ScreenRes.exe" }
+
+# OU path template — site_code is set per-host or derived from hostname
+domain_ou_role: "Servers"

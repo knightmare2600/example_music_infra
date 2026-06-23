@@ -1,0 +1,53 @@
+---
+# =============================================================================
+# group_vars/windows/vars.yml
+# Example Music Limited — Variables for all Windows hosts
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# Ansible connection — SSH primary, WinRM fallback
+ansible_connection:        ssh
+ansible_shell_type:        powershell
+ansible_user:              Administrator
+ansible_port:              22
+
+# WinRM fallback vars (override per-host or per-group if needed)
+# ansible_connection:                winrm
+# ansible_winrm_transport:           basic
+# ansible_winrm_server_cert_validation: ignore
+# ansible_port:                      5986
+
+# Chocolatey packages installed on every Windows host
+choco_packages_common:
+  - winscp.install
+  - putty.install
+  - hyper
+  - notepadplusplus.install
+  - powershell-core
+  - 7zip.install
+  - far
+  - dua-cli
+  - rustdesk
+
+# Binaries deployed to C:\Windows\ on every host (arch-aware, src resolved at runtime)
+# Format: { src: "<filename in arch folder>", dest: "<filename on host>" }
+binaries_common:
+  - { src: "dua.exe",    dest: "dua.exe" }
+  - { src: "wget.exe",   dest: "wget.exe" }
+
+# Registry keys applied to every Windows host
+registry_common:
+  - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',              name: EnableLUA,                    data: 1,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',              name: ConsentPromptBehaviorAdmin,   data: 2,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',              name: InactivityTimeoutSecs,        data: "{{ exa_lock_timeout_secs }}", type: dword }
+  - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',              name: AutoAdminLogon,               data: "0", type: string }
+  - { path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server',                       name: fDenyTSConnections,           data: 0,  type: dword }
+  - { path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp',  name: UserAuthentication,           data: 1,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU',                  name: NoAutoUpdate,                 data: 1,  type: dword }
+  - { path: 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters',             name: SMB1,                         data: 0,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced',           name: HideFileExt,                  data: 0,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced',           name: Hidden,                       data: 1,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize',          name: AppsUseLightTheme,            data: 0,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize',          name: SystemUsesLightTheme,         data: 0,  type: dword }

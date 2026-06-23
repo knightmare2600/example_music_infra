@@ -1,0 +1,294 @@
+---
+# =============================================================================
+# roles/firewall/tasks/03_wireguard_config.yml
+# Example Music Limited — WireGuard role selection and hub key verification
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file
+#   2026-06-20  Colourised prompts — matches firewallme.sh colour scheme
+# =============================================================================
+
+- name: "[WireGuard] Skip — CLD black site has no WireGuard"
+  ansible.builtin.debug:
+    msg: "{{ _c.Y }}[!]{{ _c.NC }} CLD black site — WireGuard skipped."
+  when: fw_is_black_site
+
+- name: "[WireGuard] Prompt for WireGuard role"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
+      {{ _c.C }}║              WireGuard Configuration                 ║{{ _c.NC }}
+      {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
+
+      {{ _c.C }}[*]{{ _c.NC }} Host           : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}
+      {{ _c.C }}[*]{{ _c.NC }} Site           : {{ _c.G }}{{ fw_site_code }}{{ _c.NC }}
+      {{ _c.C }}[*]{{ _c.NC }} Tunnel subnet  : {{ _c.G }}{{ fw_wg_tunnel_net }}{{ _c.NC }}
+
+      Roles:
+        {{ _c.G }}hub-primary{{ _c.NC }}   — top-level hub (FAL)
+        {{ _c.G }}hub-regional{{ _c.NC }}  — regional hub (ODE, BRK)
+        {{ _c.G }}spoke{{ _c.NC }}         — satellite office (default for most sites)
+        {{ _c.G }}none{{ _c.NC }}          — no WireGuard
+
+      WireGuard role [default: {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}]
+  register: fw_wg_role_prompt
+  when: not fw_is_black_site
+
+- name: "[WireGuard] Set WG role from prompt"
+  ansible.builtin.set_fact:
+    fw_wg_role: >-
+      {%- set inp = fw_wg_role_prompt.user_input | default('') | trim | lower -%}
+      {%- if inp in ['hub-primary', 'hub-regional', 'spoke', 'none'] -%}{{ inp }}
+      {%- else -%}{{ fw_wg_role }}
+      {%- endif -%}
+  when: not fw_is_black_site
+
+- name: "[WireGuard] Log role selection"
+  ansible.builtin.debug:
+    msg: "{{ _c.G }}[+]{{ _c.NC }} WireGuard role: {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}"
+  when: not fw_is_black_site
+
+# ── Hub prompts ───────────────────────────────────────────────────────────────
+
+- name: "[WireGuard] Prompt hub tunnel IP"
+  ansible.builtin.pause:
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} Hub tunnel IP [{{ _c.G }}10.0.{{ fw_site_octet }}.1{{ _c.NC }}]"
+  register: fw_wg_hub_tunnel_ip_prompt
+  when:
+    - not fw_is_black_site
+    - fw_wg_role in ['hub-primary', 'hub-regional']
+
+- name: "[WireGuard] Prompt hub listen port"
+  ansible.builtin.pause:
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} WireGuard listen port [{{ _c.G }}51820{{ _c.NC }}]"
+  register: fw_wg_port_prompt
+  when:
+    - not fw_is_black_site
+    - fw_wg_role in ['hub-primary', 'hub-regional']
+
+- name: "[WireGuard] Set hub WG facts"
+  ansible.builtin.set_fact:
+    fw_wg_tunnel_ip: >-
+      {%- set inp = fw_wg_hub_tunnel_ip_prompt.user_input | default('') | trim -%}
+      {{ inp if inp != '' else '10.0.' + fw_site_octet | string + '.1' }}
+    fw_wg_port: >-
+      {%- set inp = fw_wg_port_prompt.user_input | default('') | trim -%}
+      {{ inp if inp != '' else '51820' }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role in ['hub-primary', 'hub-regional']
+
+# ── Spoke prompts ─────────────────────────────────────────────────────────────
+
+- name: "[WireGuard] Prompt for spoke tunnel IP"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
+      {{ _c.C }}║              Known Hubs                              ║{{ _c.NC }}
+      {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
+      {% for hub, ip in wg_hub_wan_ips.items() %}
+      {{ _c.C }}  {{ hub }}{{ _c.NC }}  {{ ip }}:{{ wg_hub_default_port }}
+      {% endfor %}
+
+      {{ _c.C }}[*]{{ _c.NC }} Spoke tunnel IP [{{ _c.G }}10.0.{{ fw_site_octet }}.2{{ _c.NC }}]
+  register: fw_wg_spoke_tunnel_ip_prompt
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Set spoke tunnel IP"
+  ansible.builtin.set_fact:
+    fw_wg_tunnel_ip: >-
+      {%- set inp = fw_wg_spoke_tunnel_ip_prompt.user_input | default('') | trim -%}
+      {{ inp if inp != '' else '10.0.' + fw_site_octet | string + '.2' }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Prompt for primary hub site code"
+  ansible.builtin.pause:
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} Primary hub site code (e.g. {{ _c.G }}FAL{{ _c.NC }}, {{ _c.G }}ODE{{ _c.NC }}, {{ _c.G }}BRK{{ _c.NC }}) [default: {{ _c.G }}ODE{{ _c.NC }} for EU spokes]"
+  register: fw_wg_hub_site_prompt
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Set hub site code"
+  ansible.builtin.set_fact:
+    fw_wg_hub_site: "{{ fw_wg_hub_site_prompt.user_input | default('ODE') | trim | upper }}"
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Derive hub endpoint"
+  ansible.builtin.set_fact:
+    fw_wg_hub_default_endpoint: >-
+      {{ wg_hub_wan_ips[fw_wg_hub_site] | default('') + ':' + wg_hub_default_port | string
+         if fw_wg_hub_site in wg_hub_wan_ips else '' }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Prompt for hub endpoint"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.C }}[*]{{ _c.NC }} Hub WAN endpoint
+      {% if fw_wg_hub_default_endpoint %}
+      {{ _c.C }}    Known WAN IP for {{ fw_wg_hub_site }}: {{ _c.G }}{{ fw_wg_hub_default_endpoint }}{{ _c.NC }}
+      {% else %}
+      {{ _c.Y }}[!]{{ _c.NC }} No known WAN IP for {{ fw_wg_hub_site }} — enter manually
+      {% endif %}
+      Primary hub endpoint [{{ _c.G }}{{ fw_wg_hub_default_endpoint if fw_wg_hub_default_endpoint else 'IP:port' }}{{ _c.NC }}]
+  register: fw_wg_hub_endpoint_prompt
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Set hub endpoint and IP"
+  ansible.builtin.set_fact:
+    fw_wg_hub_endpoint: >-
+      {%- set inp = fw_wg_hub_endpoint_prompt.user_input | default('') | trim -%}
+      {{ inp if inp != '' else fw_wg_hub_default_endpoint }}
+    fw_wg_hub_ip: >-
+      {%- set inp = fw_wg_hub_endpoint_prompt.user_input | default('') | trim -%}
+      {%- set ep = inp if inp != '' else fw_wg_hub_default_endpoint -%}
+      {{ ep.split(':')[0] }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+# ── Hub pubkey fetch ──────────────────────────────────────────────────────────
+
+- name: "[WireGuard] Attempt SSH fetch of hub pubkey"
+  ansible.builtin.shell: |
+    ssh -o ConnectTimeout=5 \
+        -o StrictHostKeyChecking=no \
+        -o BatchMode=yes \
+        ansible@{{ fw_wg_hub_ip }} 'cat /etc/wireguard/public.key' 2>/dev/null \
+        || echo "FETCH_FAILED"
+  register: fw_wg_hub_pubkey_ssh
+  delegate_to: localhost
+  changed_when: false
+  failed_when: false
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Validate SSH-fetched pubkey format"
+  ansible.builtin.set_fact:
+    fw_wg_hub_pubkey_live: >-
+      {%- set raw = fw_wg_hub_pubkey_ssh.stdout | default('') | trim -%}
+      {{ raw if raw | regex_search('^[A-Za-z0-9+/]{43}=$') else '' }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Report SSH fetch result"
+  ansible.builtin.debug:
+    msg: >-
+      {%- set known = wg_hub_known_pubkeys[fw_wg_hub_site] | default('') -%}
+      {%- if fw_wg_hub_pubkey_live == '' -%}
+      {{ _c.Y }}[!]{{ _c.NC }} SSH fetch failed or returned invalid key — manual entry required.
+      {%- elif known == '' -%}
+      {{ _c.G }}[+]{{ _c.NC }} Live key fetched: {{ fw_wg_hub_pubkey_live }} (no known-good key to compare)
+      {%- elif fw_wg_hub_pubkey_live == known -%}
+      {{ _c.G }}[+]{{ _c.NC }} Live key {{ _c.G }}matches{{ _c.NC }} known-good key for {{ fw_wg_hub_site }} ✓
+      {%- else -%}
+      {{ _c.R }}[!]{{ _c.NC }} Live key {{ _c.R }}DIFFERS{{ _c.NC }} from known-good key for {{ fw_wg_hub_site }}!
+      {{ _c.R }}    Known : {{ wg_hub_known_pubkeys[fw_wg_hub_site] }}{{ _c.NC }}
+      {{ _c.R }}    Live  : {{ fw_wg_hub_pubkey_live }}{{ _c.NC }}
+      {{ _c.R }}    Hub may have been rebuilt — verify before accepting.{{ _c.NC }}
+      {%- endif -%}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Confirm differing key or provide manual key"
+  ansible.builtin.pause:
+    prompt: |
+      {% set known = wg_hub_known_pubkeys[fw_wg_hub_site] | default('') %}
+      {% if fw_wg_hub_pubkey_live != '' and known != '' and fw_wg_hub_pubkey_live != known %}
+      {{ _c.R }}[!] WARNING: Live key differs from known-good key for {{ fw_wg_hub_site }}{{ _c.NC }}
+      {{ _c.R }}    Known : {{ known }}{{ _c.NC }}
+      {{ _c.R }}    Live  : {{ fw_wg_hub_pubkey_live }}{{ _c.NC }}
+
+      Type {{ _c.G }}accept{{ _c.NC }} to use the live key, or paste a replacement key
+      {% elif fw_wg_hub_pubkey_live == '' %}
+      {{ _c.Y }}[!]{{ _c.NC }} SSH fetch failed. Get the hub pubkey manually:
+      {{ _c.G }}    ssh ansible@{{ fw_wg_hub_ip }} 'cat /etc/wireguard/public.key'{{ _c.NC }}
+      {% if known %}
+      {{ _c.Y }}[!]{{ _c.NC }} Last known good key for {{ fw_wg_hub_site }}: {{ _c.C }}{{ known }}{{ _c.NC }}
+      {% endif %}
+      Paste the hub public key (44 base64 chars ending in =)
+      {% else %}
+      {{ _c.G }}[+]{{ _c.NC }} SSH fetch succeeded and key matches known-good ✓
+      {{ _c.G }}    {{ fw_wg_hub_pubkey_live }}{{ _c.NC }}
+
+      Press Enter to accept
+      {% endif %}
+  register: fw_wg_hub_pubkey_confirm
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Set final hub pubkey"
+  ansible.builtin.set_fact:
+    fw_wg_hub_pubkey: >-
+      {%- set inp = fw_wg_hub_pubkey_confirm.user_input | default('') | trim -%}
+      {%- if inp == '' or inp | lower == 'accept' -%}{{ fw_wg_hub_pubkey_live }}
+      {%- else -%}{{ inp }}
+      {%- endif -%}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] FAIL — no valid hub pubkey"
+  ansible.builtin.fail:
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} No valid WireGuard public key for hub {{ fw_wg_hub_site }}. Expected 44 base64 chars ending in =."
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+    - not fw_wg_hub_pubkey | default('') | regex_search('^[A-Za-z0-9+/]{43}=$')
+
+# ── Build topology-aware AllowedIPs ──────────────────────────────────────────
+
+- name: "[WireGuard] Build topology-aware AllowedIPs"
+  ansible.builtin.set_fact:
+    fw_wg_allowed_ips: >-
+      {%- set hub = fw_wg_hub_site -%}
+      {%- set parts = [] -%}
+      {%- set topo = wg_hub_topology[hub]['spokes'] | default([]) -%}
+      {%- set all_sites = [hub] + topo -%}
+      {%- for code in all_sites -%}
+        {%- set octet = wg_site_octets[code] | default('') -%}
+        {%- if octet != '' -%}
+          {%- set _ = parts.append('10.0.' + octet|string + '.0/24') -%}
+          {%- set _ = parts.append('192.168.' + octet|string + '.0/24') -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ parts | join(', ') }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Summary — spoke"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.G }}[+]{{ _c.NC }} WG role      : {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}"
+      - "{{ _c.O }}[+]{{ _c.NC }} Tunnel IP    : {{ _c.O }}{{ fw_wg_tunnel_ip }}/24{{ _c.NC }}"
+      - "{{ _c.O }}[+]{{ _c.NC }} Hub          : {{ _c.O }}{{ fw_wg_hub_site }} — {{ fw_wg_hub_endpoint }}{{ _c.NC }}"
+      - "{{ _c.O }}[+]{{ _c.NC }} Hub pubkey   : {{ _c.O }}{{ fw_wg_hub_pubkey }}{{ _c.NC }}"
+      - "{{ _c.C }}[+]{{ _c.NC }} AllowedIPs   : {{ fw_wg_allowed_ips }}"
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[WireGuard] Summary — hub"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.G }}[+]{{ _c.NC }} WG role    : {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}"
+      - "{{ _c.O }}[+]{{ _c.NC }} Tunnel IP  : {{ _c.O }}{{ fw_wg_tunnel_ip }}/24{{ _c.NC }}"
+      - "{{ _c.O }}[+]{{ _c.NC }} Port       : {{ _c.O }}{{ fw_wg_port }}{{ _c.NC }}"
+  when:
+    - not fw_is_black_site
+    - fw_wg_role in ['hub-primary', 'hub-regional']

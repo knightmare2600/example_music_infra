@@ -1,0 +1,532 @@
+---
+# =============================================================================
+# Example Music Limited — Windows Node Bootstrap Playbook
+# windows_bootstrap.yml
+#
+# Ansible equivalent of PostOOBE.cmd + Join-DomainAndBootstrap.ps1.
+# Covers domain join, all system configuration, tooling, and hardening.
+#
+# PRE-REQUISITES:
+#   - OpenSSH is installed and running (handled by autounattend.xml).
+#   - host_vars/<hostname>/windows.yml must be populated (see TEMPLATE).
+#
+# CREDENTIALS:
+#   First run: the playbook prompts for the local Administrator password
+#   (masked). It uses this to connect and deploy the Ansible SSH key.
+#   After that first run the key is in place and the password is never
+#   needed again — just let ansible_ssh_private_key_file do its job.
+#
+#   To skip the prompt on subsequent runs (key already deployed):
+#     ansible-playbook ... --key-file ~/ansible/configs/ansible-id_rsa
+#   Or set ansible_password in vault if you ever need password auth again.
+#
+# SENTINEL GUARD:
+#   C:\Windows\Temp\PostOOBE-Bootstrap.done — if present, host is skipped.
+#   Override with: -e force_bootstrap=true
+#
+# USAGE — single host (first time, will prompt for password):
+#   ansible-playbook playbooks/windows/windows_bootstrap.yml \
+#     -i configs/inventory --limit EXAWKSFAL001
+#
+# USAGE — bulk (host_vars must be fully populated, key already deployed):
+#   ansible-playbook playbooks/windows/windows_bootstrap.yml \
+#     -i configs/inventory --limit windows_nodes
+# =============================================================================
+
+- name: Bootstrap Windows node — pre-join configuration
+  hosts: "{{ target_hosts | default('windows_nodes') }}"
+  gather_facts: true
+
+  vars_prompt:
+    # Prompted once on first run to deploy the SSH key.
+    # Leave blank on subsequent runs — Ansible will use the private key file.
+    - name: ansible_password
+      prompt: "Local Administrator password (blank if SSH key already deployed)"
+      private: true
+      default: ""
+
+  vars:
+    force_bootstrap: false
+    forest_root:     jukebox.internal
+    deploy_tools_dc: EXADCSCPH001
+    wallpaper_url:   "http://192.168.139.50/ExampleMusicWallpaper.png"
+    wallpaper_dest:  'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.png'
+    marker_file:     'C:\Windows\Temp\PostOOBE-Bootstrap.done'
+
+    # Subnet third-octet → site/domain map
+    subnet_site_map:
+      "76":  { site: FAL, domain: example.net  }  # Falkirk — head office
+      "131": { site: EDI, domain: example.net  }  # Edinburgh
+      "141": { site: GLA, domain: example.net  }  # Glasgow
+      "41":  { site: CLY, domain: example.net  }  # Clydebank
+      "138": { site: DUN, domain: example.net  }  # Dundee
+      "173": { site: PER, domain: example.net  }  # Perth
+      "224": { site: ABD, domain: example.org  }  # Aberdeen
+      "20":  { site: LND, domain: example.net  }  # London
+      "121": { site: BIR, domain: example.net  }  # Birmingham
+      "161": { site: MCR, domain: example.org  }  # Manchester
+      "151": { site: LIV, domain: example.org  }  # Liverpool
+      "191": { site: NEW, domain: example.org  }  # Newcastle
+      "114": { site: SHE, domain: example.net  }  # Sheffield
+      "142": { site: HAL, domain: example.net  }  # Halifax
+      "148": { site: HUL, domain: example.net  }  # Hull
+      "247": { site: COV, domain: example.net  }  # Coventry
+      "231": { site: CPH, domain: example.com  }  # Copenhagen
+      "126": { site: ODE, domain: example.net  }  # Odense — EU hub
+      "65":  { site: KGE, domain: example.net  }  # Køge
+      "246": { site: FAX, domain: example.net  }  # Faxe
+      "238": { site: KOR, domain: example.net  }  # Korsør
+      "228": { site: BON, domain: example.net  }  # Bonn
+      "113": { site: BER, domain: example.net  }  # West Berlin
+      "189": { site: MUN, domain: example.net  }  # Munich
+      "46":  { site: GOT, domain: example.net  }  # Gothenburg
+      "47":  { site: OSL, domain: example.net  }  # Oslo
+      "31":  { site: AMS, domain: example.net  }  # Amsterdam
+      "39":  { site: MIL, domain: example.net  }  # Milan
+      "78":  { site: VIE, domain: example.net  }  # Vienna
+      "136": { site: BRK, domain: example.net  }  # Brockville — NA/APAC hub
+      "164": { site: TOR, domain: example.net  }  # Toronto
+      "154": { site: MTL, domain: example.net  }  # Montreal
+      "213": { site: LAX, domain: example.net  }  # Los Angeles
+      "212": { site: NYC, domain: example.net  }  # New York
+      "201": { site: NJC, domain: example.net  }  # New Jersey
+      "135": { site: MIA, domain: example.net  }  # Miami
+      "44":  { site: ATL, domain: example.net  }  # Athens GA
+      "214": { site: CHI, domain: example.net  }  # Chicago
+      "29":  { site: SYD, domain: example.net  }  # Sydney
+      "61":  { site: MEL, domain: example.net  }  # Melbourne
+      "93":  { site: AKL, domain: example.net  }  # Auckland
+      "139": { site: CLD, domain: example.net  }  # Cloud / provisioning
+
+  pre_tasks:
+
+    # -------------------------------------------------------------------------
+    # Sentinel guard — skip gracefully if already bootstrapped
+    # -------------------------------------------------------------------------
+    - name: Check for bootstrap marker
+      ansible.windows.win_stat:
+        path: "{{ marker_file }}"
+      register: marker_stat
+
+    - name: Note — already bootstrapped, skipping
+      debug:
+        msg: >-
+          {{ inventory_hostname }} already has {{ marker_file }} — skipping.
+          Re-run with -e force_bootstrap=true to re-apply.
+      when:
+        - marker_stat.stat.exists
+        - not force_bootstrap | bool
+
+    - name: End play for this host (already bootstrapped)
+      meta: end_host
+      when:
+        - marker_stat.stat.exists
+        - not force_bootstrap | bool
+
+    # -------------------------------------------------------------------------
+    # Derive site from IP if not set in host_vars
+    # -------------------------------------------------------------------------
+    - name: Detect site from IP address
+      set_fact:
+        detected_third_octet: "{{ ansible_ip_addresses
+          | select('match', '^192\\.168\\.')
+          | reject('match', '^192\\.168\\.139\\.')
+          | map('split', '.')
+          | map(attribute=2)
+          | first | default('') }}"
+
+    - name: Resolve site and domain from subnet map
+      set_fact:
+        resolved_site:   "{{ win_site   | default(subnet_site_map[detected_third_octet].site   | default('UNKNOWN')) }}"
+        resolved_domain: "{{ win_domain | default(subnet_site_map[detected_third_octet].domain | default('example.net')) }}"
+
+    - name: Display resolved identity before proceeding
+      debug:
+        msg:
+          - "════════════════════════════════════════════"
+          - "  Host     : {{ inventory_hostname }}"
+          - "  Site     : {{ resolved_site }}"
+          - "  Domain   : {{ resolved_domain }}"
+          - "  OU       : {{ win_ou_path }}"
+          - "  Platform : {{ ansible_virtualization_type | default('unknown') }}"
+          - "════════════════════════════════════════════"
+
+  tasks:
+
+    # =========================================================================
+    # PHASE 1 — System settings (no reboot needed yet)
+    # =========================================================================
+
+    # ---- Hypervisor guest tools ---------------------------------------------
+    - name: Install QEMU guest agent (Proxmox/KVM)
+      chocolatey.chocolatey.win_chocolatey:
+        name: qemu-guest-agent
+        state: present
+      when: ansible_virtualization_type | default('') is match('kvm|qemu|proxmox')
+
+    - name: Install VMware Tools (VMware)
+      chocolatey.chocolatey.win_chocolatey:
+        name: vmware-tools
+        state: present
+      when: ansible_virtualization_type | default('') == 'VMware'
+
+    # ---- Power settings — VM-appropriate ------------------------------------
+    - name: Disable hibernation (VMs don't need it, wastes disk)
+      ansible.windows.win_command: powercfg /h off
+      changed_when: false
+
+    - name: Set ClearPageFileAtShutdown
+      ansible.windows.win_regedit:
+        path: HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management
+        name: ClearPageFileAtShutdown
+        data: 1
+        type: dword
+
+    - name: Set monitor timeout to 60 minutes (AC power)
+      ansible.windows.win_command: powercfg /change monitor-timeout-ac 60
+      changed_when: false
+
+    - name: Set monitor timeout to 60 minutes (DC power)
+      ansible.windows.win_command: powercfg /change monitor-timeout-dc 60
+      changed_when: false
+
+    - name: Set lock screen inactivity timeout (3600 seconds = 60 min)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+        name: InactivityTimeoutSecs
+        data: 3600
+        type: dword
+
+    # ---- British English locale ---------------------------------------------
+    - name: Set system locale to en-GB
+      ansible.windows.win_command: >
+        powershell.exe -NoProfile -NonInteractive -Command
+        "Set-WinSystemLocale -SystemLocale en-GB;
+         Set-WinUserLanguageList -LanguageList en-GB -Force;
+         Set-WinUILanguageOverride -Language en-GB;
+         Set-WinHomeLocation -GeoId 242;
+         Set-Culture en-GB"
+      changed_when: false
+
+    - name: Set timezone to GMT Standard Time
+      community.windows.win_timezone:
+        timezone: GMT Standard Time
+
+    # ---- Corporate wallpaper ------------------------------------------------
+    - name: Create wallpaper directory
+      ansible.windows.win_file:
+        path: 'C:\Windows\Web\Wallpaper\ExampleMusic'
+        state: directory
+
+    - name: Download corporate wallpaper
+      ansible.windows.win_get_url:
+        url: "{{ wallpaper_url }}"
+        dest: "{{ wallpaper_dest }}"
+        force: false        # don't re-download if already present
+
+    - name: Set wallpaper via PersonalizationCSP (path)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP
+        name: DesktopImagePath
+        data: "{{ wallpaper_dest }}"
+        type: string
+
+    - name: Set wallpaper via PersonalizationCSP (url key — same value)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP
+        name: DesktopImageUrl
+        data: "{{ wallpaper_dest }}"
+        type: string
+
+    - name: Set wallpaper PersonalizationCSP status
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP
+        name: DesktopImageStatus
+        data: 1
+        type: dword
+
+    - name: Lock wallpaper via policy (prevents user changing it)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+        name: Wallpaper
+        data: "{{ wallpaper_dest }}"
+        type: string
+
+    - name: Lock wallpaper style (Fill)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+        name: WallpaperStyle
+        data: "10"
+        type: string
+
+    - name: Hide Themes tab in Settings (user cannot change wallpaper)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer
+        name: NoThemesTab
+        data: 1
+        type: dword
+
+    # ---- Dark mode ----------------------------------------------------------
+    - name: Enable dark mode — system
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize
+        name: "{{ item }}"
+        data: 0
+        type: dword
+      loop:
+        - AppsUseLightTheme
+        - SystemUsesLightTheme
+
+    - name: Enable dark mode in Default user hive (new users get dark mode on first logon)
+      ansible.windows.win_shell: |
+        reg load HKLM\TempDefaultHive C:\Users\Default\NTUSER.DAT
+        reg add "HKLM\TempDefaultHive\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v AppsUseLightTheme /t REG_DWORD /d 0 /f
+        reg add "HKLM\TempDefaultHive\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v SystemUsesLightTheme /t REG_DWORD /d 0 /f
+        [gc]::Collect()
+        reg unload HKLM\TempDefaultHive
+      changed_when: false
+
+    # ---- OpenSSH ------------------------------------------------------------
+    # OpenSSH is installed and started by SetupComplete.cmd (autounattend build).
+    # We don't reinstall it — just verify the service state and deploy the key.
+
+    - name: Verify sshd is running and set to auto-start
+      ansible.windows.win_service:
+        name: sshd
+        start_mode: auto
+        state: started
+
+    - name: Create ProgramData\ssh directory
+      ansible.windows.win_file:
+        path: 'C:\ProgramData\ssh'
+        state: directory
+
+    - name: Deploy Ansible public key to administrators_authorized_keys
+      ansible.windows.win_copy:
+        content: "{{ lookup('file', ansible_ssh_public_key_file) }}\n"
+        dest: 'C:\ProgramData\ssh\administrators_authorized_keys'
+
+    - name: Lock down administrators_authorized_keys permissions (sshd requires this)
+      ansible.windows.win_shell: |
+        icacls C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r
+        icacls C:\ProgramData\ssh\administrators_authorized_keys /grant "SYSTEM:(F)"
+        icacls C:\ProgramData\ssh\administrators_authorized_keys /grant "BUILTIN\Administrators:(F)"
+      changed_when: false
+
+    - name: Set default SSH shell to PowerShell 7 (fall back to PS5)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\OpenSSH
+        name: DefaultShell
+        data: 'C:\Program Files\PowerShell\7\pwsh.exe'
+        type: string
+
+    - name: Set SSH shell args
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\OpenSSH
+        name: DefaultShellCommandOption
+        data: '-NoLogo'
+        type: string
+
+    - name: Ensure OpenSSH firewall rule exists
+      community.windows.win_firewall_rule:
+        name: OpenSSH-Server-In-TCP
+        localport: "22"
+        action: allow
+        direction: in
+        protocol: tcp
+        state: present
+        enabled: true
+
+    # ---- RDP ----------------------------------------------------------------
+    # RDP and its firewall rules are enabled by SetupComplete.cmd.
+    # SetupComplete does NOT enforce NLA — we add that here.
+
+    - name: Enforce NLA for RDP (SetupComplete does not set this)
+      ansible.windows.win_regedit:
+        path: HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp
+        name: UserAuthentication
+        data: 1
+        type: dword
+
+    - name: Ensure TermService is running and set to auto-start
+      ansible.windows.win_service:
+        name: TermService
+        start_mode: auto
+        state: started
+
+    # ---- Chocolatey ---------------------------------------------------------
+    - name: Install Chocolatey
+      chocolatey.chocolatey.win_chocolatey:
+        name: chocolatey
+        state: present
+
+    # ---- Baseline packages --------------------------------------------------
+    - name: Install baseline packages via Chocolatey
+      chocolatey.chocolatey.win_chocolatey:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - winscp.install
+        - putty.install
+        - hyper
+        - notepadplusplus.install
+        - powershell-core
+        - 7zip.install
+        - far
+        - dua-cli
+        - rustdesk
+
+    # ---- RSAT ---------------------------------------------------------------
+    - name: Install RSAT capabilities
+      ansible.windows.win_shell: |
+        Add-WindowsCapability -Online -Name {{ item }} | Out-Null
+      loop:
+        - RSAT.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
+        - RSAT.DNS.Tools~~~~0.0.1.0
+        - RSAT.GroupPolicy.Management.Tools~~~~0.0.1.0
+      changed_when: false
+
+    # ---- PSWindowsUpdate ----------------------------------------------------
+    - name: Install PSWindowsUpdate module (Windows PowerShell 5)
+      ansible.windows.win_shell: |
+        if (-not (Get-Module -ListAvailable -Name PSWindowsUpdate)) {
+            Install-Module PSWindowsUpdate -Force -Confirm:$false -Scope AllUsers
+        }
+      changed_when: false
+
+    # ---- PowerShell 7 modules -----------------------------------------------
+    - name: Install PowerShell 7 modules (AllUsers scope)
+      ansible.windows.win_shell: |
+        $m = '{{ item }}'
+        & 'C:\Program Files\PowerShell\7\pwsh.exe' -NoProfile -NonInteractive -Command "
+            if (-not (Get-Module -ListAvailable -Name '$m')) {
+                Install-Module '$m' -Force -Confirm:\$false -Scope AllUsers -ErrorAction SilentlyContinue
+            }
+        "
+      loop:
+        - PSConsoleTools
+        - PSWindowsUpdate
+        - PSWriteColor
+        - PSReadLine
+        - Terminal-Icons
+        - CompletionPredictor
+        - NerdFonts
+      changed_when: false
+
+    # ---- JetBrainsMono Nerd Font --------------------------------------------
+    - name: Download JetBrainsMono Nerd Font
+      ansible.windows.win_get_url:
+        url: https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip
+        dest: '%TEMP%\JetBrainsMono.zip'
+        force: false
+
+    - name: Extract font archive
+      community.windows.win_unzip:
+        src: '%TEMP%\JetBrainsMono.zip'
+        dest: '%TEMP%\JetBrainsMono'
+        creates: '%TEMP%\JetBrainsMono'
+
+    - name: Install fonts and register in registry
+      ansible.windows.win_shell: |
+        $FontDest = 'C:\Windows\Fonts'
+        $FontReg  = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+        Get-ChildItem '$env:TEMP\JetBrainsMono' -Recurse -Include '*.ttf','*.otf' |
+            Where-Object { $_.Name -notmatch 'Windows Compatible' } |
+            ForEach-Object {
+                $dest = Join-Path $FontDest $_.Name
+                if (-not (Test-Path $dest)) { Copy-Item $_.FullName $dest -Force }
+                $regName = $_.BaseName + ' (TrueType)'
+                if (-not (Get-ItemProperty -Path $FontReg -Name $regName -ErrorAction SilentlyContinue)) {
+                    New-ItemProperty -Path $FontReg -Name $regName -Value $_.Name -PropertyType String -Force | Out-Null
+                }
+            }
+      changed_when: false
+
+    # ---- PowerShell 7 profile -----------------------------------------------
+    - name: Deploy PS7 AllUsersAllHosts profile
+      ansible.windows.win_copy:
+        dest: 'C:\Program Files\PowerShell\7\profile.ps1'
+        content: |
+          # Example Music — PowerShell 7 baseline profile
+          # Deployed by Ansible windows_bootstrap.yml
+
+          if (Get-Module -ListAvailable -Name PSReadLine) {
+              Set-PSReadLineOption -PredictionSource HistoryAndPlugin -ErrorAction SilentlyContinue
+              Set-PSReadLineOption -PredictionViewStyle ListView -ErrorAction SilentlyContinue
+          }
+
+          if (Get-Module -ListAvailable -Name Terminal-Icons) {
+              Import-Module Terminal-Icons -ErrorAction SilentlyContinue
+          }
+
+          if (Get-Module -ListAvailable -Name CompletionPredictor) {
+              Import-Module CompletionPredictor -ErrorAction SilentlyContinue
+          }
+
+          if (Get-Module -ListAvailable -Name NerdFonts) {
+              Import-Module NerdFonts -ErrorAction SilentlyContinue
+          }
+        force: false    # don't overwrite if already deployed
+
+    # ---- Hyper terminal config ----------------------------------------------
+    - name: Deploy Hyper config for local Administrator
+      ansible.windows.win_copy:
+        dest: 'C:\Users\Administrator\AppData\Roaming\Hyper\.hyper.js'
+        src: templates/hyper.js
+        force: true
+
+    - name: Stage Hyper config in Default profile (new domain users inherit it)
+      ansible.windows.win_copy:
+        dest: 'C:\Users\Default\AppData\Roaming\Hyper\.hyper.js'
+        src: templates/hyper.js
+        force: true
+
+    # =========================================================================
+    # PHASE 2 — Domain join (requires reboot, then reconnect)
+    # =========================================================================
+
+    - name: Rename computer if hostname differs from inventory name
+      ansible.windows.win_hostname:
+        name: "{{ inventory_hostname }}"
+      register: hostname_result
+
+    - name: Reboot now if hostname changed (required before domain join)
+      ansible.windows.win_reboot:
+        reboot_timeout: 300
+      when: hostname_result.reboot_required | default(false)
+
+    - name: Join domain
+      microsoft.ad.membership:
+        dns_domain_name: "{{ resolved_domain }}"
+        domain_admin_user: "JUKEBOX\\{{ win_domain_join_user | default('Administrator') }}"
+        domain_admin_password: "{{ win_domain_join_password }}"
+        ou_path: "{{ win_ou_path }}"
+        state: domain
+      register: domain_join_result
+
+    - name: Reboot after domain join
+      ansible.windows.win_reboot:
+        reboot_timeout: 300
+        post_reboot_delay: 30
+      when: domain_join_result.reboot_required | default(true)
+
+    # =========================================================================
+    # PHASE 3 — Post-join (runs after reboot, now domain-joined)
+    # =========================================================================
+
+    - name: Write bootstrap marker (sentinel)
+      ansible.windows.win_file:
+        path: "{{ marker_file }}"
+        state: touch
+
+    - name: Bootstrap complete
+      debug:
+        msg:
+          - "════════════════════════════════════════════"
+          - "  Bootstrap complete: {{ inventory_hostname }}"
+          - "  Domain  : {{ resolved_domain }}"
+          - "  Site    : {{ resolved_site }}"
+          - "  OU      : {{ win_ou_path }}"
+          - "  SSH     : OpenSSH running, Ansible key deployed"
+          - "  RDP     : enabled"
+          - "════════════════════════════════════════════"

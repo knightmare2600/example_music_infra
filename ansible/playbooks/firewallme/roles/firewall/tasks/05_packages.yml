@@ -1,0 +1,154 @@
+---
+# =============================================================================
+# roles/firewall/tasks/05_packages.yml
+# Example Music Limited — Package installation
+# =============================================================================
+# Mirrors firewallme.sh bootstrap package install, localepurge, initramfs
+# slimming, ansible user creation, zsh setup.
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+- name: "[Packages] Set DEBIAN_FRONTEND to suppress apt prompts"
+  ansible.builtin.shell: echo "DEBIAN_FRONTEND=noninteractive" >> /etc/environment
+  changed_when: false
+
+- name: "[Packages] Update apt cache"
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: "[Packages] Install base packages"
+  ansible.builtin.apt:
+    name: "{{ fw_packages }}"
+    state: present
+    install_recommends: false
+
+- name: "[Packages] Configure localepurge (keep en_GB, en_US)"
+  ansible.builtin.debconf:
+    name: localepurge
+    question: "{{ item.question }}"
+    value: "{{ item.value }}"
+    vtype: "{{ item.vtype }}"
+  loop:
+    - { question: "localepurge/nopurge",        value: "en_GB.UTF-8, en_US.UTF-8", vtype: "multiselect" }
+    - { question: "localepurge/verbose",         value: "false",                    vtype: "boolean" }
+    - { question: "localepurge/none_selected",   value: "false",                    vtype: "boolean" }
+    - { question: "localepurge/quickndirty",     value: "false",                    vtype: "boolean" }
+
+- name: "[Packages] Run localepurge"
+  ansible.builtin.command: localepurge
+  changed_when: true
+
+- name: "[Packages] Write VM firewall initramfs profile"
+  ansible.builtin.copy:
+    dest: /etc/initramfs-tools/conf.d/firewall.conf
+    content: |
+      # Example Music — VM firewall initramfs profile
+    mode: '0644'
+
+- name: "[Packages] Blacklist unused kernel modules"
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/firewall-blacklist.conf
+    mode: '0644'
+    content: |
+      blacklist snd
+      blacklist snd_pcm
+      blacklist snd_timer
+      blacklist soundcore
+      blacklist ac97_bus
+      blacklist ath9k
+      blacklist ath10k_core
+      blacklist brcmfmac
+      blacklist iwlwifi
+      blacklist rtl8xxxu
+      blacklist mt76
+      blacklist bluetooth
+      blacklist btusb
+      blacklist nouveau
+      blacklist radeon
+      blacklist amdgpu
+      blacklist i915
+      blacklist uvcvideo
+      blacklist pcspkr
+
+- name: "[Packages] Regenerate lean initramfs"
+  ansible.builtin.shell: update-initramfs -u -k $(uname -r)
+  changed_when: true
+
+# ── Ansible user ──────────────────────────────────────────────────────────────
+
+- name: "[Packages] Create ansible system user"
+  ansible.builtin.user:
+    name: ansible
+    shell: /bin/bash
+    groups: sudo
+    create_home: true
+    password: "!"    # locked — key/sudo auth only
+    state: present
+
+- name: "[Packages] Write ansible user .zshrc"
+  ansible.builtin.copy:
+    dest: /home/ansible/.zshrc
+    owner: ansible
+    group: ansible
+    mode: '0644'
+    content: |
+      export TERM=xterm-256color
+      export EDITOR=vim
+      export VISUAL=vim
+      export SUDO_EDITOR=vim
+      HISTFILE=~/.zsh_history
+      HISTSIZE=10000
+      SAVEHIST=10000
+      setopt appendhistory autocd extendedglob notify interactivecomments
+      setopt AUTO_CONTINUE LONG_LIST_JOBS
+      bindkey -e
+      autoload -Uz compinit && compinit
+      autoload -Uz colors && colors
+      PROMPT='
+      %F{green}%m%f:%F{cyan}%~%f> '
+      alias ls='ls --color=auto'
+      alias ll='ls -lah'
+      alias grep='grep --color=auto'
+      if (( $+commands[grc] )); then
+        GRC_ALIASES=true
+        [[ -f /etc/profile.d/grc.sh ]] && source /etc/profile.d/grc.sh
+      fi
+
+- name: "[Packages] Set ansible user login shell to zsh"
+  ansible.builtin.user:
+    name: ansible
+    shell: /usr/bin/zsh
+
+- name: "[Packages] Write root .zshrc"
+  ansible.builtin.copy:
+    dest: /root/.zshrc
+    mode: '0644'
+    content: |
+      export TERM=xterm-256color
+      HISTFILE=~/.zsh_history
+      HISTSIZE=10000
+      SAVEHIST=10000
+      export EDITOR=vim
+      export VISUAL=vim
+      export SUDO_EDITOR=vim
+      setopt appendhistory autocd extendedglob notify interactivecomments
+      setopt AUTO_CONTINUE LONG_LIST_JOBS
+      bindkey -e
+      autoload -Uz compinit && compinit
+      autoload -Uz colors && colors
+      PROMPT='
+      %F{red}%m%f:%F{cyan}%~%f# '
+      alias ls='ls --color=auto'
+      alias ll='ls -lah'
+      alias grep='grep --color=auto'
+      if (( $+commands[grc] )); then
+        GRC_ALIASES=true
+        [[ -f /etc/profile.d/grc.sh ]] && source /etc/profile.d/grc.sh
+      fi
+
+- name: "[Packages] Set root login shell to zsh"
+  ansible.builtin.user:
+    name: root
+    shell: /usr/bin/zsh
