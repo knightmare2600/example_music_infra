@@ -1,0 +1,242 @@
+---
+# =============================================================================
+# playbooks/85-dc-preflight.yml
+# Example Music Limited — Domain Controller preflight
+# =============================================================================
+# Resolves the replication source DC and validates pre-conditions before
+# promotion.  Handles the special-sauce site permutations:
+#
+#   CLD  — Datacenter DC.  May be the very first DC built (forest root) or an
+#          additional DC added later.  If no other DC is reachable this play
+#          detects that and sets dc_is_forest_root=true, which causes
+#          90-dc-promote.yml to run Install-ADDSForest instead of
+#          Install-ADDSDomainController.  CLD is NEVER used as a replication
+#          source for site DCs — site DCs always replicate from their nearest
+#          hub or FAL.
+#
+#   FAL  — Head office.  Holds PDC Emulator + Global Catalog.  Primary
+#          replication source for all non-hub, non-CLD sites if reachable.
+#
+#   ODE  — Regional hub (continental Europe).  Primary source for its region
+#          if FAL is unreachable.
+#
+#   BRK  — Regional hub (Germany/DACH).  Primary source for its region if FAL
+#          is unreachable.
+#
+# Source resolution order (for a standard site DC):
+#   1.  FAL primary DC  (192.168.76.10)   — preferred always
+#   2.  ODE primary DC  (192.168.126.10)  — first fallback
+#   3.  BRK primary DC  (192.168.136.10)  — second fallback
+#   4.  Any DC already listed in sites.csv for this site
+#   5.  ABORT — no replication source reachable
+#
+# For CLD:
+#   If no DC is reachable anywhere → dc_is_forest_root=true (first build)
+#   If any DC reachable            → standard additional DC promotion
+#
+# For FAL, ODE, BRK themselves:
+#   They replicate from CLD if reachable, else from each other in the
+#   priority order FAL > ODE > BRK (skipping self).
+#
+# vars_prompt:
+#   dc_admin_user      — Domain Admin username  (e.g. JUKEBOX\Administrator)
+#   dc_admin_password  — Domain Admin password
+#   dc_local_user      — Local Administrator username
+#   dc_local_password  — Local Administrator password
+#
+# Required extra-vars:
+#   sites_csv          — path to sites.csv on the control node
+#                        default: ../../files/sites.csv
+#
+# Sets facts consumed by 90-dc-promote.yml:
+#   dc_replication_source   — FQDN or IP of the source DC
+#   dc_is_forest_root       — true only when building the very first DC
+#   dc_site_role            — 'hub_primary' | 'hub_cld' | 'standard'
+#   dc_source_site          — 3-letter site code of the chosen source
+#
+# Tags: dc_preflight
+# =============================================================================
+# Changelog:
+#   2026-06-25  Initial file
+# =============================================================================
+
+- name: Windows DC — Preflight and replication source resolution
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+
+  vars:
+    sites_csv: "../../files/sites.csv"
+
+    # Hub / special-sauce site codes
+    dc_hub_sites:
+      - FAL
+      - ODE
+      - BRK
+
+    # CLD datacenter site code
+    dc_cld_site: "CLD"
+
+    # Hub DCs in priority order (IP .10 = primary DC per suffix_map)
+    dc_hub_sources:
+      - { site: "FAL", ip: "192.168.76.10",  fqdn: "exadcsfal001.jukebox.internal" }
+      - { site: "ODE", ip: "192.168.126.10", fqdn: "exadcsode001.jukebox.internal" }
+      - { site: "BRK", ip: "192.168.136.10", fqdn: "exadcsbrk001.jukebox.internal" }
+
+    # CLD DC
+    dc_cld_source:
+      site: "CLD"
+      ip:   "192.168.139.20"
+      fqdn: "exasvrcld002.jukebox.internal"
+
+  vars_prompt:
+    - name: dc_admin_user
+      prompt: "{{ '\\e[1;33m' }}[!]{{ '\\e[0m' }} Domain Admin username (e.g. JUKEBOX\\Administrator)"
+      private: false
+      default: "JUKEBOX\\Administrator"
+
+    - name: dc_admin_password
+      prompt: "{{ '\\e[1;33m' }}[!]{{ '\\e[0m' }} Domain Admin password"
+      private: true
+
+    - name: dc_local_user
+      prompt: "{{ '\\e[1;33m' }}[!]{{ '\\e[0m' }} Local Administrator username"
+      private: false
+      default: "Administrator"
+
+    - name: dc_local_password
+      prompt: "{{ '\\e[1;33m' }}[!]{{ '\\e[0m' }} Local Administrator password"
+      private: true
+
+  tasks:
+
+    # ── Hostname facts ────────────────────────────────────────────────────────
+
+    - name: Include hostname facts
+      include_tasks: ../tasks/hostname_facts.yml
+      tags: dc_preflight
+
+    - name: Validate this host is named as a DC (EXADCS<SITE><NNN>)
+      assert:
+        that:
+          - host_role | upper == 'DCS'
+        fail_msg: >
+          {{ inventory_hostname }} has role '{{ host_role }}' — expected DCS.
+          DC onboarding only runs on EXADCS<SITE><NNN> hosts.
+          Check the hostname or run the rename playbook first.
+        success_msg: "{{ inventory_hostname }} confirmed as DC role ({{ host_role }})"
+      tags: dc_preflight
+
+    # ── Load sites.csv ────────────────────────────────────────────────────────
+
+    - name: Load sites.csv
+      read_csv:
+        path: "{{ sites_csv }}"
+      register: dc_sites_raw
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags: dc_preflight
+
+    - name: Build site → subnet lookup
+      set_fact:
+        dc_sites_map: >-
+          {{
+            dc_sites_raw.list
+            | rejectattr('Site', 'equalto', 'BRD')
+            | rejectattr('Subnet', 'equalto', 'N/A')
+            | items2dict(key_name='Site', value_name='Subnet')
+          }}
+      run_once: true
+      tags: dc_preflight
+
+    # ── Determine this site's role ────────────────────────────────────────────
+
+    - name: Set dc_site_role fact
+      set_fact:
+        dc_site_role: >-
+          {%- if host_site == dc_cld_site -%}hub_cld
+          {%- elif host_site in dc_hub_sites -%}hub_primary
+          {%- else -%}standard
+          {%- endif -%}
+      tags: dc_preflight
+
+    - name: Show site role
+      debug:
+        msg: >
+          {{ _c.C }}[*]{{ _c.NC }} {{ inventory_hostname }}
+          site={{ host_site }}  role={{ dc_site_role }}
+      tags: dc_preflight
+
+    # ── Probe candidate replication sources ───────────────────────────────────
+
+    - name: Include replication source resolution
+      include_tasks: ../tasks/dc_source_resolution.yml
+      tags: dc_preflight
+
+    # ── Credential store (passed forward to promote playbook) ─────────────────
+
+    - name: Store credentials as facts for downstream playbooks
+      set_fact:
+        dc_admin_user:     "{{ dc_admin_user }}"
+        dc_admin_password: "{{ dc_admin_password }}"
+        dc_local_user:     "{{ dc_local_user }}"
+        dc_local_password: "{{ dc_local_password }}"
+      no_log: true
+      tags: dc_preflight
+
+    # ── Pre-promotion checks ──────────────────────────────────────────────────
+
+    - name: Confirm host is already domain-joined
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_ComputerSystem).PartOfDomain
+      register: dc_domain_check
+      changed_when: false
+      tags: dc_preflight
+
+    - name: FAIL — host must be domain-joined before DC promotion
+      fail:
+        msg: >
+          {{ inventory_hostname }} is not domain-joined.
+          Run the 80-domainjoin playbook first, or run the full site.yml
+          without --skip-tags bootstrap.
+      when:
+        - not dc_is_forest_root | default(false)
+        - dc_domain_check.stdout | trim | lower != 'true'
+      tags: dc_preflight
+
+    - name: Check AD-DS feature not already installed
+      ansible.windows.win_shell: |
+        (Get-WindowsFeature -Name AD-Domain-Services).InstallState
+      register: dc_feature_check
+      changed_when: false
+      tags: dc_preflight
+
+    - name: Set dc_already_promoted fact
+      set_fact:
+        dc_already_promoted: >-
+          {{ dc_feature_check.stdout | trim | lower in ['installed', 'installedpending'] }}
+      tags: dc_preflight
+
+    - name: Note — AD-DS already installed (promote stage will verify state only)
+      debug:
+        msg: >
+          {{ _c.Y }}[!]{{ _c.NC }} AD-DS feature already installed on
+          {{ inventory_hostname }} — promotion stage will check state and skip
+          if already a DC.
+      when: dc_already_promoted
+      tags: dc_preflight
+
+    # ── Preflight summary ─────────────────────────────────────────────────────
+
+    - name: Preflight summary
+      debug:
+        msg:
+          - "{{ _c.C }}── DC Preflight Summary ──────────────────────────────────────{{ _c.NC }}"
+          - "  Host            : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
+          - "  Site            : {{ host_site }}  (role: {{ dc_site_role }})"
+          - "  Forest root?    : {{ _c.Y }}YES — first DC build{{ _c.NC }} if {{ dc_is_forest_root | default(false) }} else No"
+          - "  Replication src : {{ _c.G }}{{ dc_replication_source | default('N/A') }}{{ _c.NC }}"
+          - "  Source site     : {{ dc_source_site | default('N/A') }}"
+          - "  Domain-joined   : {{ dc_domain_check.stdout | trim | lower }}"
+          - "  AD-DS installed : {{ dc_already_promoted }}"
+      tags: dc_preflight

@@ -1,0 +1,19 @@
+---
+# =============================================================================
+# group_vars/rudder_relays/main.yml
+# Example Music Limited — Rudder relay group variables
+#
+# Applies to hosts in [rudder_relays] (EXASRVODE001, EXASRVBRK001).
+# Relay nodes use rudder-server-relay package instead of rudder-server.
+# Most config is inherited from rudder_servers; this file overrides
+# the install package name and relay-specific settings.
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-23  Initial release.
+# =============================================================================
+
+rudder_relay_package: "rudder-server-relay"
+
+# Root server that this relay reports to
+rudder_root_server: "192.168.76.12"

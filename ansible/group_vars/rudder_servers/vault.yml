@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# group_vars/rudder_servers/vault.yml
+# Example Music Limited — Rudder server secrets
+#
+# THIS FILE MUST BE ENCRYPTED WITH ansible-vault BEFORE COMMITTING.
+#
+# Encrypt:
+#   ansible-vault encrypt group_vars/rudder_servers/vault.yml
+#
+# Edit in place:
+#   ansible-vault edit group_vars/rudder_servers/vault.yml
+#
+# Generate bcrypt hash for rudder_admin_password:
+#   htpasswd -bnBC 12 "" 'YourPassword' | tr -d ':\n'
+#   (requires apache2-utils)
+#
+# How to get the rudder_api_token:
+#   1. Complete the first run of rudder_server.yml (skip the API token step)
+#   2. Log in to https://<rudder_static_ip>/rudder as admin
+#   3. Go to Administration → API accounts → New API account
+#      Name: rudder-automation   Role: Read/Write
+#   4. Copy the token here, encrypt, and re-run the playbook
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-23  Initial release.
+# =============================================================================
+
+# Rudder web UI local admin password — bcrypt hash.
+# Generate: htpasswd -bnBC 12 "" 'YourPassword' | tr -d ':\n'
+rudder_admin_password: "$2y$12$REPLACE_WITH_BCRYPT_HASH"
+
+# Rudder REST API token — set after first UI login (see header above).
+# The playbook skips the allowed-networks API call and prints a warning
+# if this is set to UNSET.
+rudder_api_token: "UNSET"
+
+# LDAP bind account password — matches the svc_rudder_ldap AD account.
+# See rudder-setup.md section 9 for the New-ADUser command.
+rudder_ldap_bind_pass: "REPLACE_WITH_LDAP_BIND_PASSWORD"

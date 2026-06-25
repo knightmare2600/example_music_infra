@@ -1,0 +1,242 @@
+---
+# =============================================================================
+# playbooks/90-dc-promote.yml
+# Example Music Limited — Domain Controller promotion
+# =============================================================================
+# Installs the AD-DS + DNS + GPMC Windows features then promotes the host
+# to an Additional Domain Controller in the JUKEBOX domain.
+#
+# If dc_is_forest_root is true (set by 85-dc-preflight.yml, CLD only) this
+# play instead runs Install-ADDSForest to create the domain from scratch.
+#
+# The play is fully idempotent:
+#   - Feature install is skipped if AD-DS already shows Installed.
+#   - Promotion is skipped if the host is already a DC (ProductType == 2).
+#   - The reboot after promotion is handled here; Ansible waits and
+#     reconnects before continuing to 95-dc-replicate.yml.
+#
+# Facts consumed (set by 85-dc-preflight.yml):
+#   dc_replication_source  — source DC FQDN
+#   dc_is_forest_root      — bool
+#   dc_already_promoted    — bool (feature already installed)
+#   dc_admin_user          — Domain Admin (JUKEBOX\Administrator)
+#   dc_admin_password      — Domain Admin password
+#   dc_local_user          — Local Administrator username
+#   dc_local_password      — Local Administrator password
+#   host_site              — 3-letter site code
+#   host_num               — 3-digit DC number (e.g. 001)
+#
+# Tags: dc_promote
+# =============================================================================
+# Changelog:
+#   2026-06-25  Initial file
+# =============================================================================
+
+- name: Windows DC — Feature installation and promotion
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+
+  vars:
+    dc_dsrm_password_default: "{{ dc_local_password }}"   # reuse local admin password for DSRM
+    dc_site_name: "{{ host_site }}"                       # AD site name matches EXA site code
+    dc_db_path:   'C:\Windows\NTDS'
+    dc_log_path:  'C:\Windows\NTDS'
+    dc_sysvol:    'C:\Windows\SYSVOL'
+
+  tasks:
+
+    # ── Guard: already a DC? ─────────────────────────────────────────────────
+
+    - name: Check if host is already a Domain Controller (ProductType 2)
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_OperatingSystem).ProductType
+      register: dc_product_type
+      changed_when: false
+      tags: dc_promote
+
+    - name: Set dc_is_dc fact
+      set_fact:
+        dc_is_dc: "{{ dc_product_type.stdout | trim == '2' }}"
+      tags: dc_promote
+
+    - name: Skip entire promotion if already a DC
+      debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} {{ inventory_hostname }} is already a DC
+          (ProductType=2) — promotion stages skipped.
+      when: dc_is_dc
+      tags: dc_promote
+
+    # ── Stage 1 — Install Windows features ───────────────────────────────────
+
+    - name: "── Stage 1 — Install AD-DS, DNS and GPMC features ──"
+      debug:
+        msg: "{{ _c.C }}[*]{{ _c.NC }} Installing AD-DS feature set..."
+      when: not dc_is_dc
+      tags: dc_promote
+
+    - name: Install AD-Domain-Services feature
+      ansible.windows.win_feature:
+        name:
+          - AD-Domain-Services
+          - DNS
+          - GPMC
+          - RSAT-AD-Tools
+          - RSAT-AD-PowerShell
+          - RSAT-DNS-Server
+        state: present
+        include_management_tools: true
+      register: dc_feature_install
+      when: not dc_is_dc
+      tags: dc_promote
+
+    - name: Show feature install result
+      debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} AD-DS feature install:
+          changed={{ dc_feature_install.changed }}
+          reboot_required={{ dc_feature_install.reboot_required | default(false) }}
+      when: not dc_is_dc
+      tags: dc_promote
+
+    - name: Reboot if feature install requires it
+      ansible.windows.win_reboot:
+        reboot_timeout:    600
+        post_reboot_delay: 30
+        msg: "Rebooting after AD-DS feature installation"
+      when:
+        - not dc_is_dc
+        - dc_feature_install.reboot_required | default(false)
+      tags: dc_promote
+
+    # ── Stage 2a — Forest root install (CLD first build only) ────────────────
+
+    - name: "── Stage 2a — Install-ADDSForest (CLD forest root) ──"
+      debug:
+        msg: >
+          {{ _c.Y }}[!]{{ _c.NC }} Building JUKEBOX.INTERNAL forest root on CLD.
+          This is a destructive, one-time operation.
+      when:
+        - not dc_is_dc
+        - dc_is_forest_root | default(false) | bool
+      tags: dc_promote
+
+    - name: Promote — Install-ADDSForest (forest root)
+      ansible.windows.win_shell: |
+        $secDSRM = ConvertTo-SecureString "{{ dc_dsrm_password_default }}" -AsPlainText -Force
+        Import-Module ADDSDeployment
+        Install-ADDSForest `
+          -DomainName            "jukebox.internal" `
+          -DomainNetbiosName     "JUKEBOX" `
+          -DomainMode            "WinThreshold" `
+          -ForestMode            "WinThreshold" `
+          -DatabasePath          "{{ dc_db_path }}" `
+          -LogPath               "{{ dc_log_path }}" `
+          -SysvolPath            "{{ dc_sysvol }}" `
+          -SafeModeAdministratorPassword $secDSRM `
+          -InstallDns            `
+          -NoRebootOnCompletion  `
+          -Force                 `
+          -Confirm:$false
+      register: dc_forest_result
+      when:
+        - not dc_is_dc
+        - dc_is_forest_root | default(false) | bool
+      no_log: true
+      tags: dc_promote
+
+    - name: Show forest install result
+      debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} Install-ADDSForest completed.
+          Status: {{ dc_forest_result.stdout | default('') | trim }}
+      when:
+        - not dc_is_dc
+        - dc_is_forest_root | default(false) | bool
+      tags: dc_promote
+
+    # ── Stage 2b — Additional DC promotion ───────────────────────────────────
+
+    - name: "── Stage 2b — Install-ADDSDomainController (additional DC) ──"
+      debug:
+        msg: >
+          {{ _c.C }}[*]{{ _c.NC }} Promoting {{ inventory_hostname }} as
+          additional DC, replicating from {{ dc_replication_source }}.
+      when:
+        - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
+      tags: dc_promote
+
+    - name: Promote — Install-ADDSDomainController (additional DC)
+      ansible.windows.win_shell: |
+        $secAdmin = ConvertTo-SecureString "{{ dc_admin_password }}" -AsPlainText -Force
+        $secDSRM  = ConvertTo-SecureString "{{ dc_dsrm_password_default }}" -AsPlainText -Force
+        $cred     = New-Object System.Management.Automation.PSCredential(
+                      "{{ dc_admin_user }}", $secAdmin)
+        Import-Module ADDSDeployment
+        Install-ADDSDomainController `
+          -DomainName                    "jukebox.internal" `
+          -Credential                    $cred `
+          -ReplicationSourceDC           "{{ dc_replication_source }}" `
+          -SiteName                      "{{ dc_site_name }}" `
+          -DatabasePath                  "{{ dc_db_path }}" `
+          -LogPath                       "{{ dc_log_path }}" `
+          -SysvolPath                    "{{ dc_sysvol }}" `
+          -SafeModeAdministratorPassword $secDSRM `
+          -InstallDns                    `
+          -NoRebootOnCompletion          `
+          -Force                         `
+          -Confirm:$false
+      register: dc_promote_result
+      when:
+        - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
+      no_log: true
+      tags: dc_promote
+
+    - name: Show promotion result
+      debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} Install-ADDSDomainController completed.
+          Status: {{ dc_promote_result.stdout | default('') | trim }}
+      when:
+        - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
+      tags: dc_promote
+
+    # ── Reboot after promotion ────────────────────────────────────────────────
+
+    - name: Reboot after promotion (required)
+      ansible.windows.win_reboot:
+        reboot_timeout:    900
+        post_reboot_delay: 90
+        connect_timeout:   60
+        msg: "Rebooting after Domain Controller promotion"
+      when:
+        - not dc_is_dc
+      tags: dc_promote
+
+    - name: Confirm host is now a DC post-reboot
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_OperatingSystem).ProductType
+      register: dc_post_type
+      changed_when: false
+      tags: dc_promote
+
+    - name: FAIL — host ProductType is still not 2 after promotion and reboot
+      fail:
+        msg: >
+          {{ inventory_hostname }} ProductType={{ dc_post_type.stdout | trim }}
+          after promotion reboot — expected 2 (Domain Controller).
+          Check the Windows Event Log (System + Directory Services) for errors.
+      when:
+        - not dc_is_dc
+        - dc_post_type.stdout | trim != '2'
+      tags: dc_promote
+
+    - name: Promotion confirmed
+      debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} {{ inventory_hostname }} is now a Domain
+          Controller (ProductType=2).
+      tags: dc_promote

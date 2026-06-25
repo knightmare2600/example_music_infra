@@ -1,0 +1,138 @@
+---
+# =============================================================================
+# playbooks/99-dc-summary.yml
+# Example Music Limited — Domain Controller post-build summary
+# =============================================================================
+# Runs dcdiag, netlogon/SYSVOL share checks, DNS SRV record verification
+# and prints a colourised build report.  Non-fatal — all checks emit
+# warnings rather than aborting so the operator gets a full picture.
+#
+# Tags: dc_summary
+# =============================================================================
+# Changelog:
+#   2026-06-25  Initial file
+# =============================================================================
+
+- name: Windows DC — Post-build health summary
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+
+  tasks:
+
+    - name: Include hostname facts
+      include_tasks: ../tasks/hostname_facts.yml
+      tags: dc_summary
+
+    # ── dcdiag ────────────────────────────────────────────────────────────────
+
+    - name: "── dcdiag /test:replications /test:dns /test:fsmo ──"
+      ansible.windows.win_shell: |
+        dcdiag /test:replications /test:dns /test:fsmo /test:netlogons 2>&1
+      register: dc_dcdiag
+      changed_when: false
+      ignore_errors: true
+      tags: dc_summary
+
+    - name: Count dcdiag failures
+      set_fact:
+        dc_dcdiag_fail_count: >-
+          {{
+            dc_dcdiag.stdout_lines
+            | select('search', '(?i)failed|error')
+            | list | length
+          }}
+      tags: dc_summary
+
+    # ── DNS SRV record check ──────────────────────────────────────────────────
+
+    - name: Check _ldap._tcp SRV record exists for this DC
+      ansible.windows.win_shell: |
+        $srv = Resolve-DnsName -Name "_ldap._tcp.jukebox.internal" -Type SRV -ErrorAction SilentlyContinue
+        if ($srv) {
+          $match = $srv | Where-Object { $_.NameTarget -like "$env:COMPUTERNAME*" }
+          if ($match) { "OK" } else { "MISSING_FOR_THIS_DC" }
+        } else {
+          "NO_SRV_RECORDS"
+        }
+      register: dc_dns_srv
+      changed_when: false
+      tags: dc_summary
+
+    # ── SYSVOL content spot-check ─────────────────────────────────────────────
+
+    - name: Check SYSVOL contains domain policies directory
+      ansible.windows.win_shell: |
+        $sysvol = "C:\Windows\SYSVOL\sysvol\jukebox.internal\Policies"
+        if (Test-Path $sysvol) {
+          $count = (Get-ChildItem $sysvol -Directory).Count
+          Write-Output "OK:$count"
+        } else {
+          Write-Output "MISSING"
+        }
+      register: dc_sysvol_content
+      changed_when: false
+      tags: dc_summary
+
+    # ── Collect DC info ───────────────────────────────────────────────────────
+
+    - name: Collect DC info
+      ansible.windows.win_shell: |
+        Import-Module ActiveDirectory
+        $dc = Get-ADDomainController -Identity $env:COMPUTERNAME
+        [PSCustomObject]@{
+          Name            = $dc.Name
+          Site            = $dc.Site
+          IsGC            = $dc.IsGlobalCatalog
+          IsReadOnly      = $dc.IsReadOnly
+          IPv4            = $dc.IPv4Address
+          OSVersion       = $dc.OperatingSystem
+          Domain          = $dc.Domain
+        } | ConvertTo-Json
+      register: dc_info_raw
+      changed_when: false
+      ignore_errors: true
+      tags: dc_summary
+
+    - name: Parse DC info
+      set_fact:
+        dc_info: "{{ dc_info_raw.stdout | from_json }}"
+      when: dc_info_raw.rc == 0 and dc_info_raw.stdout | trim != ''
+      tags: dc_summary
+
+    # ── Print summary ─────────────────────────────────────────────────────────
+
+    - name: DC build summary
+      debug:
+        msg:
+          - "{{ _c.C }}╔══════════════════════════════════════════════════════════════╗{{ _c.NC }}"
+          - "{{ _c.C }}║{{ _c.NC }}  {{ _c.W }}Domain Controller Build Summary{{ _c.NC }}"
+          - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+          - "{{ _c.C }}║{{ _c.NC }}  Host            : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
+          - "{{ _c.C }}║{{ _c.NC }}  Site            : {{ host_site }}"
+          - "{{ _c.C }}║{{ _c.NC }}  IP              : {{ dc_info.IPv4 | default('unknown') }}"
+          - "{{ _c.C }}║{{ _c.NC }}  AD Site         : {{ dc_info.Site | default('unknown') }}"
+          - "{{ _c.C }}║{{ _c.NC }}  Global Catalog  : {{ _c.G if dc_info.IsGC | default(false) else _c.Y }}{{ dc_info.IsGC | default('unknown') }}{{ _c.NC }}"
+          - "{{ _c.C }}║{{ _c.NC }}  Read-Only DC    : {{ dc_info.IsReadOnly | default('unknown') }}"
+          - "{{ _c.C }}║{{ _c.NC }}  OS              : {{ dc_info.OSVersion | default('unknown') }}"
+          - "{{ _c.C }}║{{ _c.NC }}  Domain          : {{ dc_info.Domain | default('unknown') }}"
+          - "{{ _c.C }}║{{ _c.NC }}  Repl source     : {{ dc_replication_source | default('N/A (forest root)') }}"
+          - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+          - "{{ _c.C }}║{{ _c.NC }}  {{ _c.W }}Health Checks{{ _c.NC }}"
+          - "{{ _c.C }}║{{ _c.NC }}  dcdiag failures : {{ _c.G if dc_dcdiag_fail_count | int == 0 else _c.R }}{{ dc_dcdiag_fail_count }}{{ _c.NC }}"
+          - "{{ _c.C }}║{{ _c.NC }}  DNS SRV record  : {{ _c.G if dc_dns_srv.stdout | trim == 'OK' else _c.Y }}{{ dc_dns_srv.stdout | trim }}{{ _c.NC }}"
+          - "{{ _c.C }}║{{ _c.NC }}  SYSVOL/Policies : {{ _c.G if dc_sysvol_content.stdout | trim | regex_search('^OK') else _c.R }}{{ dc_sysvol_content.stdout | trim }}{{ _c.NC }}"
+          - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
+          - "{{ _c.C }}║{{ _c.NC }}  {{ _c.Y }}Next steps{{ _c.NC }}"
+          - "{{ _c.C }}║{{ _c.NC }}  1. Verify in ADUC / AD Sites & Services"
+          - "{{ _c.C }}║{{ _c.NC }}  2. Confirm subnet {{ host_site }} mapped to correct AD site object"
+          - "{{ _c.C }}║{{ _c.NC }}  3. Review FSMO placement if this is a hub site"
+          - "{{ _c.C }}║{{ _c.NC }}  4. Add {{ inventory_hostname }} to devices.csv if not present"
+          - "{{ _c.C }}║{{ _c.NC }}  5. Update BIND9 DNS (run bind9-dns.yml) if zone files need refresh"
+          - "{{ _c.C }}╚══════════════════════════════════════════════════════════════╝{{ _c.NC }}"
+      tags: dc_summary
+
+    - name: Full dcdiag output (review if failures above)
+      debug:
+        msg: "{{ dc_dcdiag.stdout_lines }}"
+      when: dc_dcdiag_fail_count | int > 0
+      tags: dc_summary

@@ -1,0 +1,87 @@
+---
+# =============================================================================
+# group_vars/rudder_servers/main.yml
+# Example Music Limited — Rudder server group variables
+#
+# These apply to every host in [rudder_servers].
+# Per-host overrides go in host_vars/<hostname>/main.yml.
+# Secrets go in group_vars/rudder_servers/vault.yml (ansible-vault encrypted).
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-23  Initial release.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Domain
+# -----------------------------------------------------------------------------
+rudder_domain:       "jukebox.internal"
+rudder_dc_hostname:  "EXADCSFAL001"
+
+# -----------------------------------------------------------------------------
+# Rudder version and package config
+# -----------------------------------------------------------------------------
+rudder_version:      "8.x"
+rudder_admin_user:   "admin"
+
+# -----------------------------------------------------------------------------
+# Base packages (mirrors rudderme.sh section 3)
+# -----------------------------------------------------------------------------
+rudder_base_packages:
+  - vim
+  - git
+  - curl
+  - wget
+  - htop
+  - tree
+  - jq
+  - python3
+  - arping
+  - network-manager
+  - molly-guard
+  - fail2ban
+  - ufw
+  - apache2-utils
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - apt-transport-https
+
+# -----------------------------------------------------------------------------
+# LDAP / AD configuration
+# Secrets (bind password) are in vault.yml.
+# -----------------------------------------------------------------------------
+rudder_ldap_bind_dn:     "CN=Rudder LDAP Bind,OU=Service Accounts,DC=jukebox,DC=example"
+rudder_ldap_base:        "DC=jukebox,DC=example"
+rudder_ldap_admin_group: "CN=GRP_Rudder_Admins,OU=IT Groups,DC=jukebox,DC=example"
+
+# -----------------------------------------------------------------------------
+# sites.csv path on the Ansible control node
+# Mirrors the path resolution logic in ansibleme.sh / rudderme.sh:
+#   1. $SITES_CSV environment variable (pass as --extra-vars if needed)
+#   2. /etc/example-music/sites.csv  ← system-wide install path (default)
+# Override with: --extra-vars "sites_csv_path=/other/path/sites.csv"
+# -----------------------------------------------------------------------------
+sites_csv_path: "/etc/example-music/sites.csv"
+
+# -----------------------------------------------------------------------------
+# UFW: allow Rudder agent ports from all site subnets.
+# This list is the belt-and-braces network-layer complement to Rudder's own
+# allowed-networks setting (which is the application-layer enforcement).
+# Built dynamically from sites.csv in the playbook pre_tasks; this list
+# covers the static well-known Rudder ports on both port 443 and 5309.
+# Add extra entries here if you have non-standard subnets.
+# -----------------------------------------------------------------------------
+rudder_site_ufw_rules:
+  - subnet: "10.0.0.0/8"
+    port: "443"
+    comment: "agents HTTPS all VPN"
+  - subnet: "10.0.0.0/8"
+    port: "5309"
+    comment: "CFEngine all VPN"
+  - subnet: "192.168.0.0/16"
+    port: "443"
+    comment: "agents HTTPS all LANs"
+  - subnet: "192.168.0.0/16"
+    port: "5309"
+    comment: "CFEngine all LANs"
