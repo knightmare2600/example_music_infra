@@ -1,0 +1,155 @@
+---
+# =============================================================================
+# tasks/dc_source_resolution.yml
+# Example Music Limited — DC replication source resolution
+# =============================================================================
+# Probes candidate DCs in priority order and sets:
+#   dc_replication_source  — FQDN or IP to replicate from
+#   dc_source_site         — 3-letter site code of chosen source
+#   dc_is_forest_root      — true only when NO DC is reachable anywhere
+#                            (first-ever build, CLD site only)
+#
+# Resolution logic by site role:
+#
+#   standard (non-hub, non-CLD):
+#     Probe hub sources in order: FAL → ODE → BRK
+#     If none reachable, probe any DC listed in sites.csv for this site (.10)
+#     If still none → ABORT (a standard site cannot be forest root)
+#
+#   hub_primary (FAL, ODE, BRK):
+#     Probe CLD DC first (preferred — datacenter is canonical)
+#     Then probe other hubs in order, skipping self
+#     If none reachable → ABORT (hubs cannot be forest root either;
+#     they replicate from CLD or each other, not from nothing)
+#
+#   hub_cld (CLD):
+#     Probe FAL, then ODE, then BRK
+#     If none reachable → dc_is_forest_root=true (first DC ever built)
+#     If any reachable  → standard additional DC promotion from that source
+#
+# Probing is done from the Ansible control node (delegate_to: localhost)
+# via a TCP port-check to 389 (LDAP).  This avoids WinRM/SSH round-trips
+# for hosts that haven't been promoted yet, and works regardless of whether
+# the target DC has Ansible connectivity.
+# =============================================================================
+# Changelog:
+#   2026-06-25  Initial file
+# =============================================================================
+
+# ── Build candidate list based on site role ───────────────────────────────────
+
+- name: "[Source] Build hub candidate list for standard site"
+  set_fact:
+    dc_candidates: >-
+      {{
+        dc_hub_sources
+        + ([{
+            'site': host_site,
+            'ip':   (dc_sites_map[host_site] | default('')).rsplit('.', 1)[0] + '.10',
+            'fqdn': 'exadcs' + host_site | lower + '001.jukebox.internal'
+          }]
+          if host_site in dc_sites_map else []
+        )
+      }}
+  when: dc_site_role == 'standard'
+
+- name: "[Source] Build hub candidate list for hub_primary site (FAL/ODE/BRK)"
+  set_fact:
+    dc_candidates: >-
+      {{
+        [dc_cld_source]
+        + (dc_hub_sources | rejectattr('site', 'equalto', host_site) | list)
+      }}
+  when: dc_site_role == 'hub_primary'
+
+- name: "[Source] Build hub candidate list for CLD"
+  set_fact:
+    dc_candidates: "{{ dc_hub_sources }}"
+  when: dc_site_role == 'hub_cld'
+
+- name: "[Source] Show candidate list"
+  debug:
+    msg: >
+      {{ _c.C }}[*]{{ _c.NC }} Probing {{ dc_candidates | length }} candidate(s):
+      {{ dc_candidates | map(attribute='fqdn') | join(', ') }}
+
+# ── Probe candidates — TCP 389 from control node ─────────────────────────────
+
+- name: "[Source] Probe each candidate DC — LDAP port 389"
+  command: >
+    bash -c 'timeout 3 bash -c "echo >/dev/tcp/{{ item.ip }}/389" 2>/dev/null
+    && echo reachable || echo unreachable'
+  register: dc_probe_results
+  loop: "{{ dc_candidates }}"
+  loop_control:
+    label: "{{ item.site }} ({{ item.ip }})"
+  changed_when: false
+  delegate_to: localhost
+  become: false
+  ignore_errors: true
+
+- name: "[Source] Show probe results"
+  debug:
+    msg: >
+      {{ _c.C }}[*]{{ _c.NC }}
+      {{ item.item.site }} {{ item.item.ip }}
+      → {{ _c.G if item.stdout | trim == 'reachable' else _c.R }}
+        {{ item.stdout | trim }}{{ _c.NC }}
+  loop: "{{ dc_probe_results.results }}"
+  loop_control:
+    label: "{{ item.item.site }}"
+
+# ── Select first reachable source ─────────────────────────────────────────────
+
+- name: "[Source] Select first reachable DC as replication source"
+  set_fact:
+    dc_replication_source: "{{ item.item.fqdn }}"
+    dc_source_site:        "{{ item.item.site }}"
+    dc_is_forest_root:     false
+  loop: "{{ dc_probe_results.results }}"
+  loop_control:
+    label: "{{ item.item.site }}"
+  when:
+    - item.stdout | trim == 'reachable'
+    - dc_replication_source is not defined
+  no_log: false
+
+# ── Handle no reachable source ────────────────────────────────────────────────
+
+- name: "[Source] No reachable DC found — evaluate site role"
+  set_fact:
+    dc_replication_source: ""
+    dc_source_site:        ""
+    dc_is_forest_root:     "{{ dc_site_role == 'hub_cld' }}"
+  when: dc_replication_source is not defined
+
+- name: "[Source] ABORT — standard site cannot be forest root"
+  fail:
+    msg: >
+      {{ _c.R }}[✗]{{ _c.NC }} No replication source DC is reachable for
+      {{ inventory_hostname }} (site={{ host_site }}, role={{ dc_site_role }}).
+      Probed: {{ dc_candidates | map(attribute='ip') | join(', ') }}.
+      A standard (non-CLD) site DC cannot be the forest root.
+      Check network connectivity to FAL (.76.10), ODE (.126.10), BRK (.136.10)
+      before retrying.
+  when:
+    - dc_replication_source == ""
+    - dc_site_role != 'hub_cld'
+
+- name: "[Source] CLD — no existing DC found, will build forest root"
+  debug:
+    msg: >
+      {{ _c.Y }}[!]{{ _c.NC }} CLD: no existing DC reachable.
+      This run will install the AD-DS forest root
+      (Install-ADDSForest).  Ensure this is intentional.
+  when:
+    - dc_site_role == 'hub_cld'
+    - dc_is_forest_root | bool
+
+- name: "[Source] Confirmed replication source"
+  debug:
+    msg: >
+      {{ _c.G }}[+]{{ _c.NC }} Replication source resolved:
+      {{ _c.W }}{{ dc_replication_source }}{{ _c.NC }}
+      (site={{ dc_source_site }})
+  when: not dc_is_forest_root | default(false) | bool

@@ -1,0 +1,91 @@
+---
+# =============================================================================
+# Example Music Limited — Rudder Relay Bootstrap Playbook
+# playbooks/rudder/rudder_relay.yml
+#
+# Installs rudder-server-relay on ODE and BRK hub relay nodes.
+# Relay nodes bridge agents at remote sites to the FAL root server.
+#
+# Usage:
+#   ansible-playbook playbooks/rudder/rudder_relay.yml \
+#     --limit rudder_relays \
+#     --ask-vault-pass
+#
+# After this runs:
+#   1. Accept the relay node in the Rudder UI:
+#      Node Management → Pending nodes → Accept
+#   2. Promote it to relay:
+#      Node Management → All nodes → <relay node> → Change to relay
+#   3. Assign remote site agents to this relay:
+#      Node Management → All nodes → <agent> → Policy server: <relay>
+#      Or use rudder_onboard.yml with site_code set to the relay's hub.
+#
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-23  Initial release.
+# =============================================================================
+
+- name: Bootstrap Rudder relay node
+  hosts: rudder_relays
+  become: true
+  gather_facts: true
+  ignore_unreachable: false
+
+  vars_files:
+    - ../../group_vars/rudder_servers/main.yml
+    - ../../group_vars/rudder_servers/vault.yml
+    - ../../group_vars/rudder_relays/main.yml
+
+  tasks:
+
+    - name: "Add Rudder GPG key"
+      shell: >
+        curl -s https://repository.rudder.io/apt/rudder_apt_key.pub
+        | gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg
+      args:
+        creates: /usr/share/keyrings/rudder-archive-keyring.gpg
+
+    - name: "Add Rudder apt repository"
+      copy:
+        dest: /etc/apt/sources.list.d/rudder.list
+        content: >
+          deb [signed-by=/usr/share/keyrings/rudder-archive-keyring.gpg]
+          https://repository.rudder.io/apt/{{ rudder_version }}/
+          {{ ansible_distribution_release }} main
+        mode: "0644"
+
+    - name: "Update apt cache"
+      apt:
+        update_cache: true
+
+    - name: "Install rudder-server-relay"
+      apt:
+        name: "{{ rudder_relay_package }}"
+        state: present
+        install_recommends: true
+        dpkg_options: "force-confold,force-confdef"
+
+    - name: "Point relay at root server"
+      command: "rudder agent policy-server {{ rudder_root_server }}"
+      register: _relay_policy_server
+      changed_when: true
+
+    - name: "Enable and start rudder-agent on relay"
+      systemd:
+        name: rudder-agent
+        state: started
+        enabled: true
+
+    - name: "Trigger first inventory run"
+      command: rudder agent run
+      changed_when: true
+
+    - name: "Summary"
+      debug:
+        msg:
+          - "Relay installed on {{ inventory_hostname }}."
+          - "Next steps:"
+          - "  1. Accept node in Rudder UI: Node Management → Pending nodes"
+          - "  2. Promote to relay: Node Management → All nodes → Change to relay"
+          - "  3. Assign agents to this relay via rudder_onboard.yml or UI"

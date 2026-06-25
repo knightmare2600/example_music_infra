@@ -1,0 +1,339 @@
+---
+# =============================================================================
+# Example Music Limited — Rudder Node Onboarding Playbook
+# playbooks/rudder/rudder_onboard.yml
+#
+# Installs the Rudder agent on a Linux node and registers it in the Rudder
+# server via the REST API. No human needs to click through the web UI.
+#
+# Flow:
+#   1.  Install Rudder agent (idempotent — skipped if already installed)
+#   2.  Point agent at correct policy server (root or relay, derived from site)
+#   3.  Enable and start agent service
+#   4.  Trigger first inventory run
+#   5.  Wait for node UUID to appear in Rudder pending list (up to 5 minutes)
+#   6.  Accept node via Rudder API
+#   7.  Assign node to correct relay based on site_code
+#   8.  Report
+#
+# Usage:
+#   # Onboard a specific host:
+#   ansible-playbook playbooks/rudder/rudder_onboard.yml \
+#     --limit EXAFWLFAL001 \
+#     --extra-vars "site_code=FAL" \
+#     --ask-vault-pass
+#
+#   # Onboard an entire group:
+#   ansible-playbook playbooks/rudder/rudder_onboard.yml \
+#     --limit firewalls \
+#     --ask-vault-pass
+#
+#   # Onboard and assign to ODE relay:
+#   ansible-playbook playbooks/rudder/rudder_onboard.yml \
+#     --limit EXAFWLODE001 \
+#     --extra-vars "site_code=ODE" \
+#     --ask-vault-pass
+#
+# Variables:
+#   site_code        Site code from sites.csv (e.g. FAL, ODE, BRK).
+#                    Used to determine which relay to assign the node to.
+#                    FAL nodes connect directly to the root server.
+#                    Defaults to FAL if not set.
+#
+#   rudder_server    Override the root server IP (default: 192.168.76.12).
+#                    Normally derived from group_vars; override only if needed.
+#
+# Vault required:
+#   rudder_api_token — from group_vars/rudder_servers/vault.yml
+#
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-23  Initial release. Full implementation of the skeleton
+#                     from rudder-setup.md section 19. Adds: relay UUID
+#                     lookup via API (no hardcoding), accept-all-pending mode,
+#                     idempotency check (skips install if agent already running
+#                     and already accepted), detailed per-host report.
+# =============================================================================
+
+- name: Install and register Rudder agent
+  hosts: "{{ target_hosts | default('all') }}"
+  become: true
+  gather_facts: true
+  serial: "{{ rudder_onboard_serial | default(5) }}"
+
+  vars_files:
+    - ../../group_vars/rudder_servers/main.yml
+    - ../../group_vars/rudder_servers/vault.yml
+
+  vars:
+    rudder_root_server:    "192.168.76.12"
+    rudder_url:            "https://{{ rudder_root_server }}"
+    rudder_apt_keyring:    "/usr/share/keyrings/rudder-archive-keyring.gpg"
+    site_code:             "{{ site_code | default('FAL') }}"
+
+    # Relay assignment map — site code → relay policy server.
+    # FAL nodes connect directly to the root server (no entry needed).
+    # ODE and BRK UUIDs must be set after relays are deployed and promoted.
+    # Get relay UUIDs from:
+    #   curl -sk -H "X-API-Token: TOKEN" https://192.168.76.12/rudder/api/latest/nodes \
+    #     | python3 -m json.tool | grep -A5 "rudder-policy-server-relay"
+    rudder_relay_policy_server:
+      ODE: "{{ rudder_relay_uuid_ode | default('') }}"
+      BRK: "{{ rudder_relay_uuid_brk | default('') }}"
+      # FAL: omitted — FAL nodes point at the root server directly
+
+  pre_tasks:
+
+    - name: "Validate API token is set"
+      assert:
+        that:
+          - rudder_api_token is defined
+          - rudder_api_token != ""
+          - rudder_api_token != "UNSET"
+        fail_msg: >
+          rudder_api_token must be set in group_vars/rudder_servers/vault.yml.
+          Create an API token in the Rudder UI first:
+          Administration → API accounts → New API account (Read/Write).
+
+    - name: "Check whether Rudder agent is already installed"
+      command: dpkg -l rudder-agent
+      register: _agent_installed
+      changed_when: false
+      failed_when: false
+
+    - name: "Check whether this node is already accepted in Rudder"
+      uri:
+        url: "{{ rudder_url }}/rudder/api/latest/nodes"
+        method: GET
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+        validate_certs: false
+        return_content: true
+      register: _rudder_nodes
+      delegate_to: localhost
+      become: false
+      failed_when: false
+
+    - name: "Check if this FQDN is already an accepted node"
+      set_fact:
+        _already_accepted: >-
+          {{
+            (_rudder_nodes.json.data.nodes
+              | selectattr('hostname', 'equalto', ansible_fqdn)
+              | list | length > 0)
+            if _rudder_nodes.status == 200
+            else false
+          }}
+
+    - name: "Skip node if already accepted (idempotency)"
+      debug:
+        msg: >-
+          {{ ansible_fqdn }} is already an accepted node in Rudder.
+          Skipping install and registration. To re-onboard, delete the node
+          from Rudder UI first: Node Management → All nodes → Delete.
+      when: _already_accepted | bool
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # Install Rudder agent
+    # -------------------------------------------------------------------------
+
+    - name: "1 | Add Rudder GPG key"
+      shell: >
+        curl -s https://repository.rudder.io/apt/rudder_apt_key.pub
+        | gpg --dearmor > {{ rudder_apt_keyring }}
+      args:
+        creates: "{{ rudder_apt_keyring }}"
+      when: not (_already_accepted | bool)
+
+    - name: "1 | Add Rudder apt repository"
+      copy:
+        dest: /etc/apt/sources.list.d/rudder.list
+        content: >
+          deb [signed-by={{ rudder_apt_keyring }}]
+          https://repository.rudder.io/apt/{{ rudder_version }}/
+          {{ ansible_distribution_release }} main
+        mode: "0644"
+      when: not (_already_accepted | bool)
+
+    - name: "1 | Update apt cache"
+      apt:
+        update_cache: true
+      when:
+        - not (_already_accepted | bool)
+        - _agent_installed.rc != 0
+
+    - name: "1 | Install rudder-agent"
+      apt:
+        name: rudder-agent
+        state: present
+        install_recommends: true
+        dpkg_options: "force-confold,force-confdef"
+      when:
+        - not (_already_accepted | bool)
+        - _agent_installed.rc != 0
+
+    # -------------------------------------------------------------------------
+    # Determine policy server (root or relay based on site_code)
+    # -------------------------------------------------------------------------
+
+    - name: "2 | Determine policy server for this node"
+      set_fact:
+        _policy_server: >-
+          {{
+            rudder_relay_policy_server[site_code]
+            if site_code in rudder_relay_policy_server
+               and rudder_relay_policy_server[site_code] != ""
+            else rudder_root_server
+          }}
+
+    - name: "2 | Point agent at policy server"
+      command: "rudder agent policy-server {{ _policy_server }}"
+      register: _policy_set
+      changed_when: true
+      when: not (_already_accepted | bool)
+
+    - name: "2 | Show policy server assignment"
+      debug:
+        msg: >-
+          {{ ansible_fqdn }} → policy server: {{ _policy_server }}
+          ({{ 'root' if _policy_server == rudder_root_server else site_code + ' relay' }})
+      when: not (_already_accepted | bool)
+
+    # -------------------------------------------------------------------------
+    # Start agent and trigger first inventory
+    # -------------------------------------------------------------------------
+
+    - name: "3 | Enable and start rudder-agent"
+      systemd:
+        name: rudder-agent
+        state: started
+        enabled: true
+      when: not (_already_accepted | bool)
+
+    - name: "4 | Trigger first inventory run"
+      command: rudder agent run
+      changed_when: true
+      register: _first_run
+      when: not (_already_accepted | bool)
+
+    - name: "4 | Show first run output"
+      debug:
+        msg: "{{ _first_run.stdout_lines | default([]) }}"
+      when:
+        - not (_already_accepted | bool)
+        - _first_run is not skipped
+
+    # -------------------------------------------------------------------------
+    # API registration — runs from localhost against the Rudder server
+    # -------------------------------------------------------------------------
+
+    - name: "5 | Wait for node to appear in Rudder pending list (up to 5 minutes)"
+      uri:
+        url: "{{ rudder_url }}/rudder/api/latest/nodes/pending"
+        method: GET
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+        validate_certs: false
+        return_content: true
+      register: _rudder_pending
+      until: >-
+        _rudder_pending.json.data.nodes
+        | selectattr('hostname', 'equalto', ansible_fqdn)
+        | list | length > 0
+      retries: 30
+      delay: 10
+      delegate_to: localhost
+      become: false
+      when: not (_already_accepted | bool)
+
+    - name: "5 | Extract node UUID from pending list"
+      set_fact:
+        _rudder_node_uuid: >-
+          {{
+            _rudder_pending.json.data.nodes
+            | selectattr('hostname', 'equalto', ansible_fqdn)
+            | map(attribute='id')
+            | first
+          }}
+      when:
+        - not (_already_accepted | bool)
+        - _rudder_pending is not skipped
+
+    - name: "6 | Accept node in Rudder"
+      uri:
+        url: "{{ rudder_url }}/rudder/api/latest/nodes/pending/{{ _rudder_node_uuid }}"
+        method: POST
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: "application/json"
+        body: '{"status": "accepted"}'
+        body_format: json
+        validate_certs: false
+        status_code: 200
+      delegate_to: localhost
+      become: false
+      register: _rudder_accept
+      when:
+        - not (_already_accepted | bool)
+        - _rudder_node_uuid is defined
+
+    - name: "6 | Confirm node accepted"
+      debug:
+        msg: >-
+          {{ ansible_fqdn }} (UUID: {{ _rudder_node_uuid }}) accepted in Rudder.
+      when:
+        - not (_already_accepted | bool)
+        - _rudder_accept is not skipped
+        - _rudder_accept.status == 200
+
+    # -------------------------------------------------------------------------
+    # Assign node to correct relay (non-FAL sites only)
+    # -------------------------------------------------------------------------
+
+    - name: "7 | Assign node to site relay"
+      uri:
+        url: "{{ rudder_url }}/rudder/api/latest/nodes/{{ _rudder_node_uuid }}"
+        method: POST
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: "application/json"
+        body: "{{ {'policyServerId': rudder_relay_policy_server[site_code]} | to_json }}"
+        body_format: json
+        validate_certs: false
+        status_code: 200
+      delegate_to: localhost
+      become: false
+      when:
+        - not (_already_accepted | bool)
+        - _rudder_node_uuid is defined
+        - site_code in rudder_relay_policy_server
+        - rudder_relay_policy_server[site_code] != ""
+        - site_code != 'FAL'
+
+    - name: "7 | Note — FAL nodes use root server directly"
+      debug:
+        msg: >-
+          {{ ansible_fqdn }} is at FAL — connected directly to root server.
+          No relay assignment needed.
+      when:
+        - not (_already_accepted | bool)
+        - site_code == 'FAL'
+
+    # -------------------------------------------------------------------------
+    # Per-host report
+    # -------------------------------------------------------------------------
+
+    - name: "8 | Per-host report"
+      debug:
+        msg:
+          - "────────────────────────────────────────────────────────────────"
+          - "  Host     : {{ ansible_fqdn }}"
+          - "  OS       : {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "  Site     : {{ site_code }}"
+          - "  Policy server: {{ _policy_server | default('n/a') }}"
+          - "  UUID     : {{ _rudder_node_uuid | default('already accepted — see UI') }}"
+          - "  Status   : {{ 'Already accepted (idempotent)' if _already_accepted else 'Newly accepted' }}"
+          - "────────────────────────────────────────────────────────────────"

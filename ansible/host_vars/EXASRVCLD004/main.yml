@@ -1,0 +1,36 @@
+---
+# =============================================================================
+# host_vars/EXASRVFAL002/main.yml
+# Example Music Limited — host-specific variables for the FAL Rudder server
+#
+# These override group_vars/rudder_servers/main.yml for this host only.
+# If rudder_static_ip or rudder_hostname are absent or empty here, the
+# playbook will prompt the operator interactively before making any changes.
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-23  Initial release.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Identity
+# -----------------------------------------------------------------------------
+rudder_hostname:    "EXASRVCLD004"
+rudder_static_ip:   "192.168.139.12"
+rudder_gateway:     "192.168.139.254"
+rudder_dns:         "192.168.139.10"
+rudder_prefix:      "24"
+
+# Network interface to configure (leave blank to auto-detect).
+# Override if the host has multiple interfaces and auto-detection picks
+# the wrong one.
+rudder_network_interface: ""
+
+# -----------------------------------------------------------------------------
+# Site metadata — shown in MOTD and sentinel file
+# -----------------------------------------------------------------------------
+rudder_site_code:    "CLD"
+rudder_site_city:    "Edinburgh"
+rudder_site_country: "Scotland"
+rudder_site_entity:  "Example Music Limited"
+rudder_dc_hostname:  "EXADCSCLD001"   # ← overrides the group_vars default of EXADCSFAL001

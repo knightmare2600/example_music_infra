@@ -1,0 +1,61 @@
+---
+# =============================================================================
+# group_vars/windows_dc/vars.yml
+# Example Music Limited — Variables for Domain Controller hosts
+# =============================================================================
+# DCs are servers, so windows_server/vars.yml also applies.  Values here
+# override or extend that group.
+# =============================================================================
+# Changelog:
+#   2026-06-25  Initial file
+# =============================================================================
+
+# OU path used by 80-domainjoin.yml for DC objects
+domain_ou_role: "DomainControllers"
+
+# DC-specific Chocolatey packages (added to choco_packages_common + server extra)
+choco_packages_dc:
+  - windows-admin-center
+  - adexplorer
+
+# Hibernation — always off on DCs
+exa_hibernation_enabled: false
+
+# Advertising suppression — not applicable on DCs
+exa_deadvertise_enabled: false
+
+# DC RSAT feature set (installed via win_feature in 90-dc-promote.yml,
+# listed here for reference / documentation)
+dc_required_features:
+  - AD-Domain-Services
+  - DNS
+  - GPMC
+  - RSAT-AD-Tools
+  - RSAT-AD-PowerShell
+  - RSAT-DNS-Server
+
+# AD-DS paths — Windows defaults, override per host_vars if non-standard
+dc_db_path:   'C:\Windows\NTDS'
+dc_log_path:  'C:\Windows\NTDS'
+dc_sysvol:    'C:\Windows\SYSVOL'
+
+# Hub / special-sauce site codes — used in source resolution
+dc_hub_sites:
+  - FAL
+  - ODE
+  - BRK
+
+dc_cld_site: "CLD"
+
+# Hub DC sources in priority order
+# .10 = primary DC per suffix_map convention
+dc_hub_sources:
+  - { site: "FAL", ip: "192.168.76.10",  fqdn: "exadcsfal001.jukebox.internal" }
+  - { site: "ODE", ip: "192.168.126.10", fqdn: "exadcsode001.jukebox.internal" }
+  - { site: "BRK", ip: "192.168.136.10", fqdn: "exadcsbrk001.jukebox.internal" }
+
+# CLD DC (Windows Admin Centre host also acts as secondary DC reference)
+dc_cld_source:
+  site: "CLD"
+  ip:   "192.168.139.20"
+  fqdn: "exasvrcld002.jukebox.internal"

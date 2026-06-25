@@ -1,0 +1,53 @@
+---
+# =============================================================================
+# site.yml
+# Example Music Limited — Domain Controller onboarding
+# =============================================================================
+# DC-SPECIFIC stages only.  Generic Windows bootstrap (rename, domain join,
+# tools) is handled by running windows_bootstrap/site.yml first — the DC
+# inventory file groups windows_dc as a child of windows_server, so all
+# group_vars and connection settings are inherited automatically.
+#
+# Run order:
+#   Step 1 — standard bootstrap (run from windows_bootstrap/):
+#     ansible-playbook -i ../windows_dc/inventory/<site>.ini \
+#       ../windows_bootstrap/site.yml \
+#       -e target=<host> --ask-vault-pass
+#
+#   Step 2 — DC promotion (run from windows_dc/):
+#     ansible-playbook -i inventory/<site>.ini site.yml \
+#       -e target=<host> -e sites_csv=../../files/sites.csv
+#
+#   Or single-step with tags:
+#     ansible-playbook -i inventory/<site>.ini site.yml \
+#       -e target=<host> -e sites_csv=../../files/sites.csv \
+#       --tags dc_promote
+#
+# Playbook order:
+#   85-dc-preflight   Credential prompts + replication source resolution
+#   90-dc-promote     AD-DS features + Install-ADDSDomainController (or Forest)
+#   95-dc-replicate   Force replication, SYSVOL wait, FSMO report, KCC
+#   99-dc-summary     dcdiag + colourised build report
+#
+# Tags:
+#   dc_preflight    85-dc-preflight
+#   dc_promote      90-dc-promote
+#   dc_replicate    95-dc-replicate
+#   dc_summary      99-dc-summary
+#
+# =============================================================================
+# Changelog:
+#   2026-06-25  Initial file
+# =============================================================================
+
+- import_playbook: playbooks/85-dc-preflight.yml
+  tags: dc_preflight
+
+- import_playbook: playbooks/90-dc-promote.yml
+  tags: dc_promote
+
+- import_playbook: playbooks/95-dc-replicate.yml
+  tags: dc_replicate
+
+- import_playbook: playbooks/99-dc-summary.yml
+  tags: dc_summary

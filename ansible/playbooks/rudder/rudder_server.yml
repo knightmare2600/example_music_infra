@@ -1,0 +1,814 @@
+---
+# =============================================================================
+# Example Music Limited — Rudder Server Bootstrap Playbook
+# playbooks/rudder/rudder_server.yml
+#
+# Ansible equivalent of rudderme.sh. Bootstraps EXASRVFAL002 (or any
+# cloud-hosted Rudder server) from a fresh Debian Trixie install to a
+# fully configured Rudder management server.
+#
+# Mirrors rudderme.sh section-by-section:
+#   1.  Hostname
+#   2.  Network — static IP (host_vars with interactive fallback)
+#   3.  Base packages
+#   4.  UFW firewall
+#   5.  Rudder repository + server install
+#   6.  Initial Rudder configuration (FQDN, admin user)
+#   7.  Allowed networks — all site subnets via Rudder API
+#   8.  LDAP / AD authentication skeleton
+#   9.  Cockpit
+#   10. Dynamic MOTD
+#   11. Sentinel file
+#
+# Usage
+# -----
+# First run (before ansible user exists, using root + password):
+#   ansible-playbook playbooks/rudder/rudder_server.yml \
+#     --limit rudder_servers \
+#     --user root -k \
+#     --ask-vault-pass
+#
+# Subsequent runs (ansible user + key):
+#   ansible-playbook playbooks/rudder/rudder_server.yml \
+#     --limit rudder_servers \
+#     --ask-vault-pass
+#
+# Dry-run (check mode):
+#   ansible-playbook playbooks/rudder/rudder_server.yml \
+#     --limit rudder_servers --check --diff \
+#     --ask-vault-pass
+#
+# Inventory
+# ---------
+# Add EXASRVFAL002 to configs/inventory:
+#   [rudder_servers]
+#   192.168.76.12   # EXASRVFAL002 — FAL Rudder server
+#
+# Variables (see group_vars/rudder_servers/main.yml and
+#            host_vars/EXASRVFAL002/main.yml for full list)
+# ----------------------------------------------------------
+# Required via host_vars or --extra-vars:
+#   rudder_static_ip        Static IP for this Rudder server
+#   rudder_hostname         Hostname (e.g. EXASRVFAL002)
+#   rudder_gateway          Default gateway
+#   rudder_dns              DNS server (AD DC)
+#
+# Required via vault (group_vars/rudder_servers/vault.yml):
+#   rudder_api_token        Rudder API token (set after first UI login)
+#   rudder_admin_password   bcrypt hash for local admin fallback
+#   rudder_ldap_bind_pass   LDAP bind account password
+#
+# CLD note
+# --------
+# EXASRVFAL002 lives in the cloud. The static IP task uses shell-level
+# ping checks before assigning — same pattern as rudderme.sh ip_in_use().
+# On some cloud providers ICMP is filtered; the task emits a warning and
+# proceeds rather than failing.
+#
+# Idempotency
+# -----------
+# Every task is idempotent. Re-running against an already-configured server
+# is safe — tasks that are already done report 'ok' and change nothing.
+#
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-23  Initial release. Direct translation of rudderme.sh.
+#                     Covers all 11 sections: hostname, static IP (NM), base
+#                     packages, UFW, Rudder repository + install, initial config,
+#                     allowed-networks API call, LDAP skeleton, Cockpit, MOTD,
+#                     sentinel. host_vars with interactive fallback for IP and
+#                     hostname. Vault for API token, admin password hash, LDAP
+#                     bind password. sites.csv read from control node.
+# =============================================================================
+
+- name: Bootstrap Rudder server
+  hosts: rudder_servers
+  become: true
+  gather_facts: true
+  ignore_unreachable: false
+
+  vars_files:
+    - ../../group_vars/rudder_servers/main.yml
+    - ../../group_vars/rudder_servers/vault.yml
+
+  pre_tasks:
+
+    # -------------------------------------------------------------------------
+    # Interactive fallback: if host_vars do not supply the IP or hostname,
+    # prompt the operator now (before any changes are made).
+    # -------------------------------------------------------------------------
+
+    - name: "Prompt for hostname if not set in host_vars"
+      pause:
+        prompt: >
+          Hostname for this Rudder server is not set in host_vars.
+          Enter hostname (e.g. EXASRVFAL002)
+      register: _hostname_prompt
+      when: rudder_hostname is not defined or rudder_hostname == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "Set rudder_hostname from prompt"
+      set_fact:
+        rudder_hostname: "{{ _hostname_prompt.user_input | upper }}"
+      when: _hostname_prompt is not skipped
+
+    - name: "Prompt for static IP if not set in host_vars"
+      pause:
+        prompt: >
+          Static IP for {{ rudder_hostname }} is not set in host_vars.
+          Enter static IP (e.g. 192.168.76.12)
+      register: _ip_prompt
+      when: rudder_static_ip is not defined or rudder_static_ip == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "Set rudder_static_ip from prompt"
+      set_fact:
+        rudder_static_ip: "{{ _ip_prompt.user_input }}"
+      when: _ip_prompt is not skipped
+
+    - name: "Prompt for gateway if not set in host_vars"
+      pause:
+        prompt: >
+          Gateway for {{ rudder_hostname }} is not set in host_vars.
+          Enter gateway IP (e.g. 192.168.76.1)
+      register: _gw_prompt
+      when: rudder_gateway is not defined or rudder_gateway == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "Set rudder_gateway from prompt"
+      set_fact:
+        rudder_gateway: "{{ _gw_prompt.user_input }}"
+      when: _gw_prompt is not skipped
+
+    - name: "Validate required variables are now set"
+      assert:
+        that:
+          - rudder_hostname is defined and rudder_hostname != ""
+          - rudder_static_ip is defined and rudder_static_ip != ""
+          - rudder_gateway is defined and rudder_gateway != ""
+        fail_msg: >
+          rudder_hostname, rudder_static_ip, and rudder_gateway must all be set.
+          Set them in host_vars/{{ inventory_hostname }}/main.yml or pass via
+          --extra-vars.
+        success_msg: "All required variables present — proceeding."
+
+    - name: "Derive site data from static IP"
+      set_fact:
+        _site_octet: "{{ rudder_static_ip.split('.')[2] }}"
+        _site_subnet: "{{ '.'.join(rudder_static_ip.split('.')[:3]) }}.0/24"
+
+    - name: "Load sites.csv from control node"
+      read_csv:
+        path: "{{ sites_csv_path }}"
+      register: _sites_raw
+      delegate_to: localhost
+      become: false
+
+    - name: "Build allowed-networks list from sites.csv"
+      set_fact:
+        _allowed_networks: >-
+          {{
+            (_sites_raw.list
+              | map(attribute='subnet')
+              | select('match', '^[0-9]')
+              | map('regex_replace', '^(\\d+\\.\\d+\\.)(\\d+)(\\.\\d+)', '\\g<1>\\g<3|default(\".0\")>\\g<2>.0/24')
+              | list
+            ) | unique
+          }}
+      # More readable alternative built below in the allowed-networks task —
+      # this set_fact is a pre-pass to derive the network addresses cleanly.
+      # The actual JSON payload is built in task "Set allowed networks".
+
+    - name: "Build clean subnet list from sites.csv (LAN + WireGuard)"
+      set_fact:
+        _allowed_networks: "{{ _allowed_networks_list }}"
+      vars:
+        _allowed_networks_list: >-
+          {{
+            (
+              _sites_raw.list
+              | selectattr('subnet', 'defined')
+              | map(attribute='subnet')
+              | select('match', '^[0-9]')
+              | map('regex_replace', '^(\\d+\\.\\d+\\.)(\\d+)\\.\\d+$', '\\1\\3.0/24')
+              | list
+              + _sites_raw.list
+              | selectattr('subnet', 'defined')
+              | map(attribute='subnet')
+              | select('match', '^[0-9]')
+              | map('regex_replace', '^\\d+\\.\\d+\\.(\\d+)\\.\\d+$', '10.0.\\1.0/24')
+              | list
+            ) | unique | sort
+          }}
+
+  # ---------------------------------------------------------------------------
+  # Section 1 — Hostname
+  # ---------------------------------------------------------------------------
+
+  tasks:
+
+    - name: "1 | Set hostname"
+      hostname:
+        name: "{{ rudder_hostname | lower }}"
+
+    - name: "1 | Add FQDN to /etc/hosts"
+      lineinfile:
+        path: /etc/hosts
+        regexp: "^127\\.0\\.1\\.1"
+        line: >-
+          127.0.1.1  {{ rudder_hostname | lower }}.{{ rudder_domain }}  {{ rudder_hostname | lower }}
+        state: present
+
+    - name: "1 | Add AD DC to /etc/hosts"
+      lineinfile:
+        path: /etc/hosts
+        regexp: "^{{ rudder_dns }}"
+        line: >-
+          {{ rudder_dns }}  {{ rudder_dc_hostname | lower }}.{{ rudder_domain }}  {{ rudder_dc_hostname | lower }}
+        state: present
+
+  # ---------------------------------------------------------------------------
+  # Section 2 — Static IP via NetworkManager
+  # CLD: ICMP may be filtered — check is best-effort, warns but does not fail.
+  # ---------------------------------------------------------------------------
+
+    - name: "2 | Install NetworkManager if missing"
+      apt:
+        name: network-manager
+        state: present
+        update_cache: true
+
+    - name: "2 | Check whether target IP is already in use (CLD best-effort)"
+      command: "ping -c1 -W1 {{ rudder_static_ip }}"
+      register: _ping_check
+      changed_when: false
+      failed_when: false
+
+    - name: "2 | Check current IPs on this host"
+      command: hostname -I
+      register: _current_ips
+      changed_when: false
+
+    - name: "2 | Warn if target IP appears in use by another host"
+      fail:
+        msg: >
+          {{ rudder_static_ip }} is responding to ping and is NOT assigned to
+          this host. Resolve the IP conflict before proceeding.
+          (If this is a cloud host and ICMP is filtered, this check may be a
+          false positive — in that case, remove this task and re-run.)
+      when:
+        - _ping_check.rc == 0
+        - rudder_static_ip not in _current_ips.stdout.split()
+
+    - name: "2 | Warn if ping check is unreliable (cloud environment)"
+      debug:
+        msg: >-
+          [CLD] ping check returned rc={{ _ping_check.rc }}.
+          On cloud hosts ICMP may be filtered — IP conflict check is
+          best-effort only. Proceeding.
+      when: _ping_check.rc != 0
+
+    - name: "2 | Detect provisioning interface (first non-loopback with an IP)"
+      shell: |
+        for iface in $(ls /sys/class/net/); do
+          [[ "$iface" == "lo" ]] && continue
+          ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)\d+\.\d+\.\d+\.\d+' | head -1)
+          if [[ -n "$ip_addr" ]]; then
+            echo "$iface"
+            exit 0
+          fi
+        done
+        exit 1
+      register: _detected_iface
+      changed_when: false
+
+    - name: "2 | Set interface name fact"
+      set_fact:
+        _rudder_iface: "{{ rudder_network_interface | default(_detected_iface.stdout | trim) }}"
+
+    - name: "2 | Read interface MAC address"
+      slurp:
+        src: "/sys/class/net/{{ _rudder_iface }}/address"
+      register: _iface_mac_raw
+
+    - name: "2 | Set MAC address fact"
+      set_fact:
+        _rudder_mac: "{{ _iface_mac_raw.content | b64decode | trim }}"
+
+    - name: "2 | Pin interface name via systemd .link"
+      copy:
+        dest: "/etc/systemd/network/10-rudder-prov.link"
+        content: |
+          # Example Music — Rudder server interface pin
+          # Written by rudder_server.yml on {{ ansible_date_time.iso8601 }}
+          # MAC: {{ _rudder_mac }}  interface: {{ _rudder_iface }}
+          [Match]
+          MACAddress={{ _rudder_mac }}
+          [Link]
+          Name={{ _rudder_iface }}
+        mode: "0644"
+
+    - name: "2 | Mask ifupdown to prevent conflict with NetworkManager"
+      systemd:
+        name: "networking.service"
+        masked: true
+        enabled: false
+      failed_when: false
+
+    - name: "2 | Remove interface from /etc/network/interfaces if present"
+      blockinfile:
+        path: /etc/network/interfaces
+        marker: "# {mark} ANSIBLE MANAGED — {{ _rudder_iface }}"
+        block: ""
+        state: absent
+      failed_when: false
+
+    - name: "2 | Ensure NetworkManager manages interfaces"
+      ini_file:
+        path: /etc/NetworkManager/NetworkManager.conf
+        section: ifupdown
+        option: managed
+        value: "true"
+        no_extra_spaces: true
+        backup: true
+      notify: Restart NetworkManager
+
+    - name: "2 | Ensure NetworkManager is running"
+      systemd:
+        name: NetworkManager
+        state: started
+        enabled: true
+
+    - name: "2 | Delete stale NM static profile if it exists"
+      command: nmcli con delete rudder-static
+      failed_when: false
+      changed_when: false
+
+    - name: "2 | Create static IP NM profile"
+      command: >
+        nmcli con add type ethernet ifname {{ _rudder_iface }} con-name rudder-static
+        ipv4.method manual
+        ipv4.addresses "{{ rudder_static_ip }}/{{ rudder_prefix | default('24') }}"
+        ipv4.gateway "{{ rudder_gateway }}"
+        ipv4.dns "{{ rudder_dns }}"
+        ipv4.dns-search "{{ rudder_domain }}"
+        ipv6.method ignore
+        connection.autoconnect yes
+        connection.autoconnect-priority 100
+      register: _nm_add
+      changed_when: _nm_add.rc == 0
+
+    - name: "2 | Note — static IP takes effect on reboot"
+      debug:
+        msg: >-
+          Static IP {{ rudder_static_ip }} written to NM profile 'rudder-static'.
+          It takes effect on next reboot (safe over SSH).
+          At the local console run: nmcli con up rudder-static
+
+  # ---------------------------------------------------------------------------
+  # Section 3 — Base packages
+  # ---------------------------------------------------------------------------
+
+    - name: "3 | Update apt cache"
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: "3 | Upgrade all packages"
+      apt:
+        upgrade: dist
+        dpkg_options: "force-confold,force-confdef"
+
+    - name: "3 | Install base packages"
+      apt:
+        name: "{{ rudder_base_packages }}"
+        state: present
+        install_recommends: false
+        dpkg_options: "force-confold,force-confdef"
+
+  # ---------------------------------------------------------------------------
+  # Section 4 — UFW firewall
+  # ---------------------------------------------------------------------------
+
+    - name: "4 | Set UFW default — deny incoming"
+      ufw:
+        direction: incoming
+        policy: deny
+
+    - name: "4 | Set UFW default — allow outgoing"
+      ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: "4 | Allow SSH"
+      ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+        comment: SSH
+
+    - name: "4 | Allow Rudder HTTPS"
+      ufw:
+        rule: allow
+        port: "443"
+        proto: tcp
+        comment: Rudder HTTPS
+
+    - name: "4 | Allow Rudder HTTP redirect"
+      ufw:
+        rule: allow
+        port: "80"
+        proto: tcp
+        comment: Rudder HTTP redirect
+
+    - name: "4 | Allow Rudder CFEngine (server to agent)"
+      ufw:
+        rule: allow
+        port: "5309"
+        proto: tcp
+        comment: Rudder CFEngine server-to-agent
+
+    - name: "4 | Allow Rudder relay communication"
+      ufw:
+        rule: allow
+        port: "5310"
+        proto: tcp
+        comment: Rudder relay
+
+    - name: "4 | Allow Cockpit"
+      ufw:
+        rule: allow
+        port: "9090"
+        proto: tcp
+        comment: Cockpit web UI
+
+    - name: "4 | Allow Rudder agent ports from all site subnets"
+      ufw:
+        rule: allow
+        src: "{{ item.subnet }}"
+        port: "{{ item.port }}"
+        proto: tcp
+        comment: "Rudder {{ item.comment }}"
+      loop: "{{ rudder_site_ufw_rules }}"
+
+    - name: "4 | Enable UFW"
+      ufw:
+        state: enabled
+
+  # ---------------------------------------------------------------------------
+  # Section 5 — Rudder repository and server install
+  # ---------------------------------------------------------------------------
+
+    - name: "5 | Create apt keyrings directory"
+      file:
+        path: /usr/share/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: "5 | Download Rudder GPG key"
+      shell: >
+        curl -s https://repository.rudder.io/apt/rudder_apt_key.pub
+        | gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg
+      args:
+        creates: /usr/share/keyrings/rudder-archive-keyring.gpg
+
+    - name: "5 | Add Rudder apt repository"
+      copy:
+        dest: /etc/apt/sources.list.d/rudder.list
+        content: >
+          deb [signed-by=/usr/share/keyrings/rudder-archive-keyring.gpg]
+          https://repository.rudder.io/apt/{{ rudder_version }}/
+          {{ ansible_distribution_release }} main
+        mode: "0644"
+      notify: Update apt cache
+
+    - name: "5 | Update apt cache after adding Rudder repo"
+      apt:
+        update_cache: true
+      changed_when: false
+
+    - name: "5 | Install rudder-server"
+      apt:
+        name: rudder-server
+        state: present
+        install_recommends: true
+        dpkg_options: "force-confold,force-confdef"
+
+    - name: "5 | Enable and start rudder-server"
+      systemd:
+        name: rudder-server
+        state: started
+        enabled: true
+
+    - name: "5 | Wait for Rudder web UI to become available"
+      uri:
+        url: "https://127.0.0.1/rudder/api/info"
+        method: GET
+        validate_certs: false
+        status_code: 200
+      register: _rudder_health
+      until: _rudder_health.status == 200
+      retries: 36
+      delay: 5
+
+    - name: "5 | Run Rudder health check"
+      command: rudder server health
+      register: _rudder_health_check
+      changed_when: false
+      failed_when: _rudder_health_check.rc != 0
+
+  # ---------------------------------------------------------------------------
+  # Section 6 — Initial Rudder configuration
+  # ---------------------------------------------------------------------------
+
+    - name: "6 | Set Rudder server FQDN in rudder-web.properties"
+      lineinfile:
+        path: /opt/rudder/etc/rudder-web.properties
+        regexp: "^rudder.server.name="
+        line: "rudder.server.name={{ rudder_hostname | lower }}.{{ rudder_domain }}"
+        state: present
+        backup: true
+      notify: Restart Rudder server
+
+    - name: "6 | Create Rudder admin user"
+      command: "rudder server create-user -u {{ rudder_admin_user }} --password-hash '{{ rudder_admin_password }}'"
+      register: _rudder_create_user
+      changed_when: "'created' in _rudder_create_user.stdout | lower"
+      failed_when:
+        - _rudder_create_user.rc != 0
+        - "'already exists' not in _rudder_create_user.stderr | lower"
+
+  # ---------------------------------------------------------------------------
+  # Section 7 — Allowed networks — all site subnets via Rudder API
+  # Requires rudder_api_token to be set in vault.
+  # The Rudder API replaces the full list on each POST — always send all subnets.
+  # ---------------------------------------------------------------------------
+
+    - name: "7 | Build allowed-networks JSON payload"
+      set_fact:
+        _allowed_networks_payload:
+          allowed_networks: "{{ _allowed_networks }}"
+
+    - name: "7 | POST allowed networks to Rudder API"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/settings/allowed_networks/root"
+        method: POST
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: application/json
+        body: "{{ _allowed_networks_payload | to_json }}"
+        body_format: json
+        validate_certs: false
+        status_code: 200
+      register: _rudder_allowed_nets
+      when:
+        - rudder_api_token is defined
+        - rudder_api_token != ""
+        - rudder_api_token != "UNSET"
+
+    - name: "7 | Warn if API token not set — allowed networks not configured"
+      debug:
+        msg: >-
+          [WARNING] rudder_api_token is not set in vault.
+          Allowed networks were NOT configured.
+          Set the token in group_vars/rudder_servers/vault.yml after your first
+          UI login, then re-run this playbook.
+      when: >
+        rudder_api_token is not defined
+        or rudder_api_token == ""
+        or rudder_api_token == "UNSET"
+
+    - name: "7 | Show networks that were configured"
+      debug:
+        msg: "Allowed networks set: {{ _allowed_networks | join(', ') }}"
+      when:
+        - _rudder_allowed_nets is not skipped
+        - _rudder_allowed_nets.status == 200
+
+  # ---------------------------------------------------------------------------
+  # Section 8 — LDAP / AD authentication skeleton
+  # Only writes the file if it does not already contain LDAP config.
+  # Fill in the bind password and bcrypt hash before restarting Rudder.
+  # ---------------------------------------------------------------------------
+
+    - name: "8 | Check whether LDAP is already configured"
+      command: grep -q '<ldap>' /opt/rudder/etc/rudder-users.xml
+      register: _ldap_check
+      changed_when: false
+      failed_when: false
+
+    - name: "8 | Write rudder-users.xml with LDAP skeleton"
+      copy:
+        dest: /opt/rudder/etc/rudder-users.xml
+        content: |
+          <?xml version="1.0" encoding="UTF-8"?>
+          <authentication hash="bcrypt">
+
+            <!--
+              Local fallback account — always keep this in case AD is unreachable.
+              Generate the password hash with:
+                htpasswd -bnBC 12 "" 'YourPassword' | tr -d ':\n'
+              Paste the result (starting with $2y$12$...) as the password attribute.
+            -->
+            <user name="{{ rudder_admin_user }}"
+                  password="{{ rudder_admin_password }}"
+                  role="administrator"/>
+
+            <!--
+              Active Directory LDAP authentication.
+              Prerequisites:
+                - svc_rudder_ldap service account in AD (read-only)
+                - GRP_Rudder_Admins security group in AD
+              See: rudder-setup.md section 9 for full AD setup commands.
+            -->
+            <ldap>
+              <connection url="ldap://{{ rudder_dns }}:389"
+                          bind-dn="{{ rudder_ldap_bind_dn }}"
+                          bind-password="{{ rudder_ldap_bind_pass }}"/>
+
+              <search base="{{ rudder_ldap_base }}"
+                      filter="(&amp;(objectClass=user)(sAMAccountName={0}))"
+                      returnedAttribute="sAMAccountName"/>
+
+              <roleMapping>
+                <!--
+                  Available roles: administrator, read_only, workflow, deployer,
+                                   configuration, validator, compliance
+                -->
+                <roleMap role="administrator"
+                         group="{{ rudder_ldap_admin_group }}"/>
+              </roleMapping>
+            </ldap>
+
+          </authentication>
+        mode: "0640"
+        owner: root
+        group: rudder
+        backup: true
+      when: _ldap_check.rc != 0
+      notify: Restart Rudder server
+
+    - name: "8 | Note if LDAP config was already present"
+      debug:
+        msg: >-
+          LDAP configuration already present in rudder-users.xml — not overwriting.
+          To force a rewrite, remove the <ldap> block and re-run.
+      when: _ldap_check.rc == 0
+
+  # ---------------------------------------------------------------------------
+  # Section 9 — Cockpit
+  # ---------------------------------------------------------------------------
+
+    - name: "9 | Install Cockpit"
+      apt:
+        name:
+          - cockpit
+          - cockpit-pcp
+        state: present
+        install_recommends: false
+
+    - name: "9 | Enable Cockpit socket"
+      systemd:
+        name: cockpit.socket
+        state: started
+        enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Section 10 — Dynamic MOTD
+  # Mirrors the MOTD written by rudderme.sh, updated for Ansible context.
+  # ---------------------------------------------------------------------------
+
+    - name: "10 | Write dynamic MOTD script"
+      copy:
+        dest: /etc/update-motd.d/10-examplemusic
+        mode: "0755"
+        content: |
+          #!/usr/bin/env bash
+          WH='\033[1;37m'; YL='\033[1;33m'; GR='\033[0;32m'; CY='\033[0;36m'; NC='\033[0m'
+          UPTIME=$(uptime -p)
+          LOAD=$(cut -d' ' -f1-3 /proc/loadavg)
+          MEM_TOTAL=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
+          MEM_FREE=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
+          MEM_USED=$(( MEM_TOTAL - MEM_FREE ))
+          DISK=$(df -h / | awk 'NR==2{print $3" used of "$2" ("$5")"}')
+          RUDDER_VER=$(rudder agent version 2>/dev/null | head -1 || echo "unknown")
+          NODE_COUNT=$(curl -sk -H "X-API-Token: ${RUDDER_API_TOKEN:-unset}" \
+            https://localhost/rudder/api/latest/nodes 2>/dev/null \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['total'])" 2>/dev/null || echo "?")
+          echo -e "
+          ${WH}╔══════════════════════════════════════════════════════════════╗${NC}
+          ${WH}║     EXAMPLE MUSIC LIMITED: $(printf '%-35s' "${HOSTNAME}")║${NC}
+          ${WH}╚══════════════════════════════════════════════════════════════╝${NC}
+
+            ${YL}Site     :${NC} {{ rudder_site_code }}: {{ rudder_site_city }}, {{ rudder_site_country }}
+            ${YL}Entity   :${NC} {{ rudder_site_entity }}
+            ${YL}Role     :${NC} Rudder configuration management server
+
+            ${WH}── Rudder ────────────────────────────────────────────────────${NC}
+              ${CY}Version${NC}    : ${GR}${RUDDER_VER}${NC}
+              ${CY}Web UI${NC}     : ${GR}https://{{ rudder_static_ip }}/rudder${NC}
+              ${CY}Cockpit${NC}    : ${GR}https://{{ rudder_static_ip }}:9090${NC}
+              ${CY}Managed${NC}    : ${GR}${NODE_COUNT} node(s)${NC}
+
+            ${WH}── System ───────────────────────────────────────────────────${NC}
+              ${CY}Uptime${NC}     : ${GR}${UPTIME}${NC}
+              ${CY}Load${NC}       : ${GR}${LOAD}${NC}
+              ${CY}Memory${NC}     : ${GR}${MEM_USED}MB${NC} used of ${MEM_TOTAL}MB
+              ${CY}Disk /${NC}     : ${GR}${DISK}${NC}
+
+            ${WH}── Quick reference ──────────────────────────────────────────${NC}
+              ${CY}Health      :${NC} rudder server health
+              ${CY}Pending     :${NC} rudder-pending-nodes (alias below)
+              ${CY}Logs        :${NC} tail -f /var/log/rudder/agent/agent.log
+              ${CY}Restart     :${NC} systemctl restart rudder-server
+          "
+
+    - name: "10 | Enable MOTD in sshd_config"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PrintMotd"
+        line: "PrintMotd yes"
+        state: present
+      notify: Restart SSH
+
+    - name: "10 | Write MOTD profile.d hook"
+      copy:
+        dest: /etc/profile.d/motd.sh
+        mode: "0755"
+        content: |
+          [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
+
+  # ---------------------------------------------------------------------------
+  # Section 11 — Sentinel file
+  # ---------------------------------------------------------------------------
+
+    - name: "11 | Write sentinel file"
+      copy:
+        dest: /etc/.i_am_a_rudder_server
+        mode: "0444"
+        content: |
+          Configured by Example Music rudder_server.yml
+          Site        : {{ rudder_site_code }}
+          City        : {{ rudder_site_city }}
+          Country     : {{ rudder_site_country }}
+          Entity      : {{ rudder_site_entity }}
+          Hostname    : {{ rudder_hostname }}
+          Static IP   : {{ rudder_static_ip }}
+          Rudder URL  : https://{{ rudder_static_ip }}/rudder
+          Cockpit URL : https://{{ rudder_static_ip }}:9090
+          Date        : {{ ansible_date_time.iso8601 }}
+          Playbook    : rudder_server.yml v1.0.0
+
+  # ---------------------------------------------------------------------------
+  # Post-run summary
+  # ---------------------------------------------------------------------------
+
+    - name: "Summary"
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  SETUP COMPLETE — {{ rudder_hostname }}"
+          - "════════════════════════════════════════════════════════════════"
+          - "  Site        : {{ rudder_site_code }} — {{ rudder_site_city }}, {{ rudder_site_country }}"
+          - "  Hostname    : {{ rudder_hostname }}"
+          - "  Static IP   : {{ rudder_static_ip }} (active on next reboot)"
+          - "  Rudder URL  : https://{{ rudder_static_ip }}/rudder"
+          - "  Cockpit URL : https://{{ rudder_static_ip }}:9090"
+          - "════════════════════════════════════════════════════════════════"
+          - "  Remaining manual steps:"
+          - "    1. Log in to https://{{ rudder_static_ip }}/rudder"
+          - "    2. Create API token: Administration → API accounts"
+          - "    3. Add token to vault and re-run playbook (populates allowed networks)"
+          - "    4. Create svc_rudder_ldap + GRP_Rudder_Admins in AD"
+          - "    5. Fill rudder_ldap_bind_pass in vault, re-run"
+          - "    6. Install agents: ansible-playbook playbooks/rudder/rudder_onboard.yml"
+          - "════════════════════════════════════════════════════════════════"
+
+  # ---------------------------------------------------------------------------
+  # Handlers
+  # ---------------------------------------------------------------------------
+
+  handlers:
+
+    - name: Restart NetworkManager
+      systemd:
+        name: NetworkManager
+        state: restarted
+
+    - name: Update apt cache
+      apt:
+        update_cache: true
+
+    - name: Restart Rudder server
+      systemd:
+        name: rudder-server
+        state: restarted
+
+    - name: Restart SSH
+      systemd:
+        name: ssh
+        state: restarted

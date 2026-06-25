@@ -1,0 +1,257 @@
+---
+# =============================================================================
+# playbooks/95-dc-replicate.yml
+# Example Music Limited — AD replication verification and force-sync
+# =============================================================================
+# After promotion this play:
+#   1.  Forces replication of all AD partitions from the source DC.
+#   2.  Waits for SYSVOL and NETLOGON shares to appear (DFSR convergence).
+#   3.  Runs repadmin /replsummary and checks for errors.
+#   4.  Verifies the new DC is registered in AD Sites and Services under
+#       the correct site (host_site).
+#   5.  For hub/special-sauce sites (FAL, ODE, BRK): checks and reports
+#       FSMO role placement without moving them — FSMO moves are a manual
+#       operation requiring change-control.
+#
+# Tags: dc_replicate
+# =============================================================================
+# Changelog:
+#   2026-06-25  Initial file
+# =============================================================================
+
+- name: Windows DC — Replication verification and force-sync
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+
+  vars:
+    dc_sysvol_wait_retries: 20
+    dc_sysvol_wait_delay:   30     # seconds between retries (total up to 10 min)
+
+    dc_hub_sites:
+      - FAL
+      - ODE
+      - BRK
+
+  tasks:
+
+    - name: Include hostname facts
+      include_tasks: ../tasks/hostname_facts.yml
+      tags: dc_replicate
+
+    # ── Stage 1 — Force AD replication ───────────────────────────────────────
+
+    - name: "── Stage 1 — Force replication from source DC ──"
+      debug:
+        msg: >
+          {{ _c.C }}[*]{{ _c.NC }} Forcing AD replication on
+          {{ inventory_hostname }} from {{ dc_replication_source | default('all partners') }}
+      tags: dc_replicate
+
+    - name: Force replication of all partitions (repadmin /syncall)
+      ansible.windows.win_shell: |
+        repadmin /syncall /AdeP 2>&1
+      register: dc_syncall
+      changed_when: false
+      ignore_errors: true
+      tags: dc_replicate
+
+    - name: Show syncall output
+      debug:
+        msg: "{{ dc_syncall.stdout_lines }}"
+      tags: dc_replicate
+
+    - name: Force replicate from specific source if known
+      ansible.windows.win_shell: |
+        $partitions = @(
+          "DC=jukebox,DC=internal",
+          "CN=Configuration,DC=jukebox,DC=internal",
+          "CN=Schema,CN=Configuration,DC=jukebox,DC=internal"
+        )
+        foreach ($p in $partitions) {
+          repadmin /replicate $env:COMPUTERNAME "{{ dc_replication_source }}" "$p" /force 2>&1
+        }
+      register: dc_replicate_forced
+      changed_when: false
+      ignore_errors: true
+      when: dc_replication_source is defined and dc_replication_source != ""
+      tags: dc_replicate
+
+    - name: Show forced replication output
+      debug:
+        msg: "{{ dc_replicate_forced.stdout_lines | default([]) }}"
+      when: dc_replication_source is defined and dc_replication_source != ""
+      tags: dc_replicate
+
+    # ── Stage 2 — Wait for SYSVOL and NETLOGON ───────────────────────────────
+
+    - name: "── Stage 2 — Wait for SYSVOL and NETLOGON shares ──"
+      debug:
+        msg: >
+          {{ _c.C }}[*]{{ _c.NC }} Waiting for DFSR to converge
+          (up to {{ dc_sysvol_wait_retries * dc_sysvol_wait_delay }}s)...
+      tags: dc_replicate
+
+    - name: Wait for SYSVOL share to appear
+      ansible.windows.win_shell: |
+        $shares = Get-SmbShare | Select-Object -ExpandProperty Name
+        if ($shares -contains 'SYSVOL' -and $shares -contains 'NETLOGON') {
+          "ready"
+        } else {
+          "waiting"
+        }
+      register: dc_sysvol_check
+      until: dc_sysvol_check.stdout | trim == 'ready'
+      retries: "{{ dc_sysvol_wait_retries }}"
+      delay:   "{{ dc_sysvol_wait_delay }}"
+      changed_when: false
+      tags: dc_replicate
+
+    - name: SYSVOL and NETLOGON confirmed available
+      debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} SYSVOL and NETLOGON shares are online.
+      tags: dc_replicate
+
+    # ── Stage 3 — Replication health check ───────────────────────────────────
+
+    - name: "── Stage 3 — Replication summary (repadmin /replsummary) ──"
+      debug:
+        msg: "{{ _c.C }}[*]{{ _c.NC }} Running replication summary..."
+      tags: dc_replicate
+
+    - name: Run repadmin /replsummary
+      ansible.windows.win_shell: |
+        repadmin /replsummary 2>&1
+      register: dc_replsummary
+      changed_when: false
+      tags: dc_replicate
+
+    - name: Show replication summary
+      debug:
+        msg: "{{ dc_replsummary.stdout_lines }}"
+      tags: dc_replicate
+
+    - name: Check for replication failures in summary
+      ansible.windows.win_shell: |
+        $out = repadmin /replsummary 2>&1
+        $failures = $out | Select-String -Pattern 'fail|error' -CaseSensitive:$false
+        if ($failures) {
+          Write-Output "FAILURES_DETECTED"
+          $failures | ForEach-Object { Write-Output $_.Line }
+        } else {
+          Write-Output "OK"
+        }
+      register: dc_repl_errors
+      changed_when: false
+      tags: dc_replicate
+
+    - name: Warn on replication failures (non-fatal — log and continue)
+      debug:
+        msg: >
+          {{ _c.Y }}[!]{{ _c.NC }} Replication issues detected on
+          {{ inventory_hostname }}.
+          Review repadmin /replsummary output above.
+          This may resolve as DFSR converges — re-run dc_replicate tag
+          in 15 minutes if issues persist.
+      when: dc_repl_errors.stdout_lines[0] | default('OK') == 'FAILURES_DETECTED'
+      tags: dc_replicate
+
+    # ── Stage 4 — AD Sites and Services registration ─────────────────────────
+
+    - name: "── Stage 4 — Verify DC registered in correct AD site ──"
+      debug:
+        msg: >
+          {{ _c.C }}[*]{{ _c.NC }} Checking AD Sites and Services registration
+          for site {{ host_site }}...
+      tags: dc_replicate
+
+    - name: Check DC AD site registration
+      ansible.windows.win_shell: |
+        Import-Module ActiveDirectory
+        $dc = Get-ADDomainController -Identity $env:COMPUTERNAME -ErrorAction SilentlyContinue
+        if ($dc) {
+          Write-Output $dc.Site
+        } else {
+          Write-Output "NOT_FOUND"
+        }
+      register: dc_site_registration
+      changed_when: false
+      tags: dc_replicate
+
+    - name: Warn — DC registered under unexpected site
+      debug:
+        msg: >
+          {{ _c.Y }}[!]{{ _c.NC }} {{ inventory_hostname }} is registered
+          under AD site '{{ dc_site_registration.stdout | trim }}'
+          but hostname implies site '{{ host_site }}'.
+          Review AD Sites and Services — the DC may need its subnet
+          mapped to the correct site object.
+      when: dc_site_registration.stdout | trim != host_site
+      tags: dc_replicate
+
+    - name: AD site registration confirmed
+      debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} {{ inventory_hostname }} registered
+          in AD site: {{ dc_site_registration.stdout | trim }}
+      when: dc_site_registration.stdout | trim == host_site
+      tags: dc_replicate
+
+    # ── Stage 5 — FSMO role check (hub/special-sauce sites) ──────────────────
+
+    - name: "── Stage 5 — FSMO role placement check (hub sites only) ──"
+      debug:
+        msg: >
+          {{ _c.C }}[*]{{ _c.NC }} Checking FSMO role placement
+          (informational — no roles will be moved automatically)...
+      when: host_site in dc_hub_sites or host_site == 'CLD'
+      tags: dc_replicate
+
+    - name: Query FSMO role holders
+      ansible.windows.win_shell: |
+        Import-Module ActiveDirectory
+        $domain  = Get-ADDomain
+        $forest  = Get-ADForest
+        [PSCustomObject]@{
+          SchemaMaster         = $forest.SchemaMaster
+          DomainNamingMaster   = $forest.DomainNamingMaster
+          PDCEmulator          = $domain.PDCEmulator
+          RIDMaster            = $domain.RIDMaster
+          InfrastructureMaster = $domain.InfrastructureMaster
+        } | ConvertTo-Json
+      register: dc_fsmo_raw
+      changed_when: false
+      when: host_site in dc_hub_sites or host_site == 'CLD'
+      tags: dc_replicate
+
+    - name: Parse and display FSMO roles
+      debug:
+        msg:
+          - "{{ _c.C }}── FSMO Role Holders ────────────────────────────────────────{{ _c.NC }}"
+          - "  Schema Master         : {{ (dc_fsmo_raw.stdout | from_json).SchemaMaster }}"
+          - "  Domain Naming Master  : {{ (dc_fsmo_raw.stdout | from_json).DomainNamingMaster }}"
+          - "  PDC Emulator          : {{ (dc_fsmo_raw.stdout | from_json).PDCEmulator }}"
+          - "  RID Master            : {{ (dc_fsmo_raw.stdout | from_json).RIDMaster }}"
+          - "  Infrastructure Master : {{ (dc_fsmo_raw.stdout | from_json).InfrastructureMaster }}"
+          - "{{ _c.Y }}[!]{{ _c.NC }} FSMO moves are NOT automatic — use ntdsutil or"
+          - "  Move-ADDirectoryServerOperationMasterRole if roles need relocating."
+      when:
+        - host_site in dc_hub_sites or host_site == 'CLD'
+        - dc_fsmo_raw is defined
+        - dc_fsmo_raw.stdout | trim != ''
+      tags: dc_replicate
+
+    # ── Stage 6 — KCC / site link check ──────────────────────────────────────
+
+    - name: "── Stage 6 — Trigger KCC to recalculate replication topology ──"
+      ansible.windows.win_shell: |
+        repadmin /kcc 2>&1
+      register: dc_kcc
+      changed_when: false
+      tags: dc_replicate
+
+    - name: KCC recalculation result
+      debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} KCC run: {{ dc_kcc.stdout | trim }}
+      tags: dc_replicate
