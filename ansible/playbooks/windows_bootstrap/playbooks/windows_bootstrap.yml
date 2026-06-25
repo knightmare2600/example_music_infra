@@ -85,13 +85,13 @@
       "39":  { site: MIL, domain: example.net  }  # Milan
       "78":  { site: VIE, domain: example.net  }  # Vienna
       "136": { site: BRK, domain: example.net  }  # Brockville — NA/APAC hub
-      "164": { site: TOR, domain: example.net  }  # Toronto
+      "146": { site: TOR, domain: example.net  }  # Toronto
       "154": { site: MTL, domain: example.net  }  # Montreal
       "213": { site: LAX, domain: example.net  }  # Los Angeles
       "212": { site: NYC, domain: example.net  }  # New York
       "201": { site: NJC, domain: example.net  }  # New Jersey
       "135": { site: MIA, domain: example.net  }  # Miami
-      "44":  { site: ATL, domain: example.net  }  # Athens GA
+      "33":  { site: ATL, domain: example.net  }  # Atlanta
       "214": { site: CHI, domain: example.net  }  # Chicago
       "29":  { site: SYD, domain: example.net  }  # Sydney
       "61":  { site: MEL, domain: example.net  }  # Melbourne
