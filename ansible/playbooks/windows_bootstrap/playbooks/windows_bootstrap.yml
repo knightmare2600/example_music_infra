@@ -25,11 +25,11 @@
 #   Override with: -e force_bootstrap=true
 #
 # USAGE — single host (first time, will prompt for password):
-#   ansible-playbook playbooks/windows/windows_bootstrap.yml \
+#   ansible-playbook playbooks/windows_bootstrap/playbooks/windows_bootstrap.yml \
 #     -i configs/inventory --limit EXAWKSFAL001
 #
 # USAGE — bulk (host_vars must be fully populated, key already deployed):
-#   ansible-playbook playbooks/windows/windows_bootstrap.yml \
+#   ansible-playbook playbooks/windows_bootstrap/playbooks/windows_bootstrap.yml \
 #     -i configs/inventory --limit windows_nodes
 # =============================================================================
 

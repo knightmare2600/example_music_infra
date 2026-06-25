@@ -8,8 +8,8 @@
 # site code against sites.csv (passed as --extra-vars sites_csv=<path>).
 #
 # Usage:
-#   ansible-playbook -i inventory/<site>.ini playbooks/10-rename.yml
-#   ansible-playbook -i inventory/<site>.ini playbooks/10-rename.yml \
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/10-rename.yml
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/10-rename.yml \
 #     -e new_hostname=EXAWKSGLA001
 #
 # Tags: rename

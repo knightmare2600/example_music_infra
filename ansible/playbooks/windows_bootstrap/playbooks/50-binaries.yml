@@ -18,7 +18,7 @@
 # separately since filenames are not consistent across arches.
 #
 # Usage:
-#   ansible-playbook -i inventory/<site>.ini playbooks/50-binaries.yml
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/50-binaries.yml
 #
 # Tags: binaries, fonts
 # =============================================================================

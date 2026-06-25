@@ -18,7 +18,7 @@
 #
 # Variables (set in group_vars or pass with -e):
 #   sites_csv_path   -- path to sites.csv on the control node
-#                       default: files/sites.csv (relative to playbook)
+#                       default: /etc/example-music/sites.csv
 #   dns_ip           -- static IP for this server
 #                       default: 192.168.139.10
 #   dns_gateway      -- provisioning network gateway
@@ -30,10 +30,10 @@
 #   zone_serial      -- override SOA serial (YYYYMMDDnn format)
 #                       default: auto (ansible_date_time.date + "01")
 #
-# Usage:
-#   ansible-playbook -i inventory.ini bind9-dns.yml
-#   ansible-playbook -i inventory.ini bind9-dns.yml --tags zones
-#   ansible-playbook -i inventory.ini bind9-dns.yml --tags zones,reload
+# Usage (run from ansible/ root):
+#   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml
+#   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --tags zones
+#   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --tags zones,reload
 #
 # Tags:
 #   packages   -- apt install
@@ -59,7 +59,7 @@
     dns_interface: ""          # autodetected below if blank
     zone_ttl: 300
     zone_serial: "{{ ansible_date_time.date | replace('-', '') }}01"
-    sites_csv_path: "files/sites.csv"
+    sites_csv_path: "/etc/example-music/sites.csv"
     bind_zone_dir: "/etc/bind"
     this_hostname: "exasvrcld001"
     domain: "jukebox.internal"
@@ -687,7 +687,7 @@
     bind_zone_dir: "/etc/bind"
     zone_serial: "{{ ansible_date_time.date | replace('-', '') }}01"
     zone_ttl: 300
-    sites_csv_path: "files/sites.csv"
+    sites_csv_path: "/etc/example-music/sites.csv"
     devices_csv_path: "files/devices.csv"
 
     # CLD BLACK SWAN:

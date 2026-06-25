@@ -8,7 +8,7 @@
 # (exa_deadvertise_enabled: false).
 #
 # Usage:
-#   ansible-playbook -i inventory/<site>.ini playbooks/25-deadvertise.yml
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/25-deadvertise.yml
 #
 # Tags: deadvertise
 # =============================================================================

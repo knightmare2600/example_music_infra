@@ -6,11 +6,11 @@
 # Ansible port of firewallme.sh — colourised output via exa_pretty callback
 # and ANSI codes embedded in all pause prompts.
 #
-# Usage:
-#   ansible-playbook -i inventory/kge.ini  playbooks/90-firewall.yml -e target=EXAFWLKGE001 --ask-vault-pass
-#   ansible-playbook -i inventory/cld.ini  playbooks/90-firewall.yml -e target=EXAFWLCLD001 --ask-vault-pass
-#   ansible-playbook -i inventory/kge.ini  playbooks/90-firewall.yml -e target=EXAFWLKGE001 --tags nftables --ask-vault-pass
-#   ansible-playbook -i inventory/kge.ini  playbooks/90-firewall.yml -e target=EXAFWLKGE001 --check --ask-vault-pass
+# Usage (run from ansible/ root):
+#   ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=EXAFWLKGE001 --ask-vault-pass
+#   ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=EXAFWLCLD001 --ask-vault-pass
+#   ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=EXAFWLKGE001 --tags nftables --ask-vault-pass
+#   ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=EXAFWLKGE001 --check --ask-vault-pass
 #
 # Tags: firewall, preflight, interfaces, wan, wireguard, confirm,
 #       packages, network, nftables, dnsmasq, ssh, cockpit, finish
