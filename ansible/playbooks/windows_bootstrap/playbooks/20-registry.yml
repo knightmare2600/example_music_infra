@@ -7,8 +7,8 @@
 # Safe to re-run — all tasks are idempotent.
 #
 # Usage:
-#   ansible-playbook -i inventory/<site>.ini playbooks/20-registry.yml
-#   ansible-playbook -i inventory/<site>.ini playbooks/20-registry.yml --check
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml --check
 #
 # Tags: registry
 # =============================================================================

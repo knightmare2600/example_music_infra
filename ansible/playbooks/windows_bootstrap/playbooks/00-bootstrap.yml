@@ -14,17 +14,17 @@
 #
 # Usage:
 #   # Full bootstrap
-#   ansible-playbook -i inventory/<site>.ini playbooks/00-bootstrap.yml \
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/00-bootstrap.yml \
 #     -e target=<hostname-or-ip> --ask-vault-pass
 #
 #   # With pre-supplied OU (skips interactive LDAP selection)
-#   ansible-playbook -i inventory/<site>.ini playbooks/00-bootstrap.yml \
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/00-bootstrap.yml \
 #     -e target=<host> \
 #     -e bootstrap_ou_path="OU=Servers,OU=MCR,DC=jukebox,DC=internal" \
 #     --ask-vault-pass
 #
 #   # Dry run
-#   ansible-playbook -i inventory/<site>.ini playbooks/00-bootstrap.yml \
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/00-bootstrap.yml \
 #     -e target=<host> --check --ask-vault-pass
 #
 # Stage map (mirrors Join-DomainAndBootstrap.ps1):

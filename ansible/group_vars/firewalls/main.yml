@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# vars/wireguard_hubs.yml
+# group_vars/firewalls/main.yml
 # Example Music Limited — WireGuard hub reference data
 # =============================================================================
 # These are REFERENCE values used for cross-checking live-fetched pubkeys.

@@ -10,7 +10,7 @@
 # playbook can re-apply after drift without conflict.
 #
 # Usage:
-#   ansible-playbook -i inventory/<site>.ini playbooks/60-wallpaper.yml
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/60-wallpaper.yml
 #
 # Tags: wallpaper
 # =============================================================================

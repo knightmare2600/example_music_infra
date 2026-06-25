@@ -13,7 +13,7 @@
 # Run this playbook after bootstrap on LAP/SUR devices to re-enable it.
 #
 # Usage:
-#   ansible-playbook -i inventory/<site>.ini playbooks/70-hibernation.yml
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/70-hibernation.yml
 #
 # Tags: hibernation
 # =============================================================================

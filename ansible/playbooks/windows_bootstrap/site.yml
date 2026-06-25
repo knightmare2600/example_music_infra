@@ -6,20 +6,22 @@
 # Bootstrap runs first (once, on a fresh PXE build).
 # Subsequent runs skip stages that are already complete (idempotent).
 #
+# Run from the ansible/ root for all commands.
+#
 # Usage — full run including bootstrap:
-#   ansible-playbook -i inventory/<site>.ini site.yml \
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
 #     -e target=<host> --ask-vault-pass
 #
 # Usage — skip bootstrap (host already onboarded):
-#   ansible-playbook -i inventory/<site>.ini site.yml \
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
 #     -e target=<host> --skip-tags bootstrap --ask-vault-pass
 #
 # Usage — bootstrap only:
-#   ansible-playbook -i inventory/<site>.ini site.yml \
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
 #     -e target=<host> --tags bootstrap --ask-vault-pass
 #
 # Usage — single playbook via tag:
-#   ansible-playbook -i inventory/<site>.ini site.yml \
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
 #     -e target=<host> --tags registry --ask-vault-pass
 #
 # Playbook order:

@@ -12,7 +12,7 @@
 # ACLs are re-applied, service state is confirmed.
 #
 # Usage:
-#   ansible-playbook -i inventory/<site>.ini playbooks/75-openssh.yml
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/75-openssh.yml
 #
 # Tags: openssh
 # =============================================================================

@@ -15,7 +15,7 @@
 # The host reboots after joining. Ansible will wait and reconnect.
 #
 # Usage:
-#   ansible-playbook -i inventory/<site>.ini playbooks/80-domainjoin.yml \
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/80-domainjoin.yml \
 #     --ask-vault-pass
 #
 # Tags: domainjoin

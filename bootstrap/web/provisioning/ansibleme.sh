@@ -107,6 +107,15 @@
 #                     operator review.  CSV-only mode pre-fills [dcs] & [firewalls] from SITE_DC[]/
 #                     SITE_FW[] without scanning. Additional groups can be added manually after
 #                     either mode. Inventory write updated to consume DISC_HOSTS_BY_GROUP.
+# v1.12.0 2026-06-25  configs/inventory is now a directory, not a flat file. Ansible merges all
+#                     .ini files in the directory automatically, so per-site and per-service
+#                     inventory files (cld.ini, kge.ini, fal.ini, rudder.ini, etc.) can live
+#                     alongside the generated main.ini without polluting it. INVENTORY_FILE now
+#                     points to configs/inventory/main.ini (the generated file); ansible.cfg and
+#                     all ansible commands reference configs/inventory (the directory). Section 10b
+#                     now greps all *.ini files in the directory instead of just main.ini.
+#                     group_vars/firewalls/main.yml added for WireGuard hub reference data.
+#
 # v1.3.0  2026-06-14  Quieten apt output: -qq + stdout to /dev/null on install line; errors still
 #                     surface on stderr. Section 8 (additional managed hosts): smart CSV-fill mode.
 #                     Recognises group names dc/dcs & firewalls/fw & offers to auto-build IPs from
@@ -222,7 +231,7 @@ PLAYBOOKS_DIR="${ANSIBLE_DIR}/playbooks"
 FILES_DIR="${ANSIBLE_DIR}/files"
 KEY_FILE="${CONFIGS_DIR}/ansible-id_rsa"
 KEY_PUB="${CONFIGS_DIR}/ansible-id_rsa.pub"
-INVENTORY_FILE="${CONFIGS_DIR}/inventory"
+INVENTORY_FILE="${CONFIGS_DIR}/inventory/main.ini"
 ANSIBLE_CFG="${ANSIBLE_DIR}/ansible.cfg"
 SENTINEL="/etc/.i_am_an_ansible_node"
 
@@ -654,7 +663,7 @@ section "5. Directory scaffold"
 info "Creating ansible directory tree under ${ANSIBLE_DIR}..."
 # FIX v1.1.0: brace expansion (e.g. {linux,windows}) does NOT work inside double
 # quotes — bash treats the braces as literals. Each path is now explicit.
-mkdir -p "${CONFIGS_DIR}" "${PLAYBOOKS_DIR}/proxmox" "${PLAYBOOKS_DIR}/linux" "${PLAYBOOKS_DIR}/windows" "${FILES_DIR}" "${ANSIBLE_DIR}/group_vars/all" "${ANSIBLE_DIR}/group_vars/pvenodes" "${ANSIBLE_DIR}/host_vars"
+mkdir -p "${CONFIGS_DIR}/inventory" "${PLAYBOOKS_DIR}/proxmox" "${PLAYBOOKS_DIR}/linux" "${PLAYBOOKS_DIR}/windows" "${FILES_DIR}" "${ANSIBLE_DIR}/group_vars/all" "${ANSIBLE_DIR}/group_vars/pvenodes" "${ANSIBLE_DIR}/host_vars"
 chown -R "${ANSIBLE_USER}:${ANSIBLE_USER}" "${ANSIBLE_DIR}"
 success "Directory tree created."
 
@@ -1163,7 +1172,7 @@ cat > "$ANSIBLE_CFG" <<EOF
 interpreter_python = auto_silent
 host_key_checking  = True
 # Primary inventory location.
-inventory = ${INVENTORY_FILE}
+inventory = ${CONFIGS_DIR}/inventory
 # Default SSH user.
 remote_user = ${ANSIBLE_USER}
 # SSH private key used for authentication.
@@ -1317,10 +1326,11 @@ touch "$ANSIBLE_KNOWN_HOSTS"
 chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "$ANSIBLE_KNOWN_HOSTS"
 chmod 644 "$ANSIBLE_KNOWN_HOSTS"
 
-# Extract every IP address that appears in the inventory (first column of any
-# non-comment, non-group-header, non-blank line).
+# Extract every IP address that appears in the inventory directory (first column
+# of any non-comment, non-group-header, non-blank line across all .ini files).
 mapfile -t MANAGED_IPS < <(
-  grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' "$INVENTORY_FILE" | awk '{print $1}' | sort -u
+  grep -hE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' "${CONFIGS_DIR}/inventory/"*.ini 2>/dev/null \
+    | awk '{print $1}' | sort -u
 )
 
 if [[ ${#MANAGED_IPS[@]} -eq 0 ]]; then
@@ -1643,7 +1653,7 @@ if [[ "${RUN_PING,,}" == "y" ]]; then
   echo
 
   PING_OUT=$(sudo -u "$ANSIBLE_USER" \
-    ansible pvenodes -i "$INVENTORY_FILE" -m ping 2>&1 || true)
+    ansible pvenodes -i "${CONFIGS_DIR}/inventory" -m ping 2>&1 || true)
 
   echo "$PING_OUT"
   echo
@@ -1658,12 +1668,12 @@ if [[ "${RUN_PING,,}" == "y" ]]; then
   if [[ $UNREACHABLE -gt 0 || $FAILED -gt 0 ]]; then
     warn "${UNREACHABLE} unreachable / ${FAILED} failed."
     warn "Run pve_onboard.yml as root to complete setup:"
-    warn "  ansible-playbook ${PLAYBOOKS_DIR}/proxmox/pve_onboard.yml -i ${INVENTORY_FILE} --user=root -k"
+    warn "  ansible-playbook ${PLAYBOOKS_DIR}/proxmox/pve_onboard.yml -i ${CONFIGS_DIR}/inventory --user=root -k"
   fi
 else
   info "Skipping connectivity test."
   if [[ ${#PVE_NODES[@]} -gt 0 ]]; then
-    info "Run manually any time: ansible pvenodes -i ${INVENTORY_FILE} -m ping"
+    info "Run manually any time: ansible pvenodes -i ${CONFIGS_DIR}/inventory -m ping"
   fi
 fi
 
@@ -1686,7 +1696,7 @@ MEM_FREE=\$(awk '/MemAvailable/{print int(\$2/1024)}' /proc/meminfo)
 MEM_USED=\$(( MEM_TOTAL - MEM_FREE ))
 DISK=\$(df -h / | awk 'NR==2{print \$3" used of "\$2" ("\$5")"}')
 ANSIBLE_VER=\$(ansible --version 2>/dev/null | head -1 || echo "not found")
-INV_HOSTS=\$(ansible all -i ${INVENTORY_FILE} --list-hosts 2>/dev/null | tail -n +2 | wc -l || echo "?")
+INV_HOSTS=\$(ansible all -i ${CONFIGS_DIR}/inventory --list-hosts 2>/dev/null | tail -n +2 | wc -l || echo "?")
 echo -e "
 \${WH}╔══════════════════════════════════════════════════════════════╗\${NC}
 \${WH}║     EXAMPLE MUSIC LIMITED: \$(printf '%-35s' "\${HOSTNAME}")║\${NC}
@@ -1698,7 +1708,7 @@ echo -e "
 
   \${WH}── Ansible ───────────────────────────────────────────────────\${NC}
     \${CY}Version\${NC}  : \${GR}\${ANSIBLE_VER}\${NC}
-    \${CY}Inventory\${NC}: \${GR}${INVENTORY_FILE}\${NC}
+    \${CY}Inventory\${NC}: \${GR}${CONFIGS_DIR}/inventory\${NC}
     \${CY}Hosts\${NC}    : \${GR}\${INV_HOSTS} managed host(s)\${NC}
 
   \${WH}── System ────────────────────────────────────────────────────\${NC}
@@ -1708,8 +1718,8 @@ echo -e "
     \${CY}Disk /\${NC}   : \${GR}\${DISK}\${NC}
 
   \${WH}── Quick reference ───────────────────────────────────────────\${NC}
-    \${CY}Onboard PVE :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/pve_onboard.yml -i ${INVENTORY_FILE} --user=root -k
-    \${CY}Ping all    :\${NC} ansible all -i ${INVENTORY_FILE} -m ping
+    \${CY}Onboard PVE :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/pve_onboard.yml -i ${CONFIGS_DIR}/inventory --user=root -k
+    \${CY}Ping all    :\${NC} ansible all -i ${CONFIGS_DIR}/inventory -m ping
     \${CY}Templates   :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/cloud_templates.yml
 "
 MOTD
@@ -1739,7 +1749,7 @@ success "Dynamic MOTD configured."
   echo "Country     : ${SITE_DISPLAY_COUNTRY}"
   echo "Entity      : ${SITE_DISPLAY_ENTITY}"
   echo "Ansible dir : ${ANSIBLE_DIR}"
-  echo "Inventory   : ${INVENTORY_FILE}"
+  echo "Inventory   : ${CONFIGS_DIR}/inventory"
   echo "SSH key     : ${KEY_FILE}"
   echo "PVE nodes   : ${PVE_NODES[*]:-none}"
   echo "Date        : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -1756,7 +1766,7 @@ echo -e "${GREEN}  SETUP COMPLETE — $(hostname)${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo -e "${CYAN}  Site          : ${SITE_CODE} — ${SITE_DISPLAY_CITY}, ${SITE_DISPLAY_COUNTRY}${NC}"
 echo -e "${CYAN}  Ansible dir   : ${ANSIBLE_DIR}${NC}"
-echo -e "${CYAN}  Inventory     : ${INVENTORY_FILE}${NC}"
+echo -e "${CYAN}  Inventory     : ${CONFIGS_DIR}/inventory${NC}"
 echo -e "${CYAN}  SSH key       : ${KEY_FILE}${NC}"
 echo -e "${CYAN}  ansible.cfg   : ${ANSIBLE_CFG}${NC}"
 echo
@@ -1792,7 +1802,7 @@ if [[ ${#PVE_NODES[@]} -gt 0 ]]; then
   echo -e "${YELLOW}  ║   NEXT STEP: onboard each PVE node                    ║${NC}"
   echo -e "${YELLOW}  ╚═══════════════════════════════════════════════════════╝${NC}"
   echo
-  echo -e "${GREEN}  ansible-playbook ${PLAYBOOKS_DIR}/proxmox/pve_onboard.yml -i ${INVENTORY_FILE} --user=root -k${NC}"
+  echo -e "${GREEN}  ansible-playbook ${PLAYBOOKS_DIR}/proxmox/pve_onboard.yml -i ${CONFIGS_DIR}/inventory --user=root -k${NC}"
   echo
   echo -e "${CYAN}  This deploys the ansible user + key + sudoers to each PVE node.${NC}"
   echo -e "${CYAN}  After that, all subsequent playbooks run passwordless.${NC}"

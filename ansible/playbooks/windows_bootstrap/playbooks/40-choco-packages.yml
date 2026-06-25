@@ -8,8 +8,8 @@
 # idempotent when packages are already present.
 #
 # Usage:
-#   ansible-playbook -i inventory/<site>.ini playbooks/40-choco-packages.yml
-#   ansible-playbook -i inventory/<site>.ini playbooks/40-choco-packages.yml \
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/40-choco-packages.yml
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/40-choco-packages.yml \
 #     --tags choco_packages
 #
 # Tags: choco_packages

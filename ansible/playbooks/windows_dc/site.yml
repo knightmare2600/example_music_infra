@@ -8,20 +8,23 @@
 # inventory file groups windows_dc as a child of windows_server, so all
 # group_vars and connection settings are inherited automatically.
 #
+# Run from the ansible/ root for all commands.
+#
 # Run order:
-#   Step 1 — standard bootstrap (run from windows_bootstrap/):
-#     ansible-playbook -i ../windows_dc/inventory/<site>.ini \
-#       ../windows_bootstrap/site.yml \
+#   Step 1 — standard bootstrap:
+#     ansible-playbook -i configs/inventory \
+#       playbooks/windows_bootstrap/site.yml \
 #       -e target=<host> --ask-vault-pass
 #
-#   Step 2 — DC promotion (run from windows_dc/):
-#     ansible-playbook -i inventory/<site>.ini site.yml \
-#       -e target=<host> -e sites_csv=../../files/sites.csv
+#   Step 2 — DC promotion:
+#     ansible-playbook -i configs/inventory \
+#       playbooks/windows_dc/site.yml \
+#       -e target=<host>
 #
 #   Or single-step with tags:
-#     ansible-playbook -i inventory/<site>.ini site.yml \
-#       -e target=<host> -e sites_csv=../../files/sites.csv \
-#       --tags dc_promote
+#     ansible-playbook -i configs/inventory \
+#       playbooks/windows_dc/site.yml \
+#       -e target=<host> --tags dc_promote
 #
 # Playbook order:
 #   85-dc-preflight   Credential prompts + replication source resolution

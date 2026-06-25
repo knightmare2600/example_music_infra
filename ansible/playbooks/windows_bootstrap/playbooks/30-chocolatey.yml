@@ -8,7 +8,7 @@
 # this playbook is for drift correction or non-PXE-built machines.
 #
 # Usage:
-#   ansible-playbook -i inventory/<site>.ini playbooks/30-chocolatey.yml
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/30-chocolatey.yml
 #
 # Tags: chocolatey
 # =============================================================================
