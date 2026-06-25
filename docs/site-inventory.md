@@ -1221,17 +1221,17 @@
 
 ## TOR — Toronto, Ontario
 
-**LAN:** `192.168.164.0/24` · **Domain:** `example.net`  
+**LAN:** `192.168.146.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
 
 > ⚠️ `EXADCSTOR001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXARACTOR001` — BMC node 1 (`192.168.164.2`)
-- [ ] `EXARACTOR002` — RAC emulator VM (`192.168.164.3`)
-- [ ] `EXAPVETOR001` — Proxmox node 1 (`192.168.164.5`) · ZFS RAID1
-- [ ] `EXADCSTOR001` — DC (`192.168.164.10`) ⚠️ Services stopped
-- [ ] `EXASBCTOR001` — VOIP SBC (`192.168.164.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXARACTOR001` — BMC node 1 (`192.168.146.2`)
+- [ ] `EXARACTOR002` — RAC emulator VM (`192.168.146.3`)
+- [ ] `EXAPVETOR001` — Proxmox node 1 (`192.168.146.5`) · ZFS RAID1
+- [ ] `EXADCSTOR001` — DC (`192.168.146.10`) ⚠️ Services stopped
+- [ ] `EXASBCTOR001` — VOIP SBC (`192.168.146.48`) · trunks to `EXACLDPBX001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status

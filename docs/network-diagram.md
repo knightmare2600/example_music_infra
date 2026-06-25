@@ -1416,7 +1416,7 @@ graph TD
 
 ## TOR — Toronto ⚠️
 
-**LAN:** `192.168.164.0/24` · **Domain:** `example.net`  
+**LAN:** `192.168.146.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
 > ⚠️ `EXADCSTOR001` — DNS, Netlogon and KDC services stopped.
 
