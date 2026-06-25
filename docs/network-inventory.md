@@ -12,7 +12,7 @@
 
 | Date | Change |
 |------|--------|
-| 2026-03-05 | Full review —<br /><br />subnets corrected against canonical site list; standard IP convention table added<br />CLY corrected to `192.168.41.0/24`<br />GLA corrected to `192.168.141.0/24`<br />KGE corrected to `192.168.65.0/24`<br />MEL corrected to `192.168.61.0/24`<br />MIA corrected to `192.168.135.0/24`<br />MUN corrected to `192.168.189.0/24`<br />BRD renamed BER throughout<br />TOR subnet corrected to `192.168.164.0/24`<br />FAL DC IPs corrected to `.76.10`/`.76.11`<br />FAL PVE nodes renamed EXAPVE and corrected to `.76.5`/`.76.6`<br />FAL RAC corrected to `.2`/`.3`<br />BON DC corrected to `192.168.228.10`<br />ODE DC002 corrected to `192.168.126.11`<br />FAX DC corrected to `192.168.246.10`<br />SBC addresses corrected to `.48` throughout<br />CLD (Cloud) site added<br />new sites added: AMS, ATL, CHI, GOT, HAL, HUL, KOR, MIL, MTL, OSL, SHE, VIE |
+| 2026-03-05 | Full review —<br /><br />subnets corrected against canonical site list; standard IP convention table added<br />CLY corrected to `192.168.41.0/24`<br />GLA corrected to `192.168.141.0/24`<br />KGE corrected to `192.168.65.0/24`<br />MEL corrected to `192.168.61.0/24`<br />MIA corrected to `192.168.135.0/24`<br />MUN corrected to `192.168.189.0/24`<br />BRD renamed BER throughout<br />TOR subnet corrected to `192.168.146.0/24`<br />FAL DC IPs corrected to `.76.10`/`.76.11`<br />FAL PVE nodes renamed EXAPVE and corrected to `.76.5`/`.76.6`<br />FAL RAC corrected to `.2`/`.3`<br />BON DC corrected to `192.168.228.10`<br />ODE DC002 corrected to `192.168.126.11`<br />FAX DC corrected to `192.168.246.10`<br />SBC addresses corrected to `.48` throughout<br />CLD (Cloud) site added<br />new sites added: AMS, ATL, CHI, GOT, HAL, HUL, KOR, MIL, MTL, OSL, SHE, VIE |
 | 2026-03-03 | TOR (Toronto) added — `192.168.146.0/24`, separated from shared BRK/NYC/NJC subnet |
 | 2026-03-03 | BRD renamed from BRD (West Berlin) throughout — site code correction |
 | 2026-03-03 | NJC and NYC corrected to their own subnets |
@@ -106,7 +106,7 @@ Exceptions are noted in individual site entries.
 | PER | Perth | Scotland, UK | `192.168.173.0/24` | `example.net` | Solaris archive server |
 | SHE | Sheffield | England, UK | `192.168.114.0/24` | `example.net` | |
 | SYD | Sydney | NSW, Australia | `192.168.29.0/24` | `example.net` | |
-| TOR | Toronto | Ontario, Canada | `192.168.164.0/24` | `example.net` | |
+| TOR | Toronto | Ontario, Canada | `192.168.146.0/24` | `example.net` | |
 | VIE | Vienna | Austria | `192.168.78.0/24` | `example.net` | |
 | AKL | Auckland | New Zealand | `192.168.93.0/24` | `example.net` | |
 
@@ -142,7 +142,7 @@ Exceptions are noted in individual site entries.
 | `EXADCSBRD001` | BRD | example.net | `192.168.113.10` | PDC Emulator, RID Master, Infrastructure Master | ✅ Healthy |
 | `EXADCSMUN001` | MUN | example.net | `192.168.189.10` | — | ✅ Healthy |
 | `EXADCSBRK001` | BRK | example.net | `192.168.136.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSTOR001` | TOR | example.net | `192.168.164.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSTOR001` | TOR | example.net | `192.168.146.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
 | `EXADCSNYC001` | NYC | example.net | `192.168.212.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
 | `EXADCSNJC001` | NJC | example.net | `192.168.201.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
 | `EXADCSATL001` | ATL | example.net | `192.168.44.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
@@ -787,7 +787,7 @@ Exceptions are noted in individual site entries.
 ---
 
 #### TOR — Toronto, Ontario
-**LAN:** `192.168.164.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.146.0/24` · **Domain:** `example.net`
 
 > ⚠️ `EXADCSTOR001` — DNS, Netlogon and KDC services stopped.
 
@@ -795,8 +795,8 @@ Exceptions are noted in individual site entries.
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSTOR001` | DC | Windows Server 2022 | `192.168.164.10` | ⚠️ Services stopped |
-| `EXASBCTOR001` | VOIP SBC | 3CX SBC Debian | `192.168.164.48` | Trunks to `EXACLDPBX001` |
+| `EXADCSTOR001` | DC | Windows Server 2022 | `192.168.146.10` | ⚠️ Services stopped |
+| `EXASBCTOR001` | VOIP SBC | 3CX SBC Debian | `192.168.146.48` | Trunks to `EXACLDPBX001` |
 
 ---
 
