@@ -389,8 +389,8 @@ PROV_NET_DEFAULT="192.168.139"
 read -rp "  Provisioning subnet [${PROV_NET_DEFAULT}]: " PROV_NET_INPUT
 PROV_NET="${PROV_NET_INPUT:-${PROV_NET_DEFAULT}}"
 
-read -rp "  Gateway last octet [1]: " GW_OCTET_INPUT
-GW_OCTET="${GW_OCTET_INPUT:-1}"
+read -rp "  Gateway last octet [254]: " GW_OCTET_INPUT
+GW_OCTET="${GW_OCTET_INPUT:-254}"
 PROV_GW="${PROV_NET}.${GW_OCTET}"
 
 # Ansible/management node uses .10 as its canonical DC address from the CSV.
