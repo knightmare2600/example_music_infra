@@ -6,7 +6,13 @@
 # Override any of these in group_vars, host_vars, or -e at runtime.
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-06-26  Add sites_csv_path default for dynamic wg_site_octets loading
 # =============================================================================
+
+# Path to sites.csv on the Ansible control node.
+# Used by 00_preflight.yml to build wg_site_octets at runtime.
+# Override with -e sites_csv_path=/path/to/sites.csv if needed.
+sites_csv_path: "/etc/example-music/sites.csv"
 
 # WAN mode — dhcp or static. 'static' derives IP from site octet convention.
 fw_wan_mode: "dhcp"
