@@ -792,6 +792,7 @@ declare -a SUFFIX_MAP=(
   "7:exapve:3"
   "10:exadcs:1"
   "11:exadcs:2"
+  "12:exarry:1"
   "48:exasbc:1"
   "250:exaswi:1"
   "251:exaswi:2"
@@ -805,6 +806,8 @@ declare -A ROLE_COMMENT=(
   [exarac]="BMC / RAC (iDRAC, iLO, RAC emulators)"
   [exapve]="Proxmox VE nodes"
   [exadcs]="Domain Controllers"
+  [exarry]="Rudder Relay nodes"
+  [exarud]="Rudder Server (CLD)"
   [exasbc]="VOIP SBC nodes"
   [exaswi]="Switches (unmanaged)"
   [exafwl]="Firewalls (Debian FWL nodes)"
@@ -812,11 +815,11 @@ declare -A ROLE_COMMENT=(
 )
 
 # We'll write records role by role for a tidy zone file.
-declare -a ROLE_ORDER=(exafwl exartr exadcs exapve exarac exaswi exasbc exapbx)
+declare -a ROLE_ORDER=(exafwl exartr exadcs exapve exarac exaswi exarry exarud exasbc exapbx)
 
 # Build an in-memory associative array: role -> list of "hostname IP" lines
 declare -A ROLE_RECORDS
-for r in "${ROLE_ORDER[@]}"; do ROLE_RECORDS["$r"]=""; done
+for r in "${ROLE_ORDER[@]}"; do ROLE_RECORDS["${r}"]=""; done
 
 # Sort sites by octet for deterministic output
 mapfile -t SORTED_SITES < <(
@@ -837,8 +840,12 @@ for site in "${SORTED_SITES[@]}"; do
 
     ip="${base}.${suffix}"
 
+    # CLD .12 is the Rudder Server (EXARUDCLD001), not a Relay (EXARRY)
     # CLD .48 is EXAPBX not EXASBC
-    if [[ "${suffix}" == "48" && "${site}" == "CLD" ]]; then
+    if [[ "${suffix}" == "12" && "${site}" == "CLD" ]]; then
+      hostname="EXARUDCLD001"
+      role="exarud"
+    elif [[ "${suffix}" == "48" && "${site}" == "CLD" ]]; then
       hostname="EXAPBXCLD001"
       role="exapbx"
     else
@@ -933,6 +940,9 @@ cat > "${PROV_REV_FILE}" <<PROVREVHDR
 ;
 ; PTR records:
 ;   .10  ${THIS_HOSTNAME}   -- this DNS server
+;   .12  EXARUDCLD001   -- Rudder Server
+;   .20  EXASVRCLD002   -- Windows Admin Centre
+;   .48  EXACLDPBX001   -- Central 3CX PBX
 ;   .50  EXAPRVCLD001   -- provisioning / PXE server
 ;   .69  EXAANSCLD001   -- Ansible management node
 ;   .X   EXAFWL{site}001-wan  -- firewall WAN face for each site
@@ -957,8 +967,11 @@ cat > "${PROV_REV_FILE}" <<PROVREVHDR
 
 ; -- Ancillary / management hosts -----------------------------
 10    IN  PTR  ${THIS_HOSTNAME_LOWER}.jukebox.internal.     ; DNS server (this host)
+12    IN  PTR  exarudcld001.jukebox.internal.     ; Rudder Server
+20    IN  PTR  exasvrcld002.jukebox.internal.     ; Windows Admin Centre
+48    IN  PTR  exacldpbx001.jukebox.internal.     ; Central 3CX PBX
 50    IN  PTR  exaprvcld001.jukebox.internal.     ; Provisioning / PXE
-69    IN  PTR  exaanscld001.jukebox.internal.     ; Ansible management
+69    IN  PTR  exaanscld001.jukebox.internal.     ; Ansible management node
 
 ; -- Firewall WAN PTR records ----------------------------------
 ; 192.168.139.{octet}  ->  exafwl{site}001-wan.jukebox.internal.
@@ -1000,6 +1013,7 @@ declare -a REV_SUFFIX_MAP=(
   "7   exapve  3"
   "10  exadcs  1"
   "11  exadcs  2"
+  "12  exarry  1"
   "48  exasbc  1"
   "250 exaswi  1"
   "251 exaswi  2"

@@ -35,6 +35,7 @@
 | `.7` | PVE node 3 (FAL/ODE/BRK only) |
 | `.10` | DC primary |
 | `.11` | DC secondary |
+| `.12` | Rudder Relay (`EXARRY<SITE>001`) / Rudder Server on CLD (`EXARUDCLD001`) |
 | `.48` | VOIP SBC — trunks to `EXACLDPBX001` |
 | `.100`–`.249` | DHCP pool |
 | `.250`–`.252` | Switches |
@@ -177,9 +178,10 @@
 
 ### Infrastructure Checklist
 - [ ] `EXAFWLCLD001` — Firewall / WireGuard hub online (`192.168.139.1`)
-- [ ] `EXASVRCLD001` — Windows Admin Centre deployed (`192.168.139.20`)
-- [ ] `EXASVRCLD002` — Ansible control node online (`192.168.139.49`)
-- [ ] `EXASVRCLD003` — Rudder server online (`192.168.139.22`)
+- [ ] `EXASVRCLD001` — DNS/BIND9 server online (`192.168.139.10`)
+- [ ] `EXASVRCLD002` — Windows Admin Centre deployed (`192.168.139.20`)
+- [ ] `EXAANSCLD001` — Ansible control node online (`192.168.139.69`)
+- [ ] `EXARUDCLD001` — Rudder Server online (`192.168.139.12`)
 - [ ] `EXACLDPBX001` — Central 3CX PBX online (`192.168.139.48`)
 - [ ] `EXAPRVFAL001` — Provisioning server online (`192.168.139.50`)
 - [ ] WireGuard routes verified to all site subnets
@@ -1400,17 +1402,17 @@
 
 ## ATL — Athens, Georgia
 
-**LAN:** `192.168.44.0/24` · **Domain:** `example.net`  
+**LAN:** `192.168.33.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
 
 > ⚠️ `EXADCSATL001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXARACATL001` — BMC node 1 (`192.168.44.2`)
-- [ ] `EXARACATL002` — RAC emulator VM (`192.168.44.3`)
-- [ ] `EXAPVEATL001` — Proxmox node 1 (`192.168.44.5`) · ZFS RAID1
-- [ ] `EXADCSATL001` — DC (`192.168.44.10`) ⚠️ Services stopped
-- [ ] `EXASBCATL001` — VOIP SBC (`192.168.44.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXARACATL001` — BMC node 1 (`192.168.33.2`)
+- [ ] `EXARACATL002` — RAC emulator VM (`192.168.33.3`)
+- [ ] `EXAPVEATL001` — Proxmox node 1 (`192.168.33.5`) · ZFS RAID1
+- [ ] `EXADCSATL001` — DC (`192.168.33.10`) ⚠️ Services stopped
+- [ ] `EXASBCATL001` — VOIP SBC (`192.168.33.48`) · trunks to `EXACLDPBX001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status

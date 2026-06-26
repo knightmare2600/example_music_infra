@@ -27,6 +27,14 @@ $TTL {{ zone_ttl }}
 
 ; ── PTR records (192.168.{{ item.octet }}.x) ─────────────────────────
 {% for entry in suffix_map %}
+{% if entry.suffix == 12 %}
+{% set hostname = 'exarry' + item.Site | lower + '%03d' | format(entry.seq) + '.' + domain + '.' %}
+{% else %}
 {% set hostname = entry.prefix + item.Site | lower + '%03d' | format(entry.seq) + '.' + domain + '.' %}
+{% endif %}
 {{ "%-5s" | format(entry.suffix) }} IN  PTR  {{ hostname }}
 {% endfor %}
+
+; ── DHCP pool PTR ($GENERATE) ─────────────────────────────────
+; .100–.199  →  dhcp01.{{ item.Site | lower }}.{{ domain }}. through dhcp100.{{ item.Site | lower }}.{{ domain }}.
+$GENERATE 100-199 $ IN PTR dhcp${-99,2,d}.{{ item.Site | lower }}.{{ domain }}.
