@@ -13,23 +13,32 @@
 #   3. Commit the change with the date and reason
 #
 # Topology map (which spokes connect to which hub):
+#   CLD (hub-regional) — cloud/management hub; peers with FAL, ODE, BRK
 #   FAL (hub-primary)  — UK spokes
 #   ODE (hub-regional) — EU spokes
-#   BRK (hub-regional) — AMAPAC spokes
+#   BRK (hub-regional) — NA/APAC spokes
+#
+# CLD is the management hub. All spokes must be able to reach its subnets
+# (192.168.139.0/24 vRACK + 192.168.69.0/24 private LAN) for Ansible/DNS.
+# wg_management_hubs lists hubs whose subnets are always injected into every
+# spoke's AllowedIPs regardless of which regional hub they connect through.
 #
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-06-26  CLD added as hub-regional (cloud management hub)
 # =============================================================================
 
 # Known hub public keys — last verified values
 # Format: { SITE_CODE: "base64-pubkey" }
 wg_hub_known_pubkeys:
+  CLD: ""    # EXAFWLCLD001 — populate after first build
   FAL: "yxYnCsZwxDmv6WrduGTC7pnW3sUxob1GGYpttPfGbmk="
   ODE: "gFK4oQNKN/a2UZvoil43OvOcjp2B6gT4YQ8IUqWrZ1o="
   BRK: "CSpL1NJl4jgeJDf6TccixMGv8JOSH7XS7pErjKSuoT4="
 
 # Hub WAN IPs on the provisioning network (192.168.139.x)
 wg_hub_wan_ips:
+  CLD: "192.168.139.139"
   FAL: "192.168.139.76"
   ODE: "192.168.139.126"
   BRK: "192.168.139.136"
@@ -37,9 +46,12 @@ wg_hub_wan_ips:
 # Default WireGuard listen port for all hubs
 wg_hub_default_port: 51820
 
-# Hub topology — which spoke sites connect to which hub
-# Used to build topology-aware AllowedIPs (same logic as build_allowed_ips / spoke_allowed_ips_for_hub)
+# Hub topology — which spoke sites connect to which hub.
+# Used to build topology-aware AllowedIPs.
+# CLD has no site spokes; it peers directly with FAL, ODE, BRK at the hub level.
 wg_hub_topology:
+  CLD:
+    spokes: []
   FAL:
     spokes: [ABD, BIR, CLY, COV, DUN, EDI, GLA, HAL, HUL, LIV, LND, MCR, NEW, PER, SHE]
   ODE:
@@ -47,12 +59,25 @@ wg_hub_topology:
   BRK:
     spokes: [ATL, CHI, LAX, MIA, MTL, NJC, NYC, TOR, AKL, MEL, SYD]
 
+# Management hubs — subnets always injected into every spoke's AllowedIPs,
+# regardless of which regional hub the spoke connects through.
+# This ensures all spokes can reach Ansible (139.9), DNS (139.8), etc.
+wg_management_hubs:
+  - CLD
+
+# Extra subnets per site — for nodes with more than one LAN behind the firewall.
+# These are appended to standard AllowedIPs (10.0.X.0/24, 192.168.X.0/24).
+wg_site_extra_subnets:
+  CLD:
+    - "192.168.69.0/24"   # EXAFWLCLD001 private LAN (inside interface)
+
 # Site octet map (mirrors sites.csv — used for AllowedIPs derivation without shelling out)
 # All sites from sites.csv. Derived from the third octet of each site's Subnet field.
 # sites.csv is the authoritative source — regenerate from there if octets change.
 # BRD omitted (legacy alias for BER).
 wg_site_octets:
   # ── Hubs ──────────────────────────────────────────────────────────────────
+  CLD: 139   # CloudSite     192.168.139.0/24  hub-regional (cloud/management)
   FAL: 76    # Falkirk       192.168.76.0/24   hub-primary
   ODE: 126   # Odense        192.168.126.0/24  hub-regional (EU)
   BRK: 136   # Brockville    192.168.136.0/24  hub-regional (NA/APAC)
@@ -102,5 +127,3 @@ wg_site_octets:
   NYC: 212   # New York      192.168.212.0/24
   SYD: 29    # Sydney        192.168.29.0/24
   TOR: 146   # Toronto       192.168.146.0/24
-  # ── Cloud/provisioning ────────────────────────────────────────────────────
-  CLD: 139   # CloudSite     192.168.139.0/24

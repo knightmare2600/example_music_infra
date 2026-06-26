@@ -54,17 +54,13 @@
   ansible.builtin.pause:
     prompt: "{{ _c.C }}[*]{{ _c.NC }} Hub tunnel IP [{{ _c.G }}10.0.{{ fw_site_octet }}.1{{ _c.NC }}]"
   register: fw_wg_hub_tunnel_ip_prompt
-  when:
-    - not fw_is_black_site
-    - fw_wg_role in ['hub-primary', 'hub-regional']
+  when: fw_wg_role in ['hub-primary', 'hub-regional']
 
 - name: "[WireGuard] Prompt hub listen port"
   ansible.builtin.pause:
     prompt: "{{ _c.C }}[*]{{ _c.NC }} WireGuard listen port [{{ _c.G }}51820{{ _c.NC }}]"
   register: fw_wg_port_prompt
-  when:
-    - not fw_is_black_site
-    - fw_wg_role in ['hub-primary', 'hub-regional']
+  when: fw_wg_role in ['hub-primary', 'hub-regional']
 
 - name: "[WireGuard] Set hub WG facts"
   ansible.builtin.set_fact:
@@ -74,9 +70,7 @@
     fw_wg_port: >-
       {%- set inp = fw_wg_port_prompt.user_input | default('') | trim -%}
       {{ inp if inp != '' else '51820' }}
-  when:
-    - not fw_is_black_site
-    - fw_wg_role in ['hub-primary', 'hub-regional']
+  when: fw_wg_role in ['hub-primary', 'hub-regional']
 
 # ── Spoke prompts ─────────────────────────────────────────────────────────────
 
@@ -264,6 +258,21 @@
         {%- if octet != '' -%}
           {%- set _ = parts.append('10.0.' + octet|string + '.0/24') -%}
           {%- set _ = parts.append('192.168.' + octet|string + '.0/24') -%}
+          {%- for extra in wg_site_extra_subnets[code] | default([]) -%}
+            {%- set _ = parts.append(extra) -%}
+          {%- endfor -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {%- for mgmt in wg_management_hubs | default([]) -%}
+        {%- if mgmt not in all_sites -%}
+          {%- set octet = wg_site_octets[mgmt] | default('') -%}
+          {%- if octet != '' -%}
+            {%- set _ = parts.append('10.0.' + octet|string + '.0/24') -%}
+            {%- set _ = parts.append('192.168.' + octet|string + '.0/24') -%}
+            {%- for extra in wg_site_extra_subnets[mgmt] | default([]) -%}
+              {%- set _ = parts.append(extra) -%}
+            {%- endfor -%}
+          {%- endif -%}
         {%- endif -%}
       {%- endfor -%}
       {{ parts | join(', ') }}

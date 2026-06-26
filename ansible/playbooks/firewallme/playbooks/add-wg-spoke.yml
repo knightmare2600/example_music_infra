@@ -81,6 +81,7 @@
         _spoke_octet:      "{{ wg_site_octets[spoke_site] }}"
         _spoke_tunnel_ip:  "{{ spoke_tunnel_ip | default('10.0.' + wg_site_octets[spoke_site] | string + '.2') }}"
         _spoke_lan_subnet: "192.168.{{ wg_site_octets[spoke_site] }}.0/24"
+        _spoke_extra_subnets: "{{ wg_site_extra_subnets[spoke_site] | default([]) }}"
 
     # ── Fetch spoke keys via SSH ──────────────────────────────────────────────
 
@@ -121,7 +122,7 @@
           - "Spoke site    : {{ spoke_site }}"
           - "Spoke IP      : {{ _spoke_ip }}"
           - "Tunnel IP     : {{ _spoke_tunnel_ip }}/32"
-          - "LAN subnet    : {{ _spoke_lan_subnet }}"
+          - "LAN subnet    : {{ _spoke_lan_subnet }}{% if _spoke_extra_subnets %} + {{ _spoke_extra_subnets | join(', ') }}{% endif %}"
           - "Public key    : {{ _spoke_pubkey }}"
 
     # ── Add/update peer block in wg0.conf ─────────────────────────────────────
@@ -137,7 +138,7 @@
           # {{ spoke_site }} spoke — {{ spoke_host | default(_spoke_ip) }}
           PublicKey    = {{ _spoke_pubkey }}
           PresharedKey = {{ _spoke_psk }}
-          AllowedIPs   = {{ _spoke_tunnel_ip }}/32, {{ _spoke_lan_subnet }}
+          AllowedIPs   = {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet] + _spoke_extra_subnets) | join(', ') }}
       register: _wg_conf_changed
 
     # ── Live-add peer (no restart needed) ─────────────────────────────────────
@@ -155,7 +156,7 @@
       ansible.builtin.shell: |
         wg set wg0 peer {{ _spoke_pubkey }} \
           preshared-key /tmp/.wg-psk-{{ spoke_site }} \
-          allowed-ips {{ _spoke_tunnel_ip }}/32,{{ _spoke_lan_subnet }}
+          allowed-ips {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet] + _spoke_extra_subnets) | join(',') }}
       when: _wg_conf_changed.changed
 
     - name: "[add-wg-spoke] Remove PSK tmpfile"

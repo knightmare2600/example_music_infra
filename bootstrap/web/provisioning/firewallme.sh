@@ -152,20 +152,31 @@ load_sites_csv
 # directly. The script always fetches live from the hub & asks the user to confirm. These are a
 # last-resort fallback reference.
 declare -A HUB_KNOWN_PUBKEY=(
+  [CLD]=""   # EXAFWLCLD001 — populate after first build
   [FAL]="yxYnCsZwxDmv6WrduGTC7pnW3sUxob1GGYpttPfGbmk="
   [ODE]="gFK4oQNKN/a2UZvoil43OvOcjp2B6gT4YQ8IUqWrZ1o="
   [BRK]="CSpL1NJl4jgeJDf6TccixMGv8JOSH7XS7pErjKSuoT4="
 )
 declare -A HUB_WAN_IP=(
+  [CLD]="192.168.139.139"
   [FAL]="192.168.139.76"
   [ODE]="192.168.139.126"
   [BRK]="192.168.139.136"
+)
+
+# Extra subnets per site (beyond the standard 10.0.X/24 + 192.168.X/24).
+# CLD has a private LAN (192.168.69.0/24) behind EXAFWLCLD001 in addition
+# to the vRACK (192.168.139.0/24) which is covered by the standard formula.
+declare -A EXTRA_SUBNETS=(
+  [CLD]="192.168.69.0/24"
 )
 
 # -------------------------------------------------------------------------------------------------
 # Hub topology -- which spokes belong to which hub. Used to build topology-aware AllowedIPs so
 # wg-quick injects correct kernel routes for all cross-hub destinations at boot.
 # -------------------------------------------------------------------------------------------------
+# CLD hub-regional has no site spokes — peers directly with FAL, ODE, BRK at hub level
+HUB_CLD_SPOKES=()
 # UK spokes -- connect directly to FAL
 HUB_FAL_SPOKES=(ABD BIR CLY COV DUN EDI GLA HAL HUL LIV LND MCR NEW PER SHE)
 # EU spokes -- connect directly to ODE
@@ -184,6 +195,10 @@ build_allowed_ips() {
     [[ -z "$octet" ]] && continue
     [[ -n "$result" ]] && result+=", "
     result+="10.0.${octet}.0/24, 192.168.${octet}.0/24"
+    # Append any extra subnets defined for this site (e.g. CLD private LAN)
+    if [[ -v "EXTRA_SUBNETS[$code]" && -n "${EXTRA_SUBNETS[$code]}" ]]; then
+      result+=", ${EXTRA_SUBNETS[$code]}"
+    fi
   done
   echo "$result"
 }
@@ -194,39 +209,49 @@ spoke_allowed_ips_for_hub() {
   local tmp
 
   case "$hub" in
-    FAL)
-      # Via FAL: FAL + UK + ODE + EU + BRK + AMAPAC
+    CLD)
+      # Via CLD: all hubs + all spokes (full management visibility)
       tmp=$(build_allowed_ips FAL "${HUB_FAL_SPOKES[@]}")
       [[ -n "$tmp" ]] && parts+=("$tmp")
-
       tmp=$(build_allowed_ips ODE "${HUB_ODE_SPOKES[@]}")
       [[ -n "$tmp" ]] && parts+=("$tmp")
-
       tmp=$(build_allowed_ips BRK "${HUB_BRK_SPOKES[@]}")
+      [[ -n "$tmp" ]] && parts+=("$tmp")
+      ;;
+
+    FAL)
+      # Via FAL: FAL + UK + ODE + EU + BRK + AMAPAC + CLD (management hub)
+      tmp=$(build_allowed_ips FAL "${HUB_FAL_SPOKES[@]}")
+      [[ -n "$tmp" ]] && parts+=("$tmp")
+      tmp=$(build_allowed_ips ODE "${HUB_ODE_SPOKES[@]}")
+      [[ -n "$tmp" ]] && parts+=("$tmp")
+      tmp=$(build_allowed_ips BRK "${HUB_BRK_SPOKES[@]}")
+      [[ -n "$tmp" ]] && parts+=("$tmp")
+      tmp=$(build_allowed_ips CLD)
       [[ -n "$tmp" ]] && parts+=("$tmp")
       ;;
 
     ODE)
-      # Via ODE: ODE + EU + FAL + UK + BRK + AMAPAC
+      # Via ODE: ODE + EU + FAL + UK + BRK + AMAPAC + CLD (management hub)
       tmp=$(build_allowed_ips ODE "${HUB_ODE_SPOKES[@]}")
       [[ -n "$tmp" ]] && parts+=("$tmp")
-
       tmp=$(build_allowed_ips FAL "${HUB_FAL_SPOKES[@]}")
       [[ -n "$tmp" ]] && parts+=("$tmp")
-
       tmp=$(build_allowed_ips BRK "${HUB_BRK_SPOKES[@]}")
+      [[ -n "$tmp" ]] && parts+=("$tmp")
+      tmp=$(build_allowed_ips CLD)
       [[ -n "$tmp" ]] && parts+=("$tmp")
       ;;
 
     BRK)
-      # Via BRK: BRK + AMAPAC + FAL + UK + ODE + EU
+      # Via BRK: BRK + AMAPAC + FAL + UK + ODE + EU + CLD (management hub)
       tmp=$(build_allowed_ips BRK "${HUB_BRK_SPOKES[@]}")
       [[ -n "$tmp" ]] && parts+=("$tmp")
-
       tmp=$(build_allowed_ips FAL "${HUB_FAL_SPOKES[@]}")
       [[ -n "$tmp" ]] && parts+=("$tmp")
-
       tmp=$(build_allowed_ips ODE "${HUB_ODE_SPOKES[@]}")
+      [[ -n "$tmp" ]] && parts+=("$tmp")
+      tmp=$(build_allowed_ips CLD)
       [[ -n "$tmp" ]] && parts+=("$tmp")
       ;;
 

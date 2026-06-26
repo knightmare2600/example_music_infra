@@ -32,7 +32,7 @@ ansible/
 │   │   ├── vars.yml            — additional global vars
 │   │   └── vault.yml           — encrypted secrets
 │   ├── firewalls/
-│   │   └── main.yml            — WireGuard hub reference data (pubkeys, IPs, topology)
+│   │   └── main.yml            — WireGuard hub reference data (pubkeys, IPs, topology, extra subnets)
 │   ├── pvenodes/main.yml
 │   ├── rudder_relays/main.yml
 │   ├── rudder_servers/main.yml + vault.yml
@@ -159,6 +159,44 @@ ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --tags zones
 ## firewallme
 
 Configures Linux firewall appliances (`EXAFWL*`). Ansible port of `firewallme.sh`.
+
+### WireGuard topology
+
+| Role | Sites | Connects to |
+|------|-------|------------|
+| `hub-primary` | FAL | peers with ODE, BRK, CLD |
+| `hub-regional` | ODE, BRK, **CLD** | peers with FAL + other hub-regionals |
+| `spoke` | all other sites | connects to regional hub (FAL/ODE/BRK) |
+
+**CLD is `hub-regional` (cloud management hub).** EXAFWLCLD001 peers directly with FAL, ODE,
+and BRK at the hub level — it has no site spokes of its own. All spoke firewalls' AllowedIPs
+automatically include CLD's subnets (`192.168.139.0/24` vRACK + `192.168.69.0/24` private LAN)
+via the `wg_management_hubs` injection in `03_wireguard_config.yml`.
+
+After building EXAFWLCLD001, register it on each hub and vice versa:
+
+```bash
+# Register CLD on each hub (run once per hub from EXAANSCLD001)
+for hub in EXAFWLFAL001 EXAFWLODE001 EXAFWLBRK001; do
+  ansible-playbook -i configs/inventory \
+    playbooks/firewallme/playbooks/add-wg-spoke.yml \
+    -e "target=${hub} spoke_site=CLD spoke_host=EXAFWLCLD001"
+done
+
+# Register each hub on CLD
+for hub_site in FAL ODE BRK; do
+  hub_host="EXAFWL${hub_site}001"
+  ansible-playbook -i configs/inventory \
+    playbooks/firewallme/playbooks/add-wg-spoke.yml \
+    -e "target=EXAFWLCLD001 spoke_site=${hub_site} spoke_host=${hub_host}"
+done
+```
+
+After EXAFWLCLD001 is built, populate its public key in `group_vars/firewalls/main.yml`:
+```bash
+ssh ansible@192.168.139.139 'cat /etc/wireguard/public.key'
+# Update wg_hub_known_pubkeys.CLD and commit
+```
 
 ### Usage
 
