@@ -1,3 +1,6 @@
+> **ARCHIVE** — This document is superseded by current docs in `docs/` and `docs/inventory/`.
+> Data here is intentionally stale (pre-2026-06-26). Do not use for operational reference.
+
 # Example Music — All-Site Infrastructure Inventory & Checklist
 
 **Version:** 1.0  

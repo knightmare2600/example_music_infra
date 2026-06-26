@@ -46,7 +46,7 @@
 #
 # Required extra-vars:
 #   sites_csv          — path to sites.csv on the control node
-#                        default: ../../files/sites.csv
+#                        default: /etc/example-music/sites.csv
 #
 # Sets facts consumed by 90-dc-promote.yml:
 #   dc_replication_source   — FQDN or IP of the source DC
@@ -65,7 +65,7 @@
   gather_facts: true
 
   vars:
-    sites_csv: "../../files/sites.csv"
+    sites_csv: "/etc/example-music/sites.csv"
 
     # Hub / special-sauce site codes
     dc_hub_sites:

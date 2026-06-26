@@ -1,3 +1,6 @@
+> **ARCHIVE** — This document is superseded by `docs/network-inventory.md` and `docs/inventory/network-inventory-merged.md`.
+> Data here is intentionally stale (pre-2026-06-26: wrong TOR/ATL subnets, old CLD hostnames). Do not use for operational reference.
+
 # Example Music Limited — Network & Infrastructure Inventory
 
 > **Classification:** Internal — Infrastructure  
