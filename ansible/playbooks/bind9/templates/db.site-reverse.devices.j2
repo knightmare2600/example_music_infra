@@ -38,3 +38,7 @@ $TTL {{ zone_ttl }}
 ; NO-IP  {{ dev.Hostname | lower }}{{ '  -- ' + dev.Notes if dev.Notes else '' }}
 {% endif %}
 {% endfor %}
+
+; ── DHCP pool PTR ($GENERATE) ─────────────────────────────────
+; .100–.199  →  dhcp01.{{ item | lower }}.{{ domain }}. through dhcp100.{{ item | lower }}.{{ domain }}.
+$GENERATE 100-199 $ IN PTR dhcp${-99,2,d}.{{ item | lower }}.{{ domain }}.
