@@ -9,6 +9,43 @@
 #               including the ASCII art header
 # =============================================================================
 
+# ── Node info file ────────────────────────────────────────────────────────────
+
+- name: "[Finish] Ensure /etc/example-music directory exists"
+  ansible.builtin.file:
+    path: /etc/example-music
+    state: directory
+    mode: '0755'
+
+- name: "[Finish] Write /etc/example-music/nodeinfo.json"
+  ansible.builtin.copy:
+    dest: /etc/example-music/nodeinfo.json
+    mode: '0444'
+    content: "{{ _nodeinfo | to_nice_json }}\n"
+  vars:
+    _nodeinfo:
+      hostname:        "{{ inventory_hostname }}"
+      role:            "firewall"
+      site:            "{{ fw_site_code }}"
+      city:            "{{ fw_site_city | default('') }}"
+      country:         "{{ fw_site_country | default('') }}"
+      entity:          "{{ fw_site_entity | default('Example Music') }}"
+      ansible_managed: true
+      bootstrapped_at: "{{ ansible_date_time.iso8601 }}"
+      bootstrapped_by: "90-firewall.yml"
+      environment:     "{{ fw_environment }}"
+      lan_ip:          "{{ fw_lan_ip }}"
+      lan_iface:       "{{ fw_lan_iface }}"
+      ansible_ip:      "{{ fw_ansible_ip }}"
+      wg_role:         "{{ fw_wg_role }}"
+      wg_tunnel_ip:    "{{ fw_wg_tunnel_ip | default('') }}"
+      wg_hub:          "{{ fw_wg_hub_endpoint | default('') }}"
+      wan_iface:       "{{ fw_wan_iface }}"
+      wan_mode:        "{{ fw_wan_mode }}"
+      wan_ip:          "{{ fw_wan_static_ip + '/24' if fw_wan_mode == 'static' else 'dhcp' }}"
+
+# ── Final summary ─────────────────────────────────────────────────────────────
+
 - name: "[Finish] Re-read WG public key"
   ansible.builtin.slurp:
     src: /etc/wireguard/public.key
@@ -42,7 +79,8 @@
       - "{{ _c.G }}║{{ _c.NC }}  LAN          : {{ _c.G }}{{ fw_lan_iface }}{{ _c.NC }}"
       - "{{ _c.G }}║{{ _c.NC }}  LAN IP       : {{ _c.G }}{{ fw_lan_ip }}/24{{ _c.NC }}"
       - "{{ _c.G }}║{{ _c.NC }}  DHCP range   : {{ _c.G }}{{ fw_dhcp_start }} – {{ fw_dhcp_end }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  Internal DNS : {{ _c.G }}{{ fw_internal_dns if fw_internal_dns else 'none (1.1.1.1, 9.9.9.9)' }}{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  WAN DNS      : {{ _c.G }}{{ fw_cld_dns }}, 1.1.1.1{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  LAN DNS      : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_cld_dns }}{{ _c.NC }}"
       - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
       - "{{ _c.G }}║{{ _c.NC }}  WireGuard    : {{ _c.O }}{{ fw_wg_role }}{{ _c.NC }}"
       - "{{ _c.G }}║{{ _c.NC }}  WG pubkey    : {{ _c.O }}{{ fw_wg_pubkey_final.content | b64decode | trim if (fw_wg_pubkey_final.content is defined) else 'N/A' }}{{ _c.NC }}"

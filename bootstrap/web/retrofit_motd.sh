@@ -15,18 +15,14 @@ OR='\033[38;5;208m' # orange
 WH='\033[1;37m'   # white bold
 NC='\033[0m'      # reset
 
-# Read sentinel if available
-SITE="unknown"
-WG_ROLE="none"
-ENTITY=""
-CITY=""
-COUNTRY=""
-if [[ -f /etc/.i_am_a_firewall ]]; then
-  SITE=$(grep    "^Site"    /etc/.i_am_a_firewall | awk -F': ' '{print $2}' | xargs)
-  WG_ROLE=$(grep "^WG Role" /etc/.i_am_a_firewall | awk -F': ' '{print $2}' | xargs)
-  ENTITY=$(grep  "^Entity"  /etc/.i_am_a_firewall | awk -F': ' '{print $2}' | xargs)
-  CITY=$(grep    "^City"    /etc/.i_am_a_firewall | awk -F': ' '{print $2}' | xargs)
-  COUNTRY=$(grep "^Country" /etc/.i_am_a_firewall | awk -F': ' '{print $2}' | xargs)
+# Read node info
+SITE="unknown"; WG_ROLE="none"; ENTITY=""; CITY=""; COUNTRY=""
+if [[ -f /etc/example-music/nodeinfo.json ]] && command -v jq &>/dev/null; then
+  SITE=$(   jq -r '.site    // "unknown"' /etc/example-music/nodeinfo.json)
+  WG_ROLE=$(jq -r '.wg_role // "none"'   /etc/example-music/nodeinfo.json)
+  ENTITY=$( jq -r '.entity  // ""'       /etc/example-music/nodeinfo.json)
+  CITY=$(   jq -r '.city    // ""'       /etc/example-music/nodeinfo.json)
+  COUNTRY=$(jq -r '.country // ""'       /etc/example-music/nodeinfo.json)
 fi
 
 # Collect interface info

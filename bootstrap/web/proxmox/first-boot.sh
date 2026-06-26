@@ -309,10 +309,34 @@ read -rp "$(echo -e "  ${Y}Proceed with these settings? [y/N]: ${NC}")" CONFIRM
 section "INSTALLING PACKAGES"
 
 step "Installing core packages..."
-DEBIAN_FRONTEND=noninteractive apt-get install -y openssh-server sudo net-tools bash-completion tree bc molly-guard arping nmap parted gdisk smartmontools vim zsh grc python3-proxmoxer python3-textual python3-requests python3-pbr python3-six w3m xxd 2>&1 | \
+DEBIAN_FRONTEND=noninteractive apt-get install -y openssh-server sudo net-tools bash-completion tree bc molly-guard arping nmap parted gdisk smartmontools vim zsh grc python3-proxmoxer python3-textual python3-requests python3-pbr python3-six w3m xxd jq 2>&1 | \
 grep -E "^(Setting up|Unpacking)" | sed 's/^/    /'
 ok "Core packages installed"
 ok "molly-guard active -- protects against accidental reboots/shutdowns"
+
+# ── Step 3b: Environment ──────────────────────────────────────────────────────
+section "ENVIRONMENT"
+ENV_LONG=""
+if [[ -s /etc/.environment ]]; then
+  ENV_LONG="$(cat /etc/.environment)"
+  if [[ -z "$ENV_LONG" ]]; then
+    warn "/etc/.environment is empty — defaulting to production"
+    ENV_LONG="production"
+  else
+    info "Environment loaded from file: ${ENV_LONG}"
+  fi
+else
+  read -rp "$(echo -e "  Environment ((${W}p${NC})roduction, (${W}s${NC})taging, (${W}d${NC})evelopment) [default: production]: ")" ENV
+  ENV="${ENV,,}"
+  case "$ENV" in
+    p) ENV_LONG="production" ;;
+    s) ENV_LONG="staging" ;;
+    d) ENV_LONG="development" ;;
+    *) warn "Invalid or empty — defaulting to production"; ENV_LONG="production" ;;
+  esac
+  echo "$ENV_LONG" > /etc/.environment
+  ok "Environment set to: ${ENV_LONG}"
+fi
 
 # VMware tools -- only install if running inside a VMware VM
 step "Checking hypervisor type..."
@@ -953,20 +977,37 @@ ok "zsh configured for root (red prompt)"
 # ── Step 5: Sentinel file ─────────────────────────────────────────────────────
 section "WRITING SENTINEL FILE"
 
-cat > /etc/.i_am_a_pve_node <<SENTINELEOF
-Configured by Example Music provisioning script
-Hostname    : ${HOSTNAME}
-FQDN        : ${FQDN}
-Site        : ${SITE_CODE}
-City        : ${SITE_CITY_VAL}
-Country     : ${SITE_COUNTRY_VAL}
-Entity      : ${SITE_ENTITY_VAL}
-Node IP     : ${NODE_IP}
-Gateway     : ${GATEWAY}
-Date        : $(date -u +%Y-%m-%dT%H:%M:%SZ)
-SENTINELEOF
-chmod 0444 /etc/.i_am_a_pve_node
-ok "Sentinel written -> /etc/.i_am_a_pve_node"
+mkdir -p /etc/example-music
+jq -n \
+  --arg hostname       "${HOSTNAME}" \
+  --arg fqdn           "${FQDN}" \
+  --arg role           "proxmox" \
+  --arg site           "${SITE_CODE}" \
+  --arg city           "${SITE_CITY_VAL}" \
+  --arg country        "${SITE_COUNTRY_VAL}" \
+  --arg entity         "${SITE_ENTITY_VAL}" \
+  --arg bootstrapped_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg bootstrapped_by "first-boot.sh" \
+  --arg environment    "${ENV_LONG}" \
+  --arg node_ip        "${NODE_IP}" \
+  --arg gateway        "${GATEWAY}" \
+  '{
+    hostname:        $hostname,
+    fqdn:            $fqdn,
+    role:            $role,
+    site:            $site,
+    city:            $city,
+    country:         $country,
+    entity:          $entity,
+    ansible_managed: false,
+    bootstrapped_at: $bootstrapped_at,
+    bootstrapped_by: $bootstrapped_by,
+    environment:     $environment,
+    node_ip:         $node_ip,
+    gateway:         $gateway
+  }' > /etc/example-music/nodeinfo.json
+chmod 0444 /etc/example-music/nodeinfo.json
+ok "Node info written -> /etc/example-music/nodeinfo.json"
 
 # ── Step 6: Dynamic MOTD ──────────────────────────────────────────────────────
 section "CONFIGURING DYNAMIC MOTD"
@@ -985,12 +1026,12 @@ HOSTNAME_S=$(hostname -s)
 FQDN_S=$(hostname -f 2>/dev/null || echo "$HOSTNAME_S")
 SITE="UNKNOWN"; CITY="Unknown"; COUNTRY="GB"
 ENTITY="Example Music"; NODE_IP="unknown"
-if [[ -f /etc/.i_am_a_pve_node ]]; then
-  SITE=$(   grep "^Site"    /etc/.i_am_a_pve_node | awk -F': ' '{print $2}' | xargs)
-  CITY=$(   grep "^City"    /etc/.i_am_a_pve_node | awk -F': ' '{print $2}' | xargs)
-  COUNTRY=$(grep "^Country" /etc/.i_am_a_pve_node | awk -F': ' '{print $2}' | xargs)
-  ENTITY=$( grep "^Entity"  /etc/.i_am_a_pve_node | awk -F': ' '{print $2}' | xargs)
-  NODE_IP=$(grep "^Node IP" /etc/.i_am_a_pve_node | awk -F': ' '{print $2}' | xargs)
+if [[ -f /etc/example-music/nodeinfo.json ]] && command -v jq &>/dev/null; then
+  SITE=$(   jq -r '.site     // "UNKNOWN"'       /etc/example-music/nodeinfo.json)
+  CITY=$(   jq -r '.city     // "Unknown"'       /etc/example-music/nodeinfo.json)
+  COUNTRY=$(jq -r '.country  // "GB"'            /etc/example-music/nodeinfo.json)
+  ENTITY=$( jq -r '.entity   // "Example Music"' /etc/example-music/nodeinfo.json)
+  NODE_IP=$(jq -r '.node_ip  // "unknown"'       /etc/example-music/nodeinfo.json)
 fi
 
 LAN_INFO=""
@@ -1183,7 +1224,7 @@ printf "  ${G}[+]${NC}  %-18s %s\n" "Site :"        "${W}${SITE_CODE} -- ${SITE_
 printf "  ${G}[+]${NC}  %-18s %s\n" "Entity :"      "${W}${SITE_ENTITY_VAL}${NC}"
 printf "  ${G}[+]${NC}  %-18s %s\n" "Web UI :"      "${W}https://${NODE_IP}:8006${NC}"
 printf "  ${G}[+]${NC}  %-18s %s\n" "Ansible user :" "${W}${ANSIBLE_USER} -- ${SSH_KEY_COUNT} SSH key(s)${NC}"
-printf "  ${G}[+]${NC}  %-18s %s\n" "Sentinel :"    "${W}/etc/.i_am_a_pve_node${NC}"
+printf "  ${G}[+]${NC}  %-18s %s\n" "Node info :"   "${W}/etc/example-music/nodeinfo.json${NC}"
 printf "  ${G}[+]${NC}  %-18s %s\n" "molly-guard :" "${W}active${NC}"
 echo
 

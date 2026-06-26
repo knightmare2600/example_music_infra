@@ -40,6 +40,20 @@ win_domain_join_password: !vault |
   <replace with encrypted value>
 
 # ----------------------------------------------------------------------------
+# NODE INFO — written to C:\ProgramData\example-music\nodeinfo.json
+# These enrich the node info file beyond what can be auto-detected.
+# All optional — omit to leave the field empty in the JSON.
+# ----------------------------------------------------------------------------
+# win_entity:  "Example Music (Scotland) Ltd"
+# win_city:    "Falkirk"
+# win_country: "Scotland"
+
+# Environment — production (default), staging, or development.
+# If omitted the playbook prompts once and writes
+# C:\ProgramData\example-music\environment.txt for future runs.
+# win_environment: production
+
+# ----------------------------------------------------------------------------
 # OPTIONAL OVERRIDES
 # ----------------------------------------------------------------------------
 # Override the WinRM connection user if the local Administrator account

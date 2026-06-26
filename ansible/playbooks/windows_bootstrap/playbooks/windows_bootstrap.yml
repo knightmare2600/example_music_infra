@@ -24,6 +24,11 @@
 #   C:\Windows\Temp\PostOOBE-Bootstrap.done — if present, host is skipped.
 #   Override with: -e force_bootstrap=true
 #
+# NODE INFO FILE:
+#   C:\ProgramData\example-music\nodeinfo.json — written post-domain-join.
+#   Read in PowerShell with:
+#     $n = Get-Content 'C:\ProgramData\example-music\nodeinfo.json' | ConvertFrom-Json
+#
 # USAGE — single host (first time, will prompt for password):
 #   ansible-playbook playbooks/windows_bootstrap/playbooks/windows_bootstrap.yml \
 #     -i configs/inventory --limit EXAWKSFAL001
@@ -518,6 +523,95 @@
       ansible.windows.win_file:
         path: "{{ marker_file }}"
         state: touch
+
+    # =========================================================================
+    # Node info file — C:\ProgramData\example-music\nodeinfo.json
+    # =========================================================================
+
+    - name: Create C:\ProgramData\example-music directory
+      ansible.windows.win_file:
+        path: 'C:\ProgramData\example-music'
+        state: directory
+
+    # ── Environment detection ─────────────────────────────────────────────────
+    # Check for a previously written environment file; prompt once if absent.
+
+    - name: Check for existing environment file
+      ansible.windows.win_stat:
+        path: 'C:\ProgramData\example-music\environment.txt'
+      register: _env_file
+
+    - name: Read environment from file
+      ansible.windows.win_shell: Get-Content 'C:\ProgramData\example-music\environment.txt'
+      register: _env_content
+      changed_when: false
+      when: _env_file.stat.exists
+
+    - name: Set environment from file
+      ansible.builtin.set_fact:
+        win_environment: "{{ _env_content.stdout | trim }}"
+      when: _env_file.stat.exists
+
+    - name: Prompt for environment (not yet set)
+      ansible.builtin.pause:
+        prompt: "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]"
+      register: _env_prompt
+      when: not _env_file.stat.exists
+
+    - name: Set environment from prompt
+      ansible.builtin.set_fact:
+        win_environment: >-
+          {%- set e = _env_prompt.user_input | default('') | lower | trim -%}
+          {%- if e == 's' -%}staging
+          {%- elif e == 'd' -%}development
+          {%- else -%}production
+          {%- endif -%}
+      when: not _env_file.stat.exists
+
+    - name: Write environment file
+      ansible.windows.win_copy:
+        content: "{{ win_environment }}"
+        dest: 'C:\ProgramData\example-music\environment.txt'
+      when: not _env_file.stat.exists
+
+    # ── Write nodeinfo.json ───────────────────────────────────────────────────
+    # Role is derived from the EXA hostname convention:
+    #   EXAWKS → workstation, EXASRV → server, EXADCS → domain_controller, etc.
+    # PowerShell reads this natively:
+    #   $n = Get-Content 'C:\ProgramData\example-music\nodeinfo.json' | ConvertFrom-Json
+
+    - name: Write C:\ProgramData\example-music\nodeinfo.json
+      ansible.windows.win_copy:
+        dest: 'C:\ProgramData\example-music\nodeinfo.json'
+        content: "{{ _nodeinfo | to_nice_json }}\n"
+      vars:
+        _role_map:
+          WKS: workstation
+          SRV: server
+          DCS: domain_controller
+          PBX: pbx
+          ANS: ansible
+          DNS: dns
+          RUD: rudder
+          PRV: provisioning
+          PVE: proxmox
+          FWL: firewall
+        _role_code: "{{ inventory_hostname[3:6] | upper }}"
+        _nodeinfo:
+          hostname:        "{{ inventory_hostname }}"
+          role:            "{{ _role_map[_role_code] | default('windows') }}"
+          site:            "{{ resolved_site }}"
+          domain:          "{{ resolved_domain }}"
+          ou_path:         "{{ win_ou_path }}"
+          city:            "{{ win_city    | default('') }}"
+          country:         "{{ win_country | default('') }}"
+          entity:          "{{ win_entity  | default('') }}"
+          ansible_managed: true
+          bootstrapped_at: "{{ ansible_date_time.iso8601 }}"
+          bootstrapped_by: "windows_bootstrap.yml"
+          environment:     "{{ win_environment | default('production') }}"
+          os:              "{{ ansible_distribution }}"
+          os_version:      "{{ ansible_distribution_version }}"
 
     - name: Bootstrap complete
       debug:
