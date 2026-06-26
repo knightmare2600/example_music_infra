@@ -82,11 +82,11 @@
       - { site: "ODE", ip: "192.168.126.10", fqdn: "exadcsode001.jukebox.internal" }
       - { site: "BRK", ip: "192.168.136.10", fqdn: "exadcsbrk001.jukebox.internal" }
 
-    # CLD DC
+    # CLD DC primary
     dc_cld_source:
       site: "CLD"
-      ip:   "192.168.139.20"
-      fqdn: "exasvrcld002.jukebox.internal"
+      ip:   "192.168.139.10"
+      fqdn: "exadcscld001.jukebox.internal"
 
   vars_prompt:
     - name: dc_admin_user
