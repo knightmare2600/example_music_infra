@@ -1224,15 +1224,15 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 **PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM — pending commissioning
 
 > ⚠️ `EXADCSTOR001` — DNS, Netlogon and KDC services stopped.
-> ℹ️ Subnet corrected to `192.168.146.0/24` per sites.csv (was incorrectly listed as `192.168.164.0/24`). Any devices currently at `192.168.164.x` need re-IPing.
+> ℹ️ Subnet was incorrectly listed as `192.168.164.0/24`; corrected to `192.168.146.0/24` per sites.csv.
 
 ### Infrastructure Checklist
 
 - [ ] `EXARACTOR001` — BMC node 1 (`192.168.146.2`) · pending commissioning
 - [ ] `EXARACTOR002` — RAC emulator VM (`192.168.146.3`) · pending commissioning
 - [ ] `EXAPVETOR001` — Proxmox node 1 (`192.168.146.5`) · pending commissioning
-- [ ] `EXADCSTOR001` — DC (`192.168.146.10`) · WS2022 · ⚠️ services stopped · ⚠️ IP change required if currently at `.164.10`
-- [ ] `EXASBCTOR001` — VOIP SBC (`192.168.146.48`) · ⚠️ IP change required if currently at `.164.48`
+- [ ] `EXADCSTOR001` — DC (`192.168.146.10`) · WS2022 · ⚠️ services stopped
+- [ ] `EXASBCTOR001` — VOIP SBC (`192.168.146.48`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1402,15 +1402,15 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 **PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
 
 > ⚠️ `EXADCSATL001` — DNS, Netlogon and KDC services stopped.
-> ℹ️ Subnet corrected to `192.168.33.0/24` per sites.csv (was incorrectly listed as `192.168.44.0/24`). Any devices currently at `192.168.44.x` need re-IPing. DC is currently at `192.168.44.10` — IP change required.
+> ℹ️ Subnet was incorrectly listed as `192.168.44.0/24`; corrected to `192.168.33.0/24` per sites.csv.
 
 ### Infrastructure Checklist
 
 - [ ] `EXARACATL001` — BMC node 1 (`192.168.33.2`)
 - [ ] `EXARACATL002` — RAC emulator VM (`192.168.33.3`)
 - [ ] `EXAPVEATL001` — Proxmox node 1 (`192.168.33.5`) · ZFS RAID1
-- [ ] `EXADCSATL001` — DC (`192.168.33.10`) · WS2022 · ⚠️ services stopped · ⚠️ currently at `192.168.44.10` — IP change required
-- [ ] `EXASBCATL001` — VOIP SBC (`192.168.33.48`) · ⚠️ currently at `192.168.44.48` — IP change required
+- [ ] `EXADCSATL001` — DC (`192.168.33.10`) · WS2022 · ⚠️ services stopped
+- [ ] `EXASBCATL001` — VOIP SBC (`192.168.33.48`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status

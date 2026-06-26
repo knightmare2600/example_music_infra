@@ -123,7 +123,7 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 | `191.168.192.in-addr.arpa` | Reverse, AD-integrated | `EXADCSNEW001` | Forest-wide |
 | `65.168.192.in-addr.arpa` | Reverse, AD-integrated | `EXADCSKGE001` | Forest-wide |
 | `246.168.192.in-addr.arpa` | Reverse, AD-integrated | `EXADCSFAX001` | Forest-wide |
-| `164.168.192.in-addr.arpa` | Reverse, AD-integrated | `EXADCSTOR001` | Forest-wide |
+| `146.168.192.in-addr.arpa` | Reverse, AD-integrated | `EXADCSTOR001` | Forest-wide |
 | `154.168.192.in-addr.arpa` | Reverse, AD-integrated | `EXADCSMTL001` | Forest-wide |
 | `29.168.192.in-addr.arpa` | Reverse, AD-integrated | `EXADCSSYD001` | Forest-wide |
 | `139.168.192.in-addr.arpa` | Reverse, AD-integrated | `EXADCSCLD001` | Forest-wide |
@@ -301,7 +301,7 @@ $reverseZones = @(
   @{ Zone = '191.168.192.in-addr.arpa'; DC = 'EXADCSNEW001' },
   @{ Zone = '65.168.192.in-addr.arpa';  DC = 'EXADCSKGE001' },
   @{ Zone = '246.168.192.in-addr.arpa'; DC = 'EXADCSFAX001' },
-  @{ Zone = '164.168.192.in-addr.arpa'; DC = 'EXADCSTOR001' },
+  @{ Zone = '146.168.192.in-addr.arpa'; DC = 'EXADCSTOR001' },
   @{ Zone = '154.168.192.in-addr.arpa'; DC = 'EXADCSMTL001' },
   @{ Zone = '29.168.192.in-addr.arpa';  DC = 'EXADCSSYD001' },
   @{ Zone = '139.168.192.in-addr.arpa'; DC = 'EXADCSCLD001' }
@@ -565,7 +565,7 @@ A complete per-site substitution reference:
 |------|--------|-------------|----------|-----------|
 | ABD  | 192.168.224.0/24 | 192.168.224.1 | 192.168.224.10 | 192.168.224.253 |
 | AMS  | 192.168.31.0/24  | 192.168.31.1  | 192.168.31.10  | 192.168.31.253  |
-| ATL  | 192.168.44.0/24  | 192.168.44.1  | 192.168.44.10  | 192.168.44.253  |
+| ATL  | 192.168.33.0/24  | 192.168.33.1  | 192.168.33.10  | 192.168.33.253  |
 | BIR  | 192.168.121.0/24 | 192.168.121.1 | 192.168.121.10 | 192.168.121.253 |
 | BON  | 192.168.228.0/24 | 192.168.228.1 | 192.168.228.10 | 192.168.228.253 |
 | BRD  | 192.168.113.0/24 | 192.168.113.1 | 192.168.113.10 | 192.168.113.253 |
