@@ -714,7 +714,7 @@ KNOWN_ANCILLARY = [
    "Windows Admin Centre"),
   ("CLD", "192.168.139.50", "EXAPRVCLD001", True,
    "Provisioning server -- PXE, HTTP, iPXE, sites.csv, scripts"),
-  ("CLD", "192.168.139.69", "EXAANSCLD001", True,
+  ("CLD", "192.168.139.9", "EXAANSCLD001", True,
    "Ansible management node"),
 ]
 

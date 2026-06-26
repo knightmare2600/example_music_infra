@@ -180,7 +180,7 @@
 - [ ] `EXAFWLCLD001` — Firewall / WireGuard hub online (`192.168.139.1`)
 - [ ] `EXADNSCLD001` — DNS/BIND9 server online (`192.168.139.8`)
 - [ ] `EXASVRCLD002` — Windows Admin Centre deployed (`192.168.139.20`)
-- [ ] `EXAANSCLD001` — Ansible control node online (`192.168.139.69`)
+- [ ] `EXAANSCLD001` — Ansible control node online (`192.168.139.9`)
 - [ ] `EXARUDCLD001` — Rudder Server online (`192.168.139.12`)
 - [ ] `EXACLDPBX001` — Central 3CX PBX online (`192.168.139.48`)
 - [ ] `EXAPRVFAL001` — Provisioning server online (`192.168.139.50`)

@@ -54,12 +54,9 @@
       local=/{{ fw_site_code | lower }}.jukebox.internal/
       expand-hosts
 
-      # Upstream DNS — internal first, then public
-      {% if fw_internal_dns %}
-      server={{ fw_internal_dns }}
-      {% endif %}
-      server=1.1.1.1
-      server=9.9.9.9
+      # Upstream DNS — site DC first, then central BIND9
+      server={{ fw_dc_dns }}
+      server={{ fw_cld_dns }}
 
       # DNSSEC
       dnssec
@@ -68,7 +65,7 @@
       # --- DHCP ---
       dhcp-range={{ fw_dhcp_start }},{{ fw_dhcp_end }},12h
       dhcp-option=option:router,{{ fw_lan_ip }}
-      dhcp-option=option:dns-server,{{ fw_lan_ip }}
+      dhcp-option=option:dns-server,{{ fw_dc_dns }},{{ fw_cld_dns }}
       dhcp-option=option:domain-name,{{ fw_site_code | lower }}.jukebox.internal
 
       # Authoritative — reply NACK to unknown leases
