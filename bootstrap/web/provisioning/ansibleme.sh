@@ -240,7 +240,7 @@ KEY_FILE="${CONFIGS_DIR}/ansible-id_rsa"
 KEY_PUB="${CONFIGS_DIR}/ansible-id_rsa.pub"
 INVENTORY_FILE="${CONFIGS_DIR}/inventory/main.ini"
 ANSIBLE_CFG="${ANSIBLE_DIR}/ansible.cfg"
-SENTINEL="/etc/.i_am_an_ansible_node"
+NODEINFO="/etc/example-music/nodeinfo.json"
 
 # ------------------------------------------------------------------------------
 # Banner
@@ -283,6 +283,7 @@ command -v nmcli        &>/dev/null || BOOTSTRAP_PKGS+=(network-manager)
 dpkg -s python3-proxmoxer  &>/dev/null || BOOTSTRAP_PKGS+=(python3-proxmoxer)
 dpkg -s python3-requests    &>/dev/null || BOOTSTRAP_PKGS+=(python3-requests)
 dpkg -s python3-virtualenv  &>/dev/null || BOOTSTRAP_PKGS+=(python3-virtualenv)
+command -v jq               &>/dev/null || BOOTSTRAP_PKGS+=(jq)
 
 # NB: libguestfs-tools is intentionally NOT installed on the ansible node. It is
 # only needed on PVE nodes, and is deployed there via the pve_onboard.yml and
@@ -357,6 +358,30 @@ fi
 # configure a static NM profile. The profile applies on reboot; the current
 # session can keep whatever DHCP address it has.
 # ------------------------------------------------------------------------------
+section "1a. Environment"
+
+ENV_LONG=""
+if [[ -s /etc/.environment ]]; then
+  ENV_LONG="$(cat /etc/.environment)"
+  if [[ -z "$ENV_LONG" ]]; then
+    warn "/etc/.environment is empty — defaulting to production"
+    ENV_LONG="production"
+  else
+    info "Environment loaded from file: ${ENV_LONG}"
+  fi
+else
+  read -rp "  Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]: " ENV
+  ENV="${ENV,,}"
+  case "$ENV" in
+    p) ENV_LONG="production" ;;
+    s) ENV_LONG="staging" ;;
+    d) ENV_LONG="development" ;;
+    *) warn "Invalid or empty — defaulting to production"; ENV_LONG="production" ;;
+  esac
+  echo "$ENV_LONG" > /etc/.environment
+  success "Environment set to: ${ENV_LONG}"
+fi
+
 section "1b. Network configuration"
 
 PROV_NET_DEFAULT="192.168.139"
@@ -371,8 +396,8 @@ PROV_GW="${PROV_NET}.${GW_OCTET}"
 # Ansible/management node uses .10 as its canonical DC address from the CSV.
 # We derive this from the site code entered in section 3 — but section 3 runs
 # after this. So we prompt here with a sensible default; section 3 will confirm.
-read -rp "  Static IP for this node [${PROV_NET}.10]: " NODE_IP_INPUT
-NODE_STATIC_IP="${NODE_IP_INPUT:-${PROV_NET}.10}"
+read -rp "  Static IP for this node [${PROV_NET}.9]: " NODE_IP_INPUT
+NODE_STATIC_IP="${NODE_IP_INPUT:-${PROV_NET}.9}"
 
 # Detect which interface is on the provisioning subnet
 info "Detecting interface on provisioning network (${PROV_NET}.x)..."
@@ -979,7 +1004,7 @@ DISC_MODE="${DISC_MODE,,}"
 # .253 → firewalls  (FWL LAN face)
 # .254 → gateways   (router — usually not managed by ansible, but noted)
 # .48  → pbx        (EXAPBX — telephony)
-# .139.69 → ansiblehosts (EXAANSCLD001 — Ansible control node)
+# .139.9 → ansiblehosts (EXAANSCLD001 — Ansible control node)
 # .139.8  → srvnodes (EXADNSCLD001 — DNS server)
 # .139.10/.11 → dcs (EXADCSCLD001/002)
 declare -A DISC_HOSTS_BY_GROUP   # group → newline-separated "IP  # HOSTNAME ROLE"
@@ -996,7 +1021,7 @@ _classify_host() {
   if [[ "$third_octet" == "139" ]]; then
     case "$last_octet" in
       10|11) echo "dcs"          ; return ;;  # EXADCSCLD001/002
-      69)    echo "ansiblehosts" ; return ;;  # EXAANSCLD001
+      9)     echo "ansiblehosts" ; return ;;  # EXAANSCLD001
       *)     echo "srvnodes"     ; return ;;  # DNS, Rudder, WAC, PXE, etc.
     esac
   fi
@@ -1810,20 +1835,39 @@ success "Dynamic MOTD configured."
 # ------------------------------------------------------------------------------
 # 15. Sentinel file
 # ------------------------------------------------------------------------------
-{
-  echo "Configured by Example Music ansibleme.sh"
-  echo "Site        : ${SITE_CODE}"
-  echo "City        : ${SITE_DISPLAY_CITY}"
-  echo "Country     : ${SITE_DISPLAY_COUNTRY}"
-  echo "Entity      : ${SITE_DISPLAY_ENTITY}"
-  echo "Ansible dir : ${ANSIBLE_DIR}"
-  echo "Inventory   : ${CONFIGS_DIR}/inventory"
-  echo "SSH key     : ${KEY_FILE}"
-  echo "PVE nodes   : ${PVE_NODES[*]:-none}"
-  echo "Date        : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-} > "$SENTINEL"
-chmod 0444 "$SENTINEL"
-success "Sentinel file written to ${SENTINEL}"
+mkdir -p /etc/example-music
+jq -n \
+  --arg hostname       "$(hostname -s)" \
+  --arg role           "ansible" \
+  --arg site           "${SITE_CODE}" \
+  --arg city           "${SITE_DISPLAY_CITY}" \
+  --arg country        "${SITE_DISPLAY_COUNTRY}" \
+  --arg entity         "${SITE_DISPLAY_ENTITY}" \
+  --arg bootstrapped_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg bootstrapped_by "ansibleme.sh" \
+  --arg environment    "${ENV_LONG}" \
+  --arg ansible_dir    "${ANSIBLE_DIR}" \
+  --arg inventory      "${CONFIGS_DIR}/inventory" \
+  --arg ssh_key        "${KEY_FILE}" \
+  --argjson pve_nodes  "$(printf '%s\n' "${PVE_NODES[@]:-}" | jq -R . | jq -s .)" \
+  '{
+    hostname:        $hostname,
+    role:            $role,
+    site:            $site,
+    city:            $city,
+    country:         $country,
+    entity:          $entity,
+    ansible_managed: false,
+    bootstrapped_at: $bootstrapped_at,
+    bootstrapped_by: $bootstrapped_by,
+    environment:     $environment,
+    ansible_dir:     $ansible_dir,
+    inventory:       $inventory,
+    ssh_key:         $ssh_key,
+    pve_nodes:       $pve_nodes
+  }' > "$NODEINFO"
+chmod 0444 "$NODEINFO"
+success "Node info written to ${NODEINFO}"
 
 # ------------------------------------------------------------------------------
 # 16. Final banner

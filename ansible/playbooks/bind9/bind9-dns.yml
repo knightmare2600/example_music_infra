@@ -74,7 +74,7 @@
     ancillary_hosts:
       - { name: "exadnscld001", ip: "192.168.139.8",  comment: "DNS/BIND server (this host)" }
       - { name: "exasvrcld002", ip: "192.168.139.20",  comment: "Windows Admin Centre" }
-      - { name: "exaanscld001", ip: "192.168.139.69",  comment: "Ansible control node" }
+      - { name: "exaanscld001", ip: "192.168.139.9",  comment: "Ansible control node" }
       - { name: "exacldpbx001", ip: "192.168.139.48",  comment: "Central 3CX PBX" }
       - { name: "exaprvcld001", ip: "192.168.139.50",  comment: "Provisioning / PXE server" }
 
@@ -569,21 +569,81 @@
           [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
 
   # ---------------------------------------------------------------------------
-  # 8. Sentinel file
+  # 8. Node info file
   # ---------------------------------------------------------------------------
-    - name: Write sentinel file
+    - name: Check /etc/.environment
+      tags: always
+      stat:
+        path: /etc/.environment
+      register: _env_file
+
+    - name: Read environment from file
+      tags: always
+      slurp:
+        src: /etc/.environment
+      register: _env_content
+      when: _env_file.stat.exists and _env_file.stat.size > 0
+
+    - name: Set environment from file
+      tags: always
+      set_fact:
+        dns_environment: "{{ _env_content.content | b64decode | trim }}"
+      when: _env_file.stat.exists and _env_file.stat.size > 0
+
+    - name: Prompt for environment (not set on host)
+      tags: always
+      pause:
+        prompt: "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]"
+      register: _env_prompt
+      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
+
+    - name: Set environment from prompt
+      tags: always
+      set_fact:
+        dns_environment: >-
+          {%- set e = _env_prompt.user_input | default('') | lower | trim -%}
+          {%- if e == 's' -%}staging
+          {%- elif e == 'd' -%}development
+          {%- else -%}production
+          {%- endif -%}
+      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
+
+    - name: Write /etc/.environment
       tags: always
       copy:
-        dest: /etc/.i_am_a_dns_server
+        content: "{{ dns_environment }}\n"
+        dest: /etc/.environment
+      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
+
+    - name: Ensure /etc/example-music directory exists
+      tags: always
+      file:
+        path: /etc/example-music
+        state: directory
+        mode: "0755"
+
+    - name: Write /etc/example-music/nodeinfo.json
+      tags: always
+      copy:
+        dest: /etc/example-music/nodeinfo.json
         mode: "0444"
-        content: |
-          Configured by Example Music bind9-dns.yml
-          Hostname    : {{ this_hostname }}
-          DNS IP      : {{ dns_ip }}
-          Zone        : {{ domain }}
-          Serial      : {{ zone_serial }}
-          Interface   : {{ dns_interface }}
-          Date        : {{ ansible_date_time.iso8601 }}
+        content: "{{ _nodeinfo | to_nice_json }}\n"
+      vars:
+        _nodeinfo:
+          hostname:        "{{ this_hostname }}"
+          role:            "dns"
+          site:            "CLD"
+          city:            "Central"
+          country:         "GB"
+          entity:          "Example Music Limited"
+          ansible_managed: true
+          bootstrapped_at: "{{ ansible_date_time.iso8601 }}"
+          bootstrapped_by: "bind9-dns.yml"
+          environment:     "{{ dns_environment | default('production') }}"
+          dns_ip:          "{{ dns_ip }}"
+          zone:            "{{ domain }}"
+          zone_serial:     "{{ zone_serial }}"
+          interface:       "{{ dns_interface }}"
 
   # ---------------------------------------------------------------------------
   # 9. Verify -- quick dig self-test

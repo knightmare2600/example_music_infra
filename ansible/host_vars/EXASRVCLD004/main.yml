@@ -27,7 +27,7 @@ rudder_prefix:      "24"
 rudder_network_interface: ""
 
 # -----------------------------------------------------------------------------
-# Site metadata — shown in MOTD and sentinel file
+# Site metadata — shown in MOTD and /etc/example-music/nodeinfo.json
 # -----------------------------------------------------------------------------
 rudder_site_code:    "CLD"
 rudder_site_city:    "Edinburgh"

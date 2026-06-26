@@ -359,6 +359,7 @@ command -v gpm         &>/dev/null || BOOTSTRAP_PKGS+=(gpm)
 command -v nmap        &>/dev/null || BOOTSTRAP_PKGS+=(nmap)
 command -v tcpdump     &>/dev/null || BOOTSTRAP_PKGS+=(tcpdump)
 command -v bc          &>/dev/null || BOOTSTRAP_PKGS+=(bc)
+command -v jq          &>/dev/null || BOOTSTRAP_PKGS+=(jq)
 command -v vim         &>/dev/null || BOOTSTRAP_PKGS+=(vim)
 command -v bash-completion &>/dev/null || BOOTSTRAP_PKGS+=(bash-completion)
 command -v zsh         &>/dev/null || BOOTSTRAP_PKGS+=(zsh)
@@ -723,6 +724,8 @@ done
 WG_TUNNEL_NET="10.0.${WG_OCTET}.0/24"
 WG_HUB_DEFAULT_IP="10.0.${WG_OCTET}.1"
 WG_SPOKE_DEFAULT_IP="10.0.${WG_OCTET}.2"
+DC_DNS="${SUBNET}.10"          # site DC — AD DNS primary
+CLD_DNS="192.168.139.8"        # EXADNSCLD001 — central BIND9 secondary
 
 # -------------------------------------------------------------------------------------------------
 # WAN mode — DHCP (default) or static
@@ -802,20 +805,6 @@ while true; do
   warn "Ansible octet must be a whole number between 1 and 254 (you entered: '${ANSIBLE_OCTET}')"
 done
 ANSIBLE_IP="${SUBNET}.${ANSIBLE_OCTET}"
-
-while true; do
-  read -rp "Enter internal DNS server IP or last octet (e.g. 10 → ${SUBNET}.10 — leave blank to skip): " INTERNAL_DNS
-  [[ -z "$INTERNAL_DNS" ]] && break
-  if [[ "$INTERNAL_DNS" =~ ^[0-9]{1,3}$ ]] && [[ "$INTERNAL_DNS" -ge 1 ]] && [[ "$INTERNAL_DNS" -le 254 ]]; then
-    INTERNAL_DNS="${SUBNET}.${INTERNAL_DNS}"
-    info "Expanded to ${INTERNAL_DNS}"
-    break
-  fi
-  if [[ "$INTERNAL_DNS" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-    break
-  fi
-  warn "Enter a full IP (e.g. 192.168.76.10) or just the last octet (e.g. 10)"
-done
 
 echo
 warn "SSH on WAN (port 22 open to the internet) is a security risk."
@@ -1153,11 +1142,8 @@ echo -e "${GREEN}  LAN iface     : ${LAN_IFACE} (MAC: ${LAN_MAC})${NC}"
 echo -e "${GREEN}  LAN IP        : ${LAN_IP}/24${NC}"
 echo -e "${CYAN}  DHCP          : ${DHCP_START} - ${DHCP_END}${NC}"
 echo -e "${CYAN}  Ansible IP    : ${ANSIBLE_IP}${NC}"
-if [[ -n "$INTERNAL_DNS" ]]; then
-  echo -e "${GREEN}  Int. DNS      : ${INTERNAL_DNS}, 1.1.1.1, 9.9.9.9${NC}"
-else
-  echo -e "${GREEN}  DNS           : 1.1.1.1, 9.9.9.9${NC}"
-fi
+echo -e "${GREEN}  WAN DNS       : ${CLD_DNS}, 1.1.1.1${NC}"
+echo -e "${GREEN}  LAN DNS       : ${DC_DNS}, ${CLD_DNS}${NC}"
 if [[ "$WAN_SSH" == "true" ]]; then
   [[ -n "${WAN_SSH_SRC:-}" ]] && echo -e "  WAN SSH       : ${RED}ENABLED (restricted to ${WAN_SSH_SRC})${NC}" || echo -e "  WAN SSH       : ${RED}ENABLED (open to all - be careful)${NC}"
 else
@@ -1259,12 +1245,12 @@ if [[ "$WAN_MODE" == "static" ]]; then
   # over any leftover unconfigured profile NM might auto-generate.
   nmcli con add type ethernet ifname "$WAN_IFACE" con-name wan \
     ipv4.method manual ipv4.addresses "${WAN_STATIC_IP}/${WAN_STATIC_PREFIX}" \
-    ipv4.gateway "${WAN_STATIC_GW}" ipv4.dns "1.1.1.1 9.9.9.9" ipv6.method ignore \
+    ipv4.gateway "${WAN_STATIC_GW}" ipv4.dns "${CLD_DNS} 1.1.1.1" ipv6.method ignore \
     connection.autoconnect yes connection.autoconnect-priority 100
 else
   info "WAN: DHCP"
   nmcli con add type ethernet ifname "$WAN_IFACE" con-name wan \
-    ipv4.method auto ipv6.method ignore \
+    ipv4.method auto ipv4.dns "${CLD_DNS} 1.1.1.1" ipv6.method ignore \
     connection.autoconnect yes connection.autoconnect-priority 100
 fi
 
@@ -1427,13 +1413,12 @@ domain-needed
 bogus-priv
 no-resolv
 
-$([ -n "${INTERNAL_DNS}" ] && echo "server=${INTERNAL_DNS}")
-server=1.1.1.1
-server=9.9.9.9
+server=${DC_DNS}
+server=${CLD_DNS}
 
 dhcp-range=${DHCP_START},${DHCP_END},12h
 dhcp-option=3,${LAN_IP}
-$([ -n "${INTERNAL_DNS}" ] && echo "dhcp-option=6,${INTERNAL_DNS},1.1.1.1,9.9.9.9" || echo "dhcp-option=6,1.1.1.1,9.9.9.9")
+dhcp-option=6,${DC_DNS},${CLD_DNS}
 dhcp-option=15,jukebox.internal
 
 dhcp-vendorclass=set:ipxe-client,iPXE
@@ -1797,12 +1782,12 @@ GR='\033[0;32m'; CY='\033[0;36m'; RD='\033[0;31m'; YL='\033[0;33m'
 OR='\033[38;5;208m'; WH='\033[1;37m'; NC='\033[0m'
 
 SITE="unknown"; WG_ROLE="none"; ENTITY=""; CITY=""; COUNTRY=""
-if [[ -f /etc/.i_am_a_firewall ]]; then
-  SITE=$(grep    "^Site"    /etc/.i_am_a_firewall | awk -F': ' '{print $2}' | xargs)
-  WG_ROLE=$(grep "^WG Role" /etc/.i_am_a_firewall | awk -F': ' '{print $2}' | xargs)
-  ENTITY=$(grep  "^Entity"  /etc/.i_am_a_firewall | awk -F': ' '{print $2}' | xargs)
-  CITY=$(grep    "^City"    /etc/.i_am_a_firewall | awk -F': ' '{print $2}' | xargs)
-  COUNTRY=$(grep "^Country" /etc/.i_am_a_firewall | awk -F': ' '{print $2}' | xargs)
+if [[ -f /etc/example-music/nodeinfo.json ]] && command -v jq &>/dev/null; then
+  SITE=$(   jq -r '.site    // "unknown"' /etc/example-music/nodeinfo.json)
+  WG_ROLE=$(jq -r '.wg_role // "none"'   /etc/example-music/nodeinfo.json)
+  ENTITY=$( jq -r '.entity  // ""'       /etc/example-music/nodeinfo.json)
+  CITY=$(   jq -r '.city    // ""'       /etc/example-music/nodeinfo.json)
+  COUNTRY=$(jq -r '.country // ""'       /etc/example-music/nodeinfo.json)
 fi
 
 WAN_INFO=""; LAN_INFO=""; WG_INFO=""; OTHER_INFO=""
@@ -1934,27 +1919,55 @@ success "Dynamic MOTD configured."
 # -------------------------------------------------------------------------------------------------
 # 13. Sentinel file
 # -------------------------------------------------------------------------------------------------
-{
-  echo "Configured by Example Music setup script"
-  echo "Site        : ${SITE}"
-  echo "City        : ${SITE_DISPLAY_CITY}"
-  echo "Country     : ${SITE_DISPLAY_COUNTRY}"
-  echo "Entity      : ${SITE_DISPLAY_ENTITY}"
-  echo "Environment : ${ENV_LONG}"
-  echo "LAN IP      : ${LAN_IP}"
-  echo "Ansible IP  : ${ANSIBLE_IP}"
-  echo "WG Role     : ${WG_ROLE}"
-  [[ "$WG_ROLE" != "none" ]] && echo "WG Tunnel   : ${WG_TUNNEL_IP}/24"
-  [[ "$WG_ROLE" == "hub-primary" || "$WG_ROLE" == "hub-regional" ]] && echo "WG Port     : ${WG_PORT}"
-  [[ "$WG_ROLE" == "spoke" ]] && echo "WG Hub      : ${WG_HUB_ENDPOINT}"
-  echo "WAN iface   : ${WAN_IFACE} (${WAN_MAC})"
-  echo "WAN mode    : ${WAN_MODE}"
-  [[ "$WAN_MODE" == "static" ]] && echo "WAN IP      : ${WAN_STATIC_IP}/24 gw ${WAN_STATIC_GW}"
-  echo "LAN iface   : ${LAN_IFACE} (${LAN_MAC})"
-  echo "Date        : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-} > /etc/.i_am_a_firewall
-chmod 0444 /etc/.i_am_a_firewall
-success "Sentinel file written."
+mkdir -p /etc/example-music
+jq -n \
+  --arg hostname    "$(hostname -s)" \
+  --arg role        "firewall" \
+  --arg site        "${SITE}" \
+  --arg city        "${SITE_DISPLAY_CITY}" \
+  --arg country     "${SITE_DISPLAY_COUNTRY}" \
+  --arg entity      "${SITE_DISPLAY_ENTITY}" \
+  --arg bootstrapped_at  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg bootstrapped_by  "firewallme.sh" \
+  --arg environment "${ENV_LONG}" \
+  --arg lan_ip      "${LAN_IP}" \
+  --arg lan_iface   "${LAN_IFACE}" \
+  --arg lan_mac     "${LAN_MAC}" \
+  --arg ansible_ip  "${ANSIBLE_IP}" \
+  --arg wg_role     "${WG_ROLE}" \
+  --arg wg_tunnel_ip "$( [[ "$WG_ROLE" != "none" ]] && echo "${WG_TUNNEL_IP}/24" || echo "" )" \
+  --arg wg_port      "$( [[ "$WG_ROLE" =~ hub ]] && echo "${WG_PORT}" || echo "" )" \
+  --arg wg_hub       "$( [[ "$WG_ROLE" == "spoke" ]] && echo "${WG_HUB_ENDPOINT}" || echo "" )" \
+  --arg wan_iface   "${WAN_IFACE}" \
+  --arg wan_mac     "${WAN_MAC}" \
+  --arg wan_mode    "${WAN_MODE}" \
+  --arg wan_ip      "$( [[ "$WAN_MODE" == "static" ]] && echo "${WAN_STATIC_IP}/24 gw ${WAN_STATIC_GW}" || echo "dhcp" )" \
+  '{
+    hostname:       $hostname,
+    role:           $role,
+    site:           $site,
+    city:           $city,
+    country:        $country,
+    entity:         $entity,
+    ansible_managed: false,
+    bootstrapped_at: $bootstrapped_at,
+    bootstrapped_by: $bootstrapped_by,
+    environment:    $environment,
+    lan_ip:         $lan_ip,
+    lan_iface:      $lan_iface,
+    lan_mac:        $lan_mac,
+    ansible_ip:     $ansible_ip,
+    wg_role:        $wg_role,
+    wg_tunnel_ip:   $wg_tunnel_ip,
+    wg_port:        $wg_port,
+    wg_hub:         $wg_hub,
+    wan_iface:      $wan_iface,
+    wan_mac:        $wan_mac,
+    wan_mode:       $wan_mode,
+    wan_ip:         $wan_ip
+  }' > /etc/example-music/nodeinfo.json
+chmod 0444 /etc/example-music/nodeinfo.json
+success "Node info written to /etc/example-music/nodeinfo.json"
 
 # -------------------------------------------------------------------------------------------------
 # 14. Final banner

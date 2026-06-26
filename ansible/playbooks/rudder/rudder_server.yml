@@ -743,25 +743,73 @@
           [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
 
   # ---------------------------------------------------------------------------
-  # Section 11 — Sentinel file
+  # Section 11 — Node info file
   # ---------------------------------------------------------------------------
 
-    - name: "11 | Write sentinel file"
+    - name: "11 | Check /etc/.environment"
+      stat:
+        path: /etc/.environment
+      register: _env_file
+
+    - name: "11 | Read environment from file"
+      slurp:
+        src: /etc/.environment
+      register: _env_content
+      when: _env_file.stat.exists and _env_file.stat.size > 0
+
+    - name: "11 | Set environment from file"
+      set_fact:
+        rudder_environment: "{{ _env_content.content | b64decode | trim }}"
+      when: _env_file.stat.exists and _env_file.stat.size > 0
+
+    - name: "11 | Prompt for environment (not set on host)"
+      pause:
+        prompt: "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]"
+      register: _env_prompt
+      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
+
+    - name: "11 | Set environment from prompt"
+      set_fact:
+        rudder_environment: >-
+          {%- set e = _env_prompt.user_input | default('') | lower | trim -%}
+          {%- if e == 's' -%}staging
+          {%- elif e == 'd' -%}development
+          {%- else -%}production
+          {%- endif -%}
+      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
+
+    - name: "11 | Write /etc/.environment"
       copy:
-        dest: /etc/.i_am_a_rudder_server
+        content: "{{ rudder_environment }}\n"
+        dest: /etc/.environment
+      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
+
+    - name: "11 | Ensure /etc/example-music directory exists"
+      file:
+        path: /etc/example-music
+        state: directory
+        mode: "0755"
+
+    - name: "11 | Write /etc/example-music/nodeinfo.json"
+      copy:
+        dest: /etc/example-music/nodeinfo.json
         mode: "0444"
-        content: |
-          Configured by Example Music rudder_server.yml
-          Site        : {{ rudder_site_code }}
-          City        : {{ rudder_site_city }}
-          Country     : {{ rudder_site_country }}
-          Entity      : {{ rudder_site_entity }}
-          Hostname    : {{ rudder_hostname }}
-          Static IP   : {{ rudder_static_ip }}
-          Rudder URL  : https://{{ rudder_static_ip }}/rudder
-          Cockpit URL : https://{{ rudder_static_ip }}:9090
-          Date        : {{ ansible_date_time.iso8601 }}
-          Playbook    : rudder_server.yml v1.0.0
+        content: "{{ _nodeinfo | to_nice_json }}\n"
+      vars:
+        _nodeinfo:
+          hostname:        "{{ rudder_hostname }}"
+          role:            "rudder"
+          site:            "{{ rudder_site_code }}"
+          city:            "{{ rudder_site_city }}"
+          country:         "{{ rudder_site_country }}"
+          entity:          "{{ rudder_site_entity }}"
+          ansible_managed: true
+          bootstrapped_at: "{{ ansible_date_time.iso8601 }}"
+          bootstrapped_by: "rudder_server.yml"
+          environment:     "{{ rudder_environment | default('production') }}"
+          static_ip:       "{{ rudder_static_ip }}"
+          rudder_url:      "https://{{ rudder_static_ip }}/rudder"
+          cockpit_url:     "https://{{ rudder_static_ip }}:9090"
 
   # ---------------------------------------------------------------------------
   # Post-run summary
