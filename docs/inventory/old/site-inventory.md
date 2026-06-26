@@ -1,3 +1,6 @@
+> **ARCHIVE** — This document is superseded by `docs/site-inventory.md`.
+> Data here is intentionally stale (pre-2026-06-26: wrong TOR/ATL subnets, old CLD hostnames). Do not use for operational reference.
+
 # Example Music Limited — Site Inventory & Commissioning Record
 
 > **Classification:** Internal — Infrastructure  
