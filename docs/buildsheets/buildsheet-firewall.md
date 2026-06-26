@@ -238,7 +238,7 @@ The script is interactive. It will prompt for the following — answers for each
 - Generates and starts WireGuard (`wg-quick@wg0`)
 - Configures SSH login banner (entity, site, hostname)
 - Configures dynamic MOTD (ASCII art, WireGuard peer status, system stats)
-- Writes sentinel file `/etc/.i_am_a_firewall` (prevents re-runs)
+- Writes node info file `/etc/example-music/nodeinfo.json` (prevents re-runs; shows build config)
 - Prompts to reboot
 
 ---
@@ -348,8 +348,8 @@ sudo journalctl -u dnsmasq -f
 # Cockpit
 https://192.168.<octet>.<1 or 253>:9090
 
-# Sentinel file (shows build config)
-cat /etc/.i_am_a_firewall
+# Node info file (shows build config)
+cat /etc/example-music/nodeinfo.json
 ```
 
 ---

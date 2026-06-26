@@ -178,7 +178,7 @@ ansible-playbook playbooks/zfs-disk-replace.yml -l EXAPVEFAL001 \
 
 Phase 1 always runs and prints a summary of pool state, healthy disk, missing vdev and candidate disks. It then intentionally fails to prevent accidental execution. Phase 2 requires both `new_disk` and `confirmed=yes` to be explicitly passed.
 
-Safety features: `serial: 1` (never runs on more than one node simultaneously), sentinel file check (`/etc/.i_am_a_pve_node`), reboot-pending check, disk identity assertions, GUID uniqueness verification, ESP count verification post-completion.
+Safety features: `serial: 1` (never runs on more than one node simultaneously), node role check (`jq -e '.role == "proxmox"' /etc/example-music/nodeinfo.json`), reboot-pending check, disk identity assertions, GUID uniqueness verification, ESP count verification post-completion.
 
 ---
 
@@ -219,7 +219,7 @@ docs/
 - Ansible 2.14+
 - Python 3.10+
 - SSH key at `~/.ssh/ansible_key` — remote user `ansible` with passwordless sudo
-- Proxmox nodes must have `/etc/.i_am_a_pve_node` sentinel present (written by `first-boot.sh`)
+- Proxmox nodes must have `/etc/example-music/nodeinfo.json` present with `"role": "proxmox"` (written by `first-boot.sh`)
 
 ---
 

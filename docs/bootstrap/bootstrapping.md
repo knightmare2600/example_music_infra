@@ -861,9 +861,9 @@ Creates the `ansible` service account with:
 - Added to the `kvm` group (required for `virt-v2v` / `libguestfs` to access KVM without root)
 - zsh configured as default shell
 
-**Step 5 — Molly-guard, MOTD, sentinel file**
+**Step 5 — Molly-guard, MOTD, node info file**
 
-Molly-guard is configured to prevent accidental shutdown/reboot of the wrong node over SSH. A custom MOTD is written. A sentinel file is created at a known path so re-runs of the script can detect a completed bootstrap.
+Molly-guard is configured to prevent accidental shutdown/reboot of the wrong node over SSH. A custom MOTD is written. A node info file is written to `/etc/example-music/nodeinfo.json` — a JSON record of the build configuration that re-runs of the script and Ansible playbooks can read to detect a completed bootstrap and verify the node role.
 
 **Step 6 — ZFS single-disk warning**
 
@@ -1054,9 +1054,9 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   [+] zsh configured for root (red prompt)
 
   ================================================
-  WRITING SENTINEL FILE
+  WRITING NODE INFO FILE
   ================================================
-  [+] Sentinel written -> /etc/.i_am_a_pve_node
+  [+] Node info written -> /etc/example-music/nodeinfo.json
 
   ================================================
   CONFIGURING DYNAMIC MOTD
@@ -1087,7 +1087,7 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   [+] Site       : FAL -- Falkirk, Scotland
   [+] Entity     : Example Music (Scotland) Ltd
   [+] ansible    : password + 0 SSH key(s)
-  [+] Sentinel   : /etc/.i_am_a_pve_node
+  [+] Node info  : /etc/example-music/nodeinfo.json
   [+] molly-guard: active
   [+] Web UI     : https://192.168.139.5:8006
 
