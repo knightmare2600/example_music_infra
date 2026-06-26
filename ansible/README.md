@@ -785,9 +785,6 @@ mkdir -p host_vars/EXADCSLIV001
 
 ```yaml
 ---
-# Override group default (Administrator) — use the ansible service account
-ansible_user: ansible
-
 win_site:   LIV
 win_domain: example.org
 win_ou_path: "OU=Domain Controllers,OU=LIV,DC=example,DC=org"
@@ -815,11 +812,10 @@ ansible-vault encrypt_string 'ActualDomainJoinPassword' \
 
 ```bash
 ansible EXADCSLIV001 -i configs/inventory -m win_ping \
-  -e ansible_password='ansible-user-password-here'
+  -e ansible_password='Administrator-password-here'
 ```
 
-Expected: `pong`. If authentication fails, confirm `ansible_user: ansible` is in
-`host_vars/EXADCSLIV001/windows.yml` and the password is correct.
+Expected: `pong`.
 
 ---
 
@@ -838,7 +834,7 @@ ansible-playbook -i configs/inventory \
 
 | Prompt | Answer |
 |--------|--------|
-| Local Administrator password | ansible user's password |
+| Local Administrator password | built-in Administrator password |
 | Environment | `p` (production) |
 
 **What happens:**
@@ -927,7 +923,7 @@ git push
 | File | Action | Why |
 |------|--------|-----|
 | `configs/inventory/liv.ini` | Create | LIV site inventory |
-| `host_vars/EXADCSLIV001/windows.yml` | Create | ansible_user override, OU path, entity metadata |
+| `host_vars/EXADCSLIV001/windows.yml` | Create | OU path, entity metadata |
 | `files/devices.csv` | Amend | DC record for DNS zone generation |
 
 No playbooks need amending — the DC and bootstrap playbooks are already parameterised
