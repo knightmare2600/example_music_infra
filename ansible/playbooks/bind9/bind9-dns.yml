@@ -688,7 +688,7 @@
     zone_serial: "{{ ansible_date_time.date | replace('-', '') }}01"
     zone_ttl: 300
     sites_csv_path: "/etc/example-music/sites.csv"
-    devices_csv_path: "files/devices.csv"
+    devices_csv_path: "/etc/example-music/devices.csv"
 
     # CLD BLACK SWAN:
     # CLD is the provisioning network (192.168.139.0/24). It is structurally

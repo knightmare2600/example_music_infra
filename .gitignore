@@ -14,6 +14,11 @@ ansible/configs/ansible-id_rsa.pub
 # ARE tracked — only the generated discovery output is excluded.
 ansible/configs/inventory/main.ini
 
+# ansible/files/devices.csv is populated by ansibleme.sh from the canonical
+# source at /etc/example-music/devices.csv (or downloaded from the provisioning
+# server). The authoritative copy is bootstrap/web/proxmox/devices.csv.
+ansible/files/devices.csv
+
 # Retry files written by ansible-playbook on failure
 *.retry
 

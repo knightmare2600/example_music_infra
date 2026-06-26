@@ -43,7 +43,7 @@ wg_hub_topology:
   FAL:
     spokes: [ABD, BIR, CLY, COV, DUN, EDI, GLA, HAL, HUL, LIV, LND, MCR, NEW, PER, SHE]
   ODE:
-    spokes: [AMS, BON, CPH, FAX, GOT, KGE, KOR, MIL, MUN, OSL, VIE]
+    spokes: [AAR, AMS, BER, BON, BRT, CPH, DRS, DUS, FAX, FRE, GOT, KGE, KOR, MIL, MUN, OSL, VIE]
   BRK:
     spokes: [ATL, CHI, LAX, MIA, MTL, NJC, NYC, TOR, AKL, MEL, SYD]
 
@@ -73,10 +73,16 @@ wg_site_octets:
   PER: 173   # Perth         192.168.173.0/24
   SHE: 114   # Sheffield     192.168.114.0/24
   # ── EU spokes (ODE) ───────────────────────────────────────────────────────
+  AAR: 86    # Aarhus        192.168.86.0/24
   AMS: 31    # Amsterdam     192.168.31.0/24
+  BER: 113   # Berlin        192.168.113.0/24
   BON: 228   # Bonn          192.168.228.0/24
+  BRT: 169   # Beirut        192.168.169.0/24
   CPH: 231   # Copenhagen    192.168.231.0/24
+  DRS: 153   # Dresden       192.168.153.0/24
+  DUS: 211   # Dusseldorf    192.168.211.0/24
   FAX: 246   # Faxe          192.168.246.0/24
+  FRE: 75    # Fredericia    192.168.75.0/24
   GOT: 46    # Gothenburg    192.168.46.0/24
   KGE: 65    # Koge          192.168.65.0/24
   KOR: 238   # Korsor        192.168.238.0/24
@@ -96,12 +102,5 @@ wg_site_octets:
   NYC: 212   # New York      192.168.212.0/24
   SYD: 29    # Sydney        192.168.29.0/24
   TOR: 146   # Toronto       192.168.146.0/24
-  # ── Other / not yet in WG topology ───────────────────────────────────────
-  AAR: 86    # Aarhus        192.168.86.0/24
-  BER: 113   # Berlin        192.168.113.0/24
-  BRT: 169   # Beirut        192.168.169.0/24
-  DRS: 153   # Dresden       192.168.153.0/24
-  DUS: 211   # Dusseldorf    192.168.211.0/24
-  FRE: 75    # Fredericia    192.168.75.0/24
   # ── Cloud/provisioning ────────────────────────────────────────────────────
   CLD: 139   # CloudSite     192.168.139.0/24
