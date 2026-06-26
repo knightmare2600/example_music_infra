@@ -1,9 +1,9 @@
-# EXASVRCLD001 — DNS Server Operations Guide
+# EXADNSCLD001 — DNS Server Operations Guide
 
-**Hostname:** `exasvrcld001.jukebox.internal`
+**Hostname:** `exadnscld001.jukebox.internal`
 **Role:** Authoritative DNS — `jukebox.internal`
 **OS:** Debian trixie
-**IP:** `192.168.139.10/24` (provisioning network, CLD site octet `.10`)
+**IP:** `192.168.139.8/24` (provisioning network, CLD site octet `.10`)
 **Provisioned by:** `bindme.sh`
 
 ---
@@ -24,7 +24,7 @@
 
 ## 1. What This Server Does
 
-EXASVRCLD001 is the authoritative DNS server for the `jukebox.internal` private zone. It runs BIND9 on Debian trixie and sits on the provisioning network (`192.168.139.0/24`).
+EXADNSCLD001 is the authoritative DNS server for the `jukebox.internal` private zone. It runs BIND9 on Debian trixie and sits on the provisioning network (`192.168.139.0/24`).
 
 It answers two types of query:
 
@@ -66,7 +66,7 @@ The forward zone also contains **firewall WAN addresses** — see [Section 9](#9
 
 | Name                               | IP               | Purpose                   |
 |------------------------------------|------------------|---------------------------|
-| `exasvrcld001.jukebox.internal`    | `192.168.139.10` | DNS/BIND server (this host)       |
+| `exadnscld001.jukebox.internal`    | `192.168.139.8` | DNS/BIND server (this host)       |
 | `exasvrcld002.jukebox.internal`    | `192.168.139.20` | Windows Admin Centre              |
 | `exasvrcld003.jukebox.internal`    | `192.168.139.49` | Ansible control node              |
 | `exasvrcld004.jukebox.internal`    | `192.168.139.22` | Rudder configuration management   |
@@ -165,7 +165,7 @@ All site data lives in `sites.csv` (single source of truth). To add a site or ch
 3. Confirm the new records are visible:
 
    ```
-   dig @192.168.139.10 exafwl{SITE}001.jukebox.internal
+   dig @192.168.139.8 exafwl{SITE}001.jukebox.internal
    ```
 
 Do **not** edit the generated sections of the zone file by hand — your changes will be overwritten on the next regeneration. Use the one-off section at the bottom for anything not covered by the standard SUFFIX_MAP (see Section 5).
@@ -231,7 +231,7 @@ exact line.
 ### A record not resolving
 
 ```
-dig @192.168.139.10 exafwledi001.jukebox.internal
+dig @192.168.139.8 exafwledi001.jukebox.internal
 ```
 
 If `NXDOMAIN` — check the zone file contains the record, and that the serial was incremented and a reload was done. If `SERVFAIL` — check `bindlog` for errors.
@@ -239,7 +239,7 @@ If `NXDOMAIN` — check the zone file contains the record, and that the serial w
 ### PTR lookup failing
 
 ```
-dig @192.168.139.10 -x 192.168.139.131
+dig @192.168.139.8 -x 192.168.139.131
 ```
 
 For the provisioning network (`.139`), check `/etc/bind/db.192.168.139`. For site subnets, check `/etc/bind/db.192.168.{octet}`.

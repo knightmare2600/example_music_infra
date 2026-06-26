@@ -22,7 +22,7 @@
 
 ## ⚠️ Hostname Warning — CLD EXASVR vs EXASRV
 
-> **`EXASVRCLD001`** (DNS/BIND server) and the previous working name **`EXASRVCLD001`** differ by one transposed letter only.
+> **`EXADNSCLD001`** (DNS/BIND server) and the previous working name **`EXASRVCLD001`** differ by one transposed letter only.
 > The correct prefix is **`EXASVR`** throughout. Any reference to `EXASRV` is an error.
 > The full CLD server numbering is: **001** = DNS · **002** = WAC · **003** = Ansible · **004** = Rudder
 
@@ -175,12 +175,12 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 **LAN:** `192.168.139.0/24`
 **Role:** WireGuard hub — routes to all site subnets. Central PBX, DNS, Ansible, Rudder, WAC, Provisioning.
 
-> ⚠️ **Hostname note:** `EXASVRCLD001` (DNS) and the former working name `EXASRVCLD001` differ by one transposed letter. The correct prefix is `EXASVR` throughout. See the warning at the top of this document.
+> ⚠️ **Hostname note:** `EXADNSCLD001` (DNS) and the former working name `EXASRVCLD001` differ by one transposed letter. The correct prefix is `EXASVR` throughout. See the warning at the top of this document.
 
 ### Infrastructure Checklist
 
 - [ ] `EXAFWLCLD001` — Firewall / WireGuard hub (`192.168.139.1`) · CNAME `ovhfwl.knight139.co.uk`
-- [ ] `EXASVRCLD001` — DNS/BIND server (`192.168.139.10`) · `jukebox.internal` authoritative
+- [ ] `EXADNSCLD001` — DNS/BIND server (`192.168.139.8`) · `jukebox.internal` authoritative
 - [ ] `EXASVRCLD002` — Windows Admin Centre (`192.168.139.20`) · WS2022 · reaches all site DCs
 - [ ] `EXASVRCLD004` — Rudder configuration management (`192.168.139.22`)
 - [ ] `EXACLDPBX001` — Central 3CX PBX (`192.168.139.48`) · all site SBCs trunk here
@@ -189,12 +189,12 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] WireGuard routes verified to all site subnets
 - [ ] Ansible key distribution tested from `EXAPRVCLD001`
 - [ ] Rudder agents checked in from test node
-- [ ] DNS self-test: `dig @192.168.139.10 exasvrcld001.jukebox.internal`
+- [ ] DNS self-test: `dig @192.168.139.8 exadnscld001.jukebox.internal`
 
 | Hostname | Role | OS | IP | Notes |
 |----------|------|----|----|-------|
 | `EXAFWLCLD001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` |
-| `EXASVRCLD001` | DNS/BIND server | Debian trixie | `192.168.139.10` | `jukebox.internal` authoritative |
+| `EXADNSCLD001` | DNS/BIND server | Debian trixie | `192.168.139.8` | `jukebox.internal` authoritative |
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | Reaches all site DCs |
 | `EXASVRCLD004` | Rudder | Debian | `192.168.139.22` | Configuration management |
 | `EXACLDPBX001` | Central PBX | 3CX | `192.168.139.48` | All site SBCs trunk here |
@@ -1591,7 +1591,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 | `EXASWI` | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site / regional) | `EXADCSFAL001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASVR` | Server | `EXASVRCLD001` |
+| `EXASVR` | Server | `EXADNSCLD001` |
 | `EXASRV` | Server (legacy / local) | `EXASRVCLY001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS | `EXANASFAL001` |

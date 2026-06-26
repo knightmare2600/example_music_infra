@@ -4,12 +4,14 @@
 ;
 ; Zone:    139.168.192.in-addr.arpa
 ; Covers:  192.168.139.0/24  (provisioning network)
-; Server:  EXASVRCLD001 ({{ dns_ip }})
+; Server:  EXADNSCLD001 ({{ dns_ip }})
 ; Managed by: Ansible bind9-dns.yml
 ; Generated:  {{ ansible_date_time.iso8601 }}
 ;
 ; PTR records:
-;   .10  EXASVRCLD001   -- this DNS server
+;   .8   EXADNSCLD001   -- DNS/BIND9 server
+;   .10  EXADCSCLD001   -- DC primary
+;   .11  EXADCSCLD002   -- DC secondary
 ;   .12  EXARUDCLD001   -- Rudder Server
 ;   .20  EXASVRCLD002   -- Windows Admin Centre
 ;   .48  EXACLDPBX001   -- Central 3CX PBX
@@ -28,7 +30,7 @@
 $ORIGIN 139.168.192.in-addr.arpa.
 $TTL {{ zone_ttl }}
 
-@   IN  SOA  exasvrcld001.{{ domain }}.  hostmaster.{{ domain }}. (
+@   IN  SOA  exadnscld001.{{ domain }}.  hostmaster.{{ domain }}. (
               {{ zone_serial }}  ; serial
               3600       ; refresh
               900        ; retry
@@ -36,10 +38,12 @@ $TTL {{ zone_ttl }}
               {{ zone_ttl }}        ; minimum
             )
 
-@   IN  NS   exasvrcld001.{{ domain }}.
+@   IN  NS   exadnscld001.{{ domain }}.
 
 ; ── Ancillary / management hosts ─────────────────────────────
-10    IN  PTR  exasvrcld001.{{ domain }}.     ; DNS/BIND server (this host)
+8     IN  PTR  exadnscld001.{{ domain }}.     ; DNS/BIND9 server (this host)
+10    IN  PTR  exadcscld001.{{ domain }}.     ; DC primary
+11    IN  PTR  exadcscld002.{{ domain }}.     ; DC secondary
 12    IN  PTR  exarudcld001.{{ domain }}.     ; Rudder Server
 20    IN  PTR  exasvrcld002.{{ domain }}.     ; Windows Admin Centre
 48    IN  PTR  exacldpbx001.{{ domain }}.     ; Central 3CX PBX

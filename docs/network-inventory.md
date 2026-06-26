@@ -56,7 +56,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS | IP | Notes |
 |----------|------|----|----|-------|
 | `EXAFWLCLD001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` · LAN `192.168.139.0/24` |
-| `EXASVRCLD001` | DNS / BIND9 server | Debian | `192.168.139.10` | Authoritative DNS for `jukebox.internal` |
+| `EXADNSCLD001` | DNS / BIND9 server | Debian | `192.168.139.8` | Authoritative DNS for `jukebox.internal` |
 | `EXARUDCLD001` | Rudder Server | Debian | `192.168.139.12` | Configuration management — see NET-MGMT-RUDDER-001 |
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | WAC — reaches all site DCs and Windows nodes |
 | `EXACLDPBX001` | Central PBX | — | `192.168.139.48` | 3CX PBX — all site SBCs trunk here |
@@ -172,7 +172,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS | IP | Notes |
 |----------|------|----|----|-------|
 | `EXAFWLCLD001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` |
-| `EXASVRCLD001` | DNS / BIND9 server | Debian | `192.168.139.10` | Authoritative DNS for `jukebox.internal` |
+| `EXADNSCLD001` | DNS / BIND9 server | Debian | `192.168.139.8` | Authoritative DNS for `jukebox.internal` |
 | `EXARUDCLD001` | Rudder Server | Debian | `192.168.139.12` | Configuration management |
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | Reaches all site DCs and Windows nodes |
 | `EXACLDPBX001` | Central PBX | 3CX | `192.168.139.48` | All site SBCs trunk here |
@@ -1025,7 +1025,7 @@ Exceptions are noted in individual site entries.
 | `EXASWI` | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site/regional) | `EXADCSFAL001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASRV` | Server | `EXASVRCLD001` |
+| `EXASRV` | Server | `EXADNSCLD001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS | `EXANASFAL001` |
 | `EXASBC` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBCFAL001` |

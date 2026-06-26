@@ -92,7 +92,7 @@
 graph TD
     INET(("🌐 Internet"))
     FWLCLD["EXAFWLCLD001\nFirewall / WireGuard Hub\n192.168.139.1"]
-    DNS["EXASVRCLD001\nDNS / BIND9 Server\n192.168.139.10"]
+    DNS["EXADNSCLD001\nDNS / BIND9 Server\n192.168.139.8"]
     RUD["EXARUDCLD001\nRudder Server\n192.168.139.12"]
     WAC["EXASVRCLD002\nWindows Admin Centre\n192.168.139.20"]
     PBX["EXACLDPBX001\n3CX Central PBX\n192.168.139.48"]

@@ -2,7 +2,7 @@
 ; /etc/bind/db.{{ domain }}
 ; Example Music Limited -- {{ domain }} forward zone
 ;
-; Authoritative DNS: EXASVRCLD001 ({{ dns_ip }})
+; Authoritative DNS: EXADNSCLD001 ({{ dns_ip }})
 ; Zone:              {{ domain }}
 ; Source:            devices.csv (single source of truth)
 ; Managed by:        Ansible bind9-dns.yml Play 2
@@ -28,7 +28,7 @@ $ORIGIN {{ domain }}.
 $TTL {{ zone_ttl }}
 
 ; ── SOA + NS ─────────────────────────────────────────────────
-@   IN  SOA  exasvrcld001.{{ domain }}.  hostmaster.{{ domain }}. (
+@   IN  SOA  exadnscld001.{{ domain }}.  hostmaster.{{ domain }}. (
               {{ zone_serial }}  ; serial   YYYYMMDDnn
               3600       ; refresh  1 hour
               900        ; retry    15 minutes
@@ -36,7 +36,7 @@ $TTL {{ zone_ttl }}
               {{ zone_ttl }}        ; minimum  {{ zone_ttl }}s
             )
 
-@   IN  NS   exasvrcld001.{{ domain }}.
+@   IN  NS   exadnscld001.{{ domain }}.
 
 ; ── FWL WAN addresses on provisioning network (192.168.139.{octet}) ──────────
 ; Each site firewall has a WAN interface on 192.168.139.0/24.

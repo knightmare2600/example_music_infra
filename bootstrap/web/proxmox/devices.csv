@@ -42,7 +42,7 @@ Site,Hostname,HostOctet,Role,OS,Notes
 # BLACK SWAN -- see header note. IPs are provisioning-specific.
 # ============================================================
 CLD,EXAFWLCLD001,1,EXAFWL,,Firewall / WireGuard hub. CNAME ovhfwl.knight139.co.uk
-CLD,EXASVRCLD001,10,EXASVR,Debian trixie,DNS/BIND server -- jukebox.internal authoritative
+CLD,EXADNSCLD001,8,EXADNS,Debian trixie,DNS/BIND server -- jukebox.internal authoritative
 CLD,EXASVRCLD002,20,EXASVR,Windows Server 2022,Windows Admin Centre -- reaches all site DCs
 CLD,EXASVRCLD004,22,EXASVR,Debian,Rudder configuration management
 CLD,EXACLDPBX001,48,EXAPBX,3CX,Central PBX -- all site SBCs trunk here
