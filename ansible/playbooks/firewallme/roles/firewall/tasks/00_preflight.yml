@@ -107,11 +107,12 @@
       ╔══════════════════════════════════════════════════════════════╗
       ║  *** BLACK SITE — CLD PROVISIONING NETWORK ***               ║
       ║                                                              ║
-      ║  This is EXAFWLCLD001 — the bootstrap/provisioning firewall. ║
+      ║  This is EXAFWLCLD001 — the cloud management hub firewall.  ║
       ║  This device carries ALL site provisioning traffic.          ║
       ║                                                              ║
       ║  Extra precautions apply:                                    ║
-      ║    - WireGuard will NOT be configured (CLD has no WG)        ║
+      ║    - WireGuard: hub-regional (peers with FAL, ODE, BRK)     ║
+      ║    - WAN 192.168.139.139 / LAN 192.168.69.x (free-form)     ║
       ║    - Static WAN IP is mandatory                              ║
       ║    - All changes require explicit confirmation               ║
       ╚══════════════════════════════════════════════════════════════╝
@@ -127,9 +128,9 @@
     - fw_is_black_site
     - fw_black_site_confirm.user_input | trim | upper != 'CONFIRM'
 
-- name: "[Preflight] Force WG role to none for CLD"
+- name: "[Preflight] Force WG role to hub-regional for CLD"
   ansible.builtin.set_fact:
-    fw_wg_role: "none"
+    fw_wg_role: "hub-regional"
   when: fw_is_black_site
 
 - name: "[Preflight] Summary"
