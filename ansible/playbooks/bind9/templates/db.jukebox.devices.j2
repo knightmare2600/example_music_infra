@@ -82,6 +82,21 @@ $TTL {{ zone_ttl }}
 {% endfor %}
 {% endfor %}
 
+; ── DHCP pool ($GENERATE) ─────────────────────────────────────
+; .100–.199 per site — forward records only.
+; PTR $GENERATE blocks are in each per-site reverse zone file.
+; CLD (provisioning network) has no DHCP pool.
+{% for site in sites_raw.list
+   | rejectattr('Site', 'equalto', 'BRD')
+   | rejectattr('Site', 'equalto', 'Site')
+   | rejectattr('Site', 'equalto', 'CLD')
+   | rejectattr('Subnet', 'equalto', 'N/A')
+   | sort(attribute='Site') %}
+{% set octet = site.Subnet.split('.')[2] %}
+; {{ site.Site }} -- 192.168.{{ octet }}.100-199
+$GENERATE 100-199 dhcp${-99,2,d}.{{ site.Site | lower }} IN A 192.168.{{ octet }}.$
+{% endfor %}
+
 ; ── One-off records -- add below, DO NOT edit above ──────────
 ; Records added here are preserved between Ansible runs only if
 ; you manage them outside the template. Increment SOA serial manually.

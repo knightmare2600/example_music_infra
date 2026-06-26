@@ -9,7 +9,7 @@
 ; Generated:  {{ ansible_date_time.iso8601 }}
 ;
 ; PTR records cover the standard static SUFFIX_MAP addresses.
-; DHCP-assigned addresses are not covered -- they resolve forward only.
+; DHCP pool .100-.199 PTR records are covered via $GENERATE at the end of this file.
 ; ============================================================
 
 $ORIGIN {{ item.octet }}.168.192.in-addr.arpa.
