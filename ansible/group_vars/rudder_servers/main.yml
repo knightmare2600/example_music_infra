@@ -72,6 +72,14 @@ sites_csv_path: "/etc/example-music/sites.csv"
 # covers the static well-known Rudder ports on both port 443 and 5309.
 # Add extra entries here if you have non-standard subnets.
 # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Windows baseline technique — Defender exclusions
+# Comma-separated binary names exempted from Defender scanning.
+# Add new entries here and re-run the playbook to push the updated directive.
+# -----------------------------------------------------------------------------
+rudder_windows_excluded_binaries: "netscan.exe,nmap.exe,ncat.exe,psexec.exe,npcap-oem.exe"
+
+# -----------------------------------------------------------------------------
 rudder_site_ufw_rules:
   - subnet: "10.0.0.0/8"
     port: "443"

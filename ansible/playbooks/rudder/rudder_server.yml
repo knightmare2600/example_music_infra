@@ -18,7 +18,8 @@
 #   8.  LDAP / AD authentication skeleton
 #   9.  Cockpit
 #   10. Dynamic MOTD
-#   11. Sentinel file
+#   11. Node info file
+#   12. Windows baseline — techniques, directives, rule via Rudder API
 #
 # Usage
 # -----
@@ -810,6 +811,402 @@
           static_ip:       "{{ rudder_static_ip }}"
           rudder_url:      "https://{{ rudder_static_ip }}/rudder"
           cockpit_url:     "https://{{ rudder_static_ip }}:9090"
+
+  # ---------------------------------------------------------------------------
+  # Section 12 — Windows baseline: techniques, group, directives, rule
+  # ---------------------------------------------------------------------------
+  # Creates via Rudder REST API (idempotent — GET first, then PUT/POST):
+  #
+  #   Techniques:
+  #     exa_windows_security_policy   — WU policy, Defender lockdown, SmartScreen
+  #       parameter: excluded_binaries (comma-separated; from group_vars)
+  #     exa_pswindowsupdate           — ensures PSWindowsUpdate module is present
+  #
+  #   Group:
+  #     "Windows Nodes" — dynamic, queries by OS type == Windows
+  #
+  #   Directives:
+  #     "EXA Windows Security Policy" → technique above, excluded_binaries param
+  #     "EXA PSWindowsUpdate"          → technique above (no params)
+  #
+  #   Rule:
+  #     "EXA Windows baseline" → both directives → Windows Nodes group
+  #
+  # To add a binary to the Defender exclusion list:
+  #   1. Add it to rudder_windows_excluded_binaries in group_vars/rudder_servers/main.yml
+  #   2. Re-run this playbook — Section 12 updates the directive in-place
+  #
+  # Requires rudder_api_token (same guard as section 7).
+  # Technique parameter substitution uses Rudder's ${technique_parameter.id} syntax.
+  # ---------------------------------------------------------------------------
+
+    - name: "12 | Skip if API token not set"
+      debug:
+        msg: >-
+          [WARNING] rudder_api_token not set — Windows baseline techniques not configured.
+          Set the token in vault and re-run.
+      when: >
+        rudder_api_token is not defined
+        or rudder_api_token == ""
+        or rudder_api_token == "UNSET"
+
+    # ── Technique: exa_windows_security_policy ────────────────────────────────
+
+    - name: "12 | PUT technique — exa_windows_security_policy"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/techniques"
+        method: PUT
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          id: "exa_windows_security_policy"
+          name: "EXA Windows Security Policy"
+          version: "1.0"
+          category: "ncf_techniques"
+          description: >-
+            Locks down Windows Update, Defender, and SmartScreen for EXA nodes.
+            Managed by Ansible — rudder_server.yml section 12.
+          parameters:
+            - id: "excluded_binaries"
+              name: "Excluded Binaries"
+              description: >-
+                Comma-separated list of binary names to exclude from Defender scanning.
+                Example: netscan.exe,nmap.exe,ncat.exe
+              type: "String"
+              mayBeEmpty: true
+          calls:
+            - id: "wsp_tamper"
+              method: "command_execution"
+              component: "Disable Tamper Protection"
+              parameters:
+                - name: "command"
+                  value: "powershell -NonInteractive -Command \"Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows Defender\\Features' -Name TamperProtection -Value 4 -Force -ErrorAction SilentlyContinue\""
+              condition: ""
+            - id: "wsp_wu"
+              method: "command_execution"
+              component: "Windows Update — notify only, no download or install"
+              parameters:
+                - name: "command"
+                  value: "powershell -NonInteractive -Command \"$p='HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU'; New-Item $p -Force | Out-Null; Set-ItemProperty $p AUOptions 1; Set-ItemProperty $p NoAutoUpdate 1\""
+              condition: ""
+            - id: "wsp_maps"
+              method: "command_execution"
+              component: "Defender — disable cloud reporting and sample submission"
+              parameters:
+                - name: "command"
+                  value: "powershell -NonInteractive -Command \"Set-MpPreference -MAPSReporting Disabled -SubmitSamplesConsent NeverSend -ErrorAction SilentlyContinue\""
+              condition: ""
+            - id: "wsp_sigupdate"
+              method: "command_execution"
+              component: "Defender — disable automatic signature updates"
+              parameters:
+                - name: "command"
+                  value: "powershell -NonInteractive -Command \"Set-MpPreference -SignatureUpdateInterval 0 -ErrorAction SilentlyContinue\""
+              condition: ""
+            - id: "wsp_exclusions"
+              method: "command_execution"
+              component: "Defender — process exclusions"
+              parameters:
+                - name: "command"
+                  value: "powershell -NonInteractive -Command \"$bins = '${technique_parameter.excluded_binaries}' -split '[,\\s]+' | Where-Object { $_ -ne '' }; if ($bins) { Set-MpPreference -ExclusionProcess $bins -ErrorAction SilentlyContinue }\""
+              condition: ""
+            - id: "wsp_smartscreen"
+              method: "command_execution"
+              component: "SmartScreen — disable for apps and Explorer"
+              parameters:
+                - name: "command"
+                  value: "powershell -NonInteractive -Command \"$p='HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System'; New-Item $p -Force | Out-Null; Set-ItemProperty $p EnableSmartScreen 0\""
+              condition: ""
+        validate_certs: false
+        status_code: [200, 201]
+      register: _wsp_technique
+      when:
+        - rudder_api_token is defined
+        - rudder_api_token != ""
+        - rudder_api_token != "UNSET"
+
+    # ── Technique: exa_pswindowsupdate ───────────────────────────────────────
+
+    - name: "12 | PUT technique — exa_pswindowsupdate"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/techniques"
+        method: PUT
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          id: "exa_pswindowsupdate"
+          name: "EXA PSWindowsUpdate module"
+          version: "1.0"
+          category: "ncf_techniques"
+          description: >-
+            Ensures the PSWindowsUpdate PowerShell module is installed from PSGallery.
+            Managed by Ansible — rudder_server.yml section 12.
+          parameters: []
+          calls:
+            - id: "pswu_install"
+              method: "command_execution"
+              component: "Install PSWindowsUpdate from PSGallery"
+              parameters:
+                - name: "command"
+                  value: "powershell -NonInteractive -Command \"if (-not (Get-Module PSWindowsUpdate -ListAvailable)) { Install-PackageProvider NuGet -MinimumVersion 2.8.5.201 -Force; Install-Module PSWindowsUpdate -Force -AllowClobber -Scope AllUsers }\""
+              condition: ""
+        validate_certs: false
+        status_code: [200, 201]
+      register: _pswu_technique
+      when:
+        - rudder_api_token is defined
+        - rudder_api_token != ""
+        - rudder_api_token != "UNSET"
+
+    # ── Dynamic group: Windows Nodes ─────────────────────────────────────────
+
+    - name: "12 | GET existing Rudder groups"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/groups"
+        method: GET
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+        validate_certs: false
+      register: _rudder_groups
+      when:
+        - rudder_api_token is defined
+        - rudder_api_token != ""
+        - rudder_api_token != "UNSET"
+
+    - name: "12 | Resolve Windows Nodes group ID"
+      set_fact:
+        _win_group_id: >-
+          {{ (_rudder_groups.json.data.groups
+              | selectattr('displayName', 'equalto', 'Windows Nodes')
+              | map(attribute='id') | first) | default('') }}
+      when: _rudder_groups is not skipped
+
+    - name: "12 | Create Windows Nodes dynamic group"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/groups"
+        method: PUT
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          displayName: "Windows Nodes"
+          description: "All Windows-managed nodes — dynamic group, queries by OS type"
+          query:
+            select: "node"
+            composition: "and"
+            where:
+              - objectType: "node"
+                attribute: "OS type"
+                comparator: "eq"
+                value: "Windows"
+          enabled: true
+          dynamic: true
+        validate_certs: false
+        status_code: [200, 201]
+      register: _win_group_create
+      when:
+        - _win_group_id is defined
+        - _win_group_id == ''
+
+    - name: "12 | Set Windows Nodes group ID from create response"
+      set_fact:
+        _win_group_id: "{{ _win_group_create.json.data.groups[0].id }}"
+      when:
+        - _win_group_create is not skipped
+        - _win_group_create.status in [200, 201]
+
+    # ── Directives ────────────────────────────────────────────────────────────
+
+    - name: "12 | GET existing directives"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/directives"
+        method: GET
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+        validate_certs: false
+      register: _rudder_directives
+      when:
+        - rudder_api_token is defined
+        - rudder_api_token != ""
+        - rudder_api_token != "UNSET"
+
+    - name: "12 | Resolve existing directive IDs"
+      set_fact:
+        _sec_directive_id: >-
+          {{ (_rudder_directives.json.data.directives
+              | selectattr('displayName', 'equalto', 'EXA Windows Security Policy')
+              | map(attribute='id') | first) | default('') }}
+        _pswu_directive_id: >-
+          {{ (_rudder_directives.json.data.directives
+              | selectattr('displayName', 'equalto', 'EXA PSWindowsUpdate')
+              | map(attribute='id') | first) | default('') }}
+      when: _rudder_directives is not skipped
+
+    - name: "12 | Create EXA Windows Security Policy directive"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/directives"
+        method: PUT
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          displayName: "EXA Windows Security Policy"
+          techniqueName: "exa_windows_security_policy"
+          techniqueVersion: "1.0"
+          priority: 5
+          enabled: true
+          parameters:
+            excluded_binaries: "{{ rudder_windows_excluded_binaries }}"
+        validate_certs: false
+        status_code: [200, 201]
+      when:
+        - _sec_directive_id is defined
+        - _sec_directive_id == ''
+
+    - name: "12 | Update EXA Windows Security Policy directive (excluded_binaries may have changed)"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/directives/{{ _sec_directive_id }}"
+        method: POST
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          displayName: "EXA Windows Security Policy"
+          techniqueName: "exa_windows_security_policy"
+          techniqueVersion: "1.0"
+          priority: 5
+          enabled: true
+          parameters:
+            excluded_binaries: "{{ rudder_windows_excluded_binaries }}"
+        validate_certs: false
+        status_code: [200, 201]
+      when:
+        - _sec_directive_id is defined
+        - _sec_directive_id != ''
+
+    - name: "12 | Create EXA PSWindowsUpdate directive"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/directives"
+        method: PUT
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          displayName: "EXA PSWindowsUpdate"
+          techniqueName: "exa_pswindowsupdate"
+          techniqueVersion: "1.0"
+          priority: 5
+          enabled: true
+          parameters: {}
+        validate_certs: false
+        status_code: [200, 201]
+      when:
+        - _pswu_directive_id is defined
+        - _pswu_directive_id == ''
+
+    # ── Rule ──────────────────────────────────────────────────────────────────
+
+    - name: "12 | GET existing rules"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/rules"
+        method: GET
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+        validate_certs: false
+      register: _rudder_rules
+      when:
+        - rudder_api_token is defined
+        - rudder_api_token != ""
+        - rudder_api_token != "UNSET"
+
+    - name: "12 | Resolve existing Windows baseline rule ID"
+      set_fact:
+        _baseline_rule_id: >-
+          {{ (_rudder_rules.json.data.rules
+              | selectattr('displayName', 'equalto', 'EXA Windows baseline')
+              | map(attribute='id') | first) | default('') }}
+      when: _rudder_rules is not skipped
+
+    - name: "12 | Resolve directive IDs for rule body"
+      set_fact:
+        _final_sec_id: >-
+          {{ (_rudder_directives.json.data.directives
+              | selectattr('displayName', 'equalto', 'EXA Windows Security Policy')
+              | map(attribute='id') | first) | default('') }}
+        _final_pswu_id: >-
+          {{ (_rudder_directives.json.data.directives
+              | selectattr('displayName', 'equalto', 'EXA PSWindowsUpdate')
+              | map(attribute='id') | first) | default('') }}
+      when: _rudder_directives is not skipped
+
+    - name: "12 | Create EXA Windows baseline rule"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/rules"
+        method: PUT
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          displayName: "EXA Windows baseline"
+          shortDescription: "WU lockdown, Defender hardening, PSWindowsUpdate on all Windows nodes"
+          directives: "{{ [_final_sec_id, _final_pswu_id] | select('ne', '') | list }}"
+          targets:
+            - include:
+                or:
+                  - nodeGroupId: "{{ _win_group_id }}"
+          enabled: true
+        validate_certs: false
+        status_code: [200, 201]
+      when:
+        - _baseline_rule_id is defined
+        - _baseline_rule_id == ''
+        - _win_group_id is defined
+        - _win_group_id != ''
+
+    - name: "12 | Update EXA Windows baseline rule (directives or group may have changed)"
+      uri:
+        url: "https://127.0.0.1/rudder/api/latest/rules/{{ _baseline_rule_id }}"
+        method: POST
+        headers:
+          X-API-Token: "{{ rudder_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          displayName: "EXA Windows baseline"
+          shortDescription: "WU lockdown, Defender hardening, PSWindowsUpdate on all Windows nodes"
+          directives: "{{ [_final_sec_id, _final_pswu_id] | select('ne', '') | list }}"
+          targets:
+            - include:
+                or:
+                  - nodeGroupId: "{{ _win_group_id }}"
+          enabled: true
+        validate_certs: false
+        status_code: [200, 201]
+      when:
+        - _baseline_rule_id is defined
+        - _baseline_rule_id != ''
+        - _win_group_id is defined
+        - _win_group_id != ''
+
+    - name: "12 | Summary — Windows baseline configured"
+      debug:
+        msg:
+          - "Windows baseline techniques, directives and rule configured in Rudder."
+          - "Excluded binaries: {{ rudder_windows_excluded_binaries }}"
+          - "To add a binary: update rudder_windows_excluded_binaries in group_vars and re-run."
+      when:
+        - rudder_api_token is defined
+        - rudder_api_token != ""
+        - rudder_api_token != "UNSET"
 
   # ---------------------------------------------------------------------------
   # Post-run summary
