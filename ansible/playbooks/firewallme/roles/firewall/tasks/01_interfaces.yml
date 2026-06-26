@@ -129,6 +129,8 @@
   ansible.builtin.set_fact:
     fw_lan_mac: "{{ fw_lan_mac_raw.stdout | trim }}"
 
+# ── LAN IP — standard sites (.1 or .253 of site subnet) ──────────────────────
+
 - name: "[Interfaces] Prompt for LAN IP (.1 or .253)"
   ansible.builtin.pause:
     prompt: |
@@ -140,16 +142,44 @@
 
       Enter {{ _c.G }}1{{ _c.NC }} or {{ _c.G }}253{{ _c.NC }}
   register: fw_lan_octet_prompt
+  when: not fw_is_black_site
 
 - name: "[Interfaces] Validate LAN IP choice"
   ansible.builtin.assert:
     that:
       - fw_lan_octet_prompt.user_input | trim in ['1', '253']
     fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Invalid choice — enter 1 or 253."
+  when: not fw_is_black_site
 
 - name: "[Interfaces] Set LAN IP"
   ansible.builtin.set_fact:
     fw_lan_ip: "{{ fw_subnet }}.{{ fw_lan_octet_prompt.user_input | trim }}"
+  when: not fw_is_black_site
+
+# ── LAN IP — CLD black site (LAN is on a different subnet, free-form entry) ──
+
+- name: "[Interfaces] CLD: prompt for LAN IP (not on fw_subnet — enter full IP)"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.C }}  *** CLD BLACK SITE ***{{ _c.NC }}
+      {{ _c.C }}  LAN is not on {{ fw_subnet }}.0/24 — enter the full LAN IP.{{ _c.NC }}
+      {{ _c.C }}  Example: {{ _c.G }}192.168.69.253{{ _c.NC }} (the private inside interface)
+
+      Enter full LAN IP
+  register: fw_cld_lan_ip_prompt
+  when: fw_is_black_site
+
+- name: "[Interfaces] CLD: validate and set LAN IP"
+  ansible.builtin.assert:
+    that:
+      - fw_cld_lan_ip_prompt.user_input | trim | regex_search('^(\d{1,3}\.){3}\d{1,3}$')
+    fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Enter a valid IPv4 address."
+  when: fw_is_black_site
+
+- name: "[Interfaces] CLD: set LAN IP fact"
+  ansible.builtin.set_fact:
+    fw_lan_ip: "{{ fw_cld_lan_ip_prompt.user_input | trim }}"
+  when: fw_is_black_site
 
 - name: "[Interfaces] Write systemd .link files"
   ansible.builtin.file:
