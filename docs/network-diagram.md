@@ -92,30 +92,34 @@
 graph TD
     INET(("🌐 Internet"))
     FWLCLD["EXAFWLCLD001\nFirewall / WireGuard Hub\n192.168.139.1"]
-    SVRCLD1["EXASVRCLD001\nWindows Admin Centre\n192.168.139.20"]
-    SVRCLD2["EXASVRCLD002\nAnsible Control Node\n192.168.139.49"]
-    SVRCLD3["EXASVRCLD003\nRudder Server\n192.168.139.22"]
+    DNS["EXASVRCLD001\nDNS / BIND9 Server\n192.168.139.10"]
+    RUD["EXARUDCLD001\nRudder Server\n192.168.139.12"]
+    WAC["EXASVRCLD002\nWindows Admin Centre\n192.168.139.20"]
     PBX["EXACLDPBX001\n3CX Central PBX\n192.168.139.48"]
-    PRV["EXAPRVFAL001\nProvisioning Server\n192.168.139.50"]
+    PRV["EXAPRVCLD001\nProvisioning Server\n192.168.139.50"]
+    ANS["EXAANSCLD001\nAnsible Control Node\n192.168.139.69"]
 
     VPN_FAL(["🔗 WireGuard → FAL primary"])
     VPN_ODE(["🔗 WireGuard → ODE EU backup"])
     VPN_BRK(["🔗 WireGuard → BRK NA/APAC backup"])
 
     INET --> FWLCLD
-    FWLCLD --> SVRCLD1
-    FWLCLD --> SVRCLD2
-    FWLCLD --> SVRCLD3
+    FWLCLD --> DNS
+    FWLCLD --> RUD
+    FWLCLD --> WAC
     FWLCLD --> PBX
     FWLCLD --> PRV
+    FWLCLD --> ANS
     FWLCLD --> VPN_FAL
     FWLCLD --> VPN_ODE
     FWLCLD --> VPN_BRK
 
     classDef server fill:#1a1a2e,stroke:#4fc3f7,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     classDef vpn fill:#0d3b2e,stroke:#66bb6a,color:#e8f5e9
     classDef inet fill:#333,stroke:#aaa,color:#fff
-    class FWLCLD,SVRCLD1,SVRCLD2,SVRCLD3,PBX,PRV server
+    class FWLCLD,DNS,WAC,PBX,PRV,ANS server
+    class RUD rudder
     class VPN_FAL,VPN_ODE,VPN_BRK vpn
     class INET inet
 ```
@@ -161,6 +165,7 @@ graph TD
 
     subgraph INFRA ["Infrastructure"]
         SBC["EXASBCFAL001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYFAL001\nRudder Relay\n.12"]
         NAS["EXANASFAL001\nFreeNAS 13.0-U6\n.32"]
         TAR["EXATARFAL001\nTape Archiver\n.33"]
     end
@@ -214,14 +219,18 @@ graph TD
     RAC3 -.->|"manages"| PVE3
     FWL <-->|"WireGuard tunnel"| VPN_CLD
 
+    SW1 --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN_CLD
     classDef net fill:#0d3b2e,stroke:#66bb6a,color:#e8f5e9
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef bmc fill:#bf360c,stroke:#ff8a65,color:#fbe9e7
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class RTR,FWL,SW1,SW2 net
     class PVE1,PVE2,PVE3,DC1,DC2,SBC,NAS,TAR srv
+    class RRY rudder
     class WKS1,WKS2,WKS3,LAP,SUR,PHN,PHN2,TAB,WAP,CAM1,CAM2,CAM3,CAM4,RDR ep
     class LCD,VCU,JKB,PAY,COF,VND1,VND2,VND3,VND4,VND5,PMP,CLK site
     class RAC1,RAC2,RAC3 bmc
@@ -246,6 +255,7 @@ graph TD
     PVE["EXAPVEEDI001\nProxmox node 1\n.5"]
     DC["⚠️ EXADCSEDI003\nDC · DFSR stopped\nC: 5% free · .11"]
     SBC["EXASBCEDI001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYEDI001\nRudder Relay\n.12"]
     WKS["EXAWKSEDI001\nWorkstation\n.150"]
     LAP["EXALAPEDI098\nPool Laptop\n.108"]
     WAP["WAPs x2\nUbiquiti UniFi U6-Pro"]
@@ -260,14 +270,18 @@ graph TD
     SW2 --> WKS & LAP & WAP & CAM & COF
     RTR <-->|"WireGuard tunnel"| VPN
 
+    SW1 --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class RTR,SW1,SW2 net
     class DC warn
     class PVE,SBC,RAC srv
+    class RRY rudder
     class WKS,LAP,WAP,CAM,COF ep
     class VPN vpn
 ```
@@ -286,6 +300,7 @@ graph TD
     RAC["EXARACGLA001\nBMC node 1\n.2"]
     DC["EXADCRGLA001\nDC · Schema/DN Master\nPDC Emulator · .10"]
     SBC["EXASBCGLA001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYGLA001\nRudder Relay\n.12"]
     WKS1["EXAWKSGLA001\nHot Desk WKS\n.150"]
     WKS2["EXAWKSGLA002\nHot Desk WKS\n.151"]
     LAP["EXALAPGLA001\nPool Laptop\n.152"]
@@ -300,11 +315,15 @@ graph TD
     PVE --> WKS1 & WKS2 & LAP & PRN & WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WKS1,WKS2,LAP,PRN,WAP,CAM ep
     class VPN vpn
 ```
@@ -328,6 +347,7 @@ graph TD
     DC2["EXADCSCLY002\nDC secondary\n.11"]
     SRV["EXASRVCLY001\nRocky Linux · Oracle DB\n.20"]
     SBC["EXASBCCLY001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYCLY001\nRudder Relay\n.12"]
     SUR["EXASURCLY001\nMicrosoft Surface\n.51"]
     PHN["EXAPHNCLY001\niOS handset"]
     TAB["EXASURCLY002\nAndroid Tablet"]
@@ -341,12 +361,16 @@ graph TD
     SW --> SUR & PHN & TAB & WAP & CAM
     FWL <-->|"WireGuard tunnel"| VPN
 
+    SW --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class FWL,RTR,SW net
     class PVE,DC1,DC2,SRV,SBC,RAC srv
+    class RRY rudder
     class SUR,PHN,TAB,WAP,CAM ep
     class VPN vpn
 ```
@@ -366,6 +390,7 @@ graph TD
     PVE["EXAPVEDUN001\nProxmox node 1\n.5"]
     DC["EXADCSDUN001\nDC\n.10"]
     SBC["EXASBCDUN001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYDUN001\nRudder Relay\n.12"]
     SUR1["EXASURDUN001\nSurface\n.51"]
     SUR2["EXASURDUN002\nSurface\n.52"]
     PHN1["EXAPHNDUN001\niOS Phone"]
@@ -380,12 +405,16 @@ graph TD
     RTR --> SUR1 & SUR2 & PHN1 & PHN2 & WAP & CAM
     RTR <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class RTR net
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class SUR1,SUR2,PHN1,PHN2,WAP,CAM ep
     class VPN vpn
 ```
@@ -404,6 +433,7 @@ graph TD
     PVE["EXAPVEPER001\nProxmox node 1\n.5"]
     DC["EXADCSPER001\nDC\n.10"]
     SBC["EXASBCPER001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYPER001\nRudder Relay\n.12"]
     NIX["EXANIXPER001\nSolaris 11.5\nMIDI/Music Archive · .40"]
     NAS["EXANASPER001\nSynology NAS\n.50"]
     MBP["EXAMBPPER001\nMacBook Pro\n.70"]
@@ -421,11 +451,15 @@ graph TD
     PVE --> MBP & SUR & PHN & PRN & VND & WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,NIX,NAS,RAC srv
+    class RRY rudder
     class MBP,SUR,PHN,PRN,WAP,CAM ep
     class VND site
     class VPN vpn
@@ -447,6 +481,7 @@ graph TD
     PVE["EXAPVEABD001\nProxmox node 1\n.5"]
     DC["EXADCSABD001\nDC\n.10"]
     SBC["EXASBCABD001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYABD001\nRudder Relay\n.12"]
     MBP1["EXAMBPABD001\nMacBook\n.137"]
     MBP2["EXAMBPABD002\nMacBook\n.124"]
     PHN1["EXAPHNABD001\nCorporate iPhone"]
@@ -461,12 +496,16 @@ graph TD
     FWL --> MBP1 & MBP2 & PHN1 & PHN2 & WAP & CAM
     FWL <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class FWL,RTR net
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class MBP1,MBP2,PHN1,PHN2,WAP,CAM ep
     class VPN vpn
 ```
@@ -494,6 +533,7 @@ graph TD
     PVE["EXAPVELND001\nProxmox node 1\n.5"]
     DC["EXADCRLND001\nDC · RID/Infra Master\n.10"]
     SBC["EXASBCLND001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYLND001\nRudder Relay\n.12"]
     WKS["EXAWKSLND001\nHot Desk WKS\n.150"]
     PRN1["EXAPRNLND001\nXerox WorkCentre\n.16"]
     PRN2["EXAPRNLND002\nProCAT Steno Writer\nCourt Device"]
@@ -509,13 +549,17 @@ graph TD
     SW --> WKS & PRN1 & PRN2 & RAD & MIC & WAP & CAM
     FWL <-->|"WireGuard tunnel"| VPN
 
+    SW --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class FWL,SW,RTR net
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WKS,PRN1,WAP,CAM ep
     class PRN2,RAD,MIC site
     class VPN vpn
@@ -541,6 +585,7 @@ graph TD
     DC2["EXADCRBIR002\nDC secondary\n.11"]
     SRV["EXASRVBIR001\nRocky Linux · Oracle DB\n.20"]
     SBC["EXASBCBIR001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYBIR001\nRudder Relay\n.12"]
     MBP["EXAMBPBIR001\nMacBook Pro\n.41"]
     TAB["EXATABBIR001\nSamsung Galaxy Tab\n.61"]
     PHN["EXAPHNBIR001\nSamsung S25 Ultra"]
@@ -561,13 +606,17 @@ graph TD
     SW2 --> MOO & LIN & FCL & AST & PAY & LCD
     FWL <-->|"WireGuard tunnel"| VPN
 
+    SW1 --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class FWL,SW1,SW2,RTR net
     class PVE,DC1,DC2,SRV,SBC,RAC srv
+    class RRY rudder
     class MBP,TAB,PHN,WAP,CAM ep
     class MOO,LIN,FCL,AST,PAY,LCD site
     class VPN vpn
@@ -589,6 +638,7 @@ graph TD
     DC1["EXADCRMCR001\nDC PDC · RID/Infra Master\n.10"]
     DC2["EXADCSMCR002\nDC secondary\n.11"]
     SBC["EXASBCMCR001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYMCR001\nRudder Relay\n.12"]
     LAP1["EXALAPMCR001\nWin11 Laptop\n.19"]
     LAP2["EXALAPMCR002\nWin11 Laptop\n.150"]
     WKS1["EXAWKSMCR001\nFront Desk WKS\n.152"]
@@ -604,12 +654,16 @@ graph TD
     SW --> LAP1 & LAP2 & WKS1 & WKS2 & PRN & WAP & CAM
     SW <-->|"WireGuard tunnel"| VPN
 
+    SW --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class SW net
     class PVE,DC1,DC2,SBC,RAC srv
+    class RRY rudder
     class LAP1,LAP2,WKS1,WKS2,PRN,WAP,CAM ep
     class VPN vpn
 ```
@@ -629,6 +683,7 @@ graph TD
     PVE["EXAPVELIV001\nProxmox node 1\n.5"]
     DC["EXADCRLIV001\nDC · WS2025\n.10"]
     SBC["EXASBCLIV001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYLIV001\nRudder Relay\n.12"]
     SRV["EXASVRLIV001\nWS2022 File Server\n.10"]
     MBP["EXAMBPLIV001\nMacBook Pro · macOS Tahoe\n.150"]
     MAC["EXAMACLIV001\niMac ⚠️ disabled\n.152"]
@@ -644,13 +699,17 @@ graph TD
     SW --> SRV & MBP & MAC & RDR & BPS & WAP & CAM
     SW <-->|"WireGuard tunnel"| VPN
 
+    SW --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class SW net
     class PVE,DC,SBC,RAC,SRV srv
+    class RRY rudder
     class MBP,RDR,BPS,WAP,CAM ep
     class MAC warn
     class VPN vpn
@@ -671,6 +730,7 @@ graph TD
     PVE["EXAPVENEW001\nProxmox node 1\n.5"]
     DC["EXADCRNEW001\nDC\n.10"]
     SBC["EXASBCNEW001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYNEW001\nRudder Relay\n.12"]
     SRV["EXASRVNEW001\nWS2022 File/Print Server\n.21"]
     WKS["⚠️ EXAWKSNEW099\nWin11 WKS · LAPS expired\n.161"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
@@ -683,13 +743,17 @@ graph TD
     SW --> SRV & WKS & WAP & CAM
     SW <-->|"WireGuard tunnel"| VPN
 
+    SW --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class SW net
     class PVE,DC,SBC,RAC,SRV srv
+    class RRY rudder
     class WAP,CAM ep
     class WKS warn
     class VPN vpn
@@ -709,6 +773,7 @@ graph TD
     PVE["EXAPVESHE001\nProxmox node 1\n.5"]
     DC["EXADCSSHE001\nDC\n.10"]
     SBC["EXASBCSHE001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYSHE001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     EP["Endpoints TODO"]
@@ -719,10 +784,14 @@ graph TD
     PVE --> WAP & CAM & EP
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM,EP ep
     class VPN vpn
 ```
@@ -741,6 +810,7 @@ graph TD
     PVE["EXAPVEHAL001\nProxmox node 1\n.5"]
     DC["EXADCSHAL001\nDC\n.10"]
     SBC["EXASBCHAL001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYHAL001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     EP["Endpoints TODO"]
@@ -751,10 +821,14 @@ graph TD
     PVE --> WAP & CAM & EP
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM,EP ep
     class VPN vpn
 ```
@@ -773,6 +847,7 @@ graph TD
     PVE["EXAPVEHUL001\nProxmox node 1\n.5"]
     DC["EXADCSHUL001\nDC\n.10"]
     SBC["EXASBCHUL001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYHUL001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     EP["Endpoints TODO"]
@@ -783,10 +858,14 @@ graph TD
     PVE --> WAP & CAM & EP
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM,EP ep
     class VPN vpn
 ```
@@ -807,6 +886,7 @@ graph TD
     PVE["EXAPVECOV001\nProxmox node 1\n.5"]
     DC["EXADCSCOV001\nDC\n.10"]
     SBC["EXASBCCOV001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYCOV001\nRudder Relay\n.12"]
     WAP["WAPs x2\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → FAL"])
@@ -816,12 +896,16 @@ graph TD
     RTR --> WAP & CAM
     RTR <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class RTR net
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM ep
     class VPN vpn
 ```
@@ -849,6 +933,7 @@ graph TD
     DC1["EXADCSCPH001\nDC · example.com\n.10"]
     DC2["EXADCSCPH002\nDC · example.net\n.11"]
     SBC["EXASBCCPH001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYCPH001\nRudder Relay\n.12"]
     NTP["EXACLKCPH001\nMeinberg LANTIME M300\nNTP Clock · .18"]
     TV["EXATVSCPH001\nBella Kronik 42X\nDR/TV2 · .17"]
     WAP["WAPs x3\nUbiquiti UniFi U6-Pro"]
@@ -861,13 +946,17 @@ graph TD
     SW --> NTP & TV & WAP & CAM
     RTR <-->|"WireGuard tunnel"| VPN
 
+    SW --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class RTR,SW net
     class PVE,DC1,DC2,SBC,RAC srv
+    class RRY rudder
     class NTP,TV site
     class WAP,CAM ep
     class VPN vpn
@@ -900,6 +989,7 @@ graph TD
     DC1["EXADCSODE001\nDC PDC · RID/Infra Master\n.10"]
     DC2["EXADCSODE002\nDC secondary\n.11"]
     SBC["EXASBCODE001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYODE001\nRudder Relay\n.12"]
     MAC["EXAMACODE001\niMac · macOS Tahoe\n.150"]
     MBP["EXAMBPODE002\nMacBook Pro\n.151"]
     JKB["EXAMUSODE001\nPureline 128V Jukebox\n.60"]
@@ -918,14 +1008,18 @@ graph TD
     FWL <-->|"WireGuard tunnel"| VPN_CLD
     FWL -->|"WireGuard spokes"| VPN_EU
 
+    PVE1 --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN_CLD
     classDef net fill:#0d3b2e,stroke:#66bb6a,color:#e8f5e9
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef bmc fill:#bf360c,stroke:#ff8a65,color:#fbe9e7
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class FWL net
     class PVE1,PVE2,PVE3,DC1,DC2,SBC srv
+    class RRY rudder
     class MAC,MBP,WAP,CAM ep
     class JKB site
     class RAC1,RAC2,RAC3 bmc
@@ -947,6 +1041,7 @@ graph TD
     PVE["EXAPVEKGE001\nProxmox node 1\n.5"]
     DC["⚠️ EXADCSKGE001\nDC · WS2016 EOL\nOOS 27d · .10"]
     SBC["EXASBCKGE001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYKGE001\nRudder Relay\n.12"]
     WAP["EXAWAPKGE001\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     PRN["EXAPRNKGE001\nHP LaserJet MFP M528\n.16"]
@@ -957,11 +1052,15 @@ graph TD
     PVE --> WAP & CAM & PRN
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,SBC,RAC srv
+    class RRY rudder
     class DC warn
     class WAP,CAM,PRN ep
     class VPN vpn
@@ -982,6 +1081,7 @@ graph TD
     PVE["EXAPVEFAX001\nProxmox node 1\n.5"]
     DC["EXADCSFAX001\nDC\n.10"]
     SBC["EXASBCFAX001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYFAX001\nRudder Relay\n.12"]
     WAP["WAPs x2\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → ODE"])
@@ -991,12 +1091,16 @@ graph TD
     RTR --> WAP & CAM
     RTR <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class RTR net
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM ep
     class VPN vpn
 ```
@@ -1015,6 +1119,7 @@ graph TD
     PVE["EXAPVEKOR001\nProxmox node 1\n.5"]
     DC["EXADCSKOR001\nDC\n.10"]
     SBC["EXASBCKOR001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYKOR001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → ODE"])
@@ -1024,10 +1129,14 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM ep
     class VPN vpn
 ```
@@ -1055,6 +1164,7 @@ graph TD
     PVE["EXAPVEBON001\nProxmox node 1\n.5"]
     DC["EXADCSBON001\nDC · Schema Master\nDN Master · .10"]
     SBC["EXASBCBON001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYBON001\nRudder Relay\n.12"]
     WKS["EXAWKSBON001\nFinance WKS · .151"]
     LAP1["EXALAPBON001\nThinkPad ⚠️ disabled\n.150"]
     LAP2["EXALAPBON002\nFinance Laptop · .153"]
@@ -1070,14 +1180,18 @@ graph TD
     SW --> WKS & LAP1 & LAP2 & VCU & CAM & TV & WAP
     RTR <-->|"WireGuard tunnel"| VPN
 
+    SW --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#bf360c,stroke:#ff8a65,color:#fbe9e7
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class SW,RTR net
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WKS,LAP2,WAP ep
     class VCU,CAM,TV site
     class LAP1 warn
@@ -1099,6 +1213,7 @@ graph TD
     PVE["EXAPVEBER001\nProxmox node 1\n.5"]
     DC["EXADCSBER001\nDC · PDC Emulator\nRID/Infra Master WS2019 · .10"]
     SBC["EXASBCBER001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYBER001\nRudder Relay\n.12"]
     SRV["EXASRVBER001\nWS2019 Legacy App Server\n.21"]
     NIX["EXANIXBER001\nDebian 12 Server\n.22"]
     WAP["WAPs x2\nUbiquiti UniFi U6-Pro"]
@@ -1110,12 +1225,16 @@ graph TD
     RTR --> WAP & CAM
     RTR <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#bf360c,stroke:#ff8a65,color:#fbe9e7
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class RTR net
     class PVE,DC,SBC,SRV,NIX,RAC srv
+    class RRY rudder
     class WAP,CAM ep
     class VPN vpn
 ```
@@ -1135,6 +1254,7 @@ graph TD
     PVE["EXAPVEMUN001\nProxmox node 1\n.5"]
     DC["EXADCSMUN001\nDC\n.10"]
     SBC["EXASBCMUN001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYMUN001\nRudder Relay\n.12"]
     WKS["EXAWKSMUN001\nHot Desk WKS\n.150"]
     LAP1["EXALAPMUN001\nPool Laptop\n.151"]
     LAP2["⚠️ EXALAPMUN002\nPool Laptop\nLAPS expired 61d · .152"]
@@ -1148,13 +1268,17 @@ graph TD
     SW --> WKS & LAP1 & LAP2 & WAP & CAM
     SW <-->|"WireGuard tunnel"| VPN
 
+    SW --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#bf360c,stroke:#ff8a65,color:#fbe9e7
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class SW net
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WKS,LAP1,WAP,CAM ep
     class LAP2 warn
     class VPN vpn
@@ -1180,6 +1304,7 @@ graph TD
     PVE["EXAPVEGOT001\nProxmox node 1\n.5"]
     DC["EXADCSGOT001\nDC\n.10"]
     SBC["EXASBCGOT001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYGOT001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → ODE"])
@@ -1189,10 +1314,14 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM ep
     class VPN vpn
 ```
@@ -1217,6 +1346,7 @@ graph TD
     PVE["EXAPVEOSL001\nProxmox node 1\n.5"]
     DC["EXADCSOSL001\nDC\n.10"]
     SBC["EXASBCOSL001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYOSL001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → ODE"])
@@ -1226,10 +1356,14 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM ep
     class VPN vpn
 ```
@@ -1254,6 +1388,7 @@ graph TD
     PVE["EXAPVEAMS001\nProxmox node 1\n.5"]
     DC["EXADCSAMS001\nDC\n.10"]
     SBC["EXASBCAMS001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYAMS001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → ODE"])
@@ -1263,10 +1398,14 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM ep
     class VPN vpn
 ```
@@ -1291,6 +1430,7 @@ graph TD
     PVE["EXAPVEMIL001\nProxmox node 1\n.5"]
     DC["EXADCSMIL001\nDC\n.10"]
     SBC["EXASBCMIL001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYMIL001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → ODE"])
@@ -1300,10 +1440,14 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM ep
     class VPN vpn
 ```
@@ -1328,6 +1472,7 @@ graph TD
     PVE["EXAPVEVIE001\nProxmox node 1\n.5"]
     DC["EXADCSVIE001\nDC\n.10"]
     SBC["EXASBCVIE001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYVIE001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → ODE"])
@@ -1337,10 +1482,14 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM ep
     class VPN vpn
 ```
@@ -1378,6 +1527,7 @@ graph TD
 
     DC["🔴 EXADCSBRK001\nDC · Services stopped\n.10"]
     SBC["EXASBCBRK001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYBRK001\nRudder Relay\n.12"]
     LAP["EXALAPBRK001\nWin11 Tour Laptop\n.21"]
     WAP["EXAWAPBRK001\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
@@ -1396,6 +1546,8 @@ graph TD
     RTR <-->|"WireGuard tunnel"| VPN_CLD
     RTR -->|"WireGuard spokes"| VPN_NA
 
+    PVE1 --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN_CLD
     classDef net fill:#0d3b2e,stroke:#66bb6a,color:#e8f5e9
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
@@ -1403,8 +1555,10 @@ graph TD
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef bmc fill:#bf360c,stroke:#ff8a65,color:#fbe9e7
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class RTR net
     class PVE1,PVE2,PVE3,SBC srv
+    class RRY rudder
     class DC warn
     class LAP,WAP,CAM ep
     class VND1,VND2 site
@@ -1427,6 +1581,7 @@ graph TD
     PVE["EXAPVETOR001\nProxmox node 1\n.5"]
     DC["🔴 EXADCSTOR001\nDC · Services stopped\n.10"]
     SBC["EXASBCTOR001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYTOR001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → BRK"])
@@ -1436,11 +1591,15 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,SBC,RAC srv
+    class RRY rudder
     class DC warn
     class WAP,CAM ep
     class VPN vpn
@@ -1460,6 +1619,7 @@ graph TD
     PVE["EXAPVEMTL001\nProxmox node 1\n.5"]
     DC["EXADCSMTL001\nDC\n.10"]
     SBC["EXASBCMTL001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYMTL001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → BRK"])
@@ -1469,10 +1629,14 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class WAP,CAM ep
     class VPN vpn
 ```
@@ -1503,6 +1667,7 @@ graph TD
     DC["🔴 EXADCSLAX001\nDC · Services stopped\n.10"]
     SRV["EXASRVLAX001\nRocky Linux · Local services/DB\n.20"]
     SBC["EXASBCLAX001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYLAX001\nRudder Relay\n.12"]
     MBP["EXAMBPLAX001\nMacBook Pro\n.41"]
     TAB["EXATABLAX001\niPad · Setlists\n.61"]
     PHN["EXAPHNLAX001\nAndroid Phone"]
@@ -1523,14 +1688,18 @@ graph TD
     SW2 --> MOO & LIN & FCL & AST & PAY & LCD
     FWL <-->|"WireGuard tunnel"| VPN
 
+    SW1 --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#1b5e20,stroke:#81c784,color:#f1f8e9
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class FWL,SW1,SW2,RTR net
     class PVE,SRV,SBC,RAC srv
+    class RRY rudder
     class DC warn
     class MBP,TAB,PHN,WAP,CAM ep
     class MOO,LIN,FCL,AST,PAY,LCD site
@@ -1552,6 +1721,7 @@ graph TD
     PVE["EXAPVENYC001\nProxmox node 1\n.5"]
     DC["🔴 EXADCSNYC001\nDC · Services stopped\n.10"]
     SBC["EXASBCNYC001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYNYC001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → BRK"])
@@ -1561,11 +1731,15 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,SBC,RAC srv
+    class RRY rudder
     class DC warn
     class WAP,CAM ep
     class VPN vpn
@@ -1586,6 +1760,7 @@ graph TD
     PVE["EXAPVENJC001\nProxmox node 1\n.5"]
     DC["🔴 EXADCSNJC001\nDC · Services stopped\n.10"]
     SBC["EXASBCNJC001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYNJC001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → BRK"])
@@ -1595,11 +1770,15 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,SBC,RAC srv
+    class RRY rudder
     class DC warn
     class WAP,CAM ep
     class VPN vpn
@@ -1619,6 +1798,7 @@ graph TD
     PVE["EXAPVEMIA001\nProxmox node 1\n.5"]
     DC["EXADCSMIA001\nDC\n.10"]
     SBC["EXASBCMIA001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYMIA001\nRudder Relay\n.12"]
     LAP["EXALAPMIA001\nmacOS Sonoma Laptop\n.21"]
     COF["EXACOFMIA001\nCuban Covfefe Machine\nVxWorks · .60"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
@@ -1630,11 +1810,15 @@ graph TD
     PVE --> LAP & COF & WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,DC,SBC,RAC srv
+    class RRY rudder
     class LAP,WAP,CAM ep
     class COF site
     class VPN vpn
@@ -1644,7 +1828,7 @@ graph TD
 
 ## ATL — Athens, GA ⚠️
 
-**LAN:** `192.168.44.0/24` · **Domain:** `example.net`  
+**LAN:** `192.168.33.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
 > ⚠️ `EXADCSATL001` — DNS, Netlogon and KDC services stopped.
 
@@ -1655,6 +1839,7 @@ graph TD
     PVE["EXAPVEATL001\nProxmox node 1\n.5"]
     DC["🔴 EXADCSATL001\nDC · Services stopped\n.10"]
     SBC["EXASBCATL001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYATL001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → BRK"])
@@ -1664,11 +1849,15 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,SBC,RAC srv
+    class RRY rudder
     class DC warn
     class WAP,CAM ep
     class VPN vpn
@@ -1689,6 +1878,7 @@ graph TD
     PVE["EXAPVECHI001\nProxmox node 1\n.5"]
     DC["🔴 EXADCSCHI001\nDC · Services stopped\n.10"]
     SBC["EXASBCCHI001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYCHI001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → BRK"])
@@ -1698,11 +1888,15 @@ graph TD
     PVE --> WAP & CAM
     PVE <-->|"WireGuard tunnel"| VPN
 
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class PVE,SBC,RAC srv
+    class RRY rudder
     class DC warn
     class WAP,CAM ep
     class VPN vpn
@@ -1733,6 +1927,7 @@ graph TD
     DC["🔴 EXADCSSYD001\nDC · Services stopped\n.10"]
     SRV["EXASRVSYD001\nWS2022 Local Infra\n.20"]
     SBC["EXASBCSYD001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYSYD001\nRudder Relay\n.12"]
     MBP["EXAMBPSYD001\nMacBook Pro\n.40"]
     WKS["EXAWKSSYD001\nWin11 Workstation\n.41"]
     PHN["EXAPHNSYD001\nAndroid Phone"]
@@ -1752,14 +1947,18 @@ graph TD
     SW2 --> CAM1 & CAM2 & LCD & PRN & COF
     FWL <-->|"WireGuard tunnel"| VPN
 
+    SW1 --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#f57f17,stroke:#ffee58,color:#1a1a1a
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class FWL,SW1,SW2 net
     class PVE,SRV,SBC,RAC srv
+    class RRY rudder
     class DC warn
     class MBP,WKS,PHN,TAB,WAP ep
     class CAM1,CAM2,LCD,PRN,COF site
@@ -1785,6 +1984,7 @@ graph TD
     DC["🔴 EXADCSMEL001\nDC · Services stopped\n.10"]
     SRV["EXASRVMEL001\nWS2022 File/Print\n.20"]
     SBC["EXASBCMEL001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYMEL001\nRudder Relay\n.12"]
     MBP["EXAMBPMEL001\nMacBook Pro\n.40"]
     WKS["EXAWKSMEL001\nWin11 Workstation\n.41"]
     PHN["EXAPHNMEL001\niOS Phone"]
@@ -1803,14 +2003,18 @@ graph TD
     SW2 --> LCD & PRN & NAS
     FWL <-->|"WireGuard tunnel"| VPN
 
+    SW1 --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#f57f17,stroke:#ffee58,color:#1a1a1a
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class FWL,SW1,SW2 net
     class PVE,SRV,SBC,RAC srv
+    class RRY rudder
     class DC warn
     class MBP,WKS,PHN,TAB,WAP,CAM ep
     class LCD,PRN,NAS site
@@ -1843,6 +2047,7 @@ graph TD
     DC["🔴 EXADCSAKL001\nDC · Services stopped\n.10"]
     SRV["EXASRVAKL001\nWS2022 Local Server\n.20"]
     SBC["EXASBCAKL001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYAKL001\nRudder Relay\n.12"]
     WKS["EXAWKSAKL001\nWin11 Workstation\n.40"]
     MBP["EXAMBPAKL001\nMacBook Pro\n.41"]
     PHN["EXAPHNAKL001\nAndroid Phone"]
@@ -1862,14 +2067,18 @@ graph TD
     SW2 --> CAM & LCD & PRN & COF
     FWL <-->|"WireGuard tunnel"| VPN
 
+    SW1 --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
     classDef net fill:#f57f17,stroke:#ffee58,color:#1a1a1a
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
     class FWL,SW1,SW2,RTR net
     class PVE,SRV,SBC,RAC srv
+    class RRY rudder
     class DC warn
     class WKS,MBP,PHN,TAB,WAP1,WAP2 ep
     class CAM,LCD,PRN,COF site
