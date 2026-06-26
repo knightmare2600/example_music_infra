@@ -50,6 +50,10 @@ __pycache__/
 .vscode/
 *.iml
 
+# ── Claude Code session memory ────────────────────────────────────────────────
+# Local memory files for resuming Claude Code sessions. Not for public consumption.
+.claude/
+
 # ── Temporary / local ─────────────────────────────────────────────────────────
 *.log
 *.tmp
