@@ -54,8 +54,8 @@ dc_hub_sources:
   - { site: "ODE", ip: "192.168.126.10", fqdn: "exadcsode001.jukebox.internal" }
   - { site: "BRK", ip: "192.168.136.10", fqdn: "exadcsbrk001.jukebox.internal" }
 
-# CLD DC (Windows Admin Centre host also acts as secondary DC reference)
+# CLD DC primary — used as replication source for forest-root check
 dc_cld_source:
   site: "CLD"
-  ip:   "192.168.139.20"
-  fqdn: "exasvrcld002.jukebox.internal"
+  ip:   "192.168.139.10"
+  fqdn: "exadcscld001.jukebox.internal"

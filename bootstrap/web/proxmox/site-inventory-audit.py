@@ -707,6 +707,11 @@ def _section_header(label):
 
 KNOWN_ANCILLARY = [
   # (site, ip, hostname, in_ansible, comment)
+  # CLD-specific hosts that are not derivable from SUFFIX_MAP
+  ("CLD", "192.168.139.8",  "EXADNSCLD001", True,
+   "DNS/BIND9 server -- jukebox.internal authoritative"),
+  ("CLD", "192.168.139.20", "EXASVRCLD002", True,
+   "Windows Admin Centre"),
   ("CLD", "192.168.139.50", "EXAPRVCLD001", True,
    "Provisioning server -- PXE, HTTP, iPXE, sites.csv, scripts"),
   ("CLD", "192.168.139.69", "EXAANSCLD001", True,
@@ -739,6 +744,7 @@ SUFFIX_MAP = {
   7:   ("EXAPVE", 3, True),   # Proxmox VE node 3
   10:  ("EXADCS", 1, True),   # Domain Controller primary
   11:  ("EXADCS", 2, True),   # Domain Controller secondary
+  12:  ("EXARRY", 1, True),   # Rudder Relay (or Rudder Server for CLD -- handled below)
   48:  ("EXASBC", 1, True),   # VOIP SBC (or PBX for CLD -- handled below)
   250: ("EXASWI", 1, True),   # Switch 1
   251: ("EXASWI", 2, True),   # Switch 2
@@ -773,9 +779,11 @@ def _site_hosts(site_code, site_data):
   hosts = []
   for suffix, (prefix, seq, in_ansible) in SUFFIX_MAP.items():
     ip = f"{base}.{suffix}"
-    # CLD special case: .48 is PBX not SBC
-    if suffix == 48 and site_code == "CLD":
-      hostname = f"EXAPBXCLD001"
+    # CLD special cases: .12 is Rudder Server (not Relay); .48 is PBX (not SBC)
+    if suffix == 12 and site_code == "CLD":
+      hostname = "EXARUDCLD001"
+    elif suffix == 48 and site_code == "CLD":
+      hostname = "EXAPBXCLD001"
     else:
       hostname = f"{prefix}{site_code}{seq:03d}"
     hosts.append((ip, hostname, prefix, in_ansible))
