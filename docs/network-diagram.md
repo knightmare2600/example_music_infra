@@ -38,11 +38,15 @@
 - [KGE — Køge](#kge--kge-)
 - [FAX — Faxe](#fax--faxe)
 - [KOR — Korsør](#kor--korsr)
+- [AAR — Aarhus](#aar--aarhus)
+- [FRE — Fredericia](#fre--fredericia)
 
 ### 🇩🇪 Deutschland
 - [BON — Bonn](#bon--bonn)
 - [BER — West Berlin](#ber--west-berlin)
 - [MUN — Munich](#mun--munich)
+- [DRS — Dresden](#drs--dresden)
+- [DUS — Düsseldorf](#dus--dsseldorf)
 
 ### 🇸🇪 Sverige
 - [GOT — Gothenburg](#got--gothenburg)
@@ -59,6 +63,9 @@
 ### 🇦🇹 Österreich
 - [VIE — Vienna](#vie--vienna)
 
+### 🇱🇧 Lebanon
+- [BRT — Beirut](#brt--beirut)
+
 ### 🇨🇦 Canada
 - [BRK — Brockville *(NA/APAC Hub)*](#brk--brockville-naapac-hub-)
 - [TOR — Toronto](#tor--toronto-)
@@ -69,7 +76,7 @@
 - [NYC — New York](#nyc--new-york-)
 - [NJC — New Jersey](#njc--new-jersey-)
 - [MIA — Miami](#mia--miami)
-- [ATL — Athens GA](#atl--athens-ga-)
+- [ATL — Atlanta](#atl--atlanta-)
 - [CHI — Chicago](#chi--chicago-)
 
 ### 🇦🇺 Australia
@@ -165,7 +172,7 @@ graph TD
 
     subgraph INFRA ["Infrastructure"]
         SBC["EXASBCFAL001\n3CX SBC → CLD PBX\n.48"]
-    RRY["EXARRYFAL001\nRudder Relay\n.12"]
+        RRY["EXARRYFAL001\nRudder Relay\n.12"]
         NAS["EXANASFAL001\nFreeNAS 13.0-U6\n.32"]
         TAR["EXATARFAL001\nTape Archiver\n.33"]
     end
@@ -996,7 +1003,7 @@ graph TD
     WAP["WAPs x2\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN_CLD(["🔗 WireGuard ← CLD\nEU backup"])
-    VPN_EU(["🔗 WireGuard → EU spokes\nCPH/KGE/FAX/KOR/BON/BER/MUN\nGOT/OSL/AMS/MIL/VIE"])
+    VPN_EU(["🔗 WireGuard → EU spokes\nCPH/KGE/FAX/KOR/AAR/FRE/BON/BER\nDRS/DUS/MUN/GOT/OSL/AMS/MIL/VIE/BRT"])
 
     INET --> FWL
     FWL --> PVE1 & PVE2 & PVE3
@@ -1120,6 +1127,78 @@ graph TD
     DC["EXADCSKOR001\nDC\n.10"]
     SBC["EXASBCKOR001\n3CX SBC → CLD PBX\n.48"]
     RRY["EXARRYKOR001\nRudder Relay\n.12"]
+    WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
+    CAM["CAMs TODO"]
+    VPN(["🔗 WireGuard → ODE"])
+
+    INET --> PVE --> DC & SBC
+    RAC -.->|"manages"| PVE
+    PVE --> WAP & CAM
+    PVE <-->|"WireGuard tunnel"| VPN
+
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
+    classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
+    classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
+    classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
+    class PVE,DC,SBC,RAC srv
+    class RRY rudder
+    class WAP,CAM ep
+    class VPN vpn
+```
+
+---
+
+## AAR — Aarhus
+
+**LAN:** `192.168.86.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 · **VPN parent:** ODE
+
+```mermaid
+graph TD
+    INET(("🌐 Internet"))
+    RAC["EXARACAAR001\nBMC node 1\n.2"]
+    PVE["EXAPVEAAR001\nProxmox node 1\n.5"]
+    DC["EXADCSAAR001\nDC\n.10"]
+    SBC["EXASBCAAR001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYAAR001\nRudder Relay\n.12"]
+    WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
+    CAM["CAMs TODO"]
+    VPN(["🔗 WireGuard → ODE"])
+
+    INET --> PVE --> DC & SBC
+    RAC -.->|"manages"| PVE
+    PVE --> WAP & CAM
+    PVE <-->|"WireGuard tunnel"| VPN
+
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
+    classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
+    classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
+    classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
+    class PVE,DC,SBC,RAC srv
+    class RRY rudder
+    class WAP,CAM ep
+    class VPN vpn
+```
+
+---
+
+## FRE — Fredericia
+
+**LAN:** `192.168.75.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 · **VPN parent:** ODE
+
+```mermaid
+graph TD
+    INET(("🌐 Internet"))
+    RAC["EXARACFRE001\nBMC node 1\n.2"]
+    PVE["EXAPVEFRE001\nProxmox node 1\n.5"]
+    DC["EXADCSFRE001\nDC\n.10"]
+    SBC["EXASBCFRE001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYFRE001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → ODE"])
@@ -1281,6 +1360,78 @@ graph TD
     class RRY rudder
     class WKS,LAP1,WAP,CAM ep
     class LAP2 warn
+    class VPN vpn
+```
+
+---
+
+## DRS — Dresden
+
+**LAN:** `192.168.153.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 · **VPN parent:** ODE
+
+```mermaid
+graph TD
+    INET(("🌐 Internet"))
+    RAC["EXARACDRS001\nBMC node 1\n.2"]
+    PVE["EXAPVEDRS001\nProxmox node 1\n.5"]
+    DC["EXADCSDRS001\nDC\n.10"]
+    SBC["EXASBCDRS001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYDRS001\nRudder Relay\n.12"]
+    WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
+    CAM["CAMs TODO"]
+    VPN(["🔗 WireGuard → ODE"])
+
+    INET --> PVE --> DC & SBC
+    RAC -.->|"manages"| PVE
+    PVE --> WAP & CAM
+    PVE <-->|"WireGuard tunnel"| VPN
+
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
+    classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
+    classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
+    classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
+    class PVE,DC,SBC,RAC srv
+    class RRY rudder
+    class WAP,CAM ep
+    class VPN vpn
+```
+
+---
+
+## DUS — Düsseldorf
+
+**LAN:** `192.168.211.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 · **VPN parent:** ODE
+
+```mermaid
+graph TD
+    INET(("🌐 Internet"))
+    RAC["EXARACDUS001\nBMC node 1\n.2"]
+    PVE["EXAPVEDUS001\nProxmox node 1\n.5"]
+    DC["EXADCSDUS001\nDC\n.10"]
+    SBC["EXASBCDUS001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYDUS001\nRudder Relay\n.12"]
+    WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
+    CAM["CAMs TODO"]
+    VPN(["🔗 WireGuard → ODE"])
+
+    INET --> PVE --> DC & SBC
+    RAC -.->|"manages"| PVE
+    PVE --> WAP & CAM
+    PVE <-->|"WireGuard tunnel"| VPN
+
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
+    classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
+    classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
+    classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
+    class PVE,DC,SBC,RAC srv
+    class RRY rudder
+    class WAP,CAM ep
     class VPN vpn
 ```
 
@@ -1473,6 +1624,48 @@ graph TD
     DC["EXADCSVIE001\nDC\n.10"]
     SBC["EXASBCVIE001\n3CX SBC → CLD PBX\n.48"]
     RRY["EXARRYVIE001\nRudder Relay\n.12"]
+    WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
+    CAM["CAMs TODO"]
+    VPN(["🔗 WireGuard → ODE"])
+
+    INET --> PVE --> DC & SBC
+    RAC -.->|"manages"| PVE
+    PVE --> WAP & CAM
+    PVE <-->|"WireGuard tunnel"| VPN
+
+    PVE --> RRY
+    RRY -. "→ EXARUDCLD001" .-> VPN
+    classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
+    classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
+    classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
+    classDef rudder fill:#2d1b4e,stroke:#a569bd,color:#d7bde2
+    class PVE,DC,SBC,RAC srv
+    class RRY rudder
+    class WAP,CAM ep
+    class VPN vpn
+```
+
+---
+
+---
+
+## 🇱🇧 Lebanon
+
+---
+
+## BRT — Beirut
+
+**LAN:** `192.168.169.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 · **VPN parent:** ODE
+
+```mermaid
+graph TD
+    INET(("🌐 Internet"))
+    RAC["EXARACBRT001\nBMC node 1\n.2"]
+    PVE["EXAPVEBRT001\nProxmox node 1\n.5"]
+    DC["EXADCSBRT001\nDC\n.10"]
+    SBC["EXASBCBRT001\n3CX SBC → CLD PBX\n.48"]
+    RRY["EXARRYBRT001\nRudder Relay\n.12"]
     WAP["WAPs TODO\nUbiquiti UniFi U6-Pro"]
     CAM["CAMs TODO"]
     VPN(["🔗 WireGuard → ODE"])
@@ -1826,7 +2019,7 @@ graph TD
 
 ---
 
-## ATL — Athens, GA ⚠️
+## ATL — Atlanta ⚠️
 
 **LAN:** `192.168.33.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
