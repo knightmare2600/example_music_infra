@@ -683,3 +683,254 @@ ssh ansible@EXAFWLFAL001 'wg show wg0 | grep -A4 VIE'
 | NM — WAN static profile | — | ✓ (con add, not activated) | active |
 | nodeinfo.json | ✓ | — | — |
 | WG hub peer registration | — | — | (separate playbook) |
+
+---
+
+## Appendix B — Onboarding a Windows Domain Controller (WinPE install, DHCP on site LAN)
+
+This procedure covers the case where a Windows Server has been installed via WinPE and
+has a DHCP lease on its site LAN (`192.168.{octet}.0/24`), and you want to promote it to
+a Domain Controller. The example uses `EXADCSLIV001` on `192.168.151.0/24` (LIV site).
+
+### Prerequisites
+
+- The LIV firewall (`EXAFWLLIV001`) is up and its WireGuard spoke is registered on the
+  hub — `192.168.151.0/24` must be advertised via WG so `EXAANSCLD001` can reach it
+- `EXADNSCLD001` is up and responding
+- The `ansible` user was created during the WinPE install and is a local Administrator
+- You are SSH'd into `EXAANSCLD001` in `/home/ansible/ansible`
+
+### What may not be set up on the node
+
+A bare WinPE install typically leaves the machine in this state:
+
+| Item | State |
+|------|-------|
+| Hostname | Random (`WIN-XXXXXXX`) |
+| OpenSSH | Unknown — may not be installed |
+| WinRM | Unknown |
+| RDP | Disabled |
+| Domain | Not joined |
+| Ansible SSH key | Not deployed |
+
+---
+
+### Step 1 — Enable OpenSSH (if not already present)
+
+Ansible connects via SSH (`group_vars/windows_nodes/connection.yml`), not WinRM.
+Run this at the local console (KVM, iDRAC, iLO, or physical keyboard) as Administrator:
+
+```powershell
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0; `
+Start-Service sshd; `
+Set-Service sshd -StartupType Automatic; `
+New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server' `
+  -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+```
+
+If WinRM happens to be reachable, you can do this remotely instead of at the console:
+
+```powershell
+# From any Windows machine on the same subnet
+Enter-PSSession -ComputerName 192.168.151.X -Credential ansible
+# Paste the OpenSSH block above inside the session
+```
+
+Verify from the console:
+
+```powershell
+Get-Service sshd   # Status: Running
+```
+
+---
+
+### Step 2 — Find the DHCP IP
+
+`EXAFWLLIV001` (192.168.151.1) runs dnsmasq for the LIV LAN. From `EXAANSCLD001`
+via the WireGuard tunnel:
+
+```bash
+ssh ansible@192.168.151.1 'grep -i EXADCSLIV /var/lib/misc/dnsmasq.leases'
+# e.g. 1750000000 aa:bb:cc:dd:ee:ff 192.168.151.47 WIN-A1B2C3D4E5 *
+# Random hostname is expected — the bootstrap playbook renames it
+```
+
+Or scan the subnet:
+
+```bash
+nmap -sn 192.168.151.0/24 --exclude 192.168.151.1
+```
+
+---
+
+### Step 3 — Create inventory and host_vars
+
+**`configs/inventory/liv.ini`** (new file):
+
+```bash
+cat > configs/inventory/liv.ini << 'EOF'
+[windows_dc]
+EXADCSLIV001  ansible_host=192.168.151.47
+
+[windows_nodes:children]
+windows_dc
+EOF
+```
+
+**`host_vars/EXADCSLIV001/windows.yml`** (new file, from the TEMPLATE):
+
+```bash
+mkdir -p host_vars/EXADCSLIV001
+```
+
+```yaml
+---
+# Override group default (Administrator) — use the ansible service account
+ansible_user: ansible
+
+win_site:   LIV
+win_domain: example.org
+win_ou_path: "OU=Domain Controllers,OU=LIV,DC=example,DC=org"
+
+win_domain_join_user: Administrator
+win_domain_join_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  <replace — see below>
+
+win_entity:  "Example Music A/S"
+win_city:    "Liverpool"
+win_country: "England"
+```
+
+Encrypt the domain join password and paste the output in place of `<replace — see below>`:
+
+```bash
+ansible-vault encrypt_string 'ActualDomainJoinPassword' \
+  --name win_domain_join_password
+```
+
+---
+
+### Step 4 — Test connectivity
+
+```bash
+ansible EXADCSLIV001 -i configs/inventory -m win_ping \
+  -e ansible_password='ansible-user-password-here'
+```
+
+Expected: `pong`. If authentication fails, confirm `ansible_user: ansible` is in
+`host_vars/EXADCSLIV001/windows.yml` and the password is correct.
+
+---
+
+### Step 5 — Bootstrap (rename, configure, domain join)
+
+This run uses password auth to deploy the SSH key. All subsequent runs use the key.
+
+```bash
+ansible-playbook -i configs/inventory \
+  playbooks/windows_bootstrap/playbooks/windows_bootstrap.yml \
+  -e target=EXADCSLIV001 \
+  --ask-vault-pass
+```
+
+**Prompts:**
+
+| Prompt | Answer |
+|--------|--------|
+| Local Administrator password | ansible user's password |
+| Environment | `p` (production) |
+
+**What happens:**
+
+1. Renames `WIN-A1B2C3D4E5` → `EXADCSLIV001`, reboots
+2. Reconnects; configures locale, timezone, Windows features
+3. Enables RDP
+4. Deploys the Ansible SSH key to `C:\ProgramData\ssh\administrators_authorized_keys`
+5. Installs Chocolatey and standard tooling
+6. Applies registry hardening, wallpaper, hibernation policy
+7. Domain-joins to `example.org` under `OU=Domain Controllers,OU=LIV`, reboots
+8. Writes `C:\ProgramData\example-music\nodeinfo.json` (`ansible_managed: true`)
+
+The node is now domain-joined but still a plain member server.
+
+---
+
+### Step 6 — DC promotion
+
+```bash
+ansible-playbook -i configs/inventory \
+  playbooks/windows_dc/site.yml \
+  -e target=EXADCSLIV001 \
+  --ask-vault-pass
+```
+
+**Prompts** (from `85-dc-preflight.yml`):
+
+| Prompt | Answer |
+|--------|--------|
+| Domain Admin username | `JUKEBOX\Administrator` |
+| Domain Admin password | *(masked)* |
+| Local Administrator username | `Administrator` |
+| Local Administrator password | *(masked)* |
+
+**What happens, stage by stage:**
+
+| Stage | Playbook | What it does |
+|-------|----------|-------------|
+| `dc_preflight` | `85-dc-preflight.yml` | Probes FAL → ODE → BRK for a live replication source; LIV is a standard site so it picks the first reachable hub |
+| `dc_promote` | `90-dc-promote.yml` | Installs AD-DS role, runs `Install-ADDSDomainController` against the chosen source, reboots |
+| `dc_replicate` | `95-dc-replicate.yml` | Forces replication, waits for SYSVOL to synchronise, reports FSMO role placement |
+| `dc_summary` | `99-dc-summary.yml` | Runs `dcdiag` and prints a colourised build report |
+
+If any hub is temporarily unreachable, re-run `--tags dc_preflight,dc_promote` once
+connectivity is restored — all stages are idempotent.
+
+---
+
+### Step 7 — Post-build housekeeping
+
+Add the DC to `files/devices.csv` so BIND9 generates an A record for it:
+
+```bash
+echo "LIV,EXADCSLIV001,11,EXADCS,Windows Server 2022,DC primary" \
+  >> files/devices.csv
+```
+
+Regenerate DNS zones:
+
+```bash
+ansible-playbook -i configs/inventory \
+  playbooks/bind9/bind9-dns.yml \
+  --tags zones,reload \
+  --ask-vault-pass
+```
+
+Remove the hard-coded `ansible_host` now that DNS resolves the hostname:
+
+```bash
+sed -i 's/  ansible_host=192.168.151.47//' configs/inventory/liv.ini
+```
+
+Commit everything:
+
+```bash
+git add configs/inventory/liv.ini host_vars/EXADCSLIV001/ files/devices.csv
+git commit -m "Add EXADCSLIV001 — Liverpool primary DC"
+git push
+```
+
+---
+
+### Files created or amended
+
+| File | Action | Why |
+|------|--------|-----|
+| `configs/inventory/liv.ini` | Create | LIV site inventory |
+| `host_vars/EXADCSLIV001/windows.yml` | Create | ansible_user override, OU path, entity metadata |
+| `files/devices.csv` | Amend | DC record for DNS zone generation |
+
+No playbooks need amending — the DC and bootstrap playbooks are already parameterised
+for any standard site. The `subnet_site_map` in `windows_bootstrap.yml` already has
+`"151": { site: LIV, domain: example.org }` so site and domain auto-detect correctly
+from the 192.168.151.x DHCP address.
