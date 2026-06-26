@@ -468,3 +468,218 @@ FAL,EXADCSFAL002,11,EXADCS,Windows Server 2022,DC secondary. Global Catalog
 ```
 
 Then re-run `bind9-dns.yml --tags zones,reload` to refresh zone files.
+
+---
+
+## Appendix A — Onboarding a firewall over WAN SSH (DHCP lease on 192.168.139.x)
+
+This procedure covers the case where a firewall has been PXE-installed and has a DHCP
+lease on the provisioning network (`192.168.139.0/24`), and you are connecting to it via
+SSH from `EXAANSCLD001` over that same WAN interface.
+
+### Why the naive approach fails
+
+The firewall playbook task order is:
+
+```
+preflight → interfaces → WAN prompts → WG prompts → confirm →
+packages → network → nftables → dnsmasq → WG deploy → SSH hardening → cockpit → finish
+```
+
+Running the full playbook over WAN SSH **kills the connection at the `network` stage**
+(`06_network_manager.yml`). The first task in that file does:
+
+```
+[NM] Delete existing WAN connections   ← removes the DHCP lease immediately
+[NM] Flush handlers (NM restart)       ← ensures the interface drops
+```
+
+`fw_wan_activate=false` (the default) only prevents `nmcli con up wan` at the end — it
+does nothing to protect against the `con delete` that fires first. SSH dies mid-run and
+tasks 07–12 (nftables, dnsmasq, WireGuard, SSH hardening, nodeinfo.json) never execute.
+
+### Prerequisites
+
+- `EXADNSCLD001` is up and answering DNS
+- SSH keypair is on `EXAANSCLD001` (`~/ansible/configs/ansible-id_rsa`)
+- You are SSH'd into `EXAANSCLD001` in `/home/ansible/ansible`
+- The preseed placed `sites.csv`, `devices.csv`, and `nodeinfo.json` correctly on the
+  target node during PXE install
+
+---
+
+### Step 1 — Find the DHCP IP
+
+`EXAFWLCLD001` (192.168.139.1) runs dnsmasq for the 139.x subnet and holds the lease:
+
+```bash
+ssh ansible@192.168.139.1 'grep -i EXAFWLVIE001 /var/lib/misc/dnsmasq.leases'
+# e.g. 1750000000 aa:bb:cc:dd:ee:ff 192.168.139.47 EXAFWLVIE001 *
+```
+
+If the hostname wasn't set during install, ping-scan instead:
+
+```bash
+nmap -sn 192.168.139.0/24 --exclude 192.168.139.1,192.168.139.8,192.168.139.9,192.168.139.50
+```
+
+---
+
+### Step 2 — Create the inventory entry
+
+```bash
+cat > configs/inventory/vie.ini << 'EOF'
+[firewalls]
+EXAFWLVIE001  ansible_host=192.168.139.47  ansible_user=ansible  ansible_connection=ssh
+EOF
+```
+
+Test connectivity (the preseed deployed the Ansible SSH key during install):
+
+```bash
+ansible EXAFWLVIE001 -i configs/inventory -m ping
+```
+
+---
+
+### Step 3 — Pass 1: everything except NetworkManager
+
+Run the playbook with `--skip-tags network`. This skips `06_network_manager.yml`
+entirely — the DHCP WAN interface is never touched and SSH stays up throughout.
+All other stages run normally.
+
+```bash
+ansible-playbook -i configs/inventory \
+  playbooks/firewallme/playbooks/90-firewall.yml \
+  -e target=EXAFWLVIE001 \
+  --skip-tags network
+```
+
+**Respond to the prompts as follows:**
+
+| Prompt | Answer | Notes |
+|--------|--------|-------|
+| Environment | `p` | production |
+| WAN mode | `static` | convention: `192.168.139.{VIE_octet}` |
+| WAN SSH | `n` | don't expose port 22 to the internet |
+| WAN activation | `n` | irrelevant (network stage is skipped, but answer anyway) |
+| WG role | `spoke` | |
+| Hub site | `ODE` or `FAL` | ODE for EU spokes; FAL for primary |
+| Hub pubkey | *(auto-fetched)* | confirm if it matches, paste manually if SSH fetch fails |
+| Summary confirm | `yes` | |
+| Reboot now? | **`n`** | LAN is not wired up yet — do not reboot yet |
+
+After pass 1 completes, the node has:
+
+- ✓ Packages installed
+- ✓ nftables ruleset written
+- ✓ dnsmasq configured (DHCP + DNS forwarder)
+- ✓ WireGuard keys generated, `wg0.conf` written
+- ✓ SSH hardening applied
+- ✓ Cockpit configured
+- ✓ `/etc/example-music/nodeinfo.json` written
+- ✗ NetworkManager profiles **not** written (skipped)
+
+---
+
+### Step 4 — Pass 2: write NM profiles without dropping SSH
+
+First, confirm the interface names the playbook detected:
+
+```bash
+ssh ansible@192.168.139.47 'ip -o link show | grep -v lo'
+# e.g. ens18 (WAN), ens19 (LAN)
+```
+
+Add the LAN profile and bring it up (touches a different interface — WAN SSH is unaffected):
+
+```bash
+ansible EXAFWLVIE001 -i configs/inventory -m shell -a \
+  "nmcli con add type ethernet con-name lan ifname ens19 \
+   ipv4.method manual ipv4.addresses 192.168.{VIE_octet}.1/24 \
+   ipv4.never-default yes connection.autoconnect yes \
+   connection.autoconnect-priority 100 \
+   && nmcli con up lan"
+```
+
+Write the static WAN profile **without activating it** — the DHCP connection stays active
+and SSH stays up:
+
+```bash
+ansible EXAFWLVIE001 -i configs/inventory -m shell -a \
+  "nmcli con add type ethernet con-name wan ifname ens18 \
+   ipv4.method manual \
+   ipv4.addresses 192.168.139.{VIE_octet}/24 \
+   ipv4.gateway 192.168.139.254 \
+   ipv4.dns '192.168.139.8 1.1.1.1' \
+   ipv4.dns-search jukebox.internal \
+   connection.autoconnect yes connection.autoconnect-priority 100"
+```
+
+Substitute `{VIE_octet}` with VIE's actual third octet from `sites.csv` in both commands.
+
+---
+
+### Step 5 — Reboot
+
+Ansible's `reboot` module waits for the node to come back before returning:
+
+```bash
+ansible EXAFWLVIE001 -i configs/inventory -m reboot
+```
+
+On the way up, NM activates the static WAN profile at `192.168.139.{VIE_octet}`,
+LAN comes up at `192.168.{VIE_octet}.1`, dnsmasq starts, WireGuard starts.
+
+Update the inventory to use the static IP:
+
+```bash
+sed -i 's/ansible_host=192.168.139.47/ansible_host=192.168.139.{VIE_octet}/' \
+  configs/inventory/vie.ini
+```
+
+Verify everything came up:
+
+```bash
+ansible EXAFWLVIE001 -i configs/inventory -m shell -a "wg show && systemctl is-active dnsmasq nftables"
+```
+
+---
+
+### Step 6 — Register as a spoke on the hub
+
+The node has WireGuard keys and `wg0.conf` pointing at the hub, but the hub has no
+`[Peer]` block for it yet. Run `add-wg-spoke.yml` from `EXAANSCLD001` against the hub:
+
+```bash
+ansible-playbook -i configs/inventory \
+  playbooks/firewallme/playbooks/add-wg-spoke.yml \
+  -e "target=EXAFWLFAL001 spoke_site=VIE spoke_host=EXAFWLVIE001"
+```
+
+This SSH-fetches the spoke's public key and PSK, appends a `[Peer]` block to the hub's
+`/etc/wireguard/wg0.conf` under the marker `# BEGIN ANSIBLE MANAGED BLOCK VIE`, and
+live-applies it via `wg set` — no hub restart needed. Re-running is safe; it updates
+only the VIE block and leaves all other peers untouched.
+
+Verify the tunnel from the hub:
+
+```bash
+ssh ansible@EXAFWLFAL001 'wg show wg0 | grep -A4 VIE'
+```
+
+---
+
+### Summary of what each pass does
+
+| Stage | Pass 1 (`--skip-tags network`) | Pass 2 (ad-hoc NM) | Reboot |
+|-------|---|----|---|
+| Packages | ✓ | — | — |
+| nftables | ✓ | — | — |
+| dnsmasq | ✓ | — | active |
+| WireGuard config | ✓ | — | active |
+| SSH hardening | ✓ | — | — |
+| NM — LAN profile | — | ✓ (con add) | active |
+| NM — WAN static profile | — | ✓ (con add, not activated) | active |
+| nodeinfo.json | ✓ | — | — |
+| WG hub peer registration | — | — | (separate playbook) |
