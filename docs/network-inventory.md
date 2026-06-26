@@ -61,7 +61,7 @@ Exceptions are noted in individual site entries.
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | WAC — reaches all site DCs and Windows nodes |
 | `EXACLDPBX001` | Central PBX | — | `192.168.139.48` | 3CX PBX — all site SBCs trunk here |
 | `EXAPRVCLD001` | Provisioning / bootstrap | — | `192.168.139.50` | Serves Ansible keys, ISOs, scripts |
-| `EXAANSCLD001` | Ansible control node | Debian | `192.168.139.69` | Ansible — manages all sites |
+| `EXAANSCLD001` | Ansible control node | Debian | `192.168.139.9` | Ansible — manages all sites |
 
 ---
 
@@ -177,7 +177,7 @@ Exceptions are noted in individual site entries.
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | Reaches all site DCs and Windows nodes |
 | `EXACLDPBX001` | Central PBX | 3CX | `192.168.139.48` | All site SBCs trunk here |
 | `EXAPRVCLD001` | Provisioning server | — | `192.168.139.50` | Bootstrap — Ansible keys, ISOs, scripts |
-| `EXAANSCLD001` | Ansible control node | Debian | `192.168.139.69` | Central Ansible — manages all sites |
+| `EXAANSCLD001` | Ansible control node | Debian | `192.168.139.9` | Central Ansible — manages all sites |
 
 ---
 

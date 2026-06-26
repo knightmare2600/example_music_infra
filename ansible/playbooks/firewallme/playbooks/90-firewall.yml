@@ -24,9 +24,8 @@
   hosts: "{{ target | default('all') }}"
   gather_facts: true
   become: true
-  vars_files:
-    - ../vars/wireguard_hubs.yml
-    # colours.yml is in group_vars/all/ — loaded automatically, no reference needed here
+  # vars from group_vars/firewalls/main.yml (wg_site_octets, hub tables) and
+  # group_vars/all/colours.yml are auto-loaded — no explicit vars_files needed
 
   roles:
     - firewall

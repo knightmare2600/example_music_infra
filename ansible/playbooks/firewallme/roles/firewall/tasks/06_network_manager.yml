@@ -49,7 +49,7 @@
       ipv4.method manual \
       ipv4.addresses {{ fw_wan_static_ip }}/{{ fw_wan_static_prefix }} \
       ipv4.gateway {{ fw_wan_static_gw }} \
-      ipv4.dns "1.1.1.1 9.9.9.9{{ ' ' + fw_internal_dns if fw_internal_dns else '' }}" \
+      ipv4.dns "{{ fw_cld_dns }} 1.1.1.1" \
       ipv4.dns-search "jukebox.internal" \
       connection.autoconnect yes
   when: fw_wan_mode == 'static'
@@ -64,7 +64,7 @@
       con-name wan \
       ifname {{ fw_wan_iface }} \
       ipv4.method auto \
-      ipv4.dns "1.1.1.1 9.9.9.9{{ ' ' + fw_internal_dns if fw_internal_dns else '' }}" \
+      ipv4.dns "{{ fw_cld_dns }} 1.1.1.1" \
       ipv4.dns-search "jukebox.internal" \
       connection.autoconnect yes
   when: fw_wan_mode == 'dhcp'

@@ -1,0 +1,175 @@
+---
+# =============================================================================
+# playbooks/add-wg-spoke.yml
+# Example Music Limited — Register a new WireGuard spoke peer on a hub
+# =============================================================================
+# Idempotent: uses blockinfile with a per-site marker so re-running updates
+# the target spoke's [Peer] block without touching any other peers.
+#
+# Usage (run from ansible/ root):
+#   ansible-playbook -i configs/inventory \
+#     playbooks/firewallme/playbooks/add-wg-spoke.yml \
+#     -e "target=EXAFWLFAL001 spoke_site=BER spoke_host=EXAFWLBER001"
+#
+#   # If the spoke isn't in inventory or has a different SSH address:
+#   ansible-playbook -i configs/inventory \
+#     playbooks/firewallme/playbooks/add-wg-spoke.yml \
+#     -e "target=EXAFWLFAL001 spoke_site=BER spoke_ip=192.168.169.1"
+#
+# Required vars:
+#   target      — hub host (inventory name, e.g. EXAFWLFAL001)
+#   spoke_site  — spoke site code (e.g. BER), must exist in wg_site_octets
+#
+# Optional vars:
+#   spoke_host      — spoke inventory name; used to derive spoke_ip if not set
+#   spoke_ip        — IP to SSH to for pubkey/PSK fetch (overrides spoke_host)
+#   spoke_tunnel_ip — override default 10.0.<octet>.2 tunnel address
+#
+# What it does:
+#   1. Validates spoke_site exists in wg_site_octets
+#   2. SSH-fetches pubkey and PSK from the spoke (delegate_to: localhost)
+#   3. Adds or updates a [Peer] block in /etc/wireguard/wg0.conf on the hub
+#   4. Live-adds the peer via `wg set` so WireGuard picks it up immediately
+#      without a full restart
+#
+# Changelog:
+#   2026-06-26  Initial file
+# =============================================================================
+
+- name: "Example Music — Register WireGuard spoke peer on hub"
+  hosts: "{{ target }}"
+  gather_facts: false
+  become: true
+  # wg_site_octets and hub tables come from group_vars/firewalls/main.yml (auto-loaded)
+
+  vars:
+    spoke_ansible_user: ansible
+    _spoke_ip: >-
+      {{
+        spoke_ip
+        if spoke_ip is defined
+        else hostvars[spoke_host]['ansible_host']
+        if (spoke_host is defined and spoke_host in hostvars and 'ansible_host' in hostvars[spoke_host])
+        else spoke_host
+        if spoke_host is defined
+        else ''
+      }}
+
+  tasks:
+
+    # ── Validation ────────────────────────────────────────────────────────────
+
+    - name: "[add-wg-spoke] Require spoke_site"
+      ansible.builtin.fail:
+        msg: "spoke_site is required. Use -e 'spoke_site=BER'"
+      when: spoke_site is not defined
+
+    - name: "[add-wg-spoke] Require spoke_host or spoke_ip"
+      ansible.builtin.fail:
+        msg: "Provide spoke_host (inventory name) or spoke_ip (direct IP) to SSH-fetch spoke keys."
+      when: _spoke_ip == ''
+
+    - name: "[add-wg-spoke] Validate spoke_site is a known site"
+      ansible.builtin.fail:
+        msg: "spoke_site '{{ spoke_site }}' not found in wg_site_octets. Check group_vars/firewalls/main.yml."
+      when: spoke_site not in wg_site_octets
+
+    # ── Derive spoke facts ────────────────────────────────────────────────────
+
+    - name: "[add-wg-spoke] Derive spoke network facts"
+      ansible.builtin.set_fact:
+        _spoke_octet:      "{{ wg_site_octets[spoke_site] }}"
+        _spoke_tunnel_ip:  "{{ spoke_tunnel_ip | default('10.0.' + wg_site_octets[spoke_site] | string + '.2') }}"
+        _spoke_lan_subnet: "192.168.{{ wg_site_octets[spoke_site] }}.0/24"
+
+    # ── Fetch spoke keys via SSH ──────────────────────────────────────────────
+
+    - name: "[add-wg-spoke] Fetch spoke public key via SSH"
+      ansible.builtin.shell: |
+        ssh -o ConnectTimeout=5 \
+            -o StrictHostKeyChecking=no \
+            -o BatchMode=yes \
+            {{ spoke_ansible_user }}@{{ _spoke_ip }} \
+            'cat /etc/wireguard/public.key'
+      register: _spoke_pubkey_raw
+      delegate_to: localhost
+      changed_when: false
+      failed_when: >-
+        _spoke_pubkey_raw.rc != 0
+        or not (_spoke_pubkey_raw.stdout | trim | regex_search('^[A-Za-z0-9+/]{43}=$'))
+
+    - name: "[add-wg-spoke] Fetch spoke PSK via SSH"
+      ansible.builtin.shell: |
+        ssh -o ConnectTimeout=5 \
+            -o StrictHostKeyChecking=no \
+            -o BatchMode=yes \
+            {{ spoke_ansible_user }}@{{ _spoke_ip }} \
+            'cat /etc/wireguard/preshared.key'
+      register: _spoke_psk_raw
+      delegate_to: localhost
+      changed_when: false
+      failed_when: _spoke_psk_raw.rc != 0 or _spoke_psk_raw.stdout | trim == ''
+
+    - name: "[add-wg-spoke] Set key facts"
+      ansible.builtin.set_fact:
+        _spoke_pubkey: "{{ _spoke_pubkey_raw.stdout | trim }}"
+        _spoke_psk:    "{{ _spoke_psk_raw.stdout | trim }}"
+
+    - name: "[add-wg-spoke] Display fetched spoke details"
+      ansible.builtin.debug:
+        msg:
+          - "Spoke site    : {{ spoke_site }}"
+          - "Spoke IP      : {{ _spoke_ip }}"
+          - "Tunnel IP     : {{ _spoke_tunnel_ip }}/32"
+          - "LAN subnet    : {{ _spoke_lan_subnet }}"
+          - "Public key    : {{ _spoke_pubkey }}"
+
+    # ── Add/update peer block in wg0.conf ─────────────────────────────────────
+    # blockinfile marker is keyed on spoke_site so each spoke has its own
+    # named block. Re-running updates this spoke's block only.
+
+    - name: "[add-wg-spoke] Add/update [Peer] block in wg0.conf"
+      ansible.builtin.blockinfile:
+        path: /etc/wireguard/wg0.conf
+        marker: "# {mark} ANSIBLE MANAGED BLOCK {{ spoke_site }}"
+        block: |
+          [Peer]
+          # {{ spoke_site }} spoke — {{ spoke_host | default(_spoke_ip) }}
+          PublicKey    = {{ _spoke_pubkey }}
+          PresharedKey = {{ _spoke_psk }}
+          AllowedIPs   = {{ _spoke_tunnel_ip }}/32, {{ _spoke_lan_subnet }}
+      register: _wg_conf_changed
+
+    # ── Live-add peer (no restart needed) ─────────────────────────────────────
+    # Write PSK to a tmpfile — `wg set` requires a file path, not stdin.
+    # tmpfile is removed immediately after.
+
+    - name: "[add-wg-spoke] Write PSK to tmpfile for wg set"
+      ansible.builtin.copy:
+        dest: "/tmp/.wg-psk-{{ spoke_site }}"
+        content: "{{ _spoke_psk }}"
+        mode: '0600'
+      when: _wg_conf_changed.changed
+
+    - name: "[add-wg-spoke] Live-add peer via wg set"
+      ansible.builtin.shell: |
+        wg set wg0 peer {{ _spoke_pubkey }} \
+          preshared-key /tmp/.wg-psk-{{ spoke_site }} \
+          allowed-ips {{ _spoke_tunnel_ip }}/32,{{ _spoke_lan_subnet }}
+      when: _wg_conf_changed.changed
+
+    - name: "[add-wg-spoke] Remove PSK tmpfile"
+      ansible.builtin.file:
+        path: "/tmp/.wg-psk-{{ spoke_site }}"
+        state: absent
+      when: _wg_conf_changed.changed
+
+    # ── Summary ───────────────────────────────────────────────────────────────
+
+    - name: "[add-wg-spoke] Summary"
+      ansible.builtin.debug:
+        msg:
+          - "{{ '[ UPDATED ]' if _wg_conf_changed.changed else '[ NO CHANGE ]' }} {{ spoke_site }} peer block in /etc/wireguard/wg0.conf"
+          - "Next step: ensure the spoke's wg0.conf has this hub as its [Peer] and run:"
+          - "  wg show wg0  — on the hub to verify the peer appears"
+          - "  wg show wg0  — on the spoke to verify the handshake"

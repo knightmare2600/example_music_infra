@@ -28,8 +28,8 @@ fw_wan_ssh_enabled: false
 # Source IP restriction for WAN SSH (empty = allow all)
 fw_wan_ssh_src: ""
 
-# Internal DNS server last octet or full IP (empty = use public DNS only)
-fw_internal_dns: ""
+# Central BIND9 DNS server (EXADNSCLD001) — WAN primary, LAN secondary
+fw_cld_dns: "192.168.139.8"
 
 # Ansible/PXE server last octet on the LAN subnet (default: 15)
 fw_ansible_octet: 15

@@ -97,7 +97,7 @@ graph TD
     WAC["EXASVRCLD002\nWindows Admin Centre\n192.168.139.20"]
     PBX["EXACLDPBX001\n3CX Central PBX\n192.168.139.48"]
     PRV["EXAPRVCLD001\nProvisioning Server\n192.168.139.50"]
-    ANS["EXAANSCLD001\nAnsible Control Node\n192.168.139.69"]
+    ANS["EXAANSCLD001\nAnsible Control Node\n192.168.139.9"]
 
     VPN_FAL(["🔗 WireGuard → FAL primary"])
     VPN_ODE(["🔗 WireGuard → ODE EU backup"])

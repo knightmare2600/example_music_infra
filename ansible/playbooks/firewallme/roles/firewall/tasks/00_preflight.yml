@@ -47,6 +47,7 @@
     fw_lan_ip_253:     "192.168.{{ fw_site_octet }}.253"
     fw_wan_static_ip:  "192.168.139.{{ fw_site_octet }}"
     fw_ansible_ip:     "192.168.{{ fw_site_octet }}.{{ fw_ansible_octet }}"
+    fw_dc_dns:         "192.168.{{ fw_site_octet }}.10"
     fw_dhcp_start:     "192.168.{{ fw_site_octet }}.150"
     fw_dhcp_end:       "192.168.{{ fw_site_octet }}.250"
     fw_wg_tunnel_net:  "10.0.{{ fw_site_octet }}.0/24"

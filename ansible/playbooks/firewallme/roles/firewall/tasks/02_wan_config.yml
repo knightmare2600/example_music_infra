@@ -156,24 +156,6 @@
       {%- else -%}{{ inp }}
       {%- endif -%}
 
-# ── Internal DNS ──────────────────────────────────────────────────────────────
-
-- name: "[WAN] Prompt for internal DNS server"
-  ansible.builtin.pause:
-    prompt: |
-      {{ _c.C }}[*]{{ _c.NC }} Internal DNS server last octet (e.g. {{ _c.G }}10{{ _c.NC }} → {{ fw_subnet }}.10)
-          or full IP, or press Enter to skip (use public DNS only: 1.1.1.1, 9.9.9.9)
-  register: fw_dns_prompt
-
-- name: "[WAN] Set internal DNS IP"
-  ansible.builtin.set_fact:
-    fw_internal_dns: >-
-      {%- set inp = fw_dns_prompt.user_input | default('') | trim -%}
-      {%- if inp == '' -%}
-      {%- elif inp | regex_search('^\d{1,3}$') -%}{{ fw_subnet }}.{{ inp }}
-      {%- else -%}{{ inp }}
-      {%- endif -%}
-
 # ── WAN SSH ───────────────────────────────────────────────────────────────────
 
 - name: "[WAN] Prompt for WAN SSH"
@@ -237,4 +219,5 @@
       - "{{ _c.G }}[+]{{ _c.NC }} WAN activate : {{ _c.G }}{{ fw_wan_activate }}{{ _c.NC }}"
       - "{{ _c.G }}[+]{{ _c.NC }} WAN SSH      : {{ (_c.R + 'ENABLED' + (' src:' + fw_wan_ssh_src if fw_wan_ssh_src else ' open') + _c.NC) if fw_wan_ssh_enabled else (_c.Y + 'disabled' + _c.NC) }}"
       - "{{ _c.G }}[+]{{ _c.NC }} Ansible IP   : {{ _c.G }}{{ fw_ansible_ip }}{{ _c.NC }}"
-      - "{{ _c.G }}[+]{{ _c.NC }} Internal DNS : {{ _c.G }}{{ fw_internal_dns if fw_internal_dns else 'none (1.1.1.1, 9.9.9.9)' }}{{ _c.NC }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} WAN DNS      : {{ _c.G }}{{ fw_cld_dns }}, 1.1.1.1{{ _c.NC }}"
+      - "{{ _c.G }}[+]{{ _c.NC }} LAN DNS      : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_cld_dns }}{{ _c.NC }}"
