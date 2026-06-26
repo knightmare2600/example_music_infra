@@ -18,7 +18,7 @@
 rudder_hostname:    "EXASRVCLD004"
 rudder_static_ip:   "192.168.139.12"
 rudder_gateway:     "192.168.139.254"
-rudder_dns:         "192.168.139.10"
+rudder_dns:         "192.168.139.8"
 rudder_prefix:      "24"
 
 # Network interface to configure (leave blank to auto-detect).

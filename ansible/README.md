@@ -121,7 +121,7 @@ to regenerate and push the zone files.
 
 ## bind9
 
-Configures `EXASVRCLD001` as the authoritative BIND9 DNS server for `jukebox.internal`.
+Configures `EXADNSCLD001` as the authoritative BIND9 DNS server for `jukebox.internal`.
 Ansible port of `bindme.sh` — idempotent enforcer, not a bootstrapper.
 
 ### Usage
@@ -144,7 +144,7 @@ ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --tags zones
 |----------|---------|-------------|
 | `sites_csv_path` | `/etc/example-music/sites.csv` | Path to sites.csv on control node |
 | `devices_csv_path` | `files/devices.csv` | Path to devices.csv on control node |
-| `dns_ip` | `192.168.139.10` | Static IP for the DNS server |
+| `dns_ip` | `192.168.139.8` | Static IP for the DNS server |
 | `dns_gateway` | `192.168.139.1` | Gateway |
 | `dns_interface` | `""` | NIC name (autodetected if blank) |
 | `zone_ttl` | `300` | Zone TTL in seconds |

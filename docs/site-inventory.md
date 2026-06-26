@@ -178,7 +178,7 @@
 
 ### Infrastructure Checklist
 - [ ] `EXAFWLCLD001` — Firewall / WireGuard hub online (`192.168.139.1`)
-- [ ] `EXASVRCLD001` — DNS/BIND9 server online (`192.168.139.10`)
+- [ ] `EXADNSCLD001` — DNS/BIND9 server online (`192.168.139.8`)
 - [ ] `EXASVRCLD002` — Windows Admin Centre deployed (`192.168.139.20`)
 - [ ] `EXAANSCLD001` — Ansible control node online (`192.168.139.69`)
 - [ ] `EXARUDCLD001` — Rudder Server online (`192.168.139.12`)

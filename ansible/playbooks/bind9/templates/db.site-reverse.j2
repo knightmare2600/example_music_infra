@@ -4,7 +4,7 @@
 ;
 ; Zone:    {{ item.octet }}.168.192.in-addr.arpa
 ; Covers:  192.168.{{ item.octet }}.0/24  ({{ item.Site }} -- {{ item.City }})
-; Server:  EXASVRCLD001 ({{ dns_ip }})
+; Server:  EXADNSCLD001 ({{ dns_ip }})
 ; Managed by: Ansible bind9-dns.yml
 ; Generated:  {{ ansible_date_time.iso8601 }}
 ;
@@ -15,7 +15,7 @@
 $ORIGIN {{ item.octet }}.168.192.in-addr.arpa.
 $TTL {{ zone_ttl }}
 
-@   IN  SOA  exasvrcld001.{{ domain }}.  hostmaster.{{ domain }}. (
+@   IN  SOA  exadnscld001.{{ domain }}.  hostmaster.{{ domain }}. (
               {{ zone_serial }}  ; serial
               3600       ; refresh
               900        ; retry
@@ -23,7 +23,7 @@ $TTL {{ zone_ttl }}
               {{ zone_ttl }}        ; minimum
             )
 
-@   IN  NS   exasvrcld001.{{ domain }}.
+@   IN  NS   exadnscld001.{{ domain }}.
 
 ; ── PTR records (192.168.{{ item.octet }}.x) ─────────────────────────
 {% for entry in suffix_map %}

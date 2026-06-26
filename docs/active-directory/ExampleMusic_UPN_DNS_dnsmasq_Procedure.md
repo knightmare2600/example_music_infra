@@ -101,7 +101,7 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 | Hostname | IP | Site | Role in this procedure |
 |----------|----|------|----------------------|
 | `EXADCSFAL001` | `192.168.76.10` | FAL | Primary DC — run forest-wide config from here |
-| `EXADCSCLD001` | `192.168.139.10` | CLD | Hosts `139.168.192.in-addr.arpa` and provisioning records |
+| `EXADCSCLD001` | `192.168.139.8` | CLD | Hosts `139.168.192.in-addr.arpa` and provisioning records |
 | `EXAPROVCLD001` | `192.168.139.50` | CLD | Provisioning web server — DNS target for `provisioning.*` |
 | `EXAFWL<SITE>001` | `192.168.<SITE>.253` | All | dnsmasq DHCP+DNS, sends nsupdate to DC |
 | `EXADCS<SITE>001` | `192.168.<SITE>.10` | All | Receives dynamic DNS updates from firewall |
@@ -571,7 +571,7 @@ A complete per-site substitution reference:
 | BRD  | 192.168.113.0/24 | 192.168.113.1 | 192.168.113.10 | 192.168.113.253 |
 | BRK  | 192.168.136.0/24 | 192.168.136.1 | 192.168.136.10 | 192.168.136.253 |
 | CHI  | 192.168.214.0/24 | 192.168.214.1 | 192.168.214.10 | 192.168.214.253 |
-| CLD  | 192.168.139.0/24 | 192.168.139.1 | 192.168.139.10 | 192.168.139.253 |
+| CLD  | 192.168.139.0/24 | 192.168.139.1 | 192.168.139.8 | 192.168.139.253 |
 | CLY  | 192.168.41.0/24  | 192.168.41.1  | 192.168.41.10  | 192.168.41.253  |
 | COV  | 192.168.247.0/24 | 192.168.247.1 | 192.168.247.10 | 192.168.247.253 |
 | CPH  | 192.168.231.0/24 | 192.168.231.1 | 192.168.231.10 | 192.168.231.253 |
@@ -820,7 +820,7 @@ EOF
 | `EXASWI` | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site/regional) | `EXADCSFAL001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASRV` | Server | `EXASVRCLD001` |
+| `EXASRV` | Server | `EXADNSCLD001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS | `EXANASFAL001` |
 | `EXASBC` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBCFAL001` |

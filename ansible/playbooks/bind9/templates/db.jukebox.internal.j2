@@ -2,7 +2,7 @@
 ; /etc/bind/db.{{ domain }}
 ; Example Music Limited -- {{ domain }} forward zone
 ;
-; Authoritative DNS: EXASVRCLD001 ({{ dns_ip }})
+; Authoritative DNS: EXADNSCLD001 ({{ dns_ip }})
 ; Zone:              {{ domain }}
 ; Managed by:        Ansible bind9-dns.yml
 ; Generated:         {{ ansible_date_time.iso8601 }}
@@ -19,7 +19,7 @@ $ORIGIN {{ domain }}.
 $TTL {{ zone_ttl }}
 
 ; ── SOA + NS ─────────────────────────────────────────────────
-@   IN  SOA  exasvrcld001.{{ domain }}.  hostmaster.{{ domain }}. (
+@   IN  SOA  exadnscld001.{{ domain }}.  hostmaster.{{ domain }}. (
               {{ zone_serial }}  ; serial   YYYYMMDDnn
               3600       ; refresh  1 hour
               900        ; retry    15 minutes
@@ -27,15 +27,15 @@ $TTL {{ zone_ttl }}
               {{ zone_ttl }}        ; minimum
             )
 
-@   IN  NS   exasvrcld001.{{ domain }}.
+@   IN  NS   exadnscld001.{{ domain }}.
 
 ; ── DNS server itself ─────────────────────────────────────────
-exasvrcld001  IN  A  {{ dns_ip }}
+exadnscld001  IN  A  {{ dns_ip }}
 
 ; ── CLD ancillary / provisioning infrastructure ───────────────
 ; EXASVR numbering: 001=DNS(.10) 002=WAC(.20) 003=Ansible(.49) 004=Rudder(.22)
 {% for h in ancillary_hosts %}
-{% if h.name != 'exasvrcld001' %}
+{% if h.name != 'exadnscld001' %}
 {{ "%-45s" | format(h.name) }} IN  A  {{ h.ip }}   ; {{ h.comment }}
 {% endif %}
 {% endfor %}

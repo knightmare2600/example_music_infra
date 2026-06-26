@@ -27,7 +27,7 @@
 | TOR | `192.168.146.0/24` | `192.168.146.1` | `192.168.146.10` | `192.168.146.253` |
 | MTL | `192.168.154.0/24` | `192.168.154.1` | `192.168.154.10` | `192.168.154.253` |
 | SYD | `192.168.29.0/24` | `192.168.29.1` | `192.168.29.10` | `192.168.29.253` |
-| CLD | `192.168.139.0/24` | `192.168.139.1` | `192.168.139.10` | `192.168.139.253` |
+| CLD | `192.168.139.0/24` | `192.168.139.1` | `192.168.139.8` | `192.168.139.253` |
 | ATL | `192.168.33.0/24` | `192.168.33.1` | `192.168.33.10` | `192.168.33.253` |
 
 > **Note:** All other sites can be found in the master CSV (`sites_extended.csv`).
@@ -180,7 +180,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 | `EXASWI`            | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site/regional) | `EXADCSFAL001` |
 | `EXAPVE`            | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASRV`            | Server | `EXASVRCLD001` |
+| `EXASRV`            | Server | `EXADNSCLD001` |
 | `EXARAC`            | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS`            | NAS | `EXANASFAL001` |
 | `EXASBC`            | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBCFAL001` |

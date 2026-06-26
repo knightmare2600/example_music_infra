@@ -52,7 +52,7 @@
 #                     helper added. arping and network-manager added to BOOTSTRAP_PKGS.
 #                     Section 1c added: hostname prompt matching bindme.sh pattern.
 #                     Detects EXA* convention hostname, normalises to uppercase,
-#                     defaults to EXASVRCLD001 if convention not matched. Sets
+#                     defaults to EXAANSCLD001 if convention not matched. Sets
 #                     hostname via hostnamectl and adds /etc/hosts entry.
 # v1.10.0 2026-06-17  Section 6 (SSH keypair) now offers a choice: generate a new keypair on host
 #                     (unchanged default), or paste an existing PUBLIC key only. Private keys are
@@ -470,7 +470,7 @@ nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "ansible-static" \
   ipv4.method manual \
   ipv4.addresses "${NODE_STATIC_IP}/24" \
   ipv4.gateway "${PROV_GW}" \
-  ipv4.dns "192.168.139.10" \
+  ipv4.dns "192.168.139.8" \
   ipv4.dns-search "jukebox.internal" \
   ipv6.method ignore \
   connection.autoconnect yes \
@@ -502,7 +502,7 @@ if [[ "${CURRENT_HOSTNAME}" =~ ^[Ee][Xx][Aa] ]]; then
   SUGGESTED_HOSTNAME="${CURRENT_HOSTNAME^^}"
   info "Detected EXA-convention hostname: ${SUGGESTED_HOSTNAME}"
 else
-  SUGGESTED_HOSTNAME="EXASVRCLD001"
+  SUGGESTED_HOSTNAME="EXAANSCLD001"
   warn "Current hostname '${CURRENT_HOSTNAME}' does not match EXA* convention."
 fi
 
@@ -979,7 +979,9 @@ DISC_MODE="${DISC_MODE,,}"
 # .253 → firewalls  (FWL LAN face)
 # .254 → gateways   (router — usually not managed by ansible, but noted)
 # .48  → pbx        (EXAPBX — telephony)
-# .139.10 → ansible/srv nodes on provisioning net
+# .139.69 → ansiblehosts (EXAANSCLD001 — Ansible control node)
+# .139.8  → srvnodes (EXADNSCLD001 — DNS server)
+# .139.10/.11 → dcs (EXADCSCLD001/002)
 declare -A DISC_HOSTS_BY_GROUP   # group → newline-separated "IP  # HOSTNAME ROLE"
 DISC_UNKNOWNS=""                  # IP entries that didn't classify
 
@@ -990,11 +992,12 @@ _classify_host() {
   local third_octet
   third_octet=$(echo "$ip" | awk -F. '{print $3}')
 
-  # Provisioning net (.139.x) — ansible/DNS/srv nodes
+  # Provisioning net (.139.x) — known roles by last octet
   if [[ "$third_octet" == "139" ]]; then
     case "$last_octet" in
-      10)  echo "ansiblehosts" ; return ;;
-      *)   echo "srvnodes"     ; return ;;
+      10|11) echo "dcs"          ; return ;;  # EXADCSCLD001/002
+      69)    echo "ansiblehosts" ; return ;;  # EXAANSCLD001
+      *)     echo "srvnodes"     ; return ;;  # DNS, Rudder, WAC, PXE, etc.
     esac
   fi
 
