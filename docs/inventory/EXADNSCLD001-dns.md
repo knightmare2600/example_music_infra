@@ -288,7 +288,7 @@ rndc zonestatus jukebox.internal
 | `/home/ansible/.zshrc`                | zsh config including aliases for ansible     |
 | `/usr/local/sbin/bindme.sh`           | Copy of setup script (for regen-zone.sh)     |
 | `/usr/local/sbin/regen-zone.sh`       | Zone regeneration helper                     |
-| `/etc/.i_am_a_dns_server`             | Sentinel file (read-only, install record)    |
+| `/etc/example-music/nodeinfo.json`    | Node info file (read-only, install record)   |
 
 ---
 

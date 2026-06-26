@@ -229,23 +229,35 @@ The pool now spans both mirror vdevs — total usable = sum of both mirrors.
 
 ---
 
-## Sentinel File
+## Node Info File
 
-Every provisioned PVE node has `/etc/.i_am_a_pve_node` (read-only):
+Every provisioned PVE node has `/etc/example-music/nodeinfo.json` (read-only, mode 0444):
 
+```json
+{
+    "hostname": "EXAFALPVE001",
+    "fqdn": "EXAFALPVE001.jukebox.internal",
+    "role": "proxmox",
+    "site": "FAL",
+    "city": "Falkirk",
+    "country": "Scotland",
+    "entity": "Example Music (Scotland) Ltd",
+    "ansible_managed": false,
+    "bootstrapped_at": "2026-02-25T17:00:00Z",
+    "bootstrapped_by": "first-boot.sh",
+    "environment": "production",
+    "node_ip": "192.168.76.5",
+    "gateway": "192.168.76.254"
+}
 ```
-Configured by Example Music provisioning script
-Hostname    : EXAFALP VE001
-FQDN        : EXAFALPVE001.jukebox.internal
-Site        : FAL
-City        : Falkirk
-Country     : Scotland
-Entity      : Example Music (Scotland) Ltd
-Node IP     : 192.168.76.5
-Date        : 2026-02-25T17:00:00Z
-```
 
-Ansible playbooks check for this file before running any destructive operations — prevents accidentally running hypervisor playbooks on routers or workstations.
+`ansible_managed` is `false` when written by `first-boot.sh`. Ansible playbooks that subsequently manage the node should update it to `true`.
+
+Playbooks check for this file before running any destructive operations — prevents accidentally running hypervisor playbooks on routers or workstations. The guard is:
+
+```bash
+jq -e '.role == "proxmox"' /etc/example-music/nodeinfo.json
+```
 
 ---
 

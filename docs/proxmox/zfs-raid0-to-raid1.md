@@ -24,7 +24,7 @@ http://192.168.139.50/proxmox/degraded.toml
 ```
 
 This installs Proxmox with `zfs.raid = "raid0"` on a single disk. The node comes up fully functional — first-boot runs, Ansible user is configured,
-sentinel file is written, everything is ready. The node simply has no redundancy until the second disk is added.
+node info file is written to `/etc/example-music/nodeinfo.json`, everything is ready. The node simply has no redundancy until the second disk is added.
 
 **Do not put the node into production until this upgrade procedure has been completed and both disks boot independently.**
 
