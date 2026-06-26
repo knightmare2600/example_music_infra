@@ -99,6 +99,24 @@ exasvrcld001  IN  A  {{ dns_ip }}
 {% endif %}
 {% endfor %}
 
+; Rudder — .12 server at CLD, .12 relay at all other sites
+{% for site in sites | sort(attribute='octet') %}
+{% if site.Site == 'CLD' %}
+{{ "%-45s" | format('exarudcld001') }} IN  A  192.168.{{ site.octet }}.12   ; CLD: Rudder Server
+{% else %}
+{{ "%-45s" | format('exarry' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.12
+{% endif %}
+{% endfor %}
+
+; ── DHCP pool ($GENERATE) ─────────────────────────────────────
+; .100–.199 per site — forward records only.
+; PTR $GENERATE blocks are in each per-site reverse zone file.
+; CLD (provisioning network) has no DHCP pool.
+{% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
+; {{ site.Site }} -- 192.168.{{ site.octet }}.100-199
+$GENERATE 100-199 dhcp${-99,2,d}.{{ site.Site | lower }} IN A 192.168.{{ site.octet }}.$
+{% endfor %}
+
 ; ── One-off records -- add below, DO NOT edit above ──────────
 ; Records here survive playbook runs only if you manage them separately.
 ; Increment the SOA serial manually when editing by hand.

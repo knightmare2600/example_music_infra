@@ -50,6 +50,9 @@ Changelog:
                 (treated as a required field). Site-specific VLANs (ATL, FAL, BRK, NEW, etc.) still take precedence as the
                 prompt default when a site VLAN is proposed; CLD is purely the fallback. The WAN port of dual-NIC roles
                 (FWL/RTR) also default to CLD VLAN rather than untagged. "untagged" label removed from all display paths.
+    2026-06-26  Role codes: added RRY (Rudder Relay), RUD (Rudder Server).
+                SERIAL_CONSOLE_ROLES: added ANS, RRY, RUD.
+                WINDOWS_ROLES: added DCS (Domain Controller needs VirtIO driver disk).
     2026-05-29  vmbr0 provisioning bridge special case: if NIC is on vmbr0 & user leaves/sets VLAN as the CLD default (or
                 blank), script now correctly sets vlan=None (untagged). vmbr0 already sits on a port in 192.168.139.0/24 --
                 adding VLAN tag 139 would double-tag frames & the switch could drop silently. Explicitly typed non-CLD VLAN
@@ -223,6 +226,8 @@ ROLE_CODES = {
     "RAD": "Radio Transmitter / Broadcast",
     "RDR": "Card Reader / Badge Reader",
     "RTR": "Router",
+    "RRY": "Rudder Relay",
+    "RUD": "Rudder Server",
     "SBC": "Session Border Controller",
     "SRV": "Server (General Purpose)",
     "SUR": "Microsoft Surface Device",
@@ -241,13 +246,13 @@ ROLE_CODES = {
 }
 
 # Roles that get serial console by default
-SERIAL_CONSOLE_ROLES = {"FWL", "RTR", "SBC", "PBX", "NIX"}
+SERIAL_CONSOLE_ROLES = {"ANS", "FWL", "NIX", "PBX", "RTR", "RRY", "RUD", "SBC"}
 
 # Roles that get two NICs (WAN + LAN)
 DUAL_NIC_ROLES = {"FWL", "RTR"}
 
 # Roles that get a VirtIO driver disk (scsi1) — Windows installs
-WINDOWS_ROLES = {"SRV", "SVR", "WKS", "LAP"}
+WINDOWS_ROLES = {"DCS", "SRV", "SVR", "WKS", "LAP"}
 
 # OS type options — Proxmox ostype enum
 # Source: https://pve.proxmox.com/wiki/Manual:_qm.conf

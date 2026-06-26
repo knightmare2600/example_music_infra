@@ -36,6 +36,7 @@ Exceptions are noted in individual site entries.
 | `.7` | PVE node 3 | `EXAPVE<SITE>003` |
 | `.10` | Domain Controller — primary | `EXADCS<SITE>001` |
 | `.11` | Domain Controller — secondary | `EXADCS<SITE>002` |
+| `.12` | Rudder Relay (Rudder Server on CLD) | `EXARRY<SITE>001` / `EXARUDCLD001` |
 | `.48` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBC<SITE>001` |
 | `.100`–`.249` | DHCP pool | — |
 | `.250`–`.252` | RT switches | `EXASWI<SITE>001`–`003` |
@@ -55,11 +56,12 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS | IP | Notes |
 |----------|------|----|----|-------|
 | `EXAFWLCLD001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` · LAN `192.168.139.0/24` |
-| `EXASVRCLD001` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | WAC — reaches all site DCs and Windows nodes |
-| `EXASVRCLD002` | Ansible control node | Debian | `192.168.139.49` | Ansible — manages all sites |
-| `EXASVRCLD003` | Rudder | Debian | `192.168.139.22` | Configuration management — see NET-MGMT-RUDDER-001 |
+| `EXASVRCLD001` | DNS / BIND9 server | Debian | `192.168.139.10` | Authoritative DNS for `jukebox.internal` |
+| `EXARUDCLD001` | Rudder Server | Debian | `192.168.139.12` | Configuration management — see NET-MGMT-RUDDER-001 |
+| `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | WAC — reaches all site DCs and Windows nodes |
 | `EXACLDPBX001` | Central PBX | — | `192.168.139.48` | 3CX PBX — all site SBCs trunk here |
-| `EXAPRVFAL001` | Provisioning / bootstrap | — | `192.168.139.50` | Serves Ansible keys, ISOs, scripts |
+| `EXAPRVCLD001` | Provisioning / bootstrap | — | `192.168.139.50` | Serves Ansible keys, ISOs, scripts |
+| `EXAANSCLD001` | Ansible control node | Debian | `192.168.139.69` | Ansible — manages all sites |
 
 ---
 
@@ -69,7 +71,7 @@ Exceptions are noted in individual site entries.
 |------|----------|---------|-----------|--------|-------|
 | ABD | Aberdeen | Scotland, UK | `192.168.224.0/24` | `example.org` | Satellite office |
 | AMS | Amsterdam | Netherlands | `192.168.31.0/24` | `example.net` | |
-| ATL | Athens, GA | USA | `192.168.44.0/24` | `example.net` | |
+| ATL | Athens, GA | USA | `192.168.33.0/24` | `example.net` | |
 | BIR | Birmingham | England, UK | `192.168.121.0/24` | `example.net` | |
 | BON | Bonn | West Germany (FRG) | `192.168.228.0/24` | `example.net` | Schema Master / Domain Naming Master |
 | BRD | West Berlin | West Germany (FRG) | `192.168.113.0/24` | `example.net` | Legacy site |
@@ -145,7 +147,7 @@ Exceptions are noted in individual site entries.
 | `EXADCSTOR001` | TOR | example.net | `192.168.146.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
 | `EXADCSNYC001` | NYC | example.net | `192.168.212.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
 | `EXADCSNJC001` | NJC | example.net | `192.168.201.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSATL001` | ATL | example.net | `192.168.44.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSATL001` | ATL | example.net | `192.168.33.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
 | `EXADCSLAX001` | LAX | example.net | `192.168.213.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
 | `EXADCSCHI001` | CHI | example.net | `192.168.214.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
 | `EXADCSSYD001` | SYD | example.net | `192.168.29.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
@@ -170,11 +172,12 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS | IP | Notes |
 |----------|------|----|----|-------|
 | `EXAFWLCLD001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` |
-| `EXASVRCLD001` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | Reaches all site DCs and Windows nodes |
-| `EXASVRCLD002` | Ansible control node | Debian | `192.168.139.49` | Central Ansible — manages all sites |
-| `EXASVRCLD003` | Rudder | Debian | `192.168.139.22` | Configuration management |
+| `EXASVRCLD001` | DNS / BIND9 server | Debian | `192.168.139.10` | Authoritative DNS for `jukebox.internal` |
+| `EXARUDCLD001` | Rudder Server | Debian | `192.168.139.12` | Configuration management |
+| `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | Reaches all site DCs and Windows nodes |
 | `EXACLDPBX001` | Central PBX | 3CX | `192.168.139.48` | All site SBCs trunk here |
-| `EXAPRVFAL001` | Provisioning server | — | `192.168.139.50` | Bootstrap — Ansible keys, ISOs, scripts |
+| `EXAPRVCLD001` | Provisioning server | — | `192.168.139.50` | Bootstrap — Ansible keys, ISOs, scripts |
+| `EXAANSCLD001` | Ansible control node | Debian | `192.168.139.69` | Central Ansible — manages all sites |
 
 ---
 
@@ -889,7 +892,7 @@ Exceptions are noted in individual site entries.
 ---
 
 #### ATL — Athens, Georgia
-**LAN:** `192.168.44.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.33.0/24` · **Domain:** `example.net`
 
 > ⚠️ `EXADCSATL001` — DNS, Netlogon and KDC services stopped.
 
@@ -897,8 +900,8 @@ Exceptions are noted in individual site entries.
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSATL001` | DC | Windows Server 2022 | `192.168.44.10` | ⚠️ Services stopped |
-| `EXASBCATL001` | VOIP SBC | 3CX SBC Debian | `192.168.44.48` | Trunks to `EXACLDPBX001` |
+| `EXADCSATL001` | DC | Windows Server 2022 | `192.168.33.10` | ⚠️ Services stopped |
+| `EXASBCATL001` | VOIP SBC | 3CX SBC Debian | `192.168.33.48` | Trunks to `EXACLDPBX001` |
 
 ---
 
