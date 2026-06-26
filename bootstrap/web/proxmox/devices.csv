@@ -26,9 +26,8 @@
 #   the dedicated provisioning reverse zone (db.192.168.139).
 #
 # SUBNET CORRECTION NOTES (from merge 2026-03-29):
-#   ATL: correct subnet is 192.168.33.0/24 (not .44) per sites.csv
-#   TOR: correct subnet is 192.168.146.0/24 (not .164) per sites.csv
-#   Any ATL/TOR devices currently on wrong IPs are flagged in Notes.
+#   ATL: correct subnet is 192.168.33.0/24 (was incorrectly .44)
+#   TOR: correct subnet is 192.168.146.0/24 (was incorrectly .164)
 #
 # BRD/BER NOTE:
 #   West Berlin site currently uses code BRD (legacy). Will be rebuilt and
@@ -542,15 +541,13 @@ BRK,EXAWAPBRK001,,EXAWAP,Ubiquiti UniFi U6-Pro,WAP
 #
 # ============================================================
 # TOR -- Toronto  192.168.146.0/24
-# Subnet corrected from 192.168.164.0/24 per sites.csv.
-# Devices at .164.x need re-IPing.
 # Hardware present -- commissioning pending
 # ============================================================
 TOR,EXARACTOR001,2,EXARAC,,BMC node 1 -- pending commissioning
 TOR,EXARACTOR002,3,EXARAC,,RAC emulator VM -- pending commissioning
 TOR,EXAPVETOR001,5,EXAPVE,Proxmox VE,PVE node 1 -- pending commissioning
-TOR,EXADCSTOR001,10,EXADCS,Windows Server 2022,DC -- SERVICES STOPPED. Currently at 192.168.164.10 -- IP change required
-TOR,EXASBCTOR001,48,EXASBC,3CX SBC Debian,Currently at 192.168.164.48 -- IP change required
+TOR,EXADCSTOR001,10,EXADCS,Windows Server 2022,DC -- SERVICES STOPPED
+TOR,EXASBCTOR001,48,EXASBC,3CX SBC Debian,
 #
 # ============================================================
 # MTL -- Montreal  192.168.154.0/24
@@ -620,14 +617,12 @@ MIA,EXALAPMIA001,,EXALAP,macOS Sonoma,MacBook
 #
 # ============================================================
 # ATL -- Atlanta  192.168.33.0/24
-# Subnet CORRECTED from 192.168.44.0/24 per sites.csv.
-# Devices currently at .44.x need re-IPing.
 # ============================================================
 ATL,EXARACATL001,2,EXARAC,,BMC node 1
 ATL,EXARACATL002,3,EXARAC,,RAC emulator VM
 ATL,EXAPVEATL001,5,EXAPVE,Proxmox VE,PVE node 1. ZFS RAID1
-ATL,EXADCSATL001,10,EXADCS,Windows Server 2022,DC -- SERVICES STOPPED. Currently at 192.168.44.10 -- IP change required
-ATL,EXASBCATL001,48,EXASBC,3CX SBC Debian,Currently at 192.168.44.48 -- IP change required
+ATL,EXADCSATL001,10,EXADCS,Windows Server 2022,DC -- SERVICES STOPPED
+ATL,EXASBCATL001,48,EXASBC,3CX SBC Debian,
 #
 # ============================================================
 # CHI -- Chicago  192.168.214.0/24

@@ -65,14 +65,14 @@ graph TD
 
     subgraph NAAPAC ["🌎 Americas & APAC — BRK spokes"]
         direction TB
-        TOR["TOR · Toronto · .164"]
+        TOR["TOR · Toronto · .146"]
         MTL["MTL · Montréal · .154"]
         NYC["NYC · New York · .212"]
         LAX["LAX · Los Angeles · .213"]
         MIA["MIA · Miami · .135 ⚠️"]
         NJC["NJC · New Jersey · .201"]
         CHI["CHI · Chicago · .214"]
-        ATL["ATL · Athens GA · .44"]
+        ATL["ATL · Atlanta · .33"]
         SYD["SYD · Sydney · .29"]
         MEL["MEL · Melbourne · .61"]
         AKL["AKL · Auckland · .93"]
@@ -450,7 +450,7 @@ cat /etc/example-music/nodeinfo.json
 
 | Site | Hostname | IP | VM | OS | PW | FW | RB | WG | PR | VF | AN | OK | Notes |
 |------|----------|----|----|----|----|----|----|----|----|----|----|----|----|
-| ATL | EXAFWLATL001 | 192.168.44.253 |      |      |      |      |      |      |      |      |      |      | Athens GA |
+| ATL | EXAFWLATL001 | 192.168.33.253 |      |      |      |      |      |      |      |      |      |      | Athens GA |
 | CHI | EXAFWLCHI001 | 192.168.214.253 |      |      |      |      |      |      |      |      |      |      | Chicago |
 | LAX | EXAFWLLAX001 | 192.168.213.253 |      |      |      |      |      |      |      |      |      |      | Los Angeles |
 | MIA | EXAFWLMIA001 | 192.168.135.253 |      |      |      |      |      |      |      |      |      |      | Miami — PENDING BUILD |
