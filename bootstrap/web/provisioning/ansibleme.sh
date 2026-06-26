@@ -107,6 +107,13 @@
 #                     operator review.  CSV-only mode pre-fills [dcs] & [firewalls] from SITE_DC[]/
 #                     SITE_FW[] without scanning. Additional groups can be added manually after
 #                     either mode. Inventory write updated to consume DISC_HOSTS_BY_GROUP.
+# v1.13.0 2026-06-26  Section 5b added: data file bootstrap. devices.csv and sites.csv are
+#                     canonical at /etc/example-music/ (placed by preseed late_command).
+#                     Script now checks for both and downloads from the provisioning server
+#                     (192.168.PROV.50/proxmox/) if either is missing. devices.csv is also
+#                     copied to ansible/files/ for the bind9-dns.yml playbook. bind9-dns.yml
+#                     devices_csv_path default updated to /etc/example-music/devices.csv.
+#
 # v1.12.0 2026-06-25  configs/inventory is now a directory, not a flat file. Ansible merges all
 #                     .ini files in the directory automatically, so per-site and per-service
 #                     inventory files (cld.ini, kge.ini, fal.ini, rudder.ini, etc.) can live
@@ -666,6 +673,64 @@ info "Creating ansible directory tree under ${ANSIBLE_DIR}..."
 mkdir -p "${CONFIGS_DIR}/inventory" "${PLAYBOOKS_DIR}/proxmox" "${PLAYBOOKS_DIR}/linux" "${PLAYBOOKS_DIR}/windows" "${FILES_DIR}" "${ANSIBLE_DIR}/group_vars/all" "${ANSIBLE_DIR}/group_vars/pvenodes" "${ANSIBLE_DIR}/host_vars"
 chown -R "${ANSIBLE_USER}:${ANSIBLE_USER}" "${ANSIBLE_DIR}"
 success "Directory tree created."
+
+# ------------------------------------------------------------------------------
+# 5b. Data files — sites.csv and devices.csv
+# ------------------------------------------------------------------------------
+# Canonical location for both files is /etc/example-music/ — placed there by
+# the Debian preseed late_command. This section ensures they are present,
+# downloading from the provisioning server (192.168.PROV.50) if missing.
+# The ansible/files/ copy of devices.csv (used by bind9-dns.yml) is populated
+# here; sites.csv was already loaded above from its canonical path.
+# ------------------------------------------------------------------------------
+section "5b. Data files"
+
+PROV_SERVER="${PROV_NET}.50"
+CANONICAL_DIR="/etc/example-music"
+mkdir -p "${CANONICAL_DIR}"
+
+# ── devices.csv ──────────────────────────────────────────────────────────────
+DEVICES_CANONICAL="${CANONICAL_DIR}/devices.csv"
+DEVICES_LOCAL="${FILES_DIR}/devices.csv"
+DEVICES_URL="http://${PROV_SERVER}/proxmox/devices.csv"
+
+if [[ -f "${DEVICES_CANONICAL}" ]]; then
+  success "devices.csv found at ${DEVICES_CANONICAL}"
+  cp "${DEVICES_CANONICAL}" "${DEVICES_LOCAL}"
+  chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${DEVICES_LOCAL}"
+  success "Copied to ${DEVICES_LOCAL} for Ansible playbooks."
+else
+  info "devices.csv not found at ${DEVICES_CANONICAL} — fetching from ${DEVICES_URL}..."
+  if wget -q --timeout=15 -O "${DEVICES_LOCAL}" "${DEVICES_URL}" 2>/dev/null; then
+    cp "${DEVICES_LOCAL}" "${DEVICES_CANONICAL}"
+    chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${DEVICES_LOCAL}"
+    success "Downloaded and installed to ${DEVICES_CANONICAL} and ${DEVICES_LOCAL}."
+  else
+    warn "Could not download devices.csv from ${DEVICES_URL}."
+    warn "Place devices.csv at ${DEVICES_CANONICAL} before running bind9-dns.yml."
+    warn "Source: bootstrap/web/proxmox/devices.csv in the infrastructure repo."
+  fi
+fi
+
+# ── sites.csv local copy ──────────────────────────────────────────────────────
+# sites.csv was already loaded from its canonical path at script start.
+# Ensure the canonical file is present for other tools (bind9, firewallme, etc.)
+# that expect it there. If it came from $SITES_CSV override, install it now.
+SITES_CANONICAL="${CANONICAL_DIR}/sites.csv"
+if [[ ! -f "${SITES_CANONICAL}" ]]; then
+  if [[ -n "${SITES_CSV:-}" && -f "${SITES_CSV}" ]]; then
+    cp "${SITES_CSV}" "${SITES_CANONICAL}"
+    success "Installed sites.csv to ${SITES_CANONICAL} from ${SITES_CSV}."
+  else
+    info "Fetching sites.csv from provisioning server..."
+    SITES_URL="http://${PROV_SERVER}/proxmox/sites.csv"
+    if wget -q --timeout=15 -O "${SITES_CANONICAL}" "${SITES_URL}" 2>/dev/null; then
+      success "Downloaded sites.csv to ${SITES_CANONICAL}."
+    else
+      warn "Could not download sites.csv from ${SITES_URL} — already loaded from ${SITES_CSV:-/etc/example-music/sites.csv}."
+    fi
+  fi
+fi
 
 # ------------------------------------------------------------------------------
 # 6. SSH keypair
