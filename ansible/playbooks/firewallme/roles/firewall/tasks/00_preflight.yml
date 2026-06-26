@@ -6,6 +6,7 @@
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-20  Colourised prompts — matches firewallme.sh colour scheme
+#   2026-06-26  Load wg_site_octets dynamically from sites.csv at runtime
 # =============================================================================
 
 # ── Parse hostname ────────────────────────────────────────────────────────────
@@ -26,13 +27,29 @@
   ansible.builtin.set_fact:
     fw_is_black_site: "{{ fw_site_code == 'CLD' }}"
 
+# ── Load site octet map from sites.csv ───────────────────────────────────────
+
+- name: "[Preflight] Load sites.csv from control node"
+  delegate_to: localhost
+  become: false
+  read_csv:
+    path: "{{ sites_csv_path }}"
+  register: _sites_csv_raw
+
+- name: "[Preflight] Build wg_site_octets from sites.csv"
+  ansible.builtin.set_fact:
+    wg_site_octets: "{{ wg_site_octets | combine({item.Site: item.Subnet.split('.')[2] | int}) }}"
+  loop: "{{ _sites_csv_raw.list | selectattr('Subnet', 'ne', 'N/A') | selectattr('Site', 'ne', 'BRD') | list }}"
+  loop_control:
+    label: "{{ item.Site }}"
+
 - name: "[Preflight] Look up site octet"
   ansible.builtin.set_fact:
     fw_site_octet: "{{ wg_site_octets[fw_site_code] | default('') }}"
 
 - name: "[Preflight] FAIL — site code not in known site map"
   ansible.builtin.fail:
-    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Site code '{{ fw_site_code }}' not found in wg_site_octets."
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Site code '{{ fw_site_code }}' not found in wg_site_octets (checked {{ sites_csv_path }})."
   when: fw_site_octet == '' and fw_site_octet_override is not defined
 
 - name: "[Preflight] Use site octet override if provided"

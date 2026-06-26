@@ -26,6 +26,8 @@
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-26  CLD added as hub-regional (cloud management hub)
+#   2026-06-26  wg_site_octets removed — now loaded dynamically from sites.csv
+#               in 00_preflight.yml via read_csv (sites.csv is authoritative)
 # =============================================================================
 
 # Known hub public keys — last verified values
@@ -71,59 +73,8 @@ wg_site_extra_subnets:
   CLD:
     - "192.168.69.0/24"   # EXAFWLCLD001 private LAN (inside interface)
 
-# Site octet map (mirrors sites.csv — used for AllowedIPs derivation without shelling out)
-# All sites from sites.csv. Derived from the third octet of each site's Subnet field.
-# sites.csv is the authoritative source — regenerate from there if octets change.
-# BRD omitted (legacy alias for BER).
-wg_site_octets:
-  # ── Hubs ──────────────────────────────────────────────────────────────────
-  CLD: 139   # CloudSite     192.168.139.0/24  hub-regional (cloud/management)
-  FAL: 76    # Falkirk       192.168.76.0/24   hub-primary
-  ODE: 126   # Odense        192.168.126.0/24  hub-regional (EU)
-  BRK: 136   # Brockville    192.168.136.0/24  hub-regional (NA/APAC)
-  # ── UK spokes (FAL) ───────────────────────────────────────────────────────
-  ABD: 224   # Aberdeen      192.168.224.0/24
-  BIR: 121   # Birmingham    192.168.121.0/24
-  CLY: 41    # Clydebank     192.168.41.0/24
-  COV: 247   # Coventry      192.168.247.0/24
-  DUN: 138   # Dundee        192.168.138.0/24
-  EDI: 131   # Edinburgh     192.168.131.0/24
-  GLA: 141   # Glasgow       192.168.141.0/24
-  HAL: 142   # Halifax       192.168.142.0/24
-  HUL: 148   # Hull          192.168.148.0/24
-  LIV: 151   # Liverpool     192.168.151.0/24
-  LND: 20    # London        192.168.20.0/24
-  MCR: 161   # Manchester    192.168.161.0/24
-  NEW: 191   # Newcastle     192.168.191.0/24
-  PER: 173   # Perth         192.168.173.0/24
-  SHE: 114   # Sheffield     192.168.114.0/24
-  # ── EU spokes (ODE) ───────────────────────────────────────────────────────
-  AAR: 86    # Aarhus        192.168.86.0/24
-  AMS: 31    # Amsterdam     192.168.31.0/24
-  BER: 113   # Berlin        192.168.113.0/24
-  BON: 228   # Bonn          192.168.228.0/24
-  BRT: 169   # Beirut        192.168.169.0/24
-  CPH: 231   # Copenhagen    192.168.231.0/24
-  DRS: 153   # Dresden       192.168.153.0/24
-  DUS: 211   # Dusseldorf    192.168.211.0/24
-  FAX: 246   # Faxe          192.168.246.0/24
-  FRE: 75    # Fredericia    192.168.75.0/24
-  GOT: 46    # Gothenburg    192.168.46.0/24
-  KGE: 65    # Koge          192.168.65.0/24
-  KOR: 238   # Korsor        192.168.238.0/24
-  MIL: 39    # Milan         192.168.39.0/24
-  MUN: 189   # Munich        192.168.189.0/24
-  OSL: 47    # Oslo          192.168.47.0/24
-  VIE: 78    # Vienna        192.168.78.0/24
-  # ── NA/APAC spokes (BRK) ──────────────────────────────────────────────────
-  AKL: 93    # Auckland      192.168.93.0/24
-  ATL: 33    # Atlanta       192.168.33.0/24
-  CHI: 214   # Chicago       192.168.214.0/24
-  LAX: 213   # Los Angeles   192.168.213.0/24
-  MEL: 61    # Melbourne     192.168.61.0/24
-  MIA: 135   # Miami         192.168.135.0/24
-  MTL: 154   # Montreal      192.168.154.0/24
-  NJC: 201   # New Jersey    192.168.201.0/24
-  NYC: 212   # New York      192.168.212.0/24
-  SYD: 29    # Sydney        192.168.29.0/24
-  TOR: 146   # Toronto       192.168.146.0/24
+# Site octet map — populated dynamically at runtime by 00_preflight.yml
+# via read_csv from sites_csv_path (default: /etc/example-music/sites.csv).
+# sites.csv is the single authoritative source; no manual copy needed here.
+# Override with -e sites_csv_path=/path/to/sites.csv when running outside CLD.
+wg_site_octets: {}
