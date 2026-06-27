@@ -1,0 +1,93 @@
+---
+# =============================================================================
+# vars/wireguard_hubs.yml
+# Example Music Limited — WireGuard hub reference data
+# =============================================================================
+# These are REFERENCE values used for cross-checking live-fetched pubkeys.
+# They are NOT written directly into wg0.conf — the playbook always fetches
+# the live key from the hub and compares against these.
+#
+# Update after any hub rebuild:
+#   1. Run: ssh ansible@<hub-wan-ip> 'cat /etc/wireguard/public.key'
+#   2. Update the relevant wg_hub_known_pubkeys entry below
+#   3. Commit the change with the date and reason
+#
+# Topology map (which spokes connect to which hub):
+#   FAL (hub-primary)  — UK spokes
+#   ODE (hub-regional) — EU spokes
+#   BRK (hub-regional) — AMAPAC spokes
+#
+# Changelog:
+#   2026-06-20  Initial file
+# =============================================================================
+
+# Known hub public keys — last verified values
+# Format: { SITE_CODE: "base64-pubkey" }
+wg_hub_known_pubkeys:
+  FAL: "yxYnCsZwxDmv6WrduGTC7pnW3sUxob1GGYpttPfGbmk="
+  ODE: "gFK4oQNKN/a2UZvoil43OvOcjp2B6gT4YQ8IUqWrZ1o="
+  BRK: "CSpL1NJl4jgeJDf6TccixMGv8JOSH7XS7pErjKSuoT4="
+
+# Hub WAN IPs on the provisioning network (192.168.139.x)
+wg_hub_wan_ips:
+  FAL: "192.168.139.76"
+  ODE: "192.168.139.126"
+  BRK: "192.168.139.136"
+
+# Default WireGuard listen port for all hubs
+wg_hub_default_port: 51820
+
+# Hub topology — which spoke sites connect to which hub
+# Used to build topology-aware AllowedIPs (same logic as build_allowed_ips / spoke_allowed_ips_for_hub)
+wg_hub_topology:
+  FAL:
+    spokes: [ABD, BIR, CLY, COV, DUN, EDI, GLA, HAL, HUL, LIV, LND, MCR, NEW, PER, SHE]
+  ODE:
+    spokes: [AMS, BON, CPH, FAX, GOT, KGE, KOR, MIL, MUN, OSL, VIE]
+  BRK:
+    spokes: [ATL, CHI, LAX, MIA, MTL, NJC, NYC, TOR, AKL, MEL, SYD]
+
+# Site octet map (mirrors sites.csv — used for AllowedIPs derivation without shelling out)
+# This is a subset covering all hub and spoke sites. Add new sites as they are commissioned.
+wg_site_octets:
+  FAL: 76
+  ODE: 126
+  BRK: 136
+  ABD: 100
+  AMS: 121
+  ATL: 33
+  BIR: 177
+  BON: 199
+  CHI: 21
+  CLY: 193
+  COV: 152
+  CPH: 231
+  DUN: 167
+  EDI: 182
+  FAX: 246
+  GLA: 141
+  GOT: 214
+  HAL: 157
+  HUL: 172
+  KGE: 65
+  KOR: 209
+  LAX: 26
+  LIV: 151
+  LND: 187
+  MCR: 161
+  MEL: 19
+  MIA: 41
+  MIL: 204
+  MTL: 154
+  MUN: 219
+  NEW: 191
+  NJC: 46
+  NYC: 51
+  OSL: 236
+  PER: 147
+  SHE: 196
+  SYD: 29
+  TOR: 164
+  VIE: 241
+  AKL: 14
+  CLD: 139
