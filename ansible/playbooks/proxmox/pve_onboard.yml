@@ -1,0 +1,58 @@
+---
+# pve_onboard.yml
+# Verify and complete Ansible management setup on a Proxmox VE node.
+#
+# Our PXE/first-boot installer creates the ansible user, but we trust-but-verify:
+#   - ansible user exists and has the right shell
+#   - SSH key is authorised
+#   - sudoers drop-in is present and correct
+#   - management packages installed
+#
+# Run once per new PVE node, as root via SSH password:
+#   ansible-playbook playbooks/proxmox/pve_onboard.yml \
+#     -i configs/inventory --user=root -k
+#
+# After this runs once, all subsequent playbooks authenticate as ansible (key-based).
+
+- hosts: pvenodes
+  become: true
+  vars_files:
+    - ../../group_vars/pvenodes/main.yml
+
+  tasks:
+
+    - name: Install management packages
+      apt:
+        name: "{{ pve_packages }}"
+        update_cache: yes
+        cache_valid_time: 3600
+        state: latest
+
+    - name: Verify ansible user exists (created by PXE installer; created here if missing)
+      user:
+        name: ansible
+        shell: /bin/bash
+        create_home: yes
+        state: present
+
+    - name: Ensure ansible SSH public key is authorised
+      authorized_key:
+        user: ansible
+        key: "{{ lookup('file', '../../configs/ansible-id_rsa.pub') }}"
+        state: present
+
+    - name: Deploy sudoers drop-in (validate before placing)
+      copy:
+        src: ../../files/sudoer_ansible
+        dest: /etc/sudoers.d/ansible
+        owner: root
+        group: root
+        mode: '0440'
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Ensure ansible is in kvm group (needed for virt-customize)
+      user:
+        name: ansible
+        groups: kvm
+        append: yes
+
