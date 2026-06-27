@@ -28,10 +28,10 @@
 #   .253 EXAFWL    (Debian firewall)
 #
 # Plus CLD ancillary hosts:
-#   192.168.139.8    ${THIS_HOSTNAME}  (this DNS server)
-#   192.168.139.9    EXAANSCLD001      (Ansible management)
-#   192.168.139.50   EXAPRVCLD001      (provisioning / PXE)
-#   192.168.139.139  EXAFWLCLD001      (CLD firewall — WAN face on vRACK)
+#   192.168.69.9     EXAANSCLD001       (Ansible management)
+#   192.168.139.8    ${THIS_HOSTNAME}   (this DNS server)
+#   192.168.139.50   EXAPRVCLD001       (provisioning / PXE)
+#   192.168.139.69   EXAFWLCLD001       (CLD firewall — WAN face on vRACK)
 #   192.168.139.254  DC provider router (vRACK gateway — not EXA kit)
 # ===============================================================
 
