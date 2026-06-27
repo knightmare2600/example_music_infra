@@ -1,0 +1,328 @@
+---
+# =============================================================================
+# playbooks/windows_bootstrap/playbooks/00-preflight.yml
+# Example Music Limited — Pre-flight: credentials, hostname, IP, SSH hardening
+#
+# Runs against a freshly built Windows host on its DHCP address.
+# Handles everything that must happen BEFORE 05-bootstrap.yml:
+#
+#   1. Verify SSH is running and set to auto-start
+#   2. Deploy Ansible public key (so subsequent runs are passwordless)
+#   3. Prompt for target hostname — validates EXA[ROLE][SITE][NNN] format
+#   4. Derive site details from sites.csv on the Ansible control node
+#   5. List NICs, prompt user to select one
+#   6. Prompt for DHCP or static IP (pre-filled from sites.csv)
+#   7. Rename computer
+#   8. Single reboot — rename takes effect AND static IP scheduled task fires
+#   9. wait_for_connection on new IP
+#  10. Hand off to 05-bootstrap.yml
+#
+# Usage:
+#   ansible-playbook playbooks/windows_bootstrap/playbooks/00-preflight.yml \
+#     -i 192.168.151.174, -e "target_hosts=192.168.151.174"
+#
+# Changelog:
+#   2026-06-27  Initial file
+#   2026-06-27  Combined rename and static IP into single reboot
+# =============================================================================
+
+- name: Pre-flight — credentials, hostname, IP, SSH
+  hosts: "{{ target_hosts }}"
+  gather_facts: false
+
+  vars_prompt:
+    - name: ansible_user
+      prompt: "Username to connect as"
+      private: false
+      default: "Administrator"
+
+    - name: ansible_password
+      prompt: "Local Administrator password (blank if SSH key already deployed)"
+      private: true
+      default: ""
+
+    - name: target_hostname
+      prompt: "Target hostname (e.g. EXADCSLIV001)"
+      private: false
+      default: ""
+
+  vars:
+    ansible_become:               false
+    ansible_become_method:        runas
+    ansible_connection:           ssh
+    ansible_shell_type:           powershell
+    ansible_ssh_extra_args:       '-o StrictHostKeyChecking=no'
+    ansible_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa"
+    ansible_ssh_public_key_file:  "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa.pub"
+    sites_csv:                    "/etc/example-music/sites.csv"
+    dns_server:                   "192.168.139.8"
+
+  tasks:
+
+    # =========================================================================
+    # STEP 1 — Validate hostname before touching anything
+    # =========================================================================
+
+    - name: Validate hostname format
+      assert:
+        that:
+          - target_hostname | length > 0
+          - target_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$')
+        fail_msg: >
+          '{{ target_hostname }}' is not a valid EXA hostname.
+          Format: EXA[ROLE][SITE][NNN] — e.g. EXADCSLIV001, EXAWKSFAL001.
+
+    - name: Parse site and role codes from hostname
+      set_fact:
+        host_site_code: "{{ target_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first }}"
+        host_role_code: "{{ target_hostname | upper | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\\1') | first }}"
+
+    # =========================================================================
+    # STEP 2 — Read sites.csv on control node, derive network details
+    # =========================================================================
+
+    - name: Read sites.csv from control node
+      set_fact:
+        site_data: "{{ lookup('file', sites_csv) | community.general.from_csv }}"
+      delegate_to: localhost
+
+    - name: Find site record for {{ host_site_code }}
+      set_fact:
+        site_record: "{{ site_data | selectattr('Site', 'equalto', host_site_code) | list | first | default({}) }}"
+
+    - name: Fail if site code not found in sites.csv
+      fail:
+        msg: "Site code '{{ host_site_code }}' not found in {{ sites_csv }}. Check the hostname."
+      when: site_record | length == 0
+
+    - name: Derive network defaults from sites.csv
+      set_fact:
+        site_subnet:  "{{ site_record.Subnet }}"
+        site_gateway: "{{ site_record.Gateway }}"
+        site_dc:      "{{ site_record.DC }}"
+        site_city:    "{{ site_record.City }}"
+        site_country: "{{ site_record.Country }}"
+        subnet_base:  "{{ site_record.Subnet | regex_replace('/\\d+$', '') | regex_replace('\\.\\d+$', '') }}"
+        prefix_len:   "{{ site_record.Subnet.split('/')[1] }}"
+
+    - name: Show derived site info
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════"
+          - "  Hostname : {{ target_hostname | upper }}"
+          - "  Site     : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
+          - "  Subnet   : {{ site_subnet }}"
+          - "  Gateway  : {{ site_gateway }}"
+          - "  DC       : {{ site_dc }}"
+          - "  DNS      : {{ dns_server }}"
+          - "════════════════════════════════════════════════════════"
+
+    # =========================================================================
+    # STEP 3 — Connect and verify SSH is healthy
+    # =========================================================================
+
+    - name: Gather facts
+      ansible.windows.setup:
+
+    - name: Ensure sshd is running and set to auto-start
+      ansible.windows.win_service:
+        name: sshd
+        start_mode: auto
+        state: started
+
+    - name: Ensure OpenSSH firewall rule exists
+      community.windows.win_firewall_rule:
+        name:      OpenSSH-Server-In-TCP
+        localport: "22"
+        action:    allow
+        direction: in
+        protocol:  tcp
+        state:     present
+        enabled:   true
+
+    # =========================================================================
+    # STEP 4 — Deploy Ansible public key (passwordless from here on)
+    # =========================================================================
+
+    - name: Create ProgramData\ssh directory
+      ansible.windows.win_file:
+        path: 'C:\ProgramData\ssh'
+        state: directory
+
+    - name: Deploy Ansible public key to administrators_authorized_keys
+      ansible.windows.win_copy:
+        content: "{{ lookup('file', ansible_ssh_public_key_file) }}\n"
+        dest:    'C:\ProgramData\ssh\administrators_authorized_keys'
+
+    - name: Lock down administrators_authorized_keys permissions
+      ansible.windows.win_shell: |
+        icacls C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r
+        icacls C:\ProgramData\ssh\administrators_authorized_keys /grant "SYSTEM:(F)"
+        icacls C:\ProgramData\ssh\administrators_authorized_keys /grant "BUILTIN\Administrators:(F)"
+      changed_when: false
+
+    # =========================================================================
+    # STEP 5 — NIC selection
+    # =========================================================================
+
+    - name: List available NICs
+      ansible.windows.win_shell: |
+        $nics = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.Name -notmatch 'Loopback' }
+        $i = 1
+        foreach ($n in $nics) {
+          $ip = (Get-NetIPAddress -InterfaceIndex $n.ifIndex -AddressFamily IPv4 `
+                 -ErrorAction SilentlyContinue).IPAddress
+          Write-Output "$i`t$($n.Name)`t$($n.InterfaceDescription)`t$($ip -join ',')"
+          $i++
+        }
+      register: nic_list
+      changed_when: false
+
+    - name: Show available NICs
+      debug:
+        msg: "{{ nic_list.stdout_lines }}"
+
+    - name: Prompt — select NIC
+      ansible.builtin.pause:
+        prompt: |
+
+          ── NIC Selection ────────────────────────────────────────────────────
+          NICs listed above (number / name / description / current IP).
+          Enter the NUMBER of the NIC to configure.
+          (If only one NIC listed, enter 1)
+      register: nic_choice
+
+    - name: Get selected NIC name
+      ansible.windows.win_shell: |
+        $nics = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.Name -notmatch 'Loopback' }
+        $selected = @($nics)[{{ nic_choice.user_input | trim | int - 1 }}]
+        Write-Output $selected.Name
+      register: selected_nic
+      changed_when: false
+
+    - name: Set selected NIC fact
+      set_fact:
+        target_nic: "{{ selected_nic.stdout | trim }}"
+
+    # =========================================================================
+    # STEP 6 — IP configuration
+    # =========================================================================
+
+    - name: Prompt — DHCP or static IP
+      ansible.builtin.pause:
+        prompt: |
+
+          ── IP Configuration for {{ target_nic }} ────────────────────────────
+          Site    : {{ host_site_code }} — {{ site_city }}
+          Subnet  : {{ site_subnet }}
+          Gateway : {{ site_gateway }}
+          DNS     : {{ dns_server }}
+
+          Enter 'd' for DHCP, or a static IP (e.g. {{ subnet_base }}.10)
+          Servers/DCs typically use a static IP. Workstations can use DHCP.
+      register: ip_choice
+
+    - name: Set IP mode facts
+      set_fact:
+        use_dhcp:  "{{ ip_choice.user_input | trim | lower == 'd' }}"
+        static_ip: "{{ ip_choice.user_input | trim if ip_choice.user_input | trim | lower != 'd' else '' }}"
+
+    - name: Prompt — confirm static IP details
+      ansible.builtin.pause:
+        prompt: |
+
+          ── Confirm Static IP ────────────────────────────────────────────────
+          NIC     : {{ target_nic }}
+          IP      : {{ static_ip }}/{{ prefix_len }}
+          Gateway : {{ site_gateway }}
+          DNS 1   : {{ dns_server }}
+          DNS 2   : {{ site_dc }}
+
+          Press Enter to confirm, Ctrl+C then A to abort.
+      when: not use_dhcp | bool
+
+    # =========================================================================
+    # STEP 7 — Write scheduled task to apply static IP on next boot
+    # Scheduled as SYSTEM@startup so it fires during the rename reboot
+    # below — one reboot covers both. Task self-deletes after running.
+    # =========================================================================
+
+    - name: Write scheduled task — apply static IP on next boot
+      ansible.windows.win_shell: |
+        $script = @"
+        netsh interface ip set address name='{{ target_nic }}' static {{ static_ip }} {{ '255.255.255.0' if prefix_len == '24' else '255.255.0.0' }} {{ site_gateway }}
+        netsh interface ip set dns    name='{{ target_nic }}' static {{ dns_server }}
+        netsh interface ip add dns    name='{{ target_nic }}' {{ site_dc }} index=2
+        Unregister-ScheduledTask -TaskName 'EXA-ApplyStaticIP' -Confirm:$false
+        "@
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+        $action    = New-ScheduledTaskAction -Execute "powershell.exe" `
+                       -Argument "-NoProfile -NonInteractive -EncodedCommand $encoded"
+        $trigger   = New-ScheduledTaskTrigger -AtStartup
+        $settings  = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
+        $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest
+        Register-ScheduledTask -TaskName "EXA-ApplyStaticIP" `
+          -Action $action -Trigger $trigger -Settings $settings `
+          -Principal $principal -Force
+      changed_when: true
+      when: not use_dhcp | bool
+
+    # =========================================================================
+    # STEP 8 — Rename computer
+    # =========================================================================
+
+    - name: Rename computer to {{ target_hostname | upper }}
+      ansible.windows.win_hostname:
+        name: "{{ target_hostname | upper }}"
+      register: rename_result
+
+    # =========================================================================
+    # STEP 9 — Single reboot covers both rename and static IP scheduled task
+    # =========================================================================
+
+    - name: Warn operator — reboot imminent, reconnect address will change
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  Rebooting now to apply hostname and IP changes."
+          - "{% if not use_dhcp | bool %}"
+          - "  !! IP CHANGE — Ansible will reconnect on {{ static_ip }} !!"
+          - "  DO NOT press Ctrl+C — reconnect takes up to 5 minutes."
+          - "{% else %}"
+          - "  IP stays DHCP — reconnecting on {{ inventory_hostname }}"
+          - "{% endif %}"
+          - "════════════════════════════════════════════════════════════════"
+      when: rename_result.reboot_required | default(false) or not use_dhcp | bool
+
+    - name: Reboot — applies rename and static IP in one pass
+      ansible.windows.win_reboot:
+        reboot_timeout:    300
+        post_reboot_delay: 20
+        msg: "EXA pre-flight — applying hostname and IP"
+      when: rename_result.reboot_required | default(false) or not use_dhcp | bool
+
+    - name: Wait for reconnection after reboot
+      ansible.builtin.wait_for_connection:
+        host:    "{{ static_ip if not use_dhcp | bool else inventory_hostname }}"
+        port:    22
+        timeout: 300
+        delay:   20
+      when: rename_result.reboot_required | default(false) or not use_dhcp | bool
+
+    # =========================================================================
+    # STEP 10 — Summary before handing off
+    # =========================================================================
+
+    - name: Pre-flight complete — summary
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  Pre-flight complete"
+          - "  Hostname : {{ target_hostname | upper }}"
+          - "  Site     : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
+          - "  IP       : {{ static_ip if not use_dhcp | bool else 'DHCP' }}"
+          - "  SSH      : running, auto-start, Ansible key deployed"
+          - "  Handing off to 05-bootstrap.yml..."
+          - "════════════════════════════════════════════════════════════════"
+
+- import_playbook: 05-bootstrap.yml
