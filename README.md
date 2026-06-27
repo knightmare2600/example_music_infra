@@ -216,18 +216,18 @@ docs/
 - **Remote access consoles:** iDRAC or iLO depending on hardware vendor, e.g. `192.168.76.3/24` for `FAL` site
 
 | IP | Hostname | Role | Notes |
-|----|----------|------|-------|
-| `192.168.139.1` | `EXARTRCLD001` | Secondary internet gateway / firewall | Fallback IP/Internet Connection |
-| `192.168.139.2` | `EXARACCLD001` | BMC pool slot 1 — DRAC/iLO | PVE node 1 BMC |
-| `192.168.139.5` | `EXAPVECLD001` | Proxmox VE node | Hosts CLD infra |
-| `192.168.139.8` | `EXADNSCLD001` | BIND DNS server | Primary DNS for `jukebox.internal` |
-| `192.168.139.9` | `EXAANSCLD001` | Ansible server | Ansible Automation Server *NB: Moved to 192.168.69.??* as EXAFWLCLD is the primary Wireguard hub |
-| `192.168.139.10` | `EXADCSCLD001` | Active Directory server | Active Directory Server for `jukebox.internal` |
-| `192.168.139.20` | `EXASVRCLD001` | Windows Admin Server | Windows Central Admin Server |
-| `192.168.139.48` | `EXAPBXCLD001` | PBX | Central PBX — all site SBCs trunk here |
-| `192.168.139.50` | `EXAPRVCLD001` | Legal ficiton | Provisioning / Bootstrap Server / HTTP / PXE / TFTP Server |
-| `192.168.139.69` | `EXAFWLCLD001` | CLD Firewall | Internal LAN: 192.168.69.253/24 ***NB: Some infra will move here in due course to free up vRACK IP Addresses*** |
-| `192.168.139.253` | `EXARTRCLD001` | Primary internet gateway / DNS | Physical router *NOT controlled* |
+|-------------------|----------------|---------------------------------------|------------------------------------|
+| `192.168.139.1`   | `EXARTRCLD001` | Secondary internet gateway / firewall | Fallback IP/Internet Connection    |
+| `192.168.139.2`   | `EXARACCLD001` | BMC pool slot 1 — DRAC/iLO            | PVE node 1 BMC                     |
+| `192.168.139.5`   | `EXAPVECLD001` | Proxmox VE node                       | Hosts CLD infra                    |
+| `192.168.139.8`   | `EXADNSCLD001` | BIND DNS server                       | Primary DNS for `jukebox.internal` |
+| `192.168.139.9`   | `EXAANSCLD001` | Ansible server                        | Ansible Automation Server *NB: Moved to 192.168.69.??* as EXAFWLCLD is the primary Wireguard hub |
+| `192.168.139.10`  | `EXADCSCLD001` | Active Directory server               | Active Directory Server for `jukebox.internal` |
+| `192.168.139.20`  | `EXASVRCLD001` | Windows Admin Server                  | Windows Central Admin Server       |
+| `192.168.139.48`  | `EXAPBXCLD001` | PBX                                   | Central PBX — all site SBCs trunk here |
+| `192.168.139.50`  | `EXAPRVCLD001` | Legal ficiton                         | Provisioning / Bootstrap Server / HTTP / PXE / TFTP Server |
+| `192.168.139.69`  | `EXAFWLCLD001` | CLD Firewall                          | Internal LAN: 192.168.69.253/24 ***NB: Some infra will move here in due course to free up vRACK IP Addresses*** |
+| `192.168.139.253` | `EXARTRCLD001` | Primary internet gateway / DNS        | Physical router *NOT controlled*    |
 
 ## Requirements
 
