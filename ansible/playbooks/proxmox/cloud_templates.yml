@@ -1,0 +1,125 @@
+---
+# proxmox/cloud_templates.yml
+# Build Ubuntu Noble and Debian Trixie cloud-init templates.
+# Must run on a PVE node as ansible (has kvm group, sudo).
+#   ansible-playbook playbooks/proxmox/cloud_templates.yml \
+#     -i configs/inventory --limit pvenodes
+#
+# Idempotent: skips download/build if template ID already exists.
+# TODO: extend for Windows template (separate task file)
+
+- name: Build cloud-init VM templates
+  hosts: pvenodes
+  become: true
+  vars_files:
+    - ../../group_vars/pvenodes/main.yml
+
+  vars:
+    images:
+      - name: ubuntu-noble-2404-cloudinit-template
+        vmid: "{{ template_ubuntu_noble }}"
+        url: https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
+        dest: /home/ansible/noble-server-cloudimg-amd64.img
+
+      - name: debian-trixie-13-cloudinit-template
+        vmid: "{{ template_debian_trixie }}"
+        url: https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2
+        dest: /home/ansible/debian-13-genericcloud-amd64.qcow2
+
+  tasks:
+
+    - name: Check which templates already exist
+      command: qm list
+      register: qm_list_out
+      changed_when: false
+
+    - name: Download cloud image (if template does not exist)
+      get_url:
+        url: "{{ item.url }}"
+        dest: "{{ item.dest }}"
+        mode: '0644'
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Update packages in cloud image
+      command: virt-customize -a {{ item.dest }} --update
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Install tools in cloud image
+      command: >
+        virt-customize -a {{ item.dest }}
+        --install net-tools,qemu-guest-agent,vim,grc,curl
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Add ansible user in cloud image
+      command: >
+        virt-customize -a {{ item.dest }}
+        --run-command 'useradd --shell /bin/bash ansible'
+        --run-command 'mkdir -p /home/ansible/.ssh'
+        --run-command 'chown -R ansible:ansible /home/ansible'
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Inject ansible SSH key into cloud image
+      command: >
+        virt-customize -a {{ item.dest }}
+        --ssh-inject ansible:file:/home/ansible/.ssh/authorized_keys
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Inject sudoers file into cloud image
+      command: >
+        virt-customize -a {{ item.dest }}
+        --upload /etc/sudoers.d/ansible:/etc/sudoers.d/ansible
+        --run-command 'chmod 0440 /etc/sudoers.d/ansible'
+        --run-command 'chown root:root /etc/sudoers.d/ansible'
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Blank machine-id in cloud image
+      command: >
+        virt-customize -a {{ item.dest }}
+        --run-command 'echo -n >/etc/machine-id'
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Create VM from cloud image
+      command: >
+        /usr/sbin/qm create {{ item.vmid }}
+        --name "{{ item.name }}"
+        --memory 2048
+        --cores 2
+        --net0 virtio,bridge=vmbr0
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Import disk
+      command: >
+        /usr/sbin/qm importdisk {{ item.vmid }} {{ item.dest }} {{ pve_default_storage }}
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Attach disk and configure VM
+      shell: |
+        /usr/sbin/qm set {{ item.vmid }} --scsihw virtio-scsi-pci --scsi0 {{ pve_default_storage }}:vm-{{ item.vmid }}-disk-0
+        /usr/sbin/qm set {{ item.vmid }} --boot c --bootdisk scsi0
+        /usr/sbin/qm set {{ item.vmid }} --ide2 {{ pve_default_storage }}:cloudinit
+        /usr/sbin/qm set {{ item.vmid }} --serial0 socket --vga serial0
+        /usr/sbin/qm set {{ item.vmid }} --agent enabled=1
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Convert to template
+      command: /usr/sbin/qm template {{ item.vmid }}
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+
+    - name: Remove downloaded image (clean up)
+      file:
+        path: "{{ item.dest }}"
+        state: absent
+      loop: "{{ images }}"
+      when: item.vmid | string not in qm_list_out.stdout
+

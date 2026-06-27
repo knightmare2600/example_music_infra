@@ -1,0 +1,25 @@
+---
+# linux/tools.yml
+# Deploy common tools to all Linux hosts.
+#   ansible-playbook playbooks/linux/tools.yml -i configs/inventory
+
+- name: Deploy common tools
+  hosts: all
+  become: true
+  vars_files:
+    - ../../group_vars/all/main.yml
+
+  tasks:
+
+    - name: Install common packages
+      apt:
+        name: "{{ common_packages }}"
+        state: latest
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Set default shell to zsh for ansible user
+      user:
+        name: ansible
+        shell: /bin/zsh
+

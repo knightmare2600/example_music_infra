@@ -1,0 +1,2 @@
+# Ansible automation - full passwordless sudo
+ansible ALL=(ALL) NOPASSWD: ALL
