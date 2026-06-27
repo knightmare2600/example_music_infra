@@ -8,17 +8,13 @@
 #
 # PRE-REQUISITES:
 #   - OpenSSH is installed and running (handled by autounattend.xml).
-#   - host_vars/<hostname>/windows.yml must be populated (see TEMPLATE).
+#   - host_vars/<hostname>/windows.yml must be populated for inventory runs.
 #
 # CREDENTIALS:
 #   First run: the playbook prompts for the local Administrator password
 #   (masked). It uses this to connect and deploy the Ansible SSH key.
 #   After that first run the key is in place and the password is never
 #   needed again — just let ansible_ssh_private_key_file do its job.
-#
-#   To skip the prompt on subsequent runs (key already deployed):
-#     ansible-playbook ... --key-file ~/ansible/configs/ansible-id_rsa
-#   Or set ansible_password in vault if you ever need password auth again.
 #
 # SENTINEL GUARD:
 #   C:\Windows\Temp\PostOOBE-Bootstrap.done — if present, host is skipped.
@@ -29,13 +25,19 @@
 #   Read in PowerShell with:
 #     $n = Get-Content 'C:\ProgramData\example-music\nodeinfo.json' | ConvertFrom-Json
 #
-# USAGE — single host (first time, will prompt for password):
+# USAGE — one-shot (prompts for all required values):
 #   ansible-playbook playbooks/windows_bootstrap/playbooks/windows_bootstrap.yml \
-#     -i configs/inventory --limit EXAWKSFAL001
+#     -i 192.168.151.174, -e "target_hosts=192.168.151.174"
 #
 # USAGE — bulk (host_vars must be fully populated, key already deployed):
 #   ansible-playbook playbooks/windows_bootstrap/playbooks/windows_bootstrap.yml \
 #     -i configs/inventory --limit windows_nodes
+#
+# Changelog:
+#   2026-06-20  Initial file
+#   2026-06-27  Added ansible_user/target_hostname prompts; fixed connection
+#               vars for ad-hoc runs; reordered phases: rename→config→choco
+#               →openssh→domain join→post-join; hostname-driven site detection
 # =============================================================================
 
 - name: Bootstrap Windows node — pre-join configuration
@@ -43,22 +45,44 @@
   gather_facts: true
 
   vars_prompt:
-    # Prompted once on first run to deploy the SSH key.
-    # Leave blank on subsequent runs — Ansible will use the private key file.
+
+    - name: ansible_user
+      prompt: "Username to connect as"
+      private: false
+      default: "Administrator"
+
     - name: ansible_password
       prompt: "Local Administrator password (blank if SSH key already deployed)"
       private: true
       default: ""
 
-  vars:
-    force_bootstrap: false
-    forest_root:     jukebox.internal
-    deploy_tools_dc: EXADCSCPH001
-    wallpaper_url:   "http://192.168.139.50/ExampleMusicWallpaper.png"
-    wallpaper_dest:  'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.png'
-    marker_file:     'C:\Windows\Temp\PostOOBE-Bootstrap.done'
+    - name: target_hostname
+      prompt: "Target hostname (e.g. EXADCSLIV001, blank to skip rename)"
+      private: false
+      default: ""
 
-    # Subnet third-octet → site/domain map
+    - name: win_domain_join_password
+      prompt: "Domain join password"
+      private: true
+      default: ""
+
+  vars:
+    ansible_become:               false
+    ansible_become_method:        runas
+    ansible_connection:           ssh
+    ansible_shell_type:           powershell
+    ansible_ssh_extra_args:       '-o StrictHostKeyChecking=no'
+    ansible_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa"
+    ansible_ssh_public_key_file:  "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa.pub"
+    force_bootstrap:              false
+    forest_root:                  jukebox.internal
+    deploy_tools_dc:              EXADCSCLD001
+    wallpaper_url:                "http://192.168.139.50/ExampleMusicWallpaper.png"
+    wallpaper_dest:               'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.png'
+    win_ou_path:                  "OU=Computers,DC=jukebox,DC=internal"
+    marker_file:                  'C:\Windows\Temp\PostOOBE-Bootstrap.done'
+
+    # Subnet third-octet → site/domain map (used when hostname not provided)
     subnet_site_map:
       "76":  { site: FAL, domain: example.net  }  # Falkirk — head office
       "131": { site: EDI, domain: example.net  }  # Edinburgh
@@ -103,10 +127,56 @@
       "93":  { site: AKL, domain: example.net  }  # Auckland
       "139": { site: CLD, domain: example.net  }  # Cloud / provisioning
 
+    # Hostname site code → domain map (used when target_hostname is provided)
+    # Site code is characters 6-8 of the EXA hostname convention: EXADCS[LIV]001
+    site_domain_map:
+      FAL: example.net
+      EDI: example.net
+      GLA: example.net
+      CLY: example.net
+      DUN: example.net
+      PER: example.net
+      ABD: example.org
+      LND: example.net
+      BIR: example.net
+      MCR: example.org
+      LIV: example.org
+      NEW: example.org
+      SHE: example.net
+      HAL: example.net
+      HUL: example.net
+      COV: example.net
+      CPH: example.com
+      ODE: example.net
+      KGE: example.net
+      FAX: example.net
+      KOR: example.net
+      BON: example.net
+      BER: example.net
+      MUN: example.net
+      GOT: example.net
+      OSL: example.net
+      AMS: example.net
+      MIL: example.net
+      VIE: example.net
+      BRK: example.net
+      TOR: example.net
+      MTL: example.net
+      LAX: example.net
+      NYC: example.net
+      NJC: example.net
+      MIA: example.net
+      ATL: example.net
+      CHI: example.net
+      SYD: example.net
+      MEL: example.net
+      AKL: example.net
+      CLD: example.net
+
   pre_tasks:
 
     # -------------------------------------------------------------------------
-    # Sentinel guard — skip gracefully if already bootstrapped
+    # Sentinel guard
     # -------------------------------------------------------------------------
     - name: Check for bootstrap marker
       ansible.windows.win_stat:
@@ -129,37 +199,88 @@
         - not force_bootstrap | bool
 
     # -------------------------------------------------------------------------
-    # Derive site from IP if not set in host_vars
+    # Site / domain detection
+    # Priority: prompted hostname > host_vars > IP subnet map
     # -------------------------------------------------------------------------
-    - name: Detect site from IP address
+    - name: Derive site code from prompted hostname
       set_fact:
-        detected_third_octet: "{{ ansible_ip_addresses
+        _site_from_hostname: "{{ target_hostname[6:9] | upper }}"
+      when: target_hostname | length >= 9
+
+    - name: Derive site code from IP subnet (fallback)
+      set_fact:
+        _detected_third_octet: "{{ ansible_ip_addresses
           | select('match', '^192\\.168\\.')
           | reject('match', '^192\\.168\\.139\\.')
           | map('split', '.')
           | map(attribute=2)
           | first | default('') }}"
+      when: target_hostname | length < 9
 
-    - name: Resolve site and domain from subnet map
+    - name: Resolve site and domain
       set_fact:
-        resolved_site:   "{{ win_site   | default(subnet_site_map[detected_third_octet].site   | default('UNKNOWN')) }}"
-        resolved_domain: "{{ win_domain | default(subnet_site_map[detected_third_octet].domain | default('example.net')) }}"
+        resolved_site: >-
+          {%- if target_hostname | length >= 9 -%}
+            {{ _site_from_hostname }}
+          {%- elif win_site is defined -%}
+            {{ win_site }}
+          {%- else -%}
+            {{ subnet_site_map[_detected_third_octet].site | default('UNKNOWN') }}
+          {%- endif -%}
+        resolved_domain: >-
+          {%- if target_hostname | length >= 9 -%}
+            {{ site_domain_map[_site_from_hostname] | default('example.net') }}
+          {%- elif win_domain is defined -%}
+            {{ win_domain }}
+          {%- else -%}
+            {{ subnet_site_map[_detected_third_octet].domain | default('example.net') }}
+          {%- endif -%}
 
-    - name: Display resolved identity before proceeding
+    - name: Resolve effective hostname
+      set_fact:
+        effective_hostname: "{{ target_hostname if target_hostname | length > 0 else inventory_hostname }}"
+
+    # -------------------------------------------------------------------------
+    # Identity summary — confirm before doing anything destructive
+    # -------------------------------------------------------------------------
+    - name: Display resolved identity
       debug:
         msg:
           - "════════════════════════════════════════════"
-          - "  Host     : {{ inventory_hostname }}"
+          - "  Host     : {{ effective_hostname }}"
           - "  Site     : {{ resolved_site }}"
           - "  Domain   : {{ resolved_domain }}"
           - "  OU       : {{ win_ou_path }}"
           - "  Platform : {{ ansible_virtualization_type | default('unknown') }}"
           - "════════════════════════════════════════════"
 
+    - name: Confirm identity before proceeding
+      ansible.builtin.pause:
+        prompt: "Press Enter to continue or Ctrl-C to abort"
+
+    # =========================================================================
+    # PHASE 1 — Rename (must happen before everything else so the machine
+    #           identity is correct before it hits AD)
+    # =========================================================================
+
+    - name: Rename computer
+      ansible.windows.win_hostname:
+        name: "{{ effective_hostname }}"
+      register: hostname_result
+      when: target_hostname | length > 0
+
+    - name: Reboot after rename
+      ansible.windows.win_reboot:
+        reboot_timeout: 300
+        post_reboot_delay: 15
+      when:
+        - target_hostname | length > 0
+        - hostname_result.reboot_required | default(false)
+
   tasks:
 
     # =========================================================================
-    # PHASE 1 — System settings (no reboot needed yet)
+    # PHASE 2 — System configuration
     # =========================================================================
 
     # ---- Hypervisor guest tools ---------------------------------------------
@@ -175,8 +296,8 @@
         state: present
       when: ansible_virtualization_type | default('') == 'VMware'
 
-    # ---- Power settings — VM-appropriate ------------------------------------
-    - name: Disable hibernation (VMs don't need it, wastes disk)
+    # ---- Power settings -----------------------------------------------------
+    - name: Disable hibernation
       ansible.windows.win_command: powercfg /h off
       changed_when: false
 
@@ -195,7 +316,7 @@
       ansible.windows.win_command: powercfg /change monitor-timeout-dc 60
       changed_when: false
 
-    - name: Set lock screen inactivity timeout (3600 seconds = 60 min)
+    - name: Set lock screen inactivity timeout (3600 seconds)
       ansible.windows.win_regedit:
         path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
         name: InactivityTimeoutSecs
@@ -227,7 +348,7 @@
       ansible.windows.win_get_url:
         url: "{{ wallpaper_url }}"
         dest: "{{ wallpaper_dest }}"
-        force: false        # don't re-download if already present
+        force: false
 
     - name: Set wallpaper via PersonalizationCSP (path)
       ansible.windows.win_regedit:
@@ -236,7 +357,7 @@
         data: "{{ wallpaper_dest }}"
         type: string
 
-    - name: Set wallpaper via PersonalizationCSP (url key — same value)
+    - name: Set wallpaper via PersonalizationCSP (url key)
       ansible.windows.win_regedit:
         path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP
         name: DesktopImageUrl
@@ -250,7 +371,7 @@
         data: 1
         type: dword
 
-    - name: Lock wallpaper via policy (prevents user changing it)
+    - name: Lock wallpaper via policy
       ansible.windows.win_regedit:
         path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
         name: Wallpaper
@@ -264,7 +385,7 @@
         data: "10"
         type: string
 
-    - name: Hide Themes tab in Settings (user cannot change wallpaper)
+    - name: Hide Themes tab in Settings
       ansible.windows.win_regedit:
         path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer
         name: NoThemesTab
@@ -282,7 +403,7 @@
         - AppsUseLightTheme
         - SystemUsesLightTheme
 
-    - name: Enable dark mode in Default user hive (new users get dark mode on first logon)
+    - name: Enable dark mode in Default user hive
       ansible.windows.win_shell: |
         reg load HKLM\TempDefaultHive C:\Users\Default\NTUSER.DAT
         reg add "HKLM\TempDefaultHive\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v AppsUseLightTheme /t REG_DWORD /d 0 /f
@@ -291,9 +412,23 @@
         reg unload HKLM\TempDefaultHive
       changed_when: false
 
-    # ---- OpenSSH ------------------------------------------------------------
-    # OpenSSH is installed and started by SetupComplete.cmd (autounattend build).
-    # We don't reinstall it — just verify the service state and deploy the key.
+    # ---- RDP ----------------------------------------------------------------
+    - name: Enforce NLA for RDP
+      ansible.windows.win_regedit:
+        path: HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp
+        name: UserAuthentication
+        data: 1
+        type: dword
+
+    - name: Ensure TermService is running and set to auto-start
+      ansible.windows.win_service:
+        name: TermService
+        start_mode: auto
+        state: started
+
+    # =========================================================================
+    # PHASE 3 — OpenSSH (deploy key before choco reboot so reconnect works)
+    # =========================================================================
 
     - name: Verify sshd is running and set to auto-start
       ansible.windows.win_service:
@@ -311,14 +446,14 @@
         content: "{{ lookup('file', ansible_ssh_public_key_file) }}\n"
         dest: 'C:\ProgramData\ssh\administrators_authorized_keys'
 
-    - name: Lock down administrators_authorized_keys permissions (sshd requires this)
+    - name: Lock down administrators_authorized_keys permissions
       ansible.windows.win_shell: |
         icacls C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r
         icacls C:\ProgramData\ssh\administrators_authorized_keys /grant "SYSTEM:(F)"
         icacls C:\ProgramData\ssh\administrators_authorized_keys /grant "BUILTIN\Administrators:(F)"
       changed_when: false
 
-    - name: Set default SSH shell to PowerShell 7 (fall back to PS5)
+    - name: Set default SSH shell to PowerShell 7
       ansible.windows.win_regedit:
         path: HKLM:\SOFTWARE\OpenSSH
         name: DefaultShell
@@ -342,30 +477,16 @@
         state: present
         enabled: true
 
-    # ---- RDP ----------------------------------------------------------------
-    # RDP and its firewall rules are enabled by SetupComplete.cmd.
-    # SetupComplete does NOT enforce NLA — we add that here.
+    # =========================================================================
+    # PHASE 4 — Chocolatey, packages, PS modules, fonts
+    #           Reboot after choco install to refresh environment
+    # =========================================================================
 
-    - name: Enforce NLA for RDP (SetupComplete does not set this)
-      ansible.windows.win_regedit:
-        path: HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp
-        name: UserAuthentication
-        data: 1
-        type: dword
-
-    - name: Ensure TermService is running and set to auto-start
-      ansible.windows.win_service:
-        name: TermService
-        start_mode: auto
-        state: started
-
-    # ---- Chocolatey ---------------------------------------------------------
     - name: Install Chocolatey
       chocolatey.chocolatey.win_chocolatey:
         name: chocolatey
         state: present
 
-    # ---- Baseline packages --------------------------------------------------
     - name: Install baseline packages via Chocolatey
       chocolatey.chocolatey.win_chocolatey:
         name: "{{ item }}"
@@ -380,6 +501,11 @@
         - far
         - dua-cli
         - rustdesk
+
+    - name: Reboot after Chocolatey packages (refreshes PATH, PS7 becomes available)
+      ansible.windows.win_reboot:
+        reboot_timeout: 300
+        post_reboot_delay: 15
 
     # ---- RSAT ---------------------------------------------------------------
     - name: Install RSAT capabilities
@@ -471,7 +597,7 @@
           if (Get-Module -ListAvailable -Name NerdFonts) {
               Import-Module NerdFonts -ErrorAction SilentlyContinue
           }
-        force: false    # don't overwrite if already deployed
+        force: false
 
     # ---- Hyper terminal config ----------------------------------------------
     - name: Deploy Hyper config for local Administrator
@@ -480,25 +606,15 @@
         src: templates/hyper.js
         force: true
 
-    - name: Stage Hyper config in Default profile (new domain users inherit it)
+    - name: Stage Hyper config in Default profile
       ansible.windows.win_copy:
         dest: 'C:\Users\Default\AppData\Roaming\Hyper\.hyper.js'
         src: templates/hyper.js
         force: true
 
     # =========================================================================
-    # PHASE 2 — Domain join (requires reboot, then reconnect)
+    # PHASE 5 — Domain join
     # =========================================================================
-
-    - name: Rename computer if hostname differs from inventory name
-      ansible.windows.win_hostname:
-        name: "{{ inventory_hostname }}"
-      register: hostname_result
-
-    - name: Reboot now if hostname changed (required before domain join)
-      ansible.windows.win_reboot:
-        reboot_timeout: 300
-      when: hostname_result.reboot_required | default(false)
 
     - name: Join domain
       microsoft.ad.membership:
@@ -516,7 +632,7 @@
       when: domain_join_result.reboot_required | default(true)
 
     # =========================================================================
-    # PHASE 3 — Post-join (runs after reboot, now domain-joined)
+    # PHASE 6 — Post-join
     # =========================================================================
 
     - name: Write bootstrap marker (sentinel)
@@ -524,18 +640,12 @@
         path: "{{ marker_file }}"
         state: touch
 
-    # =========================================================================
-    # Node info file — C:\ProgramData\example-music\nodeinfo.json
-    # =========================================================================
-
     - name: Create C:\ProgramData\example-music directory
       ansible.windows.win_file:
         path: 'C:\ProgramData\example-music'
         state: directory
 
     # ── Environment detection ─────────────────────────────────────────────────
-    # Check for a previously written environment file; prompt once if absent.
-
     - name: Check for existing environment file
       ansible.windows.win_stat:
         path: 'C:\ProgramData\example-music\environment.txt'
@@ -575,11 +685,6 @@
       when: not _env_file.stat.exists
 
     # ── Write nodeinfo.json ───────────────────────────────────────────────────
-    # Role is derived from the EXA hostname convention:
-    #   EXAWKS → workstation, EXASRV → server, EXADCS → domain_controller, etc.
-    # PowerShell reads this natively:
-    #   $n = Get-Content 'C:\ProgramData\example-music\nodeinfo.json' | ConvertFrom-Json
-
     - name: Write C:\ProgramData\example-music\nodeinfo.json
       ansible.windows.win_copy:
         dest: 'C:\ProgramData\example-music\nodeinfo.json'
@@ -596,9 +701,9 @@
           PRV: provisioning
           PVE: proxmox
           FWL: firewall
-        _role_code: "{{ inventory_hostname[3:6] | upper }}"
+        _role_code: "{{ effective_hostname[3:6] | upper }}"
         _nodeinfo:
-          hostname:        "{{ inventory_hostname }}"
+          hostname:        "{{ effective_hostname }}"
           role:            "{{ _role_map[_role_code] | default('windows') }}"
           site:            "{{ resolved_site }}"
           domain:          "{{ resolved_domain }}"
@@ -617,10 +722,11 @@
       debug:
         msg:
           - "════════════════════════════════════════════"
-          - "  Bootstrap complete: {{ inventory_hostname }}"
+          - "  Bootstrap complete: {{ effective_hostname }}"
           - "  Domain  : {{ resolved_domain }}"
           - "  Site    : {{ resolved_site }}"
           - "  OU      : {{ win_ou_path }}"
           - "  SSH     : OpenSSH running, Ansible key deployed"
           - "  RDP     : enabled"
           - "════════════════════════════════════════════"
+
