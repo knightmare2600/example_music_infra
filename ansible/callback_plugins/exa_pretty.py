@@ -19,6 +19,9 @@
 #
 # Changelog:
 #   2026-06-20  Initial file — port of firewallme.sh colour scheme to Ansible
+#   2026-06-27  Merged: live unreachable counter + classify_unreachable + fmt_ip;
+#               restored colourised recap and DIM/WHITE host distinction
+#   2026-06-27  Fix \r/display collision; grouped recap (reachable, no_route, unreachable)
 # =================================================================================================
 
 from __future__ import absolute_import, division, print_function
@@ -41,7 +44,8 @@ options:
 from ansible.plugins.callback import CallbackBase
 import datetime
 import os
-
+import sys
+from collections import defaultdict
 
 class C:
   RESET  = "\033[0m"
@@ -53,17 +57,27 @@ class C:
   WHITE  = "\033[1;37m"
   DIM    = "\033[2;37m"
 
-
 def _ts():
   return datetime.datetime.now().strftime("%H:%M:%S")
 
+def fmt_ip(ip):
+  return f"{ip:<16}"
 
-def ok(msg):    return f"{C.GREEN}[+]{C.RESET} {msg}"
-def info(msg):  return f"{C.CYAN}[*]{C.RESET} {msg}"
-def warn(msg):  return f"{C.YELLOW}[!]{C.RESET} {msg}"
-def err(msg):   return f"{C.RED}[✗]{C.RESET} {msg}"
-def chg(msg):   return f"{C.CYAN}[→]{C.RESET} {msg}"
+def ok(msg):   return f"{C.GREEN}[+]{C.RESET} {msg}"
+def info(msg): return f"{C.CYAN}[*]{C.RESET} {msg}"
+def warn(msg): return f"{C.YELLOW}[!]{C.RESET} {msg}"
+def err(msg):  return f"{C.RED}[✗]{C.RESET} {msg}"
+def chg(msg):  return f"{C.CYAN}[→]{C.RESET} {msg}"
 
+def classify_unreachable(msg: str) -> str:
+  m = (msg or "").lower()
+  if "no route to host" in m:
+    return "no_route"
+  if "timed out" in m or "timeout" in m:
+    return "timeout"
+  if "connection refused" in m or "refused" in m:
+    return "refused"
+  return "other"
 
 class CallbackModule(CallbackBase):
   CALLBACK_VERSION = 2.0
@@ -71,86 +85,155 @@ class CallbackModule(CallbackBase):
   CALLBACK_NAME    = "exa_pretty"
 
   def _load_settings(self):
-    # default first (never trust Ansible runtime options)
     self.suppress_unreachable = False
-
-    # SAFE ansible.cfg option fetch (NO KeyError possible)
     try:
       opt = self.get_option("suppress_unreachable")
       if opt is not None:
         self.suppress_unreachable = bool(opt)
     except Exception:
       pass
-
-    # env override (always wins)
     val = os.getenv("ANSIBLE_SUPPRESS_UNREACHABLE")
     if val is not None:
       self.suppress_unreachable = val.lower() in ("1", "true", "yes", "y")
+    self._unreach_counts = defaultdict(int)
+    self._unreach_hosts  = defaultdict(list)
+    self._unreach_total  = 0
+    self._last_line_len  = 0
+    self._counter_active = False
+
+  def _clear_counter(self):
+    """Erase the live counter line before printing anything else."""
+    if self._counter_active:
+      sys.stdout.write("\r" + " " * self._last_line_len + "\r")
+      sys.stdout.flush()
+      self._counter_active = False
+
+  def _render_unreachable_line(self):
+    parts  = [f"{k}={v}" for k, v in self._unreach_counts.items()]
+    line   = f"[!] UNREACHABLE total={self._unreach_total} ({', '.join(parts)})"
+    padded = line + " " * max(0, self._last_line_len - len(line))
+    self._last_line_len  = len(line)
+    self._counter_active = True
+    sys.stdout.write("\r" + padded)
+    sys.stdout.flush()
 
   def v2_playbook_on_start(self, playbook):
     self._load_settings()
-
     self._display.display(
-      f"\n{C.CYAN}{'═' * 62}{C.RESET}\n"
+      f"\n{C.CYAN}{'═' * 80}{C.RESET}\n"
       f"{C.WHITE}  Example Music — Ansible{C.RESET}\n"
       f"{C.DIM}  {playbook._file_name}{C.RESET}\n"
-      f"{C.CYAN}{'═' * 62}{C.RESET}\n"
+      f"{C.CYAN}{'═' * 80}{C.RESET}\n"
     )
 
   def v2_playbook_on_play_start(self, play):
+    self._clear_counter()
     self._display.display(
-      f"\n{C.CYAN}── {play.get_name()} {'─' * max(0, 55 - len(play.get_name()))}{C.RESET}\n"
+      f"\n{C.CYAN}── {play.get_name()}{C.RESET}\n"
     )
 
   def v2_playbook_on_task_start(self, task, is_conditional):
+    self._clear_counter()
     self._display.display(info(f"{C.DIM}{_ts()}{C.RESET}  {task.get_name()}"))
 
   def v2_runner_on_ok(self, result):
-    host = result._host.get_name()
+    self._clear_counter()
+    host    = result._host.get_name()
     changed = result._result.get("changed", False)
-    msg = result._result.get("msg", "")
+    msg     = result._result.get("msg", "")
+    ip      = fmt_ip(host)
 
     if changed:
-      self._display.display(chg(f"  {C.WHITE}{host}{C.RESET}  {msg}"))
+      self._display.display(chg(f"  {C.WHITE}{ip}{C.RESET}  {msg}"))
     else:
-      self._display.display(ok(f"  {C.DIM}{host}{C.RESET}  {msg if msg else 'no change'}"))
+      self._display.display(ok(f"  {C.DIM}{ip}{C.RESET}  {msg if msg else 'no change'}"))
 
   def v2_runner_on_failed(self, result, ignore_errors=False):
+    self._clear_counter()
     host = result._host.get_name()
     msg  = result._result.get("msg", result._result.get("stderr", "unknown error"))
-    self._display.display(err(f"  {C.WHITE}{host}{C.RESET}  {msg}"))
+    ip   = fmt_ip(host)
+
+    self._display.display(err(f"  {C.WHITE}{ip}{C.RESET}  {msg}"))
     if ignore_errors:
       self._display.display(warn("  (ignored)"))
 
   def v2_runner_on_skipped(self, result):
+    self._clear_counter()
     host = result._host.get_name()
-    self._display.display(warn(f"  {C.DIM}{host}{C.RESET}  skipped"))
+    ip   = fmt_ip(host)
+    self._display.display(warn(f"  {C.DIM}{ip}{C.RESET}  skipped"))
 
   def v2_runner_on_unreachable(self, result):
     if getattr(self, "suppress_unreachable", False):
       return
 
-    host = result._host.get_name()
-    msg  = result._result.get("msg", "unreachable")
+    host     = result._host.get_name()
+    msg      = result._result.get("msg", "unreachable")
+    category = classify_unreachable(msg)
 
-    self._display.display(
-      err(f"  {C.WHITE}{host}{C.RESET}  UNREACHABLE — {msg}")
-    )
+    self._unreach_counts[category] += 1
+    self._unreach_hosts[category].append(host)
+    self._unreach_total += 1
+    self._render_unreachable_line()
 
   def v2_playbook_on_stats(self, stats):
-    self._display.display(f"\n{C.WHITE}{'═' * 62}{C.RESET}")
-    self._display.display(f"{C.WHITE}  PLAY RECAP{C.RESET}")
-    self._display.display(f"{C.WHITE}{'═' * 62}{C.RESET}")
+    self._clear_counter()
+
+    # bucket hosts by outcome
+    reachable = []
+    no_route  = []
+    timeout   = []
+    other_unr = []
 
     for host in sorted(stats.processed.keys()):
       s = stats.summarize(host)
-      self._display.display(
-        f"  {C.WHITE}{host:<30}{C.RESET}"
-        f"  {C.GREEN}ok={s['ok']:<4}{C.RESET}"
-        f"  {C.CYAN}changed={s['changed']:<4}{C.RESET}"
-        f"  {C.YELLOW}skipped={s['skipped']:<4}{C.RESET}"
-        f"  {C.RED}failed={s['failures']:<4}{C.RESET}"
-        f"  {C.RED}unreachable={s['unreachable']}{C.RESET}"
-      )
 
-    self._display.display(f"{C.WHITE}{'═' * 62}{C.RESET}\n")
+      if s['unreachable']:
+        # find which category this host landed in
+        if host in self._unreach_hosts.get("no_route", []):
+          no_route.append((host, s))
+        elif host in self._unreach_hosts.get("timeout", []):
+          timeout.append((host, s))
+        else:
+          other_unr.append((host, s))
+      else:
+        reachable.append((host, s))
+
+    self._display.display(f"\n{C.WHITE}{'═' * 80}{C.RESET}")
+    self._display.display(f"{C.CYAN}  PLAY RECAP{C.RESET}")
+    self._display.display(f"{C.WHITE}{'═' * 80}{C.RESET}")
+
+    # --- reachable ---
+    if reachable:
+      self._display.display(f"\n{C.GREEN}  ── Reachable ({len(reachable)}){C.RESET}")
+      for host, s in reachable:
+        fai_c = C.RED if s['failures'] else C.DIM
+        self._display.display(
+          f"  {C.WHITE}{host:<30}{C.RESET}"
+          f"  {C.GREEN}ok={s['ok']:<4}{C.RESET}"
+          f"  {C.CYAN}changed={s['changed']:<4}{C.RESET}"
+          f"  {C.YELLOW}skipped={s['skipped']:<4}{C.RESET}"
+          f"  {fai_c}failed={s['failures']:<4}{C.RESET}"
+        )
+
+    # --- no route ---
+    if no_route:
+      self._display.display(f"\n{C.ORANGE}  ── No Route ({len(no_route)}){C.RESET}")
+      for host, s in no_route:
+        self._display.display(
+          f"  {C.DIM}{host:<30}{C.RESET}  {C.ORANGE}no route to host{C.RESET}"
+        )
+
+    # --- timeout / other unreachable ---
+    unreachable_rows = timeout + other_unr
+    if unreachable_rows:
+      label = "Unreachable"
+      self._display.display(f"\n{C.RED}  ── {label} ({len(unreachable_rows)}){C.RESET}")
+      for host, s in unreachable_rows:
+        reason = "timeout" if (host in self._unreach_hosts.get("timeout", [])) else "other"
+        self._display.display(
+          f"  {C.DIM}{host:<30}{C.RESET}  {C.RED}{reason}{C.RESET}"
+        )
+
+    self._display.display(f"\n{C.WHITE}{'═' * 80}{C.RESET}\n")
