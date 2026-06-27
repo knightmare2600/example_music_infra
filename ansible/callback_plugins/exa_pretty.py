@@ -25,16 +25,15 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 DOCUMENTATION = """
-    name: exa_pretty
-    type: stdout
-    short_description: Example Music colourised output
-    description:
-      - Colourised Ansible output following the Example Music colour scheme.
-      - ok=green, changed=cyan, skipped=yellow, failed=red, unreachable=red.
+name: exa_pretty
+type: stdout
+short_description: Example Music colourised output
+description:
+  - Colourised Ansible output following the Example Music colour scheme.
+  - ok=green, changed=cyan, skipped=yellow, failed=red, unreachable=red.
 """
 
 from ansible.plugins.callback import CallbackBase
-from ansible.utils.color import colorize, hostcolor
 
 import datetime
 
