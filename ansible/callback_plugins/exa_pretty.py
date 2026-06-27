@@ -1,9 +1,9 @@
-# =============================================================================
+# =================================================================================================
 # callback_plugins/exa_pretty.py
 # Example Music Limited — Colourised Ansible output callback
-# =============================================================================
+# =================================================================================================
 # Based on the community.general diy callback:
-#   https://docs.ansible.com/projects/ansible/latest/collections/community/general/diy_callback.html
+#  https://docs.ansible.com/projects/ansible/latest/collections/community/general/diy_callback.html
 #
 # To enable globally, add to ansible.cfg:
 #   [defaults]
@@ -19,7 +19,7 @@
 #
 # Changelog:
 #   2026-06-20  Initial file — port of firewallme.sh colour scheme to Ansible
-# =============================================================================
+# =================================================================================================
 
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
@@ -29,28 +29,33 @@ name: exa_pretty
 type: stdout
 short_description: Example Music colourised output
 description:
-  - Colourised Ansible output following the Example Music colour scheme.
-  - ok=green, changed=cyan, skipped=yellow, failed=red, unreachable=red.
+  - Colourised Ansible output following Example Music style.
+options:
+  suppress_unreachable:
+    description:
+      - If true, suppress unreachable host messages.
+    type: bool
+    default: false
 """
 
 from ansible.plugins.callback import CallbackBase
-
 import datetime
+import os
 
 
 class C:
-    RESET  = "\033[0m"
-    GREEN  = "\033[0;32m"
-    YELLOW = "\033[1;33m"
-    RED    = "\033[0;31m"
-    CYAN   = "\033[0;36m"
-    ORANGE = "\033[38;5;208m"
-    WHITE  = "\033[1;37m"
-    DIM    = "\033[2;37m"
+  RESET  = "\033[0m"
+  GREEN  = "\033[0;32m"
+  YELLOW = "\033[1;33m"
+  RED    = "\033[0;31m"
+  CYAN   = "\033[0;36m"
+  ORANGE = "\033[38;5;208m"
+  WHITE  = "\033[1;37m"
+  DIM    = "\033[2;37m"
 
 
 def _ts():
-    return datetime.datetime.now().strftime("%H:%M:%S")
+  return datetime.datetime.now().strftime("%H:%M:%S")
 
 
 def ok(msg):    return f"{C.GREEN}[+]{C.RESET} {msg}"
@@ -61,66 +66,91 @@ def chg(msg):   return f"{C.CYAN}[→]{C.RESET} {msg}"
 
 
 class CallbackModule(CallbackBase):
-    CALLBACK_VERSION = 2.0
-    CALLBACK_TYPE    = "stdout"
-    CALLBACK_NAME    = "exa_pretty"
+  CALLBACK_VERSION = 2.0
+  CALLBACK_TYPE    = "stdout"
+  CALLBACK_NAME    = "exa_pretty"
 
-    def v2_playbook_on_start(self, playbook):
-        self._display.display(
-            f"\n{C.CYAN}{'═' * 62}{C.RESET}\n"
-            f"{C.WHITE}  Example Music — Ansible{C.RESET}\n"
-            f"{C.DIM}  {playbook._file_name}{C.RESET}\n"
-            f"{C.CYAN}{'═' * 62}{C.RESET}\n"
-        )
+  def _load_settings(self):
+    # default first (never trust Ansible runtime options)
+    self.suppress_unreachable = False
 
-    def v2_playbook_on_play_start(self, play):
-        self._display.display(
-            f"\n{C.CYAN}── {play.get_name()} {'─' * max(0, 55 - len(play.get_name()))}{C.RESET}\n"
-        )
+    # SAFE ansible.cfg option fetch (NO KeyError possible)
+    try:
+      opt = self.get_option("suppress_unreachable")
+      if opt is not None:
+        self.suppress_unreachable = bool(opt)
+    except Exception:
+      pass
 
-    def v2_playbook_on_task_start(self, task, is_conditional):
-        name = task.get_name()
-        self._display.display(info(f"{C.DIM}{_ts()}{C.RESET}  {name}"))
+    # env override (always wins)
+    val = os.getenv("ANSIBLE_SUPPRESS_UNREACHABLE")
+    if val is not None:
+      self.suppress_unreachable = val.lower() in ("1", "true", "yes", "y")
 
-    def v2_runner_on_ok(self, result):
-        host   = result._host.get_name()
-        changed = result._result.get("changed", False)
-        msg    = result._result.get("msg", "")
-        if changed:
-            self._display.display(chg(f"  {C.WHITE}{host}{C.RESET}  {msg}"))
-        else:
-            self._display.display(ok(f"  {C.DIM}{host}{C.RESET}  {msg if msg else 'no change'}"))
+  def v2_playbook_on_start(self, playbook):
+    self._load_settings()
 
-    def v2_runner_on_failed(self, result, ignore_errors=False):
-        host = result._host.get_name()
-        msg  = result._result.get("msg", result._result.get("stderr", "unknown error"))
-        self._display.display(err(f"  {C.WHITE}{host}{C.RESET}  {msg}"))
-        if ignore_errors:
-            self._display.display(warn("  (ignored)"))
+    self._display.display(
+      f"\n{C.CYAN}{'═' * 62}{C.RESET}\n"
+      f"{C.WHITE}  Example Music — Ansible{C.RESET}\n"
+      f"{C.DIM}  {playbook._file_name}{C.RESET}\n"
+      f"{C.CYAN}{'═' * 62}{C.RESET}\n"
+    )
 
-    def v2_runner_on_skipped(self, result):
-        host = result._host.get_name()
-        self._display.display(warn(f"  {C.DIM}{host}{C.RESET}  skipped"))
+  def v2_playbook_on_play_start(self, play):
+    self._display.display(
+      f"\n{C.CYAN}── {play.get_name()} {'─' * max(0, 55 - len(play.get_name()))}{C.RESET}\n"
+    )
 
-    def v2_runner_on_unreachable(self, result):
-        host = result._host.get_name()
-        msg  = result._result.get("msg", "unreachable")
-        self._display.display(err(f"  {C.WHITE}{host}{C.RESET}  UNREACHABLE — {msg}"))
+  def v2_playbook_on_task_start(self, task, is_conditional):
+    self._display.display(info(f"{C.DIM}{_ts()}{C.RESET}  {task.get_name()}"))
 
-    def v2_playbook_on_stats(self, stats):
-        self._display.display(f"\n{C.WHITE}{'═' * 62}{C.RESET}")
-        self._display.display(f"{C.WHITE}  PLAY RECAP{C.RESET}")
-        self._display.display(f"{C.WHITE}{'═' * 62}{C.RESET}")
-        hosts = sorted(stats.processed.keys())
-        for host in hosts:
-            s = stats.summarize(host)
-            line = (
-                f"  {C.WHITE}{host:<30}{C.RESET}"
-                f"  {C.GREEN}ok={s['ok']:<4}{C.RESET}"
-                f"  {C.CYAN}changed={s['changed']:<4}{C.RESET}"
-                f"  {C.YELLOW}skipped={s['skipped']:<4}{C.RESET}"
-                f"  {C.RED}failed={s['failures']:<4}{C.RESET}"
-                f"  {C.RED}unreachable={s['unreachable']}{C.RESET}"
-            )
-            self._display.display(line)
-        self._display.display(f"{C.WHITE}{'═' * 62}{C.RESET}\n")
+  def v2_runner_on_ok(self, result):
+    host = result._host.get_name()
+    changed = result._result.get("changed", False)
+    msg = result._result.get("msg", "")
+
+    if changed:
+      self._display.display(chg(f"  {C.WHITE}{host}{C.RESET}  {msg}"))
+    else:
+      self._display.display(ok(f"  {C.DIM}{host}{C.RESET}  {msg if msg else 'no change'}"))
+
+  def v2_runner_on_failed(self, result, ignore_errors=False):
+    host = result._host.get_name()
+    msg  = result._result.get("msg", result._result.get("stderr", "unknown error"))
+    self._display.display(err(f"  {C.WHITE}{host}{C.RESET}  {msg}"))
+    if ignore_errors:
+      self._display.display(warn("  (ignored)"))
+
+  def v2_runner_on_skipped(self, result):
+    host = result._host.get_name()
+    self._display.display(warn(f"  {C.DIM}{host}{C.RESET}  skipped"))
+
+  def v2_runner_on_unreachable(self, result):
+    if getattr(self, "suppress_unreachable", False):
+      return
+
+    host = result._host.get_name()
+    msg  = result._result.get("msg", "unreachable")
+
+    self._display.display(
+      err(f"  {C.WHITE}{host}{C.RESET}  UNREACHABLE — {msg}")
+    )
+
+  def v2_playbook_on_stats(self, stats):
+    self._display.display(f"\n{C.WHITE}{'═' * 62}{C.RESET}")
+    self._display.display(f"{C.WHITE}  PLAY RECAP{C.RESET}")
+    self._display.display(f"{C.WHITE}{'═' * 62}{C.RESET}")
+
+    for host in sorted(stats.processed.keys()):
+      s = stats.summarize(host)
+      self._display.display(
+        f"  {C.WHITE}{host:<30}{C.RESET}"
+        f"  {C.GREEN}ok={s['ok']:<4}{C.RESET}"
+        f"  {C.CYAN}changed={s['changed']:<4}{C.RESET}"
+        f"  {C.YELLOW}skipped={s['skipped']:<4}{C.RESET}"
+        f"  {C.RED}failed={s['failures']:<4}{C.RESET}"
+        f"  {C.RED}unreachable={s['unreachable']}{C.RESET}"
+      )
+
+    self._display.display(f"{C.WHITE}{'═' * 62}{C.RESET}\n")
