@@ -206,13 +206,28 @@ docs/
 
 ## Conventions
 
-- **Provisioning network:** `192.168.139.0/24` — used only during bootstrap, serves as WAN connection for prod, emulating the upstream ISP
-- **Bootstrap server:** `192.168.139.50`
-- **Site LANs:** `192.168.xx.0/24` where `xx` is the site octet, e.g. `192.168.76.0/24` for `FAL` site
-- **VPN subnets:** `10.0.xx.0/24` — WireGuard endpoint always at `.1` on the firewall, e.g. `10.0.76.1/24` for `FAL` site
-- **Proxmox nodes:** always `.5-10` on the site LAN, e.g. `192.168.76.5/24` for `FAL` site
-- **Domain Controllers:** always `.10` on the site LAN, , e.g. `192.168.76.10/24` for `FAL` site
+- **vRACK** A "LEgal Ficiton" For OVH aficionados, this is 192.168.139.0/24 with gateway presumed at 192.168.139.254. Give your VMs "REal world" IPs in this subnet.
+- **Provisioning network:** `192.168.139.0/24` — used only during bootstrap, serves as WAN connection for production, emulating the upstream ISP/OVH style VRack.
+- **Bootstrap server:** `192.168.139.50` This might be oyur laptop, a desktop, a small container, or a VM. Without this, nohing else can bootstrap.
+- **Site LANs:** `192.168.xx.0/24` where `xx` is the site octet, e.g. `192.168.76.0/24` for `FAL` site. Look at boostrap/web/proxmox/sites.csv for the known source of truth.
+- **VPN subnets:** `10.0.xx.0/24` — WireGuard endpoint always at `.1` on the firewall, e.g. `10.0.76.1/24` for `FAL` site. You will notice a pattern forming, vis-a-vis subnets.
+- **Proxmox nodes:** always `.5-7` on the site LAN, e.g. `192.168.76.5/24` for `FAL` site.
+- **Domain Controllers:** always `.10` on the site LAN, , e.g. `192.168.76.10/24` for `FAL` site.
 - **Remote access consoles:** iDRAC or iLO depending on hardware vendor, e.g. `192.168.76.3/24` for `FAL` site
+
+| IP | Hostname | Role | Notes |
+|----|----------|------|-------|
+| `192.168.139.1` | `EXARTRCLD001` | Secondary internet gateway / firewall | Fallback IP/Internet Connection |
+| `192.168.139.2` | `EXARACCLD001` | BMC pool slot 1 — DRAC/iLO | PVE node 1 BMC |
+| `192.168.139.5` | `EXAPVECLD001` | Proxmox VE node | Hosts CLD infra |
+| `192.168.139.8` | `EXADNSCLD001` | BIND DNS server | Primary DNS for `jukebox.internal` |
+| `192.168.139.9` | `EXAANSCLD001` | Ansible server | Ansible Automation Server *NB: Moved to 192.168.69.??* as EXAFWLCLD is the primary Wireguard hub |
+| `192.168.139.10` | `EXADCSCLD001` | Active Directory server | Active Directory Server for `jukebox.internal` |
+| `192.168.139.20` | `EXASVRCLD001` | Windows Admin Server | Windows Central Admin Server |
+| `192.168.139.48` | `EXAPBXCLD001` | PBX | Central PBX — all site SBCs trunk here |
+| `192.168.139.50` | `EXAPRVCLD001` | Legal ficiton | Provisioning / Bootstrap Server / HTTP / PXE / TFTP Server |
+| `192.168.139.69` | `EXAFWLCLD001` | CLD Firewall | Internal LAN: 192.168.69.253/24 ***NB: Some infra will move here in due course to free up vRACK IP Addresses*** |
+| `192.168.139.253` | `EXARTRCLD001` | Primary internet gateway / DNS | Physical router *NOT controlled* |
 
 ## Requirements
 
