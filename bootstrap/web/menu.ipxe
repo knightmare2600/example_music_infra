@@ -2,38 +2,89 @@
 
 # ===========================================================================
 # Example Music Limited -- Enterprise Network Boot
-# Provisioning server: http://192.168.139.50
 # Safe default: boot local disk after 30 seconds
+#
+# Boot server topology:
+#   192.168.139.50    Edinburgh datacentre  (EXAPRVCLD001, gateway .254)
+#   172.16.124.1:8000 Fredericia datacentre (EXAPRVCLD002, gateway .2)
+#                     Legal fiction -- physically a MacBook running
+#                     python3 -m http.server 8000, mirroring /debian
+#                     from Edinburgh. Only the IP differs.
+#
+# boot-url is set dynamically by gateway detection. To add a new environment:
+# add one iseq line and set boot-url. Nothing else needs changing.
 # ===========================================================================
+#
 # Version history:
-#   v1.7 -- Switch Ubuntu Alpine helper from virt to lts kernel. Add storage
-#            drivers to modules= kernel parameter so initramfs loads them
-#            before the local service runs. Fix apkovl to use depmod -a
-#            instead of apk add linux-virt (which caused ENOSPC). Add GB
-#            keymap via 00-keymap.start. Fix rm -rf to unlink symlink first.
-#   v1.6 -- Pin alpine_repo= to v3.23 in Ubuntu entries. latest-stable caused
-#            kernel version mismatch between running kernel and available modules.
-#            Rebuild apkovl to pin /etc/apk/repositories to v3.23 and install
-#            linux-virt inside writer script to get matching storage modules.
-#   v1.5 -- Replace Ubuntu Subiquity live installer approach with Alpine
-#            dd-writer pattern. Alpine virt netboot (~50 MB) streams the
-#            Ubuntu 24.04 minimal cloud image (~247 MB) onto disk via
-#            wget|dd, avoiding the 1.1 GB Subiquity squashfs entirely.
-#            cloud-init nocloud seed served from ${boot-url}/ubuntu/.
-#            Add alpine-arch remap (arm64->aarch64) matching rocky-arch pattern.
-#   v1.4 -- Restore inst.stage2= in Rocky entries, pointing at minimal
-#            boot.iso images/install.img on Rocky CDN (~200 MB, not ~700 MB).
-#            Add per-entry rocky-arch remap (iPXE uses arm64, Rocky mirror
-#            uses aarch64) so the CDN URL resolves correctly on both arches.
-#   v1.3 -- Rename file from boot.ipxe to menu.ipxe to match server layout
-#   v1.2 -- Remove inst.stage2= from all Rocky entries; stage2 now resolved
-#            from url= in install.ks, preventing ramdisk overflow at boot
-#   v1.1 -- Fix missing Ubuntu and OpenBSD menu items; OpenBSD placed after
-#            Arch Linux (before Hypervisors); Ubuntu placed after Debian
-#   v1.0 -- Initial release
+#
+#   v2.0   Gateway-based boot-url detection. Removes hardcoded IP throughout.
+#          Edinburgh (gw 192.168.139.254) or Fredericia (gw 172.16.124.2).
+#          Fix archiso_http_srv was hardcoded, now uses ${boot-url}. Fix WinPE
+#          ARM64; uefi-http-boot-url now references ${boot-url}. One variable,
+#          one place to change.
+#
+#   v2.1   Rewrite WinPE entries. ARM64 now uses wimboot.arm64 (added in wimboot
+#          v2.8.0). Same wimboot streaming pattern as x86_64, no UEFI HTTP Boot
+#          handoff. x86_64: UEFI firmware, & wimboot/BIOS firmware wimboot.i386;
+#          detected via build arch. Both stream a single self-contained boot.wim
+#          as wimboot 2.7.1+ extracts BCD & boot.sdi from WIM automatically with
+#          wimboot 2.9.0 also extracting boot.stl for Windows 11 24H2. Recommend
+#          upgrading all wimboot binaries to v2.9.0.
+#
+#   v1.9   WinPE x86_64 entry switched to wimboot.i386 (BIOS binary) For wimboot
+#          (EFI binary) caused CPU hang on legacy BIOS VMs.
+#          BCD in boot\ uses winload.exe; BCD.efi uses winload.efi.
+#          Both files are present in the iPXE folder for future reference.
+#
+#   v1.8   Replace PhoenixPE entry with lean custom WinPE build.
+#            x86_64: wimboot streaming from HTTP as before.
+#            ARM64:  UEFI HTTP Boot path (wimboot does not support ARM64).
+#          Both WIMs include VMware PVSCSI/VMXNET3 & VirtIO SCSI/NetKVM drivers
+#          Boot target is cmd.exe; tools in Windows\Tools\ directory.
+#
+#   v1.7   Switch Alpine helper from virt to LTS kernel. Add storage drivers to
+#          to modules= kernel parameter so initramfs loads them before the local
+#          service runs, apkovl to use depmod -a rather than apk add linux-virt
+#          (which caused ENOSPC). Add GB keymap via 00-keymap.start. Fix rm -rf
+#          to unlink symlink first.
+#
+#   v1.6   Pin alpine_repo = v3.23 for Ubuntu boots. latest-stable causes kernel
+#          version mismatch between running kernel & available modules. Rebuild
+#          apkovl to pin /etc/apk/repositories to v3.23 and install linux-virt
+#          inside writer script to get matching storage modules.
+#
+#   v1.5   Replace Ubuntu Subiquity live install with Alpine dd-writer pattern.
+#          Alpine virt netboot (~50 MB) streams the Ubuntu 24.04 minimal cloud
+#          image (~247 MB) onto disk via wget|dd, skipping the 1.1GB Subiquity
+#          squashfs entirely.
+#          cloud-init nocloud seed served from ${boot-url}/ubuntu/.
+#          Add alpine-arch remap (arm64->aarch64) matching rocky-arch pattern.
+#   v1.4   Restore inst.stage2= in Rocky entries, pointing at minimal boot.iso
+#          images/install.img on Rocky CDN (~200 MB, not ~700 MB). Add per-entry
+#          rocky-arch remap (iPXE uses arm64, Rocky mirror uses aarch64) so CDN
+#          URL resolves correctly on both arches.
+#
+#   v1.3   Rename file from boot.ipxe to menu.ipxe to match server layout
+#
+#   v1.2   Remove inst.stage2= from all Rocky entries; stage2 now resolved from
+#          url= in install.ks, preventing ramdisk overflow at boot
+#
+#   v1.1   Fix missing Ubuntu & OpenBSD menu items; OpenBSD after Arch Linux,
+#          before Hypervisors & Ubuntu placed after Debian.
+#
+#   v1.0   Initial release
+#
 # ===========================================================================
 
-set boot-url http://192.168.139.50
+# ---------------------------------------------------------------------------
+# Make the hostname traceable e.g. ipxe-00-0c-29-be-ef-69
+set hostname ipxe-${net0/mac:hexhyp}
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# For better hallway vision - (C) John Bender Saturday March 24th 1984
+#console --x 1024 --y 768 --depth 32
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Architecture normalisation
@@ -45,6 +96,42 @@ iseq ${buildarch} arm64 && set arch arm64 || set arch x86_64
 echo Detected: ${buildarch} -- payload arch: ${arch}
 
 # ---------------------------------------------------------------------------
+# Preseed selection by architecture
+#    arm64 -> lvm-efi.seed  (EFI recipe, arm64 kernel, no biosgrub partition)
+#   x86_64 -> lvm-bios.seed (BIOS/GPT recipe, amd64 kernel, biosgrub partition)
+# ---------------------------------------------------------------------------
+iseq ${arch} arm64 && set seed lvm-efi.seed || set seed lvm-bios.seed
+echo Preseed: ${seed}
+
+# ---------------------------------------------------------------------------
+# Gateway-based environment detection
+# Sets ${boot-url} once; everything below uses it exclusively.
+# To add a new environment: one iseq line + set boot-url, nothing else.
+# ---------------------------------------------------------------------------
+echo Detecting boot environment from gateway ${net0/gateway}...
+iseq ${net0/gateway} 192.168.139.254 && goto env_edinburgh  ||
+iseq ${net0/gateway} 172.16.124.2    && goto env_fredericia ||
+goto env_fallback
+
+:env_edinburgh
+echo Environment: Edinburgh (EXAPRVCLD001)
+set boot-url http://192.168.139.50
+goto env_done
+
+:env_fredericia
+echo Environment: Fredericia (EXAPRVCLD002 - MacBook/Fusion NAT)
+set boot-url http://172.16.124.1:8000
+goto env_done
+
+:env_fallback
+echo Gateway ${net0/gateway} not recognised -- defaulting to Edinburgh
+set boot-url http://192.168.139.50
+
+:env_done
+echo Boot server: ${boot-url}
+echo
+
+# ---------------------------------------------------------------------------
 # Auto-deploy: chain to a MAC-specific script if one exists, else menu
 # ---------------------------------------------------------------------------
 chain --autofree ${boot-url}/autodeploy/${mac:hexhyp}.ipxe || goto main
@@ -53,40 +140,53 @@ chain --autofree ${boot-url}/autodeploy/${mac:hexhyp}.ipxe || goto main
 # MAIN MENU
 # ===========================================================================
 :main
-menu Example Music: Enterprise Network Boot  [ ${arch} ]
-item --gap --         ${hostname}  /  ${mac}
+menu Example Music: Enterprise Network Boot  Arch: [ ${arch} ]
 item --gap --
+item --gap --         Hostname: ${hostname}  /  MAC: ${mac}
+item --gap --         Host IP : ${net0/ip}   / Boot URL: ${boot-url}
+item --gap --
+item --gap --         -- Default Selection --
 item localboot        Boot local disk  (default, 30s timeout)
+item spejder          Spejder Hardware Provisioning Runtime (Console and Serial ttyS0/COM1)
+item --gap --
 item --gap --         -- Debian --
 item debian-auto      Debian  Auto install
 item debian-ssh       Debian  Auto install  (SSH console)
 item debian-auto-s    Debian  Auto install  (ttyS0 serial)
 item debian-ssh-s     Debian  Auto install  (SSH + ttyS0 serial)
+item --gap --
 item --gap --         -- Ubuntu --
 item ubuntu-auto      Ubuntu  Auto install
 item ubuntu-auto-s    Ubuntu  Auto install  (ttyS0 serial)
 item ubuntu-ssh-s     Ubuntu  Auto install  (SSH + ttyS0 serial)
+item --gap --
 item --gap --         -- Rocky Linux --
 item rocky-auto       Rocky   Auto install
 item rocky-ssh        Rocky   Auto install  (SSH console)
 item rocky-auto-s     Rocky   Auto install  (ttyS0 serial)
 item rocky-ssh-s      Rocky   Auto install  (SSH + ttyS0 serial)
+item --gap --
 item --gap --         -- Arch Linux --
 item arch-auto        Arch    Auto install
 item arch-ssh         Arch    Install  (SSH console)
 item arch-auto-s      Arch    Auto install  (ttyS0 serial)
 item arch-ssh-s       Arch    Install  (SSH + ttyS0 serial)
+item --gap --
 item --gap --         -- OpenBSD --
 item openbsd-auto     OpenBSD 7.5  Auto install
 item openbsd-auto-s   OpenBSD 7.5  Auto install  (ttyS0 serial)
 item openbsd-inter-s  OpenBSD 7.5  Interactive   (ttyS0 serial)
+item --gap --
 item --gap --         -- Hypervisors --
 item proxmox-ve       Proxmox VE 9   (x86_64 only)
 item proxmox-dcm      Proxmox DCM 9  (x86_64 only)
+item --gap --
 item --gap --         -- Utilities --
 item gparted          GParted Live
-item phoenixpe        PhoenixPE WinPE environment  (x86_64 only)
+item winpe-x64        WinPE deployment environment  (x86_64)
+item winpe-arm64      WinPE deployment environment  (ARM64)
 item hdt              Hardware Detection Tool  (x86_64 only)
+item --gap --
 item --gap --         -- System --
 item shell            iPXE shell
 item reboot           Reboot
@@ -101,6 +201,11 @@ goto ${target}
 :localboot
 sanboot --no-describe --drive 0x80 || exit
 
+:spejder
+kernel ${boot-url}/spejder/${arch}/linux-${arch} console=ttyS0,115200 console=tty0 rw net.ifnames=0 biosdevname=0 quiet loglevel=3
+initrd ${boot-url}/spejder/${arch}/initramfs-${arch}.cpio.zst
+boot
+
 # ===========================================================================
 # DEBIAN
 # Common kernel parameters factored into comments for reference:
@@ -110,22 +215,22 @@ sanboot --no-describe --drive 0x80 || exit
 #   netcfg/choose_interface=auto
 # ===========================================================================
 :debian-auto
-kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
+kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
 initrd ${boot-url}/debian/${arch}/initrd.gz
 boot
 
 :debian-ssh
-kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
+kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
 initrd ${boot-url}/debian/${arch}/initrd.gz
 boot
 
 :debian-auto-s
-kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
+kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
 initrd ${boot-url}/debian/${arch}/initrd.gz
 boot
 
 :debian-ssh-s
-kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/lvm.seed priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
+kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
 initrd ${boot-url}/debian/${arch}/initrd.gz
 boot
 
@@ -195,38 +300,42 @@ initrd ${boot-url}/alpine/${alpine-arch}/initramfs-lts
 boot
 
 # ===========================================================================
-# ROCKY LINUX
-# inst.stage2 points at the minimal boot.iso images/install.img on the Rocky
-# CDN (~200 MB squashfs) rather than the full DVD tree (~700 MB).  This is
-# fetched into RAM once at boot; url= in install.ks handles package retrieval
-# separately.  ${arch} resolves to x86_64 or arm64 (normalised at top of file)
-# but Rocky mirrors use aarch64, so the set below remaps before the kernel line.
+# ROCKY LINUX — custom installer initrd
+# No Anaconda. No inst.repo. No inst.stage2. No install.img.
+# The custom initrd IS the installer — it partitions, extracts
+# the Container-Base rootfs, installs grub, injects firstboot,
+# and reboots. vmlinuz is the standard Rocky kernel, unchanged.
+# ${arch} normalised to aarch64 for arm64 below.
+# rd.multipath=0 rd.luks=0 prevent dracut probing delays.
+# rd.driver.blacklist=dm_mod prevents dracut-pre-udev attempting
+# to modprobe dm_mod which is built into the Rocky 9 kernel and
+# has no .ko file — causes fatal boot failure without this.
 # ===========================================================================
 :rocky-auto
 set rocky-arch ${arch}
 iseq ${arch} arm64 && set rocky-arch aarch64 ||
-kernel ${boot-url}/rockylinux/${arch}/vmlinuz inst.ks=${boot-url}/rockylinux/install.ks inst.stage2=https://download.rockylinux.org/pub/rocky/9/BaseOS/${rocky-arch}/os/images/install.img inst.lang=en_GB.UTF-8 inst.keymap=uk inst.timezone=Europe/London ip=dhcp quiet
+kernel ${boot-url}/rockylinux/${arch}/vmlinuz rd.multipath=0 rd.luks=0 rd.driver.blacklist=dm_mod ip=dhcp quiet
 initrd ${boot-url}/rockylinux/${arch}/initrd.img
 boot
 
 :rocky-ssh
 set rocky-arch ${arch}
 iseq ${arch} arm64 && set rocky-arch aarch64 ||
-kernel ${boot-url}/rockylinux/${arch}/vmlinuz inst.ks=${boot-url}/rockylinux/install.ks inst.stage2=https://download.rockylinux.org/pub/rocky/9/BaseOS/${rocky-arch}/os/images/install.img inst.lang=en_GB.UTF-8 inst.keymap=uk inst.timezone=Europe/London ip=dhcp inst.sshd inst.sshd.password=install
+kernel ${boot-url}/rockylinux/${arch}/vmlinuz rd.multipath=0 rd.luks=0 rd.driver.blacklist=dm_mod ip=dhcp
 initrd ${boot-url}/rockylinux/${arch}/initrd.img
 boot
 
 :rocky-auto-s
 set rocky-arch ${arch}
 iseq ${arch} arm64 && set rocky-arch aarch64 ||
-kernel ${boot-url}/rockylinux/${arch}/vmlinuz inst.ks=${boot-url}/rockylinux/install.ks inst.stage2=https://download.rockylinux.org/pub/rocky/9/BaseOS/${rocky-arch}/os/images/install.img inst.lang=en_GB.UTF-8 inst.keymap=uk inst.timezone=Europe/London ip=dhcp console=ttyS0,115200n8 console=tty0 quiet
+kernel ${boot-url}/rockylinux/${arch}/vmlinuz rd.multipath=0 rd.luks=0 rd.driver.blacklist=dm_mod ip=dhcp console=ttyS0,115200n8 console=tty0 quiet
 initrd ${boot-url}/rockylinux/${arch}/initrd.img
 boot
 
 :rocky-ssh-s
 set rocky-arch ${arch}
 iseq ${arch} arm64 && set rocky-arch aarch64 ||
-kernel ${boot-url}/rockylinux/${arch}/vmlinuz inst.ks=${boot-url}/rockylinux/install.ks inst.stage2=https://download.rockylinux.org/pub/rocky/9/BaseOS/${rocky-arch}/os/images/install.img inst.lang=en_GB.UTF-8 inst.keymap=uk inst.timezone=Europe/London ip=dhcp inst.sshd inst.sshd.password=install console=ttyS0,115200n8 console=tty0
+kernel ${boot-url}/rockylinux/${arch}/vmlinuz rd.multipath=0 rd.luks=0 rd.driver.blacklist=dm_mod ip=dhcp console=ttyS0,115200n8 console=tty0
 initrd ${boot-url}/rockylinux/${arch}/initrd.img
 boot
 
@@ -236,24 +345,26 @@ boot
 # in for the auto entries. See arch-pxe-setup.md for build instructions.
 # SSH entries use the standard upstream airootfs -- no custom build needed.
 # Label is :arch-linux (not :arch) to avoid shadowing the ${arch} variable.
+# archiso_http_srv must be a bare http://host:port/ URL with trailing slash.
+# Uses ${boot-url} — do not hardcode the IP here.
 # ===========================================================================
 :arch-auto
-kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=http://192.168.139.50/ copytoram arch-autoinstall locale=en_GB.UTF-8 keymap=uk timezone=Europe/London
+kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=${boot-url}/ copytoram arch-autoinstall locale=en_GB.UTF-8 keymap=uk timezone=Europe/London
 initrd ${boot-url}/arch/${arch}/initramfs-linux.img
 boot
 
 :arch-ssh
-kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=http://192.168.139.50/ copytoram locale=en_GB.UTF-8 keymap=uk timezone=Europe/London systemd.unit=multi-user.target
+kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=${boot-url}/ copytoram locale=en_GB.UTF-8 keymap=uk timezone=Europe/London systemd.unit=multi-user.target
 initrd ${boot-url}/arch/${arch}/initramfs-linux.img
 boot
 
 :arch-auto-s
-kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=http://192.168.139.50/ copytoram arch-autoinstall locale=en_GB.UTF-8 keymap=uk timezone=Europe/London console=ttyS0,115200n8
+kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=${boot-url}/ copytoram arch-autoinstall locale=en_GB.UTF-8 keymap=uk timezone=Europe/London console=ttyS0,115200n8
 initrd ${boot-url}/arch/${arch}/initramfs-linux.img
 boot
 
 :arch-ssh-s
-kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=http://192.168.139.50/ copytoram locale=en_GB.UTF-8 keymap=uk timezone=Europe/London systemd.unit=multi-user.target console=tty0 console=ttyS0,115200n8
+kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=${boot-url}/ copytoram locale=en_GB.UTF-8 keymap=uk timezone=Europe/London systemd.unit=multi-user.target console=tty0 console=ttyS0,115200n8
 initrd ${boot-url}/arch/${arch}/initramfs-linux.img
 boot
 
@@ -305,14 +416,54 @@ initrd ${boot-url}/gparted/${arch}/initrd.img
 boot
 
 # ===========================================================================
-# PHOENIXPE  (x86_64 only)
+# WINPE x86_64
+# Streamed via wimboot over HTTP -- the WIM is not loaded into RAM in full;
+# pages are fetched on demand, keeping memory use low.
+# Boots to cmd.exe. VMware PVSCSI/VMXNET3 and VirtIO SCSI/NetKVM drivers
+# are injected at build time. Tools are in X:\Windows\Tools\.
+#
+# wimboot v2.7.1+ extracts BCD and boot.sdi from the WIM automatically so
+# no separate bootmgr or BCD file is needed alongside the WIM.
+# wimboot v2.9.0+ also extracts boot.stl automatically (Windows 11 24H2).
+# Recommend keeping all wimboot binaries at v2.9.0+.
+# Ref: https://github.com/ipxe/wimboot/releases
+#
+# UEFI firmware  -> wimboot     (x86_64 EFI binary)
+# BIOS firmware  -> wimboot.i386 (x86 BIOS/32-bit EFI binary)
+# Detected via ${buildarch}: x86_64 = UEFI, i386 = BIOS.
+#
+# Files required on provisioning server under winpe/x86_64/:
+#   wimboot        -- EFI binary  (for UEFI firmware VMs)
+#   wimboot.i386   -- BIOS binary (for legacy BIOS firmware VMs)
+#   boot_x64.wim   -- self-contained WIM from Build-WinPE.ps1
 # ===========================================================================
-:phoenixpe
+:winpe-x64
 iseq ${arch} arm64 && goto noarch-msg ||
-kernel ${boot-url}/phoenixpe/wimboot
-initrd ${boot-url}/phoenixpe/bootmgr.exe  bootmgr.exe
-initrd ${boot-url}/phoenixpe/boot.sdi     boot.sdi
-initrd ${boot-url}/phoenixpe/Boot.wim     Boot.wim
+iseq ${buildarch} i386 && set winpe-boot ${boot-url}/winpe/x86_64/wimboot.i386 || set winpe-boot ${boot-url}/winpe/x86_64/wimboot
+kernel ${winpe-boot}
+initrd ${boot-url}/winpe/x86_64/boot_x64.wim  Boot.wim
+boot
+
+# ===========================================================================
+# WINPE ARM64
+# Uses wimboot.arm64 -- AArch64 UEFI binary, added in wimboot v2.8.0.
+# Same wimboot streaming pattern as x86_64 -- no UEFI HTTP Boot handoff,
+# no separate bootmgr or BCD file needed.
+# ARM64 WinPE requires UEFI firmware -- BIOS is not applicable on ARM64.
+#
+# wimboot v2.9.0+ extracts boot.stl automatically (Windows 11 24H2 support).
+# Ref: https://github.com/ipxe/wimboot/releases
+#
+# This entry is only reachable on ARM64 -- the iseq guard below blocks x86_64.
+#
+# Files required on provisioning server under winpe/arm64/:
+#   wimboot.arm64  -- AArch64 EFI binary (rename from release download)
+#   boot_arm64.wim -- self-contained WIM from Build-WinPE.ps1
+# ===========================================================================
+:winpe-arm64
+iseq ${arch} x86_64 && goto noarch-msg ||
+kernel ${boot-url}/winpe/arm64/wimboot.arm64
+initrd ${boot-url}/winpe/arm64/boot_arm64.wim  Boot.wim
 boot
 
 # ===========================================================================

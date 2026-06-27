@@ -384,7 +384,7 @@ fi
 
 section "1b. Network configuration"
 
-PROV_NET_DEFAULT="192.168.139"
+PROV_NET_DEFAULT="192.168.69"
 
 read -rp "  Provisioning subnet [${PROV_NET_DEFAULT}]: " PROV_NET_INPUT
 PROV_NET="${PROV_NET_INPUT:-${PROV_NET_DEFAULT}}"
@@ -495,7 +495,7 @@ nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "ansible-static" \
   ipv4.method manual \
   ipv4.addresses "${NODE_STATIC_IP}/24" \
   ipv4.gateway "${PROV_GW}" \
-  ipv4.dns "192.168.139.8" \
+  ipv4.dns "192.168.69.8" \
   ipv4.dns-search "jukebox.internal" \
   ipv6.method ignore \
   connection.autoconnect yes \

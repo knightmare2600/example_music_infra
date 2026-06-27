@@ -65,14 +65,14 @@ graph TD
 
     subgraph NAAPAC ["🌎 Americas & APAC — BRK spokes"]
         direction TB
-        TOR["TOR · Toronto · .146"]
+        TOR["TOR · Toronto · .164"]
         MTL["MTL · Montréal · .154"]
         NYC["NYC · New York · .212"]
         LAX["LAX · Los Angeles · .213"]
         MIA["MIA · Miami · .135 ⚠️"]
         NJC["NJC · New Jersey · .201"]
         CHI["CHI · Chicago · .214"]
-        ATL["ATL · Atlanta · .33"]
+        ATL["ATL · Athens GA · .44"]
         SYD["SYD · Sydney · .29"]
         MEL["MEL · Melbourne · .61"]
         AKL["AKL · Auckland · .93"]
@@ -238,7 +238,7 @@ The script is interactive. It will prompt for the following — answers for each
 - Generates and starts WireGuard (`wg-quick@wg0`)
 - Configures SSH login banner (entity, site, hostname)
 - Configures dynamic MOTD (ASCII art, WireGuard peer status, system stats)
-- Writes node info file `/etc/example-music/nodeinfo.json` (prevents re-runs; shows build config)
+- Writes sentinel file `/etc/.i_am_a_firewall` (prevents re-runs)
 - Prompts to reboot
 
 ---
@@ -348,8 +348,8 @@ sudo journalctl -u dnsmasq -f
 # Cockpit
 https://192.168.<octet>.<1 or 253>:9090
 
-# Node info file (shows build config)
-cat /etc/example-music/nodeinfo.json
+# Sentinel file (shows build config)
+cat /etc/.i_am_a_firewall
 ```
 
 ---
@@ -444,13 +444,13 @@ cat /etc/example-music/nodeinfo.json
 | Site | Hostname | IP | VM | OS | PW | FW | RB | WG | PR | VF | AN | OK | Notes |
 |------|----------|----|----|----|----|----|----|----|----|----|----|----|----|
 | MTL | EXAFWLMTL001 | 192.168.154.253 |      |      |      |      |      |      |      |      |      |      | Montréal |
-| TOR | EXAFWLTOR001 | 192.168.146.253 |      |      |      |      |      |      |      |      |      |      | Toronto |
+| TOR | EXAFWLTOR001 | 192.168.164.253 |      |      |      |      |      |      |      |      |      |      | Toronto |
 
 ### USA
 
 | Site | Hostname | IP | VM | OS | PW | FW | RB | WG | PR | VF | AN | OK | Notes |
 |------|----------|----|----|----|----|----|----|----|----|----|----|----|----|
-| ATL | EXAFWLATL001 | 192.168.33.253 |      |      |      |      |      |      |      |      |      |      | Athens GA |
+| ATL | EXAFWLATL001 | 192.168.44.253 |      |      |      |      |      |      |      |      |      |      | Athens GA |
 | CHI | EXAFWLCHI001 | 192.168.214.253 |      |      |      |      |      |      |      |      |      |      | Chicago |
 | LAX | EXAFWLLAX001 | 192.168.213.253 |      |      |      |      |      |      |      |      |      |      | Los Angeles |
 | MIA | EXAFWLMIA001 | 192.168.135.253 |      |      |      |      |      |      |      |      |      |      | Miami — PENDING BUILD |

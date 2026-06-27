@@ -151,7 +151,7 @@ All servers listed below are, or will be, Domain Controllers in the `jukebox.int
 | `EXADCSNEW001` | `192.168.191.10` | NEW | Newcastle, England | DC (to be promoted) | Satellite (read-only) |
 | `EXADCSKGE001` | `192.168.65.10` | KGE | Køge, Danmark | DC (to be promoted) | Satellite (read-only) |
 | `EXADCSFAX001` | `192.168.246.10` | FAX | Faxe, Danmark | DC (to be promoted) | Satellite (read-only) |
-| `EXADCSTOR001` | `192.168.146.10` | TOR | Toronto, Ontario | DC (to be promoted) | Satellite (read-only) |
+| `EXADCSTOR001` | `192.168.164.10` | TOR | Toronto, Ontario | DC (to be promoted) | Satellite (read-only) |
 | `EXADCSMTL001` | `192.168.154.10` | MTL | Montréal, Québec | DC (to be promoted) | Satellite (read-only) |
 | `EXADCSSYD001` | `192.168.29.10` | SYD | Sydney, Australia | DC (to be promoted) | Satellite (read-only) |
 
@@ -171,7 +171,7 @@ Inter-site connectivity is provided by WireGuard VPN tunnels. The WireGuard endp
 | `EXAFWLNEW001` | NEW | `192.168.191.1` | |
 | `EXAFWLKGE001` | KGE | `192.168.65.1` | |
 | `EXAFWLFAX001` | FAX | `192.168.246.1` | |
-| `EXAFWLTOR001` | TOR | `192.168.146.1` | |
+| `EXAFWLTOR001` | TOR | `192.168.164.1` | |
 | `EXAFWLMTL001` | MTL | `192.168.154.1` | |
 | `EXAFWLSYD001` | SYD | `192.168.29.1` | |
 
@@ -697,7 +697,7 @@ Use this checklist to track progress through the deployment:
 | `EXASWI` | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site/regional) | `EXADCSFAL001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASRV` | Server | `EXADNSCLD001` |
+| `EXASRV` | Server | `EXASVRCLD001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS | `EXANASFAL001` |
 | `EXASBC` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBCFAL001` |
