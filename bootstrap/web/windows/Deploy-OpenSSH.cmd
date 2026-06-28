@@ -17,6 +17,12 @@
 :: 1.2.1   2026-06-28   Replaced %%D loop variable with named variables
 ::  - SCANDRIVE / INSTALLDRIVE / WINDRIVE to avoid
 ::  - delayed expansion conflicts
+:: 1.3.0   2026-06-28   Swapped plain echo for cecho - colourised output
+::  - Errors: red  {04}
+::  - Warnings: yellow  {0e}
+::  - OK/success: green  {0a}
+::  - Info/banners: cyan  {03}
+::  - Prompts: white  {0f}
 ::
 :: Purpose
 :: -------
@@ -88,7 +94,7 @@ setlocal EnableDelayedExpansion
 :: Script metadata
 :: ------------------------------------------------------------------------------
 set "SCRIPT_NAME=Deploy-OpenSSH.cmd"
-set "SCRIPT_VERSION=1.2.1"
+set "SCRIPT_VERSION=1.3.0"
 set "ORG_NAME=Example Music Limited"
 
 :: ------------------------------------------------------------------------------
@@ -112,12 +118,12 @@ echo [%DATE% %TIME%] ===========================================================
 :: Banner
 :: ------------------------------------------------------------------------------
 cls
-echo.
-echo  ==============================================================================
-echo   %ORG_NAME%
-echo   %SCRIPT_NAME% v%SCRIPT_VERSION%
-echo  ==============================================================================
-echo.
+echo+
+cecho.exe {03} "==============================================================================" {\n}{##}
+cecho.exe {03} "  %ORG_NAME%" {\n}{##}
+cecho.exe {03} "  %SCRIPT_NAME% v%SCRIPT_VERSION%" {\n}{##}
+cecho.exe {03} "==============================================================================" {\n}{##}
+echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 1: Architecture detection
@@ -128,16 +134,15 @@ if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "ARCH=arm64"
 if /i "%PROCESSOR_ARCHITECTURE%"=="x86"   set "ARCH=x86"
 
 echo [%DATE% %TIME%] PROCESSOR_ARCHITECTURE=%PROCESSOR_ARCHITECTURE%  ARCH=%ARCH% >> "%LOGFILE%"
-echo   Architecture : %ARCH%
-echo.
+cecho.exe {03} "[INFO] Architecture : %ARCH%" {\n}{##}
+echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 2: Find Windows installer media
 :: Identified by the presence of \Sources\Setup.exe.
 :: See header note on why \Sources\Setup.exe and NOT \Setup.exe.
 :: ------------------------------------------------------------------------------
-echo  Searching for Windows installer media (Sources\Setup.exe)...
-echo.
+cecho.exe {03} "[INFO] Searching for Windows installer media (Sources\Setup.exe)..." {\n}{##}
 echo [%DATE% %TIME%] Searching for installer media... >> "%LOGFILE%"
 
 set "INSTALLDRIVE="
@@ -154,34 +159,32 @@ for %%LETTER in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (
 
 if not defined INSTALLDRIVE (
   echo [%DATE% %TIME%] ERROR: No installer media found. >> "%LOGFILE%"
-  echo  [ERROR] Could not find Windows installer media.
-  echo.
-  echo  Searched C: through Z: for \Sources\Setup.exe (excluding %SYSTEMDRIVE%)
-  echo  Verify the installer USB or ISO is attached and visible to WinPE.
-  echo.
+  cecho.exe {04} "[ERROR] Could not find Windows installer media." {\n}{##}
+  cecho.exe {04} "        Searched C: through Z: for \Sources\Setup.exe (excluding %SYSTEMDRIVE%)" {\n}{##}
+  cecho.exe {04} "        Verify the installer USB or ISO is attached and visible to WinPE." {\n}{##}
+  echo+
   goto :ABORT
 )
 
-echo   Installer media : %INSTALLDRIVE%
+cecho.exe {0a} "[ OK ] Installer media found : %INSTALLDRIVE%" {\n}{##}
 echo [%DATE% %TIME%] Installer media confirmed: %INSTALLDRIVE% >> "%LOGFILE%"
-echo.
+echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 3: Download headlessunattend.xml to WinPE RAM disk
 :: ------------------------------------------------------------------------------
-echo  Downloading headlessunattend.xml...
-echo.
+cecho.exe {03} "[INFO] Downloading headlessunattend.xml..." {\n}{##}
 echo [%DATE% %TIME%] Fetching headlessunattend.xml >> "%LOGFILE%"
 
 certutil.exe -urlcache -f "%BASE_URL%/unattend/headlessunattend.xml" "%SYSTEMDRIVE%\headlessunattend.xml" >> "%LOGFILE%" 2>&1
 if errorlevel 1 (
   echo [%DATE% %TIME%] ERROR: Failed to download headlessunattend.xml >> "%LOGFILE%"
-  echo  [ERROR] Failed to download headlessunattend.xml
+  cecho.exe {04} "[ERROR] Failed to download headlessunattend.xml" {\n}{##}
   goto :ABORT
 )
-echo   OK: %SYSTEMDRIVE%\headlessunattend.xml
+cecho.exe {0a} "[ OK ] %SYSTEMDRIVE%\headlessunattend.xml" {\n}{##}
 echo [%DATE% %TIME%] headlessunattend.xml saved to %SYSTEMDRIVE%\headlessunattend.xml >> "%LOGFILE%"
-echo.
+echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 4: Launch Windows Setup
@@ -195,29 +198,28 @@ echo.
 ::              Control returns here so the PFY can confirm before we continue.
 :: /unattend  - Provides the answer file for a fully headless install.
 :: ------------------------------------------------------------------------------
-echo  ==============================================================================
-echo   Launching Windows Setup. This will take some time.
-echo   Do NOT close this window.
-echo  ==============================================================================
-echo.
+cecho.exe {03} "==============================================================================" {\n}{##}
+cecho.exe {0f} "  Launching Windows Setup. This will take some time." {\n}{##}
+cecho.exe {0f} "  Do NOT close this window." {\n}{##}
+cecho.exe {03} "==============================================================================" {\n}{##}
+echo+
 echo [%DATE% %TIME%] Launching: %INSTALLDRIVE%\Sources\Setup.exe >> "%LOGFILE%"
 
 "%INSTALLDRIVE%\Sources\Setup.exe" /noreboot /unattend:"%SYSTEMDRIVE%\headlessunattend.xml"
 
 echo [%DATE% %TIME%] Setup.exe returned. Exit code: %ERRORLEVEL% >> "%LOGFILE%"
-echo.
+echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 5: PAUSE - wait for PFY to confirm install is complete
 :: ------------------------------------------------------------------------------
-echo  ==============================================================================
-echo   Windows Setup has returned.
-echo.
-echo   Verify the installation completed successfully before continuing.
-echo   Press any key to proceed with post-install configuration...
-echo  ==============================================================================
+cecho.exe {03} "==============================================================================" {\n}{##}
+cecho.exe {0f} "  Windows Setup has returned." {\n}{##}
+cecho.exe {0f} "  Verify the installation completed successfully before continuing." {\n}{##}
+cecho.exe {0e} "  Press any key to proceed with post-install configuration..." {\n}{##}
+cecho.exe {03} "==============================================================================" {\n}{##}
 pause >nul
-echo.
+echo+
 echo [%DATE% %TIME%] Operator confirmed setup complete. Proceeding. >> "%LOGFILE%"
 
 :: ------------------------------------------------------------------------------
@@ -231,8 +233,8 @@ echo [%DATE% %TIME%] Operator confirmed setup complete. Proceeding. >> "%LOGFILE
 :: Accept:
 ::   drives with \Windows\System32\cmd.exe that pass all exclusions above
 :: ------------------------------------------------------------------------------
-echo  Scanning for installed Windows. Please wait...
-echo.
+cecho.exe {03} "[INFO] Scanning for installed Windows..." {\n}{##}
+echo+
 echo [%DATE% %TIME%] Enumerating drives for installed Windows... >> "%LOGFILE%"
 
 set FOUND_COUNT=0
@@ -257,15 +259,10 @@ for %%L in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (
 :: ------------------------------------------------------------------------------
 if %FOUND_COUNT% EQU 0 (
   echo [%DATE% %TIME%] ERROR: No installed Windows found after setup. >> "%LOGFILE%"
-  echo  [ERROR] Could not find an installed Windows on any drive.
-  echo.
-  echo  Exclusions applied:
-  echo    %SYSTEMDRIVE%                       (WinPE RAM disk)
-  echo    Drives with \Sources\Setup.exe      (installer media)
-  echo    Drives with \Sources\boot.wim       (WinPE boot media)
-  echo.
-  echo  If the install failed, resolve the issue and re-run this script.
-  echo.
+  cecho.exe {04} "[ERROR] Could not find an installed Windows on any drive." {\n}{##}
+  cecho.exe {04} "        Exclusions: %SYSTEMDRIVE% (WinPE), drives with \Sources\Setup.exe, \Sources\boot.wim" {\n}{##}
+  cecho.exe {04} "        If the install failed, resolve the issue and re-run this script." {\n}{##}
+  echo+
   goto :ABORT
 )
 
@@ -274,16 +271,14 @@ if %FOUND_COUNT% EQU 0 (
 :: ------------------------------------------------------------------------------
 if %FOUND_COUNT% EQU 1 (
   set "SELECTED_DRIVE=!WINDRIVE_1!"
-  echo  Installed Windows found:
-  echo.
-  echo    !SELECTED_DRIVE!\Windows
-  echo.
+  cecho.exe {0a} "[ OK ] Installed Windows found: !SELECTED_DRIVE!\Windows" {\n}{##}
+  echo+
   choice /C YN /N /M "  Deploy post-install files into !SELECTED_DRIVE!\Windows? [Y/N]: "
   if errorlevel 2 (
     echo [%DATE% %TIME%] Operator declined. Aborting. >> "%LOGFILE%"
-    echo.
-    echo  Aborted by operator.
-    echo.
+    echo+
+    cecho.exe {0e} "[WARN] Aborted by operator." {\n}{##}
+    echo+
     goto :ABORT
   )
   echo [%DATE% %TIME%] Operator confirmed: !SELECTED_DRIVE! >> "%LOGFILE%"
@@ -294,44 +289,44 @@ if %FOUND_COUNT% EQU 1 (
 :: Step 7b: Multiple installs found - numbered menu
 :: ------------------------------------------------------------------------------
 :MENU
-echo  Multiple Windows installations were found. Select the target:
-echo.
+cecho.exe {0f} "  Multiple Windows installations were found. Select the target:" {\n}{##}
+echo+
 for /L %%N in (1,1,%FOUND_COUNT%) do (
-  echo    %%N.  !WINDRIVE_%%N!\Windows
+  cecho.exe {0e} "    %%N.  !WINDRIVE_%%N!\Windows" {\n}{##}
 )
-echo.
+echo+
 set "SELECTION="
 set /P SELECTION="  Select installation [1-%FOUND_COUNT%]: "
 
 echo !SELECTION!| findstr /R "^[0-9][0-9]*$" >nul 2>&1
 if errorlevel 1 (
-  echo.
-  echo  [ERROR] Invalid input. Enter a number between 1 and %FOUND_COUNT%.
-  echo.
+  echo+
+  cecho.exe {04} "[ERROR] Invalid input. Enter a number between 1 and %FOUND_COUNT%." {\n}{##}
+  echo+
   goto :MENU
 )
 if !SELECTION! LSS 1 (
-  echo.
-  echo  [ERROR] Selection out of range.
-  echo.
+  echo+
+  cecho.exe {04} "[ERROR] Selection out of range." {\n}{##}
+  echo+
   goto :MENU
 )
 if !SELECTION! GTR %FOUND_COUNT% (
-  echo.
-  echo  [ERROR] Selection out of range.
-  echo.
+  echo+
+  cecho.exe {04} "[ERROR] Selection out of range." {\n}{##}
+  echo+
   goto :MENU
 )
 
 set "SELECTED_DRIVE=!WINDRIVE_%SELECTION%!"
 echo [%DATE% %TIME%] Operator selected !SELECTED_DRIVE! >> "%LOGFILE%"
 
-echo.
+echo+
 choice /C YN /N /M "  Deploy post-install files into !SELECTED_DRIVE!\Windows? [Y/N]: "
 if errorlevel 2 (
-  echo.
-  echo  Returning to menu...
-  echo.
+  echo+
+  cecho.exe {0e} "[WARN] Returning to menu..." {\n}{##}
+  echo+
   goto :MENU
 )
 echo [%DATE% %TIME%] Operator confirmed: !SELECTED_DRIVE! >> "%LOGFILE%"
@@ -340,118 +335,118 @@ echo [%DATE% %TIME%] Operator confirmed: !SELECTED_DRIVE! >> "%LOGFILE%"
 :: Step 8: Create directories on target
 :: ------------------------------------------------------------------------------
 :DEPLOY
-echo.
-echo  ------------------------------------------------------------------------------
-echo   Deploying post-install files to !SELECTED_DRIVE!
-echo  ------------------------------------------------------------------------------
-echo.
+echo+
+cecho.exe {03} "------------------------------------------------------------------------------" {\n}{##}
+cecho.exe {03} "  Deploying post-install files to !SELECTED_DRIVE!" {\n}{##}
+cecho.exe {03} "------------------------------------------------------------------------------" {\n}{##}
+echo+
 
 set "TARGET_SCRIPTS=!SELECTED_DRIVE!\Windows\Setup\Scripts"
 set "TARGET_DRIVERS=!SELECTED_DRIVE!\ProgramData\ExampleMusic\Drivers"
 
 if NOT exist "!SELECTED_DRIVE!\Windows\System32" (
   echo [%DATE% %TIME%] ERROR: !SELECTED_DRIVE!\Windows\System32 not found. >> "%LOGFILE%"
-  echo  [ERROR] !SELECTED_DRIVE!\Windows\System32 not found. Target may be invalid.
+  cecho.exe {04} "[ERROR] !SELECTED_DRIVE!\Windows\System32 not found. Target may be invalid." {\n}{##}
   goto :ABORT
 )
 echo [%DATE% %TIME%] Target verified: !SELECTED_DRIVE! >> "%LOGFILE%"
 
 if NOT exist "!TARGET_SCRIPTS!" (
-  echo   Creating !TARGET_SCRIPTS!...
+  cecho.exe {03} "[INFO] Creating !TARGET_SCRIPTS!..." {\n}{##}
   mkdir "!TARGET_SCRIPTS!"
   if errorlevel 1 (
     echo [%DATE% %TIME%] ERROR: Failed to create !TARGET_SCRIPTS! >> "%LOGFILE%"
-    echo  [ERROR] Failed to create !TARGET_SCRIPTS!
+    cecho.exe {04} "[ERROR] Failed to create !TARGET_SCRIPTS!" {\n}{##}
     goto :ABORT
   )
   echo [%DATE% %TIME%] Created: !TARGET_SCRIPTS! >> "%LOGFILE%"
 ) else (
-  echo   Exists: !TARGET_SCRIPTS!
+  cecho.exe {03} "[INFO] Exists: !TARGET_SCRIPTS!" {\n}{##}
   echo [%DATE% %TIME%] Exists: !TARGET_SCRIPTS! >> "%LOGFILE%"
 )
 
 if NOT exist "!TARGET_DRIVERS!" (
-  echo   Creating !TARGET_DRIVERS!...
+  cecho.exe {03} "[INFO] Creating !TARGET_DRIVERS!..." {\n}{##}
   mkdir "!TARGET_DRIVERS!"
   if errorlevel 1 (
     echo [%DATE% %TIME%] ERROR: Failed to create !TARGET_DRIVERS! >> "%LOGFILE%"
-    echo  [ERROR] Failed to create !TARGET_DRIVERS!
+    cecho.exe {04} "[ERROR] Failed to create !TARGET_DRIVERS!" {\n}{##}
     goto :ABORT
   )
   echo [%DATE% %TIME%] Created: !TARGET_DRIVERS! >> "%LOGFILE%"
 ) else (
-  echo   Exists: !TARGET_DRIVERS!
+  cecho.exe {03} "[INFO] Exists: !TARGET_DRIVERS!" {\n}{##}
   echo [%DATE% %TIME%] Exists: !TARGET_DRIVERS! >> "%LOGFILE%"
 )
-echo.
+echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 9: Download scripts to target
 :: ------------------------------------------------------------------------------
-echo   Downloading setup scripts...
-echo.
+cecho.exe {03} "[INFO] Downloading setup scripts..." {\n}{##}
+echo+
 
 echo [%DATE% %TIME%] Fetching Detect-Platform.cmd >> "%LOGFILE%"
 certutil.exe -urlcache -f "%BASE_URL%/Detect-Platform.cmd" "!TARGET_SCRIPTS!\Detect-Platform.cmd" >> "%LOGFILE%" 2>&1
 if errorlevel 1 (
   echo [%DATE% %TIME%] ERROR: Failed to download Detect-Platform.cmd >> "%LOGFILE%"
-  echo  [ERROR] Failed to download Detect-Platform.cmd
+  cecho.exe {04} "[ERROR] Failed to download Detect-Platform.cmd" {\n}{##}
   goto :ABORT
 )
-echo   OK: Detect-Platform.cmd
+cecho.exe {0a} "[ OK ] Detect-Platform.cmd" {\n}{##}
 
 echo [%DATE% %TIME%] Fetching SetupComplete.cmd >> "%LOGFILE%"
 certutil.exe -urlcache -f "%BASE_URL%/SetupComplete.cmd" "!TARGET_SCRIPTS!\SetupComplete.cmd" >> "%LOGFILE%" 2>&1
 if errorlevel 1 (
   echo [%DATE% %TIME%] ERROR: Failed to download SetupComplete.cmd >> "%LOGFILE%"
-  echo  [ERROR] Failed to download SetupComplete.cmd
+  cecho.exe {04} "[ERROR] Failed to download SetupComplete.cmd" {\n}{##}
   goto :ABORT
 )
-echo   OK: SetupComplete.cmd
+cecho.exe {0a} "[ OK ] SetupComplete.cmd" {\n}{##}
 
 echo [%DATE% %TIME%] Fetching Install-OpenSSH.ps1 >> "%LOGFILE%"
 certutil.exe -urlcache -f "%BASE_URL%/Install-OpenSSH.ps1" "!TARGET_SCRIPTS!\Install-OpenSSH.ps1" >> "%LOGFILE%" 2>&1
 if errorlevel 1 (
   echo [%DATE% %TIME%] ERROR: Failed to download Install-OpenSSH.ps1 >> "%LOGFILE%"
-  echo  [ERROR] Failed to download Install-OpenSSH.ps1
+  cecho.exe {04} "[ERROR] Failed to download Install-OpenSSH.ps1" {\n}{##}
   goto :ABORT
 )
-echo   OK: Install-OpenSSH.ps1
-echo.
+cecho.exe {0a} "[ OK ] Install-OpenSSH.ps1" {\n}{##}
+echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 10: Download arch-appropriate drivers to target
 :: ------------------------------------------------------------------------------
-echo   Downloading drivers for %ARCH%...
-echo.
+cecho.exe {03} "[INFO] Downloading drivers for %ARCH%..." {\n}{##}
+echo+
 
 if "%ARCH%"=="x86_64" (
   echo [%DATE% %TIME%] Fetching qemu-ga-x86_64.msi >> "%LOGFILE%"
   certutil.exe -urlcache -f "%BASE_URL%/x86_64/qemu-ga-x86_64.msi" "!TARGET_DRIVERS!\qemu-ga-x86_64.msi" >> "%LOGFILE%" 2>&1
   if errorlevel 1 (
     echo [%DATE% %TIME%] ERROR: Failed to download qemu-ga-x86_64.msi >> "%LOGFILE%"
-    echo  [ERROR] Failed to download qemu-ga-x86_64.msi
+    cecho.exe {04} "[ERROR] Failed to download qemu-ga-x86_64.msi" {\n}{##}
     goto :ABORT
   )
-  echo   OK: qemu-ga-x86_64.msi
+  cecho.exe {0a} "[ OK ] qemu-ga-x86_64.msi" {\n}{##}
 
   echo [%DATE% %TIME%] Fetching virtio-win-gt-x64.msi >> "%LOGFILE%"
   certutil.exe -urlcache -f "%BASE_URL%/x86_64/virtio-win-gt-x64.msi" "!TARGET_DRIVERS!\virtio-win-gt-x64.msi" >> "%LOGFILE%" 2>&1
   if errorlevel 1 (
     echo [%DATE% %TIME%] ERROR: Failed to download virtio-win-gt-x64.msi >> "%LOGFILE%"
-    echo  [ERROR] Failed to download virtio-win-gt-x64.msi
+    cecho.exe {04} "[ERROR] Failed to download virtio-win-gt-x64.msi" {\n}{##}
     goto :ABORT
   )
-  echo   OK: virtio-win-gt-x64.msi
+  cecho.exe {0a} "[ OK ] virtio-win-gt-x64.msi" {\n}{##}
 
   echo [%DATE% %TIME%] Fetching VMware-tools-13.0.10-25056151-x64.exe >> "%LOGFILE%"
   certutil.exe -urlcache -f "%BASE_URL%/x86_64/VMware-tools-13.0.10-25056151-x64.exe" "!TARGET_DRIVERS!\VMware-tools-13.0.10-25056151-x64.exe" >> "%LOGFILE%" 2>&1
   if errorlevel 1 (
     echo [%DATE% %TIME%] ERROR: Failed to download VMware-tools-13.0.10-25056151-x64.exe >> "%LOGFILE%"
-    echo  [ERROR] Failed to download VMware-tools-13.0.10-25056151-x64.exe
+    cecho.exe {04} "[ERROR] Failed to download VMware-tools-13.0.10-25056151-x64.exe" {\n}{##}
     goto :ABORT
   )
-  echo   OK: VMware-tools-13.0.10-25056151-x64.exe
+  cecho.exe {0a} "[ OK ] VMware-tools-13.0.10-25056151-x64.exe" {\n}{##}
 )
 
 if "%ARCH%"=="arm64" (
@@ -459,12 +454,12 @@ if "%ARCH%"=="arm64" (
   certutil.exe -urlcache -f "%BASE_URL%/arm64/VMware-tools-13.0.10-25056151-arm.exe" "!TARGET_DRIVERS!\VMware-tools-13.0.10-25056151-arm.exe" >> "%LOGFILE%" 2>&1
   if errorlevel 1 (
     echo [%DATE% %TIME%] ERROR: Failed to download VMware-tools-13.0.10-25056151-arm.exe >> "%LOGFILE%"
-    echo  [ERROR] Failed to download VMware-tools-13.0.10-25056151-arm.exe
+    cecho.exe {04} "[ERROR] Failed to download VMware-tools-13.0.10-25056151-arm.exe" {\n}{##}
     goto :ABORT
   )
-  echo   OK: VMware-tools-13.0.10-25056151-arm.exe
+  cecho.exe {0a} "[ OK ] VMware-tools-13.0.10-25056151-arm.exe" {\n}{##}
 )
-echo.
+echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 11: Verify all expected files landed on target
@@ -487,7 +482,7 @@ if "%ARCH%"=="arm64" (
 
 if !VERIFY_OK! EQU 0 (
   echo [%DATE% %TIME%] ERROR: Verification failed - one or more files missing. >> "%LOGFILE%"
-  echo  [ERROR] Verification failed. One or more expected files are missing.
+  cecho.exe {04} "[ERROR] Verification failed. One or more expected files are missing." {\n}{##}
   goto :ABORT
 )
 echo [%DATE% %TIME%] Verification passed. >> "%LOGFILE%"
@@ -495,23 +490,24 @@ echo [%DATE% %TIME%] Verification passed. >> "%LOGFILE%"
 :: ------------------------------------------------------------------------------
 :: Success
 :: ------------------------------------------------------------------------------
-echo  ==============================================================================
-echo   Deployment complete.
-echo  ==============================================================================
-echo.
-echo   Target drive  :  !SELECTED_DRIVE!
-echo   Architecture  :  %ARCH%
-echo   Scripts       :  !TARGET_SCRIPTS!
-echo   Drivers       :  !TARGET_DRIVERS!
-echo.
-echo   On next boot Windows will automatically run SetupComplete.cmd which:
-echo     1. Detects platform and installs guest tools  (Detect-Platform.cmd)
-echo     2. Installs and configures OpenSSH Server     (Install-OpenSSH.ps1)
-echo.
-echo   You may now reboot the target machine.
-echo.
-echo   WinPE log  :  %LOGFILE%
-echo.
+echo+
+cecho.exe {03} "==============================================================================" {\n}{##}
+cecho.exe {0a} "  Deployment complete." {\n}{##}
+cecho.exe {03} "==============================================================================" {\n}{##}
+echo+
+cecho.exe {0f} "  Target drive  :  !SELECTED_DRIVE!" {\n}{##}
+cecho.exe {0f} "  Architecture  :  %ARCH%" {\n}{##}
+cecho.exe {0f} "  Scripts       :  !TARGET_SCRIPTS!" {\n}{##}
+cecho.exe {0f} "  Drivers       :  !TARGET_DRIVERS!" {\n}{##}
+echo+
+cecho.exe {03} "  On next boot Windows will automatically run SetupComplete.cmd which:" {\n}{##}
+cecho.exe {0a} "    1. Detects platform and installs guest tools  (Detect-Platform.cmd)" {\n}{##}
+cecho.exe {0a} "    2. Installs and configures OpenSSH Server     (Install-OpenSSH.ps1)" {\n}{##}
+echo+
+cecho.exe {0e} "  You may now reboot the target machine." {\n}{##}
+echo+
+cecho.exe {03} "  WinPE log  :  %LOGFILE%" {\n}{##}
+echo+
 echo [%DATE% %TIME%] Deployment completed successfully. Target: !SELECTED_DRIVE! Arch: %ARCH% >> "%LOGFILE%"
 goto :END
 
@@ -519,13 +515,13 @@ goto :END
 :: Abort
 :: ------------------------------------------------------------------------------
 :ABORT
-echo.
-echo  ==============================================================================
-echo   Deployment aborted.
-echo  ==============================================================================
-echo.
-echo   WinPE log  :  %LOGFILE%
-echo.
+echo+
+cecho.exe {04} "==============================================================================" {\n}{##}
+cecho.exe {04} "  Deployment aborted." {\n}{##}
+cecho.exe {04} "==============================================================================" {\n}{##}
+echo+
+cecho.exe {04} "  WinPE log  :  %LOGFILE%" {\n}{##}
+echo+
 echo [%DATE% %TIME%] Deployment aborted. >> "%LOGFILE%"
 endlocal
 exit /b 1
