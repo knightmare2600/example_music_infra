@@ -204,30 +204,95 @@ docs/
 
 ---
 
-## Conventions
+# The Special Case: Cloud Network & vRACK LEgal Ficiton
 
-- **vRACK** A "LEgal Ficiton" For OVH aficionados, this is 192.168.139.0/24 with gateway presumed at 192.168.139.254. Give your VMs "REal world" IPs in this subnet.
-- **Provisioning network:** `192.168.139.0/24` — used only during bootstrap, serves as WAN connection for production, emulating the upstream ISP/OVH style VRack.
-- **Bootstrap server:** `192.168.139.50` This might be oyur laptop, a desktop, a small container, or a VM. Without this, nohing else can bootstrap.
-- **Site LANs:** `192.168.xx.0/24` where `xx` is the site octet, e.g. `192.168.76.0/24` for `FAL` site. Look at boostrap/web/proxmox/sites.csv for the known source of truth.
-- **VPN subnets:** `10.0.xx.0/24` — WireGuard endpoint always at `.1` on the firewall, e.g. `10.0.76.1/24` for `FAL` site. You will notice a pattern forming, vis-a-vis subnets.
-- **Proxmox nodes:** always `.5-7` on the site LAN, e.g. `192.168.76.5/24` for `FAL` site.
-- **Domain Controllers:** always `.10` on the site LAN, , e.g. `192.168.76.10/24` for `FAL` site.
-- **Remote access consoles:** iDRAC or iLO depending on hardware vendor, e.g. `192.168.76.3/24` for `FAL` site
+The CLD network on `192.168.69.0/24` and it's vRACK `192.168.139.0/24` are a special case. Below is the documentation which covers this:
 
-| IP | Hostname | Role | Notes |
-|-------------------|----------------|---------------------------------------|------------------------------------|
-| `192.168.139.1`   | `EXARTRCLD001` | Secondary internet gateway / firewall | Fallback IP/Internet Connection    |
-| `192.168.139.2`   | `EXARACCLD001` | BMC pool slot 1 — DRAC/iLO            | PVE node 1 BMC                     |
-| `192.168.139.5`   | `EXAPVECLD001` | Proxmox VE node                       | Hosts CLD infra                    |
-| `192.168.139.8`   | `EXADNSCLD001` | BIND DNS server                       | Primary DNS for `jukebox.internal` |
-| `192.168.139.9`   | `EXAANSCLD001` | Ansible server                        | Ansible Automation Server *NB: Moved to 192.168.69.??* as EXAFWLCLD is the primary Wireguard hub |
-| `192.168.139.10`  | `EXADCSCLD001` | Active Directory server               | Active Directory Server for `jukebox.internal` |
-| `192.168.139.20`  | `EXASVRCLD001` | Windows Admin Server                  | Windows Central Admin Server       |
-| `192.168.139.48`  | `EXAPBXCLD001` | PBX                                   | Central PBX — all site SBCs trunk here |
-| `192.168.139.50`  | `EXAPRVCLD001` | Legal ficiton                         | Provisioning / Bootstrap Server / HTTP / PXE / TFTP Server |
-| `192.168.139.69`  | `EXAFWLCLD001` | CLD Firewall                          | Internal LAN: 192.168.69.253/24 ***NB: Some infra will move here in due course to free up vRACK IP Addresses*** |
-| `192.168.139.253` | `EXARTRCLD001` | Primary internet gateway / DNS        | Physical router *NOT controlled*    |
+## Terminology
+
+The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) and [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174).
+
+**NB: I personally treat SHOULD and SHOULD NOT as ambigious, so they MUST NOT be used!**
+
+### Conventions
+
+The Example Music infrastructure follows a consistent addressing convention throughout the estate. Once the addressing scheme is understood, the function and location of most hosts can be determined from their IP address alone.
+
+Unless explicitly stated otherwise, **all deployments MUST conform to the conventions defined below.**
+
+- **vRACK:** A *legal fiction* representing the upstream OVH vRACK. This network uses **192.168.139.0/24**, with the upstream gateway assumed to be **192.168.139.254**. Virtual machines attached to this network MUST be assigned their "real-world" addresses from this subnet.
+
+- **Provisioning Network:** **192.168.139.0/24**. This network MUST be used exclusively during the bootstrap process. Following successful deployment, it represents the upstream WAN connection, emulating an ISP/OVH vRACK.
+
+- **Bootstrap Server:** **192.168.139.50**. This host MAY be a laptop, desktop workstation, lightweight container or virtual machine. It provides the HTTP, PXE, TFTP and associated services required to provision the remainder of the environment. Without this host, the estate cannot bootstrap.
+
+- **Site LANs:** Site LANs MUST use the format **192.168.xx.0/24**, where **xx** is the allocated site octet (for example, **192.168.76.0/24** for the FAL site). The authoritative source for site allocations MUST be:
+
+- **VPN Networks:** WireGuard networks MUST use **10.0.xx.0/24**, where **xx** matches the corresponding site number. The firewall WireGuard endpoint MUST always be assigned **.1**.
+
+- **Proxmox Nodes:** Proxmox VE hosts MUST occupy addresses **.5–.7** on the site LAN.
+
+- **Domain Controllers:** Active Directory Domain Controllers MUST occupy address **.10** on the site LAN.
+
+- **Remote Management:** Hardware management interfaces (iDRAC, iLO, Redfish, etc.) MUST occupy address **.3** wherever practical.
+
+---
+
+# CLD Special Case
+
+The **CLD** deployment is the sole special-case deployment within the estate.
+
+Unlike every branch deployment, CLD hosts shared infrastructure consumed by multiple sites. Consequently, several addressing conventions and infrastructure roles intentionally differ from the standard site model.
+
+This behaviour is intentional, documented, and REQUIRED.
+
+Automation MUST assume the standard site conventions by default.
+
+Automation MUST NOT assume that CLD conforms to the standard branch architecture.
+
+Any behaviour required specifically for CLD MUST be implemented explicitly and MUST remain isolated to the CLD deployment. Under no circumstances MUST the baseline conventions be weakened or modified solely to accommodate CLD.
+
+The CLD deployment hosts infrastructure including (but not limited to):
+
+- Central DNS
+- Central PBX
+- Ansible Automation
+- Bootstrap / Provisioning Services
+- Active Directory
+- Central Windows Administration
+- Shared management infrastructure
+
+For complete architectural details, refer to:
+
+## CLD Special Hosts
+
+| IP Address        | Hostname       | Role                                  | Notes |
+|------------------|----------------|--------------------------------------|-------|
+| `192.168.139.1`  | EXARTRCLD001   | Secondary Internet Gateway / Firewall | Fallback Internet connection |
+| `192.168.139.2`  | EXARACCLD001   | BMC Pool Slot 1                      | Proxmox Node 1 iDRAC/iLO |
+| `192.168.139.5`  | EXAPVECLD001   | Proxmox VE Node                      | Hosts core CLD infrastructure |
+| `192.168.139.8`  | EXADNSCLD001   | BIND9 DNS Server                     | Primary DNS for `jukebox.internal` |
+| `192.168.139.9`  | EXAANSCLD001   | Ansible Automation Server            | Planned migration to 192.168.69.0/24 |
+| `192.168.139.10` | EXADCSCLD001   | Active Directory Domain Controller    | AD for `jukebox.internal` |
+| `192.168.139.20` | EXASVRCLD001   | Windows Administration Server         | Central Windows management |
+| `192.168.139.48` | EXAPBXCLD001   | Central PBX                          | All remote site SBCs trunk here |
+| `192.168.139.50` | EXAPRVCLD001   | Provisioning Server                  | Bootstrap / PXE / TFTP (*legal fiction*) |
+| `192.168.139.69` | EXAFWLCLD001   | CLD Firewall                        | Internal LAN: 192.168.69.253/24 |
+| `192.168.139.253`| EXARTRCLD001   | Primary Internet Gateway            | Physical upstream router (not managed) |
+
+## Normative Requirements
+
+The following requirements are MANDATORY:
+
+- Site addressing MUST follow the conventions defined in this document.
+- Site allocations MUST be recorded in `bootstrap/web/proxmox/sites.csv`.
+- Automation MUST treat branch deployments as the default case.
+- CLD MUST be treated as the sole special-case deployment.
+- CLD-specific logic MUST remain isolated from standard site logic.
+- Contributors MUST NOT modify baseline conventions to accommodate CLD.
+- Any future special-case deployments MUST be explicitly documented before implementation.
+
+Check the `CLD_Network_Overview.md` document for full details for the "Black Swan" Network 
 
 ## Requirements
 
