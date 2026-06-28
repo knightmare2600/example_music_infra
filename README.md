@@ -204,7 +204,7 @@ docs/
 
 ---
 
-# The Special Case: Cloud Network & vRACK LEgal Ficiton
+# The Special Case: Cloud Network & vRACK Legal Ficiton
 
 The CLD network on `192.168.69.0/24` and it's vRACK `192.168.139.0/24` are a special case. Below is the documentation which covers this:
 
@@ -236,9 +236,7 @@ Unless explicitly stated otherwise, **all deployments MUST conform to the conven
 
 - **Remote Management:** Hardware management interfaces (iDRAC, iLO, Redfish, etc.) MUST occupy address **.3** wherever practical.
 
----
-
-# CLD Special Case
+## CLD Special Case
 
 The **CLD** deployment is the sole special-case deployment within the estate.
 
