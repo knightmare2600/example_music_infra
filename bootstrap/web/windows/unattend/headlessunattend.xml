@@ -17,8 +17,28 @@ Sample answer file for headless deployment
                     <Order>1</Order>
                 </SynchronousCommand>
                 <SynchronousCommand wcm:action="add">
-                    <CommandLine>shutdown /L</CommandLine>
+                    <CommandLine>dism /online /add-capability /capabilityname:OpenSSH.Server~~~~0.0.1.0 /source:D:\ /limitaccess</CommandLine>
                     <Order>2</Order>
+                </SynchronousCommand>
+                <SynchronousCommand wcm:action="add">
+                    <CommandLine>timeout /t 120 /nobreak</CommandLine>
+                    <Order>3</Order>
+                </SynchronousCommand>
+                <SynchronousCommand wcm:action="add">
+                    <CommandLine>netsh advfirewall firewall set rule group="OpenSSH Server" new enable=yes</CommandLine>
+                    <Order>4</Order>
+                </SynchronousCommand>
+                <SynchronousCommand wcm:action="add">
+                    <CommandLine>sc config sshd start= auto</CommandLine>
+                    <Order>5</Order>
+                </SynchronousCommand>
+                <SynchronousCommand wcm:action="add">
+                    <CommandLine>sc start sshd</CommandLine>
+                    <Order>6</Order>
+                </SynchronousCommand>
+                <SynchronousCommand wcm:action="add">
+                    <CommandLine>shutdown /L</CommandLine>
+                    <Order>7</Order>
                 </SynchronousCommand>
             </FirstLogonCommands>
             <UserAccounts>
