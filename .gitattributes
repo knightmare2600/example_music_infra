@@ -21,7 +21,6 @@
 *.cfg         text eol=lf
 *.conf        text eol=lf
 *.cnf         text eol=lf
-*.ini         text eol=lf
 
 *.ipxe        text eol=lf
 
@@ -55,6 +54,12 @@
 *.cmd         text eol=crlf
 
 *.reg         text eol=crlf
+*.xaml        text eol=crlf
+*.xml         text eol=crlf
+
+*.inf         text eol=crlf
+*.sif         text eol=crlf
+*.unattend    text eol=crlf
 
 ###############################################################################
 # Binary files (never modify line endings)
