@@ -1,0 +1,216 @@
+---
+# =============================================================================
+# Example Music Limited — Active Directory Users Playbook
+# playbooks/windows_adschema/ad_users.yml
+#
+# Creates AD user accounts from jukebox.example.tdf ($Script:rawUsers).
+#
+# ⚠️  ADDITIVE ONLY — state: present throughout. Never removes accounts.
+#     Passwords are only set on account creation (update_password: on_create).
+#     Re-running this playbook will NOT reset existing passwords.
+#
+# Prerequisites (run in order):
+#   1. ad_schema.yml  — OU hierarchy must exist
+#   2. ad_groups.yml  — groups must exist before group assignments
+#
+# This playbook also creates band sub-OUs under each city's Users OU.
+# These are derived from the TDF OU paths and are NOT in ad_schema.yml.
+#
+# Usage:
+#   ansible-playbook playbooks/windows_adschema/ad_users.yml \
+#     --limit EXADCSFAL001 --ask-vault-pass
+#
+#   # Check mode
+#   ansible-playbook playbooks/windows_adschema/ad_users.yml \
+#     --limit EXADCSFAL001 --check --diff --ask-vault-pass
+#
+# Vault variables required (add to your Windows DC group vault):
+#   vault_ad_new_user_password  — initial password for all new accounts
+#
+# Variables (override with --extra-vars):
+#   ad_target   Target DC hostname   (default: EXADCSFAL001)
+#   ad_domain   AD domain FQDN       (default: jukebox.internal)
+#   tdf_path    Path to TDF file     (default: /etc/example-music/jukebox.example.tdf)
+#   sites_csv   Path to sites.csv    (default: /etc/example-music/sites.csv)
+#
+# Notes:
+#   • Users with Disabled=true are created disabled (enabled: false).
+#   • MustChangePassword is honoured from the TDF data.
+#   • Groups with names that don't match any AD group are silently skipped
+#     (ignore_errors on group assignment task). Run ad_groups.yml first.
+#   • 353 user accounts from rawUsers. Room resource mailboxes and the
+#     template.users stub are excluded by the parser.
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-29  Initial release. 353 users, band OUs, group membership.
+# =============================================================================
+
+- name: "Build AD users from TDF"
+  hosts: "{{ ad_target | default('EXADCSFAL001') }}"
+  gather_facts: false
+  become: false
+
+  vars:
+    ad_domain:      "jukebox.internal"
+    ad_email_domain: "{{ ad_domain }}"
+    tdf_path:        "/etc/example-music/jukebox.example.tdf"
+    sites_csv:       "/etc/example-music/sites.csv"
+
+  pre_tasks:
+
+    - name: "Preflight | Check microsoft.ad collection is installed"
+      command: ansible-galaxy collection list microsoft.ad
+      register: _col_check
+      changed_when: false
+      failed_when: false
+      delegate_to: localhost
+      become: false
+
+    - name: "Preflight | Fail with install instructions if collection is missing"
+      fail:
+        msg: |
+          Required Ansible collection not found: microsoft.ad
+
+          Install it on the control node with:
+            ansible-galaxy collection install microsoft.ad
+
+          Then re-run this playbook.
+      when: "'microsoft.ad' not in _col_check.stdout"
+      delegate_to: localhost
+      become: false
+
+    - name: "Parse TDF users section on control node"
+      command: >-
+        python3 {{ playbook_dir }}/parse_tdf.py
+          --section users
+          --tdf {{ tdf_path }}
+          --domain {{ ad_domain }}
+          --email-domain {{ ad_email_domain }}
+          --sites-csv {{ sites_csv }}
+      register: _tdf_raw
+      changed_when: false
+      delegate_to: localhost
+      become: false
+
+    - name: "Decode users JSON and compute base DN"
+      set_fact:
+        _users_all: "{{ _tdf_raw.stdout | from_json }}"
+        _base_dn:   "DC={{ ad_domain.split('.') | join(',DC=') }}"
+
+    - name: "Filter out users with unresolvable OU paths"
+      set_fact:
+        _users: "{{ _users_all | selectattr('ad_ou', 'ne', '') | list }}"
+
+    - name: "Build name-to-SAM lookup for manager resolution"
+      set_fact:
+        _name_to_sam: "{{ _users | items2dict(key_name='Name', value_name='SamAccountName') }}"
+
+    - name: "Preflight | Report user count"
+      debug:
+        msg: >-
+          Parsed {{ _users_all | length }} users from TDF;
+          {{ _users | length }} have resolvable OU paths
+          ({{ _users | selectattr('Disabled') | list | length }} disabled,
+           {{ _users | selectattr('Manager') | list | length }} have a manager set).
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # Section A — Band sub-OUs
+    # Create band/team OUs under each city's Users OU.
+    # These are not created by ad_schema.yml (schema only has the city OUs).
+    # The microsoft.ad.ou module is idempotent: re-running is safe.
+    # We iterate over all users; duplicate OU creation attempts are no-ops.
+    # -------------------------------------------------------------------------
+
+    - name: "A | Create band sub-OUs under city Users OUs"
+      microsoft.ad.ou:
+        name:                 "{{ item.ad_band_ou_name }}"
+        path:                 "{{ item.ad_band_parent }}"
+        state:                present
+        protect_from_deletion: true
+      when: item.ad_band_ou_name | length > 0
+      loop: "{{ _users }}"
+      loop_control:
+        label: >-
+          OU={{ item.ad_band_ou_name }},{{ item.ad_band_parent | regex_replace(',DC=.*$','') }}
+
+    # -------------------------------------------------------------------------
+    # Section B — User accounts
+    # update_password: on_create — only sets the vault password on first creation.
+    # existing accounts keep their current password on re-runs.
+    # -------------------------------------------------------------------------
+
+    - name: "B | Create user accounts"
+      microsoft.ad.user:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        upn:              "{{ item.UserPrincipalName }}"
+        path:             "{{ item.ad_ou }}"
+        display_name:     "{{ item.Name }}"
+        given_name:       "{{ item.Name.split(' ')[0] }}"
+        surname:          "{{ item.Name.split(' ')[1:] | join(' ') }}"
+        description:      "{{ item.Description }}"
+        email_address:    "{{ item.Email }}"
+        company:          "{{ item.Company }}"
+        title:            "{{ item.Title }}"
+        department:       "{{ item.Department }}"
+        telephone_number: "{{ item.telephoneNumber }}"
+        mobile_phone:     "{{ item.mobile }}"
+        street_address:   "{{ item.Street }}"
+        city:             "{{ item.City }}"
+        postal_code:      "{{ item.PostalCode }}"
+        office:           "{{ item.physicalDeliveryOfficeName }}"
+        country:          "{{ item.CountryCode if item.CountryCode else omit }}"
+        enabled:          "{{ not item.Disabled }}"
+        password:         "{{ vault_ad_new_user_password }}"
+        update_password:  on_create
+        password_expired: "{{ item.MustChangePassword }}"
+        state:            present
+      loop: "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    # -------------------------------------------------------------------------
+    # Section C — Group membership
+    # Groups are added, not replaced (groups_action: add).
+    # Errors are ignored — some TDF group names don't match AD group names
+    # (e.g. 'Keyboardists' vs 'Keyboards'). Run ad_groups.yml first to
+    # minimise mismatches.
+    # -------------------------------------------------------------------------
+
+    - name: "C | Add users to groups"
+      microsoft.ad.user:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        groups:
+          add: "{{ item.Groups }}"
+        state: present
+      when:  item.Groups | length > 0
+      loop:  "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }} → {{ item.Groups | join(', ') }}"
+      ignore_errors: true
+
+    # -------------------------------------------------------------------------
+    # Section D — Manager
+    # Runs after all accounts exist so the manager DN can be resolved.
+    # Manager in the TDF is a display name; we resolve it to a SamAccountName
+    # via the _name_to_sam dict built in pre_tasks.
+    # Users whose manager is not in the TDF (e.g. external or unlisted) are
+    # silently skipped by the 'when' condition.
+    # -------------------------------------------------------------------------
+
+    - name: "D | Set manager attribute"
+      microsoft.ad.user:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        manager:          "{{ _name_to_sam[item.Manager] }}"
+        state:            present
+      when:
+        - item.Manager | length > 0
+        - item.Manager in _name_to_sam
+      loop: "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }} ← manager: {{ item.Manager }}"
