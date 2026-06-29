@@ -51,9 +51,9 @@ rudder_base_packages:
 # LDAP / AD configuration
 # Secrets (bind password) are in vault.yml.
 # -----------------------------------------------------------------------------
-rudder_ldap_bind_dn:     "CN=Rudder LDAP Bind,OU=Service Accounts,DC=jukebox,DC=example"
-rudder_ldap_base:        "DC=jukebox,DC=example"
-rudder_ldap_admin_group: "CN=GRP_Rudder_Admins,OU=IT Groups,DC=jukebox,DC=example"
+rudder_ldap_bind_dn:     "CN=Rudder LDAP Bind,OU=Service Accounts,DC=jukebox,DC=internal"
+rudder_ldap_base:        "DC=jukebox,DC=internal"
+rudder_ldap_admin_group: "CN=GRP_Rudder_Admins,OU=IT Groups,DC=jukebox,DC=internal"
 
 # -----------------------------------------------------------------------------
 # sites.csv path on the Ansible control node

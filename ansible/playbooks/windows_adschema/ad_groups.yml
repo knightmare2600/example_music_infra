@@ -1,0 +1,103 @@
+---
+# =============================================================================
+# Example Music Limited — Active Directory Groups Playbook
+# playbooks/windows_adschema/ad_groups.yml
+#
+# Creates all AD security groups from jukebox.example.tdf ($Script:rawDemoGroups).
+# All groups are created in OU=Security Groups,OU=IT Groups.
+#
+# ⚠️  ADDITIVE ONLY — state: present throughout. Never removes groups.
+#
+# Prerequisite:
+#   ad_schema.yml must have been run first (OU structure must exist).
+#
+# Usage:
+#   ansible-playbook playbooks/windows_adschema/ad_groups.yml \
+#     --limit EXADCSFAL001 --ask-vault-pass
+#
+#   # Check mode (dry run)
+#   ansible-playbook playbooks/windows_adschema/ad_groups.yml \
+#     --limit EXADCSFAL001 --check --diff --ask-vault-pass
+#
+# Variables (override with --extra-vars):
+#   ad_target   Target DC hostname   (default: EXADCSFAL001)
+#   ad_domain   AD domain FQDN       (default: jukebox.internal)
+#   tdf_path    Path to TDF file     (default: /etc/example-music/jukebox.example.tdf)
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-29  Initial release. 105 groups from rawDemoGroups.
+# =============================================================================
+
+- name: "Build AD groups from TDF"
+  hosts: "{{ ad_target | default('EXADCSFAL001') }}"
+  gather_facts: false
+  become: false
+
+  vars:
+    ad_domain:       "jukebox.internal"
+    ad_email_domain: "{{ ad_domain }}"
+    tdf_path:        "/etc/example-music/jukebox.example.tdf"
+
+  pre_tasks:
+
+    - name: "Preflight | Check microsoft.ad collection is installed"
+      command: ansible-galaxy collection list microsoft.ad
+      register: _col_check
+      changed_when: false
+      failed_when: false
+      delegate_to: localhost
+      become: false
+
+    - name: "Preflight | Fail with install instructions if collection is missing"
+      fail:
+        msg: |
+          Required Ansible collection not found: microsoft.ad
+
+          Install it on the control node with:
+            ansible-galaxy collection install microsoft.ad
+
+          Then re-run this playbook.
+      when: "'microsoft.ad' not in _col_check.stdout"
+      delegate_to: localhost
+      become: false
+
+    - name: "Parse TDF groups section on control node"
+      command: >-
+        python3 {{ playbook_dir }}/parse_tdf.py
+          --section groups
+          --tdf {{ tdf_path }}
+          --domain {{ ad_domain }}
+          --email-domain {{ ad_email_domain }}
+      register: _tdf_raw
+      changed_when: false
+      delegate_to: localhost
+      become: false
+
+    - name: "Decode groups JSON and compute base DN"
+      set_fact:
+        _groups:  "{{ _tdf_raw.stdout | from_json }}"
+        _base_dn: "DC={{ ad_domain.split('.') | join(',DC=') }}"
+
+    - name: "Preflight | Report group count"
+      debug:
+        msg: "Parsed {{ _groups | length }} groups from TDF — proceeding."
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # All rawDemoGroups are Type=Security, Scope=Global.
+    # They all land in OU=Security Groups,OU=IT Groups.
+    # -------------------------------------------------------------------------
+
+    - name: "Create AD security groups"
+      microsoft.ad.group:
+        name:        "{{ item.Name }}"
+        path:        "OU=Security Groups,OU=IT Groups,{{ _base_dn }}"
+        description: "{{ item.Description }}"
+        scope:       global
+        category:    security
+        state:       present
+      loop:          "{{ _groups }}"
+      loop_control:
+        label: "{{ item.Name }}"
