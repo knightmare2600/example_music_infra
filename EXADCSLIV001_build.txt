@@ -1,0 +1,255 @@
+EXADCSLIV001 BUILD RUNBOOK
+==========================
+Date    : 2026-06-29
+Domain  : jukebox.internal  (NetBIOS: JUKEBOX)
+FAL DC  : EXADCSFAL001  192.168.76.10   Falkirk  192.168.76.0/24   (forest root, PDCe)
+LIV DC  : EXADCSLIV001  192.168.151.10  Liverpool 192.168.151.0/24  (replica, GC)
+OS      : Windows Server 2022 (fresh install)
+
+Run sections in order. Sections marked [FAL001] run on the existing DC.
+Sections marked [LIV001] run on the new server. All PowerShell as Administrator.
+
+===============================================================================
+SECTION A  --  PREFLIGHT  [FAL001]
+===============================================================================
+Verify the existing forest is healthy before adding a second DC. Fix any
+errors from dcdiag before proceeding.
+
+    Get-ADDomainController -Filter *
+    repadmin /showrepl
+    repadmin /replsummary
+    dcdiag /test:replications /test:services /test:systemlog /test:dns /q
+
+
+===============================================================================
+SECTION B  --  CREATE AD SITES AND SUBNETS  [FAL001]
+===============================================================================
+Do this BEFORE promoting LIV001. Providing -SiteName "Liverpool" during
+promotion (Section E) requires the site to already exist.
+
+    # Create the two physical sites
+    New-ADReplicationSite -Name "Falkirk"   -Description "FAL -- Scotland, UK"
+    New-ADReplicationSite -Name "Liverpool" -Description "LIV -- England, UK"
+
+    # Associate subnets with sites
+    New-ADReplicationSubnet -Name "192.168.76.0/24"  -Site "Falkirk"   -Location "Falkirk, Scotland"
+    New-ADReplicationSubnet -Name "192.168.151.0/24" -Site "Liverpool" -Location "Liverpool, England"
+
+    # Move FAL001 into its own site
+    Move-ADDirectoryServer -Identity "EXADCSFAL001" -Site "Falkirk"
+
+    # Inter-site link: IP transport, 15-minute schedule
+    New-ADReplicationSiteLink `
+        -Name                        "FAL-LIV" `
+        -SitesIncluded               "Falkirk","Liverpool" `
+        -Cost                        100 `
+        -ReplicationFrequencyInMinutes 15 `
+        -InterSiteTransportProtocol  IP
+
+    # Confirm
+    Get-ADReplicationSite    -Filter *
+    Get-ADReplicationSubnet  -Filter *
+    Get-ADReplicationSiteLink -Filter *
+
+
+===============================================================================
+SECTION C  --  INITIAL CONFIG  [LIV001]  (fresh Server 2022, local admin)
+===============================================================================
+
+    # 1. Rename and reboot
+    Rename-Computer -NewName "EXADCSLIV001" -Force -Restart
+
+    # -- After reboot, re-open PowerShell as Administrator --
+
+    # 2. Set static IP  (identify NIC first)
+    $nic = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1
+    New-NetIPAddress `
+        -InterfaceIndex $nic.ifIndex `
+        -IPAddress      "192.168.151.10" `
+        -PrefixLength   24 `
+        -DefaultGateway "192.168.151.1"
+
+    # 3. Point DNS at FAL001 (needed for domain join and promotion)
+    Set-DnsClientServerAddress -InterfaceIndex $nic.ifIndex `
+        -ServerAddresses "192.168.76.10"
+
+    # 4. Verify connectivity to FAL001
+    Test-Connection   -ComputerName "192.168.76.10" -Count 2
+    Resolve-DnsName   "jukebox.internal" -Server "192.168.76.10"
+
+    # 5. Time zone
+    Set-TimeZone -Id "GMT Standard Time"
+
+    # 6. Disable IPv6 if not required (optional, avoids DNS lookup noise)
+    Disable-NetAdapterBinding -Name $nic.Name -ComponentID ms_tcpip6
+
+NOTE: Ensure the firewall between 192.168.151.0/24 and 192.168.76.0/24 passes
+the following ports in both directions before Section E:
+  TCP/UDP 53   (DNS)
+  TCP/UDP 88   (Kerberos)
+  TCP/UDP 135  (RPC endpoint mapper)
+  TCP/UDP 389  (LDAP)
+  TCP     445  (SMB / DFSR SYSVOL)
+  TCP     464  (Kerberos password change)
+  TCP     3268 (Global Catalogue LDAP)
+  TCP     49152-65535  (RPC dynamic -- or restrict with Set-ItemProperty
+                        HKLM:\SYSTEM\CurrentControlSet\Services\NTDS\Parameters
+                        TCP/IP Port 49152)
+
+
+===============================================================================
+SECTION D  --  INSTALL AD ROLE  [LIV001]
+===============================================================================
+
+    Install-WindowsFeature -Name AD-Domain-Services,DNS -IncludeManagementTools
+
+    # Confirm
+    Get-WindowsFeature AD-Domain-Services,DNS
+
+
+===============================================================================
+SECTION E  --  PROMOTE TO REPLICA DC  [LIV001]
+===============================================================================
+You will be prompted for:
+  - Domain admin credentials  (JUKEBOX\Administrator)
+  - DSRM safe-mode password   (store this in the Ansible vault)
+
+    $cred = Get-Credential -Message "Domain admin (JUKEBOX\Administrator)"
+
+    Install-ADDSDomainController `
+        -DomainName             "jukebox.internal" `
+        -Credential             $cred `
+        -SiteName               "Liverpool" `
+        -InstallDns             $true `
+        -CreateDnsDelegation    $false `
+        -DatabasePath           "C:\Windows\NTDS" `
+        -LogPath                "C:\Windows\NTDS" `
+        -SysvolPath             "C:\Windows\SYSVOL" `
+        -NoGlobalCatalog        $false `
+        -CriticalReplicationOnly $false `
+        -NoRebootOnCompletion   $false `
+        -Force                  $true
+
+The server reboots automatically at the end of promotion.
+
+
+===============================================================================
+SECTION F  --  FIX DNS AFTER REBOOT  [LIV001]  (log in as JUKEBOX\Administrator)
+===============================================================================
+After promotion LIV001 runs its own DNS server. Update the NIC to use itself
+as primary and FAL001 as secondary.
+
+    $nic = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1
+    Set-DnsClientServerAddress -InterfaceIndex $nic.ifIndex `
+        -ServerAddresses "192.168.151.10","192.168.76.10"
+
+
+===============================================================================
+SECTION G  --  TIME SYNC  [LIV001]
+===============================================================================
+Replica DCs sync time from the PDC Emulator. FAL001 should be the PDCe.
+
+    # Confirm PDCe
+    (Get-ADDomain).PDCEmulator
+
+    # Point LIV001 at the PDCe
+    w32tm /config /manualpeerlist:"EXADCSFAL001.jukebox.internal" /syncfromflags:manual /update
+    Restart-Service w32tm
+    w32tm /resync
+    w32tm /query /status
+
+    # Time should be within 5 minutes of FAL001 -- Kerberos will reject if it drifts more.
+
+
+===============================================================================
+SECTION H  --  VERIFY REPLICATION  [FAL001 or LIV001]
+===============================================================================
+
+    # Both DCs visible
+    Get-ADDomainController -Filter *
+
+    # Force initial sync from FAL001 to LIV001
+    repadmin /replicate EXADCSLIV001 EXADCSFAL001 "DC=jukebox,DC=internal"
+    repadmin /replicate EXADCSLIV001 EXADCSFAL001 "CN=Configuration,DC=jukebox,DC=internal"
+    repadmin /replicate EXADCSLIV001 EXADCSFAL001 "CN=Schema,CN=Configuration,DC=jukebox,DC=internal"
+
+    # Check replication health
+    repadmin /showrepl
+    repadmin /replsummary
+
+    # Full diagnostics (should return no errors)
+    dcdiag /test:replications /test:services /test:systemlog /test:dns /q
+
+
+===============================================================================
+SECTION I  --  SYSVOL REPLICATION CHECK  [LIV001]
+===============================================================================
+Server 2022 uses DFSR for SYSVOL. The NETLOGON and SYSVOL shares must appear.
+
+    # DFSR service running
+    Get-Service -Name DFSR
+
+    # SYSVOL and NETLOGON shares present
+    net share
+
+If SYSVOL/NETLOGON are missing after 10 minutes, force a sync:
+
+    dfsrdiag SyncNow /Partner:EXADCSFAL001 /RGName:"Domain System Volume" /Time:5
+
+
+===============================================================================
+SECTION J  --  ADD LIV001 TO ANSIBLE INVENTORY
+===============================================================================
+Add EXADCSLIV001 to the Windows DC host group in your inventory so playbooks
+can target it individually or alongside FAL001.
+
+Example entry (adjust path to match your inventory file):
+
+    [windows_dcs]
+    EXADCSFAL001 ansible_host=192.168.76.10
+    EXADCSLIV001 ansible_host=192.168.151.10
+
+    [windows_dcs:vars]
+    ansible_user=JUKEBOX\ansible_svc
+    ansible_password={{ vault_windows_ansible_password }}
+    ansible_connection=winrm
+    ansible_winrm_transport=kerberos
+    ansible_winrm_server_cert_validation=ignore
+
+
+===============================================================================
+SECTION K  --  RUN ANSIBLE PLAYBOOKS  (control node, after both DCs healthy)
+===============================================================================
+Copy jukebox.example.tdf and sites.csv to the control node paths or override
+via --extra-vars if they live elsewhere.
+
+    # 1. Build full OU hierarchy
+    ansible-playbook ansible/playbooks/windows_adschema/ad_schema.yml \
+        --limit EXADCSFAL001 --ask-vault-pass
+
+    # 2. Create 105 security groups
+    ansible-playbook ansible/playbooks/windows_adschema/ad_groups.yml \
+        --limit EXADCSFAL001 --ask-vault-pass
+
+    # 3. Create 353 user accounts (sets vault_ad_new_user_password on first run only)
+    ansible-playbook ansible/playbooks/windows_adschema/ad_users.yml \
+        --limit EXADCSFAL001 --ask-vault-pass
+
+    # 4. Create 271 computer accounts
+    ansible-playbook ansible/playbooks/windows_adschema/ad_computers.yml \
+        --limit EXADCSFAL001 --ask-vault-pass
+
+    # For a production UPN/email domain, add to every playbook above:
+    #   --extra-vars "ad_email_domain=example1.co.uk"
+    # This registers example1.co.uk as an alternate UPN suffix (ad_schema.yml
+    # Section 9) and rewrites user UPNs and email addresses accordingly.
+
+
+===============================================================================
+QUICK REFERENCE
+===============================================================================
+EXADCSFAL001  192.168.76.10   Falkirk    Forest root / PDCe / RID Master / GC
+EXADCSLIV001  192.168.151.10  Liverpool  Replica DC / GC
+Domain        jukebox.internal
+NetBIOS       JUKEBOX
+DSRM password Set during Section E -- add to Ansible vault as vault_dsrm_password
