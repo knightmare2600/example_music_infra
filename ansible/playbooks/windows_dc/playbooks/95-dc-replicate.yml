@@ -17,10 +17,13 @@
 # =============================================================================
 # Changelog:
 #   2026-06-25  Initial file
+#   2026-06-29  Add Stage 0 pre-sync health checks (DNS, ProductType, SYSVOL,
+#               repadmin /showrepl, dcdiag) with operator confirmation pause
+#               before any sync is triggered; standardise hosts: target
 # =============================================================================
 
 - name: Windows DC — Replication verification and force-sync
-  hosts: "{{ target | default('all') }}"
+  hosts: "{{ target | default('windows_dc') }}"
   gather_facts: true
 
   vars:
@@ -38,7 +41,130 @@
       include_tasks: ../tasks/hostname_facts.yml
       tags: dc_replicate
 
-    # ── Stage 1 — Force AD replication ───────────────────────────────────────
+    # =========================================================================
+    # Stage 0 — Pre-sync health checks (read-only — nothing is changed here)
+    # =========================================================================
+
+    - name: "── Stage 0 — Pre-sync health checks ──"
+      ansible.builtin.debug:
+        msg: >
+          {{ _c.C }}[*]{{ _c.NC }} Running read-only health checks before
+          triggering replication sync...
+      tags: dc_replicate
+
+    - name: "[Stage 0] Confirm host is a DC (ProductType 2)"
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_OperatingSystem).ProductType
+      register: dc_presync_product_type
+      changed_when: false
+      tags: dc_replicate
+
+    - name: "[Stage 0] FAIL — host is not a DC"
+      ansible.builtin.fail:
+        msg: >
+          {{ _c.R }}[✗]{{ _c.NC }} {{ inventory_hostname }} ProductType=
+          {{ dc_presync_product_type.stdout | trim }} — expected 2 (DC).
+          Run 90-dc-promote.yml first.
+      when: dc_presync_product_type.stdout | trim != '2'
+      tags: dc_replicate
+
+    - name: "[Stage 0] Check jukebox.internal DNS resolution"
+      ansible.windows.win_shell: |
+        try {
+          $r = Resolve-DnsName jukebox.internal -ErrorAction Stop
+          Write-Output "OK:$($r[0].IPAddress)"
+        } catch {
+          Write-Output "FAIL:$($_.Exception.Message)"
+        }
+      register: dc_presync_dns
+      changed_when: false
+      tags: dc_replicate
+
+    - name: "[Stage 0] Check SYSVOL and NETLOGON shares are online"
+      ansible.windows.win_shell: |
+        $shares = Get-SmbShare | Select-Object -ExpandProperty Name
+        if ($shares -contains 'SYSVOL' -and $shares -contains 'NETLOGON') {
+          "OK"
+        } else {
+          "MISSING: " + (@('SYSVOL','NETLOGON') | Where-Object { $shares -notcontains $_ }) -join ', '
+        }
+      register: dc_presync_sysvol
+      changed_when: false
+      tags: dc_replicate
+
+    - name: "[Stage 0] Run repadmin /showrepl (read-only status)"
+      ansible.windows.win_shell: |
+        repadmin /showrepl 2>&1
+      register: dc_presync_showrepl
+      changed_when: false
+      ignore_errors: true
+      tags: dc_replicate
+
+    - name: "[Stage 0] Run dcdiag /test:connectivity /test:replications"
+      ansible.windows.win_shell: |
+        dcdiag /test:connectivity /test:replications 2>&1
+      register: dc_presync_dcdiag
+      changed_when: false
+      ignore_errors: true
+      tags: dc_replicate
+
+    - name: "[Stage 0] Count dcdiag failures"
+      ansible.builtin.set_fact:
+        dc_presync_fail_count: >-
+          {{
+            dc_presync_dcdiag.stdout_lines
+            | select('search', '(?i)failed|error')
+            | list | length
+          }}
+      tags: dc_replicate
+
+    - name: "[Stage 0] Check for repadmin errors"
+      ansible.builtin.set_fact:
+        dc_presync_repl_errors: >-
+          {{
+            dc_presync_showrepl.stdout_lines
+            | select('search', '(?i)error|fail|8457|8453|1722')
+            | list
+          }}
+      tags: dc_replicate
+
+    - name: "[Stage 0] Pre-sync health summary"
+      ansible.builtin.debug:
+        msg:
+          - "{{ _c.C }}── Pre-Sync Health Check Summary ─────────────────────────────{{ _c.NC }}"
+          - "  DC confirmed    : {{ _c.G }}YES (ProductType=2){{ _c.NC }}"
+          - "  DNS (jukebox)   : {{ _c.G if dc_presync_dns.stdout | trim | regex_search('^OK') else _c.R }}{{ dc_presync_dns.stdout | trim }}{{ _c.NC }}"
+          - "  SYSVOL/NETLOGON : {{ _c.G if dc_presync_sysvol.stdout | trim == 'OK' else _c.Y }}{{ dc_presync_sysvol.stdout | trim }}{{ _c.NC }}"
+          - "  dcdiag failures : {{ _c.G if dc_presync_fail_count | int == 0 else _c.Y }}{{ dc_presync_fail_count }}{{ _c.NC }}"
+          - "  repadmin errors : {{ _c.G if dc_presync_repl_errors | length == 0 else _c.Y }}{{ dc_presync_repl_errors | length }} line(s){{ _c.NC }}"
+      tags: dc_replicate
+
+    - name: "[Stage 0] Show repadmin errors (if any)"
+      ansible.builtin.debug:
+        msg: "{{ _c.Y }}[!]{{ _c.NC }} {{ item }}"
+      loop: "{{ dc_presync_repl_errors }}"
+      when: dc_presync_repl_errors | length > 0
+      tags: dc_replicate
+
+    - name: "[Stage 0] Operator confirmation — proceed with replication sync?"
+      ansible.builtin.pause:
+        prompt: |
+
+          ── Pre-sync checks complete ─────────────────────────────────────────
+          DC confirmed    : YES
+          DNS (jukebox)   : {{ dc_presync_dns.stdout | trim }}
+          SYSVOL/NETLOGON : {{ dc_presync_sysvol.stdout | trim }}
+          dcdiag failures : {{ dc_presync_fail_count }}
+          repadmin errors : {{ dc_presync_repl_errors | length }} line(s)
+
+          Proceeding will run: repadmin /syncall /AdeP (forces full sync of
+          all AD partitions from all replication partners).
+
+          Press Enter to proceed, or Ctrl+C then A to abort.
+      tags: dc_replicate
+
+    # =========================================================================
+    # Stage 1 — Force AD replication ─────────────────────────────────────────
 
     - name: "── Stage 1 — Force replication from source DC ──"
       debug:
@@ -68,7 +194,7 @@
           "CN=Schema,CN=Configuration,DC=jukebox,DC=internal"
         )
         foreach ($p in $partitions) {
-          repadmin /replicate $env:COMPUTERNAME "{{ dc_replication_source }}" "$p" /force 2>&1
+          repadmin /replicate $env:COMPUTERNAME "{{ dc_replication_source | default('') }}" "$p" /force 2>&1
         }
       register: dc_replicate_forced
       changed_when: false

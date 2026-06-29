@@ -32,86 +32,86 @@ $TTL {{ zone_ttl }}
 ; ── DNS server itself ─────────────────────────────────────────
 exadnscld001  IN  A  {{ dns_ip }}
 
-; ── CLD ancillary / provisioning infrastructure ───────────────
-; EXASVR numbering: 001=DNS(.10) 002=WAC(.20) 003=Ansible(.49) 004=Rudder(.22)
+; ── vRACK (192.168.139.0/24) ancillary hosts ─────────────────
+; Hardcoded -- not derived from sites.csv.  CLD LAN devices follow below.
 {% for h in ancillary_hosts %}
 {% if h.name != 'exadnscld001' %}
 {{ "%-45s" | format(h.name) }} IN  A  {{ h.ip }}   ; {{ h.comment }}
 {% endif %}
 {% endfor %}
 
+; ── CLD LAN (192.168.69.0/24) devices ────────────────────────
+; CLD black swan: LAN and vRACK are separate subnets.
+; Standard suffix_map does not apply -- listed explicitly.
+{% for h in cld_lan_hosts %}
+{{ "%-45s" | format(h.name) }} IN  A  {{ h.ip }}   ; {{ h.comment }}
+{% endfor %}
+
 ; ── Firewall WAN addresses on provisioning network ────────────
 ; Each site firewall has a WAN interface on 192.168.139.0/24.
 ; Host octet = site subnet third octet.
 ; e.g. EDI 192.168.131.0/24  ->  exafwledi001-wan IN A 192.168.139.131
-; The -wan suffix distinguishes the provisioning face from the LAN address.
-{% for site in sites | sort(attribute='octet') %}
+; CLD is special: vRACK WAN is .139, not the CLD LAN octet.
+{% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exafwl' + site.Site | lower + '001-wan') }} IN  A  192.168.139.{{ site.octet }}   ; {{ site.Site }} WAN face on provisioning net
 {% endfor %}
+exafwlcld001-wan                              IN  A  192.168.139.139  ; CLD WAN face on provisioning net (static)
 
-; ── Generated records by role ─────────────────────────────────
+; ── Generated records by role (CLD excluded -- listed above) ──
 ; Sorted by site octet ascending within each role group.
 ; SUFFIX_MAP mirrors site-inventory-audit.py exactly.
 
 ; Firewalls (Debian FWL nodes)
-{% for site in sites | sort(attribute='octet') %}
+{% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exafwl' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.253
 {% endfor %}
 
 ; Routers / hardware gateways (unmanaged)
-{% for site in sites | sort(attribute='octet') %}
+{% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exartr' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.1
 {% endfor %}
 
 ; Domain Controllers
-{% for site in sites | sort(attribute='octet') %}
+{% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exadcs' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.10
 {{ "%-45s" | format('exadcs' + site.Site | lower + '002') }} IN  A  192.168.{{ site.octet }}.11
 {% endfor %}
 
 ; Proxmox VE nodes
-{% for site in sites | sort(attribute='octet') %}
+{% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exapve' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.5
 {{ "%-45s" | format('exapve' + site.Site | lower + '002') }} IN  A  192.168.{{ site.octet }}.6
 {{ "%-45s" | format('exapve' + site.Site | lower + '003') }} IN  A  192.168.{{ site.octet }}.7
 {% endfor %}
 
 ; BMC / RAC (iDRAC, iLO, RAC emulators)
-{% for site in sites | sort(attribute='octet') %}
+{% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exarac' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.2
 {{ "%-45s" | format('exarac' + site.Site | lower + '002') }} IN  A  192.168.{{ site.octet }}.3
 {{ "%-45s" | format('exarac' + site.Site | lower + '003') }} IN  A  192.168.{{ site.octet }}.4
 {% endfor %}
 
 ; Switches (unmanaged)
-{% for site in sites | sort(attribute='octet') %}
+{% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exaswi' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.250
 {{ "%-45s" | format('exaswi' + site.Site | lower + '002') }} IN  A  192.168.{{ site.octet }}.251
 {{ "%-45s" | format('exaswi' + site.Site | lower + '003') }} IN  A  192.168.{{ site.octet }}.252
 {% endfor %}
 
-; VOIP SBC / PBX
-{% for site in sites | sort(attribute='octet') %}
-{% if site.Site == 'CLD' %}
-{{ "%-45s" | format('exapbx' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.48   ; CLD: PBX not SBC
-{% else %}
+; VOIP SBC nodes
+{% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exasbc' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.48
-{% endif %}
 {% endfor %}
 
-; Rudder — .12 server at CLD, .12 relay at all other sites
-{% for site in sites | sort(attribute='octet') %}
-{% if site.Site == 'CLD' %}
-{{ "%-45s" | format('exarudcld001') }} IN  A  192.168.{{ site.octet }}.12   ; CLD: Rudder Server
-{% else %}
+; Rudder relay nodes (.12 per site)
+{% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exarry' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.12
-{% endif %}
 {% endfor %}
 
 ; ── DHCP pool ($GENERATE) ─────────────────────────────────────
 ; .100–.199 per site — forward records only.
 ; PTR $GENERATE blocks are in each per-site reverse zone file.
-; CLD (provisioning network) has no DHCP pool.
+; CLD has no DHCP pool (LAN or vRACK).
 {% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 ; {{ site.Site }} -- 192.168.{{ site.octet }}.100-199
 $GENERATE 100-199 dhcp${-99,2,d}.{{ site.Site | lower }} IN A 192.168.{{ site.octet }}.$

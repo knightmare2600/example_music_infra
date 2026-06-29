@@ -24,8 +24,6 @@
 - name: Windows — Hibernation policy
   hosts: "{{ target | default('all') }}"
   gather_facts: false
-  handlers:
-    - import_tasks: ../handlers/main.yml
   tasks:
 
     - name: Disable hibernation (servers and desktops)

@@ -1,0 +1,40 @@
+; ============================================================
+; /etc/bind/db.192.168.69
+; Example Music Limited -- CLD LAN reverse zone
+;
+; Zone:    69.168.192.in-addr.arpa
+; Covers:  192.168.69.0/24  (CLD LAN)
+; Server:  EXADNSCLD001 ({{ dns_ip }})
+; Managed by: Ansible bind9-dns.yml
+; Generated:  {{ ansible_date_time.iso8601 }}
+;
+; CLD BLACK SWAN:
+;   CLD has two subnets.  This zone covers the LAN (192.168.69.0/24).
+;   The vRACK (192.168.139.0/24) is handled by db.192.168.139.
+;   Standard suffix_map does not apply -- CLD LAN devices are explicit.
+;
+; PTR records:
+;   .1   EXAFWLCLD001      -- CLD firewall (LAN face / default gateway)
+;   .9   EXAANSCLD001      -- Ansible control node
+;   .10  EXADCSCLD001      -- DC primary
+;   .11  EXADCSCLD002      -- DC secondary
+; ============================================================
+
+$ORIGIN 69.168.192.in-addr.arpa.
+$TTL {{ zone_ttl }}
+
+@   IN  SOA  exadnscld001.{{ domain }}.  hostmaster.{{ domain }}. (
+              {{ zone_serial }}  ; serial
+              3600       ; refresh
+              900        ; retry
+              604800     ; expire
+              {{ zone_ttl }}        ; minimum
+            )
+
+@   IN  NS   exadnscld001.{{ domain }}.
+
+; ── CLD LAN PTR records ──────────────────────────────────────
+{% for h in cld_lan_hosts | sort(attribute='ip') %}
+{% set host_octet = h.ip.split('.')[3] %}
+{{ "%-5s" | format(host_octet) }} IN  PTR  {{ h.name }}.{{ domain }}.   ; {{ h.comment }}
+{% endfor %}

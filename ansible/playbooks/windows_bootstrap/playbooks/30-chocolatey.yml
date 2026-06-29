@@ -19,8 +19,6 @@
 - name: Windows — Chocolatey installation
   hosts: "{{ target | default('all') }}"
   gather_facts: false
-  handlers:
-    - import_tasks: ../handlers/main.yml
   tasks:
 
     - name: Check if Chocolatey is installed

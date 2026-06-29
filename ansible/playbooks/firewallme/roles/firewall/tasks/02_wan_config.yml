@@ -6,6 +6,7 @@
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-20  Colourised prompts — matches firewallme.sh colour scheme
+#   2026-06-29  Remove duplicate LAN IP prompt — fw_lan_ip is set in 01_interfaces.yml
 # =============================================================================
 
 - name: "[WAN] BLACK SITE — force static WAN for CLD"
@@ -120,23 +121,6 @@
   ansible.builtin.debug:
     msg: "{{ _c.G }}[+]{{ _c.NC }} WAN: static {{ fw_wan_static_ip }}/24 gw {{ fw_wan_static_gw }}"
   when: fw_wan_mode == 'static'
-
-# ── LAN IP (.1 / .253) ────────────────────────────────────────────────────────
-
-- name: "[WAN] Prompt — .1 or .253 for LAN IP"
-  ansible.builtin.pause:
-    prompt: "Use {{ _c.G }}.1{{ _c.NC }} or {{ _c.G }}.253{{ _c.NC }} for LAN IP?"
-  register: fw_lan_octet_prompt_wan
-
-- name: "[WAN] Validate LAN IP choice"
-  ansible.builtin.assert:
-    that:
-      - fw_lan_octet_prompt_wan.user_input | trim in ['1', '253']
-    fail_msg: "{{ _c.Y }}[!]{{ _c.NC }} Invalid choice. Enter 1 or 253."
-
-- name: "[WAN] Set LAN IP"
-  ansible.builtin.set_fact:
-    fw_lan_ip: "{{ fw_subnet }}.{{ fw_lan_octet_prompt_wan.user_input | trim }}"
 
 # ── Ansible/PXE server ────────────────────────────────────────────────────────
 

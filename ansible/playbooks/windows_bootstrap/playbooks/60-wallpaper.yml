@@ -21,8 +21,6 @@
 - name: Windows — Corporate wallpaper
   hosts: "{{ target | default('all') }}"
   gather_facts: false
-  handlers:
-    - import_tasks: ../handlers/main.yml
   tasks:
 
     - name: Create wallpaper directory
@@ -35,7 +33,7 @@
       ansible.windows.win_get_url:
         url:  "{{ exa_wallpaper_url }}"
         dest: "{{ exa_wallpaper_dest }}"
-      notify: apply wallpaper
+      register: wallpaper_download
       tags: wallpaper
 
     - name: Set wallpaper via PersonalizationCSP (applies to all users)
@@ -73,5 +71,8 @@
         type: dword
       tags: wallpaper
 
-    - name: Flush handlers (apply wallpaper change immediately)
-      meta: flush_handlers
+    - name: Apply wallpaper change (broadcast WM_SETTINGCHANGE)
+      ansible.windows.win_shell: |
+        RUNDLL32.EXE user32.dll,UpdatePerUserSystemParameters ,1 ,True
+      changed_when: false
+      when: wallpaper_download is changed

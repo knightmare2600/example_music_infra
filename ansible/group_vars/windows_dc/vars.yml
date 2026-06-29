@@ -57,5 +57,5 @@ dc_hub_sources:
 # CLD DC primary — used as replication source for forest-root check
 dc_cld_source:
   site: "CLD"
-  ip:   "192.168.139.10"
+  ip:   "192.168.69.10"
   fqdn: "exadcscld001.jukebox.internal"

@@ -7,6 +7,12 @@
 # static) and LAN profiles, set DNS, bring up LAN, optionally bring up WAN.
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-06-29  Add connection.autoconnect-priority 100 to all nmcli con add calls
+#               (bug fix: NM could silently skip profiles at boot without the priority)
+#   2026-06-29  Fix interface activation order — WAN up + wait before LAN (bug fix:
+#               DHCP race; mirrors firewallme.sh 2026-04-25 + 2026-06-14 fixes)
+#   2026-06-29  Enable NetworkManager-wait-online.service (required for WireGuard
+#               After=network-online.target drop-in to function correctly)
 # =============================================================================
 
 # ── Remove existing NM connections for our interfaces ─────────────────────────
@@ -51,7 +57,8 @@
       ipv4.gateway {{ fw_wan_static_gw }} \
       ipv4.dns "{{ fw_cld_dns }} 1.1.1.1" \
       ipv4.dns-search "jukebox.internal" \
-      connection.autoconnect yes
+      connection.autoconnect yes \
+      connection.autoconnect-priority 100
   when: fw_wan_mode == 'static'
   notify: restart NetworkManager
 
@@ -66,7 +73,8 @@
       ipv4.method auto \
       ipv4.dns "{{ fw_cld_dns }} 1.1.1.1" \
       ipv4.dns-search "jukebox.internal" \
-      connection.autoconnect yes
+      connection.autoconnect yes \
+      connection.autoconnect-priority 100
   when: fw_wan_mode == 'dhcp'
   notify: restart NetworkManager
 
@@ -82,19 +90,25 @@
       ipv4.addresses {{ fw_lan_ip }}/24 \
       ipv4.never-default yes \
       ipv4.dns "" \
-      connection.autoconnect yes
+      connection.autoconnect yes \
+      connection.autoconnect-priority 100
   notify: restart NetworkManager
 
 - name: "[NM] Flush handlers (apply NM profiles)"
   ansible.builtin.meta: flush_handlers
 
-# ── Bring up interfaces ───────────────────────────────────────────────────────
+# ── Enable NetworkManager-wait-online ─────────────────────────────────────────
 
-- name: "[NM] Bring up LAN interface"
-  ansible.builtin.shell: nmcli con up lan
-  register: nm_lan_up
-  changed_when: nm_lan_up.rc == 0
-  failed_when: nm_lan_up.rc != 0
+- name: "[NM] Enable NetworkManager-wait-online.service"
+  ansible.builtin.systemd:
+    name: NetworkManager-wait-online.service
+    enabled: true
+
+# ── Bring up interfaces — WAN first, then LAN ─────────────────────────────────
+# BUG FIX (mirrors firewallme.sh 2026-04-25 + 2026-06-14): WAN must come up and
+# be polled for a live IP before LAN is activated. The original order (LAN then
+# WAN) caused DHCP race conditions. WAN activation is still gated on fw_wan_activate
+# so SSH operators can skip it safely.
 
 - name: "[NM] Bring up WAN interface"
   ansible.builtin.shell: nmcli con up wan
@@ -102,6 +116,22 @@
   changed_when: nm_wan_up.rc == 0
   failed_when: false
   when: fw_wan_activate
+
+- name: "[NM] Wait for WAN interface to obtain an IP address"
+  ansible.builtin.shell: |
+    nmcli -g IP4.ADDRESS dev show {{ fw_wan_iface }} | head -1 | cut -d/ -f1
+  register: nm_wan_ip_poll
+  until: nm_wan_ip_poll.stdout | trim != ''
+  retries: 30
+  delay: 1
+  changed_when: false
+  when: fw_wan_activate
+
+- name: "[NM] Bring up LAN interface"
+  ansible.builtin.shell: nmcli con up lan
+  register: nm_lan_up
+  changed_when: nm_lan_up.rc == 0
+  failed_when: nm_lan_up.rc != 0
 
 - name: "[NM] NOTE — WAN activation skipped"
   ansible.builtin.debug:

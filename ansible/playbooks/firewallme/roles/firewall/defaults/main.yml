@@ -66,6 +66,7 @@ fw_packages:
   - nmap
   - tcpdump
   - bc
+  - jq
   - vim
   - bash-completion
   - zsh

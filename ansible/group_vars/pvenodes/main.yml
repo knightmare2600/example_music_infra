@@ -4,10 +4,12 @@
 
 pve_packages:
   - libguestfs-tools
+  - jq
   - python3-proxmoxer
   - python3-requests
   - python3-virtualenv
   - sudo
+  - unattended-upgrades
 
 # Cloud image template IDs (update after first run)
 template_ubuntu_noble:    1000

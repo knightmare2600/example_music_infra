@@ -26,8 +26,6 @@
       prompt: "New hostname (EXA[ROLE][SITE][NNN], e.g. EXAWKSGLA001) — Enter to skip rename"
       private: false
       default: ""
-  handlers:
-    - import_tasks: ../handlers/main.yml
   tasks:
 
     - name: Include hostname facts (current name)
@@ -60,10 +58,14 @@
     - name: Rename computer
       ansible.windows.win_shell: |
         Rename-Computer -NewName "{{ new_hostname | upper }}" -Force
+      register: rename_result
       when:
         - new_hostname != ""
         - ansible_hostname | upper != new_hostname | upper
-      notify: reboot host
 
-    - name: Flush handlers (trigger reboot now if rename occurred)
-      meta: flush_handlers
+    - name: Reboot after rename
+      ansible.windows.win_reboot:
+        reboot_timeout:    600
+        post_reboot_delay: 30
+        msg: "Rebooting after hostname rename"
+      when: rename_result is changed

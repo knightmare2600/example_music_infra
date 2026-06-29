@@ -106,6 +106,19 @@
       bindkey -e
       autoload -Uz compinit && compinit
       autoload -Uz colors && colors
+      bindkey "\e[1~"  beginning-of-line
+      bindkey "\e[4~"  end-of-line
+      bindkey "\e[H"   beginning-of-line
+      bindkey "\e[F"   end-of-line
+      bindkey "\eOH"   beginning-of-line
+      bindkey "\eOF"   end-of-line
+      bindkey "\e[1;5C" forward-word
+      bindkey "\e[1;5D" backward-word
+      bindkey "\e[5C"  forward-word
+      bindkey "\e[5D"  backward-word
+      bindkey "\e\e[C" forward-word
+      bindkey "\e\e[D" backward-word
+      bindkey "\e[3~"  delete-char
       PROMPT='
       %F{green}%m%f:%F{cyan}%~%f> '
       alias ls='ls --color=auto'
@@ -114,6 +127,9 @@
       if (( $+commands[grc] )); then
         GRC_ALIASES=true
         [[ -f /etc/profile.d/grc.sh ]] && source /etc/profile.d/grc.sh
+      fi
+      if [[ -f /usr/local/bin/server-prompts.zsh ]]; then
+        source /usr/local/bin/server-prompts.zsh
       fi
 
 - name: "[Packages] Set ansible user login shell to zsh"
@@ -138,6 +154,19 @@
       bindkey -e
       autoload -Uz compinit && compinit
       autoload -Uz colors && colors
+      bindkey "\e[1~"  beginning-of-line
+      bindkey "\e[4~"  end-of-line
+      bindkey "\e[H"   beginning-of-line
+      bindkey "\e[F"   end-of-line
+      bindkey "\eOH"   beginning-of-line
+      bindkey "\eOF"   end-of-line
+      bindkey "\e[1;5C" forward-word
+      bindkey "\e[1;5D" backward-word
+      bindkey "\e[5C"  forward-word
+      bindkey "\e[5D"  backward-word
+      bindkey "\e\e[C" forward-word
+      bindkey "\e\e[D" backward-word
+      bindkey "\e[3~"  delete-char
       PROMPT='
       %F{red}%m%f:%F{cyan}%~%f# '
       alias ls='ls --color=auto'

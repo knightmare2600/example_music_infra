@@ -41,13 +41,18 @@ $TTL {{ zone_ttl }}
 ; ── FWL WAN addresses on provisioning network (192.168.139.{octet}) ──────────
 ; Each site firewall has a WAN interface on 192.168.139.0/24.
 ; Host octet = site subnet third octet. -wan suffix distinguishes from LAN face.
+; CLD special case: vRACK WAN is .139, not the CLD LAN octet (.69).
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
    | rejectattr('Site', 'equalto', 'Site')
    | rejectattr('Subnet', 'equalto', 'N/A')
    | sort(attribute='Site') %}
 {% set octet = site.Subnet.split('.')[2] %}
+{% if site.Site == 'CLD' %}
+{{ "%-45s" | format('exafwlcld001-wan') }} IN  A  192.168.139.139  ; CLD WAN face (static -- LAN octet .69 != vRACK WAN octet .139)
+{% else %}
 {{ "%-45s" | format('exafwl' + site.Site | lower + '001-wan') }} IN  A  192.168.139.{{ octet }}   ; {{ site.Site }} WAN face on provisioning net
+{% endif %}
 {% endfor %}
 
 ; ── CLD -- Cloud / Provisioning (192.168.139.0/24) ───────────

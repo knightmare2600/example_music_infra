@@ -42,7 +42,7 @@
 #   2026-06-20  Bootstrap added as entry point replacing Join-DomainAndBootstrap.ps1
 # =============================================================================
 
-- import_playbook: playbooks/00-bootstrap.yml
+- import_playbook: playbooks/00-preflight.yml
   tags: bootstrap
 
 - import_playbook: playbooks/10-rename.yml

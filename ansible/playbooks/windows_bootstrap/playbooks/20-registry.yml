@@ -19,8 +19,6 @@
 - name: Windows — Registry hardening
   hosts: "{{ target | default('all') }}"
   gather_facts: false
-  handlers:
-    - import_tasks: ../handlers/main.yml
   tasks:
 
     - name: Apply common registry keys
