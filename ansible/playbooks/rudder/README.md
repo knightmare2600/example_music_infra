@@ -12,7 +12,7 @@ the existing `example_music_infra` repo structure under `ansible/`.
 
 | File | What it does |
 |------|-------------|
-| `rudder_server.yml` | Bootstraps EXASRVFAL002: hostname, static IP, packages, UFW, Rudder install, LDAP skeleton, Cockpit, MOTD, sentinel |
+| `rudder_server.yml` | Bootstraps EXARDRCLD001: hostname, static IP, packages, UFW, Rudder install, LDAP skeleton, Cockpit, MOTD, sentinel |
 | `rudder_relay.yml` | Installs `rudder-server-relay` on ODE/BRK relay nodes (future) |
 | `rudder_onboard.yml` | Installs the Rudder agent on a Linux node and registers it via API |
 
@@ -32,7 +32,7 @@ ansible/
 │   └── rudder_relays/
 │       └── main.yml
 ├── host_vars/
-│   └── EXASRVFAL002/
+│   └── EXARDRCLD001/
 │       └── main.yml                   ← IP, hostname, site metadata
 ├── playbooks/
 │   └── rudder/
@@ -53,7 +53,7 @@ Append the content of `inventory_snippet.ini` to `configs/inventory`.
 
 ### Step 2 — Populate host_vars
 
-`host_vars/EXASRVFAL002/main.yml` is pre-filled for the FAL server.
+`host_vars/EXARDRCLD001/main.yml` is pre-filled for the CLD server.
 For each additional relay or server, create a matching `host_vars/<hostname>/main.yml`.
 
 If `rudder_static_ip` or `rudder_hostname` are absent from `host_vars`,
@@ -92,7 +92,7 @@ ansible-playbook playbooks/rudder/rudder_server.yml \
 ### Step 5 — After first UI login: add API token to vault
 
 ```bash
-# Log in to https://192.168.76.12/rudder
+# Log in to https://192.168.139.12/rudder
 # Administration → API accounts → New API account
 # Name: rudder-automation   Role: Read/Write
 # Copy the token
@@ -136,7 +136,7 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | `rudder_version` | `8.x` | Rudder package stream |
 | `rudder_admin_user` | `admin` | Rudder web UI local admin username |
 | `rudder_ldap_bind_dn` | `CN=Rudder LDAP Bind,...` | AD LDAP bind account DN |
-| `rudder_ldap_base` | `DC=jukebox,DC=example` | LDAP search base |
+| `rudder_ldap_base` | `DC=jukebox,DC=internal` | LDAP search base |
 | `rudder_ldap_admin_group` | `CN=GRP_Rudder_Admins,...` | AD group → Rudder admin role |
 | `sites_csv_path` | `../../sites.csv` | Path to sites.csv on control node |
 | `rudder_base_packages` | (list) | Base packages installed in section 3 |
@@ -150,12 +150,12 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | `rudder_api_token` | Rudder REST API token (set after first UI login) |
 | `rudder_ldap_bind_pass` | Password for `svc_rudder_ldap` AD account |
 
-### host_vars/EXASRVFAL002/main.yml (per-host)
+### host_vars/EXARDRCLD001/main.yml (per-host)
 
 | Variable | Example | Description |
 |----------|---------|-------------|
-| `rudder_hostname` | `EXASRVFAL002` | Hostname (uppercase, EXA convention) |
-| `rudder_static_ip` | `192.168.76.12` | Static IP for this node |
+| `rudder_hostname` | `EXARDRCLD001` | Hostname (uppercase, EXA convention) |
+| `rudder_static_ip` | `192.168.139.12` | Static IP for this node |
 | `rudder_gateway` | `192.168.76.1` | Default gateway |
 | `rudder_dns` | `192.168.76.10` | DNS / AD DC IP |
 | `rudder_prefix` | `24` | Subnet prefix length |
@@ -186,7 +186,7 @@ run `nmcli con up rudder-static` to apply without rebooting.
 
 ### CLD IP conflict check
 
-`EXASRVFAL002` is cloud-hosted. Some cloud providers filter ICMP within the
+`EXARDRCLD001` is cloud-hosted. Some cloud providers filter ICMP within the
 virtual network, so the ping-based IP conflict check may return a false
 negative. The playbook emits a warning in that case rather than failing —
 the operator is expected to verify the IP is free via the cloud console.

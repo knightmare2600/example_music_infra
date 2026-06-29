@@ -3,7 +3,7 @@
 # Example Music Limited — Rudder Server Bootstrap Playbook
 # playbooks/rudder/rudder_server.yml
 #
-# Ansible equivalent of rudderme.sh. Bootstraps EXASRVFAL002 (or any
+# Ansible equivalent of rudderme.sh. Bootstraps EXARDRCLD001 (or any
 # cloud-hosted Rudder server) from a fresh Debian Trixie install to a
 # fully configured Rudder management server.
 #
@@ -41,16 +41,16 @@
 #
 # Inventory
 # ---------
-# Add EXASRVFAL002 to configs/inventory:
+# Add EXARDRCLD001 to configs/inventory:
 #   [rudder_servers]
-#   192.168.76.12   # EXASRVFAL002 — FAL Rudder server
+#   192.168.139.12   # EXARDRCLD001 — CLD Rudder server
 #
 # Variables (see group_vars/rudder_servers/main.yml and
-#            host_vars/EXASRVFAL002/main.yml for full list)
+#            host_vars/EXARDRCLD001/main.yml for full list)
 # ----------------------------------------------------------
 # Required via host_vars or --extra-vars:
 #   rudder_static_ip        Static IP for this Rudder server
-#   rudder_hostname         Hostname (e.g. EXASRVFAL002)
+#   rudder_hostname         Hostname (e.g. EXARDRCLD001)
 #   rudder_gateway          Default gateway
 #   rudder_dns              DNS server (AD DC)
 #
@@ -61,7 +61,7 @@
 #
 # CLD note
 # --------
-# EXASRVFAL002 lives in the cloud. The static IP task uses shell-level
+# EXARDRCLD001 lives in the cloud. The static IP task uses shell-level
 # ping checks before assigning — same pattern as rudderme.sh ip_in_use().
 # On some cloud providers ICMP is filtered; the task emits a warning and
 # proceeds rather than failing.
@@ -104,7 +104,7 @@
       pause:
         prompt: >
           Hostname for this Rudder server is not set in host_vars.
-          Enter hostname (e.g. EXASRVFAL002)
+          Enter hostname (e.g. EXARDRCLD001)
       register: _hostname_prompt
       when: rudder_hostname is not defined or rudder_hostname == ""
       delegate_to: localhost
@@ -119,7 +119,7 @@
       pause:
         prompt: >
           Static IP for {{ rudder_hostname }} is not set in host_vars.
-          Enter static IP (e.g. 192.168.76.12)
+          Enter static IP (e.g. 192.168.139.12)
       register: _ip_prompt
       when: rudder_static_ip is not defined or rudder_static_ip == ""
       delegate_to: localhost
@@ -168,21 +168,6 @@
       register: _sites_raw
       delegate_to: localhost
       become: false
-
-    - name: "Build allowed-networks list from sites.csv"
-      set_fact:
-        _allowed_networks: >-
-          {{
-            (_sites_raw.list
-              | map(attribute='subnet')
-              | select('match', '^[0-9]')
-              | map('regex_replace', '^(\\d+\\.\\d+\\.)(\\d+)(\\.\\d+)', '\\g<1>\\g<3|default(\".0\")>\\g<2>.0/24')
-              | list
-            ) | unique
-          }}
-      # More readable alternative built below in the allowed-networks task —
-      # this set_fact is a pre-pass to derive the network addresses cleanly.
-      # The actual JSON payload is built in task "Set allowed networks".
 
     - name: "Build clean subnet list from sites.csv (LAN + WireGuard)"
       set_fact:

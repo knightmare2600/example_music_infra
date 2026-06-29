@@ -16,4 +16,4 @@
 rudder_relay_package: "rudder-server-relay"
 
 # Root server that this relay reports to
-rudder_root_server: "192.168.76.12"
+rudder_root_server: "192.168.139.12"
