@@ -19,8 +19,6 @@
 - name: Windows — Advertising & telemetry suppression
   hosts: "{{ target | default('all') }}"
   gather_facts: false
-  handlers:
-    - import_tasks: ../handlers/main.yml
   tasks:
 
     - name: Skip if not applicable for this host type

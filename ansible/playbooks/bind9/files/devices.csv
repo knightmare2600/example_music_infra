@@ -38,16 +38,28 @@
 Site,Hostname,HostOctet,Role,OS,Notes
 #
 # ============================================================
-# CLD -- Cloud / Provisioning  192.168.139.0/24
-# BLACK SWAN -- see header note. IPs are provisioning-specific.
+# CLD -- Cloud / Provisioning
+# TWO SUBNETS -- BLACK SWAN:
+#   LAN  : 192.168.69.0/24   (primary site subnet -- in sites.csv)
+#   vRACK: 192.168.139.0/24  (OVH provisioning network -- SPECIAL CASE)
+#
+# HostOctet below is relative to 192.168.69.0/24 (LAN).
+# vRACK devices are NOT generated from this table -- they are
+# hardcoded as ancillary_hosts in bindme.sh and bind9-dns.yml.
+# Do not apply standard site convention checks to CLD rows.
 # ============================================================
-CLD,EXAFWLCLD001,1,EXAFWL,,Firewall / WireGuard hub. CNAME ovhfwl.knight139.co.uk
-CLD,EXASVRCLD001,10,EXASVR,Debian trixie,DNS/BIND server -- jukebox.internal authoritative
-CLD,EXASVRCLD002,20,EXASVR,Windows Server 2022,Windows Admin Centre -- reaches all site DCs
-CLD,EXASVRCLD004,22,EXASVR,Debian,Rudder configuration management
-CLD,EXACLDPBX001,48,EXAPBX,3CX,Central PBX -- all site SBCs trunk here
-CLD,EXASVRCLD003,49,EXASVR,Debian,Ansible control node -- manages all sites
-CLD,EXAPRVCLD001,50,EXAPRV,,Provisioning server -- PXE / ISOs / Ansible keys / scripts
+CLD,EXAFWLCLD001,253,EXAFWL,,Firewall / WireGuard hub. LAN face: 192.168.69.253. vRACK face: 192.168.139.139
+CLD,EXADCSCLD001,10,EXADCS,Windows Server 2022,DC primary
+CLD,EXADCSCLD002,11,EXADCS,Windows Server 2022,DC secondary
+CLD,EXAANSCLD001,9,EXASVR,Debian,Ansible control node -- manages all sites
+#
+# vRACK devices (192.168.139.0/24) -- hardcoded in ancillary_hosts, NOT processed from CSV.
+# Listed here for documentation only.
+# EXADNSCLD001      .8    DNS/BIND9 server (jukebox.internal authoritative)
+# EXASVRCLD002      .20   Windows Admin Centre
+# EXARDRCLD001      .12   Rudder configuration management server
+# EXACLDPBX001      .48   Central 3CX PBX
+# EXAPRVCLD001      .50   Provisioning server (PXE / ISOs / Ansible keys / scripts)
 #
 # ============================================================
 # FAL -- Falkirk (Head Office)  192.168.76.0/24

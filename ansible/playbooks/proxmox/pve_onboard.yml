@@ -1,18 +1,37 @@
 ---
-# pve_onboard.yml
-# Verify and complete Ansible management setup on a Proxmox VE node.
+# =============================================================================
+# proxmox/pve_onboard.yml
+# Example Music Limited — Proxmox VE node onboarding
+# =============================================================================
+# Verifies and completes Ansible management setup on a PVE node, then deploys
+# all scripts, configs and systemd units monitored by Zabbix.
 #
 # Our PXE/first-boot installer creates the ansible user, but we trust-but-verify:
-#   - ansible user exists and has the right shell
-#   - SSH key is authorised
-#   - sudoers drop-in is present and correct
+#   - ansible user exists with correct shell and SSH key
+#   - sudoers drop-in present and validated
 #   - management packages installed
+#   - ansible in kvm group (needed for virt-customize)
+#
+# Files deployed (source: ansible/playbooks/proxmox/files/ — copy yours there):
+#   /usr/local/bin/enable_vm_trim_discard.sh     -- TRIM/discard helper
+#   /usr/local/bin/pve-monthly-hoover.sh         -- monthly cleanup script
+#   /usr/local/bin/pve-snapshot-check.py         -- snapshot audit script
+#   /etc/apt/apt.conf.d/52unattended-upgrades-pve -- kernel cleanup apt config
+#   /etc/systemd/system/pve-monthly-hoover.{service,timer}
+#   /etc/systemd/system/pve-snapshot-check.{service,timer}
+#
+# Ansible re-deploys any file whose checksum differs from the source.
+# Zabbix cksum items will alert if files drift between Ansible runs.
 #
 # Run once per new PVE node, as root via SSH password:
 #   ansible-playbook playbooks/proxmox/pve_onboard.yml \
 #     -i configs/inventory --user=root -k
 #
 # After this runs once, all subsequent playbooks authenticate as ansible (key-based).
+#
+# Changelog:
+#   2026-06-29  Added Zabbix-monitored file deployment, systemd timers
+# =============================================================================
 
 - hosts: pvenodes
   become: true
@@ -20,6 +39,8 @@
     - ../../group_vars/pvenodes/main.yml
 
   tasks:
+
+    # ── Ansible user setup ────────────────────────────────────────────────────
 
     - name: Install management packages
       apt:
@@ -56,3 +77,56 @@
         groups: kvm
         append: yes
 
+    # ── Scripts ───────────────────────────────────────────────────────────────
+
+    - name: Deploy PVE scripts to /usr/local/bin
+      copy:
+        src: "files/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - enable_vm_trim_discard.sh
+        - pve-monthly-hoover.sh
+        - pve-snapshot-check.py
+
+    # ── Apt config ────────────────────────────────────────────────────────────
+
+    - name: Deploy PVE kernel cleanup apt config
+      copy:
+        src: files/52unattended-upgrades-pve
+        dest: /etc/apt/apt.conf.d/52unattended-upgrades-pve
+        owner: root
+        group: root
+        mode: '0644'
+
+    # ── Systemd unit files ────────────────────────────────────────────────────
+
+    - name: Deploy PVE maintenance systemd units
+      copy:
+        src: "files/{{ item }}"
+        dest: "/etc/systemd/system/{{ item }}"
+        owner: root
+        group: root
+        mode: '0644'
+      loop:
+        - pve-monthly-hoover.service
+        - pve-monthly-hoover.timer
+        - pve-snapshot-check.service
+        - pve-snapshot-check.timer
+      register: pve_unit_files
+
+    - name: Reload systemd daemon (unit files changed)
+      systemd:
+        daemon_reload: yes
+      when: pve_unit_files.changed
+
+    - name: Enable and start PVE maintenance timers
+      systemd:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+      loop:
+        - pve-monthly-hoover.timer
+        - pve-snapshot-check.timer

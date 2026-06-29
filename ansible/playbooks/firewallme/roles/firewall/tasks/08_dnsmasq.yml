@@ -7,6 +7,9 @@
 # internal DNS upstream if set, DHCP static leases from inventory.
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-06-29  Add iPXE vendor class DHCP tagging (dhcp-vendorclass + dhcp-option tags)
+#   2026-06-29  Add dnsmasq.service.d/wait-for-lan.conf drop-in so dnsmasq waits for
+#               network-online.target and the LAN device before starting
 # =============================================================================
 
 - name: "[dnsmasq] Disable systemd-resolved (conflicts with dnsmasq on port 53)"
@@ -71,6 +74,13 @@
       # Authoritative — reply NACK to unknown leases
       dhcp-authoritative
 
+      # --- iPXE vendor class tagging ---
+      # Detect iPXE clients by vendor class string and redirect them to the
+      # bootstrap URL. Mirrors firewallme.sh dhcp-vendorclass / dhcp-option tags.
+      dhcp-vendorclass=set:ipxe-client,iPXE
+      dhcp-option=tag:ipxe-client,option:dns-server,{{ fw_lan_ip }}
+      dhcp-option=tag:ipxe-client,option:bootfile-name,http://{{ fw_ansible_ip }}/bootstrap.ipxe
+
       # DHCP lease file
       dhcp-leasefile=/var/lib/misc/dnsmasq.leases
 
@@ -128,6 +138,28 @@
           systemctl restart dnsmasq >/dev/null 2>&1 || true
         endscript
       }
+
+# ── systemd drop-in: wait for LAN device before starting ─────────────────────
+
+- name: "[dnsmasq] Create dnsmasq systemd drop-in directory"
+  ansible.builtin.file:
+    path: /etc/systemd/system/dnsmasq.service.d
+    state: directory
+    mode: '0755'
+
+- name: "[dnsmasq] Write wait-for-lan drop-in"
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/dnsmasq.service.d/wait-for-lan.conf
+    mode: '0644'
+    content: |
+      [Unit]
+      After=network-online.target sys-subsystem-net-devices-{{ fw_lan_iface }}.device
+      Wants=network-online.target sys-subsystem-net-devices-{{ fw_lan_iface }}.device
+  notify: restart dnsmasq
+
+- name: "[dnsmasq] Reload systemd daemon after drop-in"
+  ansible.builtin.systemd:
+    daemon_reload: true
 
 - name: "[dnsmasq] Enable and start dnsmasq"
   ansible.builtin.systemd:

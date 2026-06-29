@@ -27,9 +27,87 @@
 - name: Windows — Domain join
   hosts: "{{ target | default('all') }}"
   gather_facts: true
-  handlers:
-    - import_tasks: ../handlers/main.yml
+  vars_prompt:
+    - name: dj_temp_dns_ip
+      prompt: "DNS server IP to use if jukebox.internal cannot be resolved (Enter for 192.168.139.8)"
+      private: false
+      default: "192.168.139.8"
   tasks:
+
+    # ── Stage 0: DNS resolution ────────────────────────────────────────────────
+    # A fresh VM may have DHCP/ISP DNS that cannot resolve jukebox.internal.
+    # Check first; only override if needed.  Windows updates NIC DNS itself
+    # during the domain join so the temp entry doesn't need cleaning up.
+
+    - name: "[Stage 0] Check jukebox.internal resolves"
+      ansible.windows.win_shell: |
+        try {
+          Resolve-DnsName "jukebox.internal" -ErrorAction Stop | Out-Null
+          Write-Output "resolvable"
+        } catch {
+          Write-Output "unresolvable"
+        }
+      register: dj_dns_check
+      changed_when: false
+      tags: domainjoin
+
+    - name: "[Stage 0] Fail — domain unresolvable and no DNS override provided"
+      ansible.builtin.fail:
+        msg: >
+          jukebox.internal cannot be resolved and no DNS override IP was provided.
+          Re-run and enter a DC/DNS IP when prompted (e.g. 192.168.139.8).
+      when:
+        - dj_dns_check.stdout | trim == "unresolvable"
+        - dj_temp_dns_ip | length == 0
+      tags: domainjoin
+
+    - name: "[Stage 0] Get default-route NIC alias"
+      ansible.windows.win_shell: |
+        (Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric |
+         Select-Object -First 1).InterfaceAlias
+      register: dj_nic_alias
+      changed_when: false
+      when:
+        - dj_dns_check.stdout | trim == "unresolvable"
+        - dj_temp_dns_ip | length > 0
+      tags: domainjoin
+
+    - name: "[Stage 0] Set temporary DNS to {{ dj_temp_dns_ip }}"
+      ansible.windows.win_shell: |
+        Set-DnsClientServerAddress `
+          -InterfaceAlias "{{ dj_nic_alias.stdout | trim }}" `
+          -ServerAddresses "{{ dj_temp_dns_ip }}"
+      when:
+        - dj_dns_check.stdout | trim == "unresolvable"
+        - dj_temp_dns_ip | length > 0
+      tags: domainjoin
+
+    - name: "[Stage 0] Re-check jukebox.internal after DNS override"
+      ansible.windows.win_shell: |
+        try {
+          Resolve-DnsName "jukebox.internal" -ErrorAction Stop | Out-Null
+          Write-Output "resolvable"
+        } catch {
+          Write-Output "unresolvable"
+        }
+      register: dj_dns_recheck
+      changed_when: false
+      when:
+        - dj_dns_check.stdout | trim == "unresolvable"
+        - dj_temp_dns_ip | length > 0
+      tags: domainjoin
+
+    - name: "[Stage 0] Fail — jukebox.internal still unresolvable after DNS override"
+      ansible.builtin.fail:
+        msg: >
+          jukebox.internal still cannot be resolved after setting DNS to {{ dj_temp_dns_ip }}.
+          Verify that {{ dj_temp_dns_ip }} is reachable and serves jukebox.internal.
+      when:
+        - dj_dns_recheck is defined
+        - dj_dns_recheck.stdout | trim == "unresolvable"
+      tags: domainjoin
+
+    # ── Domain join ───────────────────────────────────────────────────────────
 
     - name: Include hostname facts
       include_tasks: ../tasks/hostname_facts.yml

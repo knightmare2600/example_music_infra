@@ -31,7 +31,7 @@
   when:
     - hypervisor == "VMware"
     - vmware_asset_check.status_code | default(404) == 200
-  notify: reboot host
+  register: vmware_install_asset
 
 - name: "[Stage 12] Install VMware Tools via Chocolatey (asset server fallback)"
   chocolatey.chocolatey.win_chocolatey:
@@ -40,7 +40,14 @@
   when:
     - hypervisor == "VMware"
     - vmware_asset_check.status_code | default(404) != 200
-  notify: reboot host
+  register: vmware_install_choco
+
+- name: "[Stage 12] Reboot after VMware Tools install"
+  ansible.windows.win_reboot:
+    reboot_timeout: 600
+  when:
+    - hypervisor == "VMware"
+    - (vmware_install_asset is changed) or (vmware_install_choco is changed)
 
 # ── KVM / Proxmox ─────────────────────────────────────────────────────────────
 

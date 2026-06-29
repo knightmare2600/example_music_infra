@@ -7,6 +7,10 @@
 # ansible user authorized_keys.
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-06-29  Replace static /etc/motd with dynamic MOTD via PAM update-motd.d;
+#               add /etc/update-motd.d/10-examplemusic (ASCII art, network table,
+#               live WireGuard peer handshake status, system stats) and
+#               /etc/profile.d/motd.sh for console logins
 # =============================================================================
 
 - name: "[SSH] Write ansible user authorized_keys"
@@ -76,17 +80,150 @@
     line: 'Banner /etc/issue.net'
   notify: reload ssh
 
-- name: "[SSH] Write /etc/motd (post-login banner)"
+- name: "[SSH] Clear /etc/motd (dynamic MOTD via PAM update-motd.d replaces static banner)"
   ansible.builtin.copy:
     dest: /etc/motd
     mode: '0644'
-    content: |
+    content: ""
 
-      ┌─────────────────────────────────────────────────────────────────┐
-      │  {{ inventory_hostname }}  │  {{ fw_site_code }}  │  {{ fw_environment }}
-      │  LAN: {{ fw_lan_ip }}/24   WAN: {{ fw_wan_static_ip if fw_wan_mode == 'static' else 'DHCP' }}
-      │  WireGuard: {{ fw_wg_role }}
-      └─────────────────────────────────────────────────────────────────┘
+- name: "[SSH] Disable existing update-motd.d scripts"
+  ansible.builtin.shell: chmod -x /etc/update-motd.d/* 2>/dev/null || true
+  changed_when: false
+
+- name: "[SSH] Write dynamic MOTD script"
+  ansible.builtin.copy:
+    dest: /etc/update-motd.d/10-examplemusic
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      GR='\033[0;32m'; CY='\033[0;36m'; RD='\033[0;31m'; YL='\033[0;33m'
+      OR='\033[38;5;208m'; WH='\033[1;37m'; NC='\033[0m'
+
+      SITE="unknown"; WG_ROLE="none"; ENTITY=""; CITY=""; COUNTRY=""
+      if [[ -f /etc/example-music/nodeinfo.json ]] && command -v jq &>/dev/null; then
+        SITE=$(   jq -r '.site    // "unknown"' /etc/example-music/nodeinfo.json)
+        WG_ROLE=$(jq -r '.wg_role // "none"'   /etc/example-music/nodeinfo.json)
+        ENTITY=$( jq -r '.entity  // ""'       /etc/example-music/nodeinfo.json)
+        CITY=$(   jq -r '.city    // ""'       /etc/example-music/nodeinfo.json)
+        COUNTRY=$(jq -r '.country // ""'       /etc/example-music/nodeinfo.json)
+      fi
+
+      WAN_INFO=""; LAN_INFO=""; WG_INFO=""; OTHER_INFO=""
+      while IFS= read -r iface; do
+        IP=$(ip -4 addr show "$iface" 2>/dev/null | awk '/inet /{print $2}' | head -1)
+        [[ -z "$IP" ]] && IP="no IP"
+        case "$iface" in
+          wg*)  WG_INFO="${WG_INFO}    ${OR}WireGuard ${iface}${NC} : ${OR}${IP}${NC}\n" ;;
+          lo)   continue ;;
+          *)
+            if ip route show dev "$iface" 2>/dev/null | grep -q "^default"; then
+              WAN_INFO="${WAN_INFO}    ${RD}WAN  ${iface}${NC} : ${RD}${IP}${NC}\n"
+            elif [[ -n "$IP" ]]; then
+              LAN_INFO="${LAN_INFO}    ${GR}LAN  ${iface}${NC} : ${GR}${IP}${NC}\n"
+            fi
+            ;;
+        esac
+      done < <(ip -o link show | awk -F': ' '{print $2}' | grep -v '@')
+
+      WG_PEERS=""
+      if command -v wg &>/dev/null && ip link show wg0 &>/dev/null 2>&1; then
+        WG_PEERS="  ${WH}── WireGuard Peers ──────────────────────────────────────────${NC}\n"
+        PEER_COUNT=0; ACTIVE_COUNT=0; NOW=$(date +%s)
+        while IFS=$'\t' read -r PUBKEY PRESHARED ENDPOINT ALLOWED HANDSHAKE TX RX KEEPALIVE; do
+          PEER_COUNT=$((PEER_COUNT + 1))
+          PEER_NAME=$(awk -v pk="$PUBKEY" '
+            /^#/ { comment = substr($0, 3) }
+            /PublicKey/ && $3 == pk { print comment; exit }
+          ' /etc/wireguard/wg0.conf 2>/dev/null)
+          PEER_NAME="${PEER_NAME:-???}"
+          EP_IP="${ENDPOINT%%:*}"
+          [[ "$EP_IP" == "(none)" ]] && EP_IP="no endpoint"
+          ALLOWED_DISP=$(echo "$ALLOWED" | cut -d',' -f1 | xargs)
+          if [[ "$HANDSHAKE" == "0" ]]; then
+            HS_STR="${RD}never${NC}"; STATUS="${RD}✗${NC}"
+          else
+            AGE=$((NOW - HANDSHAKE))
+            if [[ $AGE -lt 60 ]]; then HS_STR="${GR}${AGE}s ago${NC}"
+            elif [[ $AGE -lt 3600 ]]; then HS_STR="${GR}$((AGE/60))m ago${NC}"
+            elif [[ $AGE -lt 86400 ]]; then HS_STR="${YL}$((AGE/3600))h ago${NC}"
+            else HS_STR="${RD}$((AGE/86400))d ago${NC}"; fi
+            if [[ $AGE -lt 180 ]]; then STATUS="${GR}✓${NC}"; ACTIVE_COUNT=$((ACTIVE_COUNT + 1))
+            else STATUS="${YL}~${NC}"; ACTIVE_COUNT=$((ACTIVE_COUNT + 1)); fi
+          fi
+          fmt_bytes() {
+            local b=$1
+            if [[ $b -ge 1073741824 ]]; then printf "%.1fG" "$(echo "scale=1; $b/1073741824" | bc)"
+            elif [[ $b -ge 1048576 ]];   then printf "%.1fM" "$(echo "scale=1; $b/1048576"   | bc)"
+            elif [[ $b -ge 1024 ]];      then printf "%.1fK" "$(echo "scale=1; $b/1024"      | bc)"
+            else printf "${b}B"; fi
+          }
+          TX_STR=$(fmt_bytes "$TX"); RX_STR=$(fmt_bytes "$RX")
+          WG_PEERS="${WG_PEERS}    ${STATUS} ${CY}$(printf '%-12s' "$PEER_NAME")${NC}"
+          WG_PEERS="${WG_PEERS} ${GR}$(printf '%-18s' "$ALLOWED_DISP")${NC}"
+          WG_PEERS="${WG_PEERS} ${WH}$(printf '%-18s' "$EP_IP")${NC}"
+          WG_PEERS="${WG_PEERS} ${HS_STR}  ${YL}↑${TX_STR} ↓${RX_STR}${NC}\n"
+        done < <(wg show wg0 dump 2>/dev/null | tail -n +2)
+        WG_PEERS="${WG_PEERS}    ${CY}Total${NC}: ${GR}${ACTIVE_COUNT}${NC} active of ${PEER_COUNT} configured\n"
+      fi
+
+      UPTIME=$(uptime -p 2>/dev/null | sed 's/up //')
+      LOAD=$(cut -d' ' -f1-3 /proc/loadavg)
+      MEM_TOTAL=$(free -m | awk '/^Mem/{print $2}')
+      MEM_USED=$(free -m  | awk '/^Mem/{print $3}')
+      DISK=$(df -h / | awk 'NR==2{print $3 " used of " $2 " (" $5 ")"}')
+
+      echo -e "
+      ${GR}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⠤⠤⣄⠀⠀⠀⠀
+      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠞⠉⢀⣀⣀⣿⣧⠀⠀⠀
+      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⢰⣾⠁⣠⠖⠉⢀⣀⣧⣈⣧⠀⠀
+      ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⣷⣄⠀⠀⠀⠀⠀⠀⣠⢾⠛⣿⡁⣠⠞⠉⢀⣯⣀⣈⣇⠀
+      ⠀⠀⠀⠀⠀⢀⣼⣿⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⠞⠉⠀⣀⣘⣏⠛⣷⢤⣀⣀⡤⠞⠁⣸⠟⠀⡷⠃⣠⣶⣟⣏⣀⣀⣘⣆
+      ⠀⠀⠀⠀⠀⣾⡿⠛⢻⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⠞⠀⣠⠖⠉⠉⠉⣏⠙⡿⢾⣄⣀⣀⣠⣼⣽⣠⠞⠀⡰⠃⢨⠟⠋⠀⠀⠀⠉
+      ⠀⠀⠀⠀⢰⣿⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡏⢠⠞⠁⣠⣴⣾⣿⠏⠉⠓⢾⣦⣀⡀⢻⡿⠟⠁⢀⠞⠁⡴⠃⠀⠀⠀⠀⠀⠀
+      ⠀⠀⠀⠀⠸⡇⠀⢀⣾⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣆⠀⡸⢀⠏⢠⠞⠁⣨⠟⠋⠉⠉⠉⢻⡧⢤⣈⣁⣀⣠⠖⠋⢀⡞⠁⠀⠀⠀⠀⠀⠀⠀
+      ⠀⠀⠀⠀⠀⣿⣤⣿⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠛⢳⡇⡸⢠⠏⢠⠞⠁⣠⠔⠊⠉⠉⢻⠗⠦⣄⣀⠀⢀⣠⠔⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⠀⠀⠀⠀⣠⣾⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢠⣀⣀⣤⠀⠀⠀⠀⠀⠀⢸⣀⡞⣷⠇⡜⢠⠏⢀⡞⠁⠀⠀⣰⢞⣻⠇⠀⠀⠀⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⠀⠀⣠⣾⣿⡿⣏⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⡐⠦⠤⢤⡈⣻⢿⡖⠦⠤⣀⣠⣴⠏⢘⡟⢀⠃⡜⢠⠏⠀⠀⠀⠀⠛⠛⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⠀⣴⣿⡿⠋⠀⢻⡉⠀⠀⠀⠀⠀⠀⠀⠀⠑⠒⠢⠄⢤⣀⣏⠙⢻⠲⠤⢿⣿⣋⠤⠊⢀⣾⣠⠃⡜⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⢰⣿⡟⠀⢀⣴⣿⣿⣿⣿⣦⠀⠀⠀⠀⠀⠒⠒⠲⠤⣤⡀⣯⣉⠛⠒⠦⠤⣀⣀⣀⡤⠚⢹⣿⣰⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⢸⡿⠀⠀⣿⠟⠛⣿⠟⠛⣿⣧⠀⠀⠀⠐⠐⠒⠒⠰⣹⠷⣯⣈⡉⠑⠒⠦⠤⣀⣀⣀⡤⢿⢀⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⠘⣿⡀⠀⢿⡀⠀⢻⣤⠖⢻⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠓⠲⠤⢄⣀⣀⣀⣼⠟⣸⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⠀⠘⢷⣄⠈⠙⠦⠸⡇⢀⡾⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⠀⠀⠀⠙⠛⠶⠤⠶⣿⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⠀⠀⠀⠀⠀⠀⠀⠀⢹⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⠀⠀⢀⣴⣾⣿⣆⠀⠈⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⠀⠀⠈⣿⣿⡿⠃⠀⣰⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+      ⠀⠀⠀⠈⣙⠓⠒⠚⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀${NC}
+
+      ${WH}╔══════════════════════════════════════════════════════════════╗${NC}
+      ${WH}║              EXAMPLE MUSIC LIMITED: $(printf '%-24s' "${HOSTNAME}")║${NC}
+      ${WH}╚══════════════════════════════════════════════════════════════╝${NC}
+
+        ${YL}Site     :${NC} ${SITE}: ${CITY}, ${COUNTRY}
+        ${YL}Entity   :${NC} ${ENTITY}
+        ${YL}WG Role  :${NC} ${WG_ROLE}
+
+        ${WH}── Network ──────────────────────────────────────────────────${NC}
+      $(echo -e "${WAN_INFO}${LAN_INFO}${WG_INFO}" | grep -v '^$')
+
+      $(echo -e "${WG_PEERS}" | grep -v '^$')
+
+        ${WH}── System ───────────────────────────────────────────────────${NC}
+          ${CY}Uptime${NC}   : ${GR}${UPTIME}${NC}
+          ${CY}Load${NC}     : ${GR}${LOAD}${NC}
+          ${CY}Memory${NC}   : ${GR}${MEM_USED}MB${NC} used of ${MEM_TOTAL}MB
+          ${CY}Disk /  ${NC} : ${GR}${DISK}${NC}
+
+        ${WH}── Management ───────────────────────────────────────────────${NC}
+          ${CY}Cockpit${NC}  : ${GR}https://$(ip -4 addr show | awk '/inet /{print $2}' | grep -v '127\.' | grep -v '10\.0\.' | tail -1 | cut -d/ -f1):9090${NC}
+      "
+
+- name: "[SSH] Write /etc/profile.d/motd.sh (console logins)"
+  ansible.builtin.copy:
+    dest: /etc/profile.d/motd.sh
+    mode: '0644'
+    content: |
+      [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
 
 - name: "[SSH] Flush handlers (reload sshd)"
   ansible.builtin.meta: flush_handlers

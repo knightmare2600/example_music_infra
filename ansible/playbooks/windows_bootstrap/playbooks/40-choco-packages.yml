@@ -21,8 +21,6 @@
 - name: Windows — Chocolatey package deployment
   hosts: "{{ target | default('all') }}"
   gather_facts: false
-  handlers:
-    - import_tasks: ../handlers/main.yml
   tasks:
 
     - name: Install common Chocolatey packages

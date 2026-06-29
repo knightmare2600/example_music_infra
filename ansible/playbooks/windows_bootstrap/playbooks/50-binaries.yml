@@ -29,8 +29,6 @@
 - name: Windows — Binary and font deployment
   hosts: "{{ target | default('all') }}"
   gather_facts: true
-  handlers:
-    - import_tasks: ../handlers/main.yml
   tasks:
 
     # ── Arch detection ────────────────────────────────────────────────────────

@@ -12,11 +12,10 @@
 ;   .8   EXADNSCLD001   -- DNS/BIND9 server
 ;   .10  EXADCSCLD001   -- DC primary
 ;   .11  EXADCSCLD002   -- DC secondary
-;   .12  EXARUDCLD001   -- Rudder Server
+;   .12  EXARDRCLD001   -- Rudder configuration management server
 ;   .20  EXASVRCLD002   -- Windows Admin Centre
 ;   .48  EXACLDPBX001   -- Central 3CX PBX
 ;   .50  EXAPRVCLD001   -- provisioning / PXE server
-;   .69  EXAANSCLD001   -- Ansible control node
 ;   .X   exafwl{site}001-wan  -- firewall WAN face per site
 ;        where X = the site's /24 third octet (from sites.csv)
 ;
@@ -40,19 +39,22 @@ $TTL {{ zone_ttl }}
 
 @   IN  NS   exadnscld001.{{ domain }}.
 
-; ── Ancillary / management hosts ─────────────────────────────
+; ── vRACK ancillary hosts ─────────────────────────────────────
+; DCs and Ansible node moved to CLD LAN (192.168.69.0/24).
 8     IN  PTR  exadnscld001.{{ domain }}.     ; DNS/BIND9 server (this host)
-10    IN  PTR  exadcscld001.{{ domain }}.     ; DC primary
-11    IN  PTR  exadcscld002.{{ domain }}.     ; DC secondary
-12    IN  PTR  exarudcld001.{{ domain }}.     ; Rudder Server
 20    IN  PTR  exasvrcld002.{{ domain }}.     ; Windows Admin Centre
+12    IN  PTR  exardrcld001.{{ domain }}.     ; Rudder configuration management server
 48    IN  PTR  exacldpbx001.{{ domain }}.     ; Central 3CX PBX
 50    IN  PTR  exaprvcld001.{{ domain }}.     ; Provisioning / PXE
-69    IN  PTR  exaanscld001.{{ domain }}.     ; Ansible control node
 
 ; ── Firewall WAN PTR records ──────────────────────────────────
 ; 192.168.139.{octet}  ->  exafwl{site}001-wan.{{ domain }}.
+; CLD special case: vRACK WAN is .139, not .{{ sites | selectattr('Site', 'equalto', 'CLD') | map(attribute='octet') | first | default('69') }}
 ; Sorted by octet ascending.
 {% for site in sites | sort(attribute='octet') %}
+{% if site.Site == 'CLD' %}
+139   IN  PTR  {{ "%-50s" | format('exafwlcld001-wan.' + domain + '.') }} ; CLD ({{ site.City }}) -- vRACK WAN static .139
+{% else %}
 {{ "%-5s" | format(site.octet) }} IN  PTR  {{ "%-50s" | format('exafwl' + site.Site | lower + '001-wan.' + domain + '.') }} ; {{ site.Site }} ({{ site.City }})
+{% endif %}
 {% endfor %}

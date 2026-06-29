@@ -58,10 +58,13 @@
 # =============================================================================
 # Changelog:
 #   2026-06-25  Initial file
+#   2026-06-29  Remove ANSI codes from vars_prompt strings (exa_pretty handles
+#               colouring); add default: "" to password prompts; standardise
+#               hosts: target to windows_dc; store dc_replication_source_ip fact
 # =============================================================================
 
 - name: Windows DC — Preflight and replication source resolution
-  hosts: "{{ target | default('all') }}"
+  hosts: "{{ target | default('windows_dc') }}"
   gather_facts: true
 
   vars:
@@ -90,22 +93,24 @@
 
   vars_prompt:
     - name: dc_admin_user
-      prompt: "{{ '\\e[1;33m' }}[!]{{ '\\e[0m' }} Domain Admin username (e.g. JUKEBOX\\Administrator)"
+      prompt: "Domain Admin username (e.g. JUKEBOX\\Administrator)"
       private: false
       default: "JUKEBOX\\Administrator"
 
     - name: dc_admin_password
-      prompt: "{{ '\\e[1;33m' }}[!]{{ '\\e[0m' }} Domain Admin password"
+      prompt: "Domain Admin password"
       private: true
+      default: ""
 
     - name: dc_local_user
-      prompt: "{{ '\\e[1;33m' }}[!]{{ '\\e[0m' }} Local Administrator username"
+      prompt: "Local Administrator username"
       private: false
       default: "Administrator"
 
     - name: dc_local_password
-      prompt: "{{ '\\e[1;33m' }}[!]{{ '\\e[0m' }} Local Administrator password"
+      prompt: "Local Administrator password"
       private: true
+      default: ""
 
   tasks:
 

@@ -1,0 +1,14 @@
+[Unit]
+Description=Proxmox VE Monthly Hoover Timer
+Documentation=man:systemd.timer(5)
+Requires=pve-monthly-hoover.service
+
+[Timer]
+OnCalendar=*-*-01 02:00:00
+Persistent=true
+Accuracy=1h
+OnBootSec=10min
+RandomizedDelaySec=15min
+
+[Install]
+WantedBy=timers.target
