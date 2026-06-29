@@ -23,15 +23,12 @@
 - name: Windows — OpenSSH configuration
   hosts: "{{ target | default('all') }}"
   gather_facts: false
-  handlers:
-    - import_tasks: ../handlers/main.yml
   tasks:
 
     - name: Install OpenSSH Server capability
       ansible.windows.win_optional_feature:
         name: OpenSSH.Server~~~~0.0.1.0
         state: present
-      notify: restart sshd
       tags: openssh
 
     - name: Ensure sshd service is running and set to Automatic
@@ -51,7 +48,6 @@
       ansible.windows.win_copy:
         content: "{{ exa_ansible_pub_key }}\n"
         dest:    "{{ exa_ansible_key_path }}"
-      notify: restart sshd
       tags: openssh
 
     - name: Set ACLs on administrators_authorized_keys (remove inheritance)
@@ -86,7 +82,6 @@
         data: 'C:\Program Files\PowerShell\7\pwsh.exe'
         type: string
       when: ps7_stat.stat.exists
-      notify: restart sshd
       tags: openssh
 
     - name: Set PS5 as default SSH shell (PS7 not installed)
@@ -96,7 +91,6 @@
         data: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
         type: string
       when: not ps7_stat.stat.exists
-      notify: restart sshd
       tags: openssh
 
     - name: Set DefaultShellCommandOption
@@ -105,4 +99,10 @@
         name: DefaultShellCommandOption
         data: '-NoLogo'
         type: string
+      tags: openssh
+
+    - name: Restart sshd (pick up key, ACLs and shell changes)
+      ansible.windows.win_service:
+        name: sshd
+        state: restarted
       tags: openssh

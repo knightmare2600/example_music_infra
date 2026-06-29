@@ -1,0 +1,23 @@
+[Unit]
+Description=Proxmox VE Snapshot Check - Report VM and LXC snapshot state to JSON
+Documentation=man:pvesh(1)
+After=pve-cluster.service pveproxy.service
+Wants=pve-cluster.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/pve-snapshot-check.py
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pve-snapshot-check
+User=root
+Group=root
+
+PrivateTmp=no
+ProtectSystem=strict
+ReadWritePaths=/tmp
+ProtectHome=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

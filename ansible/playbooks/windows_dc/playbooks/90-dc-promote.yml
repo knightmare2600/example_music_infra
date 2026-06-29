@@ -15,37 +15,81 @@
 #   - The reboot after promotion is handled here; Ansible waits and
 #     reconnects before continuing to 95-dc-replicate.yml.
 #
+# DNS management:
+#   During promotion the host must resolve jukebox.internal to contact the
+#   source DC.  Stage 0 checks if the domain is already resolvable; if not,
+#   it temporarily sets the NIC DNS to dc_temp_dns_ip (prompted — default
+#   pre-filled from dc_replication_source_ip set by 85-dc-preflight.yml).
+#   After the post-promotion reboot, DNS is set to 127.0.0.1 (the DC now
+#   runs its own DNS) and forwarders are configured:
+#     192.168.139.8  — CLD BIND9 (upstream for internal zones we control)
+#     9.9.9.9        — Quad9 (public upstream)
+#     1.1.1.1        — Cloudflare (public upstream)
+#
 # Facts consumed (set by 85-dc-preflight.yml):
-#   dc_replication_source  — source DC FQDN
-#   dc_is_forest_root      — bool
-#   dc_already_promoted    — bool (feature already installed)
-#   dc_admin_user          — Domain Admin (JUKEBOX\Administrator)
-#   dc_admin_password      — Domain Admin password
-#   dc_local_user          — Local Administrator username
-#   dc_local_password      — Local Administrator password
-#   host_site              — 3-letter site code
-#   host_num               — 3-digit DC number (e.g. 001)
+#   dc_replication_source     — source DC FQDN
+#   dc_replication_source_ip  — source DC IP (used as DNS default)
+#   dc_is_forest_root         — bool
+#   dc_already_promoted       — bool (feature already installed)
+#   dc_admin_user             — Domain Admin (JUKEBOX\Administrator)
+#   dc_admin_password         — Domain Admin password
+#   dc_local_user             — Local Administrator username
+#   dc_local_password         — Local Administrator password
+#   host_site                 — 3-letter site code
 #
 # Tags: dc_promote
 # =============================================================================
 # Changelog:
 #   2026-06-25  Initial file
+#   2026-06-29  Add Stage 0 temporary DNS management (set before promotion,
+#               restore to 127.0.0.1 + configure forwarders after reboot);
+#               add credential guard assert; add DNS forwarder config post-
+#               promotion; standardise hosts: target to windows_dc
 # =============================================================================
 
 - name: Windows DC — Feature installation and promotion
-  hosts: "{{ target | default('all') }}"
+  hosts: "{{ target | default('windows_dc') }}"
   gather_facts: true
 
+  vars_prompt:
+    - name: dc_temp_dns_ip
+      prompt: >-
+        Temporary DNS IP for AD resolution during promotion
+        (leave blank to skip — only needed if jukebox.internal not already resolvable.
+        Default is the replication source found by preflight)
+      private: false
+      default: "{{ hostvars[inventory_hostname].dc_replication_source_ip | default('') }}"
+
   vars:
-    dc_dsrm_password_default: "{{ dc_local_password }}"   # reuse local admin password for DSRM
-    dc_site_name: "{{ host_site }}"                       # AD site name matches EXA site code
+    dc_dsrm_password_default: "{{ dc_local_password }}"
+    dc_site_name: "{{ host_site }}"
     dc_db_path:   'C:\Windows\NTDS'
     dc_log_path:  'C:\Windows\NTDS'
     dc_sysvol:    'C:\Windows\SYSVOL'
+    dc_dns_forwarders:
+      - "192.168.139.8"
+      - "9.9.9.9"
+      - "1.1.1.1"
 
   tasks:
 
-    # ── Guard: already a DC? ─────────────────────────────────────────────────
+    # ── Guard: credentials must come from preflight ───────────────────────────
+
+    - name: Assert domain credentials are available from preflight
+      ansible.builtin.assert:
+        that:
+          - dc_admin_password is defined
+          - dc_admin_password | length > 0
+          - dc_local_password is defined
+          - dc_local_password | length > 0
+        fail_msg: >
+          dc_admin_password / dc_local_password are not set.
+          Run the full chain via site.yml so 85-dc-preflight.yml fires first.
+          To run this stage standalone: -e dc_admin_password=<pw>
+          -e dc_local_password=<pw> -e dc_admin_user=<user>
+      tags: dc_promote
+
+    # ── Guard: already a DC? ──────────────────────────────────────────────────
 
     - name: Check if host is already a Domain Controller (ProductType 2)
       ansible.windows.win_shell: |
@@ -55,22 +99,121 @@
       tags: dc_promote
 
     - name: Set dc_is_dc fact
-      set_fact:
+      ansible.builtin.set_fact:
         dc_is_dc: "{{ dc_product_type.stdout | trim == '2' }}"
       tags: dc_promote
 
-    - name: Skip entire promotion if already a DC
-      debug:
+    - name: Skip — already a DC
+      ansible.builtin.debug:
         msg: >
           {{ _c.G }}[+]{{ _c.NC }} {{ inventory_hostname }} is already a DC
           (ProductType=2) — promotion stages skipped.
       when: dc_is_dc
       tags: dc_promote
 
-    # ── Stage 1 — Install Windows features ───────────────────────────────────
+    # =========================================================================
+    # Stage 0 — Temporary DNS (ensure jukebox.internal is resolvable)
+    # =========================================================================
+
+    - name: "── Stage 0 — DNS preparation ──"
+      ansible.builtin.debug:
+        msg: "{{ _c.C }}[*]{{ _c.NC }} Checking DNS resolution of jukebox.internal..."
+      when: not dc_is_dc
+      tags: dc_promote
+
+    - name: "[Stage 0] Check if jukebox.internal is already resolvable"
+      ansible.windows.win_shell: |
+        try {
+          Resolve-DnsName jukebox.internal -ErrorAction Stop | Out-Null
+          Write-Output "resolvable"
+        } catch {
+          Write-Output "unresolvable"
+        }
+      register: dc_dns_check
+      changed_when: false
+      when: not dc_is_dc
+      tags: dc_promote
+
+    - name: "[Stage 0] Get default-route NIC alias (for DNS override)"
+      ansible.windows.win_shell: |
+        (Get-NetRoute -DestinationPrefix '0.0.0.0/0' |
+          Sort-Object RouteMetric |
+          Select-Object -First 1).InterfaceAlias
+      register: dc_default_nic
+      changed_when: false
+      when:
+        - not dc_is_dc
+        - dc_dns_check.stdout | trim == 'unresolvable'
+        - dc_temp_dns_ip | length > 0
+      tags: dc_promote
+
+    - name: "[Stage 0] Set temporary DNS to {{ dc_temp_dns_ip }}"
+      ansible.windows.win_shell: |
+        Set-DnsClientServerAddress `
+          -InterfaceAlias "{{ dc_default_nic.stdout | trim }}" `
+          -ServerAddresses "{{ dc_temp_dns_ip }}"
+      when:
+        - not dc_is_dc
+        - dc_dns_check.stdout | trim == 'unresolvable'
+        - dc_temp_dns_ip | length > 0
+      tags: dc_promote
+
+    - name: "[Stage 0] Re-check jukebox.internal after DNS change"
+      ansible.windows.win_shell: |
+        try {
+          Resolve-DnsName jukebox.internal -ErrorAction Stop | Out-Null
+          Write-Output "resolvable"
+        } catch {
+          Write-Output "unresolvable"
+        }
+      register: dc_dns_recheck
+      changed_when: false
+      when:
+        - not dc_is_dc
+        - dc_dns_check.stdout | trim == 'unresolvable'
+        - dc_temp_dns_ip | length > 0
+      tags: dc_promote
+
+    - name: "[Stage 0] FAIL — jukebox.internal still not resolvable"
+      ansible.builtin.fail:
+        msg: >
+          {{ _c.R }}[✗]{{ _c.NC }} jukebox.internal is not resolvable after
+          setting DNS to {{ dc_temp_dns_ip }}.
+          Check that {{ dc_temp_dns_ip }} is a reachable DC and that
+          the site firewall is not blocking UDP/TCP 53.
+      when:
+        - not dc_is_dc
+        - dc_dns_check.stdout | trim == 'unresolvable'
+        - dc_temp_dns_ip | length > 0
+        - dc_dns_recheck.stdout | trim == 'unresolvable'
+      tags: dc_promote
+
+    - name: "[Stage 0] FAIL — jukebox.internal not resolvable and no temp DNS supplied"
+      ansible.builtin.fail:
+        msg: >
+          {{ _c.R }}[✗]{{ _c.NC }} jukebox.internal is not resolvable and
+          dc_temp_dns_ip was left blank.
+          Re-run and enter the IP of an existing DC (e.g. the replication
+          source shown in the preflight output) when prompted.
+      when:
+        - not dc_is_dc
+        - dc_dns_check.stdout | trim == 'unresolvable'
+        - dc_temp_dns_ip | length == 0
+      tags: dc_promote
+
+    - name: "[Stage 0] DNS OK"
+      ansible.builtin.debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} jukebox.internal is resolvable — DNS preparation complete.
+      when: not dc_is_dc
+      tags: dc_promote
+
+    # =========================================================================
+    # Stage 1 — Install Windows features
+    # =========================================================================
 
     - name: "── Stage 1 — Install AD-DS, DNS and GPMC features ──"
-      debug:
+      ansible.builtin.debug:
         msg: "{{ _c.C }}[*]{{ _c.NC }} Installing AD-DS feature set..."
       when: not dc_is_dc
       tags: dc_promote
@@ -91,7 +234,7 @@
       tags: dc_promote
 
     - name: Show feature install result
-      debug:
+      ansible.builtin.debug:
         msg: >
           {{ _c.G }}[+]{{ _c.NC }} AD-DS feature install:
           changed={{ dc_feature_install.changed }}
@@ -109,10 +252,12 @@
         - dc_feature_install.reboot_required | default(false)
       tags: dc_promote
 
-    # ── Stage 2a — Forest root install (CLD first build only) ────────────────
+    # =========================================================================
+    # Stage 2a — Forest root install (CLD first build only)
+    # =========================================================================
 
     - name: "── Stage 2a — Install-ADDSForest (CLD forest root) ──"
-      debug:
+      ansible.builtin.debug:
         msg: >
           {{ _c.Y }}[!]{{ _c.NC }} Building JUKEBOX.INTERNAL forest root on CLD.
           This is a destructive, one-time operation.
@@ -146,7 +291,7 @@
       tags: dc_promote
 
     - name: Show forest install result
-      debug:
+      ansible.builtin.debug:
         msg: >
           {{ _c.G }}[+]{{ _c.NC }} Install-ADDSForest completed.
           Status: {{ dc_forest_result.stdout | default('') | trim }}
@@ -155,10 +300,12 @@
         - dc_is_forest_root | default(false) | bool
       tags: dc_promote
 
-    # ── Stage 2b — Additional DC promotion ───────────────────────────────────
+    # =========================================================================
+    # Stage 2b — Additional DC promotion
+    # =========================================================================
 
     - name: "── Stage 2b — Install-ADDSDomainController (additional DC) ──"
-      debug:
+      ansible.builtin.debug:
         msg: >
           {{ _c.C }}[*]{{ _c.NC }} Promoting {{ inventory_hostname }} as
           additional DC, replicating from {{ dc_replication_source }}.
@@ -195,7 +342,7 @@
       tags: dc_promote
 
     - name: Show promotion result
-      debug:
+      ansible.builtin.debug:
         msg: >
           {{ _c.G }}[+]{{ _c.NC }} Install-ADDSDomainController completed.
           Status: {{ dc_promote_result.stdout | default('') | trim }}
@@ -212,8 +359,17 @@
         post_reboot_delay: 90
         connect_timeout:   60
         msg: "Rebooting after Domain Controller promotion"
-      when:
-        - not dc_is_dc
+      when: not dc_is_dc
+      tags: dc_promote
+
+    # =========================================================================
+    # Stage 3 — Post-promotion: DC confirmation + DNS restore + forwarders
+    # =========================================================================
+
+    - name: "── Stage 3 — Post-promotion DNS and forwarder configuration ──"
+      ansible.builtin.debug:
+        msg: "{{ _c.C }}[*]{{ _c.NC }} Configuring DNS after promotion reboot..."
+      when: not dc_is_dc
       tags: dc_promote
 
     - name: Confirm host is now a DC post-reboot
@@ -224,7 +380,7 @@
       tags: dc_promote
 
     - name: FAIL — host ProductType is still not 2 after promotion and reboot
-      fail:
+      ansible.builtin.fail:
         msg: >
           {{ inventory_hostname }} ProductType={{ dc_post_type.stdout | trim }}
           after promotion reboot — expected 2 (Domain Controller).
@@ -234,9 +390,36 @@
         - dc_post_type.stdout | trim != '2'
       tags: dc_promote
 
+    - name: "[Stage 3] Set NIC DNS to 127.0.0.1 (DC runs its own DNS now)"
+      ansible.windows.win_shell: |
+        $iface = (Get-NetRoute -DestinationPrefix '0.0.0.0/0' |
+          Sort-Object RouteMetric |
+          Select-Object -First 1).InterfaceAlias
+        Set-DnsClientServerAddress -InterfaceAlias $iface -ServerAddresses "127.0.0.1"
+      when: not dc_is_dc
+      tags: dc_promote
+
+    - name: "[Stage 3] Configure DNS forwarders (upstream for non-local zones)"
+      ansible.windows.win_shell: |
+        Import-Module DnsServer
+        Set-DnsServerForwarder `
+          -IPAddress @("192.168.139.8","9.9.9.9","1.1.1.1") `
+          -PassThru
+      register: dc_forwarder_result
+      when: not dc_is_dc
+      tags: dc_promote
+
+    - name: "[Stage 3] Show forwarder config"
+      ansible.builtin.debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} DNS forwarders set:
+          192.168.139.8 (CLD BIND9), 9.9.9.9 (Quad9), 1.1.1.1 (Cloudflare)
+      when: not dc_is_dc
+      tags: dc_promote
+
     - name: Promotion confirmed
-      debug:
+      ansible.builtin.debug:
         msg: >
           {{ _c.G }}[+]{{ _c.NC }} {{ inventory_hostname }} is now a Domain
-          Controller (ProductType=2).
+          Controller (ProductType=2). DNS restored to 127.0.0.1.
       tags: dc_promote

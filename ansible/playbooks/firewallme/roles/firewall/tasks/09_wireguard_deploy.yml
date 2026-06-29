@@ -8,6 +8,9 @@
 # Skipped for CLD (fw_is_black_site) and fw_wg_role == 'none'.
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-06-29  Add wg-quick@wg0 network-online.target drop-in (bug fix: shipped
+#               unit only has After=network.target which fires before any interface
+#               has an IP, causing endpoint resolution failures at boot)
 # =============================================================================
 
 - name: "[WireGuard] Skip — not applicable (role=none or black site)"
@@ -155,6 +158,29 @@
     - fw_wg_role in ['hub-primary', 'hub-regional']
     - not fw_is_black_site
   notify: restart wireguard
+
+# ── wg-quick network-online.target drop-in ────────────────────────────────────
+# BUG FIX (2026-06-14): wg-quick@wg0.service ships with After=network.target
+# which is satisfied before any interface has an IP. Endpoint resolution then
+# fails at boot. Drop-in adds After=network-online.target to wait for NM to
+# report a fully online interface before WireGuard starts.
+
+- name: "[WireGuard] Create wg-quick@wg0 drop-in directory"
+  ansible.builtin.file:
+    path: /etc/systemd/system/wg-quick@wg0.service.d
+    state: directory
+    mode: '0755'
+  when: fw_wg_role != 'none' and not fw_is_black_site
+
+- name: "[WireGuard] Write network-online.target drop-in for wg-quick@wg0"
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/wg-quick@wg0.service.d/wait-online.conf
+    mode: '0644'
+    content: |
+      [Unit]
+      After=network-online.target
+      Wants=network-online.target
+  when: fw_wg_role != 'none' and not fw_is_black_site
 
 # ── Enable wg-quick ───────────────────────────────────────────────────────────
 

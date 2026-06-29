@@ -1,0 +1,22 @@
+[Unit]
+Description=Proxmox VE Monthly Hoover - Clean Journals, Temps, Coredumps, Old Proxmox Kernels
+Documentation=man:journalctl(1) man:systemd-journal(8) man:apt-get(8)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/pve-monthly-hoover.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pve-monthly-hoover
+User=root
+Group=root
+
+ProtectSystem=full
+ProtectHome=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

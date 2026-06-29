@@ -1,0 +1,30 @@
+# Example Music Limited — Proxmox VE 9.x Unattended-Upgrades Configuration
+# Scope: Debian security patches and old Debian kernel cleanup only.
+# All PVE/Proxmox packages are blacklisted — upgrades for these remain a
+# manual, coordinated operation.
+# Old Proxmox kernel cleanup is handled separately by pve-monthly-hoover.sh.
+
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Debian,codename=${distro_codename}-security";
+    "origin=Proxmox,label=Proxmox Debian Repository";
+};
+
+Unattended-Upgrade::Package-Blacklist {
+    "proxmox-ve";
+    "proxmox-kernel.*";
+    "pve-kernel.*";
+    "pve-headers.*";
+    "pve-manager";
+    "pve-qemu-kvm";
+    "qemu-server";
+    "pve-container";
+    "pve-ha-manager";
+    "pve-cluster";
+};
+
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Mail "root";
+Unattended-Upgrade::MailReport "on-change";
+Unattended-Upgrade::Verbose "true";

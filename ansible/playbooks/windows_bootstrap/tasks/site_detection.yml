@@ -64,7 +64,7 @@
         '76':  'FAL', '231': 'CPH', '126': 'ODE', '136': 'BRK',
         '161': 'MCR', '151': 'LIV', '141': 'GLA', '191': 'NEW',
         '65':  'KGE', '246': 'FAX', '146': 'TOR', '154': 'MTL',
-        '29':  'SYD', '139': 'CLD', '33':  'ATL'
+        '29':  'SYD', '69':  'CLD', '33':  'ATL'
       } -%}
       {{ octet_map.get(host_subnet_octet, 'UNKNOWN') }}
 

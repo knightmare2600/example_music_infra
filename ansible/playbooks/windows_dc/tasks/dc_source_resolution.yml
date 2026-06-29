@@ -103,9 +103,10 @@
 
 - name: "[Source] Select first reachable DC as replication source"
   set_fact:
-    dc_replication_source: "{{ item.item.fqdn }}"
-    dc_source_site:        "{{ item.item.site }}"
-    dc_is_forest_root:     false
+    dc_replication_source:    "{{ item.item.fqdn }}"
+    dc_replication_source_ip: "{{ item.item.ip }}"
+    dc_source_site:           "{{ item.item.site }}"
+    dc_is_forest_root:        false
   loop: "{{ dc_probe_results.results }}"
   loop_control:
     label: "{{ item.item.site }}"

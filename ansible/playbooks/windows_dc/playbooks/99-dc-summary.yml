@@ -14,7 +14,7 @@
 # =============================================================================
 
 - name: Windows DC — Post-build health summary
-  hosts: "{{ target | default('all') }}"
+  hosts: "{{ target | default('windows_dc') }}"
   gather_facts: true
 
   tasks:
@@ -115,7 +115,7 @@
           - "{{ _c.C }}║{{ _c.NC }}  Read-Only DC    : {{ dc_info.IsReadOnly | default('unknown') }}"
           - "{{ _c.C }}║{{ _c.NC }}  OS              : {{ dc_info.OSVersion | default('unknown') }}"
           - "{{ _c.C }}║{{ _c.NC }}  Domain          : {{ dc_info.Domain | default('unknown') }}"
-          - "{{ _c.C }}║{{ _c.NC }}  Repl source     : {{ dc_replication_source | default('N/A (forest root)') }}"
+          - "{{ _c.C }}║{{ _c.NC }}  Repl source     : {{ dc_replication_source | default('N/A — forest root or run standalone') }}"
           - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
           - "{{ _c.C }}║{{ _c.NC }}  {{ _c.W }}Health Checks{{ _c.NC }}"
           - "{{ _c.C }}║{{ _c.NC }}  dcdiag failures : {{ _c.G if dc_dcdiag_fail_count | int == 0 else _c.R }}{{ dc_dcdiag_fail_count }}{{ _c.NC }}"

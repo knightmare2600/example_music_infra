@@ -1,0 +1,14 @@
+[Unit]
+Description=Proxmox VE Snapshot Check Timer — hourly
+Documentation=man:systemd.timer(5)
+Requires=pve-snapshot-check.service
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+Accuracy=1min
+OnBootSec=10min
+RandomizedDelaySec=3min
+
+[Install]
+WantedBy=timers.target

@@ -63,9 +63,6 @@
 - name: Windows — PostOOBE Bootstrap (replaces Join-DomainAndBootstrap.ps1)
   hosts: "{{ target | default('all') }}"
   gather_facts: true
-  handlers:
-    - import_tasks: ../handlers/main.yml
-
   tasks:
 
     # ── Hostname facts (needed throughout) ────────────────────────────────────
@@ -298,7 +295,7 @@
         url:  "{{ exa_wallpaper_url }}"
         dest: "{{ exa_wallpaper_dest }}"
       when: wallpaper_available
-      notify: apply wallpaper
+      register: wallpaper_download
 
     - name: "[Stage 9] Set wallpaper via PersonalizationCSP"
       ansible.windows.win_regedit:
@@ -335,8 +332,11 @@
         type: dword
       when: wallpaper_available
 
-    - name: "[Stage 9] Flush handlers (apply wallpaper now)"
-      meta: flush_handlers
+    - name: "[Stage 9] Apply wallpaper change (broadcast WM_SETTINGCHANGE)"
+      ansible.windows.win_shell: |
+        RUNDLL32.EXE user32.dll,UpdatePerUserSystemParameters ,1 ,True
+      changed_when: false
+      when: wallpaper_download is changed
 
     # =========================================================================
     # Stage 10 — Dark mode
@@ -499,8 +499,6 @@
       ansible.windows.win_optional_feature:
         name: OpenSSH.Server~~~~0.0.1.0
         state: present
-      notify: restart sshd
-
     - name: "[Stage 16] Ensure sshd is running and Automatic"
       ansible.windows.win_service:
         name: sshd
@@ -516,7 +514,6 @@
       ansible.windows.win_copy:
         content: "{{ exa_ansible_pub_key }}\n"
         dest:    "{{ exa_ansible_key_path }}"
-      notify: restart sshd
 
     - name: "[Stage 16] Set ACLs on administrators_authorized_keys"
       ansible.windows.win_shell: |
@@ -537,7 +534,6 @@
         data: 'C:\Program Files\PowerShell\7\pwsh.exe'
         type: string
       when: stage16_ps7.stat.exists
-      notify: restart sshd
 
     - name: "[Stage 16] Set PS5 as default SSH shell (PS7 not yet installed)"
       ansible.windows.win_regedit:
@@ -546,7 +542,6 @@
         data: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
         type: string
       when: not stage16_ps7.stat.exists
-      notify: restart sshd
 
     - name: "[Stage 16] Open SSH firewall rule"
       community.windows.win_firewall_rule:
@@ -558,8 +553,10 @@
         enabled:   true
         state:     present
 
-    - name: "[Stage 16] Flush handlers (restart sshd now)"
-      meta: flush_handlers
+    - name: "[Stage 16] Restart sshd (pick up key and shell changes)"
+      ansible.windows.win_service:
+        name: sshd
+        state: restarted
 
     # =========================================================================
     # Stage 17 — RDP
@@ -575,7 +572,6 @@
         name: fDenyTSConnections
         data: 0
         type: dword
-      notify: restart rdp
 
     - name: "[Stage 17] Enforce NLA"
       ansible.windows.win_regedit:
@@ -596,6 +592,11 @@
         group:     "Remote Desktop"
         enabled:   true
         state:     present
+
+    - name: "[Stage 17] Restart TermService (apply RDP changes)"
+      ansible.windows.win_service:
+        name: TermService
+        state: restarted
 
     # =========================================================================
     # Stage 17b — SAC/EMS serial console (Server OS only)
