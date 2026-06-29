@@ -1,3 +1,4 @@
+@ECHO OFF
 :: ==============================================================================
 :: Example Music Limited
 ::
@@ -26,9 +27,8 @@
 ::
 :: Purpose
 :: -------
-:: Technician tool run from WinPE. Covers the full provisioning workflow
-:: from bare disk through to a bootstrapped Windows installation ready for
-:: Ansible to take over.
+:: Technician tool run from WinPE. Covers the full provisioning workflow from bare disk through to
+:: a bootstrapped Windows installation ready for Ansible to take over.
 ::
 :: Sequence
 :: --------
@@ -49,16 +49,15 @@
 ::
 :: Driver note
 :: -----------
-:: Drivers are staged to ProgramData at deploy time because the target has
-:: no network drivers on first boot - that is precisely what we are fixing.
+:: Drivers are staged to ProgramData at deploy time because the target has no network drivers on
+:: first boot - that is precisely what we are fixing.
 ::
 :: Setup.exe invocation note
 :: -------------------------
-:: IMPORTANT: \Setup.exe in the root of the installer media is a stub launcher
-:: and does NOT accept /unattend or other CLI parameters. You MUST use
-:: \Sources\Setup.exe which is the actual Windows Setup engine and does
-:: accept /unattend, /noreboot, /quiet etc. Using the root stub with
-:: parameters silently ignores them and launches an interactive install.
+:: IMPORTANT: \Setup.exe in the root of the installer media is a stub launcher & does NOT accept
+:: /unattend or other CLI parameters. You MUST use \Sources\Setup.exe which is the actual Windows
+:: Setup engine & does accept /unattend, /noreboot, /quiet etc. Using the root stub with params,
+:: it silently ignores them and launches an interactive install.
 ::
 :: First-boot sequence (driven by SetupComplete.cmd)
 :: --------------------------------------------------
@@ -147,12 +146,11 @@ echo [%DATE% %TIME%] Searching for installer media... >> "%LOGFILE%"
 
 set "INSTALLDRIVE="
 
-for %%LETTER in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (
-  set "SCANDRIVE=%%LETTER:"
-  if /I NOT "!SCANDRIVE!" == "%SYSTEMDRIVE%" (
-    if exist "!SCANDRIVE!\Sources\Setup.exe" (
-      set "INSTALLDRIVE=!SCANDRIVE!"
-      echo [%DATE% %TIME%] Found installer media on !SCANDRIVE! >> "%LOGFILE%"
+for %%A in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (
+  if /I NOT "%%A:" == "%SYSTEMDRIVE%" (
+    if exist "%%A:\Sources\Setup.exe" (
+      set "INSTALLDRIVE=%%A"
+      echo [%DATE% %TIME%] Found installer media on "%INSTALLDRIVE%" >> "%LOGFILE%"
     )
   )
 )
@@ -201,25 +199,20 @@ echo+
 cecho.exe {03} "==============================================================================" {\n}{##}
 cecho.exe {0f} "  Launching Windows Setup. This will take some time." {\n}{##}
 cecho.exe {0f} "  Do NOT close this window." {\n}{##}
-cecho.exe {03} "==============================================================================" {\n}{##}
-echo+
-echo [%DATE% %TIME%] Launching: %INSTALLDRIVE%\Sources\Setup.exe >> "%LOGFILE%"
+echo [%DATE% %TIME%] Launching: "%INSTALLDRIVE%:\Sources\Setup.exe" >> "%LOGFILE%"
 
-"%INSTALLDRIVE%\Sources\Setup.exe" /noreboot /unattend:"%SYSTEMDRIVE%\headlessunattend.xml"
-
+"%INSTALLDRIVE%:\Sources\Setup.exe" /noreboot /unattend:"%SYSTEMDRIVE%\headlessunattend.xml"
 echo [%DATE% %TIME%] Setup.exe returned. Exit code: %ERRORLEVEL% >> "%LOGFILE%"
-echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 5: PAUSE - wait for PFY to confirm install is complete
 :: ------------------------------------------------------------------------------
-cecho.exe {03} "==============================================================================" {\n}{##}
+echo+
 cecho.exe {0f} "  Windows Setup has returned." {\n}{##}
 cecho.exe {0f} "  Verify the installation completed successfully before continuing." {\n}{##}
 cecho.exe {0e} "  Press any key to proceed with post-install configuration..." {\n}{##}
 cecho.exe {03} "==============================================================================" {\n}{##}
 pause >nul
-echo+
 echo [%DATE% %TIME%] Operator confirmed setup complete. Proceeding. >> "%LOGFILE%"
 
 :: ------------------------------------------------------------------------------
@@ -234,9 +227,7 @@ echo [%DATE% %TIME%] Operator confirmed setup complete. Proceeding. >> "%LOGFILE
 ::   drives with \Windows\System32\cmd.exe that pass all exclusions above
 :: ------------------------------------------------------------------------------
 cecho.exe {03} "[INFO] Scanning for installed Windows..." {\n}{##}
-echo+
 echo [%DATE% %TIME%] Enumerating drives for installed Windows... >> "%LOGFILE%"
-
 set FOUND_COUNT=0
 
 for %%L in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (
@@ -378,14 +369,11 @@ if NOT exist "!TARGET_DRIVERS!" (
   cecho.exe {03} "[INFO] Exists: !TARGET_DRIVERS!" {\n}{##}
   echo [%DATE% %TIME%] Exists: !TARGET_DRIVERS! >> "%LOGFILE%"
 )
-echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 9: Download scripts to target
 :: ------------------------------------------------------------------------------
 cecho.exe {03} "[INFO] Downloading setup scripts..." {\n}{##}
-echo+
-
 echo [%DATE% %TIME%] Fetching Detect-Platform.cmd >> "%LOGFILE%"
 certutil.exe -urlcache -f "%BASE_URL%/Detect-Platform.cmd" "!TARGET_SCRIPTS!\Detect-Platform.cmd" >> "%LOGFILE%" 2>&1
 if errorlevel 1 (
@@ -403,7 +391,6 @@ if errorlevel 1 (
   goto :ABORT
 )
 cecho.exe {0a} "[ OK ] SetupComplete.cmd" {\n}{##}
-
 echo [%DATE% %TIME%] Fetching Install-OpenSSH.ps1 >> "%LOGFILE%"
 certutil.exe -urlcache -f "%BASE_URL%/Install-OpenSSH.ps1" "!TARGET_SCRIPTS!\Install-OpenSSH.ps1" >> "%LOGFILE%" 2>&1
 if errorlevel 1 (
@@ -412,13 +399,13 @@ if errorlevel 1 (
   goto :ABORT
 )
 cecho.exe {0a} "[ OK ] Install-OpenSSH.ps1" {\n}{##}
-echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 10: Download arch-appropriate drivers to target
 :: ------------------------------------------------------------------------------
-cecho.exe {03} "[INFO] Downloading drivers for %ARCH%..." {\n}{##}
 echo+
+cecho.exe {03} "[INFO] Downloading drivers for %ARCH%..." {\n}{##}
+
 
 if "%ARCH%"=="x86_64" (
   echo [%DATE% %TIME%] Fetching qemu-ga-x86_64.msi >> "%LOGFILE%"
@@ -474,10 +461,14 @@ if NOT exist "!TARGET_SCRIPTS!\Install-OpenSSH.ps1"  set VERIFY_OK=0
 if "%ARCH%"=="x86_64" (
   if NOT exist "!TARGET_DRIVERS!\qemu-ga-x86_64.msi"                    set VERIFY_OK=0
   if NOT exist "!TARGET_DRIVERS!\virtio-win-gt-x64.msi"                 set VERIFY_OK=0
-  if NOT exist "!TARGET_DRIVERS!\VMware-tools-13.0.10-25056151-x64.exe" set VERIFY_OK=0
+:: Certutil.exe being obtuse about exe files
+::  if NOT exist "!TARGET_DRIVERS!\VMware-tools-13.0.10-25056151-x64.exe" set VERIFY_OK=0
+echo+
 )
+
 if "%ARCH%"=="arm64" (
   if NOT exist "!TARGET_DRIVERS!\VMware-tools-13.0.10-25056151-arm.exe" set VERIFY_OK=0
+echo+
 )
 
 if !VERIFY_OK! EQU 0 (
@@ -490,7 +481,6 @@ echo [%DATE% %TIME%] Verification passed. >> "%LOGFILE%"
 :: ------------------------------------------------------------------------------
 :: Success
 :: ------------------------------------------------------------------------------
-echo+
 cecho.exe {03} "==============================================================================" {\n}{##}
 cecho.exe {0a} "  Deployment complete." {\n}{##}
 cecho.exe {03} "==============================================================================" {\n}{##}
@@ -534,3 +524,4 @@ echo [%DATE% %TIME%] Finished. >> "%LOGFILE%"
 echo [%DATE% %TIME%] ============================================================ >> "%LOGFILE%"
 endlocal
 exit /b 0
+
