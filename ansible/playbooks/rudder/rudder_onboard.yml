@@ -40,7 +40,7 @@
 #                    FAL nodes connect directly to the root server.
 #                    Defaults to FAL if not set.
 #
-#   rudder_server    Override the root server IP (default: 192.168.76.12).
+#   rudder_server    Override the root server IP (default: 192.168.139.12).
 #                    Normally derived from group_vars; override only if needed.
 #
 # Vault required:
@@ -67,7 +67,7 @@
     - ../../group_vars/rudder_servers/vault.yml
 
   vars:
-    rudder_root_server:    "192.168.76.12"
+    rudder_root_server:    "192.168.139.12"
     rudder_url:            "https://{{ rudder_root_server }}"
     rudder_apt_keyring:    "/usr/share/keyrings/rudder-archive-keyring.gpg"
     site_code:             "{{ site_code | default('FAL') }}"
@@ -76,7 +76,7 @@
     # FAL nodes connect directly to the root server (no entry needed).
     # ODE and BRK UUIDs must be set after relays are deployed and promoted.
     # Get relay UUIDs from:
-    #   curl -sk -H "X-API-Token: TOKEN" https://192.168.76.12/rudder/api/latest/nodes \
+    #   curl -sk -H "X-API-Token: TOKEN" https://192.168.139.12/rudder/api/latest/nodes \
     #     | python3 -m json.tool | grep -A5 "rudder-policy-server-relay"
     rudder_relay_policy_server:
       ODE: "{{ rudder_relay_uuid_ode | default('') }}"

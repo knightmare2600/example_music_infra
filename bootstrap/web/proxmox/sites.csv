@@ -1,49 +1,49 @@
-Site,City,Country,CountryCode,Subnet,Gateway,DC,FW,Landline,Mobile,Timezone,AnsibleRegion,Entity
-AAR,Aarhus,Denmark,DK,192.168.86.0/24,192.168.86.1,192.168.86.10,192.168.86.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Aarhus,dk_site,Example Music (Danmark) ApS
-ABD,Aberdeen,United Kingdom,UK,192.168.224.0/24,192.168.224.1,192.168.224.10,192.168.224.253,+44 1224 496 0xxx,+44 7700 900 2xxx,Europe/London,uk_site,Example Music (Scotland) Ltd
-AKL,Auckland,New Zealand,NZ,192.168.93.0/24,192.168.93.1,192.168.93.10,192.168.93.253,+64 9 300 0xxx,+64 21 900 2xxx,Pacific/Auckland,apac_site,Example Music (New Zealand) Tapui
-AMS,Amsterdam,Netherlands,NL,192.168.31.0/24,192.168.31.1,192.168.31.10,192.168.31.253,N/A,N/A,Europe/Amsterdam,eu_site,Example Music (Nederland) B.V.
-ATL,Atlanta,United States,US,192.168.33.0/24,192.168.33.1,192.168.33.10,192.168.33.253,+1 334 300 0xxx,+1 770 900 2xxx,America/Chicago,us_site,Example Music (US) LLC.
-BER,Berlin,Germany,DE,192.168.113.0/24,192.168.113.1,192.168.113.10,192.168.113.253,+49 311 555 xxx,+49 211 xxx xxxx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH
-BIR,Birmingham,United Kingdom,UK,192.168.121.0/24,192.168.121.1,192.168.121.10,192.168.121.253,+44 121 496 0xxx,+44 7700 900 2xxx,Europe/London,uk_site,Example Music (England) Ltd
-BON,Bonn,Germany,DE,192.168.228.0/24,192.168.228.1,192.168.228.10,192.168.228.253,+49 228 555 xxx,+49 211 xxx xxxx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH
-BRD,West Berlin (legacy alias for BER),Germany,DE,192.168.113.0/24,192.168.113.1,192.168.113.10,192.168.113.253,+49 311 555 xxx,+49 211 xxx xxxx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH
-BRK,Brockville,Canada,CA,192.168.136.0/24,192.168.136.1,192.168.136.10,192.168.136.253,+1 613 555 6xxx,+1 613 555 6xxx,America/Toronto,ca_site,Example Music (Canada) Inc.
-BRT,Beirut,Lebanon,LB,192.168.169.0/24,192.168.169.1,192.168.169.10,192.168.169.253,+961 1 555 xxxx,+961 3 555 xxxx,Asia/Beirut,lb_site,Example Music (Lebanon) SAL
-CHI,Chicago,United States,US,192.168.214.0/24,192.168.214.1,192.168.214.10,192.168.214.253,+1 312 555 xxxx,+1 773 900 xxxx,America/Chicago,us_site,Example Music (US) LLC.
-CLD,CloudSite,Global,N/A,192.168.69.0/24,192.168.69.1,192.168.69.10,192.168.69.253,N/A,N/A,UTC,cloud_site,Example Music Limited
-CLY,Clydebank,United Kingdom,UK,192.168.41.0/24,192.168.41.1,192.168.41.10,192.168.41.253,+44 141 496 00xx,+44 770 090 5xxx,Europe/London,uk_site,Example Music (Scotland) Ltd
-COV,Coventry,United Kingdom,UK,192.168.247.0/24,192.168.247.1,192.168.247.10,192.168.247.253,+44 247 765 0xxx,+44 7700 901 2xxx,Europe/London,uk_site,Example Music (England) Ltd
-CPH,Copenhagen,Denmark,DK,192.168.231.0/24,192.168.231.1,192.168.231.10,192.168.231.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS
-DRS,Dresden,Germany,DE,192.168.153.0/24,192.168.153.1,192.168.153.10,192.168.153.253,+49 351 555 xxx,+49 172 xxx xxxx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH
-DUS,Dusseldorf,Germany,DE,192.168.211.0/24,192.168.211.1,192.168.211.10,192.168.211.253,+49 211 555 xxx,+49 172 xxx xxxx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH
-DUN,Dundee,United Kingdom,UK,192.168.138.0/24,192.168.138.1,192.168.138.10,192.168.138.253,+44 163 249 60xx,+44 770 090 82xx,Europe/London,uk_site,Example Music (Scotland) Ltd
-EDI,Edinburgh,United Kingdom,UK,192.168.131.0/24,192.168.131.1,192.168.131.10,192.168.131.253,+44 131 496 0xxx,+44 770 090 3xxx,Europe/London,uk_site,Example Music (Scotland) Ltd
-FAL,Falkirk,United Kingdom,UK,192.168.76.0/24,192.168.76.1,192.168.76.10,192.168.76.253,+44 1324 500 0xxx,+44 7700 903 2xxx,Europe/London,uk_site,Example Music (Scotland) Ltd
-FAX,Faxe,Denmark,DK,192.168.246.0/24,192.168.246.1,192.168.246.10,192.168.246.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS
-FRE,Fredericia,Denmark,DK,192.168.75.0/24,192.168.75.1,192.168.75.10,192.168.75.253,+45 75 xx xx xx,+45 2x xx xx xx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS
-GLA,Glasgow,United Kingdom,UK,192.168.141.0/24,192.168.141.1,192.168.141.10,192.168.141.253,+44 141 496 01xx,+44 770 009 4xxx,Europe/London,uk_site,Example Music (Scotland) Ltd
-GOT,Gothenburg,Sweden,SE,192.168.46.0/24,192.168.46.1,192.168.46.10,192.168.46.253,N/A,N/A,Europe/Stockholm,eu_site,Example Music (Sverige) AB
-HAL,Halifax,United Kingdom,UK,192.168.142.0/24,192.168.142.1,192.168.142.10,192.168.142.253,+44 1422 200 0xxx,+44 7700 904 2xxx,Europe/London,uk_site,Example Music (England) Ltd
-HUL,Hull,United Kingdom,UK,192.168.148.0/24,192.168.148.1,192.168.148.10,192.168.148.253,+44 1482 300 0xxx,+44 7700 902 2xxx,Europe/London,uk_site,Example Music (England) Ltd
-KGE,Koge,Denmark,DK,192.168.65.0/24,192.168.65.1,192.168.65.10,192.168.65.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS
-KOR,Korsor,Denmark,DK,192.168.238.0/24,192.168.238.1,192.168.238.10,192.168.238.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS
-LAX,Los Angeles,United States,US,192.168.213.0/24,192.168.213.1,192.168.213.10,192.168.213.253,+1 213 555 xxxx,+1 213 555 xxx,America/Los_Angeles,us_site,Example Music (US) LLC.
-LIV,Liverpool,United Kingdom,UK,192.168.151.0/24,192.168.151.1,192.168.151.10,192.168.151.253,+44 151 496 0xxx,+44 770 090 5xxx,Europe/London,uk_site,Example Music (England) Ltd
-LND,London,United Kingdom,UK,192.168.20.0/24,192.168.20.1,192.168.20.10,192.168.20.253,+44 207 496 0xxx,+44 770 090 0xxx,Europe/London,uk_site,Example Music (England) Ltd
-MCR,Manchester,United Kingdom,UK,192.168.161.0/24,192.168.161.1,192.168.161.10,192.168.161.253,+44 161 715 xxxx,+44 770 090 6xxx,Europe/London,uk_site,Example Music (England) Ltd
-MEL,Melbourne,Australia,AU,192.168.61.0/24,192.168.61.1,192.168.61.10,192.168.61.253,+61 3 9000 0xxx,+61 400 901 2xxx,Australia/Melbourne,apac_site,Example Music (Australia) Pty Ltd
-MIA,Miami,United States,US,192.168.135.0/24,192.168.135.1,192.168.135.10,192.168.135.253,+1 305 555 xxxx,+1 786 555 xxxx,America/New_York,us_site,Example Music (US) LLC.
-MIL,Milan,Italy,IT,192.168.39.0/24,192.168.39.1,192.168.39.10,192.168.39.253,N/A,N/A,Europe/Rome,eu_site,Example Music (Italia) S.p.a.
-MTL,Montreal,Canada,CA,192.168.154.0/24,192.168.154.1,192.168.154.10,192.168.154.253,+1 514 400 0xxx,+1 514 900 2xxx,America/Montreal,ca_site,Example Music (Canada) Inc.
-MUN,Munich,Germany,DE,192.168.189.0/24,192.168.189.1,192.168.189.10,192.168.189.253,+49 893 555 33xx,+49 893 555 99xx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH
-NEW,Newcastle,United Kingdom,UK,192.168.191.0/24,192.168.191.1,192.168.191.10,192.168.191.253,+44 191 496 0xxx,+44 770 090 9xxx,Europe/London,uk_site,Example Music (England) Ltd
-NJC,New Jersey,United States,US,192.168.201.0/24,192.168.201.1,192.168.201.10,192.168.201.253,+1 201 400 0xxx,+1 908 900 2xxx,America/New_York,us_site,Example Music (US) LLC.
-NYC,New York City,United States,US,192.168.212.0/24,192.168.212.1,192.168.212.10,192.168.212.253,+1 212 500 0xxx,+1 917 900 2xxx,America/New_York,us_site,Example Music (US) LLC.
-ODE,Odense,Denmark,DK,192.168.126.0/24,192.168.126.1,192.168.126.10,192.168.126.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS
-OSL,Oslo,Norway,NO,192.168.47.0/24,192.168.47.1,192.168.47.10,192.168.47.253,N/A,N/A,Europe/Oslo,eu_site,Example Music (Norge) ASA
-PER,Perth,United Kingdom,UK,192.168.173.0/24,192.168.173.1,192.168.173.10,192.168.173.253,+44 173 849 60xx,+44 770 0173 0xx,Europe/London,uk_site,Example Music (Scotland) Ltd
-SHE,Sheffield,United Kingdom,UK,192.168.114.0/24,192.168.114.1,192.168.114.10,192.168.114.253,+44 114 250 0xxx,+44 7700 905 2xxx,Europe/London,uk_site,Example Music (England) Ltd
-SYD,Sydney,Australia,AU,192.168.29.0/24,192.168.29.1,192.168.29.10,192.168.29.253,+61 2 9000 0xxx,+61 400 900 2xxx,Australia/Sydney,apac_site,Example Music (Australia) Pty Ltd
-TOR,Toronto,Canada,CA,192.168.146.0/24,192.168.146.1,192.168.146.10,192.168.146.253,+1 416 555 xxxx,+1 647 555 xxxx,America/Toronto,ca_site,Example Music (Canada) Inc.
-VIE,Vienna,Austria,AT,192.168.78.0/24,192.168.78.1,192.168.78.10,192.168.78.253,+43 800 078 0xx,+43 664 665 xxx,Europe/Vienna,eu_site,Example Music (Osterreich) GmbH
+Site,City,Country,CountryCode,Subnet,Gateway,DC,FW,Landline,Mobile,Timezone,AnsibleRegion,Entity,Province
+AAR,Aarhus,Denmark,DK,192.168.86.0/24,192.168.86.1,192.168.86.10,192.168.86.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Aarhus,dk_site,Example Music (Danmark) ApS,
+ABD,Aberdeen,United Kingdom,UK,192.168.224.0/24,192.168.224.1,192.168.224.10,192.168.224.253,+44 1224 496 0xxx,+44 7700 900 2xxx,Europe/London,uk_site,Example Music (Scotland) Ltd,Scotland
+AKL,Auckland,New Zealand,NZ,192.168.93.0/24,192.168.93.1,192.168.93.10,192.168.93.253,+64 9 300 0xxx,+64 21 900 2xxx,Pacific/Auckland,apac_site,Example Music (New Zealand) Tapui,
+AMS,Amsterdam,Netherlands,NL,192.168.31.0/24,192.168.31.1,192.168.31.10,192.168.31.253,N/A,N/A,Europe/Amsterdam,eu_site,Example Music (Nederland) B.V.,
+ATL,Atlanta,United States,US,192.168.33.0/24,192.168.33.1,192.168.33.10,192.168.33.253,+1 334 300 0xxx,+1 770 900 2xxx,America/Chicago,us_site,Example Music (US) LLC.,Georgia
+BER,Berlin,Germany,DE,192.168.113.0/24,192.168.113.1,192.168.113.10,192.168.113.253,+49 311 555 xxx,+49 211 xxx xxxx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH,
+BIR,Birmingham,United Kingdom,UK,192.168.121.0/24,192.168.121.1,192.168.121.10,192.168.121.253,+44 121 496 0xxx,+44 7700 900 2xxx,Europe/London,uk_site,Example Music (England) Ltd,England
+BON,Bonn,Germany,DE,192.168.228.0/24,192.168.228.1,192.168.228.10,192.168.228.253,+49 228 555 xxx,+49 211 xxx xxxx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH,
+BRD,West Berlin,Germany,DE,192.168.113.0/24,192.168.113.1,192.168.113.10,192.168.113.253,+49 311 555 xxx,+49 211 xxx xxxx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH,
+BRK,Brockville,Canada,CA,192.168.136.0/24,192.168.136.1,192.168.136.10,192.168.136.253,+1 613 555 6xxx,+1 613 555 6xxx,America/Toronto,ca_site,Example Music (Canada) Inc.,Ontario
+BRT,Beirut,Lebanon,LB,192.168.169.0/24,192.168.169.1,192.168.169.10,192.168.169.253,+961 1 555 xxxx,+961 3 555 xxxx,Asia/Beirut,lb_site,Example Music (Lebanon) SAL,
+CHI,Chicago,United States,US,192.168.214.0/24,192.168.214.1,192.168.214.10,192.168.214.253,+1 312 555 xxxx,+1 773 900 xxxx,America/Chicago,us_site,Example Music (US) LLC.,Illinois
+CLD,CloudSite,Global,N/A,192.168.69.0/24,192.168.69.1,192.168.69.10,192.168.69.253,N/A,N/A,UTC,cloud_site,Example Music Limited,
+CLY,Clydebank,United Kingdom,UK,192.168.41.0/24,192.168.41.1,192.168.41.10,192.168.41.253,+44 141 496 00xx,+44 770 090 5xxx,Europe/London,uk_site,Example Music (Scotland) Ltd,Scotland
+COV,Coventry,United Kingdom,UK,192.168.247.0/24,192.168.247.1,192.168.247.10,192.168.247.253,+44 247 765 0xxx,+44 7700 901 2xxx,Europe/London,uk_site,Example Music (England) Ltd,England
+CPH,Copenhagen,Denmark,DK,192.168.231.0/24,192.168.231.1,192.168.231.10,192.168.231.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS,
+DRS,Dresden,Germany,DE,192.168.153.0/24,192.168.153.1,192.168.153.10,192.168.153.253,+49 351 555 xxx,+49 172 xxx xxxx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH,
+DUN,Dundee,United Kingdom,UK,192.168.138.0/24,192.168.138.1,192.168.138.10,192.168.138.253,+44 163 249 60xx,+44 770 090 82xx,Europe/London,uk_site,Example Music (Scotland) Ltd,Scotland
+DUS,Dusseldorf,Germany,DE,192.168.211.0/24,192.168.211.1,192.168.211.10,192.168.211.253,+49 211 555 xxx,+49 172 xxx xxxx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH,
+EDI,Edinburgh,United Kingdom,UK,192.168.131.0/24,192.168.131.1,192.168.131.10,192.168.131.253,+44 131 496 0xxx,+44 770 090 3xxx,Europe/London,uk_site,Example Music (Scotland) Ltd,Scotland
+FAL,Falkirk,United Kingdom,UK,192.168.76.0/24,192.168.76.1,192.168.76.10,192.168.76.253,+44 1324 500 0xxx,+44 7700 903 2xxx,Europe/London,uk_site,Example Music (Scotland) Ltd,Scotland
+FAX,Faxe,Denmark,DK,192.168.246.0/24,192.168.246.1,192.168.246.10,192.168.246.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS,
+FRE,Fredericia,Denmark,DK,192.168.75.0/24,192.168.75.1,192.168.75.10,192.168.75.253,+45 75 xx xx xx,+45 2x xx xx xx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS,
+GLA,Glasgow,United Kingdom,UK,192.168.141.0/24,192.168.141.1,192.168.141.10,192.168.141.253,+44 141 496 01xx,+44 770 009 4xxx,Europe/London,uk_site,Example Music (Scotland) Ltd,Scotland
+GOT,Gothenburg,Sweden,SE,192.168.46.0/24,192.168.46.1,192.168.46.10,192.168.46.253,N/A,N/A,Europe/Stockholm,eu_site,Example Music (Sverige) AB,
+HAL,Halifax,United Kingdom,UK,192.168.142.0/24,192.168.142.1,192.168.142.10,192.168.142.253,+44 1422 200 0xxx,+44 7700 904 2xxx,Europe/London,uk_site,Example Music (England) Ltd,England
+HUL,Hull,United Kingdom,UK,192.168.148.0/24,192.168.148.1,192.168.148.10,192.168.148.253,+44 1482 300 0xxx,+44 7700 902 2xxx,Europe/London,uk_site,Example Music (England) Ltd,England
+KGE,Koge,Denmark,DK,192.168.65.0/24,192.168.65.1,192.168.65.10,192.168.65.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS,
+KOR,Korsor,Denmark,DK,192.168.238.0/24,192.168.238.1,192.168.238.10,192.168.238.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS,
+LAX,Los Angeles,United States,US,192.168.213.0/24,192.168.213.1,192.168.213.10,192.168.213.253,+1 213 555 xxxx,+1 213 555 xxx,America/Los_Angeles,us_site,Example Music (US) LLC.,California
+LIV,Liverpool,United Kingdom,UK,192.168.151.0/24,192.168.151.1,192.168.151.10,192.168.151.253,+44 151 496 0xxx,+44 770 090 5xxx,Europe/London,uk_site,Example Music (England) Ltd,England
+LND,London,United Kingdom,UK,192.168.20.0/24,192.168.20.1,192.168.20.10,192.168.20.253,+44 207 496 0xxx,+44 770 090 0xxx,Europe/London,uk_site,Example Music (England) Ltd,England
+MCR,Manchester,United Kingdom,UK,192.168.161.0/24,192.168.161.1,192.168.161.10,192.168.161.253,+44 161 715 xxxx,+44 770 090 6xxx,Europe/London,uk_site,Example Music (England) Ltd,England
+MEL,Melbourne,Australia,AU,192.168.61.0/24,192.168.61.1,192.168.61.10,192.168.61.253,+61 3 9000 0xxx,+61 400 901 2xxx,Australia/Melbourne,apac_site,Example Music (Australia) Pty Ltd,
+MIA,Miami,United States,US,192.168.135.0/24,192.168.135.1,192.168.135.10,192.168.135.253,+1 305 555 xxxx,+1 786 555 xxxx,America/New_York,us_site,Example Music (US) LLC.,Florida
+MIL,Milan,Italy,IT,192.168.39.0/24,192.168.39.1,192.168.39.10,192.168.39.253,N/A,N/A,Europe/Rome,eu_site,Example Music (Italia) S.p.a.,
+MTL,Montreal,Canada,CA,192.168.154.0/24,192.168.154.1,192.168.154.10,192.168.154.253,+1 514 400 0xxx,+1 514 900 2xxx,America/Montreal,ca_site,Example Music (Canada) Inc.,Quebec
+MUN,Munich,Germany,DE,192.168.189.0/24,192.168.189.1,192.168.189.10,192.168.189.253,+49 893 555 33xx,+49 893 555 99xx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH,
+NEW,Newcastle,United Kingdom,UK,192.168.191.0/24,192.168.191.1,192.168.191.10,192.168.191.253,+44 191 496 0xxx,+44 770 090 9xxx,Europe/London,uk_site,Example Music (England) Ltd,England
+NJC,New Jersey,United States,US,192.168.201.0/24,192.168.201.1,192.168.201.10,192.168.201.253,+1 201 400 0xxx,+1 908 900 2xxx,America/New_York,us_site,Example Music (US) LLC.,
+NYC,New York City,United States,US,192.168.212.0/24,192.168.212.1,192.168.212.10,192.168.212.253,+1 212 500 0xxx,+1 917 900 2xxx,America/New_York,us_site,Example Music (US) LLC.,New York
+ODE,Odense,Denmark,DK,192.168.126.0/24,192.168.126.1,192.168.126.10,192.168.126.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS,
+OSL,Oslo,Norway,NO,192.168.47.0/24,192.168.47.1,192.168.47.10,192.168.47.253,N/A,N/A,Europe/Oslo,eu_site,Example Music (Norge) ASA,
+PER,Perth,United Kingdom,UK,192.168.173.0/24,192.168.173.1,192.168.173.10,192.168.173.253,+44 173 849 60xx,+44 770 0173 0xx,Europe/London,uk_site,Example Music (Scotland) Ltd,Scotland
+SHE,Sheffield,United Kingdom,UK,192.168.114.0/24,192.168.114.1,192.168.114.10,192.168.114.253,+44 114 250 0xxx,+44 7700 905 2xxx,Europe/London,uk_site,Example Music (England) Ltd,England
+SYD,Sydney,Australia,AU,192.168.29.0/24,192.168.29.1,192.168.29.10,192.168.29.253,+61 2 9000 0xxx,+61 400 900 2xxx,Australia/Sydney,apac_site,Example Music (Australia) Pty Ltd,
+TOR,Toronto,Canada,CA,192.168.146.0/24,192.168.146.1,192.168.146.10,192.168.146.253,+1 416 555 xxxx,+1 647 555 xxxx,America/Toronto,ca_site,Example Music (Canada) Inc.,Ontario
+VIE,Vienna,Austria,AT,192.168.78.0/24,192.168.78.1,192.168.78.10,192.168.78.253,+43 800 078 0xx,+43 664 665 xxx,Europe/Vienna,eu_site,Example Music (Osterreich) GmbH,

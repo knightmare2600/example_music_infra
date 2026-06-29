@@ -1,0 +1,124 @@
+---
+# =============================================================================
+# Example Music Limited — Active Directory Computer Accounts Playbook
+# playbooks/windows_adschema/ad_computers.yml
+#
+# Creates computer accounts in AD from jukebox.example.tdf ($Script:rawComputers).
+#
+# ⚠️  ADDITIVE ONLY — state: present throughout. Never removes accounts.
+#
+# Prerequisites (run in order):
+#   1. ad_schema.yml  — OU hierarchy (including device sub-OUs) must exist
+#
+# Device Role → OU mapping (same as ad_schema.yml _device_sub_ous):
+#   Workstations : WKS LAP SUR MBP MAC VDU
+#   Servers      : DCS SRV SVR SBC RDR
+#   Infrastructure: FWL RTR SWI RAC PVE NAS NIX
+#   Telephony    : PHN PBX PAY
+#   AV           : LCD TVS VCU MIC RAD
+#   IoT          : CAM WAP CLK PMP TEA COF PRN DON VND MUS TTY OB
+#   Assets       : TAB BUS CAR TRK JET AST MOO
+#
+# Computers with unknown site codes (ABR, LON/LOC, GAA, HEL) are skipped
+# with a warning from the parser — these are intentional demo-data errors.
+#
+# Usage:
+#   ansible-playbook playbooks/windows_adschema/ad_computers.yml \
+#     --limit EXADCSFAL001 --ask-vault-pass
+#
+#   # Check mode
+#   ansible-playbook playbooks/windows_adschema/ad_computers.yml \
+#     --limit EXADCSFAL001 --check --diff --ask-vault-pass
+#
+# Variables (override with --extra-vars):
+#   ad_target   Target DC hostname   (default: EXADCSFAL001)
+#   ad_domain   AD domain FQDN       (default: jukebox.internal)
+#   tdf_path    Path to TDF file     (default: /etc/example-music/jukebox.example.tdf)
+#   sites_csv   Path to sites.csv    (default: /etc/example-music/sites.csv)
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-29  Initial release. 271 computers; 7 skipped (bad site codes).
+# =============================================================================
+
+- name: "Build AD computer accounts from TDF"
+  hosts: "{{ ad_target | default('EXADCSFAL001') }}"
+  gather_facts: false
+  become: false
+
+  vars:
+    ad_domain:  "jukebox.internal"
+    tdf_path:   "/etc/example-music/jukebox.example.tdf"
+    sites_csv:  "/etc/example-music/sites.csv"
+
+  pre_tasks:
+
+    - name: "Preflight | Check microsoft.ad collection is installed"
+      command: ansible-galaxy collection list microsoft.ad
+      register: _col_check
+      changed_when: false
+      failed_when: false
+      delegate_to: localhost
+      become: false
+
+    - name: "Preflight | Fail with install instructions if collection is missing"
+      fail:
+        msg: |
+          Required Ansible collection not found: microsoft.ad
+
+          Install it on the control node with:
+            ansible-galaxy collection install microsoft.ad
+
+          Then re-run this playbook.
+      when: "'microsoft.ad' not in _col_check.stdout"
+      delegate_to: localhost
+      become: false
+
+    - name: "Parse TDF computers section on control node"
+      command: >-
+        python3 {{ playbook_dir }}/parse_tdf.py
+          --section computers
+          --tdf {{ tdf_path }}
+          --domain {{ ad_domain }}
+          --sites-csv {{ sites_csv }}
+      register: _tdf_raw
+      changed_when: false
+      delegate_to: localhost
+      become: false
+
+    - name: "Decode computers JSON and compute base DN"
+      set_fact:
+        _computers_all: "{{ _tdf_raw.stdout | from_json }}"
+        _base_dn:       "DC={{ ad_domain.split('.') | join(',DC=') }}"
+
+    - name: "Filter out computers with unresolvable OU paths"
+      set_fact:
+        _computers: "{{ _computers_all | selectattr('ad_ou', 'ne', '') | list }}"
+
+    - name: "Preflight | Report computer count"
+      debug:
+        msg: >-
+          Parsed {{ _computers_all | length }} computers from TDF;
+          {{ _computers | length }} have resolvable OU paths
+          ({{ _computers_all | length - _computers | length }} skipped — unknown site codes).
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # Create computer accounts.
+    # The microsoft.ad.computer module is idempotent: re-running is safe.
+    # SamAccountName in the TDF includes the $ suffix — pass it as-is.
+    # -------------------------------------------------------------------------
+
+    - name: "Create computer accounts"
+      microsoft.ad.computer:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        path:             "{{ item.ad_ou }}"
+        dns_hostname:     "{{ item.DNSHostName if item.DNSHostName else omit }}"
+        description:      "{{ item.Description }}"
+        enabled:          "{{ item.Enabled | default(true) }}"
+        state:            present
+      loop: "{{ _computers }}"
+      loop_control:
+        label: "{{ item.Name }} ({{ item.Role }}) → {{ item.ad_device_sub_ou }}"

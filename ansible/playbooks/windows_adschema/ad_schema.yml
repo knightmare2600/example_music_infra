@@ -1,0 +1,414 @@
+---
+# =============================================================================
+# Example Music Limited — Active Directory OU Schema Playbook
+# playbooks/windows_adschema/ad_schema.yml
+#
+# ⚠️  ADDITIVE ONLY — This playbook NEVER deletes OUs or objects.
+#     state: present is used throughout. Re-running is fully idempotent.
+#     To remove an OU: use ADUC (dsa.msc) or a targeted ad-hoc task.
+#     DO NOT add state: absent tasks to this playbook.
+#     DO NOT set ad_force_absent — the safety check task will abort the run.
+#
+# Builds the complete OU hierarchy from sites.csv:
+#
+#   DC=jukebox,DC=internal
+#   ├── OU=Sites
+#   │   ├── OU=Europe
+#   │   │   ├── OU=United Kingdom
+#   │   │   │   ├── OU=Scotland
+#   │   │   │   │   └── OU=Falkirk          (FAL)
+#   │   │   │   │       ├── OU=Users
+#   │   │   │   │       ├── OU=Devices
+#   │   │   │   │       │   ├── OU=Workstations
+#   │   │   │   │       │   ├── OU=Servers
+#   │   │   │   │       │   ├── OU=Infrastructure
+#   │   │   │   │       │   ├── OU=Telephony
+#   │   │   │   │       │   ├── OU=AV
+#   │   │   │   │       │   ├── OU=IoT
+#   │   │   │   │       │   └── OU=Assets
+#   │   │   │   │       └── OU=Groups
+#   │   │   │   └── OU=England  (+ all England cities)
+#   │   │   ├── OU=Germany  ├── OU=Denmark  ├── OU=Netherlands
+#   │   │   ├── OU=Sweden   ├── OU=Italy    ├── OU=Norway  ├── OU=Austria
+#   │   ├── OU=North America
+#   │   │   ├── OU=Canada
+#   │   │   │   ├── OU=Ontario  (BRK, TOR)
+#   │   │   │   └── OU=Quebec   (MTL)
+#   │   │   └── OU=United States
+#   │   │       ├── OU=Georgia (ATL)  ├── OU=Illinois (CHI)
+#   │   │       ├── OU=California (LAX)  ├── OU=Florida (MIA)
+#   │   │       ├── OU=New York (NYC)
+#   │   │       └── OU=New Jersey (NJC — flat, no state sub-OU)
+#   │   ├── OU=Asia Pacific
+#   │   │   ├── OU=Australia    (MEL, SYD)
+#   │   │   └── OU=New Zealand  (AKL)
+#   │   ├── OU=Middle East
+#   │   │   └── OU=Lebanon  (BRT)
+#   │   └── OU=Cloud Infrastructure
+#   │       ├── OU=Users
+#   │       ├── OU=Devices  (+ sub-OUs)
+#   │       ├── OU=Groups
+#   │       └── OU=Service Accounts
+#   ├── OU=IT Groups
+#   │   ├── OU=Security Groups
+#   │   └── OU=Distribution Groups
+#   ├── OU=Service Accounts
+#   └── OU=Disabled
+#       ├── OU=Users
+#       └── OU=Computers
+#
+# Usage:
+#   # First run — standard
+#   ansible-playbook playbooks/windows_adschema/ad_schema.yml \
+#     --limit EXADCSFAL001 \
+#     --ask-vault-pass
+#
+#   # Check mode (dry run — shows what would be created)
+#   ansible-playbook playbooks/windows_adschema/ad_schema.yml \
+#     --limit EXADCSFAL001 --check --diff \
+#     --ask-vault-pass
+#
+#   # Override target DC
+#   ansible-playbook playbooks/windows_adschema/ad_schema.yml \
+#     --extra-vars "ad_target=EXADCSEDI001" \
+#     --ask-vault-pass
+#
+# Prerequisites:
+#   ansible-galaxy collection install microsoft.ad
+#
+# Variables (override with --extra-vars if needed):
+#   ad_domain        AD domain FQDN        (default: jukebox.internal)
+#   sites_csv_path   Path to sites.csv     (default: /etc/example-music/sites.csv)
+#   ad_target        Target DC hostname    (default: EXADCSFAL001)
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-29  Initial release. Full OU hierarchy from sites.csv.
+#                     Continent derived from AnsibleRegion; Province column
+#                     added to sites.csv for UK nations and CA/US states.
+# =============================================================================
+
+- name: Build Active Directory OU schema
+  hosts: "{{ ad_target | default('EXADCSFAL001') }}"
+  gather_facts: false
+  become: false
+
+  vars:
+    ad_domain:      "jukebox.internal"
+    sites_csv_path: "/etc/example-music/sites.csv"
+
+    # Set ad_email_domain to your routable email domain when it differs from
+    # the AD internal domain (e.g. ad_email_domain: "example1.co.uk").
+    # That domain will be added to ad_upn_suffixes and registered in the forest
+    # so users can log in as user@example1.co.uk.
+    # Leave as-is for internal-only / demo environments (jukebox.internal is
+    # the forest root and is automatically available as a UPN suffix).
+    ad_email_domain: "{{ ad_domain }}"
+    ad_upn_suffixes: "{{ [ad_email_domain] if ad_email_domain != ad_domain else [] }}"
+
+    # Maps AnsibleRegion values to continent OU names.
+    _region_continent:
+      uk_site:    "Europe"
+      de_site:    "Europe"
+      dk_site:    "Europe"
+      eu_site:    "Europe"
+      lb_site:    "Middle East"
+      us_site:    "North America"
+      ca_site:    "North America"
+      apac_site:  "Asia Pacific"
+      cloud_site: "Cloud Infrastructure"
+
+    # Device sub-OUs created under each city's Devices OU.
+    # Align with Role prefixes from devices.csv:
+    #   Workstations: WKS, LAP, SUR, MAC, MBP
+    #   Servers:      DCS, SRV, SVR, SBC, RDR
+    #   Infrastructure: FWL, RTR, SWI, RAC, PVE, NAS, NIX
+    #   Telephony:    PHN, PBX, PAY
+    #   AV:           VCU, LCD, TVS, MIC, RAD
+    #   IoT:          CAM, CLK, WAP, PMP, TEA, COF, PRN, DON, VND, MUS, TTY
+    #   Assets:       BUS, CAR, TRK, JET, AST, MOO, TAB
+    _device_sub_ous:
+      - Workstations
+      - Servers
+      - Infrastructure
+      - Telephony
+      - AV
+      - IoT
+      - Assets
+
+  pre_tasks:
+
+    - name: "Preflight | Check microsoft.ad collection is installed"
+      command: ansible-galaxy collection list microsoft.ad
+      register: _col_check
+      changed_when: false
+      failed_when: false
+      delegate_to: localhost
+      become: false
+
+    - name: "Preflight | Fail with install instructions if collection is missing"
+      fail:
+        msg: |
+          Required Ansible collection not found: microsoft.ad
+
+          Install it on the control node with:
+            ansible-galaxy collection install microsoft.ad
+
+          Then re-run this playbook.
+      when: "'microsoft.ad' not in _col_check.stdout"
+      delegate_to: localhost
+      become: false
+
+    - name: "Safety check — this playbook must never delete OUs"
+      assert:
+        that:
+          - ad_force_absent is not defined
+        fail_msg: >
+          ABORTED. This playbook is ADDITIVE ONLY (state: present throughout).
+          Do not set ad_force_absent. Remove OUs manually via ADUC/DSA.MSC.
+
+    - name: "Read sites.csv from control node"
+      read_csv:
+        path: "{{ sites_csv_path }}"
+      register: _sites_raw
+      delegate_to: localhost
+      become: false
+
+    - name: "Compute base DN from domain"
+      set_fact:
+        _base_dn: "DC={{ ad_domain.split('.') | join(',DC=') }}"
+
+    - name: "Attach continent and parent city path to each site"
+      set_fact:
+        _sites: >-
+          {{ _sites | default([]) + [_s] }}
+      vars:
+        _cont:  "{{ _region_continent[item.AnsibleRegion] }}"
+        _prov:  "{{ item.Province | default('') }}"
+        _cpath: >-
+          {{
+            'OU=Cloud Infrastructure,OU=Sites,' + _base_dn
+            if _cont == 'Cloud Infrastructure'
+            else (
+              'OU=' + _prov + ',OU=' + item.Country + ',OU=' + _cont + ',OU=Sites,' + _base_dn
+              if _prov != ''
+              else 'OU=' + item.Country + ',OU=' + _cont + ',OU=Sites,' + _base_dn
+            )
+          }}
+        _s: "{{ item | combine({'_continent': _cont, '_prov': _prov, '_cpath': _cpath}) }}"
+      loop: "{{ _sites_raw.list }}"
+      loop_control:
+        label: "{{ item.Site }}"
+
+    - name: "Build unique continent list"
+      set_fact:
+        _continents: "{{ _sites | map(attribute='_continent') | unique | sort | list }}"
+
+    - name: "Build unique continent-country pairs"
+      set_fact:
+        _cc_pairs: >-
+          {{ _cc_pairs | default([]) +
+             ([{'continent': item._continent, 'country': item.Country}]
+              if {'continent': item._continent, 'country': item.Country}
+                 not in _cc_pairs | default([])
+              else []) }}
+      loop: "{{ _sites | rejectattr('Country', 'equalto', 'Global') | list }}"
+      loop_control:
+        label: "{{ item.Country }} ({{ item._continent }})"
+
+    - name: "Build unique continent-country-province triples"
+      set_fact:
+        _ccp_triples: >-
+          {{ _ccp_triples | default([]) +
+             ([{'continent': item._continent, 'country': item.Country, 'province': item._prov}]
+              if item._prov != ''
+              and {'continent': item._continent, 'country': item.Country, 'province': item._prov}
+                  not in _ccp_triples | default([])
+              else []) }}
+      loop: "{{ _sites }}"
+      loop_control:
+        label: "{{ item.Site }}"
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # Section 0 — Root OUs directly under the domain
+    # -------------------------------------------------------------------------
+
+    - name: "0 | Create root OUs"
+      microsoft.ad.ou:
+        name: "{{ item }}"
+        path: "{{ _base_dn }}"
+        state: present
+        protect_from_deletion: true
+      loop:
+        - Sites
+        - IT Groups
+        - Service Accounts
+        - Disabled
+
+    # -------------------------------------------------------------------------
+    # Section 1 — Continent OUs under Sites
+    # -------------------------------------------------------------------------
+
+    - name: "1 | Create continent OUs"
+      microsoft.ad.ou:
+        name: "{{ item }}"
+        path: "OU=Sites,{{ _base_dn }}"
+        state: present
+        protect_from_deletion: true
+      loop: "{{ _continents }}"
+
+    # -------------------------------------------------------------------------
+    # Section 2 — Country OUs
+    # CLD (Country=Global) is handled separately in Section 7 — skip it here.
+    # -------------------------------------------------------------------------
+
+    - name: "2 | Create country OUs"
+      microsoft.ad.ou:
+        name: "{{ item.country }}"
+        path: "OU={{ item.continent }},OU=Sites,{{ _base_dn }}"
+        state: present
+        protect_from_deletion: true
+      loop: "{{ _cc_pairs }}"
+      loop_control:
+        label: "{{ item.country }} / {{ item.continent }}"
+
+    # -------------------------------------------------------------------------
+    # Section 3 — Province OUs
+    # Scotland, England, Ontario, Quebec, US states (where Province is set).
+    # -------------------------------------------------------------------------
+
+    - name: "3 | Create province OUs"
+      microsoft.ad.ou:
+        name: "{{ item.province }}"
+        path: "OU={{ item.country }},OU={{ item.continent }},OU=Sites,{{ _base_dn }}"
+        state: present
+        protect_from_deletion: true
+      loop: "{{ _ccp_triples }}"
+      loop_control:
+        label: "{{ item.province }}, {{ item.country }}"
+
+    # -------------------------------------------------------------------------
+    # Section 4 — City OUs
+    # _cpath is the pre-computed parent DN (province/country/continent).
+    # CLD is excluded — its leaf OUs go directly under Cloud Infrastructure.
+    # -------------------------------------------------------------------------
+
+    - name: "4 | Create city OUs"
+      microsoft.ad.ou:
+        name: "{{ item.City }}"
+        path: "{{ item._cpath }}"
+        state: present
+        protect_from_deletion: true
+        description: "{{ item.Site }} — {{ item.Entity }}"
+      loop: "{{ _sites | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list }}"
+      loop_control:
+        label: "{{ item.Site }} — {{ item.City }}"
+
+    # -------------------------------------------------------------------------
+    # Section 5 — Leaf OUs (Users, Devices, Groups) under each city
+    # -------------------------------------------------------------------------
+
+    - name: "5 | Create city leaf OUs"
+      microsoft.ad.ou:
+        name: "{{ item.1 }}"
+        path: "OU={{ item.0.City }},{{ item.0._cpath }}"
+        state: present
+      loop: >-
+        {{
+          _sites
+          | rejectattr('_continent', 'equalto', 'Cloud Infrastructure')
+          | list
+          | product(['Users', 'Devices', 'Groups'])
+          | list
+        }}
+      loop_control:
+        label: "OU={{ item.1 }} under {{ item.0.Site }}"
+
+    # -------------------------------------------------------------------------
+    # Section 6 — Device sub-OUs under each city's Devices OU
+    # -------------------------------------------------------------------------
+
+    - name: "6 | Create device sub-OUs"
+      microsoft.ad.ou:
+        name: "{{ item.1 }}"
+        path: "OU=Devices,OU={{ item.0.City }},{{ item.0._cpath }}"
+        state: present
+      loop: >-
+        {{
+          _sites
+          | rejectattr('_continent', 'equalto', 'Cloud Infrastructure')
+          | list
+          | product(_device_sub_ous)
+          | list
+        }}
+      loop_control:
+        label: "OU={{ item.1 }} / Devices / {{ item.0.Site }}"
+
+    # -------------------------------------------------------------------------
+    # Section 7 — Cloud Infrastructure (CLD)
+    # Leaf OUs sit directly under OU=Cloud Infrastructure — no city sub-level.
+    # -------------------------------------------------------------------------
+
+    - name: "7 | Create Cloud Infrastructure leaf OUs"
+      microsoft.ad.ou:
+        name: "{{ item }}"
+        path: "OU=Cloud Infrastructure,OU=Sites,{{ _base_dn }}"
+        state: present
+      loop:
+        - Users
+        - Devices
+        - Groups
+        - Service Accounts
+
+    - name: "7 | Create Cloud Infrastructure device sub-OUs"
+      microsoft.ad.ou:
+        name: "{{ item }}"
+        path: "OU=Devices,OU=Cloud Infrastructure,OU=Sites,{{ _base_dn }}"
+        state: present
+      loop: "{{ _device_sub_ous }}"
+
+    # -------------------------------------------------------------------------
+    # Section 8 — Global OU sub-structure
+    # -------------------------------------------------------------------------
+
+    - name: "8 | Create IT Groups sub-OUs"
+      microsoft.ad.ou:
+        name: "{{ item }}"
+        path: "OU=IT Groups,{{ _base_dn }}"
+        state: present
+      loop:
+        - Security Groups
+        - Distribution Groups
+
+    - name: "8 | Create Disabled sub-OUs"
+      microsoft.ad.ou:
+        name: "{{ item }}"
+        path: "OU=Disabled,{{ _base_dn }}"
+        state: present
+      loop:
+        - Users
+        - Computers
+
+    # -------------------------------------------------------------------------
+    # Section 9 — UPN suffixes
+    # Registers alternative UPN suffixes in the AD forest so users can log in
+    # with an external email domain (e.g. user@example1.co.uk).
+    # The forest root domain (jukebox.internal) is always available as a UPN
+    # suffix without registration, so this task is a no-op in demo environments.
+    # Override ad_email_domain to trigger registration:
+    #   --extra-vars "ad_email_domain=example1.co.uk"
+    # -------------------------------------------------------------------------
+
+    - name: "9 | Register alternative UPN suffixes in AD forest"
+      ansible.windows.win_powershell:
+        script: |
+          $suffixes = {{ ad_upn_suffixes | to_json }}
+          $forest   = Get-ADForest
+          $missing  = $suffixes | Where-Object { $_ -notin $forest.UPNSuffixes }
+          if ($missing) {
+              Set-ADForest -UPNSuffixes @{Add = $missing}
+          }
+          $Ansible.Changed = [bool]$missing
+      when: ad_upn_suffixes | length > 0
