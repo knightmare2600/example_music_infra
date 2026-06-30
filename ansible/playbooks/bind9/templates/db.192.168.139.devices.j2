@@ -50,6 +50,7 @@ $TTL {{ zone_ttl }}
 ; Sorted by octet ascending.
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
+   | rejectattr('Site', 'equalto', 'VRK')
    | rejectattr('Site', 'equalto', 'Site')
    | rejectattr('Subnet', 'equalto', 'N/A')
    | sort(attribute='Subnet') %}

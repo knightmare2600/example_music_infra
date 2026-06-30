@@ -121,13 +121,14 @@
         path: "{{ sites_csv_path }}"
       register: sites_raw
 
-    - name: Parse sites.csv into filtered list (skip BRD and N/A subnets)
+    - name: Parse sites.csv into filtered list (skip BRD, VRK and N/A subnets)
       tags: always
       set_fact:
         sites_raw_list: >-
           {{
             sites_raw.list
             | rejectattr('Site', 'equalto', 'BRD')
+            | rejectattr('Site', 'equalto', 'VRK')
             | rejectattr('Subnet', 'equalto', 'N/A')
             | list
           }}
@@ -768,6 +769,7 @@
           {{
             sites_raw.list
             | rejectattr('Site', 'equalto', 'BRD')
+            | rejectattr('Site', 'equalto', 'VRK')
             | rejectattr('Subnet', 'equalto', 'N/A')
             | items2dict(key_name='Site', value_name='Subnet')
           }}
