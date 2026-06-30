@@ -45,6 +45,7 @@ $TTL {{ zone_ttl }}
 ; CLD special case: vRACK WAN is .139, not the CLD LAN octet (.69).
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
+   | rejectattr('Site', 'equalto', 'VRK')
    | rejectattr('Site', 'equalto', 'Site')
    | rejectattr('Subnet', 'equalto', 'N/A')
    | sort(attribute='Site') %}
@@ -94,6 +95,7 @@ $TTL {{ zone_ttl }}
 ; CLD (provisioning network) has no DHCP pool.
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
+   | rejectattr('Site', 'equalto', 'VRK')
    | rejectattr('Site', 'equalto', 'Site')
    | rejectattr('Site', 'equalto', 'CLD')
    | rejectattr('Subnet', 'equalto', 'N/A')
