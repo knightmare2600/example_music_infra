@@ -11,8 +11,8 @@
 #   3. Prompt for target hostname — validates EXA[ROLE][SITE][NNN] format
 #   4. Derive site details from sites.csv on the Ansible control node
 #   5. List NICs, prompt user to select one
-#   6. Prompt for DHCP or static IP (pre-filled from sites.csv)
-#   7. Rename computer
+#   6. Prompt for DHCP or static IP — SKIPPED if IP already matches sites.csv
+#   7. Rename computer — SKIPPED if hostname already correct
 #   8. Single reboot — rename takes effect AND static IP scheduled task fires
 #   9. wait_for_connection on new IP
 #  10. Hand off to 05-bootstrap.yml
@@ -24,6 +24,11 @@
 # Changelog:
 #   2026-06-27  Initial file
 #   2026-06-27  Combined rename and static IP into single reboot
+#   2026-06-29  Guard reboot/scheduled task if IP already correct
+#   2026-06-29  Fix reconnect — wait_for on control node, then wait_for_connection
+#   2026-06-29  Fix heredoc to use single-quote @'...'@ to avoid YAML parse issues
+#   2026-06-29  Skip IP prompt if current IP already matches sites.csv expectation
+#   2026-06-29  Skip rename prompt if hostname already matches target
 # =============================================================================
 
 - name: Pre-flight — credentials, hostname, IP, SSH
@@ -67,7 +72,7 @@
       assert:
         that:
           - target_hostname | length > 0
-          - target_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$')
+          - target_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$') is not none
         fail_msg: >
           '{{ target_hostname }}' is not a valid EXA hostname.
           Format: EXA[ROLE][SITE][NNN] — e.g. EXADCSLIV001, EXAWKSFAL001.
@@ -97,13 +102,14 @@
 
     - name: Derive network defaults from sites.csv
       set_fact:
-        site_subnet:  "{{ site_record.Subnet }}"
-        site_gateway: "{{ site_record.Gateway }}"
-        site_dc:      "{{ site_record.DC }}"
-        site_city:    "{{ site_record.City }}"
-        site_country: "{{ site_record.Country }}"
-        subnet_base:  "{{ site_record.Subnet | regex_replace('/\\d+$', '') | regex_replace('\\.\\d+$', '') }}"
-        prefix_len:   "{{ site_record.Subnet.split('/')[1] }}"
+        site_subnet:       "{{ site_record.Subnet }}"
+        site_gateway:      "{{ site_record.Gateway }}"
+        site_dc:           "{{ site_record.DC }}"
+        site_city:         "{{ site_record.City }}"
+        site_country:      "{{ site_record.Country }}"
+        subnet_base:       "{{ site_record.Subnet | regex_replace('/\\d+$', '') | regex_replace('\\.\\d+$', '') }}"
+        prefix_len:        "{{ site_record.Subnet.split('/')[1] }}"
+        site_expected_ip:  "{{ site_record.DC }}"
 
     - name: Show derived site info
       debug:
@@ -162,7 +168,44 @@
       changed_when: false
 
     # =========================================================================
-    # STEP 5 — NIC selection
+    # STEP 5 — Check current hostname and IP against expected values
+    # =========================================================================
+
+    - name: Get current hostname
+      ansible.windows.win_shell: $env:COMPUTERNAME
+      register: current_hostname_raw
+      changed_when: false
+
+    - name: Set current hostname fact
+      set_fact:
+        current_hostname: "{{ current_hostname_raw.stdout | trim | upper }}"
+
+    - name: Get current IP on primary NIC
+      ansible.windows.win_shell: |
+        (Get-NetIPAddress -AddressFamily IPv4 |
+          Where-Object { $_.IPAddress -notmatch '^(127\.|169\.)' } |
+          Sort-Object -Property PrefixLength -Descending |
+          Select-Object -First 1).IPAddress
+      register: current_ip_raw
+      changed_when: false
+
+    - name: Set current IP fact
+      set_fact:
+        current_ip: "{{ current_ip_raw.stdout | trim }}"
+
+    - name: Set change-needed facts
+      set_fact:
+        hostname_needs_change: "{{ current_hostname != target_hostname | upper }}"
+        ip_needs_change: "{{ not (current_ip.startswith(subnet_base + '.')) }}"
+
+    - name: Show current state
+      debug:
+        msg:
+          - "  Current hostname : {{ current_hostname }} → target: {{ target_hostname | upper }} ({{ 'CHANGE NEEDED' if hostname_needs_change else 'OK' }})"
+          - "  Current IP       : {{ current_ip }} → subnet: {{ site_subnet }} ({{ 'CHANGE NEEDED' if ip_needs_change else 'OK' }})"
+
+    # =========================================================================
+    # STEP 6 — NIC selection (only if IP needs changing)
     # =========================================================================
 
     - name: List available NICs
@@ -177,10 +220,12 @@
         }
       register: nic_list
       changed_when: false
+      when: ip_needs_change | bool
 
     - name: Show available NICs
       debug:
         msg: "{{ nic_list.stdout_lines }}"
+      when: ip_needs_change | bool
 
     - name: Prompt — select NIC
       ansible.builtin.pause:
@@ -191,6 +236,7 @@
           Enter the NUMBER of the NIC to configure.
           (If only one NIC listed, enter 1)
       register: nic_choice
+      when: ip_needs_change | bool
 
     - name: Get selected NIC name
       ansible.windows.win_shell: |
@@ -199,16 +245,18 @@
         Write-Output $selected.Name
       register: selected_nic
       changed_when: false
+      when: ip_needs_change | bool
 
     - name: Set selected NIC fact
       set_fact:
         target_nic: "{{ selected_nic.stdout | trim }}"
+      when: ip_needs_change | bool
 
     # =========================================================================
-    # STEP 6 — IP configuration
+    # STEP 7 — IP configuration (only if IP needs changing)
     # =========================================================================
 
-    - name: Prompt — DHCP or static IP
+    - name: Prompt — static IP to assign
       ansible.builtin.pause:
         prompt: |
 
@@ -218,14 +266,22 @@
           Gateway : {{ site_gateway }}
           DNS     : {{ dns_server }}
 
-          Enter 'd' for DHCP, or a static IP (e.g. {{ subnet_base }}.10)
-          Servers/DCs typically use a static IP. Workstations can use DHCP.
+          Enter a static IP (e.g. {{ subnet_base }}.10)
+          Servers/DCs typically use .10 (primary) or .11 (secondary).
       register: ip_choice
+      when: ip_needs_change | bool
 
-    - name: Set IP mode facts
+    - name: Set static IP facts
       set_fact:
-        use_dhcp:  "{{ ip_choice.user_input | trim | lower == 'd' }}"
-        static_ip: "{{ ip_choice.user_input | trim if ip_choice.user_input | trim | lower != 'd' else '' }}"
+        use_dhcp:  false
+        static_ip: "{{ ip_choice.user_input | trim }}"
+      when: ip_needs_change | bool
+
+    - name: Set no-change IP facts (IP already correct)
+      set_fact:
+        use_dhcp:  false
+        static_ip: "{{ current_ip }}"
+      when: not ip_needs_change | bool
 
     - name: Prompt — confirm static IP details
       ansible.builtin.pause:
@@ -239,22 +295,23 @@
           DNS 2   : {{ site_dc }}
 
           Press Enter to confirm, Ctrl+C then A to abort.
-      when: not use_dhcp | bool
+      when: ip_needs_change | bool
 
     # =========================================================================
-    # STEP 7 — Write scheduled task to apply static IP on next boot
-    # Scheduled as SYSTEM@startup so it fires during the rename reboot
-    # below — one reboot covers both. Task self-deletes after running.
+    # STEP 8 — Write scheduled task (only if IP needs changing)
     # =========================================================================
 
     - name: Write scheduled task — apply static IP on next boot
       ansible.windows.win_shell: |
-        $script = @"
+        $script = @'
         netsh interface ip set address name='{{ target_nic }}' static {{ static_ip }} {{ '255.255.255.0' if prefix_len == '24' else '255.255.0.0' }} {{ site_gateway }}
         netsh interface ip set dns    name='{{ target_nic }}' static {{ dns_server }}
         netsh interface ip add dns    name='{{ target_nic }}' {{ site_dc }} index=2
+        netsh advfirewall firewall set rule name="OpenSSH-Server-In-TCP" new enable=yes
+        netsh advfirewall firewall set rule group="OpenSSH Server" new enable=yes
+        Restart-Service sshd
         Unregister-ScheduledTask -TaskName 'EXA-ApplyStaticIP' -Confirm:$false
-        "@
+        '@
         $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
         $action    = New-ScheduledTaskAction -Execute "powershell.exe" `
                        -Argument "-NoProfile -NonInteractive -EncodedCommand $encoded"
@@ -265,52 +322,69 @@
           -Action $action -Trigger $trigger -Settings $settings `
           -Principal $principal -Force
       changed_when: true
-      when: not use_dhcp | bool
+      when: ip_needs_change | bool
 
     # =========================================================================
-    # STEP 8 — Rename computer
+    # STEP 9 — Rename computer (only if hostname needs changing)
     # =========================================================================
 
     - name: Rename computer to {{ target_hostname | upper }}
       ansible.windows.win_hostname:
         name: "{{ target_hostname | upper }}"
       register: rename_result
+      when: hostname_needs_change | bool
 
     # =========================================================================
-    # STEP 9 — Single reboot covers both rename and static IP scheduled task
+    # STEP 10 — Reboot if rename or IP change needed
     # =========================================================================
 
-    - name: Warn operator — reboot imminent, reconnect address will change
+    - name: Set needs_reboot fact
+      set_fact:
+        needs_reboot: >-
+          {{ hostname_needs_change | bool
+             or ip_needs_change | bool }}
+
+    - name: Warn operator — reboot imminent
       debug:
-        msg:
-          - "════════════════════════════════════════════════════════════════"
-          - "  Rebooting now to apply hostname and IP changes."
-          - "{% if not use_dhcp | bool %}"
-          - "  !! IP CHANGE — Ansible will reconnect on {{ static_ip }} !!"
-          - "  DO NOT press Ctrl+C — reconnect takes up to 5 minutes."
-          - "{% else %}"
-          - "  IP stays DHCP — reconnecting on {{ inventory_hostname }}"
-          - "{% endif %}"
-          - "════════════════════════════════════════════════════════════════"
-      when: rename_result.reboot_required | default(false) or not use_dhcp | bool
+        msg: >-
+          ════════════════════════════════════════════════════════════════
+          Rebooting now to apply changes.
+          {% if ip_needs_change | bool %}
+          !! IP CHANGE — Ansible will reconnect on {{ static_ip }} !!
+          DO NOT press Ctrl+C — reconnect takes up to 5 minutes.
+          {% else %}
+          IP unchanged — reconnecting on {{ current_ip }}
+          {% endif %}
+          ════════════════════════════════════════════════════════════════
+      when: needs_reboot | bool
 
     - name: Reboot — applies rename and static IP in one pass
-      ansible.windows.win_reboot:
-        reboot_timeout:    300
-        post_reboot_delay: 20
-        msg: "EXA pre-flight — applying hostname and IP"
-      when: rename_result.reboot_required | default(false) or not use_dhcp | bool
+      ansible.windows.win_shell: shutdown /r /t 5 /f
+      when: needs_reboot | bool
 
-    - name: Wait for reconnection after reboot
-      ansible.builtin.wait_for_connection:
-        host:    "{{ static_ip if not use_dhcp | bool else inventory_hostname }}"
+    - name: Switch ansible_host to new static IP for remainder of play
+      set_fact:
+        ansible_host: "{{ static_ip }}"
+      when: ip_needs_change | bool
+
+    - name: Wait for SSH on new IP (control node poll)
+      ansible.builtin.wait_for:
+        host:    "{{ static_ip if ip_needs_change | bool else current_ip }}"
         port:    22
+        state:   started
         timeout: 300
-        delay:   20
-      when: rename_result.reboot_required | default(false) or not use_dhcp | bool
+        delay:   30
+      delegate_to: localhost
+      when: needs_reboot | bool
+
+    - name: Re-establish Ansible connection
+      ansible.builtin.wait_for_connection:
+        timeout: 120
+        delay:   10
+      when: needs_reboot | bool
 
     # =========================================================================
-    # STEP 10 — Summary before handing off
+    # STEP 11 — Summary before handing off
     # =========================================================================
 
     - name: Pre-flight complete — summary
@@ -320,9 +394,10 @@
           - "  Pre-flight complete"
           - "  Hostname : {{ target_hostname | upper }}"
           - "  Site     : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
-          - "  IP       : {{ static_ip if not use_dhcp | bool else 'DHCP' }}"
+          - "  IP       : {{ static_ip }}"
           - "  SSH      : running, auto-start, Ansible key deployed"
           - "  Handing off to 05-bootstrap.yml..."
           - "════════════════════════════════════════════════════════════════"
 
 - import_playbook: 05-bootstrap.yml
+
