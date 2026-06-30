@@ -6,6 +6,16 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-06-29  Derive host_subnet_octet from IP directly — do not rely on
+#               site_detection.yml which runs after this task file
+#   2026-06-29  Switch jukebox.internal DNS check from FAIL to WARN — this
+#               will not resolve on a host that is not yet domain-joined,
+#               which is expected and not an error
+#   2026-06-29  Add first-DC prompt — if primary DC is unreachable, ask the
+#               operator to confirm whether this IS the first DC being
+#               built (skips the DC-reachability hard fail and defers
+#               domain creation to the windows_dc module, avoiding a
+#               chicken-and-egg with Stage 5 domain join in this playbook)
 # =============================================================================
 
 - name: "[Preflight] Gather facts"
@@ -34,6 +44,22 @@
     is_laptop: >-
       {{ preflight_chassis.stdout | trim in ['9','10','14','30','31','32'] }}
 
+- name: "[Preflight] Derive subnet octet from current IP"
+  ansible.windows.win_shell: |
+    (Get-NetIPAddress -AddressFamily IPv4 |
+      Where-Object { $_.IPAddress -notmatch '^(127\.|169\.)' } |
+      Select-Object -First 1).IPAddress.Split('.')[2]
+  register: subnet_octet_raw
+  changed_when: false
+
+- name: "[Preflight] Set host_subnet_octet fact"
+  set_fact:
+    host_subnet_octet: "{{ subnet_octet_raw.stdout | trim }}"
+
+# =============================================================================
+# Primary DC reachability — first-DC handling
+# =============================================================================
+
 - name: "[Preflight] Check primary DC reachable"
   ansible.windows.win_shell: |
     $dc = "192.168.{{ host_subnet_octet }}.10"
@@ -41,12 +67,59 @@
   register: preflight_dc
   changed_when: false
 
-- name: "[Preflight] FAIL — Primary DC unreachable"
+- name: "[Preflight] Prompt — confirm first-DC build (primary DC unreachable)"
+  pause:
+    prompt: |
+
+      ── Primary DC Unreachable ───────────────────────────────────────────
+      192.168.{{ host_subnet_octet }}.10 did not respond.
+
+      This is expected if {{ inventory_hostname }} ({{ target_hostname | default(ansible_hostname) | default('this host') }})
+      is the FIRST domain controller being built — there is nothing to
+      reach yet.
+
+      If this IS the first DC:
+        Domain creation (Install-ADDSForest) is handled separately by the
+        windows_dc module, NOT by this bootstrap playbook. This playbook
+        will skip Stage 5 domain join and leave the host as a standalone
+        server ready for windows_dc/site.yml to take over.
+
+      If this is NOT the first DC:
+        Check networking/firewall/DNS before proceeding — domain join
+        will fail without a reachable DC.
+
+      Is this the FIRST domain controller being built? (yes/no)
+  register: first_dc_prompt
+  when: preflight_dc.stdout | trim == "fail"
+
+- name: "[Preflight] Set is_first_dc fact"
+  set_fact:
+    is_first_dc: >-
+      {{ (preflight_dc.stdout | trim == "fail")
+         and (first_dc_prompt.user_input | default('') | trim | lower in ['y', 'yes']) }}
+
+- name: "[Preflight] FAIL — Primary DC unreachable and NOT confirmed as first DC"
   fail:
     msg: >
-      Primary DC 192.168.{{ host_subnet_octet }}.10 is unreachable.
-      Domain join will fail. Check networking before proceeding.
-  when: preflight_dc.stdout | trim == "fail"
+      Primary DC 192.168.{{ host_subnet_octet }}.10 is unreachable and this
+      was not confirmed as the first DC build. Domain join will fail.
+      Check networking before proceeding, or re-run and confirm 'yes' if
+      this genuinely is the first DC for this site/forest.
+  when:
+    - preflight_dc.stdout | trim == "fail"
+    - not is_first_dc | bool
+
+- name: "[Preflight] NOTE — proceeding as first-DC build, domain join will be skipped"
+  debug:
+    msg: >
+      NOTE: Confirmed as first-DC build. Stage 5 (domain join) in this
+      playbook will be skipped. Run windows_dc/site.yml after this
+      bootstrap completes to create the forest/domain.
+  when: is_first_dc | bool
+
+# =============================================================================
+# DNS — warning only, not a hard fail
+# =============================================================================
 
 - name: "[Preflight] Check jukebox.internal DNS resolves"
   ansible.windows.win_shell: |
@@ -57,12 +130,23 @@
   register: preflight_dns
   changed_when: false
 
-- name: "[Preflight] FAIL — jukebox.internal does not resolve"
-  fail:
+- name: "[Preflight] WARN — jukebox.internal does not resolve (expected pre-domain-join)"
+  debug:
     msg: >
-      jukebox.internal does not resolve on {{ inventory_hostname }}.
-      Check DNS configuration before proceeding.
+      WARN: jukebox.internal does not resolve on {{ inventory_hostname }}.
+      This is expected if the host is not yet domain-joined, or if this is
+      the first DC build (domain does not exist yet).
+      If this host SHOULD already be able to resolve it, check DNS
+      configuration before proceeding.
   when: preflight_dns.stdout | trim == "fail"
+
+- name: "[Preflight] Set dns_resolves fact"
+  set_fact:
+    dns_resolves: "{{ preflight_dns.stdout | trim == 'ok' }}"
+
+# =============================================================================
+# Asset / package source reachability checks (unchanged — warnings only)
+# =============================================================================
 
 - name: "[Preflight] Check wallpaper URL reachable"
   ansible.windows.win_shell: |
@@ -110,6 +194,10 @@
     msg: "WARN: github.com unreachable — font stage will use asset server only."
   when: preflight_github.stdout | trim == "warn"
 
+# =============================================================================
+# Domain join status
+# =============================================================================
+
 - name: "[Preflight] Check not already domain-joined"
   ansible.windows.win_shell: |
     (Get-WmiObject Win32_ComputerSystem).PartOfDomain
@@ -125,13 +213,20 @@
   set_fact:
     already_domain_joined: "{{ preflight_domain.stdout | trim | lower == 'true' }}"
 
+# =============================================================================
+# Summary
+# =============================================================================
+
 - name: "[Preflight] Summary"
   debug:
     msg:
       - "OS product type : {{ product_type }} ({{ 'Server/DC' if is_server else 'Workstation' }})"
       - "Chassis         : {{ preflight_chassis.stdout | trim }} ({{ 'Laptop/Tablet' if is_laptop else 'Desktop/Server' }})"
-      - "Primary DC      : 192.168.{{ host_subnet_octet }}.10 [OK]"
-      - "DNS jukebox     : [OK]"
+      - "Subnet octet    : {{ host_subnet_octet }}"
+      - "Primary DC      : 192.168.{{ host_subnet_octet }}.10 {{ '[OK]' if preflight_dc.stdout | trim == 'ok' else ('[FIRST DC BUILD]' if is_first_dc | bool else '[UNREACHABLE]') }}"
+      - "DNS jukebox     : {{ '[OK]' if dns_resolves | bool else '[WARN — not yet resolvable]' }}"
       - "Wallpaper URL   : {{ '[OK]' if wallpaper_available else '[WARN — will skip]' }}"
       - "Chocolatey.org  : {{ '[OK]' if preflight_choco.stdout | trim == 'ok' else '[WARN]' }}"
       - "Domain joined   : {{ 'YES — join stage will skip' if already_domain_joined else 'No' }}"
+      - "First DC build  : {{ 'YES — Stage 5 domain join will skip, run windows_dc/site.yml after' if is_first_dc | bool else 'No' }}"
+
