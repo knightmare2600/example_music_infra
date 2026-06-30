@@ -1,0 +1,105 @@
+; ============================================================
+; /etc/bind/db.{{ domain }}
+; Example Music Limited -- {{ domain }} forward zone
+;
+; Authoritative DNS: EXASVRCLD001 ({{ dns_ip }})
+; Zone:              {{ domain }}
+; Managed by:        Ansible bind9-dns.yml
+; Generated:         {{ ansible_date_time.iso8601 }}
+;
+; DO NOT EDIT the generated sections by hand.
+; Add one-off records in the labelled section at the bottom.
+; Regenerate by running the bind9-dns.yml playbook (zones tag).
+;
+; SOA serial format: YYYYMMDDnn
+; TTL {{ zone_ttl }}s ({{ (zone_ttl / 60) | int }} minutes) -- short TTL for fast provisioning propagation.
+; ============================================================
+
+$ORIGIN {{ domain }}.
+$TTL {{ zone_ttl }}
+
+; ── SOA + NS ─────────────────────────────────────────────────
+@   IN  SOA  exasvrcld001.{{ domain }}.  hostmaster.{{ domain }}. (
+              {{ zone_serial }}  ; serial   YYYYMMDDnn
+              3600       ; refresh  1 hour
+              900        ; retry    15 minutes
+              604800     ; expire   1 week
+              {{ zone_ttl }}        ; minimum
+            )
+
+@   IN  NS   exasvrcld001.{{ domain }}.
+
+; ── DNS server itself ─────────────────────────────────────────
+exasvrcld001  IN  A  {{ dns_ip }}
+
+; ── CLD ancillary / provisioning infrastructure ───────────────
+; EXASVR numbering: 001=DNS(.10) 002=WAC(.20) 003=Ansible(.49) 004=Rudder(.22)
+{% for h in ancillary_hosts %}
+{% if h.name != 'exasvrcld001' %}
+{{ "%-45s" | format(h.name) }} IN  A  {{ h.ip }}   ; {{ h.comment }}
+{% endif %}
+{% endfor %}
+
+; ── Firewall WAN addresses on provisioning network ────────────
+; Each site firewall has a WAN interface on 192.168.139.0/24.
+; Host octet = site subnet third octet.
+; e.g. EDI 192.168.131.0/24  ->  exafwledi001-wan IN A 192.168.139.131
+; The -wan suffix distinguishes the provisioning face from the LAN address.
+{% for site in sites | sort(attribute='octet') %}
+{{ "%-45s" | format('exafwl' + site.Site | lower + '001-wan') }} IN  A  192.168.139.{{ site.octet }}   ; {{ site.Site }} WAN face on provisioning net
+{% endfor %}
+
+; ── Generated records by role ─────────────────────────────────
+; Sorted by site octet ascending within each role group.
+; SUFFIX_MAP mirrors site-inventory-audit.py exactly.
+
+; Firewalls (Debian FWL nodes)
+{% for site in sites | sort(attribute='octet') %}
+{{ "%-45s" | format('exafwl' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.253
+{% endfor %}
+
+; Routers / hardware gateways (unmanaged)
+{% for site in sites | sort(attribute='octet') %}
+{{ "%-45s" | format('exartr' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.1
+{% endfor %}
+
+; Domain Controllers
+{% for site in sites | sort(attribute='octet') %}
+{{ "%-45s" | format('exadcs' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.10
+{{ "%-45s" | format('exadcs' + site.Site | lower + '002') }} IN  A  192.168.{{ site.octet }}.11
+{% endfor %}
+
+; Proxmox VE nodes
+{% for site in sites | sort(attribute='octet') %}
+{{ "%-45s" | format('exapve' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.5
+{{ "%-45s" | format('exapve' + site.Site | lower + '002') }} IN  A  192.168.{{ site.octet }}.6
+{{ "%-45s" | format('exapve' + site.Site | lower + '003') }} IN  A  192.168.{{ site.octet }}.7
+{% endfor %}
+
+; BMC / RAC (iDRAC, iLO, RAC emulators)
+{% for site in sites | sort(attribute='octet') %}
+{{ "%-45s" | format('exarac' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.2
+{{ "%-45s" | format('exarac' + site.Site | lower + '002') }} IN  A  192.168.{{ site.octet }}.3
+{{ "%-45s" | format('exarac' + site.Site | lower + '003') }} IN  A  192.168.{{ site.octet }}.4
+{% endfor %}
+
+; Switches (unmanaged)
+{% for site in sites | sort(attribute='octet') %}
+{{ "%-45s" | format('exaswi' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.250
+{{ "%-45s" | format('exaswi' + site.Site | lower + '002') }} IN  A  192.168.{{ site.octet }}.251
+{{ "%-45s" | format('exaswi' + site.Site | lower + '003') }} IN  A  192.168.{{ site.octet }}.252
+{% endfor %}
+
+; VOIP SBC / PBX
+{% for site in sites | sort(attribute='octet') %}
+{% if site.Site == 'CLD' %}
+{{ "%-45s" | format('exapbx' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.48   ; CLD: PBX not SBC
+{% else %}
+{{ "%-45s" | format('exasbc' + site.Site | lower + '001') }} IN  A  192.168.{{ site.octet }}.48
+{% endif %}
+{% endfor %}
+
+; ── One-off records -- add below, DO NOT edit above ──────────
+; Records here survive playbook runs only if you manage them separately.
+; Increment the SOA serial manually when editing by hand.
+; Format: hostname  IN  A  ip  ; description
