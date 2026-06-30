@@ -1,0 +1,58 @@
+; ============================================================
+; /etc/bind/db.192.168.139
+; Example Music Limited -- provisioning network reverse zone
+;
+; Zone:    139.168.192.in-addr.arpa
+; Covers:  192.168.139.0/24  (provisioning network)
+; Source:  devices.csv (single source of truth)
+; Server:  EXASVRCLD001 ({{ dns_ip }})
+; Managed: Ansible bind9-dns.yml Play 2
+; Generated: {{ ansible_date_time.iso8601 }}
+;
+; CLD BLACK SWAN:
+;   192.168.139.0/24 is the provisioning network. It serves two purposes:
+;
+;   (a) CLD provisioning devices -- EXASVRCLD001-004, EXACLDPBX001,
+;       EXAPRVCLD001. IPs are manually assigned, not convention-derived.
+;
+;   (b) FWL WAN addresses -- every site firewall has a WAN interface here.
+;       Host octet = site subnet third octet (e.g. EDI .131 -> .139.131).
+;       -wan suffix distinguishes from the LAN-facing address.
+;
+;   This zone is generated separately and NOT by the per-site loop.
+;   CLD's own subnet is this zone -- there is no separate CLD site reverse.
+; ============================================================
+
+$ORIGIN 139.168.192.in-addr.arpa.
+$TTL {{ zone_ttl }}
+
+@   IN  SOA  exasvrcld001.{{ domain }}.  hostmaster.{{ domain }}. (
+              {{ zone_serial }}  ; serial
+              3600       ; refresh
+              900        ; retry
+              604800     ; expire
+              {{ zone_ttl }}        ; minimum
+            )
+
+@   IN  NS   exasvrcld001.{{ domain }}.
+
+; ── CLD provisioning devices ─────────────────────────────────
+; EXASVR numbering: 001=DNS(.10) 002=WAC(.20) 003=Ansible(.49) 004=Rudder(.22)
+{% set cld_devices = all_devices
+   | selectattr('Site', 'equalto', 'CLD')
+   | selectattr('HostOctet', 'ne', '')
+   | sort(attribute='HostOctet') | list %}
+{% for dev in cld_devices %}
+{{ "%-5s" | format(dev.HostOctet) }} IN  PTR  {{ dev.Hostname | lower }}.{{ domain }}.{{ '   ; ' + dev.Notes if dev.Notes else '' }}
+{% endfor %}
+
+; ── FWL WAN PTR records (192.168.139.{octet} per site) ───────
+; Sorted by octet ascending.
+{% for site in sites_raw.list
+   | rejectattr('Site', 'equalto', 'BRD')
+   | rejectattr('Site', 'equalto', 'Site')
+   | rejectattr('Subnet', 'equalto', 'N/A')
+   | sort(attribute='Subnet') %}
+{% set octet = site.Subnet.split('.')[2] %}
+{{ "%-5s" | format(octet) }} IN  PTR  {{ "%-50s" | format('exafwl' + site.Site | lower + '001-wan.' + domain + '.') }} ; {{ site.Site }} ({{ site.City }})
+{% endfor %}
