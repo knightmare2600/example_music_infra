@@ -20,7 +20,7 @@
 ;       -wan suffix distinguishes from the LAN-facing address.
 ;
 ;   This zone is generated separately and NOT by the per-site loop.
-;   CLD's LAN (192.168.69.0/24) has its own zone: db.192.168.69.
+;   CLD's own subnet is this zone -- there is no separate CLD site reverse.
 ; ============================================================
 
 $ORIGIN 139.168.192.in-addr.arpa.
@@ -50,7 +50,6 @@ $TTL {{ zone_ttl }}
 ; Sorted by octet ascending.
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
-   | rejectattr('Site', 'equalto', 'VRK')
    | rejectattr('Site', 'equalto', 'Site')
    | rejectattr('Subnet', 'equalto', 'N/A')
    | sort(attribute='Subnet') %}
