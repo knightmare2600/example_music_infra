@@ -92,11 +92,9 @@ class CallbackModule(CallbackBase):
         self.suppress_unreachable = bool(opt)
     except Exception:
       pass
-
     val = os.getenv("ANSIBLE_SUPPRESS_UNREACHABLE")
     if val is not None:
       self.suppress_unreachable = val.lower() in ("1", "true", "yes", "y")
-
     self._unreach_counts = defaultdict(int)
     self._unreach_hosts  = defaultdict(list)
     self._unreach_total  = 0
@@ -155,6 +153,7 @@ class CallbackModule(CallbackBase):
     host = result._host.get_name()
     msg  = result._result.get("msg", result._result.get("stderr", "unknown error"))
     ip   = fmt_ip(host)
+
     self._display.display(err(f"  {C.WHITE}{ip}{C.RESET}  {msg}"))
     if ignore_errors:
       self._display.display(warn("  (ignored)"))
@@ -168,9 +167,11 @@ class CallbackModule(CallbackBase):
   def v2_runner_on_unreachable(self, result):
     if getattr(self, "suppress_unreachable", False):
       return
+
     host     = result._host.get_name()
     msg      = result._result.get("msg", "unreachable")
     category = classify_unreachable(msg)
+
     self._unreach_counts[category] += 1
     self._unreach_hosts[category].append(host)
     self._unreach_total += 1
@@ -178,6 +179,7 @@ class CallbackModule(CallbackBase):
 
   def v2_playbook_on_stats(self, stats):
     self._clear_counter()
+
     # bucket hosts by outcome
     reachable = []
     no_route  = []
@@ -186,6 +188,7 @@ class CallbackModule(CallbackBase):
 
     for host in sorted(stats.processed.keys()):
       s = stats.summarize(host)
+
       if s['unreachable']:
         # find which category this host landed in
         if host in self._unreach_hosts.get("no_route", []):
@@ -196,6 +199,7 @@ class CallbackModule(CallbackBase):
           other_unr.append((host, s))
       else:
         reachable.append((host, s))
+
     self._display.display(f"\n{C.WHITE}{'═' * 80}{C.RESET}")
     self._display.display(f"{C.CYAN}  PLAY RECAP{C.RESET}")
     self._display.display(f"{C.WHITE}{'═' * 80}{C.RESET}")
@@ -233,4 +237,3 @@ class CallbackModule(CallbackBase):
         )
 
     self._display.display(f"\n{C.WHITE}{'═' * 80}{C.RESET}\n")
-
