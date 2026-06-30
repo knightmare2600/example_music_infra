@@ -13,9 +13,8 @@
 ; are emitted as comments so they remain documented without DNS resolution.
 ;
 ; CLD BLACK SWAN:
-;   CLD has two subnets: LAN 192.168.69.0/24, vRACK 192.168.139.0/24.
-;   LAN devices (DCs, Ansible) live on 192.168.69.x.
-;   EXAFWLCLD001 WAN face is 192.168.139.139 (vRACK -- not the LAN).
+;   CLD (192.168.139.0/24) is the provisioning network. It does not follow
+;   standard site convention. Its devices have manually assigned IPs.
 ;   CLD devices are listed first and separately from the per-site blocks.
 ;
 ; SOA serial format: YYYYMMDDnn
@@ -45,7 +44,6 @@ $TTL {{ zone_ttl }}
 ; CLD special case: vRACK WAN is .139, not the CLD LAN octet (.69).
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
-   | rejectattr('Site', 'equalto', 'VRK')
    | rejectattr('Site', 'equalto', 'Site')
    | rejectattr('Subnet', 'equalto', 'N/A')
    | sort(attribute='Site') %}
@@ -57,9 +55,9 @@ $TTL {{ zone_ttl }}
 {% endif %}
 {% endfor %}
 
-; ── CLD -- Cloud Infrastructure (LAN 192.168.69.0/24) ───────────
-; LAN devices (DCs, Ansible) on 192.168.69.x. vRACK on 192.168.139.x.
-; IPs manually assigned -- CLD does not follow the site octet convention.
+; ── CLD -- Cloud / Provisioning (192.168.139.0/24) ───────────
+; BLACK SWAN: provisioning network -- not a standard site.
+; IPs are manually assigned for specific provisioning roles.
 {% set cld_devices = all_devices | selectattr('Site', 'equalto', 'CLD') | list %}
 {% for dev in cld_devices | sort(attribute='HostOctet') %}
 {% if dev.HostOctet != '' %}
@@ -95,7 +93,6 @@ $TTL {{ zone_ttl }}
 ; CLD (provisioning network) has no DHCP pool.
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
-   | rejectattr('Site', 'equalto', 'VRK')
    | rejectattr('Site', 'equalto', 'Site')
    | rejectattr('Site', 'equalto', 'CLD')
    | rejectattr('Subnet', 'equalto', 'N/A')
