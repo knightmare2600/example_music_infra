@@ -66,8 +66,9 @@
 
     # Forwarders
     dns_forwarders:
-      - "1.1.1.1"   # Cloudflare
-      - "9.9.9.9"   # Quad9
+      - "9.9.9.9"         # Quad9
+      - "208.67.222.222"  # OpenDNS
+      - "1.1.1.1"         # Cloudflare
 
     # vRACK (192.168.139.0/24) ancillary hosts -- hardcoded, not from sites.csv.
     ancillary_hosts:
