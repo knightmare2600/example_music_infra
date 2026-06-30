@@ -2,7 +2,7 @@
 ; /etc/bind/db.{{ domain }}
 ; Example Music Limited -- {{ domain }} forward zone
 ;
-; Authoritative DNS: EXADNSCLD001 ({{ dns_ip }})
+; Authoritative DNS: EXASVRCLD001 ({{ dns_ip }})
 ; Zone:              {{ domain }}
 ; Source:            devices.csv (single source of truth)
 ; Managed by:        Ansible bind9-dns.yml Play 2
@@ -28,7 +28,7 @@ $ORIGIN {{ domain }}.
 $TTL {{ zone_ttl }}
 
 ; ── SOA + NS ─────────────────────────────────────────────────
-@   IN  SOA  exadnscld001.{{ domain }}.  hostmaster.{{ domain }}. (
+@   IN  SOA  exasvrcld001.{{ domain }}.  hostmaster.{{ domain }}. (
               {{ zone_serial }}  ; serial   YYYYMMDDnn
               3600       ; refresh  1 hour
               900        ; retry    15 minutes
@@ -36,23 +36,18 @@ $TTL {{ zone_ttl }}
               {{ zone_ttl }}        ; minimum  {{ zone_ttl }}s
             )
 
-@   IN  NS   exadnscld001.{{ domain }}.
+@   IN  NS   exasvrcld001.{{ domain }}.
 
 ; ── FWL WAN addresses on provisioning network (192.168.139.{octet}) ──────────
 ; Each site firewall has a WAN interface on 192.168.139.0/24.
 ; Host octet = site subnet third octet. -wan suffix distinguishes from LAN face.
-; CLD special case: vRACK WAN is .139, not the CLD LAN octet (.69).
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
    | rejectattr('Site', 'equalto', 'Site')
    | rejectattr('Subnet', 'equalto', 'N/A')
    | sort(attribute='Site') %}
 {% set octet = site.Subnet.split('.')[2] %}
-{% if site.Site == 'CLD' %}
-{{ "%-45s" | format('exafwlcld001-wan') }} IN  A  192.168.139.139  ; CLD WAN face (static -- LAN octet .69 != vRACK WAN octet .139)
-{% else %}
 {{ "%-45s" | format('exafwl' + site.Site | lower + '001-wan') }} IN  A  192.168.139.{{ octet }}   ; {{ site.Site }} WAN face on provisioning net
-{% endif %}
 {% endfor %}
 
 ; ── CLD -- Cloud / Provisioning (192.168.139.0/24) ───────────
@@ -85,21 +80,6 @@ $TTL {{ zone_ttl }}
 ; NO-IP  {{ dev.Hostname | lower }}{{ '  -- ' + dev.Notes if dev.Notes else '' }}
 {% endif %}
 {% endfor %}
-{% endfor %}
-
-; ── DHCP pool ($GENERATE) ─────────────────────────────────────
-; .100–.199 per site — forward records only.
-; PTR $GENERATE blocks are in each per-site reverse zone file.
-; CLD (provisioning network) has no DHCP pool.
-{% for site in sites_raw.list
-   | rejectattr('Site', 'equalto', 'BRD')
-   | rejectattr('Site', 'equalto', 'Site')
-   | rejectattr('Site', 'equalto', 'CLD')
-   | rejectattr('Subnet', 'equalto', 'N/A')
-   | sort(attribute='Site') %}
-{% set octet = site.Subnet.split('.')[2] %}
-; {{ site.Site }} -- 192.168.{{ octet }}.100-199
-$GENERATE 100-199 dhcp${-99,2,d}.{{ site.Site | lower }} IN A 192.168.{{ octet }}.$
 {% endfor %}
 
 ; ── One-off records -- add below, DO NOT edit above ──────────

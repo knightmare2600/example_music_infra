@@ -5,7 +5,7 @@
 ; Zone:    {{ sites_by_code[item].split('.')[2] }}.168.192.in-addr.arpa
 ; Covers:  {{ sites_by_code[item] | regex_replace('/24', '.0/24') }}  ({{ item }})
 ; Source:  devices.csv (single source of truth)
-; Server:  EXADNSCLD001 ({{ dns_ip }})
+; Server:  EXASVRCLD001 ({{ dns_ip }})
 ; Managed: Ansible bind9-dns.yml Play 2
 ; Generated: {{ ansible_date_time.iso8601 }}
 ;
@@ -17,7 +17,7 @@
 $ORIGIN {{ site_octet }}.168.192.in-addr.arpa.
 $TTL {{ zone_ttl }}
 
-@   IN  SOA  exadnscld001.{{ domain }}.  hostmaster.{{ domain }}. (
+@   IN  SOA  exasvrcld001.{{ domain }}.  hostmaster.{{ domain }}. (
               {{ zone_serial }}  ; serial
               3600       ; refresh
               900        ; retry
@@ -25,7 +25,7 @@ $TTL {{ zone_ttl }}
               {{ zone_ttl }}        ; minimum
             )
 
-@   IN  NS   exadnscld001.{{ domain }}.
+@   IN  NS   exasvrcld001.{{ domain }}.
 
 ; ── PTR records (192.168.{{ site_octet }}.x) ─────────────────
 {% set site_devs = all_devices
@@ -38,7 +38,3 @@ $TTL {{ zone_ttl }}
 ; NO-IP  {{ dev.Hostname | lower }}{{ '  -- ' + dev.Notes if dev.Notes else '' }}
 {% endif %}
 {% endfor %}
-
-; ── DHCP pool PTR ($GENERATE) ─────────────────────────────────
-; .100–.199  →  dhcp01.{{ item | lower }}.{{ domain }}. through dhcp100.{{ item | lower }}.{{ domain }}.
-$GENERATE 100-199 $ IN PTR dhcp${-99,2,d}.{{ item | lower }}.{{ domain }}.
