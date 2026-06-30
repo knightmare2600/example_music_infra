@@ -18,12 +18,12 @@
 #   Notes      -- Free text notes
 #
 # CLD BLACK SWAN NOTE:
-#   CLD (192.168.139.0/24) is the provisioning network -- it is structurally
-#   different from all site subnets. It does not follow the standard SUFFIX_MAP
-#   (no PVE nodes, no EXADCS, no EXASBC). Its devices are manually assigned IPs
-#   that serve specific provisioning roles. Do not apply site convention checks
-#   to CLD rows. The BIND zone for 192.168.139.0/24 is generated separately as
-#   the dedicated provisioning reverse zone (db.192.168.139).
+#   CLD has TWO subnets:
+#     LAN  : 192.168.69.0/24   -- DCs, Ansible node. In sites.csv. Standard HostOctet applies.
+#     vRACK: 192.168.139.0/24  -- OVH provisioning: DNS, Rudder, PBX, PXE, FWL WAN faces.
+#   vRACK devices are NOT in this CSV -- hardcoded in ancillary_hosts and bind9 templates.
+#   CLD LAN devices use sites.csv octet (69). Do not apply convention checks to CLD rows.
+#   db.192.168.139 (vRACK reverse) is generated separately; db.192.168.69 (LAN) from this CSV.
 #
 # SUBNET CORRECTION NOTES (from merge 2026-03-29):
 #   ATL: correct subnet is 192.168.33.0/24 (not .44) per sites.csv
@@ -177,7 +177,7 @@ GLA,EXALAPGLA001,152,EXALAP,Windows 11 Pro,Pool laptop
 # ============================================================
 # CLY -- Clydebank  192.168.41.0/24
 # ============================================================
-CLY,EXAFWLCLY001,1,EXAFWL,FortiOS 7.6.5,VPN gateway
+CLY,EXAFWLCLY001,253,EXAFWL,FortiOS 7.6.5,VPN gateway
 CLY,EXARACCLY001,2,EXARAC,HPE iLO5,BMC node 1
 CLY,EXARACCLY002,3,EXARAC,,RAC emulator VM
 CLY,EXAPVECLY001,5,EXAPVE,Proxmox VE,PVE node 1. ZFS RAID1
@@ -230,7 +230,7 @@ PER,EXAVNDPER001,,EXAVND,Embedded SP100,Scone Palace vending machine
 # ============================================================
 # ABD -- Aberdeen  192.168.224.0/24
 # ============================================================
-ABD,EXAFWLABD001,1,EXAFWL,Cisco ASA 5506-X,Edge firewall
+ABD,EXAFWLABD001,253,EXAFWL,Cisco ASA 5506-X,Edge firewall
 ABD,EXARACABD001,2,EXARAC,,BMC node 1
 ABD,EXARACABD002,3,EXARAC,,RAC emulator VM
 ABD,EXAPVEABD001,5,EXAPVE,Proxmox VE,PVE node 1. ZFS RAID1
@@ -245,7 +245,7 @@ ABD,EXAWAPABD002,,EXAWAP,Ubiquiti UniFi U6-Pro,WAP 2
 # ============================================================
 # LND -- London  192.168.20.0/24
 # ============================================================
-LND,EXAFWLLND001,1,EXAFWL,Cisco ASA 5516-X,Perimeter firewall / VPN gateway
+LND,EXAFWLLND001,253,EXAFWL,Cisco ASA 5516-X,Perimeter firewall / VPN gateway
 LND,EXARACLND001,2,EXARAC,Dell iDRAC9,BMC node 1
 LND,EXARACLND002,3,EXARAC,,RAC emulator VM
 LND,EXAPVELND001,5,EXAPVE,Proxmox VE,PVE node 1. ZFS RAID1
@@ -262,7 +262,7 @@ LND,EXAPRNLND002,,EXAPRN,,ProCAT Stylus steno writer -- court device. No IP
 # ============================================================
 # BIR -- Birmingham  192.168.121.0/24
 # ============================================================
-BIR,EXAFWLBIR001,1,EXAFWL,Palo Alto PAN-OS,VPN gateway
+BIR,EXAFWLBIR001,253,EXAFWL,Palo Alto PAN-OS,VPN gateway
 BIR,EXARACBIR001,2,EXARAC,Dell DRAC,BMC node 1
 BIR,EXARACBIR002,3,EXARAC,,RAC emulator VM
 BIR,EXAPVEBIR001,5,EXAPVE,Proxmox VE,PVE node 1. ZFS RAID1
@@ -386,7 +386,7 @@ CPH,EXAWAPCPH003,,EXAWAP,Ubiquiti UniFi U6-Pro,WAP 3
 # ============================================================
 # ODE -- Odense (EU Hub 3-node)  192.168.126.0/24
 # ============================================================
-ODE,EXAFWLODE001,1,EXAFWL,Cisco ASA 5506-X,Edge firewall
+ODE,EXAFWLODE001,253,EXAFWL,Cisco ASA 5506-X,Edge firewall
 ODE,EXARACODE001,2,EXARAC,,BMC node 1
 ODE,EXARACODE002,3,EXARAC,,BMC node 2
 ODE,EXARACODE003,4,EXARAC,,BMC node 3
@@ -577,7 +577,7 @@ MTL,EXASBCMTL001,48,EXASBC,3CX SBC Debian,VOIP SBC. Trunks to EXACLDPBX001
 # ============================================================
 # LAX -- Los Angeles  192.168.213.0/24
 # ============================================================
-LAX,EXAFWLLAX001,1,EXAFWL,Palo Alto PAN-OS 10.x,VPN gateway
+LAX,EXAFWLLAX001,253,EXAFWL,Palo Alto PAN-OS 10.x,VPN gateway
 LAX,EXARACLAX001,2,EXARAC,Dell iDRAC9,BMC node 1
 LAX,EXARACLAX002,3,EXARAC,,RAC emulator VM
 LAX,EXAPVELAX001,5,EXAPVE,Proxmox VE,PVE node 1. ZFS RAID1
@@ -653,7 +653,7 @@ CHI,EXASBCCHI001,48,EXASBC,3CX SBC Debian,VOIP SBC. Trunks to EXACLDPBX001
 # ============================================================
 # SYD -- Sydney  192.168.29.0/24
 # ============================================================
-SYD,EXAFWLSYD001,1,EXAFWL,FortiGate 7.x,Site firewall
+SYD,EXAFWLSYD001,253,EXAFWL,FortiGate 7.x,Site firewall
 SYD,EXARACSYD001,2,EXARAC,Dell iDRAC9,BMC node 1
 SYD,EXARACSYD002,3,EXARAC,,RAC emulator VM
 SYD,EXAPVESYD001,5,EXAPVE,Proxmox VE,PVE node 1. ZFS RAID1
@@ -676,7 +676,7 @@ SYD,EXACOFSYD001,,EXACOF,,Smart coffee machine. RFC 2324 compliant
 # ============================================================
 # MEL -- Melbourne  192.168.61.0/24
 # ============================================================
-MEL,EXAFWLMEL001,1,EXAFWL,FortiGate 7.x,Site firewall
+MEL,EXAFWLMEL001,253,EXAFWL,FortiGate 7.x,Site firewall
 MEL,EXARACMEL001,2,EXARAC,HPE iLO5,BMC node 1
 MEL,EXARACMEL002,3,EXARAC,,RAC emulator VM
 MEL,EXAPVEMEL001,5,EXAPVE,Proxmox VE,PVE node 1. ZFS RAID1
@@ -696,7 +696,7 @@ MEL,EXANASMEL001,,EXANAS,Synology DSM 7.x,NAS
 # ============================================================
 # AKL -- Auckland  192.168.93.0/24
 # ============================================================
-AKL,EXAFWLAKL001,1,EXAFWL,FortiGate 7.x,Site firewall
+AKL,EXAFWLAKL001,253,EXAFWL,FortiGate 7.x,Site firewall
 AKL,EXARACAKL001,2,EXARAC,HPE iLO5,BMC node 1
 AKL,EXARACAKL002,3,EXARAC,,RAC emulator VM
 AKL,EXAPVEAKL001,5,EXAPVE,Proxmox VE,PVE node 1. ZFS RAID1
