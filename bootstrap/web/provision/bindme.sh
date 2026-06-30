@@ -44,8 +44,8 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 # Changelog:
 # 2026-03-29 Initial release: Static IP 192.168.139.10 on PROV/CLD net. Hostname ${THIS_HOSTNAME}
 #            (EXA/SRV/CLD/001, .10 per SUFFIX_MAP). Zone jukebox.internal generated from sites.csv.
-#            Reverse zones generated for ALL site /24 subnets (~44 files). Forwarders: 1.1.1.1
-#            (Cloudflare) + 9.9.9.9 (Quad9). zsh + bash aliases: reloadbind, checkbind, editzone.
+#            Reverse zones generated for ALL site /24 subnets (~44 files). Forwarders: 9.9.9.9
+#            (Quad9) + 208.67.222.222 (OpenDNS) + 1.1.1.1 (Cloudflare). zsh + bash aliases: reloadbind, checkbind, editzone.
 #            MOTD, sentinel file, final banner.
 # 2026-06-14 Fix: load_sites_csv() while-read loop dropped last CSV line when file had no trailing
 #            newline (read returns non-zero at EOF, loop exits before processing that iteration).
@@ -594,7 +594,7 @@ THIS_HOSTNAME_LOWER="${THIS_HOSTNAME,,}"
 # ---------------------------------------------------------------
 # 6. BIND9 named.conf.options
 #    - Recursion allowed from provisioning net only
-#    - Forwarders: 1.1.1.1 + 9.9.9.9
+#    - Forwarders: 9.9.9.9 + 208.67.222.222 (OpenDNS) + 1.1.1.1
 #    - DNSSEC validation auto
 # ---------------------------------------------------------------
 info "Writing /etc/bind/named.conf.options..."
@@ -616,8 +616,9 @@ options {
   // Used for names outside jukebox.internal.
   // Only reached when the querying client is in allow-recursion.
   forwarders {
-    1.1.1.1;    // Cloudflare
-    9.9.9.9;    // Quad9
+    9.9.9.9;          // Quad9
+    208.67.222.222;   // OpenDNS
+    1.1.1.1;          // Cloudflare
   };
 
   forward only;
@@ -1419,7 +1420,7 @@ echo -e "${CYAN}  DNS IP        : ${DNS_IP}/24  (${PROV_IFACE})${NC}"
 echo -e "${CYAN}  Zone          : jukebox.internal${NC}"
 echo -e "${CYAN}  A records     : ${RECORD_COUNT}${NC}"
 echo -e "${CYAN}  Zone serial   : ${SERIAL}${NC}"
-echo -e "${CYAN}  Forwarders    : 1.1.1.1, 9.9.9.9${NC}"
+echo -e "${CYAN}  Forwarders    : 9.9.9.9, 208.67.222.222, 1.1.1.1${NC}"
 echo -e "${CYAN}  Reverse zones : 139.168.192.in-addr.arpa  (provisioning -- FWL WAN + ancillary)${NC}"
 echo -e "${CYAN}                 + one X.168.192.in-addr.arpa per site (${non_cld_count} zones)${NC}"
 echo
