@@ -48,6 +48,34 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              cockpit socket binding until network ready, avoids bind to unstable/non-existent LAN
 #              IP. SSH banner now skips SSH restart. Sentinel file fix. Add ENV_LONG for full env
 #              traceability across script runs.
+#  2026-06-28  Boot reliability and race condition fixes:
+#              1. NM profiles: added connection.autoconnect-retries -1 (retry forever) and
+#                 ipv4.route-metric (WAN=100, LAN=200) so NM never gives up on boot and
+#                 default route is always WAN.
+#              2. NetworkManager-wait-online.service drop-in written at profile creation time
+#                 (not deferred to Cockpit section). When WAN_ACTIVATE=true waits for both
+#                 WAN and LAN; when WAN_ACTIVATE=false waits for LAN only so boot does not
+#                 stall on an unactivated WAN interface.
+#              3. wg-quick@wg0 drop-in extended: After=NetworkManager-wait-online.service
+#                 added, ExecStartPre sleep 5 to let NM settle, Restart=on-failure +
+#                 RestartSec=10 + StartLimitBurst=3 so a race loss self-heals rather than
+#                 leaving wg0 permanently down.
+#              4. dnsmasq drop-in: After=NetworkManager-wait-online.service added,
+#                 ExecStartPre polls until LAN_IP is assigned to LAN_IFACE (30s timeout,
+#                 non-fatal) before dnsmasq tries to bind. Restart=on-failure + RestartSec=5.
+#              5. Cockpit drop-in: After=NetworkManager-wait-online.service added.
+#              6. NETWORK_READY flag now set true immediately after successful LAN bring-up
+#                 inside WAN_ACTIVATE=true block. Was never set previously so Cockpit socket
+#                 never restarted even when network was fully up.
+#              7. DNS hierarchy corrected throughout:
+#                 WAN NM profile: 192.168.139.8 (EXADNSCLD001) + 9.9.9.9 fallback
+#                 LAN NM profile: no DNS (dnsmasq owns LAN DNS)
+#                 dnsmasq upstreams: DC (.10) + 192.168.139.8 + 9.9.9.9 fallback
+#                 dnsmasq DHCP option 6: DC (.10) + 9.9.9.9 (internet survives CLD outage)
+#              8. NetworkManager-wait-online.service enabled immediately after NM profile
+#                 creation, not deferred to Cockpit section (line ~1495 in previous version).
+#              9. for iface in $(ls ...) replaced with glob expansion throughout interface
+#                 detection loop.
 #  2026-06-14  A number of produciton-tested bug fixes:
 #              1. load_sites_csv() while-read loop dropped the last CSV line when the file had no
 #                 trailing newline (read returns non-zero on EOF without \n, so loop exited before
@@ -597,7 +625,8 @@ LAN_IFACE=""
 LAN_MAC=""
 
 echo -e "${CYAN}Scanning interfaces for provisioning network (192.168.139.x)...${NC}"
-for iface in $(ls /sys/class/net/); do
+for iface_path in /sys/class/net/*/; do
+  iface=$(basename "$iface_path")
   [[ "$iface" == "lo" ]] && continue
   ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)192\.168\.139\.\d+' | head -1)
   if [[ -n "$ip_addr" ]]; then
@@ -610,11 +639,13 @@ done
 
 echo -e "${CYAN}Available network interfaces:${NC}"
 echo -e "${CYAN}──────────────────────────────────────────────────────────────${NC}"
-for iface in $(ls /sys/class/net/); do
+for iface_path in /sys/class/net/*/; do
+  iface=$(basename "$iface_path")
   [[ "$iface" == "lo" ]] && continue
   mac=$(cat "/sys/class/net/${iface}/address" 2>/dev/null) || mac="??:??:??:??:??:??"
   ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' | head -1) || ip_addr=""
   state=$(cat "/sys/class/net/${iface}/operstate" 2>/dev/null) || state="unknown"
+
   if [[ "$iface" == "$WAN_IFACE" ]]; then
     printf "  ${RED}%-14s${NC}  MAC: %s   IP: %-22s [%s] ← WAN\n" "$iface" "$mac" "${ip_addr:-(no address)}" "$state"
   elif [[ -n "$ip_addr" ]]; then
@@ -749,8 +780,9 @@ done
 WG_TUNNEL_NET="10.0.${WG_OCTET}.0/24"
 WG_HUB_DEFAULT_IP="10.0.${WG_OCTET}.1"
 WG_SPOKE_DEFAULT_IP="10.0.${WG_OCTET}.2"
-DC_DNS="${SUBNET}.10"          # site DC — AD DNS primary
-CLD_DNS="192.168.139.8"        # EXADNSCLD001 — central BIND9 secondary
+DC_DNS="${SUBNET}.10"          # site DC — AD DNS primary for LAN clients
+CLD_DNS="192.168.139.8"        # EXADNSCLD001 — central BIND9, WAN profile primary + dnsmasq upstream
+INET_DNS="9.9.9.9"             # Quad9 — internet fallback; ensures DNS works if CLD unreachable
 
 # -------------------------------------------------------------------------------------------------
 # WAN mode — DHCP (default) or static
@@ -1167,8 +1199,8 @@ echo -e "${GREEN}  LAN iface     : ${LAN_IFACE} (MAC: ${LAN_MAC})${NC}"
 echo -e "${GREEN}  LAN IP        : ${LAN_IP}/24${NC}"
 echo -e "${CYAN}  DHCP          : ${DHCP_START} - ${DHCP_END}${NC}"
 echo -e "${CYAN}  Ansible IP    : ${ANSIBLE_IP}${NC}"
-echo -e "${GREEN}  WAN DNS       : ${CLD_DNS}, 1.1.1.1${NC}"
-echo -e "${GREEN}  LAN DNS       : ${DC_DNS}, ${CLD_DNS}${NC}"
+echo -e "${GREEN}  WAN DNS       : ${CLD_DNS} (EXADNSCLD001), ${INET_DNS} (fallback)${NC}"
+echo -e "${GREEN}  LAN DNS       : ${DC_DNS} (site DC), ${INET_DNS} (fallback) — via dnsmasq${NC}"
 if [[ "$WAN_SSH" == "true" ]]; then
   [[ -n "${WAN_SSH_SRC:-}" ]] && echo -e "  WAN SSH       : ${RED}ENABLED (restricted to ${WAN_SSH_SRC})${NC}" || echo -e "  WAN SSH       : ${RED}ENABLED (open to all - be careful)${NC}"
 else
@@ -1265,24 +1297,42 @@ nmcli con delete wan 2>/dev/null || true
 
 if [[ "$WAN_MODE" == "static" ]]; then
   info "WAN: static ${WAN_STATIC_IP}/24 gw ${WAN_STATIC_GW}"
-  # BUG FIX: missing connection.autoconnect yes + autoconnect-priority meant NM
-  # could silently skip this profile on boot.  Priority 100 ensures WAN wins
-  # over any leftover unconfigured profile NM might auto-generate.
+  # DNS: EXADNSCLD001 primary, Quad9 fallback so internet resolves if CLD is unreachable.
+  # LAN profile deliberately has NO dns — dnsmasq owns all LAN DNS.
+  # route-metric 100 ensures WAN wins the default route over LAN (metric 200).
+  # autoconnect-retries -1 means NM retries forever on boot rather than giving up.
   nmcli con add type ethernet ifname "$WAN_IFACE" con-name wan \
     ipv4.method manual ipv4.addresses "${WAN_STATIC_IP}/${WAN_STATIC_PREFIX}" \
-    ipv4.gateway "${WAN_STATIC_GW}" ipv4.dns "${CLD_DNS} 1.1.1.1" ipv6.method ignore \
-    connection.autoconnect yes connection.autoconnect-priority 100
+    ipv4.gateway "${WAN_STATIC_GW}" \
+    ipv4.dns "${CLD_DNS} ${INET_DNS}" \
+    ipv4.route-metric 100 \
+    ipv6.method ignore \
+    connection.autoconnect yes \
+    connection.autoconnect-priority 100 \
+    connection.autoconnect-retries -1
 else
   info "WAN: DHCP"
   nmcli con add type ethernet ifname "$WAN_IFACE" con-name wan \
-    ipv4.method auto ipv4.dns "${CLD_DNS} 1.1.1.1" ipv6.method ignore \
-    connection.autoconnect yes connection.autoconnect-priority 100
+    ipv4.method auto \
+    ipv4.dns "${CLD_DNS} ${INET_DNS}" \
+    ipv4.route-metric 100 \
+    ipv6.method ignore \
+    connection.autoconnect yes \
+    connection.autoconnect-priority 100 \
+    connection.autoconnect-retries -1
 fi
 
-# BUG FIX: same missing autoconnect flags on LAN profile.
+# LAN profile: static, no gateway (WAN owns default route), no DNS (dnsmasq owns LAN DNS).
+# route-metric 200 ensures LAN never steals the default route from WAN.
 nmcli con add type ethernet ifname "$LAN_IFACE" con-name lan \
-  ipv4.method manual ipv4.addresses "${LAN_IP}/24" ipv4.gateway "" ipv6.method ignore \
-  connection.autoconnect yes connection.autoconnect-priority 100
+  ipv4.method manual ipv4.addresses "${LAN_IP}/24" \
+  ipv4.gateway "" \
+  ipv4.dns "" \
+  ipv4.route-metric 200 \
+  ipv6.method ignore \
+  connection.autoconnect yes \
+  connection.autoconnect-priority 100 \
+  connection.autoconnect-retries -1
 
 NM_CONF="/etc/NetworkManager/NetworkManager.conf"
 if grep -q "managed=false" "$NM_CONF" 2>/dev/null; then
@@ -1291,6 +1341,38 @@ if grep -q "managed=false" "$NM_CONF" 2>/dev/null; then
   warn "NetworkManager config adjusted — restart required later"
   NM_RESTART_REQUIRED=1
 fi
+
+# Write NetworkManager-wait-online drop-in now (not deferred) so the ordering
+# is in place before any dependent service (WireGuard, dnsmasq, Cockpit) is started.
+# When WAN_ACTIVATE=true  — wait for BOTH interfaces (WAN + LAN) before reporting ready.
+# When WAN_ACTIVATE=false — wait for LAN only; WAN is not yet active so waiting for it
+#                           would stall boot at the timeout.
+info "Writing NetworkManager-wait-online drop-in..."
+mkdir -p /etc/systemd/system/NetworkManager-wait-online.service.d
+if [[ "$WAN_ACTIVATE" == "true" ]]; then
+  cat > /etc/systemd/system/NetworkManager-wait-online.service.d/override.conf <<EOF
+# Example Music — NM wait-online: require both WAN and LAN before reporting ready.
+# Written by firewallme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+[Service]
+ExecStart=
+ExecStart=/usr/lib/NetworkManager/nm-online -s -q --timeout=60 \
+  --iface=${WAN_IFACE} --iface=${LAN_IFACE}
+EOF
+else
+  # WAN not activated — only wait for LAN so boot does not stall on an inactive interface.
+  cat > /etc/systemd/system/NetworkManager-wait-online.service.d/override.conf <<EOF
+# Example Music — NM wait-online: LAN only (WAN not yet activated).
+# Written by firewallme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+# Re-run firewallme.sh or update this file after WAN is activated.
+[Service]
+ExecStart=
+ExecStart=/usr/lib/NetworkManager/nm-online -s -q --timeout=60 \
+  --iface=${LAN_IFACE}
+EOF
+fi
+systemctl daemon-reload
+systemctl enable NetworkManager-wait-online.service
+success "NetworkManager-wait-online.service configured and enabled."
 
 # BUG FIX: original code brought LAN up before calling wait_for_wan, which defeated the purpose of
 # the sequencing guard entirely. BUG FIX: added WAN_ACTIVATE gate so operators on SSH can skip the
@@ -1305,6 +1387,26 @@ else
 fi
 
 nmcli con up lan || die "Failed to bring up LAN connection"
+
+# Wait for LAN IP to be actually assigned to the interface — not just the profile
+# to be "connected" in NM's view. dnsmasq and Cockpit depend on the IP being present.
+LAN_READY=false
+for ((i=1; i<=30; i++)); do
+  if ip -4 addr show "${LAN_IFACE}" | grep -q "${LAN_IP}"; then
+    LAN_READY=true
+    break
+  fi
+  sleep 1
+done
+
+if [[ "$LAN_READY" == "true" ]]; then
+  success "LAN interface ${LAN_IFACE} has IP ${LAN_IP} — network ready."
+  NETWORK_READY=true
+else
+  warn "LAN IP ${LAN_IP} not detected on ${LAN_IFACE} after 30s — dnsmasq/Cockpit may need manual start."
+  NETWORK_READY=false
+fi
+
 success "NM connections configured${WAN_ACTIVATE:+ and WAN brought up}."
 
 # BUG FIX: NM_RESTART_REQUIRED was set (when managed=false was corrected or ifupdown stanzas were
@@ -1432,18 +1534,32 @@ fi
 
 cat > /etc/dnsmasq.d/lan.conf <<EOF
 # Example Music LAN DHCP/DNS - Site: ${SITE}
+# Written by firewallme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+#
+# DNS upstream hierarchy:
+#   1. ${DC_DNS}         — site DC (AD DNS, jukebox.internal authority)
+#   2. ${CLD_DNS}    — EXADNSCLD001 (central BIND9, cross-site resolution)
+#   3. ${INET_DNS}           — Quad9 (internet fallback; DNS survives CLD outage)
+#
+# DHCP clients receive DC + Quad9 as resolvers so internet DNS works even
+# if the CLD management network is temporarily unreachable.
 interface=${LAN_IFACE}
 bind-interfaces
 domain-needed
 bogus-priv
 no-resolv
 
+# Upstream resolvers — tried in order
 server=${DC_DNS}
 server=${CLD_DNS}
+server=${INET_DNS}
 
 dhcp-range=${DHCP_START},${DHCP_END},12h
 dhcp-option=3,${LAN_IP}
-dhcp-option=6,${DC_DNS},${CLD_DNS}
+# DHCP option 6 (DNS): site DC primary, Quad9 fallback.
+# CLD DNS intentionally omitted from client list — clients on LAN subnets
+# may not have a route to 192.168.139.0/24 until WireGuard is up.
+dhcp-option=6,${DC_DNS},${INET_DNS}
 dhcp-option=15,jukebox.internal
 
 dhcp-vendorclass=set:ipxe-client,iPXE
@@ -1474,9 +1590,28 @@ done
 
 mkdir -p /etc/systemd/system/dnsmasq.service.d
 cat > /etc/systemd/system/dnsmasq.service.d/wait-for-lan.conf <<EOF
+# Example Music — dnsmasq ordered after NM is fully online.
+# Written by firewallme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+#
+# ExecStartPre polls until ${LAN_IP} is assigned to ${LAN_IFACE} before
+# dnsmasq attempts to bind. Without this, dnsmasq races NM and fails to bind
+# if it starts before the LAN IP is configured on the interface (device
+# present != IP assigned). 30s poll timeout; non-fatal so boot continues
+# and Restart=on-failure self-heals if dnsmasq still loses the race.
 [Unit]
-After=network-online.target sys-subsystem-net-devices-${LAN_IFACE}.device
-Wants=network-online.target sys-subsystem-net-devices-${LAN_IFACE}.device
+After=network-online.target NetworkManager-wait-online.service sys-subsystem-net-devices-${LAN_IFACE}.device
+Wants=network-online.target NetworkManager-wait-online.service
+
+[Service]
+ExecStartPre=/bin/bash -c '\
+  for i in \$(seq 1 30); do \
+    ip addr show ${LAN_IFACE} 2>/dev/null | grep -q "${LAN_IP}" && exit 0; \
+    sleep 1; \
+  done; \
+  echo "dnsmasq pre-start: ${LAN_IP} not yet on ${LAN_IFACE} after 30s — starting anyway" >&2; \
+  exit 0'
+Restart=on-failure
+RestartSec=5
 EOF
 
 if [[ "${WAN_ACTIVATE:-false}" == true ]]; then
@@ -1492,12 +1627,14 @@ fi
 # 9. Cockpit
 # -------------------------------------------------------------------------------------------------
 info "Binding Cockpit to LAN (${LAN_IP})..."
-systemctl enable NetworkManager-wait-online.service
+# NetworkManager-wait-online.service was already enabled earlier (after NM profile creation).
 
 mkdir -p /etc/systemd/system/cockpit.socket.d
 cat > /etc/systemd/system/cockpit.socket.d/override.conf <<EOF
+# Example Music — Cockpit socket ordered after NM is fully online.
+# Written by firewallme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
 [Unit]
-After=network-online.target
+After=network-online.target NetworkManager-wait-online.service
 Wants=network-online.target
 
 [Socket]
@@ -1668,20 +1805,37 @@ EOF
 
   chmod 600 /etc/wireguard/wg0.conf
 
-  # BUG FIX: wg-quick@.service ships with After=network.target which is satisfied the moment the
-  # network subsystem initialises; long before any interface actually has an IP. On boot, wg-quick
-  # then tries to resolve the hub Endpoint, fails, & leaves wg0 down. Fix: install a drop-in that
-  # adds After=network-online.target so systemd waits for NM (& NetworkManager-wait-online.service)
-  # reports that at least one interface is fully online before starting WireGuard.
-  info "Installing wg-quick@wg0 drop-in to wait for network-online.target..."
+  # wg-quick@.service ships with After=network.target which is satisfied the moment the
+  # network subsystem initialises — long before any interface has an IP. On boot wg-quick
+  # tries to resolve the hub Endpoint, fails, and leaves wg0 permanently down.
+  #
+  # Fix: drop-in adds After=NetworkManager-wait-online.service so systemd waits until NM
+  # reports all required interfaces are fully online (per the NM-wait-online drop-in written
+  # earlier in this script). ExecStartPre sleep 5 gives NM an additional settling period
+  # after it reports ready, avoiding a residual race where route table updates are still
+  # in progress. Restart=on-failure + RestartSec=10 self-heals the rare case where wg-quick
+  # still loses the race. StartLimitBurst=3 prevents a tight restart loop if the hub is
+  # genuinely unreachable.
+  info "Installing wg-quick@wg0 drop-in to wait for NetworkManager-wait-online..."
   mkdir -p /etc/systemd/system/wg-quick@wg0.service.d
-  cat > /etc/systemd/system/wg-quick@wg0.service.d/wait-online.conf <<'DROPIN'
+  cat > /etc/systemd/system/wg-quick@wg0.service.d/wait-online.conf <<EOF
+# Example Music — wg-quick@wg0 ordered after NM is fully online.
+# Written by firewallme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
 [Unit]
-After=network-online.target
+After=network-online.target NetworkManager-wait-online.service
 Wants=network-online.target
-DROPIN
+
+[Service]
+# 5s settle time after NM reports ready — allows route table to stabilise
+# before wg-quick attempts endpoint resolution.
+ExecStartPre=/bin/sleep 5
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=3
+EOF
   systemctl daemon-reload
-  success "wg-quick@wg0 will now wait for network-online.target before starting."
+  success "wg-quick@wg0 drop-in written — will wait for NM online + 5s settle before starting."
 
   if [[ "$WAN_ACTIVATE" == true ]]; then
     systemctl enable --now wg-quick@wg0
