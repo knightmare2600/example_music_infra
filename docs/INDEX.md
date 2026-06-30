@@ -34,6 +34,7 @@
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [ExampleMusic_Beginners_Guide.md](ExampleMusic_Beginners_Guide.md) | NET-BEGIN-001 | **Start here** — estate overview, IP/naming conventions, architecture, order of operations, trust but verify, prove a negative |
 | [network-inventory.md](network-inventory.md) | NET-INV-001 | Comprehensive device and IP inventory — all sites, all nodes, health status, known issues |
 | [site-inventory.md](site-inventory.md) | NET-SITE-001 | Per-site commissioning checklists — build tracking, ZFS status, endpoint and equipment sign-off |
 | `README.md` | — | Repository overview and conventions |
@@ -169,6 +170,7 @@ WireGuard VPN configuration and troubleshooting.
 
 | Series | Scope |
 |--------|-------|
+| `NET-BEGIN-*` | Beginner's guide and onboarding |
 | `NET-INV-*` | Inventory documents |
 | `NET-SITE-*` | Site commissioning records |
 | `NET-AD-*` | Active Directory and DNS |
