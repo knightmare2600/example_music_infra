@@ -3,16 +3,35 @@
 # tasks/hostname_facts.yml
 # Example Music Limited — Parse EXA[ROLE][SITE][NNN] hostname convention
 # Sets: host_role (e.g. WKS), host_site (e.g. GLA), host_num (e.g. 001)
+#
+# Uses target_hostname (set by 00-preflight.yml) if available, falls back
+# to ansible_hostname (Windows-reported name), then inventory_hostname.
+# This covers bare-IP inventory runs where inventory_hostname is an IP.
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-06-29  Fix | default placement — must wrap list before | first
+#   2026-06-29  Use target_hostname > ansible_hostname > inventory_hostname
+#               so bare-IP inventory runs parse the correct hostname
 # =============================================================================
 
 - name: Parse role from hostname
   set_fact:
-    host_role: "{{ inventory_hostname | upper | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\\1') | first | default('UNKNOWN') }}"
-    host_site: "{{ inventory_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first | default('UNKNOWN') }}"
-    host_num:  "{{ inventory_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}([0-9]{3})$', '\\1') | first | default('001') }}"
+    host_role: >-
+      {{ (target_hostname | default(ansible_hostname | default(inventory_hostname)))
+         | upper
+         | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\1')
+         | default(['UNKNOWN']) | first }}
+    host_site: >-
+      {{ (target_hostname | default(ansible_hostname | default(inventory_hostname)))
+         | upper
+         | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\1')
+         | default(['UNKNOWN']) | first }}
+    host_num: >-
+      {{ (target_hostname | default(ansible_hostname | default(inventory_hostname)))
+         | upper
+         | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}([0-9]{3})$', '\1')
+         | default(['001']) | first }}
 
 - name: Validate hostname convention
   assert:
@@ -20,7 +39,8 @@
       - host_role != 'UNKNOWN'
       - host_site != 'UNKNOWN'
     fail_msg: >
-      Hostname '{{ inventory_hostname }}' does not match EXA[ROLE][SITE][NNN] convention.
+      Hostname '{{ target_hostname | default(ansible_hostname | default(inventory_hostname)) }}'
+      does not match EXA[ROLE][SITE][NNN] convention.
       Examples: EXAWKSGLA001, EXASRVCLD002, EXALAPCPH003.
     success_msg: "Hostname valid: role={{ host_role }} site={{ host_site }} num={{ host_num }}"
 
@@ -28,3 +48,4 @@
   debug:
     msg: "role={{ host_role }}  site={{ host_site }}  num={{ host_num }}"
   tags: [never, debug]
+

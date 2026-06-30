@@ -1,39 +1,38 @@
 ---
 # =============================================================================
-# playbooks/00-bootstrap.yml
+# playbooks/05-bootstrap.yml
 # Example Music Limited — Windows PostOOBE Bootstrap
 # =============================================================================
 # Ansible port of Join-DomainAndBootstrap.ps1, Stages 0b–23.
 # Runs once on a freshly installed host (post-UNATTEND.CMD / post-PXE boot).
 # All stages are idempotent — safe to re-run if interrupted.
 #
+# Deliberately inventory-agnostic — runs against a bare IP before the host
+# is in any group. All vars that would normally come from group_vars are
+# inlined here for exactly this reason.
+#
 # Prerequisites:
 #   - Host has completed WinPE unattended install (UNATTEND.CMD)
 #   - OpenSSH is running (installed by UNATTEND.CMD)
-#   - Host is in inventory under its DHCP address (update after rename)
+#   - 00-preflight.yml has run (hostname set, static IP applied, Ansible key deployed)
 #
-# Usage:
-#   # Full bootstrap
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/00-bootstrap.yml \
-#     -e target=<hostname-or-ip> --ask-vault-pass
+# Usage (via site.yml — normal path):
+#   ansible-playbook playbooks/windows_bootstrap/site.yml \
+#     -i 192.168.x.x, -e "target_hosts=192.168.x.x"
 #
-#   # With pre-supplied OU (skips interactive LDAP selection)
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/00-bootstrap.yml \
-#     -e target=<host> \
-#     -e bootstrap_ou_path="OU=Servers,OU=MCR,DC=jukebox,DC=internal" \
-#     --ask-vault-pass
-#
-#   # Dry run
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/00-bootstrap.yml \
-#     -e target=<host> --check --ask-vault-pass
+# Usage (standalone):
+#   ansible-playbook playbooks/windows_bootstrap/playbooks/05-bootstrap.yml \
+#     -i 192.168.x.x, -e "target_hosts=192.168.x.x"
 #
 # Stage map (mirrors Join-DomainAndBootstrap.ps1):
-#   0b  Preflight checks
+#   0b  Preflight checks            (sets is_first_dc if primary DC unreachable
+#                                    and operator confirms first-DC build)
 #   1   Hypervisor detection
 #   2   Site detection from IP
-#   3   Hostname confirm / rename  [interactive — pause]
-#   4   OU selection via LDAP      [interactive — pause]
-#   5   Rename + domain join
+#   3   Hostname confirm / rename  (skips if already correct)
+#   4   OU selection via LDAP      (skips if already joined OR first-DC build)
+#   5   Rename + domain join       (skips if already joined OR first-DC build —
+#                                    run windows_dc/site.yml afterwards instead)
 #   6   Power & pagefile
 #   7   Locale & timezone
 #   8   Screen lock
@@ -58,11 +57,95 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file — Ansible port of Join-DomainAndBootstrap.ps1
+#   2026-06-29  Fix hosts var to accept target_hosts OR target
+#   2026-06-29  Fix Stage 16 — set DefaultShellCommandOption=-SSHServerMode for PS7
+#   2026-06-29  Inline all group_vars — bootstrap runs inventory-agnostic
+#   2026-06-29  vars_prompt for domain join password instead of vault
+#   2026-06-29  Fix win_timezone deprecation warning — use ansible.windows module
+#   2026-06-29  Skip Stage 4 (OU selection) and Stage 5 (domain join) when
+#               is_first_dc is true (set by tasks/preflight.yml) — avoids
+#               chicken-and-egg on the very first DC build; domain creation
+#               is handled by windows_dc/site.yml instead
 # =============================================================================
 
 - name: Windows — PostOOBE Bootstrap (replaces Join-DomainAndBootstrap.ps1)
-  hosts: "{{ target | default('all') }}"
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
   gather_facts: true
+  handlers:
+    - import_tasks: ../handlers/main.yml
+
+  vars_prompt:
+    - name: vault_domain_join_password
+      prompt: "Domain join password (JUKEBOX\\Administrator)"
+      private: true
+
+  vars:
+    # ── Connection ────────────────────────────────────────────────────────────
+    ansible_connection:           ssh
+    ansible_shell_type:           powershell
+    ansible_user:                 Administrator
+    ansible_port:                 22
+    ansible_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa"
+    ansible_ssh_extra_args:       '-o StrictHostKeyChecking=no'
+
+    # ── Asset / binary server ─────────────────────────────────────────────────
+    exa_asset_base:     "http://192.168.139.50/WINDOWS"
+    exa_wallpaper_url:  "http://192.168.139.50/ExampleMusicWallpaper.png"
+    exa_wallpaper_dest: 'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.png'
+
+    # ── Domain ────────────────────────────────────────────────────────────────
+    exa_domain:           "jukebox.internal"
+    exa_domain_join_user: "JUKEBOX\\Administrator"
+
+    # ── Chocolatey ────────────────────────────────────────────────────────────
+    exa_choco_source: "https://community.chocolatey.org/api/v2/"
+
+    choco_packages_common:
+      - winscp.install
+      - putty.install
+      - hyper
+      - notepadplusplus.install
+      - powershell-core
+      - 7zip.install
+      - far
+      - dua-cli
+      - rustdesk
+
+    # ── Screen lock ───────────────────────────────────────────────────────────
+    exa_lock_timeout_secs: 3600
+
+    # ── SSH / Ansible key ─────────────────────────────────────────────────────
+    exa_ansible_pub_key:  "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCyEVQgZP5f3dSLQ/cK7CV1tjN152BhZGQ7evsOTARTG5o9AmMzn4xFurdvmkFli4dEr7HZ3Dp83jxAMbHJ7d0eVuYNHG1n7ktm4FwYPhzBS3Kni3UvM91TeB6kvNZU1jFVE3oaDlft/C104M5S72zUx9SIzI5XH3fUyssAQEGoEoLzW1u4Tj84pxdXoIdGAGJCZ/gZJJFoPGLNkn3m19ML5EQzIpD4sO6yhODVu7gc9RckFGJpTD1CgKa5q4RPWPMN2y3Xw/J95VTHV8+NCBNKGzoVGdxu1E94+aCV5UCaxvgtLGcjJfv4D8Yrnxd//ZTjFYmT+DdIc6XsgYDYvr7Eoanv+bg8mtVVKxhwsxD3XOoxVdLhvCfYlg9IjXPG65GoTDrZuRfkUA6e1YnEaC4wvyXtwcnMV5NaklwAiIH5VLLo6laK1lyxr1tZEVpYx0F0S9S+oVDRPdpoVH98zE8JkPGWI6xSwaekMUMrAu5fZ/7Dfw2LAwAG7dixMroAj3c= knightmare@ansible"
+    exa_ansible_key_path: 'C:\ProgramData\ssh\administrators_authorized_keys'
+
+    # ── Fonts ─────────────────────────────────────────────────────────────────
+    exa_font_files:
+      - JetBrainsMonoNerdFont-Regular.ttf
+      - JetBrainsMonoNerdFont-Bold.ttf
+      - JetBrainsMonoNerdFont-BoldItalic.ttf
+      - JetBrainsMonoNerdFont-Italic.ttf
+      - JetBrainsMonoNerdFontMono-Regular.ttf
+
+    # ── Binaries ──────────────────────────────────────────────────────────────
+    binaries_common:
+      - { src: "dua.exe",  dest: "dua.exe"  }
+      - { src: "wget.exe", dest: "wget.exe" }
+
+    # ── Registry ──────────────────────────────────────────────────────────────
+    registry_common:
+      - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',             name: EnableLUA,                  data: 1,    type: dword  }
+      - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',             name: ConsentPromptBehaviorAdmin, data: 2,    type: dword  }
+      - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',             name: InactivityTimeoutSecs,      data: 3600, type: dword  }
+      - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',             name: AutoAdminLogon,             data: "0",  type: string }
+      - { path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server',                      name: fDenyTSConnections,         data: 0,    type: dword  }
+      - { path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp', name: UserAuthentication,         data: 1,    type: dword  }
+      - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU',                 name: NoAutoUpdate,               data: 1,    type: dword  }
+      - { path: 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters',            name: SMB1,                       data: 0,    type: dword  }
+      - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced',          name: HideFileExt,                data: 0,    type: dword  }
+      - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced',          name: Hidden,                     data: 1,    type: dword  }
+      - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize',         name: AppsUseLightTheme,          data: 0,    type: dword  }
+      - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize',         name: SystemUsesLightTheme,       data: 0,    type: dword  }
+
   tasks:
 
     # ── Hostname facts (needed throughout) ────────────────────────────────────
@@ -130,7 +213,7 @@
     - name: "[Stage 3] Validate supplied hostname format"
       assert:
         that:
-          - target_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$')
+          - target_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$') is not none
         fail_msg: >
           '{{ target_hostname }}' is not a valid EXA hostname.
           Format: EXA[ROLE][SITE][NNN] — e.g. EXAWKSGLA001, EXASRVCLD002.
@@ -138,34 +221,48 @@
 
     - name: "[Stage 3] Re-parse facts from new hostname"
       set_fact:
-        host_role: "{{ target_hostname | upper | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\\1') | first }}"
-        host_site: "{{ target_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first }}"
+        host_role: "{{ target_hostname | upper | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\\1') | default(['UNKNOWN']) | first }}"
+        host_site: "{{ target_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | default(['UNKNOWN']) | first }}"
       when: target_hostname != ansible_hostname
 
     # =========================================================================
     # Stage 4 — OU selection
+    # Skipped if already domain-joined OR this is the first-DC build
+    # (no domain exists yet to query OUs from)
     # =========================================================================
 
     - name: "── Stage 4 — OU selection ──"
       debug:
         msg: "Querying OUs from DC at 192.168.{{ host_subnet_octet }}.10..."
+      when: not already_domain_joined and not is_first_dc | default(false) | bool
 
     - name: Include OU selection
       include_tasks: ../tasks/ou_selection.yml
-      when: not already_domain_joined
+      when: not already_domain_joined and not is_first_dc | default(false) | bool
 
     - name: "[Stage 4] Skip OU selection (already domain-joined)"
       debug:
         msg: "Already domain-joined — skipping OU selection."
       when: already_domain_joined
 
+    - name: "[Stage 4] Skip OU selection (first-DC build — no domain exists yet)"
+      debug:
+        msg: >
+          First-DC build confirmed — skipping OU selection.
+          windows_dc/site.yml will create the domain after this bootstrap.
+      when:
+        - not already_domain_joined
+        - is_first_dc | default(false) | bool
+
     # =========================================================================
     # Stage 5 — Rename + domain join
+    # Skipped if already joined OR this is the first-DC build
     # =========================================================================
 
     - name: "── Stage 5 — Rename and domain join ──"
       debug:
         msg: "Target hostname: {{ target_hostname }} | OU: {{ bootstrap_ou_path | default('N/A — already joined') }}"
+      when: not is_first_dc | default(false) | bool
 
     - name: "[Stage 5] Rename computer"
       ansible.windows.win_shell: |
@@ -191,7 +288,19 @@
         state:                 domain
         reboot:                false
       register: stage5_join
-      when: not already_domain_joined
+      when:
+        - not already_domain_joined
+        - not is_first_dc | default(false) | bool
+
+    - name: "[Stage 5] Skip domain join (first-DC build — no domain exists yet)"
+      debug:
+        msg: >
+          First-DC build confirmed — skipping domain join.
+          Run windows_dc/site.yml after this bootstrap completes to
+          create the forest/domain on this host.
+      when:
+        - not already_domain_joined
+        - is_first_dc | default(false) | bool
 
     - name: "[Stage 5] Reboot after domain join"
       ansible.windows.win_reboot:
@@ -230,7 +339,7 @@
         msg: "Setting locale to en-GB, timezone to GMT Standard Time..."
 
     - name: "[Stage 7] Set timezone to GMT Standard Time"
-      community.windows.win_timezone:
+      ansible.windows.win_timezone:
         timezone: "GMT Standard Time"
 
     - name: "[Stage 7] Set locale and UI language to en-GB"
@@ -263,10 +372,10 @@
         data: "{{ item.data }}"
         type: "{{ item.type }}"
       loop:
-        - { name: SCRNSAVE.EXE,         data: 'C:\Windows\system32\scrnsave.scr', type: string }
-        - { name: ScreenSaveActive,      data: "1",                                type: string }
-        - { name: ScreenSaverIsSecure,   data: "1",                                type: string }
-        - { name: ScreenSaveTimeOut,     data: "3600",                             type: string }
+        - { name: SCRNSAVE.EXE,       data: 'C:\Windows\system32\scrnsave.scr', type: string }
+        - { name: ScreenSaveActive,    data: "1",                                type: string }
+        - { name: ScreenSaverIsSecure, data: "1",                                type: string }
+        - { name: ScreenSaveTimeOut,   data: "3600",                             type: string }
       loop_control:
         label: "{{ item.name }}"
 
@@ -295,7 +404,7 @@
         url:  "{{ exa_wallpaper_url }}"
         dest: "{{ exa_wallpaper_dest }}"
       when: wallpaper_available
-      register: wallpaper_download
+      notify: apply wallpaper
 
     - name: "[Stage 9] Set wallpaper via PersonalizationCSP"
       ansible.windows.win_regedit:
@@ -332,11 +441,8 @@
         type: dword
       when: wallpaper_available
 
-    - name: "[Stage 9] Apply wallpaper change (broadcast WM_SETTINGCHANGE)"
-      ansible.windows.win_shell: |
-        RUNDLL32.EXE user32.dll,UpdatePerUserSystemParameters ,1 ,True
-      changed_when: false
-      when: wallpaper_download is changed
+    - name: "[Stage 9] Flush handlers (apply wallpaper now)"
+      meta: flush_handlers
 
     # =========================================================================
     # Stage 10 — Dark mode
@@ -353,7 +459,7 @@
         data: 0
         type: dword
       loop:
-        - { name: AppsUseLightTheme   }
+        - { name: AppsUseLightTheme    }
         - { name: SystemUsesLightTheme }
       loop_control:
         label: "{{ item.name }}"
@@ -499,6 +605,8 @@
       ansible.windows.win_optional_feature:
         name: OpenSSH.Server~~~~0.0.1.0
         state: present
+      notify: restart sshd
+
     - name: "[Stage 16] Ensure sshd is running and Automatic"
       ansible.windows.win_service:
         name: sshd
@@ -514,6 +622,7 @@
       ansible.windows.win_copy:
         content: "{{ exa_ansible_pub_key }}\n"
         dest:    "{{ exa_ansible_key_path }}"
+      notify: restart sshd
 
     - name: "[Stage 16] Set ACLs on administrators_authorized_keys"
       ansible.windows.win_shell: |
@@ -534,6 +643,16 @@
         data: 'C:\Program Files\PowerShell\7\pwsh.exe'
         type: string
       when: stage16_ps7.stat.exists
+      notify: restart sshd
+
+    - name: "[Stage 16] Set DefaultShellCommandOption for SSHServerMode (PS7)"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\OpenSSH'
+        name: DefaultShellCommandOption
+        data: '-SSHServerMode'
+        type: string
+      when: stage16_ps7.stat.exists
+      notify: restart sshd
 
     - name: "[Stage 16] Set PS5 as default SSH shell (PS7 not yet installed)"
       ansible.windows.win_regedit:
@@ -541,6 +660,14 @@
         name: DefaultShell
         data: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
         type: string
+      when: not stage16_ps7.stat.exists
+      notify: restart sshd
+
+    - name: "[Stage 16] Clear DefaultShellCommandOption (PS5 does not need it)"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\OpenSSH'
+        name: DefaultShellCommandOption
+        state: absent
       when: not stage16_ps7.stat.exists
 
     - name: "[Stage 16] Open SSH firewall rule"
@@ -553,10 +680,8 @@
         enabled:   true
         state:     present
 
-    - name: "[Stage 16] Restart sshd (pick up key and shell changes)"
-      ansible.windows.win_service:
-        name: sshd
-        state: restarted
+    - name: "[Stage 16] Flush handlers (restart sshd now)"
+      meta: flush_handlers
 
     # =========================================================================
     # Stage 17 — RDP
@@ -572,6 +697,7 @@
         name: fDenyTSConnections
         data: 0
         type: dword
+      notify: restart rdp
 
     - name: "[Stage 17] Enforce NLA"
       ansible.windows.win_regedit:
@@ -592,11 +718,6 @@
         group:     "Remote Desktop"
         enabled:   true
         state:     present
-
-    - name: "[Stage 17] Restart TermService (apply RDP changes)"
-      ansible.windows.win_service:
-        name: TermService
-        state: restarted
 
     # =========================================================================
     # Stage 17b — SAC/EMS serial console (Server OS only)
@@ -622,7 +743,7 @@
         start_mode: auto
         state:      started
       when: is_server
-      failed_when: false  # sacsvr not present on all SKUs
+      failed_when: false
 
     - name: "[Stage 17b] Prompt operator — confirm SAC is visible via SOL"
       pause:
@@ -688,6 +809,7 @@
           - " RDP   : {{ host_ip }}:3389"
           - " SAC   : {{ 'Enabled on COM1/115200 (SOL)' if is_server else 'N/A (not a server OS)' }}"
           - " Domain: {{ exa_domain }} / OU: {{ bootstrap_ou_path | default('already joined') }}"
+          - "{{ '!! FIRST-DC BUILD — domain NOT joined. Run windows_dc/site.yml next !!' if is_first_dc | default(false) | bool else '' }}"
           - " Site  : {{ host_site }}"
           - " Arch  : {{ host_arch }}"
           - " Hyper : {{ hypervisor }}"
@@ -701,3 +823,5 @@
         reboot_timeout:    600
         post_reboot_delay: 30
         msg:               "Ansible bootstrap complete — final reboot"
+
+

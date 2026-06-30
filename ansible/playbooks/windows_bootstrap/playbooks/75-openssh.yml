@@ -84,21 +84,21 @@
       when: ps7_stat.stat.exists
       tags: openssh
 
-    - name: Set PS5 as default SSH shell (PS7 not installed)
-      ansible.windows.win_regedit:
-        path: 'HKLM:\SOFTWARE\OpenSSH'
-        name: DefaultShell
-        data: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
-        type: string
-      when: not ps7_stat.stat.exists
-      tags: openssh
-
-    - name: Set DefaultShellCommandOption
+    - name: Set DefaultShellCommandOption for SSHServerMode
       ansible.windows.win_regedit:
         path: 'HKLM:\SOFTWARE\OpenSSH'
         name: DefaultShellCommandOption
-        data: '-NoLogo'
+        data: '-SSHServerMode'
         type: string
+      when: ps7_stat.stat.exists
+      tags: openssh
+
+    - name: Clear DefaultShellCommandOption (PS5 does not need it)
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\OpenSSH'
+        name: DefaultShellCommandOption
+        state: absent
+      when: not ps7_stat.stat.exists
       tags: openssh
 
     - name: Restart sshd (pick up key, ACLs and shell changes)
