@@ -17,13 +17,13 @@
 #   OS         -- Operating system / firmware / model (free text)
 #   Notes      -- Free text notes
 #
-# CLD BLACK SWAN NOTE:
-#   CLD (192.168.139.0/24) is the provisioning network -- it is structurally
-#   different from all site subnets. It does not follow the standard SUFFIX_MAP
-#   (no PVE nodes, no EXADCS, no EXASBC). Its devices are manually assigned IPs
-#   that serve specific provisioning roles. Do not apply site convention checks
-#   to CLD rows. The BIND zone for 192.168.139.0/24 is generated separately as
-#   the dedicated provisioning reverse zone (db.192.168.139).
+# CLD / VRK BLACK SWAN NOTE:
+#   CLD (192.168.69.0/24) is the primary cloud site LAN. VRK (192.168.139.0/24)
+#   is the OVH vRACK provisioning network. Both are structurally different from
+#   standard site subnets. CLD hosts DCs, Ansible, WAC, PBX, and Rudder on the LAN.
+#   VRK hosts DNS/BIND, the provisioning server, and the FWL WAN face.
+#   BIND generates two reverse zones: db.192.168.69 (CLD LAN) and
+#   db.192.168.139 (VRK). Do not apply standard site convention checks to VRK rows.
 #
 # SUBNET CORRECTION NOTES (from merge 2026-03-29):
 #   ATL: correct subnet is 192.168.33.0/24 (not .44) per sites.csv
@@ -38,16 +38,25 @@
 Site,Hostname,HostOctet,Role,OS,Notes
 #
 # ============================================================
-# CLD -- Cloud / Provisioning  192.168.139.0/24
-# BLACK SWAN -- see header note. IPs are provisioning-specific.
+# CLD -- Cloud Site LAN  192.168.69.0/24
+# Gateway: 192.168.69.253 (EXAFWLCLD001 LAN face)
 # ============================================================
-CLD,EXAFWLCLD001,1,EXAFWL,,Firewall / WireGuard hub. CNAME ovhfwl.knight139.co.uk
-CLD,EXASVRCLD001,10,EXASVR,Debian trixie,DNS/BIND server -- jukebox.internal authoritative
+CLD,EXAANSCLD001,9,EXASVR,Debian,Ansible control node -- manages all sites
+CLD,EXADCSCLD001,10,EXADCS,Windows Server 2022,DC primary. jukebox.internal forest root
+CLD,EXADCSCLD002,11,EXADCS,Windows Server 2022,DC secondary
+CLD,EXARDRCLD001,12,EXARDR,Debian,Rudder configuration management server
 CLD,EXASVRCLD002,20,EXASVR,Windows Server 2022,Windows Admin Centre -- reaches all site DCs
-CLD,EXASVRCLD004,22,EXASVR,Debian,Rudder configuration management
 CLD,EXACLDPBX001,48,EXAPBX,3CX,Central PBX -- all site SBCs trunk here
-CLD,EXASVRCLD003,49,EXASVR,Debian,Ansible control node -- manages all sites
-CLD,EXAPRVCLD001,50,EXAPRV,,Provisioning server -- PXE / ISOs / Ansible keys / scripts
+CLD,EXAFWLCLD001,253,EXAFWL,,Firewall LAN face. WAN face at 192.168.139.68 (see VRK section below)
+#
+# ============================================================
+# VRK -- OVH vRACK Provisioning Network  192.168.139.0/24
+# Gateway: 192.168.139.254 (OVH infrastructure -- not a site device)
+# NOTE: EXAFWLCLD001 has two interfaces -- WAN face here at .68; LAN face in CLD section above at .69.253
+# ============================================================
+VRK,EXADNSCLD001,8,EXASVR,Debian trixie,DNS/BIND server -- jukebox.internal authoritative
+VRK,EXAPRVCLD001,50,EXAPRV,,Provisioning server -- PXE / ISOs / Ansible keys / scripts
+VRK,EXAFWLCLD001,68,EXAFWL,,Firewall WAN face (vRACK). LAN face: 192.168.69.253 (see CLD section above)
 #
 # ============================================================
 # FAL -- Falkirk (Head Office)  192.168.76.0/24
