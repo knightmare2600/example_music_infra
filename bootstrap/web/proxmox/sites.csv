@@ -11,7 +11,7 @@ BRD,West Berlin (legacy alias for BER),Germany,DE,192.168.113.0/24,192.168.113.2
 BRK,Brockville,Canada,CA,192.168.136.0/24,192.168.136.253,192.168.136.10,192.168.136.253,+1 613 555 6xxx,+1 613 555 6xxx,America/Toronto,ca_site,Example Music (Canada) Inc.
 BRT,Beirut,Lebanon,LB,192.168.169.0/24,192.168.169.253,192.168.169.10,192.168.169.253,+961 1 555 xxxx,+961 3 555 xxxx,Asia/Beirut,lb_site,Example Music (Lebanon) SAL
 CHI,Chicago,United States,US,192.168.214.0/24,192.168.214.253,192.168.214.10,192.168.214.253,+1 312 555 xxxx,+1 773 900 xxxx,America/Chicago,us_site,Example Music (US) LLC.
-CLD,CloudSite,Global,N/A,192.168.139.0/24,192.168.139.253,192.168.139.10,192.168.139.253,N/A,N/A,UTC,cloud_site,Example Music Limited
+CLD,CloudSite,Global,N/A,192.168.69.0/24,192.168.69.253,192.168.69.10,192.168.69.253,N/A,N/A,UTC,cloud_site,Example Music Limited
 CLY,Clydebank,United Kingdom,UK,192.168.41.0/24,192.168.41.253,192.168.41.10,192.168.41.253,+44 141 496 00xx,+44 770 090 5xxx,Europe/London,uk_site,Example Music (Scotland) Ltd
 COV,Coventry,United Kingdom,UK,192.168.247.0/24,192.168.247.253,192.168.247.10,192.168.247.253,+44 247 765 0xxx,+44 7700 901 2xxx,Europe/London,uk_site,Example Music (England) Ltd
 CPH,Copenhagen,Denmark,DK,192.168.231.0/24,192.168.231.253,192.168.231.10,192.168.231.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS

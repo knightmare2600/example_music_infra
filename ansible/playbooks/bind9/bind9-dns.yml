@@ -737,14 +737,10 @@
     devices_csv_path: "/etc/example-music/devices.csv"
 
     # CLD BLACK SWAN:
-    # CLD is the provisioning network (192.168.139.0/24). It is structurally
-    # different from all site subnets and must never be treated as a standard
-    # site for convention checks or per-site reverse zone generation.
-    # Its reverse zone (db.192.168.139) is generated separately and contains:
-    #   (a) CLD device PTRs (EXADNSCLD001-004, EXACLDPBX001, EXAPRVCLD001)
-    #   (b) FWL WAN PTRs for every site (192.168.139.{octet} per site)
-    cld_site_code: "CLD"
-    cld_subnet_octet: "139"
+    # CLD has two subnets: LAN 192.168.69.0/24 (DCs, Ansible) and
+    # vRACK 192.168.139.0/24 (DNS, Rudder, PBX, PXE, FWL WAN faces).
+    # CLD LAN is now in sites.csv so sites_by_code['CLD'] resolves normally.
+    # vRACK ancillary PTRs are hardcoded in db.192.168.139.devices.j2.
 
   pre_tasks:
     - name: Load sites.csv
@@ -780,24 +776,20 @@
       set_fact:
         all_devices: >-
           {{
-            devices_raw.list
-            | rejectattr('Site', 'equalto', 'Site')
-            | map('combine', {
-                'octet': (sites_by_code[item.Site] | default('') ).split('.')[2]
-                          if item.Site != cld_site_code
-                          else cld_subnet_octet,
+            all_devices | default([]) + [
+              item | combine({
+                'octet':   (sites_by_code[item.Site] | default('')).split('.')[2],
                 'full_ip': (
-                  (sites_by_code[item.Site] | default('') ).split('.')[:3] | join('.')
+                  (sites_by_code[item.Site] | default('')).split('.')[:3] | join('.')
                   + '.' + item.HostOctet
                 ) if item.HostOctet != ''
                   else ''
               })
-            | list
+            ]
           }}
       loop: "{{ devices_raw.list | rejectattr('Site', 'equalto', 'Site') | list }}"
       loop_control:
         label: "{{ item.Hostname }}"
-      run_once: true
 
   tasks:
     # -------------------------------------------------------------------------
@@ -835,15 +827,14 @@
 
     # -------------------------------------------------------------------------
     # Per-site reverse zones -- db.192.168.{octet}
-    # One per site from devices.csv. CLD excluded (handled above).
+    # One per site from devices.csv, including CLD (192.168.69.0/24).
     # -------------------------------------------------------------------------
-    - name: Build unique non-CLD site list from devices.csv
+    - name: Build unique device site list from devices.csv
       tags: zones-full
       set_fact:
         device_sites: >-
           {{
             all_devices
-            | rejectattr('Site', 'equalto', cld_site_code)
             | map(attribute='Site')
             | unique
             | list
