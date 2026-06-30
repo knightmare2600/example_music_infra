@@ -39,6 +39,8 @@ $TTL {{ zone_ttl }}
 {% endif %}
 {% endfor %}
 
+{% if item != 'CLD' %}
 ; ── DHCP pool PTR ($GENERATE) ─────────────────────────────────
 ; .100–.199  →  dhcp01.{{ item | lower }}.{{ domain }}. through dhcp100.{{ item | lower }}.{{ domain }}.
 $GENERATE 100-199 $ IN PTR dhcp${-99,2,d}.{{ item | lower }}.{{ domain }}.
+{% endif %}
