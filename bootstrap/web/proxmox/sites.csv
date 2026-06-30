@@ -47,3 +47,4 @@ SHE,Sheffield,United Kingdom,UK,192.168.114.0/24,192.168.114.253,192.168.114.10,
 SYD,Sydney,Australia,AU,192.168.29.0/24,192.168.29.253,192.168.29.10,192.168.29.253,+61 2 9000 0xxx,+61 400 900 2xxx,Australia/Sydney,apac_site,Example Music (Australia) Pty Ltd
 TOR,Toronto,Canada,CA,192.168.146.0/24,192.168.146.253,192.168.146.10,192.168.146.253,+1 416 555 xxxx,+1 647 555 xxxx,America/Toronto,ca_site,Example Music (Canada) Inc.
 VIE,Vienna,Austria,AT,192.168.78.0/24,192.168.78.253,192.168.78.10,192.168.78.253,+43 800 078 0xx,+43 664 665 xxx,Europe/Vienna,eu_site,Example Music (Osterreich) GmbH
+VRK,VRack,Global,N/A,192.168.139.0/24,N/A,N/A,N/A,N/A,N/A,UTC,cloud_site,Example Music Limited
