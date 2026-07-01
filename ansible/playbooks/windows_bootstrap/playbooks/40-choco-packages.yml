@@ -4,24 +4,89 @@
 # Example Music Limited — Chocolatey package deployment
 # =============================================================================
 # Installs choco_packages_common (all hosts) + choco_packages_extra
-# (set per group in group_vars). Safe to re-run — choco install is
+# (selected by host_role below). Safe to re-run — choco install is
 # idempotent when packages are already present.
 #
+# DESIGN NOTE: This file is part of the windows_bootstrap chain, which by
+# design runs against a freshly PXE/WDS-built Windows host on its DHCP
+# address — the host has NO presence in any Ansible inventory file and
+# therefore NEVER picks up group_vars/windows*/. Every var this file needs
+# must be self-contained here (vars: block) or derived from facts already
+# established earlier in the chain (host_role, parsed in hostname_facts.yml
+# during 05-bootstrap.yml). Do not move these back to group_vars — that was
+# the 2026-06-30 regression this file fixes.
+#
+# Once the chain completes and the host is later added to a real inventory
+# file for ongoing management, group_vars/windows*/ become relevant for
+# OTHER playbooks run against it at that point — this file specifically
+# remains self-contained since it only ever runs once, during bootstrap.
+#
 # Usage:
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/40-choco-packages.yml
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/40-choco-packages.yml \
-#     --tags choco_packages
+#   ansible-playbook -i 192.168.x.x, playbooks/windows_bootstrap/playbooks/40-choco-packages.yml \
+#     -e "target_hosts=192.168.x.x"
+#   (normally reached via site.yml as part of the full bootstrap chain)
 #
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-06-30  Fixed: choco_packages_common / choco_packages_extra /
+#               exa_choco_source were previously expected to come from
+#               group_vars/windows*/, which a bare-IP bootstrap run never
+#               loads (host is not in inventory, not in any group). This
+#               caused "choco_packages_common is undefined" failures on
+#               every real bootstrap run. Moved all three to a play-level
+#               vars: block, self-contained in this file. Package selection
+#               by host type now keys off host_role (DCS/SRV/WKS/LAP/SUR),
+#               which is already a fact by this point in the chain via
+#               tasks/hostname_facts.yml. Also fixed hosts: to use
+#               target_hosts (what 00-preflight.yml and the live invocation
+#               actually pass) instead of target, which was never being set
+#               and was silently falling back to 'all'.
 # =============================================================================
 
 - name: Windows — Chocolatey package deployment
-  hosts: "{{ target | default('all') }}"
+  hosts: "{{ target_hosts | default(target) | default('all') }}"
   gather_facts: false
+
+  vars:
+    exa_choco_source: "https://community.chocolatey.org/api/v2/"
+
+    # Installed on every host regardless of role
+    choco_packages_common:
+      - 7zip
+      - notepadplusplus
+      - vcredist-all
+      - dotnetfx
+
+    # Selected below by host_role — DCS/SRV (server roles) vs WKS/LAP/SUR (desktop roles)
+    choco_packages_server:
+      - sysinternals
+      - putty
+      - winscp
+
+    choco_packages_desktop:
+      - googlechrome
+      - firefox
+      - vlc
+      - putty
+      - winscp
+
   tasks:
+
+    - name: Determine package set for this host's role
+      set_fact:
+        choco_packages_extra: >-
+          {{ choco_packages_server
+             if (host_role | default('') in ['DCS', 'SRV'])
+             else choco_packages_desktop }}
+
+    - name: Show package selection for this run
+      debug:
+        msg:
+          - "Host role     : {{ host_role | default('UNKNOWN — defaulting to desktop set') }}"
+          - "Common pkgs   : {{ choco_packages_common | join(', ') }}"
+          - "Extra pkgs    : {{ choco_packages_extra | join(', ') }}"
 
     - name: Install common Chocolatey packages
       chocolatey.chocolatey.win_chocolatey:
@@ -49,3 +114,4 @@
         name:  all
         state: latest
       tags: [never, choco_upgrade]
+
