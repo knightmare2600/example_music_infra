@@ -22,6 +22,18 @@
 #   2026-06-27  Merged: live unreachable counter + classify_unreachable + fmt_ip;
 #               restored colourised recap and DIM/WHITE host distinction
 #   2026-06-27  Fix \r/display collision; grouped recap (reachable, no_route, unreachable)
+#   2026-06-30  Fix: list/tuple msg values (e.g. debug: msg: [...]) were being
+#               rendered via Python repr — "['line1', 'line2', ...]" — instead
+#               of one line per element. v2_runner_on_ok now detects list/tuple
+#               msg and joins with real newlines, indented to align under the
+#               host column, matching how multi-line debug summaries (preflight
+#               summary, finish banner etc.) are meant to display.
+#               Also: DIM (\033[2;37m, faint white) was unreadable on several
+#               terminal colour schemes — replaced with CYAN throughout
+#               (host column in ok/skipped lines, recap host names, play
+#               separator dim text) for consistency with the [*] info colour
+#               and actual readability. DIM constant kept defined (unused) in
+#               case something else still references C.DIM externally.
 # =================================================================================================
 
 from __future__ import absolute_import, division, print_function
@@ -55,7 +67,7 @@ class C:
   CYAN   = "\033[0;36m"
   ORANGE = "\033[38;5;208m"
   WHITE  = "\033[1;37m"
-  DIM    = "\033[2;37m"
+  DIM    = "\033[2;37m"   # kept for compatibility — no longer used below, see changelog 2026-06-30
 
 def _ts():
   return datetime.datetime.now().strftime("%H:%M:%S")
@@ -78,6 +90,27 @@ def classify_unreachable(msg: str) -> str:
   if "connection refused" in m or "refused" in m:
     return "refused"
   return "other"
+
+def fmt_msg(msg, indent_width):
+  """
+  Render a debug/result msg for display.
+
+  - str:            returned as-is.
+  - list/tuple:      joined with newlines, each continuation line indented
+                      to align under the host column (indent_width spaces),
+                      so multi-line debug summaries (e.g. preflight banners)
+                      render as an actual multi-line block instead of a
+                      single-line Python repr like "['a', 'b', 'c']".
+  - anything else:   str()'d as a fallback (dicts etc. still readable,
+                      just not specially formatted).
+  """
+  if isinstance(msg, (list, tuple)):
+    pad = " " * indent_width
+    lines = [str(line) for line in msg]
+    if not lines:
+      return ""
+    return ("\n" + pad).join(lines)
+  return msg if isinstance(msg, str) else str(msg)
 
 class CallbackModule(CallbackBase):
   CALLBACK_VERSION = 2.0
@@ -122,7 +155,7 @@ class CallbackModule(CallbackBase):
     self._display.display(
       f"\n{C.CYAN}{'═' * 80}{C.RESET}\n"
       f"{C.WHITE}  Example Music — Ansible{C.RESET}\n"
-      f"{C.DIM}  {playbook._file_name}{C.RESET}\n"
+      f"{C.CYAN}  {playbook._file_name}{C.RESET}\n"
       f"{C.CYAN}{'═' * 80}{C.RESET}\n"
     )
 
@@ -134,25 +167,32 @@ class CallbackModule(CallbackBase):
 
   def v2_playbook_on_task_start(self, task, is_conditional):
     self._clear_counter()
-    self._display.display(info(f"{C.DIM}{_ts()}{C.RESET}  {task.get_name()}"))
+    self._display.display(info(f"{C.CYAN}{_ts()}{C.RESET}  {task.get_name()}"))
 
   def v2_runner_on_ok(self, result):
     self._clear_counter()
     host    = result._host.get_name()
     changed = result._result.get("changed", False)
-    msg     = result._result.get("msg", "")
+    raw_msg = result._result.get("msg", "")
     ip      = fmt_ip(host)
+    # Host column width: "[+] " (4) + ip column width, so wrapped lines of a
+    # multi-line msg align under the first line's text rather than under
+    # column zero.
+    indent_width = 4 + len(ip) + 2
+    msg = fmt_msg(raw_msg, indent_width)
 
     if changed:
       self._display.display(chg(f"  {C.WHITE}{ip}{C.RESET}  {msg}"))
     else:
-      self._display.display(ok(f"  {C.DIM}{ip}{C.RESET}  {msg if msg else 'no change'}"))
+      self._display.display(ok(f"  {C.CYAN}{ip}{C.RESET}  {msg if msg else 'no change'}"))
 
   def v2_runner_on_failed(self, result, ignore_errors=False):
     self._clear_counter()
-    host = result._host.get_name()
-    msg  = result._result.get("msg", result._result.get("stderr", "unknown error"))
-    ip   = fmt_ip(host)
+    host    = result._host.get_name()
+    raw_msg = result._result.get("msg", result._result.get("stderr", "unknown error"))
+    ip      = fmt_ip(host)
+    indent_width = 4 + len(ip) + 2
+    msg = fmt_msg(raw_msg, indent_width)
 
     self._display.display(err(f"  {C.WHITE}{ip}{C.RESET}  {msg}"))
     if ignore_errors:
@@ -162,7 +202,7 @@ class CallbackModule(CallbackBase):
     self._clear_counter()
     host = result._host.get_name()
     ip   = fmt_ip(host)
-    self._display.display(warn(f"  {C.DIM}{ip}{C.RESET}  skipped"))
+    self._display.display(warn(f"  {C.CYAN}{ip}{C.RESET}  skipped"))
 
   def v2_runner_on_unreachable(self, result):
     if getattr(self, "suppress_unreachable", False):
@@ -208,7 +248,7 @@ class CallbackModule(CallbackBase):
     if reachable:
       self._display.display(f"\n{C.GREEN}  ── Reachable ({len(reachable)}){C.RESET}")
       for host, s in reachable:
-        fai_c = C.RED if s['failures'] else C.DIM
+        fai_c = C.RED if s['failures'] else C.CYAN
         self._display.display(
           f"  {C.WHITE}{host:<30}{C.RESET}"
           f"  {C.GREEN}ok={s['ok']:<4}{C.RESET}"
@@ -222,7 +262,7 @@ class CallbackModule(CallbackBase):
       self._display.display(f"\n{C.ORANGE}  ── No Route ({len(no_route)}){C.RESET}")
       for host, s in no_route:
         self._display.display(
-          f"  {C.DIM}{host:<30}{C.RESET}  {C.ORANGE}no route to host{C.RESET}"
+          f"  {C.CYAN}{host:<30}{C.RESET}  {C.ORANGE}no route to host{C.RESET}"
         )
 
     # --- timeout / other unreachable ---
@@ -233,7 +273,8 @@ class CallbackModule(CallbackBase):
       for host, s in unreachable_rows:
         reason = "timeout" if (host in self._unreach_hosts.get("timeout", [])) else "other"
         self._display.display(
-          f"  {C.DIM}{host:<30}{C.RESET}  {C.RED}{reason}{C.RESET}"
+          f"  {C.CYAN}{host:<30}{C.RESET}  {C.RED}{reason}{C.RESET}"
         )
 
     self._display.display(f"\n{C.WHITE}{'═' * 80}{C.RESET}\n")
+
