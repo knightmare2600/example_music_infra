@@ -20,7 +20,7 @@
 # Usage:
 #   ansible-playbook playbooks/windows_bootstrap/playbooks/00-preflight.yml \
 #     -i 192.168.151.174, -e "target_hosts=192.168.151.174"
-#
+# =============================================================================
 # Changelog:
 #   2026-06-27  Initial file
 #   2026-06-27  Combined rename and static IP into single reboot
@@ -29,11 +29,18 @@
 #   2026-06-29  Fix heredoc to use single-quote @'...'@ to avoid YAML parse issues
 #   2026-06-29  Skip IP prompt if current IP already matches sites.csv expectation
 #   2026-06-29  Skip rename prompt if hostname already matches target
+#   2026-06-30  RESTORED after being incorrectly overwritten with unrelated
+#               "Stage 0b DNS/DC" content that was never part of this file.
+#               This file is now back to the original credentials/hostname/IP
+#               flow exactly as it was on 2026-06-29. No content changes
+#               beyond restoration — the DNS-resolver fix discussed separately
+#               belongs in 05-bootstrap.yml's own preflight checks (chocolatey/
+#               github/wallpaper reachability), not here. That fix has NOT
+#               been re-applied yet — see Open Items in the Windows guide.
 # =============================================================================
 
 - name: Pre-flight — credentials, hostname, IP, SSH
   hosts: "{{ target_hosts }}"
-  gather_facts: false
 
   vars_prompt:
     - name: ansible_user
