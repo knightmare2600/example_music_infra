@@ -101,15 +101,15 @@
     exa_choco_source: "https://community.chocolatey.org/api/v2/"
 
     choco_packages_common:
-      - winscp.install
-      - putty.install
+      - 7zip.install
+      - edit
+      - far
       - hyper
       - notepadplusplus.install
       - powershell-core
-      - 7zip.install
-      - far
-      - dua-cli
-      - rustdesk
+      - putty.install
+      - rustdesk.install
+      - winscp.install
 
     # ── Screen lock ───────────────────────────────────────────────────────────
     exa_lock_timeout_secs: 3600
@@ -601,11 +601,12 @@
       debug:
         msg: "Configuring OpenSSH and writing Ansible public key..."
 
-    - name: "[Stage 16] Ensure OpenSSH Server is installed"
-      ansible.windows.win_optional_feature:
-        name: OpenSSH.Server~~~~0.0.1.0
-        state: present
-      notify: restart sshd
+## Moved to unattendedheadless.xml
+#    - name: "[Stage 16] Ensure OpenSSH Server is installed"
+#      ansible.windows.win_optional_feature:
+#        name: OpenSSH.Server~~~~0.0.1.0
+#        state: present
+#      notify: restart sshd
 
     - name: "[Stage 16] Ensure sshd is running and Automatic"
       ansible.windows.win_service:
@@ -636,23 +637,24 @@
         path: 'C:\Program Files\PowerShell\7\pwsh.exe'
       register: stage16_ps7
 
-    - name: "[Stage 16] Set PS7 as default SSH shell"
-      ansible.windows.win_regedit:
-        path: 'HKLM:\SOFTWARE\OpenSSH'
-        name: DefaultShell
-        data: 'C:\Program Files\PowerShell\7\pwsh.exe'
-        type: string
-      when: stage16_ps7.stat.exists
-      notify: restart sshd
-
-    - name: "[Stage 16] Set DefaultShellCommandOption for SSHServerMode (PS7)"
-      ansible.windows.win_regedit:
-        path: 'HKLM:\SOFTWARE\OpenSSH'
-        name: DefaultShellCommandOption
-        data: '-SSHServerMode'
-        type: string
-      when: stage16_ps7.stat.exists
-      notify: restart sshd
+## Disabled 2026-07-01 10:00 Causes issues iwth Ansible SSH
+#    - name: "[Stage 16] Set PS7 as default SSH shell"
+#      ansible.windows.win_regedit:
+#        path: 'HKLM:\SOFTWARE\OpenSSH'
+#        name: DefaultShell
+#        data: 'C:\Program Files\PowerShell\7\pwsh.exe'
+#        type: string
+#      when: stage16_ps7.stat.exists
+#      notify: restart sshd
+#
+#    - name: "[Stage 16] Set DefaultShellCommandOption for SSHServerMode (PS7)"
+#      ansible.windows.win_regedit:
+#        path: 'HKLM:\SOFTWARE\OpenSSH'
+#        name: DefaultShellCommandOption
+#        data: '-SSHServerMode'
+#        type: string
+#      when: stage16_ps7.stat.exists
+#      notify: restart sshd
 
     - name: "[Stage 16] Set PS5 as default SSH shell (PS7 not yet installed)"
       ansible.windows.win_regedit:
