@@ -607,11 +607,18 @@
       debug:
         msg: "Configuring OpenSSH and writing Ansible public key..."
 
+    - name: "[Stage 16] Check if sshd service already exists"
+      ansible.windows.win_shell: |
+        if (Get-Service sshd -ErrorAction SilentlyContinue) { "exists" } else { "missing" }
+      register: sshd_check
+      changed_when: false
+
     - name: "[Stage 16] Ensure OpenSSH Server is installed"
       ansible.windows.win_optional_feature:
         name: OpenSSH.Server~~~~0.0.1.0
         state: present
       notify: restart sshd
+      when: sshd_check.stdout | trim != "exists"
 
     - name: "[Stage 16] Ensure sshd is running and Automatic"
       ansible.windows.win_service:
