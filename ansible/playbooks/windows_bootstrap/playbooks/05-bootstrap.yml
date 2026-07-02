@@ -80,13 +80,13 @@
 #               was already correct. Skip condition: prompted_hostname is blank
 #               (operator just pressed Enter) OR prompted_hostname matches
 #               ansible_hostname exactly.
-#   2026-06-30  Patch 3: Stage 17b bcdedit fix — bcdedit {bootmgr}/{current}
-#               tokens must be passed via cmd /c to bypass PowerShell's parser.
-#               In win_shell (which runs via powershell.exe), single-quoted
-#               '{bootmgr}' is a valid PS string literal that gets passed
-#               as-is, but bcdedit on Windows Server 2022 rejects the curly
-#               braces when quoted. Using cmd /c passes the arguments raw,
-#               which is what bcdedit expects.
+#   2026-06-30  Patch 3: Stage 17b bcdedit fix — {bootmgr}/{current} tokens
+#               must survive PowerShell's argument parser. PS tokenises
+#               {bootmgr} as a ScriptBlock and strips the braces before cmd
+#               ever sees them. Fix: wrap entire bcdedit invocation in double
+#               quotes — cmd /c "bcdedit /set {bootmgr} ..." — so PS treats
+#               it as one opaque string and cmd receives the braces intact.
+#   2026-07-02  Patch 4: Stage 17b — apply Patch 3 fix (double-quoted cmd /c)
 # =============================================================================
 
 - name: Windows — PostOOBE Bootstrap (replaces Join-DomainAndBootstrap.ps1)
@@ -743,16 +743,16 @@
 
     - name: "[Stage 17b] Configure Windows Boot Manager serial redirect"
       ansible.windows.win_shell: |
-        cmd /c bcdedit /set {bootmgr} displaybootmenu yes
-        cmd /c bcdedit /set {bootmgr} timeout 10
-        cmd /c bcdedit /set {bootmgr} bootems yes
+        cmd /c "bcdedit /set {bootmgr} displaybootmenu yes"
+        cmd /c "bcdedit /set {bootmgr} timeout 10"
+        cmd /c "bcdedit /set {bootmgr} bootems yes"
       changed_when: true
       when: is_server
 
     - name: "[Stage 17b] Configure EMS on current boot entry"
       ansible.windows.win_shell: |
-        cmd /c bcdedit /ems {current} on
-        cmd /c bcdedit /emssettings EMSPORT:1 EMSBAUDRATE:115200
+        cmd /c "bcdedit /ems {current} on"
+        cmd /c "bcdedit /emssettings EMSPORT:1 EMSBAUDRATE:115200"
       changed_when: true
       when: is_server
 
