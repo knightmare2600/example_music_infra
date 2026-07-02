@@ -1,0 +1,151 @@
+---
+# =============================================================================
+# windows_hygiene/site.yml
+# Example Music Limited — Post-build Windows cleanup and optimisation
+# =============================================================================
+# Intended for: any Windows host after bootstrap (servers, desktops, laptops).
+# Safe to re-run — all tasks are idempotent except DISM (harmless repeat).
+#
+# What this does:
+#   1. DISM component store cleanup + ResetBase (reclaims WinSxS space)
+#   2. Hibernation — OFF on servers/desktops/VMs, ON on laptops/tablets
+#   3. Clear page file at shutdown (registry)
+#
+# Chassis detection is done at runtime via WMI — no group_vars required.
+# Laptop chassis types: 9 (Laptop), 10 (Notebook), 14 (Sub-Notebook),
+#                       30 (Tablet), 31 (Convertible), 32 (Detachable)
+#
+# Usage:
+#   ansible-playbook playbooks/windows_hygiene/site.yml \
+#     -i <host>, -e target_hosts=<host>
+#
+#   Or against inventory group:
+#   ansible-playbook playbooks/windows_hygiene/site.yml \
+#     -i configs/inventory -e target_hosts=windows_servers
+#
+#   DISM only:
+#   ansible-playbook playbooks/windows_hygiene/site.yml \
+#     -i <host>, -e target_hosts=<host> --tags dism
+#
+#   Skip DISM (quick hygiene pass):
+#   ansible-playbook playbooks/windows_hygiene/site.yml \
+#     -i <host>, -e target_hosts=<host> --skip-tags dism
+#
+# Tags: dism, hibernation, pagefile
+# =============================================================================
+# Changelog:
+#   2026-07-02  Initial file
+# =============================================================================
+
+- name: Windows — Post-build hygiene
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: false
+
+  tasks:
+
+    # =========================================================================
+    # Detect chassis and OS type
+    # =========================================================================
+
+    - name: Detect chassis type
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_SystemEnclosure -ErrorAction SilentlyContinue).ChassisTypes[0]
+      register: chassis_raw
+      changed_when: false
+
+    - name: Set chassis fact
+      set_fact:
+        is_laptop: "{{ chassis_raw.stdout | trim in ['9','10','14','30','31','32'] }}"
+
+    - name: Detect OS product type
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_OperatingSystem).ProductType
+      register: product_type_raw
+      changed_when: false
+
+    - name: Set OS type facts
+      set_fact:
+        is_server: "{{ product_type_raw.stdout | trim in ['2','3'] }}"
+
+    - name: Show detected platform
+      debug:
+        msg: >-
+          Chassis: {{ chassis_raw.stdout | trim }}
+          ({{ 'Laptop/Tablet' if is_laptop | bool else 'Desktop/Server/VM' }})
+          | OS product type: {{ product_type_raw.stdout | trim }}
+          ({{ 'Server/DC' if is_server | bool else 'Workstation' }})
+
+    # =========================================================================
+    # DISM — component store cleanup and ResetBase
+    # =========================================================================
+    # WARNING: ResetBase removes the ability to uninstall Windows Updates.
+    # This is correct for managed estate hosts — updates are controlled via
+    # WSUS/policy, not rolled back manually.
+    # Runs async — DISM can take 10–30 minutes on a loaded system.
+    # =========================================================================
+
+    - name: "── DISM — component cleanup + ResetBase ──"
+      debug:
+        msg: "Running DISM StartComponentCleanup /ResetBase — this can take 10–30 minutes. Do not interrupt."
+      tags: dism
+
+    - name: Run DISM component cleanup and ResetBase
+      ansible.windows.win_shell: |
+        DISM.exe /online /Cleanup-Image /StartComponentCleanup /ResetBase
+      async:        1800
+      poll:         30
+      changed_when: true
+      tags: dism
+
+    # =========================================================================
+    # Hibernation
+    # =========================================================================
+
+    - name: "── Hibernation policy ──"
+      debug:
+        msg: "{{ 'Laptop/Tablet detected — enabling hibernation.' if is_laptop | bool else 'Desktop/Server/VM detected — disabling hibernation.' }}"
+      tags: hibernation
+
+    - name: Disable hibernation (desktop, server, VM)
+      ansible.windows.win_shell: powercfg /hibernate off
+      when:         not (is_laptop | bool)
+      changed_when: true
+      tags: hibernation
+
+    - name: Enable hibernation (laptop, tablet)
+      ansible.windows.win_shell: powercfg /hibernate on
+      when:         is_laptop | bool
+      changed_when: true
+      tags: hibernation
+
+    # =========================================================================
+    # Page file — clear at shutdown
+    # =========================================================================
+
+    - name: "── Page file ──"
+      debug:
+        msg: "Configuring page file to clear at shutdown..."
+      tags: pagefile
+
+    - name: Clear page file at shutdown
+      ansible.windows.win_regedit:
+        path:  'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'
+        name:  ClearPageFileAtShutdown
+        data:  1
+        type:  dword
+      tags: pagefile
+
+    # =========================================================================
+    # Summary
+    # =========================================================================
+
+    - name: Hygiene complete — summary
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  Hygiene complete — {{ inventory_hostname }}"
+          - "  Chassis     : {{ chassis_raw.stdout | trim }} ({{ 'Laptop/Tablet' if is_laptop | bool else 'Desktop/Server/VM' }})"
+          - "  Hibernation : {{ 'ENABLED' if is_laptop | bool else 'DISABLED' }}"
+          - "  Page file   : clear at shutdown (set)"
+          - "  DISM        : StartComponentCleanup /ResetBase complete"
+          - "════════════════════════════════════════════════════════════════"
