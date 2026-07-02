@@ -8,21 +8,22 @@
 #
 # Run from the ansible/ root for all commands.
 #
-# Usage — full run including bootstrap:
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-#     -e target=<host> --ask-vault-pass
+# Usage — bootstrap a fresh host (default, no --tags needed):
+#   ansible-playbook playbooks/windows_bootstrap/site.yml \
+#     -i <ip>, -e target_hosts=<ip>
 #
-# Usage — skip bootstrap (host already onboarded):
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-#     -e target=<host> --skip-tags bootstrap --ask-vault-pass
+# Usage — run a standalone management play (opt-in, tagged [never, <name>]):
+#   ansible-playbook playbooks/windows_bootstrap/site.yml \
+#     -i configs/inventory -e target_hosts=<host> --tags rename
+#   ansible-playbook playbooks/windows_bootstrap/site.yml \
+#     -i configs/inventory -e target_hosts=<host> --tags registry
+#   ansible-playbook playbooks/windows_bootstrap/site.yml \
+#     -i configs/inventory -e target_hosts=<host> --tags openssh
+#   (etc. — see playbook order below for all tag names)
 #
-# Usage — bootstrap only:
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-#     -e target=<host> --tags bootstrap --ask-vault-pass
-#
-# Usage — single playbook via tag:
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-#     -e target=<host> --tags registry --ask-vault-pass
+# Standalone plays can also be run directly without site.yml:
+#   ansible-playbook playbooks/windows_bootstrap/playbooks/20-registry.yml \
+#     -i configs/inventory
 #
 # Playbook order:
 #   00-bootstrap    Full PostOOBE bootstrap (replaces Join-DomainAndBootstrap.ps1)
@@ -40,37 +41,45 @@
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-20  Bootstrap added as entry point replacing Join-DomainAndBootstrap.ps1
+#   2026-07-02  Standalone management plays tagged [never, <name>] so a bare
+#               site.yml run only executes the bootstrap sequence. Each
+#               standalone play must be invoked with --tags <name> explicitly.
 # =============================================================================
 
+# Bootstrap sequence — runs by default (preflight chain-imports 05-bootstrap.yml)
 - import_playbook: playbooks/00-preflight.yml
   tags: bootstrap
 
+# Standalone management plays — opt-in only via --tags <name>
+# These MUST NOT run automatically after bootstrap: the machine may be
+# mid-reboot, and each has its own vars_prompt that fires mid-run.
+
 - import_playbook: playbooks/10-rename.yml
-  tags: rename
+  tags: [never, rename]
 
 - import_playbook: playbooks/20-registry.yml
-  tags: registry
+  tags: [never, registry]
 
 - import_playbook: playbooks/25-deadvertise.yml
-  tags: deadvertise
+  tags: [never, deadvertise]
 
 - import_playbook: playbooks/30-chocolatey.yml
-  tags: chocolatey
+  tags: [never, chocolatey]
 
 - import_playbook: playbooks/40-choco-packages.yml
-  tags: choco_packages
+  tags: [never, choco_packages]
 
 - import_playbook: playbooks/50-binaries.yml
-  tags: binaries
+  tags: [never, binaries]
 
 - import_playbook: playbooks/60-wallpaper.yml
-  tags: wallpaper
+  tags: [never, wallpaper]
 
 - import_playbook: playbooks/70-hibernation.yml
-  tags: hibernation
+  tags: [never, hibernation]
 
 - import_playbook: playbooks/75-openssh.yml
-  tags: openssh
+  tags: [never, openssh]
 
 - import_playbook: playbooks/80-domainjoin.yml
-  tags: domainjoin
+  tags: [never, domainjoin]
