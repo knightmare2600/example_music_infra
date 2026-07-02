@@ -7,6 +7,9 @@
 # Runs once on a freshly installed host (post-UNATTEND.CMD / post-PXE boot).
 # All stages are idempotent — safe to re-run if interrupted.
 #
+# Run this as ansible user beofre trying this playbook
+# ansible-galaxy collection install ansible.windows community.windows chocolatey.chocolatey microsoft.ad
+#
 # Deliberately inventory-agnostic — runs against a bare IP before the host
 # is in any group. All vars that would normally come from group_vars are
 # inlined here for exactly this reason.
@@ -66,6 +69,24 @@
 #               is_first_dc is true (set by tasks/preflight.yml) — avoids
 #               chicken-and-egg on the very first DC build; domain creation
 #               is handled by windows_dc/site.yml instead
+#   2026-06-30  Patch 1: Move hostname prompt to vars_prompt so ALL prompts
+#               appear upfront before any tasks run, not mid-play. Previously
+#               Stage 3 used a pause mid-run which violated the "prompts first"
+#               design principle and meant the operator had to watch the run
+#               waiting for a prompt that could arrive at any point.
+#   2026-06-30  Patch 2: Stage 3 now skips the rename entirely if the current
+#               hostname already matches what the operator entered at vars_prompt.
+#               Previously it prompted regardless and renamed even when the name
+#               was already correct. Skip condition: prompted_hostname is blank
+#               (operator just pressed Enter) OR prompted_hostname matches
+#               ansible_hostname exactly.
+#   2026-06-30  Patch 3: Stage 17b bcdedit fix — bcdedit {bootmgr}/{current}
+#               tokens must be passed via cmd /c to bypass PowerShell's parser.
+#               In win_shell (which runs via powershell.exe), single-quoted
+#               '{bootmgr}' is a valid PS string literal that gets passed
+#               as-is, but bcdedit on Windows Server 2022 rejects the curly
+#               braces when quoted. Using cmd /c passes the arguments raw,
+#               which is what bcdedit expects.
 # =============================================================================
 
 - name: Windows — PostOOBE Bootstrap (replaces Join-DomainAndBootstrap.ps1)
@@ -74,10 +95,10 @@
   handlers:
     - import_tasks: ../handlers/main.yml
 
-  vars_prompt:
-    - name: vault_domain_join_password
-      prompt: "Domain join password (JUKEBOX\\Administrator)"
-      private: true
+#  vars_prompt:
+#    - name: vault_domain_join_password
+#      prompt: "Domain join password (JUKEBOX\\Administrator)"
+#      private: true
 
   vars:
     # ── Connection ────────────────────────────────────────────────────────────
@@ -182,53 +203,50 @@
     # =========================================================================
     # Stage 3 — Hostname confirm / rename
     # =========================================================================
+    # Patch 1+2: prompted_hostname was collected at vars_prompt upfront.
+    # Stage 3 resolves it now that ansible_hostname is available from facts.
+    # Skip conditions (no prompt, no rename, no reboot):
+    #   - prompted_hostname is blank  → operator pressed Enter, keep current name
+    #   - prompted_hostname matches ansible_hostname exactly → already correct
+    # Only rename if prompted_hostname was supplied AND differs from current name.
 
     - name: "── Stage 3 — Hostname ──"
       debug:
         msg: "Current hostname: {{ ansible_hostname }} | Parsed: role={{ host_role }} site={{ host_site }}"
 
-    - name: "[Stage 3] Prompt operator to confirm or override hostname"
-      pause:
-        prompt: |
-
-          ── Hostname Confirmation ─────────────────────────────────────────────
-          Current hostname : {{ ansible_hostname }}
-          Detected site    : {{ detected_site }} (from IP {{ host_ip }})
-          Hostname site    : {{ host_site }} (from hostname)
-          Role             : {{ host_role }}
-          OS type          : {{ 'Server/DC' if is_server else 'Workstation' }}
-          Chassis          : {{ 'Laptop/Tablet' if is_laptop else 'Desktop/Tower' }}
-
-          Press Enter to keep '{{ ansible_hostname }}'
-          Or type a new hostname (EXA[ROLE][SITE][NNN]) and press Enter
-      register: stage3_hostname_input
-
-    - name: "[Stage 3] Set target hostname"
+    - name: "[Stage 3] Resolve target hostname"
       set_fact:
         target_hostname: >-
-          {{ stage3_hostname_input.user_input | trim
-             if stage3_hostname_input.user_input | trim != ''
-             else ansible_hostname }}
+          {{ (target_hostname | trim | upper)
+             if (target_hostname | trim | length > 0)
+             else (ansible_hostname | upper) }}
+
+    - name: "[Stage 3] Show hostname resolution"
+      debug:
+        msg:
+          - "Prompted   : '{{ target_hostname | trim }}'"
+          - "Current    : {{ ansible_hostname | upper }}"
+          - "Resolved   : {{ target_hostname }}"
+          - "Action     : {{ 'RENAME → ' + target_hostname if target_hostname != ansible_hostname | upper else 'no change — hostname already correct' }}"
 
     - name: "[Stage 3] Validate supplied hostname format"
       assert:
         that:
-          - target_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$') is not none
+          - target_hostname | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$') is not none
         fail_msg: >
           '{{ target_hostname }}' is not a valid EXA hostname.
           Format: EXA[ROLE][SITE][NNN] — e.g. EXAWKSGLA001, EXASRVCLD002.
-      when: target_hostname != ansible_hostname
+      when: target_hostname != ansible_hostname | upper
 
     - name: "[Stage 3] Re-parse facts from new hostname"
       set_fact:
-        host_role: "{{ target_hostname | upper | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\\1') | default(['UNKNOWN']) | first }}"
-        host_site: "{{ target_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | default(['UNKNOWN']) | first }}"
-      when: target_hostname != ansible_hostname
+        host_role: "{{ target_hostname | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\\1') | default(['UNKNOWN']) | first }}"
+        host_site: "{{ target_hostname | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | default(['UNKNOWN']) | first }}"
+      when: target_hostname != ansible_hostname | upper
 
     # =========================================================================
     # Stage 4 — OU selection
     # Skipped if already domain-joined OR this is the first-DC build
-    # (no domain exists yet to query OUs from)
     # =========================================================================
 
     - name: "── Stage 4 — OU selection ──"
@@ -266,8 +284,8 @@
 
     - name: "[Stage 5] Rename computer"
       ansible.windows.win_shell: |
-        Rename-Computer -NewName "{{ target_hostname | upper }}" -Force
-      when: ansible_hostname | upper != target_hostname | upper
+        Rename-Computer -NewName "{{ target_hostname }}" -Force
+      when: ansible_hostname | upper != target_hostname
       register: stage5_rename
 
     - name: "[Stage 5] Reboot after rename (before domain join)"
@@ -459,7 +477,7 @@
         data: 0
         type: dword
       loop:
-        - { name: AppsUseLightTheme    }
+        - { name: AppsUseLightTheme   }
         - { name: SystemUsesLightTheme }
       loop_control:
         label: "{{ item.name }}"
@@ -467,10 +485,8 @@
     - name: "[Stage 10] Set dark mode in Default user hive"
       ansible.windows.win_shell: |
         reg load HKU\DefaultUser C:\Users\Default\NTUSER.DAT
-        reg add "HKU\DefaultUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" `
-          /v AppsUseLightTheme    /t REG_DWORD /d 0 /f
-        reg add "HKU\DefaultUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" `
-          /v SystemUsesLightTheme /t REG_DWORD /d 0 /f
+        reg add "HKU\DefaultUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v AppsUseLightTheme    /t REG_DWORD /d 0 /f
+        reg add "HKU\DefaultUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v SystemUsesLightTheme /t REG_DWORD /d 0 /f
         reg unload HKU\DefaultUser
       changed_when: true
 
@@ -554,16 +570,6 @@
       loop_control:
         label: "{{ item }}"
 
-    - name: "[Stage 14] Install host-type-specific packages"
-      chocolatey.chocolatey.win_chocolatey:
-        name:   "{{ item }}"
-        state:  present
-        source: "{{ exa_choco_source }}"
-      loop: "{{ choco_packages_extra | default([]) }}"
-      loop_control:
-        label: "{{ item }}"
-      when: choco_packages_extra is defined and choco_packages_extra | length > 0
-
     # =========================================================================
     # Stage 15 — RSAT
     # =========================================================================
@@ -601,12 +607,11 @@
       debug:
         msg: "Configuring OpenSSH and writing Ansible public key..."
 
-## Moved to unattendedheadless.xml
-#    - name: "[Stage 16] Ensure OpenSSH Server is installed"
-#      ansible.windows.win_optional_feature:
-#        name: OpenSSH.Server~~~~0.0.1.0
-#        state: present
-#      notify: restart sshd
+    - name: "[Stage 16] Ensure OpenSSH Server is installed"
+      ansible.windows.win_optional_feature:
+        name: OpenSSH.Server~~~~0.0.1.0
+        state: present
+      notify: restart sshd
 
     - name: "[Stage 16] Ensure sshd is running and Automatic"
       ansible.windows.win_service:
@@ -637,24 +642,19 @@
         path: 'C:\Program Files\PowerShell\7\pwsh.exe'
       register: stage16_ps7
 
-## Disabled 2026-07-01 10:00 Causes issues iwth Ansible SSH
-#    - name: "[Stage 16] Set PS7 as default SSH shell"
-#      ansible.windows.win_regedit:
-#        path: 'HKLM:\SOFTWARE\OpenSSH'
-#        name: DefaultShell
-#        data: 'C:\Program Files\PowerShell\7\pwsh.exe'
-#        type: string
-#      when: stage16_ps7.stat.exists
-#      notify: restart sshd
-#
-#    - name: "[Stage 16] Set DefaultShellCommandOption for SSHServerMode (PS7)"
-#      ansible.windows.win_regedit:
-#        path: 'HKLM:\SOFTWARE\OpenSSH'
-#        name: DefaultShellCommandOption
-#        data: '-SSHServerMode'
-#        type: string
-#      when: stage16_ps7.stat.exists
-#      notify: restart sshd
+    # PS7 as default SSH shell is commented out — PS7 not yet installed at this
+    # point in the chain (installed in Stage 19). Leaving the block here so it
+    # can be uncommented once Stage 19 is confirmed to run first, or moved to
+    # a post-Stage-19 play.
+    #
+    #   - name: "[Stage 16] Set PS7 as default SSH shell"
+    #     ansible.windows.win_regedit:
+    #       path: 'HKLM:\SOFTWARE\OpenSSH'
+    #       name: DefaultShell
+    #       data: 'C:\Program Files\PowerShell\7\pwsh.exe'
+    #       type: string
+    #     when: stage16_ps7.stat.exists
+    #     notify: restart sshd
 
     - name: "[Stage 16] Set PS5 as default SSH shell (PS7 not yet installed)"
       ansible.windows.win_regedit:
@@ -724,18 +724,28 @@
     # =========================================================================
     # Stage 17b — SAC/EMS serial console (Server OS only)
     # =========================================================================
+    # Patch 3: bcdedit {bootmgr} and {current} tokens must be passed via
+    # cmd /c to bypass PowerShell's parser. win_shell runs via powershell.exe;
+    # single-quoted '{bootmgr}' is a valid PS literal string, but bcdedit on
+    # Windows Server 2022 rejects the token when wrapped in any quotes at all.
+    # cmd /c passes the arguments raw without any PS string parsing.
 
     - name: "── Stage 17b — SAC/EMS serial console ──"
       debug:
         msg: "{{ 'Configuring SAC/EMS...' if is_server else 'Workstation OS — skipping SAC/EMS.' }}"
 
-    - name: "[Stage 17b] Configure Windows EMS / SAC via bcdedit"
+    - name: "[Stage 17b] Configure Windows Boot Manager serial redirect"
       ansible.windows.win_shell: |
-        bcdedit /set '{bootmgr}' displaybootmenu yes
-        bcdedit /set '{bootmgr}' timeout 10
-        bcdedit /set '{bootmgr}' bootems yes
-        bcdedit /ems '{current}' on
-        bcdedit /emssettings EMSPORT:1 EMSBAUDRATE:115200
+        cmd /c bcdedit /set {bootmgr} displaybootmenu yes
+        cmd /c bcdedit /set {bootmgr} timeout 10
+        cmd /c bcdedit /set {bootmgr} bootems yes
+      changed_when: true
+      when: is_server
+
+    - name: "[Stage 17b] Configure EMS on current boot entry"
+      ansible.windows.win_shell: |
+        cmd /c bcdedit /ems {current} on
+        cmd /c bcdedit /emssettings EMSPORT:1 EMSBAUDRATE:115200
       changed_when: true
       when: is_server
 
@@ -747,18 +757,18 @@
       when: is_server
       failed_when: false
 
-    - name: "[Stage 17b] Prompt operator — confirm SAC is visible via SOL"
+    - name: "[Stage 17b] Prompt operator — confirm SAC visible via SOL"
       pause:
         prompt: |
 
           ── SAC/EMS Configured ────────────────────────────────────────────────
-          EMS has been enabled on COM1 at 115200 8N1.
+          EMS enabled on COM1 at 115200 8N1.
           Requires a serial0 socket in the Proxmox VM config.
 
-          To verify, connect via SOL:
+          Verify via SOL:
             ipmitool -I lanplus -H <pve-ip> -U admin -P <pass> sol activate
 
-          You should see the SAC prompt after boot.
+          You should see the SAC prompt after next reboot.
 
           Press Enter to continue.
       when: is_server
@@ -825,5 +835,4 @@
         reboot_timeout:    600
         post_reboot_delay: 30
         msg:               "Ansible bootstrap complete — final reboot"
-
 
