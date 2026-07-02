@@ -45,6 +45,13 @@
 #               a set_fact that consumes is_first_dc_input from vars_prompt.
 #               Passing -e is_first_dc=true on the command line still works
 #               and bypasses the prompt entirely for scripted builds.
+#   2026-07-02  Remove invalid set_fact from vars_prompt block (Ansible error).
+#               Fix ip_needs_change: was checking subnet membership only, so
+#               a node already on a same-subnet DHCP lease was never given a
+#               static IP. Now reads devices.csv to derive expected_ip for the
+#               target hostname and compares current_ip exactly. Falls back to
+#               subnet check if hostname is absent from devices.csv.
+#               IP prompt now shows expected_ip and defaults to it on Enter.
 # =============================================================================
 
 - name: Pre-flight — credentials, hostname, IP, SSH
@@ -74,10 +81,6 @@
       private: false
       default: "no"
 
-    - name: Persist first DC input
-      set_fact:
-        is_first_dc_input: "{{ is_first_dc_input }}"
-
     - name: dj_temp_dns_ip
       prompt: "Temporary DNS server if jukebox.internal is unreachable"
       private: false
@@ -92,6 +95,7 @@
     ansible_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa"
     ansible_ssh_public_key_file:  "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa.pub"
     sites_csv:                    "/etc/example-music/sites.csv"
+    devices_csv:                  "/etc/example-music/devices.csv"
     dns_server:                   "192.168.139.8"
 
   tasks:
@@ -163,17 +167,36 @@
         prefix_len:       "{{ site_record.Subnet.split('/')[1] }}"
         site_expected_ip: "{{ site_record.DC }}"
 
+    - name: Read devices.csv from control node
+      set_fact:
+        devices_data: >-
+          {{ (lookup('file', devices_csv).split('\n')
+              | reject('match', '^#')
+              | reject('match', '^$')
+              | join('\n')) | community.general.from_csv }}
+      delegate_to: localhost
+
+    - name: Find device record for {{ target_hostname }}
+      set_fact:
+        device_record: "{{ devices_data | selectattr('Hostname', 'equalto', target_hostname | upper) | list | first | default({}) }}"
+
+    - name: Derive expected IP from devices.csv
+      set_fact:
+        expected_ip: "{{ subnet_base }}.{{ device_record.HostOctet }}"
+      when: device_record | length > 0 and device_record.HostOctet | default('') | length > 0
+
     - name: Show derived site info
       debug:
         msg:
           - "════════════════════════════════════════════════════════"
-          - "  Hostname : {{ target_hostname | upper }}"
-          - "  Site     : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
-          - "  Subnet   : {{ site_subnet }}"
-          - "  Gateway  : {{ site_gateway }}"
-          - "  DC       : {{ site_dc }}"
-          - "  DNS      : {{ dns_server }}"
-          - "  First DC : {{ is_first_dc }}"
+          - "  Hostname    : {{ target_hostname | upper }}"
+          - "  Site        : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
+          - "  Subnet      : {{ site_subnet }}"
+          - "  Gateway     : {{ site_gateway }}"
+          - "  DC          : {{ site_dc }}"
+          - "  DNS         : {{ dns_server }}"
+          - "  Expected IP : {{ expected_ip | default('(not in devices.csv)') }}"
+          - "  First DC    : {{ is_first_dc }}"
           - "════════════════════════════════════════════════════════"
 
     # =========================================================================
@@ -249,7 +272,7 @@
     - name: Set change-needed facts
       set_fact:
         hostname_needs_change: "{{ current_hostname != target_hostname | upper }}"
-        ip_needs_change:       "{{ not (current_ip.startswith(subnet_base + '.')) }}"
+        ip_needs_change:       "{{ current_ip != expected_ip if expected_ip is defined else not (current_ip.startswith(subnet_base + '.')) }}"
 
     - name: Show current state
       debug:
@@ -285,20 +308,20 @@
         prompt: |
 
           ── IP Configuration for {{ target_nic }} ────────────────────────────
-          Site    : {{ host_site_code }} — {{ site_city }}
-          Subnet  : {{ site_subnet }}
-          Gateway : {{ site_gateway }}
-          DNS     : {{ dns_server }}
+          Site     : {{ host_site_code }} — {{ site_city }}
+          Subnet   : {{ site_subnet }}
+          Gateway  : {{ site_gateway }}
+          DNS      : {{ dns_server }}
+          Expected : {{ expected_ip | default('(not in devices.csv — enter manually)') }}
 
-          Enter a static IP (e.g. {{ subnet_base }}.10)
-          Servers/DCs typically use .10 (primary) or .11 (secondary).
+          Press Enter to accept {{ expected_ip | default('expected IP above') }}, or type a different IP.
       register: ip_choice
       when: ip_needs_change | bool
 
     - name: Set static IP facts
       set_fact:
         use_dhcp:  false
-        static_ip: "{{ ip_choice.user_input | trim }}"
+        static_ip: "{{ ip_choice.user_input | trim | default(expected_ip | default(''), true) }}"
       when: ip_needs_change | bool
 
     - name: Set no-change IP facts (IP already correct)
