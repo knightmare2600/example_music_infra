@@ -9,15 +9,33 @@
 #
 # Override: pass -e bootstrap_ou_path="OU=Servers,OU=MCR,DC=jukebox,DC=internal"
 # to skip the interactive selection entirely.
+#
+# First-DC builds (is_first_dc == true) skip this task file's LDAP query
+# entirely — there is no DC to query yet, and the DC's computer object
+# lands in the default "Domain Controllers" container pre-promotion, so no
+# custom OU is needed. Presumes is_first_dc is already set as a fact by
+# the pre-flight play before this file runs.
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-02  Skip OU selection entirely for first-DC builds (catch-22 fix:
+#               can't LDAP-query a DC that doesn't exist yet)
 # =============================================================================
+
+- name: "[Stage 4] Skip OU selection — first DC build (default container)"
+  debug:
+    msg: >-
+      First-DC build detected — skipping OU selection. This host's computer
+      object will land in the default "Domain Controllers" container; no
+      custom OU placement is needed pre-promotion.
+  when: is_first_dc | default(false)
 
 - name: "[Stage 4] Skip OU selection — bootstrap_ou_path already set"
   debug:
     msg: "Using supplied OU: {{ bootstrap_ou_path }}"
-  when: bootstrap_ou_path is defined and bootstrap_ou_path != ""
+  when:
+    - not (is_first_dc | default(false))
+    - bootstrap_ou_path is defined and bootstrap_ou_path != ""
 
 - name: "[Stage 4] Query OUs from DC at .10"
   ansible.windows.win_shell: |
@@ -36,29 +54,32 @@
     }
   register: stage4_ou_list
   changed_when: false
-  when: bootstrap_ou_path is not defined or bootstrap_ou_path == ""
+  when:
+    - not (is_first_dc | default(false))
+    - bootstrap_ou_path is not defined or bootstrap_ou_path == ""
 
 - name: "[Stage 4] Display OU list"
   debug:
     msg: "{{ stage4_ou_list.stdout_lines }}"
-  when: bootstrap_ou_path is not defined or bootstrap_ou_path == ""
+  when:
+    - not (is_first_dc | default(false))
+    - bootstrap_ou_path is not defined or bootstrap_ou_path == ""
 
 - name: "[Stage 4] Prompt operator to select OU"
   pause:
     prompt: |
-
       ── OU Selection ──────────────────────────────────────────────────────────
       OUs listed above. Enter the NUMBER of the target OU for this host.
-
       Suggested for role {{ host_role }}:
         Workstations  → find OU=Workstations,OU={{ host_site }},...
         Laptops       → find OU=Laptops,OU={{ host_site }},...
         Servers       → find OU=Servers,OU={{ host_site }},...
         DomainCtrlrs  → find OU=DomainControllers,OU={{ host_site }},...
-
       Enter OU number
   register: stage4_ou_choice
-  when: bootstrap_ou_path is not defined or bootstrap_ou_path == ""
+  when:
+    - not (is_first_dc | default(false))
+    - bootstrap_ou_path is not defined or bootstrap_ou_path == ""
 
 - name: "[Stage 4] Parse selected OU from numbered list"
   set_fact:
@@ -69,15 +90,17 @@
         | list | first
         | regex_replace('^\d+\t', '')
       }}
-  when: bootstrap_ou_path is not defined or bootstrap_ou_path == ""
+  when:
+    - not (is_first_dc | default(false))
+    - bootstrap_ou_path is not defined or bootstrap_ou_path == ""
 
 - name: "[Stage 4] Confirm selected OU"
   pause:
     prompt: |
-
       Selected OU: {{ bootstrap_ou_path }}
-
       Press Enter to confirm, or Ctrl+C then A to abort and re-run with
       -e bootstrap_ou_path="<OU path>" to override.
+  when:
+    - not (is_first_dc | default(false))
+    - bootstrap_ou_path is defined
 
-  when: bootstrap_ou_path is defined

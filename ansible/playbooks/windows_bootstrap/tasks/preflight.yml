@@ -16,6 +16,18 @@
 #               built (skips the DC-reachability hard fail and defers
 #               domain creation to the windows_dc module, avoiding a
 #               chicken-and-egg with Stage 5 domain join in this playbook)
+#   2026-07-02  Fix is_first_dc being silently overwritten to false. Two
+#               causes stacked: (1) this file's set_fact had no guard, so
+#               it always ran after 00-preflight.yml had already set the
+#               correct value from the operator's vars_prompt answer;
+#               (2) the DC-reachability ping targets .10, but for a
+#               first-DC build the host itself IS .10, so it was pinging
+#               itself and always getting "ok" — never "fail" — regardless
+#               of what the operator answered. Added self-IP detection
+#               ("self" result alongside "ok"/"fail") and an
+#               `is_first_dc is not defined` guard on the set_fact so an
+#               already-resolved value from 00-preflight.yml is never
+#               clobbered here.
 # =============================================================================
 
 - name: "[Preflight] Gather facts"
@@ -63,7 +75,8 @@
 - name: "[Preflight] Check primary DC reachable"
   ansible.windows.win_shell: |
     $dc = "192.168.{{ host_subnet_octet }}.10"
-    if (Test-Connection -ComputerName $dc -Count 1 -Quiet) { "ok" } else { "fail" }
+    $own_ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notmatch '^(127\.|169\.)' } | Select-Object -First 1).IPAddress
+    if ($dc -eq $own_ip) { "self" } elseif (Test-Connection -ComputerName $dc -Count 1 -Quiet) { "ok" } else { "fail" }
   register: preflight_dc
   changed_when: false
 
@@ -95,9 +108,10 @@
 - name: "[Preflight] Set is_first_dc fact"
   set_fact:
     is_first_dc: >-
-      {{ (preflight_dc.stdout | trim == 'fail')
+      {{ (preflight_dc.stdout | trim in ['fail', 'self'])
         and (is_first_dc_input | trim | lower in ['y', 'yes'])
       }}
+  when: is_first_dc is not defined
 
 - name: "[Preflight] FAIL — Primary DC unreachable and NOT confirmed as first DC"
   fail:
@@ -107,7 +121,7 @@
       Check networking before proceeding, or re-run and confirm 'yes' if
       this genuinely is the first DC for this site/forest.
   when:
-    - preflight_dc.stdout | trim == "fail"
+    - preflight_dc.stdout | trim in ['fail', 'self']
     - not is_first_dc | bool
 
 - name: "[Preflight] NOTE — proceeding as first-DC build, domain join will be skipped"

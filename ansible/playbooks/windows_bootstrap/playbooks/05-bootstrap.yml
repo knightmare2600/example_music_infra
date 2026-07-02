@@ -87,6 +87,7 @@
 #               quotes — cmd /c "bcdedit /set {bootmgr} ..." — so PS treats
 #               it as one opaque string and cmd receives the braces intact.
 #   2026-07-02  Patch 4: Stage 17b — apply Patch 3 fix (double-quoted cmd /c)
+#               Add setres task at end of file — sets resolution to 1280x960
 # =============================================================================
 
 - name: Windows — PostOOBE Bootstrap (replaces Join-DomainAndBootstrap.ps1)
@@ -851,6 +852,10 @@
           - " NOTE: Run playbook 70-hibernation.yml on LAP/SUR devices"
           - " to re-enable hibernation (disabled unconditionally here)."
           - "══════════════════════════════════════════════════════════"
+
+    - name: "[Preflight] Set screen resolution to 1280x960"
+      ansible.windows.win_shell: setres.exe -w 1280 -h 960
+      changed_when: true
 
     - name: "[Stage 23] Final reboot"
       ansible.windows.win_reboot:
