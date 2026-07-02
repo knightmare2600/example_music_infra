@@ -67,36 +67,37 @@
   register: preflight_dc
   changed_when: false
 
-- name: "[Preflight] Prompt — confirm first-DC build (primary DC unreachable)"
-  pause:
-    prompt: |
-
-      ── Primary DC Unreachable ───────────────────────────────────────────
-      192.168.{{ host_subnet_octet }}.10 did not respond.
-
-      This is expected if {{ inventory_hostname }} ({{ target_hostname | default(ansible_hostname) | default('this host') }})
-      is the FIRST domain controller being built — there is nothing to
-      reach yet.
-
-      If this IS the first DC:
-        Domain creation (Install-ADDSForest) is handled separately by the
-        windows_dc module, NOT by this bootstrap playbook. This playbook
-        will skip Stage 5 domain join and leave the host as a standalone
-        server ready for windows_dc/site.yml to take over.
-
-      If this is NOT the first DC:
-        Check networking/firewall/DNS before proceeding — domain join
-        will fail without a reachable DC.
-
-      Is this the FIRST domain controller being built? (yes/no)
-  register: first_dc_prompt
-  when: preflight_dc.stdout | trim == "fail"
+#- name: "[Preflight] Prompt — confirm first-DC build (primary DC unreachable)"
+#  pause:
+#    prompt: |
+#
+#      ── Primary DC Unreachable ───────────────────────────────────────────
+#      192.168.{{ host_subnet_octet }}.10 did not respond.
+#
+#      This is expected if {{ inventory_hostname }} ({{ target_hostname | default(ansible_hostname) | default('this host') }})
+#      is the FIRST domain controller being built — there is nothing to
+#      reach yet.
+#
+#      If this IS the first DC:
+#        Domain creation (Install-ADDSForest) is handled separately by the
+#        windows_dc module, NOT by this bootstrap playbook. This playbook
+#        will skip Stage 5 domain join and leave the host as a standalone
+#        server ready for windows_dc/site.yml to take over.
+#
+#      If this is NOT the first DC:
+#        Check networking/firewall/DNS before proceeding — domain join
+#        will fail without a reachable DC.
+#
+#      Is this the FIRST domain controller being built? (yes/no)
+#  register: first_dc_prompt
+#  when: preflight_dc.stdout | trim == "fail"
 
 - name: "[Preflight] Set is_first_dc fact"
   set_fact:
     is_first_dc: >-
-      {{ (preflight_dc.stdout | trim == "fail")
-         and (first_dc_prompt.user_input | default('') | trim | lower in ['y', 'yes']) }}
+      {{ (preflight_dc.stdout | trim == 'fail')
+        and (is_first_dc_input | trim | lower in ['y', 'yes'])
+      }}
 
 - name: "[Preflight] FAIL — Primary DC unreachable and NOT confirmed as first DC"
   fail:

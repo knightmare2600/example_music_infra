@@ -70,17 +70,13 @@
       default: ""
 
     - name: is_first_dc_input
-      prompt: |
-
-        Is this the FIRST domain controller being built for this site?
-        (yes/no — leave blank / enter no for all other host types)
+      prompt: "Is this the FIRST domain controller being built for this site...? (yes/no — leave blank / enter no for all other host types):"
       private: false
       default: "no"
 
-#    - name: prompted_hostname
-#      prompt: "Computer name (Enter to keep current hostname)"
-#      private: false
-#      default: ""
+    - name: Persist first DC input
+      set_fact:
+        is_first_dc_input: "{{ is_first_dc_input }}"
 
     - name: dj_temp_dns_ip
       prompt: "Temporary DNS server if jukebox.internal is unreachable"
@@ -115,6 +111,10 @@
     - name: Show first-DC build status
       debug:
         msg: "{{ 'FIRST-DC BUILD — domain join will be skipped. Run windows_dc/site.yml after bootstrap.' if is_first_dc else 'Not a first-DC build — domain join will run in Stage 5.' }}"
+
+    - name: Persist first DC input for later plays
+      set_fact:
+        is_first_dc_input: "{{ is_first_dc_input }}"
 
     # =========================================================================
     # STEP 1 — Validate hostname before touching anything
