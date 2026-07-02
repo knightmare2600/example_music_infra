@@ -305,19 +305,6 @@
         static_ip: "{{ current_ip }}"
       when: not ip_needs_change | bool
 
-    - name: Prompt — confirm static IP details
-      ansible.builtin.pause:
-        prompt: |
-
-          ── Confirm Static IP ────────────────────────────────────────────────
-          NIC     : {{ target_nic }}
-          IP      : {{ static_ip }}/{{ prefix_len }}
-          Gateway : {{ site_gateway }}
-          DNS 1   : {{ dns_server }}
-          DNS 2   : {{ site_dc }}
-
-          Press Enter to confirm, Ctrl+C then A to abort.
-      when: ip_needs_change | bool
 
     # =========================================================================
     # STEP 8 — Write scheduled task (only if IP needs changing)
@@ -376,23 +363,24 @@
           ════════════════════════════════════════════════════════════════
       when: needs_reboot | bool
 
-    - name: Reboot — IP change (send to old IP, scheduled task applies new IP on boot)
-      ansible.windows.win_shell: shutdown /r /t 5 /f
-      ignore_unreachable: true
+    - name: Reboot — IP change (async fire-and-forget, SSH stays live until /t delay)
+      ansible.windows.win_shell: shutdown /r /t 15 /f
+      async:        30
+      poll:         0
+      when:         ip_needs_change | bool
+
+    - name: Switch ansible_host to new static IP
+      set_fact:
+        ansible_host: "{{ static_ip }}"
       when: ip_needs_change | bool
 
     - name: Wait for SSH on new static IP
       ansible.builtin.wait_for:
         host:    "{{ static_ip }}"
         port:    22
-        delay:   20
+        delay:   25
         timeout: 300
       delegate_to: localhost
-      when: ip_needs_change | bool
-
-    - name: Switch ansible_host to new static IP
-      set_fact:
-        ansible_host: "{{ static_ip }}"
       when: ip_needs_change | bool
 
     - name: Verify connection on new IP
