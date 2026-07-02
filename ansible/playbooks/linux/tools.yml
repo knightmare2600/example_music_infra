@@ -16,7 +16,7 @@
     # Source paths on the Ansible control node (relative to this playbook's directory).
     # Assumes standard repo layout: ansible/ and bootstrap/ sit under the same repo root.
     sites_csv_src:   "{{ playbook_dir }}/../../../bootstrap/web/proxmox/sites.csv"
-    devices_csv_src: "{{ playbook_dir }}/../../files/devices.csv"
+    devices_csv_src: "{{ playbook_dir }}/../../../bootstrap/web/proxmox/devices.csv"
 
   tasks:
 
