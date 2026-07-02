@@ -395,14 +395,28 @@
         ansible_host: "{{ static_ip }}"
       when: ip_needs_change | bool
 
-    - name: Wait for SSH on new static IP
-      ansible.builtin.wait_for:
-        host:    "{{ static_ip }}"
-        port:    22
-        delay:   25
-        timeout: 300
-      delegate_to: localhost
+#    - name: Wait for SSH on new static IP
+#      ansible.builtin.wait_for:
+#        host:    "{{ static_ip }}"
+#        port:    22
+#        delay:   25
+#        timeout: 300
+#      delegate_to: localhost
+#      when: ip_needs_change | bool
+
+    - name: Wait for user to verify SSH
+      ansible.builtin.pause:
+        prompt: "The network configuration has been changed. Please verify that you can SSH to: {{ static_ip }}. Then press Enter to continue."
       when: ip_needs_change | bool
+
+#    - name: Wait for SSH on new static IP
+#      ansible.builtin.pause:
+#        host:    "{{ static_ip }}"
+#        port:    22
+#        delay:   25
+#        timeout: 300
+#      delegate_to: localhost
+#      when: ip_needs_change | bool
 
     - name: Verify connection on new IP
       ansible.builtin.wait_for_connection:
