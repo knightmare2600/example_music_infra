@@ -344,6 +344,14 @@
       ansible.windows.win_shell: powercfg /hibernate off
       changed_when: true
 
+    - name: "[Stage 6] Disable SConfig auto-launch at logon (Server only, all users)"
+      ansible.windows.win_shell: |
+        if (Get-Command Set-SConfig -ErrorAction SilentlyContinue) {
+            Set-SConfig -AutoLaunch $false
+        }
+      changed_when: true
+      when: is_server
+
     - name: "[Stage 6] Clear page file at shutdown"
       ansible.windows.win_regedit:
         path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'
