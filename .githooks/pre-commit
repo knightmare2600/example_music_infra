@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # .githooks/pre-commit
-# Enforces sync between benarbejdet/ and bootstrap/web/proxmox/ for
+# Enforces sync between benarbejde/ and bootstrap/web/proxmox/ for
 # sites.csv and devices.csv.  Both copies must be identical before a
 # commit is accepted.
 #
@@ -16,7 +16,7 @@ FAIL=0
 
 check_sync() {
     local name="$1"
-    local a="benarbejdet/${name}"
+    local a="benarbejde/${name}"
     local b="bootstrap/web/proxmox/${name}"
 
     if [[ ! -f "$a" ]]; then

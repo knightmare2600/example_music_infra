@@ -11,7 +11,7 @@ This repository contains everything needed to take a site from bare metal to pro
 ```
 example_music_infra/
 ├── ansible/          # Playbooks, inventory, group_vars, host_vars
-├── benarbejdet/      # Legwork in advance — shared data files (sites.csv, devices.csv)
+├── benarbejde/      # Legwork in advance — shared data files (sites.csv, devices.csv)
 ├── bootstrap/        # Day-zero site bootstrap toolkit
 ├── docs/             # Operational documentation and runbooks
 ├── hardware/         # Hardware reference documents
@@ -24,11 +24,11 @@ example_music_infra/
 git config core.hooksPath .githooks
 ```
 
-This enables the pre-commit hook that enforces sync between `benarbejdet/` and `bootstrap/web/proxmox/` for `sites.csv` and `devices.csv`. Without it, the hook does not fire and the copies can drift.
+This enables the pre-commit hook that enforces sync between `benarbejde/` and `bootstrap/web/proxmox/` for `sites.csv` and `devices.csv`. Without it, the hook does not fire and the copies can drift.
 
 ---
 
-## benarbejdet/
+## benarbejde/
 
 *Benarbejdet* — Danish: the legwork done in advance.
 
@@ -185,7 +185,7 @@ Unless explicitly stated otherwise, all deployments MUST conform to these conven
 | `.250–.252` | SWI — switches |
 | `.253` | FWL — firewall LAN face / site gateway |
 
-The authoritative source for site subnet allocations is `benarbejdet/sites.csv` (and its sync copy at `bootstrap/web/proxmox/sites.csv`). If any other source disagrees, `sites.csv` wins.
+The authoritative source for site subnet allocations is `benarbejde/sites.csv` (and its sync copy at `bootstrap/web/proxmox/sites.csv`). If any other source disagrees, `sites.csv` wins.
 
 ### Naming
 
