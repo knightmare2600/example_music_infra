@@ -52,6 +52,9 @@
 #               target hostname and compares current_ip exactly. Falls back to
 #               subnet check if hostname is absent from devices.csv.
 #               IP prompt now shows expected_ip and defaults to it on Enter.
+#               Persist target_hostname and dj_temp_dns_ip as host facts so
+#               they survive into subsequent imported plays (05-bootstrap.yml
+#               etc.) — vars_prompt values are play-scoped and lost otherwise.
 # =============================================================================
 
 - name: Pre-flight — credentials, hostname, IP, SSH
@@ -116,9 +119,11 @@
       debug:
         msg: "{{ 'FIRST-DC BUILD — domain join will be skipped. Run windows_dc/site.yml after bootstrap.' if is_first_dc else 'Not a first-DC build — domain join will run in Stage 5.' }}"
 
-    - name: Persist first DC input for later plays
+    - name: Persist vars_prompt values as host facts for later plays
       set_fact:
         is_first_dc_input: "{{ is_first_dc_input }}"
+        target_hostname:   "{{ target_hostname }}"
+        dj_temp_dns_ip:    "{{ dj_temp_dns_ip }}"
 
     # =========================================================================
     # STEP 1 — Validate hostname before touching anything

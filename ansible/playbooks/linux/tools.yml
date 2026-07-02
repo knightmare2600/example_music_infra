@@ -2,12 +2,21 @@
 # linux/tools.yml
 # Deploy common tools to all Linux hosts.
 #   ansible-playbook playbooks/linux/tools.yml -i configs/inventory
+#
+# Changelog:
+#   2026-07-02  Add /etc/example-music deploy for sites.csv and devices.csv
 
 - name: Deploy common tools
   hosts: all
   become: true
   vars_files:
     - ../../group_vars/all/main.yml
+
+  vars:
+    # Source paths on the Ansible control node (relative to this playbook's directory).
+    # Assumes standard repo layout: ansible/ and bootstrap/ sit under the same repo root.
+    sites_csv_src:   "{{ playbook_dir }}/../../../bootstrap/web/proxmox/sites.csv"
+    devices_csv_src: "{{ playbook_dir }}/../../files/devices.csv"
 
   tasks:
 
@@ -22,4 +31,28 @@
       user:
         name: ansible
         shell: /bin/zsh
+
+    - name: Create /etc/example-music directory
+      ansible.builtin.file:
+        path:  /etc/example-music
+        state: directory
+        owner: root
+        group: root
+        mode:  '0755'
+
+    - name: Deploy sites.csv to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ sites_csv_src }}"
+        dest:  /etc/example-music/sites.csv
+        owner: root
+        group: root
+        mode:  '0644'
+
+    - name: Deploy devices.csv to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ devices_csv_src }}"
+        dest:  /etc/example-music/devices.csv
+        owner: root
+        group: root
+        mode:  '0644'
 
