@@ -385,7 +385,7 @@
       when: needs_reboot | bool
 
     - name: Reboot — IP change (async fire-and-forget, SSH stays live until /t delay)
-      ansible.windows.win_shell: shutdown /r /t 15 /f
+      ansible.windows.win_shell: shutdown /r /t 0 /f
       async:        30
       poll:         0
       when:         ip_needs_change | bool
