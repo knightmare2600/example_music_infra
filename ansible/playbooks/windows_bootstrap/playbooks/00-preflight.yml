@@ -89,6 +89,11 @@
       private: false
       default: "192.168.139.8"
 
+    - name: target_ip
+      prompt: "Static IP to assign (leave blank if IP is already correct)"
+      private: false
+      default: ""
+
   vars:
     ansible_become:               false
     ansible_become_method:        runas
@@ -97,9 +102,8 @@
     ansible_ssh_extra_args:       '-o StrictHostKeyChecking=no'
     ansible_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa"
     ansible_ssh_public_key_file:  "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa.pub"
-    sites_csv:                    "/etc/example-music/sites.csv"
-    devices_csv:                  "/etc/example-music/devices.csv"
-    dns_server:                   "192.168.139.8"
+    sites_csv:   "/etc/example-music/sites.csv"
+    dns_server:  "192.168.139.8"
 
   tasks:
 
@@ -124,6 +128,7 @@
         is_first_dc_input: "{{ is_first_dc_input }}"
         target_hostname:   "{{ target_hostname }}"
         dj_temp_dns_ip:    "{{ dj_temp_dns_ip }}"
+        target_ip:         "{{ target_ip }}"
 
     # =========================================================================
     # STEP 1 — Validate hostname before touching anything
@@ -168,22 +173,8 @@
         site_dc:          "{{ site_record.DC }}"
         site_city:        "{{ site_record.City }}"
         site_country:     "{{ site_record.Country }}"
-        subnet_base:      "{{ site_record.Subnet | regex_replace('/\\d+$', '') | regex_replace('\\.\\d+$', '') }}"
-        prefix_len:       "{{ site_record.Subnet.split('/')[1] }}"
-        site_expected_ip: "{{ site_record.DC }}"
-
-    - name: Find HostOctet for {{ target_hostname }} in devices.csv
-      ansible.builtin.shell: >-
-        grep -m1 ',{{ target_hostname | upper }},' '{{ devices_csv }}' | cut -d',' -f3
-      register: device_octet_raw
-      delegate_to: localhost
-      changed_when: false
-      failed_when: false
-
-    - name: Derive expected IP from devices.csv
-      set_fact:
-        expected_ip: "{{ subnet_base }}.{{ device_octet_raw.stdout | trim }}"
-      when: device_octet_raw.stdout | trim | length > 0
+        subnet_base: "{{ site_record.Subnet | regex_replace('/\\d+$', '') | regex_replace('\\.\\d+$', '') }}"
+        prefix_len:  "{{ site_record.Subnet.split('/')[1] }}"
 
     - name: Show derived site info
       debug:
@@ -195,7 +186,7 @@
           - "  Gateway     : {{ site_gateway }}"
           - "  DC          : {{ site_dc }}"
           - "  DNS         : {{ dns_server }}"
-          - "  Expected IP : {{ expected_ip | default('(not in devices.csv)') }}"
+          - "  Target IP   : {{ target_ip if target_ip | length > 0 else '(not provided — IP will not be changed)' }}"
           - "  First DC    : {{ is_first_dc }}"
           - "════════════════════════════════════════════════════════"
 
@@ -272,7 +263,7 @@
     - name: Set change-needed facts
       set_fact:
         hostname_needs_change: "{{ current_hostname != target_hostname | upper }}"
-        ip_needs_change:       "{{ current_ip != expected_ip if expected_ip is defined else not (current_ip.startswith(subnet_base + '.')) }}"
+        ip_needs_change:       "{{ target_ip | length > 0 and current_ip != target_ip }}"
 
     - name: Show current state
       debug:
@@ -303,25 +294,10 @@
     # STEP 7 — IP configuration (only if IP needs changing)
     # =========================================================================
 
-    - name: Prompt — static IP to assign
-      ansible.builtin.pause:
-        prompt: |
-
-          ── IP Configuration for {{ target_nic }} ────────────────────────────
-          Site     : {{ host_site_code }} — {{ site_city }}
-          Subnet   : {{ site_subnet }}
-          Gateway  : {{ site_gateway }}
-          DNS      : {{ dns_server }}
-          Expected : {{ expected_ip | default('(not in devices.csv — enter manually)') }}
-
-          Press Enter to accept {{ expected_ip | default('expected IP above') }}, or type a different IP.
-      register: ip_choice
-      when: ip_needs_change | bool
-
     - name: Set static IP facts
       set_fact:
         use_dhcp:  false
-        static_ip: "{{ ip_choice.user_input | trim | default(expected_ip | default(''), true) }}"
+        static_ip: "{{ target_ip }}"
       when: ip_needs_change | bool
 
     - name: Set no-change IP facts (IP already correct)
