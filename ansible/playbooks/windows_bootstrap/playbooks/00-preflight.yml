@@ -180,9 +180,20 @@
               | reject('match', '^$')
               | join('\n')) | community.general.from_csv }}
 
+    - name: "[DEBUG] devices_data row count and first 3 Hostnames"
+      debug:
+        msg:
+          - "devices_data rows : {{ devices_data | length }}"
+          - "First 3 Hostnames : {{ devices_data[:3] | map(attribute='Hostname') | list }}"
+          - "target_hostname   : '{{ target_hostname | upper }}' (len={{ (target_hostname | upper) | length }})"
+
     - name: Find device record for {{ target_hostname }}
       set_fact:
         device_record: "{{ devices_data | selectattr('Hostname', 'equalto', target_hostname | upper) | list | first | default({}) }}"
+
+    - name: "[DEBUG] device_record result"
+      debug:
+        msg: "device_record = {{ device_record }}"
 
     - name: Derive expected IP from devices.csv
       set_fact:

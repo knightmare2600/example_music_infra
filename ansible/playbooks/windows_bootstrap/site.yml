@@ -8,18 +8,17 @@
 #
 # Run from the ansible/ root for all commands.
 #
-# Usage — bootstrap a fresh host (default, no --tags needed):
+# Usage — full run (bootstrap + all management plays):
 #   ansible-playbook playbooks/windows_bootstrap/site.yml \
 #     -i <ip>, -e target_hosts=<ip>
 #
-# Usage — run a standalone management play (opt-in, tagged [never, <name>]):
+# Usage — bootstrap only:
 #   ansible-playbook playbooks/windows_bootstrap/site.yml \
-#     -i configs/inventory -e target_hosts=<host> --tags rename
+#     -i <ip>, -e target_hosts=<ip> --tags bootstrap
+#
+# Usage — single management play:
 #   ansible-playbook playbooks/windows_bootstrap/site.yml \
 #     -i configs/inventory -e target_hosts=<host> --tags registry
-#   ansible-playbook playbooks/windows_bootstrap/site.yml \
-#     -i configs/inventory -e target_hosts=<host> --tags openssh
-#   (etc. — see playbook order below for all tag names)
 #
 # Standalone plays can also be run directly without site.yml:
 #   ansible-playbook playbooks/windows_bootstrap/playbooks/20-registry.yml \
@@ -50,36 +49,32 @@
 - import_playbook: playbooks/00-preflight.yml
   tags: bootstrap
 
-# Standalone management plays — opt-in only via --tags <name>
-# These MUST NOT run automatically after bootstrap: the machine may be
-# mid-reboot, and each has its own vars_prompt that fires mid-run.
-
 - import_playbook: playbooks/10-rename.yml
-  tags: [never, rename]
+  tags: rename
 
 - import_playbook: playbooks/20-registry.yml
-  tags: [never, registry]
+  tags: registry
 
 - import_playbook: playbooks/25-deadvertise.yml
-  tags: [never, deadvertise]
+  tags: deadvertise
 
 - import_playbook: playbooks/30-chocolatey.yml
-  tags: [never, chocolatey]
+  tags: chocolatey
 
 - import_playbook: playbooks/40-choco-packages.yml
-  tags: [never, choco_packages]
+  tags: choco_packages
 
 - import_playbook: playbooks/50-binaries.yml
-  tags: [never, binaries]
+  tags: binaries
 
 - import_playbook: playbooks/60-wallpaper.yml
-  tags: [never, wallpaper]
+  tags: wallpaper
 
 - import_playbook: playbooks/70-hibernation.yml
-  tags: [never, hibernation]
+  tags: hibernation
 
 - import_playbook: playbooks/75-openssh.yml
-  tags: [never, openssh]
+  tags: openssh
 
 - import_playbook: playbooks/80-domainjoin.yml
-  tags: [never, domainjoin]
+  tags: domainjoin
