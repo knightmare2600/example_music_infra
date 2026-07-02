@@ -25,13 +25,14 @@
 # =============================================================================
 
 - name: Windows — Domain join
-  hosts: "{{ target | default('all') }}"
-  gather_facts: true
-  vars_prompt:
-    - name: dj_temp_dns_ip
-      prompt: "DNS server IP to use if jukebox.internal cannot be resolved (Enter for 192.168.139.8)"
-      private: false
-      default: "192.168.139.8"
+#  hosts: "{{ target | default('all') }}"
+#  gather_facts: true
+#  vars_prompt:
+#    - name: dj_temp_dns_ip
+#      prompt: "DNS server IP to use if jukebox.internal cannot be resolved (Enter for 192.168.139.8)"
+#      private: false
+#      default: "192.168.139.8"
+
   tasks:
 
     # ── Stage 0: DNS resolution ────────────────────────────────────────────────
