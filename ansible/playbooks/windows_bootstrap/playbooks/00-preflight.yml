@@ -58,7 +58,8 @@
 # =============================================================================
 
 - name: Pre-flight — credentials, hostname, IP, SSH
-  hosts: "{{ target_hosts }}"
+  hosts:         "{{ target_hosts }}"
+  gather_facts:  false
 
   vars_prompt:
     - name: ansible_user
@@ -108,7 +109,27 @@
   tasks:
 
     # =========================================================================
-    # STEP 0 — Resolve is_first_dc from vars_prompt answer or -e override
+    # STEP 0 — Pre-flight summary (runs on localhost, before any SSH connection)
+    # =========================================================================
+
+    - name: Pre-flight summary — confirm before connecting
+      ansible.builtin.pause:
+        prompt: |
+
+          ── Pre-flight summary ───────────────────────────────────────────────
+            Host target : {{ inventory_hostname }}
+            SSH user    : {{ ansible_user }}
+            Hostname    : {{ target_hostname | upper }}
+            First DC    : {{ 'YES' if is_first_dc_input | lower | trim in ['yes','y'] else 'no' }}
+            Temp DNS    : {{ dj_temp_dns_ip }}
+            Target IP   : {{ target_ip if target_ip | length > 0 else '(blank — no IP change)' }}
+          ─────────────────────────────────────────────────────────────────────
+
+          Press Enter to proceed, Ctrl+C then A to abort.
+      delegate_to: localhost
+
+    # =========================================================================
+    # STEP 1 — Resolve is_first_dc from vars_prompt answer or -e override
     # =========================================================================
     # Consumes is_first_dc_input from vars_prompt above.
     # Passing -e is_first_dc=true on the command line takes precedence
