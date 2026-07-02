@@ -37,6 +37,14 @@
 #               belongs in 05-bootstrap.yml's own preflight checks (chocolatey/
 #               github/wallpaper reachability), not here. That fix has NOT
 #               been re-applied yet — see Open Items in the Windows guide.
+#   2026-06-30  Moved is_first_dc question into vars_prompt so ALL prompts
+#               fire upfront before any tasks run. Previously this was a
+#               pause task mid-run inside tasks/preflight.yml, causing the
+#               operator to be prompted after tasks had already started.
+#               The mid-run pause in tasks/preflight.yml is now replaced with
+#               a set_fact that consumes is_first_dc_input from vars_prompt.
+#               Passing -e is_first_dc=true on the command line still works
+#               and bypasses the prompt entirely for scripted builds.
 # =============================================================================
 
 - name: Pre-flight — credentials, hostname, IP, SSH
@@ -44,7 +52,7 @@
 
   vars_prompt:
     - name: ansible_user
-      prompt: "Username to connect as"
+      prompt: "SSH Username to connect as"
       private: false
       default: "Administrator"
 
@@ -53,10 +61,31 @@
       private: true
       default: ""
 
+    - name: vault_domain_join_password
+      prompt: "Domain join password (JUKEBOX\\Administrator)"
+ 
     - name: target_hostname
-      prompt: "Target hostname (e.g. EXADCSLIV001)"
+      prompt: "Target hostname (EXA[ROLE][SITE][NNN], e.g. EXADCSCLD001)"
       private: false
       default: ""
+
+    - name: is_first_dc_input
+      prompt: |
+
+        Is this the FIRST domain controller being built for this site?
+        (yes/no — leave blank / enter no for all other host types)
+      private: false
+      default: "no"
+
+#    - name: prompted_hostname
+#      prompt: "Computer name (Enter to keep current hostname)"
+#      private: false
+#      default: ""
+
+    - name: dj_temp_dns_ip
+      prompt: "Temporary DNS server if jukebox.internal is unreachable"
+      private: false
+      default: "192.168.139.8"
 
   vars:
     ansible_become:               false
@@ -70,6 +99,22 @@
     dns_server:                   "192.168.139.8"
 
   tasks:
+
+    # =========================================================================
+    # STEP 0 — Resolve is_first_dc from vars_prompt answer or -e override
+    # =========================================================================
+    # Consumes is_first_dc_input from vars_prompt above.
+    # Passing -e is_first_dc=true on the command line takes precedence
+    # (the set_fact is skipped when is_first_dc is already defined externally).
+
+    - name: Set is_first_dc fact from vars_prompt
+      set_fact:
+        is_first_dc: "{{ is_first_dc_input | lower | trim in ['yes', 'y'] }}"
+      when: is_first_dc is not defined
+
+    - name: Show first-DC build status
+      debug:
+        msg: "{{ 'FIRST-DC BUILD — domain join will be skipped. Run windows_dc/site.yml after bootstrap.' if is_first_dc else 'Not a first-DC build — domain join will run in Stage 5.' }}"
 
     # =========================================================================
     # STEP 1 — Validate hostname before touching anything
@@ -109,14 +154,14 @@
 
     - name: Derive network defaults from sites.csv
       set_fact:
-        site_subnet:       "{{ site_record.Subnet }}"
-        site_gateway:      "{{ site_record.Gateway }}"
-        site_dc:           "{{ site_record.DC }}"
-        site_city:         "{{ site_record.City }}"
-        site_country:      "{{ site_record.Country }}"
-        subnet_base:       "{{ site_record.Subnet | regex_replace('/\\d+$', '') | regex_replace('\\.\\d+$', '') }}"
-        prefix_len:        "{{ site_record.Subnet.split('/')[1] }}"
-        site_expected_ip:  "{{ site_record.DC }}"
+        site_subnet:      "{{ site_record.Subnet }}"
+        site_gateway:     "{{ site_record.Gateway }}"
+        site_dc:          "{{ site_record.DC }}"
+        site_city:        "{{ site_record.City }}"
+        site_country:     "{{ site_record.Country }}"
+        subnet_base:      "{{ site_record.Subnet | regex_replace('/\\d+$', '') | regex_replace('\\.\\d+$', '') }}"
+        prefix_len:       "{{ site_record.Subnet.split('/')[1] }}"
+        site_expected_ip: "{{ site_record.DC }}"
 
     - name: Show derived site info
       debug:
@@ -128,6 +173,7 @@
           - "  Gateway  : {{ site_gateway }}"
           - "  DC       : {{ site_dc }}"
           - "  DNS      : {{ dns_server }}"
+          - "  First DC : {{ is_first_dc }}"
           - "════════════════════════════════════════════════════════"
 
     # =========================================================================
@@ -203,7 +249,7 @@
     - name: Set change-needed facts
       set_fact:
         hostname_needs_change: "{{ current_hostname != target_hostname | upper }}"
-        ip_needs_change: "{{ not (current_ip.startswith(subnet_base + '.')) }}"
+        ip_needs_change:       "{{ not (current_ip.startswith(subnet_base + '.')) }}"
 
     - name: Show current state
       debug:
@@ -211,52 +257,23 @@
           - "  Current hostname : {{ current_hostname }} → target: {{ target_hostname | upper }} ({{ 'CHANGE NEEDED' if hostname_needs_change else 'OK' }})"
           - "  Current IP       : {{ current_ip }} → subnet: {{ site_subnet }} ({{ 'CHANGE NEEDED' if ip_needs_change else 'OK' }})"
 
+
     # =========================================================================
     # STEP 6 — NIC selection (only if IP needs changing)
     # =========================================================================
 
-    - name: List available NICs
-      ansible.windows.win_shell: |
-        $nics = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.Name -notmatch 'Loopback' }
-        $i = 1
-        foreach ($n in $nics) {
-          $ip = (Get-NetIPAddress -InterfaceIndex $n.ifIndex -AddressFamily IPv4 `
-                 -ErrorAction SilentlyContinue).IPAddress
-          Write-Output "$i`t$($n.Name)`t$($n.InterfaceDescription)`t$($ip -join ',')"
-          $i++
-        }
-      register: nic_list
+    - name: Get first active NIC
+      ansible.windows.win_powershell:
+        script: |
+          Get-NetAdapter | Where-Object Status -eq 'Up' | Sort-Object ifIndex | Select-Object -First 1 -ExpandProperty Name
+      register: nic
       changed_when: false
       when: ip_needs_change | bool
 
-    - name: Show available NICs
-      debug:
-        msg: "{{ nic_list.stdout_lines }}"
-      when: ip_needs_change | bool
-
-    - name: Prompt — select NIC
-      ansible.builtin.pause:
-        prompt: |
-
-          ── NIC Selection ────────────────────────────────────────────────────
-          NICs listed above (number / name / description / current IP).
-          Enter the NUMBER of the NIC to configure.
-          (If only one NIC listed, enter 1)
-      register: nic_choice
-      when: ip_needs_change | bool
-
-    - name: Get selected NIC name
-      ansible.windows.win_shell: |
-        $nics = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.Name -notmatch 'Loopback' }
-        $selected = @($nics)[{{ nic_choice.user_input | trim | int - 1 }}]
-        Write-Output $selected.Name
-      register: selected_nic
+    - name: Set target NIC
+      ansible.builtin.set_fact:
+        target_nic: "{{ nic.stdout | trim }}"
       changed_when: false
-      when: ip_needs_change | bool
-
-    - name: Set selected NIC fact
-      set_fact:
-        target_nic: "{{ selected_nic.stdout | trim }}"
       when: ip_needs_change | bool
 
     # =========================================================================
@@ -319,15 +336,12 @@
         Restart-Service sshd
         Unregister-ScheduledTask -TaskName 'EXA-ApplyStaticIP' -Confirm:$false
         '@
-        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
-        $action    = New-ScheduledTaskAction -Execute "powershell.exe" `
-                       -Argument "-NoProfile -NonInteractive -EncodedCommand $encoded"
-        $trigger   = New-ScheduledTaskTrigger -AtStartup
-        $settings  = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
+        $encoded  = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+        $action   = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -NonInteractive -EncodedCommand $encoded"
+        $trigger  = New-ScheduledTaskTrigger -AtStartup
+        $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
         $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest
-        Register-ScheduledTask -TaskName "EXA-ApplyStaticIP" `
-          -Action $action -Trigger $trigger -Settings $settings `
-          -Principal $principal -Force
+        Register-ScheduledTask -TaskName "EXA-ApplyStaticIP" -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force
       changed_when: true
       when: ip_needs_change | bool
 
@@ -348,8 +362,7 @@
     - name: Set needs_reboot fact
       set_fact:
         needs_reboot: >-
-          {{ hostname_needs_change | bool
-             or ip_needs_change | bool }}
+          {{ hostname_needs_change | bool or ip_needs_change | bool }}
 
     - name: Warn operator — reboot imminent
       debug:
@@ -403,6 +416,7 @@
           - "  Site     : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
           - "  IP       : {{ static_ip }}"
           - "  SSH      : running, auto-start, Ansible key deployed"
+          - "  First DC : {{ is_first_dc }}"
           - "  Handing off to 05-bootstrap.yml..."
           - "════════════════════════════════════════════════════════════════"
 
