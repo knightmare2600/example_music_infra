@@ -277,9 +277,8 @@
     # =========================================================================
 
     - name: Get first active NIC
-      ansible.windows.win_powershell:
-        script: |
-          Get-NetAdapter | Where-Object Status -eq 'Up' | Sort-Object ifIndex | Select-Object -First 1 -ExpandProperty Name
+      ansible.windows.win_shell: |
+        (Get-NetAdapter | Where-Object Status -eq 'Up' | Sort-Object ifIndex | Select-Object -First 1 -ExpandProperty Name)
       register: nic
       changed_when: false
       when: ip_needs_change | bool
