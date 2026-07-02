@@ -7,12 +7,41 @@ This repository contains everything needed to take a site from bare metal to pro
 ---
 
 ## Repository Structure
+
 ```
-exa-infra/
-├── ansible/          # Ansible roles and playbooks
-├── bootstrap/        # Site bootstrap toolkit — day zero tooling
-└── docs/             # Operational documentation and procedures
+example_music_infra/
+├── ansible/          # Playbooks, inventory, group_vars, host_vars
+├── benarbejdet/      # Legwork in advance — shared data files (sites.csv, devices.csv)
+├── bootstrap/        # Day-zero site bootstrap toolkit
+├── docs/             # Operational documentation and runbooks
+├── hardware/         # Hardware reference documents
+└── .githooks/        # Pre-commit hooks — see One-time setup below
 ```
+
+### One-time setup (per clone)
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This enables the pre-commit hook that enforces sync between `benarbejdet/` and `bootstrap/web/proxmox/` for `sites.csv` and `devices.csv`. Without it, the hook does not fire and the copies can drift.
+
+---
+
+## benarbejdet/
+
+*Benarbejdet* — Danish: the legwork done in advance.
+
+Shared data files referenced from multiple parts of the repo. Single edit point for anything that needs to be consistent across Ansible, bootstrap, and documentation.
+
+| File | Description |
+|------|-------------|
+| `sites.csv` | Authoritative site registry — every site code, subnet, gateway, city, timezone and legal entity |
+| `devices.csv` | Authoritative device inventory — every hostname, IP octet, role and OS across the estate |
+
+Both files also live in `bootstrap/web/proxmox/` where the preseed web server serves them during bare-metal installs. The two copies **MUST** stay identical. The `.githooks/pre-commit` hook enforces this — if the copies differ at commit time, it shows a diff and blocks until you resolve it.
+
+These are the **Known source of truth** (0xDF). If any other source disagrees with these files, the other source is wrong.
 
 ---
 
@@ -20,7 +49,7 @@ exa-infra/
 
 Day-zero toolkit for new site deployments. This is what goes on the technician's USB drive or laptop when they walk into an empty server room.
 
-The bootstrap network is always `192.168.139.0/24`. The bootstrap server runs at `192.168.139.50` and provides DHCP, TFTP, HTTP and DNS for the provisioning subnet. Nothing else should be on this subnet during deployment.
+The bootstrap network is always `192.168.139.0/24`. The bootstrap server runs at `192.168.139.50` and provides DHCP, TFTP, HTTP and DNS for the provisioning subnet during deployment.
 
 **Contents:**
 
@@ -31,6 +60,8 @@ The bootstrap network is always `192.168.139.0/24`. The bootstrap server runs at
   - `answer.toml` — standard two-disk ZFS RAID1 install
   - `degraded.toml` — single-disk ZFS RAID0 install for when the second disk hasn't arrived yet
 - `first-boot.sh` — post-install provisioning script, runs on first boot, configures hostname, networking, DNS, packages and raises a single-disk warning if RAID1 is not yet in place
+- `ansibleme.sh` — provisions the Ansible control node (`EXAANSCLD001`) from scratch — installs packages, deploys keys, clones the repo, places `sites.csv` and `devices.csv` at `/etc/example-music/`
+- `firewallme.sh` — interactive firewall bootstrap script, handles WireGuard key generation, site code lookup and peer configuration
 
 **Typical bootstrap sequence:**
 
@@ -52,84 +83,10 @@ The bootstrap network is always `192.168.139.0/24`. The bootstrap server runs at
 >>   } else { Write-Host $_ }
 >> }
 2026-06-12 09:25:21 INFO server: static-web-server 2.40.1
-2026-06-12 09:25:21 INFO server: log level: info
-2026-06-12 09:25:21 INFO server: server bound to tcp socket 192.168.139.50:80
-2026-06-12 09:25:21 INFO server: runtime worker threads: 16
-2026-06-12 09:25:21 INFO server: runtime max blocking threads: 512
-2026-06-12 09:25:21 INFO server: redirect trailing slash: enabled=true
-2026-06-12 09:25:21 INFO server: ignore hidden files: enabled=false
-2026-06-12 09:25:21 INFO server: disable symlinks: enabled=false
-2026-06-12 09:25:21 INFO server: grace period before graceful shutdown: 0s
-2026-06-12 09:25:21 INFO server: index files: index.html
-2026-06-12 09:25:21 INFO directory_listing: directory listing: enabled=true
-2026-06-12 09:25:21 INFO directory_listing: directory listing order code: 6
-2026-06-12 09:25:21 INFO directory_listing: directory listing format: Html
-2026-06-12 09:25:21 INFO directory_listing_download: directory listing download: enabled=false
-2026-06-12 09:25:21 INFO fallback_page: fallback page: enabled=false, value=""
-2026-06-12 09:25:21 INFO health: health endpoint: enabled=false
-2026-06-12 09:25:21 INFO log_addr: log requests with remote IP addresses: enabled=false
-2026-06-12 09:25:21 INFO log_addr: log X-Real-IP header: enabled=false
-2026-06-12 09:25:21 INFO log_addr: log X-Forwarded-For header: enabled=false
-2026-06-12 09:25:21 INFO log_addr: trusted IPs for X-Forwarded-For: all
-2026-06-12 09:25:21 INFO basic_auth: basic authentication: enabled=false
-2026-06-12 09:25:21 INFO maintenance_mode: maintenance mode: enabled=false
-2026-06-12 09:25:21 INFO maintenance_mode: maintenance mode status: 503
-2026-06-12 09:25:21 INFO maintenance_mode: maintenance mode file: ""
-2026-06-12 09:25:21 INFO compression_static: compression static: enabled=false
-2026-06-12 09:25:21 INFO compression: auto compression: enabled=true, formats=deflate,gzip,brotli,zstd, compression level=Default
-2026-06-12 09:25:21 INFO control_headers: cache control headers: enabled=true
-2026-06-12 09:25:21 INFO security_headers: security headers: enabled=false
-2026-06-12 09:25:21 INFO mem_cache::cache: in-memory cache (experimental): enabled=false
-2026-06-12 09:25:21 INFO server: installing graceful shutdown ctrl+c signal handler
-2026-06-12 09:25:21 INFO Server::start_server{addr_str="192.168.139.50:80" threads=16}: server: close time.busy=0.00ns time.idle=2.70┬╡s
 2026-06-12 09:25:21 INFO server: http1 server is listening on http://192.168.139.50:80
-2026-06-12 09:25:21 INFO server: press ctrl+c to shut down the server
-:<snip>
-2026-06-13 16:40:37 WARN error_page: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe status=404 error="Not Found"
-2026-06-13 16:41:31 INFO log_addr: incoming request: method=GET uri=/menu.ipxe
-2026-06-13 16:41:31 INFO log_addr: incoming request: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe
-2026-06-13 16:41:31 WARN error_page: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe status=404 error="Not Found"
-2026-06-13 16:42:25 INFO log_addr: incoming request: method=GET uri=/menu.ipxe
-2026-06-13 16:42:25 INFO log_addr: incoming request: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe
-2026-06-13 16:42:25 WARN error_page: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe status=404 error="Not Found"
-2026-06-13 16:43:18 INFO log_addr: incoming request: method=GET uri=/menu.ipxe
-2026-06-13 16:43:19 INFO log_addr: incoming request: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe
-2026-06-13 16:43:19 WARN error_page: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe status=404 error="Not Found"
-2026-06-13 16:44:12 INFO log_addr: incoming request: method=GET uri=/menu.ipxe
-2026-06-13 16:44:12 INFO log_addr: incoming request: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe
-2026-06-13 16:44:12 WARN error_page: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe status=404 error="Not Found"
-2026-06-13 16:45:06 INFO log_addr: incoming request: method=GET uri=/menu.ipxe
-2026-06-13 16:45:06 INFO log_addr: incoming request: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe
-2026-06-13 16:45:06 WARN error_page: method=GET uri=/autodeploy/bc-24-11-ad-b0-d5.ipxe status=404 error="Not Found"
-2026-06-14 10:16:13 INFO log_addr: incoming request: method=GET uri=/menu.ipxe
-2026-06-14 10:16:13 INFO log_addr: incoming request: method=GET uri=/autodeploy/00-0c-29-ad-ff-74.ipxe
-2026-06-14 10:16:13 WARN error_page: method=GET uri=/autodeploy/00-0c-29-ad-ff-74.ipxe status=404 error="Not Found"
-2026-06-14 10:16:20 INFO log_addr: incoming request: method=GET uri=/debian/x86_64/linux
-2026-06-14 10:16:20 INFO log_addr: incoming request: method=GET uri=/debian/x86_64/initrd.gz
-2026-06-14 10:16:47 INFO log_addr: incoming request: method=GET uri=/debian/lvm-bios.seed
-2026-06-14 10:19:54 INFO log_addr: incoming request: method=GET uri=/debian/late_command.sh
-2026-06-14 10:19:55 INFO log_addr: incoming request: method=GET uri=/ansible_sshkey.pub
-2026-06-14 10:19:55 INFO log_addr: incoming request: method=GET uri=/server-prompts.zsh
-2026-06-14 10:19:55 INFO log_addr: incoming request: method=GET uri=/server-prompts.sh
-2026-06-14 10:22:45 INFO log_addr: incoming request: method=GET uri=/firewallme.sh
-2026-06-14 10:23:37 INFO log_addr: incoming request: method=GET uri=/proxmox/sites.csv
-2026-06-14 10:31:15 INFO log_addr: incoming request: method=GET uri=/firewallme.sh
-2026-06-14 10:34:36 INFO log_addr: incoming request: method=GET uri=/firewallme.sh
-2026-06-14 10:38:51 INFO log_addr: incoming request: method=GET uri=/ansibleme.sh
-2026-06-14 10:39:35 INFO log_addr: incoming request: method=GET uri=/sites.csv
-2026-06-14 10:39:43 INFO log_addr: incoming request: method=GET uri=/proxmox/sites.csv
 ```
 
-3. PXE boot target machine — it will chainload the iPXE menu from the `192.168.139.50` device:
-
-```
-2026-02-28T10:29:28.678023Z  INFO static_web_server::log_addr: incoming request: method=GET uri=/menu.ipxe
-2026-02-28T10:29:28.682221Z  INFO static_web_server::log_addr: incoming request: method=GET uri=/autodeploy/00-0c-29-81-fc-e1.ipxe
-2026-02-28T10:29:28.682459Z  WARN static_web_server::error_page: method=GET uri=/autodeploy/00-0c-29-81-fc-e1.ipxe status=404 error="Not Found"
-2026-02-28T10:29:33.055129Z  INFO static_web_server::log_addr: incoming request: method=GET uri=/debian/linux
-2026-02-28T10:29:33.366703Z  INFO static_web_server::log_addr: incoming request: method=GET uri=/debian/initrd.gz
-2026-02-28T10:30:08.322125Z  INFO static_web_server::log_addr: incoming request: method=GET uri=/lvm.seed
-```
+3. PXE boot target machine — it will chainload the iPXE menu from `192.168.139.50`
 
 4. Select install target (Proxmox VE RAID1 or degraded single-disk)
 
@@ -145,175 +102,166 @@ The bootstrap network is always `192.168.139.0/24`. The bootstrap server runs at
 
 ## ansible/
 
-Ansible roles and playbooks for post-bootstrap configuration and ongoing management.
+Ansible playbooks for post-bootstrap configuration and ongoing management. Run all commands from the `ansible/` directory.
+
 ```
 ansible/
 ├── ansible.cfg
-├── inventory/
-│   └── hosts.yml          # Static inventory — all sites and nodes
+├── callback_plugins/        # Custom output formatting (exa_pretty.py)
+├── configs/
+│   └── inventory/           # Static inventory — all sites and nodes
+├── files/                   # Static files deployed by playbooks (sudoer_ansible etc.)
+├── group_vars/              # Per-group variable files
+│   ├── all/                 # common_packages, ansible_user
+│   ├── firewalls/
+│   ├── linux/
+│   ├── pvenodes/
+│   ├── rudder_servers/
+│   ├── windows/
+│   ├── windows_dc/
+│   └── ...
+├── handlers/
+├── host_vars/               # Per-host overrides
 ├── playbooks/
-│   └── zfs-disk-replace.yml
-└── roles/
-    └── pve_zfs_replace/   # ZFS disk replacement / RAID1 upgrade
-        ├── defaults/
-        ├── meta/
-        └── tasks/
-            ├── main.yml
-            ├── assess.yml      # Read-only assessment — always runs
-            ├── validate.yml    # Safety checks before any changes
-            ├── replace.yml     # Partition, resilver, bootloader
-            ├── expand.yml      # Pool expansion if new disk is larger
-            └── summarise.yml   # Final verification and report
+│   ├── bind9/               # BIND9 DNS zone generation from devices.csv
+│   ├── firewallme/          # Firewall bootstrap (wraps firewallme.sh)
+│   ├── linux/               # Common Linux tooling — packages, /etc/example-music deploy
+│   ├── proxmox/             # Proxmox VE onboarding (pve_onboard.yml)
+│   ├── rudder/              # Rudder configuration management server
+│   ├── windows_adschema/    # AD schema, OUs, groups, computers, users
+│   ├── windows_bootstrap/   # Windows host PostOOBE bootstrap (replaces Join-DomainAndBootstrap.ps1)
+│   └── windows_dc/          # Domain controller promotion
+└── vars/
 ```
 
-**ZFS disk replacement playbook** runs in two phases:
-```bash
-# Phase 1 — assessment only, no changes made
-ansible-playbook playbooks/zfs-disk-replace.yml -l EXAPVEFAL001
+**Key playbooks:**
 
-# Phase 2 — execute replacement
-ansible-playbook playbooks/zfs-disk-replace.yml -l EXAPVEFAL001 \
-  -e new_disk=sdb -e confirmed=yes
-```
-
-Phase 1 always runs and prints a summary of pool state, healthy disk, missing vdev and candidate disks. It then intentionally fails to prevent accidental execution. Phase 2 requires both `new_disk` and `confirmed=yes` to be explicitly passed.
-
-Safety features: `serial: 1` (never runs on more than one node simultaneously), node role check (`jq -e '.role == "proxmox"' /etc/example-music/nodeinfo.json`), reboot-pending check, disk identity assertions, GUID uniqueness verification, ESP count verification post-completion.
+| Playbook | Purpose |
+|----------|---------|
+| `linux/tools.yml` | Deploy common packages and `/etc/example-music/{sites,devices}.csv` to all Linux hosts |
+| `bind9/bind9-dns.yml` | Generate and deploy BIND9 zones from `devices.csv` |
+| `proxmox/pve_onboard.yml` | Onboard a new Proxmox VE node — Zabbix, packages, SSH, sudoers |
+| `windows_bootstrap/site.yml` | Full Windows host PostOOBE bootstrap — rename, static IP, domain join, packages, wallpaper |
+| `windows_dc/site.yml` | Promote a Windows Server to domain controller |
+| `windows_adschema/ad_schema.yml` | Create AD OUs, groups, computers and users from TDF data |
 
 ---
 
 ## docs/
 
-Operational runbooks and deployment procedures.
+Operational runbooks and deployment procedures. See `docs/INDEX.md` for the full document registry.
+
 ```
 docs/
-├── site-inventory.md          # Per-site device register and network map
-├── network-inventory.md       # Full global infrastructure inventory
-├── zfs-disk-replace.md        # ZFS RAID1 disk replacement procedure
-├── zfs-raid0-to-raid1.md      # Single-disk to RAID1 upgrade procedure
-└── zfs-pool-expansion.md      # Expanding pool after replacing with larger disk
+├── INDEX.md                        # Full document index and ID registry
+├── ExampleMusic_Beginners_Guide.md # Start here — estate overview, conventions, architecture
+├── network-inventory.md            # Full global device register
+├── site-inventory.md               # Per-site commissioning checklists
+├── ExampleMusic_Procedure_Template.md
+└── ...                             # Buildsheets, runbooks, proxmox, wireguard guides
 ```
-
-| Document | Description |
-|---|---|
-| `site-inventory.md` | Template and per-site checklist — one section per site, tracks completion status, ZFS mirror health and boot independence testing |
-| `network-inventory.md` | Full global device register — all 30+ sites, infrastructure, endpoints, IoT, domain controllers and known issues |
-| `zfs-disk-replace.md` | Runbook for replacing a failed disk in an existing RAID1 mirror — manual procedure with verified command sequence |
-| `zfs-raid0-to-raid1.md` | Runbook for upgrading a single-disk (degraded) node to full RAID1 when the second disk arrives — uses `zpool attach` not `zpool replace` |
-| `zfs-pool-expansion.md` | Runbook for expanding pool capacity after replacing both disks with larger ones — `parted resizepart`, `autoexpand`, `zpool online -e` |
 
 ---
 
-# The Special Case: Cloud Network & vRACK Legal Ficiton
+## Conventions
 
-The CLD network on `192.168.69.0/24` and it's vRACK `192.168.139.0/24` are a special case. Below is the documentation which covers this:
+The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **RECOMMENDED**, and **OPTIONAL** in this document are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) and [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174).
 
-## Terminology
+**SHOULD and SHOULD NOT are ambiguous and MUST NOT be used in this repository.**
 
-The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) and [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174).
+### Addressing
 
-**NB: I personally treat SHOULD and SHOULD NOT as ambigious, so they MUST NOT be used!**
+Unless explicitly stated otherwise, all deployments MUST conform to these conventions:
 
-### Conventions
+| Offset | Role |
+|--------|------|
+| `.1` | RTR — upstream / ISP gateway |
+| `.2–.4` | BMC / RAC — iDRAC, iLO, Redfish |
+| `.5–.7` | PVE — Proxmox VE nodes |
+| `.10–.11` | DCS — Domain Controllers |
+| `.15` | PRV — provisioning server |
+| `.48` | SBC — VOIP SBC |
+| `.100–.249` | DHCP pool |
+| `.250–.252` | SWI — switches |
+| `.253` | FWL — firewall LAN face / site gateway |
 
-The Example Music infrastructure follows a consistent addressing convention throughout the estate. Once the addressing scheme is understood, the function and location of most hosts can be determined from their IP address alone.
+The authoritative source for site subnet allocations is `benarbejdet/sites.csv` (and its sync copy at `bootstrap/web/proxmox/sites.csv`). If any other source disagrees, `sites.csv` wins.
 
-Unless explicitly stated otherwise, **all deployments MUST conform to the conventions defined below.**
+### Naming
 
-- **vRACK:** A *legal fiction* representing the upstream OVH vRACK. This network uses **192.168.139.0/24**, with the upstream gateway assumed to be **192.168.139.254**. Virtual machines attached to this network MUST be assigned their "real-world" addresses from this subnet.
+Format: `EXA` + `<ROLE>` + `<SITE>` + `<NNN>`
 
-- **Provisioning Network:** **192.168.139.0/24**. This network MUST be used exclusively during the bootstrap process. Following successful deployment, it represents the upstream WAN connection, emulating an ISP/OVH vRACK.
+Example: `EXAFWLFAL001` — EXA estate, firewall, Falkirk, first unit.
 
-- **Bootstrap Server:** **192.168.139.50**. This host MAY be a laptop, desktop workstation, lightweight container or virtual machine. It provides the HTTP, PXE, TFTP and associated services required to provision the remainder of the environment. Without this host, the estate cannot bootstrap.
+### WireGuard
 
-- **Site LANs:** Site LANs MUST use the format **192.168.xx.0/24**, where **xx** is the allocated site octet (for example, **192.168.76.0/24** for the FAL site). The authoritative source for site allocations MUST be:
+WireGuard networks use `10.0.<site-octet>.0/24`. The firewall WireGuard endpoint is always `.1`. CLD is the **sole WireGuard hub** — every site connects directly to CLD. No site intermediates WireGuard traffic for another.
 
-- **VPN Networks:** WireGuard networks MUST use **10.0.xx.0/24**, where **xx** matches the corresponding site number. The firewall WireGuard endpoint MUST always be assigned **.1**.
-
-- **Proxmox Nodes:** Proxmox VE hosts MUST occupy addresses **.5–.7** on the site LAN.
-
-- **Domain Controllers:** Active Directory Domain Controllers MUST occupy address **.10** on the site LAN.
-
-- **Remote Management:** Hardware management interfaces (iDRAC, iLO, Redfish, etc.) MUST occupy address **.3** wherever practical.
+---
 
 ## CLD Special Case
 
-The **CLD** deployment is the sole special-case deployment within the estate.
+CLD (Edinburgh, OVH Pulseant datacentre) is the sole special-case deployment. It hosts shared infrastructure consumed by all sites and intentionally differs from the standard site model in several respects.
 
-Unlike every branch deployment, CLD hosts shared infrastructure consumed by multiple sites. Consequently, several addressing conventions and infrastructure roles intentionally differ from the standard site model.
+Automation MUST assume standard site conventions by default. Automation MUST NOT assume CLD conforms to standard branch architecture. CLD-specific logic MUST remain isolated from standard site logic.
 
-This behaviour is intentional, documented, and REQUIRED.
+CLD has two networks, each with its own site code in `sites.csv`:
 
-Automation MUST assume the standard site conventions by default.
+| Site code | Network | Range | Gateway |
+|-----------|---------|-------|---------|
+| `CLD` | LAN | `192.168.69.0/24` | `192.168.69.253` |
+| `VRK` | OVH vRACK | `192.168.139.0/24` | `192.168.139.254` |
 
-Automation MUST NOT assume that CLD conforms to the standard branch architecture.
+The vRACK (`VRK`) is an OVH product providing 256 statically routed IPs. Treat them as real-world IPs operationally — they are routed across OVH's infrastructure to site FWL WAN interfaces. Technically RFC 1918, operationally not.
 
-Any behaviour required specifically for CLD MUST be implemented explicitly and MUST remain isolated to the CLD deployment. Under no circumstances MUST the baseline conventions be weakened or modified solely to accommodate CLD.
+### CLD Hosts
 
-The CLD deployment hosts infrastructure including (but not limited to):
+**vRACK (`192.168.139.0/24` — site code `VRK`):**
 
-- Central DNS
-- Central PBX
-- Ansible Automation
-- Bootstrap / Provisioning Services
-- Active Directory
-- Central Windows Administration
-- Shared management infrastructure
+| IP | Hostname | Role |
+|----|----------|------|
+| `192.168.139.8` | `EXADNSCLD001` | BIND9 — authoritative DNS for `jukebox.internal` |
+| `192.168.139.50` | `EXAPRVCLD001` | Provisioning / PXE server |
+| `192.168.139.68` | `EXAFWLCLD001` (WAN) | Firewall WAN face — LAN face at `192.168.69.253` |
+| `192.168.139.254` | — | vRACK gateway (OVH infrastructure, not a site device) |
 
-For complete architectural details, refer to:
+**LAN (`192.168.69.0/24` — site code `CLD`):**
 
-## CLD Special Hosts
+| IP | Hostname | Role |
+|----|----------|------|
+| `192.168.69.9` | `EXAANSCLD001` | Ansible control node |
+| `192.168.69.10` | `EXADCSCLD001` | Domain Controller — primary, forest root |
+| `192.168.69.11` | `EXADCSCLD002` | Domain Controller — secondary |
+| `192.168.69.12` | `EXARDRCLD001` | Rudder configuration management |
+| `192.168.69.20` | `EXASVRCLD002` | Windows Admin Centre |
+| `192.168.69.48` | `EXACLDPBX001` | Central 3CX PBX — all site SBCs trunk here |
+| `192.168.69.253` | `EXAFWLCLD001` (LAN) | Firewall LAN face / gateway — WAN face at `192.168.139.68` |
 
-| IP Address        | Hostname       | Role                                  | Notes |
-|------------------|----------------|--------------------------------------|-------|
-| `192.168.139.1`  | EXARTRCLD001   | Secondary Internet Gateway / Firewall | Fallback Internet connection |
-| `192.168.139.2`  | EXARACCLD001   | BMC Pool Slot 1                      | Proxmox Node 1 iDRAC/iLO |
-| `192.168.139.5`  | EXAPVECLD001   | Proxmox VE Node                      | Hosts core CLD infrastructure |
-| `192.168.139.8`  | EXADNSCLD001   | BIND9 DNS Server                     | Primary DNS for `jukebox.internal` |
-| `192.168.139.9`  | EXAANSCLD001   | Ansible Automation Server            | Planned migration to 192.168.69.0/24 |
-| `192.168.139.10` | EXADCSCLD001   | Active Directory Domain Controller    | AD for `jukebox.internal` |
-| `192.168.139.20` | EXASVRCLD001   | Windows Administration Server         | Central Windows management |
-| `192.168.139.48` | EXAPBXCLD001   | Central PBX                          | All remote site SBCs trunk here |
-| `192.168.139.50` | EXAPRVCLD001   | Provisioning Server                  | Bootstrap / PXE / TFTP (*legal fiction*) |
-| `192.168.139.69` | EXAFWLCLD001   | CLD Firewall                        | Internal LAN: 192.168.69.253/24 |
-| `192.168.139.253`| EXARTRCLD001   | Primary Internet Gateway            | Physical upstream router (not managed) |
+For full architectural details see `docs/ExampleMusic_Beginners_Guide.md` (NET-BEGIN-001).
 
-## Normative Requirements
-
-The following requirements are MANDATORY:
-
-- Site addressing MUST follow the conventions defined in this document.
-- Site allocations MUST be recorded in `bootstrap/web/proxmox/sites.csv`.
-- Automation MUST treat branch deployments as the default case.
-- CLD MUST be treated as the sole special-case deployment.
-- CLD-specific logic MUST remain isolated from standard site logic.
-- Contributors MUST NOT modify baseline conventions to accommodate CLD.
-- Any future special-case deployments MUST be explicitly documented before implementation.
-
-Check the `CLD_Network_Overview.md` document for full details for the "Black Swan" Network 
+---
 
 ## Requirements
 
 - Ansible 2.14+
 - Python 3.10+
-- SSH key at `~/.ssh/ansible_key` — remote user `ansible` with passwordless sudo
+- `community.general` and `community.windows` Ansible collections
+- SSH key at `~/ansible/configs/ansible-id_rsa` — remote user `ansible` with passwordless sudo
 - Proxmox nodes must have `/etc/example-music/nodeinfo.json` present with `"role": "proxmox"` (written by `first-boot.sh`)
+- Linux hosts must have `/etc/example-music/sites.csv` and `/etc/example-music/devices.csv` — deployed by `linux/tools.yml`
 
 ---
-
-*Example Music Limited — Internal Infrastructure*
-*Do not distribute outside the organisation*
 
 # Related Projects & Ecosystem that were created, updated or paid forward by this work
 
 ## Spin-offs from This Repository
 
-| Repository | Description | Why is it named "Projectname"? | Reason for Name | 
+| Repository | Description | Why is it named "Projectname"? | Reason for Name |
 |---|---|---|---|
-| [Spejder](https://github.com/knightmare2600/Spejder)  | Spejder — Hardware Provisioning Runtime | Spejder (Danish: scout/ranger) — sent ahead to gather intelligence and report back. |A minimal, stateless, multi-architecture provisioning runtime built on Debian. Boots via iPXE, collects hardware inventory, and uploads it to a deployment share. No persistent storage. No installer. No nonsense. ISOs also avilable. |
+| [Spejder](https://github.com/knightmare2600/Spejder) | Spejder — Hardware Provisioning Runtime | Spejder (Danish: scout/ranger) — sent ahead to gather intelligence and report back. | A minimal, stateless, multi-architecture provisioning runtime built on Debian. Boots via iPXE, collects hardware inventory, and uploads it to a deployment share. No persistent storage. No installer. No nonsense. ISOs also available. |
 | [Fyrtaarn](https://github.com/knightmare2600/fyrtaarn) | Nordic Out-of-Band Management for IPMI, BMC, iLO, DRAC, and friends. | "Fyrtaarn" is Danish for: lighthouse / beacon / watchtower | The name reflects the project's purpose: visibility, remote control, and infrastructure oversight — without tying the project to a single vendor. |
-| [pe_tools](https://github.com/knightmare2600/pe_tools) | Tools to help when using WinPE images on x86_64 and arm64 windows | Windows Pre-install Envrionment tools | They have to be self contained/mininmal by design | 
-| [example_music_infra](https://github.com/knightmare2600/example_music_infra) | This repo | A repo that helps you get going if you want an entire AD environment using the JUKEBOX Domain with various bands as the "branch offices" and "AD users" | Warning: Some jokes are part of the fun, for example, [Ian Hislop](https://en.wikipedia.org/wiki/Ian_Hislop)'s "office" is The Old Bailey in London. [Kate Aide](https://en.wikipedia.org/wiki/Kate_Adie) is a VPN user in Beruit with a PSION (no politics here, just some old school humour). There's other such Easter Eggs & amusements inside the code and AD data. |
+| [pe_tools](https://github.com/knightmare2600/pe_tools) | Tools to help when using WinPE images on x86_64 and arm64 windows | Windows Pre-install Environment tools | They have to be self contained/minimal by design |
+| [example_music_infra](https://github.com/knightmare2600/example_music_infra) | This repo | A repo that helps you get going if you want an entire AD environment using the JUKEBOX Domain with various bands as the "branch offices" and "AD users" | Warning: Some jokes are part of the fun, for example, [Ian Hislop](https://en.wikipedia.org/wiki/Ian_Hislop)'s "office" is The Old Bailey in London. [Kate Adie](https://en.wikipedia.org/wiki/Kate_Adie) is a VPN user in Beirut with a PSION (no politics here, just some old school humour). There's other such Easter Eggs & amusements inside the code and AD data. |
 | [wintools/pwsh](https://github.com/knightmare2600/wintools/tree/master/pwsh) | Windows TUI scripts in Powershell | TUI PowerShell Helpers | Designed to defang the "fear" of PowerShell til Nutidens Unge. Hello Paige, Ellen and Ollie! |
 
 ## Recently Updated
