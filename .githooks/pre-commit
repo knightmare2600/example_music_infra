@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit
+# Enforces sync between benarbejdet/ and bootstrap/web/proxmox/ for
+# sites.csv and devices.csv.  Both copies must be identical before a
+# commit is accepted.
+#
+# One-time setup (per clone):
+#   git config core.hooksPath .githooks
+#
+# If the hook fires, decide which copy is correct, cp it over the other,
+# git add both, then commit again.
+
+set -euo pipefail
+
+FAIL=0
+
+check_sync() {
+    local name="$1"
+    local a="benarbejdet/${name}"
+    local b="bootstrap/web/proxmox/${name}"
+
+    if [[ ! -f "$a" ]]; then
+        echo "  [!] Missing: ${a}"
+        FAIL=1
+        return
+    fi
+    if [[ ! -f "$b" ]]; then
+        echo "  [!] Missing: ${b}"
+        FAIL=1
+        return
+    fi
+
+    if ! diff -q "$a" "$b" > /dev/null 2>&1; then
+        echo ""
+        echo "  [SYNC ERROR] ${name} differs between the two locations:"
+        echo "    A: ${a}"
+        echo "    B: ${b}"
+        echo ""
+        diff --unified=2 "$a" "$b" | head -50
+        echo ""
+        echo "  To accept A as correct:  cp ${a} ${b}"
+        echo "  To accept B as correct:  cp ${b} ${a}"
+        echo "  Then: git add ${a} ${b} && git commit"
+        FAIL=1
+    fi
+}
+
+check_sync "sites.csv"
+check_sync "devices.csv"
+
+if [[ $FAIL -ne 0 ]]; then
+    echo ""
+    echo "  Commit blocked — resolve sync errors above first."
+    echo ""
+    exit 1
+fi

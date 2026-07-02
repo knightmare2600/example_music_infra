@@ -14,9 +14,10 @@
 
   vars:
     # Source paths on the Ansible control node (relative to this playbook's directory).
-    # Assumes standard repo layout: ansible/ and bootstrap/ sit under the same repo root.
-    sites_csv_src:   "{{ playbook_dir }}/../../../bootstrap/web/proxmox/sites.csv"
-    devices_csv_src: "{{ playbook_dir }}/../../../bootstrap/web/proxmox/devices.csv"
+    # Reads from benarbejdet/ — the shared data directory at the repo root.
+    # benarbejdet/ and bootstrap/web/proxmox/ copies are kept in sync by .githooks/pre-commit.
+    sites_csv_src:   "{{ playbook_dir }}/../../../benarbejdet/sites.csv"
+    devices_csv_src: "{{ playbook_dir }}/../../../benarbejdet/devices.csv"
 
   tasks:
 
