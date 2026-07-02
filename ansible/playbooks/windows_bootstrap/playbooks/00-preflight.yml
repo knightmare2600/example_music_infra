@@ -183,8 +183,10 @@
     - name: "[DEBUG] devices_data row count and first 3 Hostnames"
       debug:
         msg:
+          - "raw file length   : {{ lookup('file', devices_csv) | length }} chars"
+          - "lines after filter: {{ (lookup('file', devices_csv).split('\n') | reject('match', '^#') | reject('match', '^$') | list) | length }}"
+          - "first filtered ln : {{ (lookup('file', devices_csv).split('\n') | reject('match', '^#') | reject('match', '^$') | list)[0] | default('(empty)') }}"
           - "devices_data rows : {{ devices_data | length }}"
-          - "First 3 Hostnames : {{ devices_data[:3] | map(attribute='Hostname') | list }}"
           - "target_hostname   : '{{ target_hostname | upper }}' (len={{ (target_hostname | upper) | length }})"
 
     - name: Find device record for {{ target_hostname }}
@@ -416,29 +418,16 @@
           ════════════════════════════════════════════════════════════════
       when: needs_reboot | bool
 
-    - name: Reboot — applies rename and static IP in one pass
-      ansible.windows.win_shell: shutdown /r /t 5 /f
-      when: needs_reboot | bool
-
-    - name: Switch ansible_host to new static IP for remainder of play
+    - name: Switch ansible_host to new static IP before reboot
       set_fact:
         ansible_host: "{{ static_ip }}"
       when: ip_needs_change | bool
 
-    - name: Wait for SSH on new IP (control node poll)
-      ansible.builtin.wait_for:
-        host:    "{{ static_ip if ip_needs_change | bool else current_ip }}"
-        port:    22
-        state:   started
-        timeout: 300
-        delay:   30
-      delegate_to: localhost
-      when: needs_reboot | bool
-
-    - name: Re-establish Ansible connection
-      ansible.builtin.wait_for_connection:
-        timeout: 120
-        delay:   10
+    - name: Reboot — applies rename and static IP in one pass
+      ansible.windows.win_reboot:
+        reboot_timeout:    300
+        post_reboot_delay: 20
+        msg:               "Ansible preflight — applying hostname/IP changes"
       when: needs_reboot | bool
 
     # =========================================================================
