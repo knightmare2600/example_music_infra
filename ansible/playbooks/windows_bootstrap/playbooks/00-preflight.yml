@@ -172,18 +172,14 @@
         prefix_len:       "{{ site_record.Subnet.split('/')[1] }}"
         site_expected_ip: "{{ site_record.DC }}"
 
-    - name: Find device line for {{ target_hostname }} in devices.csv
+    - name: Find HostOctet for {{ target_hostname }} in devices.csv
       set_fact:
-        device_line: >-
-          {{ lookup('file', devices_csv).split('\n')
-              | reject('match', '^#')
-              | select('search', ',' + (target_hostname | upper) + ',')
-              | first | default('') }}
+        device_octet: "{{ lookup('file', devices_csv) | regex_search('[A-Z]+,' + (target_hostname | upper) + ',(\\d+)') | default('') }}"
 
     - name: Derive expected IP from devices.csv
       set_fact:
-        expected_ip: "{{ subnet_base }}.{{ device_line.split(',')[2] }}"
-      when: device_line | length > 0
+        expected_ip: "{{ subnet_base }}.{{ device_octet }}"
+      when: device_octet | length > 0
 
     - name: Show derived site info
       debug:

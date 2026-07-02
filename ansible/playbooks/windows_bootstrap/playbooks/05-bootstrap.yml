@@ -133,7 +133,6 @@
       - sdelete
       - sysinternals
       - windirstat
-      - windowssystemcontrolcenter
       - winscp.install
 
     # ── Screen lock ───────────────────────────────────────────────────────────
@@ -570,6 +569,13 @@
         name:   "{{ choco_packages_common }}"
         state:  present
         source: "{{ exa_choco_source }}"
+
+    - name: "[Stage 14] Install Windows System Control Centre (pinned)"
+      chocolatey.chocolatey.win_chocolatey:
+        name:    windowssystemcontrolcenter
+        version: '4.0.5.1'
+        state:   present
+        source:  "{{ exa_choco_source }}"
 
     # =========================================================================
     # Stage 15 — RSAT
