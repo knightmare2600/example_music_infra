@@ -173,13 +173,17 @@
         site_expected_ip: "{{ site_record.DC }}"
 
     - name: Find HostOctet for {{ target_hostname }} in devices.csv
-      set_fact:
-        device_octet: "{{ lookup('file', devices_csv) | regex_search('[A-Z]+,' + (target_hostname | upper) + ',([0-9]+)') | default('', true) }}"
+      ansible.builtin.shell: >-
+        grep -m1 ',{{ target_hostname | upper }},' '{{ devices_csv }}' | cut -d',' -f3
+      register: device_octet_raw
+      delegate_to: localhost
+      changed_when: false
+      failed_when: false
 
     - name: Derive expected IP from devices.csv
       set_fact:
-        expected_ip: "{{ subnet_base }}.{{ device_octet }}"
-      when: device_octet | length > 0
+        expected_ip: "{{ subnet_base }}.{{ device_octet_raw.stdout | trim }}"
+      when: device_octet_raw.stdout | trim | length > 0
 
     - name: Show derived site info
       debug:
