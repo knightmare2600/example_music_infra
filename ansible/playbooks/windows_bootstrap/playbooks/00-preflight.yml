@@ -172,35 +172,18 @@
         prefix_len:       "{{ site_record.Subnet.split('/')[1] }}"
         site_expected_ip: "{{ site_record.DC }}"
 
-    - name: Read devices.csv from control node
+    - name: Find device line for {{ target_hostname }} in devices.csv
       set_fact:
-        devices_data: >-
-          {{ (lookup('file', devices_csv).split('\n')
+        device_line: >-
+          {{ lookup('file', devices_csv).split('\n')
               | reject('match', '^#')
-              | reject('match', '^$')
-              | join('\n')) | community.general.from_csv }}
-
-    - name: "[DEBUG] devices_data row count and first 3 Hostnames"
-      debug:
-        msg:
-          - "raw file length   : {{ lookup('file', devices_csv) | length }} chars"
-          - "lines after filter: {{ (lookup('file', devices_csv).split('\n') | reject('match', '^#') | reject('match', '^$') | list) | length }}"
-          - "first filtered ln : {{ (lookup('file', devices_csv).split('\n') | reject('match', '^#') | reject('match', '^$') | list)[0] | default('(empty)') }}"
-          - "devices_data rows : {{ devices_data | length }}"
-          - "target_hostname   : '{{ target_hostname | upper }}' (len={{ (target_hostname | upper) | length }})"
-
-    - name: Find device record for {{ target_hostname }}
-      set_fact:
-        device_record: "{{ devices_data | selectattr('Hostname', 'equalto', target_hostname | upper) | list | first | default({}) }}"
-
-    - name: "[DEBUG] device_record result"
-      debug:
-        msg: "device_record = {{ device_record }}"
+              | select('search', ',' + (target_hostname | upper) + ',')
+              | first | default('') }}
 
     - name: Derive expected IP from devices.csv
       set_fact:
-        expected_ip: "{{ subnet_base }}.{{ device_record.HostOctet }}"
-      when: device_record | length > 0 and device_record.HostOctet | default('') | length > 0
+        expected_ip: "{{ subnet_base }}.{{ device_line.split(',')[2] }}"
+      when: device_line | length > 0
 
     - name: Show derived site info
       debug:

@@ -567,12 +567,9 @@
 
     - name: "[Stage 14] Install common baseline packages"
       chocolatey.chocolatey.win_chocolatey:
-        name:   "{{ item }}"
+        name:   "{{ choco_packages_common }}"
         state:  present
         source: "{{ exa_choco_source }}"
-      loop: "{{ choco_packages_common }}"
-      loop_control:
-        label: "{{ item }}"
 
     # =========================================================================
     # Stage 15 — RSAT
