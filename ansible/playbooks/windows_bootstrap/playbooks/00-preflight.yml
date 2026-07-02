@@ -179,7 +179,6 @@
               | reject('match', '^#')
               | reject('match', '^$')
               | join('\n')) | community.general.from_csv }}
-      delegate_to: localhost
 
     - name: Find device record for {{ target_hostname }}
       set_fact:
