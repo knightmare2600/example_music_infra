@@ -376,17 +376,37 @@
           ════════════════════════════════════════════════════════════════
       when: needs_reboot | bool
 
-    - name: Switch ansible_host to new static IP before reboot
+    - name: Reboot — IP change (send to old IP, scheduled task applies new IP on boot)
+      ansible.windows.win_shell: shutdown /r /t 5 /f
+      ignore_unreachable: true
+      when: ip_needs_change | bool
+
+    - name: Wait for SSH on new static IP
+      ansible.builtin.wait_for:
+        host:    "{{ static_ip }}"
+        port:    22
+        delay:   20
+        timeout: 300
+      delegate_to: localhost
+      when: ip_needs_change | bool
+
+    - name: Switch ansible_host to new static IP
       set_fact:
         ansible_host: "{{ static_ip }}"
       when: ip_needs_change | bool
 
-    - name: Reboot — applies rename and static IP in one pass
+    - name: Verify connection on new IP
+      ansible.builtin.wait_for_connection:
+        delay:   5
+        timeout: 60
+      when: ip_needs_change | bool
+
+    - name: Reboot — hostname change only (no IP change)
       ansible.windows.win_reboot:
         reboot_timeout:    300
         post_reboot_delay: 20
-        msg:               "Ansible preflight — applying hostname/IP changes"
-      when: needs_reboot | bool
+        msg:               "Ansible preflight — applying hostname change"
+      when: hostname_needs_change | bool and not ip_needs_change | bool
 
     # =========================================================================
     # STEP 11 — Summary before handing off
