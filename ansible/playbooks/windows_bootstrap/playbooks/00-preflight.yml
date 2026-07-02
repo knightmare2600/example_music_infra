@@ -174,7 +174,7 @@
 
     - name: Find HostOctet for {{ target_hostname }} in devices.csv
       set_fact:
-        device_octet: "{{ lookup('file', devices_csv) | regex_search('[A-Z]+,' + (target_hostname | upper) + ',(\\d+)') | default('') }}"
+        device_octet: "{{ lookup('file', devices_csv) | regex_search('[A-Z]+,' + (target_hostname | upper) + ',([0-9]+)') | default('', true) }}"
 
     - name: Derive expected IP from devices.csv
       set_fact:
