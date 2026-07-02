@@ -32,7 +32,7 @@
         name: ansible
         shell: /bin/zsh
 
-    - name: Create /etc/example-music directory
+    - name: Ensure /etc/example-music exists
       ansible.builtin.file:
         path:  /etc/example-music
         state: directory
