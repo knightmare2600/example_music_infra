@@ -130,6 +130,10 @@
       - powershell-core
       - putty.install
       - rustdesk.install
+      - sdelete
+      - sysinternals
+      - windirstat
+      - windowssystemcontrolcenter
       - winscp.install
 
     # ── Screen lock ───────────────────────────────────────────────────────────
