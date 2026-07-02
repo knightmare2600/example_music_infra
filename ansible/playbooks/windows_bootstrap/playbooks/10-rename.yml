@@ -8,9 +8,9 @@
 # site code against sites.csv (passed as --extra-vars sites_csv=<path>).
 #
 # Usage:
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/10-rename.yml
-#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/10-rename.yml \
-#     -e new_hostname=EXAWKSGLA001
+#   ansible-playbook playbooks/windows_bootstrap/playbooks/10-rename.yml -i <ip>,
+#   ansible-playbook playbooks/windows_bootstrap/playbooks/10-rename.yml -i <ip>, \
+#     -e target_hostname=EXAWKSGLA001
 #
 # Tags: rename
 # =============================================================================
@@ -19,49 +19,43 @@
 # =============================================================================
 
 - name: Windows — Rename host
-  hosts: "{{ target | default('all') }}"
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
   gather_facts: true
   vars_prompt:
-    - name: new_hostname
+    - name: target_hostname
       prompt: "New hostname (EXA[ROLE][SITE][NNN], e.g. EXAWKSGLA001) — Enter to skip rename"
       private: false
       default: ""
   tasks:
 
-    - name: Include hostname facts (current name)
-      include_tasks: ../tasks/hostname_facts.yml
-      vars:
-        inventory_hostname: "{{ ansible_hostname }}"
-      when: new_hostname == ""
-
-    - name: Skip rename if no new hostname supplied
+    - name: Skip rename if no hostname supplied
       debug:
-        msg: "No new hostname supplied — skipping rename. Current: {{ ansible_hostname }}"
-      when: new_hostname == ""
+        msg: "No hostname supplied — skipping rename. Current: {{ ansible_hostname }}"
+      when: target_hostname == ""
 
     - name: Validate supplied hostname format
       assert:
         that:
-          - new_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$')
+          - target_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$')
         fail_msg: >
-          '{{ new_hostname }}' is not a valid EXA hostname.
+          '{{ target_hostname }}' is not a valid EXA hostname.
           Format: EXA[ROLE][SITE][NNN] — e.g. EXAWKSGLA001, EXASRVCLD002.
-      when: new_hostname != ""
+      when: target_hostname != ""
 
     - name: Skip if already named correctly
       debug:
-        msg: "Host is already named {{ new_hostname | upper }} — no rename needed."
+        msg: "Host is already named {{ target_hostname | upper }} — no rename needed."
       when:
-        - new_hostname != ""
-        - ansible_hostname | upper == new_hostname | upper
+        - target_hostname != ""
+        - ansible_hostname | upper == target_hostname | upper
 
     - name: Rename computer
       ansible.windows.win_shell: |
-        Rename-Computer -NewName "{{ new_hostname | upper }}" -Force
+        Rename-Computer -NewName "{{ target_hostname | upper }}" -Force
       register: rename_result
       when:
-        - new_hostname != ""
-        - ansible_hostname | upper != new_hostname | upper
+        - target_hostname != ""
+        - ansible_hostname | upper != target_hostname | upper
 
     - name: Reboot after rename
       ansible.windows.win_reboot:
