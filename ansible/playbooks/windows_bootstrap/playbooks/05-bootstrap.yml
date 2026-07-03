@@ -854,7 +854,7 @@
           - "══════════════════════════════════════════════════════════"
 
     - name: "[Preflight] Set screen resolution to 1280x960"
-      ansible.windows.win_shell: setres.exe -w 1280 -h 960
+      ansible.windows.win_shell: setres.exe -w 1280 -h 800
       changed_when: true
 
     - name: "[Stage 23] Final reboot"
