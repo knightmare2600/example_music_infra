@@ -46,7 +46,7 @@
         + ([{
             'site': host_site,
             'ip':   (dc_sites_map[host_site] | default('')).rsplit('.', 1)[0] + '.10',
-            'fqdn': 'exadcs' + host_site | lower + '001.jukebox.internal'
+            'fqdn': 'exadcs' + host_site | lower + '001.' + dc_domain_name
           }]
           if host_site in dc_sites_map else []
         )

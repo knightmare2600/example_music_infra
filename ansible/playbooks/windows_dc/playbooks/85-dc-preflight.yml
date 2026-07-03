@@ -92,8 +92,23 @@
       fqdn: "exadcscld001.jukebox.internal"
 
   vars_prompt:
+    - name: dc_domain_name
+      prompt: "AD domain FQDN"
+      private: false
+      default: "jukebox.internal"
+
+    - name: dc_netbios_name
+      prompt: "AD NetBIOS name"
+      private: false
+      default: "JUKEBOX"
+
+    - name: dc_dsrm_password
+      prompt: "DSRM (Directory Services Restore Mode) password"
+      private: true
+      default: ""
+
     - name: dc_admin_user
-      prompt: "Domain Admin username (e.g. JUKEBOX\\Administrator)"
+      prompt: "Domain Admin username (NETBIOS_NAME\\username)"
       private: false
       default: "JUKEBOX\\Administrator"
 
@@ -177,6 +192,22 @@
           site={{ host_site }}  role={{ dc_site_role }}
       tags: dc_preflight
 
+    # ── Apply domain name to replication source FQDNs ────────────────────────
+    # vars: block is evaluated before vars_prompt — FQDNs must be rebuilt here
+    # so dc_source_resolution.yml sees the correct domain in each candidate FQDN.
+
+    - name: Apply chosen domain name to replication source FQDNs
+      set_fact:
+        dc_hub_sources:
+          - { site: "FAL", ip: "192.168.76.10",  fqdn: "{{ 'exadcsfal001.' + dc_domain_name }}" }
+          - { site: "ODE", ip: "192.168.126.10", fqdn: "{{ 'exadcsode001.' + dc_domain_name }}" }
+          - { site: "BRK", ip: "192.168.136.10", fqdn: "{{ 'exadcsbrk001.' + dc_domain_name }}" }
+        dc_cld_source:
+          site: "CLD"
+          ip:   "192.168.139.10"
+          fqdn: "{{ 'exadcscld001.' + dc_domain_name }}"
+      tags: dc_preflight
+
     # ── Probe candidate replication sources ───────────────────────────────────
 
     - name: Include replication source resolution
@@ -187,12 +218,27 @@
 
     - name: Store credentials and flags as facts for downstream playbooks
       set_fact:
+        dc_domain_name:    "{{ dc_domain_name }}"
+        dc_netbios_name:   "{{ dc_netbios_name }}"
+        dc_dsrm_password:  "{{ dc_dsrm_password }}"
         dc_admin_user:     "{{ dc_admin_user }}"
         dc_admin_password: "{{ dc_admin_password }}"
         dc_local_user:     "{{ dc_local_user }}"
         dc_local_password: "{{ dc_local_password }}"
         populate_ad:       "{{ populate_ad }}"
       no_log: true
+      tags: dc_preflight
+
+    - name: "DSRM password — write it down now"
+      debug:
+        msg:
+          - "{{ _c.R }}╔═══════════════════════════════════════════════════════════════════╗{{ _c.NC }}"
+          - "{{ _c.R }}║  DSRM PASSWORD — WRITE IT DOWN AND STORE IT SECURELY NOW          ║{{ _c.NC }}"
+          - "{{ _c.R }}║  DSRM (Directory Services Restore Mode) is the ONLY recovery      ║{{ _c.NC }}"
+          - "{{ _c.R }}║  path if this domain loses all its DCs or AD becomes corrupted.   ║{{ _c.NC }}"
+          - "{{ _c.R }}║  If you lose this password and there is no other working DC,       ║{{ _c.NC }}"
+          - "{{ _c.R }}║  the domain is gone. There is no recovery path. Write it down.    ║{{ _c.NC }}"
+          - "{{ _c.R }}╚═══════════════════════════════════════════════════════════════════╝{{ _c.NC }}"
       tags: dc_preflight
 
     # ── Pre-promotion checks ──────────────────────────────────────────────────
@@ -244,10 +290,22 @@
         msg:
           - "{{ _c.C }}── DC Preflight Summary ──────────────────────────────────────{{ _c.NC }}"
           - "  Host            : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
+          - "  Domain          : {{ dc_domain_name }}  (NetBIOS: {{ dc_netbios_name }})"
           - "  Site            : {{ host_site }}  (role: {{ dc_site_role }})"
           - "  Forest root?    : {{ _c.Y }}YES — first DC build{{ _c.NC }} if {{ dc_is_forest_root | default(false) }} else No"
           - "  Replication src : {{ _c.G }}{{ dc_replication_source | default('N/A') }}{{ _c.NC }}"
           - "  Source site     : {{ dc_source_site | default('N/A') }}"
           - "  Domain-joined   : {{ dc_domain_check.stdout | trim | lower }}"
           - "  AD-DS installed : {{ dc_already_promoted }}"
+          - "  Populate AD     : {{ populate_ad }}"
+      tags: dc_preflight
+
+    - name: "AD population — additive only, re-run safe"
+      debug:
+        msg:
+          - "{{ _c.Y }}[!]{{ _c.NC }} populate_ad=yes — AD schema/groups/users/computers will run after promotion."
+          - "{{ _c.Y }}[!]{{ _c.NC }} These plays are ADDITIVE ONLY. Re-running will NOT wipe or overwrite"
+          - "{{ _c.Y }}[!]{{ _c.NC }} existing AD objects. Passwords are set on account creation only — no resets."
+          - "{{ _c.Y }}[!]{{ _c.NC }} To remove objects, use ADUC (dsa.msc). There is no automated wipe."
+      when: (populate_ad | default('no')) | lower in ['yes', 'y']
       tags: dc_preflight

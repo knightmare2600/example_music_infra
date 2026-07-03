@@ -47,7 +47,7 @@
 
     - name: Check _ldap._tcp SRV record exists for this DC
       ansible.windows.win_shell: |
-        $srv = Resolve-DnsName -Name "_ldap._tcp.jukebox.internal" -Type SRV -ErrorAction SilentlyContinue
+        $srv = Resolve-DnsName -Name "_ldap._tcp.{{ dc_domain_name }}" -Type SRV -ErrorAction SilentlyContinue
         if ($srv) {
           $match = $srv | Where-Object { $_.NameTarget -like "$env:COMPUTERNAME*" }
           if ($match) { "OK" } else { "MISSING_FOR_THIS_DC" }
@@ -62,7 +62,7 @@
 
     - name: Check SYSVOL contains domain policies directory
       ansible.windows.win_shell: |
-        $sysvol = "C:\Windows\SYSVOL\sysvol\jukebox.internal\Policies"
+        $sysvol = "C:\Windows\SYSVOL\sysvol\{{ dc_domain_name }}\Policies"
         if (Test-Path $sysvol) {
           $count = (Get-ChildItem $sysvol -Directory).Count
           Write-Output "OK:$count"
