@@ -181,3 +181,5 @@ authorized_keys
 #
 # Ignore individual download/cache directories instead of every ZIP/EXE.
 ###############################################################################
+
+legwork/
