@@ -47,7 +47,7 @@
   become: false
 
   vars:
-    ad_domain:          "jukebox.internal"
+    ad_domain:          "{{ dc_domain_name | default('jukebox.internal') }}"
     ad_computers_json:  "/etc/example-music/ad_computers.json"
 
   pre_tasks:

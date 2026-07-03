@@ -68,10 +68,10 @@
       when: dc_presync_product_type.stdout | trim != '2'
       tags: dc_replicate
 
-    - name: "[Stage 0] Check jukebox.internal DNS resolution"
+    - name: "[Stage 0] Check {{ dc_domain_name }} DNS resolution"
       ansible.windows.win_shell: |
         try {
-          $r = Resolve-DnsName jukebox.internal -ErrorAction Stop
+          $r = Resolve-DnsName {{ dc_domain_name }} -ErrorAction Stop
           Write-Output "OK:$($r[0].IPAddress)"
         } catch {
           Write-Output "FAIL:$($_.Exception.Message)"
