@@ -403,8 +403,24 @@ With the FWL live and the WireGuard tunnel up, the site can talk to CLD. Now bui
 1. Create the DC VM on the site PVE node
 2. Boot via iPXE (served from `EXAPRVCLD001` across the WireGuard tunnel)
 3. Debian installs unattended via `lvm.seed` / `late_command.sh`
-4. Run the `windows_dc` Ansible playbook from `EXAANSCLD001` — this promotes the VM to a DC, joins it to the appropriate child domain, and configures AD replication back to `EXADCSCLD001`
-5. DNS at the site now resolves `jukebox.internal` locally via the new DC — update the FWL's dnsmasq to point to `.10` instead of CLD
+4. Run `00-preflight.yml` from the `windows_bootstrap` playbook — renames the host, assigns a static IP, and configures DNS (see below)
+5. Run the `windows_dc` Ansible playbook from `EXAANSCLD001` — this promotes the VM to a DC, joins it to the appropriate child domain, and configures AD replication back to `EXADCSCLD001`
+6. DNS at the site now resolves `jukebox.internal` locally via the new DC — update the FWL's dnsmasq to point to `.10` instead of CLD
+
+**DNS during the DC build — how it works (Trust but verify)**
+
+`00-preflight.yml` decides DNS automatically. It probes the site DC IP (the `.10` address from `sites.csv`) via TCP 389 (LDAP) from the control node before the first SSH connection. Ping is not used — it is firewall-blocked. DNS lookup is not used — it is circular (we are deciding what DNS to set). LDAP is a reliable indicator that a DC is up.
+
+| What the probe finds | Primary DNS set | Secondary |
+|---|---|---|
+| Role=DCS, is_first_dc=yes | BIND9 (`192.168.139.8`) | — |
+| Site DC (`.10`) up | site DC `.10` | BIND9 |
+| Site DC down, hub DC reachable | nearest hub DC (FAL/ODE/BRK) | BIND9 |
+| No DC reachable | BIND9 only | — |
+
+The decided DNS appears in the pre-flight summary before the operator confirms. No DNS prompt is shown.
+
+**Order of operations — why hub DC first:** When you are building the first DC at a spoke site, the site `.10` does not exist yet. The hub DC (FAL for UK/IE, ODE for EU, BRK for Americas/APAC) provides AD DNS so the new DC can locate the domain for replication. After promotion, `90-dc-promote.yml` sets NIC DNS to `127.0.0.1` (the DC runs its own DNS now) and configures forwarders. The hub-DC-as-temporary-primary is only needed during the bootstrap window.
 
 The DC build is handled by Ansible. See [buildsheet-domainControllers.md](buildsheets/buildsheet-domainControllers.md) and the `windows_dc` playbook README.
 
