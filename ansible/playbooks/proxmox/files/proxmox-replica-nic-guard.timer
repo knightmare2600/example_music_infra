@@ -1,0 +1,51 @@
+# /etc/systemd/system/proxmox-replica-nic-guard.timer
+#
+# Drives proxmox-replica-nic-guard.service on a schedule.
+#
+# QUICK START
+#   systemctl daemon-reload
+#   systemctl enable --now proxmox-replica-nic-guard.timer
+#
+# CHECK SCHEDULE
+#   systemctl list-timers proxmox-replica-nic-guard.timer
+#
+# CHANGING THE INTERVAL
+#   Edit OnCalendar= below, then:
+#     systemctl daemon-reload && systemctl restart proxmox-replica-nic-guard.timer
+#
+# COMMON OnCalendar VALUES
+# ┌────────────────────────┬──────────────────────────────────────────────────┐
+# │ OnCalendar=            │ Meaning                                          │
+# ├────────────────────────┼──────────────────────────────────────────────────┤
+# │ *:0/15                 │ Every 15 minutes                                 │
+# │ *:0/30                 │ Every 30 minutes                                 │
+# │ hourly  (or *:00:00)   │ Every hour on the hour                           │
+# │ 0/2:00:00              │ Every 2 hours  (00:00, 02:00, 04:00, …)         │
+# │ 0/4:00:00              │ Every 4 hours  ← DEFAULT                         │
+# │ 0/6:00:00              │ Every 6 hours                                    │
+# │ daily                  │ Once per day at midnight                         │
+# └────────────────────────┴──────────────────────────────────────────────────┘
+# Full syntax: man systemd.time
+
+[Unit]
+Description=Run Proxmox Replica NIC Guard on a schedule
+Documentation=man:systemd.timer(5)
+
+[Timer]
+# ──────────────────────────────────────────────────────────────────────────────
+# ▶ CHANGE THIS LINE to adjust how frequently the guard runs.
+# ──────────────────────────────────────────────────────────────────────────────
+OnCalendar=0/4:00:00
+
+# If the system was off during a scheduled run, fire once on next boot.
+Persistent=true
+
+# Spread start times by up to 60 s across a fleet of PVE nodes running
+# identical timers, to avoid hammering the API simultaneously.
+RandomizedDelaySec=60
+
+# Ensure the timer triggers the corresponding service unit
+Unit=proxmox-replica-nic-guard.service
+
+[Install]
+WantedBy=timers.target
