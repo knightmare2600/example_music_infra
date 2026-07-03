@@ -47,17 +47,20 @@
 # =============================================================================
 
 - name: "Build AD users from TDF"
-  hosts: "{{ ad_target | default('EXADCSFAL001') }}"
+  hosts: "{{ ad_target | default(target | default('EXADCSFAL001')) }}"
   gather_facts: false
   become: false
 
   vars:
-    ad_domain:      "jukebox.internal"
+    ad_domain:       "jukebox.internal"
     ad_email_domain: "{{ ad_domain }}"
-    tdf_path:        "/etc/example-music/jukebox.example.tdf"
-    sites_csv:       "/etc/example-music/sites.csv"
+    ad_users_json:   "/etc/example-music/ad_users.json"
 
   pre_tasks:
+
+    - name: "Skip — populate_ad not requested"
+      meta: end_play
+      when: (populate_ad | default('no')) | lower not in ['yes', 'y']
 
     - name: "Preflight | Check microsoft.ad collection is installed"
       command: ansible-galaxy collection list microsoft.ad
@@ -80,23 +83,12 @@
       delegate_to: localhost
       become: false
 
-    - name: "Parse TDF users section on control node"
-      command: >-
-        python3 {{ playbook_dir }}/parse_tdf.py
-          --section users
-          --tdf {{ tdf_path }}
-          --domain {{ ad_domain }}
-          --email-domain {{ ad_email_domain }}
-          --sites-csv {{ sites_csv }}
-      register: _tdf_raw
-      changed_when: false
+    - name: "Load users from ad_users.json (known source of truth)"
+      set_fact:
+        _users_all: "{{ lookup('file', ad_users_json) | from_json }}"
+        _base_dn:   "DC={{ ad_domain.split('.') | join(',DC=') }}"
       delegate_to: localhost
       become: false
-
-    - name: "Decode users JSON and compute base DN"
-      set_fact:
-        _users_all: "{{ _tdf_raw.stdout | from_json }}"
-        _base_dn:   "DC={{ ad_domain.split('.') | join(',DC=') }}"
 
     - name: "Filter out users with unresolvable OU paths"
       set_fact:

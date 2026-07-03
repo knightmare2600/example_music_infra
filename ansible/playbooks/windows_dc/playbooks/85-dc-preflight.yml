@@ -112,6 +112,11 @@
       private: true
       default: ""
 
+    - name: populate_ad
+      prompt: "Populate AD with demo users/groups/computers after promotion? (yes/no)"
+      private: false
+      default: "no"
+
   tasks:
 
     # ── Hostname facts ────────────────────────────────────────────────────────
@@ -180,12 +185,13 @@
 
     # ── Credential store (passed forward to promote playbook) ─────────────────
 
-    - name: Store credentials as facts for downstream playbooks
+    - name: Store credentials and flags as facts for downstream playbooks
       set_fact:
         dc_admin_user:     "{{ dc_admin_user }}"
         dc_admin_password: "{{ dc_admin_password }}"
         dc_local_user:     "{{ dc_local_user }}"
         dc_local_password: "{{ dc_local_password }}"
+        populate_ad:       "{{ populate_ad }}"
       no_log: true
       tags: dc_preflight
 

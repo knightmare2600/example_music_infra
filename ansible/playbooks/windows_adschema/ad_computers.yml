@@ -42,16 +42,19 @@
 # =============================================================================
 
 - name: "Build AD computer accounts from TDF"
-  hosts: "{{ ad_target | default('EXADCSFAL001') }}"
+  hosts: "{{ ad_target | default(target | default('EXADCSFAL001')) }}"
   gather_facts: false
   become: false
 
   vars:
-    ad_domain:  "jukebox.internal"
-    tdf_path:   "/etc/example-music/jukebox.example.tdf"
-    sites_csv:  "/etc/example-music/sites.csv"
+    ad_domain:          "jukebox.internal"
+    ad_computers_json:  "/etc/example-music/ad_computers.json"
 
   pre_tasks:
+
+    - name: "Skip — populate_ad not requested"
+      meta: end_play
+      when: (populate_ad | default('no')) | lower not in ['yes', 'y']
 
     - name: "Preflight | Check microsoft.ad collection is installed"
       command: ansible-galaxy collection list microsoft.ad
@@ -74,22 +77,12 @@
       delegate_to: localhost
       become: false
 
-    - name: "Parse TDF computers section on control node"
-      command: >-
-        python3 {{ playbook_dir }}/parse_tdf.py
-          --section computers
-          --tdf {{ tdf_path }}
-          --domain {{ ad_domain }}
-          --sites-csv {{ sites_csv }}
-      register: _tdf_raw
-      changed_when: false
+    - name: "Load computers from ad_computers.json (known source of truth)"
+      set_fact:
+        _computers_all: "{{ lookup('file', ad_computers_json) | from_json }}"
+        _base_dn:       "DC={{ ad_domain.split('.') | join(',DC=') }}"
       delegate_to: localhost
       become: false
-
-    - name: "Decode computers JSON and compute base DN"
-      set_fact:
-        _computers_all: "{{ _tdf_raw.stdout | from_json }}"
-        _base_dn:       "DC={{ ad_domain.split('.') | join(',DC=') }}"
 
     - name: "Filter out computers with unresolvable OU paths"
       set_fact:

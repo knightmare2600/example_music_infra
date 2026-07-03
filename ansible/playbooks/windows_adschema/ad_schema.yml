@@ -89,7 +89,7 @@
 # =============================================================================
 
 - name: Build Active Directory OU schema
-  hosts: "{{ ad_target | default('EXADCSFAL001') }}"
+  hosts: "{{ ad_target | default(target | default('EXADCSFAL001')) }}"
   gather_facts: false
   become: false
 
@@ -137,6 +137,10 @@
       - Assets
 
   pre_tasks:
+
+    - name: "Skip — populate_ad not requested"
+      meta: end_play
+      when: (populate_ad | default('no')) | lower not in ['yes', 'y']
 
     - name: "Preflight | Check microsoft.ad collection is installed"
       command: ansible-galaxy collection list microsoft.ad

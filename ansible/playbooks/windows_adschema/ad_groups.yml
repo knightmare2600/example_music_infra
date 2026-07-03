@@ -30,16 +30,20 @@
 # =============================================================================
 
 - name: "Build AD groups from TDF"
-  hosts: "{{ ad_target | default('EXADCSFAL001') }}"
+  hosts: "{{ ad_target | default(target | default('EXADCSFAL001')) }}"
   gather_facts: false
   become: false
 
   vars:
     ad_domain:       "jukebox.internal"
     ad_email_domain: "{{ ad_domain }}"
-    tdf_path:        "/etc/example-music/jukebox.example.tdf"
+    ad_groups_json:  "/etc/example-music/ad_groups.json"
 
   pre_tasks:
+
+    - name: "Skip — populate_ad not requested"
+      meta: end_play
+      when: (populate_ad | default('no')) | lower not in ['yes', 'y']
 
     - name: "Preflight | Check microsoft.ad collection is installed"
       command: ansible-galaxy collection list microsoft.ad
@@ -62,26 +66,16 @@
       delegate_to: localhost
       become: false
 
-    - name: "Parse TDF groups section on control node"
-      command: >-
-        python3 {{ playbook_dir }}/parse_tdf.py
-          --section groups
-          --tdf {{ tdf_path }}
-          --domain {{ ad_domain }}
-          --email-domain {{ ad_email_domain }}
-      register: _tdf_raw
-      changed_when: false
+    - name: "Load groups from ad_groups.json (known source of truth)"
+      set_fact:
+        _groups:  "{{ lookup('file', ad_groups_json) | from_json }}"
+        _base_dn: "DC={{ ad_domain.split('.') | join(',DC=') }}"
       delegate_to: localhost
       become: false
 
-    - name: "Decode groups JSON and compute base DN"
-      set_fact:
-        _groups:  "{{ _tdf_raw.stdout | from_json }}"
-        _base_dn: "DC={{ ad_domain.split('.') | join(',DC=') }}"
-
     - name: "Preflight | Report group count"
       debug:
-        msg: "Parsed {{ _groups | length }} groups from TDF — proceeding."
+        msg: "Loaded {{ _groups | length }} groups from {{ ad_groups_json }} — proceeding."
 
   tasks:
 

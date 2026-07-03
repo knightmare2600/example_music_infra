@@ -54,3 +54,18 @@
 
 - import_playbook: playbooks/99-dc-summary.yml
   tags: dc_summary
+
+# AD population — runs only when populate_ad=yes was answered at preflight.
+# Each play guards itself with meta: end_play when populate_ad is not yes.
+# Order is mandatory: schema → groups → users → computers.
+- import_playbook: ../windows_adschema/ad_schema.yml
+  tags: ad_populate
+
+- import_playbook: ../windows_adschema/ad_groups.yml
+  tags: ad_populate
+
+- import_playbook: ../windows_adschema/ad_users.yml
+  tags: ad_populate
+
+- import_playbook: ../windows_adschema/ad_computers.yml
+  tags: ad_populate
