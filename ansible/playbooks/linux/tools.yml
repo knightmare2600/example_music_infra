@@ -57,3 +57,20 @@
         group: root
         mode:  '0644'
 
+    - name: Configure systemd-journald — vacuum period and max size
+      ansible.builtin.lineinfile:
+        path:   /etc/systemd/journald.conf
+        regexp: "{{ item.regexp }}"
+        line:   "{{ item.line }}"
+        state:  present
+      loop:
+        - { regexp: '^#?MaxRetentionSec=', line: 'MaxRetentionSec=30day' }
+        - { regexp: '^#?SystemMaxUse=',    line: 'SystemMaxUse=500M' }
+      notify: Restart journald
+
+  handlers:
+    - name: Restart journald
+      ansible.builtin.systemd:
+        name:  systemd-journald
+        state: restarted
+
