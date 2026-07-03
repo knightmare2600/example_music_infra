@@ -1,0 +1,60 @@
+# /etc/systemd/system/proxmox-replica-nic-guard.service
+#
+# One-shot service that runs the NIC guard script once.
+# It is driven by the companion .timer – do not enable this unit directly;
+# enable the timer instead:
+#
+#   systemctl daemon-reload
+#   systemctl enable --now proxmox-replica-nic-guard.timer
+#
+# To run a single on-demand check:
+#   systemctl start proxmox-replica-nic-guard.service
+#
+# To do a dry-run (no changes written):
+#   systemd-run --unit nic-guard-dryrun --service-type=oneshot \
+#     /usr/local/bin/proxmox-replica-nic-guard.py --dry-run
+
+[Unit]
+Description=Proxmox Replica NIC Guard — disconnect NICs on stopped replicated VMs
+Documentation=https://github.com/your-org/proxmox-tools   # update to your repo
+# Require network before running; the script connects to the Proxmox API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Credentials / config
+# Do NOT put secrets in this file.  Put them in the EnvironmentFile instead.
+# ──────────────────────────────────────────────────────────────────────────────
+EnvironmentFile=/etc/proxmox-replica-nic-guard/auth.env
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Script invocation
+# Remove --quiet if you want the JSON report echoed to the journal on each run
+# (useful for debugging; verbose in production).
+# ──────────────────────────────────────────────────────────────────────────────
+ExecStart=/usr/local/bin/proxmox-replica-nic-guard.py --quiet
+
+# Non-zero exit from the script (API errors) is treated as a service failure,
+# which systemd will journal and which Zabbix can detect via the nodata trigger.
+# SuccessExitStatus is not set so a real error exit propagates.
+
+# ── Hardening ──────────────────────────────────────────────────────────────────
+User=root
+# The script only needs network, /var/log write, and /etc/proxmox-replica-nic-guard read.
+CapabilityBoundingSet=
+NoNewPrivileges=yes
+ProtectSystem=full
+PrivateTmp=yes
+# Allow writing to /var/log (the JSON report)
+ReadWritePaths=/var/log
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=proxmox-replica-nic-guard
+
+[Install]
+WantedBy=multi-user.target
