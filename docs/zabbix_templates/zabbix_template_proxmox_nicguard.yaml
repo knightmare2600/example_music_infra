@@ -1,0 +1,349 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: e5a1f0b2-c3d4-4e5f-a6b7-c8d9e0f1a2b3
+      name: Templates/Proxmox
+
+  templates:
+    - uuid: f6b2a1c3-d4e5-4f60-b7c8-d9e0f1a2b3c4
+      template: Proxmox Replica NIC Guard
+      name: Proxmox Replica NIC Guard
+      description: |
+        Monitors the JSON report produced by proxmox-replica-nic-guard.py.
+
+        HOW IT WORKS
+          One master item reads the JSON file via vfs.file.contents every 5 minutes.
+          All other items are DEPENDENT on the master and extract fields via JSONPath.
+
+        MASTER ITEM UPDATE RATE vs. TIMER SCHEDULE
+          The systemd timer runs the guard every 4 hours (configurable).
+          The master item polls every 5 minutes so Zabbix picks up results
+          quickly after each run.  The file content only changes on each guard run,
+          so most polls are no-ops.
+
+        KEY ALERT: nics_connected_on_stopped
+          This counter is incremented whenever the guard finds a NIC without
+          link_down=1 on a STOPPED replicated VM.  A non-zero value means the
+          guard found (and should have fixed) unguarded replica NICs.
+          The WARNING trigger fires immediately; resolve once the guard confirms
+          0 connected NICs on stopped replicas.
+
+        FILE PERMISSIONS
+          The script writes /var/log/proxmox-replica-nic-guard.json as root
+          with chmod 644, so the zabbix user can read it without elevation.
+
+        IMPORT INSTRUCTIONS
+          Zabbix UI → Data Collection → Templates → Import → select this file.
+          Assign the template to each Proxmox host (or a dedicated monitor host
+          that has the agent deployed on the PVE node).
+
+      groups:
+        - name: Templates/Proxmox
+
+      # ──────────────────────────────────────────────────────────────────────
+      # ITEMS
+      # ──────────────────────────────────────────────────────────────────────
+      items:
+
+        # ── Master item ──────────────────────────────────────────────────────
+        - uuid: a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5
+          name: 'NIC Guard: JSON report (master)'
+          type: ZABBIX_ACTIVE
+          key: 'vfs.file.contents[/var/log/proxmox-replica-nic-guard.json]'
+          delay: 5m
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          description: |
+            Raw JSON output from proxmox-replica-nic-guard.py.
+            All other NIC Guard items depend on this one.
+            Update interval: every 5 minutes (file is rewritten by systemd timer,
+            typically every 4 hours).
+          tags:
+            - tag: component
+              value: proxmox-nic-guard
+            - tag: item-type
+              value: master
+
+        # ── NICs connected on stopped replicas (PRIMARY ALERT METRIC) ────────
+        - uuid: b2c3d4e5-f6a7-4b8c-9d0e-f1a2b3c4d5e6
+          name: 'NIC Guard: NICs connected on stopped replicas'
+          type: DEPENDENT
+          key: proxmox.nicguard.nics_connected_on_stopped
+          delay: '0'
+          history: 30d
+          trends: 90d
+          value_type: UNSIGNED
+          description: |
+            Count of NICs that were found connected (no link_down=1) on stopped
+            replicated VMs during the last guard run.
+
+            KEY NUANCE: this fires for stopped replicas only.  Running VMs (live
+            source copies) are never counted here — they are intentionally skipped
+            by the guard.
+
+            A value > 0 means replica NICs were exposed; the guard should have
+            disconnected them.  If nics_fix_failed is also > 0, disconnection
+            failed and the replicas remain at risk.
+          master_item:
+            key: 'vfs.file.contents[/var/log/proxmox-replica-nic-guard.json]'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.summary.nics_connected_on_stopped'
+              error_handler: DISCARD_VALUE
+          tags:
+            - tag: component
+              value: proxmox-nic-guard
+            - tag: scope
+              value: network-safety
+          triggers:
+            - uuid: c9d0e1f2-a3b4-4c5d-6e7f-a8b9c0d1e2f3
+              expression: 'last(/Proxmox Replica NIC Guard/proxmox.nicguard.nics_connected_on_stopped) > 0'
+              name: 'Replica NIC(s) found connected on stopped VMs ({ITEM.LASTVALUE} NIC(s))'
+              event_name: 'Proxmox replica NIC exposed on stopped VM — {ITEM.LASTVALUE} NIC(s) found connected'
+              priority: WARNING
+              description: |
+                One or more stopped replicated VMs had NICs without link_down=1.
+                The guard found (and attempted to fix) {ITEM.LASTVALUE} connected NIC(s).
+
+                KEY NUANCE: this only triggers for STOPPED replicas.
+                Running VMs are the live source and are intentionally excluded.
+
+                If the guard ran in --dry-run mode, no changes were made.
+                If nics_fix_failed > 0, some NICs could NOT be disconnected —
+                check the errors field in the JSON report.
+
+                Recovery: resolves automatically once the guard runs and reports 0.
+              tags:
+                - tag: scope
+                  value: network-safety
+
+        # ── NICs that failed to disconnect ──────────────────────────────────
+        - uuid: d4e5f6a7-b8c9-4d0e-1f2a-b3c4d5e6f7a8
+          name: 'NIC Guard: NICs failed to disconnect'
+          type: DEPENDENT
+          key: proxmox.nicguard.nics_fix_failed
+          delay: '0'
+          history: 30d
+          trends: 90d
+          value_type: UNSIGNED
+          description: |
+            Count of NICs that were found connected on stopped replicas but could
+            NOT be set to link_down=1 (API error, permission denied, etc.).
+            These replicas remain at risk of network collision on failover start.
+          master_item:
+            key: 'vfs.file.contents[/var/log/proxmox-replica-nic-guard.json]'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.summary.nics_fix_failed'
+              error_handler: DISCARD_VALUE
+          tags:
+            - tag: component
+              value: proxmox-nic-guard
+            - tag: scope
+              value: network-safety
+          triggers:
+            - uuid: e1f2a3b4-c5d6-4e7f-8a9b-c0d1e2f3a4b5
+              expression: 'last(/Proxmox Replica NIC Guard/proxmox.nicguard.nics_fix_failed) > 0'
+              name: 'NIC Guard FAILED to disconnect {ITEM.LASTVALUE} replica NIC(s) — replicas at risk'
+              priority: HIGH
+              description: |
+                The guard found connected NICs on stopped replicated VMs but could
+                NOT set link_down=1 on them.  These replicas could connect to the
+                live network if started.
+
+                Check the errors[] array in the JSON report for root cause.
+                Common causes: API token lacks VM.Config.Network permission, VM config
+                locked by another process, or API connectivity issue.
+              tags:
+                - tag: scope
+                  value: network-safety
+
+        # ── Script errors ────────────────────────────────────────────────────
+        - uuid: c3d4e5f6-a7b8-4c9d-0e1f-a2b3c4d5e6f7
+          name: 'NIC Guard: errors'
+          type: DEPENDENT
+          key: proxmox.nicguard.errors
+          delay: '0'
+          history: 30d
+          trends: 90d
+          value_type: UNSIGNED
+          description: |
+            Count of API or other errors encountered during the last guard run.
+            Check the errors[] array in the JSON report for details.
+          master_item:
+            key: 'vfs.file.contents[/var/log/proxmox-replica-nic-guard.json]'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.summary.errors'
+              error_handler: DISCARD_VALUE
+          tags:
+            - tag: component
+              value: proxmox-nic-guard
+          triggers:
+            - uuid: d0e1f2a3-b4c5-4d6e-7f8a-b9c0d1e2f3a4
+              expression: 'last(/Proxmox Replica NIC Guard/proxmox.nicguard.errors) > 0'
+              name: 'NIC Guard ran with {ITEM.LASTVALUE} error(s)'
+              priority: AVERAGE
+              description: |
+                The guard encountered API or permission errors during its last run.
+                NIC state may be incomplete.  Check the JSON report on the PVE host:
+                  cat /var/log/proxmox-replica-nic-guard.json | python3 -m json.tool
+                And the systemd journal:
+                  journalctl -u proxmox-replica-nic-guard.service -n 50
+              tags:
+                - tag: component
+                  value: proxmox-nic-guard
+
+        # ── Dry-run mode warning ──────────────────────────────────────────────
+        - uuid: b8c9d0e1-f2a3-4b4c-5d6e-f7a8b9c0d1e2
+          name: 'NIC Guard: dry-run mode active'
+          type: DEPENDENT
+          key: proxmox.nicguard.dry_run
+          delay: '0'
+          history: 30d
+          trends: 90d
+          value_type: UNSIGNED
+          description: |
+            1 if the guard ran in --dry-run mode (no NICs were modified), 0 otherwise.
+            Trigger alerts when dry-run is unexpectedly active in production.
+          master_item:
+            key: 'vfs.file.contents[/var/log/proxmox-replica-nic-guard.json]'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.dry_run'
+              error_handler: DISCARD_VALUE
+          tags:
+            - tag: component
+              value: proxmox-nic-guard
+          triggers:
+            - uuid: f2a3b4c5-d6e7-4f8a-9b0c-d1e2f3a4b5c6
+              expression: 'last(/Proxmox Replica NIC Guard/proxmox.nicguard.dry_run) = 1'
+              name: 'NIC Guard running in DRY-RUN mode — no NICs are being disconnected'
+              priority: INFO
+              description: |
+                The guard is running with --dry-run.  It is scanning and reporting
+                but NOT writing link_down=1 to any NIC config.
+                If this is unintentional, remove --dry-run from ExecStart= in
+                /etc/systemd/system/proxmox-replica-nic-guard.service and reload.
+              tags:
+                - tag: component
+                  value: proxmox-nic-guard
+
+        # ── Informational counters ────────────────────────────────────────────
+        - uuid: e5f6a7b8-c9d0-4e1f-2a3b-c4d5e6f7a8b9
+          name: 'NIC Guard: NICs disconnected this run'
+          type: DEPENDENT
+          key: proxmox.nicguard.nics_disconnected
+          delay: '0'
+          history: 30d
+          trends: 90d
+          value_type: UNSIGNED
+          description: |
+            Count of NICs successfully set to link_down=1 during the last run.
+            Non-zero means the guard actively fixed something.
+          master_item:
+            key: 'vfs.file.contents[/var/log/proxmox-replica-nic-guard.json]'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.summary.nics_disconnected'
+              error_handler: DISCARD_VALUE
+          tags:
+            - tag: component
+              value: proxmox-nic-guard
+
+        - uuid: f6a7b8c9-d0e1-4f2a-3b4c-d5e6f7a8b9c0
+          name: 'NIC Guard: replicated VM count'
+          type: DEPENDENT
+          key: proxmox.nicguard.replicated_vm_count
+          delay: '0'
+          history: 30d
+          trends: 90d
+          value_type: UNSIGNED
+          description: Total number of VMs with at least one replication job (enabled).
+          master_item:
+            key: 'vfs.file.contents[/var/log/proxmox-replica-nic-guard.json]'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.summary.replicated_vm_count'
+              error_handler: DISCARD_VALUE
+          tags:
+            - tag: component
+              value: proxmox-nic-guard
+
+        - uuid: a7b8c9d0-e1f2-4a3b-4c5d-e6f7a8b9c0d1
+          name: 'NIC Guard: VMs skipped (active task)'
+          type: DEPENDENT
+          key: proxmox.nicguard.vms_skipped_busy
+          delay: '0'
+          history: 30d
+          trends: 90d
+          value_type: UNSIGNED
+          description: VMs skipped because a replication, backup, restore, or migration task was running.
+          master_item:
+            key: 'vfs.file.contents[/var/log/proxmox-replica-nic-guard.json]'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.summary.vms_skipped_busy'
+              error_handler: DISCARD_VALUE
+          tags:
+            - tag: component
+              value: proxmox-nic-guard
+
+        - uuid: a8b9c0d1-e2f3-4a4b-5c6d-e7f8a9b0c1d2
+          name: 'NIC Guard: last run timestamp'
+          type: DEPENDENT
+          key: proxmox.nicguard.timestamp
+          delay: '0'
+          history: 30d
+          trends: '0'
+          value_type: TEXT
+          description: ISO-8601 UTC timestamp of the last completed guard run.
+          master_item:
+            key: 'vfs.file.contents[/var/log/proxmox-replica-nic-guard.json]'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.timestamp'
+              error_handler: DISCARD_VALUE
+          tags:
+            - tag: component
+              value: proxmox-nic-guard
+
+      # ──────────────────────────────────────────────────────────────────────
+      # TEMPLATE-LEVEL TRIGGERS
+      # (staleness check — depends on master item, not a dependent item)
+      # ──────────────────────────────────────────────────────────────────────
+      triggers:
+        - uuid: a3b4c5d6-e7f8-4a9b-0c1d-e2f3a4b5c6d7
+          expression: >-
+            nodata(/Proxmox Replica NIC Guard/vfs.file.contents[/var/log/proxmox-replica-nic-guard.json],5h)=1
+          name: 'NIC Guard: no report received for >5 hours — guard may have stopped'
+          priority: WARNING
+          description: |
+            The guard has not produced a new JSON report in over 5 hours.
+            For a 4-hour schedule this means at least one run was missed.
+
+            Check:
+              systemctl status proxmox-replica-nic-guard.timer
+              systemctl status proxmox-replica-nic-guard.service
+              journalctl -u proxmox-replica-nic-guard.service -n 30
+          tags:
+            - tag: component
+              value: proxmox-nic-guard
+            - tag: scope
+              value: availability
+
+      # ──────────────────────────────────────────────────────────────────────
+      # DASHBOARDS — optional starter dashboard (import separately if wanted)
+      # ──────────────────────────────────────────────────────────────────────
+      # (Zabbix dashboard YAML can be appended here; omitted for brevity.
+      #  Use the template items above to build a simple graph widget showing
+      #  nics_connected_on_stopped over time.)

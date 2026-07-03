@@ -12,16 +12,28 @@
 #   - management packages installed
 #   - ansible in kvm group (needed for virt-customize)
 #
-# Files deployed (source: ansible/playbooks/proxmox/files/ — copy yours there):
-#   /usr/local/bin/enable_vm_trim_discard.sh     -- TRIM/discard helper
-#   /usr/local/bin/pve-monthly-hoover.sh         -- monthly cleanup script
-#   /usr/local/bin/pve-snapshot-check.py         -- snapshot audit script
-#   /etc/apt/apt.conf.d/52unattended-upgrades-pve -- kernel cleanup apt config
+# Files deployed (source: ansible/playbooks/proxmox/files/):
+#   /usr/local/bin/enable_vm_trim_discard.sh          -- TRIM/discard helper
+#   /usr/local/bin/pve-monthly-hoover.sh              -- monthly cleanup script
+#   /usr/local/bin/pve-snapshot-check.py              -- snapshot audit script
+#   /usr/local/bin/proxmox-replica-nic-guard.py       -- NIC link_down guard for replicas
+#   /usr/local/bin/proxmox-zfs-vm-audit.py            -- ZFS VM pool placement audit
+#   /etc/apt/apt.conf.d/52unattended-upgrades-pve     -- blocks proxmox-ve from auto-upgrade
 #   /etc/systemd/system/pve-monthly-hoover.{service,timer}
 #   /etc/systemd/system/pve-snapshot-check.{service,timer}
+#   /etc/systemd/system/proxmox-replica-nic-guard.{service,timer}
+#   /etc/systemd/system/proxmox-zfs-vm-audit.{service,timer}
+#   /etc/proxmox-replica-nic-guard/proxmox-replica-nic-guard.env.example
+#   /etc/zabbix/zabbix_agentd.d/zabbix_agentd_nic-guard.conf
 #
 # Ansible re-deploys any file whose checksum differs from the source.
 # Zabbix cksum items will alert if files drift between Ansible runs.
+#
+# NIC guard credentials:
+#   The replica-nic-guard script reads its Proxmox API credentials from
+#   /etc/proxmox-replica-nic-guard/auth.env (not deployed by Ansible — fill
+#   in from the .env.example that IS deployed).
+#   See docs/zabbix_templates/ for the matching Zabbix template to import.
 #
 # Run once per new PVE node, as root via SSH password:
 #   ansible-playbook playbooks/proxmox/pve_onboard.yml \
@@ -31,12 +43,21 @@
 #
 # Changelog:
 #   2026-06-29  Added Zabbix-monitored file deployment, systemd timers
+#   2026-07-03  Add proxmox-replica-nic-guard and proxmox-zfs-vm-audit scripts,
+#               units, and associated config/Zabbix agent drop-in
 # =============================================================================
 
 - hosts: pvenodes
   become: true
   vars_files:
     - ../../group_vars/pvenodes/main.yml
+
+  handlers:
+    - name: Restart zabbix-agent
+      ansible.builtin.systemd:
+        name: zabbix-agent
+        state: restarted
+      failed_when: false
 
   tasks:
 
@@ -90,6 +111,8 @@
         - enable_vm_trim_discard.sh
         - pve-monthly-hoover.sh
         - pve-snapshot-check.py
+        - proxmox-replica-nic-guard.py
+        - proxmox-zfs-vm-audit.py
 
     # ── Apt config ────────────────────────────────────────────────────────────
 
@@ -115,6 +138,10 @@
         - pve-monthly-hoover.timer
         - pve-snapshot-check.service
         - pve-snapshot-check.timer
+        - proxmox-replica-nic-guard.service
+        - proxmox-replica-nic-guard.timer
+        - proxmox-zfs-vm-audit.service
+        - proxmox-zfs-vm-audit.timer
       register: pve_unit_files
 
     - name: Reload systemd daemon (unit files changed)
@@ -130,3 +157,45 @@
       loop:
         - pve-monthly-hoover.timer
         - pve-snapshot-check.timer
+        - proxmox-replica-nic-guard.timer
+        - proxmox-zfs-vm-audit.timer
+
+    # ── NIC guard credentials directory ──────────────────────────────────────
+    # The script reads /etc/proxmox-replica-nic-guard/auth.env at runtime.
+    # Ansible deploys only the example file — the operator fills in the real
+    # credentials (Proxmox API token) and saves them as auth.env.
+
+    - name: Create /etc/proxmox-replica-nic-guard directory
+      ansible.builtin.file:
+        path:  /etc/proxmox-replica-nic-guard
+        state: directory
+        owner: root
+        group: root
+        mode:  '0700'
+
+    - name: Deploy NIC guard credentials example
+      copy:
+        src:   files/proxmox-replica-nic-guard.env.example
+        dest:  /etc/proxmox-replica-nic-guard/auth.env.example
+        owner: root
+        group: root
+        mode:  '0600'
+
+    # ── Zabbix agent drop-in ──────────────────────────────────────────────────
+
+    - name: Ensure /etc/zabbix/zabbix_agentd.d exists
+      ansible.builtin.file:
+        path:  /etc/zabbix/zabbix_agentd.d
+        state: directory
+        owner: root
+        group: root
+        mode:  '0755'
+
+    - name: Deploy Zabbix agent drop-in for NIC guard
+      copy:
+        src:   files/zabbix_agentd_nic-guard.conf
+        dest:  /etc/zabbix/zabbix_agentd.d/proxmox-nic-guard.conf
+        owner: root
+        group: root
+        mode:  '0644'
+      notify: Restart zabbix-agent
