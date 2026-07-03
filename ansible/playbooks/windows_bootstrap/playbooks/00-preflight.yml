@@ -4,22 +4,72 @@
 # Example Music Limited — Pre-flight: credentials, hostname, IP, SSH hardening
 #
 # Runs against a freshly built Windows host on its DHCP address.
-# Handles everything that must happen BEFORE 05-bootstrap.yml:
+# Handles everything that must happen BEFORE 05-bootstrap.yml.
 #
-#   1. Verify SSH is running and set to auto-start
-#   2. Deploy Ansible public key (so subsequent runs are passwordless)
-#   3. Prompt for target hostname — validates EXA[ROLE][SITE][NNN] format
-#   4. Derive site details from sites.csv on the Ansible control node
-#   5. List NICs, prompt user to select one
-#   6. Prompt for DHCP or static IP — SKIPPED if IP already matches sites.csv
-#   7. Rename computer — SKIPPED if hostname already correct
-#   8. Single reboot — rename takes effect AND static IP scheduled task fires
-#   9. wait_for_connection on new IP
-#  10. Hand off to 05-bootstrap.yml
+# Task flow
+# ─────────
+# PHASE A — All control-node work (no SSH connection to target yet):
+#   A1  Resolve is_first_dc and persist vars_prompt facts
+#   A2  Validate hostname format and parse site/role codes
+#   A3  Read sites.csv → derive subnet, gateway, site DC IP
+#   A4  DNS probe → decide dns_primary / dns_secondary (see below)
+#   A5  Pre-flight summary + operator confirm
 #
-# Usage:
-#   ansible-playbook playbooks/windows_bootstrap/playbooks/00-preflight.yml \
-#     -i 192.168.151.174, -e "target_hosts=192.168.151.174"
+# PHASE B — SSH connect and harden:
+#   B1  gather_facts (first real SSH connection)
+#   B2  Ensure sshd running and set to auto-start
+#   B3  Deploy Ansible public key
+#
+# PHASE C — Assess current state:
+#   C1  Read current hostname and IP from host
+#   C2  Set hostname_needs_change / ip_needs_change facts
+#
+# PHASE D — NIC selection (ip_needs_change only)
+# PHASE E — Static IP facts
+#
+# PHASE F — Write EXA-ApplyStaticIP scheduled task (ip_needs_change only):
+#   Sets static IP, correct DNS, re-enables OpenSSH firewall rules on next boot.
+#
+# PHASE G — Rename computer (hostname_needs_change only)
+# PHASE H — Reboot (rename or IP change), operator-confirmed reconnect
+# PHASE I — Summary and hand-off to 05-bootstrap.yml
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# DNS decision (Phase A4)
+# ─────────────────────────────────────────────────────────────────────────────
+# The correct DNS for the new static IP depends on what DCs are actually
+# reachable at run time.  A TCP 389 (LDAP) probe from the control node
+# determines the state.  Ping is firewall-blocked and unreliable.  A DNS
+# lookup would be circular (we are deciding what DNS to set).  LDAP/389 is a
+# reliable indicator that a DC is up and answering.
+#
+# Source of truth for hub DC IPs: the DC column of sites.csv.
+#
+# Decision tree (applied in order):
+#
+#   Role=DCS AND is_first_dc=yes
+#     → primary=BIND9 (192.168.139.8), secondary=none
+#       Creating the AD forest from scratch.  No domain exists yet — no AD DNS
+#       is needed and none will answer.  90-dc-promote.yml sets DNS to
+#       127.0.0.1 and configures BIND9 as a forwarder after promotion.
+#
+#   site DC (.10) reachable via TCP 389
+#     → primary=site_dc (.10), secondary=BIND9
+#       A DC is already up at this site.  Use it — AD SRV records resolve
+#       correctly for domain join and replication.
+#
+#   site DC (.10) not reachable, hub DC (FAL/ODE/BRK) reachable
+#     → primary=nearest reachable hub DC, secondary=BIND9
+#       First DC at this site.  The domain exists elsewhere — a hub DC provides
+#       AD DNS for domain join and replication.  For DCS hosts, 90-dc-promote
+#       handles DNS after promotion.  For non-DCS hosts this is TEMPORARY —
+#       once the site DC (EXADCS<SITE>001) is commissioned, update DNS to .10.
+#
+#   No DC reachable anywhere
+#     → primary=BIND9 only, secondary=none
+#       BIND9 is the last resort.  Domain join will likely fail — BIND9 does
+#       not serve AD SRV records.  Investigate connectivity before proceeding.
+#
 # =============================================================================
 # Changelog:
 #   2026-06-27  Initial file
@@ -31,30 +81,18 @@
 #   2026-06-29  Skip rename prompt if hostname already matches target
 #   2026-06-30  RESTORED after being incorrectly overwritten with unrelated
 #               "Stage 0b DNS/DC" content that was never part of this file.
-#               This file is now back to the original credentials/hostname/IP
-#               flow exactly as it was on 2026-06-29. No content changes
-#               beyond restoration — the DNS-resolver fix discussed separately
-#               belongs in 05-bootstrap.yml's own preflight checks (chocolatey/
-#               github/wallpaper reachability), not here. That fix has NOT
-#               been re-applied yet — see Open Items in the Windows guide.
 #   2026-06-30  Moved is_first_dc question into vars_prompt so ALL prompts
-#               fire upfront before any tasks run. Previously this was a
-#               pause task mid-run inside tasks/preflight.yml, causing the
-#               operator to be prompted after tasks had already started.
-#               The mid-run pause in tasks/preflight.yml is now replaced with
-#               a set_fact that consumes is_first_dc_input from vars_prompt.
-#               Passing -e is_first_dc=true on the command line still works
-#               and bypasses the prompt entirely for scripted builds.
-#   2026-07-02  Remove invalid set_fact from vars_prompt block (Ansible error).
-#               Fix ip_needs_change: was checking subnet membership only, so
-#               a node already on a same-subnet DHCP lease was never given a
-#               static IP. Now reads devices.csv to derive expected_ip for the
-#               target hostname and compares current_ip exactly. Falls back to
-#               subnet check if hostname is absent from devices.csv.
-#               IP prompt now shows expected_ip and defaults to it on Enter.
-#               Persist target_hostname and dj_temp_dns_ip as host facts so
-#               they survive into subsequent imported plays (05-bootstrap.yml
-#               etc.) — vars_prompt values are play-scoped and lost otherwise.
+#               fire upfront before any tasks run.
+#   2026-07-02  Fix ip_needs_change: was checking subnet membership only.
+#               Persist target_hostname and dj_temp_dns_ip as host facts.
+#   2026-07-03  Automated DNS decision — remove hardcoded dns_server var and
+#               dj_temp_dns_ip prompt. Phase A4 probes site DC and hub DCs via
+#               TCP 389 and sets dns_primary / dns_secondary based on role,
+#               is_first_dc, and probe results. dj_temp_dns_ip is derived from
+#               dns_primary and passed forward to downstream plays as before.
+#               Pre-flight summary moved to after Phase A4 so operator sees
+#               the decided DNS before confirming.  Task flow reorganised into
+#               named phases (A–I) matching the file header above.
 # =============================================================================
 
 - name: Pre-flight — credentials, hostname, IP, SSH
@@ -73,22 +111,17 @@
       default: ""
 
     - name: vault_domain_join_password
-      prompt: "Domain join password (JUKEBOX\\Administrator)"
- 
+      prompt: "Domain join password (Domain Admin)"
+
     - name: target_hostname
       prompt: "Target hostname (EXA[ROLE][SITE][NNN], e.g. EXADCSCLD001)"
       private: false
       default: ""
 
     - name: is_first_dc_input
-      prompt: "Is this the FIRST domain controller being built for this site...? (yes/no — leave blank / enter no for all other host types):"
+      prompt: "Is this the FIRST domain controller being built for this site? (yes/no — no for all other host types)"
       private: false
       default: "no"
-
-    - name: dj_temp_dns_ip
-      prompt: "Temporary DNS server if jukebox.internal is unreachable"
-      private: false
-      default: "192.168.139.8"
 
     - name: target_ip
       prompt: "Static IP to assign (leave blank if IP is already correct)"
@@ -103,58 +136,33 @@
     ansible_ssh_extra_args:       '-o StrictHostKeyChecking=no'
     ansible_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa"
     ansible_ssh_public_key_file:  "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa.pub"
-    sites_csv:   "/etc/example-music/sites.csv"
-    dns_server:  "192.168.139.8"
+    sites_csv: "/etc/example-music/sites.csv"
+    dns_bind9: "192.168.139.8"   # CLD BIND9 — upstream resolver for jukebox.internal
 
   tasks:
 
     # =========================================================================
-    # STEP 0 — Pre-flight summary (runs on localhost, before any SSH connection)
+    # PHASE A — Control-node tasks (no SSH connection to target)
     # =========================================================================
 
-    - name: Pre-flight summary — confirm before connecting
-      ansible.builtin.pause:
-        prompt: |-
+    # ── A1 — is_first_dc and fact persistence ─────────────────────────────────
 
-          ── Pre-flight summary ───────────────────────────────────────────────
-            Host target : {{ inventory_hostname }}
-            SSH user    : {{ ansible_user }}
-            Hostname    : {{ target_hostname | upper }}
-            First DC    : {{ 'YES' if is_first_dc_input | lower | trim in ['yes','y'] else 'no' }}
-            Temp DNS    : {{ dj_temp_dns_ip }}
-            Target IP   : {{ target_ip if target_ip | length > 0 else '(blank — no IP change)' }}
-          ─────────────────────────────────────────────────────────────────────
-          Confirm (Enter to proceed, Ctrl+C → A to abort)
-      delegate_to: localhost
-
-    # =========================================================================
-    # STEP 1 — Resolve is_first_dc from vars_prompt answer or -e override
-    # =========================================================================
-    # Consumes is_first_dc_input from vars_prompt above.
-    # Passing -e is_first_dc=true on the command line takes precedence
-    # (the set_fact is skipped when is_first_dc is already defined externally).
-
-    - name: Set is_first_dc fact from vars_prompt
+    - name: "[A1] Set is_first_dc fact from vars_prompt"
       set_fact:
         is_first_dc: "{{ is_first_dc_input | lower | trim in ['yes', 'y'] }}"
       when: is_first_dc is not defined
 
-    - name: Show first-DC build status
-      debug:
-        msg: "{{ 'FIRST-DC BUILD — domain join will be skipped. Run windows_dc/site.yml after bootstrap.' if is_first_dc else 'Not a first-DC build — domain join will run in Stage 5.' }}"
-
-    - name: Persist vars_prompt values as host facts for later plays
+    - name: "[A1] Persist vars_prompt values as host facts for downstream plays"
       set_fact:
-        is_first_dc_input: "{{ is_first_dc_input }}"
-        target_hostname:   "{{ target_hostname }}"
-        dj_temp_dns_ip:    "{{ dj_temp_dns_ip }}"
-        target_ip:         "{{ target_ip }}"
+        is_first_dc_input:          "{{ is_first_dc_input }}"
+        target_hostname:            "{{ target_hostname }}"
+        target_ip:                  "{{ target_ip }}"
+        vault_domain_join_password: "{{ vault_domain_join_password }}"
+      no_log: true
 
-    # =========================================================================
-    # STEP 1 — Validate hostname before touching anything
-    # =========================================================================
+    # ── A2 — Hostname validation and site/role parsing ─────────────────────────
 
-    - name: Validate hostname format
+    - name: "[A2] Validate hostname format"
       assert:
         that:
           - target_hostname | length > 0
@@ -163,67 +171,163 @@
           '{{ target_hostname }}' is not a valid EXA hostname.
           Format: EXA[ROLE][SITE][NNN] — e.g. EXADCSLIV001, EXAWKSFAL001.
 
-    - name: Parse site and role codes from hostname
+    - name: "[A2] Parse site and role codes from hostname"
       set_fact:
         host_site_code: "{{ target_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first }}"
         host_role_code: "{{ target_hostname | upper | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\\1') | first }}"
 
-    # =========================================================================
-    # STEP 2 — Read sites.csv on control node, derive network details
-    # =========================================================================
+    # ── A3 — Read sites.csv and derive network details ─────────────────────────
 
-    - name: Read sites.csv from control node
+    - name: "[A3] Read sites.csv from control node"
       set_fact:
         site_data: "{{ lookup('file', sites_csv) | community.general.from_csv }}"
       delegate_to: localhost
 
-    - name: Find site record for {{ host_site_code }}
+    - name: "[A3] Find site record for {{ host_site_code }}"
       set_fact:
         site_record: "{{ site_data | selectattr('Site', 'equalto', host_site_code) | list | first | default({}) }}"
 
-    - name: Fail if site code not found in sites.csv
+    - name: "[A3] Fail if site code not found in sites.csv"
       fail:
         msg: "Site code '{{ host_site_code }}' not found in {{ sites_csv }}. Check the hostname."
       when: site_record | length == 0
 
-    - name: Derive network defaults from sites.csv
+    - name: "[A3] Derive network defaults from sites.csv"
       set_fact:
-        site_subnet:      "{{ site_record.Subnet }}"
-        site_gateway:     "{{ site_record.Gateway }}"
-        site_dc:          "{{ site_record.DC }}"
-        site_city:        "{{ site_record.City }}"
-        site_country:     "{{ site_record.Country }}"
-        subnet_base: "{{ site_record.Subnet | regex_replace('/\\d+$', '') | regex_replace('\\.\\d+$', '') }}"
-        prefix_len:  "{{ site_record.Subnet.split('/')[1] }}"
+        site_subnet:  "{{ site_record.Subnet }}"
+        site_gateway: "{{ site_record.Gateway }}"
+        site_dc:      "{{ site_record.DC }}"
+        site_city:    "{{ site_record.City }}"
+        site_country: "{{ site_record.Country }}"
+        subnet_base:  "{{ site_record.Subnet | regex_replace('/\\d+$', '') | regex_replace('\\.\\d+$', '') }}"
+        prefix_len:   "{{ site_record.Subnet.split('/')[1] }}"
 
-    - name: Show derived site info
-      debug:
-        msg:
-          - "════════════════════════════════════════════════════════"
-          - "  Hostname    : {{ target_hostname | upper }}"
-          - "  Site        : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
-          - "  Subnet      : {{ site_subnet }}"
-          - "  Gateway     : {{ site_gateway }}"
-          - "  DC          : {{ site_dc }}"
-          - "  DNS         : {{ dns_server }}"
-          - "  Target IP   : {{ target_ip if target_ip | length > 0 else '(not provided — IP will not be changed)' }}"
-          - "  First DC    : {{ is_first_dc }}"
-          - "════════════════════════════════════════════════════════"
+    # ── A4 — DNS probe: decide primary and secondary DNS ──────────────────────
+    # All probes run from the Ansible control node (delegate_to: localhost).
+    # Hub DC IPs come from the DC column of sites.csv — same source of truth
+    # used everywhere else; no IPs hardcoded in this playbook.
+
+    - name: "[A4] Build hub DC candidate list from sites.csv"
+      set_fact:
+        _hub_candidates:
+          - site: "FAL"
+            ip: "{{ (site_data | selectattr('Site', 'equalto', 'FAL') | list | first | default({})).DC | default('192.168.76.10') }}"
+          - site: "ODE"
+            ip: "{{ (site_data | selectattr('Site', 'equalto', 'ODE') | list | first | default({})).DC | default('192.168.126.10') }}"
+          - site: "BRK"
+            ip: "{{ (site_data | selectattr('Site', 'equalto', 'BRK') | list | first | default({})).DC | default('192.168.136.10') }}"
+      delegate_to: localhost
+      become: false
+
+    - name: "[A4] Probe site DC {{ site_dc }} — TCP 389 (LDAP)"
+      command: >
+        bash -c 'timeout 3 bash -c "echo >/dev/tcp/{{ site_dc }}/389" 2>/dev/null
+        && echo reachable || echo unreachable'
+      register: _site_dc_probe
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      when: not (host_role_code | upper == 'DCS' and is_first_dc | bool)
+
+    - name: "[A4] Set site DC reachability fact"
+      set_fact:
+        _site_dc_up: "{{ _site_dc_probe.stdout | default('unreachable') | trim == 'reachable' }}"
+
+    - name: "[A4] Probe hub DCs — TCP 389 (fallback when site DC not reachable)"
+      command: >
+        bash -c 'timeout 3 bash -c "echo >/dev/tcp/{{ item.ip }}/389" 2>/dev/null
+        && echo reachable || echo unreachable'
+      register: _hub_probe
+      loop: "{{ _hub_candidates }}"
+      loop_control:
+        label: "{{ item.site }} ({{ item.ip }})"
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      when:
+        - not _site_dc_up | bool
+        - not (host_role_code | upper == 'DCS' and is_first_dc | bool)
+
+    - name: "[A4] Select first reachable hub DC as primary fallback"
+      set_fact:
+        _hub_fallback_ip:   "{{ item.item.ip }}"
+        _hub_fallback_site: "{{ item.item.site }}"
+      loop: "{{ _hub_probe.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.site | default('?') }}"
+      when:
+        - not (_hub_probe is skipped)
+        - item.stdout | default('unreachable') | trim == 'reachable'
+        - _hub_fallback_ip is not defined
+
+    - name: "[A4] Apply DNS decision"
+      set_fact:
+        dns_primary:    "{{ _primary }}"
+        dns_secondary:  "{{ _secondary }}"
+        dns_reason:     "{{ _reason }}"
+        dj_temp_dns_ip: "{{ _primary }}"
+      vars:
+        _is_forest_root: "{{ host_role_code | upper == 'DCS' and is_first_dc | bool }}"
+        _primary: >-
+          {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
+            {{ dns_bind9 }}
+          {%- elif _site_dc_up | bool -%}
+            {{ site_dc }}
+          {%- elif _hub_fallback_ip is defined -%}
+            {{ _hub_fallback_ip }}
+          {%- else -%}
+            {{ dns_bind9 }}
+          {%- endif -%}
+        _secondary: "{{ '' if (host_role_code | upper == 'DCS' and is_first_dc | bool) else dns_bind9 }}"
+        _reason: >-
+          {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
+            forest root — BIND9 only, no AD DNS until promotion completes
+          {%- elif _site_dc_up | bool -%}
+            site DC {{ site_dc }} is up — using local DC
+          {%- elif _hub_fallback_ip is defined -%}
+            site DC offline — {{ _hub_fallback_ip }} ({{ _hub_fallback_site }}) temporary primary
+          {%- else -%}
+            no DC reachable — BIND9 only; domain join will likely fail
+          {%- endif -%}
+
+    # ── A5 — Pre-flight summary and operator confirm ───────────────────────────
+    # Runs on localhost. No SSH connection has been made to the target yet.
+    # All site, DNS, and role information is now resolved — operator sees
+    # the complete picture before confirming.
+
+    - name: "[A5] Pre-flight summary — confirm before connecting"
+      ansible.builtin.pause:
+        prompt: |-
+
+          ── Pre-flight summary ───────────────────────────────────────────────
+            Host target : {{ inventory_hostname }}
+            SSH user    : {{ ansible_user }}
+            Hostname    : {{ target_hostname | upper }}
+            Role        : {{ host_role_code }}   First DC: {{ 'YES' if is_first_dc | bool else 'no' }}
+            Site        : {{ host_site_code }} — {{ site_city }}, {{ site_country }}
+            Subnet      : {{ site_subnet }}   Gateway: {{ site_gateway }}
+            Target IP   : {{ target_ip if target_ip | length > 0 else '(blank — no IP change)' }}
+            DNS primary : {{ dns_primary }}
+            DNS 2nd     : {{ dns_secondary if dns_secondary | length > 0 else '(none — forest root build)' }}
+            DNS reason  : {{ dns_reason }}
+          ─────────────────────────────────────────────────────────────────────
+          Confirm (Enter to proceed, Ctrl+C → A to abort)
+      delegate_to: localhost
 
     # =========================================================================
-    # STEP 3 — Connect and verify SSH is healthy
+    # PHASE B — SSH connection and host hardening
     # =========================================================================
 
-    - name: Gather facts
+    - name: "[B1] Gather facts (first SSH connection to target)"
       ansible.windows.setup:
 
-    - name: Ensure sshd is running and set to auto-start
+    - name: "[B1] Ensure sshd is running and set to auto-start"
       ansible.windows.win_service:
         name: sshd
         start_mode: auto
         state: started
 
-    - name: Ensure OpenSSH firewall rule exists
+    - name: "[B1] Ensure OpenSSH firewall rule exists"
       community.windows.win_firewall_rule:
         name:      OpenSSH-Server-In-TCP
         localport: "22"
@@ -233,21 +337,17 @@
         state:     present
         enabled:   true
 
-    # =========================================================================
-    # STEP 4 — Deploy Ansible public key (passwordless from here on)
-    # =========================================================================
-
-    - name: Create ProgramData\ssh directory
+    - name: "[B2] Create ProgramData\\ssh directory"
       ansible.windows.win_file:
         path: 'C:\ProgramData\ssh'
         state: directory
 
-    - name: Deploy Ansible public key to administrators_authorized_keys
+    - name: "[B2] Deploy Ansible public key to administrators_authorized_keys"
       ansible.windows.win_copy:
         content: "{{ lookup('file', ansible_ssh_public_key_file) }}\n"
         dest:    'C:\ProgramData\ssh\administrators_authorized_keys'
 
-    - name: Lock down administrators_authorized_keys permissions
+    - name: "[B2] Lock down administrators_authorized_keys permissions"
       ansible.windows.win_shell: |
         icacls C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r
         icacls C:\ProgramData\ssh\administrators_authorized_keys /grant "SYSTEM:(F)"
@@ -255,19 +355,19 @@
       changed_when: false
 
     # =========================================================================
-    # STEP 5 — Check current hostname and IP against expected values
+    # PHASE C — Assess current hostname and IP
     # =========================================================================
 
-    - name: Get current hostname
+    - name: "[C1] Get current hostname"
       ansible.windows.win_shell: $env:COMPUTERNAME
       register: current_hostname_raw
       changed_when: false
 
-    - name: Set current hostname fact
+    - name: "[C1] Set current hostname fact"
       set_fact:
         current_hostname: "{{ current_hostname_raw.stdout | trim | upper }}"
 
-    - name: Get current IP on primary NIC
+    - name: "[C1] Get current IP on primary NIC"
       ansible.windows.win_shell: |
         (Get-NetIPAddress -AddressFamily IPv4 |
           Where-Object { $_.IPAddress -notmatch '^(127\.|169\.)' } |
@@ -276,66 +376,73 @@
       register: current_ip_raw
       changed_when: false
 
-    - name: Set current IP fact
+    - name: "[C1] Set current IP fact"
       set_fact:
         current_ip: "{{ current_ip_raw.stdout | trim }}"
 
-    - name: Set change-needed facts
+    - name: "[C2] Set change-needed facts"
       set_fact:
         hostname_needs_change: "{{ current_hostname != target_hostname | upper }}"
         ip_needs_change:       "{{ target_ip | length > 0 and current_ip != target_ip }}"
 
-    - name: Show current state
+    - name: "[C2] Show current state"
       debug:
         msg:
-          - "  Current hostname : {{ current_hostname }} → target: {{ target_hostname | upper }} ({{ 'CHANGE NEEDED' if hostname_needs_change else 'OK' }})"
-          - "  Current IP       : {{ current_ip }} → subnet: {{ site_subnet }} ({{ 'CHANGE NEEDED' if ip_needs_change else 'OK' }})"
-
+          - "  Hostname : {{ current_hostname }} → {{ target_hostname | upper }} ({{ 'CHANGE NEEDED' if hostname_needs_change else 'OK' }})"
+          - "  IP       : {{ current_ip }} → {{ target_ip if target_ip | length > 0 else '(no change)' }} ({{ 'CHANGE NEEDED' if ip_needs_change else 'OK' }})"
 
     # =========================================================================
-    # STEP 6 — NIC selection (only if IP needs changing)
+    # PHASE D — NIC selection (ip_needs_change only)
     # =========================================================================
 
-    - name: Get first active NIC
-      ansible.windows.win_shell: |
-        (Get-NetAdapter | Where-Object Status -eq 'Up' | Sort-Object ifIndex | Select-Object -First 1 -ExpandProperty Name)
+    - name: "[D] Get first active NIC"
+      ansible.windows.win_shell: >
+        (Get-NetAdapter | Where-Object Status -eq 'Up' |
+          Sort-Object ifIndex | Select-Object -First 1 -ExpandProperty Name)
       register: nic
       changed_when: false
       when: ip_needs_change | bool
 
-    - name: Set target NIC
-      ansible.builtin.set_fact:
+    - name: "[D] Set target NIC fact"
+      set_fact:
         target_nic: "{{ nic.stdout | trim }}"
-      changed_when: false
       when: ip_needs_change | bool
 
     # =========================================================================
-    # STEP 7 — IP configuration (only if IP needs changing)
+    # PHASE E — Static IP facts
     # =========================================================================
 
-    - name: Set static IP facts
+    - name: "[E] Set static IP facts (IP change needed)"
       set_fact:
         use_dhcp:  false
         static_ip: "{{ target_ip }}"
       when: ip_needs_change | bool
 
-    - name: Set no-change IP facts (IP already correct)
+    - name: "[E] Set static IP facts (IP already correct)"
       set_fact:
         use_dhcp:  false
         static_ip: "{{ current_ip }}"
       when: not ip_needs_change | bool
 
-
     # =========================================================================
-    # STEP 8 — Write scheduled task (only if IP needs changing)
+    # PHASE F — Write EXA-ApplyStaticIP scheduled task (ip_needs_change only)
     # =========================================================================
+    # Fires at next boot (before login screen), applies static IP and DNS,
+    # re-enables OpenSSH firewall rules (Windows resets these on IP change),
+    # restarts sshd, then removes itself.
+    #
+    # dns_primary and dns_secondary were decided by the Phase A4 probe.
+    # dns_secondary is empty for forest-root DC builds — the secondary netsh
+    # line is omitted in that case via the Jinja2 conditional below.
 
-    - name: Write scheduled task — apply static IP on next boot
+    - name: "[F] Write scheduled task — apply static IP and DNS on next boot"
       ansible.windows.win_shell: |
         $script = @'
         netsh interface ip set address name='{{ target_nic }}' static {{ static_ip }} {{ '255.255.255.0' if prefix_len == '24' else '255.255.0.0' }} {{ site_gateway }}
-        netsh interface ip set dns    name='{{ target_nic }}' static {{ dns_server }}
-        netsh interface ip add dns    name='{{ target_nic }}' {{ site_dc }} index=2
+        netsh interface ip set dns    name='{{ target_nic }}' static {{ dns_primary }}
+        {% if dns_secondary | length > 0 -%}
+        netsh interface ip add dns    name='{{ target_nic }}' {{ dns_secondary }} index=2
+        {% endif -%}
         netsh advfirewall firewall set rule name="OpenSSH-Server-In-TCP" new enable=yes
         netsh advfirewall firewall set rule group="OpenSSH Server" new enable=yes
         Restart-Service sshd
@@ -351,50 +458,52 @@
       when: ip_needs_change | bool
 
     # =========================================================================
-    # STEP 9 — Rename computer (only if hostname needs changing)
+    # PHASE G — Rename computer (hostname_needs_change only)
     # =========================================================================
 
-    - name: Rename computer to {{ target_hostname | upper }}
+    - name: "[G] Rename computer to {{ target_hostname | upper }}"
       ansible.windows.win_hostname:
         name: "{{ target_hostname | upper }}"
       register: rename_result
       when: hostname_needs_change | bool
 
     # =========================================================================
-    # STEP 10 — Reboot if rename or IP change needed
+    # PHASE H — Reboot
     # =========================================================================
 
-    - name: Set needs_reboot fact
+    - name: "[H] Set needs_reboot fact"
       set_fact:
-        needs_reboot: >-
-          {{ hostname_needs_change | bool or ip_needs_change | bool }}
+        needs_reboot: "{{ hostname_needs_change | bool or ip_needs_change | bool }}"
 
-    - name: Warn operator — reboot imminent
+    - name: "[H] Warn operator — reboot imminent"
       debug:
         msg: >-
           ════════════════════════════════════════════════════════════════
           Rebooting now to apply changes.
           {% if ip_needs_change | bool %}
           !! IP CHANGE — Ansible will reconnect on {{ static_ip }} !!
-          DO NOT press Ctrl+C — reconnect takes up to 5 minutes.
+          The EXA-ApplyStaticIP scheduled task will set:
+            Primary DNS : {{ dns_primary }}
+            Secondary   : {{ dns_secondary if dns_secondary | length > 0 else '(none)' }}
+            Reason      : {{ dns_reason }}
           {% else %}
           IP unchanged — reconnecting on {{ current_ip }}
           {% endif %}
           ════════════════════════════════════════════════════════════════
       when: needs_reboot | bool
 
-    - name: Reboot — IP change (async fire-and-forget, SSH stays live until /t delay)
+    - name: "[H] Reboot — IP change (async fire-and-forget)"
       ansible.windows.win_shell: shutdown /r /t 0 /f
-      async:        30
-      poll:         0
-      when:         ip_needs_change | bool
+      async:   30
+      poll:    0
+      when:    ip_needs_change | bool
 
-    - name: Switch ansible_host to new static IP
+    - name: "[H] Switch ansible_host to new static IP"
       set_fact:
         ansible_host: "{{ static_ip }}"
       when: ip_needs_change | bool
 
-    - name: Wait — confirm VM is back up before continuing
+    - name: "[H] Wait — confirm VM is back up before continuing"
       ansible.builtin.pause:
         prompt: |-
 
@@ -407,13 +516,13 @@
       delegate_to: localhost
       when: ip_needs_change | bool
 
-    - name: Verify connection on new IP
+    - name: "[H] Verify connection on new IP"
       ansible.builtin.wait_for_connection:
         delay:   5
         timeout: 60
       when: ip_needs_change | bool
 
-    - name: Reboot — hostname change only (no IP change)
+    - name: "[H] Reboot — hostname change only (no IP change)"
       ansible.windows.win_reboot:
         reboot_timeout:    300
         post_reboot_delay: 20
@@ -421,21 +530,23 @@
       when: hostname_needs_change | bool and not ip_needs_change | bool
 
     # =========================================================================
-    # STEP 11 — Summary before handing off
+    # PHASE I — Summary and hand-off
     # =========================================================================
 
-    - name: Pre-flight complete — summary
+    - name: "[I] Pre-flight complete — summary"
       debug:
         msg:
           - "════════════════════════════════════════════════════════════════"
           - "  Pre-flight complete"
-          - "  Hostname : {{ target_hostname | upper }}"
-          - "  Site     : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
-          - "  IP       : {{ static_ip }}"
-          - "  SSH      : running, auto-start, Ansible key deployed"
-          - "  First DC : {{ is_first_dc }}"
+          - "  Hostname    : {{ target_hostname | upper }}"
+          - "  Site        : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
+          - "  IP          : {{ static_ip }}"
+          - "  DNS primary : {{ dns_primary }}"
+          - "  DNS 2nd     : {{ dns_secondary if dns_secondary | length > 0 else '(none — forest root build)' }}"
+          - "  DNS reason  : {{ dns_reason }}"
+          - "  SSH         : running, auto-start, Ansible key deployed"
+          - "  First DC    : {{ is_first_dc }}"
           - "  Handing off to 05-bootstrap.yml..."
           - "════════════════════════════════════════════════════════════════"
 
 - import_playbook: 05-bootstrap.yml
-
