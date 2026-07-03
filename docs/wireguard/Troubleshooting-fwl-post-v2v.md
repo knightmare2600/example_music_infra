@@ -440,7 +440,7 @@ sudo nmcli connection modify lan ethernet.mac-address ""
 
 Optionally, set a static WAN IP if the ISP has given one:
 ```bash
-nmcli connection modify wan ipv4.addresses 192.168.139.9/24 ipv4.gateway 192.168.139.254 ipv4.dns "1.1.1.1 8.8.8.8" ipv4.method manual
+nmcli connection modify wan ipv4.addresses <STATIC_WAN_IP>/24 ipv4.gateway <STATIC_WAN_GW> ipv4.dns "1.1.1.1 8.8.8.8" ipv4.method manual
 ```
 
 Bring the connections up:
