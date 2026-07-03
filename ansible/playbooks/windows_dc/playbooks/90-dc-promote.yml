@@ -16,7 +16,7 @@
 #     reconnects before continuing to 95-dc-replicate.yml.
 #
 # DNS management:
-#   During promotion the host must resolve jukebox.internal to contact the
+#   During promotion the host must resolve {{ dc_domain_name }} to contact the
 #   source DC.  Stage 0 checks if the domain is already resolvable; if not,
 #   it temporarily sets the NIC DNS to dc_temp_dns_ip (prompted — default
 #   pre-filled from dc_replication_source_ip set by 85-dc-preflight.yml).
@@ -55,13 +55,12 @@
     - name: dc_temp_dns_ip
       prompt: >-
         Temporary DNS IP for AD resolution during promotion
-        (leave blank to skip — only needed if jukebox.internal not already resolvable.
+        (leave blank to skip — only needed if the AD domain is not already resolvable.
         Default is the replication source found by preflight)
       private: false
       default: "{{ hostvars[inventory_hostname].dc_replication_source_ip | default('') }}"
 
   vars:
-    dc_dsrm_password_default: "{{ dc_local_password }}"
     dc_site_name: "{{ host_site }}"
     dc_db_path:   'C:\Windows\NTDS'
     dc_log_path:  'C:\Windows\NTDS'
@@ -112,19 +111,19 @@
       tags: dc_promote
 
     # =========================================================================
-    # Stage 0 — Temporary DNS (ensure jukebox.internal is resolvable)
+    # Stage 0 — Temporary DNS (ensure {{ dc_domain_name }} is resolvable)
     # =========================================================================
 
     - name: "── Stage 0 — DNS preparation ──"
       ansible.builtin.debug:
-        msg: "{{ _c.C }}[*]{{ _c.NC }} Checking DNS resolution of jukebox.internal..."
+        msg: "{{ _c.C }}[*]{{ _c.NC }} Checking DNS resolution of {{ dc_domain_name }}..."
       when: not dc_is_dc
       tags: dc_promote
 
-    - name: "[Stage 0] Check if jukebox.internal is already resolvable"
+    - name: "[Stage 0] Check if {{ dc_domain_name }} is already resolvable"
       ansible.windows.win_shell: |
         try {
-          Resolve-DnsName jukebox.internal -ErrorAction Stop | Out-Null
+          Resolve-DnsName {{ dc_domain_name }} -ErrorAction Stop | Out-Null
           Write-Output "resolvable"
         } catch {
           Write-Output "unresolvable"
@@ -158,10 +157,10 @@
         - dc_temp_dns_ip | length > 0
       tags: dc_promote
 
-    - name: "[Stage 0] Re-check jukebox.internal after DNS change"
+    - name: "[Stage 0] Re-check {{ dc_domain_name }} after DNS change"
       ansible.windows.win_shell: |
         try {
-          Resolve-DnsName jukebox.internal -ErrorAction Stop | Out-Null
+          Resolve-DnsName {{ dc_domain_name }} -ErrorAction Stop | Out-Null
           Write-Output "resolvable"
         } catch {
           Write-Output "unresolvable"
@@ -174,10 +173,10 @@
         - dc_temp_dns_ip | length > 0
       tags: dc_promote
 
-    - name: "[Stage 0] FAIL — jukebox.internal still not resolvable"
+    - name: "[Stage 0] FAIL — {{ dc_domain_name }} still not resolvable"
       ansible.builtin.fail:
         msg: >
-          {{ _c.R }}[✗]{{ _c.NC }} jukebox.internal is not resolvable after
+          {{ _c.R }}[✗]{{ _c.NC }} {{ dc_domain_name }} is not resolvable after
           setting DNS to {{ dc_temp_dns_ip }}.
           Check that {{ dc_temp_dns_ip }} is a reachable DC and that
           the site firewall is not blocking UDP/TCP 53.
@@ -188,10 +187,10 @@
         - dc_dns_recheck.stdout | trim == 'unresolvable'
       tags: dc_promote
 
-    - name: "[Stage 0] FAIL — jukebox.internal not resolvable and no temp DNS supplied"
+    - name: "[Stage 0] FAIL — {{ dc_domain_name }} not resolvable and no temp DNS supplied"
       ansible.builtin.fail:
         msg: >
-          {{ _c.R }}[✗]{{ _c.NC }} jukebox.internal is not resolvable and
+          {{ _c.R }}[✗]{{ _c.NC }} {{ dc_domain_name }} is not resolvable and
           dc_temp_dns_ip was left blank.
           Re-run and enter the IP of an existing DC (e.g. the replication
           source shown in the preflight output) when prompted.
@@ -204,7 +203,7 @@
     - name: "[Stage 0] DNS OK"
       ansible.builtin.debug:
         msg: >
-          {{ _c.G }}[+]{{ _c.NC }} jukebox.internal is resolvable — DNS preparation complete.
+          {{ _c.G }}[+]{{ _c.NC }} {{ dc_domain_name }} is resolvable — DNS preparation complete.
       when: not dc_is_dc
       tags: dc_promote
 
@@ -259,7 +258,7 @@
     - name: "── Stage 2a — Install-ADDSForest (CLD forest root) ──"
       ansible.builtin.debug:
         msg: >
-          {{ _c.Y }}[!]{{ _c.NC }} Building JUKEBOX.INTERNAL forest root on CLD.
+          {{ _c.Y }}[!]{{ _c.NC }} Building {{ dc_domain_name | upper }} forest root on CLD.
           This is a destructive, one-time operation.
       when:
         - not dc_is_dc
@@ -268,11 +267,11 @@
 
     - name: Promote — Install-ADDSForest (forest root)
       ansible.windows.win_shell: |
-        $secDSRM = ConvertTo-SecureString "{{ dc_dsrm_password_default }}" -AsPlainText -Force
+        $secDSRM = ConvertTo-SecureString "{{ dc_dsrm_password }}" -AsPlainText -Force
         Import-Module ADDSDeployment
         Install-ADDSForest `
-          -DomainName            "jukebox.internal" `
-          -DomainNetbiosName     "JUKEBOX" `
+          -DomainName            "{{ dc_domain_name }}" `
+          -DomainNetbiosName     "{{ dc_netbios_name }}" `
           -DomainMode            "WinThreshold" `
           -ForestMode            "WinThreshold" `
           -DatabasePath          "{{ dc_db_path }}" `
@@ -317,12 +316,12 @@
     - name: Promote — Install-ADDSDomainController (additional DC)
       ansible.windows.win_shell: |
         $secAdmin = ConvertTo-SecureString "{{ dc_admin_password }}" -AsPlainText -Force
-        $secDSRM  = ConvertTo-SecureString "{{ dc_dsrm_password_default }}" -AsPlainText -Force
+        $secDSRM  = ConvertTo-SecureString "{{ dc_dsrm_password }}" -AsPlainText -Force
         $cred     = New-Object System.Management.Automation.PSCredential(
                       "{{ dc_admin_user }}", $secAdmin)
         Import-Module ADDSDeployment
         Install-ADDSDomainController `
-          -DomainName                    "jukebox.internal" `
+          -DomainName                    "{{ dc_domain_name }}" `
           -Credential                    $cred `
           -ReplicationSourceDC           "{{ dc_replication_source }}" `
           -SiteName                      "{{ dc_site_name }}" `

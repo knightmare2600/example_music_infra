@@ -94,7 +94,7 @@
   become: false
 
   vars:
-    ad_domain:      "jukebox.internal"
+    ad_domain:      "{{ dc_domain_name | default('jukebox.internal') }}"
     sites_csv_path: "/etc/example-music/sites.csv"
 
     # Set ad_email_domain to your routable email domain when it differs from
