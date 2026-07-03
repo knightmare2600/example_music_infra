@@ -114,7 +114,7 @@
 
     - name: Pre-flight summary — confirm before connecting
       ansible.builtin.pause:
-        prompt: |
+        prompt: |-
 
           ── Pre-flight summary ───────────────────────────────────────────────
             Host target : {{ inventory_hostname }}
@@ -124,8 +124,7 @@
             Temp DNS    : {{ dj_temp_dns_ip }}
             Target IP   : {{ target_ip if target_ip | length > 0 else '(blank — no IP change)' }}
           ─────────────────────────────────────────────────────────────────────
-
-          Press Enter to proceed, Ctrl+C then A to abort.
+          Confirm (Enter to proceed, Ctrl+C → A to abort)
       delegate_to: localhost
 
     # =========================================================================
@@ -395,28 +394,18 @@
         ansible_host: "{{ static_ip }}"
       when: ip_needs_change | bool
 
-#    - name: Wait for SSH on new static IP
-#      ansible.builtin.wait_for:
-#        host:    "{{ static_ip }}"
-#        port:    22
-#        delay:   25
-#        timeout: 300
-#      delegate_to: localhost
-#      when: ip_needs_change | bool
-
-    - name: Wait for user to verify SSH
+    - name: Wait — confirm VM is back up before continuing
       ansible.builtin.pause:
-        prompt: "The network configuration has been changed. Please verify that you can SSH to: {{ static_ip }}. Then press Enter to continue."
-      when: ip_needs_change | bool
+        prompt: |-
 
-#    - name: Wait for SSH on new static IP
-#      ansible.builtin.pause:
-#        host:    "{{ static_ip }}"
-#        port:    22
-#        delay:   25
-#        timeout: 300
-#      delegate_to: localhost
-#      when: ip_needs_change | bool
+          ── Waiting for reboot ───────────────────────────────────────────────
+            Reboot sent. VM is changing IP from {{ current_ip }} → {{ static_ip }}.
+            From another terminal, run: ping {{ static_ip }}
+            Press Enter here once SSH is responding on {{ static_ip }}.
+          ─────────────────────────────────────────────────────────────────────
+          Confirm (Enter to continue, Ctrl+C → A to abort)
+      delegate_to: localhost
+      when: ip_needs_change | bool
 
     - name: Verify connection on new IP
       ansible.builtin.wait_for_connection:
