@@ -1,0 +1,345 @@
+# Zabbix Monitoring Configuration for Proxmox VE Maintenance
+# Items and Triggers to ensure kernel cleanup and monthly hoover are configured
+# 
+# This file documents the Zabbix items and triggers needed.
+# Copy/paste into your Zabbix template or create manually in the GUI.
+
+# ============================================================================
+# PART 1: FILE EXISTENCE CHECKS
+# ============================================================================
+
+Name: PVE - Kernel Cleanup Config File Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/etc/apt/apt.conf.d/52unattended-upgrades-pve]
+Data type: Numeric (unsigned)
+Units: bool
+Description: Check if kernel cleanup configuration exists (1=exists, 0=missing)
+
+---
+
+Name: PVE - Monthly Hoover Script Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh]
+Data type: Numeric (unsigned)
+Units: bool
+Description: Check if monthly hoover script exists (1=exists, 0=missing)
+
+---
+
+Name: PVE - Monthly Hoover Service File Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/etc/systemd/system/pve-monthly-hoover.service]
+Data type: Numeric (unsigned)
+Units: bool
+Description: Check if systemd service file exists (1=exists, 0=missing)
+
+---
+
+Name: PVE - Monthly Hoover Timer File Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/etc/systemd/system/pve-monthly-hoover.timer]
+Data type: Numeric (unsigned)
+Units: bool
+Description: Check if systemd timer file exists (1=exists, 0=missing)
+
+---
+
+# ============================================================================
+# PART 2: FILE CONTENT VERIFICATION
+# ============================================================================
+
+Name: PVE - Kernel Cleanup Config Content Check
+Type: Zabbix agent (script)
+Key: pve.config.kernel.cleanup.check
+Data type: Text
+Interval: 3600 (1 hour)
+Description: Verify kernel cleanup configuration contains required settings
+
+Script/Command:
+```bash
+#!/bin/bash
+CONFIG="/etc/apt/apt.conf.d/52unattended-upgrades-pve"
+REQUIRED_LINES=(
+    "Remove-Unused-Kernel-Packages"
+    "Remove-New-Unused-Dependencies"
+    "Package-Blacklist"
+    "proxmox-ve"
+    "pve-kernel"
+    "pve-manager"
+)
+
+if [ ! -f "$CONFIG" ]; then
+    echo "MISSING"
+    exit 1
+fi
+
+MISSING=0
+for LINE in "${REQUIRED_LINES[@]}"; do
+    if ! grep -q "$LINE" "$CONFIG"; then
+        echo "MISSING_$LINE"
+        MISSING=$((MISSING + 1))
+    fi
+done
+
+if [ $MISSING -eq 0 ]; then
+    echo "OK"
+    exit 0
+else
+    echo "INCOMPLETE"
+    exit 1
+fi
+```
+
+---
+
+Name: PVE - Monthly Hoover Config Content Check
+Type: Zabbix agent (script)
+Key: pve.config.hoover.check
+Data type: Text
+Interval: 3600 (1 hour)
+Description: Verify hoover script and systemd files contain required settings
+
+Script/Command:
+```bash
+#!/bin/bash
+SCRIPT="/usr/local/bin/pve-monthly-hoover.sh"
+SERVICE="/etc/systemd/system/pve-monthly-hoover.service"
+TIMER="/etc/systemd/system/pve-monthly-hoover.timer"
+
+REQUIRED_SCRIPT_LINES=(
+    "journalctl --vacuum"
+    "atime +7 -delete"
+    "logger -t"
+    "Hoovering systemd journals"
+    "Hoovering old PVE kernels"
+)
+
+REQUIRED_SERVICE_LINES=(
+    "pve-monthly-hoover.sh"
+    "Type=oneshot"
+    "StandardOutput=journal"
+)
+
+REQUIRED_TIMER_LINES=(
+    "OnCalendar=*-*-01"
+    "02:00:00"
+    "pve-monthly-hoover.service"
+)
+
+MISSING=0
+
+# Check script
+if [ ! -f "$SCRIPT" ]; then
+    echo "SCRIPT_MISSING"
+    MISSING=$((MISSING + 1))
+else
+    for LINE in "${REQUIRED_SCRIPT_LINES[@]}"; do
+        if ! grep -q "$LINE" "$SCRIPT"; then
+            echo "SCRIPT_INCOMPLETE_$LINE"
+            MISSING=$((MISSING + 1))
+        fi
+    done
+fi
+
+# Check service
+if [ ! -f "$SERVICE" ]; then
+    echo "SERVICE_MISSING"
+    MISSING=$((MISSING + 1))
+else
+    for LINE in "${REQUIRED_SERVICE_LINES[@]}"; do
+        if ! grep -q "$LINE" "$SERVICE"; then
+            echo "SERVICE_INCOMPLETE_$LINE"
+            MISSING=$((MISSING + 1))
+        fi
+    done
+fi
+
+# Check timer
+if [ ! -f "$TIMER" ]; then
+    echo "TIMER_MISSING"
+    MISSING=$((MISSING + 1))
+else
+    for LINE in "${REQUIRED_TIMER_LINES[@]}"; do
+        if ! grep -q "$LINE" "$TIMER"; then
+            echo "TIMER_INCOMPLETE_$LINE"
+            MISSING=$((MISSING + 1))
+        fi
+    done
+fi
+
+if [ $MISSING -eq 0 ]; then
+    echo "OK"
+    exit 0
+else
+    echo "INCOMPLETE"
+    exit 1
+fi
+```
+
+---
+
+Name: PVE - Monthly Hoover Timer Status
+Type: Zabbix agent (script)
+Key: pve.hoover.timer.status
+Data type: Text
+Interval: 1800 (30 minutes)
+Description: Check if hoover timer is enabled and active
+
+Script/Command:
+```bash
+#!/bin/bash
+STATUS=$(systemctl is-enabled pve-monthly-hoover.timer 2>/dev/null)
+ACTIVE=$(systemctl is-active pve-monthly-hoover.timer 2>/dev/null)
+
+if [ "$STATUS" = "enabled" ] && [ "$ACTIVE" = "active" ]; then
+    echo "OK_ENABLED_ACTIVE"
+    exit 0
+elif [ "$STATUS" = "enabled" ] && [ "$ACTIVE" = "inactive" ]; then
+    echo "ENABLED_BUT_INACTIVE"
+    exit 1
+elif [ "$STATUS" != "enabled" ]; then
+    echo "DISABLED"
+    exit 1
+else
+    echo "UNKNOWN"
+    exit 1
+fi
+```
+
+---
+
+Name: PVE - Unattended-Upgrades Timer Status
+Type: Zabbix agent (script)
+Key: pve.upgrades.timer.status
+Data type: Text
+Interval: 1800 (30 minutes)
+Description: Check if kernel cleanup timer is enabled and active
+
+Script/Command:
+```bash
+#!/bin/bash
+STATUS=$(systemctl is-enabled apt-daily-upgrade.timer 2>/dev/null)
+ACTIVE=$(systemctl is-active apt-daily-upgrade.timer 2>/dev/null)
+
+if [ "$STATUS" = "enabled" ] && [ "$ACTIVE" = "active" ]; then
+    echo "OK_ENABLED_ACTIVE"
+    exit 0
+else
+    echo "PROBLEM"
+    exit 1
+fi
+```
+
+---
+
+# ============================================================================
+# PART 3: TRIGGERS
+# ============================================================================
+
+Name: PVE - Kernel Cleanup Config File Missing
+Expression: {pve-host:vfs.file.exists[/etc/apt/apt.conf.d/52unattended-upgrades-pve].last()} = 0
+Severity: High
+Description: The kernel cleanup configuration file is missing!
+Action: Alert admin to re-deploy configuration
+
+---
+
+Name: PVE - Monthly Hoover Script Missing
+Expression: {pve-host:vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh].last()} = 0
+Severity: High
+Description: The monthly hoover script is missing!
+Action: Alert admin to re-deploy script
+
+---
+
+Name: PVE - Monthly Hoover Service File Missing
+Expression: {pve-host:vfs.file.exists[/etc/systemd/system/pve-monthly-hoover.service].last()} = 0
+Severity: Medium
+Description: The systemd service file is missing
+Action: Re-deploy systemd service
+
+---
+
+Name: PVE - Monthly Hoover Timer File Missing
+Expression: {pve-host:vfs.file.exists[/etc/systemd/system/pve-monthly-hoover.timer].last()} = 0
+Severity: Medium
+Description: The systemd timer file is missing
+Action: Re-deploy systemd timer
+
+---
+
+Name: PVE - Kernel Cleanup Config Incomplete
+Expression: {pve-host:pve.config.kernel.cleanup.check.last()} <> "OK"
+Severity: High
+Description: The kernel cleanup configuration is incomplete or corrupted
+Action: Review /etc/apt/apt.conf.d/52unattended-upgrades-pve
+
+---
+
+Name: PVE - Monthly Hoover Config Incomplete
+Expression: {pve-host:pve.config.hoover.check.last()} <> "OK"
+Severity: High
+Description: The hoover script or systemd files are incomplete or corrupted
+Action: Re-deploy hoover files
+
+---
+
+Name: PVE - Monthly Hoover Timer Not Active
+Expression: {pve-host:pve.hoover.timer.status.last()} <> "OK_ENABLED_ACTIVE"
+Severity: High
+Description: Monthly hoover timer is not enabled or active!
+Action: Check systemd: systemctl status pve-monthly-hoover.timer
+
+---
+
+Name: PVE - Unattended-Upgrades Timer Not Active
+Expression: {pve-host:pve.upgrades.timer.status.last()} <> "OK_ENABLED_ACTIVE"
+Severity: High
+Description: Unattended-upgrades timer is not enabled or active!
+Action: Check systemd: systemctl status apt-daily-upgrade.timer
+
+---
+
+Name: PVE - Hoover Last Run Older Than 35 Days
+Expression: {pve-host:pve.hoover.last.run.age.last()} > 35
+Severity: Medium
+Description: Monthly hoover has not run in over 35 days
+Action: Check /var/log/syslog for pve-monthly-hoover errors
+
+---
+
+# ============================================================================
+# OPTIONAL: LAST RUN TRACKING
+# ============================================================================
+
+Name: PVE - Hoover Last Run Timestamp
+Type: Zabbix agent (script)
+Key: pve.hoover.last.run.timestamp
+Data type: Numeric (unsigned)
+Interval: 3600 (1 hour)
+Description: Unix timestamp of last hoover run
+
+Script/Command:
+```bash
+#!/bin/bash
+# Get last occurrence of "Proxmox VE Monthly Hoover Completed" in syslog
+LAST_RUN=$(grep "pve-monthly-hoover.*Completed Successfully" /var/log/syslog 2>/dev/null | tail -1 | awk '{print $1, $2, $3}')
+
+if [ -z "$LAST_RUN" ]; then
+    echo "0"
+    exit 0
+fi
+
+# Convert to Unix timestamp
+date -d "$LAST_RUN" +%s 2>/dev/null || echo "0"
+```
+
+---
+
+Name: PVE - Hoover Last Run Age (Days)
+Type: Calculated
+Expression: (now - {pve-host:pve.hoover.last.run.timestamp.last()}) / 86400
+Description: How many days since hoover last ran
+
+---
+
