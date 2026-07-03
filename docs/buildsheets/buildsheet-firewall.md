@@ -444,7 +444,7 @@ cat /etc/.i_am_a_firewall
 | Site | Hostname | IP | VM | OS | PW | FW | RB | WG | PR | VF | AN | OK | Notes |
 |------|----------|----|----|----|----|----|----|----|----|----|----|----|----|
 | MTL | EXAFWLMTL001 | 192.168.154.253 |      |      |      |      |      |      |      |      |      |      | Montréal |
-| TOR | EXAFWLTOR001 | 192.168.164.253 |      |      |      |      |      |      |      |      |      |      | Toronto |
+| TOR | EXAFWLTOR001 | 192.168.146.253 |      |      |      |      |      |      |      |      |      |      | Toronto |
 
 ### USA
 
