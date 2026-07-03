@@ -62,13 +62,7 @@
 
   vars:
     dc_site_name: "{{ host_site }}"
-    dc_db_path:   'C:\Windows\NTDS'
-    dc_log_path:  'C:\Windows\NTDS'
-    dc_sysvol:    'C:\Windows\SYSVOL'
-    dc_dns_forwarders:
-      - "192.168.139.8"
-      - "9.9.9.9"
-      - "1.1.1.1"
+    # dc_db_path, dc_log_path, dc_sysvol, dc_dns_forwarders → group_vars/windows_dc/vars.yml
 
   tasks:
 
@@ -402,7 +396,7 @@
       ansible.windows.win_shell: |
         Import-Module DnsServer
         Set-DnsServerForwarder `
-          -IPAddress @("192.168.139.8","9.9.9.9","1.1.1.1") `
+          -IPAddress @("{{ dc_dns_forwarders | join('","') }}") `
           -PassThru
       register: dc_forwarder_result
       when: not dc_is_dc
@@ -411,8 +405,7 @@
     - name: "[Stage 3] Show forwarder config"
       ansible.builtin.debug:
         msg: >
-          {{ _c.G }}[+]{{ _c.NC }} DNS forwarders set:
-          192.168.139.8 (CLD BIND9), 9.9.9.9 (Quad9), 1.1.1.1 (Cloudflare)
+          {{ _c.G }}[+]{{ _c.NC }} DNS forwarders set: {{ dc_dns_forwarders | join(', ') }}
       when: not dc_is_dc
       tags: dc_promote
 

@@ -69,38 +69,20 @@
 
   vars:
     sites_csv: "/etc/example-music/sites.csv"
-
-    # Hub / special-sauce site codes
-    dc_hub_sites:
-      - FAL
-      - ODE
-      - BRK
-
-    # CLD datacenter site code
-    dc_cld_site: "CLD"
-
-    # Hub DCs in priority order (IP .10 = primary DC per suffix_map)
-    dc_hub_sources:
-      - { site: "FAL", ip: "192.168.76.10",  fqdn: "exadcsfal001.jukebox.internal" }
-      - { site: "ODE", ip: "192.168.126.10", fqdn: "exadcsode001.jukebox.internal" }
-      - { site: "BRK", ip: "192.168.136.10", fqdn: "exadcsbrk001.jukebox.internal" }
-
-    # CLD DC primary
-    dc_cld_source:
-      site: "CLD"
-      ip:   "192.168.139.10"
-      fqdn: "exadcscld001.jukebox.internal"
+    # ad_domain_name, ad_netbios_name, dc_hub_sites, dc_cld_site,
+    # dc_dns_forwarders → group_vars/windows_dc/vars.yml (single source of truth).
+    # dc_hub_sources and dc_cld_source are built at runtime from sites.csv.
 
   vars_prompt:
     - name: dc_domain_name
       prompt: "AD domain FQDN"
       private: false
-      default: "jukebox.internal"
+      default: "{{ ad_domain_name }}"
 
     - name: dc_netbios_name
       prompt: "AD NetBIOS name"
       private: false
-      default: "JUKEBOX"
+      default: "{{ ad_netbios_name }}"
 
     - name: dc_dsrm_password
       prompt: "DSRM (Directory Services Restore Mode) password"
@@ -110,7 +92,7 @@
     - name: dc_admin_user
       prompt: "Domain Admin username (NETBIOS_NAME\\username)"
       private: false
-      default: "JUKEBOX\\Administrator"
+      default: "{{ ad_netbios_name }}\\Administrator"
 
     - name: dc_admin_password
       prompt: "Domain Admin password"
@@ -192,20 +174,23 @@
           site={{ host_site }}  role={{ dc_site_role }}
       tags: dc_preflight
 
-    # ── Apply domain name to replication source FQDNs ────────────────────────
-    # vars: block is evaluated before vars_prompt — FQDNs must be rebuilt here
-    # so dc_source_resolution.yml sees the correct domain in each candidate FQDN.
+    # ── Build replication source list from sites.csv ──────────────────────────
+    # IPs come from the DC column of sites.csv (loaded above) so sites.csv is
+    # the single source of truth — no IPs hardcoded in playbooks.
+    # FQDNs use the operator-confirmed dc_domain_name from the prompt.
 
-    - name: Apply chosen domain name to replication source FQDNs
+    - name: Build hub DC sources from sites.csv DC column and chosen domain name
       set_fact:
         dc_hub_sources:
-          - { site: "FAL", ip: "192.168.76.10",  fqdn: "{{ 'exadcsfal001.' + dc_domain_name }}" }
-          - { site: "ODE", ip: "192.168.126.10", fqdn: "{{ 'exadcsode001.' + dc_domain_name }}" }
-          - { site: "BRK", ip: "192.168.136.10", fqdn: "{{ 'exadcsbrk001.' + dc_domain_name }}" }
+          - { site: "FAL", ip: "{{ _dc_ips['FAL'] | default('192.168.76.10')  }}", fqdn: "{{ 'exadcsfal001.' + dc_domain_name }}" }
+          - { site: "ODE", ip: "{{ _dc_ips['ODE'] | default('192.168.126.10') }}", fqdn: "{{ 'exadcsode001.' + dc_domain_name }}" }
+          - { site: "BRK", ip: "{{ _dc_ips['BRK'] | default('192.168.136.10') }}", fqdn: "{{ 'exadcsbrk001.' + dc_domain_name }}" }
         dc_cld_source:
           site: "CLD"
-          ip:   "192.168.139.10"
+          ip:   "{{ _dc_ips['CLD'] | default('192.168.69.10') }}"
           fqdn: "{{ 'exadcscld001.' + dc_domain_name }}"
+      vars:
+        _dc_ips: "{{ dc_sites_raw.list | items2dict(key_name='Site', value_name='DC') }}"
       tags: dc_preflight
 
     # ── Probe candidate replication sources ───────────────────────────────────

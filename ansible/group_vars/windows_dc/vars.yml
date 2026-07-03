@@ -39,6 +39,12 @@ dc_db_path:   'C:\Windows\NTDS'
 dc_log_path:  'C:\Windows\NTDS'
 dc_sysvol:    'C:\Windows\SYSVOL'
 
+# AD domain identity — single source of truth for domain name and NetBIOS.
+# Used as defaults in 85-dc-preflight.yml vars_prompt; operator can override at
+# run time but changing here keeps all defaults in sync with no playbook edits.
+ad_domain_name:  "jukebox.internal"
+ad_netbios_name: "JUKEBOX"
+
 # Hub / special-sauce site codes — used in source resolution
 dc_hub_sites:
   - FAL
@@ -47,15 +53,13 @@ dc_hub_sites:
 
 dc_cld_site: "CLD"
 
-# Hub DC sources in priority order
-# .10 = primary DC per suffix_map convention
-dc_hub_sources:
-  - { site: "FAL", ip: "192.168.76.10",  fqdn: "exadcsfal001.jukebox.internal" }
-  - { site: "ODE", ip: "192.168.126.10", fqdn: "exadcsode001.jukebox.internal" }
-  - { site: "BRK", ip: "192.168.136.10", fqdn: "exadcsbrk001.jukebox.internal" }
+# dc_hub_sources and dc_cld_source are NOT defined here.
+# 85-dc-preflight.yml builds them at runtime from sites.csv so the IPs stay in
+# one place (the DC column of sites.csv) rather than being duplicated here.
 
-# CLD DC primary — used as replication source for forest-root check
-dc_cld_source:
-  site: "CLD"
-  ip:   "192.168.69.10"
-  fqdn: "exadcscld001.jukebox.internal"
+# DNS forwarders configured on each new DC post-promotion.
+# Order matters: CLD BIND9 first (internal zones), then public upstreams.
+dc_dns_forwarders:
+  - "192.168.139.8"   # CLD BIND9 — upstream for internal zones we control
+  - "9.9.9.9"         # Quad9 — public upstream
+  - "1.1.1.1"         # Cloudflare — public upstream
