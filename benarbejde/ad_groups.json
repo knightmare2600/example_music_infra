@@ -1,0 +1,842 @@
+[
+  {
+    "Name": "Simple Minds",
+    "Description": "Scottish rock band formed in Glasgow in 1977",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Jim Kerr",
+    "Email": "simpleminds@example1.co.uk"
+  },
+  {
+    "Name": "Marillion",
+    "Description": "British rock band formed in Edinburgh in 1979",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Steve Hogarth",
+    "Email": "marillion@example1.co.uk"
+  },
+  {
+    "Name": "Altered Images",
+    "Description": "New Wave band formed in Glasgow 1980",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Clare Grogan",
+    "Email": "alteredimages@example1.co.uk"
+  },
+  {
+    "Name": "Eurythmics",
+    "Description": "Duo formed in Aberdeen in 1980",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Annie Lennox",
+    "Email": "eurythmics@example1.co.uk"
+  },
+  {
+    "Name": "Ultravox",
+    "Description": "Scottish New Wave band, classic Midge Ure era lineup",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Midge Ure",
+    "Email": "ultravox@example1.co.uk"
+  },
+  {
+    "Name": "Deacon Blue",
+    "Description": "Scottish pop rock band formed in Glasgow in 1985",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Ricky Ross",
+    "Email": "deaconblue@example1.co.uk"
+  },
+  {
+    "Name": "Wet Wet Wet",
+    "Description": "Scottish pop rock band formed in Clydebank in 1982",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Marti Pellow",
+    "Email": "wetwetwet@example1.co.uk"
+  },
+  {
+    "Name": "The Proclaimers",
+    "Description": "Scottish folk rock duo formed in Edinburgh in 1983",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Craig Reid",
+    "Email": "proclaimers@example1.co.uk"
+  },
+  {
+    "Name": "Fiction Factory",
+    "Description": "Scottish synth band formed in Perth, Scotland in 1982",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Mike Ogletree",
+    "Email": "fictionfactory@example1.co.uk"
+  },
+  {
+    "Name": "Lowlife",
+    "Description": "Scottish post-punk and new wave band formed in Falkirk in 1985",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Craig Lorentsen",
+    "Email": "lowlife@example1.co.uk"
+  },
+  {
+    "Name": "The Pastels",
+    "Description": "Scottish indie pop band associated with the C86 movement, from the early 1980s",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Stephen McPhee",
+    "Email": "thepastels@example1.co.uk"
+  },
+  {
+    "Name": "The Beat",
+    "Description": "English ska and new wave band formed in Birmingham in 1978",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Dave Wakeling",
+    "Email": "thebeat@example1.co.uk"
+  },
+  {
+    "Name": "China Crisis",
+    "Description": "UK synth-pop band formed in Liverpool",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Gary Daly",
+    "Email": "chinacrisis@example1.co.uk"
+  },
+  {
+    "Name": "A Flock of Seagulls",
+    "Description": "English new wave band formed in Liverpool",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Mike Score",
+    "Email": "aflockofseagulls@example1.co.uk"
+  },
+  {
+    "Name": "Depeche Mode",
+    "Description": "English electronic music band formed in Basildon in 1980",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Dave Gahan",
+    "Email": "depechemode@example1.co.uk"
+  },
+  {
+    "Name": "Pet Shop Boys",
+    "Description": "English synth-pop duo formed in London in 1981",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Neil Tennant",
+    "Email": "petshopboys@example1.co.uk"
+  },
+  {
+    "Name": "The Specials",
+    "Description": "English ska / 2 Tone band formed in Coventry in 1977",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Jerry Dammers",
+    "Email": "thespecials@example1.co.uk"
+  },
+  {
+    "Name": "Fun Boy Three",
+    "Description": "English new wave band formed in Coventry in 1981",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Terry Hall",
+    "Email": "funboythree@example1.co.uk"
+  },
+  {
+    "Name": "Fine Young Cannibals",
+    "Description": "English rock and soul band formed in Birmingham in 1984",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Roland Gift",
+    "Email": "fineyoungcannibals@example1.co.uk"
+  },
+  {
+    "Name": "The Beat",
+    "Description": "English ska and new wave band formed in Birmingham in 1978",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Dave Wakeling",
+    "Email": "thebeat@example1.co.uk"
+  },
+  {
+    "Name": "Erasure",
+    "Description": "English synth-pop duo formed in London in 1985",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Andy Bell",
+    "Email": "erasure@example1.co.uk"
+  },
+  {
+    "Name": "Echo And The Bunnymen",
+    "Description": "Echo And The Bunnymen Groupr",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Ian McCulloch",
+    "Email": "bunnymen@example1.co.uk"
+  },
+  {
+    "Name": "The Police",
+    "Description": "Group Catch-all for The Police",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Sting",
+    "Email": "thepolice@example1.co.uk"
+  },
+  {
+    "Name": "New Order",
+    "Description": "English rock band formed in Salford in 1980",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Tony Wilson",
+    "Email": "neworder@example1.co.uk"
+  },
+  {
+    "Name": "Mel And Kim",
+    "Description": "Melanie and Kimberly Appleby",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Pete Waterman",
+    "Email": "melandkim@example1.co.uk"
+  },
+  {
+    "Name": "UB40",
+    "Description": "Band named after the Unemployment Benefit 40 Form in 1978",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Margaret Thatcher",
+    "Email": "ub40@example1.co.uk"
+  },
+  {
+    "Name": "Duan Duran",
+    "Description": "English new wave/synth-pop band formed in Birmingham in 1978",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Simon Le Bon",
+    "Email": "duranduran@example1.co.uk"
+  },
+  {
+    "Name": "Human League",
+    "Description": "English synth-pop band formed in Sheffield in 1977",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Philip Oakey",
+    "Email": "humanleague@example1.co.uk"
+  },
+  {
+    "Name": "Heaven 17",
+    "Description": "English synth-pop band formed in Sheffield in 1980",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Glenn Gregory",
+    "Email": "heaven17@example1.co.uk"
+  },
+  {
+    "Name": "M-People",
+    "Description": "M-People – Dance-pop band from Manchester, UK",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Heather Small",
+    "Email": "m-people@example1.co.uk"
+  },
+  {
+    "Name": "OMD",
+    "Description": "Orchestral Manoeuvres in the Dark – Synth-pop band from Liverpool",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Andy McCluskey",
+    "Email": "omd@example1.co.uk"
+  },
+  {
+    "Name": "The Beautiful South",
+    "Description": "English pop/rock band formed in Halifax in 1988",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Paul Heaton",
+    "Email": "thebeautifulsouth@example1.co.uk"
+  },
+  {
+    "Name": "Everything But The Girl",
+    "Description": "Everything But The Girl – Jazz/Pop duo from Hull, UK",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Tracey Thorn",
+    "Email": "everythingbutthegirl@example1.co.uk"
+  },
+  {
+    "Name": "Dire Straits",
+    "Description": "Classic Dire Straits lineup",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Mark Knopfler",
+    "Email": "direstraits@example1.co.uk"
+  },
+  {
+    "Name": "Wham",
+    "Description": "UK 1980s pop group from London, including backing vocalists",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "George Michael",
+    "Email": "wham@example1.co.uk"
+  },
+  {
+    "Name": "Bananarama",
+    "Description": "Core Bananarama members from London, UK",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Sara Dallin",
+    "Email": "bananarama@example1.co.uk"
+  },
+  {
+    "Name": "Then Jerico",
+    "Description": "Then Jerico formed in London in 1983",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Mark Shaw",
+    "Email": "thenjerico@example1.co.uk"
+  },
+  {
+    "Name": "The Stone Roses",
+    "Description": "The Stone Roses classic lineup from Manchester (formed 1983)",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Ian Brown",
+    "Email": "stoneroses@example1.co.uk"
+  },
+  {
+    "Name": "The Style Council",
+    "Description": "British soul-pop group formed in 1983 by Paul Weller after The Jam",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Paul Weller",
+    "Email": "stylecouncil@example1.co.uk"
+  },
+  {
+    "Name": "The Jam",
+    "Description": "English mod revival band formed 1972, disbanded 1982",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Paul Weller",
+    "Email": "thejam@example1.co.uk"
+  },
+  {
+    "Name": "Elmer",
+    "Description": "Danish band Elmer, Copenhagen",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Jonas Elmer",
+    "Email": "elmer@example.dk"
+  },
+  {
+    "Name": "TV-2",
+    "Description": "Danish rock band formed in 1981",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Steffen Brandt",
+    "Email": "tv2@example1.co.uk"
+  },
+  {
+    "Name": "Rocazino",
+    "Description": "Danish pop band from Køge",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Stine Bramsen",
+    "Email": "alphabeat@example1.co.uk"
+  },
+  {
+    "Name": "Whigfield Solo",
+    "Description": "Solo artist Whigfield from Kørsor",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Whigfield",
+    "Email": "whigfield-band@example1.co.uk"
+  },
+  {
+    "Name": "MØ Solo",
+    "Description": "Solo artist MØ from Odense",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Karen Marie Ørsted",
+    "Email": "mo@example1.co.uk"
+  },
+  {
+    "Name": "Dodo-and-the-Dodos",
+    "Description": "Danish band Dodo and the Dodos, Copenhagen",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Dodo Gad",
+    "Email": "dodo-and-the-dodos@example.dk"
+  },
+  {
+    "Name": "1000-Keys",
+    "Description": "Danish 1980s band 1000 Keys",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Lead Vocalist",
+    "Email": "1000-keys@example.dk"
+  },
+  {
+    "Name": "News",
+    "Description": "Danish 1980s band News",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Lead Vocalist",
+    "Email": "news@example.dk"
+  },
+  {
+    "Name": "Ace of Base",
+    "Description": "Ace of Base – Swedish pop group formed in Gothenburg in 1990",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Jonas Berggren",
+    "Email": "aceofbase@example1.co.uk"
+  },
+  {
+    "Name": "Roxette",
+    "Description": "Roxette – Swedish pop rock duo formed in Halmstad in 1986",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Per Gessle",
+    "Email": "roxette@example1.co.uk"
+  },
+  {
+    "Name": "A-Ha",
+    "Description": "a-ha – Norwegian band formed in Oslo in 1982",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Morten Harket",
+    "Email": "aha@example1.co.uk"
+  },
+  {
+    "Name": "Jan Hammer Group",
+    "Description": "Jan Hammer solo project and collaborators; founded 1974",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Jan Hammer",
+    "Email": "janhammer@example1.co.uk"
+  },
+  {
+    "Name": "Giorgio Moroder",
+    "Description": "Giorgio Moroder production group; founded 1969",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Giorgio Moroder",
+    "Email": "moroder@example1.co.uk"
+  },
+  {
+    "Name": "Kraftwerk",
+    "Description": "German electronic music pioneers from Bonn, formed 1970",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Ralf Hutter",
+    "Email": "kraftwerk@example1.co.uk"
+  },
+  {
+    "Name": "Nena",
+    "Description": "German Neue Deutsche Welle band from West-Berlin, formed 1982",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Gabriele Kerner",
+    "Email": "nena@example1.co.uk"
+  },
+  {
+    "Name": "Tangerine Dream",
+    "Description": "German electronic music group from West-Berlin, formed 1967",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Christopher Franke",
+    "Email": "tangerinedream@example1.co.uk"
+  },
+  {
+    "Name": "Fancy Solo",
+    "Description": "Solo artist Fancy from Munich, Italo disco performer",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Manfred Segieth",
+    "Email": "fancy@example1.co.uk"
+  },
+  {
+    "Name": "The Jam",
+    "Description": "German New Wave band formed in 1984 in Saarbrücken",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Sandra Lauder",
+    "Email": "sandra.band@example1.co.uk"
+  },
+  {
+    "Name": "Candy Dulfer",
+    "Description": "Candy Dulfer formed in Amsterdam in 1983",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Candy Dulfer",
+    "Email": "candydulfer@example1.co.uk"
+  },
+  {
+    "Name": "Trio",
+    "Description": "West German minimalist new wave band",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Stephan Remmler",
+    "Email": "trio@example1.co.uk"
+  },
+  {
+    "Name": "Falco",
+    "Description": "Falco – Austrian solo artist with classic 1980s backing band",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "falco",
+    "Email": "falco@example1.co.uk"
+  },
+  {
+    "Name": "Baltimora",
+    "Description": "Italian Italo-disco / pop project founded in 1984",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "maurizio.bassi",
+    "Email": "baltimora@example1.co.uk"
+  },
+  {
+    "Name": "Vanessa Paradis",
+    "Description": "French singer and actress; active artist. Relocated to Quebec, Canada",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Vanessa Paradis",
+    "Email": "vanessaparadis@example1.co.uk"
+  },
+  {
+    "Name": "Rush",
+    "Description": "Core Rush members from Toronto, Canada",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Geddy Lee",
+    "Email": "rush@example1.co.uk"
+  },
+  {
+    "Name": "SCTV-Guest-Artists",
+    "Description": "Guest artists from SCTV show, Toronto, CA",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Rick Moranis",
+    "Email": "sctv.guests@example1.co.uk"
+  },
+  {
+    "Name": "Great White North",
+    "Description": "Canadian satirical rock project associated with Bob and Doug McKenzie in the 1980s",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Rick Moranis",
+    "Email": "greatwhitenorth@example1.co.uk"
+  },
+  {
+    "Name": "Miami Sound Machine",
+    "Description": "American Latin pop band formed in Miami in the 1970",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Gloria Estefan",
+    "Email": "miamisoundmachine@example1.co.uk"
+  },
+  {
+    "Name": "REM",
+    "Description": "American alternative rock band formed in Athens, Georgia",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Michael Stipe",
+    "Email": "rem@example1.co.uk"
+  },
+  {
+    "Name": "Blondie",
+    "Description": "Blondie – New Wave/Punk band from NYC",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Debbie Harry",
+    "Email": "blondie@example1.co.uk"
+  },
+  {
+    "Name": "E-Street Band",
+    "Description": "Bruce Springsteen & E-Street Band – Rock band from New Jersey",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Bruce Springsteen",
+    "Email": "estreetband@example1.co.uk"
+  },
+  {
+    "Name": "KC-Sunshine-Band",
+    "Description": "Core group of KC and the Sunshine Band, Miami, FL",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Harry Wayne Casey",
+    "Email": "kc.sunshine@example1.co.uk"
+  },
+  {
+    "Name": "Herb Alpert & Tijuana Brass",
+    "Description": "Herb Alpert, featured vocalists, and classic Tijuana Brass lineup",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Herb Alpert",
+    "Email": "tijuanabrass@example1.co.uk"
+  },
+  {
+    "Name": "Chris Isaak",
+    "Description": "Chris Isaak & Silvertone – formed in San Francisco in 1985",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Chris Isaak",
+    "Email": "chrisisaak@example1.co.uk"
+  },
+  {
+    "Name": "Kenny G Band",
+    "Description": "Kenny G and Studio Band formed in Seattle in 1980",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Kenny G",
+    "Email": "kennyg@example1.co.uk"
+  },
+  {
+    "Name": "Tina Turner – Private Dancer",
+    "Description": "Tina Turner and the classic Private Dancer era lineup (formed 1984)",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Tina Turner",
+    "Email": "tinaprivatedancer@example1.co.uk"
+  },
+  {
+    "Name": "Craig T Cooper",
+    "Description": "Craig T. Cooper music project formed in Chicago in 1985",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Craig T. Cooper",
+    "Email": "craig.t.cooper@example1.co.uk"
+  },
+  {
+    "Name": "Fleetwood Mac",
+    "Description": "Fleetwood Mac band members, legacy artists, and approved collaborators (Founded 1967)",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Mick Fleetwood",
+    "Email": "fleetwoodmac@example1.co.uk"
+  },
+  {
+    "Name": "Foreigner",
+    "Description": "Foreigner rock band classic lineup; founded 1976 in New York City",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Mick Jones",
+    "Email": "foreigner@example1.co.uk"
+  },
+  {
+    "Name": "Chicago",
+    "Description": "Chicago rock band classic lineup; founded 1967 in Chicago, Illinois",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Robert Lamm",
+    "Email": "chicago@example1.co.uk"
+  },
+  {
+    "Name": "Talking Heads",
+    "Description": "Talking Heads classic lineup; founded 1975 in New York City",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "David Byrne",
+    "Email": "talkingheads@example1.co.uk"
+  },
+  {
+    "Name": "Hall and Oates",
+    "Description": "Hall & Oates classic 1980s lineup; formed in the early 1970s in Philadelphia",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Daryl Hall",
+    "Email": "hallandoates@example1.co.uk"
+  },
+  {
+    "Name": "Boz Scaggs",
+    "Description": "Boz Scaggs and touring band; Silk Degrees era (mid-1970s)",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Boz Scaggs",
+    "Email": "bozscaggs@example1.co.uk"
+  },
+  {
+    "Name": "Men at Work",
+    "Description": "Men at Work classic lineup; founded 1978 in Melbourne, Australia",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Colin Hay",
+    "Email": "menatwork@example1.co.uk"
+  },
+  {
+    "Name": "Divinyls",
+    "Description": "Divinyls classic lineup; founded 1980 in Sydney, Australia",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Mark McEntee",
+    "Email": "divinyls@example1.co.uk"
+  },
+  {
+    "Name": "Split Enz",
+    "Description": "New Zealand art rock / new wave band formed in 1972",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Tim Finn",
+    "Email": "splitenz@example1.co.uk"
+  },
+  {
+    "Name": "INXS",
+    "Description": "Classic 1980s INXS lineup",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Michael Hutchence",
+    "Email": "inxs@example1.co.uk"
+  },
+  {
+    "Name": "Icehouse",
+    "Description": "Classic 1980s Icehouse lineup",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Iva Davies",
+    "Email": "icehouse@example1.co.uk"
+  },
+  {
+    "Name": "Crowded House",
+    "Description": "Classic 1980s Crowded House lineup",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Neil Finn",
+    "Email": "crowdedhouse@example1.co.uk"
+  },
+  {
+    "Name": "Thompson Twins",
+    "Description": "Classic 1980s Thompson Twins lineup",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Tom Bailey",
+    "Email": "thompsontwins@example1.co.uk"
+  },
+  {
+    "Name": "OMC",
+    "Description": "OMC (Ōtara Millionaires Club) How bizzare",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Pauly Fuemana",
+    "Email": "omc@example1.co.uk"
+  },
+  {
+    "Name": "Vocalists",
+    "Description": "Lead singers and vocalists across all bands",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "vocalists@example1.co.uk"
+  },
+  {
+    "Name": "Keyboards",
+    "Description": "Keyboard And synthesizers",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "synths@example1.co.uk"
+  },
+  {
+    "Name": "Musicians",
+    "Description": "Instrumentalists",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "instruments@example1.co.uk"
+  },
+  {
+    "Name": "Guitarists",
+    "Description": "Guitar and bass players",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "guitars@example1.co.uk"
+  },
+  {
+    "Name": "Percussionists",
+    "Description": "Drummers and percussion specialists",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "percussion@example1.co.uk"
+  },
+  {
+    "Name": "Legal",
+    "Description": "Company Lawyer Messers Sue, Grabbit & Runne",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Arkell v Pressdram",
+    "Email": "legal@example1.co.uk"
+  },
+  {
+    "Name": "Marketing",
+    "Description": "Marketing and Creattive Group",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Helena Christensen",
+    "Email": "marketing@example1.co.uk"
+  },
+  {
+    "Name": "Journalists",
+    "Description": "Journalists",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Neil Tennant",
+    "Email": "lunchtimeobouz@example1.co.uk"
+  },
+  {
+    "Name": "Broadcasters",
+    "Description": "Broadcasting staff who want their MTV",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Carol Hersee",
+    "Email": "popup-video@example1.co.uk"
+  },
+  {
+    "Name": "Builders",
+    "Description": "Team from Auf Wiedersehen, Pet",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Dennis Pinner",
+    "Email": "builders@example1.co.uk"
+  },
+  {
+    "Name": "Sales",
+    "Description": "Remote VPN users and road warriors in sales",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "IT Admin",
+    "Email": "sales@example1.co.uk"
+  },
+  {
+    "Name": "Former Staff",
+    "Description": "Former band members and staff",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "formerstaff@example1.co.uk"
+  },
+  {
+    "Name": "VPN-Users",
+    "Description": "Remote access users (touring staff, laptops and tablets)",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "IT Operations",
+    "Email": "vpn-users@example1.co.uk"
+  },
+  {
+    "Name": "2FA Users",
+    "Description": "Users with 2FA enabled",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "IT Operations",
+    "Email": "mfa-users@example1.co.uk"
+  },
+  {
+    "Name": "Disabled Users",
+    "Description": "Administratively disabled user accounts",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": ""
+  }
+]
