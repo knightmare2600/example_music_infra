@@ -1,0 +1,314 @@
+# Zabbix 7.0 Monitoring Configuration — PVE Snapshot Check
+#
+# Architecture:
+#   One master item reads /tmp/pve-snapshot-check.json via vfs.file.contents.
+#   All other items are Dependent Items using JSONPath preprocessing.
+#   No agent scripts required.
+#
+# Severity integer mapping (used in trigger expressions):
+#   0 = OK
+#   1 = WARNING  (any snapshot present)
+#   2 = HIGH     (2+ snapshots)
+#   3 = CRITICAL (2+ snaps >= 5 days old, OR any snap >= 7 days old)
+#  -1 = UNKNOWN  (pvesh query failed for that guest)
+#
+# Stale file alert: if generated_unix has not been updated in 2 hours,
+# the timer or script has failed and Zabbix alerts on that independently.
+#
+# ============================================================================
+# MASTER ITEM
+# ============================================================================
+
+Name: PVE - Snapshot Check Report (master)
+Type: Zabbix agent
+Key: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Type of information: Text
+Update interval: 5m
+History: 7d
+Description: >
+  Reads the full JSON report written by pve-snapshot-check.py.
+  All other snapshot items depend on this master item.
+  Script runs hourly; Zabbix polls every 5 minutes — any given
+  poll reads the most recent run's output.
+
+---
+
+# ============================================================================
+# DEPENDENT ITEMS  (all depend on the master item above)
+# Preprocessing type: JSONPath
+# ============================================================================
+
+Name: PVE - Snapshot Worst Severity (integer)
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.worst.severity.int
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.worst_severity_int
+Description: >
+  Numeric worst severity across all VMs and LXC on this node.
+  0=OK, 1=WARNING, 2=HIGH, 3=CRITICAL.
+  Use this item in trigger expressions.
+
+---
+
+Name: PVE - Snapshot Worst Severity (text)
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.worst.severity.text
+Type of information: Text
+Preprocessing: JSONPath  $.summary.worst_severity
+Description: Human-readable worst severity. For display only — use the integer item in triggers.
+
+---
+
+Name: PVE - Snapshot CRITICAL Count
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.critical.count
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.critical_count
+Description: Number of VMs or LXC containers at CRITICAL severity.
+
+---
+
+Name: PVE - Snapshot HIGH Count
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.high.count
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.high_count
+Description: Number of VMs or LXC containers at HIGH severity.
+
+---
+
+Name: PVE - Snapshot WARNING Count
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.warning.count
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.warning_count
+Description: Number of VMs or LXC containers at WARNING severity.
+
+---
+
+Name: PVE - Snapshot UNKNOWN Count
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.unknown.count
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.unknown_count
+Description: Number of guests where pvesh query failed. Non-zero indicates a problem querying the API.
+
+---
+
+Name: PVE - VMs With Snapshots
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.vms.with.snapshots
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.vms_with_snapshots
+Description: Count of QEMU VMs with at least one snapshot.
+
+---
+
+Name: PVE - LXC With Snapshots
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.lxc.with.snapshots
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.lxc_with_snapshots
+Description: Count of LXC containers with at least one snapshot.
+
+---
+
+Name: PVE - Snapshot Report Generated (Unix timestamp)
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.generated.unix
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.generated_unix
+Description: >
+  Unix timestamp of when the report was generated.
+  Used to detect a stale report (timer or script failure).
+  Trigger fires if this has not advanced in 2 hours.
+
+---
+
+Name: PVE - Total VMs Checked
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.total.vms.checked
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.total_vms_checked
+Description: Total QEMU VMs enumerated on this node during last check.
+
+---
+
+Name: PVE - Total LXC Checked
+Type: Dependent item
+Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
+Key: pve.snapshot.total.lxc.checked
+Type of information: Numeric (unsigned)
+Preprocessing: JSONPath  $.summary.total_lxc_checked
+Description: Total LXC containers enumerated on this node during last check.
+
+---
+
+# ============================================================================
+# TRIGGERS
+# ============================================================================
+# Host macro used: {$PVE_SNAPSHOT_STALE_SECONDS} — default 7200 (2 hours)
+# Set this macro on the host or template if you want a different stale window.
+# ============================================================================
+
+Name: PVE - CRITICAL snapshot state on {HOST.NAME}
+Expression: last(/pve-host/pve.snapshot.worst.severity.int) >= 3
+Severity: High
+Manual close: Yes
+Description: >
+  One or more VMs or LXC containers on {HOST.NAME} is in a CRITICAL snapshot state.
+  This means: a snapshot >= 7 days old exists, OR multiple snapshots exist
+  with at least one >= 5 days old.
+  Review /tmp/pve-snapshot-check.json on the host for the full list.
+  DO NOT auto-remove snapshots — check with a senior admin first.
+  Snapshots may be protecting an in-progress migration or backup job.
+
+---
+
+Name: PVE - HIGH snapshot state on {HOST.NAME}
+Expression: last(/pve-host/pve.snapshot.worst.severity.int) = 2
+Severity: Average
+Manual close: Yes
+Description: >
+  One or more VMs or LXC containers on {HOST.NAME} has multiple snapshots.
+  Multiple snapshots consume significant disk space and can cause unexpected
+  behaviour during live migration.
+  Review /tmp/pve-snapshot-check.json on the host.
+  DO NOT auto-remove snapshots without authorisation.
+
+---
+
+Name: PVE - WARNING snapshot state on {HOST.NAME}
+Expression: last(/pve-host/pve.snapshot.worst.severity.int) = 1
+Severity: Warning
+Manual close: Yes
+Description: >
+  One or more VMs or LXC containers on {HOST.NAME} has at least one snapshot.
+  Snapshots are not inherently a problem but forgotten ones consume disk space
+  and can grow over time.
+  Review /tmp/pve-snapshot-check.json on the host.
+
+---
+
+Name: PVE - Snapshot check report is stale on {HOST.NAME}
+Expression: (now() - last(/pve-host/pve.snapshot.generated.unix)) > 7200
+Severity: High
+Manual close: No
+Description: >
+  The snapshot report on {HOST.NAME} has not been updated in over 2 hours.
+  This means pve-snapshot-check.timer has likely failed, or the script
+  crashed without writing output.
+  Check: systemctl status pve-snapshot-check.timer
+  Check: journalctl -u pve-snapshot-check.service -n 30
+
+---
+
+Name: PVE - Snapshot check has UNKNOWN guests on {HOST.NAME}
+Expression: last(/pve-host/pve.snapshot.unknown.count) > 0
+Severity: Average
+Manual close: Yes
+Description: >
+  One or more guests on {HOST.NAME} could not be queried by pvesh.
+  This may indicate pveproxy is down, a guest is in an inconsistent state,
+  or the script does not have sufficient permissions.
+  Check: journalctl -u pve-snapshot-check.service -n 50
+
+---
+
+Name: PVE - Snapshot report file missing on {HOST.NAME}
+Expression: vfs.file.exists[/tmp/pve-snapshot-check.json] = 0
+Severity: High
+Manual close: No
+Description: >
+  /tmp/pve-snapshot-check.json does not exist on {HOST.NAME}.
+  This is normal immediately after a reboot (file is in /tmp — volatile)
+  and resolves once the timer fires (10 minutes after boot).
+  If this persists beyond 15 minutes post-boot, investigate:
+  Check: systemctl status pve-snapshot-check.timer
+  Check: journalctl -u pve-snapshot-check.service -n 30
+
+---
+
+# ============================================================================
+# ADDITIONAL FILE EXISTENCE CHECKS (match style of hoover monitoring)
+# ============================================================================
+
+Name: PVE - Snapshot Check Script Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/usr/local/bin/pve-snapshot-check.py]
+Type of information: Numeric (unsigned)
+Update interval: 1h
+Description: 1 = script present, 0 = missing
+
+---
+
+Name: PVE - Snapshot Check Service File Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/etc/systemd/system/pve-snapshot-check.service]
+Type of information: Numeric (unsigned)
+Update interval: 1h
+Description: 1 = service file present, 0 = missing
+
+---
+
+Name: PVE - Snapshot Check Timer File Exists
+Type: Zabbix agent
+Key: vfs.file.exists[/etc/systemd/system/pve-snapshot-check.timer]
+Type of information: Numeric (unsigned)
+Update interval: 1h
+Description: 1 = timer file present, 0 = missing
+
+---
+
+Name: PVE - Snapshot Check Timer Status
+Type: Zabbix agent (script)
+Key: pve.snapshot.timer.status
+Type of information: Text
+Update interval: 30m
+Description: Returns OK_ENABLED_ACTIVE if timer is healthy, otherwise a fault string.
+
+Script/Command:
+```bash
+#!/bin/bash
+STATUS=$(systemctl is-enabled pve-snapshot-check.timer 2>/dev/null)
+ACTIVE=$(systemctl is-active pve-snapshot-check.timer 2>/dev/null)
+if [ "$STATUS" = "enabled" ] && [ "$ACTIVE" = "active" ]; then
+  echo "OK_ENABLED_ACTIVE"
+  exit 0
+elif [ "$STATUS" = "enabled" ] && [ "$ACTIVE" = "inactive" ]; then
+  echo "ENABLED_BUT_INACTIVE"
+  exit 1
+elif [ "$STATUS" != "enabled" ]; then
+  echo "DISABLED"
+  exit 1
+else
+  echo "UNKNOWN"
+  exit 1
+fi
+```
+
+---
+
+Name: PVE - Snapshot Check Script Missing
+Expression: last(/pve-host/vfs.file.exists[/usr/local/bin/pve-snapshot-check.py]) = 0
+Severity: High
+Description: The snapshot check script has been removed from this host.
+
+---
+
+Name: PVE - Snapshot Check Timer Not Active
+Expression: last(/pve-host/pve.snapshot.timer.status) <> "OK_ENABLED_ACTIVE"
+Severity: High
+Description: The snapshot check timer is not enabled or active.
+
+---
