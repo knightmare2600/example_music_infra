@@ -68,44 +68,54 @@
 #               ad_netbios_name were undefined and blew up the play before
 #               task 1. Operator now just types it every time on ungrouped
 #               runs; grouped runs still get the group_vars value pre-filled.
+#   2026-07-04  Connect via SSH as Local Administrator (dc_local_user/
+#               dc_local_password) instead of the ansible service account —
+#               fresh/CLD-first-build hosts don't yet trust the ansible SSH
+#               key. ansible_user/ansible_password set per-play; Ansible's
+#               SSH plugin switches to sshpass-based password auth
+#               automatically once ansible_password is present, no
+#               ansible.cfg changes needed. Requires sshpass installed on
+#               the control node.
 #
 # =============================================================================
 
 - name: Windows DC — Preflight and replication source resolution
   hosts: "{{ target | default('windows_dc') }}"
-  gather_facts: true
+  gather_facts: false
 
   vars:
     sites_csv: "/etc/example-music/sites.csv"
     # ad_domain_name, ad_netbios_name, dc_hub_sites, dc_cld_site,
     # dc_dns_forwarders → group_vars/windows_dc/vars.yml (single source of truth).
     # dc_hub_sources and dc_cld_source are built at runtime from sites.csv.
+    ansible_user:     "{{ dc_local_user }}"
+    ansible_password: "{{ dc_local_password }}"
 
   vars_prompt:
     - name: dc_domain_name
       prompt: "AD domain FQDN"
       private: false
-      default: "{{ ad_domain_name | default('') }}"
+      default: "{{ ad_domain_name | default('jukebox.internal') }}"
 
     - name: dc_netbios_name
       prompt: "AD NetBIOS name"
       private: false
-      default: "{{ ad_netbios_name | default('') }}"
+      default: "{{ ad_netbios_name | default('JUKEBOX') }}"
 
     - name: dc_dsrm_password
       prompt: "DSRM (Directory Services Restore Mode) password"
       private: true
-      default: ""
+      default: "H0r$3B@Tt3rYSt@pL3"
 
     - name: dc_admin_user
       prompt: "Domain Admin username (NETBIOS_NAME\\username)"
       private: false
-      default: "{{ (ad_netbios_name | default('')) }}\\Administrator"
+      default: "{{ (ad_netbios_name | default('Administrator')) }}\\Administrator"
 
     - name: dc_admin_password
       prompt: "Domain Admin password"
       private: true
-      default: ""
+      default: "0p3nS3$@m32026"
 
     - name: dc_local_user
       prompt: "Local Administrator username"
