@@ -61,6 +61,14 @@
 #   2026-06-29  Remove ANSI codes from vars_prompt strings (exa_pretty handles
 #               colouring); add default: "" to password prompts; standardise
 #               hosts: target to windows_dc; store dc_replication_source_ip fact
+#   2026-07-04  vars_prompt defaults for dc_domain_name/dc_netbios_name/
+#               dc_admin_user now use | default('') — bare-IP runs (-i
+#               <ip>, with no group membership) don't pull in
+#               group_vars/windows_dc/vars.yml, so ad_domain_name/
+#               ad_netbios_name were undefined and blew up the play before
+#               task 1. Operator now just types it every time on ungrouped
+#               runs; grouped runs still get the group_vars value pre-filled.
+#
 # =============================================================================
 
 - name: Windows DC — Preflight and replication source resolution
@@ -77,12 +85,12 @@
     - name: dc_domain_name
       prompt: "AD domain FQDN"
       private: false
-      default: "{{ ad_domain_name }}"
+      default: "{{ ad_domain_name | default('') }}"
 
     - name: dc_netbios_name
       prompt: "AD NetBIOS name"
       private: false
-      default: "{{ ad_netbios_name }}"
+      default: "{{ ad_netbios_name | default('') }}"
 
     - name: dc_dsrm_password
       prompt: "DSRM (Directory Services Restore Mode) password"
@@ -92,7 +100,7 @@
     - name: dc_admin_user
       prompt: "Domain Admin username (NETBIOS_NAME\\username)"
       private: false
-      default: "{{ ad_netbios_name }}\\Administrator"
+      default: "{{ (ad_netbios_name | default('')) }}\\Administrator"
 
     - name: dc_admin_password
       prompt: "Domain Admin password"
