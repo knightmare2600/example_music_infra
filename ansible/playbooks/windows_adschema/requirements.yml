@@ -1,0 +1,13 @@
+---
+# requirements.yml
+# Install with: ansible-galaxy collection install -r requirements.yml
+#
+# These collections provide the modules used across windows_adschema's
+# numbered stages (00-ad-preflight through 30-ad-users, and 40-ad-computers
+# once migrated).
+
+collections:
+  - name: microsoft.ad           # microsoft.ad.ou, .group, .user, .computer
+    version: ">=1.0.0"
+  - name: ansible.windows        # win_powershell (UPN suffix registration)
+    version: ">=2.0.0"

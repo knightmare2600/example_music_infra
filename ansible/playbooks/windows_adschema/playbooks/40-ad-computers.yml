@@ -1,0 +1,104 @@
+---
+# =============================================================================
+# playbooks/40-ad-computers.yml
+# Example Music Limited — Active Directory Computer Accounts Playbook
+# =============================================================================
+# Creates all AD computer accounts from ad_computers.json.
+#
+# ⚠  ADDITIVE ONLY — state: present throughout. Never removes computer
+#    accounts.
+#
+# Prerequisite:
+#   10-ad-schema.yml must have been run first (OU hierarchy, including all
+#   device sub-OUs, must already exist, and — when run via site.yml — the
+#   ad_target prompt happens in 00-ad-preflight.yml once and is reused here
+#   and in 20-ad-groups.yml/40-ad-users.yml).
+#
+# Device Role → OU mapping (matches 10-ad-schema.yml _device_sub_ous):
+#   Workstations   WKS LAP SUR MBP MAC VDU
+#   Servers        DCS SRV SVR SBC RDR
+#   Infrastructure FWL RTR SWI RAC PVE NAS NIX
+#   Telephony      PHN PBX PAY
+#   AV             LCD TVS VCU MIC RAD
+#   IoT            CAM WAP CLK PMP TEA COF PRN DON VND MUS TTY OB
+#   Assets         TAB BUS CAR TRK JET AST MOO
+#
+# Computers with unknown site codes (ABR, LON/LOC, GAA, HEL) are skipped by
+# the JSON generator because their OU paths cannot be resolved.
+#
+# Usage:
+#   # Normal path — run via site.yml, prompted once by 00-ad-preflight.yml:
+#   ansible-playbook playbooks/windows_adschema/site.yml -i <inventory> -e populate_ad=yes
+#
+#   # Standalone run — supply the target directly, no prompt available here:
+#   ansible-playbook playbooks/windows_adschema/playbooks/30-ad-computers.yml -e ad_target=<host> --ask-vault-pass
+#
+#   # Check mode (dry run)
+#   ansible-playbook playbooks/windows_adschema/playbooks/30-ad-computers.yml -e ad_target=<host> --check --diff
+#
+# Variables (override with --extra-vars):
+#   ad_target         Target DC hostname or IP — no prompt in this playbook;
+#                     comes from 00-ad-preflight.yml when run via site.yml,
+#                     or must be supplied with -e ad_target=<host> if run
+#                     standalone
+#   ad_domain         AD domain FQDN        (default: jukebox.internal)
+#   ad_computers_json Path to JSON file     (default: /etc/example-music/ad_computers.json)
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-29  Initial release. 271 computers; 7 skipped (bad site codes).
+# v1.1.0  2026-07-04  Removed hardcoded ad_target default (EXADCSFAL001) —
+#                     leftover from testing. hosts: now reads ad_target from
+#                     hostvars['localhost'], set by 00-ad-preflight.yml
+#                     earlier in the same run.
+# v1.2.0  2026-07-04  Moved into windows_adschema/playbooks/ as part of the
+#                     windows_bootstrap-style restructure. Renamed from
+#                     ad_computers.yml to 30-ad-computers.yml. Prompt now
+#                     lives in 00-ad-preflight.yml, not inline. Inline
+#                     microsoft.ad collection check replaced with a shared
+#                     include: ../tasks/ad_collection_check.yml.
+# =============================================================================
+
+- name: "Build AD computer accounts from JSON"
+  hosts: "{{ ad_target | default(hostvars['localhost']['ad_target'] | default('localhost')) }}"
+  gather_facts: false
+  become: false
+
+  vars:
+    ad_domain:         "{{ dc_domain_name | default('jukebox.internal') }}"
+    ad_computers_json: "/etc/example-music/ad_computers.json"
+
+  pre_tasks:
+
+    - name: "Skip — populate_ad not requested"
+      meta: end_play
+      when: (populate_ad | default('no')) | lower not in ['yes', 'y']
+
+    - name: "Fail — no target Domain Controller resolved"
+      fail:
+        msg: >
+          No target Domain Controller was resolved from 00-ad-preflight.yml's
+          prompt or -e ad_target=<host>. Re-run the play.
+      when: inventory_hostname == 'localhost'
+
+    - name: Include microsoft.ad collection preflight check
+      include_tasks: ../tasks/ad_collection_check.yml
+
+    - name: "Load computers from ad_computers.json (known source of truth)"
+      set_fact:
+        _computers_all: "{{ lookup('file', ad_computers_json) | from_json }}"
+        _base_dn: "DC={{ ad_domain.split('.') | join(',DC=') }}"
+      delegate_to: localhost
+      become: false
+
+    - name: "Filter out computers with unresolvable OU paths"
+      set_fact:
+        _computers: "{{ _computers_all | selectattr('ad_ou', 'ne', '') | list }}"
+
+    - name: "Preflight | Report computer count"
+      debug:
+        msg: >-
+          Parsed {{ _computers_all | length }} computers from JSON;
+          {{ _computers | length }} have resolvable OU paths
+          ({{ _computers_all | length - _computers | length }} skipped —
+          unknown site codes).

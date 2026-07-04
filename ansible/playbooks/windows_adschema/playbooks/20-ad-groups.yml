@@ -1,0 +1,102 @@
+---
+# =============================================================================
+# playbooks/20-ad-groups.yml
+# Example Music Limited — Active Directory Groups Playbook
+# =============================================================================
+# Creates all AD security groups from jukebox.example.tdf ($Script:rawDemoGroups).
+# All groups are created in OU=Security Groups,OU=IT Groups.
+#
+# ⚠  ADDITIVE ONLY — state: present throughout. Never removes groups.
+#
+# Prerequisite:
+#   10-ad-schema.yml must have been run first (OU structure must exist, and —
+#   when run via site.yml — the ad_target prompt happens in 00-ad-preflight.yml
+#   once and is reused here and in 30-ad-users.yml/40-ad-computers.yml).
+#
+# Usage:
+#   # Normal path — run via site.yml, prompted once by 00-ad-preflight.yml:
+#   ansible-playbook playbooks/windows_adschema/site.yml -i <inventory> -e populate_ad=yes
+#
+#   # Standalone run — supply the target directly, no prompt available here:
+#   ansible-playbook playbooks/windows_adschema/playbooks/20-ad-groups.yml -e ad_target=<host> --ask-vault-pass
+#
+#   # Check mode (dry run)
+#   ansible-playbook playbooks/windows_adschema/playbooks/20-ad-groups.yml -e ad_target=<host> --check --diff
+#
+# Variables (override with --extra-vars):
+#   ad_target   Target DC hostname or IP — no prompt in this playbook; comes
+#               from 00-ad-preflight.yml when run via site.yml, or must be
+#               supplied with -e ad_target=<host> if run standalone
+#   ad_domain   AD domain FQDN       (default: jukebox.internal)
+#   tdf_path    Path to TDF file     (default: /etc/example-music/jukebox.example.tdf)
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-06-29  Initial release. 105 groups from rawDemoGroups.
+# v1.1.0  2026-07-04  Removed hardcoded ad_target default (EXADCSFAL001) —
+#                     leftover from testing. hosts: now reads ad_target from
+#                     hostvars['localhost'], set by ad_schema.yml's prompt
+#                     play earlier in the same run.
+# v1.2.0  2026-07-04  Moved into windows_adschema/playbooks/ as part of the
+#                     windows_bootstrap-style restructure. Renamed from
+#                     ad_groups.yml to 20-ad-groups.yml. Prompt now lives in
+#                     00-ad-preflight.yml, not inline. Inline microsoft.ad
+#                     collection check replaced with a shared include:
+#                     ../tasks/ad_collection_check.yml.
+# =============================================================================
+
+- name: "Build AD groups from TDF"
+  hosts: "{{ ad_target | default(hostvars['localhost']['ad_target'] | default('localhost')) }}"
+  gather_facts: false
+  become: false
+
+  vars:
+    ad_domain:       "{{ dc_domain_name | default('jukebox.internal') }}"
+    ad_email_domain: "{{ ad_domain }}"
+    ad_groups_json:  "/etc/example-music/ad_groups.json"
+
+  pre_tasks:
+
+    - name: "Skip — populate_ad not requested"
+      meta: end_play
+      when: (populate_ad | default('no')) | lower not in ['yes', 'y']
+
+    - name: "Fail — no target Domain Controller resolved"
+      fail:
+        msg: >
+          No target Domain Controller was resolved from 00-ad-preflight.yml's
+          prompt or -e ad_target=<host>. Re-run the play.
+      when: inventory_hostname == 'localhost'
+
+    - name: Include microsoft.ad collection preflight check
+      include_tasks: ../tasks/ad_collection_check.yml
+
+    - name: "Load groups from ad_groups.json (known source of truth)"
+      set_fact:
+        _groups:  "{{ lookup('file', ad_groups_json) | from_json }}"
+        _base_dn: "DC={{ ad_domain.split('.') | join(',DC=') }}"
+      delegate_to: localhost
+      become: false
+
+    - name: "Preflight | Report group count"
+      debug:
+        msg: "Loaded {{ _groups | length }} groups from {{ ad_groups_json }} — proceeding."
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # All rawDemoGroups are Type=Security, Scope=Global.
+    # They all land in OU=Security Groups,OU=IT Groups.
+    # -------------------------------------------------------------------------
+
+    - name: "Create AD security groups"
+      microsoft.ad.group:
+        name:        "{{ item.Name }}"
+        path:        "OU=Security Groups,OU=IT Groups,{{ _base_dn }}"
+        description: "{{ item.Description }}"
+        scope:       global
+        category:    security
+        state:       present
+      loop:          "{{ _groups }}"
+      loop_control:
+        label: "{{ item.Name }}"

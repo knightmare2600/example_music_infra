@@ -1,0 +1,38 @@
+---
+# =============================================================================
+# tasks/ad_collection_check.yml
+# Example Music Limited — microsoft.ad collection preflight
+# =============================================================================
+# Shared by 10-ad-schema.yml, 20-ad-groups.yml, 30-ad-users.yml and
+# 40-ad-computers.yml. Extracted here so the check only lives in one place —
+# previously it was copy-pasted into all four files.
+#
+# Safe to include from a standalone run (ansible-playbook 20-ad-groups.yml
+# on its own) as well as via site.yml — it only reads collection metadata
+# on the control node, no dependency on prior plays having run.
+# =============================================================================
+# Changelog:
+#   2026-07-04  Initial file — extracted from ad_schema.yml/ad_groups.yml/
+#               ad_users.yml during the windows_adschema restructure.
+# =============================================================================
+
+- name: "Preflight | Check microsoft.ad collection is installed"
+  command: ansible-galaxy collection list microsoft.ad
+  register: _col_check
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+  become: false
+
+- name: "Preflight | Fail with install instructions if collection is missing"
+  fail:
+    msg: |
+      Required Ansible collection not found: microsoft.ad
+
+      Install it on the control node with:
+        ansible-galaxy collection install microsoft.ad
+
+      Then re-run this playbook.
+  when: "'microsoft.ad' not in _col_check.stdout"
+  delegate_to: localhost
+  become: false
