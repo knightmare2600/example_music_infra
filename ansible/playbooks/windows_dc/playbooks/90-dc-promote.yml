@@ -49,7 +49,7 @@
 
 - name: Windows DC — Feature installation and promotion
   hosts: "{{ target | default('windows_dc') }}"
-  gather_facts: true
+  gather_facts: false
 
   vars_prompt:
     - name: dc_temp_dns_ip
@@ -63,9 +63,10 @@
   vars:
     dc_site_name: "{{ host_site }}"
     # dc_db_path, dc_log_path, dc_sysvol, dc_dns_forwarders → group_vars/windows_dc/vars.yml
+    ansible_user:     "{{ dc_local_user }}"
+    ansible_password: "{{ dc_local_password }}"
 
   tasks:
-
     # ── Guard: credentials must come from preflight ───────────────────────────
 
     - name: Assert domain credentials are available from preflight

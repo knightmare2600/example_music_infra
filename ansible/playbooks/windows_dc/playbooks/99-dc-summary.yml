@@ -11,11 +11,23 @@
 # =============================================================================
 # Changelog:
 #   2026-06-25  Initial file
+#   2026-07-04  Connect via SSH as Local Administrator (dc_local_user/
+#               dc_local_password) instead of the ansible service account —
+#               fresh/CLD-first-build hosts don't yet trust the ansible SSH
+#               key. ansible_user/ansible_password set per-play; Ansible's
+#               SSH plugin switches to sshpass-based password auth
+#               automatically once ansible_password is present, no
+#               ansible.cfg changes needed. Requires sshpass installed on
+#               the control node.
 # =============================================================================
 
 - name: Windows DC — Post-build health summary
   hosts: "{{ target | default('windows_dc') }}"
-  gather_facts: true
+  gather_facts: false
+
+  vars:
+    ansible_user:     "{{ dc_local_user }}"
+    ansible_password: "{{ dc_local_password }}"
 
   tasks:
 

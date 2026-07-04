@@ -20,11 +20,19 @@
 #   2026-06-29  Add Stage 0 pre-sync health checks (DNS, ProductType, SYSVOL,
 #               repadmin /showrepl, dcdiag) with operator confirmation pause
 #               before any sync is triggered; standardise hosts: target
+#   2026-07-04  Connect via SSH as Local Administrator (dc_local_user/
+#               dc_local_password) instead of the ansible service account —
+#               fresh/CLD-first-build hosts don't yet trust the ansible SSH
+#               key. ansible_user/ansible_password set per-play; Ansible's
+#               SSH plugin switches to sshpass-based password auth
+#               automatically once ansible_password is present, no
+#               ansible.cfg changes needed. Requires sshpass installed on
+#               the control node.
 # =============================================================================
 
 - name: Windows DC — Replication verification and force-sync
   hosts: "{{ target | default('windows_dc') }}"
-  gather_facts: true
+  gather_facts: false
 
   vars:
     dc_sysvol_wait_retries: 20
@@ -34,6 +42,9 @@
       - FAL
       - ODE
       - BRK
+
+    ansible_user:     "{{ dc_local_user }}"
+    ansible_password: "{{ dc_local_password }}"
 
   tasks:
 
