@@ -1,0 +1,50 @@
+---
+# =============================================================================
+# site.yml
+# Example Music Limited — Active Directory population entry point
+# =============================================================================
+# Builds the OU schema, security groups, users and computer accounts against
+# a single target Domain Controller — always run this against one host to
+# "up" the AD schema, no tags, no --limit gymnastics.
+#
+# Runs only when populate_ad=yes was answered at 85-dc-preflight.yml (or
+# passed directly with -e populate_ad=yes on a standalone run). Each stage
+# guards itself with meta: end_play otherwise.
+#
+# Run from the ansible/ root for all commands.
+#
+# Usage — normal path, via windows_dc/site.yml (prompts at dc preflight):
+#   ansible-playbook playbooks/windows_dc/site.yml -i <inventory> -e target=<host>
+#
+# Usage — standalone, prompted for the target Domain Controller:
+#   ansible-playbook playbooks/windows_adschema/site.yml -e populate_ad=yes
+#
+# Usage — standalone, target supplied directly (skips the prompt):
+#   ansible-playbook playbooks/windows_adschema/site.yml -e populate_ad=yes -e ad_target=<host>
+#
+# Standalone plays can also be run directly without site.yml:
+#   ansible-playbook playbooks/windows_adschema/playbooks/20-ad-groups.yml -e ad_target=<host>
+#
+# Playbook order:
+#   00-ad-preflight  Prompt for ad_target (skipped if populate_ad != yes)
+#   10-ad-schema     OU hierarchy from sites.csv
+#   20-ad-groups     Security groups from TDF
+#   30-ad-users      User accounts, band OUs, group membership, manager from TDF
+#   40-ad-computers  Computer accounts from TDF — pending, not yet migrated
+# =============================================================================
+# Changelog:
+#   2026-07-04  Initial file — windows_bootstrap-style restructure of what
+#               was previously four flat files (ad_schema.yml, ad_groups.yml,
+#               ad_users.yml, ad_computers.yml) directly under
+#               windows_adschema/. No tags used — this site.yml is always run
+#               against a single target, unlike windows_dc/site.yml's
+#               per-stage tags. 40-ad-computers.yml is not yet migrated —
+#               its numbered stage and this import will be added once the
+#               source file is available.
+# =============================================================================
+
+- import_playbook: playbooks/00-ad-preflight.yml
+- import_playbook: playbooks/10-ad-schema.yml
+- import_playbook: playbooks/20-ad-groups.yml
+- import_playbook: playbooks/30-ad-users.yml
+- import_playbook: playbooks/40-ad-computers.yml
