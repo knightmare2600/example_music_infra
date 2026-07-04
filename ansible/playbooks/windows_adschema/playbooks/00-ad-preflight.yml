@@ -1,0 +1,48 @@
+---
+# =============================================================================
+# playbooks/00-ad-preflight.yml
+# Example Music Limited — AD population target prompt
+# =============================================================================
+# Prompts for the Domain Controller name or IP to build/populate the AD
+# schema against, and stores it in hostvars['localhost']['ad_target'] for
+# every later stage in this site.yml run to read back.
+#
+# hosts: resolves to an empty list when populate_ad != yes, so this play —
+# and its prompt — is skipped entirely on a run where AD population wasn't
+# requested at 85-dc-preflight.yml. No behaviour change for that case.
+#
+# Skip the prompt on any run by supplying -e ad_target=<host> directly.
+# =============================================================================
+# Changelog:
+#   2026-07-04  Initial file — split out of ad_schema.yml (was inline there,
+#               causing a hardcoded EXADCSFAL001 default to leak in as a
+#               fallback). windows_adschema now follows the windows_bootstrap
+#               numbered-stage layout — see README.md.
+# =============================================================================
+
+- name: "AD Schema — prompt for target Domain Controller"
+  hosts: "{{ 'localhost' if (populate_ad | default('no')) | lower in ['yes', 'y'] else [] }}"
+  gather_facts: false
+  become: false
+
+  vars_prompt:
+    - name: ad_target
+      prompt: "Domain Controller name or IP to build/populate the AD schema against"
+      private: false
+      default: ""
+
+  tasks:
+    - name: Save target Domain Controller
+      ansible.builtin.set_fact:
+        ad_target: "{{ ad_target }}"
+
+    - name: Fail if no target DC supplied
+      fail:
+        msg: >
+          No Domain Controller name or IP was entered. Re-run and supply one, or pass -e ad_target=<host> to skip the prompt.
+      when: ad_target | trim == ''
+
+    - name: Publish ad_target
+      set_fact:
+        ad_target: "{{ ad_target }}"
+
