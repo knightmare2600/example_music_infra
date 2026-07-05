@@ -3,12 +3,11 @@
 # ==================================================================================================
 # Example Music Inventory Generator
 #
-# Authoritative source:
-#     /etc/example-music/sites.csv
-#
+# Authoritative source: /etc/example-music/sites.csv
+'
 # Requires an apt -y install python3-ipy to be run on your ansible node.
 #
-# Address allocation policy
+# Address allocation policy:
 #
 #   .1          RTR   Upstream router
 #   .2-.4       BMC   iDRAC / iLO / Redfish
@@ -19,42 +18,34 @@
 #   .48         SBC   VoIP Session Border Controller
 #   .100-.249   DHCP  DHCP Pool
 #   .250-.252   SWI   Switches
-#   .253        FWL   Firewall
+#   .253        FWL1  Firewall
+#   .254        FWL2  Firewall
 #
 # Host naming:
 #
 #   EXA<ROLE><SITE><NNN>
 # ==================================================================================================
 # Changelog:
-#   2026-07-05  Fixed offset_ip() — IPy's IP.__add__ is reserved for merging two adjacent IP()/network objects into a parent CIDR block
-#               (see https://pypi.org/project/IPy/), it is not address
-#               offsetting. `base + offset` with offset as a plain int made
-#               IPy's __add__ try to read offset._ipversion, causing
-#               "'int' object has no attribute '_ipversion'". Fixed by
-#               converting to the integer form with .int(), adding there,
-#               then rebuilding an IP from the result.
-#   2026-07-05  Rewrote build_ini() to use the standard header block and
-#               proper multi-group INI syntax (firewalls/windows_server/
-#               windows_desktop/windows_laptop/windows:children), matching
-#               windows_bootstrap/inventory/cld.ini's structure. Hostnames
-#               (FWL/DCS1/DCS2/WKS1/LAP1) now come from build_hostname()
-#               instead of being duplicated as inline EXA{ROLE}{SITE}001
-#               string literals — single source of truth for the
-#               EXA<ROLE><SITE><NNN> naming convention.
-#   2026-07-05  Wired in the previously-unused hostname_map (BMC/PVE) built
-#               in generate() into build_ini(). PVE nodes get a real,
-#               uncommented [pvenodes] group (matching the existing
-#               group_vars/pvenodes/ directory) since they're genuinely
-#               Ansible-managed. BMC hosts (iDRAC/iLO/Redfish) are not
-#               Ansible-managed, so they're added as commented reference
-#               lines only, no group header.
-#   2026-07-05  register_ip() now skips "N/A" entirely instead of treating
-#               it as a real address. Two unrelated sites both legitimately
-#               having "N/A" for Gateway/DC/FW (e.g. VRK, BRD) were
-#               colliding with each other on the literal string "N/A".
-#               "N/A" is an established sentinel elsewhere in this estate
-#               (ad_schema.yml's rejectattr('Subnet', 'equalto', 'N/A'));
-#               this brings register_ip() in line with that convention.
+#  2026-07-05  Fixed offset_ip() — IPy's IP.__add__ is reserved for merging two adjacent IP()/net
+#              objects into a parent CIDR block (see https://pypi.org/project/IPy/), not address
+#              offsetting. base + offset with offset as a plain int made IPy's __add__ try to read
+#              offset._ipversion, causing 'int' object has no attribute '_ipversion'. Fixed by
+#              converting to the integer form with .int(), adding there, then rebuilding an IP from
+#              the result.
+#  2026-07-05  Rewrote build_ini() to use the standard header block & proper multi-group INI syntax
+#              (firewalls/windows_server/windows_desktop/windows_laptop/windows:children), matching
+#              windows_bootstrap/inventory/cld.ini's structure. Hostnames (FWL/DCS1/DCS2/WKS1/LAP1)
+#              now come from build_hostname() instead of duplicated as inline EXA{ROLE}{SITE}001
+#              string literals — known source of truth for EXA<ROLE><SITE><NNN> naming convention.
+#  2026-07-05  Wire in unused hostname_map (BMC/PVE) built in generate() into build_ini(). PVE nodes
+#              get a real, uncommented [pvenodes] group (matching the existing group_vars/pvenodes/
+#              directory) since they're genuinely Ansible-managed. BMC hosts (iDRAC/iLO/Redfish) are
+#              not Ansible-managed, so added as commented reference lines only, no group header.
+#  2026-07-05  register_ip() now skips "N/A" entirely instead of treating it as a real address. Two
+#              unrelated sites both legitimately having "N/A" for Gateway/DC/FW (e.g. VRK, BRD) were
+#              colliding with each other on the literal string "N/A". N/A is an established sentinel
+#              elsewhere in this estate (ad_schema.yml rejectattr('Subnet', 'equalto', 'N/A')); this
+#              brings register_ip() in line with that convention.
 # ==================================================================================================
 
 import csv
@@ -82,16 +73,16 @@ def msg(col, text):
 # ==================================================================================================
 OFFSETS_SINGLE = {
   "RTR": 1,
-  "DCS": [10, 11],
   "PRV": 15,
   "SBC": 48,
   "WKS": 101,
   "LAP": 102,
-  "FWL": 253,
 }
 
 ROLE_OFFSETS = {
   "BMC": [2, 3, 4],
+  "DCS": [10, 11],
+  "FWL": [253, 254].
   "PVE": [5, 6, 7],
 }
 
@@ -225,12 +216,14 @@ def build_ini(site, row, vals, hostnames):
 # .11 Secondary DC
 # .101 Example workstation
 # .102 Example laptop
-# .253 Firewall
+# .253 Primary Firewall
+# .254 Secondary Firewall
 #
 # ==================================================================================================
 
 [firewalls]
 {hostnames['FWL1']}  ansible_host={vals['FW']}  ansible_user=ansible  ansible_connection=ssh
+{hostnames['FWL2']}  ansible_host={vals['FW']}  ansible_user=ansible  ansible_connection=ssh
 
 [windows_server]
 {hostnames['DCS1']}  ansible_host={vals['DCS1']}
