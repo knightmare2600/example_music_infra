@@ -1,0 +1,30 @@
+---
+# =============================================================================
+# ansible/tasks/colour_fallback.yml
+# Example Music Limited — Fallback ANSI colour codes
+# =============================================================================
+# group_vars/all/colours.yml normally supplies {{ _c.G }}, {{ _c.R }}, etc.
+# to every host automatically — but only when the host is actually resolved
+# through the inventory (group_vars/all is tied to inventory group
+# membership). Ad hoc/ungrouped runs (bad -i target, inventory parse
+# failures, bare-IP addressing) skip group_vars entirely, so _c ends up
+# undefined and any debug/pause/fail msg referencing it blows up.
+#
+# This mirrors the exact dict in group_vars/all/colours.yml so behaviour is
+# identical whether _c came from there or from here.
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file
+# =============================================================================
+
+- name: Fallback colour codes if group_vars/all did not load
+  set_fact:
+    _c:
+      R:  "\e[0;31m"
+      G:  "\e[0;32m"
+      Y:  "\e[1;33m"
+      O:  "\e[38;5;208m"
+      C:  "\e[0;36m"
+      W:  "\e[1;37m"
+      NC: "\e[0m"
+  when: _c is not defined
