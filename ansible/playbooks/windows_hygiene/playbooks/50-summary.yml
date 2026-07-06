@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# playbooks/50-summary.yml
+# Example Music Limited — Windows hygiene: summary
+# =============================================================================
+# Prints a summary of what the hygiene run did. Relies on facts/registered
+# vars set by earlier stages (chassis_raw, is_laptop, win_update_result) —
+# run via site.yml, or after 00-preflight.yml + whichever other stages you
+# ran, in the same ansible-playbook invocation (facts persist across
+# chained plays for the same host).
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/site.yml
+#
+# Tags: summary
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from site.yml (was a single
+#               monolithic play) for consistency with the numbered
+#               00-preflight/major-step-of-10 convention used by
+#               windows_dc and windows_bootstrap.
+# =============================================================================
+
+- name: Windows hygiene — Summary
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: false
+  tasks:
+
+    - name: Hygiene complete — summary
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  Hygiene complete — {{ inventory_hostname }}"
+          - "  Chassis     : {{ chassis_raw.stdout | trim }} ({{ 'Laptop/Tablet' if is_laptop | bool else 'Desktop/Server/VM' }})"
+          - "  Hibernation : {{ 'ENABLED' if is_laptop | bool else 'DISABLED' }}"
+          - "  Page file   : clear at shutdown (set)"
+          - "  DISM        : StartComponentCleanup /ResetBase complete"
+          - "  Chocolatey  : upgraded all; WinDirStat + SDelete present"
+          - "  Win Update  : {{ 'updates applied (reboot may be required)' if win_update_result is defined and 'KB' in (win_update_result.stdout | default('')) else 'no updates applied or stage skipped' }}"
+          - "════════════════════════════════════════════════════════════════"
+      tags: summary
