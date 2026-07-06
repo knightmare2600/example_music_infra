@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# tasks/hostname_facts.yml
+# ansible/tasks/hostname_facts.yml
 # Example Music Limited — Parse EXA[ROLE][SITE][NNN] hostname convention
 # Sets: host_role (e.g. WKS), host_site (e.g. GLA), host_num (e.g. 001)
 #

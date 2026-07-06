@@ -49,7 +49,7 @@
   tasks:
 
     - name: Include hostname facts
-      include_tasks: ../tasks/hostname_facts.yml
+      include_tasks: ../../../tasks/hostname_facts.yml
       tags: dc_replicate
 
     # =========================================================================
@@ -200,9 +200,9 @@
     - name: Force replicate from specific source if known
       ansible.windows.win_shell: |
         $partitions = @(
-          "DC=jukebox,DC=internal",
-          "CN=Configuration,DC=jukebox,DC=internal",
-          "CN=Schema,CN=Configuration,DC=jukebox,DC=internal"
+          "DC={{ dc_domain_name.split('.') | join(',DC=') }}",
+          "CN=Configuration,DC={{ dc_domain_name.split('.') | join(',DC=') }}",
+          "CN=Schema,CN=Configuration,DC={{ dc_domain_name.split('.') | join(',DC=') }}"
         )
         foreach ($p in $partitions) {
           repadmin /replicate $env:COMPUTERNAME "{{ dc_replication_source | default('') }}" "$p" /force 2>&1

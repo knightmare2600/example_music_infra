@@ -111,7 +111,7 @@
     # ── Domain join ───────────────────────────────────────────────────────────
 
     - name: Include hostname facts
-      include_tasks: ../tasks/hostname_facts.yml
+      include_tasks: ../../../tasks/hostname_facts.yml
       tags: domainjoin
 
     - name: Check if already domain-joined
