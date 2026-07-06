@@ -1,0 +1,125 @@
+---
+# =============================================================================
+# playbooks/50-systemd-units.yml
+# Example Music Limited — Proxmox VE node: systemd units + Zabbix agent
+# =============================================================================
+# Deploys the systemd service/timer units for the scripts in
+# 40-scripts.yml, reloads systemd, enables+starts the timers, and deploys
+# the Zabbix agent drop-in for NIC-guard monitoring (restarting
+# zabbix-agent to pick it up).
+#
+# GATED — only runs when pve_run_full_onboard is true (set by
+# 00-preflight.yml): true on first-ever onboarding, or when the operator
+# explicitly passes -e pve_force_full_onboard=true against an
+# already-onboarded node. daemon-reload, timer enable/start, and a
+# zabbix-agent restart all touch live running state, however briefly —
+# not something to redo silently on every routine refresh of a hypervisor.
+#
+# Units deployed (source: ansible/playbooks/proxmox/files/):
+#   /etc/systemd/system/pve-monthly-hoover.{service,timer}
+#   /etc/systemd/system/pve-snapshot-check.{service,timer}
+#   /etc/systemd/system/proxmox-replica-nic-guard.{service,timer}
+#   /etc/systemd/system/proxmox-zfs-vm-audit.{service,timer}
+#   /etc/zabbix/zabbix_agentd.d/proxmox-nic-guard.conf
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/50-systemd-units.yml
+#   (run via site.yml normally, gated by 00-preflight.yml's fact — running
+#   this file directly bypasses that gate, so only do so deliberately)
+#
+# Tags: systemd_units
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from pve_onboard.yml as part of the
+#               numbered-stage split (see 00-preflight.yml). Gated behind
+#               pve_run_full_onboard so a refresh run against an
+#               already-onboarded node doesn't restart zabbix-agent or
+#               touch systemd unless explicitly requested via
+#               -e pve_force_full_onboard=true.
+# =============================================================================
+
+- name: Proxmox VE — Systemd units and Zabbix agent
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+
+  handlers:
+    - name: Restart zabbix-agent
+      ansible.builtin.systemd:
+        name: zabbix-agent
+        state: restarted
+      failed_when: false
+
+  tasks:
+
+    - name: Skip — already onboarded, systemd units not requested
+      ansible.builtin.debug:
+        msg: >
+          {{ inventory_hostname }} is already onboarded — skipping systemd
+          units and Zabbix agent restart. Pass -e pve_force_full_onboard=true
+          to force this stage.
+      when: not (pve_run_full_onboard | default(true) | bool)
+      tags: systemd_units
+
+    - name: Deploy PVE maintenance systemd units
+      ansible.builtin.copy:
+        src: "../files/{{ item }}"
+        dest: "/etc/systemd/system/{{ item }}"
+        owner: root
+        group: root
+        mode: '0644'
+      loop:
+        - pve-monthly-hoover.service
+        - pve-monthly-hoover.timer
+        - pve-snapshot-check.service
+        - pve-snapshot-check.timer
+        - proxmox-replica-nic-guard.service
+        - proxmox-replica-nic-guard.timer
+        - proxmox-zfs-vm-audit.service
+        - proxmox-zfs-vm-audit.timer
+      register: pve_unit_files
+      when: pve_run_full_onboard | default(true) | bool
+      tags: systemd_units
+
+    - name: Reload systemd daemon (unit files changed)
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when:
+        - pve_run_full_onboard | default(true) | bool
+        - pve_unit_files.changed
+      tags: systemd_units
+
+    - name: Enable and start PVE maintenance timers
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - pve-monthly-hoover.timer
+        - pve-snapshot-check.timer
+        - proxmox-replica-nic-guard.timer
+        - proxmox-zfs-vm-audit.timer
+      when: pve_run_full_onboard | default(true) | bool
+      tags: systemd_units
+
+    # ── Zabbix agent drop-in ──────────────────────────────────────────────────
+
+    - name: Ensure /etc/zabbix/zabbix_agentd.d exists
+      ansible.builtin.file:
+        path:  /etc/zabbix/zabbix_agentd.d
+        state: directory
+        owner: root
+        group: root
+        mode:  '0755'
+      when: pve_run_full_onboard | default(true) | bool
+      tags: systemd_units
+
+    - name: Deploy Zabbix agent drop-in for NIC guard
+      ansible.builtin.copy:
+        src:   ../files/zabbix_agentd_nic-guard.conf
+        dest:  /etc/zabbix/zabbix_agentd.d/proxmox-nic-guard.conf
+        owner: root
+        group: root
+        mode:  '0644'
+      when: pve_run_full_onboard | default(true) | bool
+      notify: Restart zabbix-agent
+      tags: systemd_units

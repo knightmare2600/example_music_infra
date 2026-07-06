@@ -1,0 +1,100 @@
+---
+# =============================================================================
+# playbooks/30-example-music.yml
+# Example Music Limited — Proxmox VE node: /etc/example-music/ deployment
+# =============================================================================
+# Every device in the estate is meant to carry /etc/example-music/{sites,
+# devices}.csv (see playbooks/linux/tools.yml, which does this for all
+# Linux hosts) — PVE nodes previously didn't get this from Ansible at all,
+# only a one-time nodeinfo.json written by the interactive first-boot.sh
+# bash script (ansible_managed: false, never refreshed). This stage brings
+# PVE nodes in line with the rest of the estate and makes nodeinfo.json
+# idempotently re-writable by Ansible from here on (ansible_managed: true,
+# bootstrapped_by: proxmox/site.yml).
+#
+# sites.csv/devices.csv are copied from benarbejde/ (the git checkout on
+# the control node) — the same authoritative source playbooks/linux/tools.yml
+# uses, not a possibly-stale already-deployed copy.
+#
+# Always runs, first onboarding or refresh — pure file placement, no
+# service impact.
+#
+# Requires: 00-preflight.yml (host_site, pve_city/pve_country/pve_entity,
+# pve_site_row facts) — run via site.yml, or after 00-preflight.yml, in the
+# same ansible-playbook invocation (facts persist across chained plays for
+# the same host). Running this file truly standalone will error out
+# cleanly on the undefined facts rather than write a wrong nodeinfo.json.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/site.yml --tags example_music
+#
+# Tags: example_music
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted/added as part of the pve_onboard.yml
+#               numbered-stage split (see 00-preflight.yml). Adds
+#               sites.csv/devices.csv deployment (previously PVE nodes got
+#               neither from Ansible) and makes nodeinfo.json Ansible-managed
+#               and re-runnable, superseding the one-time bash/jq version
+#               first-boot.sh writes at initial OS install.
+# =============================================================================
+
+- name: Proxmox VE — /etc/example-music deployment
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+  gather_facts: true
+
+  vars:
+    sites_csv_src:   "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
+    devices_csv_src: "{{ playbook_dir }}/../../../../benarbejde/devices.csv"
+
+  tasks:
+
+    - name: Ensure /etc/example-music exists
+      ansible.builtin.file:
+        path:  /etc/example-music
+        state: directory
+        owner: root
+        group: root
+        mode:  '0755'
+      tags: example_music
+
+    - name: Deploy sites.csv to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ sites_csv_src }}"
+        dest:  /etc/example-music/sites.csv
+        owner: root
+        group: root
+        mode:  '0644'
+      tags: example_music
+
+    - name: Deploy devices.csv to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ devices_csv_src }}"
+        dest:  /etc/example-music/devices.csv
+        owner: root
+        group: root
+        mode:  '0644'
+      tags: example_music
+
+    - name: Write /etc/example-music/nodeinfo.json
+      ansible.builtin.copy:
+        dest: /etc/example-music/nodeinfo.json
+        mode: "0444"
+        content: "{{ _nodeinfo | to_nice_json }}\n"
+      vars:
+        _nodeinfo:
+          hostname:        "{{ inventory_hostname }}"
+          fqdn:            "{{ ansible_fqdn | default(inventory_hostname) }}"
+          role:            "proxmox"
+          site:            "{{ host_site }}"
+          city:            "{{ pve_city | default('') }}"
+          country:         "{{ pve_country | default('') }}"
+          entity:          "{{ pve_entity | default('') }}"
+          ansible_managed: true
+          bootstrapped_at: "{{ ansible_date_time.iso8601 }}"
+          bootstrapped_by: "proxmox/site.yml"
+          environment:     "{{ pve_environment | default('production') }}"
+          node_ip:         "{{ ansible_default_ipv4.address | default('') }}"
+          gateway:         "{{ pve_site_row.Gateway | default(ansible_default_ipv4.gateway | default('')) }}"
+      tags: example_music

@@ -11,7 +11,7 @@
 #   - Downloads exa_pretty.py callback from GitHub
 #   - Writes ansible.cfg, inventory, group_vars scaffolding
 #   - Fixes known first-run issues (sudoers path, etc.)
-#   - Onboards PVE nodes via pve_onboard.yml
+#   - Onboards PVE nodes via proxmox/site.yml
 #   - Tests connectivity with ansible ping
 #   - Sentinel file + dynamic MOTD
 #
@@ -169,6 +169,13 @@
 #                     still created with mkdir -p. Existence guards added to all cat > file
 #                     writes (ansible.cfg, inventory, group_vars/*) so re-runs do not
 #                     overwrite operator-edited files.
+# v1.16.0 2026-07-06  proxmox/pve_onboard.yml was split into a numbered-stage
+#                     site.yml chain (00-preflight through 50-systemd-units) —
+#                     updated every command reference here from pve_onboard.yml
+#                     to proxmox/site.yml. Behaviour for a first-time onboard
+#                     is unchanged; site.yml additionally now detects an
+#                     already-onboarded node and only refreshes the safe
+#                     stages by default (see proxmox/site.yml's own header).
 #
 # ==============================================================================
 
@@ -335,7 +342,7 @@ dpkg -s python3-virtualenv  &>/dev/null || BOOTSTRAP_PKGS+=(python3-virtualenv)
 command -v jq               &>/dev/null || BOOTSTRAP_PKGS+=(jq)
 
 # NB: libguestfs-tools is intentionally NOT installed on the ansible node. It is
-# only needed on PVE nodes, and is deployed there via the pve_onboard.yml and
+# only needed on PVE nodes, and is deployed there via the proxmox/site.yml and
 # cloud_templates.yml playbooks. Installing here pulls in the full qemu/kvm pkgs
 # (100s of MB, kernel images) which can cause OOM on small nodes.
 
@@ -1660,8 +1667,8 @@ if [[ "${RUN_PING,,}" == "y" ]]; then
   fi
   if [[ $UNREACHABLE -gt 0 || $FAILED -gt 0 ]]; then
     warn "${UNREACHABLE} unreachable / ${FAILED} failed."
-    warn "Run pve_onboard.yml as root to complete setup:"
-    warn "  ansible-playbook ${PLAYBOOKS_DIR}/proxmox/pve_onboard.yml --user=root -k"
+    warn "Run proxmox/site.yml as root to complete setup:"
+    warn "  ansible-playbook ${PLAYBOOKS_DIR}/proxmox/site.yml --user=root -k"
   fi
 else
   info "Skipping connectivity test."
@@ -1711,7 +1718,7 @@ echo -e "
     \${CY}Disk /\${NC}   : \${GR}\${DISK}\${NC}
 
   \${WH}── Quick reference ───────────────────────────────────────────\${NC}
-    \${CY}Onboard PVE :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/pve_onboard.yml --user=root -k
+    \${CY}Onboard PVE :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/site.yml --user=root -k
     \${CY}Ping all    :\${NC} ansible all -m ping
     \${CY}Templates   :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/cloud_templates.yml
 "
@@ -1807,7 +1814,7 @@ echo -e "${CYAN}     To pull the latest changes:${NC}"
 echo -e "${GREEN}     git -C ${ANSIBLE_HOME}/example-music-infra pull --ff-only${NC}"
 echo
 echo -e "${CYAN}  2. Onboard PVE nodes:${NC}"
-echo -e "${GREEN}     ansible-playbook ${PLAYBOOKS_DIR}/proxmox/pve_onboard.yml --user=root -k${NC}"
+echo -e "${GREEN}     ansible-playbook ${PLAYBOOKS_DIR}/proxmox/site.yml --user=root -k${NC}"
 echo
 echo -e "${CYAN}  3. Verify connectivity:${NC}"
 echo -e "${GREEN}     ansible all -m ping${NC}"

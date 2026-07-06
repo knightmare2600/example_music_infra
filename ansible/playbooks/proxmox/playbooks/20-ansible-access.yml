@@ -1,0 +1,88 @@
+---
+# =============================================================================
+# playbooks/20-ansible-access.yml
+# Example Music Limited — Proxmox VE node: ansible user and access setup
+# =============================================================================
+# Verifies/creates the ansible user, authorises the Ansible SSH key, deploys
+# and validates the sudoers drop-in, and adds ansible to the kvm group
+# (needed for virt-customize in cloud_templates.yml).
+#
+# GATED — only runs when pve_run_full_onboard is true (set by
+# 00-preflight.yml): true on first-ever onboarding, or when the operator
+# explicitly passes -e pve_force_full_onboard=true against an
+# already-onboarded node. On a routine refresh of an already-onboarded
+# node this stage is skipped entirely — it's the "establishes trust and
+# access" stage, not something to silently redo on every run.
+#
+# Our PXE/first-boot installer creates the ansible user, but we
+# trust-but-verify:
+#   - ansible user exists with correct shell and SSH key
+#   - sudoers drop-in present and validated
+#   - ansible in kvm group
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/20-ansible-access.yml
+#   (run via site.yml normally, gated by 00-preflight.yml's fact — running
+#   this file directly bypasses that gate, so only do so deliberately)
+#
+# Tags: ansible_access
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from pve_onboard.yml as part of the
+#               numbered-stage split (see 00-preflight.yml). Gated behind
+#               pve_run_full_onboard so a refresh run against an
+#               already-onboarded node doesn't silently re-touch access
+#               (SSH key, sudoers, group membership) unless explicitly
+#               requested via -e pve_force_full_onboard=true.
+# =============================================================================
+
+- name: Proxmox VE — Ansible user and access setup
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+
+  tasks:
+
+    - name: Skip — already onboarded, access setup not requested
+      ansible.builtin.debug:
+        msg: >
+          {{ inventory_hostname }} is already onboarded — skipping access
+          setup (user/SSH key/sudoers/kvm group). Pass
+          -e pve_force_full_onboard=true to force this stage.
+      when: not (pve_run_full_onboard | default(true) | bool)
+      tags: ansible_access
+
+    - name: Verify ansible user exists (created by PXE installer; created here if missing)
+      ansible.builtin.user:
+        name: ansible
+        shell: /bin/bash
+        create_home: true
+        state: present
+      when: pve_run_full_onboard | default(true) | bool
+      tags: ansible_access
+
+    - name: Ensure ansible SSH public key is authorised
+      ansible.posix.authorized_key:
+        user: ansible
+        key: "{{ lookup('file', '../../../configs/ansible-id_rsa.pub') }}"
+        state: present
+      when: pve_run_full_onboard | default(true) | bool
+      tags: ansible_access
+
+    - name: Deploy sudoers drop-in (validate before placing)
+      ansible.builtin.copy:
+        src: ../../../files/sudoer_ansible
+        dest: /etc/sudoers.d/ansible
+        owner: root
+        group: root
+        mode: '0440'
+        validate: /usr/sbin/visudo -cf %s
+      when: pve_run_full_onboard | default(true) | bool
+      tags: ansible_access
+
+    - name: Ensure ansible is in kvm group (needed for virt-customize)
+      ansible.builtin.user:
+        name: ansible
+        groups: kvm
+        append: true
+      when: pve_run_full_onboard | default(true) | bool
+      tags: ansible_access
