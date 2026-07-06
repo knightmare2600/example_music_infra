@@ -1,0 +1,117 @@
+---
+# =============================================================================
+# playbooks/00-preflight.yml
+# Example Music Limited — Proxmox VE node preflight
+# =============================================================================
+# Resolves this node's site (from its hostname, e.g. EXAPVEFAL001 -> FAL) and
+# looks up that site's city/country/entity from sites.csv, for enrichment of
+# nodeinfo.json in 30-example-music.yml.
+#
+# Also detects whether this node has already been through the access-setup
+# stage (20-ansible-access.yml) before, by checking for
+# /etc/sudoers.d/ansible. This decides which stages the rest of the chain
+# runs:
+#
+#   First-ever onboarding (sudoers drop-in absent):
+#     Every stage runs — packages, access setup, example-music, scripts,
+#     systemd units.
+#
+#   Already onboarded (sudoers drop-in present):
+#     Only the stages that cannot break a running hypervisor run by
+#     default: packages, example-music, scripts. Access setup (user/SSH
+#     key/sudoers/kvm group) and systemd units (daemon-reload, timer
+#     enable/start, Zabbix agent restart) are SKIPPED, since those touch
+#     live state — re-run them only if you explicitly want to, via:
+#       -e pve_force_full_onboard=true
+#
+# sites.csv is read from benarbejde/ (the git checkout on the control
+# node) — the same authoritative source playbooks/linux/tools.yml deploys
+# from — not from an already-deployed /etc/example-music/ copy, so this
+# always reflects the latest committed site data even if the target node
+# (or the control node itself) hasn't been refreshed recently.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/00-preflight.yml
+#
+# Tags: preflight
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — part of the pve_onboard.yml -> numbered-stage
+#               split (00-preflight, 10-packages, 20-ansible-access,
+#               30-example-music, 40-scripts, 50-systemd-units), matching
+#               the 00-preflight/major-step-of-10 convention used by
+#               windows_dc/windows_bootstrap/windows_hygiene. Added so a
+#               refresh run on an already-onboarded node can safely skip
+#               the stages that touch live state, without an operator
+#               having to remember which tags are safe by hand.
+# =============================================================================
+
+- name: Proxmox VE — Preflight (site lookup, onboarding-state detection)
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+  gather_facts: true
+
+  vars:
+    sites_csv_src: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
+
+  tasks:
+
+    - name: Include hostname facts
+      include_tasks: ../../../tasks/hostname_facts.yml
+      tags: preflight
+
+    - name: Load sites.csv
+      read_csv:
+        path: "{{ sites_csv_src }}"
+      register: pve_sites_raw
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags: preflight
+
+    - name: Look up this node's site row
+      set_fact:
+        pve_site_row: "{{ pve_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
+      tags: preflight
+
+    - name: WARN — site code not found in sites.csv
+      debug:
+        msg: >
+          host_site='{{ host_site }}' (parsed from hostname
+          '{{ inventory_hostname }}') was not found in sites.csv.
+          nodeinfo.json city/country/entity fields will be blank.
+      when: pve_site_row == {}
+      tags: preflight
+
+    - name: Set site enrichment facts
+      set_fact:
+        pve_city:   "{{ pve_site_row.City | default('') }}"
+        pve_country: "{{ pve_site_row.Country | default('') }}"
+        pve_entity: "{{ pve_site_row.Entity | default('') }}"
+      tags: preflight
+
+    - name: Check whether this node has already been onboarded
+      ansible.builtin.stat:
+        path: /etc/sudoers.d/ansible
+      register: pve_sudoers_check
+      tags: preflight
+
+    - name: Set pve_onboarded fact
+      set_fact:
+        pve_onboarded: "{{ pve_sudoers_check.stat.exists }}"
+      tags: preflight
+
+    - name: Set pve_run_full_onboard fact
+      set_fact:
+        pve_run_full_onboard: "{{ (not pve_onboarded) or (pve_force_full_onboard | default(false) | bool) }}"
+      tags: preflight
+
+    - name: Show preflight summary
+      debug:
+        msg:
+          - "Host          : {{ inventory_hostname }} (site={{ host_site }})"
+          - "Site data     : city={{ pve_city }} country={{ pve_country }} entity={{ pve_entity }}"
+          - "Already onboarded : {{ pve_onboarded }}"
+          - "Full onboard run  : {{ pve_run_full_onboard }} {{ '(forced via pve_force_full_onboard)' if pve_onboarded and pve_run_full_onboard else '' }}"
+          - "{{ 'Access-setup and systemd-units stages will be SKIPPED this run — pass -e pve_force_full_onboard=true to force them.' if not pve_run_full_onboard else '' }}"
+      tags: preflight

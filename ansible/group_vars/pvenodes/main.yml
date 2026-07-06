@@ -10,6 +10,11 @@ pve_packages:
   - python3-virtualenv
   - sudo
   - unattended-upgrades
+  # VM disk-repair tooling — our estate is ZFS-only today, but these are for
+  # fixing up a guest's LVM/NTFS disk from the PVE host if one ever shows up
+  # (e.g. an imported/migrated Windows VM using LVM instead of GPT+ZFS).
+  - kpartx     # map partition tables inside a VM disk image/LV
+  - ntfs-3g    # provides ntfsfix, for repairing a dirty/unclean NTFS volume
 
 # Cloud image template IDs (update after first run)
 template_ubuntu_noble:    1000

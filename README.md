@@ -126,7 +126,7 @@ ansible/
 │   ├── bind9/               # BIND9 DNS zone generation from devices.csv
 │   ├── firewallme/          # Firewall bootstrap (wraps firewallme.sh)
 │   ├── linux/               # Common Linux tooling — packages, /etc/example-music deploy
-│   ├── proxmox/             # Proxmox VE onboarding (pve_onboard.yml)
+│   ├── proxmox/             # Proxmox VE onboarding (site.yml)
 │   ├── rudder/              # Rudder configuration management server
 │   ├── windows_adschema/    # AD schema, OUs, groups, computers, users
 │   ├── windows_bootstrap/   # Windows host PostOOBE bootstrap (replaces Join-DomainAndBootstrap.ps1)
@@ -140,7 +140,7 @@ ansible/
 |----------|---------|
 | `linux/tools.yml` | Deploy common packages and `/etc/example-music/{sites,devices}.csv` to all Linux hosts |
 | `bind9/bind9-dns.yml` | Generate and deploy BIND9 zones from `devices.csv` |
-| `proxmox/pve_onboard.yml` | Onboard a new Proxmox VE node — Zabbix, packages, SSH, sudoers |
+| `proxmox/site.yml` | Onboard a new Proxmox VE node — Zabbix, packages, SSH, sudoers, `/etc/example-music/`. Re-run safe: only refreshes packages/example-music/scripts on an already-onboarded node unless `-e pve_force_full_onboard=true` |
 | `windows_bootstrap/site.yml` | Full Windows host PostOOBE bootstrap — rename, static IP, domain join, packages, wallpaper |
 | `windows_dc/site.yml` | Promote a Windows Server to domain controller |
 | `windows_adschema/ad_schema.yml` | Create AD OUs, groups, computers and users from TDF data |
@@ -247,8 +247,8 @@ For full architectural details see `docs/ExampleMusic_Beginners_Guide.md` (NET-B
 - Python 3.10+
 - `community.general` and `community.windows` Ansible collections
 - SSH key at `~/ansible/configs/ansible-id_rsa` — remote user `ansible` with passwordless sudo
-- Proxmox nodes must have `/etc/example-music/nodeinfo.json` present with `"role": "proxmox"` (written by `first-boot.sh`)
-- Linux hosts must have `/etc/example-music/sites.csv` and `/etc/example-music/devices.csv` — deployed by `linux/tools.yml`
+- Proxmox nodes must have `/etc/example-music/nodeinfo.json` present with `"role": "proxmox"` — written once by `first-boot.sh` at first boot (`ansible_managed: false`), then kept current by `proxmox/site.yml` (`ansible_managed: true`) from then on
+- Linux hosts (including PVE nodes) must have `/etc/example-music/sites.csv` and `/etc/example-music/devices.csv` — deployed by `linux/tools.yml`, and by `proxmox/site.yml` for PVE nodes specifically
 
 ---
 

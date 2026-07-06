@@ -1,0 +1,95 @@
+---
+# =============================================================================
+# playbooks/40-scripts.yml
+# Example Music Limited — Proxmox VE node: maintenance scripts
+# =============================================================================
+# Deploys the Zabbix-monitored maintenance scripts and the apt config that
+# blocks proxmox-ve from unattended auto-upgrade. Safe to run on an
+# already-onboarded node — copy is checksum-idempotent and nothing here is
+# executed or reloaded (that's 50-systemd-units.yml).
+#
+# Files deployed (source: ansible/playbooks/proxmox/files/):
+#   /usr/local/bin/enable_vm_trim_discard.sh          -- TRIM/discard helper
+#   /usr/local/bin/pve-monthly-hoover.sh              -- monthly cleanup script
+#   /usr/local/bin/pve-snapshot-check.py              -- snapshot audit script
+#   /usr/local/bin/proxmox-replica-nic-guard.py       -- NIC link_down guard for replicas
+#   /usr/local/bin/proxmox-zfs-vm-audit.py            -- ZFS VM pool placement audit
+#   /etc/apt/apt.conf.d/52unattended-upgrades-pve     -- blocks proxmox-ve from auto-upgrade
+#   /etc/proxmox-replica-nic-guard/auth.env.example   -- credentials template (not the real auth.env)
+#
+# NIC guard credentials: the replica-nic-guard script reads its Proxmox API
+# credentials from /etc/proxmox-replica-nic-guard/auth.env (not deployed by
+# Ansible — the operator fills it in from the .env.example that IS
+# deployed here). See docs/zabbix_templates/ for the matching Zabbix
+# template to import.
+#
+# Ansible re-deploys any file whose checksum differs from the source.
+# Zabbix cksum items will alert if files drift between Ansible runs.
+#
+# This stage is pure file placement — nothing here is executed, reloaded,
+# or restarted (systemd units + Zabbix agent restart are
+# 50-systemd-units.yml), which is why it's safe to always run.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/40-scripts.yml
+#
+# Tags: scripts
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from pve_onboard.yml as part of the
+#               numbered-stage split (see 00-preflight.yml). Always runs,
+#               even on a refresh-only pass against an already-onboarded node.
+# =============================================================================
+
+- name: Proxmox VE — Maintenance scripts
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+
+  tasks:
+
+    - name: Deploy PVE scripts to /usr/local/bin
+      ansible.builtin.copy:
+        src: "../files/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - enable_vm_trim_discard.sh
+        - pve-monthly-hoover.sh
+        - pve-snapshot-check.py
+        - proxmox-replica-nic-guard.py
+        - proxmox-zfs-vm-audit.py
+      tags: scripts
+
+    - name: Deploy PVE kernel cleanup apt config
+      ansible.builtin.copy:
+        src: ../files/52unattended-upgrades-pve
+        dest: /etc/apt/apt.conf.d/52unattended-upgrades-pve
+        owner: root
+        group: root
+        mode: '0644'
+      tags: scripts
+
+    # ── NIC guard credentials directory ──────────────────────────────────────
+    # The script reads /etc/proxmox-replica-nic-guard/auth.env at runtime.
+    # Ansible deploys only the example file — the operator fills in the real
+    # credentials (Proxmox API token) and saves them as auth.env.
+
+    - name: Create /etc/proxmox-replica-nic-guard directory
+      ansible.builtin.file:
+        path:  /etc/proxmox-replica-nic-guard
+        state: directory
+        owner: root
+        group: root
+        mode:  '0700'
+      tags: scripts
+
+    - name: Deploy NIC guard credentials example
+      ansible.builtin.copy:
+        src:   ../files/proxmox-replica-nic-guard.env.example
+        dest:  /etc/proxmox-replica-nic-guard/auth.env.example
+        owner: root
+        group: root
+        mode:  '0600'
+      tags: scripts

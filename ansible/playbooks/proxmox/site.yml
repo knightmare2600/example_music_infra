@@ -1,0 +1,86 @@
+---
+# =============================================================================
+# proxmox/site.yml
+# Example Music Limited — Proxmox VE node onboarding
+# =============================================================================
+# Verifies and completes Ansible management setup on a PVE node, then
+# deploys /etc/example-music/ (sites.csv, devices.csv, nodeinfo.json),
+# management scripts, and all Zabbix-monitored systemd units.
+#
+# Safe to re-run against an already-onboarded node — see
+# playbooks/00-preflight.yml. By default, a re-run only refreshes the
+# stages that cannot break a running hypervisor (packages, example-music,
+# scripts). The stages that touch access or live service state (ansible
+# user/SSH key/sudoers/kvm group, systemd units + Zabbix agent restart)
+# are skipped unless you explicitly pass -e pve_force_full_onboard=true.
+#
+# Playbook order (00 = preflight, "before take off"; major steps of 10):
+#   00-preflight          Site lookup (sites.csv) + onboarding-state detection
+#   10-packages            Management packages (always)
+#   20-ansible-access       User/SSH key/sudoers/kvm group (gated)
+#   30-example-music       /etc/example-music/ — sites.csv, devices.csv, nodeinfo.json (always)
+#   40-scripts              Maintenance scripts + apt config + NIC guard creds (always)
+#   50-systemd-units        Systemd units + Zabbix agent (gated)
+#
+# Run once per new PVE node, as root via SSH password:
+#   ansible-playbook playbooks/proxmox/site.yml \
+#     -i configs/inventory --user=root -k
+#
+# To target a single node:
+#   ansible-playbook playbooks/proxmox/site.yml \
+#     -i configs/inventory --user=root -k -e target=EXAPVEODE001
+#
+# To force a full re-onboard of an already-onboarded node (re-touches
+# access and systemd/Zabbix state):
+#   ansible-playbook playbooks/proxmox/site.yml \
+#     -i configs/inventory -e target=EXAPVEODE001 -e pve_force_full_onboard=true
+#
+# After this runs once, all subsequent playbooks authenticate as ansible (key-based).
+#
+# Standalone plays can also be run directly without site.yml, e.g.:
+#   ansible-playbook playbooks/proxmox/playbooks/40-scripts.yml -i configs/inventory
+# (20-ansible-access.yml, 30-example-music.yml and 50-systemd-units.yml all
+# need 00-preflight.yml's facts — run those together, or via site.yml,
+# rather than standalone.)
+#
+# Tags: preflight, packages, ansible_access, example_music, scripts, systemd_units
+# =============================================================================
+# Changelog:
+#   2026-06-29  Added Zabbix-monitored file deployment, systemd timers
+#   2026-07-03  Add proxmox-replica-nic-guard and proxmox-zfs-vm-audit scripts,
+#               units, and associated config/Zabbix agent drop-in
+#   2026-07-06  Use target var for single-node targeting; FQCN module names;
+#               boolean style true/false
+#   2026-07-06  Replaced the single monolithic pve_onboard.yml with this
+#               numbered-stage chain (00-preflight through 50-systemd-units),
+#               matching the 00-preflight/major-step-of-10 convention used
+#               by windows_dc/windows_bootstrap/windows_hygiene. Added
+#               00-preflight.yml's onboarding-state detection so a refresh
+#               run against an already-onboarded node only touches the
+#               stages that can't break a running hypervisor by default
+#               (packages/example-music/scripts), gating access-setup and
+#               systemd/Zabbix behind -e pve_force_full_onboard=true. Also
+#               added 30-example-music.yml — PVE nodes previously got
+#               neither sites.csv/devices.csv nor an Ansible-managed
+#               nodeinfo.json (only a one-time bash/jq version from
+#               first-boot.sh) — every device in the estate is meant to
+#               carry these, per playbooks/linux/tools.yml's precedent.
+# =============================================================================
+
+- import_playbook: playbooks/00-preflight.yml
+  tags: preflight
+
+- import_playbook: playbooks/10-packages.yml
+  tags: packages
+
+- import_playbook: playbooks/20-ansible-access.yml
+  tags: ansible_access
+
+- import_playbook: playbooks/30-example-music.yml
+  tags: example_music
+
+- import_playbook: playbooks/40-scripts.yml
+  tags: scripts
+
+- import_playbook: playbooks/50-systemd-units.yml
+  tags: systemd_units

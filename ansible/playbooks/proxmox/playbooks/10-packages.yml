@@ -1,0 +1,34 @@
+---
+# =============================================================================
+# playbooks/10-packages.yml
+# Example Music Limited — Proxmox VE node: management packages
+# =============================================================================
+# Installs/upgrades pve_packages (group_vars/pvenodes/main.yml). Safe to run
+# on an already-onboarded node — apt install/upgrade of these specific
+# packages (none are core PVE services: pve-cluster, corosync, qemu, etc.
+# are never touched here) doesn't affect running VMs.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/10-packages.yml
+#
+# Tags: packages
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from pve_onboard.yml as part of the
+#               numbered-stage split (see 00-preflight.yml). Always runs,
+#               even on a refresh-only pass against an already-onboarded node.
+# =============================================================================
+
+- name: Proxmox VE — Management packages
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+
+  tasks:
+
+    - name: Install management packages
+      ansible.builtin.apt:
+        name: "{{ pve_packages }}"
+        update_cache: true
+        cache_valid_time: 3600
+        state: latest
+      tags: packages
