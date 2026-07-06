@@ -16,6 +16,7 @@
 ansible_connection: ssh
 ansible_shell_type: powershell     # OpenSSH default shell is set to pwsh by unattend
 ansible_user: Administrator
+ansible_port: 22
 
 # Private key used for all runs after the first bootstrap.
 # The corresponding public key is deployed to administrators_authorized_keys.
@@ -24,3 +25,9 @@ ansible_ssh_public_key_file:  "{{ lookup('env', 'HOME') }}/ansible/configs/ansib
 
 # Accept the host key on first connection without prompting.
 ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+
+# WinRM fallback — uncomment and override per-host or per-group if needed
+# ansible_connection:                winrm
+# ansible_winrm_transport:           basic
+# ansible_winrm_server_cert_validation: ignore
+# ansible_port:                      5986
