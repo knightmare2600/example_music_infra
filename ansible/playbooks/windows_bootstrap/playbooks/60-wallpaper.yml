@@ -1,13 +1,14 @@
 ---
 # =============================================================================
 # playbooks/60-wallpaper.yml
-# Example Music Limited — Corporate wallpaper deployment
+# Example Music Limited — Corporate wallpaper and dark mode
 # =============================================================================
 # Downloads ExampleMusicWallpaper.png from the asset server and sets it
-# via PersonalizationCSP (all users) + Policies\System (locked).
+# via PersonalizationCSP (all users) + Policies\System (locked). Also
+# enables dark mode system-wide (HKLM + Default user hive).
 #
-# Key paths match Join-DomainAndBootstrap.ps1 Stage 9 exactly so this
-# playbook can re-apply after drift without conflict.
+# Key paths match Join-DomainAndBootstrap.ps1 Stages 9 and 10 exactly so
+# this playbook can re-apply after drift without conflict.
 #
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/60-wallpaper.yml
@@ -16,9 +17,13 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-06  Folded in dark mode (Stage 10) — same "desktop theming"
+#               concern as wallpaper, tightly coupled by the original
+#               PS script's stage ordering (9 then 10), not worth a
+#               separate file for two small regedit tasks.
 # =============================================================================
 
-- name: Windows — Corporate wallpaper
+- name: Windows — Corporate wallpaper and dark mode
   hosts: "{{ target | default('all') }}"
   gather_facts: false
   tasks:
@@ -76,3 +81,8 @@
         RUNDLL32.EXE user32.dll,UpdatePerUserSystemParameters ,1 ,True
       changed_when: false
       when: wallpaper_download is changed
+      tags: wallpaper
+
+    - name: Include dark mode tasks
+      include_tasks: ../tasks/dark_mode.yml
+      tags: wallpaper

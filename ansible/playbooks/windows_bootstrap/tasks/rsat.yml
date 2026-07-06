@@ -1,0 +1,36 @@
+---
+# =============================================================================
+# tasks/rsat.yml
+# Example Music Limited — RSAT tools (Stage 15)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 15
+# =============================================================================
+# Requires is_server / is_workstation (set by tasks/preflight.yml, or
+# computed inline by callers that don't run the full preflight chain —
+# see playbooks/45-rsat.yml).
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file (inline in 05-bootstrap.yml)
+#   2026-07-06  Extracted into a shared task file so 05-bootstrap.yml and
+#               playbooks/45-rsat.yml share one source of truth.
+# =============================================================================
+
+- name: "[Stage 15] Install RSAT via Server Manager (Server OS)"
+  ansible.windows.win_feature:
+    name:
+      - RSAT-AD-PowerShell
+      - RSAT-AD-AdminCenter
+      - RSAT-ADDS-Tools
+      - RSAT-DNS-Server
+      - GPMC
+    state: present
+  when: is_server
+
+- name: "[Stage 15] Install RSAT via Windows Capabilities (Desktop OS)"
+  ansible.windows.win_optional_feature:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
+    - Rsat.Dns.Tools~~~~0.0.1.0
+    - Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0
+  when: is_workstation

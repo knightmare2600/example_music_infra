@@ -1,0 +1,32 @@
+---
+# =============================================================================
+# tasks/dark_mode.yml
+# Example Music Limited — System-wide dark mode (Stage 10)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 10
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file (inline in 05-bootstrap.yml)
+#   2026-07-06  Extracted into a shared task file so 05-bootstrap.yml and
+#               playbooks/60-wallpaper.yml (broadened to cover theming, not
+#               just wallpaper) share one source of truth.
+# =============================================================================
+
+- name: "[Stage 10] Set dark mode (HKLM)"
+  ansible.windows.win_regedit:
+    path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+    name: "{{ item.name }}"
+    data: 0
+    type: dword
+  loop:
+    - { name: AppsUseLightTheme   }
+    - { name: SystemUsesLightTheme }
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: "[Stage 10] Set dark mode in Default user hive"
+  ansible.windows.win_shell: |
+    reg load HKU\DefaultUser C:\Users\Default\NTUSER.DAT
+    reg add "HKU\DefaultUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v AppsUseLightTheme    /t REG_DWORD /d 0 /f
+    reg add "HKU\DefaultUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v SystemUsesLightTheme /t REG_DWORD /d 0 /f
+    reg unload HKU\DefaultUser
+  changed_when: true

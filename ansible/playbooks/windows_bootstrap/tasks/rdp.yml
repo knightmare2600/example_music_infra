@@ -1,0 +1,56 @@
+---
+# =============================================================================
+# tasks/rdp.yml
+# Example Music Limited — RDP with NLA (Stage 17)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 17
+# =============================================================================
+# Consolidates what used to be split across two places: the fuller version
+# here (enable + NLA + service + firewall) and a partial duplicate (service
+# + firewall only) that lived in playbooks/20-registry.yml. RDP config now
+# has one home.
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file (inline in 05-bootstrap.yml)
+#   2026-07-06  Extracted into a shared task file so 05-bootstrap.yml and
+#               playbooks/77-rdp.yml share one source of truth. Absorbed
+#               the "Ensure RDP service is running" / "Enable RDP firewall
+#               rule" tasks that previously duplicated this in
+#               20-registry.yml (removed from there). Replaced the
+#               notify: restart rdp handler with an inline restart gated on
+#               "is changed" — standalone callers don't all import
+#               handlers/main.yml, so this task file stays self-contained.
+# =============================================================================
+
+- name: "[Stage 17] Enable RDP"
+  ansible.windows.win_regedit:
+    path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server'
+    name: fDenyTSConnections
+    data: 0
+    type: dword
+  register: rdp_enable_result
+
+- name: "[Stage 17] Enforce NLA"
+  ansible.windows.win_regedit:
+    path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp'
+    name: UserAuthentication
+    data: 1
+    type: dword
+
+- name: "[Stage 17] Ensure TermService is Automatic"
+  ansible.windows.win_service:
+    name: TermService
+    start_mode: auto
+    state: started
+
+- name: "[Stage 17] Open RDP firewall rule"
+  community.windows.win_firewall_rule:
+    name:      "Remote Desktop"
+    group:     "Remote Desktop"
+    enabled:   true
+    state:     present
+
+- name: "[Stage 17] Restart TermService (pick up RDP enable/NLA change)"
+  ansible.windows.win_service:
+    name: TermService
+    state: restarted
+  when: rdp_enable_result is changed

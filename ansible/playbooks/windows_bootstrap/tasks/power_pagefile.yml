@@ -1,0 +1,38 @@
+---
+# =============================================================================
+# tasks/power_pagefile.yml
+# Example Music Limited — SConfig auto-launch and pagefile (part of Stage 6)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 6
+# =============================================================================
+# The hibernate on/off decision itself is NOT here — that's
+# exa_hibernation_enabled-driven policy owned by playbooks/70-hibernation.yml
+# (and, unconditionally off, by 05-bootstrap.yml Stage 6 directly — a
+# fresh-build default that 70-hibernation.yml is later run to correct on
+# LAP/SUR devices). This file covers the two other Stage 6 settings that
+# aren't hibernation-policy-dependent, so both 05-bootstrap.yml and
+# 70-hibernation.yml can share one source of truth for them.
+#
+# Requires is_server (set by tasks/preflight.yml, or computed inline by
+# callers that don't run the full preflight chain — see 70-hibernation.yml).
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file (inline in 05-bootstrap.yml)
+#   2026-07-06  Extracted into a shared task file so 05-bootstrap.yml and
+#               70-hibernation.yml (broadened to cover power/pagefile, not
+#               just hibernation) share one source of truth.
+# =============================================================================
+
+- name: "[Stage 6] Disable SConfig auto-launch at logon (Server only, all users)"
+  ansible.windows.win_shell: |
+    if (Get-Command Set-SConfig -ErrorAction SilentlyContinue) {
+        Set-SConfig -AutoLaunch $false
+    }
+  changed_when: true
+  when: is_server
+
+- name: "[Stage 6] Clear page file at shutdown"
+  ansible.windows.win_regedit:
+    path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'
+    name: ClearPageFileAtShutdown
+    data: 1
+    type: dword

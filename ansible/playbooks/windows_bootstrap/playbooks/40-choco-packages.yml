@@ -4,8 +4,9 @@
 # Example Music Limited — Chocolatey package deployment
 # =============================================================================
 # Installs choco_packages_common (all hosts) + choco_packages_extra
-# (selected by host_role below). Safe to re-run — choco install is
-# idempotent when packages are already present.
+# (server-role only) + choco_packages_gui (Client OS, or Server OS with
+# Desktop Experience — skipped on Server Core). Safe to re-run — choco
+# install is idempotent when packages are already present.
 #
 # DESIGN NOTE: This file is part of the windows_bootstrap chain, which by
 # design runs against a freshly PXE/WDS-built Windows host on its DHCP
@@ -43,6 +44,39 @@
 #               target_hosts (what 00-preflight.yml and the live invocation
 #               actually pass) instead of target, which was never being set
 #               and was silently falling back to 'all'.
+#   2026-07-06  Added rustdesk, wget, busybox — these were previously
+#               fetched as raw binaries from the internal asset server
+#               (192.168.139.50), which doesn't actually host them; all
+#               three have Chocolatey packages, so installing via choco
+#               here (this file's own package list, per the self-contained
+#               design note above) replaces that entirely.
+#   2026-07-06  Unified choco_packages_common/_server/_desktop with
+#               05-bootstrap.yml — the two files had independently drifted
+#               to different package sets (this file scoped sysinternals to
+#               server-only and windirstat to desktop-only and gave every
+#               role its own putty/winscp; 05-bootstrap.yml installed
+#               sysinternals/windirstat on every host and had no
+#               role-specific extras at all), so a host's actual package
+#               set depended on which of the two paths provisioned it.
+#               Also standardised naming on ".install" where a package has
+#               both a bare and a ".install" Chocolatey ID (7zip,
+#               notepadplusplus, putty, winscp, rustdesk) — these are
+#               different install mechanisms, not just a naming choice.
+#               Moved putty/winscp to choco_packages_common (both roles had
+#               them identically, so the role split was pointless) and
+#               added the packages this file was missing entirely (edit,
+#               far, hyper, powershell-core, sdelete, windows-terminal).
+#   2026-07-06  Replaced choco_packages_desktop (role-based: WKS/LAP/SUR
+#               only) with choco_packages_gui, gated on a detected has_gui
+#               fact instead of host role. googlechrome/firefox/vlc/
+#               windows-terminal are GUI-dependent apps, not "desktop-role"
+#               apps — a Windows Server host with Desktop Experience
+#               installed (not Server Core) should get them too, which the
+#               old role-based split never allowed. has_gui comes from
+#               HKLM:\...\CurrentVersion InstallationType (Client/Server/
+#               Server Core) — Server Core is the only case without a GUI
+#               shell. choco_packages_common is unaffected (windirstat and
+#               hyper are confirmed to run fine on Server Core).
 # =============================================================================
 
 - name: Windows — Chocolatey package deployment
@@ -52,41 +86,70 @@
   vars:
     exa_choco_source: "https://community.chocolatey.org/api/v2/"
 
-    # Installed on every host regardless of role
+    # Installed on every host regardless of role. Kept byte-for-byte
+    # identical to 05-bootstrap.yml's copy (both files must stay
+    # self-contained, per the design note above — "canonical" here means
+    # "the values agree", not "lives in one place").
     choco_packages_common:
-      - 7zip
-      - notepadplusplus
+      - 7zip.install
+      - notepadplusplus.install
+      - powershell-core
+      - hyper
+      - far
+      - edit
+      - sdelete
+      - putty.install
+      - winscp.install
+      - rustdesk.install
+      - wget
+      - busybox
       - vcredist-all
       - dotnetfx
-
-    # Selected below by host_role — DCS/SRV (server roles) vs WKS/LAP/SUR (desktop roles)
-    choco_packages_server:
       - sysinternals
-      - putty
-      - winscp
+      - windirstat
 
-    choco_packages_desktop:
+    # Server-role-specific (SRV/DCS), installed regardless of GUI presence
+    choco_packages_server:
+      - nmap
+
+    # GUI-dependent (browsers etc.) — installed on Client OS always, and on
+    # Server OS only if Desktop Experience is installed (not Server Core).
+    # See has_gui fact below.
+    choco_packages_gui:
       - googlechrome
       - firefox
       - vlc
-      - putty
-      - winscp
+      - windows-terminal
 
   tasks:
 
-    - name: Determine package set for this host's role
+    - name: Detect Windows installation type (Client / Server / Server Core)
+      ansible.windows.win_shell: |
+        (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').InstallationType
+      register: installation_type_check
+      changed_when: false
+      tags: choco_packages
+
+    - name: Set has_gui fact
+      set_fact:
+        has_gui: "{{ installation_type_check.stdout | trim != 'Server Core' }}"
+      tags: choco_packages
+
+    - name: Determine role-specific package set
       set_fact:
         choco_packages_extra: >-
-          {{ choco_packages_server
-             if (host_role | default('') in ['DCS', 'SRV'])
-             else choco_packages_desktop }}
+          {{ choco_packages_server if (host_role | default('') in ['DCS', 'SRV']) else [] }}
+      tags: choco_packages
 
     - name: Show package selection for this run
       debug:
         msg:
-          - "Host role     : {{ host_role | default('UNKNOWN — defaulting to desktop set') }}"
+          - "Host role     : {{ host_role | default('UNKNOWN') }}"
+          - "Has GUI       : {{ has_gui }}"
           - "Common pkgs   : {{ choco_packages_common | join(', ') }}"
-          - "Extra pkgs    : {{ choco_packages_extra | join(', ') }}"
+          - "Role pkgs     : {{ choco_packages_extra | join(', ') }}"
+          - "GUI pkgs      : {{ (choco_packages_gui | join(', ')) if has_gui | bool else '(skipped — no GUI)' }}"
+      tags: choco_packages
 
     - name: Install common Chocolatey packages
       chocolatey.chocolatey.win_chocolatey:
@@ -98,7 +161,7 @@
         label: "{{ item }}"
       tags: choco_packages
 
-    - name: Install host-type-specific Chocolatey packages
+    - name: Install role-specific Chocolatey packages
       chocolatey.chocolatey.win_chocolatey:
         name:   "{{ item }}"
         state:  present
@@ -106,7 +169,18 @@
       loop: "{{ choco_packages_extra | default([]) }}"
       loop_control:
         label: "{{ item }}"
-      when: choco_packages_extra is defined and choco_packages_extra | length > 0
+      when: choco_packages_extra | length > 0
+      tags: choco_packages
+
+    - name: Install GUI Chocolatey packages (Client OS, or Server with Desktop Experience)
+      chocolatey.chocolatey.win_chocolatey:
+        name:   "{{ item }}"
+        state:  present
+        source: "{{ exa_choco_source }}"
+      loop: "{{ choco_packages_gui }}"
+      loop_control:
+        label: "{{ item }}"
+      when: has_gui | bool
       tags: choco_packages
 
     - name: Upgrade all Chocolatey packages

@@ -1,0 +1,27 @@
+---
+# =============================================================================
+# playbooks/48-pswindowsupdate.yml
+# Example Music Limited — PSWindowsUpdate module
+# =============================================================================
+# Installs the PSWindowsUpdate PowerShell module from the PSGallery if not
+# already present. Safe to re-run.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/48-pswindowsupdate.yml
+#
+# Tags: pswindowsupdate
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from 05-bootstrap.yml Stage 18 so
+#               it can be run/retried standalone instead of only inline
+#               during initial bootstrap.
+# =============================================================================
+
+- name: Windows — PSWindowsUpdate module
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  tasks:
+
+    - name: Include PSWindowsUpdate tasks
+      include_tasks: ../tasks/pswindowsupdate.yml
+      tags: pswindowsupdate

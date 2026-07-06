@@ -1,0 +1,36 @@
+---
+# =============================================================================
+# playbooks/35-guest-tools.yml
+# Example Music Limited — Hypervisor guest tools
+# =============================================================================
+# Installs VMware Tools or QEMU guest agent (via Chocolatey) depending on
+# detected hypervisor. No-op on Physical or Hyper-V hosts.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/35-guest-tools.yml
+#
+# Tags: guest_tools
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from 05-bootstrap.yml Stage 12 so
+#               it can be run/retried standalone instead of only inline
+#               during initial bootstrap. Reuses tasks/guest_tools.yml,
+#               which 05-bootstrap.yml already included rather than
+#               duplicating inline — no logic change there.
+#   2026-07-06  Dropped the arch_facts.yml include — tasks/guest_tools.yml
+#               no longer needs host_arch now that it installs via
+#               Chocolatey instead of downloading arch-specific installers.
+# =============================================================================
+
+- name: Windows — Hypervisor guest tools
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+  tasks:
+
+    - name: Include hypervisor detection
+      include_tasks: ../tasks/site_detection.yml
+      tags: guest_tools
+
+    - name: Include guest tools
+      include_tasks: ../tasks/guest_tools.yml
+      tags: guest_tools

@@ -1,0 +1,40 @@
+---
+# =============================================================================
+# tasks/screenlock.yml
+# Example Music Limited — Screen lock and inactivity timeout (Stage 8)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 8
+# =============================================================================
+# exa_lock_timeout_secs → group_vars/all/vars.yml (single source of truth).
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file (inline in 05-bootstrap.yml)
+#   2026-07-06  Extracted into a shared task file so 05-bootstrap.yml and
+#               playbooks/22-screenlock.yml share one source of truth.
+# =============================================================================
+
+- name: "[Stage 8] Set machine-level inactivity timeout"
+  ansible.windows.win_regedit:
+    path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+    name: InactivityTimeoutSecs
+    data: "{{ exa_lock_timeout_secs }}"
+    type: dword
+
+- name: "[Stage 8] Set screensaver to blank with password"
+  ansible.windows.win_regedit:
+    path: 'HKCU:\Control Panel\Desktop'
+    name: "{{ item.name }}"
+    data: "{{ item.data }}"
+    type: "{{ item.type }}"
+  loop:
+    - { name: SCRNSAVE.EXE,       data: 'C:\Windows\system32\scrnsave.scr', type: string }
+    - { name: ScreenSaveActive,    data: "1",                                type: string }
+    - { name: ScreenSaverIsSecure, data: "1",                                type: string }
+    - { name: ScreenSaveTimeOut,   data: "3600",                             type: string }
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: "[Stage 8] Set monitor timeout (plugged in and on battery)"
+  ansible.windows.win_shell: |
+    powercfg /change monitor-timeout-ac 60
+    powercfg /change monitor-timeout-dc 30
+  changed_when: true

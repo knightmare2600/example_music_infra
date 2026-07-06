@@ -24,6 +24,14 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-06  Fonts now come from tasks/fonts.yml (upstream nerd-fonts GH
+#               release zip) instead of individual files from the internal
+#               asset server, which doesn't actually host them. Shared with
+#               tasks/ps7_setup.yml, which had the same logic duplicated.
+#               dua.exe removed from binaries_common (group_vars/windows) —
+#               added tasks/dua_cli.yml instead, an arch-aware upstream
+#               GitHub release download, since dua-cli ships as a zip per
+#               platform rather than a bare exe the asset server could host.
 # =============================================================================
 
 - name: Windows — Binary and font deployment
@@ -49,9 +57,13 @@
       ansible.windows.win_get_url:
         url:  "{{ binary_base_url }}/{{ item.src }}"
         dest: "C:\\Windows\\{{ item.dest }}"
-      loop: "{{ binaries_common }}"
+      loop: "{{ binaries_common | default([]) }}"
       loop_control:
         label: "{{ item.dest }}"
+      tags: binaries
+
+    - name: Include dua-cli deployment tasks
+      include_tasks: ../tasks/dua_cli.yml
       tags: binaries
 
     # ── Host-type-specific binaries (arch-aware, different filenames) ─────────
@@ -82,22 +94,6 @@
 
     # ── Fonts ─────────────────────────────────────────────────────────────────
 
-    - name: Deploy JetBrainsMono Nerd Font files
-      ansible.windows.win_get_url:
-        url:  "{{ exa_asset_base }}/fonts/{{ item }}"
-        dest: "C:\\Windows\\Fonts\\{{ item }}"
-      loop: "{{ exa_font_files }}"
-      loop_control:
-        label: "{{ item }}"
-      tags: fonts
-
-    - name: Register fonts in registry
-      ansible.windows.win_regedit:
-        path: 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
-        name: "{{ item | regex_replace('\\.ttf$', '') }} (TrueType)"
-        data: "{{ item }}"
-        type: string
-      loop: "{{ exa_font_files }}"
-      loop_control:
-        label: "{{ item }}"
+    - name: Include font deployment tasks
+      include_tasks: ../tasks/fonts.yml
       tags: fonts
