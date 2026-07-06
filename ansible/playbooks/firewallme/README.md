@@ -3,8 +3,11 @@
 Configures Linux firewall appliances (EXAFWL*). Ansible port of firewallme.sh.
 
 ## Usage
+
+Run from the `ansible/` root:
+
 ```
-ansible-playbook -i inventory/kge.ini playbooks/firewallme/playbooks/90-firewall.yml \
+ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml \
   -e target=EXAFWLKGE001 --ask-vault-pass
 ```
 
