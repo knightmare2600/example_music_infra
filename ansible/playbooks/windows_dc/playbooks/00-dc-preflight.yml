@@ -24,27 +24,33 @@
 #   3.  ODE primary DC  (192.168.126.10)  — second fallback
 #   4.  BRK primary DC  (192.168.136.10)  — third fallback
 #   5.  Any DC already listed in sites.csv for this site
-#   6.  No candidate reachable → ask the operator whether this is the first
-#       DC in the forest (see below) instead of aborting outright
+#   6.  No candidate reachable → fall back to the operator's
+#       dc_is_first_in_forest answer (see below) instead of aborting outright
 #
 # Forest root (dc_is_forest_root) — ANY site, not just CLD:
-#   If no candidate DC is reachable from anywhere, this play does NOT infer
-#   forest-root status from the site name. It asks the operator directly:
-#   "Is this the first DC in the AD Forest?" A "yes" sets
-#   dc_is_forest_root=true (20-dc-promote.yml then runs Install-ADDSForest
+#   This is NOT inferred from the site name — it comes from
+#   dc_is_first_in_forest, answered upfront at the vars_prompt below
+#   (alongside the other operator prompts, not asked interactively mid-play).
+#   It's only consulted if no candidate DC is reachable from anywhere: a
+#   reachable candidate always wins regardless of the answer. "yes" then
+#   sets dc_is_forest_root=true (20-dc-promote.yml runs Install-ADDSForest
 #   instead of Install-ADDSDomainController) regardless of which site the
-#   host is in. A "no" aborts the play, since there is then no valid
-#   replication source and no confirmation that one is unnecessary.
+#   host is in. "no" (the default) aborts the play, since there is then no
+#   valid replication source and no confirmation that one is unnecessary.
 #
 # For FAL, ODE, BRK themselves:
 #   They replicate from CLD if reachable, else from each other in the
 #   priority order FAL > ODE > BRK (skipping self).
 #
 # vars_prompt:
-#   dc_admin_user      — Domain Admin username  (e.g. JUKEBOX\Administrator)
-#   dc_admin_password  — Domain Admin password
-#   dc_local_user      — Local Administrator username
-#   dc_local_password  — Local Administrator password
+#   dc_domain_name        — AD domain FQDN
+#   dc_netbios_name       — AD NetBIOS name
+#   dc_is_first_in_forest — yes/no; only consulted if no source is reachable
+#   dc_dsrm_password      — DSRM password
+#   dc_admin_user         — Domain Admin username  (e.g. JUKEBOX\Administrator)
+#   dc_admin_password     — Domain Admin password
+#   dc_local_user         — Local Administrator username
+#   dc_local_password     — Local Administrator password
 #
 # Required extra-vars:
 #   sites_csv          — path to sites.csv on the control node
@@ -104,6 +110,13 @@
 #   2026-07-06  Standard-site probe order now includes CLD, ahead of FAL:
 #               CLD → FAL → ODE → BRK. Previously standard sites skipped
 #               CLD entirely even when it was the only reachable DC.
+#   2026-07-06  Added dc_is_first_in_forest vars_prompt (default "no"),
+#               answered upfront with the other operator prompts.
+#               dc_source_resolution.yml previously used an interactive
+#               pause mid-play to ask this, only when no source was
+#               reachable — worse UX than bundling every question the
+#               operator answers at the top of the run before any task
+#               output has printed.
 #
 # =============================================================================
 
@@ -129,6 +142,15 @@
       prompt: "AD NetBIOS name"
       private: false
       default: "{{ ad_netbios_name | default('JUKEBOX') }}"
+
+    - name: dc_is_first_in_forest
+      prompt: >-
+        Is this the first DC in the AD Forest? (yes/no)
+        (only matters if no replication source turns out to be reachable —
+        see dc_source_resolution.yml. Answer "no" if unsure; probing will
+        still find a source if one exists)
+      private: false
+      default: "no"
 
     - name: dc_dsrm_password
       prompt: "DSRM (Directory Services Restore Mode) password"

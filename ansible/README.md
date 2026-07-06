@@ -478,11 +478,12 @@ Credentials are **never written to disk** — in-memory only for the duration of
 
 ### Site-specific DC logic
 
-**Forest root — any site, not just CLD.** `00-dc-preflight.yml` probes candidate
-replication sources in priority order; if none are reachable it pauses and asks the
-operator directly: "Is this the first DC in the AD Forest?"
+**Forest root — any site, not just CLD.** `00-dc-preflight.yml` prompts upfront
+("Is this the first DC in the AD Forest?", default no), then probes candidate
+replication sources in priority order. A reachable candidate always wins regardless
+of the answer — it's only consulted if none are reachable:
 - yes → `dc_is_forest_root=true` → `Install-ADDSForest`
-- no → the play aborts (no replication source, and not confirmed as a from-scratch build)
+- no (default) → the play aborts (no replication source, and not confirmed as a from-scratch build)
 
 This is operator-confirmed, not inferred from the site code — any site can be the
 forest root if it's genuinely the first DC built for the forest.

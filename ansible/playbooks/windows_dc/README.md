@@ -118,14 +118,18 @@ facts for the duration of the play.
 ### Forest root — any site, not just CLD
 
 Any site's DC can be the **first DC ever built** (forest root), not only
-CLD. `00-dc-preflight.yml` probes candidate sources in priority order (see
-below); if **none** are reachable it pauses and asks the operator directly:
+CLD. `00-dc-preflight.yml` prompts upfront (alongside the other operator
+prompts, not mid-play):
 
-> Is this the first DC in the AD Forest? (yes/no)
+> Is this the first DC in the AD Forest? (yes/no) `[no]`
+
+It then probes candidate sources in priority order (see below). A
+**reachable** candidate always wins regardless of the answer — the prompt
+is only consulted if **none** are reachable:
 
 - **yes** → `dc_is_forest_root=true` → `Install-ADDSForest`
-- **no**  → the play aborts (no replication source, and not confirmed as a
-  from-scratch forest build)
+- **no**  (the default) → the play aborts (no replication source, and not
+  confirmed as a from-scratch forest build)
 
 This is an operator-confirmed fact, not something inferred from the site
 code — a non-CLD site being built first (e.g. before CLD exists yet, or in
@@ -183,3 +187,6 @@ already covered by the suffix_map.
   confirmed on any site, not hardcoded to CLD
 - 2026-07-06  Standard-site probe order now CLD → FAL → ODE → BRK (CLD
   added ahead of FAL)
+- 2026-07-06  Forest-root confirmation ("Is this the first DC in the AD
+  Forest?") moved from an interactive mid-play pause to a `dc_is_first_in_forest`
+  vars_prompt answered upfront with the other operator prompts
