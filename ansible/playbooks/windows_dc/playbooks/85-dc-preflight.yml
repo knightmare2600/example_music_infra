@@ -94,6 +94,12 @@
 #               ("Is this the first DC in the AD Forest?") when no candidate
 #               is reachable, for any dc_site_role, instead of only setting
 #               dc_is_forest_root=true when dc_site_role == 'hub_cld'.
+#   2026-07-06  Same ungrouped-run root cause hit again, this time for _c
+#               (group_vars/all/colours.yml) — "Show site role" blew up with
+#               '_c' is undefined on a run where group_vars/all never
+#               loaded. Added tasks/colour_fallback.yml, included first
+#               (before hostname facts), so _c always resolves even when
+#               group_vars didn't load.
 #
 # =============================================================================
 
@@ -153,6 +159,10 @@
   tasks:
 
     # ── Hostname facts ────────────────────────────────────────────────────────
+
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: dc_preflight
 
     - name: Include hostname facts
       include_tasks: ../../../tasks/hostname_facts.yml
