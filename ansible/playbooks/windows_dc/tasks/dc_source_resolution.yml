@@ -6,26 +6,30 @@
 # Probes candidate DCs in priority order and sets:
 #   dc_replication_source  — FQDN or IP to replicate from
 #   dc_source_site         — 3-letter site code of chosen source
-#   dc_is_forest_root      — true only when NO DC is reachable anywhere
-#                            (first-ever build, CLD site only)
+#   dc_is_forest_root      — true only when NO DC is reachable anywhere AND
+#                            the operator confirms this is genuinely the
+#                            first DC ever built for the forest. This is
+#                            NOT tied to site — any site can be the forest
+#                            root; the site name only decides probe order.
 #
-# Resolution logic by site role:
+# Candidate probe order by site role (who to check, NOT who may be forest root):
 #
 #   standard (non-hub, non-CLD):
 #     Probe hub sources in order: FAL → ODE → BRK
 #     If none reachable, probe any DC listed in sites.csv for this site (.10)
-#     If still none → ABORT (a standard site cannot be forest root)
 #
 #   hub_primary (FAL, ODE, BRK):
 #     Probe CLD DC first (preferred — datacenter is canonical)
 #     Then probe other hubs in order, skipping self
-#     If none reachable → ABORT (hubs cannot be forest root either;
-#     they replicate from CLD or each other, not from nothing)
 #
 #   hub_cld (CLD):
 #     Probe FAL, then ODE, then BRK
-#     If none reachable → dc_is_forest_root=true (first DC ever built)
-#     If any reachable  → standard additional DC promotion from that source
+#
+# If none of a site's candidates are reachable, the operator is asked
+# "Is this the first DC in the AD Forest?" (see below) rather than the play
+# assuming an answer from dc_site_role. Answering "yes" sets
+# dc_is_forest_root=true regardless of site; answering "no" aborts the play,
+# since there is then no replication source and no confirmed forest build.
 #
 # Probing is done from the Ansible control node (delegate_to: localhost)
 # via a TCP port-check to 389 (LDAP).  This avoids WinRM/SSH round-trips
@@ -34,6 +38,15 @@
 # =============================================================================
 # Changelog:
 #   2026-06-25  Initial file
+#   2026-07-06  Forest-root eligibility was hardcoded to dc_site_role ==
+#               'hub_cld' (i.e. only the CLD site could ever become forest
+#               root; FAL/ODE/BRK/standard aborted outright with no
+#               reachable source). That's wrong — which site is built first
+#               is an operational fact, not something derivable from the
+#               site code. Replaced the automatic role-based branch with an
+#               interactive pause asking the operator "Is this the first DC
+#               in the AD Forest?" when no candidate is reachable, for any
+#               site role.
 # =============================================================================
 
 # ── Build candidate list based on site role ───────────────────────────────────
@@ -117,34 +130,49 @@
 
 # ── Handle no reachable source ────────────────────────────────────────────────
 
-- name: "[Source] No reachable DC found — evaluate site role"
+- name: "[Source] No reachable DC found — ask operator whether this is the forest root"
+  pause:
+    prompt: |
+
+      ── No replication source reachable ──────────────────────────────────
+      {{ inventory_hostname }} (site={{ host_site }}, role={{ dc_site_role }})
+      could not reach any candidate DC: {{ dc_candidates | map(attribute='ip') | join(', ') }}
+
+      This can legitimately happen on any site, not just CLD — it just means
+      no other DC in the forest is reachable from here yet.
+
+      Is this the first DC in the AD Forest? (yes/no)
+  register: dc_forest_root_prompt
+  when: dc_replication_source is not defined
+
+- name: "[Source] Set dc_is_forest_root from operator answer"
   set_fact:
     dc_replication_source: ""
     dc_source_site:        ""
-    dc_is_forest_root:     "{{ dc_site_role == 'hub_cld' }}"
-  when: dc_replication_source is not defined
+    dc_is_forest_root:     "{{ (dc_forest_root_prompt.user_input | default('') | trim | lower) in ['y', 'yes'] }}"
+  when: dc_forest_root_prompt is not skipped
 
-- name: "[Source] ABORT — standard site cannot be forest root"
+- name: "[Source] ABORT — no reachable source and not confirmed as forest root"
   fail:
     msg: >
       {{ _c.R }}[✗]{{ _c.NC }} No replication source DC is reachable for
-      {{ inventory_hostname }} (site={{ host_site }}, role={{ dc_site_role }}).
+      {{ inventory_hostname }} (site={{ host_site }}, role={{ dc_site_role }})
+      and this was not confirmed as the first DC in the forest.
       Probed: {{ dc_candidates | map(attribute='ip') | join(', ') }}.
-      A standard (non-CLD) site DC cannot be the forest root.
-      Check network connectivity to FAL (.76.10), ODE (.126.10), BRK (.136.10)
-      before retrying.
+      Check network connectivity, or re-run and answer "yes" at the prompt
+      above if this is genuinely the first DC being built for this forest.
   when:
     - dc_replication_source == ""
-    - dc_site_role != 'hub_cld'
+    - not dc_is_forest_root | bool
 
-- name: "[Source] CLD — no existing DC found, will build forest root"
+- name: "[Source] No existing DC found — will build forest root"
   debug:
     msg: >
-      {{ _c.Y }}[!]{{ _c.NC }} CLD: no existing DC reachable.
-      This run will install the AD-DS forest root
-      (Install-ADDSForest).  Ensure this is intentional.
+      {{ _c.Y }}[!]{{ _c.NC }} {{ inventory_hostname }} (site={{ host_site }}):
+      no existing DC reachable, and confirmed as the first DC in the forest.
+      This run will install the AD-DS forest root (Install-ADDSForest).
   when:
-    - dc_site_role == 'hub_cld'
+    - dc_replication_source == ""
     - dc_is_forest_root | bool
 
 - name: "[Source] Confirmed replication source"
