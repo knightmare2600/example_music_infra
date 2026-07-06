@@ -45,6 +45,10 @@
 #               restore to 127.0.0.1 + configure forwarders after reboot);
 #               add credential guard assert; add DNS forwarder config post-
 #               promotion; standardise hosts: target to windows_dc
+#   2026-07-06  Include tasks/colour_fallback.yml first — this play uses
+#               {{ _c }} in several msgs but (unlike 85/95/99) never included
+#               hostname_facts.yml, so on ungrouped/ad hoc runs where
+#               group_vars/all didn't load, _c was undefined here too.
 # =============================================================================
 
 - name: Windows DC — Feature installation and promotion
@@ -67,6 +71,10 @@
     ansible_password: "{{ dc_local_password }}"
 
   tasks:
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: dc_promote
+
     # ── Guard: credentials must come from preflight ───────────────────────────
 
     - name: Assert domain credentials are available from preflight

@@ -19,6 +19,9 @@
 #               automatically once ansible_password is present, no
 #               ansible.cfg changes needed. Requires sshpass installed on
 #               the control node.
+#   2026-07-06  Include tasks/colour_fallback.yml before hostname facts —
+#               on ungrouped/ad hoc runs group_vars/all doesn't load, so
+#               {{ _c }} used throughout this play's msgs was undefined.
 # =============================================================================
 
 - name: Windows DC — Post-build health summary
@@ -30,6 +33,10 @@
     ansible_password: "{{ dc_local_password }}"
 
   tasks:
+
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: dc_summary
 
     - name: Include hostname facts
       include_tasks: ../../../tasks/hostname_facts.yml
