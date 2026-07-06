@@ -176,7 +176,7 @@
     # ── Hostname facts (needed throughout) ────────────────────────────────────
 
     - name: Include hostname facts
-      include_tasks: ../tasks/hostname_facts.yml
+      include_tasks: ../../../tasks/hostname_facts.yml
 
     # =========================================================================
     # Stage 0b — Preflight

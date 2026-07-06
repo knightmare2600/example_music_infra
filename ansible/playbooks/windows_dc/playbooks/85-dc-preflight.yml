@@ -137,7 +137,7 @@
     # ── Hostname facts ────────────────────────────────────────────────────────
 
     - name: Include hostname facts
-      include_tasks: ../tasks/hostname_facts.yml
+      include_tasks: ../../../tasks/hostname_facts.yml
       tags: dc_preflight
 
     - name: Validate this host is named as a DC (EXADCS<SITE><NNN>)
@@ -295,7 +295,7 @@
           - "  Host            : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
           - "  Domain          : {{ dc_domain_name }}  (NetBIOS: {{ dc_netbios_name }})"
           - "  Site            : {{ host_site }}  (role: {{ dc_site_role }})"
-          - "  Forest root?    : {{ _c.Y }}YES — first DC build{{ _c.NC }} if {{ dc_is_forest_root | default(false) }} else No"
+          - "  Forest root?    : {{ _c.Y if dc_is_forest_root | default(false) | bool else _c.G }}{{ 'YES — first DC build' if dc_is_forest_root | default(false) | bool else 'No' }}{{ _c.NC }}"
           - "  Replication src : {{ _c.G }}{{ dc_replication_source | default('N/A') }}{{ _c.NC }}"
           - "  Source site     : {{ dc_source_site | default('N/A') }}"
           - "  Domain-joined   : {{ dc_domain_check.stdout | trim | lower }}"
