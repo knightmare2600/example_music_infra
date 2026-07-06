@@ -73,6 +73,43 @@
       loop_control:
         label: "{{ item.key }}"
 
+    - name: Deploy .tmux.conf to all user home directories
+      ansible.builtin.copy:
+        src:   files/tmux.conf
+        dest:  "{{ item.value[4] }}/.tmux.conf"
+        owner: "{{ item.key }}"
+        group: "{{ item.key }}"
+        mode:  '0644'
+      loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+      when: item.value[4] | regex_search('^/home/')
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Deploy .vimrc to all user home directories
+      ansible.builtin.copy:
+        src:   files/vimrc
+        dest:  "{{ item.value[4] }}/.vimrc"
+        owner: "{{ item.key }}"
+        group: "{{ item.key }}"
+        mode:  '0644'
+      loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+      when: item.value[4] | regex_search('^/home/')
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Deploy .vim directory to all user home directories
+      ansible.builtin.copy:
+        src:            files/vim/
+        dest:           "{{ item.value[4] }}/.vim/"
+        owner:          "{{ item.key }}"
+        group:          "{{ item.key }}"
+        mode:           '0644'
+        directory_mode: '0755'
+      loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+      when: item.value[4] | regex_search('^/home/')
+      loop_control:
+        label: "{{ item.key }}"
+
     - name: Configure systemd-journald — vacuum period and max size
       ansible.builtin.lineinfile:
         path:   /etc/systemd/journald.conf
