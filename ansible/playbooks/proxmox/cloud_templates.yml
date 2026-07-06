@@ -9,7 +9,7 @@
 # TODO: extend for Windows template (separate task file)
 
 - name: Build cloud-init VM templates
-  hosts: pvenodes
+  hosts: "{{ target | default('pvenodes') }}"
   become: true
   vars_files:
     - ../../group_vars/pvenodes/main.yml
@@ -41,49 +41,22 @@
       loop: "{{ images }}"
       when: item.vmid | string not in qm_list_out.stdout
 
-    - name: Update packages in cloud image
-      command: virt-customize -a {{ item.dest }} --update
-      loop: "{{ images }}"
-      when: item.vmid | string not in qm_list_out.stdout
-
-    - name: Install tools in cloud image
+    - name: Customise cloud image — packages, ansible user, SSH key, sudoers, machine-id
       command: >
         virt-customize -a {{ item.dest }}
+        --update
         --install net-tools,qemu-guest-agent,vim,grc,curl
-      loop: "{{ images }}"
-      when: item.vmid | string not in qm_list_out.stdout
-
-    - name: Add ansible user in cloud image
-      command: >
-        virt-customize -a {{ item.dest }}
         --run-command 'useradd --shell /bin/bash ansible'
         --run-command 'mkdir -p /home/ansible/.ssh'
         --run-command 'chown -R ansible:ansible /home/ansible'
-      loop: "{{ images }}"
-      when: item.vmid | string not in qm_list_out.stdout
-
-    - name: Inject ansible SSH key into cloud image
-      command: >
-        virt-customize -a {{ item.dest }}
         --ssh-inject ansible:file:/home/ansible/.ssh/authorized_keys
-      loop: "{{ images }}"
-      when: item.vmid | string not in qm_list_out.stdout
-
-    - name: Inject sudoers file into cloud image
-      command: >
-        virt-customize -a {{ item.dest }}
         --upload /etc/sudoers.d/ansible:/etc/sudoers.d/ansible
         --run-command 'chmod 0440 /etc/sudoers.d/ansible'
         --run-command 'chown root:root /etc/sudoers.d/ansible'
-      loop: "{{ images }}"
-      when: item.vmid | string not in qm_list_out.stdout
-
-    - name: Blank machine-id in cloud image
-      command: >
-        virt-customize -a {{ item.dest }}
         --run-command 'echo -n >/etc/machine-id'
       loop: "{{ images }}"
       when: item.vmid | string not in qm_list_out.stdout
+      changed_when: true
 
     - name: Create VM from cloud image
       command: >
@@ -117,7 +90,7 @@
       when: item.vmid | string not in qm_list_out.stdout
 
     - name: Remove downloaded image (clean up)
-      file:
+      ansible.builtin.file:
         path: "{{ item.dest }}"
         state: absent
       loop: "{{ images }}"
