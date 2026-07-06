@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# playbooks/30-choco.yml
+# Example Music Limited — Windows hygiene: Chocolatey upgrade + tools
+# =============================================================================
+# Upgrades all installed Chocolatey packages to latest, and ensures
+# WinDirStat + SDelete are present. Both are also in choco_packages_common
+# (windows_bootstrap/playbooks/40-choco-packages.yml) as of 2026-07-06 — for
+# a host that went through the bootstrap chain this is a no-op re-check,
+# not a gap; kept here so a periodic hygiene run doesn't depend on the host
+# having been bootstrapped via that specific path.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/playbooks/30-choco.yml
+#
+# Tags: choco
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from site.yml (was a single
+#               monolithic play) for consistency with the numbered
+#               00-preflight/major-step-of-10 convention used by
+#               windows_dc and windows_bootstrap.
+# =============================================================================
+
+- name: Windows hygiene — Chocolatey upgrade and tools
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: false
+  tasks:
+
+    - name: "── Chocolatey packages ──"
+      debug:
+        msg: "Upgrading all Chocolatey packages and installing WinDirStat and SDelete..."
+      tags: choco
+
+    - name: Upgrade all Chocolatey packages to latest
+      chocolatey.chocolatey.win_chocolatey:
+        name:  all
+        state: latest
+      tags: choco
+
+    - name: Install WinDirStat
+      chocolatey.chocolatey.win_chocolatey:
+        name:  windirstat
+        state: present
+      tags: choco
+
+    - name: Install SDelete (Sysinternals)
+      chocolatey.chocolatey.win_chocolatey:
+        name:  sdelete
+        state: present
+      tags: choco

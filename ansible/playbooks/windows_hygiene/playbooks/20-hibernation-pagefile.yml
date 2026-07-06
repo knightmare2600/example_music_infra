@@ -1,0 +1,64 @@
+---
+# =============================================================================
+# playbooks/20-hibernation-pagefile.yml
+# Example Music Limited — Windows hygiene: hibernation policy + pagefile
+# =============================================================================
+# Hibernation ON for laptops/tablets, OFF for desktops/servers/VMs — decided
+# from the is_laptop fact set by 00-preflight.yml (live WMI chassis-type
+# detection, not group_vars/inventory grouping — deliberately independent
+# of whether the host is correctly grouped in inventory).
+#
+# Also clears the page file at shutdown (registry), same as
+# windows_bootstrap's 70-hibernation.yml — this file is intentionally kept
+# separate rather than merged into that one: it's a live-detected,
+# inventory-independent check meant to be re-run periodically as a
+# correctness sweep, not a one-time bootstrap step.
+#
+# Requires: 00-preflight.yml (is_laptop fact).
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/playbooks/20-hibernation-pagefile.yml
+#
+# Tags: hibernation, pagefile
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from site.yml (was a single
+#               monolithic play) for consistency with the numbered
+#               00-preflight/major-step-of-10 convention used by
+#               windows_dc and windows_bootstrap.
+# =============================================================================
+
+- name: Windows hygiene — Hibernation and pagefile
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: false
+  tasks:
+
+    - name: "── Hibernation policy ──"
+      debug:
+        msg: "{{ 'Laptop/Tablet detected — enabling hibernation.' if is_laptop | bool else 'Desktop/Server/VM detected — disabling hibernation.' }}"
+      tags: hibernation
+
+    - name: Disable hibernation (desktop, server, VM)
+      ansible.windows.win_shell: powercfg /hibernate off
+      when:         not (is_laptop | bool)
+      changed_when: true
+      tags: hibernation
+
+    - name: Enable hibernation (laptop, tablet)
+      ansible.windows.win_shell: powercfg /hibernate on
+      when:         is_laptop | bool
+      changed_when: true
+      tags: hibernation
+
+    - name: "── Page file ──"
+      debug:
+        msg: "Configuring page file to clear at shutdown..."
+      tags: pagefile
+
+    - name: Clear page file at shutdown
+      ansible.windows.win_regedit:
+        path:  'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'
+        name:  ClearPageFileAtShutdown
+        data:  1
+        type:  dword
+      tags: pagefile

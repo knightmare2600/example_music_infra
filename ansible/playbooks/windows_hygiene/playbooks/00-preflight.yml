@@ -1,0 +1,62 @@
+---
+# =============================================================================
+# playbooks/00-preflight.yml
+# Example Music Limited — Windows hygiene: chassis/OS detection
+# =============================================================================
+# Detects chassis type (laptop/tablet vs desktop/server/VM) and OS product
+# type (server vs workstation) via live WMI queries — no group_vars or
+# inventory grouping required. Sets is_laptop / is_server facts consumed by
+# 20-hibernation-pagefile.yml and 50-summary.yml.
+#
+# Laptop chassis types: 9 (Laptop), 10 (Notebook), 14 (Sub-Notebook),
+#                       30 (Tablet), 31 (Convertible), 32 (Detachable)
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/playbooks/00-preflight.yml
+#
+# Tags: preflight
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from site.yml (was a single
+#               monolithic play) for consistency with the numbered
+#               00-preflight/major-step-of-10 convention used by
+#               windows_dc and windows_bootstrap.
+# =============================================================================
+
+- name: Windows hygiene — Preflight (chassis/OS detection)
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: false
+  tasks:
+
+    - name: Detect chassis type
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_SystemEnclosure -ErrorAction SilentlyContinue).ChassisTypes[0]
+      register: chassis_raw
+      changed_when: false
+      tags: preflight
+
+    - name: Set chassis fact
+      set_fact:
+        is_laptop: "{{ chassis_raw.stdout | trim in ['9','10','14','30','31','32'] }}"
+      tags: preflight
+
+    - name: Detect OS product type
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_OperatingSystem).ProductType
+      register: product_type_raw
+      changed_when: false
+      tags: preflight
+
+    - name: Set OS type facts
+      set_fact:
+        is_server: "{{ product_type_raw.stdout | trim in ['2','3'] }}"
+      tags: preflight
+
+    - name: Show detected platform
+      debug:
+        msg: >-
+          Chassis: {{ chassis_raw.stdout | trim }}
+          ({{ 'Laptop/Tablet' if is_laptop | bool else 'Desktop/Server/VM' }})
+          | OS product type: {{ product_type_raw.stdout | trim }}
+          ({{ 'Server/DC' if is_server | bool else 'Workstation' }})
+      tags: preflight

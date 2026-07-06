@@ -1,0 +1,54 @@
+---
+# =============================================================================
+# playbooks/40-winupdate.yml
+# Example Music Limited — Windows hygiene: Windows Update via PSWindowsUpdate
+# =============================================================================
+# Installs the PSWindowsUpdate module (Scope AllUsers, persists across
+# reboots) and runs Windows Update with -AcceptAll -AutoReboot:$false — a
+# reboot may be required afterward but is never triggered automatically.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/playbooks/40-winupdate.yml
+#
+# Tags: winupdate
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from site.yml (was a single
+#               monolithic play) for consistency with the numbered
+#               00-preflight/major-step-of-10 convention used by
+#               windows_dc and windows_bootstrap.
+# =============================================================================
+
+- name: Windows hygiene — Windows Update
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: false
+  tasks:
+
+    - name: "── Windows Update ──"
+      debug:
+        msg: "Installing PSWindowsUpdate module and running Windows updates (no auto-reboot)..."
+      tags: winupdate
+
+    - name: Install PSWindowsUpdate module (Scope AllUsers, persists across reboots)
+      ansible.windows.win_shell: |
+        if (-not (Get-Module -ListAvailable -Name PSWindowsUpdate)) {
+          Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -Scope AllUsers
+        }
+      changed_when: false
+      tags: winupdate
+
+    - name: Run Windows Update (AcceptAll, no auto-reboot)
+      ansible.windows.win_shell: |
+        Import-Module PSWindowsUpdate
+        Install-WindowsUpdate -AcceptAll -AutoReboot:$false -Verbose 2>&1 | Out-String
+      register: win_update_result
+      changed_when: "'KB' in (win_update_result.stdout | default(''))"
+      async: 3600
+      poll: 30
+      tags: winupdate
+
+    - name: Show Windows Update results
+      debug:
+        msg: "{{ win_update_result.stdout_lines | default(['(no output)']) }}"
+      when: win_update_result is defined
+      tags: winupdate

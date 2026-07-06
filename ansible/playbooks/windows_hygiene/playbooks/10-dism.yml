@@ -1,0 +1,39 @@
+---
+# =============================================================================
+# playbooks/10-dism.yml
+# Example Music Limited — Windows hygiene: DISM component store cleanup
+# =============================================================================
+# WARNING: ResetBase removes the ability to uninstall Windows Updates.
+# This is correct for managed estate hosts — updates are controlled via
+# WSUS/policy, not rolled back manually.
+# Runs async — DISM can take 10-30 minutes on a loaded system.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/playbooks/10-dism.yml
+#
+# Tags: dism
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from site.yml (was a single
+#               monolithic play) for consistency with the numbered
+#               00-preflight/major-step-of-10 convention used by
+#               windows_dc and windows_bootstrap.
+# =============================================================================
+
+- name: Windows hygiene — DISM component cleanup
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: false
+  tasks:
+
+    - name: "── DISM — component cleanup + ResetBase ──"
+      debug:
+        msg: "Running DISM StartComponentCleanup /ResetBase — this can take 10-30 minutes. Do not interrupt."
+      tags: dism
+
+    - name: Run DISM component cleanup and ResetBase
+      ansible.windows.win_shell: |
+        DISM.exe /online /Cleanup-Image /StartComponentCleanup /ResetBase
+      async:        1800
+      poll:         30
+      changed_when: true
+      tags: dism
