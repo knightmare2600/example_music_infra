@@ -27,12 +27,12 @@
 | TOR | `192.168.146.0/24` | `192.168.146.1` | `192.168.146.10` | `192.168.146.253` |
 | MTL | `192.168.154.0/24` | `192.168.154.1` | `192.168.154.10` | `192.168.154.253` |
 | SYD | `192.168.29.0/24` | `192.168.29.1` | `192.168.29.10` | `192.168.29.253` |
-| CLD (LAN) | `192.168.69.0/24` | `192.168.69.1` | `192.168.69.10` | `192.168.69.253` |
+| CLD (LAN) | `192.168.69.0/24` | `192.168.69.253` | `192.168.69.10` | `192.168.69.253` |
 | CLD (vRACK) | `192.168.139.0/24` | — | — | `192.168.139.68` |
 | ATL | `192.168.33.0/24` | `192.168.33.1` | `192.168.33.10` | `192.168.33.253` |
 
 > **Note:** All other sites can be found in the master CSV (`sites_extended.csv`).  
-> **CLD is dual-subnet.** LAN (`192.168.69.x`) hosts domain-joined machines (DC at `.10`, FWL at `.253`). vRACK (`192.168.139.x`) is the provisioning network — key addresses: `.8` BIND9/DNS, `.9` Ansible, `.50` PXE, `.68` FWL WAN interface.  
+> **CLD is dual-subnet.** LAN (`192.168.69.x`) hosts domain-joined machines (DC at `.10`, Ansible at `.9`, FWL at `.253`). vRACK (`192.168.139.x`) is the provisioning network — key addresses: `.8` BIND9/DNS, `.50` PXE, `.68` FWL WAN interface.  
 
 ---
 

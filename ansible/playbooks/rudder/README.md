@@ -92,7 +92,7 @@ ansible-playbook playbooks/rudder/rudder_server.yml \
 ### Step 5 — After first UI login: add API token to vault
 
 ```bash
-# Log in to https://192.168.139.12/rudder
+# Log in to https://192.168.69.12/rudder
 # Administration → API accounts → New API account
 # Name: rudder-automation   Role: Read/Write
 # Copy the token
@@ -155,9 +155,9 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | Variable | Example | Description |
 |----------|---------|-------------|
 | `rudder_hostname` | `EXARDRCLD001` | Hostname (uppercase, EXA convention) |
-| `rudder_static_ip` | `192.168.139.12` | Static IP for this node |
-| `rudder_gateway` | `192.168.76.1` | Default gateway |
-| `rudder_dns` | `192.168.76.10` | DNS / AD DC IP |
+| `rudder_static_ip` | `192.168.69.12` | Static IP for this node |
+| `rudder_gateway` | `192.168.69.253` | Default gateway |
+| `rudder_dns` | `192.168.139.8` | DNS — BIND9 on vRACK, reachable from CLD LAN |
 | `rudder_prefix` | `24` | Subnet prefix length |
 | `rudder_network_interface` | `""` | Interface to configure (blank = auto-detect) |
 | `rudder_site_code` | `FAL` | Site code (matches sites.csv) |
