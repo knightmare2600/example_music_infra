@@ -52,38 +52,37 @@ Stages 00–80 delegate to `windows_bootstrap/playbooks/` — no duplication.
 
 ## Usage
 
+Run from the `ansible/` root. The DC onboarding inventory for each site lives in
+`configs/inventory/<site>.ini` (e.g. `configs/inventory/fal.ini`).
+
 ### Full run (fresh build)
 
 ```bash
-ansible-playbook -i inventory/<site>.ini site.yml \
-  -e target=EXADCSFAL002 \
-  -e sites_csv=../../files/sites.csv
+ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
+  -e target=EXADCSFAL002
 ```
 
 ### DC stages only (host already bootstrapped and domain-joined)
 
 ```bash
-ansible-playbook -i inventory/<site>.ini site.yml \
+ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
   -e target=EXADCSFAL002 \
-  -e sites_csv=../../files/sites.csv \
   --skip-tags bootstrap
 ```
 
 ### DC promotion only
 
 ```bash
-ansible-playbook -i inventory/<site>.ini site.yml \
+ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
   -e target=EXADCSFAL002 \
-  -e sites_csv=../../files/sites.csv \
   --tags dc_preflight,dc_promote,dc_replicate,dc_summary
 ```
 
 ### Replication health check only (post-build)
 
 ```bash
-ansible-playbook -i inventory/<site>.ini site.yml \
+ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
   -e target=EXADCSFAL002 \
-  -e sites_csv=../../files/sites.csv \
   --tags dc_replicate,dc_summary
 ```
 
