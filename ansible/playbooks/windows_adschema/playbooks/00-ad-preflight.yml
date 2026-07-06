@@ -9,7 +9,7 @@
 #
 # hosts: resolves to an empty list when populate_ad != yes, so this play —
 # and its prompt — is skipped entirely on a run where AD population wasn't
-# requested at 85-dc-preflight.yml. No behaviour change for that case.
+# requested at 00-dc-preflight.yml. No behaviour change for that case.
 #
 # Skip the prompt on any run by supplying -e ad_target=<host> directly.
 # =============================================================================

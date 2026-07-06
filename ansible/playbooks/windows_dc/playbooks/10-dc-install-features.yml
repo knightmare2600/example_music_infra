@@ -1,0 +1,125 @@
+---
+# =============================================================================
+# playbooks/10-dc-install-features.yml
+# Example Music Limited — Domain Controller: install AD-DS/DNS/GPMC features
+# =============================================================================
+# Installs the Windows features a Domain Controller needs (AD-DS, DNS, GPMC,
+# RSAT tooling). Deliberately separate from the actual promotion
+# (20-dc-promote.yml) — installing the feature set needs no domain contact
+# at all, it's a plain local Windows feature install, whereas dcpromo needs
+# DNS resolution to the domain and does the actual forest/DC creation.
+# "Install the tools" and "run dcpromo" are two distinct major steps.
+#
+# Idempotent: skipped entirely if the host is already a DC (ProductType==2).
+#
+# Facts consumed (set by 00-dc-preflight.yml):
+#   dc_admin_password   — asserted here too (fail-fast) even though it's not
+#                         used until 20-dc-promote.yml, so a missing
+#                         credential is caught before doing any work
+#   dc_local_user / dc_local_password  — SSH connection credentials
+#
+# Facts set (persist for 20-dc-promote.yml when run via site.yml):
+#   dc_is_dc            — bool, true if ProductType==2 already
+#
+# Tags: dc_features
+# =============================================================================
+# Changelog:
+#   2026-07-06  Split out of 90-dc-promote.yml — "install the tools" and
+#               "run dcpromo" are two distinct major steps under the new
+#               00/10/20/30/40 numbering, not one combined play.
+# =============================================================================
+
+- name: Windows DC — Feature installation
+  hosts: "{{ target | default('windows_dc') }}"
+  gather_facts: false
+
+  vars:
+    ansible_user:     "{{ dc_local_user }}"
+    ansible_password: "{{ dc_local_password }}"
+
+  tasks:
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: dc_features
+
+    # ── Guard: credentials must come from preflight ───────────────────────────
+
+    - name: Assert domain credentials are available from preflight
+      ansible.builtin.assert:
+        that:
+          - dc_admin_password is defined
+          - dc_admin_password | length > 0
+          - dc_local_password is defined
+          - dc_local_password | length > 0
+        fail_msg: >
+          dc_admin_password / dc_local_password are not set.
+          Run the full chain via site.yml so 00-dc-preflight.yml fires first.
+          To run this stage standalone: -e dc_admin_password=<pw>
+          -e dc_local_password=<pw> -e dc_admin_user=<user>
+      tags: dc_features
+
+    # ── Guard: already a DC? ──────────────────────────────────────────────────
+
+    - name: Check if host is already a Domain Controller (ProductType 2)
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_OperatingSystem).ProductType
+      register: dc_product_type
+      changed_when: false
+      tags: dc_features
+
+    - name: Set dc_is_dc fact
+      ansible.builtin.set_fact:
+        dc_is_dc: "{{ dc_product_type.stdout | trim == '2' }}"
+      tags: dc_features
+
+    - name: Skip — already a DC
+      ansible.builtin.debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} {{ inventory_hostname }} is already a DC
+          (ProductType=2) — feature install skipped.
+      when: dc_is_dc
+      tags: dc_features
+
+    # =========================================================================
+    # Install Windows features
+    # =========================================================================
+
+    - name: "── Install AD-DS, DNS and GPMC features ──"
+      ansible.builtin.debug:
+        msg: "{{ _c.C }}[*]{{ _c.NC }} Installing AD-DS feature set..."
+      when: not dc_is_dc
+      tags: dc_features
+
+    - name: Install AD-Domain-Services feature
+      ansible.windows.win_feature:
+        name:
+          - AD-Domain-Services
+          - DNS
+          - GPMC
+          - RSAT-AD-Tools
+          - RSAT-AD-PowerShell
+          - RSAT-DNS-Server
+        state: present
+        include_management_tools: true
+      register: dc_feature_install
+      when: not dc_is_dc
+      tags: dc_features
+
+    - name: Show feature install result
+      ansible.builtin.debug:
+        msg: >
+          {{ _c.G }}[+]{{ _c.NC }} AD-DS feature install:
+          changed={{ dc_feature_install.changed }}
+          reboot_required={{ dc_feature_install.reboot_required | default(false) }}
+      when: not dc_is_dc
+      tags: dc_features
+
+    - name: Reboot if feature install requires it
+      ansible.windows.win_reboot:
+        reboot_timeout:    600
+        post_reboot_delay: 30
+        msg: "Rebooting after AD-DS feature installation"
+      when:
+        - not dc_is_dc
+        - dc_feature_install.reboot_required | default(false)
+      tags: dc_features

@@ -7,7 +7,7 @@ and sites.csv.
 
 ## Usage
 ```
-# Normal path — via windows_dc/site.yml, prompted once at 85-dc-preflight.yml
+# Normal path — via windows_dc/site.yml, prompted once at 00-dc-preflight.yml
 ansible-playbook playbooks/windows_dc/site.yml -i <inventory> -e target=<host>
 
 # Standalone — prompted for the target Domain Controller

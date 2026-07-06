@@ -1,36 +1,36 @@
 ---
 # =============================================================================
-# playbooks/90-dc-promote.yml
-# Example Music Limited — Domain Controller promotion
+# playbooks/20-dc-promote.yml
+# Example Music Limited — Domain Controller promotion (dcpromo)
 # =============================================================================
-# Installs the AD-DS + DNS + GPMC Windows features then promotes the host
-# to an Additional Domain Controller in the JUKEBOX domain.
+# Runs the actual promotion: Install-ADDSDomainController against the
+# replication source resolved by 00-dc-preflight.yml, or Install-ADDSForest
+# if dc_is_forest_root is true (operator-confirmed first DC in the forest —
+# any site, not just CLD; see 00-dc-preflight.yml).
 #
-# If dc_is_forest_root is true (set by 85-dc-preflight.yml, CLD only) this
-# play instead runs Install-ADDSForest to create the domain from scratch.
+# Assumes 10-dc-install-features.yml already installed the AD-DS/DNS/GPMC
+# Windows features on this host.
 #
-# The play is fully idempotent:
-#   - Feature install is skipped if AD-DS already shows Installed.
-#   - Promotion is skipped if the host is already a DC (ProductType == 2).
-#   - The reboot after promotion is handled here; Ansible waits and
-#     reconnects before continuing to 95-dc-replicate.yml.
+# The play is fully idempotent — promotion is skipped if the host is
+# already a DC (ProductType == 2). The reboot after promotion is handled
+# here; Ansible waits and reconnects before continuing to
+# 30-dc-replicate.yml.
 #
 # DNS management:
 #   During promotion the host must resolve {{ dc_domain_name }} to contact the
 #   source DC.  Stage 0 checks if the domain is already resolvable; if not,
 #   it temporarily sets the NIC DNS to dc_temp_dns_ip (prompted — default
-#   pre-filled from dc_replication_source_ip set by 85-dc-preflight.yml).
+#   pre-filled from dc_replication_source_ip set by 00-dc-preflight.yml).
 #   After the post-promotion reboot, DNS is set to 127.0.0.1 (the DC now
 #   runs its own DNS) and forwarders are configured:
 #     192.168.139.8  — CLD BIND9 (upstream for internal zones we control)
 #     9.9.9.9        — Quad9 (public upstream)
 #     1.1.1.1        — Cloudflare (public upstream)
 #
-# Facts consumed (set by 85-dc-preflight.yml):
+# Facts consumed (set by 00-dc-preflight.yml):
 #   dc_replication_source     — source DC FQDN
 #   dc_replication_source_ip  — source DC IP (used as DNS default)
 #   dc_is_forest_root         — bool
-#   dc_already_promoted       — bool (feature already installed)
 #   dc_admin_user             — Domain Admin (JUKEBOX\Administrator)
 #   dc_admin_password         — Domain Admin password
 #   dc_local_user             — Local Administrator username
@@ -40,18 +40,25 @@
 # Tags: dc_promote
 # =============================================================================
 # Changelog:
-#   2026-06-25  Initial file
+#   2026-06-25  Initial file (as 90-dc-promote.yml, combined with feature
+#               install)
 #   2026-06-29  Add Stage 0 temporary DNS management (set before promotion,
 #               restore to 127.0.0.1 + configure forwarders after reboot);
 #               add credential guard assert; add DNS forwarder config post-
 #               promotion; standardise hosts: target to windows_dc
 #   2026-07-06  Include tasks/colour_fallback.yml first — this play uses
-#               {{ _c }} in several msgs but (unlike 85/95/99) never included
-#               hostname_facts.yml, so on ungrouped/ad hoc runs where
-#               group_vars/all didn't load, _c was undefined here too.
+#               {{ _c }} in several msgs but never included hostname_facts.yml,
+#               so on ungrouped/ad hoc runs where group_vars/all didn't load,
+#               _c was undefined here too.
+#   2026-07-06  Renumbered 90 -> 20 and split feature install out into
+#               10-dc-install-features.yml — "install the tools" and "run
+#               dcpromo" are two distinct major steps under the new
+#               00/10/20/30/40 numbering. This file now recomputes dc_is_dc
+#               independently (rather than relying solely on the fact
+#               carrying over from 10) so it stays safe to run standalone.
 # =============================================================================
 
-- name: Windows DC — Feature installation and promotion
+- name: Windows DC — Promotion (dcpromo)
   hosts: "{{ target | default('windows_dc') }}"
   gather_facts: false
 
@@ -86,7 +93,7 @@
           - dc_local_password | length > 0
         fail_msg: >
           dc_admin_password / dc_local_password are not set.
-          Run the full chain via site.yml so 85-dc-preflight.yml fires first.
+          Run the full chain via site.yml so 00-dc-preflight.yml fires first.
           To run this stage standalone: -e dc_admin_password=<pw>
           -e dc_local_password=<pw> -e dc_admin_user=<user>
       tags: dc_promote
@@ -211,57 +218,14 @@
       tags: dc_promote
 
     # =========================================================================
-    # Stage 1 — Install Windows features
+    # Stage 1a — Forest root install (operator-confirmed first DC only)
     # =========================================================================
 
-    - name: "── Stage 1 — Install AD-DS, DNS and GPMC features ──"
-      ansible.builtin.debug:
-        msg: "{{ _c.C }}[*]{{ _c.NC }} Installing AD-DS feature set..."
-      when: not dc_is_dc
-      tags: dc_promote
-
-    - name: Install AD-Domain-Services feature
-      ansible.windows.win_feature:
-        name:
-          - AD-Domain-Services
-          - DNS
-          - GPMC
-          - RSAT-AD-Tools
-          - RSAT-AD-PowerShell
-          - RSAT-DNS-Server
-        state: present
-        include_management_tools: true
-      register: dc_feature_install
-      when: not dc_is_dc
-      tags: dc_promote
-
-    - name: Show feature install result
+    - name: "── Stage 1a — Install-ADDSForest (forest root) ──"
       ansible.builtin.debug:
         msg: >
-          {{ _c.G }}[+]{{ _c.NC }} AD-DS feature install:
-          changed={{ dc_feature_install.changed }}
-          reboot_required={{ dc_feature_install.reboot_required | default(false) }}
-      when: not dc_is_dc
-      tags: dc_promote
-
-    - name: Reboot if feature install requires it
-      ansible.windows.win_reboot:
-        reboot_timeout:    600
-        post_reboot_delay: 30
-        msg: "Rebooting after AD-DS feature installation"
-      when:
-        - not dc_is_dc
-        - dc_feature_install.reboot_required | default(false)
-      tags: dc_promote
-
-    # =========================================================================
-    # Stage 2a — Forest root install (CLD first build only)
-    # =========================================================================
-
-    - name: "── Stage 2a — Install-ADDSForest (CLD forest root) ──"
-      ansible.builtin.debug:
-        msg: >
-          {{ _c.Y }}[!]{{ _c.NC }} Building {{ dc_domain_name | upper }} forest root on CLD.
+          {{ _c.Y }}[!]{{ _c.NC }} Building {{ dc_domain_name | upper }} forest root on
+          {{ inventory_hostname }} (site={{ host_site }}).
           This is a destructive, one-time operation.
       when:
         - not dc_is_dc
@@ -303,10 +267,10 @@
       tags: dc_promote
 
     # =========================================================================
-    # Stage 2b — Additional DC promotion
+    # Stage 1b — Additional DC promotion
     # =========================================================================
 
-    - name: "── Stage 2b — Install-ADDSDomainController (additional DC) ──"
+    - name: "── Stage 1b — Install-ADDSDomainController (additional DC) ──"
       ansible.builtin.debug:
         msg: >
           {{ _c.C }}[*]{{ _c.NC }} Promoting {{ inventory_hostname }} as
@@ -365,10 +329,10 @@
       tags: dc_promote
 
     # =========================================================================
-    # Stage 3 — Post-promotion: DC confirmation + DNS restore + forwarders
+    # Stage 2 — Post-promotion: DC confirmation + DNS restore + forwarders
     # =========================================================================
 
-    - name: "── Stage 3 — Post-promotion DNS and forwarder configuration ──"
+    - name: "── Stage 2 — Post-promotion DNS and forwarder configuration ──"
       ansible.builtin.debug:
         msg: "{{ _c.C }}[*]{{ _c.NC }} Configuring DNS after promotion reboot..."
       when: not dc_is_dc
@@ -392,7 +356,7 @@
         - dc_post_type.stdout | trim != '2'
       tags: dc_promote
 
-    - name: "[Stage 3] Set NIC DNS to 127.0.0.1 (DC runs its own DNS now)"
+    - name: "[Stage 2] Set NIC DNS to 127.0.0.1 (DC runs its own DNS now)"
       ansible.windows.win_shell: |
         $iface = (Get-NetRoute -DestinationPrefix '0.0.0.0/0' |
           Sort-Object RouteMetric |
@@ -401,7 +365,7 @@
       when: not dc_is_dc
       tags: dc_promote
 
-    - name: "[Stage 3] Configure DNS forwarders (upstream for non-local zones)"
+    - name: "[Stage 2] Configure DNS forwarders (upstream for non-local zones)"
       ansible.windows.win_shell: |
         Import-Module DnsServer
         Set-DnsServerForwarder `
@@ -411,7 +375,7 @@
       when: not dc_is_dc
       tags: dc_promote
 
-    - name: "[Stage 3] Show forwarder config"
+    - name: "[Stage 2] Show forwarder config"
       ansible.builtin.debug:
         msg: >
           {{ _c.G }}[+]{{ _c.NC }} DNS forwarders set: {{ dc_dns_forwarders | join(', ') }}
