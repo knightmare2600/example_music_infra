@@ -27,6 +27,10 @@
 #   2026-07-06  Split out of 90-dc-promote.yml — "install the tools" and
 #               "run dcpromo" are two distinct major steps under the new
 #               00/10/20/30/40 numbering, not one combined play.
+#   2026-07-06  Set ansible_connection/shell_type/port explicitly (see
+#               00-dc-preflight.yml) — group_vars/windows_nodes/
+#               connection.yml is inventory-group-gated and doesn't apply
+#               on ungrouped/ad hoc runs, which broke every win_* task here.
 # =============================================================================
 
 - name: Windows DC — Feature installation
@@ -34,8 +38,14 @@
   gather_facts: false
 
   vars:
-    ansible_user:     "{{ dc_local_user }}"
-    ansible_password: "{{ dc_local_password }}"
+    # ansible_connection/shell_type/port: see 00-dc-preflight.yml — set here
+    # too since group_vars/windows_nodes/connection.yml is inventory-group-
+    # gated and won't apply on ungrouped/ad hoc runs.
+    ansible_connection: ssh
+    ansible_shell_type: powershell
+    ansible_port:       22
+    ansible_user:       "{{ dc_local_user }}"
+    ansible_password:   "{{ dc_local_password }}"
 
   tasks:
     - name: Include colour fallback

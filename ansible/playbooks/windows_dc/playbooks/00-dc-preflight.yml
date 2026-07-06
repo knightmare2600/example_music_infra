@@ -117,6 +117,15 @@
 #               reachable — worse UX than bundling every question the
 #               operator answers at the top of the run before any task
 #               output has printed.
+#   2026-07-06  Same ungrouped-run gap yet again, this time for connection
+#               mechanics: "Confirm host is already domain-joined" (the
+#               first ansible.windows task to actually hit the target) blew
+#               up with "Module result deserialization failed" because
+#               ansible_shell_type never got set to powershell —
+#               group_vars/windows_nodes/connection.yml is inventory-group-
+#               gated just like everything else. ansible_user/
+#               ansible_password were already set per-play (2026-07-04) but
+#               ansible_connection/shell_type/port weren't. Added alongside.
 #
 # =============================================================================
 
@@ -129,8 +138,16 @@
     # ad_domain_name, ad_netbios_name, dc_hub_sites, dc_cld_site,
     # dc_dns_forwarders → group_vars/windows_dc/vars.yml (single source of truth).
     # dc_hub_sources and dc_cld_source are built at runtime from sites.csv.
-    ansible_user:     "{{ dc_local_user }}"
-    ansible_password: "{{ dc_local_password }}"
+    # ansible_connection/shell_type/port normally come from
+    # group_vars/windows_nodes/connection.yml, but that's inventory-group-
+    # gated like everything else — set explicitly so ungrouped/ad hoc runs
+    # still connect over SSH+PowerShell instead of falling back to a POSIX
+    # shell wrapper against a Windows host.
+    ansible_connection: ssh
+    ansible_shell_type: powershell
+    ansible_port:       22
+    ansible_user:       "{{ dc_local_user }}"
+    ansible_password:   "{{ dc_local_password }}"
 
   vars_prompt:
     - name: dc_domain_name

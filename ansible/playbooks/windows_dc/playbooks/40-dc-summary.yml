@@ -22,6 +22,10 @@
 #   2026-07-06  Include tasks/colour_fallback.yml before hostname facts —
 #               on ungrouped/ad hoc runs group_vars/all doesn't load, so
 #               {{ _c }} used throughout this play's msgs was undefined.
+#   2026-07-06  Set ansible_connection/shell_type/port explicitly (see
+#               00-dc-preflight.yml) — group_vars/windows_nodes/
+#               connection.yml is inventory-group-gated and doesn't apply
+#               on ungrouped/ad hoc runs, which broke every win_* task here.
 # =============================================================================
 
 - name: Windows DC — Post-build health summary
@@ -29,8 +33,14 @@
   gather_facts: false
 
   vars:
-    ansible_user:     "{{ dc_local_user }}"
-    ansible_password: "{{ dc_local_password }}"
+    # ansible_connection/shell_type/port: see 00-dc-preflight.yml — set here
+    # too since group_vars/windows_nodes/connection.yml is inventory-group-
+    # gated and won't apply on ungrouped/ad hoc runs.
+    ansible_connection: ssh
+    ansible_shell_type: powershell
+    ansible_port:       22
+    ansible_user:       "{{ dc_local_user }}"
+    ansible_password:   "{{ dc_local_password }}"
 
   tasks:
 

@@ -56,6 +56,10 @@
 #               00/10/20/30/40 numbering. This file now recomputes dc_is_dc
 #               independently (rather than relying solely on the fact
 #               carrying over from 10) so it stays safe to run standalone.
+#   2026-07-06  Set ansible_connection/shell_type/port explicitly (see
+#               00-dc-preflight.yml) — group_vars/windows_nodes/
+#               connection.yml is inventory-group-gated and doesn't apply
+#               on ungrouped/ad hoc runs, which broke every win_* task here.
 # =============================================================================
 
 - name: Windows DC — Promotion (dcpromo)
@@ -74,8 +78,14 @@
   vars:
     dc_site_name: "{{ host_site }}"
     # dc_db_path, dc_log_path, dc_sysvol, dc_dns_forwarders → group_vars/windows_dc/vars.yml
-    ansible_user:     "{{ dc_local_user }}"
-    ansible_password: "{{ dc_local_password }}"
+    # ansible_connection/shell_type/port: see 00-dc-preflight.yml — set here
+    # too since group_vars/windows_nodes/connection.yml is inventory-group-
+    # gated and won't apply on ungrouped/ad hoc runs.
+    ansible_connection: ssh
+    ansible_shell_type: powershell
+    ansible_port:       22
+    ansible_user:       "{{ dc_local_user }}"
+    ansible_password:   "{{ dc_local_password }}"
 
   tasks:
     - name: Include colour fallback
