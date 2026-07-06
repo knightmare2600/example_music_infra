@@ -1,0 +1,53 @@
+set cursorline
+map <F7> :let &syntax = ( &syn == "nmap"? "none" : "nmap" )<CR>
+map <F8> :let _s=@/<Bar>:%s/\s\+$//e<Bar>:let @/=_s<Bar><CR>
+map <F9> :let &background = ( &background == "dark"? "light" : "dark" )<CR>
+set hlsearch                    " highlight searches
+set incsearch                   " do incremental searching
+set ruler                       " show the cursor position all the time
+set ignorecase                  " ignore case when searching 
+set title                       " show title in console title bar
+set ttyfast                     " smoother changes
+set background=dark             " uhh....
+set backspace=indent,eol,start  " more powerful backspacing
+
+syntax on
+
+" Block insert: move to location, CTRL+v Press I (capital i), make change, press ESC to repeat
+
+" custom syntax highlights I like
+au BufNewFile,BufRead .tmux.conf set filetype=tmux
+au BufNewFile,BufRead *.nmap.report set filetype=nmap
+
+colorscheme terminal
+
+" Mouse fixes for parrot
+set mouse=
+set ttymouse=
+
+" Spell checking in British English per https://www.linux.com/learn/using-spell-checking-vim
+"[S and s] to search for next spelling error z= to list options
+setlocal spell spelllang=en_gb
+hi clear SpellBad                       " ignore colour scheme for spelling mistakes
+hi SpellBad cterm=underline ctermfg=red " Spelling errors highlight underlined red a la winword
+
+":so matrix.vim                         " source the screensaver (:Matrix to start it)
+
+hi User1 guifg=#eeee40 guibg=#222222
+hi User2 guifg=#dd3333 guibg=#222222
+hi User3 guifg=#ff66ff guibg=#222222
+hi User4 guifg=#a0ee40 guibg=#222222
+hi User5 guifg=#eeee40 guibg=#222222
+
+hi Search cterm=NONE ctermfg=grey ctermbg=blue
+set hlsearch                      " Highlight search terms...
+set incsearch                     " ...dynamically as they are typed.
+
+nnoremap <C-N> :next<Enter>       " CTRL + N for the next file
+nnoremap <C-P> :prev<Enter>       " CTRL + P for the prev file
+" :sp Horizontal Split or :vsp for Vertical Split then Ctrl + W <arrow key> to move around
+
+set laststatus=2
+"set statusline=\ %f%m%r%h%w\ %=%({%{&ff}\|%{(&fenc==\"\"?&enc:&fenc).((exists(\"+bomb\")\ &&\ &bomb)?\",B\":\"\")}%k\|%Y}%)\ %([%l,%v][%p%%]\ %)
+
+set statusline=%<%f%m\ \[%{&ff}:%{&fenc}:%Y]\ %{getcwd()}\ \ \[%{strftime('%d/%b/%Y\ %a\ %I:%M\ %p')}\]\ %=\ Line:%l\/%L\ Column:%c%V\ %P
