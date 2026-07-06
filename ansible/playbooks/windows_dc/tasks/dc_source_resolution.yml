@@ -15,7 +15,7 @@
 # Candidate probe order by site role (who to check, NOT who may be forest root):
 #
 #   standard (non-hub, non-CLD):
-#     Probe hub sources in order: FAL → ODE → BRK
+#     Probe in order: CLD → FAL → ODE → BRK
 #     If none reachable, probe any DC listed in sites.csv for this site (.10)
 #
 #   hub_primary (FAL, ODE, BRK):
@@ -47,6 +47,11 @@
 #               interactive pause asking the operator "Is this the first DC
 #               in the AD Forest?" when no candidate is reachable, for any
 #               site role.
+#   2026-07-06  Standard-site probe order now includes CLD first: CLD → FAL
+#               → ODE → BRK. Previously standard sites never probed CLD at
+#               all (only the hub_primary sites did, plus CLD itself is
+#               excluded as a source elsewhere), skipping a potentially
+#               reachable, canonical source.
 # =============================================================================
 
 # ── Build candidate list based on site role ───────────────────────────────────
@@ -55,7 +60,8 @@
   set_fact:
     dc_candidates: >-
       {{
-        dc_hub_sources
+        [dc_cld_source]
+        + dc_hub_sources
         + ([{
             'site': host_site,
             'ip':   (dc_sites_map[host_site] | default('')).rsplit('.', 1)[0] + '.10',

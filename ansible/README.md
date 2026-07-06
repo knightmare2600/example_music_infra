@@ -487,14 +487,13 @@ operator directly: "Is this the first DC in the AD Forest?"
 This is operator-confirmed, not inferred from the site code — any site can be the
 forest root if it's genuinely the first DC built for the forest.
 
-**CLD (Datacenter)** — Probes FAL, ODE, and BRK on TCP/389. Never used as a
-replication source for site DCs.
+**CLD (Datacenter)** — Probes FAL, ODE, and BRK on TCP/389.
 
 **FAL (Head office)** — Prefers to replicate from CLD. Falls back to ODE or BRK.
 
 **ODE and BRK (Regional hubs)** — CLD first, then other hubs (skipping self).
 
-**Standard sites** — Probe FAL → ODE → BRK. If none reachable, fall back to any existing DC
+**Standard sites** — Probe CLD → FAL → ODE → BRK. If none reachable, fall back to any existing DC
 at `.10` for that site's subnet.
 
 ### FSMO roles
@@ -918,7 +917,7 @@ ansible-playbook -i configs/inventory \
 
 | Stage | Playbook | What it does |
 |-------|----------|-------------|
-| `dc_preflight` | `00-dc-preflight.yml` | Probes FAL → ODE → BRK for a live replication source; LIV is a standard site so it picks the first reachable hub |
+| `dc_preflight` | `00-dc-preflight.yml` | Probes CLD → FAL → ODE → BRK for a live replication source; LIV is a standard site so it picks the first reachable one |
 | `dc_features` | `10-dc-install-features.yml` | Installs the AD-DS/DNS/GPMC feature set |
 | `dc_promote` | `20-dc-promote.yml` | Runs `Install-ADDSDomainController` against the chosen source, reboots |
 | `dc_replicate` | `30-dc-replicate.yml` | Forces replication, waits for SYSVOL to synchronise, reports FSMO role placement |

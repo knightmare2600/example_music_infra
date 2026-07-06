@@ -133,8 +133,7 @@ a disconnected environment) is expected to answer "yes" too.
 
 ### CLD (Datacenter)
 
-CLD probes FAL, then ODE, then BRK. CLD is never used as a replication
-*source* for site DCs.
+CLD probes FAL, then ODE, then BRK.
 
 ### FAL (Head office)
 
@@ -147,8 +146,9 @@ Same logic as FAL — CLD first, then other hubs (skipping self).
 
 ### Standard sites
 
-Standard site DCs probe FAL → ODE → BRK in order.  If none is reachable,
-the play falls back to any existing DC at `.10` for that site's subnet.
+Standard site DCs probe CLD → FAL → ODE → BRK in order.  If none is
+reachable, the play falls back to any existing DC at `.10` for that site's
+subnet.
 
 ---
 
@@ -181,3 +181,5 @@ already covered by the suffix_map.
 - 2026-07-06  Renumbered 85/90/95/99 → 00/10/20/30/40; split promote into
   feature-install (10) and dcpromo (20); forest-root is now operator-
   confirmed on any site, not hardcoded to CLD
+- 2026-07-06  Standard-site probe order now CLD → FAL → ODE → BRK (CLD
+  added ahead of FAL)
