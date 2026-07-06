@@ -7,18 +7,6 @@
 #   2026-06-20  Initial file
 # =============================================================================
 
-# Ansible connection — SSH primary, WinRM fallback
-ansible_connection:        ssh
-ansible_shell_type:        powershell
-ansible_user:              Administrator
-ansible_port:              22
-
-# WinRM fallback vars (override per-host or per-group if needed)
-# ansible_connection:                winrm
-# ansible_winrm_transport:           basic
-# ansible_winrm_server_cert_validation: ignore
-# ansible_port:                      5986
-
 # Chocolatey packages installed on every Windows host
 choco_packages_common:
   - winscp.install
@@ -51,3 +39,15 @@ registry_common:
   - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced',           name: Hidden,                       data: 1,  type: dword }
   - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize',          name: AppsUseLightTheme,            data: 0,  type: dword }
   - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize',          name: SystemUsesLightTheme,         data: 0,  type: dword }
+
+# Registry keys applied when exa_deadvertise_enabled is true (desktop + laptop only)
+registry_deadvertise:
+  - { path: 'HKCU:\Software\Policies\Microsoft\Windows\Explorer',                              name: DisableSearchBoxSuggestions,           data: 1,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SystemPaneSuggestionsEnabled,          data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SubscribedContent-338388Enabled,       data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SubscribedContent-338389Enabled,       data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager',          name: SoftLandingEnabled,                    data: 0,  type: dword }
+  - { path: 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced',               name: Start_TrackProgs,                      data: 0,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent',                         name: DisableWindowsConsumerFeatures,        data: 1,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection',                       name: AllowTelemetry,                        data: 0,  type: dword }
+  - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection',                       name: DisableOneSettingsDownloads,           data: 1,  type: dword }
