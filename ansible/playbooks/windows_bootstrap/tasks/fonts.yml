@@ -1,0 +1,60 @@
+---
+# =============================================================================
+# tasks/fonts.yml
+# Example Music Limited — JetBrainsMono Nerd Font deployment
+# =============================================================================
+# Downloads the JetBrainsMono Nerd Font release directly from upstream
+# (nerd-fonts GitHub releases), extracts it, and deploys only the specific
+# variants listed in exa_font_files (group_vars/all/vars.yml) — the release
+# zip contains many more weights/variants than we actually use.
+#
+# Previously these were downloaded individually from the internal asset
+# server (192.168.139.50); that server doesn't actually host them, so this
+# always would have failed in practice. Pulling from the upstream release
+# means no asset-server hosting is needed for fonts at all.
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — replaces per-file asset-server downloads
+#               (previously inline in tasks/ps7_setup.yml Stage 20 and
+#               duplicated again in playbooks/50-binaries.yml) with a
+#               single upstream release zip, shared by both.
+# =============================================================================
+
+- name: "[Fonts] Ensure font staging directory exists"
+  ansible.windows.win_file:
+    path: 'C:\Windows\Temp\nerd-fonts'
+    state: directory
+
+- name: "[Fonts] Download JetBrainsMono Nerd Font release zip"
+  ansible.windows.win_get_url:
+    url:  "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip"
+    dest: 'C:\Windows\Temp\nerd-fonts\JetBrainsMono.zip'
+
+- name: "[Fonts] Extract JetBrainsMono Nerd Font release zip"
+  community.windows.win_unzip:
+    src:  'C:\Windows\Temp\nerd-fonts\JetBrainsMono.zip'
+    dest: 'C:\Windows\Temp\nerd-fonts\extracted'
+
+- name: "[Fonts] Deploy JetBrainsMono Nerd Font files"
+  ansible.windows.win_copy:
+    remote_src: true
+    src:  'C:\Windows\Temp\nerd-fonts\extracted\{{ item }}'
+    dest: 'C:\Windows\Fonts\{{ item }}'
+  loop: "{{ exa_font_files }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[Fonts] Register fonts in registry"
+  ansible.windows.win_regedit:
+    path: 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+    name: "{{ item | regex_replace('\\.ttf$', '') }} (TrueType)"
+    data: "{{ item }}"
+    type: string
+  loop: "{{ exa_font_files }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[Fonts] Clean up font staging directory"
+  ansible.windows.win_file:
+    path: 'C:\Windows\Temp\nerd-fonts'
+    state: absent

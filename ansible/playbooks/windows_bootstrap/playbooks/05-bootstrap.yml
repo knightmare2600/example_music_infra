@@ -43,7 +43,7 @@
 #   10  Dark mode
 #   11  Chocolatey
 #   12  Guest tools
-#   13  RustDesk
+#   13  RustDesk — removed, redundant with rustdesk.install in Stage 14
 #   14  Baseline Chocolatey packages
 #   15  RSAT
 #   16  OpenSSH + Ansible key
@@ -56,6 +56,16 @@
 #   22  Hyper terminal config
 #   22b Windows Terminal settings.json
 #   23  Finish — summary + reboot
+#
+# Stages 6 (partial), 7, 8, 10, 12, 15, 17, 17b, 18, and 19-22b delegate to
+# shared tasks/*.yml files rather than inlining their logic — the same
+# files are also included by standalone playbooks/NN-*.yml plays (see
+# site.yml) so this chain and a standalone re-run share one source of
+# truth. Stage 13 has been removed entirely (see changelog). Stages 3, 4,
+# 5, 9, 11, 14, 16, and 23 still inline their own logic here (some, like
+# Stage 4/5's first-DC handling, are tightly specific to this chain; others,
+# like 9/11/14/16, predate this split and duplicate an existing standalone
+# file — out of scope for this pass).
 #
 # =============================================================================
 # Changelog:
@@ -88,6 +98,53 @@
 #               it as one opaque string and cmd receives the braces intact.
 #   2026-07-02  Patch 4: Stage 17b — apply Patch 3 fix (double-quoted cmd /c)
 #               Add setres task at end of file — sets resolution to 1280x960
+#   2026-07-06  Extracted Stages 7, 8, 10, 15, 17, 17b, 18, and the
+#               SConfig/pagefile part of Stage 6 into shared tasks/*.yml
+#               files (Stage 12 and 19-22b already delegated this way — no
+#               change there), and added standalone playbooks/NN-*.yml
+#               wrappers for each so every one of these can be run/retried
+#               independently instead of only inline during initial
+#               bootstrap. See site.yml for the new tags.
+#   2026-07-06  Removed Stage 13 (RustDesk) entirely — it downloaded from
+#               the asset server with a Chocolatey fallback, but
+#               rustdesk.install is already in choco_packages_common
+#               (Stage 14), which unconditionally installs it. Pure
+#               redundancy; the asset server doesn't actually host the
+#               RustDesk installer anyway.
+#   2026-07-06  Added wget, busybox to choco_packages_common (both have
+#               Chocolatey packages; the asset server doesn't actually host
+#               their binaries). Removed the binaries_common var entirely —
+#               it defined dua.exe/wget.exe but no task in this file ever
+#               consumed it; dua-cli now comes from tasks/dua_cli.yml
+#               (only wired into 50-binaries.yml, which is where
+#               binaries_common was actually used).
+#   2026-07-06  Unified choco_packages_common/_server/_desktop with
+#               40-choco-packages.yml — the two files had independently
+#               drifted to different package sets (this file installed
+#               sysinternals/windirstat unconditionally and had no
+#               role-specific extras at all; 40-choco-packages.yml treated
+#               them as server/desktop-only and separately installed
+#               vcredist-all/dotnetfx/googlechrome/firefox/vlc/nmap that
+#               this file never touched), so a host's actual package set
+#               depended on which of the two paths provisioned it. Also
+#               reconciled naming — some packages have both a bare and a
+#               ".install" Chocolatey package (different install
+#               mechanisms); standardised on ".install" where both exist
+#               (7zip, notepadplusplus, putty, winscp, rustdesk). Added the
+#               role-based choco_packages_extra selection (previously only
+#               in 40-choco-packages.yml) so Stage 14 now installs the same
+#               packages a standalone 40-choco-packages.yml run would.
+#   2026-07-06  Replaced choco_packages_desktop (role-based: WKS/LAP/SUR
+#               only) with choco_packages_gui, gated on a detected has_gui
+#               fact instead of host role. googlechrome/firefox/vlc/
+#               windows-terminal are GUI-dependent apps, not "desktop-role"
+#               apps — a Windows Server host with Desktop Experience
+#               installed (not Server Core) should get them too, which the
+#               old role-based split never allowed. has_gui comes from
+#               HKLM:\...\CurrentVersion InstallationType (Client/Server/
+#               Server Core) — Server Core is the only case without a GUI
+#               shell. choco_packages_common is unaffected (windirstat and
+#               hyper are confirmed to run fine on Server Core).
 # =============================================================================
 
 - name: Windows — PostOOBE Bootstrap (replaces Join-DomainAndBootstrap.ps1)
@@ -122,19 +179,40 @@
     # ── Chocolatey ────────────────────────────────────────────────────────────
     exa_choco_source: "https://community.chocolatey.org/api/v2/"
 
+    # Canonical package set — kept byte-for-byte identical to
+    # 40-choco-packages.yml's copy (both files must stay self-contained,
+    # see that file's design note; "canonical" here means "the values
+    # agree", not "lives in one place").
     choco_packages_common:
       - 7zip.install
-      - edit
-      - far
-      - hyper
       - notepadplusplus.install
       - powershell-core
-      - putty.install
-      - rustdesk.install
+      - hyper
+      - far
+      - edit
       - sdelete
+      - putty.install
+      - winscp.install
+      - rustdesk.install
+      - wget
+      - busybox
+      - vcredist-all
+      - dotnetfx
       - sysinternals
       - windirstat
-      - winscp.install
+
+    # Server-role-specific (SRV/DCS), installed regardless of GUI presence
+    choco_packages_server:
+      - nmap
+
+    # GUI-dependent (browsers etc.) — installed on Client OS always, and on
+    # Server OS only if Desktop Experience is installed (not Server Core).
+    # See has_gui fact in Stage 14.
+    choco_packages_gui:
+      - googlechrome
+      - firefox
+      - vlc
+      - windows-terminal
 
     # ── Screen lock ───────────────────────────────────────────────────────────
     exa_lock_timeout_secs: 3600
@@ -150,11 +228,6 @@
       - JetBrainsMonoNerdFont-BoldItalic.ttf
       - JetBrainsMonoNerdFont-Italic.ttf
       - JetBrainsMonoNerdFontMono-Regular.ttf
-
-    # ── Binaries ──────────────────────────────────────────────────────────────
-    binaries_common:
-      - { src: "dua.exe",  dest: "dua.exe"  }
-      - { src: "wget.exe", dest: "wget.exe" }
 
     # ── Registry ──────────────────────────────────────────────────────────────
     registry_common:
@@ -345,20 +418,8 @@
       ansible.windows.win_shell: powercfg /hibernate off
       changed_when: true
 
-    - name: "[Stage 6] Disable SConfig auto-launch at logon (Server only, all users)"
-      ansible.windows.win_shell: |
-        if (Get-Command Set-SConfig -ErrorAction SilentlyContinue) {
-            Set-SConfig -AutoLaunch $false
-        }
-      changed_when: true
-      when: is_server
-
-    - name: "[Stage 6] Clear page file at shutdown"
-      ansible.windows.win_regedit:
-        path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management'
-        name: ClearPageFileAtShutdown
-        data: 1
-        type: dword
+    - name: Include power/pagefile tasks (SConfig auto-launch, pagefile)
+      include_tasks: ../tasks/power_pagefile.yml
 
     # =========================================================================
     # Stage 7 — Locale & timezone
@@ -368,17 +429,8 @@
       debug:
         msg: "Setting locale to en-GB, timezone to GMT Standard Time..."
 
-    - name: "[Stage 7] Set timezone to GMT Standard Time"
-      ansible.windows.win_timezone:
-        timezone: "GMT Standard Time"
-
-    - name: "[Stage 7] Set locale and UI language to en-GB"
-      ansible.windows.win_shell: |
-        Set-WinUILanguageOverride -Language en-GB
-        Set-WinUserLanguageList en-GB -Force
-        Set-WinHomeLocation -GeoId 242
-        Set-Culture en-GB
-      changed_when: true
+    - name: Include locale and timezone tasks
+      include_tasks: ../tasks/locale_timezone.yml
 
     # =========================================================================
     # Stage 8 — Screen lock
@@ -388,32 +440,8 @@
       debug:
         msg: "Configuring screen lock and timeout..."
 
-    - name: "[Stage 8] Set machine-level inactivity timeout (60 min)"
-      ansible.windows.win_regedit:
-        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
-        name: InactivityTimeoutSecs
-        data: "{{ exa_lock_timeout_secs }}"
-        type: dword
-
-    - name: "[Stage 8] Set screensaver to blank with password"
-      ansible.windows.win_regedit:
-        path: 'HKCU:\Control Panel\Desktop'
-        name: "{{ item.name }}"
-        data: "{{ item.data }}"
-        type: "{{ item.type }}"
-      loop:
-        - { name: SCRNSAVE.EXE,       data: 'C:\Windows\system32\scrnsave.scr', type: string }
-        - { name: ScreenSaveActive,    data: "1",                                type: string }
-        - { name: ScreenSaverIsSecure, data: "1",                                type: string }
-        - { name: ScreenSaveTimeOut,   data: "3600",                             type: string }
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: "[Stage 8] Set monitor timeout (plugged in and on battery)"
-      ansible.windows.win_shell: |
-        powercfg /change monitor-timeout-ac 60
-        powercfg /change monitor-timeout-dc 30
-      changed_when: true
+    - name: Include screen lock tasks
+      include_tasks: ../tasks/screenlock.yml
 
     # =========================================================================
     # Stage 9 — Corporate wallpaper
@@ -482,25 +510,8 @@
       debug:
         msg: "Enabling dark mode system-wide..."
 
-    - name: "[Stage 10] Set dark mode (HKLM)"
-      ansible.windows.win_regedit:
-        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
-        name: "{{ item.name }}"
-        data: 0
-        type: dword
-      loop:
-        - { name: AppsUseLightTheme   }
-        - { name: SystemUsesLightTheme }
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: "[Stage 10] Set dark mode in Default user hive"
-      ansible.windows.win_shell: |
-        reg load HKU\DefaultUser C:\Users\Default\NTUSER.DAT
-        reg add "HKU\DefaultUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v AppsUseLightTheme    /t REG_DWORD /d 0 /f
-        reg add "HKU\DefaultUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v SystemUsesLightTheme /t REG_DWORD /d 0 /f
-        reg unload HKU\DefaultUser
-      changed_when: true
+    - name: Include dark mode tasks
+      include_tasks: ../tasks/dark_mode.yml
 
     # =========================================================================
     # Stage 11 — Chocolatey
@@ -535,35 +546,10 @@
       include_tasks: ../tasks/guest_tools.yml
 
     # =========================================================================
-    # Stage 13 — RustDesk
+    # Stage 13 — RustDesk: removed. rustdesk.install is in choco_packages_common
+    # below (Stage 14), which already installs it — the asset-server-first,
+    # choco-fallback logic that used to live here was pure redundancy.
     # =========================================================================
-
-    - name: "── Stage 13 — RustDesk ──"
-      debug:
-        msg: "Installing RustDesk..."
-
-    - name: "[Stage 13] Check RustDesk installer on asset server"
-      ansible.windows.win_uri:
-        url: "{{ exa_asset_base }}/x86_64/rustdesk-1.4.5-x86_64.exe"
-        method: HEAD
-        status_code: [200, 404]
-      register: rustdesk_asset_check
-      failed_when: false
-
-    - name: "[Stage 13] Install RustDesk from asset server"
-      ansible.windows.win_package:
-        path: "{{ exa_asset_base }}/x86_64/rustdesk-1.4.5-x86_64.exe"
-        arguments: "--silent-install"
-        state: present
-      when:
-        - host_arch == 'x86_64'
-        - rustdesk_asset_check.status_code | default(404) == 200
-
-    - name: "[Stage 13] Install RustDesk via Chocolatey (fallback)"
-      chocolatey.chocolatey.win_chocolatey:
-        name:  rustdesk
-        state: present
-      when: rustdesk_asset_check.status_code | default(404) != 200
 
     # =========================================================================
     # Stage 14 — Baseline Chocolatey packages
@@ -573,11 +559,40 @@
       debug:
         msg: "Installing baseline Chocolatey packages..."
 
+    - name: "[Stage 14] Detect Windows installation type (Client / Server / Server Core)"
+      ansible.windows.win_shell: |
+        (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').InstallationType
+      register: stage14_installation_type
+      changed_when: false
+
+    - name: "[Stage 14] Set has_gui fact"
+      set_fact:
+        has_gui: "{{ stage14_installation_type.stdout | trim != 'Server Core' }}"
+
+    - name: "[Stage 14] Determine role-specific package set"
+      set_fact:
+        choco_packages_extra: >-
+          {{ choco_packages_server if (host_role | default('') in ['DCS', 'SRV']) else [] }}
+
     - name: "[Stage 14] Install common baseline packages"
       chocolatey.chocolatey.win_chocolatey:
         name:   "{{ choco_packages_common }}"
         state:  present
         source: "{{ exa_choco_source }}"
+
+    - name: "[Stage 14] Install role-specific baseline packages"
+      chocolatey.chocolatey.win_chocolatey:
+        name:   "{{ choco_packages_extra }}"
+        state:  present
+        source: "{{ exa_choco_source }}"
+      when: choco_packages_extra | length > 0
+
+    - name: "[Stage 14] Install GUI packages (Client OS, or Server with Desktop Experience)"
+      chocolatey.chocolatey.win_chocolatey:
+        name:   "{{ choco_packages_gui }}"
+        state:  present
+        source: "{{ exa_choco_source }}"
+      when: has_gui | bool
 
     # - name: "[Stage 14] Install Windows System Control Centre (pinned)"
     #   chocolatey.chocolatey.win_chocolatey:
@@ -594,26 +609,8 @@
       debug:
         msg: "Installing RSAT ({{ 'Server features' if is_server else 'Desktop capabilities' }})..."
 
-    - name: "[Stage 15] Install RSAT via Server Manager (Server OS)"
-      ansible.windows.win_feature:
-        name:
-          - RSAT-AD-PowerShell
-          - RSAT-AD-AdminCenter
-          - RSAT-ADDS-Tools
-          - RSAT-DNS-Server
-          - GPMC
-        state: present
-      when: is_server
-
-    - name: "[Stage 15] Install RSAT via Windows Capabilities (Desktop OS)"
-      ansible.windows.win_optional_feature:
-        name: "{{ item }}"
-        state: present
-      loop:
-        - Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
-        - Rsat.Dns.Tools~~~~0.0.1.0
-        - Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0
-      when: is_workstation
+    - name: Include RSAT tasks
+      include_tasks: ../tasks/rsat.yml
 
     # =========================================================================
     # Stage 16 — OpenSSH + Ansible key
@@ -716,85 +713,19 @@
       debug:
         msg: "Configuring RDP with NLA..."
 
-    - name: "[Stage 17] Enable RDP"
-      ansible.windows.win_regedit:
-        path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server'
-        name: fDenyTSConnections
-        data: 0
-        type: dword
-      notify: restart rdp
-
-    - name: "[Stage 17] Enforce NLA"
-      ansible.windows.win_regedit:
-        path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp'
-        name: UserAuthentication
-        data: 1
-        type: dword
-
-    - name: "[Stage 17] Ensure TermService is Automatic"
-      ansible.windows.win_service:
-        name: TermService
-        start_mode: auto
-        state: started
-
-    - name: "[Stage 17] Open RDP firewall rule"
-      community.windows.win_firewall_rule:
-        name:      "Remote Desktop"
-        group:     "Remote Desktop"
-        enabled:   true
-        state:     present
+    - name: Include RDP tasks
+      include_tasks: ../tasks/rdp.yml
 
     # =========================================================================
     # Stage 17b — SAC/EMS serial console (Server OS only)
     # =========================================================================
-    # Patch 3: bcdedit {bootmgr} and {current} tokens must be passed via
-    # cmd /c to bypass PowerShell's parser. win_shell runs via powershell.exe;
-    # single-quoted '{bootmgr}' is a valid PS literal string, but bcdedit on
-    # Windows Server 2022 rejects the token when wrapped in any quotes at all.
-    # cmd /c passes the arguments raw without any PS string parsing.
 
     - name: "── Stage 17b — SAC/EMS serial console ──"
       debug:
         msg: "{{ 'Configuring SAC/EMS...' if is_server else 'Workstation OS — skipping SAC/EMS.' }}"
 
-    - name: "[Stage 17b] Configure Windows Boot Manager serial redirect"
-      ansible.windows.win_shell: |
-        cmd /c "bcdedit /set {bootmgr} displaybootmenu yes"
-        cmd /c "bcdedit /set {bootmgr} timeout 10"
-        cmd /c "bcdedit /set {bootmgr} bootems yes"
-      changed_when: true
-      when: is_server
-
-    - name: "[Stage 17b] Configure EMS on current boot entry"
-      ansible.windows.win_shell: |
-        cmd /c "bcdedit /ems {current} on"
-        cmd /c "bcdedit /emssettings EMSPORT:1 EMSBAUDRATE:115200"
-      changed_when: true
-      when: is_server
-
-    - name: "[Stage 17b] Enable SAC service (sacsvr)"
-      ansible.windows.win_service:
-        name:       sacsvr
-        start_mode: auto
-        state:      started
-      when: is_server
-      failed_when: false
-
-    - name: "[Stage 17b] Prompt operator — confirm SAC visible via SOL"
-      pause:
-        prompt: |
-
-          ── SAC/EMS Configured ────────────────────────────────────────────────
-          EMS enabled on COM1 at 115200 8N1.
-          Requires a serial0 socket in the Proxmox VM config.
-
-          Verify via SOL:
-            ipmitool -I lanplus -H <pve-ip> -U admin -P <pass> sol activate
-
-          You should see the SAC prompt after next reboot.
-
-          Press Enter to continue.
-      when: is_server
+    - name: Include SAC/EMS tasks
+      include_tasks: ../tasks/sac_ems.yml
 
     # =========================================================================
     # Stage 18 — PSWindowsUpdate module
@@ -804,16 +735,8 @@
       debug:
         msg: "Installing PSWindowsUpdate module..."
 
-    - name: "[Stage 18] Install PSWindowsUpdate from PSGallery"
-      ansible.windows.win_shell: |
-        if (-not (Get-Module -ListAvailable PSWindowsUpdate)) {
-          Install-Module PSWindowsUpdate -Scope AllUsers -Force -SkipPublisherCheck
-          Write-Output "installed"
-        } else {
-          Write-Output "present"
-        }
-      register: stage18_result
-      changed_when: "'installed' in stage18_result.stdout"
+    - name: Include PSWindowsUpdate tasks
+      include_tasks: ../tasks/pswindowsupdate.yml
 
     # =========================================================================
     # Stages 19–22b — PS7 modules, fonts, profile, terminal config

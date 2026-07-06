@@ -356,27 +356,36 @@ next run unless also added to `sites.csv`.
 Bootstraps and configures Windows machines (desktops, laptops, servers).
 Ansible port of `Join-DomainAndBootstrap.ps1`.
 
-Two entry points:
-
-| Entry point | When to use |
-|-------------|-------------|
-| `site.yml` | Granular — runs numbered step playbooks, supports per-tag runs |
-| `playbooks/windows_bootstrap.yml` | All-in-one — domain join, tools, locale, wallpaper, OpenSSH in one play |
+`site.yml` is the entry point — it chain-imports numbered step playbooks,
+and supports per-tag runs. `00-preflight.yml` (hostname/static IP/Ansible
+key) chain-imports `05-bootstrap.yml` (the full PostOOBE bootstrap, Stages
+0b–23) as one combined play; everything from `10-rename.yml` onward is a
+separate standalone play that also runs inline as part of that same
+bootstrap chain (see `05-bootstrap.yml`'s own "Stage map" comment for which
+numbered stage each corresponds to).
 
 ### Numbered steps (site.yml)
 
 | Playbook | Tag | Description |
 |----------|-----|-------------|
-| `playbooks/00-bootstrap.yml` | `bootstrap` | Full PostOOBE bootstrap |
+| `playbooks/00-preflight.yml` | `bootstrap` | Hostname/static IP/Ansible key, then chain-imports `05-bootstrap.yml` (full PostOOBE bootstrap, Stages 0b–23) |
 | `playbooks/10-rename.yml` | `rename` | Rename to EXA convention |
+| `playbooks/15-locale-timezone.yml` | `locale_timezone` | Locale (en-GB) and timezone (GMT Standard Time) |
 | `playbooks/20-registry.yml` | `registry` | Registry hardening |
+| `playbooks/22-screenlock.yml` | `screenlock` | Screen lock and inactivity timeout |
 | `playbooks/25-deadvertise.yml` | `deadvertise` | Advertising/telemetry suppression |
 | `playbooks/30-chocolatey.yml` | `chocolatey` | Chocolatey installation |
+| `playbooks/35-guest-tools.yml` | `guest_tools` | VMware Tools / QEMU guest agent by hypervisor |
 | `playbooks/40-choco-packages.yml` | `choco_packages` | Package deployment |
+| `playbooks/45-rsat.yml` | `rsat` | RSAT tools (Server features or Desktop capabilities) |
+| `playbooks/48-pswindowsupdate.yml` | `pswindowsupdate` | PSWindowsUpdate module |
 | `playbooks/50-binaries.yml` | `binaries` | Arch-aware binary + font deployment |
-| `playbooks/60-wallpaper.yml` | `wallpaper` | Corporate wallpaper |
-| `playbooks/70-hibernation.yml` | `hibernation` | Hibernation policy |
+| `playbooks/60-wallpaper.yml` | `wallpaper` | Corporate wallpaper + dark mode |
+| `playbooks/70-hibernation.yml` | `hibernation` | Power management: hibernation, pagefile, SConfig by host type |
 | `playbooks/75-openssh.yml` | `openssh` | OpenSSH + Ansible key |
+| `playbooks/77-rdp.yml` | `rdp` | RDP with NLA |
+| `playbooks/78-sac-ems.yml` | `sac_ems` | SAC/EMS serial console (Server OS only) |
+| `playbooks/79-ps7-setup.yml` | `ps7_setup` | PS7 modules, fonts, profile, terminal config |
 | `playbooks/80-domainjoin.yml` | `domainjoin` | Join JUKEBOX domain |
 
 ### Usage
@@ -393,12 +402,14 @@ ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
 # Skip bootstrap (host already onboarded)
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
   -e target=EXAWKSFAL001 --skip-tags bootstrap --ask-vault-pass
-
-# All-in-one (first time, will prompt for local Administrator password)
-ansible-playbook -i configs/inventory \
-  playbooks/windows_bootstrap/playbooks/windows_bootstrap.yml \
-  --limit EXAWKSFAL001 --ask-vault-pass
 ```
+
+Note: a bare `site.yml` run with no `--tags`/`--skip-tags` currently runs
+*every* play above in sequence (bootstrap plus every standalone stage
+again) — the standalone plays aren't tagged `never` despite what an
+earlier changelog entry in `site.yml` claims. Use `--tags <name>` for a
+single stage, or `--tags bootstrap` for bootstrap-only, until that's
+tightened up.
 
 ### Dependencies
 

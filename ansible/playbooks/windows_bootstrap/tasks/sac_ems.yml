@@ -1,0 +1,64 @@
+---
+# =============================================================================
+# tasks/sac_ems.yml
+# Example Music Limited — SAC/EMS serial console (Stage 17b, Server OS only)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 17b
+# =============================================================================
+# bcdedit {bootmgr} and {current} tokens must be passed via cmd /c to bypass
+# PowerShell's parser. win_shell runs via powershell.exe; single-quoted
+# '{bootmgr}' is a valid PS literal string, but bcdedit on Windows Server
+# 2022 rejects the token when wrapped in any quotes at all. cmd /c passes
+# the arguments raw without any PS string parsing.
+#
+# Requires is_server (set by tasks/preflight.yml, or computed inline by
+# callers that don't run the full preflight chain — see
+# playbooks/78-sac-ems.yml).
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file (inline in 05-bootstrap.yml)
+#   2026-06-30  Patch 3: bcdedit {bootmgr}/{current} tokens fix — wrap
+#               entire bcdedit invocation in double quotes so cmd receives
+#               the braces intact.
+#   2026-07-02  Patch 4: apply Patch 3 fix (double-quoted cmd /c)
+#   2026-07-06  Extracted into a shared task file so 05-bootstrap.yml and
+#               playbooks/78-sac-ems.yml share one source of truth.
+# =============================================================================
+
+- name: "[Stage 17b] Configure Windows Boot Manager serial redirect"
+  ansible.windows.win_shell: |
+    cmd /c "bcdedit /set {bootmgr} displaybootmenu yes"
+    cmd /c "bcdedit /set {bootmgr} timeout 10"
+    cmd /c "bcdedit /set {bootmgr} bootems yes"
+  changed_when: true
+  when: is_server
+
+- name: "[Stage 17b] Configure EMS on current boot entry"
+  ansible.windows.win_shell: |
+    cmd /c "bcdedit /ems {current} on"
+    cmd /c "bcdedit /emssettings EMSPORT:1 EMSBAUDRATE:115200"
+  changed_when: true
+  when: is_server
+
+- name: "[Stage 17b] Enable SAC service (sacsvr)"
+  ansible.windows.win_service:
+    name:       sacsvr
+    start_mode: auto
+    state:      started
+  when: is_server
+  failed_when: false
+
+- name: "[Stage 17b] Prompt operator — confirm SAC visible via SOL"
+  pause:
+    prompt: |
+
+      ── SAC/EMS Configured ────────────────────────────────────────────────
+      EMS enabled on COM1 at 115200 8N1.
+      Requires a serial0 socket in the Proxmox VM config.
+
+      Verify via SOL:
+        ipmitool -I lanplus -H <pve-ip> -U admin -P <pass> sol activate
+
+      You should see the SAC prompt after next reboot.
+
+      Press Enter to continue.
+  when: is_server

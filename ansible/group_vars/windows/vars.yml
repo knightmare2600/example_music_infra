@@ -5,25 +5,33 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-06  Added rustdesk, wget, busybox (all previously binaries
+#               pulled from the asset server, which doesn't host them);
+#               removed dua-cli (now tasks/dua_cli.yml, an upstream GitHub
+#               release, not a Chocolatey package) and emptied
+#               binaries_common (dua.exe/wget.exe both migrated away).
+#   2026-07-06  Removed choco_packages_common entirely — it was dead code
+#               (shadowed by both real consumers' own play vars:, see
+#               note below) and had drifted from them besides. Not worth
+#               a confusing third copy.
 # =============================================================================
 
-# Chocolatey packages installed on every Windows host
-choco_packages_common:
-  - winscp.install
-  - putty.install
-  - hyper
-  - notepadplusplus.install
-  - powershell-core
-  - 7zip.install
-  - far
-  - dua-cli
-  - rustdesk
+# NOTE: choco_packages_common is NOT defined here. Both consumers
+# (playbooks/05-bootstrap.yml and playbooks/40-choco-packages.yml) run
+# against a bare-IP host with no inventory group membership yet, so they
+# each keep their own self-contained, byte-for-byte-identical copy of this
+# list instead — see either file's design note. A copy used to live here
+# too, but nothing ever read it (play vars: always wins over group_vars,
+# so it was silently shadowed) and it had drifted from the two real
+# copies; removed rather than leave a third, misleading version around.
 
 # Binaries deployed to C:\Windows\ on every host (arch-aware, src resolved at runtime)
 # Format: { src: "<filename in arch folder>", dest: "<filename on host>" }
-binaries_common:
-  - { src: "dua.exe",    dest: "dua.exe" }
-  - { src: "wget.exe",   dest: "wget.exe" }
+# dua.exe and wget.exe removed — dua-cli now comes from tasks/dua_cli.yml
+# (upstream GitHub release, arch-aware), wget is a Chocolatey package
+# (choco_packages_common above). Neither was actually hosted by the asset
+# server in the first place.
+binaries_common: []
 
 # Registry keys applied to every Windows host
 registry_common:

@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# playbooks/78-sac-ems.yml
+# Example Music Limited — SAC/EMS serial console (Server OS only)
+# =============================================================================
+# Configures Windows Boot Manager serial redirect (bcdedit), enables EMS on
+# the current boot entry, and starts the SAC service. No-op on workstation
+# OS. Pauses for operator confirmation via SOL at the end (same as inline
+# during bootstrap) — this is a one-time-per-drift-fix action worth
+# confirming, not routine idempotent noise.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/78-sac-ems.yml
+#
+# Tags: sac_ems
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from 05-bootstrap.yml Stage 17b so
+#               it can be run/retried standalone instead of only inline
+#               during initial bootstrap. is_server isn't computed by the
+#               full tasks/preflight.yml chain here (that file does much
+#               more than OS-type detection); a small inline ProductType
+#               check is enough, matching playbooks/45-rsat.yml.
+# =============================================================================
+
+- name: Windows — SAC/EMS serial console
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  tasks:
+
+    - name: Detect OS product type (1=Workstation 2=DC 3=Server)
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_OperatingSystem).ProductType
+      register: sac_ems_product_type
+      changed_when: false
+      tags: sac_ems
+
+    - name: Set OS type fact
+      set_fact:
+        is_server: "{{ sac_ems_product_type.stdout | trim in ['2', '3'] }}"
+      tags: sac_ems
+
+    - name: Skip — workstation OS (SAC/EMS is Server-only)
+      debug:
+        msg: "{{ inventory_hostname }} is not a Server OS — skipping SAC/EMS."
+      when: not is_server
+      tags: sac_ems
+
+    - name: Include SAC/EMS tasks
+      include_tasks: ../tasks/sac_ems.yml
+      tags: sac_ems

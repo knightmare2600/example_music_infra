@@ -25,17 +25,25 @@
 #     -i configs/inventory
 #
 # Playbook order:
-#   00-bootstrap    Full PostOOBE bootstrap (replaces Join-DomainAndBootstrap.ps1)
-#   10-rename       Rename (standalone — also runs inside bootstrap)
-#   20-registry     Registry hardening
-#   25-deadvertise  Advertising/telemetry suppression (desktop + laptop only)
-#   30-chocolatey   Chocolatey installation
-#   40-choco-pkgs   Chocolatey packages
-#   50-binaries     Arch-aware binary + font deployment
-#   60-wallpaper    Corporate wallpaper
-#   70-hibernation  Hibernation policy by host type
-#   75-openssh      OpenSSH + Ansible key (standalone — also runs inside bootstrap)
-#   80-domainjoin   Domain join (standalone — also runs inside bootstrap)
+#   00-bootstrap       Full PostOOBE bootstrap (replaces Join-DomainAndBootstrap.ps1)
+#   10-rename          Rename (standalone — also runs inside bootstrap)
+#   15-locale-timezone Locale and timezone (standalone — also runs inside bootstrap)
+#   20-registry        Registry hardening
+#   22-screenlock      Screen lock and inactivity timeout (standalone — also runs inside bootstrap)
+#   25-deadvertise     Advertising/telemetry suppression (desktop + laptop only)
+#   30-chocolatey      Chocolatey installation
+#   35-guest-tools     Hypervisor guest tools (standalone — also runs inside bootstrap)
+#   40-choco-pkgs      Chocolatey packages
+#   45-rsat            RSAT tools (standalone — also runs inside bootstrap)
+#   48-pswindowsupdate PSWindowsUpdate module (standalone — also runs inside bootstrap)
+#   50-binaries        Arch-aware binary + font deployment
+#   60-wallpaper       Corporate wallpaper + dark mode
+#   70-hibernation     Power management: hibernation, pagefile, SConfig by host type
+#   75-openssh         OpenSSH + Ansible key (standalone — also runs inside bootstrap)
+#   77-rdp             RDP with NLA (standalone — also runs inside bootstrap)
+#   78-sac-ems         SAC/EMS serial console, Server OS only (standalone — also runs inside bootstrap)
+#   79-ps7-setup       PS7 modules, fonts, profile, terminal config (standalone — also runs inside bootstrap)
+#   80-domainjoin      Domain join (standalone — also runs inside bootstrap)
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
@@ -43,6 +51,21 @@
 #   2026-07-02  Standalone management plays tagged [never, <name>] so a bare
 #               site.yml run only executes the bootstrap sequence. Each
 #               standalone play must be invoked with --tags <name> explicitly.
+#   2026-07-06  Added 9 new standalone plays (15/22/35/45/48/76/77/78/79),
+#               extracted from stages that previously only existed inline
+#               in 05-bootstrap.yml, so each can be run/retried independently.
+#               NOTE: the "[never, <name>]" tagging described in the
+#               2026-07-02 entry above was never actually implemented in
+#               any of these playbook files (checked all of them) — a bare
+#               `site.yml` run with no --tags currently executes every
+#               play below in sequence, not just bootstrap. That's a
+#               pre-existing gap, not something this change introduces;
+#               flagging it here since it's directly relevant to how these
+#               new plays behave by default. Left as-is pending a decision
+#               on whether/how to fix it repo-wide.
+#   2026-07-06  Removed 76-rustdesk.yml — rustdesk is a Chocolatey package
+#               (choco_packages_common, via 40-choco-packages.yml), so a
+#               dedicated asset-server-download playbook was redundant.
 # =============================================================================
 
 # Bootstrap sequence — runs by default (preflight chain-imports 05-bootstrap.yml)
@@ -52,8 +75,14 @@
 - import_playbook: playbooks/10-rename.yml
   tags: rename
 
+- import_playbook: playbooks/15-locale-timezone.yml
+  tags: locale_timezone
+
 - import_playbook: playbooks/20-registry.yml
   tags: registry
+
+- import_playbook: playbooks/22-screenlock.yml
+  tags: screenlock
 
 - import_playbook: playbooks/25-deadvertise.yml
   tags: deadvertise
@@ -61,8 +90,17 @@
 - import_playbook: playbooks/30-chocolatey.yml
   tags: chocolatey
 
+- import_playbook: playbooks/35-guest-tools.yml
+  tags: guest_tools
+
 - import_playbook: playbooks/40-choco-packages.yml
   tags: choco_packages
+
+- import_playbook: playbooks/45-rsat.yml
+  tags: rsat
+
+- import_playbook: playbooks/48-pswindowsupdate.yml
+  tags: pswindowsupdate
 
 - import_playbook: playbooks/50-binaries.yml
   tags: binaries
@@ -75,6 +113,15 @@
 
 - import_playbook: playbooks/75-openssh.yml
   tags: openssh
+
+- import_playbook: playbooks/77-rdp.yml
+  tags: rdp
+
+- import_playbook: playbooks/78-sac-ems.yml
+  tags: sac_ems
+
+- import_playbook: playbooks/79-ps7-setup.yml
+  tags: ps7_setup
 
 - import_playbook: playbooks/80-domainjoin.yml
   tags: domainjoin

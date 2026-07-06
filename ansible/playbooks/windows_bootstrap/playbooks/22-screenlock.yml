@@ -1,0 +1,29 @@
+---
+# =============================================================================
+# playbooks/22-screenlock.yml
+# Example Music Limited — Screen lock and inactivity timeout
+# =============================================================================
+# Sets machine-level inactivity timeout, a blank password-protected
+# screensaver, and monitor timeouts (AC/DC). Safe to re-run.
+#
+# exa_lock_timeout_secs → group_vars/all/vars.yml (single source of truth).
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/22-screenlock.yml
+#
+# Tags: screenlock
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from 05-bootstrap.yml Stage 8 so it
+#               can be run/retried standalone instead of only inline during
+#               initial bootstrap.
+# =============================================================================
+
+- name: Windows — Screen lock
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  tasks:
+
+    - name: Include screen lock tasks
+      include_tasks: ../tasks/screenlock.yml
+      tags: screenlock

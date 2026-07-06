@@ -1,0 +1,27 @@
+---
+# =============================================================================
+# playbooks/15-locale-timezone.yml
+# Example Music Limited — Locale and timezone
+# =============================================================================
+# Sets timezone to GMT Standard Time and locale/UI language to en-GB.
+# Safe to re-run.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/15-locale-timezone.yml
+#
+# Tags: locale_timezone
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from 05-bootstrap.yml Stage 7 so it
+#               can be run/retried standalone instead of only inline during
+#               initial bootstrap.
+# =============================================================================
+
+- name: Windows — Locale and timezone
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  tasks:
+
+    - name: Include locale and timezone tasks
+      include_tasks: ../tasks/locale_timezone.yml
+      tags: locale_timezone

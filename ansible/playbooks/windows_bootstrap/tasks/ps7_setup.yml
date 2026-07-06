@@ -6,6 +6,12 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-06  Stage 20 now includes tasks/fonts.yml instead of downloading
+#               font files individually from the internal asset server
+#               (which doesn't actually host them) — pulls the release zip
+#               from upstream (nerd-fonts on GitHub) instead. Shared with
+#               playbooks/50-binaries.yml, which had the same logic
+#               duplicated.
 # =============================================================================
 
 # ── Stage 19 — PS7 modules (AllUsers) ────────────────────────────────────────
@@ -47,23 +53,8 @@
 
 # ── Stage 20 — JetBrainsMono Nerd Font ───────────────────────────────────────
 
-- name: "[Stage 20] Deploy JetBrainsMono Nerd Font files from asset server"
-  ansible.windows.win_get_url:
-    url:  "{{ exa_asset_base }}/fonts/{{ item }}"
-    dest: "C:\\Windows\\Fonts\\{{ item }}"
-  loop: "{{ exa_font_files }}"
-  loop_control:
-    label: "{{ item }}"
-
-- name: "[Stage 20] Register fonts in registry"
-  ansible.windows.win_regedit:
-    path: 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
-    name: "{{ item | regex_replace('\\.ttf$', '') }} (TrueType)"
-    data: "{{ item }}"
-    type: string
-  loop: "{{ exa_font_files }}"
-  loop_control:
-    label: "{{ item }}"
+- name: "[Stage 20] Include font deployment tasks"
+  include_tasks: fonts.yml
 
 # ── Stage 21 — PS7 AllUsersAllHosts profile ───────────────────────────────────
 
