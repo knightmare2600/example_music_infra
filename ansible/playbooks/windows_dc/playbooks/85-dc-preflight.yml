@@ -6,13 +6,8 @@
 # Resolves the replication source DC and validates pre-conditions before
 # promotion.  Handles the special-sauce site permutations:
 #
-#   CLD  — Datacenter DC.  May be the very first DC built (forest root) or an
-#          additional DC added later.  If no other DC is reachable this play
-#          detects that and sets dc_is_forest_root=true, which causes
-#          90-dc-promote.yml to run Install-ADDSForest instead of
-#          Install-ADDSDomainController.  CLD is NEVER used as a replication
-#          source for site DCs — site DCs always replicate from their nearest
-#          hub or FAL.
+#   CLD  — Datacenter DC.  CLD is NEVER used as a replication source for site
+#          DCs — site DCs always replicate from their nearest hub or FAL.
 #
 #   FAL  — Head office.  Holds PDC Emulator + Global Catalog.  Primary
 #          replication source for all non-hub, non-CLD sites if reachable.
@@ -28,11 +23,17 @@
 #   2.  ODE primary DC  (192.168.126.10)  — first fallback
 #   3.  BRK primary DC  (192.168.136.10)  — second fallback
 #   4.  Any DC already listed in sites.csv for this site
-#   5.  ABORT — no replication source reachable
+#   5.  No candidate reachable → ask the operator whether this is the first
+#       DC in the forest (see below) instead of aborting outright
 #
-# For CLD:
-#   If no DC is reachable anywhere → dc_is_forest_root=true (first build)
-#   If any DC reachable            → standard additional DC promotion
+# Forest root (dc_is_forest_root) — ANY site, not just CLD:
+#   If no candidate DC is reachable from anywhere, this play does NOT infer
+#   forest-root status from the site name. It asks the operator directly:
+#   "Is this the first DC in the AD Forest?" A "yes" sets
+#   dc_is_forest_root=true (90-dc-promote.yml then runs Install-ADDSForest
+#   instead of Install-ADDSDomainController) regardless of which site the
+#   host is in. A "no" aborts the play, since there is then no valid
+#   replication source and no confirmation that one is unnecessary.
 #
 # For FAL, ODE, BRK themselves:
 #   They replicate from CLD if reachable, else from each other in the
@@ -50,7 +51,8 @@
 #
 # Sets facts consumed by 90-dc-promote.yml:
 #   dc_replication_source   — FQDN or IP of the source DC
-#   dc_is_forest_root       — true only when building the very first DC
+#   dc_is_forest_root       — true only when operator confirms this is the
+#                             first DC in the forest (any site — see above)
 #   dc_site_role            — 'hub_primary' | 'hub_cld' | 'standard'
 #   dc_source_site          — 3-letter site code of the chosen source
 #
@@ -76,6 +78,22 @@
 #               automatically once ansible_password is present, no
 #               ansible.cfg changes needed. Requires sshpass installed on
 #               the control node.
+#   2026-07-06  Same ungrouped-run gap as the 2026-07-04 vars_prompt fix, but
+#               for dc_cld_site/dc_hub_sites: bare-target runs (inventory
+#               parse failure, or target not a member of windows_dc) don't
+#               pull in group_vars/windows_dc/vars.yml, so "Set dc_site_role
+#               fact" blew up on 'dc_cld_site' is undefined. Added
+#               | default('CLD') / | default(['FAL','ODE','BRK']) fallbacks
+#               matching the group_vars values so grouped runs are unaffected
+#               and ungrouped runs no longer abort here.
+#   2026-07-06  Forest-root detection no longer hardcoded to CLD. Site is
+#               just where a DC happens to sit — it says nothing about
+#               whether this is the very first DC built for the forest (a
+#               non-CLD site with populate_ad=no is exactly this case).
+#               dc_source_resolution.yml now asks the operator directly
+#               ("Is this the first DC in the AD Forest?") when no candidate
+#               is reachable, for any dc_site_role, instead of only setting
+#               dc_is_forest_root=true when dc_site_role == 'hub_cld'.
 #
 # =============================================================================
 
@@ -179,8 +197,8 @@
     - name: Set dc_site_role fact
       set_fact:
         dc_site_role: >-
-          {%- if host_site == dc_cld_site -%}hub_cld
-          {%- elif host_site in dc_hub_sites -%}hub_primary
+          {%- if host_site == (dc_cld_site | default('CLD')) -%}hub_cld
+          {%- elif host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) -%}hub_primary
           {%- else -%}standard
           {%- endif -%}
       tags: dc_preflight
