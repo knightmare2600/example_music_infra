@@ -6,24 +6,25 @@
 # Resolves the replication source DC and validates pre-conditions before
 # promotion.  Handles the special-sauce site permutations:
 #
-#   CLD  — Datacenter DC.  CLD is NEVER used as a replication source for site
-#          DCs — site DCs always replicate from their nearest hub or FAL.
+#   CLD  — Datacenter DC.  Primary replication source for standard sites,
+#          preferred even over FAL (datacenter is canonical).
 #
-#   FAL  — Head office.  Holds PDC Emulator + Global Catalog.  Primary
-#          replication source for all non-hub, non-CLD sites if reachable.
+#   FAL  — Head office.  Holds PDC Emulator + Global Catalog.  Preferred
+#          replication source for standard sites if CLD is unreachable.
 #
 #   ODE  — Regional hub (continental Europe).  Primary source for its region
-#          if FAL is unreachable.
+#          if CLD and FAL are unreachable.
 #
-#   BRK  — Regional hub (Germany/DACH).  Primary source for its region if FAL
-#          is unreachable.
+#   BRK  — Regional hub (Germany/DACH).  Primary source for its region if
+#          CLD and FAL are unreachable.
 #
 # Source resolution order (for a standard site DC):
-#   1.  FAL primary DC  (192.168.76.10)   — preferred always
-#   2.  ODE primary DC  (192.168.126.10)  — first fallback
-#   3.  BRK primary DC  (192.168.136.10)  — second fallback
-#   4.  Any DC already listed in sites.csv for this site
-#   5.  No candidate reachable → ask the operator whether this is the first
+#   1.  CLD primary DC  (192.168.69.10)   — preferred always
+#   2.  FAL primary DC  (192.168.76.10)   — first fallback
+#   3.  ODE primary DC  (192.168.126.10)  — second fallback
+#   4.  BRK primary DC  (192.168.136.10)  — third fallback
+#   5.  Any DC already listed in sites.csv for this site
+#   6.  No candidate reachable → ask the operator whether this is the first
 #       DC in the forest (see below) instead of aborting outright
 #
 # Forest root (dc_is_forest_root) — ANY site, not just CLD:
@@ -100,6 +101,9 @@
 #               loaded. Added tasks/colour_fallback.yml, included first
 #               (before hostname facts), so _c always resolves even when
 #               group_vars didn't load.
+#   2026-07-06  Standard-site probe order now includes CLD, ahead of FAL:
+#               CLD → FAL → ODE → BRK. Previously standard sites skipped
+#               CLD entirely even when it was the only reachable DC.
 #
 # =============================================================================
 
