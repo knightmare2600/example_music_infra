@@ -25,11 +25,13 @@
 #   hub_cld (CLD):
 #     Probe FAL, then ODE, then BRK
 #
-# If none of a site's candidates are reachable, the operator is asked
-# "Is this the first DC in the AD Forest?" (see below) rather than the play
-# assuming an answer from dc_site_role. Answering "yes" sets
-# dc_is_forest_root=true regardless of site; answering "no" aborts the play,
-# since there is then no replication source and no confirmed forest build.
+# If none of a site's candidates are reachable, dc_is_forest_root is decided
+# from dc_is_first_in_forest — answered upfront at the vars_prompt in
+# 00-dc-preflight.yml, not asked interactively mid-play here. "yes" sets
+# dc_is_forest_root=true regardless of site; "no" (the default) aborts the
+# play, since there is then no replication source and no confirmed forest
+# build. A reachable candidate always wins regardless of the answer — this
+# task only consults dc_is_first_in_forest when nothing was reachable.
 #
 # Probing is done from the Ansible control node (delegate_to: localhost)
 # via a TCP port-check to 389 (LDAP).  This avoids WinRM/SSH round-trips
@@ -52,6 +54,15 @@
 #               all (only the hub_primary sites did, plus CLD itself is
 #               excluded as a source elsewhere), skipping a potentially
 #               reachable, canonical source.
+#   2026-07-06  Replaced the interactive mid-play pause ("Is this the first
+#               DC in the AD Forest?") with dc_is_first_in_forest, a
+#               vars_prompt answered upfront in 00-dc-preflight.yml
+#               alongside the other operator prompts. Asking mid-play, after
+#               several tasks had already printed output, was a worse UX
+#               than bundling every question the operator has to answer at
+#               the top of the run. The probe-then-decide logic is
+#               unchanged — a reachable candidate still always wins over
+#               the answer.
 # =============================================================================
 
 # ── Build candidate list based on site role ───────────────────────────────────
@@ -134,39 +145,38 @@
     - dc_replication_source is not defined
   no_log: false
 
+- name: "[Source] NOTE — a replication source was found despite dc_is_first_in_forest=yes"
+  debug:
+    msg: >
+      {{ _c.Y }}[!]{{ _c.NC }} You answered "yes" to "Is this the first DC in
+      the AD Forest?" at preflight, but {{ dc_replication_source }} answered
+      on TCP/389 — proceeding as an additional DC replicating from it, not
+      as a forest root. If that's wrong, check {{ dc_replication_source }}
+      before continuing.
+  when:
+    - dc_replication_source is defined
+    - dc_replication_source != ""
+    - (dc_is_first_in_forest | default('no') | trim | lower) in ['y', 'yes']
+
 # ── Handle no reachable source ────────────────────────────────────────────────
 
-- name: "[Source] No reachable DC found — ask operator whether this is the forest root"
-  pause:
-    prompt: |
-
-      ── No replication source reachable ──────────────────────────────────
-      {{ inventory_hostname }} (site={{ host_site }}, role={{ dc_site_role }})
-      could not reach any candidate DC: {{ dc_candidates | map(attribute='ip') | join(', ') }}
-
-      This can legitimately happen on any site, not just CLD — it just means
-      no other DC in the forest is reachable from here yet.
-
-      Is this the first DC in the AD Forest? (yes/no)
-  register: dc_forest_root_prompt
-  when: dc_replication_source is not defined
-
-- name: "[Source] Set dc_is_forest_root from operator answer"
+- name: "[Source] No reachable DC found — use dc_is_first_in_forest from preflight prompt"
   set_fact:
     dc_replication_source: ""
     dc_source_site:        ""
-    dc_is_forest_root:     "{{ (dc_forest_root_prompt.user_input | default('') | trim | lower) in ['y', 'yes'] }}"
-  when: dc_forest_root_prompt is not skipped
+    dc_is_forest_root:     "{{ (dc_is_first_in_forest | default('no') | trim | lower) in ['y', 'yes'] }}"
+  when: dc_replication_source is not defined
 
 - name: "[Source] ABORT — no reachable source and not confirmed as forest root"
   fail:
     msg: >
       {{ _c.R }}[✗]{{ _c.NC }} No replication source DC is reachable for
       {{ inventory_hostname }} (site={{ host_site }}, role={{ dc_site_role }})
-      and this was not confirmed as the first DC in the forest.
+      and dc_is_first_in_forest was not answered "yes" at the preflight prompt.
       Probed: {{ dc_candidates | map(attribute='ip') | join(', ') }}.
-      Check network connectivity, or re-run and answer "yes" at the prompt
-      above if this is genuinely the first DC being built for this forest.
+      Check network connectivity, or re-run and answer "yes" to
+      "Is this the first DC in the AD Forest?" if this is genuinely the
+      first DC being built for this forest.
   when:
     - dc_replication_source == ""
     - not dc_is_forest_root | bool
