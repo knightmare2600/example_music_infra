@@ -7,12 +7,19 @@ ansible_user:        ansible
 common_packages:
   - curl
   - dnsutils
+  - git
+  - git-lfs
+  - grc
+  - jq
+  - mc
   - net-tools
   - nmap
+  - tmux
   - tree
   - vim
   - wget
-  - grc
-  - zsh
   - yamllint
-  - jq
+  - zsh
+  - zsh-autosuggestions
+  - zsh-common
+  - zsh-syntax-highlighting

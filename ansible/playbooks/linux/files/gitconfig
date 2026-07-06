@@ -1,0 +1,44 @@
+## Begin knightmare2600  ~/.gitconfig file.
+## This file sets up aliases, colour prompts and other git settings
+
+## Colours which need (): normal black red green yellow blue magenta cyan white
+## attributes for power : bold dim ul blink reverse
+
+[alias]
+## Print out a shortened history with the hist alias, git log behaves like it always did
+hist = log --graph --pretty=format:'%Cred%h%Creset -%C(red)%d%Creset %C(bold cyan)%s%Creset %Cgreen(%cd)' --abbrev-commit --date=short
+
+[color]
+  branch = auto
+  diff = auto
+  status = auto
+
+[color "branch"]
+  current = yellow reverse
+  local = yellow
+  remote = green
+
+[color "diff"]
+  meta = yellow bold
+  frag = magenta bold
+  old = red bold
+  new = green bold
+
+[color "status"]
+  added = bold blue
+  changed = green
+  untracked = cyan
+
+[http]
+  postBuffer = 524288000
+  maxRequestBuffer = 524288000
+
+[core]
+  compression = 0
+
+[user]
+  name = knightmare2600
+  email = knightmare2600@users.noreply.github.com
+
+[credential]
+  helper = store --file=$HOME/.git-credentials-private
