@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+  <version>7.0</version>
+  <template_groups>
+    <template_group>
+      <uuid>d9792c7e70434b53b6c23fab791afeab</uuid>
+      <name>Templates</name>
+    </template_group>
+  </template_groups>
+  <templates>
+    <template>
+      <uuid>ee711bb1c21140dc9b1323408f803139</uuid>
+      <template>Windows Hygiene Checks</template>
+      <name>Windows Hygiene Checks</name>
+      <description>Registry and file-based health checks for Windows systems</description>
+      <groups>
+        <group>
+          <name>Templates</name>
+        </group>
+      </groups>
+      <items>
+        <item>
+          <uuid>957d1a824fb74d6a99ff4c0f0166f1e7</uuid>
+          <name>PSWindowsUpdate Module Check</name>
+          <type>ZABBIX_ACTIVE</type>
+          <key>vfs.file.exists[C:\Program Files\WindowsPowerShell\Modules\PSWindowsUpdate\PSWindowsUpdate.psd1]</key>
+          <delay>1h</delay>
+          <history>30d</history>
+          <trends>90d</trends>
+          <value_type>UNSIGNED</value_type>
+          <description>Checks if PSWindowsUpdate module manifest exists (1=installed, 0=not found)</description>
+          <triggers>
+            <trigger>
+              <uuid>e7d7e649acc349a5988113f2f9288b8d</uuid>
+              <expression>last(/Windows Hygiene Checks/vfs.file.exists[C:\Program Files\WindowsPowerShell\Modules\PSWindowsUpdate\PSWindowsUpdate.psd1])=0</expression>
+              <name>PSWindowsUpdate Module Not Found</name>
+              <priority>WARNING</priority>
+              <description>PSWindowsUpdate PowerShell module is not installed. Install via: Install-Module -Name PSWindowsUpdate -Force</description>
+            </trigger>
+          </triggers>
+        </item>
+        <item>
+          <uuid>1b36d61e899e402599f7603ff0c8f579</uuid>
+          <name>Clear PageFile Registry Value</name>
+          <type>ZABBIX_ACTIVE</type>
+          <key>wmi.get[root\default,"StdRegProv.GetDWORDValue(hDefKey=2147483650,sSubKeyName='SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management',sValueName='ClearPageFileAtShutdown')"]</key>
+          <delay>1h</delay>
+          <history>30d</history>
+          <trends>90d</trends>
+          <value_type>UNSIGNED</value_type>
+          <description>Returns the DWORD value of ClearPageFileAtShutdown (1=enabled, 0=disabled)</description>
+          <triggers>
+            <trigger>
+              <uuid>06a16c3e59ab41afb6dcf0f96b9a3535</uuid>
+              <expression>last(/Windows Hygiene Checks/wmi.get[root\default,"StdRegProv.GetDWORDValue(hDefKey=2147483650,sSubKeyName='SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management',sValueName='ClearPageFileAtShutdown')"])=0</expression>
+              <name>ClearPageFileAtShutdown not set — hygiene playbook not run or value was reset</name>
+              <priority>AVERAGE</priority>
+              <description>ClearPageFileAtShutdown is 0 (not enabled). The hygiene playbook sets this to 1. Run windows_hygiene/site.yml --tags pagefile to correct.</description>
+            </trigger>
+          </triggers>
+        </item>
+        <item>
+          <uuid>0bd12863e94d49489d093ece4cac6e76</uuid>
+          <name>Device Chassis Type</name>
+          <type>ZABBIX_ACTIVE</type>
+          <key>wmi.get[root\cimv2,"Select ChassisTypes from Win32_SystemEnclosure"]</key>
+          <delay>1d</delay>
+          <history>30d</history>
+          <trends>90d</trends>
+          <value_type>TEXT</value_type>
+          <description>Chassis Type: 10=Laptop, 3/4/6/7=Desktop/Server</description>
+          <preprocessing>
+            <step>
+              <type>REGEX</type>
+              <parameters>
+                <parameter>\{(\d+)\}</parameter>
+                <parameter>\1</parameter>
+              </parameters>
+            </step>
+          </preprocessing>
+        </item>
+        <item>
+          <uuid>8a0dd6f153fc4da5b93b68a6ee626fe6</uuid>
+          <name>Hibernation Registry Value</name>
+          <type>ZABBIX_ACTIVE</type>
+          <key>wmi.get[root\default,"StdRegProv.GetDWORDValue(hDefKey=2147483650,sSubKeyName='SYSTEM\\CurrentControlSet\\Control\\Power',sValueName='HibernateEnabled')"]</key>
+          <delay>1h</delay>
+          <history>30d</history>
+          <trends>90d</trends>
+          <value_type>UNSIGNED</value_type>
+          <description>Returns 1 if hibernation is enabled, 0 if disabled</description>
+        </item>
+        <item>
+          <uuid>9fc5d1f39caa456f9bce8e13cc779791</uuid>
+          <name>Chocolatey Installed</name>
+          <type>ZABBIX_ACTIVE</type>
+          <key>vfs.file.exists[C:\ProgramData\chocolatey\choco.exe]</key>
+          <delay>1h</delay>
+          <history>30d</history>
+          <trends>90d</trends>
+          <value_type>UNSIGNED</value_type>
+          <description>Returns 1 if Chocolatey is installed, 0 otherwise</description>
+          <triggers>
+            <trigger>
+              <uuid>5e9d540b217f48c0a6479a3841993041</uuid>
+              <expression>last(/Windows Hygiene Checks/vfs.file.exists[C:\ProgramData\chocolatey\choco.exe])=0</expression>
+              <name>Chocolatey Package Manager Not Installed</name>
+              <priority>AVERAGE</priority>
+              <description>Chocolatey is not installed. Install from: https://chocolatey.org/install</description>
+            </trigger>
+          </triggers>
+        </item>
+        <item>
+          <uuid>3112e0d57b2145f281f764d08352cb27</uuid>
+          <name>WinDirStat Installed</name>
+          <type>ZABBIX_ACTIVE</type>
+          <key>vfs.file.exists[C:\Program Files (x86)\WinDirStat\WinDirStat.exe]</key>
+          <delay>1h</delay>
+          <history>30d</history>
+          <trends>90d</trends>
+          <value_type>UNSIGNED</value_type>
+          <description>Returns 1 if WinDirStat.exe exists, 0 if not found</description>
+          <triggers>
+            <trigger>
+              <uuid>513967d340624ec28022f35dbb03ec43</uuid>
+              <expression>last(/Windows Hygiene Checks/vfs.file.exists[C:\Program Files (x86)\WinDirStat\WinDirStat.exe])=0</expression>
+              <name>WinDirStat Not Installed</name>
+              <priority>AVERAGE</priority>
+              <description>WinDirStat is not installed. Install via: choco install windirstat</description>
+            </trigger>
+          </triggers>
+        </item>
+        <item>
+          <uuid>f024710cbb88451ab4c5eb3588f28f27</uuid>
+          <name>SDelete x64 Installed</name>
+          <type>ZABBIX_ACTIVE</type>
+          <key>vfs.file.exists[C:\ProgramData\chocolatey\lib\sdelete\tools\sdelete64.exe]</key>
+          <delay>1h</delay>
+          <history>30d</history>
+          <trends>90d</trends>
+          <value_type>UNSIGNED</value_type>
+          <description>Returns 1 if sdelete64.exe exists, 0 if not found</description>
+        </item>
+        <item>
+          <uuid>172f05658c2841c0ad4391440471167e</uuid>
+          <name>SDelete x64a ARM Installed</name>
+          <type>ZABBIX_ACTIVE</type>
+          <key>vfs.file.exists[C:\ProgramData\chocolatey\lib\sdelete\tools\sdelete64a.exe]</key>
+          <delay>1h</delay>
+          <history>30d</history>
+          <trends>90d</trends>
+          <value_type>UNSIGNED</value_type>
+          <description>Returns 1 if sdelete64a.exe exists (ARM version), 0 if not found</description>
+          <triggers>
+            <trigger>
+              <uuid>b7680c0663b44ad1a84e26e64ec726df</uuid>
+              <expression>last(/Windows Hygiene Checks/vfs.file.exists[C:\ProgramData\chocolatey\lib\sdelete\tools\sdelete64.exe])=0 and last(/Windows Hygiene Checks/vfs.file.exists[C:\ProgramData\chocolatey\lib\sdelete\tools\sdelete64a.exe])=0</expression>
+              <name>SDelete Not Installed</name>
+              <priority>AVERAGE</priority>
+              <description>SDelete (Sysinternals) is not installed. Install via: choco install sdelete</description>
+            </trigger>
+          </triggers>
+        </item>
+      </items>
+      <tags>
+        <tag>
+          <tag>class</tag>
+          <value>software</value>
+        </tag>
+        <tag>
+          <tag>target</tag>
+          <value>windows</value>
+        </tag>
+      </tags>
+    </template>
+  </templates>
+</zabbix_export>
