@@ -31,10 +31,11 @@
 #   ansible-playbook playbooks/windows_hygiene/site.yml \
 #     -i <host>, -e target_hosts=<host> --skip-tags dism
 #
-# Tags: dism, hibernation, pagefile
+# Tags: dism, hibernation, pagefile, choco, winupdate
 # =============================================================================
 # Changelog:
 #   2026-07-02  Initial file
+#   2026-07-06  Add Chocolatey upgrade, WinDirStat, SDelete, PSWindowsUpdate/Windows Update
 # =============================================================================
 
 - name: Windows — Post-build hygiene
@@ -136,6 +137,66 @@
       tags: pagefile
 
     # =========================================================================
+    # Chocolatey — upgrade all packages + install WinDirStat and SDelete
+    # =========================================================================
+
+    - name: "── Chocolatey packages ──"
+      debug:
+        msg: "Upgrading all Chocolatey packages and installing WinDirStat and SDelete..."
+      tags: choco
+
+    - name: Upgrade all Chocolatey packages to latest
+      chocolatey.chocolatey.win_chocolatey:
+        name:  all
+        state: latest
+      tags: choco
+
+    - name: Install WinDirStat
+      chocolatey.chocolatey.win_chocolatey:
+        name:  windirstat
+        state: present
+      tags: choco
+
+    - name: Install SDelete (Sysinternals)
+      chocolatey.chocolatey.win_chocolatey:
+        name:  sdelete
+        state: present
+      tags: choco
+
+    # =========================================================================
+    # Windows Update via PSWindowsUpdate
+    # =========================================================================
+
+    - name: "── Windows Update ──"
+      debug:
+        msg: "Installing PSWindowsUpdate module and running Windows updates (no auto-reboot)..."
+      tags: winupdate
+
+    - name: Install PSWindowsUpdate module (Scope AllUsers, persists across reboots)
+      ansible.windows.win_shell: |
+        if (-not (Get-Module -ListAvailable -Name PSWindowsUpdate)) {
+          Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -Scope AllUsers
+        }
+      changed_when: false
+      tags: winupdate
+
+    - name: Run Windows Update (AcceptAll, no auto-reboot)
+      ansible.windows.win_shell: |
+        Import-Module PSWindowsUpdate
+        Install-WindowsUpdate -AcceptAll -AutoReboot:$false -Verbose 2>&1 | Out-String
+      register: win_update_result
+      changed_when: "'KB' in (win_update_result.stdout | default(''))"
+      async: 3600
+      poll: 30
+      tags: winupdate
+
+    - name: Show Windows Update results
+      debug:
+        msg: "{{ win_update_result.stdout_lines | default(['(no output)']) }}"
+      when: win_update_result is defined
+      tags: winupdate
+
+    # =========================================================================
     # Summary
     # =========================================================================
 
@@ -148,4 +209,6 @@
           - "  Hibernation : {{ 'ENABLED' if is_laptop | bool else 'DISABLED' }}"
           - "  Page file   : clear at shutdown (set)"
           - "  DISM        : StartComponentCleanup /ResetBase complete"
+          - "  Chocolatey  : upgraded all; WinDirStat + SDelete present"
+          - "  Win Update  : {{ 'updates applied (reboot may be required)' if win_update_result is defined and 'KB' in (win_update_result.stdout | default('')) else 'no updates applied or stage skipped' }}"
           - "════════════════════════════════════════════════════════════════"
