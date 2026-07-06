@@ -5,6 +5,12 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-06  Removed choco_packages_extra — it was dead code (shadowed
+#               by 05-bootstrap.yml's/40-choco-packages.yml's own play
+#               vars: — see either file's design note) and had drifted
+#               from them besides (windirstat is common to all hosts now,
+#               not laptop/desktop-only; firefox/windows-terminal are
+#               still in both files' choco_packages_desktop).
 # =============================================================================
 
 # Hibernation — ENABLED on laptops and tablets
@@ -13,15 +19,9 @@ exa_hibernation_enabled: true
 # Advertising suppression — on for laptops
 exa_deadvertise_enabled: true
 
-# Laptop-specific Chocolatey packages (added to choco_packages_common)
-choco_packages_extra:
-  - firefox
-  - windirstat
-  - windows-terminal
-
 # Laptop-specific arch-aware binaries (added to binaries_common)
+# busybox removed 2026-07-06 — it's a Chocolatey package now (choco_packages_common).
 binaries_extra:
-  - { src_amd64: "busybox64.exe",         src_arm64: "busybox64a.exe",         dest: "busybox.exe" }
   - { src_amd64: "jq-windows-amd64.exe",  src_arm64: "jq-windows-arm64.exe",   dest: "jq.exe" }
   - { src_amd64: "ScreenRes-x64.exe",     src_arm64: "ScreenRes-arm64.exe",     dest: "ScreenRes.exe" }
   - { src_amd64: "WinDirStat.exe",        src_arm64: "WinDirStat_arm64.exe",    dest: "WinDirStat.exe" }

@@ -1,0 +1,33 @@
+---
+# =============================================================================
+# playbooks/77-rdp.yml
+# Example Music Limited — RDP with NLA
+# =============================================================================
+# Enables RDP, enforces NLA, ensures TermService is running, and opens the
+# firewall rule. Safe to re-run.
+#
+# This is now the single home for RDP config — it previously duplicated
+# across two places (the fuller version inline in 05-bootstrap.yml Stage 17,
+# and a partial service+firewall-only copy in 20-registry.yml). The
+# 20-registry.yml copy has been removed.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/77-rdp.yml
+#
+# Tags: rdp
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from 05-bootstrap.yml Stage 17 so
+#               it can be run/retried standalone instead of only inline
+#               during initial bootstrap, and consolidated the partial
+#               duplicate that lived in 20-registry.yml.
+# =============================================================================
+
+- name: Windows — RDP
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  tasks:
+
+    - name: Include RDP tasks
+      include_tasks: ../tasks/rdp.yml
+      tags: rdp

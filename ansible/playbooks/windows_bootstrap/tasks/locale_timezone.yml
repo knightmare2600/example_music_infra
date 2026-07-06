@@ -1,0 +1,23 @@
+---
+# =============================================================================
+# tasks/locale_timezone.yml
+# Example Music Limited — Locale and timezone (Stage 7)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 7
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file (inline in 05-bootstrap.yml)
+#   2026-07-06  Extracted into a shared task file so 05-bootstrap.yml and
+#               playbooks/15-locale-timezone.yml share one source of truth.
+# =============================================================================
+
+- name: "[Stage 7] Set timezone to GMT Standard Time"
+  ansible.windows.win_timezone:
+    timezone: "GMT Standard Time"
+
+- name: "[Stage 7] Set locale and UI language to en-GB"
+  ansible.windows.win_shell: |
+    Set-WinUILanguageOverride -Language en-GB
+    Set-WinUserLanguageList en-GB -Force
+    Set-WinHomeLocation -GeoId 242
+    Set-Culture en-GB
+  changed_when: true

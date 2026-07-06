@@ -1,0 +1,36 @@
+---
+# =============================================================================
+# playbooks/79-ps7-setup.yml
+# Example Music Limited — PS7 modules, fonts, profile, and terminal config
+# =============================================================================
+# Installs PS7 console modules (AllUsers scope) if PS7 is present, deploys
+# JetBrainsMono Nerd Font, writes the PS7 AllUsersAllHosts profile, and
+# writes Hyper/Windows Terminal config if those apps are installed. Safe to
+# re-run.
+#
+# Note: font deployment here overlaps with 50-binaries.yml's "fonts" tag —
+# both install the same JetBrainsMono Nerd Font files. This duplication
+# predates this file (it already existed between 50-binaries.yml and
+# 05-bootstrap.yml Stage 20) and isn't something this split introduced.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/79-ps7-setup.yml
+#
+# Tags: ps7_setup
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from 05-bootstrap.yml Stages
+#               19-22b so it can be run/retried standalone instead of only
+#               inline during initial bootstrap. Reuses tasks/ps7_setup.yml,
+#               which 05-bootstrap.yml already included rather than
+#               duplicating inline — no logic change there.
+# =============================================================================
+
+- name: Windows — PS7 setup, fonts, and terminal config
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  tasks:
+
+    - name: Include PS7 setup tasks
+      include_tasks: ../tasks/ps7_setup.yml
+      tags: ps7_setup

@@ -1,0 +1,22 @@
+---
+# =============================================================================
+# tasks/pswindowsupdate.yml
+# Example Music Limited — PSWindowsUpdate module (Stage 18)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 18
+# =============================================================================
+# Changelog:
+#   2026-06-20  Initial file (inline in 05-bootstrap.yml)
+#   2026-07-06  Extracted into a shared task file so 05-bootstrap.yml and
+#               playbooks/48-pswindowsupdate.yml share one source of truth.
+# =============================================================================
+
+- name: "[Stage 18] Install PSWindowsUpdate from PSGallery"
+  ansible.windows.win_shell: |
+    if (-not (Get-Module -ListAvailable PSWindowsUpdate)) {
+      Install-Module PSWindowsUpdate -Scope AllUsers -Force -SkipPublisherCheck
+      Write-Output "installed"
+    } else {
+      Write-Output "present"
+    }
+  register: pswindowsupdate_result
+  changed_when: "'installed' in pswindowsupdate_result.stdout"

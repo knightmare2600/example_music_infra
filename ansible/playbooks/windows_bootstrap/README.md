@@ -3,6 +3,43 @@
 Bootstraps and configures Windows machines (desktops, laptops, servers).
 Ansible port of Join-DomainAndBootstrap.ps1.
 
+## Playbook order
+
+`00-preflight.yml` chain-imports `05-bootstrap.yml` (the full PostOOBE
+bootstrap, Stages 0b–23) as one combined play. Everything below that is a
+separate standalone play that also runs inline as part of that same
+bootstrap chain — see `05-bootstrap.yml`'s own "Stage map" comment for
+which numbered stage each corresponds to, and its shared `tasks/*.yml`
+files (e.g. `tasks/rdp.yml`) that both the chain and the standalone play
+include, so there's one source of truth for the actual task logic.
+
+| Playbook | Tag | Description |
+|----------|-----|-------------|
+| `00-preflight.yml` | `bootstrap` | Hostname/static IP/Ansible key, then chain-imports `05-bootstrap.yml` |
+| `10-rename.yml` | `rename` | Rename to EXA convention |
+| `15-locale-timezone.yml` | `locale_timezone` | Locale (en-GB) and timezone (GMT Standard Time) |
+| `20-registry.yml` | `registry` | Registry hardening |
+| `22-screenlock.yml` | `screenlock` | Screen lock and inactivity timeout |
+| `25-deadvertise.yml` | `deadvertise` | Advertising/telemetry suppression |
+| `30-chocolatey.yml` | `chocolatey` | Chocolatey installation |
+| `35-guest-tools.yml` | `guest_tools` | VMware Tools / QEMU guest agent by hypervisor |
+| `40-choco-packages.yml` | `choco_packages` | Package deployment |
+| `45-rsat.yml` | `rsat` | RSAT tools |
+| `48-pswindowsupdate.yml` | `pswindowsupdate` | PSWindowsUpdate module |
+| `50-binaries.yml` | `binaries` | Arch-aware binary + font deployment |
+| `60-wallpaper.yml` | `wallpaper` | Corporate wallpaper + dark mode |
+| `70-hibernation.yml` | `hibernation` | Power management: hibernation, pagefile, SConfig |
+| `75-openssh.yml` | `openssh` | OpenSSH + Ansible key |
+| `77-rdp.yml` | `rdp` | RDP with NLA |
+| `78-sac-ems.yml` | `sac_ems` | SAC/EMS serial console (Server OS only) |
+| `79-ps7-setup.yml` | `ps7_setup` | PS7 modules, fonts, profile, terminal config |
+| `80-domainjoin.yml` | `domainjoin` | Join JUKEBOX domain |
+
+A bare `site.yml` run with no `--tags` currently runs every play above in
+sequence (the standalone plays aren't actually tagged `never`, despite
+site.yml's changelog claiming otherwise) — use `--tags <name>` for a single
+stage, or `--tags bootstrap` for bootstrap-only.
+
 ## Usage
 
 Run from the `ansible/` root:

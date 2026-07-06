@@ -14,6 +14,16 @@
 #
 # The host reboots after joining. Ansible will wait and reconnect.
 #
+# NOTE on OU selection: this file computes domain_ou_path directly from
+# group_vars (domain_ou_role + host_site) — no operator interaction needed,
+# because by the time this standalone play is re-run, the host is already
+# in inventory and its role/site are known. This is deliberately different
+# from tasks/ou_selection.yml (used inline by 05-bootstrap.yml's Stage 4),
+# which LDAP-queries a live DC and prompts the operator to pick an OU
+# interactively — that's for the fresh-build case, where the host isn't in
+# inventory yet and group_vars aren't available. Two different scenarios,
+# two mechanisms; not folded into one on purpose.
+#
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/80-domainjoin.yml \
 #     --ask-vault-pass
@@ -22,6 +32,9 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-06  Documented (no code change) why this file's static OU
+#               derivation and tasks/ou_selection.yml's interactive LDAP
+#               picker are intentionally separate rather than unified.
 # =============================================================================
 
 - name: Windows — Domain join

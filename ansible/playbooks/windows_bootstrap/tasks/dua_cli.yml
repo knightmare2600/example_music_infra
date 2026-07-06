@@ -1,0 +1,67 @@
+---
+# =============================================================================
+# tasks/dua_cli.yml
+# Example Music Limited — dua-cli (disk usage analyzer) deployment
+# =============================================================================
+# Downloads dua-cli directly from its upstream GitHub release (arch-aware:
+# x86_64, arm64, or x86), extracts it, and deploys dua.exe to C:\Windows.
+#
+# Previously dua.exe was downloaded as a raw binary from the internal asset
+# server (192.168.139.50), which doesn't actually host it — dua-cli ships
+# as a zip per platform, not a bare exe, so this needs an extract step.
+#
+# Requires host_arch (set by tasks/arch_facts.yml).
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — replaces the asset-server binaries_common
+#               entry for dua.exe in playbooks/50-binaries.yml.
+# =============================================================================
+
+- name: "[dua-cli] Map host_arch to release asset suffix"
+  set_fact:
+    dua_cli_arch: >-
+      {{ {'x86_64': 'x86_64-pc-windows-msvc',
+          'arm64':  'aarch64-pc-windows-msvc',
+          'x86':    'i686-pc-windows-msvc'}[host_arch] }}
+
+- name: "[dua-cli] Ensure staging directory exists"
+  ansible.windows.win_file:
+    path: 'C:\Windows\Temp\dua-cli'
+    state: directory
+
+- name: "[dua-cli] Download dua-cli release zip"
+  ansible.windows.win_get_url:
+    url:  "https://github.com/byron/dua-cli/releases/download/v2.37.1/dua-v2.37.1-{{ dua_cli_arch }}.zip"
+    dest: 'C:\Windows\Temp\dua-cli\dua-cli.zip'
+
+- name: "[dua-cli] Extract dua-cli release zip"
+  community.windows.win_unzip:
+    src:  'C:\Windows\Temp\dua-cli\dua-cli.zip'
+    dest: 'C:\Windows\Temp\dua-cli\extracted'
+
+- name: "[dua-cli] Locate dua.exe in extracted archive"
+  ansible.windows.win_find:
+    paths:    'C:\Windows\Temp\dua-cli\extracted'
+    patterns: 'dua.exe'
+    recurse:  true
+  register: dua_cli_find
+
+- name: '[dua-cli] Deploy dua.exe to C:\Windows'
+  ansible.windows.win_copy:
+    remote_src: true
+    src:  "{{ dua_cli_find.files[0].path }}"
+    dest: 'C:\Windows\dua.exe'
+  when: dua_cli_find.files | length > 0
+
+- name: "[dua-cli] WARN — dua.exe not found in extracted archive"
+  debug:
+    msg: >
+      dua.exe not found after extracting dua-cli.zip for arch
+      {{ dua_cli_arch }} — check the release asset layout upstream
+      (https://github.com/byron/dua-cli/releases).
+  when: dua_cli_find.files | length == 0
+
+- name: "[dua-cli] Clean up staging directory"
+  ansible.windows.win_file:
+    path: 'C:\Windows\Temp\dua-cli'
+    state: absent

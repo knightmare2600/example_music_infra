@@ -1,13 +1,17 @@
 ---
 # =============================================================================
 # playbooks/70-hibernation.yml
-# Example Music Limited — Hibernation policy
+# Example Music Limited — Power management (hibernation, pagefile, SConfig)
 # =============================================================================
 # Applies the correct hibernation policy based on exa_hibernation_enabled
 # from group_vars:
 #   windows_server:  false  (disabled)
 #   windows_desktop: false  (disabled)
 #   windows_laptop:  true   (enabled)
+#
+# Also clears the pagefile at shutdown and (Server OS only) disables
+# SConfig auto-launch at logon — same "power management" theme as
+# hibernation, folded in here rather than a separate file.
 #
 # Join-DomainAndBootstrap.ps1 Stage 6 disables hibernation unconditionally.
 # Run this playbook after bootstrap on LAP/SUR devices to re-enable it.
@@ -19,9 +23,14 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-06  Folded in pagefile-at-shutdown and SConfig auto-launch
+#               (Stage 6) — same power management theme as hibernation.
+#               Added an inline OS-type check for the SConfig task, which
+#               is Server-only (is_server isn't otherwise available here —
+#               this file doesn't run the full tasks/preflight.yml chain).
 # =============================================================================
 
-- name: Windows — Hibernation policy
+- name: Windows — Power management
   hosts: "{{ target | default('all') }}"
   gather_facts: false
   tasks:
@@ -43,4 +52,20 @@
         msg: >
           Hibernation {{ 'ENABLED' if exa_hibernation_enabled | default(false) | bool else 'DISABLED' }}
           on {{ inventory_hostname }}
+      tags: hibernation
+
+    - name: Detect OS product type (1=Workstation 2=DC 3=Server)
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_OperatingSystem).ProductType
+      register: hibernation_product_type
+      changed_when: false
+      tags: hibernation
+
+    - name: Set OS type fact
+      set_fact:
+        is_server: "{{ hibernation_product_type.stdout | trim in ['2', '3'] }}"
+      tags: hibernation
+
+    - name: Include power/pagefile tasks
+      include_tasks: ../tasks/power_pagefile.yml
       tags: hibernation

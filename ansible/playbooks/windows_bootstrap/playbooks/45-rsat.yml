@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# playbooks/45-rsat.yml
+# Example Music Limited — RSAT tools
+# =============================================================================
+# Installs RSAT (AD PowerShell, AD Admin Center, ADDS Tools, DNS Server,
+# GPMC) via Server Manager on Server OS, or the equivalent Windows
+# Capabilities on Desktop OS. Safe to re-run.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/45-rsat.yml
+#
+# Tags: rsat
+# =============================================================================
+# Changelog:
+#   2026-07-06  Initial file — extracted from 05-bootstrap.yml Stage 15 so
+#               it can be run/retried standalone instead of only inline
+#               during initial bootstrap. is_server/is_workstation aren't
+#               computed by the full tasks/preflight.yml chain here (that
+#               file does much more than OS-type detection); a small inline
+#               ProductType check is enough, matching how the other
+#               already-standalone playbooks in this module avoid pulling
+#               in the whole preflight chain just for one fact.
+# =============================================================================
+
+- name: Windows — RSAT tools
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  tasks:
+
+    - name: Detect OS product type (1=Workstation 2=DC 3=Server)
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_OperatingSystem).ProductType
+      register: rsat_product_type
+      changed_when: false
+      tags: rsat
+
+    - name: Set OS type facts
+      set_fact:
+        is_server:      "{{ rsat_product_type.stdout | trim in ['2', '3'] }}"
+        is_workstation: "{{ rsat_product_type.stdout | trim == '1' }}"
+      tags: rsat
+
+    - name: Include RSAT tasks
+      include_tasks: ../tasks/rsat.yml
+      tags: rsat
