@@ -43,7 +43,7 @@
 # ---------
 # Add EXARDRCLD001 to configs/inventory:
 #   [rudder_servers]
-#   192.168.139.12   # EXARDRCLD001 — CLD Rudder server
+#   192.168.69.12   # EXARDRCLD001 — CLD Rudder server
 #
 # Variables (see group_vars/rudder_servers/main.yml and
 #            host_vars/EXARDRCLD001/main.yml for full list)
@@ -119,7 +119,7 @@
       pause:
         prompt: >
           Static IP for {{ rudder_hostname }} is not set in host_vars.
-          Enter static IP (e.g. 192.168.139.12)
+          Enter static IP (e.g. 192.168.69.12)
       register: _ip_prompt
       when: rudder_static_ip is not defined or rudder_static_ip == ""
       delegate_to: localhost
