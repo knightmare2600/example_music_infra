@@ -7,7 +7,7 @@
 # a single target Domain Controller — always run this against one host to
 # "up" the AD schema, no tags, no --limit gymnastics.
 #
-# Runs only when populate_ad=yes was answered at 85-dc-preflight.yml (or
+# Runs only when populate_ad=yes was answered at 00-dc-preflight.yml (or
 # passed directly with -e populate_ad=yes on a standalone run). Each stage
 # guards itself with meta: end_play otherwise.
 #

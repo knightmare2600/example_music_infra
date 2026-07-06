@@ -24,7 +24,7 @@ exa_hibernation_enabled: false
 # Advertising suppression — not applicable on DCs
 exa_deadvertise_enabled: false
 
-# DC RSAT feature set (installed via win_feature in 90-dc-promote.yml,
+# DC RSAT feature set (installed via win_feature in 10-dc-install-features.yml,
 # listed here for reference / documentation)
 dc_required_features:
   - AD-Domain-Services
@@ -40,7 +40,7 @@ dc_log_path:  'C:\Windows\NTDS'
 dc_sysvol:    'C:\Windows\SYSVOL'
 
 # AD domain identity — single source of truth for domain name and NetBIOS.
-# Used as defaults in 85-dc-preflight.yml vars_prompt; operator can override at
+# Used as defaults in 00-dc-preflight.yml vars_prompt; operator can override at
 # run time but changing here keeps all defaults in sync with no playbook edits.
 ad_domain_name:  "jukebox.internal"
 ad_netbios_name: "JUKEBOX"
@@ -54,7 +54,7 @@ dc_hub_sites:
 dc_cld_site: "CLD"
 
 # dc_hub_sources and dc_cld_source are NOT defined here.
-# 85-dc-preflight.yml builds them at runtime from sites.csv so the IPs stay in
+# 00-dc-preflight.yml builds them at runtime from sites.csv so the IPs stay in
 # one place (the DC column of sites.csv) rather than being duplicated here.
 
 # DNS forwarders configured on each new DC post-promotion.

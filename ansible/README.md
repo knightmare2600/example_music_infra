@@ -412,7 +412,7 @@ ansible-galaxy collection install -r playbooks/windows_bootstrap/requirements.ym
 
 Onboards a bare Windows Server host as an Additional Domain Controller in
 `jukebox.internal`. Mirrors `windows_bootstrap` for stages 00–80, then adds
-DC-specific stages 85 onwards.
+DC-specific stages with their own 00-preflight/major-step-of-10 numbering.
 
 `sites.csv` is the single source of truth for site codes, subnets, and hub topology.
 
@@ -431,10 +431,11 @@ Examples: `EXADCSFAL001`, `EXADCSODE002`, `EXADCSCLD001`
 | Playbook | Tag | Description |
 |----------|-----|-------------|
 | *(00–80 from windows_bootstrap)* | `bootstrap` | Bootstrap + domain join |
-| `playbooks/85-dc-preflight.yml` | `dc_preflight` | Cred prompts + replication source resolution |
-| `playbooks/90-dc-promote.yml` | `dc_promote` | AD-DS features + DC promotion |
-| `playbooks/95-dc-replicate.yml` | `dc_replicate` | Force replication, SYSVOL wait, FSMO report |
-| `playbooks/99-dc-summary.yml` | `dc_summary` | dcdiag + colourised build report |
+| `playbooks/00-dc-preflight.yml` | `dc_preflight` | Cred prompts + replication source resolution |
+| `playbooks/10-dc-install-features.yml` | `dc_features` | AD-DS/DNS/GPMC feature install |
+| `playbooks/20-dc-promote.yml` | `dc_promote` | Install-ADDSDomainController (or Forest) |
+| `playbooks/30-dc-replicate.yml` | `dc_replicate` | Force replication, SYSVOL wait, FSMO report |
+| `playbooks/40-dc-summary.yml` | `dc_summary` | dcdiag + colourised build report |
 
 ### Usage
 
@@ -454,7 +455,7 @@ ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
 # DC promotion only
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
   -e target=EXADCSFAL002 \
-  --tags dc_preflight,dc_promote,dc_replicate,dc_summary
+  --tags dc_preflight,dc_features,dc_promote,dc_replicate,dc_summary
 
 # Replication health check only (post-build)
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
@@ -464,7 +465,7 @@ ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
 
 ### Credentials
 
-`85-dc-preflight.yml` prompts for four values at runtime:
+`00-dc-preflight.yml` prompts for four values at runtime:
 
 | Prompt | Purpose | Default |
 |--------|---------|---------|
@@ -477,23 +478,28 @@ Credentials are **never written to disk** — in-memory only for the duration of
 
 ### Site-specific DC logic
 
-**CLD (Datacenter)** — May be the first DC ever built (forest root) or an additional DC.
-`85-dc-preflight.yml` probes FAL, ODE, and BRK on TCP/389:
-- None reachable → `dc_is_forest_root=true` → `Install-ADDSForest`
-- Any reachable → `dc_is_forest_root=false` → `Install-ADDSDomainController`
+**Forest root — any site, not just CLD.** `00-dc-preflight.yml` probes candidate
+replication sources in priority order; if none are reachable it pauses and asks the
+operator directly: "Is this the first DC in the AD Forest?"
+- yes → `dc_is_forest_root=true` → `Install-ADDSForest`
+- no → the play aborts (no replication source, and not confirmed as a from-scratch build)
 
-CLD is never used as a replication source for site DCs.
+This is operator-confirmed, not inferred from the site code — any site can be the
+forest root if it's genuinely the first DC built for the forest.
 
-**FAL (Head office)** — Prefers to replicate from CLD. Falls back to ODE or BRK. Cannot be a forest root.
+**CLD (Datacenter)** — Probes FAL, ODE, and BRK on TCP/389. Never used as a
+replication source for site DCs.
 
-**ODE and BRK (Regional hubs)** — CLD first, then other hubs (skipping self), then ABORT.
+**FAL (Head office)** — Prefers to replicate from CLD. Falls back to ODE or BRK.
+
+**ODE and BRK (Regional hubs)** — CLD first, then other hubs (skipping self).
 
 **Standard sites** — Probe FAL → ODE → BRK. If none reachable, fall back to any existing DC
-at `.10` for that site's subnet. If still nothing, the play aborts.
+at `.10` for that site's subnet.
 
 ### FSMO roles
 
-FSMO placement is **reported** in `95-dc-replicate.yml` for hub sites but **never moved
+FSMO placement is **reported** in `30-dc-replicate.yml` for hub sites but **never moved
 automatically**. Use `ntdsutil` or `Move-ADDirectoryServerOperationMasterRole` manually
 after reviewing the summary output.
 
@@ -899,7 +905,7 @@ ansible-playbook -i configs/inventory \
   --ask-vault-pass
 ```
 
-**Prompts** (from `85-dc-preflight.yml`):
+**Prompts** (from `00-dc-preflight.yml`):
 
 | Prompt | Answer |
 |--------|--------|
@@ -912,13 +918,14 @@ ansible-playbook -i configs/inventory \
 
 | Stage | Playbook | What it does |
 |-------|----------|-------------|
-| `dc_preflight` | `85-dc-preflight.yml` | Probes FAL → ODE → BRK for a live replication source; LIV is a standard site so it picks the first reachable hub |
-| `dc_promote` | `90-dc-promote.yml` | Installs AD-DS role, runs `Install-ADDSDomainController` against the chosen source, reboots |
-| `dc_replicate` | `95-dc-replicate.yml` | Forces replication, waits for SYSVOL to synchronise, reports FSMO role placement |
-| `dc_summary` | `99-dc-summary.yml` | Runs `dcdiag` and prints a colourised build report |
+| `dc_preflight` | `00-dc-preflight.yml` | Probes FAL → ODE → BRK for a live replication source; LIV is a standard site so it picks the first reachable hub |
+| `dc_features` | `10-dc-install-features.yml` | Installs the AD-DS/DNS/GPMC feature set |
+| `dc_promote` | `20-dc-promote.yml` | Runs `Install-ADDSDomainController` against the chosen source, reboots |
+| `dc_replicate` | `30-dc-replicate.yml` | Forces replication, waits for SYSVOL to synchronise, reports FSMO role placement |
+| `dc_summary` | `40-dc-summary.yml` | Runs `dcdiag` and prints a colourised build report |
 
-If any hub is temporarily unreachable, re-run `--tags dc_preflight,dc_promote` once
-connectivity is restored — all stages are idempotent.
+If any hub is temporarily unreachable, re-run `--tags dc_preflight,dc_features,dc_promote`
+once connectivity is restored — all stages are idempotent.
 
 ---
 

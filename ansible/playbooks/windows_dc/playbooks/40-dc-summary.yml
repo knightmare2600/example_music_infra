@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# playbooks/99-dc-summary.yml
+# playbooks/40-dc-summary.yml
 # Example Music Limited — Domain Controller post-build summary
 # =============================================================================
 # Runs dcdiag, netlogon/SYSVOL share checks, DNS SRV record verification
