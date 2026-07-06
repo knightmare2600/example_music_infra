@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# playbooks/95-dc-replicate.yml
+# playbooks/30-dc-replicate.yml
 # Example Music Limited — AD replication verification and force-sync
 # =============================================================================
 # After promotion this play:
@@ -82,7 +82,7 @@
         msg: >
           {{ _c.R }}[✗]{{ _c.NC }} {{ inventory_hostname }} ProductType=
           {{ dc_presync_product_type.stdout | trim }} — expected 2 (DC).
-          Run 90-dc-promote.yml first.
+          Run 20-dc-promote.yml first.
       when: dc_presync_product_type.stdout | trim != '2'
       tags: dc_replicate
 

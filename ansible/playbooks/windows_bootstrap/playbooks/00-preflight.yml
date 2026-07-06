@@ -50,7 +50,7 @@
 #   Role=DCS AND is_first_dc=yes
 #     → primary=BIND9 (192.168.139.8), secondary=none
 #       Creating the AD forest from scratch.  No domain exists yet — no AD DNS
-#       is needed and none will answer.  90-dc-promote.yml sets DNS to
+#       is needed and none will answer.  20-dc-promote.yml sets DNS to
 #       127.0.0.1 and configures BIND9 as a forwarder after promotion.
 #
 #   site DC (.10) reachable via TCP 389
@@ -61,7 +61,7 @@
 #   site DC (.10) not reachable, hub DC (FAL/ODE/BRK) reachable
 #     → primary=nearest reachable hub DC, secondary=BIND9
 #       First DC at this site.  The domain exists elsewhere — a hub DC provides
-#       AD DNS for domain join and replication.  For DCS hosts, 90-dc-promote
+#       AD DNS for domain join and replication.  For DCS hosts, 20-dc-promote
 #       handles DNS after promotion.  For non-DCS hosts this is TEMPORARY —
 #       once the site DC (EXADCS<SITE>001) is commissioned, update DNS to .10.
 #

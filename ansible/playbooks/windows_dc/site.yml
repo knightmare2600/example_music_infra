@@ -26,33 +26,45 @@
 #       playbooks/windows_dc/site.yml \
 #       -e target=<host> --tags dc_promote
 #
-# Playbook order:
-#   85-dc-preflight   Credential prompts + replication source resolution
-#   90-dc-promote     AD-DS features + Install-ADDSDomainController (or Forest)
-#   95-dc-replicate   Force replication, SYSVOL wait, FSMO report, KCC
-#   99-dc-summary     dcdiag + colourised build report
+# Playbook order (00 = preflight, then major steps in increments of 10;
+# in-between/minor steps would be 11/12/13, 21/22/23, etc. if ever needed):
+#   00-dc-preflight          Credential prompts + replication source resolution
+#   10-dc-install-features   AD-DS/DNS/GPMC feature install
+#   20-dc-promote            Install-ADDSDomainController (or Install-ADDSForest)
+#   30-dc-replicate          Force replication, SYSVOL wait, FSMO report, KCC
+#   40-dc-summary            dcdiag + colourised build report
 #
 # Tags:
-#   dc_preflight    85-dc-preflight
-#   dc_promote      90-dc-promote
-#   dc_replicate    95-dc-replicate
-#   dc_summary      99-dc-summary
+#   dc_preflight    00-dc-preflight
+#   dc_features     10-dc-install-features
+#   dc_promote      20-dc-promote
+#   dc_replicate    30-dc-replicate
+#   dc_summary      40-dc-summary
 #
 # =============================================================================
 # Changelog:
 #   2026-06-25  Initial file
+#   2026-07-06  Renumbered 85/90/95/99 -> 00/10/20/30/40 (00 = preflight,
+#               "before take off"; major steps in increments of 10). Split
+#               90-dc-promote.yml into 10-dc-install-features.yml ("install
+#               the tools" — AD-DS/DNS/GPMC feature install) and
+#               20-dc-promote.yml ("run dcpromo" — actual promotion) since
+#               those are two distinct major steps, not one.
 # =============================================================================
 
-- import_playbook: playbooks/85-dc-preflight.yml
+- import_playbook: playbooks/00-dc-preflight.yml
   tags: dc_preflight
 
-- import_playbook: playbooks/90-dc-promote.yml
+- import_playbook: playbooks/10-dc-install-features.yml
+  tags: dc_features
+
+- import_playbook: playbooks/20-dc-promote.yml
   tags: dc_promote
 
-- import_playbook: playbooks/95-dc-replicate.yml
+- import_playbook: playbooks/30-dc-replicate.yml
   tags: dc_replicate
 
-- import_playbook: playbooks/99-dc-summary.yml
+- import_playbook: playbooks/40-dc-summary.yml
   tags: dc_summary
 
 # AD population — runs only when populate_ad=yes was answered at preflight.

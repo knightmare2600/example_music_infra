@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# playbooks/85-dc-preflight.yml
+# playbooks/00-dc-preflight.yml
 # Example Music Limited — Domain Controller preflight
 # =============================================================================
 # Resolves the replication source DC and validates pre-conditions before
@@ -30,7 +30,7 @@
 #   If no candidate DC is reachable from anywhere, this play does NOT infer
 #   forest-root status from the site name. It asks the operator directly:
 #   "Is this the first DC in the AD Forest?" A "yes" sets
-#   dc_is_forest_root=true (90-dc-promote.yml then runs Install-ADDSForest
+#   dc_is_forest_root=true (20-dc-promote.yml then runs Install-ADDSForest
 #   instead of Install-ADDSDomainController) regardless of which site the
 #   host is in. A "no" aborts the play, since there is then no valid
 #   replication source and no confirmation that one is unnecessary.
@@ -49,7 +49,7 @@
 #   sites_csv          — path to sites.csv on the control node
 #                        default: /etc/example-music/sites.csv
 #
-# Sets facts consumed by 90-dc-promote.yml:
+# Sets facts consumed by 20-dc-promote.yml:
 #   dc_replication_source   — FQDN or IP of the source DC
 #   dc_is_forest_root       — true only when operator confirms this is the
 #                             first DC in the forest (any site — see above)

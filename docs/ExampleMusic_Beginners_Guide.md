@@ -420,7 +420,7 @@ With the FWL live and the WireGuard tunnel up, the site can talk to CLD. Now bui
 
 The decided DNS appears in the pre-flight summary before the operator confirms. No DNS prompt is shown.
 
-**Order of operations — why hub DC first:** When you are building the first DC at a spoke site, the site `.10` does not exist yet. The hub DC (FAL for UK/IE, ODE for EU, BRK for Americas/APAC) provides AD DNS so the new DC can locate the domain for replication. After promotion, `90-dc-promote.yml` sets NIC DNS to `127.0.0.1` (the DC runs its own DNS now) and configures forwarders. The hub-DC-as-temporary-primary is only needed during the bootstrap window.
+**Order of operations — why hub DC first:** When you are building the first DC at a spoke site, the site `.10` does not exist yet. The hub DC (FAL for UK/IE, ODE for EU, BRK for Americas/APAC) provides AD DNS so the new DC can locate the domain for replication. After promotion, `20-dc-promote.yml` sets NIC DNS to `127.0.0.1` (the DC runs its own DNS now) and configures forwarders. The hub-DC-as-temporary-primary is only needed during the bootstrap window.
 
 The DC build is handled by Ansible. See [buildsheet-domainControllers.md](buildsheets/buildsheet-domainControllers.md) and the `windows_dc` playbook README.
 
