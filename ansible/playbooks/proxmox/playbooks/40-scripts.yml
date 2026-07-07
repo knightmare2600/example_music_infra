@@ -17,6 +17,15 @@
 #   /etc/apt/apt.conf.d/52unattended-upgrades-pve     -- blocks proxmox-ve from auto-upgrade
 #   /etc/proxmox-replica-nic-guard/auth.env.example   -- credentials template (not the real auth.env)
 #
+# Also deploys the infrastructure-management provisioning scripts (source:
+# bootstrap/web/proxmox/ in the git checkout, not files/ above) directly to
+# /usr/local/bin/ -- create-vm.py, convert-v2v.py, manage-pool.py,
+# site-inventory-audit.py, bulk_iso_upload.py, pve-bootorder.py,
+# virt-v2v-vmdp.sh. These used to be fetched by first-boot.sh over HTTP from
+# the provisioning web server; now they come straight from the control
+# node's own checkout, same single-source-of-truth pattern as
+# sites.csv/devices.csv deployment.
+#
 # NIC guard credentials: the replica-nic-guard script reads its Proxmox API
 # credentials from /etc/proxmox-replica-nic-guard/auth.env (not deployed by
 # Ansible — the operator fills it in from the .env.example that IS
@@ -39,13 +48,40 @@
 #   2026-07-06  Initial file — extracted from pve_onboard.yml as part of the
 #               numbered-stage split (see 00-preflight.yml). Always runs,
 #               even on a refresh-only pass against an already-onboarded node.
+#   2026-07-07  Added provisioning-script deployment (create-vm.py, convert-v2v.py,
+#               manage-pool.py, site-inventory-audit.py, bulk_iso_upload.py,
+#               pve-bootorder.py, virt-v2v-vmdp.sh) — moved here from
+#               first-boot.sh, which used to fetch these over HTTP from the
+#               provisioning web server ($PROV_PKG_PATH, which was never
+#               actually defined anywhere — dead code). Copied straight from
+#               the control node's git checkout instead.
 # =============================================================================
 
 - name: Proxmox VE — Maintenance scripts
   hosts: "{{ target | default('pvenodes') }}"
   become: true
 
+  vars:
+    provisioning_scripts_src: "{{ playbook_dir }}/../../../../bootstrap/web/proxmox"
+
   tasks:
+
+    - name: Deploy provisioning scripts to /usr/local/bin (from git checkout)
+      ansible.builtin.copy:
+        src: "{{ provisioning_scripts_src }}/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - create-vm.py
+        - convert-v2v.py
+        - manage-pool.py
+        - site-inventory-audit.py
+        - bulk_iso_upload.py
+        - pve-bootorder.py
+        - virt-v2v-vmdp.sh
+      tags: scripts
 
     - name: Deploy PVE scripts to /usr/local/bin
       ansible.builtin.copy:

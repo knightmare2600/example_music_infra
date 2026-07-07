@@ -21,6 +21,7 @@
 #   /etc/systemd/system/proxmox-replica-nic-guard.{service,timer}
 #   /etc/systemd/system/proxmox-zfs-vm-audit.{service,timer}
 #   /etc/zabbix/zabbix_agentd.d/proxmox-nic-guard.conf
+#   proxmoxbmc service (only if pve_proxmoxbmc_deb_url was set for 45-virt-tools.yml)
 #
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/50-systemd-units.yml
@@ -36,6 +37,10 @@
 #               already-onboarded node doesn't restart zabbix-agent or
 #               touch systemd unless explicitly requested via
 #               -e pve_force_full_onboard=true.
+#   2026-07-07  Added proxmoxbmc service enable/start + API token creation
+#               (moved from first-boot.sh) — gated the same way, and only
+#               runs when pve_proxmoxbmc_deb_url was set for 45-virt-tools.yml
+#               to actually install it.
 # =============================================================================
 
 - name: Proxmox VE — Systemd units and Zabbix agent
@@ -122,4 +127,42 @@
         mode:  '0644'
       when: pve_run_full_onboard | default(true) | bool
       notify: Restart zabbix-agent
+      tags: systemd_units
+
+    # ── proxmoxbmc service (only if 45-virt-tools.yml actually installed it —
+    #    see pve_proxmoxbmc_deb_url there. Service enable/start + API token
+    #    creation touch live state, so this stays gated here rather than in
+    #    45-virt-tools.yml's pure file-placement tasks.) ─────────────────────
+
+    - name: Enable and start proxmoxbmc service
+      ansible.builtin.systemd:
+        name: proxmoxbmc
+        daemon_reload: true
+        enabled: true
+        state: restarted
+      when:
+        - pve_run_full_onboard | default(true) | bool
+        - pve_proxmoxbmc_deb_url | default('') | length > 0
+      tags: systemd_units
+
+    - name: Create Proxmox API token for proxmoxbmc
+      ansible.builtin.command: pveum user token add root@pam proxmoxbmc --privsep=0 --output-format=json
+      register: _proxmoxbmc_token
+      failed_when: false
+      changed_when: _proxmoxbmc_token.rc == 0
+      when:
+        - pve_run_full_onboard | default(true) | bool
+        - pve_proxmoxbmc_deb_url | default('') | length > 0
+      tags: systemd_units
+
+    - name: Show proxmoxbmc API token (save this — shown only once)
+      ansible.builtin.debug:
+        msg: >-
+          {{ (_proxmoxbmc_token.stdout | from_json).value
+             if (_proxmoxbmc_token.rc | default(1)) == 0
+             else 'Token not created this run (may already exist — check Datacenter -> Permissions -> API Tokens).' }}
+      when:
+        - pve_run_full_onboard | default(true) | bool
+        - pve_proxmoxbmc_deb_url | default('') | length > 0
+        - _proxmoxbmc_token is not skipped
       tags: systemd_units

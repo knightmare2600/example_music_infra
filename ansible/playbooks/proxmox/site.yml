@@ -20,7 +20,8 @@
 #   20-ansible-access       User/SSH key/sudoers/kvm group (gated)
 #   30-example-music       /etc/example-music/ — sites.csv, devices.csv, nodeinfo.json (always)
 #   40-scripts              Maintenance scripts + apt config + NIC guard creds (always)
-#   50-systemd-units        Systemd units + Zabbix agent (gated)
+#   45-virt-tools           V2V/VirtIO/proxmoxbmc/BIOS ROMs (always — file placement only)
+#   50-systemd-units        Systemd units + Zabbix agent + proxmoxbmc service (gated)
 #
 # Run once per new PVE node, as root via SSH password:
 #   ansible-playbook playbooks/proxmox/site.yml \
@@ -43,7 +44,7 @@
 # need 00-preflight.yml's facts — run those together, or via site.yml,
 # rather than standalone.)
 #
-# Tags: preflight, packages, ansible_access, example_music, scripts, systemd_units
+# Tags: preflight, packages, ansible_access, example_music, scripts, virt_tools, systemd_units
 # =============================================================================
 # Changelog:
 #   2026-06-29  Added Zabbix-monitored file deployment, systemd timers
@@ -65,6 +66,13 @@
 #               nodeinfo.json (only a one-time bash/jq version from
 #               first-boot.sh) — every device in the estate is meant to
 #               carry these, per playbooks/linux/tools.yml's precedent.
+#   2026-07-07  Added 45-virt-tools.yml — V2V prerequisites, VirtIO ISO,
+#               proxmoxbmc, and BIOS ROM files, moved here from
+#               first-boot.sh's interactive Steps 3b/3c/3d/3f as part of
+#               retiring that shell-script wizard in favour of Ansible (see
+#               bootstrap-new-node.yml, which replaces the rest of
+#               first-boot.sh's former interactive work — site/hostname/
+#               network setup).
 # =============================================================================
 
 - import_playbook: playbooks/00-preflight.yml
@@ -81,6 +89,9 @@
 
 - import_playbook: playbooks/40-scripts.yml
   tags: scripts
+
+- import_playbook: playbooks/45-virt-tools.yml
+  tags: virt_tools
 
 - import_playbook: playbooks/50-systemd-units.yml
   tags: systemd_units
