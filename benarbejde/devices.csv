@@ -32,7 +32,7 @@ FAL,LAP,1,103,Windows 11 Pro 23H2,,,Production laptop
 FAL,SUR,1,104,Windows 11 23H2,,,Microsoft Surface
 FAL,SWI,1,250,Cisco Catalyst 9300,,,Core switch 1
 FAL,SWI,2,251,Cisco Catalyst 9300,,,Core switch 2
-FAL,RTR,2,254,FortiGate,,,WAN edge router
+FAL,RTR,2,1,FortiGate,,,WAN edge router
 FAL,PHN,1,,Yealink T58A,,,Phone 1
 FAL,PHN,2,,Yealink T58A,,,Phone 2
 FAL,PHN,3,,Yealink T58A,,,Phone 3
@@ -70,25 +70,24 @@ EDI,WKS,1,150,Windows 10 Pro 22H2,,,Shared desktop
 EDI,LAP,98,108,Windows 11 Pro 24H2,,,Pool laptop
 EDI,SWI,1,250,Cisco Catalyst 2960X,,,Floor switch
 EDI,SWI,2,251,Cisco Catalyst 2960X,,,48-port switch
-EDI,RTR,1,254,Cisco ISR 4331,,,WAN edge
+EDI,RTR,1,1,Cisco ISR 4331,,,WAN edge
 EDI,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
 EDI,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 EDI,TEA,1,60,Siemens EQ700,,,Coffee machine
-GLA,DCR,1,10,Windows Server 2022,,,DC Schema Master
 GLA,PRN,1,16,HP LaserJet Pro,,,Main floor printer
 GLA,WKS,1,150,Windows 11 Pro,,,Hot desk workstation
 GLA,WKS,2,151,Windows 11 Pro,,,Hot desk workstation
 GLA,LAP,1,152,Windows 11 Pro,,,Pool laptop
-CLY,FWL,1,1,FortiOS 7.6.5,,,VPN gateway
+CLY,FWL,1,254,FortiOS 7.6.5,,,VPN gateway
 CLY,SRV,1,20,Rocky Linux,,,Oracle DB server
 CLY,SWI,1,250,Cisco Catalyst 9300,,,Core switch
-CLY,RTR,1,254,Cisco ISR 4331,,,WAN edge
+CLY,RTR,1,1,Cisco ISR 4331,,,WAN edge
 CLY,SUR,1,,Windows 11,,,Surface
 CLY,PHN,1,,iOS,,,Phone
 CLY,SUR,2,,Android,,,Android tablet
 CLY,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
 CLY,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
-DUN,RTR,1,254,Cisco ISR 4331,,,WAN edge
+DUN,RTR,1,1,Cisco ISR 4331,,,WAN edge
 DUN,SUR,1,,Windows 11,,,Surface
 DUN,SUR,2,,Windows 11,,,Surface
 DUN,PHN,1,,iOS,,,Phone
@@ -105,26 +104,23 @@ PER,PHN,3,,Yealink T46G,,,Phone 3
 PER,PHN,4,,Yealink T46G,,,Phone 4
 PER,PRN,1,,HP MFP,,,Printer
 PER,VND,1,,Embedded SP100,,,Vending machine
-ABD,FWL,1,1,Cisco ASA 5506-X,,,Edge firewall
-ABD,RTR,1,254,Cisco ISR 4331,,,WAN edge
+ABD,FWL,1,254,Cisco ASA 5506-X,,,Edge firewall
+ABD,RTR,1,1,Cisco ISR 4331,,,WAN edge
 ABD,MBP,1,,macOS,,,MacBook
 ABD,MBP,2,,macOS,,,MacBook
 ABD,PHN,1,,iOS,,,iPhone
 ABD,PHN,2,,iOS,,,iPhone
 ABD,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
 ABD,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
-LND,FWL,1,1,Cisco ASA 5516-X,,,Perimeter firewall
-LND,DCR,1,10,Windows Server 2022,,,DC RID Master
+LND,FWL,1,254,Cisco ASA 5516-X,,,Perimeter firewall
 LND,RAD,1,80,,,,BBC Office Radio Mk II
 LND,MIC,1,81,,,,Shure SM7 via Dante audio
 LND,SWI,1,250,Cisco Catalyst 9300,,,Core switch
-LND,RTR,1,254,Cisco ISR 4331,,,WAN edge
+LND,RTR,1,1,Cisco ISR 4331,,,WAN edge
 LND,WKS,1,150,Windows 11,,,Workstation
 LND,PRN,1,,Xerox WorkCentre,,,Printer
 LND,PRN,2,,,,,Steno writer no IP
-BIR,FWL,1,1,Palo Alto PAN-OS,,,VPN gateway
-BIR,DCR,1,10,Windows Server 2022,,,DC primary
-BIR,DCR,2,11,Windows Server 2022,,,DC secondary
+BIR,FWL,1,254,Palo Alto PAN-OS,,,VPN gateway
 BIR,SRV,1,20,Rocky Linux,,,Oracle DB
 BIR,MOO,1,70,,,,Moog synth
 BIR,LIN,1,71,,,,Drum machine
@@ -134,41 +130,38 @@ BIR,PAY,1,74,,,,Payphone
 BIR,LCD,1,75,NEC PlasmaSync,,,NOC display
 BIR,SWI,1,250,Cisco Catalyst 9300,,,Core switch
 BIR,SWI,2,251,Cisco Catalyst 48-port,,,Access switch
-BIR,RTR,1,254,Cisco ISR 4331,,,WAN edge
+BIR,RTR,1,1,Cisco ISR 4331,,,WAN edge
 BIR,MBP,1,,macOS,,,MacBook
 BIR,TAB,1,,Android,,,Galaxy Tab
 BIR,PHN,1,,Android,,,Samsung S25
 BIR,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
 BIR,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
-MCR,DCR,1,10,Windows Server 2022,,,DC primary
 MCR,SWI,1,250,Cisco Catalyst 9300,,,Distribution switch
 MCR,LAP,1,,Windows 11,,,Laptop
 MCR,LAP,2,,Windows 11,,,Laptop
 MCR,WKS,1,,Windows 10,,,Desktop
 MCR,WKS,2,,Windows 10,,,Desktop
 MCR,PRN,1,,,,,Printer
-LIV,DCR,1,10,Windows Server 2025,,,DC
 LIV,SWI,1,250,Cisco Catalyst 9200,,,Core switch
 LIV,SVR,1,,Windows Server 2022,,,File server
 LIV,MBP,1,,macOS Tahoe,,,MacBook Pro
 LIV,MAC,1,,macOS,,,iMac DISABLED
 LIV,RDR,2,,,,,HID Signo badge reader
 LIV,BPS,1,,,,,Badge programming workstation
-NEW,DCR,1,10,Windows Server 2022,,,DC
 NEW,SWI,1,250,TP-Link JetStream,,,Access switch
 NEW,SRV,1,,Windows Server 2022,,,File/print server
 NEW,WKS,99,,Windows 11,,,LAPS password expired
-COV,RTR,1,254,Cisco ISR 4331,,,WAN edge no server infra
+COV,RTR,1,1,Cisco ISR 4331,,,WAN edge no server infra
 COV,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
 COV,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 CPH,CLK,1,18,Meinberg LANTIME M300,,,NTP clock
 CPH,TVS,1,17,Bella Kronik 42X,,,Display
 CPH,SWI,1,250,TP-Link JetStream,,,Office switch
-CPH,RTR,1,254,Cisco ISR 4331,,,WAN edge
+CPH,RTR,1,1,Cisco ISR 4331,,,WAN edge
 CPH,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
 CPH,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 CPH,WAP,3,,Ubiquiti UniFi U6-Pro,,,WAP 3
-ODE,FWL,1,1,Cisco ASA 5506-X,,,Edge firewall
+ODE,FWL,1,254,Cisco ASA 5506-X,,,Edge firewall
 ODE,MUS,1,60,,,,Jukebox
 ODE,MAC,1,,macOS Tahoe,,,iMac
 ODE,MBP,2,,macOS,,,MacBook Pro
@@ -176,11 +169,11 @@ ODE,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
 ODE,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 KGE,PRN,1,,HP LaserJet MFP M528,,,Printer
 KGE,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP
-FAX,RTF,1,254,Cisco ISR 4331,,,WAN edge possible typo verify
+FAX,FWL,1,254,Cisco ISR 4331,,,WAN edge possible typo verify
 FAX,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
 FAX,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 BON,SWI,1,250,Cisco Catalyst 2960X,,,Office switch
-BON,RTR,1,254,Cisco ISR 4331,,,WAN edge
+BON,RTR,1,1,Cisco ISR 4331,,,WAN edge
 BON,LAP,1,,Windows 11,,,ThinkPad DISABLED
 BON,WKS,1,,Windows 11,,,Finance workstation
 BON,LAP,2,,Windows 11,,,Finance laptop
@@ -189,7 +182,7 @@ BON,CAM,1,,Axis P3245-LVE,,,CCTV camera
 BON,TVS,1,,Samsung 65in,,,Display
 BON,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
 BON,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
-BRD,RTR,1,254,Cisco ISR 4331,,,WAN edge
+BRD,RTR,1,1,Cisco ISR 4331,,,WAN edge
 BRD,SRV,1,,Windows Server 2019,,,Legacy application server
 BRD,NIX,1,,Debian 12,,,Debian server
 BRD,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
@@ -199,11 +192,11 @@ MUN,WKS,1,,Windows 11,,,Hot desk workstation
 MUN,LAP,1,,Windows 11,,,Pool laptop
 MUN,LAP,2,,Windows 11,,,LAPS expired
 BRK,DON,1,60,VxWorks,,,Donut vending
-BRK,RTR,1,254,Cisco ISR 4331,,,WAN edge
+BRK,RTR,1,1,Cisco ISR 4331,,,WAN edge
 BRK,LAP,1,,Windows 11,,,Tour laptop
 BRK,VND,1,,XPe,,,Vending machine
 BRK,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP
-LAX,FWL,1,1,Palo Alto PAN-OS 10.x,,,VPN gateway
+LAX,FWL,1,254,Palo Alto PAN-OS 10.x,,,VPN gateway
 LAX,SRV,1,20,Rocky Linux 9.x,,,Local services DB
 LAX,MUS,1,70,,,,Synth
 LAX,MUS,2,71,,,,Drum machine
@@ -213,7 +206,7 @@ LAX,PAY,1,74,,,,Payphone
 LAX,LCD,1,75,NEC PlasmaSync,,,Status wallboard
 LAX,SWI,1,250,Cisco Catalyst 9300,,,Core switch
 LAX,SWI,2,251,Cisco Catalyst 2960,,,Access switch
-LAX,RTR,1,254,Cisco ISR 4331,,,WAN edge
+LAX,RTR,1,1,Cisco ISR 4331,,,WAN edge
 LAX,MBP,1,,macOS,,,MacBook Pro
 LAX,TAB,1,,iPadOS,,,iPad
 LAX,PHN,1,,Android,,,Phone
@@ -222,7 +215,7 @@ LAX,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 LAX,WAP,3,,Ubiquiti UniFi U6-Pro,,,WAP 3
 MIA,COF,1,60,VxWorks,,,Coffee machine
 MIA,LAP,1,,macOS Sonoma,,,MacBook
-SYD,FWL,1,1,FortiGate 7.x,,,Site firewall
+SYD,FWL,1,254,FortiGate 7.x,,,Site firewall
 SYD,SRV,1,20,Windows Server 2022,,,Local infra server
 SYD,SWI,1,250,Cisco Catalyst 9300,,,Core switch
 SYD,SWI,2,251,Cisco Catalyst 2960,,,Access switch
@@ -236,7 +229,7 @@ SYD,PRN,1,,Brother,,,Laser printer
 SYD,CAM,1,,Hikvision,,,Camera
 SYD,CAM,2,,Hikvision,,,Camera reception
 SYD,COF,1,,,,,Coffee machine
-MEL,FWL,1,1,FortiGate 7.x,,,Site firewall
+MEL,FWL,1,254,FortiGate 7.x,,,Site firewall
 MEL,SRV,1,20,Windows Server 2022,,,Local file and print server
 MEL,SWI,1,250,Cisco Catalyst 9300,,,Core switch
 MEL,SWI,2,251,Cisco Catalyst 2960,,,Access switch
@@ -247,11 +240,11 @@ MEL,TAB,1,,iPadOS,,,iPad
 MEL,LCD,1,,Samsung,,,Signage display
 MEL,PRN,1,,HP,,,LaserJet printer
 MEL,NAS,1,,Synology DSM 7.x,,,NAS
-AKL,FWL,1,1,FortiGate 7.x,,,Site firewall
+AKL,FWL,1,254,FortiGate 7.x,,,Site firewall
 AKL,SRV,1,20,Windows Server 2022,,,Local server
 AKL,SWI,1,250,Cisco Catalyst 9300,,,Core switch
 AKL,SWI,2,251,Cisco Catalyst 2960,,,Access switch
-AKL,RTR,1,254,Cisco ISR 4331,,,WAN edge
+AKL,RTR,1,1,Cisco ISR 4331,,,WAN edge
 AKL,WKS,1,,Windows 11,,,Workstation
 AKL,MBP,1,,macOS,,,MacBook Pro
 AKL,PHN,1,,Android,,,Phone
