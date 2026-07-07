@@ -3,7 +3,7 @@
 ; Example Music Limited -- reverse zone
 ;
 ; Zone:    {{ sites_by_code[item].split('.')[2] }}.168.192.in-addr.arpa
-; Covers:  {{ sites_by_code[item] | regex_replace('/24', '.0/24') }}  ({{ item }})
+; Covers:  {{ sites_by_code[item] }}  ({{ item }})
 ; Source:  devices.csv (single source of truth)
 ; Server:  EXADNSCLD001 ({{ dns_ip }})
 ; Managed: Ansible bind9-dns.yml Play 2
