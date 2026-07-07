@@ -24,7 +24,7 @@ example_music_infra/
 git config core.hooksPath .githooks
 ```
 
-This enables the pre-commit hook that enforces sync between `benarbejde/` and `bootstrap/web/proxmox/` for `sites.csv` and `devices.csv`. Without it, the hook does not fire and the copies can drift.
+This enables the pre-commit hook that keeps `bootstrap/web/proxmox/` in sync with `benarbejde/` for `sites.csv`, `devices.csv`, and `address_policy.json` — `benarbejde/` always wins; the hook copies it over and stages the result as part of your commit. Without it, the hook does not fire and the copies can drift.
 
 ---
 
@@ -37,11 +37,25 @@ Shared data files referenced from multiple parts of the repo. Single edit point 
 | File | Description |
 |------|-------------|
 | `sites.csv` | Authoritative site registry — every site code, subnet, gateway, city, timezone and legal entity |
-| `devices.csv` | Authoritative device inventory — every hostname, IP octet, role and OS across the estate |
+| `devices.csv` | Device **exceptions** — every device that isn't already implied by the standard addressing convention (a specific workstation, laptop, printer, etc.) |
+| `address_policy.json` | The standard addressing convention itself, as data — see below |
 
-Both files also live in `bootstrap/web/proxmox/` where the preseed web server serves them during bare-metal installs. The two copies **MUST** stay identical. The `.githooks/pre-commit` hook enforces this — if the copies differ at commit time, it shows a diff and blocks until you resolve it.
+All three files also live in `bootstrap/web/proxmox/` where the preseed web server serves them during bare-metal installs. That copy is never hand-edited — the `.githooks/pre-commit` hook automatically overwrites it from `benarbejde/` (the source of truth) and stages the result as part of your commit, so the two locations can't drift.
 
 These are the **Known source of truth** (0xDF). If any other source disagrees with these files, the other source is wrong.
+
+### devices.csv is exceptions-only
+
+`devices.csv` does **not** list every device at every site — every site's router, domain controllers, Proxmox nodes, SBC and firewalls are already fully predictable from `address_policy.json` + `sites.csv` (see [Addressing](#addressing) below), so listing them again in `devices.csv` would just be 49 sites' worth of repeated boilerplate. `devices.csv` only needs a row for a device that **doesn't** fit that pattern — a specific workstation, a laptop, a printer, a coffee machine with a network port, a second/third instance of something that's normally singular.
+
+`benarbejde/generate_inventory.py` is what joins the two together — one script, two jobs:
+
+- **Default mode** (writes `.ini` inventory files): for each site, derive the standard hosts from `address_policy.json` + `sites.csv`, then layer `devices.csv`'s real exceptions on top. Anything in `devices.csv` that just re-describes a standard slot is silently skipped (it'd be a duplicate); anything genuinely ambiguous is flagged `NEEDS REVIEW` rather than guessed at.
+- **`--emit-devices-json` mode**: prints the same combined, deduplicated device list as JSON instead of writing files — this is what `ansible/playbooks/bind9/bind9-dns.yml` calls to build DNS zones, so the DNS view of the estate and the Ansible-inventory view of the estate can never disagree about which devices are real or what they're called.
+
+### address_policy.json
+
+Machine-readable version of the [Addressing](#addressing) table below — `offsets_single` (RTR/PRV/SBC/WKS/LAP: one instance, fixed octet) and `role_offsets` (BMC/DCS/FWL/PVE: multiple instances, fixed octet list). This isn't new policy — it's the same data that used to live only as hardcoded Python dictionaries inside `generate_inventory.py`. It was pulled out into its own file so that `bind9-dns.yml` (Ansible/Jinja, a different language and runtime to the Python generator) can read the identical rule without a second, hand-maintained copy that could quietly drift out of sync.
 
 ---
 
@@ -140,6 +154,7 @@ ansible/
 |----------|---------|
 | `linux/tools.yml` | Deploy common packages and `/etc/example-music/{sites,devices}.csv` to all Linux hosts |
 | `bind9/bind9-dns.yml` | Generate and deploy BIND9 zones from `devices.csv` |
+| `proxmox/bootstrap-new-node.yml` | One-time: give a brand-new PVE node (still on its preseed DHCP IP) its real hostname and static network config, from an operator-supplied build-sheet hostname. Run this first against the DHCP IP, then add the node to inventory and run `proxmox/site.yml` |
 | `proxmox/site.yml` | Onboard a new Proxmox VE node — Zabbix, packages, SSH, sudoers, `/etc/example-music/`. Re-run safe: only refreshes packages/example-music/scripts on an already-onboarded node unless `-e pve_force_full_onboard=true` |
 | `windows_bootstrap/site.yml` | Full Windows host PostOOBE bootstrap — rename, static IP, domain join, packages, wallpaper |
 | `windows_dc/site.yml` | Promote a Windows Server to domain controller |
@@ -181,11 +196,13 @@ Unless explicitly stated otherwise, all deployments MUST conform to these conven
 | `.10–.11` | DCS — Domain Controllers |
 | `.15` | PRV — provisioning server |
 | `.48` | SBC — VOIP SBC |
-| `.100–.249` | DHCP pool |
+| `.100–.249` | DHCP pool (`.101`/`.102` are documentation examples within the pool, not exclusive reservations) |
 | `.250–.252` | SWI — switches |
-| `.253` | FWL — firewall LAN face / site gateway |
+| `.253–.254` | FWL — firewall (two instances; `.253` and `.254`) |
 
 The authoritative source for site subnet allocations is `benarbejde/sites.csv` (and its sync copy at `bootstrap/web/proxmox/sites.csv`). If any other source disagrees, `sites.csv` wins.
+
+This table is also encoded as data in `benarbejde/address_policy.json` — see [devices.csv is exceptions-only](#devices-csv-is-exceptions-only) above for how it's used.
 
 ### Naming
 
