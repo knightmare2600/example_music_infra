@@ -1,0 +1,248 @@
+---
+# =============================================================================
+# proxmox/bootstrap-new-node.yml
+# Example Music Limited — Give a brand-new PVE node its real identity
+# =============================================================================
+# A freshly-preseeded PVE node comes up on DHCP with a generic placeholder
+# hostname (answer.toml: source = "from-dhcp", fqdn = "pve-install.jukebox.internal")
+# and only the ansible-bootstrap sliver of first-boot.sh has run (ansible user +
+# SSH key — see first-boot.sh's 2026-07-07 changelog entry). This playbook does
+# the rest: renames the node to its real hostname (from the operator's build
+# sheet) and rewrites its networking to static, using the exact same
+# /etc/network/interfaces template first-boot.sh used to write imperatively.
+#
+# Deliberately NOT part of site.yml's chain and NOT number-prefixed like the
+# playbooks/*.yml stages there — this is a one-time, higher-risk operation
+# (renames the live host, rewrites its own networking, strands the current SSH
+# connection on purpose) that should only ever run when explicitly invoked by
+# name, never as a side effect of routine maintenance.
+#
+# Run against the node's temporary DHCP IP (not through configs/inventory —
+# it isn't in there yet):
+#
+#   ansible-playbook -i "192.168.x.x," playbooks/proxmox/bootstrap-new-node.yml
+#
+# You'll be prompted for the target hostname (e.g. EXAPVEKGE001, from your
+# build sheet) and asked to confirm the derived static IP before anything is
+# changed. The SSH session on the DHCP IP will not survive this play — that is
+# expected. Reconnect via the new hostname/IP afterward, add it to
+# configs/inventory/, then run proxmox/site.yml as normal — 00-preflight.yml
+# onward already assumes a correctly-named, statically-addressed node.
+#
+# Refuses to run against a node that has already been through
+# 20-ansible-access.yml (detected via /etc/sudoers.d/ansible, same check
+# 00-preflight.yml uses) — that means this node has already been onboarded
+# through the normal site.yml flow, and re-running this playbook against it
+# would rename/rewrite the networking of a live, already-configured node.
+# Override with -e bootstrap_force=true if you genuinely mean to.
+# =============================================================================
+# Changelog:
+#   2026-07-07  Initial file — replaces first-boot.sh's interactive site/
+#               hostname/gateway/IP prompts and Step 7 (rename + network
+#               rewrite), ported here so the operator's already-known
+#               build-sheet hostname/IP drives Ansible instead of a
+#               shell-script wizard re-deriving them from a sites.csv copy
+#               that had to be pre-served by the preseed web server.
+# =============================================================================
+
+- name: Proxmox VE — bootstrap a new node's real identity
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    sites_csv_src: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
+    address_policy_src: "{{ playbook_dir }}/../../../../benarbejde/address_policy.json"
+
+  vars_prompt:
+    - name: target_hostname
+      prompt: "Target hostname for this node (from your build sheet, e.g. EXAPVEKGE001)"
+      private: false
+
+  tasks:
+    - name: Refuse to run against an already-onboarded node
+      ansible.builtin.stat:
+        path: /etc/sudoers.d/ansible
+      register: _already_onboarded
+
+    - name: Abort if already onboarded (override with -e bootstrap_force=true)
+      ansible.builtin.assert:
+        that:
+          - (not _already_onboarded.stat.exists) or (bootstrap_force | default(false) | bool)
+        fail_msg: >-
+          /etc/sudoers.d/ansible already exists — this node has already been
+          through 20-ansible-access.yml, meaning it's already onboarded via
+          the normal site.yml flow. Re-running this playbook would rename and
+          rewrite the networking of a live, already-configured node. If you
+          are certain that's what you want, re-run with -e bootstrap_force=true.
+
+    - name: Include hostname facts (parses target_hostname)
+      include_tasks: ../../tasks/hostname_facts.yml
+
+    - name: Abort if this isn't a PVE hostname
+      ansible.builtin.assert:
+        that:
+          - host_role == 'PVE'
+        fail_msg: >-
+          '{{ target_hostname }}' parses as role={{ host_role }}, not PVE.
+          This playbook is for Proxmox VE nodes only.
+
+    - name: Load sites.csv
+      ansible.builtin.read_csv:
+        path: "{{ sites_csv_src }}"
+      register: _sites_raw
+      delegate_to: localhost
+      become: false
+
+    - name: Look up this node's site row
+      ansible.builtin.set_fact:
+        _site_row: "{{ _sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
+
+    - name: Abort if site code not found in sites.csv
+      ansible.builtin.assert:
+        that:
+          - _site_row != {}
+        fail_msg: "Site code '{{ host_site }}' (parsed from {{ target_hostname }}) was not found in sites.csv."
+
+    - name: Load address_policy.json
+      ansible.builtin.set_fact:
+        _address_policy: "{{ lookup('file', address_policy_src) | from_json }}"
+      delegate_to: localhost
+      become: false
+
+    - name: Derive expected static IP from address_policy.json's PVE offsets
+      ansible.builtin.set_fact:
+        _subnet_base: "{{ _site_row.Subnet.split('.')[0:3] | join('.') }}"
+        _pve_offsets: "{{ _address_policy.role_offsets.PVE }}"
+
+    - name: Abort if host_num is out of range for the PVE offset list
+      ansible.builtin.assert:
+        that:
+          - (host_num | int) >= 1
+          - (host_num | int) <= (_pve_offsets | length)
+        fail_msg: >-
+          host_num={{ host_num }} (parsed from {{ target_hostname }}) has no
+          matching entry in address_policy.json's PVE offsets ({{ _pve_offsets }}) —
+          check the instance number in the hostname.
+
+    - name: Set derived static IP + gateway
+      ansible.builtin.set_fact:
+        _derived_ip: "{{ _subnet_base }}.{{ _pve_offsets[(host_num | int) - 1] }}"
+        _gateway: "{{ _site_row.Gateway }}"
+
+    - name: Show derived network config and confirm
+      ansible.builtin.pause:
+        prompt: |
+
+          Target hostname : {{ target_hostname | upper }}
+          Site            : {{ host_site }} ({{ _site_row.City }}, {{ _site_row.Country }})
+          Derived static IP : {{ _derived_ip }}/24
+          Gateway           : {{ _gateway }}
+
+          This matches the standard PVE{{ host_num }} slot for {{ host_site }}.
+          If this does NOT match your build sheet, Ctrl-C now and re-check
+          before continuing — this playbook will rewrite this node's
+          networking and the current SSH session will drop.
+
+          Press Enter to confirm and proceed, or Ctrl-C to abort
+      when: not (bootstrap_skip_confirm | default(false) | bool)
+
+    - name: Detect physical NIC from existing bridge-ports
+      ansible.builtin.command: awk '/bridge-ports/{print $2}' /etc/network/interfaces
+      register: _phys_nic_from_bridge
+      changed_when: false
+
+    - name: Fall back to first non-virtual interface if bridge-ports not found
+      ansible.builtin.shell: >-
+        set -o pipefail;
+        ip -o link show | awk -F': ' '{print $2}' |
+        grep -vE '^(lo|vmbr|fwbr|fwpr|fwln|tap|veth|bond|docker|br-)' | head -1
+      args:
+        executable: /bin/bash
+      register: _phys_nic_fallback
+      changed_when: false
+      when: _phys_nic_from_bridge.stdout | trim == ''
+
+    - name: Set physical NIC fact
+      ansible.builtin.set_fact:
+        _phys_nic: >-
+          {{ (_phys_nic_from_bridge.stdout | trim)
+             if (_phys_nic_from_bridge.stdout | trim != '')
+             else (_phys_nic_fallback.stdout | default('ens32') | trim | default('ens32', true)) }}
+
+    - name: Write /etc/network/interfaces (static, matches first-boot.sh's former template)
+      ansible.builtin.copy:
+        dest: /etc/network/interfaces
+        mode: "0644"
+        content: |
+          auto lo
+          iface lo inet loopback
+
+          iface {{ _phys_nic }} inet manual
+
+          auto vmbr0
+          iface vmbr0 inet static
+              address {{ _derived_ip }}/24
+              gateway {{ _gateway }}
+              bridge-ports {{ _phys_nic }}
+              bridge-stp off
+              bridge-fd 0
+              bridge-vlan-aware yes
+
+          source /etc/network/interfaces.d/*
+
+    - name: Write /etc/hostname
+      ansible.builtin.copy:
+        dest: /etc/hostname
+        mode: "0644"
+        content: "{{ target_hostname | lower }}\n"
+
+    - name: Update /etc/hosts — remove stale 127.0.1.1 line
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1\s'
+        state: absent
+
+    - name: Update /etc/hosts — remove stale provisioning-network lines
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^192\.168\.\d+\.\d+\s'
+        state: absent
+
+    - name: Update /etc/hosts — add 127.0.1.1 and real IP lines
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ item }}"
+        insertafter: EOF
+      loop:
+        - "127.0.1.1\t{{ target_hostname | lower }}.jukebox.internal\t{{ target_hostname | lower }}"
+        - "{{ _derived_ip }}\t{{ target_hostname | lower }}.jukebox.internal\t{{ target_hostname | lower }}"
+
+    - name: Apply hostname to the running system
+      ansible.builtin.hostname:
+        name: "{{ target_hostname | lower }}"
+
+    - name: Check for postfix
+      ansible.builtin.stat:
+        path: /etc/postfix/main.cf
+      register: _postfix_check
+
+    - name: Update postfix myhostname
+      ansible.builtin.lineinfile:
+        path: /etc/postfix/main.cf
+        regexp: '^myhostname\s*='
+        line: "myhostname = {{ target_hostname | lower }}.jukebox.internal"
+      when: _postfix_check.stat.exists
+
+    - name: Set persistent DNS via PVE API
+      ansible.builtin.command: >-
+        pvesh set /nodes/{{ target_hostname | lower }}/dns
+        --dns1 1.1.1.1 --dns2 9.9.9.9 --search jukebox.internal
+      changed_when: true
+
+    - name: Final message — SSH session on the old IP is about to drop
+      ansible.builtin.debug:
+        msg:
+          - "Network config applied. This SSH session (on the DHCP IP) will not survive."
+          - "Reconnect via: ssh ansible@{{ _derived_ip }}  (or {{ target_hostname | lower }}.jukebox.internal once DNS picks it up)"
+          - "Then: add it to configs/inventory/, and run proxmox/site.yml as normal."

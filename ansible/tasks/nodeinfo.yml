@@ -1,0 +1,60 @@
+---
+# =============================================================================
+# ansible/tasks/nodeinfo.yml
+# Example Music Limited — Write /etc/example-music/nodeinfo.json
+# =============================================================================
+# Shared by every playbook that writes nodeinfo.json (linux/tools.yml,
+# proxmox/30-example-music.yml, firewallme's 12_finish.yml, rudder_server.yml)
+# instead of each hand-writing its own near-identical copy/vars block. The
+# base fields (hostname, fqdn, role, site, city, country, entity,
+# ansible_managed, bootstrapped_at/by, environment) come from data every
+# caller already has after hostname_facts.yml + a sites.csv lookup; role-
+# specific fields (e.g. proxmox's node_ip/gateway, firewall's WAN/LAN/
+# WireGuard details, rudder's static_ip/URLs) are merged in via
+# nodeinfo_extra.
+#
+# Required vars (set by the caller before including this file):
+#   nodeinfo_role             e.g. "proxmox", "firewall", "rudder", "linux"
+#   nodeinfo_site              site code (host_site from hostname_facts.yml)
+#   nodeinfo_bootstrapped_by   which playbook wrote this, e.g. "proxmox/site.yml"
+#
+# Optional vars:
+#   nodeinfo_hostname     default: inventory_hostname
+#   nodeinfo_city/country/entity   default: '' (site not found in sites.csv)
+#   nodeinfo_environment  default: 'production'
+#   nodeinfo_extra        default: {} — role-specific fields, merged in last
+#                         so they can override a base field if a caller ever
+#                         genuinely needs to (should be rare)
+# =============================================================================
+# Changelog:
+#   2026-07-07  Initial file — extracted from proxmox/30-example-music.yml,
+#               firewallme's 12_finish.yml, and rudder_server.yml, which had
+#               each independently hand-written the same 9 base fields under
+#               different variable names (pve_city vs fw_site_city vs
+#               rudder_site_city, etc). Also wired into linux/tools.yml so
+#               every Linux host gets a base nodeinfo.json, not just the
+#               three roles that had their own bespoke version.
+# =============================================================================
+
+- name: "Write /etc/example-music/nodeinfo.json"
+  ansible.builtin.copy:
+    dest: /etc/example-music/nodeinfo.json
+    mode: '0444'
+    content: "{{ _nodeinfo | to_nice_json }}\n"
+  vars:
+    _nodeinfo: >-
+      {{
+        {
+          'hostname':        nodeinfo_hostname | default(inventory_hostname),
+          'fqdn':             ansible_fqdn | default(inventory_hostname),
+          'role':             nodeinfo_role,
+          'site':             nodeinfo_site,
+          'city':             nodeinfo_city | default(''),
+          'country':          nodeinfo_country | default(''),
+          'entity':           nodeinfo_entity | default(''),
+          'ansible_managed':  true,
+          'bootstrapped_at':  ansible_date_time.iso8601,
+          'bootstrapped_by':  nodeinfo_bootstrapped_by,
+          'environment':      nodeinfo_environment | default('production'),
+        } | combine(nodeinfo_extra | default({}))
+      }}
