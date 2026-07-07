@@ -2,14 +2,14 @@
   {
     "Name": "Annie Lennox",
     "SamAccountName": "annie.lennox",
-    "UserPrincipalName": "annie.lennox@example.com",
+    "UserPrincipalName": "annie.lennox@example.co.uk",
     "Groups": [
       "Eurythmics",
       "Vocalists",
       "Keyboardists"
     ],
     "Title": "Lead Vocalist/Keyboardist",
-    "Email": "annie.lennox@example.com",
+    "Email": "annie.lennox@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -32,14 +32,14 @@
   {
     "Name": "Dave Stewart",
     "SamAccountName": "dave.stewart",
-    "UserPrincipalName": "dave.stewart@example.com",
+    "UserPrincipalName": "dave.stewart@example.co.uk",
     "Groups": [
       "Eurythmics",
       "Guitarists",
       "Producers"
     ],
     "Title": "Guitarist and Producer",
-    "Email": "dave.stewart@example.com",
+    "Email": "dave.stewart@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Annie Lennox",
@@ -62,13 +62,13 @@
   {
     "Name": "Ricky Ross",
     "SamAccountName": "ricky.ross",
-    "UserPrincipalName": "ricky.ross@example.com",
+    "UserPrincipalName": "ricky.ross@example.co.uk",
     "Groups": [
       "Deacon Blue",
       "Sales"
     ],
     "Title": "Lead Vocalist",
-    "Email": "ricky.ross@example.com",
+    "Email": "ricky.ross@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -91,13 +91,13 @@
   {
     "Name": "Lorraine McIntosh",
     "SamAccountName": "lorraine.mcintosh",
-    "UserPrincipalName": "lorraine.mcintosh@example.com",
+    "UserPrincipalName": "lorraine.mcintosh@example.co.uk",
     "Groups": [
       "Deacon Blue",
       "Sales"
     ],
     "Title": "Vocalist",
-    "Email": "lorraine.mcintosh@example.com",
+    "Email": "lorraine.mcintosh@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ricky Ross",
@@ -120,13 +120,13 @@
   {
     "Name": "Dougie Vipond",
     "SamAccountName": "dougie.vipond",
-    "UserPrincipalName": "dougie.vipond@example.com",
+    "UserPrincipalName": "dougie.vipond@example.co.uk",
     "Groups": [
       "Deacon Blue",
       "Sales"
     ],
     "Title": "Drummer",
-    "Email": "dougie.vipond@example.com",
+    "Email": "dougie.vipond@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ricky Ross",
@@ -149,13 +149,13 @@
   {
     "Name": "James Prime",
     "SamAccountName": "james.prime",
-    "UserPrincipalName": "james.prime@example.com",
+    "UserPrincipalName": "james.prime@example.co.uk",
     "Groups": [
       "Deacon Blue",
       "Sales"
     ],
     "Title": "Keyboardist",
-    "Email": "james.prime@example.com",
+    "Email": "james.prime@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ricky Ross",
@@ -178,13 +178,13 @@
   {
     "Name": "Ewen Vernal",
     "SamAccountName": "ewen.vernal",
-    "UserPrincipalName": "ewen.vernal@example.com",
+    "UserPrincipalName": "ewen.vernal@example.co.uk",
     "Groups": [
       "Deacon Blue",
       "Sales"
     ],
     "Title": "Bassist",
-    "Email": "ewen.vernal@example.com",
+    "Email": "ewen.vernal@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ricky Ross",
@@ -207,13 +207,13 @@
   {
     "Name": "Graeme Kelling",
     "SamAccountName": "graeme.kelling",
-    "UserPrincipalName": "graeme.kelling@example.com",
+    "UserPrincipalName": "graeme.kelling@example.co.uk",
     "Groups": [
       "Deacon Blue",
       "Sales"
     ],
     "Title": "Guitarist",
-    "Email": "graeme.kelling@example.com",
+    "Email": "graeme.kelling@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ricky Ross",
@@ -236,13 +236,13 @@
   {
     "Name": "Kevin Patterson",
     "SamAccountName": "kpatterson",
-    "UserPrincipalName": "kpatterson@example.com",
+    "UserPrincipalName": "kpatterson@example.co.uk",
     "Groups": [
       "Fiction Factory",
       "Keyboards"
     ],
     "Title": "Keyboardist",
-    "Email": "kevin.patterson@example.com",
+    "Email": "kevin.patterson@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -265,13 +265,13 @@
   {
     "Name": "Eddie Jordan",
     "SamAccountName": "ejordan",
-    "UserPrincipalName": "ejordan@example.com",
+    "UserPrincipalName": "ejordan@example.co.uk",
     "Groups": [
       "Fiction Factory",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "eddie.jordan@example.com",
+    "Email": "eddie.jordan@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -294,13 +294,13 @@
   {
     "Name": "Mike Ogletree",
     "SamAccountName": "mogletree",
-    "UserPrincipalName": "mogletree@example.com",
+    "UserPrincipalName": "mogletree@example.co.uk",
     "Groups": [
       "Fiction Factory",
       "Percussion"
     ],
     "Title": "Percussionist",
-    "Email": "mike.ogletree@example.com",
+    "Email": "mike.ogletree@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -323,13 +323,13 @@
   {
     "Name": "Eddie Campbell",
     "SamAccountName": "ecampbell",
-    "UserPrincipalName": "ecampbell@example.com",
+    "UserPrincipalName": "ecampbell@example.co.uk",
     "Groups": [
       "Fiction Factory",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "eddie.campbell@example.com",
+    "Email": "eddie.campbell@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -352,13 +352,13 @@
   {
     "Name": "Graham McGregor",
     "SamAccountName": "gmcgregor",
-    "UserPrincipalName": "gmcgregor@example.com",
+    "UserPrincipalName": "gmcgregor@example.co.uk",
     "Groups": [
       "Fiction Factory",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "graham.mcgregor@example.com",
+    "Email": "graham.mcgregor@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -381,13 +381,13 @@
   {
     "Name": "Derek Dick",
     "SamAccountName": "fish",
-    "UserPrincipalName": "fish@example.com",
+    "UserPrincipalName": "fish@example.co.uk",
     "Groups": [
       "Marillion",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "fish@example.com",
+    "Email": "fish@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -410,13 +410,13 @@
   {
     "Name": "Steve Rothery",
     "SamAccountName": "steve.rothery",
-    "UserPrincipalName": "steve.rothery@example.com",
+    "UserPrincipalName": "steve.rothery@example.co.uk",
     "Groups": [
       "Marillion",
       "Guitarists"
     ],
     "Title": "Lead Guitarist",
-    "Email": "steve.rothery@example.com",
+    "Email": "steve.rothery@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Derek Dick",
@@ -439,13 +439,13 @@
   {
     "Name": "Pete Trewavas",
     "SamAccountName": "pete.trewavas",
-    "UserPrincipalName": "pete.trewavas@example.com",
+    "UserPrincipalName": "pete.trewavas@example.co.uk",
     "Groups": [
       "Marillion",
       "Guitarists"
     ],
     "Title": "Bassist",
-    "Email": "pete.trewavas@example.com",
+    "Email": "pete.trewavas@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Derek Dick",
@@ -468,13 +468,13 @@
   {
     "Name": "Mark Kelly",
     "SamAccountName": "mark.kelly",
-    "UserPrincipalName": "mark.kelly@example.com",
+    "UserPrincipalName": "mark.kelly@example.co.uk",
     "Groups": [
       "Marillion",
       "Keyboards"
     ],
     "Title": "Keyboardist",
-    "Email": "mark.kelly@example.com",
+    "Email": "mark.kelly@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Derek Dick",
@@ -497,13 +497,13 @@
   {
     "Name": "Ian Mosley",
     "SamAccountName": "ian.mosley",
-    "UserPrincipalName": "ian.mosley@example.com",
+    "UserPrincipalName": "ian.mosley@example.co.uk",
     "Groups": [
       "Marillion",
       "Percussion"
     ],
     "Title": "Drummer",
-    "Email": "ian.mosley@example.com",
+    "Email": "ian.mosley@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Derek Dick",
@@ -526,13 +526,13 @@
   {
     "Name": "Craig Reid",
     "SamAccountName": "craig.reid",
-    "UserPrincipalName": "craig.reid@example.com",
+    "UserPrincipalName": "craig.reid@example.co.uk",
     "Groups": [
       "The Proclaimers",
       "VPN-Users"
     ],
     "Title": "Vocalist / Guitarist",
-    "Email": "craig.reid@example.com",
+    "Email": "craig.reid@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -555,13 +555,13 @@
   {
     "Name": "Charlie Reid",
     "SamAccountName": "charlie.reid",
-    "UserPrincipalName": "charlie.reid@example.com",
+    "UserPrincipalName": "charlie.reid@example.co.uk",
     "Groups": [
       "The Proclaimers",
       "VPN-Users"
     ],
     "Title": "Vocalist / Guitarist",
-    "Email": "charlie.reid@example.com",
+    "Email": "charlie.reid@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -584,13 +584,13 @@
   {
     "Name": "Midge Ure",
     "SamAccountName": "midge.ure",
-    "UserPrincipalName": "midge.ure@example.com",
+    "UserPrincipalName": "midge.ure@example.co.uk",
     "Groups": [
       "Ultravox",
       "Sales"
     ],
     "Title": "Vocalist / Guitarist",
-    "Email": "midge.ure@example.com",
+    "Email": "midge.ure@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -613,13 +613,13 @@
   {
     "Name": "Billy Currie",
     "SamAccountName": "billy.currie",
-    "UserPrincipalName": "billy.currie@example.com",
+    "UserPrincipalName": "billy.currie@example.co.uk",
     "Groups": [
       "Ultravox",
       "Sales"
     ],
     "Title": "Keyboardist / Violinist",
-    "Email": "billy.currie@example.com",
+    "Email": "billy.currie@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Midge Ure",
@@ -642,13 +642,13 @@
   {
     "Name": "Chris Cross",
     "SamAccountName": "chris.cross",
-    "UserPrincipalName": "chris.cross@example.com",
+    "UserPrincipalName": "chris.cross@example.co.uk",
     "Groups": [
       "Ultravox",
       "Sales"
     ],
     "Title": "Bassist",
-    "Email": "chris.cross@example.com",
+    "Email": "chris.cross@example.co.uk",
     "Country": "AT",
     "CountryCode": "AT",
     "Manager": "Midge Ure",
@@ -671,13 +671,13 @@
   {
     "Name": "Warren Cann",
     "SamAccountName": "warren.cann",
-    "UserPrincipalName": "warren.cann@example.com",
+    "UserPrincipalName": "warren.cann@example.co.uk",
     "Groups": [
       "Ultravox",
       "Sales"
     ],
     "Title": "Drummer",
-    "Email": "warren.cann@example.com",
+    "Email": "warren.cann@example.co.uk",
     "Country": "AT",
     "CountryCode": "AT",
     "Manager": "Midge Ure",
@@ -700,13 +700,13 @@
   {
     "Name": "Craig Lorentsen",
     "SamAccountName": "craig.lorentsen",
-    "UserPrincipalName": "craig.lorentsen@example.com",
+    "UserPrincipalName": "craig.lorentsen@example.co.uk",
     "Groups": [
       "Lowlife",
       "Vocalists"
     ],
     "Title": "Vocalist",
-    "Email": "craig.lorentsen@example.com",
+    "Email": "craig.lorentsen@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -729,13 +729,13 @@
   {
     "Name": "Will Heggie",
     "SamAccountName": "will.heggie",
-    "UserPrincipalName": "will.heggie@example.com",
+    "UserPrincipalName": "will.heggie@example.co.uk",
     "Groups": [
       "Lowlife",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "will.heggie@example.com",
+    "Email": "will.heggie@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Craig Lorentsen",
@@ -758,13 +758,13 @@
   {
     "Name": "Stuart Everingham",
     "SamAccountName": "stuart.everingham",
-    "UserPrincipalName": "stuart.everingham@example.com",
+    "UserPrincipalName": "stuart.everingham@example.co.uk",
     "Groups": [
       "Lowlife",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "stuart.everingham@example.com",
+    "Email": "stuart.everingham@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Craig Lorentsen",
@@ -787,14 +787,14 @@
   {
     "Name": "John McLaren",
     "SamAccountName": "john.mclaren",
-    "UserPrincipalName": "john.mclaren@example.com",
+    "UserPrincipalName": "john.mclaren@example.co.uk",
     "Groups": [
       "Pastis-51",
       "Vocalists",
       "Songwriters"
     ],
     "Title": "Vocalist / Songwriter",
-    "Email": "john.mclaren@example.com",
+    "Email": "john.mclaren@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -817,13 +817,13 @@
   {
     "Name": "Paul Bennett",
     "SamAccountName": "paul.bennett",
-    "UserPrincipalName": "paul.bennett@example.com",
+    "UserPrincipalName": "paul.bennett@example.co.uk",
     "Groups": [
       "Pastis-51",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "paul.bennett@example.com",
+    "Email": "paul.bennett@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "John McLaren",
@@ -846,13 +846,13 @@
   {
     "Name": "Alan Stewart",
     "SamAccountName": "alan.stewart",
-    "UserPrincipalName": "alan.stewart@example.com",
+    "UserPrincipalName": "alan.stewart@example.co.uk",
     "Groups": [
       "Pastis-51",
       "Keyboardists"
     ],
     "Title": "Keyboardist",
-    "Email": "alan.stewart@example.com",
+    "Email": "alan.stewart@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "John McLaren",
@@ -875,13 +875,13 @@
   {
     "Name": "Clare Grogan",
     "SamAccountName": "clare.grogan",
-    "UserPrincipalName": "clare.grogan@example.com",
+    "UserPrincipalName": "clare.grogan@example.co.uk",
     "Groups": [
       "Altered Images",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "clare.grogan@example.com",
+    "Email": "clare.grogan@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -904,13 +904,13 @@
   {
     "Name": "Johnny McElhone",
     "SamAccountName": "johnny.mcelhone",
-    "UserPrincipalName": "johnny.mcelhone@example.com",
+    "UserPrincipalName": "johnny.mcelhone@example.co.uk",
     "Groups": [
       "Altered Images",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "johnny.mcelhone@example.com",
+    "Email": "johnny.mcelhone@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Clare Grogan",
@@ -933,13 +933,13 @@
   {
     "Name": "Jim McKinven",
     "SamAccountName": "jim.mckinven",
-    "UserPrincipalName": "jim.mckinven@example.com",
+    "UserPrincipalName": "jim.mckinven@example.co.uk",
     "Groups": [
       "Altered Images",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "jim.mckinven@example.com",
+    "Email": "jim.mckinven@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Clare Grogan",
@@ -962,13 +962,13 @@
   {
     "Name": "Michael Anderson",
     "SamAccountName": "michael.anderson",
-    "UserPrincipalName": "michael.anderson@example.com",
+    "UserPrincipalName": "michael.anderson@example.co.uk",
     "Groups": [
       "Altered Images",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "michael.anderson@example.com",
+    "Email": "michael.anderson@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Clare Grogan",
@@ -991,13 +991,13 @@
   {
     "Name": "Jim Kerr",
     "SamAccountName": "jkerr",
-    "UserPrincipalName": "jkerr@example.com",
+    "UserPrincipalName": "jkerr@example.co.uk",
     "Groups": [
       "Simple Minds",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "jim.kerr@example.com",
+    "Email": "jim.kerr@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1020,13 +1020,13 @@
   {
     "Name": "Charlie Burchill",
     "SamAccountName": "charlie.b",
-    "UserPrincipalName": "charlie.b@example.com",
+    "UserPrincipalName": "charlie.b@example.co.uk",
     "Groups": [
       "Simple Minds",
       "Guitarists"
     ],
     "Title": "Lead Guitarist",
-    "Email": "charlie.b@example.com",
+    "Email": "charlie.b@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Jim Kerr",
@@ -1049,13 +1049,13 @@
   {
     "Name": "Mel Gaynor",
     "SamAccountName": "mel.gaynor",
-    "UserPrincipalName": "mel.gaynor@example.com",
+    "UserPrincipalName": "mel.gaynor@example.co.uk",
     "Groups": [
       "Simple Minds",
       "Percussion"
     ],
     "Title": "Drummer",
-    "Email": "mel.gaynor@example.com",
+    "Email": "mel.gaynor@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Jim Kerr",
@@ -1078,14 +1078,14 @@
   {
     "Name": "Mick MacNeil",
     "SamAccountName": "mick.macneil",
-    "UserPrincipalName": "mick.macneil@example.com",
+    "UserPrincipalName": "mick.macneil@example.co.uk",
     "Groups": [
       "Simple Minds",
       "Musicians",
       "Former Staff"
     ],
     "Title": "Keyboardist (Former)",
-    "Email": "mick.macneil@example.com",
+    "Email": "mick.macneil@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1108,14 +1108,14 @@
   {
     "Name": "Derek Forbes",
     "SamAccountName": "derek.forbes",
-    "UserPrincipalName": "derek.forbes@example.com",
+    "UserPrincipalName": "derek.forbes@example.co.uk",
     "Groups": [
       "Simple Minds",
       "Musicians",
       "Former Staff"
     ],
     "Title": "Bassist (Former)",
-    "Email": "derek.forbes@example.com",
+    "Email": "derek.forbes@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1138,14 +1138,14 @@
   {
     "Name": "Marti Pellow",
     "SamAccountName": "marti.pellow",
-    "UserPrincipalName": "marti.pellow@example.com",
+    "UserPrincipalName": "marti.pellow@example.co.uk",
     "Groups": [
       "Wet Wet Wet",
       "Sales",
       "VPN Users"
     ],
     "Title": "Lead Vocalist",
-    "Email": "marti.pellow@example.com",
+    "Email": "marti.pellow@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1168,14 +1168,14 @@
   {
     "Name": "Graeme Clark",
     "SamAccountName": "graeme.clark",
-    "UserPrincipalName": "graeme.clark@example.com",
+    "UserPrincipalName": "graeme.clark@example.co.uk",
     "Groups": [
       "Wet Wet Wet",
       "Sales",
       "VPN Users"
     ],
     "Title": "Bassist",
-    "Email": "graeme.clark@example.com",
+    "Email": "graeme.clark@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Marti Pellow",
@@ -1198,14 +1198,14 @@
   {
     "Name": "Tommy Cunningham",
     "SamAccountName": "tommy.cunningham",
-    "UserPrincipalName": "tommy.cunningham@example.com",
+    "UserPrincipalName": "tommy.cunningham@example.co.uk",
     "Groups": [
       "Wet Wet Wet",
       "Sales",
       "VPN Users"
     ],
     "Title": "Drummer",
-    "Email": "tommy.cunningham@example.com",
+    "Email": "tommy.cunningham@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Marti Pellow",
@@ -1228,14 +1228,14 @@
   {
     "Name": "Neil Mitchell",
     "SamAccountName": "neil.mitchell",
-    "UserPrincipalName": "neil.mitchell@example.com",
+    "UserPrincipalName": "neil.mitchell@example.co.uk",
     "Groups": [
       "Wet Wet Wet",
       "Sales",
       "VPN Users"
     ],
     "Title": "Keyboardist",
-    "Email": "neil.mitchell@example.com",
+    "Email": "neil.mitchell@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Marti Pellow",
@@ -1258,14 +1258,14 @@
   {
     "Name": "Ali Campbell",
     "SamAccountName": "ali.campbell",
-    "UserPrincipalName": "ali.campbell@example.com",
+    "UserPrincipalName": "ali.campbell@example.co.uk",
     "Groups": [
       "UB40",
       "Sales",
       "VPN Users"
     ],
     "Title": "Lead Vocalist",
-    "Email": "ali.campbell@example.com",
+    "Email": "ali.campbell@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1288,14 +1288,14 @@
   {
     "Name": "Robin Campbell",
     "SamAccountName": "robin.campbell",
-    "UserPrincipalName": "robin.campbell@example.com",
+    "UserPrincipalName": "robin.campbell@example.co.uk",
     "Groups": [
       "UB40",
       "Sales",
       "VPN Users"
     ],
     "Title": "Guitarist",
-    "Email": "robin.campbell@example.com",
+    "Email": "robin.campbell@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ali Campbell",
@@ -1318,14 +1318,14 @@
   {
     "Name": "Brian Travers",
     "SamAccountName": "brian.travers",
-    "UserPrincipalName": "brian.travers@example.com",
+    "UserPrincipalName": "brian.travers@example.co.uk",
     "Groups": [
       "UB40",
       "Sales",
       "VPN Users"
     ],
     "Title": "Saxophonist",
-    "Email": "brian.travers@example.com",
+    "Email": "brian.travers@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ali Campbell",
@@ -1348,14 +1348,14 @@
   {
     "Name": "Earl Falconer",
     "SamAccountName": "earl.falconer",
-    "UserPrincipalName": "earl.falconer@example.com",
+    "UserPrincipalName": "earl.falconer@example.co.uk",
     "Groups": [
       "UB40",
       "Sales",
       "VPN Users"
     ],
     "Title": "Bassist",
-    "Email": "earl.falconer@example.com",
+    "Email": "earl.falconer@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ali Campbell",
@@ -1378,14 +1378,14 @@
   {
     "Name": "Norman Hassan",
     "SamAccountName": "norman.hassan",
-    "UserPrincipalName": "norman.hassan@example.com",
+    "UserPrincipalName": "norman.hassan@example.co.uk",
     "Groups": [
       "UB40",
       "Sales",
       "VPN Users"
     ],
     "Title": "Percussionist",
-    "Email": "norman.hassan@example.com",
+    "Email": "norman.hassan@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ali Campbell",
@@ -1408,14 +1408,14 @@
   {
     "Name": "Terence Wilson",
     "SamAccountName": "astro.wilson",
-    "UserPrincipalName": "astro@example.com",
+    "UserPrincipalName": "astro@example.co.uk",
     "Groups": [
       "UB40",
       "Sales",
       "VPN Users"
     ],
     "Title": "Toaster / Trumpet",
-    "Email": "astro.wilson@example.com",
+    "Email": "astro.wilson@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ali Campbell",
@@ -1438,14 +1438,14 @@
   {
     "Name": "James Brown",
     "SamAccountName": "james.brown",
-    "UserPrincipalName": "james.brown@example.com",
+    "UserPrincipalName": "james.brown@example.co.uk",
     "Groups": [
       "UB40",
       "Sales",
       "VPN Users"
     ],
     "Title": "Drummer",
-    "Email": "james.brown@example.com",
+    "Email": "james.brown@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ali Campbell",
@@ -1468,14 +1468,14 @@
   {
     "Name": "Simon Le Bon",
     "SamAccountName": "simon.lebon",
-    "UserPrincipalName": "simon.lebon@example.com",
+    "UserPrincipalName": "simon.lebon@example.co.uk",
     "Groups": [
       "Duran Duran",
       "Marketing",
       "VPN Users"
     ],
     "Title": "Lead Vocalist",
-    "Email": "simon.lebon@example.com",
+    "Email": "simon.lebon@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1498,14 +1498,14 @@
   {
     "Name": "Nick Rhodes",
     "SamAccountName": "nick.rhodes",
-    "UserPrincipalName": "nick.rhodes@example.com",
+    "UserPrincipalName": "nick.rhodes@example.co.uk",
     "Groups": [
       "Duran Duran",
       "Marketing",
       "VPN Users"
     ],
     "Title": "Keyboardist",
-    "Email": "nick.rhodes@example.com",
+    "Email": "nick.rhodes@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Simon Le Bon",
@@ -1528,14 +1528,14 @@
   {
     "Name": "John Taylor",
     "SamAccountName": "john.taylor",
-    "UserPrincipalName": "john.taylor@example.com",
+    "UserPrincipalName": "john.taylor@example.co.uk",
     "Groups": [
       "Duran Duran",
       "Marketing",
       "VPN Users"
     ],
     "Title": "Bassist",
-    "Email": "john.taylor@example.com",
+    "Email": "john.taylor@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Simon Le Bon",
@@ -1558,14 +1558,14 @@
   {
     "Name": "Andy Taylor",
     "SamAccountName": "andy.taylor",
-    "UserPrincipalName": "andy.taylor@example.com",
+    "UserPrincipalName": "andy.taylor@example.co.uk",
     "Groups": [
       "Duran Duran",
       "Marketing",
       "VPN Users"
     ],
     "Title": "Guitarist",
-    "Email": "andy.taylor@example.com",
+    "Email": "andy.taylor@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Simon Le Bon",
@@ -1588,14 +1588,14 @@
   {
     "Name": "Roger Taylor",
     "SamAccountName": "roger.taylor",
-    "UserPrincipalName": "roger.taylor@example.com",
+    "UserPrincipalName": "roger.taylor@example.co.uk",
     "Groups": [
       "Duran Duran",
       "Marketing",
       "VPN Users"
     ],
     "Title": "Drummer",
-    "Email": "roger.taylor@example.com",
+    "Email": "roger.taylor@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Simon Le Bon",
@@ -1618,13 +1618,13 @@
   {
     "Name": "Roland Gift",
     "SamAccountName": "roland.gift",
-    "UserPrincipalName": "roland.gift@example.com",
+    "UserPrincipalName": "roland.gift@example.co.uk",
     "Groups": [
       "Fine Young Cannibals",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "roland.gift@example.com",
+    "Email": "roland.gift@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1647,13 +1647,13 @@
   {
     "Name": "Andy Cox",
     "SamAccountName": "andy.cox",
-    "UserPrincipalName": "andy.cox@example.com",
+    "UserPrincipalName": "andy.cox@example.co.uk",
     "Groups": [
       "Fine Young Cannibals",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "andy.cox@example.com",
+    "Email": "andy.cox@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Roland Gift",
@@ -1676,13 +1676,13 @@
   {
     "Name": "David Steele",
     "SamAccountName": "david.steele",
-    "UserPrincipalName": "david.steele@example.com",
+    "UserPrincipalName": "david.steele@example.co.uk",
     "Groups": [
       "Fine Young Cannibals",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "david.steele@example.com",
+    "Email": "david.steele@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Roland Gift",
@@ -1705,12 +1705,12 @@
   {
     "Name": "Dave Wakeling",
     "SamAccountName": "dave.wakeling",
-    "UserPrincipalName": "dave.wakeling@example.com",
+    "UserPrincipalName": "dave.wakeling@example.co.uk",
     "Groups": [
       "The Beat"
     ],
     "Title": "Lead Vocalist / Guitarist",
-    "Email": "dave.wakeling@example.com",
+    "Email": "dave.wakeling@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1733,12 +1733,12 @@
   {
     "Name": "Ranking Roger",
     "SamAccountName": "ranking.roger",
-    "UserPrincipalName": "ranking.roger@example.com",
+    "UserPrincipalName": "ranking.roger@example.co.uk",
     "Groups": [
       "The Beat"
     ],
     "Title": "Vocalist / Toasting",
-    "Email": "ranking.roger@example.com",
+    "Email": "ranking.roger@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Dave Wakeling",
@@ -1761,12 +1761,12 @@
   {
     "Name": "Andy Cox",
     "SamAccountName": "andy.cox",
-    "UserPrincipalName": "andy.cox@example.com",
+    "UserPrincipalName": "andy.cox@example.co.uk",
     "Groups": [
       "The Beat"
     ],
     "Title": "Guitarist",
-    "Email": "andy.cox@example.com",
+    "Email": "andy.cox@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Dave Wakeling",
@@ -1789,12 +1789,12 @@
   {
     "Name": "David Steele",
     "SamAccountName": "david.steele",
-    "UserPrincipalName": "david.steele@example.com",
+    "UserPrincipalName": "david.steele@example.co.uk",
     "Groups": [
       "The Beat"
     ],
     "Title": "Bassist",
-    "Email": "david.steele@example.com",
+    "Email": "david.steele@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Dave Wakeling",
@@ -1817,12 +1817,12 @@
   {
     "Name": "Everett Morton",
     "SamAccountName": "everett.morton",
-    "UserPrincipalName": "everett.morton@example.com",
+    "UserPrincipalName": "everett.morton@example.co.uk",
     "Groups": [
       "The Beat"
     ],
     "Title": "Drummer",
-    "Email": "everett.morton@example.com",
+    "Email": "everett.morton@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Dave Wakeling",
@@ -1845,12 +1845,12 @@
   {
     "Name": "Lionel Martin",
     "SamAccountName": "lionel.martin",
-    "UserPrincipalName": "lionel.martin@example.com",
+    "UserPrincipalName": "lionel.martin@example.co.uk",
     "Groups": [
       "The Beat"
     ],
     "Title": "Saxophonist",
-    "Email": "lionel.martin@example.com",
+    "Email": "lionel.martin@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Dave Wakeling",
@@ -1873,13 +1873,13 @@
   {
     "Name": "Terry Hall",
     "SamAccountName": "terry.hall",
-    "UserPrincipalName": "terry.hall@example.com",
+    "UserPrincipalName": "terry.hall@example.co.uk",
     "Groups": [
       "The Specials",
       "Ska"
     ],
     "Title": "Lead Vocalist",
-    "Email": "terry.hall@example.com",
+    "Email": "terry.hall@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1902,13 +1902,13 @@
   {
     "Name": "Jerry Dammers",
     "SamAccountName": "jerry.dammers",
-    "UserPrincipalName": "jerry.dammers@example.com",
+    "UserPrincipalName": "jerry.dammers@example.co.uk",
     "Groups": [
       "The Specials",
       "Keyboards"
     ],
     "Title": "Keyboardist / Songwriter",
-    "Email": "jerry.dammers@example.com",
+    "Email": "jerry.dammers@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1931,13 +1931,13 @@
   {
     "Name": "Neville Staple",
     "SamAccountName": "neville.staple",
-    "UserPrincipalName": "neville.staple@example.com",
+    "UserPrincipalName": "neville.staple@example.co.uk",
     "Groups": [
       "The Specials",
       "Vocalists"
     ],
     "Title": "Toaster",
-    "Email": "neville.staple@example.com",
+    "Email": "neville.staple@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1960,13 +1960,13 @@
   {
     "Name": "Lynval Golding",
     "SamAccountName": "lynval.golding",
-    "UserPrincipalName": "lynval.golding@example.com",
+    "UserPrincipalName": "lynval.golding@example.co.uk",
     "Groups": [
       "The Specials",
       "Guitarists"
     ],
     "Title": "Guitarist / Vocalist",
-    "Email": "lynval.golding@example.com",
+    "Email": "lynval.golding@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -1989,13 +1989,13 @@
   {
     "Name": "Horace Panter",
     "SamAccountName": "horace.panter",
-    "UserPrincipalName": "horace.panter@example.com",
+    "UserPrincipalName": "horace.panter@example.co.uk",
     "Groups": [
       "The Specials",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "horace.panter@example.com",
+    "Email": "horace.panter@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2018,13 +2018,13 @@
   {
     "Name": "John Bradbury",
     "SamAccountName": "john.bradbury",
-    "UserPrincipalName": "john.bradbury@example.com",
+    "UserPrincipalName": "john.bradbury@example.co.uk",
     "Groups": [
       "The Specials",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "john.bradbury@example.com",
+    "Email": "john.bradbury@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2134,13 +2134,13 @@
   {
     "Name": "Paul Heaton",
     "SamAccountName": "paul.heaton",
-    "UserPrincipalName": "paul.heaton@example.com",
+    "UserPrincipalName": "paul.heaton@example.co.uk",
     "Groups": [
       "The Beautiful South",
       "Music"
     ],
     "Title": "Lead Vocalist",
-    "Email": "paul.heaton@example.com",
+    "Email": "paul.heaton@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2163,13 +2163,13 @@
   {
     "Name": "Dave Hemingway",
     "SamAccountName": "dave.hemingway",
-    "UserPrincipalName": "dave.hemingway@example.com",
+    "UserPrincipalName": "dave.hemingway@example.co.uk",
     "Groups": [
       "The Beautiful South",
       "Music"
     ],
     "Title": "Drummer/Vocalist",
-    "Email": "dave.hemingway@example.com",
+    "Email": "dave.hemingway@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Paul Heaton",
@@ -2192,13 +2192,13 @@
   {
     "Name": "Boo Hewerdine",
     "SamAccountName": "boo.hewerdine",
-    "UserPrincipalName": "boo.hewerdine@example.com",
+    "UserPrincipalName": "boo.hewerdine@example.co.uk",
     "Groups": [
       "The Beautiful South",
       "Music"
     ],
     "Title": "Guitarist",
-    "Email": "boo.hewerdine@example.com",
+    "Email": "boo.hewerdine@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Paul Heaton",
@@ -2221,13 +2221,13 @@
   {
     "Name": "Jacqui Abbott",
     "SamAccountName": "jacqui.abbott",
-    "UserPrincipalName": "jacqui.abbott@example.com",
+    "UserPrincipalName": "jacqui.abbott@example.co.uk",
     "Groups": [
       "The Beautiful South",
       "Music"
     ],
     "Title": "Vocalist",
-    "Email": "jacqui.abbott@example.com",
+    "Email": "jacqui.abbott@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Paul Heaton",
@@ -2250,13 +2250,13 @@
   {
     "Name": "Tracey Thorn",
     "SamAccountName": "tracey.thorn",
-    "UserPrincipalName": "tracey.thorn@example.com",
+    "UserPrincipalName": "tracey.thorn@example.co.uk",
     "Groups": [
       "Everything But The Girl",
       "Music"
     ],
     "Title": "Lead Vocalist",
-    "Email": "tracey.thorn@example.com",
+    "Email": "tracey.thorn@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2279,13 +2279,13 @@
   {
     "Name": "Ben Watt",
     "SamAccountName": "ben.watt",
-    "UserPrincipalName": "ben.watt@example.com",
+    "UserPrincipalName": "ben.watt@example.co.uk",
     "Groups": [
       "Everything But The Girl",
       "Music"
     ],
     "Title": "Guitarist/Producer",
-    "Email": "ben.watt@example.com",
+    "Email": "ben.watt@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Tracey Thorn",
@@ -2308,13 +2308,13 @@
   {
     "Name": "Ian McCulloch",
     "SamAccountName": "ian.mcculloch",
-    "UserPrincipalName": "ian.mcculloch@example.com",
+    "UserPrincipalName": "ian.mcculloch@example.co.uk",
     "Groups": [
       "Echo and The Bunnymen",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "ian.mcculloch@example.com",
+    "Email": "ian.mcculloch@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2337,13 +2337,13 @@
   {
     "Name": "Will Sergeant",
     "SamAccountName": "will.sergeant",
-    "UserPrincipalName": "will.sergeant@example.com",
+    "UserPrincipalName": "will.sergeant@example.co.uk",
     "Groups": [
       "Echo and The Bunnymen",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "will.sergeant@example.com",
+    "Email": "will.sergeant@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ian McCulloch",
@@ -2366,13 +2366,13 @@
   {
     "Name": "Les Pattinson",
     "SamAccountName": "les.pattinson",
-    "UserPrincipalName": "les.pattinson@example.com",
+    "UserPrincipalName": "les.pattinson@example.co.uk",
     "Groups": [
       "Echo and The Bunnymen",
       "Bassists"
     ],
     "Title": "Bass Guitarist",
-    "Email": "les.pattinson@example.com",
+    "Email": "les.pattinson@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ian McCulloch",
@@ -2395,13 +2395,13 @@
   {
     "Name": "Pete de Freitas",
     "SamAccountName": "pete.defreitas",
-    "UserPrincipalName": "pete.defreitas@example.com",
+    "UserPrincipalName": "pete.defreitas@example.co.uk",
     "Groups": [
       "Echo and The Bunnymen",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "pete.defreitas@example.com",
+    "Email": "pete.defreitas@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ian McCulloch",
@@ -2424,13 +2424,13 @@
   {
     "Name": "Andy McCluskey",
     "SamAccountName": "andy.mccluskey",
-    "UserPrincipalName": "andy.mccluskey@example.com",
+    "UserPrincipalName": "andy.mccluskey@example.co.uk",
     "Groups": [
       "OMD",
       "Music"
     ],
     "Title": "Lead Vocalist/Bassist",
-    "Email": "andy.mccluskey@example.com",
+    "Email": "andy.mccluskey@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2453,13 +2453,13 @@
   {
     "Name": "Paul Humphreys",
     "SamAccountName": "paul.humphreys",
-    "UserPrincipalName": "paul.humphreys@example.com",
+    "UserPrincipalName": "paul.humphreys@example.co.uk",
     "Groups": [
       "OMD",
       "Music"
     ],
     "Title": "Keyboardist/Vocalist",
-    "Email": "paul.humphreys@example.com",
+    "Email": "paul.humphreys@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Andy McCluskey",
@@ -2482,13 +2482,13 @@
   {
     "Name": "Malcolm Holmes",
     "SamAccountName": "malcolm.holmes",
-    "UserPrincipalName": "malcolm.holmes@example.com",
+    "UserPrincipalName": "malcolm.holmes@example.co.uk",
     "Groups": [
       "OMD",
       "Music"
     ],
     "Title": "Drummer/Percussionist",
-    "Email": "malcolm.holmes@example.com",
+    "Email": "malcolm.holmes@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Andy McCluskey",
@@ -2511,13 +2511,13 @@
   {
     "Name": "Martin Cooper",
     "SamAccountName": "martin.cooper",
-    "UserPrincipalName": "martin.cooper@example.com",
+    "UserPrincipalName": "martin.cooper@example.co.uk",
     "Groups": [
       "OMD",
       "Music"
     ],
     "Title": "Keyboardist/Saxophonist",
-    "Email": "martin.cooper@example.com",
+    "Email": "martin.cooper@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Andy McCluskey",
@@ -2540,13 +2540,13 @@
   {
     "Name": "Gary Daly",
     "SamAccountName": "gary.daly",
-    "UserPrincipalName": "gary.daly@example.com",
+    "UserPrincipalName": "gary.daly@example.co.uk",
     "Groups": [
       "China Crisis",
       "Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "gary.daly@example.com",
+    "Email": "gary.daly@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2569,13 +2569,13 @@
   {
     "Name": "Eddie Lundon",
     "SamAccountName": "eddie.lundon",
-    "UserPrincipalName": "eddie.lundon@example.com",
+    "UserPrincipalName": "eddie.lundon@example.co.uk",
     "Groups": [
       "China Crisis",
       "Artists"
     ],
     "Title": "Guitarist",
-    "Email": "eddie.lundon@example.com",
+    "Email": "eddie.lundon@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Gary Daly",
@@ -2598,13 +2598,13 @@
   {
     "Name": "Mike Score",
     "SamAccountName": "mike.score",
-    "UserPrincipalName": "mike.score@example.com",
+    "UserPrincipalName": "mike.score@example.co.uk",
     "Groups": [
       "A Flock of Seagulls",
       "Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "mike.score@example.com",
+    "Email": "mike.score@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2627,13 +2627,13 @@
   {
     "Name": "Ali Score",
     "SamAccountName": "ali.score",
-    "UserPrincipalName": "ali.score@example.com",
+    "UserPrincipalName": "ali.score@example.co.uk",
     "Groups": [
       "A Flock of Seagulls",
       "Artists"
     ],
     "Title": "Drummer",
-    "Email": "ali.score@example.com",
+    "Email": "ali.score@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mike Score",
@@ -2656,13 +2656,13 @@
   {
     "Name": "Paul Reynolds",
     "SamAccountName": "paul.reynolds",
-    "UserPrincipalName": "paul.reynolds@example.com",
+    "UserPrincipalName": "paul.reynolds@example.co.uk",
     "Groups": [
       "A Flock of Seagulls",
       "Artists"
     ],
     "Title": "Guitarist",
-    "Email": "paul.reynolds@example.com",
+    "Email": "paul.reynolds@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mike Score",
@@ -2685,13 +2685,13 @@
   {
     "Name": "Frank Maudsley",
     "SamAccountName": "frank.maudsley",
-    "UserPrincipalName": "frank.maudsley@example.com",
+    "UserPrincipalName": "frank.maudsley@example.co.uk",
     "Groups": [
       "A Flock of Seagulls",
       "Artists"
     ],
     "Title": "Bassist",
-    "Email": "frank.maudsley@example.com",
+    "Email": "frank.maudsley@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mike Score",
@@ -2714,13 +2714,13 @@
   {
     "Name": "Andy Bell",
     "SamAccountName": "andy.bell",
-    "UserPrincipalName": "andy.bell@example.com",
+    "UserPrincipalName": "andy.bell@example.co.uk",
     "Groups": [
       "Erasure",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "andy.bell@example.com",
+    "Email": "andy.bell@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2743,14 +2743,14 @@
   {
     "Name": "Vince Clarke",
     "SamAccountName": "vince.clarke",
-    "UserPrincipalName": "vince.clarke@example.com",
+    "UserPrincipalName": "vince.clarke@example.co.uk",
     "Groups": [
       "Erasure",
       "Synth",
       "Keyboards"
     ],
     "Title": "Synth / Keyboardist",
-    "Email": "vince.clarke@example.com",
+    "Email": "vince.clarke@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Andy Bell",
@@ -2773,13 +2773,13 @@
   {
     "Name": "George Michael",
     "SamAccountName": "george.michael",
-    "UserPrincipalName": "george.michael@example.com",
+    "UserPrincipalName": "george.michael@example.co.uk",
     "Groups": [
       "Wham",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "george.michael@example.com",
+    "Email": "george.michael@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2802,13 +2802,13 @@
   {
     "Name": "Andrew Ridgeley",
     "SamAccountName": "andrew.ridgeley",
-    "UserPrincipalName": "andrew.ridgeley@example.com",
+    "UserPrincipalName": "andrew.ridgeley@example.co.uk",
     "Groups": [
       "Wham",
       "Guitarists"
     ],
     "Title": "Guitarist / Backing Vocals",
-    "Email": "andrew.ridgeley@example.com",
+    "Email": "andrew.ridgeley@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "George Michael",
@@ -2831,13 +2831,13 @@
   {
     "Name": "Pepsi DeMacque",
     "SamAccountName": "pepsi.demacque",
-    "UserPrincipalName": "pepsi.demacque@example.com",
+    "UserPrincipalName": "pepsi.demacque@example.co.uk",
     "Groups": [
       "Wham",
       "Backing Vocalists"
     ],
     "Title": "Backing Vocalist",
-    "Email": "pepsi.demacque@example.com",
+    "Email": "pepsi.demacque@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "George Michael",
@@ -2860,13 +2860,13 @@
   {
     "Name": "Shirlie Holliman",
     "SamAccountName": "shirlie.holliman",
-    "UserPrincipalName": "shirlie.holliman@example.com",
+    "UserPrincipalName": "shirlie.holliman@example.co.uk",
     "Groups": [
       "Wham",
       "Backing Vocalists"
     ],
     "Title": "Backing Vocalist",
-    "Email": "shirlie.holliman@example.com",
+    "Email": "shirlie.holliman@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "George Michael",
@@ -2889,13 +2889,13 @@
   {
     "Name": "Neil Tennant",
     "SamAccountName": "neil.tennant",
-    "UserPrincipalName": "neil.tennant@example.com",
+    "UserPrincipalName": "neil.tennant@example.co.uk",
     "Groups": [
       "Pet Shop Boys",
       "Vocalists"
     ],
     "Title": "Lead Vocalist / Lyricist",
-    "Email": "neil.tennant@example.com",
+    "Email": "neil.tennant@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -2918,13 +2918,13 @@
   {
     "Name": "Chris Lowe",
     "SamAccountName": "chris.lowe",
-    "UserPrincipalName": "chris.lowe@example.com",
+    "UserPrincipalName": "chris.lowe@example.co.uk",
     "Groups": [
       "Pet Shop Boys",
       "Keyboards"
     ],
     "Title": "Keyboardist / Composer",
-    "Email": "chris.lowe@example.com",
+    "Email": "chris.lowe@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Neil Tennant",
@@ -2947,13 +2947,13 @@
   {
     "Name": "Dusty Springfield",
     "SamAccountName": "dusty.springfield",
-    "UserPrincipalName": "dusty.springfield@example.com",
+    "UserPrincipalName": "dusty.springfield@example.co.uk",
     "Groups": [
       "Pet Shop Boys",
       "Guests"
     ],
     "Title": "Guest Vocalist",
-    "Email": "dusty.springfield@example.com",
+    "Email": "dusty.springfield@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Neil Tennant",
@@ -2976,13 +2976,13 @@
   {
     "Name": "Mark Shaw",
     "SamAccountName": "mark.shaw",
-    "UserPrincipalName": "mark.shaw@example.com",
+    "UserPrincipalName": "mark.shaw@example.co.uk",
     "Groups": [
       "Then Jerico",
       "Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "mark.shaw@example.com",
+    "Email": "mark.shaw@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -3005,14 +3005,14 @@
   {
     "Name": "Steve Halliwell",
     "SamAccountName": "steve.halliwell",
-    "UserPrincipalName": "steve.halliwell@example.com",
+    "UserPrincipalName": "steve.halliwell@example.co.uk",
     "Groups": [
       "Then Jerico",
       "Artists",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "steve.halliwell@example.com",
+    "Email": "steve.halliwell@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mark Shaw",
@@ -3035,14 +3035,14 @@
   {
     "Name": "Chris Pope",
     "SamAccountName": "chris.pope",
-    "UserPrincipalName": "chris.pope@example.com",
+    "UserPrincipalName": "chris.pope@example.co.uk",
     "Groups": [
       "Then Jerico",
       "Artists",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "chris.pope@example.com",
+    "Email": "chris.pope@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mark Shaw",
@@ -3065,14 +3065,14 @@
   {
     "Name": "Michael ONeill",
     "SamAccountName": "michael.oneill",
-    "UserPrincipalName": "michael.oneill@example.com",
+    "UserPrincipalName": "michael.oneill@example.co.uk",
     "Groups": [
       "Then Jerico",
       "Artists",
       "Keyboardists"
     ],
     "Title": "Keyboardist",
-    "Email": "michael.oneill@example.com",
+    "Email": "michael.oneill@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mark Shaw",
@@ -3095,14 +3095,14 @@
   {
     "Name": "Derek MacKenzie",
     "SamAccountName": "derek.mackenzie",
-    "UserPrincipalName": "derek.mackenzie@example.com",
+    "UserPrincipalName": "derek.mackenzie@example.co.uk",
     "Groups": [
       "Then Jerico",
       "Artists",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "derek.mackenzie@example.com",
+    "Email": "derek.mackenzie@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mark Shaw",
@@ -3125,13 +3125,13 @@
   {
     "Name": "Belinda Carlisle",
     "SamAccountName": "belinda.carlisle",
-    "UserPrincipalName": "belinda.carlisle@example.com",
+    "UserPrincipalName": "belinda.carlisle@example.co.uk",
     "Groups": [
       "Then Jerico",
       "Featured Artists"
     ],
     "Title": "Guest Vocalist",
-    "Email": "belinda.carlisle@example.com",
+    "Email": "belinda.carlisle@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Mark Shaw",
@@ -3154,13 +3154,13 @@
   {
     "Name": "Sara Dallin",
     "SamAccountName": "sara.dallin",
-    "UserPrincipalName": "sara.dallin@example.com",
+    "UserPrincipalName": "sara.dallin@example.co.uk",
     "Groups": [
       "Bananarama",
       "Vocalists"
     ],
     "Title": "Vocalist",
-    "Email": "sara.dallin@example.com",
+    "Email": "sara.dallin@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -3183,13 +3183,13 @@
   {
     "Name": "Keren Woodward",
     "SamAccountName": "keren.woodward",
-    "UserPrincipalName": "keren.woodward@example.com",
+    "UserPrincipalName": "keren.woodward@example.co.uk",
     "Groups": [
       "Bananarama",
       "Vocalists"
     ],
     "Title": "Vocalist",
-    "Email": "keren.woodward@example.com",
+    "Email": "keren.woodward@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Sara Dallin",
@@ -3212,13 +3212,13 @@
   {
     "Name": "Siobhan Fahey",
     "SamAccountName": "siobhan.fahey",
-    "UserPrincipalName": "siobhan.fahey@example.com",
+    "UserPrincipalName": "siobhan.fahey@example.co.uk",
     "Groups": [
       "Bananarama",
       "Vocalists"
     ],
     "Title": "Vocalist",
-    "Email": "siobhan.fahey@example.com",
+    "Email": "siobhan.fahey@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Sara Dallin",
@@ -3241,13 +3241,13 @@
   {
     "Name": "Melanie Appleby",
     "SamAccountName": "melanie.appleby",
-    "UserPrincipalName": "mel.appleby@example.com",
+    "UserPrincipalName": "mel.appleby@example.co.uk",
     "Groups": [
       "Mel And Kim",
       "Sales"
     ],
     "Title": "Singer and Dancer",
-    "Email": "mel.appleby@example.com",
+    "Email": "mel.appleby@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -3270,13 +3270,13 @@
   {
     "Name": "Kimberly Appleby",
     "SamAccountName": "kim.appleby",
-    "UserPrincipalName": "kim.appleby@example.com",
+    "UserPrincipalName": "kim.appleby@example.co.uk",
     "Groups": [
       "Mel And Kim",
       "Sales"
     ],
     "Title": "Singer and Dancer",
-    "Email": "kim.appleby@example.com",
+    "Email": "kim.appleby@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -3299,13 +3299,13 @@
   {
     "Name": "Dave Gahan",
     "SamAccountName": "dave.gahan",
-    "UserPrincipalName": "dave.gahan@example.com",
+    "UserPrincipalName": "dave.gahan@example.co.uk",
     "Groups": [
       "Depeche Mode",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "dave.gahan@example.com",
+    "Email": "dave.gahan@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Martin Gore",
@@ -3328,14 +3328,14 @@
   {
     "Name": "Martin Gore",
     "SamAccountName": "martin.gore",
-    "UserPrincipalName": "martin.gore@example.com",
+    "UserPrincipalName": "martin.gore@example.co.uk",
     "Groups": [
       "Depeche Mode",
       "Guitarists",
       "Keyboards"
     ],
     "Title": "Guitarist/Keyboardist",
-    "Email": "martin.gore@example.com",
+    "Email": "martin.gore@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -3358,14 +3358,14 @@
   {
     "Name": "Alan Wilder",
     "SamAccountName": "alan.wilder",
-    "UserPrincipalName": "alan.wilder@example.com",
+    "UserPrincipalName": "alan.wilder@example.co.uk",
     "Groups": [
       "Depeche Mode",
       "Keyboards",
       "Percussion"
     ],
     "Title": "Keyboardist/Drummer",
-    "Email": "alan.wilder@example.com",
+    "Email": "alan.wilder@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Martin Gore",
@@ -3388,13 +3388,13 @@
   {
     "Name": "Andrew Fletcher",
     "SamAccountName": "andrew.fletcher",
-    "UserPrincipalName": "andrew.fletcher@example.com",
+    "UserPrincipalName": "andrew.fletcher@example.co.uk",
     "Groups": [
       "Depeche Mode",
       "Keyboards"
     ],
     "Title": "Keyboards/Bass Synth",
-    "Email": "andrew.fletcher@example.com",
+    "Email": "andrew.fletcher@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Martin Gore",
@@ -3417,14 +3417,14 @@
   {
     "Name": "Barbara Gogan",
     "SamAccountName": "barbara.gogan",
-    "UserPrincipalName": "barbara.gogan@example.com",
+    "UserPrincipalName": "barbara.gogan@example.co.uk",
     "Groups": [
       "The-Passions",
       "Artists",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "barbara.gogan@example.com",
+    "Email": "barbara.gogan@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Band Management",
@@ -3447,14 +3447,14 @@
   {
     "Name": "Richard Hardy",
     "SamAccountName": "richard.hardy",
-    "UserPrincipalName": "richard.hardy@example.com",
+    "UserPrincipalName": "richard.hardy@example.co.uk",
     "Groups": [
       "The-Passions",
       "Musicians",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "richard.hardy@example.com",
+    "Email": "richard.hardy@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Band Lead",
@@ -3477,14 +3477,14 @@
   {
     "Name": "Claire Bidwell",
     "SamAccountName": "claire.bidwell",
-    "UserPrincipalName": "claire.bidwell@example.com",
+    "UserPrincipalName": "claire.bidwell@example.co.uk",
     "Groups": [
       "The-Passions",
       "Musicians",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "claire.bidwell@example.com",
+    "Email": "claire.bidwell@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Band Lead",
@@ -3507,14 +3507,14 @@
   {
     "Name": "Pat Fitzgerald",
     "SamAccountName": "pat.fitzgerald",
-    "UserPrincipalName": "pat.fitzgerald@example.com",
+    "UserPrincipalName": "pat.fitzgerald@example.co.uk",
     "Groups": [
       "The-Passions",
       "Musicians",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "pat.fitzgerald@example.com",
+    "Email": "pat.fitzgerald@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Band Lead",
@@ -3537,13 +3537,13 @@
   {
     "Name": "Heather Small",
     "SamAccountName": "heather.small",
-    "UserPrincipalName": "heather.small@example.com",
+    "UserPrincipalName": "heather.small@example.co.uk",
     "Groups": [
       "M-People",
       "Music"
     ],
     "Title": "Lead Vocalist",
-    "Email": "heather.small@example.com",
+    "Email": "heather.small@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -3566,13 +3566,13 @@
   {
     "Name": "Mike Pickering",
     "SamAccountName": "mike.pickering",
-    "UserPrincipalName": "mike.pickering@example.com",
+    "UserPrincipalName": "mike.pickering@example.co.uk",
     "Groups": [
       "M-People",
       "Music"
     ],
     "Title": "Keyboardist/Producer",
-    "Email": "mike.pickering@example.com",
+    "Email": "mike.pickering@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Heather Small",
@@ -3595,13 +3595,13 @@
   {
     "Name": "Paul Heard",
     "SamAccountName": "paul.heard",
-    "UserPrincipalName": "paul.heard@example.com",
+    "UserPrincipalName": "paul.heard@example.co.uk",
     "Groups": [
       "M-People",
       "Music"
     ],
     "Title": "Keyboardist/Bassist",
-    "Email": "paul.heard@example.com",
+    "Email": "paul.heard@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Heather Small",
@@ -3624,13 +3624,13 @@
   {
     "Name": "Shovell",
     "SamAccountName": "shovell",
-    "UserPrincipalName": "shovell@example.com",
+    "UserPrincipalName": "shovell@example.co.uk",
     "Groups": [
       "M-People",
       "Music"
     ],
     "Title": "Percussionist",
-    "Email": "shovell@example.com",
+    "Email": "shovell@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Heather Small",
@@ -3653,14 +3653,14 @@
   {
     "Name": "Bernard Sumner",
     "SamAccountName": "bernard.sumner",
-    "UserPrincipalName": "bernard.sumner@example.com",
+    "UserPrincipalName": "bernard.sumner@example.co.uk",
     "Groups": [
       "New Order",
       "Vocalists",
       "Guitarists"
     ],
     "Title": "Lead Vocalist & Guitarist",
-    "Email": "bernard.sumner@example.com",
+    "Email": "bernard.sumner@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -3683,13 +3683,13 @@
   {
     "Name": "Stephen Morris",
     "SamAccountName": "stephen.morris",
-    "UserPrincipalName": "stephen.morris@example.com",
+    "UserPrincipalName": "stephen.morris@example.co.uk",
     "Groups": [
       "New Order",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "stephen.morris@example.com",
+    "Email": "stephen.morris@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Bernard Sumner",
@@ -3712,13 +3712,13 @@
   {
     "Name": "Peter Hook",
     "SamAccountName": "peter.hook",
-    "UserPrincipalName": "peter.hook@example.com",
+    "UserPrincipalName": "peter.hook@example.co.uk",
     "Groups": [
       "New Order",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "peter.hook@example.com",
+    "Email": "peter.hook@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Bernard Sumner",
@@ -3741,14 +3741,14 @@
   {
     "Name": "Gillian Gilbert",
     "SamAccountName": "gillian.gilbert",
-    "UserPrincipalName": "gillian.gilbert@example.com",
+    "UserPrincipalName": "gillian.gilbert@example.co.uk",
     "Groups": [
       "New Order",
       "Keyboardists",
       "Guitarists"
     ],
     "Title": "Keyboardist & Guitarist",
-    "Email": "gillian.gilbert@example.com",
+    "Email": "gillian.gilbert@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Bernard Sumner",
@@ -3771,12 +3771,12 @@
   {
     "Name": "Ian Brown",
     "SamAccountName": "ian.brown",
-    "UserPrincipalName": "ian.brown@example.com",
+    "UserPrincipalName": "ian.brown@example.co.uk",
     "Groups": [
       "The Stone Roses"
     ],
     "Title": "Lead Vocalist",
-    "Email": "ian.brown@example.com",
+    "Email": "ian.brown@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -3799,12 +3799,12 @@
   {
     "Name": "John Squire",
     "SamAccountName": "john.squire",
-    "UserPrincipalName": "john.squire@example.com",
+    "UserPrincipalName": "john.squire@example.co.uk",
     "Groups": [
       "The Stone Roses"
     ],
     "Title": "Guitarist",
-    "Email": "john.squire@example.com",
+    "Email": "john.squire@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ian Brown",
@@ -3827,12 +3827,12 @@
   {
     "Name": "Gary Mounfield",
     "SamAccountName": "mani",
-    "UserPrincipalName": "manid@example.com",
+    "UserPrincipalName": "manid@example.co.uk",
     "Groups": [
       "The Stone Roses"
     ],
     "Title": "Bass Guitarist",
-    "Email": "mani@example.com",
+    "Email": "mani@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ian Brown",
@@ -3855,12 +3855,12 @@
   {
     "Name": "Alan Wren",
     "SamAccountName": "reni",
-    "UserPrincipalName": "renin@example.com",
+    "UserPrincipalName": "renin@example.co.uk",
     "Groups": [
       "The Stone Roses"
     ],
     "Title": "Drummer",
-    "Email": "reni@example.com",
+    "Email": "reni@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Ian Brown",
@@ -3883,14 +3883,14 @@
   {
     "Name": "Gordon Summer",
     "SamAccountName": "sting",
-    "UserPrincipalName": "sting@example.com",
+    "UserPrincipalName": "sting@example.co.uk",
     "Groups": [
       "The Police",
       "Vocalists",
       "Bassists"
     ],
     "Title": "Lead Vocalist & Bassist",
-    "Email": "sting@example.com",
+    "Email": "sting@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -3913,13 +3913,13 @@
   {
     "Name": "Andy Summers",
     "SamAccountName": "andy.summers",
-    "UserPrincipalName": "andy.summers@example.com",
+    "UserPrincipalName": "andy.summers@example.co.uk",
     "Groups": [
       "The Police",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "andy.summers@example.com",
+    "Email": "andy.summers@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Sting",
@@ -3942,13 +3942,13 @@
   {
     "Name": "Stewart Copeland",
     "SamAccountName": "stewart.copeland",
-    "UserPrincipalName": "stewart.copeland@example.com",
+    "UserPrincipalName": "stewart.copeland@example.co.uk",
     "Groups": [
       "The Police",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "stewart.copeland@example.com",
+    "Email": "stewart.copeland@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Sting",
@@ -3971,14 +3971,14 @@
   {
     "Name": "Mark Knopfler",
     "SamAccountName": "mark.knopfler",
-    "UserPrincipalName": "mark.knopfler@example.com",
+    "UserPrincipalName": "mark.knopfler@example.co.uk",
     "Groups": [
       "Dire Straits",
       "Guitarists",
       "Vocalists"
     ],
     "Title": "Lead Vocalist / Guitarist",
-    "Email": "mark.knopfler@example.com",
+    "Email": "mark.knopfler@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -4001,13 +4001,13 @@
   {
     "Name": "David Knopfler",
     "SamAccountName": "david.knopfler",
-    "UserPrincipalName": "david.knopfler@example.com",
+    "UserPrincipalName": "david.knopfler@example.co.uk",
     "Groups": [
       "Dire Straits",
       "Guitarists"
     ],
     "Title": "Rhythm Guitarist",
-    "Email": "david.knopfler@example.com",
+    "Email": "david.knopfler@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mark Knopfler",
@@ -4030,13 +4030,13 @@
   {
     "Name": "John Illsley",
     "SamAccountName": "john.illsley",
-    "UserPrincipalName": "john.illsley@example.com",
+    "UserPrincipalName": "john.illsley@example.co.uk",
     "Groups": [
       "Dire Straits",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "john.illsley@example.com",
+    "Email": "john.illsley@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mark Knopfler",
@@ -4059,13 +4059,13 @@
   {
     "Name": "Pick Withers",
     "SamAccountName": "pick.withers",
-    "UserPrincipalName": "pick.withers@example.com",
+    "UserPrincipalName": "pick.withers@example.co.uk",
     "Groups": [
       "Dire Straits",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "pick.withers@example.com",
+    "Email": "pick.withers@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mark Knopfler",
@@ -4088,13 +4088,13 @@
   {
     "Name": "Alan Clark",
     "SamAccountName": "alan.clark",
-    "UserPrincipalName": "alan.clark@example.com",
+    "UserPrincipalName": "alan.clark@example.co.uk",
     "Groups": [
       "Dire Straits",
       "Keyboardists"
     ],
     "Title": "Keyboardist",
-    "Email": "alan.clark@example.com",
+    "Email": "alan.clark@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mark Knopfler",
@@ -4117,13 +4117,13 @@
   {
     "Name": "Guy Fletcher",
     "SamAccountName": "guy.fletcher",
-    "UserPrincipalName": "guy.fletcher@example.com",
+    "UserPrincipalName": "guy.fletcher@example.co.uk",
     "Groups": [
       "Dire Straits",
       "Keyboardists"
     ],
     "Title": "Keyboardist",
-    "Email": "guy.fletcher@example.com",
+    "Email": "guy.fletcher@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mark Knopfler",
@@ -4146,13 +4146,13 @@
   {
     "Name": "Terry Williams",
     "SamAccountName": "terry.williams",
-    "UserPrincipalName": "terry.williams@example.com",
+    "UserPrincipalName": "terry.williams@example.co.uk",
     "Groups": [
       "Dire Straits",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "terry.williams@example.com",
+    "Email": "terry.williams@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mark Knopfler",
@@ -4175,13 +4175,13 @@
   {
     "Name": "Philip Oakey",
     "SamAccountName": "philip.oakey",
-    "UserPrincipalName": "philip.oakey@example.com",
+    "UserPrincipalName": "philip.oakey@example.co.uk",
     "Groups": [
       "Human League",
       "Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "philip.oakey@example.com",
+    "Email": "philip.oakey@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -4204,13 +4204,13 @@
   {
     "Name": "Martyn Ware",
     "SamAccountName": "martyn.ware",
-    "UserPrincipalName": "martyn.ware@example.com",
+    "UserPrincipalName": "martyn.ware@example.co.uk",
     "Groups": [
       "Human League",
       "Artists"
     ],
     "Title": "Synthesizer / Programmer",
-    "Email": "martyn.ware@example.com",
+    "Email": "martyn.ware@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Philip Oakey",
@@ -4233,13 +4233,13 @@
   {
     "Name": "Ian Burden",
     "SamAccountName": "ian.burden",
-    "UserPrincipalName": "ian.burden@example.com",
+    "UserPrincipalName": "ian.burden@example.co.uk",
     "Groups": [
       "Human League",
       "Artists"
     ],
     "Title": "Bassist / Keyboardist",
-    "Email": "ian.burden@example.com",
+    "Email": "ian.burden@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Philip Oakey",
@@ -4262,13 +4262,13 @@
   {
     "Name": "Jo Callis",
     "SamAccountName": "jo.callis",
-    "UserPrincipalName": "jo.callis@example.com",
+    "UserPrincipalName": "jo.callis@example.co.uk",
     "Groups": [
       "Human League",
       "Artists"
     ],
     "Title": "Guitarist / Songwriter",
-    "Email": "jo.callis@example.com",
+    "Email": "jo.callis@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Philip Oakey",
@@ -4291,14 +4291,14 @@
   {
     "Name": "Susan Ann Sulley",
     "SamAccountName": "susan.sulley",
-    "UserPrincipalName": "susan.sulley@example.com",
+    "UserPrincipalName": "susan.sulley@example.co.uk",
     "Groups": [
       "Human League",
       "Artists",
       "Vocalists"
     ],
     "Title": "Vocalist",
-    "Email": "susan.sulley@example.com",
+    "Email": "susan.sulley@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Philip Oakey",
@@ -4321,13 +4321,13 @@
   {
     "Name": "Glenn Gregory",
     "SamAccountName": "glenn.gregory",
-    "UserPrincipalName": "glenn.gregory@example.com",
+    "UserPrincipalName": "glenn.gregory@example.co.uk",
     "Groups": [
       "Heaven 17",
       "Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "glenn.gregory@example.com",
+    "Email": "glenn.gregory@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -4350,13 +4350,13 @@
   {
     "Name": "Martyn Ware",
     "SamAccountName": "martyn.ware.h17",
-    "UserPrincipalName": "martyn.ware@example.com",
+    "UserPrincipalName": "martyn.ware@example.co.uk",
     "Groups": [
       "Heaven 17",
       "Artists"
     ],
     "Title": "Synthesizer / Programmer",
-    "Email": "martyn.ware@example.com",
+    "Email": "martyn.ware@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Glenn Gregory",
@@ -4379,13 +4379,13 @@
   {
     "Name": "Ian Craig Marsh",
     "SamAccountName": "ian.marsh",
-    "UserPrincipalName": "ian.marsh@example.com",
+    "UserPrincipalName": "ian.marsh@example.co.uk",
     "Groups": [
       "Heaven 17",
       "Artists"
     ],
     "Title": "Synthesizer / Programmer",
-    "Email": "ian.marsh@example.com",
+    "Email": "ian.marsh@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Glenn Gregory",
@@ -4408,13 +4408,13 @@
   {
     "Name": "Adrian Wright",
     "SamAccountName": "adrian.wright",
-    "UserPrincipalName": "adrian.wright@example.com",
+    "UserPrincipalName": "adrian.wright@example.co.uk",
     "Groups": [
       "Heaven 17",
       "Artists"
     ],
     "Title": "Synthesizer / Programmer",
-    "Email": "adrian.wright@example.com",
+    "Email": "adrian.wright@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Glenn Gregory",
@@ -4437,12 +4437,12 @@
   {
     "Name": "Paul Weller",
     "SamAccountName": "paul.weller",
-    "UserPrincipalName": "paul.weller@example.com",
+    "UserPrincipalName": "paul.weller@example.co.uk",
     "Groups": [
       "The Jam"
     ],
     "Title": "Lead Vocalist / Guitarist",
-    "Email": "paul.weller@example.com",
+    "Email": "paul.weller@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -4465,12 +4465,12 @@
   {
     "Name": "Bruce Foxton",
     "SamAccountName": "bruce.foxton",
-    "UserPrincipalName": "bruce.foxton@example.com",
+    "UserPrincipalName": "bruce.foxton@example.co.uk",
     "Groups": [
       "The Jam"
     ],
     "Title": "Bass Guitarist",
-    "Email": "bruce.foxton@example.com",
+    "Email": "bruce.foxton@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Paul Weller",
@@ -4493,12 +4493,12 @@
   {
     "Name": "Rick Buckler",
     "SamAccountName": "rick.buckler",
-    "UserPrincipalName": "rick.buckler@example.com",
+    "UserPrincipalName": "rick.buckler@example.co.uk",
     "Groups": [
       "The Jam"
     ],
     "Title": "Drummer",
-    "Email": "rick.buckler@example.com",
+    "Email": "rick.buckler@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Paul Weller",
@@ -4521,12 +4521,12 @@
   {
     "Name": "Paul Weller",
     "SamAccountName": "paul.weller.sc",
-    "UserPrincipalName": "paul.weller.sc@example.com",
+    "UserPrincipalName": "paul.weller.sc@example.co.uk",
     "Groups": [
       "The Style Council"
     ],
     "Title": "Vocalist / Guitarist",
-    "Email": "paul.weller@example.com",
+    "Email": "paul.weller@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -4549,12 +4549,12 @@
   {
     "Name": "Mick Talbot",
     "SamAccountName": "mick.talbot",
-    "UserPrincipalName": "mick.talbot@example.com",
+    "UserPrincipalName": "mick.talbot@example.co.uk",
     "Groups": [
       "The Style Council"
     ],
     "Title": "Keyboardist",
-    "Email": "mick.talbot@example.com",
+    "Email": "mick.talbot@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Paul Weller",
@@ -4577,12 +4577,12 @@
   {
     "Name": "Dee C. Lee",
     "SamAccountName": "dee.lee",
-    "UserPrincipalName": "dee.lee@example.com",
+    "UserPrincipalName": "dee.lee@example.co.uk",
     "Groups": [
       "The Style Council"
     ],
     "Title": "Vocalist",
-    "Email": "dee.lee@example.com",
+    "Email": "dee.lee@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Paul Weller",
@@ -4605,13 +4605,13 @@
   {
     "Name": "Lis Sørensen",
     "SamAccountName": "lissorensen",
-    "UserPrincipalName": "lis.sorensen@example.com",
+    "UserPrincipalName": "lis.sorensen@example.co.uk",
     "Groups": [
       "Lis Sørensen",
       "Studio Access"
     ],
     "Title": "Singer",
-    "Email": "lis.sorensen@example.com",
+    "Email": "lis.sorensen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -4634,13 +4634,13 @@
   {
     "Name": "Helena Christensen",
     "SamAccountName": "helenachristensen",
-    "UserPrincipalName": "helena.christensen@example.com",
+    "UserPrincipalName": "helena.christensen@example.co.uk",
     "Groups": [
       "Creative Team",
       "Esbjerg Office Access"
     ],
     "Title": "Company Photographer",
-    "Email": "helena.christensen@example.com",
+    "Email": "helena.christensen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -4663,14 +4663,14 @@
   {
     "Name": "Steffen Brandt",
     "SamAccountName": "steffen.brandt",
-    "UserPrincipalName": "steffen.brandt@example.com",
+    "UserPrincipalName": "steffen.brandt@example.co.uk",
     "Groups": [
       "TV-2",
       "Vocalists",
       "Guitarists"
     ],
     "Title": "Lead Vocalist / Guitarist",
-    "Email": "steffen.brandt@example.com",
+    "Email": "steffen.brandt@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -4693,13 +4693,13 @@
   {
     "Name": "Hans Erik Lerchenfeldt",
     "SamAccountName": "hans.lerchenfeldt",
-    "UserPrincipalName": "hans.lerchenfeldt@example.com",
+    "UserPrincipalName": "hans.lerchenfeldt@example.co.uk",
     "Groups": [
       "TV-2",
       "Musicians"
     ],
     "Title": "Bassist",
-    "Email": "hans.lerchenfeldt@example.com",
+    "Email": "hans.lerchenfeldt@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Steffen Brandt",
@@ -4722,13 +4722,13 @@
   {
     "Name": "Sven Gaul",
     "SamAccountName": "sven.gaul",
-    "UserPrincipalName": "sven.gaul@example.com",
+    "UserPrincipalName": "sven.gaul@example.co.uk",
     "Groups": [
       "TV-2",
       "Musicians"
     ],
     "Title": "Drummer",
-    "Email": "sven.gaul@example.com",
+    "Email": "sven.gaul@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Steffen Brandt",
@@ -4751,14 +4751,14 @@
   {
     "Name": "Georg Olesen",
     "SamAccountName": "georg.olesen",
-    "UserPrincipalName": "georg.olesen@example.com",
+    "UserPrincipalName": "georg.olesen@example.co.uk",
     "Groups": [
       "TV-2",
       "Musicians",
       "Former Staff"
     ],
     "Title": "Guitarist (Former)",
-    "Email": "georg.olesen@example.com",
+    "Email": "georg.olesen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -4781,13 +4781,13 @@
   {
     "Name": "Jonas Elmer",
     "SamAccountName": "jonas.elmer",
-    "UserPrincipalName": "jonas.elmer@example.com",
+    "UserPrincipalName": "jonas.elmer@example.co.uk",
     "Groups": [
       "Elmer",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "jonas.elmer@example.com",
+    "Email": "jonas.elmer@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -4810,13 +4810,13 @@
   {
     "Name": "Sofie Møller",
     "SamAccountName": "sofie.moller",
-    "UserPrincipalName": "sofie.moller@example.com",
+    "UserPrincipalName": "sofie.moller@example.co.uk",
     "Groups": [
       "Elmer",
       "Keyboardists"
     ],
     "Title": "Keyboardist",
-    "Email": "sofie.moller@example.com",
+    "Email": "sofie.moller@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Jonas Elmer",
@@ -4839,13 +4839,13 @@
   {
     "Name": "Peter Nielsen",
     "SamAccountName": "peter.nielsen",
-    "UserPrincipalName": "peter.nielsen@example.com",
+    "UserPrincipalName": "peter.nielsen@example.co.uk",
     "Groups": [
       "Elmer",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "peter.nielsen@example.com",
+    "Email": "peter.nielsen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Jonas Elmer",
@@ -4868,13 +4868,13 @@
   {
     "Name": "Lars Pedersen",
     "SamAccountName": "lars.pedersen",
-    "UserPrincipalName": "lars.pedersen@example.com",
+    "UserPrincipalName": "lars.pedersen@example.co.uk",
     "Groups": [
       "Elmer",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "lars.pedersen@example.com",
+    "Email": "lars.pedersen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Jonas Elmer",
@@ -4897,13 +4897,13 @@
   {
     "Name": "Dodo Gad",
     "SamAccountName": "dodo.gad",
-    "UserPrincipalName": "dodo.gad@example.com",
+    "UserPrincipalName": "dodo.gad@example.co.uk",
     "Groups": [
       "Dodo-and-the-Dodos",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "dodo.gad@example.com",
+    "Email": "dodo.gad@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -4926,13 +4926,13 @@
   {
     "Name": "Steen Christiansen",
     "SamAccountName": "steen.christiansen",
-    "UserPrincipalName": "steen.christiansen@example.com",
+    "UserPrincipalName": "steen.christiansen@example.co.uk",
     "Groups": [
       "Dodo-and-the-Dodos",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "steen.christiansen@example.com",
+    "Email": "steen.christiansen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Dodo Gad",
@@ -4955,13 +4955,13 @@
   {
     "Name": "Henrik Stanley Møller",
     "SamAccountName": "henrik.moller",
-    "UserPrincipalName": "henrik.moller@example.com",
+    "UserPrincipalName": "henrik.moller@example.co.uk",
     "Groups": [
       "Dodo-and-the-Dodos",
       "Keyboardists"
     ],
     "Title": "Keyboardist",
-    "Email": "henrik.moller@example.com",
+    "Email": "henrik.moller@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Dodo Gad",
@@ -4984,13 +4984,13 @@
   {
     "Name": "Søren Jacobsen",
     "SamAccountName": "soren.jacobsen",
-    "UserPrincipalName": "soren.jacobsen@example.com",
+    "UserPrincipalName": "soren.jacobsen@example.co.uk",
     "Groups": [
       "Dodo-and-the-Dodos",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "soren.jacobsen@example.com",
+    "Email": "soren.jacobsen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Dodo Gad",
@@ -5013,13 +5013,13 @@
   {
     "Name": "Morten Jensen",
     "SamAccountName": "morten.jensen",
-    "UserPrincipalName": "morten.jensen@example.com",
+    "UserPrincipalName": "morten.jensen@example.co.uk",
     "Groups": [
       "1000 Keys",
       "Keyboardists"
     ],
     "Title": "Keyboardist",
-    "Email": "morten.jensen@example.com",
+    "Email": "morten.jensen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -5042,13 +5042,13 @@
   {
     "Name": "Lars Pedersen",
     "SamAccountName": "lars.pedersen",
-    "UserPrincipalName": "lars.pedersen@example.com",
+    "UserPrincipalName": "lars.pedersen@example.co.uk",
     "Groups": [
       "1000 Keys",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "lars.pedersen@example.com",
+    "Email": "lars.pedersen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -5071,14 +5071,14 @@
   {
     "Name": "Søren Hansen",
     "SamAccountName": "soren.hansen",
-    "UserPrincipalName": "soren.hansen@example.com",
+    "UserPrincipalName": "soren.hansen@example.co.uk",
     "Groups": [
       "1000 Keys",
       "Drummers",
       "Artists"
     ],
     "Title": "Drummer",
-    "Email": "soren.hansen@example.com",
+    "Email": "soren.hansen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Lars Pedersen",
@@ -5101,13 +5101,13 @@
   {
     "Name": "Peter Møller",
     "SamAccountName": "peter.moller",
-    "UserPrincipalName": "peter.moller@example.com",
+    "UserPrincipalName": "peter.moller@example.co.uk",
     "Groups": [
       "1000 Keys",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "peter.moller@example.com",
+    "Email": "peter.moller@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Lars Pedersen",
@@ -5130,13 +5130,13 @@
   {
     "Name": "Kim Larsen",
     "SamAccountName": "kim.larsen",
-    "UserPrincipalName": "kim.larsen@example.com",
+    "UserPrincipalName": "kim.larsen@example.co.uk",
     "Groups": [
       "News",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "kim.larsen@example.com",
+    "Email": "kim.larsen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -5159,13 +5159,13 @@
   {
     "Name": "Anne Sørensen",
     "SamAccountName": "anne.sorensen",
-    "UserPrincipalName": "anne.sorensen@example.com",
+    "UserPrincipalName": "anne.sorensen@example.co.uk",
     "Groups": [
       "News",
       "Keyboardists"
     ],
     "Title": "Keyboardist",
-    "Email": "anne.sorensen@example.com",
+    "Email": "anne.sorensen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Kim Larsen",
@@ -5188,13 +5188,13 @@
   {
     "Name": "Henrik Nielsen",
     "SamAccountName": "henrik.nielsen",
-    "UserPrincipalName": "henrik.nielsen@example.com",
+    "UserPrincipalName": "henrik.nielsen@example.co.uk",
     "Groups": [
       "News",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "henrik.nielsen@example.com",
+    "Email": "henrik.nielsen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Kim Larsen",
@@ -5217,13 +5217,13 @@
   {
     "Name": "Peter Madsen",
     "SamAccountName": "peter.madsen",
-    "UserPrincipalName": "peter.madsen@example.com",
+    "UserPrincipalName": "peter.madsen@example.co.uk",
     "Groups": [
       "News",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "peter.madsen@example.com",
+    "Email": "peter.madsen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Kim Larsen",
@@ -5246,13 +5246,13 @@
   {
     "Name": "Ulla Kjaer",
     "SamAccountName": "ulla.kjaer",
-    "UserPrincipalName": "ulla.kjaer@example.com",
+    "UserPrincipalName": "ulla.kjaer@example.co.uk",
     "Groups": [
       "Rocazino",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "ulla.kjaer@example.com",
+    "Email": "ulla.kjaer@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -5275,13 +5275,13 @@
   {
     "Name": "Michael Bruun",
     "SamAccountName": "michael.bruun",
-    "UserPrincipalName": "michael.bruun@example.com",
+    "UserPrincipalName": "michael.bruun@example.co.uk",
     "Groups": [
       "Rocazino",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "michael.bruun@example.com",
+    "Email": "michael.bruun@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Ulla Kjaer",
@@ -5304,13 +5304,13 @@
   {
     "Name": "Jan Sivertsen",
     "SamAccountName": "jan.sivertsen",
-    "UserPrincipalName": "jan.sivertsen@example.com",
+    "UserPrincipalName": "jan.sivertsen@example.co.uk",
     "Groups": [
       "Rocazino",
       "Percussion"
     ],
     "Title": "Drummer",
-    "Email": "jan.sivertsen@example.com",
+    "Email": "jan.sivertsen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Ulla Kjaer",
@@ -5333,13 +5333,13 @@
   {
     "Name": "Sannie Charlotte Carlson",
     "SamAccountName": "whigfield",
-    "UserPrincipalName": "whigfield@example.com",
+    "UserPrincipalName": "whigfield@example.co.uk",
     "Groups": [
       "Whigfield",
       "Warehouse Access"
     ],
     "Title": "Performer",
-    "Email": "whigfield@example.com",
+    "Email": "whigfield@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -5362,13 +5362,13 @@
   {
     "Name": "Karen Marie Orsted",
     "SamAccountName": "karen.orsted",
-    "UserPrincipalName": "mo@example.com",
+    "UserPrincipalName": "mo@example.co.uk",
     "Groups": [
       "Mo",
       "Vocalists"
     ],
     "Title": "Singer / Songwriter",
-    "Email": "mo@example.com",
+    "Email": "mo@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -5391,13 +5391,13 @@
   {
     "Name": "Jonas Berggren",
     "SamAccountName": "jonas.berggren",
-    "UserPrincipalName": "jonas.berggren@example.com",
+    "UserPrincipalName": "jonas.berggren@example.co.uk",
     "Groups": [
       "Ace of Base",
       "Artists"
     ],
     "Title": "Songwriter / Keyboardist",
-    "Email": "jonas.berggren@example.com",
+    "Email": "jonas.berggren@example.co.uk",
     "Country": "SE",
     "CountryCode": "SE",
     "Manager": "",
@@ -5420,13 +5420,13 @@
   {
     "Name": "Ulf Ekberg",
     "SamAccountName": "ulf.ekberg",
-    "UserPrincipalName": "ulf.ekberg@example.com",
+    "UserPrincipalName": "ulf.ekberg@example.co.uk",
     "Groups": [
       "Ace of Base",
       "Artists"
     ],
     "Title": "Producer / Keyboardist",
-    "Email": "ulf.ekberg@example.com",
+    "Email": "ulf.ekberg@example.co.uk",
     "Country": "SE",
     "CountryCode": "SE",
     "Manager": "Jonas Berggren",
@@ -5449,13 +5449,13 @@
   {
     "Name": "Jenny Berggren",
     "SamAccountName": "jenny.berggren",
-    "UserPrincipalName": "jenny.berggren@example.com",
+    "UserPrincipalName": "jenny.berggren@example.co.uk",
     "Groups": [
       "Ace of Base",
       "Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "jenny.berggren@example.com",
+    "Email": "jenny.berggren@example.co.uk",
     "Country": "SE",
     "CountryCode": "SE",
     "Manager": "Jonas Berggren",
@@ -5478,13 +5478,13 @@
   {
     "Name": "Linn Berggren",
     "SamAccountName": "linn.berggren",
-    "UserPrincipalName": "linn.berggren@example.com",
+    "UserPrincipalName": "linn.berggren@example.co.uk",
     "Groups": [
       "Ace of Base",
       "Artists"
     ],
     "Title": "Vocalist",
-    "Email": "linn.berggren@example.com",
+    "Email": "linn.berggren@example.co.uk",
     "Country": "SE",
     "CountryCode": "SE",
     "Manager": "Jonas Berggren",
@@ -5507,13 +5507,13 @@
   {
     "Name": "Marie Fredriksson",
     "SamAccountName": "marie.fredriksson",
-    "UserPrincipalName": "marie.fredriksson@example.com",
+    "UserPrincipalName": "marie.fredriksson@example.co.uk",
     "Groups": [
       "Roxette",
       "Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "marie.fredriksson@example.com",
+    "Email": "marie.fredriksson@example.co.uk",
     "Country": "SE",
     "CountryCode": "SE",
     "Manager": "Per Gessle",
@@ -5536,14 +5536,14 @@
   {
     "Name": "Per Gessle",
     "SamAccountName": "per.gessle",
-    "UserPrincipalName": "per.gessle@example.com",
+    "UserPrincipalName": "per.gessle@example.co.uk",
     "Groups": [
       "Roxette",
       "Artists",
       "Producers"
     ],
     "Title": "Songwriter / Guitarist",
-    "Email": "per.gessle@example.com",
+    "Email": "per.gessle@example.co.uk",
     "Country": "SE",
     "CountryCode": "SE",
     "Manager": "",
@@ -5566,14 +5566,14 @@
   {
     "Name": "Clarence Öfwerman",
     "SamAccountName": "clarence.ofwerman",
-    "UserPrincipalName": "clarence.ofwerman@example.com",
+    "UserPrincipalName": "clarence.ofwerman@example.co.uk",
     "Groups": [
       "Roxette",
       "Artists",
       "Producers"
     ],
     "Title": "Keyboardist / Producer",
-    "Email": "clarence.ofwerman@example.com",
+    "Email": "clarence.ofwerman@example.co.uk",
     "Country": "SE",
     "CountryCode": "SE",
     "Manager": "Per Gessle",
@@ -5596,13 +5596,13 @@
   {
     "Name": "Jonas Isacsson",
     "SamAccountName": "jonas.isacsson",
-    "UserPrincipalName": "jonas.isacsson@example.com",
+    "UserPrincipalName": "jonas.isacsson@example.co.uk",
     "Groups": [
       "Roxette",
       "Artists"
     ],
     "Title": "Lead Guitarist",
-    "Email": "jonas.isacsson@example.com",
+    "Email": "jonas.isacsson@example.co.uk",
     "Country": "SE",
     "CountryCode": "SE",
     "Manager": "Per Gessle",
@@ -5625,13 +5625,13 @@
   {
     "Name": "Morten Harket",
     "SamAccountName": "morten.harket",
-    "UserPrincipalName": "morten.harket@example.com",
+    "UserPrincipalName": "morten.harket@example.co.uk",
     "Groups": [
       "A-Ha",
       "Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "morten.harket@example.com",
+    "Email": "morten.harket@example.co.uk",
     "Country": "NO",
     "CountryCode": "NO",
     "Manager": "",
@@ -5654,13 +5654,13 @@
   {
     "Name": "Magne Furuholmen",
     "SamAccountName": "magne.furuholmen",
-    "UserPrincipalName": "magne.furuholmen@example.com",
+    "UserPrincipalName": "magne.furuholmen@example.co.uk",
     "Groups": [
       "A-Ha",
       "Artists"
     ],
     "Title": "Keyboardist / Songwriter",
-    "Email": "magne.furuholmen@example.com",
+    "Email": "magne.furuholmen@example.co.uk",
     "Country": "NO",
     "CountryCode": "NO",
     "Manager": "",
@@ -5683,14 +5683,14 @@
   {
     "Name": "Pål Waaktaar-Savoy",
     "SamAccountName": "pal.waaktaar",
-    "UserPrincipalName": "pal.waaktaar@example.com",
+    "UserPrincipalName": "pal.waaktaar@example.co.uk",
     "Groups": [
       "A-Ha",
       "Artists",
       "Producers"
     ],
     "Title": "Guitarist / Songwriter",
-    "Email": "pal.waaktaar@example.com",
+    "Email": "pal.waaktaar@example.co.uk",
     "Country": "NO",
     "CountryCode": "NO",
     "Manager": "",
@@ -5713,14 +5713,14 @@
   {
     "Name": "Ralf Hutter",
     "SamAccountName": "ralf.hutter",
-    "UserPrincipalName": "ralf.hutter@example.com",
+    "UserPrincipalName": "ralf.hutter@example.co.uk",
     "Groups": [
       "Kraftwerk",
       "Vocalists",
       "Musicians"
     ],
     "Title": "Vocals/Synthesizer",
-    "Email": "ralf.hutter@example.com",
+    "Email": "ralf.hutter@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -5743,13 +5743,13 @@
   {
     "Name": "Florian Schneider",
     "SamAccountName": "florian.schneider",
-    "UserPrincipalName": "florian.schneider@example.com",
+    "UserPrincipalName": "florian.schneider@example.co.uk",
     "Groups": [
       "Kraftwerk",
       "Musicians"
     ],
     "Title": "Synthesizer/Flute",
-    "Email": "florian.schneider@example.com",
+    "Email": "florian.schneider@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Ralf Hutter",
@@ -5772,14 +5772,14 @@
   {
     "Name": "Wolfgang Flur",
     "SamAccountName": "wolfgang.flur",
-    "UserPrincipalName": "wolfgang.flur@example.com",
+    "UserPrincipalName": "wolfgang.flur@example.co.uk",
     "Groups": [
       "Kraftwerk",
       "Musicians",
       "Percussionists"
     ],
     "Title": "Electronic Drums",
-    "Email": "wolfgang.flur@example.com",
+    "Email": "wolfgang.flur@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Ralf Hutter",
@@ -5802,14 +5802,14 @@
   {
     "Name": "Karl Bartos",
     "SamAccountName": "karl.bartos",
-    "UserPrincipalName": "karl.bartos@example.com",
+    "UserPrincipalName": "karl.bartos@example.co.uk",
     "Groups": [
       "Kraftwerk",
       "Musicians",
       "Percussionists"
     ],
     "Title": "Electronic Percussion",
-    "Email": "karl.bartos@example.com",
+    "Email": "karl.bartos@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Ralf Hutter",
@@ -5832,13 +5832,13 @@
   {
     "Name": "Manfred Segieth",
     "SamAccountName": "fancy",
-    "UserPrincipalName": "fancy@example.com",
+    "UserPrincipalName": "fancy@example.co.uk",
     "Groups": [
       "Fancy Solo",
       "Vocalists"
     ],
     "Title": "Solo Artist",
-    "Email": "fancy@example.com",
+    "Email": "fancy@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -5861,13 +5861,13 @@
   {
     "Name": "Gabriele Kerner",
     "SamAccountName": "nena",
-    "UserPrincipalName": "nena@example.com",
+    "UserPrincipalName": "nena@example.co.uk",
     "Groups": [
       "Nena",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "nena@example.com",
+    "Email": "nena@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -5890,13 +5890,13 @@
   {
     "Name": "Carlo Karges",
     "SamAccountName": "carlo.karges",
-    "UserPrincipalName": "carlo.karges@example.com",
+    "UserPrincipalName": "carlo.karges@example.co.uk",
     "Groups": [
       "Nena",
       "Musicians"
     ],
     "Title": "Guitarist",
-    "Email": "carlo.karges@example.com",
+    "Email": "carlo.karges@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -5919,13 +5919,13 @@
   {
     "Name": "Uwe Fahrenkrog-Petersen",
     "SamAccountName": "uwe.fahrenkrog",
-    "UserPrincipalName": "uwe.fahrenkrog@example.com",
+    "UserPrincipalName": "uwe.fahrenkrog@example.co.uk",
     "Groups": [
       "Nena",
       "Musicians"
     ],
     "Title": "Keyboardist",
-    "Email": "uwe.fahrenkrog@example.com",
+    "Email": "uwe.fahrenkrog@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Gabriele Kerner",
@@ -5948,13 +5948,13 @@
   {
     "Name": "Jurgen Dehmel",
     "SamAccountName": "jurgen.dehmel",
-    "UserPrincipalName": "jurgen.dehmel@example.com",
+    "UserPrincipalName": "jurgen.dehmel@example.co.uk",
     "Groups": [
       "Nena",
       "Musicians"
     ],
     "Title": "Bassist",
-    "Email": "jurgen.dehmel@example.com",
+    "Email": "jurgen.dehmel@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Gabriele Kerner",
@@ -5977,14 +5977,14 @@
   {
     "Name": "Rolf Brendel",
     "SamAccountName": "rolf.brendel",
-    "UserPrincipalName": "rolf.brendel@example.com",
+    "UserPrincipalName": "rolf.brendel@example.co.uk",
     "Groups": [
       "Nena",
       "Musicians",
       "Percussionists"
     ],
     "Title": "Drummer",
-    "Email": "rolf.brendel@example.com",
+    "Email": "rolf.brendel@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Gabriele Kerner",
@@ -6007,13 +6007,13 @@
   {
     "Name": "Edgar Froese",
     "SamAccountName": "edgar.froese",
-    "UserPrincipalName": "edgar.froese@example.com",
+    "UserPrincipalName": "edgar.froese@example.co.uk",
     "Groups": [
       "Tangerine Dream",
       "Musicians"
     ],
     "Title": "Synthesizer/Guitar",
-    "Email": "edgar.froese@example.com",
+    "Email": "edgar.froese@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -6036,13 +6036,13 @@
   {
     "Name": "Christopher Franke",
     "SamAccountName": "christopher.franke",
-    "UserPrincipalName": "christopher.franke@example.com",
+    "UserPrincipalName": "christopher.franke@example.co.uk",
     "Groups": [
       "Tangerine Dream",
       "Musicians"
     ],
     "Title": "Synthesizer/Drums",
-    "Email": "christopher.franke@example.com",
+    "Email": "christopher.franke@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -6065,13 +6065,13 @@
   {
     "Name": "Peter Baumann",
     "SamAccountName": "peter.baumann",
-    "UserPrincipalName": "peter.baumann@example.com",
+    "UserPrincipalName": "peter.baumann@example.co.uk",
     "Groups": [
       "Tangerine Dream",
       "Musicians"
     ],
     "Title": "Synthesizer",
-    "Email": "peter.baumann@example.com",
+    "Email": "peter.baumann@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -6094,14 +6094,14 @@
   {
     "Name": "Claudia Brücken",
     "SamAccountName": "claudia.bruecken",
-    "UserPrincipalName": "claudia.bruecken@example.com",
+    "UserPrincipalName": "claudia.bruecken@example.co.uk",
     "Groups": [
       "Propaganda",
       "Artists",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "claudia.bruecken@example.com",
+    "Email": "claudia.bruecken@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Ralf Dörper",
@@ -6124,14 +6124,14 @@
   {
     "Name": "Ralf Dörper",
     "SamAccountName": "ralf.doerper",
-    "UserPrincipalName": "ralf.doerper@example.com",
+    "UserPrincipalName": "ralf.doerper@example.co.uk",
     "Groups": [
       "Propaganda",
       "Founders",
       "Producers"
     ],
     "Title": "Founder / Composer",
-    "Email": "ralf.doerper@example.com",
+    "Email": "ralf.doerper@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Paul Morley",
@@ -6154,14 +6154,14 @@
   {
     "Name": "Michael Mertens",
     "SamAccountName": "michael.mertens",
-    "UserPrincipalName": "michael.mertens@example.com",
+    "UserPrincipalName": "michael.mertens@example.co.uk",
     "Groups": [
       "Propaganda",
       "Musicians",
       "Programmers"
     ],
     "Title": "Composer / Synthesist",
-    "Email": "michael.mertens@example.com",
+    "Email": "michael.mertens@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Ralf Dörper",
@@ -6184,14 +6184,14 @@
   {
     "Name": "Susanne Freytag",
     "SamAccountName": "susanne.freytag",
-    "UserPrincipalName": "susanne.freytag@example.com",
+    "UserPrincipalName": "susanne.freytag@example.co.uk",
     "Groups": [
       "Propaganda",
       "Artists",
       "Backing-Vocalists"
     ],
     "Title": "Backing Vocalist",
-    "Email": "susanne.freytag@example.com",
+    "Email": "susanne.freytag@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Claudia Brücken",
@@ -6214,13 +6214,13 @@
   {
     "Name": "Andreas Thein",
     "SamAccountName": "andreas.thein",
-    "UserPrincipalName": "andreas.thein@example.com",
+    "UserPrincipalName": "andreas.thein@example.co.uk",
     "Groups": [
       "Propaganda",
       "Founders"
     ],
     "Title": "Co-Founder (Deceased)",
-    "Email": "andreas.thein@example.com",
+    "Email": "andreas.thein@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Ralf Dörper",
@@ -6243,13 +6243,13 @@
   {
     "Name": "Stephan Remmler",
     "SamAccountName": "stephan.remmler",
-    "UserPrincipalName": "stephan.remmler@example.com",
+    "UserPrincipalName": "stephan.remmler@example.co.uk",
     "Groups": [
       "Trio",
       "Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "stephan.remmler@example.com",
+    "Email": "stephan.remmler@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -6272,13 +6272,13 @@
   {
     "Name": "Gert Krawinkel",
     "SamAccountName": "gert.krawinkel",
-    "UserPrincipalName": "gert.krawinkel@example.com",
+    "UserPrincipalName": "gert.krawinkel@example.co.uk",
     "Groups": [
       "Trio",
       "Artists"
     ],
     "Title": "Guitarist",
-    "Email": "gert.krawinkel@example.com",
+    "Email": "gert.krawinkel@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Stephan Remmler",
@@ -6301,13 +6301,13 @@
   {
     "Name": "Peter Behrens",
     "SamAccountName": "peter.behrens",
-    "UserPrincipalName": "peter.behrens@example.com",
+    "UserPrincipalName": "peter.behrens@example.co.uk",
     "Groups": [
       "Trio",
       "Artists"
     ],
     "Title": "Drummer",
-    "Email": "peter.behrens@example.com",
+    "Email": "peter.behrens@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Stephan Remmler",
@@ -6330,14 +6330,14 @@
   {
     "Name": "Sandra Lauer",
     "SamAccountName": "sandra.lauer",
-    "UserPrincipalName": "sandra.lauer@example.com",
+    "UserPrincipalName": "sandra.lauer@example.co.uk",
     "Groups": [
       "Sandra",
       "Vocalists",
       "Solo Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "sandra.lauer@example.com",
+    "Email": "sandra.lauer@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -6360,14 +6360,14 @@
   {
     "Name": "Michael Cretu",
     "SamAccountName": "michael.cretu",
-    "UserPrincipalName": "michael.cretu@example.com",
+    "UserPrincipalName": "michael.cretu@example.co.uk",
     "Groups": [
       "Sandra",
       "Producers",
       "Keyboardists"
     ],
     "Title": "Producer / Keyboardist",
-    "Email": "michael.cretu@example.com",
+    "Email": "michael.cretu@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -6390,13 +6390,13 @@
   {
     "Name": "Candy Dulfer",
     "SamAccountName": "candy.dulfer",
-    "UserPrincipalName": "candy.dulfer@example.com",
+    "UserPrincipalName": "candy.dulfer@example.co.uk",
     "Groups": [
       "Candy Dulfer",
       "Artists"
     ],
     "Title": "Saxophonist",
-    "Email": "candy.dulfer@example.com",
+    "Email": "candy.dulfer@example.co.uk",
     "Country": "NL",
     "CountryCode": "NL",
     "Manager": "",
@@ -6419,13 +6419,13 @@
   {
     "Name": "Dave Stewart (NL)",
     "SamAccountName": "dave.stewart-nl",
-    "UserPrincipalName": "dave.stewart-nl@example.com",
+    "UserPrincipalName": "dave.stewart-nl@example.co.uk",
     "Groups": [
       "Candy Dulfer",
       "Featured Artists"
     ],
     "Title": "Composer / Guitarist",
-    "Email": "dave.stewart-nl@example.com",
+    "Email": "dave.stewart-nl@example.co.uk",
     "Country": "NL",
     "CountryCode": "NL",
     "Manager": "Candy Dulfer",
@@ -6448,7 +6448,7 @@
   {
     "Name": "Johann Hölzel (Falco)",
     "SamAccountName": "falco",
-    "UserPrincipalName": "falco@example.com",
+    "UserPrincipalName": "falco@example.co.uk",
     "Groups": [
       "Falco",
       "Artists",
@@ -6456,7 +6456,7 @@
       "Touring"
     ],
     "Title": "Singer / Songwriter",
-    "Email": "falco@example.com",
+    "Email": "falco@example.co.uk",
     "Country": "AT",
     "CountryCode": "AT",
     "Manager": "",
@@ -6479,14 +6479,14 @@
   {
     "Name": "Thomas Rabitsch",
     "SamAccountName": "thomas.rabitsch",
-    "UserPrincipalName": "thomas.rabitsch@example.com",
+    "UserPrincipalName": "thomas.rabitsch@example.co.uk",
     "Groups": [
       "Falco",
       "Musicians",
       "Studio Access"
     ],
     "Title": "Keyboardist / Musical Director",
-    "Email": "thomas.rabitsch@example.com",
+    "Email": "thomas.rabitsch@example.co.uk",
     "Country": "AT",
     "CountryCode": "AT",
     "Manager": "falco",
@@ -6509,13 +6509,13 @@
   {
     "Name": "Walter Grassmann",
     "SamAccountName": "walter.grassmann",
-    "UserPrincipalName": "walter.grassmann@example.com",
+    "UserPrincipalName": "walter.grassmann@example.co.uk",
     "Groups": [
       "Falco",
       "Musicians"
     ],
     "Title": "Bassist",
-    "Email": "walter.grassmann@example.com",
+    "Email": "walter.grassmann@example.co.uk",
     "Country": "AT",
     "CountryCode": "AT",
     "Manager": "falco",
@@ -6538,14 +6538,14 @@
   {
     "Name": "Jimmy McShane",
     "SamAccountName": "jimmy.mcshane",
-    "UserPrincipalName": "jimmy.mcshane@example.com",
+    "UserPrincipalName": "jimmy.mcshane@example.co.uk",
     "Groups": [
       "Baltimora",
       "Artists",
       "Vocalists"
     ],
     "Title": "Lead Vocalist / Frontman",
-    "Email": "jimmy.mcshane@example.com",
+    "Email": "jimmy.mcshane@example.co.uk",
     "Country": "IT",
     "CountryCode": "IT",
     "Manager": "Maurizio Bassi",
@@ -6568,14 +6568,14 @@
   {
     "Name": "Maurizio Bassi",
     "SamAccountName": "maurizio.bassi",
-    "UserPrincipalName": "maurizio.bassi@example.com",
+    "UserPrincipalName": "maurizio.bassi@example.co.uk",
     "Groups": [
       "Baltimora",
       "Artists",
       "Producers"
     ],
     "Title": "Producer / Composer",
-    "Email": "maurizio.bassi@example.com",
+    "Email": "maurizio.bassi@example.co.uk",
     "Country": "IT",
     "CountryCode": "IT",
     "Manager": "",
@@ -6598,12 +6598,12 @@
   {
     "Name": "Jan Hammer",
     "SamAccountName": "jan.hammer",
-    "UserPrincipalName": "jan.hammer@example.com",
+    "UserPrincipalName": "jan.hammer@example.co.uk",
     "Groups": [
       "Jan Hammer"
     ],
     "Title": "Composer / Keyboardist",
-    "Email": "jan.hammer@example.com",
+    "Email": "jan.hammer@example.co.uk",
     "Country": "AT",
     "CountryCode": "AT",
     "Manager": "",
@@ -6626,12 +6626,12 @@
   {
     "Name": "Giorgio Moroder",
     "SamAccountName": "giorgio.moroder",
-    "UserPrincipalName": "giorgio.moroder@example.com",
+    "UserPrincipalName": "giorgio.moroder@example.co.uk",
     "Groups": [
       "Giorgio Moroder"
     ],
     "Title": "Producer / Composer",
-    "Email": "giorgio.moroder@example.com",
+    "Email": "giorgio.moroder@example.co.uk",
     "Country": "IT",
     "CountryCode": "IT",
     "Manager": "",
@@ -6654,13 +6654,13 @@
   {
     "Name": "Vanessa Paradis",
     "SamAccountName": "vanessa.paradis",
-    "UserPrincipalName": "vanessa.paradis@example.com",
+    "UserPrincipalName": "vanessa.paradis@example.co.uk",
     "Groups": [
       "Vanessa Paradis",
       "Artists"
     ],
     "Title": "Singer/Actress",
-    "Email": "vanessa.paradis@example.com",
+    "Email": "vanessa.paradis@example.co.uk",
     "Country": "Canada",
     "CountryCode": "Canada",
     "Manager": "",
@@ -6683,14 +6683,14 @@
   {
     "Name": "Geddy Lee",
     "SamAccountName": "geddy.lee",
-    "UserPrincipalName": "geddy.lee@example.com",
+    "UserPrincipalName": "geddy.lee@example.co.uk",
     "Groups": [
       "Rush",
       "Bassists",
       "Vocalists"
     ],
     "Title": "Bassist / Vocalist",
-    "Email": "geddy.lee@example.com",
+    "Email": "geddy.lee@example.co.uk",
     "Country": "CA",
     "CountryCode": "CA",
     "Manager": "",
@@ -6713,13 +6713,13 @@
   {
     "Name": "Alex Lifeson",
     "SamAccountName": "alex.lifeson",
-    "UserPrincipalName": "alex.lifeson@example.com",
+    "UserPrincipalName": "alex.lifeson@example.co.uk",
     "Groups": [
       "Rush",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "alex.lifeson@example.com",
+    "Email": "alex.lifeson@example.co.uk",
     "Country": "CA",
     "CountryCode": "CA",
     "Manager": "Geddy Lee",
@@ -6742,13 +6742,13 @@
   {
     "Name": "Neil Peart",
     "SamAccountName": "neil.peart",
-    "UserPrincipalName": "neil.peart@example.com",
+    "UserPrincipalName": "neil.peart@example.co.uk",
     "Groups": [
       "Rush",
       "Drummers"
     ],
     "Title": "Drummer / Lyricist",
-    "Email": "neil.peart@example.com",
+    "Email": "neil.peart@example.co.uk",
     "Country": "CA",
     "CountryCode": "CA",
     "Manager": "Geddy Lee",
@@ -6771,13 +6771,13 @@
   {
     "Name": "Rick Moranis",
     "SamAccountName": "rick.moranis",
-    "UserPrincipalName": "rick.moranis@example.com",
+    "UserPrincipalName": "rick.moranis@example.co.uk",
     "Groups": [
       "Great-White-North",
       "Guest-Artists"
     ],
     "Title": "Comedian / Guest Vocalist",
-    "Email": "rick.moranis@example.com",
+    "Email": "rick.moranis@example.co.uk",
     "Country": "CA",
     "CountryCode": "CA",
     "Manager": "",
@@ -6800,13 +6800,13 @@
   {
     "Name": "Dave Thomas",
     "SamAccountName": "dave.thomas",
-    "UserPrincipalName": "dave.thomas@example.com",
+    "UserPrincipalName": "dave.thomas@example.co.uk",
     "Groups": [
       "Great-White-North",
       "Guest-Artists"
     ],
     "Title": "Comedian / Guest Vocalist",
-    "Email": "dave.thomas@example.com",
+    "Email": "dave.thomas@example.co.uk",
     "Country": "CA",
     "CountryCode": "CA",
     "Manager": "",
@@ -6829,13 +6829,13 @@
   {
     "Name": "Michael Stipe",
     "SamAccountName": "michael.stipe",
-    "UserPrincipalName": "michael.stipe@example.com",
+    "UserPrincipalName": "michael.stipe@example.co.uk",
     "Groups": [
       "REM",
       "Artists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "michael.stipe@example.com",
+    "Email": "michael.stipe@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "",
@@ -6858,13 +6858,13 @@
   {
     "Name": "Peter Buck",
     "SamAccountName": "peter.buck",
-    "UserPrincipalName": "peter.buck@example.com",
+    "UserPrincipalName": "peter.buck@example.co.uk",
     "Groups": [
       "REM",
       "Artists"
     ],
     "Title": "Guitarist",
-    "Email": "peter.buck@example.com",
+    "Email": "peter.buck@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Michael Stipe",
@@ -6887,13 +6887,13 @@
   {
     "Name": "Mike Mills",
     "SamAccountName": "mike.mills",
-    "UserPrincipalName": "mike.mills@example.com",
+    "UserPrincipalName": "mike.mills@example.co.uk",
     "Groups": [
       "REM",
       "Artists"
     ],
     "Title": "Bassist / Keyboardist",
-    "Email": "mike.mills@example.com",
+    "Email": "mike.mills@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Michael Stipe",
@@ -6916,13 +6916,13 @@
   {
     "Name": "Bill Berry",
     "SamAccountName": "bill.berry",
-    "UserPrincipalName": "bill.berry@example.com",
+    "UserPrincipalName": "bill.berry@example.co.uk",
     "Groups": [
       "REM",
       "Artists"
     ],
     "Title": "Drummer",
-    "Email": "bill.berry@example.com",
+    "Email": "bill.berry@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Michael Stipe",
@@ -6945,13 +6945,13 @@
   {
     "Name": "Gloria Estefan",
     "SamAccountName": "gloria.estefan",
-    "UserPrincipalName": "gloria.estefan@example.com",
+    "UserPrincipalName": "gloria.estefan@example.co.uk",
     "Groups": [
       "Miami Sound Machine",
       "Marketing"
     ],
     "Title": "Lead Vocalist",
-    "Email": "gloria.estefan@example.com",
+    "Email": "gloria.estefan@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "",
@@ -6974,13 +6974,13 @@
   {
     "Name": "Emilio Estefan",
     "SamAccountName": "emilio.estefan",
-    "UserPrincipalName": "emilio.estefan@example.com",
+    "UserPrincipalName": "emilio.estefan@example.co.uk",
     "Groups": [
       "Miami Sound Machine",
       "Management"
     ],
     "Title": "Keyboardist / Producer",
-    "Email": "emilio.estefan@example.com",
+    "Email": "emilio.estefan@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Gloria Estefan",
@@ -7003,13 +7003,13 @@
   {
     "Name": "Raúl Murciano",
     "SamAccountName": "raul.murciano",
-    "UserPrincipalName": "raul.murciano@example.com",
+    "UserPrincipalName": "raul.murciano@example.co.uk",
     "Groups": [
       "Miami Sound Machine",
       "Sales"
     ],
     "Title": "Guitarist",
-    "Email": "raul.murciano@example.com",
+    "Email": "raul.murciano@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Emilio Estefan",
@@ -7032,13 +7032,13 @@
   {
     "Name": "Juan Marcos Avila",
     "SamAccountName": "juan.avila",
-    "UserPrincipalName": "juan.avila@example.com",
+    "UserPrincipalName": "juan.avila@example.co.uk",
     "Groups": [
       "Miami Sound Machine",
       "Sales"
     ],
     "Title": "Percussionist",
-    "Email": "juan.avila@example.com",
+    "Email": "juan.avila@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Emilio Estefan",
@@ -7061,13 +7061,13 @@
   {
     "Name": "Robert Heiden",
     "SamAccountName": "robert.heiden",
-    "UserPrincipalName": "robert.heiden@example.com",
+    "UserPrincipalName": "robert.heiden@example.co.uk",
     "Groups": [
       "Miami Sound Machine",
       "Sales"
     ],
     "Title": "Drummer",
-    "Email": "robert.heiden@example.com",
+    "Email": "robert.heiden@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Emilio Estefan",
@@ -7090,14 +7090,14 @@
   {
     "Name": "Harry Wayne Casey",
     "SamAccountName": "harry.casey",
-    "UserPrincipalName": "harry.casey@example.com",
+    "UserPrincipalName": "harry.casey@example.co.uk",
     "Groups": [
       "KC-Sunshine-Band",
       "Vocalists",
       "Executives"
     ],
     "Title": "Founder / Lead Vocalist",
-    "Email": "harry.casey@example.com",
+    "Email": "harry.casey@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "",
@@ -7120,14 +7120,14 @@
   {
     "Name": "Richard Finch",
     "SamAccountName": "richard.finch",
-    "UserPrincipalName": "richard.finch@example.com",
+    "UserPrincipalName": "richard.finch@example.co.uk",
     "Groups": [
       "KC-Sunshine-Band",
       "Songwriters",
       "Producers"
     ],
     "Title": "Producer / Songwriter",
-    "Email": "richard.finch@example.com",
+    "Email": "richard.finch@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Harry Wayne Casey",
@@ -7150,14 +7150,14 @@
   {
     "Name": "Fermin Goytisolo",
     "SamAccountName": "fermin.goytisolo",
-    "UserPrincipalName": "fermin.goytisolo@example.com",
+    "UserPrincipalName": "fermin.goytisolo@example.co.uk",
     "Groups": [
       "KC-Sunshine-Band",
       "Musicians",
       "Percussion"
     ],
     "Title": "Percussionist",
-    "Email": "fermin.goytisolo@example.com",
+    "Email": "fermin.goytisolo@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Harry Wayne Casey",
@@ -7180,13 +7180,13 @@
   {
     "Name": "Debbie Harry",
     "SamAccountName": "debbie.harry",
-    "UserPrincipalName": "debbie.harry@example.com",
+    "UserPrincipalName": "debbie.harry@example.co.uk",
     "Groups": [
       "Blondie",
       "Music"
     ],
     "Title": "Lead Vocalist",
-    "Email": "debbie.harry@example.com",
+    "Email": "debbie.harry@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "",
@@ -7209,13 +7209,13 @@
   {
     "Name": "Chris Stein",
     "SamAccountName": "chris.stein",
-    "UserPrincipalName": "chris.stein@example.com",
+    "UserPrincipalName": "chris.stein@example.co.uk",
     "Groups": [
       "Blondie",
       "Music"
     ],
     "Title": "Guitarist",
-    "Email": "chris.stein@example.com",
+    "Email": "chris.stein@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Debbie Harry",
@@ -7238,13 +7238,13 @@
   {
     "Name": "Clem Burke",
     "SamAccountName": "clem.burke",
-    "UserPrincipalName": "clem.burke@example.com",
+    "UserPrincipalName": "clem.burke@example.co.uk",
     "Groups": [
       "Blondie",
       "Music"
     ],
     "Title": "Drummer",
-    "Email": "clem.burke@example.com",
+    "Email": "clem.burke@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Debbie Harry",
@@ -7267,13 +7267,13 @@
   {
     "Name": "Jimmy Destri",
     "SamAccountName": "jimmy.destri",
-    "UserPrincipalName": "jimmy.destri@example.com",
+    "UserPrincipalName": "jimmy.destri@example.co.uk",
     "Groups": [
       "Blondie",
       "Music"
     ],
     "Title": "Keyboardist",
-    "Email": "jimmy.destri@example.com",
+    "Email": "jimmy.destri@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Debbie Harry",
@@ -7296,13 +7296,13 @@
   {
     "Name": "Nigel Harrison",
     "SamAccountName": "nigel.harrison",
-    "UserPrincipalName": "nigel.harrison@example.com",
+    "UserPrincipalName": "nigel.harrison@example.co.uk",
     "Groups": [
       "Blondie",
       "Music"
     ],
     "Title": "Bassist",
-    "Email": "nigel.harrison@example.com",
+    "Email": "nigel.harrison@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Debbie Harry",
@@ -7325,13 +7325,13 @@
   {
     "Name": "Bruce Springsteen",
     "SamAccountName": "bruce.springsteen",
-    "UserPrincipalName": "bruce.springsteen@example.com",
+    "UserPrincipalName": "bruce.springsteen@example.co.uk",
     "Groups": [
       "E-Street Band",
       "Music"
     ],
     "Title": "Lead Vocalist",
-    "Email": "bruce.springsteen@example.com",
+    "Email": "bruce.springsteen@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "",
@@ -7354,13 +7354,13 @@
   {
     "Name": "Steven Van Zandt",
     "SamAccountName": "steven.vanzandt",
-    "UserPrincipalName": "steven.vanzandt@example.com",
+    "UserPrincipalName": "steven.vanzandt@example.co.uk",
     "Groups": [
       "E-Street Band",
       "Music"
     ],
     "Title": "Guitarist",
-    "Email": "steven.vanzandt@example.com",
+    "Email": "steven.vanzandt@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Bruce Springsteen",
@@ -7383,13 +7383,13 @@
   {
     "Name": "Clarence Clemons",
     "SamAccountName": "clarence.clemons",
-    "UserPrincipalName": "clarence.clemons@example.com",
+    "UserPrincipalName": "clarence.clemons@example.co.uk",
     "Groups": [
       "E-Street Band",
       "Music"
     ],
     "Title": "Saxophonist",
-    "Email": "clarence.clemons@example.com",
+    "Email": "clarence.clemons@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Bruce Springsteen",
@@ -7412,13 +7412,13 @@
   {
     "Name": "Max Weinberg",
     "SamAccountName": "max.weinberg",
-    "UserPrincipalName": "max.weinberg@example.com",
+    "UserPrincipalName": "max.weinberg@example.co.uk",
     "Groups": [
       "E-Street Band",
       "Music"
     ],
     "Title": "Drummer",
-    "Email": "max.weinberg@example.com",
+    "Email": "max.weinberg@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Bruce Springsteen",
@@ -7441,13 +7441,13 @@
   {
     "Name": "Danny Federici",
     "SamAccountName": "danny.federici",
-    "UserPrincipalName": "danny.federici@example.com",
+    "UserPrincipalName": "danny.federici@example.co.uk",
     "Groups": [
       "E-Street Band",
       "Music"
     ],
     "Title": "Keyboardist/Accordion",
-    "Email": "danny.federici@example.com",
+    "Email": "danny.federici@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Bruce Springsteen",
@@ -7470,13 +7470,13 @@
   {
     "Name": "Garry Tallent",
     "SamAccountName": "garry.tallent",
-    "UserPrincipalName": "garry.tallent@example.com",
+    "UserPrincipalName": "garry.tallent@example.co.uk",
     "Groups": [
       "E-Street Band",
       "Music"
     ],
     "Title": "Bassist",
-    "Email": "garry.tallent@example.com",
+    "Email": "garry.tallent@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Bruce Springsteen",
@@ -7499,13 +7499,13 @@
   {
     "Name": "Roy Bittan",
     "SamAccountName": "roy.bittan",
-    "UserPrincipalName": "roy.bittan@example.com",
+    "UserPrincipalName": "roy.bittan@example.co.uk",
     "Groups": [
       "E-Street Band",
       "Music"
     ],
     "Title": "Keyboardist",
-    "Email": "roy.bittan@example.com",
+    "Email": "roy.bittan@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Bruce Springsteen",
@@ -7528,13 +7528,13 @@
   {
     "Name": "Patti Scialfa",
     "SamAccountName": "patti.scialfa",
-    "UserPrincipalName": "patti.scialfa@example.com",
+    "UserPrincipalName": "patti.scialfa@example.co.uk",
     "Groups": [
       "E-Street Band",
       "Music"
     ],
     "Title": "Vocalist/Guitarist",
-    "Email": "patti.scialfa@example.com",
+    "Email": "patti.scialfa@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Bruce Springsteen",
@@ -7557,13 +7557,13 @@
   {
     "Name": "Craig T. Cooper",
     "SamAccountName": "craig.cooper",
-    "UserPrincipalName": "craig.cooper@example.com",
+    "UserPrincipalName": "craig.cooper@example.co.uk",
     "Groups": [
       "Craig T Cooper",
       "Producers"
     ],
     "Title": "Producer / Songwriter",
-    "Email": "craig.cooper@example.com",
+    "Email": "craig.cooper@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "",
@@ -7586,13 +7586,13 @@
   {
     "Name": "Caroline Day",
     "SamAccountName": "caroline.day",
-    "UserPrincipalName": "caroline.day@example.com",
+    "UserPrincipalName": "caroline.day@example.co.uk",
     "Groups": [
       "Craig T Cooper",
       "Session Vocalists"
     ],
     "Title": "Vocalist",
-    "Email": "caroline.day@example.com",
+    "Email": "caroline.day@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Craig T. Cooper",
@@ -7615,13 +7615,13 @@
   {
     "Name": "Herb Alpert",
     "SamAccountName": "herb.alpert",
-    "UserPrincipalName": "herb.alpert@example.com",
+    "UserPrincipalName": "herb.alpert@example.co.uk",
     "Groups": [
       "Herb Alpert & Tijuana Brass",
       "Artists"
     ],
     "Title": "Trumpeter / Producer",
-    "Email": "herb.alpert@example.com",
+    "Email": "herb.alpert@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "",
@@ -7644,13 +7644,13 @@
   {
     "Name": "Lisa Keith",
     "SamAccountName": "lisa.keith",
-    "UserPrincipalName": "lisa.keith@example.com",
+    "UserPrincipalName": "lisa.keith@example.co.uk",
     "Groups": [
       "Herb Alpert & Tijuana Brass",
       "Session Vocalists"
     ],
     "Title": "Vocalist",
-    "Email": "lisa.keith@example.com",
+    "Email": "lisa.keith@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Herb Alpert",
@@ -7673,13 +7673,13 @@
   {
     "Name": "Janet Jackson",
     "SamAccountName": "janet.jackson",
-    "UserPrincipalName": "janet.jackson@example.com",
+    "UserPrincipalName": "janet.jackson@example.co.uk",
     "Groups": [
       "Herb Alpert & Tijuana Brass",
       "Featured Artists"
     ],
     "Title": "Vocalist / Performer",
-    "Email": "janet.jackson@example.com",
+    "Email": "janet.jackson@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "",
@@ -7702,12 +7702,12 @@
   {
     "Name": "Julius Wechter",
     "SamAccountName": "julius.wechter",
-    "UserPrincipalName": "julius.wechter@example.com",
+    "UserPrincipalName": "julius.wechter@example.co.uk",
     "Groups": [
       "Herb Alpert & Tijuana Brass"
     ],
     "Title": "Percussionist / Composer",
-    "Email": "julius.wechter@example.com",
+    "Email": "julius.wechter@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Herb Alpert",
@@ -7730,12 +7730,12 @@
   {
     "Name": "Nick Ceroli",
     "SamAccountName": "nick.ceroli",
-    "UserPrincipalName": "nick.ceroli@example.com",
+    "UserPrincipalName": "nick.ceroli@example.co.uk",
     "Groups": [
       "Herb Alpert And The Tijuana Brass"
     ],
     "Title": "Drummer",
-    "Email": "nick.ceroli@example.com",
+    "Email": "nick.ceroli@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Herb Alpert",
@@ -7758,12 +7758,12 @@
   {
     "Name": "John Pisano",
     "SamAccountName": "john.pisano",
-    "UserPrincipalName": "john.pisano@example.com",
+    "UserPrincipalName": "john.pisano@example.co.uk",
     "Groups": [
       "Herb Alpert & Tijuana Brass"
     ],
     "Title": "Guitarist",
-    "Email": "john.pisano@example.com",
+    "Email": "john.pisano@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Herb Alpert",
@@ -7786,7 +7786,7 @@
   {
     "Name": "Boz Scaggs",
     "SamAccountName": "boz.scaggs",
-    "UserPrincipalName": "boz.scaggs@example.com",
+    "UserPrincipalName": "boz.scaggs@example.co.uk",
     "Groups": [
       "Boz Scaggs",
       "Vocalists",
@@ -7794,7 +7794,7 @@
       "Songwriters"
     ],
     "Title": "Lead Vocalist / Guitarist",
-    "Email": "boz.scaggs@example.com",
+    "Email": "boz.scaggs@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "",
@@ -7817,14 +7817,14 @@
   {
     "Name": "David Paich",
     "SamAccountName": "david.paich",
-    "UserPrincipalName": "david.paich@example.com",
+    "UserPrincipalName": "david.paich@example.co.uk",
     "Groups": [
       "Boz Scaggs",
       "Keyboardists",
       "Songwriters"
     ],
     "Title": "Keyboardist / Backing Vocalist",
-    "Email": "david.paich@example.com",
+    "Email": "david.paich@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Boz Scaggs",
@@ -7847,14 +7847,14 @@
   {
     "Name": "Jeff Porcaro",
     "SamAccountName": "jeff.porcaro",
-    "UserPrincipalName": "jeff.porcaro@example.com",
+    "UserPrincipalName": "jeff.porcaro@example.co.uk",
     "Groups": [
       "Boz Scaggs",
       "Drummers",
       "Percussionists"
     ],
     "Title": "Drummer / Percussionist",
-    "Email": "jeff.porcaro@example.com",
+    "Email": "jeff.porcaro@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Boz Scaggs",
@@ -7877,13 +7877,13 @@
   {
     "Name": "Kenny G",
     "SamAccountName": "kenny.g",
-    "UserPrincipalName": "kenny.g@example.com",
+    "UserPrincipalName": "kenny.g@example.co.uk",
     "Groups": [
       "Kenny G Band",
       "Artists"
     ],
     "Title": "Saxophonist / Composer",
-    "Email": "kenny.g@example.com",
+    "Email": "kenny.g@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "",
@@ -7906,12 +7906,12 @@
   {
     "Name": "Walt Biscardi",
     "SamAccountName": "walt.biscardi",
-    "UserPrincipalName": "walt.biscardi@example.com",
+    "UserPrincipalName": "walt.biscardi@example.co.uk",
     "Groups": [
       "Kenny G Band"
     ],
     "Title": "Keyboardist",
-    "Email": "walt.biscardi@example.com",
+    "Email": "walt.biscardi@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Kenny G",
@@ -7934,12 +7934,12 @@
   {
     "Name": "Vail Johnson",
     "SamAccountName": "vail.johnson",
-    "UserPrincipalName": "vail.johnson@example.com",
+    "UserPrincipalName": "vail.johnson@example.co.uk",
     "Groups": [
       "Kenny G Band"
     ],
     "Title": "Bassist",
-    "Email": "vail.johnson@example.com",
+    "Email": "vail.johnson@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Kenny G",
@@ -7962,13 +7962,13 @@
   {
     "Name": "Chris Isaak",
     "SamAccountName": "chris.isaak",
-    "UserPrincipalName": "chris.isaak@example.com",
+    "UserPrincipalName": "chris.isaak@example.co.uk",
     "Groups": [
       "Chris Isaak",
       "Artists"
     ],
     "Title": "Lead Vocalist / Rhythm Guitar",
-    "Email": "chris.isaak@example.com",
+    "Email": "chris.isaak@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "",
@@ -7991,13 +7991,13 @@
   {
     "Name": "James Calvin Wilsey",
     "SamAccountName": "james.wilsey",
-    "UserPrincipalName": "james.wilsey@example.com",
+    "UserPrincipalName": "james.wilsey@example.co.uk",
     "Groups": [
       "Chris Isaak",
       "Artists"
     ],
     "Title": "Lead Guitarist",
-    "Email": "james.wilsey@example.com",
+    "Email": "james.wilsey@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Chris Isaak",
@@ -8020,13 +8020,13 @@
   {
     "Name": "Rowland Salley",
     "SamAccountName": "rowland.salley",
-    "UserPrincipalName": "rowland.salley@example.com",
+    "UserPrincipalName": "rowland.salley@example.co.uk",
     "Groups": [
       "Chris Isaak",
       "Artists"
     ],
     "Title": "Bassist",
-    "Email": "rowland.salley@example.com",
+    "Email": "rowland.salley@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Chris Isaak",
@@ -8049,13 +8049,13 @@
   {
     "Name": "Kenney Dale Johnson",
     "SamAccountName": "kenney.johnson",
-    "UserPrincipalName": "kenney.johnson@example.com",
+    "UserPrincipalName": "kenney.johnson@example.co.uk",
     "Groups": [
       "Chris Isaak",
       "Artists"
     ],
     "Title": "Drummer",
-    "Email": "kenney.johnson@example.com",
+    "Email": "kenney.johnson@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Chris Isaak",
@@ -8078,12 +8078,12 @@
   {
     "Name": "Tina Turner",
     "SamAccountName": "tina.turner",
-    "UserPrincipalName": "tina.turner@example.com",
+    "UserPrincipalName": "tina.turner@example.co.uk",
     "Groups": [
       "Tina Turner – Private Dancer"
     ],
     "Title": "Lead Vocalist",
-    "Email": "tina.turner@example.com",
+    "Email": "tina.turner@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "",
@@ -8106,12 +8106,12 @@
   {
     "Name": "James Ralston",
     "SamAccountName": "james.ralston",
-    "UserPrincipalName": "james.ralston@example.com",
+    "UserPrincipalName": "james.ralston@example.co.uk",
     "Groups": [
       "Tina Turner – Private Dancer"
     ],
     "Title": "Guitarist",
-    "Email": "james.ralston@example.com",
+    "Email": "james.ralston@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Tina Turner",
@@ -8134,12 +8134,12 @@
   {
     "Name": "Jamie West-Oram",
     "SamAccountName": "jamie.westoram",
-    "UserPrincipalName": "jamie.westoram@example.com",
+    "UserPrincipalName": "jamie.westoram@example.co.uk",
     "Groups": [
       "Tina Turner – Private Dancer"
     ],
     "Title": "Guitarist",
-    "Email": "jamie.westoram@example.com",
+    "Email": "jamie.westoram@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Tina Turner",
@@ -8162,12 +8162,12 @@
   {
     "Name": "Jack Bruno",
     "SamAccountName": "jack.bruno",
-    "UserPrincipalName": "jack.bruno@example.com",
+    "UserPrincipalName": "jack.bruno@example.co.uk",
     "Groups": [
       "Tina Turner – Private Dancer"
     ],
     "Title": "Drummer",
-    "Email": "jack.bruno@example.com",
+    "Email": "jack.bruno@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Tina Turner",
@@ -8190,12 +8190,12 @@
   {
     "Name": "Neil Jason",
     "SamAccountName": "neil.jason",
-    "UserPrincipalName": "neil.jason@example.com",
+    "UserPrincipalName": "neil.jason@example.co.uk",
     "Groups": [
       "Tina Turner – Private Dancer"
     ],
     "Title": "Bass Guitarist",
-    "Email": "neil.jason@example.com",
+    "Email": "neil.jason@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Tina Turner",
@@ -8218,12 +8218,12 @@
   {
     "Name": "Timmy Capello",
     "SamAccountName": "timmy.capello",
-    "UserPrincipalName": "timmy.capello@example.com",
+    "UserPrincipalName": "timmy.capello@example.co.uk",
     "Groups": [
       "Tina Turner – Private Dancer"
     ],
     "Title": "Saxophonist",
-    "Email": "timmy.capello@example.com",
+    "Email": "timmy.capello@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Tina Turner",
@@ -8246,12 +8246,12 @@
   {
     "Name": "Kenny Moore",
     "SamAccountName": "kenny.moore",
-    "UserPrincipalName": "kenny.moore@example.com",
+    "UserPrincipalName": "kenny.moore@example.co.uk",
     "Groups": [
       "Tina Turner – Private Dancer"
     ],
     "Title": "Keyboardist",
-    "Email": "kenny.moore@example.com",
+    "Email": "kenny.moore@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Tina Turner",
@@ -8274,12 +8274,12 @@
   {
     "Name": "David Byrne",
     "SamAccountName": "david.byrne",
-    "UserPrincipalName": "david.byrne@example.com",
+    "UserPrincipalName": "david.byrne@example.co.uk",
     "Groups": [
       "Talking Heads"
     ],
     "Title": "Lead Vocalist / Guitarist",
-    "Email": "david.byrne@example.com",
+    "Email": "david.byrne@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "",
@@ -8302,12 +8302,12 @@
   {
     "Name": "Tina Weymouth",
     "SamAccountName": "tina.weymouth",
-    "UserPrincipalName": "tina.weymouth@example.com",
+    "UserPrincipalName": "tina.weymouth@example.co.uk",
     "Groups": [
       "Talking Heads"
     ],
     "Title": "Bassist",
-    "Email": "tina.weymouth@example.com",
+    "Email": "tina.weymouth@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "David Byrne",
@@ -8330,12 +8330,12 @@
   {
     "Name": "Chris Frantz",
     "SamAccountName": "chris.frantz",
-    "UserPrincipalName": "chris.frantz@example.com",
+    "UserPrincipalName": "chris.frantz@example.co.uk",
     "Groups": [
       "Talking Heads"
     ],
     "Title": "Drummer",
-    "Email": "chris.frantz@example.com",
+    "Email": "chris.frantz@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "David Byrne",
@@ -8358,12 +8358,12 @@
   {
     "Name": "Jerry Harrison",
     "SamAccountName": "jerry.harrison",
-    "UserPrincipalName": "jerry.harrison@example.com",
+    "UserPrincipalName": "jerry.harrison@example.co.uk",
     "Groups": [
       "Talking Heads"
     ],
     "Title": "Keyboardist / Guitarist",
-    "Email": "jerry.harrison@example.com",
+    "Email": "jerry.harrison@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "David Byrne",
@@ -8386,7 +8386,7 @@
   {
     "Name": "Daryl Hall",
     "SamAccountName": "daryl.hall",
-    "UserPrincipalName": "daryl.hall@example.com",
+    "UserPrincipalName": "daryl.hall@example.co.uk",
     "Groups": [
       "Hall and Oates",
       "Vocalists",
@@ -8394,7 +8394,7 @@
       "Songwriters"
     ],
     "Title": "Lead Vocalist / Keyboardist",
-    "Email": "daryl.hall@example.com",
+    "Email": "daryl.hall@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "",
@@ -8417,7 +8417,7 @@
   {
     "Name": "John Oates",
     "SamAccountName": "john.oates",
-    "UserPrincipalName": "john.oates@example.com",
+    "UserPrincipalName": "john.oates@example.co.uk",
     "Groups": [
       "Hall and Oates",
       "Guitarists",
@@ -8425,7 +8425,7 @@
       "Songwriters"
     ],
     "Title": "Guitarist / Vocalist",
-    "Email": "john.oates@example.com",
+    "Email": "john.oates@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Daryl Hall",
@@ -8448,14 +8448,14 @@
   {
     "Name": "Charlie DeChant",
     "SamAccountName": "charlie.dechant",
-    "UserPrincipalName": "charlie.dechant@example.com",
+    "UserPrincipalName": "charlie.dechant@example.co.uk",
     "Groups": [
       "Hall and Oates",
       "Saxophonists",
       "Horn Section"
     ],
     "Title": "Saxophonist",
-    "Email": "charlie.dechant@example.com",
+    "Email": "charlie.dechant@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Daryl Hall",
@@ -8478,13 +8478,13 @@
   {
     "Name": "G.E. Smith",
     "SamAccountName": "ge.smith",
-    "UserPrincipalName": "ge.smith@example.com",
+    "UserPrincipalName": "ge.smith@example.co.uk",
     "Groups": [
       "Hall and Oates",
       "Guitarists"
     ],
     "Title": "Lead Guitarist",
-    "Email": "ge.smith@example.com",
+    "Email": "ge.smith@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Daryl Hall",
@@ -8507,13 +8507,13 @@
   {
     "Name": "T-Bone Wolk",
     "SamAccountName": "tbone.wolk",
-    "UserPrincipalName": "tbone.wolk@example.com",
+    "UserPrincipalName": "tbone.wolk@example.co.uk",
     "Groups": [
       "Hall and Oates",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "tbone.wolk@example.com",
+    "Email": "tbone.wolk@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Daryl Hall",
@@ -8536,14 +8536,14 @@
   {
     "Name": "Mickey Curry",
     "SamAccountName": "mickey.curry",
-    "UserPrincipalName": "mickey.curry@example.com",
+    "UserPrincipalName": "mickey.curry@example.co.uk",
     "Groups": [
       "Hall and Oates",
       "Drummers",
       "Percussionists"
     ],
     "Title": "Drummer",
-    "Email": "mickey.curry@example.com",
+    "Email": "mickey.curry@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Daryl Hall",
@@ -8566,12 +8566,12 @@
   {
     "Name": "Robert Lamm",
     "SamAccountName": "robert.lamm",
-    "UserPrincipalName": "robert.lamm@example.com",
+    "UserPrincipalName": "robert.lamm@example.co.uk",
     "Groups": [
       "Chicago"
     ],
     "Title": "Keyboardist / Vocalist",
-    "Email": "robert.lamm@example.com",
+    "Email": "robert.lamm@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "",
@@ -8594,12 +8594,12 @@
   {
     "Name": "Peter Cetera",
     "SamAccountName": "peter.cetera",
-    "UserPrincipalName": "peter.cetera@example.com",
+    "UserPrincipalName": "peter.cetera@example.co.uk",
     "Groups": [
       "Chicago"
     ],
     "Title": "Bassist / Vocalist",
-    "Email": "peter.cetera@example.com",
+    "Email": "peter.cetera@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Robert Lamm",
@@ -8622,12 +8622,12 @@
   {
     "Name": "Danny Seraphine",
     "SamAccountName": "danny.seraphine",
-    "UserPrincipalName": "danny.seraphine@example.com",
+    "UserPrincipalName": "danny.seraphine@example.co.uk",
     "Groups": [
       "Chicago"
     ],
     "Title": "Drummer",
-    "Email": "danny.seraphine@example.com",
+    "Email": "danny.seraphine@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "Robert Lamm",
@@ -8650,12 +8650,12 @@
   {
     "Name": "Lou Gramm",
     "SamAccountName": "lou.gramm",
-    "UserPrincipalName": "lou.gramm@example.com",
+    "UserPrincipalName": "lou.gramm@example.co.uk",
     "Groups": [
       "Foreigner"
     ],
     "Title": "Lead Vocalist",
-    "Email": "lou.gramm@example.com",
+    "Email": "lou.gramm@example.co.uk",
     "Country": "USA",
     "CountryCode": "USA",
     "Manager": "",
@@ -8678,12 +8678,12 @@
   {
     "Name": "Mick Jones",
     "SamAccountName": "mick.jones",
-    "UserPrincipalName": "mick.jones@example.com",
+    "UserPrincipalName": "mick.jones@example.co.uk",
     "Groups": [
       "Foreigner"
     ],
     "Title": "Guitarist / Songwriter",
-    "Email": "mick.jones@example.com",
+    "Email": "mick.jones@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Lou Gramm",
@@ -8706,13 +8706,13 @@
   {
     "Name": "Lindsey Buckingham",
     "SamAccountName": "lindsey.buckingham",
-    "UserPrincipalName": "lindsey.buckingham@example.com",
+    "UserPrincipalName": "lindsey.buckingham@example.co.uk",
     "Groups": [
       "Fleetwood Mac",
       "Artists"
     ],
     "Title": "Guitarist / Vocalist / Producer",
-    "Email": "lindsey.buckingham@example.com",
+    "Email": "lindsey.buckingham@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "",
@@ -8735,13 +8735,13 @@
   {
     "Name": "Stephanie Nicks",
     "SamAccountName": "stevie.nicks",
-    "UserPrincipalName": "stevie.nicks@example.com",
+    "UserPrincipalName": "stevie.nicks@example.co.uk",
     "Groups": [
       "Fleetwood Mac",
       "Artists"
     ],
     "Title": "Vocalist",
-    "Email": "stevie.nicks@example.com",
+    "Email": "stevie.nicks@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Lindsey Buckingham",
@@ -8764,13 +8764,13 @@
   {
     "Name": "Christine McVie",
     "SamAccountName": "christine.mcvie",
-    "UserPrincipalName": "christine.mcvie@example.com",
+    "UserPrincipalName": "christine.mcvie@example.co.uk",
     "Groups": [
       "Fleetwood Mac",
       "Artists"
     ],
     "Title": "Keyboardist / Vocalist",
-    "Email": "christine.mcvie@example.com",
+    "Email": "christine.mcvie@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Lindsey Buckingham",
@@ -8793,13 +8793,13 @@
   {
     "Name": "John McVie",
     "SamAccountName": "john.mcvie",
-    "UserPrincipalName": "john.mcvie@example.com",
+    "UserPrincipalName": "john.mcvie@example.co.uk",
     "Groups": [
       "Fleetwood Mac",
       "Artists"
     ],
     "Title": "Bassist",
-    "Email": "john.mcvie@example.com",
+    "Email": "john.mcvie@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Mick Fleetwood",
@@ -8822,13 +8822,13 @@
   {
     "Name": "Mick Fleetwood",
     "SamAccountName": "mick.fleetwood",
-    "UserPrincipalName": "mick.fleetwood@example.com",
+    "UserPrincipalName": "mick.fleetwood@example.co.uk",
     "Groups": [
       "Fleetwood Mac",
       "Artists"
     ],
     "Title": "Drummer",
-    "Email": "mick.fleetwood@example.com",
+    "Email": "mick.fleetwood@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -8851,13 +8851,13 @@
   {
     "Name": "Chris Nicks",
     "SamAccountName": "chris.nicks",
-    "UserPrincipalName": "chris.nicks@example.com",
+    "UserPrincipalName": "chris.nicks@example.co.uk",
     "Groups": [
       "Fleetwood Mac",
       "Guest-Artists"
     ],
     "Title": "Saxophonist / Guest Musician",
-    "Email": "chris.nicks@example.com",
+    "Email": "chris.nicks@example.co.uk",
     "Country": "US",
     "CountryCode": "US",
     "Manager": "Stevie Nicks",
@@ -8880,13 +8880,13 @@
   {
     "Name": "Danny Kirwan",
     "SamAccountName": "danny.kirwan",
-    "UserPrincipalName": "danny.kirwan@example.com",
+    "UserPrincipalName": "danny.kirwan@example.co.uk",
     "Groups": [
       "Fleetwood Mac",
       "Legacy-Artists"
     ],
     "Title": "Guitarist / Songwriter",
-    "Email": "danny.kirwan@example.com",
+    "Email": "danny.kirwan@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Peter Green",
@@ -8909,13 +8909,13 @@
   {
     "Name": "Jeremy Spencer",
     "SamAccountName": "jeremy.spencer",
-    "UserPrincipalName": "jeremy.spencer@example.com",
+    "UserPrincipalName": "jeremy.spencer@example.co.uk",
     "Groups": [
       "Fleetwood Mac",
       "Legacy-Artists"
     ],
     "Title": "Guitarist / Slide Guitar",
-    "Email": "jeremy.spencer@example.com",
+    "Email": "jeremy.spencer@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "Peter Green",
@@ -8938,12 +8938,12 @@
   {
     "Name": "Chrissy Amphlett",
     "SamAccountName": "chrissy.amphlett",
-    "UserPrincipalName": "chrissy.amphlett@example.com",
+    "UserPrincipalName": "chrissy.amphlett@example.co.uk",
     "Groups": [
       "Divinyls"
     ],
     "Title": "Lead Vocalist",
-    "Email": "chrissy.amphlett@example.com",
+    "Email": "chrissy.amphlett@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "",
@@ -8966,12 +8966,12 @@
   {
     "Name": "Mark McEntee",
     "SamAccountName": "mark.mcentee",
-    "UserPrincipalName": "mark.mcentee@example.com",
+    "UserPrincipalName": "mark.mcentee@example.co.uk",
     "Groups": [
       "Divinyls"
     ],
     "Title": "Guitarist",
-    "Email": "mark.mcentee@example.com",
+    "Email": "mark.mcentee@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Chrissy Amphlett",
@@ -8994,13 +8994,13 @@
   {
     "Name": "Michael Hutchence",
     "SamAccountName": "michael.hutchence",
-    "UserPrincipalName": "michael.hutchence@example.com",
+    "UserPrincipalName": "michael.hutchence@example.co.uk",
     "Groups": [
       "INXS",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
-    "Email": "michael.hutchence@example.com",
+    "Email": "michael.hutchence@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "",
@@ -9023,13 +9023,13 @@
   {
     "Name": "Andrew Farriss",
     "SamAccountName": "andrew.farriss",
-    "UserPrincipalName": "andrew.farriss@example.com",
+    "UserPrincipalName": "andrew.farriss@example.co.uk",
     "Groups": [
       "INXS",
       "Keyboardists"
     ],
     "Title": "Keyboardist / Guitarist",
-    "Email": "andrew.farriss@example.com",
+    "Email": "andrew.farriss@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Michael Hutchence",
@@ -9052,13 +9052,13 @@
   {
     "Name": "Tim Farriss",
     "SamAccountName": "tim.farriss",
-    "UserPrincipalName": "tim.farriss@example.com",
+    "UserPrincipalName": "tim.farriss@example.co.uk",
     "Groups": [
       "INXS",
       "Guitarists"
     ],
     "Title": "Lead Guitarist",
-    "Email": "tim.farriss@example.com",
+    "Email": "tim.farriss@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Andrew Farriss",
@@ -9081,13 +9081,13 @@
   {
     "Name": "Jon Farriss",
     "SamAccountName": "jon.farriss",
-    "UserPrincipalName": "jon.farriss@example.com",
+    "UserPrincipalName": "jon.farriss@example.co.uk",
     "Groups": [
       "INXS",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "jon.farriss@example.com",
+    "Email": "jon.farriss@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Michael Hutchence",
@@ -9110,14 +9110,14 @@
   {
     "Name": "Kirk Pengilly",
     "SamAccountName": "kirk.pengilly",
-    "UserPrincipalName": "kirk.pengilly@example.com",
+    "UserPrincipalName": "kirk.pengilly@example.co.uk",
     "Groups": [
       "INXS",
       "Guitarists",
       "Saxophonists"
     ],
     "Title": "Guitarist / Saxophonist",
-    "Email": "kirk.pengilly@example.com",
+    "Email": "kirk.pengilly@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Michael Hutchence",
@@ -9140,13 +9140,13 @@
   {
     "Name": "Gary Garry Beers",
     "SamAccountName": "gary.beers",
-    "UserPrincipalName": "gary.beers@example.com",
+    "UserPrincipalName": "gary.beers@example.co.uk",
     "Groups": [
       "INXS",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "gary.beers@example.com",
+    "Email": "gary.beers@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Andrew Farriss",
@@ -9169,13 +9169,13 @@
   {
     "Name": "Iva Davies",
     "SamAccountName": "iva.davies",
-    "UserPrincipalName": "iva.davies@example.com",
+    "UserPrincipalName": "iva.davies@example.co.uk",
     "Groups": [
       "Icehouse",
       "Vocalists"
     ],
     "Title": "Lead Vocalist / Guitarist",
-    "Email": "iva.davies@example.com",
+    "Email": "iva.davies@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "",
@@ -9198,13 +9198,13 @@
   {
     "Name": "Robert Kretschmer",
     "SamAccountName": "robert.kretschmer",
-    "UserPrincipalName": "robert.kretschmer@example.com",
+    "UserPrincipalName": "robert.kretschmer@example.co.uk",
     "Groups": [
       "Icehouse",
       "Guitarists"
     ],
     "Title": "Guitarist",
-    "Email": "robert.kretschmer@example.com",
+    "Email": "robert.kretschmer@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Iva Davies",
@@ -9227,13 +9227,13 @@
   {
     "Name": "Guy Pratt",
     "SamAccountName": "guy.pratt",
-    "UserPrincipalName": "guy.pratt@example.com",
+    "UserPrincipalName": "guy.pratt@example.co.uk",
     "Groups": [
       "Icehouse",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "guy.pratt@example.com",
+    "Email": "guy.pratt@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Iva Davies",
@@ -9256,14 +9256,14 @@
   {
     "Name": "Neil Finn",
     "SamAccountName": "neil.finn",
-    "UserPrincipalName": "neil.finn@example.com",
+    "UserPrincipalName": "neil.finn@example.co.uk",
     "Groups": [
       "Crowded House",
       "Vocalists",
       "Songwriters"
     ],
     "Title": "Lead Vocalist / Guitarist",
-    "Email": "neil.finn@example.com",
+    "Email": "neil.finn@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "",
@@ -9286,13 +9286,13 @@
   {
     "Name": "Nick Seymour",
     "SamAccountName": "nick.seymour",
-    "UserPrincipalName": "nick.seymour@example.com",
+    "UserPrincipalName": "nick.seymour@example.co.uk",
     "Groups": [
       "Crowded House",
       "Bassists"
     ],
     "Title": "Bassist",
-    "Email": "nick.seymour@example.com",
+    "Email": "nick.seymour@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Neil Finn",
@@ -9315,13 +9315,13 @@
   {
     "Name": "Paul Hester",
     "SamAccountName": "paul.hester",
-    "UserPrincipalName": "paul.hester@example.com",
+    "UserPrincipalName": "paul.hester@example.co.uk",
     "Groups": [
       "Crowded House",
       "Drummers"
     ],
     "Title": "Drummer",
-    "Email": "paul.hester@example.com",
+    "Email": "paul.hester@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Neil Finn",
@@ -9344,13 +9344,13 @@
   {
     "Name": "Eddie Rayner",
     "SamAccountName": "eddie.rayner",
-    "UserPrincipalName": "eddie.rayner@example.com",
+    "UserPrincipalName": "eddie.rayner@example.co.uk",
     "Groups": [
       "Crowded House",
       "Keyboardists"
     ],
     "Title": "Keyboardist",
-    "Email": "eddie.rayner@example.com",
+    "Email": "eddie.rayner@example.co.uk",
     "Country": "AU",
     "CountryCode": "AU",
     "Manager": "Neil Finn",
@@ -9373,14 +9373,14 @@
   {
     "Name": "Tom Bailey",
     "SamAccountName": "tom.bailey",
-    "UserPrincipalName": "tom.bailey@example.com",
+    "UserPrincipalName": "tom.bailey@example.co.uk",
     "Groups": [
       "Thompson Twins",
       "Vocalists",
       "Keyboardists"
     ],
     "Title": "Lead Vocalist / Keyboardist",
-    "Email": "tom.bailey@example.com",
+    "Email": "tom.bailey@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "",
@@ -9403,14 +9403,14 @@
   {
     "Name": "Joe Leeway",
     "SamAccountName": "joe.leeway",
-    "UserPrincipalName": "joe.leeway@example.com",
+    "UserPrincipalName": "joe.leeway@example.co.uk",
     "Groups": [
       "Thompson Twins",
       "Percussionists",
       "Vocalists"
     ],
     "Title": "Percussionist / Vocalist",
-    "Email": "joe.leeway@example.com",
+    "Email": "joe.leeway@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "Tom Bailey",
@@ -9433,14 +9433,14 @@
   {
     "Name": "Alannah Currie",
     "SamAccountName": "alannah.currie",
-    "UserPrincipalName": "alannah.currie@example.com",
+    "UserPrincipalName": "alannah.currie@example.co.uk",
     "Groups": [
       "Thompson Twins",
       "Percussionists",
       "Vocalists"
     ],
     "Title": "Percussionist / Vocalist",
-    "Email": "alannah.currie@example.com",
+    "Email": "alannah.currie@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "Tom Bailey",
@@ -9463,12 +9463,12 @@
   {
     "Name": "Tim Finn",
     "SamAccountName": "tim.finn",
-    "UserPrincipalName": "tim.finn@example.com",
+    "UserPrincipalName": "tim.finn@example.co.uk",
     "Groups": [
       "Split Enz"
     ],
     "Title": "Lead Vocalist / Songwriter",
-    "Email": "tim.finn@example.com",
+    "Email": "tim.finn@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "",
@@ -9491,12 +9491,12 @@
   {
     "Name": "Neil Finn",
     "SamAccountName": "neil.finn",
-    "UserPrincipalName": "neil.finn@example.com",
+    "UserPrincipalName": "neil.finn@example.co.uk",
     "Groups": [
       "Split Enz"
     ],
     "Title": "Vocalist / Guitarist / Songwriter",
-    "Email": "neil.finn@example.com",
+    "Email": "neil.finn@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "Tim Finn",
@@ -9519,12 +9519,12 @@
   {
     "Name": "Eddie Rayner",
     "SamAccountName": "eddie.rayner",
-    "UserPrincipalName": "eddie.rayner@example.com",
+    "UserPrincipalName": "eddie.rayner@example.co.uk",
     "Groups": [
       "Split Enz"
     ],
     "Title": "Keyboardist",
-    "Email": "eddie.rayner@example.com",
+    "Email": "eddie.rayner@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "Tim Finn",
@@ -9547,12 +9547,12 @@
   {
     "Name": "Nigel Griggs",
     "SamAccountName": "nigel.griggs",
-    "UserPrincipalName": "nigel.griggs@example.com",
+    "UserPrincipalName": "nigel.griggs@example.co.uk",
     "Groups": [
       "Split Enz"
     ],
     "Title": "Bassist",
-    "Email": "nigel.griggs@example.com",
+    "Email": "nigel.griggs@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "Tim Finn",
@@ -9575,12 +9575,12 @@
   {
     "Name": "Malcolm Green",
     "SamAccountName": "malcolm.green",
-    "UserPrincipalName": "malcolm.green@example.com",
+    "UserPrincipalName": "malcolm.green@example.co.uk",
     "Groups": [
       "Split Enz"
     ],
     "Title": "Drummer",
-    "Email": "malcolm.green@example.com",
+    "Email": "malcolm.green@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "Tim Finn",
@@ -9603,14 +9603,14 @@
   {
     "Name": "Pauly Fuemana",
     "SamAccountName": "pauly.fuemana",
-    "UserPrincipalName": "pauly.fuemana@example.com",
+    "UserPrincipalName": "pauly.fuemana@example.co.uk",
     "Groups": [
       "OMC",
       "Vocalists",
       "Songwriters"
     ],
     "Title": "Lead Vocalist / Songwriter",
-    "Email": "pauly.fuemana@example.com",
+    "Email": "pauly.fuemana@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "",
@@ -9633,14 +9633,14 @@
   {
     "Name": "Phil Fuemana",
     "SamAccountName": "phil.fuemana",
-    "UserPrincipalName": "phil.fuemana@example.com",
+    "UserPrincipalName": "phil.fuemana@example.co.uk",
     "Groups": [
       "OMC",
       "Vocalists",
       "Songwriters"
     ],
     "Title": "Backing Vocalist / Songwriter",
-    "Email": "phil.fuemana@example.com",
+    "Email": "phil.fuemana@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "Pauly Fuemana",
@@ -9663,14 +9663,14 @@
   {
     "Name": "Alan Jansson",
     "SamAccountName": "alan.jansson",
-    "UserPrincipalName": "alan.jansson@example.com",
+    "UserPrincipalName": "alan.jansson@example.co.uk",
     "Groups": [
       "OMC",
       "Producers",
       "Managers"
     ],
     "Title": "Producer / Manager",
-    "Email": "alan.jansson@example.com",
+    "Email": "alan.jansson@example.co.uk",
     "Country": "NZ",
     "CountryCode": "NZ",
     "Manager": "",
@@ -9693,14 +9693,14 @@
   {
     "Name": "Carol Hersee",
     "SamAccountName": "carol.hersee",
-    "UserPrincipalName": "carol.hersee@example.com",
+    "UserPrincipalName": "carol.hersee@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Broadcast",
       "VPN Users"
     ],
     "Title": "Continuity Announcer",
-    "Email": "carol.hersee@example.com",
+    "Email": "carol.hersee@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -9723,14 +9723,14 @@
   {
     "Name": "Kate Adie",
     "SamAccountName": "kate.adie",
-    "UserPrincipalName": "kate.adie@example.com",
+    "UserPrincipalName": "kate.adie@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Journalists",
       "VPN Users"
     ],
     "Title": "Journalist",
-    "Email": "kate.adie@example.com",
+    "Email": "kate.adie@example.co.uk",
     "Country": "LB",
     "CountryCode": "LB",
     "Manager": "Carol Hersee",
@@ -9753,14 +9753,14 @@
   {
     "Name": "Ulla Terkelsen",
     "SamAccountName": "ulla.terkelsen",
-    "UserPrincipalName": "ulla.terkelsen@example.com",
+    "UserPrincipalName": "ulla.terkelsen@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Editors",
       "VPN Users"
     ],
     "Title": "Europe Editor",
-    "Email": "ulla.terkelsen@example.com",
+    "Email": "ulla.terkelsen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -9783,14 +9783,14 @@
   {
     "Name": "Claus Tøgsvig",
     "SamAccountName": "claus.togsvig",
-    "UserPrincipalName": "claus.togsvig@example.com",
+    "UserPrincipalName": "claus.togsvig@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Editors",
       "VPN Users"
     ],
     "Title": "Senior Correspondent",
-    "Email": "claus.togsvig@example.com",
+    "Email": "claus.togsvig@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Ulla Terkelsen",
@@ -9813,14 +9813,14 @@
   {
     "Name": "Knud Christian Frederik",
     "SamAccountName": "prins.knud",
-    "UserPrincipalName": "prins.knud@example.com",
+    "UserPrincipalName": "prins.knud@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Ceremonial",
       "VPN Users"
     ],
     "Title": "Ceremonial Figure",
-    "Email": "prins.knud@example.com",
+    "Email": "prins.knud@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Christian X",
@@ -9843,14 +9843,14 @@
   {
     "Name": "Ove Sprogøe",
     "SamAccountName": "dr.hansen",
-    "UserPrincipalName": "dr.hansen@example.com",
+    "UserPrincipalName": "dr.hansen@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Medical",
       "VPN Users"
     ],
     "Title": "Company Accountant",
-    "Email": "dr.hansen@example.com",
+    "Email": "dr.hansen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "Mads Skærne",
@@ -9873,14 +9873,14 @@
   {
     "Name": "Mads Skærne",
     "SamAccountName": "mads.skaerne",
-    "UserPrincipalName": "mads.skaerne@example.com",
+    "UserPrincipalName": "mads.skaerne@example.co.uk",
     "Groups": [
       "Staff",
       "Costumes",
       "VPN Users"
     ],
     "Title": "Head of Costumes/Logistics",
-    "Email": "mads.skaerne@example.com",
+    "Email": "mads.skaerne@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -9903,14 +9903,14 @@
   {
     "Name": "Kristen Skjern",
     "SamAccountName": "kristen.skjern",
-    "UserPrincipalName": "kristen.skjern@example.com",
+    "UserPrincipalName": "kristen.skjern@example.co.uk",
     "Groups": [
       "Staff",
       "Banking",
       "VPN Users"
     ],
     "Title": "Bank Manager",
-    "Email": "kristen.skjern@example.com",
+    "Email": "kristen.skjern@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -9933,14 +9933,14 @@
   {
     "Name": "Helle Vikner",
     "SamAccountName": "helle.vikner",
-    "UserPrincipalName": "helle.vikner@example.com",
+    "UserPrincipalName": "helle.vikner@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Transport",
       "VPN Users"
     ],
     "Title": "Company Transport",
-    "Email": "helle.vikner@example.com",
+    "Email": "helle.vikner@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -9963,14 +9963,14 @@
   {
     "Name": "Bodil Udsen",
     "SamAccountName": "bodil.udsen",
-    "UserPrincipalName": "bodil.udsen@example.com",
+    "UserPrincipalName": "bodil.udsen@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Catering",
       "VPN Users"
     ],
     "Title": "Company Caterer / Chef",
-    "Email": "bodil.udsen@example.com",
+    "Email": "bodil.udsen@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -9993,14 +9993,14 @@
   {
     "Name": "Arthur Jensen",
     "SamAccountName": "meyer",
-    "UserPrincipalName": "meyer@example.com",
+    "UserPrincipalName": "meyer@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Facilities",
       "VPN Users"
     ],
     "Title": "Janitor",
-    "Email": "meyer@example.com",
+    "Email": "meyer@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -10023,14 +10023,14 @@
   {
     "Name": "Axel Strobye",
     "SamAccountName": "axel.strobye",
-    "UserPrincipalName": "axel.strobye@example.com",
+    "UserPrincipalName": "axel.strobye@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Legal",
       "VPN Users"
     ],
     "Title": "Company Lawyer (Europe)",
-    "Email": "axel.strobye@example.com",
+    "Email": "axel.strobye@example.co.uk",
     "Country": "DK",
     "CountryCode": "DK",
     "Manager": "",
@@ -10053,14 +10053,14 @@
   {
     "Name": "Ian Hislop",
     "SamAccountName": "ian.hislop",
-    "UserPrincipalName": "ian.hislop@example.com",
+    "UserPrincipalName": "ian.hislop@example.co.uk",
     "Groups": [
       "Ancillary Staff",
       "Legal",
       "VPN Users"
     ],
     "Title": "Company Lawyer",
-    "Email": "ian.hislop@example.com",
+    "Email": "ian.hislop@example.co.uk",
     "Country": "UK",
     "CountryCode": "GB",
     "Manager": "",
@@ -10083,12 +10083,12 @@
   {
     "Name": "Dennis Patterson",
     "SamAccountName": "dennis.patterson",
-    "UserPrincipalName": "dennis.patterson@example.com",
+    "UserPrincipalName": "dennis.patterson@example.co.uk",
     "Groups": [
       "Builders"
     ],
     "Title": "Gaffer",
-    "Email": "builders@example.com",
+    "Email": "builders@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "",
@@ -10111,12 +10111,12 @@
   {
     "Name": "Albert Moxey",
     "SamAccountName": "moxey",
-    "UserPrincipalName": "moxey@example.com",
+    "UserPrincipalName": "moxey@example.co.uk",
     "Groups": [
       "Builders"
     ],
     "Title": "Plasterer",
-    "Email": "builders@example.com",
+    "Email": "builders@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Dennis Pinner",
@@ -10139,12 +10139,12 @@
   {
     "Name": "Neville Hope",
     "SamAccountName": "neville.hope",
-    "UserPrincipalName": "neville.hope@example.com",
+    "UserPrincipalName": "neville.hope@example.co.uk",
     "Groups": [
       "Builders"
     ],
     "Title": "Bricklayer",
-    "Email": "builders@example.com",
+    "Email": "builders@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Dennis Pinner",
@@ -10167,12 +10167,12 @@
   {
     "Name": "Wayne Norris",
     "SamAccountName": "wayne.norris",
-    "UserPrincipalName": "wayne.norris@example.com",
+    "UserPrincipalName": "wayne.norris@example.co.uk",
     "Groups": [
       "Builders"
     ],
     "Title": "Carpenter",
-    "Email": "builders@example.com",
+    "Email": "builders@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Dennis Pinner",
@@ -10195,12 +10195,12 @@
   {
     "Name": "Barry Taylor",
     "SamAccountName": "barry.taylor",
-    "UserPrincipalName": "barry.taylor@example.com",
+    "UserPrincipalName": "barry.taylor@example.co.uk",
     "Groups": [
       "Builders"
     ],
     "Title": "Electrician / Radish",
-    "Email": "builders@example.com",
+    "Email": "builders@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Dennis Pinner",
@@ -10223,12 +10223,12 @@
   {
     "Name": "Brian Busbridge",
     "SamAccountName": "bomber",
-    "UserPrincipalName": "bomber@example.com",
+    "UserPrincipalName": "bomber@example.co.uk",
     "Groups": [
       "Builders"
     ],
     "Title": "Bricklayer",
-    "Email": "builders@example.com",
+    "Email": "builders@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Dennis Pinner",
@@ -10251,12 +10251,12 @@
   {
     "Name": "Leonard Jeffrey Osborne",
     "SamAccountName": "oz",
-    "UserPrincipalName": "oz.osborne@example.com",
+    "UserPrincipalName": "oz.osborne@example.co.uk",
     "Groups": [
       "Builders"
     ],
     "Title": "Labourer",
-    "Email": "builders@example.com",
+    "Email": "builders@example.co.uk",
     "Country": "DE",
     "CountryCode": "DE",
     "Manager": "Dennis Pinner",
