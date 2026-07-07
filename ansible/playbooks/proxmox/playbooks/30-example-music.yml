@@ -12,9 +12,9 @@
 # idempotently re-writable by Ansible from here on (ansible_managed: true,
 # bootstrapped_by: proxmox/site.yml).
 #
-# sites.csv/devices.csv are copied from benarbejde/ (the git checkout on
-# the control node) — the same authoritative source playbooks/linux/tools.yml
-# uses, not a possibly-stale already-deployed copy.
+# sites.csv/devices.csv/address_policy.json are copied from benarbejde/ (the
+# git checkout on the control node) — the same authoritative source
+# playbooks/linux/tools.yml uses, not a possibly-stale already-deployed copy.
 #
 # Always runs, first onboarding or refresh — pure file placement, no
 # service impact.
@@ -37,6 +37,11 @@
 #               neither from Ansible) and makes nodeinfo.json Ansible-managed
 #               and re-runnable, superseding the one-time bash/jq version
 #               first-boot.sh writes at initial OS install.
+#   2026-07-07  Add address_policy.json deployment, matching linux/tools.yml
+#               — bind9-dns.yml Play 2 needs it (standard-slot DNS synthesis).
+#   2026-07-07  nodeinfo.json write now uses the shared ansible/tasks/nodeinfo.yml
+#               (also used by linux/tools.yml, firewallme, rudder_server.yml)
+#               instead of hand-writing the same base fields independently.
 # =============================================================================
 
 - name: Proxmox VE — /etc/example-music deployment
@@ -45,8 +50,9 @@
   gather_facts: true
 
   vars:
-    sites_csv_src:   "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
-    devices_csv_src: "{{ playbook_dir }}/../../../../benarbejde/devices.csv"
+    sites_csv_src:      "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
+    devices_csv_src:    "{{ playbook_dir }}/../../../../benarbejde/devices.csv"
+    address_policy_src: "{{ playbook_dir }}/../../../../benarbejde/address_policy.json"
 
   tasks:
 
@@ -77,24 +83,26 @@
         mode:  '0644'
       tags: example_music
 
-    - name: Write /etc/example-music/nodeinfo.json
+    - name: Deploy address_policy.json to /etc/example-music
       ansible.builtin.copy:
-        dest: /etc/example-music/nodeinfo.json
-        mode: "0444"
-        content: "{{ _nodeinfo | to_nice_json }}\n"
+        src:   "{{ address_policy_src }}"
+        dest:  /etc/example-music/address_policy.json
+        owner: root
+        group: root
+        mode:  '0644'
+      tags: example_music
+
+    - name: Write /etc/example-music/nodeinfo.json
+      include_tasks: ../../../tasks/nodeinfo.yml
       vars:
-        _nodeinfo:
-          hostname:        "{{ inventory_hostname }}"
-          fqdn:            "{{ ansible_fqdn | default(inventory_hostname) }}"
-          role:            "proxmox"
-          site:            "{{ host_site }}"
-          city:            "{{ pve_city | default('') }}"
-          country:         "{{ pve_country | default('') }}"
-          entity:          "{{ pve_entity | default('') }}"
-          ansible_managed: true
-          bootstrapped_at: "{{ ansible_date_time.iso8601 }}"
-          bootstrapped_by: "proxmox/site.yml"
-          environment:     "{{ pve_environment | default('production') }}"
-          node_ip:         "{{ ansible_default_ipv4.address | default('') }}"
-          gateway:         "{{ pve_site_row.Gateway | default(ansible_default_ipv4.gateway | default('')) }}"
+        nodeinfo_role: "proxmox"
+        nodeinfo_site: "{{ host_site }}"
+        nodeinfo_city: "{{ pve_city | default('') }}"
+        nodeinfo_country: "{{ pve_country | default('') }}"
+        nodeinfo_entity: "{{ pve_entity | default('') }}"
+        nodeinfo_environment: "{{ pve_environment | default('production') }}"
+        nodeinfo_bootstrapped_by: "proxmox/site.yml"
+        nodeinfo_extra:
+          node_ip: "{{ ansible_default_ipv4.address | default('') }}"
+          gateway: "{{ pve_site_row.Gateway | default(ansible_default_ipv4.gateway | default('')) }}"
       tags: example_music

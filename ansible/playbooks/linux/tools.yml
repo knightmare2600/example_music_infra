@@ -7,6 +7,15 @@
 #   2026-07-02  Add /etc/example-music deploy for sites.csv and devices.csv
 #   2026-07-06  Add dotfile deployment (gitconfig, tmux, vim, zshrc)
 #   2026-07-06  Add optional user creation via vars_prompt
+#   2026-07-07  Add /etc/example-music deploy for address_policy.json —
+#               bind9-dns.yml Play 2 needs it (standard-slot DNS synthesis,
+#               see generate_inventory.py's identical loader)
+#   2026-07-07  Add nodeinfo.json (best-effort, via shared tasks/nodeinfo.yml)
+#               so every properly-named Linux host gets a base version, not
+#               just the three roles (proxmox/firewall/rudder) that used to
+#               each hand-write their own. Wrapped in block/rescue since this
+#               playbook runs on every Linux host, including ones that may
+#               not have a conformant hostname yet.
 
 - name: Deploy common tools
   hosts: all
@@ -23,8 +32,9 @@
 
   vars:
     extra_users: "{{ extra_users_input.split() }}"
-    sites_csv_src:   "{{ playbook_dir }}/../../../benarbejde/sites.csv"
-    devices_csv_src: "{{ playbook_dir }}/../../../benarbejde/devices.csv"
+    sites_csv_src:     "{{ playbook_dir }}/../../../benarbejde/sites.csv"
+    devices_csv_src:   "{{ playbook_dir }}/../../../benarbejde/devices.csv"
+    address_policy_src: "{{ playbook_dir }}/../../../benarbejde/address_policy.json"
 
   tasks:
 
@@ -63,6 +73,54 @@
         owner: root
         group: root
         mode:  '0644'
+
+    - name: Deploy address_policy.json to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ address_policy_src }}"
+        dest:  /etc/example-music/address_policy.json
+        owner: root
+        group: root
+        mode:  '0644'
+
+    # -------------------------------------------------------------------------
+    # nodeinfo.json — best-effort: needs an already-conformant EXA[ROLE][SITE][NNN]
+    # hostname, which not every host reaches this playbook with (e.g. mid-bootstrap
+    # via bootstrap-new-node.yml). Role-specific playbooks (proxmox/site.yml,
+    # firewallme, rudder_server.yml) refresh this afterward with their own richer
+    # role + extra fields — this just gives every properly-named Linux host a base
+    # version, rather than leaving it entirely to the three role-specific ones.
+    # -------------------------------------------------------------------------
+    - name: Write /etc/example-music/nodeinfo.json (best-effort)
+      block:
+        - include_tasks: ../../tasks/hostname_facts.yml
+
+        - name: Load sites.csv for nodeinfo enrichment
+          ansible.builtin.read_csv:
+            path: "{{ sites_csv_src }}"
+          register: _tools_sites_raw
+          delegate_to: localhost
+          become: false
+
+        - name: Look up this host's site row
+          ansible.builtin.set_fact:
+            _tools_site_row: "{{ _tools_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
+
+        - name: Write nodeinfo.json
+          include_tasks: ../../tasks/nodeinfo.yml
+          vars:
+            nodeinfo_role: "{{ host_role | lower }}"
+            nodeinfo_site: "{{ host_site }}"
+            nodeinfo_city: "{{ _tools_site_row.City | default('') }}"
+            nodeinfo_country: "{{ _tools_site_row.Country | default('') }}"
+            nodeinfo_entity: "{{ _tools_site_row.Entity | default('') }}"
+            nodeinfo_bootstrapped_by: "linux/tools.yml"
+      rescue:
+        - name: nodeinfo.json skipped — hostname not yet EXA-convention
+          ansible.builtin.debug:
+            msg: >-
+              Skipping nodeinfo.json for {{ inventory_hostname }} — hostname
+              doesn't match EXA[ROLE][SITE][NNN] yet (expected for hosts still
+              mid-bootstrap). Re-run once it's been renamed.
 
     # -------------------------------------------------------------------------
     # Optional user creation — runs before getent so new accounts are included

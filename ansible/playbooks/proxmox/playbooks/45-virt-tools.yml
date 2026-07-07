@@ -1,0 +1,235 @@
+---
+# =============================================================================
+# playbooks/45-virt-tools.yml
+# Example Music Limited — Proxmox VE node: Windows V2V conversion tooling
+# =============================================================================
+# Deploys everything virt-v2v needs for converting Windows guests, plus
+# custom BIOS ROM files. Always runs — pure package install + file
+# placement, nothing here is executed or reloaded (proxmoxbmc's systemd
+# service enable/start is 50-systemd-units.yml, since that touches live
+# state).
+#
+# Ported from first-boot.sh's former Steps 3b/3c/3d/3f, which used to run
+# interactively at first boot. The V2V-prerequisite and VirtIO-ISO sources
+# are real, public URLs (Fedora Koji / fedorapeople.org) and are ported
+# unchanged. The proxmoxbmc .deb and BIOS ROM files used to be fetched from
+# an internal provisioning server via a $PROV_PKG_PATH variable that was
+# never actually defined anywhere in first-boot.sh or answer.toml — i.e.
+# already dead/non-functional as shipped. Both are wired up here as
+# optional, off-by-default tasks (pve_proxmoxbmc_deb_url /
+# pve_bios_rom_base_url) that skip cleanly with a clear message until a
+# real source is supplied — rather than guessing a URL.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/45-virt-tools.yml
+#
+# Tags: virt_tools
+# =============================================================================
+# Changelog:
+#   2026-07-07  Initial file — ported from first-boot.sh's Steps 3b/3c/3d/3f
+#               as part of retiring the shell-script bootstrap wizard in
+#               favour of Ansible (see first-boot.sh's 2026-07-07 changelog
+#               entry, and ansible/playbooks/proxmox/bootstrap-new-node.yml).
+# =============================================================================
+
+- name: Proxmox VE — Windows V2V conversion tooling
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+
+  vars:
+    v2v_tools_dir: /usr/share/virt-tools
+    srvany_url: "https://kojipkgs.fedoraproject.org//packages/mingw-srvany/1.1/4.fc38/noarch/mingw32-srvany-1.1-4.fc38.noarch.rpm"
+    virtio_iso_url: "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso"
+    virtio_iso_dest: /var/lib/vz/template/iso/virtio-win.iso
+    virtio_extract_dir: /usr/share/virtio-win
+    # Not defined by default — see the changelog note above. Set with
+    # -e pve_proxmoxbmc_deb_url=... / -e pve_bios_rom_base_url=... (or in
+    # group_vars/pvenodes/) once a real source is confirmed.
+    pve_proxmoxbmc_deb_url: ""
+    pve_bios_rom_base_url: ""
+    pve_bios_roms:
+      - WORKSTATION_25H2_DELL2.7_BIOS.440.ROM
+      - WORKSTATION_25H2_DELL2.7_EFI20-64.ROM
+      - WORKSTATION_25H2_DELL2.7_EFI64.ROM
+      - BIOS.440.ROM
+      - EFI20-64.ROM
+      - EFI64.ROM
+
+  tasks:
+
+    # ── virt-v2v Windows conversion prerequisites ────────────────────────────
+    # virt-v2v requires pvvxsvc.exe/rhsrvany.exe in /usr/share/virt-tools/ to
+    # inject Windows firstboot scripts during conversion, or it aborts before
+    # even touching the guest disk. Not in any Proxmox/Debian repo — extracted
+    # from the Fedora mingw32-srvany RPM via rpm2cpio + cpio.
+    - name: Check for existing virt-tools exes
+      ansible.builtin.find:
+        paths: "{{ v2v_tools_dir }}"
+        patterns: "*.exe"
+      register: _v2v_exes
+      tags: virt_tools
+
+    - name: Install rpm2cpio + cpio (needed to extract the RPM without an RPM runtime)
+      ansible.builtin.apt:
+        name: [rpm2cpio, cpio]
+        state: present
+      when: _v2v_exes.matched == 0
+      tags: virt_tools
+
+    - name: Download mingw32-srvany RPM from Fedora Koji
+      ansible.builtin.get_url:
+        url: "{{ srvany_url }}"
+        dest: /tmp/srvany.rpm
+        mode: "0644"
+      when: _v2v_exes.matched == 0
+      tags: virt_tools
+
+    - name: Extract exes from RPM (rpm2cpio | cpio)
+      ansible.builtin.shell: |
+        set -o pipefail
+        mkdir -p /tmp/srvany-extract
+        cd /tmp/srvany-extract
+        rpm2cpio /tmp/srvany.rpm | cpio -idm
+      args:
+        executable: /bin/bash
+        creates: /tmp/srvany-extract/usr/i686-w64-mingw32/sys-root/mingw/bin
+      when: _v2v_exes.matched == 0
+      tags: virt_tools
+
+    - name: Ensure virt-tools directory exists
+      ansible.builtin.file:
+        path: "{{ v2v_tools_dir }}"
+        state: directory
+        mode: "0755"
+      when: _v2v_exes.matched == 0
+      tags: virt_tools
+
+    - name: Install extracted exes to virt-tools directory
+      ansible.builtin.copy:
+        remote_src: true
+        src: /tmp/srvany-extract/usr/i686-w64-mingw32/sys-root/mingw/bin/{{ item }}
+        dest: "{{ v2v_tools_dir }}/{{ item }}"
+        mode: "0755"
+      loop:
+        - pvvxsvc.exe
+        - rhsrvany.exe
+      when: _v2v_exes.matched == 0
+      ignore_errors: true  # not all mingw-srvany RPM builds ship both exes
+      tags: virt_tools
+
+    - name: Clean up RPM extraction temp files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/srvany.rpm
+        - /tmp/srvany-extract
+      when: _v2v_exes.matched == 0
+      tags: virt_tools
+
+    # ── VirtIO drivers ISO ───────────────────────────────────────────────────
+    # Extracted (not just attached as CDROM) so virt-v2v can auto-inject
+    # vioscsi/NetKVM/balloon drivers during conversion — without this,
+    # converted Windows VMs boot on slow emulated IDE/RTL8139 and risk
+    # INACCESSIBLE_BOOT_DEVICE if the disk controller is changed later.
+    - name: Check for existing VirtIO driver extraction
+      ansible.builtin.stat:
+        path: "{{ virtio_extract_dir }}/vioscsi"
+      register: _virtio_extracted
+      tags: virt_tools
+
+    - name: Install p7zip-full (needed to extract the VirtIO ISO)
+      ansible.builtin.apt:
+        name: p7zip-full
+        state: present
+      when: not _virtio_extracted.stat.exists
+      tags: virt_tools
+
+    - name: Ensure ISO template directory exists
+      ansible.builtin.file:
+        path: /var/lib/vz/template/iso
+        state: directory
+        mode: "0755"
+      tags: virt_tools
+
+    - name: Download VirtIO drivers ISO (~500MB)
+      ansible.builtin.get_url:
+        url: "{{ virtio_iso_url }}"
+        dest: "{{ virtio_iso_dest }}"
+        mode: "0644"
+      register: _virtio_download
+      when: not _virtio_extracted.stat.exists
+      tags: virt_tools
+
+    - name: Extract VirtIO ISO to {{ virtio_extract_dir }}
+      ansible.builtin.command: 7z x "{{ virtio_iso_dest }}" -o"{{ virtio_extract_dir }}" -y
+      when: not _virtio_extracted.stat.exists and _virtio_download is not skipped
+      changed_when: true
+      tags: virt_tools
+
+    # ── proxmoxbmc (optional — .deb install only; service enable/start is
+    #    50-systemd-units.yml, since that touches live state) ────────────────
+    - name: Install proxmoxbmc apt dependencies
+      ansible.builtin.apt:
+        name:
+          - python3-proxmoxer
+          - python3-pyghmi
+          - python3-cliff
+          - python3-zmq
+          - python3-pbr
+          - python3-requests
+        state: present
+      when: pve_proxmoxbmc_deb_url | length > 0
+      tags: virt_tools
+
+    - name: Download proxmoxbmc .deb
+      ansible.builtin.get_url:
+        url: "{{ pve_proxmoxbmc_deb_url }}"
+        dest: /tmp/python3-proxmoxbmc.deb
+        mode: "0644"
+      when: pve_proxmoxbmc_deb_url | length > 0
+      register: _proxmoxbmc_deb
+      tags: virt_tools
+
+    - name: Install proxmoxbmc .deb
+      ansible.builtin.apt:
+        deb: /tmp/python3-proxmoxbmc.deb
+      when: pve_proxmoxbmc_deb_url | length > 0 and _proxmoxbmc_deb is not skipped
+      tags: virt_tools
+
+    - name: proxmoxbmc skipped — no source URL configured
+      ansible.builtin.debug:
+        msg: >-
+          Skipping proxmoxbmc — set -e pve_proxmoxbmc_deb_url=<url> (or in
+          group_vars/pvenodes/) to a real, resolvable .deb location to enable
+          this. See docs/proxmoxbmc-setup.md.
+      when: pve_proxmoxbmc_deb_url | length == 0
+      tags: virt_tools
+
+    # ── Custom BIOS ROM files ────────────────────────────────────────────────
+    # SLIC/SLP-activated SeaBIOS/UEFI firmware (e.g. Dell SLIC 2.7) —
+    # create-vm.py and convert-v2v.py enumerate these from /usr/share/kvm/.
+    - name: Ensure /usr/share/kvm exists
+      ansible.builtin.file:
+        path: /usr/share/kvm
+        state: directory
+        mode: "0755"
+      when: pve_bios_rom_base_url | length > 0
+      tags: virt_tools
+
+    - name: Download BIOS ROM files
+      ansible.builtin.get_url:
+        url: "{{ pve_bios_rom_base_url }}/{{ item }}"
+        dest: "/usr/share/kvm/{{ item }}"
+        mode: "0644"
+      loop: "{{ pve_bios_roms }}"
+      when: pve_bios_rom_base_url | length > 0
+      tags: virt_tools
+
+    - name: BIOS ROM files skipped — no source URL configured
+      ansible.builtin.debug:
+        msg: >-
+          Skipping BIOS ROM files — set -e pve_bios_rom_base_url=<url> (or in
+          group_vars/pvenodes/) to a real, resolvable location to enable this.
+      when: pve_bios_rom_base_url | length == 0
+      tags: virt_tools
