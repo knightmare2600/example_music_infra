@@ -125,10 +125,11 @@
       cloud_site: "Cloud Infrastructure"
 
     # Device sub-OUs created under each city's Devices OU.
-    # Align with Role prefixes from devices.csv:
+    # Align with Type prefixes from devices.csv:
     #   Workstations: WKS, LAP, SUR, MAC, MBP
     #   Servers:      DCS, SRV, SVR, SBC, RDR
-    #   Infrastructure: FWL, RTR, SWI, RAC, PVE, NAS, NIX
+    #   Infrastructure: FWL, RTR, SWI, BMC, PVE, NAS, NIX
+    #                 (BMC supersedes the legacy RAC prefix)
     #   Telephony:    PHN, PBX, PAY
     #   AV:           VCU, LCD, TVS, MIC, RAD
     #   IoT:          CAM, CLK, WAP, PMP, TEA, COF, PRN, DON, VND, MUS, TTY

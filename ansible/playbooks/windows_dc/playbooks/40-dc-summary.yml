@@ -155,8 +155,9 @@
           - "{{ _c.C }}║{{ _c.NC }}  1. Verify in ADUC / AD Sites & Services"
           - "{{ _c.C }}║{{ _c.NC }}  2. Confirm subnet {{ host_site }} mapped to correct AD site object"
           - "{{ _c.C }}║{{ _c.NC }}  3. Review FSMO placement if this is a hub site"
-          - "{{ _c.C }}║{{ _c.NC }}  4. Add {{ inventory_hostname }} to devices.csv if not present"
-          - "{{ _c.C }}║{{ _c.NC }}  5. Update BIND9 DNS (run bind9-dns.yml) if zone files need refresh"
+          - "{{ _c.C }}║{{ _c.NC }}  4. If this is a 2nd+ DC at this site, add it to devices.csv"
+          - "{{ _c.C }}║{{ _c.NC }}     (a site's 1st DC is auto-derived, no devices.csv row needed)"
+          - "{{ _c.C }}║{{ _c.NC }}  5. Update BIND9 DNS (run bind9-dns.yml --tags zones-full,reload)"
           - "{{ _c.C }}╚══════════════════════════════════════════════════════════════╝{{ _c.NC }}"
       tags: dc_summary
 
