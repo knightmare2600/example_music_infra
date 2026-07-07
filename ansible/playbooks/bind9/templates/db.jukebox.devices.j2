@@ -74,8 +74,11 @@ $TTL {{ zone_ttl }}
 {% set site_codes = non_cld | map(attribute='Site') | unique | sort | list %}
 {% for site_code in site_codes %}
 {% set site_devs = non_cld | selectattr('Site', 'equalto', site_code) | list %}
-{% set subnet = sites_by_code.get(site_code, '') %}
-{% set octet = subnet.split('.')[2] if subnet else '?' %}
+{#- derived from the devices' own full_ip, not sites_by_code: BRD and VRK are both
+   deliberately absent from sites_by_code (BRD shares BER's reverse zone; VRK is the
+   provisioning network, handled by its own template) but still have real devices here #}
+{% set with_ip = site_devs | selectattr('full_ip', 'ne', '') | list %}
+{% set octet = with_ip[0].full_ip.split('.')[2] if with_ip else '?' %}
 
 ; ── {{ site_code }}  (192.168.{{ octet }}.0/24) ───────────────
 {% for dev in site_devs | sort(attribute='HostOctet') %}
