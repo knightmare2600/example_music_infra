@@ -135,19 +135,35 @@ v3.2   - Refactoring for maintenence
 v5.0   - devices.csv integration
         • --devices-csv flag to specify devices.csv path (single source of
           truth for all devices across all sites)
-        • devices.csv loaded alongside sites.csv when present
+        • devices.csv loaded alongside sites.csv when present, used by
+          --validate-devices (generate_hosts/generate_inventory derive
+          purely from sites.csv via _site_hosts() and never actually
+          consumed the loaded devices list, despite what this entry used
+          to claim -- corrected in v5.1 below)
         • --validate-devices  validates devices.csv structure and cross-checks
           site codes against sites.csv, flags unknown sites, duplicate IPs,
           HostOctet conflicts against SUFFIX_MAP convention
-        • --generate-hosts now uses devices.csv when available, falling back
-          to SUFFIX_MAP derivation from sites.csv if not present
-        • --generate-inventory likewise uses devices.csv when available
         • CLD black swan handling: CLD rows bypass convention checks since
           192.168.139.0/24 is the provisioning network with manually assigned
           IPs that do not follow the standard site SUFFIX_MAP
         • BRD site preserved as legacy code pending BER rename on reunification
         • Non-networked assets (blank HostOctet) included as comments in
           generated hosts file and skipped from Ansible inventory
+
+v5.1   - 2026-07-07: schema update for exceptions-only devices.csv
+        • devices.csv is now exceptions-only (see benarbejde/generate_inventory.py);
+          its columns changed from Site,Hostname,HostOctet,Role,OS,Notes to
+          Site,Type,Number,HostOctet,OS,ConnectionType,Managed,Notes. Updated
+          _load_devices() to derive hostname/role from Type+Number instead of
+          reading now-nonexistent Hostname/Role columns (was silently
+          producing blank hostname/role for every row -- .get() with a
+          default doesn't raise on a missing column)
+        • validate_devices()'s hardcoded SUFFIX_MAP replaced with
+          _load_address_policy(), reading benarbejde/address_policy.json --
+          the same source generate_inventory.py and bind9-dns.yml use. This
+          also fixes a real inaccuracy in the old hardcoded copy: it had .1
+          as EXAFWL (RTR only as an alt) and .254 as EXARTR, backwards from
+          the corrected convention (RTR is .1; FWL is .253 AND .254)
 
 ======================================================================
 """
@@ -233,20 +249,71 @@ SITE_CODES   = set(SITES.keys())
 
 
 # =============================================================================
-# DEVICES.CSV -- single source of truth for all devices
+# DEVICES.CSV -- exceptions only as of 2026-07-07 (see benarbejde/generate_inventory.py
+# and benarbejde/address_policy.json) -- it does NOT contain a row for every
+# standard-slot device (router, BMC, PVE node, DC, provisioning server, SBC,
+# firewall) any more, only devices that don't fit that pattern.
 # =============================================================================
 # CLD BLACK SWAN:
 #   CLD (192.168.139.0/24) is the provisioning network. Its devices have
-#   manually assigned IPs that do not follow the standard SUFFIX_MAP convention.
+#   manually assigned IPs that do not follow the standard addressing convention.
 #   Convention checks are bypassed for all rows where Site == "CLD".
 #
-# Schema: Site,Hostname,HostOctet,Role,OS,Notes
-#   HostOctet  -- host portion of IP only. Blank = non-networked asset.
-#   Full IP    -- derived as sites.csv subnet base + HostOctet.
-#   CLD IPs    -- 192.168.139.{HostOctet} (provisioning network base).
+# Schema: Site,Type,Number,HostOctet,OS,ConnectionType,Managed,Notes
+#   Type+Number -- role code + instance number; hostname is derived as
+#                  EXA<Type><Site><Number, zero-padded to 3>, same convention
+#                  generate_inventory.py uses (build_hostname()).
+#   HostOctet   -- host portion of IP only. Blank = non-networked asset.
+#   Full IP     -- derived as sites.csv subnet base + HostOctet.
+#   CLD IPs     -- 192.168.139.{HostOctet} (provisioning network base).
 # =============================================================================
 
 CLD_SUBNET_BASE = "192.168.139"
+
+def _load_address_policy(policy_path=None):
+  """
+  Load the standard addressing convention from address_policy.json.
+  Searches: same directory as this script, then cwd, then
+  /etc/example-music/address_policy.json. Override with ADDRESS_POLICY_JSON
+  environment variable or policy_path argument.
+
+  Returns a flat {octet_str: TYPE} dict (e.g. {"1": "RTR", "10": "DCS", ...}) --
+  this is the single source of truth also used by generate_inventory.py and
+  bind9-dns.yml; do not hardcode a second copy of these offsets here.
+  """
+  import json as _json_mod
+
+  if policy_path is None:
+    policy_path = _os.environ.get("ADDRESS_POLICY_JSON")
+  if policy_path is None:
+    script_dir = _os.path.dirname(_os.path.abspath(__file__))
+    candidates = [
+      _os.path.join(script_dir, "address_policy.json"),
+      _os.path.join(_os.getcwd(), "address_policy.json"),
+      "/etc/example-music/address_policy.json",
+    ]
+    for p in candidates:
+      if _os.path.isfile(p):
+        policy_path = p
+        break
+
+  if not policy_path or not _os.path.isfile(policy_path):
+    print("WARNING: address_policy.json not found -- convention-conflict checks "
+          "in --validate-devices will be skipped.")
+    print("  Looked in: script directory, cwd, /etc/example-music/address_policy.json")
+    print("  Set ADDRESS_POLICY_JSON=/path/to/address_policy.json to override.")
+    return {}
+
+  with open(policy_path, encoding="utf-8") as f:
+    data = _json_mod.load(f)
+
+  suffix_role = {}
+  for role, offset in data.get("offsets_single", {}).items():
+    suffix_role[str(offset)] = role
+  for role, offsets in data.get("role_offsets", {}).items():
+    for offset in offsets:
+      suffix_role[str(offset)] = role
+  return suffix_role
 
 def _load_devices(csv_path=None):
   """
@@ -256,9 +323,10 @@ def _load_devices(csv_path=None):
   then /etc/example-music/devices.csv.
   Override with DEVICES_CSV environment variable or csv_path argument.
 
-  Returns a list of dicts with keys matching CSV columns plus:
-    full_ip  -- resolved full IP (empty string if HostOctet is blank)
-    subnet_base -- first three octets of the site subnet
+  Returns a list of dicts: site, hostname (derived from Type+Site+Number,
+  same convention as generate_inventory.py's build_hostname()), host_octet,
+  role (= Type), os, notes, subnet_base, full_ip (resolved from sites.csv;
+  empty string if HostOctet is blank).
 
   Non-networked assets (blank HostOctet) are included with empty full_ip.
   Returns empty list (not an error) if devices.csv is not found.
@@ -290,6 +358,9 @@ def _load_devices(csv_path=None):
         continue
 
       host_octet = row.get("HostOctet", "").strip()
+      role = row.get("Type", "").strip().upper()
+      number = row.get("Number", "").strip()
+      hostname = f"EXA{role}{site}{int(number):03d}" if role and number.isdigit() else ""
 
       # Resolve subnet base
       if site == "CLD":
@@ -304,9 +375,9 @@ def _load_devices(csv_path=None):
 
       devices.append({
         "site":        site,
-        "hostname":    row.get("Hostname", "").strip().upper(),
+        "hostname":    hostname,
         "host_octet":  host_octet,
-        "role":        row.get("Role", "").strip().upper(),
+        "role":        role,
         "os":          row.get("OS", "").strip(),
         "notes":       row.get("Notes", "").strip(),
         "subnet_base": subnet_base,
@@ -326,8 +397,8 @@ def validate_devices(devices, sites=None):
     - HostOctet is numeric (when present)
     - No duplicate full IPs within a site (excluding blank octets)
     - Warns if HostOctet falls inside DHCP pool (.100-.249) for non-CLD sites
-    - Warns if HostOctet conflicts with SUFFIX_MAP standard assignments for
-      a different role prefix
+    - Warns if HostOctet conflicts with address_policy.json's standard
+      assignment for a different role
 
   CLD rows bypass convention checks -- see CLD BLACK SWAN note.
   """
@@ -336,18 +407,12 @@ def validate_devices(devices, sites=None):
 
   hostname_re = re.compile(r"^EXA[A-Z]{3}[A-Z]{3}[0-9]{3}$")
 
-  # SUFFIX_MAP: octet -> expected role prefix (for convention conflict detection)
-  suffix_role = {
-    "1": "EXAFWL", "2": "EXARAC", "3": "EXARAC", "4": "EXARAC",
-    "5": "EXAPVE", "6": "EXAPVE", "7": "EXAPVE",
-    "10": "EXADCS", "11": "EXADCS",
-    "48": "EXASBC",
-    "250": "EXASWI", "251": "EXASWI", "252": "EXASWI",
-    "253": "EXAFWL", "254": "EXARTR",
-  }
-
-  # Also allow EXARTR at .1 (FAL convention -- Cisco ASA as primary gateway)
-  suffix_role_alt = {"1": "EXARTR"}
+  # octet -> expected Type, loaded from address_policy.json (the same source
+  # generate_inventory.py and bind9-dns.yml use) -- not a separately
+  # maintained copy that can drift, and not the old .1/.254 assignment this
+  # dict used to hardcode (RTR is .1, FWL is .253/.254 -- see
+  # benarbejde/generate_inventory.py's ALLOWED_SITE_OVERLAP comment history).
+  suffix_role = _load_address_policy()
 
   errors = []
   warnings = []
@@ -398,8 +463,7 @@ def validate_devices(devices, sites=None):
     # Convention conflict
     if octet and octet in suffix_role:
       expected = suffix_role[octet]
-      alt = suffix_role_alt.get(octet)
-      if role != expected and role != alt:
+      if role != expected:
         warnings.append(
           f"{hostname}: HostOctet {octet} conventionally assigned to {expected} "
           f"but role is {role}"
