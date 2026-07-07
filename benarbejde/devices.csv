@@ -2,6 +2,7 @@ Site,Type,Number,HostOctet,OS,ConnectionType,Managed,Notes
 CLD,ANS,1,9,Debian,,,Ansible control node -- manages all sites
 CLD,RDR,1,12,Debian,,,Rudder configuration management server
 CLD,SVR,2,20,Windows Server 2022,,,Windows Admin Centre -- reaches all site DCs
+CLD,PBX,1,49,,,,3CX PBX. No SBC in CLD so put the PBX there instead
 VRK,DNS,1,8,Debian trixie,,,DNS/BIND server -- jukebox.internal authoritative
 VRK,PRV,1,50,,,,Provisioning server -- PXE / ISOs / Ansible keys / scripts
 VRK,FWL,1,68,,,,Firewall WAN face (vRACK). LAN face 192.168.69.253
