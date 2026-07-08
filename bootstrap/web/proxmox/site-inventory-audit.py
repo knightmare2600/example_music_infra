@@ -143,9 +143,10 @@ v5.0   - devices.csv integration
         • --validate-devices  validates devices.csv structure and cross-checks
           site codes against sites.csv, flags unknown sites, duplicate IPs,
           HostOctet conflicts against SUFFIX_MAP convention
-        • CLD black swan handling: CLD rows bypass convention checks since
-          192.168.139.0/24 is the provisioning network with manually assigned
-          IPs that do not follow the standard site SUFFIX_MAP
+        • CLD/FRD black swan handling: rows for these cloud_site-family hub
+          sites bypass convention checks -- both deliberately reuse empty
+          standard slots (e.g. PBX on the SBC octet) rather than following
+          the standard site SUFFIX_MAP
         • BRD site preserved as legacy code pending BER rename on reunification
         • Non-networked assets (blank HostOctet) included as comments in
           generated hosts file and skipped from Ansible inventory
@@ -396,11 +397,11 @@ def validate_devices(devices, sites=None):
     - Hostname follows EXA+ROLE+SITE+NNN pattern
     - HostOctet is numeric (when present)
     - No duplicate full IPs within a site (excluding blank octets)
-    - Warns if HostOctet falls inside DHCP pool (.100-.249) for non-CLD sites
+    - Warns if HostOctet falls inside DHCP pool (.100-.249) for non-CLD/FRD sites
     - Warns if HostOctet conflicts with address_policy.json's standard
       assignment for a different role
 
-  CLD rows bypass convention checks -- see CLD BLACK SWAN note.
+  CLD/FRD rows bypass convention checks -- see CLD BLACK SWAN note.
   """
   if sites is None:
     sites = SITES
@@ -439,8 +440,11 @@ def validate_devices(devices, sites=None):
       errors.append(f"{hostname}: HostOctet '{octet}' is not numeric")
       continue
 
-    # CLD black swan -- skip convention checks
-    if site == "CLD":
+    # CLD/FRD black swan -- skip convention checks. Both are cloud_site-family
+    # hub sites that deliberately reuse empty standard slots (e.g. PBX sitting
+    # on the SBC octet, since neither has a real SBC of its own) rather than
+    # following the normal per-site convention.
+    if site in ("CLD", "FRD"):
       continue
 
     # Duplicate IP within site
@@ -1221,7 +1225,7 @@ Examples:
     action="store_true",
     help="Validate devices.csv against sites.csv -- check site codes, hostname "
          "patterns, duplicate IPs, DHCP pool conflicts, convention mismatches. "
-         "CLD rows bypass convention checks (provisioning network black swan).")
+         "CLD/FRD rows bypass convention checks (cloud_site-family black swan).")
 
   args = parser.parse_args()
 
