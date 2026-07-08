@@ -39,12 +39,6 @@ FAL,PHN,3,,Yealink T58A,,,Phone 3
 FAL,PHN,6,,Yealink T58A,,,Phone 6
 FAL,PHN,7,,Yealink T58A,,,Phone 7
 FAL,TAB,1,,,,,Tablet
-FAL,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-FAL,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
-FAL,WAP,3,,Ubiquiti UniFi U6-Pro,,,WAP 3
-FAL,WAP,4,,Ubiquiti UniFi U6-Pro,,,WAP 4
-FAL,WAP,5,,Ubiquiti UniFi U6-Pro,,,WAP 5
-FAL,WAP,6,,Ubiquiti UniFi U6-Pro,,,WAP 6
 FAL,TTY,1,,,,,VT320 serial terminal
 FAL,BUS,1,,,,,Tour bus 1
 FAL,BUS,2,,,,,Tour bus 2
@@ -71,8 +65,6 @@ EDI,LAP,98,108,Windows 11 Pro 24H2,,,Pool laptop
 EDI,SWI,1,250,Cisco Catalyst 2960X,,,Floor switch
 EDI,SWI,2,251,Cisco Catalyst 2960X,,,48-port switch
 EDI,RTR,1,1,Cisco ISR 4331,,,WAN edge
-EDI,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-EDI,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 EDI,TEA,1,60,Siemens EQ700,,,Coffee machine
 GLA,PRN,1,16,HP LaserJet Pro,,,Main floor printer
 GLA,WKS,1,150,Windows 11 Pro,,,Hot desk workstation
@@ -85,15 +77,11 @@ CLY,RTR,1,1,Cisco ISR 4331,,,WAN edge
 CLY,SUR,1,,Windows 11,,,Surface
 CLY,PHN,1,,iOS,,,Phone
 CLY,SUR,2,,Android,,,Android tablet
-CLY,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-CLY,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 DUN,RTR,1,1,Cisco ISR 4331,,,WAN edge
 DUN,SUR,1,,Windows 11,,,Surface
 DUN,SUR,2,,Windows 11,,,Surface
 DUN,PHN,1,,iOS,,,Phone
 DUN,PHN,2,,iOS,,,Phone
-DUN,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-DUN,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 PER,NIX,1,40,Solaris 11.5,,,MIDI archive
 PER,NAS,1,50,Synology DSM 7.1,,,NAS
 PER,MBP,1,,macOS,,,MacBook
@@ -110,8 +98,6 @@ ABD,MBP,1,,macOS,,,MacBook
 ABD,MBP,2,,macOS,,,MacBook
 ABD,PHN,1,,iOS,,,iPhone
 ABD,PHN,2,,iOS,,,iPhone
-ABD,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-ABD,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 LND,FWL,1,254,Cisco ASA 5516-X,,,Perimeter firewall
 LND,RAD,1,80,,,,BBC Office Radio Mk II
 LND,MIC,1,81,,,,Shure SM7 via Dante audio
@@ -134,8 +120,6 @@ BIR,RTR,1,1,Cisco ISR 4331,,,WAN edge
 BIR,MBP,1,,macOS,,,MacBook
 BIR,TAB,1,,Android,,,Galaxy Tab
 BIR,PHN,1,,Android,,,Samsung S25
-BIR,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-BIR,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 MCR,SWI,1,250,Cisco Catalyst 9300,,,Distribution switch
 MCR,LAP,1,,Windows 11,,,Laptop
 MCR,LAP,2,,Windows 11,,,Laptop
@@ -152,26 +136,16 @@ NEW,SWI,1,250,TP-Link JetStream,,,Access switch
 NEW,SRV,1,,Windows Server 2022,,,File/print server
 NEW,WKS,99,,Windows 11,,,LAPS password expired
 COV,RTR,1,1,Cisco ISR 4331,,,WAN edge no server infra
-COV,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-COV,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 CPH,CLK,1,18,Meinberg LANTIME M300,,,NTP clock
 CPH,TVS,1,17,Bella Kronik 42X,,,Display
 CPH,SWI,1,250,TP-Link JetStream,,,Office switch
 CPH,RTR,1,1,Cisco ISR 4331,,,WAN edge
-CPH,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-CPH,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
-CPH,WAP,3,,Ubiquiti UniFi U6-Pro,,,WAP 3
 ODE,FWL,1,254,Cisco ASA 5506-X,,,Edge firewall
 ODE,MUS,1,60,,,,Jukebox
 ODE,MAC,1,,macOS Tahoe,,,iMac
 ODE,MBP,2,,macOS,,,MacBook Pro
-ODE,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-ODE,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 KGE,PRN,1,,HP LaserJet MFP M528,,,Printer
-KGE,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP
 FAX,FWL,1,254,Cisco ISR 4331,,,WAN edge possible typo verify
-FAX,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-FAX,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 BON,SWI,1,250,Cisco Catalyst 2960X,,,Office switch
 BON,RTR,1,1,Cisco ISR 4331,,,WAN edge
 BON,LAP,1,,Windows 11,,,ThinkPad DISABLED
@@ -180,13 +154,9 @@ BON,LAP,2,,Windows 11,,,Finance laptop
 BON,VCU,1,,Poly Studio X70,,,Boardroom video conferencing
 BON,CAM,1,,Axis P3245-LVE,,,CCTV camera
 BON,TVS,1,,Samsung 65in,,,Display
-BON,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-BON,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 BRD,RTR,1,1,Cisco ISR 4331,,,WAN edge
 BRD,SRV,1,,Windows Server 2019,,,Legacy application server
 BRD,NIX,1,,Debian 12,,,Debian server
-BRD,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-BRD,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
 MUN,SWI,1,250,Cisco Catalyst 9200,,,Access switch
 MUN,WKS,1,,Windows 11,,,Hot desk workstation
 MUN,LAP,1,,Windows 11,,,Pool laptop
@@ -195,7 +165,6 @@ BRK,DON,1,60,VxWorks,,,Donut vending
 BRK,RTR,1,1,Cisco ISR 4331,,,WAN edge
 BRK,LAP,1,,Windows 11,,,Tour laptop
 BRK,VND,1,,XPe,,,Vending machine
-BRK,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP
 LAX,FWL,1,254,Palo Alto PAN-OS 10.x,,,VPN gateway
 LAX,SRV,1,20,Rocky Linux 9.x,,,Local services DB
 LAX,MUS,1,70,,,,Synth
@@ -210,9 +179,6 @@ LAX,RTR,1,1,Cisco ISR 4331,,,WAN edge
 LAX,MBP,1,,macOS,,,MacBook Pro
 LAX,TAB,1,,iPadOS,,,iPad
 LAX,PHN,1,,Android,,,Phone
-LAX,WAP,1,,Ubiquiti UniFi U6-Pro,,,WAP 1
-LAX,WAP,2,,Ubiquiti UniFi U6-Pro,,,WAP 2
-LAX,WAP,3,,Ubiquiti UniFi U6-Pro,,,WAP 3
 MIA,COF,1,60,VxWorks,,,Coffee machine
 MIA,LAP,1,,macOS Sonoma,,,MacBook
 SYD,FWL,1,254,FortiGate 7.x,,,Site firewall
@@ -223,7 +189,6 @@ SYD,MBP,1,,macOS,,,MacBook Pro
 SYD,WKS,1,,Windows 11,,,Workstation
 SYD,PHN,1,,Android,,,Phone
 SYD,TAB,1,,iPadOS,,,iPad
-SYD,WAP,1,,Ubiquiti UniFi,,,WAP
 SYD,LCD,1,,,,,LG Signage wallboard
 SYD,PRN,1,,Brother,,,Laser printer
 SYD,CAM,1,,Hikvision,,,Camera
@@ -249,9 +214,8 @@ AKL,WKS,1,,Windows 11,,,Workstation
 AKL,MBP,1,,macOS,,,MacBook Pro
 AKL,PHN,1,,Android,,,Phone
 AKL,TAB,1,,iPadOS,,,iPad
-AKL,WAP,1,,Ubiquiti UniFi,,,WAP 1
-AKL,WAP,2,,Ubiquiti UniFi,,,WAP 2
 AKL,LCD,1,,Samsung,,,Signage display
 AKL,PRN,1,,HP,,,LaserJet printer
 AKL,CAM,1,,Axis,,,Camera
 AKL,COF,1,,,,,Coffee machine
+CLD,UFC,1,82,Debian trixie,,,UniFi Network Controller -- manages WAPs across the estate; no physical WiFi at CLD itself (hub-based management pattern)
