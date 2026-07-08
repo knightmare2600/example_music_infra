@@ -5,8 +5,8 @@
 # Uses in-target to run commands inside the installed system chroot
 #
 # Boot server detection mirrors bootstrap.ipxe and the preseed files:
-#   Gateway 172.16.124.2 -> Fredericia (EXAPRVCLD002, MacBook/Fusion NAT)
-#   Anything else        -> Edinburgh  (EXAPRVCLD001, 192.168.139.50)
+#   Gateway 172.16.124.2 -> Fredericia (EXAPRVFRD001, MacBook/Fusion NAT)
+#   Anything else        -> Edinburgh  (EXAPRVVRK001, 192.168.139.50)
 #
 # SSH key is fetched from whichever server is active.
 # To add a new environment: one if/elif block, nothing else changes.

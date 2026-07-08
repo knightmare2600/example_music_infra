@@ -30,7 +30,7 @@
 # Plus CLD ancillary hosts:
 #   192.168.139.8    ${THIS_HOSTNAME}  (this DNS server)
 #   192.168.139.9    EXAANSCLD001      (Ansible management)
-#   192.168.139.50   EXAPRVCLD001      (provisioning / PXE)
+#   192.168.139.50   EXAPRVVRK001      (provisioning / PXE)
 #   192.168.139.139  EXAFWLCLD001      (CLD firewall — WAN face on vRACK)
 #   192.168.139.254  DC provider router (vRACK gateway — not EXA kit)
 # ===============================================================
@@ -755,7 +755,7 @@ success "named.conf.local written (1 forward + 1 provisioning + ${non_cld_count}
 #
 # CLD ancillary hosts are added explicitly after the generated block:
 #   .10  ${THIS_HOSTNAME}   (this server)
-#   .50  EXAPRVCLD001   (provisioning/PXE)
+#   .50  EXAPRVVRK001   (provisioning/PXE)
 #   .9   EXAANSCLD001   (Ansible)
 #
 # NOTE: BRD is skipped (legacy alias for BER -- BER covers it).
@@ -972,7 +972,7 @@ success "Forward zone file written ($(grep -c 'IN  A' "${ZONE_FILE}") A records 
 # This zone covers 192.168.139.0/24 (the provisioning network).
 # It contains two sets of records:
 #
-#   (i)  Ancillary hosts -- ${THIS_HOSTNAME} (.10), EXAPRVCLD001 (.50),
+#   (i)  Ancillary hosts -- ${THIS_HOSTNAME} (.10), EXAPRVVRK001 (.50),
 #        EXAANSCLD001 (.9)
 #
 #   (ii) FWL WAN PTR records -- every site firewall has a WAN
@@ -1002,7 +1002,7 @@ cat > "${PROV_REV_FILE}" <<PROVREVHDR
 ;   .12  EXARUDCLD001   -- Rudder Server
 ;   .20  EXASVRCLD002   -- Windows Admin Centre
 ;   .48  EXACLDPBX001   -- Central 3CX PBX
-;   .50  EXAPRVCLD001   -- provisioning / PXE server
+;   .50  EXAPRVVRK001   -- provisioning / PXE server
 ;   .9   EXAANSCLD001   -- Ansible management node
 ;   .X   EXAFWL{site}001-wan  -- firewall WAN face for each site
 ;        where X = the site's /24 third octet (from sites.csv)

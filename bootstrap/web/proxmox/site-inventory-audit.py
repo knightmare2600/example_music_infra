@@ -265,11 +265,16 @@ SITE_CODES   = set(SITES.keys())
 #                  EXA<Type><Site><Number, zero-padded to 3>, same convention
 #                  generate_inventory.py uses (build_hostname()).
 #   HostOctet   -- host portion of IP only. Blank = non-networked asset.
-#   Full IP     -- derived as sites.csv subnet base + HostOctet.
-#   CLD IPs     -- 192.168.139.{HostOctet} (provisioning network base).
+#   Full IP     -- derived as sites.csv subnet base + HostOctet, straight from
+#                  SITES (which already has the real per-site subnet, CLD and
+#                  VRK included -- no special-casing needed here; a hardcoded
+#                  CLD_SUBNET_BASE override used to force every CLD row onto
+#                  192.168.139.x, which was wrong for CLD's own LAN devices
+#                  (ANS/RDR/SVR/PBX/UFC, correctly 192.168.69.x) and only
+#                  happened to look right for the vRACK-resident ones
+#                  (DNS/PRV/FWL-WAN, which are Site=VRK in devices.csv, not
+#                  CLD, and so were never affected by the override anyway).
 # =============================================================================
-
-CLD_SUBNET_BASE = "192.168.139"
 
 def _load_address_policy(policy_path=None):
   """
@@ -326,8 +331,9 @@ def _load_devices(csv_path=None):
 
   Returns a list of dicts: site, hostname (derived from Type+Site+Number,
   same convention as generate_inventory.py's build_hostname()), host_octet,
-  role (= Type), os, notes, subnet_base, full_ip (resolved from sites.csv;
-  empty string if HostOctet is blank).
+  role (= Type), os, connection_type (ssh/winrm/telnet/snmp/http/none, see
+  address_policy.json's connection_types), notes, subnet_base, full_ip
+  (resolved from sites.csv; empty string if HostOctet is blank).
 
   Non-networked assets (blank HostOctet) are included with empty full_ip.
   Returns empty list (not an error) if devices.csv is not found.
@@ -363,10 +369,8 @@ def _load_devices(csv_path=None):
       number = row.get("Number", "").strip()
       hostname = f"EXA{role}{site}{int(number):03d}" if role and number.isdigit() else ""
 
-      # Resolve subnet base
-      if site == "CLD":
-        subnet_base = CLD_SUBNET_BASE
-      elif site in SITES and SITES[site].get("subnet") not in (None, "N/A"):
+      # Resolve subnet base -- straight from SITES, correct for every site including CLD/VRK
+      if site in SITES and SITES[site].get("subnet") not in (None, "N/A"):
         parts = SITES[site]["subnet"].split(".")
         subnet_base = f"{parts[0]}.{parts[1]}.{parts[2]}"
       else:
@@ -380,6 +384,7 @@ def _load_devices(csv_path=None):
         "host_octet":  host_octet,
         "role":        role,
         "os":          row.get("OS", "").strip(),
+        "connection_type": row.get("ConnectionType", "").strip().lower(),
         "notes":       row.get("Notes", "").strip(),
         "subnet_base": subnet_base,
         "full_ip":     full_ip,
@@ -769,22 +774,34 @@ def _section_header(label):
 
 # =============================================================================
 # KNOWN ANCILLARY / SPECIAL-CASE HOSTS
-# Hardcoded here because they are stable infrastructure not derivable from
-# the standard suffix map. All CLD-based provisioning / management nodes.
+# Stable infrastructure not derivable from the standard suffix map. Derived
+# from devices.csv (single source of truth) rather than a hand-maintained
+# duplicate list -- a hand-copied version of this previously used the wrong
+# subnet for CLD's own LAN devices (192.168.139.x instead of 192.168.69.x,
+# the same bug _load_devices()'s CLD_SUBNET_BASE override had -- fixed
+# alongside this, 2026-07-08).
 # =============================================================================
 
-KNOWN_ANCILLARY = [
-  # (site, ip, hostname, in_ansible, comment)
-  # CLD-specific hosts that are not derivable from SUFFIX_MAP
-  ("CLD", "192.168.139.8",  "EXADNSCLD001", True,
-   "DNS/BIND9 server -- jukebox.internal authoritative"),
-  ("CLD", "192.168.139.20", "EXASVRCLD002", True,
-   "Windows Admin Centre"),
-  ("CLD", "192.168.139.50", "EXAPRVCLD001", True,
-   "Provisioning server -- PXE, HTTP, iPXE, sites.csv, scripts"),
-  ("CLD", "192.168.139.9", "EXAANSCLD001", True,
-   "Ansible management node"),
-]
+def _build_known_ancillary():
+  """
+  (site, ip, hostname, in_ansible, comment) for each known ancillary host, pulled from
+  devices.csv via _load_devices(). in_ansible is derived from ConnectionType: ssh/winrm/telnet
+  are real Ansible connection methods, snmp/http/none are not (see address_policy.json's
+  connection_types) -- e.g. the provisioning server (ConnectionType=none, deliberately not
+  Ansible-managed) is correctly excluded from the generated [ancillary] inventory group.
+  """
+  wanted = [("VRK", "DNS"), ("CLD", "SVR"), ("VRK", "PRV"), ("CLD", "ANS")]
+  devices = _load_devices()
+  result = []
+  for site, role in wanted:
+    for dev in devices:
+      if dev["site"] == site and dev["role"] == role and dev["full_ip"]:
+        in_ansible = dev["connection_type"] in ("ssh", "winrm", "telnet")
+        result.append((site, dev["full_ip"], dev["hostname"], in_ansible, dev["notes"]))
+        break
+  return result
+
+KNOWN_ANCILLARY = _build_known_ancillary()
 
 
 # =============================================================================
