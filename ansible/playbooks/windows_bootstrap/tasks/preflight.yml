@@ -160,26 +160,12 @@
     dns_resolves: "{{ preflight_dns.stdout | trim == 'ok' }}"
 
 # =============================================================================
-# Asset / package source reachability checks (unchanged — warnings only)
+# Asset / package source reachability checks (warnings only)
 # =============================================================================
-
-- name: "[Preflight] Check wallpaper URL reachable"
-  ansible.windows.win_shell: |
-    try {
-      $r = Invoke-WebRequest -Uri "{{ exa_wallpaper_url }}" -Method Head -UseBasicParsing -TimeoutSec 5
-      "ok"
-    } catch { "warn" }
-  register: preflight_wallpaper
-  changed_when: false
-
-- name: "[Preflight] WARN — wallpaper URL unreachable (wallpaper stage will be skipped)"
-  debug:
-    msg: "WARN: {{ exa_wallpaper_url }} unreachable — wallpaper stage will be skipped."
-  when: preflight_wallpaper.stdout | trim == "warn"
-
-- name: "[Preflight] Set wallpaper available fact"
-  set_fact:
-    wallpaper_available: "{{ preflight_wallpaper.stdout | trim == 'ok' }}"
+# Wallpaper's own reachability check was removed 2026-07-08 -- it's a local
+# win_copy from files/ now (see 60-wallpaper.yml/05-bootstrap.yml Stage 9),
+# not an HTTP fetch, so there's nothing to preflight: win_copy fails loudly
+# and clearly on its own if the source file is missing.
 
 - name: "[Preflight] Check chocolatey.org reachable"
   ansible.windows.win_shell: |
@@ -240,7 +226,6 @@
       - "Subnet octet    : {{ host_subnet_octet }}"
       - "Primary DC      : 192.168.{{ host_subnet_octet }}.10 {{ '[OK]' if preflight_dc.stdout | trim == 'ok' else ('[FIRST DC BUILD]' if is_first_dc | bool else '[UNREACHABLE]') }}"
       - "DNS jukebox     : {{ '[OK]' if dns_resolves | bool else '[WARN — not yet resolvable]' }}"
-      - "Wallpaper URL   : {{ '[OK]' if wallpaper_available else '[WARN — will skip]' }}"
       - "Chocolatey.org  : {{ '[OK]' if preflight_choco.stdout | trim == 'ok' else '[WARN]' }}"
       - "Domain joined   : {{ 'YES — join stage will skip' if already_domain_joined else 'No' }}"
       - "First DC build  : {{ 'YES — Stage 5 domain join will skip, run windows_dc/site.yml after' if is_first_dc | bool else 'No' }}"
