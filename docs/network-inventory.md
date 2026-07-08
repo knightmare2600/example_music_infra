@@ -1,7 +1,7 @@
 # Example Music Limited — Network & Infrastructure Inventory
 
 > **Classification:** Internal — Infrastructure  
-> **Forest:** `jukebox.example`  
+> **Forest:** `jukebox.internal`  
 > **Domains:** `example.net` · `example.org` · `example.com`  
 > **Provisioning network:** `192.168.139.0/24`  
 > **Credentials:** See password manager — do **not** store passwords in this document
@@ -12,6 +12,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-08 | Fixed both "Cloud / Provisioning" sections, which wrongly labelled CLD's own LAN subnet as `192.168.139.0/24` (that's `VRK`, the vRACK — CLD's own LAN is `192.168.69.0/24`), a leftover from before the CLD/VRK split existed. Restructured into three clearly separated subsections (vRACK/CLD LAN/FRD); added `FRD` (Fredericia Havn) and `VRK` rows to the Global Site Summary, which previously had neither. Fixed `EXARUDCLD001` -> `EXARDRCLD001` (typo). Fixed stale forest name `jukebox.example` -> `jukebox.internal` (this repo's domain rename completed some time ago; this reference was never updated). |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94` (added to Standard IP Convention table). Per-site `**WAPs:**` lines updated. Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD itself has no physical WiFi |
 | 2026-03-05 | Full review —<br /><br />subnets corrected against canonical site list; standard IP convention table added<br />CLY corrected to `192.168.41.0/24`<br />GLA corrected to `192.168.141.0/24`<br />KGE corrected to `192.168.65.0/24`<br />MEL corrected to `192.168.61.0/24`<br />MIA corrected to `192.168.135.0/24`<br />MUN corrected to `192.168.189.0/24`<br />BRD renamed BER throughout<br />TOR subnet corrected to `192.168.146.0/24`<br />FAL DC IPs corrected to `.76.10`/`.76.11`<br />FAL PVE nodes renamed EXAPVE and corrected to `.76.5`/`.76.6`<br />FAL RAC corrected to `.2`/`.3`<br />BON DC corrected to `192.168.228.10`<br />ODE DC002 corrected to `192.168.126.11`<br />FAX DC corrected to `192.168.246.10`<br />SBC addresses corrected to `.48` throughout<br />CLD (Cloud) site added<br />new sites added: AMS, ATL, CHI, GOT, HAL, HUL, KOR, MIL, MTL, OSL, SHE, VIE |
 | 2026-03-03 | TOR (Toronto) added — `192.168.146.0/24`, separated from shared BRK/NYC/NJC subnet |
@@ -37,8 +38,8 @@ Exceptions are noted in individual site entries.
 | `.7` | PVE node 3 | `EXAPVE<SITE>003` |
 | `.10` | Domain Controller — primary | `EXADCS<SITE>001` |
 | `.11` | Domain Controller — secondary | `EXADCS<SITE>002` |
-| `.12` | Rudder Relay (Rudder Server on CLD) | `EXARRY<SITE>001` / `EXARUDCLD001` |
-| `.48` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBC<SITE>001` |
+| `.12` | Rudder Relay (Rudder Server on CLD) | `EXARRY<SITE>001` / `EXARDRCLD001` |
+| `.48` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBC<SITE>001` |
 | `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site | `EXAWAP<SITE>001`–`013` |
 | `.100`–`.249` | DHCP pool | — |
 | `.250`–`.252` | RT switches | `EXASWI<SITE>001`–`003` |
@@ -50,21 +51,39 @@ Exceptions are noted in individual site entries.
 
 ---
 
-## Cloud / Provisioning Network — CLD
+## Cloud / Provisioning Network — CLD / VRK / FRD
 
-**LAN:** `192.168.139.0/24`  
+CLD (Edinburgh, OVH datacentre) has two networks, each its own site code in `sites.csv` — its
+own LAN (`CLD`) and the OVH vRACK provisioning network (`VRK`). `FRD` (Fredericia Havn) is a
+second, standby provisioning network, same idea as `VRK`, at a different site entirely — see
+`docs/ExampleMusic_Beginners_Guide.md` §4.2.
+
+**vRACK — `VRK`, `192.168.139.0/24`**
 **WireGuard hub** — routes to all sites. Any node that can reach `192.168.139.1` can reach any site subnet.
 
 | Hostname | Role | OS | IP | Notes |
 |----------|------|----|----|-------|
-| `EXAFWLCLD001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` · LAN `192.168.139.0/24` |
-| `EXADNSCLD001` | DNS / BIND9 server | Debian | `192.168.139.8` | Authoritative DNS for `jukebox.internal` |
-| `EXARUDCLD001` | Rudder Server | Debian | `192.168.139.12` | Configuration management — see NET-MGMT-RUDDER-001 |
-| `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | WAC — reaches all site DCs and Windows nodes |
-| `EXACLDPBX001` | Central PBX | — | `192.168.139.48` | 3CX PBX — all site SBCs trunk here |
-| `EXAPRVCLD001` | Provisioning / bootstrap | — | `192.168.139.50` | Serves Ansible keys, ISOs, scripts |
-| `EXAANSCLD001` | Ansible control node | Debian | `192.168.139.9` | Ansible — manages all sites |
-| `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. Note: this is CLD's **LAN** (`192.168.69.0/24`), not the vRACK addresses above — CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
+| `EXAFWLVRK001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` — same physical firewall as `EXAFWLCLD001` |
+| `EXADNSVRK001` | DNS / BIND9 server | Debian | `192.168.139.8` | Authoritative DNS for `jukebox.internal` |
+| `EXAPRVVRK001` | Provisioning / bootstrap | — | `192.168.139.50` | Serves Ansible keys, ISOs, scripts |
+| `EXAFWLVRK001` (WAN face) | Firewall — vRACK WAN | — | `192.168.139.69` | Same device as `EXAFWLCLD001` (LAN face, `192.168.69.253`) |
+
+**CLD LAN — `CLD`, `192.168.69.0/24`**
+
+| Hostname | Role | OS | IP | Notes |
+|----------|------|----|----|-------|
+| `EXAANSCLD001` | Ansible control node | Debian | `192.168.69.9` | Ansible — manages all sites |
+| `EXARDRCLD001` | Rudder Server | Debian | `192.168.69.12` | Configuration management — see NET-MGMT-RUDDER-001 |
+| `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.69.20` | WAC — reaches all site DCs and Windows nodes |
+| `EXAPBXCLD001` | Central PBX | — | `192.168.69.48` | 3CX PBX — all site SBCs trunk here |
+| `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
+
+**FRD — Fredericia Havn (standby), `172.16.124.0/24`**
+
+| Hostname | Role | IP | Notes |
+|----------|------|----|-------|
+| `EXAPRVFRD001` | Provisioning / bootstrap (standby) | `172.16.124.1` | Port 8000, not 80 |
+| `EXAPBXFRD001` | Secondary 3CX PBX | `172.16.124.48` | Reuses the empty SBC slot, same pattern as CLD's own PBX |
 
 ---
 
@@ -80,7 +99,7 @@ Exceptions are noted in individual site entries.
 | BRD | West Berlin | West Germany (FRG) | `192.168.113.0/24` | `example.net` | Legacy site |
 | BRK | Brockville | Ontario, Canada | `192.168.136.0/24` | `example.net` | |
 | CHI | Chicago | Illinois, USA | `192.168.214.0/24` | `example.net` | |
-| CLD | Cloud / Provisioning | Korsbaek, DK | `192.168.139.0/24` | `<blank / NULL>` | WireGuard hub — routes to all sites |
+| CLD | Cloud / Provisioning (LAN) | Korsbaek, DK | `192.168.69.0/24` | `<blank / NULL>` | DCs, Ansible, Rudder, WAC, PBX, UniFi controller |
 | CLY | Clydebank | Scotland, UK | `192.168.41.0/24` | `example.net` | |
 | COV | Coventry | England, UK | `192.168.247.0/24` | `example.net` | WAP/RTR only |
 | CPH | København | Danmark | `192.168.231.0/24` | `example.com/net` | |
@@ -88,6 +107,7 @@ Exceptions are noted in individual site entries.
 | EDI | Edinburgh | Scotland, UK | `192.168.131.0/24` | `example.org/net` | Multiple DCs — check replication health |
 | FAL | Falkirk | Scotland, UK | `192.168.76.0/24` | `example.net` | **Head Office** — Brockville Stadium |
 | FAX | Faxe | Danmark | `192.168.246.0/24` | `example.net` | |
+| FRD | Fredericia Havn (standby vRACK) | Danmark | `172.16.124.0/24` | `<blank / NULL>` | Standby provisioning network — not `FRE`, the real Fredericia office. Legal fiction, physically the same MacBook running `http.server` |
 | GLA | Glasgow | Scotland, UK | `192.168.141.0/24` | `example.net` | Regional DC hub |
 | GOT | Gothenburg | Sweden | `192.168.46.0/24` | `example.net` | |
 | HAL | Halifax | England, UK | `192.168.142.0/24` | `example.net` | |
@@ -113,6 +133,7 @@ Exceptions are noted in individual site entries.
 | SYD | Sydney | NSW, Australia | `192.168.29.0/24` | `example.net` | |
 | TOR | Toronto | Ontario, Canada | `192.168.146.0/24` | `example.net` | |
 | VIE | Vienna | Austria | `192.168.78.0/24` | `example.net` | |
+| VRK | OVH vRACK (Edinburgh) | Scotland, UK | `192.168.139.0/24` | `<blank / NULL>` | Provisioning network — DNS, PXE/provisioning server, FWL WAN face. Not a real office |
 | AKL | Auckland | New Zealand | `192.168.93.0/24` | `example.net` | |
 
 ---
@@ -167,21 +188,9 @@ Exceptions are noted in individual site entries.
 
 ---
 
-### ☁️ Cloud / Provisioning — CLD
+### ☁️ Cloud / Provisioning — CLD / VRK / FRD
 
-**LAN:** `192.168.139.0/24`  
-**WireGuard hub** — `EXAFWLCLD001` routes to all site subnets via WireGuard.
-
-| Hostname | Role | OS | IP | Notes |
-|----------|------|----|----|-------|
-| `EXAFWLCLD001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` |
-| `EXADNSCLD001` | DNS / BIND9 server | Debian | `192.168.139.8` | Authoritative DNS for `jukebox.internal` |
-| `EXARUDCLD001` | Rudder Server | Debian | `192.168.139.12` | Configuration management |
-| `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | Reaches all site DCs and Windows nodes |
-| `EXACLDPBX001` | Central PBX | 3CX | `192.168.139.48` | All site SBCs trunk here |
-| `EXAPRVCLD001` | Provisioning server | — | `192.168.139.50` | Bootstrap — Ansible keys, ISOs, scripts |
-| `EXAANSCLD001` | Ansible control node | Debian | `192.168.139.9` | Central Ansible — manages all sites |
-| `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. On CLD's **LAN** (`192.168.69.0/24`), not vRACK — CLD has no physical WiFi itself |
+See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-network--cld--vrk--frd) section above for the full breakdown (vRACK vs CLD LAN vs FRD standby).
 
 ---
 
@@ -218,7 +227,7 @@ Exceptions are noted in individual site entries.
 | `EXAPVEFAL002` | Proxmox | Proxmox VE 8.3 | `192.168.76.6` | PVE node 2 · Web UI: https://192.168.76.6:8006 |
 | `EXADCSFAL001` | DC | Windows Server 2022 | `192.168.76.10` | PDC Emulator · Global Catalog |
 | `EXADCSFAL002` | DC | Windows Server 2022 | `192.168.76.11` | Global Catalog |
-| `EXASBCFAL001` | VOIP SBC | 3CX SBC Debian | `192.168.76.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCFAL001` | VOIP SBC | 3CX SBC Debian | `192.168.76.48` | Trunks to `EXAPBXCLD001` |
 | `EXANASFAL001` | NAS | FreeNAS 13.0-U6 | `192.168.76.32` | Primary storage |
 | `EXAPRVFAL001` | Provisioning server | — | `192.168.139.50` | Bootstrap server — on CLD network |
 | `EXATARFAL001` | Tape Archiver | Solaris Embedded | `192.168.76.33` | Legacy tape archive |
@@ -276,7 +285,7 @@ Exceptions are noted in individual site entries.
 | `EXASWIEDI002` | Switch | Cisco Catalyst 2960X | `192.168.131.251` | 48-port |
 | `EXARACEDI001` | iDRAC | Dell iDRAC9 | `192.168.131.2` | BMC |
 | `EXADCSEDI003` | DC | Windows Server 2022 | `192.168.131.11` | ⚠️ UNHEALTHY — DFSR stopped, C: 5% free |
-| `EXASBCEDI001` | VOIP SBC | 3CX SBC Debian | `192.168.131.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCEDI001` | VOIP SBC | 3CX SBC Debian | `192.168.131.48` | Trunks to `EXAPBXCLD001` |
 
 **Endpoints:**
 
@@ -325,7 +334,7 @@ Exceptions are noted in individual site entries.
 | `EXADCSCLY001` | DC | Windows Server 2022 | `192.168.41.10` | Global Catalog |
 | `EXADCSCLY002` | DC | Windows Server 2022 | `192.168.41.11` | Global Catalog |
 | `EXASRVCLY001` | Server | Rocky Linux | `192.168.41.20` | Oracle DB |
-| `EXASBCCLY001` | VOIP SBC | 3CX SBC Debian | `192.168.41.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCCLY001` | VOIP SBC | 3CX SBC Debian | `192.168.41.48` | Trunks to `EXAPBXCLD001` |
 
 **WAPs:** `EXAWAPCLY001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
@@ -357,7 +366,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSPER001` | DC | Windows Server 2022 | `192.168.173.10` | Global Catalog |
-| `EXASBCPER001` | VOIP SBC | 3CX SBC Debian | `192.168.173.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCPER001` | VOIP SBC | 3CX SBC Debian | `192.168.173.48` | Trunks to `EXAPBXCLD001` |
 | `EXANIXPER001` | Unix | Solaris 11.5 | `192.168.173.40` | MIDI/Music archive — Fiction Factory |
 | `EXANASPER001` | NAS | Synology DSM 7.1 | `192.168.173.50` | User profiles & music archive |
 
@@ -399,7 +408,7 @@ Exceptions are noted in individual site entries.
 | `EXARTRLND001` | Router | Cisco ISR 4331 | `192.168.20.254` | WAN edge |
 | `EXARACLND001` | iDRAC | Dell iDRAC9 | `192.168.20.2` | BMC |
 | `EXADCRLND001` | DC | Windows Server 2022 | `192.168.20.10` | RID Master · Infrastructure Master |
-| `EXASBCLND001` | VOIP SBC | 3CX SBC Debian | `192.168.20.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCLND001` | VOIP SBC | 3CX SBC Debian | `192.168.20.48` | Trunks to `EXAPBXCLD001` |
 
 **Endpoints:** `EXAWKSLND001` (Win11 hot desk `192.168.20.150`), `EXAPRNLND001` (Xerox WorkCentre)
 
@@ -428,7 +437,7 @@ Exceptions are noted in individual site entries.
 | `EXADCRBIR001` | DC | Windows Server 2022 | `192.168.121.10` | Global Catalog |
 | `EXADCRBIR002` | DC | Windows Server 2022 | `192.168.121.11` | Global Catalog |
 | `EXASRVBIR001` | Server | Rocky Linux | `192.168.121.20` | Oracle DB |
-| `EXASBCBIR001` | VOIP SBC | 3CX SBC Debian | `192.168.121.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCBIR001` | VOIP SBC | 3CX SBC Debian | `192.168.121.48` | Trunks to `EXAPBXCLD001` |
 
 **WAPs:** `EXAWAPBIR001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
@@ -458,7 +467,7 @@ Exceptions are noted in individual site entries.
 | `EXARACMCR001` | iLO | HPE iLO5 | `192.168.161.2` | BMC |
 | `EXADCRMCR001` | DC | Windows Server 2022 | `192.168.161.10` | PDC Emulator · RID Master · Infrastructure Master |
 | `EXADCSMCR002` | DC | Windows Server 2022 | `192.168.161.11` | Global Catalog |
-| `EXASBCMCR001` | VOIP SBC | 3CX SBC Debian | `192.168.161.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCMCR001` | VOIP SBC | 3CX SBC Debian | `192.168.161.48` | Trunks to `EXAPBXCLD001` |
 
 **Endpoints:** `EXALAPMCR001–002` (Win11 laptops), `EXAWKSMCR001–002` (Win10 desktops), `EXAPRNMCR001` (printer)
 
@@ -474,7 +483,7 @@ Exceptions are noted in individual site entries.
 | `EXASWILIV001` | Switch | Cisco Catalyst 9200 | `192.168.151.250` | Core switch |
 | `EXARACLIV001` | iLO | HPE iLO5 | `192.168.151.2` | BMC |
 | `EXADCRLIV001` | DC | Windows Server 2025 | `192.168.151.10` | Global Catalog |
-| `EXASBCLIV001` | VOIP SBC | 3CX SBC Debian | `192.168.151.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCLIV001` | VOIP SBC | 3CX SBC Debian | `192.168.151.48` | Trunks to `EXAPBXCLD001` |
 
 **Endpoints:** `EXASVRLIV001` (Win Server 2022 file server), `EXAMBPLIV001` (MacBook Pro — macOS Tahoe), `EXAMACLIV001` (iMac — **disabled, maintenance**)
 
@@ -492,7 +501,7 @@ Exceptions are noted in individual site entries.
 | `EXASWINEW001` | Switch | TP-Link JetStream | `192.168.191.250` | Access switch |
 | `EXARACNEW001` | iDRAC | Dell iDRAC9 | `192.168.191.2` | BMC |
 | `EXADCRNEW001` | DC | Windows Server 2022 | `192.168.191.10` | Global Catalog |
-| `EXASBCNEW001` | VOIP SBC | 3CX SBC Debian | `192.168.191.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCNEW001` | VOIP SBC | 3CX SBC Debian | `192.168.191.48` | Trunks to `EXAPBXCLD001` |
 
 **Endpoints:** `EXASRVNEW001` (Win Server 2022 file/print), `EXAWKSNEW099` (Win11 — ⚠️ LAPS password expired)
 
@@ -515,7 +524,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSHAL001` | DC | Windows Server 2022 | `192.168.142.10` | — |
-| `EXASBCHAL001` | VOIP SBC | 3CX SBC Debian | `192.168.142.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCHAL001` | VOIP SBC | 3CX SBC Debian | `192.168.142.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -527,7 +536,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSHUL001` | DC | Windows Server 2022 | `192.168.148.10` | — |
-| `EXASBCHUL001` | VOIP SBC | 3CX SBC Debian | `192.168.148.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCHUL001` | VOIP SBC | 3CX SBC Debian | `192.168.148.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -539,7 +548,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSSHE001` | DC | Windows Server 2022 | `192.168.114.10` | — |
-| `EXASBCSHE001` | VOIP SBC | 3CX SBC Debian | `192.168.114.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCSHE001` | VOIP SBC | 3CX SBC Debian | `192.168.114.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -559,7 +568,7 @@ Exceptions are noted in individual site entries.
 | `EXARACCPH001` | iDRAC | Dell iDRAC9 | `192.168.231.2` | BMC |
 | `EXADCSCPH001` | DC | Windows Server 2022 | `192.168.231.10` | example.com |
 | `EXADCSCPH002` | DC | Windows Server 2022 | `192.168.231.11` | example.net |
-| `EXASBCCPH001` | VOIP SBC | 3CX SBC Debian | `192.168.231.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCCPH001` | VOIP SBC | 3CX SBC Debian | `192.168.231.48` | Trunks to `EXAPBXCLD001` |
 
 **WAPs:** `EXAWAPCPH001–003` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
@@ -577,7 +586,7 @@ Exceptions are noted in individual site entries.
 | `EXAFWLODE001` | Firewall | Cisco ASA 5506-X | `192.168.126.1` | Edge firewall |
 | `EXADCSODE001` | DC | Windows Server 2022 | `192.168.126.10` | PDC Emulator · RID Master · Infrastructure Master |
 | `EXADCSODE002` | DC | Windows Server 2022 | `192.168.126.11` | Global Catalog |
-| `EXASBCODE001` | VOIP SBC | 3CX SBC Debian | `192.168.126.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCODE001` | VOIP SBC | 3CX SBC Debian | `192.168.126.48` | Trunks to `EXAPBXCLD001` |
 
 **WAPs:** `EXAWAPODE001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
@@ -626,7 +635,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSKOR001` | DC | Windows Server 2022 | `192.168.238.10` | — |
-| `EXASBCKOR001` | VOIP SBC | 3CX SBC Debian | `192.168.238.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCKOR001` | VOIP SBC | 3CX SBC Debian | `192.168.238.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -645,7 +654,7 @@ Exceptions are noted in individual site entries.
 | `EXARTRBON001` | Router | Cisco ISR 4331 | `192.168.228.254` | WAN edge |
 | `EXARACBON001` | iDRAC | Dell iDRAC9 | `192.168.228.2` | BMC |
 | `EXADCSBON001` | DC | Windows Server 2022 | `192.168.228.10` | **Schema Master · Domain Naming Master** |
-| `EXASBCBON001` | VOIP SBC | 3CX SBC Debian | `192.168.228.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCBON001` | VOIP SBC | 3CX SBC Debian | `192.168.228.48` | Trunks to `EXAPBXCLD001` |
 
 **WAPs:** `EXAWAPBON001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
@@ -664,7 +673,7 @@ Exceptions are noted in individual site entries.
 |----------|------|------------|----|-------|
 | `EXARTRBRD001` | Router | Cisco ISR 4331 | `192.168.113.254` | WAN edge |
 | `EXADCSBRD001` | DC | Windows Server 2019 | `192.168.113.10` | PDC Emulator · RID Master · Infrastructure Master |
-| `EXASBCBRD001` | VOIP SBC | 3CX SBC Debian | `192.168.113.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCBRD001` | VOIP SBC | 3CX SBC Debian | `192.168.113.48` | Trunks to `EXAPBXCLD001` |
 
 **WAPs:** `EXAWAPBRD001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
@@ -682,7 +691,7 @@ Exceptions are noted in individual site entries.
 | `EXASWIMUN001` | Switch | Cisco Catalyst 9200 | `192.168.189.250` | Access switch |
 | `EXARACMUN001` | iLO | HPE iLO5 | `192.168.189.2` | BMC |
 | `EXADCSMUN001` | DC | Windows Server 2022 | `192.168.189.10` | Global Catalog |
-| `EXASBCMUN001` | VOIP SBC | 3CX SBC Debian | `192.168.189.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCMUN001` | VOIP SBC | 3CX SBC Debian | `192.168.189.48` | Trunks to `EXAPBXCLD001` |
 
 **Endpoints:** `EXAWKSMUN001` (Win11 hot desk), `EXALAPMUN001` (Win11 pool), `EXALAPMUN002` (Win11 — ⚠️ LAPS expired 61 days ago)
 
@@ -700,7 +709,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSGOT001` | DC | Windows Server 2022 | `192.168.46.10` | — |
-| `EXASBCGOT001` | VOIP SBC | 3CX SBC Debian | `192.168.46.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCGOT001` | VOIP SBC | 3CX SBC Debian | `192.168.46.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -716,7 +725,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSOSL001` | DC | Windows Server 2022 | `192.168.47.10` | — |
-| `EXASBCOSL001` | VOIP SBC | 3CX SBC Debian | `192.168.47.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCOSL001` | VOIP SBC | 3CX SBC Debian | `192.168.47.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -732,7 +741,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSAMS001` | DC | Windows Server 2022 | `192.168.31.10` | — |
-| `EXASBCAMS001` | VOIP SBC | 3CX SBC Debian | `192.168.31.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCAMS001` | VOIP SBC | 3CX SBC Debian | `192.168.31.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -748,7 +757,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSMIL001` | DC | Windows Server 2022 | `192.168.39.10` | — |
-| `EXASBCMIL001` | VOIP SBC | 3CX SBC Debian | `192.168.39.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCMIL001` | VOIP SBC | 3CX SBC Debian | `192.168.39.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -764,7 +773,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSVIE001` | DC | Windows Server 2022 | `192.168.78.10` | — |
-| `EXASBCVIE001` | VOIP SBC | 3CX SBC Debian | `192.168.78.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCVIE001` | VOIP SBC | 3CX SBC Debian | `192.168.78.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -783,7 +792,7 @@ Exceptions are noted in individual site entries.
 |----------|------|------------|----|-------|
 | `EXARTRBRK001` | Router | Cisco ISR 4331 | `192.168.136.254` | WAN edge |
 | `EXADCSBRK001` | DC | Windows Server 2022 | `192.168.136.10` | ⚠️ Services stopped |
-| `EXASBCBRK001` | VOIP SBC | 3CX SBC Debian | `192.168.136.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCBRK001` | VOIP SBC | 3CX SBC Debian | `192.168.136.48` | Trunks to `EXAPBXCLD001` |
 
 **WAPs:** `EXAWAPBRK001` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
@@ -803,7 +812,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSTOR001` | DC | Windows Server 2022 | `192.168.146.10` | ⚠️ Services stopped |
-| `EXASBCTOR001` | VOIP SBC | 3CX SBC Debian | `192.168.146.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCTOR001` | VOIP SBC | 3CX SBC Debian | `192.168.146.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -815,7 +824,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSMTL001` | DC | Windows Server 2022 | `192.168.154.10` | — |
-| `EXASBCMTL001` | VOIP SBC | 3CX SBC Debian | `192.168.154.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCMTL001` | VOIP SBC | 3CX SBC Debian | `192.168.154.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -839,7 +848,7 @@ Exceptions are noted in individual site entries.
 | `EXARACLAX001` | iDRAC | Dell iDRAC9 | `192.168.213.2` | BMC |
 | `EXADCSLAX001` | DC | Windows Server 2022 | `192.168.213.10` | ⚠️ Services stopped |
 | `EXASRVLAX001` | Server | Rocky Linux 9.x | `192.168.213.20` | Local services / DB |
-| `EXASBCLAX001` | VOIP SBC | 3CX SBC Debian | `192.168.213.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCLAX001` | VOIP SBC | 3CX SBC Debian | `192.168.213.48` | Trunks to `EXAPBXCLD001` |
 
 **WAPs:** `EXAWAPLAX001–003` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
@@ -868,7 +877,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSNYC001` | DC | Windows Server 2022 | `192.168.212.10` | ⚠️ Services stopped |
-| `EXASBCNYC001` | VOIP SBC | 3CX SBC Debian | `192.168.212.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCNYC001` | VOIP SBC | 3CX SBC Debian | `192.168.212.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -882,7 +891,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSNJC001` | DC | Windows Server 2022 | `192.168.201.10` | ⚠️ Services stopped |
-| `EXASBCNJC001` | VOIP SBC | 3CX SBC Debian | `192.168.201.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCNJC001` | VOIP SBC | 3CX SBC Debian | `192.168.201.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -905,7 +914,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSATL001` | DC | Windows Server 2022 | `192.168.33.10` | ⚠️ Services stopped |
-| `EXASBCATL001` | VOIP SBC | 3CX SBC Debian | `192.168.33.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCATL001` | VOIP SBC | 3CX SBC Debian | `192.168.33.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -919,7 +928,7 @@ Exceptions are noted in individual site entries.
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
 | `EXADCSCHI001` | DC | Windows Server 2022 | `192.168.214.10` | ⚠️ Services stopped |
-| `EXASBCCHI001` | VOIP SBC | 3CX SBC Debian | `192.168.214.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCCHI001` | VOIP SBC | 3CX SBC Debian | `192.168.214.48` | Trunks to `EXAPBXCLD001` |
 
 ---
 
@@ -942,7 +951,7 @@ Exceptions are noted in individual site entries.
 | `EXARACSYD001` | iDRAC | Dell iDRAC9 | `192.168.29.2` | BMC |
 | `EXADCSSYD001` | DC | Windows Server 2022 | `192.168.29.10` | ⚠️ Services stopped |
 | `EXASRVSYD001` | Server | Windows Server 2022 | `192.168.29.20` | Local infra |
-| `EXASBCSYD001` | VOIP SBC | 3CX SBC | `192.168.29.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCSYD001` | VOIP SBC | 3CX SBC | `192.168.29.48` | Trunks to `EXAPBXCLD001` |
 
 **WAPs:** `EXAWAPSYD001` · Ubiquiti UniFi — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
@@ -967,7 +976,7 @@ Exceptions are noted in individual site entries.
 | `EXARACMEL001` | iLO | HPE iLO5 | `192.168.61.2` | BMC |
 | `EXADCSMEL001` | DC | Windows Server 2022 | `192.168.61.10` | ⚠️ Services stopped |
 | `EXASRVMEL001` | Server | Windows Server 2022 | `192.168.61.20` | Local file & print |
-| `EXASBCMEL001` | VOIP SBC | 3CX SBC | `192.168.61.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCMEL001` | VOIP SBC | 3CX SBC | `192.168.61.48` | Trunks to `EXAPBXCLD001` |
 
 **Endpoints:** `EXAMBPMEL001` (MacBook Pro), `EXAWKSMEL001` (Win11), `EXAPHNMEL001` (iOS), `EXATABMEL001` (iPad)
 
@@ -995,7 +1004,7 @@ Exceptions are noted in individual site entries.
 | `EXARACAKL001` | iLO | HPE iLO5 | `192.168.93.2` | BMC |
 | `EXADCSAKL001` | DC | Windows Server 2022 | `192.168.93.10` | ⚠️ Services stopped |
 | `EXASRVAKL001` | Server | Windows Server 2022 | `192.168.93.20` | Local server |
-| `EXASBCAKL001` | VOIP SBC | 3CX SBC | `192.168.93.48` | Trunks to `EXACLDPBX001` |
+| `EXASBCAKL001` | VOIP SBC | 3CX SBC | `192.168.93.48` | Trunks to `EXAPBXCLD001` |
 
 **WAPs:** `EXAWAPAKL001`, `EXAWAPAKL002` · Ubiquiti UniFi — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
@@ -1029,11 +1038,11 @@ Exceptions are noted in individual site entries.
 | `EXASWI` | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site/regional) | `EXADCSFAL001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASRV` | Server | `EXADNSCLD001` |
+| `EXASRV` | Server | `EXADNSVRK001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS | `EXANASFAL001` |
-| `EXASBC` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBCFAL001` |
-| `EXAPBX` | PBX | `EXACLDPBX001` |
+| `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
+| `EXAPBX` | PBX | `EXAPBXCLD001` |
 | `EXAPRV` | Provisioning / bootstrap server | `EXAPRVFAL001` |
 | `EXAWAP` | WiFi Access Point | `EXAWAPFAL001` |
 | `EXAUFC` | UniFi Network Controller (CLD only — manages every site's WAPs) | `EXAUFCCLD001` |

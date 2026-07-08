@@ -15,6 +15,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-08 | Fixed CLD's checklist: several devices were listed with `192.168.139.x` (the vRACK octet range) when they're actually CLD-LAN-only (`192.168.69.x`) — Ansible/Rudder/WAC/PBX. Fixed `EXAPRVFAL001` -> `EXAPRVVRK001` (copy-paste error — FAL is a different site entirely). Fixed `EXAFWLCLD001` -> `EXAFWLVRK001` for the `.1` WireGuard-hub address specifically (same physical firewall, vRACK-facing role). Fixed stale forest name `jukebox.example` -> `jukebox.internal`. |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94` (added to Quick Reference table, per-site checklist items updated). Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) checklist item |
 | 2026-03-05 | Full rewrite — all sites added, standard IP convention applied, PVE node counts confirmed, RAC/BMC pool documented, site-specific equipment placeholders added |
 | 2026-03-03 | BRD renamed from BER throughout |
@@ -36,8 +37,8 @@
 | `.7` | PVE node 3 (FAL/ODE/BRK only) |
 | `.10` | DC primary |
 | `.11` | DC secondary |
-| `.12` | Rudder Relay (`EXARRY<SITE>001`) / Rudder Server on CLD (`EXARUDCLD001`) |
-| `.48` | VOIP SBC — trunks to `EXACLDPBX001` |
+| `.12` | Rudder Relay (`EXARRY<SITE>001`) / Rudder Server on CLD (`EXARDRCLD001`) |
+| `.48` | VOIP SBC — trunks to `EXAPBXCLD001` |
 | `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site |
 | `.100`–`.249` | DHCP pool |
 | `.250`–`.252` | Switches |
@@ -175,20 +176,23 @@
 
 ## CLD — Cloud / Provisioning
 
-**LAN:** `192.168.139.0/24`  
+**vRACK (`VRK`):** `192.168.139.0/24` · **CLD LAN:** `192.168.69.0/24`
 **Role:** WireGuard hub — routes to all sites. Central PBX, Ansible, Rudder, WAC.
+See `docs/ExampleMusic_Beginners_Guide.md` §4.1 for the full CLD/VRK split, and §4.2 for `FRD`
+(Fredericia Havn, a separate standby provisioning network — not tracked as a build checklist
+here, it's a MacBook running `http.server`, not a physical site).
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLCLD001` — Firewall / WireGuard hub online (`192.168.139.1`)
-- [ ] `EXADNSCLD001` — DNS/BIND9 server online (`192.168.139.8`)
-- [ ] `EXASVRCLD002` — Windows Admin Centre deployed (`192.168.139.20`)
-- [ ] `EXAANSCLD001` — Ansible control node online (`192.168.139.9`)
-- [ ] `EXARUDCLD001` — Rudder Server online (`192.168.139.12`)
-- [ ] `EXACLDPBX001` — Central 3CX PBX online (`192.168.139.48`)
-- [ ] `EXAPRVFAL001` — Provisioning server online (`192.168.139.50`)
+- [ ] `EXAFWLVRK001` — Firewall / WireGuard hub online (`192.168.139.1`, same physical firewall as `EXAFWLCLD001`)
+- [ ] `EXADNSVRK001` — DNS/BIND9 server online (`192.168.139.8`)
+- [ ] `EXAPRVVRK001` — Provisioning server online (`192.168.139.50`)
+- [ ] `EXAANSCLD001` — Ansible control node online (`192.168.69.9`)
+- [ ] `EXARDRCLD001` — Rudder Server online (`192.168.69.12`)
+- [ ] `EXASVRCLD002` — Windows Admin Centre deployed (`192.168.69.20`)
+- [ ] `EXAPBXCLD001` — Central 3CX PBX online (`192.168.69.48`)
 - [ ] `EXAUFCCLD001` — UniFi Network Controller online (`192.168.69.82`, CLD's **LAN** — not vRACK; manages every site's WAPs)
 - [ ] WireGuard routes verified to all site subnets
-- [ ] Ansible key distribution tested from `EXAPRVFAL001`
+- [ ] Ansible key distribution tested from `EXAPRVVRK001`
 - [ ] Rudder agents checked in from test node
 
 ### ZFS / Storage
@@ -225,12 +229,12 @@
 - [ ] `EXAPVEFAL003` — Proxmox node 3 (`192.168.76.7`) · ZFS RAID1
 - [ ] `EXADCSFAL001` — DC primary (`192.168.76.10`) · PDC Emulator
 - [ ] `EXADCSFAL002` — DC secondary (`192.168.76.11`)
-- [ ] `EXASBCFAL001` — VOIP SBC (`192.168.76.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCFAL001` — VOIP SBC (`192.168.76.48`) · trunks to `EXAPBXCLD001`
 - [ ] `EXANASFAL001` — NAS (`192.168.76.32`) · FreeNAS 13.0-U6
 - [ ] `EXATARFAL001` — Tape archiver (`192.168.76.33`) · Solaris Embedded
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool `.100`–`.249` confirmed active
-- [ ] DNS resolving `jukebox.example` from site
+- [ ] DNS resolving `jukebox.internal` from site
 
 ### ZFS Status
 
@@ -290,7 +294,7 @@
 - [ ] `EXARACEDI002` — RAC emulator VM (`192.168.131.3`)
 - [ ] `EXAPVEEDI001` — Proxmox node 1 (`192.168.131.5`) · ZFS RAID1
 - [ ] `EXADCSEDI003` — DC (`192.168.131.11`) ⚠️ DFSR stopped — resolve before sign-off
-- [ ] `EXASBCEDI001` — VOIP SBC (`192.168.131.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCEDI001` — VOIP SBC (`192.168.131.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -322,7 +326,7 @@
 - [ ] `EXARACGLA002` — RAC emulator VM (`192.168.141.3`)
 - [ ] `EXAPVEGLA001` — Proxmox node 1 (`192.168.141.5`) · ZFS RAID1
 - [ ] `EXADCRGLA001` — DC (`192.168.141.10`) · Schema/Domain Naming Master/PDC Emulator
-- [ ] `EXASBCGLA001` — VOIP SBC (`192.168.141.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCGLA001` — VOIP SBC (`192.168.141.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -359,7 +363,7 @@
 - [ ] `EXADCSCLY001` — DC primary (`192.168.41.10`)
 - [ ] `EXADCSCLY002` — DC secondary (`192.168.41.11`)
 - [ ] `EXASRVCLY001` — Rocky Linux server (`192.168.41.20`) · Oracle DB
-- [ ] `EXASBCCLY001` — VOIP SBC (`192.168.41.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCCLY001` — VOIP SBC (`192.168.41.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -392,7 +396,7 @@
 - [ ] `EXARACDUN002` — RAC emulator VM (`192.168.138.3`)
 - [ ] `EXAPVEDUN001` — Proxmox node 1 (`192.168.138.5`) · ZFS RAID1
 - [ ] `EXADCSDUN001` — DC (`192.168.138.10`)
-- [ ] `EXASBCDUN001` — VOIP SBC (`192.168.138.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCDUN001` — VOIP SBC (`192.168.138.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -423,7 +427,7 @@
 - [ ] `EXARACPER002` — RAC emulator VM (`192.168.173.3`)
 - [ ] `EXAPVEPER001` — Proxmox node 1 (`192.168.173.5`) · ZFS RAID1
 - [ ] `EXADCSPER001` — DC (`192.168.173.10`)
-- [ ] `EXASBCPER001` — VOIP SBC (`192.168.173.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCPER001` — VOIP SBC (`192.168.173.48`) · trunks to `EXAPBXCLD001`
 - [ ] `EXANIXPER001` — Solaris 11.5 (`192.168.173.40`) · MIDI/Music archive
 - [ ] `EXANASPER001` — Synology NAS (`192.168.173.50`)
 - [ ] WireGuard tunnel verified
@@ -460,7 +464,7 @@
 - [ ] `EXARACABD002` — RAC emulator VM (`192.168.224.3`)
 - [ ] `EXAPVEABD001` — Proxmox node 1 (`192.168.224.5`) · ZFS RAID1
 - [ ] `EXADCSABD001` — DC (`192.168.224.10`)
-- [ ] `EXASBCABD001` — VOIP SBC (`192.168.224.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCABD001` — VOIP SBC (`192.168.224.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -500,7 +504,7 @@
 - [ ] `EXARACLND002` — RAC emulator VM (`192.168.20.3`)
 - [ ] `EXAPVELND001` — Proxmox node 1 (`192.168.20.5`) · ZFS RAID1
 - [ ] `EXADCRLND001` — DC (`192.168.20.10`) · RID Master · Infrastructure Master
-- [ ] `EXASBCLND001` — VOIP SBC (`192.168.20.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCLND001` — VOIP SBC (`192.168.20.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -538,7 +542,7 @@
 - [ ] `EXADCRBIR001` — DC primary (`192.168.121.10`)
 - [ ] `EXADCRBIR002` — DC secondary (`192.168.121.11`)
 - [ ] `EXASRVBIR001` — Rocky Linux server (`192.168.121.20`) · Oracle DB
-- [ ] `EXASBCBIR001` — VOIP SBC (`192.168.121.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCBIR001` — VOIP SBC (`192.168.121.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -577,7 +581,7 @@
 - [ ] `EXAPVEMCR001` — Proxmox node 1 (`192.168.161.5`) · ZFS RAID1
 - [ ] `EXADCRMCR001` — DC primary (`192.168.161.10`) · PDC Emulator · RID/Infra Master
 - [ ] `EXADCSMCR002` — DC secondary (`192.168.161.11`)
-- [ ] `EXASBCMCR001` — VOIP SBC (`192.168.161.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMCR001` — VOIP SBC (`192.168.161.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -609,7 +613,7 @@
 - [ ] `EXARACLIV002` — RAC emulator VM (`192.168.151.3`)
 - [ ] `EXAPVELIV001` — Proxmox node 1 (`192.168.151.5`) · ZFS RAID1
 - [ ] `EXADCRLIV001` — DC (`192.168.151.10`) · WS2025
-- [ ] `EXASBCLIV001` — VOIP SBC (`192.168.151.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCLIV001` — VOIP SBC (`192.168.151.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -643,7 +647,7 @@
 - [ ] `EXARACNEW002` — RAC emulator VM (`192.168.191.3`)
 - [ ] `EXAPVENEW001` — Proxmox node 1 (`192.168.191.5`) · ZFS RAID1
 - [ ] `EXADCRNEW001` — DC (`192.168.191.10`)
-- [ ] `EXASBCNEW001` — VOIP SBC (`192.168.191.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCNEW001` — VOIP SBC (`192.168.191.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -673,7 +677,7 @@
 - [ ] `EXARACSHE002` — RAC emulator VM (`192.168.114.3`)
 - [ ] `EXAPVESHE001` — Proxmox node 1 (`192.168.114.5`) · ZFS RAID1
 - [ ] `EXADCSSHE001` — DC (`192.168.114.10`)
-- [ ] `EXASBCSHE001` — VOIP SBC (`192.168.114.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCSHE001` — VOIP SBC (`192.168.114.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -702,7 +706,7 @@
 - [ ] `EXARACHAL002` — RAC emulator VM (`192.168.142.3`)
 - [ ] `EXAPVEHAL001` — Proxmox node 1 (`192.168.142.5`) · ZFS RAID1
 - [ ] `EXADCSHAL001` — DC (`192.168.142.10`)
-- [ ] `EXASBCHAL001` — VOIP SBC (`192.168.142.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCHAL001` — VOIP SBC (`192.168.142.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -731,7 +735,7 @@
 - [ ] `EXARACHUL002` — RAC emulator VM (`192.168.148.3`)
 - [ ] `EXAPVEHUL001` — Proxmox node 1 (`192.168.148.5`) · ZFS RAID1
 - [ ] `EXADCSHUL001` — DC (`192.168.148.10`)
-- [ ] `EXASBCHUL001` — VOIP SBC (`192.168.148.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCHUL001` — VOIP SBC (`192.168.148.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -762,7 +766,7 @@
 - [ ] `EXARACCOV002` — RAC emulator VM (`192.168.247.3`)
 - [ ] `EXAPVECOV001` — Proxmox node 1 (`192.168.247.5`) · ZFS RAID1
 - [ ] `EXADCSCOV001` — DC (`192.168.247.10`)
-- [ ] `EXASBCCOV001` — VOIP SBC (`192.168.247.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCCOV001` — VOIP SBC (`192.168.247.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPCOV001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
@@ -796,7 +800,7 @@
 - [ ] `EXAPVECPH001` — Proxmox node 1 (`192.168.231.5`) · ZFS RAID1
 - [ ] `EXADCSCPH001` — DC primary (`192.168.231.10`) · example.com
 - [ ] `EXADCSCPH002` — DC secondary (`192.168.231.11`) · example.net
-- [ ] `EXASBCCPH001` — VOIP SBC (`192.168.231.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCCPH001` — VOIP SBC (`192.168.231.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPCPH001`–`003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
@@ -830,7 +834,7 @@
 - [ ] `EXAPVEODE003` — Proxmox node 3 (`192.168.126.7`) · ZFS RAID1
 - [ ] `EXADCSODE001` — DC primary (`192.168.126.10`) · PDC Emulator · RID/Infra Master
 - [ ] `EXADCSODE002` — DC secondary (`192.168.126.11`)
-- [ ] `EXASBCODE001` — VOIP SBC (`192.168.126.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCODE001` — VOIP SBC (`192.168.126.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPODE001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
@@ -863,7 +867,7 @@
 - [ ] `EXARACKGE002` — RAC emulator VM (`192.168.65.3`)
 - [ ] `EXAPVEKGE001` — Proxmox node 1 (`192.168.65.5`) · ZFS RAID1
 - [ ] `EXADCSKGE001` — DC (`192.168.65.10`) ⚠️ WS2016 EOL — rebuild required
-- [ ] `EXASBCKGE001` — VOIP SBC (`192.168.65.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCKGE001` — VOIP SBC (`192.168.65.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAP `EXAWAPKGE001` — Ubiquiti UniFi U6-Pro
 - [ ] WireGuard tunnel verified
 
@@ -892,7 +896,7 @@
 - [ ] `EXARACFAX002` — RAC emulator VM (`192.168.246.3`)
 - [ ] `EXAPVEFAX001` — Proxmox node 1 (`192.168.246.5`) · ZFS RAID1
 - [ ] `EXADCSFAX001` — DC (`192.168.246.10`)
-- [ ] `EXASBCFAX001` — VOIP SBC (`192.168.246.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCFAX001` — VOIP SBC (`192.168.246.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPFAX001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
@@ -917,7 +921,7 @@
 - [ ] `EXARACKOR002` — RAC emulator VM (`192.168.238.3`)
 - [ ] `EXAPVEKOR001` — Proxmox node 1 (`192.168.238.5`) · ZFS RAID1
 - [ ] `EXADCSKOR001` — DC (`192.168.238.10`)
-- [ ] `EXASBCKOR001` — VOIP SBC (`192.168.238.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCKOR001` — VOIP SBC (`192.168.238.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -949,7 +953,7 @@
 - [ ] `EXARACBON002` — RAC emulator VM (`192.168.228.3`)
 - [ ] `EXAPVEBON001` — Proxmox node 1 (`192.168.228.5`) · ZFS RAID1
 - [ ] `EXADCSBON001` — DC (`192.168.228.10`) · **Schema Master · Domain Naming Master**
-- [ ] `EXASBCBON001` — VOIP SBC (`192.168.228.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCBON001` — VOIP SBC (`192.168.228.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPBON001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
@@ -982,7 +986,7 @@
 - [ ] `EXARACBER002` — RAC emulator VM (`192.168.113.3`)
 - [ ] `EXAPVEBER001` — Proxmox node 1 (`192.168.113.5`) · ZFS RAID1
 - [ ] `EXADCSBER001` — DC (`192.168.113.10`) · WS2019 · PDC Emulator · RID/Infra Master
-- [ ] `EXASBCBER001` — VOIP SBC (`192.168.113.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCBER001` — VOIP SBC (`192.168.113.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPBER001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
@@ -1012,7 +1016,7 @@
 - [ ] `EXARACMUN002` — RAC emulator VM (`192.168.189.3`)
 - [ ] `EXAPVEMUN001` — Proxmox node 1 (`192.168.189.5`) · ZFS RAID1
 - [ ] `EXADCSMUN001` — DC (`192.168.189.10`)
-- [ ] `EXASBCMUN001` — VOIP SBC (`192.168.189.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMUN001` — VOIP SBC (`192.168.189.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1047,7 +1051,7 @@
 - [ ] `EXARACGOT002` — RAC emulator VM (`192.168.46.3`)
 - [ ] `EXAPVEGOT001` — Proxmox node 1 (`192.168.46.5`) · ZFS RAID1
 - [ ] `EXADCSGOT001` — DC (`192.168.46.10`)
-- [ ] `EXASBCGOT001` — VOIP SBC (`192.168.46.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCGOT001` — VOIP SBC (`192.168.46.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1077,7 +1081,7 @@
 - [ ] `EXARACOSL002` — RAC emulator VM (`192.168.47.3`)
 - [ ] `EXAPVEOSL001` — Proxmox node 1 (`192.168.47.5`) · ZFS RAID1
 - [ ] `EXADCSOSL001` — DC (`192.168.47.10`)
-- [ ] `EXASBCOSL001` — VOIP SBC (`192.168.47.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCOSL001` — VOIP SBC (`192.168.47.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1107,7 +1111,7 @@
 - [ ] `EXARACAMS002` — RAC emulator VM (`192.168.31.3`)
 - [ ] `EXAPVEAMS001` — Proxmox node 1 (`192.168.31.5`) · ZFS RAID1
 - [ ] `EXADCSAMS001` — DC (`192.168.31.10`)
-- [ ] `EXASBCAMS001` — VOIP SBC (`192.168.31.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCAMS001` — VOIP SBC (`192.168.31.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1137,7 +1141,7 @@
 - [ ] `EXARACMIL002` — RAC emulator VM (`192.168.39.3`)
 - [ ] `EXAPVEMIL001` — Proxmox node 1 (`192.168.39.5`) · ZFS RAID1
 - [ ] `EXADCSMIL001` — DC (`192.168.39.10`)
-- [ ] `EXASBCMIL001` — VOIP SBC (`192.168.39.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMIL001` — VOIP SBC (`192.168.39.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1167,7 +1171,7 @@
 - [ ] `EXARACVIE002` — RAC emulator VM (`192.168.78.3`)
 - [ ] `EXAPVEVIE001` — Proxmox node 1 (`192.168.78.5`) · ZFS RAID1
 - [ ] `EXADCSVIE001` — DC (`192.168.78.10`)
-- [ ] `EXASBCVIE001` — VOIP SBC (`192.168.78.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCVIE001` — VOIP SBC (`192.168.78.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1203,7 +1207,7 @@
 - [ ] `EXAPVEBRK002` — Proxmox node 2 (`192.168.136.6`) · ZFS RAID1
 - [ ] `EXAPVEBRK003` — Proxmox node 3 (`192.168.136.7`) · ZFS RAID1
 - [ ] `EXADCSBRK001` — DC (`192.168.136.10`) ⚠️ Services stopped — resolve before sign-off
-- [ ] `EXASBCBRK001` — VOIP SBC (`192.168.136.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCBRK001` — VOIP SBC (`192.168.136.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAP `EXAWAPBRK001` — Ubiquiti UniFi U6-Pro
 - [ ] WireGuard tunnel verified
 
@@ -1236,7 +1240,7 @@
 - [ ] `EXARACTOR002` — RAC emulator VM (`192.168.146.3`)
 - [ ] `EXAPVETOR001` — Proxmox node 1 (`192.168.146.5`) · ZFS RAID1
 - [ ] `EXADCSTOR001` — DC (`192.168.146.10`) ⚠️ Services stopped
-- [ ] `EXASBCTOR001` — VOIP SBC (`192.168.146.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCTOR001` — VOIP SBC (`192.168.146.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1260,7 +1264,7 @@
 - [ ] `EXARACMTL002` — RAC emulator VM (`192.168.154.3`)
 - [ ] `EXAPVEMTL001` — Proxmox node 1 (`192.168.154.5`) · ZFS RAID1
 - [ ] `EXADCSMTL001` — DC (`192.168.154.10`)
-- [ ] `EXASBCMTL001` — VOIP SBC (`192.168.154.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMTL001` — VOIP SBC (`192.168.154.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1297,7 +1301,7 @@
 - [ ] `EXAPVELAX001` — Proxmox node 1 (`192.168.213.5`) · ZFS RAID1
 - [ ] `EXADCSLAX001` — DC (`192.168.213.10`) ⚠️ Services stopped
 - [ ] `EXASRVLAX001` — Rocky Linux server (`192.168.213.20`) · local services/DB
-- [ ] `EXASBCLAX001` — VOIP SBC (`192.168.213.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCLAX001` — VOIP SBC (`192.168.213.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPLAX001`–`003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
@@ -1335,7 +1339,7 @@
 - [ ] `EXARACNYC002` — RAC emulator VM (`192.168.212.3`)
 - [ ] `EXAPVENYC001` — Proxmox node 1 (`192.168.212.5`) · ZFS RAID1
 - [ ] `EXADCSNYC001` — DC (`192.168.212.10`) ⚠️ Services stopped
-- [ ] `EXASBCNYC001` — VOIP SBC (`192.168.212.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCNYC001` — VOIP SBC (`192.168.212.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1361,7 +1365,7 @@
 - [ ] `EXARACNJC002` — RAC emulator VM (`192.168.201.3`)
 - [ ] `EXAPVENJC001` — Proxmox node 1 (`192.168.201.5`) · ZFS RAID1
 - [ ] `EXADCSNJC001` — DC (`192.168.201.10`) ⚠️ Services stopped
-- [ ] `EXASBCNJC001` — VOIP SBC (`192.168.201.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCNJC001` — VOIP SBC (`192.168.201.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1385,7 +1389,7 @@
 - [ ] `EXARACMIA002` — RAC emulator VM (`192.168.135.3`)
 - [ ] `EXAPVEMIA001` — Proxmox node 1 (`192.168.135.5`) · ZFS RAID1
 - [ ] `EXADCSMIA001` — DC (`192.168.135.10`) · pending build
-- [ ] `EXASBCMIA001` — VOIP SBC (`192.168.135.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMIA001` — VOIP SBC (`192.168.135.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1415,7 +1419,7 @@
 - [ ] `EXARACATL002` — RAC emulator VM (`192.168.33.3`)
 - [ ] `EXAPVEATL001` — Proxmox node 1 (`192.168.33.5`) · ZFS RAID1
 - [ ] `EXADCSATL001` — DC (`192.168.33.10`) ⚠️ Services stopped
-- [ ] `EXASBCATL001` — VOIP SBC (`192.168.33.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCATL001` — VOIP SBC (`192.168.33.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1441,7 +1445,7 @@
 - [ ] `EXARACCHI002` — RAC emulator VM (`192.168.214.3`)
 - [ ] `EXAPVECHI001` — Proxmox node 1 (`192.168.214.5`) · ZFS RAID1
 - [ ] `EXADCSCHI001` — DC (`192.168.214.10`) ⚠️ Services stopped
-- [ ] `EXASBCCHI001` — VOIP SBC (`192.168.214.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCCHI001` — VOIP SBC (`192.168.214.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1477,7 +1481,7 @@
 - [ ] `EXAPVESYD001` — Proxmox node 1 (`192.168.29.5`) · ZFS RAID1
 - [ ] `EXADCSSYD001` — DC (`192.168.29.10`) ⚠️ Services stopped
 - [ ] `EXASRVSYD001` — WS2022 server (`192.168.29.20`) · local infra
-- [ ] `EXASBCSYD001` — VOIP SBC (`192.168.29.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCSYD001` — VOIP SBC (`192.168.29.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAP `EXAWAPSYD001` — Ubiquiti UniFi
 - [ ] WireGuard tunnel verified
 
@@ -1518,7 +1522,7 @@
 - [ ] `EXAPVEMEL001` — Proxmox node 1 (`192.168.61.5`) · ZFS RAID1
 - [ ] `EXADCSMEL001` — DC (`192.168.61.10`) ⚠️ Services stopped
 - [ ] `EXASRVMEL001` — WS2022 server (`192.168.61.20`) · local file/print
-- [ ] `EXASBCMEL001` — VOIP SBC (`192.168.61.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMEL001` — VOIP SBC (`192.168.61.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1563,7 +1567,7 @@
 - [ ] `EXAPVEAKL001` — Proxmox node 1 (`192.168.93.5`) · ZFS RAID1
 - [ ] `EXADCSAKL001` — DC (`192.168.93.10`) ⚠️ Services stopped
 - [ ] `EXASRVAKL001` — WS2022 server (`192.168.93.20`) · local server
-- [ ] `EXASBCAKL001` — VOIP SBC (`192.168.93.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCAKL001` — VOIP SBC (`192.168.93.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPAKL001`–`002` — Ubiquiti UniFi — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 

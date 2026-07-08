@@ -238,9 +238,9 @@ The vRACK (`VRK`) is an OVH product providing 256 statically routed IPs. Treat t
 
 | IP | Hostname | Role |
 |----|----------|------|
-| `192.168.139.8` | `EXADNSCLD001` | BIND9 — authoritative DNS for `jukebox.internal` |
-| `192.168.139.50` | `EXAPRVCLD001` | Provisioning / PXE server |
-| `192.168.139.68` | `EXAFWLCLD001` (WAN) | Firewall WAN face — LAN face at `192.168.69.253` |
+| `192.168.139.8` | `EXADNSVRK001` | BIND9 — authoritative DNS for `jukebox.internal` |
+| `192.168.139.50` | `EXAPRVVRK001` | Provisioning / PXE server |
+| `192.168.139.69` | `EXAFWLVRK001` | Firewall WAN face — same physical firewall as `EXAFWLCLD001`, LAN face at `192.168.69.253` |
 | `192.168.139.254` | — | vRACK gateway (OVH infrastructure, not a site device) |
 
 **LAN (`192.168.69.0/24` — site code `CLD`):**
@@ -252,9 +252,11 @@ The vRACK (`VRK`) is an OVH product providing 256 statically routed IPs. Treat t
 | `192.168.69.11` | `EXADCSCLD002` | Domain Controller — secondary |
 | `192.168.69.12` | `EXARDRCLD001` | Rudder configuration management |
 | `192.168.69.20` | `EXASVRCLD002` | Windows Admin Centre |
-| `192.168.69.48` | `EXACLDPBX001` | Central 3CX PBX — all site SBCs trunk here |
+| `192.168.69.48` | `EXAPBXCLD001` | Central 3CX PBX — all site SBCs trunk here |
 | `192.168.69.82` | `EXAUFCCLD001` | UniFi Network Controller — manages every site's WAPs. CLD itself has no physical WiFi; `.82` is WAP1's reserved octet elsewhere (see [Addressing](#addressing)) — putting the controller at the same octet the devices it manages use, at the one site that has none of them itself, is deliberate |
-| `192.168.69.253` | `EXAFWLCLD001` (LAN) | Firewall LAN face / gateway — WAN face at `192.168.139.68` |
+| `192.168.69.253` | `EXAFWLCLD001` (LAN) | Firewall LAN face / gateway — WAN face (`EXAFWLVRK001`) at `192.168.139.69` |
+
+**`FRD` (`172.16.124.0/24`) — Fredericia Havn, the vRACK's standby provisioning network.** Not to be confused with `FRE`, the real Fredericia office. See `docs/ExampleMusic_Beginners_Guide.md` §4.2 for the full picture.
 
 For full architectural details see `docs/ExampleMusic_Beginners_Guide.md` (NET-BEGIN-001).
 

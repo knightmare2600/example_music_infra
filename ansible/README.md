@@ -124,7 +124,7 @@ After adding a new device to `benarbejde/devices.csv`, re-run
 
 ## bind9
 
-Configures `EXADNSCLD001` as the authoritative BIND9 DNS server for `jukebox.internal`.
+Configures `EXADNSVRK001` as the authoritative BIND9 DNS server for `jukebox.internal`.
 Ansible port of `bindme.sh` — idempotent enforcer, not a bootstrapper.
 
 ### Usage
@@ -240,7 +240,7 @@ done
 
 After EXAFWLCLD001 is built, populate its public key in `group_vars/firewalls/main.yml`:
 ```bash
-ssh ansible@192.168.139.139 'cat /etc/wireguard/public.key'
+ssh ansible@192.168.139.69 'cat /etc/wireguard/public.key'
 # Update wg_hub_known_pubkeys.CLD and commit
 ```
 
@@ -607,7 +607,7 @@ tasks 07–12 (nftables, dnsmasq, WireGuard, SSH hardening, nodeinfo.json) never
 
 ### Prerequisites
 
-- `EXADNSCLD001` is up and answering DNS
+- `EXADNSVRK001` is up and answering DNS
 - SSH keypair is on `EXAANSCLD001` (`~/ansible/configs/ansible-id_rsa`)
 - You are SSH'd into `EXAANSCLD001` in `/home/ansible/ansible`
 - The preseed placed `sites.csv`, `devices.csv`, and `nodeinfo.json` correctly on the
@@ -617,7 +617,7 @@ tasks 07–12 (nftables, dnsmasq, WireGuard, SSH hardening, nodeinfo.json) never
 
 ### Step 1 — Find the DHCP IP
 
-`EXAFWLCLD001` (192.168.139.1) runs dnsmasq for the 139.x subnet and holds the lease:
+`EXAFWLVRK001` (192.168.139.1 -- the same physical firewall as `EXAFWLCLD001`, its vRACK-facing role) runs dnsmasq for the 139.x subnet and holds the lease:
 
 ```bash
 ssh ansible@192.168.139.1 'grep -i EXAFWLVIE001 /var/lib/misc/dnsmasq.leases'
@@ -803,7 +803,7 @@ a Domain Controller. The example uses `EXADCSLIV001` on `192.168.151.0/24` (LIV 
 
 - The LIV firewall (`EXAFWLLIV001`) is up and its WireGuard spoke is registered on the
   hub — `192.168.151.0/24` must be advertised via WG so `EXAANSCLD001` can reach it
-- `EXADNSCLD001` is up and responding
+- `EXADNSVRK001` is up and responding
 - The `ansible` user was created during the WinPE install and is a local Administrator
 - You are SSH'd into `EXAANSCLD001` in `/home/ansible/ansible`
 

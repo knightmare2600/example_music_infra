@@ -37,7 +37,7 @@ Exceptions are noted in individual site entries.
 | `.7`          | PVE node 3                                                   | `EXAPVE<SITE>003`                     |
 | `.10`         | Domain Controller — primary                                  | `EXADCS<SITE>001`                     |
 | `.11`         | Domain Controller — secondary                                | `EXADCS<SITE>002`                     |
-| `.48`         | VOIP SBC — trunks to `EXACLDPBX001`                          | `EXASBC<SITE>001`                     |
+| `.48`         | VOIP SBC — trunks to `EXAPBXCLD001`                          | `EXASBC<SITE>001`                     |
 | `.100`–`.249` | DHCP pool                                                    | —                                     |
 | `.250`–`.252` | RT switches                                                  | `EXASWI<SITE>001`–`003`               |
 | `.253`        | Secondary internet gateway                                   | —                                     |
@@ -442,13 +442,13 @@ If all three fail, the script drops to an iPXE shell with diagnostic instruction
 **Compiling the iPXE binary** (run on a Linux build host):
 
 ```bash
-┌─[ansible@EXAPRVCLD001]─[C:\Users\Ansible\Desktop\Boottrap]
+┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap]
 └──╼ git clone https://github.com/ipxe/ipxe.git
 
-┌─[ansible@EXAPRVCLD001]─[C:\Users\Ansible\Desktop\Boottrap]
+┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap]
 └──╼cd ipxe/src
 
-┌─[ansible@EXAPRVCLD001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ cat bootstrap.ipxe
 #!ipxe
 ################################################
@@ -564,13 +564,13 @@ shell
 :end
 
 ## Enable BOTH serial console (115,200 8N1 and VGA at the same time)
-┌─[ansible@EXAPRVCLD001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ cat config/local/console.h
 #define CONSOLE_PCBIOS    /* VGA — interactive TUI */
 #define CONSOLE_SERIAL    /* COM1, 115200 8n1 — for FWL/RTR/SBC VMs */
 
 ## Enable colours and extra functions
-┌─[ansible@EXAPRVCLD001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ cat config/local/general.h
 #define CONSOLE_FRAMEBUFFER
 #define PING_CMD
@@ -580,23 +580,23 @@ shell
 #define NSLOOKUP_CMD
 #define ROUTE_CMD
 
-┌─[ansible@EXAPRVCLD001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ make bin/ipxe.iso EMBED=bootstrap.ipxe
 
 ## This is the iso you boot devices with
-┌─[ansible@EXAPRVCLD001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ copy bin/ipxe.iso ./ipxe.iso
 
 ## copy lkrn module too if that's what oyu want as a bootfile. It's 6 and 2x3
-┌─[ansible@EXAPRVCLD001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ copy bin/ipxe.lkrn.iso ./ipxe.lkrn
 
 # ISO (for CD/CDROM/IPMI virtual media):
-┌─[ansible@EXAPRVCLD001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ make bin/ipxe.iso EMBED=bootstrap.ipxe
 
 # USB image:
-┌─[ansible@EXAPRVCLD001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ make bin/ipxe.usb EMBED=bootstrap.ipxe
 
 # PXE ROM (for DHCP/TFTP environments):
