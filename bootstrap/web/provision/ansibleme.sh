@@ -555,13 +555,21 @@ while IFS=: read -r profile device rest; do
   fi
 done < <(nmcli -t -f NAME,DEVICE con show)
 
-# DNS points at the CLD BIND9 server (192.168.139.8) on the vRACK.
+# DNS points at the CLD BIND9 server on the vRACK -- looked up from begyndelse.json
+# (benarbejde/generate_inventory.py --emit-begyndelse-json) rather than hardcoded, same
+# reasoning as sites.csv above: single source of truth, regenerate instead of hand-editing.
 # This is correct and intentional — all hosts use this as upstream DNS.
+DNS_IP=""
+for candidate in "${BEGYNDELSE_JSON:-}" "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/begyndelse.json" "/etc/example-music/begyndelse.json"; do
+  [[ -n "${candidate}" && -f "${candidate}" ]] && { DNS_IP=$(jq -r '.dns.ip' "${candidate}"); break; }
+done
+[[ -z "${DNS_IP}" ]] && die "begyndelse.json not found (looked in \$BEGYNDELSE_JSON, script directory, /etc/example-music/) -- cannot determine DNS IP."
+
 nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "ansible-static" \
   ipv4.method manual \
   ipv4.addresses "${NODE_STATIC_IP}/24" \
   ipv4.gateway "${VRACK_GW}" \
-  ipv4.dns "192.168.139.8" \
+  ipv4.dns "${DNS_IP}" \
   ipv4.dns-search "jukebox.internal" \
   ipv6.method ignore \
   connection.autoconnect yes \

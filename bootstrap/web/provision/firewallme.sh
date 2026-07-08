@@ -784,7 +784,15 @@ WG_TUNNEL_NET="10.0.${WG_OCTET}.0/24"
 WG_HUB_DEFAULT_IP="10.0.${WG_OCTET}.1"
 WG_SPOKE_DEFAULT_IP="10.0.${WG_OCTET}.2"
 DC_DNS="${SUBNET}.10"          # site DC — AD DNS primary for LAN clients
-CLD_DNS="192.168.139.8"        # EXADNSVRK001 — central BIND9, WAN profile primary + dnsmasq upstream
+
+# EXADNSVRK001's IP -- looked up from begyndelse.json (benarbejde/generate_inventory.py
+# --emit-begyndelse-json) rather than hardcoded, same reasoning as sites.csv above.
+CLD_DNS=""
+for candidate in "${BEGYNDELSE_JSON:-}" "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/begyndelse.json" "/etc/example-music/begyndelse.json"; do
+  [[ -n "${candidate}" && -f "${candidate}" ]] && { CLD_DNS=$(jq -r '.dns.ip' "${candidate}"); break; }
+done
+[[ -z "${CLD_DNS}" ]] && die "begyndelse.json not found (looked in \$BEGYNDELSE_JSON, script directory, /etc/example-music/) -- cannot determine central BIND9 DNS IP."
+                               # ^ WAN profile primary + dnsmasq upstream
 INET_DNS="9.9.9.9"             # Quad9 — internet fallback; ensures DNS works if CLD unreachable
 
 # -------------------------------------------------------------------------------------------------

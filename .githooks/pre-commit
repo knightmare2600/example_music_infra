@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # .githooks/pre-commit
-# benarbejde/ is the single source of truth for sites.csv, devices.csv, and
-# address_policy.json. bootstrap/web/proxmox/ only exists so the preseed web
-# server can serve them during PXE installs -- it is never hand-edited.
+# benarbejde/ is the single source of truth for sites.csv, devices.csv,
+# address_policy.json, and begyndelse.json. bootstrap/web/proxmox/ only exists
+# so the preseed web server can serve them during PXE installs -- it is never
+# hand-edited.
 # This hook keeps it in sync automatically: benarbejde/ always wins, the
 # bootstrap/web/proxmox/ copy is overwritten to match and staged as part of
 # the same commit.
@@ -35,6 +36,7 @@ sync_from_source() {
 sync_from_source "sites.csv"
 sync_from_source "devices.csv"
 sync_from_source "address_policy.json"
+sync_from_source "begyndelse.json"
 
 if [[ $FAIL -ne 0 ]]; then
     echo ""

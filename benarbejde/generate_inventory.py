@@ -779,10 +779,12 @@ def find_device(devices_by_site: dict, site: str, dtype: str):
       return dev
   return None
 
-def emit_group_vars(csv_path: Path, devices_path: Path) -> str:
+def compute_site_services(csv_path: Path, devices_path: Path) -> dict:
   """
-  Returns the full text of ansible/group_vars/all/site_services.yml -- well-known service
-  hostnames/IPs derived from sites.csv + devices.csv.
+  Well-known service hostnames/IPs/subnets derived from sites.csv + devices.csv. Shared by
+  emit_group_vars() (site_services.yml, for Ansible) and emit_begyndelse_json() (begyndelse.json,
+  for non-Ansible consumers like bindme.sh/menu.ipxe) so the two outputs can never drift out of
+  sync with each other -- this is the one place either is computed from.
   """
   rows = list(csv.DictReader(csv_path.open()))
   validate_csv_structure(rows)
@@ -796,14 +798,17 @@ def emit_group_vars(csv_path: Path, devices_path: Path) -> str:
 
   devices_by_site, _stats = load_devices(devices_path)
 
-  def lookup(site, dtype):
+  def lookup(site, dtype, with_subnet=False):
     dev = find_device(devices_by_site, site, dtype)
     if dev is None or dev["octet"] is None or site not in nets:
       return None
-    return {"hostname": dev["hostname"], "ip": offset_ip(nets[site], dev["octet"])}
+    result = {"hostname": dev["hostname"], "ip": offset_ip(nets[site], dev["octet"])}
+    if with_subnet:
+      result["subnet"] = str(nets[site])
+    return result
 
-  prv_edi = lookup("VRK", "PRV")
-  prv_frd = lookup("FRD", "PRV")
+  prv_edi = lookup("VRK", "PRV", with_subnet=True)
+  prv_frd = lookup("FRD", "PRV", with_subnet=True)
   dns = lookup("VRK", "DNS")
   ans = lookup("CLD", "ANS")
   pbx_edi = lookup("CLD", "PBX")
@@ -816,18 +821,40 @@ def emit_group_vars(csv_path: Path, devices_path: Path) -> str:
   # no port column. Documented here for reference even though nothing currently consumes these
   # URLs directly -- windows_bootstrap's assets moved to a local files/ win_copy (2026-07-08),
   # since HTTP-fetching from the provisioning server was only ever a pre-Ansible bootstrap thing.
-  prv_edi_url = f"http://{prv_edi['ip']}" if prv_edi else None
-  prv_frd_url = f"http://{prv_frd['ip']}:8000" if prv_frd else None
+  if prv_edi:
+    prv_edi["url"] = f"http://{prv_edi['ip']}"
+  if prv_frd:
+    prv_frd["url"] = f"http://{prv_frd['ip']}:8000"
 
-  def yaml_block(name, dev, url=None):
+  return {
+    "provisioning_edinburgh": prv_edi,
+    "provisioning_fredericia_havn": prv_frd,
+    "dns": dns,
+    "ansible_control": ans,
+    "pbx_edinburgh": pbx_edi,
+    "pbx_fredericia_havn": pbx_frd,
+    "rudder": rdr,
+    "wac": wac,
+  }
+
+
+def emit_group_vars(csv_path: Path, devices_path: Path) -> str:
+  """
+  Returns the full text of ansible/group_vars/all/site_services.yml -- well-known service
+  hostnames/IPs derived from sites.csv + devices.csv.
+  """
+  services = compute_site_services(csv_path, devices_path)
+
+  def yaml_block(name, dev):
     if dev is None:
       return f"  {name}: null  # no matching devices.csv row found\n"
     lines = [f"  {name}:\n"]
-    lines.append(f"    hostname: \"{dev['hostname']}\"\n")
-    lines.append(f"    ip: \"{dev['ip']}\"\n")
-    if url:
-      lines.append(f"    url: \"{url}\"\n")
+    for key in ("hostname", "ip", "subnet", "url"):
+      if key in dev:
+        lines.append(f"    {key}: \"{dev[key]}\"\n")
     return "".join(lines)
+
+  blocks = "".join(yaml_block(name, dev) for name, dev in services.items())
 
   return f"""\
 # =============================================================================
@@ -841,10 +868,35 @@ def emit_group_vars(csv_path: Path, devices_path: Path) -> str:
 # scattered across playbooks (e.g. bind9-dns.yml's ancillary_hosts, migrated 2026-07-08 to read
 # devices.csv directly rather than this file — see that playbook's own changelog). If a
 # well-known service's IP ever changes, fix its devices.csv row and regenerate.
+#
+# For non-Ansible consumers (bindme.sh, menu.ipxe, etc.) see benarbejde/begyndelse.json instead
+# -- same underlying data, JSON, jq-friendly. Both are generated from compute_site_services() in
+# this script, so they never drift out of sync with each other.
 # =============================================================================
 
 site_services:
-{yaml_block("provisioning_edinburgh", prv_edi, prv_edi_url)}{yaml_block("provisioning_fredericia_havn", prv_frd, prv_frd_url)}{yaml_block("dns", dns)}{yaml_block("ansible_control", ans)}{yaml_block("pbx_edinburgh", pbx_edi)}{yaml_block("pbx_fredericia_havn", pbx_frd)}{yaml_block("rudder", rdr)}{yaml_block("wac", wac)}"""
+{blocks}"""
+
+
+def emit_begyndelse_json(csv_path: Path, devices_path: Path) -> str:
+  """
+  Returns the full text of benarbejde/begyndelse.json -- the same well-known service data as
+  site_services.yml, in JSON, for non-Ansible consumers (bindme.sh/ansibleme.sh/firewallme.sh,
+  menu.ipxe-adjacent tooling) to read via jq instead of hardcoding IPs.
+
+  "Begyndelse" is Danish for "beginning"/"origin" -- matches benarbejde/'s own Danish naming.
+  """
+  services = compute_site_services(csv_path, devices_path)
+  payload = {
+    "_comment": (
+      "Example Music Limited -- well-known service addresses. AUTOMATICALLY GENERATED by "
+      "benarbejde/generate_inventory.py --emit-begyndelse-json. Source: sites.csv + devices.csv "
+      "(single source of truth) -- do not hand-edit, regenerate instead. Same underlying data as "
+      "ansible/group_vars/all/site_services.yml (for Ansible); this file is for everything else."
+    ),
+    **services,
+  }
+  return json.dumps(payload, indent=2) + "\n"
 
 # ==================================================================================================
 # Generator
@@ -975,6 +1027,16 @@ def main():
     help="Path to write with --emit-group-vars (default: ansible/group_vars/all/site_services.yml, "
          "resolved relative to this script's own location)."
   )
+  parser.add_argument(
+    "--emit-begyndelse-json", action="store_true",
+    help="Write benarbejde/begyndelse.json — the same well-known service addresses as "
+         "--emit-group-vars, in JSON, for non-Ansible consumers (bindme.sh, menu.ipxe, etc.) to "
+         "read via jq instead of hardcoding IPs."
+  )
+  parser.add_argument(
+    "--begyndelse-out", type=Path, default=None,
+    help="Path to write with --emit-begyndelse-json (default: begyndelse.json next to sites.csv)."
+  )
   args = parser.parse_args()
 
   devices_path = args.devices if args.devices is not None else args.csv.parent / "devices.csv"
@@ -991,6 +1053,11 @@ def main():
       group_vars_out.parent.mkdir(parents=True, exist_ok=True)
       group_vars_out.write_text(emit_group_vars(args.csv, devices_path))
       msg("green", f"Wrote {group_vars_out}")
+    elif args.emit_begyndelse_json:
+      begyndelse_out = args.begyndelse_out or (args.csv.parent / "begyndelse.json")
+      begyndelse_out.parent.mkdir(parents=True, exist_ok=True)
+      begyndelse_out.write_text(emit_begyndelse_json(args.csv, devices_path))
+      msg("green", f"Wrote {begyndelse_out}")
     else:
       generate(args.csv, args.out, devices_path)
   except Exception as e:
