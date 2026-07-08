@@ -17,6 +17,12 @@
 #
 # Version history:
 #
+#   v2.2   lvm-bios.seed/lvm-efi.seed moved here from the separate bootstrap/debian/ staging
+#          dir in git -- they were never actually copied to this served location, so
+#          debian-auto/-ssh/-auto-s/-ssh-s would have 404'd on ${seed} if used. Added
+#          debian-test as a deliberately separate, clearly-labelled entry to verify the fix
+#          before relying on the four pre-existing entries again.
+#
 #   v2.0   Gateway-based boot-url detection. Removes hardcoded IP throughout.
 #          Edinburgh (gw 192.168.139.254) or Fredericia (gw 172.16.124.2).
 #          Fix archiso_http_srv was hardcoded, now uses ${boot-url}. Fix WinPE
@@ -154,6 +160,7 @@ item debian-auto      Debian  Auto install
 item debian-ssh       Debian  Auto install  (SSH console)
 item debian-auto-s    Debian  Auto install  (ttyS0 serial)
 item debian-ssh-s     Debian  Auto install  (SSH + ttyS0 serial)
+item debian-test      Debian  [TEST] seed file relocation fix -- try this first
 item --gap --
 item --gap --         -- Ubuntu --
 item ubuntu-auto      Ubuntu  Auto install
@@ -231,6 +238,18 @@ boot
 
 :debian-ssh-s
 kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
+initrd ${boot-url}/debian/${arch}/initrd.gz
+boot
+
+# 2026-07-08: lvm-bios.seed/lvm-efi.seed were missing from this served
+# location entirely until just now (only existed in the separate
+# bootstrap/debian/ staging dir in git, never copied over) -- meaning
+# debian-auto/-ssh/-auto-s/-ssh-s above would have 404'd on ${seed} if
+# actually used before this fix. This entry is a deliberately separate,
+# clearly-labelled test of the fix -- pick this one first; the four above
+# are untouched and should also now work identically once this is confirmed.
+:debian-test
+kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
 initrd ${boot-url}/debian/${arch}/initrd.gz
 boot
 
