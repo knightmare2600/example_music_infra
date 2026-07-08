@@ -68,7 +68,7 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #                 inside WAN_ACTIVATE=true block. Was never set previously so Cockpit socket
 #                 never restarted even when network was fully up.
 #              7. DNS hierarchy corrected throughout:
-#                 WAN NM profile: 192.168.139.8 (EXADNSCLD001) + 9.9.9.9 fallback
+#                 WAN NM profile: 192.168.139.8 (EXADNSVRK001) + 9.9.9.9 fallback
 #                 LAN NM profile: no DNS (dnsmasq owns LAN DNS)
 #                 dnsmasq upstreams: DC (.10) + 192.168.139.8 + 9.9.9.9 fallback
 #                 dnsmasq DHCP option 6: DC (.10) + 9.9.9.9 (internet survives CLD outage)
@@ -102,7 +102,10 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              7. wg-quick@wg0 systemd drop-in addition: Wants=network-online.target. The shipped
 #                 unit only has After=network.target which is satisfied before any interface has an
 #                 IP, causing wg-quick to fail endpoint resolution on boot.
-
+#  2026-07-08  Renamed the DNS server references from EXADNSCLD001 to EXADNSVRK001 in comments/
+#              banner text (CLD_DNS's IP, 192.168.139.8, was already correct -- devices.csv files
+#              this device under Site=VRK, not CLD, matching bind9-dns.yml's own rename today).
+#
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
 # -------------------------------------------------------------------------------------------------
@@ -781,7 +784,7 @@ WG_TUNNEL_NET="10.0.${WG_OCTET}.0/24"
 WG_HUB_DEFAULT_IP="10.0.${WG_OCTET}.1"
 WG_SPOKE_DEFAULT_IP="10.0.${WG_OCTET}.2"
 DC_DNS="${SUBNET}.10"          # site DC — AD DNS primary for LAN clients
-CLD_DNS="192.168.139.8"        # EXADNSCLD001 — central BIND9, WAN profile primary + dnsmasq upstream
+CLD_DNS="192.168.139.8"        # EXADNSVRK001 — central BIND9, WAN profile primary + dnsmasq upstream
 INET_DNS="9.9.9.9"             # Quad9 — internet fallback; ensures DNS works if CLD unreachable
 
 # -------------------------------------------------------------------------------------------------
@@ -1199,7 +1202,7 @@ echo -e "${GREEN}  LAN iface     : ${LAN_IFACE} (MAC: ${LAN_MAC})${NC}"
 echo -e "${GREEN}  LAN IP        : ${LAN_IP}/24${NC}"
 echo -e "${CYAN}  DHCP          : ${DHCP_START} - ${DHCP_END}${NC}"
 echo -e "${CYAN}  Ansible IP    : ${ANSIBLE_IP}${NC}"
-echo -e "${GREEN}  WAN DNS       : ${CLD_DNS} (EXADNSCLD001), ${INET_DNS} (fallback)${NC}"
+echo -e "${GREEN}  WAN DNS       : ${CLD_DNS} (EXADNSVRK001), ${INET_DNS} (fallback)${NC}"
 echo -e "${GREEN}  LAN DNS       : ${DC_DNS} (site DC), ${INET_DNS} (fallback) — via dnsmasq${NC}"
 if [[ "$WAN_SSH" == "true" ]]; then
   [[ -n "${WAN_SSH_SRC:-}" ]] && echo -e "  WAN SSH       : ${RED}ENABLED (restricted to ${WAN_SSH_SRC})${NC}" || echo -e "  WAN SSH       : ${RED}ENABLED (open to all - be careful)${NC}"
@@ -1297,7 +1300,7 @@ nmcli con delete wan 2>/dev/null || true
 
 if [[ "$WAN_MODE" == "static" ]]; then
   info "WAN: static ${WAN_STATIC_IP}/24 gw ${WAN_STATIC_GW}"
-  # DNS: EXADNSCLD001 primary, Quad9 fallback so internet resolves if CLD is unreachable.
+  # DNS: EXADNSVRK001 primary, Quad9 fallback so internet resolves if CLD is unreachable.
   # LAN profile deliberately has NO dns — dnsmasq owns all LAN DNS.
   # route-metric 100 ensures WAN wins the default route over LAN (metric 200).
   # autoconnect-retries -1 means NM retries forever on boot rather than giving up.
@@ -1538,7 +1541,7 @@ cat > /etc/dnsmasq.d/lan.conf <<EOF
 #
 # DNS upstream hierarchy:
 #   1. ${DC_DNS}         — site DC (AD DNS, jukebox.internal authority)
-#   2. ${CLD_DNS}    — EXADNSCLD001 (central BIND9, cross-site resolution)
+#   2. ${CLD_DNS}    — EXADNSVRK001 (central BIND9, cross-site resolution)
 #   3. ${INET_DNS}           — Quad9 (internet fallback; DNS survives CLD outage)
 #
 # DHCP clients receive DC + Quad9 as resolvers so internet DNS works even
