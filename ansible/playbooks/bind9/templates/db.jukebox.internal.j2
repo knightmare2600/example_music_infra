@@ -32,32 +32,26 @@ $TTL {{ zone_ttl }}
 ; ── DNS server itself ─────────────────────────────────────────
 {{ "%-13s" | format(this_hostname) }} IN  A  {{ dns_ip }}
 
-; ── vRACK (192.168.139.0/24) ancillary hosts ─────────────────
-; Derived from devices.csv (see bind9-dns.yml's ancillary_hosts set_fact).
-; CLD LAN devices follow below.
-{% for h in ancillary_hosts %}
+; ── CLD / VRK / FRD black swan hosts ──────────────────────────
+; Derived from devices.csv (see bind9-dns.yml's cld_black_swan_hosts set_fact). A forward
+; zone doesn't care what subnet any of these are actually on (CLD's own LAN, the real vRACK,
+; or the Fredericia Havn vRACK stand-in) -- that's a reverse-zone concern, handled separately.
+{% for h in cld_black_swan_hosts %}
 {% if h.name != this_hostname %}
 {{ "%-45s" | format(h.name) }} IN  A  {{ h.ip }}   ; {{ h.comment }}
 {% endif %}
-{% endfor %}
-
-; ── CLD LAN (192.168.69.0/24) devices ────────────────────────
-; CLD black swan: LAN and vRACK are separate subnets.
-; Standard suffix_map does not apply -- listed explicitly.
-{% for h in cld_lan_hosts %}
-{{ "%-45s" | format(h.name) }} IN  A  {{ h.ip }}   ; {{ h.comment }}
 {% endfor %}
 
 ; ── Firewall WAN addresses on provisioning network ────────────
 ; Each site firewall has a WAN interface on 192.168.139.0/24.
 ; Host octet = site subnet third octet.
 ; e.g. EDI 192.168.131.0/24  ->  exafwledi001-wan IN A 192.168.139.131
-; CLD is special: vRACK WAN comes from devices.csv (ancillary_hosts' exafwlvrk001 entry) rather
-; than the site-octet pattern above, since CLD's own subnet is the LAN side, not the vRACK.
+; CLD is special: vRACK WAN comes from devices.csv (cld_black_swan_hosts' exafwlvrk001 entry)
+; rather than the site-octet pattern above, since CLD's own subnet is the LAN side, not the vRACK.
 {% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exafwl' + site.Site | lower + '001-wan') }} IN  A  192.168.139.{{ site.octet }}   ; {{ site.Site }} WAN face on provisioning net
 {% endfor %}
-{{ "%-45s" | format('exafwlcld001-wan') }} IN  A  {{ ancillary_hosts | selectattr('name', 'equalto', 'exafwlvrk001') | map(attribute='ip') | first }}   ; CLD WAN face on provisioning net (same interface as exafwlvrk001 above)
+{{ "%-45s" | format('exafwlcld001-wan') }} IN  A  {{ cld_black_swan_hosts | selectattr('name', 'equalto', 'exafwlvrk001') | map(attribute='ip') | first }}   ; CLD WAN face on provisioning net (same interface as exafwlvrk001 above)
 
 ; ── Generated records by role (CLD excluded -- listed above) ──
 ; Sorted by site octet ascending within each role group.

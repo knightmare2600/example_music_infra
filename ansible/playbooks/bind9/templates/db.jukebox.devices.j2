@@ -12,11 +12,16 @@
 ; Devices without a HostOctet (non-networked assets: vehicles, aircraft etc.)
 ; are emitted as comments so they remain documented without DNS resolution.
 ;
-; CLD BLACK SWAN:
-;   CLD (192.168.69.0/24, its own LAN) does not follow standard site
-;   convention -- listed first and separately from the per-site blocks below.
-;   The vRACK ancillary devices (DNS/PRV/FWL-WAN, 192.168.139.0/24) are
-;   Site=VRK in devices.csv, not CLD -- see the FWL WAN section above.
+; CLD/VRK/FRD:
+;   A forward zone is just hostname->IP; it doesn't care what subnet an A
+;   record's IP is on (that's a reverse-zone concern, handled separately per
+;   subnet in db.192.168.139/db.192.168.69/db.172.16.124). So CLD (its own
+;   LAN, 192.168.69.0/24), VRK (the vRACK, 192.168.139.0/24) and FRD (the
+;   Fredericia Havn vRACK stand-in, 172.16.124.0/24) all flow through the
+;   same generic per-site loop below like any other site -- no special-casing
+;   needed here at all (each site's octet is derived from its own devices'
+;   real IPs already, not a sites.csv lookup, so this was never blocked on
+;   VRK/CLD/FRD's absence from/oddities in sites_by_code).
 ;
 ; SOA serial format: YYYYMMDDnn
 ; TTL: {{ zone_ttl }}s -- short TTL for fast provisioning propagation.
@@ -58,33 +63,21 @@ $TTL {{ zone_ttl }}
 {% endif %}
 {% endfor %}
 
-; ── CLD -- Cloud / Provisioning (192.168.69.0/24, CLD's own LAN) ───────────
-; BLACK SWAN: not a standard site -- devices.csv exceptions + standard slots,
-; same as any other site, just on CLD's own LAN subnet (vRACK ancillary
-; devices -- DNS/PRV/FWL-WAN -- are Site=VRK in devices.csv, not here).
-{% set cld_devices = all_devices | selectattr('Site', 'equalto', 'CLD') | list %}
-{% for dev in cld_devices | sort(attribute='HostOctet') %}
-{% if dev.HostOctet != '' %}
-{{ "%-45s" | format(dev.Hostname | lower) }} IN  A  {{ dev.full_ip }}{{ '   ; ' + dev.Notes if dev.Notes else '' }}
-{% else %}
-; NO-IP  {{ dev.Hostname | lower }}  -- {{ dev.Notes | default('non-networked asset') }}
-{% endif %}
-{% endfor %}
-
 ; ── Per-site device records ───────────────────────────────────
 ; Grouped by site, sorted by HostOctet within each site.
 ; Devices without a HostOctet are documented as comments.
-{% set non_cld = all_devices | rejectattr('Site', 'equalto', 'CLD') | list %}
-{% set site_codes = non_cld | map(attribute='Site') | unique | sort | list %}
+{% set site_codes = all_devices | map(attribute='Site') | unique | sort | list %}
 {% for site_code in site_codes %}
-{% set site_devs = non_cld | selectattr('Site', 'equalto', site_code) | list %}
-{#- derived from the devices' own full_ip, not sites_by_code: BRD and VRK are both
-   deliberately absent from sites_by_code (BRD shares BER's reverse zone; VRK is the
-   provisioning network, handled by its own template) but still have real devices here #}
+{% set site_devs = all_devices | selectattr('Site', 'equalto', site_code) | list %}
+{#- derived from the devices' own full_ip, not sites_by_code: CLD (its own LAN), VRK (the
+   vRACK) and BRD (shares BER's reverse zone) are all deliberately absent from
+   sites_by_code but still have real devices here -- and this also means the subnet
+   prefix itself is derived per-site rather than hardcoded, since FRD's is
+   172.16.124.0/24, not 192.168.x.0/24 like every other site #}
 {% set with_ip = site_devs | selectattr('full_ip', 'ne', '') | list %}
-{% set octet = with_ip[0].full_ip.split('.')[2] if with_ip else '?' %}
+{% set subnet_prefix = with_ip[0].full_ip.rsplit('.', 1)[0] if with_ip else '?' %}
 
-; ── {{ site_code }}  (192.168.{{ octet }}.0/24) ───────────────
+; ── {{ site_code }}  ({{ subnet_prefix }}.0/24) ───────────────
 {% for dev in site_devs | sort(attribute='HostOctet') %}
 {% if dev.HostOctet != '' %}
 {{ "%-45s" | format(dev.Hostname | lower) }} IN  A  {{ dev.full_ip }}{{ '   ; ' + dev.Notes if dev.Notes else '' }}
