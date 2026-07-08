@@ -14,6 +14,12 @@ filesystem = "zfs"
 zfs.raid = "raid1"
 disk-list = ["sda", "sdb"]
 
+# NOTE (2026-07-08): this url is a static TOML value -- it cannot do the gateway-based boot-server
+# detection menu.ipxe/late_command.sh/first-boot.sh itself all use, since TOML has no conditionals.
+# This file is always fetched from the right server already (menu.ipxe/boot.ipxe request it via
+# ${boot-url}), but the URL *inside* it is fixed at Edinburgh (192.168.139.50). If a Proxmox install
+# is ever done from the Fredericia Havn provisioning server (172.16.124.1:8000) instead, this one
+# line needs a manually-maintained override on that server's own copy of this file.
 [first-boot]
 source = "from-url"
 ordering = "fully-up"
