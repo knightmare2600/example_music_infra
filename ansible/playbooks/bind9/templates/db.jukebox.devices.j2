@@ -2,7 +2,7 @@
 ; /etc/bind/db.{{ domain }}
 ; Example Music Limited -- {{ domain }} forward zone
 ;
-; Authoritative DNS: EXADNSCLD001 ({{ dns_ip }})
+; Authoritative DNS: EXADNSVRK001 ({{ dns_ip }})
 ; Zone:              {{ domain }}
 ; Source:            devices.csv (single source of truth)
 ; Managed by:        Ansible bind9-dns.yml Play 2
@@ -13,9 +13,10 @@
 ; are emitted as comments so they remain documented without DNS resolution.
 ;
 ; CLD BLACK SWAN:
-;   CLD (192.168.139.0/24) is the provisioning network. It does not follow
-;   standard site convention. Its devices have manually assigned IPs.
-;   CLD devices are listed first and separately from the per-site blocks.
+;   CLD (192.168.69.0/24, its own LAN) does not follow standard site
+;   convention -- listed first and separately from the per-site blocks below.
+;   The vRACK ancillary devices (DNS/PRV/FWL-WAN, 192.168.139.0/24) are
+;   Site=VRK in devices.csv, not CLD -- see the FWL WAN section above.
 ;
 ; SOA serial format: YYYYMMDDnn
 ; TTL: {{ zone_ttl }}s -- short TTL for fast provisioning propagation.
@@ -28,7 +29,7 @@ $ORIGIN {{ domain }}.
 $TTL {{ zone_ttl }}
 
 ; ── SOA + NS ─────────────────────────────────────────────────
-@   IN  SOA  exadnscld001.{{ domain }}.  hostmaster.{{ domain }}. (
+@   IN  SOA  {{ this_hostname }}.{{ domain }}.  hostmaster.{{ domain }}. (
               {{ zone_serial }}  ; serial   YYYYMMDDnn
               3600       ; refresh  1 hour
               900        ; retry    15 minutes
@@ -36,12 +37,14 @@ $TTL {{ zone_ttl }}
               {{ zone_ttl }}        ; minimum  {{ zone_ttl }}s
             )
 
-@   IN  NS   exadnscld001.{{ domain }}.
+@   IN  NS   {{ this_hostname }}.{{ domain }}.
 
 ; ── FWL WAN addresses on provisioning network (192.168.139.{octet}) ──────────
 ; Each site firewall has a WAN interface on 192.168.139.0/24.
 ; Host octet = site subnet third octet. -wan suffix distinguishes from LAN face.
-; CLD special case: vRACK WAN is .139, not the CLD LAN octet (.69).
+; CLD special case: vRACK WAN comes from devices.csv (all_devices' EXAFWLVRK001 entry), not the
+; CLD LAN octet (.69) -- CLD's own subnet is the LAN side, not the vRACK.
+{% set cld_wan_ip = all_devices | selectattr('Hostname', 'equalto', 'EXAFWLVRK001') | map(attribute='full_ip') | first %}
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
    | rejectattr('Site', 'equalto', 'Site')
@@ -49,15 +52,16 @@ $TTL {{ zone_ttl }}
    | sort(attribute='Site') %}
 {% set octet = site.Subnet.split('.')[2] %}
 {% if site.Site == 'CLD' %}
-{{ "%-45s" | format('exafwlcld001-wan') }} IN  A  192.168.139.139  ; CLD WAN face (static -- LAN octet .69 != vRACK WAN octet .139)
+{{ "%-45s" | format('exafwlcld001-wan') }} IN  A  {{ cld_wan_ip }}  ; CLD WAN face (same interface as exafwlvrk001)
 {% else %}
 {{ "%-45s" | format('exafwl' + site.Site | lower + '001-wan') }} IN  A  192.168.139.{{ octet }}   ; {{ site.Site }} WAN face on provisioning net
 {% endif %}
 {% endfor %}
 
-; ── CLD -- Cloud / Provisioning (192.168.139.0/24) ───────────
-; BLACK SWAN: provisioning network -- not a standard site.
-; IPs are manually assigned for specific provisioning roles.
+; ── CLD -- Cloud / Provisioning (192.168.69.0/24, CLD's own LAN) ───────────
+; BLACK SWAN: not a standard site -- devices.csv exceptions + standard slots,
+; same as any other site, just on CLD's own LAN subnet (vRACK ancillary
+; devices -- DNS/PRV/FWL-WAN -- are Site=VRK in devices.csv, not here).
 {% set cld_devices = all_devices | selectattr('Site', 'equalto', 'CLD') | list %}
 {% for dev in cld_devices | sort(attribute='HostOctet') %}
 {% if dev.HostOctet != '' %}

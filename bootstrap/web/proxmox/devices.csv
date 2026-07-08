@@ -7,7 +7,7 @@ FRD,PRV,1,1,,none,,Provisioning server (PXE, port 8000) -- legal fiction, physic
 FRD,PBX,1,48,,ssh,,Secondary 3CX PBX at Fredericia Havn. No SBC on this network either -- same reuse-the-empty-SBC-slot pattern as CLD's own PBX
 VRK,DNS,1,8,Debian trixie,ssh,,DNS/BIND server -- jukebox.internal authoritative
 VRK,PRV,1,50,,none,,Provisioning server -- PXE / ISOs / Ansible keys / scripts
-VRK,FWL,1,68,,ssh,,Firewall WAN face (vRACK). LAN face 192.168.69.253
+VRK,FWL,1,69,,ssh,,Firewall WAN face (vRACK). LAN face 192.168.69.253
 FAL,RDR,1,16,,ssh,,HID Signo badge reader
 FAL,SRV,1,20,,ssh,,Reserved -- standard convention slot
 FAL,NAS,1,32,FreeNAS 13.0-U6,ssh,,Primary storage
