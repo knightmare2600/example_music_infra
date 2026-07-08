@@ -44,6 +44,10 @@
 #               script no longer reads sites.csv at all -- removed load_sites_csv()/SITE_OCTET etc, and the now-unused
 #               ip_in_use()/suggest_ip() helpers that only Step 2 called. The ansible-user/SSH-key step (Step 4) is
 #               untouched -- that's the one thing that must still happen here, before Ansible can connect at all.
+#   2026-07-08  SSH_KEY_URL was hardcoded to Edinburgh (192.168.139.50) -- did not account for the
+#               Fredericia Havn provisioning server (172.16.124.1:8000, legal fiction, physically a
+#               MacBook). Added the same gateway-detection late_command.sh/menu.ipxe already use, so
+#               this fetch (and any future one added to this step) picks the right server.
 # =============================================================================
 set -e
 
@@ -182,9 +186,19 @@ fi
 # ── Step 4: Ansible user ──────────────────────────────────────────────────────
 section "ANSIBLE USER SETUP"
 
+## Detect boot server by gateway IP -- same logic as late_command.sh/menu.ipxe.
+## To add a new environment: one elif block, nothing else changes.
+GW=$(ip route | awk '/default/ {print $3}')
+if [ "$GW" = "172.16.124.2" ]; then
+  BOOT_SERVER="http://172.16.124.1:8000"
+else
+  BOOT_SERVER="http://192.168.139.50"
+fi
+info "Boot server detected: ${BOOT_SERVER} (gateway: ${GW})"
+
 ANSIBLE_USER="ansible"
 ANSIBLE_PASSWORD="Password1!"
-SSH_KEY_URL="http://192.168.139.50/ansible_sshkey.pub"
+SSH_KEY_URL="${BOOT_SERVER}/ansible_sshkey.pub"
 
 step "Creating ansible user..."
 if id "$ANSIBLE_USER" &>/dev/null; then
