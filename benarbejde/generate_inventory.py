@@ -235,6 +235,14 @@ ALLOWED_SITE_OVERLAP = {
   ("BER", "BRD"),
 }
 
+## Cloud/hub "black swan" sites (CLD, FRD — see site-inventory-audit.py's own black-swan
+## handling) have no real standalone Router device; the standard template's Router slot (.1)
+## is a documentation-only placeholder for them, not a real device. FRD's actual devices.csv PRV
+## row legitimately claims .1 (the real boot-url, per menu.ipxe/late_command.sh) — registering
+## the fictional Router slot first would collide with it. Skip that one registration for these
+## sites; every other standard-slot registration (Gateway/DC/FW) still happens as normal.
+NO_STANDARD_ROUTER_SITES = {"CLD", "FRD"}
+
 # ==================================================================================================
 # State
 # ==================================================================================================
@@ -641,8 +649,12 @@ def compute_standard_devices_for_site(site: str, net: IP):
   (Site, Hostname, HostOctet, Notes) — the same addresses build_ini() derives for the ones it
   shows uncommented, just shaped for JSON consumption instead of f-string interpolation.
   """
+  suppressed = SUPPRESSED_STANDARD_ROLES.get(site, set())
+
   devices = []
   for role in DNS_SINGLE_ROLES:
+    if role in suppressed:
+      continue
     devices.append({
       "Site": site,
       "Hostname": build_hostname(role, site, 1),
@@ -650,6 +662,8 @@ def compute_standard_devices_for_site(site: str, net: IP):
       "Notes": f"Standard {role} slot",
     })
   for role, offsets in ROLE_OFFSETS.items():
+    if role in suppressed:
+      continue
     if role in DNS_MULTI_ALL_INSTANCES:
       selected = list(enumerate(offsets, start=1))
     elif role in DNS_MULTI_FIRST_INSTANCE_ONLY:
@@ -677,7 +691,18 @@ def compute_standard_devices_for_site(site: str, net: IP):
 # per-site convention (per bind9-dns.yml's own "CLD BLACK SWAN" documentation for VRK: the
 # provisioning network, with manually-assigned roles — no EXADCS, no EXAPVE, no EXASBC). Their
 # standard-slot devices are never synthesized; only their real devices.csv rows appear.
-NON_STANDARD_SITES = {"VRK"}
+# FRD (Fredericia Havn) gets the same treatment — it's one machine (a MacBook playing PXE
+# server + secondary PBX), not a real office with DCS/FWL/PVE of its own.
+NON_STANDARD_SITES = {"VRK", "FRD"}
+
+# CLD has real DCS/FWL/PVE (unlike VRK/FRD), so it can't go in NON_STANDARD_SITES wholesale —
+# but it deliberately reuses specific empty standard slots for real devices.csv devices (PBX on
+# the SBC octet, since CLD has no SBC of its own — same pattern as the UniFi controller reusing
+# WAP1's octet). Suppress just those specific standard roles per site, so the fictional
+# standard-slot entry doesn't collide in the DNS output with the real device sitting there.
+SUPPRESSED_STANDARD_ROLES = {
+  "CLD": {"SBC"},
+}
 
 def emit_devices_for_dns(csv_path: Path, devices_path: Path):
   """
@@ -789,7 +814,8 @@ def generate(csv_path: Path, out_dir: Path, devices_path: Path):
     register_ip(site, vals["GATEWAY"], "Gateway")
     register_ip(site, vals["DC"], "Domain Controller")
     register_ip(site, vals["FW"], "Firewall")
-    register_ip(site, vals["RTR"], "Router")
+    if site not in NO_STANDARD_ROUTER_SITES:
+      register_ip(site, vals["RTR"], "Router")
 
     # register IPs — devices.csv extras for this site (real collisions against the standard
     # template, or between two devices.csv rows, are still caught here)
