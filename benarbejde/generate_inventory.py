@@ -99,6 +99,15 @@
 #              mechanism as every other role_offsets entry) — this was an explicit, informed
 #              choice: real per-device Notes are lost for WAPs at this range in favour of treating
 #              the slot as standardised, same tradeoff already accepted for DCS/PVE/FWL/RTR.
+#  2026-07-08  Wired up devices.csv's ConnectionType column (was always blank, never read by
+#              anything since the schema migration). address_policy.json now has a
+#              connection_types map (Type -> ssh/winrm/telnet/snmp/http/none) — populated every
+#              existing devices.csv row from it. is_managed()/needs_review() now treat
+#              ConnectionType as a signal between Managed (explicit override) and the OS-regex
+#              guess (fallback): snmp/http/none are never managed regardless of OS, since Ansible
+#              can't task-execute over those. render_device_line() now emits the right
+#              ansible_connection for ssh/winrm/telnet, and documents snmp/http as a query
+#              protocol in the comment instead (Ansible itself never connects that way).
 # ==================================================================================================
 
 import csv
@@ -133,9 +142,10 @@ def msg(col, text):
 OFFSETS_SINGLE = {}
 ROLE_OFFSETS = {}
 STANDARD_OFFSETS = {}
+TYPE_CONNECTION = {}
 
 def load_address_policy(policy_path: Path):
-  global OFFSETS_SINGLE, ROLE_OFFSETS
+  global OFFSETS_SINGLE, ROLE_OFFSETS, TYPE_CONNECTION
   if not policy_path.exists():
     raise ValueError(
       f"address_policy.json not found at {policy_path} — this is the shared source of truth "
@@ -145,6 +155,13 @@ def load_address_policy(policy_path: Path):
   data = json.loads(policy_path.read_text())
   OFFSETS_SINGLE = data["offsets_single"]
   ROLE_OFFSETS = data["role_offsets"]
+
+  # TYPE_CONNECTION: Type -> ConnectionType (ssh/winrm/telnet/snmp/http/none), flattened from
+  # address_policy.json's connection_types. Single source of truth — not a second copy.
+  TYPE_CONNECTION.clear()
+  for conn, types in data.get("connection_types", {}).items():
+    for t in types:
+      TYPE_CONNECTION[t] = conn
 
   # STANDARD_OFFSETS: derived from the address policy just loaded (not a second, separately-
   # maintained copy — inventory_devices.py used to keep its own STANDARD_SINGLE/STANDARD_MULTI
@@ -305,19 +322,35 @@ def validate_devices_csv_structure(rows):
     if col not in header:
       raise ValueError(f"devices.csv missing column: {col}")
 
+# ConnectionType values that are real Ansible connection methods (task-execution capable).
+# snmp/http are monitoring/query protocols, not Ansible connection methods — a device with one
+# of those (or "none") is never treated as managed, regardless of what its OS looks like.
+ANSIBLE_CAPABLE_CONNECTIONS = {"ssh", "winrm", "telnet"}
+
 def is_managed(row: dict) -> bool:
-  """Managed column wins if the operator has set it; otherwise guess from OS."""
+  """
+  Priority: Managed column (explicit operator override) > ConnectionType (address_policy.json's
+  per-Type connection_types — a deliberate signal, not a guess) > OS-based guess (fallback for
+  rows predating ConnectionType, or a Type with no entry in connection_types).
+  """
   flag = row.get("Managed", "").strip().lower()
   if flag in ("yes", "y", "true", "1"):
     return True
   if flag in ("no", "n", "false", "0"):
     return False
+
+  conn = row.get("ConnectionType", "").strip().lower()
+  if conn:
+    return conn in ANSIBLE_CAPABLE_CONNECTIONS
+
   return bool(MANAGEABLE_OS_PATTERN.search(row.get("OS", "") or ""))
 
 def needs_review(row: dict) -> bool:
-  """Ambiguous rows: no explicit Managed flag AND no OS-based signal either way."""
+  """Ambiguous rows: no explicit Managed flag, no ConnectionType, AND no OS-based signal either way."""
   flag = row.get("Managed", "").strip().lower()
   if flag in ("yes", "y", "true", "1", "no", "n", "false", "0"):
+    return False
+  if row.get("ConnectionType", "").strip():
     return False
   return not (row.get("OS", "") or "").strip()
 
@@ -380,16 +413,36 @@ def load_devices(devices_path: Path):
       "needs_review": review,
       "os": r.get("OS", ""),
       "notes": r.get("Notes", ""),
+      "connection_type": r.get("ConnectionType", "").strip().lower(),
     })
 
   return devices_by_site, stats
 
 def render_device_line(net: IP, dev: dict) -> str:
-  note = f"  # {dev['notes']}" if dev["notes"] else ""
+  conn = dev.get("connection_type", "")
+  notes_parts = [dev["notes"]] if dev["notes"] else []
+
+  # snmp/http aren't Ansible connection methods — document them as a query/monitoring protocol
+  # instead, since Ansible itself will never be the one connecting to these.
+  if conn in ("snmp", "http"):
+    notes_parts.append(f"reachable via {conn.upper()}")
+  note = f"  # {' -- '.join(notes_parts)}" if notes_parts else ""
+
   if dev["octet"] is None:
     return f"# {dev['hostname']}  (no HostOctet in devices.csv){note}"
+
   ip = offset_ip(net, dev["octet"])
-  return f"{dev['hostname']}  ansible_host={ip}{note}"
+
+  # ssh is Ansible's own default and needs no override; telnet/winrm do. Spelled out explicitly
+  # for ssh too, for the same reason windows_dc/windows_bootstrap set it explicitly elsewhere in
+  # this repo — makes it correct on an ungrouped/ad hoc run, not just when group_vars applies.
+  conn_str = {
+    "ssh":    "  ansible_connection=ssh",
+    "winrm":  "  ansible_connection=winrm",
+    "telnet": "  ansible_connection=community.general.telnet",
+  }.get(conn, "")
+
+  return f"{dev['hostname']}  ansible_host={ip}{conn_str}{note}"
 
 # ==================================================================================================
 # Output
