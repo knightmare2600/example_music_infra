@@ -62,6 +62,12 @@
 #               `--tags zones,reload` silently skips devices.csv entirely).
 #               Fixed dns_gateway default in this comment (was documented
 #               as .1, actual default is .254).
+#   2026-07-08  Play 1's nodeinfo.json write now uses the shared ansible/tasks/nodeinfo.yml
+#               (also used by linux/tools.yml, proxmox, firewallme, rudder_server.yml) instead
+#               of its own hand-written block — missed during the 2026-07-07 consolidation.
+#               Also fixes stale hardcoded city="Central"/country="GB" (CLD's real sites.csv
+#               row is City=CloudSite, Country=Global) — now derived from sites.csv like every
+#               other writer, instead of a wrong guess.
 # =============================================================================
 
 - name: EXADNSCLD001 -- BIND9 DNS server
@@ -625,28 +631,28 @@
         state: directory
         mode: "0755"
 
+    - name: Look up CLD's site row for nodeinfo enrichment
+      tags: always
+      set_fact:
+        _dns_site_row: "{{ sites | selectattr('Site', 'equalto', 'CLD') | list | first | default({}) }}"
+
     - name: Write /etc/example-music/nodeinfo.json
       tags: always
-      copy:
-        dest: /etc/example-music/nodeinfo.json
-        mode: "0444"
-        content: "{{ _nodeinfo | to_nice_json }}\n"
+      include_tasks: ../../tasks/nodeinfo.yml
       vars:
-        _nodeinfo:
-          hostname:        "{{ this_hostname }}"
-          role:            "dns"
-          site:            "CLD"
-          city:            "Central"
-          country:         "GB"
-          entity:          "Example Music Limited"
-          ansible_managed: true
-          bootstrapped_at: "{{ ansible_date_time.iso8601 }}"
-          bootstrapped_by: "bind9-dns.yml"
-          environment:     "{{ dns_environment | default('production') }}"
-          dns_ip:          "{{ dns_ip }}"
-          zone:            "{{ domain }}"
-          zone_serial:     "{{ zone_serial }}"
-          interface:       "{{ dns_interface }}"
+        nodeinfo_hostname: "{{ this_hostname }}"
+        nodeinfo_role: "dns"
+        nodeinfo_site: "CLD"
+        nodeinfo_city: "{{ _dns_site_row.City | default('') }}"
+        nodeinfo_country: "{{ _dns_site_row.Country | default('') }}"
+        nodeinfo_entity: "{{ _dns_site_row.Entity | default('') }}"
+        nodeinfo_environment: "{{ dns_environment | default('production') }}"
+        nodeinfo_bootstrapped_by: "bind9-dns.yml"
+        nodeinfo_extra:
+          dns_ip: "{{ dns_ip }}"
+          zone: "{{ domain }}"
+          zone_serial: "{{ zone_serial }}"
+          interface: "{{ dns_interface }}"
 
   # ---------------------------------------------------------------------------
   # 9. Verify -- quick dig self-test
