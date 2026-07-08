@@ -9,16 +9,22 @@
 # scattered across playbooks (e.g. bind9-dns.yml's ancillary_hosts, migrated 2026-07-08 to read
 # devices.csv directly rather than this file — see that playbook's own changelog). If a
 # well-known service's IP ever changes, fix its devices.csv row and regenerate.
+#
+# For non-Ansible consumers (bindme.sh, menu.ipxe, etc.) see benarbejde/begyndelse.json instead
+# -- same underlying data, JSON, jq-friendly. Both are generated from compute_site_services() in
+# this script, so they never drift out of sync with each other.
 # =============================================================================
 
 site_services:
   provisioning_edinburgh:
     hostname: "EXAPRVVRK001"
     ip: "192.168.139.50"
+    subnet: "192.168.139.0/24"
     url: "http://192.168.139.50"
   provisioning_fredericia_havn:
     hostname: "EXAPRVFRD001"
     ip: "172.16.124.1"
+    subnet: "172.16.124.0/24"
     url: "http://172.16.124.1:8000"
   dns:
     hostname: "EXADNSVRK001"
