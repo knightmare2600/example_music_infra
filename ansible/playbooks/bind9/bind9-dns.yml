@@ -103,6 +103,23 @@
 #               confirmation, PBX now also uses its natural devices.csv name (exapbxcld001)
 #               consistently; cld_lan_name_overrides is gone entirely, same as
 #               vrk_ancillary_name_overrides above.
+#   2026-07-08  A forward zone is just hostname->IP -- it doesn't care what subnet an A
+#               record's IP is on (reverse zones are the subnet-specific concern, unchanged).
+#               So ancillary_hosts (VRK) and cld_lan_hosts (CLD) -- previously two separate
+#               set_fact tasks/lists purely because Play 1's reverse zones needed per-subnet
+#               data -- are now one merged cld_black_swan_hosts list (CLD+VRK+FRD), each entry
+#               tagged with its real site so the reverse-zone templates can filter it down to
+#               their own subnet instead of needing their own separately-built lists.
+#               Play 2's db.jukebox.devices.j2 got the same treatment even further: its whole
+#               dedicated "CLD" forward-zone section was removed entirely -- VRK and FRD
+#               already flowed through the generic per-site loop with zero special-casing
+#               (octet derived from each device's own real IP, never blocked on CLD/VRK/FRD's
+#               absence from sites_by_code), so CLD didn't need special-casing there either.
+#               This also surfaced and fixed a real bug in that per-site loop: the section
+#               header hardcoded "192.168.{{ octet }}.0/24", which would have been wrong for
+#               FRD (172.16.124.0/24) the first time anything caused it to render -- now
+#               derives the full subnet prefix from the device's own IP instead of assuming
+#               192.168.x for every site.
 # =============================================================================
 
 - name: EXADNSVRK001 -- BIND9 DNS server
@@ -127,8 +144,8 @@
       - "208.67.222.222"  # OpenDNS
       - "1.1.1.1"         # Cloudflare
 
-    # ancillary_hosts/cld_lan_hosts below are now built from devices.csv (see pre_tasks) rather
-    # than hardcoded here -- every device uses its own devices.csv-computed hostname, lowercased
+    # cld_black_swan_hosts below is built from devices.csv (see pre_tasks) rather than
+    # hardcoded here -- every device uses its own devices.csv-computed hostname, lowercased
     # (e.g. EXADNSVRK001 -> exadnsvrk001, EXAPBXCLD001 -> exapbxcld001), no overrides needed.
 
     # Standard SUFFIX_MAP -- mirrors site-inventory-audit.py and bindme.sh exactly
@@ -189,9 +206,9 @@
       run_once: true
 
     # -------------------------------------------------------------------------
-    # Merged device list -- single source for both this play's ancillary_hosts/
-    # cld_lan_hosts (below) and Play 2's own zone generation, computed once here
-    # (tags: always) rather than twice. See generate_inventory.py --emit-devices-json.
+    # Merged device list -- single source for both this play's cld_black_swan_hosts
+    # (below) and Play 2's own zone generation, computed once here (tags: always)
+    # rather than twice. See generate_inventory.py --emit-devices-json.
     # -------------------------------------------------------------------------
     - name: Compute merged device list via generate_inventory.py
       tags: always
@@ -208,29 +225,26 @@
       set_fact:
         all_devices: "{{ all_devices_raw.stdout | from_json }}"
 
-    - name: Build ancillary_hosts (vRACK zone) from devices.csv
+    # A forward zone is just hostname->IP; it doesn't care what subnet an A record's IP is
+    # on (that's a reverse-zone concern). CLD (its own LAN), VRK (the vRACK) and FRD (the
+    # Fredericia Havn vRACK stand-in) are all "black swan" sites in the sense that none of
+    # them follow the standard per-site convention -- so for the forward zone, one combined
+    # list covering all three is all that's needed; db.jukebox.internal.j2 doesn't need to
+    # know or care which subnet any given entry's IP is actually on.
+    # Reverse zones DO care (a PTR zone is inherently one-subnet), so db.192.168.139.j2/
+    # db.192.168.69.j2 filter this same list down to their own site via the 'site' key,
+    # rather than needing their own separately-built lists.
+    - name: Build cld_black_swan_hosts (forward zone) from devices.csv
       tags: always
       set_fact:
-        ancillary_hosts: >-
-          {{ (ancillary_hosts | default([])) + [{
+        cld_black_swan_hosts: >-
+          {{ (cld_black_swan_hosts | default([])) + [{
+            'site': item.Site,
             'name': item.Hostname | lower,
             'ip': item.full_ip,
             'comment': item.Notes,
           }] }}
-      loop: "{{ all_devices | selectattr('Site', 'equalto', 'VRK') | list }}"
-      loop_control:
-        label: "{{ item.Hostname }}"
-
-    - name: Build cld_lan_hosts (CLD LAN zone) from devices.csv
-      tags: always
-      set_fact:
-        cld_lan_hosts: >-
-          {{ (cld_lan_hosts | default([])) + [{
-            'name': item.Hostname | lower,
-            'ip': item.full_ip,
-            'comment': item.Notes,
-          }] }}
-      loop: "{{ all_devices | selectattr('Site', 'equalto', 'CLD') | list }}"
+      loop: "{{ all_devices | selectattr('Site', 'in', ['CLD', 'VRK', 'FRD']) | list }}"
       loop_control:
         label: "{{ item.Hostname }}"
 
