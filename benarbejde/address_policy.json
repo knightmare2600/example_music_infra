@@ -27,5 +27,14 @@
     "FWL": [253, 254],
     "PVE": [5, 6, 7],
     "WAP": [82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
+  },
+  "_connection_types_comment": "How Ansible (or other tooling, for snmp/http) reaches a devices.csv Type. ssh/winrm/telnet are real Ansible connection methods -- a device with one of these is treated as manageable. snmp/http are NOT Ansible connection methods (Ansible can't task-execute over them) -- these are monitoring/query protocols only, the device is never treated as Ansible-managed regardless of OS. none means no network connection of any kind applies (vehicles, instruments, etc). Added 2026-07-08.",
+  "connection_types": {
+    "ssh":    ["MBP", "MAC", "NIX", "DCS", "SRV", "SVR", "FWL", "ANS", "DNS", "NAS", "PBX", "SBC", "RDR"],
+    "telnet": ["RTR", "TAR"],
+    "winrm":  ["WKS", "LAP", "TAB", "SUR"],
+    "snmp":   ["PRN", "SWI", "UFC"],
+    "http":   ["BPS", "CAM", "CLK", "COF", "DON", "LCD", "PHN", "TEA", "TVS", "VCU"],
+    "none":   ["AST", "FCL", "BUS", "JET", "MOO", "LIN", "MIC", "MUS", "PAY", "PMP", "PRV", "RAD", "TRK", "TTY", "VND", "CAR"]
   }
 }
