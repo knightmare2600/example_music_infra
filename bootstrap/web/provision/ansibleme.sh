@@ -183,6 +183,13 @@
 #                     it. Matches the same fix applied to the committed
 #                     ansible/ansible.cfg (this heredoc is only used as a
 #                     fallback if that file is somehow missing).
+# v1.18.0 2026-07-08  Fix: _classify_host()'s vRACK case block (192.168.139.x) wrongly assumed
+#                     ANS/DCS also had vRACK addresses at .9/.10/.11 — same pre-CLD/VRK-split
+#                     assumption bind9-dns.yml/bindme.sh had before their own fixes today. ANS/DCS
+#                     are CLD LAN-only (192.168.69.x); only DNS(.8)/PRV(.50)/FWL-WAN(.69) are
+#                     actually vRACK-resident (Site=VRK in devices.csv). Removed the false
+#                     .9/.10/.11 cases, kept the correct ones, everything else already fell
+#                     through to the generic srvnodes catch-all.
 #
 # ==============================================================================
 
@@ -1062,12 +1069,16 @@ _classify_host() {
   local third_octet
   third_octet=$(echo "$ip" | awk -F. '{print $3}')
 
-  # vRACK net (192.168.139.x) — known roles by last octet
+  # vRACK net (192.168.139.x) — known roles by last octet. ANS/DCS are NOT here --
+  # they're CLD LAN-only (192.168.69.x, see below) -- only DNS/PRV/FWL-WAN are
+  # actually vRACK-resident (Site=VRK in devices.csv). An earlier version of this
+  # case block wrongly assumed ANS/DCS also had vRACK addresses at .9/.10/.11 (the
+  # same pre-CLD/VRK-split assumption bind9-dns.yml/bindme.sh had); fixed 2026-07-08.
   if [[ "$third_octet" == "139" ]]; then
     case "$last_octet" in
-      8)     echo "srvnodes"     ; return ;;  # EXADNSCLD001 — DNS/BIND9
-      9)     echo "ansiblehosts" ; return ;;  # EXAANSCLD001 — Ansible control node
-      10|11) echo "dcs"          ; return ;;  # EXADCSCLD001/002 (vRACK face)
+      8)     echo "srvnodes"     ; return ;;  # EXADNSVRK001 — DNS/BIND9
+      50)    echo "srvnodes"     ; return ;;  # EXAPRVVRK001 — provisioning/PXE
+      69)    echo "srvnodes"     ; return ;;  # EXAFWLVRK001 — CLD firewall (vRACK WAN face)
       *)     echo "srvnodes"     ; return ;;  # other CLD infra on vRACK
     esac
   fi
