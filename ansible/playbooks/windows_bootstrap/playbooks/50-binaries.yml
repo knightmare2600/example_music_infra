@@ -3,7 +3,7 @@
 # playbooks/50-binaries.yml
 # Example Music Limited — Arch-aware binary deployment
 # =============================================================================
-# Pulls binaries from http://192.168.139.50/WINDOWS/<arch>/ and deploys
+# Pushes binaries from files/<arch>/ directly via win_copy and deploys
 # them to C:\Windows\ (globally on PATH).
 #
 # Arch detection maps ansible_architecture to the folder convention used
@@ -32,6 +32,11 @@
 #               added tasks/dua_cli.yml instead, an arch-aware upstream
 #               GitHub release download, since dua-cli ships as a zip per
 #               platform rather than a bare exe the asset server could host.
+#   2026-07-08  win_get_url (exa_asset_base, an HTTP fetch from the
+#               provisioning server) replaced with win_copy from files/ —
+#               that pattern only existed for the pre-Ansible bootstrap
+#               scripts. See files/README.md for what needs to be dropped
+#               in before running this playbook.
 # =============================================================================
 
 - name: Windows — Binary and font deployment
@@ -54,8 +59,8 @@
       tags: binaries
 
     - name: Deploy common binaries
-      ansible.windows.win_get_url:
-        url:  "{{ binary_base_url }}/{{ item.src }}"
+      ansible.windows.win_copy:
+        src:  "{{ host_arch }}/{{ item.src }}"
         dest: "C:\\Windows\\{{ item.dest }}"
       loop: "{{ binaries_common | default([]) }}"
       loop_control:
@@ -69,8 +74,8 @@
     # ── Host-type-specific binaries (arch-aware, different filenames) ─────────
 
     - name: Deploy arch-specific binaries (AMD64)
-      ansible.windows.win_get_url:
-        url:  "{{ exa_asset_base }}/x86_64/{{ item.src_amd64 }}"
+      ansible.windows.win_copy:
+        src:  "x86_64/{{ item.src_amd64 }}"
         dest: "C:\\Windows\\{{ item.dest }}"
       loop: "{{ binaries_extra | default([]) }}"
       loop_control:
@@ -81,8 +86,8 @@
       tags: binaries
 
     - name: Deploy arch-specific binaries (ARM64)
-      ansible.windows.win_get_url:
-        url:  "{{ exa_asset_base }}/arm64/{{ item.src_arm64 }}"
+      ansible.windows.win_copy:
+        src:  "arm64/{{ item.src_arm64 }}"
         dest: "C:\\Windows\\{{ item.dest }}"
       loop: "{{ binaries_extra | default([]) }}"
       loop_control:
