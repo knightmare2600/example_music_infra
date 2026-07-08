@@ -5,15 +5,18 @@
 ; Zone:    139.168.192.in-addr.arpa
 ; Covers:  192.168.139.0/24  (provisioning network)
 ; Source:  devices.csv (single source of truth)
-; Server:  EXADNSCLD001 ({{ dns_ip }})
+; Server:  EXADNSVRK001 ({{ dns_ip }})
 ; Managed: Ansible bind9-dns.yml Play 2
 ; Generated: {{ ansible_date_time.iso8601 }}
 ;
 ; CLD BLACK SWAN:
-;   192.168.139.0/24 is the provisioning network. It serves two purposes:
+;   192.168.139.0/24 is the provisioning network (the vRACK). It serves two purposes:
 ;
-;   (a) CLD provisioning devices -- EXADNSCLD001-004, EXACLDPBX001,
-;       EXAPRVCLD001. IPs are manually assigned, not convention-derived.
+;   (a) vRACK-resident devices -- DNS/PRV/FWL-WAN, Site=VRK in devices.csv.
+;       Rudder/WAC/PBX/DCs are CLD LAN-only (192.168.69.0/24) -- see db.192.168.69,
+;       NOT this zone (an earlier version of this file wrongly duplicated them
+;       here too, at the same host octets as their real LAN addresses -- a
+;       copy-paste mistake, not a genuine second vRACK-side interface).
 ;
 ;   (b) FWL WAN addresses -- every site firewall has a WAN interface here.
 ;       Host octet = site subnet third octet (e.g. EDI .131 -> .139.131).
@@ -26,7 +29,7 @@
 $ORIGIN 139.168.192.in-addr.arpa.
 $TTL {{ zone_ttl }}
 
-@   IN  SOA  exadnscld001.{{ domain }}.  hostmaster.{{ domain }}. (
+@   IN  SOA  {{ this_hostname }}.{{ domain }}.  hostmaster.{{ domain }}. (
               {{ zone_serial }}  ; serial
               3600       ; refresh
               900        ; retry
@@ -34,20 +37,21 @@ $TTL {{ zone_ttl }}
               {{ zone_ttl }}        ; minimum
             )
 
-@   IN  NS   exadnscld001.{{ domain }}.
+@   IN  NS   {{ this_hostname }}.{{ domain }}.
 
 ; ── vRACK ancillary PTRs ─────────────────────────────────────
-; CLD LAN devices (DCs, Ansible) are now on 192.168.69.0/24 and
-; appear in db.192.168.69 instead. Only vRACK-resident services here.
-8     IN  PTR  exadnscld001.{{ domain }}.     ; DNS/BIND9 server (this host)
-20    IN  PTR  exasvrcld002.{{ domain }}.     ; Windows Admin Centre
-12    IN  PTR  exardrcld001.{{ domain }}.     ; Rudder configuration management server
-48    IN  PTR  exacldpbx001.{{ domain }}.     ; Central 3CX PBX
-50    IN  PTR  exaprvcld001.{{ domain }}.     ; Provisioning / PXE
+; Derived from all_devices (Site=VRK). Rudder/WAC/PBX/DCs are CLD LAN-only --
+; see db.192.168.69 instead.
+{% for dev in all_devices | selectattr('Site', 'equalto', 'VRK') | sort(attribute='full_ip') %}
+{% set host_octet = dev.full_ip.split('.')[3] %}
+{{ "%-5s" | format(host_octet) }} IN  PTR  {{ "%-50s" | format(dev.Hostname | lower + '.' + domain + '.') }} ; {{ dev.Notes }}
+{% endfor %}
 
 ; ── FWL WAN PTR records (192.168.139.{octet} per site) ───────
-; CLD special case: vRACK WAN is .139, not the LAN octet.
+; CLD special case: vRACK WAN comes from devices.csv (all_devices' EXAFWLVRK001 entry), not the
+; CLD LAN octet -- CLD's own subnet is the LAN side, not the vRACK.
 ; Sorted by octet ascending.
+{% set cld_wan_octet = (all_devices | selectattr('Hostname', 'equalto', 'EXAFWLVRK001') | map(attribute='full_ip') | first).split('.')[3] %}
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
    | rejectattr('Site', 'equalto', 'Site')
@@ -55,7 +59,7 @@ $TTL {{ zone_ttl }}
    | sort(attribute='Subnet') %}
 {% set octet = site.Subnet.split('.')[2] %}
 {% if site.Site == 'CLD' %}
-139   IN  PTR  {{ "%-50s" | format('exafwlcld001-wan.' + domain + '.') }} ; CLD ({{ site.City }}) -- vRACK WAN static .139
+{{ "%-5s" | format(cld_wan_octet) }} IN  PTR  {{ "%-50s" | format('exafwlcld001-wan.' + domain + '.') }} ; CLD ({{ site.City }}) -- vRACK WAN (same interface as exafwlvrk001)
 {% else %}
 {{ "%-5s" | format(octet) }} IN  PTR  {{ "%-50s" | format('exafwl' + site.Site | lower + '001-wan.' + domain + '.') }} ; {{ site.Site }} ({{ site.City }})
 {% endif %}
