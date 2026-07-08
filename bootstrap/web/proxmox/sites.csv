@@ -38,7 +38,7 @@ MIL,Milan,Italy,IT,192.168.39.0/24,192.168.39.253,192.168.39.10,192.168.39.253,N
 MTL,Montreal,Canada,CA,192.168.154.0/24,192.168.154.253,192.168.154.10,192.168.154.253,+1 514 400 0xxx,+1 514 900 2xxx,America/Montreal,ca_site,Example Music (Canada) Inc.
 MUN,Munich,Germany,DE,192.168.189.0/24,192.168.189.253,192.168.189.10,192.168.189.253,+49 893 555 33xx,+49 893 555 99xx,Europe/Berlin,de_site,Example Music (Deutschland) GmbH
 NEW,Newcastle,United Kingdom,UK,192.168.191.0/24,192.168.191.253,192.168.191.10,192.168.191.253,+44 191 496 0xxx,+44 770 090 9xxx,Europe/London,uk_site,Example Music (England) Ltd
-NYB,Nyborg,Denmark,DK,192.168.90.0/24,192.168.90.253,192.168.90.10,192.168.90.253,+45 80 400 0xxx,+45 200 900 2xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS.
+NYB,Nyborg,Denmark,DK,192.168.90.0/24,192.168.90.253,192.168.90.10,192.168.90.253,+45 80 400 0xxx,+45 200 900 2xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS
 NJC,New Jersey,United States,US,192.168.201.0/24,192.168.201.253,192.168.201.10,192.168.201.253,+1 201 400 0xxx,+1 908 900 2xxx,America/New_York,us_site,Example Music (US) LLC.
 NYC,New York City,United States,US,192.168.212.0/24,192.168.212.253,192.168.212.10,192.168.212.253,+1 212 500 0xxx,+1 917 900 2xxx,America/New_York,us_site,Example Music (US) LLC.
 ODE,Odense,Denmark,DK,192.168.126.0/24,192.168.126.253,192.168.126.10,192.168.126.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS
