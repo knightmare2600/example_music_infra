@@ -12,6 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-07-08 | Added section 4.2, `FRD` (Fredericia Havn) — the vRACK's standby provisioning network, not to be confused with `FRE` (the real Fredericia office). Fixed section 4.1's CLD IP table: DNS/PRV/the firewall's WAN face are `EXA*VRK001`-suffixed hostnames, not `EXA*CLD001` (devices.csv files them under `Site=VRK`); corrected the WAN face octet (`.69`, not `.68`); PBX is `EXAPBXCLD001`, not `EXACLDPBX001`. |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94`. Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD has no physical WiFi itself |
 | 2026-06-30 | Initial version           |
 | 2026-06-30 | Add VRK site code; expand naming table; add AAR/DRS/DUS/FRE EU spokes |
@@ -166,19 +167,43 @@ The CLD IP table is reproduced here for reference. These are authoritative — v
 
 | Hostname | IP | Network | Role |
 |----------|----|---------|------|
-| `EXAFWLCLD001` (WAN) | `192.168.139.68` | vRACK | Firewall WAN face |
+| `EXAFWLVRK001` (WAN) | `192.168.139.69` | vRACK | Firewall WAN face — same physical firewall as `EXAFWLCLD001`, its vRACK-facing interface |
 | `EXAFWLCLD001` (LAN) | `192.168.69.253` | LAN | Firewall LAN face |
-| `EXADNSCLD001` | `192.168.139.8` | vRACK | BIND9 — authoritative DNS for `jukebox.internal` |
-| `EXAPRVCLD001` | `192.168.139.50` | vRACK | Provisioning / PXE server |
+| `EXADNSVRK001` | `192.168.139.8` | vRACK | BIND9 — authoritative DNS for `jukebox.internal` |
+| `EXAPRVVRK001` | `192.168.139.50` | vRACK | Provisioning / PXE server (Edinburgh, primary) |
 | `EXAANSCLD001` | `192.168.69.9` | LAN | Ansible control node |
 | `EXADCSCLD001` | `192.168.69.10` | LAN | Domain Controller — primary |
 | `EXADCSCLD002` | `192.168.69.11` | LAN | Domain Controller — secondary |
 | `EXARDRCLD001` | `192.168.69.12` | LAN | Rudder configuration management server |
 | `EXASVRCLD002` | `192.168.69.20` | LAN | Windows Admin Centre |
-| `EXACLDPBX001` | `192.168.69.48` | LAN | Central 3CX PBX |
+| `EXAPBXCLD001` | `192.168.69.48` | LAN | Central 3CX PBX — reuses the empty SBC slot, since CLD has no SBC of its own |
 | `EXAUFCCLD001` | `192.168.69.82` | LAN | UniFi Network Controller — manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
 
-> **Common mistakes:** The FWL WAN face is `.139.68`, not `.139.139` (`.139.139` would be `EXAFWLVRK001` — not currently deployed). The FWL LAN face is `.69.253`, not `.69.1`. Rudder, WAC, and PBX are on the **LAN** (`.69.x`) — not the vRACK. The Ansible node is LAN-only at `.69.9`.
+> **Common mistakes:** DNS/PRV/the firewall's WAN face are `VRK`-suffixed hostnames (`EXADNSVRK001`, `EXAPRVVRK001`, `EXAFWLVRK001`), not `CLD`-suffixed — devices.csv files them under `Site=VRK` since they're vRACK-resident, not CLD LAN. The FWL LAN face is `.69.253`, not `.69.1`. Rudder, WAC, PBX, and the Ansible node are on the **LAN** (`.69.x`) — not the vRACK, despite PBX and the UniFi controller both reusing octets (`.48`, `.82`) that are conventionally something else at a normal site.
+
+### 4.2 FRD (Fredericia Havn) — the vRACK's backup
+
+**`FRD` is not the same as `FRE`.** `FRE` is the real Fredericia office, near the train station — a normal site like any other. `FRD` (Fredericia Havn — "havn" is Danish for harbour/port) is a second, standby provisioning network, modelled the same way `VRK` is: a special infrastructure site code, not a real office, with its own row in `sites.csv`.
+
+In-story, it's presented as a second OVH-style vRACK, providing redundancy if Edinburgh (`VRK`) is unreachable. In reality it's a legal fiction — physically the same MacBook running `python3 -m http.server`, mirroring `/debian` from Edinburgh. Only the IP differs. `menu.ipxe`/`late_command.sh` detect which one to use by checking the booting machine's own network gateway:
+
+| Gateway | Environment | Boot server |
+|---------|-------------|-------------|
+| `192.168.139.254` | Edinburgh (primary) | `http://192.168.139.50` |
+| `172.16.124.2` | Fredericia Havn (standby) | `http://172.16.124.1:8000` |
+
+| Site code | Network | Range | Gateway | Role |
+|-----------|---------|-------|---------|------|
+| `FRD` | vRACK stand-in | `172.16.124.0/24` | `172.16.124.2` | Fredericia Havn — standby provisioning network |
+
+FRD's own IP table:
+
+| Hostname | IP | Role |
+|----------|----|------|
+| `EXAPRVFRD001` | `172.16.124.1` | Provisioning / PXE server (standby). Port 8000, not 80 — a real, fixed detail of the MacBook's `http.server` setup, not derivable from any convention |
+| `EXAPBXFRD001` | `172.16.124.48` | Secondary 3CX PBX — reuses the empty SBC slot, same reasoning as CLD's own PBX |
+
+> **Why does FRD have its own PBX?** It doesn't have to, architecturally — it's simply another real device.csv exception recorded there, following the exact same "reuse the empty SBC slot" pattern CLD already uses. Nothing about FRD's role as a standby provisioning network requires a PBX; it's just where this particular one happens to live.
 
 ---
 
