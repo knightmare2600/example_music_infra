@@ -57,6 +57,16 @@ Changelog:
                 blank), script now correctly sets vlan=None (untagged). vmbr0 already sits on a port in 192.168.139.0/24 --
                 adding VLAN tag 139 would double-tag frames & the switch could drop silently. Explicitly typed non-CLD VLAN
                 on vmbr0 is unchanged. Show label: "VLAN untagged (vmbr0 provisioning)" across all three summary paths.
+    2026-07-08  Fixed a real bug the above missed: CLD and VRK are separate sites/subnets (CLD's own LAN is
+                192.168.69.0/24; the real vRACK that vmbr0 physically sits on is VRK, 192.168.139.0/24) -- but the vmbr0
+                collapse check compared against cld_vlan (69), not the vRACK's own octet (139), so someone who typed 139
+                deliberately (believing it correct, per this file's own comment) would NOT get the untagged collapse,
+                producing exactly the double-tagged-frame bug this special case exists to prevent. Now checks against
+                both. Also added explicit site="VRK" handling to configure_network() -- a VM created directly for VRK
+                (the vRACK itself) gets a single vmbr0, untagged NIC instead of the usual vmbr1+site-VLAN LAN layout;
+                per direct confirmation, CLD-targeted VMs are unaffected and still default to VLAN 69 on vmbr1.
+                Tested via a scripted harness simulating the interactive prompts (FWL/RTR dual-NIC, single-NIC, VRK,
+                and CLD scenarios) -- all four produce the correct bridge/VLAN/untagged result.
 
 
 Usage:
@@ -813,6 +823,7 @@ def _prompt_nic(idx, default_bridge, default_vlan, default_desc):
     # CLD VLAN is the fallback — blank and CLD are synonymous in this environment.
     # Site-specific VLAN takes precedence when one is proposed (default_vlan is not None).
     cld_vlan       = SITES["CLD"]["octet"]
+    vrk_octet      = SITES["VRK"]["octet"]
     effective_vlan = default_vlan if default_vlan is not None else cld_vlan
     vlan_label     = "" if default_vlan is not None else "  [CLD fallback]"
     vlan_raw = prompt(
@@ -827,18 +838,21 @@ def _prompt_nic(idx, default_bridge, default_vlan, default_desc):
 
     # vmbr0 SPECIAL CASE — provisioning bridge / "bridged mode"
     # ---------------------------------------------------------------
-    # vmbr0 sits on vmnic0 which is a switch ACCESS port already on
-    # 192.168.139.0/24 (the CLD / provisioning network). Access ports
-    # carry traffic UNTAGGED — adding a VLAN tag here would produce
-    # double-tagged frames that the switch drops silently.
+    # vmbr0 sits on vmnic0 which is a switch ACCESS port already on the real
+    # vRACK, 192.168.139.0/24 (VRK in sites.csv/devices.csv — the CLD site
+    # code is its own separate LAN, 192.168.69.0/24, not this network).
+    # Access ports carry traffic UNTAGGED — adding a VLAN tag here would
+    # produce double-tagged frames that the switch drops silently.
     #
-    # So: if the user picked vmbr0 AND left the VLAN at the CLD default
-    # (i.e. they mean "provisioning network" not a specific tagged VLAN),
-    # we collapse it to None (untagged). If they typed a different VLAN
-    # number deliberately we leave it alone — they know what they're doing.
-    if bridge == "vmbr0" and vlan == cld_vlan:
+    # So: if the user picked vmbr0 AND left the VLAN at either the CLD
+    # fallback default or VRK's own octet (i.e. they mean "provisioning
+    # network" not a specific tagged VLAN, whichever value they associate
+    # with that), we collapse it to None (untagged). If they typed a
+    # different VLAN number deliberately we leave it alone — they know
+    # what they're doing.
+    if bridge == "vmbr0" and vlan in (cld_vlan, vrk_octet):
         vlan = None
-        info(f"  {nic_id}: vmbr0 + CLD VLAN detected — using native/untagged (provisioning bridge mode)")
+        info(f"  {nic_id}: vmbr0 detected — using native/untagged (provisioning bridge mode, vRACK)")
 
     desc = prompt(f"    Description for {nic_id}", default=default_desc)
 
@@ -869,8 +883,31 @@ def configure_network(role, site):
     then asks how many NICs are needed. Each NIC is individually prompted
     for bridge, VLAN tag, description, and optional MAC address.
     Supports up to 10 NICs (Proxmox limit: net0–net9).
+
+    VRK is a special case: it's the real vRACK itself (192.168.139.0/24),
+    reachable natively/untagged on vmbr0, not a normal tagged-VLAN LAN like
+    every other site (CLD included — CLD is its own separate LAN,
+    192.168.69.0/24). A VM created directly for site="VRK" gets a single
+    vmbr0, untagged NIC instead of the usual vmbr1 + site-VLAN layout.
     """
     section("NETWORK CONFIGURATION")
+
+    # CLD VLAN is the environment-wide fallback — blank and CLD are synonymous here.
+    cld_vlan  = SITES["CLD"]["octet"]
+    vrk_octet = SITES["VRK"]["octet"]
+
+    if site == "VRK":
+        info(f"Role {role} — site VRK is the vRACK itself: single NIC, vmbr0, untagged.")
+        print()
+        if not confirm("Configure NICs now?", default="y"):
+            warn("Skipping NIC config — configure NICs manually after creation.")
+            return []
+        # vrk_octet as the proposed default (not None -- None means "no site-specific value,
+        # fall back to cld_vlan" in _prompt_nic, not "untagged"). Accepting this default on
+        # vmbr0 hits that function's own vmbr0+known-provisioning-octet collapse, landing on
+        # the correct untagged/native result either way.
+        nic = _prompt_nic(0, "vmbr0", vrk_octet, "vRACK (native, untagged)")
+        return [nic]
 
     site_data = SITES[site]
     octet     = site_data["octet"]
@@ -880,15 +917,12 @@ def configure_network(role, site):
     dc_ip     = site_data["dc"]
     fw_ip     = site_data["fw"]
 
-    # CLD VLAN is the environment-wide fallback — blank and CLD are synonymous here.
-    cld_vlan = SITES["CLD"]["octet"]
-
     dual_nic      = role in DUAL_NIC_ROLES
     default_count = 2 if dual_nic else 1
 
     if dual_nic:
         info(f"Role {role} — suggested dual NIC layout:")
-        info(f"  net0  vmbr0  VLAN {cld_vlan:<5}   (WAN / provisioning — CLD)")
+        info(f"  net0  vmbr0  untagged        (WAN / provisioning — vRACK)")
         info(f"  net1  vmbr1  VLAN {vlan_id:<5}   (LAN — {site}, {subnet}  gw={gw})")
     else:
         info(f"Role {role} — suggested single NIC layout:")
@@ -903,15 +937,17 @@ def configure_network(role, site):
     nic_count = prompt_int("Number of NICs", default=default_count, min_val=1, max_val=10)
 
     # Build defaults for each NIC position
-    # Position 0: WAN (vmbr0, CLD VLAN) for dual roles, else LAN (vmbr1, site VLAN)
+    # Position 0: WAN (vmbr0, vRACK) for dual roles, else LAN (vmbr1, site VLAN)
     # Position 1: LAN (vmbr1, site VLAN) for dual roles
     # Position 2+: vmbr1, CLD VLAN fallback — user fills in
-    # Note: None is never passed as default_vlan; _prompt_nic() maps None → cld_vlan
-    #       but we pass cld_vlan explicitly here for clarity in the summary display.
+    # Note: the WAN slot passes vrk_octet (not None -- None means "no site-specific value,
+    #       fall back to cld_vlan" in _prompt_nic, not "untagged"); accepting that default on
+    #       vmbr0 hits _prompt_nic's own vmbr0+known-provisioning-octet collapse, landing on
+    #       the correct untagged/native result.
     def _defaults(idx):
         if dual_nic:
             if idx == 0:
-                return "vmbr0", cld_vlan, "WAN / provisioning (CLD)"
+                return "vmbr0", vrk_octet, "WAN / provisioning (vRACK)"
             elif idx == 1:
                 return "vmbr1", vlan_id,  f"LAN — {site} VLAN {vlan_id} ({subnet})"
             else:
