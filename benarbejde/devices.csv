@@ -2,7 +2,9 @@ Site,Type,Number,HostOctet,OS,ConnectionType,Managed,Notes
 CLD,ANS,1,9,Debian,ssh,,Ansible control node -- manages all sites
 CLD,RDR,1,12,Debian,ssh,,Rudder configuration management server
 CLD,SVR,2,20,Windows Server 2022,ssh,,Windows Admin Centre -- reaches all site DCs
-CLD,PBX,1,49,,ssh,,3CX PBX. No SBC in CLD so put the PBX there instead
+CLD,PBX,1,48,,ssh,,3CX PBX. No SBC in CLD so put the PBX there instead
+FRD,PRV,1,1,,none,,Provisioning server (PXE, port 8000) -- legal fiction, physically a MacBook running python3 -m http.server 8000, mirroring /debian from Edinburgh. Detected via gateway 172.16.124.2 in menu.ipxe/late_command.sh; octet .1 here (not the standard .15 PRV slot) matches the real boot-url
+FRD,PBX,1,48,,ssh,,Secondary 3CX PBX at Fredericia Havn. No SBC on this network either -- same reuse-the-empty-SBC-slot pattern as CLD's own PBX
 VRK,DNS,1,8,Debian trixie,ssh,,DNS/BIND server -- jukebox.internal authoritative
 VRK,PRV,1,50,,none,,Provisioning server -- PXE / ISOs / Ansible keys / scripts
 VRK,FWL,1,68,,ssh,,Firewall WAN face (vRACK). LAN face 192.168.69.253
