@@ -161,7 +161,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 | `.7`          | PVE node 3 | `EXAPVE<SITE>003` |
 | `.10`         | Domain Controller — primary | `EXADCS<SITE>001` |
 | `.11`         | Domain Controller — secondary | `EXADCS<SITE>002` |
-| `.48`         | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBC<SITE>001` |
+| `.48`         | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBC<SITE>001` |
 | `.100`–`.249` | DHCP pool | — |
 | `.250`–`.252` | RT switches | `EXASWI<SITE>001`–`003` |
 | `.253`        | Secondary internet gateway | — |
@@ -180,11 +180,11 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 | `EXASWI`            | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site/regional) | `EXADCSFAL001` |
 | `EXAPVE`            | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASRV`            | Server | `EXADNSCLD001` |
+| `EXASRV`            | Server | `EXADNSVRK001` |
 | `EXARAC`            | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS`            | NAS | `EXANASFAL001` |
-| `EXASBC`            | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBCFAL001` |
-| `EXAPBX`            | PBX | `EXACLDPBX001` |
+| `EXASBC`            | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
+| `EXAPBX`            | PBX | `EXAPBXCLD001` |
 | `EXAPRV`            | Provisioning / bootstrap server | `EXAPRVFAL001` |
 | `EXAWAP`            | WiFi Access Point | `EXAWAPFAL001` |
 | `EXAWKS`            | Workstation | `EXAWKSFAL001` |

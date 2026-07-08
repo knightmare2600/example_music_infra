@@ -92,19 +92,20 @@
 
 ## ☁️  — Cloud / Provisioning
 
-**LAN:** `192.168.139.0/24` · **WireGuard VPN:** `10.0.139.0/24`  
+**vRACK (`VRK`):** `192.168.139.0/24` · **CLD LAN:** `192.168.69.0/24` · **WireGuard VPN:** `10.0.139.0/24`
 **Role:** WireGuard hub — routes to all sites. Central PBX, Ansible, Rudder, WAC.
+CLD's own LAN is `192.168.69.0/24` — the vRACK (`192.168.139.0/24`) is a separate site code, `VRK`.
 
 ```mermaid
 graph TD
     INET(("🌐 Internet"))
-    FWLCLD["EXAFWLCLD001\nFirewall / WireGuard Hub\n192.168.139.1"]
-    DNS["EXADNSCLD001\nDNS / BIND9 Server\n192.168.139.8"]
-    RUD["EXARUDCLD001\nRudder Server\n192.168.139.12"]
-    WAC["EXASVRCLD002\nWindows Admin Centre\n192.168.139.20"]
-    PBX["EXACLDPBX001\n3CX Central PBX\n192.168.139.48"]
-    PRV["EXAPRVCLD001\nProvisioning Server\n192.168.139.50"]
-    ANS["EXAANSCLD001\nAnsible Control Node\n192.168.139.9"]
+    FWLCLD["EXAFWLVRK001\nFirewall / WireGuard Hub\n192.168.139.1"]
+    DNS["EXADNSVRK001\nDNS / BIND9 Server\n192.168.139.8"]
+    PRV["EXAPRVVRK001\nProvisioning Server\n192.168.139.50"]
+    RUD["EXARDRCLD001\nRudder Server\n192.168.69.12"]
+    WAC["EXASVRCLD002\nWindows Admin Centre\n192.168.69.20"]
+    PBX["EXAPBXCLD001\n3CX Central PBX\n192.168.69.48"]
+    ANS["EXAANSCLD001\nAnsible Control Node\n192.168.69.9"]
 
     VPN_FAL(["🔗 WireGuard → FAL primary"])
     VPN_ODE(["🔗 WireGuard → ODE EU backup"])
@@ -227,7 +228,7 @@ graph TD
     FWL <-->|"WireGuard tunnel"| VPN_CLD
 
     SW1 --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN_CLD
+    RRY -. "→ EXARDRCLD001" .-> VPN_CLD
     classDef net fill:#0d3b2e,stroke:#66bb6a,color:#e8f5e9
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -278,7 +279,7 @@ graph TD
     RTR <-->|"WireGuard tunnel"| VPN
 
     SW1 --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
@@ -323,7 +324,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -369,7 +370,7 @@ graph TD
     FWL <-->|"WireGuard tunnel"| VPN
 
     SW --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -413,7 +414,7 @@ graph TD
     RTR <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -459,7 +460,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
@@ -504,7 +505,7 @@ graph TD
     FWL <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -557,7 +558,7 @@ graph TD
     FWL <-->|"WireGuard tunnel"| VPN
 
     SW --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -614,7 +615,7 @@ graph TD
     FWL <-->|"WireGuard tunnel"| VPN
 
     SW1 --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -662,7 +663,7 @@ graph TD
     SW <-->|"WireGuard tunnel"| VPN
 
     SW --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -707,7 +708,7 @@ graph TD
     SW <-->|"WireGuard tunnel"| VPN
 
     SW --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -751,7 +752,7 @@ graph TD
     SW <-->|"WireGuard tunnel"| VPN
 
     SW --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -792,7 +793,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -829,7 +830,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -866,7 +867,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -904,7 +905,7 @@ graph TD
     RTR <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -954,7 +955,7 @@ graph TD
     RTR <-->|"WireGuard tunnel"| VPN
 
     SW --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
@@ -1016,7 +1017,7 @@ graph TD
     FWL -->|"WireGuard spokes"| VPN_EU
 
     PVE1 --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN_CLD
+    RRY -. "→ EXARDRCLD001" .-> VPN_CLD
     classDef net fill:#0d3b2e,stroke:#66bb6a,color:#e8f5e9
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -1060,7 +1061,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -1099,7 +1100,7 @@ graph TD
     RTR <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#880e4f,stroke:#f48fb1,color:#fce4ec
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -1137,7 +1138,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1173,7 +1174,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1209,7 +1210,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1260,7 +1261,7 @@ graph TD
     RTR <-->|"WireGuard tunnel"| VPN
 
     SW --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#bf360c,stroke:#ff8a65,color:#fbe9e7
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -1305,7 +1306,7 @@ graph TD
     RTR <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#bf360c,stroke:#ff8a65,color:#fbe9e7
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -1348,7 +1349,7 @@ graph TD
     SW <-->|"WireGuard tunnel"| VPN
 
     SW --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#bf360c,stroke:#ff8a65,color:#fbe9e7
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -1388,7 +1389,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1424,7 +1425,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1466,7 +1467,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1508,7 +1509,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1550,7 +1551,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1592,7 +1593,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1634,7 +1635,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1676,7 +1677,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1740,7 +1741,7 @@ graph TD
     RTR -->|"WireGuard spokes"| VPN_NA
 
     PVE1 --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN_CLD
+    RRY -. "→ EXARDRCLD001" .-> VPN_CLD
     classDef net fill:#0d3b2e,stroke:#66bb6a,color:#e8f5e9
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
@@ -1785,7 +1786,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -1823,7 +1824,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef vpn fill:#006064,stroke:#4dd0e1,color:#e0f7fa
@@ -1882,7 +1883,7 @@ graph TD
     FWL <-->|"WireGuard tunnel"| VPN
 
     SW1 --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#1b5e20,stroke:#81c784,color:#f1f8e9
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
@@ -1925,7 +1926,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -1964,7 +1965,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -2004,7 +2005,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
     classDef site fill:#880e4f,stroke:#f48fb1,color:#fce4ec
@@ -2043,7 +2044,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -2082,7 +2083,7 @@ graph TD
     PVE <-->|"WireGuard tunnel"| VPN
 
     PVE --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
     classDef ep fill:#4a148c,stroke:#ba68c8,color:#f3e5f5
@@ -2141,7 +2142,7 @@ graph TD
     FWL <-->|"WireGuard tunnel"| VPN
 
     SW1 --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#f57f17,stroke:#ffee58,color:#1a1a1a
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
@@ -2197,7 +2198,7 @@ graph TD
     FWL <-->|"WireGuard tunnel"| VPN
 
     SW1 --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#f57f17,stroke:#ffee58,color:#1a1a1a
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee
@@ -2261,7 +2262,7 @@ graph TD
     FWL <-->|"WireGuard tunnel"| VPN
 
     SW1 --> RRY
-    RRY -. "→ EXARUDCLD001" .-> VPN
+    RRY -. "→ EXARDRCLD001" .-> VPN
     classDef net fill:#f57f17,stroke:#ffee58,color:#1a1a1a
     classDef srv fill:#1a237e,stroke:#7986cb,color:#e8eaf6
     classDef warn fill:#b71c1c,stroke:#ef9a9a,color:#ffebee

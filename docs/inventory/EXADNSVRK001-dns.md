@@ -1,9 +1,9 @@
-# EXADNSCLD001 — DNS Server Operations Guide
+# EXADNSVRK001 — DNS Server Operations Guide
 
-**Hostname:** `exadnscld001.jukebox.internal`
+**Hostname:** `exadnsvrk001.jukebox.internal`
 **Role:** Authoritative DNS — `jukebox.internal`
 **OS:** Debian trixie
-**IP:** `192.168.139.8/24` (provisioning network, CLD site octet `.10`)
+**IP:** `192.168.139.8/24` (the vRACK, site code `VRK` — not `CLD`, which is CLD's own separate LAN)
 **Provisioned by:** `bindme.sh`
 
 ---
@@ -24,7 +24,7 @@
 
 ## 1. What This Server Does
 
-EXADNSCLD001 is the authoritative DNS server for the `jukebox.internal` private zone. It runs BIND9 on Debian trixie and sits on the provisioning network (`192.168.139.0/24`).
+EXADNSVRK001 is the authoritative DNS server for the `jukebox.internal` private zone. It runs BIND9 on Debian trixie and sits on the provisioning network (`192.168.139.0/24`).
 
 It answers two types of query:
 
@@ -66,12 +66,12 @@ The forward zone also contains **firewall WAN addresses** — see [Section 9](#9
 
 | Name                               | IP               | Purpose                   |
 |------------------------------------|------------------|---------------------------|
-| `exadnscld001.jukebox.internal`    | `192.168.139.8` | DNS/BIND server (this host)       |
+| `exadnsvrk001.jukebox.internal`    | `192.168.139.8` | DNS/BIND server (this host)       |
 | `exasvrcld002.jukebox.internal`    | `192.168.139.20` | Windows Admin Centre              |
 | `exasvrcld003.jukebox.internal`    | `192.168.139.49` | Ansible control node              |
 | `exasvrcld004.jukebox.internal`    | `192.168.139.22` | Rudder configuration management   |
-| `exacldpbx001.jukebox.internal`    | `192.168.139.48` | Central 3CX PBX                   |
-| `exaprvcld001.jukebox.internal`    | `192.168.139.50` | Provisioning / PXE server         |
+| `exapbxcld001.jukebox.internal`    | `192.168.139.48` | Central 3CX PBX                   |
+| `exaprvvrk001.jukebox.internal`    | `192.168.139.50` | Provisioning / PXE server         |
 | `exafwl{site}001-wan.jukebox.internal` | `192.168.139.{octet}` | Each site's FWL WAN face  |
 
 ### Reverse zone — provisioning network
@@ -325,6 +325,6 @@ The `139` reverse zone exploits this to provide PTR records for all firewall WAN
 | EDI  | 192.168.131.0/24    | 192.168.131.253   | 192.168.139.131    |
 | GLA  | 192.168.141.0/24    | 192.168.141.253   | 192.168.139.141    |
 | ABD  | 192.168.224.0/24    | 192.168.224.253   | 192.168.139.224    |
-| CLD  | 192.168.139.0/24    | 192.168.139.253   | 192.168.139.139    |
+| CLD  | 192.168.69.0/24     | 192.168.69.253    | 192.168.139.69     |
 
-CLD's own subnet **is** the provisioning network, so its firewall WAN address (`.139`) is unusual but consistent — and is included in the `139` reverse zone.
+**CLD is the one exception to the formula above.** Its firewall's WAN address is `192.168.139.69` — the real, fixed address of `EXAFWLVRK001`, not a derivation of CLD's own LAN octet (`69`). Those two numbers happen to match, which made this an easy mistake to make (and was, in fact, wrong in several places in this repo until 2026-07-08) — but the WAN address is looked up from devices.csv, never computed from CLD's own subnet the way every other site's is.

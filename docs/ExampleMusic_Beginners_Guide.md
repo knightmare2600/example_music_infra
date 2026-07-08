@@ -12,7 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
-| 2026-07-08 | Added section 4.2, `FRD` (Fredericia Havn) — the vRACK's standby provisioning network, not to be confused with `FRE` (the real Fredericia office). Fixed section 4.1's CLD IP table: DNS/PRV/the firewall's WAN face are `EXA*VRK001`-suffixed hostnames, not `EXA*CLD001` (devices.csv files them under `Site=VRK`); corrected the WAN face octet (`.69`, not `.68`); PBX is `EXAPBXCLD001`, not `EXACLDPBX001`. |
+| 2026-07-08 | Added section 4.2, `FRD` (Fredericia Havn) — the vRACK's standby provisioning network, not to be confused with `FRE` (the real Fredericia office). Fixed section 4.1's CLD IP table: DNS/PRV/the firewall's WAN face are `EXA*VRK001`-suffixed hostnames, not `EXA*CLD001` (devices.csv files them under `Site=VRK`); corrected the WAN face octet (`.69`, not `.68`); PBX is `EXAPBXCLD001`, not `EXACLDPBX001` (fixed a second time after an over-eager find/replace on this same changelog line corrupted it into a tautology). |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94`. Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD has no physical WiFi itself |
 | 2026-06-30 | Initial version           |
 | 2026-06-30 | Add VRK site code; expand naming table; add AAR/DRS/DUS/FRE EU spokes |
@@ -138,7 +138,7 @@ Every site in the estate follows the same IP addressing scheme within its `/24` 
 | `.10` | Domain Controller — primary | `EXADCS<SITE>001` |
 | `.11` | Domain Controller — secondary | `EXADCS<SITE>002` |
 | `.15` | Ansible/PXE node (where present) | `EXAPRV<SITE>001` |
-| `.48` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBC<SITE>001` |
+| `.48` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBC<SITE>001` |
 | `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site | `EXAWAP<SITE>001`–`013` |
 | `.100`–`.249` | DHCP pool | — |
 | `.250`–`.252` | Layer 2 switches | `EXASWI<SITE>001`–`003` |
@@ -231,8 +231,8 @@ Example: `EXAFWLEDI001` — EXA estate, firewall role, Edinburgh site, first uni
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS | `EXANASFAL001` |
 | `EXASBC` | VOIP SBC | `EXASBCFAL001` |
-| `EXAPBX` | PBX | `EXACLDPBX001` |
-| `EXAPRV` | Provisioning / bootstrap server | `EXAPRVCLD001` |
+| `EXAPBX` | PBX | `EXAPBXCLD001` |
+| `EXAPRV` | Provisioning / bootstrap server | `EXAPRVVRK001` |
 | `EXAWAP` | WiFi access point | `EXAWAPFAL001` |
 | `EXAUFC` | UniFi Network Controller (CLD only) | `EXAUFCCLD001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |
@@ -363,10 +363,10 @@ graph TD
 Once CLD is fully commissioned:
 
 - `EXADCSCLD001` (`192.168.69.10`) is the forest root DC for `jukebox.internal`. Every other site's DC is a child domain DC that replicates from it.
-- `EXADNSCLD001` (`192.168.139.8`) is the authoritative BIND9 nameserver for `jukebox.internal`. Every site firewall forwards internal DNS queries to it across the WireGuard tunnel. It sits on the vRACK — every site FWL WAN interface can reach it directly without going through the LAN.
+- `EXADNSVRK001` (`192.168.139.8`) is the authoritative BIND9 nameserver for `jukebox.internal`. Every site firewall forwards internal DNS queries to it across the WireGuard tunnel. It sits on the vRACK — every site FWL WAN interface can reach it directly without going through the LAN.
 - `EXAANSCLD001` (`192.168.69.9`) is the Ansible control node. It runs playbooks against the entire estate. Reachable on the CLD LAN via WireGuard.
 - `EXARDRCLD001` (`192.168.69.12`) is the Rudder configuration management server. All managed nodes report to it. Reachable on the CLD LAN via WireGuard.
-- `EXACLDPBX001` (`192.168.69.48`) is the central 3CX PBX. Site SBCs (`EXASBC<SITE>001`) trunk to it.
+- `EXAPBXCLD001` (`192.168.69.48`) is the central 3CX PBX. Site SBCs (`EXASBC<SITE>001`) trunk to it.
 - `EXAUFCCLD001` (`192.168.69.82`) is the UniFi Network Controller. Every site's WAPs (`EXAWAP<SITE>001`+) check in to it — CLD has no physical WiFi of its own, it just hosts the management plane.
 
 When a spoke site comes up, it does not operate autonomously. It connects back to CLD for AD replication, DNS, config management, and telephony. CLD MUST exist before any of this works.
@@ -388,7 +388,7 @@ CLD → FAL → ODE → BRK → all spokes
 ```
 
 **CLD first, always.** CLD is the sole WireGuard hub. Without it:
-- There is no provisioning server (`EXAPRVCLD001` at `192.168.139.50`) to serve iPXE boot files, preseed configs, and the Ansible SSH key
+- There is no provisioning server (`EXAPRVVRK001` at `192.168.139.50`) to serve iPXE boot files, preseed configs, and the Ansible SSH key
 - There is no DNS for `jukebox.internal`
 - There is no forest root DC — child domains cannot exist
 - There is no Ansible control node to run playbooks against anything
@@ -431,7 +431,7 @@ Once `firewallme.sh` completes and the FWL reboots, the WireGuard tunnel to CLD 
 With the FWL live and the WireGuard tunnel up, the site can talk to CLD. Now build the domain controller:
 
 1. Create the DC VM on the site PVE node
-2. Boot via iPXE (served from `EXAPRVCLD001` across the WireGuard tunnel)
+2. Boot via iPXE (served from `EXAPRVVRK001` across the WireGuard tunnel)
 3. Debian installs unattended via `lvm.seed` / `late_command.sh`
 4. Run `00-preflight.yml` from the `windows_bootstrap` playbook — renames the host, assigns a static IP, and configures DNS (see below)
 5. Run the `windows_dc` Ansible playbook from `EXAANSCLD001` — this promotes the VM to a DC, joins it to the appropriate child domain, and configures AD replication back to `EXADCSCLD001`
@@ -724,7 +724,7 @@ The database MUST be stored on an encrypted volume or in a secure location. Do n
 
 ### 11.3 SSH key setup
 
-The Ansible user across the estate uses a shared SSH keypair. The public key is served from `EXAPRVCLD001` at `http://192.168.139.50/ansible_sshkey.pub` and installed into every provisioned node during the preseed/first-boot stage.
+The Ansible user across the estate uses a shared SSH keypair. The public key is served from `EXAPRVVRK001` at `http://192.168.139.50/ansible_sshkey.pub` and installed into every provisioned node during the preseed/first-boot stage.
 
 You MUST have the corresponding private key to run Ansible playbooks or SSH directly as the `ansible` user. Retrieve it from KeePassXC under **Bootstrap → Ansible SSH private key**:
 
@@ -747,7 +747,7 @@ For firewall testing locally in Fusion, use:
 - **Host-Only** network adapter for the LAN interface (isolated from the Mac's real network)
 - **Bridged** adapter for the WAN interface (reaches the real provisioning network, or another Host-Only net for an isolated WAN stub)
 
-The `firewallme.sh` script detects which interface has a `192.168.139.x` DHCP lease and uses that as WAN automatically. This detection works correctly in Fusion as long as the bridged adapter is on a network where `EXAPRVCLD001` is reachable.
+The `firewallme.sh` script detects which interface has a `192.168.139.x` DHCP lease and uses that as WAN automatically. This detection works correctly in Fusion as long as the bridged adapter is on a network where `EXAPRVVRK001` is reachable.
 
 ---
 

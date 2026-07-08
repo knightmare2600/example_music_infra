@@ -13,8 +13,9 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-08 | Fixed CLD/VRK subnet confusion throughout: several devices (Ansible/Rudder/WAC/PBX) were listed at `192.168.139.x` (the vRACK) when they're actually CLD-LAN-only (`192.168.69.x`); DNS/PRV/the WireGuard-hub firewall face genuinely are vRACK-resident and now use their `VRK`-suffixed names (`EXADNSVRK001`/`EXAPRVVRK001`/`EXAFWLVRK001`). Added `VRK` and `FRD` rows to the Global Site Summary, which previously had neither. Flagged (not reconciled) this section's own separate `EXASVRCLD002/003/004` numbering, which diverges from what's canonical elsewhere (`EXAANSCLD001`/`EXARDRCLD001`). |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94` (added to Standard IP Convention table, per-site checklist items updated). Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD has no physical WiFi itself |
-| 2026-03-29 | Merged `network-inventory.md` and `site-inventory.md` into single document. CLD EXASVR renumbering: 001=DNS, 002=WAC, 003=Ansible, 004=Rudder. ATL subnet corrected to `192.168.33.0/24` (sites.csv canonical). TOR subnet corrected to `192.168.146.0/24`. EXAPRVFAL001 renamed EXAPRVCLD001. EXAPRNGLA001 corrected hostname (was EXAPGLAGLA001 / EXAPRNZGLA001). EXAATTLAX001 corrected to EXAASTLAX001. EDI DC remediation plan added. BRD→BER rename plan documented. |
+| 2026-03-29 | Merged `network-inventory.md` and `site-inventory.md` into single document. CLD EXASVR renumbering: 001=DNS, 002=WAC, 003=Ansible, 004=Rudder. ATL subnet corrected to `192.168.33.0/24` (sites.csv canonical). TOR subnet corrected to `192.168.146.0/24`. EXAPRVFAL001 renamed EXAPRVVRK001. EXAPRNGLA001 corrected hostname (was EXAPGLAGLA001 / EXAPRNZGLA001). EXAATTLAX001 corrected to EXAASTLAX001. EDI DC remediation plan added. BRD→BER rename plan documented. |
 | 2026-03-05 | Full review — subnets corrected against sites.csv; new sites added |
 | 2026-03-03 | TOR added; BRD renamed from BER; NJC/NYC corrected to own subnets |
 | 2026-03-01 | Initial document |
@@ -23,7 +24,7 @@
 
 ## ⚠️ Hostname Warning — CLD EXASVR vs EXASRV
 
-> **`EXADNSCLD001`** (DNS/BIND server) and the previous working name **`EXASRVCLD001`** differ by one transposed letter only.
+> **`EXADNSVRK001`** (DNS/BIND server) and the previous working name **`EXASRVCLD001`** differ by one transposed letter only.
 > The correct prefix is **`EXASVR`** throughout. Any reference to `EXASRV` is an error.
 > The full CLD server numbering is: **001** = DNS · **002** = WAC · **003** = Ansible · **004** = Rudder
 
@@ -44,7 +45,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 | `.7` | PVE node 3 — FAL/ODE/BRK only | `EXAPVE<SITE>003` |
 | `.10` | Domain Controller — primary | `EXADCS<SITE>001` |
 | `.11` | Domain Controller — secondary | `EXADCS<SITE>002` |
-| `.48` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBC<SITE>001` |
+| `.48` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBC<SITE>001` |
 | `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site | `EXAWAP<SITE>001`–`013` |
 | `.100`–`.249` | DHCP pool | — |
 | `.250`–`.252` | Switches | `EXASWI<SITE>001`–`003` |
@@ -61,7 +62,9 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 
 | Code | Location | Country | LAN Subnet | Domain | Notes |
 |------|----------|---------|-----------|--------|-------|
-| CLD | Cloud / Provisioning | — | `192.168.139.0/24` | — | WireGuard hub |
+| CLD | Cloud / Provisioning (LAN) | — | `192.168.69.0/24` | — | DCs, Ansible, Rudder, WAC, PBX |
+| VRK | OVH vRACK (Edinburgh) | — | `192.168.139.0/24` | — | Provisioning network — DNS, PXE/provisioning server, FWL WAN face. Not a real office |
+| FRD | Fredericia Havn (standby vRACK) | — | `172.16.124.0/24` | — | Standby provisioning network — not `FRE`, the real Fredericia office |
 | FAL | Falkirk | 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland | `192.168.76.0/24` | `example.net` | **Head Office** · 3-node hub |
 | EDI | Edinburgh | 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland | `192.168.131.0/24` | `example.org`/`example.net` | ⚠️ DC issues |
 | GLA | Glasgow | 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland | `192.168.141.0/24` | `example.net` | Regional DC hub |
@@ -174,35 +177,41 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 
 ## ☁️ Cloud / Provisioning — CLD
 
-**LAN:** `192.168.139.0/24`
+**vRACK (`VRK`):** `192.168.139.0/24` · **CLD LAN:** `192.168.69.0/24`
 **Role:** WireGuard hub — routes to all site subnets. Central PBX, DNS, Ansible, Rudder, WAC, Provisioning.
+CLD's own LAN is `192.168.69.0/24`, not `192.168.139.0/24` — that's `VRK`, the vRACK, a
+separate site code. See `docs/ExampleMusic_Beginners_Guide.md` §4.1.
 
-> ⚠️ **Hostname note:** `EXADNSCLD001` (DNS) and the former working name `EXASRVCLD001` differ by one transposed letter. The correct prefix is `EXASVR` throughout. See the warning at the top of this document.
+> ⚠️ **Hostname note:** `EXADNSVRK001` (DNS) and the former working name `EXASRVCLD001` differ by one transposed letter. The correct prefix is `EXASVR` throughout. See the warning at the top of this document.
+>
+> ⚠️ **This section's device numbering (`EXASVRCLD002`/`003`/`004`) predates and diverges from
+> what's now canonical elsewhere in this repo (`EXAANSCLD001` for Ansible, `EXARDRCLD001` for
+> Rudder) — flagged here, not reconciled, since that's a separate, larger naming question.
 
 ### Infrastructure Checklist
 
-- [ ] `EXAFWLCLD001` — Firewall / WireGuard hub (`192.168.139.1`) · CNAME `ovhfwl.knight139.co.uk`
-- [ ] `EXADNSCLD001` — DNS/BIND server (`192.168.139.8`) · `jukebox.internal` authoritative
-- [ ] `EXASVRCLD002` — Windows Admin Centre (`192.168.139.20`) · WS2022 · reaches all site DCs
-- [ ] `EXASVRCLD004` — Rudder configuration management (`192.168.139.22`)
-- [ ] `EXACLDPBX001` — Central 3CX PBX (`192.168.139.48`) · all site SBCs trunk here
-- [ ] `EXASVRCLD003` — Ansible control node (`192.168.139.49`) · manages all sites
-- [ ] `EXAPRVCLD001` — Provisioning server (`192.168.139.50`) · PXE · ISOs · Ansible keys · scripts
+- [ ] `EXAFWLVRK001` — Firewall / WireGuard hub (`192.168.139.1`, same physical firewall as `EXAFWLCLD001`) · CNAME `ovhfwl.knight139.co.uk`
+- [ ] `EXADNSVRK001` — DNS/BIND server (`192.168.139.8`) · `jukebox.internal` authoritative
+- [ ] `EXAPRVVRK001` — Provisioning server (`192.168.139.50`) · PXE · ISOs · Ansible keys · scripts
+- [ ] `EXASVRCLD002` — Windows Admin Centre (`192.168.69.20`) · WS2022 · reaches all site DCs
+- [ ] `EXASVRCLD004` — Rudder configuration management (`192.168.69.22`)
+- [ ] `EXAPBXCLD001` — Central 3CX PBX (`192.168.69.48`) · all site SBCs trunk here
+- [ ] `EXASVRCLD003` — Ansible control node (`192.168.69.49`) · manages all sites
 - [ ] `EXAUFCCLD001` — UniFi Network Controller (`192.168.69.82`, CLD's **LAN** — not vRACK) · manages every site's WAPs
 - [ ] WireGuard routes verified to all site subnets
-- [ ] Ansible key distribution tested from `EXAPRVCLD001`
+- [ ] Ansible key distribution tested from `EXAPRVVRK001`
 - [ ] Rudder agents checked in from test node
-- [ ] DNS self-test: `dig @192.168.139.8 exadnscld001.jukebox.internal`
+- [ ] DNS self-test: `dig @192.168.139.8 exadnsvrk001.jukebox.internal`
 
 | Hostname | Role | OS | IP | Notes |
 |----------|------|----|----|-------|
-| `EXAFWLCLD001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` |
-| `EXADNSCLD001` | DNS/BIND server | Debian trixie | `192.168.139.8` | `jukebox.internal` authoritative |
-| `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.139.20` | Reaches all site DCs |
-| `EXASVRCLD004` | Rudder | Debian | `192.168.139.22` | Configuration management |
-| `EXACLDPBX001` | Central PBX | 3CX | `192.168.139.48` | All site SBCs trunk here |
-| `EXASVRCLD003` | Ansible control node | Debian | `192.168.139.49` | Central Ansible — manages all sites |
-| `EXAPRVCLD001` | Provisioning server | — | `192.168.139.50` | PXE · ISOs · Ansible keys · scripts |
+| `EXAFWLVRK001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` — same physical firewall as `EXAFWLCLD001` |
+| `EXADNSVRK001` | DNS/BIND server | Debian trixie | `192.168.139.8` | `jukebox.internal` authoritative |
+| `EXAPRVVRK001` | Provisioning server | — | `192.168.139.50` | PXE · ISOs · Ansible keys · scripts |
+| `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.69.20` | Reaches all site DCs |
+| `EXASVRCLD004` | Rudder | Debian | `192.168.69.22` | Configuration management |
+| `EXAPBXCLD001` | Central PBX | 3CX | `192.168.69.48` | All site SBCs trunk here |
+| `EXASVRCLD003` | Ansible control node | Debian | `192.168.69.49` | Central Ansible — manages all sites |
 | `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. On CLD's **LAN** (`192.168.69.0/24`), not vRACK — CLD has no physical WiFi itself |
 
 ---
@@ -235,7 +244,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAPVEFAL003` — Proxmox node 3 (`192.168.76.7`) · PVE 8.3 · ⚠️ ZFS RAID1 pending
 - [ ] `EXADCSFAL001` — DC primary (`192.168.76.10`) · WS2022 · PDC Emulator · Global Catalog
 - [ ] `EXADCSFAL002` — DC secondary (`192.168.76.11`) · WS2022 · Global Catalog
-- [ ] `EXASBCFAL001` — VOIP SBC (`192.168.76.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCFAL001` — VOIP SBC (`192.168.76.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] `EXANASFAL001` — NAS (`192.168.76.32`) · FreeNAS 13.0-U6 · primary storage
 - [ ] `EXATARFAL001` — Tape archiver (`192.168.76.33`) · Solaris Embedded · legacy archive
 - [ ] WireGuard tunnel verified
@@ -333,7 +342,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXADCSEDI001` — DC primary (`192.168.131.10`) · confirm healthy before proceeding
 - [ ] `EXADCSEDI002` — DC secondary (`192.168.131.11`) · ⚠️ needs rebuild · currently misnamed `EXADCREDI001`
 - [ ] `EXADCSEDI003` — DC (`192.168.131.11`) · 🔴 DFSR stopped · C: 5% free · **decommission after EDI002 rebuilt**
-- [ ] `EXASBCEDI001` — VOIP SBC (`192.168.131.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCEDI001` — VOIP SBC (`192.168.131.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -369,7 +378,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACGLA002` — RAC emulator VM (`192.168.141.3`)
 - [ ] `EXAPVEGLA001` — Proxmox node 1 (`192.168.141.5`) · ZFS RAID1
 - [ ] `EXADCRGLA001` — DC (`192.168.141.10`) · WS2022 · Schema Master · Domain Naming Master · PDC Emulator
-- [ ] `EXASBCGLA001` — VOIP SBC (`192.168.141.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCGLA001` — VOIP SBC (`192.168.141.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -405,7 +414,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXADCSCLY001` — DC primary (`192.168.41.10`) · WS2022 · Global Catalog
 - [ ] `EXADCSCLY002` — DC secondary (`192.168.41.11`) · WS2022 · Global Catalog
 - [ ] `EXASRVCLY001` — Rocky Linux server (`192.168.41.20`) · Oracle DB
-- [ ] `EXASBCCLY001` — VOIP SBC (`192.168.41.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCCLY001` — VOIP SBC (`192.168.41.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -466,7 +475,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACPER002` — RAC emulator VM (`192.168.173.3`)
 - [ ] `EXAPVEPER001` — Proxmox node 1 (`192.168.173.5`) · ZFS RAID1
 - [ ] `EXADCSPER001` — DC (`192.168.173.10`) · WS2022 · Global Catalog
-- [ ] `EXASBCPER001` — VOIP SBC (`192.168.173.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCPER001` — VOIP SBC (`192.168.173.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] `EXANIXPER001` — Unix archive (`192.168.173.40`) · Solaris 11.5 · MIDI/Music archive — Fiction Factory
 - [ ] `EXANASPER001` — NAS (`192.168.173.50`) · Synology DSM 7.1 · user profiles & music archive
 - [ ] WireGuard tunnel verified
@@ -540,7 +549,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACLND002` — RAC emulator VM (`192.168.20.3`)
 - [ ] `EXAPVELND001` — Proxmox node 1 (`192.168.20.5`) · ZFS RAID1
 - [ ] `EXADCRLND001` — DC (`192.168.20.10`) · WS2022 · RID Master · Infrastructure Master
-- [ ] `EXASBCLND001` — VOIP SBC (`192.168.20.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCLND001` — VOIP SBC (`192.168.20.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -581,7 +590,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXADCRBIR001` — DC primary (`192.168.121.10`) · WS2022 · Global Catalog
 - [ ] `EXADCRBIR002` — DC secondary (`192.168.121.11`) · WS2022 · Global Catalog
 - [ ] `EXASRVBIR001` — Rocky Linux server (`192.168.121.20`) · Oracle DB
-- [ ] `EXASBCBIR001` — VOIP SBC (`192.168.121.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCBIR001` — VOIP SBC (`192.168.121.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -625,7 +634,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAPVEMCR001` — Proxmox node 1 (`192.168.161.5`) · ZFS RAID1
 - [ ] `EXADCRMCR001` — DC primary (`192.168.161.10`) · WS2022 · PDC Emulator · RID Master · Infrastructure Master
 - [ ] `EXADCSMCR002` — DC secondary (`192.168.161.11`) · WS2022 · Global Catalog
-- [ ] `EXASBCMCR001` — VOIP SBC (`192.168.161.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMCR001` — VOIP SBC (`192.168.161.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -656,7 +665,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACLIV002` — RAC emulator VM (`192.168.151.3`)
 - [ ] `EXAPVELIV001` — Proxmox node 1 (`192.168.151.5`) · ZFS RAID1
 - [ ] `EXADCRLIV001` — DC (`192.168.151.10`) · WS2025 · Global Catalog
-- [ ] `EXASBCLIV001` — VOIP SBC (`192.168.151.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCLIV001` — VOIP SBC (`192.168.151.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -689,7 +698,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACNEW002` — RAC emulator VM (`192.168.191.3`)
 - [ ] `EXAPVENEW001` — Proxmox node 1 (`192.168.191.5`) · ZFS RAID1
 - [ ] `EXADCRNEW001` — DC (`192.168.191.10`) · WS2022 · Global Catalog
-- [ ] `EXASBCNEW001` — VOIP SBC (`192.168.191.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCNEW001` — VOIP SBC (`192.168.191.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -718,7 +727,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACSHE002` — RAC emulator VM (`192.168.114.3`) · pending commissioning
 - [ ] `EXAPVESHE001` — Proxmox node 1 (`192.168.114.5`) · pending commissioning
 - [ ] `EXADCSSHE001` — DC (`192.168.114.10`) · WS2022
-- [ ] `EXASBCSHE001` — VOIP SBC (`192.168.114.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCSHE001` — VOIP SBC (`192.168.114.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -740,7 +749,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACHAL002` — RAC emulator VM (`192.168.142.3`) · pending commissioning
 - [ ] `EXAPVEHAL001` — Proxmox node 1 (`192.168.142.5`) · pending commissioning
 - [ ] `EXADCSHAL001` — DC (`192.168.142.10`) · WS2022
-- [ ] `EXASBCHAL001` — VOIP SBC (`192.168.142.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCHAL001` — VOIP SBC (`192.168.142.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -762,7 +771,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACHUL002` — RAC emulator VM (`192.168.148.3`) · pending commissioning
 - [ ] `EXAPVEHUL001` — Proxmox node 1 (`192.168.148.5`) · pending commissioning
 - [ ] `EXADCSHUL001` — DC (`192.168.148.10`) · WS2022
-- [ ] `EXASBCHUL001` — VOIP SBC (`192.168.148.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCHUL001` — VOIP SBC (`192.168.148.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -805,7 +814,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAPVECPH001` — Proxmox node 1 (`192.168.231.5`) · ZFS RAID1
 - [ ] `EXADCSCPH001` — DC (`192.168.231.10`) · WS2022 · `example.com`
 - [ ] `EXADCSCPH002` — DC (`192.168.231.11`) · WS2022 · `example.net`
-- [ ] `EXASBCCPH001` — VOIP SBC (`192.168.231.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCCPH001` — VOIP SBC (`192.168.231.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -843,7 +852,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAPVEODE003` — Proxmox node 3 (`192.168.126.7`) · ZFS RAID1
 - [ ] `EXADCSODE001` — DC primary (`192.168.126.10`) · WS2022 · PDC Emulator · RID Master · Infrastructure Master
 - [ ] `EXADCSODE002` — DC secondary (`192.168.126.11`) · WS2022 · Global Catalog
-- [ ] `EXASBCODE001` — VOIP SBC (`192.168.126.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCODE001` — VOIP SBC (`192.168.126.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -933,7 +942,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACKOR002` — RAC emulator VM (`192.168.238.3`) · pending commissioning
 - [ ] `EXAPVEKOR001` — Proxmox node 1 (`192.168.238.5`) · pending commissioning
 - [ ] `EXADCSKOR001` — DC (`192.168.238.10`) · WS2022
-- [ ] `EXASBCKOR001` — VOIP SBC (`192.168.238.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCKOR001` — VOIP SBC (`192.168.238.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -961,7 +970,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACBON002` — RAC emulator VM (`192.168.228.3`)
 - [ ] `EXAPVEBON001` — Proxmox node 1 (`192.168.228.5`) · ZFS RAID1
 - [ ] `EXADCSBON001` — DC (`192.168.228.10`) · WS2022 · **Schema Master · Domain Naming Master**
-- [ ] `EXASBCBON001` — VOIP SBC (`192.168.228.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCBON001` — VOIP SBC (`192.168.228.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -1000,7 +1009,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACBRD002` — RAC emulator VM (`192.168.113.3`) · pending commissioning
 - [ ] `EXAPVEBRD001` — Proxmox node 1 (`192.168.113.5`) · pending commissioning
 - [ ] `EXADCSBRD001` — DC (`192.168.113.10`) · WS2019 · PDC Emulator · RID Master · Infrastructure Master
-- [ ] `EXASBCBRD001` — VOIP SBC (`192.168.113.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCBRD001` — VOIP SBC (`192.168.113.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1029,7 +1038,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACMUN002` — RAC emulator VM (`192.168.189.3`)
 - [ ] `EXAPVEMUN001` — Proxmox node 1 (`192.168.189.5`) · ZFS RAID1
 - [ ] `EXADCSMUN001` — DC (`192.168.189.10`) · WS2022 · Global Catalog
-- [ ] `EXASBCMUN001` — VOIP SBC (`192.168.189.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMUN001` — VOIP SBC (`192.168.189.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -1063,7 +1072,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACGOT002` — RAC emulator VM (`192.168.46.3`) · pending commissioning
 - [ ] `EXAPVEGOT001` — Proxmox node 1 (`192.168.46.5`) · pending commissioning
 - [ ] `EXADCSGOT001` — DC (`192.168.46.10`) · WS2022
-- [ ] `EXASBCGOT001` — VOIP SBC (`192.168.46.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCGOT001` — VOIP SBC (`192.168.46.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1089,7 +1098,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACOSL002` — RAC emulator VM (`192.168.47.3`) · pending commissioning
 - [ ] `EXAPVEOSL001` — Proxmox node 1 (`192.168.47.5`) · pending commissioning
 - [ ] `EXADCSOSL001` — DC (`192.168.47.10`) · WS2022
-- [ ] `EXASBCOSL001` — VOIP SBC (`192.168.47.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCOSL001` — VOIP SBC (`192.168.47.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1115,7 +1124,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACAMS002` — RAC emulator VM (`192.168.31.3`) · pending commissioning
 - [ ] `EXAPVEAMS001` — Proxmox node 1 (`192.168.31.5`) · pending commissioning
 - [ ] `EXADCSAMS001` — DC (`192.168.31.10`) · WS2022
-- [ ] `EXASBCAMS001` — VOIP SBC (`192.168.31.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCAMS001` — VOIP SBC (`192.168.31.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1141,7 +1150,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACMIL002` — RAC emulator VM (`192.168.39.3`) · pending commissioning
 - [ ] `EXAPVEMIL001` — Proxmox node 1 (`192.168.39.5`) · pending commissioning
 - [ ] `EXADCSMIL001` — DC (`192.168.39.10`) · WS2022
-- [ ] `EXASBCMIL001` — VOIP SBC (`192.168.39.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMIL001` — VOIP SBC (`192.168.39.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1167,7 +1176,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACVIE002` — RAC emulator VM (`192.168.78.3`) · pending commissioning
 - [ ] `EXAPVEVIE001` — Proxmox node 1 (`192.168.78.5`) · pending commissioning
 - [ ] `EXADCSVIE001` — DC (`192.168.78.10`) · WS2022
-- [ ] `EXASBCVIE001` — VOIP SBC (`192.168.78.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCVIE001` — VOIP SBC (`192.168.78.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1199,7 +1208,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAPVEBRK002` — Proxmox node 2 (`192.168.136.6`) · ZFS RAID1
 - [ ] `EXAPVEBRK003` — Proxmox node 3 (`192.168.136.7`) · ZFS RAID1
 - [ ] `EXADCSBRK001` — DC (`192.168.136.10`) · WS2022 · ⚠️ services stopped
-- [ ] `EXASBCBRK001` — VOIP SBC (`192.168.136.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCBRK001` — VOIP SBC (`192.168.136.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1258,7 +1267,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACMTL002` — RAC emulator VM (`192.168.154.3`) · pending commissioning
 - [ ] `EXAPVEMTL001` — Proxmox node 1 (`192.168.154.5`) · pending commissioning
 - [ ] `EXADCSMTL001` — DC (`192.168.154.10`) · WS2022
-- [ ] `EXASBCMTL001` — VOIP SBC (`192.168.154.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMTL001` — VOIP SBC (`192.168.154.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1291,7 +1300,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAPVELAX001` — Proxmox node 1 (`192.168.213.5`) · ZFS RAID1
 - [ ] `EXADCSLAX001` — DC (`192.168.213.10`) · WS2022 · ⚠️ services stopped
 - [ ] `EXASRVLAX001` — Rocky Linux 9.x server (`192.168.213.20`) · local services / DB
-- [ ] `EXASBCLAX001` — VOIP SBC (`192.168.213.48`) · 3CX SBC Debian · trunks to `EXACLDPBX001`
+- [ ] `EXASBCLAX001` — VOIP SBC (`192.168.213.48`) · 3CX SBC Debian · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -1335,7 +1344,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACNYC002` — RAC emulator VM (`192.168.212.3`) · pending commissioning
 - [ ] `EXAPVENYC001` — Proxmox node 1 (`192.168.212.5`) · pending commissioning
 - [ ] `EXADCSNYC001` — DC (`192.168.212.10`) · WS2022 · ⚠️ services stopped
-- [ ] `EXASBCNYC001` — VOIP SBC (`192.168.212.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCNYC001` — VOIP SBC (`192.168.212.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1359,7 +1368,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACNJC002` — RAC emulator VM (`192.168.201.3`) · pending commissioning
 - [ ] `EXAPVENJC001` — Proxmox node 1 (`192.168.201.5`) · pending commissioning
 - [ ] `EXADCSNJC001` — DC (`192.168.201.10`) · WS2022 · ⚠️ services stopped
-- [ ] `EXASBCNJC001` — VOIP SBC (`192.168.201.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCNJC001` — VOIP SBC (`192.168.201.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1381,7 +1390,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACMIA002` — RAC emulator VM (`192.168.135.3`)
 - [ ] `EXAPVEMIA001` — Proxmox node 1 (`192.168.135.5`) · ZFS RAID1
 - [ ] `EXADCSMIA001` — DC (`192.168.135.10`) · WS2022
-- [ ] `EXASBCMIA001` — VOIP SBC (`192.168.135.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMIA001` — VOIP SBC (`192.168.135.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1438,7 +1447,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXARACCHI002` — RAC emulator VM (`192.168.214.3`)
 - [ ] `EXAPVECHI001` — Proxmox node 1 (`192.168.214.5`) · ZFS RAID1
 - [ ] `EXADCSCHI001` — DC (`192.168.214.10`) · WS2022 · ⚠️ services stopped
-- [ ] `EXASBCCHI001` — VOIP SBC (`192.168.214.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCCHI001` — VOIP SBC (`192.168.214.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1470,7 +1479,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAPVESYD001` — Proxmox node 1 (`192.168.29.5`) · ZFS RAID1
 - [ ] `EXADCSSYD001` — DC (`192.168.29.10`) · WS2022 · ⚠️ services stopped
 - [ ] `EXASRVSYD001` — WS2022 server (`192.168.29.20`) · local infra
-- [ ] `EXASBCSYD001` — VOIP SBC (`192.168.29.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCSYD001` — VOIP SBC (`192.168.29.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAP `EXAWAPSYD001` — Ubiquiti UniFi
 - [ ] WireGuard tunnel verified
 
@@ -1514,7 +1523,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAPVEMEL001` — Proxmox node 1 (`192.168.61.5`) · ZFS RAID1
 - [ ] `EXADCSMEL001` — DC (`192.168.61.10`) · WS2022 · ⚠️ services stopped
 - [ ] `EXASRVMEL001` — WS2022 server (`192.168.61.20`) · local file & print
-- [ ] `EXASBCMEL001` — VOIP SBC (`192.168.61.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCMEL001` — VOIP SBC (`192.168.61.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1560,7 +1569,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAPVEAKL001` — Proxmox node 1 (`192.168.93.5`) · ZFS RAID1
 - [ ] `EXADCSAKL001` — DC (`192.168.93.10`) · WS2022 · ⚠️ services stopped
 - [ ] `EXASRVAKL001` — WS2022 server (`192.168.93.20`) · local server
-- [ ] `EXASBCAKL001` — VOIP SBC (`192.168.93.48`) · trunks to `EXACLDPBX001`
+- [ ] `EXASBCAKL001` — VOIP SBC (`192.168.93.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPAKL001`–`002` — Ubiquiti UniFi — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
@@ -1595,13 +1604,13 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 | `EXASWI` | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site / regional) | `EXADCSFAL001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASVR` | Server | `EXADNSCLD001` |
+| `EXASVR` | Server | `EXADNSVRK001` |
 | `EXASRV` | Server (legacy / local) | `EXASRVCLY001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS | `EXANASFAL001` |
-| `EXASBC` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBCFAL001` |
-| `EXAPBX` | PBX | `EXACLDPBX001` |
-| `EXAPRV` | Provisioning / bootstrap server | `EXAPRVCLD001` |
+| `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
+| `EXAPBX` | PBX | `EXAPBXCLD001` |
+| `EXAPRV` | Provisioning / bootstrap server | `EXAPRVVRK001` |
 | `EXAWAP` | WiFi Access Point | `EXAWAPFAL001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |
 | `EXALAP` | Laptop | `EXALAPFAL001` |
