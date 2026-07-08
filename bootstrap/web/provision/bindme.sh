@@ -27,11 +27,12 @@
 #   .252 EXASWI    (Switch 3)
 #   .253 EXAFWL    (Debian firewall)
 #
-# Plus CLD ancillary hosts:
+# Plus vRACK ancillary hosts (Site=VRK in devices.csv -- these are the only ones actually
+# resident on 192.168.139.0/24; CLD's own LAN devices -- ANS/RDR/WAC/PBX/UFC -- are on
+# 192.168.69.0/24 instead, see db.192.168.69 below):
 #   192.168.139.8    ${THIS_HOSTNAME}  (this DNS server)
-#   192.168.139.9    EXAANSCLD001      (Ansible management)
 #   192.168.139.50   EXAPRVVRK001      (provisioning / PXE)
-#   192.168.139.139  EXAFWLCLD001      (CLD firewall — WAN face on vRACK)
+#   192.168.139.69   EXAFWLVRK001      (CLD firewall — WAN face on vRACK)
 #   192.168.139.254  DC provider router (vRACK gateway — not EXA kit)
 # ===============================================================
 
@@ -82,10 +83,19 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #            site portion but role prefix (exa{dcs|fwl|rac} etc,) remained lowercase. Full name now
 #            uppercase at construction via ${hostname^^} giving EXA{DCS|FWL}{EDI|ODE}001, matches
 #            deployment convention. Applies to forward A records and all PTR records.
-
-# ---------------------------------------------------------------
-# Colour helpers  (identical style to firewallme.sh)
-# ---------------------------------------------------------------
+# 2026-07-08 Fix: same class of bugs bind9-dns.yml (the Ansible equivalent this script mirrors)
+#            had before today -- CLD's vRACK WAN face was hardcoded at .139.139 throughout (forward
+#            A record, FWL WAN append loop, provisioning reverse zone PTR) instead of the real
+#            EXAFWLVRK001 address, .69. WAC/Rudder/PBX (Windows Admin Centre/exardrcld001/
+#            exacldpbx001) were duplicated onto the vRACK zone (192.168.139.x) at their real LAN
+#            octets -- a copy-paste mistake, not a genuine second vRACK-side interface; removed
+#            from there and added to the CLD LAN sections (forward + reverse) instead, alongside
+#            the previously-missing UniFi Network Controller (UFC, .82). Also renamed the real
+#            vRACK-resident devices to their VRK-suffixed names (exaprvcld001 -> exaprvvrk001,
+#            exafwlcld001 -> exafwlvrk001 for the WAN-face entry specifically -- the LAN-face
+#            entry keeps its CLD name, unchanged) to match devices.csv/bind9-dns.yml. Fixed a
+#            separate, unrelated stale comment claiming the DNS server itself is at .10 (it's
+#            actually .8, per this file's own header).
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()    { echo -e "${CYAN}[*]${NC} $*"; }
 success() { echo -e "${GREEN}[+]${NC} $*"; }
@@ -753,10 +763,20 @@ success "named.conf.local written (1 forward + 1 provisioning + ${non_cld_count}
 #   .10/.11 EXADCS  .48 EXASBC (EXAPBX for CLD)
 #   .250/.251/.252 EXASWI  .253 EXAFWL
 #
-# CLD ancillary hosts are added explicitly after the generated block:
-#   .10  ${THIS_HOSTNAME}   (this server)
+# vRACK ancillary hosts (Site=VRK, 192.168.139.0/24) are added explicitly after the
+# generated block:
+#   .8   ${THIS_HOSTNAME}   (this server)
 #   .50  EXAPRVVRK001   (provisioning/PXE)
+#   .69  EXAFWLVRK001   (CLD firewall -- WAN face on vRACK)
+#
+# CLD LAN devices (Site=CLD, 192.168.69.0/24) are added separately, after the FWL WAN
+# section:
 #   .9   EXAANSCLD001   (Ansible)
+#   .10/.11  EXADCSCLD001/002  (DC primary/secondary)
+#   .12  EXARDRCLD001   (Rudder)
+#   .20  EXASVRCLD002   (Windows Admin Centre)
+#   .48  EXAPBXCLD001   (Central 3CX PBX)
+#   .82  EXAUFCCLD001   (UniFi Network Controller)
 #
 # NOTE: BRD is skipped (legacy alias for BER -- BER covers it).
 # ---------------------------------------------------------------
@@ -810,13 +830,14 @@ ${THIS_HOSTNAME_LOWER}  IN  A  192.168.139.8
 
 ; -- vRACK (192.168.139.0/24) ancillary hosts ------------------
 ; Hardcoded -- not derived from the per-site suffix_map loop.
-; CLD LAN (192.168.69.0/24) devices are added after the suffix_map
-; and FWL WAN sections below.
-exafwlcld001  IN  A  192.168.139.139  ; CLD firewall (vRACK WAN face)
-exasvrcld002  IN  A  192.168.139.20   ; Windows Admin Centre
-exardrcld001  IN  A  192.168.139.12   ; Rudder configuration management server
-exacldpbx001  IN  A  192.168.139.48   ; Central 3CX PBX
-exaprvcld001  IN  A  192.168.139.50   ; Provisioning server (PXE)
+; CLD LAN (192.168.69.0/24) devices (ANS/RDR/WAC/PBX/UFC) are added after the
+; suffix_map and FWL WAN sections below -- they are NOT vRACK-resident, only
+; DNS/PRV/FWL-WAN actually are (an earlier version of this script wrongly
+; duplicated them here too, at the same host octets as their real LAN
+; addresses -- a copy-paste mistake, not a genuine second vRACK-side
+; interface. Fixed 2026-07-08, matching the same fix in bind9-dns.yml).
+exafwlvrk001  IN  A  192.168.139.69   ; CLD firewall (vRACK WAN face)
+exaprvvrk001  IN  A  192.168.139.50   ; Provisioning server (PXE)
 
 ; -- Firewall WAN addresses on provisioning network ------------
 ; Each site firewall (EXAFWL) has a WAN interface on 192.168.139.0/24.
@@ -914,14 +935,16 @@ done
 } >> "${ZONE_FILE}"
 
 # Append FWL WAN A records (192.168.139.{site-octet} per site)
-# CLD special case: vRACK WAN is 192.168.139.139, not 192.168.139.69
+# CLD special case: vRACK WAN is the real EXAFWLVRK001 address (192.168.139.69), not a
+# formulaic 192.168.139.{CLD's own LAN octet}
 {
   echo "; -- Firewall WAN addresses (192.168.139.{site-octet}) ----------"
-  echo "; CLD vRACK WAN is static (.139) -- LAN octet (.69) != vRACK WAN octet (.139)."
+  echo "; CLD vRACK WAN is static (.69, EXAFWLVRK001's real address) -- same interface, not"
+  echo "; a formulaic site-octet lookup like every other site below."
   for site in "${SORTED_SITES[@]}"; do
     octet="${SITE_OCTET[$site]}"
     if [[ "${site}" == "CLD" ]]; then
-      wan_ip="192.168.139.139"
+      wan_ip="192.168.139.69"
     else
       wan_ip="192.168.139.${octet}"
     fi
@@ -940,6 +963,10 @@ done
   printf "%-45s IN  A  %-15s ; Ansible control node\n"                      "exaanscld001"     "192.168.69.9"
   printf "%-45s IN  A  %-15s ; DC primary\n"                                "exadcscld001"     "192.168.69.10"
   printf "%-45s IN  A  %-15s ; DC secondary\n"                              "exadcscld002"     "192.168.69.11"
+  printf "%-45s IN  A  %-15s ; Rudder configuration management server\n"    "exardrcld001"     "192.168.69.12"
+  printf "%-45s IN  A  %-15s ; Windows Admin Centre\n"                      "exasvrcld002"     "192.168.69.20"
+  printf "%-45s IN  A  %-15s ; Central 3CX PBX\n"                          "exapbxcld001"     "192.168.69.48"
+  printf "%-45s IN  A  %-15s ; UniFi Network Controller (manages WAPs)\n"   "exaufccld001"     "192.168.69.82"
   echo ""
 } >> "${ZONE_FILE}"
 
@@ -972,14 +999,16 @@ success "Forward zone file written ($(grep -c 'IN  A' "${ZONE_FILE}") A records 
 # This zone covers 192.168.139.0/24 (the provisioning network).
 # It contains two sets of records:
 #
-#   (i)  Ancillary hosts -- ${THIS_HOSTNAME} (.10), EXAPRVVRK001 (.50),
-#        EXAANSCLD001 (.9)
+#   (i)  vRACK ancillary hosts -- ${THIS_HOSTNAME} (.8), EXAPRVVRK001 (.50),
+#        EXAFWLVRK001 (.69). CLD LAN devices (ANS/DCs/RDR/WAC/PBX/UFC) are
+#        NOT in this zone -- see db.192.168.69 instead.
 #
 #   (ii) FWL WAN PTR records -- every site firewall has a WAN
 #        interface on this subnet.  The host octet equals the site
 #        subnet's third octet.
 #        e.g. EDI = 192.168.131.0/24  ->  .131  IN PTR exafwledi001-wan
-#        CLD's firewall lands at .139 (its own octet).
+#        CLD's firewall lands at .69 (EXAFWLVRK001's real address, not a
+#        formulaic lookup of CLD's own LAN octet).
 #
 # This file is written directly (not from the per-site loop) so
 # that CLD's site subnet does not end up as a duplicate zone.
@@ -999,16 +1028,15 @@ cat > "${PROV_REV_FILE}" <<PROVREVHDR
 ;
 ; PTR records:
 ;   .8   ${THIS_HOSTNAME}   -- DNS/BIND9 server
-;   .12  EXARUDCLD001   -- Rudder Server
-;   .20  EXASVRCLD002   -- Windows Admin Centre
-;   .48  EXACLDPBX001   -- Central 3CX PBX
 ;   .50  EXAPRVVRK001   -- provisioning / PXE server
-;   .9   EXAANSCLD001   -- Ansible management node
+;   .69  EXAFWLVRK001   -- CLD firewall, WAN face on vRACK
 ;   .X   EXAFWL{site}001-wan  -- firewall WAN face for each site
 ;        where X = the site's /24 third octet (from sites.csv)
 ;
 ; The -wan suffix distinguishes the firewall's provisioning-network
 ; address from its LAN address (EXAFWL{site}001 in its own subnet).
+; CLD LAN devices (ANS/DCs/RDR/WAC/PBX/UFC) are NOT in this zone -- see
+; db.192.168.69 instead.
 ; ============================================================
 
 \$ORIGIN 139.168.192.in-addr.arpa.
@@ -1025,12 +1053,11 @@ cat > "${PROV_REV_FILE}" <<PROVREVHDR
 @   IN  NS   ${THIS_HOSTNAME_LOWER}.jukebox.internal.
 
 ; -- vRACK ancillary hosts -------------------------------------
-; DCs and Ansible node moved to CLD LAN (192.168.69.0/24) -- see db.192.168.69.
+; CLD LAN devices (ANS/DCs/RDR/WAC/PBX/UFC) are on 192.168.69.0/24 --
+; see db.192.168.69 instead. Only DNS/PRV/FWL-WAN are actually vRACK-resident.
 8     IN  PTR  ${THIS_HOSTNAME_LOWER}.jukebox.internal.     ; DNS/BIND9 server (this host)
-20    IN  PTR  exasvrcld002.jukebox.internal.               ; Windows Admin Centre
-12    IN  PTR  exardrcld001.jukebox.internal.               ; Rudder configuration management server
-48    IN  PTR  exacldpbx001.jukebox.internal.               ; Central 3CX PBX
-50    IN  PTR  exaprvcld001.jukebox.internal.               ; Provisioning / PXE
+50    IN  PTR  exaprvvrk001.jukebox.internal.               ; Provisioning / PXE
+69    IN  PTR  exafwlvrk001.jukebox.internal.               ; CLD firewall (vRACK WAN face)
 
 ; -- Firewall WAN PTR records ----------------------------------
 ; 192.168.139.{octet}  ->  exafwl{site}001-wan.jukebox.internal.
@@ -1040,9 +1067,10 @@ PROVREVHDR
 for site in "${SORTED_SITES[@]}"; do
   octet="${SITE_OCTET[$site]}"
   wan_host="EXAFWL${site}001-wan.jukebox.internal."
-  # CLD special case: vRACK WAN face is .139, not the LAN octet (.69)
+  # CLD special case: vRACK WAN face is EXAFWLVRK001's real address (.69), not a
+  # formulaic lookup of CLD's own LAN octet
   if [[ "${site}" == "CLD" ]]; then
-    ptr_octet="139"
+    ptr_octet="69"
   else
     ptr_octet="${octet}"
   fi
@@ -1096,6 +1124,10 @@ cat > "${CLD_LAN_REV_FILE}" <<CLDLANREVHDR
 9     IN  PTR  exaanscld001.jukebox.internal.               ; Ansible control node
 10    IN  PTR  exadcscld001.jukebox.internal.               ; DC primary
 11    IN  PTR  exadcscld002.jukebox.internal.               ; DC secondary
+12    IN  PTR  exardrcld001.jukebox.internal.               ; Rudder configuration management server
+20    IN  PTR  exasvrcld002.jukebox.internal.               ; Windows Admin Centre
+48    IN  PTR  exapbxcld001.jukebox.internal.               ; Central 3CX PBX
+82    IN  PTR  exaufccld001.jukebox.internal.               ; UniFi Network Controller
 CLDLANREVHDR
 
 success "CLD LAN reverse zone written."
