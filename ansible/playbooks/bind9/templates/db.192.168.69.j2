@@ -13,8 +13,9 @@
 ;   The vRACK (192.168.139.0/24) is handled by db.192.168.139.
 ;   Standard suffix_map does not apply -- CLD LAN devices are explicit.
 ;
-; PTR records: derived from devices.csv (see bind9-dns.yml's cld_lan_hosts set_fact) --
-; every CLD-site entry in the merged device list, standard-slot and real alike.
+; PTR records: derived from devices.csv (see bind9-dns.yml's cld_black_swan_hosts set_fact),
+; filtered to this zone's own site (CLD) -- every CLD-site entry in the merged device list,
+; standard-slot and real alike.
 ; ============================================================
 
 $ORIGIN 69.168.192.in-addr.arpa.
@@ -31,7 +32,7 @@ $TTL {{ zone_ttl }}
 @   IN  NS   {{ this_hostname }}.{{ domain }}.
 
 ; ── CLD LAN PTR records ──────────────────────────────────────
-{% for h in cld_lan_hosts | sort(attribute='ip') %}
+{% for h in cld_black_swan_hosts | selectattr('site', 'equalto', 'CLD') | sort(attribute='ip') %}
 {% set host_octet = h.ip.split('.')[3] %}
 {{ "%-5s" | format(host_octet) }} IN  PTR  {{ h.name }}.{{ domain }}.   ; {{ h.comment }}
 {% endfor %}

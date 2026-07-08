@@ -9,7 +9,7 @@
 ; Generated:  {{ ansible_date_time.iso8601 }}
 ;
 ; PTR records:
-;   ancillary_hosts (DNS/PRV/FWL WAN face -- devices.csv Site=VRK) below.
+;   cld_black_swan_hosts, filtered to Site=VRK (DNS/PRV/FWL WAN face) below.
 ;   Rudder/WAC/PBX/DCs are CLD LAN-only (192.168.69.0/24) -- see db.192.168.69.j2,
 ;   NOT this zone. (An earlier version of this file wrongly duplicated them here
 ;   too, at the same host octets as their real LAN addresses -- a copy-paste
@@ -38,21 +38,23 @@ $TTL {{ zone_ttl }}
 @   IN  NS   {{ this_hostname }}.{{ domain }}.
 
 ; ── vRACK ancillary hosts ─────────────────────────────────────
-; Derived from devices.csv (see bind9-dns.yml's ancillary_hosts set_fact).
-; DCs, Ansible node, Rudder, WAC, PBX are CLD LAN-only -- see db.192.168.69.j2.
-{% for h in ancillary_hosts | sort(attribute='ip') %}
+; Derived from devices.csv (see bind9-dns.yml's cld_black_swan_hosts set_fact), filtered to
+; this zone's own site (VRK). DCs, Ansible node, Rudder, WAC, PBX are CLD LAN-only -- see
+; db.192.168.69.j2.
+{% set vrk_hosts = cld_black_swan_hosts | selectattr('site', 'equalto', 'VRK') | list %}
+{% for h in vrk_hosts | sort(attribute='ip') %}
 {% set host_octet = h.ip.split('.')[3] %}
 {{ "%-5s" | format(host_octet) }} IN  PTR  {{ "%-50s" | format(h.name + '.' + domain + '.') }} ; {{ h.comment }}
 {% endfor %}
 
 ; ── Firewall WAN PTR records ──────────────────────────────────
 ; 192.168.139.{octet}  ->  exafwl{site}001-wan.{{ domain }}.
-; CLD special case: vRACK WAN comes from devices.csv (ancillary_hosts' exafwlvrk001 entry),
-; not the site-octet pattern below, since CLD's own subnet is the LAN side, not the vRACK.
-; Sorted by octet ascending.
+; CLD special case: vRACK WAN comes from devices.csv (cld_black_swan_hosts' exafwlvrk001
+; entry), not the site-octet pattern below, since CLD's own subnet is the LAN side, not the
+; vRACK. Sorted by octet ascending.
 {% for site in sites | sort(attribute='octet') %}
 {% if site.Site == 'CLD' %}
-{% set cld_wan_octet = (ancillary_hosts | selectattr('name', 'equalto', 'exafwlvrk001') | map(attribute='ip') | first).split('.')[3] %}
+{% set cld_wan_octet = (vrk_hosts | selectattr('name', 'equalto', 'exafwlvrk001') | map(attribute='ip') | first).split('.')[3] %}
 {{ "%-5s" | format(cld_wan_octet) }} IN  PTR  {{ "%-50s" | format('exafwlcld001-wan.' + domain + '.') }} ; CLD ({{ site.City }}) -- vRACK WAN (same interface as exafwlvrk001 above)
 {% else %}
 {{ "%-5s" | format(site.octet) }} IN  PTR  {{ "%-50s" | format('exafwl' + site.Site | lower + '001-wan.' + domain + '.') }} ; {{ site.Site }} ({{ site.City }})
