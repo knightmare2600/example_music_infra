@@ -46,7 +46,7 @@ These are the **Known source of truth** (0xDF). If any other source disagrees wi
 
 ### devices.csv is exceptions-only
 
-`devices.csv` does **not** list every device at every site — every site's router, domain controllers, Proxmox nodes, SBC and firewalls are already fully predictable from `address_policy.json` + `sites.csv` (see [Addressing](#addressing) below), so listing them again in `devices.csv` would just be 49 sites' worth of repeated boilerplate. `devices.csv` only needs a row for a device that **doesn't** fit that pattern — a specific workstation, a laptop, a printer, a coffee machine with a network port, a second/third instance of something that's normally singular.
+`devices.csv` does **not** list every device at every site — every site's router, domain controllers, Proxmox nodes, SBC and firewalls are already fully predictable from `address_policy.json` + `sites.csv` (see [Addressing](#addressing) below), so listing them again in `devices.csv` would just be every site's worth of repeated boilerplate. `devices.csv` only needs a row for a device that **doesn't** fit that pattern — a specific workstation, a laptop, a printer, a coffee machine with a network port, a second/third instance of something that's normally singular.
 
 `benarbejde/generate_inventory.py` is what joins the two together — one script, two jobs:
 
