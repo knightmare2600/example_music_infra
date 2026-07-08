@@ -17,7 +17,7 @@
 # Device Role → OU mapping (matches 10-ad-schema.yml _device_sub_ous):
 #   Workstations   WKS LAP SUR MBP MAC VDU
 #   Servers        DCS SRV SVR SBC RDR
-#   Infrastructure FWL RTR SWI RAC PVE NAS NIX
+#   Infrastructure FWL RTR SWI BMC PVE NAS NIX
 #   Telephony      PHN PBX PAY
 #   AV             LCD TVS VCU MIC RAD
 #   IoT            CAM WAP CLK PMP TEA COF PRN DON VND MUS TTY OB
@@ -57,6 +57,9 @@
 #                     lives in 00-ad-preflight.yml, not inline. Inline
 #                     microsoft.ad collection check replaced with a shared
 #                     include: ../tasks/ad_collection_check.yml.
+# v1.3.0  2026-07-08  Fixed stale "RAC" in the Device Role -> OU mapping comment above (BMC
+#                     supersedes RAC — same fix already applied to 10-ad-schema.yml, missed
+#                     here since this file has its own copy of the same table).
 # =============================================================================
 
 - name: "Build AD computer accounts from JSON"
