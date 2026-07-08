@@ -13,6 +13,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94` (added to Standard IP Convention table, per-site checklist items updated). Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD has no physical WiFi itself |
 | 2026-03-29 | Merged `network-inventory.md` and `site-inventory.md` into single document. CLD EXASVR renumbering: 001=DNS, 002=WAC, 003=Ansible, 004=Rudder. ATL subnet corrected to `192.168.33.0/24` (sites.csv canonical). TOR subnet corrected to `192.168.146.0/24`. EXAPRVFAL001 renamed EXAPRVCLD001. EXAPRNGLA001 corrected hostname (was EXAPGLAGLA001 / EXAPRNZGLA001). EXAATTLAX001 corrected to EXAASTLAX001. EDI DC remediation plan added. BRD→BER rename plan documented. |
 | 2026-03-05 | Full review — subnets corrected against sites.csv; new sites added |
 | 2026-03-03 | TOR added; BRD renamed from BER; NJC/NYC corrected to own subnets |
@@ -44,6 +45,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 | `.10` | Domain Controller — primary | `EXADCS<SITE>001` |
 | `.11` | Domain Controller — secondary | `EXADCS<SITE>002` |
 | `.48` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBC<SITE>001` |
+| `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site | `EXAWAP<SITE>001`–`013` |
 | `.100`–`.249` | DHCP pool | — |
 | `.250`–`.252` | Switches | `EXASWI<SITE>001`–`003` |
 | `.253` | Secondary gateway / firewall | `EXAFWL<SITE>001` (if `.1` is router) |
@@ -186,6 +188,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXACLDPBX001` — Central 3CX PBX (`192.168.139.48`) · all site SBCs trunk here
 - [ ] `EXASVRCLD003` — Ansible control node (`192.168.139.49`) · manages all sites
 - [ ] `EXAPRVCLD001` — Provisioning server (`192.168.139.50`) · PXE · ISOs · Ansible keys · scripts
+- [ ] `EXAUFCCLD001` — UniFi Network Controller (`192.168.69.82`, CLD's **LAN** — not vRACK) · manages every site's WAPs
 - [ ] WireGuard routes verified to all site subnets
 - [ ] Ansible key distribution tested from `EXAPRVCLD001`
 - [ ] Rudder agents checked in from test node
@@ -200,6 +203,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 | `EXACLDPBX001` | Central PBX | 3CX | `192.168.139.48` | All site SBCs trunk here |
 | `EXASVRCLD003` | Ansible control node | Debian | `192.168.139.49` | Central Ansible — manages all sites |
 | `EXAPRVCLD001` | Provisioning server | — | `192.168.139.50` | PXE · ISOs · Ansible keys · scripts |
+| `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. On CLD's **LAN** (`192.168.69.0/24`), not vRACK — CLD has no physical WiFi itself |
 
 ---
 
@@ -256,7 +260,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXASURFAL001` — Surface (`192.168.76.104`) · Win11 23H2
 - [ ] `EXAPHNFAL001`–`003` · `EXAPHNFAL006`–`007` — Yealink T58A phones
 - [ ] `EXATABFAL001` — Tablet
-- [ ] WAPs `EXAWAPFAL001`–`006` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPFAL001`–`006` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Security & Building Systems
 
@@ -344,7 +348,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 
 - [ ] `EXAWKSEDI001` — Workstation (`192.168.131.150`) · Win10 Pro 22H2
 - [ ] `EXALAPEDI098` — Laptop (`192.168.131.108`) · Win11 Pro 24H2 · pool device
-- [ ] WAPs `EXAWAPEDI001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPEDI001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 
@@ -417,7 +421,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXASURCLY001` — Surface
 - [ ] `EXAPHNCLY001` — iOS device
 - [ ] `EXASURCLY002` — Android tablet
-- [ ] WAPs `EXAWAPCLY001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPCLY001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ---
 
@@ -447,7 +451,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 
 - [ ] `EXASURDUN001`–`002` — Surface / Win11
 - [ ] `EXAPHNDUN001`–`002` — iOS devices
-- [ ] WAPs `EXAWAPDUN001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPDUN001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ---
 
@@ -514,7 +518,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 
 - [ ] `EXAMBPABD001`–`002` — MacBooks
 - [ ] `EXAPHNABD001`–`002` — iPhones
-- [ ] WAPs `EXAWAPABD001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPABD001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ---
 
@@ -593,7 +597,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAMBPBIR001` — MacBook
 - [ ] `EXATABBIR001` — Samsung Galaxy Tab
 - [ ] `EXAPHNBIR001` — Samsung S25
-- [ ] WAPs `EXAWAPBIR001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPBIR001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 
@@ -778,7 +782,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 ### Infrastructure Checklist
 
 - [ ] `EXARTRCOV001` — WAN edge router (`192.168.247.254`) · Cisco ISR 4331
-- [ ] WAPs `EXAWAPCOV001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPCOV001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
 ---
@@ -814,7 +818,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 
 ### Endpoints Checklist
 
-- [ ] WAPs `EXAWAPCPH001`–`003` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPCPH001`–`003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 
@@ -856,7 +860,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 
 - [ ] `EXAMACODE001` — iMac · macOS Tahoe
 - [ ] `EXAMBPODE002` — MacBook Pro
-- [ ] WAPs `EXAWAPODE001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPODE001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 
@@ -914,7 +918,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 
 ### Endpoints Checklist
 
-- [ ] WAPs `EXAWAPFAX001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPFAX001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ---
 
@@ -1009,7 +1013,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 
 - [ ] `EXASRVBRD001` — WS2019 legacy application server
 - [ ] `EXANIXBRD001` — Debian 12 server
-- [ ] WAPs `EXAWAPBRD001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPBRD001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ---
 
@@ -1303,7 +1307,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXAMBPLAX001` — MacBook Pro
 - [ ] `EXATABLAX001` — iPad · setlists
 - [ ] `EXAPHNLAX001` — Android phone
-- [ ] WAPs `EXAWAPLAX001`–`003` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPLAX001`–`003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 
@@ -1557,7 +1561,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 - [ ] `EXADCSAKL001` — DC (`192.168.93.10`) · WS2022 · ⚠️ services stopped
 - [ ] `EXASRVAKL001` — WS2022 server (`192.168.93.20`) · local server
 - [ ] `EXASBCAKL001` — VOIP SBC (`192.168.93.48`) · trunks to `EXACLDPBX001`
-- [ ] WAPs `EXAWAPAKL001`–`002` — Ubiquiti UniFi
+- [ ] WAPs `EXAWAPAKL001`–`002` — Ubiquiti UniFi — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
