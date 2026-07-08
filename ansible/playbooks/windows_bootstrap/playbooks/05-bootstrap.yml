@@ -168,8 +168,10 @@
     ansible_ssh_extra_args:       '-o StrictHostKeyChecking=no'
 
     # ── Asset / binary server ─────────────────────────────────────────────────
-    exa_asset_base:     "http://192.168.139.50/WINDOWS"
-    exa_wallpaper_url:  "http://192.168.139.50/ExampleMusicWallpaper.png"
+    # exa_asset_base / exa_wallpaper_url removed entirely 2026-07-08 -- wallpaper/binaries are
+    # win_copy'd from files/ now (see 60-wallpaper.yml/50-binaries.yml), not HTTP-fetched from
+    # the provisioning server. exa_wallpaper_dest is just the destination path on the Windows
+    # side, unrelated to how the file gets there -- still needed.
     exa_wallpaper_dest: 'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.png'
 
     # ── Domain ────────────────────────────────────────────────────────────────
@@ -449,19 +451,17 @@
 
     - name: "── Stage 9 — Corporate wallpaper ──"
       debug:
-        msg: "{{ 'Deploying wallpaper...' if wallpaper_available else 'Wallpaper URL unreachable — skipping.' }}"
+        msg: "Deploying wallpaper..."
 
     - name: "[Stage 9] Create wallpaper directory"
       ansible.windows.win_file:
         path: 'C:\Windows\Web\Wallpaper\ExampleMusic'
         state: directory
-      when: wallpaper_available
 
-    - name: "[Stage 9] Download corporate wallpaper"
-      ansible.windows.win_get_url:
-        url:  "{{ exa_wallpaper_url }}"
+    - name: "[Stage 9] Push corporate wallpaper"
+      ansible.windows.win_copy:
+        src:  ExampleMusicWallpaper.png
         dest: "{{ exa_wallpaper_dest }}"
-      when: wallpaper_available
       notify: apply wallpaper
 
     - name: "[Stage 9] Set wallpaper via PersonalizationCSP"
@@ -476,7 +476,6 @@
         - { name: DesktopImageStatus, data: 1,                          type: dword  }
       loop_control:
         label: "{{ item.name }}"
-      when: wallpaper_available
 
     - name: "[Stage 9] Lock wallpaper via policy"
       ansible.windows.win_regedit:
@@ -489,7 +488,6 @@
         - { name: WallpaperStyle, data: "10",                       type: string }
       loop_control:
         label: "{{ item.name }}"
-      when: wallpaper_available
 
     - name: "[Stage 9] Disable themes tab (prevent user override)"
       ansible.windows.win_regedit:
@@ -497,7 +495,6 @@
         name: NoThemesTab
         data: 1
         type: dword
-      when: wallpaper_available
 
     - name: "[Stage 9] Flush handlers (apply wallpaper now)"
       meta: flush_handlers

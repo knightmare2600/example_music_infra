@@ -8,8 +8,10 @@
 # =============================================================================
 
 # Binary / asset server
-exa_asset_base:      "http://192.168.139.50/WINDOWS"
-exa_wallpaper_url:   "http://192.168.139.50/ExampleMusicWallpaper.png"
+# exa_asset_base / exa_wallpaper_url removed 2026-07-08 -- wallpaper/binaries are win_copy'd
+# from windows_bootstrap/playbooks/files/ now, not HTTP-fetched from the provisioning server.
+# That pattern only ever existed for the pre-Ansible bootstrap scripts, which had no other way
+# to get a file onto a box. exa_wallpaper_dest is just the destination path, still needed.
 exa_wallpaper_dest:  'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.png'
 
 # Domain

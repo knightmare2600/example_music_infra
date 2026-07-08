@@ -3,9 +3,9 @@
 # playbooks/60-wallpaper.yml
 # Example Music Limited — Corporate wallpaper and dark mode
 # =============================================================================
-# Downloads ExampleMusicWallpaper.png from the asset server and sets it
-# via PersonalizationCSP (all users) + Policies\System (locked). Also
-# enables dark mode system-wide (HKLM + Default user hive).
+# Pushes ExampleMusicWallpaper.png (files/wallpaper/) directly via win_copy
+# and sets it via PersonalizationCSP (all users) + Policies\System (locked).
+# Also enables dark mode system-wide (HKLM + Default user hive).
 #
 # Key paths match Join-DomainAndBootstrap.ps1 Stages 9 and 10 exactly so
 # this playbook can re-apply after drift without conflict.
@@ -21,6 +21,10 @@
 #               concern as wallpaper, tightly coupled by the original
 #               PS script's stage ordering (9 then 10), not worth a
 #               separate file for two small regedit tasks.
+#   2026-07-08  win_get_url (exa_wallpaper_url, an HTTP fetch from the
+#               provisioning server) replaced with win_copy from files/ —
+#               that pattern only existed for the pre-Ansible bootstrap
+#               scripts, which had no other way to get a file onto a box.
 # =============================================================================
 
 - name: Windows — Corporate wallpaper and dark mode
@@ -34,9 +38,9 @@
         state: directory
       tags: wallpaper
 
-    - name: Download corporate wallpaper
-      ansible.windows.win_get_url:
-        url:  "{{ exa_wallpaper_url }}"
+    - name: Push corporate wallpaper
+      ansible.windows.win_copy:
+        src:  ExampleMusicWallpaper.png
         dest: "{{ exa_wallpaper_dest }}"
       register: wallpaper_download
       tags: wallpaper
