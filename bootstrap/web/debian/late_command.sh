@@ -19,6 +19,9 @@
 #         re-adding LVM2 kernel modules, use echo '' instead of "" per POSIX.
 #   v1.3  Create the example-music folder and drop a copy of sites.csv in place
 #   v1.4  Also download devices.csv to /etc/example-music/ alongside sites.csv
+#   v1.5  Also download begyndelse.json (well-known service addresses -- provisioning/DNS/
+#         Ansible/PBX/Rudder/WAC) to /etc/example-music/, so bindme.sh/ansibleme.sh/
+#         firewallme.sh can jq it instead of hardcoding those IPs.
 # =============================================================================
 set -e
 
@@ -40,6 +43,7 @@ ANSIBLE_USER="ansible"
 HOME_DIR="/home/${ANSIBLE_USER}"
 SITES_CSV="${BOOT_SERVER}/proxmox/sites.csv"
 DEVICES_CSV="${BOOT_SERVER}/proxmox/devices.csv"
+BEGYNDELSE_JSON="${BOOT_SERVER}/proxmox/begyndelse.json"
 
 ## now created in the preseed file
 echo ' >>> Creating ansible user...'
@@ -55,6 +59,7 @@ echo ' >>> Creating /etc/example-music directory and fetching data files...'
 mkdir -p /target/etc/example-music
 wget -O /target/etc/example-music/sites.csv "${SITES_CSV}"
 wget -O /target/etc/example-music/devices.csv "${DEVICES_CSV}"
+wget -O /target/etc/example-music/begyndelse.json "${BEGYNDELSE_JSON}"
 
 echo ' >>> Creating .ssh directory...'
 mkdir -p /target${HOME_DIR}/.ssh
