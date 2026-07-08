@@ -2,7 +2,7 @@
 ; /etc/bind/db.{{ domain }}
 ; Example Music Limited -- {{ domain }} forward zone
 ;
-; Authoritative DNS: EXADNSCLD001 ({{ dns_ip }})
+; Authoritative DNS: EXADNSVRK001 ({{ dns_ip }})
 ; Zone:              {{ domain }}
 ; Managed by:        Ansible bind9-dns.yml
 ; Generated:         {{ ansible_date_time.iso8601 }}
@@ -19,7 +19,7 @@ $ORIGIN {{ domain }}.
 $TTL {{ zone_ttl }}
 
 ; ── SOA + NS ─────────────────────────────────────────────────
-@   IN  SOA  exadnscld001.{{ domain }}.  hostmaster.{{ domain }}. (
+@   IN  SOA  {{ this_hostname }}.{{ domain }}.  hostmaster.{{ domain }}. (
               {{ zone_serial }}  ; serial   YYYYMMDDnn
               3600       ; refresh  1 hour
               900        ; retry    15 minutes
@@ -27,15 +27,16 @@ $TTL {{ zone_ttl }}
               {{ zone_ttl }}        ; minimum
             )
 
-@   IN  NS   exadnscld001.{{ domain }}.
+@   IN  NS   {{ this_hostname }}.{{ domain }}.
 
 ; ── DNS server itself ─────────────────────────────────────────
-exadnscld001  IN  A  {{ dns_ip }}
+{{ "%-13s" | format(this_hostname) }} IN  A  {{ dns_ip }}
 
 ; ── vRACK (192.168.139.0/24) ancillary hosts ─────────────────
-; Hardcoded -- not derived from sites.csv.  CLD LAN devices follow below.
+; Derived from devices.csv (see bind9-dns.yml's ancillary_hosts set_fact).
+; CLD LAN devices follow below.
 {% for h in ancillary_hosts %}
-{% if h.name != 'exadnscld001' %}
+{% if h.name != this_hostname %}
 {{ "%-45s" | format(h.name) }} IN  A  {{ h.ip }}   ; {{ h.comment }}
 {% endif %}
 {% endfor %}
@@ -51,11 +52,12 @@ exadnscld001  IN  A  {{ dns_ip }}
 ; Each site firewall has a WAN interface on 192.168.139.0/24.
 ; Host octet = site subnet third octet.
 ; e.g. EDI 192.168.131.0/24  ->  exafwledi001-wan IN A 192.168.139.131
-; CLD is special: vRACK WAN is .139, not the CLD LAN octet.
+; CLD is special: vRACK WAN comes from devices.csv (ancillary_hosts' exafwlvrk001 entry) rather
+; than the site-octet pattern above, since CLD's own subnet is the LAN side, not the vRACK.
 {% for site in sites | rejectattr('Site', 'equalto', 'CLD') | sort(attribute='octet') %}
 {{ "%-45s" | format('exafwl' + site.Site | lower + '001-wan') }} IN  A  192.168.139.{{ site.octet }}   ; {{ site.Site }} WAN face on provisioning net
 {% endfor %}
-exafwlcld001-wan                              IN  A  192.168.139.139  ; CLD WAN face on provisioning net (static)
+{{ "%-45s" | format('exafwlcld001-wan') }} IN  A  {{ ancillary_hosts | selectattr('name', 'equalto', 'exafwlvrk001') | map(attribute='ip') | first }}   ; CLD WAN face on provisioning net (same interface as exafwlvrk001 above)
 
 ; ── Generated records by role (CLD excluded -- listed above) ──
 ; Sorted by site octet ascending within each role group.

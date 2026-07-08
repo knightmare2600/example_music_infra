@@ -1,7 +1,7 @@
 ---
 # =============================================================================
 # Example Music Limited -- BIND9 DNS Server Playbook
-# Target      : EXADNSCLD001  (exadnscld001.jukebox.internal)
+# Target      : EXADNSVRK001  (exadnsvrk001.jukebox.internal)
 # Role        : Authoritative DNS -- jukebox.internal
 # OS          : Debian trixie
 # IP          : 192.168.139.8/24  (provisioning network)
@@ -68,10 +68,45 @@
 #               Also fixes stale hardcoded city="Central"/country="GB" (CLD's real sites.csv
 #               row is City=CloudSite, Country=Global) — now derived from sites.csv like every
 #               other writer, instead of a wrong guess.
+#   2026-07-08  Play 1's ancillary_hosts/cld_lan_hosts are no longer hardcoded -- both are now
+#               built (pre_tasks, tags: always) from the same all_devices merged list Play 2
+#               already computed, moved here so both plays share one computation instead of two.
+#               This surfaced two real bugs in the hardcoded data it replaces:
+#                 - CLD's firewall WAN face was documented at .139.139; devices.csv (VRK,FWL row,
+#                   corrected 68->69 this same pass per direct confirmation) and every other
+#                   source agree on .69. Also fixed the same stale .139 in db.jukebox.internal.j2
+#                   and db.192.168.139.j2's separate "-wan" hardcoded line for CLD.
+#                 - WAC/Rudder/PBX appeared a second time in ancillary_hosts AND in
+#                   db.192.168.139.j2's PTR records, both claiming vRACK addresses at the exact
+#                   same octets as their real CLD LAN devices.csv entries -- a copy-paste mistake,
+#                   not a genuine second interface (confirmed). Removed from both; they're LAN-only,
+#                   now correctly covered via the expanded cld_lan_hosts below.
+#               cld_lan_hosts now includes every CLD device (RTR/PRV standard slots included,
+#               matching what Play 2's own forward zone already publishes for CLD) instead of
+#               just the historical FWL-LAN/ANS/DCS1/DCS2 subset -- CLD's DCS2 is still absent
+#               from both plays' output, since DNS_MULTI_FIRST_INSTANCE_ONLY in
+#               generate_inventory.py only ever synthesizes the first DCS instance for DNS,
+#               site-wide, not a CLD-specific gap.
+#               vRACK-side hostnames (DNS/PRV/FWL) were briefly kept as "CLD-branded"
+#               (exadnscld001 etc) via a name-override lookup, then reversed the same day per
+#               direct confirmation ("if we rename vrack things to suffix VRK ... I don't mind")
+#               -- they now use devices.csv's own computed VRK-prefixed names directly
+#               (exadnsvrk001, exaprvvrk001, exafwlvrk001), including this playbook's own
+#               this_hostname/hosts target. vrk_ancillary_name_overrides is gone entirely.
+#               PBX briefly kept its historically-established name (exacldpbx001) via a
+#               cld_lan_name_overrides table too, until testing showed the override was
+#               already inert: Play 2 (which wins on any full/correct run -- see the zones vs
+#               zones-full trap documented above) renders its own CLD forward-zone section and
+#               its generic per-site reverse-zone loop straight from devices.csv's own Hostname,
+#               with no override applied there. The override only ever affected Play 1's
+#               (always-overwritten) fallback -- never the actual live name. Per direct
+#               confirmation, PBX now also uses its natural devices.csv name (exapbxcld001)
+#               consistently; cld_lan_name_overrides is gone entirely, same as
+#               vrk_ancillary_name_overrides above.
 # =============================================================================
 
-- name: EXADNSCLD001 -- BIND9 DNS server
-  hosts: exadnscld001
+- name: EXADNSVRK001 -- BIND9 DNS server
+  hosts: exadnsvrk001
   become: true
 
   vars:
@@ -81,8 +116,9 @@
     zone_ttl: 300
     zone_serial: "{{ ansible_date_time.date | replace('-', '') }}01"
     sites_csv_path: "/etc/example-music/sites.csv"
+    devices_csv_path: "/etc/example-music/devices.csv"
     bind_zone_dir: "/etc/bind"
-    this_hostname: "exadnscld001"
+    this_hostname: "exadnsvrk001"
     domain: "jukebox.internal"
 
     # Forwarders
@@ -91,21 +127,9 @@
       - "208.67.222.222"  # OpenDNS
       - "1.1.1.1"         # Cloudflare
 
-    # vRACK (192.168.139.0/24) ancillary hosts -- hardcoded, not from sites.csv.
-    ancillary_hosts:
-      - { name: "exafwlcld001", ip: "192.168.139.139", comment: "CLD firewall (vRACK WAN face)" }
-      - { name: "exadnscld001", ip: "192.168.139.8",   comment: "DNS/BIND9 server (this host)" }
-      - { name: "exasvrcld002", ip: "192.168.139.20",  comment: "Windows Admin Centre" }
-      - { name: "exardrcld001", ip: "192.168.139.12",  comment: "Rudder configuration management server" }
-      - { name: "exacldpbx001", ip: "192.168.139.48",  comment: "Central 3CX PBX" }
-      - { name: "exaprvcld001", ip: "192.168.139.50",  comment: "Provisioning / PXE server" }
-
-    # CLD LAN (192.168.69.0/24) devices -- CLD black swan, listed explicitly.
-    cld_lan_hosts:
-      - { name: "exafwlcld001-lan", ip: "192.168.69.253", comment: "CLD firewall (LAN face)" }
-      - { name: "exaanscld001",     ip: "192.168.69.9",  comment: "Ansible control node" }
-      - { name: "exadcscld001",     ip: "192.168.69.10", comment: "DC primary" }
-      - { name: "exadcscld002",     ip: "192.168.69.11", comment: "DC secondary" }
+    # ancillary_hosts/cld_lan_hosts below are now built from devices.csv (see pre_tasks) rather
+    # than hardcoded here -- every device uses its own devices.csv-computed hostname, lowercased
+    # (e.g. EXADNSVRK001 -> exadnsvrk001, EXAPBXCLD001 -> exapbxcld001), no overrides needed.
 
     # Standard SUFFIX_MAP -- mirrors site-inventory-audit.py and bindme.sh exactly
     # Each entry: { suffix, prefix, seq }
@@ -163,6 +187,52 @@
       loop_control:
         label: "{{ item.Site }}"
       run_once: true
+
+    # -------------------------------------------------------------------------
+    # Merged device list -- single source for both this play's ancillary_hosts/
+    # cld_lan_hosts (below) and Play 2's own zone generation, computed once here
+    # (tags: always) rather than twice. See generate_inventory.py --emit-devices-json.
+    # -------------------------------------------------------------------------
+    - name: Compute merged device list via generate_inventory.py
+      tags: always
+      delegate_to: localhost
+      become: false
+      command: >
+        python3 {{ playbook_dir }}/../../../benarbejde/generate_inventory.py
+        {{ sites_csv_path }} --devices {{ devices_csv_path }} --emit-devices-json
+      register: all_devices_raw
+      changed_when: false
+
+    - name: Parse merged device list
+      tags: always
+      set_fact:
+        all_devices: "{{ all_devices_raw.stdout | from_json }}"
+
+    - name: Build ancillary_hosts (vRACK zone) from devices.csv
+      tags: always
+      set_fact:
+        ancillary_hosts: >-
+          {{ (ancillary_hosts | default([])) + [{
+            'name': item.Hostname | lower,
+            'ip': item.full_ip,
+            'comment': item.Notes,
+          }] }}
+      loop: "{{ all_devices | selectattr('Site', 'equalto', 'VRK') | list }}"
+      loop_control:
+        label: "{{ item.Hostname }}"
+
+    - name: Build cld_lan_hosts (CLD LAN zone) from devices.csv
+      tags: always
+      set_fact:
+        cld_lan_hosts: >-
+          {{ (cld_lan_hosts | default([])) + [{
+            'name': item.Hostname | lower,
+            'ip': item.full_ip,
+            'comment': item.Notes,
+          }] }}
+      loop: "{{ all_devices | selectattr('Site', 'equalto', 'CLD') | list }}"
+      loop_control:
+        label: "{{ item.Hostname }}"
 
     # Detect provisioning interface if dns_interface not set
     - name: Detect provisioning network interface
@@ -298,7 +368,7 @@
         content: |
           // ============================================================
           // named.conf.options -- Example Music Limited
-          // EXADNSCLD001  --  jukebox.internal DNS
+          // EXADNSVRK001  --  jukebox.internal DNS
           // Managed by Ansible bind9-dns.yml
           // ============================================================
 
@@ -659,7 +729,7 @@
   # ---------------------------------------------------------------------------
     - name: Self-test DNS -- forward lookup
       tags: service, reload
-      command: "dig @127.0.0.1 +short exadnscld001.{{ domain }}"
+      command: "dig @127.0.0.1 +short {{ this_hostname }}.{{ domain }}"
       register: dig_result
       changed_when: false
       failed_when: dns_ip not in dig_result.stdout
@@ -669,7 +739,7 @@
       command: "dig @127.0.0.1 +short -x {{ dns_ip }}"
       register: dig_ptr
       changed_when: false
-      failed_when: "'exadnscld001' not in dig_ptr.stdout"
+      failed_when: this_hostname not in dig_ptr.stdout
 
   # ---------------------------------------------------------------------------
   # Handlers
@@ -778,12 +848,13 @@
 #               in review.)
 # =============================================================================
 
-- name: EXADNSCLD001 -- Full zone generation from devices.csv
-  hosts: exadnscld001
+- name: EXADNSVRK001 -- Full zone generation from devices.csv
+  hosts: exadnsvrk001
   become: true
 
   vars:
     dns_ip: "192.168.139.8"
+    this_hostname: "exadnsvrk001"
     domain: "jukebox.internal"
     bind_zone_dir: "/etc/bind"
     zone_serial: "{{ ansible_date_time.date | replace('-', '') }}01"
@@ -818,31 +889,11 @@
             | items2dict(key_name='Site', value_name='Subnet')
           }}
 
-    # -------------------------------------------------------------------------
-    # devices.csv is exceptions-only as of 2026-07-07 (see generate_inventory.py
-    # and address_policy.json) — it no longer contains a row for every
-    # standard-slot device (router, BMC, PVE, DC, provisioning server, SBC,
-    # firewall). generate_inventory.py's --emit-devices-json mode is the
-    # single source of truth for the merged, deduplicated device list
-    # (standard-slot synthesis + devices.csv exceptions, full_ip resolved,
-    # BRD/VRK special-cased) — the exact same code path the .ini generator
-    # uses, computed once in Python rather than a second, hand-maintained
-    # copy of this logic re-derived here in Jinja.
-    # -------------------------------------------------------------------------
-    - name: Compute merged device list via generate_inventory.py
-      tags: always
-      delegate_to: localhost
-      become: false
-      command: >
-        python3 {{ playbook_dir }}/../../../benarbejde/generate_inventory.py
-        {{ sites_csv_path }} --devices {{ devices_csv_path }} --emit-devices-json
-      register: all_devices_raw
-      changed_when: false
-
-    - name: Parse merged device list
-      tags: always
-      set_fact:
-        all_devices: "{{ all_devices_raw.stdout | from_json }}"
+    # devices.csv is exceptions-only as of 2026-07-07 (see generate_inventory.py and
+    # address_policy.json). all_devices (the merged, deduplicated device list -- standard-slot
+    # synthesis + devices.csv exceptions, full_ip resolved, BRD/VRK special-cased) is computed
+    # once, in Play 1's pre_tasks (tags: always, so it runs regardless of which tags this play
+    # actually needs) -- shared as a fact rather than recomputed here a second time.
 
   tasks:
     # -------------------------------------------------------------------------
