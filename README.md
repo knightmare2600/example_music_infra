@@ -196,6 +196,7 @@ Unless explicitly stated otherwise, all deployments MUST conform to these conven
 | `.10–.11` | DCS — Domain Controllers |
 | `.15` | PRV — provisioning server |
 | `.48` | SBC — VOIP SBC |
+| `.82–.94` | WAP — wireless access points (static; added 2026-07-08, moved off DHCP). Count varies per site — 1 to 13+ |
 | `.100–.249` | DHCP pool (`.101`/`.102` are documentation examples within the pool, not exclusive reservations) |
 | `.250–.252` | SWI — switches |
 | `.253–.254` | FWL — firewall (two instances; `.253` and `.254`) |
@@ -252,6 +253,7 @@ The vRACK (`VRK`) is an OVH product providing 256 statically routed IPs. Treat t
 | `192.168.69.12` | `EXARDRCLD001` | Rudder configuration management |
 | `192.168.69.20` | `EXASVRCLD002` | Windows Admin Centre |
 | `192.168.69.48` | `EXACLDPBX001` | Central 3CX PBX — all site SBCs trunk here |
+| `192.168.69.82` | `EXAUFCCLD001` | UniFi Network Controller — manages every site's WAPs. CLD itself has no physical WiFi; `.82` is WAP1's reserved octet elsewhere (see [Addressing](#addressing)) — putting the controller at the same octet the devices it manages use, at the one site that has none of them itself, is deliberate |
 | `192.168.69.253` | `EXAFWLCLD001` (LAN) | Firewall LAN face / gateway — WAN face at `192.168.139.68` |
 
 For full architectural details see `docs/ExampleMusic_Beginners_Guide.md` (NET-BEGIN-001).

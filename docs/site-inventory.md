@@ -15,6 +15,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94` (added to Quick Reference table, per-site checklist items updated). Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) checklist item |
 | 2026-03-05 | Full rewrite — all sites added, standard IP convention applied, PVE node counts confirmed, RAC/BMC pool documented, site-specific equipment placeholders added |
 | 2026-03-03 | BRD renamed from BER throughout |
 | 2026-03-03 | TOR (Toronto) added |
@@ -37,6 +38,7 @@
 | `.11` | DC secondary |
 | `.12` | Rudder Relay (`EXARRY<SITE>001`) / Rudder Server on CLD (`EXARUDCLD001`) |
 | `.48` | VOIP SBC — trunks to `EXACLDPBX001` |
+| `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site |
 | `.100`–`.249` | DHCP pool |
 | `.250`–`.252` | Switches |
 | `.253` | Secondary gateway / router |
@@ -184,6 +186,7 @@
 - [ ] `EXARUDCLD001` — Rudder Server online (`192.168.139.12`)
 - [ ] `EXACLDPBX001` — Central 3CX PBX online (`192.168.139.48`)
 - [ ] `EXAPRVFAL001` — Provisioning server online (`192.168.139.50`)
+- [ ] `EXAUFCCLD001` — UniFi Network Controller online (`192.168.69.82`, CLD's **LAN** — not vRACK; manages every site's WAPs)
 - [ ] WireGuard routes verified to all site subnets
 - [ ] Ansible key distribution tested from `EXAPRVFAL001`
 - [ ] Rudder agents checked in from test node
@@ -246,7 +249,7 @@
 - [ ] `EXAPHNFAL001`–`003` — Phones
 - [ ] `EXAPHNFAL006`–`007` — Yealink T58A phones
 - [ ] `EXATABFAL001` — Tablet
-- [ ] WAPs `EXAWAPFAL001`–`006` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPFAL001`–`006` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Security & Building Systems
 - [ ] `EXACAMFAL001` — Camera (`192.168.76.70`) · Front entrance
@@ -301,7 +304,7 @@
 ### Endpoints Checklist
 - [ ] `EXAWKSEDI001` — Workstation (`192.168.131.150`)
 - [ ] `EXALAPEDI098` — Laptop (`192.168.131.108`)
-- [ ] WAPs `EXAWAPEDI001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPEDI001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 - [ ] `EXATEAEDI001` — Siemens EQ700 coffee machine (`192.168.131.60`)
@@ -371,7 +374,7 @@
 - [ ] `EXASURCLY001` — Surface
 - [ ] `EXAPHNCLY001` — iOS device
 - [ ] `EXASURCLY002` — Android tablet
-- [ ] WAPs `EXAWAPCLY001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPCLY001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -403,7 +406,7 @@
 ### Endpoints Checklist
 - [ ] `EXASURDUN001`–`002` — Surfaces
 - [ ] `EXAPHNDUN001`–`002` — iOS devices
-- [ ] WAPs `EXAWAPDUN001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPDUN001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -471,7 +474,7 @@
 ### Endpoints Checklist
 - [ ] `EXAMBPABD001`–`002` — MacBooks
 - [ ] `EXAPHNABD001`–`002` — iPhones
-- [ ] WAPs `EXAWAPABD001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPABD001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -550,7 +553,7 @@
 - [ ] `EXAMBPBIR001` — MacBook
 - [ ] `EXATABBIR001` — Samsung Galaxy Tab
 - [ ] `EXAPHNBIR001` — Samsung S25
-- [ ] WAPs `EXAWAPBIR001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPBIR001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 - [ ] `EXAMOOBIR001` — Moog One synthesizer (`192.168.121.70`) · MIDI
@@ -760,7 +763,7 @@
 - [ ] `EXAPVECOV001` — Proxmox node 1 (`192.168.247.5`) · ZFS RAID1
 - [ ] `EXADCSCOV001` — DC (`192.168.247.10`)
 - [ ] `EXASBCCOV001` — VOIP SBC (`192.168.247.48`) · trunks to `EXACLDPBX001`
-- [ ] WAPs `EXAWAPCOV001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPCOV001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -794,7 +797,7 @@
 - [ ] `EXADCSCPH001` — DC primary (`192.168.231.10`) · example.com
 - [ ] `EXADCSCPH002` — DC secondary (`192.168.231.11`) · example.net
 - [ ] `EXASBCCPH001` — VOIP SBC (`192.168.231.48`) · trunks to `EXACLDPBX001`
-- [ ] WAPs `EXAWAPCPH001`–`003` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPCPH001`–`003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -828,7 +831,7 @@
 - [ ] `EXADCSODE001` — DC primary (`192.168.126.10`) · PDC Emulator · RID/Infra Master
 - [ ] `EXADCSODE002` — DC secondary (`192.168.126.11`)
 - [ ] `EXASBCODE001` — VOIP SBC (`192.168.126.48`) · trunks to `EXACLDPBX001`
-- [ ] WAPs `EXAWAPODE001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPODE001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -890,7 +893,7 @@
 - [ ] `EXAPVEFAX001` — Proxmox node 1 (`192.168.246.5`) · ZFS RAID1
 - [ ] `EXADCSFAX001` — DC (`192.168.246.10`)
 - [ ] `EXASBCFAX001` — VOIP SBC (`192.168.246.48`) · trunks to `EXACLDPBX001`
-- [ ] WAPs `EXAWAPFAX001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPFAX001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -947,7 +950,7 @@
 - [ ] `EXAPVEBON001` — Proxmox node 1 (`192.168.228.5`) · ZFS RAID1
 - [ ] `EXADCSBON001` — DC (`192.168.228.10`) · **Schema Master · Domain Naming Master**
 - [ ] `EXASBCBON001` — VOIP SBC (`192.168.228.48`) · trunks to `EXACLDPBX001`
-- [ ] WAPs `EXAWAPBON001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPBON001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -980,7 +983,7 @@
 - [ ] `EXAPVEBER001` — Proxmox node 1 (`192.168.113.5`) · ZFS RAID1
 - [ ] `EXADCSBER001` — DC (`192.168.113.10`) · WS2019 · PDC Emulator · RID/Infra Master
 - [ ] `EXASBCBER001` — VOIP SBC (`192.168.113.48`) · trunks to `EXACLDPBX001`
-- [ ] WAPs `EXAWAPBER001`–`002` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPBER001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1295,7 +1298,7 @@
 - [ ] `EXADCSLAX001` — DC (`192.168.213.10`) ⚠️ Services stopped
 - [ ] `EXASRVLAX001` — Rocky Linux server (`192.168.213.20`) · local services/DB
 - [ ] `EXASBCLAX001` — VOIP SBC (`192.168.213.48`) · trunks to `EXACLDPBX001`
-- [ ] WAPs `EXAWAPLAX001`–`003` — Ubiquiti UniFi U6-Pro
+- [ ] WAPs `EXAWAPLAX001`–`003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1561,7 +1564,7 @@
 - [ ] `EXADCSAKL001` — DC (`192.168.93.10`) ⚠️ Services stopped
 - [ ] `EXASRVAKL001` — WS2022 server (`192.168.93.20`) · local server
 - [ ] `EXASBCAKL001` — VOIP SBC (`192.168.93.48`) · trunks to `EXACLDPBX001`
-- [ ] WAPs `EXAWAPAKL001`–`002` — Ubiquiti UniFi
+- [ ] WAPs `EXAWAPAKL001`–`002` — Ubiquiti UniFi — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status

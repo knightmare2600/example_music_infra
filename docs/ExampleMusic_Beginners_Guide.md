@@ -12,6 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94`. Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD has no physical WiFi itself |
 | 2026-06-30 | Initial version           |
 | 2026-06-30 | Add VRK site code; expand naming table; add AAR/DRS/DUS/FRE EU spokes |
 
@@ -137,6 +138,7 @@ Every site in the estate follows the same IP addressing scheme within its `/24` 
 | `.11` | Domain Controller — secondary | `EXADCS<SITE>002` |
 | `.15` | Ansible/PXE node (where present) | `EXAPRV<SITE>001` |
 | `.48` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBC<SITE>001` |
+| `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site | `EXAWAP<SITE>001`–`013` |
 | `.100`–`.249` | DHCP pool | — |
 | `.250`–`.252` | Layer 2 switches | `EXASWI<SITE>001`–`003` |
 | `.253` | Secondary internet gateway / firewall LAN face | `EXAFWL<SITE>001` |
@@ -174,6 +176,7 @@ The CLD IP table is reproduced here for reference. These are authoritative — v
 | `EXARDRCLD001` | `192.168.69.12` | LAN | Rudder configuration management server |
 | `EXASVRCLD002` | `192.168.69.20` | LAN | Windows Admin Centre |
 | `EXACLDPBX001` | `192.168.69.48` | LAN | Central 3CX PBX |
+| `EXAUFCCLD001` | `192.168.69.82` | LAN | UniFi Network Controller — manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
 
 > **Common mistakes:** The FWL WAN face is `.139.68`, not `.139.139` (`.139.139` would be `EXAFWLVRK001` — not currently deployed). The FWL LAN face is `.69.253`, not `.69.1`. Rudder, WAC, and PBX are on the **LAN** (`.69.x`) — not the vRACK. The Ansible node is LAN-only at `.69.9`.
 
@@ -206,6 +209,7 @@ Example: `EXAFWLEDI001` — EXA estate, firewall role, Edinburgh site, first uni
 | `EXAPBX` | PBX | `EXACLDPBX001` |
 | `EXAPRV` | Provisioning / bootstrap server | `EXAPRVCLD001` |
 | `EXAWAP` | WiFi access point | `EXAWAPFAL001` |
+| `EXAUFC` | UniFi Network Controller (CLD only) | `EXAUFCCLD001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |
 | `EXALAP` | Laptop | `EXALAPFAL001` |
 | `EXAMBP` | MacBook Pro | `EXAMBPFAL001` |
@@ -338,6 +342,7 @@ Once CLD is fully commissioned:
 - `EXAANSCLD001` (`192.168.69.9`) is the Ansible control node. It runs playbooks against the entire estate. Reachable on the CLD LAN via WireGuard.
 - `EXARDRCLD001` (`192.168.69.12`) is the Rudder configuration management server. All managed nodes report to it. Reachable on the CLD LAN via WireGuard.
 - `EXACLDPBX001` (`192.168.69.48`) is the central 3CX PBX. Site SBCs (`EXASBC<SITE>001`) trunk to it.
+- `EXAUFCCLD001` (`192.168.69.82`) is the UniFi Network Controller. Every site's WAPs (`EXAWAP<SITE>001`+) check in to it — CLD has no physical WiFi of its own, it just hosts the management plane.
 
 When a spoke site comes up, it does not operate autonomously. It connects back to CLD for AD replication, DNS, config management, and telephony. CLD MUST exist before any of this works.
 

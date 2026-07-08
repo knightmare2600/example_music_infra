@@ -12,6 +12,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94` (added to Standard IP Convention table). Per-site `**WAPs:**` lines updated. Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD itself has no physical WiFi |
 | 2026-03-05 | Full review —<br /><br />subnets corrected against canonical site list; standard IP convention table added<br />CLY corrected to `192.168.41.0/24`<br />GLA corrected to `192.168.141.0/24`<br />KGE corrected to `192.168.65.0/24`<br />MEL corrected to `192.168.61.0/24`<br />MIA corrected to `192.168.135.0/24`<br />MUN corrected to `192.168.189.0/24`<br />BRD renamed BER throughout<br />TOR subnet corrected to `192.168.146.0/24`<br />FAL DC IPs corrected to `.76.10`/`.76.11`<br />FAL PVE nodes renamed EXAPVE and corrected to `.76.5`/`.76.6`<br />FAL RAC corrected to `.2`/`.3`<br />BON DC corrected to `192.168.228.10`<br />ODE DC002 corrected to `192.168.126.11`<br />FAX DC corrected to `192.168.246.10`<br />SBC addresses corrected to `.48` throughout<br />CLD (Cloud) site added<br />new sites added: AMS, ATL, CHI, GOT, HAL, HUL, KOR, MIL, MTL, OSL, SHE, VIE |
 | 2026-03-03 | TOR (Toronto) added — `192.168.146.0/24`, separated from shared BRK/NYC/NJC subnet |
 | 2026-03-03 | BRD renamed from BRD (West Berlin) throughout — site code correction |
@@ -38,6 +39,7 @@ Exceptions are noted in individual site entries.
 | `.11` | Domain Controller — secondary | `EXADCS<SITE>002` |
 | `.12` | Rudder Relay (Rudder Server on CLD) | `EXARRY<SITE>001` / `EXARUDCLD001` |
 | `.48` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBC<SITE>001` |
+| `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site | `EXAWAP<SITE>001`–`013` |
 | `.100`–`.249` | DHCP pool | — |
 | `.250`–`.252` | RT switches | `EXASWI<SITE>001`–`003` |
 | `.253` | Secondary internet gateway | — |
@@ -62,6 +64,7 @@ Exceptions are noted in individual site entries.
 | `EXACLDPBX001` | Central PBX | — | `192.168.139.48` | 3CX PBX — all site SBCs trunk here |
 | `EXAPRVCLD001` | Provisioning / bootstrap | — | `192.168.139.50` | Serves Ansible keys, ISOs, scripts |
 | `EXAANSCLD001` | Ansible control node | Debian | `192.168.139.9` | Ansible — manages all sites |
+| `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. Note: this is CLD's **LAN** (`192.168.69.0/24`), not the vRACK addresses above — CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
 
 ---
 
@@ -178,6 +181,7 @@ Exceptions are noted in individual site entries.
 | `EXACLDPBX001` | Central PBX | 3CX | `192.168.139.48` | All site SBCs trunk here |
 | `EXAPRVCLD001` | Provisioning server | — | `192.168.139.50` | Bootstrap — Ansible keys, ISOs, scripts |
 | `EXAANSCLD001` | Ansible control node | Debian | `192.168.139.9` | Central Ansible — manages all sites |
+| `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. On CLD's **LAN** (`192.168.69.0/24`), not vRACK — CLD has no physical WiFi itself |
 
 ---
 
@@ -229,7 +233,7 @@ Exceptions are noted in individual site entries.
 | `EXALAPFAL001` | Laptop | Windows 11 Pro 23H2 | `192.168.76.103` | Production laptop |
 | `EXASURFAL001` | Surface | Windows 11 23H2 | `192.168.76.104` | Microsoft Surface |
 
-**WAPs:** `EXAWAPFAL001–006` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPFAL001–006` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Security & IoT:**
 
@@ -281,7 +285,7 @@ Exceptions are noted in individual site entries.
 | `EXAWKSEDI001` | Workstation | Windows 10 Pro 22H2 | `192.168.131.150` | Shared desktop |
 | `EXALAPEDI098` | Laptop | Windows 11 Pro 24H2 | `192.168.131.108` | Pool laptop |
 
-**WAPs:** `EXAWAPEDI001–002` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPEDI001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **IoT:** `EXATEAEDI001` — Siemens EQ700 Coffee Machine (`192.168.131.60`)
 
@@ -323,7 +327,7 @@ Exceptions are noted in individual site entries.
 | `EXASRVCLY001` | Server | Rocky Linux | `192.168.41.20` | Oracle DB |
 | `EXASBCCLY001` | VOIP SBC | 3CX SBC Debian | `192.168.41.48` | Trunks to `EXACLDPBX001` |
 
-**WAPs:** `EXAWAPCLY001–002` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPCLY001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXASURCLY001` (Surface), `EXAPHNCLY001` (iOS), `EXASURCLY002` (Android tablet)
 
@@ -339,7 +343,7 @@ Exceptions are noted in individual site entries.
 | `EXARTRDUN001` | Router | Cisco ISR 4331 | `192.168.138.254` | WAN edge |
 | `EXADCSDUN001` | DC | Windows Server 2022 | `192.168.138.10` | Global Catalog |
 
-**WAPs:** `EXAWAPDUN001–002` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPDUN001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXASURDUN001–002` (Surface/Win11), `EXAPHNDUN001–002` (iOS)
 
@@ -373,7 +377,7 @@ Exceptions are noted in individual site entries.
 | `EXAFWLABD001` | Firewall | Cisco ASA 5506-X | `192.168.224.1` | Edge firewall |
 | `EXARTRABD001` | Router | Cisco ISR 4331 | `192.168.224.254` | WAN edge |
 
-**WAPs:** `EXAWAPABD001–002` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPABD001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXAMBPABD001–002` (MacBooks), `EXAPHNABD001–002` (iPhones)
 
@@ -426,7 +430,7 @@ Exceptions are noted in individual site entries.
 | `EXASRVBIR001` | Server | Rocky Linux | `192.168.121.20` | Oracle DB |
 | `EXASBCBIR001` | VOIP SBC | 3CX SBC Debian | `192.168.121.48` | Trunks to `EXACLDPBX001` |
 
-**WAPs:** `EXAWAPBIR001–002` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPBIR001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXAMBPBIR001` (MacBook), `EXATABBIR001` (Samsung Galaxy Tab), `EXAPHNBIR001` (Samsung S25)
 
@@ -499,7 +503,7 @@ Exceptions are noted in individual site entries.
 
 **Infrastructure:** `EXARTRCOV001` (Cisco ISR 4331 — `192.168.247.254`)
 
-**WAPs:** `EXAWAPCOV001–002` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPCOV001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 ---
 
@@ -557,7 +561,7 @@ Exceptions are noted in individual site entries.
 | `EXADCSCPH002` | DC | Windows Server 2022 | `192.168.231.11` | example.net |
 | `EXASBCCPH001` | VOIP SBC | 3CX SBC Debian | `192.168.231.48` | Trunks to `EXACLDPBX001` |
 
-**WAPs:** `EXAWAPCPH001–003` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPCPH001–003` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **IoT:** `EXACLKCPH001` (Meinberg LANTIME M300 NTP `192.168.231.18`), `EXATVSCPH001` (Bella Kronik 42X `192.168.231.17`)
 
@@ -575,7 +579,7 @@ Exceptions are noted in individual site entries.
 | `EXADCSODE002` | DC | Windows Server 2022 | `192.168.126.11` | Global Catalog |
 | `EXASBCODE001` | VOIP SBC | 3CX SBC Debian | `192.168.126.48` | Trunks to `EXACLDPBX001` |
 
-**WAPs:** `EXAWAPODE001–002` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPODE001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXAMACODE001` (iMac macOS Tahoe), `EXAMBPODE002` (MacBook Pro)
 
@@ -594,7 +598,7 @@ Exceptions are noted in individual site entries.
 |----------|------|------------|----|-------|
 | `EXADCSKGE001` | DC | Windows Server 2016 | `192.168.65.10` | ⚠️ Out of sync · EOL OS |
 
-**WAPs:** `EXAWAPKGE001` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPKGE001` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Other:** `EXAPRNKGE001` (HP LaserJet MFP M528)
 
@@ -610,7 +614,7 @@ Exceptions are noted in individual site entries.
 | `EXARTFFAX001` | Router | Cisco ISR 4331 | `192.168.246.254` | WAN edge |
 | `EXADCSFAX001` | DC | Windows Server 2022 | `192.168.246.10` | — |
 
-**WAPs:** `EXAWAPFAX001–002` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPFAX001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 ---
 
@@ -643,7 +647,7 @@ Exceptions are noted in individual site entries.
 | `EXADCSBON001` | DC | Windows Server 2022 | `192.168.228.10` | **Schema Master · Domain Naming Master** |
 | `EXASBCBON001` | VOIP SBC | 3CX SBC Debian | `192.168.228.48` | Trunks to `EXACLDPBX001` |
 
-**WAPs:** `EXAWAPBON001–002` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPBON001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXALAPBON001` (ThinkPad — **disabled, maintenance**), `EXAWKSBON001` (Win11 finance), `EXALAPBON002` (Win11 finance)
 
@@ -662,7 +666,7 @@ Exceptions are noted in individual site entries.
 | `EXADCSBRD001` | DC | Windows Server 2019 | `192.168.113.10` | PDC Emulator · RID Master · Infrastructure Master |
 | `EXASBCBRD001` | VOIP SBC | 3CX SBC Debian | `192.168.113.48` | Trunks to `EXACLDPBX001` |
 
-**WAPs:** `EXAWAPBRD001–002` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPBRD001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXASRVBRD001` (WS2019 legacy app server), `EXANIXBRD001` (Debian 12)
 
@@ -781,7 +785,7 @@ Exceptions are noted in individual site entries.
 | `EXADCSBRK001` | DC | Windows Server 2022 | `192.168.136.10` | ⚠️ Services stopped |
 | `EXASBCBRK001` | VOIP SBC | 3CX SBC Debian | `192.168.136.48` | Trunks to `EXACLDPBX001` |
 
-**WAPs:** `EXAWAPBRK001` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPBRK001` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXALAPBRK001` (Win11 tour laptop), `EXAVNDBRK001` (Maple syrup vending — XPe)
 
@@ -837,7 +841,7 @@ Exceptions are noted in individual site entries.
 | `EXASRVLAX001` | Server | Rocky Linux 9.x | `192.168.213.20` | Local services / DB |
 | `EXASBCLAX001` | VOIP SBC | 3CX SBC Debian | `192.168.213.48` | Trunks to `EXACLDPBX001` |
 
-**WAPs:** `EXAWAPLAX001–003` · Ubiquiti UniFi U6-Pro
+**WAPs:** `EXAWAPLAX001–003` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXAMBPLAX001` (MacBook Pro), `EXATABLAX001` (iPad setlists), `EXAPHNLAX001` (Android)
 
@@ -940,7 +944,7 @@ Exceptions are noted in individual site entries.
 | `EXASRVSYD001` | Server | Windows Server 2022 | `192.168.29.20` | Local infra |
 | `EXASBCSYD001` | VOIP SBC | 3CX SBC | `192.168.29.48` | Trunks to `EXACLDPBX001` |
 
-**WAPs:** `EXAWAPSYD001` · Ubiquiti UniFi
+**WAPs:** `EXAWAPSYD001` · Ubiquiti UniFi — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXAMBPSYD001` (MacBook Pro), `EXAWKSSYD001` (Win11), `EXAPHNSYD001` (Android), `EXATABSYD001` (iPad)
 
@@ -993,7 +997,7 @@ Exceptions are noted in individual site entries.
 | `EXASRVAKL001` | Server | Windows Server 2022 | `192.168.93.20` | Local server |
 | `EXASBCAKL001` | VOIP SBC | 3CX SBC | `192.168.93.48` | Trunks to `EXACLDPBX001` |
 
-**WAPs:** `EXAWAPAKL001`, `EXAWAPAKL002` · Ubiquiti UniFi
+**WAPs:** `EXAWAPAKL001`, `EXAWAPAKL002` · Ubiquiti UniFi — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
 
 **Endpoints:** `EXAWKSAKL001` (Win11), `EXAMBPAKL001` (MacBook Pro), `EXAPHNAKL001` (Android), `EXATABAKL001` (iPad)
 
@@ -1032,6 +1036,7 @@ Exceptions are noted in individual site entries.
 | `EXAPBX` | PBX | `EXACLDPBX001` |
 | `EXAPRV` | Provisioning / bootstrap server | `EXAPRVFAL001` |
 | `EXAWAP` | WiFi Access Point | `EXAWAPFAL001` |
+| `EXAUFC` | UniFi Network Controller (CLD only — manages every site's WAPs) | `EXAUFCCLD001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |
 | `EXALAP` | Laptop | `EXALAPFAL001` |
 | `EXAMBP` | MacBook Pro | `EXAMBPFAL001` |

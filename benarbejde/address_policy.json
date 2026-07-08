@@ -11,7 +11,8 @@
     ".100-.249": "DHCP  DHCP Pool (.101/.102 shown below are documentation examples within this pool, not exclusive reservations)",
     ".250-.252": "SWI   Switches",
     ".253":      "FWL1  Firewall",
-    ".254":      "FWL2  Firewall"
+    ".254":      "FWL2  Firewall",
+    ".82-.94":   "WAP   Wireless access points (static — added 2026-07-08, moved off DHCP). Count varies per site (1 to 13+); devices.csv rows at these octets are treated as standard-slot and excluded from the .ini/DNS output the same way BMC is — only the generic commented placeholder lines show, per-device Notes are not preserved for slots at this range."
   },
   "offsets_single": {
     "RTR": 1,
@@ -24,6 +25,7 @@
     "BMC": [2, 3, 4],
     "DCS": [10, 11],
     "FWL": [253, 254],
-    "PVE": [5, 6, 7]
+    "PVE": [5, 6, 7],
+    "WAP": [82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
   }
 }
