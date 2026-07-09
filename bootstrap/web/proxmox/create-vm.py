@@ -67,6 +67,11 @@ Changelog:
                 per direct confirmation, CLD-targeted VMs are unaffected and still default to VLAN 69 on vmbr1.
                 Tested via a scripted harness simulating the interactive prompts (FWL/RTR dual-NIC, single-NIC, VRK,
                 and CLD scenarios) -- all four produce the correct bridge/VLAN/untagged result.
+    2026-07-09  sites.csv gained a Province column (AD onboarding needs it -- see windows_adschema/
+                10-ad-schema.yml). No code change needed here: _load_sites() reads sites.csv via
+                csv.DictReader keyed by column name, not position, so an inserted column is inert
+                until a "province" key is added to the dict this function builds. Updated the
+                "Expected CSV columns" comment below to match reality.
 
 
 Usage:
@@ -129,8 +134,12 @@ except ImportError:
 # To add a new site: add a row to sites.csv and re-run. No code changes needed.
 #
 # Expected CSV columns:
-#   Site, City, Country, CountryCode, Subnet, Gateway, DC, FW,
-#   Landline, Mobile, Timezone, AnsibleRegion
+#   Site, City, Country, CountryCode, Province, Subnet, Gateway, DC, FW,
+#   Landline, Mobile, Timezone, AnsibleRegion, Entity
+#
+# Province is read by windows_adschema (AD OU schema), not by this script --
+# listed here for completeness since _load_sites() below reads by column
+# name via csv.DictReader, so extra columns are otherwise silently ignored.
 #
 # BRD is a legacy alias for BER (West Berlin) -- same subnet, kept for v2v
 # compatibility. Both are valid site codes.
