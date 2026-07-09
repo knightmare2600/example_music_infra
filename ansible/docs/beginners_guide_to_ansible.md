@@ -41,7 +41,7 @@ The following examples were captured from:
 
 ```text
 Hostname : EXASRVCLD001
-Address  : 192.168.139.10
+Address  : 192.168.139.8
 Role     : DNS Server
 Domain   : jukebox.internal
 ```
@@ -85,7 +85,7 @@ Perform task: TASK: Gathering Facts (N)o/(y)es/(c)ontinue: y
 Perform task: TASK: Gathering Facts (N)o/(y)es/(c)ontinue: *****************************************************************************************************************
 
 TASK [Gathering Facts] *****************************************************************************************************************************************************
-ok: [192.168.139.10]
+ok: [192.168.139.8]
 Perform task: TASK: Install common packages (N)o/(y)es/(c)ontinue: y
 
 Perform task: TASK: Install common packages (N)o/(y)es/(c)ontinue: *********************************************************************************************************
@@ -98,16 +98,16 @@ Suggested packages:
 The following NEW packages will be installed:
   libblas3 liblinear4 liblua5.4-0 nmap nmap-common
 0 upgraded, 5 newly installed, 0 to remove and 0 not upgraded.
-changed: [192.168.139.10]
+changed: [192.168.139.8]
 Perform task: TASK: Set default shell to zsh for ansible user (N)o/(y)es/(c)ontinue: y
 
 Perform task: TASK: Set default shell to zsh for ansible user (N)o/(y)es/(c)ontinue: ***************************************************************************************
 
 TASK [Set default shell to zsh for ansible user] ***************************************************************************************************************************
-changed: [192.168.139.10]
+changed: [192.168.139.8]
 
 PLAY RECAP *****************************************************************************************************************************************************************
-192.168.139.10             : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+192.168.139.8             : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 ```
 
 ---
@@ -126,7 +126,7 @@ The first task:
 
 ```text
 TASK [Gathering Facts]
-ok: [192.168.139.10]
+ok: [192.168.139.8]
 ```
 
 collects information about the remote host including operating system, hostname, network interfaces, CPU information, and memory information.
@@ -134,7 +134,7 @@ collects information about the remote host including operating system, hostname,
 The following line:
 
 ```text
-changed: [192.168.139.10]
+changed: [192.168.139.8]
 ```
 
 does **not** indicate an error. It indicates that Ansible believes a change would be required. Because this run used `--check`, the changes were simulated rather than executed.
@@ -452,15 +452,15 @@ After troubleshooting, the server was rebooted:
 
 ```text
 ansible@exasrvcld001[~/ansible]$ sudo reboot
-ansible@exasrvcld001[~/ansible]$ Connection to 192.168.139.10 closed by remote host.
-Connection to 192.168.139.10 closed.
+ansible@exasrvcld001[~/ansible]$ Connection to 192.168.139.8 closed by remote host.
+Connection to 192.168.139.8 closed.
 ```
 
 The administrator then reconnected:
 
 ```text
-knightmare@orangepipc:~$ ssh ansible@192.168.139.10
-ansible@192.168.139.10's password:
+knightmare@orangepipc:~$ ssh ansible@192.168.139.8
+ansible@192.168.139.8's password:
 ```
 
 The login banner confirmed successful startup:
@@ -474,7 +474,7 @@ The login banner confirmed successful startup:
   Zone     : jukebox.internal  (708 A records, serial serial)
 
   ── Network ──────────────────────────────────────────────────
-    DNS IP   : 192.168.139.10
+    DNS IP   : 192.168.139.8
     BIND9    : active
 
   ── System ───────────────────────────────────────────────────
