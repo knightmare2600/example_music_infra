@@ -10,6 +10,10 @@
 #   2026-07-07  nodeinfo.json write now uses the shared ansible/tasks/nodeinfo.yml
 #               (also used by linux/tools.yml, proxmox, rudder_server.yml)
 #               instead of hand-writing the same base fields independently.
+#   2026-07-09  Reboot question moved to 04_summary_confirm.yml -- asked alongside
+#               every other confirmation, before any writes happen, instead of
+#               here at the very end after everything's already applied. This file
+#               now only acts on the stored fw_reboot_requested fact.
 # =============================================================================
 
 # ── Node info file ────────────────────────────────────────────────────────────
@@ -76,7 +80,7 @@
       - "{{ _c.G }}║{{ _c.NC }}  LAN          : {{ _c.G }}{{ fw_lan_iface }}{{ _c.NC }}"
       - "{{ _c.G }}║{{ _c.NC }}  LAN IP       : {{ _c.G }}{{ fw_lan_ip }}/24{{ _c.NC }}"
       - "{{ _c.G }}║{{ _c.NC }}  DHCP range   : {{ _c.G }}{{ fw_dhcp_start }} – {{ fw_dhcp_end }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  WAN DNS      : {{ _c.G }}{{ fw_cld_dns }}, 1.1.1.1{{ _c.NC }}"
+      - "{{ _c.G }}║{{ _c.NC }}  WAN DNS      : {{ _c.G }}{{ fw_cld_dns }}, {{ fw_inet_dns }}{{ _c.NC }}"
       - "{{ _c.G }}║{{ _c.NC }}  LAN DNS      : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_cld_dns }}{{ _c.NC }}"
       - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
       - "{{ _c.G }}║{{ _c.NC }}  WireGuard    : {{ _c.O }}{{ fw_wg_role }}{{ _c.NC }}"
@@ -91,27 +95,22 @@
       - "{{ _c.G }}    wg set wg0 peer {{ fw_wg_pubkey_final.content | b64decode | trim if (fw_wg_pubkey_final.content is defined) else '<pubkey>' }} allowed-ips {{ fw_wg_tunnel_ip | default('10.0.x.y') }}/32,{{ fw_subnet }}.0/24{{ _c.NC }}"
       - ""
 
-- name: "[Finish] Prompt for reboot"
-  ansible.builtin.pause:
-    prompt: |
-      {{ _c.Y }}[!]{{ _c.NC }} A reboot is recommended to ensure interface pinning (.link files),
-      {{ _c.Y }}[!]{{ _c.NC }} initramfs changes, and sysctl settings all take effect cleanly.
 
-      Reboot now? [y/N]
-  register: fw_reboot_prompt
+# Reboot decision was already made and confirmed in 04_summary_confirm.yml
+# (fw_reboot_requested) — not asked again here, just acted on.
 
 - name: "[Finish] Reboot host"
   ansible.builtin.reboot:
     reboot_timeout:    300
     post_reboot_delay: 30
     msg: "Ansible firewall role — post-config reboot"
-  when: fw_reboot_prompt.user_input | default('n') | lower | trim == 'y'
+  when: fw_reboot_requested | default(false)
 
 - name: "[Finish] Reboot skipped"
   ansible.builtin.debug:
     msg:
-      - "{{ _c.Y }}[!]{{ _c.NC }} Reboot skipped."
+      - "{{ _c.Y }}[!]{{ _c.NC }} Reboot skipped (not requested)."
       - "{{ _c.C }}[*]{{ _c.NC }} When ready:  {{ _c.G }}reboot{{ _c.NC }}"
       - "{{ _c.C }}[*]{{ _c.NC }} Interface name pinning (.link files) takes effect after reboot."
       - "{{ _c.C }}[*]{{ _c.NC }} If WAN was not activated:  {{ _c.G }}nmcli con up wan{{ _c.NC }}"
-  when: fw_reboot_prompt.user_input | default('n') | lower | trim != 'y'
+  when: not (fw_reboot_requested | default(false))
