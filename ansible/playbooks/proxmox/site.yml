@@ -21,6 +21,7 @@
 #   30-example-music       /etc/example-music/ — sites.csv, devices.csv, nodeinfo.json (always)
 #   40-scripts              Maintenance scripts + apt config + NIC guard creds (always)
 #   45-virt-tools           V2V/VirtIO/proxmoxbmc/BIOS ROMs (always — file placement only)
+#   46-proxmorph            proxmorph UI themes + sensor monitoring (always)
 #   50-systemd-units        Systemd units + Zabbix agent + proxmoxbmc service (gated)
 #
 # Run once per new PVE node, as root via SSH password:
@@ -44,9 +45,12 @@
 # need 00-preflight.yml's facts — run those together, or via site.yml,
 # rather than standalone.)
 #
-# Tags: preflight, packages, ansible_access, example_music, scripts, virt_tools, systemd_units
+# Tags: preflight, packages, ansible_access, example_music, scripts, virt_tools, proxmorph, systemd_units
 # =============================================================================
 # Changelog:
+#   2026-07-09  Added 46-proxmorph.yml — third-party proxmorph UI themes for
+#               the PVE web UI plus its hardware sensor monitoring feature,
+#               on by default for every PVE node.
 #   2026-06-29  Added Zabbix-monitored file deployment, systemd timers
 #   2026-07-03  Add proxmox-replica-nic-guard and proxmox-zfs-vm-audit scripts,
 #               units, and associated config/Zabbix agent drop-in
@@ -92,6 +96,9 @@
 
 - import_playbook: playbooks/45-virt-tools.yml
   tags: virt_tools
+
+- import_playbook: playbooks/46-proxmorph.yml
+  tags: proxmorph
 
 - import_playbook: playbooks/50-systemd-units.yml
   tags: systemd_units
