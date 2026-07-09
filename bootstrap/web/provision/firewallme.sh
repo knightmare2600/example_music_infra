@@ -114,6 +114,10 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #  2026-07-08  Renamed the DNS server references from EXADNSCLD001 to EXADNSVRK001 in comments/
 #              banner text (CLD_DNS's IP, 192.168.139.8, was already correct -- devices.csv files
 #              this device under Site=VRK, not CLD, matching bind9-dns.yml's own rename today).
+#  2026-07-09  Added EXA_DOMAIN, read from begyndelse.json's new domain_fqdn field (itself
+#              derived from benarbejde/ad_forest.json, single source of truth for the AD forest
+#              name) -- replaces "jukebox.internal" hardcoded 6x directly into the dnsmasq
+#              config this script generates (search/domain/dhcp-option/address/cname entries).
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
@@ -794,14 +798,18 @@ WG_HUB_DEFAULT_IP="10.0.${WG_OCTET}.1"
 WG_SPOKE_DEFAULT_IP="10.0.${WG_OCTET}.2"
 DC_DNS="${SUBNET}.10"          # site DC — AD DNS primary for LAN clients
 
-# EXADNSVRK001's IP -- looked up from begyndelse.json (benarbejde/generate_inventory.py
-# --emit-begyndelse-json) rather than hardcoded, same reasoning as sites.csv above.
-CLD_DNS=""
+# EXADNSVRK001's IP + the AD domain name -- looked up from begyndelse.json
+# (benarbejde/generate_inventory.py --emit-begyndelse-json) rather than hardcoded, same
+# reasoning as sites.csv above. EXA_DOMAIN replaces what used to be "jukebox.internal"
+# hardcoded directly into the dnsmasq config below (search/domain/local/dhcp-option/CNAMEs).
+BEGYNDELSE_FILE=""
 for candidate in "${BEGYNDELSE_JSON:-}" "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/begyndelse.json" "/etc/example-music/begyndelse.json"; do
-  [[ -n "${candidate}" && -f "${candidate}" ]] && { CLD_DNS=$(jq -r '.dns.ip' "${candidate}"); break; }
+  [[ -n "${candidate}" && -f "${candidate}" ]] && { BEGYNDELSE_FILE="${candidate}"; break; }
 done
-[[ -z "${CLD_DNS}" ]] && die "begyndelse.json not found (looked in \$BEGYNDELSE_JSON, script directory, /etc/example-music/) -- cannot determine central BIND9 DNS IP."
+[[ -z "${BEGYNDELSE_FILE}" ]] && die "begyndelse.json not found (looked in \$BEGYNDELSE_JSON, script directory, /etc/example-music/) -- cannot determine central BIND9 DNS IP / AD domain."
+CLD_DNS=$(jq -r '.dns.ip' "${BEGYNDELSE_FILE}")
                                # ^ WAN profile primary + dnsmasq upstream
+EXA_DOMAIN=$(jq -r '.domain_fqdn' "${BEGYNDELSE_FILE}")
 INET_DNS="9.9.9.9"             # Quad9 — internet fallback; ensures DNS works if CLD unreachable
 
 # -------------------------------------------------------------------------------------------------
@@ -1557,7 +1565,7 @@ cat > /etc/dnsmasq.d/lan.conf <<EOF
 # Written by firewallme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
 #
 # DNS upstream hierarchy:
-#   1. ${DC_DNS}         — site DC (AD DNS, jukebox.internal authority)
+#   1. ${DC_DNS}         — site DC (AD DNS, ${EXA_DOMAIN} authority)
 #   2. ${CLD_DNS}    — EXADNSVRK001 (central BIND9, cross-site resolution)
 #   3. ${INET_DNS}           — Quad9 (internet fallback; DNS survives CLD outage)
 #
@@ -1580,7 +1588,7 @@ dhcp-option=3,${LAN_IP}
 # CLD DNS intentionally omitted from client list — clients on LAN subnets
 # may not have a route to 192.168.139.0/24 until WireGuard is up.
 dhcp-option=6,${DC_DNS},${INET_DNS}
-dhcp-option=15,jukebox.internal
+dhcp-option=15,${EXA_DOMAIN}
 
 dhcp-vendorclass=set:ipxe-client,iPXE
 dhcp-option=tag:ipxe-client,6,${LAN_IP}
@@ -1589,11 +1597,11 @@ EOF
 
 cat > /etc/dnsmasq.d/local-records.conf <<EOF
 # Example Music local DNS - Site: ${SITE}
-address=/ansible.jukebox.internal/${ANSIBLE_IP}
-cname=www.jukebox.internal,ansible.jukebox.internal
-cname=tftp.jukebox.internal,ansible.jukebox.internal
-cname=provisioning.jukebox.internal,ansible.jukebox.internal
-cname=preseed.jukebox.internal,ansible.jukebox.internal
+address=/ansible.${EXA_DOMAIN}/${ANSIBLE_IP}
+cname=www.${EXA_DOMAIN},ansible.${EXA_DOMAIN}
+cname=tftp.${EXA_DOMAIN},ansible.${EXA_DOMAIN}
+cname=provisioning.${EXA_DOMAIN},ansible.${EXA_DOMAIN}
+cname=preseed.${EXA_DOMAIN},ansible.${EXA_DOMAIN}
 EOF
 
 info "Add extra local DNS records now, or leave blank to skip."
@@ -2185,7 +2193,7 @@ echo -e "${CYAN}  Hostname      : $(hostname)${NC}"
 echo -e "${CYAN}  WAN Interface : ${WAN_IFACE} (${WAN_MAC})  →  ${WAN_IP_CURRENT}${NC}"
 echo -e "${CYAN}  LAN Interface : ${LAN_IFACE} (${LAN_MAC})  →  ${LAN_IP}/24${NC}"
 echo -e "${CYAN}  DHCP Range    : ${DHCP_START} - ${DHCP_END}${NC}"
-echo -e "${CYAN}  Ansible/PXE   : ${ANSIBLE_IP} (ansible.jukebox.internal)${NC}"
+echo -e "${CYAN}  Ansible/PXE   : ${ANSIBLE_IP} (ansible.${EXA_DOMAIN})${NC}"
 echo -e "${CYAN}  Cockpit URL   : https://${LAN_IP}:9090${NC}"
 if [[ "$WAN_SSH" == "true" ]]; then
   [[ -n "${WAN_SSH_SRC:-}" ]] \

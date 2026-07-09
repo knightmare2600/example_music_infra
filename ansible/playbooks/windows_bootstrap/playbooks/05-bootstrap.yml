@@ -145,6 +145,13 @@
 #               Server Core) — Server Core is the only case without a GUI
 #               shell. choco_packages_common is unaffected (windirstat and
 #               hyper are confirmed to run fine on Server Core).
+#   2026-07-09  exa_domain/exa_domain_join_user now derived from
+#               benarbejde/ad_forest.json instead of a separately-hardcoded local
+#               copy — this play's own vars: block was silently shadowing
+#               group_vars/all/vars.yml's exa_domain (identical value, but two
+#               separate hardcoded copies that could drift). Stays self-contained
+#               per this file's own design (reads the JSON directly), just no
+#               longer duplicates the literal.
 # =============================================================================
 
 - name: Windows — PostOOBE Bootstrap (replaces Join-DomainAndBootstrap.ps1)
@@ -175,8 +182,13 @@
     exa_wallpaper_dest: 'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.png'
 
     # ── Domain ────────────────────────────────────────────────────────────────
-    exa_domain:           "jukebox.internal"
-    exa_domain_join_user: "JUKEBOX\\Administrator"
+    # Derived from benarbejde/ad_forest.json (single source of truth), not hardcoded --
+    # this play stays self-contained/inventory-agnostic (see design note above), it just
+    # reads the same JSON file group_vars/all/vars.yml itself now reads, rather than
+    # carrying its own separately-hardcoded copy of the domain name.
+    ad_forest_json_path:  "/etc/example-music/ad_forest.json"
+    exa_domain:           "{{ (lookup('file', ad_forest_json_path) | from_json).domain_fqdn }}"
+    exa_domain_join_user: "{{ (lookup('file', ad_forest_json_path) | from_json).netbios_name }}\\Administrator"
 
     # ── Chocolatey ────────────────────────────────────────────────────────────
     exa_choco_source: "https://community.chocolatey.org/api/v2/"

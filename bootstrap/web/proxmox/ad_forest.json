@@ -1,0 +1,10 @@
+{
+  "_comment": "Example Music Limited -- AD forest identity, single source of truth for domain_fqdn/netbios_name/etc. Consumed by windows_dc, windows_bootstrap, windows_adschema, rudder_servers, bind9-dns.yml, and (via begyndelse.json) firewallme. Edit this file only, not the consumers.",
+  "domain_fqdn": "jukebox.internal",
+  "netbios_name": "JUKEBOX",
+  "forest_mode": "WinThreshold",
+  "domain_mode": "WinThreshold",
+  "hub_sites": ["FAL", "ODE", "BRK"],
+  "cld_site": "CLD",
+  "dns_forwarders": ["192.168.139.8", "9.9.9.9", "1.1.1.1"]
+}

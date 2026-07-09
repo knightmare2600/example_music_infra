@@ -16,6 +16,10 @@
 #               each hand-write their own. Wrapped in block/rescue since this
 #               playbook runs on every Linux host, including ones that may
 #               not have a conformant hostname yet.
+#   2026-07-09  Add /etc/example-music deploy for ad_forest.json -- AD forest
+#               identity (domain_fqdn/netbios_name/etc), single source of truth
+#               for group_vars/all/vars.yml's exa_domain and every other
+#               ad_forest.json consumer (windows_dc, rudder_servers, bind9-dns.yml).
 
 - name: Deploy common tools
   hosts: all
@@ -35,6 +39,7 @@
     sites_csv_src:     "{{ playbook_dir }}/../../../benarbejde/sites.csv"
     devices_csv_src:   "{{ playbook_dir }}/../../../benarbejde/devices.csv"
     address_policy_src: "{{ playbook_dir }}/../../../benarbejde/address_policy.json"
+    ad_forest_src:     "{{ playbook_dir }}/../../../benarbejde/ad_forest.json"
 
   tasks:
 
@@ -78,6 +83,14 @@
       ansible.builtin.copy:
         src:   "{{ address_policy_src }}"
         dest:  /etc/example-music/address_policy.json
+        owner: root
+        group: root
+        mode:  '0644'
+
+    - name: Deploy ad_forest.json to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ ad_forest_src }}"
+        dest:  /etc/example-music/ad_forest.json
         owner: root
         group: root
         mode:  '0644'

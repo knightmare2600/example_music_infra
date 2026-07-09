@@ -60,6 +60,9 @@
 # v1.3.0  2026-07-08  Fixed stale "RAC" in the Device Role -> OU mapping comment above (BMC
 #                     supersedes RAC — same fix already applied to 10-ad-schema.yml, missed
 #                     here since this file has its own copy of the same table).
+# v1.4.0  2026-07-09  ad_domain's fallback changed from a hardcoded
+#                     'jukebox.internal' literal to exa_domain, derived from
+#                     benarbejde/ad_forest.json (single source of truth).
 # =============================================================================
 
 - name: "Build AD computer accounts from JSON"
@@ -68,7 +71,7 @@
   become: false
 
   vars:
-    ad_domain:         "{{ dc_domain_name | default('jukebox.internal') }}"
+    ad_domain:         "{{ dc_domain_name | default(exa_domain) }}"
     ad_computers_json: "/etc/example-music/ad_computers.json"
 
   pre_tasks:

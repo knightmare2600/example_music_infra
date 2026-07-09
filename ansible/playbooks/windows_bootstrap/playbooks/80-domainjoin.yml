@@ -3,14 +3,15 @@
 # playbooks/80-domainjoin.yml
 # Example Music Limited — Domain join
 # =============================================================================
-# Joins the host to jukebox.internal. OU is derived from:
+# Joins the host to the domain named in benarbejde/ad_forest.json (exa_domain --
+# jukebox.internal by default). OU is derived from:
 #   - domain_ou_role  (from group_vars — Workstations/Laptops/Servers/DomainControllers)
 #   - host_site       (parsed from hostname via tasks/hostname_facts.yml)
 #
-# Resulting OU: OU=<role>,OU=<SITE>,DC=jukebox,DC=internal
+# Resulting OU: OU=<role>,OU=<SITE>,<exa_domain as DC=...,DC=...>
 #
-# Domain join account: JUKEBOX\Administrator (forest-level DA — valid across
-# all child domains via forest trust). Stored in vault as vault_domain_join_password.
+# Domain join account: exa_domain_join_user (forest-level DA — valid across all
+# child domains via forest trust). Stored in vault as vault_domain_join_password.
 #
 # The host reboots after joining. Ansible will wait and reconnect.
 #
@@ -35,6 +36,13 @@
 #   2026-07-06  Documented (no code change) why this file's static OU
 #               derivation and tasks/ou_selection.yml's interactive LDAP
 #               picker are intentionally separate rather than unified.
+#   2026-07-09  Fixed domain_ou_path (line ~145): hardcoded "DC=jukebox,DC=internal"
+#               even though exa_domain (used elsewhere in this same file for the
+#               actual domain join) was already a variable -- silently diverged if
+#               exa_domain ever changed. Now derives the DN from exa_domain via the
+#               same DC=-join pattern windows_adschema/10-ad-schema.yml already
+#               uses correctly. Also fixed two hardcoded Resolve-DnsName
+#               "jukebox.internal" PowerShell calls (Stage 0) to use exa_domain.
 # =============================================================================
 
 - name: Windows — Domain join
@@ -53,10 +61,10 @@
     # Check first; only override if needed.  Windows updates NIC DNS itself
     # during the domain join so the temp entry doesn't need cleaning up.
 
-    - name: "[Stage 0] Check jukebox.internal resolves"
+    - name: "[Stage 0] Check {{ exa_domain }} resolves"
       ansible.windows.win_shell: |
         try {
-          Resolve-DnsName "jukebox.internal" -ErrorAction Stop | Out-Null
+          Resolve-DnsName "{{ exa_domain }}" -ErrorAction Stop | Out-Null
           Write-Output "resolvable"
         } catch {
           Write-Output "unresolvable"
@@ -68,7 +76,7 @@
     - name: "[Stage 0] Fail — domain unresolvable and no DNS override provided"
       ansible.builtin.fail:
         msg: >
-          jukebox.internal cannot be resolved and no DNS override IP was provided.
+          {{ exa_domain }} cannot be resolved and no DNS override IP was provided.
           Re-run and enter a DC/DNS IP when prompted (e.g. 192.168.139.8).
       when:
         - dj_dns_check.stdout | trim == "unresolvable"
@@ -96,10 +104,10 @@
         - dj_temp_dns_ip | length > 0
       tags: domainjoin
 
-    - name: "[Stage 0] Re-check jukebox.internal after DNS override"
+    - name: "[Stage 0] Re-check {{ exa_domain }} after DNS override"
       ansible.windows.win_shell: |
         try {
-          Resolve-DnsName "jukebox.internal" -ErrorAction Stop | Out-Null
+          Resolve-DnsName "{{ exa_domain }}" -ErrorAction Stop | Out-Null
           Write-Output "resolvable"
         } catch {
           Write-Output "unresolvable"
@@ -111,11 +119,11 @@
         - dj_temp_dns_ip | length > 0
       tags: domainjoin
 
-    - name: "[Stage 0] Fail — jukebox.internal still unresolvable after DNS override"
+    - name: "[Stage 0] Fail — {{ exa_domain }} still unresolvable after DNS override"
       ansible.builtin.fail:
         msg: >
-          jukebox.internal still cannot be resolved after setting DNS to {{ dj_temp_dns_ip }}.
-          Verify that {{ dj_temp_dns_ip }} is reachable and serves jukebox.internal.
+          {{ exa_domain }} still cannot be resolved after setting DNS to {{ dj_temp_dns_ip }}.
+          Verify that {{ dj_temp_dns_ip }} is reachable and serves {{ exa_domain }}.
       when:
         - dj_dns_recheck is defined
         - dj_dns_recheck.stdout | trim == "unresolvable"
@@ -142,7 +150,7 @@
 
     - name: Build target OU path
       set_fact:
-        domain_ou_path: "OU={{ domain_ou_role }},OU={{ host_site }},DC=jukebox,DC=internal"
+        domain_ou_path: "OU={{ domain_ou_role }},OU={{ host_site }},{{ 'DC=' + exa_domain.split('.') | join(',DC=') }}"
       when: domain_check.stdout | trim | lower != 'true'
       tags: domainjoin
 

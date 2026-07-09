@@ -43,6 +43,9 @@
 #                     00-ad-preflight.yml, not inline. Inline microsoft.ad
 #                     collection check replaced with a shared include:
 #                     ../tasks/ad_collection_check.yml.
+# v1.3.0  2026-07-09  ad_domain's fallback changed from a hardcoded
+#                     'jukebox.internal' literal to exa_domain, derived from
+#                     benarbejde/ad_forest.json (single source of truth).
 # =============================================================================
 
 - name: "Build AD groups from TDF"
@@ -51,7 +54,7 @@
   become: false
 
   vars:
-    ad_domain:       "{{ dc_domain_name | default('jukebox.internal') }}"
+    ad_domain:       "{{ dc_domain_name | default(exa_domain) }}"
     ad_email_domain: "{{ ad_domain }}"
     ad_groups_json:  "/etc/example-music/ad_groups.json"
 
