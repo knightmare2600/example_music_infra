@@ -7,6 +7,15 @@
 # - Cockpit (latest, via cockpit-project repo) bound to LAN only
 # - WireGuard hub-primary / hub-regional / spoke setup
 # - Site code lookup for automatic subnet assignment
+#
+# BREAK-GLASS TOOL: this script predates Ansible existing in this estate and has since been
+# ported to ansible/playbooks/firewallme/playbooks/90-firewall.yml (same steps, native Ansible
+# tasks). That's the actively maintained, normal path -- use it once the box is reachable and
+# in inventory. This script is kept intentionally, not by oversight, for when a firewall needs
+# to come up before Ansible connectivity exists at all: a dead/replaced firewall (which is also
+# the WireGuard hub for the whole estate at some sites), or a brand-new site with nothing else
+# up yet. Self-contained by design: manual wget of sites.csv/devices.csv/begyndelse.json from
+# the provisioning server is the expected, supported path here, not a shortcut to be "fixed".
 # ===============================================================
 
 set -euo pipefail

@@ -12,6 +12,15 @@
 #   - Sets up LDAP/AD config skeleton
 #   - Sentinel file + dynamic MOTD
 #
+# BREAK-GLASS TOOL: this script predates Ansible existing in this estate and has since been
+# ported to ansible/playbooks/rudder/rudder_server.yml (and rudder_relay.yml/rudder_onboard.yml
+# for the relay/onboarding steps). Those are the actively maintained, normal path -- use them
+# once the box is reachable and in inventory. This script is kept intentionally, not by
+# oversight, for when the Rudder server needs to come up before Ansible connectivity exists at
+# all (a dead/replaced Rudder box, or a brand-new site). Self-contained by design: manual wget
+# of sites.csv/devices.csv/begyndelse.json from the provisioning server is the expected,
+# supported path here, not a shortcut to be "fixed" later.
+#
 # -------------------------------------------------------------------------------------------------
 # Version history
 # -------------------------------------------------------------------------------------------------
