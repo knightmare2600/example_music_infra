@@ -38,13 +38,17 @@ each other, so there's one source of truth for the actual task logic.
 | `80-domainjoin.yml` | `domainjoin` | Join JUKEBOX domain |
 | `85-finish.yml` | `finish` | Remote-access summary + final reboot |
 
-A bare `site.yml` run with no `--tags` currently runs every play above in
-sequence (the standalone plays aren't actually tagged `never`, despite
-site.yml's changelog claiming otherwise) — use `--tags <name>` for a single
-stage, or `--tags bootstrap` for bootstrap-only. This caveat predates and
-is unrelated to the `05-bootstrap.yml` removal above (it was never mutually
-exclusive with anything); it remains an open architectural question, not
-yet resolved.
+A bare `site.yml` run with no `--tags` runs every play above in sequence —
+this is deliberate, not a gap. Each play is idempotent (checks its own
+"already done" condition before acting), so a full run converges *any*
+host — freshly built or already bootstrapped — to the same known-good
+bootstrap state every time. That convergent state (renamed, packages
+installed, hardened, domain-joined) is the prerequisite for the next,
+separate step: DC promotion via `windows_dc/site.yml`, or any other
+module-specific action. Use `--tags <name>` to re-run or debug a single
+stage in isolation. `--tags bootstrap` only ever matches `00-preflight.yml`
+(each play has its own unique tag, there's no shared "early stages" group)
+— it is not a shorthand for "the minimal subset", just that one stage.
 
 ## Usage
 

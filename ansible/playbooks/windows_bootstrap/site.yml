@@ -83,6 +83,16 @@
 #               previously had no final summary or guaranteed reboot at all,
 #               a genuine gap found while cross-checking that everything from
 #               the original monolith made it into the split-out files.
+#   2026-07-09  Resolved the "bare run executes every play" question raised in
+#               the 2026-07-06 entry above: confirmed this is the intended
+#               design, not a gap. Every play here is idempotent, so a full
+#               run converges any host to the same known-good bootstrap state
+#               regardless of how many times it's run or what state the host
+#               started in -- that convergent state is the deliverable, and
+#               DC promotion (windows_dc/site.yml) or any other follow-on
+#               action is a deliberate separate step afterward. No tagging
+#               change made; README.md updated to state this as intended
+#               behaviour rather than an open question.
 # =============================================================================
 
 # Bootstrap sequence — runs by default
