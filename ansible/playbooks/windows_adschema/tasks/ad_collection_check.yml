@@ -1,11 +1,20 @@
 ---
 # =============================================================================
 # tasks/ad_collection_check.yml
-# Example Music Limited — microsoft.ad collection preflight
+# Example Music Limited — Ansible collection preflight
 # =============================================================================
 # Shared by 10-ad-schema.yml, 20-ad-groups.yml, 30-ad-users.yml and
 # 40-ad-computers.yml. Extracted here so the check only lives in one place —
 # previously it was copy-pasted into all four files.
+#
+# Checks every collection windows_adschema actually uses a module from (see
+# requirements.yml) — not just microsoft.ad. ansible.windows is needed too:
+# 10-ad-schema.yml's Section 9 (UPN suffix registration) uses
+# ansible.windows.win_powershell, gated behind ad_upn_suffixes | length > 0
+# (only fires when ad_email_domain is overridden away from the default), so
+# it's easy to never hit it in typical demo runs and only discover the
+# missing collection deep into a real run instead of at preflight — exactly
+# what this check exists to prevent.
 #
 # Safe to include from a standalone run (ansible-playbook 20-ad-groups.yml
 # on its own) as well as via site.yml — it only reads collection metadata
@@ -14,25 +23,45 @@
 # Changelog:
 #   2026-07-04  Initial file — extracted from ad_schema.yml/ad_groups.yml/
 #               ad_users.yml during the windows_adschema restructure.
+#   2026-07-09  Added ansible.windows to the check -- it was checking
+#               microsoft.ad only, even though requirements.yml has always
+#               listed ansible.windows too (win_powershell, UPN suffix
+#               registration) and 10-ad-schema.yml has used it since v1.0.0.
+#               A run without ansible.windows installed would fail deep into
+#               10-ad-schema.yml instead of cleanly at preflight, but only
+#               once someone actually overrides ad_email_domain -- easy to
+#               miss in testing since the demo default never exercises it.
 # =============================================================================
 
-- name: "Preflight | Check microsoft.ad collection is installed"
-  command: ansible-galaxy collection list microsoft.ad
+- name: "Preflight | Check required Ansible collections are installed"
+  command: "ansible-galaxy collection list {{ item }}"
   register: _col_check
   changed_when: false
   failed_when: false
   delegate_to: localhost
   become: false
+  loop:
+    - microsoft.ad
+    - ansible.windows
+  loop_control:
+    label: "{{ item }}"
 
-- name: "Preflight | Fail with install instructions if collection is missing"
+- name: "Preflight | Fail with install instructions if any collection is missing"
   fail:
     msg: |
-      Required Ansible collection not found: microsoft.ad
+      Required Ansible collection not found: {{ item.item }}
 
       Install it on the control node with:
-        ansible-galaxy collection install microsoft.ad
+        ansible-galaxy collection install {{ item.item }}
+
+      Or install everything windows_adschema needs at once with (run from
+      the ansible/ root):
+        ansible-galaxy collection install -r playbooks/windows_adschema/requirements.yml
 
       Then re-run this playbook.
-  when: "'microsoft.ad' not in _col_check.stdout"
+  when: item.item not in item.stdout
+  loop: "{{ _col_check.results }}"
+  loop_control:
+    label: "{{ item.item }}"
   delegate_to: localhost
   become: false
