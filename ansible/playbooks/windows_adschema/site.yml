@@ -35,7 +35,7 @@
 #   10-ad-schema     OU hierarchy from sites.csv
 #   20-ad-groups     Security groups from TDF
 #   30-ad-users      User accounts, band OUs, group membership, manager from TDF
-#   40-ad-computers  Computer accounts from TDF — pending, not yet migrated
+#   40-ad-computers  Computer accounts from ad_computers.json
 # =============================================================================
 # Changelog:
 #   2026-07-04  Initial file — windows_bootstrap-style restructure of what
@@ -54,6 +54,11 @@
 #               00-dc-preflight.yml runtime and hosts: patterns for later
 #               imported plays are resolved at parse time. This has always
 #               been, and remains, a manually-run second command.
+#   2026-07-09  Corrected the "Playbook order" table above: 40-ad-computers
+#               was still marked "pending, not yet migrated" despite already
+#               being imported below and, as of this same date, actually
+#               implemented (see its own changelog — it previously loaded
+#               and counted ad_computers.json in pre_tasks, then stopped).
 # =============================================================================
 
 - import_playbook: playbooks/00-ad-preflight.yml
