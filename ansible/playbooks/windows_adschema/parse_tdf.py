@@ -199,9 +199,18 @@ def _bool(text, key):
 
 
 def _arr(text, key):
-    """Return list of strings for Key=@('a','b','c'), or [] if absent."""
+    """Return list of strings for Key=@('a','b','c'), or [] if absent.
+
+    The closing ) is matched via a lookahead for a following ;/} rather than
+    a plain [^)]* stop-at-first-) -- a quoted element containing a literal
+    paren (e.g. 'Chicago (Band)') would otherwise truncate the capture at
+    that inner ), silently dropping the rest of the array and shifting every
+    later element down one position. Found via 3 mis-parsed OU arrays
+    (Robert Lamm/Peter Cetera/Danny Seraphine, all 'Chicago (Band)') that
+    resolved to a nonexistent 'Illinois' city OU instead of 'Chicago'.
+    """
     m = re.search(
-        r"(?:;\s*|^|\{)\s*'?" + re.escape(key) + r"'?\s*=\s*@\(([^)]*)\)",
+        r"(?:;\s*|^|\{)\s*'?" + re.escape(key) + r"'?\s*=\s*@\((.*?)\)(?=\s*[;}])",
         text,
     )
     if not m:
