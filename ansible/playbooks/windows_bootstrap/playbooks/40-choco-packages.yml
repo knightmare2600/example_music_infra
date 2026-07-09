@@ -13,9 +13,9 @@
 # address — the host has NO presence in any Ansible inventory file and
 # therefore NEVER picks up group_vars/windows*/. Every var this file needs
 # must be self-contained here (vars: block) or derived from facts already
-# established earlier in the chain (host_role, parsed in hostname_facts.yml
-# during 05-bootstrap.yml). Do not move these back to group_vars — that was
-# the 2026-06-30 regression this file fixes.
+# established earlier in the chain (host_role, parsed in hostname_facts.yml).
+# Do not move these back to group_vars — that was the 2026-06-30 regression
+# this file fixes.
 #
 # Once the chain completes and the host is later added to a real inventory
 # file for ongoing management, group_vars/windows*/ become relevant for
@@ -86,10 +86,10 @@
   vars:
     exa_choco_source: "https://community.chocolatey.org/api/v2/"
 
-    # Installed on every host regardless of role. Kept byte-for-byte
-    # identical to 05-bootstrap.yml's copy (both files must stay
-    # self-contained, per the design note above — "canonical" here means
-    # "the values agree", not "lives in one place").
+    # Installed on every host regardless of role. Self-contained per the
+    # design note above (05-bootstrap.yml, which used to carry a second,
+    # kept-in-sync-by-hand copy of this list, was retired 2026-07-09 — this
+    # is now the only copy).
     choco_packages_common:
       - 7zip.install
       - notepadplusplus.install

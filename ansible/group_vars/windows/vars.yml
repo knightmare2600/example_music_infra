@@ -16,14 +16,14 @@
 #               a confusing third copy.
 # =============================================================================
 
-# NOTE: choco_packages_common is NOT defined here. Both consumers
-# (playbooks/05-bootstrap.yml and playbooks/40-choco-packages.yml) run
-# against a bare-IP host with no inventory group membership yet, so they
-# each keep their own self-contained, byte-for-byte-identical copy of this
-# list instead — see either file's design note. A copy used to live here
-# too, but nothing ever read it (play vars: always wins over group_vars,
-# so it was silently shadowed) and it had drifted from the two real
-# copies; removed rather than leave a third, misleading version around.
+# NOTE: choco_packages_common is NOT defined here. playbooks/40-choco-packages.yml
+# runs against a bare-IP host with no inventory group membership yet, so it
+# keeps its own self-contained copy of this list instead — see that file's
+# design note. (05-bootstrap.yml used to carry a second, kept-in-sync-by-hand
+# copy of the same list; retired 2026-07-09.) A copy used to live here too,
+# but nothing ever read it (play vars: always wins over group_vars, so it was
+# silently shadowed) and it had drifted from the real copies; removed rather
+# than leave a misleading version around.
 
 # Binaries deployed to C:\Windows\ on every host (arch-aware, src resolved at runtime)
 # Format: { src: "<filename in arch folder>", dest: "<filename on host>" }

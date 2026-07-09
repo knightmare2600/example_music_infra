@@ -166,9 +166,9 @@
 # Asset / package source reachability checks (warnings only)
 # =============================================================================
 # Wallpaper's own reachability check was removed 2026-07-08 -- it's a local
-# win_copy from files/ now (see 60-wallpaper.yml/05-bootstrap.yml Stage 9),
-# not an HTTP fetch, so there's nothing to preflight: win_copy fails loudly
-# and clearly on its own if the source file is missing.
+# win_copy from files/ now (see 60-wallpaper.yml), not an HTTP fetch, so
+# there's nothing to preflight: win_copy fails loudly and clearly on its
+# own if the source file is missing.
 
 - name: "[Preflight] Check chocolatey.org reachable"
   ansible.windows.win_shell: |

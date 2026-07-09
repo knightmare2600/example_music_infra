@@ -25,25 +25,33 @@
 #     -i configs/inventory
 #
 # Playbook order:
-#   00-bootstrap       Full PostOOBE bootstrap (replaces Join-DomainAndBootstrap.ps1)
-#   10-rename          Rename (standalone — also runs inside bootstrap)
-#   15-locale-timezone Locale and timezone (standalone — also runs inside bootstrap)
+#   00-preflight       Pre-flight: credentials, hostname, IP, SSH hardening
+#   10-rename          Rename
+#   15-locale-timezone Locale and timezone
 #   20-registry        Registry hardening
-#   22-screenlock      Screen lock and inactivity timeout (standalone — also runs inside bootstrap)
+#   22-screenlock      Screen lock and inactivity timeout
 #   25-deadvertise     Advertising/telemetry suppression (desktop + laptop only)
 #   30-chocolatey      Chocolatey installation
-#   35-guest-tools     Hypervisor guest tools (standalone — also runs inside bootstrap)
+#   35-guest-tools     Hypervisor guest tools
 #   40-choco-pkgs      Chocolatey packages
-#   45-rsat            RSAT tools (standalone — also runs inside bootstrap)
-#   48-pswindowsupdate PSWindowsUpdate module (standalone — also runs inside bootstrap)
+#   45-rsat            RSAT tools
+#   48-pswindowsupdate PSWindowsUpdate module
 #   50-binaries        Arch-aware binary + font deployment
 #   60-wallpaper       Corporate wallpaper + dark mode
 #   70-hibernation     Power management: hibernation, pagefile, SConfig by host type
-#   75-openssh         OpenSSH + Ansible key (standalone — also runs inside bootstrap)
-#   77-rdp             RDP with NLA (standalone — also runs inside bootstrap)
-#   78-sac-ems         SAC/EMS serial console, Server OS only (standalone — also runs inside bootstrap)
-#   79-ps7-setup       PS7 modules, fonts, profile, terminal config (standalone — also runs inside bootstrap)
-#   80-domainjoin      Domain join (standalone — also runs inside bootstrap)
+#   75-openssh         OpenSSH + Ansible key
+#   77-rdp             RDP with NLA
+#   78-sac-ems         SAC/EMS serial console, Server OS only
+#   79-ps7-setup       PS7 modules, fonts, profile, terminal config
+#   80-domainjoin      Domain join
+#   85-finish          Bootstrap finish: summary + final reboot
+#
+# Every play above is standalone and independently re-runnable via its own
+# tag. Until 2026-07-09 there was also an inline monolith (05-bootstrap.yml)
+# chain-imported by 00-preflight.yml that duplicated most of these stages in
+# one combined play; it was retired once every stage was confirmed to have a
+# working standalone equivalent here (see this file's and 00-preflight.yml's
+# own changelogs for the two real gaps found and fixed in that process).
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
@@ -66,9 +74,18 @@
 #   2026-07-06  Removed 76-rustdesk.yml — rustdesk is a Chocolatey package
 #               (choco_packages_common, via 40-choco-packages.yml), so a
 #               dedicated asset-server-download playbook was redundant.
+#   2026-07-09  Fixed 80-domainjoin.yml: its hosts:/gather_facts:/vars_prompt were
+#               all commented out, meaning this ENTIRE chain could never even
+#               syntax-check (a play missing hosts: fails Ansible's parser at
+#               load time, regardless of --tags) -- this wasn't a "needs --tags"
+#               issue, site.yml as a whole was broken. Added 85-finish.yml
+#               (ported from 05-bootstrap.yml's Stage 23) -- the granular chain
+#               previously had no final summary or guaranteed reboot at all,
+#               a genuine gap found while cross-checking that everything from
+#               the original monolith made it into the split-out files.
 # =============================================================================
 
-# Bootstrap sequence — runs by default (preflight chain-imports 05-bootstrap.yml)
+# Bootstrap sequence — runs by default
 - import_playbook: playbooks/00-preflight.yml
   tags: bootstrap
 
@@ -125,3 +142,6 @@
 
 - import_playbook: playbooks/80-domainjoin.yml
   tags: domainjoin
+
+- import_playbook: playbooks/85-finish.yml
+  tags: finish

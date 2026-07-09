@@ -5,17 +5,19 @@ Ansible port of Join-DomainAndBootstrap.ps1.
 
 ## Playbook order
 
-`00-preflight.yml` chain-imports `05-bootstrap.yml` (the full PostOOBE
-bootstrap, Stages 0b–23) as one combined play. Everything below that is a
-separate standalone play that also runs inline as part of that same
-bootstrap chain — see `05-bootstrap.yml`'s own "Stage map" comment for
-which numbered stage each corresponds to, and its shared `tasks/*.yml`
-files (e.g. `tasks/rdp.yml`) that both the chain and the standalone play
-include, so there's one source of truth for the actual task logic.
+`00-preflight.yml` (hostname/static IP/Ansible key) hands off to the rest
+of the chain below, ending with `85-finish.yml` (remote-access summary +
+final reboot). The old `05-bootstrap.yml` monolith that used to duplicate
+this chain inline as one combined play was retired 2026-07-09 — every
+stage it contained was confirmed to have a granular standalone equivalent
+first (two real gaps found in the process were fixed before removal: see
+`00-preflight.yml`'s and `80-domainjoin.yml`'s own changelogs). The
+standalone plays share `tasks/*.yml` files (e.g. `tasks/rdp.yml`) with
+each other, so there's one source of truth for the actual task logic.
 
 | Playbook | Tag | Description |
 |----------|-----|-------------|
-| `00-preflight.yml` | `bootstrap` | Hostname/static IP/Ansible key, then chain-imports `05-bootstrap.yml` |
+| `00-preflight.yml` | `bootstrap` | Hostname/static IP/Ansible key, then hands off to the rest of the chain |
 | `10-rename.yml` | `rename` | Rename to EXA convention |
 | `15-locale-timezone.yml` | `locale_timezone` | Locale (en-GB) and timezone (GMT Standard Time) |
 | `20-registry.yml` | `registry` | Registry hardening |
@@ -34,11 +36,15 @@ include, so there's one source of truth for the actual task logic.
 | `78-sac-ems.yml` | `sac_ems` | SAC/EMS serial console (Server OS only) |
 | `79-ps7-setup.yml` | `ps7_setup` | PS7 modules, fonts, profile, terminal config |
 | `80-domainjoin.yml` | `domainjoin` | Join JUKEBOX domain |
+| `85-finish.yml` | `finish` | Remote-access summary + final reboot |
 
 A bare `site.yml` run with no `--tags` currently runs every play above in
 sequence (the standalone plays aren't actually tagged `never`, despite
 site.yml's changelog claiming otherwise) — use `--tags <name>` for a single
-stage, or `--tags bootstrap` for bootstrap-only.
+stage, or `--tags bootstrap` for bootstrap-only. This caveat predates and
+is unrelated to the `05-bootstrap.yml` removal above (it was never mutually
+exclusive with anything); it remains an open architectural question, not
+yet resolved.
 
 ## Usage
 

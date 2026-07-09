@@ -4,7 +4,8 @@
 # Example Music Limited — Pre-flight: credentials, hostname, IP, SSH hardening
 #
 # Runs against a freshly built Windows host on its DHCP address.
-# Handles everything that must happen BEFORE 05-bootstrap.yml.
+# Handles everything that must happen before the rest of site.yml's chain
+# (10-rename.yml onward).
 #
 # Task flow
 # ─────────
@@ -32,7 +33,7 @@
 #
 # PHASE G — Rename computer (hostname_needs_change only)
 # PHASE H — Reboot (rename or IP change), operator-confirmed reconnect
-# PHASE I — Summary and hand-off to 05-bootstrap.yml
+# PHASE I — Summary and hand-off to the rest of site.yml's chain
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # DNS decision (Phase A4)
@@ -93,10 +94,28 @@
 #               Pre-flight summary moved to after Phase A4 so operator sees
 #               the decided DNS before confirming.  Task flow reorganised into
 #               named phases (A–I) matching the file header above.
+#   2026-07-09  Fixed hosts: — was bare "{{ target_hosts }}" with no fallback to
+#               target at all, the only file in this directory without one (every
+#               other early-stage play here, e.g. 05-bootstrap.yml/10-rename.yml,
+#               already accepts target_hosts | default(target | default('all'))).
+#               configs/inventory/cld.ini (and fal.ini/liv.ini) document
+#               -e target=<host> as the Step 1 invocation -- that command failed
+#               immediately with 'target_hosts' is undefined before this fix.
+#   2026-07-09  Removed "import_playbook: 05-bootstrap.yml" and the "Handing off to
+#               05-bootstrap.yml" summary line. That monolith (Stages 0b-23) has been
+#               fully retired -- every stage was confirmed to have moved to a
+#               standalone playbook in this same directory (10-rename.yml through
+#               85-finish.yml, all already wired into site.yml's own top-level
+#               import list), except two real gaps found and fixed as part of this
+#               retirement: 80-domainjoin.yml had no is_first_dc awareness (would
+#               have blindly attempted a domain join during forest creation -- see
+#               its own changelog), and 85-finish.yml (Stage 23's summary + final
+#               reboot) didn't exist as a standalone file at all until now. See
+#               05-bootstrap.yml's own git history for the removed file.
 # =============================================================================
 
 - name: Pre-flight — credentials, hostname, IP, SSH
-  hosts:         "{{ target_hosts }}"
+  hosts:         "{{ target_hosts | default(target | default('all')) }}"
   gather_facts:  false
 
   vars_prompt:
@@ -546,7 +565,5 @@
           - "  DNS reason  : {{ dns_reason }}"
           - "  SSH         : running, auto-start, Ansible key deployed"
           - "  First DC    : {{ is_first_dc }}"
-          - "  Handing off to 05-bootstrap.yml..."
+          - "  Handing off to the rest of site.yml's chain (10-rename.yml onward)..."
           - "════════════════════════════════════════════════════════════════"
-
-- import_playbook: 05-bootstrap.yml

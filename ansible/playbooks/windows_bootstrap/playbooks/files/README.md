@@ -14,9 +14,8 @@ before running `50-binaries.yml` / `60-wallpaper.yml`.
 ## files/ (top level)
 
 - `ExampleMusicWallpaper.png` — the corporate wallpaper image, used by
-  `60-wallpaper.yml` and `05-bootstrap.yml` (Stage 9). Platform-agnostic
-  (same PNG regardless of CPU architecture), so it lives at the top level,
-  not under an arch subfolder.
+  `60-wallpaper.yml`. Platform-agnostic (same PNG regardless of CPU
+  architecture), so it lives at the top level, not under an arch subfolder.
 
 ## x86_64/ and arm64/
 
