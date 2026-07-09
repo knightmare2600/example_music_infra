@@ -36,7 +36,7 @@ fw_wan_ssh_src: ""
 
 # Central BIND9 DNS server (EXADNSVRK001) and internet fallback (Quad9, survives
 # a CLD/VRK outage) — set as facts in 00_preflight.yml from site_services.yml
-# (ansible/group_vars/all/site_services.yml, generated from devices.csv), not
+# (ansible/configs/inventory/group_vars/all/site_services.yml, generated from devices.csv), not
 # hardcoded here. No default needed — always set before use.
 
 # Ansible/PXE server last octet on the LAN subnet (default: 15)
