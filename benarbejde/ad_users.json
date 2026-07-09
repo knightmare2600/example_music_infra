@@ -5355,9 +5355,9 @@
     "City": "Faxe",
     "PostalCode": "4640",
     "physicalDeliveryOfficeName": "Kørsor Office",
-    "ad_ou": "OU=Whigfield,OU=Users,OU=Køge,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Whigfield,OU=Users,OU=Koge,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Whigfield",
-    "ad_band_parent": "OU=Users,OU=Køge,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Koge,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Karen Marie Orsted",
@@ -5883,9 +5883,9 @@
     "City": "Berlin",
     "PostalCode": "10709",
     "physicalDeliveryOfficeName": "Berlin Office",
-    "ad_ou": "OU=Nena,OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Nena,OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Nena",
-    "ad_band_parent": "OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Carlo Karges",
@@ -5912,9 +5912,9 @@
     "City": "Berlin",
     "PostalCode": "10709",
     "physicalDeliveryOfficeName": "Berlin Office",
-    "ad_ou": "OU=Nena,OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Nena,OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Nena",
-    "ad_band_parent": "OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Uwe Fahrenkrog-Petersen",
@@ -5941,9 +5941,9 @@
     "City": "Berlin",
     "PostalCode": "10709",
     "physicalDeliveryOfficeName": "Berlin Office",
-    "ad_ou": "OU=Nena,OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Nena,OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Nena",
-    "ad_band_parent": "OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Jurgen Dehmel",
@@ -5970,9 +5970,9 @@
     "City": "Berlin",
     "PostalCode": "10709",
     "physicalDeliveryOfficeName": "Berlin Office",
-    "ad_ou": "OU=Nena,OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Nena,OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Nena",
-    "ad_band_parent": "OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Rolf Brendel",
@@ -6000,9 +6000,9 @@
     "City": "Berlin",
     "PostalCode": "10709",
     "physicalDeliveryOfficeName": "Berlin Office",
-    "ad_ou": "OU=Nena,OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Nena,OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Nena",
-    "ad_band_parent": "OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Edgar Froese",
@@ -6029,9 +6029,9 @@
     "City": "Berlin",
     "PostalCode": "10625",
     "physicalDeliveryOfficeName": "Berlin Office",
-    "ad_ou": "OU=Tangerine Dream,OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Tangerine Dream,OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Tangerine Dream",
-    "ad_band_parent": "OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Christopher Franke",
@@ -6058,9 +6058,9 @@
     "City": "Berlin",
     "PostalCode": "10625",
     "physicalDeliveryOfficeName": "Berlin Office",
-    "ad_ou": "OU=Tangerine Dream,OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Tangerine Dream,OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Tangerine Dream",
-    "ad_band_parent": "OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Peter Baumann",
@@ -6087,9 +6087,9 @@
     "City": "Berlin",
     "PostalCode": "10625",
     "physicalDeliveryOfficeName": "Berlin Office",
-    "ad_ou": "OU=Tangerine Dream,OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Tangerine Dream,OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Tangerine Dream",
-    "ad_band_parent": "OU=Users,OU=West-Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Claudia Brücken",
@@ -7202,9 +7202,9 @@
     "City": "New York",
     "PostalCode": "10002",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Blondie,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Blondie,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Blondie",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Chris Stein",
@@ -7231,9 +7231,9 @@
     "City": "New York",
     "PostalCode": "10002",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Blondie,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Blondie,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Blondie",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Clem Burke",
@@ -7260,9 +7260,9 @@
     "City": "New York",
     "PostalCode": "10002",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Blondie,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Blondie,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Blondie",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Jimmy Destri",
@@ -7289,9 +7289,9 @@
     "City": "New York",
     "PostalCode": "10002",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Blondie,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Blondie,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Blondie",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Nigel Harrison",
@@ -7318,9 +7318,9 @@
     "City": "New York",
     "PostalCode": "10002",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Blondie,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Blondie,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Blondie",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Bruce Springsteen",
@@ -8295,9 +8295,9 @@
     "City": "New York",
     "PostalCode": "10012",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Talking Heads,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Talking Heads,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Talking Heads",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Tina Weymouth",
@@ -8323,9 +8323,9 @@
     "City": "New York",
     "PostalCode": "10012",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Talking Heads,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Talking Heads,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Talking Heads",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Chris Frantz",
@@ -8351,9 +8351,9 @@
     "City": "New York",
     "PostalCode": "10012",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Talking Heads,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Talking Heads,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Talking Heads",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Jerry Harrison",
@@ -8379,9 +8379,9 @@
     "City": "New York",
     "PostalCode": "10012",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Talking Heads,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Talking Heads,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Talking Heads",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Daryl Hall",
@@ -8410,9 +8410,9 @@
     "City": "New York",
     "PostalCode": "10019",
     "physicalDeliveryOfficeName": "New York Studio",
-    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Hall and Oates",
-    "ad_band_parent": "OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "John Oates",
@@ -8441,9 +8441,9 @@
     "City": "New York",
     "PostalCode": "10019",
     "physicalDeliveryOfficeName": "New York Studio",
-    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Hall and Oates",
-    "ad_band_parent": "OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Charlie DeChant",
@@ -8471,9 +8471,9 @@
     "City": "New York",
     "PostalCode": "10019",
     "physicalDeliveryOfficeName": "New York Studio",
-    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Hall and Oates",
-    "ad_band_parent": "OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "G.E. Smith",
@@ -8500,9 +8500,9 @@
     "City": "New York",
     "PostalCode": "10019",
     "physicalDeliveryOfficeName": "New York Studio",
-    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Hall and Oates",
-    "ad_band_parent": "OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "T-Bone Wolk",
@@ -8529,9 +8529,9 @@
     "City": "New York",
     "PostalCode": "10019",
     "physicalDeliveryOfficeName": "New York Studio",
-    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Hall and Oates",
-    "ad_band_parent": "OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Mickey Curry",
@@ -8559,9 +8559,9 @@
     "City": "New York",
     "PostalCode": "10019",
     "physicalDeliveryOfficeName": "New York Studio",
-    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Hall and Oates,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Hall and Oates",
-    "ad_band_parent": "OU=Users,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Robert Lamm",
@@ -8671,9 +8671,9 @@
     "City": "New York",
     "PostalCode": "10036",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Foreigner,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Foreigner,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Foreigner",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Mick Jones",
@@ -8699,9 +8699,9 @@
     "City": "New York",
     "PostalCode": "10036",
     "physicalDeliveryOfficeName": "NYC Studio",
-    "ad_ou": "OU=Foreigner,OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Foreigner,OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Foreigner",
-    "ad_band_parent": "OU=Users,OU=New York,OU=New York,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New York City,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Lindsey Buckingham",
