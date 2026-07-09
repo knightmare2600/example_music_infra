@@ -56,6 +56,17 @@ Active Directory configuration, tooling, and DNS management.
 
 ---
 
+## `ansible/`
+
+Ansible usage and reference — day-to-day operation, not build procedures (those live in `buildsheets/` and `bootstrap/`).
+
+| File | Doc ID | Description |
+|------|--------|-------------|
+| [ansible/beginners_guide_to_ansible.md](ansible/beginners_guide_to_ansible.md) | NET-ANS-BEGIN-001 | **Start here for Ansible** — inventory/group_vars architecture, `add_host`, idempotency, `ansible.cfg`, sudo/become |
+| [ansible/Ansible_Windows_Guide.md](ansible/Ansible_Windows_Guide.md) | NET-ANS-WIN-001 | Day-to-day operation of the Windows playbook set (`windows_bootstrap` chain) |
+
+---
+
 ## `bootstrap/`
 
 Procedures for provisioning new sites and nodes from scratch.
