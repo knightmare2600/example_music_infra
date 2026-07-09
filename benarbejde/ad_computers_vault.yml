@@ -1,0 +1,94 @@
+---
+# =============================================================================
+# benarbejde/ad_computers_vault.yml
+# Example Music Limited — Demo device credentials (extracted from ad_computers_vault)
+# =============================================================================
+# ENCRYPT THIS FILE WITH ansible-vault BEFORE COMMITTING TO A REAL FOREST.
+#   ansible-vault encrypt benarbejde/ad_computers_vault.yml
+#   ansible-vault edit benarbejde/ad_computers_vault.yml
+#
+# These are plaintext-looking admin credentials that used to sit directly in
+# jukebox.example.tdf's / ad_computers.json's Description field for 12 demo
+# network/BMC devices (11 unique credential strings — one is shared by two
+# devices) — visible to anyone reading the demo data, and exactly the kind
+# of thing that's easy to carry into a real environment by accident later.
+# Scrubbed from both files 2026-07-09; the values are parked here instead,
+# since this is fictional demo data with no real device behind it.
+#
+# NOT currently read by any playbook — none of these devices (Cisco/TPLink
+# switches, Dell DRACs) are Ansible-managed in this repo; they only exist as
+# AD computer objects. This file exists purely so the credentials aren't
+# lost and aren't sitting in plaintext in committed JSON/TDF data. If a
+# switches/BMC-management playbook is ever added, wire these in as proper
+# vault_ vars at that point rather than reading this file directly.
+#
+# Device identifier is SamAccountName, plus IPv4Address to disambiguate the
+# two EXASWICLY001$ records (a pre-existing duplicate-Name data quality
+# issue in the TDF, not something fixed here).
+# =============================================================================
+# Changelog:
+#   2026-07-09  Initial file. Extracted from jukebox.example.tdf/
+#               ad_computers.json — see those files' own changelog/commit
+#               for the scrub.
+# =============================================================================
+
+ad_computer_credentials:
+  - device: "EXASWIEDI001$"
+    ipv4:   "192.168.131.5"
+    desc:   "Floor switch, Edinburgh"
+    credential: "admin:cisco / EDI2960!"
+
+  - device: "EXASWIEDI002$"
+    ipv4:   "192.168.131.6"
+    desc:   "Cisco Catalyst 48-port, Edinburgh"
+    credential: "admin:cisco123"
+
+  - device: "EXASWICLY001$"
+    ipv4:   "192.168.141.2"
+    desc:   "Cisco Catalyst 48-port, Clydebank"
+    credential: "admin:catalyst80s"
+
+  - device: "EXASWICLY001$"
+    ipv4:   "192.168.141.20"
+    desc:   "TPLink 48-port managed switch, Clydebank"
+    credential: "admin:tplink1987"
+
+  - device: "EXARACCLY001$"
+    ipv4:   "192.168.141.30"
+    desc:   "Dell DRAC for EXACLYDC001"
+    credential: "dracadmin:WetWet87"
+
+  - device: "EXASWIMCR001$"
+    ipv4:   "192.168.161.5"
+    desc:   "Distribution switch, Manchester"
+    credential: "admin:cisco / MCR9300!"
+
+  - device: "EXASWILIV001$"
+    ipv4:   "192.168.151.5"
+    desc:   "Core switch, Liverpool"
+    credential: "admin:cisco / LIVcore!"
+
+  - device: "EXASWIBIR002$"
+    ipv4:   "192.168.121.20"
+    desc:   "Cisco Catalyst 48-port, Birmingham"
+    credential: "admin:catalyst80s"
+
+  - device: "EXARACBIR001$"
+    ipv4:   "192.168.121.6"
+    desc:   "Dell DRAC, Birmingham"
+    credential: "dracadmin:Dr@c1983"
+
+  - device: "EXASWILND001$"
+    ipv4:   "192.168.20.5"
+    desc:   "Core switch, London"
+    credential: "admin:cisco / Sw1tchLND!"
+
+  - device: "EXASWIMUN001$"
+    ipv4:   "192.168.89.5"
+    desc:   "Access switch, Munich"
+    credential: "admin:cisco / MUN9200!"
+
+  - device: "EXASWIBON001$"
+    ipv4:   "192.168.228.5"
+    desc:   "Office switch, Bonn"
+    credential: "admin:cisco / BONsw01"
