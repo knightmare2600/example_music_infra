@@ -6,15 +6,21 @@ replacement for manually populating a demo/production forest from the TDF
 and sites.csv.
 
 ## Usage
+
+This is always run as its own, separate command — it is never automatically
+chained from `windows_dc/site.yml`, even if you answered "yes" to the
+`populate_ad` prompt at DC preflight. That prompt only records the answer;
+`import_playbook`'s `hosts:` patterns are resolved at parse time, before the
+prompt has actually run, so a later imported play has no way to see the
+answer. `40-dc-summary.yml` prints the exact command below once DC
+promotion has succeeded.
+
 ```
-# Normal path — via windows_dc/site.yml, prompted once at 00-dc-preflight.yml
-ansible-playbook playbooks/windows_dc/site.yml -i <inventory> -e target=<host>
+# Normal path — after DC promotion, once 40-dc-summary.yml prints this command
+ansible-playbook playbooks/windows_adschema/site.yml -e populate_ad=yes -e ad_target=<host> --ask-vault-pass
 
 # Standalone — prompted for the target Domain Controller
 ansible-playbook playbooks/windows_adschema/site.yml -e populate_ad=yes --ask-vault-pass
-
-# Standalone — target supplied directly, skips the prompt
-ansible-playbook playbooks/windows_adschema/site.yml -e populate_ad=yes -e ad_target=<host> --ask-vault-pass
 
 # Single stage, run directly without site.yml
 ansible-playbook playbooks/windows_adschema/playbooks/20-ad-groups.yml -e ad_target=<host> --ask-vault-pass
