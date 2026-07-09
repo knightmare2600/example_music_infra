@@ -82,7 +82,7 @@ every platform. If `ansible.cfg`'s `inventory =` path ever changes, `group_vars`
 
 ### Control node
 
-Bootstrap the Ansible control node with `bootstrap/web/provisioning/ansibleme.sh`.
+Bootstrap the Ansible control node with `bootstrap/web/provision/ansibleme.sh`.
 That script creates the ansible user, installs packages, generates `ansible.cfg` and
 the initial `configs/inventory/main.ini`, and runs a discovery scan.
 
