@@ -16,6 +16,17 @@
 # custom OU is needed. Presumes is_first_dc is already set as a fact by
 # the pre-flight play before this file runs.
 # =============================================================================
+# NOT CURRENTLY USED — kept for reference, may be reinstated later.
+# Its only caller was 05-bootstrap.yml's Stage 4, which was retired
+# 2026-07-09 once the monolith's stages were confirmed fully covered by the
+# standalone numbered playbooks (see windows_bootstrap/site.yml's own
+# changelog). 80-domainjoin.yml's static OU derivation from group_vars
+# (domain_ou_role + host_site) covers the "host already in inventory" case
+# instead — this file's interactive LDAP picker was for the different
+# scenario of a fresh host not yet in inventory, which the granular chain
+# has no equivalent for today. Confirmed nothing else in the repo includes
+# this file (only self-references and one docs mention remain).
+# =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-07-02  Skip OU selection entirely for first-DC builds (catch-22 fix:
