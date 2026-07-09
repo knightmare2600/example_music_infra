@@ -33,6 +33,10 @@
 #
 # PHASE G — Rename computer (hostname_needs_change only)
 # PHASE H — Reboot (rename or IP change), operator-confirmed reconnect
+# PHASE H2 — Dynamically register this host into its permanent inventory
+#            group (add_host) so group_vars/windows*/ resolve correctly for
+#            the rest of this run — requires -i configs/inventory (not a
+#            bare IP) so the group hierarchy already exists to register into
 # PHASE I — Summary and hand-off to the rest of site.yml's chain
 #
 # ─────────────────────────────────────────────────────────────────────────────
@@ -112,6 +116,49 @@
 #               its own changelog), and 85-finish.yml (Stage 23's summary + final
 #               reboot) didn't exist as a standalone file at all until now. See
 #               05-bootstrap.yml's own git history for the removed file.
+#   2026-07-09  Added Phase H2 (dynamic inventory registration via add_host).
+#               Idempotency audit of the full chain found that a bare-IP full
+#               run (site.yml's own documented "full run" usage, -i <ip>,
+#               -e target_hosts=<ip>) leaves the host with no inventory group
+#               membership for the *entire* run, since group membership
+#               doesn't change just because Ansible progresses to a later
+#               play. group_vars/windows*/ never applies as a result --
+#               confirmed two real crashes (20-registry.yml's registry_common,
+#               80-domainjoin.yml's domain_ou_role, both undefined-variable
+#               errors) and two silent-wrong-behaviour cases (70-hibernation.yml
+#               and 25-deadvertise.yml both defensively default to "off" rather
+#               than fail, so a laptop that should get hibernation enabled
+#               silently doesn't). Only 40-choco-packages.yml had ever been
+#               fixed for this (2026-06-30, made fully self-contained) --  the
+#               other five stages were extracted from the old monolith later
+#               without anyone connecting that they'd hit the same problem.
+#               Rather than patch each file individually (or require the
+#               operator to hand-edit configs/inventory/<site>.ini before
+#               every first-ever bootstrap run), this host now registers
+#               itself into its permanent group once Phase H knows the final
+#               IP/hostname -- confirmed empirically that add_host in an
+#               earlier play is correctly visible to later, separately-
+#               imported plays' hosts: patterns in the same run (including
+#               real group_vars/<group>/ auto-loading, not just vars passed
+#               directly to add_host), provided -i configs/inventory is the
+#               loaded inventory source so these groups already exist to
+#               register into. add_host is given the full group chain
+#               explicitly (e.g. [windows_desktop, windows, windows_nodes])
+#               rather than just the most-specific group -- checked, and
+#               configs/inventory/{cld,fal,liv}.ini only ever define the
+#               windows_dc -> windows_server -> windows -> windows_nodes
+#               :children chain (DC onboarding); windows_desktop/
+#               windows_laptop are never linked into windows/windows_nodes
+#               anywhere in this repo today. Listing the full chain directly
+#               sidesteps that gap rather than also fixing it, and doesn't
+#               depend on which .ini files happen to be loaded. Also fixed
+#               10-rename.yml and
+#               40-choco-packages.yml's hosts: lines, which both prioritised
+#               target_hosts over target -- harmless for those two files
+#               specifically today, but would have kept them targeting the
+#               raw IP directly all run, bypassing this registration, since
+#               target_hosts stays set (and therefore wins) for the whole
+#               run. Every other numbered play already used target-only.
 # =============================================================================
 
 - name: Pre-flight — credentials, hostname, IP, SSH
@@ -547,6 +594,62 @@
         post_reboot_delay: 20
         msg:               "Ansible preflight — applying hostname change"
       when: hostname_needs_change | bool and not ip_needs_change | bool
+
+    # =========================================================================
+    # PHASE H2 — Dynamic inventory registration
+    # =========================================================================
+    # Registers this host into its permanent group for the rest of this run
+    # (10-rename.yml onward) via add_host, so group_vars/windows*/ resolve
+    # correctly without requiring the operator to hand-edit configs/inventory
+    # before the very first bootstrap run — add_host only affects this one
+    # process's in-memory inventory, it doesn't touch the .ini files on disk.
+    # Requires -i configs/inventory (not a bare IP) so the windows_dc/
+    # windows_server/windows/windows_nodes :children hierarchy already exists
+    # for the new host to inherit into — confirmed empirically, add_host into
+    # just the most specific group (e.g. windows_dc) correctly inherits every
+    # parent group's group_vars, including group_vars/windows_nodes/
+    # connection.yml (SSH user/key/shell), with no need to also pass
+    # connection vars to add_host directly.
+    #
+    # Still add the host to configs/inventory/<site>.ini for real once
+    # bootstrap completes, same as before — this only covers the current run.
+
+    - name: "[H2] Determine permanent inventory groups for this host's role"
+      set_fact:
+        _permanent_groups: "{{ _role_group_map[host_role_code | upper] | default([]) }}"
+      vars:
+        # Full group list, most-specific first — passed to add_host directly
+        # rather than relying on configs/inventory's own [group:children]
+        # relationships existing for every role. They don't: cld.ini/fal.ini/
+        # liv.ini only ever define windows_dc -> windows_server -> windows ->
+        # windows_nodes (DC onboarding) -- windows_desktop/windows_laptop are
+        # never linked into windows/windows_nodes anywhere in this repo today.
+        # Listing the full chain here sidesteps that gap entirely rather than
+        # also fixing it, and doesn't depend on which .ini files are loaded.
+        _role_group_map:
+          DCS: [windows_dc, windows_server, windows, windows_nodes]
+          SRV: [windows_server, windows, windows_nodes]
+          WKS: [windows_desktop, windows, windows_nodes]
+          LAP: [windows_laptop, windows, windows_nodes]
+          SUR: [windows_laptop, windows, windows_nodes]
+
+    - name: "[H2] Fail — unrecognised role code, cannot determine permanent groups"
+      fail:
+        msg: >
+          Role code '{{ host_role_code }}' (parsed from {{ target_hostname | upper }}) isn't
+          one of the known windows_bootstrap roles (DCS, SRV, WKS, LAP, SUR). Cannot determine
+          which permanent inventory groups to register this host into for the rest of this run —
+          group_vars/windows*/ would not resolve correctly downstream. Check the hostname, or
+          add this role to _role_group_map above if it's a genuinely new one.
+      when: _permanent_groups | length == 0
+
+    - name: "[H2] Register into {{ _permanent_groups | join(', ') }} for the rest of this run"
+      add_host:
+        name:         "{{ target_hostname | upper }}"
+        groups:       "{{ _permanent_groups }}"
+        ansible_host: "{{ static_ip }}"
+      delegate_to: localhost
+      become: false
 
     # =========================================================================
     # PHASE I — Summary and hand-off

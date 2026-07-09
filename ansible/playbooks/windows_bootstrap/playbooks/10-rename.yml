@@ -16,10 +16,22 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-09  Fixed hosts: to target-only, matching every other numbered
+#               play except 00-preflight.yml itself. 00-preflight.yml now
+#               dynamically registers the host into its permanent inventory
+#               group via add_host once it knows the final IP/hostname, so
+#               target_hosts=<ip> (a fixed extra-var for the whole run) is
+#               only needed for 00-preflight.yml's own first connection,
+#               before that registration exists. Prioritising target_hosts
+#               here meant this play kept targeting the raw IP directly all
+#               run, bypassing the new registration -- harmless for this
+#               file specifically (nothing here reads group_vars), but wrong
+#               on principle and one broken link away from mattering if this
+#               file ever needs to.
 # =============================================================================
 
 - name: Windows — Rename host
-  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  hosts: "{{ target | default('all') }}"
   gather_facts: true
   vars_prompt:
     - name: target_hostname
