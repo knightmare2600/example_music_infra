@@ -160,7 +160,7 @@ ansible/
 | `linux/tools.yml` | Deploy common packages and `/etc/example-music/{sites,devices}.csv` to all Linux hosts |
 | `bind9/bind9-dns.yml` | Generate and deploy BIND9 zones from `devices.csv` |
 | `proxmox/bootstrap-new-node.yml` | One-time: give a brand-new PVE node (still on its preseed DHCP IP) its real hostname and static network config, from an operator-supplied build-sheet hostname. Run this first against the DHCP IP, then add the node to inventory and run `proxmox/site.yml` |
-| `proxmox/site.yml` | Onboard a new Proxmox VE node — Zabbix, packages, SSH, sudoers, `/etc/example-music/`. Re-run safe: only refreshes packages/example-music/scripts on an already-onboarded node unless `-e pve_force_full_onboard=true` |
+| `proxmox/site.yml` | Onboard a new Proxmox VE node — Zabbix, packages, SSH, sudoers, `/etc/example-music/`, [proxmorph](https://github.com/IT-BAER/proxmorph) UI themes + sensor monitoring. Re-run safe: only refreshes packages/example-music/scripts on an already-onboarded node unless `-e pve_force_full_onboard=true` |
 | `windows_bootstrap/site.yml` | Full Windows host PostOOBE bootstrap — rename, static IP, domain join, packages, wallpaper |
 | `windows_dc/site.yml` | Promote a Windows Server to domain controller |
 | `windows_adschema/ad_schema.yml` | Create AD OUs, groups, computers and users from TDF data |

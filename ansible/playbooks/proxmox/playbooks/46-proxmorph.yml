@@ -1,0 +1,89 @@
+---
+# =============================================================================
+# playbooks/46-proxmorph.yml
+# Example Music Limited — Proxmox VE node: proxmorph UI themes + sensors
+# =============================================================================
+# Installs proxmorph (https://github.com/IT-BAER/proxmorph) — third-party CSS
+# themes for the Proxmox VE web UI (Catppuccin, Dracula, Nord, Gruvbox,
+# Solarized, Tokyo Night, UniFi, and more), integrated with PVE's own native
+# Color Theme selector, plus its optional hardware sensor monitoring feature
+# (exposes lm-sensors/UPS data via a patch to PVE's own Nodes.pm API module).
+#
+# Always runs, on by default for every PVE node — not gated behind an
+# opt-in flag like proxmoxbmc/BIOS ROMs in 45-virt-tools.yml, per direct
+# instruction.
+#
+# Fetches install.sh fresh from the project's main branch on every run
+# (not a pinned/vendored release) — per direct instruction, upstream is
+# trusted to move forward without a review step here.
+#
+# proxmorph's own install/enable logic is idempotent (checks for existing
+# theme registrations/patches before reinserting) and installs its own apt
+# hook (/etc/apt/apt.conf.d/99proxmorph) so themes survive future pve-manager
+# package upgrades without needing this playbook to run again.
+#
+# The theme itself must still be picked manually per browser/user afterward
+# (username menu -> Color Theme -> pick a proxmorph theme, after a hard
+# refresh) — nothing here can automate that part, it's a per-session UI
+# preference, not node state.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/46-proxmorph.yml
+#
+# Tags: proxmorph
+# =============================================================================
+# Changelog:
+#   2026-07-09  Initial file.
+# =============================================================================
+
+- name: Proxmox VE — proxmorph UI themes + sensor monitoring
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+
+  vars:
+    proxmorph_install_url: "https://raw.githubusercontent.com/IT-BAER/proxmorph/main/install.sh"
+    proxmorph_install_path: /tmp/proxmorph-install.sh
+
+  tasks:
+
+    # ── Theme installation ───────────────────────────────────────────────────
+
+    - name: Download proxmorph install script (main branch, fetched fresh every run)
+      ansible.builtin.get_url:
+        url: "{{ proxmorph_install_url }}"
+        dest: "{{ proxmorph_install_path }}"
+        mode: "0755"
+        force: true
+      tags: proxmorph
+
+    - name: Install proxmorph themes
+      ansible.builtin.command: "{{ proxmorph_install_path }} install"
+      changed_when: true
+      tags: proxmorph
+
+    # ── Hardware sensor monitoring (PVE-only proxmorph feature) ──────────────
+    # detect_sensors() in install.sh requires lm-sensors (command -v sensors)
+    # and live sensor data (sensors -j) to proceed -- both are provided here
+    # before calling 'sensors enable', which otherwise exits 1.
+
+    - name: Install lm-sensors
+      ansible.builtin.apt:
+        name: lm-sensors
+        state: present
+      tags: proxmorph
+
+    - name: Auto-detect and load sensor kernel modules (non-interactive)
+      ansible.builtin.command: sensors-detect --auto
+      changed_when: true
+      tags: proxmorph
+
+    - name: Enable proxmorph hardware sensor monitoring
+      ansible.builtin.command: "{{ proxmorph_install_path }} sensors enable"
+      changed_when: true
+      tags: proxmorph
+
+    - name: Clean up install script
+      ansible.builtin.file:
+        path: "{{ proxmorph_install_path }}"
+        state: absent
+      tags: proxmorph
