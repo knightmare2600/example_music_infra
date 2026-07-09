@@ -5,7 +5,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Jim Kerr",
-    "Email": "simpleminds@example.com"
+    "Email": "simpleminds@jukebox.internal"
   },
   {
     "Name": "Marillion",
@@ -13,7 +13,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Steve Hogarth",
-    "Email": "marillion@example.com"
+    "Email": "marillion@jukebox.internal"
   },
   {
     "Name": "Altered Images",
@@ -21,7 +21,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Clare Grogan",
-    "Email": "alteredimages@example.com"
+    "Email": "alteredimages@jukebox.internal"
   },
   {
     "Name": "Eurythmics",
@@ -29,7 +29,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Annie Lennox",
-    "Email": "eurythmics@example.com"
+    "Email": "eurythmics@jukebox.internal"
   },
   {
     "Name": "Ultravox",
@@ -37,7 +37,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Midge Ure",
-    "Email": "ultravox@example.com"
+    "Email": "ultravox@jukebox.internal"
   },
   {
     "Name": "Deacon Blue",
@@ -45,7 +45,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Ricky Ross",
-    "Email": "deaconblue@example.com"
+    "Email": "deaconblue@jukebox.internal"
   },
   {
     "Name": "Wet Wet Wet",
@@ -53,7 +53,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Marti Pellow",
-    "Email": "wetwetwet@example.com"
+    "Email": "wetwetwet@jukebox.internal"
   },
   {
     "Name": "The Proclaimers",
@@ -61,7 +61,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Craig Reid",
-    "Email": "proclaimers@example.com"
+    "Email": "proclaimers@jukebox.internal"
   },
   {
     "Name": "Fiction Factory",
@@ -69,7 +69,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Mike Ogletree",
-    "Email": "fictionfactory@example.com"
+    "Email": "fictionfactory@jukebox.internal"
   },
   {
     "Name": "Lowlife",
@@ -77,7 +77,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Craig Lorentsen",
-    "Email": "lowlife@example.com"
+    "Email": "lowlife@jukebox.internal"
   },
   {
     "Name": "The Pastels",
@@ -85,7 +85,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Stephen McPhee",
-    "Email": "thepastels@example.com"
+    "Email": "thepastels@jukebox.internal"
   },
   {
     "Name": "The Beat",
@@ -93,7 +93,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Dave Wakeling",
-    "Email": "thebeat@example.com"
+    "Email": "thebeat@jukebox.internal"
   },
   {
     "Name": "China Crisis",
@@ -101,7 +101,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Gary Daly",
-    "Email": "chinacrisis@example.com"
+    "Email": "chinacrisis@jukebox.internal"
   },
   {
     "Name": "A Flock of Seagulls",
@@ -109,7 +109,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Mike Score",
-    "Email": "aflockofseagulls@example.com"
+    "Email": "aflockofseagulls@jukebox.internal"
   },
   {
     "Name": "Depeche Mode",
@@ -117,7 +117,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Dave Gahan",
-    "Email": "depechemode@example.com"
+    "Email": "depechemode@jukebox.internal"
   },
   {
     "Name": "Pet Shop Boys",
@@ -125,7 +125,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Neil Tennant",
-    "Email": "petshopboys@example.com"
+    "Email": "petshopboys@jukebox.internal"
   },
   {
     "Name": "The Specials",
@@ -133,7 +133,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Jerry Dammers",
-    "Email": "thespecials@example.com"
+    "Email": "thespecials@jukebox.internal"
   },
   {
     "Name": "Fun Boy Three",
@@ -141,7 +141,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Terry Hall",
-    "Email": "funboythree@example.com"
+    "Email": "funboythree@jukebox.internal"
   },
   {
     "Name": "Fine Young Cannibals",
@@ -149,7 +149,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Roland Gift",
-    "Email": "fineyoungcannibals@example.com"
+    "Email": "fineyoungcannibals@jukebox.internal"
   },
   {
     "Name": "The Beat",
@@ -157,7 +157,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Dave Wakeling",
-    "Email": "thebeat@example.com"
+    "Email": "thebeat@jukebox.internal"
   },
   {
     "Name": "Erasure",
@@ -165,7 +165,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Andy Bell",
-    "Email": "erasure@example.com"
+    "Email": "erasure@jukebox.internal"
   },
   {
     "Name": "Echo And The Bunnymen",
@@ -173,7 +173,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Ian McCulloch",
-    "Email": "bunnymen@example.com"
+    "Email": "bunnymen@jukebox.internal"
   },
   {
     "Name": "The Police",
@@ -181,7 +181,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Sting",
-    "Email": "thepolice@example.com"
+    "Email": "thepolice@jukebox.internal"
   },
   {
     "Name": "New Order",
@@ -189,7 +189,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Tony Wilson",
-    "Email": "neworder@example.com"
+    "Email": "neworder@jukebox.internal"
   },
   {
     "Name": "Mel And Kim",
@@ -197,7 +197,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Pete Waterman",
-    "Email": "melandkim@example.com"
+    "Email": "melandkim@jukebox.internal"
   },
   {
     "Name": "UB40",
@@ -205,7 +205,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Margaret Thatcher",
-    "Email": "ub40@example.com"
+    "Email": "ub40@jukebox.internal"
   },
   {
     "Name": "Duan Duran",
@@ -213,7 +213,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Simon Le Bon",
-    "Email": "duranduran@example.com"
+    "Email": "duranduran@jukebox.internal"
   },
   {
     "Name": "Human League",
@@ -221,7 +221,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Philip Oakey",
-    "Email": "humanleague@example.com"
+    "Email": "humanleague@jukebox.internal"
   },
   {
     "Name": "Heaven 17",
@@ -229,7 +229,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Glenn Gregory",
-    "Email": "heaven17@example.com"
+    "Email": "heaven17@jukebox.internal"
   },
   {
     "Name": "M-People",
@@ -237,7 +237,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Heather Small",
-    "Email": "m-people@example.com"
+    "Email": "m-people@jukebox.internal"
   },
   {
     "Name": "OMD",
@@ -245,7 +245,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Andy McCluskey",
-    "Email": "omd@example.com"
+    "Email": "omd@jukebox.internal"
   },
   {
     "Name": "The Beautiful South",
@@ -253,7 +253,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Paul Heaton",
-    "Email": "thebeautifulsouth@example.com"
+    "Email": "thebeautifulsouth@jukebox.internal"
   },
   {
     "Name": "Everything But The Girl",
@@ -261,7 +261,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Tracey Thorn",
-    "Email": "everythingbutthegirl@example.com"
+    "Email": "everythingbutthegirl@jukebox.internal"
   },
   {
     "Name": "Dire Straits",
@@ -269,7 +269,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Mark Knopfler",
-    "Email": "direstraits@example.com"
+    "Email": "direstraits@jukebox.internal"
   },
   {
     "Name": "Wham",
@@ -277,7 +277,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "George Michael",
-    "Email": "wham@example.com"
+    "Email": "wham@jukebox.internal"
   },
   {
     "Name": "Bananarama",
@@ -285,7 +285,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Sara Dallin",
-    "Email": "bananarama@example.com"
+    "Email": "bananarama@jukebox.internal"
   },
   {
     "Name": "Then Jerico",
@@ -293,7 +293,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Mark Shaw",
-    "Email": "thenjerico@example.com"
+    "Email": "thenjerico@jukebox.internal"
   },
   {
     "Name": "The Stone Roses",
@@ -301,7 +301,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Ian Brown",
-    "Email": "stoneroses@example.com"
+    "Email": "stoneroses@jukebox.internal"
   },
   {
     "Name": "The Style Council",
@@ -309,7 +309,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Paul Weller",
-    "Email": "stylecouncil@example.com"
+    "Email": "stylecouncil@jukebox.internal"
   },
   {
     "Name": "The Jam",
@@ -317,7 +317,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Paul Weller",
-    "Email": "thejam@example.com"
+    "Email": "thejam@jukebox.internal"
   },
   {
     "Name": "Elmer",
@@ -325,7 +325,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Jonas Elmer",
-    "Email": "elmer@example.dk"
+    "Email": "elmer@jukebox.internal"
   },
   {
     "Name": "TV-2",
@@ -333,7 +333,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Steffen Brandt",
-    "Email": "tv2@example.com"
+    "Email": "tv2@jukebox.internal"
   },
   {
     "Name": "Rocazino",
@@ -341,7 +341,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Stine Bramsen",
-    "Email": "alphabeat@example.com"
+    "Email": "alphabeat@jukebox.internal"
   },
   {
     "Name": "Whigfield Solo",
@@ -349,7 +349,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Whigfield",
-    "Email": "whigfield-band@example.com"
+    "Email": "whigfield-band@jukebox.internal"
   },
   {
     "Name": "MØ Solo",
@@ -357,7 +357,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Karen Marie Ørsted",
-    "Email": "mo@example.com"
+    "Email": "mo@jukebox.internal"
   },
   {
     "Name": "Dodo-and-the-Dodos",
@@ -365,7 +365,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Dodo Gad",
-    "Email": "dodo-and-the-dodos@example.dk"
+    "Email": "dodo-and-the-dodos@jukebox.internal"
   },
   {
     "Name": "1000-Keys",
@@ -373,7 +373,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Lead Vocalist",
-    "Email": "1000-keys@example.dk"
+    "Email": "1000-keys@jukebox.internal"
   },
   {
     "Name": "News",
@@ -381,7 +381,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Lead Vocalist",
-    "Email": "news@example.dk"
+    "Email": "news@jukebox.internal"
   },
   {
     "Name": "Ace of Base",
@@ -389,7 +389,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Jonas Berggren",
-    "Email": "aceofbase@example.com"
+    "Email": "aceofbase@jukebox.internal"
   },
   {
     "Name": "Roxette",
@@ -397,7 +397,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Per Gessle",
-    "Email": "roxette@example.com"
+    "Email": "roxette@jukebox.internal"
   },
   {
     "Name": "A-Ha",
@@ -405,7 +405,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Morten Harket",
-    "Email": "aha@example.com"
+    "Email": "aha@jukebox.internal"
   },
   {
     "Name": "Jan Hammer Group",
@@ -413,7 +413,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Jan Hammer",
-    "Email": "janhammer@example.com"
+    "Email": "janhammer@jukebox.internal"
   },
   {
     "Name": "Giorgio Moroder",
@@ -421,7 +421,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Giorgio Moroder",
-    "Email": "moroder@example.com"
+    "Email": "moroder@jukebox.internal"
   },
   {
     "Name": "Kraftwerk",
@@ -429,7 +429,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Ralf Hutter",
-    "Email": "kraftwerk@example.com"
+    "Email": "kraftwerk@jukebox.internal"
   },
   {
     "Name": "Nena",
@@ -437,7 +437,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Gabriele Kerner",
-    "Email": "nena@example.com"
+    "Email": "nena@jukebox.internal"
   },
   {
     "Name": "Tangerine Dream",
@@ -445,7 +445,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Christopher Franke",
-    "Email": "tangerinedream@example.com"
+    "Email": "tangerinedream@jukebox.internal"
   },
   {
     "Name": "Fancy Solo",
@@ -453,7 +453,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Manfred Segieth",
-    "Email": "fancy@example.com"
+    "Email": "fancy@jukebox.internal"
   },
   {
     "Name": "The Jam",
@@ -461,7 +461,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Sandra Lauder",
-    "Email": "sandra.band@example.com"
+    "Email": "sandra.band@jukebox.internal"
   },
   {
     "Name": "Candy Dulfer",
@@ -469,7 +469,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Candy Dulfer",
-    "Email": "candydulfer@example.com"
+    "Email": "candydulfer@jukebox.internal"
   },
   {
     "Name": "Trio",
@@ -477,7 +477,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Stephan Remmler",
-    "Email": "trio@example.com"
+    "Email": "trio@jukebox.internal"
   },
   {
     "Name": "Falco",
@@ -485,7 +485,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "falco",
-    "Email": "falco@example.com"
+    "Email": "falco@jukebox.internal"
   },
   {
     "Name": "Baltimora",
@@ -493,7 +493,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "maurizio.bassi",
-    "Email": "baltimora@example.com"
+    "Email": "baltimora@jukebox.internal"
   },
   {
     "Name": "Vanessa Paradis",
@@ -501,7 +501,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Vanessa Paradis",
-    "Email": "vanessaparadis@example.com"
+    "Email": "vanessaparadis@jukebox.internal"
   },
   {
     "Name": "Rush",
@@ -509,7 +509,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Geddy Lee",
-    "Email": "rush@example.com"
+    "Email": "rush@jukebox.internal"
   },
   {
     "Name": "SCTV-Guest-Artists",
@@ -517,7 +517,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Rick Moranis",
-    "Email": "sctv.guests@example.com"
+    "Email": "sctv.guests@jukebox.internal"
   },
   {
     "Name": "Great White North",
@@ -525,7 +525,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Rick Moranis",
-    "Email": "greatwhitenorth@example.com"
+    "Email": "greatwhitenorth@jukebox.internal"
   },
   {
     "Name": "Miami Sound Machine",
@@ -533,7 +533,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Gloria Estefan",
-    "Email": "miamisoundmachine@example.com"
+    "Email": "miamisoundmachine@jukebox.internal"
   },
   {
     "Name": "REM",
@@ -541,7 +541,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Michael Stipe",
-    "Email": "rem@example.com"
+    "Email": "rem@jukebox.internal"
   },
   {
     "Name": "Blondie",
@@ -549,7 +549,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Debbie Harry",
-    "Email": "blondie@example.com"
+    "Email": "blondie@jukebox.internal"
   },
   {
     "Name": "E-Street Band",
@@ -557,7 +557,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Bruce Springsteen",
-    "Email": "estreetband@example.com"
+    "Email": "estreetband@jukebox.internal"
   },
   {
     "Name": "KC-Sunshine-Band",
@@ -565,7 +565,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Harry Wayne Casey",
-    "Email": "kc.sunshine@example.com"
+    "Email": "kc.sunshine@jukebox.internal"
   },
   {
     "Name": "Herb Alpert & Tijuana Brass",
@@ -573,7 +573,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Herb Alpert",
-    "Email": "tijuanabrass@example.com"
+    "Email": "tijuanabrass@jukebox.internal"
   },
   {
     "Name": "Chris Isaak",
@@ -581,7 +581,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Chris Isaak",
-    "Email": "chrisisaak@example.com"
+    "Email": "chrisisaak@jukebox.internal"
   },
   {
     "Name": "Kenny G Band",
@@ -589,7 +589,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Kenny G",
-    "Email": "kennyg@example.com"
+    "Email": "kennyg@jukebox.internal"
   },
   {
     "Name": "Tina Turner – Private Dancer",
@@ -597,7 +597,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Tina Turner",
-    "Email": "tinaprivatedancer@example.com"
+    "Email": "tinaprivatedancer@jukebox.internal"
   },
   {
     "Name": "Craig T Cooper",
@@ -605,7 +605,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Craig T. Cooper",
-    "Email": "craig.t.cooper@example.com"
+    "Email": "craig.t.cooper@jukebox.internal"
   },
   {
     "Name": "Fleetwood Mac",
@@ -613,7 +613,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Mick Fleetwood",
-    "Email": "fleetwoodmac@example.com"
+    "Email": "fleetwoodmac@jukebox.internal"
   },
   {
     "Name": "Foreigner",
@@ -621,7 +621,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Mick Jones",
-    "Email": "foreigner@example.com"
+    "Email": "foreigner@jukebox.internal"
   },
   {
     "Name": "Chicago",
@@ -629,7 +629,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Robert Lamm",
-    "Email": "chicago@example.com"
+    "Email": "chicago@jukebox.internal"
   },
   {
     "Name": "Talking Heads",
@@ -637,7 +637,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "David Byrne",
-    "Email": "talkingheads@example.com"
+    "Email": "talkingheads@jukebox.internal"
   },
   {
     "Name": "Hall and Oates",
@@ -645,7 +645,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Daryl Hall",
-    "Email": "hallandoates@example.com"
+    "Email": "hallandoates@jukebox.internal"
   },
   {
     "Name": "Boz Scaggs",
@@ -653,7 +653,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Boz Scaggs",
-    "Email": "bozscaggs@example.com"
+    "Email": "bozscaggs@jukebox.internal"
   },
   {
     "Name": "Men at Work",
@@ -661,7 +661,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Colin Hay",
-    "Email": "menatwork@example.com"
+    "Email": "menatwork@jukebox.internal"
   },
   {
     "Name": "Divinyls",
@@ -669,7 +669,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Mark McEntee",
-    "Email": "divinyls@example.com"
+    "Email": "divinyls@jukebox.internal"
   },
   {
     "Name": "Split Enz",
@@ -677,7 +677,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Tim Finn",
-    "Email": "splitenz@example.com"
+    "Email": "splitenz@jukebox.internal"
   },
   {
     "Name": "INXS",
@@ -685,7 +685,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Michael Hutchence",
-    "Email": "inxs@example.com"
+    "Email": "inxs@jukebox.internal"
   },
   {
     "Name": "Icehouse",
@@ -693,7 +693,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Iva Davies",
-    "Email": "icehouse@example.com"
+    "Email": "icehouse@jukebox.internal"
   },
   {
     "Name": "Crowded House",
@@ -701,7 +701,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Neil Finn",
-    "Email": "crowdedhouse@example.com"
+    "Email": "crowdedhouse@jukebox.internal"
   },
   {
     "Name": "Thompson Twins",
@@ -709,7 +709,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Tom Bailey",
-    "Email": "thompsontwins@example.com"
+    "Email": "thompsontwins@jukebox.internal"
   },
   {
     "Name": "OMC",
@@ -717,7 +717,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Pauly Fuemana",
-    "Email": "omc@example.com"
+    "Email": "omc@jukebox.internal"
   },
   {
     "Name": "Vocalists",
@@ -725,7 +725,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "",
-    "Email": "vocalists@example.com"
+    "Email": "vocalists@jukebox.internal"
   },
   {
     "Name": "Keyboards",
@@ -733,7 +733,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "",
-    "Email": "synths@example.com"
+    "Email": "synths@jukebox.internal"
   },
   {
     "Name": "Musicians",
@@ -741,7 +741,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "",
-    "Email": "instruments@example.com"
+    "Email": "instruments@jukebox.internal"
   },
   {
     "Name": "Guitarists",
@@ -749,7 +749,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "",
-    "Email": "guitars@example.com"
+    "Email": "guitars@jukebox.internal"
   },
   {
     "Name": "Percussionists",
@@ -757,7 +757,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "",
-    "Email": "percussion@example.com"
+    "Email": "percussion@jukebox.internal"
   },
   {
     "Name": "Legal",
@@ -765,7 +765,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Arkell v Pressdram",
-    "Email": "legal@example.com"
+    "Email": "legal@jukebox.internal"
   },
   {
     "Name": "Marketing",
@@ -773,7 +773,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Helena Christensen",
-    "Email": "marketing@example.com"
+    "Email": "marketing@jukebox.internal"
   },
   {
     "Name": "Journalists",
@@ -781,7 +781,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Neil Tennant",
-    "Email": "lunchtimeobouz@example.com"
+    "Email": "lunchtimeobouz@jukebox.internal"
   },
   {
     "Name": "Broadcasters",
@@ -789,7 +789,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Carol Hersee",
-    "Email": "popup-video@example.com"
+    "Email": "popup-video@jukebox.internal"
   },
   {
     "Name": "Builders",
@@ -797,7 +797,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Dennis Pinner",
-    "Email": "builders@example.com"
+    "Email": "builders@jukebox.internal"
   },
   {
     "Name": "Sales",
@@ -805,7 +805,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "IT Admin",
-    "Email": "sales@example.com"
+    "Email": "sales@jukebox.internal"
   },
   {
     "Name": "Former Staff",
@@ -813,7 +813,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "",
-    "Email": "formerstaff@example.com"
+    "Email": "formerstaff@jukebox.internal"
   },
   {
     "Name": "VPN-Users",
@@ -821,7 +821,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "IT Operations",
-    "Email": "vpn-users@example.com"
+    "Email": "vpn-users@jukebox.internal"
   },
   {
     "Name": "2FA Users",
@@ -829,7 +829,7 @@
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "IT Operations",
-    "Email": "mfa-users@example.com"
+    "Email": "mfa-users@jukebox.internal"
   },
   {
     "Name": "Disabled Users",
