@@ -4458,9 +4458,9 @@
     "City": "Slough",
     "PostalCode": "SL1 1EL",
     "physicalDeliveryOfficeName": "Slough Studio",
-    "ad_ou": "OU=The Jam,OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=The Jam,OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "The Jam",
-    "ad_band_parent": "OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Bruce Foxton",
@@ -4486,9 +4486,9 @@
     "City": "Slough",
     "PostalCode": "SL1 1EL",
     "physicalDeliveryOfficeName": "Slough Studio",
-    "ad_ou": "OU=The Jam,OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=The Jam,OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "The Jam",
-    "ad_band_parent": "OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Rick Buckler",
@@ -4514,9 +4514,9 @@
     "City": "Slough",
     "PostalCode": "SL1 1EL",
     "physicalDeliveryOfficeName": "Slough Studio",
-    "ad_ou": "OU=The Jam,OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=The Jam,OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "The Jam",
-    "ad_band_parent": "OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Paul Weller",
@@ -4542,9 +4542,9 @@
     "City": "Slough",
     "PostalCode": "SL1 1EL",
     "physicalDeliveryOfficeName": "Slough Studio",
-    "ad_ou": "OU=Style Council,OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Style Council,OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Style Council",
-    "ad_band_parent": "OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Mick Talbot",
@@ -4570,9 +4570,9 @@
     "City": "Slough",
     "PostalCode": "SL1 1EL",
     "physicalDeliveryOfficeName": "Slough Studio",
-    "ad_ou": "OU=Style Council,OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Style Council,OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Style Council",
-    "ad_band_parent": "OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Dee C. Lee",
@@ -4598,9 +4598,9 @@
     "City": "Slough",
     "PostalCode": "SL1 1EL",
     "physicalDeliveryOfficeName": "Slough Studio",
-    "ad_ou": "OU=Style Council,OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Style Council,OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Style Council",
-    "ad_band_parent": "OU=Users,OU=Slough,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Lis Sørensen",
@@ -4627,9 +4627,9 @@
     "City": "Bramming",
     "PostalCode": "1165",
     "physicalDeliveryOfficeName": "Bramming Studio",
-    "ad_ou": "OU=Lis Sørensen,OU=Users,OU=Bramming,OU=Syd Jyland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Lis Sørensen,OU=Users,OU=Fredericia,OU=Sydøst Jyland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Lis Sørensen",
-    "ad_band_parent": "OU=Users,OU=Bramming,OU=Syd Jyland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Fredericia,OU=Sydøst Jyland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Helena Christensen",
@@ -4656,9 +4656,9 @@
     "City": "Esjberg",
     "PostalCode": "6700",
     "physicalDeliveryOfficeName": "Esjberg Studio",
-    "ad_ou": "OU=Photography,OU=Users,OU=Esbjerg,OU=Syd Jyland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Photography,OU=Users,OU=Fredericia,OU=Sydøst Jyland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Photography",
-    "ad_band_parent": "OU=Users,OU=Esbjerg,OU=Syd Jyland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Fredericia,OU=Sydøst Jyland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Steffen Brandt",
@@ -4686,9 +4686,9 @@
     "City": "København",
     "PostalCode": "1550",
     "physicalDeliveryOfficeName": "København Office",
-    "ad_ou": "OU=TV-2,OU=Users,OU=København,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=TV-2,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "TV-2",
-    "ad_band_parent": "OU=Users,OU=København,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Hans Erik Lerchenfeldt",
@@ -4715,9 +4715,9 @@
     "City": "København",
     "PostalCode": "2200",
     "physicalDeliveryOfficeName": "København Office",
-    "ad_ou": "OU=TV-2,OU=Users,OU=København,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=TV-2,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "TV-2",
-    "ad_band_parent": "OU=Users,OU=København,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Sven Gaul",
@@ -4744,9 +4744,9 @@
     "City": "København",
     "PostalCode": "2200",
     "physicalDeliveryOfficeName": "København Office",
-    "ad_ou": "OU=TV-2,OU=Users,OU=København,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=TV-2,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "TV-2",
-    "ad_band_parent": "OU=Users,OU=København,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Georg Olesen",
@@ -4803,9 +4803,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=Elmer,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Elmer,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Elmer",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Sofie Møller",
@@ -4832,9 +4832,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=Elmer,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Elmer,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Elmer",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Peter Nielsen",
@@ -4861,9 +4861,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=Elmer,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Elmer,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Elmer",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Lars Pedersen",
@@ -4890,9 +4890,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=Elmer,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Elmer,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Elmer",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Dodo Gad",
@@ -4919,9 +4919,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=Dodo and the Dodos,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Dodo and the Dodos,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Dodo and the Dodos",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Steen Christiansen",
@@ -4948,9 +4948,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=Dodo and the Dodos,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Dodo and the Dodos,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Dodo and the Dodos",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Henrik Stanley Møller",
@@ -4977,9 +4977,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=Dodo and the Dodos,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Dodo and the Dodos,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Dodo and the Dodos",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Søren Jacobsen",
@@ -5006,9 +5006,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=Dodo and the Dodos,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Dodo and the Dodos,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Dodo and the Dodos",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Morten Jensen",
@@ -5035,9 +5035,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=1000 Keys,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=1000 Keys,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "1000 Keys",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Lars Pedersen",
@@ -5064,9 +5064,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=1000 Keys,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=1000 Keys,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "1000 Keys",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Søren Hansen",
@@ -5094,9 +5094,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "Archive",
-    "ad_ou": "OU=1000 Keys,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=1000 Keys,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "1000 Keys",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Peter Møller",
@@ -5123,9 +5123,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=1000 Keys,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=1000 Keys,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "1000 Keys",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Kim Larsen",
@@ -5152,9 +5152,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=News,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=News,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "News",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Anne Sørensen",
@@ -5181,9 +5181,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=News,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=News,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "News",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Henrik Nielsen",
@@ -5210,9 +5210,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "Archive",
-    "ad_ou": "OU=News,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=News,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "News",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Peter Madsen",
@@ -5239,9 +5239,9 @@
     "City": "",
     "PostalCode": "",
     "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=News,OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=News,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "News",
-    "ad_band_parent": "OU=Users,OU=København,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Ulla Kjaer",
@@ -5268,9 +5268,9 @@
     "City": "Køge",
     "PostalCode": "4600",
     "physicalDeliveryOfficeName": "Køge Office",
-    "ad_ou": "OU=Rocazino,OU=Users,OU=Køge,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Rocazino,OU=Users,OU=Koge,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Rocazino",
-    "ad_band_parent": "OU=Users,OU=Køge,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Koge,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Michael Bruun",
@@ -5297,9 +5297,9 @@
     "City": "Køge",
     "PostalCode": "4600",
     "physicalDeliveryOfficeName": "Køge Office",
-    "ad_ou": "OU=Rocazino,OU=Users,OU=Køge,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Rocazino,OU=Users,OU=Koge,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Rocazino",
-    "ad_band_parent": "OU=Users,OU=Køge,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Koge,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Jan Sivertsen",
@@ -5326,9 +5326,9 @@
     "City": "Køge",
     "PostalCode": "4600",
     "physicalDeliveryOfficeName": "Køge Office",
-    "ad_ou": "OU=Rocazino,OU=Users,OU=Køge,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Rocazino,OU=Users,OU=Koge,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Rocazino",
-    "ad_band_parent": "OU=Users,OU=Køge,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Koge,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Sannie Charlotte Carlson",
@@ -5529,9 +5529,9 @@
     "City": "Halmstad",
     "PostalCode": "302 31",
     "physicalDeliveryOfficeName": "Halmstad Studio",
-    "ad_ou": "OU=Roxette,OU=Users,OU=Halmstad,OU=Halland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Roxette,OU=Users,OU=Gothenburg,OU=Västra Götaland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Roxette",
-    "ad_band_parent": "OU=Users,OU=Halmstad,OU=Halland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Gothenburg,OU=Västra Götaland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Per Gessle",
@@ -5559,9 +5559,9 @@
     "City": "Halmstad",
     "PostalCode": "302 31",
     "physicalDeliveryOfficeName": "Halmstad Studio",
-    "ad_ou": "OU=Roxette,OU=Users,OU=Halmstad,OU=Halland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Roxette,OU=Users,OU=Gothenburg,OU=Västra Götaland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Roxette",
-    "ad_band_parent": "OU=Users,OU=Halmstad,OU=Halland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Gothenburg,OU=Västra Götaland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Clarence Öfwerman",
@@ -5589,9 +5589,9 @@
     "City": "Stockholm",
     "PostalCode": "118 25",
     "physicalDeliveryOfficeName": "Stockholm Studio",
-    "ad_ou": "OU=Roxette,OU=Users,OU=Halmstad,OU=Halland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Roxette,OU=Users,OU=Gothenburg,OU=Västra Götaland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Roxette",
-    "ad_band_parent": "OU=Users,OU=Halmstad,OU=Halland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Gothenburg,OU=Västra Götaland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Jonas Isacsson",
@@ -5618,9 +5618,9 @@
     "City": "Stockholm",
     "PostalCode": "118 25",
     "physicalDeliveryOfficeName": "Stockholm Studio",
-    "ad_ou": "OU=Roxette,OU=Users,OU=Halmstad,OU=Halland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Roxette,OU=Users,OU=Gothenburg,OU=Västra Götaland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Roxette",
-    "ad_band_parent": "OU=Users,OU=Halmstad,OU=Halland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Gothenburg,OU=Västra Götaland,OU=Sweden,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Morten Harket",
@@ -6265,9 +6265,9 @@
     "City": "Großenkneten",
     "PostalCode": "26197",
     "physicalDeliveryOfficeName": "Großenkneten Studio",
-    "ad_ou": "OU=Trio,OU=Users,OU=Großenkneten,OU=Niedersachsen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Trio,OU=Users,OU=Dusseldorf,OU=Nordrhein-Westfalen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Trio",
-    "ad_band_parent": "OU=Users,OU=Großenkneten,OU=Niedersachsen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Dusseldorf,OU=Nordrhein-Westfalen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Gert Krawinkel",
@@ -6294,9 +6294,9 @@
     "City": "Großenkneten",
     "PostalCode": "26197",
     "physicalDeliveryOfficeName": "Großenkneten Studio",
-    "ad_ou": "OU=Trio,OU=Users,OU=Großenkneten,OU=Niedersachsen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Trio,OU=Users,OU=Dusseldorf,OU=Nordrhein-Westfalen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Trio",
-    "ad_band_parent": "OU=Users,OU=Großenkneten,OU=Niedersachsen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Dusseldorf,OU=Nordrhein-Westfalen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Peter Behrens",
@@ -6323,9 +6323,9 @@
     "City": "Großenkneten",
     "PostalCode": "26197",
     "physicalDeliveryOfficeName": "Großenkneten Studio",
-    "ad_ou": "OU=Trio,OU=Users,OU=Großenkneten,OU=Niedersachsen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Trio,OU=Users,OU=Dusseldorf,OU=Nordrhein-Westfalen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Trio",
-    "ad_band_parent": "OU=Users,OU=Großenkneten,OU=Niedersachsen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Dusseldorf,OU=Nordrhein-Westfalen,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Sandra Lauer",
@@ -6353,9 +6353,9 @@
     "City": "Saarbrücken",
     "PostalCode": "66111",
     "physicalDeliveryOfficeName": "Saarbrücken Studio",
-    "ad_ou": "OU=Sandra,OU=Users,OU=Saarbrücken,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Sandra,OU=Users,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Sandra",
-    "ad_band_parent": "OU=Users,OU=Saarbrücken,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Michael Cretu",
@@ -6383,9 +6383,9 @@
     "City": "Munich",
     "PostalCode": "80539",
     "physicalDeliveryOfficeName": "Munich Studio",
-    "ad_ou": "OU=Sandra,OU=Users,OU=Saarbrücken,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Sandra,OU=Users,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Sandra",
-    "ad_band_parent": "OU=Users,OU=Saarbrücken,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Candy Dulfer",
@@ -6647,9 +6647,9 @@
     "City": "Munich",
     "PostalCode": "81925",
     "physicalDeliveryOfficeName": "Munich Studio",
-    "ad_ou": "OU=Moroder,OU=Users,OU=South Tyrol,OU=Italy,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Moroder,OU=Users,OU=Milan,OU=Lombardy,OU=Italy,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Moroder",
-    "ad_band_parent": "OU=Users,OU=South Tyrol,OU=Italy,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Milan,OU=Lombardy,OU=Italy,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Vanessa Paradis",
@@ -6851,9 +6851,9 @@
     "City": "Athens",
     "PostalCode": "30601",
     "physicalDeliveryOfficeName": "Athens Studio",
-    "ad_ou": "OU=REM,OU=Users,OU=Athens,OU=Georgia,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=REM,OU=Users,OU=Atlanta,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "REM",
-    "ad_band_parent": "OU=Users,OU=Athens,OU=Georgia,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Atlanta,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Peter Buck",
@@ -6880,9 +6880,9 @@
     "City": "Athens",
     "PostalCode": "30601",
     "physicalDeliveryOfficeName": "Athens Studio",
-    "ad_ou": "OU=REM,OU=Users,OU=Athens,OU=Georgia,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=REM,OU=Users,OU=Atlanta,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "REM",
-    "ad_band_parent": "OU=Users,OU=Athens,OU=Georgia,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Atlanta,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Mike Mills",
@@ -6909,9 +6909,9 @@
     "City": "Athens",
     "PostalCode": "30601",
     "physicalDeliveryOfficeName": "Athens Studio",
-    "ad_ou": "OU=REM,OU=Users,OU=Athens,OU=Georgia,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=REM,OU=Users,OU=Atlanta,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "REM",
-    "ad_band_parent": "OU=Users,OU=Athens,OU=Georgia,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Atlanta,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Bill Berry",
@@ -6938,9 +6938,9 @@
     "City": "Athens",
     "PostalCode": "30601",
     "physicalDeliveryOfficeName": "Athens Studio",
-    "ad_ou": "OU=REM,OU=Users,OU=Athens,OU=Georgia,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=REM,OU=Users,OU=Atlanta,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "REM",
-    "ad_band_parent": "OU=Users,OU=Athens,OU=Georgia,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Atlanta,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Gloria Estefan",
@@ -7347,9 +7347,9 @@
     "City": "Asbury Park",
     "PostalCode": "07712",
     "physicalDeliveryOfficeName": "Asbury Park Office",
-    "ad_ou": "OU=E-Street Band,OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=E-Street Band,OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "E-Street Band",
-    "ad_band_parent": "OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Steven Van Zandt",
@@ -7376,9 +7376,9 @@
     "City": "Asbury Park",
     "PostalCode": "07712",
     "physicalDeliveryOfficeName": "Asbury Park Office",
-    "ad_ou": "OU=E-Street Band,OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=E-Street Band,OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "E-Street Band",
-    "ad_band_parent": "OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Clarence Clemons",
@@ -7405,9 +7405,9 @@
     "City": "Asbury Park",
     "PostalCode": "07712",
     "physicalDeliveryOfficeName": "Asbury Park Office",
-    "ad_ou": "OU=E-Street Band,OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=E-Street Band,OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "E-Street Band",
-    "ad_band_parent": "OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Max Weinberg",
@@ -7434,9 +7434,9 @@
     "City": "Asbury Park",
     "PostalCode": "07712",
     "physicalDeliveryOfficeName": "Asbury Park Office",
-    "ad_ou": "OU=E-Street Band,OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=E-Street Band,OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "E-Street Band",
-    "ad_band_parent": "OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Danny Federici",
@@ -7463,9 +7463,9 @@
     "City": "Asbury Park",
     "PostalCode": "07712",
     "physicalDeliveryOfficeName": "Asbury Park Office",
-    "ad_ou": "OU=E-Street Band,OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=E-Street Band,OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "E-Street Band",
-    "ad_band_parent": "OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Garry Tallent",
@@ -7492,9 +7492,9 @@
     "City": "Asbury Park",
     "PostalCode": "07712",
     "physicalDeliveryOfficeName": "Asbury Park Office",
-    "ad_ou": "OU=E-Street Band,OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=E-Street Band,OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "E-Street Band",
-    "ad_band_parent": "OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Roy Bittan",
@@ -7521,9 +7521,9 @@
     "City": "Asbury Park",
     "PostalCode": "07712",
     "physicalDeliveryOfficeName": "Asbury Park Office",
-    "ad_ou": "OU=E-Street Band,OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=E-Street Band,OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "E-Street Band",
-    "ad_band_parent": "OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Patti Scialfa",
@@ -7550,9 +7550,9 @@
     "City": "Asbury Park",
     "PostalCode": "07712",
     "physicalDeliveryOfficeName": "Asbury Park Office",
-    "ad_ou": "OU=E-Street Band,OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=E-Street Band,OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "E-Street Band",
-    "ad_band_parent": "OU=Users,OU=Asbury Park,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=New Jersey,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Craig T. Cooper",
@@ -7810,9 +7810,9 @@
     "City": "Los Angeles",
     "PostalCode": "90069",
     "physicalDeliveryOfficeName": "Los Angeles Studio",
-    "ad_ou": "OU=Boz Scaggs,OU=Users,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Boz Scaggs,OU=Users,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Boz Scaggs",
-    "ad_band_parent": "OU=Users,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "David Paich",
@@ -7840,9 +7840,9 @@
     "City": "Los Angeles",
     "PostalCode": "90069",
     "physicalDeliveryOfficeName": "Los Angeles Studio",
-    "ad_ou": "OU=Boz Scaggs,OU=Users,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Boz Scaggs,OU=Users,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Boz Scaggs",
-    "ad_band_parent": "OU=Users,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Jeff Porcaro",
@@ -7870,9 +7870,9 @@
     "City": "Los Angeles",
     "PostalCode": "90069",
     "physicalDeliveryOfficeName": "Los Angeles Studio",
-    "ad_ou": "OU=Boz Scaggs,OU=Users,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Boz Scaggs,OU=Users,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Boz Scaggs",
-    "ad_band_parent": "OU=Users,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Kenny G",
@@ -8587,9 +8587,9 @@
     "City": "Chicago",
     "PostalCode": "60601",
     "physicalDeliveryOfficeName": "Chicago Studio",
-    "ad_ou": "OU=Chicago,OU=Users,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "Chicago",
-    "ad_band_parent": "OU=Users,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_ou": "OU=Chicago (Band),OU=Users,OU=Chicago,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_band_ou_name": "Chicago (Band)",
+    "ad_band_parent": "OU=Users,OU=Chicago,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Peter Cetera",
@@ -8615,9 +8615,9 @@
     "City": "Chicago",
     "PostalCode": "60601",
     "physicalDeliveryOfficeName": "Chicago Studio",
-    "ad_ou": "OU=Chicago,OU=Users,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "Chicago",
-    "ad_band_parent": "OU=Users,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_ou": "OU=Chicago (Band),OU=Users,OU=Chicago,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_band_ou_name": "Chicago (Band)",
+    "ad_band_parent": "OU=Users,OU=Chicago,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Danny Seraphine",
@@ -8643,9 +8643,9 @@
     "City": "Chicago",
     "PostalCode": "60601",
     "physicalDeliveryOfficeName": "Chicago Studio",
-    "ad_ou": "OU=Chicago,OU=Users,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "Chicago",
-    "ad_band_parent": "OU=Users,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
+    "ad_ou": "OU=Chicago (Band),OU=Users,OU=Chicago,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_band_ou_name": "Chicago (Band)",
+    "ad_band_parent": "OU=Users,OU=Chicago,OU=Illinois,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Lou Gramm",
@@ -9806,9 +9806,9 @@
     "City": "Hellerup",
     "PostalCode": "2900",
     "physicalDeliveryOfficeName": "Hellerup Bureau",
-    "ad_ou": "OU=Journalists,OU=Users,OU=Hellerup,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Journalists,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Journalists",
-    "ad_band_parent": "OU=Users,OU=Hellerup,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Knud Christian Frederik",
@@ -9836,7 +9836,7 @@
     "City": "København",
     "PostalCode": "1257",
     "physicalDeliveryOfficeName": "Amalienborg Palace",
-    "ad_ou": "OU=Users,OU=Royal Household,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "",
     "ad_band_parent": ""
   },
@@ -9956,9 +9956,9 @@
     "City": "Fredericia",
     "PostalCode": "7000",
     "physicalDeliveryOfficeName": "Fredericia Office",
-    "ad_ou": "OU=Ancillary Staff,OU=Users,OU=Christianshavn,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Ancillary Staff,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Ancillary Staff",
-    "ad_band_parent": "OU=Users,OU=Christianshavn,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Bodil Udsen",
@@ -9986,9 +9986,9 @@
     "City": "Fredericia",
     "PostalCode": "7000",
     "physicalDeliveryOfficeName": "Fredericia Office",
-    "ad_ou": "OU=Ancillary Staff,OU=Users,OU=Christianshavn,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Ancillary Staff,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Ancillary Staff",
-    "ad_band_parent": "OU=Users,OU=Christianshavn,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Arthur Jensen",
@@ -10016,9 +10016,9 @@
     "City": "Fredericia",
     "PostalCode": "7000",
     "physicalDeliveryOfficeName": "Fredericia Office",
-    "ad_ou": "OU=Ancillary Staff,OU=Users,OU=Christianshavn,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Ancillary Staff,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Ancillary Staff",
-    "ad_band_parent": "OU=Users,OU=Christianshavn,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Axel Strobye",
@@ -10046,9 +10046,9 @@
     "City": "Fredericia",
     "PostalCode": "7000",
     "physicalDeliveryOfficeName": "Fredericia Office",
-    "ad_ou": "OU=Ancillary Staff,OU=Users,OU=Hellerup,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Ancillary Staff,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "Ancillary Staff",
-    "ad_band_parent": "OU=Users,OU=Hellerup,OU=Sjælland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
+    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
     "Name": "Ian Hislop",
