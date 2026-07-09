@@ -404,17 +404,17 @@ Ansible port of `Join-DomainAndBootstrap.ps1`.
 
 `site.yml` is the entry point — it chain-imports numbered step playbooks,
 and supports per-tag runs. `00-preflight.yml` (hostname/static IP/Ansible
-key) chain-imports `05-bootstrap.yml` (the full PostOOBE bootstrap, Stages
-0b–23) as one combined play; everything from `10-rename.yml` onward is a
-separate standalone play that also runs inline as part of that same
-bootstrap chain (see `05-bootstrap.yml`'s own "Stage map" comment for which
-numbered stage each corresponds to).
+key) hands off to the rest of the chain (`10-rename.yml` onward), ending
+with `85-finish.yml` (remote-access summary + final reboot). The old
+`05-bootstrap.yml` monolith that used to duplicate this chain inline was
+retired 2026-07-09, once every stage it contained was confirmed to have a
+granular standalone equivalent.
 
 ### Numbered steps (site.yml)
 
 | Playbook | Tag | Description |
 |----------|-----|-------------|
-| `playbooks/00-preflight.yml` | `bootstrap` | Hostname/static IP/Ansible key, then chain-imports `05-bootstrap.yml` (full PostOOBE bootstrap, Stages 0b–23) |
+| `playbooks/00-preflight.yml` | `bootstrap` | Hostname/static IP/Ansible key, then hands off to the rest of the chain |
 | `playbooks/10-rename.yml` | `rename` | Rename to EXA convention |
 | `playbooks/15-locale-timezone.yml` | `locale_timezone` | Locale (en-GB) and timezone (GMT Standard Time) |
 | `playbooks/20-registry.yml` | `registry` | Registry hardening |

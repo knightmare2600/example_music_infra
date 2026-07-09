@@ -43,16 +43,34 @@
 #               same DC=-join pattern windows_adschema/10-ad-schema.yml already
 #               uses correctly. Also fixed two hardcoded Resolve-DnsName
 #               "jukebox.internal" PowerShell calls (Stage 0) to use exa_domain.
+#   2026-07-09  MUCH BIGGER FIX: hosts:/gather_facts:/vars_prompt were all commented
+#               out (likely a leftover from some past debugging session, never
+#               restored). This isn't just "runs against no hosts" -- a play missing
+#               a required hosts: key fails Ansible's PARSER outright, at load time,
+#               regardless of --tags. Since site.yml unconditionally import_playbooks
+#               this file (line ~126), the *entire* windows_bootstrap/site.yml chain
+#               could never even syntax-check, let alone run, until this was
+#               restored. dj_temp_dns_ip (used throughout the DNS-override tasks)
+#               was also undefined without the vars_prompt block that sets it.
+#   2026-07-09  SAFETY FIX: this file had zero is_first_dc awareness -- a first-DC
+#               (forest-creation) build would have blindly attempted
+#               microsoft.ad.membership against a domain that doesn't exist yet.
+#               05-bootstrap.yml's own Stage 5 (now retired, see its own removal
+#               changelog note) explicitly skipped domain-join for is_first_dc
+#               builds; this file never had the equivalent check, since it was
+#               only ever exercised via the granular chain where that scenario
+#               hadn't been hit yet. Added the same skip, with a message pointing
+#               at windows_dc/site.yml as the next step, matching Stage 5's intent.
 # =============================================================================
 
 - name: Windows — Domain join
-#  hosts: "{{ target | default('all') }}"
-#  gather_facts: true
-#  vars_prompt:
-#    - name: dj_temp_dns_ip
-#      prompt: "DNS server IP to use if jukebox.internal cannot be resolved (Enter for 192.168.139.8)"
-#      private: false
-#      default: "192.168.139.8"
+  hosts: "{{ target | default('all') }}"
+  gather_facts: true
+  vars_prompt:
+    - name: dj_temp_dns_ip
+      prompt: "DNS server IP to use if the domain cannot be resolved (Enter for 192.168.139.8)"
+      private: false
+      default: "192.168.139.8"
 
   tasks:
 
@@ -148,10 +166,23 @@
       when: domain_check.stdout | trim | lower == 'true'
       tags: domainjoin
 
+    - name: Skip — first-DC build, domain doesn't exist yet
+      debug:
+        msg: >
+          {{ inventory_hostname }} is a first-DC build (is_first_dc=true) — the domain doesn't
+          exist yet, so there's nothing to join. Run windows_dc/site.yml next to create the
+          forest; this host will then already be the DC, not something that joins it afterward.
+      when:
+        - domain_check.stdout | trim | lower != 'true'
+        - is_first_dc | default(false) | bool
+      tags: domainjoin
+
     - name: Build target OU path
       set_fact:
         domain_ou_path: "OU={{ domain_ou_role }},OU={{ host_site }},{{ 'DC=' + exa_domain.split('.') | join(',DC=') }}"
-      when: domain_check.stdout | trim | lower != 'true'
+      when:
+        - domain_check.stdout | trim | lower != 'true'
+        - not (is_first_dc | default(false) | bool)
       tags: domainjoin
 
     - name: Show domain join target
@@ -159,7 +190,9 @@
         msg: >
           Joining {{ inventory_hostname }} to {{ exa_domain }}
           OU: {{ domain_ou_path }}
-      when: domain_check.stdout | trim | lower != 'true'
+      when:
+        - domain_check.stdout | trim | lower != 'true'
+        - not (is_first_dc | default(false) | bool)
       tags: domainjoin
 
     - name: Join domain
@@ -171,7 +204,9 @@
         state:              domain
         reboot:             false
       register: join_result
-      when: domain_check.stdout | trim | lower != 'true'
+      when:
+        - domain_check.stdout | trim | lower != 'true'
+        - not (is_first_dc | default(false) | bool)
       tags: domainjoin
 
     - name: Reboot after domain join
