@@ -60,10 +60,18 @@ _DNS_PATTERNS = [
 ]
 
 # Applied to UserPrincipalName and Email fields on user / group objects.
+# fb3.example.net must be listed even though it contains 'example.net' as a
+# substring -- .replace() only matches the exact leading pattern, and
+# '@example.net' does not occur inside '@fb3.example.net' (there's no '@'
+# immediately before 'example.net'), so without its own entry these addresses
+# pass through unmodified. Same story for example.dk, a demo domain used by
+# the Danish groups/users that was never added here.
 _EMAIL_PATTERNS = [
-    ('@example.net',    '@{d}'),
-    ('@example.org',    '@{d}'),
-    ('@example.com',    '@{d}'),
+    ('@fb3.example.net', '@{d}'),
+    ('@example.net',     '@{d}'),
+    ('@example.org',     '@{d}'),
+    ('@example.com',     '@{d}'),
+    ('@example.dk',      '@{d}'),
 ]
 
 # ISO 3166-1 alpha-2 corrections (the TDF uses 'UK' but AD expects 'GB').
