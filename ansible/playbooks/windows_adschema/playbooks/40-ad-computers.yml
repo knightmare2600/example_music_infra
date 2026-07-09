@@ -31,10 +31,10 @@
 #   ansible-playbook playbooks/windows_adschema/site.yml -i <inventory> -e populate_ad=yes
 #
 #   # Standalone run — supply the target directly, no prompt available here:
-#   ansible-playbook playbooks/windows_adschema/playbooks/30-ad-computers.yml -e ad_target=<host> --ask-vault-pass
+#   ansible-playbook playbooks/windows_adschema/playbooks/40-ad-computers.yml -e ad_target=<host> --ask-vault-pass
 #
 #   # Check mode (dry run)
-#   ansible-playbook playbooks/windows_adschema/playbooks/30-ad-computers.yml -e ad_target=<host> --check --diff
+#   ansible-playbook playbooks/windows_adschema/playbooks/40-ad-computers.yml -e ad_target=<host> --check --diff
 #
 # Variables (override with --extra-vars):
 #   ad_target         Target DC hostname or IP — no prompt in this playbook;
@@ -53,7 +53,7 @@
 #                     earlier in the same run.
 # v1.2.0  2026-07-04  Moved into windows_adschema/playbooks/ as part of the
 #                     windows_bootstrap-style restructure. Renamed from
-#                     ad_computers.yml to 30-ad-computers.yml. Prompt now
+#                     ad_computers.yml to 40-ad-computers.yml. Prompt now
 #                     lives in 00-ad-preflight.yml, not inline. Inline
 #                     microsoft.ad collection check replaced with a shared
 #                     include: ../tasks/ad_collection_check.yml.
@@ -63,6 +63,15 @@
 # v1.4.0  2026-07-09  ad_domain's fallback changed from a hardcoded
 #                     'jukebox.internal' literal to exa_domain, derived from
 #                     benarbejde/ad_forest.json (single source of truth).
+# v2.0.0  2026-07-09  Implemented the tasks: block -- until now this file
+#                     only loaded and counted ad_computers.json in
+#                     pre_tasks, then stopped; no microsoft.ad.computer task
+#                     existed anywhere, so it created nothing. Added
+#                     computer-account creation (Section A) and OS /
+#                     OperatingSystemVersion attribute tasks (Section B/C).
+#                     Also fixed stale "30-ad-computers.yml" references in
+#                     this header (copy-paste leftover from 30-ad-users.yml
+#                     — a file of that name never existed in this repo).
 # =============================================================================
 
 - name: "Build AD computer accounts from JSON"
@@ -108,3 +117,62 @@
           {{ _computers | length }} have resolvable OU paths
           ({{ _computers_all | length - _computers | length }} skipped —
           unknown site codes).
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # Section A — Computer accounts
+    # sam_account_name in the JSON already carries the trailing $ (e.g.
+    # "EXAPHNABD001$"), matching the identity-lookup convention microsoft.ad.
+    # computer expects — see Section B/C below, which look these accounts
+    # back up by the same value.
+    # -------------------------------------------------------------------------
+
+    - name: "A | Create computer accounts"
+      microsoft.ad.computer:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        dns_hostname:     "{{ item.DNSHostName }}"
+        path:             "{{ item.ad_ou }}"
+        description:      "{{ item.Description }}"
+        enabled:          "{{ item.Enabled }}"
+        state:            present
+      loop: "{{ _computers }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    # -------------------------------------------------------------------------
+    # Section B/C — Operating system attributes
+    # OS / OperatingSystemVersion aren't microsoft.ad.computer module params —
+    # set via the generic attributes: mechanism onto the standard
+    # operatingSystem / operatingSystemVersion LDAP attributes. Each is its
+    # own task, gated on that field being non-blank in the source data (some
+    # IoT/embedded devices have no OS, and ~73 records have OS but no
+    # version) — this file is additive only, so an empty string is never
+    # sent, which would otherwise clear the attribute instead of leaving it
+    # untouched.
+    # -------------------------------------------------------------------------
+
+    - name: "B | Set operatingSystem attribute"
+      microsoft.ad.computer:
+        identity: "{{ item.SamAccountName }}"
+        name:     "{{ item.Name }}"
+        attributes:
+          set:
+            operatingSystem: "{{ item.OS }}"
+      when: item.OS | length > 0
+      loop: "{{ _computers }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    - name: "C | Set operatingSystemVersion attribute"
+      microsoft.ad.computer:
+        identity: "{{ item.SamAccountName }}"
+        name:     "{{ item.Name }}"
+        attributes:
+          set:
+            operatingSystemVersion: "{{ item.OperatingSystemVersion }}"
+      when: item.OperatingSystemVersion | length > 0
+      loop: "{{ _computers }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"

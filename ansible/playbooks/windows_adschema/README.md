@@ -1,7 +1,7 @@
 # windows_adschema
 
-Builds the AD OU schema, security groups, user accounts and (once migrated)
-computer accounts against a single target Domain Controller. Ansible-driven
+Builds the AD OU schema, security groups, user accounts and computer
+accounts against a single target Domain Controller. Ansible-driven
 replacement for manually populating a demo/production forest from the TDF
 and sites.csv.
 
@@ -53,8 +53,8 @@ to read back.
 
 **Order of operations:** the prompt happens once, in 00-ad-preflight.yml.
 10-ad-schema.yml, 20-ad-groups.yml, 30-ad-users.yml and 40-ad-computers.yml
-(once migrated) all read the same value back out of `hostvars['localhost']`
-rather than prompting again.
+all read the same value back out of `hostvars['localhost']` rather than
+prompting again.
 
 **Standalone runs:** if you run a numbered stage directly without
 00-ad-preflight.yml having run first in the same `ansible-playbook`
