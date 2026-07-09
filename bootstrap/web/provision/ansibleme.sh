@@ -21,6 +21,14 @@
 #       subfolder to /home/ansible/ansible using full paths. On re-runs
 #       the existing clone is pulled (--ff-only) rather than re-cloned.
 #
+# NOT a break-glass tool in the same sense as bindme.sh/firewallme.sh/rudderme.sh -- there is
+# no Ansible-ported equivalent to fall back FROM here, and there never will be: this script
+# bootstraps the very first Ansible control node an estate has, a genuine chicken-and-egg case
+# (Ansible can't provision the box it needs in order to run Ansible from). It stays the primary,
+# permanent path for that specific job. If a SECOND control node is ever needed at a site that
+# already has a working one elsewhere, that could reasonably be done via Ansible from the
+# existing node instead -- but that's a different scenario, not what this script is for.
+#
 # -------------------------------------------------------------------------------------------------
 # Version history
 # -------------------------------------------------------------------------------------------------

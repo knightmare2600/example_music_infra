@@ -74,9 +74,13 @@ The bootstrap network is always `192.168.139.0/24`. The bootstrap server runs at
 - Proxmox answer files:
   - `answer.toml` — standard two-disk ZFS RAID1 install
   - `degraded.toml` — single-disk ZFS RAID0 install for when the second disk hasn't arrived yet
-- `first-boot.sh` — post-install provisioning script, runs on first boot, configures hostname, networking, DNS, packages and raises a single-disk warning if RAID1 is not yet in place
-- `ansibleme.sh` — provisions the Ansible control node (`EXAANSCLD001`) from scratch — installs packages, deploys keys, clones the repo, places `sites.csv` and `devices.csv` at `/etc/example-music/`
+- `first-boot.sh` — post-install provisioning script, runs on first boot: ansible user + SSH key (so Ansible can reach the box at all) plus local-only convenience steps (apt repo fix, subscription-nag removal, MOTD, single-disk RAID warning). Everything else PVE-specific (hostname/network rewrite, V2V/VirtIO/proxmoxbmc tooling) moved to `ansible/playbooks/proxmox/bootstrap-new-node.yml` and `45-virt-tools.yml`, run once the node has a temporary DHCP IP
+- `ansibleme.sh` — provisions the Ansible control node (`EXAANSCLD001`) from scratch — installs packages, deploys keys, clones the repo, places `sites.csv`/`devices.csv`/`begyndelse.json` at `/etc/example-music/`
 - `firewallme.sh` — interactive firewall bootstrap script, handles WireGuard key generation, site code lookup and peer configuration
+- `bindme.sh` — interactive BIND9 DNS server bootstrap script, generates forward/reverse zones from `sites.csv`/`devices.csv`
+- `rudderme.sh` — interactive Rudder configuration-management server bootstrap script
+
+**`ansibleme.sh`/`firewallme.sh`/`bindme.sh`/`rudderme.sh` are break-glass tools, kept intentionally.** All four predate Ansible existing in this estate; `firewallme.sh` and `rudderme.sh` have since been ported to proper Ansible roles (`playbooks/firewallme/`, `playbooks/rudder/`), and `bindme.sh`'s logic is mirrored in `playbooks/bind9/bind9-dns.yml` — those are the actively maintained, normal path once a box is reachable and in Ansible's inventory. These scripts stay for the case Ansible can't help with: bringing a box up from nothing, before any Ansible connectivity exists at that site at all (a dead/replaced firewall or DNS server, or a brand-new site). They're deliberately self-contained — a manual `wget` of `sites.csv`/`devices.csv`/`begyndelse.json` from the provisioning server is the expected, supported path here, not a shortcut awaiting a "real" fix. `ansibleme.sh` is different again: there's no Ansible equivalent to fall back from, since it bootstraps the very first Ansible control node an estate has — a genuine chicken-and-egg case, not something Ansible could ever supersede.
 
 **Typical bootstrap sequence:**
 
