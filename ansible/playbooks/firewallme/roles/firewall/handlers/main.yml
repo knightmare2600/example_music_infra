@@ -5,22 +5,32 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-09  SAFETY FIX: "reload nftables" and "restart NetworkManager" used to
+#               fire unconditionally, with no check of whether doing so would strand
+#               the current Ansible SSH session. Both now check the same facts the
+#               corresponding task files set before notifying: nftables won't reload
+#               if the current session is on WAN with WAN SSH disabled (see
+#               07_nftables.yml); NetworkManager is never restarted at all any more --
+#               profile changes are applied via 'nmcli connection reload' (re-reads
+#               connection files, does not tear down active connections), gated
+#               behind fw_wan_activate the same way activation already was.
 # =============================================================================
 
 - name: reload nftables
   ansible.builtin.systemd:
     name: nftables
     state: reloaded
+  when: not (nft_reload_would_strand_session | default(false))
 
 - name: restart dnsmasq
   ansible.builtin.systemd:
     name: dnsmasq
     state: restarted
+  when: fw_wan_activate | default(false)
 
-- name: restart NetworkManager
-  ansible.builtin.systemd:
-    name: NetworkManager
-    state: restarted
+- name: reload NetworkManager connections
+  ansible.builtin.command: nmcli connection reload
+  changed_when: true
 
 - name: reload ssh
   ansible.builtin.systemd:
@@ -31,6 +41,7 @@
   ansible.builtin.systemd:
     name: wg-quick@wg0
     state: restarted
+  when: fw_wan_activate | default(false)
 
 - name: reload systemd daemon
   ansible.builtin.systemd:

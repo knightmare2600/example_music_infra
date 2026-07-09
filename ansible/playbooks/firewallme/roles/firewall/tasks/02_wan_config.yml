@@ -50,54 +50,14 @@
     fw_wan_static_prefix: "24"
   when: fw_wan_mode == 'static'
 
-- name: "[WAN] Show derived static WAN IP"
-  ansible.builtin.debug:
-    msg: "{{ _c.C }}[*]{{ _c.NC }} Derived static WAN IP: {{ _c.G }}{{ fw_wan_static_ip }}/24{{ _c.NC }} gw {{ _c.G }}{{ fw_wan_static_gw }}{{ _c.NC }}"
-  when: fw_wan_mode == 'static'
-
-- name: "[WAN] Check if static IP already in use"
-  ansible.builtin.shell: |
-    if ping -c1 -W1 {{ fw_wan_static_ip }} &>/dev/null 2>&1; then echo "in_use"
-    else echo "free"; fi
-  register: fw_wan_ip_check
-  changed_when: false
-  when: fw_wan_mode == 'static'
-
-- name: "[WAN] Report IP free"
-  ansible.builtin.debug:
-    msg: "{{ _c.G }}[+]{{ _c.NC }} {{ fw_wan_static_ip }} is free."
-  when:
-    - fw_wan_mode == 'static'
-    - fw_wan_ip_check.stdout | trim == 'free'
-
-- name: "[WAN] Prompt — static IP already responding"
+- name: "[WAN] Confirm derived static WAN IP"
   ansible.builtin.pause:
     prompt: |
-      {{ _c.Y }}[!]{{ _c.NC }} {{ fw_wan_static_ip }} is already responding on the network.
-      {{ _c.Y }}[!]{{ _c.NC }} This is expected if this node already has this IP (re-running the playbook).
-      {{ _c.Y }}[!]{{ _c.NC }} If this is a NEW node, the IP may be taken — check the provisioning network.
+      {{ _c.C }}[*]{{ _c.NC }} Derived static WAN IP: {{ _c.G }}{{ fw_wan_static_ip }}/24{{ _c.NC }} gw {{ _c.G }}{{ fw_wan_static_gw }}{{ _c.NC }}
+      {{ _c.C }}    This is EXAFWL{{ fw_site_code }}001-wan's reserved address per DNS/devices.csv{{ _c.NC }}
+      {{ _c.C }}    (192.168.139.<site-octet> is this site's fixed convention, not guessed).{{ _c.NC }}
 
-      Use {{ fw_wan_static_ip }} anyway? [y/N]
-  register: fw_wan_collision_confirm
-  when:
-    - fw_wan_mode == 'static'
-    - fw_wan_ip_check.stdout | trim == 'in_use'
-    - not fw_is_black_site
-
-- name: "[WAN] Fall back to DHCP if collision not accepted"
-  ansible.builtin.set_fact:
-    fw_wan_mode: "dhcp"
-  when:
-    - fw_wan_mode == 'static'
-    - fw_wan_ip_check is defined
-    - fw_wan_ip_check.stdout | default('') | trim == 'in_use'
-    - not fw_is_black_site
-    - fw_wan_collision_confirm.user_input | default('') | lower | trim != 'y'
-
-- name: "[WAN] Prompt to override static WAN IP"
-  ansible.builtin.pause:
-    prompt: |
-      {{ _c.C }}[*]{{ _c.NC }} WAN IP [{{ _c.G }}{{ fw_wan_static_ip }}{{ _c.NC }}] — press Enter to accept or type a different IP
+      Press {{ _c.G }}Enter{{ _c.NC }} to accept or type a different IP
   register: fw_wan_ip_override
   when: fw_wan_mode == 'static'
 
@@ -190,18 +150,10 @@
 - name: "[WAN] Log WAN activation state"
   ansible.builtin.debug:
     msg: >-
-      {{ _c.G }}[+]{{ _c.NC }} WAN will be activated during setup.
-      if fw_wan_activate else
-      _c.Y + '[!]' + _c.NC + ' WAN activation skipped — bring it up manually after the playbook completes.'
-  when: true
+      {{ (_c.G + '[+]' + _c.NC + ' WAN will be activated during setup.')
+         if fw_wan_activate else
+         (_c.Y + '[!]' + _c.NC + ' WAN activation skipped — bring it up manually after the playbook completes.') }}
 
-- name: "[WAN] Summary"
-  ansible.builtin.debug:
-    msg:
-      - "{{ _c.G }}[+]{{ _c.NC }} WAN mode     : {{ _c.G }}{{ fw_wan_mode }}{{ _c.NC }}"
-      - "{{ _c.G }}[+]{{ _c.NC }} WAN IP       : {{ _c.G }}{{ fw_wan_static_ip + '/24 gw ' + fw_wan_static_gw if fw_wan_mode == 'static' else 'DHCP' }}{{ _c.NC }}"
-      - "{{ _c.G }}[+]{{ _c.NC }} WAN activate : {{ _c.G }}{{ fw_wan_activate }}{{ _c.NC }}"
-      - "{{ _c.G }}[+]{{ _c.NC }} WAN SSH      : {{ (_c.R + 'ENABLED' + (' src:' + fw_wan_ssh_src if fw_wan_ssh_src else ' open') + _c.NC) if fw_wan_ssh_enabled else (_c.Y + 'disabled' + _c.NC) }}"
-      - "{{ _c.G }}[+]{{ _c.NC }} Ansible IP   : {{ _c.G }}{{ fw_ansible_ip }}{{ _c.NC }}"
-      - "{{ _c.G }}[+]{{ _c.NC }} WAN DNS      : {{ _c.G }}{{ fw_cld_dns }}, 1.1.1.1{{ _c.NC }}"
-      - "{{ _c.G }}[+]{{ _c.NC }} LAN DNS      : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_cld_dns }}{{ _c.NC }}"
+# NOTE: no per-file summary here -- WAN mode/IP/activation/SSH/DNS are all in the
+# one comprehensive summary in 04_summary_confirm.yml. Repeating it here was
+# redundant noise.

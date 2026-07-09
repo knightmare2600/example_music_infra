@@ -1,0 +1,25 @@
+[connection]
+id=wan
+uuid={{ (inventory_hostname + '-wan') | to_uuid }}
+type=ethernet
+interface-name={{ fw_wan_iface }}
+autoconnect=true
+autoconnect-priority=100
+
+[ethernet]
+
+[ipv4]
+{% if fw_wan_mode == 'static' %}
+address1={{ fw_wan_static_ip }}/{{ fw_wan_static_prefix }},{{ fw_wan_static_gw }}
+method=manual
+{% else %}
+method=auto
+{% endif %}
+dns={{ fw_cld_dns }};{{ fw_inet_dns }};
+dns-search=jukebox.internal;
+
+[ipv6]
+addr-gen-mode=default
+method=ignore
+
+[proxy]

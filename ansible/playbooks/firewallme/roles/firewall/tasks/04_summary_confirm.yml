@@ -6,6 +6,10 @@
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-20  Colourised — replicates firewallme.sh final summary block
+#   2026-07-09  Reboot question moved here from 10_finish.yml (was asked at the very
+#               end, after everything was already applied). Now asked alongside every
+#               other confirmation, before any writes happen — the answer is stored
+#               as fw_reboot_requested and acted on at the end, not re-asked there.
 # =============================================================================
 
 - name: "[Summary] Display full configuration summary"
@@ -29,13 +33,28 @@
       - "{{ _c.C }}║{{ _c.NC }}  LAN IP        : {{ _c.G }}{{ fw_lan_ip }}/24{{ _c.NC }}"
       - "{{ _c.C }}║{{ _c.NC }}  DHCP range    : {{ _c.G }}{{ fw_dhcp_start }} – {{ fw_dhcp_end }}{{ _c.NC }}"
       - "{{ _c.C }}║{{ _c.NC }}  Ansible IP    : {{ _c.G }}{{ fw_ansible_ip }}{{ _c.NC }}"
-      - "{{ _c.C }}║{{ _c.NC }}  WAN DNS       : {{ _c.G }}{{ fw_cld_dns }}, 1.1.1.1{{ _c.NC }}"
+      - "{{ _c.C }}║{{ _c.NC }}  WAN DNS       : {{ _c.G }}{{ fw_cld_dns }}, {{ fw_inet_dns }}{{ _c.NC }}"
       - "{{ _c.C }}║{{ _c.NC }}  LAN DNS       : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_cld_dns }}{{ _c.NC }}"
       - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
       - "{{ _c.C }}║{{ _c.NC }}  WireGuard     : {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}"
       - "{{ _c.C }}║{{ _c.NC }}  WG tunnel     : {{ _c.O }}{{ fw_wg_tunnel_ip + '/24 (' + fw_wg_tunnel_net + ')' if fw_wg_role != 'none' else 'N/A' }}{{ _c.NC }}"
       - "{{ _c.C }}║{{ _c.NC }}  WG hub        : {{ _c.O }}{{ fw_wg_hub_endpoint | default('N/A') }}{{ _c.NC }}"
       - "{{ _c.C }}╚══════════════════════════════════════════════════════════════╝{{ _c.NC }}"
+
+- name: "[Summary] Prompt for reboot (asked now, executed at the end)"
+  ansible.builtin.pause:
+    prompt: |
+      {{ _c.Y }}[!]{{ _c.NC }} A reboot is recommended after this run to ensure interface pinning
+      {{ _c.Y }}[!]{{ _c.NC }} (.link files), initramfs changes, and sysctl settings all take effect
+      {{ _c.Y }}[!]{{ _c.NC }} cleanly. This will happen automatically at the end of this run if you
+      {{ _c.Y }}[!]{{ _c.NC }} say yes here — you won't be asked again.
+
+      Reboot at the end of this run? [y/N]
+  register: fw_reboot_prompt
+
+- name: "[Summary] Set reboot decision"
+  ansible.builtin.set_fact:
+    fw_reboot_requested: "{{ fw_reboot_prompt.user_input | default('n') | lower | trim == 'y' }}"
 
 - name: "[Summary] Operator confirmation"
   ansible.builtin.pause:

@@ -13,88 +13,75 @@
 #               DHCP race; mirrors firewallme.sh 2026-04-25 + 2026-06-14 fixes)
 #   2026-06-29  Enable NetworkManager-wait-online.service (required for WireGuard
 #               After=network-online.target drop-in to function correctly)
+#   2026-07-09  SAFETY FIX: every task here used to `notify: restart NetworkManager`
+#               (systemctl restart, tearing down every NM-managed connection on the
+#               box) with no gating at all -- on essentially every run, since this
+#               deleted then recreated the wan/lan profiles via nmcli every time. If
+#               Ansible's own SSH session was on an NM-managed interface, this
+#               restart would drop it mid-play.
+#   2026-07-09  Replaced nmcli con add/delete with directly-templated .nmconnection
+#               keyfiles (templates/wan.nmconnection.j2, lan.nmconnection.j2; format
+#               confirmed against a real firewall's on-disk files, EXAFWLCPH001).
+#               Two safety wins: (1) genuine idempotency -- if nothing changed, the
+#               template task reports unchanged and never notifies anything, unlike
+#               nmcli which recreated the connection (and notified) every run
+#               regardless; (2) the apply mechanism is `nmcli connection reload`
+#               (re-reads connection files from disk, does not tear down active
+#               connections) instead of `systemctl restart NetworkManager`. UUIDs are
+#               deterministic (to_uuid filter on hostname+role) so re-runs produce a
+#               byte-identical file when nothing changed. Activating a profile
+#               (`nmcli con up`) remains explicitly gated on fw_wan_activate, as it
+#               already was for WAN.
 # =============================================================================
 
-# ── Remove existing NM connections for our interfaces ─────────────────────────
+# ── Remove stale auto-created NM connections for our interfaces ───────────────
+# Only targets NM's own auto-created defaults (e.g. "Wired connection 1") by
+# NAME -- unlike firewallme.sh's own cleanup (script lines 1254-1260), deliberately
+# does NOT also match on disconnected state ("--"), since our own just-written
+# wan/lan profiles are legitimately "disconnected" whenever fw_wan_activate is
+# false, and a state-based match risks deleting the file we just wrote. Name-only
+# matching can never touch our own profiles (fixed id "wan"/"lan").
 
-- name: "[NM] List existing NM connections on WAN interface"
+- name: "[NM] List NM connections on our interfaces"
   ansible.builtin.shell: |
-    nmcli -t -f NAME,DEVICE con show | grep ':{{ fw_wan_iface }}' | cut -d: -f1 || true
-  register: nm_wan_existing
+    nmcli -t -f NAME,DEVICE con show | awk -F: -v w="{{ fw_wan_iface }}" -v l="{{ fw_lan_iface }}" \
+      '$2==w || $2==l {print $1}'
+  register: nm_existing_on_our_ifaces
   changed_when: false
 
-- name: "[NM] Delete existing WAN connections"
-  ansible.builtin.shell: "nmcli con delete '{{ item }}'"
-  loop: "{{ nm_wan_existing.stdout_lines }}"
-  when: nm_wan_existing.stdout_lines | length > 0
-  notify: restart NetworkManager
+- name: "[NM] Identify stale auto-created profiles to remove"
+  ansible.builtin.set_fact:
+    nm_stale_profiles: >-
+      {{ nm_existing_on_our_ifaces.stdout_lines
+         | select('match', '.*(Wired connection|Ifupdown).*')
+         | list }}
 
-- name: "[NM] List existing NM connections on LAN interface"
-  ansible.builtin.shell: |
-    nmcli -t -f NAME,DEVICE con show | grep ':{{ fw_lan_iface }}' | cut -d: -f1 || true
-  register: nm_lan_existing
-  changed_when: false
+- name: "[NM] Remove stale auto-created profiles"
+  ansible.builtin.command: nmcli con delete "{{ item }}"
+  loop: "{{ nm_stale_profiles }}"
+  when: nm_stale_profiles | length > 0
 
-- name: "[NM] Delete existing LAN connections"
-  ansible.builtin.shell: "nmcli con delete '{{ item }}'"
-  loop: "{{ nm_lan_existing.stdout_lines }}"
-  when: nm_lan_existing.stdout_lines | length > 0
-  notify: restart NetworkManager
+# ── WAN / LAN profiles — templated keyfiles ───────────────────────────────────
 
-- name: "[NM] Flush handlers (restart NM before adding new profiles)"
-  ansible.builtin.meta: flush_handlers
+- name: "[NM] Write WAN connection profile"
+  ansible.builtin.template:
+    src: wan.nmconnection.j2
+    dest: /etc/NetworkManager/system-connections/wan.nmconnection
+    owner: root
+    group: root
+    mode: '0600'
+  notify: reload NetworkManager connections
 
-# ── WAN profile — static ──────────────────────────────────────────────────────
+- name: "[NM] Write LAN connection profile"
+  ansible.builtin.template:
+    src: lan.nmconnection.j2
+    dest: /etc/NetworkManager/system-connections/lan.nmconnection
+    owner: root
+    group: root
+    mode: '0600'
+  notify: reload NetworkManager connections
 
-- name: "[NM] Create static WAN connection profile"
-  ansible.builtin.shell: |
-    nmcli con add \
-      type ethernet \
-      con-name wan \
-      ifname {{ fw_wan_iface }} \
-      ipv4.method manual \
-      ipv4.addresses {{ fw_wan_static_ip }}/{{ fw_wan_static_prefix }} \
-      ipv4.gateway {{ fw_wan_static_gw }} \
-      ipv4.dns "{{ fw_cld_dns }} 1.1.1.1" \
-      ipv4.dns-search "jukebox.internal" \
-      connection.autoconnect yes \
-      connection.autoconnect-priority 100
-  when: fw_wan_mode == 'static'
-  notify: restart NetworkManager
-
-# ── WAN profile — DHCP ────────────────────────────────────────────────────────
-
-- name: "[NM] Create DHCP WAN connection profile"
-  ansible.builtin.shell: |
-    nmcli con add \
-      type ethernet \
-      con-name wan \
-      ifname {{ fw_wan_iface }} \
-      ipv4.method auto \
-      ipv4.dns "{{ fw_cld_dns }} 1.1.1.1" \
-      ipv4.dns-search "jukebox.internal" \
-      connection.autoconnect yes \
-      connection.autoconnect-priority 100
-  when: fw_wan_mode == 'dhcp'
-  notify: restart NetworkManager
-
-# ── LAN profile ───────────────────────────────────────────────────────────────
-
-- name: "[NM] Create LAN connection profile"
-  ansible.builtin.shell: |
-    nmcli con add \
-      type ethernet \
-      con-name lan \
-      ifname {{ fw_lan_iface }} \
-      ipv4.method manual \
-      ipv4.addresses {{ fw_lan_ip }}/24 \
-      ipv4.never-default yes \
-      ipv4.dns "" \
-      connection.autoconnect yes \
-      connection.autoconnect-priority 100
-  notify: restart NetworkManager
-
-- name: "[NM] Flush handlers (apply NM profiles)"
+- name: "[NM] Flush handlers (reload NM connection state, if anything changed)"
   ansible.builtin.meta: flush_handlers
 
 # ── Enable NetworkManager-wait-online ─────────────────────────────────────────
