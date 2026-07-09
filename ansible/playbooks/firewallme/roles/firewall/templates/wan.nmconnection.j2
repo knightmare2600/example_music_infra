@@ -16,7 +16,7 @@ method=manual
 method=auto
 {% endif %}
 dns={{ fw_cld_dns }};{{ fw_inet_dns }};
-dns-search=jukebox.internal;
+dns-search={{ fw_domain }};
 
 [ipv6]
 addr-gen-mode=default

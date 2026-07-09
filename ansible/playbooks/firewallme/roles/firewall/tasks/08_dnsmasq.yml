@@ -32,7 +32,7 @@
       # Example Music Limited — {{ inventory_hostname }}
       # Written by Ansible firewall role
       nameserver 127.0.0.1
-      search {{ fw_site_code | lower }}.jukebox.internal jukebox.internal
+      search {{ fw_site_code | lower }}.{{ fw_domain }} {{ fw_domain }}
     attributes: "+i"   # immutable — prevent NM overwriting
 
 - name: "[dnsmasq] Write /etc/dnsmasq.d/exa-firewall.conf"
@@ -53,8 +53,8 @@
       listen-address={{ fw_lan_ip }}
 
       # --- DNS ---
-      domain={{ fw_site_code | lower }}.jukebox.internal
-      local=/{{ fw_site_code | lower }}.jukebox.internal/
+      domain={{ fw_site_code | lower }}.{{ fw_domain }}
+      local=/{{ fw_site_code | lower }}.{{ fw_domain }}/
       expand-hosts
 
       # Upstream DNS — site DC first, then central BIND9
@@ -69,7 +69,7 @@
       dhcp-range={{ fw_dhcp_start }},{{ fw_dhcp_end }},12h
       dhcp-option=option:router,{{ fw_lan_ip }}
       dhcp-option=option:dns-server,{{ fw_dc_dns }},{{ fw_cld_dns }}
-      dhcp-option=option:domain-name,{{ fw_site_code | lower }}.jukebox.internal
+      dhcp-option=option:domain-name,{{ fw_site_code | lower }}.{{ fw_domain }}
 
       # Authoritative — reply NACK to unknown leases
       dhcp-authoritative
@@ -85,7 +85,7 @@
       dhcp-leasefile=/var/lib/misc/dnsmasq.leases
 
       # DHCP dynamic hostname registration in BIND zone convention
-      # dhcp01.<site>.jukebox.internal → 192.168.<octet>.100
+      # dhcp01.<site>.{{ fw_domain }} → 192.168.<octet>.100
       dhcp-generate-names=tag:{{ fw_site_code | lower }},dhcp%s.{{ fw_site_code | lower }}
 
       # --- Static DHCP leases from inventory ---

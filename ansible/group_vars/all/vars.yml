@@ -5,7 +5,16 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-09  exa_domain/exa_domain_join_user derived from benarbejde/ad_forest.json
+#               (single source of truth for AD forest identity) instead of hardcoded --
+#               see ansible/tasks/ad_forest_facts.yml. Jinja here is evaluated lazily by
+#               Ansible the first time either var is actually referenced in a task, so no
+#               explicit task-file include is needed for group_vars/all to pick this up.
 # =============================================================================
+
+# Path to ad_forest.json on the Ansible control node. Mirrors sites_csv_path's
+# existing per-consumer default pattern (e.g. group_vars/rudder_servers/main.yml).
+ad_forest_json_path: "/etc/example-music/ad_forest.json"
 
 # Binary / asset server
 # exa_asset_base / exa_wallpaper_url removed 2026-07-08 -- wallpaper/binaries are win_copy'd
@@ -14,9 +23,9 @@
 # to get a file onto a box. exa_wallpaper_dest is just the destination path, still needed.
 exa_wallpaper_dest:  'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.png'
 
-# Domain
-exa_domain:          "jukebox.internal"
-exa_domain_join_user: "JUKEBOX\\Administrator"
+# Domain -- see benarbejde/ad_forest.json (single source of truth)
+exa_domain:           "{{ (lookup('file', ad_forest_json_path) | from_json).domain_fqdn }}"
+exa_domain_join_user: "{{ (lookup('file', ad_forest_json_path) | from_json).netbios_name }}\\Administrator"
 
 # Chocolatey
 exa_choco_source:    "https://community.chocolatey.org/api/v2/"
