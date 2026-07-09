@@ -28,6 +28,9 @@
 #               `is_first_dc is not defined` guard on the set_fact so an
 #               already-resolved value from 00-preflight.yml is never
 #               clobbered here.
+#   2026-07-09  DNS check now uses exa_domain (from benarbejde/ad_forest.json via
+#               group_vars/all/vars.yml) instead of a hardcoded "jukebox.internal"
+#               literal -- this was executable PowerShell, not just a comment.
 # =============================================================================
 
 - name: "[Preflight] Gather facts"
@@ -136,19 +139,19 @@
 # DNS — warning only, not a hard fail
 # =============================================================================
 
-- name: "[Preflight] Check jukebox.internal DNS resolves"
+- name: "[Preflight] Check {{ exa_domain }} DNS resolves"
   ansible.windows.win_shell: |
     try {
-      [System.Net.Dns]::GetHostAddresses("jukebox.internal") | Out-Null
+      [System.Net.Dns]::GetHostAddresses("{{ exa_domain }}") | Out-Null
       "ok"
     } catch { "fail" }
   register: preflight_dns
   changed_when: false
 
-- name: "[Preflight] WARN — jukebox.internal does not resolve (expected pre-domain-join)"
+- name: "[Preflight] WARN — {{ exa_domain }} does not resolve (expected pre-domain-join)"
   debug:
     msg: >
-      WARN: jukebox.internal does not resolve on {{ inventory_hostname }}.
+      WARN: {{ exa_domain }} does not resolve on {{ inventory_hostname }}.
       This is expected if the host is not yet domain-joined, or if this is
       the first DC build (domain does not exist yet).
       If this host SHOULD already be able to resolve it, check DNS

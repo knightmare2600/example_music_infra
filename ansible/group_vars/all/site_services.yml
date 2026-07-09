@@ -16,6 +16,7 @@
 # =============================================================================
 
 site_services:
+  domain_fqdn: "jukebox.internal"
   provisioning_edinburgh:
     hostname: "EXAPRVVRK001"
     ip: "192.168.139.50"

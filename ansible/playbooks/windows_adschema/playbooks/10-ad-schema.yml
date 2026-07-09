@@ -92,6 +92,11 @@
 #                     ad_schema.yml to 10-ad-schema.yml. Inline microsoft.ad
 #                     collection check replaced with a shared include:
 #                     ../tasks/ad_collection_check.yml.
+# v1.3.0  2026-07-09  ad_domain's fallback (when dc_domain_name isn't set --
+#                     i.e. standalone runs not preceded by windows_dc/00-dc-
+#                     preflight.yml) changed from a hardcoded 'jukebox.internal'
+#                     literal to exa_domain, which is itself now derived from
+#                     benarbejde/ad_forest.json (single source of truth).
 # =============================================================================
 
 - name: Build Active Directory OU schema
@@ -100,7 +105,7 @@
   become: false
 
   vars:
-    ad_domain:      "{{ dc_domain_name | default('jukebox.internal') }}"
+    ad_domain:      "{{ dc_domain_name | default(exa_domain) }}"
     sites_csv_path: "/etc/example-music/sites.csv"
 
     # Set ad_email_domain to your routable email domain when it differs from

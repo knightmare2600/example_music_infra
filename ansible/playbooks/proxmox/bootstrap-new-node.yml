@@ -43,6 +43,15 @@
 #               build-sheet hostname/IP drives Ansible instead of a
 #               shell-script wizard re-deriving them from a sites.csv copy
 #               that had to be pre-served by the preseed web server.
+#   2026-07-09  Domain hardcodes (/etc/hosts, postfix myhostname, PVE DNS search,
+#               reconnect message) replaced with _ad_forest.domain_fqdn, loaded from
+#               benarbejde/ad_forest.json the same way sites.csv/address_policy.json
+#               already are here. Also fixed a real bug found along the way: the PVE
+#               DNS API call set --dns1/--dns2 to two PUBLIC resolvers only
+#               (1.1.1.1/9.9.9.9), with no internal BIND9 server at all -- meaning
+#               this node could never have resolved internal hostnames. Now uses
+#               _ad_forest.dns_forwarders[0:2] (internal BIND9 first, then one public
+#               upstream), matching the order used everywhere else in this repo.
 # =============================================================================
 
 - name: Proxmox VE — bootstrap a new node's real identity
@@ -53,6 +62,7 @@
   vars:
     sites_csv_src: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
     address_policy_src: "{{ playbook_dir }}/../../../../benarbejde/address_policy.json"
+    ad_forest_src: "{{ playbook_dir }}/../../../../benarbejde/ad_forest.json"
 
   vars_prompt:
     - name: target_hostname
@@ -107,6 +117,12 @@
     - name: Load address_policy.json
       ansible.builtin.set_fact:
         _address_policy: "{{ lookup('file', address_policy_src) | from_json }}"
+      delegate_to: localhost
+      become: false
+
+    - name: Load ad_forest.json
+      ansible.builtin.set_fact:
+        _ad_forest: "{{ lookup('file', ad_forest_src) | from_json }}"
       delegate_to: localhost
       become: false
 
@@ -215,8 +231,8 @@
         line: "{{ item }}"
         insertafter: EOF
       loop:
-        - "127.0.1.1\t{{ target_hostname | lower }}.jukebox.internal\t{{ target_hostname | lower }}"
-        - "{{ _derived_ip }}\t{{ target_hostname | lower }}.jukebox.internal\t{{ target_hostname | lower }}"
+        - "127.0.1.1\t{{ target_hostname | lower }}.{{ _ad_forest.domain_fqdn }}\t{{ target_hostname | lower }}"
+        - "{{ _derived_ip }}\t{{ target_hostname | lower }}.{{ _ad_forest.domain_fqdn }}\t{{ target_hostname | lower }}"
 
     - name: Apply hostname to the running system
       ansible.builtin.hostname:
@@ -231,18 +247,23 @@
       ansible.builtin.lineinfile:
         path: /etc/postfix/main.cf
         regexp: '^myhostname\s*='
-        line: "myhostname = {{ target_hostname | lower }}.jukebox.internal"
+        line: "myhostname = {{ target_hostname | lower }}.{{ _ad_forest.domain_fqdn }}"
       when: _postfix_check.stat.exists
 
     - name: Set persistent DNS via PVE API
+      # DNS forwarder order matches _ad_forest.dns_forwarders (benarbejde/ad_forest.json):
+      # internal BIND9 first, then a public upstream -- previously hardcoded to two public
+      # resolvers only (1.1.1.1/9.9.9.9), which would never have resolved internal
+      # {{ _ad_forest.domain_fqdn }} hostnames at all.
       ansible.builtin.command: >-
         pvesh set /nodes/{{ target_hostname | lower }}/dns
-        --dns1 1.1.1.1 --dns2 9.9.9.9 --search jukebox.internal
+        --dns1 {{ _ad_forest.dns_forwarders[0] }} --dns2 {{ _ad_forest.dns_forwarders[1] }}
+        --search {{ _ad_forest.domain_fqdn }}
       changed_when: true
 
     - name: Final message — SSH session on the old IP is about to drop
       ansible.builtin.debug:
         msg:
           - "Network config applied. This SSH session (on the DHCP IP) will not survive."
-          - "Reconnect via: ssh ansible@{{ _derived_ip }}  (or {{ target_hostname | lower }}.jukebox.internal once DNS picks it up)"
+          - "Reconnect via: ssh ansible@{{ _derived_ip }}  (or {{ target_hostname | lower }}.{{ _ad_forest.domain_fqdn }} once DNS picks it up)"
           - "Then: add it to configs/inventory/, and run proxmox/site.yml as normal."

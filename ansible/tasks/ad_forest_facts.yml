@@ -1,0 +1,32 @@
+---
+# =============================================================================
+# ansible/tasks/ad_forest_facts.yml
+# Example Music Limited — Load AD forest identity from ad_forest.json
+#
+# Single source of truth for domain_fqdn/netbios_name/forest_mode/domain_mode/
+# hub_sites/cld_site/dns_forwarders — benarbejde/ad_forest.json, deployed to
+# /etc/example-music/ad_forest.json the same way sites.csv/devices.csv are.
+#
+# Sets one fact, `ad_forest` (a dict with all of the above as keys). Consumers
+# derive their own existing variable names from it (e.g. exa_domain: "{{
+# ad_forest.domain_fqdn }}") rather than reading ad_forest.* directly
+# everywhere, so this is a one-time migration, not a rename of every reference.
+#
+# Mirrors ansible/tasks/hostname_facts.yml's pattern: a small, focused shared
+# task file, included via import_tasks/include_tasks at the top of every
+# consuming play.
+# =============================================================================
+# Changelog:
+#   2026-07-09  Initial file.
+# =============================================================================
+
+- name: Load ad_forest.json
+  delegate_to: localhost
+  become: false
+  set_fact:
+    ad_forest: "{{ lookup('file', ad_forest_json_path | default('/etc/example-music/ad_forest.json')) | from_json }}"
+
+- name: Debug — ad_forest facts
+  debug:
+    msg: "domain_fqdn={{ ad_forest.domain_fqdn }}  netbios_name={{ ad_forest.netbios_name }}"
+  tags: [never, debug]

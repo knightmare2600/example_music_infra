@@ -1,0 +1,32 @@
+---
+# =============================================================================
+# group_vars/windows_dc/vault.yml
+# Example Music Limited — Encrypted secrets (ansible-vault) for DC hosts
+# =============================================================================
+# Encrypt this file:
+#   ansible-vault encrypt group_vars/windows_dc/vault.yml
+# Edit:
+#   ansible-vault edit group_vars/windows_dc/vault.yml
+# =============================================================================
+# Changelog:
+#   2026-07-09  Initial file. Previously 00-dc-preflight.yml's dc_dsrm_password/
+#               dc_admin_password vars_prompt entries had real, guessable, hardcoded
+#               plaintext defaults ("H0r$3B@Tt3rYSt@pL3" / "0p3nS3$@m32026") sitting
+#               in the playbook source -- anyone accepting the prompt default (or
+#               just reading the file) got a real credential. Both prompts now
+#               default to these vault vars (empty unless you populate them),
+#               forcing explicit entry at the prompt otherwise, matching
+#               dc_local_password's already-correct empty-default pattern.
+#               vault_ad_new_user_password also added here -- required by
+#               windows_adschema/playbooks/30-ad-users.yml but previously undefined
+#               anywhere in the repo (a real blocker, not new scope).
+# =============================================================================
+
+# Optional -- leave empty ("") to force explicit entry at the 00-dc-preflight.yml
+# prompt every run (the safer default). Only populate these if you specifically
+# need this playbook to run non-interactively / unattended.
+vault_dc_dsrm_password:      ""
+vault_dc_admin_password:     ""
+
+# Required by windows_adschema/playbooks/30-ad-users.yml (demo AD user creation).
+vault_ad_new_user_password:  "CHANGEME"

@@ -120,6 +120,9 @@
 #               FRD (172.16.124.0/24) the first time anything caused it to render -- now
 #               derives the full subnet prefix from the device's own IP instead of assuming
 #               192.168.x for every site.
+#   2026-07-09  domain (both plays) now derived from benarbejde/ad_forest.json instead of a
+#               hardcoded "jukebox.internal" literal -- single source of truth, same file
+#               windows_dc/windows_bootstrap/windows_adschema/rudder_servers now all read.
 # =============================================================================
 
 - name: EXADNSVRK001 -- BIND9 DNS server
@@ -136,7 +139,8 @@
     devices_csv_path: "/etc/example-music/devices.csv"
     bind_zone_dir: "/etc/bind"
     this_hostname: "exadnsvrk001"
-    domain: "jukebox.internal"
+    ad_forest_json_path: "/etc/example-music/ad_forest.json"
+    domain: "{{ (lookup('file', ad_forest_json_path) | from_json).domain_fqdn }}"
 
     # Forwarders
     dns_forwarders:
@@ -382,7 +386,7 @@
         content: |
           // ============================================================
           // named.conf.options -- Example Music Limited
-          // EXADNSVRK001  --  jukebox.internal DNS
+          // EXADNSVRK001  --  {{ domain }} DNS
           // Managed by Ansible bind9-dns.yml
           // ============================================================
 
@@ -869,7 +873,8 @@
   vars:
     dns_ip: "192.168.139.8"
     this_hostname: "exadnsvrk001"
-    domain: "jukebox.internal"
+    ad_forest_json_path: "/etc/example-music/ad_forest.json"
+    domain: "{{ (lookup('file', ad_forest_json_path) | from_json).domain_fqdn }}"
     bind_zone_dir: "/etc/bind"
     zone_serial: "{{ ansible_date_time.date | replace('-', '') }}01"
     zone_ttl: 300

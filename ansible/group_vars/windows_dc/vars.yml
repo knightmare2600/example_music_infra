@@ -8,6 +8,14 @@
 # =============================================================================
 # Changelog:
 #   2026-06-25  Initial file
+#   2026-07-09  ad_domain_name/ad_netbios_name/dc_hub_sites/dc_cld_site/dc_dns_forwarders
+#               derived from benarbejde/ad_forest.json instead of hardcoded -- this file
+#               previously called itself the "single source of truth" for domain name/
+#               NetBIOS, but exa_domain (group_vars/all) and rudder_domain
+#               (group_vars/rudder_servers) each had their own separate hardcoded copy of
+#               the same value, with no way to change one without hunting for the others.
+#               ad_forest.json is the real single source now; this file (and the other two)
+#               just read it.
 # =============================================================================
 
 # OU path used by 80-domainjoin.yml for DC objects
@@ -39,27 +47,16 @@ dc_db_path:   'C:\Windows\NTDS'
 dc_log_path:  'C:\Windows\NTDS'
 dc_sysvol:    'C:\Windows\SYSVOL'
 
-# AD domain identity — single source of truth for domain name and NetBIOS.
-# Used as defaults in 00-dc-preflight.yml vars_prompt; operator can override at
-# run time but changing here keeps all defaults in sync with no playbook edits.
-ad_domain_name:  "jukebox.internal"
-ad_netbios_name: "JUKEBOX"
-
-# Hub / special-sauce site codes — used in source resolution
-dc_hub_sites:
-  - FAL
-  - ODE
-  - BRK
-
-dc_cld_site: "CLD"
+# AD domain identity, hub sites, and DNS forwarders — all derived from
+# benarbejde/ad_forest.json (single source of truth), not hardcoded. See
+# ansible/tasks/ad_forest_facts.yml. Used as defaults in 00-dc-preflight.yml
+# vars_prompt; operator can still override at run time.
+ad_domain_name:    "{{ (lookup('file', ad_forest_json_path) | from_json).domain_fqdn }}"
+ad_netbios_name:   "{{ (lookup('file', ad_forest_json_path) | from_json).netbios_name }}"
+dc_hub_sites:      "{{ (lookup('file', ad_forest_json_path) | from_json).hub_sites }}"
+dc_cld_site:       "{{ (lookup('file', ad_forest_json_path) | from_json).cld_site }}"
+dc_dns_forwarders: "{{ (lookup('file', ad_forest_json_path) | from_json).dns_forwarders }}"
 
 # dc_hub_sources and dc_cld_source are NOT defined here.
 # 00-dc-preflight.yml builds them at runtime from sites.csv so the IPs stay in
 # one place (the DC column of sites.csv) rather than being duplicated here.
-
-# DNS forwarders configured on each new DC post-promotion.
-# Order matters: CLD BIND9 first (internal zones), then public upstreams.
-dc_dns_forwarders:
-  - "192.168.139.8"   # CLD BIND9 — upstream for internal zones we control
-  - "9.9.9.9"         # Quad9 — public upstream
-  - "1.1.1.1"         # Cloudflare — public upstream

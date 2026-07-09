@@ -126,6 +126,21 @@
 #               gated just like everything else. ansible_user/
 #               ansible_password were already set per-play (2026-07-04) but
 #               ansible_connection/shell_type/port weren't. Added alongside.
+#   2026-07-09  SAFETY FIX: dc_dsrm_password/dc_admin_password had real, guessable,
+#               hardcoded plaintext defaults ("H0r$3B@Tt3rYSt@pL3" / "0p3nS3$@m32026")
+#               sitting in this file -- anyone accepting the prompt default (or just
+#               reading the source) got a real credential. Both now default to
+#               group_vars/windows_dc/vault.yml's vault_dc_dsrm_password/
+#               vault_dc_admin_password (empty unless populated), forcing explicit
+#               entry at the prompt otherwise -- matches dc_local_password's already-
+#               correct empty-default pattern. Also fixed dc_admin_user's fallback:
+#               previously rendered "Administrator\Administrator" (not
+#               "JUKEBOX\Administrator") when ad_netbios_name was undefined, since
+#               the fallback-within-a-fallback used the wrong variable name. Same
+#               pass: dc_domain_name/dc_netbios_name's own fallback-of-fallback
+#               (used only if ad_domain_name/ad_netbios_name are somehow undefined --
+#               a truly ungrouped run) now reads ad_forest.json directly instead of a
+#               second hardcoded 'jukebox.internal'/'JUKEBOX' literal.
 #
 # =============================================================================
 
@@ -153,12 +168,12 @@
     - name: dc_domain_name
       prompt: "AD domain FQDN"
       private: false
-      default: "{{ ad_domain_name | default('jukebox.internal') }}"
+      default: "{{ ad_domain_name | default((lookup('file', ad_forest_json_path | default('/etc/example-music/ad_forest.json')) | from_json).domain_fqdn) }}"
 
     - name: dc_netbios_name
       prompt: "AD NetBIOS name"
       private: false
-      default: "{{ ad_netbios_name | default('JUKEBOX') }}"
+      default: "{{ ad_netbios_name | default((lookup('file', ad_forest_json_path | default('/etc/example-music/ad_forest.json')) | from_json).netbios_name) }}"
 
     - name: dc_is_first_in_forest
       prompt: >-
@@ -172,17 +187,17 @@
     - name: dc_dsrm_password
       prompt: "DSRM (Directory Services Restore Mode) password"
       private: true
-      default: "H0r$3B@Tt3rYSt@pL3"
+      default: "{{ vault_dc_dsrm_password | default('') }}"
 
     - name: dc_admin_user
       prompt: "Domain Admin username (NETBIOS_NAME\\username)"
       private: false
-      default: "{{ (ad_netbios_name | default('Administrator')) }}\\Administrator"
+      default: "{{ ad_netbios_name | default('JUKEBOX') }}\\Administrator"
 
     - name: dc_admin_password
       prompt: "Domain Admin password"
       private: true
-      default: "0p3nS3$@m32026"
+      default: "{{ vault_dc_admin_password | default('') }}"
 
     - name: dc_local_user
       prompt: "Local Administrator username"
