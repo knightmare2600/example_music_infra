@@ -7,20 +7,25 @@
 # a single target Domain Controller — always run this against one host to
 # "up" the AD schema, no tags, no --limit gymnastics.
 #
-# Runs only when populate_ad=yes was answered at 00-dc-preflight.yml (or
-# passed directly with -e populate_ad=yes on a standalone run). Each stage
-# guards itself with meta: end_play otherwise.
+# This is always a separate, second ansible-playbook invocation — it is not,
+# and cannot be, chain-imported from windows_dc/site.yml (import_playbook
+# expands every play's hosts: pattern at parse time, before 00-dc-preflight.yml's
+# vars_prompt has run, so a later play's hosts: gate can never see that
+# answer — see windows_dc/site.yml's own changelog). 00-dc-preflight.yml
+# only records the populate_ad answer and 40-dc-summary.yml prints the exact
+# command to run here, once promotion has actually succeeded.
+#
+# Each stage guards itself with a hosts:/meta: end_play gate on populate_ad,
+# so it's also safe to invoke this file directly without remembering the flag.
 #
 # Run from the ansible/ root for all commands.
 #
-# Usage — normal path, via windows_dc/site.yml (prompts at dc preflight):
-#   ansible-playbook playbooks/windows_dc/site.yml -i <inventory> -e target=<host>
+# Usage — after DC promotion, once 40-dc-summary.yml has printed the command
+# (target supplied directly, skips the prompt):
+#   ansible-playbook playbooks/windows_adschema/site.yml -e populate_ad=yes -e ad_target=<host>
 #
 # Usage — standalone, prompted for the target Domain Controller:
 #   ansible-playbook playbooks/windows_adschema/site.yml -e populate_ad=yes
-#
-# Usage — standalone, target supplied directly (skips the prompt):
-#   ansible-playbook playbooks/windows_adschema/site.yml -e populate_ad=yes -e ad_target=<host>
 #
 # Standalone plays can also be run directly without site.yml:
 #   ansible-playbook playbooks/windows_adschema/playbooks/20-ad-groups.yml -e ad_target=<host>
@@ -41,6 +46,14 @@
 #               per-stage tags. 40-ad-computers.yml is not yet migrated —
 #               its numbered stage and this import will be added once the
 #               source file is available.
+#   2026-07-09  Corrected the usage note above: windows_dc/site.yml's
+#               "AD population" import block (commented out, pointed at the
+#               old flat filenames from before this restructure) has been
+#               removed rather than fixed — even pointed at this file, it
+#               could never have worked, since populate_ad is only known at
+#               00-dc-preflight.yml runtime and hosts: patterns for later
+#               imported plays are resolved at parse time. This has always
+#               been, and remains, a manually-run second command.
 # =============================================================================
 
 - import_playbook: playbooks/00-ad-preflight.yml
