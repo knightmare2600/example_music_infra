@@ -5,12 +5,11 @@
 # Replicates Join-DomainAndBootstrap.ps1 Stage 6
 # =============================================================================
 # The hibernate on/off decision itself is NOT here — that's
-# exa_hibernation_enabled-driven policy owned by playbooks/70-hibernation.yml
-# (and, unconditionally off, by 05-bootstrap.yml Stage 6 directly — a
-# fresh-build default that 70-hibernation.yml is later run to correct on
-# LAP/SUR devices). This file covers the two other Stage 6 settings that
-# aren't hibernation-policy-dependent, so both 05-bootstrap.yml and
-# 70-hibernation.yml can share one source of truth for them.
+# exa_hibernation_enabled-driven policy owned by playbooks/70-hibernation.yml.
+# This file covers the two other Stage 6 settings that aren't
+# hibernation-policy-dependent (05-bootstrap.yml, which used to also include
+# this inline, was retired 2026-07-09 — see 70-hibernation.yml/00-preflight.yml's
+# own changelogs).
 #
 # Requires is_server (set by tasks/preflight.yml, or computed inline by
 # callers that don't run the full preflight chain — see 70-hibernation.yml).

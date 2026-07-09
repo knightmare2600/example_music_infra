@@ -1,0 +1,84 @@
+---
+# =============================================================================
+# playbooks/85-finish.yml
+# Example Music Limited — Bootstrap finish: summary + final reboot
+# =============================================================================
+# Prints a remote-access summary (SSH/RDP/SAC, domain/OU, first-DC warning,
+# site/arch/hypervisor) and performs the final reboot. Ported from
+# 05-bootstrap.yml's Stage 23, which had no standalone equivalent at all --
+# the granular site.yml chain (00-preflight through 80-domainjoin) previously
+# just ended after domain-join with no summary and no guaranteed final reboot.
+#
+# Needs facts set by earlier plays in the chain (all confirmed present by the
+# time this runs, in a normal site.yml invocation):
+#   target_hostname, is_first_dc  — 00-preflight.yml
+#   host_ip, hypervisor           — 35-guest-tools.yml (site_detection.yml/
+#                                    hypervisor detection tasks)
+#   host_arch                     — 50-binaries.yml (tasks/arch_facts.yml)
+#   host_site                     — tasks/hostname_facts.yml
+#   is_server                     — tasks/preflight.yml
+#   domain_ou_path                — 80-domainjoin.yml (only set if this run
+#                                    actually joined the domain; falls back to
+#                                    "already joined" otherwise, same as
+#                                    05-bootstrap.yml's Stage 23 did)
+# Running this file standalone (outside site.yml) will show these as blank/
+# undefined unless the earlier plays already ran against the same host in a
+# prior session — this file assumes it's the last stage of a full run.
+#
+# NOT ported: Stage 23's "run 70-hibernation.yml separately on LAP/SUR
+# devices" note. That was a workaround for 05-bootstrap.yml's monolith, which
+# historically didn't handle hibernation policy correctly for all device
+# roles. The granular chain's own 70-hibernation.yml already runs earlier as
+# a normal stage of site.yml (role-aware, via exa_hibernation_enabled) -- by
+# the time this file runs, hibernation is already correctly set, no follow-up
+# needed.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/85-finish.yml
+#
+# Tags: finish
+# =============================================================================
+# Changelog:
+#   2026-07-09  Initial file — ported from 05-bootstrap.yml Stage 23. This was
+#               a genuine gap, not a stylistic one: site.yml's chain had no
+#               final summary or guaranteed reboot at all before this.
+# =============================================================================
+
+- name: Windows — Bootstrap finish (summary + reboot)
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  tasks:
+
+    - name: "── Finish ──"
+      debug:
+        msg: "Bootstrap complete. Printing summary..."
+      tags: finish
+
+    - name: "[Finish] Remote access summary"
+      debug:
+        msg:
+          - "══════════════════════════════════════════════════════════"
+          - " Bootstrap complete: {{ target_hostname | upper }}"
+          - "══════════════════════════════════════════════════════════"
+          - " SSH   : ssh Administrator@{{ host_ip }} (port 22)"
+          - " RDP   : {{ host_ip }}:3389"
+          - " SAC   : {{ 'Enabled on COM1/115200 (SOL)' if is_server else 'N/A (not a server OS)' }}"
+          - " Domain: {{ exa_domain }} / OU: {{ domain_ou_path | default('already joined') }}"
+          - "{{ '!! FIRST-DC BUILD — domain NOT joined. Run windows_dc/site.yml next !!' if is_first_dc | default(false) | bool else '' }}"
+          - " Site  : {{ host_site }}"
+          - " Arch  : {{ host_arch }}"
+          - " Hyper : {{ hypervisor }}"
+          - "══════════════════════════════════════════════════════════"
+      tags: finish
+
+    - name: "[Finish] Set screen resolution to 1280x960"
+      ansible.windows.win_shell: setres.exe -w 1280 -h 800
+      changed_when: true
+      tags: finish
+
+    - name: "[Finish] Final reboot"
+      ansible.windows.win_reboot:
+        reboot_timeout:    600
+        post_reboot_delay: 30
+        msg:               "Ansible bootstrap complete — final reboot"
+      tags: finish
