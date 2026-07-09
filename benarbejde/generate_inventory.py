@@ -43,6 +43,8 @@
 #              windows_bootstrap/inventory/cld.ini's structure. Hostnames (FWL/DCS1/DCS2/WKS1/LAP1)
 #              now come from build_hostname() instead of duplicated as inline EXA{ROLE}{SITE}001
 #              string literals — known source of truth for EXA<ROLE><SITE><NNN> naming convention.
+#              (2026-07-09 note: the "windows_bootstrap/inventory/cld.ini" this comment refers to
+#              no longer exists under that path/structure -- see the 2026-07-09 entry below.)
 #  2026-07-05  Wire in unused hostname_map (BMC/PVE) built in generate() into build_ini(). PVE nodes
 #              get a real, uncommented [pvenodes] group (matching the existing group_vars/pvenodes/
 #              directory) since they're genuinely Ansible-managed. BMC hosts (iDRAC/iLO/Redfish) are
@@ -122,6 +124,22 @@
 #              from the provisioning server (that pattern only ever existed for the pre-Ansible
 #              bootstrap scripts). The site_services dict itself (provisioning server hostnames/
 #              IPs/URLs, still useful documentation) is unchanged.
+#  2026-07-09  Consolidated the two parallel inventory locations this generator and windows_dc
+#              onboarding had drifted into. ansible/inventory/ (this script's own --out default)
+#              and ansible/configs/inventory/ (windows_dc's hand-curated cld.ini/fal.ini/liv.ini)
+#              had different, incompatible group structures for the exact same sites -- this
+#              script put DCS1 straight into [windows_server] with no windows_dc/windows_nodes
+#              groups at all, while configs/inventory/*.ini used a distinct
+#              windows_dc -> windows_server -> windows -> windows_nodes chain (needed for
+#              group_vars/windows_dc/ and group_vars/windows_nodes/connection.yml to apply).
+#              Running both meant whichever one a given operator invocation happened to load
+#              silently determined whether DC-specific group_vars applied at all. build_ini() now
+#              emits the windows_dc/windows_nodes structure directly (DEVICE_GROUP_MAP's DCS entry
+#              moved from windows_server to windows_dc to match), and --out's default moved from
+#              ~/ansible/inventory to ~/ansible/configs/inventory -- one location, one structure,
+#              matching what windows_dc onboarding has always actually needed. ansible/inventory/
+#              retired; see configs/inventory/README or the commit that made this change for the
+#              migration.
 # ==================================================================================================
 
 import csv
@@ -205,7 +223,7 @@ DEVICE_GROUP_MAP = {
   "WKS": "windows_desktop",
   "LAP": "windows_laptop",
   "SVR": "windows_server",
-  "DCS": "windows_server",
+  "DCS": "windows_dc",
   "FWL": "firewalls",
 }
 
@@ -519,18 +537,27 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
 
   extra_group_blocks = ""
   for group, lines in managed_by_group.items():
-    if group in ("windows_desktop", "windows_laptop", "windows_server", "firewalls"):
+    if group in ("windows_desktop", "windows_laptop", "windows_server", "windows_dc", "firewalls"):
       # These groups already exist above with their standard-template entries — append to
       # the SAME group rather than declaring it a second time (INI parsers merge repeated
       # group headers, but keeping it readable matters more than being clever here).
       continue
     extra_group_blocks += f"\n[{group}]\n" + "\n".join(lines) + "\n"
 
-  # Devices destined for windows_desktop/windows_laptop/windows_server/firewalls get folded
+  # Devices destined for windows_desktop/windows_laptop/windows_dc/firewalls get folded
   # into those groups' existing blocks below via these lookups.
   def extra_for(group):
     lines = managed_by_group.get(group, [])
     return ("\n" + "\n".join(lines)) if lines else ""
+
+  # windows_server has no standard-template hosts of its own any more (DCS moved to its own
+  # windows_dc group below, :children-linked into windows_server) -- only devices.csv SVR-role
+  # extras (a plain, non-DC server) put anything directly into windows_server. Only emit the
+  # section if there's actually something to put in it, since an empty [windows_server] header
+  # with nothing but a blank line under it is confusing next to windows_server:children below.
+  windows_server_extra_block = ""
+  if managed_by_group.get("windows_server"):
+    windows_server_extra_block = "\n[windows_server]" + extra_for("windows_server") + "\n"
 
   other_devices_block = ""
   if reference_lines or review_lines:
@@ -587,10 +614,13 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
 {hostnames['FWL1']}  ansible_host={vals['FW']}  ansible_user=ansible  ansible_connection=ssh
 {hostnames['FWL2']}  ansible_host={vals['FW']}  ansible_user=ansible  ansible_connection=ssh{extra_for('firewalls')}
 
-[windows_server]
+[windows_dc]
 {hostnames['DCS1']}  ansible_host={vals['DCS1']}
-# {hostnames['DCS2']}  ansible_host={vals['DCS2']}{extra_for('windows_server')}
+# {hostnames['DCS2']}  ansible_host={vals['DCS2']}{extra_for('windows_dc')}
 
+[windows_server:children]
+windows_dc
+{windows_server_extra_block}
 [windows_desktop]
 # {hostnames['WKS1']}  ansible_host={vals['WKS1']}{extra_for('windows_desktop')}
 
@@ -606,6 +636,9 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
 windows_server
 windows_desktop
 windows_laptop
+
+[windows_nodes:children]
+windows
 {extra_group_blocks}
 # Out-of-band management (iDRAC/iLO/Redfish) — not Ansible-managed, for
 # reference only:
@@ -1013,7 +1046,7 @@ def generate(csv_path: Path, out_dir: Path, devices_path: Path):
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument("csv", type=Path, help="Path to sites.csv")
-  parser.add_argument("-o", "--out", type=Path, default=Path.home() / "ansible/inventory")
+  parser.add_argument("-o", "--out", type=Path, default=Path.home() / "ansible/configs/inventory")
   parser.add_argument(
     "--devices", type=Path, default=None,
     help="Path to devices.csv (default: devices.csv next to sites.csv)"
