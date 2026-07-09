@@ -8,7 +8,28 @@
 # Ansible IP allow, Cockpit, Zabbix agent, dnsmasq, DHCP.
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-09  SAFETY FIX: the ruleset reload previously fired unconditionally on any
+#               change, with no check of which interface the current session is using.
+#               fw_wan_ssh_enabled defaults to false (no WAN SSH accept rule in the
+#               generated ruleset), so a WAN-connected control session would lose SSH
+#               the instant the ruleset reloaded. Added the same CURRENT_IFACE check
+#               firewallme.sh already has (script lines 1528-1538): skip the live
+#               reload, defer with a printed message, if the current session's
+#               outbound interface is WAN and WAN SSH isn't enabled. The ruleset is
+#               still always written to disk regardless -- only the live reload is
+#               gated.
 # =============================================================================
+
+- name: "[nftables] Detect current session's outbound interface (safety check before reload)"
+  ansible.builtin.shell: |
+    ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}'
+  register: nft_current_iface
+  changed_when: false
+
+- name: "[nftables] Set safety flag — would this reload strand the current session?"
+  ansible.builtin.set_fact:
+    nft_reload_would_strand_session: >-
+      {{ (nft_current_iface.stdout | trim == fw_wan_iface) and not fw_wan_ssh_enabled }}
 
 - name: "[nftables] Write /etc/nftables.conf"
   ansible.builtin.copy:
@@ -162,20 +183,39 @@
       }
   notify: reload nftables
 
-- name: "[nftables] Enable nftables service"
+- name: "[nftables] Enable nftables service (queued for boot only — session would be stranded)"
+  ansible.builtin.systemd:
+    name: nftables
+    enabled: true
+  when: nft_reload_would_strand_session
+
+- name: "[nftables] Enable and start nftables service (safe to apply live)"
   ansible.builtin.systemd:
     name: nftables
     enabled: true
     state: started
+  when: not nft_reload_would_strand_session
 
-- name: "[nftables] Flush handlers (load ruleset now)"
+- name: "[nftables] Flush handlers (load ruleset now, if safe)"
   ansible.builtin.meta: flush_handlers
+
+- name: "[nftables] NOTE — ruleset apply deferred (current session would be stranded)"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _c.Y }}[!]{{ _c.NC }} nftables ruleset written to /etc/nftables.conf but NOT applied live --
+      the current session is connected via {{ fw_wan_iface }} (WAN) and WAN SSH is disabled, so
+      applying it now would cut this connection. It will apply on next boot, or run
+      'nft -f /etc/nftables.conf && systemctl start nftables' yourself once you're
+      reconnected via LAN or WireGuard.
+  when: nft_reload_would_strand_session
 
 - name: "[nftables] Verify ruleset loaded"
   ansible.builtin.shell: nft list ruleset | wc -l
   register: nft_line_count
   changed_when: false
+  when: not nft_reload_would_strand_session
 
 - name: "[nftables] Show ruleset size"
   ansible.builtin.debug:
     msg: "nftables ruleset loaded — {{ nft_line_count.stdout | trim }} lines"
+  when: not nft_reload_would_strand_session

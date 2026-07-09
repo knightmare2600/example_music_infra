@@ -161,11 +161,18 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
+- name: "[dnsmasq] Enable dnsmasq (queued for boot only — WAN not yet activated)"
+  ansible.builtin.systemd:
+    name: dnsmasq
+    enabled: true
+  when: not fw_wan_activate
+
 - name: "[dnsmasq] Enable and start dnsmasq"
   ansible.builtin.systemd:
     name: dnsmasq
     enabled: true
     state: started
+  when: fw_wan_activate
 
 - name: "[dnsmasq] Flush handlers"
   ansible.builtin.meta: flush_handlers
@@ -174,7 +181,17 @@
   ansible.builtin.shell: "ss -ulnp | grep ':53'"
   register: dnsmasq_listen
   changed_when: false
+  when: fw_wan_activate
 
 - name: "[dnsmasq] Show listening sockets"
   ansible.builtin.debug:
     msg: "{{ dnsmasq_listen.stdout_lines }}"
+  when: fw_wan_activate
+
+- name: "[dnsmasq] NOTE — start deferred"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _c.Y }}[!]{{ _c.NC }} dnsmasq enabled but not started — WAN not yet activated
+      this run. It will start on next boot, or bring it up now with:
+      {{ _c.G }}systemctl start dnsmasq{{ _c.NC }}
+  when: not fw_wan_activate

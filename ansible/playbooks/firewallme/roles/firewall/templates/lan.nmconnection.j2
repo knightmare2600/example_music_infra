@@ -1,0 +1,20 @@
+[connection]
+id=lan
+uuid={{ (inventory_hostname + '-lan') | to_uuid }}
+type=ethernet
+interface-name={{ fw_lan_iface }}
+autoconnect=true
+autoconnect-priority=100
+
+[ethernet]
+
+[ipv4]
+address1={{ fw_lan_ip }}/24
+method=manual
+never-default=true
+
+[ipv6]
+addr-gen-mode=default
+method=ignore
+
+[proxy]

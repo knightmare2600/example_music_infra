@@ -184,6 +184,16 @@
 
 # ── Enable wg-quick ───────────────────────────────────────────────────────────
 
+- name: "[WireGuard] Enable wg-quick@wg0 (queued for boot only — WAN not yet activated)"
+  ansible.builtin.systemd:
+    name: wg-quick@wg0
+    enabled: true
+    daemon_reload: true
+  when:
+    - fw_wg_role != 'none'
+    - not fw_is_black_site
+    - not fw_wan_activate
+
 - name: "[WireGuard] Enable and start wg-quick@wg0"
   ansible.builtin.systemd:
     name: wg-quick@wg0
@@ -193,6 +203,18 @@
   when:
     - fw_wg_role != 'none'
     - not fw_is_black_site
+    - fw_wan_activate
+
+- name: "[WireGuard] NOTE — start deferred"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _c.Y }}[!]{{ _c.NC }} wg-quick@wg0 enabled but not started — WAN not yet activated
+      this run. It will start on next boot, or bring it up now with:
+      {{ _c.G }}systemctl start wg-quick@wg0{{ _c.NC }}
+  when:
+    - fw_wg_role != 'none'
+    - not fw_is_black_site
+    - not fw_wan_activate
 
 - name: "[WireGuard] Flush handlers"
   ansible.builtin.meta: flush_handlers
@@ -205,11 +227,13 @@
   when:
     - fw_wg_role != 'none'
     - not fw_is_black_site
+    - fw_wan_activate
 
 - name: "[WireGuard] Show wg status"
   ansible.builtin.debug:
     msg: "{{ wg_show.stdout_lines }}"
   when:
+    - fw_wan_activate
     - fw_wg_role != 'none'
     - not fw_is_black_site
     - wg_show.stdout_lines is defined
