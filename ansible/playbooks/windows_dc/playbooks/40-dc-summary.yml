@@ -26,6 +26,11 @@
 #               00-dc-preflight.yml) — group_vars/windows_nodes/
 #               connection.yml is inventory-group-gated and doesn't apply
 #               on ungrouped/ad hoc runs, which broke every win_* task here.
+#   2026-07-09  Added the "Next step — populate AD" task: prints the actual
+#               windows_adschema/site.yml follow-up command when
+#               populate_ad=yes was answered at preflight. This is now the
+#               only place that command is surfaced — see windows_dc/
+#               site.yml's changelog for why it can't be auto-chained.
 # =============================================================================
 
 - name: Windows DC — Post-build health summary
@@ -165,4 +170,19 @@
       debug:
         msg: "{{ dc_dcdiag.stdout_lines }}"
       when: dc_dcdiag_fail_count | int > 0
+      tags: dc_summary
+
+    # ── AD population follow-up ─────────────────────────────────────────────
+    # populate_ad (set as a fact on this host in 00-dc-preflight.yml) is
+    # NOT auto-chained -- see windows_dc/site.yml's own changelog for why
+    # that's structurally impossible with import_playbook. This is the
+    # single place that tells the operator the actual next command.
+
+    - name: "Next step — populate AD"
+      debug:
+        msg:
+          - "{{ _c.Y }}[!]{{ _c.NC }} populate_ad=yes was answered at preflight — run this next:"
+          - "{{ _c.W }}    ansible-playbook playbooks/windows_adschema/site.yml \\{{ _c.NC }}"
+          - "{{ _c.W }}      -e populate_ad=yes -e ad_target={{ inventory_hostname }} --ask-vault-pass{{ _c.NC }}"
+      when: (populate_ad | default('no')) | lower in ['yes', 'y']
       tags: dc_summary

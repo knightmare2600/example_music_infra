@@ -141,6 +141,12 @@
 #               (used only if ad_domain_name/ad_netbios_name are somehow undefined --
 #               a truly ungrouped run) now reads ad_forest.json directly instead of a
 #               second hardcoded 'jukebox.internal'/'JUKEBOX' literal.
+#   2026-07-09  Fixed the "AD population" message below: it claimed the
+#               windows_adschema plays "will run after promotion", but
+#               nothing in windows_dc/site.yml ever chained them (see that
+#               file's own changelog for why it structurally can't be
+#               chained via import_playbook). Message now says the follow-up
+#               command will be printed at 40-dc-summary.yml instead.
 #
 # =============================================================================
 
@@ -392,8 +398,10 @@
     - name: "AD population — additive only, re-run safe"
       debug:
         msg:
-          - "{{ _c.Y }}[!]{{ _c.NC }} populate_ad=yes — AD schema/groups/users/computers will run after promotion."
-          - "{{ _c.Y }}[!]{{ _c.NC }} These plays are ADDITIVE ONLY. Re-running will NOT wipe or overwrite"
+          - "{{ _c.Y }}[!]{{ _c.NC }} populate_ad=yes — noted. This does NOT run automatically as part of"
+          - "{{ _c.Y }}[!]{{ _c.NC }} this playbook: the exact follow-up command will be printed at the end"
+          - "{{ _c.Y }}[!]{{ _c.NC }} of this run (40-dc-summary.yml), once promotion has actually succeeded."
+          - "{{ _c.Y }}[!]{{ _c.NC }} Those plays are ADDITIVE ONLY. Re-running will NOT wipe or overwrite"
           - "{{ _c.Y }}[!]{{ _c.NC }} existing AD objects. Passwords are set on account creation only — no resets."
           - "{{ _c.Y }}[!]{{ _c.NC }} To remove objects, use ADUC (dsa.msc). There is no automated wipe."
       when: (populate_ad | default('no')) | lower in ['yes', 'y']

@@ -50,6 +50,11 @@
 #               the tools" — AD-DS/DNS/GPMC feature install) and
 #               20-dc-promote.yml ("run dcpromo" — actual promotion) since
 #               those are two distinct major steps, not one.
+#   2026-07-09  Removed the dead, commented-out AD-population import block --
+#               it pointed at files that don't exist, and even fixed to point
+#               at windows_adschema/site.yml, could never have worked (see
+#               comment below). 40-dc-summary.yml now prints the correct
+#               follow-up command instead of pretending to auto-chain it.
 # =============================================================================
 
 - import_playbook: playbooks/00-dc-preflight.yml
@@ -67,17 +72,21 @@
 - import_playbook: playbooks/40-dc-summary.yml
   tags: dc_summary
 
-# AD population — runs only when populate_ad=yes was answered at preflight.
-# Each play guards itself with meta: end_play when populate_ad is not yes.
-# Order is mandatory: schema → groups → users → computers.
-# - import_playbook: ../windows_adschema/ad_schema.yml
-#   tags: ad_populate
+# AD population (windows_adschema/site.yml) is deliberately NOT chain-imported
+# here, and can't be made to work that way: populate_ad is only known once
+# 00-dc-preflight.yml's vars_prompt actually runs, but import_playbook expands
+# every play's hosts: pattern at parse time, before any play has executed --
+# confirmed empirically (a later imported play's hosts: pattern cannot see a
+# set_fact from an earlier imported play in the same run, even though normal
+# task-level {{ vars }} can). windows_adschema/00-ad-preflight.yml's hosts:
+# gate on populate_ad would therefore always see the pre-prompt value, never
+# the operator's actual answer. The commented-out imports that used to be
+# here also pointed at files that don't exist (ad_schema.yml/ad_groups.yml/
+# ad_users.yml/ad_computers.yml directly under windows_adschema/ -- the real
+# entry point is windows_adschema/site.yml, which chain-imports the numbered
+# playbooks/ files).
 #
-# - import_playbook: ../windows_adschema/ad_groups.yml
-#   tags: ad_populate
-#
-# - import_playbook: ../windows_adschema/ad_users.yml
-#   tags: ad_populate
-#
-# - import_playbook: ../windows_adschema/ad_computers.yml
-#   tags: ad_populate
+# Instead: if populate_ad=yes, 40-dc-summary.yml prints the exact follow-up
+# command to run as a separate, second ansible-playbook invocation -- see
+# windows_adschema/site.yml (order is mandatory there: schema → groups →
+# users → computers, each stage additive-only and re-run safe).

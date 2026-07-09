@@ -520,6 +520,14 @@ ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
   -e target=EXADCSFAL002 \
   --tags dc_replicate,dc_summary
+
+# Step 3 (optional) — populate AD with demo users/groups/computers, only if
+# you answered "yes" to populate_ad at Step 2's preflight prompt. This is
+# always a separate command (see playbooks/windows_adschema/README.md for
+# why it can't be auto-chained) — 40-dc-summary.yml prints it verbatim at
+# the end of Step 2:
+ansible-playbook -i configs/inventory playbooks/windows_adschema/site.yml \
+  -e populate_ad=yes -e ad_target=EXADCSFAL002 --ask-vault-pass
 ```
 
 ### Credentials
