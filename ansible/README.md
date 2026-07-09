@@ -44,6 +44,22 @@ ansible/
 │   ├── windows_nodes/connection.yml
 │   └── windows_server/vars.yml
 ├── handlers/main.yml
+
+**`group_vars` symlinks:** every `playbooks/<subsystem>/playbooks/` directory
+(`windows_bootstrap`, `windows_dc`, `windows_adschema`, `firewallme`,
+`windows_hygiene`, `proxmox`) contains a `group_vars -> ../../../group_vars`
+symlink pointing back to the real directory above. This is load-bearing, not
+cosmetic: Ansible only auto-loads `group_vars/` relative to the exact file
+passed to `ansible-playbook` (or `import_playbook`ed from it) — confirmed
+empirically, not inventory-relative, not walked up the tree. Every numbered
+playbook lives two directories below the real `group_vars/`, so without
+these symlinks `group_vars/all/`, `group_vars/windows*/`, etc. silently never
+apply for any of them, regardless of inventory group membership (this is
+what caused the `registry_common`/`domain_ou_role` undefined-variable
+crashes found in the 2026-07-09 idempotency audit). Don't delete these
+symlinks; if a new subsystem directory is added under `playbooks/`, it needs
+one too.
+
 ├── host_vars/
 │   ├── EXASRVCLD004/main.yml
 │   └── TEMPLATE/windows.yml    — host_vars template for Windows nodes
