@@ -77,10 +77,25 @@
 #               Server Core) — Server Core is the only case without a GUI
 #               shell. choco_packages_common is unaffected (windirstat and
 #               hyper are confirmed to run fine on Server Core).
+#   2026-07-09  Fixed hosts: back to target-only (matching every other
+#               numbered play except 00-preflight.yml itself). 00-preflight.yml
+#               now dynamically registers the host into its permanent
+#               inventory group via add_host once it knows the final IP/
+#               hostname, so target_hosts=<ip> (a fixed extra-var for the
+#               whole run) is only needed for 00-preflight.yml's own first
+#               connection, before that registration exists. Prioritising
+#               target_hosts here meant this specific play kept targeting the
+#               raw IP directly all run, bypassing the new registration and
+#               its group_vars entirely -- the self-contained vars: block
+#               below happened to paper over that (nothing here reads
+#               group_vars anyway), but it's no longer the reason this file
+#               needs its own copy of these lists; group_vars/windows/vars.yml
+#               would now resolve correctly too. Left self-contained for now
+#               rather than bundle a de-duplication pass into this fix.
 # =============================================================================
 
 - name: Windows — Chocolatey package deployment
-  hosts: "{{ target_hosts | default(target) | default('all') }}"
+  hosts: "{{ target | default('all') }}"
   gather_facts: false
 
   vars:
