@@ -39,7 +39,7 @@ half-configured. This role was audited and hardened against that:
 - **dnsmasq / WireGuard**: starting these services is gated behind `fw_wan_activate`,
   same as WAN interface activation already was — nothing that could plausibly affect a
   live session starts until the operator has explicitly said it's safe to.
-- **DNS**: `fw_cld_dns` is set from `ansible/group_vars/all/site_services.yml` (generated
+- **DNS**: `fw_cld_dns` is set from `ansible/configs/inventory/group_vars/all/site_services.yml` (generated
   from `devices.csv`, same source firewallme.sh itself reads via `begyndelse.json`) rather
   than hardcoded — the two can't drift out of sync. Fallback DNS is `9.9.9.9` (Quad9),
   matching firewallme.sh's own choice (survives a CLD/VRK outage), not `1.1.1.1`.
