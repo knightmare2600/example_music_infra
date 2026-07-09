@@ -10,7 +10,7 @@
     "OS": "iOS",
     "OperatingSystemVersion": "17.x",
     "IPv4Address": "",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Aberdeen,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -24,7 +24,7 @@
     "OS": "iOS",
     "OperatingSystemVersion": "17.x",
     "IPv4Address": "",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Aberdeen,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -38,7 +38,7 @@
     "OS": "macOS Sonoma",
     "OperatingSystemVersion": "14.2.1",
     "IPv4Address": "192.168.224.137",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Aberdeen,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -52,7 +52,7 @@
     "OS": "macOS Sonoma",
     "OperatingSystemVersion": "14.2.1",
     "IPv4Address": "192.168.224.124",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Aberdeen,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -66,7 +66,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-ABD-552901",
     "IPv4Address": "192.168.224.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Aberdeen,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -80,7 +80,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-ABD-847392",
     "IPv4Address": "192.168.224.5",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Aberdeen,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -94,7 +94,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-ABD-847392",
     "IPv4Address": "192.168.224.6",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Aberdeen,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -108,7 +108,7 @@
     "OS": "Cisco ASA 5506-X",
     "OperatingSystemVersion": "ASA5506X-ABD-847392",
     "IPv4Address": "192.168.224.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Aberdeen,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -122,7 +122,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
     "IPv4Address": "192.168.138.51",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Dundee,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Dundee,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -136,7 +136,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
     "IPv4Address": "192.168.138.52",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Dundee,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Dundee,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -150,7 +150,7 @@
     "OS": "iOS 17.2",
     "OperatingSystemVersion": "17.2",
     "IPv4Address": "",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Dundee,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Dundee,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -164,7 +164,7 @@
     "OS": "iOS 17.2",
     "OperatingSystemVersion": "17.2",
     "IPv4Address": "",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Dundee,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Dundee,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -178,7 +178,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-DUN-847392",
     "IPv4Address": "192.168.138.5",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Dundee,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Dundee,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -192,7 +192,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-DUN-847392",
     "IPv4Address": "192.168.138.6",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Dundee,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Dundee,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -206,7 +206,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-DUN-552901",
     "IPv4Address": "192.168.138.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Dundee,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Dundee,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -220,7 +220,7 @@
     "OS": "HP MFP LaserJet",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.173.20",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -234,7 +234,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.173.30",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -248,7 +248,7 @@
     "OS": "Solaris 11.5",
     "OperatingSystemVersion": "11.5",
     "IPv4Address": "192.168.173.40",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -262,7 +262,7 @@
     "OS": "Synology DSM 7.1",
     "OperatingSystemVersion": "7.1",
     "IPv4Address": "192.168.173.50",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -276,7 +276,7 @@
     "OS": "Smart Bakery Vending Machine",
     "OperatingSystemVersion": "SP100",
     "IPv4Address": "192.168.173.60",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -290,7 +290,7 @@
     "OS": "macOS Ventura",
     "OperatingSystemVersion": "13.5",
     "IPv4Address": "192.168.173.70",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -304,7 +304,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
     "IPv4Address": "192.168.173.71",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -318,7 +318,7 @@
     "OS": "Yealink T46G",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.173.80",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -332,7 +332,7 @@
     "OS": "Yealink T46G",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.173.80",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -346,7 +346,7 @@
     "OS": "Yealink T46G",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.173.80",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -360,7 +360,7 @@
     "OS": "Yealink T46G",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.173.80",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Perth,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -374,7 +374,7 @@
     "OS": "Windows 10 Pro",
     "OperatingSystemVersion": "22H2",
     "IPv4Address": "192.168.131.150",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Edinburgh,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -388,7 +388,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
     "IPv4Address": "192.168.131.108",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Edinburgh,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -402,7 +402,7 @@
     "OS": "Dell iDRAC9",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.131.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -416,7 +416,7 @@
     "OS": "Cisco Catalyst 2960X",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.131.5",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -430,7 +430,7 @@
     "OS": "Cisco Catalyst 2960X",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.131.6",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -444,7 +444,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.131.49",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Edinburgh,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -458,7 +458,7 @@
     "OS": "Smart Bean to Cup Coffee Machine",
     "OperatingSystemVersion": "TP713GB9",
     "IPv4Address": "192.168.131.16",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Edinburgh,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -472,7 +472,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-EDI-847392",
     "IPv4Address": "192.168.131.5",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Edinburgh,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -486,7 +486,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-EDI-847392",
     "IPv4Address": "192.168.131.6",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Edinburgh,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -500,7 +500,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-EDI-552901",
     "IPv4Address": "192.168.131.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -514,7 +514,7 @@
     "OS": "FreeNAS",
     "OperatingSystemVersion": "13.0-U6",
     "IPv4Address": "192.168.76.32",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -528,7 +528,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "23H2",
     "IPv4Address": "192.168.76.10",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -542,7 +542,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "23H2",
     "IPv4Address": "192.168.76.11",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -556,7 +556,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "23H2",
     "IPv4Address": "192.168.76.12",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -570,7 +570,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "23H2",
     "IPv4Address": "192.168.76.20",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -584,7 +584,7 @@
     "OS": "Proxmox VE",
     "OperatingSystemVersion": "8.3",
     "IPv4Address": "192.168.76.30",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -598,7 +598,7 @@
     "OS": "Proxmox VE",
     "OperatingSystemVersion": "8.3",
     "IPv4Address": "192.168.76.31",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -612,7 +612,7 @@
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "16.12",
     "IPv4Address": "192.168.76.18",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -626,7 +626,7 @@
     "OS": "Samsung Tizen",
     "OperatingSystemVersion": "2025.1",
     "IPv4Address": "192.168.76.50",
-    "ad_ou": "OU=AV,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=AV,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
   {
@@ -640,7 +640,7 @@
     "OS": "Dell iDRAC9",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.76.30",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -654,7 +654,7 @@
     "OS": "Dell iDRAC9",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.76.30",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -668,7 +668,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.76.49",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -682,7 +682,7 @@
     "OS": "Axis P3245-LVE",
     "OperatingSystemVersion": "AXIS3245-FAL-001",
     "IPv4Address": "192.168.76.70",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -696,7 +696,7 @@
     "OS": "Axis P3245-LVE",
     "OperatingSystemVersion": "AXIS3245-FAL-001",
     "IPv4Address": "192.168.76.71",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -710,7 +710,7 @@
     "OS": "Axis P3245-LVE",
     "OperatingSystemVersion": "AXIS3245-FAL-001",
     "IPv4Address": "192.168.76.72",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -724,7 +724,7 @@
     "OS": "Axis P3245-LVE",
     "OperatingSystemVersion": "AXIS3245-FAL-001",
     "IPv4Address": "192.168.76.73",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -738,7 +738,7 @@
     "OS": "Embedded NTP",
     "OperatingSystemVersion": "v1.0",
     "IPv4Address": "192.168.76.80",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -752,7 +752,7 @@
     "OS": "Embedded",
     "OperatingSystemVersion": "v2.1",
     "IPv4Address": "192.168.76.60",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -766,7 +766,7 @@
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -780,7 +780,7 @@
     "OS": "FortiOS",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.1",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -794,7 +794,7 @@
     "OS": "Linux",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.49",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -808,7 +808,7 @@
     "OS": "Yealink T58A",
     "OperatingSystemVersion": "SIP",
     "IPv4Address": "192.168.141.51",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -822,7 +822,7 @@
     "OS": "Yealink T58A",
     "OperatingSystemVersion": "SIP",
     "IPv4Address": "192.168.141.52",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -836,7 +836,7 @@
     "OS": "VxWorks",
     "OperatingSystemVersion": "7.2",
     "IPv4Address": "192.168.76.62",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -850,7 +850,7 @@
     "OS": "NT4 Embedded",
     "OperatingSystemVersion": "v4.0",
     "IPv4Address": "192.168.76.63",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -864,7 +864,7 @@
     "OS": "XPe Embedded",
     "OperatingSystemVersion": "v5.1.2600",
     "IPv4Address": "192.168.76.64",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -878,7 +878,7 @@
     "OS": "NT4 Embedded",
     "OperatingSystemVersion": "v4.0",
     "IPv4Address": "192.168.76.65",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -892,7 +892,7 @@
     "OS": "NT4 Embedded",
     "OperatingSystemVersion": "v4.0",
     "IPv4Address": "192.168.76.65",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -906,7 +906,7 @@
     "OS": "Embedded",
     "OperatingSystemVersion": "v1.2",
     "IPv4Address": "192.168.76.61",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -920,7 +920,7 @@
     "OS": "iOS / Android",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.76.90",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -934,7 +934,7 @@
     "OS": "iOS / Android",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.76.91",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -948,7 +948,7 @@
     "OS": "iOS / Android",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.76.92",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -962,7 +962,7 @@
     "OS": "iOS / Android",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.76.93",
-    "ad_ou": "OU=Assets,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Assets,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Assets"
   },
   {
@@ -976,7 +976,7 @@
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
     "IPv4Address": "192.168.76.94",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -990,7 +990,7 @@
     "OS": "GPO Public telephone Kiosk No. 6",
     "OperatingSystemVersion": "SIP Gateway",
     "IPv4Address": "192.168.76.95",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -1004,7 +1004,7 @@
     "OS": "VT320",
     "OperatingSystemVersion": "",
     "IPv4Address": "",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1018,7 +1018,7 @@
     "OS": "Embedded Firmware",
     "OperatingSystemVersion": "1.02",
     "IPv4Address": "192.168.76.30",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1032,7 +1032,7 @@
     "OS": "Pureline 128V Retro Vinyl Jukebox",
     "OperatingSystemVersion": "PL128V-ODE-095823",
     "IPv4Address": "192.168.66.18",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1046,7 +1046,7 @@
     "OS": "Poly Studio X70",
     "OperatingSystemVersion": "POLY-X70-BON-772190",
     "IPv4Address": "192.168.228.2",
-    "ad_ou": "OU=AV,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=AV,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
   {
@@ -1060,7 +1060,7 @@
     "OS": "HID Signo Reader",
     "OperatingSystemVersion": "HID-SIGNO-LIV-338572",
     "IPv4Address": "192.168.31.16",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1074,7 +1074,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-FAL-847392",
     "IPv4Address": "192.168.76.5",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1088,7 +1088,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-FAL-847392",
     "IPv4Address": "192.168.76.6",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1102,7 +1102,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-FAL-847392",
     "IPv4Address": "192.168.76.7",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1116,7 +1116,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-FAL-847392",
     "IPv4Address": "192.168.76.8",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1130,7 +1130,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-FAL-847392",
     "IPv4Address": "192.168.76.9",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1144,7 +1144,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-FAL-847392",
     "IPv4Address": "192.168.76.10",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1158,7 +1158,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-FAL-552901",
     "IPv4Address": "192.168.76.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1172,7 +1172,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
     "IPv4Address": "192.168.141.150",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1186,7 +1186,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
     "IPv4Address": "192.168.141.151",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1200,7 +1200,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
     "IPv4Address": "192.168.141.152",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1214,7 +1214,7 @@
     "OS": "Printer",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.16",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Glasgow,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Glasgow,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1228,7 +1228,7 @@
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1242,7 +1242,7 @@
     "OS": "FortiOS",
     "OperatingSystemVersion": "7.6.5 build 3651",
     "IPv4Address": "192.168.141.1",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1256,7 +1256,7 @@
     "OS": "Rocky Linux",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.20",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1270,7 +1270,7 @@
     "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.30",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1284,7 +1284,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.49",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1298,7 +1298,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
     "IPv4Address": "192.168.141.51",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1312,7 +1312,7 @@
     "OS": "Apple iOS",
     "OperatingSystemVersion": "26.1",
     "IPv4Address": "",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -1326,7 +1326,7 @@
     "OS": "Apple iOD",
     "OperatingSystemVersion": "26.2",
     "IPv4Address": "192.168.141.62",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1340,7 +1340,7 @@
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.20",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1354,7 +1354,7 @@
     "OS": "HP iLO5",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.30",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1368,7 +1368,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-CLY-847392",
     "IPv4Address": "192.168.41.5",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1382,7 +1382,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-CLY-847392",
     "IPv4Address": "192.168.41.6",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1396,7 +1396,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-CLY-552901",
     "IPv4Address": "192.168.41.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1410,7 +1410,7 @@
     "OS": "Windows Server 2022",
     "OperatingSystemVersion": "21H2",
     "IPv4Address": "192.168.191.21",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Newcastle,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Newcastle,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1424,7 +1424,7 @@
     "OS": "Dell iDRAC9",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.191.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Newcastle,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Newcastle,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1438,7 +1438,7 @@
     "OS": "TP-Link JetStream",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.191.5",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Newcastle,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Newcastle,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1452,7 +1452,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.191.49",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Newcastle,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Newcastle,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1466,7 +1466,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
     "IPv4Address": "192.168.191.161",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Newcastle,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Newcastle,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1480,7 +1480,7 @@
     "OS": "Windows 11 Enterprise",
     "OperatingSystemVersion": "10.0.22631",
     "IPv4Address": "192.168.228.19",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1494,7 +1494,7 @@
     "OS": "Windows 11 Enterprise",
     "OperatingSystemVersion": "10.0.22631",
     "IPv4Address": "192.168.161.150",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1508,7 +1508,7 @@
     "OS": "Windows 10 Enterprise",
     "OperatingSystemVersion": "10.0.22631",
     "IPv4Address": "192.168.161.152",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1522,7 +1522,7 @@
     "OS": "Windows 10 Enterprise",
     "OperatingSystemVersion": "10.0.22631",
     "IPv4Address": "192.168.161.153",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1536,7 +1536,7 @@
     "OS": "Embedded Printer Firmware",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.161.16",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Manchester,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1550,7 +1550,7 @@
     "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.161.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Manchester,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1564,7 +1564,7 @@
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.161.5",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Manchester,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1578,7 +1578,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.161.49",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Manchester,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1592,7 +1592,7 @@
     "OS": "Windows Server 2022",
     "OperatingSystemVersion": "21H2",
     "IPv4Address": "192.168.151.10",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Liverpool,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Liverpool,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1606,7 +1606,7 @@
     "OS": "HID Signo Reader",
     "OperatingSystemVersion": "HID-SIGNO-LIV-338572",
     "IPv4Address": "192.168.31.16",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Liverpool,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Liverpool,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1620,7 +1620,7 @@
     "OS": "HID Omnikey 5427",
     "OperatingSystemVersion": "OMNI5427-LIV-449821",
     "IPv4Address": "192.168.151.17",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Liverpool,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Liverpool,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1634,7 +1634,7 @@
     "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.151.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Liverpool,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Liverpool,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1648,7 +1648,7 @@
     "OS": "Cisco Catalyst 9200",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.151.5",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Liverpool,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Liverpool,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1662,7 +1662,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.151.49",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Liverpool,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Liverpool,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1676,7 +1676,7 @@
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.121.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1690,7 +1690,7 @@
     "OS": "Palo Alto PanOS",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.121.1",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1704,7 +1704,7 @@
     "OS": "Rocky Linux",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.121.20",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1718,7 +1718,7 @@
     "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.121.30",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1732,7 +1732,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "3CX Debian",
     "IPv4Address": "192.168.121.49",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -1746,7 +1746,7 @@
     "OS": "macOS Sonoma",
     "OperatingSystemVersion": "25.2.1",
     "IPv4Address": "192.168.121.41",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1760,7 +1760,7 @@
     "OS": "Samsung Galaxy Tab A10",
     "OperatingSystemVersion": "Lineage OS",
     "IPv4Address": "192.168.121.61",
-    "ad_ou": "OU=Assets,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Assets,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Assets"
   },
   {
@@ -1774,7 +1774,7 @@
     "OS": "Samsung Glalaxy S25 Ultra",
     "OperatingSystemVersion": "Linage OS",
     "IPv4Address": "",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -1788,7 +1788,7 @@
     "OS": "",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.121.20",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1802,7 +1802,7 @@
     "OS": "",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.121.6",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1816,7 +1816,7 @@
     "OS": "NEC PlasmaSync 42MP1",
     "OperatingSystemVersion": "PlasmaSync v1.x",
     "IPv4Address": "192.168.121.30",
-    "ad_ou": "OU=AV,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=AV,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
   {
@@ -1830,7 +1830,7 @@
     "OS": "Moog One",
     "OperatingSystemVersion": "Firmware 1.x",
     "IPv4Address": "192.168.121.70",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1844,7 +1844,7 @@
     "OS": "LinnDrum LM-2",
     "OperatingSystemVersion": "EPROM v7",
     "IPv4Address": "192.168.121.71",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1858,7 +1858,7 @@
     "OS": "Fairlight CMI IIx",
     "OperatingSystemVersion": "QDOS 2.x",
     "IPv4Address": "192.168.121.72",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1872,7 +1872,7 @@
     "OS": "Atari ST",
     "OperatingSystemVersion": "TOS 1.04",
     "IPv4Address": "192.168.121.73",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1886,7 +1886,7 @@
     "OS": "GPO Public telephone Kiosk No. 6",
     "OperatingSystemVersion": "SIP Gateway",
     "IPv4Address": "192.168.121.74",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -1900,7 +1900,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-BIR-847392",
     "IPv4Address": "192.168.121.5",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1914,7 +1914,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-BIR-847392",
     "IPv4Address": "192.168.121.6",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1928,7 +1928,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-BIR-552901",
     "IPv4Address": "192.168.121.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1942,7 +1942,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-COV-847392",
     "IPv4Address": "192.168.247.5",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Coventry,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Coventry,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1956,7 +1956,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-COV-847392",
     "IPv4Address": "192.168.247.6",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Coventry,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Coventry,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -1970,7 +1970,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-COV-552901",
     "IPv4Address": "192.168.247.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Coventry,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Coventry,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -1984,7 +1984,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
     "IPv4Address": "192.168.20.150",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=London,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -1998,7 +1998,7 @@
     "OS": "Printer",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.20.16",
-    "ad_ou": "OU=IoT,OU=Devices,OU=London,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2012,7 +2012,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-LND-552901",
     "IPv4Address": "192.168.20.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2026,7 +2026,7 @@
     "OS": "Cisco ASA 5516-X",
     "OperatingSystemVersion": "ASA5516-LND-884210",
     "IPv4Address": "192.168.20.1",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2040,7 +2040,7 @@
     "OS": "Dell iDRAC9",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.20.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2054,7 +2054,7 @@
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.20.5",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2068,7 +2068,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.20.49",
-    "ad_ou": "OU=Servers,OU=Devices,OU=London,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -2082,7 +2082,7 @@
     "OS": "Embedded Firmware",
     "OperatingSystemVersion": "ProCAT Stylus",
     "IPv4Address": "$null",
-    "ad_ou": "OU=IoT,OU=Devices,OU=London,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2096,7 +2096,7 @@
     "OS": "BBC Office Radio Mk II",
     "OperatingSystemVersion": "FM-IP Bridge v1.0",
     "IPv4Address": "192.168.20.80",
-    "ad_ou": "OU=AV,OU=Devices,OU=London,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=AV,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
   {
@@ -2110,7 +2110,7 @@
     "OS": "Shure SM7 (Retro)",
     "OperatingSystemVersion": "Dante-IP Audio",
     "IPv4Address": "192.168.20.81",
-    "ad_ou": "OU=AV,OU=Devices,OU=London,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=AV,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
   {
@@ -2124,7 +2124,7 @@
     "OS": "MacOS Tahoe",
     "OperatingSystemVersion": "26.0.1",
     "IPv4Address": "192.168.66.150",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Odense,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Odense,OU=Fyn,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -2138,7 +2138,7 @@
     "OS": "MacOS Tahoe",
     "OperatingSystemVersion": "26.0.1",
     "IPv4Address": "192.168.66.151",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Odense,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Odense,OU=Fyn,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -2152,7 +2152,7 @@
     "OS": "Pureline 128V Retro Vinyl Jukebox",
     "OperatingSystemVersion": "PL128V-ODE-095823",
     "IPv4Address": "192.168.66.18",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Odense,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Odense,OU=Fyn,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2166,7 +2166,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-ODE-847392",
     "IPv4Address": "192.168.126.5",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Odense,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Odense,OU=Fyn,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2180,7 +2180,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-ODE-847392",
     "IPv4Address": "192.168.126.6",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Odense,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Odense,OU=Fyn,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2194,7 +2194,7 @@
     "OS": "Cisco ASA 5506-X",
     "OperatingSystemVersion": "ASA5506X-ODE-847392",
     "IPv4Address": "192.168.126.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Odense,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Odense,OU=Fyn,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2488,7 +2488,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
     "IPv4Address": "192.168.89.151",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Munich,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -2502,7 +2502,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
     "IPv4Address": "192.168.89.152",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Munich,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -2516,7 +2516,7 @@
     "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.89.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Munich,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2530,7 +2530,7 @@
     "OS": "Cisco Catalyst 9200",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.89.5",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Munich,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2544,7 +2544,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.89.49",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Munich,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -2712,7 +2712,7 @@
     "OS": "VxWorks",
     "OperatingSystemVersion": "7.25.09",
     "IPv4Address": "10.30.10.50",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Miami,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Miami,OU=Florida,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2726,7 +2726,7 @@
     "OS": "XPe Embedded",
     "OperatingSystemVersion": "v5.1.2600",
     "IPv4Address": "192.168.76.64",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2740,7 +2740,7 @@
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
     "IPv4Address": "10.20.10.21",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Brockville,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Brockville,OU=Ontario,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -2754,7 +2754,7 @@
     "OS": "macOS Sonoma",
     "OperatingSystemVersion": "25.2",
     "IPv4Address": "10.30.10.21",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Miami,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Miami,OU=Florida,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -2768,7 +2768,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-BRK-552901",
     "IPv4Address": "192.168.136.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Brockville,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Brockville,OU=Ontario,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2782,7 +2782,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-BRK-847392",
     "IPv4Address": "192.168.136.5",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Brockville,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Brockville,OU=Ontario,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2796,7 +2796,7 @@
     "OS": "VxWorks",
     "OperatingSystemVersion": "7.25.09",
     "IPv4Address": "10.20.10.50",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Brockville,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Brockville,OU=Ontario,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2824,7 +2824,7 @@
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.213.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2838,7 +2838,7 @@
     "OS": "Palo Alto PAN-OS",
     "OperatingSystemVersion": "10.x",
     "IPv4Address": "192.168.213.1",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2852,7 +2852,7 @@
     "OS": "Rocky Linux",
     "OperatingSystemVersion": "9.x",
     "IPv4Address": "192.168.213.20",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -2866,7 +2866,7 @@
     "OS": "Dell iDRAC9",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.213.30",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2880,7 +2880,7 @@
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.213.49",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -2894,7 +2894,7 @@
     "OS": "macOS Sonoma",
     "OperatingSystemVersion": "14.x",
     "IPv4Address": "192.168.213.41",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -2908,7 +2908,7 @@
     "OS": "iPadOS",
     "OperatingSystemVersion": "17.x",
     "IPv4Address": "192.168.213.61",
-    "ad_ou": "OU=Assets,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Assets,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Assets"
   },
   {
@@ -2922,7 +2922,7 @@
     "OS": "Android",
     "OperatingSystemVersion": "14",
     "IPv4Address": "",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -2936,7 +2936,7 @@
     "OS": "Cisco Catalyst 2960",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.213.5",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -2950,7 +2950,7 @@
     "OS": "NEC PlasmaSync",
     "OperatingSystemVersion": "1.x",
     "IPv4Address": "192.168.213.30",
-    "ad_ou": "OU=AV,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=AV,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
   {
@@ -2964,7 +2964,7 @@
     "OS": "Moog One",
     "OperatingSystemVersion": "Firmware 1.x",
     "IPv4Address": "192.168.213.70",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2978,7 +2978,7 @@
     "OS": "LinnDrum LM-2",
     "OperatingSystemVersion": "EPROM v7",
     "IPv4Address": "192.168.213.71",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -2992,7 +2992,7 @@
     "OS": "Fairlight CMI IIx",
     "OperatingSystemVersion": "QDOS 2.x",
     "IPv4Address": "192.168.213.72",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -3006,7 +3006,7 @@
     "OS": "Atari ST",
     "OperatingSystemVersion": "TOS 1.04",
     "IPv4Address": "192.168.213.73",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -3020,7 +3020,7 @@
     "OS": "Public Payphone",
     "OperatingSystemVersion": "SIP Gateway",
     "IPv4Address": "192.168.213.74",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -3034,7 +3034,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-LAX-552901",
     "IPv4Address": "192.168.213.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -3048,7 +3048,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-LAX-847392",
     "IPv4Address": "192.168.213.5",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -3062,7 +3062,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-LAX-847392",
     "IPv4Address": "192.168.213.6",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -3076,7 +3076,7 @@
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-LAX-847392",
     "IPv4Address": "192.168.213.7",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -3776,7 +3776,7 @@
     "OS": "IBM PC AT",
     "OperatingSystemVersion": "MS-DOS 5.0",
     "IPv4Address": "192.168.45.10",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Aarhus,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Aarhus,OU=Nord Jyland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
