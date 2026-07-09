@@ -34,6 +34,16 @@
 #   192.168.139.50   EXAPRVVRK001      (provisioning / PXE)
 #   192.168.139.69   EXAFWLVRK001      (CLD firewall — WAN face on vRACK)
 #   192.168.139.254  DC provider router (vRACK gateway — not EXA kit)
+#
+# BREAK-GLASS TOOL: this script predates Ansible existing in this estate. It is kept
+# intentionally, not by oversight -- for when EXADNSVRK001 itself needs to come up before
+# Ansible connectivity exists at all (a dead/replaced DNS server, a brand-new site, disaster
+# recovery). It is self-contained by design: manual wget of sites.csv/devices.csv/
+# begyndelse.json from the provisioning server is the expected, supported path here, not a
+# shortcut to be "fixed" later. Routine DNS changes (adding a site, a device, a zone tweak)
+# should go through ansible/playbooks/bind9/bind9-dns.yml instead, which is the actively
+# maintained, tested path -- reach for this script only when Ansible genuinely can't reach
+# the box yet.
 # ===============================================================
 
 set -euo pipefail
