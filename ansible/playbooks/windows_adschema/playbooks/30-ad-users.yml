@@ -32,12 +32,18 @@
 #   vault_ad_new_user_password  — initial password for all new accounts
 #
 # Variables (override with --extra-vars):
-#   ad_target   Target DC hostname or IP — no prompt in this playbook; comes
-#               from 00-ad-preflight.yml when run via site.yml, or must be
-#               supplied with -e ad_target=<host> if run standalone
-#   ad_domain   AD domain FQDN       (default: jukebox.internal)
-#   tdf_path    Path to TDF file     (default: /etc/example-music/jukebox.example.tdf)
-#   sites_csv   Path to sites.csv    (default: /etc/example-music/sites.csv)
+#   ad_target       Target DC hostname or IP — no prompt in this playbook;
+#                   comes from 00-ad-preflight.yml when run via site.yml, or
+#                   must be supplied with -e ad_target=<host> if run standalone
+#   ad_domain       AD domain FQDN       (default: jukebox.internal)
+#   ad_users_json   Path to JSON file    (default: /etc/example-music/ad_users.json)
+#
+# This playbook only ever reads ad_users_json above -- it never touches the
+# TDF directly. ad_users.json is generated offline from jukebox.example.tdf
+# by benarbejde/parse_tdf.py (a standalone tool, not run by Ansible; see its
+# own header) and deployed to /etc/example-music manually. (tdf_path/
+# sites_csv used to be documented here as if this playbook read them
+# directly -- it never did; removed 2026-07-09 as misleading.)
 #
 # Notes:
 #   • Users with Disabled=true are created disabled (enabled: false).

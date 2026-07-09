@@ -2,20 +2,39 @@
 """
 parse_tdf.py — Convert jukebox.example.tdf sections to JSON for Ansible.
 
+*** LEGACY / DEFUNCT TOOL — READ BEFORE USING ***
+This is old code kept around because the demo data it produces (ad_users.json,
+ad_groups.json, ad_computers.json) is still genuinely useful, not because this
+is the current, actively-developed approach to anything. It is a manual,
+offline, run-by-hand tool ONLY:
+    - No Ansible playbook or task invokes this script, or reads
+      jukebox.example.tdf, at any point, directly or indirectly. Only the
+      JSON files this script produces are ever read by Ansible (by
+      windows_adschema/playbooks/{20-ad-groups,30-ad-users,40-ad-computers}.yml).
+    - jukebox.example.tdf and this script must stay that way: offline inputs
+      to a manual regeneration step, never a live Ansible dependency. If you
+      find yourself wiring either into a playbook, stop and reconsider.
+Both files live in benarbejde/ alongside sites.csv/devices.csv, but unlike
+those, neither is synced to bootstrap/web/proxmox/ or deployed to
+/etc/example-music/ by anything — there's deliberately no live path for
+either.
+
 Usage:
     python3 parse_tdf.py --section {users|groups|computers}
                          [--tdf /path/to/jukebox.example.tdf]
                          [--domain jukebox.internal]
                          [--email-domain jukebox.internal]
                          [--sites-csv /path/to/sites.csv]
+                         [--out /path/to/output.json]
 
 Sections:
     users     — $Script:rawUsers: user accounts with computed ad_ou paths
     groups    — $Script:rawDemoGroups: security groups
     computers — $Script:rawComputers: computer/device accounts with computed ad_ou paths
 
-Output is a JSON array on stdout. Errors and warnings go to stderr.
-Exit 0 on success, 1 on error.
+Output is a JSON array — written to --out if given, otherwise stdout (the
+original behaviour; redirect with `> benarbejde/ad_users.json` yourself).
+Errors and warnings go to stderr. Exit 0 on success, 1 on error.
 
 Domain substitution:
     --domain        rewrites DNS hostnames (.example.net → .jukebox.internal, etc.)
@@ -36,6 +55,24 @@ Notes on demo-data quirks handled:
       SamAccountName via a name→SAM lookup built from the users list itself.
     • Locked=$true accounts are NOT reproducible programmatically; accounts will
       be created in an unlocked state regardless of the TDF value.
+
+Changelog:
+    2026-07-09  Fixed a real parser bug in _arr(): the OU-array regex stopped at
+                the first ')', so a quoted element containing a literal paren
+                (e.g. 'Chicago (Band)') silently truncated, dropping the real
+                value and shifting every later field. Also fixed _EMAIL_PATTERNS
+                to cover @fb3.example.net and @example.dk, previously missed.
+    2026-07-09  Moved here from ansible/playbooks/windows_adschema/ (jukebox.
+                example.tdf moved from the repo root at the same time) --
+                consolidating this alongside sites.csv/devices.csv, the other
+                source-of-truth files this script's sibling generator
+                (generate_inventory.py) already lives next to. --tdf and
+                --sites-csv now default to co-located paths instead of
+                /etc/example-music/... (which nothing ever deployed either
+                file to -- that default had never actually been exercised).
+                Added --out for writing directly to a file, matching
+                generate_inventory.py's own convention, instead of always
+                requiring the caller to redirect stdout.
 """
 
 import argparse
@@ -43,6 +80,7 @@ import csv
 import json
 import re
 import sys
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Domain substitution — split into DNS (hostnames) and email (UPN / addresses)
@@ -499,17 +537,24 @@ def _load_sites(csv_path):
 # ---------------------------------------------------------------------------
 
 def main():
+    script_dir = Path(__file__).resolve().parent
+
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--section',      required=True, choices=['users', 'groups', 'computers'])
-    ap.add_argument('--tdf',          default='/etc/example-music/jukebox.example.tdf',
-                    help='Path to jukebox.example.tdf (default: /etc/example-music/jukebox.example.tdf)')
+    ap.add_argument('--tdf',          default=str(script_dir / 'jukebox.example.tdf'),
+                    help='Path to jukebox.example.tdf (default: co-located with this script, '
+                         'benarbejde/jukebox.example.tdf -- NOT /etc/example-music, this file is '
+                         'never deployed there, see the module docstring)')
     ap.add_argument('--domain',       default='jukebox.internal',
                     help='AD internal domain for DNS hostname rewriting (default: jukebox.internal)')
     ap.add_argument('--email-domain', default='',
                     help='Email/UPN domain for @example.* substitution (default: same as --domain)')
-    ap.add_argument('--sites-csv',    default='',
-                    help='Path to sites.csv for computer OU derivation')
+    ap.add_argument('--sites-csv',    default=str(script_dir / 'sites.csv'),
+                    help='Path to sites.csv for computer OU derivation (default: co-located with '
+                         'this script, benarbejde/sites.csv)')
+    ap.add_argument('--out',          default=None, type=Path,
+                    help='Write output here instead of stdout (default: print to stdout, as before)')
     args = ap.parse_args()
 
     email_domain  = args.email_domain or args.domain
@@ -544,8 +589,15 @@ def main():
             if obj:
                 results.append(obj)
 
-    json.dump(results, sys.stdout, indent=2, ensure_ascii=False)
-    print()
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        with open(args.out, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+            f.write('\n')
+        print(f'Wrote {args.out}', file=sys.stderr)
+    else:
+        json.dump(results, sys.stdout, indent=2, ensure_ascii=False)
+        print()
 
 
 if __name__ == '__main__':
