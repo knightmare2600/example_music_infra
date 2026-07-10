@@ -8,7 +8,9 @@
 # Runs everything this repo has learned it needs to check the hard way, in one
 # place, so the next change doesn't silently reintroduce a bug already found
 # and fixed once:
-#   1. YAML validity        -- every *.yml under ansible/ parses.
+#   1. YAML validity        -- every git-tracked *.yml/*.yaml in the whole repo
+#      parses (via git ls-files, not a directory walk -- automatically covers
+#      new files anywhere, not just ansible/).
 #   2. ansible-playbook --syntax-check on every real playbook (files with a
 #      top-level hosts: key; task-fragment files are exercised indirectly via
 #      whatever includes them).
@@ -26,9 +28,11 @@
 #      and begyndelse.json are re-derivable byte-for-byte from
 #      benarbejde/sites.csv+devices.csv+address_policy.json+ad_forest.json --
 #      catches "edited the source, forgot to regenerate."
-#   7. check_doc_index.py   -- docs/INDEX.md: every link resolves to a real
-#      file (fails if not); every real doc under docs/ is linked from it
-#      (warns if not -- some are deliberately excluded, see the script).
+#   7. check_doc_index.py   -- every relative link in every git-tracked *.md
+#      file in the whole repo (not just docs/) resolves to a real file
+#      (fails if not); separately, docs/INDEX.md specifically is checked for
+#      completeness -- every real doc under docs/ linked from it (warns if
+#      not -- some are deliberately excluded, see the script).
 #   8. check_facts.py       -- facts.yml: a short, hand-curated list of
 #      specific facts (an IP, a hostname) restated as prose across multiple
 #      docs/scripts, confirmed still true in every file that asserts them.
@@ -63,6 +67,21 @@
 #               (docs/buildsheets/buildsheet-firewall.md,
 #               docs/inventory/EXADNSVRK001-dns.md) -- harness is fully
 #               green again as of this entry.
+#   2026-07-10  Repo-wide sweep, per Robert: "The test harness needs to check
+#               documentation, truth be told it needs to check the entire
+#               repo, so maybe git can 'help' here." Section 1 (YAML
+#               validity) switched from an ansible/-only find to `git
+#               ls-files` across the whole repo -- picked up 2 previously-
+#               unchecked YAML files (benarbejde/ad_computers_vault.yml,
+#               docs/zabbix_templates/*.yaml). check_doc_index.py's broken-
+#               link check widened from "docs/INDEX.md's own links" to
+#               "every relative link in every git-tracked *.md file in the
+#               repo" (docs/INDEX.md completeness stays a separate,
+#               docs/-specific check) -- found and fixed 2 more real broken
+#               links in docs/ExampleMusic_Beginners_Guide.md (same
+#               bootstrap/ vs active-directory/ path bug already fixed once
+#               in docs/INDEX.md, plus a stray ../ in a same-directory
+#               link) that the narrower check had no way to see.
 # ==============================================================================
 set -uo pipefail
 
@@ -87,10 +106,17 @@ FAILED_CHECKS=()
 # ------------------------------------------------------------------------------
 # 1. YAML validity
 # ------------------------------------------------------------------------------
-section "1. YAML validity — every *.yml under ansible/"
+section "1. YAML validity — every git-tracked *.yml/*.yaml in the repo"
 
+# git ls-files, not find: only checks files actually tracked (no stray/gitignored
+# cruft), and automatically covers new files anywhere in the repo -- benarbejde/ and
+# docs/ have their own YAML too (e.g. benarbejde/ad_computers_vault.yml,
+# docs/zabbix_templates/*.yaml), previously missed entirely by an ansible/-only scan.
 yaml_errors=0
 while IFS= read -r -d '' f; do
+  case "$f" in
+    ansible/at_have_ryggen_fri/*) continue ;;
+  esac
   # Ansible-vault-encrypted values use a !vault YAML tag that plain PyYAML
   # doesn't know how to construct -- register a no-op constructor for it
   # (this checks structural validity, not that we can decrypt secrets).
@@ -99,11 +125,11 @@ import sys, yaml
 class L(yaml.SafeLoader): pass
 L.add_constructor('!vault', lambda loader, node: '<vault-encrypted>')
 list(yaml.load_all(open(sys.argv[1]), Loader=L))
-" "$f" 2>/tmp/ryggen_fri_yaml_err; then
-    fail "$(realpath --relative-to="$REPO_ROOT" "$f"): $(tail -1 /tmp/ryggen_fri_yaml_err)"
+" "$REPO_ROOT/$f" 2>/tmp/ryggen_fri_yaml_err; then
+    fail "$f: $(tail -1 /tmp/ryggen_fri_yaml_err)"
     (( yaml_errors++ ))
   fi
-done < <(find "$ANSIBLE_DIR" -name "*.yml" -not -path "*/at_have_ryggen_fri/*" -print0)
+done < <(git -C "$REPO_ROOT" ls-files -z -- '*.yml' '*.yaml')
 rm -f /tmp/ryggen_fri_yaml_err
 
 if [[ $yaml_errors -eq 0 ]]; then
@@ -215,20 +241,20 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 7. Documentation index integrity — docs/INDEX.md
+# 7. Markdown link integrity (repo-wide) + docs/INDEX.md completeness
 # ------------------------------------------------------------------------------
-section "7. Documentation index — check_doc_index.py"
+section "7. Markdown links — check_doc_index.py"
 
 idx_out=$(python3 "${HERE}/check_doc_index.py")
 idx_rc=$?
 echo "$idx_out"
 if [[ $idx_rc -ne 0 ]]; then
-  fail "docs/INDEX.md has broken link(s) -- see above."
+  fail "Broken markdown link(s) found -- see above."
   FAILED_CHECKS+=("check_doc_index.py")
 elif echo "$idx_out" | grep -q "not linked from docs/INDEX.md"; then
-  warn "docs/INDEX.md has no broken links, but some real docs aren't indexed (see above)."
+  warn "No broken links, but some real docs aren't indexed in docs/INDEX.md (see above)."
 else
-  success "docs/INDEX.md is complete and every link resolves."
+  success "No broken markdown links anywhere in the repo; docs/INDEX.md is complete."
 fi
 
 # ------------------------------------------------------------------------------

@@ -26,11 +26,13 @@ repo's history:
   exactly this by hand for `EXAFWLVRK001`'s WAN IP before deciding to
   automate it.
 
-Phases 1 (repo-wide reference/data integrity) and 2 (the estate's bare-metal
-bootstrap scenarios as repeatable checks) are both done as of 2026-07-10 —
-see the git history for the fuller context if picking this back up later.
-Phase 3 (the unattend XML per-edition variants, and any further findings)
-is still open.
+Phases 1 (repo-wide reference/data integrity), 2 (the estate's bare-metal
+bootstrap scenarios as repeatable checks), and an initial repo-wide sweep
+(using `git ls-files` instead of hardcoded directory scans, so coverage
+grows automatically as the repo does) are all done as of 2026-07-10 — see
+the git history for the fuller context if picking this back up later.
+Still open: the unattend XML per-edition variants, this harness's own
+`docs/INDEX.md` entry, and any further findings.
 
 Nothing here touches a real host, needs a vault password, or needs network
 access beyond `localhost` — safe to run on any clone, any time.
@@ -49,13 +51,13 @@ the same `[*]`/`[+]`/`[!]`/`[✗]` convention as `firewallme.sh`/`ansibleme.sh`.
 
 | # | Check | How |
 |---|-------|-----|
-| 1 | YAML validity | Every `*.yml` under `ansible/` (excluding this directory) parses, including `!vault`-tagged files |
+| 1 | YAML validity | Every git-tracked `*.yml`/`*.yaml` in the whole repo (via `git ls-files`, excluding this directory) parses, including `!vault`-tagged files |
 | 2 | `ansible-playbook --syntax-check` | Every file with a top-level `hosts:` key |
 | 3 | Reference integrity | `check_references.py` — every literal `src:`/`include_tasks:`/`import_tasks:`/`import_playbook:` path resolves to a real file, correctly handling both playbook-relative and role-relative (`roles/<name>/templates|files/`) resolution. Also resolves `src: "...{{ item.attr }}..."` when combined with `loop: "{{ some_group_vars_list }}"` — the group_vars list is static, so `item.attr` is substitutable per loop item even though it's technically Jinja (this is how `50-binaries.yml`'s x86_64/arm64 binary paths get checked, not silently skipped as "dynamic") |
 | 4 | Inventory structure | `check_inventory_structure.py` — the real `configs/inventory`'s `windows_dc → windows_server → windows → windows_nodes` chain exists across multiple sites (not just the 3 hand-curated ones); `group_vars` genuinely resolves (become correctly scoped to `linux` only, never Windows; `colours.yml`'s `_c` dict present) — via `ansible-inventory`, no host contacted |
 | 5 | `add_host` visibility | `add_host_probe/` — a live two-play `ansible-playbook` run: play 1 registers a scratch host into a group via `add_host` (`delegate_to: localhost`), play 2 asserts that group's `group_vars` resolved for it — the exact mechanism `windows_bootstrap/00-preflight.yml`'s Phase H2 depends on |
 | 6 | Generated-file freshness | `check_generated_freshness.py` — regenerates `configs/inventory/*.ini`, `site_services.yml`, and `begyndelse.json` from `benarbejde/sites.csv`+`devices.csv`+`address_policy.json`+`ad_forest.json` into a scratch dir and diffs against committed — catches "edited the source, forgot to regenerate" |
-| 7 | Documentation index | `check_doc_index.py` — every link in `docs/INDEX.md` resolves to a real file (fails if not); every real doc under `docs/` is linked from it (warns if not — some are deliberately excluded) |
+| 7 | Markdown link integrity | `check_doc_index.py` — every relative link in every git-tracked `*.md` file in the whole repo (not just `docs/`) resolves to a real file (fails if not); separately, `docs/INDEX.md` specifically is checked for completeness — every real doc under `docs/` linked from it (warns if not — some are deliberately excluded) |
 | 8 | Cross-file facts | `check_facts.py` — reads `facts.yml`, a short hand-curated list of specific facts (an IP, a hostname) restated as prose across multiple docs/scripts, and confirms each is still asserted correctly everywhere it's registered |
 | 9 | Bootstrap scenarios | `check_scenarios.py` — reads `scenarios.yml`, covering the 4 bare-metal-to-working-estate scenarios (PVE+Ansible node, DNS, firewall, Windows unattend): confirms every file each depends on exists, and a handful of load-bearing warnings/framing comments (e.g. `ansibleme.sh`'s `git clone`, the break-glass framing in `bindme.sh`/`firewallme.sh`, the circular-dependency callout in `Procedure-PVE-Node-Onboarding.md`) haven't been edited away. Does not build real infrastructure — see `scenarios.yml`'s own header for what's deliberately out of scope (no real iLO/DRAC automation exists; the per-edition Windows unattend XML files don't exist yet) |
 
@@ -120,3 +122,18 @@ the same `[*]`/`[+]`/`[!]`/`[✗]` convention as `firewallme.sh`/`ansibleme.sh`.
   edited away by someone who didn't understand why it was there." Keep
   that distinction when deciding whether a new check belongs in
   `facts.yml` or `scenarios.yml`.
+- **`git ls-files`, not `find`, for repo-wide enumeration** (checks 1 and
+  7, 2026-07-10) — two deliberate properties, not just a syntax swap.
+  First, it only sees files git actually tracks, so a stray untracked or
+  `.gitignore`d file never produces a false failure. Second, and more
+  importantly, it means coverage grows automatically as the repo does —
+  no hardcoded directory list to remember to update when a new top-level
+  folder shows up. This immediately paid off: widening check 1 past
+  `ansible/` found two previously-unchecked YAML files
+  (`benarbejde/ad_computers_vault.yml`, `docs/zabbix_templates/*.yaml`),
+  and widening check 7 past `docs/INDEX.md`'s own links found two more
+  real broken links in `docs/ExampleMusic_Beginners_Guide.md` that the
+  narrower check had no way to see (including a repeat of the exact
+  `bootstrap/` vs `active-directory/` path bug already fixed once in
+  `docs/INDEX.md` — the same mistake had been made in a second file, and
+  nothing had ever checked that file's own links before).
