@@ -118,6 +118,12 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              derived from benarbejde/ad_forest.json, single source of truth for the AD forest
 #              name) -- replaces "jukebox.internal" hardcoded 6x directly into the dnsmasq
 #              config this script generates (search/domain/dhcp-option/address/cname entries).
+#  2026-07-10  Environment resolution now checks /etc/example-music/nodeinfo.json first, then
+#              falls back to the legacy /etc/.environment file, then prompts -- no longer writes
+#              /etc/.environment (matches the equivalent change in bindme.sh and bind9-dns.yml
+#              the same day). Added a standalone defensive jq install immediately before this
+#              check, since unlike bindme.sh this script has no earlier jq install and the main
+#              BOOTSTRAP_PKGS batch (which includes jq) doesn't run until later.
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
@@ -321,19 +327,28 @@ spoke_allowed_ips_for_hub() {
 # -------------------------------------------------------------------------------------------------
 # Ensure correct environment. Default to production if unsure
 # -------------------------------------------------------------------------------------------------
+# Resolved from an already-deployed nodeinfo.json if present, falling back to the legacy
+# /etc/.environment file (hosts provisioned before 2026-07-10), else prompted. No longer written
+# to /etc/.environment -- nodeinfo.json (written later in this script) is the only place this is
+# persisted now; Ansible's linux/tools.yml removes any leftover /etc/.environment it finds on a
+# later run. jq isn't installed yet at this point -- the main BOOTSTRAP_PKGS batch runs later, and
+# unlike bindme.sh this script has no earlier standalone jq install -- so install it now,
+# defensively, same as bindme.sh already does for the same reason.
+command -v jq &>/dev/null || { info "Installing jq..."; apt-get install -y -qq jq >/dev/null; }
+
 ENV_LONG=""
 
-if [[ -s /etc/.environment ]]; then
+if [[ -s /etc/example-music/nodeinfo.json ]]; then
+  ENV_LONG="$(jq -r '.environment // empty' /etc/example-music/nodeinfo.json 2>/dev/null)"
+  [[ -n "$ENV_LONG" ]] && info "Environment loaded from existing nodeinfo.json: ${ENV_LONG}"
+fi
+
+if [[ -z "$ENV_LONG" && -s /etc/.environment ]]; then
   ENV_LONG="$(cat /etc/.environment)"
+  [[ -n "$ENV_LONG" ]] && info "Environment loaded from legacy /etc/.environment: ${ENV_LONG}"
+fi
 
-  if [[ -z "$ENV_LONG" ]]; then
-    warn "/etc/.environment is empty — defaulting to production"
-    ENV_LONG="production"
-  else
-    info "Environment loaded from file: ${ENV_LONG}"
-  fi
-
-else
+if [[ -z "$ENV_LONG" ]]; then
   read -rp "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]: " ENV
   ENV="${ENV,,}"
 
@@ -347,7 +362,6 @@ else
       ;;
   esac
 
-  echo "$ENV_LONG" > /etc/.environment
   success "Environment set to: ${ENV_LONG}"
 fi
 

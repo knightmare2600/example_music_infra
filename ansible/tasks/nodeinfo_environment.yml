@@ -27,6 +27,14 @@
 #               write, which previously always defaulted to 'production'
 #               with no way to see an already-set environment from a
 #               role-specific play that ran first.
+#   2026-07-10  Added a legacy /etc/.environment fallback tier (checked
+#               after nodeinfo.json, before prompting), for a node that was
+#               provisioned before this file existed and has an
+#               /etc/.environment but no nodeinfo.json yet -- avoids
+#               silently re-prompting for a value the operator already gave
+#               once. linux/tools.yml deletes /etc/.environment once
+#               nodeinfo.json has captured it, so this fallback is expected
+#               to stop firing naturally as the estate is swept.
 # =============================================================================
 
 - name: "[Environment] Check for existing /etc/example-music/nodeinfo.json"
@@ -46,7 +54,30 @@
     resolved_environment: "{{ (_nodeinfo_env_content.content | b64decode | from_json).environment | default('') }}"
   when: _nodeinfo_env_file.stat.exists
 
-- name: "[Environment] Prompt for environment (no nodeinfo.json yet)"
+- name: "[Environment] Check for legacy /etc/.environment"
+  ansible.builtin.stat:
+    path: /etc/.environment
+  register: _nodeinfo_env_legacy_file
+  when: resolved_environment | default('') == ''
+
+- name: "[Environment] Read legacy /etc/.environment"
+  ansible.builtin.slurp:
+    src: /etc/.environment
+  register: _nodeinfo_env_legacy_content
+  when:
+    - resolved_environment | default('') == ''
+    - _nodeinfo_env_legacy_file.stat.exists | default(false)
+    - _nodeinfo_env_legacy_file.stat.size | default(0) > 0
+  changed_when: false
+
+- name: "[Environment] Set environment from legacy /etc/.environment"
+  ansible.builtin.set_fact:
+    resolved_environment: "{{ _nodeinfo_env_legacy_content.content | b64decode | trim }}"
+  when:
+    - resolved_environment | default('') == ''
+    - _nodeinfo_env_legacy_content is not skipped
+
+- name: "[Environment] Prompt for environment (no nodeinfo.json or legacy file)"
   ansible.builtin.pause:
     prompt: "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]"
   register: _nodeinfo_env_prompt
