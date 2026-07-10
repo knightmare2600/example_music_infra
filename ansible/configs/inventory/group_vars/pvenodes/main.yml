@@ -15,6 +15,27 @@ pve_packages:
   # (e.g. an imported/migrated Windows VM using LVM instead of GPT+ZFS).
   - kpartx     # map partition tables inside a VM disk image/LV
   - ntfs-3g    # provides ntfsfix, for repairing a dirty/unclean NTFS volume
+  # Moved from first-boot.sh's old Step 3 on 2026-07-10 -- first-boot.sh now
+  # only does enough for the ansible user to be SSH-reachable; everything
+  # else (including this package list) is Ansible's job.
+  - net-tools
+  - bash-completion
+  - tree
+  - bc
+  - molly-guard    # protects against accidental reboots/shutdowns
+  - arping
+  - nmap
+  - parted
+  - gdisk
+  - smartmontools
+  - vim
+  - zsh
+  - grc
+  - python3-textual
+  - python3-pbr
+  - python3-six
+  - w3m
+  - xxd
 
 # Cloud image template IDs (update after first run)
 template_ubuntu_noble:    1000
