@@ -26,10 +26,11 @@ repo's history:
   exactly this by hand for `EXAFWLVRK001`'s WAN IP before deciding to
   automate it.
 
-This is Phase 1 of a larger, ongoing plan (repo-wide reference/data
-integrity, then the estate's bare-metal bootstrap scenarios as repeatable
-checks) — see the git history for the fuller context if picking this back
-up later.
+Phases 1 (repo-wide reference/data integrity) and 2 (the estate's bare-metal
+bootstrap scenarios as repeatable checks) are both done as of 2026-07-10 —
+see the git history for the fuller context if picking this back up later.
+Phase 3 (the unattend XML per-edition variants, and any further findings)
+is still open.
 
 Nothing here touches a real host, needs a vault password, or needs network
 access beyond `localhost` — safe to run on any clone, any time.
@@ -56,6 +57,7 @@ the same `[*]`/`[+]`/`[!]`/`[✗]` convention as `firewallme.sh`/`ansibleme.sh`.
 | 6 | Generated-file freshness | `check_generated_freshness.py` — regenerates `configs/inventory/*.ini`, `site_services.yml`, and `begyndelse.json` from `benarbejde/sites.csv`+`devices.csv`+`address_policy.json`+`ad_forest.json` into a scratch dir and diffs against committed — catches "edited the source, forgot to regenerate" |
 | 7 | Documentation index | `check_doc_index.py` — every link in `docs/INDEX.md` resolves to a real file (fails if not); every real doc under `docs/` is linked from it (warns if not — some are deliberately excluded) |
 | 8 | Cross-file facts | `check_facts.py` — reads `facts.yml`, a short hand-curated list of specific facts (an IP, a hostname) restated as prose across multiple docs/scripts, and confirms each is still asserted correctly everywhere it's registered |
+| 9 | Bootstrap scenarios | `check_scenarios.py` — reads `scenarios.yml`, covering the 4 bare-metal-to-working-estate scenarios (PVE+Ansible node, DNS, firewall, Windows unattend): confirms every file each depends on exists, and a handful of load-bearing warnings/framing comments (e.g. `ansibleme.sh`'s `git clone`, the break-glass framing in `bindme.sh`/`firewallme.sh`, the circular-dependency callout in `Procedure-PVE-Node-Onboarding.md`) haven't been edited away. Does not build real infrastructure — see `scenarios.yml`'s own header for what's deliberately out of scope (no real iLO/DRAC automation exists; the per-edition Windows unattend XML files don't exist yet) |
 
 ## Design notes
 
@@ -102,9 +104,19 @@ the same `[*]`/`[+]`/`[!]`/`[✗]` convention as `firewallme.sh`/`ansibleme.sh`.
   someone has already registered; it will not catch a new, unregistered
   inconsistency. Add to it as drift is found, rather than trying to make it
   exhaustive up front.
-- **As of 2026-07-10, `check_facts.py` genuinely fails** — `docs/buildsheets/
-  buildsheet-firewall.md`, `docs/bootstrap/bootstrapping.md`, and
-  `docs/inventory/EXADNSVRK001-dns.md` really do still have the stale
-  IPs/hostnames `facts.yml` checks for. This is correct, expected harness
-  behaviour, not a bug in the check — those docs haven't been fixed yet
-  (next phase of the same plan that added this check).
+- **`check_facts.py` found real drift on its first run** (2026-07-10) —
+  `docs/buildsheets/buildsheet-firewall.md`, `docs/bootstrap/bootstrapping.md`,
+  and `docs/inventory/EXADNSVRK001-dns.md` all had the stale
+  `EXAFWLCLD001`/wrong-Ansible-node-hostname errors it was built to catch.
+  All three were fixed the same day, alongside a full correction pass on
+  `bootstrapping.md` (found substantially stale — fictional file paths,
+  wrong site codes, a backwards addressing table — while researching the
+  scenarios `scenarios.yml` now checks). The harness is fully green again.
+- **`scenarios.yml`'s content assertions are deliberately about framing,
+  not facts.** Things like "does `ansibleme.sh` still say `git clone`" or
+  "does `Procedure-PVE-Node-Onboarding.md` still have its circular-
+  dependency warning" aren't drift-from-a-known-value the way `facts.yml`
+  checks are — they're "has this load-bearing explanation been quietly
+  edited away by someone who didn't understand why it was there." Keep
+  that distinction when deciding whether a new check belongs in
+  `facts.yml` or `scenarios.yml`.

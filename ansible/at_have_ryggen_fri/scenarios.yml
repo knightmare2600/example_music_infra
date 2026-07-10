@@ -1,0 +1,98 @@
+---
+# scenarios.yml -- part of at_have_ryggen_fri.
+#
+# The four bare-metal-to-working-estate scenarios discussed 2026-07-10:
+#   1. Bare metal -> Proxmox node -> Ansible control node
+#   2. PXE-install Debian -> DNS server (EXADNSVRK001)
+#   3. Build the firewall (EXAFWLVRK001/EXAFWLCLD001)
+#   4. Windows Server 2022 Core via unattend XML -> OpenSSH -> Ansible reachable
+#
+# Each scenario lists the files that must exist for someone to actually
+# follow it, plus a small number of content assertions for things that
+# are easy to silently regress (a doc losing its warning about a known
+# gotcha, a script losing its self-identifying header). This is
+# deliberately not exhaustive fact-checking -- that's what facts.yml is
+# for. This is closer to "is the paper trail for this scenario still
+# intact," checked by check_scenarios.py.
+#
+# Known, accepted gaps (not failures, don't add assertions expecting
+# these to be fixed until they actually are):
+#   - Scenario 4's per-edition unattend XML files (autounattend_2022core.xml
+#     etc, referenced by several buildsheets) don't exist yet -- only
+#     headlessunattend.xml, the one real, generic file, does. Deferred
+#     pending real files being supplied.
+#   - Scenario 1 has no real scripted iLO/DRAC/Redfish procedure -- manual
+#     virtual-media mounting is the actual, current, accepted method.
+
+scenarios:
+  - name: pve_and_ansible_node
+    description: >
+      Bare metal (iLO/DRAC virtual media) -> Proxmox VE node -> Ansible
+      control node (git clone + symlink via ansibleme.sh).
+    requires_files:
+      - bootstrap/web/proxmox/answer.toml
+      - bootstrap/web/proxmox/degraded.toml
+      - bootstrap/web/proxmox/first-boot.sh
+      - bootstrap/web/proxmox/create-vm.py
+      - bootstrap/web/provision/ansibleme.sh
+      - docs/buildsheets/buildsheet-pve.md
+      - docs/proxmox/Procedure-PVE-Node-Onboarding.md
+      - docs/proxmox/pve-create-vm.md
+    content_assertions:
+      - file: bootstrap/web/provision/ansibleme.sh
+        must_contain: "git clone"
+        why: "ansibleme.sh must still clone the repo itself -- it's the break-glass path with no other way to get the repo onto a fresh control node."
+      - file: bootstrap/web/provision/ansibleme.sh
+        must_contain: 'ln -s "${REPO_DIR}/ansible" "${ANSIBLE_DIR}"'
+        why: "The clone-then-symlink mechanism a trainee relies on to make /home/ansible/ansible resolve."
+      - file: docs/proxmox/Procedure-PVE-Node-Onboarding.md
+        must_contain: "Circular-dependency warning"
+        why: "This procedure presupposes a working Ansible control node -- the doc must keep explaining why that isn't actually circular for every case except bootstrapping the very first control node."
+
+  - name: dns_bootstrap
+    description: >
+      PXE-install Debian -> EXADNSVRK001 (BIND9), via the bindme.sh
+      break-glass path (Ansible doesn't exist yet to do this the normal way).
+    requires_files:
+      - bootstrap/web/provision/bindme.sh
+      - ansible/playbooks/bind9/bind9-dns.yml
+      - docs/inventory/EXADNSVRK001-dns.md
+    content_assertions:
+      - file: bootstrap/web/provision/bindme.sh
+        must_contain: "BREAK-GLASS TOOL"
+        why: "bindme.sh's whole reason to exist is that it predates Ansible -- losing this framing would invite someone to 'clean it up' into an Ansible dependency it can't have."
+      - file: docs/bootstrap/bootstrapping.md
+        must_contain: "EXADNSVRK001"
+        why: "The estate topology diagram must include the DNS host -- it was silently missing until 2026-07-10."
+
+  - name: firewall_build
+    description: >
+      PXE-install Debian -> EXAFWLVRK001/EXAFWLCLD001 (firewallme.sh break-glass,
+      then the Ansible firewallme role for ongoing management).
+    requires_files:
+      - bootstrap/web/provision/firewallme.sh
+      - docs/buildsheets/buildsheet-firewall.md
+      - ansible/playbooks/firewallme/README.md
+      - ansible/playbooks/firewallme/playbooks/90-firewall.yml
+    content_assertions:
+      - file: bootstrap/web/provision/firewallme.sh
+        must_contain: "BREAK-GLASS TOOL"
+        why: "Same reasoning as bindme.sh above."
+      - file: ansible/README.md
+        must_contain: "Appendix A"
+        why: "The WAN-SSH onboarding gotcha (network stage kills the connection) must stay documented -- it's a real, easy-to-hit footgun, not a hypothetical."
+
+  - name: windows_unattend
+    description: >
+      Windows Server 2022 ISO + unattend XML -> Server Core with OpenSSH ->
+      Ansible reachable via SSH from the very first run.
+    requires_files:
+      - bootstrap/web/windows/unattend/headlessunattend.xml
+      - ansible/configs/inventory/group_vars/windows_nodes/connection.yml
+    content_assertions:
+      - file: bootstrap/web/windows/unattend/headlessunattend.xml
+        must_contain: "OpenSSH.Server"
+        why: "This is the whole point of the scenario -- if the unattend XML stops installing OpenSSH, Ansible has no way to reach a fresh Windows Core box at all."
+      - file: bootstrap/web/windows/unattend/headlessunattend.xml
+        must_contain: "sc start sshd"
+        why: "Installing the capability isn't enough -- the service has to actually be started for SSH to be reachable on first boot."
