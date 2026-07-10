@@ -1,0 +1,7 @@
+---
+# Marker variable for at_have_ryggen_fri's add_host probe. If this shows up
+# on the seed host after playbook.yml's first play registers it into
+# ryggen_fri_marker_group via add_host, dynamic-registration group_vars
+# resolution -- the mechanism windows_bootstrap/00-preflight.yml's Phase H2
+# depends on -- is confirmed working.
+ryggen_fri_marker: "ryggen fri: group_vars resolved via add_host"
