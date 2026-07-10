@@ -27,6 +27,7 @@
 | Set up a RAC emulator VM | [lab/rac-emulator.md](lab/rac-emulator.md) |
 | Fix a ZFS disk | [proxmox/zfs-disk-replacement.md](proxmox/zfs-disk-replacement.md) |
 | Troubleshoot WireGuard | [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) |
+| Verify a change is safe before merging | [../ansible/at_have_ryggen_fri/README.md](../ansible/at_have_ryggen_fri/README.md) |
 
 ---
 
@@ -164,6 +165,22 @@ Proxmox VE administration, storage, networking, and planning documents.
 | [proxmox/proxmox-dcm-pbs-planning.md](proxmox/proxmox-dcm-pbs-planning.md) | NET-PVE-PBS-001 | Proxmox Backup Server and DC migration planning |
 | [proxmox/pegaprox-evaluation.md](proxmox/pegaprox-evaluation.md) | NET-PVE-EVAL-001 | PegaProx evaluation notes |
 | [proxmox/pdm-enterprise-proposal.md](proxmox/pdm-enterprise-proposal.md) | NET-PVE-PDM-001 | Proxmox Datacenter Manager enterprise proposal |
+
+---
+
+## `testing/`
+
+Repo-wide verification. Lives under `ansible/` rather than `docs/`, unlike
+everything else in this index, because it's a runnable tool colocated with
+the code it checks (matching every other subsystem's own `README.md` —
+`ansible/README.md`, `ansible/playbooks/firewallme/README.md`, etc. — none
+of which are indexed here either). Listed anyway, deliberately, because
+running it belongs in everyone's workflow, not just people working inside
+that one directory.
+
+| File | Doc ID | Description |
+|------|--------|-------------|
+| [../ansible/at_have_ryggen_fri/README.md](../ansible/at_have_ryggen_fri/README.md) | NET-QA-001 | `at_have_ryggen_fri` — repo-wide verification harness. YAML validity, `ansible-playbook --syntax-check`, file-reference integrity, inventory structure, `add_host` visibility, generated-file freshness, markdown link integrity, cross-file fact consistency, and the estate's bare-metal bootstrap scenarios. Run `ansible/at_have_ryggen_fri/run.sh` before merging anything that touches inventory, `group_vars`, `ansible.cfg`, `benarbejde/`, or `docs/` |
 
 ---
 

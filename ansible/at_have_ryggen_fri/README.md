@@ -47,6 +47,39 @@ cd ansible/at_have_ryggen_fri
 Exit code 0 if every check passes, 1 otherwise. Colour-coded output follows
 the same `[*]`/`[+]`/`[!]`/`[✗]` convention as `firewallme.sh`/`ansibleme.sh`.
 
+## What a real failure looks like
+
+This isn't hypothetical — `check_facts.py` genuinely caught this on its first
+run, 2026-07-10. `docs/buildsheets/buildsheet-firewall.md` still had the
+firewall's old, pre-CLD/VRK-split WAN IP after every other file had already
+been fixed:
+
+```
+── 8. Cross-file facts — check_facts.py ──
+
+Checked 4 fact(s) against 14 file assertion(s) (facts.yml).
+
+3 drifted assertion(s):
+  [fwl_wan_ip] docs/buildsheets/buildsheet-firewall.md: does not contain "192.168.139.69"
+      expected (per benarbejde/devices.csv (VRK,FWL,1,69)): "192.168.139.69"
+  ...
+[✗] Registered fact(s) have drifted -- see above.
+
+── Summary ──
+
+[✗] 1 check(s) failed:
+  ✗ check_facts.py
+```
+
+What to do with output like this: the `[name]` in brackets (`fwl_wan_ip`)
+is the fact's key in `facts.yml` — look it up there for the full context
+(`source`, `description`) and the complete list of files it's supposed to
+hold in. Fix the file named in the failure (either it's genuinely stale, or
+the fact's registered `value` itself needs updating if the real IP/hostname
+legitimately changed) and re-run. This one specific failure is what
+prompted fixing that buildsheet the same day — see the git log around
+2026-07-10 for the actual commit.
+
 ## What it checks
 
 | # | Check | How |
