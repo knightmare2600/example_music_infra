@@ -28,6 +28,16 @@
 #               the Ansible control node -- same reason sites.csv needs to land here,
 #               not on the Windows DC being configured. Previously these files existed
 #               in benarbejde/ but nothing deployed them anywhere Ansible could read.
+#   2026-07-10  nodeinfo.json's environment field now resolved via the shared
+#               tasks/nodeinfo_environment.yml instead of being left to
+#               nodeinfo.yml's 'production' default. Previously, running
+#               this playbook after a role-specific play (proxmox/site.yml,
+#               firewallme, rudder_server.yml) had already set a real
+#               environment (e.g. staging) would silently reset it back to
+#               production, since this play never read any existing value.
+#               nodeinfo_environment.yml checks the host's own existing
+#               nodeinfo.json first, so a correctly-set value survives a
+#               later run of this playbook.
 
 - name: Deploy common tools
   hosts: all
@@ -153,6 +163,9 @@
           ansible.builtin.set_fact:
             _tools_site_row: "{{ _tools_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
 
+        - name: Resolve environment
+          include_tasks: ../../tasks/nodeinfo_environment.yml
+
         - name: Write nodeinfo.json
           include_tasks: ../../tasks/nodeinfo.yml
           vars:
@@ -161,6 +174,7 @@
             nodeinfo_city: "{{ _tools_site_row.City | default('') }}"
             nodeinfo_country: "{{ _tools_site_row.Country | default('') }}"
             nodeinfo_entity: "{{ _tools_site_row.Entity | default('') }}"
+            nodeinfo_environment: "{{ resolved_environment }}"
             nodeinfo_bootstrapped_by: "linux/tools.yml"
       rescue:
         - name: nodeinfo.json skipped — hostname not yet EXA-convention

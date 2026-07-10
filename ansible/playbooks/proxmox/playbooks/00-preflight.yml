@@ -44,15 +44,21 @@
 #               refresh run on an already-onboarded node can safely skip
 #               the stages that touch live state, without an operator
 #               having to remember which tags are safe by hand.
-#   2026-07-10  Added /etc/.environment detection (moved from first-boot.sh,
-#               same check/prompt/write pattern already used by firewallme's
-#               00_preflight.yml and bind9-dns.yml) and a single-disk ZFS
-#               rpool check (moved from first-boot.sh's console "type I
-#               UNDERSTAND" gate; converted to an explicit
+#   2026-07-10  Added environment detection (moved from first-boot.sh) and a
+#               single-disk ZFS rpool check (moved from first-boot.sh's
+#               console "type I UNDERSTAND" gate; converted to an explicit
 #               -e pve_acknowledge_single_disk=true override, matching the
 #               bootstrap_force/pve_force_full_onboard pattern already used
 #               elsewhere in this playbook chain, for an auditable
 #               non-interactive run instead of a console-only prompt).
+#   2026-07-10  Environment detection reworked, same day as above: dropped
+#               the standalone /etc/.environment file entirely in favour of
+#               ansible/tasks/nodeinfo_environment.yml, which reads the
+#               environment straight from an already-deployed nodeinfo.json
+#               if present. /etc/.environment's only real consumer anywhere
+#               in the estate was nodeinfo.json's own `environment` field —
+#               same cleanup applied to firewallme's 00_preflight.yml,
+#               bind9-dns.yml, and rudder_server.yml.
 # =============================================================================
 
 - name: Proxmox VE — Preflight (site lookup, onboarding-state detection)
@@ -126,54 +132,19 @@
       tags: preflight
 
     # ── Environment detection ──────────────────────────────────────────────
-    # Moved from first-boot.sh 2026-07-10. Same check/prompt/write pattern
-    # already used by firewallme/roles/firewall/tasks/00_preflight.yml and
-    # bind9/bind9-dns.yml — read /etc/.environment if it exists, else prompt
-    # and write it.
+    # Resolved from an already-deployed nodeinfo.json if present, else
+    # prompted -- see ansible/tasks/nodeinfo_environment.yml (replaced the
+    # old standalone /etc/.environment file 2026-07-10, same day it was
+    # added here, once it became clear every consumer of that file across
+    # the estate only ever used it to seed this one nodeinfo.json field).
 
-    - name: "[Preflight] Check /etc/.environment on host"
-      ansible.builtin.stat:
-        path: /etc/.environment
-      register: pve_env_file
+    - name: "[Preflight] Resolve environment"
+      ansible.builtin.include_tasks: ../../../tasks/nodeinfo_environment.yml
       tags: preflight
 
-    - name: "[Preflight] Read environment from file"
-      ansible.builtin.slurp:
-        src: /etc/.environment
-      register: pve_env_content
-      when: pve_env_file.stat.exists and pve_env_file.stat.size > 0
-      tags: preflight
-
-    - name: "[Preflight] Set environment from file"
+    - name: "[Preflight] Set pve_environment"
       ansible.builtin.set_fact:
-        pve_environment: "{{ pve_env_content.content | b64decode | trim }}"
-      when: pve_env_file.stat.exists and pve_env_file.stat.size > 0
-      tags: preflight
-
-    - name: "[Preflight] Prompt for environment (not set on host)"
-      ansible.builtin.pause:
-        prompt: "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]"
-      register: pve_env_prompt
-      when: not pve_env_file.stat.exists or pve_env_file.stat.size == 0
-      tags: preflight
-
-    - name: "[Preflight] Set environment from prompt"
-      ansible.builtin.set_fact:
-        pve_environment: >-
-          {%- set e = pve_env_prompt.user_input | default('p') | lower | trim -%}
-          {%- if e == 's' -%}staging
-          {%- elif e == 'd' -%}development
-          {%- else -%}production
-          {%- endif -%}
-      when: not pve_env_file.stat.exists or pve_env_file.stat.size == 0
-      tags: preflight
-
-    - name: "[Preflight] Write /etc/.environment"
-      ansible.builtin.copy:
-        content: "{{ pve_environment }}\n"
-        dest: /etc/.environment
-        mode: '0644'
-      when: not pve_env_file.stat.exists or pve_env_file.stat.size == 0
+        pve_environment: "{{ resolved_environment }}"
       tags: preflight
 
     # ── Single-disk ZFS check ───────────────────────────────────────────────

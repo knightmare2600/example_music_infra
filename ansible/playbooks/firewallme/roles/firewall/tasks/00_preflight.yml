@@ -86,50 +86,18 @@
     fw_domain: "{{ site_services.domain_fqdn }}"
 
 # ── Environment detection ─────────────────────────────────────────────────────
+# Resolved from an already-deployed nodeinfo.json if present, else prompted --
+# see ansible/tasks/nodeinfo_environment.yml (replaced the old standalone
+# /etc/.environment file 2026-07-10; fw_environment kept as the local alias
+# since 04_summary_confirm.yml/07_nftables.yml/10_ssh_hardening.yml/
+# 12_finish.yml all already reference it by this name).
 
-- name: "[Preflight] Check /etc/.environment on host"
-  ansible.builtin.stat:
-    path: /etc/.environment
-  register: fw_env_file
+- name: "[Preflight] Resolve environment"
+  ansible.builtin.include_tasks: ../../../../../tasks/nodeinfo_environment.yml
 
-- name: "[Preflight] Read environment from file"
-  ansible.builtin.slurp:
-    src: /etc/.environment
-  register: fw_env_content
-  when: fw_env_file.stat.exists and fw_env_file.stat.size > 0
-
-- name: "[Preflight] Set environment from file"
+- name: "[Preflight] Set fw_environment"
   ansible.builtin.set_fact:
-    fw_environment: "{{ fw_env_content.content | b64decode | trim }}"
-  when: fw_env_file.stat.exists and fw_env_file.stat.size > 0
-
-- name: "[Preflight] Show loaded environment"
-  ansible.builtin.debug:
-    msg: "{{ _c.C }}[*]{{ _c.NC }} Environment loaded from file: {{ _c.G }}{{ fw_environment }}{{ _c.NC }}"
-  when: fw_env_file.stat.exists and fw_env_file.stat.size > 0
-
-- name: "[Preflight] Prompt for environment (not set on host)"
-  ansible.builtin.pause:
-    prompt: "{{ _c.C }}Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]{{ _c.NC }}"
-  register: fw_env_prompt
-  when: not fw_env_file.stat.exists
-
-- name: "[Preflight] Set environment from prompt"
-  ansible.builtin.set_fact:
-    fw_environment: >-
-      {%- set e = fw_env_prompt.user_input | default('p') | lower | trim -%}
-      {%- if e == 's' -%}staging
-      {%- elif e == 'd' -%}development
-      {%- else -%}production
-      {%- endif -%}
-  when: not fw_env_file.stat.exists
-
-- name: "[Preflight] Write environment to /etc/.environment"
-  ansible.builtin.copy:
-    content: "{{ fw_environment }}\n"
-    dest: /etc/.environment
-    mode: '0644'
-  when: not fw_env_file.stat.exists
+    fw_environment: "{{ resolved_environment }}"
 
 # ── Black-site extra confirmation ─────────────────────────────────────────────
 
