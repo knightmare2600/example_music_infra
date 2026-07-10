@@ -1,0 +1,63 @@
+---
+# =============================================================================
+# ansible/tasks/nodeinfo_environment.yml
+# Example Music Limited — Resolve a node's environment (production/staging/
+# development) from its own nodeinfo.json, prompting only if unset
+# =============================================================================
+# Replaces the old /etc/.environment check/prompt/write pattern, which was
+# duplicated near-identically across firewallme's 00_preflight.yml,
+# bind9-dns.yml, rudder_server.yml, and proxmox's 00-preflight.yml -- in
+# every case, /etc/.environment's only purpose was to seed nodeinfo.json's
+# `environment` field (ansible/tasks/nodeinfo.yml). This checks that field
+# directly instead of maintaining a second, separate flat file whose only
+# consumer was itself.
+#
+# Sets:
+#   resolved_environment   'production' | 'staging' | 'development'
+#
+# Usage: include this, then pass resolved_environment into
+# ansible/tasks/nodeinfo.yml's nodeinfo_environment (optionally via a
+# locally-scoped alias, e.g. fw_environment, if other tasks in the same
+# role already reference that name).
+# =============================================================================
+# Changelog:
+#   2026-07-10  Initial file -- consolidates 4 duplicated /etc/.environment
+#               blocks (firewallme, bind9, rudder, proxmox) into one shared
+#               task, and fixes linux/tools.yml's best-effort nodeinfo.json
+#               write, which previously always defaulted to 'production'
+#               with no way to see an already-set environment from a
+#               role-specific play that ran first.
+# =============================================================================
+
+- name: "[Environment] Check for existing /etc/example-music/nodeinfo.json"
+  ansible.builtin.stat:
+    path: /etc/example-music/nodeinfo.json
+  register: _nodeinfo_env_file
+
+- name: "[Environment] Read existing nodeinfo.json"
+  ansible.builtin.slurp:
+    src: /etc/example-music/nodeinfo.json
+  register: _nodeinfo_env_content
+  when: _nodeinfo_env_file.stat.exists
+  changed_when: false
+
+- name: "[Environment] Set environment from existing nodeinfo.json"
+  ansible.builtin.set_fact:
+    resolved_environment: "{{ (_nodeinfo_env_content.content | b64decode | from_json).environment | default('') }}"
+  when: _nodeinfo_env_file.stat.exists
+
+- name: "[Environment] Prompt for environment (no nodeinfo.json yet)"
+  ansible.builtin.pause:
+    prompt: "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]"
+  register: _nodeinfo_env_prompt
+  when: resolved_environment | default('') == ''
+
+- name: "[Environment] Set environment from prompt"
+  ansible.builtin.set_fact:
+    resolved_environment: >-
+      {%- set e = _nodeinfo_env_prompt.user_input | default('p') | lower | trim -%}
+      {%- if e == 's' -%}staging
+      {%- elif e == 'd' -%}development
+      {%- else -%}production
+      {%- endif -%}
+  when: resolved_environment | default('') == ''
