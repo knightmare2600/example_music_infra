@@ -668,49 +668,17 @@
   # ---------------------------------------------------------------------------
   # 8. Node info file
   # ---------------------------------------------------------------------------
-    - name: Check /etc/.environment
+    # Resolved from an already-deployed nodeinfo.json if present, else
+    # prompted -- see ansible/tasks/nodeinfo_environment.yml (replaced the
+    # old standalone /etc/.environment file 2026-07-10).
+    - name: Resolve environment
       tags: always
-      stat:
-        path: /etc/.environment
-      register: _env_file
+      include_tasks: ../../tasks/nodeinfo_environment.yml
 
-    - name: Read environment from file
-      tags: always
-      slurp:
-        src: /etc/.environment
-      register: _env_content
-      when: _env_file.stat.exists and _env_file.stat.size > 0
-
-    - name: Set environment from file
+    - name: Set dns_environment
       tags: always
       set_fact:
-        dns_environment: "{{ _env_content.content | b64decode | trim }}"
-      when: _env_file.stat.exists and _env_file.stat.size > 0
-
-    - name: Prompt for environment (not set on host)
-      tags: always
-      pause:
-        prompt: "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]"
-      register: _env_prompt
-      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
-
-    - name: Set environment from prompt
-      tags: always
-      set_fact:
-        dns_environment: >-
-          {%- set e = _env_prompt.user_input | default('') | lower | trim -%}
-          {%- if e == 's' -%}staging
-          {%- elif e == 'd' -%}development
-          {%- else -%}production
-          {%- endif -%}
-      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
-
-    - name: Write /etc/.environment
-      tags: always
-      copy:
-        content: "{{ dns_environment }}\n"
-        dest: /etc/.environment
-      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
+        dns_environment: "{{ resolved_environment }}"
 
     - name: Ensure /etc/example-music directory exists
       tags: always

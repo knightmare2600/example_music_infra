@@ -736,43 +736,15 @@
   # Section 11 — Node info file
   # ---------------------------------------------------------------------------
 
-    - name: "11 | Check /etc/.environment"
-      stat:
-        path: /etc/.environment
-      register: _env_file
+    # Resolved from an already-deployed nodeinfo.json if present, else
+    # prompted -- see ansible/tasks/nodeinfo_environment.yml (replaced the
+    # old standalone /etc/.environment file 2026-07-10).
+    - name: "11 | Resolve environment"
+      include_tasks: ../../tasks/nodeinfo_environment.yml
 
-    - name: "11 | Read environment from file"
-      slurp:
-        src: /etc/.environment
-      register: _env_content
-      when: _env_file.stat.exists and _env_file.stat.size > 0
-
-    - name: "11 | Set environment from file"
+    - name: "11 | Set rudder_environment"
       set_fact:
-        rudder_environment: "{{ _env_content.content | b64decode | trim }}"
-      when: _env_file.stat.exists and _env_file.stat.size > 0
-
-    - name: "11 | Prompt for environment (not set on host)"
-      pause:
-        prompt: "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]"
-      register: _env_prompt
-      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
-
-    - name: "11 | Set environment from prompt"
-      set_fact:
-        rudder_environment: >-
-          {%- set e = _env_prompt.user_input | default('') | lower | trim -%}
-          {%- if e == 's' -%}staging
-          {%- elif e == 'd' -%}development
-          {%- else -%}production
-          {%- endif -%}
-      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
-
-    - name: "11 | Write /etc/.environment"
-      copy:
-        content: "{{ rudder_environment }}\n"
-        dest: /etc/.environment
-      when: not (_env_file.stat.exists and _env_file.stat.size > 0)
+        rudder_environment: "{{ resolved_environment }}"
 
     - name: "11 | Ensure /etc/example-music directory exists"
       file:
