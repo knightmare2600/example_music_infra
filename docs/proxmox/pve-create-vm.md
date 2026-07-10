@@ -17,7 +17,7 @@
 
 > **Applies to:** Proxmox VE 8.x · Python 3.8+
 > **Requires:** `proxmoxer`, `requests` (`pip3 install proxmoxer requests`)
-> **Location:** `bootstrap/create-vm.py`
+> **Location:** `bootstrap/web/proxmox/create-vm.py`
 
 ---
 
