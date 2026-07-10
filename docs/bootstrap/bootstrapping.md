@@ -294,6 +294,10 @@ bootstrap/web/
 ├── menu.ipxe                    ← main iPXE boot menu, chained to from bootstrap.ipxe
 ├── lvm.seed / lvm-bios.seed / lvm-efi.seed  ← Debian preseed variants (also under debian/)
 ├── ipxe.lkrn, ipxeaa64_arch.efi ← prebuilt iPXE binaries
+├── ansible_sshkey.pub           ← Ansible user public key — served from the web root; every
+│                                    consumer (first-boot.sh, late_command.sh, docs) fetches it
+│                                    from here, not from proxmox/ — moved here 2026-07-10 to
+│                                    match, rather than fixing every fetch path individually
 │
 ├── debian/
 │   ├── late_command.sh          ← Debian post-install hook
@@ -306,7 +310,6 @@ bootstrap/web/
 │   ├── degraded.toml            ← PVE auto-install: ZFS RAID-0 (1 disk, degraded mirror)
 │   ├── first-boot.sh            ← PVE post-install provisioning script
 │   ├── post-pve-install.sh, create-vm.py, convert-v2v.py, manage-pool.py, pve-bootorder.py, ...
-│   ├── ansible_sshkey.pub       ← Ansible user public key
 │   ├── sites.csv, devices.csv, address_policy.json, begyndelse.json, ad_forest.json
 │   │   ← synced copies of benarbejde/*, kept in sync by .githooks/pre-commit — edit the
 │   │     benarbejde/ originals, never these
@@ -1212,10 +1215,16 @@ This applies to new Windows VMs (or physical Windows machines) being provisioned
 > **Correction (2026-07-10):** this section previously described `PostOOBE.cmd` mapping a `Z:` drive to
 > `\\EXADCSCPH001\DeployTools` with a `DEPLOYTOOLS_PASS` environment variable, launching the script from
 > `Z:\panther\`, then unmapping on exit. None of that matches the real, current `bootstrap/web/windows/
-> PostOOBE.cmd` — corrected below. Note this is also `Join-DomainAndBootstrap.ps1`'s legacy, manually-
-> triggered domain-join path — for the raw Server Core scenario (unattend XML → OpenSSH → Ansible), this
-> script is not required; Ansible's own `windows_bootstrap/playbooks/80-domainjoin.yml` handles domain
-> join instead. This section is kept for the cases where the manual/interactive path is still used.
+> PostOOBE.cmd` — corrected below.
+>
+> **Status: historical artefact, not a live path.** `PostOOBE.cmd`/`Join-DomainAndBootstrap.ps1` predate
+> Ansible's `windows_bootstrap` chain. Domain join and everything else this script does are now handled by
+> `windows_bootstrap/playbooks/80-domainjoin.yml` and the rest of the numbered chain, run the normal way
+> once a host has OpenSSH reachable (unattend XML → OpenSSH → Ansible). The manually-mapped `DeployTools`
+> share this script depends on is itself moot now that Ansible bootstrapping handles this end to end — it
+> is not being actively maintained or kept in sync, and its `\\DC01\deploytools\` vs `$DeployToolsShare`
+> (`\\EXADCSCPH001\DeployTools`) UNC-path disagreement (noted below) is left as-is rather than reconciled.
+> This section documents it as a historical record, not a recommended path.
 
 The real, current `PostOOBE.cmd` is much simpler than previously described:
 
