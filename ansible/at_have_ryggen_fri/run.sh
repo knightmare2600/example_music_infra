@@ -85,6 +85,18 @@
 # ==============================================================================
 set -uo pipefail
 
+# --strict: promotes "expected, informational" warnings (missing drop-in
+# binaries, unindexed docs) to real failures. Added 2026-07-10 after Robert
+# pointed out that burying 20 missing ARM64/x86_64 binaries as a generic
+# "expected on a fresh clone" yellow line is the wrong default for someone
+# actually about to deploy, not just cloning the repo to read it. Default
+# behaviour (no flag) is unchanged -- still safe to run on a bare clone with
+# nothing dropped in yet.
+STRICT=false
+for arg in "$@"; do
+  [[ "$arg" == "--strict" ]] && STRICT=true
+done
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; WHITE='\033[1;37m'; NC='\033[0m'
 info()    { echo -e "${CYAN}[*]${NC} $*"; }
@@ -192,11 +204,17 @@ section "3. Reference integrity — check_references.py"
 ref_out=$(python3 "${HERE}/check_references.py")
 ref_rc=$?
 echo "$ref_out"
+drop_in_count=$(echo "$ref_out" | grep -oE '^[0-9]+ drop-in asset' | grep -oE '^[0-9]+' || true)
 if [[ $ref_rc -ne 0 ]]; then
   fail "Broken file reference(s) found -- see above."
   FAILED_CHECKS+=("check_references.py")
-elif echo "$ref_out" | grep -q "drop-in asset(s)"; then
-  warn "All references resolve, but some drop-in assets aren't present yet (see above) -- expected on a fresh clone."
+elif [[ -n "$drop_in_count" && "$drop_in_count" -gt 0 ]]; then
+  if $STRICT; then
+    fail "${drop_in_count} drop-in asset(s) missing -- see above. Failing because --strict was passed: you said you're about to deploy, not just reading the repo."
+    FAILED_CHECKS+=("check_references.py (--strict: drop-in assets missing)")
+  else
+    warn "${drop_in_count} drop-in asset(s) aren't present yet (see above) -- expected on a fresh clone, but re-run with --strict before an actual deployment to fail on this instead of just warning."
+  fi
 else
   success "All literal file references resolved."
 fi
