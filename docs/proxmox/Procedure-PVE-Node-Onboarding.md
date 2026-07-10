@@ -37,6 +37,18 @@ The playbook is idempotent and safe to re-run. It does not rebuild the node — 
 
 > **Note:** If the node was provisioned by our PXE installer, the `ansible` user already exists. The playbook will verify this and skip creation if present.
 
+> **Circular-dependency warning — read this before using this procedure for a brand-new site's very first PVE node:**
+> This procedure runs `site.yml` *from* an Ansible control node against the target PVE node. That means it presupposes
+> a working Ansible control node already exists — which itself normally runs as a VM *on* a PVE node. For the very
+> first PVE node at a new site (the one that will eventually host that site's own `EXAANS<SITE>001`, if it has one,
+> or that leans on the estate's existing `EXAANSCLD001`), this is not circular in practice, because `EXAANSCLD001`
+> already exists and can onboard any new PVE node anywhere, including a brand-new site's first one. It only becomes
+> genuinely circular if you are trying to bootstrap `EXAANSCLD001` itself, or any Ansible control node, from scratch
+> with no other Ansible control node reachable — in that specific case, `bootstrap/web/provision/ansibleme.sh` is the
+> break-glass path (it clones this repo and configures itself directly on the target box over SSH, without needing
+> an existing Ansible control node to drive it), not this procedure. Run `ansibleme.sh` first in that case, then come
+> back here for every PVE node after that.
+
 ---
 
 ## 1. Verify the node is in the inventory

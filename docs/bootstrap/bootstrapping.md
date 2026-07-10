@@ -18,6 +18,7 @@
 | 2026-03-07 | Initial version                                              |
 | 2026-03-08 | Rework some sections. Explain more about "starting with nothing but a laptop and a flask of tea" |
 | 2026-05-17 | Spruce up the static web server output for easier debug      |
+| 2026-07-10 | Major correction pass, prompted by a full line-by-line audit against `benarbejde/`'s source-of-truth files and the real `bootstrap/web/` tree. Corrected: the Standard IP Convention table (firewall was mapped to `.1`, actually `.253`/`.254`; `.15` PRV and `.82`-`.94` WAP were missing entirely); the firewall's identity throughout (`EXAFWLCLD001` → `EXAFWLVRK001`, with its real vRACK/CLD-LAN dual-interface addressing, not a single `192.168.139.253`); the provisioning-server narrative (`EXASTRPCLD001` was superseded by `EXAPRVVRK001`, not "migrated to" `EXAANSCLD001` — those are two separate hosts on separate subnets); the §1.5 topology diagram (added the missing `EXADNSVRK001`, fixed the PBX/firewall IPs, fixed the `192.168.139.0/24` subnet mislabel); the `web/` directory tree in §2.3 (previously described several directories and files — `gparted/`, `phoenixpe/`, `proxmox/boot/`, two `.msi` files — that don't exist anywhere in this repo; replaced with the real, verified current layout); the `.ipxe` dotfile claim in §4.2 (never existed; real file is `menu.ipxe`); site-code errors (`ABR`→`ABD`, fictional `GAA` removed, the known-site-codes list refreshed against `sites.csv`); the first-boot.sh sample transcript (was internally inconsistent — wrong hostname for the worked example, wrong gateway octet reinforcing the `.1`-is-gateway error, mismatched IPs before/after reboot); §8's PostOOBE.cmd/Join-DomainAndBootstrap.ps1 description (previously described a `Z:`-mapping/`DEPLOYTOOLS_PASS` flow and a "12-stage" script that don't match the real files — real `PostOOBE.cmd` is a 3-line hardcoded-UNC-path launcher, real script is 22+ stages); §9's boot-server-IP-change file table (wrong/nonexistent paths). Also flagged, not resolved: `example.org`'s status as a registered domain is inconsistent between this doc, `Join-DomainAndBootstrap.ps1`, and `ad_forest.json`; `PostOOBE.cmd`'s `\\DC01\deploytools\` vs the script's own `$DeployToolsShare` (`\\EXADCSCPH001\DeployTools`) disagree and neither matches a real inventoried host. See `ansible/at_have_ryggen_fri/` (the repo's verification harness) for how some of these are now checked automatically going forward. |
 
 ---
 
@@ -28,8 +29,8 @@ Exceptions are noted in individual site entries.
 
 | Address       | Role                                                         | Hostname pattern                      |
 | ------------- | ------------------------------------------------------------ | ------------------------------------- |
-| `.1`          | Primary internet gateway                                     | `EXAFWL<SITE>001` / `EXARTR<SITE>001` |
-| `.2`          | BMC pool slot 1 — DRAC / iLO                                 | `EXARAC<SITE>001`                     |
+| `.1`          | Upstream router (RTR) — not the firewall, see `.253`/`.254`  | `EXARTR<SITE>001`                     |
+| `.2`          | BMC pool slot 1 — DRAC / iLO / Redfish                       | `EXARAC<SITE>001`                     |
 | `.3`          | BMC pool slot 2 — or RAC emulator VM on single-PVE-node sites | `EXARAC<SITE>002`                     |
 | `.4`          | BMC pool slot 3 — or RAC emulator VM on two-PVE-node sites   | `EXARAC<SITE>003`                     |
 | `.5`          | PVE node 1                                                   | `EXAPVE<SITE>001`                     |
@@ -37,12 +38,17 @@ Exceptions are noted in individual site entries.
 | `.7`          | PVE node 3                                                   | `EXAPVE<SITE>003`                     |
 | `.10`         | Domain Controller — primary                                  | `EXADCS<SITE>001`                     |
 | `.11`         | Domain Controller — secondary                                | `EXADCS<SITE>002`                     |
+| `.15`         | Provisioning server                                          | `EXAPRV<SITE>001`                     |
 | `.48`         | VOIP SBC — trunks to `EXAPBXCLD001`                          | `EXASBC<SITE>001`                     |
+| `.82`–`.94`   | Wireless access points (static, one per WAP; count varies)   | `EXAWAP<SITE>00N`                     |
 | `.100`–`.249` | DHCP pool                                                    | —                                     |
 | `.250`–`.252` | RT switches                                                  | `EXASWI<SITE>001`–`003`               |
-| `.253`        | Secondary internet gateway                                   | —                                     |
+| `.253`        | Firewall — primary (FWL1). **This is the site's actual gateway/internet-facing device, not `.1`.** | `EXAFWL<SITE>001` |
+| `.254`        | Firewall — secondary (FWL2)                                  | `EXAFWL<SITE>002`                     |
 
-> **BMC pool:** `.2`/`.3`/`.4` are shared between physical DRAC/iLO interfaces and the RAC emulator VM. Physical PVE node BMCs consume from `.2` upward; the RAC VM (`EXARAC<SITE>00N`) takes the next free slot.
+> **Role codes match `benarbejde/address_policy.json`, the single source of truth this table is derived from — if the two ever disagree, `address_policy.json` is correct and this table needs fixing, not the other way round.**
+>
+> **BMC pool:** `.2`/`.3`/`.4` are shared between physical DRAC/iLO interfaces and the RAC emulator VM (a training/lab tool — see `docs/lab/rac-emulator.md` — not a real BMC control plane). Physical PVE node BMCs consume from `.2` upward; the RAC VM (`EXARAC<SITE>00N`) takes the next free slot.
 >
 > ***NB: On three-PVE-node sites the pool is fully consumed by physical BMCs.***
 
@@ -66,25 +72,32 @@ The server runs Proxmox VE directly on bare metal. Its public IP (`192.0.8.86`) 
 
 *NB: Working with OVH's infrastructure falls outside the scope of this document.*
 
-### 1.2 Additional IP — EXAFWLCLD001 WAN
+### 1.2 Additional IP — EXAFWLVRK001 WAN
+
+> **Naming correction (2026-07-10):** this device was originally referred to throughout this section as
+> `EXAFWLCLD001`, with a single LAN interface at `192.168.139.253/24`. It has since been split into its
+> current, correct form — `EXAFWLVRK001`, with a `192.168.139.0/24`-facing (vRACK) address distinct from
+> its `192.168.69.0/24`-facing (CLD LAN) address — see `benarbejde/devices.csv`. The values below reflect
+> the current, correct state, not the original one-address model.
 
 OVH allows the purchase of additional IPs that can be assigned to VMs via MAC virtualisation. One additional IP was purchased for the firewall VM:
 
 | Property | Value |
 |---|---|
-| VM Hostname | `EXAFWLCLD001` |
-| FQDN | `exafwlcld001.example.com` |
-| WAN IP (OVH additional IP) | `192.0.8.131` |
+| VM Hostname | `EXAFWLVRK001` |
+| FQDN | `exafwlvrk001.example.com` |
+| WAN IP (OVH additional IP, real internet uplink) | `192.0.8.131` |
 | WAN Gateway | `192.0.8.254` |
-| LAN interface | `192.168.139.253/24` |
-| Role | Firewall/gateway for the `192.168.139.0/24` provisioning subnet |
+| vRACK-facing interface | `192.168.139.69/24` |
+| CLD LAN-facing interface | `192.168.69.253/24` |
+| Role | Internet-facing firewall/gateway; also the gateway for the `192.168.69.0/24` (CLD) and `192.168.139.0/24` (vRACK) subnets |
 | MAC Address | `00:50:00:C0:FF:EE` (OVH will require you ot set the MAC they provide) |
 
-`EXAFWLCLD001` is a VM running on `EXAPVECLD001`. Its WAN interface uses the additional OVH IP (`192.0.8.131`) with a virtual MAC assigned in the OVH control panel — this is required for OVH's network to route the additional IP to the VM rather than the host. The LAN interface (`192.168.139.253`) is the default gateway for the entire `192.168.139.0/24` provisioning subnet.
+`EXAFWLVRK001` is a VM running on `EXAPVECLD001`. Its WAN interface uses the additional OVH IP (`192.0.8.131`) with a virtual MAC assigned in the OVH control panel — this is required for OVH's network to route the additional IP to the VM rather than the host. Internally it has two further interfaces: `192.168.139.69` (vRACK-facing) and `192.168.69.253` (CLD LAN-facing, the default gateway for CLD's own subnet).
 
-EXAFWLCLD001 runs **dnsmasq** on the LAN interface, providing both DHCP and DNS for `192.168.139.0/24`. It also handles DNS for `jukebox.internal` internally.
+`EXAFWLVRK001` runs **dnsmasq** on its vRACK interface, providing DHCP and iPXE tagging for `192.168.139.0/24`. Authoritative DNS for `jukebox.internal` is **not** handled by the firewall — that's BIND9 on `EXADNSVRK001` (`192.168.139.8`, see §4a below); the firewall's `dns_forwarders` point at it.
 
-**Firewall rules on EXAFWLCLD001:** Inbound access to the provisioning network from site WAN IPs is permitted, but each site is restricted to a `/32` — i.e. the single known public IP of each site (FAL, BRK, ODE, and all other commissioned sites). No wider ranges are permitted inbound.
+**Firewall rules on EXAFWLVRK001:** Inbound access to the provisioning network from site WAN IPs is permitted, but each site is restricted to a `/32` — i.e. the single known public IP of each site (FAL, BRK, ODE, and all other commissioned sites). No wider ranges are permitted inbound.
 
 ### 1.3 Temporary Bootstrapping Node — EXASTRPCLD001
 
@@ -97,9 +110,16 @@ EXAFWLCLD001 runs **dnsmasq** on the LAN interface, providing both DHCP and DNS 
 | OS | Windows 11 (minimal install) |
 | Role | Temporary HTTP provisioning server — serves `web/` |
 
-This is a VM on `EXAPVECLD001`, sitting behind `EXAFWLCLD001` on `192.168.139.0/24`. It runs `static-web-server.exe` serving the `web/` directory tree. It exists purely because it was the fastest way to stand up an HTTP server at the start of the project. You may use `Python3 -m http.server` too
+This is a VM on `EXAPVECLD001`, sitting behind `EXAFWLVRK001` on `192.168.139.0/24`. It runs `static-web-server.exe` serving the `web/` directory tree. It exists purely because it was the fastest way to stand up an HTTP server at the start of the project. You may use `Python3 -m http.server` too
 
-**This node must be migrated to EXAANSCLD001 (the Ansible node) once that VM is commissioned.** At that point `EXASTRPCLD001` will be shut down and destroyed. The IP `192.168.139.50` is the address hardcoded throughout all provisioning scripts and Proxmox TOML files — when migrating, either assign `192.168.139.50` to EXAANSCLD001 or update every reference (see §8).
+> **Correction (2026-07-10):** the line that originally stood here said this node "must be migrated to
+> `EXAANSCLD001` (the Ansible node) once that VM is commissioned." That was wrong even as a plan, not just
+> stale — `EXASTRPCLD001` was in fact superseded by **`EXAPRVVRK001`**, a permanent Linux provisioning
+> server that keeps the same role (serving `web/` at `192.168.139.50`) and the same IP. `EXAANSCLD001` (the
+> Ansible control node) is a separate box entirely, on a different subnet (`192.168.69.0/24`, not
+> `192.168.139.0/24`) — see `benarbejde/begyndelse.json`'s `provisioning_edinburgh` and `ansible_control`
+> entries, which are two distinct hosts. **`EXASTRPCLD001` was decommissioned once `EXAPRVVRK001` took
+> over `192.168.139.50`.**
 
 ### 1.4 Domain Registration and Public DNS
 
@@ -115,14 +135,14 @@ The following public DNS records exist:
 | Record | Type | Value | Notes |
 |---|---|---|---|
 | `exapvecld001.example.com` | A | `192.0.8.86` | Proxmox host — web UI, SSH |
-| `exafwlcld001.example.com` | A | `192.0.8.131` | Firewall WAN IP |
-| `ansible.jukebox.internal` | A | `192.0.8.131` | Primary provisioning server name — resolves to EXAFWLCLD001's WAN IP (port-forwarded through to `192.168.139.50`) |
+| `exafwlvrk001.example.com` | A | `192.0.8.131` | Firewall WAN IP |
+| `ansible.jukebox.internal` | A | `192.0.8.131` | Provisioning server name — resolves to EXAFWLVRK001's WAN IP (port-forwarded through to `192.168.139.50`, `EXAPRVVRK001`) |
 | `ansible.example.com` | CNAME | `ansible.jukebox.internal` | Alias |
 | `www.jukebox.internal` | CNAME | `ansible.jukebox.internal` | Fallback used by `bootstrap.ipxe` |
 
-The `ansible.jukebox.internal` A record is the one that matters for iPXE boot. The embedded `bootstrap.ipxe` script tries hostnames in this order: `ansible.jukebox.internal` → `www.jukebox.internal` → direct IP `192.168.139.50`. The CNAME aliases mean all three resolve correctly as long as public DNS is functioning.
+The `ansible.jukebox.internal` A record is the one that matters for iPXE boot. The embedded `bootstrap.ipxe` script tries hostnames in this order: `ansible.jukebox.internal` → `www.jukebox.internal` → direct IP `192.168.139.50`. The CNAME aliases mean all three resolve correctly as long as public DNS is functioning. **Note:** despite the `ansible.*` name, this DNS record always points at the *provisioning* server (`EXAPRVVRK001`), never at the Ansible control node (`EXAANSCLD001`) — the two are separate hosts on separate subnets (see the correction in §1.3). The name predates that distinction and is being kept for compatibility with existing iPXE/preseed configs rather than renamed.
 
-Port forwarding on EXAFWLCLD001 forwards inbound HTTP (port `80/TCP`) on `192.0.8.131` through to `192.168.139.50` (EXASTRPCLD001, or EXAANSCLD001 once migrated).
+Port forwarding on EXAFWLVRK001 forwards inbound HTTP (port `80/TCP`) on `192.0.8.131` through to `192.168.139.50` (`EXAPRVVRK001`).
 
 ### 1.5 Network topology summary
 
@@ -131,17 +151,24 @@ Internet
     │
     │  192.0.8.86 (EXAPVECLD001 — Proxmox host, OVH Edinburgh)
     │
-    ├─ VM: EXAFWLCLD001
-    │       WAN: 192.0.8.131 (OVH additional IP, gw 192.0.8.254)
-    │       LAN: 192.168.139.253/24
-    │       Runs: dnsmasq, DHCP, firewall, WireGuard hub (CLD spoke)
+    ├─ VM: EXAFWLVRK001
+    │       WAN (internet): 192.0.8.131 (OVH additional IP, gw 192.0.8.254)
+    │       WAN (vRACK):    192.168.139.69/24
+    │       LAN (CLD):      192.168.69.253/24
+    │       Runs: dnsmasq (vRACK DHCP/iPXE), firewall, WireGuard hub (CLD spoke)
     │
-    └─ 192.168.139.0/24  (provisioning / CLD LAN)
+    ├─ 192.168.139.0/24  (vRACK / provisioning subnet)
+    │       │
+    │       ├─ 192.168.139.8    EXADNSVRK001 (BIND9 — authoritative for jukebox.internal)
+    │       ├─ 192.168.139.50   EXAPRVVRK001 (provisioning HTTP server; was EXASTRPCLD001, decommissioned)
+    │       └─ 192.168.139.69   EXAFWLVRK001 (vRACK-facing face of the firewall above)
+    │
+    └─ 192.168.69.0/24   (CLD LAN)
             │
-            ├─ 192.168.139.50   EXASTRPCLD001 (temp bootstrap — Windows 11)  ⚠ temporary
-            ├─ 192.168.139.48   PBX (per-site convention)
-            ├─ 192.168.139.253  EXAFWLCLD001 LAN
-            └─ ...              Future VMs (EXAANSCLD001, EXADCSCLD001, etc.)
+            ├─ 192.168.69.9     EXAANSCLD001 (Ansible control node)
+            ├─ 192.168.69.48    EXAPBXCLD001 (PBX)
+            ├─ 192.168.69.253   EXAFWLVRK001 (CLD LAN-facing face of the firewall above)
+            └─ ...              Other CLD VMs (EXADCSCLD001, etc.)
 
 Public DNS:
     ansible.jukebox.internal  A      192.0.8.131  ← iPXE boot target
@@ -158,10 +185,10 @@ This document covers the full lifecycle of bringing a new site node from bare me
 The pipeline is:
 
 ```
-Internet → ansible.jukebox.internal (192.0.8.131, EXAFWLCLD001)
-               └─ port 80 forwarded to 192.168.139.50 (EXASTRPCLD001)
+Internet → ansible.jukebox.internal (192.0.8.131, EXAFWLVRK001)
+               └─ port 80 forwarded to 192.168.139.50 (EXAPRVVRK001)
                     └─ static-web-server serving web/
-                         └─ iPXE boot (embedded bootstrap.ipxe → chains to .ipxe menu)
+                         └─ iPXE boot (embedded bootstrap.ipxe → chains to menu.ipxe)
                               ├─ Proxmox VE auto-install (answer.toml / degraded.toml)
                               │    └─ first-boot.sh (post-install provisioning)
                               └─ Debian auto-install (lvm.seed → late_command.sh)
@@ -202,7 +229,7 @@ All of the above are available via Chocolatey on Windows (installed automaticall
 
 ### 2.2 Setting up the HTTP server
 
-The provisioning pipeline is driven by an HTTP server serving the `web/` directory tree. In production this runs permanently on EXASTRPCLD001. For field use from a laptop, use `static-web-server.exe`:
+The provisioning pipeline is driven by an HTTP server serving the `web/` directory tree. In production this runs permanently on EXAPRVVRK001. For field use from a laptop, use `static-web-server.exe`:
 
 ```powershell
 PS> .\static-web-server.exe -d web\ -g info -a 192.168.139.50 --directory-listing
@@ -249,90 +276,64 @@ sudo python3 -m http.server 80 --bind 127.0.0.1 -d web/ | while IFS= read -r lin
 
 > **Note:** Python's `http.server` is single-threaded and will stall if a client disconnects mid-transfer. For iPXE kernel/initrd loads (which are large) prefer `static-web-server`.
 
-### 2.3 Building the `web/` directory tree
+### 2.3 The `web/` directory tree
 
-The following structure must exist before the server starts. Create it with:
+> **Correction (2026-07-10):** the structure and `mkdir` commands that used to stand here (`web/proxmox/boot/`,
+> `web/gparted/`, `web/phoenixpe/`, `web/autodeploy/`, plus `qemu-ga-x86_64.msi`/`virtio-win-gt-x64.msi` at the
+> `web/` root) do not match this repo — none of those paths or files exist anywhere in `bootstrap/web/`, and
+> there's no evidence they were ever built out beyond this document. Replaced below with the real, current
+> layout (`bootstrap/web/`, confirmed against the actual tree, not reconstructed from memory).
 
-**Windows (PowerShell):**
-```powershell
-mkdir -Force web/proxmox/boot,web/debian,web/gparted,web/phoenixpe,web/arch,web/autodeploy
-```
-
-**Linux / macOS:**
-```bash
-mkdir -p web/proxmox/boot web/debian web/gparted web/phoenixpe web/arch web/autodeploy
-```
-
-Minimum required files and where they come from:
+This structure ships in the repo already — you don't need to build it from scratch, only add the large
+binary assets (installer kernels/initrds, ISOs) that aren't committed (see the note at the end of this
+section for why).
 
 ```cmd
-web/
-├── menu.ipxe                    ← boot menu (served as /menu.ipxe — see §3.2)
-├── lvm.seed                     ← Debian preseed file
-├── late_command.sh              ← Debian post-install hook
-├── ansible_sshkey.pub           ← Ansible user public key
-├── convert-v2v.py               ← V2V migration script
-├── create-vm.py                 ← VM creation script
-├── manage-pool.py               ← Pool management script
-├── PostOOBE.cmd                 ← Windows post-OOBE bootstrap launcher
-├── Join-DomainAndBootstrap.ps1  ← Windows domain join + software install
-├── qemu-ga-x86_64.msi           ← QEMU guest agent MSI (offline fallback)
-├── virtio-win-gt-x64.msi        ← VirtIO guest tools MSI (offline fallback)
+bootstrap/web/
+├── boot.ipxe, bootstrap.ipxe    ← iPXE boot scripts (bootstrap.ipxe is the one embedded — see §4.3)
+├── menu.ipxe                    ← main iPXE boot menu, chained to from bootstrap.ipxe
+├── lvm.seed / lvm-bios.seed / lvm-efi.seed  ← Debian preseed variants (also under debian/)
+├── ipxe.lkrn, ipxeaa64_arch.efi ← prebuilt iPXE binaries
+│
+├── debian/
+│   ├── late_command.sh          ← Debian post-install hook
+│   ├── lvm.seed / lvm-bios.seed / lvm-efi.seed
+│   ├── x86_64/linux, x86_64/initrd.gz   ← Debian netboot kernel+initrd (AMD64)
+│   └── arm64/linux, arm64/initrd.gz     ← Debian netboot kernel+initrd (ARM64)
 │
 ├── proxmox/
 │   ├── answer.toml              ← PVE auto-install: ZFS RAID-1 (2 disks)
 │   ├── degraded.toml            ← PVE auto-install: ZFS RAID-0 (1 disk, degraded mirror)
 │   ├── first-boot.sh            ← PVE post-install provisioning script
-│   └── boot/
-│       ├── linux26              ← Proxmox VE installer kernel
-│       └── initrd               ← Proxmox VE installer initrd
+│   ├── post-pve-install.sh, create-vm.py, convert-v2v.py, manage-pool.py, pve-bootorder.py, ...
+│   ├── ansible_sshkey.pub       ← Ansible user public key
+│   ├── sites.csv, devices.csv, address_policy.json, begyndelse.json, ad_forest.json
+│   │   ← synced copies of benarbejde/*, kept in sync by .githooks/pre-commit — edit the
+│   │     benarbejde/ originals, never these
+│   └── x86_64/boot/linux26, x86_64/boot/initrd
+│       ← Proxmox VE installer kernel+initrd (x86_64 only) — NOT committed, see below
 │
-├── debian/
-│   ├── linux                    ← Debian netboot kernel (from netboot.tar.gz)
-│   └── initrd.gz                ← Debian netboot initrd
+├── windows/
+│   ├── unattend/headlessunattend.xml    ← the one real unattend XML (see the Windows section)
+│   ├── PostOOBE.cmd, SetupComplete.cmd, Install-OpenSSH.ps1, Deploy-OpenSSH.cmd
+│   └── Join-DomainAndBootstrap.ps1      ← legacy; see the Windows section for current status
 │
-├── gparted/
-│   ├── vmlinuz
-│   ├── initrd.img
-│   └── filesystem.squashfs
+├── provision/
+│   └── ansibleme.sh, bindme.sh, firewallme.sh, rudderme.sh   ← break-glass bootstrap scripts
 │
-└── phoenixpe/
-    ├── wimboot
-    ├── bootmgr.exe
-    ├── boot.sdi
-    └── Boot.wim
+├── arch/x86_64/          ← Arch Linux netboot assets
+└── rocky/                ← Rocky Linux netboot assets
 ```
 
-#### Proxmox VE boot files
-
-Extract the kernel and initrd from the Proxmox VE ISO:
-
-```bash
-# Mount the ISO (Linux)
-mount -o loop proxmox-ve_9.1-1.iso /mnt/iso
-
-# Copy boot files
-cp /mnt/iso/boot/linux26 web/proxmox/boot/
-cp /mnt/iso/boot/initrd  web/proxmox/boot/
-
-umount /mnt/iso
-```
-
-On Windows, use 7-Zip to open the ISO and extract `boot/linux26` and `boot/initrd`.
-
-#### Debian netboot files
-
-The `debian/` subdirectory uses the Trixi netboot image (not the full ISO). Download the netboot tarball for your Debian version:
-
-```bash
-# Debian 12 (Bookworm) example
-wget https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/netboot.tar.gz
-tar xf netboot.tar.gz ./debian-installer/amd64/linux ./debian-installer/amd64/initrd.gz
-cp debian-installer/amd64/linux   web/debian/
-cp debian-installer/amd64/initrd.gz web/debian/
-```
-
-These are small (~50 MB combined). The installer fetches everything else from the network during install.
+**Not committed to this repo** (installer kernels/initrds and full ISOs — hundreds of MB to
+multiple GB each, deliberately kept out of git): the Proxmox VE installer's own boot kernel/initrd,
+expected at `proxmox/x86_64/boot/linux26` and `proxmox/x86_64/boot/initrd` (extracted from the
+Proxmox VE ISO you download separately — `menu.ipxe`'s `:proxmox-ve` entry serves x86_64 only) and
+any full distro ISOs. These need to be dropped into the tree by hand before first use, same pattern
+as `windows_bootstrap`'s drop-in binaries (see
+`ansible/playbooks/windows_bootstrap/playbooks/files/README.md`). If you don't have a copy already,
+ask whoever owns this repo — do not guess a source and download a potentially tampered installer
+image.
 
 ---
 
@@ -350,14 +351,16 @@ Organise entries into groups as follows:
 Example Music.kdbx
 ├── Infrastructure
 ├──── CLD
-│   ├── EXASTRPCLD001 — root (Proxmox provisioning node)
+│   ├── EXAPRVVRK001 — root (provisioning HTTP server; was EXASTRPCLD001, decommissioned)
 │   ├── PVE root password (answer.toml hash source)
 │   └── Ansible user password (per-node if not key-only)
 │
 ├── Active Directory
 │   ├── JUKEBOX\Administrator (forest DA)
-│   ├── DEPLOYTOOLS_PASS (used by PostOOBE.cmd)
-│   └── Per-domain DA accounts (example.net, example.org, example.com)
+│   └── Per-domain DA accounts (example.net, example.com — see §1.4. Join-DomainAndBootstrap.ps1
+│       also allows example.org as a join target, but §1.4's registered-domains list and
+│       ad_forest.json don't mention it — unresolved inconsistency, confirm with whoever owns
+│       DNS registration before assuming example.org is real and in use)
 │
 ├── Network
 │   ├── WireGuard pre-shared keys (per peer)
@@ -368,7 +371,7 @@ Example Music.kdbx
 │   └── Any third-party service credentials
 │
 ├── Site Credentials
-│   ├── ABR (Aberdeen, UK)
+│   ├── ABD (Aberdeen, UK)
 │   ├── AMS (Amsterdam, NL)
 │   ├── BON (Bonn, W. Germany)
 │   ├── <etc>
@@ -403,19 +406,22 @@ There are two iPXE script files:
 | File | Role |
 |---|---|
 | `bootstrap.ipxe` | **Embedded** into the compiled iPXE ISO/USB/ROM. Runs before any network is configured. Does DHCP, then chains to the boot menu. |
-| `web/.ipxe` (served as `/menu.ipxe`) | **Remote** boot menu. Served by the HTTP server. Contains all OS installer entries. |
+| `menu.ipxe` | **Remote** boot menu. Served by the HTTP server at `bootstrap/web/menu.ipxe`. Contains all OS installer entries. |
 
 The flow is: BIOS/UEFI boots iPXE ISO → `bootstrap.ipxe` runs → DHCP → chains to `http://192.168.139.50/menu.ipxe` → operator selects OS.
 
-### 4.2 The `.ipxe` filename and URL mapping
+### 4.2 The `menu.ipxe` filename and URL mapping
 
-The menu file is stored on disk as `web/.ipxe` (dotfile, hidden on Unix). The HTTP server serves it at the path configured in `bootstrap.ipxe`:
+> **Correction (2026-07-10):** this section previously claimed the menu file is stored on disk as a hidden
+> dotfile (`web/.ipxe`) and discussed working around web servers that refuse to serve dotfiles. That was
+> never accurate — the real file is `bootstrap/web/menu.ipxe`, a perfectly normal, non-hidden filename. No
+> dotfile has ever existed in this repo; there was nothing to work around.
+
+The menu file is stored on disk as `bootstrap/web/menu.ipxe`. The HTTP server serves it at the path configured in `bootstrap.ipxe`:
 
 ```
 set boot-path  /menu.ipxe
 ```
-
-When using `static-web-server`, the dotfile is served normally. With `python3 -m http.server` you may need to rename it to `menu.ipxe` if the server refuses to serve dotfiles.
 
 ### 4.3 Embedded bootstrap (`bootstrap.ipxe`)
 
@@ -605,7 +611,7 @@ make bin/undionly.kpxe EMBED=bootstrap.ipxe
 
 Pre-built binaries for common configurations are in `x86_64/ipxe.iso` and `arm64/ipxe.iso` in the repository.
 
-### 4.4 Boot menu (`.ipxe`)
+### 4.4 Boot menu (`menu.ipxe`)
 
 The remote boot menu offers the following entries:
 
@@ -638,21 +644,20 @@ The default selection is **Boot from local disk**, with a 30-second timeout. Thi
 
 ```ipxe
 :proxmox-ve
-kernel ${boot-url}/proxmox/boot/linux26 vga=791 video=vesafb:ywrap,mtrr ramdisk_size=16777216 proxmox-start-auto-installer=1 \
+iseq ${arch} arm64 && goto noarch-msg ||
+kernel ${boot-url}/proxmox/x86_64/boot/linux26 vga=791 video=vesafb:ywrap,mtrr ramdisk_size=16777216 proxmox-start-auto-installer=1 \
 proxmox-auto-install-mode=http proxmox-auto-install-url=${boot-url}/proxmox/answer.toml
-initrd ${boot-url}/proxmox/boot/initrd
+initrd ${boot-url}/proxmox/x86_64/boot/initrd
 boot
 ```
 
-This always pulls `answer.toml`. To do a **manual interactive install** instead, edit the menu file and swap in the commented-out manual block (present in `web/.ipxe`):
-
-```ipxe
-# PROXMOX VE — MANUAL INSTALL (uncomment to use)
-# :proxmox-ve
-# kernel ${boot-url}/proxmox/boot/linux26 vga=791 video=vesafb:ywrap,mtrr ramdisk_size=16777216
-# initrd ${boot-url}/proxmox/boot/initrd
-# boot
-```
+> **Correction (2026-07-10):** the path is `proxmox/x86_64/boot/` (arch-nested, matching `debian/x86_64/`'s
+> convention elsewhere in this tree), not a flat `proxmox/boot/` as previously shown here — quoted directly
+> from the real `bootstrap/web/menu.ipxe`. Proxmox VE is x86_64-only; the real menu entry checks `${arch}`
+> and redirects ARM64 hosts to a "not supported" message rather than attempting the boot. The
+> previously-referenced "manual interactive install" commented-out block does not exist in the real
+> `menu.ipxe` — there is no manual/interactive alternative entry today. If you need one, it would need to
+> be added, not just uncommented.
 
 
 ### Build ARM64 iPXE ISO for VMware Fusion (Apple Silicon)
@@ -992,26 +997,29 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   ================================================
   NODE CONFIGURATION
   ================================================
-  Known site codes:
-    ABR AKL AMS BIR BON BRD BRK CLD CLY COV CPH DUN EDI FAL FAX GAA GLA GOT HAL HUL KGE KOR LAX LIV LND MCR MEL MIA MIL MTL MUN NEW NJC NYC ODE OSL PER SHE SYD VIE
+  Known site codes (illustrative — the script reads this list live from benarbejde/sites.csv,
+  so it grows as sites are added; treat sites.csv as authoritative, not this transcript):
+    AAR ABD AKL AMS ATL BER BIR BON BRD BRK BRT CHI CLD CLY COV CPH DRS DUN DUS EDI FAL FAX FRD
+    FRE GLA GOT HAL HUL KGE KOR LAX LIV LND MCR MEL MIA MIL MTL MUN NEW NJC NYB NYC ODE OSL PER
+    SEA SFO SHE SYD TOR VIE VRK
 
   Site code (e.g. FAL, MCR, GLA): FAL
   [+] Site   : FAL -- Falkirk, Scotland
   [+] Entity : Example Music (Scotland) Ltd
   [+] Subnet : 192.168.76.0/24
-  Hostname (short, e.g. EXAFALPVE001): EXAPVECLD001
-  Gateway last octet (e.g. 253 -> 192.168.76.253): 1
-  [+] Gateway: 192.168.76.1
+  Hostname (short, e.g. EXAPVEFAL001): EXAPVEFAL001
+  Gateway last octet (e.g. 253 -> 192.168.76.253): 253
+  [+] Gateway: 192.168.76.253
 
-  [->] Scanning 192.168.76.5-10 for available IPs...
-  [+] Suggested: 192.168.76.5 (first free in .5-.10 range)
-  IP Address [192.168.76.5]: 192.168.139.5
-  [->] Checking 192.168.139.5 is not already in use...
-  [+] 192.168.139.5 is free
+  [->] Scanning 192.168.76.5-7 for available IPs (PVE node slots)...
+  [+] Suggested: 192.168.76.5 (first free in .5-.7 range)
+  IP Address [192.168.76.5]: 192.168.76.5
+  [->] Checking 192.168.76.5 is not already in use...
+  [+] 192.168.76.5 is free
 
-  [i] Hostname : EXAPVECLD001.jukebox.internal
-  [i] IP       : 192.168.139.5/24
-  [i] Gateway  : 192.168.76.1
+  [i] Hostname : EXAPVEFAL001.jukebox.internal
+  [i] IP       : 192.168.76.5/24
+  [i] Gateway  : 192.168.76.253
   [i] Site     : FAL -- Falkirk, Scotland
   [i] Entity   : Example Music (Scotland) Ltd
 
@@ -1068,37 +1076,37 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   RENAMING NODE AND FIXING NETWORK
   ================================================
   [->] Setting /etc/hostname...
-  [+] /etc/hostname -> EXAPVECLD001
+  [+] /etc/hostname -> EXAPVEFAL001
   [->] Updating /etc/hosts...
   [+] /etc/hosts updated
   [->] Fixing /etc/network/interfaces...
   [+] Physical NIC: eno1
-  [+] /etc/network/interfaces written (192.168.139.5/24 gw 192.168.76.1 via eno1)
+  [+] /etc/network/interfaces written (192.168.76.5/24 gw 192.168.76.253 via eno1)
   [->] Applying hostname to running system...
-  [+] Hostname: EXAPVECLD001
+  [+] Hostname: EXAPVEFAL001
   [->] Updating postfix...
-  [+] Postfix myhostname -> EXAPVECLD001.jukebox.internal
+  [+] Postfix myhostname -> EXAPVEFAL001.jukebox.internal
 
   +======================================================+
   |  PROVISIONING COMPLETE                               |
   +======================================================+
-  [+] Hostname   : EXAPVECLD001.jukebox.internal
-  [+] New IP     : 192.168.139.5/24 via 192.168.76.1
+  [+] Hostname   : EXAPVEFAL001.jukebox.internal
+  [+] New IP     : 192.168.76.5/24 via 192.168.76.253
   [+] Site       : FAL -- Falkirk, Scotland
   [+] Entity     : Example Music (Scotland) Ltd
   [+] ansible    : password + 0 SSH key(s)
   [+] Node info  : /etc/example-music/nodeinfo.json
   [+] molly-guard: active
-  [+] Web UI     : https://192.168.139.5:8006
+  [+] Web UI     : https://192.168.76.5:8006
 
   +------------------------------------------------------+
   |  NETWORK MIGRATION ON REBOOT                         |
   |                                                      |
-  |  Current (provisioning) : 192.168.139.2/24           |
-  |  After reboot (site LAN): 192.168.139.5/24           |
+  |  Current (provisioning, vRACK DHCP lease) : 192.168.139.x/24 |
+  |  After reboot (FAL site LAN)              : 192.168.76.5/24  |
   |                                                      |
   |  This SSH session will DROP on reboot.               |
-  |  Reconnect on the site LAN to 192.168.139.5          |
+  |  Reconnect on the site LAN to 192.168.76.5           |
   +------------------------------------------------------+
 
   +======================================================+
@@ -1154,9 +1162,9 @@ Set User Password command successful (user 2)
 ## Reboot ofr changes ot take effect
 root@pve-install:~# poweroff
 W: molly-guard: SSH session detected!
-Please type in hostname of the machine to poweroff: EXAPVECLD001
-root@pve-install:~# Connection to 192.168.139.2 closed by remote host.
-Connection to 192.168.139.2 closed.
+Please type in hostname of the machine to poweroff: EXAPVEFAL001
+root@pve-install:~# Connection to 192.168.139.x closed by remote host.
+Connection to 192.168.139.x closed.
 ```
 
 ---
@@ -1201,20 +1209,37 @@ This applies to new Windows VMs (or physical Windows machines) being provisioned
 
 ### 8.1 PostOOBE.cmd
 
-`PostOOBE.cmd` is the entry point. It is placed in `C:\Windows\System32\oobe\SetupComplete.cmd` (or run manually at first logon). It:
+> **Correction (2026-07-10):** this section previously described `PostOOBE.cmd` mapping a `Z:` drive to
+> `\\EXADCSCPH001\DeployTools` with a `DEPLOYTOOLS_PASS` environment variable, launching the script from
+> `Z:\panther\`, then unmapping on exit. None of that matches the real, current `bootstrap/web/windows/
+> PostOOBE.cmd` — corrected below. Note this is also `Join-DomainAndBootstrap.ps1`'s legacy, manually-
+> triggered domain-join path — for the raw Server Core scenario (unattend XML → OpenSSH → Ansible), this
+> script is not required; Ansible's own `windows_bootstrap/playbooks/80-domainjoin.yml` handles domain
+> join instead. This section is kept for the cases where the manual/interactive path is still used.
 
-1. Waits 12 seconds for networking to settle
-2. Maps `Z:` to `\\EXADCSCPH001\DeployTools` using the forest DA credential (`JUKEBOX\Administrator` with the password from the `DEPLOYTOOLS_PASS` environment variable — set this from KeePassXC before running, or inject it via your provisioning toolchain)
-3. Launches `Join-DomainAndBootstrap.ps1` from `Z:\panther\`
-4. Unmaps `Z:` on exit
+The real, current `PostOOBE.cmd` is much simpler than previously described:
 
-> **TODO:** Once all sites are commissioned, update the UNC in `PostOOBE.cmd` from `\\EXADCSCPH001\DeployTools` to `\\jukebox.internal\DeployTools` (DFS namespace).
+```cmd
+timeout /t 8 >nul
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "& '\\DC01\deploytools\Join-DomainAndBootstrap.ps1'"
+```
 
-> **Security note:** Do not hardcode the `DEPLOYTOOLS_PASS` value in the script. Set it as an environment variable at deploy time, or retrieve it from a secrets vault.
+It waits 8 seconds for networking, then runs `Join-DomainAndBootstrap.ps1` directly from a hardcoded UNC
+path (`\\DC01\deploytools\`) — no `Z:` drive mapping, no credential environment variable, no unmap step.
+
+> **Known, unresolved inconsistency:** `PostOOBE.cmd` hardcodes `\\DC01\deploytools\`, but
+> `Join-DomainAndBootstrap.ps1`'s own `$DeployToolsShare` variable is set to `\\EXADCSCPH001\DeployTools`
+> — two different UNC paths for what should be the same share. `DC01` doesn't follow the `EXA*` naming
+> convention used everywhere else in this estate, and no `DCS` host is defined for site `CPH` in
+> `benarbejde/devices.csv`. Flagging this rather than guessing which one is correct — confirm with
+> whoever set up the DeployTools share before relying on either path.
 
 ### 8.2 Join-DomainAndBootstrap.ps1
 
-The PowerShell script runs as a 12-stage bootstrap. It must be run elevated from the mapped `DeployTools` share (the script checks its own path and aborts if run from elsewhere). A sentinel file at `C:\Windows\Temp\PostOOBE-Bootstrap.done` prevents re-running.
+The PowerShell script runs as a 22-stage bootstrap (stages 0, 0b, 1 through 22, plus 17b and 22b —
+see the script's own `# ---------- Stage N: ... ----------` comments for the authoritative list; the
+"12-stage" figure previously stated here was wrong). A sentinel file at
+`C:\Windows\Temp\PostOOBE-Bootstrap.done` prevents re-running.
 
 **Stage 1 — Hypervisor detection**
 
@@ -1222,7 +1247,7 @@ Reads `Win32_ComputerSystem.Manufacturer` to determine whether the machine is a 
 
 **Stage 2 — Site detection**
 
-Reads the local IPv4 address and matches the third octet against the `$SubnetSiteMap` table to identify the site code and suggest the correct AD domain. All 42 sites plus CLD are in the map.
+Reads the local IPv4 address and matches the third octet against the `$SubnetSiteMap` table to identify the site code and suggest the correct AD domain. The map is a hardcoded table inside the script (not derived from `sites.csv`), so it needs a manual entry added whenever a new site is commissioned — check `$SubnetSiteMap` directly in the script for the current, authoritative list rather than trusting a specific count here.
 
 **Stage 3 — Hostname and domain**
 
@@ -1257,16 +1282,20 @@ Writes the sentinel file and reboots after 20 seconds.
 
 If the provisioning server IP changes from `192.168.139.50`, the following files must be updated:
 
+> **Correction (2026-07-10):** the table below previously referenced `web/.ipxe` (doesn't exist — see
+> §4.2's correction) and gave `web/`-root paths for `lvm.seed`/`late_command.sh` that don't match the
+> real tree. Corrected against the actual files.
+
 | File | Variable / line to change |
 |---|---|
-| `bootstrap.ipxe` | `set boot-ip 192.168.139.50` |
-| `web/.ipxe` | `set boot-url http://192.168.139.50` |
-| `web/boot.ipxe` | `set boot-url http://192.168.139.50` |
-| `web/proxmox/answer.toml` | `url = "http://192.168.139.50/proxmox/first-boot.sh"` |
-| `web/proxmox/degraded.toml` | `url = "http://192.168.139.50/proxmox/first-boot.sh"` |
-| `web/lvm.seed` | `wget ... http://192.168.139.50/late_command.sh` |
-| `web/late_command.sh` | `SSH_KEY_URL="http://192.168.139.50/ansible_sshkey.pub"` |
-| `first-boot.sh` | Any references to provisioning server URL |
+| `bootstrap/web/bootstrap.ipxe` | `set boot-ip 192.168.139.50` |
+| `bootstrap/web/boot.ipxe` | `set boot-url http://192.168.139.50` |
+| `bootstrap/web/menu.ipxe` | any hardcoded provisioning-server URLs in installer menu entries |
+| `bootstrap/web/proxmox/answer.toml` | `url = "http://192.168.139.50/proxmox/first-boot.sh"` |
+| `bootstrap/web/proxmox/degraded.toml` | `url = "http://192.168.139.50/proxmox/first-boot.sh"` |
+| `bootstrap/web/lvm.seed` **and** `bootstrap/web/debian/lvm.seed` | both exist, and currently disagree on the fetch path for `late_command.sh` (`/late_command.sh` vs `/debian/late_command.sh`) — check both, don't assume they're in sync |
+| `bootstrap/web/debian/late_command.sh` | `BOOT_SERVER="http://192.168.139.50"` |
+| `bootstrap/web/proxmox/first-boot.sh` | Any references to provisioning server URL |
 
 After changing `bootstrap.ipxe`, the iPXE binary must be recompiled and redistributed to all IPMI virtual media mounts and USB keys.
 

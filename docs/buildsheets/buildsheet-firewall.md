@@ -319,7 +319,7 @@ sudo bash -c 'wg setconf wg0 <(wg-quick strip /etc/wireguard/wg0.conf)'
 
 ## Step 8 — Add to Ansible Inventory
 
-Once the firewall is up and reachable, add it to the Ansible inventory on `EXASVRCLD002` (Ansible control node, `192.168.139.49`).
+Once the firewall is up and reachable, add it to the Ansible inventory on `EXAANSCLD001` (the Ansible control node, `192.168.69.9`). `EXASVRCLD002` is the Windows Admin Centre node, not the Ansible control node — see `benarbejde/begyndelse.json`.
 
 ---
 
@@ -376,7 +376,7 @@ cat /etc/.i_am_a_firewall
 
 | Site | Hostname     | IP              | Role        | VM   | OS   | PW   | FW   | RB   | WG   | PR   | VF   | AN   | OK   | Notes                         |
 | ---- | ------------ | --------------- | ----------- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ----------------------------- |
-| CLD  | EXAFWLCLD001 | 192.168.139.253 | Cloud Infra | X    | X    | X    | X    | X    | X    | N/A  | X    |      |      | Hosted at OVH                 |
+| CLD  | EXAFWLVRK001 | 192.168.69.253 (CLD LAN) / 192.168.139.69 (vRACK) | Cloud Infra | X    | X    | X    | X    | X    | X    | N/A  | X    |      |      | Hosted at OVH. Two internal interfaces, not one — see bootstrapping.md §1.2 |
 | PRV  | EXAFWLPRV001 | 192.168.139.253 | Cloud twin  | X    | X    | X    | X    | X    | X    | X    | X    |      |      | Legal fiction. Does not exist |
 
 ### Hubs (build these next)
