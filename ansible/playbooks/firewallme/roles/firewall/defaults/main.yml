@@ -43,7 +43,8 @@ fw_wan_ssh_src: ""
 fw_ansible_octet: 15
 
 # Environment (production / staging / development)
-# Read from /etc/.environment on the host if present; prompted if not.
+# Resolved from an already-deployed nodeinfo.json if present, else prompted --
+# see ansible/tasks/nodeinfo_environment.yml. This default is a fallback only.
 fw_environment: "production"
 
 # Black-site flag — set automatically when site code is CLD.
