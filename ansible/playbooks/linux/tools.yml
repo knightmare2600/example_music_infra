@@ -176,6 +176,16 @@
             nodeinfo_entity: "{{ _tools_site_row.Entity | default('') }}"
             nodeinfo_environment: "{{ resolved_environment }}"
             nodeinfo_bootstrapped_by: "linux/tools.yml"
+
+        # nodeinfo.json now carries the environment (above), so the legacy
+        # standalone file is redundant -- clean it up once it's confirmed
+        # captured. Only reached on the success path (not rescue), so a host
+        # that isn't EXA-conformant yet keeps its /etc/.environment until a
+        # later run actually writes nodeinfo.json.
+        - name: Remove legacy /etc/.environment (superseded by nodeinfo.json)
+          ansible.builtin.file:
+            path: /etc/.environment
+            state: absent
       rescue:
         - name: nodeinfo.json skipped — hostname not yet EXA-convention
           ansible.builtin.debug:

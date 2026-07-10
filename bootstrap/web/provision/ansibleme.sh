@@ -220,6 +220,11 @@
 #                     section is expected to be a no-op, not the primary source of
 #                     the content it used to be. Historical entries above describe
 #                     the layout as it was at the time; left as-is.
+# v1.20.0 2026-07-10  Environment resolution (§1a) now checks $NODEINFO first, then falls back
+#                     to the legacy /etc/.environment file, then prompts -- no longer writes
+#                     /etc/.environment (matches the equivalent change in bindme.sh/firewallme.sh/
+#                     bind9-dns.yml the same day). jq is guaranteed installed by this point (part
+#                     of BOOTSTRAP_PKGS, installed before §1a runs).
 #
 # ==============================================================================
 
@@ -452,16 +457,21 @@ fi
 # ------------------------------------------------------------------------------
 section "1a. Environment"
 
+# Resolved from an already-deployed nodeinfo.json if present (jq is guaranteed installed by this
+# point -- part of BOOTSTRAP_PKGS above), falling back to the legacy /etc/.environment file (hosts
+# provisioned before 2026-07-10), else prompted. No longer written to /etc/.environment --
+# nodeinfo.json (written later in this script) is the only place this is persisted now; Ansible's
+# linux/tools.yml removes any leftover /etc/.environment it finds on a later run.
 ENV_LONG=""
-if [[ -s /etc/.environment ]]; then
+if [[ -s "$NODEINFO" ]]; then
+  ENV_LONG="$(jq -r '.environment // empty' "$NODEINFO" 2>/dev/null)"
+  [[ -n "$ENV_LONG" ]] && info "Environment loaded from existing nodeinfo.json: ${ENV_LONG}"
+fi
+if [[ -z "$ENV_LONG" && -s /etc/.environment ]]; then
   ENV_LONG="$(cat /etc/.environment)"
-  if [[ -z "$ENV_LONG" ]]; then
-    warn "/etc/.environment is empty — defaulting to production"
-    ENV_LONG="production"
-  else
-    info "Environment loaded from file: ${ENV_LONG}"
-  fi
-else
+  [[ -n "$ENV_LONG" ]] && info "Environment loaded from legacy /etc/.environment: ${ENV_LONG}"
+fi
+if [[ -z "$ENV_LONG" ]]; then
   read -rp "  Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]: " ENV
   ENV="${ENV,,}"
   case "$ENV" in
@@ -470,7 +480,6 @@ else
     d) ENV_LONG="development" ;;
     *) warn "Invalid or empty — defaulting to production"; ENV_LONG="production" ;;
   esac
-  echo "$ENV_LONG" > /etc/.environment
   success "Environment set to: ${ENV_LONG}"
 fi
 
