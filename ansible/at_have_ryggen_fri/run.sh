@@ -131,11 +131,16 @@ fi
 # ------------------------------------------------------------------------------
 section "3. Reference integrity — check_references.py"
 
-if python3 "${HERE}/check_references.py"; then
-  success "All literal file references resolved."
-else
+ref_out=$(python3 "${HERE}/check_references.py")
+ref_rc=$?
+echo "$ref_out"
+if [[ $ref_rc -ne 0 ]]; then
   fail "Broken file reference(s) found -- see above."
   FAILED_CHECKS+=("check_references.py")
+elif echo "$ref_out" | grep -q "drop-in asset(s)"; then
+  warn "All references resolve, but some drop-in assets aren't present yet (see above) -- expected on a fresh clone."
+else
+  success "All literal file references resolved."
 fi
 
 # ------------------------------------------------------------------------------
