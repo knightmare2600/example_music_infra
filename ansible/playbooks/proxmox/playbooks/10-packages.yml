@@ -3,10 +3,13 @@
 # playbooks/10-packages.yml
 # Example Music Limited — Proxmox VE node: management packages
 # =============================================================================
-# Installs/upgrades pve_packages (group_vars/pvenodes/main.yml). Safe to run
-# on an already-onboarded node — apt install/upgrade of these specific
-# packages (none are core PVE services: pve-cluster, corosync, qemu, etc.
-# are never touched here) doesn't affect running VMs.
+# Fixes the apt repos (disables the paid pve-enterprise/ceph repos, adds the
+# no-subscription repo), removes the web-UI subscription nag, installs/
+# upgrades pve_packages (group_vars/pvenodes/main.yml), and installs
+# open-vm-tools if the node is a VMware guest. Safe to run on an
+# already-onboarded node — apt install/upgrade of these specific packages
+# (none are core PVE services: pve-cluster, corosync, qemu, etc. are never
+# touched here) doesn't affect running VMs.
 #
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/10-packages.yml
@@ -17,6 +20,9 @@
 #   2026-07-06  Initial file — extracted from pve_onboard.yml as part of the
 #               numbered-stage split (see 00-preflight.yml). Always runs,
 #               even on a refresh-only pass against an already-onboarded node.
+#   2026-07-10  Added apt repo fixing, subscription-nag removal, and VMware
+#               guest-tools detection — moved from first-boot.sh, which now
+#               only does enough for the ansible user to be SSH-reachable.
 # =============================================================================
 
 - name: Proxmox VE — Management packages
@@ -25,10 +31,111 @@
 
   tasks:
 
+    # ── Repo fixing ────────────────────────────────────────────────────────
+
+    - name: Check for pve-enterprise/ceph .list repos (legacy format)
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /etc/apt/sources.list.d/pve-enterprise.list
+        - /etc/apt/sources.list.d/ceph.list
+      register: pve_repo_list_check
+      tags: packages
+
+    - name: Disable pve-enterprise/ceph .list repos (legacy format)
+      ansible.builtin.replace:
+        path: "{{ item.item }}"
+        regexp: '^deb '
+        replace: '#deb '
+      loop: "{{ pve_repo_list_check.results }}"
+      when: item.stat.exists
+      tags: packages
+
+    - name: Check for DEB822 pve-enterprise/ceph .sources repos (PVE 9)
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /etc/apt/sources.list.d/pve-enterprise.sources
+        - /etc/apt/sources.list.d/ceph.sources
+      register: pve_repo_sources_check
+      tags: packages
+
+    - name: Disable DEB822 pve-enterprise/ceph .sources repos
+      ansible.builtin.command:
+        cmd: "mv {{ item.item }} {{ item.item }}.disabled"
+      loop: "{{ pve_repo_sources_check.results }}"
+      when: item.stat.exists
+      tags: packages
+
+    - name: Add Proxmox no-subscription repo
+      ansible.builtin.copy:
+        content: |
+          # Proxmox VE no-subscription repository - added by Ansible (10-packages.yml)
+          deb http://download.proxmox.com/debian/pve trixie pve-no-subscription
+        dest: /etc/apt/sources.list.d/pve-no-subscription.list
+        owner: root
+        group: root
+        mode: '0644'
+      tags: packages
+
+    # ── Subscription nag removal ──────────────────────────────────────────
+
+    - name: Check proxmoxlib.js for subscription nag
+      ansible.builtin.command:
+        cmd: grep -q 'Ext.Msg.show({' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+      register: pve_nag_check
+      changed_when: false
+      failed_when: false
+      tags: packages
+
+    - name: Patch proxmoxlib.js to remove subscription nag
+      ansible.builtin.replace:
+        path: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+        regexp: 'Ext\.Msg\.show\(\{'
+        replace: 'void({'
+        backup: true
+      register: pve_nag_patch
+      when: pve_nag_check.rc == 0
+      tags: packages
+
+    - name: Restart pveproxy (nag patch applied)
+      ansible.builtin.systemd:
+        name: pveproxy
+        state: restarted
+      when: pve_nag_patch.changed | default(false)
+      tags: packages
+
+    # ── Packages ───────────────────────────────────────────────────────────
+
     - name: Install management packages
       ansible.builtin.apt:
         name: "{{ pve_packages }}"
         update_cache: true
         cache_valid_time: 3600
         state: latest
+      tags: packages
+
+    # ── VMware guest tools ─────────────────────────────────────────────────
+
+    - name: Detect virtualisation type
+      ansible.builtin.command:
+        cmd: systemd-detect-virt
+      register: pve_virt_type
+      changed_when: false
+      failed_when: false
+      tags: packages
+
+    - name: Install open-vm-tools (VMware guest only)
+      ansible.builtin.apt:
+        name: open-vm-tools
+        state: present
+      when: pve_virt_type.stdout | default('') == 'vmware'
+      tags: packages
+
+    - name: Enable open-vm-tools (VMware guest only)
+      ansible.builtin.systemd:
+        name: open-vm-tools
+        enabled: true
+        state: started
+      when: pve_virt_type.stdout | default('') == 'vmware'
       tags: packages

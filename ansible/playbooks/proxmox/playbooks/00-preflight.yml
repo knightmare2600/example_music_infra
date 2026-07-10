@@ -44,6 +44,15 @@
 #               refresh run on an already-onboarded node can safely skip
 #               the stages that touch live state, without an operator
 #               having to remember which tags are safe by hand.
+#   2026-07-10  Added /etc/.environment detection (moved from first-boot.sh,
+#               same check/prompt/write pattern already used by firewallme's
+#               00_preflight.yml and bind9-dns.yml) and a single-disk ZFS
+#               rpool check (moved from first-boot.sh's console "type I
+#               UNDERSTAND" gate; converted to an explicit
+#               -e pve_acknowledge_single_disk=true override, matching the
+#               bootstrap_force/pve_force_full_onboard pattern already used
+#               elsewhere in this playbook chain, for an auditable
+#               non-interactive run instead of a console-only prompt).
 # =============================================================================
 
 - name: Proxmox VE — Preflight (site lookup, onboarding-state detection)
@@ -114,4 +123,95 @@
           - "Already onboarded : {{ pve_onboarded }}"
           - "Full onboard run  : {{ pve_run_full_onboard }} {{ '(forced via pve_force_full_onboard)' if pve_onboarded and pve_run_full_onboard else '' }}"
           - "{{ 'Access-setup and systemd-units stages will be SKIPPED this run — pass -e pve_force_full_onboard=true to force them.' if not pve_run_full_onboard else '' }}"
+      tags: preflight
+
+    # ── Environment detection ──────────────────────────────────────────────
+    # Moved from first-boot.sh 2026-07-10. Same check/prompt/write pattern
+    # already used by firewallme/roles/firewall/tasks/00_preflight.yml and
+    # bind9/bind9-dns.yml — read /etc/.environment if it exists, else prompt
+    # and write it.
+
+    - name: "[Preflight] Check /etc/.environment on host"
+      ansible.builtin.stat:
+        path: /etc/.environment
+      register: pve_env_file
+      tags: preflight
+
+    - name: "[Preflight] Read environment from file"
+      ansible.builtin.slurp:
+        src: /etc/.environment
+      register: pve_env_content
+      when: pve_env_file.stat.exists and pve_env_file.stat.size > 0
+      tags: preflight
+
+    - name: "[Preflight] Set environment from file"
+      ansible.builtin.set_fact:
+        pve_environment: "{{ pve_env_content.content | b64decode | trim }}"
+      when: pve_env_file.stat.exists and pve_env_file.stat.size > 0
+      tags: preflight
+
+    - name: "[Preflight] Prompt for environment (not set on host)"
+      ansible.builtin.pause:
+        prompt: "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]"
+      register: pve_env_prompt
+      when: not pve_env_file.stat.exists or pve_env_file.stat.size == 0
+      tags: preflight
+
+    - name: "[Preflight] Set environment from prompt"
+      ansible.builtin.set_fact:
+        pve_environment: >-
+          {%- set e = pve_env_prompt.user_input | default('p') | lower | trim -%}
+          {%- if e == 's' -%}staging
+          {%- elif e == 'd' -%}development
+          {%- else -%}production
+          {%- endif -%}
+      when: not pve_env_file.stat.exists or pve_env_file.stat.size == 0
+      tags: preflight
+
+    - name: "[Preflight] Write /etc/.environment"
+      ansible.builtin.copy:
+        content: "{{ pve_environment }}\n"
+        dest: /etc/.environment
+        mode: '0644'
+      when: not pve_env_file.stat.exists or pve_env_file.stat.size == 0
+      tags: preflight
+
+    # ── Single-disk ZFS check ───────────────────────────────────────────────
+    # Moved from first-boot.sh 2026-07-10. Was a console "type I UNDERSTAND"
+    # gate; converted to an explicit override flag so a run against a
+    # known-single-disk node (e.g. awaiting a second disk on order) can be
+    # acknowledged non-interactively and auditably, matching
+    # bootstrap_force/pve_force_full_onboard elsewhere in this chain.
+
+    - name: "[Preflight] Count ONLINE vdevs in rpool"
+      ansible.builtin.shell:
+        cmd: "zpool status rpool 2>/dev/null | grep -cE '^\\s+(sd|nvme|vd)[a-z]+[0-9]+\\s+ONLINE' || true"
+      register: pve_zpool_vdev_count
+      changed_when: false
+      tags: preflight
+
+    - name: FAIL — single disk, no ZFS redundancy, not acknowledged
+      ansible.builtin.fail:
+        msg: >
+          {{ inventory_hostname }}: only {{ pve_zpool_vdev_count.stdout | trim }}
+          disk(s) detected in ZFS pool rpool — this node has NO disk
+          redundancy and WILL lose all data if that disk fails. Follow
+          docs/proxmox/zfs-raid0-to-raid1.md to add a second disk before
+          production use. To proceed anyway (e.g. the second disk is on
+          order), re-run with -e pve_acknowledge_single_disk=true.
+      when:
+        - (pve_zpool_vdev_count.stdout | trim | int) < 2
+        - not (pve_acknowledge_single_disk | default(false) | bool)
+      tags: preflight
+
+    - name: WARN — single disk, acknowledged
+      ansible.builtin.debug:
+        msg: >
+          {{ inventory_hostname }}: only {{ pve_zpool_vdev_count.stdout | trim }}
+          disk(s) in ZFS pool rpool — no redundancy. Acknowledged via
+          -e pve_acknowledge_single_disk=true. Do not forget to add the
+          second disk before production use.
+      when:
+        - (pve_zpool_vdev_count.stdout | trim | int) < 2
+        - pve_acknowledge_single_disk | default(false) | bool
       tags: preflight

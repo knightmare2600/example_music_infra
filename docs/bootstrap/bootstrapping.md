@@ -20,6 +20,7 @@
 | 2026-05-17 | Spruce up the static web server output for easier debug      |
 | 2026-07-10 | Major correction pass, prompted by a full line-by-line audit against `benarbejde/`'s source-of-truth files and the real `bootstrap/web/` tree. Corrected: the Standard IP Convention table (firewall was mapped to `.1`, actually `.253`/`.254`; `.15` PRV and `.82`-`.94` WAP were missing entirely); the firewall's identity throughout (`EXAFWLCLD001` → `EXAFWLVRK001`, with its real vRACK/CLD-LAN dual-interface addressing, not a single `192.168.139.253`); the provisioning-server narrative (`EXASTRPCLD001` was superseded by `EXAPRVVRK001`, not "migrated to" `EXAANSCLD001` — those are two separate hosts on separate subnets); the §1.5 topology diagram (added the missing `EXADNSVRK001`, fixed the PBX/firewall IPs, fixed the `192.168.139.0/24` subnet mislabel); the `web/` directory tree in §2.3 (previously described several directories and files — `gparted/`, `phoenixpe/`, `proxmox/boot/`, two `.msi` files — that don't exist anywhere in this repo; replaced with the real, verified current layout); the `.ipxe` dotfile claim in §4.2 (never existed; real file is `menu.ipxe`); site-code errors (`ABR`→`ABD`, fictional `GAA` removed, the known-site-codes list refreshed against `sites.csv`); the first-boot.sh sample transcript (was internally inconsistent — wrong hostname for the worked example, wrong gateway octet reinforcing the `.1`-is-gateway error, mismatched IPs before/after reboot); §8's PostOOBE.cmd/Join-DomainAndBootstrap.ps1 description (previously described a `Z:`-mapping/`DEPLOYTOOLS_PASS` flow and a "12-stage" script that don't match the real files — real `PostOOBE.cmd` is a 3-line hardcoded-UNC-path launcher, real script is 22+ stages); §9's boot-server-IP-change file table (wrong/nonexistent paths). Also flagged, not resolved: `example.org`'s status as a registered domain is inconsistent between this doc, `Join-DomainAndBootstrap.ps1`, and `ad_forest.json`; `PostOOBE.cmd`'s `\\DC01\deploytools\` vs the script's own `$DeployToolsShare` (`\\EXADCSCPH001\DeployTools`) disagree and neither matches a real inventoried host. See `ansible/at_have_ryggen_fri/` (the repo's verification harness) for how some of these are now checked automatically going forward. |
 | 2026-07-10 | Second correction pass, prompted by Robert planning to physically test this document. The first pass above was thorough but, checked again from scratch against the real files rather than trusting the earlier edits, missed real gaps: §4.4's boot menu list was still describing an old menu (missing Ubuntu/OpenBSD/Spejder entirely, still saying "PhoenixPE" for what the real file's own changelog records as replaced by WinPE at v1.8) — the real `menu.ipxe` is at v2.2 with a **gateway-based dual-datacentre boot-url detection mechanism** (Edinburgh vs a "Fredericia" fallback) not documented anywhere before now, added as new §4.1a. §2.3's "not committed" note was Proxmox-only; widened to a full table of every missing asset directory `menu.ipxe` references, cross-checked against what the PFY's actual plan needs (only Proxmox VE's kernel/initrd, confirmed nothing else required). §6 ("first-boot.sh") was almost entirely rewritten: the real script was substantially trimmed on 2026-07-07 (confirmed via its own changelog) — the interactive site/hostname/IP/gateway prompt, virt-v2v/VirtIO/proxmoxbmc steps, and the node-rename-and-network step are **all gone**, moved into Ansible (`bootstrap-new-node.yml`, `40-scripts.yml`); the whole sample transcript was fictional relative to the current script and has been replaced with one quoted from the real, current output. §7.2 ("late_command.sh") had a step (LVM kernel modules) that the real script's own changelog records as deliberately removed, and was missing several real, current actions (fetching `sites.csv`/`devices.csv`/`begyndelse.json`, the "safety dance" prompt scripts, the same gateway detection as §4.1a). Also moved `bootstrap/web/proxmox/ansible_sshkey.pub` to the web root (matching every real consumer) and marked `Join-DomainAndBootstrap.ps1`/`PostOOBE.cmd` as historical artefacts, not break-glass tools — see the git log around this date for the separate commits. **Lesson for whoever picks this up next:** a "thorough" pass against source-of-truth files is not the same as checking every referenced file's *current* content — several of the errors found this time were real files that had been correctly identified as sources of truth in the first pass, then not fully read. |
+| 2026-07-10 | §6 rewritten again, same day as the above but a separate, deliberate change (not a correction of an error): `first-boot.sh` was trimmed a second time, this time by design rather than as dead-code removal — applying the "foot in the door" principle explicitly to the ansible-user step, on top of what 2026-07-07 already did for hostname/rename. The script now does only enough for the `ansible` user to be SSH-reachable (sshd present, user created, SSH key installed, `NOPASSWD` sudoers); everything else (apt repo fix, subscription-nag removal, packages, VMware guest tools, `/etc/.environment` prompt, dynamic MOTD, single-disk ZFS check, kvm-group membership, dotfiles/zsh) moved into `ansible/playbooks/proxmox/playbooks/` (`00-preflight.yml`, `10-packages.yml`, `40-scripts.yml`) or `group_vars/pvenodes/main.yml`, reusing `20-ansible-access.yml`/`playbooks/linux/tools.yml` where they already covered the same ground redundantly. The single-disk ZFS console "type I UNDERSTAND" gate became an explicit `-e pve_acknowledge_single_disk=true` override flag in `00-preflight.yml`, for an auditable non-interactive run instead of a console-only prompt. §6.1 and §6.4 rewritten to match; §6.4's transcript is now ~15 lines instead of ~70. |
 
 ---
 
@@ -935,37 +936,29 @@ The `first-boot.sh` is fetched and executed automatically by the PVE installer a
 
 ### 6.1 What it does (in order)
 
-> **Correction (2026-07-10):** this whole section previously described a much larger script — interactive
-> site/hostname/IP/gateway prompts, virt-v2v Windows-conversion prerequisites, VirtIO driver extraction,
-> and a final node-rename-and-network step. **All of that was removed on 2026-07-07** (see the real
-> script's own changelog): this script is now trimmed to only what must happen *before* Ansible can
-> connect — the ansible user and SSH key. Everything else moved into Ansible
-> (`ansible/playbooks/proxmox/bootstrap-new-node.yml` for hostname/rename/static-IP,
-> `ansible/playbooks/proxmox/playbooks/40-scripts.yml` for what used to be the V2V/VirtIO/proxmoxbmc
-> steps). The corrected step list below is quoted directly from the real, current
-> `bootstrap/web/proxmox/first-boot.sh` (576 lines) — **this is the single most consequential correction
-> in this document for anyone about to actually run this script**, since the old version would have had
-> you sitting at a keyboard waiting for prompts that no longer exist.
+> **Correction (2026-07-10, second trim):** this whole section previously described a script that did a
+> fair amount beyond the ansible user — apt repo fixing, subscription-nag removal, package installs,
+> an `/etc/.environment` prompt, VMware guest-tools detection, dotfiles/zsh, a dynamic MOTD, and a
+> single-disk ZFS warning. **All of that moved into Ansible on 2026-07-10** (see the real script's own
+> changelog), following the same "foot in the door" principle already applied to hostname/rename/
+> static-IP on 2026-07-07: this script now does *only* what must happen before Ansible can connect at
+> all — ensure `sshd` is present, create the `ansible` user, install its SSH key, configure `NOPASSWD`
+> sudoers. Everything else moved to `ansible/playbooks/proxmox/playbooks/`:
+> `10-packages.yml` (apt repo fix, subscription nag, packages, VMware tools), `00-preflight.yml`
+> (`/etc/.environment` prompt, single-disk ZFS check — now an explicit
+> `-e pve_acknowledge_single_disk=true` flag instead of a console "type I UNDERSTAND" prompt),
+> `40-scripts.yml` (dynamic MOTD), and `group_vars/pvenodes/main.yml` (the extra packages). kvm-group
+> membership and dotfiles/zsh were dropped from the script entirely rather than moved, since
+> `20-ansible-access.yml` and `playbooks/linux/tools.yml` already did them redundantly. The step list
+> below is quoted directly from the real, current `bootstrap/web/proxmox/first-boot.sh` (~145 lines,
+> down from 576) — **this is the single most consequential correction in this document for anyone about
+> to actually run this script**, since the old version would have had you sitting at a keyboard waiting
+> for prompts and package installs that no longer happen here.
 
-**Step 1 — APT repositories**
+**Step 1 — Ensure sshd is present**
 
-Disables the Proxmox enterprise repository (requires a subscription) and adds the no-subscription community repository.
-
-**Step 1b — Remove subscription nag**
-
-Patches `proxmoxlib.js` to suppress the "no valid subscription" popup in the web UI, and restarts `pveproxy`. Safe to re-run — re-patches automatically if an apt upgrade restores the original file (a `.bak` backup is kept from the first patch).
-
-**Step 3 — Core package installation**
-
-Installs: `openssh-server`, `sudo`, `net-tools`, `bash-completion`, `tree`, `bc`, `molly-guard`, `arping`, `nmap`, `parted`, `gdisk`, `smartmontools`, `vim`, `zsh`, `grc`, `python3-proxmoxer`, `python3-textual`, `python3-requests`, `python3-pbr`, `python3-six`, `w3m`, `xxd`, `jq`. (No `zsh-autosuggestions`/`zsh-syntax-highlighting` — those aren't in the real package list, despite an earlier version of this doc claiming otherwise.)
-
-**Step 3b — Environment selection**
-
-Interactively prompts: `Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]`. This is a genuinely new prompt not previously documented here at all — answer written to `/etc/.environment` and reused automatically on any re-run (won't ask twice). **This is the only interactive prompt left in the entire script** — there is no site/hostname/IP/gateway prompt any more.
-
-**VMware guest tools (unlabelled step)**
-
-Detects the hypervisor via `systemd-detect-virt`. If the PVE node is itself running inside VMware (nested — relevant during a migration period, not the normal case), installs and enables `open-vm-tools`. On real hardware or a non-VMware hypervisor this is skipped, correctly, with no prompt.
+Defensively installs `openssh-server` and `sudo` (PVE ISO installs already include both — this is a
+belt-and-braces check, not a real dependency fix) and ensures `ssh` is enabled/running.
 
 **Step 4 — Ansible user**
 
@@ -973,17 +966,15 @@ Creates the `ansible` service account with:
 - Password hardcoded to `Password1!` (matches the pattern used elsewhere in this repo's demo/lab scenarios — deliberate, not a bug, but change it before any real production use)
 - SSH public key fetched from `${BOOT_SERVER}/ansible_sshkey.pub`, where `${BOOT_SERVER}` is picked by the same gateway-based detection described in §4.1a (Edinburgh vs Fredericia) — added 2026-07-08, this used to be hardcoded to Edinburgh only
 - Full `NOPASSWD` sudo access via `/etc/sudoers.d/ansible` (syntax-checked with `visudo -c`; the file is removed again if the check fails, rather than leaving a broken sudoers drop-in)
-- Added to the `kvm` group, if it exists (required for `virt-v2v`/`libguestfs` to access `/dev/kvm` without root — relevant later, once Ansible's `40-scripts.yml` reintroduces the V2V tooling)
-- `.vimrc` written; zsh configured (with colour-coded prompt, green for `ansible`, red for `root`) and set as the default shell for both `ansible` and `root`
 
-**Step 6 — Dynamic MOTD**
-
-Writes `/etc/update-motd.d/10-pve`, a script that renders site/entity/PVE-version/network/VM-and-container-count/storage/ZFS-status/uptime info on every SSH login — reading `/etc/example-music/nodeinfo.json` if present, but **this script does not write that file itself** (an earlier version of this doc claimed it did — the MOTD script only reads it defensively, falling back to `UNKNOWN`/`Unknown` fields if it's absent, which it will be until Ansible runs). Enables `PrintMotd` in `sshd_config` if not already set.
+That's the entire script now. No packages beyond `openssh-server`/`sudo`, no MOTD, no dotfiles, no
+prompts other than what's built into the ansible-user steps above (none, in fact — there is no
+interactive prompt left in this script at all).
 
 **Summary and next steps**
 
-Prints a summary (current DHCP IP, environment, ansible user, molly-guard status) and — this is the
-important part — tells you exactly what to run next, verbatim:
+Prints a short summary (current DHCP IP, ansible user + key count) and — this is the important part —
+tells you exactly what to run next, verbatim:
 
 ```
 NEXT STEP: Ansible finishes this node's setup
@@ -997,22 +988,19 @@ the Ansible control node, run:
 You'll be prompted for this node's real hostname (from your build sheet, e.g. EXAPVEKGE001) --
 it sets the real hostname and static network config. The SSH session on this DHCP IP will then
 drop -- reconnect via the new hostname/IP, add it to configs/inventory/, then run proxmox/site.yml
-as normal.
+-- which does everything else this script used to (repo fix, packages, MOTD, /etc/.environment,
+single-disk warning, dotfiles, kvm group, etc.).
 ```
 
-**No reboot is required or performed automatically** — the script explicitly says so ("networking/hostname
-are unchanged") and only reboots if you opt in at a final `y/N` prompt, purely for a clean state (e.g.
-after kernel updates), not because anything requires it.
+**No reboot is required or performed automatically** — nothing left in this script needs one, so unlike
+the pre-2026-07-10 version there is no `y/N` reboot prompt at all any more.
 
-**ZFS single-disk warning** (only shown if applicable — checked by counting `ONLINE` vdevs in `zpool
-status rpool`): if the pool has fewer than 2 disks, prints a prominent warning and requires typing
-`I UNDERSTAND` verbatim before the script continues. This prevents a degraded, no-redundancy node from
-going unnoticed.
-
-**What happens to hostname/rename/static-IP now:** none of it happens in this script any more. The node
-stays on its DHCP-assigned IP with the Proxmox installer's placeholder hostname (`pve-install`) until you
-run `ansible-playbook -i "<dhcp-ip>," playbooks/proxmox/bootstrap-new-node.yml` from the Ansible control
-node, per the script's own on-screen instructions above.
+**What happens to hostname/rename/static-IP now:** none of it happens in this script any more (unchanged
+from the 2026-07-07 trim). The node stays on its DHCP-assigned IP with the Proxmox installer's placeholder
+hostname (`pve-install`) until you run `ansible-playbook -i "<dhcp-ip>," playbooks/proxmox/bootstrap-new-node.yml`
+from the Ansible control node, per the script's own on-screen instructions above. `proxmox/site.yml`'s
+`00-preflight.yml`/`10-packages.yml`/`40-scripts.yml` stages then do everything this script used to do
+on real hardware.
 
 ### 6.2 Alternate/historical method: `pve-iso-2-pxe`
 
@@ -1082,9 +1070,10 @@ Set User Password command successful (user 2)
 
 ### 6.4 What the real script's output actually looks like
 
-> Quoted directly from the real, current `bootstrap/web/proxmox/first-boot.sh` (2026-07-10) — see §6.1's
-> correction notice for what changed and why the shape of this transcript is now much shorter than an
-> earlier version of this document showed.
+> Quoted directly from the real, current `bootstrap/web/proxmox/first-boot.sh` (2026-07-10, second trim)
+> — see §6.1's correction notice for what changed. This transcript is now much shorter than an earlier
+> version of this document showed — no repo/nag/package/environment/MOTD/disk-warning output any more,
+> since none of that happens in this script.
 
 ```text
 root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
@@ -1095,41 +1084,10 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   +======================================================+
 
   ================================================
-  FIXING APT REPOSITORIES
+  ENSURING SSH SERVER
   ================================================
-  [->] Disabling Proxmox enterprise repos (require paid subscription)...
-  [->] Adding Proxmox no-subscription community repo...
-  [+] No-subscription repo added
-  [->] Running apt update...
-  [+] Repositories updated
-
-  ================================================
-  REMOVING SUBSCRIPTION NAG
-  ================================================
-  [->] Patching proxmoxlib.js...
-  [+] Subscription nag removed
-  [+] Backup saved: .../proxmoxlib.js.bak
-  [->] Restarting pveproxy...
-  [+] pveproxy restarted -- hard-refresh browser (Ctrl+Shift+R)
-
-  ================================================
-  INSTALLING PACKAGES
-  ================================================
-  [->] Installing core packages...
-    Setting up molly-guard (0.11.0) ...
-    : <snip>
-  [+] Core packages installed
-  [+] molly-guard active -- protects against accidental reboots/shutdowns
-
-  ================================================
-  ENVIRONMENT
-  ================================================
-  Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]: p
-  [+] Environment set to: production
-
-  [->] Checking hypervisor type...
-  [i] Detected virtualisation: none
-  [i] Not a VMware VM (none) -- skipping open-vm-tools
+  [->] Installing openssh-server + sudo (if missing)...
+  [+] sshd present and enabled
 
   ================================================
   ANSIBLE USER SETUP
@@ -1145,28 +1103,13 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   [+] Permissions set
   [->] Configuring NOPASSWD sudo...
   [+] Sudoers configured
-  [->] Adding ansible user to kvm group (required for virt-v2v / libguestfs performance)...
-  [+] ansible added to kvm group -- /dev/kvm accessible without sudo
-  [->] Writing .vimrc...
-  [+] .vimrc written
-  [->] Configuring zsh for ansible user...
-  [+] zsh configured for ansible user (green prompt)
-  [->] Configuring zsh for root...
-  [+] zsh configured for root (red prompt)
-
-  ================================================
-  CONFIGURING DYNAMIC MOTD
-  ================================================
-  [+] MOTD written
 
   +======================================================+
   |  ANSIBLE-BOOTSTRAP COMPLETE                           |
   +======================================================+
 
   [+]  Current IP :        192.168.139.87 (DHCP, provisioning network)
-  [+]  Environment :       production
   [+]  Ansible user :      ansible -- 1 SSH key(s)
-  [+]  molly-guard :       active
 
   +------------------------------------------------------+
   |  NEXT STEP: Ansible finishes this node's setup       |
@@ -1183,36 +1126,23 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   |  sets the real hostname and static network config.    |
   |  The SSH session on this DHCP IP will then drop --    |
   |  reconnect via the new hostname/IP, add it to         |
-  |  configs/inventory/, then run proxmox/site.yml as     |
-  |  normal.                                              |
+  |  configs/inventory/, then run proxmox/site.yml --     |
+  |  which does everything else this script used to      |
+  |  (repo fix, packages, MOTD, /etc/.environment,        |
+  |  single-disk warning, dotfiles, kvm group, etc.).     |
   +------------------------------------------------------+
 
-  +------------------------------------------------------+
-  |  POST-PROVISIONING: LET'S ENCRYPT WILDCARD CERT      |
-  |  ... (see docs/pve-letsencrypt.md) ...                |
-  +------------------------------------------------------+
-
-  [only if fewer than 2 ZFS vdevs detected:]
-
-  +======================================================+
-  |  WARNING: THIS NODE HAS NO DISK REDUNDANCY           |
-  |  ... (see §5.2's NB) ...                              |
-  +======================================================+
-
-  Type 'I UNDERSTAND' to confirm you have read this warning: I UNDERSTAND
-  [!] Acknowledged. Do not forget -- add the second disk before production.
-
-  No reboot is required by this script -- networking/hostname are unchanged.
-  A reboot is still fine if you want one for a clean state (e.g. after kernel updates).
-  Reboot now? [y/N]: n
-  [+] Skipping reboot. Run 'ansible-playbook ... playbooks/proxmox/bootstrap-new-node.yml' next.
+  [i] No reboot is required by this script -- nothing here needs one.
 ```
 
 **The single most important thing in that output, for the PFY's plan:** the node never gets a real
 hostname or static IP from this script — it stays on its DHCP lease with the Proxmox installer's
 placeholder hostname the whole time. The very next command to run, from the Ansible control node, is
 printed on-screen at the end: `ansible-playbook -i "<dhcp-ip>," playbooks/proxmox/bootstrap-new-node.yml`.
-That playbook is what actually asks for the real hostname and sets the permanent site-LAN IP.
+That playbook is what actually asks for the real hostname and sets the permanent site-LAN IP — after
+which `proxmox/site.yml` (specifically `00-preflight.yml`, `10-packages.yml`, `40-scripts.yml`) does
+everything else this script used to do: apt repo fix, subscription-nag removal, packages, the
+`/etc/.environment` prompt, VMware guest tools, the dynamic MOTD, and the single-disk ZFS check.
 
 ---
 
