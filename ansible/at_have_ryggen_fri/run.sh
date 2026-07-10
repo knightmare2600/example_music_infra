@@ -32,6 +32,11 @@
 #   8. check_facts.py       -- facts.yml: a short, hand-curated list of
 #      specific facts (an IP, a hostname) restated as prose across multiple
 #      docs/scripts, confirmed still true in every file that asserts them.
+#   9. check_scenarios.py   -- scenarios.yml: the four bare-metal-to-working-
+#      estate scenarios (PVE+Ansible node, DNS, firewall, Windows unattend)
+#      -- confirms every file each depends on still exists and a handful of
+#      load-bearing warnings/framing comments haven't been edited away.
+#      Doesn't build real infrastructure -- see scenarios.yml's own header.
 #
 # Nothing here touches a real host, needs a vault password, or needs network
 # access beyond localhost -- safe to run any time, by anyone, on any clone.
@@ -49,6 +54,15 @@
 #               referenced actually exist / actually agree" philosophy from
 #               just Ansible playbooks to benarbejde/'s generated files and
 #               docs/INDEX.md.
+#   2026-07-10  Phase 2: added check_scenarios.py (section 9), covering the
+#               four bare-metal bootstrap scenarios discussed with Robert.
+#               Landed alongside a full correction pass on
+#               docs/bootstrap/bootstrapping.md (prompted by researching
+#               these scenarios and finding it substantially stale) and the
+#               2 stale docs check_facts.py's first real facts caught
+#               (docs/buildsheets/buildsheet-firewall.md,
+#               docs/inventory/EXADNSVRK001-dns.md) -- harness is fully
+#               green again as of this entry.
 # ==============================================================================
 set -uo pipefail
 
@@ -229,6 +243,20 @@ else
   echo "$out"
   fail "Registered fact(s) have drifted -- see above."
   FAILED_CHECKS+=("check_facts.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 9. Bare-metal bootstrap scenarios — scenarios.yml
+# ------------------------------------------------------------------------------
+section "9. Bootstrap scenarios — check_scenarios.py"
+
+if out=$(python3 "${HERE}/check_scenarios.py"); then
+  echo "$out"
+  success "All 4 bootstrap scenarios' required files and assertions hold."
+else
+  echo "$out"
+  fail "Bootstrap scenario check(s) failed -- see above."
+  FAILED_CHECKS+=("check_scenarios.py")
 fi
 
 # ------------------------------------------------------------------------------
