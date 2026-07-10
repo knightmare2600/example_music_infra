@@ -1,0 +1,112 @@
+#!/bin/bash
+# Example Music Limited -- PVE dynamic MOTD
+# Deployed by ansible/playbooks/proxmox/playbooks/40-scripts.yml.
+# Moved from bootstrap/web/proxmox/first-boot.sh on 2026-07-10 -- was
+# generated inline by first-boot.sh, which now only does enough for the
+# ansible user to be SSH-reachable.
+GR='\033[0;32m'
+CY='\033[0;36m'
+YL='\033[0;33m'
+WH='\033[1;37m'
+NC='\033[0m'
+
+HOSTNAME_S=$(hostname -s)
+FQDN_S=$(hostname -f 2>/dev/null || echo "$HOSTNAME_S")
+SITE="UNKNOWN"; CITY="Unknown"; COUNTRY="GB"
+ENTITY="Example Music"; NODE_IP="unknown"
+if [[ -f /etc/example-music/nodeinfo.json ]] && command -v jq &>/dev/null; then
+  SITE=$(   jq -r '.site     // "UNKNOWN"'       /etc/example-music/nodeinfo.json)
+  CITY=$(   jq -r '.city     // "Unknown"'       /etc/example-music/nodeinfo.json)
+  COUNTRY=$(jq -r '.country  // "GB"'            /etc/example-music/nodeinfo.json)
+  ENTITY=$( jq -r '.entity   // "Example Music"' /etc/example-music/nodeinfo.json)
+  NODE_IP=$(jq -r '.node_ip  // "unknown"'       /etc/example-music/nodeinfo.json)
+fi
+
+LAN_INFO=""
+while IFS= read -r iface; do
+  [[ "$iface" == "lo" ]] && continue
+  IP=$(ip -4 addr show "$iface" 2>/dev/null | awk '/inet /{print $2}' | head -1)
+  [[ -z "$IP" ]] && continue
+  LAN_INFO="${LAN_INFO}    ${GR}${iface}${NC} : ${GR}${IP}${NC}\n"
+done < <(ip -o link show | awk -F': ' '{print $2}' | grep -v '@')
+
+VM_COUNT=0; CT_COUNT=0; VM_RUNNING=0; CT_RUNNING=0
+if command -v qm &>/dev/null; then
+  VM_COUNT=$(qm list 2>/dev/null | tail -n +2 | wc -l)
+  VM_RUNNING=$(qm list 2>/dev/null | tail -n +2 | grep -c "running" || true)
+fi
+if command -v pct &>/dev/null; then
+  CT_COUNT=$(pct list 2>/dev/null | tail -n +2 | wc -l)
+  CT_RUNNING=$(pct list 2>/dev/null | tail -n +2 | grep -c "running" || true)
+fi
+
+STORAGE_INFO=""
+if command -v pvesm &>/dev/null; then
+  while IFS= read -r line; do
+    STORAGE_INFO="${STORAGE_INFO}    ${CY}${line}${NC}\n"
+  done < <(pvesm status 2>/dev/null | tail -n +2 | awk '{printf "%-20s %s used of %s (%s%%)\n", $1, $4, $3, $6}' || true)
+fi
+
+UPTIME=$(uptime -p 2>/dev/null | sed 's/up //')
+LOAD=$(cut -d' ' -f1-3 /proc/loadavg)
+MEM_TOTAL=$(free -m | awk '/^Mem/{print $2}')
+MEM_USED=$(free -m  | awk '/^Mem/{print $3}')
+DISK=$(df -h / | awk 'NR==2{print $3 " used of " $2 " (" $5 ")"}')
+PVE_VER=$(pveversion 2>/dev/null | head -1 || echo "unknown")
+ZFS_STATUS=$(zpool status -x 2>/dev/null || echo "ZFS unavailable")
+
+echo -e "
+${GR}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⠤⠤⣄⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠞⠉⢀⣀⣀⣿⣧⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠀⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⢰⣾⠁⣠⠖⠉⢀⣀⣧⣈⣧⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣀⣷⣄⠀⠀⠀⠀⠀⠀⣠⢾⠛⣿⡁⣠⠞⠉⢀⣯⣀⣈⣇⠀
+⠀⠀⠀⠀⠀⢀⣼⣿⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⠞⠉⠀⣀⣘⣏⠛⣷⢤⣀⣀⡤⠞⠁⣸⠟⠀⡷⠃⣠⣶⣟⣏⣀⣀⣘⣆
+⠀⠀⠀⠀⠀⣾⡿⠛⢻⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⠞⠀⣠⠖⠉⠉⠉⣏⠙⡿⢾⣄⣀⣀⣠⣼⣽⣠⠞⠀⡰⠃⢨⠟⠋⠀⠀⠀⠉
+⠀⠀⠀⠀⢰⣿⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡏⢠⠞⠁⣠⣴⣾⣿⠏⠉⠓⢾⣦⣀⡀⢻⡿⠟⠁⢀⠞⠁⡴⠃⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠸⡇⠀⢀⣾⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣆⠀⡸⢀⠏⢠⠞⠁⣨⠟⠋⠉⠉⠉⢻⡧⢤⣈⣁⣀⣠⠖⠋⢀⡞⠁⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⣿⣤⣿⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠛⢳⡇⡸⢠⠏⢠⠞⠁⣠⠔⠊⠉⠉⢻⠗⠦⣄⣀⠀⢀⣠⠔⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⣠⣾⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢠⣀⣀⣤⠀⠀⠀⠀⠀⠀⢸⣀⡞⣷⠇⡜⢠⠏⢀⡞⠁⠀⠀⣰⢞⣻⠇⠀⠀⠀⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⣠⣾⣿⡿⣏⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⡐⠦⠤⢤⡈⣻⢿⡖⠦⠤⣀⣠⣴⠏⢘⡟⢀⠃⡜⢠⠏⠀⠀⠀⠀⠛⠛⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⣴⣿⡿⠋⠀⢻⡉⠀⠀⠀⠀⠀⠀⠀⠀⠑⠒⠢⠄⢤⣀⣏⠙⢻⠲⠤⢿⣿⣋⠤⠊⢀⣾⣠⠃⡜⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⢰⣿⡟⠀⢀⣴⣿⣿⣿⣿⣦⠀⠀⠀⠀⠀⠒⠒⠲⠤⣤⡀⣯⣉⠛⠒⠦⠤⣀⣀⣀⡤⠚⢹⣿⣰⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⢸⡿⠀⠀⣿⠟⠛⣿⠟⠛⣿⣧⠀⠀⠀⠐⠐⠒⠒⠰⣹⠷⣯⣈⡉⠑⠒⠦⠤⣀⣀⣀⡤⢿⢀⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠘⣿⡀⠀⢿⡀⠀⢻⣤⠖⢻⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠓⠲⠤⢄⣀⣀⣀⣼⠟⣸⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠘⢷⣄⠈⠙⠦⠸⡇⢀⡾⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠙⠛⠶⠤⠶⣿⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢹⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⢀⣴⣾⣿⣆⠀⠈⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠈⣿⣿⡿⠃⠀⣰⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠈⣙⠓⠒⠚⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀${NC}
+
+${WH}+================================================================+${NC}
+${WH}| EXAMPLE MUSIC LIMITED: $(printf '%-38s' "${HOSTNAME_S}")|${NC}
+${WH}+================================================================+${NC}
+
+  ${YL}Site     :${NC} ${SITE} -- ${CITY}, ${COUNTRY}
+  ${YL}Entity   :${NC} ${ENTITY}
+  ${YL}PVE      :${NC} ${PVE_VER}
+  ${YL}FQDN     :${NC} ${FQDN_S}
+
+  ${WH}-- Network --------------------------------------------------${NC}
+$(echo -e "${LAN_INFO}" | grep -v '^$')
+
+  ${WH}-- Guests ---------------------------------------------------${NC}
+    ${CY}VMs${NC}        : ${GR}${VM_RUNNING}${NC} running of ${VM_COUNT} defined
+    ${CY}Containers${NC} : ${GR}${CT_RUNNING}${NC} running of ${CT_COUNT} defined
+
+  ${WH}-- Storage --------------------------------------------------${NC}
+$(echo -e "${STORAGE_INFO:-    ${CY}(pvesm not available)${NC}}" | grep -v '^$')
+
+  ${WH}-- ZFS -------------------------------------------------------${NC}
+    ${CY}${ZFS_STATUS}${NC}
+
+  ${WH}-- System ---------------------------------------------------${NC}
+    ${CY}Uptime${NC}   : ${GR}${UPTIME}${NC}
+    ${CY}Load${NC}     : ${GR}${LOAD}${NC}
+    ${CY}Memory${NC}   : ${GR}${MEM_USED}MB${NC} used of ${MEM_TOTAL}MB
+    ${CY}Disk /  ${NC} : ${GR}${DISK}${NC}
+
+  ${WH}-- Management -----------------------------------------------${NC}
+    ${CY}Web UI${NC}   : ${GR}https://${NODE_IP}:8006${NC}
+
+"
