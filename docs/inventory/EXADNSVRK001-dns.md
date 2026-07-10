@@ -64,14 +64,20 @@ CLD is a special case: suffix `.48` resolves to `exapbxcld001` (PBX), not `exasb
 
 The forward zone also contains **firewall WAN addresses** — see [Section 9](#9-how-the-addressing-scheme-works) — and the provisioning ancillary hosts:
 
+> **Correction (2026-07-10):** this table previously put every host below on `192.168.139.x` (vRACK). Only
+> `EXADNSVRK001` and `EXAPRVVRK001` actually live there — `EXAANSCLD001`, `EXASVRCLD002`, `EXARDRCLD001`,
+> and `EXAPBXCLD001` are all on `192.168.69.x` (CLD LAN), per `benarbejde/begyndelse.json`. The old
+> `exasvrcld003`/`exasvrcld004` names were also wrong — the real hostnames are `EXAANSCLD001` (Ansible) and
+> `EXARDRCLD001` (Rudder).
+
 | Name                               | IP               | Purpose                   |
 |------------------------------------|------------------|---------------------------|
-| `exadnsvrk001.jukebox.internal`    | `192.168.139.8` | DNS/BIND server (this host)       |
-| `exasvrcld002.jukebox.internal`    | `192.168.139.20` | Windows Admin Centre              |
-| `exasvrcld003.jukebox.internal`    | `192.168.139.49` | Ansible control node              |
-| `exasvrcld004.jukebox.internal`    | `192.168.139.22` | Rudder configuration management   |
-| `exapbxcld001.jukebox.internal`    | `192.168.139.48` | Central 3CX PBX                   |
-| `exaprvvrk001.jukebox.internal`    | `192.168.139.50` | Provisioning / PXE server         |
+| `exadnsvrk001.jukebox.internal`    | `192.168.139.8`  | DNS/BIND server (this host), vRACK      |
+| `exaprvvrk001.jukebox.internal`    | `192.168.139.50` | Provisioning / PXE server, vRACK        |
+| `exaanscld001.jukebox.internal`    | `192.168.69.9`   | Ansible control node, CLD LAN           |
+| `exasvrcld002.jukebox.internal`    | `192.168.69.20`  | Windows Admin Centre, CLD LAN           |
+| `exardrcld001.jukebox.internal`    | `192.168.69.12`  | Rudder configuration management, CLD LAN |
+| `exapbxcld001.jukebox.internal`    | `192.168.69.48`  | Central 3CX PBX, CLD LAN                |
 | `exafwl{site}001-wan.jukebox.internal` | `192.168.139.{octet}` | Each site's FWL WAN face  |
 
 ### Reverse zone — provisioning network
