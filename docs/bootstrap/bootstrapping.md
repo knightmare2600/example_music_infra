@@ -859,6 +859,7 @@ fqdn = "pve-install.jukebox.internal"
 mailto = "root@jukebox.internal"
 timezone = "Europe/London"
 root-password-hashed = "$6$..."        ← see §2.2
+root-ssh-keys = ["ssh-... ansible@exaanscld001.example.com"]  ← see note below
 
 [network]
 source = "from-dhcp"
@@ -875,6 +876,18 @@ url = "http://192.168.139.50/proxmox/first-boot.sh"
 ```
 
 The `fqdn` here is a placeholder used during install only. `first-boot.sh` will rename the node to its real hostname.
+
+> **`root-ssh-keys` (added 2026-07-10) — the earliest possible foot-in-the-door.** Confirmed against
+> Proxmox's own automated-installer schema (`[global] root-ssh-keys` — "SSH public keys to add to the
+> `authorized_keys` file of the `root` user after the installation"): root is SSH-reachable by key the
+> *moment install finishes*, before `first-boot.sh` has even run. **This does not replace anything** —
+> Ansible's whole estate connects as the `ansible` user, not root (`ansible.cfg`'s `remote_user`), so
+> `first-boot.sh` still creates that user and its own key as before. `root-ssh-keys` is purely an earlier
+> / recovery path, useful if you need to poke at a node before `first-boot.sh` completes. Same key as
+> `bootstrap/web/ansible_sshkey.pub` — if that key is ever rotated, update both TOML files to match.
+> Considered and rejected as part of this change: a `pveme.sh` script duplicating parts of
+> `late_command.sh` (Debian's post-install hook) — decided against once this simpler, script-free option
+> was confirmed to exist; see the git log around 2026-07-10 for the fuller reasoning.
 
 > **Gateway detection doesn't reach this file.** The `[first-boot] url` above is a static TOML value —
 > TOML has no conditionals, so it can't do the gateway-based `${boot-url}` detection `menu.ipxe`,
