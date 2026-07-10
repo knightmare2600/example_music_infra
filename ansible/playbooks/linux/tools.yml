@@ -20,6 +20,14 @@
 #               identity (domain_fqdn/netbios_name/etc), single source of truth
 #               for group_vars/all/vars.yml's exa_domain and every other
 #               ad_forest.json consumer (windows_dc, rudder_servers, bind9-dns.yml).
+#   2026-07-10  Add /etc/example-music deploy for ad_groups.json/ad_users.json/
+#               ad_computers.json -- generated (by benarbejde/parse_tdf.py, hand-run,
+#               offline) from jukebox.example.tdf, committed in benarbejde/ alongside
+#               sites.csv. windows_adschema's 20-ad-groups.yml/30-ad-users.yml/
+#               40-ad-computers.yml read these via delegate_to: localhost, i.e. on
+#               the Ansible control node -- same reason sites.csv needs to land here,
+#               not on the Windows DC being configured. Previously these files existed
+#               in benarbejde/ but nothing deployed them anywhere Ansible could read.
 
 - name: Deploy common tools
   hosts: all
@@ -40,6 +48,9 @@
     devices_csv_src:   "{{ playbook_dir }}/../../../benarbejde/devices.csv"
     address_policy_src: "{{ playbook_dir }}/../../../benarbejde/address_policy.json"
     ad_forest_src:     "{{ playbook_dir }}/../../../benarbejde/ad_forest.json"
+    ad_groups_src:     "{{ playbook_dir }}/../../../benarbejde/ad_groups.json"
+    ad_users_src:      "{{ playbook_dir }}/../../../benarbejde/ad_users.json"
+    ad_computers_src:  "{{ playbook_dir }}/../../../benarbejde/ad_computers.json"
 
   tasks:
 
@@ -91,6 +102,30 @@
       ansible.builtin.copy:
         src:   "{{ ad_forest_src }}"
         dest:  /etc/example-music/ad_forest.json
+        owner: root
+        group: root
+        mode:  '0644'
+
+    - name: Deploy ad_groups.json to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ ad_groups_src }}"
+        dest:  /etc/example-music/ad_groups.json
+        owner: root
+        group: root
+        mode:  '0644'
+
+    - name: Deploy ad_users.json to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ ad_users_src }}"
+        dest:  /etc/example-music/ad_users.json
+        owner: root
+        group: root
+        mode:  '0644'
+
+    - name: Deploy ad_computers.json to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ ad_computers_src }}"
+        dest:  /etc/example-music/ad_computers.json
         owner: root
         group: root
         mode:  '0644'
