@@ -23,7 +23,7 @@
 | Build a firewall | [buildsheets/buildsheet-firewall.md](buildsheets/buildsheet-firewall.md) |
 | Build the Windows Admin node | [buildsheets/buildsheet-winadmin.md](buildsheets/buildsheet-winadmin.md) |
 | Build the Rudder server | [buildsheets/buildsheet-rudder.md](buildsheets/buildsheet-rudder.md) |
-| Set up WireGuard / DC deployment | [bootstrap/ad-dc-wireguard-deployment.md](bootstrap/ad-dc-wireguard-deployment.md) |
+| Set up WireGuard / DC deployment | [active-directory/ad-dc-wireguard-deployment.md](active-directory/ad-dc-wireguard-deployment.md) |
 | Set up a RAC emulator VM | [lab/rac-emulator.md](lab/rac-emulator.md) |
 | Fix a ZFS disk | [proxmox/zfs-disk-replacement.md](proxmox/zfs-disk-replacement.md) |
 | Troubleshoot WireGuard | [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) |
@@ -48,6 +48,7 @@ Active Directory configuration, tooling, and DNS management.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [active-directory/ad-dc-wireguard-deployment.md](active-directory/ad-dc-wireguard-deployment.md) | NET-AD-DC-001 | AD DC promotion procedure + WireGuard site deployment — **required before DC buildsheet sign-off** |
 | [active-directory/corporate-livery.md](active-directory/corporate-livery.md) | NET-AD-LIV-001 | GPO-based corporate branding and livery deployment |
 | [active-directory/CSVDE_Property_Mapping_Analysis.md](active-directory/CSVDE_Property_Mapping_Analysis.md) | NET-AD-CSV-001 | CSVDE attribute mapping analysis for bulk AD imports |
 | [active-directory/demo_data_compatibility_analysis.md](active-directory/demo_data_compatibility_analysis.md) | NET-AD-DEMO-001 | Demo data compatibility analysis for AD test environments |
@@ -73,7 +74,6 @@ Procedures for provisioning new sites and nodes from scratch.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
-| [bootstrap/ad-dc-wireguard-deployment.md](bootstrap/ad-dc-wireguard-deployment.md) | NET-AD-DC-001 | AD DC promotion procedure + WireGuard site deployment — **required before DC buildsheet sign-off** |
 | [bootstrap/ipxe-build.md](bootstrap/ipxe-build.md) | NET-BOOT-IPXE-001 | iPXE build and configuration for network booting |
 | [bootstrap/TFTPD64_Debian_Headless_Rescue_Guide.md](bootstrap/TFTPD64_Debian_Headless_Rescue_Guide.md) | NET-BOOT-TFTP-001 | TFTPD64 setup on Debian for headless PXE rescue |
 | [bootstrap/WinPE ARM64 Build Procedure.md](bootstrap/WinPE%20ARM64%20Build%20Procedure.md) | NET-BOOT-WINPE-001 | WinPE ARM64 build — deployment and recovery media |

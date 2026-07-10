@@ -675,17 +675,17 @@ tasks 07–12 (nftables, dnsmasq, WireGuard, SSH hardening, nodeinfo.json) never
 
 ### Step 1 — Find the DHCP IP
 
-`EXAFWLVRK001` (192.168.139.1 -- the same physical firewall as `EXAFWLCLD001`, its vRACK-facing role) runs dnsmasq for the 139.x subnet and holds the lease:
+`EXAFWLVRK001` (192.168.139.69 -- the same physical firewall as `EXAFWLCLD001`, its vRACK-facing role) runs dnsmasq for the 139.x subnet and holds the lease:
 
 ```bash
-ssh ansible@192.168.139.1 'grep -i EXAFWLVIE001 /var/lib/misc/dnsmasq.leases'
+ssh ansible@192.168.139.69 'grep -i EXAFWLVIE001 /var/lib/misc/dnsmasq.leases'
 # e.g. 1750000000 aa:bb:cc:dd:ee:ff 192.168.139.47 EXAFWLVIE001 *
 ```
 
 If the hostname wasn't set during install, ping-scan instead:
 
 ```bash
-nmap -sn 192.168.139.0/24 --exclude 192.168.139.1,192.168.139.8,192.168.139.9,192.168.139.50
+nmap -sn 192.168.139.0/24 --exclude 192.168.139.8,192.168.139.9,192.168.139.50,192.168.139.69
 ```
 
 ---
