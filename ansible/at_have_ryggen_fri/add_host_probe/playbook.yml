@@ -1,0 +1,40 @@
+---
+# Two plays in one ansible-playbook run, mirroring
+# windows_bootstrap/00-preflight.yml's Phase H2 pattern exactly:
+#   Play 1 registers a host into a group via add_host (delegate_to: localhost).
+#   Play 2, running afterward in the same process, targets that group and
+#   asserts the group's group_vars actually resolved for the host add_host
+#   just created.
+#
+# Run with:
+#   ansible-playbook -i inventory.ini playbook.yml
+# (from this directory -- run.sh does this for you)
+
+- name: "ryggen_fri probe 1 -- register seed host into marker group"
+  hosts: ryggen_fri_seed
+  gather_facts: false
+  tasks:
+    - name: Register into ryggen_fri_marker_group for the rest of this run
+      add_host:
+        name:   "{{ inventory_hostname }}"
+        groups: [ryggen_fri_marker_group]
+      delegate_to: localhost
+      become: false
+
+- name: "ryggen_fri probe 2 -- confirm group_vars resolved for the dynamically-registered host"
+  hosts: ryggen_fri_marker_group
+  gather_facts: false
+  tasks:
+    - name: Assert marker variable is defined
+      assert:
+        that:
+          - ryggen_fri_marker is defined
+          - "ryggen_fri_marker == 'ryggen fri: group_vars resolved via add_host'"
+        fail_msg: >-
+          add_host registered the host into ryggen_fri_marker_group, but
+          group_vars/ryggen_fri_marker_group/vars.yml never resolved. This
+          is the exact class of bug fixed 2026-07-09 (group_vars must live
+          inside the loaded -i path) -- if this probe fails, confirm
+          add_host_probe/group_vars/ is still nested inside this same
+          directory, next to inventory.ini.
+        success_msg: "add_host -> group_vars resolution confirmed working."
