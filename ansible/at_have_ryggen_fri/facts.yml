@@ -1,0 +1,69 @@
+---
+# facts.yml -- part of at_have_ryggen_fri.
+#
+# A hand-curated list of specific facts (an IP, a hostname) that are
+# restated as prose across multiple docs/scripts, rather than read from a
+# single structured source at runtime. These can't be checked generically
+# the way check_generated_freshness.py checks generate_inventory.py's
+# outputs, or check_references.py checks a template: path -- there's no
+# single function to re-run and diff. Instead: name the fact, name where
+# it's correctly asserted, and check_facts.py confirms each file still
+# says what it's supposed to.
+#
+# This deliberately does NOT try to be exhaustive -- it grows as drift is
+# found and fixed, starting with the facts that were actually found wrong
+# during the 2026-07-10 bootstrap-scenario research (see conversation).
+# A missing entry here doesn't mean a file has no facts worth checking; it
+# means nobody has registered one yet.
+#
+# Each fact:
+#   name         short identifier
+#   description  what the fact is, in plain English
+#   value        the correct, current value
+#   source       where the value is authoritative (a real source-of-truth
+#                file, not another prose restatement)
+#   asserted_in  files that should contain `value` verbatim. A file listed
+#                here that does NOT contain it is reported as drifted --
+#                this includes the two docs already known to be stale
+#                (buildsheet-firewall.md, bootstrap/bootstrapping.md) and
+#                the wrong-hostname doc (EXADNSVRK001-dns.md) -- reporting
+#                them is the point, not a bug in this list.
+
+facts:
+  - name: fwl_wan_ip
+    description: "EXAFWLVRK001's WAN/vRACK-facing static IP (same physical box as EXAFWLCLD001)"
+    value: "192.168.139.69"
+    source: "benarbejde/devices.csv (VRK,FWL,1,69)"
+    asserted_in:
+      - ansible/README.md
+      - bootstrap/web/provision/firewallme.sh
+      - ansible/playbooks/firewallme/roles/firewall/tasks/00_preflight.yml
+      - docs/ExampleMusic_Beginners_Guide.md
+      - docs/ExampleMusic_Procedure_Template.md
+      - docs/buildsheets/buildsheet-firewall.md
+      - docs/bootstrap/bootstrapping.md
+
+  - name: dns_hostname
+    description: "The estate's BIND9 DNS server hostname -- site VRK, not CLD"
+    value: "EXADNSVRK001"
+    source: "benarbejde/begyndelse.json (dns.hostname), benarbejde/sites.csv (VRK row)"
+    asserted_in:
+      - ansible/playbooks/bind9/bind9-dns.yml
+      - docs/inventory/EXADNSVRK001-dns.md
+      - docs/bootstrap/bootstrapping.md
+
+  - name: ansible_control_node
+    description: "The estate's Ansible control node hostname and IP"
+    value: "EXAANSCLD001"
+    source: "benarbejde/begyndelse.json (ansible_control.hostname), benarbejde/sites.csv (CLD row)"
+    asserted_in:
+      - bootstrap/web/provision/ansibleme.sh
+      - docs/inventory/EXADNSVRK001-dns.md
+      - docs/buildsheets/buildsheet-firewall.md
+
+  - name: create_vm_script_path
+    description: "Where create-vm.py actually lives"
+    value: "bootstrap/web/proxmox/create-vm.py"
+    source: "the file itself"
+    asserted_in:
+      - docs/proxmox/pve-create-vm.md
