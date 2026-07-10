@@ -22,6 +22,16 @@
 #   5. add_host_probe/      -- add_host in one play is visible, with correct
 #      group_vars, to a later play in the same run (the mechanism
 #      windows_bootstrap/00-preflight.yml's Phase H2 depends on).
+#   6. check_generated_freshness.py -- configs/inventory/*.ini, site_services.yml,
+#      and begyndelse.json are re-derivable byte-for-byte from
+#      benarbejde/sites.csv+devices.csv+address_policy.json+ad_forest.json --
+#      catches "edited the source, forgot to regenerate."
+#   7. check_doc_index.py   -- docs/INDEX.md: every link resolves to a real
+#      file (fails if not); every real doc under docs/ is linked from it
+#      (warns if not -- some are deliberately excluded, see the script).
+#   8. check_facts.py       -- facts.yml: a short, hand-curated list of
+#      specific facts (an IP, a hostname) restated as prose across multiple
+#      docs/scripts, confirmed still true in every file that asserts them.
 #
 # Nothing here touches a real host, needs a vault password, or needs network
 # access beyond localhost -- safe to run any time, by anyone, on any clone.
@@ -31,6 +41,14 @@
 #
 # Changelog:
 #   2026-07-10  Initial version.
+#   2026-07-10  Phase 1 of the repo-wide extrapolation: added
+#               check_generated_freshness.py, check_doc_index.py, and
+#               check_facts.py (sections 6-8). check_references.py also
+#               gained loop+item.attr resolution this same day (see its own
+#               header) -- together these extend the "does everything that's
+#               referenced actually exist / actually agree" philosophy from
+#               just Ansible playbooks to benarbejde/'s generated files and
+#               docs/INDEX.md.
 # ==============================================================================
 set -uo pipefail
 
@@ -166,6 +184,51 @@ else
   fail "add_host visibility probe failed:"
   echo "$out" | sed 's/^/      /'
   FAILED_CHECKS+=("add_host_probe")
+fi
+
+# ------------------------------------------------------------------------------
+# 6. Generated-file freshness (benarbejde/ -> configs/inventory/, begyndelse.json)
+# ------------------------------------------------------------------------------
+section "6. Generated-file freshness — check_generated_freshness.py"
+
+if out=$(python3 "${HERE}/check_generated_freshness.py"); then
+  echo "$out"
+  success "All generated files are fresh."
+else
+  echo "$out"
+  fail "Generated file(s) have drifted from benarbejde/ -- see above."
+  FAILED_CHECKS+=("check_generated_freshness.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 7. Documentation index integrity — docs/INDEX.md
+# ------------------------------------------------------------------------------
+section "7. Documentation index — check_doc_index.py"
+
+idx_out=$(python3 "${HERE}/check_doc_index.py")
+idx_rc=$?
+echo "$idx_out"
+if [[ $idx_rc -ne 0 ]]; then
+  fail "docs/INDEX.md has broken link(s) -- see above."
+  FAILED_CHECKS+=("check_doc_index.py")
+elif echo "$idx_out" | grep -q "not linked from docs/INDEX.md"; then
+  warn "docs/INDEX.md has no broken links, but some real docs aren't indexed (see above)."
+else
+  success "docs/INDEX.md is complete and every link resolves."
+fi
+
+# ------------------------------------------------------------------------------
+# 8. Hand-curated cross-file facts — facts.yml
+# ------------------------------------------------------------------------------
+section "8. Cross-file facts — check_facts.py"
+
+if out=$(python3 "${HERE}/check_facts.py"); then
+  echo "$out"
+  success "All registered facts hold everywhere they're asserted."
+else
+  echo "$out"
+  fail "Registered fact(s) have drifted -- see above."
+  FAILED_CHECKS+=("check_facts.py")
 fi
 
 # ------------------------------------------------------------------------------

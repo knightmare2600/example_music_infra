@@ -2,9 +2,10 @@
 
 Danish: *"at have ryggen fri"* — to have your back covered.
 
-An Ansible verification harness. Run it before merging anything that touches
-inventory, `group_vars`/`host_vars`, `ansible.cfg`, or any playbook's file
-references, to catch the exact classes of bug found the hard way in this
+A verification harness for this whole repo — not just the Ansible side.
+Run it before merging anything that touches inventory, `group_vars`/
+`host_vars`, `ansible.cfg`, `benarbejde/`'s source-of-truth files, or
+`docs/`, to catch the exact classes of bug found the hard way in this
 repo's history:
 
 - `group_vars`/`host_vars` silently not applying because they live outside
@@ -16,6 +17,19 @@ repo's history:
   pointing at a file that doesn't actually exist.
 - Malformed YAML that only breaks when a specific handler/task file is
   actually loaded, not on a casual read.
+- `benarbejde/sites.csv`/`devices.csv`/etc. edited but `configs/inventory/`,
+  `site_services.yml`, or `begyndelse.json` never regenerated to match.
+- `docs/INDEX.md` linking to a file that's moved, or a real doc nobody
+  indexed.
+- A fact (an IP, a hostname) restated as prose in several docs/scripts,
+  where one got fixed and the others didn't — found 2026-07-10 doing
+  exactly this by hand for `EXAFWLVRK001`'s WAN IP before deciding to
+  automate it.
+
+This is Phase 1 of a larger, ongoing plan (repo-wide reference/data
+integrity, then the estate's bare-metal bootstrap scenarios as repeatable
+checks) — see the git history for the fuller context if picking this back
+up later.
 
 Nothing here touches a real host, needs a vault password, or needs network
 access beyond `localhost` — safe to run on any clone, any time.
@@ -39,6 +53,9 @@ the same `[*]`/`[+]`/`[!]`/`[✗]` convention as `firewallme.sh`/`ansibleme.sh`.
 | 3 | Reference integrity | `check_references.py` — every literal `src:`/`include_tasks:`/`import_tasks:`/`import_playbook:` path resolves to a real file, correctly handling both playbook-relative and role-relative (`roles/<name>/templates|files/`) resolution. Also resolves `src: "...{{ item.attr }}..."` when combined with `loop: "{{ some_group_vars_list }}"` — the group_vars list is static, so `item.attr` is substitutable per loop item even though it's technically Jinja (this is how `50-binaries.yml`'s x86_64/arm64 binary paths get checked, not silently skipped as "dynamic") |
 | 4 | Inventory structure | `check_inventory_structure.py` — the real `configs/inventory`'s `windows_dc → windows_server → windows → windows_nodes` chain exists across multiple sites (not just the 3 hand-curated ones); `group_vars` genuinely resolves (become correctly scoped to `linux` only, never Windows; `colours.yml`'s `_c` dict present) — via `ansible-inventory`, no host contacted |
 | 5 | `add_host` visibility | `add_host_probe/` — a live two-play `ansible-playbook` run: play 1 registers a scratch host into a group via `add_host` (`delegate_to: localhost`), play 2 asserts that group's `group_vars` resolved for it — the exact mechanism `windows_bootstrap/00-preflight.yml`'s Phase H2 depends on |
+| 6 | Generated-file freshness | `check_generated_freshness.py` — regenerates `configs/inventory/*.ini`, `site_services.yml`, and `begyndelse.json` from `benarbejde/sites.csv`+`devices.csv`+`address_policy.json`+`ad_forest.json` into a scratch dir and diffs against committed — catches "edited the source, forgot to regenerate" |
+| 7 | Documentation index | `check_doc_index.py` — every link in `docs/INDEX.md` resolves to a real file (fails if not); every real doc under `docs/` is linked from it (warns if not — some are deliberately excluded) |
+| 8 | Cross-file facts | `check_facts.py` — reads `facts.yml`, a short hand-curated list of specific facts (an IP, a hostname) restated as prose across multiple docs/scripts, and confirms each is still asserted correctly everywhere it's registered |
 
 ## Design notes
 
@@ -76,3 +93,18 @@ the same `[*]`/`[+]`/`[!]`/`[✗]` convention as `firewallme.sh`/`ansibleme.sh`.
   picked up by Ansible's config auto-discovery when `ansible/` is the
   current directory. Getting this wrong produced a false "role not found"
   failure against `firewallme` while this harness was first being written.
+- **`facts.yml` is deliberately narrow, not a general scanner.** A broad
+  regex scan for IP-literal patterns across every doc/script was considered
+  and rejected — it would produce real false positives against historical
+  changelog entries (which correctly describe *old*, deliberately-
+  superseded values, per this repo's "never delete version history" rule)
+  and illustrative examples. `facts.yml` only catches drift in a fact
+  someone has already registered; it will not catch a new, unregistered
+  inconsistency. Add to it as drift is found, rather than trying to make it
+  exhaustive up front.
+- **As of 2026-07-10, `check_facts.py` genuinely fails** — `docs/buildsheets/
+  buildsheet-firewall.md`, `docs/bootstrap/bootstrapping.md`, and
+  `docs/inventory/EXADNSVRK001-dns.md` really do still have the stale
+  IPs/hostnames `facts.yml` checks for. This is correct, expected harness
+  behaviour, not a bug in the check — those docs haven't been fixed yet
+  (next phase of the same plan that added this check).
