@@ -4,9 +4,22 @@
 # Forest: jukebox.internal
 # Domains: example.net / example.org / example.com
 # =========================================================
+# HISTORICAL ARTEFACT (2026-07-10): this is NOT a break-glass tool in the sense
+# bindme.sh/firewallme.sh/ansibleme.sh are (those predate Ansible existing at all
+# and are the only way to bring a box up before it does). This script predates the
+# Ansible windows_bootstrap chain specifically -- domain join and the rest of what
+# it does are now handled by windows_bootstrap/playbooks/80-domainjoin.yml and the
+# numbered playbooks either side of it, run the normal way once a Windows host has
+# OpenSSH reachable (see the unattend XML / windows_nodes/connection.yml). Kept in
+# the repo as a record of the pre-Ansible manual process, not as a live alternative
+# path -- do not "fix" it forward as if it needs to stay in sync with Ansible.
+#
 # DeployTools share: \\EXADCSCPH001\DeployTools
-# NOTE: DeployTools will migrate to DFS once all sites are commissioned. Update
-# $DeployToolsShare at that point to \\jukebox.internal\DeployTools (DFS namespace).
+# NOTE: DeployTools will migrate to DFS once all sites are commissioned (still
+# planned, not done). Update $DeployToolsShare at that point to
+# \\jukebox.internal\DeployTools (DFS namespace). PostOOBE.cmd separately hardcodes
+# \\DC01\deploytools\ -- the two don't currently agree, and since this script is a
+# historical artefact rather than a live path, that's not being reconciled.
 #
 # Credentials: JUKEBOX\Administrator is a forest-level DA.
 #   It is valid across all child domains (example.net, example.org, example.com) via
