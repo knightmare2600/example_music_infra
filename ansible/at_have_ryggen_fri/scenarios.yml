@@ -45,6 +45,9 @@ scenarios:
       - file: bootstrap/web/provision/ansibleme.sh
         must_contain: 'ln -s "${REPO_DIR}/ansible" "${ANSIBLE_DIR}"'
         why: "The clone-then-symlink mechanism a trainee relies on to make /home/ansible/ansible resolve."
+      - file: bootstrap/web/proxmox/first-boot.sh
+        must_contain: "playbooks/proxmox/bootstrap-new-node.yml"
+        why: "first-boot.sh no longer sets a real hostname/static IP itself (removed 2026-07-07) -- the on-screen instruction telling the operator to run bootstrap-new-node.yml next is the only place that's explained. If this line goes silently, a fresh PVE node build has no documented next step at all."
       - file: docs/proxmox/Procedure-PVE-Node-Onboarding.md
         must_contain: "Circular-dependency warning"
         why: "This procedure presupposes a working Ansible control node -- the doc must keep explaining why that isn't actually circular for every case except bootstrapping the very first control node."

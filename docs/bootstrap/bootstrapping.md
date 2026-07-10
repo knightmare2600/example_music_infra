@@ -19,6 +19,7 @@
 | 2026-03-08 | Rework some sections. Explain more about "starting with nothing but a laptop and a flask of tea" |
 | 2026-05-17 | Spruce up the static web server output for easier debug      |
 | 2026-07-10 | Major correction pass, prompted by a full line-by-line audit against `benarbejde/`'s source-of-truth files and the real `bootstrap/web/` tree. Corrected: the Standard IP Convention table (firewall was mapped to `.1`, actually `.253`/`.254`; `.15` PRV and `.82`-`.94` WAP were missing entirely); the firewall's identity throughout (`EXAFWLCLD001` → `EXAFWLVRK001`, with its real vRACK/CLD-LAN dual-interface addressing, not a single `192.168.139.253`); the provisioning-server narrative (`EXASTRPCLD001` was superseded by `EXAPRVVRK001`, not "migrated to" `EXAANSCLD001` — those are two separate hosts on separate subnets); the §1.5 topology diagram (added the missing `EXADNSVRK001`, fixed the PBX/firewall IPs, fixed the `192.168.139.0/24` subnet mislabel); the `web/` directory tree in §2.3 (previously described several directories and files — `gparted/`, `phoenixpe/`, `proxmox/boot/`, two `.msi` files — that don't exist anywhere in this repo; replaced with the real, verified current layout); the `.ipxe` dotfile claim in §4.2 (never existed; real file is `menu.ipxe`); site-code errors (`ABR`→`ABD`, fictional `GAA` removed, the known-site-codes list refreshed against `sites.csv`); the first-boot.sh sample transcript (was internally inconsistent — wrong hostname for the worked example, wrong gateway octet reinforcing the `.1`-is-gateway error, mismatched IPs before/after reboot); §8's PostOOBE.cmd/Join-DomainAndBootstrap.ps1 description (previously described a `Z:`-mapping/`DEPLOYTOOLS_PASS` flow and a "12-stage" script that don't match the real files — real `PostOOBE.cmd` is a 3-line hardcoded-UNC-path launcher, real script is 22+ stages); §9's boot-server-IP-change file table (wrong/nonexistent paths). Also flagged, not resolved: `example.org`'s status as a registered domain is inconsistent between this doc, `Join-DomainAndBootstrap.ps1`, and `ad_forest.json`; `PostOOBE.cmd`'s `\\DC01\deploytools\` vs the script's own `$DeployToolsShare` (`\\EXADCSCPH001\DeployTools`) disagree and neither matches a real inventoried host. See `ansible/at_have_ryggen_fri/` (the repo's verification harness) for how some of these are now checked automatically going forward. |
+| 2026-07-10 | Second correction pass, prompted by Robert planning to physically test this document. The first pass above was thorough but, checked again from scratch against the real files rather than trusting the earlier edits, missed real gaps: §4.4's boot menu list was still describing an old menu (missing Ubuntu/OpenBSD/Spejder entirely, still saying "PhoenixPE" for what the real file's own changelog records as replaced by WinPE at v1.8) — the real `menu.ipxe` is at v2.2 with a **gateway-based dual-datacentre boot-url detection mechanism** (Edinburgh vs a "Fredericia" fallback) not documented anywhere before now, added as new §4.1a. §2.3's "not committed" note was Proxmox-only; widened to a full table of every missing asset directory `menu.ipxe` references, cross-checked against what the PFY's actual plan needs (only Proxmox VE's kernel/initrd, confirmed nothing else required). §6 ("first-boot.sh") was almost entirely rewritten: the real script was substantially trimmed on 2026-07-07 (confirmed via its own changelog) — the interactive site/hostname/IP/gateway prompt, virt-v2v/VirtIO/proxmoxbmc steps, and the node-rename-and-network step are **all gone**, moved into Ansible (`bootstrap-new-node.yml`, `40-scripts.yml`); the whole sample transcript was fictional relative to the current script and has been replaced with one quoted from the real, current output. §7.2 ("late_command.sh") had a step (LVM kernel modules) that the real script's own changelog records as deliberately removed, and was missing several real, current actions (fetching `sites.csv`/`devices.csv`/`begyndelse.json`, the "safety dance" prompt scripts, the same gateway detection as §4.1a). Also moved `bootstrap/web/proxmox/ansible_sshkey.pub` to the web root (matching every real consumer) and marked `Join-DomainAndBootstrap.ps1`/`PostOOBE.cmd` as historical artefacts, not break-glass tools — see the git log around this date for the separate commits. **Lesson for whoever picks this up next:** a "thorough" pass against source-of-truth files is not the same as checking every referenced file's *current* content — several of the errors found this time were real files that had been correctly identified as sources of truth in the first pass, then not fully read. |
 
 ---
 
@@ -329,14 +330,36 @@ bootstrap/web/
 ```
 
 **Not committed to this repo** (installer kernels/initrds and full ISOs — hundreds of MB to
-multiple GB each, deliberately kept out of git): the Proxmox VE installer's own boot kernel/initrd,
-expected at `proxmox/x86_64/boot/linux26` and `proxmox/x86_64/boot/initrd` (extracted from the
-Proxmox VE ISO you download separately — `menu.ipxe`'s `:proxmox-ve` entry serves x86_64 only) and
-any full distro ISOs. These need to be dropped into the tree by hand before first use, same pattern
-as `windows_bootstrap`'s drop-in binaries (see
+multiple GB each, deliberately kept out of git). Confirmed 2026-07-10 by checking the real tree
+directly, not assumed — **none of the following directories exist yet**, even though `menu.ipxe`
+references every one of them:
+
+| Menu entry | Expected directory | Needed for the PFY's plan (PVE/Ansible/DNS/FWL/Windows)? |
+|---|---|---|
+| Proxmox VE | `proxmox/x86_64/boot/linux26`, `proxmox/x86_64/boot/initrd` | **Yes** — required for scenario 1 |
+| Debian | `debian/x86_64/`, `debian/arm64/` | Already present — nothing to add |
+| Arch Linux | `arch/x86_64/` | Already present — nothing to add |
+| GParted | `gparted/${arch}/` | No |
+| WinPE (x86_64/ARM64) | `winpe/x86_64/`, `winpe/arm64/` | No — Windows Server 2022 uses the unattend-XML path (§7), not this WinPE menu entry |
+| Ubuntu | `alpine/`, `ubuntu/` (Alpine dd-writer pattern — see the file's own header comment) | No |
+| Rocky Linux | `rockylinux/${arch}/` | No |
+| OpenBSD | `openbsd/7.5/${arch}/` | No |
+| Hardware Detection Tool | `hdt/` | No |
+| Spejder | `spejder/${arch}/` | No (separate external tool, see above) |
+| Auto-deploy | `autodeploy/` (optional — chain fails silently if absent) | No, unless you specifically want zero-touch MAC-based deploy |
+
+For the PFY's plan specifically: only the Proxmox VE installer kernel/initrd need to be added before
+testing scenario 1. Debian and Arch are already there. Extract the PVE kernel/initrd from the Proxmox
+VE ISO you download separately, same pattern as `windows_bootstrap`'s drop-in binaries (see
 `ansible/playbooks/windows_bootstrap/playbooks/files/README.md`). If you don't have a copy already,
-ask whoever owns this repo — do not guess a source and download a potentially tampered installer
-image.
+ask whoever owns this repo — do not guess a source and download a potentially tampered installer image.
+
+**Separately, `bootstrap/web/rocky/install.ks` appears to be dead** — an Anaconda-kickstart-based
+Rocky install approach, referenced from nowhere else in the repo, and superseded by the "custom
+installer initrd" approach `menu.ipxe`'s own Rocky section comments describe (which expects
+`rockylinux/`, a different, not-yet-populated directory). Not touched here — Rocky isn't part of the
+PFY's plan — but flagged since it's confusing to find two different, seemingly-competing Rocky
+approaches if you go looking.
 
 ---
 
@@ -404,14 +427,42 @@ Paste the resulting `$6$...` string into both TOML files at `root-password-hashe
 
 ### 4.1 How it fits together
 
-There are two iPXE script files:
+There are two iPXE script files, and they solve two different problems —
+**do not conflate them**, they were checked separately on 2026-07-10 and
+both are accurate as documented, but for different reasons:
 
 | File | Role |
 |---|---|
-| `bootstrap.ipxe` | **Embedded** into the compiled iPXE ISO/USB/ROM. Runs before any network is configured. Does DHCP, then chains to the boot menu. |
-| `menu.ipxe` | **Remote** boot menu. Served by the HTTP server at `bootstrap/web/menu.ipxe`. Contains all OS installer entries. |
+| `bootstrap.ipxe` | **Embedded** into the compiled iPXE ISO/USB/ROM. Runs before any network is configured. Does DHCP, then locates `menu.ipxe` via a DNS-name fallback chain (§4.3) — this only has to get you to a working `menu.ipxe`, once, from a cold boot with no other context. |
+| `menu.ipxe` | **Remote** boot menu, fetched by `bootstrap.ipxe`. Served by the HTTP server at `bootstrap/web/menu.ipxe`. Once it's running, it does its **own, separate** gateway-based environment detection (§4.1a) to pick which datacentre to fetch every subsequent OS installer file from — `bootstrap.ipxe`'s DNS chain is not involved again after this point. |
 
-The flow is: BIOS/UEFI boots iPXE ISO → `bootstrap.ipxe` runs → DHCP → chains to `http://192.168.139.50/menu.ipxe` → operator selects OS.
+The flow is: BIOS/UEFI boots iPXE ISO → `bootstrap.ipxe` runs → DHCP →
+locates and fetches `menu.ipxe` (DNS chain) → `menu.ipxe` detects which
+datacentre it's on (gateway IP) → operator selects an OS from the menu →
+every kernel/initrd/seed fetch from that point on uses the datacentre
+`menu.ipxe` detected, not anything `bootstrap.ipxe` decided.
+
+#### 4.1a Gateway-based datacentre detection (inside `menu.ipxe`)
+
+`menu.ipxe` (not `bootstrap.ipxe`) sets a `${boot-url}` variable once, near
+the top of the file, by checking the DHCP-assigned gateway IP — every
+kernel/initrd/seed URL for every menu entry below uses `${boot-url}`
+exclusively, never a hardcoded IP:
+
+| Gateway seen | Environment | `${boot-url}` |
+|---|---|---|
+| `192.168.139.254` | Edinburgh — `EXAPRVVRK001` | `http://192.168.139.50` |
+| `172.16.124.2` | Fredericia — `EXAPRVFRD001` (see the file's own comment: *"Legal fiction — physically a MacBook running `python3 -m http.server 8000`, mirroring `/debian` from Edinburgh. Only the IP differs."*) | `http://172.16.124.1:8000` |
+| anything else | falls back to Edinburgh with a warning | `http://192.168.139.50` |
+
+This matters for testing on an unfamiliar network segment: if the gateway
+doesn't match either known value, you silently get Edinburgh's `boot-url`
+regardless of whether that host is actually reachable from where you are
+— the menu still renders, but every install attempt will time out fetching
+its kernel/initrd. Watch for `Environment: <name>` in the iPXE console
+output right after DHCP completes; if it says "not recognised — defaulting
+to Edinburgh" and you're not actually on the Edinburgh network, that's
+your failure mode before you've picked anything from the menu.
 
 ### 4.2 The `menu.ipxe` filename and URL mapping
 
@@ -616,32 +667,76 @@ Pre-built binaries for common configurations are in `x86_64/ipxe.iso` and `arm64
 
 ### 4.4 Boot menu (`menu.ipxe`)
 
-The remote boot menu offers the following entries:
+> **Correction (2026-07-10):** the entry list below was significantly out of date — missing
+> Ubuntu and OpenBSD entirely, missing the "Spejder" entry, and still listing "PhoenixPE
+> Environment" for what the real file's own changelog records as replaced back at v1.8
+> ("Replace PhoenixPE entry with lean custom WinPE build"). The real file is at v2.2 as of
+> this correction — quoted directly from `bootstrap/web/menu.ipxe`, not reconstructed.
+
+The remote boot menu offers the following entries (grouped exactly as the real menu groups them):
 
 ```
-INSTALLERS
-  Debian  - Automated Install
-  Debian  - Install (SSH console)
-  Debian  - Automated Install (serial ttyS0)
-  Debian  - SSH Install (serial ttyS0)
-  Arch Linux Install
-  Proxmox VE 9 (Hypervisor)
-  Proxmox DCM 9 (Datacentre Manager)      ← not yet configured
+-- Default Selection --
+  Boot local disk  (default, 30s timeout)
+  Spejder Hardware Provisioning Runtime (Console and Serial ttyS0/COM1)
 
-UTILITIES
+-- Debian --
+  Debian  Auto install
+  Debian  Auto install  (SSH console)
+  Debian  Auto install  (ttyS0 serial)
+  Debian  Auto install  (SSH + ttyS0 serial)
+  Debian  [TEST] seed file relocation fix -- try this first
+
+-- Ubuntu --
+  Ubuntu  Auto install
+  Ubuntu  Auto install  (ttyS0 serial)
+  Ubuntu  Auto install  (SSH + ttyS0 serial)
+
+-- Rocky Linux --
+  Rocky   Auto install
+  Rocky   Auto install  (SSH console)
+  Rocky   Auto install  (ttyS0 serial)
+  Rocky   Auto install  (SSH + ttyS0 serial)
+
+-- Arch Linux --
+  Arch    Auto install
+  Arch    Install  (SSH console)
+  Arch    Auto install  (ttyS0 serial)
+  Arch    Install  (SSH + ttyS0 serial)
+
+-- OpenBSD --
+  OpenBSD 7.5  Auto install
+  OpenBSD 7.5  Auto install  (ttyS0 serial)
+  OpenBSD 7.5  Interactive   (ttyS0 serial)
+
+-- Hypervisors --
+  Proxmox VE 9   (x86_64 only)
+  Proxmox DCM 9  (x86_64 only)             ← not yet configured, returns to menu
+
+-- Utilities --
   GParted Live
-  PhoenixPE Environment
-  Hardware Detection Tool
+  WinPE deployment environment  (x86_64)
+  WinPE deployment environment  (ARM64)
+  Hardware Detection Tool  (x86_64 only)
 
-SYSTEM
+-- System --
   iPXE shell / Reboot / Shutdown
 ```
 
-The default selection is **Boot from local disk**, with a 30-second timeout. This means a machine that accidentally PXE-boots will fall through to its local OS without intervention.
+**"Spejder Hardware Provisioning Runtime"** is a separate, external tool
+(`github.com/knightmare2600/Spejder` — see the root `README.md`'s
+"related projects" table), not documented in this repo beyond its menu
+entry existing. It's a minimal, stateless, multi-architecture hardware
+inventory/provisioning runtime — worth knowing it's there and selectable
+from this menu, but its own repo is the source of truth for what it does.
 
-**MAC-based auto-deploy:** Before showing the menu, the script attempts to chain to `http://192.168.139.50/autodeploy/<mac-address>.ipxe`. If a file exists for that MAC, it runs instead of the menu, enabling fully automated zero-touch deployment. If the file does not exist, the chain fails silently and the menu appears. Create per-MAC scripts in `web/autodeploy/` using the hyphenated MAC format (e.g. `aa-bb-cc-dd-ee-ff.ipxe`).
+The default selection is **Boot local disk**, with a 30-second timeout. This means a machine that accidentally PXE-boots will fall through to its local OS without intervention.
 
-**Serial console variants:** The serial entries add `console=ttyS0,115200n8` (and `console=tty0` for the SSH variant to keep both consoles active). Use these for headless servers accessed via IPMI serial-over-LAN.
+**MAC-based auto-deploy:** Before showing the menu, the script attempts to chain to `${boot-url}/autodeploy/<mac-address>.ipxe` (`${boot-url}` per the gateway detection in §4.1a — so this is datacentre-relative, not a hardcoded IP). If a file exists for that MAC, it runs instead of the menu, enabling fully automated zero-touch deployment. If the file does not exist, the chain fails silently and the menu appears. Create per-MAC scripts using the hyphenated MAC format (e.g. `aa-bb-cc-dd-ee-ff.ipxe`), under `bootstrap/web/autodeploy/` for Edinburgh (not committed to git — create it yourself if you need per-MAC entries; it's optional, the chain simply fails silently without it).
+
+**Serial console variants:** entries suffixed `(ttyS0 serial)`/`(SSH + ttyS0 serial)` add `console=ttyS0,115200n8` (and `console=tty0` where both consoles need to stay active). Use these for headless servers accessed via IPMI serial-over-LAN.
+
+**The Debian menu currently has 5 entries, not 4** — `debian-test` was added 2026-07-08 as a deliberately separate, clearly-labelled entry after a real bug was found and fixed (the preseed files `lvm-bios.seed`/`lvm-efi.seed` had never actually been copied to the served location, so the four pre-existing Debian entries would have 404'd on `${seed}` if anyone had actually used them). Per the file's own comment, try `debian-test` first to confirm the fix holds before trusting the other four.
 
 ### 4.5 Proxmox VE boot entry
 
@@ -781,6 +876,15 @@ url = "http://192.168.139.50/proxmox/first-boot.sh"
 
 The `fqdn` here is a placeholder used during install only. `first-boot.sh` will rename the node to its real hostname.
 
+> **Gateway detection doesn't reach this file.** The `[first-boot] url` above is a static TOML value —
+> TOML has no conditionals, so it can't do the gateway-based `${boot-url}` detection `menu.ipxe`,
+> `late_command.sh`, and `first-boot.sh` itself all use (§4.1a). `answer.toml` is always correctly
+> *fetched* from whichever datacentre you're actually on (that part goes through `${boot-url}` via
+> `menu.ipxe`), but the URL written *inside* it is permanently fixed at Edinburgh. This only matters if
+> you're installing from Fredericia — not relevant to the PFY's plan (Edinburgh-based), but if that ever
+> changes, that server needs its own copy of this file with the URL manually overridden. Per the file's
+> own 2026-07-08 comment, this hasn't been automated.
+
 ### 5.2 degraded.toml — single-disk install
 
 Use when a replacement disk hasn't arrived yet. Creates a ZFS mirror with only one disk (degraded state). The second disk can be added later with `zpool attach`.
@@ -808,7 +912,7 @@ The iPXE menu always references `answer.toml`. To use `degraded.toml` for a spec
 
 The `[first-boot]` section in both TOML files instructs the Proxmox installer to fetch and run `first-boot.sh` once the node is up. The `ordering = "fully-up"` setting means the script runs only after the network is fully online — important since it downloads packages.
 
-See §5 for full details of what `first-boot.sh` does.
+See §6 for full details of what `first-boot.sh` does.
 
 ---
 
@@ -818,169 +922,158 @@ The `first-boot.sh` is fetched and executed automatically by the PVE installer a
 
 ### 6.1 What it does (in order)
 
+> **Correction (2026-07-10):** this whole section previously described a much larger script — interactive
+> site/hostname/IP/gateway prompts, virt-v2v Windows-conversion prerequisites, VirtIO driver extraction,
+> and a final node-rename-and-network step. **All of that was removed on 2026-07-07** (see the real
+> script's own changelog): this script is now trimmed to only what must happen *before* Ansible can
+> connect — the ansible user and SSH key. Everything else moved into Ansible
+> (`ansible/playbooks/proxmox/bootstrap-new-node.yml` for hostname/rename/static-IP,
+> `ansible/playbooks/proxmox/playbooks/40-scripts.yml` for what used to be the V2V/VirtIO/proxmoxbmc
+> steps). The corrected step list below is quoted directly from the real, current
+> `bootstrap/web/proxmox/first-boot.sh` (576 lines) — **this is the single most consequential correction
+> in this document for anyone about to actually run this script**, since the old version would have had
+> you sitting at a keyboard waiting for prompts that no longer exist.
+
 **Step 1 — APT repositories**
 
-Disables the Proxmox enterprise repository (requires a subscription) and adds the no-subscription community repository. Removes the subscription nag from the web UI.
+Disables the Proxmox enterprise repository (requires a subscription) and adds the no-subscription community repository.
 
-**Step 2 — Node identity**
+**Step 1b — Remove subscription nag**
 
-Prompts interactively for:
-- Site code (e.g. `FAL`, `ODE`, `BRK`)
-- Hostname (becomes `EXAPVExxx001` per naming convention)
-- IP address (with collision detection via `arping`)
-- Gateway
-
-> If running unattended from a fully automated pipeline, pre-seed these values by setting environment variables before invoking the script — see the script header for variable names.
+Patches `proxmoxlib.js` to suppress the "no valid subscription" popup in the web UI, and restarts `pveproxy`. Safe to re-run — re-patches automatically if an apt upgrade restores the original file (a `.bak` backup is kept from the first patch).
 
 **Step 3 — Core package installation**
 
-Installs: `openssh-server`, `sudo`, `net-tools`, `molly-guard`, `arping`, `nmap`, `python3-proxmoxer`, `zsh`, `zsh-autosuggestions`, `zsh-syntax-highlighting`, and other required packages.
+Installs: `openssh-server`, `sudo`, `net-tools`, `bash-completion`, `tree`, `bc`, `molly-guard`, `arping`, `nmap`, `parted`, `gdisk`, `smartmontools`, `vim`, `zsh`, `grc`, `python3-proxmoxer`, `python3-textual`, `python3-requests`, `python3-pbr`, `python3-six`, `w3m`, `xxd`, `jq`. (No `zsh-autosuggestions`/`zsh-syntax-highlighting` — those aren't in the real package list, despite an earlier version of this doc claiming otherwise.)
 
-If the node is itself a VMware guest (detected via `systemd-detect-virt`), VMware Tools are also installed — this applies during the migration period when some PVE nodes may themselves run inside VMware.
+**Step 3b — Environment selection**
 
-**Step 3b — virt-v2v Windows prerequisites**
+Interactively prompts: `Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]`. This is a genuinely new prompt not previously documented here at all — answer written to `/etc/.environment` and reused automatically on any re-run (won't ask twice). **This is the only interactive prompt left in the entire script** — there is no site/hostname/IP/gateway prompt any more.
 
-Installs `rpm2cpio` and `cpio`, then downloads and extracts `pvvxsvc.exe` / `rhsrvany.exe` from a Fedora Koji RPM into `/usr/share/virt-tools/`. These are required by `virt-v2v` for converting Windows VMs — without them, conversion of Windows guests will fail.
+**VMware guest tools (unlabelled step)**
 
-```bash
-wget -O /tmp/srvany.rpm https://kojipkgs.fedoraproject.org//packages/mingw-srvany/1.1/4.fc38/noarch/mingw32-srvany-1.1-4.fc38.noarch.rpm
-wget -O /tmp/vmdp.iso https://github.com/SUSE/vmdp/releases/download/v2.5.5.1/VMDP-WIN-2.5.5.1-Community.iso
-rpm2cpio /tmp/srvany.rpm | cpio -idmv
-
-mkdir -p /usr/share/virt-tools
-mv ./usr/i686-w64-mingw32/sys-root/mingw/bin/*.exe /usr/share/virt-tools/
-mv /tmp/pvvxsvc.rpm
-```
-
-**Step 3c — VirtIO driver extraction**
-
-Downloads `virtio-win.iso` (~500 MB) to `/var/lib/vz/template/iso/virtio-win.iso` (Proxmox's ISO store, making it available for VM CDROM attachment via the web UI). Then extracts the ISO contents to `/usr/share/virtio-win/` using `p7zip-full`.
-
-This step is idempotent — if the extraction directory already exists and contains the expected subdirectories (`vioscsi`, `NetKVM`, `balloon`, `viostor`), it is skipped.
-
-The extracted drivers are used by `convert-v2v.py` to inject VirtIO drivers during Windows VM conversion, allowing converted VMs to boot with VirtIO storage and networking rather than falling back to emulated IDE/RTL8139.
+Detects the hypervisor via `systemd-detect-virt`. If the PVE node is itself running inside VMware (nested — relevant during a migration period, not the normal case), installs and enables `open-vm-tools`. On real hardware or a non-VMware hypervisor this is skipped, correctly, with no prompt.
 
 **Step 4 — Ansible user**
 
 Creates the `ansible` service account with:
-- Password set (prompted, or pre-seeded)
-- SSH public key fetched from `http://192.168.139.50/ansible_sshkey.pub`
-- Full `NOPASSWD` sudo access via `/etc/sudoers.d/ansible`
-- Added to the `kvm` group (required for `virt-v2v` / `libguestfs` to access KVM without root)
-- zsh configured as default shell
+- Password hardcoded to `Password1!` (matches the pattern used elsewhere in this repo's demo/lab scenarios — deliberate, not a bug, but change it before any real production use)
+- SSH public key fetched from `${BOOT_SERVER}/ansible_sshkey.pub`, where `${BOOT_SERVER}` is picked by the same gateway-based detection described in §4.1a (Edinburgh vs Fredericia) — added 2026-07-08, this used to be hardcoded to Edinburgh only
+- Full `NOPASSWD` sudo access via `/etc/sudoers.d/ansible` (syntax-checked with `visudo -c`; the file is removed again if the check fails, rather than leaving a broken sudoers drop-in)
+- Added to the `kvm` group, if it exists (required for `virt-v2v`/`libguestfs` to access `/dev/kvm` without root — relevant later, once Ansible's `40-scripts.yml` reintroduces the V2V tooling)
+- `.vimrc` written; zsh configured (with colour-coded prompt, green for `ansible`, red for `root`) and set as the default shell for both `ansible` and `root`
 
-**Step 5 — Molly-guard, MOTD, node info file**
+**Step 6 — Dynamic MOTD**
 
-Molly-guard is configured to prevent accidental shutdown/reboot of the wrong node over SSH. A custom MOTD is written. A node info file is written to `/etc/example-music/nodeinfo.json` — a JSON record of the build configuration that re-runs of the script and Ansible playbooks can read to detect a completed bootstrap and verify the node role.
+Writes `/etc/update-motd.d/10-pve`, a script that renders site/entity/PVE-version/network/VM-and-container-count/storage/ZFS-status/uptime info on every SSH login — reading `/etc/example-music/nodeinfo.json` if present, but **this script does not write that file itself** (an earlier version of this doc claimed it did — the MOTD script only reads it defensively, falling back to `UNKNOWN`/`Unknown` fields if it's absent, which it will be until Ansible runs). Enables `PrintMotd` in `sshd_config` if not already set.
 
-**Step 6 — ZFS single-disk warning**
+**Summary and next steps**
 
-If the ZFS pool was created on a single disk (degraded install), the script prints a prominent warning and requires the operator to type `I UNDERSTAND` before continuing. This prevents single-disk nodes from being forgotten about.
+Prints a summary (current DHCP IP, environment, ansible user, molly-guard status) and — this is the
+important part — tells you exactly what to run next, verbatim:
 
-**Step 7 — Node rename and network**
+```
+NEXT STEP: Ansible finishes this node's setup
 
-Renames the node from the `pve-install` placeholder to the real hostname, updates `/etc/network/interfaces` with the correct static IP, and sets DNS via `pvesh`.
+This node still has its installer placeholder hostname and a DHCP IP -- that's expected. From
+the Ansible control node, run:
+
+  ansible-playbook -i "<this node's current DHCP IP>," \
+    playbooks/proxmox/bootstrap-new-node.yml
+
+You'll be prompted for this node's real hostname (from your build sheet, e.g. EXAPVEKGE001) --
+it sets the real hostname and static network config. The SSH session on this DHCP IP will then
+drop -- reconnect via the new hostname/IP, add it to configs/inventory/, then run proxmox/site.yml
+as normal.
+```
+
+**No reboot is required or performed automatically** — the script explicitly says so ("networking/hostname
+are unchanged") and only reboots if you opt in at a final `y/N` prompt, purely for a clean state (e.g.
+after kernel updates), not because anything requires it.
+
+**ZFS single-disk warning** (only shown if applicable — checked by counting `ONLINE` vdevs in `zpool
+status rpool`): if the pool has fewer than 2 disks, prints a prominent warning and requires typing
+`I UNDERSTAND` verbatim before the script continues. This prevents a degraded, no-redundancy node from
+going unnoticed.
+
+**What happens to hostname/rename/static-IP now:** none of it happens in this script any more. The node
+stays on its DHCP-assigned IP with the Proxmox installer's placeholder hostname (`pve-install`) until you
+run `ansible-playbook -i "<dhcp-ip>," playbooks/proxmox/bootstrap-new-node.yml` from the Ansible control
+node, per the script's own on-screen instructions above.
+
+### 6.2 Alternate/historical method: `pve-iso-2-pxe`
+
+> This is a **third-party tool, kept for historical reference — not the currently-documented or
+> supported method.** The current, supported way to get the Proxmox VE installer kernel/initrd onto the
+> provisioning server is the simple mount-and-copy (or 7-Zip, on Windows) approach in §2.3: extract
+> `boot/linux26` and `boot/initrd` directly from the official Proxmox VE ISO into
+> `bootstrap/web/proxmox/x86_64/boot/`. The transcript below, using a third-party GitHub tool
+> (`morph027/pve-iso-2-pxe`) to build a separate PXE-TFTP image bundle, predates that and was never
+> confirmed to still be needed — if you're setting up a new provisioning server, use §2.3's method, not
+> this one.
 
 ```bash
-┌─[ansible@exaanscld001]─[/home/ansible/bootstrap]
-└──╼ $ sudo apt install wget genisoimage gzip zstd
-Reading package lists... Done
-: <snbip>
-
-┌─[ansible@exaanscld001]─[/home/ansible/bootstrap]
+┌─[knightmare@ovhfwl]─[/home/knightmare/vmware]
 └──╼ $ git clone https://github.com/morph027/pve-iso-2-pxe
-cd pve-iso-2-pxe
 Cloning into 'pve-iso-2-pxe'...
-remote: Enumerating objects: 132, done.
-remote: Counting objects: 100% (71/71), done.
-remote: Compressing objects: 100% (54/54), done.
-remote: Total 132 (delta 28), reused 43 (delta 17), pack-reused 61 (from 1)
-Receiving objects: 100% (132/132), 38.45 KiB | 546.00 KiB/s, done.
-Resolving deltas: 100% (45/45), done.
+: <snip>
 
 ┌─[knightmare@ovhfwl]─[/home/knightmare/vmware/pve-iso-2-pxe]
 └──╼ $ wget https://enterprise.proxmox.com/iso/proxmox-ve_9.1-1.iso
---2026-02-24 14:54:39--  https://enterprise.proxmox.com/iso/proxmox-ve_9.1-1.iso
-Resolving enterprise.proxmox.com (enterprise.proxmox.com)... 185.219.221.167, 2001:41d0:b00:5900::34
-Connecting to enterprise.proxmox.com (enterprise.proxmox.com)|185.219.221.167|:443... connected.
-HTTP request sent, awaiting response... 200 OK
-Length: 1831886848 (1.7G) [application/octet-stream]
-Saving to: ‘proxmox-ve_9.1-1.iso’
+: <snip, ~1.7 GB download>
 
-proxmox-ve_9.1-1.iso       100%[===========================================================================>]   1.71G  54.4MB/s    in 44s
-
-2026-02-24 14:55:23 (39.5 MB/s) - ‘proxmox-ve_9.1-1.iso’ saved [1831886848/1831886848]
-
-┌─[ansible@exaanscld001]─[/home/ansible/bootstrap/pve-iso-2-pxe]
+┌─[knightmare@ovhfwl]─[/home/knightmare/vmware/pve-iso-2-pxe]
 └──╼ $ sudo bash pve-iso-2-pxe.sh proxmox-ve_*.iso
-
-#########################################################################################################
-# Create PXE bootable Proxmox image including ISO                                                       #
-#                                                                                                       #
-# Author: mrballcb @ Proxmox Forum (06-12-2012)                                                         #
-# Thread: http://forum.proxmox.com/threads/8484-Proxmox-installation-via-PXE-solution?p=55985#post55985 #
-# Modified: morph027 @ Proxmox Forum (23-02-2015) to work with 3.4                                      #
-#########################################################################################################
-
 Using proxmox-ve_9.1-1.iso...
 extracting kernel...
 extracting initrd...
-adding iso file ...
-3577905 blocks
 Finished! pxeboot files can be found in /home/knightmare/vmware/pve-iso-2-pxe.
-┌─[ansible@exaanscld001]─[/home/ansible/bootstrap/pve-iso-2-pxe]
-└──╼ $ ls
-LICENSE  proxmox.iso  proxmox-ve_9.1-1.iso  pve-iso-2-pxe.sh  pxeboot  README.md
-┌─[ansible@exaanscld001]─[/home/ansible/bootstrap/pve-iso-2-pxe]
-└──╼ $ df -hT
-Filesystem                Type   Size  Used Avail Use% Mounted on
-tmpfs                     tmpfs  197M  740K  197M   1% /run
-/dev/mapper/vgovhfwl-root ext4    24G   21G  2.6G  89% /
-tmpfs                     tmpfs  984M     0  984M   0% /dev/shm
-tmpfs                     tmpfs  5.0M     0  5.0M   0% /run/lock
-/dev/sda1                 vfat   511M  4.0K  511M   1% /boot/efi
-tmpfs                     tmpfs  984M     0  984M   0% /run/qemu
-tmpfs                     tmpfs  197M  8.0K  197M   1% /run/user/1000
-┌─[ansible@exaanscld001]─[/home/ansible/bootstrap/pve-iso-2-pxe]
+
+┌─[knightmare@ovhfwl]─[/home/knightmare/vmware/pve-iso-2-pxe]
 └──╼ $ tree pxeboot
 pxeboot
 ├── initrd
 └── linux26
+```
 
-1 directory, 2 files
-┌─[ansible@exaanscld001]─[/home/ansible/bootstrap/pve-iso-2-pxe]
-└──╼ $ ls -lh pxeboot
-total 2.1G
--rw-r--r-- 1 root root 2.1G Feb 24 14:56 initrd
--rw-r--r-- 1 root root  15M Feb 24 14:55 linux26
+### 6.3 Deploying and debugging
 
-## Deploying
+The actual install flow (confirmed accurate against `docs/buildsheets/buildsheet-pve.md` and the real
+`answer.toml`): boot → auto-install mode "fails" to fetch the answer file (expected, this is the
+mechanism, not an error) → `wget -O /run/automatic-installer-answers http://192.168.139.50/proxmox/answer.toml`
+→ `exit` → installs unattended → on first login (root), `bash /var/lib/proxmox-first-boot/proxmox-first-boot`
+to run §6.1's script by hand if it didn't already fire via `[first-boot]`.
 
-Boot → auto mode → "fails" to fetch answer
-wget -O /run/automatic-installer-answers http://192.168.139.50/proxmox/answer.toml
-exit
-Installs perfectly
-on first boot, sing in as root / P.....
-bash /var/lib/proxmox-first-boot/proxmox-first-boot/
+Useful debugging commands if `first-boot.sh` didn't run automatically or you need to inspect state
+afterward:
 
-## Debugging
-
-## Did it try to fetch the script?
+```bash
+## Did it try to fetch the script automatically?
 journalctl -u proxmox-first-boot
 
 ## Is the script even reachable from the node?
 wget -O /tmp/test.sh http://192.168.139.50/proxmox/first-boot.sh && echo "OK"
+```
 
-## TODO: make this backup part of script of playbook
-tar czf /root/pve-host-backup-$(date +%F).tar.gz /etc/pve /etc/network/interfaces /etc/hosts /etc/fstab
+**A standalone tip, unrelated to `first-boot.sh` itself — resetting a forgotten BMC/IPMI password from
+the OS once Proxmox is up:**
 
-## And also this database file
-cp /var/lib/pve-cluster/config.db /root/pve-config-db-backup-$(date +%F).db
+```bash
+root@pve-install:~# apt install ipmitool
+: <snip>
+root@pve-install:~# ipmitool user set password 2
+Password for user 2:
+Password for user 2:
+Set User Password command successful (user 2)
+```
 
-## Now out figure out how to restore these...?
+### 6.4 What the real script's output actually looks like
 
-##################### on real hardware ##############################
+> Quoted directly from the real, current `bootstrap/web/proxmox/first-boot.sh` (2026-07-10) — see §6.1's
+> correction notice for what changed and why the shape of this transcript is now much shorter than an
+> earlier version of this document showed.
 
+```text
 root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
 
   +======================================================+
@@ -998,56 +1091,39 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   [+] Repositories updated
 
   ================================================
-  NODE CONFIGURATION
+  REMOVING SUBSCRIPTION NAG
   ================================================
-  Known site codes (illustrative — the script reads this list live from benarbejde/sites.csv,
-  so it grows as sites are added; treat sites.csv as authoritative, not this transcript):
-    AAR ABD AKL AMS ATL BER BIR BON BRD BRK BRT CHI CLD CLY COV CPH DRS DUN DUS EDI FAL FAX FRD
-    FRE GLA GOT HAL HUL KGE KOR LAX LIV LND MCR MEL MIA MIL MTL MUN NEW NJC NYB NYC ODE OSL PER
-    SEA SFO SHE SYD TOR VIE VRK
-
-  Site code (e.g. FAL, MCR, GLA): FAL
-  [+] Site   : FAL -- Falkirk, Scotland
-  [+] Entity : Example Music (Scotland) Ltd
-  [+] Subnet : 192.168.76.0/24
-  Hostname (short, e.g. EXAPVEFAL001): EXAPVEFAL001
-  Gateway last octet (e.g. 253 -> 192.168.76.253): 253
-  [+] Gateway: 192.168.76.253
-
-  [->] Scanning 192.168.76.5-7 for available IPs (PVE node slots)...
-  [+] Suggested: 192.168.76.5 (first free in .5-.7 range)
-  IP Address [192.168.76.5]: 192.168.76.5
-  [->] Checking 192.168.76.5 is not already in use...
-  [+] 192.168.76.5 is free
-
-  [i] Hostname : EXAPVEFAL001.jukebox.internal
-  [i] IP       : 192.168.76.5/24
-  [i] Gateway  : 192.168.76.253
-  [i] Site     : FAL -- Falkirk, Scotland
-  [i] Entity   : Example Music (Scotland) Ltd
-
-  Proceed with these settings? [y/N]: y
+  [->] Patching proxmoxlib.js...
+  [+] Subscription nag removed
+  [+] Backup saved: .../proxmoxlib.js.bak
+  [->] Restarting pveproxy...
+  [+] pveproxy restarted -- hard-refresh browser (Ctrl+Shift+R)
 
   ================================================
   INSTALLING PACKAGES
   ================================================
   [->] Installing core packages...
-    Unpacking sudo (1.9.16p2-3) ...
-    Unpacking arping (2.25-1) ...
+    Setting up molly-guard (0.11.0) ...
     : <snip>
-    Setting up parted (3.6-5) ...
-    Setting up python3-paramiko (3.5.1-3) ...
   [+] Core packages installed
   [+] molly-guard active -- protects against accidental reboots/shutdowns
+
+  ================================================
+  ENVIRONMENT
+  ================================================
+  Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]: p
+  [+] Environment set to: production
+
   [->] Checking hypervisor type...
-  [i] Detected virtualisation: none unknown <-- Not a mistake. This is for nested virtualisaiton
-  [i] Not a VMware VM (none unknown) -- skipping open-vm-tools
+  [i] Detected virtualisation: none
+  [i] Not a VMware VM (none) -- skipping open-vm-tools
 
   ================================================
   ANSIBLE USER SETUP
   ================================================
+  [i] Boot server detected: http://192.168.139.50 (gateway: 192.168.139.254)
   [->] Creating ansible user...
-  [!] User ansible already exists -- updating password
+  [+] User ansible created
   [->] Setting password...
   [+] Password set to Password1!
   [->] Fetching SSH public key...
@@ -1055,8 +1131,9 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   [->] Setting permissions...
   [+] Permissions set
   [->] Configuring NOPASSWD sudo...
-  /etc/sudoers.d/ansible: parsed OK
   [+] Sudoers configured
+  [->] Adding ansible user to kvm group (required for virt-v2v / libguestfs performance)...
+  [+] ansible added to kvm group -- /dev/kvm accessible without sudo
   [->] Writing .vimrc...
   [+] .vimrc written
   [->] Configuring zsh for ansible user...
@@ -1065,110 +1142,64 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   [+] zsh configured for root (red prompt)
 
   ================================================
-  WRITING NODE INFO FILE
-  ================================================
-  [+] Node info written -> /etc/example-music/nodeinfo.json
-
-  ================================================
   CONFIGURING DYNAMIC MOTD
   ================================================
   [+] MOTD written
-  [+] MOTD configured -- shows on SSH login and console
-
-  ================================================
-  RENAMING NODE AND FIXING NETWORK
-  ================================================
-  [->] Setting /etc/hostname...
-  [+] /etc/hostname -> EXAPVEFAL001
-  [->] Updating /etc/hosts...
-  [+] /etc/hosts updated
-  [->] Fixing /etc/network/interfaces...
-  [+] Physical NIC: eno1
-  [+] /etc/network/interfaces written (192.168.76.5/24 gw 192.168.76.253 via eno1)
-  [->] Applying hostname to running system...
-  [+] Hostname: EXAPVEFAL001
-  [->] Updating postfix...
-  [+] Postfix myhostname -> EXAPVEFAL001.jukebox.internal
 
   +======================================================+
-  |  PROVISIONING COMPLETE                               |
+  |  ANSIBLE-BOOTSTRAP COMPLETE                           |
   +======================================================+
-  [+] Hostname   : EXAPVEFAL001.jukebox.internal
-  [+] New IP     : 192.168.76.5/24 via 192.168.76.253
-  [+] Site       : FAL -- Falkirk, Scotland
-  [+] Entity     : Example Music (Scotland) Ltd
-  [+] ansible    : password + 0 SSH key(s)
-  [+] Node info  : /etc/example-music/nodeinfo.json
-  [+] molly-guard: active
-  [+] Web UI     : https://192.168.76.5:8006
+
+  [+]  Current IP :        192.168.139.87 (DHCP, provisioning network)
+  [+]  Environment :       production
+  [+]  Ansible user :      ansible -- 1 SSH key(s)
+  [+]  molly-guard :       active
 
   +------------------------------------------------------+
-  |  NETWORK MIGRATION ON REBOOT                         |
-  |                                                      |
-  |  Current (provisioning, vRACK DHCP lease) : 192.168.139.x/24 |
-  |  After reboot (FAL site LAN)              : 192.168.76.5/24  |
-  |                                                      |
-  |  This SSH session will DROP on reboot.               |
-  |  Reconnect on the site LAN to 192.168.76.5           |
+  |  NEXT STEP: Ansible finishes this node's setup       |
+  |                                                       |
+  |  This node still has its installer placeholder       |
+  |  hostname and a DHCP IP -- that's expected. From      |
+  |  the Ansible control node, run:                      |
+  |                                                       |
+  |    ansible-playbook -i "192.168.139.87," \            |
+  |      playbooks/proxmox/bootstrap-new-node.yml         |
+  |                                                       |
+  |  You'll be prompted for this node's real hostname     |
+  |  (from your build sheet, e.g. EXAPVEKGE001) -- it     |
+  |  sets the real hostname and static network config.    |
+  |  The SSH session on this DHCP IP will then drop --    |
+  |  reconnect via the new hostname/IP, add it to         |
+  |  configs/inventory/, then run proxmox/site.yml as     |
+  |  normal.                                              |
   +------------------------------------------------------+
 
+  +------------------------------------------------------+
+  |  POST-PROVISIONING: LET'S ENCRYPT WILDCARD CERT      |
+  |  ... (see docs/pve-letsencrypt.md) ...                |
+  +------------------------------------------------------+
+
+  [only if fewer than 2 ZFS vdevs detected:]
+
   +======================================================+
-  |                                                      |
-  |  WARNING  WARNING  WARNING  WARNING  WARNING         |
-  |                                                      |
-  |      THIS NODE HAS NO DISK REDUNDANCY                |
-  |                                                      |
-  |  Only 1 disk detected in ZFS pool rpool              |
-  |  This node WILL lose ALL data if this disk fails     |
-  |                                                      |
-  |  When the second disk arrives:                       |
-  |    Follow zfs-raid0-to-raid1.md to upgrade to        |
-  |    a full RAID1 mirror before production use         |
-  |                                                      |
-  |  DO NOT put this node into production as-is          |
-  |                                                      |
+  |  WARNING: THIS NODE HAS NO DISK REDUNDANCY           |
+  |  ... (see §5.2's NB) ...                              |
   +======================================================+
 
   Type 'I UNDERSTAND' to confirm you have read this warning: I UNDERSTAND
   [!] Acknowledged. Do not forget -- add the second disk before production.
 
+  No reboot is required by this script -- networking/hostname are unchanged.
+  A reboot is still fine if you want one for a clean state (e.g. after kernel updates).
   Reboot now? [y/N]: n
-  [i] Skipped -- run: ifreload -a   to apply network without reboot
-
-## Reset forgotten BMC password
-root@pve-install:~# apt install ipmitool
-Installing:
-  ipmitool
-
-Installing dependencies:
-  freeipmi-common  libfreeipmi17  libopenipmi0t64  libsnmp-base  libsnmp40t64  openipmi
-
-Suggested packages:
-  freeipmi-tools  snmp-mibs-downloader
-
-Summary:
-  Upgrading: 0, Installing: 7, Removing: 0, Not Upgrading: 80
-  Download size: 8,597 kB
-  Space needed: 23.2 MB / 963 GB available
-
-Continue? [Y/n] y
-Get:1 http://deb.debian.org/debian trixie/main amd64 freeipmi-common all 1.6.15-1 [357 kB]
-: <snip>
-Processing triggers for libc-bin (2.41-12) ...
-
-## Reset admin password (will _not_ echo)
-root@pve-install:~# ipmitool user set password 2
-Password for user 2:
-Password for user 2:
-Set User Password command successful (user 2)
-
-## Reboot ofr changes ot take effect
-root@pve-install:~# poweroff
-W: molly-guard: SSH session detected!
-Please type in hostname of the machine to poweroff: EXAPVEFAL001
-root@pve-install:~# Connection to 192.168.139.x closed by remote host.
-Connection to 192.168.139.x closed.
+  [+] Skipping reboot. Run 'ansible-playbook ... playbooks/proxmox/bootstrap-new-node.yml' next.
 ```
+
+**The single most important thing in that output, for the PFY's plan:** the node never gets a real
+hostname or static IP from this script — it stays on its DHCP lease with the Proxmox installer's
+placeholder hostname the whole time. The very next command to run, from the Ansible control node, is
+printed on-screen at the end: `ansible-playbook -i "<dhcp-ip>," playbooks/proxmox/bootstrap-new-node.yml`.
+That playbook is what actually asks for the real hostname and sets the permanent site-LAN IP.
 
 ---
 
@@ -1192,17 +1223,26 @@ The hostname is **not** set by the preseed — the installer will prompt for it.
 
 ### 7.2 late_command.sh
 
+> **Correction (2026-07-10):** the LVM-kernel-module bullet below was removed at the real script's own
+> v1.2 ("stop re-adding LVM2 kernel modules" — the file's own changelog, not a guess) and no longer
+> happens at all. Several real, current actions were previously undocumented entirely — the gateway-based
+> boot-server detection, and fetching `sites.csv`/`devices.csv`/`begyndelse.json`. Rewritten against the
+> real, current `bootstrap/web/debian/late_command.sh` (v1.5).
+
 Runs inside the Debian installer environment (busybox `sh` — no bash, no arrays, no `[[ ]]`). Uses `in-target` to run commands inside the installed system chroot.
 
-Actions performed:
+Actions performed, in order:
 
-- Forces LVM modules (`dm_mod`, `dm_snapshot`, `dm_mirror`) into the initramfs and rebuilds it — required for the standard kernel to boot from LVM at first boot
-- Adds `ansible` to the `sudo` group
+- **Gateway-based boot-server detection** — same mechanism as §4.1a/§6.1's Step 4: checks the DHCP gateway (`172.16.124.2` → Fredericia, anything else → Edinburgh) and uses that server for every fetch below. Not a separate concept from the Proxmox side — the exact same detection logic, independently implemented in three places (`bootstrap.ipxe`'s embedded chain fetches `menu.ipxe` differently, but `menu.ipxe`, `first-boot.sh`, and `late_command.sh` all do this same gateway check).
+- Adds `ansible` to the `sudo` group (the user account itself is created by the preseed directly, via `d-i passwd/user-default-groups string adm cdrom sudo dip` — not by this script, despite an earlier version of this doc implying otherwise)
 - Installs `openssh-server sudo net-tools bash-completion` (belt-and-braces, some are already in the preseed package list)
-- Creates `/home/ansible/.ssh/authorized_keys` by fetching `ansible_sshkey.pub` from the provisioning server using busybox `wget`
+- Creates `/etc/example-music/` and fetches `sites.csv`, `devices.csv`, and `begyndelse.json` into it — the same single-source-of-truth files every other bootstrap script (`bindme.sh`, `ansibleme.sh`, `firewallme.sh`) reads, so this node has them from first boot rather than waiting for Ansible
+- Creates `/home/ansible/.ssh/authorized_keys` by fetching `ansible_sshkey.pub` from the (gateway-detected) provisioning server using busybox `wget`
+- Fetches `server-prompts.zsh`/`server-prompts.sh` (the "safety dance" prompt scripts — see `bootstrap/web/server-prompts.{sh,zsh}`) and wires them into `/etc/zsh/zshrc` and `/etc/bash.bashrc` so they load for every shell on this node
 - Writes a `.vimrc` (ruler, dark background, syntax highlighting) to the ansible home dir
+- Sets correct ownership and permissions (`700` on `.ssh/`, `600` on `authorized_keys`) using numeric UID/GID (necessary because the script runs outside the chroot, in the installer environment, not inside the target system)
 - Creates `/etc/sudoers.d/ansible` with `NOPASSWD: ALL` and validates it with `visudo -c` — removes the file and aborts if validation fails
-- Sets correct ownership and permissions (`700` on `.ssh/`, `600` on `authorized_keys`) using numeric UID/GID (necessary because the script runs outside the chroot)
+- Prints verification output at the end (passwd entry, authorized_keys content, `/etc/example-music` listing, permissions) — useful to check on-screen if something later goes wrong and you're wondering whether this step actually completed
 
 ---
 
