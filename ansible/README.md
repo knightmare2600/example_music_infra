@@ -156,6 +156,22 @@ After adding a new device to `benarbejde/devices.csv`, re-run
 
 ---
 
+## at_have_ryggen_fri/
+
+Verification harness — YAML validity, `--syntax-check`, file-reference
+integrity (`template:`/`copy:`/`include_tasks:`/etc actually resolve),
+inventory structure, and `add_host` visibility. Needs no real hosts, no
+vault password, no network beyond localhost. Run before merging anything
+that touches inventory, `group_vars`/`host_vars`, or `ansible.cfg`:
+
+```bash
+cd ansible/at_have_ryggen_fri && ./run.sh
+```
+
+See `at_have_ryggen_fri/README.md` for what each check does and why.
+
+---
+
 ## bind9
 
 Configures `EXADNSVRK001` as the authoritative BIND9 DNS server for `jukebox.internal`.
