@@ -63,7 +63,7 @@ This is proper IT. It is not PRINCE2 and Gantt charts.
 
 > ⛔ **Existing site infrastructure MUST NOT be modified, reconfigured, or decommissioned until the new EXA infrastructure at that site is fully commissioned and signed off.**
 
-If you are unsure whether something is "existing acquired infrastructure" or "new EXA infrastructure," check the build checklist for that site in [site-inventory.md](../site-inventory.md). If a device does not have an EXA hostname (`EXAXXX<SITE>NNN`), it is existing infrastructure. Hands off.
+If you are unsure whether something is "existing acquired infrastructure" or "new EXA infrastructure," check the build checklist for that site in [site-inventory.md](site-inventory.md). If a device does not have an EXA hostname (`EXAXXX<SITE>NNN`), it is existing infrastructure. Hands off.
 
 ---
 
@@ -764,7 +764,7 @@ The `firewallme.sh` script detects which interface has a `192.168.139.x` DHCP le
 | Build a member server | [buildsheets/buildsheet-server.md](buildsheets/buildsheet-server.md) |
 | Build a workstation / laptop | [buildsheets/buildsheet-workstation.md](buildsheets/buildsheet-workstation.md) |
 | Build a Windows Admin node | [buildsheets/buildsheet-winadmin.md](buildsheets/buildsheet-winadmin.md) |
-| Set up WireGuard / DC deployment from scratch | [bootstrap/ad-dc-wireguard-deployment.md](bootstrap/ad-dc-wireguard-deployment.md) |
+| Set up WireGuard / DC deployment from scratch | [active-directory/ad-dc-wireguard-deployment.md](active-directory/ad-dc-wireguard-deployment.md) |
 | Understand the full bootstrap pipeline (iPXE, PVE, Debian) | [bootstrap/bootstrapping.md](bootstrap/bootstrapping.md) |
 | Troubleshoot a WireGuard tunnel | [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) |
 | Fix a broken ZFS disk | [proxmox/zfs-disk-replacement.md](proxmox/zfs-disk-replacement.md) |

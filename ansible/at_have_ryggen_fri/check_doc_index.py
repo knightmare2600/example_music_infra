@@ -2,27 +2,32 @@
 """
 check_doc_index.py -- part of at_have_ryggen_fri.
 
-docs/INDEX.md is the estate-wide documentation catalogue -- every real doc
-under docs/ is supposed to be listed there, with a stable Doc ID, and every
-link in it is supposed to point at a real file. Neither direction was ever
-checked mechanically before; a 2026-07-09 manual audit found a broken link
-(pointing at a directory the file had moved out of) and 35 real doc files
-not listed at all. This makes both checks repeatable.
+Two related but distinct checks:
 
-Two categories, reported separately:
-  - BROKEN LINKS: docs/INDEX.md links to a file that doesn't exist. This is
-    always a bug (a move/rename without updating the index) -- fails the
-    check.
-  - UNINDEXED FILES: a real file under docs/ that no link in docs/INDEX.md
-    points at. Not necessarily a bug -- some files are deliberately excluded
-    (meta files like README.md/INDEX.md itself, archived docs under an
-    old/ subdirectory, templates). Reported as a warning, not a failure,
-    so a human can triage and either index them or explicitly note them as
-    excluded -- see EXCLUDED below, which grows as that triage happens.
+1. REPO-WIDE BROKEN LINKS: every git-tracked *.md file in the whole repo
+   (not just docs/ -- ansible/README.md, ansible/playbooks/*/README.md,
+   etc. all have their own relative markdown links, never checked before
+   2026-07-10) is scanned for `[text](relative/path)` links, resolved
+   relative to that file's own directory, and confirmed to point at a
+   real file. Always a failure -- a dangling link is always a bug (a
+   move/rename that didn't update the link), regardless of which file
+   it's in. Uses `git ls-files`, not a directory walk, so it only checks
+   tracked files and automatically covers new ones anywhere in the repo.
 
-Exit code: 0 unless there's at least one broken link.
+2. docs/INDEX.md COMPLETENESS: docs/INDEX.md is specifically the
+   estate-wide documentation catalogue -- every real doc under docs/ is
+   supposed to be listed there with a stable Doc ID. This is docs/-
+   specific curation, not a general repo-wide concept, so it stays a
+   separate check: a 2026-07-09 manual audit found 35 real doc files not
+   listed at all. Reported as a warning, not a failure -- some files are
+   deliberately excluded (meta files, archived docs under an old/
+   subdirectory) and a human needs to triage, not autofail a fresh clone.
+
+Exit code: 0 unless there's at least one broken link (category 1). Category
+2 (unindexed files) never affects the exit code.
 """
 import re
+import subprocess
 import sys
 import urllib.parse
 from pathlib import Path
@@ -47,12 +52,20 @@ EXCLUDED_PREFIXES = (
 LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 
-def find_links():
-    text = INDEX_MD.read_text(encoding="utf-8")
+def git_tracked_markdown_files():
+    result = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "ls-files", "-z", "--", "*.md"],
+        capture_output=True, check=True,
+    )
+    return [REPO_ROOT / p for p in result.stdout.decode("utf-8").split("\0") if p]
+
+
+def extract_relative_links(md_path):
+    text = md_path.read_text(encoding="utf-8", errors="replace")
     links = []
     for m in LINK_RE.finditer(text):
         target = urllib.parse.unquote(m.group(2))
-        if target.startswith(("http://", "https://", "#")):
+        if target.startswith(("http://", "https://", "#", "mailto:")):
             continue
         if not target.endswith((".md", ".pdf", ".sh", ".py")):
             continue
@@ -74,18 +87,27 @@ def find_real_docs():
 
 
 def main():
-    links = find_links()
-    real_docs = set(find_real_docs())
+    md_files = git_tracked_markdown_files()
 
+    # --- 1. repo-wide broken links ---------------------------------------
     broken = []
-    for link in links:
-        if not (DOCS_DIR / link).exists():
-            broken.append(link)
+    total_links = 0
+    for md_path in md_files:
+        for link in extract_relative_links(md_path):
+            total_links += 1
+            if not (md_path.parent / link).exists():
+                rel_source = md_path.relative_to(REPO_ROOT)
+                broken.append((str(rel_source), link))
 
-    linked_targets = {link for link in links}
-    unindexed = sorted(real_docs - linked_targets)
+    print(f"Scanned {len(md_files)} git-tracked *.md file(s) repo-wide; "
+          f"{total_links} relative link(s) checked.")
 
-    print(f"docs/INDEX.md has {len(links)} file link(s); "
+    # --- 2. docs/INDEX.md completeness (docs/-specific, warning only) ----
+    index_links = set(extract_relative_links(INDEX_MD))
+    real_docs = set(find_real_docs())
+    unindexed = sorted(real_docs - index_links)
+
+    print(f"docs/INDEX.md specifically: {len(index_links)} link(s); "
           f"{len(real_docs)} real .md/.pdf file(s) under docs/ (excluding meta/archived).")
 
     if unindexed:
@@ -94,13 +116,13 @@ def main():
             print(f"  - {u}")
 
     if broken:
-        print(f"\n{len(broken)} BROKEN link(s) in docs/INDEX.md (target doesn't exist):")
-        for b in sorted(set(broken)):
-            print(f"  - {b}")
+        print(f"\n{len(broken)} BROKEN link(s) (target doesn't exist):")
+        for source, link in broken:
+            print(f"  [{source}] -> \"{link}\"")
         return 1
 
-    print("\nNo broken links in docs/INDEX.md." if not unindexed else
-          "\nNo broken links in docs/INDEX.md (unindexed files above are a warning, not a failure).")
+    print("\nNo broken links anywhere in the repo." if not unindexed else
+          "\nNo broken links anywhere in the repo (unindexed files above are a warning, not a failure).")
     return 0
 
 
