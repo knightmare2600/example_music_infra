@@ -42,10 +42,21 @@ access beyond `localhost` — safe to run on any clone, any time.
 ```bash
 cd ansible/at_have_ryggen_fri
 ./run.sh
+
+# Before an actual deployment (not just cloning the repo to read it):
+./run.sh --strict
 ```
 
 Exit code 0 if every check passes, 1 otherwise. Colour-coded output follows
 the same `[*]`/`[+]`/`[!]`/`[✗]` convention as `firewallme.sh`/`ansibleme.sh`.
+
+**`--strict`** promotes "expected, informational" warnings to real failures —
+currently just missing drop-in binaries (check 3). Default behaviour treats
+those as fine (a bare clone genuinely won't have them yet), which is correct
+for "does the repo make sense" but wrong for "am I actually ready to deploy" —
+use `--strict` for the latter. Added 2026-07-10 after 20 missing ARM64/x86_64
+binaries were found buried in a generic yellow warning line instead of being
+front and centre.
 
 ## What a real failure looks like
 
