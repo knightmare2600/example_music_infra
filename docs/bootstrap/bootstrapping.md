@@ -132,7 +132,7 @@ Two domains are registered for the estate:
 | Domain | Use |
 |---|---|
 | `example.com` | Primary public domain — AD forest root is `jukebox.internal` (internal); `example.com` is used for public-facing DNS records |
-| `example.net` | Secondary domain — used for the majority of child AD domains across sites |
+| `example.net` | Secondary domain — used as a UPN suffix and internal DNS alias zone (see `ExampleMusic_UPN_DNS_dnsmasq_Procedure.md`); not an AD domain in its own right |
 
 The following public DNS records exist:
 
@@ -387,11 +387,14 @@ Example Music.kdbx
 │   └── Ansible user password (per-node if not key-only)
 │
 ├── Active Directory
-│   ├── JUKEBOX\Administrator (forest DA)
-│   └── Per-domain DA accounts (example.net, example.com — see §1.4. Join-DomainAndBootstrap.ps1
-│       also allows example.org as a join target, but §1.4's registered-domains list and
-│       ad_forest.json don't mention it — unresolved inconsistency, confirm with whoever owns
-│       DNS registration before assuming example.org is real and in use)
+│   └── JUKEBOX\Administrator (forest DA — the only AD credential; there are no per-domain
+│       DA accounts, because example.net/example.org/example.com are not real, joinable AD
+│       domains — see §1.4. Resolved 2026-07-11, confirmed with Robert: every host joins
+│       `jukebox.internal` and only `jukebox.internal`; the example.* names are UPN suffixes
+│       and DNS aliases only. Join-DomainAndBootstrap.ps1's `$AllowedDomains` still lists
+│       them as selectable join targets — that script is a documented HISTORICAL ARTEFACT
+│       (see its own header) deliberately not kept in sync with current live behaviour, not
+│       a live inconsistency to chase.)
 │
 ├── Network
 │   ├── WireGuard pre-shared keys (per peer)
@@ -1250,7 +1253,7 @@ Reads the local IPv4 address and matches the third octet against the `$SubnetSit
 
 **Stage 3 — Hostname and domain**
 
-Prompts for a hostname (max 15 characters, alphanumeric + hyphens) and the target AD domain. The site-detected domain is offered as the default. Forest root (`jukebox.internal`) is explicitly rejected as a join target — only the child domains (`example.com`, `example.net`, `example.org`) are valid.
+Prompts for a hostname (max 15 characters, alphanumeric + hyphens) and the target AD domain. The site-detected domain is offered as the default — every entry in `$SubnetSiteMap` suggests `jukebox.internal`, since that's the only real, joinable domain (see the §3.1 correction above). `$AllowedDomains` also still lists `example.com`/`example.net`/`example.org` as selectable, a leftover from this script's pre-`ad_forest.json` design — this is a documented historical-artefact quirk, not something to rely on or "fix" going forward (see the script's own header).
 
 **Stage 4 — OU enumeration**
 
