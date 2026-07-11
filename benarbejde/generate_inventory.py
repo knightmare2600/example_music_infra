@@ -466,6 +466,12 @@ def load_devices(devices_path: Path):
       "os": r.get("OS", ""),
       "notes": r.get("Notes", ""),
       "connection_type": r.get("ConnectionType", "").strip().lower(),
+      # Optional -- set only when this device's real IP is on a DIFFERENT site's subnet than
+      # the one its hostname/Site column names (e.g. a device hostnamed EXA...CLD... that
+      # physically sits on FRD Havn's own network, sharing OVH's vRACK fabric with CLD but
+      # keeping its own subnet behind its own firewall). Empty/absent for the overwhelming
+      # majority of rows, where Site alone determines both hostname and subnet.
+      "subnet_site": (r.get("SubnetSite") or "").strip() or None,
     })
 
   return devices_by_site, stats
@@ -539,7 +545,7 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
     )
 
   for dev in site_devices:
-    line = render_device_line(net, dev)
+    line = render_device_line(dev.get("_net", net), dev)
     if dev["needs_review"]:
       review_lines.append(f"# NEEDS REVIEW (no OS/Managed set): {line}")
     elif dev["managed"]:
@@ -774,6 +780,16 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
   under different hostnames by design — bind9-dns.yml keeps BRD out of the per-site *reverse*
   zone loop only (a subnet can only have one authoritative reverse zone; BER owns it), not out of
   the forward zone.
+
+  OPEN QUESTION (2026-07-11, not resolved here): a device with a SubnetSite override (see
+  load_devices()) now gets a correct full_ip on its real subnet, so the FORWARD zone is right.
+  The REVERSE zone is not necessarily right — bind9-dns.yml's per-site reverse-zone loop filters
+  all_devices by Site (the hostname/naming site), not SubnetSite, and CLD doesn't go through
+  that generic loop at all (it has its own dedicated db.192.168.139 handling, which has no
+  awareness of FRD's 172.16.124.0/24 range). A CLD-hostnamed, FRD-subnetted device may end up
+  with no PTR record at all rather than a wrong one -- confirmed safe-by-omission, not fixed.
+  Needs a real decision (does FRD Havn get its own reverse zone at all?) before touching the
+  reverse-zone templates further.
   """
   rows = list(csv.DictReader(csv_path.open()))
   validate_csv_structure(rows)
@@ -795,13 +811,20 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
     for dev in site_devices:
       all_devices.append({
         "Site": site,
+        # SubnetSite override (see load_devices()) -- which site's subnet this device's real
+        # IP is actually on, if different from Site (its hostname/naming site). Empty string,
+        # not None, so the reverse-zone consumer below can treat "" the same as "unset" without
+        # a separate None check.
+        "SubnetSite": dev["subnet_site"] or "",
         "Hostname": dev["hostname"],
         "HostOctet": str(dev["octet"]) if dev["octet"] is not None else "",
         "Notes": dev["notes"],
       })
 
   for d in all_devices:
-    base = subnet_base.get(d["Site"], "")
+    # Standard-slot devices (from compute_standard_devices_for_site()) never have a
+    # SubnetSite key at all -- only devices.csv exceptions can carry one.
+    base = subnet_base.get(d.get("SubnetSite") or d["Site"], "")
     d["full_ip"] = f"{base}.{d['HostOctet']}" if (base and d["HostOctet"]) else ""
 
   print(json.dumps(all_devices))
@@ -819,10 +842,21 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
 # (as CLD's PBX octet already did once this session — see generate_inventory.py's own changelog).
 
 def find_device(devices_by_site: dict, site: str, dtype: str):
-  """First devices.csv row matching (site, dtype) for this site, or None if there isn't one."""
+  """
+  First devices.csv row matching (site, dtype), or None if there isn't one. Tries the direct
+  Site bucket first (the common case), then falls back to scanning every site's devices for
+  a SubnetSite match -- a device can be hostnamed/bucketed under one site while physically
+  living on another's network (e.g. a CLD-hostnamed device whose real subnet is FRD Havn's),
+  and callers here mean "physically at this site" (see prv_frd/pbx_frd below), not "hostnamed
+  under this site". See load_devices()'s subnet_site field and the 2026-07-11 CLD/FRD rework.
+  """
   for dev in devices_by_site.get(site, []):
     if dev["type"] == dtype:
       return dev
+  for devs in devices_by_site.values():
+    for dev in devs:
+      if dev["type"] == dtype and dev.get("subnet_site") == site:
+        return dev
   return None
 
 def compute_site_services(csv_path: Path, devices_path: Path, ad_forest_path: Path = None) -> dict:
@@ -969,6 +1003,13 @@ def generate(csv_path: Path, out_dir: Path, devices_path: Path):
 
   devices_by_site, device_stats = load_devices(devices_path)
 
+  # Full site -> subnet lookup, built before the main loop so a devices.csv row's optional
+  # SubnetSite override (a device whose hostname/site-segment is one site but whose real IP
+  # is on a different site's subnet -- e.g. a device folded into CLD's naming that still
+  # physically sits on FRD Havn's own network) can resolve regardless of row order in
+  # sites.csv. See the 2026-07-11 CLD/FRD Pulsant-vRACK rework.
+  site_to_net = {r["Site"]: validate_cidr(r["Subnet"]) for r in rows}
+
   for r in rows:
     site = r["Site"]
     net = validate_cidr(r["Subnet"])
@@ -1031,8 +1072,9 @@ def generate(csv_path: Path, out_dir: Path, devices_path: Path):
     # template, or between two devices.csv rows, are still caught here)
     site_devices = devices_by_site.get(site, [])
     for dev in site_devices:
+      dev["_net"] = site_to_net[dev["subnet_site"]] if dev["subnet_site"] else net
       if dev["octet"] is not None:
-        register_ip(site, offset_ip(net, dev["octet"]), dev["type"])
+        register_ip(dev["subnet_site"] or site, offset_ip(dev["_net"], dev["octet"]), dev["type"])
 
     dest = out_dir / site_filename(site)
 

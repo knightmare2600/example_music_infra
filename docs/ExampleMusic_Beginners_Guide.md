@@ -201,9 +201,9 @@ FRD's own IP table:
 | Hostname | IP | Role |
 |----------|----|------|
 | `EXAPRVFRD001` | `172.16.124.1` | Provisioning / PXE server (standby). Port 8000, not 80 — a real, fixed detail of the MacBook's `http.server` setup, not derivable from any convention |
-| `EXAPBXFRD001` | `172.16.124.48` | Secondary 3CX PBX — reuses the empty SBC slot, same reasoning as CLD's own PBX |
+| `EXAPBXCLD002` | `172.16.124.48` | Secondary 3CX PBX, physically at Fredericia Havn — reuses the empty SBC slot, same reasoning as CLD's own PBX (`EXAPBXCLD001`) |
 
-> **Why does FRD have its own PBX?** It doesn't have to, architecturally — it's simply another real device.csv exception recorded there, following the exact same "reuse the empty SBC slot" pattern CLD already uses. Nothing about FRD's role as a standby provisioning network requires a PBX; it's just where this particular one happens to live.
+> **Why is FRD's PBX hostnamed under CLD?** As of the 2026-07-11 network rework, CLD is "top of the tree" for the Pulsant DC / FRD Havn pairing — FRD Havn and (some of) Edinburgh's Pulsant-hosted nodes share OVH's vRACK fabric with CLD, so devices physically at FRD Havn are now hostnamed as CLD's next-numbered device (`EXAPBXCLD002`, following `EXAPBXCLD001`) while keeping their real IP on FRD's own `172.16.124.0/24` subnet — a `SubnetSite` override in `devices.csv`, resolved by `generate_inventory.py`. `EXAPRVFRD001` above deliberately keeps its own FRD-hostnamed identity — it's woven into FRD-specific lookups (`menu.ipxe`/`late_command.sh` gateway detection, `begyndelse.json`'s `provisioning_fredericia_havn`) in a way the PBX wasn't, so it wasn't folded in.
 
 ---
 
