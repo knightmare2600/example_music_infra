@@ -62,6 +62,20 @@
 #               explicit -e pve_acknowledge_single_disk=true gate instead of a console "type I
 #               UNDERSTAND" prompt; dynamic MOTD -> 40-scripts.yml. The reboot prompt is dropped
 #               entirely -- nothing left in this script touches anything that needs one.
+#   2026-07-11  Fixed 3 bugs found running this for real against a disposable PVE node for the
+#               first time (proxmox-first-boot-multi-user.service, no controlling TTY):
+#               1) `clear` was the very first command under `set -e` -- with no TTY, $TERM is
+#                  unset, `clear` exits non-zero, and the whole script died before Step 1 ever
+#                  ran. Now `clear 2>/dev/null || true`.
+#               2) CURRENT_IP (from `ip -4 addr show vmbr0`) kept its /24 CIDR suffix, which then
+#                  landed straight in the printed `ansible-playbook -i "<ip>,"` next-step command
+#                  -- not a valid inventory host pattern. Now stripped with `${CURRENT_IP%%/*}`.
+#               3) The two summary printf lines embedded $W/$NC (escape-sequence variables) inside
+#                  the %s-substituted arguments, not printf's own format string -- printf only
+#                  expands backslash escapes that are literally present in the format string, so
+#                  they printed as literal `\033[...m` text instead of colour. Every other message
+#                  in this script uses `echo -e` (which does expand them). Switched these two lines
+#                  to `echo -e` as well, keeping printf only for the `%-18s` label padding.
 # =============================================================================
 set -e
 
@@ -88,7 +102,7 @@ section() {
     echo
 }
 # ── Header ────────────────────────────────────────────────────────────────────
-clear
+clear 2>/dev/null || true
 echo
 echo -e "${C}  +======================================================+${NC}"
 echo -e "${C}  |${W}        PROXMOX VE - NODE PROVISIONING                ${C}|${NC}"
@@ -168,11 +182,12 @@ echo -e "${G}  |${W}  ANSIBLE-BOOTSTRAP COMPLETE                           ${G}|
 echo -e "${G}  +======================================================+${NC}"
 echo
 CURRENT_IP=$(ip -4 addr show vmbr0 2>/dev/null | awk '/inet /{print $2}' | head -1)
+CURRENT_IP="${CURRENT_IP%%/*}"
 CURRENT_IP="${CURRENT_IP:-unknown}"
 SSH_KEY_COUNT=$(wc -l < /home/${ANSIBLE_USER}/.ssh/authorized_keys 2>/dev/null || echo 0)
 
-printf "  ${G}[+]${NC}  %-18s %s\n" "Current IP :"   "${W}${CURRENT_IP} (DHCP, provisioning network)${NC}"
-printf "  ${G}[+]${NC}  %-18s %s\n" "Ansible user :" "${W}${ANSIBLE_USER} -- ${SSH_KEY_COUNT} SSH key(s)${NC}"
+echo -e "  ${G}[+]${NC}  $(printf '%-18s' 'Current IP :') ${W}${CURRENT_IP} (DHCP, provisioning network)${NC}"
+echo -e "  ${G}[+]${NC}  $(printf '%-18s' 'Ansible user :') ${W}${ANSIBLE_USER} -- ${SSH_KEY_COUNT} SSH key(s)${NC}"
 echo
 echo -e "${C}  +------------------------------------------------------+${NC}"
 echo -e "${C}  |  NEXT STEP: Ansible finishes this node's setup       |${NC}"
