@@ -182,9 +182,9 @@ Based on the real csvde.exe export sample, these mappings are **CORRECT**:
       
       # Object Category (schema path)
       objectCategory = switch ($obj.ObjectClass) {
-        'user' { "CN=Person,CN=Schema,CN=Configuration,DC=omni,DC=corp" }
-        'computer' { "CN=Computer,CN=Schema,CN=Configuration,DC=omni,DC=corp" }
-        'group' { "CN=Group,CN=Schema,CN=Configuration,DC=omni,DC=corp" }
+        'user' { "CN=Person,CN=Schema,CN=Configuration,$BaseDN" }
+        'computer' { "CN=Computer,CN=Schema,CN=Configuration,$BaseDN" }
+        'group' { "CN=Group,CN=Schema,CN=Configuration,$BaseDN" }
         default { "" }
       }
     }

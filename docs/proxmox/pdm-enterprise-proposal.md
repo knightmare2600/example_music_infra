@@ -33,7 +33,7 @@ This proposal requests budget approval for Proxmox Enterprise Support subscripti
 
 ## Background and Current State
 
-Example Music Group operates Proxmox VE across multiple sites globally, connected via a WireGuard VPN mesh in a hub-and-spoke topology. The three regional hubs are Falkirk (FAL, UK), Odense (ODE, EU), and Brooklyn (BRK, NA). Each site runs one or more PVE nodes hosting virtual machines for domain controllers, file servers, firewall appliances, and application workloads.
+Example Music Group operates Proxmox VE across multiple sites globally, connected via a WireGuard VPN mesh in a hub-and-spoke topology. The three regional hubs are Falkirk (FAL, UK), Odense (ODE, EU), and Brockville (BRK, Ontario, Canada). Each site runs one or more PVE nodes hosting virtual machines for domain controllers, file servers, firewall appliances, and application workloads.
 
 Currently, each PVE cluster is managed independently through its own web interface. There is no unified view of the estate, no centralised backup infrastructure, and no mechanism for cross-site VM migration. Administrators must log in to individual cluster nodes to perform maintenance, apply updates, or investigate issues. As the number of managed nodes grows, this approach becomes unsustainable.
 
@@ -114,7 +114,7 @@ One PDM instance at FAL (UK head office hub) and one PBS instance at each of the
               │            │            │
               ▼            ▼            ▼
          EXAPBSFAL001  EXAPBSODE001 EXAPBSBRK001
-         UK backups    EU backups   NA/Pacific
+         UK backups    EU backups   NA (Eastern)
                                     backups
 ```
 
@@ -125,7 +125,7 @@ One PDM instance at FAL (UK head office hub) and one PBS instance at each of the
 | `EXAPDMFAL001` | FAL | VM (Debian/PDM appliance) | PDM — manages all sites |
 | `EXAPBSFAL001` | FAL | Dedicated server | PBS — UK backups |
 | `EXAPBSODE001` | ODE | Dedicated server | PBS — EU backups |
-| `EXAPBSBRK001` | BRK | Dedicated server | PBS — NA/Pacific backups |
+| `EXAPBSBRK001` | BRK | Dedicated server | PBS — NA (Eastern) backups |
 
 ### Connectivity
 
