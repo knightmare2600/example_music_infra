@@ -37,8 +37,13 @@
 # Variables:
 #   site_code        Site code from sites.csv (e.g. FAL, ODE, BRK).
 #                    Used to determine which relay to assign the node to.
-#                    FAL nodes connect directly to the root server.
-#                    Defaults to FAL if not set.
+#                    CLD nodes connect directly to the root server — CLD is
+#                    "top of the tree" (2026-07-11: the Rudder root server
+#                    itself lives at CLD, 192.168.69.12/EXARDRCLD001, and CLD
+#                    now spans multiple physical facilities — CLD001-numbered
+#                    devices in the Pulsant DC, CLD002+ in FRD Havn — so CLD
+#                    is the natural no-relay-hop site, not FAL).
+#                    Defaults to CLD if not set.
 #
 #   rudder_server    Override the root server IP (default: 192.168.69.12).
 #                    Normally derived from group_vars; override only if needed.
@@ -54,6 +59,12 @@
 #                     lookup via API (no hardcoding), accept-all-pending mode,
 #                     idempotency check (skips install if agent already running
 #                     and already accepted), detailed per-host report.
+# v1.1.0  2026-07-11  CLD replaces FAL as the no-relay "top of the tree" site
+#                     for network rework — Rudder root already lives at CLD
+#                     (192.168.69.12/EXARDRCLD001); FAL now behaves like any
+#                     other spoke site and needs a relay UUID like ODE/BRK if
+#                     it doesn't already have a direct path to root. See
+#                     project notes for the Pulsant DC / FRD Havn CLD split.
 # =============================================================================
 
 - name: Install and register Rudder agent
@@ -70,18 +81,25 @@
     rudder_root_server:    "192.168.69.12"
     rudder_url:            "https://{{ rudder_root_server }}"
     rudder_apt_keyring:    "/usr/share/keyrings/rudder-archive-keyring.gpg"
-    site_code:             "{{ site_code | default('FAL') }}"
+    site_code:             "{{ site_code | default('CLD') }}"
 
     # Relay assignment map — site code → relay policy server.
-    # FAL nodes connect directly to the root server (no entry needed).
-    # ODE and BRK UUIDs must be set after relays are deployed and promoted.
+    # CLD nodes connect directly to the root server (no entry needed) — CLD is
+    # "top of the tree" (2026-07-11 network rework: root already lives at CLD,
+    # 192.168.69.12/EXARDRCLD001). ODE, BRK, and FAL UUIDs must be set after
+    # relays are deployed and promoted — FAL is included here (empty by
+    # default, same as ODE/BRK before their relays existed) so it falls
+    # through to the root server directly until/unless a FAL relay is stood
+    # up, rather than being hardcoded as a permanent special case the way it
+    # was before this change.
     # Get relay UUIDs from:
     #   curl -sk -H "X-API-Token: TOKEN" https://192.168.69.12/rudder/api/latest/nodes \
     #     | python3 -m json.tool | grep -A5 "rudder-policy-server-relay"
     rudder_relay_policy_server:
       ODE: "{{ rudder_relay_uuid_ode | default('') }}"
       BRK: "{{ rudder_relay_uuid_brk | default('') }}"
-      # FAL: omitted — FAL nodes point at the root server directly
+      FAL: "{{ rudder_relay_uuid_fal | default('') }}"
+      # CLD: omitted — CLD nodes point at the root server directly
 
   pre_tasks:
 
@@ -290,7 +308,7 @@
         - _rudder_accept.status == 200
 
     # -------------------------------------------------------------------------
-    # Assign node to correct relay (non-FAL sites only)
+    # Assign node to correct relay (non-CLD sites only)
     # -------------------------------------------------------------------------
 
     - name: "7 | Assign node to site relay"
@@ -311,16 +329,16 @@
         - _rudder_node_uuid is defined
         - site_code in rudder_relay_policy_server
         - rudder_relay_policy_server[site_code] != ""
-        - site_code != 'FAL'
+        - site_code != 'CLD'
 
-    - name: "7 | Note — FAL nodes use root server directly"
+    - name: "7 | Note — CLD nodes use root server directly"
       debug:
         msg: >-
-          {{ ansible_fqdn }} is at FAL — connected directly to root server.
+          {{ ansible_fqdn }} is at CLD — connected directly to root server.
           No relay assignment needed.
       when:
         - not (_already_accepted | bool)
-        - site_code == 'FAL'
+        - site_code == 'CLD'
 
     # -------------------------------------------------------------------------
     # Per-host report

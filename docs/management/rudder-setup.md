@@ -577,7 +577,7 @@ The Linux agent is a lightweight C daemon — no Java, no heavy runtime. It runs
 ### Via Package Repository (recommended)
 
 ```bash
-RUDDER_SERVER="192.168.69.12"   # or relay IP for non-FAL sites
+RUDDER_SERVER="192.168.69.12"   # or relay IP for non-CLD sites
 
 wget -qO - https://repository.rudder.io/apt/rudder_apt_key.pub | sudo gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/rudder-archive-keyring.gpg] \
@@ -733,12 +733,18 @@ rudder agent run -i
 
 ## 13. Relay Servers — ODE and BRK
 
-Relay servers sit between remote agents and the Rudder server. Agents at EU sites connect to the `ODE` relay; NA sites connect to `BRK`. The relay forwards policy requests to `FAL` and aggregates compliance reports back.
+Relay servers sit between remote agents and the Rudder server. Agents at EU sites connect to the `ODE` relay; NA sites connect to `BRK`. The relay forwards policy requests to `CLD` (the root server — CLD is "top of the tree" as of the 2026-07-11 network rework) and aggregates compliance reports back.
+
+> **2026-07-11:** `rudder_onboard.yml`'s relay map now also has a `FAL` entry (empty by
+> default, same shape as `ODE`/`BRK`), so a UK relay can be stood up the same way these two
+> were, if/when one is needed. Until a `rudder_relay_uuid_fal` is actually set, FAL nodes fall
+> straight through to the root server directly — the same practical behaviour as before this
+> change, just derived from CLD being the no-relay site rather than FAL being hardcoded as one.
 
 ### Install Relay on ODE/BRK
 
 ```bash
-RUDDER_SERVER="192.168.69.12"   # FAL root server
+RUDDER_SERVER="192.168.69.12"   # CLD root server
 
 ansible@EXARDRCLD001[~]$ wget -qO - https://repository.rudder.io/apt/rudder_apt_key.pub | sudo gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg
 
@@ -1121,8 +1127,8 @@ After installing the agent, the node appears in the pending list after its first
     validate_certs: false
     status_code: 200
   delegate_to: localhost
-  when: site_code is defined and site_code != 'FAL'
-  # FAL nodes connect directly to the root server — no relay assignment needed
+  when: site_code is defined and site_code != 'CLD'
+  # CLD nodes connect directly to the root server — no relay assignment needed
 ```
 
 ### group_vars for Relay UUIDs
@@ -1136,7 +1142,8 @@ After installing the agent, the node appears in the pending list after its first
 rudder_relay_uuid:
   ODE: "replace-with-ode-relay-uuid"
   BRK: "replace-with-brk-relay-uuid"
-  # FAL nodes connect directly to root — no entry needed
+  FAL: "replace-with-fal-relay-uuid"   # leave unset/empty until a FAL relay exists
+  # CLD nodes connect directly to root — no entry needed
 ```
 
 ### Full Onboarding Playbook Skeleton
@@ -1241,7 +1248,7 @@ rudder_relay_uuid:
         status_code: 200
       delegate_to: localhost
 
-    - name: Assign to site relay (non-FAL sites only)
+    - name: Assign to site relay (non-CLD sites only)
       uri:
         url: "{{ rudder_url }}/rudder/api/latest/nodes/{{ rudder_node_uuid }}"
         method: POST
@@ -1255,7 +1262,7 @@ rudder_relay_uuid:
       delegate_to: localhost
       when:
         - site_code is defined
-        - site_code != 'FAL'
+        - site_code != 'CLD'
         - rudder_relay_uuid[site_code] is defined
 
     - name: Report
@@ -1263,7 +1270,7 @@ rudder_relay_uuid:
         msg: >
           Node {{ ansible_fqdn }} (UUID: {{ rudder_node_uuid }})
           accepted in Rudder and assigned to
-          {{ 'FAL root server' if site_code == 'FAL' else site_code + ' relay' }}.
+          {{ 'CLD root server' if site_code == 'CLD' else site_code + ' relay' }}.
 ```
 
 ---
@@ -1320,7 +1327,7 @@ rudder_relay_uuid:
 
 ### Phase 5 — All Remaining Sites
 
-Roll out agents to all remaining site nodes. Point each agent at its regional relay (`ODE` for EU sites, `BRK` for NA/Pacific, direct to `FAL` for UK sites). Use `rudder_onboard.yml` playbook for automation.
+Roll out agents to all remaining site nodes. Point each agent at its regional relay (`ODE` for EU sites, `BRK` for NA/Pacific, `FAL` for UK sites once a UK relay exists — direct to the `CLD` root server until then). Use `rudder_onboard.yml` playbook for automation.
 
 ---
 
