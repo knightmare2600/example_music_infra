@@ -60,6 +60,21 @@ facts:
       - bootstrap/web/provision/ansibleme.sh
       - docs/inventory/EXADNSVRK001-dns.md
       - docs/buildsheets/buildsheet-firewall.md
+      - docs/inventory/network-inventory-merged.md
+
+  - name: rudder_server_hostname
+    description: >-
+      The real Rudder configuration-management server hostname is EXARDRCLD001
+      (Site=CLD, Role=RDR, 192.168.69.12) -- found wrong as EXASRVFAL002/
+      EXASVRCLD003/EXASVRCLD004/EXASVRCLD003 (four different wrong forms) across
+      rudder-setup.md, buildsheet-rudder.md, and network-inventory-merged.md,
+      2026-07-11.
+    value: "EXARDRCLD001"
+    source: "benarbejde/devices.csv (CLD,RDR,1,12), ansible/configs/inventory/rudder.ini"
+    asserted_in:
+      - docs/management/rudder-setup.md
+      - docs/buildsheets/buildsheet-rudder.md
+      - docs/inventory/network-inventory-merged.md
 
   - name: create_vm_script_path
     description: "Where create-vm.py actually lives"
