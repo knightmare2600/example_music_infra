@@ -134,9 +134,16 @@ facts:
       - docs/proxmox/pve-create-vm.md
 
   - name: pve_answer_toml_filename
-    description: "The real filename is answer.toml, singular -- not answers.toml, found wrong throughout buildsheet-pve.md on 2026-07-10"
-    value: "answer.toml"
-    source: "bootstrap/web/proxmox/answer.toml (the file itself)"
+    description: >-
+      The real files are VRK-answer.toml/FRD-answer.toml (site-prefixed, one per
+      provisioning server -- see bootstrap/web/menu.ipxe's site-prefix detection), not a
+      bare answer.toml. Originally this fact just guarded singular "answer.toml" against a
+      2026-07-10 "answers.toml" typo; superseded 2026-07-11 when the file was split per
+      site (single source of truth: bootstrap/web/proxmox/VRK-answer.toml). A bare
+      "answer.toml" substring match would no longer catch a doc reverting to the old,
+      pre-split behaviour, so this now checks for the real VRK- prefixed filename instead.
+    value: "VRK-answer.toml"
+    source: "bootstrap/web/proxmox/VRK-answer.toml (the file itself)"
     asserted_in:
       - docs/buildsheets/buildsheet-pve.md
       - docs/bootstrap/bootstrapping.md

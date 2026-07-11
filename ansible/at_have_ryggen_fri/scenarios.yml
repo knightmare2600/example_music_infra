@@ -30,8 +30,10 @@ scenarios:
       Bare metal (iLO/DRAC virtual media) -> Proxmox VE node -> Ansible
       control node (git clone + symlink via ansibleme.sh).
     requires_files:
-      - bootstrap/web/proxmox/answer.toml
-      - bootstrap/web/proxmox/degraded.toml
+      - bootstrap/web/proxmox/VRK-answer.toml
+      - bootstrap/web/proxmox/VRK-degraded.toml
+      - bootstrap/web/proxmox/FRD-answer.toml
+      - bootstrap/web/proxmox/FRD-degraded.toml
       - bootstrap/web/proxmox/first-boot.sh
       - bootstrap/web/proxmox/create-vm.py
       - bootstrap/web/provision/ansibleme.sh
@@ -55,6 +57,9 @@ scenarios:
       - file: docs/proxmox/Procedure-PVE-Node-Onboarding.md
         must_contain: "Circular-dependency warning"
         why: "This procedure presupposes a working Ansible control node -- the doc must keep explaining why that isn't actually circular for every case except bootstrapping the very first control node."
+      - file: bootstrap/web/menu.ipxe
+        must_contain: "proxmox-auto-install-url=${boot-url}/proxmox/${site-prefix}-answer.toml"
+        why: "Fixed 2026-07-11: every site used to request the same literal answer.toml, which was only ever correct for Edinburgh (TOML can't self-select its own URL). If this reverts to a bare answer.toml, a Proxmox install from Fredericia Havn would silently fetch Edinburgh's file again."
 
   - name: dns_bootstrap
     description: >

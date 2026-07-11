@@ -193,7 +193,7 @@ Internet → ansible.jukebox.internal (192.0.8.131, EXAFWLVRK001)
                └─ port 80 forwarded to 192.168.139.50 (EXAPRVVRK001)
                     └─ static-web-server serving web/
                          └─ iPXE boot (embedded bootstrap.ipxe → chains to menu.ipxe)
-                              ├─ Proxmox VE auto-install (answer.toml / degraded.toml)
+                              ├─ Proxmox VE auto-install (VRK/FRD-answer.toml / -degraded.toml)
                               │    └─ first-boot.sh (post-install provisioning)
                               └─ Debian auto-install (lvm.seed → late_command.sh)
                                    └─ Windows VM: PostOOBE.cmd → Join-DomainAndBootstrap.ps1
@@ -312,8 +312,8 @@ bootstrap/web/
 │   └── arm64/linux, arm64/initrd.gz     ← Debian netboot kernel+initrd (ARM64)
 │
 ├── proxmox/
-│   ├── answer.toml              ← PVE auto-install: ZFS RAID-1 (2 disks)
-│   ├── degraded.toml            ← PVE auto-install: ZFS RAID-0 (1 disk, degraded mirror)
+│   ├── VRK-answer.toml, FRD-answer.toml     ← PVE auto-install: ZFS RAID-1 (2 disks), one per site
+│   ├── VRK-degraded.toml, FRD-degraded.toml ← PVE auto-install: ZFS RAID-0 (1 disk, degraded), one per site
 │   ├── first-boot.sh            ← PVE post-install provisioning script
 │   ├── post-pve-install.sh, create-vm.py, convert-v2v.py, manage-pool.py, pve-bootorder.py, ...
 │   ├── sites.csv, devices.csv, address_policy.json, begyndelse.json, ad_forest.json
@@ -418,7 +418,9 @@ Example Music.kdbx
 
 ### 3.2 Generating the PVE root password hash
 
-The `answer.toml` and `degraded.toml` files contain a pre-hashed root password. To generate a new one:
+All four TOML files (`VRK-answer.toml`, `FRD-answer.toml`, `VRK-degraded.toml`, `FRD-degraded.toml`)
+contain a pre-hashed root password — the same hash in all four, so update all four together if it's
+ever rotated. To generate a new one:
 
 ```bash
 # On any Linux system with openssl or mkpasswd. The example files use Password1! which is obviously for exmaple purposes only!
@@ -752,10 +754,15 @@ The default selection is **Boot local disk**, with a 30-second timeout. This mea
 :proxmox-ve
 iseq ${arch} arm64 && goto noarch-msg ||
 kernel ${boot-url}/proxmox/x86_64/boot/linux26 vga=791 video=vesafb:ywrap,mtrr ramdisk_size=16777216 proxmox-start-auto-installer=1 \
-proxmox-auto-install-mode=http proxmox-auto-install-url=${boot-url}/proxmox/answer.toml
+proxmox-auto-install-mode=http proxmox-auto-install-url=${boot-url}/proxmox/${site-prefix}-answer.toml
 initrd ${boot-url}/proxmox/x86_64/boot/initrd
 boot
 ```
+
+> **Correction (2026-07-11):** `proxmox-auto-install-url` uses `${site-prefix}-answer.toml`, not a bare
+> `answer.toml` — `${site-prefix}` (`VRK` or `FRD`) is set in the same gateway-detection block as
+> `${boot-url}` (§4.1) and selects which server-specific answer file to request. See §5.1 for why this
+> changed and `bootstrap/web/proxmox/VRK-answer.toml`/`FRD-answer.toml` for the real files.
 
 > **Correction (2026-07-10):** the path is `proxmox/x86_64/boot/` (arch-nested, matching `debian/x86_64/`'s
 > convention elsewhere in this tree), not a flat `proxmox/boot/` as previously shown here — quoted directly
@@ -855,9 +862,23 @@ ls -lh ipxe-arm64.iso
 
 ## 5. Proxmox VE Auto-Install
 
-### 5.1 answer.toml — normal install (ZFS RAID-1)
+### 5.1 VRK-answer.toml / FRD-answer.toml — normal install (ZFS RAID-1)
 
 Use this when both disks are present.
+
+> **Site-prefixed files (fixed 2026-07-11).** There is no bare `answer.toml` any more — each
+> provisioning server has its own file (`VRK-answer.toml` for Edinburgh, `FRD-answer.toml` for
+> Fredericia Havn), each with its own correct `[first-boot] url`. `menu.ipxe`'s gateway detection
+> sets `${site-prefix}` (`VRK`/`FRD`) alongside `${boot-url}` and requests
+> `${boot-url}/proxmox/${site-prefix}-answer.toml` (§4.5) — so whichever server actually answers
+> the request, it serves its own correctly-pinned file. TOML itself still can't do conditionals
+> (that constraint hasn't changed — see the note below), but the file split means there's no
+> longer a single file that's only correct for one site; there are two files, each correct for
+> its own site, and the iPXE layer picks the right one. This replaces the previous design, where
+> a single `answer.toml` was permanently pinned to Edinburgh and using it from Fredericia would
+> have silently pointed a fresh node's `first-boot.sh` fetch at the wrong datacentre.
+
+`VRK-answer.toml` (Edinburgh):
 
 ```toml
 [global]
@@ -883,6 +904,12 @@ ordering = "fully-up"
 url = "http://192.168.139.50/proxmox/first-boot.sh"
 ```
 
+`FRD-answer.toml` (Fredericia Havn) is identical except for the `[first-boot] url`:
+
+```toml
+url = "http://172.16.124.1:8000/proxmox/first-boot.sh"
+```
+
 The `fqdn` here is a placeholder used during install only. `first-boot.sh` will rename the node to its real hostname.
 
 > **`root-ssh-keys` (added 2026-07-10) — the earliest possible foot-in-the-door.** Confirmed against
@@ -892,21 +919,20 @@ The `fqdn` here is a placeholder used during install only. `first-boot.sh` will 
 > Ansible's whole estate connects as the `ansible` user, not root (`ansible.cfg`'s `remote_user`), so
 > `first-boot.sh` still creates that user and its own key as before. `root-ssh-keys` is purely an earlier
 > / recovery path, useful if you need to poke at a node before `first-boot.sh` completes. Same key as
-> `bootstrap/web/ansible_sshkey.pub` — if that key is ever rotated, update both TOML files to match.
+> `bootstrap/web/ansible_sshkey.pub` — if that key is ever rotated, update all four TOML files to match.
 > Considered and rejected as part of this change: a `pveme.sh` script duplicating parts of
 > `late_command.sh` (Debian's post-install hook) — decided against once this simpler, script-free option
 > was confirmed to exist; see the git log around 2026-07-10 for the fuller reasoning.
 
-> **Gateway detection doesn't reach this file.** The `[first-boot] url` above is a static TOML value —
-> TOML has no conditionals, so it can't do the gateway-based `${boot-url}` detection `menu.ipxe`,
-> `late_command.sh`, and `first-boot.sh` itself all use (§4.1a). `answer.toml` is always correctly
-> *fetched* from whichever datacentre you're actually on (that part goes through `${boot-url}` via
-> `menu.ipxe`), but the URL written *inside* it is permanently fixed at Edinburgh. This only matters if
-> you're installing from Fredericia — not relevant to the PFY's plan (Edinburgh-based), but if that ever
-> changes, that server needs its own copy of this file with the URL manually overridden. Per the file's
-> own 2026-07-08 comment, this hasn't been automated.
+> **TOML still can't do conditionals.** Each `[first-boot] url` above is a static value — TOML has no
+> conditionals, so neither file can do the gateway-based `${boot-url}` detection `menu.ipxe`,
+> `late_command.sh`, and `first-boot.sh` itself all use (§4.1). That's exactly why there are now two
+> files instead of one with an "if" in it — the site-awareness lives in which *file* gets requested
+> (`menu.ipxe`'s `${site-prefix}`), not inside the file itself. If a third provisioning server is ever
+> added, it needs its own `<SITE>-answer.toml`/`<SITE>-degraded.toml` pair plus one `iseq`/`set site-prefix`
+> line in `menu.ipxe` — nothing else.
 
-### 5.2 degraded.toml — single-disk install
+### 5.2 VRK-degraded.toml / FRD-degraded.toml — single-disk install
 
 Use when a replacement disk hasn't arrived yet. Creates a ZFS mirror with only one disk (degraded state). The second disk can be added later with `zpool attach`.
 
@@ -917,17 +943,20 @@ zfs.raid = "raid0"          ← single-disk, equivalent to degraded mirror
 disk-list = ["sda"]
 ```
 
-Everything else is identical to `answer.toml`.
+Everything else is identical to the site's own `*-answer.toml` — including the `[first-boot] url`,
+which is `VRK-degraded.toml` → Edinburgh, `FRD-degraded.toml` → Fredericia Havn, matching §5.1.
 
 <u>***NB: Warning! A single-disk ZFS pool has no redundancy. Add the second disk and run `zpool attach rpool sda sdb` before putting workloads on the node***</u>. This is covered in it's onw procedure in this repo!
 
 ### 5.3 Switching between TOML files
 
-The iPXE menu always references `answer.toml`. To use `degraded.toml` for a specific install, either:
-
-- Temporarily rename `degraded.toml` to `answer.toml` on the server before booting, or
-- Edit the iPXE menu entry's `proxmox-auto-install-url` parameter at boot time by pressing Ctrl-B, or
-- Create a MAC-specific autodeploy script that overrides the URL.
+The iPXE menu's Proxmox VE entry always references `${site-prefix}-answer.toml` — the RAID-1,
+both-disks-present file (§5.1). To use the matching `*-degraded.toml` for a specific install
+instead (single disk), press Ctrl-B at the boot prompt and change `answer` to `degraded` in the
+`proxmox-auto-install-url` parameter — e.g. `.../proxmox/VRK-answer.toml` becomes
+`.../proxmox/VRK-degraded.toml`. No file renaming on the server is needed any more (that was the
+old workaround, back when there was only one site-agnostic pair of files); a MAC-specific
+autodeploy script overriding the URL is still an option too, for a repeatable single-disk build.
 
 ### 5.4 What happens after the installer finishes
 
@@ -1050,8 +1079,9 @@ pxeboot
 ### 6.3 Deploying and debugging
 
 The actual install flow (confirmed accurate against `docs/buildsheets/buildsheet-pve.md` and the real
-`answer.toml`): boot → auto-install mode "fails" to fetch the answer file (expected, this is the
-mechanism, not an error) → `wget -O /run/automatic-installer-answers http://192.168.139.50/proxmox/answer.toml`
+`VRK-answer.toml`): boot → auto-install mode "fails" to fetch the answer file (expected, this is the
+mechanism, not an error) → `wget -O /run/automatic-installer-answers http://192.168.139.50/proxmox/VRK-answer.toml`
+(Fredericia Havn: `http://172.16.124.1:8000/proxmox/FRD-answer.toml`)
 → `exit` → installs unattended → on first login (root), `bash /var/lib/proxmox-first-boot/proxmox-first-boot`
 to run §6.1's script by hand if it didn't already fire via `[first-boot]`.
 
@@ -1295,13 +1325,19 @@ If the provisioning server IP changes from `192.168.139.50`, the following files
 > a synced copy) no longer need manual reconciliation — `.githooks/pre-commit` keeps them in sync
 > automatically now (same mechanism as `sites.csv` etc.), so only `debian/late_command.sh`'s own
 > `BOOT_SERVER` line needs changing by hand.
+>
+> **Correction (2026-07-11, second):** `answer.toml`/`degraded.toml` are now site-prefixed
+> (`VRK-answer.toml`/`FRD-answer.toml`/`VRK-degraded.toml`/`FRD-degraded.toml`, §5.1) — if
+> **Edinburgh's** IP specifically changes, only the `VRK-*` files need their `[first-boot] url`
+> updated; the `FRD-*` files are unaffected (they're already pinned to Fredericia Havn, not
+> Edinburgh). If Fredericia Havn's IP changes instead, it's the `FRD-*` files, not `VRK-*`.
 
 | File | Variable / line to change |
 |---|---|
 | `bootstrap/web/bootstrap.ipxe` | `set boot-ip 192.168.139.50` |
-| `bootstrap/web/menu.ipxe` | any hardcoded provisioning-server URLs in installer menu entries |
-| `bootstrap/web/proxmox/answer.toml` | `url = "http://192.168.139.50/proxmox/first-boot.sh"` |
-| `bootstrap/web/proxmox/degraded.toml` | `url = "http://192.168.139.50/proxmox/first-boot.sh"` |
+| `bootstrap/web/menu.ipxe` | `set boot-url http://192.168.139.50` in the `:env_edinburgh` branch (§4.1) — `${site-prefix}` itself doesn't change |
+| `bootstrap/web/proxmox/VRK-answer.toml` | `url = "http://192.168.139.50/proxmox/first-boot.sh"` |
+| `bootstrap/web/proxmox/VRK-degraded.toml` | `url = "http://192.168.139.50/proxmox/first-boot.sh"` |
 | `bootstrap/web/debian/late_command.sh` | `BOOT_SERVER="http://192.168.139.50"` — `bootstrap/web/late_command.sh` syncs automatically via `.githooks/pre-commit`, don't edit it directly |
 | `bootstrap/web/proxmox/first-boot.sh` | Any references to provisioning server URL |
 
@@ -1312,7 +1348,7 @@ After changing `bootstrap.ipxe`, the iPXE binary must be recompiled and redistri
 ## 10. Quick Reference — Deploy a New Proxmox Node
 
 1. **Prepare** — ensure `web/` is being served from `192.168.139.50` (or the real provisioning IP)
-2. **Check TOML** — use `answer.toml` if both disks are present; use `degraded.toml` if shipping delays mean only one disk is installed
+2. **Check TOML** — the menu already selects the right site's `${site-prefix}-answer.toml` automatically (both disks present); to use the matching `*-degraded.toml` instead (shipping delays, one disk only), press Ctrl-B at boot and change `answer` to `degraded` in the URL (§5.3)
 3. **Boot** — attach iPXE ISO via IPMI virtual media (or physical USB), power on, select **Proxmox VE 9** from the menu
 4. **Install** — fully automated; takes approximately 5–10 minutes depending on disk speed
 5. **first-boot.sh** — runs automatically when the node comes up; provide hostname, IP, and site code when prompted

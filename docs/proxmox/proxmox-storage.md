@@ -25,9 +25,10 @@ Proxmox VE is a first-class ZFS citizen. The installer handles everything native
 
 ---
 
-## answer.toml Configuration
+## Answer File Configuration (VRK-answer.toml / FRD-answer.toml)
 
-ZFS RAID1 is configured in the automated installer answer file:
+ZFS RAID1 is configured in the automated installer answer file — identical `[disk-setup]`
+stanza in both site-prefixed files (`docs/bootstrap/bootstrapping.md` §5.1):
 
 ```toml
 [disk-setup]

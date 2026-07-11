@@ -4,7 +4,7 @@
 # Example Music Limited — Give a brand-new PVE node its real identity
 # =============================================================================
 # A freshly-preseeded PVE node comes up on DHCP with a generic placeholder
-# hostname (answer.toml: source = "from-dhcp", fqdn = "pve-install.jukebox.internal")
+# hostname (VRK-answer.toml/FRD-answer.toml: source = "from-dhcp", fqdn = "pve-install.jukebox.internal")
 # and only the ansible-bootstrap sliver of first-boot.sh has run (ansible user +
 # SSH key — see first-boot.sh's 2026-07-07 changelog entry). This playbook does
 # the rest: renames the node to its real hostname (from the operator's build

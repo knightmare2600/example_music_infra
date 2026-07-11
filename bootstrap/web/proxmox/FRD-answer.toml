@@ -1,0 +1,37 @@
+[global]
+keyboard = "en-gb"
+country = "gb"
+fqdn = "pve-install.jukebox.internal"
+mailto = "root@jukebox.internal"
+timezone = "Europe/London"
+root-password-hashed = "$6$AHl84jrZ7PWHZKfM$q4POMoxXoRb6M6Up2uKDnzJjr4EntVfPI4/KndRu.Z45lwuZoGrxkW2o5EAAC0O8Vyr9qGClpIL/TdYjRWURk/"
+# Added 2026-07-10: earliest possible foot-in-the-door -- root is SSH-reachable by key the
+# moment install finishes, before first-boot.sh has even run. This does NOT replace
+# first-boot.sh's ansible-user creation (Ansible's whole estate connects as `ansible`, not
+# root -- see ansible.cfg's remote_user); this is purely an earlier/recovery path. Same key
+# served at bootstrap/web/ansible_sshkey.pub -- keep both in sync if it's ever rotated.
+root-ssh-keys = [
+  "q732vQgG6lcTUGG7mCFQyDhtKmquTRePv3QS7F8UC/v20HFC11ZTk0WWw62oE6izySFxJkWMXySBk64XjDKSq3vAeZGCXjqKlJBB8XnTtTCcma9a6s9W4sQ71bWVBSkbbEB4RC6nRdCLVcfnnAc3TXnavkeI330NZIkBSYxDmLmFm+Q+4cUhoylxSR95299RfFAldhs4FVziwarBFBYABwOiW/NOFU64bxsexZNcacQmlO+RkO5FOs4X+hD/v9/LtTQgZKtxA9b8vMweRCblXsISiAepDIv9LtB8+VQbudGwDrHWutmTm+UfNBagXb4kFFI6SMvj6pM42WH53WATfj5tyLGtcgESsd/pZpVYV4FAUx7Ty5VlLHh4T+xZbfPiV+M0HWn2DB1TH4I+y0HE0PBnW9XrPs/WkccstUjiZ+6qH0VARVnTbC35llIMJrnypktERqF2ZaZEU7+vC4Ku2IHwhH0dTm6icMtGq3FnuPnfBaL0/CvX99twD81GBoiK5c3innaiSddQTZkuOnCIv4s1oYeooqqF4Xfacfd= ansible@exaanscld001.example.com"
+]
+
+[network]
+source = "from-dhcp"
+
+[disk-setup]
+filesystem = "zfs"
+zfs.raid = "raid1"
+disk-list = ["sda", "sdb"]
+
+# TOML has no conditionals, so this file can't do the gateway-based ${boot-url} detection
+# menu.ipxe/late_command.sh/first-boot.sh itself all use -- it's a static value. Fixed
+# 2026-07-11: rather than one answer.toml with a URL permanently pinned to Edinburgh
+# (requiring a manually-maintained divergent copy on any other provisioning server), each
+# site now has its own correctly-pinned file (this one: FRD/Fredericia Havn). menu.ipxe's
+# gateway detection sets ${site-prefix} in the same iseq branch that sets ${boot-url}, and
+# requests ${boot-url}/proxmox/${site-prefix}-answer.toml -- so whichever server answers the
+# request, it's always serving its own file with its own correct URL below. See
+# bootstrap/web/proxmox/VRK-answer.toml for Edinburgh's equivalent.
+[first-boot]
+source = "from-url"
+ordering = "fully-up"
+url = "http://172.16.124.1:8000/proxmox/first-boot.sh"

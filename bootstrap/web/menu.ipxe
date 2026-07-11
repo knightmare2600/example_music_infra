@@ -111,8 +111,14 @@ echo Preseed: ${seed}
 
 # ---------------------------------------------------------------------------
 # Gateway-based environment detection
-# Sets ${boot-url} once; everything below uses it exclusively.
-# To add a new environment: one iseq line + set boot-url, nothing else.
+# Sets ${boot-url} and ${site-prefix} once; everything below uses them exclusively.
+# ${site-prefix} matches this site's own devices.csv/sites.csv Site code, and selects
+# which server-specific Proxmox answer file to request (VRK-answer.toml, FRD-answer.toml,
+# etc -- see bootstrap/web/proxmox/*.toml). Fixed 2026-07-11: previously only ${boot-url}
+# was site-aware, so every site fetched the exact same literal "answer.toml", which was
+# only ever correct for Edinburgh (TOML can't do this gateway-based branching itself --
+# see VRK-answer.toml's own comment). To add a new environment: one iseq line, set
+# boot-url, set site-prefix -- nothing else needs changing.
 # ---------------------------------------------------------------------------
 echo Detecting boot environment from gateway ${net0/gateway}...
 iseq ${net0/gateway} 192.168.139.254 && goto env_edinburgh  ||
@@ -122,19 +128,22 @@ goto env_fallback
 :env_edinburgh
 echo Environment: Edinburgh (EXAPRVVRK001)
 set boot-url http://192.168.139.50
+set site-prefix VRK
 goto env_done
 
 :env_fredericia
 echo Environment: Fredericia (EXAPRVFRD001 - MacBook/Fusion NAT)
 set boot-url http://172.16.124.1:8000
+set site-prefix FRD
 goto env_done
 
 :env_fallback
 echo Gateway ${net0/gateway} not recognised -- defaulting to Edinburgh
 set boot-url http://192.168.139.50
+set site-prefix VRK
 
 :env_done
-echo Boot server: ${boot-url}
+echo Boot server: ${boot-url}  (site-prefix: ${site-prefix})
 echo
 
 # ---------------------------------------------------------------------------
@@ -411,10 +420,16 @@ boot
 # ===========================================================================
 # PROXMOX VE
 # x86_64 only -- Proxmox does not publish arm64 installer ISOs
+#
+# proxmox-auto-install-url uses ${site-prefix}-answer.toml, not a bare "answer.toml" --
+# each provisioning server serves its own correctly-pinned file (see the gateway-detection
+# block above and bootstrap/web/proxmox/*.toml). To boot with degraded.toml instead
+# (single-disk install), press Ctrl-B at the boot prompt and change answer to degraded in
+# the proxmox-auto-install-url below -- no more renaming files on the server.
 # ===========================================================================
 :proxmox-ve
 iseq ${arch} arm64 && goto noarch-msg ||
-kernel ${boot-url}/proxmox/x86_64/boot/linux26 vga=791 video=vesafb:ywrap,mtrr ramdisk_size=16777216 proxmox-start-auto-installer=1 proxmox-auto-install-mode=http proxmox-auto-install-url=${boot-url}/proxmox/answer.toml
+kernel ${boot-url}/proxmox/x86_64/boot/linux26 vga=791 video=vesafb:ywrap,mtrr ramdisk_size=16777216 proxmox-start-auto-installer=1 proxmox-auto-install-mode=http proxmox-auto-install-url=${boot-url}/proxmox/${site-prefix}-answer.toml
 initrd ${boot-url}/proxmox/x86_64/boot/initrd
 boot
 
