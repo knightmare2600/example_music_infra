@@ -43,6 +43,20 @@ facts:
       - docs/buildsheets/buildsheet-firewall.md
       - docs/bootstrap/bootstrapping.md
 
+  - name: rudder_top_of_tree_site
+    description: >-
+      CLD, not FAL, is the Rudder relay-exempt "top of the tree" site -- Rudder root already
+      lives at CLD (EXARDRCLD001, 192.168.69.12) and CLD is where the 2026-07-11 network rework
+      is centring the estate (CLD001-numbered devices in the Pulsant DC, CLD002+ in FRD Havn).
+      FAL was hardcoded as the no-relay site before this change; it now behaves like ODE/BRK
+      (a relay-map entry, empty/unset by default, falling through to direct-to-root until a
+      FAL relay actually exists).
+    value: "site_code != 'CLD'"
+    source: "ansible/playbooks/rudder/rudder_onboard.yml (v1.1.0, 2026-07-11)"
+    asserted_in:
+      - ansible/playbooks/rudder/rudder_onboard.yml
+      - docs/management/rudder-setup.md
+
   - name: dns_hostname
     description: "The estate's BIND9 DNS server hostname -- site VRK, not CLD"
     value: "EXADNSVRK001"
