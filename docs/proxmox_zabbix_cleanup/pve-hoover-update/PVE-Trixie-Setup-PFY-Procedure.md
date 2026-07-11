@@ -35,7 +35,7 @@
 | Temp files & coredumps | `pve-monthly-hoover.sh` (7 days) | 1st of month |
 | apt cache cleanup | `pve-monthly-hoover.sh` | 1st of month |
 
-> **PVE kernel policy:** The hoover script keeps the **running kernel** and the **latest installed kernel**. All older `pve-kernel-*` and matching `pve-headers-*` packages are purged. Both are preserved because PVE nodes are rarely rebooted — keeping the latest allows a rollback path after the next maintenance window.
+> **PVE kernel policy:** The hoover script keeps the **running kernel** and the **latest installed kernel**. All older `proxmox-kernel-*-signed` packages are purged (PVE 9.x package naming — see the script's own v1.2.0 changelog entry; there's no separate `pve-headers-*` package to clean up anymore). Both kept kernels are preserved because PVE nodes are rarely rebooted — keeping the latest allows a rollback path after the next maintenance window.
 
 > **PVE package upgrades (pve-manager, pve-cluster, etc.) remain manual** — they require cluster coordination and are not touched by any automated process here.
 
@@ -51,7 +51,7 @@
 systemctl list-timers apt-daily-upgrade.timer pve-monthly-hoover.timer
 
 # How many PVE kernels are installed?
-dpkg -l 'pve-kernel-[0-9]*' | awk '/^ii/ {print $2}' | sort -V
+dpkg -l 'proxmox-kernel-*.*.*-*-pve-signed' | awk '/^ii/ {print $2}' | sort -V
 
 # Which kernel is running?
 uname -r
@@ -97,6 +97,7 @@ systemctl list-timers pve-monthly-hoover.timer
 
 | Date | Change |
 |------|--------|
+| 2026-07-11 | v1.2 — Corrected the hoover script and unattended-upgrades config in this doc, which had drifted from the real deployed files (`ansible/playbooks/proxmox/files/pve-monthly-hoover.sh` v1.2.0, `52unattended-upgrades-pve`): PVE 9.x renamed kernel packages from `pve-kernel-*`/`pve-headers-*` to `proxmox-kernel-*-signed` (no separate headers package); this doc's copy-pasted commands and script were still using the old pattern, which would silently detect zero kernels to clean on a real PVE 9.x node. Also added the missing `proxmox-kernel.*` blacklist entry. |
 | 2026-05-27 | v1.1 — Corrected kernel cleanup documentation: PVE kernel cleanup is handled by the hoover script (keep running + latest, purge rest), not by unattended-upgrades. Journal retention reduced to 14 days / 500 MB to prevent node instability. Fixed `ProtectSystem=strict` bug in service file (was silently preventing all writes to `/var`). |
 | YYYY-MM-DD | v1.0 — Initial document |
 
@@ -163,9 +164,9 @@ Copy and paste the entire block below in one go:
 tee /etc/apt/apt.conf.d/52unattended-upgrades-pve > /dev/null << 'EOF'
 # Example Music Limited — Proxmox VE 9.x Unattended-Upgrades Configuration
 # Scope: Debian security patches and old Debian kernel cleanup only.
-# All PVE packages (pve-manager, pve-cluster, pve-kernel-*, etc.) are
-# blacklisted — upgrades for these remain a manual, coordinated operation.
-# Old PVE kernel cleanup is handled separately by pve-monthly-hoover.sh.
+# All PVE/Proxmox packages are blacklisted — upgrades for these remain a
+# manual, coordinated operation.
+# Old Proxmox kernel cleanup is handled separately by pve-monthly-hoover.sh.
 
 Unattended-Upgrade::Origins-Pattern {
     "origin=Debian,codename=${distro_codename}-security";
@@ -174,6 +175,7 @@ Unattended-Upgrade::Origins-Pattern {
 
 Unattended-Upgrade::Package-Blacklist {
     "proxmox-ve";
+    "proxmox-kernel.*";
     "pve-kernel.*";
     "pve-headers.*";
     "pve-manager";
@@ -241,7 +243,7 @@ Expected output includes `active (waiting)`. If it shows `inactive` or `disabled
 ```bash
 echo "=== Kernel baseline $(hostname) $(date) ===" && \
 dpkg -l | grep 'linux-image' | wc -l && \
-dpkg -l 'pve-kernel-[0-9]*' | awk '/^ii/ {print $2}' | sort -V && \
+dpkg -l 'proxmox-kernel-*.*.*-*-pve-signed' | awk '/^ii/ {print $2}' | sort -V && \
 uname -r && \
 df -h /boot
 ```
@@ -271,7 +273,10 @@ tee /usr/local/bin/pve-monthly-hoover.sh > /dev/null << 'SCRIPT_EOF'
 # Proxmox VE Monthly Hoover Script
 # Version History:
 #   1.0.0 - YYYY-MM-DD - Initial release
-#   1.1.0 - 2026-05-27 - Journal retention 14d/500MB; PVE kernel cleanup added
+#   1.1.0 - 2026-05-27 - Journal retention 14d/500MB; Proxmox kernel cleanup added
+#   1.2.0 - 2026-06-09 - PVE 9.x package naming: pve-kernel-* -> proxmox-kernel-*-signed
+#                        Removed stale pve-headers-* removal code (no separate header
+#                        packages in PVE 9.x). proxmox-kernel-helper excluded by pattern.
 # =============================================================================
 set -e
 SCRIPT_NAME="pve-monthly-hoover"
@@ -283,7 +288,7 @@ log_error(){ echo "$1" | logger -t "$LOG_TAG" -p user.err;     echo "[ERROR] $1"
 
 log_info "=== Proxmox VE Monthly Hoover Started ==="
 log_info "Disk usage before hoovering:"
-df -h / | tail -1 | awk '{print "Root: " $2 " total, " $3 " used, " $4 " available"}' | xargs log_info
+log_info "$(df -h / | tail -1 | awk '{print "Root: " $2 " total, " $3 " used, " $4 " available"}')"
 
 log_info "Hoovering systemd journals..."
 JOURNALCTL_SIZE_BEFORE=$(du -sh /var/log/journal 2>/dev/null | awk '{print $1}' || echo "0B")
@@ -315,40 +320,39 @@ apt-get autoclean > /dev/null 2>&1 || true
 APT_CACHE_AFTER=$(du -sh /var/cache/apt/archives 2>/dev/null | awk '{print $1}' || echo "0B")
 log_info "Apt cache hoovered: $APT_CACHE_AFTER (was $APT_CACHE_BEFORE)"
 
-log_info "Hoovering old PVE kernels..."
+log_info "Hoovering old Proxmox kernels..."
 RUNNING_KERNEL=$(uname -r)
-RUNNING_KERNEL_PKG="pve-kernel-${RUNNING_KERNEL}"
-INSTALLED_PVE_KERNELS=$(dpkg -l 'pve-kernel-[0-9]*' 2>/dev/null | awk '/^ii/ {print $2}' | sort -V)
-KERNEL_COUNT=$(echo "$INSTALLED_PVE_KERNELS" | grep -c '[^[:space:]]' 2>/dev/null || echo 0)
+# uname -r returns e.g. 6.17.4-2-pve; the dpkg package name is proxmox-kernel-6.17.4-2-pve-signed
+RUNNING_KERNEL_PKG="proxmox-kernel-${RUNNING_KERNEL}-signed"
+# Query only versioned signed packages. This pattern automatically excludes:
+#   - meta packages        (e.g. proxmox-kernel-6.17, proxmox-kernel-6.8)
+#   - proxmox-kernel-helper  (must never be removed — excluded by pattern)
+INSTALLED_PROXMOX_KERNELS=$(dpkg -l 'proxmox-kernel-*.*.*-*-pve-signed' 2>/dev/null | awk '/^ii/ {print $2}' | sort -V)
+KERNEL_COUNT=$(echo "$INSTALLED_PROXMOX_KERNELS" | grep -c '[^[:space:]]' 2>/dev/null || echo 0)
 if [ "$KERNEL_COUNT" -le 2 ]; then
-  log_info "Only $KERNEL_COUNT PVE kernel(s) installed — nothing to remove"
+  log_info "Only $KERNEL_COUNT versioned Proxmox kernel(s) installed — nothing to remove"
 else
-  if ! echo "$INSTALLED_PVE_KERNELS" | grep -qx "$RUNNING_KERNEL_PKG"; then
-    log_warn "Running kernel $RUNNING_KERNEL_PKG not in dpkg list — skipping kernel cleanup"
+  if ! echo "$INSTALLED_PROXMOX_KERNELS" | grep -qx "$RUNNING_KERNEL_PKG"; then
+    log_warn "Running kernel package $RUNNING_KERNEL_PKG not in dpkg list — skipping kernel cleanup"
   else
-    LATEST_KERNEL=$(echo "$INSTALLED_PVE_KERNELS" | tail -1)
-    log_info "Running PVE kernel : $RUNNING_KERNEL_PKG"
-    log_info "Latest PVE kernel  : $LATEST_KERNEL"
+    LATEST_KERNEL=$(echo "$INSTALLED_PROXMOX_KERNELS" | tail -1)
+    log_info "Running Proxmox kernel : $RUNNING_KERNEL_PKG"
+    log_info "Latest Proxmox kernel  : $LATEST_KERNEL"
     KERNELS_TO_REMOVE=()
     while IFS= read -r kernel; do
       if [ "$kernel" != "$LATEST_KERNEL" ] && [ "$kernel" != "$RUNNING_KERNEL_PKG" ]; then
         KERNELS_TO_REMOVE+=("$kernel")
       fi
-    done <<< "$INSTALLED_PVE_KERNELS"
+    done <<< "$INSTALLED_PROXMOX_KERNELS"
     if [ ${#KERNELS_TO_REMOVE[@]} -eq 0 ]; then
-      log_info "Only running and latest PVE kernels present — nothing to remove"
+      log_info "Only running and latest Proxmox kernels present — nothing to remove"
     else
-      log_info "Removing ${#KERNELS_TO_REMOVE[@]} old PVE kernel(s): ${KERNELS_TO_REMOVE[*]}"
-      HEADERS_TO_REMOVE=()
-      for k in "${KERNELS_TO_REMOVE[@]}"; do
-        h="${k/pve-kernel-/pve-headers-}"
-        if dpkg -l "$h" > /dev/null 2>&1; then HEADERS_TO_REMOVE+=("$h"); fi
-      done
-      apt-get remove --purge -y "${KERNELS_TO_REMOVE[@]}" "${HEADERS_TO_REMOVE[@]}" \
+      log_info "Removing ${#KERNELS_TO_REMOVE[@]} old Proxmox kernel(s): ${KERNELS_TO_REMOVE[*]}"
+      apt-get remove --purge -y "${KERNELS_TO_REMOVE[@]}" \
         > /dev/null 2>&1 \
-        || log_warn "Some PVE kernel packages could not be removed — check manually"
+        || log_warn "Some Proxmox kernel packages could not be removed — check manually"
       apt-get autoremove -y > /dev/null 2>&1 || true
-      log_info "PVE kernel hoovering complete"
+      log_info "Proxmox kernel hoovering complete"
     fi
   fi
 fi
@@ -367,7 +371,7 @@ else
 fi
 
 log_info "Disk usage after hoovering:"
-df -h / | tail -1 | awk '{print "Root: " $2 " total, " $3 " used, " $4 " available"}' | xargs log_info
+log_info "$(df -h / | tail -1 | awk '{print "Root: " $2 " total, " $3 " used, " $4 " available"}')"
 log_info "=== Proxmox VE Monthly Hoover Completed Successfully ==="
 exit 0
 SCRIPT_EOF
@@ -481,10 +485,10 @@ Timers running:
 PVE kernel state at time of setup:
   Running : $(uname -r)
   Installed:
-$(dpkg -l 'pve-kernel-[0-9]*' | awk '/^ii/ {print "    " $2}' | sort -V)
+$(dpkg -l 'proxmox-kernel-*.*.*-*-pve-signed' | awk '/^ii/ {print "    " $2}' | sort -V)
 
 Next steps:
-  - In 2 weeks: verify old kernels are being cleaned (dpkg -l 'pve-kernel-[0-9]*' | wc -l)
+  - In 2 weeks: verify old kernels are being cleaned (dpkg -l 'proxmox-kernel-*.*.*-*-pve-signed' | wc -l)
   - Monthly: check logs — grep pve-monthly-hoover /var/log/syslog
   - Optional: configure Zabbix monitoring using ZABBIX-MONITORING-ITEMS-TRIGGERS.txt
 ```
@@ -603,7 +607,7 @@ Check what is currently installed and running:
 
 ```bash
 uname -r
-dpkg -l 'pve-kernel-[0-9]*' | awk '/^ii/ {print $2}' | sort -V
+dpkg -l 'proxmox-kernel-*.*.*-*-pve-signed' | awk '/^ii/ {print $2}' | sort -V
 ```
 
 If the running kernel package is missing from dpkg, the system is in an inconsistent state — contact your senior admin immediately. Do not reboot until this is resolved.
