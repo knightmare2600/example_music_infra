@@ -194,7 +194,7 @@ Once suffixes are registered, assign them to user accounts individually. The suf
 Set-ADUser -Identity 'jsmith' -UserPrincipalName 'j.smith@example.com'
 
 # Bulk-set all users in an OU to example.com
-Get-ADUser -Filter * -SearchBase 'OU=Users,DC=jukebox,DC=example' | ForEach-Object {
+Get-ADUser -Filter * -SearchBase 'OU=Users,DC=jukebox,DC=internal' | ForEach-Object {
     $newUPN = $_.SamAccountName + '@example.com'
     Set-ADUser $_ -UserPrincipalName $newUPN
 }

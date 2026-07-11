@@ -633,10 +633,10 @@ else
   -->
   <ldap>
     <connection url="ldap://${PROV_NET_DEFAULT}.10:389"
-                bind-dn="CN=Rudder LDAP Bind,OU=Service Accounts,DC=jukebox,DC=example"
+                bind-dn="CN=Rudder LDAP Bind,OU=Service Accounts,DC=jukebox,DC=internal"
                 bind-password="REPLACE_WITH_BIND_PASSWORD"/>
 
-    <search base="DC=jukebox,DC=example"
+    <search base="DC=jukebox,DC=internal"
             filter="(&amp;(objectClass=user)(sAMAccountName={0}))"
             returnedAttribute="sAMAccountName"/>
 
@@ -646,7 +646,7 @@ else
                          configuration, validator, compliance
       -->
       <roleMap role="administrator"
-               group="CN=GRP_Rudder_Admins,OU=IT Groups,DC=jukebox,DC=example"/>
+               group="CN=GRP_Rudder_Admins,OU=IT Groups,DC=jukebox,DC=internal"/>
     </roleMapping>
   </ldap>
 

@@ -399,7 +399,7 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | `rudder_version` | `8.x` | Rudder package stream |
 | `rudder_admin_user` | `admin` | Rudder web UI local admin username |
 | `rudder_ldap_bind_dn` | `CN=Rudder LDAP Bind,...` | AD LDAP bind account DN |
-| `rudder_ldap_base` | `DC=jukebox,DC=example` | LDAP search base |
+| `rudder_ldap_base` | `DC=jukebox,DC=internal` | LDAP search base |
 | `rudder_ldap_admin_group` | `CN=GRP_Rudder_Admins,...` | AD group → Rudder admin role |
 | `sites_csv_path` | `/etc/example-music/sites.csv` | Path to sites.csv on control node |
 

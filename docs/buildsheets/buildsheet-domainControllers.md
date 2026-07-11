@@ -113,7 +113,7 @@ in that document has been completed and signed off on the DC Promotion Sheet.
 | Hostname | RDP | SF | SB | SR | CH | CP | P7 | PM | DJ | RS | DC | IP | RD | Notes |
 |----------|-----|----|----|----|----|----|----|----|----|----|----|----|----|----|
 | EXADCSBON001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | SCHEMA MASTER / DOMAIN NAMING MASTER |
-| EXADCSBERG001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | ⚠️ See Appendix A — legacy EXADCSBRD001 in inventory |
+| EXADCSBER001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | ⚠️ See Appendix A — legacy EXADCSBRD001 in inventory |
 | EXADCSMUN001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 
 ### Sverige / Norge / Nederland / Italia / Österreich
@@ -143,7 +143,7 @@ in that document has been completed and signed off on the DC Promotion Sheet.
 | EXADCSMIA001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Miami — PENDING BUILD |
 | EXADCSNJC001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | New Jersey |
 | EXADCSCHI001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Chicago |
-| EXADCSATL001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Athens GA |
+| EXADCSATL001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Atlanta |
 
 ### Australia / New Zealand
 
@@ -203,7 +203,7 @@ The network inventory currently records the West Berlin site as `BRD` in some pl
 
 | Legacy / Incorrect | Canonical | Affected hostnames |
 |--------------------|-----------|-------------------|
-| `EXADCSBRD001` | `EXADCSBERG001` | Update DNS, AD site object, inventory |
+| `EXADCSBRD001` | `EXADCSBER001` | Update DNS, AD site object, inventory |
 | `BRD` site code | `BER` | Update any references in site-inventory.md, network-inventory.md |
 
 ### SVR → SRV (Server Role Prefix)
