@@ -1,5 +1,14 @@
 # Example Music — Keeping Three Ansible Nodes in Sync
 
+> **Note (2026-07-11):** this is a hypothetical training-lab exercise, not a description of the
+> real, current architecture. The live estate runs a single, consolidated Ansible control node
+> (`EXAANSCLD001`, `192.168.69.9` — see `ansible/configs/inventory/main.ini`'s `[ansiblehosts]`
+> group and `ansible/README.md`); the hostnames below (`ansible-master`, `ansible-odense`,
+> `ansible-brockville`) do not exist anywhere in real inventory. See the "Recommendation for
+> Example Music Training Lab" section at the bottom — this document was always scoped to the
+> training lab, not production, but says so only there; noting it here too so it isn't mistaken
+> for a live-architecture description on a first read.
+
 ## The Problem
 
 You have three Ansible control nodes:

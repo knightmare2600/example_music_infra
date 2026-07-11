@@ -15,31 +15,27 @@ call %VSDEV% -arch=x64 >nul
 echo Compiling cEcho - Colour Echo (C++ amd64)...
 cd cecho
 rc.exe cecho.rc
-cl.exe /O1 /MT /nologo cecho_v2.cpp cecho.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:cecho-arm64.exe
-rename cecho_v2.exe cecho-arm64.exe
+cl.exe /O1 /MT /nologo cecho_v2.cpp cecho.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:cecho-x64.exe
+rename cecho_v2.exe cecho-x64.exe
 del *.obj *.res 2>nul
 cd ..
 
 echo Compiling DartParse - Microsoft DART XML Parser (amd64)
-cd cecho
+cd dartparse
 rc.exe dartparse.rc
 cl /O2 /EHsc dartparse.cpp dartparse.res
-rename dartparse.exe dartparse-arm64.exe
+rename dartparse.exe dartparse-x64.exe
 del *.obj *.res 2>nul
 cd ..
 
 echo Compiling resPE - Screen Resolution Change For WinPE (C amd64)...
-cd dartparse
+cd respe
 rc.exe respe.rc
-cl.exe /O1 /MT /nologo respe.c respe.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:respe-arm64.exe
-rename respe.exe respe-arm64.exe
+cl.exe /O1 /MT /nologo respe.c respe.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:respe-x64.exe
+rename respe.exe respe-x64.exe
 del *.obj *.res 2>nul
 cd ..
 
-echo.
-echo.
-echo ========================= Build complete =========================
-pause
 :: ------------------------- Build ARM64 -------------------------
 echo.
 echo [ARM64]
@@ -55,7 +51,7 @@ del *.obj *.res 2>nul
 cd ..
 
 echo Compiling DartParse - Microsoft DART XML Parser (arm64)
-cd cecho
+cd dartparse
 rc.exe dartparse.rc
 cl /O2 /EHsc dartparse.cpp dartparse.res
 rename dartparse.exe dartparse-arm64.exe
@@ -63,7 +59,7 @@ del *.obj *.res 2>nul
 cd ..
 
 echo Compiling resPE - Screen Resolution Change For WinPE (C arm64)...
-cd dartparse
+cd respe
 rc.exe respe.rc
 cl.exe /O1 /MT /nologo respe.c respe.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:respe-arm64.exe
 rename respe.exe respe-arm64.exe

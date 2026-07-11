@@ -322,36 +322,59 @@ cecho.exe "{01}BLUE{n}{02}GREEN{n}{04}RED{n}{0E}YELLOW{##}DONE"
 
 ---
 
-## 10. Full Build Script (x64 + ARM64, cecho + dartparse)
+## 10. Full Build Script (x64 + ARM64, cEcho + resPE + DartParse)
+
+> **Correction (2026-07-11):** this section previously showed a hand-transcribed script that
+> assumed all three tools' source files sit flat in one directory. The real, committed script —
+> `bootstrap/winpe/source/pe_tools/buildme.cmd` — instead has each tool in its own subdirectory
+> (`cecho/`, `dartparse/`, `respe/`) and `cd`s into each before building. That real file itself
+> had a genuine bug found during this correction: the DartParse step `cd`'d into `cecho/` and the
+> resPE step `cd`'d into `dartparse/` (each one directory off from its actual source), so `rc.exe`
+> would have failed to find `dartparse.rc`/`respe.rc` if the script were ever run as committed;
+> the x64 pass also renamed all three outputs to `*-arm64.exe` instead of `*-x64.exe`, and a
+> misplaced `pause`/"Build complete" banner sat between the x64 and ARM64 passes, understating
+> progress. Fixed in the real file; the corrected version is reproduced below verbatim — also
+> note this script actually builds **three** tools (cEcho, resPE, DartParse), not two, despite
+> this section's original title.
 
 ```cmd
+:: Full build script for cecho, respe and dartparse
 @echo off
 setlocal
 
 set VSDEV="C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat"
 
-echo ========================= Building cEcho + dartparse =========================
+echo ========================= Building ResPE (C), cEcho (C++) and DartParse (C++) =========================
 
 :: ------------------------- Build x64 -------------------------
 echo.
 echo [x64]
 
-call %VSDEV% -arch=x64
+call %VSDEV% -arch=x64 >nul
 
-echo Compiling resources...
-rc.exe respe.rc
+echo Compiling cEcho - Colour Echo (C++ amd64)...
+cd cecho
 rc.exe cecho.rc
-
-echo Building ResPE (C)...
-cl.exe /O1 /MT /nologo respe.c respe.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:respe-x64.exe
-
-echo Building cEcho (C++)...
 cl.exe /O1 /MT /nologo cecho_v2.cpp cecho.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:cecho-x64.exe
-
 rename cecho_v2.exe cecho-x64.exe
-rename respe.exe respe-x64.exe
-
 del *.obj *.res 2>nul
+cd ..
+
+echo Compiling DartParse - Microsoft DART XML Parser (amd64)
+cd dartparse
+rc.exe dartparse.rc
+cl /O2 /EHsc dartparse.cpp dartparse.res
+rename dartparse.exe dartparse-x64.exe
+del *.obj *.res 2>nul
+cd ..
+
+echo Compiling resPE - Screen Resolution Change For WinPE (C amd64)...
+cd respe
+rc.exe respe.rc
+cl.exe /O1 /MT /nologo respe.c respe.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:respe-x64.exe
+rename respe.exe respe-x64.exe
+del *.obj *.res 2>nul
+cd ..
 
 :: ------------------------- Build ARM64 -------------------------
 echo.
@@ -359,20 +382,29 @@ echo [ARM64]
 
 call %VSDEV% -arch=arm64 >nul
 
-echo Compiling resources...
-rc.exe respe.rc
+echo Compiling cEcho - Colour Echo (C++ arm64)...
+cd cecho
 rc.exe cecho.rc
-
-echo Building ResPE (C)...
-cl.exe /O1 /MT /nologo respe.c respe.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:respe-arm64.exe
-
-echo Building cEcho (C++)...
 cl.exe /O1 /MT /nologo cecho_v2.cpp cecho.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:cecho-arm64.exe
-
 rename cecho_v2.exe cecho-arm64.exe
-rename respe.exe respe-arm64.exe
+del *.obj *.res 2>nul
+cd ..
 
-del *.obj *.res
+echo Compiling DartParse - Microsoft DART XML Parser (arm64)
+cd dartparse
+rc.exe dartparse.rc
+cl /O2 /EHsc dartparse.cpp dartparse.res
+rename dartparse.exe dartparse-arm64.exe
+del *.obj *.res 2>nul
+cd ..
+
+echo Compiling resPE - Screen Resolution Change For WinPE (C arm64)...
+cd respe
+rc.exe respe.rc
+cl.exe /O1 /MT /nologo respe.c respe.res user32.lib /link /SUBSYSTEM:CONSOLE /Fe:respe-arm64.exe
+rename respe.exe respe-arm64.exe
+del *.obj *.res 2>nul
+cd ..
 
 echo.
 echo ========================= Build complete =========================

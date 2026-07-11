@@ -36,7 +36,10 @@ The following links were helpful in confirming the nuance and crucially the inst
 - https://execmgrnet.wordpress.com/2016/02/02/dart-remote-control-winpe-the-nice-way/
 - https://www.cb-net.co.uk/microsoft-articles/configmgr/configmgr-dart-8-1-remote-viewer-and-windows-pe/
 
-**WinPE tools repo:** `<<winpe tools repo>>`
+**WinPE tools repo:** this repo, `bootstrap/winpe/` — `Build-WinPE.ps1` and
+`Fix-MDTforADK24H2.ps1` referenced throughout this guide live there, and `source/pe_tools/`
+holds the `cecho`/`dartparse`/`respe` sources (see the [cecho + dartparse build
+guide](cecho_dartparse_build_guide.md))
 
 ---
 

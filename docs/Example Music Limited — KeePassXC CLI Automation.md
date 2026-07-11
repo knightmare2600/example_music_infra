@@ -127,8 +127,8 @@ def find_cli():
   """
   if shutil.which("keepassxc-cli"):
     return "keepassxc-cli"
-    if shutil.which("kpcli"):
-      return "kpcli"
+  if shutil.which("kpcli"):
+    return "kpcli"
   return None
 
 def run_cli(cli, args, password):
@@ -138,15 +138,14 @@ def run_cli(cli, args, password):
   try:
     proc = subprocess.run(
       [cli] + args,
-        input=password.encode(),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=15
+      input=password.encode(),
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE,
+      timeout=15
     )
-
     if proc.returncode != 0:
       raise RuntimeError(proc.stderr.decode())
-      return proc.stdout.decode()
+    return proc.stdout.decode()
   finally:
     password = "\0" * len(password)
 
@@ -160,56 +159,56 @@ def verify_access(cli, db, password):
     else:
       # kpcli fallback (limited validation)
       run_cli(cli, ["--kdb", db, "--command", "ls"], password)
-      return True
-    except Exception:
-      return False
+    return True
+  except Exception:
+    return False
 
 def search(cli, db, password, pattern):
   if cli != "keepassxc-cli":
     raise NotImplementedError("Regex search requires keepassxc-cli")
-    output = run_cli(cli, ["ls", "-R", db], password)
-    regex = re.compile(pattern, re.IGNORECASE)
-    return [line for line in output.splitlines() if regex.search(line)]
+  output = run_cli(cli, ["ls", "-R", db], password)
+  regex = re.compile(pattern, re.IGNORECASE)
+  return [line for line in output.splitlines() if regex.search(line)]
 
 def create_group(cli, db, password, group):
   if cli != "keepassxc-cli":
     raise NotImplementedError("Group creation requires keepassxc-cli")
-    run_cli(cli, ["mkdir", db, group], password)
+  run_cli(cli, ["mkdir", db, group], password)
 
 def add_entry(cli, db, password, path, username):
   if cli != "keepassxc-cli":
     raise NotImplementedError("Entry management requires keepassxc-cli")
-    entry_pw = getpass.getpass("Entry password: ")
-    try:
-      run_cli(cli, ["show", db, path], password)
-      run_cli(cli, [
-        "edit", db, path,
-        "--username", username,
-        "--password-prompt"
-      ], password)
-    except Exception:
-      run_cli(cli, [
-        "add", db, path,
-        "--username", username,
-        "--password-prompt"
-      ], password)
-
-    finally:
-      entry_pw = "\0" * len(entry_pw)
+  entry_pw = getpass.getpass("Entry password: ")
+  try:
+    run_cli(cli, ["show", db, path], password)
+    run_cli(cli, [
+      "edit", db, path,
+      "--username", username,
+      "--password-prompt"
+    ], password)
+  except Exception:
+    run_cli(cli, [
+      "add", db, path,
+      "--username", username,
+      "--password-prompt"
+    ], password)
+  finally:
+    entry_pw = "\0" * len(entry_pw)
 
 def main():
   if len(sys.argv) < 3:
     print("Usage: script.py <db.kdbx> <command> [args]")
     sys.exit(1)
-    cli = find_cli()
-    if not cli:
-      print("❌ No KeePass CLI tool found.")
-      print("")
-      print("Install one of the following:")
-      print("  macOS:   brew install keepassxc")
-      print("  Linux:   sudo apt install keepassxc")
-      print("  Windows: choco install keepassxc")
-      sys.exit(2)
+
+  cli = find_cli()
+  if not cli:
+    print("❌ No KeePass CLI tool found.")
+    print("")
+    print("Install one of the following:")
+    print("  macOS:   brew install keepassxc")
+    print("  Linux:   sudo apt install keepassxc")
+    print("  Windows: choco install keepassxc")
+    sys.exit(2)
 
   db = sys.argv[1]
   command = sys.argv[2]
@@ -219,24 +218,35 @@ def main():
     print("❌ Invalid password or database")
     sys.exit(3)
 
-    try:
-      if command == "search":
-        results = search(cli, db, password, sys.argv[3])
-        print("\n".join(results))
-      elif command == "mkdir":
-        create_group(cli, db, password, sys.argv[3])
-        print("✅ Group created")
-      elif command == "add":
-        add_entry(cli, db, password, sys.argv[3], sys.argv[4])
-        print("✅ Entry added/updated")
-      else:
-        print("Unknown command")
-    finally:
-      password = "\0" * len(password)
+  try:
+    if command == "search":
+      results = search(cli, db, password, sys.argv[3])
+      print("\n".join(results))
+    elif command == "mkdir":
+      create_group(cli, db, password, sys.argv[3])
+      print("✅ Group created")
+    elif command == "add":
+      add_entry(cli, db, password, sys.argv[3], sys.argv[4])
+      print("✅ Entry added/updated")
+    else:
+      print("Unknown command")
+  finally:
+    password = "\0" * len(password)
 
 if __name__ == "__main__":
-    main()
+  main()
 ```
+
+> **Correction (2026-07-11):** the script above previously had every function's control flow
+> broken by mis-indentation — code sat nested inside the block above it after a `return`/`raise`/
+> `sys.exit()`, making it unreachable. The most serious instance: `main()`'s `cli = find_cli()`
+> assignment was nested inside the `len(sys.argv) < 3` branch, so on every *normal* invocation
+> (enough arguments given) `cli` was referenced later without ever being assigned — a guaranteed
+> `NameError` crash. `verify_access()` additionally had a syntax error (an `except` misindented
+> to align with a nested `else:` body) that would have failed to parse at all. Every function
+> exhibited the same pattern — dead code after the guard clause meant to precede it, and no
+> return value on the success path. Fixed throughout; the version above is corrected and was
+> mentally traced end-to-end (not executed) against the usage examples in Section 6.
 
 ------
 

@@ -132,7 +132,8 @@ Output:
 | 08          | Revision      | `01`                     | SLIC v2.0                      |
 | 10–15       | OEM ID        | `DELL  `                 | 6-char OEM identifier          |
 | 16–23       | OEM Table ID  | `PE_SC3  `               | 8-char table identifier        |
-| 36–39       | RSA1          | Present                  | Public key block — confirms v2.0 SLIC |
+| 28–31       | Creator ID    | `DELL`                   | 4-char ASCII, OEM-repurposed   |
+| 52–55       | RSA1          | Present                  | Public key block — confirms v2.0 SLIC |
 
 ---
 
