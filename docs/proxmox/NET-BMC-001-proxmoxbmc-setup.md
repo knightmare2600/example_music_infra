@@ -370,16 +370,21 @@ Expected output from `pbmc list`:
 
 **This section is important. Read it before registering any VM.**
 
-> **Flagged, not fixed (2026-07-11):** this section's examples bind to `192.168.139.5` as "the
-> provisioning VLAN IP" on a Clydebank (`CLY`, subnet `192.168.41.0/24`) node — but nowhere else in
-> this estate does a normal site's PVE node have a local interface on `192.168.139.0/24`. That
-> network is CLD's own vRACK, physically at Edinburgh, reached from other sites via WireGuard
-> routing, not a per-site VLAN each PVE node gets a `.5` address on. Either this describes a
-> not-yet-implemented design (a dedicated per-site provisioning-facing bridge for BMC isolation)
-> or the examples are simply wrong and should bind to something else (the site LAN, `.253`-adjacent,
-> or a real dedicated VLAN if one exists). This is security-relevant guidance (it controls who can
-> reach IPMI-equivalent power control) — flagging for explicit review rather than guessing at a
-> rewrite that could recommend an equally-wrong bind address.
+> **Resolved (2026-07-11, confirmed with Robert):** this section's examples bind to
+> the provisioning VLAN's own address range as if it were a normal local interface on a
+> Clydebank node (site code `CLY`, whose own subnet is otherwise unrelated to that range)
+> — even though a normal site's PVE node doesn't otherwise carry a local interface on the
+> provisioning VLAN — that network is CLD's own vRACK. The design is intentional, not a stray
+> example: FRD Havn and (some of) EDI's Pulsant-hosted nodes physically sit in OVH's shared
+> vRACK fabric alongside CLD, so a `192.168.139.x` address genuinely can land on a normal
+> site's node in that specific hosting arrangement — it's not exclusive to CLD, it's exclusive
+> to *whichever nodes are physically in the vRACK*, which happens to include more than just CLD.
+> The actual access control is the firewall (below), not the choice of bind address: the BMC
+> listener is firewalled to permit only `192.168.139.0/24`, `192.168.69.0/24`, and
+> `172.16.124.0/24` — all three are non-routable RFC1918 ranges in an estate that is itself a
+> documented legal fiction (see `ExampleMusic_Beginners_Guide.md`), so the blast radius of the
+> specific bind IP chosen is bounded regardless. The firewall rule below has been corrected to
+> actually allow all three subnets, not just the one it happened to mention.
 
 By default, proxmoxbmc binds to `0.0.0.0` — meaning it listens on **all interfaces** on the Proxmox node, including the site LAN bridge. Any machine that can reach the Proxmox node's IP on the registered UDP port can send IPMI commands. The firewall rules below are therefore not optional — they are the primary access control mechanism.
 
@@ -421,10 +426,13 @@ Binding to `192.168.139.5` restricts IPMI access to machines on the provisioning
 Even when using `--address` binding, firewall rules provide the outer layer of protection. IPMI must never be exposed to the internet.
 
 ```bash
-# On the Proxmox node -- allow IPMI ports from provisioning VLAN only
-# Adjust the range to match your registered VMs
-for port in $(seq 7000 7200); do
-  ufw allow from 192.168.139.0/24 to any port $port proto udp
+# On the Proxmox node -- allow IPMI ports from the provisioning VLAN, CLD LAN, and
+# FRD Havn only (the three subnets a legitimate BMC-management source can be on).
+# Adjust the range to match your registered VMs.
+for subnet in 192.168.139.0/24 192.168.69.0/24 172.16.124.0/24; do
+  for port in $(seq 7000 7200); do
+    ufw allow from "$subnet" to any port $port proto udp
+  done
 done
 
 # Explicitly deny from everywhere else (belt and braces)
