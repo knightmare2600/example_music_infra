@@ -258,13 +258,17 @@ ansible@EXAPVECLD001:~> python3 convert-v2v.py --host 192.168.139.5 --user root@
   Role code (e.g. FWL, NIX, SRV) [NIX]: FWL
 
   Known site codes:
-    ABR Aberdeen            AKL Auckland            AMS Amsterdam           BER West Berlin         BIR Birmingham          BON Bonn
+    ABD Aberdeen            AKL Auckland            AMS Amsterdam           BER West Berlin         BIR Birmingham          BON Bonn
     BRK Brockville          CLD Cloud/Provisioning  CLY Clydebank           COV Coventry            CPH Copenhagen          DUN Dundee
-    EDI Edinburgh           FAL Falkirk             FAX Faxe                GAA Georgia AL          GLA Glasgow             GOT Gothenburg
+    EDI Edinburgh           FAL Falkirk             FAX Faxe                ATL Atlanta             GLA Glasgow             GOT Gothenburg
     HAL Halifax             HUL Hull                KGE Koge                KOR Korsor              LAX Los Angeles         LIV Liverpool
     LND London              MCR Manchester          MEL Melbourne           MIA Miami               MIL Milan               MTL Montreal
     MUN Munich              NEW Newcastle           NJC New Jersey          NYC New York            ODE Odense              OSL Oslo
     PER Perth               SHE Sheffield           SYD Sydney              TOR Toronto             VIE Vienna
+
+  [Note: this "Known site codes" block is a captured example transcript (see the DRAFT status
+  above) and doesn't include every site added to sites.csv since it was captured -- treat
+  benarbejde/sites.csv as authoritative, not this list, if the two ever disagree.]
 
   Site code (e.g. FAL, LND, BRK): FAL
   [i] Next available name: EXAFWLFAL002

@@ -34,6 +34,10 @@ currently a manual bootstrap step, intended to be automated once Ansible itself 
 **Ansible public key:** `ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCyEVQgZP5f3dSLQ/cK7CV1tjN152BhZGQ7evsOTARTG5o9AmMzn4xFurdvmkFli4dEr7HZ3Dp83jxAMbHJ7d0eVuYNHG1n7ktm4FwYPhzBS3Kni3UvM91TeB6kvNZU1jFVE3oaDlft/C104M5S72zUx9SIzI5XH3fUyssAQEGoEoLzW1u4Tj84pxdXoIdGAGJCZ/gZJJFoPGLNkn3m19ML5EQzIpD4sO6yhODVu7gc9RckFGJpTD1CgKa5q4RPWPMN2y3Xw/J95VTHV8+NCBNKGzoVGdxu1E94+aCV5UCaxvgtLGcjJfv4D8Yrnxd//ZTjFYmT+DdIc6XsgYDYvr7Eoanv+bg8mtVVKxhwsxD3XOoxVdLhvCfYlg9IjXPG65GoTDrZuRfkUA6e1YnEaC4wvyXtwcnMV5NaklwAiIH5VLLo6laK1lyxr1tZEVpYx0F0S9S+oVDRPdpoVH98zE8JkPGWI6xSwaekMUMrAu5fZ/7Dfw2LAwAG7dixMroAj3c= knightmare@ansible`  
 **Key URL:** `http://192.168.139.50/ansible_sshkey.pub`
 
+> **Fredericia Havn note:** the key URL above is Edinburgh's. At Fredericia Havn it's
+> `http://172.16.124.1:8000/ansible_sshkey.pub` (gateway `172.16.124.2`) — see
+> `docs/bootstrap/bootstrapping.md` §4.1a.
+
 ---
 
 ## GPO Structure
