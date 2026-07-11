@@ -1,6 +1,6 @@
 # bind9
 
-Configures EXASVRCLD001 as the authoritative BIND9 DNS server for jukebox.internal.
+Configures EXADNSVRK001 as the authoritative BIND9 DNS server for jukebox.internal.
 
 ## Usage
 ```

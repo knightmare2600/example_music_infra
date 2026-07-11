@@ -194,9 +194,9 @@ separate site code. See `docs/ExampleMusic_Beginners_Guide.md` §4.1.
 - [ ] `EXADNSVRK001` — DNS/BIND server (`192.168.139.8`) · `jukebox.internal` authoritative
 - [ ] `EXAPRVVRK001` — Provisioning server (`192.168.139.50`) · PXE · ISOs · Ansible keys · scripts
 - [ ] `EXASVRCLD002` — Windows Admin Centre (`192.168.69.20`) · WS2022 · reaches all site DCs
-- [ ] `EXASVRCLD004` — Rudder configuration management (`192.168.69.22`)
+- [ ] `EXARDRCLD001` — Rudder configuration management (`192.168.69.12`)
 - [ ] `EXAPBXCLD001` — Central 3CX PBX (`192.168.69.48`) · all site SBCs trunk here
-- [ ] `EXASVRCLD003` — Ansible control node (`192.168.69.49`) · manages all sites
+- [ ] `EXAANSCLD001` — Ansible control node (`192.168.69.9`) · manages all sites
 - [ ] `EXAUFCCLD001` — UniFi Network Controller (`192.168.69.82`, CLD's **LAN** — not vRACK) · manages every site's WAPs
 - [ ] WireGuard routes verified to all site subnets
 - [ ] Ansible key distribution tested from `EXAPRVVRK001`
@@ -209,9 +209,9 @@ separate site code. See `docs/ExampleMusic_Beginners_Guide.md` §4.1.
 | `EXADNSVRK001` | DNS/BIND server | Debian trixie | `192.168.139.8` | `jukebox.internal` authoritative |
 | `EXAPRVVRK001` | Provisioning server | — | `192.168.139.50` | PXE · ISOs · Ansible keys · scripts |
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.69.20` | Reaches all site DCs |
-| `EXASVRCLD004` | Rudder | Debian | `192.168.69.22` | Configuration management |
+| `EXARDRCLD001` | Rudder | Debian | `192.168.69.12` | Configuration management |
 | `EXAPBXCLD001` | Central PBX | 3CX | `192.168.69.48` | All site SBCs trunk here |
-| `EXASVRCLD003` | Ansible control node | Debian | `192.168.69.49` | Central Ansible — manages all sites |
+| `EXAANSCLD001` | Ansible control node | Debian | `192.168.69.9` | Central Ansible — manages all sites |
 | `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. On CLD's **LAN** (`192.168.69.0/24`), not vRACK — CLD has no physical WiFi itself |
 
 ---

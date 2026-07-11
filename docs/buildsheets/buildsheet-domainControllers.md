@@ -215,8 +215,10 @@ Update DNS and AD computer object names when rebuilding.
 |---------------|-------------------|---------|
 | `EXASVR<SITE><N>` | `EXASRV<SITE><N>` | `EXASVRCLD001` → `EXASRVCLD001` |
 
-> Note: `EXASVRCLD001`, `EXASVRCLD002`, `EXASVRCLD003` in the network inventory  
-> are already using the legacy pattern and should be corrected on next rebuild.
+> Note: `EXASVRCLD002` (Windows Admin Centre) in the network inventory is already
+> using the legacy pattern and should be corrected on next rebuild. `EXASVRCLD001`/
+> `EXASVRCLD003` don't currently exist in `devices.csv` -- an earlier version of
+> this note claimed all three did.
 
 ---
 
