@@ -248,7 +248,16 @@ schema) left over from before the exceptions-only redesign — it was never read
 (Play 2 uses `devices_csv_path`, `/etc/example-music/devices.csv`, exclusively) and has been
 removed, along with the loose top-level `db.jukebox.internal.j2`/`db.192.168.139.j2`/
 `db.site-reverse.j2` template duplicates in this directory (the `templates/` versions are
-the ones actually used — see `src:` paths above).
+the ones actually used — see `src:` paths above). A second generation of the same problem —
+loose top-level `db.192.168.139.devices.j2`/`db.jukebox.devices.j2`/`db.site-reverse.devices.j2`/
+`named.conf.local.j2` (the Play 2-era templates this time, plus the shared zone-declaration
+template) — turned up and was removed the same way on 2026-07-11, while renaming
+`db.jukebox.internal.j2`/`db.jukebox.devices.j2` to the domain-agnostic `db.forward-zone.j2`/
+`db.forward-zone.devices.j2` (see `bind9-dns.yml`'s own changelog). None of these duplicates
+were ever reachable via any `src:` path — Ansible's `template:` module only resolves `src:`
+relative to `templates/`, never the playbook's own directory, so a loose top-level file
+sitting next to the real one is always silently inert, not a live risk — but confusing to
+find and worth not leaving lying around a second time.
 
 ---
 

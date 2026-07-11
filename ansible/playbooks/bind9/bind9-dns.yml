@@ -38,7 +38,7 @@
 # IMPORTANT: `zones` (Play 1, below) and `zones-full` (Play 2) are NOT
 # interchangeable. Play 1's zone generation is superseded by Play 2 (see
 # Play 2's own header comment) but both still exist and both write to the
-# same destination files (db.jukebox.internal, db.192.168.139, per-site
+# same destination files (db.{{ domain }}, db.192.168.139, per-site
 # reverse zones) — a full run is fine (Play 2 runs last and wins), but
 # `--tags zones,reload` on its own regenerates zones from Play 1's old
 # SUFFIX_MAP/hardcoded-hosts logic ONLY, without ever reading devices.csv.
@@ -74,8 +74,9 @@
 #               This surfaced two real bugs in the hardcoded data it replaces:
 #                 - CLD's firewall WAN face was documented at .139.139; devices.csv (VRK,FWL row,
 #                   corrected 68->69 this same pass per direct confirmation) and every other
-#                   source agree on .69. Also fixed the same stale .139 in db.jukebox.internal.j2
-#                   and db.192.168.139.j2's separate "-wan" hardcoded line for CLD.
+#                   source agree on .69. Also fixed the same stale .139 in db.forward-zone.j2
+#                   (renamed 2026-07-11, was db.jukebox.internal.j2) and db.192.168.139.j2's
+#                   separate "-wan" hardcoded line for CLD.
 #                 - WAC/Rudder/PBX appeared a second time in ancillary_hosts AND in
 #                   db.192.168.139.j2's PTR records, both claiming vRACK addresses at the exact
 #                   same octets as their real CLD LAN devices.csv entries -- a copy-paste mistake,
@@ -110,7 +111,8 @@
 #               data -- are now one merged cld_black_swan_hosts list (CLD+VRK+FRD), each entry
 #               tagged with its real site so the reverse-zone templates can filter it down to
 #               their own subnet instead of needing their own separately-built lists.
-#               Play 2's db.jukebox.devices.j2 got the same treatment even further: its whole
+#               Play 2's db.forward-zone.devices.j2 (renamed 2026-07-11, was
+#               db.jukebox.devices.j2) got the same treatment even further: its whole
 #               dedicated "CLD" forward-zone section was removed entirely -- VRK and FRD
 #               already flowed through the generic per-site loop with zero special-casing
 #               (octet derived from each device's own real IP, never blocked on CLD/VRK/FRD's
@@ -233,7 +235,7 @@
     # on (that's a reverse-zone concern). CLD (its own LAN), VRK (the vRACK) and FRD (the
     # Fredericia Havn vRACK stand-in) are all "black swan" sites in the sense that none of
     # them follow the standard per-site convention -- so for the forward zone, one combined
-    # list covering all three is all that's needed; db.jukebox.internal.j2 doesn't need to
+    # list covering all three is all that's needed; db.forward-zone.j2 doesn't need to
     # know or care which subnet any given entry's IP is actually on.
     # Reverse zones DO care (a PTR zone is inherently one-subnet), so db.192.168.139.j2/
     # db.192.168.69.j2 filter this same list down to their own site via the 'site' key,
@@ -433,11 +435,11 @@
   # ---------------------------------------------------------------------------
   # 4. Zone files
   # ---------------------------------------------------------------------------
-    - name: Write forward zone -- jukebox.internal
+    - name: Write forward zone -- {{ domain }}
       tags: zones
       template:
-        src: templates/db.jukebox.internal.j2
-        dest: "{{ bind_zone_dir }}/db.jukebox.internal"
+        src: templates/db.forward-zone.j2
+        dest: "{{ bind_zone_dir }}/db.{{ domain }}"
         mode: "0644"
         owner: root
         group: bind
@@ -753,7 +755,7 @@
 # are written as static stanzas; per-site reverse zones are looped.
 # CLD is excluded from the per-site loop (handled by the 139 zone).
 #
-# templates/db.jukebox.internal.j2
+# templates/db.forward-zone.j2
 # ─────────────────────────────────
 # Forward zone.  Loops suffix_map × sites to produce A records.
 # Appends FWL WAN A records and ancillary hosts.
@@ -777,7 +779,7 @@
 # This play supersedes the SUFFIX_MAP-based zone generation in Play 1.
 # It reads devices.csv (single source of truth for all devices) alongside
 # sites.csv and generates:
-#   - db.jukebox.internal   (forward zone -- all devices with a HostOctet)
+#   - db.{{ domain }}       (forward zone -- all devices with a HostOctet)
 #   - db.192.168.139        (provisioning reverse zone -- CLD devices + FWL WANs)
 #   - db.192.168.{octet}    (per-site reverse zones -- one per site, CLD excluded)
 #
@@ -884,7 +886,7 @@
 
   tasks:
     # -------------------------------------------------------------------------
-    # Forward zone -- db.jukebox.internal
+    # Forward zone -- db.{{ domain }}
     # Devices with HostOctet get A records.
     # Devices without HostOctet get a comment line (documented, not resolved).
     # Grouped by site, sorted by HostOctet within each site.
@@ -892,7 +894,7 @@
     - name: Write forward zone from devices.csv
       tags: zones-full
       template:
-        src: templates/db.jukebox.devices.j2
+        src: templates/db.forward-zone.devices.j2
         dest: "{{ bind_zone_dir }}/db.{{ domain }}"
         mode: "0644"
         owner: root
