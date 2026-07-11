@@ -2,11 +2,17 @@
 
 ---
 
-**Document ID:** NET-VPN-WG-001  
+**Document ID:** NET-VPN-WG-002  
 **Classification:** Internal — Network Operations  
 **Author:** Network Engineering  
 **Last Updated:** 2026-03-04  
 **Version:** 1.0  
+
+> **Correction (2026-07-11):** this document previously also claimed `NET-VPN-WG-001` — the same ID
+> as `docs/wireguard/NET-VPN-WG-001-wireguard-routing.md`. Renumbered to `NET-VPN-WG-002` to
+> de-collide; that routing doc is the real, original `NET-VPN-WG-001`. Other docs referencing
+> `NET-VPN-WG-001` for troubleshooting content (not routing/provisioning) have been updated to
+> point here instead where the context made it unambiguous.
 
 ---
 

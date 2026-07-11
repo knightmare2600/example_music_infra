@@ -100,7 +100,7 @@ Every site follows the same pattern:
 ### WireGuard Prerequisites
 
 - All site firewall VMs (`EXAFWL<SITE>001`) must be running and tunnels established
-- See `NET-VPN-WG-001` for WireGuard troubleshooting if tunnels are down
+- See `NET-VPN-WG-002` for WireGuard troubleshooting if tunnels are down
 - Verify tunnels are up using Phase 1 before proceeding
 
 ### Software Prerequisites
@@ -223,7 +223,7 @@ Expected:
 ```
 
 > **Key check:** `latest handshake` must show a recent time (within 2–3 minutes).
-> `(never)` means the tunnel is not established — see NET-VPN-WG-001.
+> `(never)` means the tunnel is not established — see NET-VPN-WG-002.
 
 ### 1.2 — ICMP Ping Verification
 

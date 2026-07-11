@@ -13,17 +13,20 @@
 
 ### Standard Site Subnets & Gateways
 
-| Site | Subnet | `.1` Gateway | `.10` DC | `.253` FW |
+| Site | Subnet | Gateway | `.10` DC | `.253` FW |
 |------|--------|-------------|----------|-----------|
-| FAL | `192.168.76.0/24` | `192.168.76.1` | `192.168.76.10` | `192.168.76.253` |
-| CPH | `192.168.231.0/24` | `192.168.231.1` | `192.168.231.10` | `192.168.231.253` |
-| ODE | `192.168.126.0/24` | `192.168.126.1` | `192.168.126.10` | `192.168.126.253` |
-| BRK | `192.168.136.0/24` | `192.168.136.1` | `192.168.136.10` | `192.168.136.253` |
-| CLY | `192.168.41.0/24`  | `192.168.41.1`  | `192.168.41.10`  | `192.168.41.253`  |
-| GLA | `192.168.141.0/24` | `192.168.141.1` | `192.168.141.10` | `192.168.141.253` |
-| CLD | `192.168.139.0/24` | `192.168.139.1` | `192.168.139.10` | `192.168.139.253` |
+| FAL | `192.168.76.0/24` | `192.168.76.253` | `192.168.76.10` | `192.168.76.253` |
+| CPH | `192.168.231.0/24` | `192.168.231.253` | `192.168.231.10` | `192.168.231.253` |
+| ODE | `192.168.126.0/24` | `192.168.126.253` | `192.168.126.10` | `192.168.126.253` |
+| BRK | `192.168.136.0/24` | `192.168.136.253` | `192.168.136.10` | `192.168.136.253` |
+| CLY | `192.168.41.0/24`  | `192.168.41.253`  | `192.168.41.10`  | `192.168.41.253`  |
+| GLA | `192.168.141.0/24` | `192.168.141.253` | `192.168.141.10` | `192.168.141.253` |
+| CLD | `192.168.69.0/24`  | `192.168.69.253`  | `192.168.69.10`  | `192.168.69.253`  |
 
-> **Note:** All other sites can be found in the master CSV (`sites.csv`).
+> **Note:** the gateway is `.253` (or `.254` if a site's `.253` is reserved for something else — check
+> `sites.csv`'s `Gateway` column), not `.1` — this table previously had that wrong, same class of error
+> already found and fixed in `docs/bootstrap/bootstrapping.md`'s Standard IP Convention table.
+> All other sites can be found in the master CSV (`sites.csv`).
 
 ---
 
@@ -41,12 +44,16 @@
 <details>
 <summary>💻 Code Helpers (click to expand)</summary>
 
+> **Not implemented:** `site_ip.py`/`site_ip.sh` don't exist anywhere in this repo (checked
+> 2026-07-11) — these are illustrative of what a helper *could* look like, not a real, runnable
+> tool. Look up values against `sites.csv` directly until/unless one gets built.
+
 #### Python
 ```python
 from site_ip import SiteIP, SiteHostnames
 hosts = SiteHostnames("sites.csv")
 print(hosts.get_ip("CLY", "DC"))        # 192.168.41.10
-print(hosts.get_hostname("CLY", ".2"))  # EXARACLY001
+print(hosts.get_hostname("CLY", ".2"))  # EXARACCLY001
 ```
 
 #### Bash
@@ -63,8 +70,7 @@ print(hosts.get_hostname("CLY", ".2"))  # EXARACLY001
 
 | Date       | Change |
 |------------|--------|
-| 2026-03-22 | Section 4b added -- Windows EMS/SAC serial console, bcdedit configuration,
-|            | SAC to PowerShell workflow, worked example, Ansible playbook snippet |
+| 2026-03-22 | Section 4b added -- Windows EMS/SAC serial console, bcdedit configuration, SAC to PowerShell workflow, worked example, Ansible playbook snippet |
 | 2026-03-22 | Initial document — proxmoxbmc setup, .deb packaging, SOL/serial console configuration |
 | 2026-03-22 | Added quick-reference block, --address binding explanation, VLAN selection, firewall hardening, BMC port exposure detail, troubleshooting entry for wrong bind address |
 
@@ -363,6 +369,17 @@ Expected output from `pbmc list`:
 ### 2.6 Network Exposure — Which Interfaces proxmoxbmc Listens On
 
 **This section is important. Read it before registering any VM.**
+
+> **Flagged, not fixed (2026-07-11):** this section's examples bind to `192.168.139.5` as "the
+> provisioning VLAN IP" on a Clydebank (`CLY`, subnet `192.168.41.0/24`) node — but nowhere else in
+> this estate does a normal site's PVE node have a local interface on `192.168.139.0/24`. That
+> network is CLD's own vRACK, physically at Edinburgh, reached from other sites via WireGuard
+> routing, not a per-site VLAN each PVE node gets a `.5` address on. Either this describes a
+> not-yet-implemented design (a dedicated per-site provisioning-facing bridge for BMC isolation)
+> or the examples are simply wrong and should bind to something else (the site LAN, `.253`-adjacent,
+> or a real dedicated VLAN if one exists). This is security-relevant guidance (it controls who can
+> reach IPMI-equivalent power control) — flagging for explicit review rather than guessing at a
+> rewrite that could recommend an equally-wrong bind address.
 
 By default, proxmoxbmc binds to `0.0.0.0` — meaning it listens on **all interfaces** on the Proxmox node, including the site LAN bridge. Any machine that can reach the Proxmox node's IP on the registered UDP port can send IPMI commands. The firewall rules below are therefore not optional — they are the primary access control mechanism.
 

@@ -25,7 +25,7 @@
 
 `create-vm.py` is an interactive Python script for creating VMs on a Proxmox node following the `EXA[ROLE][SITE][NNN]` naming convention. It runs anywhere Python is available — the Proxmox node itself, a Windows workstation, a Mac, a Linux laptop — and communicates entirely via the Proxmox REST API using `proxmoxer`.
 
-`proxmoxer` is installed on all PVE nodes by `first-boot.sh` automatically.
+`proxmoxer` is installed on all PVE nodes via `pve_packages` in `group_vars/pvenodes/main.yml` (installed by `10-packages.yml`, not `first-boot.sh` -- see that script's 2026-07-10 trim).
 
 ---
 
@@ -35,16 +35,16 @@
 # Fully interactive — prompts for everything
 python3 create-vm.py
 
-# Specify host, prompt for the rest
-python3 create-vm.py --host 192.168.139.50
+# Specify host, prompt for the rest -- any real PVE node, e.g. EXAPVEFAL001, not the provisioning server
+python3 create-vm.py --host 192.168.76.5
 
 # API token auth
-python3 create-vm.py --host 192.168.139.50 --user root@pam \
+python3 create-vm.py --host 192.168.76.5 --user root@pam \
     --token-name mytoken \
     --token-value xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 # Dry run — shows full config, makes zero API calls
-python3 create-vm.py --host 192.168.139.50 --dry-run
+python3 create-vm.py --host 192.168.76.5 --dry-run
 
 # Help
 python3 create-vm.py --help
@@ -80,7 +80,7 @@ Create a token in the Proxmox web UI under **Datacenter → Permissions → API 
 
 ```bash
 python3 create-vm.py \
-    --host 192.168.139.50 \
+    --host 192.168.76.5 \
     --user root@pam \
     --token-name create-vm \
     --token-value xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
@@ -89,7 +89,7 @@ python3 create-vm.py \
 **Username + Password**
 
 ```bash
-python3 create-vm.py --host 192.168.139.50 --user root@pam
+python3 create-vm.py --host 192.168.76.5 --user root@pam
 # Password prompted at runtime — not echoed to terminal
 ```
 
@@ -118,12 +118,14 @@ The script:
 
 | Code | Role |
 |---|---|
+| `ANS` | Ansible Control Node |
 | `AST` | Atari ST (Retro Hardware) |
 | `BPS` | Badge Programming Station |
 | `CAM` | Security Camera |
 | `CLK` | Time Clock / Punch Clock |
 | `COF` | Coffee Machine (Smart Appliance) |
 | `DCS` | Domain Controller |
+| `DNS` | DNS/BIND Server |
 | `DON` | Donut Vending Machine (Tim Hortons compatible) |
 | `FCL` | Fairlight CMI Sampler |
 | `FWL` | Firewall Appliance |
@@ -161,6 +163,7 @@ The script:
 | `TEA` | Internet Connected Tea/Coffee Machine (RFC2324) |
 | `TTY` | Teletype / Serial Terminal / VDU |
 | `TVS` | Television / Digital Signage |
+| `UFC` | UniFi Network Controller |
 | `VCU` | Video Conferencing Unit |
 | `VND` | Vending Machine |
 | `WAP` | Wireless Access Point |
@@ -275,7 +278,7 @@ All confirmation prompts default to **No** except the NIC layout confirmation wh
 ## Dry Run
 
 ```bash
-python3 create-vm.py --host 192.168.139.50 --dry-run
+python3 create-vm.py --host 192.168.76.5 --dry-run
 ```
 
 Dry run mode goes through the complete interactive flow — connecting to Proxmox, querying storage and ISOs, collecting all inputs — but makes zero API calls at the creation step. The full VM config summary is printed exactly as it would appear before a real creation.
@@ -304,7 +307,7 @@ Specify a custom log path with `--log /path/to/logfile.log`.
 
 ## Dependencies
 
-**On the Proxmox node** — already handled by `first-boot.sh`:
+**On the Proxmox node** — already handled by `10-packages.yml` (`pve_packages`):
 ```bash
 apt install python3-proxmoxer python3-requests
 ```

@@ -9,7 +9,7 @@
 
 New PVE nodes arrive in a known state from our PXE/iPXE first-boot installer: Debian Trixie, `ansible` user created, SSH accessible as root. This procedure verifies that state and completes Ansible management setup using `site.yml`.
 
-`site.yml` chains six numbered stages:
+`site.yml` chains eight numbered stages:
 
 | Stage | Purpose | Runs on a refresh of an already-onboarded node? |
 |---|---|---|
@@ -18,6 +18,8 @@ New PVE nodes arrive in a known state from our PXE/iPXE first-boot installer: De
 | `20-ansible-access.yml` | ansible user, SSH key, sudoers, kvm group | **Only on first onboard**, or with `-e pve_force_full_onboard=true` |
 | `30-example-music.yml` | `/etc/example-music/{sites,devices}.csv` + `nodeinfo.json` | Always |
 | `40-scripts.yml` | Maintenance scripts, apt config, NIC-guard credentials dir | Always |
+| `45-virt-tools.yml` | V2V/VirtIO prerequisites, optional proxmoxbmc/BIOS ROM files (file placement only) | Always |
+| `46-proxmorph.yml` | proxmorph PVE web UI themes + optional hardware sensor monitoring | Always |
 | `50-systemd-units.yml` | systemd units, timers, Zabbix agent (restarts it) | **Only on first onboard**, or with `-e pve_force_full_onboard=true` |
 
 The playbook is idempotent and safe to re-run. It does not rebuild the node — it only ensures the minimum management surface is in place, and by default a re-run against an already-onboarded node **skips anything that touches access or live service state** (stages 20 and 50) so routine refreshes can't disrupt a running hypervisor. Pass `-e pve_force_full_onboard=true` if you deliberately want those stages to run again (e.g. the SSH key was rotated, or a unit file changed and you want it reloaded).
@@ -63,7 +65,7 @@ The target node should appear under `[pvenodes]`. If it is missing, add it:
 
 ```ini
 [pvenodes]
-192.168.139.5   # EXAPVECLD001
+192.168.69.5    # EXAPVECLD001
 192.168.20.x    # EXAPVELND001  ← add new node here
 ```
 
@@ -285,12 +287,12 @@ The node may still be in first-boot. Wait 2–3 minutes and retry. Check the Pro
 The Proxmox enterprise repo is active and no subscription key is present. Fix on the node:
 
 ```bash
-echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" > /etc/apt/sources.list.d/pve-community.list
+echo "deb http://download.proxmox.com/debian/pve trixie pve-no-subscription" > /etc/apt/sources.list.d/pve-community.list
 rm -f /etc/apt/sources.list.d/pve-enterprise.list
 apt-get update
 ```
 
-Then re-run the playbook.
+Then re-run the playbook. Note `10-packages.yml` already does this repo-fix automatically as its first step on every run (moved there 2026-07-10, see `first-boot.sh`) — this manual command is a fallback for the rare case where apt itself fails before Ansible can even connect.
 
 ### FAILED — sudoers validation error
 
@@ -322,11 +324,13 @@ If `id ansible` fails on the new node, the first-boot script did not run or fail
 | `configs/ansible-id_rsa.pub` | Public key distributed to managed hosts |
 | `files/sudoer_ansible` | Sudoers drop-in deployed to each node |
 | `benarbejde/sites.csv`, `benarbejde/devices.csv` | Authoritative site/device registries, deployed to every node's `/etc/example-music/` |
-| `playbooks/proxmox/site.yml` | This procedure's entry point — chains the six stages below |
+| `playbooks/proxmox/site.yml` | This procedure's entry point — chains the eight stages below |
 | `playbooks/proxmox/playbooks/00-preflight.yml` | Site lookup + onboarding-state detection |
-| `playbooks/proxmox/playbooks/10-packages.yml` | Management packages |
+| `playbooks/proxmox/playbooks/10-packages.yml` | Management packages, apt repo fix, subscription nag removal |
 | `playbooks/proxmox/playbooks/20-ansible-access.yml` | User/SSH key/sudoers/kvm group (gated) |
 | `playbooks/proxmox/playbooks/30-example-music.yml` | `/etc/example-music/` — sites.csv, devices.csv, nodeinfo.json |
-| `playbooks/proxmox/playbooks/40-scripts.yml` | Maintenance scripts, apt config, NIC-guard credentials dir |
+| `playbooks/proxmox/playbooks/40-scripts.yml` | Maintenance scripts, apt config, NIC-guard credentials dir, dynamic MOTD |
+| `playbooks/proxmox/playbooks/45-virt-tools.yml` | V2V/VirtIO prerequisites, optional proxmoxbmc/BIOS ROM files |
+| `playbooks/proxmox/playbooks/46-proxmorph.yml` | proxmorph PVE web UI themes + sensor monitoring |
 | `playbooks/proxmox/playbooks/50-systemd-units.yml` | systemd units + Zabbix agent (gated) |
 | `group_vars/pvenodes/main.yml` | Package list and template VMIDs |

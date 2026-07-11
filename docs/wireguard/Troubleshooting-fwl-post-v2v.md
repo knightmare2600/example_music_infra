@@ -28,8 +28,8 @@ Before starting, substitute the placeholder values below with the real values fo
 | Placeholder     | Meaning                                          | Example (FAL)        | Example (GLA)        |
 |-----------------|--------------------------------------------------|----------------------|----------------------|
 | `<VM_NAME>`     | EXA hostname of the firewall VM                  | `EXAFWLFAL001`       | `EXAFWLGLA001`       |
-| `<WAN_IP>`      | Current WAN IP address of the VM                 | `192.168.139.51`     | `192.168.139.56`     |
-| `<LAN_IP>`      | LAN gateway IP of the VM                         | `192.168.76.1`       | `192.168.141.253`    |
+| `<WAN_IP>`      | Current WAN IP address of the VM                 | `192.168.139.76`     | `192.168.139.141`     |
+| `<LAN_IP>`      | LAN gateway IP of the VM                         | `192.168.76.253`       | `192.168.141.253`    |
 | `<SITE>`        | Three-letter site code                           | `FAL`                | `GLA`                |
 | `<OLD_WAN_IF>`  | Interface name WAN was using in VMware           | `ens32`              | `ens32`              |
 | `<OLD_LAN_IF>`  | Interface name LAN was using in VMware           | `ens33`              | `ens33`              |
@@ -644,7 +644,7 @@ interface: wg0
   private key: (hidden)
   listening port: 57052
 peer: yxYnCsZwxDmv6WrduGTC7pnW3sUxob1GGYpttPfGbmk=
-  endpoint: 192.168.139.51:51820
+  endpoint: 192.168.139.76:51820
   allowed ips: 10.0.76.0/24, 192.168.76.0/24
   latest handshake: 2 seconds ago
   transfer: 92 B received, 180 B sent
@@ -787,7 +787,7 @@ Then update the NM profiles and nftables config one final time to use `eth0`/`et
 
 - `NET-VIRT-V2V-001` — VMware to Proxmox V2V Migration Procedure
 - `NET-VPN-WG-001` — WireGuard Provisioning and Re-keying
-- `bootstrapping.d` — Proxmox Node First-Boot Provisioning
+- `docs/bootstrap/bootstrapping.md` — Proxmox Node First-Boot Provisioning
 
 ---
 
