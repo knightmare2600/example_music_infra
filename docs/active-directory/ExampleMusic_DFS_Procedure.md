@@ -32,7 +32,7 @@ Exceptions are noted in individual site entries.
 | `.7` | PVE node 3 | `EXAPVE<SITE>003` |
 | `.10` | Domain Controller — primary | `EXADCS<SITE>001` |
 | `.11` | Domain Controller — secondary | `EXADCS<SITE>002` |
-| `.48` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBC<SITE>001` |
+| `.48` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBC<SITE>001` |
 | `.100`–`.249` | DHCP pool | — |
 | `.250`–`.252` | RT switches | `EXASWI<SITE>001`–`003` |
 | `.253` | Secondary internet gateway | — |
@@ -700,8 +700,8 @@ Use this checklist to track progress through the deployment:
 | `EXASRV` | Server | `EXASVRCLD001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS | `EXANASFAL001` |
-| `EXASBC` | VOIP SBC — trunks to `EXACLDPBX001` | `EXASBCFAL001` |
-| `EXAPBX` | PBX | `EXACLDPBX001` |
+| `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
+| `EXAPBX` | PBX | `EXAPBXCLD001` |
 | `EXAPRV` | Provisioning / bootstrap server | `EXAPRVFAL001` |
 | `EXAWAP` | WiFi Access Point | `EXAWAPFAL001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |

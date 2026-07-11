@@ -33,8 +33,20 @@ run, not just the day someone happened to audit by hand:
    doesn't exist in sites.csv at all used as if it did) -- see the
    2026-07-11 ABR/GAA findings this check was built to generalise.
 
-Exit code: 0 if every site code is covered and no octet mismatch is found,
-1 otherwise.
+3. HOSTNAME SITE VALIDITY: every EXA<ROLE><SITE><NNN> -shaped hostname
+   found in docs/*.md (e.g. EXAFWLVRK001 -- role, site, then a 3-digit
+   number, matching how benarbejde/devices.csv-derived hostnames are
+   always built) has a real sites.csv code in its <SITE> position. Doesn't
+   check <ROLE> or <NNN> -- a hostname can legitimately be a hypothetical
+   "next available name" example that doesn't exist in devices.csv yet
+   (that's the whole point of some walkthroughs) -- but the site segment
+   is drawn from a fixed, closed set, so an invalid one is always wrong.
+   Catches role/site segments swapped in the hostname (EXACLDPBX001
+   instead of EXAPBXCLD001, found 2026-07-11 in 4 docs and one Ansible
+   Jinja2 template comment) as well as a fabricated site segment.
+
+Exit code: 0 if every site code is covered, no octet mismatch is found,
+and every hostname's site segment is real, 1 otherwise.
 """
 import csv
 import re
@@ -49,6 +61,30 @@ DOCS_DIR = REPO_ROOT / "docs"
 EXCLUDED_PREFIXES = ("inventory/old/",)
 
 IPV4_RE = re.compile(r"\b(192\.168|172\.16)\.(\d{1,3})\.(\d{1,3})\b")
+HOSTNAME_RE = re.compile(r"\bEXA([A-Z]{3})([A-Z]{3})(\d{3})\b")
+
+# Known, individually-verified exceptions -- (relative doc path, hostname) pairs
+# that legitimately have a non-site-code segment, not a bug. Checked by hand
+# 2026-07-11; add to this list only after actually reading the context, the
+# same way every other entry here was verified, not to silence a real finding.
+KNOWN_HOSTNAME_EXCEPTIONS = {
+    # Beginners_Guide.md's own changelog names the WRONG form on purpose, as
+    # part of describing a past mistake and its fix -- not a live error.
+    ("docs/ExampleMusic_Beginners_Guide.md", "EXACLDPBX001"),
+    # "XXX" is a placeholder-by-letters style (same intent as <SITE>, just
+    # written differently) used in a generic PowerShell/kernel-cmdline example,
+    # not a claim that XXX is a real site.
+    ("docs/active-directory/ExampleMusic_UPN_DNS_dnsmasq_Procedure.md", "EXADCSXXX001"),
+    ("docs/bootstrap/bootstrapping.md", "EXASRVXXX001"),
+    # A deliberately non-EXA-convention example hostname (illustrating a
+    # pre-existing/legacy machine being adopted into Ansible, not a site-named
+    # one) -- its IP (192.168.161.99) is genuinely on MCR's subnet, "OLD" is
+    # not standing in for a site code at all.
+    ("docs/ansible/Ansible_Windows_Guide.md", "EXAWKSOLD001"),
+    # Explicitly self-documented in the same table row as fictional: "Cloud
+    # twin ... Legal fiction. Does not exist." Not a real device, not a bug.
+    ("docs/buildsheets/buildsheet-firewall.md", "EXAFWLPRV001"),
+}
 
 
 def load_sites():
@@ -81,11 +117,18 @@ def main():
     docs = git_tracked_docs()
     all_text = ""
     mismatches = []
+    bad_hostnames = []
 
     for doc in docs:
         text = doc.read_text(encoding="utf-8", errors="replace")
         all_text += text
+        rel_doc = doc.relative_to(REPO_ROOT).as_posix()
         for lineno, line in enumerate(text.splitlines(), start=1):
+            for role, site_seg, num in HOSTNAME_RE.findall(line):
+                hostname = f"EXA{role}{site_seg}{num}"
+                if site_seg not in sites and (rel_doc, hostname) not in KNOWN_HOSTNAME_EXCEPTIONS:
+                    bad_hostnames.append((doc, lineno, hostname, site_seg))
+
             # A trailing "# CODE ..." comment (e.g. annotating which DC's IP a
             # command targets) is naming something *about* that site, not
             # asserting an address belongs to it -- only look at the code
@@ -145,6 +188,15 @@ def main():
                   f"{expected_base}.{expected_octet}.x")
     else:
         print("No octet mismatches found.")
+
+    if bad_hostnames:
+        ok = False
+        print(f"\n{len(bad_hostnames)} hostname(s) with an invalid site segment:")
+        for doc, lineno, hostname, site_seg in bad_hostnames:
+            rel = doc.relative_to(REPO_ROOT)
+            print(f"  {rel}:{lineno}: {hostname} -- \"{site_seg}\" is not a real sites.csv code")
+    else:
+        print("Every EXA<ROLE><SITE><NNN> hostname's site segment is real.")
 
     return 0 if ok else 1
 
