@@ -7,11 +7,11 @@
 
 ---
 
-> **Architecture note:** The Rudder server (`EXASRVFAL002`) is a dedicated, single-function node. It does not serve files, host other services, or run any workloads beyond Rudder. PVE hypervisor nodes are explicitly exempt from Rudder management — they are infrastructure substrate and are managed via Proxmox's own tooling only.
+> **Architecture note:** The Rudder server (`EXARDRCLD001`) is a dedicated, single-function node. It does not serve files, host other services, or run any workloads beyond Rudder. PVE hypervisor nodes are explicitly exempt from Rudder management — they are infrastructure substrate and are managed via Proxmox's own tooling only.
 >
-> **Java note:** The Rudder server runs Java (it is a Scala/Lift web application — this cannot be avoided on the server). The Rudder agent installed on Linux nodes (firewall VMs, Debian servers) is pure C/shell with zero Java dependency. Java never touches any node except `EXASRVFAL002`.
+> **Java note:** The Rudder server runs Java (it is a Scala/Lift web application — this cannot be avoided on the server). The Rudder agent installed on Linux nodes (firewall VMs, Debian servers) is pure C/shell with zero Java dependency. Java never touches any node except `EXARDRCLD001`.
 >
-> **Cloud note:** `EXASRVFAL002` lives in the cloud. The setup script (`rudderme.sh`) handles hostname and static IP configuration with CLD-aware checks. Because the node is cloud-hosted, skip the PVE VM creation section and use whatever provisioning method your cloud provider offers.
+> **Cloud note:** `EXARDRCLD001` lives in the cloud. The setup script (`rudderme.sh`) handles hostname and static IP configuration with CLD-aware checks. Because the node is cloud-hosted, skip the PVE VM creation section and use whatever provisioning method your cloud provider offers.
 >
 > **Fredericia Havn note:** `192.168.139.50` below is Edinburgh's provisioning server. If you're
 > fetching the Ansible key from Fredericia Havn instead, it's `172.16.124.1:8000` (gateway
@@ -23,7 +23,7 @@
 
 1. [Prerequisites](#1-prerequisites)
 2. [Node Specification and Values](#2-node-specification-and-values)
-3. [Create the VM — EXASRVFAL002](#3-create-the-vm--exasrvfal002)
+3. [Create the VM — EXARDRCLD001](#3-create-the-vm--exardrcld001)
 4. [Install Debian Trixie](#4-install-debian-trixie)
 5. [Post-Install Base Configuration](#5-post-install-base-configuration)
 6. [Install Rudder Server](#6-install-rudder-server)
@@ -55,11 +55,11 @@
 | Requirement | Detail | Status |
 |-------------|--------|--------|
 | AD deployed | `jukebox.internal` domain with FAL as FSMO holder | See NET-AD-DC-001 |
-| PVE node EXAPVEFAL001 online | FAL primary hypervisor (on-prem deployments only) | See NET-BUILD-PVE-001 |
+| PVE node EXAPVECLD001 online | CLD hypervisor (on-prem deployments only) | See NET-BUILD-PVE-001 |
 | WireGuard fabric up | FAL ↔ ODE ↔ BRK tunnels established | See NET-VPN-WG-001 |
 | DNS working | `jukebox.internal` resolves from all sites | See NET-AD-DC-001 Phase 2 |
 | Provisioning server online | `192.168.139.50` (on-prem only) | See NET-BUILD-PVE-001 |
-| `create-vm.py` deployed | On `EXAPVEFAL001` at `/usr/local/bin/` (on-prem only) | See buildsheet-pve.md |
+| `create-vm.py` deployed | On `EXAPVECLD001` at `/usr/local/bin/` (on-prem only) | See buildsheet-pve.md |
 
 > For the **cloud-hosted** Rudder server: skip the PVE VM creation step entirely. Provision a Debian Trixie cloud instance with the spec in section 2, then run `rudderme.sh`.
 
@@ -67,8 +67,8 @@
 
 | Package | Where | Purpose |
 |---------|-------|---------|
-| `create-vm.py` | EXAPVEFAL001 (on-prem only) | VM provisioning |
-| Debian Trixie ISO or PXE | EXAPVEFAL001 or cloud provider | OS install |
+| `create-vm.py` | EXAPVECLD001 (on-prem only) | VM provisioning |
+| Debian Trixie ISO or PXE | EXAPVECLD001 or cloud provider | OS install |
 | Rudder 8.x repository | Downloaded during install | Rudder server package |
 | `rudderme.sh` | This repository | Automated Rudder server setup |
 | `sites.csv` | Same directory as `rudderme.sh` | Site/subnet data for allowed-networks population |
@@ -77,10 +77,10 @@
 
 | Account | Where needed | Notes |
 |---------|-------------|-------|
-| Proxmox root or admin | EXAPVEFAL001 (on-prem only) | VM creation |
-| Local root | EXASRVFAL002 | Post-install configuration |
+| Proxmox root or admin | EXAPVECLD001 (on-prem only) | VM creation |
+| Local root | EXARDRCLD001 | Post-install configuration |
 | Domain Admin | EXADCSFAL001 | AD/LDAP service account creation |
-| Rudder admin | EXASRVFAL002 web UI | Created during initial setup |
+| Rudder admin | EXARDRCLD001 web UI | Created during initial setup |
 
 ### Network Prerequisites
 
@@ -95,7 +95,7 @@ Cross-site traffic travels over WireGuard.
 | 80 | TCP | Agent → Server/Relay | HTTP redirect (redirects to 443) |
 
 ```bash
-# On EXAFWLFAL001 — allow Rudder ports from all site VPN subnets
+# On EXAFWLCLD001 — allow Rudder ports from all site VPN subnets
 ufw allow from 10.0.0.0/8 to any port 443  proto tcp comment "Rudder agents HTTPS"
 ufw allow from 10.0.0.0/8 to any port 5309 proto tcp comment "Rudder CFEngine"
 ```
@@ -104,21 +104,21 @@ ufw allow from 10.0.0.0/8 to any port 5309 proto tcp comment "Rudder CFEngine"
 
 ## 2. Node Specification and Values
 
-### EXASRVFAL002 — Rudder Server (Cloud)
+### EXARDRCLD001 — Rudder Server (Cloud)
 
 | Parameter | Value |
 |-----------|-------|
-| Hostname | `EXASRVFAL002` |
-| FQDN | `EXASRVFAL002.jukebox.internal` |
+| Hostname | `EXARDRCLD001` |
+| FQDN | `EXARDRCLD001.jukebox.internal` |
 | Function | Rudder configuration management server |
 | OS | Debian GNU/Linux 13 (Trixie) |
 | vCPU | 4 |
 | RAM | 8 GB |
 | Disk | 30 GB minimum (SSD — PostgreSQL is I/O-sensitive) |
-| IP | `192.168.76.12` |
-| Gateway | `192.168.76.1` |
-| DNS | `192.168.76.10` (EXADCSFAL001) |
-| Rudder web UI | `https://192.168.76.12/rudder` |
+| IP | `192.168.69.12` |
+| Gateway | `192.168.69.253` |
+| DNS | `192.168.69.10` (EXADCSCLD001) |
+| Rudder web UI | `https://192.168.69.12/rudder` |
 | Rudder version | 8.x (current stable) |
 
 > **Disk sizing:** Rudder's PostgreSQL report database grows with managed nodes and retention period. The Rudder documentation estimates ~76–114 GB for 500 nodes with 50 directives each. At current `jukebox.internal` scale, 30 GB is adequate; plan to expand `/var` if the node count exceeds ~100.
@@ -141,16 +141,16 @@ ufw allow from 10.0.0.0/8 to any port 5309 proto tcp comment "Rudder CFEngine"
 
 ---
 
-## 3. Create the VM — EXASRVFAL002
+## 3. Create the VM — EXARDRCLD001
 
 ### On-Premises (PVE)
 
 ```bash
-# SSH to EXAPVEFAL001
-ansible@EXAPVECLD001[~]$ ssh ansible@192.168.76.5
+# From the Ansible control node, SSH to EXAPVECLD001
+ansible@EXAANSCLD001[~]$ ssh ansible@192.168.69.5
 
 # Create the VM
-ansible@EXAPVECLD001[~]$ python3 /usr/local/bin/create-vm.py --name EXASRVFAL002 --cores 4 --memory 8192 --disk 30 --os debian --ip 192.168.76.12 --gateway 192.168.76.1 --dns 192.168.76.10 --site FAL
+ansible@EXAPVECLD001[~]$ python3 /usr/local/bin/create-vm.py --name EXARDRCLD001 --cores 4 --memory 8192 --disk 30 --os debian --ip 192.168.69.12 --gateway 192.168.69.253 --dns 192.168.69.10 --site CLD
 ```
 
 *Refer to `proxmox/pve-create-vm.md` for full `create-vm.py` parameter reference.*
@@ -167,8 +167,8 @@ Provision a Debian Trixie instance at your cloud provider with the spec above. E
 ### Verify VM Created (on-prem only)
 
 ```bash
-# From EXAPVEFAL001
-ansible@EXAPVECLD001[~]$ qm list | grep EXASRVFAL002
+# From EXAPVECLD001
+ansible@EXAPVECLD001[~]$ qm list | grep EXARDRCLD001
 ansible@EXAPVECLD001[~]$ qm config <VMID>
 ```
 
@@ -231,18 +231,18 @@ ansible@EXASVRCLD004[~]$ chmod 0440 /etc/sudoers.d/ansible
 `rudderme.sh` prompts for these interactively. Manual equivalent:
 
 ```bash
-ansible@EXASVRCLD004[~]$ hostnamectl set-hostname EXASRVFAL002
+ansible@EXASVRCLD004[~]$ hostnamectl set-hostname EXARDRCLD001
 
 ansible@EXASVRCLD004[~]$ cat > /etc/hosts << 'EOF'
 127.0.0.1       localhost
-127.0.1.1       EXASRVFAL002.jukebox.internal EXASRVFAL002
-192.168.76.10   EXADCSFAL001.jukebox.internal EXADCSFAL001
+127.0.1.1       EXARDRCLD001.jukebox.internal EXARDRCLD001
+192.168.69.10   EXADCSCLD001.jukebox.internal EXADCSCLD001
 EOF
 
 ansible@EXASVRCLD004[~]$ cat > /etc/resolv.conf << 'EOF'
 domain jukebox.internal
 search jukebox.internal
-nameserver 192.168.76.10
+nameserver 192.168.69.10
 nameserver 192.168.231.10
 EOF
 
@@ -278,9 +278,9 @@ ansible@EXASVRCLD004[~]$ ufw status verbose
 
 ```bash
 # Check the target IP is free before assigning
-ansible@EXASVRCLD004[~]$ ping -c1 -W1 192.168.76.12 && echo "IP IN USE — resolve conflict first" && exit 1
+ansible@EXASVRCLD004[~]$ ping -c1 -W1 192.168.69.12 && echo "IP IN USE — resolve conflict first" && exit 1
 
-ansible@EXASVRCLD004[~]$ nmcli con add type ethernet ifname eth0 con-name rudder-static ipv4.method manual ipv4.addresses "192.168.76.12/24" ipv4.gateway "192.168.76.1" ipv4.dns "192.168.76.10" ipv4.dns-search "jukebox.internal" ipv6.method ignore connection.autoconnect yes connection.autoconnect-priority 100
+ansible@EXASVRCLD004[~]$ nmcli con add type ethernet ifname eth0 con-name rudder-static ipv4.method manual ipv4.addresses "192.168.69.12/24" ipv4.gateway "192.168.69.253" ipv4.dns "192.168.69.10" ipv4.dns-search "jukebox.internal" ipv6.method ignore connection.autoconnect yes connection.autoconnect-priority 100
 ```
 
 ***NB: Static IP takes effect on reboot, or immediately with `nmcli con up rudder-static` if at the local console.***
@@ -360,7 +360,7 @@ ansible@EXASVRCLD004[~]$ sudo rudder server health
 Navigate to:
 
 ```
-https://192.168.76.12/rudder
+https://192.168.69.12/rudder
 ```
 
 Accept the self-signed certificate (replace with a Let's Encrypt cert later).
@@ -388,7 +388,7 @@ rudder server change-password admin
 
 ```
 Administration → Settings → General
-  Rudder server hostname: EXASRVFAL002.jukebox.internal
+  Rudder server hostname: EXARDRCLD001.jukebox.internal
 ```
 
 This is the address agents use to connect. Set this before enrolling any agents.
@@ -442,7 +442,7 @@ Format: `networkip/mask`, e.g. `192.168.42.0/24`. Add one entry per site subnet.
 The API endpoint `POST /rudder/api/latest/settings/allowed_networks/root` **replaces** the full list (not append). Always include the full list of desired networks in each call.
 
 ```bash
-RUDDER_URL="https://192.168.76.12"
+RUDDER_URL="https://192.168.69.12"
 RUDDER_TOKEN="<your-api-token>"
 
 # View current allowed networks
@@ -451,7 +451,7 @@ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "${RUDDER_URL}/rudder/api/latest/sett
 # Set all site subnets in one call
 curl -sk -X POST -H "X-API-Token: ${RUDDER_TOKEN}" -H "Content-Type: application/json" -d '{
     "allowed_networks": [
-      "192.168.76.0/24",
+      "192.168.69.0/24",
       "192.168.113.0/24",
       "192.168.126.0/24",
       "192.168.136.0/24",
@@ -481,7 +481,7 @@ with open("sites.csv") as f:
   for row in csv.DictReader(f):
     subnet = row.get("subnet", "").strip()
     if subnet:
-      # Convert host address to network address e.g. 192.168.76.5 -> 192.168.76.0/24
+      # Convert host address to network address e.g. 192.168.76.5 -> 192.168.69.0/24
       parts = subnet.split(".")
       if len(parts) == 4:
         subnets.append(f"{parts[0]}.{parts[1]}.{parts[2]}.0/24")
@@ -502,13 +502,13 @@ Rudder supports LDAP/AD authentication for the web UI. AD is used as the primary
 
 ```powershell
 # Run on EXADCSFAL001
-New-ADUser -Name "Rudder LDAP Bind" -SamAccountName "svc_rudder_ldap" -UserPrincipalName "svc_rudder_ldap@jukebox.internal" -AccountPassword (ConvertTo-SecureString "RudderBind2026!" -AsPlainText -Force) -PasswordNeverExpires $true  -CannotChangePassword $true -Enabled $true -Path "OU=Service Accounts,DC=jukebox,DC=example" -Description "Rudder web UI LDAP bind account — read only"
+New-ADUser -Name "Rudder LDAP Bind" -SamAccountName "svc_rudder_ldap" -UserPrincipalName "svc_rudder_ldap@jukebox.internal" -AccountPassword (ConvertTo-SecureString "RudderBind2026!" -AsPlainText -Force) -PasswordNeverExpires $true  -CannotChangePassword $true -Enabled $true -Path "OU=Service Accounts,DC=jukebox,DC=internal" -Description "Rudder web UI LDAP bind account — read only"
 ```
 
 ### Create Rudder Access Group in AD
 
 ```powershell
-New-ADGroup -Name "Rudder Admins" -SamAccountName "GRP_Rudder_Admins" -GroupScope Global -GroupCategory Security -Path "OU=IT Groups,DC=jukebox,DC=example" -Description "Members have full admin access to Rudder web UI"
+New-ADGroup -Name "Rudder Admins" -SamAccountName "GRP_Rudder_Admins" -GroupScope Global -GroupCategory Security -Path "OU=IT Groups,DC=jukebox,DC=internal" -Description "Members have full admin access to Rudder web UI"
 Add-ADGroupMember -Identity "GRP_Rudder_Admins" -Members "Administrator"
 ```
 
@@ -529,11 +529,11 @@ ansible@EXASVRCLD004[~]$ cat > /opt/rudder/etc/rudder-users.xml << 'EOF'
         role="administrator"/>
 
   <ldap>
-    <connection url="ldap://192.168.76.10:389"
-                bind-dn="CN=Rudder LDAP Bind,OU=Service Accounts,DC=jukebox,DC=example"
+    <connection url="ldap://192.168.69.10:389"
+                bind-dn="CN=Rudder LDAP Bind,OU=Service Accounts,DC=jukebox,DC=internal"
                 bind-password="RudderBind2026!"/>
 
-    <search base="DC=jukebox,DC=example"
+    <search base="DC=jukebox,DC=internal"
             filter="(&amp;(objectClass=user)(sAMAccountName={0}))"
             returnedAttribute="sAMAccountName"/>
 
@@ -543,7 +543,7 @@ ansible@EXASVRCLD004[~]$ cat > /opt/rudder/etc/rudder-users.xml << 'EOF'
                          configuration, validator, compliance
       -->
       <roleMap role="administrator"
-               group="CN=GRP_Rudder_Admins,OU=IT Groups,DC=jukebox,DC=example"/>
+               group="CN=GRP_Rudder_Admins,OU=IT Groups,DC=jukebox,DC=internal"/>
     </roleMapping>
   </ldap>
 
@@ -563,7 +563,7 @@ htpasswd -bnBC 12 "" 'YourSecurePassword' | tr -d ':\n'
 
 ### Verify AD Login
 
-1. Navigate to `https://192.168.76.12/rudder`
+1. Navigate to `https://192.168.69.12/rudder`
 2. Log in with an AD account that is a member of `GRP_Rudder_Admins`
 3. Verify Administrator role on the dashboard
 4. Log out and verify local `admin` account still works as fallback
@@ -577,7 +577,7 @@ The Linux agent is a lightweight C daemon — no Java, no heavy runtime. It runs
 ### Via Package Repository (recommended)
 
 ```bash
-RUDDER_SERVER="192.168.76.12"   # or relay IP for non-FAL sites
+RUDDER_SERVER="192.168.69.12"   # or relay IP for non-FAL sites
 
 wget -qO - https://repository.rudder.io/apt/rudder_apt_key.pub | sudo gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/rudder-archive-keyring.gpg] \
@@ -598,7 +598,7 @@ ansible@EXASVRCLD004[~]$ rudder agent run
 ### One-liner for Firewall VMs (Debian)
 
 ```bash
-RUDDER_SERVER="192.168.76.12"
+RUDDER_SERVER="192.168.69.12"
 
 curl -s https://repository.rudder.io/apt/rudder_apt_key.pub | gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg && apt install -y rudder-agent && rudder agent policy-server $RUDDER_SERVER && systemctl enable --now rudder-agent && rudder agent run
 ```
@@ -619,7 +619,7 @@ rudder agent info        # last run, policy server, compliance
 
 ```powershell
 # Run as Administrator
-$rudderServer = "192.168.76.12"
+$rudderServer = "192.168.69.12"
 $rudderVersion = "8.1.0"  # update to current — check https://www.rudder.io/download/
 $msiPath = "$env:TEMP\rudder-agent.msi"
 
@@ -641,7 +641,7 @@ Write-Host "[+] Agent running — accept node in Rudder UI"
 ### Via Silent MSI (batch)
 
 ```batch
-msiexec /i rudder-agent-8.x.x.msi /quiet /norestart RUDDER_POLICY_SERVER=192.168.76.12
+msiexec /i rudder-agent-8.x.x.msi /quiet /norestart RUDDER_POLICY_SERVER=192.168.69.12
 ```
 
 ### GPO Delivery (fleet rollout)
@@ -654,7 +654,7 @@ For rolling the agent out across all Windows nodes:
 
 ```powershell
 # Save as Deploy-RudderAgent.ps1 in SYSVOL
-$rudderServer = "192.168.76.12"
+$rudderServer = "192.168.69.12"
 $agentPath    = "C:\Program Files\Rudder\bin\rudder.exe"
 
 if (-Not (Test-Path $agentPath)) {
@@ -700,7 +700,7 @@ Click **Accept**. The node moves to **All nodes** and receives policies on the n
 ### Bulk Acceptance via API
 
 ```bash
-RUDDER_URL="https://192.168.76.12"
+RUDDER_URL="https://192.168.69.12"
 RUDDER_TOKEN="<your-api-token>"
 
 # List all pending nodes
@@ -738,7 +738,7 @@ Relay servers sit between remote agents and the Rudder server. Agents at EU site
 ### Install Relay on ODE/BRK
 
 ```bash
-RUDDER_SERVER="192.168.76.12"   # FAL root server
+RUDDER_SERVER="192.168.69.12"   # FAL root server
 
 ansible@EXASVRCLD004[~]$ wget -qO - https://repository.rudder.io/apt/rudder_apt_key.pub | sudo gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg
 
@@ -894,7 +894,7 @@ For software not available via Chocolatey or apt (Bloomberg Terminal is the cano
 ### Step 1 — Upload Installer
 
 ```bash
-# On EXASRVFAL002
+# On EXARDRCLD001
 SHARED_FILES="/var/rudder/configuration-repository/shared-files"
 ansible@EXASVRCLD004[~]$ mkdir -p "${SHARED_FILES}/software/bloomberg"
 ansible@EXASVRCLD004[~]$ cp /tmp/bloomberg-setup-x.x.x.exe "${SHARED_FILES}/software/bloomberg/"
@@ -931,7 +931,7 @@ Rule:
 
 Cockpit provides a web-based system management UI for Linux nodes on port 9090. Rudder and Cockpit coexist without conflict — they serve different purposes.
 
-### Install Cockpit on EXASRVFAL002
+### Install Cockpit on EXARDRCLD001
 
 ```bash
 ansible@EXASVRCLD004[~]$ apt install -y cockpit cockpit-pcp
@@ -969,7 +969,7 @@ Administration → API accounts → New API account
 
 ```bash
 # Test API access
-ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.76.12/rudder/api/latest/nodes" | python3 -m json.tool
+ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/api/latest/nodes" | python3 -m json.tool
 ```
 
 ### Useful Endpoints
@@ -993,17 +993,17 @@ ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192
 
 ```bash
 # Force the agent to run right now (requires port 5309 open from server to node)
-ansible@EXASVRCLD004[~]$ curl -sk -X POST -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.76.12/rudder/relay-api/1/remote-run/nodes/${NODE_UUID}?keep_output=true"
+ansible@EXASVRCLD004[~]$ curl -sk -X POST -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/relay-api/1/remote-run/nodes/${NODE_UUID}?keep_output=true"
 ```
 
 ### Get Compliance Summary
 
 ```bash
 # Global compliance
-ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.76.12/rudder/api/latest/compliance" | python3 -m json.tool
+ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/api/latest/compliance" | python3 -m json.tool
 
 # Per-node compliance
-ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.76.12/rudder/api/latest/compliance/nodes" | python3 -m json.tool
+ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/api/latest/compliance/nodes" | python3 -m json.tool
 ```
 
 ---
@@ -1044,7 +1044,7 @@ Store the token in Ansible Vault:
 ansible-vault create group_vars/all/rudder_vault.yml
 # Add:
 #   rudder_api_token: "your-token-here"
-#   rudder_url: "https://192.168.76.12"
+#   rudder_url: "https://192.168.69.12"
 ```
 
 ### Ansible Task: Wait for Node to Appear in Rudder
@@ -1130,7 +1130,7 @@ After installing the agent, the node appears in the pending list after its first
 ```yaml
 # group_vars/all/rudder.yml
 # Rudder relay UUID mapping — get UUIDs from:
-#   curl -sk -H "X-API-Token: TOKEN" https://192.168.76.12/rudder/api/latest/nodes
+#   curl -sk -H "X-API-Token: TOKEN" https://192.168.69.12/rudder/api/latest/nodes
 #   (look for nodes where "rudder.roles" includes "rudder-policy-server-relay")
 
 rudder_relay_uuid:
@@ -1151,7 +1151,7 @@ rudder_relay_uuid:
 #     --limit <hostname or group> --ask-vault-pass
 #
 # Variables:
-#   rudder_server  — Rudder server or relay IP (default: 192.168.76.12)
+#   rudder_server  — Rudder server or relay IP (default: 192.168.69.12)
 #   site_code      — Site code from sites.csv (e.g. FAL, ODE, BRK)
 
 - name: Install and register Rudder agent
@@ -1161,7 +1161,7 @@ rudder_relay_uuid:
     - ../../group_vars/all/rudder_vault.yml
 
   vars:
-    rudder_server: "192.168.76.12"
+    rudder_server: "192.168.69.12"
     rudder_apt_keyring: /usr/share/keyrings/rudder-archive-keyring.gpg
     rudder_version: "8.x"
 
@@ -1275,15 +1275,15 @@ rudder_relay_uuid:
 | Task | Node | Status |
 |------|------|--------|
 | Provision VM (PVE) or cloud instance | EXAPVEFAL001 / cloud | [ ] |
-| Install Debian Trixie | EXASRVFAL002 | [ ] |
-| Run `rudderme.sh` (sets hostname, IP, installs Rudder) | EXASRVFAL002 | [ ] |
-| Initial configuration + admin password changed | EXASRVFAL002 | [ ] |
-| Allowed networks populated from sites.csv | EXASRVFAL002 | [ ] |
-| AD/LDAP authentication configured | EXASRVFAL002 | [ ] |
-| AD login verified | EXASRVFAL002 | [ ] |
-| Local admin fallback verified | EXASRVFAL002 | [ ] |
-| Cockpit installed | EXASRVFAL002 | [ ] |
-| API token generated for Ansible integration | EXASRVFAL002 | [ ] |
+| Install Debian Trixie | EXARDRCLD001 | [ ] |
+| Run `rudderme.sh` (sets hostname, IP, installs Rudder) | EXARDRCLD001 | [ ] |
+| Initial configuration + admin password changed | EXARDRCLD001 | [ ] |
+| Allowed networks populated from sites.csv | EXARDRCLD001 | [ ] |
+| AD/LDAP authentication configured | EXARDRCLD001 | [ ] |
+| AD login verified | EXARDRCLD001 | [ ] |
+| Local admin fallback verified | EXARDRCLD001 | [ ] |
+| Cockpit installed | EXARDRCLD001 | [ ] |
+| API token generated for Ansible integration | EXARDRCLD001 | [ ] |
 
 ### Phase 2 — FAL Site Agents
 
@@ -1295,7 +1295,7 @@ rudder_relay_uuid:
 | Node accepted in Rudder UI | EXADCSFAL001 | [ ] |
 | Windows agent installed | EXASRVFAL001 | [ ] |
 | Node accepted in Rudder UI | EXASRVFAL001 | [ ] |
-| Node groups created | EXASRVFAL002 | [ ] |
+| Node groups created | EXARDRCLD001 | [ ] |
 | Core package rule applied and compliant | All Windows FAL | [ ] |
 
 ### Phase 3 — ODE Hub and Relay
@@ -1384,7 +1384,7 @@ ansible@EXASVRCLD004[~]$ grep -i "error\|repair\|fail" /var/log/rudder/agent/age
 | Rudder Term | Traditional Equivalent | Description |
 |-------------|----------------------|-------------|
 | **Node** | Managed endpoint / client | Any machine with a Rudder agent |
-| **Root server** | Management server | The central Rudder server (`EXASRVFAL002`) |
+| **Root server** | Management server | The central Rudder server (`EXARDRCLD001`) |
 | **Relay** | Distribution point / secondary server | Intermediate server forwarding policies and aggregating reports |
 | **Technique** | Policy template | A reusable, parameterised policy definition — you do not use it directly, you instantiate it |
 | **Directive** | Policy instance / GPO setting | A Technique with specific values filled in. "Install Notepad++" is a Directive of the "Package management" Technique |
@@ -1431,7 +1431,7 @@ This exemption is permanent and is not a future roadmap item.
 | Document | Relationship |
 |----------|-------------|
 | `bootstrap/ad-dc-wireguard-deployment.md` | AD must be deployed before LDAP auth can be configured |
-| `proxmox/pve-create-vm.md` | `create-vm.py` used to provision EXASRVFAL002 (on-prem) |
+| `proxmox/pve-create-vm.md` | `create-vm.py` used to provision EXARDRCLD001 (on-prem) |
 | `gpo/corporate-livery.md` | Rudder and GPO are complementary — GPO for domain policy, Rudder for package and config management |
 | `dfs/dfs-replication.md` | SRV nodes managed by Rudder agents |
 | `network-inventory.md` | Node IPs and site assignments |
