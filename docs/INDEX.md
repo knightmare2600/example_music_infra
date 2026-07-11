@@ -200,6 +200,19 @@ WireGuard VPN configuration and troubleshooting.
 
 ---
 
+## Personal Tooling (Porting Work)
+
+Not Example Music infrastructure — build/release docs for Robert's own side-project ARM64
+ports and forks, listed in root `README.md`'s ["Porting Work"](../README.md#porting-work)
+table. Kept here rather than deleted (still actively built/maintained; the upstream doesn't
+maintain the original much) and catalogued rather than left as an orphan.
+
+| File | Doc ID | Description |
+|------|--------|-------------|
+| [ColorEcho GitHub Actions Build & Release Documentation.md](ColorEcho%20GitHub%20Actions%20Build%20%26%20Release%20Documentation.md) | — | GitHub Actions build/release pipeline for `ColorEcho` (ARM64 port, patches merged upstream) — win-x64/win-arm64 matrix build, release automation |
+
+---
+
 ## Document ID Registry
 
 | Series | Scope |
