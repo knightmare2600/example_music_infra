@@ -800,6 +800,22 @@
     "Email": "builders@jukebox.internal"
   },
   {
+    "Name": "D-A-D",
+    "Description": "Danish hard rock band formed in Hørsholm/Copenhagen in 1982",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Jesper Binzer",
+    "Email": "dad@jukebox.internal"
+  },
+  {
+    "Name": "Arne Lundemann",
+    "Description": "Solo artist — actor and opera singer, known for \"OB op i top\"",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Arne Lundemann",
+    "Email": "arnelundemann@jukebox.internal"
+  },
+  {
     "Name": "Sales",
     "Description": "Remote VPN users and road warriors in sales",
     "Type": "Security",
