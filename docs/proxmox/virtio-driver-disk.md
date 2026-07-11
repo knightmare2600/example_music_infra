@@ -2,7 +2,11 @@
 
 **Example Music Limited — Internal Infrastructure**
 
-This runbook covers building a small FAT32 raw disk image containing unpacked VirtIO drivers for use with PhoenixPE during Windows VM installation. The image is attached to Windows VMs as `scsi1` by `create-vm.py` and appears as drive `D:` (or similar) inside WinPE.
+> **Fredericia Havn note:** `192.168.139.50` below is Edinburgh's provisioning server. If you're
+> deploying to Fredericia Havn instead, it's `172.16.124.1:8000` (gateway `172.16.124.2`) — see
+> `docs/bootstrap/bootstrapping.md` §4.1a.
+
+This runbook covers building a small FAT32 raw disk image containing unpacked VirtIO drivers for use with WinPE during Windows VM installation. The image is attached to Windows VMs as `scsi1` by `create-vm.py` and appears as drive `D:` (or similar) inside WinPE.
 
 ---
 
@@ -147,9 +151,9 @@ scp virtio-drivers.img root@192.168.139.50:/var/lib/vz/template/iso/virtio-drive
 
 ---
 
-## Using the Disk in PhoenixPE
+## Using the Disk in WinPE
 
-When a Windows VM boots PhoenixPE, the driver disk will appear as a drive (typically `D:` if the boot media is `X:` or `C:`). Load drivers with `drvload.exe` before attempting to access the SCSI disk or network.
+When a Windows VM boots WinPE, the driver disk will appear as a drive (typically `D:` if the boot media is `X:` or `C:`). Load drivers with `drvload.exe` before attempting to access the SCSI disk or network.
 
 ### Selecting the right OS version folder
 
@@ -177,11 +181,11 @@ drvload D:\NetKVM\2k22\amd64\netkvm.inf
 
 After `drvload vioscsi`, the `scsi0` disk (where Windows will be installed) should appear in Disk Management / `diskpart`. After `drvload NetKVM`, the network adapter becomes available and you can map your share.
 
-### Suggested PhoenixPE startup script
+### Suggested WinPE startup script
 
 ```cmd
 @echo off
-:: VirtIO driver loader — runs at PhoenixPE startup
+:: VirtIO driver loader — runs at WinPE startup
 :: Adjust OSVER and DRVDRV as needed
 
 set OSVER=2k22
@@ -228,7 +232,7 @@ Old images can be retained or deleted from `/var/lib/vz/template/iso/` as prefer
 
 ### drvload fails — "The system cannot find the path specified"
 
-Check the drive letter. In PhoenixPE the driver disk may not always be `D:`.
+Check the drive letter. In WinPE the driver disk may not always be `D:`.
 Run `diskpart` → `list volume` to find the correct letter.
 
 ### drvload fails — "The INF file is not valid"

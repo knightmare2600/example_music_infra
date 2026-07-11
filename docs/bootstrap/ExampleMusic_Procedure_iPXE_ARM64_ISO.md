@@ -126,7 +126,11 @@ VMware Fusion on Apple Silicon (ARM64) requires a UEFI-bootable ISO. The standar
 
 ### Prerequisites
 
-All steps are performed on the Edinburgh provisioning host (`EXAPRVSCOTCLD001`, `192.168.139.50`) running Debian Trixie, unless otherwise noted.
+All steps are performed on the Edinburgh provisioning host (`EXAPRVVRK001`, `192.168.139.50`) running Debian Trixie, unless otherwise noted.
+
+> **Fredericia Havn note:** if you're building/deploying at Fredericia Havn instead, the
+> provisioning server is `172.16.124.1:8000` (gateway `172.16.124.2`) — see
+> `docs/bootstrap/bootstrapping.md` §4.1a.
 
 | Requirement | Notes |
 |-------------|-------|

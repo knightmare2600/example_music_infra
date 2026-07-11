@@ -82,6 +82,13 @@
 #               bootstrap/ vs active-directory/ path bug already fixed once
 #               in docs/INDEX.md, plus a stray ../ in a same-directory
 #               link) that the narrower check had no way to see.
+#   2026-07-11  Added a persistent report file (reports/run-<timestamp>.log +
+#               reports/latest.log, gitignored -- see the report-file block
+#               below) after Robert pointed out check 3's drop-in-binary
+#               output (it was already there -- see check_references.py)
+#               had nowhere durable to land once terminal scrollback was
+#               gone. --no-report added to skip it for callers that already
+#               capture output themselves.
 # ==============================================================================
 set -uo pipefail
 
@@ -92,9 +99,13 @@ set -uo pipefail
 # actually about to deploy, not just cloning the repo to read it. Default
 # behaviour (no flag) is unchanged -- still safe to run on a bare clone with
 # nothing dropped in yet.
+# --no-report: skip writing the report file (see below) -- for callers that
+# only want the terminal output (e.g. piping into something else already).
 STRICT=false
+NO_REPORT=false
 for arg in "$@"; do
   [[ "$arg" == "--strict" ]] && STRICT=true
+  [[ "$arg" == "--no-report" ]] && NO_REPORT=true
 done
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -109,6 +120,25 @@ section() { echo; echo -e "${WHITE}── $* ──${NC}"; echo; }
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANSIBLE_DIR="$(cd "${HERE}/.." && pwd)"
 REPO_ROOT="$(cd "${ANSIBLE_DIR}/.." && pwd)"
+
+# ------------------------------------------------------------------------------
+# Report file — every run's full output (identical to what's on screen,
+# colour codes included) is captured to a timestamped file under reports/,
+# plus a fixed latest.log that's always overwritten. Added 2026-07-11: this
+# harness previously only ever wrote to the terminal -- once scrollback was
+# gone, so was the evidence a check had genuinely printed something (Robert
+# asked "where is the reporting aspect... there's no output as far as I can
+# see" re: the drop-in-binary warnings, which check 3 DOES print -- but
+# nothing durable was kept to point at). reports/*.log is covered by the
+# repo's existing global *.log gitignore rule -- these are run artefacts,
+# not committed history.
+if ! $NO_REPORT; then
+  REPORT_DIR="${HERE}/reports"
+  mkdir -p "$REPORT_DIR"
+  REPORT_FILE="${REPORT_DIR}/run-$(date +%Y%m%d-%H%M%S).log"
+  LATEST_FILE="${REPORT_DIR}/latest.log"
+  exec > >(tee "$REPORT_FILE" "$LATEST_FILE") 2>&1
+fi
 
 command -v ansible-playbook >/dev/null || die "ansible-playbook not found on PATH"
 command -v python3         >/dev/null || die "python3 not found on PATH"
@@ -307,6 +337,11 @@ fi
 # Summary
 # ------------------------------------------------------------------------------
 section "Summary"
+
+if ! $NO_REPORT; then
+  info "Full report written to: ${REPORT_FILE}"
+  info "(also copied to: ${LATEST_FILE})"
+fi
 
 if [[ ${#FAILED_CHECKS[@]} -eq 0 ]]; then
   success "Ryggen er fri — all checks passed."

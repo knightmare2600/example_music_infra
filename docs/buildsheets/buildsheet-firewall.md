@@ -9,6 +9,11 @@
 > ⚠️ **Build hubs before spokes.** FAL must be fully live before any spoke or regional hub can establish its WireGuard tunnel.  
 > Order: **FAL → ODE → BRK → all spokes**
 
+> **Fredericia Havn note:** `192.168.139.50` below is Edinburgh's bootstrap server. If you're
+> building at Fredericia Havn instead, it's `172.16.124.1:8000` (gateway `172.16.124.2`) — see
+> `docs/bootstrap/bootstrapping.md` §4.1a. `late_command.sh`/`firewallme.sh` detect this
+> automatically; only matters if you're fetching something by hand (as below).
+
 ---
 
 ## Architecture Overview
@@ -479,19 +484,28 @@ cat /etc/.i_am_a_firewall
 
 ## Appendix — Bootstrap Server Contents Reference
 
-The bootstrap server at `192.168.139.50` (or `http://ansible.jukebox.internal/` once DNS is up) serves:
+> **Corrected 2026-07-11** — this table previously described a `phoenixpe/` directory and other
+> files that don't exist anywhere in the real `bootstrap/web/` tree (the same fictional layout
+> already found and corrected in `docs/bootstrap/bootstrapping.md` §2.3). Replaced with the real,
+> current top-level layout.
 
-| File | Purpose |
+The bootstrap server at `192.168.139.50` (Edinburgh — or `172.16.124.1:8000` at Fredericia Havn,
+see `docs/bootstrap/bootstrapping.md` §4.1a) serves:
+
+| File / directory | Purpose |
 |------|---------|
-| `boot.ipxe` | iPXE boot menu — Debian install + rescue options |
+| `bootstrap.ipxe` | Embedded iPXE boot script (compiled into the iPXE binary) |
+| `menu.ipxe` | Full iPXE boot menu — OS install + rescue options, gateway-based datacentre detection |
+| `boot.ipxe` | Chains into `menu.ipxe` |
 | `lvm.seed` | Debian preseed — partitioning, locale, packages, late_command |
-| `late_command.sh` | Post-install chroot script — ansible user, SSH key, sudoers |
+| `debian/late_command.sh` | Post-install chroot script — ansible user, SSH key, sudoers |
 | `ansible_sshkey.pub` | Ansible SSH public key — deployed to all nodes at install |
-| `firewallme.sh` | Firewall/router setup script — run manually on first boot |
+| `provision/firewallme.sh` | Firewall/router setup script — run manually on first boot |
 | `debian/` | Debian netboot files |
-| `phoenixpe/` | WinPE recovery environment |
+| `proxmox/` | Proxmox VE answer files, `first-boot.sh`, provisioning scripts |
+| `windows/` | Windows unattend/PostOOBE bootstrap files |
 
-> `firewallme.sh` will be moved to `bootstrap/` in the main documentation repo once published. The script contains reference WAN IPs and WireGuard public keys for FAL and ODE in its `HUB_KNOWN_PUBKEY` and `HUB_WAN_IP` tables — update these if either hub is rebuilt.
+> `firewallme.sh` lives at `bootstrap/web/provision/firewallme.sh` in this repo. The script contains reference WAN IPs and WireGuard public keys for FAL and ODE in its `HUB_KNOWN_PUBKEY` and `HUB_WAN_IP` tables — update these if either hub is rebuilt.
 
 ---
 

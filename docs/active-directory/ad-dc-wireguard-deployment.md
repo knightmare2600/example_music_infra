@@ -147,7 +147,7 @@ On each new DC before promotion:
   (MCR,BIR,etc)         (NYC,MIA,etc)
 
 UK sites connect directly to FAL:
-  EDI, GLA, ABR, DUN, CLY, PER, MCR, LND, BIR, LIV, etc.
+  EDI, GLA, ABD, DUN, CLY, PER, MCR, LND, BIR, LIV, etc.
 ```
 
 ### AD Replication Paths
@@ -766,7 +766,7 @@ $SiteData = [ordered]@{
     # ── UK sites — all connect directly to FAL ───────────────────────────────
     EDI = @{ LAN="192.168.131.0/24"; VPN="10.0.131.0/24"; Hub="FAL"; Cost=25; Freq=15; DCs=@("EXADCSEDI001") }
     GLA = @{ LAN="192.168.141.0/24"; VPN="10.0.141.0/24"; Hub="FAL"; Cost=25; Freq=15; DCs=@("EXADCSGLA001") }
-    ABR = @{ LAN="192.168.224.0/24"; VPN="10.0.224.0/24"; Hub="FAL"; Cost=25; Freq=15; DCs=@("EXADCSABR001") }
+    ABD = @{ LAN="192.168.224.0/24"; VPN="10.0.224.0/24"; Hub="FAL"; Cost=25; Freq=15; DCs=@("EXADCSABD001") }
     MCR = @{ LAN="192.168.161.0/24"; VPN="10.0.161.0/24"; Hub="FAL"; Cost=25; Freq=15; DCs=@("EXADCSMCR001") }
     LND = @{ LAN="192.168.20.0/24";  VPN="10.0.20.0/24";  Hub="FAL"; Cost=25; Freq=15; DCs=@("EXADCSLND001") }
     BIR = @{ LAN="192.168.121.0/24"; VPN="10.0.121.0/24"; Hub="FAL"; Cost=25; Freq=15; DCs=@("EXADCSBIR001") }
@@ -797,7 +797,7 @@ $SiteData = [ordered]@{
     LAX = @{ LAN="192.168.213.0/24"; VPN="10.0.213.0/24"; Hub="BRK"; Cost=25; Freq=30; DCs=@("EXADCSLAX001") }
     MIA = @{ LAN="192.168.135.0/24"; VPN="10.0.135.0/24"; Hub="BRK"; Cost=25; Freq=30; DCs=@("EXADCSMIA001") }
     NJC = @{ LAN="192.168.201.0/24"; VPN="10.0.201.0/24"; Hub="BRK"; Cost=25; Freq=30; DCs=@("EXADCSNJC001") }
-    GAA = @{ LAN="192.168.33.0/24";  VPN="10.0.33.0/24";  Hub="BRK"; Cost=25; Freq=30; DCs=@("EXADCSGAA001") }
+    ATL = @{ LAN="192.168.33.0/24";  VPN="10.0.33.0/24";  Hub="BRK"; Cost=25; Freq=30; DCs=@("EXADCSATL001") }
 
     # ── Pacific — connect via BRK ─────────────────────────────────────────────
     SYD = @{ LAN="192.168.29.0/24"; VPN="10.0.29.0/24"; Hub="BRK"; Cost=50; Freq=30; DCs=@("EXADCSSYD001") }
@@ -939,9 +939,9 @@ Command : Configure-ADSites.ps1 (run 2026-03-14 on EXADCSODE001)
   [+] Removed : DEFAULTIPSITELINK
 
 --- Step 2: Sites ---
-  37 sites created: FAL ODE BRK CPH EDI GLA ABR MCR LND BIR LIV NEW SHE HUL COV HAL
+  37 sites created: FAL ODE BRK CPH EDI GLA ABD MCR LND BIR LIV NEW SHE HUL COV HAL
                     MUN BON BER OSL GOT MIL AMS VIE FAX KGE KOR TOR MTL NYC LAX MIA
-                    NJC GAA SYD MEL AKL
+                    NJC ATL SYD MEL AKL
 
 --- Step 3: Subnets ---
   68 subnets created (LAN + VPN per site)

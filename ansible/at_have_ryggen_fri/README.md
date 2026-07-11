@@ -31,11 +31,69 @@ bootstrap scenarios as repeatable checks), and an initial repo-wide sweep
 (using `git ls-files` instead of hardcoded directory scans, so coverage
 grows automatically as the repo does) are all done as of 2026-07-10 — see
 the git history for the fuller context if picking this back up later.
-Still open: the unattend XML per-edition variants, this harness's own
-`docs/INDEX.md` entry, and any further findings.
+A first documentation-accuracy pass over the ~15 most operator-facing
+procedure docs happened 2026-07-11 (FRD alternate boot-server cross-refs,
+3 stale provisioning-server hostnames, 2 stale site codes, one fictional
+directory listing, one stale "PhoenixPE" naming) — see the Methodology
+section above for why this is a first pass, not a completed audit: `docs/`
+has ~70 markdown files and only a fraction have been checked against real
+source-of-truth data so far. Still open: the unattend XML per-edition
+variants, this harness's own `docs/INDEX.md` entry, the remaining
+un-audited procedure docs (buildsheets for domain controllers/server/
+winadmin/workstation, the `proxmox_zabbix_cleanup/` procedures, the
+Windows-side `bootstrap/` build guides), and any further findings.
 
 Nothing here touches a real host, needs a vault password, or needs network
 access beyond `localhost` — safe to run on any clone, any time.
+
+## Methodology — what does "a good run" actually mean?
+
+A test harness that only checks that code does what the code does is
+circular — it will always pass, and catches nothing. Every check here is
+built against a **source of ground truth that's independent of the file
+being checked**, so a real failure means the file actually disagrees with
+something outside itself, not just that the checker's expectations were
+generated from the same place. Three tiers, in increasing order of what
+they can catch:
+
+1. **Structural/mechanical integrity** (checks 1–5, 7's link half). Does
+   this YAML parse? Does this playbook pass `--syntax-check`? Does this
+   `template:`/`copy:`/`include_tasks:` path resolve to a real file? Does
+   this markdown link point at something that exists? These don't know or
+   care whether the *content* is correct — only whether the repo is
+   internally consistent. A failure here is unambiguous: something is
+   objectively broken, full stop.
+2. **Regenerable-output freshness** (check 6). `configs/inventory/*.ini`,
+   `site_services.yml`, and `begyndelse.json` are all deterministic
+   functions of `benarbejde/`'s CSV/JSON source files. This check
+   regenerates them from source into a scratch dir and diffs against
+   what's committed. It can't tell you the *generation logic* is right
+   (that's what actually running `generate_inventory.py` and reading its
+   output critically, once, when it's written, is for) — only that nobody
+   edited the source and forgot to regenerate afterward.
+3. **Hand-curated ground truth** (checks 8–9: `facts.yml`, `scenarios.yml`).
+   This is the only tier that catches *semantic* drift — a hostname, an
+   IP, a procedure step that's gone stale. It works because a human (me)
+   investigated the real, authoritative state of something (read
+   `devices.csv`, traced what a script actually does, confirmed a fact
+   against its real source) and registered that independently-established
+   truth once. The check then verifies the repo still agrees with it. This
+   is deliberately narrow: **it only catches drift in a fact someone has
+   already registered.** It is not a generic scanner and will not notice a
+   new, never-registered inconsistency on its own — that's the explicit
+   tradeoff (see `facts.yml`'s own header) made in exchange for zero false
+   positives against changelog entries and historical examples.
+
+**The honest limitation this implies**: tier 3's coverage is only as wide
+as what's actually been investigated and registered. As of 2026-07-10 that
+was 5 facts and 4 scenarios — a small fraction of `docs/`'s ~70 markdown
+files. A file with no registered fact and no scenario coverage can drift
+indefinitely and this harness will stay green throughout, because tiers 1–2
+never look at prose content at all. Widening tier 3's coverage (auditing
+more of `docs/` the way `bootstrapping.md` was audited, then registering
+what's found) is ongoing work, not a one-time pass — see the git log for
+what's been swept so far, and treat a clean run as "everything currently
+checked holds," not "this repo has no inaccuracies."
 
 ## Usage
 
@@ -45,6 +103,9 @@ cd ansible/at_have_ryggen_fri
 
 # Before an actual deployment (not just cloning the repo to read it):
 ./run.sh --strict
+
+# Skip writing a report file (see "Report file" below):
+./run.sh --no-report
 ```
 
 Exit code 0 if every check passes, 1 otherwise. Colour-coded output follows
@@ -57,6 +118,19 @@ for "does the repo make sense" but wrong for "am I actually ready to deploy" —
 use `--strict` for the latter. Added 2026-07-10 after 20 missing ARM64/x86_64
 binaries were found buried in a generic yellow warning line instead of being
 front and centre.
+
+### Report file
+
+Every run writes its full output (identical to what's on screen, colour codes
+included) to `reports/run-<timestamp>.log`, plus `reports/latest.log` (always
+overwritten). Both are covered by the repo's global `*.log` `.gitignore` rule
+— these are run artefacts, not committed history, and `git status` stays
+clean after running this. Added 2026-07-11: check 3 (`check_references.py`)
+has always printed every missing drop-in binary by name (see "What it
+checks" below) — but before this, that output only ever existed in terminal
+scrollback. If you're not seeing something you expect the harness to report,
+check `reports/latest.log` first — it has the complete, unedited output of
+the last run, not just whatever's still on screen.
 
 ## What a real failure looks like
 

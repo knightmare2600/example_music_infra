@@ -75,3 +75,68 @@ facts:
     asserted_in:
       - docs/buildsheets/buildsheet-pve.md
       - docs/bootstrap/bootstrapping.md
+
+  - name: frd_boot_server
+    description: >-
+      Fredericia Havn's provisioning-server address -- every doc that gives an operator
+      192.168.139.50 (Edinburgh) as a literal fetch/scp/curl target must also note this
+      alternate, per Robert's 2026-07-11 request ("it also could be on the 172 IP in FRD").
+      Files that only list the device in an inventory/architecture table (network-inventory.md,
+      site-inventory.md, network-diagram.md, EXADNSVRK001-dns.md, network-inventory-merged.md,
+      buildsheet-rudder.md) are deliberately excluded -- FRD is a different physical device, not
+      a second IP for EXAPRVVRK001, so it doesn't belong in a table describing that specific
+      device. ExampleMusic_UPN_DNS_dnsmasq_Procedure.md is also excluded -- provisioning.* DNS
+      A/PTR records are deliberately Edinburgh-only, FRD is never DNS-registered.
+      ExampleMusic_Beginners_Guide.md already has its own full §4.2 explanation, not just a
+      cross-reference, so isn't in this list either.
+    value: "172.16.124.1:8000"
+    source: "bootstrap/web/proxmox/first-boot.sh (BOOT_SERVER gateway detection) / docs/bootstrap/bootstrapping.md §4.1a"
+    asserted_in:
+      - docs/buildsheets/buildsheet-pve.md
+      - docs/buildsheets/buildsheet-firewall.md
+      - docs/management/rudder-setup.md
+      - docs/proxmox/pve-networking.md
+      - docs/arch-pxe-setup.md
+      - docs/bootstrap/ipxe-build.md
+      - docs/bootstrap/ExampleMusic_ExaRescue_ARM64_Build_Procedure.md
+      - docs/bootstrap/ExampleMusic_Procedure_iPXE_ARM64_ISO.md
+      - docs/proxmox/virtio-driver-disk.md
+      - docs/proxmox/zfs-raid0-to-raid1.md
+      - docs/lab/rac-emulator.md
+      - docs/active-directory/corporate-livery.md
+
+  - name: provisioning_server_hostname
+    description: >-
+      The real provisioning server hostname is EXAPRVVRK001 (Site=VRK, Role=PRV in
+      devices.csv) -- found wrong as EXAPROVCLD001 (wrong role code AND wrong site) in 2 docs,
+      and as EXAPRVSCOTCLD001 (fictional, doesn't match any devices.csv naming pattern) in a
+      third, all on 2026-07-11.
+    value: "EXAPRVVRK001"
+    source: "benarbejde/devices.csv (VRK,PRV,1,50)"
+    asserted_in:
+      - docs/bootstrap/ExampleMusic_ExaRescue_ARM64_Build_Procedure.md
+      - docs/active-directory/ExampleMusic_UPN_DNS_dnsmasq_Procedure.md
+      - docs/bootstrap/ExampleMusic_Procedure_iPXE_ARM64_ISO.md
+
+  - name: site_code_aberdeen
+    description: >-
+      Aberdeen's real site code is ABD, not ABR -- found wrong (with matching
+      EXADCSABR001 hostname) in ad-dc-wireguard-deployment.md and
+      v2v-scenario-walkthroughs.md's "known site codes" example transcript, 2026-07-11.
+    value: "ABD"
+    source: "benarbejde/sites.csv (ABD,Aberdeen,...)"
+    asserted_in:
+      - docs/active-directory/ad-dc-wireguard-deployment.md
+      - docs/proxmox/v2v-scenario-walkthroughs.md
+
+  - name: site_code_atlanta
+    description: >-
+      Octet 33 (192.168.33.0/24) belongs to ATL (Atlanta) in sites.csv -- found as the
+      fictional/removed code GAA ("Georgia AL") in 3 docs, 2026-07-11. GAA appears nowhere
+      in sites.csv; ATL is the real, current site at that octet.
+    value: "ATL"
+    source: "benarbejde/sites.csv (ATL,Atlanta,...,192.168.33.0/24)"
+    asserted_in:
+      - docs/active-directory/ad-dc-wireguard-deployment.md
+      - docs/proxmox/v2v-scenario-walkthroughs.md
+      - docs/proxmox/pve-networking.md

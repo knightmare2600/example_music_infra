@@ -79,7 +79,7 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 - AD-integrated forward DNS zones for all three domains, forest-wide replication
 - Initial DNS records: `provisioning.*` A records in all three zones
 - Per-site `/24` reverse zones on each site's primary DC, forest-wide replication
-- PTR record for `EXAPROVCLD001` (`192.168.139.50`) in the CLD reverse zone
+- PTR record for `EXAPRVVRK001` (`192.168.139.50`) in the CLD reverse zone
 - Windows DNS dynamic update permissions — non-secure, restricted to `.253` per site
 - dnsmasq configuration: DHCP, local DNS, DNS forwarding to DC, `nsupdate` dynamic update script
 - Verification of forest-wide replication for all zones
@@ -102,7 +102,7 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 |----------|----|------|----------------------|
 | `EXADCSFAL001` | `192.168.76.10` | FAL | Primary DC — run forest-wide config from here |
 | `EXADCSCLD001` | `192.168.69.10` | CLD | Hosts `139.168.192.in-addr.arpa` and provisioning records |
-| `EXAPROVCLD001` | `192.168.139.50` | CLD | Provisioning web server — DNS target for `provisioning.*` |
+| `EXAPRVVRK001` | `192.168.139.50` | VRK | Provisioning web server — DNS target for `provisioning.*` |
 | `EXAFWL<SITE>001` | `192.168.<SITE>.253` | All | dnsmasq DHCP+DNS, sends nsupdate to DC |
 | `EXADCS<SITE>001` | `192.168.<SITE>.10` | All | Receives dynamic DNS updates from firewall |
 
@@ -137,7 +137,7 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 | `example.com` | A | `provisioning` | `192.168.139.50` |
 | `example.org` | A | `provisioning` | `192.168.139.50` |
 | `example.net` | A | `provisioning` | `192.168.139.50` |
-| `139.168.192.in-addr.arpa` | PTR | `50` | `EXAPROVCLD001.jukebox.internal.` |
+| `139.168.192.in-addr.arpa` | PTR | `50` | `EXAPRVVRK001.jukebox.internal.` |
 
 ---
 
@@ -146,7 +146,7 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 1. `jukebox.internal` forest is operational at Windows Server 2022 functional level
 2. All DCs listed in section 3.1 are promoted and AD replication is healthy — verify with `dcdiag /test:replications` on `EXADCSFAL001`
 3. DNS role is installed and running on all DCs (`Get-Service DNS` returns `Running` on all)
-4. `EXAPROVCLD001` is online at `192.168.139.50` and reachable from all sites via WireGuard
+4. `EXAPRVVRK001` is online at `192.168.139.50` and reachable from all sites via WireGuard
 5. SSH access to each `EXAFWL???001` node is available for dnsmasq configuration
 6. `bind9-dnsutils` package available on all firewall nodes (provides `nsupdate`)
 7. Windows DNS dynamic updates are currently set to **Secure only** by default — this procedure changes them to **Nonsecure and Secure** restricted by ACL. Confirm this is acceptable before proceeding.
@@ -260,7 +260,7 @@ foreach ($dc in $dcs) {
 
 ### 6.3 Add Initial DNS Records
 
-Add the `provisioning` A record to all three forward zones, pointing to `EXAPROVCLD001`:
+Add the `provisioning` A record to all three forward zones, pointing to `EXAPRVVRK001`:
 
 ```powershell
 $zones = @('example.com', 'example.org', 'example.net')
@@ -315,10 +315,10 @@ foreach ($entry in $reverseZones) {
 
 ### 7.2 Add the Provisioning PTR Record
 
-Add the PTR record for `EXAPROVCLD001` to the CLD reverse zone:
+Add the PTR record for `EXAPRVVRK001` to the CLD reverse zone:
 
 ```powershell
-Add-DnsServerResourceRecordPtr -ZoneName '139.168.192.in-addr.arpa' -Name '50' -PtrDomainName 'EXAPROVCLD001.jukebox.internal.' -ComputerName 'EXADCSCLD001' -TimeToLive '01:00:00'
+Add-DnsServerResourceRecordPtr -ZoneName '139.168.192.in-addr.arpa' -Name '50' -PtrDomainName 'EXAPRVVRK001.jukebox.internal.' -ComputerName 'EXADCSCLD001' -TimeToLive '01:00:00'
 ```
 
 Verify:
@@ -327,7 +327,7 @@ Verify:
 Resolve-DnsName '192.168.139.50' -Server 192.168.76.10
 ```
 
-Expected output: `EXAPROVCLD001.jukebox.internal`
+Expected output: `EXAPRVVRK001.jukebox.internal`
 
 ### 7.3 Set Dynamic Update ACLs on Reverse Zones
 
@@ -794,7 +794,7 @@ EOF
 | 8 | `provisioning.example.com/org/net` A records added → `192.168.139.50` | ☐ |
 | 9 | A record resolution confirmed from FAL, ODE, BRK DCs | ☐ |
 | 10 | Reverse zone created on each site DC (13 zones + CLD) | ✅ ODE done 2026-03-14 — remaining sites pending DC promotion |
-| 11 | PTR record for `EXAPROVCLD001` added to `139.168.192.in-addr.arpa` | ☐ |
+| 11 | PTR record for `EXAPRVVRK001` added to `139.168.192.in-addr.arpa` | ☐ |
 | -- | PTR record for EXADCSODE001 (192.168.126.10) added to `126.168.192.in-addr.arpa` | ✅ Done 2026-03-14 |
 | 12 | PTR resolution for `192.168.139.50` confirmed from FAL, CPH, BRK DCs | ☐ |
 | -- | PTR resolution for `192.168.126.10` confirmed from EXADCSODE001 | ✅ Done 2026-03-14 |
