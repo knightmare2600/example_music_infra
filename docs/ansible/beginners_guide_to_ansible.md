@@ -71,7 +71,7 @@ root, outside `ansible/` entirely:
 | `devices.csv` | **Exceptions only** — a device row is only needed if it doesn't fit the standard addressing convention |
 | `address_policy.json` | The standard addressing convention (which host-role gets which octet offset) as data |
 | `begyndelse.json` | Well-known service addresses (DNS, Ansible control node, PBX, Rudder…) for consumers that run *before* Ansible exists on a box (`bindme.sh`, `ansibleme.sh`) |
-| `ad_forest.json` | AD forest identity — domain FQDN, NetBIOS name, DNS forwarders — single source for what used to be three separately hardcoded variables |
+| `ad_forest.json` | AD forest identity — domain FQDN, NetBIOS name, DNS forwarders — single source for what used to be three separately hardcoded variables. `domain_fqdn` is genuinely changeable — every consumer derives from it rather than hardcoding `jukebox.internal` — one edit here (e.g. to an illustrative `disco.internal`, not a real value) is all a rename would take, no other file should need touching |
 | `generate_inventory.py` | Reads all of the above, writes `ansible/configs/inventory/*.ini` (one file per site) plus `group_vars/all/site_services.yml` |
 
 The rule that makes this work: **nothing downstream hardcodes a fact that one of these

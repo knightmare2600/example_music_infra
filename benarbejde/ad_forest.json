@@ -1,5 +1,5 @@
 {
-  "_comment": "Example Music Limited -- AD forest identity, single source of truth for domain_fqdn/netbios_name/etc. Consumed by windows_dc, windows_bootstrap, windows_adschema, rudder_servers, bind9-dns.yml, and (via begyndelse.json) firewallme. Edit this file only, not the consumers.",
+  "_comment": "Example Music Limited -- AD forest identity, single source of truth for domain_fqdn/netbios_name/etc. Consumed by windows_dc, windows_bootstrap, windows_adschema, rudder_servers, bind9-dns.yml, and (via begyndelse.json) firewallme. Edit this file only, not the consumers. domain_fqdn is genuinely changeable -- every consumer derives from this field rather than hardcoding jukebox.internal (see the 2026-07 domain-identity rework). Illustrative only, not a real value to switch to: if this were ever renamed, e.g. to 'disco.internal', that single edit here (plus netbios_name if it should change too) is all that's needed -- no other file should need touching.",
   "domain_fqdn": "jukebox.internal",
   "netbios_name": "JUKEBOX",
   "forest_mode": "WinThreshold",
