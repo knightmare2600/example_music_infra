@@ -204,26 +204,26 @@ Run as root immediately after first SSH login. `rudderme.sh` handles most of thi
 ### Change Default Credentials
 
 ```bash
-ansible@EXASVRCLD004[~]$ passwd root
-ansible@EXASVRCLD004[~]$ passwd ansible
+ansible@EXARDRCLD001[~]$ passwd root
+ansible@EXARDRCLD001[~]$ passwd ansible
 ```
 
 ### Fetch and Run Bootstrap
 
 ```bash
-ansible@EXASVRCLD004[~]$ apt install -y sudo curl wget
+ansible@EXARDRCLD001[~]$ apt install -y sudo curl wget
 
 # Create ansible user if installer did not
-ansible@EXASVRCLD004[~]$ id ansible &>/dev/null || useradd -m -s /bin/bash ansible
+ansible@EXARDRCLD001[~]$ id ansible &>/dev/null || useradd -m -s /bin/bash ansible
 
-ansible@EXASVRCLD004[~]$ mkdir -p /home/ansible/.ssh
-ansible@EXASVRCLD004[~]$ chmod 700 /home/ansible/.ssh
-ansible@EXASVRCLD004[~]$ wget -qO - http://192.168.139.50/ansible_sshkey.pub >> /home/ansible/.ssh/authorized_keys
-ansible@EXASVRCLD004[~]$ chmod 600 /home/ansible/.ssh/authorized_keys
-ansible@EXASVRCLD004[~]$ chown -R ansible:ansible /home/ansible/.ssh
+ansible@EXARDRCLD001[~]$ mkdir -p /home/ansible/.ssh
+ansible@EXARDRCLD001[~]$ chmod 700 /home/ansible/.ssh
+ansible@EXARDRCLD001[~]$ wget -qO - http://192.168.139.50/ansible_sshkey.pub >> /home/ansible/.ssh/authorized_keys
+ansible@EXARDRCLD001[~]$ chmod 600 /home/ansible/.ssh/authorized_keys
+ansible@EXARDRCLD001[~]$ chown -R ansible:ansible /home/ansible/.ssh
 
-ansible@EXASVRCLD004[~]$ echo "ansible ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible
-ansible@EXASVRCLD004[~]$ chmod 0440 /etc/sudoers.d/ansible
+ansible@EXARDRCLD001[~]$ echo "ansible ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible
+ansible@EXARDRCLD001[~]$ chmod 0440 /etc/sudoers.d/ansible
 ```
 
 ### Set Hostname and DNS
@@ -231,15 +231,15 @@ ansible@EXASVRCLD004[~]$ chmod 0440 /etc/sudoers.d/ansible
 `rudderme.sh` prompts for these interactively. Manual equivalent:
 
 ```bash
-ansible@EXASVRCLD004[~]$ hostnamectl set-hostname EXARDRCLD001
+ansible@EXARDRCLD001[~]$ hostnamectl set-hostname EXARDRCLD001
 
-ansible@EXASVRCLD004[~]$ cat > /etc/hosts << 'EOF'
+ansible@EXARDRCLD001[~]$ cat > /etc/hosts << 'EOF'
 127.0.0.1       localhost
 127.0.1.1       EXARDRCLD001.jukebox.internal EXARDRCLD001
 192.168.69.10   EXADCSCLD001.jukebox.internal EXADCSCLD001
 EOF
 
-ansible@EXASVRCLD004[~]$ cat > /etc/resolv.conf << 'EOF'
+ansible@EXARDRCLD001[~]$ cat > /etc/resolv.conf << 'EOF'
 domain jukebox.internal
 search jukebox.internal
 nameserver 192.168.69.10
@@ -247,29 +247,29 @@ nameserver 192.168.231.10
 EOF
 
 # Prevent dhclient overwriting resolv.conf
-ansible@EXASVRCLD004[~]$ echo 'make_resolv_conf() { :; }' > /etc/dhcp/dhclient-enter-hooks.d/nodnsupdate
-ansible@EXASVRCLD004[~]$ chmod +x /etc/dhcp/dhclient-enter-hooks.d/nodnsupdate
+ansible@EXARDRCLD001[~]$ echo 'make_resolv_conf() { :; }' > /etc/dhcp/dhclient-enter-hooks.d/nodnsupdate
+ansible@EXARDRCLD001[~]$ chmod +x /etc/dhcp/dhclient-enter-hooks.d/nodnsupdate
 ```
 
 ### Update and Install Base Packages
 
 ```bash
-ansible@EXASVRCLD004[~]$ apt update && apt upgrade -y
-ansible@EXASVRCLD004[~]$ apt install -y vim git curl wget htop tree net-tools arping molly-guard ufw fail2ban ca-certificates gnupg lsb-release apt-transport-https python3 jq
+ansible@EXARDRCLD001[~]$ apt update && apt upgrade -y
+ansible@EXARDRCLD001[~]$ apt install -y vim git curl wget htop tree net-tools arping molly-guard ufw fail2ban ca-certificates gnupg lsb-release apt-transport-https python3 jq
 ```
 
 ### Configure UFW
 
 ```bash
-ansible@EXASVRCLD004[~]$ ufw default deny incoming
-ansible@EXASVRCLD004[~]$ ufw default allow outgoing
-ansible@EXASVRCLD004[~]$ ufw allow 22/tcp   comment "SSH"
-ansible@EXASVRCLD004[~]$ ufw allow 443/tcp  comment "Rudder HTTPS"
-ansible@EXASVRCLD004[~]$ ufw allow 5309/tcp comment "Rudder CFEngine server-to-agent"
-ansible@EXASVRCLD004[~]$ ufw allow 5310/tcp comment "Rudder relay"
-ansible@EXASVRCLD004[~]$ ufw allow 80/tcp   comment "Rudder HTTP redirect"
-ansible@EXASVRCLD004[~]$ ufw --force enable
-ansible@EXASVRCLD004[~]$ ufw status verbose
+ansible@EXARDRCLD001[~]$ ufw default deny incoming
+ansible@EXARDRCLD001[~]$ ufw default allow outgoing
+ansible@EXARDRCLD001[~]$ ufw allow 22/tcp   comment "SSH"
+ansible@EXARDRCLD001[~]$ ufw allow 443/tcp  comment "Rudder HTTPS"
+ansible@EXARDRCLD001[~]$ ufw allow 5309/tcp comment "Rudder CFEngine server-to-agent"
+ansible@EXARDRCLD001[~]$ ufw allow 5310/tcp comment "Rudder relay"
+ansible@EXARDRCLD001[~]$ ufw allow 80/tcp   comment "Rudder HTTP redirect"
+ansible@EXARDRCLD001[~]$ ufw --force enable
+ansible@EXARDRCLD001[~]$ ufw status verbose
 ```
 
 ### Configure Static IP
@@ -278,9 +278,9 @@ ansible@EXASVRCLD004[~]$ ufw status verbose
 
 ```bash
 # Check the target IP is free before assigning
-ansible@EXASVRCLD004[~]$ ping -c1 -W1 192.168.69.12 && echo "IP IN USE — resolve conflict first" && exit 1
+ansible@EXARDRCLD001[~]$ ping -c1 -W1 192.168.69.12 && echo "IP IN USE — resolve conflict first" && exit 1
 
-ansible@EXASVRCLD004[~]$ nmcli con add type ethernet ifname eth0 con-name rudder-static ipv4.method manual ipv4.addresses "192.168.69.12/24" ipv4.gateway "192.168.69.253" ipv4.dns "192.168.69.10" ipv4.dns-search "jukebox.internal" ipv6.method ignore connection.autoconnect yes connection.autoconnect-priority 100
+ansible@EXARDRCLD001[~]$ nmcli con add type ethernet ifname eth0 con-name rudder-static ipv4.method manual ipv4.addresses "192.168.69.12/24" ipv4.gateway "192.168.69.253" ipv4.dns "192.168.69.10" ipv4.dns-search "jukebox.internal" ipv6.method ignore connection.autoconnect yes connection.autoconnect-priority 100
 ```
 
 ***NB: Static IP takes effect on reboot, or immediately with `nmcli con up rudder-static` if at the local console.***
@@ -288,12 +288,12 @@ ansible@EXASVRCLD004[~]$ nmcli con add type ethernet ifname eth0 con-name rudder
 ### Join the Domain (optional but recommended)
 
 ```bash
-ansible@EXASVRCLD004[~]$ apt install -y realmd sssd sssd-tools adcli samba-common-bin oddjob oddjob-mkhomedir packagekit
-ansible@EXASVRCLD004[~]$ realm discover jukebox.internal
-ansible@EXASVRCLD004[~]$ realm join -U Administrator jukebox.internal
-ansible@EXASVRCLD004[~]$ realm permit --all
-ansible@EXASVRCLD004[~]$ echo "session required pam_mkhomedir.so skel=/etc/skel/ umask=0022" >> /etc/pam.d/common-session
-ansible@EXASVRCLD004[~]$ realm list
+ansible@EXARDRCLD001[~]$ apt install -y realmd sssd sssd-tools adcli samba-common-bin oddjob oddjob-mkhomedir packagekit
+ansible@EXARDRCLD001[~]$ realm discover jukebox.internal
+ansible@EXARDRCLD001[~]$ realm join -U Administrator jukebox.internal
+ansible@EXARDRCLD001[~]$ realm permit --all
+ansible@EXARDRCLD001[~]$ echo "session required pam_mkhomedir.so skel=/etc/skel/ umask=0022" >> /etc/pam.d/common-session
+ansible@EXARDRCLD001[~]$ realm list
 id Administrator@jukebox.internal
 ```
 
@@ -308,16 +308,16 @@ Always install from the official Rudder repository. The current stable version f
 ### Add Rudder Repository
 
 ```bash
-ansible@EXASVRCLD004[~]$ wget --quiet -O /etc/apt/keyrings/rudder_apt_key.gpg "https://repository.rudder.io/apt/rudder_apt_key.gpg"
-ansible@EXASVRCLD004[~]$ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/rudder_apt_key.gpg] \
+ansible@EXARDRCLD001[~]$ wget --quiet -O /etc/apt/keyrings/rudder_apt_key.gpg "https://repository.rudder.io/apt/rudder_apt_key.gpg"
+ansible@EXARDRCLD001[~]$ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/rudder_apt_key.gpg] \
   http://repository.rudder.io/apt/8.x/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/rudder.list
-ansible@EXASVRCLD004[~]$ apt update
+ansible@EXARDRCLD001[~]$ apt update
 ```
 
 ### Install Rudder Server
 
 ```bash
-ansible@EXASVRCLD004[~]$ apt install -y rudder-server
+ansible@EXARDRCLD001[~]$ apt install -y rudder-server
 
 # This installs:
 #   rudder-server         — the main application
@@ -333,21 +333,21 @@ ansible@EXASVRCLD004[~]$ apt install -y rudder-server
 ### Start and Enable Services
 
 ```bash
-ansible@EXASVRCLD004[~]$ systemctl enable rudder-server
-ansible@EXASVRCLD004[~]$ systemctl start  rudder-server
+ansible@EXARDRCLD001[~]$ systemctl enable rudder-server
+ansible@EXARDRCLD001[~]$ systemctl start  rudder-server
 
-ansible@EXASVRCLD004[~]$ systemctl status rudder-server
-ansible@EXASVRCLD004[~]$ systemctl status rudder-agent
-ansible@EXASVRCLD004[~]$ systemctl status postgresql
+ansible@EXARDRCLD001[~]$ systemctl status rudder-server
+ansible@EXARDRCLD001[~]$ systemctl status rudder-agent
+ansible@EXARDRCLD001[~]$ systemctl status postgresql
 
 # Wait for web UI (can take 2-3 minutes on first start)
-ansible@EXASVRCLD004[~]$ watch -n5 'curl -sk https://localhost/rudder/api/info | python3 -m json.tool 2>/dev/null | head -5'
+ansible@EXARDRCLD001[~]$ watch -n5 'curl -sk https://localhost/rudder/api/info | python3 -m json.tool 2>/dev/null | head -5'
 ```
 
 ### Verify Installation
 
 ```bash
-ansible@EXASVRCLD004[~]$ sudo rudder server health
+ansible@EXARDRCLD001[~]$ sudo rudder server health
 # Expected: [OK]
 ```
 
@@ -368,7 +368,7 @@ Accept the self-signed certificate (replace with a Let's Encrypt cert later).
 ### Create Admin User
 
 ```bash
-ansible@EXASVRCLD004[~]$ sudo rudder server create-user -u admin
+ansible@EXARDRCLD001[~]$ sudo rudder server create-user -u admin
 # Prompts for password twice; the server restarts automatically
 ```
 
@@ -473,7 +473,7 @@ This is the recommended approach — `sites.csv` is the single source of truth f
 # What rudderme.sh does internally — shown here for transparency
 # Reads sites.csv, extracts subnets, builds JSON, POSTs to API
 
-ansible@EXASVRCLD004[~]$ python3 - << 'PYEOF'
+ansible@EXARDRCLD001[~]$ python3 - << 'PYEOF'
 import csv, json, subprocess, sys
 
 subnets = []
@@ -515,7 +515,7 @@ Add-ADGroupMember -Identity "GRP_Rudder_Admins" -Members "Administrator"
 ### Configure LDAP in Rudder
 
 ```bash
-ansible@EXASVRCLD004[~]$ cat > /opt/rudder/etc/rudder-users.xml << 'EOF'
+ansible@EXARDRCLD001[~]$ cat > /opt/rudder/etc/rudder-users.xml << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <authentication hash="bcrypt">
 
@@ -556,7 +556,7 @@ systemctl restart rudder-server
 ### Generate bcrypt Hash for Local Admin Password
 
 ```bash
-ansible@EXASVRCLD004[~]$ apt install -y apache2-utils
+ansible@EXARDRCLD001[~]$ apt install -y apache2-utils
 htpasswd -bnBC 12 "" 'YourSecurePassword' | tr -d ':\n'
 # Copy the output (starts with $2y$12$...) into rudder-users.xml above
 ```
@@ -583,16 +583,16 @@ wget -qO - https://repository.rudder.io/apt/rudder_apt_key.pub | sudo gpg --dear
 echo "deb [signed-by=/usr/share/keyrings/rudder-archive-keyring.gpg] \
   https://repository.rudder.io/apt/8.x/ trixie main" > /etc/apt/sources.list.d/rudder.list
 
-ansible@EXASVRCLD004[~]$ apt update
-ansible@EXASVRCLD004[~]$ apt install -y rudder-agent
+ansible@EXARDRCLD001[~]$ apt update
+ansible@EXARDRCLD001[~]$ apt install -y rudder-agent
 
-ansible@EXASVRCLD004[~]$ rudder agent policy-server $RUDDER_SERVER
+ansible@EXARDRCLD001[~]$ rudder agent policy-server $RUDDER_SERVER
 
-ansible@EXASVRCLD004[~]$ systemctl enable rudder-agent
-ansible@EXASVRCLD004[~]$ systemctl start  rudder-agent
+ansible@EXARDRCLD001[~]$ systemctl enable rudder-agent
+ansible@EXARDRCLD001[~]$ systemctl start  rudder-agent
 
 # Force first check-in immediately
-ansible@EXASVRCLD004[~]$ rudder agent run
+ansible@EXARDRCLD001[~]$ rudder agent run
 ```
 
 ### One-liner for Firewall VMs (Debian)
@@ -740,18 +740,18 @@ Relay servers sit between remote agents and the Rudder server. Agents at EU site
 ```bash
 RUDDER_SERVER="192.168.69.12"   # FAL root server
 
-ansible@EXASVRCLD004[~]$ wget -qO - https://repository.rudder.io/apt/rudder_apt_key.pub | sudo gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg
+ansible@EXARDRCLD001[~]$ wget -qO - https://repository.rudder.io/apt/rudder_apt_key.pub | sudo gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg
 
-ansible@EXASVRCLD004[~]$ echo "deb [signed-by=/usr/share/keyrings/rudder-archive-keyring.gpg] \
+ansible@EXARDRCLD001[~]$ echo "deb [signed-by=/usr/share/keyrings/rudder-archive-keyring.gpg] \
   https://repository.rudder.io/apt/8.x/ trixie main" > /etc/apt/sources.list.d/rudder.list
 
-ansible@EXASVRCLD004[~]$ apt update
-ansible@EXASVRCLD004[~]$ apt install -y rudder-server-relay   # relay package — not rudder-server, not rudder-agent
+ansible@EXARDRCLD001[~]$ apt update
+ansible@EXARDRCLD001[~]$ apt install -y rudder-server-relay   # relay package — not rudder-server, not rudder-agent
 
-ansible@EXASVRCLD004[~]$ rudder agent policy-server $RUDDER_SERVER
+ansible@EXARDRCLD001[~]$ rudder agent policy-server $RUDDER_SERVER
 
-ansible@EXASVRCLD004[~]$ systemctl enable --now rudder-agent
-ansible@EXASVRCLD004[~]$ rudder agent run
+ansible@EXARDRCLD001[~]$ systemctl enable --now rudder-agent
+ansible@EXARDRCLD001[~]$ rudder agent run
 ```
 
 ### Promote to Relay in the Rudder UI
@@ -802,7 +802,7 @@ Configuration Management → Groups → Create group
 ### Create a Dynamic Group via API
 
 ```bash
-ansible@EXASVRCLD004[~]$ curl -sk -X PUT -H "X-API-Token: ${RUDDER_TOKEN}" -H "Content-Type: application/json" -d '{
+ansible@EXARDRCLD001[~]$ curl -sk -X PUT -H "X-API-Token: ${RUDDER_TOKEN}" -H "Content-Type: application/json" -d '{
     "displayName": "All Windows Nodes",
     "description": "All Windows domain-joined nodes",
     "dynamic": true,
@@ -864,7 +864,7 @@ Create one directive per package — this gives granular compliance reporting pe
 ### Via API
 
 ```bash
-ansible@EXASVRCLD004[~]$ curl -sk -X PUT -H "X-API-Token: ${RUDDER_TOKEN}" -H "Content-Type: application/json" -d '{
+ansible@EXARDRCLD001[~]$ curl -sk -X PUT -H "X-API-Token: ${RUDDER_TOKEN}" -H "Content-Type: application/json" -d '{
     "displayName": "Notepad++ installed",
     "techniqueName": "packageManagement",
     "techniqueVersion": "1.0",
@@ -896,11 +896,11 @@ For software not available via Chocolatey or apt (Bloomberg Terminal is the cano
 ```bash
 # On EXARDRCLD001
 SHARED_FILES="/var/rudder/configuration-repository/shared-files"
-ansible@EXASVRCLD004[~]$ mkdir -p "${SHARED_FILES}/software/bloomberg"
-ansible@EXASVRCLD004[~]$ cp /tmp/bloomberg-setup-x.x.x.exe "${SHARED_FILES}/software/bloomberg/"
-ansible@EXASVRCLD004[~]$ cd /var/rudder/configuration-repository
-ansible@EXASVRCLD004[~]$ git add shared-files/software/bloomberg/
-ansible@EXASVRCLD004[~]$ git commit -m "Add Bloomberg installer"
+ansible@EXARDRCLD001[~]$ mkdir -p "${SHARED_FILES}/software/bloomberg"
+ansible@EXARDRCLD001[~]$ cp /tmp/bloomberg-setup-x.x.x.exe "${SHARED_FILES}/software/bloomberg/"
+ansible@EXARDRCLD001[~]$ cd /var/rudder/configuration-repository
+ansible@EXARDRCLD001[~]$ git add shared-files/software/bloomberg/
+ansible@EXARDRCLD001[~]$ git commit -m "Add Bloomberg installer"
 ```
 
 ### Steps 2–5 — Directives and Rule
@@ -934,17 +934,17 @@ Cockpit provides a web-based system management UI for Linux nodes on port 9090. 
 ### Install Cockpit on EXARDRCLD001
 
 ```bash
-ansible@EXASVRCLD004[~]$ apt install -y cockpit cockpit-pcp
-ansible@EXASVRCLD004[~]$ systemctl enable --now cockpit.socket
-ansible@EXASVRCLD004[~]$ ufw allow 9090/tcp comment "Cockpit web UI"
+ansible@EXARDRCLD001[~]$ apt install -y cockpit cockpit-pcp
+ansible@EXARDRCLD001[~]$ systemctl enable --now cockpit.socket
+ansible@EXARDRCLD001[~]$ ufw allow 9090/tcp comment "Cockpit web UI"
 ```
 
 ### Install Cockpit on Firewall VMs
 
 ```bash
-ansible@EXASVRCLD004[~]$ apt install -y cockpit
-ansible@EXASVRCLD004[~]$ systemctl enable --now cockpit.socket
-ansible@EXASVRCLD004[~]$ ufw allow 9090/tcp comment "Cockpit web UI"
+ansible@EXARDRCLD001[~]$ apt install -y cockpit
+ansible@EXARDRCLD001[~]$ systemctl enable --now cockpit.socket
+ansible@EXARDRCLD001[~]$ ufw allow 9090/tcp comment "Cockpit web UI"
 ```
 
 ### Cockpit + AD Authentication
@@ -969,7 +969,7 @@ Administration → API accounts → New API account
 
 ```bash
 # Test API access
-ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/api/latest/nodes" | python3 -m json.tool
+ansible@EXARDRCLD001[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/api/latest/nodes" | python3 -m json.tool
 ```
 
 ### Useful Endpoints
@@ -993,17 +993,17 @@ ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192
 
 ```bash
 # Force the agent to run right now (requires port 5309 open from server to node)
-ansible@EXASVRCLD004[~]$ curl -sk -X POST -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/relay-api/1/remote-run/nodes/${NODE_UUID}?keep_output=true"
+ansible@EXARDRCLD001[~]$ curl -sk -X POST -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/relay-api/1/remote-run/nodes/${NODE_UUID}?keep_output=true"
 ```
 
 ### Get Compliance Summary
 
 ```bash
 # Global compliance
-ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/api/latest/compliance" | python3 -m json.tool
+ansible@EXARDRCLD001[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/api/latest/compliance" | python3 -m json.tool
 
 # Per-node compliance
-ansible@EXASVRCLD004[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/api/latest/compliance/nodes" | python3 -m json.tool
+ansible@EXARDRCLD001[~]$ curl -sk -H "X-API-Token: ${RUDDER_TOKEN}" "https://192.168.69.12/rudder/api/latest/compliance/nodes" | python3 -m json.tool
 ```
 
 ---
@@ -1339,25 +1339,25 @@ The Rudder web UI homepage shows:
 
 ```bash
 # Overall server status
-ansible@EXASVRCLD004[~]$ rudder server status
+ansible@EXARDRCLD001[~]$ rudder server status
 
 # Check all agents have reported recently
-ansible@EXASVRCLD004[~]$ rudder server check-agents
+ansible@EXARDRCLD001[~]$ rudder server check-agents
 
 # View last policy generation
-ansible@EXASVRCLD004[~]$ ls -lht /var/rudder/share/ | head -10
+ansible@EXARDRCLD001[~]$ ls -lht /var/rudder/share/ | head -10
 
 # PostgreSQL (report storage) health
-ansible@EXASVRCLD004[~]$ sudo -u postgres psql -c "SELECT count(*) FROM ruddersysevents WHERE executionTimeStamp > NOW() - INTERVAL '2 hours';"
+ansible@EXARDRCLD001[~]$ sudo -u postgres psql -c "SELECT count(*) FROM ruddersysevents WHERE executionTimeStamp > NOW() - INTERVAL '2 hours';"
 ```
 
 ### Check Agent Compliance from CLI
 
 ```bash
 # On any managed Linux node
-ansible@EXASVRCLD004[~]$ rudder agent info        # last run, policy server, compliance
-ansible@EXASVRCLD004[~]$ rudder agent run -i      # force run with verbose output
-ansible@EXASVRCLD004[~]$ rudder agent health      # self-diagnostic
+ansible@EXARDRCLD001[~]$ rudder agent info        # last run, policy server, compliance
+ansible@EXARDRCLD001[~]$ rudder agent run -i      # force run with verbose output
+ansible@EXARDRCLD001[~]$ rudder agent health      # self-diagnostic
 ```
 
 ### Key Log Locations
@@ -1371,10 +1371,10 @@ ansible@EXASVRCLD004[~]$ rudder agent health      # self-diagnostic
 
 ```bash
 # Watch agent run in real time
-ansible@EXASVRCLD004[~]$ tail -f /var/log/rudder/agent/agent.log
+ansible@EXARDRCLD001[~]$ tail -f /var/log/rudder/agent/agent.log
 
 # Watch for compliance errors
-ansible@EXASVRCLD004[~]$ grep -i "error\|repair\|fail" /var/log/rudder/agent/agent.log | tail -20
+ansible@EXARDRCLD001[~]$ grep -i "error\|repair\|fail" /var/log/rudder/agent/agent.log | tail -20
 ```
 
 ---

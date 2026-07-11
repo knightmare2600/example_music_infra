@@ -5,7 +5,7 @@
 ; Zone:    {{ sites_by_code[item].split('.')[2] }}.168.192.in-addr.arpa
 ; Covers:  {{ sites_by_code[item] | regex_replace('/24', '.0/24') }}  ({{ item }})
 ; Source:  devices.csv (single source of truth)
-; Server:  EXASVRCLD001 ({{ dns_ip }})
+; Server:  EXADNSVRK001 ({{ dns_ip }})
 ; Managed: Ansible bind9-dns.yml Play 2
 ; Generated: {{ ansible_date_time.iso8601 }}
 ;
