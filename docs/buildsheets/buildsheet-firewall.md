@@ -171,6 +171,7 @@ The installer will then proceed automatically. Watch the bootstrap server consol
 - Forces LVM modules into initramfs (ensures LVM is accessible at boot)
 - Adds `ansible` user to `sudo`
 - Installs `openssh-server`, `sudo`, `net-tools`, `bash-completion`
+- Fetches `begyndelse.json` (well-known service addresses) to `/etc/example-music/` — the one file no Ansible playbook ever deploys, so this is its only source before Ansible manages the box. `sites.csv`/`devices.csv` are **not** fetched here as of v1.6 — `ansible/playbooks/linux/tools.yml` deploys both once the node is under Ansible management, and the break-glass scripts' own documented path is a manual wget anyway
 - Fetches `ansible_sshkey.pub` from `http://192.168.139.50/` and places it in `/home/ansible/.ssh/authorized_keys`
 - Sets up `.vimrc` (ruler, dark background, syntax hilighting)
 - Configures password-less sudo for the `ansible` user via `/etc/sudoers.d/ansible`
