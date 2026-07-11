@@ -254,9 +254,15 @@ chmod 640 /etc/pve/nodes/$(hostname)/pveproxy-ssl.key
 
 ---
 
-## Adding to first-boot.sh
+## Post-Provisioning Reminder
 
-The DNS credentials are environment-specific and should be configured consciously rather than baked into the provisioning script. The recommended approach is to add a post-provisioning reminder to `first-boot.sh` output rather than automating the ACME setup:
+> **Correction (2026-07-11):** this section previously described adding a post-provisioning
+> reminder to `first-boot.sh`'s output. `first-boot.sh` was trimmed on 2026-07-10 to only what's
+> needed for the `ansible` user to be SSH-reachable (the "foot in the door" principle) — the
+> Let's Encrypt reminder banner it used to print was removed along with everything else that
+> moved into Ansible. Nothing currently prints this reminder anywhere.
+
+The DNS credentials are environment-specific and should be configured consciously rather than baked into automation. If a reminder is wanted again, `playbooks/proxmox/playbooks/40-scripts.yml` (pure file/message placement, matching its existing role) is the natural home for it now, not `first-boot.sh`:
 
 ```bash
 info "Post-provisioning: configure Let's Encrypt wildcard cert"
@@ -264,7 +270,7 @@ info "  Datacenter → ACME → Accounts → Add (letsencrypt)"
 info "  Datacenter → ACME → DNS Plugins → Add (your provider)"
 info "  Node → Certificates → ACME → Add (*.yourdomain.com)"
 info "  Node → Certificates → Order Certificates Now"
-info "  See docs/pve-letsencrypt.md for full procedure"
+info "  See docs/proxmox/pve-letsencrypt.md for full procedure"
 ```
 
 ---
