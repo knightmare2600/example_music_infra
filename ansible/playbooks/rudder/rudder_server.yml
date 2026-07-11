@@ -52,7 +52,15 @@
 #   rudder_static_ip        Static IP for this Rudder server
 #   rudder_hostname         Hostname (e.g. EXARDRCLD001)
 #   rudder_gateway          Default gateway
-#   rudder_dns              DNS server (AD DC)
+#   rudder_dns              DNS server (EXADNSVRK001, 192.168.139.8 -- NOT the AD DC; a plain
+#                            BIND9 box, not domain-joined, doesn't speak LDAP. Kept separate
+#                            from rudder_dc_hostname/rudder_dc_ip below on purpose -- conflating
+#                            the two was a real bug fixed 2026-07-11, see that changelog entry)
+#   rudder_dc_hostname       AD DC hostname this server authenticates LDAP against -- root
+#                            server uses its own site's DC (EXADCSCLD001); a future relay at
+#                            another site uses that site's own DC, not a shared default
+#   rudder_dc_ip             That DC's real IP (for the /etc/hosts fallback entry, written
+#                            before this node's own DNS resolver is configured in Section 2)
 #
 # Required via vault (group_vars/rudder_servers/vault.yml):
 #   rudder_api_token        Rudder API token (set after first UI login)
@@ -85,6 +93,20 @@
 #                     ansible/tasks/nodeinfo.yml (also used by linux/tools.yml,
 #                     proxmox, firewallme) instead of hand-writing the same
 #                     base fields independently.
+# v1.2.0  2026-07-11  FIXED REAL BUG: the "Add AD DC to /etc/hosts" task and the LDAP
+#                     <connection url="ldap://..."/> both used rudder_dns (the DNS
+#                     server's IP, 192.168.139.8/EXADNSVRK001) as if it were the domain
+#                     controller. EXADNSVRK001 is a plain BIND9 box -- not domain-joined,
+#                     doesn't speak LDAP on port 389 at all, so this would have made every
+#                     AD-authenticated Rudder login fail outright. Introduced rudder_dc_ip
+#                     (new, per-host, mirrors the existing rudder_dc_hostname pattern) for
+#                     the /etc/hosts entry, and switched the LDAP connection URL to
+#                     ldap://{{ rudder_dc_hostname }}.{{ rudder_domain }}:389 (resolves via
+#                     that same /etc/hosts entry, or DNS once configured). Also: CLD is now
+#                     "top of the tree" for Rudder (see rudder_onboard.yml v1.1.0) -- root
+#                     already correctly overrides to EXADCSCLD001/rudder_dc_ip in host_vars;
+#                     future site relays get their own host_vars override the same way, not
+#                     a shared group_vars default.
 # =============================================================================
 
 - name: Bootstrap Rudder server
@@ -216,9 +238,9 @@
     - name: "1 | Add AD DC to /etc/hosts"
       lineinfile:
         path: /etc/hosts
-        regexp: "^{{ rudder_dns }}"
+        regexp: "^{{ rudder_dc_ip }}"
         line: >-
-          {{ rudder_dns }}  {{ rudder_dc_hostname | lower }}.{{ rudder_domain }}  {{ rudder_dc_hostname | lower }}
+          {{ rudder_dc_ip }}  {{ rudder_dc_hostname | lower }}.{{ rudder_domain }}  {{ rudder_dc_hostname | lower }}
         state: present
 
   # ---------------------------------------------------------------------------
@@ -616,7 +638,7 @@
               See: rudder-setup.md section 9 for full AD setup commands.
             -->
             <ldap>
-              <connection url="ldap://{{ rudder_dns }}:389"
+              <connection url="ldap://{{ rudder_dc_hostname | lower }}.{{ rudder_domain }}:389"
                           bind-dn="{{ rudder_ldap_bind_dn }}"
                           bind-password="{{ rudder_ldap_bind_pass }}"/>
 

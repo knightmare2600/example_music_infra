@@ -10,6 +10,16 @@
 # Version history
 # =============================================================================
 # v1.0.0  2026-06-23  Initial release.
+# v1.1.0  2026-07-11  rudder_dc_hostname default changed FAL -> CLD (CLD is now the Rudder
+#                     "top of the tree" site, see rudder_onboard.yml v1.1.0 -- there's also
+#                     no Rudder-adjacent host actually built at FAL yet, so CLD is the more
+#                     defensible fallback if a future relay host forgets its own override).
+#                     Added rudder_dc_ip -- was missing entirely; rudder_server.yml had been
+#                     using rudder_dns (the DNS server's IP, not the DC's) for both the AD
+#                     DC's /etc/hosts entry and its LDAP connection URL, a real bug (see that
+#                     file's own changelog). Every rudder_servers host still needs its own
+#                     host_vars override for both -- this default is a fallback, not a
+#                     universally-correct value; see host_vars/EXARDRCLD001/main.yml.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -17,7 +27,8 @@
 # not hardcoded. See ansible/tasks/ad_forest_facts.yml.
 # -----------------------------------------------------------------------------
 rudder_domain:       "{{ (lookup('file', ad_forest_json_path | default('/etc/example-music/ad_forest.json')) | from_json).domain_fqdn }}"
-rudder_dc_hostname:  "EXADCSFAL001"
+rudder_dc_hostname:  "EXADCSCLD001"
+rudder_dc_ip:        "192.168.69.10"
 
 # -----------------------------------------------------------------------------
 # Rudder version and package config

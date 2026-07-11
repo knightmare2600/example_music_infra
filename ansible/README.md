@@ -395,7 +395,8 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `rudder_domain` | `jukebox.internal` | AD domain |
-| `rudder_dc_hostname` | `EXADCSFAL001` | Primary AD DC hostname |
+| `rudder_dc_hostname` | `EXADCSCLD001` | AD DC hostname this server authenticates LDAP against — per-host override expected (a relay at another site uses its own site's DC) |
+| `rudder_dc_ip` | `192.168.69.10` | That DC's real IP — used for the `/etc/hosts` fallback entry written before this node's own DNS resolver is configured |
 | `rudder_version` | `8.x` | Rudder package stream |
 | `rudder_admin_user` | `admin` | Rudder web UI local admin username |
 | `rudder_ldap_bind_dn` | `CN=Rudder LDAP Bind,...` | AD LDAP bind account DN |
@@ -411,18 +412,18 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | `rudder_api_token` | Rudder REST API token (set after first UI login) |
 | `rudder_ldap_bind_pass` | Password for `svc_rudder_ldap` AD account |
 
-**host_vars/EXASRVFAL002/main.yml**
+**host_vars/EXARDRCLD001/main.yml**
 
 | Variable | Example | Description |
 |----------|---------|-------------|
-| `rudder_hostname` | `EXASRVFAL002` | Hostname (uppercase) |
-| `rudder_static_ip` | `192.168.76.12` | Static IP |
-| `rudder_gateway` | `192.168.76.1` | Default gateway |
-| `rudder_dns` | `192.168.76.10` | DNS / AD DC IP |
+| `rudder_hostname` | `EXARDRCLD001` | Hostname (uppercase) |
+| `rudder_static_ip` | `192.168.69.12` | Static IP |
+| `rudder_gateway` | `192.168.69.253` | Default gateway |
+| `rudder_dns` | `192.168.139.8` | DNS resolver (`EXADNSVRK001`, BIND9 — *not* the AD DC, see `rudder_dc_hostname`/`rudder_dc_ip` above) |
 | `rudder_prefix` | `24` | Subnet prefix length |
 | `rudder_network_interface` | `""` | Interface (blank = auto-detect) |
-| `rudder_site_code` | `FAL` | Site code (matches sites.csv) |
-| `rudder_site_city` | `Falkirk` | Site city (used in MOTD) |
+| `rudder_site_code` | `CLD` | Site code (matches sites.csv) |
+| `rudder_site_city` | `Edinburgh` | Site city (used in MOTD) |
 | `rudder_site_country` | `Scotland` | Site country (used in MOTD) |
 | `rudder_site_entity` | `Example Music Limited` | Entity name (used in MOTD) |
 
