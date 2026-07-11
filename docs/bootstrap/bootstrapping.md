@@ -294,9 +294,11 @@ section for why).
 
 ```cmd
 bootstrap/web/
-├── boot.ipxe, bootstrap.ipxe    ← iPXE boot scripts (bootstrap.ipxe is the one embedded — see §4.3)
+├── bootstrap.ipxe               ← embedded iPXE boot script — see §4.3
 ├── menu.ipxe                    ← main iPXE boot menu, chained to from bootstrap.ipxe
-├── lvm.seed / lvm-bios.seed / lvm-efi.seed  ← Debian preseed variants (also under debian/)
+├── boot.ipxe, lvm.seed          ← STALE/superseded pre-rename leftovers (not part of the real
+│                                    boot chain — see each file's own 2026-07-11 note); the real
+│                                    preseeds are debian/lvm-bios.seed and debian/lvm-efi.seed
 ├── ipxe.lkrn, ipxeaa64_arch.efi ← prebuilt iPXE binaries
 ├── ansible_sshkey.pub           ← Ansible user public key — served from the web root; every
 │                                    consumer (first-boot.sh, late_command.sh, docs) fetches it
@@ -1282,16 +1284,22 @@ If the provisioning server IP changes from `192.168.139.50`, the following files
 > **Correction (2026-07-10):** the table below previously referenced `web/.ipxe` (doesn't exist — see
 > §4.2's correction) and gave `web/`-root paths for `lvm.seed`/`late_command.sh` that don't match the
 > real tree. Corrected against the actual files.
+>
+> **Correction (2026-07-11):** `bootstrap/web/boot.ipxe` and `bootstrap/web/lvm.seed` turned out to be
+> stale/superseded pre-rename leftovers (see each file's own note) — dropped from this table, since
+> updating a hardcoded IP in a file nothing live reads doesn't accomplish anything. `late_command.sh`'s
+> two copies (`bootstrap/web/debian/late_command.sh`, the real one, and `bootstrap/web/late_command.sh`,
+> a synced copy) no longer need manual reconciliation — `.githooks/pre-commit` keeps them in sync
+> automatically now (same mechanism as `sites.csv` etc.), so only `debian/late_command.sh`'s own
+> `BOOT_SERVER` line needs changing by hand.
 
 | File | Variable / line to change |
 |---|---|
 | `bootstrap/web/bootstrap.ipxe` | `set boot-ip 192.168.139.50` |
-| `bootstrap/web/boot.ipxe` | `set boot-url http://192.168.139.50` |
 | `bootstrap/web/menu.ipxe` | any hardcoded provisioning-server URLs in installer menu entries |
 | `bootstrap/web/proxmox/answer.toml` | `url = "http://192.168.139.50/proxmox/first-boot.sh"` |
 | `bootstrap/web/proxmox/degraded.toml` | `url = "http://192.168.139.50/proxmox/first-boot.sh"` |
-| `bootstrap/web/lvm.seed` **and** `bootstrap/web/debian/lvm.seed` | both exist, and currently disagree on the fetch path for `late_command.sh` (`/late_command.sh` vs `/debian/late_command.sh`) — check both, don't assume they're in sync |
-| `bootstrap/web/debian/late_command.sh` | `BOOT_SERVER="http://192.168.139.50"` |
+| `bootstrap/web/debian/late_command.sh` | `BOOT_SERVER="http://192.168.139.50"` — `bootstrap/web/late_command.sh` syncs automatically via `.githooks/pre-commit`, don't edit it directly |
 | `bootstrap/web/proxmox/first-boot.sh` | Any references to provisioning server URL |
 
 After changing `bootstrap.ipxe`, the iPXE binary must be recompiled and redistributed to all IPMI virtual media mounts and USB keys.
