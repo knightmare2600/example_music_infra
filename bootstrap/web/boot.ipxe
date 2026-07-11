@@ -1,6 +1,15 @@
 #!ipxe
 
 # ============================================================
+# STALE/SUPERSEDED (flagged 2026-07-11, not deleted -- see git history):
+# this is the pre-rename file menu.ipxe's own changelog refers to
+# ("v1.3 Rename file from boot.ipxe to menu.ipxe") -- untouched since
+# Initial Commit, not part of the real boot chain (bootstrap.ipxe chains to
+# menu.ipxe, not this file). References bootstrap/web/lvm.seed (also
+# stale/superseded, see its own note) and a hardcoded boot-url with no
+# gateway-based Edinburgh/Fredericia Havn detection (see menu.ipxe §4.1a).
+# ============================================================
+#
 # Example Music - Enterprise Network Boot
 # Safe default: boot local disk after 30s
 # ============================================================

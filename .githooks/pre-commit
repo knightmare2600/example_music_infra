@@ -1,12 +1,23 @@
 #!/usr/bin/env bash
 # .githooks/pre-commit
-# benarbejde/ is the single source of truth for sites.csv, devices.csv,
-# address_policy.json, begyndelse.json, and ad_forest.json. bootstrap/web/proxmox/
-# only exists so the preseed web server can serve them during PXE installs -- it
-# is never hand-edited.
-# This hook keeps it in sync automatically: benarbejde/ always wins, the
-# bootstrap/web/proxmox/ copy is overwritten to match and staged as part of
-# the same commit.
+# Keeps a handful of served-copy files in sync with their real source of
+# truth automatically: the source always wins, the served copy is
+# overwritten to match and staged as part of the same commit. Two groups:
+#
+#   benarbejde/ -> bootstrap/web/proxmox/ (sites.csv, devices.csv,
+#   address_policy.json, begyndelse.json, ad_forest.json) -- so the preseed
+#   web server can serve them during PXE installs. benarbejde/ is never
+#   hand-edited in the copy's location.
+#
+#   bootstrap/web/debian/late_command.sh -> bootstrap/web/late_command.sh --
+#   was a symlink until 2026-07-11, replaced with a real synced copy for
+#   cross-platform clones (symlinks don't survive Windows/macOS/Linux clones
+#   reliably). Its only known consumer is bootstrap/web/lvm.seed's
+#   http://.../late_command.sh fetch (the live preseed path,
+#   bootstrap/web/debian/lvm-bios.seed/lvm-efi.seed, fetches
+#   .../debian/late_command.sh directly and doesn't need this copy at all --
+#   see the 2026-07-11 note in bootstrap/web/lvm.seed itself). Real edits
+#   happen in debian/late_command.sh only.
 #
 # One-time setup (per clone):
 #   git config core.hooksPath .githooks
@@ -15,10 +26,9 @@ set -euo pipefail
 
 FAIL=0
 
-sync_from_source() {
-    local name="$1"
-    local src="benarbejde/${name}"
-    local dst="bootstrap/web/proxmox/${name}"
+sync_pair() {
+    local src="$1"
+    local dst="$2"
 
     if [[ ! -f "$src" ]]; then
         echo "  [!] Missing source of truth: ${src}"
@@ -33,11 +43,18 @@ sync_from_source() {
     fi
 }
 
+sync_from_source() {
+    local name="$1"
+    sync_pair "benarbejde/${name}" "bootstrap/web/proxmox/${name}"
+}
+
 sync_from_source "sites.csv"
 sync_from_source "devices.csv"
 sync_from_source "address_policy.json"
 sync_from_source "begyndelse.json"
 sync_from_source "ad_forest.json"
+
+sync_pair "bootstrap/web/debian/late_command.sh" "bootstrap/web/late_command.sh"
 
 if [[ $FAIL -ne 0 ]]; then
     echo ""
