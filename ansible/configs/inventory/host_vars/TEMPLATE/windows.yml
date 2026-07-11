@@ -15,18 +15,17 @@
 win_site: FAL
 
 # ----------------------------------------------------------------------------
-# DOMAIN — auto-detected from subnet map if not set
-# Allowed values: example.com / example.net / example.org
+# DOMAIN JOIN
+# All hosts join the single forest domain named in benarbejde/ad_forest.json
+# (jukebox.internal by default) -- there's only one domain, so there's
+# nothing to set here. The OU is likewise computed automatically by
+# playbooks/windows_bootstrap/playbooks/80-domainjoin.yml from
+# domain_ou_role (group_vars) + host_site (parsed from the hostname) +
+# exa_domain -- no win_domain/win_ou_path override exists or is read by
+# any playbook. If you need a non-standard OU for one host, that's not
+# currently supported by an override here; raise it as a real requirement
+# instead of hand-editing a var nothing reads.
 # ----------------------------------------------------------------------------
-win_domain: example.net
-
-# ----------------------------------------------------------------------------
-# DOMAIN JOIN — REQUIRED
-# OU path in distinguishedName format.
-# Find valid OUs with:
-#   Get-ADOrganizationalUnit -Filter * | Select-Object DistinguishedName
-# ----------------------------------------------------------------------------
-win_ou_path: "OU=Workstations,OU=FAL,DC=example,DC=net"
 
 # Domain account authorised to join machines to this domain.
 # Default is JUKEBOX\Administrator (forest DA — works across all child domains).

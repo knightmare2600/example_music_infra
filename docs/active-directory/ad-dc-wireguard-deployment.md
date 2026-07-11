@@ -110,7 +110,7 @@ On each new DC before promotion:
 - [ ] Windows Server installed and activated
 - [ ] Static IP configured (LAN IP as per table above)
 - [ ] DNS set to `192.168.231.10` (CPH) for FAL promotion; switch to `192.168.76.10` (FAL) for all subsequent DCs in Phase 6
-- [ ] **Important:** `example.net`, `example.org`, `example.com` DNS zones must exist on the DC before domain join — otherwise Add-Computer resolves them to Cloudflare and fails. Zones are created as part of `ExampleMusic_UPN_DNS_dnsmasq_Procedure.md`. Verify with `Get-DnsServerZone | Select ZoneName` before Phase 4.
+- [ ] **Important:** every host joins `jukebox.internal` — the `example.net`/`example.org`/`example.com` DNS zones are UPN-suffix support only and are **not** required for the domain join itself. Create them anyway before Phase 4 so post-join UPN logins (`user@example.com` etc.) work immediately rather than resolving to Cloudflare/IANA. Zones are created as part of `ExampleMusic_UPN_DNS_dnsmasq_Procedure.md`. Verify with `Get-DnsServerZone | Select ZoneName`.
 - [ ] Windows Firewall allows AD traffic (or is disabled for initial setup)
 - [ ] `AD-Domain-Services` role installed (see Phase 4)
 - [ ] Time sync configured — critical for Kerberos (max 5 minute skew)
@@ -1269,7 +1269,7 @@ Add-Content "$env:ProgramFiles\PowerShell\7\profile.ps1" "`nSet-PSReadLineOption
 
 Almost always DNS. Run Phase 2 checks first.
 
-> **Known gotcha (learned in testing):** The internal DNS zones for `example.net`, `example.org`, and `example.com` must exist on the DC **before** attempting any domain join or promotion. If they do not exist, Windows resolves these names to their real public owners (Cloudflare in our case) and `Add-Computer` correctly reports it cannot contact the domain. Create the zones first with `Add-DnsServerPrimaryZone`, then run `Restart-Service netlogon` to populate SRV records. Verify with `Resolve-DnsName _ldap._tcp.example.net -Type SRV` before retrying.
+> **Correction (2026-07-11):** the domain join always targets `jukebox.internal` — `example.net`/`example.org`/`example.com` are UPN suffixes and DNS aliases only, never a join target (confirmed with Robert; see the §1.4 correction in `bootstrapping.md`). A join genuinely failing with "domain not found" means `jukebox.internal`'s own DNS is broken (check `Resolve-DnsName _ldap._tcp.jukebox.internal -Type SRV`, not an example.* name) — Phase 2's DNS-pointed-at-a-live-DC check above is the right first move. The gotcha this note used to describe (Windows resolving an `example.*` name to its real public owner, e.g. Cloudflare) only happens if a domain join is attempted directly against `example.net` etc. instead of `jukebox.internal` — not a step this procedure calls for. Still create the `example.net`/`example.org`/`example.com` zones per `ExampleMusic_UPN_DNS_dnsmasq_Procedure.md` regardless, so UPN logins work post-join — just don't expect them to affect the join itself.
 
 > **Second known gotcha:** `LDAP://DC=jukebox,DC=internal` anonymous binds fail from unjoined machines on modern AD. Always bind by IP: `LDAP://192.168.231.10/DC=jukebox,DC=internal` with explicit credentials.
 

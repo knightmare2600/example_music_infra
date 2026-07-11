@@ -43,6 +43,26 @@ facts:
       - docs/buildsheets/buildsheet-firewall.md
       - docs/bootstrap/bootstrapping.md
 
+  - name: single_join_domain
+    description: >-
+      Every host joins one domain, jukebox.internal (from benarbejde/ad_forest.json) -- there
+      is no per-site or per-domain join target. example.com/example.net/example.org are UPN
+      suffixes and internal DNS alias zones only, never AD join targets. Found wrong 2026-07-11
+      as a real, hardcoded example.org/example.net "win_domain" in ansible/README.md's LIV
+      onboarding walkthrough and the windows_bootstrap host_vars TEMPLATE (both dead vars --
+      80-domainjoin.yml already computes the real OU from exa_domain + host_site + role and
+      never reads win_domain/win_ou_path at all), plus a fabricated "subnet_site_map ...
+      domain: example.org" claim in the same README section that doesn't exist anywhere in
+      the codebase. Confirmed with Robert. Join-DomainAndBootstrap.ps1 still lists the
+      example.* names as selectable join targets in its $AllowedDomains -- that's a documented
+      HISTORICAL ARTEFACT (see the script's own header) deliberately not kept in sync, not a
+      live inconsistency.
+    value: "single forest domain"
+    source: "benarbejde/ad_forest.json (domain_fqdn), ansible/playbooks/windows_bootstrap/playbooks/80-domainjoin.yml"
+    asserted_in:
+      - ansible/README.md
+      - ansible/configs/inventory/host_vars/TEMPLATE/windows.yml
+
   - name: rudder_top_of_tree_site
     description: >-
       CLD, not FAL, is the Rudder relay-exempt "top of the tree" site -- Rudder root already
