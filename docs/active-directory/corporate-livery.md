@@ -71,7 +71,7 @@ $gpos = @(
 
 foreach ($gpo in $gpos) {
     New-GPO -Name $gpo -Domain "jukebox.internal"
-    New-GPLink -Name $gpo -Target "DC=jukebox,DC=example" -LinkEnabled Yes
+    New-GPLink -Name $gpo -Target "DC=jukebox,DC=internal" -LinkEnabled Yes
     Write-Host "[+] Created and linked: $gpo"
 }
 ```
@@ -650,7 +650,7 @@ GPO: JUKEBOX - Desktop - Windows 11 Settings
 ```powershell
 New-GPO -Name "JUKEBOX - Desktop - Windows 11 Settings" -Domain "jukebox.internal"
 New-GPLink -Name "JUKEBOX - Desktop - Windows 11 Settings" `
-    -Target "DC=jukebox,DC=example" -LinkEnabled Yes
+    -Target "DC=jukebox,DC=internal" -LinkEnabled Yes
 ```
 
 ---

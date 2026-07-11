@@ -1,4 +1,4 @@
-# Build Sheet — Rudder Configuration Management Node (EXASVRCLD003)
+# Build Sheet — Rudder Configuration Management Node (EXARDRCLD001)
 
 **Document ID:** NET-BUILD-RUDDER-001  
 **Classification:** Internal — Network Operations  
@@ -11,9 +11,9 @@
 
 ### Node Details
 ```
-Hostname : EXASVRCLD003
-IP       : 192.168.139.22
-Network  : CLD (192.168.139.0/24)
+Hostname : EXARDRCLD001
+IP       : 192.168.69.12
+Network  : CLD (192.168.69.0/24)
 OS       : Debian GNU/Linux 13 (Trixie)
 Role     : Rudder root server — configuration management for all sites
 ```
@@ -21,7 +21,8 @@ Role     : Rudder root server — configuration management for all sites
 ### Prerequisites
 - CLD network reachable (`EXAFWLCLD001` up, WireGuard fabric operational)
 - DNS resolving `jukebox.internal` from CLD network
-- Ansible user exists with key from `EXAPRVFAL001` (`192.168.139.50`)
+- Ansible user exists with key from `EXAPRVVRK001` (`192.168.139.50` — or `172.16.124.1:8000` at
+  Fredericia Havn, see `docs/bootstrap/bootstrapping.md` §4.1a)
 - Port `443` and `5309` open inbound from all site subnets (Rudder agent comms)
 
 ### Rudder Installation (Debian)
@@ -45,14 +46,14 @@ systemctl enable rudder-server
 systemctl start  rudder-server
 ```
 
-Web UI available at: `https://192.168.139.22/rudder`  
+Web UI available at: `https://192.168.69.12/rudder`  
 Default credentials: set on first login — store in password manager immediately.
 
 ### Post-Install Configuration
-- Set the server FQDN: `EXASVRCLD003.jukebox.internal`
-- Configure allowed networks — all site `/24` subnets plus CLD `192.168.139.0/24`
+- Set the server FQDN: `EXARDRCLD001.jukebox.internal`
+- Configure allowed networks — all site `/24` subnets plus CLD `192.168.69.0/24`
 - Import existing techniques and rules if migrating (see NET-MGMT-RUDDER-001)
-- Verify agent check-in from `EXASVRCLD002` (Ansible node) as a test node
+- Verify agent check-in from `EXAANSCLD001` (Ansible control node) as a test node
 
 ### Rudder Agent Install (on managed nodes)
 ```bash
@@ -63,18 +64,18 @@ apt-get update
 apt-get install -y rudder-agent
 
 # Point agent at the Rudder server
-rudder agent server 192.168.139.22
+rudder agent server 192.168.69.12
 
 # Accept node in Rudder web UI or via API
 ```
 
 ### Firewall Rules Required
 ```
-Inbound to EXASVRCLD003:
+Inbound to EXARDRCLD001:
   443/tcp   — Web UI + agent HTTPS reporting
   5309/tcp  — Rudder agent CFEngine comms
 
-Outbound from EXASVRCLD003:
+Outbound from EXARDRCLD001:
   Any — for package downloads, git, API calls to managed nodes
 ```
 
@@ -82,9 +83,9 @@ Outbound from EXASVRCLD003:
 
 ## Build Checklist
 
-| Hostname | Hostname Set | Static IP Set | Ansible User Created + SSH Key Installed from EXAPRVFAL001 | Debian Trixie Installed and Updated | UFW Configured (Ports 22, 443, 5309 Open) | Rudder APT Repository Added and Signed | rudder-server Package Installed | rudder-server Service Running and Enabled | FQDN Set to EXASVRCLD003.jukebox.internal | Allowed Networks Configured (All Site /24s + CLD) | Web UI Admin Password Set and Stored in Password Manager | Test Agent Checked In and Accepted | Existing Rules / Techniques Imported | Notes |
+| Hostname | Hostname Set | Static IP Set | Ansible User Created + SSH Key Installed from EXAPRVVRK001 | Debian Trixie Installed and Updated | UFW Configured (Ports 22, 443, 5309 Open) | Rudder APT Repository Added and Signed | rudder-server Package Installed | rudder-server Service Running and Enabled | FQDN Set to EXARDRCLD001.jukebox.internal | Allowed Networks Configured (All Site /24s + CLD) | Web UI Admin Password Set and Stored in Password Manager | Test Agent Checked In and Accepted | Existing Rules / Techniques Imported | Notes |
 |----------|------------------------------|------------------------------------|------------------------------------------------------------|--------------------------------------|-------------------------------------------|----------------------------------------|------------------------------|-------------------------------------------|-------------------------------------------|-----------------------------------------------|--------------------------------------------------|----------------------------------|----------------------------------|------|
-| **EXASVRCLD003** | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | Rudder root server |
+| **EXARDRCLD001** | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | Rudder root server |
 
 ---
 
