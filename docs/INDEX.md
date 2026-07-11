@@ -5,7 +5,7 @@
 
 > **Classification:** Internal — Infrastructure  
 > **Forest:** `jukebox.internal` · **Domains:** `example.net` · `example.org` · `example.com`  
-> **Last Updated:** 2026-03-06  
+> **Last Updated:** 2026-07-11  
 > **Credentials:** See password manager — never store passwords in documentation
 
 ---
@@ -111,7 +111,10 @@ a buildsheet feeds up to the commissioning record in `site-inventory.md`.
 | [buildsheets/buildsheet-rudder.md](buildsheets/buildsheet-rudder.md) | NET-BUILD-RUDDER-001 | Rudder server build checklist + inline install procedure |
 | [buildsheets/buildsheet-winadmin.md](buildsheets/buildsheet-winadmin.md) | NET-BUILD-WIN-001 | Windows Admin Centre node build checklist (Desktop Experience) |
 
-> **Pending:** `buildsheet-nas.md` — NAS build checklist (`.32` at each site) — not yet started
+> **Pending:** `buildsheet-nas.md` — NAS build checklist — not yet started. No fixed octet
+> convention exists for `NAS` in `address_policy.json`; `devices.csv` currently has it as an
+> exception at each site that has one (FAL `.32`, PER `.50`, MEL unset) — confirm per-site via
+> `devices.csv`, don't assume `.32`.
 
 ---
 
@@ -165,6 +168,7 @@ Proxmox VE administration, storage, networking, and planning documents.
 | [proxmox/proxmox-dcm-pbs-planning.md](proxmox/proxmox-dcm-pbs-planning.md) | NET-PVE-PBS-001 | Proxmox Backup Server and DC migration planning |
 | [proxmox/pegaprox-evaluation.md](proxmox/pegaprox-evaluation.md) | NET-PVE-EVAL-001 | PegaProx evaluation notes |
 | [proxmox/pdm-enterprise-proposal.md](proxmox/pdm-enterprise-proposal.md) | NET-PVE-PDM-001 | Proxmox Datacenter Manager enterprise proposal |
+| [proxmox/NET-BMC-001-proxmoxbmc-setup.md](proxmox/NET-BMC-001-proxmoxbmc-setup.md) | NET-BMC-001 | Virtual BMC / IPMI emulation (`proxmoxbmc`) setup |
 
 ---
 
@@ -190,7 +194,9 @@ WireGuard VPN configuration and troubleshooting.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
-| [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) | NET-WG-001 | WireGuard troubleshooting guide — tunnel diagnostics, re-keying, common failures |
+| [wireguard/NET-VPN-WG-001-wireguard-routing.md](wireguard/NET-VPN-WG-001-wireguard-routing.md) | NET-VPN-WG-001 | WireGuard inter-hub routing — fabric provisioning, AllowedIPs, re-keying |
+| [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) | NET-VPN-WG-002 | WireGuard troubleshooting guide — tunnel diagnostics, re-keying, common failures |
+| [wireguard/Troubleshooting-fwl-post-v2v.md](wireguard/Troubleshooting-fwl-post-v2v.md) | NET-FW-TROUBLESHOOT-001 | Firewall recovery after V2V migration — nftables/NetworkManager on Proxmox VE |
 
 ---
 
@@ -208,7 +214,9 @@ WireGuard VPN configuration and troubleshooting.
 | `NET-MGMT-*` | Management and automation |
 | `NET-PVE-*` | Proxmox VE |
 | `NET-RAC-*` | Remote access console / BMC |
-| `NET-WG-*` | WireGuard |
+| `NET-BMC-*` | Virtual BMC / IPMI emulation |
+| `NET-VPN-WG-*` | WireGuard |
+| `NET-FW-*` | Firewall troubleshooting |
 | `HW-REF-*` | Hardware reference |
 
 ---

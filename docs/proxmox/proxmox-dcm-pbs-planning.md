@@ -146,7 +146,7 @@ instance running in a VM uses the no-subscription repo, and PDM can
 connect to it for evaluation purposes. This is explicitly not production
 use and carries no support obligations.
 
-See the separate proposal document (`pdm-enterprise-proposal.docx`)
+See the separate proposal document (`pdm-enterprise-proposal.md`)
 for the full cost-benefit analysis and licence recommendations
 for budget approval.
 
@@ -194,6 +194,14 @@ qm config <VMID> | grep cpu
 
 PDM ships as an ISO or can be installed on an existing Debian/PVE system.
 The easiest approach for lab evaluation is the ISO install on a small VM:
+
+> **Unverified (2026-07-11):** the `bookworm` codename below was not re-checked against
+> Proxmox's current PDM apt repo path. This estate's PVE 9.x nodes run Debian Trixie, not
+> Bookworm (Bookworm was the PVE 8.x base — see the `proxmox-kernel-*` package-naming fix in
+> `docs/pve-maintenance-automation.md`'s changelog for the same PVE 8→9 class of drift). Proxmox
+> has historically pinned some component repos to a specific Debian codename independent of the
+> host OS release, so `bookworm` here may or may not be stale — confirm against
+> `https://pdm.proxmox.com/debian/pdm` before running this in the lab.
 
 ```bash
 # Download PDM ISO from Proxmox
@@ -328,7 +336,7 @@ These are starting points — adjust per VM criticality and storage budget.
 
 | Document | Relationship |
 |----------|-------------|
-| `pdm-enterprise-proposal.docx` | Budget proposal for enterprise support licensing |
+| `pdm-enterprise-proposal.md` | Budget proposal for enterprise support licensing |
 | `proxmox/pve-networking.md` | Network config PDM connects through |
 | `wireguard/wireguard-troubleshooting.md` | Cross-site PDM-to-cluster connectivity |
 | `network-inventory.md` | IP assignments for PDM and PBS nodes |

@@ -987,7 +987,12 @@ else
 fi
 ```
 
-^– wrong copy the correct one on Monday
+> **Reviewed 2026-07-11:** this had a stray "wrong, copy the correct one on Monday" note left in
+> place (presumably that Monday came and went without a follow-up). Traced the logic by hand —
+> the four branches (enabled+active, enabled+inactive, not-enabled, enabled+other-state e.g.
+> failed/activating) cover every reachable `is-enabled`/`is-active` combination with no gap. No
+> replacement script was found anywhere else in the repo to compare against. Leaving as-is unless
+> someone spots an actual bug — the note itself was the only evidence something was wrong.
 
 ---
 

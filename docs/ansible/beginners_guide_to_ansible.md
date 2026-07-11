@@ -12,7 +12,7 @@
 
 This document provides a practical introduction to Ansible as it is actually used at
 Example Music. It started as a write-up of one real troubleshooting/learning session on
-`EXASRVCLD001` (the sudo/become/reboot walkthrough further down still uses that session's
+`EXADNSVRK001` (the sudo/become/reboot walkthrough further down still uses that session's
 real captured output — new administrators are encouraged to compare their own output
 against it). It has since grown to cover the repository's actual architecture: how the
 inventory is organised, where `group_vars`/`host_vars` have to live and why, how a
@@ -50,7 +50,7 @@ At Example Music, Ansible is used as the primary Linux configuration and deploym
 The following examples were captured from:
 
 ```text
-Hostname : EXASRVCLD001
+Hostname : EXADNSVRK001
 Address  : 192.168.139.8
 Role     : DNS Server
 Domain   : jukebox.internal
@@ -218,7 +218,7 @@ once bootstrap completes; `add_host` only covers the run that gets it there.
 The following command was executed:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ ansible-playbook -i /home/ansible/ansible/configs/inventory --limit ansiblehosts --check --diff --step playbooks/linux/tools.yml
+ansible@exadnsvrk001[~/ansible]$ ansible-playbook -i /home/ansible/ansible/configs/inventory --limit ansiblehosts --check --diff --step playbooks/linux/tools.yml
 ```
 
 Breaking this down:
@@ -240,7 +240,7 @@ Breaking this down:
 The following output was captured exactly during execution:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ ansible-playbook -i /home/ansible/ansible/configs/inventory --limit ansiblehosts --check --diff --step playbooks/linux/tools.yml
+ansible@exadnsvrk001[~/ansible]$ ansible-playbook -i /home/ansible/ansible/configs/inventory --limit ansiblehosts --check --diff --step playbooks/linux/tools.yml
 [WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
 [DEPRECATION WARNING]: community.general.yaml has been deprecated. The plugin has been superseded by the the option `result_format=yaml` in callback plugin ansible.builtin.default from ansible-core 2.13 onwards. This feature will be removed from collection 'community.general' version 12.0.0.
 
@@ -339,7 +339,9 @@ worth investigating, not ignoring.
 
 `ansible.cfg` is generated automatically by `ansibleme.sh` when the Ansible control node is
 first set up, and is also committed to the repo (`ansible/ansible.cfg`) as the actual source
-of truth — the version below is that committed file, not a hand-transcribed summary of it:
+of truth — every setting and value below is taken directly from that committed file, with its
+inline comments trimmed for readability (see `ansible/ansible.cfg` itself for the full comments,
+including the 2026-07-09 ini-section-bug story referenced below):
 
 ```ini
 [defaults]
@@ -513,7 +515,7 @@ For a Linux host in the `linux` group, becoming root still requires the target h
 actually grant it — which is where passwordless sudo comes in:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ sudo cat /etc/sudoers.d/ansible
+ansible@exadnsvrk001[~/ansible]$ sudo cat /etc/sudoers.d/ansible
 
 # Ansible automation - full passwordless sudo
 ansible ALL=(ALL) NOPASSWD: ALL
@@ -530,7 +532,7 @@ The following commands were used during troubleshooting.
 Verify group membership:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ groups
+ansible@exadnsvrk001[~/ansible]$ groups
 
 ansible adm cdrom sudo dip users kvm
 ```
@@ -538,12 +540,12 @@ ansible adm cdrom sudo dip users kvm
 Verify effective permissions:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ sudo -l
+ansible@exadnsvrk001[~/ansible]$ sudo -l
 
-Matching Defaults entries for ansible on exasrvcld001:
+Matching Defaults entries for ansible on exadnsvrk001:
     env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin, use_pty
 
-User ansible may run the following commands on exasrvcld001:
+User ansible may run the following commands on exadnsvrk001:
     (ALL : ALL) ALL
     (ALL) NOPASSWD: ALL
 ```
@@ -563,7 +565,7 @@ which confirms that passwordless sudo has been granted.
 The configuration file permissions were checked:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ ls -l /etc/sudoers.d/ansible
+ansible@exadnsvrk001[~/ansible]$ ls -l /etc/sudoers.d/ansible
 
 -r--r----- 1 root root 78 Jun 14 11:19 /etc/sudoers.d/ansible
 ```
@@ -571,7 +573,7 @@ ansible@exasrvcld001[~/ansible]$ ls -l /etc/sudoers.d/ansible
 The sudoers configuration was validated:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ sudo visudo -c
+ansible@exadnsvrk001[~/ansible]$ sudo visudo -c
 
 /etc/sudoers: parsed OK
 /etc/sudoers.d/README: parsed OK
@@ -587,7 +589,7 @@ This confirms there are no syntax errors.
 The following commands were executed:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ sudo grep -n "sudo" /etc/sudoers
+ansible@exadnsvrk001[~/ansible]$ sudo grep -n "sudo" /etc/sudoers
 sudo grep -n "includedir" /etc/sudoers
 
 49:# Allow members of group sudo to execute any command
@@ -606,7 +608,7 @@ This is important because `@includedir /etc/sudoers.d` appears after `%sudo ALL=
 Many administrators use `sudo -v` when testing sudo. The following commands were used instead:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ sudo -k
+ansible@exadnsvrk001[~/ansible]$ sudo -k
 sudo id
 
 uid=0(root) gid=0(root) groups=0(root)
@@ -615,7 +617,7 @@ uid=0(root) gid=0(root) groups=0(root)
 and:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ sudo -k
+ansible@exadnsvrk001[~/ansible]$ sudo -k
 sudo whoami
 
 root
@@ -630,8 +632,8 @@ These tests prove that sudo can execute privileged commands without prompting fo
 After troubleshooting, the server was rebooted:
 
 ```text
-ansible@exasrvcld001[~/ansible]$ sudo reboot
-ansible@exasrvcld001[~/ansible]$ Connection to 192.168.139.8 closed by remote host.
+ansible@exadnsvrk001[~/ansible]$ sudo reboot
+ansible@exadnsvrk001[~/ansible]$ Connection to 192.168.139.8 closed by remote host.
 Connection to 192.168.139.8 closed.
 ```
 
@@ -646,7 +648,7 @@ The login banner confirmed successful startup:
 
 ```text
 ╔══════════════════════════════════════════════════════════════╗
-║           EXAMPLE MUSIC LIMITED: exasrvcld001            ║
+║           EXAMPLE MUSIC LIMITED: exadnsvrk001            ║
 ╚══════════════════════════════════════════════════════════════╝
 
   Role     : DNS Server -- jukebox.internal
@@ -666,7 +668,7 @@ The login banner confirmed successful startup:
 Passwordless sudo was tested again:
 
 ```text
-ansible@exasrvcld001[~]$ sudo -k
+ansible@exadnsvrk001[~]$ sudo -k
 sudo whoami
 
 root
@@ -675,7 +677,7 @@ root
 System uptime immediately after reboot:
 
 ```text
-ansible@exasrvcld001[~]$ uptime
+ansible@exadnsvrk001[~]$ uptime
  18:39:12 up 1 min,  1 user,  load average: 0.25, 0.15, 0.06
 ```
 
