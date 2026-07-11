@@ -29,18 +29,28 @@ HP      iLO        : Administrator / <8-digit uppercase hex — see node record 
 
 > **Fredericia Havn note:** `192.168.139.50` is Edinburgh's provisioning server. If you're
 > building at Fredericia Havn instead, the server is `172.16.124.1:8000` (gateway `172.16.124.2`)
-> — see `docs/bootstrap/bootstrapping.md` §4.1a. The `menu.ipxe`/`first-boot.sh` boot flow
-> detects this automatically; only matters if you're fetching something by hand (as below).
+> — see `docs/bootstrap/bootstrapping.md` §4.1. The `menu.ipxe`/`first-boot.sh` boot flow
+> detects this automatically, including selecting the right site's TOML file below (§5.1) —
+> only matters if you're fetching something by hand (as below), where you must pick the
+> matching filename yourself.
 
 ### TOML Answer Files
+
+Site-prefixed as of 2026-07-11 — there's no bare `answer.toml`/`degraded.toml` any more, one
+correctly-pinned file per provisioning server (`docs/bootstrap/bootstrapping.md` §5.1):
+
 ```
-Provisioning server : http://192.168.139.50/proxmox/
+Edinburgh (VRK)        : http://192.168.139.50/proxmox/
+  VRK-answer.toml       — standard build, 2-disk ZFS mirror  ← USE THIS for production
+  VRK-degraded.toml     — single-disk ZFS pool, NOT production ready
 
-answer.toml         — standard build, 2-disk ZFS mirror  ← USE THIS for production
-degraded.toml       — single-disk ZFS pool, NOT production ready
+Fredericia Havn (FRD)  : http://172.16.124.1:8000/proxmox/
+  FRD-answer.toml       — standard build, 2-disk ZFS mirror  ← USE THIS for production
+  FRD-degraded.toml     — single-disk ZFS pool, NOT production ready
 
-Fetch from the "failed" shell:
-  wget -O /run/automatic-installer-answers http://192.168.139.50/proxmox/answer.toml
+Fetch from the "failed" shell (Edinburgh example — substitute FRD- and the Fredericia Havn
+URL above if building there):
+  wget -O /run/automatic-installer-answers http://192.168.139.50/proxmox/VRK-answer.toml
   exit
 ```
 
@@ -73,11 +83,11 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 3.  Mount Proxmox ISO via Virtual Media
 4.  Boot → Advanced → Automated Install
 5.  Node "fails" to a shell — this is expected
-6.  wget the appropriate .toml file (answer.toml for production)
+6.  wget the appropriate site-prefixed .toml file (VRK-answer.toml / FRD-answer.toml for production)
 7.  Type 'exit' — installation proceeds
 8.  On first boot: log in as root, run firstboot script
 9.  Confirm hostname, IP, site, entity displayed correctly
-10. Acknowledge ZFS warning if single-disk (degraded.toml only)
+10. Acknowledge ZFS warning if single-disk (*-degraded.toml only)
 11. Reboot when prompted (or run: ifreload -a to apply network without reboot)
 12. Reconnect on site LAN IP — verify web UI at https://<ip>:8006
 13. Install ipmitool, set BMC password via ipmitool
@@ -92,12 +102,12 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 
 ## Proxmox Node Build Checklist
 
-| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (answer.toml / degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
+| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (VRK/FRD-answer.toml or -degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 
 ### UK
 
-| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (answer.toml / degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
+| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (VRK/FRD-answer.toml or -degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | EXAPVEFAL001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | EXAPVEFAL002 | | .6 | .3 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
@@ -116,14 +126,14 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 | EXAPVEHAL001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 
 ### Scandinavia
-| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (answer.toml / degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
+| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (VRK/FRD-answer.toml or -degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | EXAPVEOSL001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | EXAPVEGOT001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 
 ### Europe
 
-| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (answer.toml / degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
+| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (VRK/FRD-answer.toml or -degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | EXAPVECPH001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | ORIG PVE node |
 | EXAPVEODE001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | EU HUB |
@@ -137,7 +147,7 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 
 ### North America
 
-| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (answer.toml / degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
+| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (VRK/FRD-answer.toml or -degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | EXAPVEBRK001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | NA HUB |
 | EXAPVEBRK002 | | .6 | .3 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
@@ -147,7 +157,7 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 
 ### Pacific
 
-| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (answer.toml / degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
+| Hostname | Vendor | Node IP Suffix | BMC IP Suffix | BMC Console Opened | BMC Credentials Stored in Keystore and Login Verified | Proxmox ISO Mounted via Virtual Media and Booted | Answer File Retrieved (VRK/FRD-answer.toml or -degraded.toml) | ZFS Pool Confirmed After Install | ZFS 2-Disk Mirror Confirmed | Firstboot Script Ran Successfully | Node Rebooted and Site LAN IP Reachable | IPMI Verified (ipmitool installed + BMC password changed) | Hostname Correctly Set | DNS Updated and Verified | Ansible SSH Key Installed and Login Verified | Post-Install Backup Taken | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | EXAPVESYD001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | EXAPVEMEL001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |

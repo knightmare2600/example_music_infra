@@ -17,15 +17,15 @@ to a full ZFS RAID1 mirror without reinstalling or losing data.
 
 ## When to Use This Procedure
 
-The Proxmox automated installer requires two disks for `zfs.raid = "raid1"`. When only one disk is available at install time, use the degraded install path instead:
+The Proxmox automated installer requires two disks for `zfs.raid = "raid1"`. When only one disk is available at install time, use the degraded install path instead (site-prefixed as of 2026-07-11 — pick the file matching where you're building, `docs/bootstrap/bootstrapping.md` §5.1/§5.3):
 
 ```bash
-http://192.168.139.50/proxmox/degraded.toml
-```
+# Edinburgh (VRK)
+http://192.168.139.50/proxmox/VRK-degraded.toml
 
-> **Fredericia Havn note:** `192.168.139.50` above is Edinburgh's provisioning server. At
-> Fredericia Havn it's `172.16.124.1:8000/proxmox/degraded.toml` (gateway `172.16.124.2`) — see
-> `docs/bootstrap/bootstrapping.md` §4.1a.
+# Fredericia Havn (FRD) -- gateway 172.16.124.2
+http://172.16.124.1:8000/proxmox/FRD-degraded.toml
+```
 
 This installs Proxmox with `zfs.raid = "raid0"` on a single disk. The node comes up fully functional — first-boot runs, Ansible user is configured,
 node info file is written to `/etc/example-music/nodeinfo.json`, everything is ready. The node simply has no redundancy until the second disk is added.
@@ -270,4 +270,4 @@ Unlike a replacement scenario where the pool is DEGRADED before you start, a sin
 
 *Example Music Infrastructure — jukebox.internal*
 *Verified Feb 2026 — Proxmox VE 9, legacy BIOS*
-*Single disk install: http://192.168.139.50/proxmox/degraded.toml*
+*Single disk install: http://192.168.139.50/proxmox/VRK-degraded.toml (Edinburgh) / http://172.16.124.1:8000/proxmox/FRD-degraded.toml (Fredericia Havn)*

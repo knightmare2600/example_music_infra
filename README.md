@@ -71,9 +71,9 @@ The bootstrap network is always `192.168.139.0/24`. The bootstrap server runs at
 - Custom iPXE ISO and `.lkrn` binary — chainloads into the boot menu from any machine that can PXE boot, pointed at `192.168.139.50`
 - iPXE boot menu — presents install options for Proxmox VE and other supported targets
 - `static-web-server.exe` — portable HTTP server, no install required, serves the bootstrap content from a Windows laptop if needed
-- Proxmox answer files:
-  - `answer.toml` — standard two-disk ZFS RAID1 install
-  - `degraded.toml` — single-disk ZFS RAID0 install for when the second disk hasn't arrived yet
+- Proxmox answer files — site-prefixed, one pair per provisioning server (`VRK-*` Edinburgh, `FRD-*` Fredericia Havn; `menu.ipxe`'s gateway detection picks the right pair automatically):
+  - `VRK-answer.toml` / `FRD-answer.toml` — standard two-disk ZFS RAID1 install
+  - `VRK-degraded.toml` / `FRD-degraded.toml` — single-disk ZFS RAID0 install for when the second disk hasn't arrived yet
 - `first-boot.sh` — post-install provisioning script, runs on first boot: ansible user + SSH key (so Ansible can reach the box at all) plus local-only convenience steps (apt repo fix, subscription-nag removal, MOTD, single-disk RAID warning). Everything else PVE-specific (hostname/network rewrite, V2V/VirtIO/proxmoxbmc tooling) moved to `ansible/playbooks/proxmox/bootstrap-new-node.yml` and `45-virt-tools.yml`, run once the node has a temporary DHCP IP
 - `ansibleme.sh` — provisions the Ansible control node (`EXAANSCLD001`) from scratch — installs packages, deploys keys, clones the repo, places `sites.csv`/`devices.csv`/`begyndelse.json` at `/etc/example-music/`
 - `firewallme.sh` — interactive firewall bootstrap script, handles WireGuard key generation, site code lookup and peer configuration
