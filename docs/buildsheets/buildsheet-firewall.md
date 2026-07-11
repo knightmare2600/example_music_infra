@@ -455,7 +455,7 @@ cat /etc/.i_am_a_firewall
 
 | Site | Hostname | IP | VM | OS | PW | FW | RB | WG | PR | VF | AN | OK | Notes |
 |------|----------|----|----|----|----|----|----|----|----|----|----|----|----|
-| ATL | EXAFWLATL001 | 192.168.44.253 |      |      |      |      |      |      |      |      |      |      | Athens GA |
+| ATL | EXAFWLATL001 | 192.168.33.253 |      |      |      |      |      |      |      |      |      |      | Atlanta |
 | CHI | EXAFWLCHI001 | 192.168.214.253 |      |      |      |      |      |      |      |      |      |      | Chicago |
 | LAX | EXAFWLLAX001 | 192.168.213.253 |      |      |      |      |      |      |      |      |      |      | Los Angeles |
 | MIA | EXAFWLMIA001 | 192.168.135.253 |      |      |      |      |      |      |      |      |      |      | Miami — PENDING BUILD |

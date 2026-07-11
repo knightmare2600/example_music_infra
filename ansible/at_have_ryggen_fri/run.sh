@@ -41,6 +41,12 @@
 #      -- confirms every file each depends on still exists and a handful of
 #      load-bearing warnings/framing comments haven't been edited away.
 #      Doesn't build real infrastructure -- see scenarios.yml's own header.
+#  10. check_site_data.py  -- benarbejde/sites.csv is read fresh every run:
+#      every site code appears somewhere in docs/*.md, and every doc line
+#      naming exactly one site code alongside a literal IP has the right
+#      octet for that site. Runs against current sites.csv every time, so
+#      any future edit to it is re-checked automatically, not just audited
+#      once by hand.
 #
 # Nothing here touches a real host, needs a vault password, or needs network
 # access beyond localhost -- safe to run any time, by anyone, on any clone.
@@ -89,6 +95,19 @@
 #               had nowhere durable to land once terminal scrollback was
 #               gone. --no-report added to skip it for callers that already
 #               capture output themselves.
+#   2026-07-11  Added check_site_data.py (section 10), per Robert: "all site
+#               codes from sites.csv are in the documentation" and "their
+#               subnets, gateways... match", checked automatically every
+#               run rather than as a one-off audit. Found and fixed one real
+#               bug (buildsheet-firewall.md's ATL row: wrong IP, wrong city
+#               name -- leftover from before the fictional GAA/"Georgia AL"
+#               code was consolidated into the real ATL/Atlanta). Also
+#               surfaced a real, deliberate, previously-undocumented-here
+#               convention while tuning out false positives: every site's
+#               firewall also has a WAN IP on the provisioning network at
+#               192.168.139.<site's own octet> (see
+#               docs/inventory/EXADNSVRK001-dns.md) -- the checker now knows
+#               to treat that pattern as correct, not a mismatch.
 # ==============================================================================
 set -uo pipefail
 
@@ -331,6 +350,20 @@ else
   echo "$out"
   fail "Bootstrap scenario check(s) failed -- see above."
   FAILED_CHECKS+=("check_scenarios.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 10. Site data coverage/consistency — benarbejde/sites.csv vs docs/
+# ------------------------------------------------------------------------------
+section "10. Site data — check_site_data.py"
+
+if out=$(python3 "${HERE}/check_site_data.py"); then
+  echo "$out"
+  success "Every sites.csv site code is documented, no octet mismatches found."
+else
+  echo "$out"
+  fail "Site coverage/consistency check(s) failed -- see above."
+  FAILED_CHECKS+=("check_site_data.py")
 fi
 
 # ------------------------------------------------------------------------------
