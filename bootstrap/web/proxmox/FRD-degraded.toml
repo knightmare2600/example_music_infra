@@ -19,16 +19,16 @@ source = "from-dhcp"
 
 [disk-setup]
 filesystem = "zfs"
-zfs.raid = "raid1"
-disk-list = ["sda", "sdb"]
+zfs.raid = "raid0"
+disk-list = ["sda"]
 
-# NOTE (2026-07-08): this url is a static TOML value -- it cannot do the gateway-based boot-server
-# detection menu.ipxe/late_command.sh/first-boot.sh itself all use, since TOML has no conditionals.
-# This file is always fetched from the right server already (menu.ipxe/boot.ipxe request it via
-# ${boot-url}), but the URL *inside* it is fixed at Edinburgh (192.168.139.50). If a Proxmox install
-# is ever done from the Fredericia Havn provisioning server (172.16.124.1:8000) instead, this one
-# line needs a manually-maintained override on that server's own copy of this file.
+# TOML has no conditionals, so this file can't do the gateway-based ${boot-url} detection
+# menu.ipxe/late_command.sh/first-boot.sh itself all use -- it's a static value. Fixed
+# 2026-07-11: each site now has its own correctly-pinned degraded.toml (this one: FRD/
+# Fredericia Havn) instead of one file with a URL permanently pinned to Edinburgh. See
+# bootstrap/web/proxmox/VRK-answer.toml's comment for the full reasoning, and
+# VRK-degraded.toml for Edinburgh's equivalent.
 [first-boot]
 source = "from-url"
 ordering = "fully-up"
-url = "http://192.168.139.50/proxmox/first-boot.sh"
+url = "http://172.16.124.1:8000/proxmox/first-boot.sh"
