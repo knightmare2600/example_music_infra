@@ -844,9 +844,9 @@ separate site code. See `docs/ExampleMusic_Beginners_Guide.md` §4.1.
 ### Infrastructure Checklist
 
 - [ ] `EXAFWLODE001` — Firewall (`192.168.126.1`) · Cisco ASA 5506-X · edge firewall
-- [ ] `EXARACODI001` — BMC node 1 (`192.168.126.2`)
-- [ ] `EXARACODI002` — BMC node 2 (`192.168.126.3`)
-- [ ] `EXARACODI003` — BMC node 3 (`192.168.126.4`)
+- [ ] `EXARACODE001` — BMC node 1 (`192.168.126.2`)
+- [ ] `EXARACODE002` — BMC node 2 (`192.168.126.3`)
+- [ ] `EXARACODE003` — BMC node 3 (`192.168.126.4`)
 - [ ] `EXAPVEODE001` — Proxmox node 1 (`192.168.126.5`) · ZFS RAID1
 - [ ] `EXAPVEODE002` — Proxmox node 2 (`192.168.126.6`) · ZFS RAID1
 - [ ] `EXAPVEODE003` — Proxmox node 3 (`192.168.126.7`) · ZFS RAID1

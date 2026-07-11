@@ -235,8 +235,8 @@ Every provisioned PVE node has `/etc/example-music/nodeinfo.json` (read-only, mo
 
 ```json
 {
-    "hostname": "EXAFALPVE001",
-    "fqdn": "EXAFALPVE001.jukebox.internal",
+    "hostname": "EXAPVEFAL001",
+    "fqdn": "EXAPVEFAL001.jukebox.internal",
     "role": "proxmox",
     "site": "FAL",
     "city": "Falkirk",

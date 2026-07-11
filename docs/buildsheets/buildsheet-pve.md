@@ -104,7 +104,7 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 | EXAPVEFAL003 | | .7 | .4 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | EXAPVEEDI001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | EXAPVEGLA001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
-| EXAPVEABR001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
+| EXAPVEABD001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | EXAPVEMCR001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | EXAPVELND001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | EXAPVEBIR001 | | .5 | .2 | [ ] | [ ] | [ ] | | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
@@ -167,7 +167,7 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 | EXAPVEFAL003 | - [ ] | - [ ] | - [ ] | |
 | EXAPVEEDI001 | - [ ] | - [ ] | - [ ] | |
 | EXAPVEGLA001 | - [ ] | - [ ] | - [ ] | |
-| EXAPVEABR001 | - [ ] | - [ ] | - [ ] | |
+| EXAPVEABD001 | - [ ] | - [ ] | - [ ] | |
 | EXAPVEMCR001 | - [ ] | - [ ] | - [ ] | |
 | EXAPVELND001 | - [ ] | - [ ] | - [ ] | |
 | EXAPVEBIR001 | - [ ] | - [ ] | - [ ] | |
@@ -199,7 +199,7 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 | EXAPVELAX001 | - [ ] | - [ ] | - [ ] | |
 | EXAPVEMIA001 | - [ ] | - [ ] | - [ ] | |
 | EXAPVENJC001 | - [ ] | - [ ] | - [ ] | |
-| EXAPVEGAA001 | - [ ] | - [ ] | - [ ] | |
+| EXAPVEATL001 | - [ ] | - [ ] | - [ ] | |
 | EXAPVESYD001 | - [ ] | - [ ] | - [ ] | |
 | EXAPVEMEL001 | - [ ] | - [ ] | - [ ] | |
 | EXAPVEAKL001 | - [ ] | - [ ] | - [ ] | |
