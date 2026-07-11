@@ -35,6 +35,7 @@ scenarios:
       - bootstrap/web/proxmox/first-boot.sh
       - bootstrap/web/proxmox/create-vm.py
       - bootstrap/web/provision/ansibleme.sh
+      - ansible/playbooks/proxmox/bootstrap-new-node.yml
       - docs/buildsheets/buildsheet-pve.md
       - docs/proxmox/Procedure-PVE-Node-Onboarding.md
       - docs/proxmox/pve-create-vm.md
@@ -42,6 +43,9 @@ scenarios:
       - file: bootstrap/web/provision/ansibleme.sh
         must_contain: "git clone"
         why: "ansibleme.sh must still clone the repo itself -- it's the break-glass path with no other way to get the repo onto a fresh control node."
+      - file: ansible/playbooks/proxmox/bootstrap-new-node.yml
+        must_contain: "Refuse to run against an already-onboarded node"
+        why: "This playbook renames the live host and rewrites its own networking, dropping the current SSH session on purpose -- the already-onboarded guard is what stops it being re-run by accident against a node that's already gone through site.yml. Losing this check silently would make a routine mistake destructive."
       - file: bootstrap/web/provision/ansibleme.sh
         must_contain: 'ln -s "${REPO_DIR}/ansible" "${ANSIBLE_DIR}"'
         why: "The clone-then-symlink mechanism a trainee relies on to make /home/ansible/ansible resolve."
