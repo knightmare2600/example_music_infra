@@ -10,6 +10,13 @@
 # Version history
 # =============================================================================
 # v1.0.0  2026-06-23  Initial release.
+# v1.1.0  2026-07-11  Added rudder_dc_ip (192.168.69.10, EXADCSCLD001's real IP) -- was
+#                     missing; rudder_server.yml had been wrongly using rudder_dns (the
+#                     DNS server's IP) for the DC's /etc/hosts entry, a real bug now fixed.
+#                     rudder_dc_hostname now matches the group_vars default (both changed
+#                     to CLD, see that file's changelog) -- kept explicit here anyway,
+#                     matching every other var on this host, rather than relying on it
+#                     falling through silently.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -33,4 +40,5 @@ rudder_site_code:    "CLD"
 rudder_site_city:    "Edinburgh"
 rudder_site_country: "Scotland"
 rudder_site_entity:  "Example Music Limited"
-rudder_dc_hostname:  "EXADCSCLD001"   # ← overrides the group_vars default of EXADCSFAL001
+rudder_dc_hostname:  "EXADCSCLD001"
+rudder_dc_ip:        "192.168.69.10"
