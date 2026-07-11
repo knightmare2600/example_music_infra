@@ -951,8 +951,6 @@ mkdir -p host_vars/EXADCSLIV001
 ```yaml
 ---
 win_site:   LIV
-win_domain: example.org
-win_ou_path: "OU=Domain Controllers,OU=LIV,DC=example,DC=org"
 
 win_domain_join_user: Administrator
 win_domain_join_password: !vault |
@@ -963,6 +961,11 @@ win_entity:  "Example Music A/S"
 win_city:    "Liverpool"
 win_country: "England"
 ```
+
+There's no `win_domain`/`win_ou_path` to set — every host joins the single forest domain
+named in `benarbejde/ad_forest.json` (`jukebox.internal`), and `80-domainjoin.yml` computes
+the OU itself from `domain_ou_role` + `host_site` + `exa_domain`. Nothing reads a per-host
+domain or OU override.
 
 Encrypt the domain join password and paste the output in place of `<replace — see below>`:
 
@@ -1010,7 +1013,7 @@ ansible-playbook -i configs/inventory \
 4. Deploys the Ansible SSH key to `C:\ProgramData\ssh\administrators_authorized_keys`
 5. Installs Chocolatey and standard tooling
 6. Applies registry hardening, wallpaper, hibernation policy
-7. Domain-joins to `example.org` under `OU=Domain Controllers,OU=LIV`, reboots
+7. Domain-joins to `jukebox.internal` under `OU=Domain Controllers,OU=LIV`, reboots
 8. Writes `C:\ProgramData\example-music\nodeinfo.json` (`ansible_managed: true`)
 
 The node is now domain-joined but still a plain member server.
@@ -1088,9 +1091,12 @@ git push
 | File | Action | Why |
 |------|--------|-----|
 | `configs/inventory/liv.ini` | Create | LIV site inventory |
-| `host_vars/EXADCSLIV001/windows.yml` | Create | OU path, entity metadata |
+| `host_vars/EXADCSLIV001/windows.yml` | Create | Explicit site, entity metadata |
 
 No playbooks need amending — the DC and bootstrap playbooks are already parameterised
-for any standard site. The `subnet_site_map` in `windows_bootstrap.yml` already has
-`"151": { site: LIV, domain: example.org }` so site and domain auto-detect correctly
-from the 192.168.151.x DHCP address.
+for any standard site. `tasks/site_detection.yml`'s `octet_map` already has `'151': 'LIV'`,
+so the site auto-detects correctly from the 192.168.151.x DHCP address even without the
+explicit `win_site: LIV` above (setting it explicitly is just belt-and-braces — see that
+task's own mismatch warning if hostname-derived and IP-detected site ever disagree). There
+is only one domain (`jukebox.internal`, from `benarbejde/ad_forest.json`) — no per-site
+domain mapping exists or is needed.
