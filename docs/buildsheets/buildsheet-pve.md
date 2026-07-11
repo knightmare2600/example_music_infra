@@ -27,6 +27,11 @@ SuperMicro BMC     : admin      / admin
 HP      iLO        : Administrator / <8-digit uppercase hex — see node record below>
 ```
 
+> **Fredericia Havn note:** `192.168.139.50` is Edinburgh's provisioning server. If you're
+> building at Fredericia Havn instead, the server is `172.16.124.1:8000` (gateway `172.16.124.2`)
+> — see `docs/bootstrap/bootstrapping.md` §4.1a. The `menu.ipxe`/`first-boot.sh` boot flow
+> detects this automatically; only matters if you're fetching something by hand (as below).
+
 ### TOML Answer Files
 ```
 Provisioning server : http://192.168.139.50/proxmox/

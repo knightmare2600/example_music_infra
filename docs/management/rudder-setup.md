@@ -12,6 +12,10 @@
 > **Java note:** The Rudder server runs Java (it is a Scala/Lift web application — this cannot be avoided on the server). The Rudder agent installed on Linux nodes (firewall VMs, Debian servers) is pure C/shell with zero Java dependency. Java never touches any node except `EXASRVFAL002`.
 >
 > **Cloud note:** `EXASRVFAL002` lives in the cloud. The setup script (`rudderme.sh`) handles hostname and static IP configuration with CLD-aware checks. Because the node is cloud-hosted, skip the PVE VM creation section and use whatever provisioning method your cloud provider offers.
+>
+> **Fredericia Havn note:** `192.168.139.50` below is Edinburgh's provisioning server. If you're
+> fetching the Ansible key from Fredericia Havn instead, it's `172.16.124.1:8000` (gateway
+> `172.16.124.2`) — see `docs/bootstrap/bootstrapping.md` §4.1a.
 
 ---
 

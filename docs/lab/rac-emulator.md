@@ -122,6 +122,10 @@ manual address instead.
 | Provisioning server reachable | `192.168.139.50` for Ansible key fetch |
 | DNS working | `jukebox.internal` resolves from the site |
 
+> **Fredericia Havn note:** `192.168.139.50` above is Edinburgh's provisioning server. At
+> Fredericia Havn it's `172.16.124.1:8000` (gateway `172.16.124.2`) — see
+> `docs/bootstrap/bootstrapping.md` §4.1a.
+
 ---
 
 ## Node Specification

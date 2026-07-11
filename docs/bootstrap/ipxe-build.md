@@ -17,6 +17,10 @@ This runbook covers building a custom iPXE ISO with an embedded boot script, inc
 
 The iPXE ISO attached to every VM at creation time (`ide2`) is a custom build with the `proxmox.ipxe` script baked in. When the VM boots cold with an empty disk, it falls through to the ISO, runs the script, and chainloads the Proxmox automated installer from `http://192.168.139.50`.
 
+> **Fredericia Havn note:** `192.168.139.50` throughout this doc is Edinburgh's provisioning
+> server. If you're building/deploying at Fredericia Havn instead, it's `172.16.124.1:8000`
+> (gateway `172.16.124.2`) — see `docs/bootstrap/bootstrapping.md` §4.1a.
+
 ### Why a custom build?
 
 - **Embedded script** — no DHCP/TFTP required, the boot logic is in the ISO itself

@@ -3,6 +3,10 @@
 
 ---
 
+> **Fredericia Havn note:** `192.168.139.50` throughout this doc is Edinburgh's provisioning
+> server. If you're at Fredericia Havn instead, it's `172.16.124.1:8000` (gateway `172.16.124.2`)
+> — see `docs/bootstrap/bootstrapping.md` §4.1a.
+
 ## File Layout on Provisioning Server (192.168.139.50)
 
 ```

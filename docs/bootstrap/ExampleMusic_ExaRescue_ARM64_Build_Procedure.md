@@ -17,9 +17,13 @@
 
 ---
 
+> **Fredericia Havn note:** `192.168.139.50` throughout this doc is Edinburgh's provisioning
+> server. If you're deploying to Fredericia Havn instead, it's `172.16.124.1:8000` (gateway
+> `172.16.124.2`) — see `docs/bootstrap/bootstrapping.md` §4.1a.
+
 ## 1. Overview
 
-ExaRescue is a custom Debian-based arm64 live image providing a minimal Fluxbox desktop environment with GParted, network tools, and a curated shell environment. It is built using Debian's official `live-build` toolchain and served over PXE from `EXAPROVCLD001` (`192.168.139.50`).
+ExaRescue is a custom Debian-based arm64 live image providing a minimal Fluxbox desktop environment with GParted, network tools, and a curated shell environment. It is built using Debian's official `live-build` toolchain and served over PXE from `EXAPRVVRK001` (`192.168.139.50`).
 
 The image is intended as the arm64 counterpart to GParted Live (which is x86_64 only). It provides the same core functionality — graphical disk management, network diagnostics, and a capable shell environment — in a bootable image suitable for ARM-based infrastructure including Apple Silicon Macs running VMware Fusion and Proxmox arm64 VMs.
 
@@ -42,7 +46,7 @@ Fluxbox is used in preference to a full desktop environment such as XFCE in orde
 - Configuring the package list, custom dotfiles, and hooks
 - Building the ISO
 - Extracting PXE boot files (`vmlinuz`, `initrd.img`, `filesystem.squashfs`) from the ISO
-- Deploying PXE files to `EXAPROVCLD001`
+- Deploying PXE files to `EXAPRVVRK001`
 - Updating `bootstrap.ipxe` to serve the arm64 GParted menu entry
 
 ### 2.2 Out of Scope
@@ -60,7 +64,7 @@ Fluxbox is used in preference to a full desktop environment such as XFCE in orde
 
 | Hostname | IP | Site | Role |
 |----------|----|------|------|
-| `EXAPROVCLD001` | `192.168.139.50` | CLD | Provisioning server — serves PXE files over HTTP |
+| `EXAPRVVRK001` | `192.168.139.50` | VRK | Provisioning server — serves PXE files over HTTP |
 | Build VM (Proxmox) | DHCP / as assigned | Any | Debian Trixie arm64 build machine — temporary |
 | MacBook M4 (VMware Fusion guest) | DHCP / as assigned | FAL or local | Debian Trixie arm64 build machine — development |
 
@@ -87,8 +91,8 @@ Fluxbox is used in preference to a full desktop environment such as XFCE in orde
 2. VM has internet access (to pull packages from Debian mirrors)
 3. VM has at least **20 GB** free disk space for the build
 4. VM has at least **4 GB** RAM (8 GB recommended)
-5. SSH access to `EXAPROVCLD001` from the build machine, or a method to transfer files (SCP/SFTP)
-6. `bootstrap.ipxe` on `EXAPROVCLD001` is the current version with `${arch}` support
+5. SSH access to `EXAPRVVRK001` from the build machine, or a method to transfer files (SCP/SFTP)
+6. `bootstrap.ipxe` on `EXAPRVVRK001` is the current version with `${arch}` support
 
 ### 4.1 VMware Fusion — Guest Setup Notes
 
@@ -849,7 +853,7 @@ umount /mnt/exarescue
 
 ### 5.12 Deploy to Provisioning Server
 
-Copy the three PXE files to `EXAPROVCLD001`:
+Copy the three PXE files to `EXAPRVVRK001`:
 
 ```bash
 scp /tmp/exarescue-pxe/vmlinuz           ansible@192.168.139.50:/srv/www/gparted/arm64/vmlinuz
@@ -978,7 +982,7 @@ Then re-run `lb clean --stage && lb build`.
 
 The live boot system fetches `filesystem.squashfs` over HTTP using the URL passed in the `fetch=` kernel parameter. Verify:
 
-- The file exists on `EXAPROVCLD001` at the correct path
+- The file exists on `EXAPRVVRK001` at the correct path
 - The HTTP server is running and serving the file (`curl -I` test from section 6.1)
 - The booting client can reach `192.168.139.50` (check DHCP/routing)
 
@@ -1041,7 +1045,7 @@ ZFS pools are not standard partitions and GParted may not display them as mounta
 | 17 | ISO mounted and `live/` directory contains `vmlinuz`, `initrd.img`, `filesystem.squashfs` | ☐ |
 | 18 | `filesystem.squashfs` is under 1 GB | ☐ |
 | 19 | Three PXE files copied to `/tmp/exarescue-pxe/` | ☐ |
-| 20 | Three PXE files SCP'd to `EXAPROVCLD001:/srv/www/gparted/arm64/` | ☐ |
+| 20 | Three PXE files SCP'd to `EXAPRVVRK001:/srv/www/gparted/arm64/` | ☐ |
 | 21 | HTTP availability verified for all three files (`curl -I`) | ☐ |
 | 22 | arm64 VM boots successfully from PXE and reaches Fluxbox desktop | ☐ |
 | 23 | GParted launches and displays disks | ☐ |

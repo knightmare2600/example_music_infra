@@ -23,6 +23,10 @@ The Proxmox automated installer requires two disks for `zfs.raid = "raid1"`. Whe
 http://192.168.139.50/proxmox/degraded.toml
 ```
 
+> **Fredericia Havn note:** `192.168.139.50` above is Edinburgh's provisioning server. At
+> Fredericia Havn it's `172.16.124.1:8000/proxmox/degraded.toml` (gateway `172.16.124.2`) — see
+> `docs/bootstrap/bootstrapping.md` §4.1a.
+
 This installs Proxmox with `zfs.raid = "raid0"` on a single disk. The node comes up fully functional — first-boot runs, Ansible user is configured,
 node info file is written to `/etc/example-music/nodeinfo.json`, everything is ready. The node simply has no redundancy until the second disk is added.
 

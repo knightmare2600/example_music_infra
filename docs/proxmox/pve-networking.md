@@ -29,7 +29,7 @@
 | 20 | LND | London | UK | `192.168.20.0/24` |
 | 29 | SYD | Sydney | AU | `192.168.29.0/24` |
 | 31 | AMS | Amsterdam | NL | `192.168.31.0/24` |
-| 33 | GAA | Georgia, AL | US | `192.168.33.0/24` |
+| 33 | ATL | Atlanta | US | `192.168.33.0/24` |
 | 39 | MIL | Milan | IT | `192.168.39.0/24` |
 | 41 | CLY | Clydebank | UK | `192.168.41.0/24` |
 | 46 | GOT | Gothenburg | SE | `192.168.46.0/24` |
@@ -67,7 +67,11 @@
 | 246 | FAX | Faxe | DK | `192.168.246.0/24` |
 | 247 | COV | Coventry | UK | `192.168.247.0/24` |
 
-> **PROV (139)** is the bootstrap/provisioning network only. It is used during site bring-up and by the iPXE installer. The bootstrap server lives at `192.168.139.50`. No firewall handles DHCP on this VLAN — the bootstrap server does.
+> **Not exhaustive:** this table doesn't list every site in `benarbejde/sites.csv` (e.g. `CLD`,
+> `AAR`, `NYB`, `SFO`, `DRS`, `BRT`, `SEA`, `DUS`, `CHI` are missing as of 2026-07-11) — treat
+> `sites.csv` as authoritative if a site you need isn't here.
+
+> **PROV (139)** is the bootstrap/provisioning network only. It is used during site bring-up and by the iPXE installer. The bootstrap server lives at `192.168.139.50` (Edinburgh) — or `172.16.124.1:8000` (gateway `172.16.124.2`) if provisioning from Fredericia Havn instead, see `docs/bootstrap/bootstrapping.md` §4.1a. No firewall handles DHCP on this VLAN — the bootstrap server does.
 
 ---
 
