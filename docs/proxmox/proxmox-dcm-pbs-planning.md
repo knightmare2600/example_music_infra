@@ -195,13 +195,14 @@ qm config <VMID> | grep cpu
 PDM ships as an ISO or can be installed on an existing Debian/PVE system.
 The easiest approach for lab evaluation is the ISO install on a small VM:
 
-> **Unverified (2026-07-11):** the `bookworm` codename below was not re-checked against
-> Proxmox's current PDM apt repo path. This estate's PVE 9.x nodes run Debian Trixie, not
-> Bookworm (Bookworm was the PVE 8.x base — see the `proxmox-kernel-*` package-naming fix in
-> `docs/pve-maintenance-automation.md`'s changelog for the same PVE 8→9 class of drift). Proxmox
-> has historically pinned some component repos to a specific Debian codename independent of the
-> host OS release, so `bookworm` here may or may not be stale — confirm against
-> `https://pdm.proxmox.com/debian/pdm` before running this in the lab.
+> **Note (2026-07-11):** this doc originally hardcoded `bookworm` here, dating from when this
+> estate's PVE nodes still ran Debian Bookworm (PVE 8.x). They now run Trixie (PVE 9.x), but
+> rather than swap the hardcoded value for another one that will just as surely go stale at the
+> next Debian release, the commands below now derive the codename from the node itself with
+> `lsb_release -c`. Proxmox has historically pinned some component repos to a specific Debian
+> codename independent of the host OS release, so if PDM's repo genuinely doesn't have a build
+> for your node's current codename yet, check `https://pdm.proxmox.com/debian/pdm` directly
+> rather than assuming `lsb_release -c`'s output is automatically correct here.
 
 ```bash
 # Download PDM ISO from Proxmox
@@ -209,11 +210,13 @@ wget https://enterprise.proxmox.com/iso/proxmox-datacenter-manager_*.iso
 # (or no-subscription equivalent — check downloads page)
 
 # Or install on existing Debian node:
-# Add PDM repo and install package
-wget -qO - https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg \
-    > /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+# Add PDM repo and install package -- CODENAME is derived from the node itself, not hardcoded
+CODENAME=$(lsb_release -c -s)
 
-echo "deb https://pdm.proxmox.com/debian/pdm bookworm pdm-no-subscription" \
+wget -qO - "https://enterprise.proxmox.com/debian/proxmox-release-${CODENAME}.gpg" \
+    > "/etc/apt/trusted.gpg.d/proxmox-release-${CODENAME}.gpg"
+
+echo "deb https://pdm.proxmox.com/debian/pdm ${CODENAME} pdm-no-subscription" \
     > /etc/apt/sources.list.d/pdm.list
 
 apt update && apt install -y proxmox-datacenter-manager
