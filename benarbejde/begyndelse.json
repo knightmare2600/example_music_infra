@@ -26,7 +26,7 @@
     "ip": "192.168.69.48"
   },
   "pbx_fredericia_havn": {
-    "hostname": "EXAPBXFRD001",
+    "hostname": "EXAPBXCLD002",
     "ip": "172.16.124.48"
   },
   "rudder": {

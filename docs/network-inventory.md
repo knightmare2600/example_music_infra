@@ -83,7 +83,7 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 | Hostname | Role | IP | Notes |
 |----------|------|----|-------|
 | `EXAPRVFRD001` | Provisioning / bootstrap (standby) | `172.16.124.1` | Port 8000, not 80 |
-| `EXAPBXFRD001` | Secondary 3CX PBX | `172.16.124.48` | Reuses the empty SBC slot, same pattern as CLD's own PBX |
+| `EXAPBXCLD002` | Secondary 3CX PBX | `172.16.124.48` | Physically at Fredericia Havn — hostnamed under CLD as part of the 2026-07-11 Pulsant DC / FRD Havn network rework (renamed from `EXAPBXFRD001`). Reuses the empty SBC slot, same pattern as CLD's own PBX (`EXAPBXCLD001`) |
 
 ---
 

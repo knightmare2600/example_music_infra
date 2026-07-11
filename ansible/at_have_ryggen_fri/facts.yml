@@ -43,6 +43,22 @@ facts:
       - docs/buildsheets/buildsheet-firewall.md
       - docs/bootstrap/bootstrapping.md
 
+  - name: frd_pbx_hostname
+    description: >-
+      Fredericia Havn's secondary 3CX PBX is EXAPBXCLD002, not EXAPBXFRD001 -- as of the
+      2026-07-11 CLD/FRD Pulsant-vRACK network rework, devices physically at FRD Havn are
+      hostnamed under CLD (SubnetSite override in devices.csv, resolved by
+      generate_inventory.py's find_device()/render_device_line()) while keeping their real IP
+      on FRD's own 172.16.124.0/24 subnet. EXAPRVFRD001 (the provisioning server) deliberately
+      was NOT renamed -- it's woven into FRD-specific lookups (menu.ipxe/late_command.sh
+      gateway detection, begyndelse.json's provisioning_fredericia_havn) that a rename would
+      have broken; only the PBX (a plain lookup("FRD", "PBX") with no such coupling) moved.
+    value: "EXAPBXCLD002"
+    source: "benarbejde/devices.csv (CLD,PBX,2,48,...,FRD), generate_inventory.py's SubnetSite handling"
+    asserted_in:
+      - docs/network-inventory.md
+      - docs/ExampleMusic_Beginners_Guide.md
+
   - name: single_join_domain
     description: >-
       Every host joins one domain, jukebox.internal (from benarbejde/ad_forest.json) -- there
