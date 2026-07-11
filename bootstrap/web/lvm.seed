@@ -1,5 +1,15 @@
 #-------------------------------------------------------------------------------#
 #                                                                               #
+# STALE/SUPERSEDED (flagged 2026-07-11, not deleted -- see git history):       #
+# this is the pre-rename copy of bootstrap/web/debian/lvm.seed, left in place  #
+# when menu.ipxe's own changelog records "v1.3 Rename file from boot.ipxe to   #
+# menu.ipxe" and things moved into the debian/ subdirectory. Only             #
+# bootstrap/web/boot.ipxe (itself untouched since Initial Commit, not part of  #
+# the real menu.ipxe boot chain) references this file. The live preseed files #
+# are bootstrap/web/debian/lvm-bios.seed and lvm-efi.seed. Content below is    #
+# original/historical -- "Ubuntu 12.04"/puppet/example.com predate this        #
+# estate's real Debian Trixie/Ansible/jukebox.internal setup entirely.         #
+#                                                                               #
 # Example Virtual PXE Install Preseed File                                      #
 #                                                                               #
 # This file will allow one to deploy an Ubuntu 12.04 VM so that it deploys a    #

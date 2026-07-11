@@ -142,14 +142,14 @@ The Debian installer is served from the bootstrap server (`192.168.139.50`) usin
 
 ```
 dhcp net0
-chain http://192.168.139.50/boot.ipxe
+chain http://192.168.139.50/menu.ipxe
 ```
 
 > If DHCP is already configured to serve the iPXE chain, this happens automatically.
 
-**2b. The iPXE menu appears.** Select **Debian Install** (or equivalent entry in `boot.ipxe`).
+**2b. The iPXE menu appears.** Select **Debian Install** (or equivalent entry in `menu.ipxe`).
 
-**2c. The installer runs unattended using `lvm.seed`.** You will be prompted for:
+**2c. The installer runs unattended using `lvm-bios.seed`/`lvm-efi.seed`** (picked automatically by architecture — see `menu.ipxe` §4.1a in `docs/bootstrap/bootstrapping.md`). You will be prompted for:
 
 | Prompt | Value |
 |--------|-------|
@@ -496,8 +496,8 @@ see `docs/bootstrap/bootstrapping.md` §4.1a) serves:
 |------|---------|
 | `bootstrap.ipxe` | Embedded iPXE boot script (compiled into the iPXE binary) |
 | `menu.ipxe` | Full iPXE boot menu — OS install + rescue options, gateway-based datacentre detection |
-| `boot.ipxe` | Chains into `menu.ipxe` |
-| `lvm.seed` | Debian preseed — partitioning, locale, packages, late_command |
+| `boot.ipxe`, `lvm.seed` | **Stale/superseded** — pre-rename leftovers, not part of the real boot chain (see each file's own 2026-07-11 note). Don't chain to `boot.ipxe`; use `menu.ipxe`. |
+| `debian/lvm-bios.seed`, `debian/lvm-efi.seed` | Debian preseed (arch-specific) — partitioning, locale, packages, late_command |
 | `debian/late_command.sh` | Post-install chroot script — ansible user, SSH key, sudoers |
 | `ansible_sshkey.pub` | Ansible SSH public key — deployed to all nodes at install |
 | `provision/firewallme.sh` | Firewall/router setup script — run manually on first boot |
