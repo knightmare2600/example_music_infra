@@ -22,6 +22,16 @@
 #   v1.5  Also download begyndelse.json (well-known service addresses -- provisioning/DNS/
 #         Ansible/PBX/Rudder/WAC) to /etc/example-music/, so bindme.sh/ansibleme.sh/
 #         firewallme.sh can jq it instead of hardcoding those IPs.
+#   v1.6  Dropped sites.csv/devices.csv fetch -- ansible/playbooks/linux/tools.yml now
+#         deploys both (and address_policy.json/ad_forest.json/ad_*.json) to every
+#         Ansible-managed Linux host, so pre-staging them here was pure duplicate work by
+#         the time any node is actually under management. bindme.sh/firewallme.sh/
+#         rudderme.sh's own documented "expected, supported path" for the pre-Ansible
+#         break-glass case is a manual wget anyway (see each script's own header) -- this
+#         pre-staged copy was never their primary path, just a convenience fallback.
+#         begyndelse.json is kept -- nothing else (no Ansible playbook) ever deploys it,
+#         so it remains the one file only late_command.sh makes available before Ansible
+#         exists on the box at all.
 # =============================================================================
 set -e
 
@@ -41,8 +51,6 @@ ZSH_SAFETY_URL="${BOOT_SERVER}/server-prompts.zsh"
 BASH_SAFETY_URL="${BOOT_SERVER}/server-prompts.sh"
 ANSIBLE_USER="ansible"
 HOME_DIR="/home/${ANSIBLE_USER}"
-SITES_CSV="${BOOT_SERVER}/proxmox/sites.csv"
-DEVICES_CSV="${BOOT_SERVER}/proxmox/devices.csv"
 BEGYNDELSE_JSON="${BOOT_SERVER}/proxmox/begyndelse.json"
 
 ## now created in the preseed file
@@ -55,10 +63,8 @@ in-target usermod -aG sudo "${ANSIBLE_USER}"
 echo ' >>> Installing openssh-server...'
 in-target apt-get install -y openssh-server sudo net-tools bash-completion
 
-echo ' >>> Creating /etc/example-music directory and fetching data files...'
+echo ' >>> Creating /etc/example-music directory and fetching begyndelse.json...'
 mkdir -p /target/etc/example-music
-wget -O /target/etc/example-music/sites.csv "${SITES_CSV}"
-wget -O /target/etc/example-music/devices.csv "${DEVICES_CSV}"
 wget -O /target/etc/example-music/begyndelse.json "${BEGYNDELSE_JSON}"
 
 echo ' >>> Creating .ssh directory...'
@@ -127,4 +133,4 @@ echo '--- Permissions:'
 ls -la /target${HOME_DIR}/
 ls -la /target${HOME_DIR}/.ssh/
 
-echo ' >>> late_command.sh v1.4 complete.'
+echo ' >>> late_command.sh v1.6 complete.'

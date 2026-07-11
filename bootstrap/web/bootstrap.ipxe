@@ -15,6 +15,10 @@
 
 ## ------------------------------------------------------------
 ## Boot server configuration: update these as needed
+## boot-ip is a placeholder here -- DHCP hasn't run yet, so ${net0/gateway}
+## isn't known. It's set for real, gateway-detected, right after ifconf
+## succeeds below (same VRK/FRD detection menu.ipxe uses) -- this initial
+## value only matters if ifconf somehow succeeds with no gateway at all.
 ## ------------------------------------------------------------
 set boot-domain   jukebox.internal
 set boot-ansible  ansible.${boot-domain}
@@ -44,6 +48,18 @@ echo Requesting DHCP lease...
 ifconf --timeout 15000 || goto dhcp_failed
 echo Got address: ${net0/ip}
 echo Gateway:     ${net0/gateway}
+echo
+
+## ------------------------------------------------------------
+## Gateway-based boot-ip detection (matches menu.ipxe's ${site-prefix}
+## logic exactly, added 2026-07-11). Only actually used if DNS fails
+## entirely below (try_ip) -- the ansible/www DNS names are tried first
+## and work from anywhere -- but when it IS used, it must point at
+## whichever datacentre this machine is actually booting from, not
+## always Edinburgh.
+## ------------------------------------------------------------
+iseq ${net0/gateway} 172.16.124.2 && set boot-ip 172.16.124.1:8000 || set boot-ip 192.168.139.50
+echo Boot-ip (DNS-failure fallback only): ${boot-ip}
 echo
 goto fetch_menu
 

@@ -443,8 +443,16 @@ both are accurate as documented, but for different reasons:
 
 | File | Role |
 |---|---|
-| `bootstrap.ipxe` | **Embedded** into the compiled iPXE ISO/USB/ROM. Runs before any network is configured. Does DHCP, then locates `menu.ipxe` via a DNS-name fallback chain (§4.3) — this only has to get you to a working `menu.ipxe`, once, from a cold boot with no other context. |
+| `bootstrap.ipxe` | **Embedded** into the compiled iPXE ISO/USB/ROM. Runs before any network is configured. Does DHCP, then locates `menu.ipxe` via a DNS-name fallback chain (§4.3), with a gateway-detected direct-IP address as the last-resort step if DNS fails entirely — this only has to get you to a working `menu.ipxe`, once, from a cold boot with no other context. |
 | `menu.ipxe` | **Remote** boot menu, fetched by `bootstrap.ipxe`. Served by the HTTP server at `bootstrap/web/menu.ipxe`. Once it's running, it does its **own, separate** gateway-based environment detection (§4.1a) to pick which datacentre to fetch every subsequent OS installer file from — `bootstrap.ipxe`'s DNS chain is not involved again after this point. |
+
+> **Correction (2026-07-11):** `bootstrap.ipxe` previously had no gateway-based detection at all —
+> its direct-IP last resort was a single hardcoded Edinburgh value (`192.168.139.50`), even though
+> DHCP (and therefore `${net0/gateway}`) has already succeeded by the point that fallback is reached.
+> It now runs the same `iseq ${net0/gateway} ...` check `menu.ipxe` uses (§4.1a) to set `boot-ip`
+> correctly for whichever datacentre it's actually on, before falling through to the DNS chain. This
+> only changes the *last-resort, DNS-down* case — the DNS chain (`ansible.jukebox.internal` →
+> `www.jukebox.internal`) is still tried first and is unaffected.
 
 The flow is: BIOS/UEFI boots iPXE ISO → `bootstrap.ipxe` runs → DHCP →
 locates and fetches `menu.ipxe` (DNS chain) → `menu.ipxe` detects which
@@ -495,15 +503,24 @@ This script is compiled into the iPXE binary. Key configuration at the top:
 set boot-domain   jukebox.internal
 set boot-ansible  ansible.${boot-domain}
 set boot-www      www.${boot-domain}
-set boot-ip       192.168.139.50          ← update to real provisioning IP if needed
+set boot-ip       192.168.139.50          ← placeholder only, see below
 set boot-path     /menu.ipxe
+```
+
+`boot-ip`'s value here is a placeholder — DHCP hasn't run yet at this point in the script, so
+`${net0/gateway}` isn't known. Immediately after `ifconf` succeeds (gateway now known), the script
+re-sets `boot-ip` for real using the same gateway check `menu.ipxe` uses (§4.1a):
+
+```ipxe
+iseq ${net0/gateway} 172.16.124.2 && set boot-ip 172.16.124.1:8000 || set boot-ip 192.168.139.50
 ```
 
 **Boot server resolution order:** The script tries three methods in sequence, falling back if each fails:
 
 1. `ansible.jukebox.internal` (DNS lookup first — skips the chain timeout if DNS is broken)
 2. `www.jukebox.internal`
-3. Direct IP: `192.168.139.50`
+3. Direct IP: `${boot-ip}` — now gateway-detected (`192.168.139.50` for Edinburgh/VRK,
+   `172.16.124.1:8000` for Fredericia/FRD), not hardcoded to Edinburgh regardless of location
 
 If all three fail, the script drops to an iPXE shell with diagnostic instructions printed on screen.
 
@@ -1211,6 +1228,15 @@ The hostname is **not** set by the preseed — the installer will prompt for it.
 > happens at all. Several real, current actions were previously undocumented entirely — the gateway-based
 > boot-server detection, and fetching `sites.csv`/`devices.csv`/`begyndelse.json`. Rewritten against the
 > real, current `bootstrap/web/debian/late_command.sh` (v1.5).
+>
+> **Correction (2026-07-11):** dropped at v1.6 — `sites.csv`/`devices.csv` are no longer fetched here.
+> `ansible/playbooks/linux/tools.yml` deploys both (and `address_policy.json`/`ad_forest.json`/
+> `ad_groups.json`/`ad_users.json`/`ad_computers.json`) to every Ansible-managed Linux host, so
+> pre-staging just these two here was pure duplicate work once a node is actually under management —
+> and `bindme.sh`/`firewallme.sh`/`rudderme.sh`'s own documented "expected, supported path" for the
+> pre-Ansible break-glass case has always been a manual wget anyway (see each script's own header),
+> not reliance on this pre-staged copy. `begyndelse.json` is kept — no Ansible playbook deploys it,
+> so it remains the one file this script is the *only* source for before Ansible exists on the box.
 
 Runs inside the Debian installer environment (busybox `sh` — no bash, no arrays, no `[[ ]]`). Uses `in-target` to run commands inside the installed system chroot.
 
@@ -1219,7 +1245,7 @@ Actions performed, in order:
 - **Gateway-based boot-server detection** — same mechanism as §4.1a/§6.1's Step 4: checks the DHCP gateway (`172.16.124.2` → Fredericia, anything else → Edinburgh) and uses that server for every fetch below. Not a separate concept from the Proxmox side — the exact same detection logic, independently implemented in three places (`bootstrap.ipxe`'s embedded chain fetches `menu.ipxe` differently, but `menu.ipxe`, `first-boot.sh`, and `late_command.sh` all do this same gateway check).
 - Adds `ansible` to the `sudo` group (the user account itself is created by the preseed directly, via `d-i passwd/user-default-groups string adm cdrom sudo dip` — not by this script, despite an earlier version of this doc implying otherwise)
 - Installs `openssh-server sudo net-tools bash-completion` (belt-and-braces, some are already in the preseed package list)
-- Creates `/etc/example-music/` and fetches `sites.csv`, `devices.csv`, and `begyndelse.json` into it — the same single-source-of-truth files every other bootstrap script (`bindme.sh`, `ansibleme.sh`, `firewallme.sh`) reads, so this node has them from first boot rather than waiting for Ansible
+- Creates `/etc/example-music/` and fetches `begyndelse.json` into it — the one single-source-of-truth file no Ansible playbook deploys, so this node has it from first boot rather than never getting it at all before a break-glass script needs it. `sites.csv`/`devices.csv` are fetched separately, later, by `ansible/playbooks/linux/tools.yml` once the node is under Ansible management (see the v1.6 correction above)
 - Creates `/home/ansible/.ssh/authorized_keys` by fetching `ansible_sshkey.pub` from the (gateway-detected) provisioning server using busybox `wget`
 - Fetches `server-prompts.zsh`/`server-prompts.sh` (the "safety dance" prompt scripts — see `bootstrap/web/server-prompts.{sh,zsh}`) and wires them into `/etc/zsh/zshrc` and `/etc/bash.bashrc` so they load for every shell on this node
 - Writes a `.vimrc` (ruler, dark background, syntax highlighting) to the ansible home dir
