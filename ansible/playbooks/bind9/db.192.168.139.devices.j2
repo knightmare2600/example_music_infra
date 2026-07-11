@@ -5,14 +5,14 @@
 ; Zone:    139.168.192.in-addr.arpa
 ; Covers:  192.168.139.0/24  (provisioning network)
 ; Source:  devices.csv (single source of truth)
-; Server:  EXASVRCLD001 ({{ dns_ip }})
+; Server:  EXADNSVRK001 ({{ dns_ip }})
 ; Managed: Ansible bind9-dns.yml Play 2
 ; Generated: {{ ansible_date_time.iso8601 }}
 ;
 ; CLD BLACK SWAN:
 ;   192.168.139.0/24 is the provisioning network. It serves two purposes:
 ;
-;   (a) CLD provisioning devices -- EXASVRCLD001-004, EXAPBXCLD001,
+;   (a) CLD provisioning devices -- EXASVRCLD002, EXAPBXCLD001,
 ;       EXAPRVVRK001. IPs are manually assigned, not convention-derived.
 ;
 ;   (b) FWL WAN addresses -- every site firewall has a WAN interface here.
