@@ -25,6 +25,10 @@ repo's history:
   where one got fixed and the others didn't — found 2026-07-10 doing
   exactly this by hand for `EXAFWLVRK001`'s WAN IP before deciding to
   automate it.
+- A site added to (or removed/renamed in) `sites.csv` that never made it
+  into `docs/`, or a doc quoting a site's subnet/octet that doesn't match
+  its real `sites.csv` row — found 2026-07-11 (`buildsheet-firewall.md`'s
+  `ATL` row had both a wrong IP and a leftover pre-rename city name).
 
 Phases 1 (repo-wide reference/data integrity), 2 (the estate's bare-metal
 bootstrap scenarios as repeatable checks), and an initial repo-wide sweep
@@ -178,6 +182,7 @@ prompted fixing that buildsheet the same day — see the git log around
 | 7 | Markdown link integrity | `check_doc_index.py` — every relative link in every git-tracked `*.md` file in the whole repo (not just `docs/`) resolves to a real file (fails if not); separately, `docs/INDEX.md` specifically is checked for completeness — every real doc under `docs/` linked from it (warns if not — some are deliberately excluded) |
 | 8 | Cross-file facts | `check_facts.py` — reads `facts.yml`, a short hand-curated list of specific facts (an IP, a hostname) restated as prose across multiple docs/scripts, and confirms each is still asserted correctly everywhere it's registered |
 | 9 | Bootstrap scenarios | `check_scenarios.py` — reads `scenarios.yml`, covering the 4 bare-metal-to-working-estate scenarios (PVE+Ansible node, DNS, firewall, Windows unattend): confirms every file each depends on exists, and a handful of load-bearing warnings/framing comments (e.g. `ansibleme.sh`'s `git clone`, the break-glass framing in `bindme.sh`/`firewallme.sh`, the circular-dependency callout in `Procedure-PVE-Node-Onboarding.md`) haven't been edited away. Does not build real infrastructure — see `scenarios.yml`'s own header for what's deliberately out of scope (no real iLO/DRAC automation exists; the per-edition Windows unattend XML files don't exist yet) |
+| 10 | Site data | `check_site_data.py` — reads `benarbejde/sites.csv` fresh every run (not a frozen snapshot): every `Site` code appears somewhere in `docs/*.md`, and every doc line naming exactly one site code alongside a literal IP has the right third octet for that site. Knows about the estate's real, deliberate exceptions (CLD is dual-homed LAN+vRACK; every site's firewall also has a WAN IP on the provisioning network at `192.168.139.<its own octet>`) so it doesn't flag those as mismatches. Lines asserting more than 3 literal IPs (multi-site `sed`/config-edit commands) are skipped for the octet check — too ambiguous to attribute safely — but still count toward coverage |
 
 ## Design notes
 
