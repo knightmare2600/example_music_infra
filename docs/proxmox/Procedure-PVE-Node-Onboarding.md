@@ -9,6 +9,8 @@
 
 New PVE nodes arrive in a known state from our PXE/iPXE first-boot installer: Debian Trixie, `ansible` user created, SSH accessible as root. This procedure verifies that state and completes Ansible management setup using `site.yml`.
 
+> **If this node was built via `playbooks/proxmox/bootstrap-new-node.yml`** (the normal path for a brand-new node still on its DHCP IP), all of this already happened automatically — as of 2026-07-12 that playbook chains straight into this entire `site.yml` stage table in the same run, then reboots once at the end. You don't need to run anything from this procedure separately afterward. This procedure is for running/re-running `site.yml` on its own — a node built some other way, or a deliberate standalone refresh (see the "Forcing a full re-onboard" section below).
+
 `site.yml` chains eight numbered stages:
 
 | Stage | Purpose | Runs on a refresh of an already-onboarded node? |

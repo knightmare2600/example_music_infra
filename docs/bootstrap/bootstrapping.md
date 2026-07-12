@@ -1038,16 +1038,24 @@ NEXT STEP: Ansible finishes this node's setup
 This node still has its installer placeholder hostname and a DHCP IP -- that's expected. From
 the Ansible control node, run:
 
-  ansible-playbook -i "<this node's current DHCP IP>," \
+  ansible-playbook -i "<this node's current DHCP IP>," -e target="<same DHCP IP>" \
     playbooks/proxmox/bootstrap-new-node.yml
 
+The -e target= (same address as -i) is required -- the full site.yml chain this now runs
+straight into (see below) resolves its own hosts: pattern before any task in the run executes,
+so it can't pick up the address from a fact set earlier in the same run. Forgetting it fails
+fast with the exact command to use, before anything is touched.
+
 You'll be prompted for this node's real hostname (from your build sheet, e.g. EXAPVEKGE001) --
-it sets the real hostname and static network config, then reboots to apply it. The SSH session on
-this DHCP IP will not survive the reboot -- reconnect via the new hostname/IP once it's back up
-(the site's PVE1 slot is already in configs/inventory/, generated active by default -- see
-generate_inventory.py -- there is nothing to add by hand), then run proxmox/site.yml -- which does
-everything else this script used to (repo fix, packages, MOTD, /etc/.environment, single-disk
-warning, dotfiles, kvm group, etc.).
+it sets the real hostname and static network config, then continues straight into the full
+site.yml chain (packages incl. GRUB serial console, access setup, /etc/example-music/
+deployment, scripts, virt-tools, proxmorph, systemd units) in the same run, still connected via
+the DHCP IP throughout. Only once everything is done does it reboot -- once, at the very end,
+not before -- to apply the identity/network change. The SSH session on this DHCP IP will not
+survive that reboot -- reconnect via the new hostname/IP once it's back up (the site's PVE1 slot
+is already in configs/inventory/, generated active by default -- see generate_inventory.py --
+there is nothing to add by hand). At that point the node is fully onboarded; nothing further to
+run.
 ```
 
 **No reboot is required or performed automatically** — nothing left in this script needs one, so unlike
@@ -1055,10 +1063,10 @@ the pre-2026-07-10 version there is no `y/N` reboot prompt at all any more.
 
 **What happens to hostname/rename/static-IP now:** none of it happens in this script any more (unchanged
 from the 2026-07-07 trim). The node stays on its DHCP-assigned IP with the Proxmox installer's placeholder
-hostname (`pve-install`) until you run `ansible-playbook -i "<dhcp-ip>," playbooks/proxmox/bootstrap-new-node.yml`
-from the Ansible control node, per the script's own on-screen instructions above. `proxmox/site.yml`'s
-`00-preflight.yml`/`10-packages.yml`/`40-scripts.yml` stages then do everything this script used to do
-on real hardware.
+hostname (`pve-install`) until you run `ansible-playbook -i "<dhcp-ip>," -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml`
+from the Ansible control node, per the script's own on-screen instructions above. That single invocation now
+does everything this script used to do on real hardware, plus the entire site.yml chain, plus one final reboot
+-- previously a separate, manual second step.
 
 ### 6.2 Alternate/historical method: `pve-iso-2-pxe`
 
@@ -1178,17 +1186,17 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   |  the Ansible control node, run:                      |
   |                                                       |
   |    ansible-playbook -i "192.168.139.87," \            |
+  |      -e target="192.168.139.87" \                     |
   |      playbooks/proxmox/bootstrap-new-node.yml         |
   |                                                       |
   |  You'll be prompted for this node's real hostname     |
   |  (from your build sheet, e.g. EXAPVEKGE001) -- it     |
-  |  sets the real hostname and static network config.    |
-  |  The SSH session on this DHCP IP will then drop --    |
-  |  reconnect via the new hostname/IP, add it to         |
-  |  configs/inventory/, then run proxmox/site.yml --     |
-  |  which does everything else this script used to      |
-  |  (repo fix, packages, MOTD, /etc/.environment,        |
-  |  single-disk warning, dotfiles, kvm group, etc.).     |
+  |  sets the real hostname/network, then continues       |
+  |  straight into the full site.yml chain (packages,     |
+  |  access, systemd units, etc.) in this same run.       |
+  |  One reboot at the very end applies it all -- the     |
+  |  SSH session on this DHCP IP will not survive that.   |
+  |  Reconnect via the new hostname/IP once it is back up.|
   +------------------------------------------------------+
 
   [i] No reboot is required by this script -- nothing here needs one.
@@ -1197,11 +1205,17 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
 **The single most important thing in that output, for the PFY's plan:** the node never gets a real
 hostname or static IP from this script — it stays on its DHCP lease with the Proxmox installer's
 placeholder hostname the whole time. The very next command to run, from the Ansible control node, is
-printed on-screen at the end: `ansible-playbook -i "<dhcp-ip>," playbooks/proxmox/bootstrap-new-node.yml`.
-That playbook is what actually asks for the real hostname and sets the permanent site-LAN IP — after
-which `proxmox/site.yml` (specifically `00-preflight.yml`, `10-packages.yml`, `40-scripts.yml`) does
-everything else this script used to do: apt repo fix, subscription-nag removal, packages, the
-environment prompt, VMware guest tools, the dynamic MOTD, and the single-disk ZFS check.
+printed on-screen at the end: `ansible-playbook -i "<dhcp-ip>," -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml`
+(the `-e target=` is required — the full site.yml chain this now runs straight into resolves its own
+hosts: pattern before any task in the run executes, so it can't be told the address by a fact set
+earlier in the same run). That single invocation asks for the real hostname, sets the permanent
+site-LAN IP, then continues straight into `proxmox/site.yml`'s full stage chain (`00-preflight.yml`,
+`10-packages.yml`, `20-ansible-access.yml`, `30-example-music.yml`, `40-scripts.yml`,
+`45-virt-tools.yml`, `46-proxmorph.yml`, `50-systemd-units.yml`) in the same run — apt repo fix,
+subscription-nag removal, packages (incl. GRUB serial console), the environment prompt, VMware guest
+tools, access setup, `/etc/example-music/` deployment, the dynamic MOTD, and the single-disk ZFS check
+— and only reboots once, right at the very end, once everything is actually done. Previously this was
+two separate manual steps with a reboot in between; as of 2026-07-12 it's one.
 
 ---
 
