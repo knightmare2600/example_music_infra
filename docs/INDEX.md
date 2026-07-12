@@ -40,6 +40,12 @@
 | [network-inventory.md](network-inventory.md) | NET-INV-001 | Comprehensive device and IP inventory — all sites, all nodes, health status, known issues |
 | [site-inventory.md](site-inventory.md) | NET-SITE-001 | Per-site commissioning checklists — build tracking, ZFS status, endpoint and equipment sign-off |
 | [INCIDENT-LOG.md](INCIDENT-LOG.md) | OPS-INC-001 | Blameless incident log — chronological, oldest first; what went wrong, root cause, and what changed as a result |
+| [network-diagram.md](network-diagram.md) | NET-DIAG-001 | Per-site network diagrams (mermaid) |
+| [example_music_branding_guide.md](example_music_branding_guide.md) | NET-BRAND-001 | 1980s touring-identity branding guide — livery, colours, fonts |
+| [gitleaks_guide.md](gitleaks_guide.md) | NET-TOOL-GITLEAKS-001 | Gitleaks pre-commit secret-scanning guide (Windows) |
+| [Example Music Limited — KeePassXC CLI Automation.md](Example%20Music%20Limited%20%E2%80%94%20KeePassXC%20CLI%20Automation.md) | NET-TOOL-KEEPASS-001 | KeePassXC CLI automation — Python wrapper for scripted credential retrieval |
+| [solarized-dark-terminal-setup.md](solarized-dark-terminal-setup.md) | NET-TOOL-TERM-001 | Solarized Dark terminal colour setup — fixes low-contrast ANSI colours |
+| [ExampleMusic_Procedure_Template.md](ExampleMusic_Procedure_Template.md) | — | Template for writing a new procedure doc — copy this, don't start from scratch |
 | `README.md` | — | Repository overview and conventions |
 | `INDEX.md` | — | This file |
 
@@ -57,6 +63,10 @@ Active Directory configuration, tooling, and DNS management.
 | [active-directory/demo_data_compatibility_analysis.md](active-directory/demo_data_compatibility_analysis.md) | NET-AD-DEMO-001 | Demo data compatibility analysis for AD test environments |
 | [active-directory/easyDNS-TUI-QuickStart.md](active-directory/easyDNS-TUI-QuickStart.md) | NET-AD-DNS-001 | easyDNS TUI quick start — Windows AD DNS management |
 | [active-directory/easyDNS-TUI-CHANGELOG.md](active-directory/easyDNS-TUI-CHANGELOG.md) | NET-AD-DNS-002 | easyDNS TUI changelog |
+| [active-directory/ExampleMusic_DFS_Procedure.md](active-directory/ExampleMusic_DFS_Procedure.md) | NET-AD-DFS-001 | DFS namespace and replication setup |
+| [active-directory/ExampleMusic_UPN_DNS_dnsmasq_Procedure.md](active-directory/ExampleMusic_UPN_DNS_dnsmasq_Procedure.md) | NET-AD-UPN-001 | UPN suffixes, internal DNS zones, and DHCP dynamic DNS |
+| [active-directory/ExampleMusic_WAPT_Deployment_Procedure_v1.0.md](active-directory/ExampleMusic_WAPT_Deployment_Procedure_v1.0.md) | NET-AD-WAPT-001 | WAPT server and agent deployment |
+| [active-directory/domain-rename-procedure.md](active-directory/domain-rename-procedure.md) | NET-AD-RENAME-001 | Bulk domain name replace after AD forest rebuild |
 
 ---
 
@@ -80,6 +90,13 @@ Procedures for provisioning new sites and nodes from scratch.
 | [bootstrap/ipxe-build.md](bootstrap/ipxe-build.md) | NET-BOOT-IPXE-001 | iPXE build and configuration for network booting |
 | [bootstrap/TFTPD64_Debian_Headless_Rescue_Guide.md](bootstrap/TFTPD64_Debian_Headless_Rescue_Guide.md) | NET-BOOT-TFTP-001 | TFTPD64 setup on Debian for headless PXE rescue |
 | [bootstrap/WinPE ARM64 Build Procedure.md](bootstrap/WinPE%20ARM64%20Build%20Procedure.md) | NET-BOOT-WINPE-001 | WinPE ARM64 build — deployment and recovery media |
+| [bootstrap/bootstrapping.md](bootstrap/bootstrapping.md) | NET-BOOT-FULL-001 | Full infrastructure bootstrapping guide — provisioning server, iPXE, first-boot scripts, real command transcripts |
+| [bootstrap/ExampleMusic_ExaRescue_ARM64_Build_Procedure.md](bootstrap/ExampleMusic_ExaRescue_ARM64_Build_Procedure.md) | NET-BOOT-RESCUE-001 | ExaRescue arm64 live rescue image build procedure |
+| [bootstrap/ExampleMusic_Procedure_iPXE_ARM64_ISO.md](bootstrap/ExampleMusic_Procedure_iPXE_ARM64_ISO.md) | NET-BOOT-IPXEISO-001 | Building an ARM64 iPXE boot ISO |
+| [bootstrap/WinPE_DaRT_Build_Guide.md](bootstrap/WinPE_DaRT_Build_Guide.md) | NET-BOOT-DART-001 | WinPE + DaRT 10 build guide |
+| [bootstrap/cecho_dartparse_build_guide.md](bootstrap/cecho_dartparse_build_guide.md) | NET-BOOT-CECHO-001 | `cecho`/`dartparse` build procedure — binaries required by WinPE's `startnet.cmd` |
+| [arch-pxe-setup.md](arch-pxe-setup.md) | NET-BOOT-ARCH-001 | Arch Linux PXE boot setup |
+| [Windows 11 Deployment - Using MDT 8456 with Windows ADK 24H2 (Build 26100) - Deployment Research.pdf](Windows%2011%20Deployment%20-%20Using%20MDT%208456%20with%20Windows%20ADK%2024H2%20%28Build%2026100%29%20-%20Deployment%20Research.pdf) | NET-BOOT-MDT-001 | Windows 11 MDT/ADK deployment research (external reference PDF) |
 
 **DeployTools scripts** (hosted on `\\EXADCSCPH001\DeployTools` — future DFS):
 
@@ -127,6 +144,18 @@ Vendor documentation and hardware reference.
 | File | Doc ID | Description |
 |------|--------|-------------|
 | [hardware/S210-X12RS_UG.pdf](hardware/S210-X12RS_UG.pdf) | HW-REF-001 | Supermicro S210-X12RS user guide |
+| [hardware/ExampleMusic_ASAv_Proxmox_Procedure.md](hardware/ExampleMusic_ASAv_Proxmox_Procedure.md) | HW-REF-002 | Cisco ASAv QEMU VM on Proxmox |
+
+---
+
+## `inventory/`
+
+Per-device operational runbooks. Cross-references `network-inventory.md`/`site-inventory.md` for
+the device's IP/commissioning record rather than duplicating it.
+
+| File | Doc ID | Description |
+|------|--------|-------------|
+| [inventory/EXADNSVRK001-dns.md](inventory/EXADNSVRK001-dns.md) | NET-INV-DNS-001 | `EXADNSVRK001` — BIND9 DNS server operations guide |
 
 ---
 
@@ -171,6 +200,31 @@ Proxmox VE administration, storage, networking, and planning documents.
 | [proxmox/pegaprox-evaluation.md](proxmox/pegaprox-evaluation.md) | NET-PVE-EVAL-001 | PegaProx evaluation notes |
 | [proxmox/pdm-enterprise-proposal.md](proxmox/pdm-enterprise-proposal.md) | NET-PVE-PDM-001 | Proxmox Datacenter Manager enterprise proposal |
 | [proxmox/NET-BMC-001-proxmoxbmc-setup.md](proxmox/NET-BMC-001-proxmoxbmc-setup.md) | NET-BMC-001 | Virtual BMC / IPMI emulation (`proxmoxbmc`) setup |
+| [proxmox/Procedure-PVE-Node-Onboarding.md](proxmox/Procedure-PVE-Node-Onboarding.md) | NET-PVE-ONBOARD-001 | PVE node onboarding procedure — `site.yml`'s eight stages, troubleshooting, SSH keypair recovery |
+| [proxmox/ExampleMusic_SLIC_Injection_Procedure_v1.0.md](proxmox/ExampleMusic_SLIC_Injection_Procedure_v1.0.md) | NET-PVE-SLIC-002 | Proxmox VM SLIC table injection and SMBIOS spoofing (SeaBIOS VMs) — distinct from NET-LAB-SLIC-001's BIOS-extraction/import procedure, not a duplicate |
+| [Proxmox Networking for VMware vSphere admins - Virtualization Howto.pdf](Proxmox%20Networking%20for%20VMware%20vSphere%20admins%20-%20Virtualization%20Howto.pdf) | NET-PVE-VMW-001 | Proxmox networking primer for VMware vSphere admins (external reference PDF) |
+
+---
+
+## `proxmox_zabbix_cleanup/`
+
+Self-contained deployment packages (script + systemd service/timer + procedure doc + Zabbix
+triggers) for Proxmox VE maintenance automation. Each subdirectory is meant to be a complete,
+standalone bundle — see `zabbix_vms_on_wrong_pool/` for the canonical shape.
+
+| File | Doc ID | Description |
+|------|--------|-------------|
+| [proxmox_zabbix_cleanup/kernels/PVE-Trixie-Setup-PFY-Procedure.md](proxmox_zabbix_cleanup/kernels/PVE-Trixie-Setup-PFY-Procedure.md) | NET-PVE-ZBX-HOOVER-001 | PVE maintenance automation setup — monthly hoover (journals/temps/coredumps/old kernels), Zabbix monitoring. **Note:** `docs/pve-maintenance-automation.md` (root, unindexed) covers the same ground with more complete/current content in places — not yet reconciled, see INDEX.md's own TODO below |
+| [proxmox_zabbix_cleanup/zabbix_vms_on_wrong_pool/README.md](proxmox_zabbix_cleanup/zabbix_vms_on_wrong_pool/README.md) | NET-PVE-ZBX-POOL-001 | ZFS VM pool-placement audit setup |
+| [proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md](proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md) | NET-PVE-ZBX-SNAP-001 | PVE snapshot check automation setup |
+
+> **Flagged, not yet resolved (ask before touching):**
+> `proxmox_zabbix_cleanup/pve-hoover-update/` duplicates `kernels/`'s script/procedure/triggers
+> byte-for-byte but is **missing `pve-monthly-hoover.timer`** — the cleanup automation described
+> would never actually run on a schedule if deployed from that directory. Not indexed here;
+> treat `kernels/` as canonical until this is fixed or explained.
+> `docs/PVE-Snapshot-Check-Procedure.md` (root) is a byte-identical stray duplicate of
+> `pve-snapshot-check/PVE-Snapshot-Check-Procedure.md` above — not indexed separately.
 
 ---
 
@@ -233,6 +287,10 @@ maintain the original much) and catalogued rather than left as an orphan.
 | `NET-VPN-WG-*` | WireGuard |
 | `NET-FW-*` | Firewall troubleshooting |
 | `HW-REF-*` | Hardware reference |
+| `NET-DIAG-*` | Network diagrams |
+| `NET-BRAND-*` | Branding / livery |
+| `NET-TOOL-*` | General tooling guides (not estate-specific infra) |
+| `OPS-INC-*` | Incident log |
 
 ---
 
