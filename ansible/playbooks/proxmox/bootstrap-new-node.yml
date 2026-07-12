@@ -38,6 +38,18 @@
 # -e bootstrap_force=true if you genuinely mean to.
 # =============================================================================
 # Changelog:
+#   2026-07-12  Added the actual reboot at the end -- the final message always
+#               claimed "this SSH session will not survive," but nothing ever
+#               applied /etc/network/interfaces (needs a reload or reboot to
+#               take effect) or rebooted; found when Robert ran this
+#               end-to-end for the first time and asked why it wasn't
+#               rebooting. Fire-and-forget shell reboot, not
+#               ansible.builtin.reboot's wait-and-reconnect -- that would try
+#               the OLD DHCP address afterward, which won't answer once the
+#               new static config is up. Also fixed the "Show derived network
+#               config and confirm" prompt's label alignment (Robert: the
+#               ragged colons would "absolutely drive my OCD apeshit") --
+#               all four labels now padded to the same width.
 #   2026-07-12  Fixed sites_csv_src/address_policy_src/ad_forest_src -- had
 #               4 levels of ../ (copy-pasted from 00-preflight.yml/
 #               30-example-music.yml, which live one directory deeper under
@@ -193,8 +205,8 @@
       ansible.builtin.pause:
         prompt: |
 
-          Target hostname : {{ target_hostname | upper }}
-          Site            : {{ host_site }} ({{ _site_row.City }}, {{ _site_row.Country }})
+          Target hostname   : {{ target_hostname | upper }}
+          Site              : {{ host_site }} ({{ _site_row.City }}, {{ _site_row.Country }})
           Derived static IP : {{ _derived_ip }}/24
           Gateway           : {{ _gateway }}
 
@@ -307,6 +319,21 @@
     - name: Final message — SSH session on the old IP is about to drop
       ansible.builtin.debug:
         msg:
-          - "Network config applied. This SSH session (on the DHCP IP) will not survive."
+          - "Network config written. Rebooting now to apply it — this SSH session (on the DHCP IP) will not survive."
           - "Reconnect via: ssh ansible@{{ _derived_ip }}  (or {{ target_hostname | lower }}.{{ _ad_forest.domain_fqdn }} once DNS picks it up)"
           - "Then: add it to configs/inventory/, and run proxmox/site.yml as normal."
+
+    - name: Reboot to apply new hostname/networking
+      # /etc/network/interfaces was written above but never takes effect on its own --
+      # it needs either an explicit reload or a reboot. A reboot is used deliberately
+      # over `ifreload -a`: this task's own SSH connection is on the interface being
+      # reconfigured (DHCP -> static), so reloading it live over that same connection
+      # is the riskier path. ansible.builtin.reboot's own wait-and-reconnect logic
+      # isn't used here (fire-and-forget shell instead) because it would try to
+      # reconnect on the OLD DHCP address afterward, which the node will no longer be
+      # answering on once the new static config is up -- that's expected to fail/hang,
+      # not a real error. Confirm the new address manually per the message above.
+      ansible.builtin.shell: sleep 2 && reboot
+      async: 1
+      poll: 0
+      ignore_errors: true
