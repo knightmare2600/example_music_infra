@@ -36,7 +36,7 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 
 | Address | Role | Hostname pattern |
 |---------|------|-----------------|
-| `.1` | Primary gateway / firewall | `EXAFWL<SITE>001` or `EXARTR<SITE>001` |
+| `.1` | Router / upstream gateway | `EXARTR<SITE>001` |
 | `.2` | BMC pool slot 1 — DRAC/iLO (PVE node 1) | `EXARAC<SITE>001` |
 | `.3` | BMC pool slot 2 — DRAC/iLO or RAC emulator VM | `EXARAC<SITE>002` |
 | `.4` | BMC pool slot 3 — hub sites only | `EXARAC<SITE>003` |
@@ -49,8 +49,8 @@ Every site follows this addressing scheme within its `/24` subnet. Exceptions ar
 | `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site | `EXAWAP<SITE>001`–`013` |
 | `.100`–`.249` | DHCP pool | — |
 | `.250`–`.252` | Switches | `EXASWI<SITE>001`–`003` |
-| `.253` | Secondary gateway / firewall | `EXAFWL<SITE>001` (if `.1` is router) |
-| `.254` | WAN edge router | `EXARTR<SITE>001` or `EXARTR<SITE>002` |
+| `.253` | Firewall — primary | `EXAFWL<SITE>001` |
+| `.254` | Firewall — secondary | `EXAFWL<SITE>002` |
 
 > **BMC pool:** `.2`/`.3`/`.4` shared between physical DRAC/iLO interfaces and RAC emulator VMs.
 > Physical PVE node BMCs consume from `.2` upward; the RAC emulator VM takes the next free slot.
