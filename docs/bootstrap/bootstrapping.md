@@ -1042,10 +1042,12 @@ the Ansible control node, run:
     playbooks/proxmox/bootstrap-new-node.yml
 
 You'll be prompted for this node's real hostname (from your build sheet, e.g. EXAPVEKGE001) --
-it sets the real hostname and static network config. The SSH session on this DHCP IP will then
-drop -- reconnect via the new hostname/IP, add it to configs/inventory/, then run proxmox/site.yml
--- which does everything else this script used to (repo fix, packages, MOTD, /etc/.environment,
-single-disk warning, dotfiles, kvm group, etc.).
+it sets the real hostname and static network config, then reboots to apply it. The SSH session on
+this DHCP IP will not survive the reboot -- reconnect via the new hostname/IP once it's back up
+(the site's PVE1 slot is already in configs/inventory/, generated active by default -- see
+generate_inventory.py -- there is nothing to add by hand), then run proxmox/site.yml -- which does
+everything else this script used to (repo fix, packages, MOTD, /etc/.environment, single-disk
+warning, dotfiles, kvm group, etc.).
 ```
 
 **No reboot is required or performed automatically** — nothing left in this script needs one, so unlike

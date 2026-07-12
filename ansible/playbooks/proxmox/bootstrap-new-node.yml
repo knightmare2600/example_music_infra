@@ -38,6 +38,16 @@
 # -e bootstrap_force=true if you genuinely mean to.
 # =============================================================================
 # Changelog:
+#   2026-07-12  Fixed the final message's "add it to configs/inventory/" --
+#               wrong advice: a site's PVE1 slot is generated ACTIVE by
+#               default (generate_inventory.py, per its own "only the FIRST
+#               instance is real in the .ini" design), and configs/*.ini's
+#               own header says "DO NOT EDIT. Changes may be overwritten."
+#               Confirmed EXAPVEGOT001 was already present in the committed
+#               got.ini before this fix -- there was never anything to add.
+#               Robert caught this asking why site.yml wasn't just chained
+#               on automatically; same doc bug also existed in
+#               docs/bootstrap/bootstrapping.md, fixed there too.
 #   2026-07-12  Added the actual reboot at the end -- the final message always
 #               claimed "this SSH session will not survive," but nothing ever
 #               applied /etc/network/interfaces (needs a reload or reboot to
@@ -321,7 +331,7 @@
         msg:
           - "Network config written. Rebooting now to apply it — this SSH session (on the DHCP IP) will not survive."
           - "Reconnect via: ssh ansible@{{ _derived_ip }}  (or {{ target_hostname | lower }}.{{ _ad_forest.domain_fqdn }} once DNS picks it up)"
-          - "Then: add it to configs/inventory/, and run proxmox/site.yml as normal."
+          - "It's already in configs/inventory/ (the site's PVE1 slot is generated active by default -- DO NOT hand-edit that file). Just run proxmox/site.yml as normal."
 
     - name: Reboot to apply new hostname/networking
       # /etc/network/interfaces was written above but never takes effect on its own --
