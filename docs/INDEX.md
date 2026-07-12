@@ -5,7 +5,7 @@
 
 > **Classification:** Internal — Infrastructure  
 > **Forest:** `jukebox.internal` · **Domains:** `example.net` · `example.org` · `example.com`  
-> **Last Updated:** 2026-07-11  
+> **Last Updated:** 2026-07-12  
 > **Credentials:** See password manager — never store passwords in documentation
 
 ---
@@ -28,6 +28,7 @@
 | Fix a ZFS disk | [proxmox/zfs-disk-replacement.md](proxmox/zfs-disk-replacement.md) |
 | Troubleshoot WireGuard | [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) |
 | Verify a change is safe before merging | [../ansible/at_have_ryggen_fri/README.md](../ansible/at_have_ryggen_fri/README.md) |
+| Read about a past incident / outage | [INCIDENT-LOG.md](INCIDENT-LOG.md) |
 
 ---
 
@@ -38,6 +39,7 @@
 | [ExampleMusic_Beginners_Guide.md](ExampleMusic_Beginners_Guide.md) | NET-BEGIN-001 | **Start here** — estate overview, IP/naming conventions, architecture, order of operations, trust but verify, prove a negative |
 | [network-inventory.md](network-inventory.md) | NET-INV-001 | Comprehensive device and IP inventory — all sites, all nodes, health status, known issues |
 | [site-inventory.md](site-inventory.md) | NET-SITE-001 | Per-site commissioning checklists — build tracking, ZFS status, endpoint and equipment sign-off |
+| [INCIDENT-LOG.md](INCIDENT-LOG.md) | OPS-INC-001 | Blameless incident log — chronological, oldest first; what went wrong, root cause, and what changed as a result |
 | `README.md` | — | Repository overview and conventions |
 | `INDEX.md` | — | This file |
 
