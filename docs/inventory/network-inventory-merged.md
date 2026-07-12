@@ -1,5 +1,11 @@
 # Example Music Limited — Network & Infrastructure Inventory
 
+> **SUPERSEDED, NOT INDEXED (2026-07-12):** this is a diverged duplicate of
+> [`../network-inventory.md`](../network-inventory.md), which is the real, actively-maintained
+> copy — this file's own changelog never picked up the 2026-07-08/2026-07-12 fixes made to the
+> real one (CLD/VRK subnet corrections, FWL-before-PVE build order, FWL/.253 vs RTR/.1). Kept for
+> history, not deleted, but do not treat this as current — use `network-inventory.md`.
+
 > **Classification:** Internal — Infrastructure
 > **Forest:** `jukebox.internal`
 > **Domains:** `example.net` · `example.org` · `example.com`

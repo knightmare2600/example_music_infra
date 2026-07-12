@@ -1,5 +1,12 @@
 # Example Music Limited — Proxmox VE Maintenance Automation Setup
 
+> **DUPLICATE, NOT INDEXED, INCOMPLETE (2026-07-12):** matches
+> [`../kernels/PVE-Trixie-Setup-PFY-Procedure.md`](../kernels/PVE-Trixie-Setup-PFY-Procedure.md)
+> (the canonical copy indexed in `docs/INDEX.md`) byte-for-byte on every file present, but this
+> directory is **missing `pve-monthly-hoover.timer`** — the scheduled cleanup this procedure
+> describes would never actually fire if deployed from here. Kept, not deleted, but fix the
+> `kernels/` copy and/or add the missing timer here before treating this directory as usable.
+
 > **Classification:** Internal — Infrastructure
 > **Applies to:** PVE nodes running Proxmox VE 9.x (Debian Trixie)
 > **Skill level:** PFY-friendly
