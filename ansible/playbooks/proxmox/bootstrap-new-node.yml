@@ -29,14 +29,24 @@
 # configs/inventory/, then run proxmox/site.yml as normal — 00-preflight.yml
 # onward already assumes a correctly-named, statically-addressed node.
 #
-# Refuses to run against a node that has already been through
-# 20-ansible-access.yml (detected via /etc/sudoers.d/ansible, same check
-# 00-preflight.yml uses) — that means this node has already been onboarded
-# through the normal site.yml flow, and re-running this playbook against it
-# would rename/rewrite the networking of a live, already-configured node.
-# Override with -e bootstrap_force=true if you genuinely mean to.
+# Refuses to run against a node that has already been through a full
+# site.yml run (detected via /etc/example-music/nodeinfo.json,
+# tasks/onboarded_check.yml — same check 00-preflight.yml uses) — that
+# means this node has already been onboarded through the normal site.yml
+# flow, and re-running this playbook against it would rename/rewrite the
+# networking of a live, already-configured node. Override with
+# -e bootstrap_force=true if you genuinely mean to.
 # =============================================================================
 # Changelog:
+#   2026-07-12  Onboarded-check moved from /etc/sudoers.d/ansible to
+#               /etc/example-music/nodeinfo.json — first-boot.sh's own
+#               ansible-bootstrap sliver writes that exact sudoers file on
+#               every fresh node (needed so Ansible can reach it at all),
+#               which meant this guard would have refused to run against
+#               EVERY genuinely fresh node, not just already-onboarded
+#               ones. Found and fixed before running this against real
+#               hardware for the first time. See tasks/onboarded_check.yml
+#               for the full reasoning.
 #   2026-07-07  Initial file — replaces first-boot.sh's interactive site/
 #               hostname/gateway/IP prompts and Step 7 (rename + network
 #               rewrite), ported here so the operator's already-known
@@ -70,19 +80,17 @@
       private: false
 
   tasks:
-    - name: Refuse to run against an already-onboarded node
-      ansible.builtin.stat:
-        path: /etc/sudoers.d/ansible
-      register: _already_onboarded
+    - name: Check whether this node has already been onboarded
+      include_tasks: ../../tasks/onboarded_check.yml
 
     - name: Abort if already onboarded (override with -e bootstrap_force=true)
       ansible.builtin.assert:
         that:
-          - (not _already_onboarded.stat.exists) or (bootstrap_force | default(false) | bool)
+          - (not node_onboarded) or (bootstrap_force | default(false) | bool)
         fail_msg: >-
-          /etc/sudoers.d/ansible already exists — this node has already been
-          through 20-ansible-access.yml, meaning it's already onboarded via
-          the normal site.yml flow. Re-running this playbook would rename and
+          /etc/example-music/nodeinfo.json already exists and is valid — this
+          node has already been through a full site.yml run, meaning it's
+          already onboarded. Re-running this playbook would rename and
           rewrite the networking of a live, already-configured node. If you
           are certain that's what you want, re-run with -e bootstrap_force=true.
 

@@ -38,6 +38,7 @@ scenarios:
       - bootstrap/web/proxmox/create-vm.py
       - bootstrap/web/provision/ansibleme.sh
       - ansible/playbooks/proxmox/bootstrap-new-node.yml
+      - ansible/tasks/onboarded_check.yml
       - docs/buildsheets/buildsheet-pve.md
       - docs/proxmox/Procedure-PVE-Node-Onboarding.md
       - docs/proxmox/pve-create-vm.md
@@ -46,8 +47,11 @@ scenarios:
         must_contain: "git clone"
         why: "ansibleme.sh must still clone the repo itself -- it's the break-glass path with no other way to get the repo onto a fresh control node."
       - file: ansible/playbooks/proxmox/bootstrap-new-node.yml
-        must_contain: "Refuse to run against an already-onboarded node"
-        why: "This playbook renames the live host and rewrites its own networking, dropping the current SSH session on purpose -- the already-onboarded guard is what stops it being re-run by accident against a node that's already gone through site.yml. Losing this check silently would make a routine mistake destructive."
+        must_contain: "Abort if already onboarded (override with -e bootstrap_force=true)"
+        why: "This playbook renames the live host and rewrites its own networking, dropping the current SSH session on purpose -- the already-onboarded guard is what stops it being re-run by accident against a node that's already gone through site.yml. Losing this check silently would make a routine mistake destructive. (Guard itself moved 2026-07-12 from an /etc/sudoers.d/ansible check -- which first-boot.sh's own sliver writes on every fresh node, defeating the whole point -- to tasks/onboarded_check.yml reading /etc/example-music/nodeinfo.json instead.)"
+      - file: ansible/tasks/onboarded_check.yml
+        must_contain: "nodeinfo.json"
+        why: "The shared onboarded-detection task both 00-preflight.yml and bootstrap-new-node.yml rely on -- if this file goes missing or stops checking nodeinfo.json, both callers silently break in different ways (one skips safety stages it shouldn't, the other loses its abort guard entirely)."
       - file: bootstrap/web/provision/ansibleme.sh
         must_contain: 'ln -s "${REPO_DIR}/ansible" "${ANSIBLE_DIR}"'
         why: "The clone-then-symlink mechanism a trainee relies on to make /home/ansible/ansible resolve."
