@@ -4,7 +4,7 @@
 **Role:** Authoritative DNS — `jukebox.internal`
 **OS:** Debian trixie
 **IP:** `192.168.139.8/24` (the vRACK, site code `VRK` — not `CLD`, which is CLD's own separate LAN)
-**Provisioned by:** `bindme.sh`
+**Provisioned by:** `playbooks/bind9/bind9-dns.yml` (Ansible — mirrors `bindme.sh` exactly, packages through service). `bindme.sh` is the break-glass fallback for when Ansible can't reach the box yet (dead/replaced DNS server, or the very first build at a brand-new site with no Ansible control node reachable at all).
 
 ---
 
@@ -160,13 +160,17 @@ grep -E 'serial|IN  A' /etc/bind/db.jukebox.internal | head -5
 All site data lives in `sites.csv` (single source of truth). To add a site or change a subnet:
 
 1. Edit `sites.csv` — add or update the site row.
-2. Re-run `bindme.sh` from the provisioning server, or run the zone regeneration helper:
-   
+2. From the Ansible control node, regenerate zones the normal way:
+
    ```
-   sudo /usr/local/sbin/regen-zone.sh
+   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --tags zones-full,reload
    ```
-   
-   This regenerates `/etc/bind/db.jukebox.internal` and all reverse zones, validates them with `named-checkzone`, and calls `rndc reload`.
+
+   (`zones-full`, not `zones` — that's the tag that actually reads `devices.csv`; see `bind9-dns.yml`'s
+   own header comment.) If you're already SSH'd onto `EXADNSVRK001` itself, `sudo
+   /usr/local/sbin/regen-zone.sh` does the same regeneration locally — both call the same
+   `named-checkzone`/`rndc reload` sequence. `bindme.sh` is the break-glass fallback for when
+   Ansible can't reach this box at all.
    
 3. Confirm the new records are visible:
 

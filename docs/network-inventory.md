@@ -12,6 +12,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-12 | FAL's "Completion checklist" listed the firewall as installed before the Proxmox nodes — backwards, since the firewall is a VM hosted on Proxmox (see `buildsheets/buildsheet-firewall.md` Step 1). Reordered. |
 | 2026-07-08 | Fixed both "Cloud / Provisioning" sections, which wrongly labelled CLD's own LAN subnet as `192.168.139.0/24` (that's `VRK`, the vRACK — CLD's own LAN is `192.168.69.0/24`), a leftover from before the CLD/VRK split existed. Restructured into three clearly separated subsections (vRACK/CLD LAN/FRD); added `FRD` (Fredericia Havn) and `VRK` rows to the Global Site Summary, which previously had neither. Fixed `EXARUDCLD001` -> `EXARDRCLD001` (typo). Fixed stale forest name `jukebox.example` -> `jukebox.internal` (this repo's domain rename completed some time ago; this reference was never updated). |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94` (added to Standard IP Convention table). Per-site `**WAPs:**` lines updated. Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD itself has no physical WiFi |
 | 2026-03-05 | Full review —<br /><br />subnets corrected against canonical site list; standard IP convention table added<br />CLY corrected to `192.168.41.0/24`<br />GLA corrected to `192.168.141.0/24`<br />KGE corrected to `192.168.65.0/24`<br />MEL corrected to `192.168.61.0/24`<br />MIA corrected to `192.168.135.0/24`<br />MUN corrected to `192.168.189.0/24`<br />BRD renamed BER throughout<br />TOR subnet corrected to `192.168.146.0/24`<br />FAL DC IPs corrected to `.76.10`/`.76.11`<br />FAL PVE nodes renamed EXAPVE and corrected to `.76.5`/`.76.6`<br />FAL RAC corrected to `.2`/`.3`<br />BON DC corrected to `192.168.228.10`<br />ODE DC002 corrected to `192.168.126.11`<br />FAX DC corrected to `192.168.246.10`<br />SBC addresses corrected to `.48` throughout<br />CLD (Cloud) site added<br />new sites added: AMS, ATL, CHI, GOT, HAL, HUL, KOR, MIL, MTL, OSL, SHE, VIE |
@@ -204,11 +205,11 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 
 **Completion checklist:**
 - [x] Switch installed and configured
-- [x] Firewall installed and configured
 - [x] Router installed and configured
-- [x] Domain Controllers provisioned (x2)
-- [x] Proxmox nodes provisioned (x2)
 - [x] Remote access consoles configured (x2)
+- [x] Proxmox nodes provisioned (x2)
+- [x] Firewall installed and configured (VM on Proxmox)
+- [x] Domain Controllers provisioned (x2)
 - [ ] Proxmox nodes upgraded to ZFS RAID1
 - [ ] Boot independence tested (both nodes)
 - [ ] VPN tunnel verified
