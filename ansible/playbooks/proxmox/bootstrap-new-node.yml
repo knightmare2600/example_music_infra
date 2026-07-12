@@ -24,18 +24,27 @@
 # feedback_no_premature_reboots in this project's history. One reboot, at
 # the very end of everything, once the node is actually fully onboarded.
 #
-# Run against the node's temporary DHCP IP (not through configs/inventory —
-# it isn't in there yet). Because the imported site.yml stages further down
-# resolve their own hosts: "{{ target | default('pvenodes') }}" pattern
-# BEFORE any task in this whole run executes (Ansible resolves a play's
-# hosts: field at parse time, not from a fact set by an earlier play --
-# verified empirically 2026-07-12), you must pass -e target= matching the
-# same address, or those stages will silently be skipped. This playbook
-# checks for that and fails fast, with the exact command to use, before
-# touching anything, if you forget:
+# Run against the node's temporary DHCP IP, WITH configs/inventory also
+# loaded as a second -i source (needed purely so group_vars/pvenodes/ -- e.g.
+# pve_packages -- actually has a path to be found from; a bare "-i
+# "1.2.3.4,"" ad-hoc inventory has none, which is exactly what broke
+# 10-packages.yml the first time this chained straight into site.yml). You
+# must also pass -e target= matching the DHCP address. This file's OWN plays
+# (not just the imported site.yml stages) use hosts: "{{ target }}" with NO
+# default and NOT hosts: all -- deliberately: once configs/inventory is
+# loaded as a second source, hosts: all matches every real host in the WHOLE
+# estate's inventory, not just this one ad-hoc node (verified empirically --
+# even a plain assert/debug task actually executes against every matched
+# host). An undefined target makes Ansible hard-fail immediately, for the
+# whole run, before anything happens (confirmed: exit code 4) -- much safer
+# than a custom in-play check, which could only ever fire AFTER a dangerously
+# broad hosts: pattern had already been accepted. The one thing a hosts:
+# check can't catch -- configs/inventory not having been loaded at all -- is
+# still checked explicitly, with a clear message, as this file's first task.
+# Full command:
 #
-#   ansible-playbook -i "192.168.x.x," -e target="192.168.x.x" \
-#     playbooks/proxmox/bootstrap-new-node.yml
+#   ansible-playbook -i "192.168.x.x," -i configs/inventory \
+#     -e target="192.168.x.x" playbooks/proxmox/bootstrap-new-node.yml
 #
 # You'll be prompted for the target hostname (e.g. EXAPVEKGE001, from your
 # build sheet) and asked to confirm the derived static IP before anything is
@@ -56,6 +65,30 @@
 # -e bootstrap_force=true if you genuinely mean to.
 # =============================================================================
 # Changelog:
+#   2026-07-12  Two fixes to the chained flow below, found on Robert's next
+#               real run against EXAPVEGOT001 (2nd attempt, past the target=
+#               fix): (1) 10-packages.yml's "Install management packages"
+#               failed with 'pve_packages' is undefined -- group_vars only
+#               auto-loads for a group that's part of the LOADED inventory
+#               path, and a bare ad-hoc "-i "1.2.3.4,"" has no path to find
+#               configs/inventory/group_vars/pvenodes/ from at all. Fixed by
+#               requiring configs/inventory as a second -i source, plus a new
+#               add_host task registering this host into the pvenodes group
+#               so it inherits that group's vars -- verified empirically.
+#               (2) Discovered, while fixing (1), that adding configs/
+#               inventory as a second source makes this file's own hosts:
+#               all (used in all three of its plays) match every real host
+#               in the whole estate's inventory, not just the one ad-hoc
+#               node -- confirmed empirically that even assert/debug tasks
+#               genuinely execute against every matched host. Changed all
+#               three plays to hosts: "{{ target }}" with NO default, so a
+#               missing target hard-fails the whole run immediately (exit
+#               code 4) instead of silently running against production PVE
+#               nodes. This replaced and removed the previous "Abort if -e
+#               target..." assert task -- unreachable now, since hosts:
+#               itself enforces this before any task can run; kept the
+#               separate "configs/inventory not loaded" check, since that
+#               failure mode isn't something a hosts: pattern can catch.
 #   2026-07-12  Chained the full site.yml stage chain directly into this
 #               playbook (import_playbook, after the identity-rename tasks),
 #               with a single reboot at the very end instead of one here and
@@ -147,14 +180,22 @@
 # =============================================================================
 
 - name: Proxmox VE — bootstrap a new node's real identity (SSH keypair preflight)
-  hosts: all
+  # hosts: "{{ target }}" -- deliberately NO default, and NOT hosts: all. Found
+  # 2026-07-12: once configs/inventory is loaded as a second -i source (required,
+  # see below, for group_vars), hosts: all matches every real host in the WHOLE
+  # inventory, not just the one ad-hoc node being bootstrapped -- verified
+  # empirically that even a plain assert/debug task actually runs against every
+  # matched host. With no default, an undefined target makes Ansible hard-fail
+  # immediately, for the whole run, before anything else happens -- confirmed
+  # empirically (exit code 4) -- rather than silently matching the entire estate.
+  hosts: "{{ target }}"
   gather_facts: false
   tasks:
     - name: Real SSH connectivity check using the configured key
       include_tasks: ../../tasks/ssh_key_preflight.yml
 
 - name: Proxmox VE — bootstrap a new node's real identity
-  hosts: all
+  hosts: "{{ target }}"
   become: true
   gather_facts: true
 
@@ -175,24 +216,22 @@
       private: false
 
   tasks:
-    - name: Abort if -e target wasn't passed matching the connected host
+    - name: Abort if configs/inventory wasn't also loaded as a second -i source
       ansible.builtin.assert:
         that:
-          - (target | default('')) == inventory_hostname
+          - ('pvenodes' in groups) and (groups.pvenodes | length > 0)
         fail_msg: >-
-          This playbook continues straight into the full site.yml chain
-          after the identity rename, in the same run. That only works if
-          the imported stages' own hosts: pattern (which defaults to the
-          pvenodes group, overridable via the target variable) resolves to
-          this host -- which Ansible can only do from a real extra-var
-          (available before any play runs), not a fact set later in this
-          run. Re-run with:
+          The pvenodes group is empty or doesn't exist -- configs/inventory
+          wasn't loaded alongside the DHCP IP. Without it, site.yml's later
+          stages have no path to find configs/inventory/group_vars/pvenodes/
+          (e.g. pve_packages) from, regardless of group membership -- this is
+          exactly what made 10-packages.yml fail with "'pve_packages' is
+          undefined" the first time this ran (2026-07-12). Re-run with:
 
-            ansible-playbook -i "{{ inventory_hostname }}," -e target="{{ inventory_hostname }}" \
-              playbooks/proxmox/bootstrap-new-node.yml
+            ansible-playbook -i "{{ inventory_hostname }}," -i configs/inventory \
+              -e target="{{ inventory_hostname }}" playbooks/proxmox/bootstrap-new-node.yml
 
-          (the same address you're already connecting to via -i.) Nothing
-          has been touched yet -- safe to just re-run.
+          Nothing has been touched yet -- safe to just re-run.
 
     - name: Check whether this node has already been onboarded
       include_tasks: ../../tasks/onboarded_check.yml
@@ -269,18 +308,14 @@
         _gateway: "{{ _site_row.Gateway }}"
 
     - name: Show derived network config and confirm
+      # Packed into 1-2 lines, ~100 cols, not one padded field per line -- Robert:
+      # "it's not an Apple [], dear boy" (2026-07-12).
       ansible.builtin.pause:
         prompt: |
 
-          Target hostname   : {{ target_hostname | upper }}
-          Site              : {{ host_site }} ({{ _site_row.City }}, {{ _site_row.Country }})
-          Derived static IP : {{ _derived_ip }}/24
-          Gateway           : {{ _gateway }}
+          {{ target_hostname | upper }}  ({{ host_site }}, {{ _site_row.City }}, {{ _site_row.Country }})  ->  {{ _derived_ip }}/24 via gw {{ _gateway }}  [standard PVE{{ host_num }} slot]
 
-          This matches the standard PVE{{ host_num }} slot for {{ host_site }}.
-          If this does NOT match your build sheet, Ctrl-C now and re-check
-          before continuing — this playbook will rewrite this node's
-          networking and the current SSH session will drop.
+          If this doesn't match your build sheet, Ctrl-C now -- rewrites this node's networking, drops the SSH session.
 
           Press Enter to confirm and proceed, or Ctrl-C to abort
       when: not (bootstrap_skip_confirm | default(false) | bool)
@@ -383,6 +418,26 @@
         --search {{ _ad_forest.domain_fqdn }}
       changed_when: true
 
+    - name: Register into the pvenodes group (site.yml's stages need its group_vars, e.g. pve_packages)
+      # group_vars only auto-loads for a group that's part of the LOADED inventory path (see
+      # ansible/at_have_ryggen_fri/add_host_probe/inventory.ini's own comment on this) -- a bare
+      # "-i "1.2.3.4,"" ad-hoc inventory has no path for Ansible to find
+      # configs/inventory/group_vars/pvenodes/ at all, regardless of group membership, which is
+      # why 10-packages.yml's "Install management packages" task failed with 'pve_packages' is
+      # undefined the first time this chained straight into site.yml (2026-07-12). Fixed by
+      # loading configs/inventory as a SECOND -i source (see this file's own header) so that
+      # group_vars actually exists to be found, and add_host-ing this specific host into the
+      # pvenodes group so it inherits it. Verified this combination -- explicit -e target=
+      # scoping (safe: matches only this one host, never the whole group, so this can never
+      # accidentally re-run against every other already-onboarded PVE node also in that group)
+      # PLUS add_host PLUS a second -i source -- actually resolves group_vars, empirically,
+      # before landing this.
+      ansible.builtin.add_host:
+        name: "{{ inventory_hostname }}"
+        groups: pvenodes
+      delegate_to: localhost
+      become: false
+
     - name: Identity rename complete — continuing into the full onboarding chain
       ansible.builtin.debug:
         msg:
@@ -393,7 +448,7 @@
 - import_playbook: site.yml
 
 - name: Proxmox VE — bootstrap a new node (final reboot)
-  hosts: all
+  hosts: "{{ target }}"
   gather_facts: false
   tasks:
     - name: Final message — SSH session on the old IP is about to drop
