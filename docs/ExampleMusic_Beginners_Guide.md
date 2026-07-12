@@ -426,9 +426,59 @@ first-instance path — see the correction below.
 The Proxmox VE node is the first thing built at every site, without exception — nothing in this
 sequence exists before it, since the firewall and the DC both run as VMs on top of it. See
 [Procedure-PVE-Node-Onboarding.md](proxmox/Procedure-PVE-Node-Onboarding.md) for the full
-procedure: `bootstrap-new-node.yml` gives the node its real hostname/static IP, then
-`proxmox/site.yml` completes onboarding, then `linux/tools.yml` brings it in line with every
-other Linux host.
+procedure. As of 2026-07-12, one command does the whole thing: `bootstrap-new-node.yml` gives the
+node its real hostname/static IP, then chains straight into the full `proxmox/site.yml` stage
+chain in the same run (packages incl. GRUB serial console, access setup,
+`/etc/example-music/` deployment, scripts, virt-tools, proxmorph, systemd units), and only then
+reboots once, at the very end — no separate manual second step any more. `linux/tools.yml` still
+brings it in line with every other Linux host afterward.
+
+Run against the node's temporary DHCP IP, from the Ansible control node:
+
+```bash
+ansible-playbook -i "192.168.x.x," -i configs/inventory -e target="192.168.x.x" \
+  playbooks/proxmox/bootstrap-new-node.yml
+```
+
+Both extra flags are required, and the playbook fails fast with the exact corrected command if
+either is missing, before touching anything:
+- `-i configs/inventory` (a *second*, additional `-i` — not a replacement for the DHCP-IP one) so
+  `group_vars/pvenodes/` (e.g. the PVE package list) has a path to be found from at all. Real
+  example of this catching a forgotten flag:
+
+  ```
+  Abort if configs/inventory wasn't also loaded as a second -i source
+  [✗]   192.168.139.87    The pvenodes group is empty or doesn't exist -- configs/inventory
+        wasn't loaded alongside the DHCP IP. [...] Nothing has been touched yet -- safe to
+        just re-run.
+  ```
+- `-e target="<same DHCP IP>"` so the imported `site.yml` stages resolve to this one node
+  specifically, not the whole `pvenodes` group.
+
+A real run (`EXAPVEGOT001`, Gothenburg) — the SSH keypair preflight, then the hostname prompt:
+
+```
+── Proxmox VE — bootstrap a new node's real identity (SSH keypair preflight)
+[*] 14:38:44  [ssh-preflight] Connectivity confirmed
+[+]   192.168.139.87    SSH connectivity to ansible@192.168.139.87 confirmed using
+      /home/ansible/ansible/configs/ansible-id_rsa.
+Target hostname for this node (from your build sheet, e.g. EXAPVEKGE001): EXAPVEGOT001
+```
+
+...then the derived-network confirmation prompt, before anything is touched:
+
+```
+EXAPVEGOT001  (GOT, Gothenburg, Sweden)  ->  192.168.46.5/24 via gw 192.168.46.253  [standard PVE001 slot]
+
+If this doesn't match your build sheet, Ctrl-C now -- rewrites this node's networking, drops the SSH session.
+
+Press Enter to confirm and proceed, or Ctrl-C to abort
+```
+
+Only reachability/naming/wiring have been confirmed against a real node so far (SSH preflight,
+the fail-fast `-i`/`-e target=` checks, and reaching `10-packages.yml`) — see
+[Procedure-PVE-Node-Onboarding.md](proxmox/Procedure-PVE-Node-Onboarding.md)'s Troubleshooting
+section for what to do if any stage fails partway through.
 
 **Step 2 — Build the FWL VM**
 
@@ -471,8 +521,10 @@ ever built, so there's no existing Ansible control node, no existing DNS, and no
 to join. The sequence there is CLD-specific:
 
 1. **Build the PVE hypervisor** (`EXAPVECLD001`) — exactly as tested in this session: the
-   `first-boot.sh` sliver, then `bootstrap-new-node.yml`, then `proxmox/site.yml`. This one
-   needs an Ansible control node to run those playbooks *from* — see the `ansibleme.sh`
+   `first-boot.sh` sliver, then `bootstrap-new-node.yml` (which as of 2026-07-12 chains straight
+   into the full `proxmox/site.yml` stage chain itself, one command, one reboot at the end — see
+   §7.2's Step 1 above for the invocation). This one needs an Ansible control node to run that
+   playbook *from* — see the `ansibleme.sh`
    chicken-and-egg note in [Procedure-PVE-Node-Onboarding.md](proxmox/Procedure-PVE-Node-Onboarding.md)
    if `EXAANSCLD001` doesn't exist yet either.
 2. **Build `EXADNSVRK001`** — no site anywhere has working DNS until this exists. See
@@ -527,7 +579,8 @@ Existing site (running, untouched)
     │  ← firewallme.sh runs, WireGuard comes up to FAL (hub)
     │  ← EXADCSFAL001 VM is created, Ansible promotes it to DC
     │  ← AD replication begins — jukebox.internal data syncs from CLD
-    │  ← Ansible adds EXAPVEFAL001 to inventory, playbooks run
+    │  ← EXAPVEFAL001's PVE1 slot is already in configs/inventory/ (generated active by
+    │    default — nothing to add by hand), so it's already reachable by hostname once static
     │
     │  (existing infra still running, users unaffected)
     │
