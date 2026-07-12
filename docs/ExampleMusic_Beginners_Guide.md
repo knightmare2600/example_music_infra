@@ -12,6 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-07-12 | §7.2 corrected — previously said the per-site build sequence was `FWL → DCS → (PVE hypervisors, ...)`, backwards, since the firewall and DC are both VMs and can't exist before the PVE node hosting them does. Also corrected "the firewall is built by running `firewallme.sh`" to name the Ansible playbook (`playbooks/firewallme/playbooks/90-firewall.yml`) as the first-instance path, `firewallme.sh` as the break-glass fallback — matches root `README.md`'s existing break-glass framing, which this section hadn't been brought in line with. Fixed a second, unrelated stale `192.168.139.68`→`.69` (CLD's FWL WAN face) that the 2026-07-08 entry below fixed in §4.1 but missed here. Added §7.2a documenting CLD/VRK's own build sequence (no site to replicate from yet) — PVE → `EXADNSVRK001` → firewall → `EXADCSCLD001`, the one DC build where `dc_is_first_in_forest` is answered yes. |
 | 2026-07-08 | Added section 4.2, `FRD` (Fredericia Havn) — the vRACK's standby provisioning network, not to be confused with `FRE` (the real Fredericia office). Fixed section 4.1's CLD IP table: DNS/PRV/the firewall's WAN face are `EXA*VRK001`-suffixed hostnames, not `EXA*CLD001` (devices.csv files them under `Site=VRK`); corrected the WAN face octet (`.69`, not `.68`); PBX is `EXAPBXCLD001`, not `EXACLDPBX001` (fixed a second time after an over-eager find/replace on this same changelog line corrupted it into a tautology). |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94`. Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD has no physical WiFi itself |
 | 2026-06-30 | Initial version           |
@@ -409,33 +410,83 @@ Everything else depends on CLD. CLD MUST be commissioned before any other work b
 Within every site, the build sequence is:
 
 ```
-FWL → DCS → (PVE hypervisors, workstations, and other devices)
+PVE hypervisor → FWL (VM) → DCS (VM) → (additional PVE nodes, switches, workstations, and other devices)
 ```
 
-**Step 1 — Build the FWL VM**
+**Correction (2026-07-12):** this section previously said `FWL → DCS → (PVE hypervisors, ...)` —
+backwards. The firewall and the DC are both VMs. Neither can exist before the PVE node hosting
+them does. §7.3's "inside out in practice" walkthrough below already had this right (`you build
+EXAPVEFAL001` first, `then create EXAFWLFAL001 as a VM on EXAPVEFAL001`) — this section just
+hadn't been brought in line with it. It also previously named `firewallme.sh` as the way the
+firewall gets built; as of the Ansible port, that script is the break-glass fallback, not the
+first-instance path — see the correction below.
 
-The firewall is the first thing built at every site, without exception. It provides:
+**Step 1 — Build the PVE hypervisor**
+
+The Proxmox VE node is the first thing built at every site, without exception — nothing in this
+sequence exists before it, since the firewall and the DC both run as VMs on top of it. See
+[Procedure-PVE-Node-Onboarding.md](proxmox/Procedure-PVE-Node-Onboarding.md) for the full
+procedure: `bootstrap-new-node.yml` gives the node its real hostname/static IP, then
+`proxmox/site.yml` completes onboarding, then `linux/tools.yml` brings it in line with every
+other Linux host.
+
+**Step 2 — Build the FWL VM**
+
+With the hypervisor up, create the firewall VM on it. It provides:
 - NAT and packet filtering between WAN and LAN
 - DHCP and DNS for the site LAN (until the DC is up and providing these)
 - The WireGuard tunnel back to CLD — this is what connects the site to the estate
 - The iPXE/DHCP chain that allows other devices to PXE boot
 
-At CLD, the FWL WAN interface takes a static IP from the OVH vRACK (`192.168.139.68`). At all other sites, the FWL WAN interface takes a DHCP or static IP from the existing upstream network (ISP / acquired infra), and its LAN face takes the site's `.253` address.
+At CLD, the FWL WAN interface takes a static IP from the OVH vRACK (`192.168.139.69`). At all other sites, the FWL WAN interface takes a DHCP or static IP from the existing upstream network (ISP / acquired infra), and its LAN face takes the site's `.253` address.
 
-The firewall is built by running `firewallme.sh`. This script is interactive and handles interface detection, site code lookup, WireGuard key generation, and peer configuration. See [buildsheet-firewall.md](buildsheets/buildsheet-firewall.md) for the full procedure.
+**The firewall is built by running the Ansible playbook**, not `firewallme.sh` directly —
+`ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e
+target=<host> --ask-vault-pass`. The VM comes up already Ansible-reachable (the same
+`late_command.sh` ansible-user/SSH-key sliver every Debian install gets, mirroring
+`first-boot.sh`'s PVE sliver), so there's normally no interactive step at all. `firewallme.sh` is
+kept as the break-glass fallback for when Ansible genuinely can't reach the box yet (a dead/
+replaced firewall, or — see §7.2a below — the very first firewall at a brand-new site with no
+Ansible control node reachable at all). See [buildsheet-firewall.md](buildsheets/buildsheet-firewall.md)
+for the full procedure either way.
 
-Once `firewallme.sh` completes and the FWL reboots, the WireGuard tunnel to CLD MUST be up and the site MUST be reachable from CLD. Do not proceed to the DCS build until you have confirmed this.
+Once the firewall play completes and the FWL reboots, the WireGuard tunnel to CLD MUST be up and the site MUST be reachable from CLD. Do not proceed to the DCS build until you have confirmed this.
 
-**Step 2 — Build the DCS**
+**Step 3 — Build the DCS**
 
 With the FWL live and the WireGuard tunnel up, the site can talk to CLD. Now build the domain controller:
 
 1. Create the DC VM on the site PVE node
 2. Boot via iPXE (served from `EXAPRVVRK001` across the WireGuard tunnel)
 3. Debian installs unattended via `lvm.seed` / `late_command.sh`
-4. Run `00-preflight.yml` from the `windows_bootstrap` playbook — renames the host, assigns a static IP, and configures DNS (see below)
-5. Run the `windows_dc` Ansible playbook from `EXAANSCLD001` — this promotes the VM to a DC, joins it to the appropriate child domain, and configures AD replication back to `EXADCSCLD001`
+4. Run `windows_bootstrap/site.yml` — renames the host, assigns a static IP, and configures DNS (see below)
+5. Run the `windows_dc/site.yml` Ansible playbook from `EXAANSCLD001` — this promotes the VM to a DC (its `00-dc-preflight.yml` `dc_is_first_in_forest` prompt is how it distinguishes "join an existing forest" from "this is the very first DC", see §7.2a), joins it to the appropriate child domain, and configures AD replication back to `EXADCSCLD001`
 6. DNS at the site now resolves `jukebox.internal` locally via the new DC — update the FWL's dnsmasq to point to `.10` instead of CLD
+
+### 7.2a CLD/VRK — the exception (there is no site to replicate from yet)
+
+Everything above assumes a regional or spoke site, replicating AD and joining a WireGuard hub
+that already exists. CLD/VRK is the one site where that's not true — it's the very first thing
+ever built, so there's no existing Ansible control node, no existing DNS, and no existing forest
+to join. The sequence there is CLD-specific:
+
+1. **Build the PVE hypervisor** (`EXAPVECLD001`) — exactly as tested in this session: the
+   `first-boot.sh` sliver, then `bootstrap-new-node.yml`, then `proxmox/site.yml`. This one
+   needs an Ansible control node to run those playbooks *from* — see the `ansibleme.sh`
+   chicken-and-egg note in [Procedure-PVE-Node-Onboarding.md](proxmox/Procedure-PVE-Node-Onboarding.md)
+   if `EXAANSCLD001` doesn't exist yet either.
+2. **Build `EXADNSVRK001`** — no site anywhere has working DNS until this exists. See
+   [EXADNSVRK001-dns.md](inventory/EXADNSVRK001-dns.md) and `playbooks/bind9/bind9-dns.yml`.
+3. **Build `EXAFWLCLD001`/`EXAFWLVRK001`** — the dual-interface WireGuard hub itself (LAN face
+   `EXAFWLCLD001` at `192.168.69.253`, WAN/vRACK face `EXAFWLVRK001` at `192.168.139.69` — same
+   physical box). Same `playbooks/firewallme/` playbook as any other site.
+4. **Build `EXADCSCLD001`** on the LAN side, once the firewall/LAN exists — `windows_bootstrap/site.yml`
+   first, then `windows_dc/site.yml`. This is the one DC promotion where `dc_is_first_in_forest`
+   at the `00-dc-preflight.yml` prompt is answered **yes** — there is no replication source
+   anywhere yet, so `20-dc-promote.yml` runs `Install-ADDSForest` instead of
+   `Install-ADDSDomainController`, creating `jukebox.internal` from nothing. Every other DC built
+   anywhere in the estate, including CLD's own secondary, answers **no** and replicates from an
+   existing DC instead.
 
 **DNS during the DC build — how it works (Trust but verify)**
 

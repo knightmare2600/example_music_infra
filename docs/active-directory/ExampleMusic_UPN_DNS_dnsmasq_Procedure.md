@@ -3,7 +3,10 @@
 > **Classification:** Internal — Infrastructure
 > **Forest / AD Domain:** `jukebox.internal` (single domain — all machines join here)
 > **UPN suffixes / internal DNS zones:** `example.net` · `example.org` · `example.com`
-> **Provisioning network:** `192.168.139.0/24`
+> **Provisioning network:** `192.168.139.0/24` (Edinburgh/`EXAPRVVRK001`) — Fredericia Havn has its
+> own separate provisioning server (`172.16.124.1:8000`/`EXAPRVFRD001`) not covered by this
+> procedure; this document's `provisioning.example.*` DNS records and reverse-zone entries are
+> Edinburgh-specific.
 > **Credentials:** See password manager — do **not** store passwords in this document
 
 > **Architecture note:** `example.net`, `example.org`, and `example.com` are **not** Active Directory child domains. They exist in this infrastructure as (a) UPN suffixes so users can log in with email-format credentials, and (b) internal DNS zones so these names resolve to internal services rather than their real public owners. All machines — servers, workstations, and DCs — join `jukebox.internal` directly.
@@ -14,6 +17,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-12 | Flagged the `192.168.139.0/24`/`192.168.139.50` references throughout as Edinburgh/VRK-specific — this document never mentioned Fredericia Havn's separate provisioning server (`172.16.124.1:8000`/`EXAPRVFRD001`) at all, which read as if `192.168.139.50` were the estate's only provisioning server. |
 | 2026-03-08 | Initial document — UPN suffixes, internal DNS zones, per-site reverse zones, dnsmasq DHCP dynamic DNS |
 | 2026-03-14 | Clarified that example.* are UPN suffixes / DNS zones only, not AD child domains. Added DNS zone pre-creation requirement before domain join. Updated EXADCSODE001 status. ODE reverse zone created and verified. |
 | 2026-03-14 | PSReadLine paste fix documented (SSH over PuTTY/pwsh). |

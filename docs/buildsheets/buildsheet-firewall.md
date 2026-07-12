@@ -1,9 +1,10 @@
 # Buildsheet — Firewall / Router (EXAFWL\*001)
 
 **Doc ID:** NET-BUILD-FWL-001  
-**Last Updated:** 2026-03-06  
+**Last Updated:** 2026-07-12  
 **Applies to:** All site firewall/router VMs — hub-primary (FAL), hub-regional (ODE, BRK), spokes (all other sites)  
-**Script:** `firewallme.sh` — hosted on bootstrap server at `http://192.168.139.50/firewallme.sh`  
+**Playbook:** `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=<host> --ask-vault-pass` — the first-instance build/enforce path once the VM is Ansible-reachable (it comes up that way already, via the same `late_command.sh` ansible-user/SSH-key sliver every Debian install gets)  
+**Break-glass script:** `firewallme.sh` — hosted on bootstrap server at `http://192.168.139.50/firewallme.sh`. Kept for when Ansible genuinely can't reach the box (dead/replaced firewall, or the very first firewall at a brand-new site with no Ansible control node reachable at all). Steps 4 onward below document this path — see `ansible/playbooks/firewallme/` for the normal one.  
 **Cross-reference:** `bootstrap/ad-dc-wireguard-deployment.md` (NET-AD-DC-001) · `buildsheet-pve.md` (NET-BUILD-PVE-001)
 
 > ⚠️ **Build hubs before spokes.** FAL must be fully live before any spoke or regional hub can establish its WireGuard tunnel.  
@@ -191,7 +192,11 @@ passwd
 
 ---
 
-## Step 4 — Run `firewallme.sh`
+## Step 4 — Run `firewallme.sh` (break-glass path)
+
+> This step and the ones after it are the **break-glass** path — use them when Ansible can't
+> reach the box yet. In the normal case, skip straight to running the Ansible playbook (see the
+> header above) instead of any of this.
 
 `firewallme.sh` configures NAT, DHCP/DNS, WireGuard, Cockpit, SSH banner, and dynamic MOTD.
 
