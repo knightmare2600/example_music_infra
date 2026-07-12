@@ -37,6 +37,15 @@
 # Tags: preflight
 # =============================================================================
 # Changelog:
+#   2026-07-12  Fixed the ZFS vdev count -- was matching specific device-name
+#               patterns (sd*/nvme*/vd*), which never matches /dev/disk/by-id/
+#               naming (Proxmox's own installer default on real hardware, not
+#               just a VM quirk). A genuinely redundant 2-disk mirror using
+#               by-id names counted as 0 disks and failed the single-disk
+#               check outright -- found against a real node (EXAPVEGOT001,
+#               QEMU by-id names). Now counts leaf disk lines by EXCLUDING the
+#               pool-name/vdev-group lines instead, so it's correct regardless
+#               of device-naming scheme.
 #   2026-07-12  Added a leading, separate SSH keypair preflight play (see
 #               tasks/ssh_key_preflight.yml, added the same day for the exact
 #               same incident against bootstrap-new-node.yml — EXAPVEGOT001
@@ -193,8 +202,27 @@
     # bootstrap_force/pve_force_full_onboard elsewhere in this chain.
 
     - name: "[Preflight] Count ONLINE vdevs in rpool"
+      # Counts leaf disk lines by EXCLUDING the pool-name and vdev-group lines
+      # (mirror-N/raidzN/spare/etc), not by matching specific device-name
+      # patterns -- found wrong 2026-07-12 against a real node (EXAPVEGOT001):
+      # the previous version only matched short kernel device names
+      # (sda3/nvme0n1p3/vda3), so a genuinely redundant 2-disk mirror using
+      # /dev/disk/by-id/ names (e.g. QEMU's own
+      # "scsi-0QEMU_QEMU_HARDDISK_drive-scsi0-part3", or real hardware's
+      # "ata-Samsung_SSD_..._part3"/"wwn-0x...-part3") counted as 0 disks and
+      # failed the redundancy check outright. by-id naming is Proxmox's own
+      # installer default on real hardware (survives device renumbering
+      # across reboots), not just a VM quirk, so this wasn't an edge case.
+      # Verified against 6 realistic zpool status samples (short sd/nvme
+      # names, by-id QEMU, by-id ata, single disk, 3-disk raidz1) before
+      # landing this -- see the changelog below.
       ansible.builtin.shell:
-        cmd: "zpool status rpool 2>/dev/null | grep -cE '^\\s+(sd|nvme|vd)[a-z]+[0-9]+\\s+ONLINE' || true"
+        cmd: >-
+          zpool status rpool 2>/dev/null
+          | grep -E '^\s+\S+\s+ONLINE\s+[0-9]+\s+[0-9]+\s+[0-9]+\s*$'
+          | grep -vE '^\s+(rpool|mirror|raidz[123]?|spare|replacing|indirect|log|cache|special|dedup)(-[0-9]+)?\s'
+          | wc -l
+          || true
       register: pve_zpool_vdev_count
       changed_when: false
       tags: preflight
