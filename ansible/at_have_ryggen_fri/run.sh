@@ -47,6 +47,13 @@
 #      octet for that site. Runs against current sites.csv every time, so
 #      any future edit to it is re-checked automatically, not just audited
 #      once by hand.
+#  11. check_ssh_keys.py -- bootstrap/web/ansible_sshkey.pub (the estate's
+#      one committed public key) is checked against both VRK-answer.toml/
+#      FRD-answer.toml's root-ssh-keys copies (clone-safe, a real failure).
+#      Separately, host-local: is ansible.cfg's configured private_key_file
+#      actually present on THIS host -- informational by default (a bare
+#      clone genuinely won't have it), --strict fails on it. If missing,
+#      scans ~/.ssh/ for a plausible candidate keypair and reports it.
 #
 # Nothing here touches a real host, needs a vault password, or needs network
 # access beyond localhost -- safe to run any time, by anyone, on any clone.
@@ -95,6 +102,14 @@
 #               had nowhere durable to land once terminal scrollback was
 #               gone. --no-report added to skip it for callers that already
 #               capture output themselves.
+#   2026-07-12  Added check_ssh_keys.py (section 11), per Robert's 5-point
+#               spec after the ansible-id_rsa private key went missing on
+#               EXAANSCLD001 mid real-node test -- see that script's own
+#               header and ansible/tasks/ssh_key_preflight.yml (the matching
+#               real-connectivity playbook-layer check, wired into
+#               bootstrap-new-node.yml and 00-preflight.yml). Point 1 of the
+#               spec: this harness previously only ever checked a public key
+#               exists (repo file presence) -- never the private half.
 #   2026-07-11  Added check_site_data.py (section 10), per Robert: "all site
 #               codes from sites.csv are in the documentation" and "their
 #               subnets, gateways... match", checked automatically every
@@ -364,6 +379,29 @@ else
   echo "$out"
   fail "Site coverage/consistency check(s) failed -- see above."
   FAILED_CHECKS+=("check_site_data.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 11. SSH keypair check — check_ssh_keys.py
+# ------------------------------------------------------------------------------
+section "11. SSH keypair — check_ssh_keys.py"
+
+keys_out=$(python3 "${HERE}/check_ssh_keys.py")
+keys_rc=$?
+echo "$keys_out"
+local_issue_count=$(echo "$keys_out" | grep -oE '^[0-9]+ local-only issue' | grep -oE '^[0-9]+' || true)
+if [[ $keys_rc -ne 0 ]]; then
+  fail "bootstrap/web/ansible_sshkey.pub has drifted from VRK/FRD-answer.toml -- see above."
+  FAILED_CHECKS+=("check_ssh_keys.py")
+elif [[ -n "$local_issue_count" && "$local_issue_count" -gt 0 ]]; then
+  if $STRICT; then
+    fail "${local_issue_count} local SSH keypair issue(s) -- see above. Failing because --strict was passed."
+    FAILED_CHECKS+=("check_ssh_keys.py (--strict: local keypair issue)")
+  else
+    warn "${local_issue_count} local SSH keypair issue(s) (see above) -- expected on a bare clone, but a showstopper on the real control node. Re-run with --strict before an actual deployment."
+  fi
+else
+  success "Public key consistent everywhere it's committed; local private key present and matching."
 fi
 
 # ------------------------------------------------------------------------------
