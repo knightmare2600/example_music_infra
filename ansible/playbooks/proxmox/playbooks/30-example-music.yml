@@ -31,6 +31,14 @@
 # Tags: example_music
 # =============================================================================
 # Changelog:
+#   2026-07-12  nodeinfo_extra's node_ip/gateway now prefer bootstrap-new-node.yml's
+#               _derived_ip/_gateway facts when present, falling back to live
+#               ansible_default_ipv4 facts exactly as before. Needed once
+#               bootstrap-new-node.yml started chaining straight into site.yml
+#               in the same run with a single final reboot -- at the point this
+#               stage runs in that chain, the node hasn't rebooted yet, so the
+#               live fact would still show the OLD DHCP address, not the new
+#               static one being written to nodeinfo.json.
 #   2026-07-06  Initial file — extracted/added as part of the pve_onboard.yml
 #               numbered-stage split (see 00-preflight.yml). Adds
 #               sites.csv/devices.csv deployment (previously PVE nodes got
@@ -103,6 +111,14 @@
         nodeinfo_environment: "{{ pve_environment | default('production') }}"
         nodeinfo_bootstrapped_by: "proxmox/site.yml"
         nodeinfo_extra:
-          node_ip: "{{ ansible_default_ipv4.address | default('') }}"
-          gateway: "{{ pve_site_row.Gateway | default(ansible_default_ipv4.gateway | default('')) }}"
+          # _derived_ip/_gateway (bootstrap-new-node.yml's own facts, set during the
+          # identity-rename stage) take priority when this runs as part of a chained
+          # bootstrap-new-node.yml -> site.yml run, 2026-07-12 -- at that point the
+          # node hasn't rebooted yet (deliberately, see feedback_no_premature_reboots),
+          # so ansible_default_ipv4 still reflects the OLD DHCP address, not the new
+          # static one. Falls back to the live fact exactly as before for a normal,
+          # standalone site.yml run against an already-onboarded/rebooted node, where
+          # _derived_ip is never defined.
+          node_ip: "{{ _derived_ip | default(ansible_default_ipv4.address | default('')) }}"
+          gateway: "{{ _gateway | default(pve_site_row.Gateway | default(ansible_default_ipv4.gateway | default(''))) }}"
       tags: example_music
