@@ -38,6 +38,16 @@
 # -e bootstrap_force=true if you genuinely mean to.
 # =============================================================================
 # Changelog:
+#   2026-07-12  Added a leading, separate SSH keypair preflight play (see
+#               tasks/ssh_key_preflight.yml) — this playbook is the one that
+#               actually failed UNREACHABLE against a real node (EXAPVEGOT001)
+#               when the configured private key went missing on the control
+#               node, with the real cause hidden behind exa_pretty's terse
+#               summary. That preflight now runs a real ssh connectivity test
+#               using the configured key BEFORE this play's own gather_facts
+#               gets a chance to fail obscurely, and fails hard with the real
+#               ssh stderr if it doesn't work. Robert's explicit ask: a
+#               showstopper, not a warning.
 #   2026-07-12  Onboarded-check moved from /etc/sudoers.d/ansible to
 #               /etc/example-music/nodeinfo.json — first-boot.sh's own
 #               ansible-bootstrap sliver writes that exact sudoers file on
@@ -63,6 +73,13 @@
 #               _ad_forest.dns_forwarders[0:2] (internal BIND9 first, then one public
 #               upstream), matching the order used everywhere else in this repo.
 # =============================================================================
+
+- name: Proxmox VE — bootstrap a new node's real identity (SSH keypair preflight)
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Real SSH connectivity check using the configured key
+      include_tasks: ../../tasks/ssh_key_preflight.yml
 
 - name: Proxmox VE — bootstrap a new node's real identity
   hosts: all
