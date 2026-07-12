@@ -11,6 +11,12 @@
 #               from them besides (windirstat is common to all hosts now,
 #               not laptop/desktop-only; firefox/windows-terminal are
 #               still in both files' choco_packages_desktop).
+#   2026-07-12  Removed the WinDirStat binaries_extra entry below — dead
+#               duplicate, see windows_desktop/vars.yml's same-day
+#               changelog entry (windirstat has been in
+#               choco_packages_common since 2026-07-06). Also fixed
+#               ScreenRes filenames to match the real upstream release
+#               asset names — see windows_server/vars.yml's same-day entry.
 # =============================================================================
 
 # Hibernation — ENABLED on laptops and tablets
@@ -23,7 +29,6 @@ exa_deadvertise_enabled: true
 # busybox removed 2026-07-06 — it's a Chocolatey package now (choco_packages_common).
 binaries_extra:
   - { src_amd64: "jq-windows-amd64.exe",  src_arm64: "jq-windows-arm64.exe",   dest: "jq.exe" }
-  - { src_amd64: "ScreenRes-x64.exe",     src_arm64: "ScreenRes-arm64.exe",     dest: "ScreenRes.exe" }
-  - { src_amd64: "WinDirStat.exe",        src_arm64: "WinDirStat_arm64.exe",    dest: "WinDirStat.exe" }
+  - { src_amd64: "screenres-amd64.exe",   src_arm64: "screenres-arm64.exe",     dest: "ScreenRes.exe" }
 
 domain_ou_role: "Laptops"

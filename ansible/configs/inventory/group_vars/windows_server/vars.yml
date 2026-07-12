@@ -12,6 +12,17 @@
 #               from them besides (sysinternals is common to all hosts
 #               now, not server-only; nmap is still server-only, defined
 #               in both files' choco_packages_server).
+#   2026-07-12  Fixed Process Explorer's ARM64 entry — src_arm64 pointed at
+#               `Procmon64a.exe` (Process Monitor's ARM64 binary, a different
+#               Sysinternals tool entirely), not `procexp64a.exe` (the real
+#               Process Explorer ARM64 build). Added Process Monitor as its
+#               own binaries_extra entry now that the mislabelled file isn't
+#               needed there. Fixed ScreenRes filenames to match the real
+#               upstream release asset names (`screenres-amd64.exe`/
+#               `screenres-arm64.exe`, lowercase, `-amd64` not `-x64` —
+#               confirmed against https://github.com/knightmare2600/ScreenRes/releases/tag/1.0.0.3)
+#               — the previous `ScreenRes-x64.exe`/`ScreenRes-arm64.exe`
+#               never matched what actually ships in the release.
 # =============================================================================
 
 # Hibernation — always off on servers
@@ -24,9 +35,10 @@ exa_deadvertise_enabled: false
 # busybox removed 2026-07-06 — it's a Chocolatey package now (choco_packages_common).
 binaries_extra:
   - { src_amd64: "ADExplorer64.exe",  src_arm64: "ADExplorer64a.exe",  dest: "ADExplorer64.exe" }
-  - { src_amd64: "procexp64.exe",     src_arm64: "Procmon64a.exe",     dest: "procexp64.exe" }
+  - { src_amd64: "procexp64.exe",     src_arm64: "procexp64a.exe",     dest: "procexp64.exe" }
+  - { src_amd64: "Procmon64.exe",     src_arm64: "Procmon64a.exe",     dest: "Procmon64.exe" }
   - { src_amd64: "jq-windows-amd64.exe", src_arm64: "jq-windows-arm64.exe", dest: "jq.exe" }
-  - { src_amd64: "ScreenRes-x64.exe", src_arm64: "ScreenRes-arm64.exe", dest: "ScreenRes.exe" }
+  - { src_amd64: "screenres-amd64.exe", src_arm64: "screenres-arm64.exe", dest: "ScreenRes.exe" }
 
 # OU path template — site_code is set per-host or derived from hostname
 domain_ou_role: "Servers"
