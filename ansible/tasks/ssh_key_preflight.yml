@@ -37,8 +37,31 @@
 #
 # Sets: nothing (fails the play outright on either problem; a host that
 # survives this task file is safe to hand to a normal, real Ansible play).
+#
+# IMPORTANT -- delegate_to and connection vars: every task below is
+# delegate_to: localhost, and ansible_host/ansible_port/ansible_user are
+# CONNECTION magic vars -- referenced bare (e.g. "{{ ansible_host }}") inside
+# a delegated task, Ansible resolves them against the DELEGATE's own
+# (localhost's) connection context, not the original target host's, whenever
+# the target has no *explicit* ansible_host/-port/-user hostvar set (exactly
+# the case for a raw "-i "1.2.3.4,"" bootstrap-new-node.yml run, which has
+# no separate ansible_host -- inventory_hostname IS the IP). Found 2026-07-12
+# testing against EXAPVEGOT001 for real: the connectivity test silently ran
+# as "ansible@localhost" instead of the actual target, passed for the wrong
+# reason (localhost was reachable), then failed for the wrong reason once it
+# wasn't. My own earlier "verified live" testing hadn't caught this because
+# the throwaway sshd used to test it WAS localhost/127.0.0.1, so the wrong
+# answer and the right answer happened to be the same box. Fixed by reading
+# hostvars[inventory_hostname].X explicitly instead of the bare magic var --
+# inventory_hostname itself is NOT a connection var and is never affected by
+# delegate_to, so this always resolves against the real original target.
 # =============================================================================
 # Changelog:
+#   2026-07-12  Fixed the delegate_to/connection-var bug above --
+#               _sshpf_target/_sshpf_remote_user/the ssh -p port now all read
+#               via hostvars[inventory_hostname] instead of bare ansible_host/
+#               ansible_user/ansible_port. Re-verified against a target that
+#               is provably NOT localhost this time.
 #   2026-07-12  Initial file. Robert's 5-point spec, all three layers
 #               (harness/at_have_ryggen_fri/check_ssh_keys.py, this file +
 #               its two callers, docs/proxmox/Procedure-PVE-Node-Onboarding.md).
@@ -55,8 +78,9 @@
 - name: "[ssh-preflight] Resolve configured private key path"
   ansible.builtin.set_fact:
     _sshpf_key_file: "{{ lookup('ansible.builtin.config', 'DEFAULT_PRIVATE_KEY_FILE') }}"
-    _sshpf_remote_user: "{{ ansible_user | default(lookup('ansible.builtin.config', 'DEFAULT_REMOTE_USER') | default('ansible', true)) }}"
-    _sshpf_target: "{{ ansible_host | default(inventory_hostname) }}"
+    _sshpf_remote_user: "{{ hostvars[inventory_hostname].ansible_user | default(lookup('ansible.builtin.config', 'DEFAULT_REMOTE_USER') | default('ansible', true)) }}"
+    _sshpf_target: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
+    _sshpf_port: "{{ hostvars[inventory_hostname].ansible_port | default(22) }}"
   delegate_to: localhost
   become: false
   when: not (ssh_key_preflight_skip | default(false) | bool)
@@ -98,7 +122,7 @@
       - -i
       - "{{ _sshpf_key_file }}"
       - -p
-      - "{{ ansible_port | default(22) }}"
+      - "{{ _sshpf_port }}"
       - -o
       - BatchMode=yes
       - -o
