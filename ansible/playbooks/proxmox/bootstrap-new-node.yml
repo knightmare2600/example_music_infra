@@ -38,6 +38,18 @@
 # -e bootstrap_force=true if you genuinely mean to.
 # =============================================================================
 # Changelog:
+#   2026-07-12  Fixed sites_csv_src/address_policy_src/ad_forest_src -- had
+#               4 levels of ../ (copy-pasted from 00-preflight.yml/
+#               30-example-music.yml, which live one directory deeper under
+#               playbooks/proxmox/playbooks/ and correctly need 4), but this
+#               file lives directly under playbooks/proxmox/ and only needs
+#               3. Off by one the whole time; invisible to check_references.py
+#               (only checks literal src:/include_tasks: paths, not
+#               Jinja playbook_dir vars used with read_csv/lookup('file',...))
+#               and to --syntax-check (a runtime task failure, not a syntax
+#               error). Only surfaced once the SSH keypair preflight (below)
+#               let a real run reach the Load sites.csv task for the first
+#               time -- every earlier attempt failed at connect time.
 #   2026-07-12  Added a leading, separate SSH keypair preflight play (see
 #               tasks/ssh_key_preflight.yml) — this playbook is the one that
 #               actually failed UNREACHABLE against a real node (EXAPVEGOT001)
@@ -87,9 +99,15 @@
   gather_facts: true
 
   vars:
-    sites_csv_src: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
-    address_policy_src: "{{ playbook_dir }}/../../../../benarbejde/address_policy.json"
-    ad_forest_src: "{{ playbook_dir }}/../../../../benarbejde/ad_forest.json"
+    # 3 levels, not 4 -- this file lives at playbooks/proxmox/bootstrap-new-node.yml
+    # (one level shallower than 00-preflight.yml/30-example-music.yml, which live
+    # under playbooks/proxmox/playbooks/ and correctly use 4). Found 2026-07-12 on
+    # the first real run to ever get past the SSH connection stage (see
+    # ansible/tasks/ssh_key_preflight.yml) -- every earlier attempt failed at
+    # connect time, before this Load sites.csv task was ever reached.
+    sites_csv_src: "{{ playbook_dir }}/../../../benarbejde/sites.csv"
+    address_policy_src: "{{ playbook_dir }}/../../../benarbejde/address_policy.json"
+    ad_forest_src: "{{ playbook_dir }}/../../../benarbejde/ad_forest.json"
 
   vars_prompt:
     - name: target_hostname
