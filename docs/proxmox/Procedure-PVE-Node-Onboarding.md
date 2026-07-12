@@ -282,6 +282,23 @@ ansible-playbook playbooks/proxmox/site.yml -i configs/inventory --limit <node-i
 
 The node may still be in first-boot. Wait 2–3 minutes and retry. Check the Proxmox console for the boot status.
 
+### UNREACHABLE despite port 22 being open — SSH keypair preflight failure
+
+Found the hard way, 2026-07-12: `bootstrap-new-node.yml` failed `UNREACHABLE` against a real node even though `nmap` confirmed port 22 was open. The real cause — the control node's own `ansible-id_rsa` private key had gone missing — was hidden behind `exa_pretty`'s terse `other=1` summary; only `-vvv` or a plain manual `ssh` invocation showed it.
+
+`bootstrap-new-node.yml` and `00-preflight.yml` (and therefore `site.yml`) now each run a leading, separate SSH keypair preflight play first (`ansible/tasks/ssh_key_preflight.yml`) — a real `ssh` connectivity test using the exact key `ansible.cfg`'s `private_key_file` points at, run **before** Ansible's own connection attempt gets a chance to fail obscurely. This is a **showstopper, not a warning**: if the key is missing, or present but the connection test still fails, the play fails immediately with the real `ssh` stderr shown in full, and nothing further runs against that host.
+
+If you hit this:
+
+1. Run `ansible/at_have_ryggen_fri/run.sh --strict` (check 11, `check_ssh_keys.py`) — on the real control node this checks whether the configured private key is actually present, and if not, scans `~/.ssh/` for a plausible existing candidate (any `.pub` whose comment contains "exa").
+2. If a genuine, matching keypair turns up: **never** move or copy the private half into this repo, anywhere, full stop. Only the public half is ever committed/served, and only in these three places (keep all three in sync if the key is ever rotated):
+   - `ansible/configs/ansible-id_rsa.pub` (gitignored locally, but read by `ansible.cfg`'s connection)
+   - `bootstrap/web/ansible_sshkey.pub` (the one committed, HTTP-servable copy)
+   - `bootstrap/web/proxmox/VRK-answer.toml` / `FRD-answer.toml`'s `root-ssh-keys`
+3. If no matching keypair can be found, the private key is genuinely, not just apparently, lost — regenerate on the control node directly (matches `bootstrap/web/provision/ansibleme.sh`'s own `ssh-keygen` invocation), then re-distribute the new public half to the three locations above and to any already-onboarded node's `~ansible/.ssh/authorized_keys`.
+
+The preflight play can be overridden with `-e ssh_key_preflight_skip=true` for a genuine edge case (e.g. a node only reachable by password, before any key exists at all) — this is an explicit, auditable override, not a default. `00-preflight.yml` also auto-skips this check for the documented `--user=root -k` password-authenticated first-ever-onboard run below, since a broken key is irrelevant when that run isn't using one.
+
 ### FAILED — apt 401 Unauthorized
 
 The Proxmox enterprise repo is active and no subscription key is present. Fix on the node:
@@ -325,7 +342,8 @@ If `id ansible` fails on the new node, the first-boot script did not run or fail
 | `files/sudoer_ansible` | Sudoers drop-in deployed to each node |
 | `benarbejde/sites.csv`, `benarbejde/devices.csv` | Authoritative site/device registries, deployed to every node's `/etc/example-music/` |
 | `playbooks/proxmox/site.yml` | This procedure's entry point — chains the eight stages below |
-| `playbooks/proxmox/playbooks/00-preflight.yml` | Site lookup + onboarding-state detection |
+| `ansible/tasks/ssh_key_preflight.yml` | Real SSH connectivity preflight (showstopper) — used by both `bootstrap-new-node.yml` and `00-preflight.yml` |
+| `playbooks/proxmox/playbooks/00-preflight.yml` | SSH keypair check, then site lookup + onboarding-state detection |
 | `playbooks/proxmox/playbooks/10-packages.yml` | Management packages, apt repo fix, subscription nag removal |
 | `playbooks/proxmox/playbooks/20-ansible-access.yml` | User/SSH key/sudoers/kvm group (gated) |
 | `playbooks/proxmox/playbooks/30-example-music.yml` | `/etc/example-music/` — sites.csv, devices.csv, nodeinfo.json |

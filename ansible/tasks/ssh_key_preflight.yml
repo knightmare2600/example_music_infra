@@ -1,0 +1,147 @@
+---
+# =============================================================================
+# ansible/tasks/ssh_key_preflight.yml
+# Example Music Limited — Real "can I SSH here" check, before Ansible tries to
+# =============================================================================
+# Trigger, 2026-07-12: bootstrap-new-node.yml failed UNREACHABLE against a
+# real node (EXAPVEGOT001) despite nmap confirming port 22 open. Root cause
+# was the configured private key (ansible.cfg's private_key_file) genuinely
+# missing on the control node — but that fact was hidden behind exa_pretty's
+# terse "other=1" unreachable summary; only -vvv/a plain `ssh` invocation by
+# hand showed the real cause. Robert's call: this must be a showstopper, not
+# a warning ("no kill like overkill ;) and I'm serious"), and it must use the
+# actual configured key to prove connectivity, not just confirm a file exists.
+#
+# Why this is a SEPARATE, gather_facts:false, delegate_to:localhost play
+# rather than a task inside the main play: by the time any task in a normal
+# play runs, Ansible has already made (and, on failure, already obscured) its
+# own connection attempt via gather_facts. Running this via a raw local `ssh`
+# invocation, in an earlier play, gets a real, unfiltered stderr/rc back
+# before Ansible's own connection plugin ever touches the target — see the
+# two callers below for how the two-play split works in practice.
+#
+# Reads the private key path and remote user from Ansible's OWN resolved
+# config (ansible.builtin.config lookup) rather than hardcoding
+# ansible.cfg's private_key_file/remote_user a second time here — if
+# ansible.cfg's values ever change, this check automatically follows,
+# instead of silently checking a stale second copy of the same fact.
+#
+# 00-preflight.yml's caller also derives an automatic skip from
+# ansible_ssh_pass/ansible_password for the documented, genuinely
+# password-authenticated first-ever-onboard path (site.yml run as
+# --user=root -k) — this task file's own -e ssh_key_preflight_skip=true is
+# the explicit, auditable manual override, matching the repo's existing
+# bootstrap_force/pve_force_full_onboard/pve_acknowledge_single_disk idiom,
+# for any other genuine edge case (e.g. a node reachable by password only,
+# before any key exists at all).
+#
+# Sets: nothing (fails the play outright on either problem; a host that
+# survives this task file is safe to hand to a normal, real Ansible play).
+# =============================================================================
+# Changelog:
+#   2026-07-12  Initial file. Robert's 5-point spec, all three layers
+#               (harness/at_have_ryggen_fri/check_ssh_keys.py, this file +
+#               its two callers, docs/proxmox/Procedure-PVE-Node-Onboarding.md).
+# =============================================================================
+
+- name: "[ssh-preflight] WARN — skipped via ssh_key_preflight_skip=true"
+  ansible.builtin.debug:
+    msg: >-
+      SSH keypair preflight check explicitly skipped for {{ inventory_hostname }}
+      via -e ssh_key_preflight_skip=true. Connectivity is unverified — if the
+      real connection fails next, you won't get this check's diagnostic.
+  when: ssh_key_preflight_skip | default(false) | bool
+
+- name: "[ssh-preflight] Resolve configured private key path"
+  ansible.builtin.set_fact:
+    _sshpf_key_file: "{{ lookup('ansible.builtin.config', 'DEFAULT_PRIVATE_KEY_FILE') }}"
+    _sshpf_remote_user: "{{ ansible_user | default(lookup('ansible.builtin.config', 'DEFAULT_REMOTE_USER') | default('ansible', true)) }}"
+    _sshpf_target: "{{ ansible_host | default(inventory_hostname) }}"
+  delegate_to: localhost
+  become: false
+  when: not (ssh_key_preflight_skip | default(false) | bool)
+
+- name: "[ssh-preflight] Stat configured private key locally (on the control node)"
+  ansible.builtin.stat:
+    path: "{{ _sshpf_key_file }}"
+  register: _sshpf_key_stat
+  delegate_to: localhost
+  become: false
+  when:
+    - not (ssh_key_preflight_skip | default(false) | bool)
+    - _sshpf_key_file | length > 0
+
+- name: "[ssh-preflight] FAIL — no private key configured or found on disk"
+  ansible.builtin.fail:
+    msg: >-
+      No usable SSH private key found for connecting to {{ _sshpf_target }}.
+      ansible.cfg's private_key_file resolves to
+      '{{ _sshpf_key_file | default("(unset)") }}', which
+      {{ "does not exist" if (_sshpf_key_file | length > 0) else "is not set" }}
+      on this control node. This is a showstopper, not a warning — nothing
+      further will run against this host until it's fixed. Run
+      ansible/at_have_ryggen_fri/run.sh (check 11, check_ssh_keys.py) for
+      guidance, including a scan of ~/.ssh/ for a plausible existing
+      keypair. If none is found, generate a fresh one (matching
+      bootstrap/web/provision/ansibleme.sh's own ssh-keygen invocation) —
+      see docs/proxmox/Procedure-PVE-Node-Onboarding.md's Troubleshooting
+      section. Never paste or commit a private key into this repo, anywhere,
+      full stop.
+  when:
+    - not (ssh_key_preflight_skip | default(false) | bool)
+    - (_sshpf_key_file | length == 0) or (not _sshpf_key_stat.stat.exists | default(false))
+
+- name: "[ssh-preflight] Real connectivity test using the configured key"
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ _sshpf_key_file }}"
+      - -p
+      - "{{ ansible_port | default(22) }}"
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=5
+      - -o
+      - StrictHostKeyChecking=accept-new
+      - "{{ _sshpf_remote_user }}@{{ _sshpf_target }}"
+      - echo ryggen_fri_ssh_ok
+  register: _sshpf_conn_test
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  ignore_errors: true
+  when:
+    - not (ssh_key_preflight_skip | default(false) | bool)
+    - _sshpf_key_file | length > 0
+    - _sshpf_key_stat.stat.exists | default(false)
+
+- name: "[ssh-preflight] FAIL — key present but connectivity test failed"
+  ansible.builtin.fail:
+    msg: >-
+      SSH connectivity test to {{ _sshpf_remote_user }}@{{ _sshpf_target }}
+      using {{ _sshpf_key_file }} failed (rc={{ _sshpf_conn_test.rc }}).
+      This is a KEY/AUTH problem, not necessarily a network problem —
+      port 22 may well be open (exa_pretty's UNREACHABLE summary won't tell
+      you this on its own). Real ssh stderr:
+
+      {{ _sshpf_conn_test.stderr }}
+
+      Check: the public half of this key is actually in
+      {{ _sshpf_target }}'s ~ansible/.ssh/authorized_keys; the private key
+      at {{ _sshpf_key_file }} matches it; and its permissions are 0600.
+      This is a showstopper — nothing further will run against this host
+      until it's fixed.
+  when:
+    - not (ssh_key_preflight_skip | default(false) | bool)
+    - _sshpf_conn_test is not skipped
+    - _sshpf_conn_test.rc | default(1) != 0
+
+- name: "[ssh-preflight] Connectivity confirmed"
+  ansible.builtin.debug:
+    msg: "SSH connectivity to {{ _sshpf_remote_user }}@{{ _sshpf_target }} confirmed using {{ _sshpf_key_file }}."
+  when:
+    - not (ssh_key_preflight_skip | default(false) | bool)
+    - _sshpf_conn_test is not skipped
+    - _sshpf_conn_test.rc | default(1) == 0

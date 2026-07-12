@@ -39,6 +39,7 @@ scenarios:
       - bootstrap/web/provision/ansibleme.sh
       - ansible/playbooks/proxmox/bootstrap-new-node.yml
       - ansible/tasks/onboarded_check.yml
+      - ansible/tasks/ssh_key_preflight.yml
       - docs/buildsheets/buildsheet-pve.md
       - docs/proxmox/Procedure-PVE-Node-Onboarding.md
       - docs/proxmox/pve-create-vm.md
@@ -52,6 +53,12 @@ scenarios:
       - file: ansible/tasks/onboarded_check.yml
         must_contain: "nodeinfo.json"
         why: "The shared onboarded-detection task both 00-preflight.yml and bootstrap-new-node.yml rely on -- if this file goes missing or stops checking nodeinfo.json, both callers silently break in different ways (one skips safety stages it shouldn't, the other loses its abort guard entirely)."
+      - file: ansible/playbooks/proxmox/bootstrap-new-node.yml
+        must_contain: "tasks/ssh_key_preflight.yml"
+        why: "This is the exact playbook that failed UNREACHABLE against EXAPVEGOT001 (2026-07-12) when the configured private key went missing on the control node, with the real cause hidden behind exa_pretty's terse summary. Losing this leading preflight play silently would bring that failure mode straight back -- a showstopper by Robert's explicit ask, not a warning."
+      - file: ansible/tasks/ssh_key_preflight.yml
+        must_contain: "showstopper"
+        why: "Robert's own words: 'no kill like overkill ;) and I'm serious' -- this must fail hard, not just warn, if the configured key is missing or doesn't actually work. If this task file stops being fatal, a broken keypair goes back to being discovered as an obscure UNREACHABLE."
       - file: bootstrap/web/provision/ansibleme.sh
         must_contain: 'ln -s "${REPO_DIR}/ansible" "${ANSIBLE_DIR}"'
         why: "The clone-then-symlink mechanism a trainee relies on to make /home/ansible/ansible resolve."

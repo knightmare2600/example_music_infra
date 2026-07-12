@@ -37,6 +37,18 @@
 # Tags: preflight
 # =============================================================================
 # Changelog:
+#   2026-07-12  Added a leading, separate SSH keypair preflight play (see
+#               tasks/ssh_key_preflight.yml, added the same day for the exact
+#               same incident against bootstrap-new-node.yml — EXAPVEGOT001
+#               went UNREACHABLE with the real cause, a missing private key on
+#               the control node, hidden behind exa_pretty's terse summary).
+#               Auto-skips when this run is using the documented password-
+#               authenticated first-ever-onboard path (--user=root -k) —
+#               detected via ansible_ssh_pass/ansible_password being defined,
+#               rather than making the operator remember an override flag for
+#               the one legitimate case a key check doesn't apply to. Every
+#               other invocation (routine refreshes, anything not explicitly
+#               password-authenticated) gets the real connectivity test.
 #   2026-07-06  Initial file — part of the pve_onboard.yml -> numbered-stage
 #               split (00-preflight, 10-packages, 20-ansible-access,
 #               30-example-music, 40-scripts, 50-systemd-units), matching
@@ -74,6 +86,20 @@
 #               before running bootstrap-new-node.yml against real hardware
 #               for the first time, rather than find out live.
 # =============================================================================
+
+- name: Proxmox VE — Preflight (SSH keypair connectivity check)
+  hosts: "{{ target | default('pvenodes') }}"
+  gather_facts: false
+  tasks:
+    - name: Real SSH connectivity check using the configured key
+      include_tasks: ../../../tasks/ssh_key_preflight.yml
+      vars:
+        # Auto-skip for the documented password-authenticated first-ever-onboard
+        # path (site.yml run as --user=root -k) -- a broken/missing private key
+        # is irrelevant when this run isn't using one at all. Neither var is
+        # ever set on a genuinely key-based run.
+        ssh_key_preflight_skip: "{{ (ansible_ssh_pass is defined) or ((ansible_password | default('')) != '') }}"
+      tags: preflight
 
 - name: Proxmox VE — Preflight (site lookup, onboarding-state detection)
   hosts: "{{ target | default('pvenodes') }}"

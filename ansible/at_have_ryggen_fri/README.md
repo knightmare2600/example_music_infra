@@ -29,6 +29,12 @@ repo's history:
   into `docs/`, or a doc quoting a site's subnet/octet that doesn't match
   its real `sites.csv` row — found 2026-07-11 (`buildsheet-firewall.md`'s
   `ATL` row had both a wrong IP and a leftover pre-rename city name).
+- The estate's SSH keypair genuinely going missing on the real control
+  node, with no local file-existence check to catch it and no real
+  connectivity test before Ansible's own connection attempt obscures the
+  cause — found 2026-07-12 when `ansible-id_rsa` went missing on
+  `EXAANSCLD001` mid real-node test (see `check_ssh_keys.py` and
+  `ansible/tasks/ssh_key_preflight.yml`).
 
 Phases 1 (repo-wide reference/data integrity), 2 (the estate's bare-metal
 bootstrap scenarios as repeatable checks), and an initial repo-wide sweep
@@ -183,6 +189,7 @@ prompted fixing that buildsheet the same day — see the git log around
 | 8 | Cross-file facts | `check_facts.py` — reads `facts.yml`, a short hand-curated list of specific facts (an IP, a hostname) restated as prose across multiple docs/scripts, and confirms each is still asserted correctly everywhere it's registered |
 | 9 | Bootstrap scenarios | `check_scenarios.py` — reads `scenarios.yml`, covering the 4 bare-metal-to-working-estate scenarios (PVE+Ansible node, DNS, firewall, Windows unattend): confirms every file each depends on exists, and a handful of load-bearing warnings/framing comments (e.g. `ansibleme.sh`'s `git clone`, the break-glass framing in `bindme.sh`/`firewallme.sh`, the circular-dependency callout in `Procedure-PVE-Node-Onboarding.md`) haven't been edited away. Does not build real infrastructure — see `scenarios.yml`'s own header for what's deliberately out of scope (no real iLO/DRAC automation exists; the per-edition Windows unattend XML files don't exist yet) |
 | 10 | Site data | `check_site_data.py` — reads `benarbejde/sites.csv` fresh every run (not a frozen snapshot): every `Site` code appears somewhere in `docs/*.md`, and every doc line naming exactly one site code alongside a literal IP has the right third octet for that site. Knows about the estate's real, deliberate exceptions (CLD is dual-homed LAN+vRACK; every site's firewall also has a WAN IP on the provisioning network at `192.168.139.<its own octet>`) so it doesn't flag those as mismatches. Lines asserting more than 3 literal IPs (multi-site `sed`/config-edit commands) are skipped for the octet check — too ambiguous to attribute safely — but still count toward coverage |
+| 11 | SSH keypair | `check_ssh_keys.py` — two tiers. Clone-safe (real failure): `bootstrap/web/ansible_sshkey.pub` (the estate's one committed, HTTP-servable public key) is checked against all four `VRK-`/`FRD-answer.toml` + `VRK-`/`FRD-degraded.toml` `root-ssh-keys` copies — every file says "keep in sync if rotated" in its own comments; this confirms that promise holds. Host-local (informational unless `--strict`): is `ansible.cfg`'s configured `private_key_file` actually present on *this* host — resolved via `ansible-config dump`, not a second hardcoded copy of the setting. Missing on a bare clone is expected; missing on the real control node is what actually happened 2026-07-12 (EXAANSCLD001, see `ansible/tasks/ssh_key_preflight.yml`'s header) and is what `--strict` is for. If missing, scans `~/.ssh/` for a plausible candidate keypair (`.pub` comment containing "exa") and reports it |
 
 ## Design notes
 
