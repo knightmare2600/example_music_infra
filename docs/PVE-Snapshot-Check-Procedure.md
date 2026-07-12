@@ -1,5 +1,11 @@
 # Example Music Limited — Proxmox VE Snapshot Monitoring Setup
 
+> **DUPLICATE, NOT INDEXED (2026-07-12):** byte-identical to
+> [`proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md`](proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md),
+> which is the canonical copy indexed in `docs/INDEX.md` (matches the self-contained
+> deployment-package shape of the other `proxmox_zabbix_cleanup/` subdirectories). This root-level
+> copy is kept, not deleted, but treat the subdirectory copy as the one to edit.
+
 > **Classification:** Internal — Infrastructure
 > **Applies to:** PVE nodes running Proxmox VE 9.x (Debian Trixie)
 > **Skill level:** PFY-friendly
