@@ -54,6 +54,13 @@
 #      actually present on THIS host -- informational by default (a bare
 #      clone genuinely won't have it), --strict fails on it. If missing,
 #      scans ~/.ssh/ for a plausible candidate keypair and reports it.
+#  12. check_playbook_dir_paths.py -- every "{{ playbook_dir }}/../.../X"
+#      expression (used with read_csv/lookup('file',...)/shell, not the
+#      literal src:/include_tasks: paths check 3 already covers) resolves
+#      to a real file. Catches copy-pasted-from-a-deeper-file path depth
+#      bugs -- found the hard way in bootstrap-new-node.yml, invisible to
+#      both check 2 (--syntax-check doesn't execute tasks) and check 3
+#      (Jinja, not literal) until a real run finally reached the task.
 #
 # Nothing here touches a real host, needs a vault password, or needs network
 # access beyond localhost -- safe to run any time, by anyone, on any clone.
@@ -102,6 +109,14 @@
 #               had nowhere durable to land once terminal scrollback was
 #               gone. --no-report added to skip it for callers that already
 #               capture output themselves.
+#   2026-07-12  Added check_playbook_dir_paths.py (section 12) after
+#               bootstrap-new-node.yml's sites_csv_src turned out to have
+#               one extra level of ../ the whole time (copy-pasted from
+#               00-preflight.yml, which lives one directory deeper) --
+#               only surfaced once the SSH keypair preflight (below) let a
+#               real run reach that task for the first time. Neither
+#               --syntax-check nor check_references.py could ever have
+#               caught this class of bug -- see the script's own header.
 #   2026-07-12  Added check_ssh_keys.py (section 11), per Robert's 5-point
 #               spec after the ansible-id_rsa private key went missing on
 #               EXAANSCLD001 mid real-node test -- see that script's own
@@ -402,6 +417,20 @@ elif [[ -n "$local_issue_count" && "$local_issue_count" -gt 0 ]]; then
   fi
 else
   success "Public key consistent everywhere it's committed; local private key present and matching."
+fi
+
+# ------------------------------------------------------------------------------
+# 12. playbook_dir-relative path check — check_playbook_dir_paths.py
+# ------------------------------------------------------------------------------
+section "12. playbook_dir-relative paths — check_playbook_dir_paths.py"
+
+if out=$(python3 "${HERE}/check_playbook_dir_paths.py"); then
+  echo "$out"
+  success "All playbook_dir-relative paths resolve."
+else
+  echo "$out"
+  fail "Unresolved playbook_dir-relative path(s) -- see above."
+  FAILED_CHECKS+=("check_playbook_dir_paths.py")
 fi
 
 # ------------------------------------------------------------------------------
