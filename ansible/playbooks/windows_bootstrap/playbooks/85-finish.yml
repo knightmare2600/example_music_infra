@@ -39,6 +39,14 @@
 # Tags: finish
 # =============================================================================
 # Changelog:
+#   2026-07-12  Final reboot made conditional on Windows actually reporting a
+#               pending reboot (idempotency audit, [[project_ad_onboarding_audit]]
+#               found it unconditional -- directly contradicted site.yml's own
+#               claim that a full rerun "converges any host to the same
+#               known-good state," since it force-rebooted an
+#               already-converged host every time). See the task's own
+#               comment for why an OS-level pending-reboot check was used
+#               instead of hand-tracking every earlier task's changed status.
 #   2026-07-09  Initial file — ported from 05-bootstrap.yml Stage 23. This was
 #               a genuine gap, not a stylistic one: site.yml's chain had no
 #               final summary or guaranteed reboot at all before this.
@@ -76,9 +84,42 @@
       changed_when: true
       tags: finish
 
-    - name: "[Finish] Final reboot"
+    - name: "[Finish] Check whether Windows is actually reporting a pending reboot"
+      # Robert: "we only need to reboot if the IP or hostname changes... presumably if those
+      # tasks don't require changes we don't need a reboot?" -- correct, and it generalises:
+      # 00-preflight.yml/10-rename.yml/35-guest-tools.yml/80-domainjoin.yml already each perform
+      # their OWN individually-gated reboot (on hostname/IP change, VMware tools install, domain
+      # join respectively -- idempotency audit, [[project_ad_onboarding_audit]]), so by the time
+      # this file runs (last of 20), any of THOSE has already happened and cleared. This file's
+      # own reboot was unconditional regardless, meaning a routine rerun against an
+      # already-converged host was forced to reboot anyway, every time, for nothing.
+      #
+      # Rather than hand-track every one of the other ~15 tasks across this chain that might
+      # also need a reboot (registry policy, SMB1 feature toggle, RSAT, hibernation, etc.) --
+      # fragile, easy to miss one -- ask Windows itself, via the same three registry locations
+      # Windows's own servicing stack uses to track a genuinely pending reboot: Component Based
+      # Servicing, Windows Update, and pending file-rename operations (covers most
+      # installer-driven reboot flags, including some Chocolatey packages).
+      ansible.windows.win_shell: |
+        $pending = $false
+        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') { $pending = $true }
+        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired') { $pending = $true }
+        if (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Name PendingFileRenameOperations -ErrorAction SilentlyContinue) { $pending = $true }
+        Write-Output $pending
+      register: _finish_reboot_pending
+      changed_when: false
+      tags: finish
+
+    - name: "[Finish] Final reboot (only if Windows is actually reporting one pending)"
       ansible.windows.win_reboot:
         reboot_timeout:    600
         post_reboot_delay: 30
         msg:               "Ansible bootstrap complete — final reboot"
+      when: _finish_reboot_pending.stdout | trim == 'True'
+      tags: finish
+
+    - name: "[Finish] No reboot needed"
+      debug:
+        msg: "No pending reboot detected -- skipping (either nothing changed this run, or whatever did doesn't require one)."
+      when: _finish_reboot_pending.stdout | trim != 'True'
       tags: finish
