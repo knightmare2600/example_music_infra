@@ -1038,13 +1038,19 @@ NEXT STEP: Ansible finishes this node's setup
 This node still has its installer placeholder hostname and a DHCP IP -- that's expected. From
 the Ansible control node, run:
 
-  ansible-playbook -i "<this node's current DHCP IP>," -e target="<same DHCP IP>" \
-    playbooks/proxmox/bootstrap-new-node.yml
+  ansible-playbook -i "<this node's current DHCP IP>," -i configs/inventory \
+    -e target="<same DHCP IP>" playbooks/proxmox/bootstrap-new-node.yml
 
-The -e target= (same address as -i) is required -- the full site.yml chain this now runs
-straight into (see below) resolves its own hosts: pattern before any task in the run executes,
-so it can't pick up the address from a fact set earlier in the same run. Forgetting it fails
-fast with the exact command to use, before anything is touched.
+Both extras are required. -i configs/inventory (a second, additional -i source, not a
+replacement) is needed purely so group_vars/pvenodes/ -- e.g. pve_packages -- has a path to be
+found from at all; without it, later stages like 10-packages.yml fail with "'pve_packages' is
+undefined". -e target= (same address as the first -i) is needed because the full site.yml chain
+this now runs straight into (see below) resolves its own hosts: pattern before any task in the
+run executes, so it can't pick up the address from a fact set earlier in the same run -- and
+without it, once configs/inventory is loaded, this playbook's own plays would otherwise match
+every real PVE node in the whole inventory, not just this one. Forgetting either fails fast
+(this playbook checks for the inventory source, and Ansible itself hard-fails immediately on a
+missing target) before anything is touched.
 
 You'll be prompted for this node's real hostname (from your build sheet, e.g. EXAPVEKGE001) --
 it sets the real hostname and static network config, then continues straight into the full
@@ -1063,7 +1069,7 @@ the pre-2026-07-10 version there is no `y/N` reboot prompt at all any more.
 
 **What happens to hostname/rename/static-IP now:** none of it happens in this script any more (unchanged
 from the 2026-07-07 trim). The node stays on its DHCP-assigned IP with the Proxmox installer's placeholder
-hostname (`pve-install`) until you run `ansible-playbook -i "<dhcp-ip>," -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml`
+hostname (`pve-install`) until you run `ansible-playbook -i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml`
 from the Ansible control node, per the script's own on-screen instructions above. That single invocation now
 does everything this script used to do on real hardware, plus the entire site.yml chain, plus one final reboot
 -- previously a separate, manual second step.
@@ -1186,6 +1192,7 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   |  the Ansible control node, run:                      |
   |                                                       |
   |    ansible-playbook -i "192.168.139.87," \            |
+  |      -i configs/inventory \                            |
   |      -e target="192.168.139.87" \                     |
   |      playbooks/proxmox/bootstrap-new-node.yml         |
   |                                                       |
@@ -1205,10 +1212,14 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
 **The single most important thing in that output, for the PFY's plan:** the node never gets a real
 hostname or static IP from this script — it stays on its DHCP lease with the Proxmox installer's
 placeholder hostname the whole time. The very next command to run, from the Ansible control node, is
-printed on-screen at the end: `ansible-playbook -i "<dhcp-ip>," -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml`
-(the `-e target=` is required — the full site.yml chain this now runs straight into resolves its own
-hosts: pattern before any task in the run executes, so it can't be told the address by a fact set
-earlier in the same run). That single invocation asks for the real hostname, sets the permanent
+printed on-screen at the end: `ansible-playbook -i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml`
+Both extras are required — `-i configs/inventory` (additional, not a replacement) so
+`group_vars/pvenodes/` (e.g. `pve_packages`) has a path to be found from at all, and
+`-e target=` because the full `site.yml` chain this now runs straight into resolves its own
+`hosts:` pattern before any task in the run executes, so it can't be told the address by a fact
+set earlier in the same run — without it, this playbook's own plays would otherwise match every
+real PVE node in the whole inventory once `configs/inventory` is loaded, not just this one. That
+single invocation asks for the real hostname, sets the permanent
 site-LAN IP, then continues straight into `proxmox/site.yml`'s full stage chain (`00-preflight.yml`,
 `10-packages.yml`, `20-ansible-access.yml`, `30-example-music.yml`, `40-scripts.yml`,
 `45-virt-tools.yml`, `46-proxmorph.yml`, `50-systemd-units.yml`) in the same run — apt repo fix,
