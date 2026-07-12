@@ -1,0 +1,73 @@
+---
+# =============================================================================
+# ansible/tasks/onboarded_check.yml
+# Example Music Limited — Detect whether a node has already been onboarded
+# =============================================================================
+# Shared by playbooks/proxmox/playbooks/00-preflight.yml and
+# playbooks/proxmox/bootstrap-new-node.yml. Both need to answer the same
+# question -- "has this node already been through a full site.yml run?" --
+# to decide whether to skip live-state-touching stages (00-preflight.yml)
+# or refuse to run at all (bootstrap-new-node.yml, which renames the host
+# and rewrites its networking).
+#
+# Historically this checked /etc/sudoers.d/ansible -- but first-boot.sh's
+# ansible-bootstrap sliver ALSO writes that exact file (NOPASSWD sudoers
+# for the ansible user), on every node, before site.yml/bootstrap-new-node.yml
+# ever run. That made the check fire on every genuinely fresh node, not
+# just already-onboarded ones -- found 2026-07-12 while preparing to run
+# bootstrap-new-node.yml against a real node for the first time.
+#
+# Now checks /etc/example-music/nodeinfo.json instead -- written only by
+# ansible/tasks/nodeinfo.yml, itself only ever called from within a full
+# site.yml-family run (proxmox/30-example-music.yml, linux/tools.yml,
+# firewallme's 12_finish.yml, rudder_server.yml). first-boot.sh never
+# touches /etc/example-music/ at all, so there's no equivalent collision
+# here. Existence alone isn't trusted, per Robert's explicit ask — the file
+# is read and parsed as JSON, and must contain a non-empty bootstrapped_by
+# field, before this task calls the node onboarded. A same-named file that
+# doesn't parse, or parses but is missing that field, is not what our own
+# nodeinfo.yml writes — this fails loudly rather than silently guessing
+# either way, since both callers use this to gate against re-touching a
+# live node's access/networking.
+#
+# Sets: node_onboarded (bool)
+# =============================================================================
+# Changelog:
+#   2026-07-12  Initial file — replaces the /etc/sudoers.d/ansible check
+#               duplicated in 00-preflight.yml and bootstrap-new-node.yml.
+# =============================================================================
+
+- name: "[onboarded-check] Stat /etc/example-music/nodeinfo.json"
+  ansible.builtin.stat:
+    path: /etc/example-music/nodeinfo.json
+  register: _onboarded_check_stat
+
+- name: "[onboarded-check] Read nodeinfo.json content"
+  ansible.builtin.slurp:
+    src: /etc/example-music/nodeinfo.json
+  register: _onboarded_check_raw
+  when: _onboarded_check_stat.stat.exists
+
+- name: "[onboarded-check] Parse nodeinfo.json"
+  ansible.builtin.set_fact:
+    _onboarded_check_parsed: "{{ (_onboarded_check_raw.content | b64decode) | from_json }}"
+  when: _onboarded_check_stat.stat.exists
+  register: _onboarded_check_parse_result
+  ignore_errors: true
+
+- name: "[onboarded-check] FAIL — nodeinfo.json exists but isn't valid JSON"
+  ansible.builtin.fail:
+    msg: >-
+      /etc/example-music/nodeinfo.json exists but could not be parsed as
+      JSON. This file is only ever written by ansible/tasks/nodeinfo.yml
+      (mode 0444, atomic write) -- a present-but-corrupt/unparseable copy
+      means either something outside Ansible wrote it, or it was truncated.
+      Investigate before proceeding -- this check can't safely tell you
+      whether the node has genuinely been onboarded or not.
+  when:
+    - _onboarded_check_stat.stat.exists
+    - _onboarded_check_parse_result is failed
+
+- name: "[onboarded-check] Set node_onboarded fact"
+  ansible.builtin.set_fact:
+    node_onboarded: "{{ _onboarded_check_stat.stat.exists and ((_onboarded_check_parsed | default({})).bootstrapped_by | default('') | length > 0) }}"

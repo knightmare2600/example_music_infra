@@ -9,14 +9,15 @@
 #
 # Also detects whether this node has already been through the access-setup
 # stage (20-ansible-access.yml) before, by checking for
-# /etc/sudoers.d/ansible. This decides which stages the rest of the chain
-# runs:
+# /etc/example-music/nodeinfo.json (tasks/onboarded_check.yml — see that
+# file for why this isn't /etc/sudoers.d/ansible any more). This decides
+# which stages the rest of the chain runs:
 #
-#   First-ever onboarding (sudoers drop-in absent):
+#   First-ever onboarding (nodeinfo.json absent):
 #     Every stage runs — packages, access setup, example-music, scripts,
 #     systemd units.
 #
-#   Already onboarded (sudoers drop-in present):
+#   Already onboarded (nodeinfo.json present and valid):
 #     Only the stages that cannot break a running hypervisor run by
 #     default: packages, example-music, scripts. Access setup (user/SSH
 #     key/sudoers/kvm group) and systemd units (daemon-reload, timer
@@ -59,6 +60,19 @@
 #               in the estate was nodeinfo.json's own `environment` field —
 #               same cleanup applied to firewallme's 00_preflight.yml,
 #               bind9-dns.yml, and rudder_server.yml.
+#   2026-07-12  "Already onboarded" detection moved from /etc/sudoers.d/ansible
+#               to /etc/example-music/nodeinfo.json (tasks/onboarded_check.yml).
+#               Real bug, found before it could actually bite: first-boot.sh's
+#               ansible-bootstrap sliver writes /etc/sudoers.d/ansible on every
+#               node as part of getting Ansible a foot in the door — meaning
+#               this check would have read "already onboarded" on every
+#               genuinely fresh node, immediately after first-boot.sh ran,
+#               before site.yml ever touched it. nodeinfo.json is only ever
+#               written from within a full site.yml-family run and
+#               first-boot.sh never touches /etc/example-music/ at all, so
+#               there's no equivalent collision. Robert's call to fix this
+#               before running bootstrap-new-node.yml against real hardware
+#               for the first time, rather than find out live.
 # =============================================================================
 
 - name: Proxmox VE — Preflight (site lookup, onboarding-state detection)
@@ -106,14 +120,12 @@
       tags: preflight
 
     - name: Check whether this node has already been onboarded
-      ansible.builtin.stat:
-        path: /etc/sudoers.d/ansible
-      register: pve_sudoers_check
+      include_tasks: ../../../tasks/onboarded_check.yml
       tags: preflight
 
     - name: Set pve_onboarded fact
       set_fact:
-        pve_onboarded: "{{ pve_sudoers_check.stat.exists }}"
+        pve_onboarded: "{{ node_onboarded }}"
       tags: preflight
 
     - name: Set pve_run_full_onboard fact
