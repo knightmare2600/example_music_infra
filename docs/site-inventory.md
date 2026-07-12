@@ -30,7 +30,7 @@
 
 | Address | Role |
 |---------|------|
-| `.1` | Firewall / primary gateway |
+| `.1` | Router (`RTR`) / upstream gateway |
 | `.2` | BMC pool slot 1 — physical DRAC/iLO (PVE node 1) |
 | `.3` | BMC pool slot 2 — physical (PVE node 2) or RAC emulator VM on single-node sites |
 | `.4` | BMC pool slot 3 — physical (PVE node 3) on hub sites only |
@@ -44,8 +44,8 @@
 | `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site |
 | `.100`–`.249` | DHCP pool |
 | `.250`–`.252` | Switches |
-| `.253` | Secondary gateway / router |
-| `.254` | WAN edge router |
+| `.253` | Firewall (`FWL`) — primary |
+| `.254` | Firewall (`FWL`) — secondary |
 
 > Full convention in `network-inventory.md` — Standard IP Convention section.
 
