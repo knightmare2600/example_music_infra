@@ -30,6 +30,25 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-07-12  Moved nmap from the role-gated choco_packages_server list to
+#               choco_packages_common (matching the 2026-07-06 precedent of
+#               doing exactly this for putty/winscp: "role split was
+#               pointless"). Robert's own framing: it's a CLI diagnostic tool,
+#               not something that needs role-based gating. Also fixes a real,
+#               separate bug this surfaced (idempotency audit,
+#               [[project_ad_onboarding_audit]]): host_role, which the old
+#               role-gate read, is never actually set by this point in the
+#               chain -- 00-preflight.yml computes its own differently-named
+#               host_role_code, and the real host_role only gets set by
+#               tasks/hostname_facts.yml, which nothing calls until
+#               80-domainjoin.yml (position 18, nine files later). Confirmed
+#               via grep, not just the audit's own claim. nmap silently never
+#               installed on any SRV/DCS host, on any run, since this file's
+#               role logic was written. Removed the whole role-gating
+#               mechanism (choco_packages_server/choco_packages_extra, the
+#               "Determine role-specific package set" task, the "Install
+#               role-specific" task) rather than just fixing the timing --
+#               with nmap moved to common, nothing needs it any more.
 #   2026-06-20  Initial file
 #   2026-06-30  Fixed: choco_packages_common / choco_packages_extra /
 #               exa_choco_source were previously expected to come from
@@ -122,9 +141,6 @@
       - dotnetfx
       - sysinternals
       - windirstat
-
-    # Server-role-specific (SRV/DCS), installed regardless of GUI presence
-    choco_packages_server:
       - nmap
 
     # GUI-dependent (browsers etc.) — installed on Client OS always, and on
@@ -150,19 +166,11 @@
         has_gui: "{{ installation_type_check.stdout | trim != 'Server Core' }}"
       tags: choco_packages
 
-    - name: Determine role-specific package set
-      set_fact:
-        choco_packages_extra: >-
-          {{ choco_packages_server if (host_role | default('') in ['DCS', 'SRV']) else [] }}
-      tags: choco_packages
-
     - name: Show package selection for this run
       debug:
         msg:
-          - "Host role     : {{ host_role | default('UNKNOWN') }}"
           - "Has GUI       : {{ has_gui }}"
           - "Common pkgs   : {{ choco_packages_common | join(', ') }}"
-          - "Role pkgs     : {{ choco_packages_extra | join(', ') }}"
           - "GUI pkgs      : {{ (choco_packages_gui | join(', ')) if has_gui | bool else '(skipped — no GUI)' }}"
       tags: choco_packages
 
@@ -174,17 +182,6 @@
       loop: "{{ choco_packages_common }}"
       loop_control:
         label: "{{ item }}"
-      tags: choco_packages
-
-    - name: Install role-specific Chocolatey packages
-      chocolatey.chocolatey.win_chocolatey:
-        name:   "{{ item }}"
-        state:  present
-        source: "{{ exa_choco_source }}"
-      loop: "{{ choco_packages_extra | default([]) }}"
-      loop_control:
-        label: "{{ item }}"
-      when: choco_packages_extra | length > 0
       tags: choco_packages
 
     - name: Install GUI Chocolatey packages (Client OS, or Server with Desktop Experience)

@@ -15,6 +15,14 @@
 # playbooks/78-sac-ems.yml).
 # =============================================================================
 # Changelog:
+#   2026-07-12  Removed failed_when: false from the "Enable SAC service"
+#               task (idempotency audit, [[project_ad_onboarding_audit]]) --
+#               it unconditionally converted a genuine failure (service
+#               missing, access denied) into a reported success, every run,
+#               not just reruns. The task is already gated `when: is_server`,
+#               so "sacsvr doesn't exist" shouldn't be a real, expected case
+#               on the hosts this actually runs against; if it happens now,
+#               it fails loudly instead of silently.
 #   2026-06-20  Initial file (inline in 05-bootstrap.yml)
 #   2026-06-30  Patch 3: bcdedit {bootmgr}/{current} tokens fix — wrap
 #               entire bcdedit invocation in double quotes so cmd receives
@@ -45,7 +53,6 @@
     start_mode: auto
     state:      started
   when: is_server
-  failed_when: false
 
 - name: "[Stage 17b] Prompt operator — confirm SAC visible via SOL"
   pause:
