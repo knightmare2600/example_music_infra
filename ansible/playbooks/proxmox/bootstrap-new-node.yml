@@ -11,23 +11,41 @@
 # sheet) and rewrites its networking to static, using the exact same
 # /etc/network/interfaces template first-boot.sh used to write imperatively.
 #
-# Deliberately NOT part of site.yml's chain and NOT number-prefixed like the
-# playbooks/*.yml stages there — this is a one-time, higher-risk operation
-# (renames the live host, rewrites its own networking, strands the current SSH
-# connection on purpose) that should only ever run when explicitly invoked by
-# name, never as a side effect of routine maintenance.
+# NOT number-prefixed like the playbooks/*.yml stages, and its own identity-
+# rename tasks (rewriting the live host's name/networking) remain a one-time,
+# higher-risk operation that should only ever be invoked deliberately, by
+# name, never as a side effect of routine maintenance — but this file now
+# chains straight into the full site.yml stage chain itself, in the same run,
+# rather than requiring a separate manual second invocation. There is nothing
+# in the site.yml chain that depends on the node already being reachable at
+# its final static IP/hostname (checked 2026-07-12 -- 30-example-music.yml
+# was the one real exception, see its own changelog), so there is no genuine
+# reason to split this into two runs with a reboot in between -- see
+# feedback_no_premature_reboots in this project's history. One reboot, at
+# the very end of everything, once the node is actually fully onboarded.
 #
 # Run against the node's temporary DHCP IP (not through configs/inventory —
-# it isn't in there yet):
+# it isn't in there yet). Because the imported site.yml stages further down
+# resolve their own hosts: "{{ target | default('pvenodes') }}" pattern
+# BEFORE any task in this whole run executes (Ansible resolves a play's
+# hosts: field at parse time, not from a fact set by an earlier play --
+# verified empirically 2026-07-12), you must pass -e target= matching the
+# same address, or those stages will silently be skipped. This playbook
+# checks for that and fails fast, with the exact command to use, before
+# touching anything, if you forget:
 #
-#   ansible-playbook -i "192.168.x.x," playbooks/proxmox/bootstrap-new-node.yml
+#   ansible-playbook -i "192.168.x.x," -e target="192.168.x.x" \
+#     playbooks/proxmox/bootstrap-new-node.yml
 #
 # You'll be prompted for the target hostname (e.g. EXAPVEKGE001, from your
 # build sheet) and asked to confirm the derived static IP before anything is
-# changed. The SSH session on the DHCP IP will not survive this play — that is
-# expected. Reconnect via the new hostname/IP afterward, add it to
-# configs/inventory/, then run proxmox/site.yml as normal — 00-preflight.yml
-# onward already assumes a correctly-named, statically-addressed node.
+# changed. Then: identity rename, the full site.yml chain (packages incl.
+# GRUB serial console, access setup, example-music deployment, scripts,
+# virt-tools, proxmorph, systemd units), and only then one final reboot.
+# The SSH session on the DHCP IP will not survive that reboot — that is
+# expected. Reconnect via the new hostname/IP afterward and you're done; the
+# site's PVE1 slot is already in configs/inventory/ (generated active by
+# default — DO NOT hand-edit that file), nothing further to add there.
 #
 # Refuses to run against a node that has already been through a full
 # site.yml run (detected via /etc/example-music/nodeinfo.json,
@@ -38,6 +56,26 @@
 # -e bootstrap_force=true if you genuinely mean to.
 # =============================================================================
 # Changelog:
+#   2026-07-12  Chained the full site.yml stage chain directly into this
+#               playbook (import_playbook, after the identity-rename tasks),
+#               with a single reboot at the very end instead of one here and
+#               a separate manual site.yml invocation later -- Robert's ask,
+#               after checking (per feedback_no_premature_reboots) that
+#               nothing in the chain genuinely needs the node's final IP/
+#               hostname mid-run. One real exception found and fixed:
+#               30-example-music.yml's nodeinfo.json node_ip/gateway fields
+#               read live ansible_default_ipv4 facts, which would still show
+#               the OLD DHCP address at that point in a merged run -- now
+#               prefers the already-derived _derived_ip/_gateway facts set
+#               below when present, falling back to the live fact exactly as
+#               before for a standalone site.yml run. Requires -e target=
+#               matching -i's address (see header) -- Ansible resolves each
+#               play's hosts: pattern at parse time, before any task runs,
+#               so a fact set by an earlier play in this same run can't
+#               reach a later, separately-imported play's hosts: line;
+#               verified empirically. Fails fast with a clear message (and
+#               the exact command to use) if target isn't set correctly,
+#               before any destructive task runs.
 #   2026-07-12  Fixed the final message's "add it to configs/inventory/" --
 #               wrong advice: a site's PVE1 slot is generated ACTIVE by
 #               default (generate_inventory.py, per its own "only the FIRST
@@ -137,6 +175,25 @@
       private: false
 
   tasks:
+    - name: Abort if -e target wasn't passed matching the connected host
+      ansible.builtin.assert:
+        that:
+          - (target | default('')) == inventory_hostname
+        fail_msg: >-
+          This playbook continues straight into the full site.yml chain
+          after the identity rename, in the same run. That only works if
+          the imported stages' own hosts: pattern (which defaults to the
+          pvenodes group, overridable via the target variable) resolves to
+          this host -- which Ansible can only do from a real extra-var
+          (available before any play runs), not a fact set later in this
+          run. Re-run with:
+
+            ansible-playbook -i "{{ inventory_hostname }}," -e target="{{ inventory_hostname }}" \
+              playbooks/proxmox/bootstrap-new-node.yml
+
+          (the same address you're already connecting to via -i.) Nothing
+          has been touched yet -- safe to just re-run.
+
     - name: Check whether this node has already been onboarded
       include_tasks: ../../tasks/onboarded_check.yml
 
@@ -326,23 +383,44 @@
         --search {{ _ad_forest.domain_fqdn }}
       changed_when: true
 
+    - name: Identity rename complete — continuing into the full onboarding chain
+      ansible.builtin.debug:
+        msg:
+          - "Network config written (takes effect on reboot, at the very end of this run -- not yet)."
+          - "Continuing straight into site.yml's full stage chain now, still connected via the DHCP IP."
+          - "Final reboot happens once everything else is done. Reconnect afterward via: ssh ansible@{{ _derived_ip }}  (or {{ target_hostname | lower }}.{{ _ad_forest.domain_fqdn }} once DNS picks it up)"
+
+- import_playbook: site.yml
+
+- name: Proxmox VE — bootstrap a new node (final reboot)
+  hosts: all
+  gather_facts: false
+  tasks:
     - name: Final message — SSH session on the old IP is about to drop
       ansible.builtin.debug:
         msg:
-          - "Network config written. Rebooting now to apply it — this SSH session (on the DHCP IP) will not survive."
-          - "Reconnect via: ssh ansible@{{ _derived_ip }}  (or {{ target_hostname | lower }}.{{ _ad_forest.domain_fqdn }} once DNS picks it up)"
-          - "It's already in configs/inventory/ (the site's PVE1 slot is generated active by default -- DO NOT hand-edit that file). Just run proxmox/site.yml as normal."
+          - "Full onboarding complete. Rebooting now to apply the identity/network change — this SSH session (on the DHCP IP) will not survive."
+          - "Reconnect via the node's new hostname/IP once it's back up."
 
     - name: Reboot to apply new hostname/networking
-      # /etc/network/interfaces was written above but never takes effect on its own --
-      # it needs either an explicit reload or a reboot. A reboot is used deliberately
-      # over `ifreload -a`: this task's own SSH connection is on the interface being
-      # reconfigured (DHCP -> static), so reloading it live over that same connection
-      # is the riskier path. ansible.builtin.reboot's own wait-and-reconnect logic
-      # isn't used here (fire-and-forget shell instead) because it would try to
-      # reconnect on the OLD DHCP address afterward, which the node will no longer be
-      # answering on once the new static config is up -- that's expected to fail/hang,
-      # not a real error. Confirm the new address manually per the message above.
+      # /etc/network/interfaces was written back in the identity-rename play but
+      # never takes effect on its own -- it needs either an explicit reload or a
+      # reboot. A reboot is used deliberately over `ifreload -a`: this task's own
+      # SSH connection is on the interface being reconfigured (DHCP -> static), so
+      # reloading it live over that same connection is the riskier path.
+      # ansible.builtin.reboot's own wait-and-reconnect logic isn't used here
+      # (fire-and-forget shell instead) because it would try to reconnect on the
+      # OLD DHCP address afterward, which the node will no longer be answering on
+      # once the new static config is up -- that's expected to fail/hang, not a
+      # real error. Confirm the new address manually per the message above.
+      #
+      # This is the ONLY reboot in the whole bootstrap-new-node.yml run -- deferred
+      # to here, after the entire site.yml chain, rather than immediately after the
+      # identity rename, because nothing in that chain actually needs the node's
+      # final IP/hostname to already be live (checked 2026-07-12; see this file's
+      # own header/changelog for the one real exception, already fixed). See
+      # feedback_no_premature_reboots in this project's history for why this
+      # matters generally, not just here.
       ansible.builtin.shell: sleep 2 && reboot
       async: 1
       poll: 0
