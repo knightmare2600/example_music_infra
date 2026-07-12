@@ -231,7 +231,7 @@ All VMs are configured with SeaBIOS (required for iPXE compatibility) and boot i
 
 The script scans the local ISO store for `ipxe.iso` and pre-selects it if found. The technician can select a different ISO or skip ISO attachment entirely.
 
-This means a fresh VM with an empty disk will fall through to the iPXE ISO on second boot attempt, chainloading your boot menu from `192.168.139.50` automatically.
+This means a fresh VM with an empty disk will fall through to the iPXE ISO on second boot attempt, chainloading your boot menu from `192.168.139.50` automatically (Edinburgh; `172.16.124.1:8000` if the VM is on Fredericia Havn's provisioning network instead — `menu.ipxe`'s gateway detection picks the right one, nothing to configure per-VM).
 
 ---
 

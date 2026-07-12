@@ -15,6 +15,8 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-12 | Fixed a second error in the same 10 sites' checklists (plus CLD): the firewall's IP was given as `.1` throughout, which is actually `RTR` (upstream router) per `address_policy.json`'s `role_offsets` — the firewall's real offset is `.253`/`.254`. Corrected all 10 standard-site entries to `.253`, matching `network-inventory.md`. CLD's `EXAFWLVRK001` line needed a different fix, not `.253` — it's the dual-interface exception, WAN/vRACK face at `.69`, LAN face (`EXAFWLCLD001`) at `.253`; corrected to state both explicitly rather than reuse the standard-site pattern verbatim. |
+| 2026-07-12 | Fixed build-order errors in 10 sites' Infrastructure Checklists (CLD, FAL, CLY, ABD, LND, BIR, ODE, LAX, SYD, MEL, AKL): the firewall line was listed before the Proxmox node line, but every site's firewall is a VM running on that site's PVE node (see `buildsheets/buildsheet-firewall.md` Step 1 — "Create the VM on Proxmox") — the hypervisor has to exist first. Reordered each to PVE node(s) → Firewall → DC, matching actual build dependency. CLD's checklist was also missing `EXAPVECLD001`/`EXADCSCLD001` entirely (both real, onboarded hosts per `ansible/configs/inventory/cld.ini`) — added in the correct position, and moved `EXADNSVRK001` ahead of the firewall to match the real first-site bootstrap order (PVE → DNS → firewall → DC). |
 | 2026-07-08 | Fixed CLD's checklist: several devices were listed with `192.168.139.x` (the vRACK octet range) when they're actually CLD-LAN-only (`192.168.69.x`) — Ansible/Rudder/WAC/PBX. Fixed `EXAPRVFAL001` -> `EXAPRVVRK001` (copy-paste error — FAL is a different site entirely). Fixed `EXAFWLCLD001` -> `EXAFWLVRK001` for the `.1` WireGuard-hub address specifically (same physical firewall, vRACK-facing role). Fixed stale forest name `jukebox.example` -> `jukebox.internal`. |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94` (added to Quick Reference table, per-site checklist items updated). Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) checklist item |
 | 2026-03-05 | Full rewrite — all sites added, standard IP convention applied, PVE node counts confirmed, RAC/BMC pool documented, site-specific equipment placeholders added |
@@ -183,8 +185,10 @@ See `docs/ExampleMusic_Beginners_Guide.md` §4.1 for the full CLD/VRK split, and
 here, it's a MacBook running `http.server`, not a physical site).
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLVRK001` — Firewall / WireGuard hub online (`192.168.139.1`, same physical firewall as `EXAFWLCLD001`)
+- [ ] `EXAPVECLD001` — Proxmox node online (`192.168.69.5`) · ZFS RAID1 — build this first, everything below except `EXAPRVVRK001`/`EXAANSCLD001` runs as a VM on top of it
 - [ ] `EXADNSVRK001` — DNS/BIND9 server online (`192.168.139.8`)
+- [ ] `EXAFWLVRK001` — Firewall / WireGuard hub online (`192.168.139.69`, WAN/vRACK face — same physical firewall as `EXAFWLCLD001`, whose LAN face is `192.168.69.253`)
+- [ ] `EXADCSCLD001` — Domain Controller online (`192.168.69.10`) — first DC in the forest; see `windows_bootstrap/site.yml` then `windows_dc/site.yml`'s `dc_is_first_in_forest` prompt
 - [ ] `EXAPRVVRK001` — Provisioning server online (`192.168.139.50`)
 - [ ] `EXAANSCLD001` — Ansible control node online (`192.168.69.9`)
 - [ ] `EXARDRCLD001` — Rudder Server online (`192.168.69.12`)
@@ -217,7 +221,6 @@ here, it's a MacBook running `http.server`, not a physical site).
 **PVE nodes:** 3 (hub) · **BMC pool:** `.2` `.3` `.4` all physical
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLFAL001` — Firewall online (`192.168.76.1`) · FortiOS
 - [ ] `EXASWIFAL001` — Core switch 1 (`192.168.76.250`)
 - [ ] `EXASWIFAL002` — Core switch 2 (`192.168.76.251`)
 - [ ] `EXARTRFAL001` — WAN edge router (`192.168.76.254`)
@@ -227,6 +230,7 @@ here, it's a MacBook running `http.server`, not a physical site).
 - [ ] `EXAPVEFAL001` — Proxmox node 1 (`192.168.76.5`) · ZFS RAID1
 - [ ] `EXAPVEFAL002` — Proxmox node 2 (`192.168.76.6`) · ZFS RAID1
 - [ ] `EXAPVEFAL003` — Proxmox node 3 (`192.168.76.7`) · ZFS RAID1
+- [ ] `EXAFWLFAL001` — Firewall online (`192.168.76.253`) · FortiOS
 - [ ] `EXADCSFAL001` — DC primary (`192.168.76.10`) · PDC Emulator
 - [ ] `EXADCSFAL002` — DC secondary (`192.168.76.11`)
 - [ ] `EXASBCFAL001` — VOIP SBC (`192.168.76.48`) · trunks to `EXAPBXCLD001`
@@ -354,12 +358,12 @@ here, it's a MacBook running `http.server`, not a physical site).
 **PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLCLY001` — Firewall (`192.168.41.1`) · FortiOS 7.6.5
 - [ ] `EXASWICLY001` — Core switch (`192.168.41.250`) · Cisco 9300
 - [ ] `EXARTRCLY001` — WAN edge router (`192.168.41.254`)
 - [ ] `EXARACCLY001` — BMC node 1 (`192.168.41.2`) · HPE iLO5
 - [ ] `EXARACCLY002` — RAC emulator VM (`192.168.41.3`)
 - [ ] `EXAPVECLY001` — Proxmox node 1 (`192.168.41.5`) · ZFS RAID1
+- [ ] `EXAFWLCLY001` — Firewall (`192.168.41.253`) · FortiOS 7.6.5
 - [ ] `EXADCSCLY001` — DC primary (`192.168.41.10`)
 - [ ] `EXADCSCLY002` — DC secondary (`192.168.41.11`)
 - [ ] `EXASRVCLY001` — Rocky Linux server (`192.168.41.20`) · Oracle DB
@@ -458,11 +462,11 @@ here, it's a MacBook running `http.server`, not a physical site).
 **PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLABD001` — Firewall (`192.168.224.1`) · Cisco ASA 5506-X
 - [ ] `EXARTRABD001` — WAN edge router (`192.168.224.254`)
 - [ ] `EXARACABD001` — BMC node 1 (`192.168.224.2`)
 - [ ] `EXARACABD002` — RAC emulator VM (`192.168.224.3`)
 - [ ] `EXAPVEABD001` — Proxmox node 1 (`192.168.224.5`) · ZFS RAID1
+- [ ] `EXAFWLABD001` — Firewall (`192.168.224.253`) · Cisco ASA 5506-X
 - [ ] `EXADCSABD001` — DC (`192.168.224.10`)
 - [ ] `EXASBCABD001` — VOIP SBC (`192.168.224.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
@@ -497,12 +501,12 @@ here, it's a MacBook running `http.server`, not a physical site).
 **PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLLND001` — Firewall (`192.168.20.1`) · Cisco ASA 5516-X
 - [ ] `EXASWILND001` — Core switch (`192.168.20.250`) · Cisco 9300
 - [ ] `EXARTRLND001` — WAN edge router (`192.168.20.254`)
 - [ ] `EXARACLND001` — BMC node 1 (`192.168.20.2`) · Dell iDRAC9
 - [ ] `EXARACLND002` — RAC emulator VM (`192.168.20.3`)
 - [ ] `EXAPVELND001` — Proxmox node 1 (`192.168.20.5`) · ZFS RAID1
+- [ ] `EXAFWLLND001` — Firewall (`192.168.20.253`) · Cisco ASA 5516-X
 - [ ] `EXADCRLND001` — DC (`192.168.20.10`) · RID Master · Infrastructure Master
 - [ ] `EXASBCLND001` — VOIP SBC (`192.168.20.48`) · trunks to `EXAPBXCLD001`
 - [ ] WireGuard tunnel verified
@@ -532,13 +536,13 @@ here, it's a MacBook running `http.server`, not a physical site).
 **PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLBIR001` — Firewall (`192.168.121.1`) · Palo Alto PAN-OS
 - [ ] `EXASWIBIR001` — Core switch (`192.168.121.250`) · Cisco 9300
 - [ ] `EXASWIBIR002` — Access switch (`192.168.121.251`)
 - [ ] `EXARTRBIR001` — WAN edge router (`192.168.121.254`)
 - [ ] `EXARACBIR001` — BMC node 1 (`192.168.121.2`) · Dell DRAC
 - [ ] `EXARACBIR002` — RAC emulator VM (`192.168.121.3`)
 - [ ] `EXAPVEBIR001` — Proxmox node 1 (`192.168.121.5`) · ZFS RAID1
+- [ ] `EXAFWLBIR001` — Firewall (`192.168.121.253`) · Palo Alto PAN-OS
 - [ ] `EXADCRBIR001` — DC primary (`192.168.121.10`)
 - [ ] `EXADCRBIR002` — DC secondary (`192.168.121.11`)
 - [ ] `EXASRVBIR001` — Rocky Linux server (`192.168.121.20`) · Oracle DB
@@ -825,13 +829,13 @@ here, it's a MacBook running `http.server`, not a physical site).
 **PVE nodes:** 3 (EU hub) · **BMC pool:** `.2` `.3` `.4` all physical
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLODE001` — Firewall (`192.168.126.1`) · Cisco ASA 5506-X
 - [ ] `EXARACODE001` — BMC node 1 (`192.168.126.2`)
 - [ ] `EXARACODE002` — BMC node 2 (`192.168.126.3`)
 - [ ] `EXARACODE003` — BMC node 3 (`192.168.126.4`)
 - [ ] `EXAPVEODE001` — Proxmox node 1 (`192.168.126.5`) · ZFS RAID1
 - [ ] `EXAPVEODE002` — Proxmox node 2 (`192.168.126.6`) · ZFS RAID1
 - [ ] `EXAPVEODE003` — Proxmox node 3 (`192.168.126.7`) · ZFS RAID1
+- [ ] `EXAFWLODE001` — Firewall (`192.168.126.253`) · Cisco ASA 5506-X
 - [ ] `EXADCSODE001` — DC primary (`192.168.126.10`) · PDC Emulator · RID/Infra Master
 - [ ] `EXADCSODE002` — DC secondary (`192.168.126.11`)
 - [ ] `EXASBCODE001` — VOIP SBC (`192.168.126.48`) · trunks to `EXAPBXCLD001`
@@ -1292,13 +1296,13 @@ here, it's a MacBook running `http.server`, not a physical site).
 > ⚠️ `EXADCSLAX001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLLAX001` — Firewall (`192.168.213.1`) · Palo Alto PAN-OS 10.x
 - [ ] `EXASWILAX001` — Core switch (`192.168.213.250`) · Cisco 9300
 - [ ] `EXASWILAX002` — Access switch (`192.168.213.251`) · Cisco 2960
 - [ ] `EXARTRLAX001` — WAN edge router (`192.168.213.254`)
 - [ ] `EXARACLAX001` — BMC node 1 (`192.168.213.2`) · Dell iDRAC9
 - [ ] `EXARACLAX002` — RAC emulator VM (`192.168.213.3`)
 - [ ] `EXAPVELAX001` — Proxmox node 1 (`192.168.213.5`) · ZFS RAID1
+- [ ] `EXAFWLLAX001` — Firewall (`192.168.213.253`) · Palo Alto PAN-OS 10.x
 - [ ] `EXADCSLAX001` — DC (`192.168.213.10`) ⚠️ Services stopped
 - [ ] `EXASRVLAX001` — Rocky Linux server (`192.168.213.20`) · local services/DB
 - [ ] `EXASBCLAX001` — VOIP SBC (`192.168.213.48`) · trunks to `EXAPBXCLD001`
@@ -1473,12 +1477,12 @@ here, it's a MacBook running `http.server`, not a physical site).
 > ⚠️ `EXADCSSYD001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLSYD001` — Firewall (`192.168.29.1`) · FortiGate 7.x
 - [ ] `EXASWISYD001` — Core switch (`192.168.29.250`) · Cisco 9300
 - [ ] `EXASWISYD002` — Access switch (`192.168.29.251`) · Cisco 2960
 - [ ] `EXARACSYD001` — BMC node 1 (`192.168.29.2`) · Dell iDRAC9
 - [ ] `EXARACSYD002` — RAC emulator VM (`192.168.29.3`)
 - [ ] `EXAPVESYD001` — Proxmox node 1 (`192.168.29.5`) · ZFS RAID1
+- [ ] `EXAFWLSYD001` — Firewall (`192.168.29.253`) · FortiGate 7.x
 - [ ] `EXADCSSYD001` — DC (`192.168.29.10`) ⚠️ Services stopped
 - [ ] `EXASRVSYD001` — WS2022 server (`192.168.29.20`) · local infra
 - [ ] `EXASBCSYD001` — VOIP SBC (`192.168.29.48`) · trunks to `EXAPBXCLD001`
@@ -1514,12 +1518,12 @@ here, it's a MacBook running `http.server`, not a physical site).
 > ⚠️ `EXADCSMEL001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLMEL001` — Firewall (`192.168.61.1`) · FortiGate 7.x
 - [ ] `EXASWIMEL001` — Core switch (`192.168.61.250`) · Cisco 9300
 - [ ] `EXASWIMEL002` — Access switch (`192.168.61.251`) · Cisco 2960
 - [ ] `EXARACMEL001` — BMC node 1 (`192.168.61.2`) · HPE iLO5
 - [ ] `EXARACMEL002` — RAC emulator VM (`192.168.61.3`)
 - [ ] `EXAPVEMEL001` — Proxmox node 1 (`192.168.61.5`) · ZFS RAID1
+- [ ] `EXAFWLMEL001` — Firewall (`192.168.61.253`) · FortiGate 7.x
 - [ ] `EXADCSMEL001` — DC (`192.168.61.10`) ⚠️ Services stopped
 - [ ] `EXASRVMEL001` — WS2022 server (`192.168.61.20`) · local file/print
 - [ ] `EXASBCMEL001` — VOIP SBC (`192.168.61.48`) · trunks to `EXAPBXCLD001`
@@ -1558,13 +1562,13 @@ here, it's a MacBook running `http.server`, not a physical site).
 > ⚠️ `EXADCSAKL001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXAFWLAKL001` — Firewall (`192.168.93.1`) · FortiGate 7.x
 - [ ] `EXASWIAKL001` — Core switch (`192.168.93.250`) · Cisco 9300
 - [ ] `EXASWIAKL002` — Access switch (`192.168.93.251`) · Cisco 2960
 - [ ] `EXARTRAKL001` — WAN edge router (`192.168.93.254`)
 - [ ] `EXARACAKL001` — BMC node 1 (`192.168.93.2`) · HPE iLO5
 - [ ] `EXARACAKL002` — RAC emulator VM (`192.168.93.3`)
 - [ ] `EXAPVEAKL001` — Proxmox node 1 (`192.168.93.5`) · ZFS RAID1
+- [ ] `EXAFWLAKL001` — Firewall (`192.168.93.253`) · FortiGate 7.x
 - [ ] `EXADCSAKL001` — DC (`192.168.93.10`) ⚠️ Services stopped
 - [ ] `EXASRVAKL001` — WS2022 server (`192.168.93.20`) · local server
 - [ ] `EXASBCAKL001` — VOIP SBC (`192.168.93.48`) · trunks to `EXAPBXCLD001`
