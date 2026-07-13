@@ -73,20 +73,22 @@
 #      the check; kroki.io being unreachable is informational unless
 #      --strict is passed.
 #  14. check_network_diagram_freshness.py -- the "New Network (current)"
-#      subgraph in every site section of docs/network-diagram.md (wrapped in
-#      %% GENERATED:NEW-NETWORK:<SITE>:START/END marker comments) is
-#      re-derivable byte-for-byte from benarbejde/sites.csv+devices.csv+
-#      address_policy.json via generate_network_diagrams.py -- same
-#      "edited the source, forgot to regenerate" class check 6 already
-#      catches for the Ansible inventory, applied to the diagrams.
+#      subgraph in every site section under docs/network-diagram/*.md (one
+#      file per region -- split 2026-07-13, see docs/network-diagram.md's
+#      own header for why; wrapped in %% GENERATED:NEW-NETWORK:<SITE>:
+#      START/END marker comments) is re-derivable byte-for-byte from
+#      benarbejde/sites.csv+devices.csv+address_policy.json via
+#      generate_network_diagrams.py -- same "edited the source, forgot to
+#      regenerate" class check 6 already catches for the Ansible inventory,
+#      applied to the diagrams.
 #  15. check_network_diagram_content.py -- independently scans (not just a
-#      second run of the generator) every committed New Network block for
-#      two invariants from the Visual Standard: no FSMO/health/low-disk-
-#      space terms ever appear (that data is old-infra-only, per Robert's
-#      2026-07-13 instruction), and every node uses one of the five
-#      approved shape wrappers. Catches drift a freshness diff alone
-#      wouldn't explain, and a hand-edit that bypasses the generator
-#      entirely.
+#      second run of the generator) every committed New Network block
+#      across docs/network-diagram/*.md for two invariants from the Visual
+#      Standard: no FSMO/health/low-disk-space terms ever appear (that data
+#      is old-infra-only, per Robert's 2026-07-13 instruction), and every
+#      node uses the uniform rect shape with a leading emoji symbol.
+#      Catches drift a freshness diff alone wouldn't explain, and a
+#      hand-edit that bypasses the generator entirely.
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -189,6 +191,19 @@
 #               drift apart again the way the .ini/legend files already had
 #               (see docs/network-cutover.md -- 18 sites' old diagrams had
 #               RTR and FWL's octets genuinely backwards).
+#   2026-07-13  Split docs/network-diagram.md's 51 site diagrams into 15
+#               per-region files under docs/network-diagram/ -- Robert, after
+#               the emoji/uniform-shape pass still left GitHub's renderer
+#               unreliable: "there's just simply too much for GitHub to
+#               render." docs/network-diagram.md is now an index (Visual
+#               Standard, emoji legend, links out) rather than holding every
+#               diagram itself. check_network_diagram_freshness.py/_content.py
+#               (14-15) and generate_network_diagrams.py's insert_into_docs()
+#               all updated to iterate the region files instead of one
+#               monolith. Deferred to a later session, per Robert: per-site
+#               colour-scheme fixes, CLD's Old Network box arguably
+#               mislabelling something that was never really "legacy," and a
+#               cloud-emoji/outline idea for the Internet node.
 # ==============================================================================
 set -uo pipefail
 
@@ -512,10 +527,10 @@ section "14. Network diagram freshness — check_network_diagram_freshness.py"
 
 if out=$(python3 "${HERE}/check_network_diagram_freshness.py"); then
   echo "$out"
-  success "docs/network-diagram.md's New Network boxes are fresh."
+  success "docs/network-diagram/*.md's New Network boxes are fresh."
 else
   echo "$out"
-  fail "docs/network-diagram.md's New Network box(es) have drifted from sites.csv/devices.csv -- see above."
+  fail "docs/network-diagram/*.md's New Network box(es) have drifted from sites.csv/devices.csv -- see above."
   FAILED_CHECKS+=("check_network_diagram_freshness.py")
 fi
 
