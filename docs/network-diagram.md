@@ -45,6 +45,29 @@ two or three. Shorter boxes, same information.
 
 **Unicode symbols, not icon fonts.** A literal Unicode character prefixed to the node label — confirmed via a live kroki.io round-trip 2026-07-13 to render reliably with no external dependency. FontAwesome-class icon syntax (`fa:fa-x`) and Mermaid's newer `@{ icon: }` syntax were tested the same way and do **not** reliably render through this pipeline (unstyled CSS class with no attached webfont, or a silent fallback to a generic default shape) — do not use either. Real Cisco stencils, an AT&T logo, an Atari logo and a jukebox glyph are not options either (trademarked, or simply don't exist as Unicode — see `docs/emojis/README.md` for what stood in for each). Any device not yet assigned a symbol carries a literal `❓` placeholder pending sign-off — see `ansible/at_have_ryggen_fri/README.md`'s Backlog section.
 
+**What the picture actually is.** Below is every symbol used in this file with what it literally depicts, not what it means in context (that mapping — which device gets which symbol, and why — is `docs/emojis/README.md`; this table is just "what am I looking at").
+
+| Symbol | It's a picture of… | | Symbol | It's a picture of… | | Symbol | It's a picture of… |
+|---|---|---|---|---|---|---|---|
+| 🕰️ | mantelpiece clock | | 🆕 | a "NEW" badge | | 🏗️ | building under construction (crane) |
+| ☎️ | old-style telephone | | 💽 | a mini optical disc | | 🍫 | chocolate bar |
+| 🍩 | ring doughnut | | ☕ | steaming hot drink in a cup | | 🫖 | teapot |
+| 🚌 | bus | | 🚗 | car | | 🚚 | delivery van/truck |
+| ✈️ | aeroplane | | ⛽ | fuel pump | | ⏰ | alarm clock |
+| 🎤 | handheld microphone | | 📻 | portable radio | | 🎹 | piano/synth keyboard |
+| 🕹️ | joystick | | 🥁 | drum | | ⌨️ | computer keyboard |
+| 📡 | satellite dish/antenna | | 🔥 | flame | | 🔀 | two arrows crossing (shuffle) |
+| 🗝️ | old-fashioned key | | 🗄️ | filing cabinet | | 🗂️ | card-index dividers (a tabbed folder set) |
+| ⚙️ | a gear/cog | | 🔁 | clockwise repeat arrows | | 🤖 | robot face |
+| 🔌 | electrical plug | | 🧭 | compass | | 📦 | cardboard parcel |
+| 🗃️ | index card box | | 🛡️ | shield | | 🎛️ | mixing-desk control knobs |
+| 🔧 | spanner/wrench | | 📶 | signal-strength bars | | 🖥️ | desktop computer/monitor |
+| 💻 | laptop | | 📱 | mobile phone | | 🖊️ | fountain pen |
+| 📞 | telephone handset | | 🖨️ | printer | | 🎥 | film/video camera |
+| 🖼️ | framed picture | | 📺 | television set | | 🍎 | red apple (fruit, not a logo) |
+| 🪪 | ID card | | 🐧 | penguin | | 🎧 | headphones |
+| ❓ | question mark | | | | | | |
+
 ---
 
 ## Table of Contents
