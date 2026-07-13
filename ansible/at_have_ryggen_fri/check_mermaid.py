@@ -33,6 +33,19 @@ Exit code: 0 if every diagram renders (or the only issues are network
 failures and --strict wasn't passed), 1 if any diagram has a genuine
 syntax error, or (with --strict) if kroki.io was unreachable for any
 diagram never previously cached.
+
+KNOWN BLIND SPOT, found 2026-07-13: this checks each diagram in isolation,
+one kroki.io HTTP POST per diagram. GitHub's own mermaid renderer processes
+every diagram on a page together, client-side, and -- confirmed empirically,
+not guessed -- fails a handful non-deterministically when a page has ~50
+diagrams on it (docs/network-diagram.md): the same diagram renders on one
+page load and shows "Unable to render rich display" on the next, and two
+byte-identical diagrams (GOT/OSL, SEA/SFO, confirmed via diff) can disagree
+with each other on the same load. This check cannot catch that class of
+failure -- it isn't a content bug, so there's nothing here to fix; see
+docs/network-diagram.md's own header note. Treat this check's "all render"
+as "every diagram is individually valid," not "GitHub will definitely
+render all of them on every page load."
 """
 import hashlib
 import json
