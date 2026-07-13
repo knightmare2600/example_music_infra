@@ -10,8 +10,10 @@
 # load_devices(), NON_STANDARD_SITES, NO_STANDARD_ROUTER_SITES, ALWAYS_EXCLUDE_TYPES) rather than
 # re-deriving which devices are real -- if those rules change, this picks the change up for free.
 #
-# Output is inserted into docs/network-diagram.md between matching
-#   <!-- GENERATED:NEW-NETWORK:<SITE>:START --> / :END -->
+# Output is inserted into docs/network-diagram/<region>.md (one file per region -- split
+# 2026-07-13, see REGION_FILES below and docs/network-diagram.md's own header for why: GitHub's
+# mermaid renderer got unreliable with all 51 sites' diagrams on one page) between matching
+#   %% GENERATED:NEW-NETWORK:<SITE>:START / :END
 # markers by insert_into_docs(). ansible/at_have_ryggen_fri's freshness check (check 14) regenerates
 # into a scratch dir and diffs against what's committed -- this script is the single place that
 # logic lives; the check just calls it and compares.
@@ -32,7 +34,30 @@ import generate_inventory as gi
 SITES_CSV = HERE / "sites.csv"
 DEVICES_CSV = HERE / "devices.csv"
 ADDRESS_POLICY = HERE / "address_policy.json"
-DOCS_FILE = HERE.parent / "docs" / "network-diagram.md"
+DOCS_DIR = HERE.parent / "docs" / "network-diagram"
+
+# Which region file each site's New Network block lives in -- must match the actual file layout
+# under docs/network-diagram/ (split 2026-07-13 from the former single network-diagram.md).
+# BRD (legacy alias for BER) and VRK (already inside CLD's diagram) deliberately have no entry --
+# neither has its own diagram section anywhere, same as before the split.
+REGION_FILES = {
+  "cld.md": ["CLD"],
+  "scotland.md": ["FAL", "EDI", "GLA", "CLY", "DUN", "PER", "ABD"],
+  "england.md": ["LND", "BIR", "MCR", "LIV", "NEW", "SHE", "HAL", "HUL", "COV"],
+  "danmark.md": ["CPH", "ODE", "KGE", "FAX", "KOR", "AAR", "FRE", "FRD", "NYB"],
+  "deutschland.md": ["BON", "BER", "MUN", "DRS", "DUS"],
+  "sverige.md": ["GOT"],
+  "norge.md": ["OSL"],
+  "nederland.md": ["AMS"],
+  "italia.md": ["MIL"],
+  "osterreich.md": ["VIE"],
+  "lebanon.md": ["BRT"],
+  "canada.md": ["BRK", "TOR", "MTL"],
+  "united-states.md": ["LAX", "NYC", "NJC", "MIA", "ATL", "CHI", "SEA", "SFO"],
+  "australia.md": ["SYD", "MEL"],
+  "new-zealand.md": ["AKL"],
+}
+SITE_TO_REGION_FILE = {site: fname for fname, sites in REGION_FILES.items() for site in sites}
 
 # All known device Type codes, for reference/validation only -- as of 2026-07-13 every node gets
 # a single uniform shape (node_box() below) and an emoji does the "what is this" job instead of
@@ -215,60 +240,72 @@ MARKER_START = "    %% GENERATED:NEW-NETWORK:{site}:START"
 MARKER_END = "    %% GENERATED:NEW-NETWORK:{site}:END"
 
 
-def insert_into_docs(docs_path=DOCS_FILE, sites_csv=SITES_CSV, devices_csv=DEVICES_CSV, policy=ADDRESS_POLICY):
-  """Idempotently (re)writes every site's marker-wrapped New Network block into docs_path.
+def insert_into_docs(docs_dir=DOCS_DIR, sites_csv=SITES_CSV, devices_csv=DEVICES_CSV, policy=ADDRESS_POLICY):
+  """Idempotently (re)writes every site's marker-wrapped New Network block into its region file
+  under docs_dir (see REGION_FILES/SITE_TO_REGION_FILE above).
 
   Three cases per site, all converging on the same marker-wrapped, freshly-generated form:
     1. Markers already present (re-run / freshness check) -- replace content between them.
-    2. No markers, but a bare "subgraph NEW_<SITE> [" already exists (the four new-build sites,
-       hand-inserted before this function existed) -- wrap it with markers and replace with
-       freshly-generated text, so it's guaranteed byte-identical to the generator's own output.
-    3. Neither exists (the 47 pre-existing sites) -- insert directly after "style OLD_<SITE>
-       fill:...", the last line of that site's Old Network box, still inside the same fence.
+    2. No markers, but a bare "subgraph NEW_<SITE> [" already exists -- wrap it with markers and
+       replace with freshly-generated text, so it's guaranteed byte-identical to the generator's
+       own output.
+    3. Neither exists -- insert directly after "style OLD_<SITE> fill:...", the last line of that
+       site's Old Network box, still inside the same fence.
 
   Returns (inserted, replaced, missing) site-code lists for the caller to report.
   """
   blocks = generate_all(sites_csv, devices_csv, policy)
-  text = docs_path.read_text(encoding="utf-8")
+
+  by_file = {}
+  for site, block in blocks.items():
+    fname = SITE_TO_REGION_FILE.get(site)
+    if fname is None:
+      continue  # e.g. BRD/VRK -- no diagram section anywhere, by design
+    by_file.setdefault(fname, []).append((site, block))
 
   inserted, replaced, missing = [], [], []
 
-  for site, block in blocks.items():
-    start_marker = MARKER_START.format(site=site)
-    end_marker = MARKER_END.format(site=site)
-    wrapped = f"{start_marker}\n{block}\n{end_marker}"
+  for fname, site_blocks in by_file.items():
+    docs_path = docs_dir / fname
+    text = docs_path.read_text(encoding="utf-8")
 
-    start_idx = text.find(start_marker)
-    if start_idx != -1:
-      end_idx = text.find(end_marker, start_idx)
-      if end_idx == -1:
-        raise ValueError(f"{site}: found START marker but no matching END marker")
-      end_idx += len(end_marker)
-      text = text[:start_idx] + wrapped + text[end_idx:]
-      replaced.append(site)
-      continue
+    for site, block in site_blocks:
+      start_marker = MARKER_START.format(site=site)
+      end_marker = MARKER_END.format(site=site)
+      wrapped = f"{start_marker}\n{block}\n{end_marker}"
 
-    bare_re = re.compile(
-      r'    subgraph NEW_' + re.escape(site) + r' \[.*?\n'
-      r'(?:.*\n)*?'
-      r'    style NEW_' + re.escape(site) + r' fill:[^\n]*\n?',
-    )
-    m = bare_re.search(text)
-    if m:
-      text = text[:m.start()] + wrapped + "\n" + text[m.end():]
-      replaced.append(site)
-      continue
+      start_idx = text.find(start_marker)
+      if start_idx != -1:
+        end_idx = text.find(end_marker, start_idx)
+        if end_idx == -1:
+          raise ValueError(f"{site}: found START marker but no matching END marker in {fname}")
+        end_idx += len(end_marker)
+        text = text[:start_idx] + wrapped + text[end_idx:]
+        replaced.append(site)
+        continue
 
-    old_style_re = re.compile(r'    style OLD_' + re.escape(site) + r' fill:[^\n]*\n')
-    m = old_style_re.search(text)
-    if m:
-      text = text[:m.end()] + wrapped + "\n" + text[m.end():]
-      inserted.append(site)
-      continue
+      bare_re = re.compile(
+        r'    subgraph NEW_' + re.escape(site) + r' \[.*?\n'
+        r'(?:.*\n)*?'
+        r'    style NEW_' + re.escape(site) + r' fill:[^\n]*\n?',
+      )
+      m = bare_re.search(text)
+      if m:
+        text = text[:m.start()] + wrapped + "\n" + text[m.end():]
+        replaced.append(site)
+        continue
 
-    missing.append(site)
+      old_style_re = re.compile(r'    style OLD_' + re.escape(site) + r' fill:[^\n]*\n')
+      m = old_style_re.search(text)
+      if m:
+        text = text[:m.end()] + wrapped + "\n" + text[m.end():]
+        inserted.append(site)
+        continue
 
-  docs_path.write_text(text, encoding="utf-8")
+      missing.append(site)
+
+    docs_path.write_text(text, encoding="utf-8")
+
   return inserted, replaced, missing
 
 

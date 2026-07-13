@@ -122,6 +122,22 @@ write-up.
       before assuming this "fixes" every diagram's size. check 15 rewritten
       to check for the uniform shape + a leading emoji instead of the old
       5-shape list.
+- [x] Phase 7 — split into per-region files, 2026-07-13. The emoji/uniform-
+      shape pass (Phase 6) still wasn't enough — Robert: "there's just simply
+      too much for GitHub to render." `docs/network-diagram.md`'s 51 diagrams
+      split into 15 files under `docs/network-diagram/` (1–9 diagrams each,
+      by region — Scotland, England, Danmark, etc.); the old file is now an
+      index (Visual Standard, emoji legend, links out). Checks 14–15 and
+      `generate_network_diagrams.py`'s `insert_into_docs()` all updated to
+      iterate the region files; re-verified idempotent (zero diff) before
+      trusting it, and both checks' guards re-confirmed against synthetic
+      tampering after the restructure.
+- [ ] Phase 8 (not started, deferred to a later session per Robert) —
+      per-site colour-scheme fixes he can "tell at a glance" are wrong but
+      wants to review properly rather than rushed; CLD's Old Network box
+      arguably mislabels something as "legacy" that never really had an old
+      network in the same sense other sites did; a cloud-outline or ☁️-emoji
+      treatment for the Internet node instead of a plain box.
 
 ## Methodology — what does "a good run" actually mean?
 
@@ -259,8 +275,8 @@ prompted fixing that buildsheet the same day — see the git log around
 | 11 | SSH keypair | `check_ssh_keys.py` — two tiers. Clone-safe (real failure): `bootstrap/web/ansible_sshkey.pub` (the estate's one committed, HTTP-servable public key) is checked against all four `VRK-`/`FRD-answer.toml` + `VRK-`/`FRD-degraded.toml` `root-ssh-keys` copies — every file says "keep in sync if rotated" in its own comments; this confirms that promise holds. Host-local (informational unless `--strict`): is `ansible.cfg`'s configured `private_key_file` actually present on *this* host — resolved via `ansible-config dump`, not a second hardcoded copy of the setting. Missing on a bare clone is expected; missing on the real control node is what actually happened 2026-07-12 (EXAANSCLD001, see `ansible/tasks/ssh_key_preflight.yml`'s header) and is what `--strict` is for. If missing, scans `~/.ssh/` for a plausible candidate keypair (`.pub` comment containing "exa") and reports it |
 | 12 | `playbook_dir`-relative paths | `check_playbook_dir_paths.py` — every `"{{ playbook_dir }}/../.../X"` expression (used with `read_csv`/`lookup('file', ...)`/a shell command — not the literal `src:`/`include_tasks:` paths check 3 already covers) is resolved against the file's real location and confirmed to exist. Found the hard way, 2026-07-12: `bootstrap-new-node.yml`'s `sites_csv_src` had one extra level of `../` copy-pasted from `00-preflight.yml` (which lives one directory deeper) — invisible to both `--syntax-check` (doesn't execute tasks) and check 3 (Jinja, not literal) until a real run finally reached that task for the first time |
 | 13 | Mermaid diagrams | `check_mermaid.py` — **the one check here that needs real network access.** Every ```` ```mermaid ```` block in every git-tracked `*.md` file is actually POSTed to `kroki.io` and confirmed to render, not just locally syntax-guessed (no mermaid parser is vendored here, and mermaid's grammar has real gotchas no structural YAML/Ansible check could ever catch). Found 3 genuine syntax bugs across the repo's 49 diagrams this way: literal `\n` instead of `<br/>` for label line breaks (938 occurrences), a backslash-escaped quote, and an unquoted `(` inside a pipe-delimited edge label. Results are cached by content hash (`reports/.mermaid_cache.json`, gitignored) so only new/changed diagrams actually hit kroki.io on a given run. A genuine render failure always fails the check; `kroki.io` being unreachable is informational unless `--strict` is passed |
-| 14 | Network diagram freshness | `check_network_diagram_freshness.py` — regenerates every site's "New Network (current)" mermaid subgraph in `docs/network-diagram.md` (via `benarbejde/generate_network_diagrams.py`, marker-wrapped in `%% GENERATED:NEW-NETWORK:<SITE>:START/END`) into a scratch copy and diffs against committed — same "edited the source, forgot to regenerate" class as check 6, applied to the diagrams |
-| 15 | Network diagram content invariants | `check_network_diagram_content.py` — independently scans (doesn't just re-run the generator) every committed New Network block for two invariants from `network-diagram.md`'s Visual Standard: no FSMO/health/low-disk-space terms ever appear (that data is old-infra-only), and every node uses the uniform rect shape with a leading emoji symbol (see `docs/emojis/README.md`) |
+| 14 | Network diagram freshness | `check_network_diagram_freshness.py` — regenerates every site's "New Network (current)" mermaid subgraph across `docs/network-diagram/*.md` (one file per region, via `benarbejde/generate_network_diagrams.py`, marker-wrapped in `%% GENERATED:NEW-NETWORK:<SITE>:START/END`) into a scratch copy and diffs against committed — same "edited the source, forgot to regenerate" class as check 6, applied to the diagrams |
+| 15 | Network diagram content invariants | `check_network_diagram_content.py` — independently scans (doesn't just re-run the generator) every committed New Network block across `docs/network-diagram/*.md` for two invariants from `network-diagram.md`'s Visual Standard: no FSMO/health/low-disk-space terms ever appear (that data is old-infra-only), and every node uses the uniform rect shape with a leading emoji symbol (see `docs/emojis/README.md`) |
 
 ## Design notes
 

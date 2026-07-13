@@ -41,7 +41,22 @@
 | [network-inventory.md](network-inventory.md) | NET-INV-001 | Comprehensive device and IP inventory — all sites, all nodes, health status, known issues |
 | [site-inventory.md](site-inventory.md) | NET-SITE-001 | Per-site commissioning checklists — build tracking, ZFS status, endpoint and equipment sign-off |
 | [INCIDENT-LOG.md](INCIDENT-LOG.md) | OPS-INC-001 | Blameless incident log — chronological, oldest first; what went wrong, root cause, and what changed as a result |
-| [network-diagram.md](network-diagram.md) | NET-DIAG-001 | Per-site network diagrams (mermaid) — Old Network (legacy) + New Network (generated from sites.csv/devices.csv) |
+| [network-diagram.md](network-diagram.md) | NET-DIAG-001 | Per-site network diagrams index — Visual Standard, emoji legend, links to every region file below. Split from one 51-diagram file into per-region files 2026-07-13 (GitHub's mermaid renderer got unreliable with that many diagrams on one page) |
+| [network-diagram/cld.md](network-diagram/cld.md) | NET-DIAG-001-CLD | Cloud (CLD) network diagram |
+| [network-diagram/scotland.md](network-diagram/scotland.md) | NET-DIAG-001-SCT | Scotland network diagrams (FAL, EDI, GLA, CLY, DUN, PER, ABD) |
+| [network-diagram/england.md](network-diagram/england.md) | NET-DIAG-001-ENG | England network diagrams (LND, BIR, MCR, LIV, NEW, SHE, HAL, HUL, COV) |
+| [network-diagram/danmark.md](network-diagram/danmark.md) | NET-DIAG-001-DNK | Danmark network diagrams (CPH, ODE, KGE, FAX, KOR, AAR, FRE, FRD, NYB) |
+| [network-diagram/deutschland.md](network-diagram/deutschland.md) | NET-DIAG-001-DEU | Deutschland network diagrams (BON, BER, MUN, DRS, DUS) |
+| [network-diagram/sverige.md](network-diagram/sverige.md) | NET-DIAG-001-SWE | Sverige network diagram (GOT) |
+| [network-diagram/norge.md](network-diagram/norge.md) | NET-DIAG-001-NOR | Norge network diagram (OSL) |
+| [network-diagram/nederland.md](network-diagram/nederland.md) | NET-DIAG-001-NLD | Nederland network diagram (AMS) |
+| [network-diagram/italia.md](network-diagram/italia.md) | NET-DIAG-001-ITA | Italia network diagram (MIL) |
+| [network-diagram/osterreich.md](network-diagram/osterreich.md) | NET-DIAG-001-AUT | Österreich network diagram (VIE) |
+| [network-diagram/lebanon.md](network-diagram/lebanon.md) | NET-DIAG-001-LBN | Lebanon network diagram (BRT) |
+| [network-diagram/canada.md](network-diagram/canada.md) | NET-DIAG-001-CAN | Canada network diagrams (BRK, TOR, MTL) |
+| [network-diagram/united-states.md](network-diagram/united-states.md) | NET-DIAG-001-USA | United States network diagrams (LAX, NYC, NJC, MIA, ATL, CHI, SEA, SFO) |
+| [network-diagram/australia.md](network-diagram/australia.md) | NET-DIAG-001-AUS | Australia network diagrams (SYD, MEL) |
+| [network-diagram/new-zealand.md](network-diagram/new-zealand.md) | NET-DIAG-001-NZL | New Zealand network diagram (AKL) |
 | [network-cutover.md](network-cutover.md) | NET-DIAG-002 | Old-vs-New Network diagram disagreements — what to check before cutover so a network doesn't go down |
 | [emojis/README.md](emojis/README.md) | NET-DIAG-003 | Icon legend for network-diagram.md's device symbols — what each emoji means and why |
 | [example_music_branding_guide.md](example_music_branding_guide.md) | NET-BRAND-001 | 1980s touring-identity branding guide — livery, colours, fonts |
