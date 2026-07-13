@@ -220,13 +220,12 @@ standalone bundle — see `zabbix_vms_on_wrong_pool/` for the canonical shape.
 | [proxmox_zabbix_cleanup/zabbix_vms_on_wrong_pool/README.md](proxmox_zabbix_cleanup/zabbix_vms_on_wrong_pool/README.md) | NET-PVE-ZBX-POOL-001 | ZFS VM pool-placement audit setup |
 | [proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md](proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md) | NET-PVE-ZBX-SNAP-001 | PVE snapshot check automation setup |
 
-> **Flagged, not yet resolved (ask before touching):**
-> `proxmox_zabbix_cleanup/pve-hoover-update/` duplicates `kernels/`'s script/procedure/triggers
-> byte-for-byte but is **missing `pve-monthly-hoover.timer`** — the cleanup automation described
-> would never actually run on a schedule if deployed from that directory. Not indexed here;
-> treat `kernels/` as canonical until this is fixed or explained.
-> `docs/PVE-Snapshot-Check-Procedure.md` (root) is a byte-identical stray duplicate of
-> `pve-snapshot-check/PVE-Snapshot-Check-Procedure.md` above — not indexed separately.
+> **Resolved 2026-07-13, per Robert:** two byte-identical stray duplicates deleted rather than
+> kept-and-flagged — `docs/PVE-Snapshot-Check-Procedure.md` (root, identical to
+> `pve-snapshot-check/PVE-Snapshot-Check-Procedure.md` above) and the whole
+> `proxmox_zabbix_cleanup/pve-hoover-update/` directory (identical to `kernels/` on every file
+> present, and missing `pve-monthly-hoover.timer` besides — `kernels/` was always the more
+> complete copy). `kernels/` and `pve-snapshot-check/` above are now each the only copy.
 
 ---
 
