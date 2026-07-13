@@ -7,7 +7,7 @@
 
 ---
 
-## BRK — Brockville *(NA/APAC Hub)* ⭐
+## BRK — Brockville *(NA/APAC Hub)* ⭐ 🍁
 
 **LAN:** `192.168.136.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 3 (NA/APAC hub) · **VPN parent:** CLD (NA/APAC backup)  
@@ -78,7 +78,7 @@ graph TD
 
 ---
 
-## TOR — Toronto ⚠️
+## TOR — Toronto ⚠️ 🗼
 
 **LAN:** `192.168.146.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
@@ -125,7 +125,7 @@ graph TD
 
 ---
 
-## MTL — Montreal
+## MTL — Montreal ⚜️
 
 **LAN:** `192.168.154.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  

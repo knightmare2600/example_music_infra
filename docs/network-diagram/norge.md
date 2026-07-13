@@ -7,7 +7,7 @@
 
 ---
 
-## OSL — Oslo
+## OSL — Oslo 🏔️
 
 **LAN:** `192.168.47.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  

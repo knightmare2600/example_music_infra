@@ -7,7 +7,7 @@
 
 ---
 
-## CPH — København
+## CPH — København 🧜‍♀️
 
 **LAN:** `192.168.231.0/24` · **Domain:** `example.com` / `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  
@@ -178,7 +178,7 @@ graph TD
 
 ---
 
-## FAX — Faxe
+## FAX — Faxe 🥤
 
 **LAN:** `192.168.246.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  
@@ -223,7 +223,7 @@ graph TD
 
 ---
 
-## KOR — Korsør
+## KOR — Korsør 🚂
 
 **LAN:** `192.168.238.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  
@@ -311,7 +311,7 @@ graph TD
 
 ---
 
-## FRE — Fredericia
+## FRE — Fredericia 🏯
 
 **LAN:** `192.168.75.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  
@@ -355,7 +355,7 @@ graph TD
 
 ---
 
-## FRD — Fredericia Havn *(New Build)*
+## FRD — Fredericia Havn *(New Build)* ⚓
 
 **LAN:** `172.16.124.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 0 — see notes below · **VPN parent:** CLD (direct, non-standard networking)  
@@ -380,7 +380,7 @@ graph TD
 
 ---
 
-## NYB — Nyborg *(New Build)*
+## NYB — Nyborg *(New Build)* 📜
 
 **LAN:** `192.168.90.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** ODE  

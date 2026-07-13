@@ -167,7 +167,7 @@ graph TD
 
 ---
 
-## EDI — Edinburgh ⚠️
+## EDI — Edinburgh ⚠️ 🏰
 
 **LAN:** `192.168.131.0/24` · **Domain:** `example.org` / `example.net`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
@@ -282,7 +282,7 @@ graph TD
 
 ---
 
-## CLY — Clydebank
+## CLY — Clydebank 🚢
 
 **LAN:** `192.168.41.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
@@ -394,7 +394,7 @@ graph TD
 
 ---
 
-## PER — Perth
+## PER — Perth 👑
 
 **LAN:** `192.168.173.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
@@ -456,7 +456,7 @@ graph TD
 
 ---
 
-## ABD — Aberdeen
+## ABD — Aberdeen 🪨
 
 **LAN:** `192.168.224.0/24` · **Domain:** `example.org`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
