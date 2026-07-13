@@ -36,7 +36,7 @@ graph TD
       CAM2["🎥 EXACAMSYD002 · Hikvision · Reception · .83"]
       LCD["🖼️ EXALCDSYD001 · LG Signage Wallboard · .70"]
       PRN["🖨️ EXAPRNSYD001 · Brother Laser Printer · .80"]
-      COF["☕ EXACOFSYD001 · Smart Coffee Machine · RFC2324 · .83"]
+      COF["🍵 EXACOFSYD001 · Smart Coffee Machine · RFC2324 · .83"]
       VPN["🔗 WireGuard → BRK"]
 
       INET --> FWL --> SW1 & SW2
@@ -70,7 +70,7 @@ graph TD
       N_PRN["🖨️ EXAPRNSYD001 · Laser printer"]
       N_CAM["🎥 EXACAMSYD001 · Camera"]
       N_CAM2["🎥 EXACAMSYD002 · Camera reception"]
-      N_COF["☕ EXACOFSYD001 · Coffee machine"]
+      N_COF["🍵 EXACOFSYD001 · Coffee machine"]
     end
     style NEW_SYD fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:SYD:END

@@ -60,7 +60,7 @@ graph TD
 
 ---
 
-## ODE — Odense *(EU Hub)* ⭐
+## ODE — Odense *(EU Hub)* ⭐ 🎩
 
 **LAN:** `192.168.126.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 3 (EU hub) · **VPN parent:** CLD (EU backup)  
