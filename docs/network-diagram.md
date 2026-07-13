@@ -299,7 +299,7 @@ graph TD
       N_VND2>"🍫 EXAVNDFAL003<br/>Vending machine<br/>.64"]
       N_VND3>"🍫 EXAVNDFAL004<br/>Vending machine<br/>.65"]
       N_VND4>"🍫 EXAVNDFAL005<br/>Confectionery machine<br/>.66"]
-      N_MUS>"❓ EXAMUSFAL001<br/>Jukebox<br/>.67"]
+      N_MUS>"💿 EXAMUSFAL001<br/>Jukebox<br/>.67"]
       N_CAM(["EXACAMFAL001<br/>Camera front entrance<br/>.70"])
       N_CAM2(["EXACAMFAL002<br/>Camera studio hallway<br/>.71"])
       N_CAM3(["EXACAMFAL003<br/>Camera car park<br/>.72"])
@@ -1295,7 +1295,7 @@ graph TD
       N_FWL{{"EXAFWLODE001<br/>FWL 1<br/>.253"}}
       N_FWL2{{"EXAFWLODE002<br/>FWL 2<br/>.254"}}
       N_PVE[("EXAPVEODE001<br/>PVE 1<br/>.5")]
-      N_MUS>"❓ EXAMUSODE001<br/>Jukebox<br/>.60"]
+      N_MUS>"💿 EXAMUSODE001<br/>Jukebox<br/>.60"]
       N_MAC(["EXAMACODE001<br/>iMac"])
       N_MBP(["EXAMBPODE002<br/>MacBook Pro"])
     end
@@ -2373,9 +2373,9 @@ graph TD
       N_FWL2{{"EXAFWLLAX002<br/>FWL 2<br/>.254"}}
       N_PVE[("EXAPVELAX001<br/>PVE 1<br/>.5")]
       N_SRV[("EXASRVLAX001<br/>Local services DB<br/>.20")]
-      N_MUS>"❓ EXAMUSLAX001<br/>Synth<br/>.70"]
-      N_MUS2>"❓ EXAMUSLAX002<br/>Drum machine<br/>.71"]
-      N_MUS3>"❓ EXAMUSLAX003<br/>Fairlight CMI<br/>.72"]
+      N_MUS>"💿 EXAMUSLAX001<br/>Synth<br/>.70"]
+      N_MUS2>"💿 EXAMUSLAX002<br/>Drum machine<br/>.71"]
+      N_MUS3>"💿 EXAMUSLAX003<br/>Fairlight CMI<br/>.72"]
       N_AST>"🕹️ EXAASTLAX001<br/>Atari ST<br/>.73"]
       N_PAY>"☎️ EXAPAYLAX001<br/>Payphone<br/>.74"]
       N_LCD(["EXALCDLAX001<br/>Status wallboard<br/>.75"])
