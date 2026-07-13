@@ -7,7 +7,7 @@
 
 ---
 
-## BON — Bonn
+## BON — Bonn 🎼
 
 **LAN:** `192.168.228.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  
@@ -69,7 +69,7 @@ graph TD
 
 ---
 
-## BER — West Berlin
+## BER — West Berlin 🐻
 
 **LAN:** `192.168.113.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  
@@ -116,7 +116,7 @@ graph TD
 
 ---
 
-## MUN — Munich
+## MUN — Munich 🍺
 
 **LAN:** `192.168.189.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  
@@ -215,7 +215,7 @@ graph TD
 
 ---
 
-## DUS — Düsseldorf
+## DUS — Düsseldorf 👗
 
 **LAN:** `192.168.211.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  

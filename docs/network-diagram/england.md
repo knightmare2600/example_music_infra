@@ -139,7 +139,7 @@ graph TD
 
 ---
 
-## MCR — Manchester
+## MCR — Manchester 🐝
 
 **LAN:** `192.168.161.0/24` · **Domain:** `example.org`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
@@ -197,7 +197,7 @@ graph TD
 
 ---
 
-## LIV — Liverpool
+## LIV — Liverpool 🎸
 
 **LAN:** `192.168.151.0/24` · **Domain:** `example.org`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
@@ -256,7 +256,7 @@ graph TD
 
 ---
 
-## NEW — Newcastle
+## NEW — Newcastle 🌉
 
 **LAN:** `192.168.191.0/24` · **Domain:** `example.org`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
@@ -309,7 +309,7 @@ graph TD
 
 ---
 
-## SHE — Sheffield
+## SHE — Sheffield 🥄
 
 **LAN:** `192.168.114.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
@@ -354,7 +354,7 @@ graph TD
 
 ---
 
-## HAL — Halifax
+## HAL — Halifax 🏦
 
 **LAN:** `192.168.142.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
@@ -399,7 +399,7 @@ graph TD
 
 ---
 
-## HUL — Hull
+## HUL — Hull 🎣
 
 **LAN:** `192.168.148.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
@@ -444,7 +444,7 @@ graph TD
 
 ---
 
-## COV — Coventry
+## COV — Coventry 🐎
 
 **LAN:** `192.168.247.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** FAL  

@@ -7,7 +7,7 @@
 
 ---
 
-## LAX — Los Angeles ⚠️
+## LAX — Los Angeles ⚠️ 🎬
 
 **LAN:** `192.168.213.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
@@ -176,7 +176,7 @@ graph TD
 
 ---
 
-## MIA — Miami
+## MIA — Miami 🌴
 
 **LAN:** `192.168.135.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
@@ -224,7 +224,7 @@ graph TD
 
 ---
 
-## ATL — Atlanta ⚠️
+## ATL — Atlanta ⚠️ 🍑
 
 **LAN:** `192.168.33.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
@@ -271,7 +271,7 @@ graph TD
 
 ---
 
-## CHI — Chicago ⚠️
+## CHI — Chicago ⚠️ 🏠
 
 **LAN:** `192.168.214.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
@@ -318,7 +318,7 @@ graph TD
 
 ---
 
-## SEA — Seattle *(New Build)*
+## SEA — Seattle *(New Build)* ☕
 
 **LAN:** `192.168.206.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
@@ -348,7 +348,7 @@ graph TD
 
 ---
 
-## SFO — San Francisco *(New Build)*
+## SFO — San Francisco *(New Build)* 🌁
 
 **LAN:** `192.168.145.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
