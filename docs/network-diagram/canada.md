@@ -63,8 +63,8 @@ graph TD
       N_PRV["📦 EXAPRVBRK001 · PRV · .15"]
       N_SBC["🛡️ EXASBCBRK001 · SBC · .48"]
       N_DCS["🗝️ EXADCSBRK001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLBRK001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLBRK002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLBRK001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLBRK002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEBRK001 · PVE 1 · .5"]
       N_DON["🍩 EXADONBRK001 · Donut vending · .60"]
       N_LAP["💻 EXALAPBRK001 · Tour laptop"]
@@ -113,8 +113,8 @@ graph TD
       N_PRV["📦 EXAPRVTOR001 · PRV · .15"]
       N_SBC["🛡️ EXASBCTOR001 · SBC · .48"]
       N_DCS["🗝️ EXADCSTOR001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLTOR001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLTOR002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLTOR001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLTOR002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVETOR001 · PVE 1 · .5"]
     end
     style NEW_TOR fill:#E69F00,stroke:#D55E00,color:#000000
@@ -159,8 +159,8 @@ graph TD
       N_PRV["📦 EXAPRVMTL001 · PRV · .15"]
       N_SBC["🛡️ EXASBCMTL001 · SBC · .48"]
       N_DCS["🗝️ EXADCSMTL001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLMTL001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLMTL002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLMTL001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLMTL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEMTL001 · PVE 1 · .5"]
     end
     style NEW_MTL fill:#E69F00,stroke:#D55E00,color:#000000
