@@ -1,6 +1,7 @@
 # Procedure: Proxmox VE Node Onboarding
-**Reference:** `playbooks/proxmox/site.yml`
-**Scope:** Example Music Limited — Infrastructure
+
+**Reference:** `playbooks/proxmox/site.yml`  
+**Scope:** Example Music Limited — Infrastructure  
 **Applies to:** Any new Proxmox VE node added to the estate
 
 ---
