@@ -219,9 +219,9 @@ graph TD
     SW1 --> PVE1 & PVE2 & PVE3
     SW1 --> DC1 & DC2
     SW1 --> SBC & NAS & TAR
-    SW2 --> ENDPOINTS
-    SW2 --> WAP_CAM
-    SW2 --> SITE
+    SW2 --> WKS1
+    SW2 --> WAP
+    SW2 --> LCD
     RAC1 -.->|"manages"| PVE1
     RAC2 -.->|"manages"| PVE2
     RAC3 -.->|"manages"| PVE3
