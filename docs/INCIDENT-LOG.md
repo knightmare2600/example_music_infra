@@ -19,12 +19,47 @@ A few ground rules for every entry in this log:
 
 ## Index
 
-Chronological, oldest incident first. Entries are added as they're formally written up, which is not necessarily the order they occurred — this log starts partway through the estate's history, and earlier incidents are backfilled retroactively as time allows, inserted in their correct chronological position rather than appended to the end.
+Newest incident at the top, oldest at the bottom — read bottom-to-top for chronological (oldest-to-newest) order. New entries are added at the top as they're formally written up, which is not necessarily the order they occurred — this log starts partway through the estate's history, and earlier incidents are backfilled retroactively as time allows, inserted below the entries that are actually more recent rather than always appended at the very bottom.
 
 | Incident ID | Date | Summary |
 |---|---|---|
-| [INC-2026-04-03-BMC-CREDS](#inc-2026-04-03-bmc-creds--mismatched-bmc-credentials-on-a-newly-delivered-fal-server) | 2026-04-03 | Vendor delivered the wrong physical chassis under otherwise-correct paperwork — documented BMC credentials didn't work on arrival at FAL |
 | [INC-2026-07-12-SSH-KEY](#inc-2026-07-12-ssh-key--lost-ssh-keypair-delayed-pve-node-deployment-in-scandinavia) | 2026-07-12 | Lost/forgotten SSH keypair delayed PVE node deployment in Scandinavia |
+| [INC-2026-04-03-BMC-CREDS](#inc-2026-04-03-bmc-creds--mismatched-bmc-credentials-on-a-newly-delivered-fal-server) | 2026-04-03 | Vendor delivered the wrong physical chassis under otherwise-correct paperwork — documented BMC credentials didn't work on arrival at FAL |
+
+---
+
+## INC-2026-07-12-SSH-KEY — Lost SSH keypair delayed PVE node deployment in Scandinavia
+
+### Incident Background
+
+**Date:** 12 July 2026  
+**Scope:** Deployment of a new Proxmox VE node in Gothenburg, Sweden (Scandinavia region)  
+**Cause (summary):** An omission in the estate's SSH keypair process left the private half of a required key unavailable when a live deployment needed it, delaying that node's onboarding.
+
+During a live deployment of a new Proxmox VE node in Gothenburg, the automation responsible for giving the node its real identity (hostname, static networking) failed to connect. Nothing about the failure pointed at why — the node was reachable on the network — but the connection itself would not complete.
+
+### Root Cause & Mitigation
+
+Investigation traced the failure to the SSH keypair the estate's automation uses to reach Proxmox nodes: the private half of that key — required on the Ansible control node, per the configured path automation relies on — could not be found there. Only the public half — routinely distributed to new nodes during provisioning — was present. An omission in the process that carries a keypair from wherever it's generated to where it's actually needed had gone unnoticed until this deployment hit it for the first time on real hardware.
+
+To keep the affected build moving, the engineer generated a fresh keypair directly on the control node and manually added the new public key to the Gothenburg node — using a combination of direct SSH (where already reachable) and out-of-band BMC/console access (where it wasn't) — restoring managed access without needing to rebuild the node. Username/password authentication remained available throughout as an existing, already-accepted fallback for Proxmox nodes specifically: if key-based access is ever unavailable, password auth is the documented alternative for these nodes, not a new decision made in response to this incident.
+
+### Lessons Learned
+
+- There was a check that a *public* key existed somewhere in the repository, but nothing that confirmed the *private* half was actually present and working before automation depended on it.
+- The failure gave no indication it was a key/authentication problem — it looked identical to a generic network issue, and the real cause only became clear after testing the connection by hand.
+- There was no written recovery procedure for this exact situation. It was worked out live, under time pressure, rather than being a known, rehearsed step.
+
+### Improvements Made
+
+- The verification harness run before any change is trusted now includes a dedicated SSH keypair check — it confirms the public key is consistent everywhere it's committed, and, on the real control node, that the private half is genuinely present.
+- The node-onboarding automation now performs a real connection test using the actual configured key before doing anything else, and stops outright with a clear explanation if that test fails, instead of proceeding and failing confusingly later.
+- The recovery steps used here — generate fresh, redistribute the public half, verify — are now written down as a documented procedure.
+- **Cross-check, every time.** The fix for this exact problem was tested end-to-end against a real connection before being trusted — not just read over and assumed correct. That's the standing rule for anything touching access to live infrastructure: a second, independent pass — another engineer, or a genuine live test — before it's relied on operationally. The same reason airline cabin crews call out "cross-check" to one another before a door is armed applies here: the cost of skipping it is paid later, at the worst possible time.
+
+### Executive Summary
+
+A gap in how SSH keypairs move from creation to actual use let a key go missing without anyone knowing, until a live deployment in Scandinavia needed it and lost time as a result. Nothing was lost that couldn't be regenerated, and the affected node was recovered the same day using existing, documented fallback access. The automation and its safety checks have both been updated so this specific failure mode is now caught immediately, with a clear explanation, instead of surfacing as an unexplained delay. This is how these incidents work: something exposes a gap nobody had reason to look for yet, it gets fixed, and the fix becomes a permanent part of how the estate protects itself going forward.
 
 ---
 
@@ -65,38 +100,3 @@ Licensing and asset records were updated to reflect the chassis actually receive
 ### Executive Summary
 
 A vendor fulfilment error — the wrong physical chassis delivered under otherwise-correct paperwork — meant a new FAL server's documented BMC credentials didn't work on arrival. Nothing was actually broken: the hardware was fit for purpose, and the credentials were recoverable on site, the same visit, using a standard local procedure rather than a vendor RMA cycle. Every step of the recovery was verified before being trusted for the next one. A compliance record was raised with the vendor as the appropriate formal follow-up. This is how these incidents work: something exposes a gap nobody had reason to look for yet, it gets handled, and the fix becomes a permanent part of how the estate protects itself going forward.
-
----
-
-## INC-2026-07-12-SSH-KEY — Lost SSH keypair delayed PVE node deployment in Scandinavia
-
-### Incident Background
-
-**Date:** 12 July 2026  
-**Scope:** Deployment of a new Proxmox VE node in Gothenburg, Sweden (Scandinavia region)  
-**Cause (summary):** An omission in the estate's SSH keypair process left the private half of a required key unavailable when a live deployment needed it, delaying that node's onboarding.
-
-During a live deployment of a new Proxmox VE node in Gothenburg, the automation responsible for giving the node its real identity (hostname, static networking) failed to connect. Nothing about the failure pointed at why — the node was reachable on the network — but the connection itself would not complete.
-
-### Root Cause & Mitigation
-
-Investigation traced the failure to the SSH keypair the estate's automation uses to reach Proxmox nodes: the private half of that key — required on the Ansible control node, per the configured path automation relies on — could not be found there. Only the public half — routinely distributed to new nodes during provisioning — was present. An omission in the process that carries a keypair from wherever it's generated to where it's actually needed had gone unnoticed until this deployment hit it for the first time on real hardware.
-
-To keep the affected build moving, the engineer generated a fresh keypair directly on the control node and manually added the new public key to the Gothenburg node — using a combination of direct SSH (where already reachable) and out-of-band BMC/console access (where it wasn't) — restoring managed access without needing to rebuild the node. Username/password authentication remained available throughout as an existing, already-accepted fallback for Proxmox nodes specifically: if key-based access is ever unavailable, password auth is the documented alternative for these nodes, not a new decision made in response to this incident.
-
-### Lessons Learned
-
-- There was a check that a *public* key existed somewhere in the repository, but nothing that confirmed the *private* half was actually present and working before automation depended on it.
-- The failure gave no indication it was a key/authentication problem — it looked identical to a generic network issue, and the real cause only became clear after testing the connection by hand.
-- There was no written recovery procedure for this exact situation. It was worked out live, under time pressure, rather than being a known, rehearsed step.
-
-### Improvements Made
-
-- The verification harness run before any change is trusted now includes a dedicated SSH keypair check — it confirms the public key is consistent everywhere it's committed, and, on the real control node, that the private half is genuinely present.
-- The node-onboarding automation now performs a real connection test using the actual configured key before doing anything else, and stops outright with a clear explanation if that test fails, instead of proceeding and failing confusingly later.
-- The recovery steps used here — generate fresh, redistribute the public half, verify — are now written down as a documented procedure.
-- **Cross-check, every time.** The fix for this exact problem was tested end-to-end against a real connection before being trusted — not just read over and assumed correct. That's the standing rule for anything touching access to live infrastructure: a second, independent pass — another engineer, or a genuine live test — before it's relied on operationally. The same reason airline cabin crews call out "cross-check" to one another before a door is armed applies here: the cost of skipping it is paid later, at the worst possible time.
-
-### Executive Summary
-
-A gap in how SSH keypairs move from creation to actual use let a key go missing without anyone knowing, until a live deployment in Scandinavia needed it and lost time as a result. Nothing was lost that couldn't be regenerated, and the affected node was recovered the same day using existing, documented fallback access. The automation and its safety checks have both been updated so this specific failure mode is now caught immediately, with a clear explanation, instead of surfacing as an unexplained delay. This is how these incidents work: something exposes a gap nobody had reason to look for yet, it gets fixed, and the fix becomes a permanent part of how the estate protects itself going forward.
