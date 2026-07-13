@@ -41,8 +41,8 @@ graph TD
       N_PRV["📦 EXAPRVAMS001 · PRV · .15"]
       N_SBC["🛡️ EXASBCAMS001 · SBC · .48"]
       N_DCS["🗝️ EXADCSAMS001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLAMS001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLAMS002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLAMS001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLAMS002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEAMS001 · PVE 1 · .5"]
     end
     style NEW_AMS fill:#E69F00,stroke:#D55E00,color:#000000

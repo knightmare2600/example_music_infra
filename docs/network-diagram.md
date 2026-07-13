@@ -48,7 +48,7 @@ two or three. Shorter boxes, same information.
 | ✈️ | aeroplane | | ⛽ | fuel pump | | ⏰ | alarm clock |
 | 🎤 | handheld microphone | | 📻 | portable radio | | 🎹 | piano/synth keyboard |
 | 🕹️ | joystick | | 🥁 | drum | | ⌨️ | computer keyboard |
-| 📡 | satellite dish/antenna | | 🔥 | flame | | 🔀 | two arrows crossing (shuffle) |
+| 📡 | satellite dish/antenna | | 🧱 | brick | | 🔀 | two arrows crossing (shuffle) |
 | 🗝️ | old-fashioned key | | 🗄️ | filing cabinet | | 🗂️ | card-index dividers (a tabbed folder set) |
 | ⚙️ | a gear/cog | | 🔁 | clockwise repeat arrows | | 🤖 | robot face |
 | 🔌 | electrical plug | | 🧭 | compass | | 📦 | cardboard parcel |
@@ -59,6 +59,11 @@ two or three. Shorter boxes, same information.
 | 🖼️ | framed picture | | 📺 | television set | | 🍎 | red apple (fruit, not a logo) |
 | 🪪 | ID card | | 🐧 | penguin | | 🎧 | headphones |
 | ❓ | question mark | | | | | | |
+
+> Browsing for a replacement symbol yourself? The full official list, with every emoji and how it
+> renders across platforms, is at
+> **[unicode.org/emoji/charts/full-emoji-list.html](https://unicode.org/emoji/charts/full-emoji-list.html)**.
+> See `docs/emojis/README.md` for how a suggested swap gets applied.
 
 ---
 

@@ -41,8 +41,8 @@ graph TD
       N_PRV["📦 EXAPRVVIE001 · PRV · .15"]
       N_SBC["🛡️ EXASBCVIE001 · SBC · .48"]
       N_DCS["🗝️ EXADCSVIE001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLVIE001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLVIE002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLVIE001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLVIE002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEVIE001 · PVE 1 · .5"]
     end
     style NEW_VIE fill:#E69F00,stroke:#D55E00,color:#000000

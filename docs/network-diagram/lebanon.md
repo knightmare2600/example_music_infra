@@ -41,8 +41,8 @@ graph TD
       N_PRV["📦 EXAPRVBRT001 · PRV · .15"]
       N_SBC["🛡️ EXASBCBRT001 · SBC · .48"]
       N_DCS["🗝️ EXADCSBRT001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLBRT001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLBRT002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLBRT001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLBRT002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEBRT001 · PVE 1 · .5"]
     end
     style NEW_BRT fill:#E69F00,stroke:#D55E00,color:#000000

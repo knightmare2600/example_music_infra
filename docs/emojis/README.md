@@ -17,6 +17,13 @@ reliably through the kroki.io pipeline this repo relies on, and vendor logos are
 regardless). A few of the things asked for don't exist as Unicode characters at all — noted below,
 not silently swapped without explanation.
 
+**Suggesting a replacement?** Browse the full official list at
+**[unicode.org/emoji/charts/full-emoji-list.html](https://unicode.org/emoji/charts/full-emoji-list.html)**
+— every emoji, its code point, and how it renders across major platforms, one page. Pick a
+character, hand over the type code and the new symbol; each one gets a quick kroki.io round-trip
+before it's committed (see `ansible/at_have_ryggen_fri/check_mermaid.py`), same as every other
+diagram change in this repo.
+
 ## Curveball / novelty devices
 
 | Type | Symbol | Device | Notes |
@@ -43,11 +50,11 @@ not silently swapped without explanation.
 
 ## Network infrastructure
 
-| Type | Symbol | Device |
-|---|---|---|
-| RTR | 📡 | Router |
-| FWL | 🔥 | Firewall |
-| SWI | 🔀 | Switch |
+| Type | Symbol | Device | Notes |
+|---|---|---|---|
+| RTR | 📡 | Router | |
+| FWL | 🧱 | Firewall | Brick — a firewall as a wall. Was 🔥 (the "firewall" pun); changed 2026-07-13 per Robert |
+| SWI | 🔀 | Switch | |
 
 ## Servers / compute / management
 
