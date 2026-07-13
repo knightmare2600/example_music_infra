@@ -34,47 +34,47 @@ DEVICES_CSV = HERE / "devices.csv"
 ADDRESS_POLICY = HERE / "address_policy.json"
 DOCS_FILE = HERE.parent / "docs" / "network-diagram.md"
 
-# Same five-shape vocabulary as docs/network-diagram.md's Visual Standard section. Keep these two
-# in sync by hand (the list is small and stable); check_network_diagram_shape_compliance (harness
-# check 15) enforces that every generated node actually uses one of these five wrappers, so drift
-# between this map and the documented standard fails loudly rather than silently.
-NET_TYPES = {'RTR', 'FWL', 'SWI'}
-SRV_TYPES = {'DCS', 'DCR', 'SVR', 'SRV', 'RDR', 'RRY', 'ANS', 'PBX', 'DNS', 'PRV', 'NAS', 'PVE', 'SBC', 'TAR', 'UFC', 'RAC'}
-WIRELESS_TYPES = {'WAP'}
-ENDPOINT_TYPES = {'WKS', 'LAP', 'MBP', 'TAB', 'SUR', 'PHN', 'PRN', 'CAM', 'LCD', 'VCU', 'TVS', 'MAC', 'NIX', 'BPS'}
+# All known device Type codes, for reference/validation only -- as of 2026-07-13 every node gets
+# a single uniform shape (node_box() below) and an emoji does the "what is this" job instead of
+# shape geometry (Robert's call: the 5-shape system was too visually heavy -- "more shapes than
+# the Ministry of Sound" -- across a 50+ node diagram). CURVEBALL_TYPES kept only to distinguish
+# "genuinely no symbol agreed yet" (falls back to PLACEHOLDER_SYMBOL) from "not a device this
+# generator ever emits" (which would be a real bug, not a missing symbol).
 CURVEBALL_TYPES = {'VND', 'MUS', 'PAY', 'COF', 'TEA', 'PMP', 'CLK', 'MIC', 'RAD', 'MOO', 'LIN', 'FCL', 'AST', 'TTY', 'BUS', 'CAR', 'JET', 'TRK', 'DON'}
 
-# Per-type Unicode symbols, agreed with Robert 2026-07-13 (Phase 5 sign-off -- see
-# ansible/at_have_ryggen_fri/README.md's Backlog section). Two deliberate substitutions where the
-# literal thing Robert asked for isn't a real Unicode character: AT&T's logo and a British red
-# phonebox glyph don't exist as Unicode (same class of limitation that ruled out real Cisco
-# stencils for the main shape system) -- used the telephone-receiver emoji instead. Likewise no
-# Atari logo exists -- used a joystick, a non-trademarked stand-in for the same retro-computing
-# era. MUS (jukebox) has no agreed symbol yet -- stays PLACEHOLDER_SYMBOL, not a guess.
+# Per-type Unicode symbols. "Feel" over "official" -- Robert's own framing, 2026-07-13: these are
+# not meant to be literal/precise device iconography, just evocative enough to scan quickly. Full
+# reasoning and a human-browsable legend live in docs/emojis/README.md -- update both together.
+# A few deliberate substitutions where the literal thing asked for isn't a real Unicode character
+# (no AT&T logo, no British phonebox, no Atari logo, no jukebox glyph -- confirmed via search, not
+# assumed) are called out in docs/emojis/README.md, not repeated here.
 PLACEHOLDER_SYMBOL = "❓"  # ❓ -- pending sign-off, do not guess a replacement
 TYPE_SYMBOLS = {
-    'PAY': "☎️",   # no AT&T logo / red-phonebox glyph exists in Unicode -- telephone receiver instead
-    'MUS': "💿",   # no jukebox glyph exists in Unicode either (confirmed via search, not assumed) -- optical disc instead
-    'VND': "🍫",
-    'DON': "🍩",
-    'COF': "☕",
-    'TEA': "🫖",
-    'BUS': "🚌",
-    'CAR': "🚗",
-    'TRK': "🚚",
-    'JET': "✈️",   # the generic airport-signage aeroplane, as asked
-    'PMP': "⛽",
-    'CLK': "⏰",   # deliberately not 🕰️ -- that's already the Old Network box's own symbol
-    'MIC': "🎤",
-    'RAD': "📻",
-    'MOO': "🎹",
-    'FCL': "🎹",   # same symbol as MOO -- both "a keyboard", per Robert
-    'AST': "🕹️",   # no Atari logo in Unicode -- joystick as a non-trademarked stand-in
-    'LIN': "🥁",
-    'TTY': "🖥️",
-    'TAR': "💽",
-    'NIX': "🐧",
-    'VCU': "🎧",
+    # curveball / novelty (agreed 2026-07-13, Phase 5)
+    'PAY': "☎️", 'MUS': "💿", 'VND': "🍫", 'DON': "🍩", 'COF': "☕", 'TEA': "🫖",
+    'BUS': "🚌", 'CAR': "🚗", 'TRK': "🚚", 'JET': "✈️", 'PMP': "⛽", 'CLK': "⏰",
+    'MIC': "🎤", 'RAD': "📻", 'MOO': "🎹", 'FCL': "🎹", 'AST': "🕹️", 'LIN': "🥁",
+    'TAR': "💽", 'NIX': "🐧", 'VCU': "🎧",
+    'TTY': "⌨️",   # moved off 🖥️ once WKS claimed it below -- VT320 terminal, keyboard-forward feel
+
+    # network infra
+    'RTR': "📡", 'FWL': "🔥", 'SWI': "🔀",
+
+    # servers / compute / management
+    'DCS': "🗝️", 'DCR': "🗝️",           # domain controller -- directory/auth, same role either naming
+    'SVR': "🗄️", 'SRV': "🗄️",           # generic server
+    'PVE': "🗂️",                        # hypervisor -- layered/stacked feel, distinct from generic server
+    'RDR': "⚙️",                        # Rudder config-mgmt OR badge reader (devices.csv reuses RDR for
+                                         # both) -- "control" fits either well enough
+    'RRY': "🔁", 'ANS': "🤖", 'PBX': "🔌", 'DNS': "🧭", 'PRV': "📦",
+    'NAS': "🗃️", 'SBC': "🛡️", 'UFC': "🎛️", 'RAC': "🔧",
+
+    # wireless
+    'WAP': "📶",
+
+    # endpoints
+    'WKS': "🖥️", 'LAP': "💻", 'MBP': "💻", 'TAB': "📱", 'SUR': "🖊️", 'PHN': "📞",
+    'PRN': "🖨️", 'CAM': "🎥", 'LCD': "🖼️", 'TVS': "📺", 'MAC': "🍎", 'BPS': "🪪",
 }
 
 # Terms that must never appear in a New Network label -- FSMO roles and health/low-disk-space
@@ -84,18 +84,10 @@ TYPE_SYMBOLS = {
 BANNED_TERMS = re.compile(r'FSMO|DFSR|low disk|OOS \d|EOL\b|UNHEALTHY|out of sync', re.IGNORECASE)
 
 
-def shape_wrap(node_id: str, label: str, dtype: str) -> str:
-  if dtype in NET_TYPES:
-    return f'{node_id}{{{{"{label}"}}}}'
-  if dtype in SRV_TYPES:
-    return f'{node_id}[("{label}")]'
-  if dtype in WIRELESS_TYPES:
-    return f'{node_id}(("{label}"))'
-  if dtype in ENDPOINT_TYPES:
-    return f'{node_id}(["{label}"])'
-  if dtype in CURVEBALL_TYPES:
-    return f'{node_id}>"{label}"]'
-  raise ValueError(f"Unmapped device type for shape assignment: {dtype!r} (node {node_id})")
+def node_box(node_id: str, label: str) -> str:
+  """One uniform shape for every node -- a plain rounded rect. The emoji in the label carries the
+  "what kind of device is this" job now, not shape geometry (see TYPE_SYMBOLS above)."""
+  return f'{node_id}["{label}"]'
 
 
 def short_note(notes: str) -> str:
@@ -172,11 +164,12 @@ def render_new_network_block(site: str, sites_row: dict, devices_by_site: dict) 
   lines = [f'    subgraph NEW_{site} ["\U0001F195 New Network (current)"]']
   seen_ids = {}
   for dev in devices:
-    label = dev["hostname"]
+    parts = [dev["hostname"]]
     if dev["label_extra"]:
-      label += f'<br/>{dev["label_extra"]}'
+      parts.append(dev["label_extra"])
     if dev["octet"]:
-      label += f'<br/>.{dev["octet"]}'
+      parts.append(f'.{dev["octet"]}')
+    label = " · ".join(parts)  # single line -- · separator, not <br/> -- see node_box()
     if BANNED_TERMS.search(label):
       raise ValueError(f"Banned FSMO/health term found in New Network label for {site}: {label!r}")
 
@@ -189,9 +182,9 @@ def render_new_network_block(site: str, sites_row: dict, devices_by_site: dict) 
     elif dev["type"] in CURVEBALL_TYPES:
       symbol = PLACEHOLDER_SYMBOL  # curveball type with no agreed symbol yet (e.g. MUS) -- ask, don't guess
     else:
-      symbol = ""
+      raise ValueError(f"Device type {dev['type']!r} has no entry in TYPE_SYMBOLS (node {node_id}, site {site})")
     display_label = f"{symbol} {label}".strip()
-    lines.append(f'      {shape_wrap(node_id, display_label, dev["type"])}')
+    lines.append(f'      {node_box(node_id, display_label)}')
 
   if not devices:
     lines.append('      N_EMPTY["No confirmed devices in sites.csv/devices.csv yet"]')

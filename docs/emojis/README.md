@@ -1,0 +1,102 @@
+# Network Diagram Icon Legend
+
+> **Classification:** Internal — Infrastructure  
+> **Applies to:** [`../network-diagram.md`](../network-diagram.md) — every node in every Old
+> Network and New Network box  
+> **Generated from:** `benarbejde/generate_network_diagrams.py`'s `TYPE_SYMBOLS` dict — this file
+> is the human-readable legend for that table; keep both in sync if either changes
+
+**These are "feel," not "official."** Robert's framing, 2026-07-13: nobody is trying to draw
+precise device iconography here, just something evocative enough to scan a 50-node diagram
+quickly. If a symbol doesn't feel right, that's a legitimate reason to change it — there's no
+"correct" answer being approximated.
+
+**Real Unicode characters only.** No FontAwesome/iconify syntax, no actual vendor logos — see
+`../network-diagram.md`'s Visual Standard section for why (tested live, both fail to render
+reliably through the kroki.io pipeline this repo relies on, and vendor logos are trademarked
+regardless). A few of the things asked for don't exist as Unicode characters at all — noted below,
+not silently swapped without explanation.
+
+## Curveball / novelty devices
+
+| Type | Symbol | Device | Notes |
+|---|---|---|---|
+| PAY | ☎️ | Payphone | No AT&T logo or British red-phonebox glyph exists in Unicode — telephone receiver instead |
+| MUS | 💿 | Jukebox | No jukebox glyph exists in Unicode either — confirmed via web search, not assumed — optical disc instead |
+| VND | 🍫 | Vending machine | |
+| DON | 🍩 | Doughnut vending | |
+| COF | ☕ | Coffee machine | |
+| TEA | 🫖 | Tea/coffee machine | |
+| BUS | 🚌 | Tour bus | |
+| CAR | 🚗 | Car | |
+| TRK | 🚚 | Truck | |
+| JET | ✈️ | Jet | The generic airport-signage aeroplane, as asked |
+| PMP | ⛽ | Petrol pump | |
+| CLK | ⏰ | Embedded NTP clock | Deliberately not 🕰️ — that's the Old Network box's own symbol |
+| MIC | 🎤 | Microphone | |
+| RAD | 📻 | Radio | |
+| MOO | 🎹 | Moog synth | Same symbol as FCL — both "a keyboard," per Robert |
+| FCL | 🎹 | Fairlight CMI | Same symbol as MOO |
+| AST | 🕹️ | Atari ST | No Atari logo in Unicode — joystick as a non-trademarked stand-in for the same retro-computing era |
+| LIN | 🥁 | Drum machine | |
+| TTY | ⌨️ | VT320 serial terminal | |
+
+## Network infrastructure
+
+| Type | Symbol | Device |
+|---|---|---|
+| RTR | 📡 | Router |
+| FWL | 🔥 | Firewall |
+| SWI | 🔀 | Switch |
+
+## Servers / compute / management
+
+| Type | Symbol | Device | Notes |
+|---|---|---|---|
+| DCS | 🗝️ | Domain controller (current naming) | |
+| DCR | 🗝️ | Domain controller (legacy naming) | Same symbol as DCS — same role |
+| SVR | 🗄️ | Generic server | |
+| SRV | 🗄️ | Generic server | Same symbol as SVR |
+| PVE | 🗂️ | Proxmox hypervisor node | Layered/stacked feel, deliberately distinct from a generic server |
+| RDR | ⚙️ | Rudder (config mgmt) **or** badge reader | `devices.csv` reuses the `RDR` type code for both a genuinely different things — "control" fits either reasonably well |
+| RRY | 🔁 | Rudder Relay | |
+| ANS | 🤖 | Ansible control node | |
+| PBX | 🔌 | Phone exchange (3CX PBX) | |
+| DNS | 🧭 | DNS server | |
+| PRV | 📦 | Provisioning server | |
+| NAS | 🗃️ | Network storage | |
+| SBC | 🛡️ | Session Border Controller | "Border controller" — a boundary/edge device |
+| UFC | 🎛️ | UniFi Network Controller (WiFi mgmt) | |
+| RAC | 🔧 | BMC / iDRAC / iLO | |
+| TAR | 💽 | Tape archive | |
+
+## Wireless
+
+| Type | Symbol | Device |
+|---|---|---|
+| WAP | 📶 | Wireless access point |
+
+## Endpoints
+
+| Type | Symbol | Device | Notes |
+|---|---|---|---|
+| WKS | 🖥️ | Workstation | |
+| LAP | 💻 | Laptop | |
+| MBP | 💻 | MacBook Pro | Same symbol as LAP |
+| TAB | 📱 | Tablet | |
+| SUR | 🖊️ | Microsoft Surface | Stylus — Surface devices are known for pen input |
+| PHN | 📞 | Office/desk phone | Distinct from PAY's ☎️ (payphone) and PBX's 🔌 (exchange) |
+| PRN | 🖨️ | Printer | |
+| CAM | 🎥 | CCTV camera | |
+| LCD | 🖼️ | Digital signage / display | |
+| TVS | 📺 | TV display | |
+| MAC | 🍎 | Apple/iMac | Generic red-apple emoji, not Apple Inc.'s trademarked logo |
+| BPS | 🪪 | Badge programming station | |
+| NIX | 🐧 | MIDI archive (\*nix-adjacent) | |
+| VCU | 🎧 | Video conferencing unit | |
+
+## Not yet decided
+
+| Type | Symbol | Device | Status |
+|---|---|---|---|
+| — | ❓ | *(none currently)* | Placeholder used only when a genuinely new device type appears with no agreed symbol yet — see `ansible/at_have_ryggen_fri/README.md`'s Backlog section if one shows up |

@@ -43,6 +43,7 @@
 | [INCIDENT-LOG.md](INCIDENT-LOG.md) | OPS-INC-001 | Blameless incident log — chronological, oldest first; what went wrong, root cause, and what changed as a result |
 | [network-diagram.md](network-diagram.md) | NET-DIAG-001 | Per-site network diagrams (mermaid) — Old Network (legacy) + New Network (generated from sites.csv/devices.csv) |
 | [network-cutover.md](network-cutover.md) | NET-DIAG-002 | Old-vs-New Network diagram disagreements — what to check before cutover so a network doesn't go down |
+| [emojis/README.md](emojis/README.md) | NET-DIAG-003 | Icon legend for network-diagram.md's device symbols — what each emoji means and why |
 | [example_music_branding_guide.md](example_music_branding_guide.md) | NET-BRAND-001 | 1980s touring-identity branding guide — livery, colours, fonts |
 | [gitleaks_guide.md](gitleaks_guide.md) | NET-TOOL-GITLEAKS-001 | Gitleaks pre-commit secret-scanning guide (Windows) |
 | [Example Music Limited — KeePassXC CLI Automation.md](Example%20Music%20Limited%20%E2%80%94%20KeePassXC%20CLI%20Automation.md) | NET-TOOL-KEEPASS-001 | KeePassXC CLI automation — Python wrapper for scripted credential retrieval |
