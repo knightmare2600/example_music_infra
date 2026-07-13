@@ -102,8 +102,10 @@ write-up.
       assumed — no Unicode jukebox emoji exists) — same class of limitation
       that ruled out real Cisco stencils for the shape system. Substituted a
       telephone receiver, a joystick, and an optical disc respectively,
-      flagged as such rather than silently picked. Visual read-through of a
-      finished diagram together not yet done — the one item left.
+      flagged as such rather than silently picked. Visual read-through of
+      FAL's finished diagram done together 2026-07-13 (published as a Claude
+      Artifact, rendered from the committed doc via the same kroki.io
+      round-trip check_mermaid.py uses) — Phase 5, and this plan, complete.
 
 ## Methodology — what does "a good run" actually mean?
 
