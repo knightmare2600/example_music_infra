@@ -35,6 +35,13 @@ repo's history:
   cause — found 2026-07-12 when `ansible-id_rsa` went missing on
   `EXAANSCLD001` mid real-node test (see `check_ssh_keys.py` and
   `ansible/tasks/ssh_key_preflight.yml`).
+- A mermaid diagram that looks fine to read but genuinely fails to render
+  — literal `\n` instead of `<br/>`, a backslash-escaped quote, an
+  unquoted `(` inside a pipe-delimited edge label — none of which any
+  YAML/Ansible-structural check could ever catch, since the failure is
+  only real against Mermaid's own parser. Found across 49 diagrams,
+  2026-07-12, after Robert spotted one broken on GitHub (see
+  `check_mermaid.py`).
 
 Phases 1 (repo-wide reference/data integrity), 2 (the estate's bare-metal
 bootstrap scenarios as repeatable checks), and an initial repo-wide sweep
@@ -53,8 +60,11 @@ un-audited procedure docs (buildsheets for domain controllers/server/
 winadmin/workstation, the `proxmox_zabbix_cleanup/` procedures, the
 Windows-side `bootstrap/` build guides), and any further findings.
 
-Nothing here touches a real host, needs a vault password, or needs network
-access beyond `localhost` — safe to run on any clone, any time.
+Nothing here touches a real host or needs a vault password. One exception to
+"network access beyond `localhost`": check 13 (`check_mermaid.py`) genuinely
+needs to reach `kroki.io` to render-test mermaid diagrams — see its own
+section below for why, and how that's handled safely. Everything else is
+still safe to run on any clone, any time, no network required.
 
 ## Methodology — what does "a good run" actually mean?
 
@@ -191,6 +201,7 @@ prompted fixing that buildsheet the same day — see the git log around
 | 10 | Site data | `check_site_data.py` — reads `benarbejde/sites.csv` fresh every run (not a frozen snapshot): every `Site` code appears somewhere in `docs/*.md`, and every doc line naming exactly one site code alongside a literal IP has the right third octet for that site. Knows about the estate's real, deliberate exceptions (CLD is dual-homed LAN+vRACK; every site's firewall also has a WAN IP on the provisioning network at `192.168.139.<its own octet>`) so it doesn't flag those as mismatches. Lines asserting more than 3 literal IPs (multi-site `sed`/config-edit commands) are skipped for the octet check — too ambiguous to attribute safely — but still count toward coverage |
 | 11 | SSH keypair | `check_ssh_keys.py` — two tiers. Clone-safe (real failure): `bootstrap/web/ansible_sshkey.pub` (the estate's one committed, HTTP-servable public key) is checked against all four `VRK-`/`FRD-answer.toml` + `VRK-`/`FRD-degraded.toml` `root-ssh-keys` copies — every file says "keep in sync if rotated" in its own comments; this confirms that promise holds. Host-local (informational unless `--strict`): is `ansible.cfg`'s configured `private_key_file` actually present on *this* host — resolved via `ansible-config dump`, not a second hardcoded copy of the setting. Missing on a bare clone is expected; missing on the real control node is what actually happened 2026-07-12 (EXAANSCLD001, see `ansible/tasks/ssh_key_preflight.yml`'s header) and is what `--strict` is for. If missing, scans `~/.ssh/` for a plausible candidate keypair (`.pub` comment containing "exa") and reports it |
 | 12 | `playbook_dir`-relative paths | `check_playbook_dir_paths.py` — every `"{{ playbook_dir }}/../.../X"` expression (used with `read_csv`/`lookup('file', ...)`/a shell command — not the literal `src:`/`include_tasks:` paths check 3 already covers) is resolved against the file's real location and confirmed to exist. Found the hard way, 2026-07-12: `bootstrap-new-node.yml`'s `sites_csv_src` had one extra level of `../` copy-pasted from `00-preflight.yml` (which lives one directory deeper) — invisible to both `--syntax-check` (doesn't execute tasks) and check 3 (Jinja, not literal) until a real run finally reached that task for the first time |
+| 13 | Mermaid diagrams | `check_mermaid.py` — **the one check here that needs real network access.** Every ```` ```mermaid ```` block in every git-tracked `*.md` file is actually POSTed to `kroki.io` and confirmed to render, not just locally syntax-guessed (no mermaid parser is vendored here, and mermaid's grammar has real gotchas no structural YAML/Ansible check could ever catch). Found 3 genuine syntax bugs across the repo's 49 diagrams this way: literal `\n` instead of `<br/>` for label line breaks (938 occurrences), a backslash-escaped quote, and an unquoted `(` inside a pipe-delimited edge label. Results are cached by content hash (`reports/.mermaid_cache.json`, gitignored) so only new/changed diagrams actually hit kroki.io on a given run. A genuine render failure always fails the check; `kroki.io` being unreachable is informational unless `--strict` is passed |
 
 ## Design notes
 

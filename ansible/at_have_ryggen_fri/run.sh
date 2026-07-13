@@ -61,9 +61,23 @@
 #      bugs -- found the hard way in bootstrap-new-node.yml, invisible to
 #      both check 2 (--syntax-check doesn't execute tasks) and check 3
 #      (Jinja, not literal) until a real run finally reached the task.
+#  13. check_mermaid.py -- THE ONE EXCEPTION to "no network beyond
+#      localhost": every ```mermaid block in every git-tracked *.md file
+#      is actually rendered via kroki.io and confirmed to succeed, not
+#      just locally syntax-guessed. Found 3 real, otherwise-invisible
+#      Mermaid syntax bugs across 49 diagrams this way (literal \n instead
+#      of <br/>, a backslash-escaped quote, an unquoted paren inside a
+#      pipe-delimited edge label). Results cached by content hash so only
+#      new/changed diagrams actually hit kroki.io on a given run. A
+#      genuine render failure (HTTP 400, real syntax error) always fails
+#      the check; kroki.io being unreachable is informational unless
+#      --strict is passed.
 #
-# Nothing here touches a real host, needs a vault password, or needs network
-# access beyond localhost -- safe to run any time, by anyone, on any clone.
+# Nothing here touches a real host or needs a vault password. ONE exception to
+# "network access beyond localhost": check 13 (check_mermaid.py) genuinely
+# needs to reach kroki.io to render-test every mermaid diagram -- see its own
+# header for why a local syntax guess isn't good enough. Everything else is
+# still safe to run any time, by anyone, on any clone, no network required.
 #
 # Usage:
 #   ./run.sh
@@ -109,6 +123,17 @@
 #               had nowhere durable to land once terminal scrollback was
 #               gone. --no-report added to skip it for callers that already
 #               capture output themselves.
+#   2026-07-12  Added check_mermaid.py (section 13), per Robert's ask after
+#               fixing 3 real Mermaid syntax bugs across the repo's 49
+#               diagrams by hand (literal \n, a backslash-escaped quote, an
+#               unquoted paren in a pipe-delimited edge label) -- none of
+#               which any structural check here could have caught, since
+#               they're only real failures against Mermaid's actual parser,
+#               not this repo's own YAML/Ansible structure. The one check in
+#               this harness that needs real network access (kroki.io) --
+#               see its own header for how that's handled safely (cached,
+#               --strict-gated on network failure specifically, always hard
+#               fails on a genuine syntax error).
 #   2026-07-12  Added check_playbook_dir_paths.py (section 12) after
 #               bootstrap-new-node.yml's sites_csv_src turned out to have
 #               one extra level of ../ the whole time (copy-pasted from
@@ -431,6 +456,27 @@ else
   echo "$out"
   fail "Unresolved playbook_dir-relative path(s) -- see above."
   FAILED_CHECKS+=("check_playbook_dir_paths.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 13. Mermaid diagram render check — check_mermaid.py
+# ------------------------------------------------------------------------------
+section "13. Mermaid diagrams — check_mermaid.py"
+
+mermaid_args=()
+$STRICT && mermaid_args+=("--strict")
+if out=$(python3 "${HERE}/check_mermaid.py" "${mermaid_args[@]}"); then
+  echo "$out"
+  success "All mermaid diagrams render successfully (or unreachable ones are informational only)."
+else
+  echo "$out"
+  if echo "$out" | grep -q "genuine syntax error"; then
+    fail "One or more mermaid diagrams have a real syntax error -- see above."
+    FAILED_CHECKS+=("check_mermaid.py")
+  else
+    fail "kroki.io was unreachable for one or more diagrams -- see above. Failing because --strict was passed."
+    FAILED_CHECKS+=("check_mermaid.py (--strict: kroki.io unreachable)")
+  fi
 fi
 
 # ------------------------------------------------------------------------------
