@@ -7,7 +7,7 @@
 
 ---
 
-## BRT — Beirut
+## BRT — Beirut 🌲
 
 **LAN:** `192.168.169.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  

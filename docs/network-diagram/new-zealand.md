@@ -7,7 +7,7 @@
 
 ---
 
-## AKL — Auckland ⚠️
+## AKL — Auckland ⚠️ ⛵
 
 **LAN:** `192.168.93.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  

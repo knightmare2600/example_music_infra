@@ -7,7 +7,7 @@
 
 ---
 
-## AMS — Amsterdam
+## AMS — Amsterdam 🚲
 
 **LAN:** `192.168.31.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  

@@ -7,7 +7,7 @@
 
 ---
 
-## SYD — Sydney ⚠️
+## SYD — Sydney ⚠️ 🎭
 
 **LAN:** `192.168.29.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
@@ -80,7 +80,7 @@ graph TD
 
 ---
 
-## MEL — Melbourne ⚠️
+## MEL — Melbourne ⚠️ 🎨
 
 **LAN:** `192.168.61.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
