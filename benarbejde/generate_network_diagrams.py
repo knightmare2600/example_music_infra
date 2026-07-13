@@ -76,7 +76,7 @@ CURVEBALL_TYPES = {'VND', 'MUS', 'PAY', 'COF', 'TEA', 'PMP', 'CLK', 'MIC', 'RAD'
 PLACEHOLDER_SYMBOL = "❓"  # ❓ -- pending sign-off, do not guess a replacement
 TYPE_SYMBOLS = {
     # curveball / novelty (agreed 2026-07-13, Phase 5)
-    'PAY': "☎️", 'MUS': "💿", 'VND': "🍫", 'DON': "🍩", 'COF': "☕", 'TEA': "🫖",
+    'PAY': "☎️", 'MUS': "💿", 'VND': "🍫", 'DON': "🍩", 'COF': "🍵", 'TEA': "🫖",  # COF: teacup-without-handle -- reads more like a coffee mug than ☕ did, per Robert 2026-07-13
     'BUS': "🚌", 'CAR': "🚗", 'TRK': "🚚", 'JET': "✈️", 'PMP': "⛽", 'CLK': "⏰",
     'MIC': "🎤", 'RAD': "📻", 'MOO': "🎹", 'FCL': "🎹", 'AST': "🕹️", 'LIN': "🥁",
     'TAR': "💽", 'NIX': "🐧", 'VCU': "🎧",
