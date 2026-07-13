@@ -295,10 +295,10 @@ FAL, ODE, and BRK are **AD / service hubs** — they host key AD roles, DFS name
 
 ```mermaid
 graph TD
-    CLD["🏴󠁧󠁢󠁳󠁣󠁴󠁿 CLD — Edinburgh\nvRACK (VRK): 192.168.139.0/24\nLAN: 192.168.69.0/24\n★ Sole WireGuard hub — all sites connect here"]
+    CLD["🏴󠁧󠁢󠁳󠁣󠁴󠁿 CLD — Edinburgh<br/>vRACK (VRK): 192.168.139.0/24<br/>LAN: 192.168.69.0/24<br/>★ Sole WireGuard hub — all sites connect here"]
 
     subgraph UK ["🇬🇧 United Kingdom"]
-        FAL["FAL · Falkirk · .76\n★ AD hub"]
+        FAL["FAL · Falkirk · .76<br/>★ AD hub"]
         EDI["EDI · Edinburgh · .131"]
         GLA["GLA · Glasgow · .141"]
         CLY["CLY · Clydebank · .41"]
@@ -317,7 +317,7 @@ graph TD
     end
 
     subgraph EU ["🇪🇺 Europe"]
-        ODE["ODE · Odense · .126\n★ AD hub"]
+        ODE["ODE · Odense · .126<br/>★ AD hub"]
         CPH["CPH · Copenhagen · .231"]
         KGE["KGE · Køge · .65"]
         FAX["FAX · Faxe · .246"]
@@ -337,7 +337,7 @@ graph TD
     end
 
     subgraph NAAPAC ["🌎 Americas, APAC & Middle East"]
-        BRK["BRK · Brockville · .136\n★ AD hub"]
+        BRK["BRK · Brockville · .136<br/>★ AD hub"]
         TOR["TOR · Toronto · .146"]
         MTL["MTL · Montréal · .154"]
         NYC["NYC · New York · .212"]
@@ -352,9 +352,9 @@ graph TD
         BRT["BRT · Beirut · .169"]
     end
 
-    CLD <-->|WireGuard\n(all sites direct)| FAL
-    CLD <-->|WireGuard\n(all sites direct)| ODE
-    CLD <-->|WireGuard\n(all sites direct)| BRK
+    CLD <-->|WireGuard<br/>(all sites direct)| FAL
+    CLD <-->|WireGuard<br/>(all sites direct)| ODE
+    CLD <-->|WireGuard<br/>(all sites direct)| BRK
 ```
 
 > **Reading this diagram:** Lines from CLD to FAL, ODE, and BRK are shown as representatives. In practice, every site in each group also maintains its own direct WireGuard tunnel to CLD. The lines are not WireGuard hops — they are logical groupings by AD / service region.
