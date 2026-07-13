@@ -72,6 +72,21 @@
 #      genuine render failure (HTTP 400, real syntax error) always fails
 #      the check; kroki.io being unreachable is informational unless
 #      --strict is passed.
+#  14. check_network_diagram_freshness.py -- the "New Network (current)"
+#      subgraph in every site section of docs/network-diagram.md (wrapped in
+#      %% GENERATED:NEW-NETWORK:<SITE>:START/END marker comments) is
+#      re-derivable byte-for-byte from benarbejde/sites.csv+devices.csv+
+#      address_policy.json via generate_network_diagrams.py -- same
+#      "edited the source, forgot to regenerate" class check 6 already
+#      catches for the Ansible inventory, applied to the diagrams.
+#  15. check_network_diagram_content.py -- independently scans (not just a
+#      second run of the generator) every committed New Network block for
+#      two invariants from the Visual Standard: no FSMO/health/low-disk-
+#      space terms ever appear (that data is old-infra-only, per Robert's
+#      2026-07-13 instruction), and every node uses one of the five
+#      approved shape wrappers. Catches drift a freshness diff alone
+#      wouldn't explain, and a hand-edit that bypasses the generator
+#      entirely.
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -163,6 +178,17 @@
 #               192.168.139.<site's own octet> (see
 #               docs/inventory/EXADNSVRK001-dns.md) -- the checker now knows
 #               to treat that pattern as correct, not a mismatch.
+#   2026-07-13  Added check_network_diagram_freshness.py and
+#               check_network_diagram_content.py (sections 14-15), landing
+#               alongside benarbejde/generate_network_diagrams.py and the
+#               "New Network (current)" box added to every site in
+#               docs/network-diagram.md. Per Robert's ask: box the old,
+#               sparse, hand-maintained diagrams as clearly-legacy, generate
+#               a current-state counterpart from sites.csv/devices.csv, and
+#               keep both in sync going forward rather than letting them
+#               drift apart again the way the .ini/legend files already had
+#               (see docs/network-cutover.md -- 18 sites' old diagrams had
+#               RTR and FWL's octets genuinely backwards).
 # ==============================================================================
 set -uo pipefail
 
@@ -477,6 +503,34 @@ else
     fail "kroki.io was unreachable for one or more diagrams -- see above. Failing because --strict was passed."
     FAILED_CHECKS+=("check_mermaid.py (--strict: kroki.io unreachable)")
   fi
+fi
+
+# ------------------------------------------------------------------------------
+# 14. Network diagram freshness — check_network_diagram_freshness.py
+# ------------------------------------------------------------------------------
+section "14. Network diagram freshness — check_network_diagram_freshness.py"
+
+if out=$(python3 "${HERE}/check_network_diagram_freshness.py"); then
+  echo "$out"
+  success "docs/network-diagram.md's New Network boxes are fresh."
+else
+  echo "$out"
+  fail "docs/network-diagram.md's New Network box(es) have drifted from sites.csv/devices.csv -- see above."
+  FAILED_CHECKS+=("check_network_diagram_freshness.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 15. Network diagram content invariants — check_network_diagram_content.py
+# ------------------------------------------------------------------------------
+section "15. Network diagram content invariants — check_network_diagram_content.py"
+
+if out=$(python3 "${HERE}/check_network_diagram_content.py"); then
+  echo "$out"
+  success "No banned FSMO/health terms found; every New Network node uses an approved shape."
+else
+  echo "$out"
+  fail "New Network content invariant violation(s) -- see above."
+  FAILED_CHECKS+=("check_network_diagram_content.py")
 fi
 
 # ------------------------------------------------------------------------------

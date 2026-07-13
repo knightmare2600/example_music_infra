@@ -42,6 +42,11 @@ repo's history:
   only real against Mermaid's own parser. Found across 49 diagrams,
   2026-07-12, after Robert spotted one broken on GitHub (see
   `check_mermaid.py`).
+- `docs/network-diagram.md`'s hand-maintained per-site diagrams silently
+  drifting from what `sites.csv`/`devices.csv` actually say is current —
+  18 sites' diagrams had `RTR`/`FWL` genuinely swapped relative to
+  `address_policy.json`'s real convention, invisible until the two were
+  compared side by side. See `docs/network-cutover.md` and checks 14–15.
 
 Phases 1 (repo-wide reference/data integrity), 2 (the estate's bare-metal
 bootstrap scenarios as repeatable checks), and an initial repo-wide sweep
@@ -65,6 +70,35 @@ Nothing here touches a real host or needs a vault password. One exception to
 needs to reach `kroki.io` to render-test mermaid diagrams — see its own
 section below for why, and how that's handled safely. Everything else is
 still safe to run on any clone, any time, no network required.
+
+## Backlog
+
+Tracks work agreed with Robert but not (yet) fully done. This is the agreed
+home for tracking this specific piece of work — see the plan for the full
+write-up.
+
+**Network diagram standardisation** (started 2026-07-12/13):
+
+- [x] Phase 1 — Old Network box + standard shapes/colours + per-site legend
+      on all 47 existing `network-diagram.md` sites, plus a colour-only pass
+      on the two site-to-hub topology diagrams (`buildsheet-firewall.md`,
+      `ExampleMusic_Beginners_Guide.md` §6.1).
+- [x] Phase 2 — `benarbejde/generate_network_diagrams.py`: New Network box
+      generated from `sites.csv`/`devices.csv`/`address_policy.json` for all
+      51 sites that have one, including the 4 genuine new-build sites (FRD,
+      NYB, SEA, SFO — confirmed by Robert, not a data gap) getting a
+      "New Build Location" placeholder in place of Old Network.
+- [x] Phase 3 — `docs/network-cutover.md`, built from a real Old-vs-New
+      octet comparison (18 sites' RTR/FWL swap, 2 site-specific collisions,
+      6 sites' DCR→DCS rename explicitly excluded as not-a-conflict).
+- [x] Phase 4 — checks 14–15 (`check_network_diagram_freshness.py`,
+      `check_network_diagram_content.py`) wired into `run.sh`.
+- [ ] Phase 5 — joint icon/curveball sign-off with Robert: every curveball
+      device (payphones, vending machines, FAL's tour-bus/car/truck/jet
+      fleet, BIR's synth collection, etc.) currently renders with a `❓`
+      placeholder symbol in its New Network label pending an agreed Unicode
+      symbol per type. Visual read-through of FAL and CLD's finished
+      diagrams together, not yet done.
 
 ## Methodology — what does "a good run" actually mean?
 
@@ -202,6 +236,8 @@ prompted fixing that buildsheet the same day — see the git log around
 | 11 | SSH keypair | `check_ssh_keys.py` — two tiers. Clone-safe (real failure): `bootstrap/web/ansible_sshkey.pub` (the estate's one committed, HTTP-servable public key) is checked against all four `VRK-`/`FRD-answer.toml` + `VRK-`/`FRD-degraded.toml` `root-ssh-keys` copies — every file says "keep in sync if rotated" in its own comments; this confirms that promise holds. Host-local (informational unless `--strict`): is `ansible.cfg`'s configured `private_key_file` actually present on *this* host — resolved via `ansible-config dump`, not a second hardcoded copy of the setting. Missing on a bare clone is expected; missing on the real control node is what actually happened 2026-07-12 (EXAANSCLD001, see `ansible/tasks/ssh_key_preflight.yml`'s header) and is what `--strict` is for. If missing, scans `~/.ssh/` for a plausible candidate keypair (`.pub` comment containing "exa") and reports it |
 | 12 | `playbook_dir`-relative paths | `check_playbook_dir_paths.py` — every `"{{ playbook_dir }}/../.../X"` expression (used with `read_csv`/`lookup('file', ...)`/a shell command — not the literal `src:`/`include_tasks:` paths check 3 already covers) is resolved against the file's real location and confirmed to exist. Found the hard way, 2026-07-12: `bootstrap-new-node.yml`'s `sites_csv_src` had one extra level of `../` copy-pasted from `00-preflight.yml` (which lives one directory deeper) — invisible to both `--syntax-check` (doesn't execute tasks) and check 3 (Jinja, not literal) until a real run finally reached that task for the first time |
 | 13 | Mermaid diagrams | `check_mermaid.py` — **the one check here that needs real network access.** Every ```` ```mermaid ```` block in every git-tracked `*.md` file is actually POSTed to `kroki.io` and confirmed to render, not just locally syntax-guessed (no mermaid parser is vendored here, and mermaid's grammar has real gotchas no structural YAML/Ansible check could ever catch). Found 3 genuine syntax bugs across the repo's 49 diagrams this way: literal `\n` instead of `<br/>` for label line breaks (938 occurrences), a backslash-escaped quote, and an unquoted `(` inside a pipe-delimited edge label. Results are cached by content hash (`reports/.mermaid_cache.json`, gitignored) so only new/changed diagrams actually hit kroki.io on a given run. A genuine render failure always fails the check; `kroki.io` being unreachable is informational unless `--strict` is passed |
+| 14 | Network diagram freshness | `check_network_diagram_freshness.py` — regenerates every site's "New Network (current)" mermaid subgraph in `docs/network-diagram.md` (via `benarbejde/generate_network_diagrams.py`, marker-wrapped in `%% GENERATED:NEW-NETWORK:<SITE>:START/END`) into a scratch copy and diffs against committed — same "edited the source, forgot to regenerate" class as check 6, applied to the diagrams |
+| 15 | Network diagram content invariants | `check_network_diagram_content.py` — independently scans (doesn't just re-run the generator) every committed New Network block for two invariants from `network-diagram.md`'s Visual Standard: no FSMO/health/low-disk-space terms ever appear (that data is old-infra-only), and every node uses one of the five approved shape wrappers (hexagon/cylinder/circle/stadium/asymmetric flag) |
 
 ## Design notes
 
