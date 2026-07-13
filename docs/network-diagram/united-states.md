@@ -82,7 +82,7 @@ graph TD
 
 ---
 
-## NYC — New York ⚠️
+## NYC — New York ⚠️ 🗽
 
 **LAN:** `192.168.212.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
@@ -129,7 +129,7 @@ graph TD
 
 ---
 
-## NJC — New Jersey ⚠️
+## NJC — New Jersey ⚠️ 🚕
 
 **LAN:** `192.168.201.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
@@ -192,7 +192,7 @@ graph TD
       SBC["🛡️ EXASBCMIA001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYMIA001 · Rudder Relay · .12"]
       LAP["💻 EXALAPMIA001 · macOS Sonoma Laptop · .21"]
-      COF["☕ EXACOFMIA001 · Cuban Covfefe Machine · VxWorks · .60"]
+      COF["🍵 EXACOFMIA001 · Cuban Covfefe Machine · VxWorks · .60"]
       WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
       CAM["CAMs TODO"]
       VPN["🔗 WireGuard → BRK"]
@@ -215,7 +215,7 @@ graph TD
       N_FWL["🧱 EXAFWLMIA001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLMIA002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEMIA001 · PVE 1 · .5"]
-      N_COF["☕ EXACOFMIA001 · Coffee machine · .60"]
+      N_COF["🍵 EXACOFMIA001 · Coffee machine · .60"]
       N_LAP["💻 EXALAPMIA001 · MacBook"]
     end
     style NEW_MIA fill:#E69F00,stroke:#D55E00,color:#000000

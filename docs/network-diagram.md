@@ -43,7 +43,7 @@ two or three. Shorter boxes, same information.
 |---|---|---|---|---|---|---|---|
 | 🕰️ | mantelpiece clock | | 🆕 | a "NEW" badge | | 🏗️ | building under construction (crane) |
 | ☎️ | old-style telephone | | 💽 | a mini optical disc | | 🍫 | chocolate bar |
-| 🍩 | ring doughnut | | ☕ | steaming hot drink in a cup | | 🫖 | teapot |
+| 🍩 | ring doughnut | | 🍵 | teacup without handle | | 🫖 | teapot |
 | 🚌 | bus | | 🚗 | car | | 🚚 | delivery van/truck |
 | ✈️ | aeroplane | | ⛽ | fuel pump | | ⏰ | alarm clock |
 | 🎤 | handheld microphone | | 📻 | portable radio | | 🎹 | piano/synth keyboard |
@@ -73,7 +73,7 @@ two or three. Shorter boxes, same information.
 - [CLD — Cloud / Provisioning](network-diagram/cld.md#cld--cloud--provisioning)
 
 ### 🏴󠁧󠁢󠁳󠁣󠁴󠁿 [Scotland](network-diagram/scotland.md)
-- [FAL — Falkirk *(Head Office)*](network-diagram/scotland.md#fal--falkirk-head-office-)
+- [FAL — Falkirk *(Head Office)*](network-diagram/scotland.md#fal--falkirk-head-office--)
 - [EDI — Edinburgh](network-diagram/scotland.md#edi--edinburgh-)
 - [GLA — Glasgow](network-diagram/scotland.md#gla--glasgow)
 - [CLY — Clydebank](network-diagram/scotland.md#cly--clydebank)
@@ -82,7 +82,7 @@ two or three. Shorter boxes, same information.
 - [ABD — Aberdeen](network-diagram/scotland.md#abd--aberdeen)
 
 ### 🏴󠁧󠁢󠁥󠁮󠁧󠁿 [England](network-diagram/england.md)
-- [LND — London](network-diagram/england.md#lnd--london)
+- [LND — London](network-diagram/england.md#lnd--london-)
 - [BIR — Birmingham](network-diagram/england.md#bir--birmingham)
 - [MCR — Manchester](network-diagram/england.md#mcr--manchester)
 - [LIV — Liverpool](network-diagram/england.md#liv--liverpool)
@@ -94,7 +94,7 @@ two or three. Shorter boxes, same information.
 
 ### 🇩🇰 [Danmark](network-diagram/danmark.md)
 - [CPH — København](network-diagram/danmark.md#cph--kbenhavn)
-- [ODE — Odense *(EU Hub)*](network-diagram/danmark.md#ode--odense-eu-hub-)
+- [ODE — Odense *(EU Hub)*](network-diagram/danmark.md#ode--odense-eu-hub--)
 - [KGE — Køge](network-diagram/danmark.md#kge--kge-)
 - [FAX — Faxe](network-diagram/danmark.md#fax--faxe)
 - [KOR — Korsør](network-diagram/danmark.md#kor--korsr)
@@ -135,8 +135,8 @@ two or three. Shorter boxes, same information.
 
 ### 🇺🇸 [United States](network-diagram/united-states.md)
 - [LAX — Los Angeles](network-diagram/united-states.md#lax--los-angeles-)
-- [NYC — New York](network-diagram/united-states.md#nyc--new-york-)
-- [NJC — New Jersey](network-diagram/united-states.md#njc--new-jersey-)
+- [NYC — New York](network-diagram/united-states.md#nyc--new-york--)
+- [NJC — New Jersey](network-diagram/united-states.md#njc--new-jersey--)
 - [MIA — Miami](network-diagram/united-states.md#mia--miami)
 - [ATL — Atlanta](network-diagram/united-states.md#atl--atlanta-)
 - [CHI — Chicago](network-diagram/united-states.md#chi--chicago-)

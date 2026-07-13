@@ -32,7 +32,7 @@ diagram change in this repo.
 | MUS | 💿 | Jukebox | No jukebox glyph exists in Unicode either — confirmed via web search, not assumed — optical disc instead |
 | VND | 🍫 | Vending machine | |
 | DON | 🍩 | Doughnut vending | |
-| COF | ☕ | Coffee machine | |
+| COF | 🍵 | Coffee machine | Teacup-without-handle — reads more like a coffee mug than ☕ did, per Robert. Was ☕, changed 2026-07-13 |
 | TEA | 🫖 | Tea/coffee machine | |
 | BUS | 🚌 | Tour bus | |
 | CAR | 🚗 | Car | |

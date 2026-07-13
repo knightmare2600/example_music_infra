@@ -37,7 +37,7 @@ graph TD
       CAM["🎥 EXACAMAKL001 · Axis Camera · .82"]
       LCD["🖼️ EXALCDAKL001 · Samsung Signage · .70"]
       PRN["🖨️ EXAPRNAKL001 · HP LaserJet · .80"]
-      COF["☕ EXACOFAKL001 · Smart Coffee Machine · .83"]
+      COF["🍵 EXACOFAKL001 · Smart Coffee Machine · .83"]
       VPN["🔗 WireGuard → BRK"]
 
       INET --> RTR --> FWL --> SW1 & SW2
@@ -70,7 +70,7 @@ graph TD
       N_LCD["🖼️ EXALCDAKL001 · Signage display"]
       N_PRN["🖨️ EXAPRNAKL001 · LaserJet printer"]
       N_CAM["🎥 EXACAMAKL001 · Camera"]
-      N_COF["☕ EXACOFAKL001 · Coffee machine"]
+      N_COF["🍵 EXACOFAKL001 · Coffee machine"]
     end
     style NEW_AKL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:AKL:END
