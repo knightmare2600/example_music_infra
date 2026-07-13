@@ -106,6 +106,22 @@ write-up.
       FAL's finished diagram done together 2026-07-13 (published as a Claude
       Artifact, rendered from the committed doc via the same kroki.io
       round-trip check_mermaid.py uses) — Phase 5, and this plan, complete.
+- [x] Phase 6 (post-hoc addendum) — visual density pass, 2026-07-13. Robert's
+      feedback after the read-through: the 5-shape system plus 3-line labels
+      made a 50+ node diagram "more shapes than the Ministry of Sound," and
+      wanted server/network-infra types to get emoji too, not just curveball
+      ones. Replaced the shape system with one uniform rect + emoji for
+      every device type (all ~40 types now, not just the 22 curveball ones
+      — see `docs/emojis/README.md`), and single-line labels (` · `
+      separator, not `<br/>`). Applied to both Old and New Network boxes —
+      Old Network's hand-written nodes reformatted via a one-off script, not
+      hand-edited 47 times. Result was mixed: a small/typical site (GOT, 7
+      nodes) got ~33% shorter; FAL (52 nodes, real device data, several
+      already-short curveball labels) barely changed in total area — wider
+      single-line labels roughly offset the height saved. Worth knowing
+      before assuming this "fixes" every diagram's size. check 15 rewritten
+      to check for the uniform shape + a leading emoji instead of the old
+      5-shape list.
 
 ## Methodology — what does "a good run" actually mean?
 
@@ -244,7 +260,7 @@ prompted fixing that buildsheet the same day — see the git log around
 | 12 | `playbook_dir`-relative paths | `check_playbook_dir_paths.py` — every `"{{ playbook_dir }}/../.../X"` expression (used with `read_csv`/`lookup('file', ...)`/a shell command — not the literal `src:`/`include_tasks:` paths check 3 already covers) is resolved against the file's real location and confirmed to exist. Found the hard way, 2026-07-12: `bootstrap-new-node.yml`'s `sites_csv_src` had one extra level of `../` copy-pasted from `00-preflight.yml` (which lives one directory deeper) — invisible to both `--syntax-check` (doesn't execute tasks) and check 3 (Jinja, not literal) until a real run finally reached that task for the first time |
 | 13 | Mermaid diagrams | `check_mermaid.py` — **the one check here that needs real network access.** Every ```` ```mermaid ```` block in every git-tracked `*.md` file is actually POSTed to `kroki.io` and confirmed to render, not just locally syntax-guessed (no mermaid parser is vendored here, and mermaid's grammar has real gotchas no structural YAML/Ansible check could ever catch). Found 3 genuine syntax bugs across the repo's 49 diagrams this way: literal `\n` instead of `<br/>` for label line breaks (938 occurrences), a backslash-escaped quote, and an unquoted `(` inside a pipe-delimited edge label. Results are cached by content hash (`reports/.mermaid_cache.json`, gitignored) so only new/changed diagrams actually hit kroki.io on a given run. A genuine render failure always fails the check; `kroki.io` being unreachable is informational unless `--strict` is passed |
 | 14 | Network diagram freshness | `check_network_diagram_freshness.py` — regenerates every site's "New Network (current)" mermaid subgraph in `docs/network-diagram.md` (via `benarbejde/generate_network_diagrams.py`, marker-wrapped in `%% GENERATED:NEW-NETWORK:<SITE>:START/END`) into a scratch copy and diffs against committed — same "edited the source, forgot to regenerate" class as check 6, applied to the diagrams |
-| 15 | Network diagram content invariants | `check_network_diagram_content.py` — independently scans (doesn't just re-run the generator) every committed New Network block for two invariants from `network-diagram.md`'s Visual Standard: no FSMO/health/low-disk-space terms ever appear (that data is old-infra-only), and every node uses one of the five approved shape wrappers (hexagon/cylinder/circle/stadium/asymmetric flag) |
+| 15 | Network diagram content invariants | `check_network_diagram_content.py` — independently scans (doesn't just re-run the generator) every committed New Network block for two invariants from `network-diagram.md`'s Visual Standard: no FSMO/health/low-disk-space terms ever appear (that data is old-infra-only), and every node uses the uniform rect shape with a leading emoji symbol (see `docs/emojis/README.md`) |
 
 ## Design notes
 
