@@ -83,7 +83,7 @@ TYPE_SYMBOLS = {
     'TTY': "⌨️",   # moved off 🖥️ once WKS claimed it below -- VT320 terminal, keyboard-forward feel
 
     # network infra
-    'RTR': "📡", 'FWL': "🔥", 'SWI': "🔀",
+    'RTR': "📡", 'FWL': "🧱", 'SWI': "🔀",   # FWL: brick -- "firewall" as a wall, per Robert 2026-07-13
 
     # servers / compute / management
     'DCS': "🗝️", 'DCR': "🗝️",           # domain controller -- directory/auth, same role either naming

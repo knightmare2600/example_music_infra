@@ -41,8 +41,8 @@ graph TD
       N_PRV["📦 EXAPRVOSL001 · PRV · .15"]
       N_SBC["🛡️ EXASBCOSL001 · SBC · .48"]
       N_DCS["🗝️ EXADCSOSL001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLOSL001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLOSL002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLOSL001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLOSL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEOSL001 · PVE 1 · .5"]
     end
     style NEW_OSL fill:#E69F00,stroke:#D55E00,color:#000000

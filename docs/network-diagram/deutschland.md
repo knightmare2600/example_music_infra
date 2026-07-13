@@ -50,8 +50,8 @@ graph TD
       N_PRV["📦 EXAPRVBON001 · PRV · .15"]
       N_SBC["🛡️ EXASBCBON001 · SBC · .48"]
       N_DCS["🗝️ EXADCSBON001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLBON001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLBON002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLBON001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLBON002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEBON001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIBON001 · Office switch · .250"]
       N_LAP["💻 EXALAPBON001 · ThinkPad DISABLED"]
@@ -106,8 +106,8 @@ graph TD
       N_PRV["📦 EXAPRVBER001 · PRV · .15"]
       N_SBC["🛡️ EXASBCBER001 · SBC · .48"]
       N_DCS["🗝️ EXADCSBER001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLBER001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLBER002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLBER001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLBER002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEBER001 · PVE 1 · .5"]
     end
     style NEW_BER fill:#E69F00,stroke:#D55E00,color:#000000
@@ -155,8 +155,8 @@ graph TD
       N_PRV["📦 EXAPRVMUN001 · PRV · .15"]
       N_SBC["🛡️ EXASBCMUN001 · SBC · .48"]
       N_DCS["🗝️ EXADCSMUN001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLMUN001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLMUN002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLMUN001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLMUN002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEMUN001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIMUN001 · Access switch · .250"]
       N_WKS["🖥️ EXAWKSMUN001 · Hot desk workstation"]
@@ -205,8 +205,8 @@ graph TD
       N_PRV["📦 EXAPRVDRS001 · PRV · .15"]
       N_SBC["🛡️ EXASBCDRS001 · SBC · .48"]
       N_DCS["🗝️ EXADCSDRS001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLDRS001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLDRS002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLDRS001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLDRS002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEDRS001 · PVE 1 · .5"]
     end
     style NEW_DRS fill:#E69F00,stroke:#D55E00,color:#000000
@@ -249,8 +249,8 @@ graph TD
       N_PRV["📦 EXAPRVDUS001 · PRV · .15"]
       N_SBC["🛡️ EXASBCDUS001 · SBC · .48"]
       N_DCS["🗝️ EXADCSDUS001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLDUS001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLDUS002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLDUS001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLDUS002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEDUS001 · PVE 1 · .5"]
     end
     style NEW_DUS fill:#E69F00,stroke:#D55E00,color:#000000

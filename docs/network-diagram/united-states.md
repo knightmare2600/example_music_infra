@@ -18,7 +18,7 @@
 graph TD
     subgraph OLD_LAX ["🕰️ Old Network (legacy)"]
       INET["🌐 Internet"]
-      FWL["🔥 EXAFWLLAX001 · Palo Alto PAN-OS 10.x · .1"]
+      FWL["🧱 EXAFWLLAX001 · Palo Alto PAN-OS 10.x · .1"]
       SW1["🔀 EXASWILAX001 · Cisco 9300 · .250"]
       SW2["🔀 EXASWILAX002 · Cisco 2960 · .251"]
       RTR["📡 EXARTRLAX001 · Cisco ISR 4331 · .254"]
@@ -58,8 +58,8 @@ graph TD
       N_PRV["📦 EXAPRVLAX001 · PRV · .15"]
       N_SBC["🛡️ EXASBCLAX001 · SBC · .48"]
       N_DCS["🗝️ EXADCSLAX001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLLAX001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLLAX002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLLAX001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLLAX002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVELAX001 · PVE 1 · .5"]
       N_SRV["🗄️ EXASRVLAX001 · Local services DB · .20"]
       N_MUS["💿 EXAMUSLAX001 · Synth · .70"]
@@ -117,8 +117,8 @@ graph TD
       N_PRV["📦 EXAPRVNYC001 · PRV · .15"]
       N_SBC["🛡️ EXASBCNYC001 · SBC · .48"]
       N_DCS["🗝️ EXADCSNYC001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLNYC001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLNYC002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLNYC001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLNYC002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVENYC001 · PVE 1 · .5"]
     end
     style NEW_NYC fill:#E69F00,stroke:#D55E00,color:#000000
@@ -164,8 +164,8 @@ graph TD
       N_PRV["📦 EXAPRVNJC001 · PRV · .15"]
       N_SBC["🛡️ EXASBCNJC001 · SBC · .48"]
       N_DCS["🗝️ EXADCSNJC001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLNJC001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLNJC002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLNJC001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLNJC002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVENJC001 · PVE 1 · .5"]
     end
     style NEW_NJC fill:#E69F00,stroke:#D55E00,color:#000000
@@ -212,8 +212,8 @@ graph TD
       N_PRV["📦 EXAPRVMIA001 · PRV · .15"]
       N_SBC["🛡️ EXASBCMIA001 · SBC · .48"]
       N_DCS["🗝️ EXADCSMIA001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLMIA001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLMIA002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLMIA001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLMIA002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEMIA001 · PVE 1 · .5"]
       N_COF["☕ EXACOFMIA001 · Coffee machine · .60"]
       N_LAP["💻 EXALAPMIA001 · MacBook"]
@@ -259,8 +259,8 @@ graph TD
       N_PRV["📦 EXAPRVATL001 · PRV · .15"]
       N_SBC["🛡️ EXASBCATL001 · SBC · .48"]
       N_DCS["🗝️ EXADCSATL001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLATL001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLATL002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLATL001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLATL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEATL001 · PVE 1 · .5"]
     end
     style NEW_ATL fill:#E69F00,stroke:#D55E00,color:#000000
@@ -306,8 +306,8 @@ graph TD
       N_PRV["📦 EXAPRVCHI001 · PRV · .15"]
       N_SBC["🛡️ EXASBCCHI001 · SBC · .48"]
       N_DCS["🗝️ EXADCSCHI001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLCHI001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLCHI002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLCHI001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLCHI002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVECHI001 · PVE 1 · .5"]
     end
     style NEW_CHI fill:#E69F00,stroke:#D55E00,color:#000000
@@ -338,8 +338,8 @@ graph TD
       N_PRV["📦 EXAPRVSEA001 · PRV · .15"]
       N_SBC["🛡️ EXASBCSEA001 · SBC · .48"]
       N_DCS["🗝️ EXADCSSEA001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLSEA001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLSEA002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLSEA001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLSEA002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVESEA001 · PVE 1 · .5"]
     end
     style NEW_SEA fill:#E69F00,stroke:#D55E00,color:#000000
@@ -368,8 +368,8 @@ graph TD
       N_PRV["📦 EXAPRVSFO001 · PRV · .15"]
       N_SBC["🛡️ EXASBCSFO001 · SBC · .48"]
       N_DCS["🗝️ EXADCSSFO001 · DCS 1 · .10"]
-      N_FWL["🔥 EXAFWLSFO001 · FWL 1 · .253"]
-      N_FWL2["🔥 EXAFWLSFO002 · FWL 2 · .254"]
+      N_FWL["🧱 EXAFWLSFO001 · FWL 1 · .253"]
+      N_FWL2["🧱 EXAFWLSFO002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVESFO001 · PVE 1 · .5"]
     end
     style NEW_SFO fill:#E69F00,stroke:#D55E00,color:#000000
