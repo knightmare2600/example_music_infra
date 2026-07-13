@@ -4,13 +4,13 @@ check_network_diagram_content.py -- part of at_have_ryggen_fri.
 
 check_network_diagram_freshness.py (check 14) verifies committed New Network
 blocks match a fresh regeneration -- but that's only as good as
-generate_network_diagrams.py's own in-process guards (BANNED_TERMS, shape_wrap's
-ValueError on an unmapped type), which never actually run against the COMMITTED
-file, only against whatever the generator produces in memory. This is the
-independent check: it re-derives both invariants by scanning the committed
-docs/network-diagram.md text directly, the same "don't just re-run the same
-code and call it verified" principle check_facts.py and check_site_data.py
-already follow.
+generate_network_diagrams.py's own in-process guards (BANNED_TERMS, node_box's
+caller raising on an unmapped type), which never actually run against the
+COMMITTED files, only against whatever the generator produces in memory. This
+is the independent check: it re-derives both invariants by scanning every
+committed docs/network-diagram/*.md file directly, the same "don't just
+re-run the same code and call it verified" principle check_facts.py and
+check_site_data.py already follow.
 
 Two invariants, both from docs/network-diagram.md's Visual Standard section:
   1. FSMO roles / health / low-disk-space annotations never appear inside a
@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DOCS_FILE = REPO_ROOT / "docs" / "network-diagram.md"
+DOCS_DIR = REPO_ROOT / "docs" / "network-diagram"
 
 NEW_NETWORK_BLOCK_RE = re.compile(
     r'%% GENERATED:NEW-NETWORK:(\w+):START\n(.*?)\n\s*%% GENERATED:NEW-NETWORK:\1:END',
@@ -49,32 +49,36 @@ PLACEHOLDER_NODE_RE = re.compile(r'^\s*N_EMPTY\[')
 
 
 def main():
-    text = DOCS_FILE.read_text(encoding="utf-8")
-    blocks = NEW_NETWORK_BLOCK_RE.findall(text)
+    blocks = []
+    for path in sorted(DOCS_DIR.glob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        for site, body in NEW_NETWORK_BLOCK_RE.findall(text):
+            blocks.append((path.name, site, body))
 
     if not blocks:
-        print("No New Network blocks found -- check the marker regex against the current file format.")
+        print(f"No New Network blocks found under {DOCS_DIR.relative_to(REPO_ROOT)}/ -- "
+              f"check the marker regex against the current file format.")
         return 1
 
     banned_hits = []
     bad_shapes = []
 
-    for site, body in blocks:
+    for fname, site, body in blocks:
         if BANNED_TERMS.search(body):
             hit = BANNED_TERMS.search(body).group(0)
-            banned_hits.append(f"{site}: found banned term {hit!r} inside its New Network block")
+            banned_hits.append(f"{fname}/{site}: found banned term {hit!r} inside its New Network block")
 
         for line in body.splitlines():
             if NON_NODE_LINE_RE.match(line) or PLACEHOLDER_NODE_RE.match(line):
                 continue
             m = NODE_LINE_RE.match(line)
             if not m:
-                bad_shapes.append(f"{site}: line does not use the uniform rect shape -- {line.strip()!r}")
+                bad_shapes.append(f"{fname}/{site}: line does not use the uniform rect shape -- {line.strip()!r}")
                 continue
             if not LEADING_EMOJI_RE.match(m.group(2)):
-                bad_shapes.append(f"{site}: node has no leading emoji symbol -- {line.strip()!r}")
+                bad_shapes.append(f"{fname}/{site}: node has no leading emoji symbol -- {line.strip()!r}")
 
-    print(f"Checked {len(blocks)} New Network block(s) in {DOCS_FILE.relative_to(REPO_ROOT)} "
+    print(f"Checked {len(blocks)} New Network block(s) across {DOCS_DIR.relative_to(REPO_ROOT)}/ "
           f"for banned FSMO/health terms and shape/symbol-convention compliance.")
 
     if banned_hits or bad_shapes:
