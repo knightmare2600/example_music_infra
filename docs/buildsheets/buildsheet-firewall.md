@@ -87,6 +87,14 @@ graph TD
     FAL --> UK
     ODE --> EU
     BRK --> NAAPAC
+
+    classDef hub fill:#0072B2,stroke:#000000,color:#ffffff
+    classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
+    class WAN,FAL,ODE,BRK hub
+    class MIA warn
+    style UK fill:#56B4E9,stroke:#0072B2,color:#000000
+    style EU fill:#F0E442,stroke:#E69F00,color:#000000
+    style NAAPAC fill:#009E73,stroke:#000000,color:#ffffff
 ```
 
 > Spokes connect to their regional hub. UK/Ireland spokes → FAL, European spokes → ODE, Americas/APAC spokes → BRK.  
