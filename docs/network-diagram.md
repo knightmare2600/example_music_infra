@@ -69,6 +69,8 @@ Every per-site diagram in this file is split into two labelled boxes:
 - [KOR — Korsør](#kor--korsr)
 - [AAR — Aarhus](#aar--aarhus)
 - [FRE — Fredericia](#fre--fredericia)
+- [FRD — Fredericia Havn *(New Build)*](#frd--fredericia-havn-new-build)
+- [NYB — Nyborg *(New Build)*](#nyb--nyborg-new-build)
 
 ### 🇩🇪 Deutschland
 - [BON — Bonn](#bon--bonn)
@@ -107,6 +109,8 @@ Every per-site diagram in this file is split into two labelled boxes:
 - [MIA — Miami](#mia--miami)
 - [ATL — Atlanta](#atl--atlanta-)
 - [CHI — Chicago](#chi--chicago-)
+- [SEA — Seattle *(New Build)*](#sea--seattle-new-build)
+- [SFO — San Francisco *(New Build)*](#sfo--san-francisco-new-build)
 
 ### 🇦🇺 Australia
 - [SYD — Sydney](#syd--sydney-)
@@ -155,6 +159,21 @@ graph TD
 
     end
     style OLD_CLD fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:CLD:START
+    subgraph NEW_CLD ["🆕 New Network (current)"]
+      N_PRV[("EXAPRVCLD001<br/>PRV<br/>.15")]
+      N_DCS[("EXADCSCLD001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLCLD001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLCLD002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVECLD001<br/>PVE 1<br/>.5")]
+      N_ANS[("EXAANSCLD001<br/>Ansible control node<br/>.9")]
+      N_RDR[("EXARDRCLD001<br/>Rudder configuration management server<br/>.12")]
+      N_SVR[("EXASVRCLD002<br/>Windows Admin Centre<br/>.20")]
+      N_PBX[("EXAPBXCLD001<br/>3CX PBX<br/>.48")]
+      N_UFC[("EXAUFCCLD001<br/>UniFi Network Controller<br/>.82")]
+    end
+    style NEW_CLD fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:CLD:END
 ```
 
 ---
@@ -258,6 +277,69 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN_CLD
     end
     style OLD_FAL fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:FAL:START
+    subgraph NEW_FAL ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRFAL001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVFAL001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCFAL001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSFAL001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLFAL001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLFAL002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEFAL001<br/>PVE 1<br/>.5")]
+      N_RDR[("EXARDRFAL001<br/>HID Signo badge reader<br/>.16")]
+      N_SRV[("EXASRVFAL001<br/>Reserved<br/>.20")]
+      N_NAS[("EXANASFAL001<br/>Primary storage<br/>.32")]
+      N_TAR[("EXATARFAL001<br/>Legacy tape archive<br/>.33")]
+      N_LCD(["EXALCDFAL001<br/>Reception display<br/>.50"])
+      N_VCU(["EXAVCUFAL001<br/>Video conferencing<br/>.51"])
+      N_PMP>"❓ EXAPMPFAL001<br/>Networked petrol pump<br/>.60"]
+      N_TEA>"❓ EXATEAFAL001<br/>Smart coffee machine<br/>.61"]
+      N_DON>"❓ EXADONFAL001<br/>Donut vending<br/>.62"]
+      N_VND>"❓ EXAVNDFAL002<br/>Vending machine<br/>.63"]
+      N_VND2>"❓ EXAVNDFAL003<br/>Vending machine<br/>.64"]
+      N_VND3>"❓ EXAVNDFAL004<br/>Vending machine<br/>.65"]
+      N_VND4>"❓ EXAVNDFAL005<br/>Confectionery machine<br/>.66"]
+      N_MUS>"❓ EXAMUSFAL001<br/>Jukebox<br/>.67"]
+      N_CAM(["EXACAMFAL001<br/>Camera front entrance<br/>.70"])
+      N_CAM2(["EXACAMFAL002<br/>Camera studio hallway<br/>.71"])
+      N_CAM3(["EXACAMFAL003<br/>Camera car park<br/>.72"])
+      N_CAM4(["EXACAMFAL004<br/>Camera rear loading bay<br/>.73"])
+      N_CLK>"❓ EXACLKFAL001<br/>Embedded NTP clock<br/>.80"]
+      N_PAY>"❓ EXAPAYFAL001<br/>GPO Kiosk No.6 payphone<br/>.95"]
+      N_WKS(["EXAWKSFAL001<br/>Workstation Analog Mixing Desk v1<br/>.100"])
+      N_WKS2(["EXAWKSFAL003<br/>Workstation shared editing<br/>.102"])
+      N_LAP(["EXALAPFAL001<br/>Production laptop<br/>.103"])
+      N_SUR(["EXASURFAL001<br/>Microsoft Surface<br/>.104"])
+      N_SWI{{"EXASWIFAL001<br/>Core switch 1<br/>.250"}}
+      N_SWI2{{"EXASWIFAL002<br/>Core switch 2<br/>.251"}}
+      N_PHN(["EXAPHNFAL001<br/>Phone 1"])
+      N_PHN2(["EXAPHNFAL002<br/>Phone 2"])
+      N_PHN3(["EXAPHNFAL003<br/>Phone 3"])
+      N_PHN4(["EXAPHNFAL006<br/>Phone 6"])
+      N_PHN5(["EXAPHNFAL007<br/>Phone 7"])
+      N_TAB(["EXATABFAL001<br/>Tablet"])
+      N_TTY>"❓ EXATTYFAL001<br/>VT320 serial terminal"]
+      N_BUS>"❓ EXABUSFAL001<br/>Tour bus 1"]
+      N_BUS2>"❓ EXABUSFAL002<br/>Tour bus 2"]
+      N_BUS3>"❓ EXABUSFAL003<br/>Tour bus 3"]
+      N_CAR>"❓ EXACARFAL001<br/>Car 1"]
+      N_CAR2>"❓ EXACARFAL002<br/>Car 2"]
+      N_CAR3>"❓ EXACARFAL003<br/>Car 3"]
+      N_CAR4>"❓ EXACARFAL004<br/>Car 4"]
+      N_CAR5>"❓ EXACARFAL005<br/>Car 5"]
+      N_TRK>"❓ EXATRKFAL001<br/>Truck 1"]
+      N_TRK2>"❓ EXATRKFAL002<br/>Truck 2"]
+      N_TRK3>"❓ EXATRKFAL003<br/>Truck 3"]
+      N_TRK4>"❓ EXATRKFAL004<br/>Truck 4"]
+      N_TRK5>"❓ EXATRKFAL005<br/>Truck 5"]
+      N_JET>"❓ EXAJETFAL001<br/>Jet 1"]
+      N_JET2>"❓ EXAJETFAL002<br/>Jet 2"]
+      N_JET3>"❓ EXAJETFAL003<br/>Jet 3"]
+      N_JET4>"❓ EXAJETFAL004<br/>Jet 4"]
+      N_JET5>"❓ EXAJETFAL005<br/>Jet 5"]
+    end
+    style NEW_FAL fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:FAL:END
 ```
 
 ---
@@ -299,6 +381,25 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_EDI fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:EDI:START
+    subgraph NEW_EDI ["🆕 New Network (current)"]
+      N_RTR{{"EXARTREDI001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVEDI001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCEDI001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSEDI001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLEDI001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLEDI002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEEDI001<br/>PVE 1<br/>.5")]
+      N_DCS2[("EXADCSEDI002<br/>DC secondary needs rebuild corrected to .12<br/>.12")]
+      N_DCS3[("EXADCSEDI003<br/>DECOMMISSION PENDING corrected to .13<br/>.13")]
+      N_WKS(["EXAWKSEDI001<br/>Shared desktop<br/>.150"])
+      N_LAP(["EXALAPEDI098<br/>Pool laptop<br/>.108"])
+      N_SWI{{"EXASWIEDI001<br/>Floor switch<br/>.250"}}
+      N_SWI2{{"EXASWIEDI002<br/>48-port switch<br/>.251"}}
+      N_TEA>"❓ EXATEAEDI001<br/>Coffee machine<br/>.60"]
+    end
+    style NEW_EDI fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:EDI:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
@@ -338,6 +439,22 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_GLA fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:GLA:START
+    subgraph NEW_GLA ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRGLA001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVGLA001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCGLA001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSGLA001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLGLA001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLGLA002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEGLA001<br/>PVE 1<br/>.5")]
+      N_PRN(["EXAPRNGLA001<br/>Main floor printer<br/>.16"])
+      N_WKS(["EXAWKSGLA001<br/>Hot desk workstation<br/>.150"])
+      N_WKS2(["EXAWKSGLA002<br/>Hot desk workstation<br/>.151"])
+      N_LAP(["EXALAPGLA001<br/>Pool laptop<br/>.152"])
+    end
+    style NEW_GLA fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:GLA:END
 ```
 
 ---
@@ -379,6 +496,23 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_CLY fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:CLY:START
+    subgraph NEW_CLY ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRCLY001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVCLY001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCCLY001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSCLY001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLCLY001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLCLY002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVECLY001<br/>PVE 1<br/>.5")]
+      N_SRV[("EXASRVCLY001<br/>Oracle DB server<br/>.20")]
+      N_SWI{{"EXASWICLY001<br/>Core switch<br/>.250"}}
+      N_SUR(["EXASURCLY001<br/>Surface"])
+      N_PHN(["EXAPHNCLY001<br/>Phone"])
+      N_SUR2(["EXASURCLY002<br/>Android tablet"])
+    end
+    style NEW_CLY fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:CLY:END
 ```
 
 ---
@@ -417,6 +551,22 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_DUN fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:DUN:START
+    subgraph NEW_DUN ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRDUN001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVDUN001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCDUN001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSDUN001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLDUN001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLDUN002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEDUN001<br/>PVE 1<br/>.5")]
+      N_SUR(["EXASURDUN001<br/>Surface"])
+      N_SUR2(["EXASURDUN002<br/>Surface"])
+      N_PHN(["EXAPHNDUN001<br/>Phone"])
+      N_PHN2(["EXAPHNDUN002<br/>Phone"])
+    end
+    style NEW_DUN fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:DUN:END
 ```
 
 ---
@@ -457,6 +607,28 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_PER fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:PER:START
+    subgraph NEW_PER ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRPER001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVPER001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCPER001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSPER001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLPER001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLPER002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEPER001<br/>PVE 1<br/>.5")]
+      N_NIX(["EXANIXPER001<br/>MIDI archive<br/>.40"])
+      N_NAS[("EXANASPER001<br/>NAS<br/>.50")]
+      N_MBP(["EXAMBPPER001<br/>MacBook"])
+      N_SUR(["EXASURPER001<br/>Surface"])
+      N_PHN(["EXAPHNPER001<br/>Phone 1"])
+      N_PHN2(["EXAPHNPER002<br/>Phone 2"])
+      N_PHN3(["EXAPHNPER003<br/>Phone 3"])
+      N_PHN4(["EXAPHNPER004<br/>Phone 4"])
+      N_PRN(["EXAPRNPER001<br/>Printer"])
+      N_VND>"❓ EXAVNDPER001<br/>Vending machine"]
+    end
+    style NEW_PER fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:PER:END
 ```
 
 ---
@@ -496,6 +668,22 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_ABD fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:ABD:START
+    subgraph NEW_ABD ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRABD001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVABD001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCABD001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSABD001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLABD001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLABD002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEABD001<br/>PVE 1<br/>.5")]
+      N_MBP(["EXAMBPABD001<br/>MacBook"])
+      N_MBP2(["EXAMBPABD002<br/>MacBook"])
+      N_PHN(["EXAPHNABD001<br/>iPhone"])
+      N_PHN2(["EXAPHNABD002<br/>iPhone"])
+    end
+    style NEW_ABD fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:ABD:END
 ```
 
 ---
@@ -543,6 +731,24 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_LND fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:LND:START
+    subgraph NEW_LND ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRLND001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVLND001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCLND001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSLND001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLLND001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLLND002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVELND001<br/>PVE 1<br/>.5")]
+      N_RAD>"❓ EXARADLND001<br/>BBC Office Radio Mk II<br/>.80"]
+      N_MIC>"❓ EXAMICLND001<br/>Shure SM7 via Dante audio<br/>.81"]
+      N_SWI{{"EXASWILND001<br/>Core switch<br/>.250"}}
+      N_WKS(["EXAWKSLND001<br/>Workstation<br/>.150"])
+      N_PRN(["EXAPRNLND001<br/>Printer"])
+      N_PRN2(["EXAPRNLND002<br/>Steno writer no IP"])
+    end
+    style NEW_LND fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:LND:END
 ```
 
 ---
@@ -592,6 +798,30 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_BIR fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:BIR:START
+    subgraph NEW_BIR ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRBIR001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVBIR001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCBIR001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSBIR001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLBIR001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLBIR002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEBIR001<br/>PVE 1<br/>.5")]
+      N_SRV[("EXASRVBIR001<br/>Oracle DB<br/>.20")]
+      N_MOO>"❓ EXAMOOBIR001<br/>Moog synth<br/>.70"]
+      N_LIN>"❓ EXALINBIR001<br/>Drum machine<br/>.71"]
+      N_FCL>"❓ EXAFCLBIR001<br/>Fairlight CMI<br/>.72"]
+      N_AST>"❓ EXAASTBIR001<br/>Atari ST<br/>.73"]
+      N_PAY>"❓ EXAPAYBIR001<br/>Payphone<br/>.74"]
+      N_LCD(["EXALCDBIR001<br/>NOC display<br/>.75"])
+      N_SWI{{"EXASWIBIR001<br/>Core switch<br/>.250"}}
+      N_SWI2{{"EXASWIBIR002<br/>Access switch<br/>.251"}}
+      N_MBP(["EXAMBPBIR001<br/>MacBook"])
+      N_TAB(["EXATABBIR001<br/>Galaxy Tab"])
+      N_PHN(["EXAPHNBIR001<br/>Samsung S25"])
+    end
+    style NEW_BIR fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:BIR:END
 ```
 
 ---
@@ -632,6 +862,24 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_MCR fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:MCR:START
+    subgraph NEW_MCR ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRMCR001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVMCR001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCMCR001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSMCR001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLMCR001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLMCR002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEMCR001<br/>PVE 1<br/>.5")]
+      N_SWI{{"EXASWIMCR001<br/>Distribution switch<br/>.250"}}
+      N_LAP(["EXALAPMCR001<br/>Laptop"])
+      N_LAP2(["EXALAPMCR002<br/>Laptop"])
+      N_WKS(["EXAWKSMCR001<br/>Desktop"])
+      N_WKS2(["EXAWKSMCR002<br/>Desktop"])
+      N_PRN(["EXAPRNMCR001<br/>Printer"])
+    end
+    style NEW_MCR fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:MCR:END
 ```
 
 ---
@@ -671,6 +919,24 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_LIV fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:LIV:START
+    subgraph NEW_LIV ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRLIV001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVLIV001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCLIV001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSLIV001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLLIV001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLLIV002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVELIV001<br/>PVE 1<br/>.5")]
+      N_SWI{{"EXASWILIV001<br/>Core switch<br/>.250"}}
+      N_SVR[("EXASVRLIV001<br/>File server")]
+      N_MBP(["EXAMBPLIV001<br/>MacBook Pro"])
+      N_MAC(["EXAMACLIV001<br/>iMac DISABLED"])
+      N_RDR[("EXARDRLIV002<br/>HID Signo badge reader")]
+      N_BPS(["EXABPSLIV001<br/>Badge programming workstation"])
+    end
+    style NEW_LIV fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:LIV:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class MAC warn
 ```
@@ -709,6 +975,21 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_NEW fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:NEW:START
+    subgraph NEW_NEW ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRNEW001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVNEW001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCNEW001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSNEW001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLNEW001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLNEW002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVENEW001<br/>PVE 1<br/>.5")]
+      N_SWI{{"EXASWINEW001<br/>Access switch<br/>.250"}}
+      N_SRV[("EXASRVNEW001<br/>File/print server")]
+      N_WKS(["EXAWKSNEW099<br/>LAPS password expired"])
+    end
+    style NEW_NEW fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:NEW:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class WKS warn
 ```
@@ -744,6 +1025,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_SHE fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:SHE:START
+    subgraph NEW_SHE ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRSHE001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVSHE001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCSHE001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSSHE001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLSHE001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLSHE002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVESHE001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_SHE fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:SHE:END
 ```
 
 ---
@@ -777,6 +1070,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_HAL fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:HAL:START
+    subgraph NEW_HAL ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRHAL001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVHAL001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCHAL001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSHAL001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLHAL001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLHAL002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEHAL001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_HAL fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:HAL:END
 ```
 
 ---
@@ -810,6 +1115,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_HUL fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:HUL:START
+    subgraph NEW_HUL ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRHUL001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVHUL001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCHUL001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSHUL001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLHUL001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLHUL002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEHUL001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_HUL fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:HUL:END
 ```
 
 ---
@@ -844,6 +1161,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_COV fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:COV:START
+    subgraph NEW_COV ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRCOV001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVCOV001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCCOV001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSCOV001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLCOV001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLCOV002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVECOV001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_COV fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:COV:END
 ```
 
 ---
@@ -888,6 +1217,21 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_CPH fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:CPH:START
+    subgraph NEW_CPH ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRCPH001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVCPH001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCCPH001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSCPH001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLCPH001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLCPH002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVECPH001<br/>PVE 1<br/>.5")]
+      N_CLK>"❓ EXACLKCPH001<br/>NTP clock<br/>.18"]
+      N_TVS(["EXATVSCPH001<br/>Display<br/>.17"])
+      N_SWI{{"EXASWICPH001<br/>Office switch<br/>.250"}}
+    end
+    style NEW_CPH fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:CPH:END
 ```
 
 ---
@@ -942,6 +1286,21 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN_CLD
     end
     style OLD_ODE fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:ODE:START
+    subgraph NEW_ODE ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRODE001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVODE001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCODE001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSODE001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLODE001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLODE002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEODE001<br/>PVE 1<br/>.5")]
+      N_MUS>"❓ EXAMUSODE001<br/>Jukebox<br/>.60"]
+      N_MAC(["EXAMACODE001<br/>iMac"])
+      N_MBP(["EXAMBPODE002<br/>MacBook Pro"])
+    end
+    style NEW_ODE fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:ODE:END
 ```
 
 ---
@@ -976,6 +1335,19 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_KGE fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:KGE:START
+    subgraph NEW_KGE ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRKGE001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVKGE001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCKGE001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSKGE001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLKGE001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLKGE002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEKGE001<br/>PVE 1<br/>.5")]
+      N_PRN(["EXAPRNKGE001<br/>Printer"])
+    end
+    style NEW_KGE fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:KGE:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
@@ -1011,6 +1383,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_FAX fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:FAX:START
+    subgraph NEW_FAX ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRFAX001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVFAX001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCFAX001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSFAX001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLFAX001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLFAX002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEFAX001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_FAX fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:FAX:END
 ```
 
 ---
@@ -1043,6 +1427,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_KOR fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:KOR:START
+    subgraph NEW_KOR ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRKOR001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVKOR001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCKOR001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSKOR001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLKOR001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLKOR002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEKOR001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_KOR fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:KOR:END
 ```
 
 ---
@@ -1075,6 +1471,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_AAR fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:AAR:START
+    subgraph NEW_AAR ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRAAR001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVAAR001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCAAR001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSAAR001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLAAR001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLAAR002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEAAR001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_AAR fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:AAR:END
 ```
 
 ---
@@ -1107,6 +1515,73 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_FRE fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:FRE:START
+    subgraph NEW_FRE ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRFRE001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVFRE001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCFRE001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSFRE001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLFRE001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLFRE002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEFRE001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_FRE fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:FRE:END
+```
+
+---
+
+## FRD — Fredericia Havn *(New Build)*
+
+**LAN:** `172.16.124.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 0 — see notes below · **VPN parent:** CLD (direct, non-standard networking)  
+**Entity:** Example Music Limited · **Landline:** N/A · **Mobile:** N/A
+
+> **New-build site.** No legacy infrastructure ever existed here — see the "New Build Location" box below in place of "Old Network." Fredericia Havn is one machine today: a MacBook running `python3 -m http.server 8000` as a PXE mirror, plus a secondary 3CX PBX hostnamed under CLD (`EXAPBXCLD002`) but physically here — see `benarbejde/generate_inventory.py`'s `NON_STANDARD_SITES`/`SubnetSite` handling.
+
+```mermaid
+graph TD
+    subgraph OLD_FRD ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site.<br/>No prior/legacy network existed before commissioning."]
+    end
+    style OLD_FRD fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:FRD:START
+    subgraph NEW_FRD ["🆕 New Network (current)"]
+      N_PRV[("EXAPRVFRD001<br/>Provisioning server (PXE, port 8000)<br/>.1")]
+      N_PBX[("EXAPBXCLD002<br/>Secondary 3CX PBX (hostnamed under CLD)<br/>.48")]
+    end
+    style NEW_FRD fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:FRD:END
+```
+
+---
+
+## NYB — Nyborg *(New Build)*
+
+**LAN:** `192.168.90.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** ODE  
+**Entity:** Example Music (Danmark) ApS · **Landline:** +45 80 400 0xxx · **Mobile:** +45 200 900 2xxx
+
+> **New-build site.** No legacy infrastructure ever existed here — see the "New Build Location" box below in place of "Old Network." Standard-slot addresses are allocated in `benarbejde/address_policy.json`/`sites.csv` the same as any other site (this is what makes the .ini/DNS generation already treat them as real, per the generated-file-freshness harness check) but no `devices.csv` exception rows exist yet — nothing beyond the standard template has been confirmed built on site.
+
+```mermaid
+graph TD
+    subgraph OLD_NYB ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site.<br/>No prior/legacy network existed before commissioning."]
+    end
+    style OLD_NYB fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:NYB:START
+    subgraph NEW_NYB ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRNYB001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVNYB001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCNYB001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSNYB001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLNYB001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLNYB002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVENYB001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_NYB fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:NYB:END
 ```
 
 ---
@@ -1154,6 +1629,25 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_BON fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:BON:START
+    subgraph NEW_BON ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRBON001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVBON001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCBON001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSBON001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLBON001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLBON002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEBON001<br/>PVE 1<br/>.5")]
+      N_SWI{{"EXASWIBON001<br/>Office switch<br/>.250"}}
+      N_LAP(["EXALAPBON001<br/>ThinkPad DISABLED"])
+      N_WKS(["EXAWKSBON001<br/>Finance workstation"])
+      N_LAP2(["EXALAPBON002<br/>Finance laptop"])
+      N_VCU(["EXAVCUBON001<br/>Boardroom video conferencing"])
+      N_CAM(["EXACAMBON001<br/>CCTV camera"])
+      N_TVS(["EXATVSBON001<br/>Display"])
+    end
+    style NEW_BON fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:BON:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class LAP1 warn
 ```
@@ -1191,6 +1685,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_BER fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:BER:START
+    subgraph NEW_BER ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRBER001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVBER001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCBER001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSBER001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLBER001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLBER002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEBER001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_BER fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:BER:END
 ```
 
 ---
@@ -1228,6 +1734,22 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_MUN fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:MUN:START
+    subgraph NEW_MUN ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRMUN001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVMUN001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCMUN001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSMUN001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLMUN001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLMUN002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEMUN001<br/>PVE 1<br/>.5")]
+      N_SWI{{"EXASWIMUN001<br/>Access switch<br/>.250"}}
+      N_WKS(["EXAWKSMUN001<br/>Hot desk workstation"])
+      N_LAP(["EXALAPMUN001<br/>Pool laptop"])
+      N_LAP2(["EXALAPMUN002<br/>LAPS expired"])
+    end
+    style NEW_MUN fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:MUN:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class LAP2 warn
 ```
@@ -1262,6 +1784,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_DRS fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:DRS:START
+    subgraph NEW_DRS ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRDRS001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVDRS001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCDRS001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSDRS001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLDRS001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLDRS002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEDRS001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_DRS fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:DRS:END
 ```
 
 ---
@@ -1294,6 +1828,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_DUS fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:DUS:START
+    subgraph NEW_DUS ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRDUS001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVDUS001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCDUS001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSDUS001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLDUS001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLDUS002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEDUS001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_DUS fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:DUS:END
 ```
 
 ---
@@ -1332,6 +1878,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_GOT fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:GOT:START
+    subgraph NEW_GOT ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRGOT001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVGOT001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCGOT001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSGOT001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLGOT001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLGOT002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEGOT001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_GOT fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:GOT:END
 ```
 
 ---
@@ -1370,6 +1928,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_OSL fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:OSL:START
+    subgraph NEW_OSL ["🆕 New Network (current)"]
+      N_RTR{{"EXARTROSL001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVOSL001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCOSL001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSOSL001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLOSL001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLOSL002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEOSL001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_OSL fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:OSL:END
 ```
 
 ---
@@ -1408,6 +1978,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_AMS fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:AMS:START
+    subgraph NEW_AMS ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRAMS001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVAMS001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCAMS001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSAMS001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLAMS001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLAMS002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEAMS001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_AMS fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:AMS:END
 ```
 
 ---
@@ -1446,6 +2028,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_MIL fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:MIL:START
+    subgraph NEW_MIL ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRMIL001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVMIL001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCMIL001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSMIL001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLMIL001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLMIL002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEMIL001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_MIL fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:MIL:END
 ```
 
 ---
@@ -1484,6 +2078,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_VIE fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:VIE:START
+    subgraph NEW_VIE ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRVIE001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVVIE001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCVIE001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSVIE001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLVIE001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLVIE002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEVIE001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_VIE fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:VIE:END
 ```
 
 ---
@@ -1522,6 +2128,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_BRT fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:BRT:START
+    subgraph NEW_BRT ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRBRT001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVBRT001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCBRT001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSBRT001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLBRT001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLBRT002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEBRT001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_BRT fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:BRT:END
 ```
 
 ---
@@ -1582,6 +2200,21 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN_CLD
     end
     style OLD_BRK fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:BRK:START
+    subgraph NEW_BRK ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRBRK001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVBRK001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCBRK001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSBRK001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLBRK001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLBRK002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEBRK001<br/>PVE 1<br/>.5")]
+      N_DON>"❓ EXADONBRK001<br/>Donut vending<br/>.60"]
+      N_LAP(["EXALAPBRK001<br/>Tour laptop"])
+      N_VND>"❓ EXAVNDBRK001<br/>Vending machine"]
+    end
+    style NEW_BRK fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:BRK:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
@@ -1617,6 +2250,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_TOR fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:TOR:START
+    subgraph NEW_TOR ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRTOR001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVTOR001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCTOR001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSTOR001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLTOR001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLTOR002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVETOR001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_TOR fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:TOR:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
@@ -1651,6 +2296,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_MTL fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:MTL:START
+    subgraph NEW_MTL ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRMTL001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVMTL001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCMTL001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSMTL001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLMTL001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLMTL002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEMTL001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_MTL fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:MTL:END
 ```
 
 ---
@@ -1706,6 +2363,30 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_LAX fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:LAX:START
+    subgraph NEW_LAX ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRLAX001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVLAX001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCLAX001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSLAX001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLLAX001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLLAX002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVELAX001<br/>PVE 1<br/>.5")]
+      N_SRV[("EXASRVLAX001<br/>Local services DB<br/>.20")]
+      N_MUS>"❓ EXAMUSLAX001<br/>Synth<br/>.70"]
+      N_MUS2>"❓ EXAMUSLAX002<br/>Drum machine<br/>.71"]
+      N_MUS3>"❓ EXAMUSLAX003<br/>Fairlight CMI<br/>.72"]
+      N_AST>"❓ EXAASTLAX001<br/>Atari ST<br/>.73"]
+      N_PAY>"❓ EXAPAYLAX001<br/>Payphone<br/>.74"]
+      N_LCD(["EXALCDLAX001<br/>Status wallboard<br/>.75"])
+      N_SWI{{"EXASWILAX001<br/>Core switch<br/>.250"}}
+      N_SWI2{{"EXASWILAX002<br/>Access switch<br/>.251"}}
+      N_MBP(["EXAMBPLAX001<br/>MacBook Pro"])
+      N_TAB(["EXATABLAX001<br/>iPad"])
+      N_PHN(["EXAPHNLAX001<br/>Phone"])
+    end
+    style NEW_LAX fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:LAX:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
@@ -1741,6 +2422,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_NYC fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:NYC:START
+    subgraph NEW_NYC ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRNYC001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVNYC001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCNYC001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSNYC001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLNYC001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLNYC002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVENYC001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_NYC fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:NYC:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
@@ -1776,6 +2469,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_NJC fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:NJC:START
+    subgraph NEW_NJC ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRNJC001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVNJC001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCNJC001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSNJC001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLNJC001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLNJC002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVENJC001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_NJC fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:NJC:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
@@ -1812,6 +2517,20 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_MIA fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:MIA:START
+    subgraph NEW_MIA ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRMIA001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVMIA001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCMIA001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSMIA001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLMIA001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLMIA002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEMIA001<br/>PVE 1<br/>.5")]
+      N_COF>"❓ EXACOFMIA001<br/>Coffee machine<br/>.60"]
+      N_LAP(["EXALAPMIA001<br/>MacBook"])
+    end
+    style NEW_MIA fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:MIA:END
 ```
 
 ---
@@ -1845,6 +2564,18 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_ATL fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:ATL:START
+    subgraph NEW_ATL ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRATL001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVATL001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCATL001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSATL001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLATL001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLATL002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEATL001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_ATL fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:ATL:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
@@ -1880,8 +2611,80 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_CHI fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:CHI:START
+    subgraph NEW_CHI ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRCHI001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVCHI001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCCHI001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSCHI001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLCHI001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLCHI002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVECHI001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_CHI fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:CHI:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
+```
+
+---
+
+## SEA — Seattle *(New Build)*
+
+**LAN:** `192.168.206.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
+**Entity:** Example Music (US) LLC. · **Landline:** +1 206 555 xxxx · **Mobile:** +1 425 555 xxxx
+
+> **New-build site.** No legacy infrastructure ever existed here — see the "New Build Location" box below in place of "Old Network." Standard-slot addresses are allocated in `benarbejde/address_policy.json`/`sites.csv` the same as any other site, but no `devices.csv` exception rows exist yet.
+
+```mermaid
+graph TD
+    subgraph OLD_SEA ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site.<br/>No prior/legacy network existed before commissioning."]
+    end
+    style OLD_SEA fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:SEA:START
+    subgraph NEW_SEA ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRSEA001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVSEA001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCSEA001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSSEA001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLSEA001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLSEA002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVESEA001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_SEA fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:SEA:END
+```
+
+---
+
+## SFO — San Francisco *(New Build)*
+
+**LAN:** `192.168.145.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
+**Entity:** Example Music (US) LLC. · **Landline:** +1 415 555 xxxx · **Mobile:** +1 628 555 xxxx
+
+> **New-build site.** No legacy infrastructure ever existed here — see the "New Build Location" box below in place of "Old Network." Standard-slot addresses are allocated in `benarbejde/address_policy.json`/`sites.csv` the same as any other site, but no `devices.csv` exception rows exist yet.
+
+```mermaid
+graph TD
+    subgraph OLD_SFO ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site.<br/>No prior/legacy network existed before commissioning."]
+    end
+    style OLD_SFO fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:SFO:START
+    subgraph NEW_SFO ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRSFO001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVSFO001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCSFO001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSSFO001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLSFO001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLSFO002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVESFO001<br/>PVE 1<br/>.5")]
+    end
+    style NEW_SFO fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:SFO:END
 ```
 
 ---
@@ -1935,6 +2738,30 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_SYD fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:SYD:START
+    subgraph NEW_SYD ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRSYD001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVSYD001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCSYD001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSSYD001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLSYD001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLSYD002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVESYD001<br/>PVE 1<br/>.5")]
+      N_SRV[("EXASRVSYD001<br/>Local infra server<br/>.20")]
+      N_SWI{{"EXASWISYD001<br/>Core switch<br/>.250"}}
+      N_SWI2{{"EXASWISYD002<br/>Access switch<br/>.251"}}
+      N_MBP(["EXAMBPSYD001<br/>MacBook Pro"])
+      N_WKS(["EXAWKSSYD001<br/>Workstation"])
+      N_PHN(["EXAPHNSYD001<br/>Phone"])
+      N_TAB(["EXATABSYD001<br/>iPad"])
+      N_LCD(["EXALCDSYD001<br/>LG Signage wallboard"])
+      N_PRN(["EXAPRNSYD001<br/>Laser printer"])
+      N_CAM(["EXACAMSYD001<br/>Camera"])
+      N_CAM2(["EXACAMSYD002<br/>Camera reception"])
+      N_COF>"❓ EXACOFSYD001<br/>Coffee machine"]
+    end
+    style NEW_SYD fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:SYD:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
@@ -1983,6 +2810,28 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_MEL fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:MEL:START
+    subgraph NEW_MEL ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRMEL001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVMEL001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCMEL001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSMEL001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLMEL001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLMEL002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEMEL001<br/>PVE 1<br/>.5")]
+      N_SRV[("EXASRVMEL001<br/>Local file and print server<br/>.20")]
+      N_SWI{{"EXASWIMEL001<br/>Core switch<br/>.250"}}
+      N_SWI2{{"EXASWIMEL002<br/>Access switch<br/>.251"}}
+      N_MBP(["EXAMBPMEL001<br/>MacBook Pro"])
+      N_WKS(["EXAWKSMEL001<br/>Workstation"])
+      N_PHN(["EXAPHNMEL001<br/>Phone"])
+      N_TAB(["EXATABMEL001<br/>iPad"])
+      N_LCD(["EXALCDMEL001<br/>Signage display"])
+      N_PRN(["EXAPRNMEL001<br/>LaserJet printer"])
+      N_NAS[("EXANASMEL001<br/>NAS")]
+    end
+    style NEW_MEL fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:MEL:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
@@ -2039,6 +2888,29 @@ graph TD
       RRY -. "→ EXARDRCLD001" .-> VPN
     end
     style OLD_AKL fill:#56B4E9,stroke:#0072B2,color:#000000
+    %% GENERATED:NEW-NETWORK:AKL:START
+    subgraph NEW_AKL ["🆕 New Network (current)"]
+      N_RTR{{"EXARTRAKL001<br/>RTR<br/>.1"}}
+      N_PRV[("EXAPRVAKL001<br/>PRV<br/>.15")]
+      N_SBC[("EXASBCAKL001<br/>SBC<br/>.48")]
+      N_DCS[("EXADCSAKL001<br/>DCS 1<br/>.10")]
+      N_FWL{{"EXAFWLAKL001<br/>FWL 1<br/>.253"}}
+      N_FWL2{{"EXAFWLAKL002<br/>FWL 2<br/>.254"}}
+      N_PVE[("EXAPVEAKL001<br/>PVE 1<br/>.5")]
+      N_SRV[("EXASRVAKL001<br/>Local server<br/>.20")]
+      N_SWI{{"EXASWIAKL001<br/>Core switch<br/>.250"}}
+      N_SWI2{{"EXASWIAKL002<br/>Access switch<br/>.251"}}
+      N_WKS(["EXAWKSAKL001<br/>Workstation"])
+      N_MBP(["EXAMBPAKL001<br/>MacBook Pro"])
+      N_PHN(["EXAPHNAKL001<br/>Phone"])
+      N_TAB(["EXATABAKL001<br/>iPad"])
+      N_LCD(["EXALCDAKL001<br/>Signage display"])
+      N_PRN(["EXAPRNAKL001<br/>LaserJet printer"])
+      N_CAM(["EXACAMAKL001<br/>Camera"])
+      N_COF>"❓ EXACOFAKL001<br/>Coffee machine"]
+    end
+    style NEW_AKL fill:#E69F00,stroke:#D55E00,color:#000000
+    %% GENERATED:NEW-NETWORK:AKL:END
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
     class DC warn
 ```
