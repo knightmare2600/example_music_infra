@@ -29,6 +29,7 @@
 | Troubleshoot WireGuard | [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) |
 | Verify a change is safe before merging | [../ansible/at_have_ryggen_fri/README.md](../ansible/at_have_ryggen_fri/README.md) |
 | Read about a past incident / outage | [INCIDENT-LOG.md](INCIDENT-LOG.md) |
+| Plan a site cutover without taking the network down | [network-cutover.md](network-cutover.md) |
 
 ---
 
@@ -40,7 +41,8 @@
 | [network-inventory.md](network-inventory.md) | NET-INV-001 | Comprehensive device and IP inventory — all sites, all nodes, health status, known issues |
 | [site-inventory.md](site-inventory.md) | NET-SITE-001 | Per-site commissioning checklists — build tracking, ZFS status, endpoint and equipment sign-off |
 | [INCIDENT-LOG.md](INCIDENT-LOG.md) | OPS-INC-001 | Blameless incident log — chronological, oldest first; what went wrong, root cause, and what changed as a result |
-| [network-diagram.md](network-diagram.md) | NET-DIAG-001 | Per-site network diagrams (mermaid) |
+| [network-diagram.md](network-diagram.md) | NET-DIAG-001 | Per-site network diagrams (mermaid) — Old Network (legacy) + New Network (generated from sites.csv/devices.csv) |
+| [network-cutover.md](network-cutover.md) | NET-DIAG-002 | Old-vs-New Network diagram disagreements — what to check before cutover so a network doesn't go down |
 | [example_music_branding_guide.md](example_music_branding_guide.md) | NET-BRAND-001 | 1980s touring-identity branding guide — livery, colours, fonts |
 | [gitleaks_guide.md](gitleaks_guide.md) | NET-TOOL-GITLEAKS-001 | Gitleaks pre-commit secret-scanning guide (Windows) |
 | [Example Music Limited — KeePassXC CLI Automation.md](Example%20Music%20Limited%20%E2%80%94%20KeePassXC%20CLI%20Automation.md) | NET-TOOL-KEEPASS-001 | KeePassXC CLI automation — Python wrapper for scripted credential retrieval |
