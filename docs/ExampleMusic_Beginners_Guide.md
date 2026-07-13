@@ -355,6 +355,12 @@ graph TD
     CLD <-->|"WireGuard<br/>(all sites direct)"| FAL
     CLD <-->|"WireGuard<br/>(all sites direct)"| ODE
     CLD <-->|"WireGuard<br/>(all sites direct)"| BRK
+
+    classDef hub fill:#0072B2,stroke:#000000,color:#ffffff
+    class CLD hub
+    style UK fill:#56B4E9,stroke:#0072B2,color:#000000
+    style EU fill:#F0E442,stroke:#E69F00,color:#000000
+    style NAAPAC fill:#009E73,stroke:#000000,color:#ffffff
 ```
 
 > **Reading this diagram:** Lines from CLD to FAL, ODE, and BRK are shown as representatives. In practice, every site in each group also maintains its own direct WireGuard tunnel to CLD. The lines are not WireGuard hops — they are logical groupings by AD / service region.
