@@ -1,6 +1,7 @@
 # Example Music Limited — Incident Log
-**Doc ID:** OPS-INC-001
-**Scope:** Example Music Limited — Infrastructure
+
+**Doc ID:** OPS-INC-001  
+**Scope:** Example Music Limited — Infrastructure  
 **Applies to:** Operational incidents affecting the estate's infrastructure, tooling, or automation
 
 ---
@@ -31,8 +32,8 @@ Chronological, oldest incident first. Entries are added as they're formally writ
 
 ### Incident Background
 
-**Date:** 3 April 2026
-**Scope:** Commissioning of a newly-delivered physical server at FAL (Falkirk)
+**Date:** 3 April 2026  
+**Scope:** Commissioning of a newly-delivered physical server at FAL (Falkirk)  
 **Cause (summary):** The vendor shipped a different physical chassis than the one described on its own accompanying asset tags and paperwork — identically specced, but not the same unit — so the documented BMC administrator credentials did not work on the hardware actually received.
 
 A new server arrived at FAL and was racked as normal. The asset tags and delivery paperwork listed BMC administrator credentials for remote out-of-band management. Those credentials did not authenticate against the delivered unit. It was later established that the vendor had shipped a different, identically-specced chassis than the one the paperwork actually described — a fulfilment mix-up on their end, not a data-entry error on ours. The hardware itself was fine for purpose; only the credentials on file were wrong for the box in front of the technician.
@@ -41,7 +42,11 @@ A new server arrived at FAL and was racked as normal. The asset tags and deliver
 
 With the documented BMC credentials unusable, remote out-of-band access to the server was not available at all — there was no way to reach it except locally. The technician connected a crash cart (monitor, keyboard, a small power bar) directly to the server. A mild inconvenience at FAL, with a technician already on site; the same problem at a site without easy physical presence, such as LAX or SYD, would have cost considerably more time.
 
-With local console access, the technician PXE-booted the server using the estate's own iPXE menu to boot into GParted Live (already an existing boot option, not something built for this), then installed `ipmitool` on that live environment. From there, `ipmitool user set password 2 <new password>` reset the BMC's administrator account directly, in-band, from the host's own IPMI device — bypassing the broken remote credential path entirely (method per [Exxact's own "Resetting the BMC Using ipmitool on Linux" guide](https://support.exxactcorp.com/hc/en-us/articles/31728599437847-Resetting-the-BMC-Using-ipmitool-on-Linux)). The technician confirmed the new password actually worked and enabled Serial-over-LAN before rebooting out of GParted — not assumed, tested, before moving on. Once rebooted, the technician independently confirmed BMC connectivity a second way — using [`fyrtaarn`](https://github.com/knightmare2600/fyrtaarn) and a separate `ipmitool` check from a different machine entirely (a MacBook) — before trusting the new credentials for anything further. Only then did the technician log into the BMC properly and use virtual media to install Proxmox VE, as any normal build would.
+With local console access, the technician PXE-booted the server using the estate's own iPXE menu to boot into GParted Live (already an existing boot option, not something built for this), then installed `ipmitool` on that live environment.
+
+From there, `ipmitool user set password 2 <new password>` reset the BMC's administrator account directly, in-band, from the host's own IPMI device — bypassing the broken remote credential path entirely (method per [Exxact's own "Resetting the BMC Using ipmitool on Linux" guide](https://support.exxactcorp.com/hc/en-us/articles/31728599437847-Resetting-the-BMC-Using-ipmitool-on-Linux)). The technician confirmed the new password actually worked and enabled Serial-over-LAN before rebooting out of GParted — not assumed, tested, before moving on.
+
+Once rebooted, the technician independently confirmed BMC connectivity a second way — using [`fyrtaarn`](https://github.com/knightmare2600/fyrtaarn) and a separate `ipmitool` check from a different machine entirely (a MacBook) — before trusting the new credentials for anything further. Only then did the technician log into the BMC properly and use virtual media to install Proxmox VE, as any normal build would.
 
 Licensing and asset records were updated to reflect the chassis actually received, rather than the one originally described on paperwork — the hardware itself needed no remedial work.
 
@@ -67,8 +72,8 @@ A vendor fulfilment error — the wrong physical chassis delivered under otherwi
 
 ### Incident Background
 
-**Date:** 12 July 2026
-**Scope:** Deployment of a new Proxmox VE node in Gothenburg, Sweden (Scandinavia region)
+**Date:** 12 July 2026  
+**Scope:** Deployment of a new Proxmox VE node in Gothenburg, Sweden (Scandinavia region)  
 **Cause (summary):** An omission in the estate's SSH keypair process left the private half of a required key unavailable when a live deployment needed it, delaying that node's onboarding.
 
 During a live deployment of a new Proxmox VE node in Gothenburg, the automation responsible for giving the node its real identity (hostname, static networking) failed to connect. Nothing about the failure pointed at why — the node was reachable on the network — but the connection itself would not complete.
