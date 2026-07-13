@@ -21,11 +21,11 @@
 
 ```mermaid
 graph TD
-    WAN["🌐 WAN / Provisioning\n192.168.139.0/24\n bootstrap: 192.168.139.50"]
+    WAN["🌐 WAN / Provisioning<br/>192.168.139.0/24<br/> bootstrap: 192.168.139.50"]
 
-    FAL["🏴󠁧󠁢󠁳󠁣󠁴󠁿 FAL — Falkirk\nhub-primary\n192.168.76.0/24 · wg: 10.0.76.1"]
-    ODE["🇩🇰 ODE — Odense\nhub-regional\n192.168.126.0/24 · wg: 10.0.126.1"]
-    BRK["🇨🇦 BRK — Brockville\nhub-regional\n192.168.136.0/24 · wg: 10.0.136.1"]
+    FAL["🏴󠁧󠁢󠁳󠁣󠁴󠁿 FAL — Falkirk<br/>hub-primary<br/>192.168.76.0/24 · wg: 10.0.76.1"]
+    ODE["🇩🇰 ODE — Odense<br/>hub-regional<br/>192.168.126.0/24 · wg: 10.0.126.1"]
+    BRK["🇨🇦 BRK — Brockville<br/>hub-regional<br/>192.168.136.0/24 · wg: 10.0.136.1"]
 
     WAN --> FAL
     WAN --> ODE
