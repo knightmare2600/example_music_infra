@@ -93,12 +93,16 @@ write-up.
       6 sites' DCR→DCS rename explicitly excluded as not-a-conflict).
 - [x] Phase 4 — checks 14–15 (`check_network_diagram_freshness.py`,
       `check_network_diagram_content.py`) wired into `run.sh`.
-- [ ] Phase 5 — joint icon/curveball sign-off with Robert: every curveball
-      device (payphones, vending machines, FAL's tour-bus/car/truck/jet
-      fleet, BIR's synth collection, etc.) currently renders with a `❓`
-      placeholder symbol in its New Network label pending an agreed Unicode
-      symbol per type. Visual read-through of FAL and CLD's finished
-      diagrams together, not yet done.
+- [x] Phase 5 (mostly) — joint icon/curveball sign-off with Robert 2026-07-13:
+      21 of 22 curveball/labelled types now have an agreed Unicode symbol
+      (`benarbejde/generate_network_diagrams.py`'s `TYPE_SYMBOLS`). Two
+      literal asks (an AT&T logo / red British phonebox for `PAY`, an Atari
+      logo for `AST`) aren't real Unicode characters — same class of
+      limitation that ruled out real Cisco stencils for the shape system —
+      substituted a telephone receiver and a joystick respectively, flagged
+      as such rather than silently picked. `MUS` (jukebox) still has no
+      agreed symbol — stays `❓`, not guessed. Visual read-through of a
+      finished diagram together not yet done.
 
 ## Methodology — what does "a good run" actually mean?
 
