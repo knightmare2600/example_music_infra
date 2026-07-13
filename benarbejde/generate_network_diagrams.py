@@ -54,6 +54,7 @@ CURVEBALL_TYPES = {'VND', 'MUS', 'PAY', 'COF', 'TEA', 'PMP', 'CLK', 'MIC', 'RAD'
 PLACEHOLDER_SYMBOL = "❓"  # ❓ -- pending sign-off, do not guess a replacement
 TYPE_SYMBOLS = {
     'PAY': "☎️",   # no AT&T logo / red-phonebox glyph exists in Unicode -- telephone receiver instead
+    'MUS': "💿",   # no jukebox glyph exists in Unicode either (confirmed via search, not assumed) -- optical disc instead
     'VND': "🍫",
     'DON': "🍩",
     'COF': "☕",

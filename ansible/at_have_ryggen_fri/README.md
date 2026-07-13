@@ -93,16 +93,17 @@ write-up.
       6 sites' DCR→DCS rename explicitly excluded as not-a-conflict).
 - [x] Phase 4 — checks 14–15 (`check_network_diagram_freshness.py`,
       `check_network_diagram_content.py`) wired into `run.sh`.
-- [x] Phase 5 (mostly) — joint icon/curveball sign-off with Robert 2026-07-13:
-      21 of 22 curveball/labelled types now have an agreed Unicode symbol
-      (`benarbejde/generate_network_diagrams.py`'s `TYPE_SYMBOLS`). Two
-      literal asks (an AT&T logo / red British phonebox for `PAY`, an Atari
-      logo for `AST`) aren't real Unicode characters — same class of
-      limitation that ruled out real Cisco stencils for the shape system —
-      substituted a telephone receiver and a joystick respectively, flagged
-      as such rather than silently picked. `MUS` (jukebox) still has no
-      agreed symbol — stays `❓`, not guessed. Visual read-through of a
-      finished diagram together not yet done.
+- [x] Phase 5 — joint icon/curveball sign-off with Robert 2026-07-13: all 22
+      curveball/labelled types now have an agreed Unicode symbol
+      (`benarbejde/generate_network_diagrams.py`'s `TYPE_SYMBOLS`), no `❓`
+      placeholders left. Three literal asks aren't real Unicode characters —
+      an AT&T logo / red British phonebox for `PAY`, an Atari logo for
+      `AST`, a jukebox glyph for `MUS` (confirmed via web search, not
+      assumed — no Unicode jukebox emoji exists) — same class of limitation
+      that ruled out real Cisco stencils for the shape system. Substituted a
+      telephone receiver, a joystick, and an optical disc respectively,
+      flagged as such rather than silently picked. Visual read-through of a
+      finished diagram together not yet done — the one item left.
 
 ## Methodology — what does "a good run" actually mean?
 
