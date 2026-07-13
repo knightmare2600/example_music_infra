@@ -5,6 +5,16 @@
 > **Note:** WAPs and cameras confirmed at all 42 sites — marked TODO where full inventory pending.  
 > Legend: ⭐ = 3-node hub · ⚠️ = issue flagged · 🔴 = DC services stopped
 
+> **If a diagram on this page shows "Unable to render rich display": hard-refresh (Ctrl/Cmd+Shift+R)
+> and try again before assuming a real bug.** Confirmed 2026-07-13, the hard way: with 51 diagrams
+> on one page, GitHub's client-side mermaid renderer fails a handful non-deterministically — the
+> same content renders fine on one load and fails on the next, and two byte-identical diagrams
+> (GOT/OSL, SEA/SFO — confirmed via diff) can show opposite results on the same load. Every
+> diagram here is verified to actually render, every commit, via a real `kroki.io` round-trip
+> (`ansible/at_have_ryggen_fri`, check 13) — that's a genuine, deterministic, server-side render,
+> unlike GitHub's own. If a specific diagram fails to render *consistently* across several hard
+> refreshes, that's worth reporting as a real bug; an occasional one-off is this known limitation.
+
 ---
 
 ## Visual Standard
