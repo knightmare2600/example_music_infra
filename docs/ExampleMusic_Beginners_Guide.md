@@ -352,9 +352,9 @@ graph TD
         BRT["BRT · Beirut · .169"]
     end
 
-    CLD <-->|WireGuard<br/>(all sites direct)| FAL
-    CLD <-->|WireGuard<br/>(all sites direct)| ODE
-    CLD <-->|WireGuard<br/>(all sites direct)| BRK
+    CLD <-->|"WireGuard<br/>(all sites direct)"| FAL
+    CLD <-->|"WireGuard<br/>(all sites direct)"| ODE
+    CLD <-->|"WireGuard<br/>(all sites direct)"| BRK
 ```
 
 > **Reading this diagram:** Lines from CLD to FAL, ODE, and BRK are shown as representatives. In practice, every site in each group also maintains its own direct WireGuard tunnel to CLD. The lines are not WireGuard hops — they are logical groupings by AD / service region.
