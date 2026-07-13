@@ -44,9 +44,37 @@ WIRELESS_TYPES = {'WAP'}
 ENDPOINT_TYPES = {'WKS', 'LAP', 'MBP', 'TAB', 'SUR', 'PHN', 'PRN', 'CAM', 'LCD', 'VCU', 'TVS', 'MAC', 'NIX', 'BPS'}
 CURVEBALL_TYPES = {'VND', 'MUS', 'PAY', 'COF', 'TEA', 'PMP', 'CLK', 'MIC', 'RAD', 'MOO', 'LIN', 'FCL', 'AST', 'TTY', 'BUS', 'CAR', 'JET', 'TRK', 'DON'}
 
-# Placeholder Unicode symbols pending Robert's Phase 5 sign-off (see the curveball table in the
-# plan) -- literal question mark, not a guess, per "if unsure, ask" instruction.
-PLACEHOLDER_SYMBOL = "❓"  # ❓
+# Per-type Unicode symbols, agreed with Robert 2026-07-13 (Phase 5 sign-off -- see
+# ansible/at_have_ryggen_fri/README.md's Backlog section). Two deliberate substitutions where the
+# literal thing Robert asked for isn't a real Unicode character: AT&T's logo and a British red
+# phonebox glyph don't exist as Unicode (same class of limitation that ruled out real Cisco
+# stencils for the main shape system) -- used the telephone-receiver emoji instead. Likewise no
+# Atari logo exists -- used a joystick, a non-trademarked stand-in for the same retro-computing
+# era. MUS (jukebox) has no agreed symbol yet -- stays PLACEHOLDER_SYMBOL, not a guess.
+PLACEHOLDER_SYMBOL = "❓"  # ❓ -- pending sign-off, do not guess a replacement
+TYPE_SYMBOLS = {
+    'PAY': "☎️",   # no AT&T logo / red-phonebox glyph exists in Unicode -- telephone receiver instead
+    'VND': "🍫",
+    'DON': "🍩",
+    'COF': "☕",
+    'TEA': "🫖",
+    'BUS': "🚌",
+    'CAR': "🚗",
+    'TRK': "🚚",
+    'JET': "✈️",   # the generic airport-signage aeroplane, as asked
+    'PMP': "⛽",
+    'CLK': "⏰",   # deliberately not 🕰️ -- that's already the Old Network box's own symbol
+    'MIC': "🎤",
+    'RAD': "📻",
+    'MOO': "🎹",
+    'FCL': "🎹",   # same symbol as MOO -- both "a keyboard", per Robert
+    'AST': "🕹️",   # no Atari logo in Unicode -- joystick as a non-trademarked stand-in
+    'LIN': "🥁",
+    'TTY': "🖥️",
+    'TAR': "💽",
+    'NIX': "🐧",
+    'VCU': "🎧",
+}
 
 # Terms that must never appear in a New Network label -- FSMO roles and health/low-disk-space
 # annotations stay old-infra-only (docs/network-inventory.md), by data-source construction (neither
@@ -155,7 +183,12 @@ def render_new_network_block(site: str, sites_row: dict, devices_by_site: dict) 
     seen_ids[base_id] = seen_ids.get(base_id, 0) + 1
     node_id = base_id if seen_ids[base_id] == 1 else f"{base_id}{seen_ids[base_id]}"
 
-    symbol = PLACEHOLDER_SYMBOL if dev["type"] in CURVEBALL_TYPES else ""
+    if dev["type"] in TYPE_SYMBOLS:
+      symbol = TYPE_SYMBOLS[dev["type"]]
+    elif dev["type"] in CURVEBALL_TYPES:
+      symbol = PLACEHOLDER_SYMBOL  # curveball type with no agreed symbol yet (e.g. MUS) -- ask, don't guess
+    else:
+      symbol = ""
     display_label = f"{symbol} {label}".strip()
     lines.append(f'      {shape_wrap(node_id, display_label, dev["type"])}')
 

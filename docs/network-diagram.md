@@ -289,23 +289,23 @@ graph TD
       N_RDR[("EXARDRFAL001<br/>HID Signo badge reader<br/>.16")]
       N_SRV[("EXASRVFAL001<br/>Reserved<br/>.20")]
       N_NAS[("EXANASFAL001<br/>Primary storage<br/>.32")]
-      N_TAR[("EXATARFAL001<br/>Legacy tape archive<br/>.33")]
+      N_TAR[("💽 EXATARFAL001<br/>Legacy tape archive<br/>.33")]
       N_LCD(["EXALCDFAL001<br/>Reception display<br/>.50"])
-      N_VCU(["EXAVCUFAL001<br/>Video conferencing<br/>.51"])
-      N_PMP>"❓ EXAPMPFAL001<br/>Networked petrol pump<br/>.60"]
-      N_TEA>"❓ EXATEAFAL001<br/>Smart coffee machine<br/>.61"]
-      N_DON>"❓ EXADONFAL001<br/>Donut vending<br/>.62"]
-      N_VND>"❓ EXAVNDFAL002<br/>Vending machine<br/>.63"]
-      N_VND2>"❓ EXAVNDFAL003<br/>Vending machine<br/>.64"]
-      N_VND3>"❓ EXAVNDFAL004<br/>Vending machine<br/>.65"]
-      N_VND4>"❓ EXAVNDFAL005<br/>Confectionery machine<br/>.66"]
+      N_VCU(["🎧 EXAVCUFAL001<br/>Video conferencing<br/>.51"])
+      N_PMP>"⛽ EXAPMPFAL001<br/>Networked petrol pump<br/>.60"]
+      N_TEA>"🫖 EXATEAFAL001<br/>Smart coffee machine<br/>.61"]
+      N_DON>"🍩 EXADONFAL001<br/>Donut vending<br/>.62"]
+      N_VND>"🍫 EXAVNDFAL002<br/>Vending machine<br/>.63"]
+      N_VND2>"🍫 EXAVNDFAL003<br/>Vending machine<br/>.64"]
+      N_VND3>"🍫 EXAVNDFAL004<br/>Vending machine<br/>.65"]
+      N_VND4>"🍫 EXAVNDFAL005<br/>Confectionery machine<br/>.66"]
       N_MUS>"❓ EXAMUSFAL001<br/>Jukebox<br/>.67"]
       N_CAM(["EXACAMFAL001<br/>Camera front entrance<br/>.70"])
       N_CAM2(["EXACAMFAL002<br/>Camera studio hallway<br/>.71"])
       N_CAM3(["EXACAMFAL003<br/>Camera car park<br/>.72"])
       N_CAM4(["EXACAMFAL004<br/>Camera rear loading bay<br/>.73"])
-      N_CLK>"❓ EXACLKFAL001<br/>Embedded NTP clock<br/>.80"]
-      N_PAY>"❓ EXAPAYFAL001<br/>GPO Kiosk No.6 payphone<br/>.95"]
+      N_CLK>"⏰ EXACLKFAL001<br/>Embedded NTP clock<br/>.80"]
+      N_PAY>"☎️ EXAPAYFAL001<br/>GPO Kiosk No.6 payphone<br/>.95"]
       N_WKS(["EXAWKSFAL001<br/>Workstation Analog Mixing Desk v1<br/>.100"])
       N_WKS2(["EXAWKSFAL003<br/>Workstation shared editing<br/>.102"])
       N_LAP(["EXALAPFAL001<br/>Production laptop<br/>.103"])
@@ -318,25 +318,25 @@ graph TD
       N_PHN4(["EXAPHNFAL006<br/>Phone 6"])
       N_PHN5(["EXAPHNFAL007<br/>Phone 7"])
       N_TAB(["EXATABFAL001<br/>Tablet"])
-      N_TTY>"❓ EXATTYFAL001<br/>VT320 serial terminal"]
-      N_BUS>"❓ EXABUSFAL001<br/>Tour bus 1"]
-      N_BUS2>"❓ EXABUSFAL002<br/>Tour bus 2"]
-      N_BUS3>"❓ EXABUSFAL003<br/>Tour bus 3"]
-      N_CAR>"❓ EXACARFAL001<br/>Car 1"]
-      N_CAR2>"❓ EXACARFAL002<br/>Car 2"]
-      N_CAR3>"❓ EXACARFAL003<br/>Car 3"]
-      N_CAR4>"❓ EXACARFAL004<br/>Car 4"]
-      N_CAR5>"❓ EXACARFAL005<br/>Car 5"]
-      N_TRK>"❓ EXATRKFAL001<br/>Truck 1"]
-      N_TRK2>"❓ EXATRKFAL002<br/>Truck 2"]
-      N_TRK3>"❓ EXATRKFAL003<br/>Truck 3"]
-      N_TRK4>"❓ EXATRKFAL004<br/>Truck 4"]
-      N_TRK5>"❓ EXATRKFAL005<br/>Truck 5"]
-      N_JET>"❓ EXAJETFAL001<br/>Jet 1"]
-      N_JET2>"❓ EXAJETFAL002<br/>Jet 2"]
-      N_JET3>"❓ EXAJETFAL003<br/>Jet 3"]
-      N_JET4>"❓ EXAJETFAL004<br/>Jet 4"]
-      N_JET5>"❓ EXAJETFAL005<br/>Jet 5"]
+      N_TTY>"🖥️ EXATTYFAL001<br/>VT320 serial terminal"]
+      N_BUS>"🚌 EXABUSFAL001<br/>Tour bus 1"]
+      N_BUS2>"🚌 EXABUSFAL002<br/>Tour bus 2"]
+      N_BUS3>"🚌 EXABUSFAL003<br/>Tour bus 3"]
+      N_CAR>"🚗 EXACARFAL001<br/>Car 1"]
+      N_CAR2>"🚗 EXACARFAL002<br/>Car 2"]
+      N_CAR3>"🚗 EXACARFAL003<br/>Car 3"]
+      N_CAR4>"🚗 EXACARFAL004<br/>Car 4"]
+      N_CAR5>"🚗 EXACARFAL005<br/>Car 5"]
+      N_TRK>"🚚 EXATRKFAL001<br/>Truck 1"]
+      N_TRK2>"🚚 EXATRKFAL002<br/>Truck 2"]
+      N_TRK3>"🚚 EXATRKFAL003<br/>Truck 3"]
+      N_TRK4>"🚚 EXATRKFAL004<br/>Truck 4"]
+      N_TRK5>"🚚 EXATRKFAL005<br/>Truck 5"]
+      N_JET>"✈️ EXAJETFAL001<br/>Jet 1"]
+      N_JET2>"✈️ EXAJETFAL002<br/>Jet 2"]
+      N_JET3>"✈️ EXAJETFAL003<br/>Jet 3"]
+      N_JET4>"✈️ EXAJETFAL004<br/>Jet 4"]
+      N_JET5>"✈️ EXAJETFAL005<br/>Jet 5"]
     end
     style NEW_FAL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:FAL:END
@@ -396,7 +396,7 @@ graph TD
       N_LAP(["EXALAPEDI098<br/>Pool laptop<br/>.108"])
       N_SWI{{"EXASWIEDI001<br/>Floor switch<br/>.250"}}
       N_SWI2{{"EXASWIEDI002<br/>48-port switch<br/>.251"}}
-      N_TEA>"❓ EXATEAEDI001<br/>Coffee machine<br/>.60"]
+      N_TEA>"🫖 EXATEAEDI001<br/>Coffee machine<br/>.60"]
     end
     style NEW_EDI fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:EDI:END
@@ -616,7 +616,7 @@ graph TD
       N_FWL{{"EXAFWLPER001<br/>FWL 1<br/>.253"}}
       N_FWL2{{"EXAFWLPER002<br/>FWL 2<br/>.254"}}
       N_PVE[("EXAPVEPER001<br/>PVE 1<br/>.5")]
-      N_NIX(["EXANIXPER001<br/>MIDI archive<br/>.40"])
+      N_NIX(["🐧 EXANIXPER001<br/>MIDI archive<br/>.40"])
       N_NAS[("EXANASPER001<br/>NAS<br/>.50")]
       N_MBP(["EXAMBPPER001<br/>MacBook"])
       N_SUR(["EXASURPER001<br/>Surface"])
@@ -625,7 +625,7 @@ graph TD
       N_PHN3(["EXAPHNPER003<br/>Phone 3"])
       N_PHN4(["EXAPHNPER004<br/>Phone 4"])
       N_PRN(["EXAPRNPER001<br/>Printer"])
-      N_VND>"❓ EXAVNDPER001<br/>Vending machine"]
+      N_VND>"🍫 EXAVNDPER001<br/>Vending machine"]
     end
     style NEW_PER fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:PER:END
@@ -740,8 +740,8 @@ graph TD
       N_FWL{{"EXAFWLLND001<br/>FWL 1<br/>.253"}}
       N_FWL2{{"EXAFWLLND002<br/>FWL 2<br/>.254"}}
       N_PVE[("EXAPVELND001<br/>PVE 1<br/>.5")]
-      N_RAD>"❓ EXARADLND001<br/>BBC Office Radio Mk II<br/>.80"]
-      N_MIC>"❓ EXAMICLND001<br/>Shure SM7 via Dante audio<br/>.81"]
+      N_RAD>"📻 EXARADLND001<br/>BBC Office Radio Mk II<br/>.80"]
+      N_MIC>"🎤 EXAMICLND001<br/>Shure SM7 via Dante audio<br/>.81"]
       N_SWI{{"EXASWILND001<br/>Core switch<br/>.250"}}
       N_WKS(["EXAWKSLND001<br/>Workstation<br/>.150"])
       N_PRN(["EXAPRNLND001<br/>Printer"])
@@ -808,11 +808,11 @@ graph TD
       N_FWL2{{"EXAFWLBIR002<br/>FWL 2<br/>.254"}}
       N_PVE[("EXAPVEBIR001<br/>PVE 1<br/>.5")]
       N_SRV[("EXASRVBIR001<br/>Oracle DB<br/>.20")]
-      N_MOO>"❓ EXAMOOBIR001<br/>Moog synth<br/>.70"]
-      N_LIN>"❓ EXALINBIR001<br/>Drum machine<br/>.71"]
-      N_FCL>"❓ EXAFCLBIR001<br/>Fairlight CMI<br/>.72"]
-      N_AST>"❓ EXAASTBIR001<br/>Atari ST<br/>.73"]
-      N_PAY>"❓ EXAPAYBIR001<br/>Payphone<br/>.74"]
+      N_MOO>"🎹 EXAMOOBIR001<br/>Moog synth<br/>.70"]
+      N_LIN>"🥁 EXALINBIR001<br/>Drum machine<br/>.71"]
+      N_FCL>"🎹 EXAFCLBIR001<br/>Fairlight CMI<br/>.72"]
+      N_AST>"🕹️ EXAASTBIR001<br/>Atari ST<br/>.73"]
+      N_PAY>"☎️ EXAPAYBIR001<br/>Payphone<br/>.74"]
       N_LCD(["EXALCDBIR001<br/>NOC display<br/>.75"])
       N_SWI{{"EXASWIBIR001<br/>Core switch<br/>.250"}}
       N_SWI2{{"EXASWIBIR002<br/>Access switch<br/>.251"}}
@@ -1226,7 +1226,7 @@ graph TD
       N_FWL{{"EXAFWLCPH001<br/>FWL 1<br/>.253"}}
       N_FWL2{{"EXAFWLCPH002<br/>FWL 2<br/>.254"}}
       N_PVE[("EXAPVECPH001<br/>PVE 1<br/>.5")]
-      N_CLK>"❓ EXACLKCPH001<br/>NTP clock<br/>.18"]
+      N_CLK>"⏰ EXACLKCPH001<br/>NTP clock<br/>.18"]
       N_TVS(["EXATVSCPH001<br/>Display<br/>.17"])
       N_SWI{{"EXASWICPH001<br/>Office switch<br/>.250"}}
     end
@@ -1642,7 +1642,7 @@ graph TD
       N_LAP(["EXALAPBON001<br/>ThinkPad DISABLED"])
       N_WKS(["EXAWKSBON001<br/>Finance workstation"])
       N_LAP2(["EXALAPBON002<br/>Finance laptop"])
-      N_VCU(["EXAVCUBON001<br/>Boardroom video conferencing"])
+      N_VCU(["🎧 EXAVCUBON001<br/>Boardroom video conferencing"])
       N_CAM(["EXACAMBON001<br/>CCTV camera"])
       N_TVS(["EXATVSBON001<br/>Display"])
     end
@@ -2209,9 +2209,9 @@ graph TD
       N_FWL{{"EXAFWLBRK001<br/>FWL 1<br/>.253"}}
       N_FWL2{{"EXAFWLBRK002<br/>FWL 2<br/>.254"}}
       N_PVE[("EXAPVEBRK001<br/>PVE 1<br/>.5")]
-      N_DON>"❓ EXADONBRK001<br/>Donut vending<br/>.60"]
+      N_DON>"🍩 EXADONBRK001<br/>Donut vending<br/>.60"]
       N_LAP(["EXALAPBRK001<br/>Tour laptop"])
-      N_VND>"❓ EXAVNDBRK001<br/>Vending machine"]
+      N_VND>"🍫 EXAVNDBRK001<br/>Vending machine"]
     end
     style NEW_BRK fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:BRK:END
@@ -2376,8 +2376,8 @@ graph TD
       N_MUS>"❓ EXAMUSLAX001<br/>Synth<br/>.70"]
       N_MUS2>"❓ EXAMUSLAX002<br/>Drum machine<br/>.71"]
       N_MUS3>"❓ EXAMUSLAX003<br/>Fairlight CMI<br/>.72"]
-      N_AST>"❓ EXAASTLAX001<br/>Atari ST<br/>.73"]
-      N_PAY>"❓ EXAPAYLAX001<br/>Payphone<br/>.74"]
+      N_AST>"🕹️ EXAASTLAX001<br/>Atari ST<br/>.73"]
+      N_PAY>"☎️ EXAPAYLAX001<br/>Payphone<br/>.74"]
       N_LCD(["EXALCDLAX001<br/>Status wallboard<br/>.75"])
       N_SWI{{"EXASWILAX001<br/>Core switch<br/>.250"}}
       N_SWI2{{"EXASWILAX002<br/>Access switch<br/>.251"}}
@@ -2526,7 +2526,7 @@ graph TD
       N_FWL{{"EXAFWLMIA001<br/>FWL 1<br/>.253"}}
       N_FWL2{{"EXAFWLMIA002<br/>FWL 2<br/>.254"}}
       N_PVE[("EXAPVEMIA001<br/>PVE 1<br/>.5")]
-      N_COF>"❓ EXACOFMIA001<br/>Coffee machine<br/>.60"]
+      N_COF>"☕ EXACOFMIA001<br/>Coffee machine<br/>.60"]
       N_LAP(["EXALAPMIA001<br/>MacBook"])
     end
     style NEW_MIA fill:#E69F00,stroke:#D55E00,color:#000000
@@ -2758,7 +2758,7 @@ graph TD
       N_PRN(["EXAPRNSYD001<br/>Laser printer"])
       N_CAM(["EXACAMSYD001<br/>Camera"])
       N_CAM2(["EXACAMSYD002<br/>Camera reception"])
-      N_COF>"❓ EXACOFSYD001<br/>Coffee machine"]
+      N_COF>"☕ EXACOFSYD001<br/>Coffee machine"]
     end
     style NEW_SYD fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:SYD:END
@@ -2907,7 +2907,7 @@ graph TD
       N_LCD(["EXALCDAKL001<br/>Signage display"])
       N_PRN(["EXAPRNAKL001<br/>LaserJet printer"])
       N_CAM(["EXACAMAKL001<br/>Camera"])
-      N_COF>"❓ EXACOFAKL001<br/>Coffee machine"]
+      N_COF>"☕ EXACOFAKL001<br/>Coffee machine"]
     end
     style NEW_AKL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:AKL:END
