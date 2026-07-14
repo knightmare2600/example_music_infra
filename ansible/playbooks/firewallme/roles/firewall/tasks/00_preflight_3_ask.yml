@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# roles/firewall/tasks/02_ask_all.yml
+# roles/firewall/tasks/00_preflight_3_ask.yml
 # Example Music Limited — Every operator prompt, back-to-back, nothing written yet
 # =============================================================================
 # Robert, 2026-07-14: "vars_prompt do it now." Ansible's native play-level
@@ -10,12 +10,19 @@
 # prompts below need exactly those as their displayed defaults. Same practical
 # effect achieved instead by phase separation across the whole role:
 #
-#   00_preflight.yml / 01_interfaces.yml  -- derive every fact silently, no prompts
-#   02_ask_all.yml (this file)            -- every operator prompt, back-to-back
-#   03_derive_post_ask.yml                -- derive whatever depends on the answers
-#   04_summary_confirm.yml                -- ONE consolidated review + ONE confirm,
+#   00_preflight_1_derive.yml / 00_preflight_2_interfaces.yml -- derive every fact
+#                                             silently, no prompts
+#   00_preflight_3_ask.yml (this file)     -- every operator prompt, back-to-back
+#   00_preflight_4_post_ask.yml            -- derive whatever depends on the answers
+#   00_preflight_5_confirm.yml             -- ONE consolidated review + ONE confirm,
 #                                             then (only after "yes") the first write
-#   05_packages.yml onward                -- the apply chain, runs uninterrupted
+#   05_packages.yml onward                 -- the apply chain, runs uninterrupted
+#
+# All five 00_preflight_* files share that name because they're genuinely one
+# phase -- nothing happens until the operator has confirmed -- not five separate
+# pipeline stages. Renamed 2026-07-14 after Robert pointed out the original
+# 00/01/02/03/04 numbering implied otherwise ("how many airlines check stuff
+# AFTER takeoff, not before?").
 #
 # This file used to be roles/firewall/tasks/02_wan_config.yml, absorbing prompts
 # that used to live in 00_preflight.yml (environment resolution, CLD black-site
@@ -36,7 +43,7 @@
 # Resolved from an already-deployed nodeinfo.json if present, else prompted --
 # see ansible/tasks/nodeinfo_environment.yml (replaced the old standalone
 # /etc/.environment file 2026-07-10; fw_environment kept as the local alias
-# since 04_summary_confirm.yml/07_nftables.yml/10_ssh_hardening.yml/
+# since 00_preflight_5_confirm.yml/07_nftables.yml/10_ssh_hardening.yml/
 # 12_finish.yml all already reference it by this name).
 
 - name: "[Ask] Resolve environment"

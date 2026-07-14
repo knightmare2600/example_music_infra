@@ -10,7 +10,7 @@
 # =============================================================================
 
 # Path to sites.csv on the Ansible control node.
-# Used by 00_preflight.yml to build wg_site_octets at runtime.
+# Used by 00_preflight_1_derive.yml to build wg_site_octets at runtime.
 # Override with -e sites_csv_path=/path/to/sites.csv if needed.
 sites_csv_path: "/etc/example-music/sites.csv"
 
@@ -35,7 +35,7 @@ fw_wan_ssh_enabled: false
 fw_wan_ssh_src: ""
 
 # Central BIND9 DNS server (EXADNSVRK001) and internet fallback (Quad9, survives
-# a CLD/VRK outage) — set as facts in 00_preflight.yml from site_services.yml
+# a CLD/VRK outage) — set as facts in 00_preflight_1_derive.yml from site_services.yml
 # (ansible/configs/inventory/group_vars/all/site_services.yml, generated from devices.csv), not
 # hardcoded here. No default needed — always set before use.
 

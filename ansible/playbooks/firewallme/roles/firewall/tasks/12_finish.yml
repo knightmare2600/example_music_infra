@@ -96,7 +96,7 @@
       - ""
 
 
-# Reboot decision was already made and confirmed in 04_summary_confirm.yml
+# Reboot decision was already made and confirmed in 00_preflight_5_confirm.yml
 # (fw_reboot_requested) — not asked again here, just acted on.
 
 - name: "[Finish] Reboot host"

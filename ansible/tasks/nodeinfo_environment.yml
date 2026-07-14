@@ -5,7 +5,7 @@
 # development) from its own nodeinfo.json, prompting only if unset
 # =============================================================================
 # Replaces the old /etc/.environment check/prompt/write pattern, which was
-# duplicated near-identically across firewallme's 00_preflight.yml,
+# duplicated near-identically across firewallme's 00_preflight_3_ask.yml,
 # bind9-dns.yml, rudder_server.yml, and proxmox's 00-preflight.yml -- in
 # every case, /etc/.environment's only purpose was to seed nodeinfo.json's
 # `environment` field (ansible/tasks/nodeinfo.yml). This checks that field
