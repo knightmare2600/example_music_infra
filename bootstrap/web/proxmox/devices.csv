@@ -60,8 +60,8 @@ FAL,JET,2,,,none,,Jet 2,,review
 FAL,JET,3,,,none,,Jet 3,,review
 FAL,JET,4,,,none,,Jet 4,,review
 FAL,JET,5,,,none,,Jet 5,,review
-EDI,DCS,2,12,Windows Server 2022,ssh,,DC secondary needs rebuild corrected to .12,,review
-EDI,DCS,3,13,Windows Server 2022,ssh,,DECOMMISSION PENDING corrected to .13,,review
+EDI,DCR,2,12,Windows Server 2022,ssh,,DC secondary needs rebuild corrected to .12,,yes
+EDI,DCR,3,13,Windows Server 2022,ssh,,DECOMMISSION PENDING corrected to .13,,yes
 EDI,WKS,1,150,Windows 10 Pro 22H2,winrm,,Shared desktop,,yes
 EDI,LAP,98,108,Windows 11 Pro 24H2,winrm,,Pool laptop,,yes
 EDI,SWI,1,250,Cisco Catalyst 2960X,snmp,,Floor switch,,yes
@@ -147,7 +147,7 @@ ODE,MUS,1,60,,none,,Jukebox,,yes
 ODE,MAC,1,,macOS Tahoe,ssh,,iMac,,yes
 ODE,MBP,2,,macOS,ssh,,MacBook Pro,,yes
 KGE,PRN,1,,HP LaserJet MFP M528,snmp,,Printer,,yes
-FAX,FWL,1,254,Cisco ISR 4331,ssh,,WAN edge possible typo verify,,review
+FAX,FWL,1,254,Cisco ISR 4331,ssh,,"WAN edge -- vRACK WAN IP at 192.168.139.246 per standard convention, confirmed",,no
 BON,SWI,1,250,Cisco Catalyst 2960X,snmp,,Office switch,,yes
 BON,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
 BON,LAP,1,,Windows 11,winrm,,ThinkPad DISABLED,,no
@@ -221,3 +221,4 @@ AKL,PRN,1,,HP,snmp,,LaserJet printer,,yes
 AKL,CAM,1,,Axis,http,,Camera,,yes
 AKL,COF,1,,,http,,Coffee machine,,yes
 CLD,UFC,1,82,Debian trixie,snmp,,UniFi Network Controller -- manages WAPs across the estate; no physical WiFi at CLD itself (hub-based management pattern),,no
+TOR,DCR,28,,Windows Server 2003,,no,"Undocumented legacy AD install found on site, no-one on record knew it existed -- running on a Dell PowerEdge 1950, no iDRAC/out-of-band card at all (real problem 3,000 miles from Falkirk). Not in benarbejde/ad_computers.json (the TDF-era AD export) -- confirmed real by Robert directly, not from that export. Slated for full replacement, not just decommission. HostOctet/ConnectionType genuinely unknown -- needs on-site discovery before this can be more than a placeholder row.",,yes

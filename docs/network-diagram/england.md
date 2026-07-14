@@ -66,7 +66,7 @@ graph TD
 
 ---
 
-## BIR — Birmingham
+## BIR — Birmingham 🪠
 
 **LAN:** `192.168.121.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
