@@ -77,8 +77,8 @@ CLY,SRV,1,20,Rocky Linux,ssh,,Oracle DB server,,yes
 CLY,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes
 CLY,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
 CLY,SUR,1,,Windows 11,winrm,,Surface,,yes
-CLY,PHN,1,,iOS,http,,Phone,,no
-CLY,SUR,2,,Android,winrm,,Android tablet,,no
+CLY,PHN,1,,iOS,http,,Phone,,yes
+CLY,TAB,1,,Android,winrm,,"Android tablet -- renamed from EXASURCLY002 to EXATABCLY001: real AD record's own Name field was stale (still said EXASURGLA001), but SamAccountName/DNSHostName/Site already correctly said EXATABCLY001/CLY -- per Robert, real-world fix is demote+rejoin to AD; this row now reflects the correct post-fix identity",,yes
 DUN,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
 DUN,SUR,1,,Windows 11,winrm,,Surface,,yes
 DUN,SUR,2,,Windows 11,winrm,,Surface,,yes
@@ -93,7 +93,7 @@ PER,PHN,2,,Yealink T46G,http,,Phone 2,,yes
 PER,PHN,3,,Yealink T46G,http,,Phone 3,,yes
 PER,PHN,4,,Yealink T46G,http,,Phone 4,,yes
 PER,PRN,1,,HP MFP,snmp,,Printer,,yes
-PER,VND,1,,Embedded SP100,none,,Vending machine,,no
+PER,VND,1,,Embedded SP100,none,,Vending machine,,yes
 ABD,FWL,1,254,Cisco ASA 5506-X,ssh,,Edge firewall,,yes
 ABD,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
 ABD,MBP,1,,macOS,ssh,,MacBook,,yes
