@@ -26,7 +26,8 @@
 #
 # Playbook order:
 #   00-preflight       Pre-flight: credentials, hostname, IP, SSH hardening
-#   10-rename          Rename
+#                      (renames the host itself, Phase G -- see 2026-07-14 entry
+#                      below for why 10-rename.yml is no longer chained here)
 #   15-locale-timezone Locale and timezone
 #   20-registry        Registry hardening
 #   22-screenlock      Screen lock and inactivity timeout
@@ -93,14 +94,35 @@
 #               action is a deliberate separate step afterward. No tagging
 #               change made; README.md updated to state this as intended
 #               behaviour rather than an open question.
+#   2026-07-14  Removed 10-rename.yml from this chain. Real EXADCSCLD001 (forest-
+#               root DC) build: it prompts its own "New hostname" question, entirely
+#               independent of 00-preflight.yml's own hostname prompt moments
+#               earlier -- confirmed via ansible-core's own vars_prompt source that
+#               this cannot be conditionally skipped based on an already-set fact
+#               (vars_prompt fires unconditionally per play, before any task logic,
+#               and is only suppressed if the same variable was passed as a CLI
+#               extra-var). 00-preflight.yml's own Phase G already fully renames
+#               the host (win_hostname module) using the SAME target_hostname
+#               answered once, up front -- 10-rename.yml's chained copy was pure
+#               redundant re-asking, and exactly the kind of trap that produced a
+#               real typo here (EXADCSCLS001 for EXADCSCLD001). Its own "Rename
+#               computer" task would have been a no-op anyway by the time it ran
+#               in the chained case (Phase G already converged the hostname) --
+#               removing it from the chain loses no chained-case functionality.
+#               10-rename.yml itself is NOT deleted -- its own documented standalone
+#               usage (renaming an already-bootstrapped host later, independent of
+#               a full re-bootstrap) is still real and still works, just no longer
+#               auto-imported here.
 # =============================================================================
 
 # Bootstrap sequence — runs by default
 - import_playbook: playbooks/00-preflight.yml
   tags: bootstrap
 
-- import_playbook: playbooks/10-rename.yml
-  tags: rename
+# 10-rename.yml deliberately NOT imported here -- see 2026-07-14 changelog entry
+# above. 00-preflight.yml's own Phase G already renames the host; chaining
+# 10-rename.yml's independent prompt straight after was pure redundant re-asking.
+# Still available standalone: ansible-playbook playbooks/10-rename.yml -i <ip>,
 
 - import_playbook: playbooks/15-locale-timezone.yml
   tags: locale_timezone

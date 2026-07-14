@@ -87,10 +87,13 @@
     - name: "[Finish] Check whether Windows is actually reporting a pending reboot"
       # Robert: "we only need to reboot if the IP or hostname changes... presumably if those
       # tasks don't require changes we don't need a reboot?" -- correct, and it generalises:
-      # 00-preflight.yml/10-rename.yml/35-guest-tools.yml/80-domainjoin.yml already each perform
+      # 00-preflight.yml/35-guest-tools.yml/80-domainjoin.yml already each perform
       # their OWN individually-gated reboot (on hostname/IP change, VMware tools install, domain
       # join respectively -- idempotency audit, [[project_ad_onboarding_audit]]), so by the time
-      # this file runs (last of 20), any of THOSE has already happened and cleared. This file's
+      # this file runs (last of the chain), any of THOSE has already happened and cleared.
+      # (10-rename.yml also has its own gated reboot, but is no longer part of this chain as of
+      # 2026-07-14 -- 00-preflight.yml's own Phase G does the rename now, see that file's
+      # changelog.) This file's
       # own reboot was unconditional regardless, meaning a routine rerun against an
       # already-converged host was forced to reboot anyway, every time, for nothing.
       #

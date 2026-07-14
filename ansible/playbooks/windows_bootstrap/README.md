@@ -5,20 +5,30 @@ Ansible port of Join-DomainAndBootstrap.ps1.
 
 ## Playbook order
 
-`00-preflight.yml` (hostname/static IP/Ansible key) hands off to the rest
-of the chain below, ending with `85-finish.yml` (remote-access summary +
-final reboot). The old `05-bootstrap.yml` monolith that used to duplicate
-this chain inline as one combined play was retired 2026-07-09 — every
-stage it contained was confirmed to have a granular standalone equivalent
-first (two real gaps found in the process were fixed before removal: see
-`00-preflight.yml`'s and `80-domainjoin.yml`'s own changelogs). The
-standalone plays share `tasks/*.yml` files (e.g. `tasks/rdp.yml`) with
-each other, so there's one source of truth for the actual task logic.
+`00-preflight.yml` (hostname/static IP/Ansible key — including the actual
+rename, Phase G) hands off to the rest of the chain below, ending with
+`85-finish.yml` (remote-access summary + final reboot). The old
+`05-bootstrap.yml` monolith that used to duplicate this chain inline as one
+combined play was retired 2026-07-09 — every stage it contained was
+confirmed to have a granular standalone equivalent first (two real gaps
+found in the process were fixed before removal: see `00-preflight.yml`'s
+and `80-domainjoin.yml`'s own changelogs). The standalone plays share
+`tasks/*.yml` files (e.g. `tasks/rdp.yml`) with each other, so there's one
+source of truth for the actual task logic.
+
+`10-rename.yml` is deliberately **not** chained here (removed 2026-07-14) —
+`00-preflight.yml`'s Phase G already renames the host using the same answer
+given once, up front; chaining `10-rename.yml` straight after meant asking
+the same question again independently, which produced a real typo during a
+live forest-root DC build (`ansible-core`'s `vars_prompt` can't be
+conditionally skipped based on an already-set fact — only a CLI extra-var
+suppresses it). Still real and still standalone-usable, for renaming an
+already-bootstrapped host later without a full re-bootstrap:
+`ansible-playbook playbooks/10-rename.yml -i <ip>,`.
 
 | Playbook | Tag | Description |
 |----------|-----|-------------|
-| `00-preflight.yml` | `bootstrap` | Hostname/static IP/Ansible key, then hands off to the rest of the chain |
-| `10-rename.yml` | `rename` | Rename to EXA convention |
+| `00-preflight.yml` | `bootstrap` | Hostname/static IP/Ansible key/rename, then hands off to the rest of the chain |
 | `15-locale-timezone.yml` | `locale_timezone` | Locale (en-GB) and timezone (GMT Standard Time) |
 | `20-registry.yml` | `registry` | Registry hardening |
 | `22-screenlock.yml` | `screenlock` | Screen lock and inactivity timeout |
