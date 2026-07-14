@@ -36,7 +36,6 @@ Generic bootstrap (delegated to `windows_bootstrap/playbooks/`, no duplication h
 | File                      | Tag            | Description                                    |
 |---------------------------|----------------|------------------------------------------------|
 | `windows_bootstrap/playbooks/00-preflight.yml` | `bootstrap`   | Full PostOOBE bootstrap (rename → join → tools) |
-| `windows_bootstrap/playbooks/10-rename.yml`    | `rename`      | Rename to EXADCS\<SITE\>\<NNN\>                |
 | `windows_bootstrap/playbooks/20-registry.yml`  | `registry`    | Registry hardening                             |
 | `windows_bootstrap/playbooks/30-chocolatey.yml`| `chocolatey`  | Chocolatey installation                        |
 | `windows_bootstrap/playbooks/40-choco-packages.yml` | `choco_packages` | Packages (RSAT + server set)          |
