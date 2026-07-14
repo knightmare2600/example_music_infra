@@ -89,6 +89,17 @@
 #      node uses the uniform rect shape with a leading emoji symbol.
 #      Catches drift a freshness diff alone wouldn't explain, and a
 #      hand-edit that bypasses the generator entirely.
+#  16. check_keepass_freshness.py -- Tier 1 (always runs): benarbejde/
+#      extracted_credentials.json is well-formed, every entry has its
+#      required fields, every role is one push_credentials_to_keepass.py
+#      actually knows how to file, no duplicate (hostname, role) pairs.
+#      Tier 2 (host-local, informational unless --strict): if this host has
+#      both the live vault and the automation master-password file,
+#      confirms push_credentials_to_keepass.py --dry-run has nothing left
+#      to add -- same "source vs generated artefact" freshness pattern as
+#      checks 6/14, applied to the KeePassXC vault. Added 2026-07-14 after
+#      two TP-Link entries turned out to carry a stale/wrong password with
+#      nothing to have caught it.
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -204,6 +215,13 @@
 #               colour-scheme fixes, CLD's Old Network box arguably
 #               mislabelling something that was never really "legacy," and a
 #               cloud-emoji/outline idea for the Internet node.
+#   2026-07-14  Added check_keepass_freshness.py (section 16), per Robert
+#               after two live TP-Link KeePass entries turned out to carry a
+#               stale/wrong password with nothing in the harness to have
+#               caught it: "It also suggests you likely need to plumb that
+#               into the harness." Same Tier 1 (JSON structure, clone-safe)
+#               / Tier 2 (live vault, host-local, informational) split as
+#               check_ssh_keys.py.
 # ==============================================================================
 set -uo pipefail
 
@@ -546,6 +564,29 @@ else
   echo "$out"
   fail "New Network content invariant violation(s) -- see above."
   FAILED_CHECKS+=("check_network_diagram_content.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 16. KeePass credential freshness — check_keepass_freshness.py
+# ------------------------------------------------------------------------------
+section "16. KeePass credential freshness — check_keepass_freshness.py"
+
+keepass_out=$(python3 "${HERE}/check_keepass_freshness.py")
+keepass_rc=$?
+echo "$keepass_out"
+keepass_local_issue_count=$(echo "$keepass_out" | grep -oE '^[0-9]+ local-only issue' | grep -oE '^[0-9]+' || true)
+if [[ $keepass_rc -ne 0 ]]; then
+  fail "benarbejde/extracted_credentials.json has a structural problem -- see above."
+  FAILED_CHECKS+=("check_keepass_freshness.py")
+elif [[ -n "$keepass_local_issue_count" && "$keepass_local_issue_count" -gt 0 ]]; then
+  if $STRICT; then
+    fail "${keepass_local_issue_count} local KeePass vault issue(s) -- see above. Failing because --strict was passed."
+    FAILED_CHECKS+=("check_keepass_freshness.py (--strict: local vault drift)")
+  else
+    warn "${keepass_local_issue_count} local KeePass vault issue(s) (see above) -- expected on a bare clone/CI runner with no local vault, but a real drift on a host that has one. Re-run with --strict before treating the vault as authoritative."
+  fi
+else
+  success "extracted_credentials.json is well-formed; live vault (where available) is up to date."
 fi
 
 # ------------------------------------------------------------------------------
