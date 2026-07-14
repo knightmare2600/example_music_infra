@@ -21,6 +21,9 @@
 #                                    actually joined the domain; falls back to
 #                                    "already joined" otherwise, same as
 #                                    05-bootstrap.yml's Stage 23 did)
+#   sac_sol_verify_needed          — 78-sac-ems.yml (tasks/sac_ems.yml, Server
+#                                    OS only; absent/false on workstations —
+#                                    defaulted, not required)
 # Running this file standalone (outside site.yml) will show these as blank/
 # undefined unless the earlier plays already ran against the same host in a
 # prior session — this file assumes it's the last stage of a full run.
@@ -39,6 +42,15 @@
 # Tags: finish
 # =============================================================================
 # Changelog:
+#   2026-07-14  Added "[Finish] SAC/EMS verification note" — Robert, live against
+#               EXADCSCLD001: the old SAC/EMS pause: task (tasks/sac_ems.yml) blocked
+#               the entire playbook run mid-chain waiting on operator confirmation,
+#               every run. He understands why SAC needs a manual SOL check but wanted
+#               it surfaced once, at the very end, not as a hard stop partway through.
+#               Moved the same verification text here, gated on the new
+#               sac_sol_verify_needed fact (set by tasks/sac_ems.yml, Server OS only) —
+#               prints as an informational note in the final summary instead of
+#               blocking anything.
 #   2026-07-12  Final reboot made conditional on Windows actually reporting a
 #               pending reboot (idempotency audit, [[project_ad_onboarding_audit]]
 #               found it unconditional -- directly contradicted site.yml's own
@@ -77,6 +89,20 @@
           - " Arch  : {{ host_arch }}"
           - " Hyper : {{ hypervisor }}"
           - "══════════════════════════════════════════════════════════"
+      tags: finish
+
+    - name: "[Finish] SAC/EMS verification note"
+      debug:
+        msg:
+          - "── SAC/EMS Configured ────────────────────────────────────────────────"
+          - "EMS enabled on COM1 at 115200 8N1."
+          - "Requires a serial0 socket in the Proxmox VM config."
+          - ""
+          - "Verify via SOL:"
+          - "  ipmitool -I lanplus -H <pve-ip> -U admin -P <pass> sol activate"
+          - ""
+          - "You should see the SAC prompt after next reboot."
+      when: sac_sol_verify_needed | default(false) | bool
       tags: finish
 
     - name: "[Finish] Set screen resolution to 1280x960"
