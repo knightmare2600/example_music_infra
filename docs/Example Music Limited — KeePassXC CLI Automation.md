@@ -131,14 +131,20 @@ def find_cli():
     return "kpcli"
   return None
 
-def run_cli(cli, args, password):
+def run_cli(cli, args, password, entry_password=None):
   """
-  Execute CLI with password via stdin.
+  Execute CLI with password via stdin. entry_password, if given, is sent as a
+  second stdin line -- needed for any command using --password-prompt, which
+  makes keepassxc-cli itself prompt for a second, per-entry password after
+  the database unlock password.
   """
+  stdin_payload = password
+  if entry_password is not None:
+    stdin_payload += "\n" + entry_password
   try:
     proc = subprocess.run(
       [cli] + args,
-      input=password.encode(),
+      input=stdin_payload.encode(),
       stdout=subprocess.PIPE,
       stderr=subprocess.PIPE,
       timeout=15
@@ -185,13 +191,13 @@ def add_entry(cli, db, password, path, username):
       "edit", db, path,
       "--username", username,
       "--password-prompt"
-    ], password)
+    ], password, entry_pw)
   except Exception:
     run_cli(cli, [
       "add", db, path,
       "--username", username,
       "--password-prompt"
-    ], password)
+    ], password, entry_pw)
   finally:
     entry_pw = "\0" * len(entry_pw)
 
@@ -247,6 +253,22 @@ if __name__ == "__main__":
 > exhibited the same pattern — dead code after the guard clause meant to precede it, and no
 > return value on the success path. Fixed throughout; the version above is corrected and was
 > mentally traced end-to-end (not executed) against the usage examples in Section 6.
+
+> **Correction (2026-07-14):** actually executed this script for the first time (against a real
+> KeePassXC database, `Example Music.kdbx`, populated with 22 real legacy credentials pulled out
+> of `benarbejde/ad_computers.json`) rather than trusting the 2026-07-11 mental trace. `search` and
+> `mkdir` worked first try. `add` silently created entries with an **empty password** — `entry_pw`
+> was captured via `getpass.getpass()` but never actually passed to the underlying
+> `keepassxc-cli add ... --password-prompt` subprocess; `run_cli()` only ever forwarded the
+> database's own unlock password as stdin, so the CLI's second prompt (for the entry's password)
+> got EOF instead of a value. Fixed: `run_cli()` now takes an optional `entry_password` argument
+> and sends it as a second stdin line; `add_entry()` passes `entry_pw` through on both the `edit`
+> and `add` branches. Verified the fix directly — a throwaway entry added through the corrected
+> script came back with its real password via `keepassxc-cli show -s`, then removed. (The 22 real
+> credentials populated into `Example Music.kdbx` this same session were added via direct
+> `keepassxc-cli add ... -p` calls with both stdin lines supplied correctly from the start, so they
+> were never affected by this particular bug — but nobody would have known that using this script
+> as written, which is the whole reason to actually run a doc's code before trusting it.)
 
 ------
 

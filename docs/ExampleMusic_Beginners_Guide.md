@@ -793,7 +793,7 @@ Malcolm and Jamie both have MacBook Pros with VMware Fusion. This section covers
 | VMware Fusion | ARM64 VM for testing firewall and Debian builds locally before touching production | vmware.com |
 | iTerm2 | Terminal — colour support, split panes, profile support | iterm2.com |
 | KeePassXC | Credential database — every password for every system lives here | keepassxc.org |
-| `kpcli` | KeePassXC CLI — retrieve credentials in scripts without opening the GUI | `brew install kpcli` |
+| `keepassxc-cli` | The real KeePassXC CLI — retrieve/add credentials in scripts without opening the GUI. `kpcli` is a *different*, older, Linux-only tool with partial KDBX4 support and no regex search — fallback only, not this. See `docs/Example Music Limited — KeePassXC CLI Automation.md` | `brew install keepassxc` (macOS) / `sudo apt install keepassxc` (Linux) |
 | OpenSSH | SSH client and agent — built into macOS | pre-installed |
 | ssh-agent | Key management — load your Ansible key at session start | `ssh-add ~/.ssh/id_ansible_ed25519` |
 | WinSCP | SFTP transfers to/from Windows machines | winscp.net |
@@ -805,7 +805,12 @@ Malcolm and Jamie both have MacBook Pros with VMware Fusion. This section covers
 
 ### 11.2 KeePassXC database structure
 
-Every engineer MUST maintain a KeePassXC database for this estate. The recommended structure:
+Every engineer MUST maintain a KeePassXC database for this estate. The recommended structure —
+built and actually tested 2026-07-14 (22 real legacy credentials pulled from
+`benarbejde/ad_computers.json` loaded in via `keepassxc-cli`, not just described on paper), which
+surfaced one real addition over the original proposal: switch admin credentials don't fit cleanly
+under `Network → IPMI / BMC` (a switch isn't a BMC), so they get their own `Network/Switches`
+group instead:
 
 ```
 Example Music.kdbx
@@ -817,14 +822,15 @@ Example Music.kdbx
 │   │   └── PVE root password (hash source for answer.toml)
 │   ├── FAL
 │   │   └── <site devices>
-│   └── <other sites>
+│   └── <other sites — one group per site with a stored credential, not every site upfront>
 ├── Active Directory
 │   ├── JUKEBOX\Administrator (forest DA)
 │   ├── DEPLOYTOOLS_PASS (used by PostOOBE.cmd)
 │   └── Per-domain DA accounts
 ├── Network
 │   ├── WireGuard pre-shared keys (per peer pair)
-│   └── IPMI / BMC passwords (per server)
+│   ├── IPMI-BMC (iDRAC/iLO passwords, per server)
+│   └── Switches (switch admin passwords, per device — added 2026-07-14, not in the original proposal)
 └── Bootstrap
     ├── Ansible SSH private key passphrase (if set)
     └── Preseed ansible user password
