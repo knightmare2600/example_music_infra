@@ -17,6 +17,11 @@
 # Tags: packages
 # =============================================================================
 # Changelog:
+#   2026-07-14  Added a heads-up debug message before "Install management packages" --
+#               a real run against EXAPVEGOT001 took ~9 minutes on this one task alone
+#               (apt cache refresh + package install/upgrade), long enough that an
+#               operator watching the console with no progress output could reasonably
+#               assume it had hung and Ctrl-C. No functional change, message only.
 #   2026-07-12  Added GRUB serial console config (console=ttyS0,115200n8,
 #               GRUB_TERMINAL="serial console", 30s timeout), matching
 #               EXAPVECLD001's real, hand-cut /etc/default/grub -- per
@@ -116,6 +121,15 @@
       tags: packages
 
     # ── Packages ───────────────────────────────────────────────────────────
+
+    - name: "[packages] Note — this step can easily take 10+ minutes"
+      ansible.builtin.debug:
+        msg: >-
+          Installing/upgrading {{ pve_packages | length }} package(s), with an apt cache
+          refresh first -- on a fresh node, or after a while since the last run, this
+          routinely takes 10 minutes or more (confirmed live, EXAPVEGOT001: ~9 minutes).
+          Nothing has hung -- let it finish rather than interrupting the run.
+      tags: packages
 
     - name: Install management packages
       ansible.builtin.apt:

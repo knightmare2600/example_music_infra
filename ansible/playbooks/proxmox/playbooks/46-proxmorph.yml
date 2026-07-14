@@ -33,6 +33,17 @@
 # Tags: proxmorph
 # =============================================================================
 # Changelog:
+#   2026-07-14  Fixed a real live failure (EXAPVEGOT001): "Enable proxmorph hardware
+#               sensor monitoring" hard-failed the whole play with a bare non-zero
+#               return code. Fetched and read the real install.sh -- its
+#               detect_sensors() only recognises 4 specific chip patterns
+#               (coretemp/k10temp, nvme-pci, drivetemp-scsi, fan*_input); if
+#               sensors-detect finds nothing matching any of them, 'sensors enable'
+#               does 'detect_sensors || exit 1'. Added a precondition check that
+#               mirrors detect_sensors() exactly, and skips the enable step cleanly
+#               with a debug message when unsupported -- same pattern already used
+#               for proxmoxbmc/BIOS ROMs in 45-virt-tools.yml -- instead of letting
+#               an optional cosmetic UI feature take down node bootstrap.
 #   2026-07-09  Initial file.
 # =============================================================================
 
@@ -65,6 +76,20 @@
     # detect_sensors() in install.sh requires lm-sensors (command -v sensors)
     # and live sensor data (sensors -j) to proceed -- both are provided here
     # before calling 'sensors enable', which otherwise exits 1.
+    #
+    # 2026-07-14: 'sensors enable' genuinely failed this way against
+    # EXAPVEGOT001 -- confirmed by reading the real install.sh, not guessed.
+    # detect_sensors() there only recognises 4 specific chip patterns
+    # (coretemp-isa-/k10temp-pci- CPU temp, nvme-pci- drive temp,
+    # drivetemp-scsi- HDD temp, fan*_input) -- if sensors-detect finds
+    # nothing matching any of those (not all hardware exposes a readable
+    # hwmon chip in one of these families), detect_sensors returns 1 and
+    # 'sensors enable' does 'detect_sensors || exit 1', hard-failing the
+    # whole play over what's meant to be an optional UI feature. Mirrors
+    # the same pattern proxmoxbmc/BIOS ROMs already use in 45-virt-tools.yml:
+    # check the real precondition ourselves first, skip cleanly with a
+    # message if it isn't met, rather than let an upstream script's exit 1
+    # take down node bootstrap.
 
     - name: Install lm-sensors
       ansible.builtin.apt:
@@ -77,9 +102,42 @@
       changed_when: true
       tags: proxmorph
 
+    - name: Read live sensor data (mirrors install.sh's own precondition check)
+      ansible.builtin.command: sensors -j
+      register: _proxmorph_sensor_output
+      changed_when: false
+      failed_when: false
+      tags: proxmorph
+
+    - name: Determine whether install.sh's detect_sensors() would find anything supported
+      ansible.builtin.set_fact:
+        _proxmorph_sensors_supported: >-
+          {{
+            (_proxmorph_sensor_output.stdout is search('coretemp-isa-'))
+            or (_proxmorph_sensor_output.stdout is search('k10temp-pci-'))
+            or (_proxmorph_sensor_output.stdout is search('nvme-pci-'))
+            or (_proxmorph_sensor_output.stdout is search('drivetemp-scsi-'))
+            or (_proxmorph_sensor_output.stdout is search('fan[0-9]*_input'))
+          }}
+      tags: proxmorph
+
     - name: Enable proxmorph hardware sensor monitoring
       ansible.builtin.command: "{{ proxmorph_install_path }} sensors enable"
       changed_when: true
+      when: _proxmorph_sensors_supported
+      tags: proxmorph
+
+    - name: Sensor monitoring skipped — no supported chip detected
+      ansible.builtin.debug:
+        msg: >-
+          Skipping proxmorph hardware sensor monitoring -- lm-sensors ran but found no
+          CPU temp (coretemp/k10temp), NVMe temp, HDD temp (drivetemp), or fan sensor
+          this hardware exposes in a form install.sh's own detect_sensors() recognises.
+          This is a real hardware limitation, not a config to fix here -- rerun this
+          playbook (tag proxmorph) if sensors are added/enabled later, or run
+          '{{ proxmorph_install_path }} sensors detect' by hand on the node to see
+          exactly what lm-sensors currently reports.
+      when: not _proxmorph_sensors_supported
       tags: proxmorph
 
     - name: Clean up install script
