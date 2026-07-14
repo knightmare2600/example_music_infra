@@ -1,0 +1,582 @@
+---
+# =============================================================================
+# roles/firewall/tasks/02_ask_all.yml
+# Example Music Limited — Every operator prompt, back-to-back, nothing written yet
+# =============================================================================
+# Robert, 2026-07-14: "vars_prompt do it now." Ansible's native play-level
+# vars_prompt: can't be used literally here -- it runs before any task executes,
+# so it has no access to facts this role derives at runtime (site octet from
+# sites.csv, auto-detected WAN interface, derived static IP, etc.), and several
+# prompts below need exactly those as their displayed defaults. Same practical
+# effect achieved instead by phase separation across the whole role:
+#
+#   00_preflight.yml / 01_interfaces.yml  -- derive every fact silently, no prompts
+#   02_ask_all.yml (this file)            -- every operator prompt, back-to-back
+#   03_derive_post_ask.yml                -- derive whatever depends on the answers
+#   04_summary_confirm.yml                -- ONE consolidated review + ONE confirm,
+#                                             then (only after "yes") the first write
+#   05_packages.yml onward                -- the apply chain, runs uninterrupted
+#
+# This file used to be roles/firewall/tasks/02_wan_config.yml, absorbing prompts
+# that used to live in 00_preflight.yml (environment resolution, CLD black-site
+# confirm), 01_interfaces.yml (WAN/LAN interface confirmation, LAN IP choice),
+# and 03_wireguard_config.yml (WireGuard role/tunnel/hub prompts) -- nothing here
+# is new logic, every task below is unchanged from wherever it used to live,
+# only relocated and reordered so the operator answers everything in one
+# uninterrupted pass instead of derive/prompt/derive/prompt throughout the run.
+#
+# Original changelogs (preserved for history):
+#   2026-06-20  Initial file(s)
+#   2026-06-20  Colourised prompts — matches firewallme.sh colour scheme
+#   2026-06-26  Load wg_site_octets dynamically from sites.csv at runtime
+#   2026-06-29  Remove duplicate LAN IP prompt — fw_lan_ip is set in 01_interfaces.yml
+# =============================================================================
+
+# ── Environment (was 00_preflight.yml) ───────────────────────────────────────
+# Resolved from an already-deployed nodeinfo.json if present, else prompted --
+# see ansible/tasks/nodeinfo_environment.yml (replaced the old standalone
+# /etc/.environment file 2026-07-10; fw_environment kept as the local alias
+# since 04_summary_confirm.yml/07_nftables.yml/10_ssh_hardening.yml/
+# 12_finish.yml all already reference it by this name).
+
+- name: "[Ask] Resolve environment"
+  ansible.builtin.include_tasks: ../../../../../tasks/nodeinfo_environment.yml
+
+- name: "[Ask] Set fw_environment"
+  ansible.builtin.set_fact:
+    fw_environment: "{{ resolved_environment }}"
+
+# ── Black-site extra confirmation (was 00_preflight.yml) ─────────────────────
+
+- name: "[Ask] BLACK SITE — CLD extra confirmation"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.R }}
+      ╔══════════════════════════════════════════════════════════════╗
+      ║  *** BLACK SITE — CLD PROVISIONING NETWORK ***               ║
+      ║                                                              ║
+      ║  This is EXAFWLCLD001 — the cloud management hub firewall.  ║
+      ║  This device carries ALL site provisioning traffic.          ║
+      ║                                                              ║
+      ║  Extra precautions apply:                                    ║
+      ║    - WireGuard: hub-regional (peers with FAL, ODE, BRK)     ║
+      ║    - WAN 192.168.139.69 (EXAFWLVRK001) / LAN 192.168.69.x   ║
+      ║      (free-form)                                             ║
+      ║    - Static WAN IP is mandatory                              ║
+      ║    - All changes require explicit confirmation               ║
+      ╚══════════════════════════════════════════════════════════════╝
+      {{ _c.NC }}
+      Type CONFIRM to proceed, anything else to abort
+  register: fw_black_site_confirm
+  when: fw_is_black_site
+
+- name: "[Ask] ABORT — black-site confirmation not given"
+  ansible.builtin.fail:
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} CLD black-site setup aborted."
+  when:
+    - fw_is_black_site
+    - fw_black_site_confirm.user_input | trim | upper != 'CONFIRM'
+
+- name: "[Ask] Force WG role to hub-regional for CLD"
+  ansible.builtin.set_fact:
+    fw_wg_role: "hub-regional"
+  when: fw_is_black_site
+
+# ── WAN interface confirmation (was 01_interfaces.yml) ───────────────────────
+
+- name: "[Ask] Confirm or override WAN interface"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.C }}──────────────────────────────────────────────────────────────{{ _c.NC }}
+      {{ _c.C }}[*]{{ _c.NC }} WAN interface is {{ _c.G }}{{ fw_wan_iface_detected }}{{ _c.NC }} ({{ fw_wan_ip_detected }}, MAC: {{ fw_wan_mac_detected }})
+      {{ _c.C }}    Connected to 192.168.139.0/24 (provisioning network){{ _c.NC }}
+
+      Press {{ _c.G }}Enter{{ _c.NC }} to confirm or type a different interface name
+  register: fw_wan_override
+  when: fw_wan_detected
+
+- name: "[Ask] Prompt for WAN interface (not auto-detected)"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.Y }}[!]{{ _c.NC }} Could not auto-detect WAN interface (no 192.168.139.x address found).
+      {{ _c.Y }}[!]{{ _c.NC }} This may mean the provisioning network is not reachable, or DHCP hasn't completed.
+      {{ _c.C }}    Available interfaces: {{ fw_available_ifaces | join(', ') }}{{ _c.NC }}
+
+      Enter the WAN interface name (default: {{ _c.G }}{{ fw_available_ifaces[0] | default('ens33') }}{{ _c.NC }})
+  register: fw_wan_manual
+  when: not fw_wan_detected
+
+- name: "[Ask] Set final WAN interface"
+  ansible.builtin.set_fact:
+    fw_wan_iface: >-
+      {%- if fw_wan_detected -%}
+        {%- set override = fw_wan_override.user_input | default('') | trim -%}
+        {{ override if override != '' else fw_wan_iface_detected }}
+      {%- else -%}
+        {%- set manual = fw_wan_manual.user_input | default('') | trim -%}
+        {{ manual if manual != '' else (fw_available_ifaces[0] | default('ens33')) }}
+      {%- endif -%}
+
+# ── LAN interface (was 01_interfaces.yml) ────────────────────────────────────
+
+- name: "[Ask] Build LAN candidates"
+  ansible.builtin.set_fact:
+    fw_lan_candidates: "{{ fw_available_ifaces | reject('equalto', fw_wan_iface) | list }}"
+
+- name: "[Ask] Show remaining interfaces for LAN"
+  ansible.builtin.debug:
+    msg: "{{ _c.C }}[*]{{ _c.NC }} Remaining interfaces for LAN (WAN {{ fw_wan_iface }} excluded):\n{% for iface in fw_lan_candidates %}    {{ _c.C }}{{ iface }}{{ _c.NC }}\n{% endfor %}"
+
+- name: "[Ask] Prompt for LAN interface"
+  ansible.builtin.pause:
+    prompt: "Enter the LAN interface name (default: {{ _c.G }}{{ fw_lan_candidates[0] | default('ens34') }}{{ _c.NC }})"
+  register: fw_lan_prompt
+
+- name: "[Ask] Set final LAN interface"
+  ansible.builtin.set_fact:
+    fw_lan_iface: >-
+      {%- set inp = fw_lan_prompt.user_input | default('') | trim -%}
+      {{ inp if inp != '' else (fw_lan_candidates[0] | default('ens34')) }}
+
+- name: "[Ask] FAIL — LAN and WAN cannot be the same"
+  ansible.builtin.fail:
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} LAN and WAN cannot be the same interface."
+  when: fw_lan_iface == fw_wan_iface
+
+# ── LAN IP — standard sites (.1 or .253 of site subnet) — was 01_interfaces.yml ──
+
+- name: "[Ask] Prompt for LAN IP (.1 or .253)"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.C }}  → {{ fw_site_code }}: subnet {{ fw_subnet }}.0/24{{ _c.NC }}
+      {{ _c.C }}  → WG tunnel 10.0.{{ fw_site_octet }}.0/24{{ _c.NC }}
+
+      Use {{ _c.G }}.1{{ _c.NC }}  ({{ fw_lan_ip_1 }})   — primary internet gateway
+      Use {{ _c.G }}.253{{ _c.NC }} ({{ fw_lan_ip_253 }}) — secondary internet gateway
+
+      Enter {{ _c.G }}1{{ _c.NC }} or {{ _c.G }}253{{ _c.NC }}
+  register: fw_lan_octet_prompt
+  when: not fw_is_black_site
+
+- name: "[Ask] Validate LAN IP choice"
+  ansible.builtin.assert:
+    that:
+      - fw_lan_octet_prompt.user_input | trim in ['1', '253']
+    fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Invalid choice — enter 1 or 253."
+  when: not fw_is_black_site
+
+- name: "[Ask] Set LAN IP"
+  ansible.builtin.set_fact:
+    fw_lan_ip: "{{ fw_subnet }}.{{ fw_lan_octet_prompt.user_input | trim }}"
+  when: not fw_is_black_site
+
+# ── LAN IP — CLD black site (LAN is on a different subnet, free-form entry) ──
+
+- name: "[Ask] CLD: prompt for LAN IP (not on fw_subnet — enter full IP)"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.C }}  *** CLD BLACK SITE ***{{ _c.NC }}
+      {{ _c.C }}  LAN is not on {{ fw_subnet }}.0/24 — enter the full LAN IP.{{ _c.NC }}
+      {{ _c.C }}  Example: {{ _c.G }}192.168.69.253{{ _c.NC }} (the private inside interface)
+
+      Enter full LAN IP
+  register: fw_cld_lan_ip_prompt
+  when: fw_is_black_site
+
+- name: "[Ask] CLD: validate and set LAN IP"
+  ansible.builtin.assert:
+    that:
+      - fw_cld_lan_ip_prompt.user_input | trim | regex_search('^(\d{1,3}\.){3}\d{1,3}$')
+    fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Enter a valid IPv4 address."
+  when: fw_is_black_site
+
+- name: "[Ask] CLD: set LAN IP fact"
+  ansible.builtin.set_fact:
+    fw_lan_ip: "{{ fw_cld_lan_ip_prompt.user_input | trim }}"
+  when: fw_is_black_site
+
+# ── WAN mode (was 02_wan_config.yml) ──────────────────────────────────────────
+
+- name: "[Ask] BLACK SITE — force static WAN for CLD"
+  ansible.builtin.set_fact:
+    fw_wan_mode: "static"
+  when: fw_is_black_site
+
+- name: "[Ask] Show WAN IP convention"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.C }}[*]{{ _c.NC }} WAN IP convention: {{ _c.C }}192.168.139.<site-octet>{{ _c.NC }}"
+      - "{{ _c.C }}[*]{{ _c.NC }} Derived for {{ fw_site_code }}: {{ _c.G }}192.168.139.{{ fw_site_octet }}{{ _c.NC }}"
+      - "{{ _c.C }}[*]{{ _c.NC }} Default: DHCP (use static if this node has a reserved provisioning IP){{ _c.NC }}"
+
+- name: "[Ask] Prompt for WAN mode (non-CLD)"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
+      {{ _c.C }}║              WAN Interface Configuration             ║{{ _c.NC }}
+      {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
+
+      WAN mode — {{ _c.G }}DHCP{{ _c.NC }} or {{ _c.G }}static{{ _c.NC }}? [DHCP/static] (default: DHCP)
+  register: fw_wan_mode_prompt
+  when: not fw_is_black_site
+
+- name: "[Ask] Set WAN mode from prompt"
+  ansible.builtin.set_fact:
+    fw_wan_mode: "{{ 'static' if fw_wan_mode_prompt.user_input | default('') | lower | trim == 'static' else 'dhcp' }}"
+  when: not fw_is_black_site
+
+- name: "[Ask] Log DHCP selection"
+  ansible.builtin.debug:
+    msg: "{{ _c.G }}[+]{{ _c.NC }} WAN: DHCP"
+  when: fw_wan_mode == 'dhcp'
+
+# ── Static WAN ────────────────────────────────────────────────────────────────
+
+- name: "[Ask] Set static WAN defaults"
+  ansible.builtin.set_fact:
+    fw_wan_static_gw:     "192.168.139.254"
+    fw_wan_static_prefix: "24"
+  when: fw_wan_mode == 'static'
+
+- name: "[Ask] Confirm derived static WAN IP"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.C }}[*]{{ _c.NC }} Derived static WAN IP: {{ _c.G }}{{ fw_wan_static_ip }}/24{{ _c.NC }} gw {{ _c.G }}{{ fw_wan_static_gw }}{{ _c.NC }}
+      {{ _c.C }}    This is EXAFWL{{ fw_site_code }}001-wan's reserved address per DNS/devices.csv{{ _c.NC }}
+      {{ _c.C }}    (192.168.139.<site-octet> is this site's fixed convention, not guessed).{{ _c.NC }}
+
+      Press {{ _c.G }}Enter{{ _c.NC }} to accept or type a different IP
+  register: fw_wan_ip_override
+  when: fw_wan_mode == 'static'
+
+- name: "[Ask] Prompt to override static WAN gateway"
+  ansible.builtin.pause:
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} WAN gateway [{{ _c.G }}{{ fw_wan_static_gw }}{{ _c.NC }}]"
+  register: fw_wan_gw_override
+  when: fw_wan_mode == 'static'
+
+- name: "[Ask] Set final static WAN IP and GW"
+  ansible.builtin.set_fact:
+    fw_wan_static_ip: >-
+      {%- set ov = fw_wan_ip_override.user_input | default('') | trim -%}
+      {{ ov if ov != '' else fw_wan_static_ip }}
+    fw_wan_static_gw: >-
+      {%- set ov = fw_wan_gw_override.user_input | default('') | trim -%}
+      {{ ov if ov != '' else fw_wan_static_gw }}
+  when: fw_wan_mode == 'static'
+
+- name: "[Ask] Log static WAN confirmed"
+  ansible.builtin.debug:
+    msg: "{{ _c.G }}[+]{{ _c.NC }} WAN: static {{ fw_wan_static_ip }}/24 gw {{ fw_wan_static_gw }}"
+  when: fw_wan_mode == 'static'
+
+# ── Ansible/PXE server ────────────────────────────────────────────────────────
+
+- name: "[Ask] Prompt for Ansible/PXE server octet"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.C }}[*]{{ _c.NC }} Ansible/PXE server IP (last octet or full IP)
+          Derived: {{ _c.G }}{{ fw_ansible_ip }}{{ _c.NC }} — press Enter to accept
+  register: fw_ansible_prompt
+
+- name: "[Ask] Set Ansible IP"
+  ansible.builtin.set_fact:
+    fw_ansible_ip: >-
+      {%- set inp = fw_ansible_prompt.user_input | default('') | trim -%}
+      {%- if inp == '' -%}{{ fw_ansible_ip }}
+      {%- elif inp | regex_search('^\d{1,3}$') -%}{{ fw_subnet }}.{{ inp }}
+      {%- else -%}{{ inp }}
+      {%- endif -%}
+
+# ── WAN SSH ───────────────────────────────────────────────────────────────────
+
+- name: "[Ask] Prompt for WAN SSH"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.Y }}[!]{{ _c.NC }} SSH on WAN (port 22 open to the internet) is a security risk.
+      {{ _c.Y }}[!]{{ _c.NC }} LAN SSH is always enabled. WAN SSH defaults to OFF.
+
+      Enable SSH on WAN interface? [y/N]
+  register: fw_wan_ssh_prompt
+
+- name: "[Ask] Set WAN SSH flag"
+  ansible.builtin.set_fact:
+    fw_wan_ssh_enabled: "{{ fw_wan_ssh_prompt.user_input | default('n') | lower | trim == 'y' }}"
+
+- name: "[Ask] Prompt for WAN SSH source restriction"
+  ansible.builtin.pause:
+    prompt: "Restrict WAN SSH to a specific source IP? (leave blank to allow all)"
+  register: fw_wan_ssh_src_prompt
+  when: fw_wan_ssh_enabled
+
+- name: "[Ask] Set WAN SSH source"
+  ansible.builtin.set_fact:
+    fw_wan_ssh_src: "{{ fw_wan_ssh_src_prompt.user_input | default('') | trim }}"
+  when: fw_wan_ssh_enabled
+
+# ── WAN activation gate ───────────────────────────────────────────────────────
+
+- name: "[Ask] Prompt for WAN activation"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
+      {{ _c.C }}║              WAN Activation                          ║{{ _c.NC }}
+      {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
+
+      {{ _c.Y }}[!]{{ _c.NC }} If you are connected via SSH over the WAN interface, bringing it
+      {{ _c.Y }}[!]{{ _c.NC }} up via nmcli mid-run may drop your session.
+      {{ _c.Y }}[!]{{ _c.NC }} All configs will be written regardless. If you say N, bring the
+      {{ _c.Y }}[!]{{ _c.NC }} WAN up yourself afterwards with:  {{ _c.G }}nmcli con up wan{{ _c.NC }}
+
+      Activate WAN interface now? [y/N]
+  register: fw_wan_activate_prompt
+
+- name: "[Ask] Set WAN activation flag"
+  ansible.builtin.set_fact:
+    fw_wan_activate: "{{ fw_wan_activate_prompt.user_input | default('n') | lower | trim == 'y' }}"
+
+- name: "[Ask] Log WAN activation state"
+  ansible.builtin.debug:
+    msg: >-
+      {{ (_c.G + '[+]' + _c.NC + ' WAN will be activated during setup.')
+         if fw_wan_activate else
+         (_c.Y + '[!]' + _c.NC + ' WAN activation skipped — bring it up manually after the playbook completes.') }}
+
+# ── WireGuard role (was 03_wireguard_config.yml) ─────────────────────────────
+
+- name: "[Ask] Skip — CLD black site has no WireGuard"
+  ansible.builtin.debug:
+    msg: "{{ _c.Y }}[!]{{ _c.NC }} CLD black site — WireGuard skipped."
+  when: fw_is_black_site
+
+- name: "[Ask] Prompt for WireGuard role"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
+      {{ _c.C }}║              WireGuard Configuration                 ║{{ _c.NC }}
+      {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
+
+      {{ _c.C }}[*]{{ _c.NC }} Host           : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}
+      {{ _c.C }}[*]{{ _c.NC }} Site           : {{ _c.G }}{{ fw_site_code }}{{ _c.NC }}
+      {{ _c.C }}[*]{{ _c.NC }} Tunnel subnet  : {{ _c.G }}{{ fw_wg_tunnel_net }}{{ _c.NC }}
+
+      Roles:
+        {{ _c.G }}hub-primary{{ _c.NC }}   — top-level hub (FAL)
+        {{ _c.G }}hub-regional{{ _c.NC }}  — regional hub (ODE, BRK)
+        {{ _c.G }}spoke{{ _c.NC }}         — satellite office (default for most sites)
+        {{ _c.G }}none{{ _c.NC }}          — no WireGuard
+
+      WireGuard role [default: {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}]
+  register: fw_wg_role_prompt
+  when: not fw_is_black_site
+
+- name: "[Ask] Set WG role from prompt"
+  ansible.builtin.set_fact:
+    fw_wg_role: >-
+      {%- set inp = fw_wg_role_prompt.user_input | default('') | trim | lower -%}
+      {%- if inp in ['hub-primary', 'hub-regional', 'spoke', 'none'] -%}{{ inp }}
+      {%- else -%}{{ fw_wg_role }}
+      {%- endif -%}
+  when: not fw_is_black_site
+
+- name: "[Ask] Log role selection"
+  ansible.builtin.debug:
+    msg: "{{ _c.G }}[+]{{ _c.NC }} WireGuard role: {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}"
+  when: not fw_is_black_site
+
+# ── Hub prompts ───────────────────────────────────────────────────────────────
+
+- name: "[Ask] Prompt hub tunnel IP"
+  ansible.builtin.pause:
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} Hub tunnel IP [{{ _c.G }}10.0.{{ fw_site_octet }}.1{{ _c.NC }}]"
+  register: fw_wg_hub_tunnel_ip_prompt
+  when: fw_wg_role in ['hub-primary', 'hub-regional']
+
+- name: "[Ask] Prompt hub listen port"
+  ansible.builtin.pause:
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} WireGuard listen port [{{ _c.G }}51820{{ _c.NC }}]"
+  register: fw_wg_port_prompt
+  when: fw_wg_role in ['hub-primary', 'hub-regional']
+
+- name: "[Ask] Set hub WG facts"
+  ansible.builtin.set_fact:
+    fw_wg_tunnel_ip: >-
+      {%- set inp = fw_wg_hub_tunnel_ip_prompt.user_input | default('') | trim -%}
+      {{ inp if inp != '' else '10.0.' + fw_site_octet | string + '.1' }}
+    fw_wg_port: >-
+      {%- set inp = fw_wg_port_prompt.user_input | default('') | trim -%}
+      {{ inp if inp != '' else '51820' }}
+  when: fw_wg_role in ['hub-primary', 'hub-regional']
+
+# ── Spoke prompts ─────────────────────────────────────────────────────────────
+
+- name: "[Ask] Prompt for spoke tunnel IP"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
+      {{ _c.C }}║              Known Hubs                              ║{{ _c.NC }}
+      {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
+      {% for hub, ip in wg_hub_wan_ips.items() %}
+      {{ _c.C }}  {{ hub }}{{ _c.NC }}  {{ ip }}:{{ wg_hub_default_port }}
+      {% endfor %}
+
+      {{ _c.C }}[*]{{ _c.NC }} Spoke tunnel IP [{{ _c.G }}10.0.{{ fw_site_octet }}.2{{ _c.NC }}]
+  register: fw_wg_spoke_tunnel_ip_prompt
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Set spoke tunnel IP"
+  ansible.builtin.set_fact:
+    fw_wg_tunnel_ip: >-
+      {%- set inp = fw_wg_spoke_tunnel_ip_prompt.user_input | default('') | trim -%}
+      {{ inp if inp != '' else '10.0.' + fw_site_octet | string + '.2' }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Prompt for primary hub site code"
+  ansible.builtin.pause:
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} Primary hub site code (e.g. {{ _c.G }}FAL{{ _c.NC }}, {{ _c.G }}ODE{{ _c.NC }}, {{ _c.G }}BRK{{ _c.NC }}) [default: {{ _c.G }}ODE{{ _c.NC }} for EU spokes]"
+  register: fw_wg_hub_site_prompt
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Set hub site code"
+  ansible.builtin.set_fact:
+    fw_wg_hub_site: "{{ fw_wg_hub_site_prompt.user_input | default('ODE') | trim | upper }}"
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Derive hub endpoint"
+  ansible.builtin.set_fact:
+    fw_wg_hub_default_endpoint: >-
+      {{ wg_hub_wan_ips[fw_wg_hub_site] | default('') + ':' + wg_hub_default_port | string
+         if fw_wg_hub_site in wg_hub_wan_ips else '' }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Prompt for hub endpoint"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.C }}[*]{{ _c.NC }} Hub WAN endpoint
+      {% if fw_wg_hub_default_endpoint %}
+      {{ _c.C }}    Known WAN IP for {{ fw_wg_hub_site }}: {{ _c.G }}{{ fw_wg_hub_default_endpoint }}{{ _c.NC }}
+      {% else %}
+      {{ _c.Y }}[!]{{ _c.NC }} No known WAN IP for {{ fw_wg_hub_site }} — enter manually
+      {% endif %}
+      Primary hub endpoint [{{ _c.G }}{{ fw_wg_hub_default_endpoint if fw_wg_hub_default_endpoint else 'IP:port' }}{{ _c.NC }}]
+  register: fw_wg_hub_endpoint_prompt
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Set hub endpoint and IP"
+  ansible.builtin.set_fact:
+    fw_wg_hub_endpoint: >-
+      {%- set inp = fw_wg_hub_endpoint_prompt.user_input | default('') | trim -%}
+      {{ inp if inp != '' else fw_wg_hub_default_endpoint }}
+    fw_wg_hub_ip: >-
+      {%- set inp = fw_wg_hub_endpoint_prompt.user_input | default('') | trim -%}
+      {%- set ep = inp if inp != '' else fw_wg_hub_default_endpoint -%}
+      {{ ep.split(':')[0] }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+# ── Hub pubkey fetch — a read-only lookup, not a write to this box, so it
+# stays part of the ask phase rather than moving to apply ──────────────────
+
+- name: "[Ask] Attempt SSH fetch of hub pubkey"
+  ansible.builtin.shell: |
+    ssh -o ConnectTimeout=5 \
+        -o StrictHostKeyChecking=no \
+        -o BatchMode=yes \
+        ansible@{{ fw_wg_hub_ip }} 'cat /etc/wireguard/public.key' 2>/dev/null \
+        || echo "FETCH_FAILED"
+  register: fw_wg_hub_pubkey_ssh
+  delegate_to: localhost
+  changed_when: false
+  failed_when: false
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Validate SSH-fetched pubkey format"
+  ansible.builtin.set_fact:
+    fw_wg_hub_pubkey_live: >-
+      {%- set raw = fw_wg_hub_pubkey_ssh.stdout | default('') | trim -%}
+      {{ raw if raw | regex_search('^[A-Za-z0-9+/]{43}=$') else '' }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Report SSH fetch result"
+  ansible.builtin.debug:
+    msg: >-
+      {%- set known = wg_hub_known_pubkeys[fw_wg_hub_site] | default('') -%}
+      {%- if fw_wg_hub_pubkey_live == '' -%}
+      {{ _c.Y }}[!]{{ _c.NC }} SSH fetch failed or returned invalid key — manual entry required.
+      {%- elif known == '' -%}
+      {{ _c.G }}[+]{{ _c.NC }} Live key fetched: {{ fw_wg_hub_pubkey_live }} (no known-good key to compare)
+      {%- elif fw_wg_hub_pubkey_live == known -%}
+      {{ _c.G }}[+]{{ _c.NC }} Live key {{ _c.G }}matches{{ _c.NC }} known-good key for {{ fw_wg_hub_site }} ✓
+      {%- else -%}
+      {{ _c.R }}[!]{{ _c.NC }} Live key {{ _c.R }}DIFFERS{{ _c.NC }} from known-good key for {{ fw_wg_hub_site }}!
+      {{ _c.R }}    Known : {{ wg_hub_known_pubkeys[fw_wg_hub_site] }}{{ _c.NC }}
+      {{ _c.R }}    Live  : {{ fw_wg_hub_pubkey_live }}{{ _c.NC }}
+      {{ _c.R }}    Hub may have been rebuilt — verify before accepting.{{ _c.NC }}
+      {%- endif -%}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Confirm differing key or provide manual key"
+  ansible.builtin.pause:
+    prompt: |-
+      {% set known = wg_hub_known_pubkeys[fw_wg_hub_site] | default('') %}
+      {% if fw_wg_hub_pubkey_live != '' and known != '' and fw_wg_hub_pubkey_live != known %}
+      {{ _c.R }}[!] WARNING: Live key differs from known-good key for {{ fw_wg_hub_site }}{{ _c.NC }}
+      {{ _c.R }}    Known : {{ known }}{{ _c.NC }}
+      {{ _c.R }}    Live  : {{ fw_wg_hub_pubkey_live }}{{ _c.NC }}
+
+      Type {{ _c.G }}accept{{ _c.NC }} to use the live key, or paste a replacement key
+      {% elif fw_wg_hub_pubkey_live == '' %}
+      {{ _c.Y }}[!]{{ _c.NC }} SSH fetch failed. Get the hub pubkey manually:
+      {{ _c.G }}    ssh ansible@{{ fw_wg_hub_ip }} 'cat /etc/wireguard/public.key'{{ _c.NC }}
+      {% if known %}
+      {{ _c.Y }}[!]{{ _c.NC }} Last known good key for {{ fw_wg_hub_site }}: {{ _c.C }}{{ known }}{{ _c.NC }}
+      {% endif %}
+      Paste the hub public key (44 base64 chars ending in =)
+      {% else %}
+      {{ _c.G }}[+]{{ _c.NC }} SSH fetch succeeded and key matches known-good ✓
+      {{ _c.G }}    {{ fw_wg_hub_pubkey_live }}{{ _c.NC }}
+
+      Press Enter to accept
+      {% endif %}
+  register: fw_wg_hub_pubkey_confirm
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Set final hub pubkey"
+  ansible.builtin.set_fact:
+    fw_wg_hub_pubkey: >-
+      {%- set inp = fw_wg_hub_pubkey_confirm.user_input | default('') | trim -%}
+      {%- if inp == '' or inp | lower == 'accept' -%}{{ fw_wg_hub_pubkey_live }}
+      {%- else -%}{{ inp }}
+      {%- endif -%}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] FAIL — no valid hub pubkey"
+  ansible.builtin.fail:
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} No valid WireGuard public key for hub {{ fw_wg_hub_site }}. Expected 44 base64 chars ending in =."
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+    - not fw_wg_hub_pubkey | default('') | regex_search('^[A-Za-z0-9+/]{43}=$')

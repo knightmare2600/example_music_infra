@@ -1,0 +1,91 @@
+---
+# =============================================================================
+# roles/firewall/tasks/03_derive_post_ask.yml
+# Example Music Limited — Derivation that depends on the operator's answers
+# =============================================================================
+# Runs after 02_ask_all.yml, before 04_summary_confirm.yml. Still no writes to
+# the box -- these are facts that couldn't be computed until the ask phase's
+# overrides were known (final interface names, chosen WireGuard hub/role).
+#
+# MAC lookups used to live in 01_interfaces.yml, and the AllowedIPs builder in
+# 03_wireguard_config.yml -- both moved here as part of the 2026-07-14
+# "ask everything, then run" restructure (see 02_ask_all.yml's own header),
+# since both need the FINAL fw_wan_iface/fw_lan_iface/fw_wg_hub_site/fw_wg_role
+# values, not the pre-override detected/default ones.
+# =============================================================================
+
+- name: "[Derive] Get WAN MAC"
+  ansible.builtin.shell: "cat /sys/class/net/{{ fw_wan_iface }}/address"
+  register: fw_wan_mac_raw
+  changed_when: false
+
+- name: "[Derive] Set WAN MAC fact"
+  ansible.builtin.set_fact:
+    fw_wan_mac: "{{ fw_wan_mac_raw.stdout | trim }}"
+
+- name: "[Derive] Get LAN MAC"
+  ansible.builtin.shell: "cat /sys/class/net/{{ fw_lan_iface }}/address"
+  register: fw_lan_mac_raw
+  changed_when: false
+
+- name: "[Derive] Set LAN MAC fact"
+  ansible.builtin.set_fact:
+    fw_lan_mac: "{{ fw_lan_mac_raw.stdout | trim }}"
+
+# ── Build topology-aware AllowedIPs ──────────────────────────────────────────
+
+- name: "[Derive] Build topology-aware AllowedIPs"
+  ansible.builtin.set_fact:
+    fw_wg_allowed_ips: >-
+      {%- set hub = fw_wg_hub_site -%}
+      {%- set parts = [] -%}
+      {%- set topo = wg_hub_topology[hub]['spokes'] | default([]) -%}
+      {%- set all_sites = [hub] + topo -%}
+      {%- for code in all_sites -%}
+        {%- set octet = wg_site_octets[code] | default('') -%}
+        {%- if octet != '' -%}
+          {%- set _ = parts.append('10.0.' + octet|string + '.0/24') -%}
+          {%- set _ = parts.append('192.168.' + octet|string + '.0/24') -%}
+          {%- for extra in wg_site_extra_subnets[code] | default([]) -%}
+            {%- set _ = parts.append(extra) -%}
+          {%- endfor -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {%- for mgmt in wg_management_hubs | default([]) -%}
+        {%- if mgmt not in all_sites -%}
+          {%- set octet = wg_site_octets[mgmt] | default('') -%}
+          {%- if octet != '' -%}
+            {%- set _ = parts.append('10.0.' + octet|string + '.0/24') -%}
+            {%- set _ = parts.append('192.168.' + octet|string + '.0/24') -%}
+            {%- for extra in wg_site_extra_subnets[mgmt] | default([]) -%}
+              {%- set _ = parts.append(extra) -%}
+            {%- endfor -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ parts | join(', ') }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Derive] WireGuard summary — spoke"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.G }}[+]{{ _c.NC }} WG role      : {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}"
+      - "{{ _c.O }}[+]{{ _c.NC }} Tunnel IP    : {{ _c.O }}{{ fw_wg_tunnel_ip }}/24{{ _c.NC }}"
+      - "{{ _c.O }}[+]{{ _c.NC }} Hub          : {{ _c.O }}{{ fw_wg_hub_site }} — {{ fw_wg_hub_endpoint }}{{ _c.NC }}"
+      - "{{ _c.O }}[+]{{ _c.NC }} Hub pubkey   : {{ _c.O }}{{ fw_wg_hub_pubkey }}{{ _c.NC }}"
+      - "{{ _c.C }}[+]{{ _c.NC }} AllowedIPs   : {{ fw_wg_allowed_ips }}"
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Derive] WireGuard summary — hub"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.G }}[+]{{ _c.NC }} WG role    : {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}"
+      - "{{ _c.O }}[+]{{ _c.NC }} Tunnel IP  : {{ _c.O }}{{ fw_wg_tunnel_ip }}/24{{ _c.NC }}"
+      - "{{ _c.O }}[+]{{ _c.NC }} Port       : {{ _c.O }}{{ fw_wg_port }}{{ _c.NC }}"
+  when:
+    - not fw_is_black_site
+    - fw_wg_role in ['hub-primary', 'hub-regional']
