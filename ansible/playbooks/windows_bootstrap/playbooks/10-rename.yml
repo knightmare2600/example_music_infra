@@ -3,6 +3,16 @@
 # playbooks/10-rename.yml
 # Example Music Limited — Windows host rename
 # =============================================================================
+# STANDALONE ONLY as of 2026-07-14 -- no longer imported by site.yml. Use this
+# to rename an already-bootstrapped host later, without a full re-bootstrap.
+# For a fresh PostOOBE build, 00-preflight.yml's own Phase G already renames
+# the host (using the target_hostname answer given once, up front) -- this
+# file used to also run straight after that in the chain, prompting AGAIN,
+# independently, for the same thing. See site.yml's 2026-07-14 changelog
+# entry for the full reasoning (ansible-core's vars_prompt can't be
+# conditionally skipped based on an already-set fact, so the only way to stop
+# the redundant second prompt was to stop chaining this file at all).
+#
 # Prompts for a hostname if --extra-vars new_hostname is not supplied.
 # Validates against EXA[ROLE][SITE][NNN] convention and cross-checks the
 # site code against sites.csv (passed as --extra-vars sites_csv=<path>).

@@ -466,18 +466,27 @@ Ansible port of `Join-DomainAndBootstrap.ps1`.
 
 `site.yml` is the entry point — it chain-imports numbered step playbooks,
 and supports per-tag runs. `00-preflight.yml` (hostname/static IP/Ansible
-key) hands off to the rest of the chain (`10-rename.yml` onward), ending
-with `85-finish.yml` (remote-access summary + final reboot). The old
-`05-bootstrap.yml` monolith that used to duplicate this chain inline was
-retired 2026-07-09, once every stage it contained was confirmed to have a
-granular standalone equivalent.
+key — including the actual rename, Phase G) hands off to the rest of the
+chain (`15-locale-timezone.yml` onward), ending with `85-finish.yml`
+(remote-access summary + final reboot). The old `05-bootstrap.yml` monolith
+that used to duplicate this chain inline was retired 2026-07-09, once every
+stage it contained was confirmed to have a granular standalone equivalent.
+
+`10-rename.yml` is deliberately **not** part of this chain (removed
+2026-07-14) — it has its own independent hostname prompt, which fired a
+second time right after `00-preflight.yml`'s already-correct rename during
+a real forest-root DC build, and produced a real typo (`ansible-core`'s
+`vars_prompt` can't be conditionally skipped based on an already-set fact —
+confirmed against its own source, it only skips if the same variable was
+passed as a CLI extra-var). Still available standalone for renaming an
+already-bootstrapped host later: `ansible-playbook
+playbooks/windows_bootstrap/playbooks/10-rename.yml -i <ip>,`.
 
 ### Numbered steps (site.yml)
 
 | Playbook | Tag | Description |
 |----------|-----|-------------|
-| `playbooks/00-preflight.yml` | `bootstrap` | Hostname/static IP/Ansible key, then hands off to the rest of the chain |
-| `playbooks/10-rename.yml` | `rename` | Rename to EXA convention |
+| `playbooks/00-preflight.yml` | `bootstrap` | Hostname/static IP/Ansible key/rename, then hands off to the rest of the chain |
 | `playbooks/15-locale-timezone.yml` | `locale_timezone` | Locale (en-GB) and timezone (GMT Standard Time) |
 | `playbooks/20-registry.yml` | `registry` | Registry hardening |
 | `playbooks/22-screenlock.yml` | `screenlock` | Screen lock and inactivity timeout |
