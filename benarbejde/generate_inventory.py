@@ -152,6 +152,20 @@
 #              A symlink-based fix was tried and reverted -- this repo is cloned on Windows, Linux,
 #              and macOS, and symlinks don't survive that reliably. A real directory move is the
 #              only fix that's identical on every platform.
+#  2026-07-14  Added SWI to role_offsets (.250-.252, address_policy.json) and
+#              DNS_MULTI_FIRST_INSTANCE_ONLY -- per Robert: "even if the physical thing... isn't
+#              yet there, it already has a 'space' to place it." Confirmed the .250 start is
+#              simple arithmetic, not an arbitrary choice: DHCP's pool ends at .249 and FWL is
+#              pinned to the top two addresses (.253/.254) with .255 as broadcast, leaving
+#              .250-.252 as the only consecutive static gap left in the /24. Unlike DCS/PVE (which
+#              never have devices.csv rows to collide with), 15 sites already have a real SWI row
+#              carrying genuine vendor/model data -- SWI is deliberately EXEMPTED from the
+#              STANDARD_OFFSETS devices.csv-exclusion mechanism (would have silently replaced real
+#              Notes with a generic placeholder) and compute_standard_devices_for_site() gained a
+#              real_device_types parameter so the synthetic placeholder is suppressed per-site
+#              when a real devices.csv row already covers it. Verified via --emit-devices-json:
+#              58 SWI entries (36 synthesized + 22 real), zero duplicate hostnames, VRK/FRD
+#              correctly excluded (NON_STANDARD_SITES).
 # ==================================================================================================
 
 import csv
@@ -212,10 +226,21 @@ def load_address_policy(policy_path: Path):
   # tables, which could silently drift from OFFSETS_SINGLE/ROLE_OFFSETS; this builds them from
   # the same source instead). A devices.csv row whose Type+HostOctet exactly matches one of these
   # is already rendered by the standard template for that site — skip it rather than duplicate it.
+  #
+  # SWI is exempted (2026-07-14): unlike DCS/PVE/RTR/FWL (whose devices.csv rows, if any existed,
+  # would carry nothing the generic placeholder doesn't already say) or WAP (deliberately accepts
+  # losing per-device Notes given its 1-13+ per-site count, see the WAP block below), SWI's real
+  # devices.csv rows carry real vendor/model data (Cisco Catalyst 9300, "Core switch", etc.) for
+  # 15 sites today. Excluding them here would silently replace that with a generic "Standard SWI
+  # slot 1" placeholder in the .ini's reference block — a real data loss, not a dedup. The
+  # opposite-direction collision (don't synthesize a placeholder for a site that already has a
+  # real SWI row) is instead handled in compute_standard_devices_for_site()'s caller.
   STANDARD_OFFSETS.clear()
   for role, offset in OFFSETS_SINGLE.items():
     STANDARD_OFFSETS.setdefault(role, set()).add(offset)
   for role, offsets in ROLE_OFFSETS.items():
+    if role == "SWI":
+      continue
     STANDARD_OFFSETS.setdefault(role, set()).update(offsets)
 
 # ==================================================================================================
@@ -706,15 +731,26 @@ def validate_csv_structure(rows):
 #     legitimately reusing EXAWKS<SITE>001, the same hostname the "example" placeholder would use)
 DNS_SINGLE_ROLES = ["RTR", "PRV", "SBC"]
 DNS_MULTI_ALL_INSTANCES = {"FWL"}
-DNS_MULTI_FIRST_INSTANCE_ONLY = {"DCS", "PVE"}
+# SWI joined 2026-07-14 (address_policy.json's .250-.252 range, previously documented in
+# _addressing but never wired into role_offsets): every site gets exactly one standard SWI
+# placeholder synthesized (first instance only, same as DCS/PVE) — Robert's "every site has one
+# of these, even if it's not physically racked yet" point. .251/.252 stay reserved headroom for
+# the sites that grow to 2-3 units via a real devices.csv row, same as they already do today.
+DNS_MULTI_FIRST_INSTANCE_ONLY = {"DCS", "PVE", "SWI"}
 
-def compute_standard_devices_for_site(site: str, net: IP):
+def compute_standard_devices_for_site(site: str, net: IP, real_device_types: frozenset = frozenset()):
   """
   Returns every confirmed-real standard-slot device for one site as a flat list of dicts
   (Site, Hostname, HostOctet, Notes) — the same addresses build_ini() derives for the ones it
   shows uncommented, just shaped for JSON consumption instead of f-string interpolation.
+
+  real_device_types: Types this site already has a genuine devices.csv row for (caller's
+  responsibility to compute from devices_by_site). Used to suppress synthesizing a standard
+  placeholder that would collide with a real, more-informative devices.csv entry -- currently
+  only matters for SWI, whose devices.csv rows (unlike DCS/PVE, which never have any) carry real
+  vendor/model data worth keeping instead of a generic "Standard SWI slot 1" placeholder.
   """
-  suppressed = SUPPRESSED_STANDARD_ROLES.get(site, set())
+  suppressed = SUPPRESSED_STANDARD_ROLES.get(site, set()) | real_device_types
 
   devices = []
   for role in DNS_SINGLE_ROLES:
@@ -794,6 +830,15 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
   rows = list(csv.DictReader(csv_path.open()))
   validate_csv_structure(rows)
 
+  # Loaded before the standard-slot synthesis loop below (not after, as this used to be ordered)
+  # so compute_standard_devices_for_site() can be told, per site, which Types already have a real
+  # devices.csv row -- currently only matters for SWI (see that function's own docstring).
+  devices_by_site, _stats = load_devices(devices_path)
+  real_types_by_site = {
+    site: {dev["type"] for dev in site_devices}
+    for site, site_devices in devices_by_site.items()
+  }
+
   subnet_base = {}
   all_devices = []
   for r in rows:
@@ -804,9 +849,10 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
     subnet_base[r["Site"]] = ".".join(net.strNormal(0).split("/")[0].split(".")[:3])
     if r["Site"] in NON_STANDARD_SITES:
       continue  # e.g. VRK — no standard-convention devices, only its real devices.csv rows
-    all_devices.extend(compute_standard_devices_for_site(r["Site"], net))
+    all_devices.extend(compute_standard_devices_for_site(
+      r["Site"], net, real_device_types=real_types_by_site.get(r["Site"], frozenset())
+    ))
 
-  devices_by_site, _stats = load_devices(devices_path)
   for site, site_devices in devices_by_site.items():
     for dev in site_devices:
       all_devices.append({
