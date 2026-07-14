@@ -3,10 +3,10 @@
 # playbooks/75-openssh.yml
 # Example Music Limited — OpenSSH configuration and Ansible key deployment
 # =============================================================================
-# Ensures OpenSSH Server is installed, running, and set to Automatic.
-# Writes the Ansible public key to administrators_authorized_keys with
-# correct ACLs (matches Join-DomainAndBootstrap.ps1 Stage 16).
-# Sets PS7 as the default SSH shell (falls back to PS5 if PS7 absent).
+# Ensures OpenSSH Server is running and set to Automatic. Writes the Ansible
+# public key to administrators_authorized_keys with correct ACLs (matches
+# Join-DomainAndBootstrap.ps1 Stage 16). Sets PS7 as the default SSH shell
+# (falls back to PS5 if PS7 absent).
 #
 # Safe to re-run — key file is overwritten with the canonical value,
 # ACLs are re-applied, service state is confirmed.
@@ -17,6 +17,25 @@
 # Tags: openssh
 # =============================================================================
 # Changelog:
+#   2026-07-14  Robert, live against EXADCSCLD001: removed the "Install OpenSSH
+#               Server capability" task (win_optional_feature, state: present).
+#               It failed with "Failed to find feature
+#               'OpenSSH.Server~~~~0.0.1.0'" -- this host's OpenSSH was never
+#               installed via the standard Windows Capability/DISM mechanism
+#               (no Features-on-Demand source available to enumerate it
+#               against), so the lookup errored regardless of sshd actually
+#               being present and working. It always was, by construction:
+#               every windows_bootstrap play, including this one, only ever
+#               runs over the SSH connection 00-preflight.yml already
+#               established (ansible_connection: ssh) -- reaching this task at
+#               all is itself proof sshd is installed and answering. This task
+#               was a holdover from Join-DomainAndBootstrap.ps1, which ran
+#               locally on a stock image *before* any SSH connection existed
+#               and genuinely needed to enable the capability from scratch;
+#               that precondition doesn't apply once Ansible is driving
+#               everything over SSH. The rest of the file (key deployment,
+#               ACLs, firewall rule, PS7 default shell, restart) still runs
+#               every time -- only the redundant install step is gone.
 #   2026-06-20  Initial file
 # =============================================================================
 
@@ -24,12 +43,6 @@
   hosts: "{{ target | default('all') }}"
   gather_facts: false
   tasks:
-
-    - name: Install OpenSSH Server capability
-      ansible.windows.win_optional_feature:
-        name: OpenSSH.Server~~~~0.0.1.0
-        state: present
-      tags: openssh
 
     - name: Ensure sshd service is running and set to Automatic
       ansible.windows.win_service:
