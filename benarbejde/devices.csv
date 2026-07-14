@@ -1,223 +1,223 @@
-Site,Type,Number,HostOctet,OS,ConnectionType,Managed,Notes,SubnetSite
-CLD,ANS,1,9,Debian,ssh,,Ansible control node -- manages all sites,
-CLD,RDR,1,12,Debian,ssh,,Rudder configuration management server,
-CLD,SVR,2,20,Windows Server 2022,ssh,,Windows Admin Centre -- reaches all site DCs,
-CLD,PBX,1,48,,ssh,,3CX PBX. No SBC in CLD so put the PBX there instead,
-FRD,PRV,1,1,,none,,"Provisioning server (PXE, port 8000) -- legal fiction, physically a MacBook running python3 -m http.server 8000, mirroring /debian from Edinburgh. Detected via gateway 172.16.124.2 in menu.ipxe/late_command.sh; octet .1 here (not the standard .15 PRV slot) matches the real boot-url",
-CLD,PBX,2,48,,ssh,,"Secondary 3CX PBX -- physically at Fredericia Havn (FRD Havn), hostnamed under CLD as part of the 2026-07-11 Pulsant DC / FRD Havn CLD network rework. No SBC on FRD's network either -- same reuse-the-empty-SBC-slot pattern as CLD's own PBX (CLD,PBX,1). Real IP stays on FRD's own subnet via SubnetSite.",FRD
-VRK,DNS,1,8,Debian trixie,ssh,,DNS/BIND server -- jukebox.internal authoritative,
-VRK,PRV,1,50,,none,,Provisioning server -- PXE / ISOs / Ansible keys / scripts,
-VRK,FWL,1,69,,ssh,,Firewall WAN face (vRACK). LAN face 192.168.69.253,
-FAL,RDR,1,16,,ssh,,HID Signo badge reader,
-FAL,SRV,1,20,,ssh,,Reserved -- standard convention slot,
-FAL,NAS,1,32,FreeNAS 13.0-U6,ssh,,Primary storage,
-FAL,TAR,1,33,Solaris Embedded,telnet,,Legacy tape archive,
-FAL,LCD,1,50,Samsung Tizen,http,,Reception display,
-FAL,VCU,1,51,Poly Studio X70,http,,Video conferencing,
-FAL,PMP,1,60,,none,,Networked petrol pump,
-FAL,TEA,1,61,,http,,Smart coffee machine,
-FAL,DON,1,62,VxWorks,http,,Donut vending,
-FAL,VND,2,63,NT4 Embedded,none,,Vending machine,
-FAL,VND,3,64,XPe,none,,Vending machine,
-FAL,VND,4,65,NT4,none,,Vending machine,
-FAL,VND,5,66,NT4,none,,Confectionery machine,
-FAL,MUS,1,67,,none,,Jukebox,
-FAL,CAM,1,70,Axis P3245-LVE,http,,Camera front entrance,
-FAL,CAM,2,71,Axis P3245-LVE,http,,Camera studio hallway,
-FAL,CAM,3,72,Axis P3245-LVE,http,,Camera car park,
-FAL,CAM,4,73,Axis P3245-LVE,http,,Camera rear loading bay,
-FAL,CLK,1,80,,http,,Embedded NTP clock,
-FAL,PAY,1,95,,none,,GPO Kiosk No.6 payphone,
-FAL,WKS,1,100,Windows 11 Pro 23H2,winrm,,Workstation Analog Mixing Desk v1,
-FAL,WKS,3,102,Windows 11 Pro 23H2,winrm,,Workstation shared editing,
-FAL,LAP,1,103,Windows 11 Pro 23H2,winrm,,Production laptop,
-FAL,SUR,1,104,Windows 11 23H2,winrm,,Microsoft Surface,
-FAL,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch 1,
-FAL,SWI,2,251,Cisco Catalyst 9300,snmp,,Core switch 2,
-FAL,RTR,2,1,FortiGate,telnet,,WAN edge router,
-FAL,PHN,1,,Yealink T58A,http,,Phone 1,
-FAL,PHN,2,,Yealink T58A,http,,Phone 2,
-FAL,PHN,3,,Yealink T58A,http,,Phone 3,
-FAL,PHN,6,,Yealink T58A,http,,Phone 6,
-FAL,PHN,7,,Yealink T58A,http,,Phone 7,
-FAL,TAB,1,,,winrm,,Tablet,
-FAL,TTY,1,,,none,,VT320 serial terminal,
-FAL,BUS,1,,,none,,Tour bus 1,
-FAL,BUS,2,,,none,,Tour bus 2,
-FAL,BUS,3,,,none,,Tour bus 3,
-FAL,CAR,1,,,none,,Car 1,
-FAL,CAR,2,,,none,,Car 2,
-FAL,CAR,3,,,none,,Car 3,
-FAL,CAR,4,,,none,,Car 4,
-FAL,CAR,5,,,none,,Car 5,
-FAL,TRK,1,,,none,,Truck 1,
-FAL,TRK,2,,,none,,Truck 2,
-FAL,TRK,3,,,none,,Truck 3,
-FAL,TRK,4,,,none,,Truck 4,
-FAL,TRK,5,,,none,,Truck 5,
-FAL,JET,1,,,none,,Jet 1,
-FAL,JET,2,,,none,,Jet 2,
-FAL,JET,3,,,none,,Jet 3,
-FAL,JET,4,,,none,,Jet 4,
-FAL,JET,5,,,none,,Jet 5,
-EDI,DCS,2,12,Windows Server 2022,ssh,,DC secondary needs rebuild corrected to .12,
-EDI,DCS,3,13,Windows Server 2022,ssh,,DECOMMISSION PENDING corrected to .13,
-EDI,WKS,1,150,Windows 10 Pro 22H2,winrm,,Shared desktop,
-EDI,LAP,98,108,Windows 11 Pro 24H2,winrm,,Pool laptop,
-EDI,SWI,1,250,Cisco Catalyst 2960X,snmp,,Floor switch,
-EDI,SWI,2,251,Cisco Catalyst 2960X,snmp,,48-port switch,
-EDI,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-EDI,TEA,1,60,Siemens EQ700,http,,Coffee machine,
-GLA,PRN,1,16,HP LaserJet Pro,snmp,,Main floor printer,
-GLA,WKS,1,150,Windows 11 Pro,winrm,,Hot desk workstation,
-GLA,WKS,2,151,Windows 11 Pro,winrm,,Hot desk workstation,
-GLA,LAP,1,152,Windows 11 Pro,winrm,,Pool laptop,
-CLY,FWL,1,254,FortiOS 7.6.5,ssh,,VPN gateway,
-CLY,SRV,1,20,Rocky Linux,ssh,,Oracle DB server,
-CLY,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,
-CLY,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-CLY,SUR,1,,Windows 11,winrm,,Surface,
-CLY,PHN,1,,iOS,http,,Phone,
-CLY,SUR,2,,Android,winrm,,Android tablet,
-DUN,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-DUN,SUR,1,,Windows 11,winrm,,Surface,
-DUN,SUR,2,,Windows 11,winrm,,Surface,
-DUN,PHN,1,,iOS,http,,Phone,
-DUN,PHN,2,,iOS,http,,Phone,
-PER,NIX,1,40,Solaris 11.5,ssh,,MIDI archive,
-PER,NAS,1,50,Synology DSM 7.1,ssh,,NAS,
-PER,MBP,1,,macOS,ssh,,MacBook,
-PER,SUR,1,,Windows,winrm,,Surface,
-PER,PHN,1,,Yealink T46G,http,,Phone 1,
-PER,PHN,2,,Yealink T46G,http,,Phone 2,
-PER,PHN,3,,Yealink T46G,http,,Phone 3,
-PER,PHN,4,,Yealink T46G,http,,Phone 4,
-PER,PRN,1,,HP MFP,snmp,,Printer,
-PER,VND,1,,Embedded SP100,none,,Vending machine,
-ABD,FWL,1,254,Cisco ASA 5506-X,ssh,,Edge firewall,
-ABD,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-ABD,MBP,1,,macOS,ssh,,MacBook,
-ABD,MBP,2,,macOS,ssh,,MacBook,
-ABD,PHN,1,,iOS,http,,iPhone,
-ABD,PHN,2,,iOS,http,,iPhone,
-LND,FWL,1,254,Cisco ASA 5516-X,ssh,,Perimeter firewall,
-LND,RAD,1,80,,none,,BBC Office Radio Mk II,
-LND,MIC,1,81,,none,,Shure SM7 via Dante audio,
-LND,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,
-LND,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-LND,WKS,1,150,Windows 11,winrm,,Workstation,
-LND,PRN,1,,Xerox WorkCentre,snmp,,Printer,
-LND,PRN,2,,,snmp,,Steno writer no IP,
-BIR,FWL,1,254,Palo Alto PAN-OS,ssh,,VPN gateway,
-BIR,SRV,1,20,Rocky Linux,ssh,,Oracle DB,
-BIR,MOO,1,70,,none,,Moog synth,
-BIR,LIN,1,71,,none,,Drum machine,
-BIR,FCL,1,72,QDOS 2.x,none,,Fairlight CMI,
-BIR,AST,1,73,TOS 1.04,none,,Atari ST,
-BIR,PAY,1,74,,none,,Payphone,
-BIR,LCD,1,75,NEC PlasmaSync,http,,NOC display,
-BIR,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,
-BIR,SWI,2,251,Cisco Catalyst 48-port,snmp,,Access switch,
-BIR,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-BIR,MBP,1,,macOS,ssh,,MacBook,
-BIR,TAB,1,,Android,winrm,,Galaxy Tab,
-BIR,PHN,1,,Android,http,,Samsung S25,
-MCR,SWI,1,250,Cisco Catalyst 9300,snmp,,Distribution switch,
-MCR,LAP,1,,Windows 11,winrm,,Laptop,
-MCR,LAP,2,,Windows 11,winrm,,Laptop,
-MCR,WKS,1,,Windows 10,winrm,,Desktop,
-MCR,WKS,2,,Windows 10,winrm,,Desktop,
-MCR,PRN,1,,,snmp,,Printer,
-LIV,SWI,1,250,Cisco Catalyst 9200,snmp,,Core switch,
-LIV,SVR,1,,Windows Server 2022,ssh,,File server,
-LIV,MBP,1,,macOS Tahoe,ssh,,MacBook Pro,
-LIV,MAC,1,,macOS,ssh,,iMac DISABLED,
-LIV,RDR,2,,,ssh,,HID Signo badge reader,
-LIV,BPS,1,,,http,,Badge programming workstation,
-NEW,SWI,1,250,TP-Link JetStream,snmp,,Access switch,
-NEW,SRV,1,,Windows Server 2022,ssh,,File/print server,
-NEW,WKS,99,,Windows 11,winrm,,LAPS password expired,
-COV,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge no server infra,
-CPH,CLK,1,18,Meinberg LANTIME M300,http,,NTP clock,
-CPH,TVS,1,17,Bella Kronik 42X,http,,Display,
-CPH,SWI,1,250,TP-Link JetStream,snmp,,Office switch,
-CPH,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-ODE,FWL,1,254,Cisco ASA 5506-X,ssh,,Edge firewall,
-ODE,MUS,1,60,,none,,Jukebox,
-ODE,MAC,1,,macOS Tahoe,ssh,,iMac,
-ODE,MBP,2,,macOS,ssh,,MacBook Pro,
-KGE,PRN,1,,HP LaserJet MFP M528,snmp,,Printer,
-FAX,FWL,1,254,Cisco ISR 4331,ssh,,WAN edge possible typo verify,
-BON,SWI,1,250,Cisco Catalyst 2960X,snmp,,Office switch,
-BON,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-BON,LAP,1,,Windows 11,winrm,,ThinkPad DISABLED,
-BON,WKS,1,,Windows 11,winrm,,Finance workstation,
-BON,LAP,2,,Windows 11,winrm,,Finance laptop,
-BON,VCU,1,,Poly Studio X70,http,,Boardroom video conferencing,
-BON,CAM,1,,Axis P3245-LVE,http,,CCTV camera,
-BON,TVS,1,,Samsung 65in,http,,Display,
-BRD,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-BRD,SRV,1,,Windows Server 2019,ssh,,Legacy application server,
-BRD,NIX,1,,Debian 12,ssh,,Debian server,
-MUN,SWI,1,250,Cisco Catalyst 9200,snmp,,Access switch,
-MUN,WKS,1,,Windows 11,winrm,,Hot desk workstation,
-MUN,LAP,1,,Windows 11,winrm,,Pool laptop,
-MUN,LAP,2,,Windows 11,winrm,,LAPS expired,
-BRK,DON,1,60,VxWorks,http,,Donut vending,
-BRK,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-BRK,LAP,1,,Windows 11,winrm,,Tour laptop,
-BRK,VND,1,,XPe,none,,Vending machine,
-LAX,FWL,1,254,Palo Alto PAN-OS 10.x,ssh,,VPN gateway,
-LAX,SRV,1,20,Rocky Linux 9.x,ssh,,Local services DB,
-LAX,MUS,1,70,,none,,Synth,
-LAX,MUS,2,71,,none,,Drum machine,
-LAX,MUS,3,72,,none,,Fairlight CMI,
-LAX,AST,1,73,TOS 1.04,none,,Atari ST,
-LAX,PAY,1,74,,none,,Payphone,
-LAX,LCD,1,75,NEC PlasmaSync,http,,Status wallboard,
-LAX,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,
-LAX,SWI,2,251,Cisco Catalyst 2960,snmp,,Access switch,
-LAX,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-LAX,MBP,1,,macOS,ssh,,MacBook Pro,
-LAX,TAB,1,,iPadOS,winrm,,iPad,
-LAX,PHN,1,,Android,http,,Phone,
-MIA,COF,1,60,VxWorks,http,,Coffee machine,
-MIA,LAP,1,,macOS Sonoma,winrm,,MacBook,
-SYD,FWL,1,254,FortiGate 7.x,ssh,,Site firewall,
-SYD,SRV,1,20,Windows Server 2022,ssh,,Local infra server,
-SYD,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,
-SYD,SWI,2,251,Cisco Catalyst 2960,snmp,,Access switch,
-SYD,MBP,1,,macOS,ssh,,MacBook Pro,
-SYD,WKS,1,,Windows 11,winrm,,Workstation,
-SYD,PHN,1,,Android,http,,Phone,
-SYD,TAB,1,,iPadOS,winrm,,iPad,
-SYD,LCD,1,,,http,,LG Signage wallboard,
-SYD,PRN,1,,Brother,snmp,,Laser printer,
-SYD,CAM,1,,Hikvision,http,,Camera,
-SYD,CAM,2,,Hikvision,http,,Camera reception,
-SYD,COF,1,,,http,,Coffee machine,
-MEL,FWL,1,254,FortiGate 7.x,ssh,,Site firewall,
-MEL,SRV,1,20,Windows Server 2022,ssh,,Local file and print server,
-MEL,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,
-MEL,SWI,2,251,Cisco Catalyst 2960,snmp,,Access switch,
-MEL,MBP,1,,macOS,ssh,,MacBook Pro,
-MEL,WKS,1,,Windows 11,winrm,,Workstation,
-MEL,PHN,1,,iOS,http,,Phone,
-MEL,TAB,1,,iPadOS,winrm,,iPad,
-MEL,LCD,1,,Samsung,http,,Signage display,
-MEL,PRN,1,,HP,snmp,,LaserJet printer,
-MEL,NAS,1,,Synology DSM 7.x,ssh,,NAS,
-AKL,FWL,1,254,FortiGate 7.x,ssh,,Site firewall,
-AKL,SRV,1,20,Windows Server 2022,ssh,,Local server,
-AKL,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,
-AKL,SWI,2,251,Cisco Catalyst 2960,snmp,,Access switch,
-AKL,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,
-AKL,WKS,1,,Windows 11,winrm,,Workstation,
-AKL,MBP,1,,macOS,ssh,,MacBook Pro,
-AKL,PHN,1,,Android,http,,Phone,
-AKL,TAB,1,,iPadOS,winrm,,iPad,
-AKL,LCD,1,,Samsung,http,,Signage display,
-AKL,PRN,1,,HP,snmp,,LaserJet printer,
-AKL,CAM,1,,Axis,http,,Camera,
-AKL,COF,1,,,http,,Coffee machine,
-CLD,UFC,1,82,Debian trixie,snmp,,UniFi Network Controller -- manages WAPs across the estate; no physical WiFi at CLD itself (hub-based management pattern),
+Site,Type,Number,HostOctet,OS,ConnectionType,Managed,Notes,SubnetSite,Legacy
+CLD,ANS,1,9,Debian,ssh,,Ansible control node -- manages all sites,,no
+CLD,RDR,1,12,Debian,ssh,,Rudder configuration management server,,no
+CLD,SVR,2,20,Windows Server 2022,ssh,,Windows Admin Centre -- reaches all site DCs,,no
+CLD,PBX,1,48,,ssh,,3CX PBX. No SBC in CLD so put the PBX there instead,,no
+FRD,PRV,1,1,,none,,"Provisioning server (PXE, port 8000) -- legal fiction, physically a MacBook running python3 -m http.server 8000, mirroring /debian from Edinburgh. Detected via gateway 172.16.124.2 in menu.ipxe/late_command.sh; octet .1 here (not the standard .15 PRV slot) matches the real boot-url",,no
+CLD,PBX,2,48,,ssh,,"Secondary 3CX PBX -- physically at Fredericia Havn (FRD Havn), hostnamed under CLD as part of the 2026-07-11 Pulsant DC / FRD Havn CLD network rework. No SBC on FRD's network either -- same reuse-the-empty-SBC-slot pattern as CLD's own PBX (CLD,PBX,1). Real IP stays on FRD's own subnet via SubnetSite.",FRD,no
+VRK,DNS,1,8,Debian trixie,ssh,,DNS/BIND server -- jukebox.internal authoritative,,no
+VRK,PRV,1,50,,none,,Provisioning server -- PXE / ISOs / Ansible keys / scripts,,no
+VRK,FWL,1,69,,ssh,,Firewall WAN face (vRACK). LAN face 192.168.69.253,,no
+FAL,RDR,1,16,,ssh,,HID Signo badge reader,,yes
+FAL,SRV,1,20,,ssh,,Reserved -- standard convention slot,,yes
+FAL,NAS,1,32,FreeNAS 13.0-U6,ssh,,Primary storage,,yes
+FAL,TAR,1,33,Solaris Embedded,telnet,,Legacy tape archive,,yes
+FAL,LCD,1,50,Samsung Tizen,http,,Reception display,,yes
+FAL,VCU,1,51,Poly Studio X70,http,,Video conferencing,,yes
+FAL,PMP,1,60,,none,,Networked petrol pump,,yes
+FAL,TEA,1,61,,http,,Smart coffee machine,,yes
+FAL,DON,1,62,VxWorks,http,,Donut vending,,yes
+FAL,VND,2,63,NT4 Embedded,none,,Vending machine,,yes
+FAL,VND,3,64,XPe,none,,Vending machine,,yes
+FAL,VND,4,65,NT4,none,,Vending machine,,yes
+FAL,VND,5,66,NT4,none,,Confectionery machine,,yes
+FAL,MUS,1,67,,none,,Jukebox,,yes
+FAL,CAM,1,70,Axis P3245-LVE,http,,Camera front entrance,,yes
+FAL,CAM,2,71,Axis P3245-LVE,http,,Camera studio hallway,,yes
+FAL,CAM,3,72,Axis P3245-LVE,http,,Camera car park,,yes
+FAL,CAM,4,73,Axis P3245-LVE,http,,Camera rear loading bay,,no
+FAL,CLK,1,80,,http,,Embedded NTP clock,,yes
+FAL,PAY,1,95,,none,,GPO Kiosk No.6 payphone,,yes
+FAL,WKS,1,100,Windows 11 Pro 23H2,winrm,,Workstation Analog Mixing Desk v1,,yes
+FAL,WKS,3,102,Windows 11 Pro 23H2,winrm,,Workstation shared editing,,yes
+FAL,LAP,1,103,Windows 11 Pro 23H2,winrm,,Production laptop,,yes
+FAL,SUR,1,104,Windows 11 23H2,winrm,,Microsoft Surface,,yes
+FAL,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch 1,,yes
+FAL,SWI,2,251,Cisco Catalyst 9300,snmp,,Core switch 2,,yes
+FAL,RTR,2,1,FortiGate,telnet,,WAN edge router,,no
+FAL,PHN,1,,Yealink T58A,http,,Phone 1,,yes
+FAL,PHN,2,,Yealink T58A,http,,Phone 2,,yes
+FAL,PHN,3,,Yealink T58A,http,,Phone 3,,yes
+FAL,PHN,6,,Yealink T58A,http,,Phone 6,,yes
+FAL,PHN,7,,Yealink T58A,http,,Phone 7,,yes
+FAL,TAB,1,,,winrm,,Tablet,,yes
+FAL,TTY,1,,,none,,VT320 serial terminal,,yes
+FAL,BUS,1,,,none,,Tour bus 1,,review
+FAL,BUS,2,,,none,,Tour bus 2,,review
+FAL,BUS,3,,,none,,Tour bus 3,,review
+FAL,CAR,1,,,none,,Car 1,,review
+FAL,CAR,2,,,none,,Car 2,,review
+FAL,CAR,3,,,none,,Car 3,,review
+FAL,CAR,4,,,none,,Car 4,,review
+FAL,CAR,5,,,none,,Car 5,,review
+FAL,TRK,1,,,none,,Truck 1,,review
+FAL,TRK,2,,,none,,Truck 2,,review
+FAL,TRK,3,,,none,,Truck 3,,review
+FAL,TRK,4,,,none,,Truck 4,,review
+FAL,TRK,5,,,none,,Truck 5,,review
+FAL,JET,1,,,none,,Jet 1,,review
+FAL,JET,2,,,none,,Jet 2,,review
+FAL,JET,3,,,none,,Jet 3,,review
+FAL,JET,4,,,none,,Jet 4,,review
+FAL,JET,5,,,none,,Jet 5,,review
+EDI,DCS,2,12,Windows Server 2022,ssh,,DC secondary needs rebuild corrected to .12,,review
+EDI,DCS,3,13,Windows Server 2022,ssh,,DECOMMISSION PENDING corrected to .13,,review
+EDI,WKS,1,150,Windows 10 Pro 22H2,winrm,,Shared desktop,,yes
+EDI,LAP,98,108,Windows 11 Pro 24H2,winrm,,Pool laptop,,yes
+EDI,SWI,1,250,Cisco Catalyst 2960X,snmp,,Floor switch,,yes
+EDI,SWI,2,251,Cisco Catalyst 2960X,snmp,,48-port switch,,yes
+EDI,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+EDI,TEA,1,60,Siemens EQ700,http,,Coffee machine,,yes
+GLA,PRN,1,16,HP LaserJet Pro,snmp,,Main floor printer,,yes
+GLA,WKS,1,150,Windows 11 Pro,winrm,,Hot desk workstation,,yes
+GLA,WKS,2,151,Windows 11 Pro,winrm,,Hot desk workstation,,yes
+GLA,LAP,1,152,Windows 11 Pro,winrm,,Pool laptop,,yes
+CLY,FWL,1,254,FortiOS 7.6.5,ssh,,VPN gateway,,yes
+CLY,SRV,1,20,Rocky Linux,ssh,,Oracle DB server,,yes
+CLY,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes
+CLY,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+CLY,SUR,1,,Windows 11,winrm,,Surface,,yes
+CLY,PHN,1,,iOS,http,,Phone,,no
+CLY,SUR,2,,Android,winrm,,Android tablet,,no
+DUN,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+DUN,SUR,1,,Windows 11,winrm,,Surface,,yes
+DUN,SUR,2,,Windows 11,winrm,,Surface,,yes
+DUN,PHN,1,,iOS,http,,Phone,,yes
+DUN,PHN,2,,iOS,http,,Phone,,yes
+PER,NIX,1,40,Solaris 11.5,ssh,,MIDI archive,,yes
+PER,NAS,1,50,Synology DSM 7.1,ssh,,NAS,,yes
+PER,MBP,1,,macOS,ssh,,MacBook,,yes
+PER,SUR,1,,Windows,winrm,,Surface,,yes
+PER,PHN,1,,Yealink T46G,http,,Phone 1,,yes
+PER,PHN,2,,Yealink T46G,http,,Phone 2,,yes
+PER,PHN,3,,Yealink T46G,http,,Phone 3,,yes
+PER,PHN,4,,Yealink T46G,http,,Phone 4,,yes
+PER,PRN,1,,HP MFP,snmp,,Printer,,yes
+PER,VND,1,,Embedded SP100,none,,Vending machine,,no
+ABD,FWL,1,254,Cisco ASA 5506-X,ssh,,Edge firewall,,yes
+ABD,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+ABD,MBP,1,,macOS,ssh,,MacBook,,yes
+ABD,MBP,2,,macOS,ssh,,MacBook,,yes
+ABD,PHN,1,,iOS,http,,iPhone,,yes
+ABD,PHN,2,,iOS,http,,iPhone,,yes
+LND,FWL,1,254,Cisco ASA 5516-X,ssh,,Perimeter firewall,,yes
+LND,RAD,1,80,,none,,BBC Office Radio Mk II,,yes
+LND,MIC,1,81,,none,,Shure SM7 via Dante audio,,yes
+LND,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes
+LND,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+LND,WKS,1,150,Windows 11,winrm,,Workstation,,yes
+LND,PRN,1,,Xerox WorkCentre,snmp,,Printer,,yes
+LND,PRN,2,,,snmp,,Steno writer no IP,,yes
+BIR,FWL,1,254,Palo Alto PAN-OS,ssh,,VPN gateway,,yes
+BIR,SRV,1,20,Rocky Linux,ssh,,Oracle DB,,yes
+BIR,MOO,1,70,,none,,Moog synth,,yes
+BIR,LIN,1,71,,none,,Drum machine,,yes
+BIR,FCL,1,72,QDOS 2.x,none,,Fairlight CMI,,yes
+BIR,AST,1,73,TOS 1.04,none,,Atari ST,,yes
+BIR,PAY,1,74,,none,,Payphone,,yes
+BIR,LCD,1,75,NEC PlasmaSync,http,,NOC display,,yes
+BIR,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes
+BIR,SWI,2,251,Cisco Catalyst 48-port,snmp,,Access switch,,yes
+BIR,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+BIR,MBP,1,,macOS,ssh,,MacBook,,yes
+BIR,TAB,1,,Android,winrm,,Galaxy Tab,,yes
+BIR,PHN,1,,Android,http,,Samsung S25,,yes
+MCR,SWI,1,250,Cisco Catalyst 9300,snmp,,Distribution switch,,yes
+MCR,LAP,1,,Windows 11,winrm,,Laptop,,yes
+MCR,LAP,2,,Windows 11,winrm,,Laptop,,yes
+MCR,WKS,1,,Windows 10,winrm,,Desktop,,yes
+MCR,WKS,2,,Windows 10,winrm,,Desktop,,yes
+MCR,PRN,1,,,snmp,,Printer,,yes
+LIV,SWI,1,250,Cisco Catalyst 9200,snmp,,Core switch,,yes
+LIV,SVR,1,,Windows Server 2022,ssh,,File server,,yes
+LIV,MBP,1,,macOS Tahoe,ssh,,MacBook Pro,,no
+LIV,MAC,1,,macOS,ssh,,iMac DISABLED,,no
+LIV,RDR,2,,,ssh,,HID Signo badge reader,,yes
+LIV,BPS,1,,,http,,Badge programming workstation,,yes
+NEW,SWI,1,250,TP-Link JetStream,snmp,,Access switch,,yes
+NEW,SRV,1,,Windows Server 2022,ssh,,File/print server,,yes
+NEW,WKS,99,,Windows 11,winrm,,LAPS password expired,,yes
+COV,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge no server infra,,yes
+CPH,CLK,1,18,Meinberg LANTIME M300,http,,NTP clock,,yes
+CPH,TVS,1,17,Bella Kronik 42X,http,,Display,,yes
+CPH,SWI,1,250,TP-Link JetStream,snmp,,Office switch,,yes
+CPH,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+ODE,FWL,1,254,Cisco ASA 5506-X,ssh,,Edge firewall,,yes
+ODE,MUS,1,60,,none,,Jukebox,,yes
+ODE,MAC,1,,macOS Tahoe,ssh,,iMac,,yes
+ODE,MBP,2,,macOS,ssh,,MacBook Pro,,yes
+KGE,PRN,1,,HP LaserJet MFP M528,snmp,,Printer,,yes
+FAX,FWL,1,254,Cisco ISR 4331,ssh,,WAN edge possible typo verify,,review
+BON,SWI,1,250,Cisco Catalyst 2960X,snmp,,Office switch,,yes
+BON,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+BON,LAP,1,,Windows 11,winrm,,ThinkPad DISABLED,,no
+BON,WKS,1,,Windows 11,winrm,,Finance workstation,,yes
+BON,LAP,2,,Windows 11,winrm,,Finance laptop,,yes
+BON,VCU,1,,Poly Studio X70,http,,Boardroom video conferencing,,yes
+BON,CAM,1,,Axis P3245-LVE,http,,CCTV camera,,no
+BON,TVS,1,,Samsung 65in,http,,Display,,yes
+BRD,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+BRD,SRV,1,,Windows Server 2019,ssh,,Legacy application server,,yes
+BRD,NIX,1,,Debian 12,ssh,,Debian server,,no
+MUN,SWI,1,250,Cisco Catalyst 9200,snmp,,Access switch,,yes
+MUN,WKS,1,,Windows 11,winrm,,Hot desk workstation,,yes
+MUN,LAP,1,,Windows 11,winrm,,Pool laptop,,yes
+MUN,LAP,2,,Windows 11,winrm,,LAPS expired,,yes
+BRK,DON,1,60,VxWorks,http,,Donut vending,,yes
+BRK,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+BRK,LAP,1,,Windows 11,winrm,,Tour laptop,,yes
+BRK,VND,1,,XPe,none,,Vending machine,,no
+LAX,FWL,1,254,Palo Alto PAN-OS 10.x,ssh,,VPN gateway,,yes
+LAX,SRV,1,20,Rocky Linux 9.x,ssh,,Local services DB,,yes
+LAX,MUS,1,70,,none,,Synth,,yes
+LAX,MUS,2,71,,none,,Drum machine,,yes
+LAX,MUS,3,72,,none,,Fairlight CMI,,yes
+LAX,AST,1,73,TOS 1.04,none,,Atari ST,,no
+LAX,PAY,1,74,,none,,Payphone,,yes
+LAX,LCD,1,75,NEC PlasmaSync,http,,Status wallboard,,yes
+LAX,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes
+LAX,SWI,2,251,Cisco Catalyst 2960,snmp,,Access switch,,yes
+LAX,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+LAX,MBP,1,,macOS,ssh,,MacBook Pro,,yes
+LAX,TAB,1,,iPadOS,winrm,,iPad,,yes
+LAX,PHN,1,,Android,http,,Phone,,yes
+MIA,COF,1,60,VxWorks,http,,Coffee machine,,yes
+MIA,LAP,1,,macOS Sonoma,winrm,,MacBook,,yes
+SYD,FWL,1,254,FortiGate 7.x,ssh,,Site firewall,,yes
+SYD,SRV,1,20,Windows Server 2022,ssh,,Local infra server,,yes
+SYD,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes
+SYD,SWI,2,251,Cisco Catalyst 2960,snmp,,Access switch,,yes
+SYD,MBP,1,,macOS,ssh,,MacBook Pro,,yes
+SYD,WKS,1,,Windows 11,winrm,,Workstation,,yes
+SYD,PHN,1,,Android,http,,Phone,,yes
+SYD,TAB,1,,iPadOS,winrm,,iPad,,yes
+SYD,LCD,1,,,http,,LG Signage wallboard,,yes
+SYD,PRN,1,,Brother,snmp,,Laser printer,,yes
+SYD,CAM,1,,Hikvision,http,,Camera,,yes
+SYD,CAM,2,,Hikvision,http,,Camera reception,,no
+SYD,COF,1,,,http,,Coffee machine,,yes
+MEL,FWL,1,254,FortiGate 7.x,ssh,,Site firewall,,yes
+MEL,SRV,1,20,Windows Server 2022,ssh,,Local file and print server,,yes
+MEL,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes
+MEL,SWI,2,251,Cisco Catalyst 2960,snmp,,Access switch,,yes
+MEL,MBP,1,,macOS,ssh,,MacBook Pro,,yes
+MEL,WKS,1,,Windows 11,winrm,,Workstation,,yes
+MEL,PHN,1,,iOS,http,,Phone,,yes
+MEL,TAB,1,,iPadOS,winrm,,iPad,,yes
+MEL,LCD,1,,Samsung,http,,Signage display,,yes
+MEL,PRN,1,,HP,snmp,,LaserJet printer,,yes
+MEL,NAS,1,,Synology DSM 7.x,ssh,,NAS,,yes
+AKL,FWL,1,254,FortiGate 7.x,ssh,,Site firewall,,yes
+AKL,SRV,1,20,Windows Server 2022,ssh,,Local server,,yes
+AKL,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes
+AKL,SWI,2,251,Cisco Catalyst 2960,snmp,,Access switch,,yes
+AKL,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
+AKL,WKS,1,,Windows 11,winrm,,Workstation,,yes
+AKL,MBP,1,,macOS,ssh,,MacBook Pro,,yes
+AKL,PHN,1,,Android,http,,Phone,,yes
+AKL,TAB,1,,iPadOS,winrm,,iPad,,yes
+AKL,LCD,1,,Samsung,http,,Signage display,,yes
+AKL,PRN,1,,HP,snmp,,LaserJet printer,,yes
+AKL,CAM,1,,Axis,http,,Camera,,yes
+AKL,COF,1,,,http,,Coffee machine,,yes
+CLD,UFC,1,82,Debian trixie,snmp,,UniFi Network Controller -- manages WAPs across the estate; no physical WiFi at CLD itself (hub-based management pattern),,no
