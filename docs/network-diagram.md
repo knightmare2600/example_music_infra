@@ -75,9 +75,9 @@ two or three. Shorter boxes, same information.
 ### 🏴󠁧󠁢󠁳󠁣󠁴󠁿 [Scotland](network-diagram/scotland.md)
 - [FAL — Falkirk *(Head Office)*](network-diagram/scotland.md#fal--falkirk-head-office--)
 - [EDI — Edinburgh](network-diagram/scotland.md#edi--edinburgh--)
-- [GLA — Glasgow](network-diagram/scotland.md#gla--glasgow)
+- [GLA — Glasgow](network-diagram/scotland.md#gla--glasgow-)
 - [CLY — Clydebank](network-diagram/scotland.md#cly--clydebank-)
-- [DUN — Dundee](network-diagram/scotland.md#dun--dundee)
+- [DUN — Dundee](network-diagram/scotland.md#dun--dundee-)
 - [PER — Perth](network-diagram/scotland.md#per--perth-)
 - [ABD — Aberdeen](network-diagram/scotland.md#abd--aberdeen-)
 

@@ -229,7 +229,7 @@ graph TD
 
 ---
 
-## GLA — Glasgow
+## GLA — Glasgow 🚧
 
 **LAN:** `192.168.141.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** FAL  
@@ -340,7 +340,7 @@ graph TD
 
 ---
 
-## DUN — Dundee
+## DUN — Dundee 🛳️
 
 **LAN:** `192.168.138.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** FAL  

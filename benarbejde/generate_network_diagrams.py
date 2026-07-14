@@ -161,6 +161,22 @@ def build_site_devices(site: str, net, devices_by_site: dict):
       "label_extra": short_note(dev["notes"]), "subnet_site": None, "is_foreign": False,
     })
 
+  # VRK has no diagram section of its own (it's the vRACK/provisioning layer, not a physical
+  # site -- see docs/network-diagram/cld.md's own header) -- its real devices.csv rows
+  # (EXADNSVRK001/EXAPRVVRK001/EXAFWLVRK001) fold into CLD's page, the same way the old
+  # hand-drawn diagram always treated them as one combined view. Confirmed 2026-07-14: VRK has
+  # zero entries in benarbejde/ad_computers.json (the real pre-project AD export), same as CLD
+  # itself -- neither is legacy, both are purely current infrastructure.
+  if site == "CLD":
+    for dev in devices_by_site.get("VRK", []):
+      if dev.get("subnet_site"):
+        continue
+      out.append({
+        "hostname": dev["hostname"], "type": dev["type"], "octet": dev["octet"],
+        "label_extra": short_note(dev["notes"]) + " (VRK)",
+        "subnet_site": None, "is_foreign": False,
+      })
+
   for other_site, devs in devices_by_site.items():
     if other_site == site:
       continue
