@@ -6,6 +6,19 @@
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-20  Colourised prompts — matches firewallme.sh colour scheme
+#   2026-07-14  Fixed a real live bug (EXAFWLBRT001): "Detect WAN interface" never
+#               found the WAN address despite it genuinely being present, and "lo"
+#               wrongly appeared in the interface table. Root cause: ansible.builtin.shell
+#               defaults to /bin/sh, which is dash on Debian, not bash -- these loops use
+#               bash-only `[[ ]]` test syntax. Under dash, `[[` isn't a builtin; it's run
+#               as an external command that doesn't exist, so every `[[ ... ]]` silently
+#               evaluates as failed (non-zero). That broke two things at once: the
+#               `[[ "$iface" == "lo" ]] && continue` skip-guard never fired (lo never
+#               skipped), and the `if [[ -n "$ip_addr" ]]; then ... fi` gate in WAN
+#               detection never took its true branch for ANY interface -- so detection
+#               always came back empty regardless of what was actually configured. Fixed
+#               by pinning these two shell tasks to bash explicitly, rather than rewriting
+#               working bash logic to POSIX sh.
 # =============================================================================
 
 - name: "[Interfaces] List all non-loopback interfaces"
@@ -28,6 +41,8 @@
         break
       fi
     done
+  args:
+    executable: /bin/bash
   register: fw_wan_detect_raw
   changed_when: false
 
@@ -47,6 +62,8 @@
       state=$(cat /sys/class/net/${iface}/operstate 2>/dev/null || echo "unknown")
       echo "    \033[0;36m${iface}\033[0m  ${mac}  ${ip_addr}  ${state}"
     done
+  args:
+    executable: /bin/bash
   register: fw_iface_table
   changed_when: false
 
