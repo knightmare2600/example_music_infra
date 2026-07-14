@@ -103,7 +103,7 @@
 
 - name: "[Preflight] BLACK SITE — CLD extra confirmation"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.R }}
       ╔══════════════════════════════════════════════════════════════╗
       ║  *** BLACK SITE — CLD PROVISIONING NETWORK ***               ║

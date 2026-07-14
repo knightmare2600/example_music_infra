@@ -100,6 +100,17 @@
 #      checks 6/14, applied to the KeePassXC vault. Added 2026-07-14 after
 #      two TP-Link entries turned out to carry a stale/wrong password with
 #      nothing to have caught it.
+#  17. check_wireguard_hub_data.py -- every WireGuard hub (CLD/FAL/ODE/BRK) in
+#      group_vars/firewalls/main.yml's wg_hub_wan_ips follows one uniform,
+#      derivable convention: WAN IP = 192.168.139.<the hub's own site subnet
+#      octet, from sites.csv>. Confirmed against all 4 real hubs before
+#      writing this check -- FAL/ODE/BRK were already correct, only CLD had
+#      drifted (192.168.139.139, a self-referential typo, instead of the
+#      real 192.168.139.69). Also flags any hub with a blank
+#      wg_hub_known_pubkeys entry, since that silently skips the live
+#      known-good pubkey cross-check for every spoke built against it.
+#      Added 2026-07-14 after the wrong CLD WAN IP was found live, during
+#      the EXAFWLBRT001 firewallme test, with nothing to have caught it.
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -222,6 +233,16 @@
 #               into the harness." Same Tier 1 (JSON structure, clone-safe)
 #               / Tier 2 (live vault, host-local, informational) split as
 #               check_ssh_keys.py.
+#   2026-07-14  Added check_wireguard_hub_data.py (section 17). Live
+#               EXAFWLBRT001 firewallme test found group_vars/firewalls/
+#               main.yml's CLD hub WAN IP had been wrong (192.168.139.139,
+#               a self-referential typo, instead of the real
+#               192.168.139.69) for an unknown length of time -- Robert:
+#               "this suggests the harness is also not checking such
+#               things against docs, or memories." Checks every hub's WAN
+#               IP against the derivable 192.168.139.<site-octet>
+#               convention (confirmed against all 4 real hubs first, not
+#               assumed), and flags any blank known-good pubkey.
 # ==============================================================================
 set -uo pipefail
 
@@ -587,6 +608,20 @@ elif [[ -n "$keepass_local_issue_count" && "$keepass_local_issue_count" -gt 0 ]]
   fi
 else
   success "extracted_credentials.json is well-formed; live vault (where available) is up to date."
+fi
+
+# ------------------------------------------------------------------------------
+# 17. WireGuard hub data freshness — check_wireguard_hub_data.py
+# ------------------------------------------------------------------------------
+section "17. WireGuard hub data — check_wireguard_hub_data.py"
+
+if out=$(python3 "${HERE}/check_wireguard_hub_data.py"); then
+  echo "$out"
+  success "Hub WAN IPs match sites.csv's convention; no blank known-good pubkeys."
+else
+  echo "$out"
+  fail "WireGuard hub reference data has drifted -- see above."
+  FAILED_CHECKS+=("check_wireguard_hub_data.py")
 fi
 
 # ------------------------------------------------------------------------------

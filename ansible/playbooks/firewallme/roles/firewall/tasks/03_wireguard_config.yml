@@ -15,7 +15,7 @@
 
 - name: "[WireGuard] Prompt for WireGuard role"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
       {{ _c.C }}║              WireGuard Configuration                 ║{{ _c.NC }}
       {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
@@ -76,7 +76,7 @@
 
 - name: "[WireGuard] Prompt for spoke tunnel IP"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
       {{ _c.C }}║              Known Hubs                              ║{{ _c.NC }}
       {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
@@ -125,7 +125,7 @@
 
 - name: "[WireGuard] Prompt for hub endpoint"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.C }}[*]{{ _c.NC }} Hub WAN endpoint
       {% if fw_wg_hub_default_endpoint %}
       {{ _c.C }}    Known WAN IP for {{ fw_wg_hub_site }}: {{ _c.G }}{{ fw_wg_hub_default_endpoint }}{{ _c.NC }}
@@ -199,7 +199,7 @@
 
 - name: "[WireGuard] Confirm differing key or provide manual key"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {% set known = wg_hub_known_pubkeys[fw_wg_hub_site] | default('') %}
       {% if fw_wg_hub_pubkey_live != '' and known != '' and fw_wg_hub_pubkey_live != known %}
       {{ _c.R }}[!] WARNING: Live key differs from known-good key for {{ fw_wg_hub_site }}{{ _c.NC }}
