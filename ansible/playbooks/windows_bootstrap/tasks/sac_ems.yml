@@ -15,6 +15,17 @@
 # playbooks/78-sac-ems.yml).
 # =============================================================================
 # Changelog:
+#   2026-07-14  Robert, live against EXADCSCLD001: the "Prompt operator — confirm SAC
+#               visible via SOL" pause: task blocked the ENTIRE playbook run waiting on
+#               Enter, mid-chain, on every single run (not just first-time setup).
+#               Robert's own framing: he understands *why* SAC needs a manual SOL check
+#               (it's genuinely something a human has to verify, Ansible has no way to
+#               drive an SOL session), but that verification should be surfaced once, at
+#               the end of the whole run, as a "here's what to do" note — not a hard stop
+#               partway through. Replaced the pause: with set_fact: sac_sol_verify_needed,
+#               and moved the actual verification instructions into 85-finish.yml's final
+#               summary (printed only when this fact is set). No information lost, just
+#               deferred and made non-blocking.
 #   2026-07-12  Removed failed_when: false from the "Enable SAC service"
 #               task (idempotency audit, [[project_ad_onboarding_audit]]) --
 #               it unconditionally converted a genuine failure (service
@@ -54,18 +65,7 @@
     state:      started
   when: is_server
 
-- name: "[Stage 17b] Prompt operator — confirm SAC visible via SOL"
-  pause:
-    prompt: |
-
-      ── SAC/EMS Configured ────────────────────────────────────────────────
-      EMS enabled on COM1 at 115200 8N1.
-      Requires a serial0 socket in the Proxmox VM config.
-
-      Verify via SOL:
-        ipmitool -I lanplus -H <pve-ip> -U admin -P <pass> sol activate
-
-      You should see the SAC prompt after next reboot.
-
-      Press Enter to continue.
+- name: "[Stage 17b] Flag SAC/EMS verification for the end-of-run summary"
+  set_fact:
+    sac_sol_verify_needed: true
   when: is_server
