@@ -142,8 +142,14 @@ def build_site_devices(site: str, net, devices_by_site: dict):
   """
   out = []
 
+  # Which Types this site already has a real devices.csv row for -- passed to
+  # compute_standard_devices_for_site() so it doesn't synthesize a generic "Standard SWI slot 1"
+  # placeholder that would duplicate/shadow a real, more-informative devices.csv SWI entry (see
+  # that function's own docstring; matters for SWI today, 2026-07-14).
+  real_types = {dev["type"] for dev in devices_by_site.get(site, [])}
+
   if site not in gi.NON_STANDARD_SITES:
-    for d in gi.compute_standard_devices_for_site(site, net):
+    for d in gi.compute_standard_devices_for_site(site, net, real_device_types=real_types):
       dtype = re.match(r'EXA([A-Z]{3})', d["Hostname"]).group(1)
       if dtype == 'RTR' and site in gi.NO_STANDARD_ROUTER_SITES:
         continue  # documentation-only placeholder for DNS purposes, not a real device here
