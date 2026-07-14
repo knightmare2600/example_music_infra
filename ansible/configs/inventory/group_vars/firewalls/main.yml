@@ -85,7 +85,8 @@ wg_management_hubs:
 # live-observed bug (EXAFWLBRT001 test), not just a style nit: CLD's own
 # subnet octet, resolved dynamically from sites.csv (wg_site_octets['CLD']),
 # is ALSO 69 (sites.csv: CLD,...,192.168.69.0/24). The standard per-site
-# AllowedIPs derivation in 03_wireguard_config.yml already appends
+# AllowedIPs derivation (now roles/firewall/tasks/03_derive_post_ask.yml,
+# formerly 03_wireguard_config.yml) already appends
 # "192.168.69.0/24" for CLD via that path -- this "extra" entry was
 # reproducing the exact same string a second time, producing a literal
 # duplicate in every spoke's AllowedIPs list. Harmless to WireGuard itself

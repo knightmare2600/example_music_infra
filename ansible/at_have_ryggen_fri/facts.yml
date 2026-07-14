@@ -37,7 +37,7 @@ facts:
     asserted_in:
       - ansible/README.md
       - bootstrap/web/provision/firewallme.sh
-      - ansible/playbooks/firewallme/roles/firewall/tasks/00_preflight.yml
+      - ansible/playbooks/firewallme/roles/firewall/tasks/02_ask_all.yml
       - docs/ExampleMusic_Beginners_Guide.md
       - docs/ExampleMusic_Procedure_Template.md
       - docs/buildsheets/buildsheet-firewall.md

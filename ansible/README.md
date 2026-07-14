@@ -276,7 +276,9 @@ Configures Linux firewall appliances (`EXAFWL*`). Ansible port of `firewallme.sh
 **CLD is `hub-regional` (cloud management hub).** EXAFWLCLD001 peers directly with FAL, ODE,
 and BRK at the hub level — it has no site spokes of its own. All spoke firewalls' AllowedIPs
 automatically include CLD's subnets (`192.168.139.0/24` vRACK + `192.168.69.0/24` private LAN)
-via the `wg_management_hubs` injection in `03_wireguard_config.yml`.
+via the `wg_management_hubs` injection in `03_derive_post_ask.yml` (the AllowedIPs builder --
+moved here 2026-07-14 from the now-retired `03_wireguard_config.yml` as part of the
+"ask everything, then run" restructure, see `02_ask_all.yml`'s own header).
 
 After building EXAFWLCLD001, register it on each hub and vice versa:
 
