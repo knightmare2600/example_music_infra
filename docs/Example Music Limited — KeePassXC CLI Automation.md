@@ -346,6 +346,56 @@ python kpcli_wrapper.py vault.kdbx add "Infrastructure/Proxmox/node1" root
 
 ------
 
+# 8a. Master Password Backup & Recovery
+
+> **This section did not exist before `Example Music.kdbx` did.** The moment a real master
+> password is generated for a real database, "where does this live if the one person who knows it
+> forgets it, or leaves" stops being theoretical. This is a business-continuity control, not an
+> afterthought — a lost master password with no backup means every credential the database holds
+> MUST be individually rotated, on every device it protects, with no shortcut.
+
+## 8a.1 Requirements
+
+- The master password MUST NOT be stored anywhere alongside, or with the same access path as, the
+  `.kdbx` file itself. Encrypting a database and keeping the key next to it protects against
+  nothing.
+- At least one **offline, physical** backup of the master password is REQUIRED. A password that
+  only ever existed in a chat transcript, a Slack message, or a single person's memory is not a
+  backup — it is a single point of failure that happens not to have failed yet.
+- A second, geographically separate physical copy is RECOMMENDED once there's a real physical
+  location to put it in (see 8a.3).
+- No single individual SHALL be the sole holder of every copy. Two-person control — a second,
+  independent custodian who can produce their copy without the first person being available — is
+  REQUIRED for the primary estate database once there is a second engineer to hold it.
+
+## 8a.2 Recommended mechanism
+
+1. Write the master password on paper. Seal it in a tamper-evident envelope, dated and initialled
+   across the seal.
+2. Store the sealed envelope in a physical safe or locked cabinet with restricted access —
+   **not** the same room as any workstation that has the `.kdbx` file open regularly.
+3. If a second custodian exists, they hold an independent sealed copy in a **different** physical
+   location — not a second envelope in the same safe.
+4. Log every time the envelope is opened (date, who, why) on the envelope itself or an
+   accompanying sheet — an unopened, unremarked seal is itself evidence nothing has gone wrong.
+5. If KeePassXC's key-file feature is adopted as a second unlock factor alongside the password,
+   the key file MUST be backed up through this same two-copy, two-location process — a key file
+   that only exists on one laptop is exactly the single point of failure this whole procedure
+   exists to avoid.
+
+## 8a.3 Open questions — Robert's call, not assumed
+
+- **Is there a physical safe or locked cabinet available at a site today?** (Falkirk HQ is the
+  obvious candidate, being the primary site — not assumed here.)
+- **Who is the second custodian, once one exists?** Until there's a second engineer on this
+  estate, two-person control isn't achievable — noted as a real gap, not silently skipped.
+- **Does the current master password (generated 2026-07-14, handed over in this session's chat)
+  get rotated once a physical backup exists**, given its only current record is that transcript?
+  Recommended: yes — treat the current password as provisional until it has a real backup, then
+  generate a fresh one and destroy the old record.
+
+------
+
 # 9. Future Enhancements (Planned)
 
 - JSON output mode for automation pipelines
