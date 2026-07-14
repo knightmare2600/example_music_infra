@@ -14,6 +14,12 @@
 #               every other confirmation, before any writes happen, instead of
 #               here at the very end after everything's already applied. This file
 #               now only acts on the stored fw_reboot_requested fact.
+#   2026-07-14  Fixed the same missing-right-border bug already found and fixed in
+#               00_preflight_5_confirm.yml's pre-apply summary box, present here too --
+#               every content line in "FIREWALL CONFIGURATION COMPLETE" was missing its
+#               closing "║" entirely (only title/divider lines ever had one). Same fix:
+#               compute each line's plain (uncoloured) text, pad to the box's real
+#               62-column inner width, then wrap in colour and close with the border.
 # =============================================================================
 
 # ── Node info file ────────────────────────────────────────────────────────────
@@ -68,27 +74,65 @@
       - "{{ _c.G }}╔══════════════════════════════════════════════════════════════╗{{ _c.NC }}"
       - "{{ _c.G }}║{{ _c.NC }}{{ _c.W }}         FIREWALL CONFIGURATION COMPLETE                    {{ _c.NC }}{{ _c.G }}║{{ _c.NC }}"
       - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  Host         : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  Site         : {{ _c.G }}{{ fw_site_code }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  Environment  : {{ _c.G }}{{ fw_environment }}{{ _c.NC }}"
+      - >-
+        {%- set plain = "  Host         : " + inventory_hostname -%}
+        {{ _c.G }}║{{ _c.NC }}  Host         : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set plain = "  Site         : " + fw_site_code -%}
+        {{ _c.G }}║{{ _c.NC }}  Site         : {{ _c.G }}{{ fw_site_code }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set plain = "  Environment  : " + fw_environment -%}
+        {{ _c.G }}║{{ _c.NC }}  Environment  : {{ _c.G }}{{ fw_environment }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
       - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  WAN          : {{ _c.G }}{{ fw_wan_iface }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  WAN mode     : {{ _c.G }}{{ fw_wan_mode }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  WAN IP       : {{ _c.G }}{{ fw_wan_static_ip + '/24' if fw_wan_mode == 'static' else 'DHCP' }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  WAN SSH      : {{ (_c.R + 'ENABLED' + (' src:' + fw_wan_ssh_src if fw_wan_ssh_src else ' open') + _c.NC) if fw_wan_ssh_enabled else (_c.Y + 'disabled' + _c.NC) }}"
+      - >-
+        {%- set plain = "  WAN          : " + fw_wan_iface -%}
+        {{ _c.G }}║{{ _c.NC }}  WAN          : {{ _c.G }}{{ fw_wan_iface }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set plain = "  WAN mode     : " + fw_wan_mode -%}
+        {{ _c.G }}║{{ _c.NC }}  WAN mode     : {{ _c.G }}{{ fw_wan_mode }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set val = (fw_wan_static_ip + '/24') if fw_wan_mode == 'static' else 'DHCP' -%}
+        {%- set plain = "  WAN IP       : " + val -%}
+        {{ _c.G }}║{{ _c.NC }}  WAN IP       : {{ _c.G }}{{ val }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set val = ('ENABLED' + (' src:' + fw_wan_ssh_src if fw_wan_ssh_src else ' open')) if fw_wan_ssh_enabled else 'disabled' -%}
+        {%- set plain = "  WAN SSH      : " + val -%}
+        {{ _c.G }}║{{ _c.NC }}  WAN SSH      : {{ (_c.R + val + _c.NC) if fw_wan_ssh_enabled else (_c.Y + val + _c.NC) }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
       - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  LAN          : {{ _c.G }}{{ fw_lan_iface }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  LAN IP       : {{ _c.G }}{{ fw_lan_ip }}/24{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  DHCP range   : {{ _c.G }}{{ fw_dhcp_start }} – {{ fw_dhcp_end }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  WAN DNS      : {{ _c.G }}{{ fw_cld_dns }}, {{ fw_inet_dns }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  LAN DNS      : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_cld_dns }}{{ _c.NC }}"
+      - >-
+        {%- set plain = "  LAN          : " + fw_lan_iface -%}
+        {{ _c.G }}║{{ _c.NC }}  LAN          : {{ _c.G }}{{ fw_lan_iface }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set plain = "  LAN IP       : " + fw_lan_ip + "/24" -%}
+        {{ _c.G }}║{{ _c.NC }}  LAN IP       : {{ _c.G }}{{ fw_lan_ip }}/24{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set plain = "  DHCP range   : " + fw_dhcp_start + " – " + fw_dhcp_end -%}
+        {{ _c.G }}║{{ _c.NC }}  DHCP range   : {{ _c.G }}{{ fw_dhcp_start }} – {{ fw_dhcp_end }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set plain = "  WAN DNS      : " + fw_cld_dns + ", " + fw_inet_dns -%}
+        {{ _c.G }}║{{ _c.NC }}  WAN DNS      : {{ _c.G }}{{ fw_cld_dns }}, {{ fw_inet_dns }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set plain = "  LAN DNS      : " + fw_dc_dns + ", " + fw_cld_dns -%}
+        {{ _c.G }}║{{ _c.NC }}  LAN DNS      : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_cld_dns }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
       - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  WireGuard    : {{ _c.O }}{{ fw_wg_role }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  WG pubkey    : {{ _c.O }}{{ fw_wg_pubkey_final.content | b64decode | trim if (fw_wg_pubkey_final.content is defined) else 'N/A' }}{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  WG hub       : {{ _c.O }}{{ fw_wg_hub_endpoint | default('N/A') }}{{ _c.NC }}"
+      - >-
+        {%- set plain = "  WireGuard    : " + fw_wg_role -%}
+        {{ _c.G }}║{{ _c.NC }}  WireGuard    : {{ _c.O }}{{ fw_wg_role }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set val = fw_wg_pubkey_final.content | b64decode | trim if (fw_wg_pubkey_final.content is defined) else 'N/A' -%}
+        {%- set plain = "  WG pubkey    : " + val -%}
+        {{ _c.G }}║{{ _c.NC }}  WG pubkey    : {{ _c.O }}{{ val }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set val = fw_wg_hub_endpoint | default('N/A') -%}
+        {%- set plain = "  WG hub       : " + val -%}
+        {{ _c.G }}║{{ _c.NC }}  WG hub       : {{ _c.O }}{{ val }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
       - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  Cockpit      : {{ _c.C }}https://{{ fw_lan_ip }}:9090{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}  SSH (LAN)    : {{ _c.C }}ssh ansible@{{ fw_lan_ip }}{{ _c.NC }}"
+      - >-
+        {%- set plain = "  Cockpit      : https://" + fw_lan_ip + ":9090" -%}
+        {{ _c.G }}║{{ _c.NC }}  Cockpit      : {{ _c.C }}https://{{ fw_lan_ip }}:9090{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set plain = "  SSH (LAN)    : ssh ansible@" + fw_lan_ip -%}
+        {{ _c.G }}║{{ _c.NC }}  SSH (LAN)    : {{ _c.C }}ssh ansible@{{ fw_lan_ip }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
       - "{{ _c.G }}╚══════════════════════════════════════════════════════════════╝{{ _c.NC }}"
       - ""
       - "{{ _c.Y }}[!]{{ _c.NC }} If WG role is spoke, register this node as a peer on {{ _c.W }}{{ fw_wg_hub_site | default('the hub') }}{{ _c.NC }}:"

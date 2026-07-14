@@ -29,6 +29,9 @@
 #               to run in 01_interfaces.yml, BEFORE this file's own "Nothing has been
 #               written to disk yet" confirmation text -- silently contradicting it.
 #               Moved here, after the confirm gate, so that claim is actually true.
+#   2026-07-14  Cosmetic fix: "WAN activate" showed the raw Python/Jinja boolean
+#               (True/False) while every other field in the box reads as a real word
+#               (static, ENABLED open, disabled). Now renders yes/no like everything else.
 # =============================================================================
 
 - name: "[Summary] Display full configuration summary"
@@ -63,8 +66,9 @@
         {%- set plain = "  WAN IP        : " + val -%}
         {{ _c.C }}║{{ _c.NC }}  WAN IP        : {{ _c.G }}{{ val }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.C }}║{{ _c.NC }}
       - >-
-        {%- set plain = "  WAN activate  : " + (fw_wan_activate | string) -%}
-        {{ _c.C }}║{{ _c.NC }}  WAN activate  : {{ _c.G }}{{ fw_wan_activate }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.C }}║{{ _c.NC }}
+        {%- set val = 'yes' if fw_wan_activate else 'no' -%}
+        {%- set plain = "  WAN activate  : " + val -%}
+        {{ _c.C }}║{{ _c.NC }}  WAN activate  : {{ _c.G }}{{ val }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.C }}║{{ _c.NC }}
       - >-
         {%- set val = ('ENABLED' + (' src:' + fw_wan_ssh_src if fw_wan_ssh_src else ' open')) if fw_wan_ssh_enabled else 'disabled' -%}
         {%- set plain = "  WAN SSH       : " + val -%}
