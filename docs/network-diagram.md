@@ -83,7 +83,7 @@ two or three. Shorter boxes, same information.
 
 ### 🏴󠁧󠁢󠁥󠁮󠁧󠁿 [England](network-diagram/england.md)
 - [LND — London](network-diagram/england.md#lnd--london-)
-- [BIR — Birmingham](network-diagram/england.md#bir--birmingham)
+- [BIR — Birmingham](network-diagram/england.md#bir--birmingham-)
 - [MCR — Manchester](network-diagram/england.md#mcr--manchester-)
 - [LIV — Liverpool](network-diagram/england.md#liv--liverpool-)
 - [NEW — Newcastle](network-diagram/england.md#new--newcastle-)
@@ -107,7 +107,7 @@ two or three. Shorter boxes, same information.
 - [BON — Bonn](network-diagram/deutschland.md#bon--bonn-)
 - [BER — West Berlin](network-diagram/deutschland.md#ber--west-berlin-)
 - [MUN — Munich](network-diagram/deutschland.md#mun--munich-)
-- [DRS — Dresden](network-diagram/deutschland.md#drs--dresden)
+- [DRS — Dresden](network-diagram/deutschland.md#drs--dresden-)
 - [DUS — Düsseldorf](network-diagram/deutschland.md#dus--dsseldorf-)
 
 ### 🇸🇪 [Sverige](network-diagram/sverige.md)

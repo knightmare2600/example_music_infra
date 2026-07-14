@@ -171,7 +171,7 @@ graph TD
 
 ---
 
-## DRS — Dresden
+## DRS — Dresden 🕺
 
 **LAN:** `192.168.153.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  
