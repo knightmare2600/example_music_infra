@@ -27,7 +27,7 @@
 #   2026-06-20  Initial file
 #   2026-06-26  CLD added as hub-regional (cloud management hub)
 #   2026-06-26  wg_site_octets removed — now loaded dynamically from sites.csv
-#               in 00_preflight.yml via read_csv (sites.csv is authoritative)
+#               in 00_preflight_1_derive.yml via read_csv (sites.csv is authoritative)
 #   2026-07-14  Fixed CLD's WAN IP: was "192.168.139.139" (self-referential --
 #               looks like the provisioning subnet's own third octet, 139,
 #               got reused as a host octet by mistake). Real value confirmed
@@ -85,7 +85,7 @@ wg_management_hubs:
 # live-observed bug (EXAFWLBRT001 test), not just a style nit: CLD's own
 # subnet octet, resolved dynamically from sites.csv (wg_site_octets['CLD']),
 # is ALSO 69 (sites.csv: CLD,...,192.168.69.0/24). The standard per-site
-# AllowedIPs derivation (now roles/firewall/tasks/03_derive_post_ask.yml,
+# AllowedIPs derivation (now roles/firewall/tasks/00_preflight_4_post_ask.yml,
 # formerly 03_wireguard_config.yml) already appends
 # "192.168.69.0/24" for CLD via that path -- this "extra" entry was
 # reproducing the exact same string a second time, producing a literal
@@ -95,7 +95,7 @@ wg_management_hubs:
 # as defensive-but-dead data.
 wg_site_extra_subnets: {}
 
-# Site octet map — populated dynamically at runtime by 00_preflight.yml
+# Site octet map — populated dynamically at runtime by 00_preflight_1_derive.yml
 # via read_csv from sites_csv_path (default: /etc/example-music/sites.csv).
 # sites.csv is the single authoritative source; no manual copy needed here.
 # Override with -e sites_csv_path=/path/to/sites.csv when running outside CLD.

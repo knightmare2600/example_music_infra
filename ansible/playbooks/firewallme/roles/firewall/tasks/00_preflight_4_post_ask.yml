@@ -1,15 +1,15 @@
 ---
 # =============================================================================
-# roles/firewall/tasks/03_derive_post_ask.yml
+# roles/firewall/tasks/00_preflight_4_post_ask.yml
 # Example Music Limited — Derivation that depends on the operator's answers
 # =============================================================================
-# Runs after 02_ask_all.yml, before 04_summary_confirm.yml. Still no writes to
+# Runs after 00_preflight_3_ask.yml, before 00_preflight_5_confirm.yml. Still no writes to
 # the box -- these are facts that couldn't be computed until the ask phase's
 # overrides were known (final interface names, chosen WireGuard hub/role).
 #
 # MAC lookups used to live in 01_interfaces.yml, and the AllowedIPs builder in
 # 03_wireguard_config.yml -- both moved here as part of the 2026-07-14
-# "ask everything, then run" restructure (see 02_ask_all.yml's own header),
+# "ask everything, then run" restructure (see 00_preflight_3_ask.yml's own header),
 # since both need the FINAL fw_wan_iface/fw_lan_iface/fw_wg_hub_site/fw_wg_role
 # values, not the pre-override detected/default ones.
 # =============================================================================

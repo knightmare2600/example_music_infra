@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# roles/firewall/tasks/01_interfaces.yml
+# roles/firewall/tasks/00_preflight_2_interfaces.yml
 # Example Music Limited — Network interface detection: silent derivation only
 # =============================================================================
 # Changelog:
@@ -23,10 +23,10 @@
 #               (interface listing + WAN auto-detection only). The WAN confirm/override
 #               prompt, LAN interface prompt, LAN IP prompts, MAC lookups, and the
 #               systemd .link file writes all moved out: prompts to the new
-#               02_ask_all.yml, MAC lookups to 03_derive_post_ask.yml (they need the
+#               00_preflight_3_ask.yml, MAC lookups to 00_preflight_4_post_ask.yml (they need the
 #               FINAL interface names, only known once the ask phase's overrides are
 #               in), and -- a real pre-existing bug fixed in the process -- the .link
-#               file writes moved to 04_summary_confirm.yml, AFTER the "type yes" gate.
+#               file writes moved to 00_preflight_5_confirm.yml, AFTER the "type yes" gate.
 #               They used to run here, before that gate, silently contradicting its own
 #               "nothing has been written to disk yet" text.
 # =============================================================================
