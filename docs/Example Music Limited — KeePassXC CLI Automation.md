@@ -303,7 +303,10 @@ python kpcli_wrapper.py vault.kdbx add "Infrastructure/Proxmox/node1" root
 ## 7.1 Controls Implemented
 
 - Password input via secure prompt (no echo)
-- No credentials stored on disk
+- No credentials stored on disk **except the two deliberate, gitignored exceptions in §7a/§8a.4**
+  (`benarbejde/extracted_credentials.json`, the vault's own source data, and
+  `benarbejde/.keepassxc_master_password`, the automation unlock copy) — both local-only,
+  `chmod 600` where applicable, never committed
 - No credentials passed via CLI arguments
 - Short-lived subprocess execution
 - Best-effort memory overwrite after use
@@ -327,6 +330,49 @@ python kpcli_wrapper.py vault.kdbx add "Infrastructure/Proxmox/node1" root
 - Do not log output containing secrets
 - Restrict file permissions on `.kdbx` files
 - Prefer user-invoked execution only
+
+------
+
+# 7a. Credential Provisioning Flow (One-Way)
+
+> Robert's instruction (2026-07-14), verbatim intent: *"I'd rather NOT have ansible adding
+> anything, so the flow is from the folder with those JSON and CSVs towards the ansible stuff."*
+> This section makes that a documented, checked rule rather than a one-off remark.
+
+- **Data flows one direction only: `benarbejde/` → `Example Music.kdbx` → Ansible/tooling reads.**
+  There is no reverse path. Nothing in `ansible/` MUST ever call `keepassxc-cli add`,
+  `keepassxc-cli edit`, or `keepassxc-cli rm` — Ansible plays, roles, and lookups only ever
+  **read** a credential (`keepassxc-cli show`/`clip`, or a future lookup plugin built on the
+  same read-only call), never write one.
+- **`benarbejde/extracted_credentials.json` is the source of truth for what belongs in the
+  vault**, exactly the same relationship `devices.csv`/`sites.csv` already have with
+  `generate_inventory.py`'s generated `.ini` files (see that script's own header comment).
+  Whenever a new device gets a real credential — a fresh BMC, a newly-provisioned switch — the
+  credential is added to this JSON file first, by a human, from real source material (a build
+  sheet, a vendor label, a provisioning log). It is never invented, guessed, or defaulted without
+  a real source.
+- **`benarbejde/push_credentials_to_keepass.py`** is the one sanctioned writer on the
+  `benarbejde/` → KeePass leg. Run by hand (or from a human-triggered script, never from an
+  Ansible task), it reads `extracted_credentials.json`, unlocks the database using
+  `.keepassxc_master_password` (§8a.4), and adds any entry not already present. It is **additive
+  only** — it never edits or deletes an existing entry, so a credential rotated by hand directly
+  in KeePassXC afterwards is never silently reverted by a re-run. `--dry-run` previews changes
+  without touching the database.
+- **Why not have Ansible push newly-discovered credentials automatically?** Because a play that
+  can write to the vault is a play that can, on a bug or a bad run, corrupt or leak the one place
+  every other credential lives. Keeping the write path to a single, small, human-invoked script —
+  reviewed the same way any other repo change is — keeps the vault's blast radius small and
+  auditable via normal git history on `extracted_credentials.json`, rather than buried in
+  Ansible's own logs.
+- **Known housekeeping item, found while verifying this script (2026-07-14):** `EXARACEDI001`
+  currently sits under `Infrastructure/EDI/` in the live database instead of
+  `Network/IPMI-BMC/EDI/` where `GROUP_FOR_ROLE` would place it — a leftover from the manual
+  live-test entry added earlier in this session to verify the wrapper script's password bug fix
+  (§5/§6 changelog). Because dedupe is by hostname (not full path), the push script correctly
+  treats it as already present and leaves it alone rather than creating a second entry — but the
+  group placement itself is still wrong and wants a manual `keepassxc-cli mv` (or drag in the
+  GUI) to `Network/IPMI-BMC/EDI/EXARACEDI001`. Not fixed here since it's a one-off manual
+  correction, not something the push script should be doing on Ansible/tooling's behalf.
 
 ------
 
@@ -394,12 +440,48 @@ python kpcli_wrapper.py vault.kdbx add "Infrastructure/Proxmox/node1" root
   Recommended: yes — treat the current password as provisional until it has a real backup, then
   generate a fresh one and destroy the old record.
 
+## 8a.4 Automation/scripted access copy
+
+Any tooling that needs to unlock `Example Music.kdbx` unattended (a provisioning script reading a
+BMC credential, a scheduled report) needs the master password available to a process, not just to
+a human with an envelope. 8a.1's "MUST NOT store alongside the `.kdbx`" rule is about not defeating
+the encryption by keeping the key on the same access path as the file it protects — it does not
+mean the password can have no machine-readable copy anywhere. A third copy exists for this reason:
+
+- **File**: `benarbejde/.keepassxc_master_password` — plain text, the raw password, nothing else.
+- **Location**: inside the repo working tree, but **not inside the `.kdbx`'s own directory**
+  (`~/KeePassXC/`) — same separation principle as 8a.1, applied to the automation copy.
+- **Access control**: `chmod 600`, owner-only. Excluded from git via `.gitignore` (the entry sits
+  immediately after the `ansible-id_rsa` block) — never committed, never pushed, never visible to
+  anyone who only has the repo, only to someone with a shell on a machine that already has this
+  file placed there.
+- **Precedent**: this follows the exact pattern already established by
+  `ansible/configs/ansible-id_rsa` — a real secret that tooling needs to read, kept local-only,
+  gitignored, never embedded in a script or committed config.
+- **Risk, stated plainly, not hidden**: anyone who compromises a machine holding this file AND
+  gets a copy of `Example Music.kdbx` has the whole database. This is accepted as a **managed
+  risk** — traded off against the alternative of no unattended automation access at all. It is
+  managed by: the file only ever existing on machines that also run provisioning tooling (not
+  laptops, not anything with broader exposure), `chmod 600`, and it being the first thing rotated
+  if any host holding it is suspected compromised.
+- **Relationship to 8a.2's sealed envelope**: the two are independent, both current. Losing the
+  automation copy is an inconvenience (lost automation, not lost data) — the envelope, or a
+  human's memory of the master password, still unlocks the database either way. Losing the
+  envelope with no replacement is the actual disaster this section exists to prevent. The
+  automation copy is never treated as *the* backup — 8a.1's physical-backup requirement is
+  satisfied by 8a.2 alone.
+- **Rotation**: if the master password is rotated per 8a.3, this file MUST be updated in the same
+  change. A stale copy here fails closed (wrong password, script errors clearly) rather than
+  failing open — no silent-corruption risk from forgetting the step, but automation stops working
+  until someone updates it.
+
 ------
 
 # 9. Future Enhancements (Planned)
 
 - JSON output mode for automation pipelines
-- Ansible lookup plugin
+- Ansible lookup plugin — **read-only**, per §7a: `keepassxc-cli show`/`clip` only, never `add`/
+  `edit`/`rm`
 - Proxmox credential integration
 - Role-based access wrappers
 

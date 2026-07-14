@@ -171,6 +171,15 @@ id_ecdsa.pub
 authorized_keys
 
 ###############################################################################
+# KeePassXC master password -- same pattern as ansible-id_rsa above: a real
+# secret Ansible/tooling needs to be able to "look at", kept local-only,
+# never committed. See docs/Example Music Limited — KeePassXC CLI
+# Automation.md §8a for the human/physical backup this does NOT replace.
+###############################################################################
+
+benarbejde/.keepassxc_master_password
+
+###############################################################################
 # Windows crash dumps
 ###############################################################################
 
