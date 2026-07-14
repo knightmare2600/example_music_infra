@@ -111,6 +111,22 @@
 #               needs its own copy of these lists; group_vars/windows/vars.yml
 #               would now resolve correctly too. Left self-contained for now
 #               rather than bundle a de-duplication pass into this fix.
+#   2026-07-14  Removed nmap. Live against EXADCSCLD001: `choco install nmap` hung
+#               indefinitely (nmap-7.99-setup running 11+ minutes, no window
+#               title, choco.exe blocked waiting on it). Root cause is upstream,
+#               not fixable from this playbook: the nmap Chocolatey package
+#               drives its bundled Npcap installer via an AutoHotkey script that
+#               simulates GUI clicks (chocolatey-community/chocolatey-packages
+#               issue #1823) -- there is no interactive window station for that
+#               automation to click into over a non-interactive SSH session, so
+#               it hangs forever rather than failing. The underlying `npcap`
+#               package's actual current --package-parameters support couldn't
+#               be verified (chocolatey.org blocks scripted fetches from this
+#               sandbox), so no pre-install-npcap workaround was attempted
+#               against a live forest-root DC build. Robert's call: drop nmap
+#               from automated onboarding entirely rather than leave a
+#               known-hang in the chain -- install manually (interactively, via
+#               RDP/console) on any host that specifically needs it.
 #   2026-07-14  Robert, live against EXADCSCLD001 (already fully choco-provisioned
 #               from an earlier run): win_chocolatey with state: present is
 #               idempotent in the sense that it never reinstalls an already-present
@@ -156,7 +172,6 @@
       - dotnetfx
       - sysinternals
       - windirstat
-      - nmap
 
     # GUI-dependent (browsers etc.) — installed on Client OS always, and on
     # Server OS only if Desktop Experience is installed (not Server Core).
