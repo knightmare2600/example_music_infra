@@ -93,7 +93,7 @@ PER,PHN,2,,Yealink T46G,http,,Phone 2,,yes
 PER,PHN,3,,Yealink T46G,http,,Phone 3,,yes
 PER,PHN,4,,Yealink T46G,http,,Phone 4,,yes
 PER,PRN,1,,HP MFP,snmp,,Printer,,yes
-PER,VND,1,,Embedded SP100,none,,Vending machine,,yes
+PER,VND,1,,Embedded SP100,none,,"Vending machine -- NOT the same device as AD Name=EXACVNDER001 (a different, real Scone Palace donut vending device whose DNSHostName coincidentally matches this hostname) -- confirmed by Robert 2026-07-14, genuinely new/current, not legacy",,no
 ABD,FWL,1,254,Cisco ASA 5506-X,ssh,,Edge firewall,,yes
 ABD,RTR,1,1,Cisco ISR 4331,telnet,,WAN edge,,yes
 ABD,MBP,1,,macOS,ssh,,MacBook,,yes
