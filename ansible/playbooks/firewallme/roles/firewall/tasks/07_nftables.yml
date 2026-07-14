@@ -18,6 +18,18 @@
 #               outbound interface is WAN and WAN SSH isn't enabled. The ruleset is
 #               still always written to disk regardless -- only the live reload is
 #               gated.
+#   2026-07-14  Fixed a real, fundamental syntax bug found live on EXAFWLBRT001:
+#               `nft -c -f /etc/nftables.conf` failed with "syntax error, unexpected
+#               newline" plus a long cascade of further errors. Root cause: nftables
+#               has no "grouped block of rules under one shared match" syntax --
+#               `iifname "X" { rule1 rule2 }` is not valid nft (curly braces are only
+#               for chain bodies and set/concatenation literals like `tcp dport
+#               { 80, 443 }`). The LAN inbound, WAN inbound, and WireGuard-tunnel
+#               inbound sections all used this invalid grouping. Fixed by repeating
+#               the iifname match on every individual rule statement instead --
+#               verified by rendering the real Jinja template with representative
+#               values and checking brace balance (13 open, 13 close) before trusting
+#               it; nft itself isn't installed in this sandbox to run -c directly.
 # =============================================================================
 
 - name: "[nftables] Detect current session's outbound interface (safety check before reload)"
@@ -81,60 +93,58 @@
           ip6 nexthdr  icmpv6 accept
 
           # ── LAN inbound ───────────────────────────────────────────────
-          iifname "{{ fw_lan_iface }}" {
+          # nftables has no "grouped block of rules under one shared match" syntax --
+          # iifname "X" { rule1 rule2 } is not valid nft (that curly-brace form is only
+          # for chain bodies and set/concatenation literals). Every rule below repeats
+          # its own iifname match instead of trying to share one via a block.
 
-            # DHCP
-            udp dport 67 accept  comment "DHCP server"
+          # DHCP
+          iifname "{{ fw_lan_iface }}" udp dport 67 accept  comment "DHCP server"
 
-            # DNS
-            tcp dport 53 accept  comment "DNS (dnsmasq)"
-            udp dport 53 accept  comment "DNS (dnsmasq)"
+          # DNS
+          iifname "{{ fw_lan_iface }}" tcp dport 53 accept  comment "DNS (dnsmasq)"
+          iifname "{{ fw_lan_iface }}" udp dport 53 accept  comment "DNS (dnsmasq)"
 
-            # SSH — always on LAN
-            tcp dport 22 accept  comment "SSH LAN"
+          # SSH — always on LAN
+          iifname "{{ fw_lan_iface }}" tcp dport 22 accept  comment "SSH LAN"
 
-            # Cockpit
-            tcp dport 9090 accept  comment "Cockpit (LAN only)"
+          # Cockpit
+          iifname "{{ fw_lan_iface }}" tcp dport 9090 accept  comment "Cockpit (LAN only)"
 
-            # Zabbix agent
-            tcp dport { 10050, 10051 } accept  comment "Zabbix agent LAN"
-          }
+          # Zabbix agent
+          iifname "{{ fw_lan_iface }}" tcp dport { 10050, 10051 } accept  comment "Zabbix agent LAN"
 
           # ── WAN inbound ───────────────────────────────────────────────
-          iifname "{{ fw_wan_iface }}" {
       {% if fw_wan_ssh_enabled %}
       {% if fw_wan_ssh_src %}
-            # SSH WAN — restricted to source IP
-            ip saddr {{ fw_wan_ssh_src }} tcp dport 22 accept  comment "SSH WAN restricted"
+          # SSH WAN — restricted to source IP
+          iifname "{{ fw_wan_iface }}" ip saddr {{ fw_wan_ssh_src }} tcp dport 22 accept  comment "SSH WAN restricted"
       {% else %}
-            # SSH WAN — open (review this!)
-            tcp dport 22 accept  comment "SSH WAN open"
+          # SSH WAN — open (review this!)
+          iifname "{{ fw_wan_iface }}" tcp dport 22 accept  comment "SSH WAN open"
       {% endif %}
       {% endif %}
 
       {% if fw_wg_role in ['hub-primary', 'hub-regional'] %}
-            # WireGuard — hub listens on {{ fw_wg_port }}
-            udp dport {{ fw_wg_port }} accept  comment "WireGuard hub listen"
+          # WireGuard — hub listens on {{ fw_wg_port }}
+          iifname "{{ fw_wan_iface }}" udp dport {{ fw_wg_port }} accept  comment "WireGuard hub listen"
       {% elif fw_wg_role == 'spoke' %}
-            # WireGuard — spoke return traffic
-            udp dport {{ fw_wg_port | default(51820) }} accept  comment "WireGuard spoke"
+          # WireGuard — spoke return traffic
+          iifname "{{ fw_wan_iface }}" udp dport {{ fw_wg_port | default(51820) }} accept  comment "WireGuard spoke"
       {% endif %}
 
-            # Zabbix proxy — CLD only
+          # Zabbix proxy — CLD only
       {% if fw_site_code == 'CLD' %}
-            tcp dport 10051 accept  comment "Zabbix proxy inbound (CLD)"
+          iifname "{{ fw_wan_iface }}" tcp dport 10051 accept  comment "Zabbix proxy inbound (CLD)"
       {% endif %}
-          }
 
           # ── WireGuard interface inbound ───────────────────────────────
       {% if fw_wg_role != 'none' and not fw_is_black_site %}
-          iifname "wg0" {
-            # WireGuard tunnel — allow management protocols
-            tcp dport 22 accept    comment "SSH over WG tunnel"
-            tcp dport 9090 accept  comment "Cockpit over WG tunnel"
-            tcp dport { 10050, 10051 } accept  comment "Zabbix over WG"
-            icmp type echo-request accept
-          }
+          # WireGuard tunnel — allow management protocols
+          iifname "wg0" tcp dport 22 accept    comment "SSH over WG tunnel"
+          iifname "wg0" tcp dport 9090 accept  comment "Cockpit over WG tunnel"
+          iifname "wg0" tcp dport { 10050, 10051 } accept  comment "Zabbix over WG"
+          iifname "wg0" icmp type echo-request accept
       {% endif %}
 
           # Reject everything else with a polite message
