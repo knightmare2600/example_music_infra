@@ -28,19 +28,30 @@
 #   2026-06-26  CLD added as hub-regional (cloud management hub)
 #   2026-06-26  wg_site_octets removed — now loaded dynamically from sites.csv
 #               in 00_preflight.yml via read_csv (sites.csv is authoritative)
+#   2026-07-14  Fixed CLD's WAN IP: was "192.168.139.139" (self-referential --
+#               looks like the provisioning subnet's own third octet, 139,
+#               got reused as a host octet by mistake). Real value confirmed
+#               against benarbejde/devices.csv's own EXAFWLVRK001 row
+#               (HostOctet=69, on VRK's provisioning-network identity) --
+#               192.168.139.69, exactly matching CLD's LAN octet per
+#               sites.csv (192.168.69.0/24). Robert: "it's been .69 for a
+#               long time." Also populated CLD's known-good pubkey (supplied
+#               directly by Robert, verified live during the EXAFWLBRT001
+#               test) -- was blank, forcing every CLD-hub spoke build to
+#               skip the known-good cross-check entirely.
 # =============================================================================
 
 # Known hub public keys — last verified values
 # Format: { SITE_CODE: "base64-pubkey" }
 wg_hub_known_pubkeys:
-  CLD: ""    # EXAFWLCLD001 — populate after first build
+  CLD: "pAkY7PZHJy8/myXwQllAdf6l6NEtYVimiANKikZHuH0="    # EXAFWLCLD001 — confirmed 2026-07-14
   FAL: "yxYnCsZwxDmv6WrduGTC7pnW3sUxob1GGYpttPfGbmk="
   ODE: "gFK4oQNKN/a2UZvoil43OvOcjp2B6gT4YQ8IUqWrZ1o="
   BRK: "CSpL1NJl4jgeJDf6TccixMGv8JOSH7XS7pErjKSuoT4="
 
 # Hub WAN IPs on the provisioning network (192.168.139.x)
 wg_hub_wan_ips:
-  CLD: "192.168.139.139"
+  CLD: "192.168.139.69"
   FAL: "192.168.139.76"
   ODE: "192.168.139.126"
   BRK: "192.168.139.136"
@@ -69,9 +80,19 @@ wg_management_hubs:
 
 # Extra subnets per site — for nodes with more than one LAN behind the firewall.
 # These are appended to standard AllowedIPs (10.0.X.0/24, 192.168.X.0/24).
-wg_site_extra_subnets:
-  CLD:
-    - "192.168.69.0/24"   # EXAFWLCLD001 private LAN (inside interface)
+#
+# 2026-07-14: CLD's entry (192.168.69.0/24) removed -- confirmed a real,
+# live-observed bug (EXAFWLBRT001 test), not just a style nit: CLD's own
+# subnet octet, resolved dynamically from sites.csv (wg_site_octets['CLD']),
+# is ALSO 69 (sites.csv: CLD,...,192.168.69.0/24). The standard per-site
+# AllowedIPs derivation in 03_wireguard_config.yml already appends
+# "192.168.69.0/24" for CLD via that path -- this "extra" entry was
+# reproducing the exact same string a second time, producing a literal
+# duplicate in every spoke's AllowedIPs list. Harmless to WireGuard itself
+# (a duplicated CIDR is a no-op), but real evidence the entry never added
+# anything wg_site_octets doesn't already cover -- removed rather than kept
+# as defensive-but-dead data.
+wg_site_extra_subnets: {}
 
 # Site octet map — populated dynamically at runtime by 00_preflight.yml
 # via read_csv from sites_csv_path (default: /etc/example-music/sites.csv).
