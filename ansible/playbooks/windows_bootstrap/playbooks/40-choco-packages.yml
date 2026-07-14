@@ -111,6 +111,21 @@
 #               needs its own copy of these lists; group_vars/windows/vars.yml
 #               would now resolve correctly too. Left self-contained for now
 #               rather than bundle a de-duplication pass into this fix.
+#   2026-07-14  Robert, live against EXADCSCLD001 (already fully choco-provisioned
+#               from an earlier run): win_chocolatey with state: present is
+#               idempotent in the sense that it never reinstalls an already-present
+#               package, but looped per-item it still spawns a real choco.exe
+#               process per package to check -- 21 processes even when every
+#               single one is a no-op. Added a single, fast, local `choco list
+#               --limit-output` query up front (pipe-delimited packageId|version,
+#               local-only by default on this Chocolatey version -- no network
+#               call, confirmed against Robert's own pasted `choco list` output
+#               showing purely local results already) and filter both package
+#               lists down to only what's actually missing before looping --
+#               same end state, same idempotency guarantee, just one process
+#               instead of N+1 when nothing needs to change. Not independently
+#               tested against a live Windows host from this sandbox (no choco
+#               available here) -- Robert confirming live.
 # =============================================================================
 
 - name: Windows — Chocolatey package deployment
@@ -166,30 +181,54 @@
         has_gui: "{{ installation_type_check.stdout | trim != 'Server Core' }}"
       tags: choco_packages
 
+    - name: Get currently installed Chocolatey packages (single local, no-network call)
+      ansible.windows.win_shell: choco list --limit-output
+      register: choco_installed_raw
+      changed_when: false
+      tags: choco_packages
+
+    - name: Set installed_choco_packages fact
+      set_fact:
+        # Each line is "packageId|version" (pipe-delimited, --limit-output) --
+        # local-only by default on this Chocolatey version, no network round-trip.
+        installed_choco_packages: >-
+          {{ choco_installed_raw.stdout_lines
+             | map('regex_replace', '\|.*$', '')
+             | map('lower')
+             | list }}
+      tags: choco_packages
+
+    - name: Set missing-package facts (only what actually needs installing)
+      set_fact:
+        choco_packages_common_missing: "{{ choco_packages_common | reject('in', installed_choco_packages) | list }}"
+        choco_packages_gui_missing:    "{{ choco_packages_gui | reject('in', installed_choco_packages) | list }}"
+      tags: choco_packages
+
     - name: Show package selection for this run
       debug:
         msg:
-          - "Has GUI       : {{ has_gui }}"
-          - "Common pkgs   : {{ choco_packages_common | join(', ') }}"
-          - "GUI pkgs      : {{ (choco_packages_gui | join(', ')) if has_gui | bool else '(skipped — no GUI)' }}"
+          - "Has GUI          : {{ has_gui }}"
+          - "Already installed: {{ installed_choco_packages | length }} package(s)"
+          - "Common — missing : {{ (choco_packages_common_missing | join(', ')) if choco_packages_common_missing | length > 0 else '(none — all already present)' }}"
+          - "GUI — missing    : {{ (choco_packages_gui_missing | join(', ') if choco_packages_gui_missing | length > 0 else '(none — all already present)') if has_gui | bool else '(skipped — no GUI)' }}"
       tags: choco_packages
 
-    - name: Install common Chocolatey packages
+    - name: Install missing common Chocolatey packages
       chocolatey.chocolatey.win_chocolatey:
         name:   "{{ item }}"
         state:  present
         source: "{{ exa_choco_source }}"
-      loop: "{{ choco_packages_common }}"
+      loop: "{{ choco_packages_common_missing }}"
       loop_control:
         label: "{{ item }}"
       tags: choco_packages
 
-    - name: Install GUI Chocolatey packages (Client OS, or Server with Desktop Experience)
+    - name: Install missing GUI Chocolatey packages (Client OS, or Server with Desktop Experience)
       chocolatey.chocolatey.win_chocolatey:
         name:   "{{ item }}"
         state:  present
         source: "{{ exa_choco_source }}"
-      loop: "{{ choco_packages_gui }}"
+      loop: "{{ choco_packages_gui_missing }}"
       loop_control:
         label: "{{ item }}"
       when: has_gui | bool
