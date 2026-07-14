@@ -1,12 +1,19 @@
 ---
 # =============================================================================
 # roles/firewall/tasks/00_preflight.yml
-# Example Music Limited — Firewall preflight checks and site detection
+# Example Music Limited — Firewall preflight: silent fact derivation only
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-20  Colourised prompts — matches firewallme.sh colour scheme
 #   2026-06-26  Load wg_site_octets dynamically from sites.csv at runtime
+#   2026-07-14  Robert: "vars_prompt do it now" -- restructured the whole role into
+#               three clean phases (derive silently -> ask everything back-to-back ->
+#               run the apply chain uninterrupted to the one final confirm), instead
+#               of prompts and derivation being interleaved throughout 00-04. This file
+#               is now PURE DERIVATION -- no prompts, no writes. Environment resolution
+#               and the CLD black-site CONFIRM prompt (which used to live here) moved to
+#               the new 02_ask_all.yml, since both can themselves prompt the operator.
 # =============================================================================
 
 # ── Parse hostname ────────────────────────────────────────────────────────────
@@ -84,58 +91,3 @@
     fw_cld_dns: "{{ site_services.dns.ip }}"
     fw_inet_dns: "9.9.9.9"
     fw_domain: "{{ site_services.domain_fqdn }}"
-
-# ── Environment detection ─────────────────────────────────────────────────────
-# Resolved from an already-deployed nodeinfo.json if present, else prompted --
-# see ansible/tasks/nodeinfo_environment.yml (replaced the old standalone
-# /etc/.environment file 2026-07-10; fw_environment kept as the local alias
-# since 04_summary_confirm.yml/07_nftables.yml/10_ssh_hardening.yml/
-# 12_finish.yml all already reference it by this name).
-
-- name: "[Preflight] Resolve environment"
-  ansible.builtin.include_tasks: ../../../../../tasks/nodeinfo_environment.yml
-
-- name: "[Preflight] Set fw_environment"
-  ansible.builtin.set_fact:
-    fw_environment: "{{ resolved_environment }}"
-
-# ── Black-site extra confirmation ─────────────────────────────────────────────
-
-- name: "[Preflight] BLACK SITE — CLD extra confirmation"
-  ansible.builtin.pause:
-    prompt: |-
-      {{ _c.R }}
-      ╔══════════════════════════════════════════════════════════════╗
-      ║  *** BLACK SITE — CLD PROVISIONING NETWORK ***               ║
-      ║                                                              ║
-      ║  This is EXAFWLCLD001 — the cloud management hub firewall.  ║
-      ║  This device carries ALL site provisioning traffic.          ║
-      ║                                                              ║
-      ║  Extra precautions apply:                                    ║
-      ║    - WireGuard: hub-regional (peers with FAL, ODE, BRK)     ║
-      ║    - WAN 192.168.139.69 (EXAFWLVRK001) / LAN 192.168.69.x   ║
-      ║      (free-form)                                             ║
-      ║    - Static WAN IP is mandatory                              ║
-      ║    - All changes require explicit confirmation               ║
-      ╚══════════════════════════════════════════════════════════════╝
-      {{ _c.NC }}
-      Type CONFIRM to proceed, anything else to abort
-  register: fw_black_site_confirm
-  when: fw_is_black_site
-
-- name: "[Preflight] ABORT — black-site confirmation not given"
-  ansible.builtin.fail:
-    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} CLD black-site setup aborted."
-  when:
-    - fw_is_black_site
-    - fw_black_site_confirm.user_input | trim | upper != 'CONFIRM'
-
-- name: "[Preflight] Force WG role to hub-regional for CLD"
-  ansible.builtin.set_fact:
-    fw_wg_role: "hub-regional"
-  when: fw_is_black_site
-
-# NOTE: no per-file summary here -- this info (hostname/site/subnet/environment/
-# black-site) is already in the one comprehensive summary in 04_summary_confirm.yml,
-# printed once right before the operator is asked to confirm. Repeating it here
-# was redundant noise.

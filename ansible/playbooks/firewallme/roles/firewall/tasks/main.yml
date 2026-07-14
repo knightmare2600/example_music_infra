@@ -7,11 +7,20 @@
 # Colour constants (_c.*) are loaded via vars_files in 90-firewall.yml.
 #
 # Stage map:
-#   00_preflight         — hostname parse, site detection, CLD black-site gate
-#   01_interfaces        — WAN/LAN detection, .link file pinning by MAC
-#   02_wan_config        — WAN mode (DHCP/static), SSH, Ansible IP, activation gate
-#   03_wireguard_config  — WG role prompt, hub pubkey SSH fetch + cross-check
-#   04_summary_confirm   — full summary, 'yes' required before any writes
+#   00_preflight         — silent derivation: hostname/site parse, sites.csv
+#                          lookup, subnet facts, DNS/domain. NO prompts, NO writes.
+#   01_interfaces        — silent derivation: interface listing, WAN auto-detect.
+#                          NO prompts, NO writes.
+#   02_ask_all           — EVERY operator prompt, back-to-back: environment,
+#                          black-site confirm, WAN/LAN interface, LAN IP, WAN
+#                          mode/IP/gateway, Ansible IP, WAN SSH, WAN activation,
+#                          WireGuard role/tunnel/hub (incl. the read-only SSH
+#                          pubkey fetch+confirm). Still NO writes.
+#   03_derive_post_ask   — derivation that needed the operator's final answers
+#                          (MAC lookups, WireGuard AllowedIPs). Still NO writes.
+#   04_summary_confirm   — ONE consolidated review + ONE "type yes" confirm,
+#                          then (only after that) the first real writes:
+#                          systemd .link files.
 #   05_packages          — apt, localepurge, initramfs, ansible user, zsh
 #   06_network_manager   — nmcli profiles, LAN up, optional WAN up, forwarding
 #   07_nftables          — ruleset generation and load
@@ -24,6 +33,14 @@
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-20  Colour constants loaded via play vars_files in 90-firewall.yml
+#   2026-07-14  Robert: "vars_prompt do it now" -- restructured 00-04 from
+#               interleaved derive/prompt/derive/prompt into three clean phases
+#               (derive silently -> ask everything back-to-back -> one review +
+#               confirm), per 02_ask_all.yml's own header for the full rationale.
+#               02_wan_config.yml and 03_wireguard_config.yml are gone -- their
+#               content was absorbed into 02_ask_all.yml (all prompts) and the
+#               new 03_derive_post_ask.yml (post-answer derivation). 05 onward
+#               is unchanged -- it already only ran after the final confirm.
 # =============================================================================
 
 - import_tasks: 00_preflight.yml
@@ -32,11 +49,11 @@
 - import_tasks: 01_interfaces.yml
   tags: [firewall, interfaces]
 
-- import_tasks: 02_wan_config.yml
-  tags: [firewall, wan]
+- import_tasks: 02_ask_all.yml
+  tags: [firewall, ask, wan, wireguard]
 
-- import_tasks: 03_wireguard_config.yml
-  tags: [firewall, wireguard]
+- import_tasks: 03_derive_post_ask.yml
+  tags: [firewall, ask, wireguard]
 
 - import_tasks: 04_summary_confirm.yml
   tags: [firewall, confirm]
