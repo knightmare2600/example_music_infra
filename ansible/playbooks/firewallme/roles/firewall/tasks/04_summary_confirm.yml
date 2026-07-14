@@ -23,6 +23,12 @@
 #               comment reserves orange for "WireGuard details, tunnel info", and
 #               03_wireguard_config.yml's own per-section summary already colours
 #               this line orange; only this box's copy was inconsistent.
+#   2026-07-14  Robert: "vars_prompt do it now" -- part of the same restructure
+#               documented in 02_ask_all.yml's header. Also fixed a real, separate
+#               bug exposed by that restructure: the systemd .link file writes used
+#               to run in 01_interfaces.yml, BEFORE this file's own "Nothing has been
+#               written to disk yet" confirmation text -- silently contradicting it.
+#               Moved here, after the confirm gate, so that claim is actually true.
 # =============================================================================
 
 - name: "[Summary] Display full configuration summary"
@@ -130,3 +136,45 @@
 - name: "[Summary] Applying configuration"
   ansible.builtin.debug:
     msg: "{{ _c.G }}[+]{{ _c.NC }} Confirmed — applying configuration to {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
+
+# ── First real writes — systemd .link files (moved from 01_interfaces.yml) ──
+# These used to run during the ask phase, before the operator had even seen
+# this confirmation screen -- moved here so they only happen after "yes".
+
+- name: "[Summary] Write systemd .link files directory"
+  ansible.builtin.file:
+    path: /etc/systemd/network
+    state: directory
+    mode: '0755'
+
+- name: "[Summary] Write WAN .link file"
+  ansible.builtin.copy:
+    dest: /etc/systemd/network/10-wan.link
+    mode: '0644'
+    content: |
+      # Example Music — WAN interface pin
+      # Written by Ansible firewall role
+      # MAC: {{ fw_wan_mac }}  interface: {{ fw_wan_iface }}
+      [Match]
+      MACAddress={{ fw_wan_mac }}
+      [Link]
+      Name={{ fw_wan_iface }}
+
+- name: "[Summary] Write LAN .link file"
+  ansible.builtin.copy:
+    dest: /etc/systemd/network/10-lan.link
+    mode: '0644'
+    content: |
+      # Example Music — LAN interface pin
+      # Written by Ansible firewall role
+      # MAC: {{ fw_lan_mac }}  interface: {{ fw_lan_iface }}
+      [Match]
+      MACAddress={{ fw_lan_mac }}
+      [Link]
+      Name={{ fw_lan_iface }}
+
+- name: "[Summary] Interface pinning summary"
+  ansible.builtin.debug:
+    msg:
+      - "{{ _c.G }}[+]{{ _c.NC }} Interface names pinned: WAN={{ _c.C }}{{ fw_wan_iface }}{{ _c.NC }} ({{ fw_wan_mac }}), LAN={{ _c.C }}{{ fw_lan_iface }}{{ _c.NC }} ({{ fw_lan_mac }})"
+      - "{{ _c.G }}[+]{{ _c.NC }} LAN IP: {{ _c.G }}{{ fw_lan_ip }}/24{{ _c.NC }}"

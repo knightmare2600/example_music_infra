@@ -1,7 +1,7 @@
 ---
 # =============================================================================
 # roles/firewall/tasks/01_interfaces.yml
-# Example Music Limited — Network interface detection and confirmation
+# Example Music Limited — Network interface detection: silent derivation only
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
@@ -19,6 +19,16 @@
 #               always came back empty regardless of what was actually configured. Fixed
 #               by pinning these two shell tasks to bash explicitly, rather than rewriting
 #               working bash logic to POSIX sh.
+#   2026-07-14  Robert: "vars_prompt do it now" -- this file is now PURE DERIVATION
+#               (interface listing + WAN auto-detection only). The WAN confirm/override
+#               prompt, LAN interface prompt, LAN IP prompts, MAC lookups, and the
+#               systemd .link file writes all moved out: prompts to the new
+#               02_ask_all.yml, MAC lookups to 03_derive_post_ask.yml (they need the
+#               FINAL interface names, only known once the ask phase's overrides are
+#               in), and -- a real pre-existing bug fixed in the process -- the .link
+#               file writes moved to 04_summary_confirm.yml, AFTER the "type yes" gate.
+#               They used to run here, before that gate, silently contradicting its own
+#               "nothing has been written to disk yet" text.
 # =============================================================================
 
 - name: "[Interfaces] List all non-loopback interfaces"
@@ -70,168 +80,3 @@
 - name: "[Interfaces] Display interface table"
   ansible.builtin.debug:
     msg: "{{ fw_iface_table.stdout_lines }}"
-
-- name: "[Interfaces] Confirm or override WAN interface"
-  ansible.builtin.pause:
-    prompt: |-
-      {{ _c.C }}──────────────────────────────────────────────────────────────{{ _c.NC }}
-      {{ _c.C }}[*]{{ _c.NC }} WAN interface is {{ _c.G }}{{ fw_wan_iface_detected }}{{ _c.NC }} ({{ fw_wan_ip_detected }}, MAC: {{ fw_wan_mac_detected }})
-      {{ _c.C }}    Connected to 192.168.139.0/24 (provisioning network){{ _c.NC }}
-
-      Press {{ _c.G }}Enter{{ _c.NC }} to confirm or type a different interface name
-  register: fw_wan_override
-  when: fw_wan_detected
-
-- name: "[Interfaces] Prompt for WAN interface (not auto-detected)"
-  ansible.builtin.pause:
-    prompt: |-
-      {{ _c.Y }}[!]{{ _c.NC }} Could not auto-detect WAN interface (no 192.168.139.x address found).
-      {{ _c.Y }}[!]{{ _c.NC }} This may mean the provisioning network is not reachable, or DHCP hasn't completed.
-      {{ _c.C }}    Available interfaces: {{ fw_available_ifaces | join(', ') }}{{ _c.NC }}
-
-      Enter the WAN interface name (default: {{ _c.G }}{{ fw_available_ifaces[0] | default('ens33') }}{{ _c.NC }})
-  register: fw_wan_manual
-  when: not fw_wan_detected
-
-- name: "[Interfaces] Set final WAN interface"
-  ansible.builtin.set_fact:
-    fw_wan_iface: >-
-      {%- if fw_wan_detected -%}
-        {%- set override = fw_wan_override.user_input | default('') | trim -%}
-        {{ override if override != '' else fw_wan_iface_detected }}
-      {%- else -%}
-        {%- set manual = fw_wan_manual.user_input | default('') | trim -%}
-        {{ manual if manual != '' else (fw_available_ifaces[0] | default('ens33')) }}
-      {%- endif -%}
-
-- name: "[Interfaces] Get WAN MAC"
-  ansible.builtin.shell: "cat /sys/class/net/{{ fw_wan_iface }}/address"
-  register: fw_wan_mac_raw
-  changed_when: false
-
-- name: "[Interfaces] Set WAN MAC fact"
-  ansible.builtin.set_fact:
-    fw_wan_mac: "{{ fw_wan_mac_raw.stdout | trim }}"
-
-- name: "[Interfaces] Build LAN candidates"
-  ansible.builtin.set_fact:
-    fw_lan_candidates: "{{ fw_available_ifaces | reject('equalto', fw_wan_iface) | list }}"
-
-- name: "[Interfaces] Show remaining interfaces for LAN"
-  ansible.builtin.debug:
-    msg: "{{ _c.C }}[*]{{ _c.NC }} Remaining interfaces for LAN (WAN {{ fw_wan_iface }} excluded):\n{% for iface in fw_lan_candidates %}    {{ _c.C }}{{ iface }}{{ _c.NC }}\n{% endfor %}"
-
-- name: "[Interfaces] Prompt for LAN interface"
-  ansible.builtin.pause:
-    prompt: "Enter the LAN interface name (default: {{ _c.G }}{{ fw_lan_candidates[0] | default('ens34') }}{{ _c.NC }})"
-  register: fw_lan_prompt
-
-- name: "[Interfaces] Set final LAN interface"
-  ansible.builtin.set_fact:
-    fw_lan_iface: >-
-      {%- set inp = fw_lan_prompt.user_input | default('') | trim -%}
-      {{ inp if inp != '' else (fw_lan_candidates[0] | default('ens34')) }}
-
-- name: "[Interfaces] FAIL — LAN and WAN cannot be the same"
-  ansible.builtin.fail:
-    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} LAN and WAN cannot be the same interface."
-  when: fw_lan_iface == fw_wan_iface
-
-- name: "[Interfaces] Get LAN MAC"
-  ansible.builtin.shell: "cat /sys/class/net/{{ fw_lan_iface }}/address"
-  register: fw_lan_mac_raw
-  changed_when: false
-
-- name: "[Interfaces] Set LAN MAC fact"
-  ansible.builtin.set_fact:
-    fw_lan_mac: "{{ fw_lan_mac_raw.stdout | trim }}"
-
-# ── LAN IP — standard sites (.1 or .253 of site subnet) ──────────────────────
-
-- name: "[Interfaces] Prompt for LAN IP (.1 or .253)"
-  ansible.builtin.pause:
-    prompt: |-
-      {{ _c.C }}  → {{ fw_site_code }}: subnet {{ fw_subnet }}.0/24{{ _c.NC }}
-      {{ _c.C }}  → WG tunnel 10.0.{{ fw_site_octet }}.0/24{{ _c.NC }}
-
-      Use {{ _c.G }}.1{{ _c.NC }}  ({{ fw_lan_ip_1 }})   — primary internet gateway
-      Use {{ _c.G }}.253{{ _c.NC }} ({{ fw_lan_ip_253 }}) — secondary internet gateway
-
-      Enter {{ _c.G }}1{{ _c.NC }} or {{ _c.G }}253{{ _c.NC }}
-  register: fw_lan_octet_prompt
-  when: not fw_is_black_site
-
-- name: "[Interfaces] Validate LAN IP choice"
-  ansible.builtin.assert:
-    that:
-      - fw_lan_octet_prompt.user_input | trim in ['1', '253']
-    fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Invalid choice — enter 1 or 253."
-  when: not fw_is_black_site
-
-- name: "[Interfaces] Set LAN IP"
-  ansible.builtin.set_fact:
-    fw_lan_ip: "{{ fw_subnet }}.{{ fw_lan_octet_prompt.user_input | trim }}"
-  when: not fw_is_black_site
-
-# ── LAN IP — CLD black site (LAN is on a different subnet, free-form entry) ──
-
-- name: "[Interfaces] CLD: prompt for LAN IP (not on fw_subnet — enter full IP)"
-  ansible.builtin.pause:
-    prompt: |-
-      {{ _c.C }}  *** CLD BLACK SITE ***{{ _c.NC }}
-      {{ _c.C }}  LAN is not on {{ fw_subnet }}.0/24 — enter the full LAN IP.{{ _c.NC }}
-      {{ _c.C }}  Example: {{ _c.G }}192.168.69.253{{ _c.NC }} (the private inside interface)
-
-      Enter full LAN IP
-  register: fw_cld_lan_ip_prompt
-  when: fw_is_black_site
-
-- name: "[Interfaces] CLD: validate and set LAN IP"
-  ansible.builtin.assert:
-    that:
-      - fw_cld_lan_ip_prompt.user_input | trim | regex_search('^(\d{1,3}\.){3}\d{1,3}$')
-    fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Enter a valid IPv4 address."
-  when: fw_is_black_site
-
-- name: "[Interfaces] CLD: set LAN IP fact"
-  ansible.builtin.set_fact:
-    fw_lan_ip: "{{ fw_cld_lan_ip_prompt.user_input | trim }}"
-  when: fw_is_black_site
-
-- name: "[Interfaces] Write systemd .link files"
-  ansible.builtin.file:
-    path: /etc/systemd/network
-    state: directory
-    mode: '0755'
-
-- name: "[Interfaces] Write WAN .link file"
-  ansible.builtin.copy:
-    dest: /etc/systemd/network/10-wan.link
-    mode: '0644'
-    content: |
-      # Example Music — WAN interface pin
-      # Written by Ansible firewall role
-      # MAC: {{ fw_wan_mac }}  interface: {{ fw_wan_iface }}
-      [Match]
-      MACAddress={{ fw_wan_mac }}
-      [Link]
-      Name={{ fw_wan_iface }}
-
-- name: "[Interfaces] Write LAN .link file"
-  ansible.builtin.copy:
-    dest: /etc/systemd/network/10-lan.link
-    mode: '0644'
-    content: |
-      # Example Music — LAN interface pin
-      # Written by Ansible firewall role
-      # MAC: {{ fw_lan_mac }}  interface: {{ fw_lan_iface }}
-      [Match]
-      MACAddress={{ fw_lan_mac }}
-      [Link]
-      Name={{ fw_lan_iface }}
-
-- name: "[Interfaces] Summary"
-  ansible.builtin.debug:
-    msg:
-      - "{{ _c.G }}[+]{{ _c.NC }} Interface names pinned: WAN={{ _c.C }}{{ fw_wan_iface }}{{ _c.NC }} ({{ fw_wan_mac }}), LAN={{ _c.C }}{{ fw_lan_iface }}{{ _c.NC }} ({{ fw_lan_mac }})"
-      - "{{ _c.G }}[+]{{ _c.NC }} LAN IP: {{ _c.G }}{{ fw_lan_ip }}/24{{ _c.NC }}"
