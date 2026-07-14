@@ -23,7 +23,7 @@
 
 - name: "[WAN] Prompt for WAN mode (non-CLD)"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
       {{ _c.C }}║              WAN Interface Configuration             ║{{ _c.NC }}
       {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
@@ -52,7 +52,7 @@
 
 - name: "[WAN] Confirm derived static WAN IP"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.C }}[*]{{ _c.NC }} Derived static WAN IP: {{ _c.G }}{{ fw_wan_static_ip }}/24{{ _c.NC }} gw {{ _c.G }}{{ fw_wan_static_gw }}{{ _c.NC }}
       {{ _c.C }}    This is EXAFWL{{ fw_site_code }}001-wan's reserved address per DNS/devices.csv{{ _c.NC }}
       {{ _c.C }}    (192.168.139.<site-octet> is this site's fixed convention, not guessed).{{ _c.NC }}
@@ -86,7 +86,7 @@
 
 - name: "[WAN] Prompt for Ansible/PXE server octet"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.C }}[*]{{ _c.NC }} Ansible/PXE server IP (last octet or full IP)
           Derived: {{ _c.G }}{{ fw_ansible_ip }}{{ _c.NC }} — press Enter to accept
   register: fw_ansible_prompt
@@ -104,7 +104,7 @@
 
 - name: "[WAN] Prompt for WAN SSH"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.Y }}[!]{{ _c.NC }} SSH on WAN (port 22 open to the internet) is a security risk.
       {{ _c.Y }}[!]{{ _c.NC }} LAN SSH is always enabled. WAN SSH defaults to OFF.
 
@@ -130,7 +130,7 @@
 
 - name: "[WAN] Prompt for WAN activation"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
       {{ _c.C }}║              WAN Activation                          ║{{ _c.NC }}
       {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}

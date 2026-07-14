@@ -73,7 +73,7 @@
 
 - name: "[Interfaces] Confirm or override WAN interface"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.C }}──────────────────────────────────────────────────────────────{{ _c.NC }}
       {{ _c.C }}[*]{{ _c.NC }} WAN interface is {{ _c.G }}{{ fw_wan_iface_detected }}{{ _c.NC }} ({{ fw_wan_ip_detected }}, MAC: {{ fw_wan_mac_detected }})
       {{ _c.C }}    Connected to 192.168.139.0/24 (provisioning network){{ _c.NC }}
@@ -84,7 +84,7 @@
 
 - name: "[Interfaces] Prompt for WAN interface (not auto-detected)"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.Y }}[!]{{ _c.NC }} Could not auto-detect WAN interface (no 192.168.139.x address found).
       {{ _c.Y }}[!]{{ _c.NC }} This may mean the provisioning network is not reachable, or DHCP hasn't completed.
       {{ _c.C }}    Available interfaces: {{ fw_available_ifaces | join(', ') }}{{ _c.NC }}
@@ -150,7 +150,7 @@
 
 - name: "[Interfaces] Prompt for LAN IP (.1 or .253)"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.C }}  → {{ fw_site_code }}: subnet {{ fw_subnet }}.0/24{{ _c.NC }}
       {{ _c.C }}  → WG tunnel 10.0.{{ fw_site_octet }}.0/24{{ _c.NC }}
 
@@ -177,7 +177,7 @@
 
 - name: "[Interfaces] CLD: prompt for LAN IP (not on fw_subnet — enter full IP)"
   ansible.builtin.pause:
-    prompt: |
+    prompt: |-
       {{ _c.C }}  *** CLD BLACK SITE ***{{ _c.NC }}
       {{ _c.C }}  LAN is not on {{ fw_subnet }}.0/24 — enter the full LAN IP.{{ _c.NC }}
       {{ _c.C }}  Example: {{ _c.G }}192.168.69.253{{ _c.NC }} (the private inside interface)
