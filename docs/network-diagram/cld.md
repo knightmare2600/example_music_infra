@@ -14,33 +14,16 @@
 CLD's own LAN is `192.168.69.0/24` — the vRACK (`192.168.139.0/24`) is a separate site code, `VRK`.  
 **Entity:** Example Music Limited · **Landline:** N/A · **Mobile:** N/A
 
+> **CLD and VRK never had a legacy network — confirmed, not assumed.** Neither appears anywhere in
+> `benarbejde/ad_computers.json` (the real pre-project Active Directory export the TDF file
+> captured) — zero entries for either site code. Both are purely current infrastructure, added as
+> part of this project. The box below reflects that; VRK's real devices (it has no diagram section
+> of its own) now show up in the New Network box, folded in by `generate_network_diagrams.py`.
+
 ```mermaid
 graph TD
-    subgraph OLD_CLD ["🕰️ Old Network (legacy)"]
-      INET["🌐 Internet"]
-      FWLCLD["🧱 EXAFWLVRK001 · Firewall / WireGuard Hub · 192.168.139.1"]
-      DNS["🧭 EXADNSVRK001 · DNS / BIND9 Server · 192.168.139.8"]
-      PRV["📦 EXAPRVVRK001 · Provisioning Server · 192.168.139.50"]
-      RUD["⚙️ EXARDRCLD001 · Rudder Server · 192.168.69.12"]
-      WAC["🗄️ EXASVRCLD002 · Windows Admin Centre · 192.168.69.20"]
-      PBX["🔌 EXAPBXCLD001 · 3CX Central PBX · 192.168.69.48"]
-      ANS["🤖 EXAANSCLD001 · Ansible Control Node · 192.168.69.9"]
-
-      VPN_FAL["🔗 WireGuard → FAL primary"]
-      VPN_ODE["🔗 WireGuard → ODE EU backup"]
-      VPN_BRK["🔗 WireGuard → BRK NA/APAC backup"]
-
-      INET --> FWLCLD
-      FWLCLD --> DNS
-      FWLCLD --> RUD
-      FWLCLD --> WAC
-      FWLCLD --> PBX
-      FWLCLD --> PRV
-      FWLCLD --> ANS
-      FWLCLD --> VPN_FAL
-      FWLCLD --> VPN_ODE
-      FWLCLD --> VPN_BRK
-
+    subgraph OLD_CLD ["☁️ No Legacy Network — Cloud-Native, Never Existed Before This Project"]
+      N_OLD_NOTE["Confirmed via benarbejde/ad_computers.json: zero pre-project AD entries for CLD or VRK."]
     end
     style OLD_CLD fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:CLD:START
@@ -55,6 +38,9 @@ graph TD
       N_SVR["🗄️ EXASVRCLD002 · Windows Admin Centre · .20"]
       N_PBX["🔌 EXAPBXCLD001 · 3CX PBX · .48"]
       N_UFC["🎛️ EXAUFCCLD001 · UniFi Network Controller · .82"]
+      N_DNS["🧭 EXADNSVRK001 · DNS/BIND server (VRK) · .8"]
+      N_PRV2["📦 EXAPRVVRK001 · Provisioning server (VRK) · .50"]
+      N_FWL3["🧱 EXAFWLVRK001 · Firewall WAN face (vRACK) (VRK) · .69"]
     end
     style NEW_CLD fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:CLD:END
