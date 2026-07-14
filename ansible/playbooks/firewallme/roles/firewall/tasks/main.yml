@@ -7,20 +7,26 @@
 # Colour constants (_c.*) are loaded via vars_files in 90-firewall.yml.
 #
 # Stage map:
-#   00_preflight         — silent derivation: hostname/site parse, sites.csv
-#                          lookup, subnet facts, DNS/domain. NO prompts, NO writes.
-#   01_interfaces        — silent derivation: interface listing, WAN auto-detect.
-#                          NO prompts, NO writes.
-#   02_ask_all           — EVERY operator prompt, back-to-back: environment,
-#                          black-site confirm, WAN/LAN interface, LAN IP, WAN
-#                          mode/IP/gateway, Ansible IP, WAN SSH, WAN activation,
-#                          WireGuard role/tunnel/hub (incl. the read-only SSH
-#                          pubkey fetch+confirm). Still NO writes.
-#   03_derive_post_ask   — derivation that needed the operator's final answers
-#                          (MAC lookups, WireGuard AllowedIPs). Still NO writes.
-#   04_summary_confirm   — ONE consolidated review + ONE "type yes" confirm,
-#                          then (only after that) the first real writes:
-#                          systemd .link files.
+#   00_preflight_1_derive       — silent derivation: hostname/site parse, sites.csv
+#                                lookup, subnet facts, DNS/domain. NO prompts, NO writes.
+#   00_preflight_2_interfaces   — silent derivation: interface listing, WAN auto-detect.
+#                                NO prompts, NO writes.
+#   00_preflight_3_ask          — EVERY operator prompt, back-to-back: environment,
+#                                black-site confirm, WAN/LAN interface, LAN IP, WAN
+#                                mode/IP/gateway, Ansible IP, WAN SSH, WAN activation,
+#                                WireGuard role/tunnel/hub (incl. the read-only SSH
+#                                pubkey fetch+confirm). Still NO writes.
+#   00_preflight_4_post_ask     — derivation that needed the operator's final answers
+#                                (MAC lookups, WireGuard AllowedIPs). Still NO writes.
+#   00_preflight_5_confirm      — ONE consolidated review + ONE "type yes" confirm,
+#                                then (only after that) the first real writes:
+#                                systemd .link files.
+#
+#   All five of the above are genuinely one phase -- preflight, in the literal sense:
+#   nothing happens until the operator has confirmed. They share the "00_preflight_"
+#   name for exactly that reason (numbered 1-5 only so `ls` still shows them in
+#   execution order); the real work -- the actual "flight" -- starts below.
+#
 #   05_packages          — apt, localepurge, initramfs, ansible user, zsh
 #   06_network_manager   — nmcli profiles, LAN up, optional WAN up, forwarding
 #   07_nftables          — ruleset generation and load
@@ -33,30 +39,36 @@
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-20  Colour constants loaded via play vars_files in 90-firewall.yml
-#   2026-07-14  Robert: "vars_prompt do it now" -- restructured 00-04 from
-#               interleaved derive/prompt/derive/prompt into three clean phases
-#               (derive silently -> ask everything back-to-back -> one review +
-#               confirm), per 02_ask_all.yml's own header for the full rationale.
-#               02_wan_config.yml and 03_wireguard_config.yml are gone -- their
-#               content was absorbed into 02_ask_all.yml (all prompts) and the
-#               new 03_derive_post_ask.yml (post-answer derivation). 05 onward
-#               is unchanged -- it already only ran after the final confirm.
+#   2026-07-14  Robert: "vars_prompt do it now" -- restructured what was 00-04 into
+#               three clean phases (derive silently -> ask everything back-to-back
+#               -> one review + confirm) instead of interleaved derive/prompt/
+#               derive/prompt. 02_wan_config.yml and 03_wireguard_config.yml are
+#               gone -- absorbed into the new ask/post-ask files.
+#   2026-07-14  Robert, same day, spotted a real naming problem with the result:
+#               "00_preflight is exactly the same as a real 'preflight' check ...
+#               how many airlines ... check stuff AFTER takeoff, not before?" --
+#               numbering the phase 00/01/02/03/04 implied five sequential pipeline
+#               stages, when it's genuinely one phase (nothing happens until
+#               confirmed) artificially chopped into what looked like separate
+#               later stages. Renamed all five to share "00_preflight_" (with a
+#               1-5 suffix only to preserve `ls` ordering), so the naming actually
+#               says what it is.
 # =============================================================================
 
-- import_tasks: 00_preflight.yml
+- import_tasks: 00_preflight_1_derive.yml
   tags: [firewall, preflight]
 
-- import_tasks: 01_interfaces.yml
-  tags: [firewall, interfaces]
+- import_tasks: 00_preflight_2_interfaces.yml
+  tags: [firewall, preflight, interfaces]
 
-- import_tasks: 02_ask_all.yml
-  tags: [firewall, ask, wan, wireguard]
+- import_tasks: 00_preflight_3_ask.yml
+  tags: [firewall, preflight, ask, wan, wireguard]
 
-- import_tasks: 03_derive_post_ask.yml
-  tags: [firewall, ask, wireguard]
+- import_tasks: 00_preflight_4_post_ask.yml
+  tags: [firewall, preflight, ask, wireguard]
 
-- import_tasks: 04_summary_confirm.yml
-  tags: [firewall, confirm]
+- import_tasks: 00_preflight_5_confirm.yml
+  tags: [firewall, preflight, confirm]
 
 - import_tasks: 05_packages.yml
   tags: [firewall, packages]

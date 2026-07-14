@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# roles/firewall/tasks/00_preflight.yml
+# roles/firewall/tasks/00_preflight_1_derive.yml
 # Example Music Limited — Firewall preflight: silent fact derivation only
 # =============================================================================
 # Changelog:
@@ -13,7 +13,7 @@
 #               of prompts and derivation being interleaved throughout 00-04. This file
 #               is now PURE DERIVATION -- no prompts, no writes. Environment resolution
 #               and the CLD black-site CONFIRM prompt (which used to live here) moved to
-#               the new 02_ask_all.yml, since both can themselves prompt the operator.
+#               the new 00_preflight_3_ask.yml, since both can themselves prompt the operator.
 # =============================================================================
 
 # ── Parse hostname ────────────────────────────────────────────────────────────

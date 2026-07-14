@@ -44,7 +44,7 @@ half-configured. This role was audited and hardened against that:
   than hardcoded — the two can't drift out of sync. Fallback DNS is `9.9.9.9` (Quad9),
   matching firewallme.sh's own choice (survives a CLD/VRK outage), not `1.1.1.1`.
 - **Prompts**: every confirmation (interfaces, WAN mode, WAN SSH policy, WireGuard role,
-  and now the reboot question too) happens before `04_summary_confirm.yml`'s "type yes"
+  and now the reboot question too) happens before `00_preflight_5_confirm.yml`'s "type yes"
   gate — nothing is written to disk until the operator has seen the full plan and
   confirmed it. The reboot question used to be asked at the very end, after everything
   was already applied; it's now asked up front and just acted on at the end.

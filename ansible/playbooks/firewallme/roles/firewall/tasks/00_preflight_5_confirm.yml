@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# roles/firewall/tasks/04_summary_confirm.yml
+# roles/firewall/tasks/00_preflight_5_confirm.yml
 # Example Music Limited — Pre-apply summary and operator confirmation
 # =============================================================================
 # Changelog:
@@ -24,7 +24,7 @@
 #               03_wireguard_config.yml's own per-section summary already colours
 #               this line orange; only this box's copy was inconsistent.
 #   2026-07-14  Robert: "vars_prompt do it now" -- part of the same restructure
-#               documented in 02_ask_all.yml's header. Also fixed a real, separate
+#               documented in 00_preflight_3_ask.yml's header. Also fixed a real, separate
 #               bug exposed by that restructure: the systemd .link file writes used
 #               to run in 01_interfaces.yml, BEFORE this file's own "Nothing has been
 #               written to disk yet" confirmation text -- silently contradicting it.
