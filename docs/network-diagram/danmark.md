@@ -129,7 +129,7 @@ graph TD
 
 ---
 
-## KGE — Køge ⚠️
+## KGE — Køge ⚠️ 🏘️
 
 **LAN:** `192.168.65.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  
@@ -267,7 +267,7 @@ graph TD
 
 ---
 
-## AAR — Aarhus
+## AAR — Aarhus 🎓
 
 **LAN:** `192.168.86.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** ODE  
