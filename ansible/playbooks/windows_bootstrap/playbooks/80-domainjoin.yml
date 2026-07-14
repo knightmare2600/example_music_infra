@@ -32,6 +32,25 @@
 # Tags: domainjoin
 # =============================================================================
 # Changelog:
+#   2026-07-14  Robert, live against EXADCSCLD001 (first-DC build, is_first_dc=yes): play
+#               crashed at "[Stage 0] Check {{ exa_domain }} resolves" with a control-node
+#               file-lookup error ("Unable to access /etc/example-music/ad_forest.json") --
+#               exa_domain (group_vars/all/vars.yml) is templated from that file. Real bug:
+#               the 2026-07-09 SAFETY FIX (see below) added is_first_dc awareness to the OU/
+#               join tasks only -- Stage 0's five DNS pre-check tasks had no such gate at
+#               all, so they ran (and needed exa_domain) unconditionally on every build,
+#               including first-DC ones where there's no existing domain to resolve against
+#               in the first place. Added `when: not is_first_dc` to all five, plus an
+#               explicit "skipping" debug message matching the join section's existing
+#               pattern. Also dropped {{ exa_domain }}/{{ dj_temp_dns_ip }} from the two
+#               Check/Re-check task *names* -- names are lenient-templated (embed the error
+#               as text rather than crashing) even when the task itself is correctly
+#               skipped, so a first-DC run would otherwise still show a confusing inline
+#               error string in the (skipped) task's display line. Separately, and NOT
+#               fixed here: /etc/example-music/ad_forest.json genuinely doesn't exist on
+#               this control node yet -- linux/tools.yml deploys it (2026-07-09) but hadn't
+#               been (re-)run against EXAANSCLD001 since. Needed before windows_dc/site.yml
+#               (which does need exa_domain for real) can run.
 #   2026-06-20  Initial file
 #   2026-07-06  Documented (no code change) why this file's static OU
 #               derivation and tasks/ou_selection.yml's interactive LDAP
@@ -78,8 +97,19 @@
     # A fresh VM may have DHCP/ISP DNS that cannot resolve jukebox.internal.
     # Check first; only override if needed.  Windows updates NIC DNS itself
     # during the domain join so the temp entry doesn't need cleaning up.
+    # Skipped entirely for first-DC builds — the domain doesn't exist yet, so
+    # there's nothing to resolve, and exa_domain doesn't need to be resolvable
+    # (its control-node file lookup may not even be available yet either).
 
-    - name: "[Stage 0] Check {{ exa_domain }} resolves"
+    - name: "[Stage 0] Skip — first-DC build, nothing to resolve yet"
+      debug:
+        msg: >
+          {{ inventory_hostname }} is a first-DC build (is_first_dc=true) — skipping the DNS
+          pre-check, there's no existing domain to resolve against yet.
+      when: is_first_dc | default(false) | bool
+      tags: domainjoin
+
+    - name: "[Stage 0] Check domain resolves"
       ansible.windows.win_shell: |
         try {
           Resolve-DnsName "{{ exa_domain }}" -ErrorAction Stop | Out-Null
@@ -89,6 +119,7 @@
         }
       register: dj_dns_check
       changed_when: false
+      when: not (is_first_dc | default(false) | bool)
       tags: domainjoin
 
     - name: "[Stage 0] Fail — domain unresolvable and no DNS override provided"
@@ -97,6 +128,7 @@
           {{ exa_domain }} cannot be resolved and no DNS override IP was provided.
           Re-run and enter a DC/DNS IP when prompted (e.g. 192.168.139.8).
       when:
+        - not (is_first_dc | default(false) | bool)
         - dj_dns_check.stdout | trim == "unresolvable"
         - dj_temp_dns_ip | length == 0
       tags: domainjoin
@@ -108,6 +140,7 @@
       register: dj_nic_alias
       changed_when: false
       when:
+        - not (is_first_dc | default(false) | bool)
         - dj_dns_check.stdout | trim == "unresolvable"
         - dj_temp_dns_ip | length > 0
       tags: domainjoin
@@ -118,11 +151,12 @@
           -InterfaceAlias "{{ dj_nic_alias.stdout | trim }}" `
           -ServerAddresses "{{ dj_temp_dns_ip }}"
       when:
+        - not (is_first_dc | default(false) | bool)
         - dj_dns_check.stdout | trim == "unresolvable"
         - dj_temp_dns_ip | length > 0
       tags: domainjoin
 
-    - name: "[Stage 0] Re-check {{ exa_domain }} after DNS override"
+    - name: "[Stage 0] Re-check domain after DNS override"
       ansible.windows.win_shell: |
         try {
           Resolve-DnsName "{{ exa_domain }}" -ErrorAction Stop | Out-Null
@@ -133,16 +167,18 @@
       register: dj_dns_recheck
       changed_when: false
       when:
+        - not (is_first_dc | default(false) | bool)
         - dj_dns_check.stdout | trim == "unresolvable"
         - dj_temp_dns_ip | length > 0
       tags: domainjoin
 
-    - name: "[Stage 0] Fail — {{ exa_domain }} still unresolvable after DNS override"
+    - name: "[Stage 0] Fail — domain still unresolvable after DNS override"
       ansible.builtin.fail:
         msg: >
           {{ exa_domain }} still cannot be resolved after setting DNS to {{ dj_temp_dns_ip }}.
           Verify that {{ dj_temp_dns_ip }} is reachable and serves {{ exa_domain }}.
       when:
+        - not (is_first_dc | default(false) | bool)
         - dj_dns_recheck is defined
         - dj_dns_recheck.stdout | trim == "unresolvable"
       tags: domainjoin
