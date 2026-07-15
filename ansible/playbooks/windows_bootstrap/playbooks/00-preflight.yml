@@ -19,6 +19,8 @@
 #   A5  Pre-flight summary + operator confirm
 #
 # PHASE B — SSH connect and harden:
+#   B0  Failsafe: clear a pre-existing DefaultShell override via plain ssh,
+#       before B1's own module-based connection can be broken by it
 #   B1  gather_facts (first real SSH connection)
 #   B2  Ensure sshd running and set to auto-start
 #   B3  Deploy Ansible public key
@@ -79,6 +81,27 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-07-15  Robert, live against EXADCSCLD001 again: DefaultShell/
+#               DefaultShellCommandOption kept reappearing before Ansible's very
+#               first connection, three times over, despite 75-openssh.yml's fix
+#               (confirmed correct and current on disk each time via grep + git
+#               log) -- because that fix runs at stage ~14 of this chain, and B1
+#               (this file's own first connection) dies long before reaching it
+#               if the box is already in that state. Exhaustively ruled out
+#               every file in this repo as the source (ps7_setup.yml never
+#               touches it; the real live imaging chain -- Deploy-OpenSSH.cmd /
+#               SetupComplete.cmd / Detect-Platform.cmd / Install-OpenSSH.ps1 --
+#               never touches it either; Join-DomainAndBootstrap.ps1/
+#               PostOOBE.cmd do, but are confirmed dead, not part of any live
+#               path). No Proxmox template is in use (Robert confirmed) so root
+#               cause is unresolved -- but per Robert's explicit instruction,
+#               added a failsafe instead of continuing to chase it: [B0], a
+#               plain (non-module, non-EncodedCommand) ssh command run from the
+#               control node's own ssh client, ahead of [B1]'s first
+#               module-based connection. Best-effort only (failed_when: false)
+#               -- if DefaultShell isn't actually the problem, or the key isn't
+#               deployed yet, this is a silent no-op and B1 behaves exactly as
+#               before.
 #   2026-07-15  Robert: leaving the target_hostname prompt blank made A2's format
 #               assert fail immediately, bombing the whole play -- unlike target_ip,
 #               which already tolerates blank ("no change, use whatever's already
@@ -423,6 +446,33 @@
     # =========================================================================
     # PHASE B — SSH connection and host hardening
     # =========================================================================
+
+    # ── B0 — Failsafe: clear a pre-existing DefaultShell override before Ansible
+    # ever tries to connect. 75-openssh.yml already removes DefaultShell/
+    # DefaultShellCommandOption for good (stage ~14 of this chain) -- but that's
+    # no help if the box already has DefaultShell set to pwsh.exe *before* B1's
+    # first connection: every ansible.windows module call (including this play's
+    # own gather_facts below) is sent as a -EncodedCommand invocation, which
+    # pwsh's DefaultShellCommandOption=-SSHServerMode doesn't parse the same way
+    # Windows PowerShell 5.1 does -- it returns its own usage banner instead of
+    # running anything, so nothing module-based can ever reach 75-openssh.yml to
+    # fix it. This uses the control node's own plain ssh client to send one flat
+    # command (not module-wrapped, not -EncodedCommand) -- best-effort only:
+    # failed_when: false so a host that isn't in this state, or where the key
+    # isn't deployed yet, never blocks the play. If it works, B1 below succeeds
+    # normally; if it doesn't, B1 fails exactly as it would have anyway and the
+    # manual registry-clear is still the fallback.
+
+    - name: "[B0] Failsafe — clear any pre-existing DefaultShell override via plain ssh"
+      ansible.builtin.command: >
+        ssh -i {{ ansible_ssh_private_key_file }}
+            -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=8
+            {{ ansible_user }}@{{ ansible_host | default(inventory_hostname) }}
+            "reg delete HKLM\SOFTWARE\OpenSSH /v DefaultShell /f & reg delete HKLM\SOFTWARE\OpenSSH /v DefaultShellCommandOption /f & exit 0"
+      delegate_to: localhost
+      become: false
+      changed_when: false
+      failed_when: false
 
     - name: "[B1] Gather facts (first SSH connection to target)"
       ansible.windows.setup:
