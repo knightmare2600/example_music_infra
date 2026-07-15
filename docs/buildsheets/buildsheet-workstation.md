@@ -4,7 +4,9 @@
 **Last Updated:** 2026-03-05  
 **Applies to:** Windows 11 Pro endpoints — office workstations, touring laptops, hot-desk machines  
 **Cross-reference:** `buildsheet-server.md` (NET-BUILD-SRV-001) for WS2022 non-DC nodes  
-**Deploy workflow:** `bootstrap/` — `preinit.cmd` → `SetupComplete.cmd` → `PostOOBE.cmd` → `Join-DomainAndBootstrap.ps1`
+**Deploy workflow:** unattend XML → OpenSSH reachable → `ansible/playbooks/windows_bootstrap/site.yml`
+(`preinit.cmd`/`SetupComplete.cmd`/`PostOOBE.cmd`/`Join-DomainAndBootstrap.ps1` are a
+historical, pre-Ansible artefact — see `docs/bootstrap/bootstrapping.md` — not the live path)
 
 > ⚠️ **Autounattend files are in `C:\DeployTools\unattend_xml\`**  
 > Use `autounattend_win11.xml` for all Win11 builds.  
@@ -20,7 +22,8 @@
 | `autounattend_win11.xml` | All Win11 Pro workstation and laptop builds |
 
 ### Hypervisor Detection
-`Join-DomainAndBootstrap.ps1` detects platform automatically via WMI `Win32_ComputerSystem.Manufacturer`:
+`ansible/playbooks/windows_bootstrap/tasks/site_detection.yml` (Stage 1) detects platform
+automatically, via WMI `Win32_ComputerSystem.Manufacturer` plus loaded-driver signatures:
 
 | Detected | Action |
 |----------|--------|

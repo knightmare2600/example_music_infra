@@ -4,7 +4,9 @@
 **Last Updated:** 2026-03-05  
 **Applies to:** WS2022 Standard / Core member servers — file servers, print servers, RRAS, utility servers  
 **Cross-reference:** `buildsheet-domainControllers.md` for DC builds · `buildsheet-workstation.md` (NET-BUILD-WKS-001) for Win11 endpoints  
-**Deploy workflow:** `bootstrap/` — `preinit.cmd` → `SetupComplete.cmd` → `PostOOBE.cmd` → `Join-DomainAndBootstrap.ps1`
+**Deploy workflow:** unattend XML → OpenSSH reachable → `ansible/playbooks/windows_bootstrap/site.yml`
+(`preinit.cmd`/`SetupComplete.cmd`/`PostOOBE.cmd`/`Join-DomainAndBootstrap.ps1` are a
+historical, pre-Ansible artefact — see `docs/bootstrap/bootstrapping.md` — not the live path)
 
 > ⚠️ **Autounattend files are in `C:\DeployTools\unattend_xml\`**  
 > DeployTools share: `\\EXADCSCPH001\DeployTools` (future: DFS `\\jukebox.internal\DeployTools`)
@@ -24,7 +26,8 @@
 
 ## Hypervisor Detection
 
-`Join-DomainAndBootstrap.ps1` detects platform automatically via WMI `Win32_ComputerSystem.Manufacturer`:
+`ansible/playbooks/windows_bootstrap/tasks/site_detection.yml` (Stage 1) detects platform
+automatically, via WMI `Win32_ComputerSystem.Manufacturer` plus loaded-driver signatures:
 
 | Detected | Action |
 |----------|--------|

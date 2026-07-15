@@ -5,6 +5,13 @@
 **Last Updated:** 2026-03-04  
 **Signed off by:** ___________________________  Date: ___________
 
+> **Note (2026-07-15):** the BMC/ISO/answer-file steps below (1-13) remain the accurate manual,
+> hardware-side procedure. Steps 14-15 (Python scripts, Ansible SSH key) are superseded — both
+> are now automated by `ansible/playbooks/proxmox/site.yml` (specifically
+> `20-ansible-access.yml`/`40-scripts.yml`). See `docs/proxmox/Procedure-PVE-Node-Onboarding.md`
+> for the current, authoritative end-to-end procedure, including the single-command
+> `bootstrap-new-node.yml` → `site.yml` chain that now covers everything from step 8 onward.
+
 ---
 
 ## Standard Build Reference
@@ -54,7 +61,12 @@ URL above if building there):
   exit
 ```
 
-### Python Scripts — deploy to /usr/local/bin/
+### Python Scripts — deployed to /usr/local/bin/ automatically
+
+> Historical: this used to be a manual per-node copy step. As of `ansible/playbooks/proxmox/playbooks/40-scripts.yml`,
+> `site.yml` deploys these automatically on every run — no manual action needed. Listed here for
+> reference only.
+
 ```
 convert-v2v.py     — VMware to Proxmox VM conversion
 create-vm.py       — VM creation and provisioning
@@ -91,9 +103,10 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 11. Reboot when prompted (or run: ifreload -a to apply network without reboot)
 12. Reconnect on site LAN IP — verify web UI at https://<ip>:8006
 13. Install ipmitool, set BMC password via ipmitool
-14. Deploy python scripts to /usr/local/bin/
-15. Verify ansible SSH key
-16. Run post-install backup
+14. Run `ansible-playbook playbooks/proxmox/bootstrap-new-node.yml -i configs/inventory -e target=<node-ip-or-hostname>`
+    (deploys Ansible SSH key + python scripts + everything else in one automated pass — see
+    `docs/proxmox/Procedure-PVE-Node-Onboarding.md`)
+15. Run post-install backup
 ```
 
 ---
@@ -167,7 +180,8 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 
 ## Python Scripts — per node checklist
 
-> These are deployed once per physical node to `/usr/local/bin/`.  
+> These are deployed automatically to `/usr/local/bin/` by `ansible/playbooks/proxmox/playbooks/40-scripts.yml`
+> on every `site.yml` run — this checklist is now a verification record, not a manual task list.
 > Tick each when deployed and verified executable.
 
 | Hostname | convert-v2v.py Deployed and Executable | create-vm.py Deployed and Executable | manage-pool.py Deployed and Executable | Notes |

@@ -1,0 +1,51 @@
+# =============================================================================
+# features.yml -- part of at_have_ryggen_fri
+# =============================================================================
+# A short, hand-curated registry mapping a named feature to its doc and its
+# harness check -- the piece that actually answers "if a feature got a doc
+# but nobody built a matching check (or vice versa), how would we know?"
+# (Robert, 2026-07-15, using the KeePassXC credential flow as the concrete
+# example -- it got both a doc and a check built together; this file is
+# what stops that pairing from silently rotting afterward.)
+#
+# Same idiom as scenarios.yml, deliberately: a flat, human-curated list, not
+# an attempt at exhaustive auto-discovery. This does NOT catch an
+# unregistered gap forming -- that still needs a human (or a session like
+# this one) to notice and add an entry, same as scenarios.yml/facts.yml
+# always have. What it DOES guarantee: once a feature IS registered here,
+# its doc can never silently go missing and its check can never silently
+# get de-wired from run.sh without this failing loudly.
+#
+# Fields per entry:
+#   name         -- short identifier, snake_case
+#   description  -- one line, what this feature actually is
+#   doc          -- repo-relative path to the primary doc/procedure for it
+#   check        -- the check_*.py filename (must exist AND be wired into
+#                    run.sh -- both checked by check_features.py)
+#
+# Add an entry whenever a new feature gets both a doc and a check built for
+# it (or when reviewing an existing pairing that deserves protecting) --
+# there's no automatic trigger for this, by design (see check_features.py's
+# own header for why a fully-automatic version isn't realistic).
+# =============================================================================
+# Changelog:
+#   2026-07-15  Initial file. Seeded with the two real pairings that exist
+#               in this repo already, as validation against the case this
+#               was designed for.
+# =============================================================================
+
+features:
+  - name: keepassxc_credential_flow
+    description: >
+      One-way credential flow: benarbejde/extracted_credentials.json ->
+      push_credentials_to_keepass.py -> KeePassXC vault. Ansible only ever
+      reads; this script is the sole writer.
+    doc: "docs/Example Music Limited — KeePassXC CLI Automation.md"
+    check: check_keepass_freshness.py
+
+  - name: wireguard_hub_data
+    description: >
+      Hub WAN IP / known-pubkey reference data (group_vars/firewalls/main.yml)
+      that add-wg-spoke.yml's live pubkey cross-check depends on.
+    doc: docs/wireguard/NET-VPN-WG-001-wireguard-routing.md
+    check: check_wireguard_hub_data.py

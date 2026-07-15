@@ -50,9 +50,13 @@ ansible/
 ├── playbooks/
 │   ├── bind9/                  — BIND9 authoritative DNS
 │   ├── firewallme/             — Linux firewall/router setup
+│   ├── linux/                  — Common tools/dotfiles for every Linux host
+│   ├── proxmox/                — Proxmox VE node onboarding + management
 │   ├── rudder/                 — Rudder configuration management
+│   ├── windows_adschema/       — AD OU schema, groups, users, computer accounts
 │   ├── windows_bootstrap/      — Windows node bootstrap (workstations + servers)
-│   └── windows_dc/             — Domain Controller promotion
+│   ├── windows_dc/             — Domain Controller promotion
+│   └── windows_hygiene/        — Post-build Windows cleanup/optimisation
 └── README.md                   — this file
 ```
 

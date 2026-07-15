@@ -9,7 +9,17 @@
 **Version:** 1.0 — Updated to reflect EXADCSODE001 promotion (2026-03-13/14)  
 **Depends on:** NET-VIRT-V2V-001, NET-VIRT-V2V-002, NET-VPN-WG-001
 
-> **⚠️ PARTIAL DRAFT**  
+> **⚠️ PARTIAL DRAFT — Status: historical artefact, not a live path (documented 2026-07-15).**
+> This manual PowerShell procedure predates the `windows_dc` Ansible module
+> (`ansible/playbooks/windows_dc/`), which now automates DC promotion end to end —
+> preflight, feature install, `Install-ADDSDomainController`/`Install-ADDSForest`, replication
+> health check, and `dcdiag` summary. See `ansible/playbooks/windows_dc/README.md` for the
+> current, live procedure; `docs/buildsheets/buildsheet-domainControllers.md`'s Promotion
+> Status section now points there. This document is left in place as a forensic record of the
+> EXADCSODE001 promotion it documents (2026-03-13/14) — it is not being actively maintained,
+> its `[PENDING OUTPUT]` gaps below (Phase 4/5) will not be filled in, and it should not be
+> followed for any new DC build.
+>
 > Phase 4 (FAL promotion) and Phase 5 (FSMO transfer) contain `[PENDING OUTPUT]` blocks to be filled when FAL is built. Phases 6 (ODE), 7, 9, and 10 verified against EXADCSODE001 on 2026-03-14.
 
 ---

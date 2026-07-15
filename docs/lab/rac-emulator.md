@@ -521,7 +521,7 @@ Key endpoints served by the emulator. All are GET unless noted.
 | `proxmox/pve-create-vm.md` | VM creation via `create-vm.py` |
 | `network-inventory.md` | `.15` RAC IP convention per site |
 | `management/rudder-setup.md` | Ansible/Rudder can target RAC endpoints for Redfish training |
-| `bootstrap/ad-dc-wireguard-deployment.md` | WireGuard fabric RAC nodes sit on |
+| `active-directory/ad-dc-wireguard-deployment.md` | WireGuard fabric RAC nodes sit on |
 
 ---
 
