@@ -335,6 +335,22 @@
     # All probes run from the Ansible control node (delegate_to: localhost).
     # Hub DC IPs come from the DC column of sites.csv — same source of truth
     # used everywhere else; no IPs hardcoded in this playbook.
+    #
+    # command:/shell: tasks delegated to localhost inside THIS play must set
+    # ansible_connection: local explicitly on the task -- the play's own vars:
+    # block sets ansible_connection: ssh (needed for the real Windows target),
+    # and that applies to every host in the play at a higher precedence than
+    # implicit localhost's own ansible_connection: local default. Without the
+    # override, delegate_to: localhost does NOT actually run locally -- Ansible
+    # tries to SSH from the control node to itself as the Windows Administrator
+    # user with the Windows keypair, which fails outright as a connection error
+    # (UNREACHABLE), not a task failure -- found live 2026-07-15 when the new
+    # [B0] failsafe below hit exactly this, and it turned out to be latent here
+    # too: these two probes had simply never been exercised yet, since every
+    # live test so far has had is_first_dc: yes, which skips them via their own
+    # when: condition. set_fact tasks (e.g. "[A3] Read sites.csv") don't need
+    # this -- lookup() always evaluates on the controller regardless of
+    # connection, only command/shell dispatch through the connection plugin.
 
     - name: "[A4] Build hub DC candidate list from sites.csv"
       set_fact:
@@ -356,6 +372,8 @@
       changed_when: false
       delegate_to: localhost
       become: false
+      vars:
+        ansible_connection: local
       when: not (host_role_code | upper == 'DCS' and is_first_dc | bool)
 
     - name: "[A4] Set site DC reachability fact"
@@ -373,6 +391,8 @@
       changed_when: false
       delegate_to: localhost
       become: false
+      vars:
+        ansible_connection: local
       when:
         - not _site_dc_up | bool
         - not (host_role_code | upper == 'DCS' and is_first_dc | bool)
@@ -473,6 +493,19 @@
       become: false
       changed_when: false
       failed_when: false
+      vars:
+        # Without this, delegate_to: localhost does NOT run locally -- the
+        # play's own vars: block sets ansible_connection: ssh for every host
+        # in the play (needed for the real Windows target), which outranks
+        # implicit localhost's own ansible_connection: local default. Left
+        # unset, Ansible tries to SSH from the control node to itself as the
+        # Windows Administrator user with the Windows keypair -- an outright
+        # connection error (UNREACHABLE), which failed_when: false above
+        # cannot suppress, since the task never runs far enough to produce a
+        # result to judge. Found live 2026-07-15: this exact task hit it on
+        # its very first real run, same day it was added -- see the two [A4]
+        # probe tasks below, which had the identical latent bug already.
+        ansible_connection: local
 
     - name: "[B1] Gather facts (first SSH connection to target)"
       ansible.windows.setup:

@@ -244,6 +244,18 @@
       tags: dc_preflight
 
     # ── Load sites.csv ────────────────────────────────────────────────────────
+    # read_csv is a real module (not a lookup plugin) -- it dispatches through
+    # whatever connection is configured for the delegated host, unlike
+    # lookup('file', ...) which always evaluates on the controller regardless.
+    # This play's own vars: sets ansible_connection: ssh for every host in the
+    # play (line ~167, needed for the real Windows target) -- that overrides
+    # implicit localhost's own ansible_connection: local default, so without
+    # an explicit override here Ansible would try to SSH from the control node
+    # to itself as the Windows Administrator user, failing outright as a
+    # connection error rather than a task failure. Same bug found and fixed
+    # 2026-07-15 in windows_bootstrap/playbooks/00-preflight.yml (its [B0]
+    # failsafe and two [A4] probe tasks) -- fixed here too before this play
+    # ever gets its first live run.
 
     - name: Load sites.csv
       read_csv:
@@ -252,6 +264,8 @@
       delegate_to: localhost
       become: false
       run_once: true
+      vars:
+        ansible_connection: local
       tags: dc_preflight
 
     - name: Build site → subnet lookup

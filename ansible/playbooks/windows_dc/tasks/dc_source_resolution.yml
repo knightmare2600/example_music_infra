@@ -117,6 +117,15 @@
   delegate_to: localhost
   become: false
   ignore_errors: true
+  vars:
+    # Without this, delegate_to: localhost does not run locally -- the group
+    # ansible_connection: ssh from group_vars/windows_nodes/connection.yml
+    # applies here too, outranking implicit localhost's own
+    # ansible_connection: local default, so Ansible would try to SSH from
+    # the control node to itself as the Windows Administrator user. See
+    # windows_bootstrap/playbooks/00-preflight.yml's 2026-07-15 changelog for
+    # the live failure this exact pattern caused there.
+    ansible_connection: local
 
 - name: "[Source] Show probe results"
   debug:
