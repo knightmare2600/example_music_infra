@@ -120,6 +120,7 @@ graph TD
       N_FWL["🧱 EXAFWLNYC001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLNYC002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVENYC001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWINYC001 · SWI 1 · .250"]
     end
     style NEW_NYC fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:NYC:END
@@ -167,6 +168,7 @@ graph TD
       N_FWL["🧱 EXAFWLNJC001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLNJC002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVENJC001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWINJC001 · SWI 1 · .250"]
     end
     style NEW_NJC fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:NJC:END
@@ -215,6 +217,7 @@ graph TD
       N_FWL["🧱 EXAFWLMIA001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLMIA002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEMIA001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIMIA001 · SWI 1 · .250"]
       N_COF["🍵 EXACOFMIA001 · Coffee machine · .60"]
       N_LAP["💻 EXALAPMIA001 · MacBook"]
     end
@@ -262,6 +265,7 @@ graph TD
       N_FWL["🧱 EXAFWLATL001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLATL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEATL001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIATL001 · SWI 1 · .250"]
     end
     style NEW_ATL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:ATL:END
@@ -309,6 +313,7 @@ graph TD
       N_FWL["🧱 EXAFWLCHI001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLCHI002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVECHI001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWICHI001 · SWI 1 · .250"]
     end
     style NEW_CHI fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:CHI:END
@@ -341,6 +346,7 @@ graph TD
       N_FWL["🧱 EXAFWLSEA001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLSEA002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVESEA001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWISEA001 · SWI 1 · .250"]
     end
     style NEW_SEA fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:SEA:END
@@ -371,6 +377,7 @@ graph TD
       N_FWL["🧱 EXAFWLSFO001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLSFO002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVESFO001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWISFO001 · SWI 1 · .250"]
     end
     style NEW_SFO fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:SFO:END

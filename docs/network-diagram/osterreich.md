@@ -44,6 +44,7 @@ graph TD
       N_FWL["🧱 EXAFWLVIE001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLVIE002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEVIE001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIVIE001 · SWI 1 · .250"]
     end
     style NEW_VIE fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:VIE:END

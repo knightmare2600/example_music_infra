@@ -66,6 +66,7 @@ graph TD
       N_FWL["🧱 EXAFWLBRK001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLBRK002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEBRK001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIBRK001 · SWI 1 · .250"]
       N_DON["🍩 EXADONBRK001 · Donut vending · .60"]
       N_LAP["💻 EXALAPBRK001 · Tour laptop"]
       N_VND["🍫 EXAVNDBRK001 · Vending machine"]
@@ -116,6 +117,8 @@ graph TD
       N_FWL["🧱 EXAFWLTOR001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLTOR002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVETOR001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWITOR001 · SWI 1 · .250"]
+      N_DCR["🗝️ EXADCRTOR028 · Undocumented legacy AD install found on site, no-one on r..."]
     end
     style NEW_TOR fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:TOR:END
@@ -162,6 +165,7 @@ graph TD
       N_FWL["🧱 EXAFWLMTL001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLMTL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEMTL001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIMTL001 · SWI 1 · .250"]
     end
     style NEW_MTL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:MTL:END
