@@ -11,6 +11,8 @@
 # ─────────
 # PHASE A — All control-node work (no SSH connection to target yet):
 #   A1  Resolve is_first_dc and persist vars_prompt facts
+#   A1b If target_hostname left blank, connect and read $env:COMPUTERNAME —
+#       the one Phase A step that does touch the target, see its own comment
 #   A2  Validate hostname format and parse site/role codes
 #   A3  Read sites.csv → derive subnet, gateway, site DC IP
 #   A4  DNS probe → decide dns_primary / dns_secondary (see below)
@@ -77,6 +79,18 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-07-15  Robert: leaving the target_hostname prompt blank made A2's format
+#               assert fail immediately, bombing the whole play -- unlike target_ip,
+#               which already tolerates blank ("no change, use whatever's already
+#               there", assessed in Phase C once connected). Added A1b: when
+#               target_hostname is blank, connect early and read $env:COMPUTERNAME,
+#               then let it flow into A2's existing assert exactly like an
+#               operator-typed value would. Couldn't reuse Phase C's later read
+#               outright -- A2/A3/A4 (site/role parsing, sites.csv lookup, DNS
+#               decision) all run before Phase B ever connects, so there's no
+#               live value yet at that point without connecting early. Operator
+#               is only stopped if the box's actual current name doesn't already
+#               match the EXA convention -- same assert, same message, as before.
 #   2026-06-27  Initial file
 #   2026-06-27  Combined rename and static IP into single reboot
 #   2026-06-29  Guard reboot/scheduled task if IP already correct
@@ -225,6 +239,32 @@
         target_ip:                  "{{ target_ip }}"
         vault_domain_join_password: "{{ vault_domain_join_password }}"
       no_log: true
+
+    # ── A1b — Blank hostname: read current from host, adopt if it's already valid ──
+    # target_ip's existing blank-tolerant pattern ("blank = no change, use whatever's
+    # already there") can't be copied as-is for hostname: A2 below parses site/role
+    # codes out of target_hostname, and A3/A4 (sites.csv lookup, DNS decision) both
+    # run long before Phase B ever connects to the box — there is no live value to
+    # fall back to yet at that point in the file. So when target_hostname is left
+    # blank, connect just long enough to read $env:COMPUTERNAME here instead, then
+    # let it flow into the *same* A2 assert as any operator-typed value. A2's
+    # existing regex is still the one and only gate on acceptability — if the box's
+    # actual current name doesn't already match the EXA convention, the assert
+    # fails with its usual message, telling the operator to supply target_hostname
+    # explicitly rather than leaving it blank. ansible_connection/ansible_ssh_*
+    # are already set in this play's vars: block, so this SSH call works fine here,
+    # ahead of B1's own gather_facts.
+
+    - name: "[A1b] Target hostname left blank — read current hostname from host"
+      ansible.windows.win_shell: $env:COMPUTERNAME
+      register: _current_hostname_probe
+      changed_when: false
+      when: target_hostname | length == 0
+
+    - name: "[A1b] Adopt current hostname as target_hostname"
+      set_fact:
+        target_hostname: "{{ _current_hostname_probe.stdout | trim }}"
+      when: target_hostname | length == 0
 
     # ── A2 — Hostname validation and site/role parsing ─────────────────────────
 
