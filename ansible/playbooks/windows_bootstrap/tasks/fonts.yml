@@ -14,26 +14,61 @@
 # means no asset-server hosting is needed for fonts at all.
 # =============================================================================
 # Changelog:
+#   2026-07-15  Robert: re-running the chain re-downloaded and re-extracted the ~9MB
+#               upstream zip and re-copied every font file every single time, even when
+#               already deployed from a previous run — no "already done" check existed at
+#               all. Worse than a single wasted run: this file is include_tasks'd from BOTH
+#               50-binaries.yml (tag fonts) AND tasks/ps7_setup.yml Stage 20 (via
+#               79-ps7-setup.yml) — a bare site.yml run with no --tags executes every play
+#               in sequence (see site.yml's 2026-07-06 changelog), so the full
+#               download-extract-deploy-registry sequence ran twice per host, back to back.
+#               Added a check-first task (are all exa_font_files already present in
+#               C:\Windows\Fonts?) and gated the download/extract/deploy/registry tasks on
+#               it -- the second of the two call sites now resolves as a fast no-op instead
+#               of repeating the whole sequence. Did not collapse the two include_tasks call
+#               sites into one; that duplication is a separate, already-documented structural
+#               decision (see this file's original 2026-07-06 note) and this fix removes the
+#               actual wasted work either way.
 #   2026-07-06  Initial file — replaces per-file asset-server downloads
 #               (previously inline in tasks/ps7_setup.yml Stage 20 and
 #               duplicated again in playbooks/50-binaries.yml) with a
 #               single upstream release zip, shared by both.
 # =============================================================================
 
+- name: "[Fonts] Check if fonts are already deployed"
+  ansible.windows.win_stat:
+    path: 'C:\Windows\Fonts\{{ item }}'
+  register: _font_file_check
+  loop: "{{ exa_font_files }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[Fonts] Set fonts_already_deployed fact"
+  set_fact:
+    fonts_already_deployed: "{{ _font_file_check.results | map(attribute='stat.exists') | select('equalto', false) | list | length == 0 }}"
+
+- name: "[Fonts] Skip — already deployed"
+  debug:
+    msg: "All {{ exa_font_files | length }} JetBrainsMono Nerd Font files already present — skipping download."
+  when: fonts_already_deployed
+
 - name: "[Fonts] Ensure font staging directory exists"
   ansible.windows.win_file:
     path: 'C:\Windows\Temp\nerd-fonts'
     state: directory
+  when: not fonts_already_deployed
 
 - name: "[Fonts] Download JetBrainsMono Nerd Font release zip"
   ansible.windows.win_get_url:
     url:  "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip"
     dest: 'C:\Windows\Temp\nerd-fonts\JetBrainsMono.zip'
+  when: not fonts_already_deployed
 
 - name: "[Fonts] Extract JetBrainsMono Nerd Font release zip"
   community.windows.win_unzip:
     src:  'C:\Windows\Temp\nerd-fonts\JetBrainsMono.zip'
     dest: 'C:\Windows\Temp\nerd-fonts\extracted'
+  when: not fonts_already_deployed
 
 - name: "[Fonts] Deploy JetBrainsMono Nerd Font files"
   ansible.windows.win_copy:
@@ -43,6 +78,7 @@
   loop: "{{ exa_font_files }}"
   loop_control:
     label: "{{ item }}"
+  when: not fonts_already_deployed
 
 - name: "[Fonts] Register fonts in registry"
   ansible.windows.win_regedit:
@@ -53,8 +89,10 @@
   loop: "{{ exa_font_files }}"
   loop_control:
     label: "{{ item }}"
+  when: not fonts_already_deployed
 
 - name: "[Fonts] Clean up font staging directory"
   ansible.windows.win_file:
     path: 'C:\Windows\Temp\nerd-fonts'
     state: absent
+  when: not fonts_already_deployed
