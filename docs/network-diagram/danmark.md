@@ -119,6 +119,7 @@ graph TD
       N_FWL["🧱 EXAFWLODE001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLODE002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEODE001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIODE001 · SWI 1 · .250"]
       N_MUS["💿 EXAMUSODE001 · Jukebox · .60"]
       N_MAC["🍎 EXAMACODE001 · iMac"]
       N_MBP["💻 EXAMBPODE002 · MacBook Pro"]
@@ -168,6 +169,7 @@ graph TD
       N_FWL["🧱 EXAFWLKGE001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLKGE002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEKGE001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIKGE001 · SWI 1 · .250"]
       N_PRN["🖨️ EXAPRNKGE001 · Printer"]
     end
     style NEW_KGE fill:#E69F00,stroke:#D55E00,color:#000000
@@ -216,6 +218,7 @@ graph TD
       N_FWL["🧱 EXAFWLFAX001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLFAX002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEFAX001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIFAX001 · SWI 1 · .250"]
     end
     style NEW_FAX fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:FAX:END
@@ -260,6 +263,7 @@ graph TD
       N_FWL["🧱 EXAFWLKOR001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLKOR002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEKOR001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIKOR001 · SWI 1 · .250"]
     end
     style NEW_KOR fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:KOR:END
@@ -304,6 +308,7 @@ graph TD
       N_FWL["🧱 EXAFWLAAR001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLAAR002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEAAR001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIAAR001 · SWI 1 · .250"]
     end
     style NEW_AAR fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:AAR:END
@@ -348,6 +353,7 @@ graph TD
       N_FWL["🧱 EXAFWLFRE001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLFRE002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEFRE001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIFRE001 · SWI 1 · .250"]
     end
     style NEW_FRE fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:FRE:END
@@ -403,6 +409,7 @@ graph TD
       N_FWL["🧱 EXAFWLNYB001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLNYB002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVENYB001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWINYB001 · SWI 1 · .250"]
     end
     style NEW_NYB fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:NYB:END

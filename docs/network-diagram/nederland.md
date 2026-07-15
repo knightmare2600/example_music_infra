@@ -44,6 +44,7 @@ graph TD
       N_FWL["🧱 EXAFWLAMS001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLAMS002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEAMS001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIAMS001 · SWI 1 · .250"]
     end
     style NEW_AMS fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:AMS:END

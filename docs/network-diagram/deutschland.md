@@ -109,6 +109,7 @@ graph TD
       N_FWL["🧱 EXAFWLBER001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLBER002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEBER001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIBER001 · SWI 1 · .250"]
     end
     style NEW_BER fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:BER:END
@@ -208,6 +209,7 @@ graph TD
       N_FWL["🧱 EXAFWLDRS001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLDRS002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEDRS001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIDRS001 · SWI 1 · .250"]
     end
     style NEW_DRS fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:DRS:END
@@ -252,6 +254,7 @@ graph TD
       N_FWL["🧱 EXAFWLDUS001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLDUS002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEDUS001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIDUS001 · SWI 1 · .250"]
     end
     style NEW_DUS fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:DUS:END

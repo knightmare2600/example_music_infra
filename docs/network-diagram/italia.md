@@ -44,6 +44,7 @@ graph TD
       N_FWL["🧱 EXAFWLMIL001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLMIL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEMIL001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIMIL001 · SWI 1 · .250"]
     end
     style NEW_MIL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:MIL:END

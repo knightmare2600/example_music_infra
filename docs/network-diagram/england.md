@@ -347,6 +347,7 @@ graph TD
       N_FWL["🧱 EXAFWLSHE001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLSHE002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVESHE001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWISHE001 · SWI 1 · .250"]
     end
     style NEW_SHE fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:SHE:END
@@ -392,6 +393,7 @@ graph TD
       N_FWL["🧱 EXAFWLHAL001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLHAL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEHAL001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIHAL001 · SWI 1 · .250"]
     end
     style NEW_HAL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:HAL:END
@@ -437,6 +439,7 @@ graph TD
       N_FWL["🧱 EXAFWLHUL001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLHUL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEHUL001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIHUL001 · SWI 1 · .250"]
     end
     style NEW_HUL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:HUL:END
@@ -483,6 +486,7 @@ graph TD
       N_FWL["🧱 EXAFWLCOV001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLCOV002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVECOV001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWICOV001 · SWI 1 · .250"]
     end
     style NEW_COV fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:COV:END
