@@ -44,6 +44,7 @@ graph TD
       N_FWL["🧱 EXAFWLGOT001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLGOT002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEGOT001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWIGOT001 · SWI 1 · .250"]
     end
     style NEW_GOT fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:GOT:END

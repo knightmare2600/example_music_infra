@@ -33,6 +33,7 @@ graph TD
       N_FWL["🧱 EXAFWLCLD001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLCLD002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVECLD001 · PVE 1 · .5"]
+      N_SWI["🔀 EXASWICLD001 · SWI 1 · .250"]
       N_ANS["🤖 EXAANSCLD001 · Ansible control node · .9"]
       N_RDR["⚙️ EXARDRCLD001 · Rudder configuration management server · .12"]
       N_SVR["🗄️ EXASVRCLD002 · Windows Admin Centre · .20"]
