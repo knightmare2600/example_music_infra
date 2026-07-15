@@ -33,6 +33,16 @@
 #      without a full restart
 #
 # Changelog:
+#   2026-07-15  Robert asked (again) about auto-adding spoke peers, unaware this file already
+#               existed -- untouched since creation, never live-tested. Fixed the [Peer] comment
+#               line: was `# {{ spoke_site }} spoke — {{ spoke_host }}`, trimmed to a bare
+#               `# {{ spoke_site }}`. Checked the real MOTD peer-name parser
+#               (bootstrap/web/provision/firewallme.sh lines 2037-2040, an awk script matching
+#               any #-prefixed line immediately before a peer's PublicKey line) -- the placement
+#               was never structurally broken (comment already sits between [Peer] and
+#               PublicKey), but the extra text would have misaligned/truncated in the MOTD's
+#               fixed-width peer-name column. Matches the bare-site-code convention Robert
+#               already confirmed via a real MOTD screenshot 2026-07-14.
 #   2026-06-26  Initial file
 # =============================================================================
 
@@ -135,7 +145,7 @@
         marker: "# {mark} ANSIBLE MANAGED BLOCK {{ spoke_site }}"
         block: |
           [Peer]
-          # {{ spoke_site }} spoke — {{ spoke_host | default(_spoke_ip) }}
+          # {{ spoke_site }}
           PublicKey    = {{ _spoke_pubkey }}
           PresharedKey = {{ _spoke_psk }}
           AllowedIPs   = {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet] + _spoke_extra_subnets) | join(', ') }}
