@@ -11,10 +11,22 @@
 #
 # SUBSEQUENT RUNS: ansible_password can be left unset — Ansible will use the
 #            key at ansible_ssh_private_key_file automatically.
+#
+# 2026-07-15  Corrected the ansible_shell_type comment below: it previously
+#             said "OpenSSH default shell is set to pwsh by unattend" -- not
+#             true of the current live path. Checked directly: the real
+#             headlessunattend.xml sets no DefaultShell at all, and a live,
+#             untouched host confirmed the same (empty registry value, sshd's
+#             genuine out-of-the-box default of cmd.exe). ansible_shell_type:
+#             powershell here means Windows PowerShell 5.1 semantics, which is
+#             what ansible.windows's SSH connection plugin is built against --
+#             it has nothing to do with what OpenSSH's own DefaultShell is set
+#             to. See windows_bootstrap/playbooks/75-openssh.yml's own
+#             changelog for why DefaultShell must never be pwsh.exe here.
 # ============================================================================
 
 ansible_connection: ssh
-ansible_shell_type: powershell     # OpenSSH default shell is set to pwsh by unattend
+ansible_shell_type: powershell     # Windows PowerShell 5.1 semantics -- what ansible.windows's SSH plugin expects
 ansible_user: Administrator
 ansible_port: 22
 
