@@ -62,9 +62,25 @@ Secondary DC : 192.168.<site-octet>.11  (if applicable)
 
 ## Promotion Status
 
-DC promotion is a multi-step process covered in **NET-AD-DC-001**.  
-The `DC` checkbox below confirms the full promotion procedure  
-in that document has been completed and signed off on the DC Promotion Sheet.
+DC promotion is automated by the `windows_dc` Ansible module — see
+**`ansible/playbooks/windows_dc/README.md`** for the full playbook order, usage, and
+site-specific replication-source logic. Run from the `ansible/` root:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
+  -e target=<hostname>
+```
+
+The `DC` checkbox below confirms this run completed cleanly (`failed=0`) — including
+`30-dc-replicate.yml`'s replication/SYSVOL health check and `40-dc-summary.yml`'s `dcdiag`
+report — and that report has been signed off on the DC Promotion Sheet.
+
+> **NET-AD-DC-001** (`docs/active-directory/ad-dc-wireguard-deployment.md`) is a historical,
+> manual-PowerShell record of an early promotion (EXADCSODE001, pre-Ansible) — not a live
+> procedure. Do not follow it for new builds; it predates `windows_dc` and is left in place for
+> forensic reference only. Documented as such 2026-07-15, per the same "historical artefact, not
+> a live path" pattern already applied to `PostOOBE.cmd`/`Join-DomainAndBootstrap.ps1` (see
+> `docs/bootstrap/bootstrapping.md`).
 
 ---
 
@@ -157,9 +173,9 @@ in that document has been completed and signed off on the DC Promotion Sheet.
 
 ## DC Promotion Sheet
 
-Attach or staple the DC Promotion Sheet (NET-AD-DC-001 completion record)
-for each node once promoted. The `DC` checkbox above is not ticked until
-that sheet is complete and signed off.
+Attach or staple the `windows_dc/site.yml` run's final play recap and `40-dc-summary.yml`
+`dcdiag` output for each node once promoted. The `DC` checkbox above is not ticked until
+that report is complete and signed off.
 
 ---
 

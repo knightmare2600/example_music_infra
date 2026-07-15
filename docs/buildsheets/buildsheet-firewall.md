@@ -5,7 +5,7 @@
 **Applies to:** All site firewall/router VMs — hub-primary (FAL), hub-regional (ODE, BRK), spokes (all other sites)  
 **Playbook:** `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=<host> --ask-vault-pass` — the first-instance build/enforce path once the VM is Ansible-reachable (it comes up that way already, via the same `late_command.sh` ansible-user/SSH-key sliver every Debian install gets)  
 **Break-glass script:** `firewallme.sh` — hosted on bootstrap server at `http://192.168.139.50/firewallme.sh`. Kept for when Ansible genuinely can't reach the box (dead/replaced firewall, or the very first firewall at a brand-new site with no Ansible control node reachable at all). Steps 4 onward below document this path — see `ansible/playbooks/firewallme/` for the normal one.  
-**Cross-reference:** `bootstrap/ad-dc-wireguard-deployment.md` (NET-AD-DC-001) · `buildsheet-pve.md` (NET-BUILD-PVE-001)
+**Cross-reference:** `active-directory/ad-dc-wireguard-deployment.md` (NET-AD-DC-001, historical — see `ansible/playbooks/windows_dc/README.md` for the live procedure) · `buildsheet-pve.md` (NET-BUILD-PVE-001)
 
 > ⚠️ **Build hubs before spokes.** FAL must be fully live before any spoke or regional hub can establish its WireGuard tunnel.  
 > Order: **FAL → ODE → BRK → all spokes**

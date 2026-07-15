@@ -221,6 +221,7 @@ Proxmox VE administration, storage, networking, and planning documents.
 | [proxmox/Procedure-PVE-Node-Onboarding.md](proxmox/Procedure-PVE-Node-Onboarding.md) | NET-PVE-ONBOARD-001 | PVE node onboarding procedure — `site.yml`'s eight stages, troubleshooting, SSH keypair recovery |
 | [proxmox/ExampleMusic_SLIC_Injection_Procedure_v1.0.md](proxmox/ExampleMusic_SLIC_Injection_Procedure_v1.0.md) | NET-PVE-SLIC-002 | Proxmox VM SLIC table injection and SMBIOS spoofing (SeaBIOS VMs) — distinct from NET-LAB-SLIC-001's BIOS-extraction/import procedure, not a duplicate |
 | [Proxmox Networking for VMware vSphere admins - Virtualization Howto.pdf](Proxmox%20Networking%20for%20VMware%20vSphere%20admins%20-%20Virtualization%20Howto.pdf) | NET-PVE-VMW-001 | Proxmox networking primer for VMware vSphere admins (external reference PDF) |
+| [VM204-disk-migration-runbook.md](VM204-disk-migration-runbook.md) | NET-PVE-DISK-001 | VM 1023 (EXASVRCLD01) disk right-sizing + PBS space-crisis runbook — SATA-hotplug/i440fx gotchas, ZFS zvol sizing, live Oracle DB handling, PBS GC grace-period behaviour (13 July 2026 session, real transcript) |
 
 ---
 
@@ -249,11 +250,24 @@ standalone bundle — see `zabbix_vms_on_wrong_pool/` for the canonical shape.
 > on PVE 9.x); synced all three from the canonical `ansible/playbooks/proxmox/files/` copies.
 
 > **Resolved 2026-07-13, per Robert:** two byte-identical stray duplicates deleted rather than
-> kept-and-flagged — `docs/PVE-Snapshot-Check-Procedure.md` (root, identical to
+> kept-and-flagged — `PVE-Snapshot-Check-Procedure.md` (formerly at docs/ root, identical to
 > `pve-snapshot-check/PVE-Snapshot-Check-Procedure.md` above) and the whole
 > `proxmox_zabbix_cleanup/pve-hoover-update/` directory (identical to `kernels/` on every file
 > present, and missing `pve-monthly-hoover.timer` besides — `kernels/` was always the more
 > complete copy). `kernels/` and `pve-snapshot-check/` above are now each the only copy.
+
+---
+
+## `zabbix_templates/`
+
+Not indexed above (deployment assets — `.xml`/`.yaml` Zabbix template files, not documentation
+— same carve-out as `proxmox_zabbix_cleanup/`'s script bundles). Real, consumed files, listed
+here for discoverability:
+
+- `WindowsHygiene.xml` — triggers `ansible/playbooks/windows_hygiene/site.yml --tags pagefile`
+  by name. See `ansible/playbooks/windows_hygiene/README.md`'s "Zabbix integration" section.
+- `zabbix_template_proxmox_nicguard.yaml` — monitors the NIC-guard credentials/units deployed by
+  `ansible/playbooks/proxmox/playbooks/40-scripts.yml`. See `ansible/playbooks/proxmox/README.md`.
 
 ---
 

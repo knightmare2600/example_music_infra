@@ -835,7 +835,7 @@ Rudder manages Windows package deployment through its built-in **Package managem
 
 ### Prerequisites
 
-Chocolatey must be installed on Windows nodes before Rudder can manage packages. For `jukebox.internal`, Chocolatey is installed during the DC build — see `buildsheets/buildsheet-dcs.md`.
+Chocolatey must be installed on Windows nodes before Rudder can manage packages. For `jukebox.internal`, Chocolatey is installed during the DC build — see `buildsheets/buildsheet-domainControllers.md`.
 
 ### Create a Package Directive
 
@@ -1437,9 +1437,9 @@ This exemption is permanent and is not a future roadmap item.
 
 | Document | Relationship |
 |----------|-------------|
-| `bootstrap/ad-dc-wireguard-deployment.md` | AD must be deployed before LDAP auth can be configured |
+| `active-directory/ad-dc-wireguard-deployment.md` | AD must be deployed before LDAP auth can be configured |
 | `proxmox/pve-create-vm.md` | `create-vm.py` used to provision EXARDRCLD001 (on-prem) |
-| `gpo/corporate-livery.md` | Rudder and GPO are complementary — GPO for domain policy, Rudder for package and config management |
+| `active-directory/corporate-livery.md` | Rudder and GPO are complementary — GPO for domain policy, Rudder for package and config management |
 | `dfs/dfs-replication.md` | SRV nodes managed by Rudder agents |
 | `network-inventory.md` | Node IPs and site assignments |
 | `wireguard/wireguard-troubleshooting.md` | Agent-to-server connectivity travels over WireGuard for cross-site nodes |

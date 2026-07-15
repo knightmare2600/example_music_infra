@@ -11,6 +11,13 @@ ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall
   -e target=EXAFWLKGE001 --ask-vault-pass
 ```
 
+## Files
+
+| File | What it does |
+|------|---------------|
+| `playbooks/90-firewall.yml` | Full firewall build/reconfigure — the Ansible port of `firewallme.sh` (see below) |
+| `playbooks/add-wg-spoke.yml` | Registers a new WireGuard spoke peer on a hub — SSH-fetches the spoke's live PublicKey/PSK, writes the `[Peer]` block via `blockinfile` (idempotent, per-site marker), live-applies with `wg set`. Run from the hub side: `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/add-wg-spoke.yml -e "target=<hub-host> spoke_site=<CODE> spoke_host=<spoke-host>"` |
+
 ## Tags
 `firewall`, `preflight`, `interfaces`, `wan`, `wireguard`, `confirm`,
 `packages`, `network`, `nftables`, `dnsmasq`, `ssh`, `cockpit`, `finish`
@@ -49,8 +56,9 @@ half-configured. This role was audited and hardened against that:
   confirmed it. The reboot question used to be asked at the very end, after everything
   was already applied; it's now asked up front and just acted on at the end.
 
-**Still unverified**: the actual `.nmconnection` keyfile format was confirmed against a
-real firewall's on-disk files (`EXAFWLCPH001`), but the live `nmcli connection reload`/
-service-restart/reload behavior of this whole role has not been tested end-to-end against
-a real or disposable firewall. Test on a non-critical/spare firewall before relying on
-this for a live site.
+**CONFIRMED DONE, 2026-07-14**: live end-to-end test against a real firewall (`EXAFWLBRT001`,
+failed=0) — the `.nmconnection` keyfile format, `nmcli connection reload` behaviour, and the
+full safety model above all verified working, not just theoretically sound. Three real bugs
+were found and fixed during that test (dash/bash `[[ ]]` incompatibility, nftables syntax, CLD
+hub-IP resolution) — see `project_firewallme_hardening` in project memory for the full
+writeup if picking this up again.

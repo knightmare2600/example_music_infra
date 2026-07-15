@@ -625,6 +625,37 @@ else
 fi
 
 # ------------------------------------------------------------------------------
+# 18. Playbook directory documentation coverage — check_playbook_doc_coverage.py
+# ------------------------------------------------------------------------------
+section "18. Playbook doc coverage — check_playbook_doc_coverage.py"
+
+covdoc_out=$(python3 "${HERE}/check_playbook_doc_coverage.py")
+covdoc_rc=$?
+echo "$covdoc_out"
+if [[ $covdoc_rc -ne 0 ]]; then
+  fail "Playbook module directory/ies missing a README.md -- see above."
+  FAILED_CHECKS+=("check_playbook_doc_coverage.py")
+elif echo "$covdoc_out" | grep -q "not named in any README/docs"; then
+  warn "No missing READMEs, but some playbook file(s) look orphaned (see above)."
+else
+  success "Every playbook module directory has a README.md; no orphaned playbook files."
+fi
+
+# ------------------------------------------------------------------------------
+# 19. Feature doc/check pairing — check_features.py
+# ------------------------------------------------------------------------------
+section "19. Feature doc/check pairing — check_features.py"
+
+if out=$(python3 "${HERE}/check_features.py"); then
+  echo "$out"
+  success "Every registered feature's doc and check both hold."
+else
+  echo "$out"
+  fail "Registered feature doc/check pairing has broken -- see above."
+  FAILED_CHECKS+=("check_features.py")
+fi
+
+# ------------------------------------------------------------------------------
 # Summary
 # ------------------------------------------------------------------------------
 section "Summary"
