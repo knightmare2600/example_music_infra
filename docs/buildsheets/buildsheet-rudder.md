@@ -25,7 +25,27 @@ Role     : Rudder root server — configuration management for all sites
   Fredericia Havn, see `docs/bootstrap/bootstrapping.md` §4.1a)
 - Port `443` and `5309` open inbound from all site subnets (Rudder agent comms)
 
-### Rudder Installation (Debian)
+### Rudder Installation — automated (`ansible/playbooks/rudder/rudder_server.yml`)
+
+> **Status: historical artefact, not a live path (documented 2026-07-15).** The manual
+> apt-get sequence below predates `ansible/playbooks/rudder/rudder_server.yml`, which now
+> automates the full install — hostname, static IP, packages, UFW, Rudder install, LDAP
+> skeleton, Cockpit, MOTD, sentinel — in one idempotent, twice-run playbook (see
+> `ansible/playbooks/rudder/README.md` for the full quick-start). Run from the `ansible/` root:
+>
+> ```bash
+> # First run — install and start Rudder
+> ansible-playbook playbooks/rudder/rudder_server.yml \
+>   --limit rudder_servers --user root -k --ask-vault-pass
+>
+> # Second run, after creating an API token via the web UI —
+> # configures allowed networks from sites.csv
+> ansible-playbook playbooks/rudder/rudder_server.yml \
+>   --limit rudder_servers --ask-vault-pass
+> ```
+>
+> The manual procedure below is left as a reference for what the playbook actually does under
+> the hood, not a recommended path.
 
 Rudder requires Java. The installer handles this but verify the version
 matches the Rudder release requirements before starting.
@@ -56,6 +76,10 @@ Default credentials: set on first login — store in password manager immediatel
 - Verify agent check-in from `EXAANSCLD001` (Ansible control node) as a test node
 
 ### Rudder Agent Install (on managed nodes)
+
+Automated by `ansible/playbooks/rudder/rudder_onboard.yml` (`--limit <hostname or group>
+--ask-vault-pass`). Manual procedure, for reference:
+
 ```bash
 # On each node to be managed — Debian/Ubuntu
 echo "deb http://repository.rudder.io/apt/8.0/ $(lsb_release -cs) main" \
@@ -95,7 +119,7 @@ Outbound from EXARDRCLD001:
 |----------|-----------|
 | `management/rudder-setup.md` (NET-MGMT-RUDDER-001) | Full Rudder configuration, techniques, and node management |
 | `management/Example Music — Keeping Three Ansible Nodes in Sync.md` | Ansible coordination with Rudder |
-| `bootstrap/ad-dc-wireguard-deployment.md` (NET-AD-DC-001) | WireGuard fabric that Rudder agents communicate over |
+| `active-directory/ad-dc-wireguard-deployment.md` (NET-AD-DC-001, historical) | WireGuard fabric that Rudder agents communicate over |
 
 ---
 

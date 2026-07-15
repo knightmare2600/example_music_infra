@@ -950,9 +950,9 @@ foreach ($path in $checks) {
 
 | Document | Relationship |
 |----------|-------------|
-| `bootstrap/ad-dc-wireguard-deployment.md` | AD must be deployed before any GPO work |
+| `active-directory/ad-dc-wireguard-deployment.md` | AD must be deployed before any GPO work |
 | `dfs-replication.md` | H: drive mapping depends on DFS namespace and SRV shares |
-| `buildsheets/buildsheet-dcs.md` | RSAT tools must be installed before GPMC is available |
+| `buildsheets/buildsheet-domainControllers.md` | RSAT tools must be installed before GPMC is available |
 | `network-inventory.md` | Node IPs for SSH key verification |
 
 ---

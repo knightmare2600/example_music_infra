@@ -219,4 +219,4 @@ run unless you also add them to `sites.csv`.
 | `rudder-setup.md` | Full manual procedure — server setup, agent onboarding, API reference |
 | `rudderme.sh` | Shell equivalent of this playbook |
 | `ansibleme.sh` | Ansible node bootstrap (style reference) |
-| `buildsheets/buildsheet-dcs.md` | AD DC build — prerequisite for LDAP |
+| `buildsheets/buildsheet-domainControllers.md` | AD DC build — prerequisite for LDAP |

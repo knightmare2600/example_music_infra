@@ -2,11 +2,15 @@
 
 **Document ID:** NET-BUILD-WIN-001  
 **Classification:** Internal — Network Operations  
-**Last Updated:** 2026-03-05  
+**Last Updated:** 2026-07-15  
 **Signed off by:** ___________________________  Date: ___________
 
-> ⚠️ **TODO:** autounattend.xml files exist but location not yet confirmed.
-> Check with build engineer before starting a manual build — the XML may automate a significant portion of this checklist. Update this sheet once the XML files are located and tested.
+**Deploy workflow:** unattend XML (`C:\DeployTools\unattend_xml\` — DeployTools share
+`\\EXADCSCPH001\DeployTools`, same convention as `buildsheet-server.md`) → OpenSSH reachable →
+`ansible/playbooks/windows_bootstrap/site.yml` — this is a `windows_server`-class node, built
+via the same Ansible chain as any other server. Chocolatey packages, PS7 modules, RSAT tools,
+and domain join below are all handled by that run; Windows Admin Centre install itself remains
+a manual step (no Ansible automation for it yet).
 
 ---
 
