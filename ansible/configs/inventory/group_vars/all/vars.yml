@@ -4,6 +4,16 @@
 # Example Music Limited — Variables common to all managed hosts
 # =============================================================================
 # Changelog:
+#   2026-07-15  Robert, mid live windows_bootstrap run against EXADCSCLD001: asked
+#               whether SSH key rotation is actually checked/updated anywhere. Found
+#               exa_ansible_pub_key was a hardcoded literal, and a completely
+#               different key from the real committed one (bootstrap/web/ansible_sshkey.pub)
+#               -- confirmed by direct comparison, not assumed. Since 75-openssh.yml
+#               (which deploys this value) runs after 00-preflight.yml's own correct,
+#               dynamically-read key deploy in the same chain, every full bootstrap run
+#               was overwriting the right key with this wrong one. Changed to a live
+#               file lookup, same file 00-preflight.yml's ansible_ssh_public_key_file
+#               already reads -- one source of truth, not two.
 #   2026-06-20  Initial file
 #   2026-07-09  exa_domain/exa_domain_join_user derived from benarbejde/ad_forest.json
 #               (single source of truth for AD forest identity) instead of hardcoded --
@@ -34,7 +44,16 @@ exa_choco_source:    "https://community.chocolatey.org/api/v2/"
 exa_lock_timeout_secs: 3600
 
 # SSH / Ansible
-exa_ansible_pub_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCyEVQgZP5f3dSLQ/cK7CV1tjN152BhZGQ7evsOTARTG5o9AmMzn4xFurdvmkFli4dEr7HZ3Dp83jxAMbHJ7d0eVuYNHG1n7ktm4FwYPhzBS3Kni3UvM91TeB6kvNZU1jFVE3oaDlft/C104M5S72zUx9SIzI5XH3fUyssAQEGoEoLzW1u4Tj84pxdXoIdGAGJCZ/gZJJFoPGLNkn3m19ML5EQzIpD4sO6yhODVu7gc9RckFGJpTD1CgKa5q4RPWPMN2y3Xw/J95VTHV8+NCBNKGzoVGdxu1E94+aCV5UCaxvgtLGcjJfv4D8Yrnxd//ZTjFYmT+DdIc6XsgYDYvr7Eoanv+bg8mtVVKxhwsxD3XOoxVdLhvCfYlg9IjXPG65GoTDrZuRfkUA6e1YnEaC4wvyXtwcnMV5NaklwAiIH5VLLo6laK1lyxr1tZEVpYx0F0S9S+oVDRPdpoVH98zE8JkPGWI6xSwaekMUMrAu5fZ/7Dfw2LAwAG7dixMroAj3c= knightmare@ansible"
+# Was a hardcoded literal (a completely different, stale key -- confirmed
+# 2026-07-15 against bootstrap/web/ansible_sshkey.pub, the real committed
+# canonical key). 75-openssh.yml runs AFTER 00-preflight.yml's own Phase B2
+# key deploy in the same chain, so the stale value here was overwriting the
+# correct one on every full bootstrap run -- a real, live lockout risk, not
+# theoretical. Now reads the same live keypair file 00-preflight.yml's
+# ansible_ssh_public_key_file already does (group_vars/windows_nodes/connection.yml),
+# so there is only ever one source for this key, never a second frozen copy
+# to drift out of sync.
+exa_ansible_pub_key: "{{ lookup('file', lookup('env', 'HOME') + '/ansible/configs/ansible-id_rsa.pub') }}"
 exa_ansible_key_path: 'C:\ProgramData\ssh\administrators_authorized_keys'
 
 # Fonts
