@@ -42,6 +42,13 @@
 # Tags: finish
 # =============================================================================
 # Changelog:
+#   2026-07-15  Robert, live against EXADCSCLD001: "[Finish] Set screen resolution" failed
+#               the whole run with a non-zero return code. setres.exe is a Windows built-in
+#               (confirmed by Robert directly -- not something this repo needs to deploy, an
+#               earlier version of this note wrongly assumed otherwise and was corrected).
+#               Real bug: wrong command syntax -- was "-w 1280 -h 800" with no "-f" flag;
+#               correct invocation is "-w 1280 -h 960 -f", matching what the task's own name
+#               always said (1280x960) and finally forcing the mode change.
 #   2026-07-14  Added "[Finish] SAC/EMS verification note" — Robert, live against
 #               EXADCSCLD001: the old SAC/EMS pause: task (tasks/sac_ems.yml) blocked
 #               the entire playbook run mid-chain waiting on operator confirmation,
@@ -106,7 +113,7 @@
       tags: finish
 
     - name: "[Finish] Set screen resolution to 1280x960"
-      ansible.windows.win_shell: setres.exe -w 1280 -h 800
+      ansible.windows.win_shell: setres.exe -w 1280 -h 960 -f
       changed_when: true
       tags: finish
 
