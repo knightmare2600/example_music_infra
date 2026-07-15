@@ -232,9 +232,21 @@ standalone bundle — see `zabbix_vms_on_wrong_pool/` for the canonical shape.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
-| [proxmox_zabbix_cleanup/kernels/PVE-Trixie-Setup-PFY-Procedure.md](proxmox_zabbix_cleanup/kernels/PVE-Trixie-Setup-PFY-Procedure.md) | NET-PVE-ZBX-HOOVER-001 | PVE maintenance automation setup — monthly hoover (journals/temps/coredumps/old kernels), Zabbix monitoring. **Note:** `docs/pve-maintenance-automation.md` (root, unindexed) covers the same ground with more complete/current content in places — not yet reconciled, see INDEX.md's own TODO below |
+| [pve-maintenance-automation.md](pve-maintenance-automation.md) | NET-PVE-ZBX-HOOVER-001 | PVE maintenance automation setup — monthly hoover (journals/temps/coredumps/old kernels), Zabbix monitoring. Deployment bundle (`.service`/`.timer`/script) lives in `proxmox_zabbix_cleanup/kernels/` |
 | [proxmox_zabbix_cleanup/zabbix_vms_on_wrong_pool/README.md](proxmox_zabbix_cleanup/zabbix_vms_on_wrong_pool/README.md) | NET-PVE-ZBX-POOL-001 | ZFS VM pool-placement audit setup |
 | [proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md](proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md) | NET-PVE-ZBX-SNAP-001 | PVE snapshot check automation setup |
+
+> **Resolved 2026-07-15, per Robert:** `pve-maintenance-automation.md` above is the one exception
+> to "each subdirectory is a self-contained bundle" — it lived both at `docs/` root and as
+> `proxmox_zabbix_cleanup/kernels/PVE-Trixie-Setup-PFY-Procedure.md`, a genuine content fork (not
+> byte-identical). Checked both against the real deployed
+> `ansible/playbooks/proxmox/files/pve-monthly-hoover.sh`: root's content and dates matched exactly
+> (`proxmox-kernel-*.*.*-*-pve-signed`, 2026-06-09 v1.2.0); the `kernels/` copy had drifted a month
+> later onto a shorter, wrong pattern and was missing several sections. Root kept as canonical, the
+> `kernels/` doc deleted. While reconciling, found `kernels/pve-monthly-hoover.sh`
+> (+ `.service`/`.timer`) — the actual manual-deploy bundle files, not just the doc — had the same
+> staleness (pre-PVE-9.x `pve-kernel-*` pattern, silently matches nothing and cleans up no kernels
+> on PVE 9.x); synced all three from the canonical `ansible/playbooks/proxmox/files/` copies.
 
 > **Resolved 2026-07-13, per Robert:** two byte-identical stray duplicates deleted rather than
 > kept-and-flagged — `docs/PVE-Snapshot-Check-Procedure.md` (root, identical to
