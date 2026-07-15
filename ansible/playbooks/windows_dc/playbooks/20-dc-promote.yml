@@ -19,8 +19,10 @@
 # DNS management:
 #   During promotion the host must resolve {{ dc_domain_name }} to contact the
 #   source DC.  Stage 0 checks if the domain is already resolvable; if not,
-#   it temporarily sets the NIC DNS to dc_temp_dns_ip (prompted — default
-#   pre-filled from dc_replication_source_ip set by 00-dc-preflight.yml).
+#   it temporarily sets the NIC DNS to dc_temp_dns_ip (no prompt — taken
+#   silently from dc_replication_source_ip, set by 00-dc-preflight.yml
+#   earlier in the same run; override with -e dc_temp_dns_ip=<ip> if ever
+#   needed).
 #   After the post-promotion reboot, DNS is set to 127.0.0.1 (the DC now
 #   runs its own DNS) and forwarders are configured:
 #     192.168.139.8  — CLD BIND9 (upstream for internal zones we control)
@@ -40,6 +42,17 @@
 # Tags: dc_promote
 # =============================================================================
 # Changelog:
+#   2026-07-15  Robert asked for an alignment check against windows_bootstrap's
+#               2026-07-14 prompt-timing lessons, before running windows_dc/site.yml
+#               live for the first time. Found: this file's own vars_prompt for
+#               dc_temp_dns_ip fired mid-chain, a second interruption separate from
+#               00-dc-preflight.yml's bundled prompt block -- same bug class as
+#               windows_bootstrap's dj_temp_dns_ip (00-preflight.yml already decides
+#               it automatically, this file's own prompt was a leftover never
+#               removed). The correct value (dc_replication_source_ip) is already
+#               resolved and persisted by 00-dc-preflight.yml earlier in the same
+#               run. Replaced the vars_prompt with a vars: entry that takes it
+#               silently; -e dc_temp_dns_ip=<ip> still overrides if ever needed.
 #   2026-06-25  Initial file (as 90-dc-promote.yml, combined with feature
 #               install)
 #   2026-06-29  Add Stage 0 temporary DNS management (set before promotion,
@@ -66,17 +79,15 @@
   hosts: "{{ target | default('windows_dc') }}"
   gather_facts: false
 
-  vars_prompt:
-    - name: dc_temp_dns_ip
-      prompt: >-
-        Temporary DNS IP for AD resolution during promotion
-        (leave blank to skip — only needed if the AD domain is not already resolvable.
-        Default is the replication source found by preflight)
-      private: false
-      default: "{{ hostvars[inventory_hostname].dc_replication_source_ip | default('') }}"
-
   vars:
     dc_site_name: "{{ host_site }}"
+    # 00-dc-preflight.yml already resolves and persists dc_replication_source_ip
+    # earlier in the same site.yml run -- no need to re-prompt mid-chain for a
+    # value that's already known (same bug class as windows_bootstrap's
+    # dj_temp_dns_ip, fixed 2026-07-14). Falls back to blank (skip DNS
+    # override) if this stage is ever run standalone. -e dc_temp_dns_ip=<ip>
+    # still overrides, same as before -- extra-vars always win.
+    dc_temp_dns_ip: "{{ dc_temp_dns_ip | default(dc_replication_source_ip | default('')) }}"
     # dc_db_path, dc_log_path, dc_sysvol, dc_dns_forwarders → group_vars/windows_dc/vars.yml
     # ansible_connection/shell_type/port: see 00-dc-preflight.yml — set here
     # too since group_vars/windows_nodes/connection.yml is inventory-group-
@@ -211,9 +222,9 @@
       ansible.builtin.fail:
         msg: >
           {{ _c.R }}[✗]{{ _c.NC }} {{ dc_domain_name }} is not resolvable and
-          dc_temp_dns_ip was left blank.
-          Re-run and enter the IP of an existing DC (e.g. the replication
-          source shown in the preflight output) when prompted.
+          dc_temp_dns_ip resolved blank (no replication source was found by
+          preflight either).
+          Re-run with -e dc_temp_dns_ip=<ip> pointing at a reachable DC.
       when:
         - not dc_is_dc
         - dc_dns_check.stdout | trim == 'unresolvable'
