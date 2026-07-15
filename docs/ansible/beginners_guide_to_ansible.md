@@ -82,6 +82,39 @@ reads the same one. `.githooks/pre-commit` auto-copies the subset of `benarbejde
 PXE preseed web server needs into `bootstrap/web/proxmox/` on every commit, so that copy can
 never drift from the source of truth by hand-editing.
 
+### Two separate deploy mechanisms — don't conflate them
+
+`benarbejde/` files reach two genuinely different audiences, via two genuinely different,
+unrelated mechanisms. Mixing them up is an easy, recurring source of confusion:
+
+1. **`.githooks/pre-commit` → `bootstrap/web/proxmox/`.** Feeds the PXE/preseed web server —
+   consumers that run *before* Ansible (or even a git clone) exists on a box at all
+   (`bindme.sh`, early preseed/unattend stages). Fires automatically on every commit.
+2. **`ansible/playbooks/linux/tools.yml` → `/etc/example-music/` on every Ansible-managed
+   Linux host.** Feeds consumers that are themselves Ansible plays — `sites.csv`,
+   `devices.csv`, `address_policy.json`, `ad_forest.json`, and the TDF-derived `ad_*.json`
+   files all go here identically, via the same `copy:` task pattern in the same playbook.
+   This is a normal Ansible run, not automatic — it needs to have actually been run (or
+   re-run) against a given host for that host's `/etc/example-music/` copy to be current.
+   The **Ansible control node counts as one of these hosts** — it doesn't get a free pass
+   just because it also happens to hold the git clone `benarbejde/` itself came from.
+
+**Why not just have Ansible read `benarbejde/` directly, skipping the `/etc/example-music/`
+copy entirely?** Two files in the whole repo do exactly this (`linux/tools.yml` itself, and
+`proxmox/bootstrap-new-node.yml`, via a `{{ playbook_dir }}/../../../benarbejde/...}}`
+relative path) — and it works fine for them, *because* each is one standalone playbook
+sitting at one fixed, known directory depth. It does **not** generalise to `group_vars/`
+files like `group_vars/all/vars.yml`, which get auto-loaded for every play across the whole
+tree regardless of depth (`windows_dc/playbooks/`, `bind9/`, `rudder/`,
+`windows_bootstrap/playbooks/`, …) — a single relative-path expression can't correctly
+count `../` for all of them at once. `/etc/example-music/` is a fixed, depth-independent
+path that works the same way from anywhere, which is exactly why `group_vars/all/vars.yml`'s
+`ad_forest_json_path` and `bind9-dns.yml`'s own copy of the same pattern both hardcode it
+rather than deriving it. (One thing that *isn't* the reason: on a real control node built via
+`ansibleme.sh`, the working `ansible/` directory is actually a symlink to the real git clone
+— confirmed empirically that this doesn't break `{{ playbook_dir }}`-relative resolution,
+Ansible resolves the real path transparently. The symlink is a non-issue either way.)
+
 ### A worked example: `jukebox.example.tdf`
 
 `benarbejde/jukebox.example.tdf` and `benarbejde/parse_tdf.py` are worth knowing about
