@@ -38,9 +38,123 @@
 #               nodeinfo_environment.yml checks the host's own existing
 #               nodeinfo.json first, so a correctly-set value survives a
 #               later run of this playbook.
+#   2026-07-16  Robert: asked whether the Ansible SSH key ever gets refreshed on
+#               ongoing Linux nodes the way it does on Proxmox
+#               (proxmox/playbooks/20-ansible-access.yml) and firewalls
+#               (firewallme's 10_ssh_hardening.yml) -- it didn't. This file (the
+#               one playbook that routinely touches every Linux host, hosts: all)
+#               had no key-deployment task at all; a host only ever got the key
+#               once, at first-boot, from bootstrap/web/ansible_sshkey.pub. Added
+#               a "[Preflight] Refresh Ansible SSH key" task (now in the "Deploy
+#               common tools" play below) using the same shared exa_ansible_pub_key
+#               var (group_vars/all/vars.yml, itself a live file lookup, not a
+#               frozen copy) the other two already use -- closes the asymmetry,
+#               no sshd_config/PasswordAuthentication changes (explicitly out of
+#               scope per Robert).
+#
+#               Also added a genuinely conditional password fallback -- explicitly
+#               NOT the windows_bootstrap pattern of "always ask, blank means use
+#               the key" (vars_prompt fires unconditionally, before any connection
+#               is even attempted, so it can't be made conditional on a live
+#               check's result). This needed its own separate play
+#               ("SSH preflight" below), not just extra tasks bolted onto the
+#               front of the existing one, for two reasons found empirically
+#               while building this:
+#                 1. pause: does not reliably register a result for every host in
+#                    a multi-host batch hitting it at once -- confirmed live, only
+#                    one host in the batch ever got a result back, regardless of
+#                    ignore_unreachable/ignore_errors/meta: clear_host_errors on
+#                    earlier tasks. serial: 1 (process one host fully through the
+#                    play before starting the next) is what actually fixes this --
+#                    but serializing the WHOLE tools.yml run across every Linux
+#                    host in the estate would be a real performance regression,
+#                    so only this lightweight preflight play is serial: 1, not
+#                    the heavier "Deploy common tools" play that follows it.
+#                 2. Using ansible.builtin.ping (a real per-host connection
+#                    attempt) as the connectivity test marks a failing host
+#                    unreachable in Ansible's own internal state for the rest of
+#                    that play -- ignore_unreachable/ignore_errors on that one
+#                    task does NOT undo this for later tasks targeting the same
+#                    host (confirmed live; meta: clear_host_errors afterward
+#                    didn't either). Testing via a plain delegate_to: localhost
+#                    ssh command instead avoids this entirely -- Ansible's own
+#                    connection layer never touches the real target until we
+#                    already know (and have a password fact ready, if needed)
+#                    whether the key actually works.
+#               Every node's ansible user has a locked password and passwordless
+#               sudo by design (see e.g. firewallme.sh's own "create with a
+#               locked password so only key/sudo auth works" comment) -- the
+#               password prompt only does anything if an operator has already
+#               manually unlocked/set a password out-of-band for recovery. A
+#               blank answer adds the host to the ssh_preflight_skip group,
+#               which "Deploy common tools" then excludes entirely -- skips that
+#               one host cleanly rather than failing the whole run or wasting a
+#               doomed reconnect attempt.
+
+- name: SSH preflight
+  hosts: all
+  gather_facts: false
+  serial: 1   # see 2026-07-16 changelog -- required for pause: to register a
+              # distinct result per host; only this lightweight play pays that
+              # serialisation cost, not the heavier play below.
+  vars:
+    _preflight_key: "{{ ansible_ssh_private_key_file | default(lookup('env', 'HOME') + '/ansible/configs/ansible-id_rsa') }}"
+
+  tasks:
+
+    - name: "[Preflight] Test SSH connectivity with the current key"
+      # Delegated plain ssh, not ansible.builtin.ping -- see 2026-07-16 changelog
+      # point 2. Never touches Ansible's own per-host connection state, so a
+      # failing host is never marked unreachable here.
+      ansible.builtin.command: >
+        ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no
+            -i {{ _preflight_key }}
+            {{ ansible_user | default('ansible') }}@{{ ansible_host | default(inventory_hostname) }}
+            true
+      register: _ssh_preflight
+      delegate_to: localhost
+      changed_when: false
+      failed_when: false
+      vars:
+        ansible_connection: local
+
+    - name: "[Preflight] Key auth failed -- prompt for a fallback password"
+      ansible.builtin.pause:
+        prompt: |-
+
+          ── SSH preflight failed for {{ inventory_hostname }} ───────────────────
+            The current Ansible SSH key was rejected (or the host didn't respond)
+            connecting as {{ ansible_user | default('ansible') }}.
+            Every Linux node's ansible user has a locked password and passwordless
+            sudo by design -- this only helps if that account's password has
+            already been manually unlocked/set out-of-band for recovery.
+            Enter it now to continue this host, or leave blank to skip it.
+          ─────────────────────────────────────────────────────────────────────
+          Password (masked, blank to skip this host)
+        echo: false
+      register: _ssh_preflight_pw
+      when: _ssh_preflight.rc != 0
+
+    - name: "[Preflight] Apply fallback password for this run"
+      ansible.builtin.set_fact:
+        ansible_password: "{{ _ssh_preflight_pw.user_input }}"
+      no_log: true
+      when:
+        - _ssh_preflight_pw is not skipped
+        - _ssh_preflight_pw.user_input | default('') | length > 0
+
+    - name: "[Preflight] Mark host to be skipped -- no working key and no password given"
+      ansible.builtin.add_host:
+        name:   "{{ inventory_hostname }}"
+        groups: ssh_preflight_skip
+      delegate_to: localhost
+      changed_when: false
+      when:
+        - _ssh_preflight.rc != 0
+        - _ssh_preflight_pw.user_input | default('') | length == 0
 
 - name: Deploy common tools
-  hosts: all
+  hosts: "{{ groups['all'] | difference(groups['ssh_preflight_skip'] | default([])) }}"
   become: true
 
   vars_prompt:
@@ -63,6 +177,12 @@
     ad_computers_src:  "{{ playbook_dir }}/../../../benarbejde/ad_computers.json"
 
   tasks:
+
+    - name: "[Preflight] Refresh Ansible SSH key"
+      ansible.posix.authorized_key:
+        user:  ansible
+        key:   "{{ exa_ansible_pub_key }}"
+        state: present
 
     - name: Install common packages
       apt:
