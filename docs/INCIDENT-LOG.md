@@ -23,8 +23,96 @@ Newest incident at the top, oldest at the bottom — read bottom-to-top for chro
 
 | Incident ID | Date | Summary |
 |---|---|---|
+| [INC-2026-07-16-ANSIBLE-LOCK](#inc-2026-07-16-ansible-lock--ansible-account-administratively-locked-out-on-a-live-firewall-node) | 2026-07-16 | The `ansible` account's administrative lock rejected every login method, not just password, on a live firewall node |
 | [INC-2026-07-12-SSH-KEY](#inc-2026-07-12-ssh-key--lost-ssh-keypair-delayed-pve-node-deployment-in-scandinavia) | 2026-07-12 | Lost/forgotten SSH keypair delayed PVE node deployment in Scandinavia |
 | [INC-2026-04-03-BMC-CREDS](#inc-2026-04-03-bmc-creds--mismatched-bmc-credentials-on-a-newly-delivered-fal-server) | 2026-04-03 | Vendor delivered the wrong physical chassis under otherwise-correct paperwork — documented BMC credentials didn't work on arrival at FAL |
+
+---
+
+## INC-2026-07-16-ANSIBLE-LOCK — `ansible` account administratively locked out on a live firewall node
+
+### Incident Background
+
+**Date:** 16 July 2026
+**Scope:** A live firewall node (EXAFWLBRT001) during WireGuard spoke-peering testing
+**Cause (summary):** Two independent pieces of automation set the `ansible` account's shadow
+password field to an administratively-locked state, intending "key and passwordless-sudo only" —
+under the SSH hardening already in place elsewhere in the same role (`UsePAM yes`), a locked
+account is rejected for every login method, not just password, contradicting the intent behind
+the lock.
+
+While live-testing WireGuard spoke registration, both console login and a fully key-based,
+non-interactive SSH connection to the `ansible` account on a firewall node were rejected outright.
+No password was involved in either attempt — the rejection happened before authentication method
+even mattered.
+
+### Root Cause & Mitigation
+
+Two separate places in the automation asserted a locked shadow state for the `ansible` account,
+each added independently, at different times, apparently on the same (incorrect) assumption that
+locking a Linux account's password only blocks password-based login. Under the sshd configuration
+already in place for these nodes (`UsePAM yes`), `pam_unix`'s account-management phase rejects a
+locked account for *every* authentication method presented to it, including public-key auth — the
+lock is checked after the key has already been verified, not instead of it.
+
+One of the two locations reasserted the lock on every single run of the routine automation that
+maintains these nodes, not just at first creation — meaning a manual unlock, applied to restore
+access, would be silently undone the next time that automation touched the host.
+
+Both locations were corrected to never assert an administrative lock: the account is created (or
+confirmed to exist) without one, and a defensive task now actively clears any lock found on every
+run, so a manual unlock survives future runs instead of being reverted by them. The general
+routine-maintenance path for ordinary Linux nodes gained the same defensive clearing task, since
+the same incorrect assumption could plausibly exist anywhere a Linux account is provisioned this
+way.
+
+Recovery, for a node already stuck in this state with no working session left at all, used local
+console access and Debian's single-user recovery mode (interrupting GRUB, appending
+`init=/bin/bash` to the kernel line) to reach an unauthenticated root shell, from which the lock
+was cleared directly. This is now written up as a standing procedure —
+[`docs/linux-recovery-runbook.md`](linux-recovery-runbook.md) — rather than something to
+re-derive under pressure next time.
+
+### Lessons Learned
+
+- **"Locked password" and "no password" are not interchangeable, and the difference has real
+  consequences under PAM.** A Linux account with no password set is nonetheless still usable for
+  key-based/passwordless-sudo auth; the same account with an *administrative lock* applied is
+  rejected outright by PAM's account phase for every method, once `UsePAM yes` is in the sshd
+  config. The intended security posture ("key and sudo only, no password") requires the former,
+  not the latter.
+- **A defensive setting reasserted on every automation run needs the same scrutiny as one applied
+  once.** The version of this bug that reapplied the lock on every routine run was the more
+  damaging of the two — it silently undid manual recovery, turning a one-time mistake into a
+  recurring one until the automation itself was fixed.
+- **Local/console recovery access remains essential even in a heavily key- and Ansible-driven
+  estate.** Every layer of remote access (SSH key, sudo, the automation itself) can, in principle,
+  fail together if the failure is in the account layer underneath all of them — the same lesson
+  the BMC-credential incident above already established for a different failure mode (remote
+  access to management hardware) applies here too, one level further down the stack.
+
+### Improvements Made
+
+- Both automation paths that could assert an administrative lock on the `ansible` account no
+  longer do so, and both now include a defensive task that actively clears one if found, on every
+  run — a manual recovery now survives the next routine run rather than being undone by it.
+- A new standing recovery procedure, [`docs/linux-recovery-runbook.md`](linux-recovery-runbook.md)
+  (`OPS-RECOVERY-001`), documents the GRUB single-user-mode recovery path end to end, so it's a
+  known, rehearsed step rather than a live investigation the next time any Linux node in the
+  estate ends up in a similar state, for any reason.
+- The Ansible documentation set gained a real, transcript-backed troubleshooting entry describing
+  this exact failure mode and how to distinguish it from an ordinary passwordless-sudo problem.
+
+### Executive Summary
+
+Two independent pieces of automation locked the `ansible` account on Linux nodes, on the mistaken
+assumption that a locked password only blocks password-based login — under this estate's own SSH
+hardening, it blocks every login method, including the key-based access the automation itself
+depends on. One of the two reasserted the lock on every routine run, which is why a manual unlock
+didn't hold. Both are now fixed to never lock the account and to actively clear a lock if found,
+so a recurrence heals itself rather than needing manual intervention again. A full recovery
+procedure is now written up as a standing runbook rather than something to work out from scratch
+under pressure.
 
 ---
 
