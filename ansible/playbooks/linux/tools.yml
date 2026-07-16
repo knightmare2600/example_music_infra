@@ -38,6 +38,14 @@
 #               nodeinfo_environment.yml checks the host's own existing
 #               nodeinfo.json first, so a correctly-set value survives a
 #               later run of this playbook.
+#   2026-07-16  Added "[Preflight] Ensure ansible account isn't locked" -- healing task for
+#               firewall nodes created under firewallme.sh's old `passwd -l ansible` bug (fixed
+#               at the source the same day). Robert found this live: it blocked both console
+#               login and add-wg-spoke.yml's key-only SSH fetch on a real firewall node, since a
+#               locked account is rejected by pam_unix's account phase for every login method
+#               under UsePAM yes, not just password. Never enables password auth -- only clears
+#               the administrative lock flag via password_lock: false (usermod, not passwd, so
+#               it doesn't hit passwd -u's "would result in a passwordless account" refusal).
 #   2026-07-16  Robert: asked whether the Ansible SSH key ever gets refreshed on
 #               ongoing Linux nodes the way it does on Proxmox
 #               (proxmox/playbooks/20-ansible-access.yml) and firewalls
@@ -183,6 +191,19 @@
         user:  ansible
         key:   "{{ exa_ansible_pub_key }}"
         state: present
+
+    - name: "[Preflight] Ensure ansible account isn't locked"
+      # firewallme.sh used to call `passwd -l ansible` right after creation, intending
+      # "key/sudo only" -- but a locked account is rejected by pam_unix's account phase for
+      # EVERY login method under UsePAM yes, not just password, so it blocked SSH key auth and
+      # console login too. Fixed at the source (2026-07-16, see firewallme.sh's own changelog),
+      # but any node already created under the old, buggy behaviour needs healing here too --
+      # password_lock: false uses usermod, not passwd, so it doesn't hit passwd -u's "would
+      # result in a passwordless account" refusal on an account that never had a real hash.
+      # This never sets or enables a real password -- only clears the administrative lock flag.
+      ansible.builtin.user:
+        name:          ansible
+        password_lock: false
 
     - name: Install common packages
       apt:

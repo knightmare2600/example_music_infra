@@ -522,12 +522,28 @@ success "Lean initramfs generated."
 # Ansible user
 # -------------------------------------------------------------------------------------------------
 # BUG FIX: the ansible user was never created. getent returned empty so the entire zsh block was
-# silently skipped & chsh was never called. Use id -u to check idempotently; create with a locked
-# password so only key/sudo auth works. Shell is set to bash at creation; zsh is applied below.
+# silently skipped & chsh was never called. Use id -u to check idempotently. Shell is set to bash
+# at creation; zsh is applied below.
+#
+# 2026-07-16 correction, Robert: this used to call `passwd -l ansible` right after creation,
+# intending "key/sudo only, no password auth" -- but useradd (without -p) ALREADY leaves a fresh
+# account in a locked (!) shadow state by default, so that call didn't add the intended
+# restriction, it just reinforced an already-locked account. The real problem: with UsePAM yes
+# (set by roles/firewall/tasks/10_ssh_hardening.yml), pam_unix's account phase rejects a locked
+# account for EVERY login method, including SSH public-key auth and console -- not just password,
+# contradicting the "only key/sudo auth works" intent -- confirmed live 2026-07-16, this was
+# blocking both console login and add-wg-spoke.yml's key-only SSH fetch on a real firewall node.
+# `usermod -p '*'` explicitly sets a definite, non-matching password hash instead of trying to
+# "unlock" an account that never had a real hash at all -- `passwd -u` on a truly empty password
+# field is documented to refuse ("would result in a passwordless account") rather than clear the
+# lock, so it isn't used here. `*` can never match any real password, so this does not enable
+# password auth -- it only ensures the account isn't administratively locked. See
+# linux/tools.yml's matching "[Preflight] Ensure ansible account isn't locked" task for nodes
+# that already got created in the old, broken state.
 if ! id -u ansible &>/dev/null; then
   info "Creating ansible system user..."
   useradd -m -s /bin/bash -G sudo ansible
-  passwd -l ansible
+  usermod -p '*' ansible
   success "ansible user created."
 else
   info "ansible user already exists — skipping creation."
