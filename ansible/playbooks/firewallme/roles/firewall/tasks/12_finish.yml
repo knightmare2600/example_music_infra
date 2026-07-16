@@ -20,6 +20,19 @@
 #               closing "║" entirely (only title/divider lines ever had one). Same fix:
 #               compute each line's plain (uncoloured) text, pad to the box's real
 #               62-column inner width, then wrap in colour and close with the border.
+#   2026-07-16  Robert, live (EXAFWLBRT001): (1) the box title line itself was hand-typed
+#               padding, not computed like every other line -- 60 characters against a
+#               62-wide border, closing "║" landed 2 short. Same class of bug as the
+#               2026-07-14 fix above, just on the one line that fix didn't touch. Now
+#               computed the same way (centre the title text within the real 62-column
+#               width). (2) "[Finish] Reboot skipped" reads as "the reboot was skipped"
+#               regardless of which branch runs -- when a reboot WAS forced (e.g. by
+#               06_network_manager.yml's WAN-strand guard overriding the operator's own
+#               "no" answer), this task itself correctly shows as skipped, but the NAME
+#               "Reboot skipped" appearing right after a "[Finish] Reboot host" task that
+#               visibly ran reads exactly like "the reboot didn't happen" when it did.
+#               Renamed to "[Finish] NOTE — no reboot occurred this run" so the task's own
+#               name and its own skip status never say the opposite of what happened.
 # =============================================================================
 
 # ── Node info file ────────────────────────────────────────────────────────────
@@ -72,7 +85,11 @@
       - "{{ _c.C }}  ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝{{ _c.NC }}"
       - ""
       - "{{ _c.G }}╔══════════════════════════════════════════════════════════════╗{{ _c.NC }}"
-      - "{{ _c.G }}║{{ _c.NC }}{{ _c.W }}         FIREWALL CONFIGURATION COMPLETE                    {{ _c.NC }}{{ _c.G }}║{{ _c.NC }}"
+      - >-
+        {%- set text = "FIREWALL CONFIGURATION COMPLETE" -%}
+        {%- set lp = (62 - text|length) // 2 -%}
+        {%- set rp = 62 - text|length - lp -%}
+        {{ _c.G }}║{{ _c.NC }}{{ _c.W }}{{ ' ' * lp }}{{ text }}{{ ' ' * rp }}{{ _c.NC }}{{ _c.G }}║{{ _c.NC }}
       - "{{ _c.G }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
       - >-
         {%- set plain = "  Host         : " + inventory_hostname -%}
@@ -150,7 +167,7 @@
     msg: "Ansible firewall role — post-config reboot"
   when: fw_reboot_requested | default(false)
 
-- name: "[Finish] Reboot skipped"
+- name: "[Finish] NOTE — no reboot occurred this run"
   ansible.builtin.debug:
     msg:
       - "{{ _c.Y }}[!]{{ _c.NC }} Reboot skipped (not requested)."

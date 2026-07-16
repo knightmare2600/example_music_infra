@@ -32,6 +32,23 @@
 #   2026-07-14  Cosmetic fix: "WAN activate" showed the raw Python/Jinja boolean
 #               (True/False) while every other field in the box reads as a real word
 #               (static, ENABLED open, disabled). Now renders yes/no like everything else.
+#   2026-07-16  Robert, live (EXAFWLBRT001): three fixes from the same run.
+#               (1) The summary box's own title line was hand-typed padding (57 chars
+#               against a 62-wide border) -- same bug class as 2026-07-14's fix above,
+#               on the one line that fix didn't touch since it's a title, not a content
+#               row. Now computed the same way (centre the title text in the real
+#               62-column width).
+#               (2) Added a line to the reboot prompt: a reboot can be forced later in
+#               the run regardless of the answer given here, if a live WAN address
+#               correction can't be applied safely without one (06_network_manager.yml's
+#               strand guard) -- Robert was confused seeing a reboot happen after
+#               answering "no" here; the override was already correct and intentional,
+#               the prompt just never said it could happen.
+#               (3) Robert: "I like the gatekeeping" but running ansible-playbook
+#               already means you want to proceed -- flipped the final confirm from
+#               "type yes to proceed, anything else aborts" to "press Enter to proceed,
+#               type no to abort". Still a real gate, just defaults the direction that
+#               matches actually running the command.
 # =============================================================================
 
 - name: "[Summary] Display full configuration summary"
@@ -39,7 +56,11 @@
     msg:
       - ""
       - "{{ _c.C }}╔══════════════════════════════════════════════════════════════╗{{ _c.NC }}"
-      - "{{ _c.C }}║{{ _c.NC }}{{ _c.W }}             Configuration Summary                       {{ _c.NC }}{{ _c.C }}║{{ _c.NC }}"
+      - >-
+        {%- set text = "Configuration Summary" -%}
+        {%- set lp = (62 - text|length) // 2 -%}
+        {%- set rp = 62 - text|length - lp -%}
+        {{ _c.C }}║{{ _c.NC }}{{ _c.W }}{{ ' ' * lp }}{{ text }}{{ ' ' * rp }}{{ _c.NC }}{{ _c.C }}║{{ _c.NC }}
       - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
       - >-
         {%- set plain = "  Hostname      : " + inventory_hostname -%}
@@ -115,6 +136,8 @@
       {{ _c.Y }}[!]{{ _c.NC }} (.link files), initramfs changes, and sysctl settings all take effect
       {{ _c.Y }}[!]{{ _c.NC }} cleanly. This will happen automatically at the end of this run if you
       {{ _c.Y }}[!]{{ _c.NC }} say yes here — you won't be asked again.
+      {{ _c.Y }}[!]{{ _c.NC }} A reboot may still be forced regardless of your answer here if this run
+      {{ _c.Y }}[!]{{ _c.NC }} corrects a live WAN address that can't safely be applied without one.
 
       Reboot at the end of this run? [y/N]
   register: fw_reboot_prompt
@@ -130,13 +153,13 @@
       {{ _c.Y }}[!]{{ _c.NC }} Review the configuration above carefully.
       {{ _c.Y }}[!]{{ _c.NC }} Nothing has been written to disk yet.
 
-      Type {{ _c.G }}yes{{ _c.NC }} to apply all changes, anything else to abort
+      Press {{ _c.G }}Enter{{ _c.NC }} to apply all changes, or type {{ _c.R }}no{{ _c.NC }} to abort
   register: fw_summary_confirm
 
 - name: "[Summary] ABORT — operator did not confirm"
   ansible.builtin.fail:
     msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Aborted by operator."
-  when: fw_summary_confirm.user_input | trim | lower != 'yes'
+  when: fw_summary_confirm.user_input | trim | lower in ['n', 'no']
 
 - name: "[Summary] Applying configuration"
   ansible.builtin.debug:
