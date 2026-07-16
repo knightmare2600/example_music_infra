@@ -42,13 +42,25 @@
 # Tags: finish
 # =============================================================================
 # Changelog:
+#   2026-07-16  Robert, live against EXADCSCLD001, again: setres.exe still failed even with
+#               correct syntax -- "The settings passed in could not be applied to the graphics
+#               device." Root cause: no attached interactive display session exists over an
+#               SSH/Ansible connection for the graphics device to apply a mode change against --
+#               syntax was never the remaining problem. Replaced the direct win_shell invocation
+#               with a HKLM RunOnce registry entry instead: the same setres.exe command now fires
+#               automatically at the next interactive logon (console/RDP), where an actual display
+#               session exists for it to act on. Per Robert's own instruction: don't force an
+#               unconditional reboot just to trigger this -- RunOnce fires at the next interactive
+#               logon regardless of whether this run's own conditional reboot below actually
+#               happens, so it needs no changes here.
 #   2026-07-15  Robert, live against EXADCSCLD001: "[Finish] Set screen resolution" failed
 #               the whole run with a non-zero return code. setres.exe is a Windows built-in
 #               (confirmed by Robert directly -- not something this repo needs to deploy, an
 #               earlier version of this note wrongly assumed otherwise and was corrected).
-#               Real bug: wrong command syntax -- was "-w 1280 -h 800" with no "-f" flag;
-#               correct invocation is "-w 1280 -h 960 -f", matching what the task's own name
-#               always said (1280x960) and finally forcing the mode change.
+#               Real bug (partial fix, superseded by the entry above): wrong command syntax --
+#               was "-w 1280 -h 800" with no "-f" flag; corrected to "-w 1280 -h 960 -f", matching
+#               what the task's own name always said (1280x960) -- fixed the syntax but not the
+#               actual failure, which turned out to be unrelated (see 2026-07-16 above).
 #   2026-07-14  Added "[Finish] SAC/EMS verification note" — Robert, live against
 #               EXADCSCLD001: the old SAC/EMS pause: task (tasks/sac_ems.yml) blocked
 #               the entire playbook run mid-chain waiting on operator confirmation,
@@ -112,9 +124,16 @@
       when: sac_sol_verify_needed | default(false) | bool
       tags: finish
 
-    - name: "[Finish] Set screen resolution to 1280x960"
-      ansible.windows.win_shell: setres.exe -w 1280 -h 960 -f
-      changed_when: true
+    - name: "[Finish] Queue screen resolution change for next interactive logon"
+      # setres.exe can't apply a mode change over this SSH session -- no attached interactive
+      # display for the graphics device to act on (see 2026-07-16 changelog entry). RunOnce
+      # fires the same command at the next real console/RDP logon instead, where a display
+      # session actually exists.
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
+        name: ExaSetRes
+        data: 'setres.exe -w 1280 -h 960 -f'
+        type: string
       tags: finish
 
     - name: "[Finish] Check whether Windows is actually reporting a pending reboot"
