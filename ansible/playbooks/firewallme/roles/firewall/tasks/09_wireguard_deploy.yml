@@ -11,6 +11,17 @@
 #   2026-06-29  Add wg-quick@wg0 network-online.target drop-in (bug fix: shipped
 #               unit only has After=network.target which fires before any interface
 #               has an IP, causing endpoint resolution failures at boot)
+#   2026-07-16  Robert, live (EXAFWLBRT001): `wg-quick up wg0` failed outright --
+#               "resolvconf: command not found" -- then tore the interface back down.
+#               The spoke wg0.conf's [Interface] DNS = line requires wg-quick to shell
+#               out to resolvconf (or systemd-resolved) to apply it; neither is
+#               installed, and doesn't need to be. Removed the DNS = line instead of
+#               adding resolvconf as a new package dependency: this firewall already
+#               resolves via its own dnsmasq (08_dnsmasq.yml writes /etc/resolv.conf
+#               pointing at 127.0.0.1 independently of the tunnel) -- the [Interface]
+#               DNS directive exists for client devices that route their default DNS
+#               through a WireGuard tunnel, not for a box that's already its own
+#               resolver. Hub wg0.conf never had this line to begin with.
 # =============================================================================
 
 - name: "[WireGuard] Skip — not applicable (role=none or black site)"
@@ -110,7 +121,6 @@
       [Interface]
       PrivateKey = {{ fw_wg_privkey }}
       Address    = {{ fw_wg_tunnel_ip }}/24
-      DNS        = {{ fw_lan_ip }}
 
       PostUp   = nft add rule inet filter forward iifname "wg0" accept
       PostUp   = nft add rule inet filter forward oifname "wg0" accept
