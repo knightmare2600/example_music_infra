@@ -9,9 +9,9 @@
 # Usage (run from ansible/ root):
 #   ansible-playbook -i configs/inventory \
 #     playbooks/firewallme/playbooks/add-wg-spoke.yml \
-#     -e "target=EXAFWLFAL001 spoke_site=BER spoke_host=EXAFWLBER001"
+#     -e "target=EXAFWLFAL001 spoke_site=BER"
 #
-#   # If the spoke isn't in inventory or has a different SSH address:
+#   # Override the address to SSH-fetch keys from (rarely needed -- see below):
 #   ansible-playbook -i configs/inventory \
 #     playbooks/firewallme/playbooks/add-wg-spoke.yml \
 #     -e "target=EXAFWLFAL001 spoke_site=BER spoke_ip=192.168.169.1"
@@ -21,8 +21,7 @@
 #   spoke_site  — spoke site code (e.g. BER), must exist in wg_site_octets
 #
 # Optional vars:
-#   spoke_host      — spoke inventory name; used to derive spoke_ip if not set
-#   spoke_ip        — IP to SSH to for pubkey/PSK fetch (overrides spoke_host)
+#   spoke_ip        — IP to SSH-fetch pubkey/PSK from, overrides the default entirely
 #   spoke_tunnel_ip — override default 10.0.<octet>.2 tunnel address
 #
 # What it does:
@@ -33,6 +32,19 @@
 #      without a full restart
 #
 # Changelog:
+#   2026-07-16  Robert, live: "[add-wg-spoke] Fetch spoke public key via SSH" failed with
+#               "Connection timed out" trying 192.168.169.253 (EXAFWLBRT001's own LAN/gateway
+#               IP, from hostvars[spoke_host]['ansible_host']) -- wrong address entirely. A
+#               spoke being registered here is, by definition, not yet WireGuard-peered, so its
+#               regular site LAN is not reachable from the hub/control node at all yet -- the
+#               only address that IS reachable before the tunnel exists is the shared
+#               provisioning network, 192.168.139.<site octet> (same convention as
+#               fw_wan_static_ip in 00_preflight_1_derive.yml, confirmed against CLD's own real
+#               WAN IP: 192.168.139.69). Fixed _spoke_ip to derive from spoke_site's octet in
+#               wg_site_octets by default instead of the spoke's own inventory ansible_host.
+#               spoke_host is no longer used for IP derivation at all (dropped from the
+#               interface -- spoke_site alone is now sufficient); spoke_ip remains as an
+#               explicit full override for genuine edge cases.
 #   2026-07-16  Robert picked this up for a real live test. Found it would have failed
 #               immediately, for any spoke_site, valid or not: wg_site_octets defaults to {}
 #               in group_vars/firewalls/main.yml and is only ever populated by
@@ -71,14 +83,19 @@
     # no roles: to inherit that default from, so it's restated here identically. Override
     # with -e sites_csv_path=/path/to/sites.csv, same as every other consumer in the repo.
     sites_csv_path: "/etc/example-music/sites.csv"
+    # Default is the shared provisioning network (192.168.139.<octet>), not the spoke's own
+    # site LAN -- see 2026-07-16 changelog. wg_site_octets is built by the task below, which
+    # runs before this is first referenced (in "[add-wg-spoke] Fetch spoke public key via SSH"),
+    # so it's already populated by then; the "spoke_site in wg_site_octets" guard here avoids a
+    # raw Jinja2 KeyError for an invalid site code, falling through to '' instead so "[add-wg-
+    # spoke] Validate spoke_site is a known site" (which runs first) gives its own clean error
+    # message rather than this crashing on an undefined dict key.
     _spoke_ip: >-
       {{
         spoke_ip
         if spoke_ip is defined
-        else hostvars[spoke_host]['ansible_host']
-        if (spoke_host is defined and spoke_host in hostvars and 'ansible_host' in hostvars[spoke_host])
-        else spoke_host
-        if spoke_host is defined
+        else '192.168.139.' + wg_site_octets[spoke_site] | string
+        if (spoke_site is defined and spoke_site in wg_site_octets)
         else ''
       }}
 
@@ -111,11 +128,6 @@
       ansible.builtin.fail:
         msg: "spoke_site is required. Use -e 'spoke_site=BER'"
       when: spoke_site is not defined
-
-    - name: "[add-wg-spoke] Require spoke_host or spoke_ip"
-      ansible.builtin.fail:
-        msg: "Provide spoke_host (inventory name) or spoke_ip (direct IP) to SSH-fetch spoke keys."
-      when: _spoke_ip == ''
 
     - name: "[add-wg-spoke] Validate spoke_site is a known site"
       ansible.builtin.fail:
