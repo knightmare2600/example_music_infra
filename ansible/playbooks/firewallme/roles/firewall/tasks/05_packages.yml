@@ -6,6 +6,22 @@
 # Mirrors firewallme.sh bootstrap package install, localepurge, initramfs
 # slimming, ansible user creation, zsh setup.
 # Changelog:
+#   2026-07-16  Robert, live: found EXAFWLBRT001's ansible account locked again after he'd
+#               already manually unlocked it -- this task was the reason. "[Packages] Create
+#               ansible system user" ran with password: "!" and NO guard for "only on first
+#               creation" -- since this role runs on every routine firewallme execution (not
+#               just first-boot), Ansible's user module compares the shadow entry against "!"
+#               on EVERY run and re-applies it if a manual unlock had changed it, silently
+#               re-locking the account the very next time this role touched the host. Same
+#               root cause as bootstrap/web/provision/firewallme.sh's own passwd -l bug (fixed
+#               the same day) -- a locked account is rejected by pam_unix's account phase for
+#               every login method under UsePAM yes (10_ssh_hardening.yml), not just password,
+#               contradicting the "key/sudo only" intent the password: "!" comment describes.
+#               Removed the password: parameter entirely -- state: present alone is enough to
+#               ensure the account exists, with no lock state actively asserted or re-asserted
+#               on every run. linux/tools.yml's own healing task
+#               (password_lock: false) still exists for nodes already stuck in the locked state
+#               from before this fix.
 #   2026-06-20  Initial file
 # =============================================================================
 
@@ -84,8 +100,17 @@
     shell: /bin/bash
     groups: sudo
     create_home: true
-    password: "!"    # locked — key/sudo auth only
     state: present
+
+- name: "[Packages] Ensure ansible account isn't locked"
+  # Self-healing, not just non-asserting -- see this file's own 2026-07-16 changelog. Runs every
+  # time this role touches the host, so a manual usermod -U survives the next routine run instead
+  # of being silently undone by it. Never sets or enables a real password -- only clears the
+  # administrative lock flag (usermod, not passwd -u, which refuses on an account with no real
+  # password hash at all).
+  ansible.builtin.user:
+    name:          ansible
+    password_lock: false
 
 - name: "[Packages] Write ansible user .zshrc"
   ansible.builtin.copy:
