@@ -32,6 +32,20 @@
 #   EXA<ROLE><SITE><NNN>
 # ==================================================================================================
 # Changelog:
+#  2026-07-16  Robert, live: brt.ini had EXAFWLBRT001 and EXAFWLBRT002 both at 192.168.169.253 --
+#              the [firewalls] template used vals['FW'] (sites.csv's single LAN column) for BOTH
+#              hostnames instead of the already-correctly-computed vals['FWL1']/vals['FWL2']
+#              (.253/.254 respectively, from the ROLE_OFFSETS loop a few lines above -- the
+#              values existed, the template just referenced the wrong variable). Fixed.
+#              Also: FWL1's ansible_host is now the VRK/provisioning-network WAN address
+#              (192.168.139.<site's own subnet octet>), not its LAN .253 -- confirmed live this
+#              is how every firewall is actually managed, including CLD (whose LAN address only
+#              ever worked in earlier testing because the control node happens to sit on that
+#              exact subnet itself, not because LAN is generally reachable). CLD is a genuine
+#              special case, reusing devices.csv's own VRK,FWL,1 row via find_device() rather
+#              than the site-octet pattern, matching bind9-dns.yml's db.forward-zone.j2 (which
+#              already generates exafwl<site>001-wan the same way). FWL2 is unaffected -- still
+#              the LAN .254 secondary address.
 #  2026-07-05  Fixed offset_ip() — IPy's IP.__add__ is reserved for merging two adjacent IP()/net
 #              objects into a parent CIDR block (see https://pypi.org/project/IPy/), not address
 #              offsetting. base + offset with offset as a plain int made IPy's __add__ try to read
@@ -648,14 +662,16 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
 # .11 Secondary DC
 # .101 Example workstation
 # .102 Example laptop
-# .253 Primary Firewall
+# .253 Primary Firewall (LAN side -- ansible_host below uses its VRK/WAN address instead,
+#      192.168.139.<this site's own octet>; Ansible manages every firewall over the shared
+#      provisioning network, not each site's own LAN)
 # .254 Secondary Firewall
 #
 # ==================================================================================================
 
 [firewalls]
-{hostnames['FWL1']}  ansible_host={vals['FW']}  ansible_user=ansible  ansible_connection=ssh
-{hostnames['FWL2']}  ansible_host={vals['FW']}  ansible_user=ansible  ansible_connection=ssh{extra_for('firewalls')}
+{hostnames['FWL1']}  ansible_host={vals['FWL1']}  ansible_user=ansible  ansible_connection=ssh
+{hostnames['FWL2']}  ansible_host={vals['FWL2']}  ansible_user=ansible  ansible_connection=ssh{extra_for('firewalls')}
 
 [windows_dc]
 {hostnames['DCS1']}  ansible_host={vals['DCS1']}
@@ -1095,6 +1111,23 @@ def generate(csv_path: Path, out_dir: Path, devices_path: Path):
     # DCS special (DCS is a two-instance role, defined in ROLE_OFFSETS — not OFFSETS_SINGLE)
     vals["DCS1"] = offset_ip(net, ROLE_OFFSETS["DCS"][0])
     vals["DCS2"] = offset_ip(net, ROLE_OFFSETS["DCS"][1])
+
+    # FWL1's ansible_host is the VRK/provisioning-network WAN address, not the site's own LAN
+    # .253 -- Ansible manages every firewall over this shared network, confirmed live 2026-07-16
+    # against a genuinely remote site (BRT): its own LAN is not routable from the control node at
+    # all, "No route to host". CLD's LAN address only ever worked in earlier testing because the
+    # control node happens to sit on that exact subnet itself, not because LAN is generally
+    # reachable. Matches the same VRK-derived address bind9-dns.yml's own DNS zone already
+    # generates as exafwl<site>001-wan -- see db.forward-zone.j2's "Firewall WAN addresses on
+    # provisioning network" section, including its own CLD special case reproduced here: CLD's
+    # WAN address comes from devices.csv's real VRK,FWL,1 row, not the site-octet pattern below,
+    # since CLD's own subnet is the LAN side, not the vRACK.
+    if site == "CLD":
+      cld_fwl_wan = find_device(devices_by_site, "VRK", "FWL")
+      vals["FWL1"] = offset_ip(site_to_net["VRK"], cld_fwl_wan["octet"])
+    else:
+      site_octet = int(net.strNormal(0).split("/")[0].split(".")[2])
+      vals["FWL1"] = offset_ip(site_to_net["VRK"], site_octet)
 
     # Hostnames for roles that appear in .ini — built via build_hostname() so  EXA<ROLE><SITE><NNN>
     # convention lives in one place rather than being duplicated as inline string literals.
