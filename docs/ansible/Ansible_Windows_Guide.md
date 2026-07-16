@@ -617,6 +617,97 @@ ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_
 
 `win_reboot` tasks (rename, domain join, `85-finish.yml`'s final reboot) wait up to 600 seconds by default for the host to come back. If the host takes longer (slow hardware, a large Windows update applying), increase the timeout in the relevant task, or simply re-run the playbook — completed stages are idempotent and will pass quickly.
 
+### `Module result deserialization failed: No start of json char found`
+
+Real transcript, live against EXADCSCLD001, 2026-07-15:
+
+```text
+[*] 18:35:20  [B1] Gather facts (first SSH connection to target)
+[✗]   EXADCSCLD001      Module result deserialization failed: No start of json char found
+```
+
+Cause: `HKLM:\SOFTWARE\OpenSSH`'s `DefaultShell` is set to `pwsh.exe` (PowerShell 7) instead of
+Windows PowerShell 5.1. `ansible.windows`'s SSH connection plugin (`ansible_shell_type:
+powershell` throughout this chain) sends every module call as a `-EncodedCommand` invocation built
+against PS 5.1's semantics — pwsh's own CLI parser doesn't recognise that invocation the same way
+and returns its own usage banner instead of module JSON, which is exactly the error above. This
+breaks every subsequent Ansible connection too, including Ansible's own next attempt — not just
+the task that first hits it.
+
+Manual fix, run interactively over SSH (typing `pwsh` once connected still works — only
+*non-interactive* invocation breaks):
+
+```powershell
+Remove-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption -ErrorAction SilentlyContinue
+Restart-Service sshd
+```
+
+`75-openssh.yml` removes this for good on every run it reaches — but that's stage ~14 of the
+chain, no help if the host is already in this state at `[B1]`, the very first connection. `00-
+preflight.yml`'s `[B0]` task (added 2026-07-15) is a best-effort failsafe ahead of `[B1]`, using a
+plain (non-module) `ssh` command instead of an Ansible module call, specifically to have a chance
+of getting through even when the module-based connection can't. Root cause of *why* a given host
+ends up in this state in the first place is still open — no Proxmox template is in use here, and
+the real imaging chain (`Deploy-OpenSSH.cmd`/`SetupComplete.cmd`/`Detect-Platform.cmd`/
+`Install-OpenSSH.ps1`) doesn't touch `DefaultShell` at all, confirmed by reading every one of
+those files directly.
+
+### `delegate_to: localhost` silently connects over SSH instead of running locally
+
+Real transcript, live, 2026-07-15 — a brand-new `command:` task with `delegate_to: localhost`
+failed on its very first run:
+
+```text
+[*] 18:35:20  [B0] Failsafe — clear any pre-existing DefaultShell override via plain ssh
+[!] UNREACHABLE total=1 (other=1)
+```
+
+Cause: the play's own `vars:` (or a `group_vars/*/connection.yml` the host belongs to) sets
+`ansible_connection: ssh` for every host in the play — that applies to `delegate_to: localhost`
+tasks too, at a higher precedence than implicit localhost's own `ansible_connection: local`
+default. Without an explicit override, Ansible tries to SSH from the control node to *itself* using
+the target's own credentials (e.g. the Windows Administrator user and key) — an outright
+connection error, not a task failure, so `failed_when: false` can't catch it (the task never runs
+far enough to produce a result to judge).
+
+Fix: add an explicit override on any `command:`/`shell:`/`read_csv:` task delegated to localhost
+inside a play like this one:
+
+```yaml
+- name: some task
+  ansible.builtin.command: ...
+  delegate_to: localhost
+  vars:
+    ansible_connection: local
+```
+
+`lookup('file', ...)`, `set_fact`, `pause`, `add_host`, and `debug` don't need this — they always
+evaluate on the controller regardless of connection settings. Only tasks that dispatch through the
+actual connection plugin do. Five instances of this exact bug were found and fixed across
+`windows_bootstrap`/`windows_dc`/`windows_adschema` in one pass by grepping for `delegate_to:
+*localhost` next to a real module with no override alongside it.
+
+### `setres.exe` fails with "settings could not be applied to the graphics device"
+
+Real transcript, live against EXADCSCLD001, 2026-07-16:
+
+```text
+administrator@EXADCSCLD001 C:\Users\Administrator>setres -w 1280 -h 960 -f
+setres will now attempt to apply the following display settings:
+  Width:          1280
+  Height:         960
+The settings passed in could not be applied to the graphics device.
+```
+
+Correct syntax (this is a genuine Windows built-in, not something the repo deploys), still fails —
+because there's no attached interactive display session over an SSH/Ansible connection for the
+graphics device to apply a mode change against. `85-finish.yml` no longer runs `setres.exe`
+directly: it queues the same command via a `HKLM:\...\RunOnce` registry entry instead, so it fires
+automatically at the next real console/RDP logon, where a display session actually exists. No
+extra reboot is forced just for this — `RunOnce` fires at the next interactive logon regardless of
+whether that run's own conditional reboot happens.
+
 ### Vault Decryption Error
 
 ```text
