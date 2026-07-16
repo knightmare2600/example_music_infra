@@ -18,6 +18,20 @@
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-20  Added vars_files for colour constants and wireguard hub data
+#   2026-07-16  Robert: "vars_prompt do it now" (asked again — 2026-07-14's restructure
+#               of roles/firewall/tasks/00_preflight_3_ask.yml only made pause-based
+#               prompts back-to-back, it never actually switched to real vars_prompt).
+#               Real vars_prompt genuinely can't take most of that file's prompts: it
+#               is evaluated once, here, before ANY task runs — no gathered facts, no
+#               site-octet/WAN-interface/derived-static-IP values this role computes
+#               at runtime, and no way to skip a question conditionally (most of that
+#               file's prompts are when:-gated on WAN mode, WG role, or fw_is_black_site).
+#               Two of them are genuinely unconditional and need no runtime-derived
+#               default though — WAN SSH enable and WAN activation are asked
+#               identically for every site including CLD today, with no when: clause
+#               at all — moved those two here as real vars_prompt. Everything else
+#               stays pause-based in 00_preflight_3_ask.yml, with an inline note there
+#               explaining exactly why each one can't follow.
 # =============================================================================
 
 - name: Example Music — Firewall configuration
@@ -25,7 +39,28 @@
   gather_facts: true
   become: true
   # vars from group_vars/firewalls/main.yml (wg_site_octets, hub tables) and
-  # group_vars/all/colours.yml are auto-loaded — no explicit vars_files needed
+  # group_vars/all/colours.yml are auto-loaded — no explicit vars_files needed.
+  # group_vars are resolved before vars_prompt runs, so colour codes (_c.*) below
+  # render correctly despite no facts having been gathered yet.
+
+  vars_prompt:
+    # No colour codes here (unlike every pause prompt elsewhere in this role) --
+    # confirmed empirically via --syntax-check: group_vars/all/colours.yml's _c is
+    # not available in vars_prompt's templating context, only inside tasks. Plain
+    # text is the correct, working form, not a stylistic choice.
+    - name: fw_wan_ssh_answer
+      prompt: |-
+        [!] SSH on WAN (port 22 open to the internet) is a security risk. LAN SSH is always enabled, WAN SSH defaults to OFF.
+        Enable SSH on WAN interface? [y/N]
+      default: "n"
+      private: false
+    - name: fw_wan_activate_answer
+      prompt: |-
+        ==== WAN Activation ====
+        [!] If you are connected via SSH over the WAN interface, bringing it up via nmcli mid-run may drop your session. All configs are written regardless -- say N and bring WAN up yourself afterwards with: nmcli con up wan
+        Activate WAN interface now? [y/N]
+      default: "n"
+      private: false
 
   roles:
     - firewall
