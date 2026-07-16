@@ -33,6 +33,18 @@
 #      without a full restart
 #
 # Changelog:
+#   2026-07-16  Robert picked this up for a real live test. Found it would have failed
+#               immediately, for any spoke_site, valid or not: wg_site_octets defaults to {}
+#               in group_vars/firewalls/main.yml and is only ever populated by
+#               roles/firewall/tasks/00_preflight_1_derive.yml's own read_csv + combine loop
+#               -- which belongs to the full firewallme role chain and this standalone
+#               playbook never included. Since Ansible facts don't persist between separate
+#               ansible-playbook invocations, "[add-wg-spoke] Validate spoke_site is a known
+#               site" would always see an empty map. Added the same read_csv/build-map pair
+#               directly here (sites_csv_path wasn't even in scope either -- it's a
+#               roles/firewall/defaults/main.yml role default, and this play has no roles:
+#               to inherit it from -- given its own explicit default matching every other
+#               consumer in the repo).
 #   2026-07-15  Robert asked (again) about auto-adding spoke peers, unaware this file already
 #               existed -- untouched since creation, never live-tested. Fixed the [Peer] comment
 #               line: was `# {{ spoke_site }} spoke — {{ spoke_host }}`, trimmed to a bare
@@ -50,10 +62,15 @@
   hosts: "{{ target }}"
   gather_facts: false
   become: true
-  # wg_site_octets and hub tables come from group_vars/firewalls/main.yml (auto-loaded)
+  # Hub tables (wg_hub_known_pubkeys etc.) come from group_vars/firewalls/main.yml
+  # (auto-loaded). wg_site_octets is built below, at runtime -- see changelog.
 
   vars:
     spoke_ansible_user: ansible
+    # Matches roles/firewall/defaults/main.yml's own default -- this standalone play has
+    # no roles: to inherit that default from, so it's restated here identically. Override
+    # with -e sites_csv_path=/path/to/sites.csv, same as every other consumer in the repo.
+    sites_csv_path: "/etc/example-music/sites.csv"
     _spoke_ip: >-
       {{
         spoke_ip
@@ -66,6 +83,27 @@
       }}
 
   tasks:
+
+    # ── Derive wg_site_octets from sites.csv ─────────────────────────────────
+    # Same read_csv + combine-loop logic as
+    # roles/firewall/tasks/00_preflight_1_derive.yml, which this standalone play
+    # doesn't include -- see the 2026-07-16 changelog entry above.
+
+    - name: "[add-wg-spoke] Load sites.csv from control node"
+      delegate_to: localhost
+      become: false
+      read_csv:
+        path: "{{ sites_csv_path }}"
+      register: _sites_csv_raw
+      vars:
+        ansible_connection: local
+
+    - name: "[add-wg-spoke] Build wg_site_octets from sites.csv"
+      ansible.builtin.set_fact:
+        wg_site_octets: "{{ wg_site_octets | default({}) | combine({item.Site: item.Subnet.split('.')[2] | int}) }}"
+      loop: "{{ _sites_csv_raw.list | selectattr('Subnet', 'ne', 'N/A') | selectattr('Site', 'ne', 'BRD') | list }}"
+      loop_control:
+        label: "{{ item.Site }}"
 
     # ── Validation ────────────────────────────────────────────────────────────
 
