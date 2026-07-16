@@ -22,7 +22,15 @@
 #               on every run. linux/tools.yml's own healing task
 #               (password_lock: false) still exists for nodes already stuck in the locked state
 #               from before this fix.
-#   2026-06-20  Initial file
+#   2026-07-16  Robert: "if something is done, don't re-run it" -- "[Packages] Run localepurge"
+#               had changed_when: true unconditionally, reporting changed on every routine run
+#               even when there was nothing left to purge. Now checks localepurge's own summary
+#               line ("Disk space freed in bytes: N") and only reports changed when N != 0.
+#               UNVERIFIED against a live run -- that exact line is localepurge's documented/
+#               typical non-verbose output, not confirmed against this sandbox (localepurge
+#               isn't installed here and installing it to test crosses the "don't install tools
+#               yourself" boundary). Watch the first real run after this: confirm it reports
+#               changed on a box that still has locales to purge, and NO CHANGE on a repeat run.
 # =============================================================================
 
 - name: "[Packages] Set DEBIAN_FRONTEND to suppress apt prompts"
@@ -54,7 +62,9 @@
 
 - name: "[Packages] Run localepurge"
   ansible.builtin.command: localepurge
-  changed_when: true
+  register: fw_localepurge_run
+  changed_when: >-
+    'Disk space freed in bytes: 0' not in fw_localepurge_run.stdout
 
 - name: "[Packages] Write VM firewall initramfs profile"
   ansible.builtin.copy:
