@@ -32,6 +32,27 @@
 #               byte-identical file when nothing changed. Activating a profile
 #               (`nmcli con up`) remains explicitly gated on fw_wan_activate, as it
 #               already was for WAN.
+#   2026-07-16  Robert (point 3/7 of the post-inventory-fix audit): now that every
+#               firewall's ansible_host is its VRK/WAN address (generate_inventory.py,
+#               2026-07-16), the interface Ansible's own SSH session rides on IS the
+#               one "[NM] Bring up WAN interface" below is about to (re)activate.
+#               `nmcli connection reload` (the write-profile handler) never touches an
+#               already-active connection's live address -- confirmed by this file's
+#               own 2026-07-09 note above -- but `nmcli con up wan` unconditionally
+#               (re)applies the profile, including a changed static address, to the
+#               live interface. If the box's WAN address is being corrected (e.g. it
+#               was built with the wrong octet, or a stale manual config) and this
+#               session is connected via that same interface, activating it live would
+#               move the address out from under the SSH connection mid-play -- the
+#               task itself wouldn't even report a failure, the play would just die.
+#               Added a same-shape check to 07_nftables.yml's existing
+#               nft_reload_would_strand_session: detect the mismatch before touching
+#               anything live, skip the live activation, and force fw_reboot_requested
+#               regardless of the operator's earlier answer at the confirmation
+#               prompt -- otherwise a corrected profile could sit on disk, inert,
+#               forever, satisfying nobody. Full playbook still runs to completion;
+#               only the live WAN reactivation is deferred, matching Robert's own
+#               "do the full run, ask to reboot once at the end" requirement.
 # =============================================================================
 
 # ── Remove stale auto-created NM connections for our interfaces ───────────────
@@ -91,18 +112,62 @@
     name: NetworkManager-wait-online.service
     enabled: true
 
+# ── Detect a live WAN address mismatch before activating ──────────────────────
+# See 2026-07-16 changelog entry above — activating a changed static WAN profile
+# live, on the same interface this SSH session is using, would drop the session
+# mid-play. Detect the overlap before "[NM] Bring up WAN interface" runs.
+
+- name: "[NM] Detect current session's outbound interface"
+  ansible.builtin.shell: |
+    ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}'
+  register: nm_current_iface
+  changed_when: false
+
+- name: "[NM] Detect WAN interface's current live address"
+  ansible.builtin.shell: |
+    nmcli -g IP4.ADDRESS dev show {{ fw_wan_iface }} 2>/dev/null | head -1 | cut -d/ -f1
+  register: nm_wan_ip_live
+  changed_when: false
+  failed_when: false
+
+- name: "[NM] Set flag — would activating WAN now strand this session?"
+  ansible.builtin.set_fact:
+    nm_wan_activate_would_strand_session: >-
+      {{
+        fw_wan_mode == 'static'
+        and nm_current_iface.stdout | trim == fw_wan_iface
+        and nm_wan_ip_live.stdout | trim != ''
+        and nm_wan_ip_live.stdout | trim != fw_wan_static_ip
+      }}
+
+- name: "[NM] Force reboot — WAN address correction can't be applied live safely"
+  ansible.builtin.set_fact:
+    fw_reboot_requested: true
+  when: nm_wan_activate_would_strand_session
+
+- name: "[NM] NOTE — WAN address correction deferred to reboot"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _c.Y }}[!]{{ _c.NC }} WAN address is changing from {{ nm_wan_ip_live.stdout | trim }}
+      to {{ fw_wan_static_ip }}, and this session is connected via {{ fw_wan_iface }} —
+      activating it now would drop this connection. The corrected profile is written
+      to disk and will take effect on reboot. A reboot has been forced for this run
+      regardless of the answer given earlier at the confirmation prompt.
+  when: nm_wan_activate_would_strand_session
+
 # ── Bring up interfaces — WAN first, then LAN ─────────────────────────────────
 # BUG FIX (mirrors firewallme.sh 2026-04-25 + 2026-06-14): WAN must come up and
 # be polled for a live IP before LAN is activated. The original order (LAN then
 # WAN) caused DHCP race conditions. WAN activation is still gated on fw_wan_activate
-# so SSH operators can skip it safely.
+# so SSH operators can skip it safely, and now also on
+# nm_wan_activate_would_strand_session (see above).
 
 - name: "[NM] Bring up WAN interface"
   ansible.builtin.shell: nmcli con up wan
   register: nm_wan_up
   changed_when: nm_wan_up.rc == 0
   failed_when: false
-  when: fw_wan_activate
+  when: fw_wan_activate and not nm_wan_activate_would_strand_session
 
 - name: "[NM] Wait for WAN interface to obtain an IP address"
   ansible.builtin.shell: |
@@ -112,7 +177,7 @@
   retries: 30
   delay: 1
   changed_when: false
-  when: fw_wan_activate
+  when: fw_wan_activate and not nm_wan_activate_would_strand_session
 
 - name: "[NM] Bring up LAN interface"
   ansible.builtin.shell: nmcli con up lan
@@ -125,7 +190,7 @@
     msg: >
       WAN interface not activated (fw_wan_activate=false).
       Bring it up manually after this run:  nmcli con up wan
-  when: not fw_wan_activate
+  when: not fw_wan_activate and not nm_wan_activate_would_strand_session
 
 # ── Enable IP forwarding ──────────────────────────────────────────────────────
 
