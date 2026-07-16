@@ -7,6 +7,23 @@
 # WireGuard port hole (hubs/spokes), WAN SSH optional, LAN SSH always,
 # Ansible IP allow, Cockpit, Zabbix agent, dnsmasq, DHCP.
 # Changelog:
+#   2026-07-16  Robert: fw_wan_ssh_enabled defaults to false (a per-site operator prompt,
+#               00_preflight_3_ask.yml, no black-site exception) -- meaning SSH on the WAN
+#               interface was blocked by default for every site unless explicitly opted into.
+#               Harmless before generate_inventory.py's own 2026-07-16 fix, since ansible_host
+#               was every firewall's LAN address then, where SSH is unconditionally allowed
+#               ("SSH LAN" rule, no gate at all). Now that ansible_host is the VRK/WAN address
+#               for every firewall (matching fw_wan_static_ip's own derivation), this default
+#               would silently block Ansible's own routine management connections the moment
+#               this ruleset is genuinely loaded and enforced -- a real, newly-exposed conflict,
+#               not present before that inventory change. Added a dedicated, always-on rule
+#               allowing SSH from the VRK network (192.168.139.0/24) specifically, independent
+#               of fw_wan_ssh_enabled -- that toggle is about exposing SSH to arbitrary WAN/
+#               internet sources, a separate and legitimately opt-in decision from Ansible's
+#               own management path. The existing session-safety check (further down this file)
+#               is deliberately left unchanged -- still defers a live reload to next boot when
+#               connected via WAN, which is the same end-of-run-reboot flow Robert wants
+#               regardless, and never risks stranding a session either way.
 #   2026-06-20  Initial file
 #   2026-07-09  SAFETY FIX: the ruleset reload previously fired unconditionally on any
 #               change, with no check of which interface the current session is using.
@@ -115,6 +132,17 @@
           iifname "{{ fw_lan_iface }}" tcp dport { 10050, 10051 } accept  comment "Zabbix agent LAN"
 
           # ── WAN inbound ───────────────────────────────────────────────
+
+          # SSH from the VRK/provisioning network — always allowed, independent of
+          # fw_wan_ssh_enabled below. This is Ansible's own management path (every
+          # firewall's ansible_host is this same interface's 192.168.139.<site octet>
+          # address, matching fw_wan_static_ip's derivation) -- not the same thing as
+          # "WAN SSH", which is about exposing SSH to arbitrary WAN/internet sources, a
+          # separate, legitimately opt-in decision. Without this, fw_wan_ssh_enabled
+          # defaulting to false (its own default, unchanged) would silently block
+          # Ansible's own routine connections the moment this ruleset is loaded.
+          iifname "{{ fw_wan_iface }}" ip saddr 192.168.139.0/24 tcp dport 22 accept  comment "SSH from VRK (Ansible management)"
+
       {% if fw_wan_ssh_enabled %}
       {% if fw_wan_ssh_src %}
           # SSH WAN — restricted to source IP
