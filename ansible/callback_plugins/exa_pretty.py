@@ -34,6 +34,29 @@
 #               separator dim text) for consistency with the [*] info colour
 #               and actual readability. DIM constant kept defined (unused) in
 #               case something else still references C.DIM externally.
+#   2026-07-16  Robert: this plugin's compact one-line-per-result display had repeatedly
+#               forced a full swap to ANSIBLE_STDOUT_CALLBACK=default this session just to
+#               see real error detail -- all-or-nothing, losing exa_pretty's formatting
+#               entirely for the whole run just to debug one task. Added two independent
+#               knobs instead:
+#                 1. -v/-vv/-vvv now works here the same way it does for ansible-core's own
+#                    "default" callback -- self._display.verbosity is already set from the
+#                    CLI flags with no plugin-side parsing needed; at verbosity > 0, the full
+#                    result dict is appended (via CallbackBase._dump_results, the same helper
+#                    "default" itself uses -- no_log/secret redaction included free) below
+#                    ok/changed/failed/skipped/unreachable lines alike. Doesn't change
+#                    anything at verbosity 0 (the existing compact display, unaffected).
+#                 2. low_noise option (config + ANSIBLE_EXA_LOW_NOISE env var, same
+#                    load-time pattern as suppress_unreachable below) -- suppresses ok/
+#                    no-change lines only when enabled. Skipped lines still show even in
+#                    low_noise mode (Robert: useful to see which conditional branches were
+#                    skipped) -- only "no change" ok lines were the actual pain point for
+#                    parsing output or running demos.
+#               Also documented (ansible.cfg, commented out by default): log_path is an
+#               existing ansible-core feature, not something this plugin needs to
+#               implement -- every self._display.display() call already goes through
+#               Ansible's own Display object, which mirrors to a log file automatically
+#               once log_path is set, colour codes stripped, no plugin code involved.
 # =================================================================================================
 
 from __future__ import absolute_import, division, print_function
@@ -49,6 +72,13 @@ options:
   suppress_unreachable:
     description:
       - If true, suppress unreachable host messages.
+    type: bool
+    default: false
+  low_noise:
+    description:
+      - If true, suppress ok/no-change result lines (skipped lines still show).
+        Useful for demos or when parsing output, where pages of "no change"
+        are just noise. Overridable per-run with ANSIBLE_EXA_LOW_NOISE.
     type: bool
     default: false
 """
@@ -128,6 +158,18 @@ class CallbackModule(CallbackBase):
     val = os.getenv("ANSIBLE_SUPPRESS_UNREACHABLE")
     if val is not None:
       self.suppress_unreachable = val.lower() in ("1", "true", "yes", "y")
+
+    self.low_noise = False
+    try:
+      opt = self.get_option("low_noise")
+      if opt is not None:
+        self.low_noise = bool(opt)
+    except Exception:
+      pass
+    val = os.getenv("ANSIBLE_EXA_LOW_NOISE")
+    if val is not None:
+      self.low_noise = val.lower() in ("1", "true", "yes", "y")
+
     self._unreach_counts = defaultdict(int)
     self._unreach_hosts  = defaultdict(list)
     self._unreach_total  = 0
@@ -150,6 +192,20 @@ class CallbackModule(CallbackBase):
     sys.stdout.write("\r" + padded)
     sys.stdout.flush()
 
+  def _maybe_show_verbose(self, result):
+    """
+    At -v and above, append the full result dict below the normal one-line
+    summary -- same helper (_dump_results) ansible-core's own "default"
+    callback uses, so no_log/secret redaction is inherited for free rather
+    than reimplemented here.
+    """
+    if self._display.verbosity <= 0:
+      return
+    dump = self._dump_results(result._result, indent=2)
+    pad = "      "
+    for line in dump.splitlines():
+      self._display.display(f"{pad}{C.CYAN}{line}{C.RESET}")
+
   def v2_playbook_on_start(self, playbook):
     self._load_settings()
     self._display.display(
@@ -170,9 +226,13 @@ class CallbackModule(CallbackBase):
     self._display.display(info(f"{C.CYAN}{_ts()}{C.RESET}  {task.get_name()}"))
 
   def v2_runner_on_ok(self, result):
+    changed = result._result.get("changed", False)
+
+    if not changed and getattr(self, "low_noise", False):
+      return  # low_noise: skip ok/no-change lines entirely (skipped lines still show)
+
     self._clear_counter()
     host    = result._host.get_name()
-    changed = result._result.get("changed", False)
     raw_msg = result._result.get("msg", "")
     ip      = fmt_ip(host)
     # Host column width: "[+] " (4) + ip column width, so wrapped lines of a
@@ -185,6 +245,7 @@ class CallbackModule(CallbackBase):
       self._display.display(chg(f"  {C.WHITE}{ip}{C.RESET}  {msg}"))
     else:
       self._display.display(ok(f"  {C.CYAN}{ip}{C.RESET}  {msg if msg else 'no change'}"))
+    self._maybe_show_verbose(result)
 
   def v2_runner_on_failed(self, result, ignore_errors=False):
     self._clear_counter()
@@ -197,12 +258,14 @@ class CallbackModule(CallbackBase):
     self._display.display(err(f"  {C.WHITE}{ip}{C.RESET}  {msg}"))
     if ignore_errors:
       self._display.display(warn("  (ignored)"))
+    self._maybe_show_verbose(result)
 
   def v2_runner_on_skipped(self, result):
     self._clear_counter()
     host = result._host.get_name()
     ip   = fmt_ip(host)
     self._display.display(warn(f"  {C.CYAN}{ip}{C.RESET}  skipped"))
+    self._maybe_show_verbose(result)
 
   def v2_runner_on_unreachable(self, result):
     if getattr(self, "suppress_unreachable", False):
@@ -216,6 +279,9 @@ class CallbackModule(CallbackBase):
     self._unreach_hosts[category].append(host)
     self._unreach_total += 1
     self._render_unreachable_line()
+    if self._display.verbosity > 0:
+      self._clear_counter()
+      self._maybe_show_verbose(result)
 
   def v2_playbook_on_stats(self, stats):
     self._clear_counter()
