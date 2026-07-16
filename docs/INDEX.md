@@ -41,6 +41,7 @@
 | [network-inventory.md](network-inventory.md) | NET-INV-001 | Comprehensive device and IP inventory — all sites, all nodes, health status, known issues |
 | [site-inventory.md](site-inventory.md) | NET-SITE-001 | Per-site commissioning checklists — build tracking, ZFS status, endpoint and equipment sign-off |
 | [INCIDENT-LOG.md](INCIDENT-LOG.md) | OPS-INC-001 | Blameless incident log — chronological, oldest first; what went wrong, root cause, and what changed as a result |
+| [linux-recovery-runbook.md](linux-recovery-runbook.md) | OPS-RECOVERY-001 | Recovering a Linux node where the `ansible` account is rejected entirely (console and SSH both) — GRUB rescue mode, unlock, verify |
 | [network-diagram.md](network-diagram.md) | NET-DIAG-001 | Per-site network diagrams index — Visual Standard, emoji legend, links to every region file below. Split from one 51-diagram file into per-region files 2026-07-13 (GitHub's mermaid renderer got unreliable with that many diagrams on one page) |
 | [network-diagram/cld.md](network-diagram/cld.md) | NET-DIAG-001-CLD | Cloud (CLD) network diagram |
 | [network-diagram/scotland.md](network-diagram/scotland.md) | NET-DIAG-001-SCT | Scotland network diagrams (FAL, EDI, GLA, CLY, DUN, PER, ABD) |
