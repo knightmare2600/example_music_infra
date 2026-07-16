@@ -474,6 +474,42 @@ stdout_callback   = exa_pretty
 callback_whitelist = exa_pretty
 ```
 
+### Verbose output and quiet ("demo") mode
+
+Two independent knobs, added 2026-07-16 after repeatedly needing to fully swap to
+`ANSIBLE_STDOUT_CALLBACK=default` just to see one task's real error detail:
+
+**`-v` / `-vv` / `-vvv`** — works the same way it does for `ansible-core`'s own `default`
+callback. No extra flags needed beyond the normal verbosity flags:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/linux/tools.yml -v
+```
+
+At verbosity 1 and above, the full result dict is printed underneath every ok/changed/failed/
+skipped/unreachable line — the same detail `-v` always gives you, just indented to stay readable
+under `exa_pretty`'s formatting instead of replacing it. No change at all with no `-v` flags.
+
+**`low_noise` mode** — for demos, or when you just want to see what actually changed without
+pages of `no change` lines scrolling past. Skipped lines still show (useful to see which
+conditional branches were skipped); only ok/no-change lines are suppressed. Two ways to turn it
+on:
+
+```bash
+# per-run, no config file changes needed
+ANSIBLE_EXA_LOW_NOISE=true ansible-playbook -i configs/inventory playbooks/linux/tools.yml
+```
+
+```ini
+# or permanently, in ansible.cfg
+[callback_exa_pretty]
+low_noise = True
+```
+
+The two combine — `low_noise` still suppresses the no-change lines even with `-v` on, so you get
+full detail on the changed/failed/skipped lines from a `low_noise` run without the no-change
+noise burying them.
+
 ### Colour Constants — group_vars/all/colours.yml
 
 The same ANSI colour codes used in the shell scripts are available as Ansible variables to all playbooks and roles. They are defined in `group_vars/all/colours.yml` and loaded automatically for every host in every play — no `vars_files` reference is needed.
@@ -590,6 +626,31 @@ The important line is:
 ```
 
 which confirms that passwordless sudo has been granted.
+
+### When the ansible account is rejected entirely — not just for sudo
+
+Real finding, live, 2026-07-16: a firewall node rejected *every* login as `ansible` — console and
+SSH public-key auth both, not password auth specifically. `sudo -l`/groups checks above are moot if
+you can't authenticate as the account at all in the first place.
+
+Cause: `firewallme.sh` used to call `passwd -l ansible` right after creating the account, intending
+"key/sudo only, no password auth." With `UsePAM yes` set (standard on every hardened SSH config in
+this repo), `pam_unix`'s account phase rejects a *locked* account for every login method, not just
+password — the lock and "no password set" are different things to PAM, and locking blocks
+everything. Fixed at the source (the script now uses `usermod -p '*'` — sets a definite,
+non-matching password hash instead of an administrative lock — never enables password auth, but
+doesn't block key auth either), plus a healing task in `linux/tools.yml` for any node already
+created under the old behaviour:
+
+```bash
+# what the healing task does, if you need to check or fix one by hand
+sudo passwd -S ansible   # look for L (locked) in the second field
+sudo usermod -U ansible  # clears the lock -- does NOT set or enable a real password
+```
+
+Don't reach for `passwd -u` here — on an account that never had a real password hash at all
+(exactly what a bare `useradd` without `-p` leaves), `passwd -u` refuses outright ("would result in
+a passwordless account") rather than clearing the lock. `usermod -U` doesn't have that guard.
 
 ---
 
