@@ -9,19 +9,21 @@
 # Usage (run from ansible/ root):
 #   ansible-playbook -i configs/inventory \
 #     playbooks/firewallme/playbooks/add-wg-spoke.yml \
-#     -e "target=EXAFWLFAL001 spoke_site=BER"
+#     -e "target=EXAFWLFAL001 spoke_site=BER spoke_host=EXAFWLBER001"
 #
-#   # Override the address to SSH-fetch keys from (rarely needed -- see below):
+#   # If the spoke isn't in inventory or has a different SSH address:
 #   ansible-playbook -i configs/inventory \
 #     playbooks/firewallme/playbooks/add-wg-spoke.yml \
-#     -e "target=EXAFWLFAL001 spoke_site=BER spoke_ip=192.168.169.1"
+#     -e "target=EXAFWLFAL001 spoke_site=BER spoke_ip=192.168.139.1"
 #
 # Required vars:
 #   target      — hub host (inventory name, e.g. EXAFWLFAL001)
 #   spoke_site  — spoke site code (e.g. BER), must exist in wg_site_octets
+#   spoke_host  — spoke inventory name; its own ansible_host (the VRK/WAN address
+#                 generate_inventory.py assigns every firewall) is used to SSH-fetch its keys
 #
 # Optional vars:
-#   spoke_ip        — IP to SSH-fetch pubkey/PSK from, overrides the default entirely
+#   spoke_ip        — IP to SSH-fetch pubkey/PSK from, overrides spoke_host's ansible_host
 #   spoke_tunnel_ip — override default 10.0.<octet>.2 tunnel address
 #
 # What it does:
@@ -32,6 +34,18 @@
 #      without a full restart
 #
 # Changelog:
+#   2026-07-16  Robert: the real bug was never in this file's address derivation at all -- it was
+#               generate_inventory.py assigning the wrong address (site LAN .253) to
+#               EXAFWL<site>001's ansible_host, when every firewall is actually managed over its
+#               VRK/WAN address (confirmed live: brt.ini had two devices sharing one IP, neither
+#               of them the right type). Fixed at the source (generate_inventory.py's own
+#               2026-07-16 changelog) -- ansible_host now correctly holds the VRK address for
+#               every site's primary firewall, CLD included. Reverted this file to its original,
+#               simplest form: hostvars[spoke_host]['ansible_host'] directly, no DNS name, no IP
+#               formula, no re-derivation -- spoke_host is back in the interface. The three
+#               entries below chased this same symptom through increasingly clever workarounds in
+#               this file before the actual root cause (the inventory itself) was found; kept for
+#               the record, but superseded.
 #   2026-07-16  Robert, live, third attempt: the "-wan"/provisioning-network address (previous
 #               entry below) resolved fine via DNS but failed with "No route to host" -- a
 #               routing-layer rejection, not a timeout. Wrong premise entirely: this estate's
@@ -102,20 +116,20 @@
     # no roles: to inherit that default from, so it's restated here identically. Override
     # with -e sites_csv_path=/path/to/sites.csv, same as every other consumer in the repo.
     sites_csv_path: "/etc/example-music/sites.csv"
-    # Plain per-site DNS name (exafwl<site>001.<domain>), resolving to the site's regular LAN
-    # address (192.168.<octet>.253) -- confirmed live 2026-07-16 (`host exafwlbrt001` ->
-    # 192.168.169.253) as the address that's actually routable from the control node right now.
-    # The earlier "-wan"/provisioning-network attempt was solving a problem that doesn't apply
-    # in this estate's real topology -- site LANs are already mutually routable, no WireGuard
-    # tunnel is a precondition for reaching them. Deliberately still a DNS name, not a hand-rolled
-    # IP, for the same reason as before: reuse the zone's own generated record instead of
-    # reconstructing it.
+    # spoke_host's own ansible_host, straight from inventory -- the real bug was never in this
+    # playbook's address derivation, it was generate_inventory.py assigning the wrong address
+    # (LAN .253) to EXAFWL<site>001's ansible_host in the first place. Now that it's fixed to
+    # assign the VRK/WAN address there (see generate_inventory.py's 2026-07-16 changelog),
+    # hostvars[spoke_host]['ansible_host'] is simply correct -- no DNS name, no IP formula,
+    # no re-derivation needed here at all.
     _spoke_ip: >-
       {{
         spoke_ip
         if spoke_ip is defined
-        else 'exafwl' + spoke_site | lower + '001.' + exa_domain
-        if spoke_site is defined
+        else hostvars[spoke_host]['ansible_host']
+        if (spoke_host is defined and spoke_host in hostvars and 'ansible_host' in hostvars[spoke_host])
+        else spoke_host
+        if spoke_host is defined
         else ''
       }}
 
@@ -148,6 +162,11 @@
       ansible.builtin.fail:
         msg: "spoke_site is required. Use -e 'spoke_site=BER'"
       when: spoke_site is not defined
+
+    - name: "[add-wg-spoke] Require spoke_host or spoke_ip"
+      ansible.builtin.fail:
+        msg: "Provide spoke_host (inventory name) or spoke_ip (direct IP) to SSH-fetch spoke keys."
+      when: _spoke_ip == ''
 
     - name: "[add-wg-spoke] Validate spoke_site is a known site"
       ansible.builtin.fail:
