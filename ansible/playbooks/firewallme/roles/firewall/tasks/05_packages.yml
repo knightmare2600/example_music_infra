@@ -31,22 +31,51 @@
 #               isn't installed here and installing it to test crosses the "don't install tools
 #               yourself" boundary). Watch the first real run after this: confirm it reports
 #               changed on a box that still has locales to purge, and NO CHANGE on a repeat run.
+#   2026-07-16  Robert, live (EXAFWLBRT001): "[Packages] Update apt cache" failed after 5
+#               retries mid-run -- this box's DNS is genuinely unreliable right now (temporary
+#               DHCP WAN, dnsmasq config from a previous run may not be serving correctly), and
+#               apt update needs working DNS to resolve the mirror. Robert's point: if the
+#               packages this role wants are already installed (true for any box that's been
+#               through this role before, like this one), there's no reason to touch the network
+#               at all here -- re-verifying against apt's cache when nothing needs to change was
+#               both pointless and a hard blocker on an unrelated, pre-existing DNS problem.
+#               Added a package_facts check (local dpkg query, no network) before the apt tasks;
+#               apt cache update and install now only run when fw_missing_packages is non-empty.
+#               Does NOT fix DNS itself -- if this box genuinely needs a NEW package, apt will
+#               still need working DNS to fetch it, same as before.
 # =============================================================================
 
 - name: "[Packages] Set DEBIAN_FRONTEND to suppress apt prompts"
   ansible.builtin.shell: echo "DEBIAN_FRONTEND=noninteractive" >> /etc/environment
   changed_when: false
 
-- name: "[Packages] Update apt cache"
+- name: "[Packages] Check which packages are already installed"
+  ansible.builtin.package_facts:
+    # Local dpkg query only, no network/DNS involved -- deliberately run before
+    # anything that needs the apt cache, so a box with everything already present
+    # never has to touch the network for this at all.
+
+- name: "[Packages] Determine missing packages"
+  ansible.builtin.set_fact:
+    fw_missing_packages: "{{ fw_packages | difference(ansible_facts.packages.keys() | list) }}"
+
+- name: "[Packages] Update apt cache (only if something is actually missing)"
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 3600
+  when: fw_missing_packages | length > 0
 
-- name: "[Packages] Install base packages"
+- name: "[Packages] Install base packages (only if something is actually missing)"
   ansible.builtin.apt:
-    name: "{{ fw_packages }}"
+    name: "{{ fw_missing_packages }}"
     state: present
     install_recommends: false
+  when: fw_missing_packages | length > 0
+
+- name: "[Packages] All packages already present — apt cache untouched"
+  ansible.builtin.debug:
+    msg: "{{ _c.G }}[+]{{ _c.NC }} All {{ fw_packages | length }} packages already installed — apt cache update skipped, no network/DNS dependency needed."
+  when: fw_missing_packages | length == 0
 
 - name: "[Packages] Configure localepurge (keep en_GB, en_US)"
   ansible.builtin.debconf:
