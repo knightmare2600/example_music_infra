@@ -17,6 +17,14 @@
 #               above excludes the WAN interface from DHCP entirely, so a reservation
 #               tied to it is dead regardless of which IP it names. "self LAN" line is
 #               unaffected and correct as-is.
+#   2026-07-16  Robert, live (EXAFWLBRT001, second re-run): "[dnsmasq] Remove
+#               systemd-resolved stub" failed with "Unlinking failed" -- this role's own
+#               previous run had written /etc/resolv.conf with attributes: "+i"
+#               (immutable, below), and nothing ever cleared that bit before the next
+#               run tried to delete the same file. chattr +i blocks unlink same as any
+#               other write. Added a chattr -i step immediately before the removal task
+#               (failed_when: false -- harmless no-op on a first run where the file
+#               either doesn't exist yet or was never made immutable).
 # =============================================================================
 
 - name: "[dnsmasq] Disable systemd-resolved (conflicts with dnsmasq on port 53)"
@@ -24,6 +32,11 @@
     name: systemd-resolved
     enabled: false
     state: stopped
+  failed_when: false
+
+- name: "[dnsmasq] Clear immutable attribute from /etc/resolv.conf (if a previous run set it)"
+  ansible.builtin.command: chattr -i /etc/resolv.conf
+  changed_when: false
   failed_when: false
 
 - name: "[dnsmasq] Remove systemd-resolved stub"
