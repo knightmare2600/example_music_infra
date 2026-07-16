@@ -10,6 +10,13 @@
 #   2026-06-29  Add iPXE vendor class DHCP tagging (dhcp-vendorclass + dhcp-option tags)
 #   2026-06-29  Add dnsmasq.service.d/wait-for-lan.conf drop-in so dnsmasq waits for
 #               network-online.target and the LAN device before starting
+#   2026-07-16  Robert, live (EXAFWLBRT001): the "self WAN" dhcp-host line silently
+#               pointed at fw_lan_ip, not a WAN address at all -- replace('.1','.1') is
+#               a no-op, spotted during an earlier audit pass but under-called as
+#               harmless dead config at the time. Removed outright: except-interface
+#               above excludes the WAN interface from DHCP entirely, so a reservation
+#               tied to it is dead regardless of which IP it names. "self LAN" line is
+#               unaffected and correct as-is.
 # =============================================================================
 
 - name: "[dnsmasq] Disable systemd-resolved (conflicts with dnsmasq on port 53)"
@@ -90,7 +97,12 @@
 
       # --- Static DHCP leases from inventory ---
       # EXA convention: .1=FWL .2-.4=BMC .5-.7=PVE .10=DC .11=DC2 .48=SBC/PBX .253=FWL2
-      dhcp-host={{ fw_wan_mac }},{{ fw_wan_iface }},{{ fw_lan_ip | replace('.1', '.1') }}  # self WAN
+      # No "self WAN" entry: except-interface={{ fw_wan_iface }} above excludes the WAN
+      # interface from DHCP entirely, so a dhcp-host reservation tied to it can never be
+      # served regardless of what IP it names -- it was also always the wrong IP (a
+      # no-op replace('.1','.1') filter meant it silently pointed at fw_lan_ip, not a
+      # WAN address at all). Confirmed dead on a real box (EXAFWLBRT001, 2026-07-16),
+      # not just on read.
       dhcp-host={{ fw_lan_mac }},{{ fw_lan_iface }},{{ fw_lan_ip }}  # self LAN
 
       # Ansible control node
