@@ -790,16 +790,16 @@ Malcolm and Jamie both have MacBook Pros with VMware Fusion. This section covers
 
 | Tool | Purpose | Install |
 |------|---------|---------|
-| VMware Fusion | ARM64 VM for testing firewall and Debian builds locally before touching production | vmware.com |
-| iTerm2 | Terminal — colour support, split panes, profile support | iterm2.com |
-| KeePassXC | Credential database — every password for every system lives here | keepassxc.org |
+| VMware Fusion | ARM64 VM for testing firewall and Debian builds locally before touching production | `brew install --cask vmware-fusion` |
+| iTerm2 | Terminal — colour support, split panes, profile support | `brew install --cask iterm2` |
+| KeePassXC | Credential database — every password for every system lives here | `brew install --cask keepassxc` |
 | `keepassxc-cli` | The real KeePassXC CLI — retrieve/add credentials in scripts without opening the GUI. `kpcli` is a *different*, older, Linux-only tool with partial KDBX4 support and no regex search — fallback only, not this. See `docs/Example Music Limited — KeePassXC CLI Automation.md` | `brew install keepassxc` (macOS) / `sudo apt install keepassxc` (Linux) |
 | OpenSSH | SSH client and agent — built into macOS | pre-installed |
 | ssh-agent | Key management — load your Ansible key at session start | `ssh-add ~/.ssh/id_ansible_ed25519` |
-| WinSCP | SFTP transfers to/from Windows machines | winscp.net |
-| Wireshark | Packet capture — for when you need to prove a negative at L2/L3 | wireshark.org |
+| WinSCP | SFTP transfers to/from Windows machines | Windows-only — no macOS build exists, Homebrew or otherwise. Run from a Windows admin box, or use `brew install --cask filezilla`/`cyberduck`/the built-in `scp`/`sftp` CLI for this from a Mac instead |
+| Wireshark | Packet capture — for when you need to prove a negative at L2/L3 | `brew install --cask wireshark` |
 | ipcalc | Subnet calculator | `brew install ipcalc` |
-| Virt-viewer | SPICE viewer for VM console access via Proxmox | gitlab.com/virt-viewer |
+| Virt-viewer | SPICE viewer for VM console access via Proxmox | `brew install virt-viewer` |
 | `jq` | JSON parsing — useful for Proxmox API and `nodeinfo.json` queries | `brew install jq` |
 | `wg` | WireGuard tools — key generation, peer inspection | `brew install wireguard-tools` |
 
