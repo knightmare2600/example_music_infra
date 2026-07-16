@@ -37,6 +37,7 @@
 - name: "[Summary] Display full configuration summary"
   ansible.builtin.debug:
     msg:
+      - ""
       - "{{ _c.C }}╔══════════════════════════════════════════════════════════════╗{{ _c.NC }}"
       - "{{ _c.C }}║{{ _c.NC }}{{ _c.W }}             Configuration Summary                       {{ _c.NC }}{{ _c.C }}║{{ _c.NC }}"
       - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
