@@ -164,6 +164,18 @@
 # which is satisfied before any interface has an IP. Endpoint resolution then
 # fails at boot. Drop-in adds After=network-online.target to wait for NM to
 # report a fully online interface before WireGuard starts.
+#
+# 2026-07-16, Robert: this alone still didn't make wg-quick reliably come up at boot on
+# real firewalls -- manual `wg-quick up wg0` needed on a number of nodes. Real gap:
+# NetworkManager-wait-online.service (enabled by 06_network_manager.yml) is a known,
+# documented source of this exact symptom -- it can consider itself "online" once *any*
+# connection settles, not specifically once OUR wan/lan profiles have, so
+# network-online.target can fire before this box's own interfaces are actually ready.
+# Added WG_ENDPOINT_RESOLUTION_RETRIES=infinity -- wg-quick's own, documented mechanism
+# for exactly this: retry resolving the [Peer] Endpoint hostname indefinitely at startup
+# instead of failing outright the first time DNS/network isn't fully ready, rather than
+# trying to out-guess NetworkManager's own readiness signal. Explicit here rather than
+# assumed already present in the shipped unit.
 
 - name: "[WireGuard] Create wg-quick@wg0 drop-in directory"
   ansible.builtin.file:
@@ -180,6 +192,9 @@
       [Unit]
       After=network-online.target
       Wants=network-online.target
+
+      [Service]
+      Environment=WG_ENDPOINT_RESOLUTION_RETRIES=infinity
   when: fw_wg_role != 'none' and not fw_is_black_site
 
 # ── Enable wg-quick ───────────────────────────────────────────────────────────
