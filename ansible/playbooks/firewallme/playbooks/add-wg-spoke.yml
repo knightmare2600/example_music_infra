@@ -38,13 +38,18 @@
 #               spoke being registered here is, by definition, not yet WireGuard-peered, so its
 #               regular site LAN is not reachable from the hub/control node at all yet -- the
 #               only address that IS reachable before the tunnel exists is the shared
-#               provisioning network, 192.168.139.<site octet> (same convention as
-#               fw_wan_static_ip in 00_preflight_1_derive.yml, confirmed against CLD's own real
-#               WAN IP: 192.168.139.69). Fixed _spoke_ip to derive from spoke_site's octet in
-#               wg_site_octets by default instead of the spoke's own inventory ansible_host.
-#               spoke_host is no longer used for IP derivation at all (dropped from the
-#               interface -- spoke_site alone is now sufficient); spoke_ip remains as an
-#               explicit full override for genuine edge cases.
+#               provisioning network, 192.168.139.<site octet>. First fix computed that IP
+#               directly ('192.168.139.' + wg_site_octets[spoke_site]) -- numerically correct
+#               for a non-CLD site, but the wrong way to get there: Robert pointed at
+#               ansible/playbooks/bind9/templates/db.forward-zone*.j2, which already generate
+#               and own a proper DNS name for exactly this, exafwl<site>001-wan.<domain>, an A
+#               record resolving to 192.168.139.<octet> for every site -- including CLD, whose
+#               WAN address is a genuine special case in those same templates (comes from
+#               devices.csv's EXAFWLVRK001 entry, not the site-octet pattern) that a hand-rolled
+#               IP formula here would have silently gotten wrong for CLD specifically. Now uses
+#               the DNS name directly, reusing the zone's own generator logic instead of
+#               duplicating it. spoke_host is dropped from the interface entirely -- spoke_site
+#               alone is sufficient; spoke_ip remains as an explicit full override.
 #   2026-07-16  Robert picked this up for a real live test. Found it would have failed
 #               immediately, for any spoke_site, valid or not: wg_site_octets defaults to {}
 #               in group_vars/firewalls/main.yml and is only ever populated by
@@ -83,19 +88,22 @@
     # no roles: to inherit that default from, so it's restated here identically. Override
     # with -e sites_csv_path=/path/to/sites.csv, same as every other consumer in the repo.
     sites_csv_path: "/etc/example-music/sites.csv"
-    # Default is the shared provisioning network (192.168.139.<octet>), not the spoke's own
-    # site LAN -- see 2026-07-16 changelog. wg_site_octets is built by the task below, which
-    # runs before this is first referenced (in "[add-wg-spoke] Fetch spoke public key via SSH"),
-    # so it's already populated by then; the "spoke_site in wg_site_octets" guard here avoids a
-    # raw Jinja2 KeyError for an invalid site code, falling through to '' instead so "[add-wg-
-    # spoke] Validate spoke_site is a known site" (which runs first) gives its own clean error
-    # message rather than this crashing on an undefined dict key.
+    # Default is the DNS name bind9-dns.yml itself already generates and owns for exactly this
+    # purpose (see db.forward-zone.j2/db.forward-zone.devices.j2's own "Firewall WAN addresses
+    # on provisioning network" section): exafwl<site>001-wan.<domain>, an A record resolving to
+    # 192.168.139.<site octet> for every site -- CLD's own special-cased address included, since
+    # DNS abstracts that away rather than needing to be re-derived here too. Deliberately a
+    # hostname, not a hand-rolled 192.168.139.<octet> IP string -- reusing the DNS zone's own
+    # generator logic instead of duplicating it (that duplication was the actual bug in the
+    # 2026-07-16 first attempt below: it happened to compute the right octet, but for the wrong
+    # reason -- CLD's special case exists precisely because the site-octet pattern doesn't hold
+    # universally, and this repo's own bind9 templates already encode that correctly).
     _spoke_ip: >-
       {{
         spoke_ip
         if spoke_ip is defined
-        else '192.168.139.' + wg_site_octets[spoke_site] | string
-        if (spoke_site is defined and spoke_site in wg_site_octets)
+        else 'exafwl' + spoke_site | lower + '001-wan.' + exa_domain
+        if spoke_site is defined
         else ''
       }}
 
