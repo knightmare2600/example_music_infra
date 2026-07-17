@@ -72,8 +72,13 @@ Notes on demo-data quirks handled:
       adds another dual-band person, give the second occurrence the same
       treatment, or 30-ad-users.yml will silently create/manage only one of
       the two intended AD objects.
-    • Locked=$true accounts are NOT reproducible programmatically; accounts will
-      be created in an unlocked state regardless of the TDF value.
+    • Locked=$true accounts ARE reproduced (fixed 2026-07-17, was previously
+      believed unfixable and documented as such here) -- 30-ad-users.yml
+      Section E sets the lockoutTime attribute directly for Locked=true users
+      (microsoft.ad.user's account_locked parameter only supports unlocking,
+      by design -- real AD lockouts are a side effect of failed logons, not
+      an admin-settable flag) and explicitly clears it via the module's
+      native account_locked: no for everyone else.
 
 Changelog:
     2026-07-17  --domain's default was a hardcoded 'jukebox.internal' literal,
