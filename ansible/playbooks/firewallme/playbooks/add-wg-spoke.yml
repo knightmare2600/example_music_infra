@@ -230,10 +230,33 @@
       changed_when: false
       failed_when: _spoke_psk_raw.rc != 0 or _spoke_psk_raw.stdout | trim == ''
 
+    # BUG FIX (2026-07-17, third pass): Robert explicitly required an Endpoint line
+    # on the hub's copy too, matching FAL/ODE/LIV exactly -- fetches the spoke's
+    # actual current listening port live, same as 10_register_spoke_on_hub.yml's
+    # equivalent fetch. Not a hardcoded 51820 -- a spoke's wg0.conf has no
+    # ListenPort set, so the kernel picks a random ephemeral port every time wg0
+    # starts, unlike a hub's fixed one. That port can change on a future wg0
+    # restart, at which point this Endpoint value goes stale until re-run -- a
+    # real, known limitation of a spoke-side peer entry, not a reason to omit it.
+
+    - name: "[add-wg-spoke] Fetch spoke's current WireGuard listening port via SSH"
+      ansible.builtin.shell: |
+        ssh -o ConnectTimeout=5 \
+            -o StrictHostKeyChecking=no \
+            -o BatchMode=yes \
+            -i {{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa \
+            {{ spoke_ansible_user }}@{{ _spoke_ip }} \
+            'sudo wg show wg0 listen-port'
+      register: _spoke_listen_port_raw
+      delegate_to: localhost
+      changed_when: false
+      failed_when: _spoke_listen_port_raw.rc != 0 or _spoke_listen_port_raw.stdout | trim == ''
+
     - name: "[add-wg-spoke] Set key facts"
       ansible.builtin.set_fact:
         _spoke_pubkey: "{{ _spoke_pubkey_raw.stdout | trim }}"
         _spoke_psk:    "{{ _spoke_psk_raw.stdout | trim }}"
+        _spoke_listen_port: "{{ _spoke_listen_port_raw.stdout | trim }}"
 
     - name: "[add-wg-spoke] Display fetched spoke details"
       ansible.builtin.debug:
@@ -270,6 +293,7 @@
           [Peer]
           PublicKey    = {{ _spoke_pubkey }}
           PresharedKey = {{ _spoke_psk }}
+          Endpoint     = {{ _spoke_ip }}:{{ _spoke_listen_port }}
           AllowedIPs   = {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet] + _spoke_extra_subnets) | join(', ') }}
           PersistentKeepalive = 25
       register: _wg_conf_changed
