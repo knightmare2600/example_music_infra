@@ -240,3 +240,51 @@
       loop: "{{ _users }}"
       loop_control:
         label: "{{ item.SamAccountName }} ← manager: {{ item.Manager }}"
+
+    # -------------------------------------------------------------------------
+    # Section E — Account lockout state
+    # BUG FIX (2026-07-17): this docstring used to say Locked=$true accounts
+    # were "not reproducible programmatically" -- confirmed against
+    # microsoft.ad.user's own docs that account_locked only accepts `false`
+    # (unlock); the module deliberately has no way to SET a lockout, since
+    # real AD lockouts are a side effect of failed logons, not an admin
+    # action. There is still a real, correct way to force it: AD represents
+    # lockout via the lockoutTime attribute directly, settable through the
+    # generic attributes: mechanism this file already uses nowhere else but
+    # 40-ad-computers.yml does for OS fields. 9 real users have Locked=true
+    # in the source data, including at least one (Alan Wilder) who is NOT
+    # also Disabled -- a genuinely distinct state this file dropped entirely
+    # before now.
+    #
+    # Caveat worth knowing: unlike a real lockout, this doesn't expire on its
+    # own according to the domain's account lockout duration policy unless
+    # that policy is itself set to indefinite (0, common, but not universal)
+    # -- re-running with Locked=false in the source data clears it via the
+    # module's own native account_locked: no, which IS fully supported.
+    # -------------------------------------------------------------------------
+
+    - name: "E | Lock accounts (Locked=true in source data)"
+      microsoft.ad.user:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        attributes:
+          set:
+            lockoutTime:
+              type:  date_time
+              value: "{{ now(utc=true).strftime('%Y-%m-%dT%H:%M:%SZ') }}"
+        state:            present
+      when: item.Locked | default(false)
+      loop: "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    - name: "E | Unlock accounts (Locked=false in source data)"
+      microsoft.ad.user:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        account_locked:   false
+        state:            present
+      when: not (item.Locked | default(false))
+      loop: "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
