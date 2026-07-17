@@ -53,6 +53,44 @@
 #               forever, satisfying nobody. Full playbook still runs to completion;
 #               only the live WAN reactivation is deferred, matching Robert's own
 #               "do the full run, ask to reboot once at the end" requirement.
+#   2026-07-17  Robert, live (EXAFWLBRT001): a corrected wan.nmconnection sat on disk,
+#               unread, across a reboot -- the WAN interface kept its old address.
+#               Root cause found by diffing against firewallme.sh directly: the shell
+#               script always masks ifupdown units, strips any ifupdown stanza for
+#               WAN/LAN from /etc/network/interfaces, and fixes NetworkManager.conf's
+#               [ifupdown] managed=false -> managed=true (script lines 1306-1401) --
+#               none of that was ever ported here. Robert confirmed this box was
+#               provisioned Ansible-only, firewallme.sh has never run on it (and never
+#               will) -- so it still has Debian's stock defaults: ifupdown holds the
+#               interface and/or NM is told to leave any interface still listed in
+#               /etc/network/interfaces alone. Either one means NM never manages the
+#               device at all, so no keyfile we write -- however correct -- has any
+#               live effect. Every other firewall in the estate was originally built
+#               by firewallme.sh at least once, which is why this never surfaced
+#               before now. Ported all three fixes, plus scoped the
+#               NetworkManager-wait-online drop-in to our actual WAN/LAN interfaces
+#               (firewallme.sh script lines 1403-1433) instead of the bare
+#               `enabled: true` this file had -- a generic wait-online has no
+#               guarantee our interfaces specifically are ready before dependent
+#               services (WireGuard, dnsmasq) start. Consuming a resulting NM restart
+#               requirement follows the exact same session-safety pattern as the
+#               2026-07-16 WAN-mismatch fix above: skip the live restart and force a
+#               reboot instead if the current session rides the WAN interface,
+#               otherwise restart and re-raise both connections immediately (mirrors
+#               firewallme.sh script lines 1470-1489, but gated on session-interface
+#               detection rather than only fw_wan_activate -- a stricter check, since
+#               a full NetworkManager restart is more disruptive than the single
+#               `nmcli con up wan` that check was originally written for).
+#   2026-07-17  Robert: the "restart NetworkManager live" branch above was dead code --
+#               ansible_host is the WAN address for every firewall in this estate
+#               (generate_inventory.py, 2026-07-16), so nm_current_iface always equals
+#               fw_wan_iface for any real SSH-driven run, meaning that branch's `when:`
+#               could never actually fire. Removed it and the two connection re-raise
+#               tasks that only existed to serve it, rather than leave unreachable code
+#               in a file this safety-critical. nm_restart_required now defers to
+#               reboot unconditionally -- there is no live-safe path for this role as
+#               currently operated (every session rides WAN), so there is nothing to
+#               branch on.
 # =============================================================================
 
 # ── Remove stale auto-created NM connections for our interfaces ───────────────
@@ -82,6 +120,68 @@
   loop: "{{ nm_stale_profiles }}"
   when: nm_stale_profiles | length > 0
 
+# ── Release interfaces from ifupdown — hand full control to NetworkManager ────
+# Mirrors firewallme.sh script lines 1306-1401. Unconditional on every run, same
+# as the shell script — cheap no-ops once already fixed, and the only way to
+# catch a box that was never touched by firewallme.sh in the first place.
+
+- name: "[NM] Mask ifupdown units"
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    masked: true
+    enabled: false
+  loop:
+    - networking.service
+    - "ifup@{{ fw_wan_iface }}.service"
+    - "ifup@{{ fw_lan_iface }}.service"
+  failed_when: false
+
+- name: "[NM] Check for /etc/network/interfaces"
+  ansible.builtin.stat:
+    path: /etc/network/interfaces
+  register: nm_interfaces_file
+
+- name: "[NM] Back up /etc/network/interfaces (first run only)"
+  ansible.builtin.copy:
+    src: /etc/network/interfaces
+    dest: /etc/network/interfaces.bak
+    remote_src: true
+    force: false
+    mode: preserve
+  when: nm_interfaces_file.stat.exists
+
+- name: "[NM] Remove ifupdown stanzas for our WAN/LAN interfaces"
+  ansible.builtin.shell: |
+    set -e
+    CHANGED=0
+    for IFACE in "{{ fw_wan_iface }}" "{{ fw_lan_iface }}"; do
+      if grep -qE "^(auto|allow-|iface)\s+${IFACE}\b" /etc/network/interfaces; then
+        sed -i "/^auto\s\+${IFACE}\b/d"      /etc/network/interfaces
+        sed -i "/^allow-.*\s${IFACE}\b/d"     /etc/network/interfaces
+        sed -i "/^iface[[:space:]]\+${IFACE}\b/,/^[^[:space:]]/d" /etc/network/interfaces
+        CHANGED=1
+      fi
+    done
+    echo "$CHANGED"
+  register: nm_interfaces_cleaned
+  changed_when: nm_interfaces_cleaned.stdout | trim == '1'
+  when: nm_interfaces_file.stat.exists
+
+- name: "[NM] Fix NetworkManager.conf managed=false -> managed=true"
+  ansible.builtin.replace:
+    path: /etc/NetworkManager/NetworkManager.conf
+    regexp: '^managed=false\s*$'
+    replace: 'managed=true'
+  register: nm_conf_fixed
+
+- name: "[NM] Set flag — does NetworkManager need a full restart to pick up ownership changes?"
+  ansible.builtin.set_fact:
+    nm_restart_required: >-
+      {{
+        (nm_interfaces_file.stat.exists and (nm_interfaces_cleaned.stdout | default('0') | trim == '1'))
+        or nm_conf_fixed.changed
+      }}
+
 # ── WAN / LAN profiles — templated keyfiles ───────────────────────────────────
 
 - name: "[NM] Write WAN connection profile"
@@ -105,7 +205,30 @@
 - name: "[NM] Flush handlers (reload NM connection state, if anything changed)"
   ansible.builtin.meta: flush_handlers
 
-# ── Enable NetworkManager-wait-online ─────────────────────────────────────────
+# ── NetworkManager-wait-online — scoped to our actual interfaces ──────────────
+# Mirrors firewallme.sh script lines 1403-1433. A bare `enabled: true` (this file's
+# previous approach) waits on NM's own default definition of "online", which has no
+# guarantee our specific WAN/LAN interfaces are actually ready before dependent
+# services (WireGuard, dnsmasq) start. When WAN isn't activated this run, wait for
+# LAN only — waiting on an interface that's deliberately not being brought up would
+# stall boot until the 60s timeout for no reason.
+
+- name: "[NM] Create NetworkManager-wait-online drop-in directory"
+  ansible.builtin.file:
+    path: /etc/systemd/system/NetworkManager-wait-online.service.d
+    state: directory
+    mode: '0755'
+
+- name: "[NM] Write NetworkManager-wait-online drop-in"
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/NetworkManager-wait-online.service.d/override.conf
+    mode: '0644'
+    content: |
+      # Example Music — NM wait-online: {{ 'require WAN + LAN' if fw_wan_activate else 'LAN only (WAN not yet activated)' }}
+      [Service]
+      ExecStart=
+      ExecStart=/usr/lib/NetworkManager/nm-online -s -q --timeout=60 --iface={{ fw_lan_iface }}{{ ' --iface=' + fw_wan_iface if fw_wan_activate else '' }}
+  notify: reload systemd daemon
 
 - name: "[NM] Enable NetworkManager-wait-online.service"
   ansible.builtin.systemd:
@@ -191,6 +314,30 @@
       WAN interface not activated (fw_wan_activate=false).
       Bring it up manually after this run:  nmcli con up wan
   when: not fw_wan_activate and not nm_wan_activate_would_strand_session
+
+# ── Consume nm_restart_required — always deferred to reboot ───────────────────
+# firewallme.sh (script lines 1470-1489) restarts NetworkManager live when
+# WAN_ACTIVATE is true, then re-raises both connections. That live-restart path is
+# not reachable here: ansible_host is the WAN address for every firewall in this
+# estate, so the session driving this play is always on fw_wan_iface, and a full
+# NetworkManager restart would drop it regardless of fw_wan_activate. No live
+# branch exists to guard -- every case defers.
+
+- name: "[NM] Force reboot — ifupdown/managed-state fix requires a NetworkManager restart"
+  ansible.builtin.set_fact:
+    fw_reboot_requested: true
+  when: nm_restart_required
+
+- name: "[NM] NOTE — ifupdown/managed-state fix deferred to reboot"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _c.Y }}[!]{{ _c.NC }} /etc/network/interfaces and/or NetworkManager.conf needed
+      correcting so NetworkManager actually manages {{ fw_wan_iface }}/{{ fw_lan_iface }} —
+      applying this live would require restarting NetworkManager, which would drop this
+      SSH session (it always rides {{ fw_wan_iface }}). The fix is written to disk and a
+      reboot has been forced for this run regardless of the answer given earlier at the
+      confirmation prompt.
+  when: nm_restart_required
 
 # ── Enable IP forwarding ──────────────────────────────────────────────────────
 
