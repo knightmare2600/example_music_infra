@@ -82,6 +82,39 @@
     ad_email_domain: "{{ ad_domain }}"
     ad_users_json:   "/etc/example-music/ad_users.json"
 
+    # BUG FIX (2026-07-17): the raw TDF CountryCode field is inconsistent --
+    # "Canada" (1 user) vs "CA" (5), "USA" (32) vs "US" (35) -- and the
+    # existing `country` param sends this straight to the c attribute, which
+    # microsoft.ad.user's own docs say strictly wants a 2-letter ISO 3166
+    # code. "Canada"/"USA" were never valid values there; this was an
+    # existing bug, not something introduced here. Normalises every raw
+    # value actually present in the data to its correct 2-letter code, and
+    # (Robert's ask) also maps to the full country name for the co
+    # attribute, which microsoft.ad.user has no dedicated param for at all --
+    # set via the generic attributes: mechanism in Section B below.
+    _country_lookup:
+      AT:     { code: AT, name: Austria }
+      AU:     { code: AU, name: Australia }
+      CA:     { code: CA, name: Canada }
+      Canada: { code: CA, name: Canada }
+      DE:     { code: DE, name: Germany }
+      DK:     { code: DK, name: Denmark }
+      GB:     { code: GB, name: United Kingdom }
+      IT:     { code: IT, name: Italy }
+      LB:     { code: LB, name: Lebanon }
+      NL:     { code: NL, name: Netherlands }
+      # BUG FIX: unquoted NO is a YAML 1.1 boolean literal (same class as
+      # yes/true/off) -- parsed as `false`, not the string "NO", both as a
+      # dict key AND as the code value below -- would have made every
+      # Norwegian user fail the CountryCode validation, and even if it
+      # somehow hadn't, sent a boolean where the AD c attribute expects a
+      # string. Caught by actually testing this dict, not by inspection.
+      "NO":   { code: "NO", name: Norway }
+      NZ:     { code: NZ, name: New Zealand }
+      SE:     { code: SE, name: Sweden }
+      US:     { code: US, name: United States }
+      USA:    { code: US, name: United States }
+
   pre_tasks:
 
     - name: "Skip — populate_ad not requested"
@@ -108,6 +141,18 @@
     - name: "Filter out users with unresolvable OU paths"
       set_fact:
         _users: "{{ _users_all | selectattr('ad_ou', 'ne', '') | list }}"
+
+    - name: "Fail — a user's CountryCode isn't in _country_lookup"
+      fail:
+        msg: >-
+          {{ item.SamAccountName }} has CountryCode '{{ item.CountryCode }}',
+          not covered by _country_lookup in this play's vars: -- add it there
+          (2-letter ISO code + full country name) rather than let it silently
+          fall through.
+      loop: "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+      when: item.CountryCode not in _country_lookup
 
     # BUG FIX (2026-07-17): items2dict silently keeps only the LAST match when
     # Name repeats -- confirmed live for Bruce Foxton/Rick Buckler (The Jam,
@@ -196,7 +241,18 @@
         city:             "{{ item.City if item.City else omit }}"
         postal_code:      "{{ item.PostalCode if item.PostalCode else omit }}"
         office:           "{{ item.physicalDeliveryOfficeName if item.physicalDeliveryOfficeName else omit }}"
-        country:          "{{ item.CountryCode if item.CountryCode else omit }}"
+        # No if/else omit fallback needed here (unlike the fields above) --
+        # the "Fail — a user's CountryCode isn't in _country_lookup" pre_task
+        # already guarantees every item.CountryCode reaching this point is a
+        # valid key, so a fallback branch would be dead code (same class of
+        # thing Robert caught earlier tonight in 06_network_manager.yml).
+        # Also: `omit` only works as a whole parameter value, not buried
+        # inside a nested dict like attributes.set -- co below would have
+        # been broken by an else: omit fallback even if one were needed.
+        country: "{{ _country_lookup[item.CountryCode].code }}"
+        attributes:
+          set:
+            co: "{{ _country_lookup[item.CountryCode].name }}"
         enabled:          "{{ not item.Disabled }}"
         password:         "{{ vault_ad_new_user_password }}"
         update_password:  on_create
