@@ -165,6 +165,17 @@
     # existing accounts keep their current password on re-runs.
     # -------------------------------------------------------------------------
 
+    # BUG FIX (2026-07-17): only `country` had an `if X else omit` guard --
+    # confirmed against microsoft.ad.user's own docs that every one of these
+    # params defaults to null (i.e. omitted = unset), meaning passing an
+    # explicit empty string is a different, riskier thing than not passing
+    # the param at all. 7 fields have real blank values in the data:
+    # telephoneNumber (23 users), mobile (89), Street/City/PostalCode
+    # (31-33 each), physicalDeliveryOfficeName (1 -- Vince Clarke), and
+    # surname would compute to '' for Shovell (M People, a real one-word
+    # stage name with no space to split Name on). Guarded all 7 the same way
+    # country already was.
+
     - name: "B | Create user accounts"
       microsoft.ad.user:
         name:             "{{ item.Name }}"
@@ -173,18 +184,18 @@
         path:             "{{ item.ad_ou }}"
         display_name:     "{{ item.Name }}"
         given_name:       "{{ item.Name.split(' ')[0] }}"
-        surname:          "{{ item.Name.split(' ')[1:] | join(' ') }}"
+        surname:          "{{ (item.Name.split(' ')[1:] | join(' ')) or omit }}"
         description:      "{{ item.Description }}"
         email_address:    "{{ item.Email }}"
         company:          "{{ item.Company }}"
         title:            "{{ item.Title }}"
         department:       "{{ item.Department }}"
-        telephone_number: "{{ item.telephoneNumber }}"
-        mobile_phone:     "{{ item.mobile }}"
-        street_address:   "{{ item.Street }}"
-        city:             "{{ item.City }}"
-        postal_code:      "{{ item.PostalCode }}"
-        office:           "{{ item.physicalDeliveryOfficeName }}"
+        telephone_number: "{{ item.telephoneNumber if item.telephoneNumber else omit }}"
+        mobile_phone:     "{{ item.mobile if item.mobile else omit }}"
+        street_address:   "{{ item.Street if item.Street else omit }}"
+        city:             "{{ item.City if item.City else omit }}"
+        postal_code:      "{{ item.PostalCode if item.PostalCode else omit }}"
+        office:           "{{ item.physicalDeliveryOfficeName if item.physicalDeliveryOfficeName else omit }}"
         country:          "{{ item.CountryCode if item.CountryCode else omit }}"
         enabled:          "{{ not item.Disabled }}"
         password:         "{{ vault_ad_new_user_password }}"
