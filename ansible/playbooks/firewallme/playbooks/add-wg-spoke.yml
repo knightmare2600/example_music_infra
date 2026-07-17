@@ -252,7 +252,12 @@
     # confirmed live on EXAFWLCLD001, BRT's entry was the only one of four peer
     # blocks without it. Doesn't block traffic here (BRT already keepalives from
     # its own side), but it's a real gap versus the hand-written FAL/ODE/LIV
-    # blocks in the same file -- fixed to match.
+    # blocks in the same file -- fixed to match. Also moved the site-code comment
+    # above [Peer] (was below, as "# {{ spoke_site }}") and doubled the hash to
+    # "## {{ spoke_site }}", matching the hand-written blocks exactly -- checked
+    # the real MOTD peer-name parser (firewallme.sh lines 2068-2071) first, it's
+    # position-independent (tracks the latest #-line until it hits a matching
+    # PublicKey), so this is purely cosmetic, not a functional change.
 
     - name: "[add-wg-spoke] Add/update [Peer] block in wg0.conf"
       ansible.builtin.blockinfile:
@@ -261,8 +266,8 @@
         mode: '0600'
         marker: "# {mark} ANSIBLE MANAGED BLOCK {{ spoke_site }}"
         block: |
+          ## {{ spoke_site }}
           [Peer]
-          # {{ spoke_site }}
           PublicKey    = {{ _spoke_pubkey }}
           PresharedKey = {{ _spoke_psk }}
           AllowedIPs   = {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet] + _spoke_extra_subnets) | join(', ') }}
