@@ -50,8 +50,9 @@
 #   • MustChangePassword is honoured from the TDF data.
 #   • Groups with names that don't match any AD group are silently skipped
 #     (ignore_errors on group assignment task). Run 20-ad-groups.yml first.
-#   • 353 user accounts from rawUsers. Room resource mailboxes and the
-#     template.users stub are excluded by the parser.
+#   • 357 user accounts from rawUsers as of 2026-07-17 (353 at v1.0.0 release,
+#     grown since). Room resource mailboxes and the template.users stub are
+#     excluded by the parser.
 # =============================================================================
 # Version history
 # =============================================================================
@@ -108,9 +109,25 @@
       set_fact:
         _users: "{{ _users_all | selectattr('ad_ou', 'ne', '') | list }}"
 
-    - name: "Build name-to-SAM lookup for manager resolution"
+    # BUG FIX (2026-07-17): items2dict silently keeps only the LAST match when
+    # Name repeats -- confirmed live for Bruce Foxton/Rick Buckler (The Jam,
+    # Manager: "Paul Weller"): with only this flat dict, both resolved to
+    # paul.weller.sc (Style Council) instead of paul.weller (The Jam), since
+    # Paul Weller's Style Council record happens to sort last in the file.
+    # Added _name_ou_to_sam below, keyed on Name + the reporting user's own
+    # ad_ou, so a manager sharing the SAME OU as their report resolves
+    # unambiguously -- falls back to this flat dict only for genuine
+    # cross-OU management relationships, where there's no same-OU candidate.
+    - name: "Build name-to-SAM lookup for manager resolution (fallback for cross-OU managers)"
       set_fact:
         _name_to_sam: "{{ _users | items2dict(key_name='Name', value_name='SamAccountName') }}"
+
+    - name: "Build (name, OU)-scoped SAM lookup for unambiguous same-OU manager resolution"
+      set_fact:
+        _name_ou_to_sam: "{{ _name_ou_to_sam | default({}) | combine({item.Name ~ '|' ~ item.ad_ou: item.SamAccountName}) }}"
+      loop: "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
 
     - name: "Preflight | Report user count"
       debug:
@@ -202,8 +219,11 @@
     # -------------------------------------------------------------------------
     # Section D — Manager
     # Runs after all accounts exist so the manager DN can be resolved.
-    # Manager in the TDF is a display name; we resolve it to a SamAccountName
-    # via the _name_to_sam dict built in pre_tasks.
+    # Manager in the TDF is a display name; we resolve it to a SamAccountName,
+    # preferring a candidate in the SAME ad_ou as the report (handles people
+    # who share a display name across different bands/OUs, e.g. two "Paul
+    # Weller" records for The Jam vs Style Council), falling back to the flat
+    # _name_to_sam lookup for genuine cross-OU management relationships.
     # Users whose manager is not in the TDF (e.g. external or unlisted) are
     # silently skipped by the 'when' condition.
     # -------------------------------------------------------------------------
@@ -212,11 +232,11 @@
       microsoft.ad.user:
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
-        manager:          "{{ _name_to_sam[item.Manager] }}"
+        manager:          "{{ _name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager]) }}"
         state:            present
       when:
         - item.Manager | length > 0
-        - item.Manager in _name_to_sam
+        - (item.Manager ~ '|' ~ item.ad_ou) in _name_ou_to_sam or item.Manager in _name_to_sam
       loop: "{{ _users }}"
       loop_control:
         label: "{{ item.SamAccountName }} ← manager: {{ item.Manager }}"

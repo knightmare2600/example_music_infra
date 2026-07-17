@@ -2810,7 +2810,7 @@
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-ATL-552901",
     "IPv4Address": "192.168.33.254",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Atlanta,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Atlanta,OU=Georgia,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
