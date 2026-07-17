@@ -248,6 +248,12 @@
     # blockinfile marker is keyed on spoke_site so each spoke has its own
     # named block. Re-running updates this spoke's block only.
 
+    # BUG FIX (2026-07-17): added peer blocks were missing PersistentKeepalive --
+    # confirmed live on EXAFWLCLD001, BRT's entry was the only one of four peer
+    # blocks without it. Doesn't block traffic here (BRT already keepalives from
+    # its own side), but it's a real gap versus the hand-written FAL/ODE/LIV
+    # blocks in the same file -- fixed to match.
+
     - name: "[add-wg-spoke] Add/update [Peer] block in wg0.conf"
       ansible.builtin.blockinfile:
         path: /etc/wireguard/wg0.conf
@@ -260,6 +266,7 @@
           PublicKey    = {{ _spoke_pubkey }}
           PresharedKey = {{ _spoke_psk }}
           AllowedIPs   = {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet] + _spoke_extra_subnets) | join(', ') }}
+          PersistentKeepalive = 25
       register: _wg_conf_changed
 
     # ── Live-add peer (no restart needed) ─────────────────────────────────────
