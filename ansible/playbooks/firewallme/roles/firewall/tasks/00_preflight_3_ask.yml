@@ -531,13 +531,20 @@
 # same {{ HOME }}/ansible/configs/ansible-id_rsa path group_vars/windows_nodes/
 # connection.yml already uses for the identical purpose -- not a new path.
 
+# BUG FIX (2026-07-17, second pass): fixed the SSH key-auth problem, then hit
+# "cat: /etc/wireguard/public.key: Permission denied" live -- 09_wireguard_deploy.yml
+# creates /etc/wireguard as `install -m 0700` (root-only traversal), so a plain
+# ansible user can't enter the directory regardless of the file's own permissions.
+# Added sudo -- relies on the same passwordless sudo every other become: true task
+# in this role already assumes for the ansible user.
+
 - name: "[Ask] Attempt SSH fetch of hub pubkey"
   ansible.builtin.shell: |
     ssh -o ConnectTimeout=5 \
         -o StrictHostKeyChecking=no \
         -o BatchMode=yes \
         -i {{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa \
-        ansible@{{ fw_wg_hub_ip }} 'cat /etc/wireguard/public.key' 2>/dev/null \
+        ansible@{{ fw_wg_hub_ip }} 'sudo cat /etc/wireguard/public.key' 2>/dev/null \
         || echo "FETCH_FAILED"
   register: fw_wg_hub_pubkey_ssh
   delegate_to: localhost
