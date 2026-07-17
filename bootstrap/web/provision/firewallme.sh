@@ -124,6 +124,17 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              the same day). Added a standalone defensive jq install immediately before this
 #              check, since unlike bindme.sh this script has no earlier jq install and the main
 #              BOOTSTRAP_PKGS batch (which includes jq) doesn't run until later.
+#  2026-07-17  BUG FIX, found live on EXAFWLCLD001 (provisioned by this script): the
+#              WAN_ACTIVATE=false branch of the wg-quick@wg0 start block only warned and
+#              skipped -- it never called systemctl enable, so the unit stayed disabled
+#              permanently, across every future reboot, until someone ran systemctl enable
+#              by hand. Confirmed live: systemctl status showed "disabled", journalctl had
+#              zero entries ever (systemd never even attempted to start it -- not a race,
+#              a unit that was never switched on). Now calls `systemctl enable` (no --now)
+#              in the else branch too -- safe on an active SSH session since it only creates
+#              the enablement symlink, it doesn't start/stop/restart anything. Ansible's
+#              equivalent port already got this right (enables in both branches); this
+#              brings the shell script's break-glass path to parity with it.
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
@@ -1901,7 +1912,11 @@ EOF
       bash -c 'wg setconf wg0 <(wg-quick strip /etc/wireguard/wg0.conf)' 2>/dev/null || true
     fi
   else
-    warn "WAN not activated — skipping WireGuard start (wg0 remains configured but stopped)."
+    # BUG FIX (2026-07-17): used to only warn and skip here, never enabling the unit at
+    # all -- see changelog above. `enable` alone (no --now) is safe on an active SSH
+    # session; it only creates the symlink, it doesn't touch anything running.
+    systemctl enable wg-quick@wg0
+    warn "WAN not activated — wg-quick@wg0 enabled for next boot, not started now (wg0 remains configured but stopped)."
   fi
 
 
