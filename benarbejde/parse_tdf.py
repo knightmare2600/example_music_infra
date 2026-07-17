@@ -27,6 +27,10 @@ Usage:
                          [--sites-csv /path/to/sites.csv]
                          [--out /path/to/output.json]
 
+    --domain defaults to ad_forest.json's domain_fqdn (co-located in
+    benarbejde/, the repo's single source of truth for this) rather than a
+    hardcoded literal -- pass --domain explicitly to override.
+
 Sections:
     users     — $Script:rawUsers: user accounts with computed ad_ou paths
     groups    — $Script:rawDemoGroups: security groups
@@ -52,11 +56,35 @@ Notes on demo-data quirks handled:
     • Unknown site codes for computers emit a warning to stderr and produce an
       empty ad_ou; those objects are skipped by the Ansible playbook.
     • Manager field is a display name string — the playbook resolves it to a
-      SamAccountName via a name→SAM lookup built from the users list itself.
+      SamAccountName via a name→SAM lookup built from the users list itself,
+      preferring a candidate in the same ad_ou as the report (30-ad-users.yml
+      Section D) since several real people appear twice under different bands
+      with the same display Name (see next point).
+    • A handful of real people who moved between two bands appear as two TDF
+      records with the same Name (e.g. Terry Hall: The Specials + Fun Boy
+      Three). AD requires a unique SamAccountName per object, so the SECOND
+      such record must carry a disambiguating suffix (e.g. terry.hall.fb3,
+      paul.weller.sc) — this is authored directly in the .tdf source, not
+      generated here. Five more real duplicates (Andy Cox, David Steele, Lars
+      Pedersen, Neil Finn, Eddie Rayner) were found missing this suffix
+      2026-07-17 and fixed the same way (andy.cox.beat, david.steele.beat,
+      lars.pedersen.1k, neil.finn.se, eddie.rayner.se) — if a future TDF edit
+      adds another dual-band person, give the second occurrence the same
+      treatment, or 30-ad-users.yml will silently create/manage only one of
+      the two intended AD objects.
     • Locked=$true accounts are NOT reproducible programmatically; accounts will
       be created in an unlocked state regardless of the TDF value.
 
 Changelog:
+    2026-07-17  --domain's default was a hardcoded 'jukebox.internal' literal,
+                independent of benarbejde/ad_forest.json (the repo's single
+                source of truth for this since 2026-07-09) -- meaning this
+                generator's default could silently drift from the real value
+                if the forest were ever renamed. Now reads domain_fqdn from
+                ad_forest.json (co-located in benarbejde/) at argparse-default
+                time, falling back to the old literal only if that file is
+                genuinely missing. --domain can still be passed explicitly to
+                override, unchanged.
     2026-07-09  Fixed a real parser bug in _arr(): the OU-array regex stopped at
                 the first ')', so a quoted element containing a literal paren
                 (e.g. 'Chicago (Band)') silently truncated, dropping the real
@@ -536,6 +564,21 @@ def _load_sites(csv_path):
 # Main
 # ---------------------------------------------------------------------------
 
+def _default_domain(script_dir: Path) -> str:
+    """Read domain_fqdn from ad_forest.json (single source of truth, co-located
+    with this script in benarbejde/), rather than a hardcoded literal here that
+    could silently drift from it. Falls back to 'jukebox.internal' only if the
+    file is genuinely missing -- it always ships alongside this script."""
+    forest_json = script_dir / 'ad_forest.json'
+    try:
+        with open(forest_json, encoding='utf-8') as f:
+            return json.load(f)['domain_fqdn']
+    except (FileNotFoundError, KeyError, json.JSONDecodeError) as exc:
+        print(f'WARNING: could not read domain_fqdn from {forest_json} ({exc}) '
+              f'-- falling back to jukebox.internal', file=sys.stderr)
+        return 'jukebox.internal'
+
+
 def main():
     script_dir = Path(__file__).resolve().parent
 
@@ -546,8 +589,9 @@ def main():
                     help='Path to jukebox.example.tdf (default: co-located with this script, '
                          'benarbejde/jukebox.example.tdf -- NOT /etc/example-music, this file is '
                          'never deployed there, see the module docstring)')
-    ap.add_argument('--domain',       default='jukebox.internal',
-                    help='AD internal domain for DNS hostname rewriting (default: jukebox.internal)')
+    ap.add_argument('--domain',       default=_default_domain(script_dir),
+                    help='AD internal domain for DNS hostname rewriting (default: read from '
+                         'ad_forest.json\'s domain_fqdn, the single source of truth)')
     ap.add_argument('--email-domain', default='',
                     help='Email/UPN domain for @example.* substitution (default: same as --domain)')
     ap.add_argument('--sites-csv',    default=str(script_dir / 'sites.csv'),
