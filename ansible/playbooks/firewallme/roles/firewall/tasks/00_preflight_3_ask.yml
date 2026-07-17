@@ -60,8 +60,8 @@
 # Resolved from an already-deployed nodeinfo.json if present, else prompted --
 # see ansible/tasks/nodeinfo_environment.yml (replaced the old standalone
 # /etc/.environment file 2026-07-10; fw_environment kept as the local alias
-# since 00_preflight_5_confirm.yml/07_nftables.yml/10_ssh_hardening.yml/
-# 12_finish.yml all already reference it by this name).
+# since 00_preflight_5_confirm.yml/07_nftables.yml/11_ssh_hardening.yml/
+# 13_finish.yml all already reference it by this name).
 
 - name: "[Ask] Resolve environment"
   ansible.builtin.include_tasks: ../../../../../tasks/nodeinfo_environment.yml
@@ -413,18 +413,29 @@
   when: fw_wg_role in ['hub-primary', 'hub-regional']
 
 # ── Spoke prompts ─────────────────────────────────────────────────────────────
+# Robert, 2026-07-17: the Known Hubs box used to be baked into this same pause
+# task's prompt text, so the task-start banner (printed once, before ANY of a
+# task's own output) ended up sitting above the whole box instead of directly
+# above the actual question. Split into a plain debug (the box, its own banner
+# is irrelevant reference info) followed by a short, clean pause -- matches how
+# "Prompt for primary hub site code" below already renders.
 
-- name: "[Ask] Prompt for spoke tunnel IP"
-  ansible.builtin.pause:
-    prompt: |-
-
+- name: "[Ask] Show known hubs"
+  ansible.builtin.debug:
+    msg: |-
       {{ _c.C }}╔══════════════════════════════════════════════════════╗{{ _c.NC }}
       {{ _c.C }}║              Known Hubs                              ║{{ _c.NC }}
       {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
       {% for hub, ip in wg_hub_wan_ips.items() %}
       {{ _c.C }}  {{ hub }}{{ _c.NC }}  {{ ip }}:{{ wg_hub_default_port }}
       {% endfor %}
-      {{ _c.C }}[*]{{ _c.NC }} Spoke tunnel IP [{{ _c.G }}10.0.{{ fw_site_octet }}.2{{ _c.NC }}]
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Prompt for spoke tunnel IP"
+  ansible.builtin.pause:
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} Spoke tunnel IP [{{ _c.G }}10.0.{{ fw_site_octet }}.2{{ _c.NC }}]"
   register: fw_wg_spoke_tunnel_ip_prompt
   when:
     - not fw_is_black_site
@@ -439,17 +450,34 @@
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
 
+# Robert, 2026-07-17: regional hubs (FAL/ODE/BRK) retired -- every spoke now
+# talks to CLD, full stop (see group_vars/firewalls/main.yml's 2026-07-17
+# changelog entry). Default changed from ODE to CLD; FAL/ODE/BRK still
+# accepted if typed explicitly (e.g. a deliberate exception), just no longer
+# the expected answer.
+
 - name: "[Ask] Prompt for primary hub site code"
   ansible.builtin.pause:
-    prompt: "{{ _c.C }}[*]{{ _c.NC }} Primary hub site code (e.g. {{ _c.G }}FAL{{ _c.NC }}, {{ _c.G }}ODE{{ _c.NC }}, {{ _c.G }}BRK{{ _c.NC }}) [default: {{ _c.G }}ODE{{ _c.NC }} for EU spokes]"
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} Primary hub site code [default: {{ _c.G }}CLD{{ _c.NC }} — the only hub every spoke connects to]"
   register: fw_wg_hub_site_prompt
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
 
+# BUG FIX (2026-07-17): `.user_input | default('CLD')` never actually applied on
+# Enter -- Jinja's default() filter only replaces genuinely undefined values, not
+# the empty string pause returns for a blank answer (confirmed empirically: ''
+# | default('CLD') renders ''). Every other prompt in this file already uses the
+# explicit "set inp, then check inp != ''" pattern below for exactly this reason;
+# this one didn't, and it went unnoticed while the default was ODE (rarely typed
+# by pressing Enter, since ODE was one choice among several). Now that CLD is
+# the expected answer for every spoke, pressing Enter needs to actually work.
+
 - name: "[Ask] Set hub site code"
   ansible.builtin.set_fact:
-    fw_wg_hub_site: "{{ fw_wg_hub_site_prompt.user_input | default('ODE') | trim | upper }}"
+    fw_wg_hub_site: >-
+      {%- set inp = fw_wg_hub_site_prompt.user_input | default('') | trim -%}
+      {{ (inp if inp != '' else 'CLD') | upper }}
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
@@ -550,7 +578,8 @@
       {{ _c.Y }}[!]{{ _c.NC }} SSH fetch failed. Get the hub pubkey manually:
       {{ _c.G }}    ssh ansible@{{ fw_wg_hub_ip }} 'cat /etc/wireguard/public.key'{{ _c.NC }}
       {% if known %}
-      {{ _c.Y }}[!]{{ _c.NC }} Last known good key for {{ fw_wg_hub_site }}: {{ _c.C }}{{ known }}{{ _c.NC }} — paste the hub public key (44 base64 chars ending in =)
+      {{ _c.Y }}[!]{{ _c.NC }} Last known good key for {{ fw_wg_hub_site }}: {{ _c.C }}{{ known }}{{ _c.NC }}
+      {{ _c.G }}    Press Enter to use this known key, or paste a different one if {{ fw_wg_hub_site }} has been rebuilt.{{ _c.NC }}
       {% else %}
       Paste the hub public key (44 base64 chars ending in =)
       {% endif %}
@@ -563,16 +592,74 @@
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
 
+# Robert, 2026-07-17: pressing Enter used to only accept the LIVE-fetched key --
+# if SSH fetch failed, that's empty, so Enter silently produced no key at all
+# even though a known-good key was shown right above as a reference. Falls back
+# to wg_hub_known_pubkeys[fw_wg_hub_site] (same source as firewallme.sh's own
+# HUB_KNOWN_PUBKEY table, confirmed identical values in
+# group_vars/firewalls/main.yml) whenever there's no live key to use instead.
+
 - name: "[Ask] Set final hub pubkey"
   ansible.builtin.set_fact:
     fw_wg_hub_pubkey: >-
       {%- set inp = fw_wg_hub_pubkey_confirm.user_input | default('') | trim -%}
-      {%- if inp == '' or inp | lower == 'accept' -%}{{ fw_wg_hub_pubkey_live }}
+      {%- set known = wg_hub_known_pubkeys[fw_wg_hub_site] | default('') -%}
+      {%- if inp == '' or inp | lower == 'accept' -%}
+      {{ fw_wg_hub_pubkey_live if fw_wg_hub_pubkey_live != '' else known }}
       {%- else -%}{{ inp }}
       {%- endif -%}
+    fw_wg_hub_pubkey_was_typed: >-
+      {%- set inp = fw_wg_hub_pubkey_confirm.user_input | default('') | trim -%}
+      {{ inp != '' and inp | lower != 'accept' }}
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
+
+# Robert, 2026-07-17: "smart-arse" cross-hub check -- firewallme.sh only ever
+# compares a pasted key against the SELECTED hub's own known-good key (script
+# lines 1077-1088). It has no equivalent for the actual copy-paste mistake
+# Robert described: operator selects one hub (e.g. CLD) but pastes a DIFFERENT
+# hub's key (e.g. FAL) by mistake -- since that pasted value IS a valid,
+# known-format key, the existing "differs from known good" check alone can't
+# tell that apart from a genuine post-rebuild key change. Reverse-looked-up
+# against every OTHER entry in wg_hub_known_pubkeys (the same table, no new
+# source of truth) -- only runs when the operator actually typed something,
+# never for an SSH-fetched or accepted/defaulted key.
+
+- name: "[Ask] Check whether the pasted key actually belongs to a different known hub"
+  ansible.builtin.set_fact:
+    fw_wg_hub_pubkey_crosshub_site: >-
+      {{ (wg_hub_known_pubkeys | dict2items
+          | selectattr('value', 'equalto', fw_wg_hub_pubkey)
+          | rejectattr('key', 'equalto', fw_wg_hub_site)
+          | map(attribute='key') | list | first | default('')) }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+    - fw_wg_hub_pubkey_was_typed | bool
+
+- name: "[Ask] Confirm cross-hub key mix-up"
+  ansible.builtin.pause:
+    prompt: |-
+      {{ _c.Y }}[!]{{ _c.NC }} I see you pasted the {{ _c.R }}{{ fw_wg_hub_pubkey_crosshub_site }}{{ _c.NC }} key
+      instead of the {{ _c.G }}{{ fw_wg_hub_site }}{{ _c.NC }} key you selected earlier — are you sure?
+      Type {{ _c.G }}yes{{ _c.NC }} to use it anyway, or Ctrl-C and re-run to correct it
+  register: fw_wg_hub_pubkey_crosshub_confirm
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+    - fw_wg_hub_pubkey_was_typed | bool
+    - fw_wg_hub_pubkey_crosshub_site | default('') != ''
+
+- name: "[Ask] FAIL — cross-hub key mix-up not confirmed"
+  ansible.builtin.fail:
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Aborted — pasted key belongs to {{ fw_wg_hub_pubkey_crosshub_site }}, not {{ fw_wg_hub_site }}."
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+    - fw_wg_hub_pubkey_was_typed | bool
+    - fw_wg_hub_pubkey_crosshub_site | default('') != ''
+    - fw_wg_hub_pubkey_crosshub_confirm.user_input | default('') | trim | lower != 'yes'
 
 - name: "[Ask] FAIL — no valid hub pubkey"
   ansible.builtin.fail:
