@@ -97,6 +97,24 @@
 #                     preflight.yml) changed from a hardcoded 'jukebox.internal'
 #                     literal to exa_domain, which is itself now derived from
 #                     benarbejde/ad_forest.json (single source of truth).
+# v1.3.1  2026-07-17  Section 2's country-OU filter only rejected Country ==
+#                     'Global' (CLD), letting FRD (Country=Denmark,
+#                     continent=Cloud Infrastructure) through and creating an
+#                     orphan OU=Denmark,OU=Cloud Infrastructure -- Section 4's
+#                     city-OU filter already correctly excludes continent ==
+#                     'Cloud Infrastructure' sites, so nothing was ever created
+#                     inside it. Section 2 now rejects the same continent,
+#                     matching Section 4. Also added Province for HAL/ATL/NYC
+#                     in sites.csv (were inconsistently blank vs every other
+#                     comparable city) and regenerated ad_computers.json,
+#                     which picked up one real fix: an Atlanta infrastructure
+#                     device now gets OU=Georgia in its path. ad_users.json
+#                     was unaffected by the sites.csv change -- user OU paths
+#                     are derived entirely from the source .tdf's own OU-array
+#                     notation (parse_tdf.py's _user_ou_path()), not from
+#                     sites.csv, so the ~21 users placed at country level for
+#                     Atlanta/NYC are a property of that frozen demo data, not
+#                     this schema gap.
 # =============================================================================
 
 - name: Build Active Directory OU schema
@@ -228,7 +246,9 @@
               if {'continent': item._continent, 'country': item.Country}
                  not in _cc_pairs | default([])
               else []) }}
-      loop: "{{ _sites | rejectattr('Country', 'equalto', 'Global') | list }}"
+      loop: >-
+        {{ _sites | rejectattr('Country', 'equalto', 'Global')
+                  | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list }}
       loop_control:
         label: "{{ item.Country }} ({{ item._continent }})"
 
