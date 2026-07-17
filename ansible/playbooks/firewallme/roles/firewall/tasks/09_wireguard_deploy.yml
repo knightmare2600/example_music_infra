@@ -5,7 +5,11 @@
 # =============================================================================
 # Mirrors firewallme.sh WG section: generate keypair (preserve if exists),
 # write /etc/wireguard/wg0.conf, enable wg-quick@wg0.
-# Skipped for CLD (fw_is_black_site) and fw_wg_role == 'none'.
+# Key generation / wg0.conf write / drop-in are skipped for CLD (fw_is_black_site)
+# and fw_wg_role == 'none' -- Ansible doesn't know how to construct CLD's unique
+# hand-maintained multi-hub peer list. Enabling/starting/verifying wg-quick@wg0
+# is NOT skipped for CLD (2026-07-17) -- every FWL node must have WireGuard
+# enabled, full stop; that guarantee doesn't need CLD-specific config knowledge.
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-06-29  Add wg-quick@wg0 network-online.target drop-in (bug fix: shipped
@@ -253,6 +257,15 @@
   when: fw_wg_role != 'none' and not fw_is_black_site
 
 # ── Enable wg-quick ───────────────────────────────────────────────────────────
+# Robert, 2026-07-17: NOT gated on fw_is_black_site, unlike everything above --
+# "isolated" (CLD's config isn't templated by this role, since Ansible doesn't
+# know how to build its unique hand-maintained multi-hub peer list) is not the
+# same thing as "skip a baseline guarantee we already know every FWL node
+# needs." His words: "ALL FWL nodes MUST have wireguard enabled, otherwise
+# what is the point in having it on a FWL node?" Key generation/wg0.conf
+# write/drop-in stay CLD-excluded above (Ansible genuinely can't construct
+# CLD's config); the service being enabled does not need CLD-specific
+# knowledge, so there's no reason to skip it there too.
 
 - name: "[WireGuard] Enable wg-quick@wg0 (queued for boot only — WAN not yet activated)"
   ansible.builtin.systemd:
@@ -261,7 +274,6 @@
     daemon_reload: true
   when:
     - fw_wg_role != 'none'
-    - not fw_is_black_site
     - not fw_wan_activate
 
 - name: "[WireGuard] Enable and start wg-quick@wg0"
@@ -272,7 +284,6 @@
     daemon_reload: true
   when:
     - fw_wg_role != 'none'
-    - not fw_is_black_site
     - fw_wan_activate
 
 - name: "[WireGuard] NOTE — start deferred"
@@ -283,7 +294,6 @@
       {{ _c.G }}systemctl start wg-quick@wg0{{ _c.NC }}
   when:
     - fw_wg_role != 'none'
-    - not fw_is_black_site
     - not fw_wan_activate
 
 - name: "[WireGuard] Flush handlers"
@@ -296,7 +306,6 @@
   failed_when: false
   when:
     - fw_wg_role != 'none'
-    - not fw_is_black_site
     - fw_wan_activate
 
 - name: "[WireGuard] Show wg status"
@@ -305,5 +314,4 @@
   when:
     - fw_wan_activate
     - fw_wg_role != 'none'
-    - not fw_is_black_site
     - wg_show.stdout_lines is defined
