@@ -30,6 +30,12 @@
 # same as any other repo edit; never auto-committed.
 # =============================================================================
 
+# BUG FIX (2026-07-17): this block was missing PersistentKeepalive -- confirmed
+# live on EXAFWLCLD001 via add-wg-spoke.yml (same template shape), the only one
+# of four peer blocks without it. Doesn't block traffic here (the spoke already
+# keepalives from its own side), but it's a real gap versus the hand-written
+# hub-to-hub peer blocks in the same file -- fixed to match.
+
 - name: "[Hub register] Add/update this spoke's [Peer] block on its hub"
   ansible.builtin.blockinfile:
     path: /etc/wireguard/wg0.conf
@@ -42,6 +48,7 @@
       PublicKey    = {{ fw_wg_pubkey }}
       PresharedKey = {{ fw_wg_psk }}
       AllowedIPs   = {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(', ') }}
+      PersistentKeepalive = 25
   delegate_to: "{{ fw_wg_hub_ip }}"
   become: true
   register: fw_hub_peer_block
