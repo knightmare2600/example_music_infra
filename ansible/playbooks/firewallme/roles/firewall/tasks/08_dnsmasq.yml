@@ -109,7 +109,13 @@
       dhcp-generate-names=tag:{{ fw_site_code | lower }},dhcp%s.{{ fw_site_code | lower }}
 
       # --- Static DHCP leases from inventory ---
-      # EXA convention: .1=FWL .2-.4=BMC .5-.7=PVE .10=DC .11=DC2 .48=SBC/PBX .253=FWL2
+      # EXA convention: .1=RTR (upstream router, not this box) .2-.4=BMC .5-.7=PVE
+      # .10=DC .11=DC2 .48=SBC/PBX .253=FWL1 (this box, primary) .254=FWL2 (secondary,
+      # not yet built). Corrected 2026-07-17 -- this comment previously had it backwards
+      # (".1=FWL .253=FWL2"), matching a mistake also found and fixed the same day in
+      # 00_preflight_3_ask.yml's LAN IP prompt; see docs/site-inventory.md and
+      # docs/bootstrap/bootstrapping.md, both already corrected for the same .1-vs-.253
+      # confusion in an earlier audit.
       # No "self WAN" entry: except-interface={{ fw_wan_iface }} above excludes the WAN
       # interface from DHCP entirely, so a dhcp-host reservation tied to it can never be
       # served regardless of what IP it names -- it was also always the wrong IP (a
