@@ -98,17 +98,26 @@ ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
 
 ## Credentials
 
-`00-dc-preflight.yml` prompts for **four** values at runtime:
+`00-dc-preflight.yml` prompts for **nine** values at runtime, all bundled into
+one `vars_prompt` block so they're asked up front, before any task runs:
 
-| Prompt                    | Purpose                                   | Default                   |
-|---------------------------|-------------------------------------------|---------------------------|
-| Domain Admin username     | Used for domain join + AD-DS promotion    | `JUKEBOX\Administrator`   |
-| Domain Admin password     | As above                                  | *(masked)*                |
-| Local Administrator user  | Pre-domain-join SSH auth + DSRM password  | `Administrator`           |
-| Local Administrator pass  | As above                                  | *(masked)*                |
+| Prompt                       | Purpose                                        | Default                                    |
+|------------------------------|-------------------------------------------------|---------------------------------------------|
+| AD domain FQDN               | Forest/domain name                              | `ad_domain_name` (from `ad_forest.json`)     |
+| AD NetBIOS name              | Short domain name                               | `ad_netbios_name` (from `ad_forest.json`)    |
+| First DC in forest? (yes/no) | Only matters if no replication source is reachable | `no`                                     |
+| **DSRM password**            | **Directory Services Restore Mode — the single most critical, unrecoverable-if-lost credential in this whole play** | `vault_dc_dsrm_password` (empty unless the vault is populated) |
+| Domain Admin username        | Used for domain join + AD-DS promotion          | `<NETBIOS>\Administrator`                    |
+| Domain Admin password        | As above                                        | `vault_dc_admin_password` (empty unless the vault is populated) |
+| Local Administrator username | Pre-domain-join SSH auth                        | `Administrator`                              |
+| Local Administrator password | As above                                        | *(masked, no default)*                       |
+| Populate AD? (yes/no)        | Run `windows_adschema/site.yml` after promotion | `no`                                          |
 
 Credentials are **never written to disk** — they live only as in-memory
-facts for the duration of the play.
+facts for the duration of the play. The DSRM and Domain Admin password
+defaults resolve to an **empty string** unless `group_vars/windows_dc/vault.yml`
+is populated — an empty DSRM password will fail forest creation outright, so
+populate the vault before a real run rather than relying on the prompt default.
 
 ---
 
