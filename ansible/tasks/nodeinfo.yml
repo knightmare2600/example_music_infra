@@ -4,7 +4,7 @@
 # Example Music Limited — Write /etc/example-music/nodeinfo.json
 # =============================================================================
 # Shared by every playbook that writes nodeinfo.json (linux/tools.yml,
-# proxmox/30-example-music.yml, firewallme's 12_finish.yml, rudder_server.yml)
+# proxmox/30-example-music.yml, firewallme's 13_finish.yml, rudder_server.yml)
 # instead of each hand-writing its own near-identical copy/vars block. The
 # base fields (hostname, fqdn, role, site, city, country, entity,
 # ansible_managed, bootstrapped_at/by, environment) come from data every
@@ -28,7 +28,7 @@
 # =============================================================================
 # Changelog:
 #   2026-07-07  Initial file — extracted from proxmox/30-example-music.yml,
-#               firewallme's 12_finish.yml, and rudder_server.yml, which had
+#               firewallme's 13_finish.yml, and rudder_server.yml, which had
 #               each independently hand-written the same 9 base fields under
 #               different variable names (pve_city vs fw_site_city vs
 #               rudder_site_city, etc). Also wired into linux/tools.yml so
