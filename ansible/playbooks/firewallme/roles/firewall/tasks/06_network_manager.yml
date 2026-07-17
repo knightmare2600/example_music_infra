@@ -263,19 +263,26 @@
         and nm_wan_ip_live.stdout | trim != fw_wan_static_ip
       }}
 
-- name: "[NM] Force reboot — WAN address correction can't be applied live safely"
-  ansible.builtin.set_fact:
-    fw_reboot_requested: true
-  when: nm_wan_activate_would_strand_session
+# Robert, 2026-07-17: this used to force fw_reboot_requested=true here regardless
+# of what the operator actually answered at the confirmation prompt. Reversed on
+# his explicit instruction: this same code path runs on every routine re-run
+# against any existing site, not just first-time builds -- an automatic,
+# unannounced reboot of a live, currently-working remote firewall (think a
+# Sydney site, operator sitting in Edinburgh) is not something to force silently,
+# no matter how justified the correction is. The corrected profile is still always
+# written to disk regardless; the decision to actually reboot is now left entirely
+# to whatever the operator already answered earlier -- never overridden here, only
+# reported clearly.
 
-- name: "[NM] NOTE — WAN address correction deferred to reboot"
+- name: "[NM] NOTE — WAN address correction needs a reboot to take effect"
   ansible.builtin.debug:
     msg: >-
       {{ _c.Y }}[!]{{ _c.NC }} WAN address is changing from {{ nm_wan_ip_live.stdout | trim }}
       to {{ fw_wan_static_ip }}, and this session is connected via {{ fw_wan_iface }} —
       activating it now would drop this connection. The corrected profile is written
-      to disk and will take effect on reboot. A reboot has been forced for this run
-      regardless of the answer given earlier at the confirmation prompt.
+      to disk — nothing has been rebooted.
+      {{ 'A reboot was requested earlier and will apply this when it happens.' if fw_reboot_requested
+         else 'You said no to a reboot earlier — that is respected, nothing is being rebooted automatically. Reboot this host yourself when it is safe to, or this correction will not take effect.' }}
   when: nm_wan_activate_would_strand_session
 
 # ── Bring up interfaces — WAN first, then LAN ─────────────────────────────────
@@ -315,28 +322,29 @@
       Bring it up manually after this run:  nmcli con up wan
   when: not fw_wan_activate and not nm_wan_activate_would_strand_session
 
-# ── Consume nm_restart_required — always deferred to reboot ───────────────────
+# ── Consume nm_restart_required — reported, never forced ───────────────────────
 # firewallme.sh (script lines 1470-1489) restarts NetworkManager live when
 # WAN_ACTIVATE is true, then re-raises both connections. That live-restart path is
 # not reachable here: ansible_host is the WAN address for every firewall in this
 # estate, so the session driving this play is always on fw_wan_iface, and a full
-# NetworkManager restart would drop it regardless of fw_wan_activate. No live
-# branch exists to guard -- every case defers.
+# NetworkManager restart would drop it regardless of fw_wan_activate.
+#
+# Robert, 2026-07-17: this used to force fw_reboot_requested=true regardless of the
+# operator's answer, same as the WAN-mismatch case above -- reversed for the same
+# reason (see that changelog entry). Never override the operator's own answer with
+# an automatic reboot of a possibly-live remote site; just report clearly that this
+# fix needs one to take effect and hasn't happened yet.
 
-- name: "[NM] Force reboot — ifupdown/managed-state fix requires a NetworkManager restart"
-  ansible.builtin.set_fact:
-    fw_reboot_requested: true
-  when: nm_restart_required
-
-- name: "[NM] NOTE — ifupdown/managed-state fix deferred to reboot"
+- name: "[NM] NOTE — ifupdown/managed-state fix needs a reboot to take effect"
   ansible.builtin.debug:
     msg: >-
       {{ _c.Y }}[!]{{ _c.NC }} /etc/network/interfaces and/or NetworkManager.conf needed
       correcting so NetworkManager actually manages {{ fw_wan_iface }}/{{ fw_lan_iface }} —
       applying this live would require restarting NetworkManager, which would drop this
-      SSH session (it always rides {{ fw_wan_iface }}). The fix is written to disk and a
-      reboot has been forced for this run regardless of the answer given earlier at the
-      confirmation prompt.
+      SSH session (it always rides {{ fw_wan_iface }}). The fix is written to disk —
+      nothing has been rebooted.
+      {{ 'A reboot was requested earlier and will apply this when it happens.' if fw_reboot_requested
+         else 'You said no to a reboot earlier — that is respected, nothing is being rebooted automatically. Reboot this host yourself when it is safe to, or this fix will not take effect.' }}
   when: nm_restart_required
 
 # ── Enable IP forwarding ──────────────────────────────────────────────────────
