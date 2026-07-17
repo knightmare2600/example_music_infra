@@ -231,6 +231,8 @@
     - name: "[add-wg-spoke] Add/update [Peer] block in wg0.conf"
       ansible.builtin.blockinfile:
         path: /etc/wireguard/wg0.conf
+        create: true
+        mode: '0600'
         marker: "# {mark} ANSIBLE MANAGED BLOCK {{ spoke_site }}"
         block: |
           [Peer]
@@ -263,6 +265,35 @@
         path: "/tmp/.wg-psk-{{ spoke_site }}"
         state: absent
       when: _wg_conf_changed.changed
+
+    # ── Keep wg_hub_topology in sync ──────────────────────────────────────────
+    # Same script 10_register_spoke_on_hub.yml uses (the automatic path run as
+    # part of a spoke's own provisioning) -- kept in sync so this standalone,
+    # manual path behaves identically rather than silently skipping the
+    # topology update the automatic path now does.
+
+    - name: "[add-wg-spoke] Derive hub site code from target's hostname"
+      ansible.builtin.set_fact:
+        _hub_site_code: >-
+          {{ target | upper | regex_search('^EXAFWL([A-Z]{3})[0-9]{3}$', '\1') | first | default('') }}
+
+    - name: "[add-wg-spoke] Update wg_hub_topology in group_vars/firewalls/main.yml"
+      ansible.builtin.command: >-
+        python3 {{ playbook_dir }}/../roles/firewall/files/update_hub_topology.py
+        {{ playbook_dir }}/../../../configs/inventory/group_vars/firewalls/main.yml
+        {{ spoke_site }} {{ _hub_site_code }}
+      delegate_to: localhost
+      become: false
+      register: _topology_update
+      changed_when: "'CHANGED' in _topology_update.stdout"
+
+    - name: "[add-wg-spoke] NOTE — wg_hub_topology updated, not committed"
+      ansible.builtin.debug:
+        msg: >-
+          wg_hub_topology updated: {{ spoke_site }} now listed under the target hub's
+          spokes in group_vars/firewalls/main.yml on the control node — uncommitted,
+          review and commit it yourself.
+      when: _topology_update.changed
 
     # ── Summary ───────────────────────────────────────────────────────────────
 

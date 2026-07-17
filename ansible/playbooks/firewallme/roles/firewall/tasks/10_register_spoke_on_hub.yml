@@ -1,0 +1,119 @@
+---
+# =============================================================================
+# roles/firewall/tasks/10_register_spoke_on_hub.yml
+# Example Music Limited — Automatically register this spoke as a peer on its hub
+# =============================================================================
+# Robert, 2026-07-17: onboarding a new spoke used to require a separate, manual
+# invocation of playbooks/add-wg-spoke.yml against the hub afterward -- easy to
+# forget, and EXAFWLBRT001 sat unregistered on EXAFWLCLD001 for exactly that
+# reason. Automated here instead, as the last step of a spoke's own run, reusing
+# the exact same blockinfile mechanism (marker-per-site, never a full-file
+# rewrite) 09_wireguard_deploy.yml's hub [Interface] block already uses -- this
+# can never "fight" that block or any other spoke's peer block, regardless of
+# run order, since blockinfile only ever touches its own marker.
+#
+# Delegates directly to fw_wg_hub_ip (the hub's WAN/VRK address, already
+# resolved during the ask phase) rather than a named inventory host -- a spoke
+# provisioned from a single-site inventory file (e.g. -i configs/inventory/brt.ini)
+# has no guarantee the hub is even a defined host in that inventory, so
+# delegate_to by inventory name would fail. Every firewall shares the same
+# ansible_user/SSH key, so delegating to a bare IP works the same way the
+# read-only pubkey fetch in 00_preflight_3_ask.yml already does.
+#
+# Also updates wg_hub_topology in group_vars/firewalls/main.yml (the git-tracked
+# list other spokes' AllowedIPs are built from -- see 00_preflight_4_post_ask.yml)
+# via files/update_hub_topology.py, so sibling spokes under the same hub don't
+# silently miss this one on their next run. That script edits only the specific
+# "spokes: [...]" line for the hubs involved via regex, never a full YAML
+# parse/re-dump, so every comment in the file survives. Left as an uncommitted
+# local change on the control node -- Robert reviews and commits it himself,
+# same as any other repo edit; never auto-committed.
+# =============================================================================
+
+- name: "[Hub register] Add/update this spoke's [Peer] block on its hub"
+  ansible.builtin.blockinfile:
+    path: /etc/wireguard/wg0.conf
+    create: true
+    mode: '0600'
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ fw_site_code }}"
+    block: |
+      [Peer]
+      # {{ fw_site_code }}
+      PublicKey    = {{ fw_wg_pubkey }}
+      PresharedKey = {{ fw_wg_psk }}
+      AllowedIPs   = {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(', ') }}
+  delegate_to: "{{ fw_wg_hub_ip }}"
+  become: true
+  register: fw_hub_peer_block
+  when:
+    - fw_wg_role == 'spoke'
+    - not fw_is_black_site
+
+- name: "[Hub register] Write PSK to tmpfile for wg set"
+  ansible.builtin.copy:
+    dest: "/tmp/.wg-psk-{{ fw_site_code }}"
+    content: "{{ fw_wg_psk }}"
+    mode: '0600'
+  delegate_to: "{{ fw_wg_hub_ip }}"
+  become: true
+  when:
+    - fw_wg_role == 'spoke'
+    - not fw_is_black_site
+    - fw_hub_peer_block.changed
+
+- name: "[Hub register] Live-add peer via wg set (no restart needed)"
+  ansible.builtin.shell: |
+    wg set wg0 peer {{ fw_wg_pubkey }} \
+      preshared-key /tmp/.wg-psk-{{ fw_site_code }} \
+      allowed-ips {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(',') }}
+  delegate_to: "{{ fw_wg_hub_ip }}"
+  become: true
+  changed_when: true
+  when:
+    - fw_wg_role == 'spoke'
+    - not fw_is_black_site
+    - fw_hub_peer_block.changed
+
+- name: "[Hub register] Remove PSK tmpfile"
+  ansible.builtin.file:
+    path: "/tmp/.wg-psk-{{ fw_site_code }}"
+    state: absent
+  delegate_to: "{{ fw_wg_hub_ip }}"
+  become: true
+  when:
+    - fw_wg_role == 'spoke'
+    - not fw_is_black_site
+    - fw_hub_peer_block.changed
+
+- name: "[Hub register] Update wg_hub_topology in group_vars/firewalls/main.yml"
+  ansible.builtin.command: >-
+    python3 {{ role_path }}/files/update_hub_topology.py
+    {{ playbook_dir }}/../../../configs/inventory/group_vars/firewalls/main.yml
+    {{ fw_site_code }} {{ fw_wg_hub_site }}
+  delegate_to: localhost
+  become: false
+  register: fw_hub_topology_update
+  changed_when: "'CHANGED' in fw_hub_topology_update.stdout"
+  when:
+    - fw_wg_role == 'spoke'
+    - not fw_is_black_site
+
+- name: "[Hub register] NOTE — wg_hub_topology updated, not committed"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _c.G }}[+]{{ _c.NC }} wg_hub_topology updated: {{ fw_site_code }} now listed under
+      {{ fw_wg_hub_site }}'s spokes in group_vars/firewalls/main.yml on the control node —
+      uncommitted, review and commit it yourself.
+  when:
+    - fw_wg_role == 'spoke'
+    - not fw_is_black_site
+    - fw_hub_topology_update.changed
+
+- name: "[Hub register] Summary"
+  ansible.builtin.debug:
+    msg: >-
+      {{ '[+] Registered' if fw_hub_peer_block.changed else '[+] Already registered (no change)' }}
+      as a peer on {{ fw_wg_hub_site }} ({{ fw_wg_hub_ip }}).
+  when:
+    - fw_wg_role == 'spoke'
+    - not fw_is_black_site
