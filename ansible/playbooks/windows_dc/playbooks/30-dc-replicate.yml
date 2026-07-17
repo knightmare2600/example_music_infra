@@ -35,6 +35,23 @@
 #               00-dc-preflight.yml) — group_vars/windows_nodes/
 #               connection.yml is inventory-group-gated and doesn't apply
 #               on ungrouped/ad hoc runs, which broke every win_* task here.
+#   2026-07-17  Two fixes:
+#               (1) dc_hub_sites was hardcoded here as a play-level vars:
+#               override ([FAL, ODE, BRK]), which always outranks group_vars
+#               regardless of a | default() at point of use -- silently
+#               shadowing group_vars/windows_dc/vars.yml's own live-derived
+#               value (from benarbejde/ad_forest.json). If hub_sites in
+#               ad_forest.json were ever changed, this file would silently
+#               keep using the stale list. Removed the override, added the
+#               same | default(['FAL','ODE','BRK']) fallback
+#               00-dc-preflight.yml already uses, at each of this file's own
+#               three usage sites instead.
+#               (2) The Stage 0 operator-confirmation pause had no when:
+#               guard at all -- fired unconditionally even when health checks
+#               found nothing wrong, blocking indefinitely on any automated/
+#               non-interactive run. Now only asks when dcdiag/repadmin
+#               actually found an issue; a clean pre-sync check proceeds
+#               straight to the sync.
 # =============================================================================
 
 - name: Windows DC — Replication verification and force-sync
@@ -45,10 +62,14 @@
     dc_sysvol_wait_retries: 20
     dc_sysvol_wait_delay:   30     # seconds between retries (total up to 10 min)
 
-    dc_hub_sites:
-      - FAL
-      - ODE
-      - BRK
+    # dc_hub_sites is NOT set here -- it used to be a hardcoded play-level
+    # override ([FAL, ODE, BRK]), which always outranks group_vars regardless
+    # of a | default() at the point of use, silently shadowing
+    # group_vars/windows_dc/vars.yml's own live-derived value (from
+    # benarbejde/ad_forest.json). Fixed 2026-07-17 -- removed the override, and
+    # added the same | default(['FAL','ODE','BRK']) fallback 00-dc-preflight.yml
+    # already uses for bare/ungrouped-target runs, at each of this file's own
+    # three usage sites below, instead of overriding here.
 
     # ansible_connection/shell_type/port: see 00-dc-preflight.yml — set here
     # too since group_vars/windows_nodes/connection.yml is inventory-group-
@@ -174,6 +195,15 @@
       when: dc_presync_repl_errors | length > 0
       tags: dc_replicate
 
+    # BUG FIX (2026-07-17): this pause had no when: guard at all -- it always
+    # fired, even when Stage 0's own health checks found nothing wrong,
+    # breaking the "ask only when there's something to decide" pattern used
+    # elsewhere in this repo, and blocking indefinitely in any automated/
+    # non-interactive run regardless of health. Now only asks when the health
+    # checks actually found something (dcdiag failures or repadmin errors) --
+    # a clean pre-sync check proceeds straight to the sync, since there's
+    # nothing for a human to weigh in on.
+
     - name: "[Stage 0] Operator confirmation — proceed with replication sync?"
       ansible.builtin.pause:
         prompt: |
@@ -185,10 +215,13 @@
           dcdiag failures : {{ dc_presync_fail_count }}
           repadmin errors : {{ dc_presync_repl_errors | length }} line(s)
 
+          Pre-sync health checks found issues above -- review before proceeding.
+
           Proceeding will run: repadmin /syncall /AdeP (forces full sync of
           all AD partitions from all replication partners).
 
           Press Enter to proceed, or Ctrl+C then A to abort.
+      when: dc_presync_fail_count | int > 0 or dc_presync_repl_errors | length > 0
       tags: dc_replicate
 
     # =========================================================================
@@ -358,7 +391,7 @@
         msg: >
           {{ _c.C }}[*]{{ _c.NC }} Checking FSMO role placement
           (informational — no roles will be moved automatically)...
-      when: host_site in dc_hub_sites or host_site == 'CLD'
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
       tags: dc_replicate
 
     - name: Query FSMO role holders
@@ -375,7 +408,7 @@
         } | ConvertTo-Json
       register: dc_fsmo_raw
       changed_when: false
-      when: host_site in dc_hub_sites or host_site == 'CLD'
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
       tags: dc_replicate
 
     - name: Parse and display FSMO roles
@@ -390,7 +423,7 @@
           - "{{ _c.Y }}[!]{{ _c.NC }} FSMO moves are NOT automatic — use ntdsutil or"
           - "  Move-ADDirectoryServerOperationMasterRole if roles need relocating."
       when:
-        - host_site in dc_hub_sites or host_site == 'CLD'
+        - host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
         - dc_fsmo_raw is defined
         - dc_fsmo_raw.stdout | trim != ''
       tags: dc_replicate
