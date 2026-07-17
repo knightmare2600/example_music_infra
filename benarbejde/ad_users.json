@@ -1760,8 +1760,8 @@
   },
   {
     "Name": "Andy Cox",
-    "SamAccountName": "andy.cox",
-    "UserPrincipalName": "andy.cox@jukebox.internal",
+    "SamAccountName": "andy.cox.beat",
+    "UserPrincipalName": "andy.cox.beat@jukebox.internal",
     "Groups": [
       "The Beat"
     ],
@@ -1788,8 +1788,8 @@
   },
   {
     "Name": "David Steele",
-    "SamAccountName": "david.steele",
-    "UserPrincipalName": "david.steele@jukebox.internal",
+    "SamAccountName": "david.steele.beat",
+    "UserPrincipalName": "david.steele.beat@jukebox.internal",
     "Groups": [
       "The Beat"
     ],
@@ -5041,8 +5041,8 @@
   },
   {
     "Name": "Lars Pedersen",
-    "SamAccountName": "lars.pedersen",
-    "UserPrincipalName": "lars.pedersen@jukebox.internal",
+    "SamAccountName": "lars.pedersen.1k",
+    "UserPrincipalName": "lars.pedersen.1k@jukebox.internal",
     "Groups": [
       "1000 Keys",
       "Vocalists"
@@ -9490,8 +9490,8 @@
   },
   {
     "Name": "Neil Finn",
-    "SamAccountName": "neil.finn",
-    "UserPrincipalName": "neil.finn@jukebox.internal",
+    "SamAccountName": "neil.finn.se",
+    "UserPrincipalName": "neil.finn.se@jukebox.internal",
     "Groups": [
       "Split Enz"
     ],
@@ -9518,8 +9518,8 @@
   },
   {
     "Name": "Eddie Rayner",
-    "SamAccountName": "eddie.rayner",
-    "UserPrincipalName": "eddie.rayner@jukebox.internal",
+    "SamAccountName": "eddie.rayner.se",
+    "UserPrincipalName": "eddie.rayner.se@jukebox.internal",
     "Groups": [
       "Split Enz"
     ],
