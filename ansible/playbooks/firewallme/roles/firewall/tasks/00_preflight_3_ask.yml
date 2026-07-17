@@ -164,30 +164,38 @@
     msg: "{{ _c.R }}[ERROR]{{ _c.NC }} LAN and WAN cannot be the same interface."
   when: fw_lan_iface == fw_wan_iface
 
-# ── LAN IP — standard sites (.1 or .253 of site subnet) — was 01_interfaces.yml ──
-
-- name: "[Ask] Prompt for LAN IP (.1 or .253)"
-  ansible.builtin.pause:
-    prompt: |-
-      {{ _c.C }}  → {{ fw_site_code }}: subnet {{ fw_subnet }}.0/24{{ _c.NC }}
-      {{ _c.C }}  → WG tunnel 10.0.{{ fw_site_octet }}.0/24{{ _c.NC }}
-
-      Use {{ _c.G }}.1{{ _c.NC }}  ({{ fw_lan_ip_1 }})   — primary internet gateway
-      Use {{ _c.G }}.253{{ _c.NC }} ({{ fw_lan_ip_253 }}) — secondary internet gateway — enter {{ _c.G }}1{{ _c.NC }} or {{ _c.G }}253{{ _c.NC }}
-  register: fw_lan_octet_prompt
-  when: not fw_is_black_site
-
-- name: "[Ask] Validate LAN IP choice"
-  ansible.builtin.assert:
-    that:
-      - fw_lan_octet_prompt.user_input | trim in ['1', '253']
-    fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Invalid choice — enter 1 or 253."
-  when: not fw_is_black_site
-
-- name: "[Ask] Set LAN IP"
-  ansible.builtin.set_fact:
-    fw_lan_ip: "{{ fw_subnet }}.{{ fw_lan_octet_prompt.user_input | trim }}"
-  when: not fw_is_black_site
+# ── LAN IP — standard sites — now derived, not asked (00_preflight_1_derive.yml) ──
+# Robert, 2026-07-17: this used to ask the operator to pick .1 or .253 -- but .1 is
+# not a valid firewall LAN IP at all (it's EXARTR<SITE>001, the upstream router;
+# see docs/site-inventory.md and docs/bootstrap/bootstrapping.md). The real
+# convention is fixed by the hostname's instance number (001=.253, 002=.254), so
+# it's derived silently in 00_preflight_1_derive.yml instead. Left the original
+# prompt commented out rather than deleted, in case a genuine free-choice need
+# ever comes up -- fw_lan_ip_1/fw_lan_ip_253 are still derived in that file for
+# exactly that reason.
+#
+# - name: "[Ask] Prompt for LAN IP (.1 or .253)"
+#   ansible.builtin.pause:
+#     prompt: |-
+#       {{ _c.C }}  → {{ fw_site_code }}: subnet {{ fw_subnet }}.0/24{{ _c.NC }}
+#       {{ _c.C }}  → WG tunnel 10.0.{{ fw_site_octet }}.0/24{{ _c.NC }}
+#
+#       Use {{ _c.G }}.1{{ _c.NC }}  ({{ fw_lan_ip_1 }})   — primary internet gateway
+#       Use {{ _c.G }}.253{{ _c.NC }} ({{ fw_lan_ip_253 }}) — secondary internet gateway — enter {{ _c.G }}1{{ _c.NC }} or {{ _c.G }}253{{ _c.NC }}
+#   register: fw_lan_octet_prompt
+#   when: not fw_is_black_site
+#
+# - name: "[Ask] Validate LAN IP choice"
+#   ansible.builtin.assert:
+#     that:
+#       - fw_lan_octet_prompt.user_input | trim in ['1', '253']
+#     fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Invalid choice — enter 1 or 253."
+#   when: not fw_is_black_site
+#
+# - name: "[Ask] Set LAN IP"
+#   ansible.builtin.set_fact:
+#     fw_lan_ip: "{{ fw_subnet }}.{{ fw_lan_octet_prompt.user_input | trim }}"
+#   when: not fw_is_black_site
 
 # ── LAN IP — CLD black site (LAN is on a different subnet, free-form entry) ──
 
