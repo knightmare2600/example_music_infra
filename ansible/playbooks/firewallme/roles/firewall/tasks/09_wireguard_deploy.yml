@@ -186,6 +186,19 @@
 # instead of failing outright the first time DNS/network isn't fully ready, rather than
 # trying to out-guess NetworkManager's own readiness signal. Explicit here rather than
 # assumed already present in the shipped unit.
+#
+# 2026-07-17, Robert: found live on EXAFWLCLD001 that this drop-in was missing three
+# things firewallme.sh's own drop-in already has (script lines 1877-1894, its
+# 2026-06-28 changelog entry #3) -- ported all three rather than leave this port
+# thinner than the trusted script it's replacing:
+#   - After=NetworkManager-wait-online.service explicitly (not just network-online.target,
+#     which is a generic target NetworkManager-wait-online.service itself feeds into --
+#     naming the specific unit directly is what firewallme.sh does and is more precise).
+#   - ExecStartPre=/bin/sleep 5 -- a settle period after NM reports ready, covering the
+#     residual race where route table updates are still in progress.
+#   - Restart=on-failure / RestartSec=10 / StartLimitIntervalSec=60 / StartLimitBurst=3 --
+#     self-heals the rare case where wg-quick still loses the race, instead of leaving
+#     wg0 permanently down until someone notices and runs `wg-quick up` by hand.
 
 - name: "[WireGuard] Create wg-quick@wg0 drop-in directory"
   ansible.builtin.file:
@@ -200,11 +213,16 @@
     mode: '0644'
     content: |
       [Unit]
-      After=network-online.target
+      After=network-online.target NetworkManager-wait-online.service
       Wants=network-online.target
 
       [Service]
       Environment=WG_ENDPOINT_RESOLUTION_RETRIES=infinity
+      ExecStartPre=/bin/sleep 5
+      Restart=on-failure
+      RestartSec=10
+      StartLimitIntervalSec=60
+      StartLimitBurst=3
   when: fw_wg_role != 'none' and not fw_is_black_site
 
 # ── Enable wg-quick ───────────────────────────────────────────────────────────
