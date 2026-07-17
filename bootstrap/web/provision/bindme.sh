@@ -113,6 +113,21 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #            persisted now (matches the equivalent Ansible-side change in bind9-dns.yml the same
 #            day). jq is guaranteed available at this point in the script (installed standalone
 #            near the top, before load_begyndelse_json() needs it).
+# 2026-07-17 Domain hardcoded as "jukebox.internal" in ~60 places throughout this script
+#            despite benarbejde/ad_forest.json existing as the repo's single source of truth
+#            for this since 2026-07-09. Fixed by loading EXA_DOMAIN from begyndelse.json in
+#            load_begyndelse_json() (same function that already loaded PRV_EDI_IP/ANS_IP/etc.),
+#            then replacing every functional "jukebox.internal" occurrence from that point
+#            onward with ${EXA_DOMAIN}. Three of the heredocs this touched (bind-aliases.sh,
+#            regen-zone.sh, the dynamic MOTD) use a quoted delimiter (<<'X') deliberately, so
+#            their real function bodies ($1, ${base}, etc.) get written out literally rather
+#            than evaluated now -- that same quoting meant ${EXA_DOMAIN} inside them would
+#            ALSO have been written literally and left unexpanded (and in the MOTD/aliases
+#            case, evaluated later against a fresh shell where EXA_DOMAIN was never set,
+#            silently going blank). Fixed with a follow-up `sed -i` on each generated file
+#            immediately after it's written, substituting the literal placeholder for the
+#            real value, rather than unquoting the whole heredoc (which would have broken
+#            every other $-expansion inside it the same way).
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()    { echo -e "${CYAN}[*]${NC} $*"; }
 success() { echo -e "${GREEN}[+]${NC} $*"; }
@@ -194,7 +209,7 @@ load_sites_csv
 # before Ansible exists on the box, so it has to fetch its own well-known-service
 # data rather than reading group_vars.
 # ---------------------------------------------------------------
-PRV_EDI_IP="" ANS_IP="" RDR_IP="" WAC_IP="" PBX_EDI_IP=""
+PRV_EDI_IP="" ANS_IP="" RDR_IP="" WAC_IP="" PBX_EDI_IP="" EXA_DOMAIN=""
 
 load_begyndelse_json() {
   local json_path=""
@@ -222,6 +237,7 @@ load_begyndelse_json() {
   RDR_IP=$(    jq -r '.rudder.ip'                 "${json_path}")
   WAC_IP=$(    jq -r '.wac.ip'                     "${json_path}")
   PBX_EDI_IP=$(jq -r '.pbx_edinburgh.ip'          "${json_path}")
+  EXA_DOMAIN=$(jq -r '.domain_fqdn'               "${json_path}")
 
   # Reverse-zone PTR records key on the last octet only, not the full IP
   PRV_EDI_OCTET="${PRV_EDI_IP##*.}"
@@ -275,7 +291,7 @@ ip_in_use() {
 echo
 echo -e "${CYAN}╔══════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║      Example Music: BIND9 DNS Server Setup           ║${NC}"
-echo -e "${CYAN}║      EXASRVCLD001  --  jukebox.internal              ║${NC}"
+echo -e "${CYAN}║      EXASRVCLD001  --  ${EXA_DOMAIN}              ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════════════╝${NC}"
 echo
 echo -e "${YELLOW}  Running on hostname: ${GREEN}$(hostname)${NC}"
@@ -446,11 +462,11 @@ cat > /etc/profile.d/bind-aliases.sh <<'ALIASES'
 # Simple aliases -- no parameters needed
 alias bindstatus='systemctl status named'
 alias bindlog='journalctl -u named -f'
-alias reloadbind='rndc reload jukebox.internal && echo "[+] Zone reloaded." || echo "[!] Reload failed -- check: journalctl -u named -n 20"'
+alias reloadbind='rndc reload ${EXA_DOMAIN} && echo "[+] Zone reloaded." || echo "[!] Reload failed -- check: journalctl -u named -n 20"'
 
 # _bind_zonename FILE
 # Derives the BIND zone name from a db file basename.
-#   db.jukebox.internal  -> jukebox.internal
+#   db.${EXA_DOMAIN}  -> ${EXA_DOMAIN}
 #   db.192.168.139       -> 139.168.192.in-addr.arpa
 #   db.192.168.78        -> 78.168.192.in-addr.arpa
 _bind_zonename() {
@@ -475,10 +491,10 @@ _bind_require_root() {
 
 # checkbind [zone-file]
 # Runs named-checkzone against a zone file.
-# Defaults to db.jukebox.internal if no argument given.
+# Defaults to db.${EXA_DOMAIN} if no argument given.
 # Accepts bare filename (db.192.168.78) or full path.
 checkbind() {
-  local file="${1:-db.jukebox.internal}"
+  local file="${1:-db.${EXA_DOMAIN}}"
   # Normalise: strip any path prefix so we always work from /etc/bind/
   local base="${file##*/}"
   local fullpath="/etc/bind/${base}"
@@ -498,11 +514,11 @@ checkbind() {
 
 # editzone [zone-file]
 # Opens a zone file in vim, then validates it, then reloads if valid.
-# Defaults to db.jukebox.internal if no argument given.
+# Defaults to db.${EXA_DOMAIN} if no argument given.
 editzone() {
   _bind_require_root || return 1
 
-  local file="${1:-db.jukebox.internal}"
+  local file="${1:-db.${EXA_DOMAIN}}"
   local base="${file##*/}"
   local fullpath="/etc/bind/${base}"
 
@@ -529,6 +545,18 @@ editzone() {
   fi
 }
 ALIASES
+# BUG FIX (2026-07-17): the heredoc above uses a quoted delimiter (<<'ALIASES')
+# deliberately, so the real function bodies ($1, ${base}, etc.) are written out
+# literally and only get evaluated later when the alias/function is actually
+# called -- not expanded now, against whatever's in bindme.sh's own shell state.
+# That same quoting means ${EXA_DOMAIN} above was ALSO never expanded -- it's
+# sitting in the written file as the literal 15-character string
+# "${EXA_DOMAIN}", and since this file is sourced fresh by /etc/profile.d in a
+# later login shell where EXA_DOMAIN was never set, it would have evaluated to
+# an empty string, not the real domain. Substituted after the fact instead of
+# unquoting the whole heredoc (which would have broken every other $-expansion
+# in it the same way).
+sed -i "s/\${EXA_DOMAIN}/${EXA_DOMAIN}/g" /etc/profile.d/bind-aliases.sh
 chmod 0644 /etc/profile.d/bind-aliases.sh
 success "BIND aliases written."
 
@@ -646,7 +674,7 @@ done < <(nmcli -t -f NAME,DEVICE con show)
 # Create the static profile
 nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "prov-static" ipv4.method manual \
   ipv4.addresses "${DNS_IP}/24" ipv4.gateway "${PROV_GW}" ipv4.dns "127.0.0.1" \
-  ipv4.dns-search "jukebox.internal" ipv6.method ignore \
+  ipv4.dns-search "${EXA_DOMAIN}" ipv6.method ignore \
   && success "NM profile prov-static written -- will apply on reboot." \
   || warn "nmcli con add returned non-zero -- check: nmcli connection show prov-static"
 
@@ -679,7 +707,7 @@ THIS_HOSTNAME="${THIS_HOSTNAME^^}"   # enforce uppercase per site convention
 info "Setting hostname to ${THIS_HOSTNAME}..."
 hostnamectl set-hostname "${THIS_HOSTNAME}"
 grep -q "${THIS_HOSTNAME,,}" /etc/hosts 2>/dev/null || \
-  echo "127.0.1.1  ${THIS_HOSTNAME,,}.jukebox.internal  ${THIS_HOSTNAME,,}" >> /etc/hosts
+  echo "127.0.1.1  ${THIS_HOSTNAME,,}.${EXA_DOMAIN}  ${THIS_HOSTNAME,,}" >> /etc/hosts
 success "Hostname set to ${THIS_HOSTNAME}."
 
 # Derive the lowercase FQDN form used in zone files (DNS is case-insensitive
@@ -697,7 +725,7 @@ info "Writing /etc/bind/named.conf.options..."
 cat > /etc/bind/named.conf.options <<NAMEDOPTS
 // ============================================================
 // named.conf.options -- Example Music Limited
-// ${THIS_HOSTNAME}  --  jukebox.internal DNS
+// ${THIS_HOSTNAME}  --  ${EXA_DOMAIN} DNS
 // Written by bindme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
 //
 // Recursion is permitted ONLY from the provisioning network
@@ -709,7 +737,7 @@ options {
   directory "/var/cache/bind";
 
   // ── Forwarders ────────────────────────────────────────────
-  // Used for names outside jukebox.internal.
+  // Used for names outside ${EXA_DOMAIN}.
   // Only reached when the querying client is in allow-recursion.
   forwarders {
     9.9.9.9;          // Quad9
@@ -726,7 +754,7 @@ options {
   allow-query { any; };
 
   // Recursion only for provisioning network clients.
-  // Spokes and site routers query for jukebox.internal names
+  // Spokes and site routers query for ${EXA_DOMAIN} names
   // only -- they do not need recursion.
   allow-recursion { 192.168.139.0/24; localhost; };
 
@@ -751,11 +779,11 @@ info "Writing /etc/bind/named.conf.local..."
 cat > /etc/bind/named.conf.local <<NAMEDLOCAL
 // ============================================================
 // named.conf.local -- Example Music Limited
-// ${THIS_HOSTNAME}  --  jukebox.internal DNS
+// ${THIS_HOSTNAME}  --  ${EXA_DOMAIN} DNS
 // Written by bindme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
 //
 // Forward zone:
-//   jukebox.internal         -- all sites, generated from sites.csv
+//   ${EXA_DOMAIN}         -- all sites, generated from sites.csv
 //
 // Reverse zones:
 //   139.168.192.in-addr.arpa -- DEDICATED provisioning network zone.
@@ -778,10 +806,10 @@ cat > /etc/bind/named.conf.local <<NAMEDLOCAL
 // named.conf.local is fully regenerated so no manual editing is needed.
 // ============================================================
 
-// ── Forward zone: jukebox.internal ───────────────────────────
-zone "jukebox.internal" {
+// ── Forward zone: ${EXA_DOMAIN} ───────────────────────────
+zone "${EXA_DOMAIN}" {
   type master;
-  file "/etc/bind/db.jukebox.internal";
+  file "/etc/bind/db.${EXA_DOMAIN}";
   allow-query   { any; };
   allow-transfer { none; };   // add secondary IPs here if a slave is added
   notify no;
@@ -833,7 +861,7 @@ non_cld_count=$(( ${#SITE_OCTET[@]} - 1 ))
 success "named.conf.local written (1 forward + 1 provisioning + ${non_cld_count} site reverse zones)."
 
 # ---------------------------------------------------------------
-# 8. Generate forward zone: jukebox.internal
+# 8. Generate forward zone: ${EXA_DOMAIN}
 #
 # SOA serial format: YYYYMMDDnn  (date-based, nn=00 on first run)
 # TTL: 300s (5 minutes) -- short enough that re-runs propagate fast
@@ -861,18 +889,18 @@ success "named.conf.local written (1 forward + 1 provisioning + ${non_cld_count}
 #
 # NOTE: BRD is skipped (legacy alias for BER -- BER covers it).
 # ---------------------------------------------------------------
-ZONE_FILE="/etc/bind/db.jukebox.internal"
+ZONE_FILE="/etc/bind/db.${EXA_DOMAIN}"
 SERIAL=$(date -u +%Y%m%d)01
 
 info "Generating forward zone file: ${ZONE_FILE}  (serial ${SERIAL})..."
 
 cat > "${ZONE_FILE}" <<ZONE_HEADER
 ; ============================================================
-; /etc/bind/db.jukebox.internal
-; Example Music Limited -- jukebox.internal forward zone
+; /etc/bind/db.${EXA_DOMAIN}
+; Example Music Limited -- ${EXA_DOMAIN} forward zone
 ;
 ; Authoritative DNS: ${THIS_HOSTNAME} (192.168.139.8)
-; Zone:              jukebox.internal
+; Zone:              ${EXA_DOMAIN}
 ; Generated by:      bindme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
 ;
 ; DO NOT EDIT BY HAND unless adding one-off records at the bottom.
@@ -892,11 +920,11 @@ cat > "${ZONE_FILE}" <<ZONE_HEADER
 ; reverse zones are out of scope for this server.
 ; ============================================================
 
-\$ORIGIN jukebox.internal.
+\$ORIGIN ${EXA_DOMAIN}.
 \$TTL 300
 
 ; -- SOA + NS -------------------------------------------------
-@   IN  SOA  ${THIS_HOSTNAME_LOWER}.jukebox.internal.  hostmaster.jukebox.internal. (
+@   IN  SOA  ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}.  hostmaster.${EXA_DOMAIN}. (
               ${SERIAL}  ; serial   YYYYMMDDnn
               3600       ; refresh  1 hour
               900        ; retry    15 minutes
@@ -904,7 +932,7 @@ cat > "${ZONE_FILE}" <<ZONE_HEADER
               300        ; minimum  5 minutes
             )
 
-@   IN  NS   ${THIS_HOSTNAME_LOWER}.jukebox.internal.
+@   IN  NS   ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}.
 
 ; -- DNS server itself -----------------------------------------
 ${THIS_HOSTNAME_LOWER}  IN  A  192.168.139.8
@@ -1123,7 +1151,7 @@ cat > "${PROV_REV_FILE}" <<PROVREVHDR
 \$ORIGIN 139.168.192.in-addr.arpa.
 \$TTL 300
 
-@   IN  SOA  ${THIS_HOSTNAME_LOWER}.jukebox.internal.  hostmaster.jukebox.internal. (
+@   IN  SOA  ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}.  hostmaster.${EXA_DOMAIN}. (
               ${SERIAL}  ; serial
               3600       ; refresh
               900        ; retry
@@ -1131,23 +1159,23 @@ cat > "${PROV_REV_FILE}" <<PROVREVHDR
               300        ; minimum
             )
 
-@   IN  NS   ${THIS_HOSTNAME_LOWER}.jukebox.internal.
+@   IN  NS   ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}.
 
 ; -- vRACK ancillary hosts -------------------------------------
 ; CLD LAN devices (ANS/DCs/RDR/WAC/PBX/UFC) are on 192.168.69.0/24 --
 ; see db.192.168.69 instead. Only DNS/PRV/FWL-WAN are actually vRACK-resident.
-8     IN  PTR  ${THIS_HOSTNAME_LOWER}.jukebox.internal.     ; DNS/BIND9 server (this host)
-${PRV_EDI_OCTET}    IN  PTR  exaprvvrk001.jukebox.internal.               ; Provisioning / PXE
-69    IN  PTR  exafwlvrk001.jukebox.internal.               ; CLD firewall (vRACK WAN face)
+8     IN  PTR  ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}.     ; DNS/BIND9 server (this host)
+${PRV_EDI_OCTET}    IN  PTR  exaprvvrk001.${EXA_DOMAIN}.               ; Provisioning / PXE
+69    IN  PTR  exafwlvrk001.${EXA_DOMAIN}.               ; CLD firewall (vRACK WAN face)
 
 ; -- Firewall WAN PTR records ----------------------------------
-; 192.168.139.{octet}  ->  exafwl{site}001-wan.jukebox.internal.
+; 192.168.139.{octet}  ->  exafwl{site}001-wan.${EXA_DOMAIN}.
 ; Sorted by octet ascending.
 PROVREVHDR
 
 for site in "${SORTED_SITES[@]}"; do
   octet="${SITE_OCTET[$site]}"
-  wan_host="EXAFWL${site}001-wan.jukebox.internal."
+  wan_host="EXAFWL${site}001-wan.${EXA_DOMAIN}."
   # CLD special case: vRACK WAN face is EXAFWLVRK001's real address (.69), not a
   # formulaic lookup of CLD's own LAN octet
   if [[ "${site}" == "CLD" ]]; then
@@ -1190,7 +1218,7 @@ cat > "${CLD_LAN_REV_FILE}" <<CLDLANREVHDR
 \$ORIGIN 69.168.192.in-addr.arpa.
 \$TTL 300
 
-@   IN  SOA  ${THIS_HOSTNAME_LOWER}.jukebox.internal.  hostmaster.jukebox.internal. (
+@   IN  SOA  ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}.  hostmaster.${EXA_DOMAIN}. (
               ${SERIAL}  ; serial
               3600       ; refresh
               900        ; retry
@@ -1198,17 +1226,17 @@ cat > "${CLD_LAN_REV_FILE}" <<CLDLANREVHDR
               300        ; minimum
             )
 
-@   IN  NS   ${THIS_HOSTNAME_LOWER}.jukebox.internal.
+@   IN  NS   ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}.
 
 ; -- CLD LAN PTR records (192.168.69.x) -----------------------
-253   IN  PTR  exafwlcld001-lan.jukebox.internal.           ; CLD firewall (LAN face)
-${ANS_OCTET}     IN  PTR  exaanscld001.jukebox.internal.               ; Ansible control node
-10    IN  PTR  exadcscld001.jukebox.internal.               ; DC primary
-11    IN  PTR  exadcscld002.jukebox.internal.               ; DC secondary
-${RDR_OCTET}    IN  PTR  exardrcld001.jukebox.internal.               ; Rudder configuration management server
-${WAC_OCTET}    IN  PTR  exasvrcld002.jukebox.internal.               ; Windows Admin Centre
-${PBX_EDI_OCTET}    IN  PTR  exapbxcld001.jukebox.internal.               ; Central 3CX PBX
-82    IN  PTR  exaufccld001.jukebox.internal.               ; UniFi Network Controller
+253   IN  PTR  exafwlcld001-lan.${EXA_DOMAIN}.           ; CLD firewall (LAN face)
+${ANS_OCTET}     IN  PTR  exaanscld001.${EXA_DOMAIN}.               ; Ansible control node
+10    IN  PTR  exadcscld001.${EXA_DOMAIN}.               ; DC primary
+11    IN  PTR  exadcscld002.${EXA_DOMAIN}.               ; DC secondary
+${RDR_OCTET}    IN  PTR  exardrcld001.${EXA_DOMAIN}.               ; Rudder configuration management server
+${WAC_OCTET}    IN  PTR  exasvrcld002.${EXA_DOMAIN}.               ; Windows Admin Centre
+${PBX_EDI_OCTET}    IN  PTR  exapbxcld001.${EXA_DOMAIN}.               ; Central 3CX PBX
+82    IN  PTR  exaufccld001.${EXA_DOMAIN}.               ; UniFi Network Controller
 CLDLANREVHDR
 
 success "CLD LAN reverse zone written."
@@ -1273,7 +1301,7 @@ for site in "${SORTED_SITES[@]}"; do
 \$ORIGIN ${octet}.168.192.in-addr.arpa.
 \$TTL 300
 
-@   IN  SOA  ${THIS_HOSTNAME_LOWER}.jukebox.internal.  hostmaster.jukebox.internal. (
+@   IN  SOA  ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}.  hostmaster.${EXA_DOMAIN}. (
               ${SERIAL}  ; serial
               3600       ; refresh
               900        ; retry
@@ -1281,27 +1309,27 @@ for site in "${SORTED_SITES[@]}"; do
               300        ; minimum
             )
 
-@   IN  NS   ${THIS_HOSTNAME_LOWER}.jukebox.internal.
+@   IN  NS   ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}.
 
 ; -- PTR records (192.168.${octet}.x) -------------------------
 REVHDR
 
   for entry in "${REV_SUFFIX_MAP[@]}"; do
     read -r suffix prefix seq <<< "${entry}"
-    hostname="${prefix}${site}$(printf '%03d' "${seq}").jukebox.internal."
+    hostname="${prefix}${site}$(printf '%03d' "${seq}").${EXA_DOMAIN}."
     hostname="${hostname^^}"
     printf "%-5s IN  PTR  %s\n" "${suffix}" "${hostname}" >> "${rev_file}"
   done
 
-  # DHCP pool $GENERATE: .100-.199 -> dhcp01.site.jukebox.internal. etc.
+  # DHCP pool $GENERATE: .100-.199 -> dhcp01.site.${EXA_DOMAIN}. etc.
   # Mirrors the forward zone $GENERATE stanza.
   # Using echo rather than a heredoc so bash doesn't expand BIND's $ syntax.
   {
     echo ""
     echo "; -- DHCP pool PTR (\$GENERATE) ---------------------------------"
-    echo "; .100 -> dhcp01.${site,,}.jukebox.internal."
-    echo "; .199 -> dhcp100.${site,,}.jukebox.internal."
-    echo "\$GENERATE 100-199 \$ IN PTR dhcp\${-99,2,d}.${site,,}.jukebox.internal."
+    echo "; .100 -> dhcp01.${site,,}.${EXA_DOMAIN}."
+    echo "; .199 -> dhcp100.${site,,}.${EXA_DOMAIN}."
+    echo "\$GENERATE 100-199 \$ IN PTR dhcp\${-99,2,d}.${site,,}.${EXA_DOMAIN}."
   } >> "${rev_file}"
 
   rev_zone_count=$(( rev_zone_count + 1 ))
@@ -1317,7 +1345,7 @@ if ! named-checkconf /etc/bind/named.conf; then
   die "named.conf validation failed -- check output above."
 fi
 info "Validating forward zone..."
-if ! named-checkzone jukebox.internal "${ZONE_FILE}"; then
+if ! named-checkzone ${EXA_DOMAIN} "${ZONE_FILE}"; then
   die "Forward zone validation failed -- check output above."
 fi
 info "Validating provisioning reverse zone (139)..."
@@ -1362,8 +1390,8 @@ fi
 # ---------------------------------------------------------------
 # 12. Quick self-test
 # ---------------------------------------------------------------
-info "Running self-test query: dig @127.0.0.1 ${THIS_HOSTNAME_LOWER}.jukebox.internal"
-if dig @127.0.0.1 +short ${THIS_HOSTNAME_LOWER}.jukebox.internal | grep -q "192.168.139.8"; then
+info "Running self-test query: dig @127.0.0.1 ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}"
+if dig @127.0.0.1 +short ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN} | grep -q "192.168.139.8"; then
   success "DNS self-test passed."
 else
   warn "Self-test query returned unexpected result -- check the zone file and named status."
@@ -1380,14 +1408,14 @@ cat > /usr/local/sbin/regen-zone.sh <<'REGEN'
 #!/usr/bin/env bash
 # ============================================================
 # regen-zone.sh -- Example Music Limited
-# Regenerate /etc/bind/db.jukebox.internal from sites.csv
+# Regenerate /etc/bind/db.${EXA_DOMAIN} from sites.csv
 # and reload the zone without a full bindme.sh re-run.
 #
 # Usage: sudo regen-zone.sh [/path/to/sites.csv]
 # If no argument given, uses the same CSV search order as bindme.sh.
 # ============================================================
 set -euo pipefail
-ZONE_FILE="/etc/bind/db.jukebox.internal"
+ZONE_FILE="/etc/bind/db.${EXA_DOMAIN}"
 SITES_CSV="${1:-}"
 
 die()  { echo "[ERROR] $*" >&2; exit 1; }
@@ -1408,9 +1436,17 @@ else
   bash /usr/local/sbin/bindme.sh --zone-only
 fi
 
-named-checkzone jukebox.internal "${ZONE_FILE}" || die "Zone check failed -- backup at ${ZONE_FILE}.bak"
-rndc reload jukebox.internal && echo "[+] Zone reloaded." || die "rndc reload failed."
+named-checkzone ${EXA_DOMAIN} "${ZONE_FILE}" || die "Zone check failed -- backup at ${ZONE_FILE}.bak"
+rndc reload ${EXA_DOMAIN} && echo "[+] Zone reloaded." || die "rndc reload failed."
 REGEN
+# BUG FIX (2026-07-17): quoted heredoc (<<'REGEN') writes ${EXA_DOMAIN} above
+# literally -- same class of bug as the bind-aliases.sh fix earlier in this
+# file. This script is meant to be re-run standalone later, so baking in
+# today's domain value at write time (rather than leaving it to fail against
+# an unset variable) is correct -- re-run bindme.sh after any domain rename to
+# regenerate this file with the new value, same as every other generated
+# artifact in this script.
+sed -i "s/\${EXA_DOMAIN}/${EXA_DOMAIN}/g" /usr/local/sbin/regen-zone.sh
 chmod 0750 /usr/local/sbin/regen-zone.sh
 
 # Copy bindme.sh itself to /usr/local/sbin for regen-zone.sh to reference
@@ -1444,17 +1480,17 @@ MEM_USED=$(free -m  | awk '/^Mem:/{print $3}')
 DISK=$(df -h / | awk 'NR==2{print $3" used of "$2" ("$5")"}')
 
 DNS_IP=$(ip -4 addr show | awk '/inet /{print $2}' | grep '192\.168\.139\.' | cut -d/ -f1 | head -1)
-ZONE_SERIAL=$(grep -oP '(?<=;\s)serial.*' /etc/bind/db.jukebox.internal 2>/dev/null | head -1 | awk '{print $1}') || true
+ZONE_SERIAL=$(grep -oP '(?<=;\s)serial.*' /etc/bind/db.${EXA_DOMAIN} 2>/dev/null | head -1 | awk '{print $1}') || true
 NAMED_STATUS=$(systemctl is-active named 2>/dev/null || echo "unknown")
-RECORD_COUNT=$(grep -c 'IN  A' /etc/bind/db.jukebox.internal 2>/dev/null || echo "?")
+RECORD_COUNT=$(grep -c 'IN  A' /etc/bind/db.${EXA_DOMAIN} 2>/dev/null || echo "?")
 
 echo -e "
 ${WH}╔══════════════════════════════════════════════════════════════╗${RS}
 ${WH}║           EXAMPLE MUSIC LIMITED: $(printf '%-24s' "${HOSTNAME}")║${RS}
 ${WH}╚══════════════════════════════════════════════════════════════╝${RS}
 
-  ${YL}Role     :${RS} DNS Server -- jukebox.internal
-  ${YL}Zone     :${RS} jukebox.internal  (${RECORD_COUNT} A records, serial ${ZONE_SERIAL:-unknown})
+  ${YL}Role     :${RS} DNS Server -- ${EXA_DOMAIN}
+  ${YL}Zone     :${RS} ${EXA_DOMAIN}  (${RECORD_COUNT} A records, serial ${ZONE_SERIAL:-unknown})
 
   ${WH}── Network ──────────────────────────────────────────────────${RS}
     ${CY}DNS IP${RS}   : ${GR}${DNS_IP:-unknown}${RS}
@@ -1471,6 +1507,12 @@ ${WH}╚════════════════════════
 "
 MOTD
 
+# BUG FIX (2026-07-17): quoted heredoc (<<'MOTD') writes ${EXA_DOMAIN} above
+# literally -- same class of bug as the bind-aliases.sh fix earlier in this
+# file, and this one matters more: update-motd.d scripts run fresh in every
+# new login shell, where EXA_DOMAIN was never set, so it would have silently
+# printed an empty zone name on every login.
+sed -i "s/\${EXA_DOMAIN}/${EXA_DOMAIN}/g" /etc/update-motd.d/10-examplemusic
 chmod +x /etc/update-motd.d/10-examplemusic
 
 if grep -q "^PrintMotd" /etc/ssh/sshd_config; then
@@ -1483,6 +1525,10 @@ cat > /etc/profile.d/motd.sh <<'EOF'
 [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
 EOF
 
+# BUG FIX (2026-07-17): quoted heredoc (<<'EOF') writes ${EXA_DOMAIN} above
+# literally -- same class of bug as the bind-aliases.sh fix earlier in this
+# file; this one runs on every login shell too.
+sed -i "s/\${EXA_DOMAIN}/${EXA_DOMAIN}/g" /etc/profile.d/motd.sh
 systemctl restart ssh
 success "Dynamic MOTD configured."
 
@@ -1501,7 +1547,7 @@ jq -n \
   --arg bootstrapped_by "bindme.sh" \
   --arg environment    "${ENV_LONG}" \
   --arg dns_ip         "${DNS_IP}" \
-  --arg zone           "jukebox.internal" \
+  --arg zone           "${EXA_DOMAIN}" \
   --arg zone_serial    "${SERIAL}" \
   --arg interface      "${PROV_IFACE}" \
   --arg interface_mac  "${PROV_MAC}" \
@@ -1535,7 +1581,7 @@ echo -e "${GREEN}  SETUP COMPLETE -- ${THIS_HOSTNAME}${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo -e "${CYAN}  Hostname      : $(hostname)${NC}"
 echo -e "${CYAN}  DNS IP        : ${DNS_IP}/24  (${PROV_IFACE})${NC}"
-echo -e "${CYAN}  Zone          : jukebox.internal${NC}"
+echo -e "${CYAN}  Zone          : ${EXA_DOMAIN}${NC}"
 echo -e "${CYAN}  A records     : ${RECORD_COUNT}${NC}"
 echo -e "${CYAN}  Zone serial   : ${SERIAL}${NC}"
 echo -e "${CYAN}  Forwarders    : 9.9.9.9, 208.67.222.222, 1.1.1.1${NC}"
@@ -1543,8 +1589,8 @@ echo -e "${CYAN}  Reverse zones : 139.168.192.in-addr.arpa  (provisioning -- FWL
 echo -e "${CYAN}                 + one X.168.192.in-addr.arpa per site (${non_cld_count} zones)${NC}"
 echo
 echo -e "${YELLOW}  Useful aliases and functions (bash + zsh):${NC}"
-echo -e "${CYAN}    reloadbind                -- rndc reload jukebox.internal${NC}"
-echo -e "${CYAN}    checkbind                 -- validate db.jukebox.internal (default)${NC}"
+echo -e "${CYAN}    reloadbind                -- rndc reload ${EXA_DOMAIN}${NC}"
+echo -e "${CYAN}    checkbind                 -- validate db.${EXA_DOMAIN} (default)${NC}"
 echo -e "${CYAN}    checkbind db.192.168.78   -- validate a specific zone file${NC}"
 echo -e "${CYAN}    editzone                  -- vim + validate + reload (default zone)${NC}"
 echo -e "${CYAN}    editzone db.192.168.139   -- edit a specific zone file (needs root)${NC}"
@@ -1552,8 +1598,8 @@ echo -e "${CYAN}    bindstatus                -- systemctl status named${NC}"
 echo -e "${CYAN}    bindlog                   -- journalctl -u named -f${NC}"
 echo
 echo -e "${YELLOW}  Quick test:${NC}"
-echo -e "${CYAN}    dig @${DNS_IP} ${THIS_HOSTNAME_LOWER}.jukebox.internal${NC}"
-echo -e "${CYAN}    dig @${DNS_IP} EXAFWLGLA001.jukebox.internal${NC}"
+echo -e "${CYAN}    dig @${DNS_IP} ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}${NC}"
+echo -e "${CYAN}    dig @${DNS_IP} EXAFWLGLA001.${EXA_DOMAIN}${NC}"
 echo -e "${CYAN}    dig @${DNS_IP} -x 192.168.139.8${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo
