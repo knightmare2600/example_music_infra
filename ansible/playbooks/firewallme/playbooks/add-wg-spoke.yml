@@ -193,6 +193,15 @@
     # ansible-id_rsa path group_vars/windows_nodes/connection.yml already uses
     # for the identical purpose -- not a new path.
 
+    # BUG FIX (2026-07-17, second pass): fixed the SSH key-auth problem, then hit
+    # "cat: /etc/wireguard/public.key: Permission denied" live -- 09_wireguard_deploy.yml
+    # creates /etc/wireguard as `install -m 0700` (root-only traversal), so a plain
+    # `ansible` user can't even enter the directory regardless of the files' own
+    # permissions (public.key is 0644, but that's moot if the directory blocks entry;
+    # preshared.key is 0600, needing sudo either way). Added sudo to both remote
+    # commands -- relies on the same passwordless sudo every other become: true task
+    # in this role already assumes for the ansible user.
+
     - name: "[add-wg-spoke] Fetch spoke public key via SSH"
       ansible.builtin.shell: |
         ssh -o ConnectTimeout=5 \
@@ -200,7 +209,7 @@
             -o BatchMode=yes \
             -i {{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa \
             {{ spoke_ansible_user }}@{{ _spoke_ip }} \
-            'cat /etc/wireguard/public.key'
+            'sudo cat /etc/wireguard/public.key'
       register: _spoke_pubkey_raw
       delegate_to: localhost
       changed_when: false
@@ -215,7 +224,7 @@
             -o BatchMode=yes \
             -i {{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa \
             {{ spoke_ansible_user }}@{{ _spoke_ip }} \
-            'cat /etc/wireguard/preshared.key'
+            'sudo cat /etc/wireguard/preshared.key'
       register: _spoke_psk_raw
       delegate_to: localhost
       changed_when: false
