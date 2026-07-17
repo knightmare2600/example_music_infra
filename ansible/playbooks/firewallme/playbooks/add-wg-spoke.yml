@@ -183,12 +183,22 @@
         _spoke_extra_subnets: "{{ wg_site_extra_subnets[spoke_site] | default([]) }}"
 
     # ── Fetch spoke keys via SSH ──────────────────────────────────────────────
+    # BUG FIX (2026-07-17): raw `ssh` in a shell task, delegated to localhost,
+    # bypasses Ansible's own connection plugin entirely -- it never picks up
+    # ansible.cfg's private_key_file, only the ssh client's own default key
+    # discovery, which fails non-interactively. Confirmed live: EXAANSCLD001
+    # could SSH to a firewall manually with -i configs/ansible-id_rsa, but this
+    # exact command failed with "Permission denied (publickey)" for want of that
+    # same flag. Added -i explicitly, using the same {{ HOME }}/ansible/configs/
+    # ansible-id_rsa path group_vars/windows_nodes/connection.yml already uses
+    # for the identical purpose -- not a new path.
 
     - name: "[add-wg-spoke] Fetch spoke public key via SSH"
       ansible.builtin.shell: |
         ssh -o ConnectTimeout=5 \
             -o StrictHostKeyChecking=no \
             -o BatchMode=yes \
+            -i {{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa \
             {{ spoke_ansible_user }}@{{ _spoke_ip }} \
             'cat /etc/wireguard/public.key'
       register: _spoke_pubkey_raw
@@ -203,6 +213,7 @@
         ssh -o ConnectTimeout=5 \
             -o StrictHostKeyChecking=no \
             -o BatchMode=yes \
+            -i {{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa \
             {{ spoke_ansible_user }}@{{ _spoke_ip }} \
             'cat /etc/wireguard/preshared.key'
       register: _spoke_psk_raw
