@@ -49,7 +49,7 @@
 #   2026-07-16  Robert: asked whether the Ansible SSH key ever gets refreshed on
 #               ongoing Linux nodes the way it does on Proxmox
 #               (proxmox/playbooks/20-ansible-access.yml) and firewalls
-#               (firewallme's 10_ssh_hardening.yml) -- it didn't. This file (the
+#               (firewallme's 11_ssh_hardening.yml) -- it didn't. This file (the
 #               one playbook that routinely touches every Linux host, hosts: all)
 #               had no key-deployment task at all; a host only ever got the key
 #               once, at first-boot, from bootstrap/web/ansible_sshkey.pub. Added

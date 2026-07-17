@@ -15,7 +15,7 @@
 #               re-locking the account the very next time this role touched the host. Same
 #               root cause as bootstrap/web/provision/firewallme.sh's own passwd -l bug (fixed
 #               the same day) -- a locked account is rejected by pam_unix's account phase for
-#               every login method under UsePAM yes (10_ssh_hardening.yml), not just password,
+#               every login method under UsePAM yes (11_ssh_hardening.yml), not just password,
 #               contradicting the "key/sudo only" intent the password: "!" comment describes.
 #               Removed the password: parameter entirely -- state: present alone is enough to
 #               ensure the account exists, with no lock state actively asserted or re-asserted

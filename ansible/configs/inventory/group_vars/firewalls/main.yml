@@ -13,10 +13,11 @@
 #   3. Commit the change with the date and reason
 #
 # Topology map (which spokes connect to which hub):
-#   CLD (hub-regional) — cloud/management hub; peers with FAL, ODE, BRK
-#   FAL (hub-primary)  — UK spokes
-#   ODE (hub-regional) — EU spokes
-#   BRK (hub-regional) — NA/APAC spokes
+#   CLD (hub-regional) — the ONLY hub every spoke connects to (2026-07-17 —
+#                         regional hubs retired, see changelog below)
+#   FAL (hub-primary)  — retired as a hub; 0 spokes, kept as reference data only
+#   ODE (hub-regional) — retired as a hub; 0 spokes, kept as reference data only
+#   BRK (hub-regional) — retired as a hub; 0 spokes, kept as reference data only
 #
 # CLD is the management hub. All spokes must be able to reach its subnets
 # (192.168.139.0/24 vRACK + 192.168.69.0/24 private LAN) for Ansible/DNS.
@@ -39,6 +40,21 @@
 #               directly by Robert, verified live during the EXAFWLBRT001
 #               test) -- was blank, forcing every CLD-hub spoke build to
 #               skip the known-good cross-check entirely.
+#   2026-07-17  Robert: regional hubs (FAL/ODE/BRK) retired -- every spoke now
+#               talks to CLD directly, full stop. All 43 spokes previously
+#               split across FAL (15)/ODE (17)/BRK (11) moved to CLD's own
+#               spokes: list below (cross-checked count before/after: 43 total,
+#               none dropped/duplicated). FAL/ODE/BRK entries kept elsewhere in
+#               this file (wg_hub_known_pubkeys, wg_hub_wan_ips) -- those are
+#               still true facts about real boxes, just no longer anyone's
+#               selected hub. This is a DATA change only: it fixes the map new
+#               registrations use (00_preflight_3_ask.yml's hub-site prompt now
+#               defaults CLD) and what add-wg-spoke.yml/10_register_spoke_on_hub.yml
+#               write going forward. It does NOT retroactively touch any
+#               currently-deployed spoke still actually peered with FAL/ODE/BRK
+#               live -- each of those needs its own wg0.conf [Peer] entry
+#               re-pointed at CLD (and removed from its old hub) individually;
+#               that's a real, live operational migration, not a data-file edit.
 # =============================================================================
 
 # Known hub public keys — last verified values
@@ -61,16 +77,20 @@ wg_hub_default_port: 51820
 
 # Hub topology — which spoke sites connect to which hub.
 # Used to build topology-aware AllowedIPs.
-# CLD has no site spokes; it peers directly with FAL, ODE, BRK at the hub level.
+# 2026-07-17: regional hubs retired -- every spoke is under CLD now. FAL/ODE/BRK
+# kept as empty entries rather than removed outright, since wg_hub_known_pubkeys/
+# wg_hub_wan_ips still reference them and update_hub_topology.py (called by
+# add-wg-spoke.yml / 10_register_spoke_on_hub.yml) expects every hub named
+# elsewhere in this file to also have a spokes: entry here.
 wg_hub_topology:
   CLD:
-    spokes: []
+    spokes: [AAR, ABD, AKL, AMS, ATL, BER, BIR, BON, BRT, CHI, CLY, COV, CPH, DRS, DUN, DUS, EDI, FAX, FRE, GLA, GOT, HAL, HUL, KGE, KOR, LAX, LIV, LND, MCR, MEL, MIA, MIL, MTL, MUN, NEW, NJC, NYC, OSL, PER, SHE, SYD, TOR, VIE]
   FAL:
-    spokes: [ABD, BIR, CLY, COV, DUN, EDI, GLA, HAL, HUL, LIV, LND, MCR, NEW, PER, SHE]
+    spokes: []
   ODE:
-    spokes: [AAR, AMS, BER, BON, BRT, CPH, DRS, DUS, FAX, FRE, GOT, KGE, KOR, MIL, MUN, OSL, VIE]
+    spokes: []
   BRK:
-    spokes: [ATL, CHI, LAX, MIA, MTL, NJC, NYC, TOR, AKL, MEL, SYD]
+    spokes: []
 
 # Management hubs — subnets always injected into every spoke's AllowedIPs,
 # regardless of which regional hub the spoke connects through.
