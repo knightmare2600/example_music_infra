@@ -34,7 +34,11 @@
 # live on EXAFWLCLD001 via add-wg-spoke.yml (same template shape), the only one
 # of four peer blocks without it. Doesn't block traffic here (the spoke already
 # keepalives from its own side), but it's a real gap versus the hand-written
-# hub-to-hub peer blocks in the same file -- fixed to match.
+# hub-to-hub peer blocks in the same file -- fixed to match. Also moved the
+# site-code comment above [Peer] and doubled the hash to "## {{ fw_site_code }}",
+# matching the hand-written blocks exactly -- the MOTD peer-name parser
+# (firewallme.sh lines 2068-2071) is position-independent, so this is cosmetic
+# only, not a functional change.
 
 - name: "[Hub register] Add/update this spoke's [Peer] block on its hub"
   ansible.builtin.blockinfile:
@@ -43,8 +47,8 @@
     mode: '0600'
     marker: "# {mark} ANSIBLE MANAGED BLOCK {{ fw_site_code }}"
     block: |
+      ## {{ fw_site_code }}
       [Peer]
-      # {{ fw_site_code }}
       PublicKey    = {{ fw_wg_pubkey }}
       PresharedKey = {{ fw_wg_psk }}
       AllowedIPs   = {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(', ') }}
