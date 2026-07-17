@@ -32,9 +32,11 @@
 #   07_nftables          — ruleset generation and load
 #   08_dnsmasq           — DNS/DHCP config, systemd-resolved disabled
 #   09_wireguard_deploy  — keygen (preserve existing), wg0.conf, wg-quick
-#   10_ssh_hardening     — sshd_config, banners, authorized_keys
-#   11_cockpit           — cockpit.socket, self-signed cert
-#   12_finish            — ASCII art header, final summary, reboot prompt
+#   10_register_spoke_on_hub — spoke only: auto-register as a peer on its hub
+#                        (delegate_to the hub's IP), update wg_hub_topology
+#   11_ssh_hardening     — sshd_config, banners, authorized_keys
+#   12_cockpit           — cockpit.socket, self-signed cert
+#   13_finish            — ASCII art header, final summary, reboot prompt
 #
 # Changelog:
 #   2026-06-20  Initial file
@@ -53,6 +55,16 @@
 #               later stages. Renamed all five to share "00_preflight_" (with a
 #               1-5 suffix only to preserve `ls` ordering), so the naming actually
 #               says what it is.
+#   2026-07-17  Robert: onboarding a spoke used to require a separate, manual
+#               playbooks/add-wg-spoke.yml run against the hub afterward -- easy
+#               to forget (EXAFWLBRT001 sat unregistered on EXAFWLCLD001 for
+#               exactly that reason). Added 10_register_spoke_on_hub.yml, run
+#               automatically as part of every spoke's own provisioning.
+#   2026-07-17  Robert: this was briefly named 09b_register_spoke_on_hub.yml --
+#               "stick to two digit numbers" (repo-wide sweep found this was the
+#               only letter-suffixed task file anywhere, not a wider pattern).
+#               Renamed to 10_, bumping the former 10/11/12
+#               (ssh_hardening/cockpit/finish) to 11/12/13.
 # =============================================================================
 
 - import_tasks: 00_preflight_1_derive.yml
@@ -85,11 +97,14 @@
 - import_tasks: 09_wireguard_deploy.yml
   tags: [firewall, wireguard]
 
-- import_tasks: 10_ssh_hardening.yml
+- import_tasks: 10_register_spoke_on_hub.yml
+  tags: [firewall, wireguard]
+
+- import_tasks: 11_ssh_hardening.yml
   tags: [firewall, ssh]
 
-- import_tasks: 11_cockpit.yml
+- import_tasks: 12_cockpit.yml
   tags: [firewall, cockpit]
 
-- import_tasks: 12_finish.yml
+- import_tasks: 13_finish.yml
   tags: [firewall, finish]
