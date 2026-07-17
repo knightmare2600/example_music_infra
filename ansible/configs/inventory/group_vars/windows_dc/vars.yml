@@ -16,6 +16,11 @@
 #               the same value, with no way to change one without hunting for the others.
 #               ad_forest.json is the real single source now; this file (and the other two)
 #               just read it.
+#   2026-07-17  Added dc_forest_mode/dc_domain_mode, same pattern -- ad_forest.json already
+#               had forest_mode/domain_mode fields (added 2026-07-09 alongside the others),
+#               but nothing here read them, so 20-dc-promote.yml still hardcoded
+#               -ForestMode/-DomainMode "WinThreshold" literally. Harmless only because that
+#               literal happened to match ad_forest.json's own value.
 # =============================================================================
 
 # OU path used by 80-domainjoin.yml for DC objects
@@ -56,6 +61,8 @@ ad_netbios_name:   "{{ (lookup('file', ad_forest_json_path) | from_json).netbios
 dc_hub_sites:      "{{ (lookup('file', ad_forest_json_path) | from_json).hub_sites }}"
 dc_cld_site:       "{{ (lookup('file', ad_forest_json_path) | from_json).cld_site }}"
 dc_dns_forwarders: "{{ (lookup('file', ad_forest_json_path) | from_json).dns_forwarders }}"
+dc_forest_mode:    "{{ (lookup('file', ad_forest_json_path) | from_json).forest_mode }}"
+dc_domain_mode:    "{{ (lookup('file', ad_forest_json_path) | from_json).domain_mode }}"
 
 # dc_hub_sources and dc_cld_source are NOT defined here.
 # 00-dc-preflight.yml builds them at runtime from sites.csv so the IPs stay in

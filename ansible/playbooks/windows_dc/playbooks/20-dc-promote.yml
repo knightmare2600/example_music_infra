@@ -73,6 +73,12 @@
 #               00-dc-preflight.yml) — group_vars/windows_nodes/
 #               connection.yml is inventory-group-gated and doesn't apply
 #               on ungrouped/ad hoc runs, which broke every win_* task here.
+#   2026-07-17  Install-ADDSForest hardcoded -DomainMode/-ForestMode "WinThreshold"
+#               literally, even though benarbejde/ad_forest.json already had
+#               forest_mode/domain_mode fields sitting unused since 2026-07-09.
+#               Now reads dc_forest_mode/dc_domain_mode (group_vars/windows_dc/
+#               vars.yml, same ad_forest.json-derived pattern as dc_domain_name).
+#               Was harmless only because the hardcoded literal happened to match.
 # =============================================================================
 
 - name: Windows DC — Promotion (dcpromo)
@@ -260,8 +266,8 @@
         Install-ADDSForest `
           -DomainName            "{{ dc_domain_name }}" `
           -DomainNetbiosName     "{{ dc_netbios_name }}" `
-          -DomainMode            "WinThreshold" `
-          -ForestMode            "WinThreshold" `
+          -DomainMode            "{{ dc_domain_mode }}" `
+          -ForestMode            "{{ dc_forest_mode }}" `
           -DatabasePath          "{{ dc_db_path }}" `
           -LogPath               "{{ dc_log_path }}" `
           -SysvolPath            "{{ dc_sysvol }}" `
