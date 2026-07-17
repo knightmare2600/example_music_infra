@@ -29,6 +29,17 @@
 #                     admin user creation, allowed-networks population from
 #                     sites.csv via Rudder API, LDAP config skeleton, Cockpit
 #                     install, dynamic MOTD, sentinel file.
+# 2026-07-17  Domain hardcoded as "jukebox.internal" in six places (/etc/hosts,
+#             dns-search, RUDDER_FQDN, and all three LDAP DNs) despite
+#             benarbejde/ad_forest.json existing as the repo's single source of
+#             truth for this since 2026-07-09, and group_vars/rudder_servers/
+#             main.yml already deriving the same three LDAP DNs from it on the
+#             Ansible side. This script was missed by that migration entirely --
+#             not even named in ad_forest.json's own consumer list. Fixed to
+#             read EXA_DOMAIN from begyndelse.json (ad_forest.json's deployed
+#             form), same pattern firewallme.sh already uses, rather than
+#             reading ad_forest.json directly -- this script runs standalone,
+#             before Ansible connectivity may exist, same as firewallme.sh.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -186,6 +197,37 @@ while true; do
 done
 
 # ------------------------------------------------------------------------------
+# AD domain — loaded from begyndelse.json (benarbejde/ad_forest.json's deployed
+# form, single source of truth), same pattern firewallme.sh already uses.
+# Replaces "jukebox.internal" hardcoded directly into /etc/hosts, dns-search,
+# RUDDER_FQDN, and the LDAP bind-dn/search-base/admin-group below. jq is
+# installed here (rather than waiting for the main BASE_PKGS block further
+# down) because the first use of EXA_DOMAIN is in Section 2, well before that.
+# Looks for begyndelse.json in:
+#   1. $BEGYNDELSE_JSON environment variable (override)
+#   2. Same directory as this script
+#   3. /etc/example-music/begyndelse.json (system-wide install)
+# ------------------------------------------------------------------------------
+command -v jq &>/dev/null || { apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true; apt-get install -y -qq jq; }
+
+BEGYNDELSE_FILE=""
+if [[ -n "${BEGYNDELSE_JSON:-}" && -f "${BEGYNDELSE_JSON}" ]]; then
+  BEGYNDELSE_FILE="${BEGYNDELSE_JSON}"
+else
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -f "${SCRIPT_DIR}/begyndelse.json" ]]; then
+    BEGYNDELSE_FILE="${SCRIPT_DIR}/begyndelse.json"
+  elif [[ -f "/etc/example-music/begyndelse.json" ]]; then
+    BEGYNDELSE_FILE="/etc/example-music/begyndelse.json"
+  fi
+fi
+[[ -z "${BEGYNDELSE_FILE}" ]] && die "begyndelse.json not found (looked in \$BEGYNDELSE_JSON, script directory, /etc/example-music/) -- cannot determine AD domain."
+EXA_DOMAIN=$(jq -r '.domain_fqdn' "${BEGYNDELSE_FILE}")
+# LDAP-style DN form, e.g. "jukebox.internal" becomes "DC=jukebox,DC=internal" --
+# same construction as group_vars/rudder_servers/main.yml's Jinja equivalent.
+EXA_DOMAIN_DN="DC=$(echo "${EXA_DOMAIN}" | sed 's/\./,DC=/g')"
+
+# ------------------------------------------------------------------------------
 # Section 2 — Hostname
 # ------------------------------------------------------------------------------
 section "2. Hostname"
@@ -209,7 +251,7 @@ THIS_HOSTNAME="${THIS_HOSTNAME^^}"   # enforce uppercase per site convention
 info "Setting hostname to ${THIS_HOSTNAME}..."
 hostnamectl set-hostname "${THIS_HOSTNAME}"
 grep -q "${THIS_HOSTNAME,,}" /etc/hosts 2>/dev/null || \
-  echo "127.0.1.1  ${THIS_HOSTNAME,,}.jukebox.internal  ${THIS_HOSTNAME,,}" >> /etc/hosts
+  echo "127.0.1.1  ${THIS_HOSTNAME,,}.${EXA_DOMAIN}  ${THIS_HOSTNAME,,}" >> /etc/hosts
 success "Hostname set to ${THIS_HOSTNAME}."
 
 # ------------------------------------------------------------------------------
@@ -315,7 +357,7 @@ nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "rudder-static" \
   ipv4.addresses "${NODE_STATIC_IP}/24" \
   ipv4.gateway "${PROV_GW}" \
   ipv4.dns "${PROV_NET_DEFAULT}.10" \
-  ipv4.dns-search "jukebox.internal" \
+  ipv4.dns-search "${EXA_DOMAIN}" \
   ipv6.method ignore \
   connection.autoconnect yes \
   connection.autoconnect-priority 100 \
@@ -480,7 +522,7 @@ rudder server health 2>/dev/null && success "Rudder server health: OK" || warn "
 section "7. Initial Rudder configuration"
 
 # Set FQDN in Rudder
-RUDDER_FQDN="${THIS_HOSTNAME,,}.jukebox.internal"
+RUDDER_FQDN="${THIS_HOSTNAME,,}.${EXA_DOMAIN}"
 info "Setting Rudder server hostname to ${RUDDER_FQDN}..."
 if [[ -f /opt/rudder/etc/rudder-web.properties ]]; then
   if grep -q "rudder.server.name" /opt/rudder/etc/rudder-web.properties; then
@@ -633,10 +675,10 @@ else
   -->
   <ldap>
     <connection url="ldap://${PROV_NET_DEFAULT}.10:389"
-                bind-dn="CN=Rudder LDAP Bind,OU=Service Accounts,DC=jukebox,DC=internal"
+                bind-dn="CN=Rudder LDAP Bind,OU=Service Accounts,${EXA_DOMAIN_DN}"
                 bind-password="REPLACE_WITH_BIND_PASSWORD"/>
 
-    <search base="DC=jukebox,DC=internal"
+    <search base="${EXA_DOMAIN_DN}"
             filter="(&amp;(objectClass=user)(sAMAccountName={0}))"
             returnedAttribute="sAMAccountName"/>
 
@@ -646,7 +688,7 @@ else
                          configuration, validator, compliance
       -->
       <roleMap role="administrator"
-               group="CN=GRP_Rudder_Admins,OU=IT Groups,DC=jukebox,DC=internal"/>
+               group="CN=GRP_Rudder_Admins,OU=IT Groups,${EXA_DOMAIN_DN}"/>
     </roleMapping>
   </ldap>
 

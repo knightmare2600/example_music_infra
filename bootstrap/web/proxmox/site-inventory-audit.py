@@ -166,6 +166,17 @@ v5.1   - 2026-07-07: schema update for exceptions-only devices.csv
           as EXAFWL (RTR only as an alt) and .254 as EXARTR, backwards from
           the corrected convention (RTR is .1; FWL is .253 AND .254)
 
+v5.2   - 2026-07-17: domain hardcoded as "jukebox.internal" in every generated
+          FQDN (--generate-hosts/--generate-inventory) despite
+          benarbejde/ad_forest.json existing as the single source of truth for
+          this since 2026-07-09 (a mirrored copy already ships alongside this
+          script at bootstrap/web/proxmox/ad_forest.json via the pre-commit
+          sync hook, same as sites.csv/devices.csv). Added _load_domain(),
+          mirroring _load_sites()'s own 3-tier lookup, and replaced every
+          functional "jukebox.internal" with EXA_DOMAIN. Verified live, not
+          just syntax-checked: --generate-hosts produced 789 correct host
+          entries with the real domain substituted.
+
 ======================================================================
 """
 
@@ -190,6 +201,7 @@ class C:
 
 import csv as _csv_mod
 import os as _os
+import json as _json_mod
 
 def _load_sites(csv_path=None):
     """
@@ -247,6 +259,43 @@ SITE_SUBNETS = {code: s["subnet"]  for code, s in SITES.items() if s["subnet"] !
 SITE_CODES   = set(SITES.keys())
 
 """ SITE_SUBNETS derived from CSV above -- used by audit checks below. """
+
+
+def _load_domain(json_path=None):
+    """
+    Load the AD forest domain (domain_fqdn) from ad_forest.json -- single
+    source of truth since 2026-07-09, same file used across windows_dc/
+    windows_bootstrap/windows_adschema/rudder_servers/bindme.sh/rudderme.sh.
+    Searches: same directory as this script, then current working directory,
+    then /etc/example-music/ad_forest.json. Override with AD_FOREST_JSON
+    environment variable or json_path argument. Mirrors _load_sites()'s own
+    3-tier lookup above.
+    """
+    if json_path is None:
+        json_path = _os.environ.get("AD_FOREST_JSON")
+    if json_path is None:
+        script_dir = _os.path.dirname(_os.path.abspath(__file__))
+        candidates = [
+            _os.path.join(script_dir, "ad_forest.json"),
+            _os.path.join(_os.getcwd(), "ad_forest.json"),
+            "/etc/example-music/ad_forest.json",
+        ]
+        for p in candidates:
+            if _os.path.isfile(p):
+                json_path = p
+                break
+
+    if not json_path or not _os.path.isfile(json_path):
+        print("WARNING: ad_forest.json not found -- falling back to jukebox.internal.")
+        print("  Looked in: script directory, cwd, /etc/example-music/ad_forest.json")
+        print("  Set AD_FOREST_JSON=/path/to/ad_forest.json to override.")
+        return "jukebox.internal"
+
+    with open(json_path, encoding="utf-8") as f:
+        return _json_mod.load(f)["domain_fqdn"]
+
+
+EXA_DOMAIN = _load_domain()
 
 
 # =============================================================================
@@ -959,14 +1008,14 @@ def generate_hosts(output_path=None, sites_csv=None, _extra_hosts=None):
     label = role_labels.get(prefix, prefix)
     lines.append(_section_header(label))
     for octet, ip, hostname in entries:
-      fqdn = f"{hostname.lower()}.jukebox.internal"
+      fqdn = f"{hostname.lower()}.{EXA_DOMAIN}"
       lines.append(f"{ip:<18} {fqdn:<45} {hostname.lower()}")
     lines.append("")
 
   # ── Known ancillary hosts (hardcoded stable infrastructure) ─────────────
   lines.append(_section_header("Ancillary / Management Infrastructure"))
   for site, ip, hostname, _, comment in KNOWN_ANCILLARY:
-    fqdn = f"{hostname.lower()}.jukebox.internal"
+    fqdn = f"{hostname.lower()}.{EXA_DOMAIN}"
     lines.append(f"{ip:<18} {fqdn:<45} {hostname.lower()}  # {comment}")
   lines.append("")
 
@@ -974,7 +1023,7 @@ def generate_hosts(output_path=None, sites_csv=None, _extra_hosts=None):
   if _extra_hosts:
     lines.append(_section_header("Site-Specific Ancillary Hosts"))
     for ip, hostname, comment, active in _extra_hosts:
-      fqdn = f"{hostname.lower()}.jukebox.internal"
+      fqdn = f"{hostname.lower()}.{EXA_DOMAIN}"
       prefix = "" if active else "# "
       suffix = f"  # {comment}" if comment else ""
       if not active:
@@ -993,7 +1042,7 @@ def generate_hosts(output_path=None, sites_csv=None, _extra_hosts=None):
   lines.append("#")
   lines.append("# Format:")
   lines.append("#      <ip>                      <fqdn>                  <short>              <description>")
-  lines.append("# 192.168.41.100   exacofcly001.jukebox.internal       exacofcly001  # Internet connected coffee machine in CLY")
+  lines.append(f"# 192.168.41.100   exacofcly001.{EXA_DOMAIN}       exacofcly001  # Internet connected coffee machine in CLY")
   lines.append("")
 
   output = "\n".join(lines)
@@ -1044,7 +1093,7 @@ def generate_inventory(output_path=None, sites_csv=None, _extra_hosts=None):
       if not in_ansible:
         continue
       role_key = prefix.lower()
-      host_line = f"{hostname.lower()}.jukebox.internal"
+      host_line = f"{hostname.lower()}.{EXA_DOMAIN}"
 
       vars_parts = [f"ansible_host={ip}"]
       # Unmanaged hardware -- do not SSH, just record in inventory
@@ -1109,11 +1158,11 @@ def generate_inventory(output_path=None, sites_csv=None, _extra_hosts=None):
   lines.append("[ancillary]")
   for site, ip, hostname, in_ansible, comment in KNOWN_ANCILLARY:
     if in_ansible:
-      host_line = f"{hostname.lower()}.jukebox.internal"
+      host_line = f"{hostname.lower()}.{EXA_DOMAIN}"
       lines.append(f"{host_line}  ansible_host={ip} site={site}  # {comment}")
   if _extra_hosts:
     for ip, hostname, comment, active in _extra_hosts:
-      host_line = f"{hostname.lower()}.jukebox.internal"
+      host_line = f"{hostname.lower()}.{EXA_DOMAIN}"
       prefix = "" if active else "# "
       note   = f"  # {comment}" if comment else ""
       if not active:
@@ -1126,7 +1175,7 @@ def generate_inventory(output_path=None, sites_csv=None, _extra_hosts=None):
   lines.append("[all:vars]")
   lines.append("ansible_user=ansible")
   lines.append("ansible_python_interpreter=/usr/bin/python3")
-  lines.append("domain=jukebox.internal")
+  lines.append(f"domain={EXA_DOMAIN}")
   lines.append("")
 
   output = "\n".join(lines)
@@ -1192,10 +1241,10 @@ def main():
   parser = argparse.ArgumentParser(
     description="Proxmox Environment Audit + Host/Inventory Generator",
     formatter_class=argparse.RawDescriptionHelpFormatter,
-    epilog="""
+    epilog=f"""
 Examples:
   # Run full audit against live Proxmox cluster
-  %(prog)s --host pve.jukebox.internal --user root@pam --inventory hosts.txt
+  %(prog)s --host pve.{EXA_DOMAIN} --user root@pam --inventory hosts.txt
 
   # Generate /etc/hosts from sites.csv (no Proxmox connection needed)
   %(prog)s --generate-hosts
@@ -1209,7 +1258,7 @@ Examples:
   %(prog)s --generate-hosts --generate-inventory
 
   # Audit + cross-check against generated hosts
-  %(prog)s --host pve.jukebox.internal --user root@pam \
+  %(prog)s --host pve.{EXA_DOMAIN} --user root@pam \
            --inventory hosts.txt --generate-hosts
 """)
 

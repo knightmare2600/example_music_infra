@@ -1,5 +1,53 @@
 # Procedure: Bulk Domain Name Replace After AD Forest Rebuild
 
+## Preferred method (2026-07-17): `benarbejde/ad_forest.json` is the single source of truth
+
+This document originally described only the bulk find-and-replace below, from the one-time
+historical `jukebox.example` → `jukebox.internal` rename (forced by `.example` being an
+RFC 2606-reserved TLD Windows DNS rejects). Since 2026-07-09, `benarbejde/ad_forest.json`
+exists specifically so a **future** domain rename does not require that bulk-replace sweep at
+all — it is the single source of truth for `domain_fqdn`, `netbios_name`, `forest_mode`,
+`domain_mode`, `hub_sites`, `cld_site`, and `dns_forwarders`.
+
+**To rename the domain today:**
+
+1. Edit `benarbejde/ad_forest.json` — change `domain_fqdn` (and `netbios_name` if it should
+   change too). That is the only file that should need a manual edit.
+2. Everything below reads that file directly, or via its deployed/mirrored form
+   (`begyndelse.json`, or the pre-commit-synced copy at `bootstrap/web/proxmox/ad_forest.json`)
+   — no further editing needed, just re-run/re-deploy each:
+   - `ansible/configs/inventory/group_vars/all/vars.yml` (`exa_domain`), `group_vars/windows_dc/vars.yml`
+     (`ad_domain_name`, `ad_netbios_name`, `dc_hub_sites`, `dc_cld_site`, `dc_dns_forwarders`),
+     `group_vars/rudder_servers/main.yml` (`rudder_domain` + its 3 LDAP DNs) — all Jinja lookups,
+     take effect on next Ansible run.
+   - `bootstrap/web/provision/firewallme.sh`, `bindme.sh`, `rudderme.sh` — read `begyndelse.json`
+     live at script-run time via `jq`; re-run the script to pick up the new value. Note
+     `bindme.sh` bakes the value into a handful of generated files (`bind-aliases.sh`,
+     `regen-zone.sh`, the dynamic MOTD) at write time — re-run `bindme.sh` itself to refresh
+     those, rather than editing them by hand.
+   - `benarbejde/parse_tdf.py` — `--domain`'s default now reads `ad_forest.json` directly
+     (co-located in `benarbejde/`); re-run it to regenerate `ad_users.json`/`ad_groups.json`/
+     `ad_computers.json` with the new domain baked into every record (those are generated
+     data dumps — the old per-record values do not update themselves).
+   - `bootstrap/web/proxmox/site-inventory-audit.py` — reads the pre-commit-synced copy of
+     `ad_forest.json` alongside itself; re-run `--generate-hosts`/`--generate-inventory` to
+     regenerate.
+3. **Known exception, deliberately not migrated**: `bootstrap/web/windows/Join-DomainAndBootstrap.ps1`
+   is marked a historical artefact (superseded by `windows_bootstrap/playbooks/80-domainjoin.yml`)
+   and explicitly must not be kept in sync — if this script is ever actually run again, use the
+   bulk-replace procedure below on it specifically, or accept it will reference the old domain.
+4. If anything is found still hardcoding the domain independently of `ad_forest.json` (a new
+   script, a doc, a config file this list doesn't cover), the bulk-replace procedure below is
+   still the right fallback for that specific file — it isn't retired, just no longer the
+   primary method for everything this list already covers.
+
+---
+
+## Legacy method: bulk find-and-replace
+
+The rest of this document is the original historical procedure, kept for anything not covered
+above (documentation prose, one-off files, or a future exception like the one in step 3).
+
 ## Context
 
 When rebuilding an Active Directory forest with a corrected domain name, all documentation,
