@@ -115,10 +115,20 @@
     - not fw_is_black_site
     - fw_hub_peer_block.changed
 
+# BUG FIX (2026-07-17): used {{ playbook_dir }} here, which is caller-dependent
+# for a role task file -- it's the directory of whatever TOP-LEVEL playbook
+# happens to include this role, not a fixed location. Only worked because
+# 90-firewall.yml is currently this role's sole entry point; caught by this
+# repo's own check_playbook_dir_paths.py harness check. role_path (already
+# used correctly for update_hub_topology.py itself, right below) is invariant
+# regardless of caller, so it's the right base for reaching outside the role
+# too -- 4 levels up from roles/firewall/ reaches ansible/, same as the
+# already-verified 3-levels-up-from-playbooks/ path playbook_dir gave.
+
 - name: "[Hub register] Update wg_hub_topology in group_vars/firewalls/main.yml"
   ansible.builtin.command: >-
     python3 {{ role_path }}/files/update_hub_topology.py
-    {{ playbook_dir }}/../../../configs/inventory/group_vars/firewalls/main.yml
+    {{ role_path }}/../../../../configs/inventory/group_vars/firewalls/main.yml
     {{ fw_site_code }} {{ fw_wg_hub_site }}
   delegate_to: localhost
   become: false
