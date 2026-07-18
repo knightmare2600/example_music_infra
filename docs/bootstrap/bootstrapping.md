@@ -1118,6 +1118,26 @@ mechanism, not an error) → `wget -O /run/automatic-installer-answers http://19
 → `exit` → installs unattended → on first login (root), `bash /var/lib/proxmox-first-boot/proxmox-first-boot`
 to run §6.1's script by hand if it didn't already fire via `[first-boot]`.
 
+**Why the automatic fetch "fails" at all:** `proxmox-fetch-from-url` sends the request as an HTTP
+POST (the node's system properties go in the body, so the answer file's `[[match]]` filters can key
+off them), not a GET. Neither `python3 -m http.server` (Fredericia Havn) nor `static-web-server.exe`
+(Edinburgh, §2.2) answer POST — both are plain static-file servers — so the installer's own fetch
+always lands as an error and the manual `wget` above (a GET) is the only way to actually get the file
+onto the node today. Two small, narrowly-scoped tools close this gap without replacing either server:
+
+- `bootstrap/serve.py` — a genuine drop-in replacement for `python3 -m http.server` (same invocation,
+  same directory served) with `do_POST` aliased to `do_GET`, so the automatic fetch succeeds instead
+  of falling through to the manual step above.
+- `bootstrap/Start-ProxmoxAnswerShim.ps1` — for a box running `static-web-server.exe`, which can't be
+  given the same one-line treatment: a narrow `HttpListener` loop on its own port, serving only the
+  `*.toml` answer files, leaving `static-web-server.exe` untouched on its own port for everything else
+  (directory listings, `/debian`, `/alpine`, iPXE assets).
+
+Neither has been confirmed live against a real Proxmox node's automated fetch yet — verified so far
+only with `curl`/`Invoke-WebRequest` against both scripts directly (see each script's own header for
+the exact commands). Test against a real `proxmox-fetch-from-url` boot before relying on either to
+remove the manual `wget` step for good.
+
 Useful debugging commands if `first-boot.sh` didn't run automatically or you need to inspect state
 afterward:
 

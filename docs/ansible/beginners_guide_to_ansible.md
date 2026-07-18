@@ -246,6 +246,203 @@ once bootstrap completes; `add_host` only covers the run that gets it there.
 
 ---
 
+## Bootstrapping the Base Nodes — A Worked Example From Nothing
+
+Everything above is easier to follow with a real, concrete run through it. This section
+walks through building CLD's core estate — the Ansible control node, the site firewall
+(also the estate's WireGuard hub), and the first domain controller — starting from a bare
+Proxmox hypervisor and nothing else. It ties together `benarbejde/` as the source of truth,
+the inventory/`group_vars` mechanism, and `add_host` dynamic registration, all in one
+concrete sequence rather than three separate abstract explanations.
+
+**The starting point:** `EXAPVECLD001` (CLD's own Proxmox hypervisor) is already built —
+imaged via its iLO BMC (`192.168.139.3`, HP iLO — can mount the Proxmox ISO as virtual
+media) — but not yet Ansible-managed. It's currently reachable at `192.168.139.243`, a
+provisioning-network address, not its real final one. *(Mounting the ISO by hand via iLO is
+a manual step today — PXE-booting Proxmox directly is planned work, not yet built. Come back
+to this once that lands.)* Nothing else exists yet: no Ansible control node, no firewall, no
+domain. This is genuinely the chicken-and-egg case
+`docs/proxmox/Procedure-PVE-Node-Onboarding.md` calls out — the fix for it is
+`bootstrap/web/provision/ansibleme.sh`, a break-glass script that configures a box directly
+over SSH without needing an existing Ansible control node to drive it.
+
+One thing worth noting before starting: **creating a VM on a Proxmox host doesn't require
+that host to be Ansible-onboarded at all** — `create-vm.py` (or the Proxmox web UI) talks
+directly to the PVE API, which is already up on any built hypervisor regardless of whether
+Ansible manages it yet. That's what breaks the apparent circularity below: every VM in this
+walkthrough gets created on `EXAPVECLD001` while it's still sitting at its provisioning
+address, `192.168.139.243`, onboarding it comes later as its own explicit step.
+
+### 1. `EXAANSCLD001` — the Ansible control node itself
+
+Create the VM on `EXAPVECLD001` (`192.168.139.243`) the same way
+`docs/buildsheets/buildsheet-firewall.md`'s Step 1 does it for a firewall — `create-vm.py`
+against the PVE API, boot order CD-ROM first. PXE/preseed installs Debian the same way it
+does for every other Linux box in this estate (see `docs/bootstrap/bootstrapping.md`) —
+`late_command.sh` already drops an `ansible` system user and the estate's SSH key onto it
+during that same install, before anything Ansible-related has run. In this walkthrough the
+box comes up on `192.168.69.222` — a DHCP lease from CLD's own LAN pool (`.100`–`.249` per
+`address_policy.json`), not the shared `192.168.139.0/24` provisioning network the firewalls
+land on, since this VM was given a single NIC on CLD's LAN bridge rather than a dual-homed
+WAN/LAN pair.
+
+SSH in as `ansible` (the key's already there) and fetch the real bootstrap script from the
+provisioning server:
+
+```bash
+ssh ansible@192.168.69.222
+wget http://192.168.139.50/provision/ansibleme.sh
+chmod +x ansibleme.sh
+sudo ./ansibleme.sh
+```
+
+> The URL above is the *actual* git-tracked path (`bootstrap/web/provision/ansibleme.sh`) —
+> worth flagging because `docs/buildsheets/buildsheet-firewall.md`'s equivalent `wget` for
+> `firewallme.sh` omits the `/provision/` segment, which looks stale against the real file
+> tree. Not fixed here — out of scope for this section — but don't copy that one literally.
+
+`ansibleme.sh` is self-contained and interactive. In order, it: reconfigures this box's own
+static IP (to `192.168.69.9`, per `devices.csv`'s `CLD,ANS,1,9` row — the same value
+`begyndelse.json`'s `ansible_control` entry already states); generates the estate's Ansible
+SSH keypair; clones this repo into `/home/ansible/example-music-infra` and symlinks
+`ansible/` to `/home/ansible/ansible`; writes `ansible.cfg` and scaffolds
+`configs/inventory/`; and offers to onboard PVE nodes and run a discovery scan of the rest of
+the estate. Say no to both for now — those are the next two steps, done deliberately rather
+than as part of this run.
+
+**End state:** a real Ansible control node at `192.168.69.9`, with `ansible-playbook`
+runnable from `~/ansible` against everything covered below.
+
+### 2. `EXAPVECLD001` — onboarding the hypervisor everything else runs on
+
+From `EXAANSCLD001`, onboard the hypervisor itself. It's still sitting at its provisioning
+address, so this is exactly `proxmox/bootstrap-new-node.yml`'s documented case — a
+freshly-preseeded node on DHCP getting its real identity for the first time:
+
+```bash
+ansible-playbook -i "192.168.139.243," -i configs/inventory \
+  -e target="192.168.139.243" playbooks/proxmox/bootstrap-new-node.yml
+```
+
+You'll be asked to confirm the target hostname (`EXAPVECLD001`) and the derived static IP
+before anything changes. That derivation matters here: `EXAPVECLD001` is CLD's standard PVE1
+slot (`address_policy.json`'s `PVE` role offset, `.5`) **within CLD's own LAN subnet**,
+`192.168.69.0/24` — so the confirmed address is `192.168.69.5`, not a `192.168.139.x`
+address. `configs/inventory/cld.ini` already has this exact entry
+(`EXAPVECLD001 ansible_host=192.168.69.5`, generated straight from `sites.csv` — nothing to
+hand-edit), and `docs/proxmox/Procedure-PVE-Node-Onboarding.md` uses this very host as its
+own worked example. The `192.168.139.0/24` range is the shared provisioning network, never a
+site's permanent address for anything other than a firewall's WAN face — worth being
+precise about, since it's an easy mix-up.
+
+The playbook renames the host, rewrites its networking to static, then chains straight into
+the full `site.yml` stage chain (packages, ansible access, `/etc/example-music/`, scripts,
+virt-tools, systemd units), rebooting once at the very end.
+
+**End state:** `EXAPVECLD001` fully Ansible-managed at `192.168.69.5`.
+
+### 3. `EXAFWLCLD001` — the site firewall and estate WireGuard hub
+
+Create another VM on `EXAPVECLD001` (now itself onboarded, though that's not a prerequisite
+— see the note above), PXE-installed the same way. In this walkthrough it comes up on
+`192.168.139.188` — the shared provisioning network this time, since a firewall genuinely
+needs a WAN-facing NIC there.
+
+The committed inventory already has an entry for this host —
+`configs/inventory/cld.ini` says `EXAFWLCLD001 ansible_host=192.168.139.69` — but that's its
+*final* WAN address, not reachable yet. The very first run against a brand-new firewall
+needs to override that for just this one connection:
+
+```bash
+ansible-playbook -i configs/inventory \
+  -e target=EXAFWLCLD001 -e ansible_host=192.168.139.188 \
+  playbooks/firewallme/playbooks/90-firewall.yml --ask-vault-pass
+```
+
+> `-e ansible_host=...` beats the inventory-set value (extra-vars are the highest-precedence
+> source in Ansible), so this connects to the box's real current address while every other
+> group-derived setting (`ansible_user=ansible`, become, `group_vars/firewalls/main.yml`'s
+> hub tables) still resolves normally — `EXAFWLCLD001` is already a genuine, correctly
+> grouped inventory host, unlike a PVE node's brand-new-hostname problem, so no `add_host`
+> dance is needed here at all. Flagged honestly: this exact override isn't a documented,
+> previously-tested worked example anywhere in this repo — it's derived directly from how
+> `late_command.sh` already provisions the `ansible` user/key and from standard Ansible
+> variable precedence, not from a prior live run in this state.
+
+CLD is the estate's black site, so the role asks its extra black-site `CONFIRM`, then — as
+of the WireGuard hub-bootstrap work landed 2026-07-18 — detects that this host has no
+existing `/etc/wireguard/private.key` and asks a further, CLD-only prompt: *"No existing hub
+config found on EXAFWLCLD001 (CLD) — set it up now?"* Answer `CONFIRM`. That's what actually
+triggers key generation and the `wg0.conf` `[Interface]` write for a from-scratch hub — it
+used to be silently skipped for CLD unconditionally, full stop. WAN mode is forced static
+here (mandatory for the black site); the role derives `192.168.139.69` and asks you to
+confirm it, matching `192.168.139.<CLD's site-octet, 69>`, the same convention every other
+site's WAN address follows.
+
+**End state:** `EXAFWLCLD001` is the estate's WireGuard hub, static WAN `192.168.139.69`,
+tunnel address `10.0.69.1`, ready to accept spokes.
+
+### 4. `EXADCSCLD001` — the first domain controller (forest root)
+
+Create a Windows Server VM on `EXAPVECLD001`, install via the estate's unattend answer file
+(see `docs/bootstrap/bootstrapping.md`'s Windows section), and once it's reachable over
+WinRM after OOBE, run the DC onboarding chain from `EXAANSCLD001`:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
+  -e target=<its-current-reachable-address>
+```
+
+`windows_bootstrap/playbooks/00-preflight.yml` (the same `add_host` mechanism described
+above, in the flesh) asks for the real hostname (`EXADCSCLD001`), whether this is the first
+DC in the forest (**yes** — nothing exists yet), and the static IP to assign. That last one
+is `192.168.69.10` — `sites.csv`'s own `DC` column for CLD already states this directly, no
+derivation needed. Being first-in-forest means DNS resolution falls back to BIND9
+(`192.168.139.8`, the estate's `EXADNSVRK001`) until this DC promotes itself and becomes its
+own DNS server. Once the rename/static-IP/reboot cycle completes,
+`add_host` registers the box into `windows_dc` (and its parent groups) for the rest of this
+same run, and the DC-specific stages (`windows_dc/playbooks/00-dc-preflight.yml` onward) take
+over — `Install-ADDSForest`, not a join, since this is the forest root.
+
+**End state:** the `jukebox.internal` forest exists, with `EXADCSCLD001` as its first DC at
+`192.168.69.10`.
+
+### 5. Proving WireGuard end-to-end — `EXAFWLFAL001`
+
+With CLD's hub genuinely up, the next firewall built anywhere is the real end-to-end test.
+`EXAFWLFAL001` comes up on `192.168.139.237` this time — a DHCP lease from the same shared
+provisioning network as CLD's own firewall used earlier, not its final address. Same
+pattern as step 3:
+
+```bash
+ansible-playbook -i configs/inventory \
+  -e target=EXAFWLFAL001 -e ansible_host=192.168.139.237 \
+  playbooks/firewallme/playbooks/90-firewall.yml --ask-vault-pass
+```
+
+FAL isn't the black site, so this one's simpler: WAN derives to `192.168.139.76` (FAL's own
+site-octet), WireGuard role defaults to `spoke`, hub site defaults to `CLD`. Once the role
+finishes, `10_register_spoke_on_hub.yml` automatically registers `EXAFWLFAL001` as a peer on
+`EXAFWLCLD001` — delegating straight to `192.168.139.69` — and (as of the same 2026-07-18
+work) checks that hub is actually reachable on port 22 first, deferring cleanly with a clear
+message rather than failing raw if CLD isn't up yet.
+
+Verify the tunnel from either end:
+
+```bash
+sudo wg show                    # both ends — look for a recent handshake
+ping -c 3 10.0.69.1              # from FAL, to CLD's hub tunnel address
+```
+
+**What this whole walkthrough demonstrates:** `benarbejde/` as the single source of truth
+(every address above came from `sites.csv`, `devices.csv`, or `address_policy.json` — none
+were invented), `add_host` resolving group membership for a host that doesn't exist in any
+`.ini` file yet, and the same core idea — a fresh box reachable only by its temporary address
+becoming a fully-managed, correctly-configured estate member — playing out identically
+across a Debian firewall, a Debian hypervisor, and a Windows domain controller.
+
+---
+
 ## Understanding an Ansible Playbook Command
 
 The following command was executed:
@@ -817,6 +1014,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-06-20 | Added colourised output section — `exa_pretty` callback and `group_vars/all/colours.yml` |
 | 2026-07-09 | Major expansion: added "How This Repository Is Organised" (`benarbejde/` single source of truth), "Inventory and group_vars" (the `host_group_vars` plugin mechanism, why it only auto-loads from inside the loaded inventory path, and the symlink-rejected/real-move fix), "Dynamic Inventory Registration" (`add_host` in `windows_bootstrap`'s preflight), and "Idempotency" (the `target`/`target_hosts` `hosts:` pattern bug found in the 2026-07-09 chain audit). Rewrote "Understanding ansible.cfg" against the actual committed `ansible/ansible.cfg` (previous version was stale and internally inconsistent with the Colourised Output section below it — it showed `ansible.builtin.default` as the callback when `exa_pretty` had already been rolled out). Corrected "Understanding Sudo and Become": the previous version stated `become = True` as the current global setting — it is, and must stay, `False`; Linux-only escalation lives in `group_vars/linux/main.yml`, and a global `become = True` previously broke Windows connectivity in production. |
 | 2026-07-09 | While writing the `ansible.cfg` section against the real file, found `forks`/`timeout`/`retry_files_enabled`/`retry_files_save_path`/`display_skipped_hosts`/`display_failed_stderr` were textually inside the wrong `[section]` and silently inert — confirmed with `ansible.config.manager.ConfigManager`, not just by reading the file. Fixed the real `ansible/ansible.cfg` (all 6 now verified reading from the file), and added the "real lesson in ini section semantics" callout in "Understanding ansible.cfg" above. |
+| 2026-07-18 | Added "Bootstrapping the Base Nodes" — a worked, address-accurate walkthrough building `EXAANSCLD001`, `EXAPVECLD001`, `EXAFWLCLD001`, and `EXADCSCLD001` from a bare Proxmox hypervisor, plus `EXAFWLFAL001` as the WireGuard end-to-end proof. Every address traced against `sites.csv`/`devices.csv`/`address_policy.json` (caught and corrected one real discrepancy along the way: CLD's PVE1 slot is `192.168.69.5`, on CLD's own LAN, not `192.168.139.x`) and against `docs/proxmox/Procedure-PVE-Node-Onboarding.md`'s own worked example. Also found `docs/buildsheets/buildsheet-firewall.md`'s `wget` for `firewallme.sh` omits the real `/provision/` path segment — flagged, not fixed (out of scope for this section). |
 
 ---
 
