@@ -1,0 +1,118 @@
+---
+# =============================================================================
+# playbooks/36-vmbr1.yml
+# Example Music Limited — Proxmox VE node: ensure vmbr1 (VM VLAN bridge) exists
+# =============================================================================
+# Turns docs/proxmox/pve-networking.md's documented-but-manual "Step 2
+# (alternative) — Create vmbr1 via CLI" into an idempotent Ansible stage.
+# vmbr1 is a single VLAN-aware Linux bridge (bridge-vids 2-4094) that passes
+# through every site's VLAN tag automatically -- there is no per-site "VLAN
+# object" to enumerate the way pools (35-pools.yml) are separate named
+# things; Proxmox SDN VNets would be the closer VMware-port-group analogue
+# but are explicitly not used here (see pve-networking.md's own "overkill
+# for our setup"). This stage only ever needs to ensure the bridge itself
+# exists -- create-vm.py's per-VM NIC tagging (tag=<site-octet>,bridge=vmbr1)
+# already does the rest, unchanged, once this bridge is there.
+#
+# vmbr0 is DELIBERATELY OUT OF SCOPE, not an oversight. pve-networking.md is
+# explicit: vmbr0 is the node's own management bridge -- "Leave this alone
+# ... the IP the Proxmox web UI lives on" -- created by the Proxmox
+# installer and never to be touched by this or any other playbook. This is
+# a different vmbr0 than the one create-vm.py attaches VRK-site VMs to (same
+# bridge name, different role: the node's own live management traffic vs. a
+# VM's untagged NIC) -- templating it here would risk the very SSH
+# connection Ansible is running this play over, the same class of mistake
+# the firewall role's whole safety model already exists to prevent. Found
+# and scoped down from an earlier, broader approval while implementing this
+# -- see project_pve_pools_and_vmbr1_ansible_port memory for the full
+# reasoning if this needs revisiting.
+#
+# Requires pve_vmbr1_uplink_iface to be set per-node (host_vars/<hostname>.yml)
+# -- the second physical NIC to use as vmbr1's bridge port. Genuinely
+# hardware-specific (varies per physical box), so this fails loudly rather
+# than guessing a default -- pve-networking.md's own worked example
+# (enp1s0f1) is one real box's interface name, not a safe universal default.
+#
+# Writes the vmbr1 stanza via blockinfile (own marker, only ever touches its
+# own block -- never anything else in /etc/network/interfaces, including
+# vmbr0's stanza) but deliberately does NOT run `ifreload -a` automatically.
+# Every other numbered stage in this chain (00-50) is designed to run
+# unattended, with no operator prompts -- but reloading network config is
+# exactly the class of action this repo's firewall role already treats as
+# too risky to fire without an explicit, aware operator action (WAN
+# activation, nftables reload-if-safe, NM connection reload-not-restart are
+# all the same caution applied elsewhere). Writes the config, prints the
+# exact commands to review and apply, leaves the actual reload to the
+# operator.
+#
+# Always runs -- writing the block is pure file placement (blockinfile
+# itself is idempotent; a no-op re-run reports unchanged), same reasoning
+# every other "Always" stage in this chain already uses. The one live-
+# affecting step (ifreload) is never run by this stage at all.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/36-vmbr1.yml
+#
+# Tags: vmbr1
+#
+# NOT YET TESTED against a real Proxmox node's /etc/network/interfaces --
+# the stanza is transcribed directly from pve-networking.md's own documented,
+# human-verified worked example, not independently confirmed against a live
+# ifupdown2 config on this box's actual hardware. Confirm with
+# `ifreload -a --diff` (never applied automatically by this stage) before
+# running the real `ifreload -a`.
+# =============================================================================
+# Changelog:
+#   2026-07-19  Initial file.
+# =============================================================================
+
+- name: Proxmox VE — ensure vmbr1 (VLAN-aware VM bridge) exists
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+  gather_facts: false
+
+  tasks:
+
+    - name: Fail if pve_vmbr1_uplink_iface is not set for this node
+      ansible.builtin.fail:
+        msg: >-
+          pve_vmbr1_uplink_iface is not set for {{ inventory_hostname }}. This is the second
+          physical NIC vmbr1 should bridge -- genuinely hardware-specific, so it must be set
+          explicitly in host_vars/{{ inventory_hostname }}.yml (verify the real interface name
+          with `ip link show` on the node first) rather than guessed at. Not run.
+      when: pve_vmbr1_uplink_iface is not defined or pve_vmbr1_uplink_iface | trim == ''
+      tags: vmbr1
+
+    - name: Write vmbr1 stanza in /etc/network/interfaces
+      ansible.builtin.blockinfile:
+        path: /etc/network/interfaces
+        marker: "# {mark} ANSIBLE MANAGED BLOCK vmbr1 (playbooks/proxmox/playbooks/36-vmbr1.yml)"
+        insertafter: EOF
+        block: |
+          # VM bridge -- VLAN-aware, no IP. All site VLANs pass through this bridge --
+          # see docs/proxmox/pve-networking.md for the full VLAN# = SITE reference table.
+          auto vmbr1
+          iface vmbr1 inet manual
+              bridge-ports {{ pve_vmbr1_uplink_iface }}
+              bridge-stp off
+              bridge-fd 0
+              bridge-vlan-aware yes
+              bridge-vids 2-4094
+      register: _vmbr1_block
+      tags: vmbr1
+
+    - name: Report next step if the bridge config changed
+      ansible.builtin.debug:
+        msg: >-
+          {{ _c.C }}[*]{{ _c.NC }} vmbr1 config written to /etc/network/interfaces -- NOT applied
+          automatically. Review and apply yourself once ready:
+            ifreload -a --diff   # preview
+            ifreload -a          # apply
+      when: _vmbr1_block.changed
+      tags: vmbr1
+
+    - name: Report no action needed
+      ansible.builtin.debug:
+        msg: "{{ _c.G }}[+]{{ _c.NC }} vmbr1 already configured correctly -- nothing to do."
+      when: not _vmbr1_block.changed
+      tags: vmbr1

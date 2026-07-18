@@ -19,6 +19,8 @@
 #   10-packages            Management packages (always)
 #   20-ansible-access       User/SSH key/sudoers/kvm group (gated)
 #   30-example-music       /etc/example-music/ — sites.csv, devices.csv, nodeinfo.json (always)
+#   35-pools                One Proxmox pool per site (always — run_once, cluster-wide)
+#   36-vmbr1                Ensure vmbr1 VLAN-aware bridge exists (always — never applied live)
 #   40-scripts              Maintenance scripts + apt config + NIC guard creds (always)
 #   45-virt-tools           V2V/VirtIO/proxmoxbmc/BIOS ROMs (always — file placement only)
 #   46-proxmorph            proxmorph UI themes + sensor monitoring (always)
@@ -45,9 +47,15 @@
 # need 00-preflight.yml's facts — run those together, or via site.yml,
 # rather than standalone.)
 #
-# Tags: preflight, packages, ansible_access, example_music, scripts, virt_tools, proxmorph, systemd_units
+# Tags: preflight, packages, ansible_access, example_music, pools, vmbr1, scripts, virt_tools, proxmorph, systemd_units
 # =============================================================================
 # Changelog:
+#   2026-07-19  Added 35-pools.yml (one Proxmox pool per sites.csv site code, ported
+#               from manage-pool.py's manual-invocation logic) and 36-vmbr1.yml
+#               (idempotent vmbr1 VLAN-aware bridge, ported from
+#               docs/proxmox/pve-networking.md's documented-but-manual steps) — both
+#               self-heal on the next site.yml run whenever a new site is added to
+#               sites.csv, rather than needing a human to remember a manual step.
 #   2026-07-09  Added 46-proxmorph.yml — third-party proxmorph UI themes for
 #               the PVE web UI plus its hardware sensor monitoring feature,
 #               on by default for every PVE node.
@@ -90,6 +98,12 @@
 
 - import_playbook: playbooks/30-example-music.yml
   tags: example_music
+
+- import_playbook: playbooks/35-pools.yml
+  tags: pools
+
+- import_playbook: playbooks/36-vmbr1.yml
+  tags: vmbr1
 
 - import_playbook: playbooks/40-scripts.yml
   tags: scripts

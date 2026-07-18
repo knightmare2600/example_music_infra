@@ -26,6 +26,8 @@ quick file-map, not a duplicate of that doc; keep the detailed procedure there.
 | `playbooks/10-packages.yml` | `packages` | Management packages | Always |
 | `playbooks/20-ansible-access.yml` | `ansible_access` | Ansible user/SSH key/sudoers/kvm group | **Only on first onboard**, or with `-e pve_force_full_onboard=true` |
 | `playbooks/30-example-music.yml` | `example_music` | `/etc/example-music/` — `sites.csv`, `devices.csv`, `nodeinfo.json` | Always |
+| `playbooks/35-pools.yml` | `pools` | Ensures one Proxmox pool per `sites.csv` site code exists (`pvesh`, no API credential needed) | Always — `run_once` (cluster-wide resource) |
+| `playbooks/36-vmbr1.yml` | `vmbr1` | Ensures the `vmbr1` VLAN-aware VM bridge exists in `/etc/network/interfaces`; never touches `vmbr0` (management) and never runs `ifreload` itself | Always — never applied live |
 | `playbooks/40-scripts.yml` | `scripts` | Maintenance scripts (`convert-v2v.py`/`create-vm.py`/`manage-pool.py`), apt config, NIC-guard credentials dir | Always |
 | `playbooks/45-virt-tools.yml` | `virt_tools` | V2V prereqs, VirtIO ISO, `proxmoxbmc`/BIOS ROM file placement | Always |
 | `playbooks/46-proxmorph.yml` | `proxmorph` | [proxmorph](https://github.com/IT-BAER/proxmorph) UI themes + hardware sensor monitoring | Always |
