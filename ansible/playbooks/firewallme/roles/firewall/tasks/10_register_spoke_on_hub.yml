@@ -58,6 +58,37 @@
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
 
+# BUG FIX (2026-07-18): every task below this point delegates straight to the
+# hub with no check it's actually up -- a spoke provisioned before its hub (or
+# while the hub is mid-maintenance, powered off, etc.) would hit a raw SSH
+# connection failure here instead of a clear, deferred message. wait_for against
+# port 22 (the same management path every firewall already shares, rather than
+# trying to probe the UDP WireGuard port itself) catches that up front.
+
+- name: "[Hub register] Check hub is reachable before registering as a peer"
+  ansible.builtin.wait_for:
+    host: "{{ fw_wg_hub_ip }}"
+    port: 22
+    timeout: 5
+  delegate_to: localhost
+  become: false
+  register: fw_hub_reachable
+  ignore_errors: true
+  when:
+    - fw_wg_role == 'spoke'
+    - not fw_is_black_site
+
+- name: "[Hub register] NOTE — hub unreachable, registration deferred"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _c.Y }}[!]{{ _c.NC }} Hub {{ fw_wg_hub_site }} ({{ fw_wg_hub_ip }}) is not reachable on
+      port 22 right now — skipping automatic peer registration. Register this spoke manually
+      once the hub is up, via playbooks/add-wg-spoke.yml.
+  when:
+    - fw_wg_role == 'spoke'
+    - not fw_is_black_site
+    - fw_hub_reachable.failed | default(true)
+
 - name: "[Hub register] Add/update this spoke's [Peer] block on its hub"
   ansible.builtin.blockinfile:
     path: /etc/wireguard/wg0.conf
@@ -78,6 +109,7 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
+    - not (fw_hub_reachable.failed | default(true))
 
 - name: "[Hub register] Write PSK to tmpfile for wg set"
   ansible.builtin.copy:
@@ -124,6 +156,14 @@
 # regardless of caller, so it's the right base for reaching outside the role
 # too -- 4 levels up from roles/firewall/ reaches ansible/, same as the
 # already-verified 3-levels-up-from-playbooks/ path playbook_dir gave.
+#
+# 2026-07-18: added a wait_for reachability check against the hub's port 22
+# before any delegate_to task -- previously a spoke provisioned before its hub
+# existed (or while the hub was mid-maintenance) hit a raw SSH connection
+# failure here instead of a clear, deferred message. Every task from the peer-
+# block write onward, plus the topology update, now also requires the hub to
+# have answered; if it didn't, registration is skipped with a NOTE pointing at
+# playbooks/add-wg-spoke.yml for a manual re-run once the hub is back up.
 
 - name: "[Hub register] Update wg_hub_topology in group_vars/firewalls/main.yml"
   ansible.builtin.command: >-
@@ -137,6 +177,7 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
+    - not (fw_hub_reachable.failed | default(true))
 
 - name: "[Hub register] NOTE — wg_hub_topology updated, not committed"
   ansible.builtin.debug:
@@ -157,3 +198,4 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
+    - not (fw_hub_reachable.failed | default(true))

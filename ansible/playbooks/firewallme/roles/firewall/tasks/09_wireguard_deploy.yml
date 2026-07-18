@@ -5,10 +5,15 @@
 # =============================================================================
 # Mirrors firewallme.sh WG section: generate keypair (preserve if exists),
 # write /etc/wireguard/wg0.conf, enable wg-quick@wg0.
-# Key generation / wg0.conf write / drop-in are skipped for CLD (fw_is_black_site)
-# and fw_wg_role == 'none' -- Ansible doesn't know how to construct CLD's unique
-# hand-maintained multi-hub peer list. Enabling/starting/verifying wg-quick@wg0
-# is NOT skipped for CLD (2026-07-17) -- every FWL node must have WireGuard
+# Key generation / wg0.conf [Interface] write / drop-in are skipped for CLD
+# (fw_is_black_site) unless fw_hub_bootstrap_confirmed is true (2026-07-18,
+# 00_preflight_3_ask.yml's CLD-only "no existing hub config found" prompt) --
+# the keypair and [Interface] section are generic, not CLD-specific; only the
+# hand-maintained multi-hub [Peer] list is genuinely something Ansible can't
+# construct, and that stays entirely with add-wg-spoke.yml/10_register_spoke_
+# on_hub.yml regardless of this flag. Also gated on fw_wg_role == 'none'.
+# Enabling/starting/verifying wg-quick@wg0 is NOT skipped for CLD (2026-07-17)
+# regardless of bootstrap confirmation -- every FWL node must have WireGuard
 # enabled, full stop; that guarantee doesn't need CLD-specific config knowledge.
 # Changelog:
 #   2026-06-20  Initial file
@@ -43,20 +48,32 @@
 #               timestamp from the header comment -- it made the block content differ
 #               (and so falsely report changed / notify restart wireguard) on every
 #               single routine run even when nothing else had changed.
+#   2026-07-18  WireGuard hub bootstrap plan, item 5: key generation, the hub
+#               [Interface] blockinfile write, and the wg-quick drop-in now also run
+#               for the black site when fw_hub_bootstrap_confirmed is true -- gives
+#               CLD a real from-scratch bootstrap path (mirrors windows_dc's
+#               dc_is_forest_root branch), rather than every piece of this being
+#               unconditionally skipped forever regardless of whether CLD's tunnel
+#               interface actually exists yet. Peer management stays entirely with
+#               add-wg-spoke.yml/10_register_spoke_on_hub.yml, unchanged.
 # =============================================================================
 
-- name: "[WireGuard] Skip — not applicable (role=none or black site)"
+- name: "[WireGuard] Skip — not applicable (role=none or black site not bootstrapping)"
   ansible.builtin.debug:
     msg: "WireGuard role is '{{ fw_wg_role }}' — skipping WG deployment."
-  when: fw_wg_role == 'none' or fw_is_black_site
+  when: fw_wg_role == 'none' or (fw_is_black_site and not fw_hub_bootstrap_confirmed)
 
 # ── Key generation (preserve if already exists) ───────────────────────────────
+# fw_hub_bootstrap_confirmed (set in 00_preflight_3_ask.yml, only ever true for
+# the black site, only when the operator confirmed a from-scratch hub setup)
+# lets these run for CLD too -- the keypair itself is generic, not CLD-specific;
+# only the multi-hub peer list is hand-maintained outside this role.
 
 - name: "[WireGuard] Check for existing private key"
   ansible.builtin.stat:
     path: /etc/wireguard/private.key
   register: wg_privkey_existing
-  when: fw_wg_role != 'none' and not fw_is_black_site
+  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
 
 - name: "[WireGuard] Generate private key (new install)"
   ansible.builtin.shell: |
@@ -66,26 +83,26 @@
     chmod 0644 /etc/wireguard/public.key
   when:
     - fw_wg_role != 'none'
-    - not fw_is_black_site
+    - not fw_is_black_site or fw_hub_bootstrap_confirmed
     - not wg_privkey_existing.stat.exists
 
 - name: "[WireGuard] Read private key"
   ansible.builtin.slurp:
     src: /etc/wireguard/private.key
   register: wg_privkey_b64
-  when: fw_wg_role != 'none' and not fw_is_black_site
+  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
 
 - name: "[WireGuard] Read public key"
   ansible.builtin.slurp:
     src: /etc/wireguard/public.key
   register: wg_pubkey_b64
-  when: fw_wg_role != 'none' and not fw_is_black_site
+  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
 
 - name: "[WireGuard] Set key facts"
   ansible.builtin.set_fact:
     fw_wg_privkey: "{{ wg_privkey_b64.content | b64decode | trim }}"
     fw_wg_pubkey:  "{{ wg_pubkey_b64.content | b64decode | trim }}"
-  when: fw_wg_role != 'none' and not fw_is_black_site
+  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
 
 - name: "[WireGuard] Display public key (needed for hub peer registration)"
   ansible.builtin.debug:
@@ -197,7 +214,7 @@
       PreDown  = nft flush chain inet filter forward
   when:
     - fw_wg_role in ['hub-primary', 'hub-regional']
-    - not fw_is_black_site
+    - not fw_is_black_site or fw_hub_bootstrap_confirmed
   notify: restart wireguard
 
 # ── wg-quick network-online.target drop-in ────────────────────────────────────
@@ -236,7 +253,7 @@
     path: /etc/systemd/system/wg-quick@wg0.service.d
     state: directory
     mode: '0755'
-  when: fw_wg_role != 'none' and not fw_is_black_site
+  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
 
 - name: "[WireGuard] Write network-online.target drop-in for wg-quick@wg0"
   ansible.builtin.copy:
@@ -254,7 +271,7 @@
       RestartSec=10
       StartLimitIntervalSec=60
       StartLimitBurst=3
-  when: fw_wg_role != 'none' and not fw_is_black_site
+  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
 
 # ── Enable wg-quick ───────────────────────────────────────────────────────────
 # Robert, 2026-07-17: NOT gated on fw_is_black_site, unlike everything above --

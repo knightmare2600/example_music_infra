@@ -14,6 +14,9 @@
 #               is now PURE DERIVATION -- no prompts, no writes. Environment resolution
 #               and the CLD black-site CONFIRM prompt (which used to live here) moved to
 #               the new 00_preflight_3_ask.yml, since both can themselves prompt the operator.
+#   2026-07-18  fw_is_black_site now derives from ad_forest.json's cld_site field instead
+#               of the hardcoded literal 'CLD' -- matches windows_dc's dc_cld_site pattern
+#               (group_vars/windows_dc/vars.yml). Part of the WireGuard hub-bootstrap plan.
 # =============================================================================
 
 # ── Parse hostname ────────────────────────────────────────────────────────────
@@ -32,7 +35,8 @@
 
 - name: "[Preflight] Set black-site flag for CLD"
   ansible.builtin.set_fact:
-    fw_is_black_site: "{{ fw_site_code == 'CLD' }}"
+    fw_is_black_site: >-
+      {{ fw_site_code == (lookup('file', ad_forest_json_path) | from_json).cld_site }}
 
 # ── Load site octet map from sites.csv ───────────────────────────────────────
 
