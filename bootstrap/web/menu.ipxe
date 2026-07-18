@@ -17,6 +17,20 @@
 #
 # Version history:
 #
+#   v2.3   PROXMOX VE section replaced entirely: the old extracted-kernel approach
+#          (linux26/initrd via pve-iso-2-pxe.sh) is out, Proxmox's own modern
+#          ISO-based auto-install boot is in -- vmlinuz/initrd.img plus the
+#          installer ISO loaded as a named initrd module. Now a 7-mode submenu
+#          (Automated/Graphical/Terminal UI/Serial/Debug/Debug TUI/Serial Debug),
+#          matching Proxmox's own generated iPXE menu, adapted to use ${boot-url}/
+#          ${arch}/${site-prefix} like every other section instead of the hardcoded
+#          values a bare Proxmox-generated menu ships with. New ${proxmox-ver}
+#          variable (set once, near the top) is the one place to bump on a point
+#          release. proxmox-auto-install-url= carried over into the Automated
+#          entry to keep the existing per-site answer-file mechanism working --
+#          NOT YET CONFIRMED against this specific ISO variant, see the section's
+#          own comment.
+#
 #   v2.2   lvm-bios.seed/lvm-efi.seed moved here from the separate bootstrap/debian/ staging
 #          dir in git -- they were never actually copied to this served location, so
 #          debian-auto/-ssh/-auto-s/-ssh-s would have 404'd on ${seed} if used. Added
@@ -108,6 +122,14 @@ echo Detected: ${buildarch} -- payload arch: ${arch}
 # ---------------------------------------------------------------------------
 iseq ${arch} arm64 && set seed lvm-efi.seed || set seed lvm-bios.seed
 echo Preseed: ${seed}
+
+# ---------------------------------------------------------------------------
+# Proxmox VE ISO version -- the one place to bump on a point release. Set here
+# (not down in the PROXMOX VE section) so the main menu's item text and the
+# Proxmox submenu's own title can both use it. Matching vmlinuz/initrd.img/ISO
+# must be served under proxmox/${arch}/auto/ -- see that section below.
+# ---------------------------------------------------------------------------
+set proxmox-ver 9.2-1
 
 # ---------------------------------------------------------------------------
 # Gateway-based environment detection
@@ -419,18 +441,83 @@ boot
 
 # ===========================================================================
 # PROXMOX VE
-# x86_64 only -- Proxmox does not publish arm64 installer ISOs
+# x86_64 only -- Proxmox does not publish arm64 installer ISOs.
 #
-# proxmox-auto-install-url uses ${site-prefix}-answer.toml, not a bare "answer.toml" --
-# each provisioning server serves its own correctly-pinned file (see the gateway-detection
-# block above and bootstrap/web/proxmox/*.toml). To boot with degraded.toml instead
-# (single-disk install), press Ctrl-B at the boot prompt and change answer to degraded in
-# the proxmox-auto-install-url below -- no more renaming files on the server.
+# Replaces the old extracted-kernel approach (linux26/initrd via
+# pve-iso-2-pxe.sh) entirely with Proxmox's own modern ISO-based auto-install
+# boot: vmlinuz/initrd.img plus the installer ISO itself, loaded as a named
+# initrd module ("proxmox.iso" -- fixed internal name the installer looks
+# for, do not rename it). Files required on the provisioning server under
+# proxmox/${arch}/auto/:
+#   vmlinuz
+#   initrd.img
+#   proxmox-ve_${proxmox-ver}-auto-from-http-url.iso
+#
+# proxmox-auto-install-url (Automated entry only -- gui/tui/serial/debug modes
+# are explicitly interactive, not answer-file-driven) uses
+# ${site-prefix}-answer.toml, not a bare "answer.toml" -- each provisioning
+# server serves its own correctly-pinned file (see the gateway-detection block
+# above, bootstrap/web/proxmox/*.toml, and bootstrap/serve.py/
+# Start-ProxmoxAnswerShim.ps1 for the POST-capable fetch this relies on). To
+# boot with degraded.toml instead (single-disk install), press Ctrl-B at the
+# boot prompt and change answer to degraded in proxmox-auto-install-url below.
+#
+# NOT YET CONFIRMED against this specific -from-http-url ISO variant --
+# conflicting reports on whether proxmox-auto-install-url= is honoured the
+# same way here as it was with the old linux26/initrd approach. Test live
+# before relying on this for a real build; once confirmed either way, update
+# this comment (and remove whichever mechanism turns out not to work).
 # ===========================================================================
 :proxmox-ve
 iseq ${arch} arm64 && goto noarch-msg ||
-kernel ${boot-url}/proxmox/x86_64/boot/linux26 vga=791 video=vesafb:ywrap,mtrr ramdisk_size=16777216 proxmox-start-auto-installer=1 proxmox-auto-install-mode=http proxmox-auto-install-url=${boot-url}/proxmox/${site-prefix}-answer.toml
-initrd ${boot-url}/proxmox/x86_64/boot/initrd
+menu Proxmox VE ${proxmox-ver}
+item proxmox-auto         Install Proxmox VE (Automated)
+item proxmox-gui          Install Proxmox VE (Graphical)
+item proxmox-tui          Install Proxmox VE (Terminal UI)
+item proxmox-serial       Install Proxmox VE (Terminal UI, Serial Console)
+item proxmox-debug        Install Proxmox VE (Debug Mode)
+item proxmox-debugtui     Install Proxmox VE (Terminal UI, Debug Mode)
+item proxmox-serialdebug  Install Proxmox VE (Serial Console, Debug Mode)
+choose --default proxmox-auto --timeout 10000 target && goto ${target} || goto main
+
+:proxmox-auto
+echo Loading Proxmox VE Automated Installer ...
+kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-start-auto-installer proxmox-auto-install-mode=http proxmox-auto-install-url=${boot-url}/proxmox/${site-prefix}-answer.toml
+goto proxmox-load
+
+:proxmox-gui
+echo Loading Proxmox VE Graphical Installer ...
+kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent
+goto proxmox-load
+
+:proxmox-tui
+echo Loading Proxmox VE Terminal UI Installer ...
+kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-tui-mode vga=788
+goto proxmox-load
+
+:proxmox-serial
+echo Loading Proxmox VE Terminal UI, Serial Console Installer ...
+kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-tui-mode console=ttyS0,115200
+goto proxmox-load
+
+:proxmox-debug
+echo Loading Proxmox VE Debug Mode Installer ...
+kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=verbose proxmox-debug vga=788
+goto proxmox-load
+
+:proxmox-debugtui
+echo Loading Proxmox VE Terminal UI, Debug Mode Installer ...
+kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=verbose proxmox-debug proxmox-tui-mode vga=788
+goto proxmox-load
+
+:proxmox-serialdebug
+echo Loading Proxmox VE Serial Console, Debug Mode Installer ...
+kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=verbose proxmox-debug proxmox-tui-mode console=ttyS0,115200
+goto proxmox-load
+
+:proxmox-load
+initrd ${boot-url}/proxmox/${arch}/auto/initrd.img
+initrd ${boot-url}/proxmox/${arch}/auto/proxmox-ve_${proxmox-ver}-auto-from-http-url.iso proxmox.iso
 boot
 
 # ===========================================================================
