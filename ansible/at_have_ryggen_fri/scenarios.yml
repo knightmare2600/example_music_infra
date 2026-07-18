@@ -37,6 +37,8 @@ scenarios:
       - bootstrap/web/proxmox/first-boot.sh
       - bootstrap/web/proxmox/create-vm.py
       - bootstrap/web/provision/ansibleme.sh
+      - bootstrap/serve.py
+      - bootstrap/Start-ProxmoxAnswerShim.ps1
       - ansible/playbooks/proxmox/bootstrap-new-node.yml
       - ansible/tasks/onboarded_check.yml
       - ansible/tasks/ssh_key_preflight.yml
@@ -44,6 +46,15 @@ scenarios:
       - docs/proxmox/Procedure-PVE-Node-Onboarding.md
       - docs/proxmox/pve-create-vm.md
     content_assertions:
+      - file: bootstrap/serve.py
+        must_contain: "do_POST"
+        why: "This script's entire reason to exist is answering Proxmox's automated-installer answer-file fetch, which arrives as a POST -- losing the do_POST alias silently regresses it back to a plain http.server that 501s on that fetch, the exact gap it was written to close."
+      - file: bootstrap/Start-ProxmoxAnswerShim.ps1
+        must_contain: "HttpListener"
+        why: "The Windows-side equivalent of serve.py's fix, for a box running static-web-server.exe instead of python3 -m http.server -- SWS can't be given the same one-line do_POST treatment, so this narrow HttpListener shim exists instead. Losing this file silently would leave a static-web-server.exe-based provisioning box with no working automated fetch and no documented alternative to the manual wget path."
+      - file: docs/bootstrap/bootstrapping.md
+        must_contain: "proxmox-fetch-from-url"
+        why: "The doc must keep explaining WHY the automatic fetch 'fails' (POST, not GET) rather than just documenting the manual wget workaround as if it were the only option -- otherwise a future reader has no way to know serve.py/Start-ProxmoxAnswerShim.ps1 exist specifically to remove that workaround."
       - file: bootstrap/web/provision/ansibleme.sh
         must_contain: "git clone"
         why: "ansibleme.sh must still clone the repo itself -- it's the break-glass path with no other way to get the repo onto a fresh control node."
