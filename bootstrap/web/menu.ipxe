@@ -17,6 +17,22 @@
 #
 # Version history:
 #
+#   v2.4   PROXMOX VE section corrected against docs/proxmox/pxe-proxmox-autoinstall-
+#          build-log.md, a real working session against proxmox-auto-install-assistant.
+#          proxmox-auto-install-mode=/proxmox-auto-install-url= kernel parameters (added
+#          in v2.3, modelled on Debian's url= preseed convention) confirmed NOT real --
+#          absent from the tool's own generated boot.ipxe, its --help, and the vanilla
+#          ISO's initrd contents -- removed from :proxmox-auto. Dropped the second
+#          initrd ... proxmox.iso HTTP fetch from :proxmox-load entirely -- BMC virtual
+#          media is the confirmed, decided delivery method for the install payload and
+#          per-site answer-file URL (baked into the mounted ISO at build time via
+#          `prepare-iso`), not a kernel-line concern at all. Added an echo reminder at
+#          the :proxmox-ve entry point to confirm the right ISO is mounted via iLO/BMC
+#          before continuing, since this menu has no visibility into that. ${proxmox-ver}
+#          kept as a display-only label (vmlinuz/initrd.img carry no version string and
+#          are identical across every site/mode). Not yet tested end to end on real
+#          hardware -- see the build log's own "Still open" section.
+#
 #   v2.3   PROXMOX VE section replaced entirely: the old extracted-kernel approach
 #          (linux26/initrd via pve-iso-2-pxe.sh) is out, Proxmox's own modern
 #          ISO-based auto-install boot is in -- vmlinuz/initrd.img plus the
@@ -124,10 +140,13 @@ iseq ${arch} arm64 && set seed lvm-efi.seed || set seed lvm-bios.seed
 echo Preseed: ${seed}
 
 # ---------------------------------------------------------------------------
-# Proxmox VE ISO version -- the one place to bump on a point release. Set here
-# (not down in the PROXMOX VE section) so the main menu's item text and the
-# Proxmox submenu's own title can both use it. Matching vmlinuz/initrd.img/ISO
-# must be served under proxmox/${arch}/auto/ -- see that section below.
+# Proxmox VE version -- display/bookkeeping only (the Proxmox submenu's own
+# title), not used to build a fetch URL -- vmlinuz/initrd.img are identical
+# across every site/mode build (confirmed by sha256sum) and carry no
+# version string in their own filenames. Bump this by hand when the
+# vmlinuz/initrd.img pair served under proxmox/${arch}/auto/ is rebuilt
+# against a newer Proxmox point release, so the boot menu's title stays
+# honest about what's actually deployed.
 # ---------------------------------------------------------------------------
 set proxmox-ver 9.2-1
 
@@ -443,33 +462,43 @@ boot
 # PROXMOX VE
 # x86_64 only -- Proxmox does not publish arm64 installer ISOs.
 #
-# Replaces the old extracted-kernel approach (linux26/initrd via
-# pve-iso-2-pxe.sh) entirely with Proxmox's own modern ISO-based auto-install
-# boot: vmlinuz/initrd.img plus the installer ISO itself, loaded as a named
-# initrd module ("proxmox.iso" -- fixed internal name the installer looks
-# for, do not rename it). Files required on the provisioning server under
-# proxmox/${arch}/auto/:
-#   vmlinuz
-#   initrd.img
-#   proxmox-ve_${proxmox-ver}-auto-from-http-url.iso
+# BMC-delivery only, confirmed 2026-07-18 -- see
+# docs/proxmox/pxe-proxmox-autoinstall-build-log.md for the full working
+# session this was settled in, including the wrong turns. vmlinuz/initrd.img
+# (identical for every site and mode -- confirmed by sha256sum across all
+# four site/mode builds) are the only two files this stanza fetches over
+# HTTP, served from proxmox/${arch}/auto/. The actual install payload and the
+# per-site/mode answer-file URL both live inside a separate `.iso`, built via
+# `proxmox-auto-install-assistant prepare-iso --fetch-from http --pxe`, which
+# must already be mounted as iLO/iDRAC virtual media on the target host
+# BEFORE this stanza is booted -- this menu has no visibility into which ISO
+# that is, hence the echo reminder below.
 #
-# proxmox-auto-install-url (Automated entry only -- gui/tui/serial/debug modes
-# are explicitly interactive, not answer-file-driven) uses
-# ${site-prefix}-answer.toml, not a bare "answer.toml" -- each provisioning
-# server serves its own correctly-pinned file (see the gateway-detection block
-# above, bootstrap/web/proxmox/*.toml, and bootstrap/serve.py/
-# Start-ProxmoxAnswerShim.ps1 for the POST-capable fetch this relies on). To
-# boot with degraded.toml instead (single-disk install), press Ctrl-B at the
-# boot prompt and change answer to degraded in proxmox-auto-install-url below.
+# proxmox-auto-install-mode=/proxmox-auto-install-url= kernel parameters
+# (present in an earlier version of this entry) turned out not to be real --
+# confirmed absent from proxmox-auto-install-assistant's own generated
+# boot.ipxe, from its --help output, and from a grep of the vanilla ISO's own
+# initrd contents. They were written by analogy to Debian's url= preseed
+# convention and never tested; removed rather than left in place unverified.
+# proxmox-start-auto-installer alone is the real, confirmed trigger.
 #
-# NOT YET CONFIRMED against this specific -from-http-url ISO variant --
-# conflicting reports on whether proxmox-auto-install-url= is honoured the
-# same way here as it was with the old linux26/initrd approach. Test live
-# before relying on this for a real build; once confirmed either way, update
-# this comment (and remove whichever mechanism turns out not to work).
+# The answer file itself is still fetched over HTTP POST at install time --
+# just from the URL baked into the mounted ISO's own /auto-installer-mode.toml
+# at build time, not from a kernel parameter here. bootstrap/
+# Start-ProxmoxAnswerShim.ps1 answering that POST on the real Windows
+# provisioning server is the one genuine blocker left before this can be
+# tested end to end (see the build log's "Still open" section).
+#
+# Not yet tested end to end on real hardware -- specifically whether the
+# BMC-mounted ISO gets found by the installer's init script the same way a
+# network-loaded one did (an inherited assumption, not independently
+# reconfirmed). If that assumption doesn't hold up, the build log's section 2
+# describes a confirmed-working HTTP fallback (a second `initrd` module) to
+# fall back to instead.
 # ===========================================================================
 :proxmox-ve
 iseq ${arch} arm64 && goto noarch-msg ||
+echo Site: ${site-prefix} -- CONFIRM the matching site/mode ISO is mounted via iLO/BMC before continuing
 menu Proxmox VE ${proxmox-ver}
 item proxmox-auto         Install Proxmox VE (Automated)
 item proxmox-gui          Install Proxmox VE (Graphical)
@@ -482,7 +511,7 @@ choose --default proxmox-auto --timeout 10000 target && goto ${target} || goto m
 
 :proxmox-auto
 echo Loading Proxmox VE Automated Installer ...
-kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-start-auto-installer proxmox-auto-install-mode=http proxmox-auto-install-url=${boot-url}/proxmox/${site-prefix}-answer.toml
+kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-start-auto-installer
 goto proxmox-load
 
 :proxmox-gui
@@ -516,8 +545,11 @@ kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet i
 goto proxmox-load
 
 :proxmox-load
+# No second `initrd ... proxmox.iso` fetch here -- BMC virtual media delivers
+# that payload now (see the section comment above). Kept out entirely rather
+# than left in place unreachable, so this file can't silently drift back to
+# describing a mechanism that isn't actually in use.
 initrd ${boot-url}/proxmox/${arch}/auto/initrd.img
-initrd ${boot-url}/proxmox/${arch}/auto/proxmox-ve_${proxmox-ver}-auto-from-http-url.iso proxmox.iso
 boot
 
 # ===========================================================================

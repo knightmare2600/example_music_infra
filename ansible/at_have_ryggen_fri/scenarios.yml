@@ -45,6 +45,7 @@ scenarios:
       - docs/buildsheets/buildsheet-pve.md
       - docs/proxmox/Procedure-PVE-Node-Onboarding.md
       - docs/proxmox/pve-create-vm.md
+      - docs/proxmox/pxe-proxmox-autoinstall-build-log.md
     content_assertions:
       - file: bootstrap/serve.py
         must_contain: "do_POST"
@@ -80,8 +81,11 @@ scenarios:
         must_contain: "Circular-dependency warning"
         why: "This procedure presupposes a working Ansible control node -- the doc must keep explaining why that isn't actually circular for every case except bootstrapping the very first control node."
       - file: bootstrap/web/menu.ipxe
-        must_contain: "proxmox-auto-install-url=${boot-url}/proxmox/${site-prefix}-answer.toml"
-        why: "Fixed 2026-07-11: every site used to request the same literal answer.toml, which was only ever correct for Edinburgh (TOML can't self-select its own URL). If this reverts to a bare answer.toml, a Proxmox install from Fredericia Havn would silently fetch Edinburgh's file again."
+        must_contain: "CONFIRM the matching site/mode ISO is mounted via iLO/BMC"
+        why: "Corrected 2026-07-18 (docs/proxmox/pxe-proxmox-autoinstall-build-log.md): the per-site/mode answer-file URL is baked into the mounted ISO at prepare-iso build time, not a kernel-line concern -- this menu has no visibility into which ISO is actually mounted, so the operator reminder is the only guard against booting the wrong site's ISO. Previously this assertion checked for a proxmox-auto-install-url= kernel parameter that turned out never to have been real (guessed by analogy to Debian's url= convention, never tested) -- if this reminder goes silently, a wrong-site install could proceed with nothing catching it."
+      - file: docs/proxmox/pxe-proxmox-autoinstall-build-log.md
+        must_contain: "BMC virtual media is the sole delivery method"
+        why: "This is the one document explaining WHY menu.ipxe's Proxmox section looks the way it does (BMC delivery, no proxmox-auto-install-url= parameter, Start-ProxmoxAnswerShim.ps1 as the remaining blocker) -- if this framing is lost, a future editor has no way to know the fictitious kernel-parameter approach was already tried and ruled out, and might reintroduce it."
 
   - name: dns_bootstrap
     description: >
