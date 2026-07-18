@@ -72,6 +72,24 @@ Changelog:
                 csv.DictReader keyed by column name, not position, so an inserted column is inert
                 until a "province" key is added to the dict this function builds. Updated the
                 "Expected CSV columns" comment below to match reality.
+    2026-07-19  Three fixes, Robert's own ask:
+                (1) select_iso()'s fallback pass (when no ipxe_amd64.iso is present) used to match
+                on "ipxe" alone with no architecture check, so it could pre-select an arm64-named
+                ISO as the default for any VM -- this script only ever creates x86_64 guests.
+                Fallback now excludes "arm64" explicitly.
+                (2) prompt_hardware() now prompts for disk count (default 1, same as before) --
+                every disk gets the same size, not prompted individually. create_vm() creates
+                scsi0 for the first disk, scsi2/scsi3/... for the rest -- scsi1 stays reserved for
+                the Windows VirtIO driver disk (select_driver_disk) so the two features can never
+                collide even if both are used on the same VM.
+                (3) select_storage() now also returns the storage type, threaded through to
+                create_vm() so every disk gets discard=on when (and only when) the storage backend
+                actually benefits from it (zfspool/lvmthin) -- matches
+                enable_vm_trim_discard.sh's own established BENEFITS_FROM_DISCARD check rather
+                than setting discard=on unconditionally regardless of storage type.
+                NOT independently tested against a real Proxmox node for any of the three -- no
+                live API access from this environment. Confirm against a real node before relying
+                on this for a real build.
 
 
 Usage:
@@ -558,7 +576,11 @@ def select_site():
 # =============================================================================
 
 def select_storage(proxmox, node):
-    """Query pvesm, filter to image-capable storage, present menu."""
+    """Query pvesm, filter to image-capable storage, present menu.
+    Returns (storage_name, storage_type) -- storage_type is needed by
+    create_vm() to decide whether discard=on is worth setting (only
+    zfspool/lvmthin actually benefit, matching enable_vm_trim_discard.sh's
+    own established BENEFITS_FROM_DISCARD check)."""
     try:
         stores = proxmox.nodes(node).storage.get(content="images")
     except Exception as e:
@@ -589,8 +611,9 @@ def select_storage(proxmox, node):
 
     choice = int(prompt("Select storage for VM disk", validator=validate_storage))
     selected = stores[choice - 1]["storage"]
+    selected_type = stores[choice - 1].get("type", "?")
     ok(f"Storage: {selected}")
-    return selected
+    return selected, selected_type
 
 # =============================================================================
 # ISO SELECTION
@@ -629,8 +652,17 @@ def select_iso(proxmox, node, label="ISO", required=True):
             return True
         return f"Enter a number between {min_choice} and {max_choice}"
 
-    # Auto-select iPXE ISO — prefer ipxe_amd64.iso explicitly (Proxmox has no arm64 build).
-    # Two-pass: first look for amd64, then fall back to any ipxe match.
+    # Auto-select iPXE ISO — prefer ipxe_amd64.iso explicitly (Proxmox has no arm64 build,
+    # and this script only ever creates x86_64 guests regardless — see OS_TYPES). Two-pass:
+    # first look for amd64, then fall back to any ipxe match that ISN'T arm64.
+    #
+    # BUG FIX (2026-07-19): the fallback pass used to match on "ipxe" alone, with no
+    # architecture check at all — if only ipxe_arm64.iso existed in local storage (e.g.
+    # amd64 not uploaded yet), it would be silently pre-selected as the default for any
+    # VM, x86_64 included. The first pass already can't match an arm64-named file (it
+    # requires "amd64" in the same volid), but the fallback needed the same exclusion
+    # explicitly rather than relying on "amd64 not being there" to also mean "arm64 isn't
+    # either" — those are independent facts about what's actually in local storage.
     default = None
     volids  = [(i, iso.get("volid", "").lower()) for i, iso in enumerate(isos, 1)]
     for i, volid in volids:
@@ -640,7 +672,7 @@ def select_iso(proxmox, node, label="ISO", required=True):
             break
     if default is None:
         for i, volid in volids:
-            if "ipxe" in volid:
+            if "ipxe" in volid and "arm64" not in volid:
                 default = str(i)
                 info(f"iPXE ISO detected — pre-selected as option {i}")
                 break
@@ -742,10 +774,20 @@ def prompt_hardware(role):
 
     cores   = int(prompt("Cores per socket", default=str(default_cores), validator=validate_cores))
     ram     = prompt_int("RAM (MB)",         default=default_ram,     min_val=256, max_val=1048576)
-    disk    = prompt_int("Disk size (GB)",   default=default_disk,    min_val=1,   max_val=65536)
+
+    # Number of disks -- added 2026-07-19, Robert: PVE test builds need multiple disks
+    # (ZFS mirror/degraded testing), previously create-vm.py always created exactly one.
+    # Defaults to 1 so nothing changes for the common case; every disk gets the same
+    # size (below), not prompted individually -- keeps this simple for what was asked.
+    disk_count = prompt_int("Number of disks", default=1, min_val=1, max_val=8)
+    disk    = prompt_int(
+        "Disk size (GB)" + (" (applied to all disks)" if disk_count > 1 else ""),
+        default=default_disk, min_val=1, max_val=65536,
+    )
 
     total_vcpus = sockets * cores
-    ok(f"CPU: {sockets} socket(s) × {cores} core(s) = {total_vcpus} vCPU(s)  |  RAM: {ram}MB  |  Disk: {disk}GB")
+    disk_summary = f"{disk_count} x {disk}GB" if disk_count > 1 else f"{disk}GB"
+    ok(f"CPU: {sockets} socket(s) × {cores} core(s) = {total_vcpus} vCPU(s)  |  RAM: {ram}MB  |  Disk: {disk_summary}")
 
     # ── BMC / IPMI emulation ──────────────────────────────────────────────────
     print()
@@ -770,7 +812,8 @@ def prompt_hardware(role):
         bmc_type = None
         ok("BMC: None")
 
-    return {"sockets": sockets, "cores": cores, "ram": ram, "disk": disk, "bmc_type": bmc_type}
+    return {"sockets": sockets, "cores": cores, "ram": ram, "disk": disk,
+            "disk_count": disk_count, "bmc_type": bmc_type}
 
 # =============================================================================
 # CONSOLE SELECTION
@@ -1406,7 +1449,8 @@ def print_serial_advisory(vmid, ostype, console, bmc_type=None):
 
 def build_vm_config(vmid, name, role, site, hw, storage, console,
                     nics, ostype, ipxe_iso, pool=None, driver_disk=None,
-                    virtio_iso=None, bios_type="seabios", bios_rom=None):
+                    virtio_iso=None, bios_type="seabios", bios_rom=None,
+                    storage_type=None):
     bmc_type = hw.get("bmc_type")
     """Build the full VM config dict for display and creation."""
 
@@ -1430,7 +1474,9 @@ def build_vm_config(vmid, name, role, site, hw, storage, console,
         "agent":   1,           # qemu-guest-agent enabled by default
         # Disk
         "storage": storage,
+        "storage_type": storage_type,
         "disk_gb": hw["disk"],
+        "disk_count": hw.get("disk_count", 1),
         # Console
         "console": console,
         # NICs
@@ -1464,7 +1510,12 @@ def print_summary(cfg, dry_run=False):
     print(f"  {C.W}Hardware{C.NC}")
     print(f"    {C.CY}CPU    :{C.NC} {cfg['sockets']} socket(s) × {cfg['cores']} core(s) = {cfg['sockets'] * cfg['cores']} vCPU(s), type=host")
     print(f"    {C.CY}RAM    :{C.NC} {cfg['memory']}MB (ballooning disabled)")
-    print(f"    {C.CY}Disk   :{C.NC} {cfg['disk_gb']}GB on {cfg['storage']} (scsi0, VirtIO SCSI)")
+    _disk_count = cfg.get("disk_count", 1)
+    _disk_discard = cfg.get("storage_type") in ("zfspool", "lvmthin")
+    _disk_slots = ["scsi0"] + [f"scsi{i}" for i in range(2, 2 + _disk_count - 1)]
+    _disk_desc = f"{_disk_count} x {cfg['disk_gb']}GB" if _disk_count > 1 else f"{cfg['disk_gb']}GB"
+    print(f"    {C.CY}Disk   :{C.NC} {_disk_desc} on {cfg['storage']} ({', '.join(_disk_slots)}, VirtIO SCSI)"
+          f"{', discard=on' if _disk_discard else ''}")
     bios_label = cfg.get("bios", "seabios").upper()
     bios_rom   = cfg.get("bios_rom")
     if bios_rom:
@@ -1581,13 +1632,28 @@ def create_vm(proxmox, node, cfg, dry_run=False):
     except Exception as e:
         err(f"Failed to create VM: {e}")
 
-    step("Adding disk...")
-    try:
-        disk_spec = f"{storage}:{cfg['disk_gb']}"
-        proxmox.nodes(node).qemu(vmid).config.put(scsi0=disk_spec)
-        ok(f"Disk: {cfg['disk_gb']}GB on {storage}")
-    except Exception as e:
-        warn(f"Failed to add disk: {e} — add manually")
+    # discard=on only actually does anything on thin-provisioned storage --
+    # matches enable_vm_trim_discard.sh's own established BENEFITS_FROM_DISCARD
+    # check (zfspool/lvmthin), rather than setting it unconditionally everywhere.
+    _discard_suffix = ",discard=on" if cfg.get("storage_type") in ("zfspool", "lvmthin") else ""
+    if not _discard_suffix:
+        info(f"Storage type '{cfg.get('storage_type', '?')}' doesn't benefit from discard/TRIM "
+             f"(only zfspool/lvmthin do) — not setting it, matching enable_vm_trim_discard.sh's own rule.")
+
+    # scsi1 is reserved for the Windows VirtIO driver disk (select_driver_disk) --
+    # extra data disks always start at scsi2 regardless of role, so the two
+    # features can never collide even if both are ever used on the same VM.
+    _disk_count = cfg.get("disk_count", 1)
+    _disk_slots = ["scsi0"] + [f"scsi{i}" for i in range(2, 2 + _disk_count - 1)]
+
+    step(f"Adding disk(s) ({len(_disk_slots)})...")
+    for _slot in _disk_slots:
+        try:
+            disk_spec = f"{storage}:{cfg['disk_gb']}{_discard_suffix}"
+            proxmox.nodes(node).qemu(vmid).config.put(**{_slot: disk_spec})
+            ok(f"Disk: {cfg['disk_gb']}GB on {storage} ({_slot}){' [discard=on]' if _discard_suffix else ''}")
+        except Exception as e:
+            warn(f"Failed to add disk {_slot}: {e} — add manually")
 
     # ── CDROM / ISO attachment ─────────────────────────────────────────────────
     # VirtIO ISO takes ide2 (highest priority — needed for driver injection on
@@ -1703,7 +1769,8 @@ def write_log(log_file, cfg, node, dry_run=False):
             f"OS={cfg['ostype']}  "
             f"CPU={cfg['sockets']}s×{cfg['cores']}c({cfg['sockets'] * cfg['cores']}vCPU)  "
             f"RAM={cfg['memory']}MB  "
-            f"DISK={cfg['disk_gb']}GB@{cfg['storage']}  "
+            f"DISK={cfg.get('disk_count', 1)}x{cfg['disk_gb']}GB@{cfg['storage']}"
+            f"{'(discard=on)' if cfg.get('storage_type') in ('zfspool', 'lvmthin') else ''}  "
             f"CONSOLE={cfg['console']}  "
             f"AGENT={cfg['agent']}  "
             f"DRVDISK={cfg['driver_disk'].split('/')[-1] if cfg['driver_disk'] else 'none'}  "
@@ -1779,7 +1846,7 @@ def create_one_vm(args, proxmox, node):
 
     # ── Storage ───────────────────────────────────────────────────────────────
     section("STORAGE")
-    storage = select_storage(proxmox, node)
+    storage, storage_type = select_storage(proxmox, node)
 
     if not confirm("Accept storage selection?", default="y"):
         err("Aborted by user.")
@@ -1819,7 +1886,8 @@ def create_one_vm(args, proxmox, node):
         hw=hw, storage=storage, console=console,
         nics=nics, ostype=ostype, ipxe_iso=ipxe_iso, pool=pool,
         driver_disk=driver_disk, virtio_iso=virtio_iso,
-        bios_type=bios_type, bios_rom=bios_rom
+        bios_type=bios_type, bios_rom=bios_rom,
+        storage_type=storage_type,
     )
 
     # ── Final summary and confirmation ────────────────────────────────────────
