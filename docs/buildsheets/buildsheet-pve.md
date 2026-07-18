@@ -55,8 +55,17 @@ Fredericia Havn (FRD)  : http://172.16.124.1:8000/proxmox/
   FRD-answer.toml       — standard build, 2-disk ZFS mirror  ← USE THIS for production
   FRD-degraded.toml     — single-disk ZFS pool, NOT production ready
 
-Fetch from the "failed" shell (Edinburgh example — substitute FRD- and the Fredericia Havn
-URL above if building there):
+Preferred: from the "failed" shell, fetch and run bootstrap/web/proxmox/select-pve-answer.sh
+instead of picking the filename by hand — it detects which provisioning network you're on and
+suggests answer/degraded from the real disk count, then fetches and verifies the right file
+itself (see docs/proxmox/pxe-proxmox-autoinstall-build-log.md 9 for the full detail):
+  wget http://192.168.139.50/proxmox/select-pve-answer.sh
+  sh select-pve-answer.sh
+  (follow the prompts)
+  exit
+
+Manual fallback, if you'd rather pick the file yourself (Edinburgh example — substitute FRD-
+and the Fredericia Havn URL above if building there):
   wget -O /run/automatic-installer-answers http://192.168.139.50/proxmox/VRK-answer.toml
   exit
 ```

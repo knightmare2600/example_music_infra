@@ -17,6 +17,20 @@
 #
 # Version history:
 #
+#   v2.5   PROXMOX VE reduced to a stub, matching PROXMOX DCM's existing pattern.
+#          v2.4's BMC-delivery approach was tested live 2026-07-18 and failed outright
+#          (blank cursor -- the installer never picked up the BMC-mounted ISO the way a
+#          network-loaded one did during earlier testing). Rather than debug an unattended
+#          PXE flow further for something built as rarely as a PVE node, reverted to the
+#          simpler, already-documented manual path (docs/bootstrap/bootstrapping.md 6.3):
+#          mount a plain Proxmox ISO via iLO/BMC, pick Automated Install with no fetch URL
+#          (drops to a root shell, expected behaviour), run the new
+#          bootstrap/web/proxmox/select-pve-answer.sh there. Removed the now-dead
+#          ${proxmox-ver} variable (was only ever used by the submenu this replaces).
+#          Proxmox VE is not a PXE boot target at all any more -- see
+#          docs/proxmox/pxe-proxmox-autoinstall-build-log.md for the full history,
+#          including the abandoned approach.
+#
 #   v2.4   PROXMOX VE section corrected against docs/proxmox/pxe-proxmox-autoinstall-
 #          build-log.md, a real working session against proxmox-auto-install-assistant.
 #          proxmox-auto-install-mode=/proxmox-auto-install-url= kernel parameters (added
@@ -138,17 +152,6 @@ echo Detected: ${buildarch} -- payload arch: ${arch}
 # ---------------------------------------------------------------------------
 iseq ${arch} arm64 && set seed lvm-efi.seed || set seed lvm-bios.seed
 echo Preseed: ${seed}
-
-# ---------------------------------------------------------------------------
-# Proxmox VE version -- display/bookkeeping only (the Proxmox submenu's own
-# title), not used to build a fetch URL -- vmlinuz/initrd.img are identical
-# across every site/mode build (confirmed by sha256sum) and carry no
-# version string in their own filenames. Bump this by hand when the
-# vmlinuz/initrd.img pair served under proxmox/${arch}/auto/ is rebuilt
-# against a newer Proxmox point release, so the boot menu's title stays
-# honest about what's actually deployed.
-# ---------------------------------------------------------------------------
-set proxmox-ver 9.2-1
 
 # ---------------------------------------------------------------------------
 # Gateway-based environment detection
@@ -460,97 +463,32 @@ boot
 
 # ===========================================================================
 # PROXMOX VE
-# x86_64 only -- Proxmox does not publish arm64 installer ISOs.
+# Not a PXE boot target -- confirmed live, 2026-07-18: the BMC-mounted-ISO +
+# PXE-delivered-vmlinuz/initrd.img split (an earlier version of this entry)
+# failed its first real test boot outright (blank cursor, installer never
+# picked up the mounted ISO). See
+# docs/proxmox/pxe-proxmox-autoinstall-build-log.md for the full history.
 #
-# BMC-delivery only, confirmed 2026-07-18 -- see
-# docs/proxmox/pxe-proxmox-autoinstall-build-log.md for the full working
-# session this was settled in, including the wrong turns. vmlinuz/initrd.img
-# (identical for every site and mode -- confirmed by sha256sum across all
-# four site/mode builds) are the only two files this stanza fetches over
-# HTTP, served from proxmox/${arch}/auto/. The actual install payload and the
-# per-site/mode answer-file URL both live inside a separate `.iso`, built via
-# `proxmox-auto-install-assistant prepare-iso --fetch-from http --pxe`, which
-# must already be mounted as iLO/iDRAC virtual media on the target host
-# BEFORE this stanza is booted -- this menu has no visibility into which ISO
-# that is, hence the echo reminder below.
-#
-# proxmox-auto-install-mode=/proxmox-auto-install-url= kernel parameters
-# (present in an earlier version of this entry) turned out not to be real --
-# confirmed absent from proxmox-auto-install-assistant's own generated
-# boot.ipxe, from its --help output, and from a grep of the vanilla ISO's own
-# initrd contents. They were written by analogy to Debian's url= preseed
-# convention and never tested; removed rather than left in place unverified.
-# proxmox-start-auto-installer alone is the real, confirmed trigger.
-#
-# The answer file itself is still fetched over HTTP POST at install time --
-# just from the URL baked into the mounted ISO's own /auto-installer-mode.toml
-# at build time, not from a kernel parameter here. bootstrap/
-# Start-ProxmoxAnswerShim.ps1 answering that POST on the real Windows
-# provisioning server is the one genuine blocker left before this can be
-# tested end to end (see the build log's "Still open" section).
-#
-# Not yet tested end to end on real hardware -- specifically whether the
-# BMC-mounted ISO gets found by the installer's init script the same way a
-# network-loaded one did (an inherited assumption, not independently
-# reconfirmed). If that assumption doesn't hold up, the build log's section 2
-# describes a confirmed-working HTTP fallback (a second `initrd` module) to
-# fall back to instead.
+# PVE nodes are built rarely enough that a fully unattended PXE flow was
+# solving a harder problem than the actual job needed -- the real, current
+# path is simpler: mount a plain, unmodified Proxmox VE ISO via iLO/iDRAC
+# virtual media, select "Install Proxmox VE (Automated)" at Proxmox's own
+# boot menu with no fetch URL configured (this is documented, expected
+# behaviour, not an error -- see docs/bootstrap/bootstrapping.md 6.3), which
+# drops to a root shell. From there:
+#   wget http://<provisioning-server>/proxmox/select-pve-answer.sh
+#   sh select-pve-answer.sh
+# does the site/disk-count detection and answer-file fetch that used to be a
+# fully manual wget, then hands back to the operator to type `exit` and let
+# the installer proceed. See select-pve-answer.sh's own header for the full
+# detail -- none of this touches PXE/iPXE at all.
 # ===========================================================================
 :proxmox-ve
-iseq ${arch} arm64 && goto noarch-msg ||
-echo Site: ${site-prefix} -- CONFIRM the matching site/mode ISO is mounted via iLO/BMC before continuing
-menu Proxmox VE ${proxmox-ver}
-item proxmox-auto         Install Proxmox VE (Automated)
-item proxmox-gui          Install Proxmox VE (Graphical)
-item proxmox-tui          Install Proxmox VE (Terminal UI)
-item proxmox-serial       Install Proxmox VE (Terminal UI, Serial Console)
-item proxmox-debug        Install Proxmox VE (Debug Mode)
-item proxmox-debugtui     Install Proxmox VE (Terminal UI, Debug Mode)
-item proxmox-serialdebug  Install Proxmox VE (Serial Console, Debug Mode)
-choose --default proxmox-auto --timeout 10000 target && goto ${target} || goto main
-
-:proxmox-auto
-echo Loading Proxmox VE Automated Installer ...
-kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-start-auto-installer
-goto proxmox-load
-
-:proxmox-gui
-echo Loading Proxmox VE Graphical Installer ...
-kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent
-goto proxmox-load
-
-:proxmox-tui
-echo Loading Proxmox VE Terminal UI Installer ...
-kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-tui-mode vga=788
-goto proxmox-load
-
-:proxmox-serial
-echo Loading Proxmox VE Terminal UI, Serial Console Installer ...
-kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=silent proxmox-tui-mode console=ttyS0,115200
-goto proxmox-load
-
-:proxmox-debug
-echo Loading Proxmox VE Debug Mode Installer ...
-kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=verbose proxmox-debug vga=788
-goto proxmox-load
-
-:proxmox-debugtui
-echo Loading Proxmox VE Terminal UI, Debug Mode Installer ...
-kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=verbose proxmox-debug proxmox-tui-mode vga=788
-goto proxmox-load
-
-:proxmox-serialdebug
-echo Loading Proxmox VE Serial Console, Debug Mode Installer ...
-kernel ${boot-url}/proxmox/${arch}/auto/vmlinuz ramdisk_size=16777216 rw quiet initrd=initrd.img splash=verbose proxmox-debug proxmox-tui-mode console=ttyS0,115200
-goto proxmox-load
-
-:proxmox-load
-# No second `initrd ... proxmox.iso` fetch here -- BMC virtual media delivers
-# that payload now (see the section comment above). Kept out entirely rather
-# than left in place unreachable, so this file can't silently drift back to
-# describing a mechanism that isn't actually in use.
-initrd ${boot-url}/proxmox/${arch}/auto/initrd.img
-boot
+echo Proxmox VE is not built via PXE -- mount a plain Proxmox ISO via iLO/BMC
+echo virtual media instead, then run select-pve-answer.sh at the installer's
+echo root shell. See docs/proxmox/pxe-proxmox-autoinstall-build-log.md.
+prompt Press any key to return to menu...
+goto main
 
 # ===========================================================================
 # PROXMOX DCM

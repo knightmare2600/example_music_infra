@@ -8,6 +8,23 @@ Version history:
 - v1.2 — 2026-07-18 — macOS POST shim confirmed not required (all four `.iso`s point at Edinburgh's
   `:8001` regardless of site); file/menu deployment mechanism is a git commit + pull on both sites,
   not `scp`; Windows POST shim is now the only genuine blocker left before a test boot
+- v1.3 — 2026-07-18 — Windows POST shim deployed and confirmed working live (`Start-ProxmoxAnswerShim.ps1`
+  v1.0.1, both GET and POST against a real `VRK-answer.toml` returned 200 with correct content).
+  **The BMC-mounted-ISO test boot itself then failed outright** — blank cursor, no sign of the
+  mounted ISO being picked up by the installer's init script the way the network-loaded companion
+  ISO was during earlier (non-BMC) testing. Section 2's inherited assumption ("the installer's init
+  script treats a real mounted block device and an iPXE-loaded in-memory file interchangeably")
+  did not hold up on the one real test that mattered. **This whole approach — `prepare-iso --pxe`,
+  four site/mode ISOs, BMC virtual media as the payload-delivery mechanism — is abandoned, not just
+  paused.** Given how rarely a PVE node actually gets built, and that an operator is physically at
+  the console for BMC virtual media anyway, the effort of debugging *why* the BMC path doesn't work
+  isn't worth it against a simpler alternative: script the plain manual-wget flow this document's own
+  section 3/`docs/bootstrap/bootstrapping.md` §6.3 already documents as the fallback, with a real
+  script (`bootstrap/web/proxmox/select-pve-answer.sh`) doing the site/disk-count detection and
+  fetch instead of a human guessing the right filename by hand. See section 9 below for that script.
+  `Start-ProxmoxAnswerShim.ps1`/`bootstrap/serve.py` are unaffected by this — the plain manual-wget
+  path this new script drives is a GET, not a POST, so neither shim is actually needed for Proxmox
+  at all any more; they remain independently useful, just not on this critical path.
 
 This is **not** the polished procedure document — that's still gated on a successful end-to-end
 test boot (see "Still open" below), matching the original plan's own rule. This is the honest
@@ -231,10 +248,13 @@ In dependency order:
    already used for `/debian` and everything else in that repo. The four `.iso`s do **not** get
    committed anywhere — they get mounted directly via iLO/iDRAC on whichever host is being
    provisioned, confirmed as trivial given the technicians' machines have local capacity for this.
-6. First real end-to-end test boot on one host, testing specifically whether the BMC-mounted ISO
-   gets found by the init script the same way the network-loaded one did. This is the gate before
-   the polished `ExampleMusic_Procedure_Proxmox-AutoInstall-*.md` document gets written at all, per
-   the original plan's own rule — this document is not that document.
+6. ~~First real end-to-end test boot on one host, testing specifically whether the BMC-mounted ISO
+   gets found by the init script the same way the network-loaded one did.~~ **Done, 2026-07-18 —
+   and it failed.** Blank cursor, no sign of the mounted ISO being picked up at all. The whole
+   BMC-delivery approach (this document's sections 2, 7, 8) is abandoned as a result — see the v1.3
+   changelog entry at the top and section 9 below for what replaces it. This document still isn't
+   the polished procedure doc the original plan's rule gates on; that gate now applies to
+   `select-pve-answer.sh` instead (section 9), not to anything BMC-related above.
 
 ---
 
@@ -350,3 +370,50 @@ Dropped `vga=791 video=vesafb:ywrap,mtrr` from the old entry — not present in 
 confirmed-correct generated stanza, and not worth carrying over untested params from the version
 that turned out to be wrong elsewhere. If there's a specific known reason they're needed, they can
 go back in.
+
+**Superseded, 2026-07-18 — kept for the record, not the current design.** This section (and the
+`:proxmox-ve` menu entry it describes) was written before the BMC virtual media approach failed its
+real test boot (see the v1.3 changelog entry and section 6, item 6). `menu.ipxe`'s `:proxmox-ve` is
+now a stub pointing at section 9 below, not this stanza.
+
+---
+
+## 9. What actually ships: `select-pve-answer.sh`
+
+Simpler than everything above, and doesn't touch PXE/iPXE at all. PVE nodes are built rarely
+enough, with an operator physically at the console for BMC virtual media anyway, that scripting
+the plain manual-wget flow `docs/bootstrap/bootstrapping.md` §6.3 already documents is a better
+trade than debugging why the ISO-based approach didn't boot.
+
+**Flow:**
+1. Mount a plain, unmodified Proxmox VE ISO via iLO/iDRAC virtual media — no `prepare-iso`
+   pre-baking, no per-site/mode variants, one ISO works everywhere.
+2. Boot it, select **Install Proxmox VE (Automated)** at Proxmox's own native boot menu, with no
+   fetch URL configured. This drops to a root shell — documented, expected behaviour, not an
+   error (§6.3).
+3. From that shell:
+   ```
+   wget http://<provisioning-server>/proxmox/select-pve-answer.sh
+   sh select-pve-answer.sh
+   ```
+4. The script detects which provisioning network it's on (same gateway-based logic `menu.ipxe`
+   already uses: `192.168.139.254` → Edinburgh/VRK, `172.16.124.2` → Fredericia/FRD, parsed
+   straight from `/proc/net/route` — no dependency on `ip`/`route` being present), counts real
+   physical disks via `/sys/block` (excluding `loop*`/`ram*`/`sr*`/`fd*`/`dm-*` — the last one
+   matters because a server being rebuilt could have leftover LVM signatures on its physical disks,
+   and `sr*` matters because the BMC-mounted Proxmox ISO itself shows up as an `sr*` optical
+   device), suggests `answer` (2+ disks) or `degraded` (fewer), lets the operator confirm or
+   override, then fetches the right `${site-prefix}-${variant}.toml` into
+   `/run/automatic-installer-answers` and verifies it's really TOML (non-empty, starts with
+   `[global]`) before saying it's safe to `exit`.
+5. Operator types `exit` themselves — the script never does this on their behalf — handing back to
+   the Proxmox installer, which finds the answer file in place and proceeds unattended from there.
+
+**Written in POSIX `sh`, not bash** — this runs inside Proxmox's installer environment (BusyBox
+`ash`), which has no bash at all. The gateway-detection and disk-enumeration logic was tested
+directly against a real `busybox ash` interpreter and real `/proc/net/route`/`/sys/block` content
+before being committed — including a real bug the first version had (device-mapper/LVM volumes
+weren't excluded from the disk count, overcounting a single physical disk as three on a box that
+happened to run its root filesystem on LVM) — but the actual `wget` fetch against a genuine Proxmox
+installer environment has **not** been tested live yet. Same rule as everywhere else in this
+document: confirm on the next real boot before calling this done.

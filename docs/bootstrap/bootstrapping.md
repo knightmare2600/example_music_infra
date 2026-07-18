@@ -1112,48 +1112,41 @@ pxeboot
 ### 6.3 Deploying and debugging
 
 The actual install flow (confirmed accurate against `docs/buildsheets/buildsheet-pve.md` and the real
-`VRK-answer.toml`): boot → auto-install mode "fails" to fetch the answer file (expected, this is the
-mechanism, not an error) → `wget -O /run/automatic-installer-answers http://192.168.139.50/proxmox/VRK-answer.toml`
-(Fredericia Havn: `http://172.16.124.1:8000/proxmox/FRD-answer.toml`)
-→ `exit` → installs unattended → on first login (root), `bash /var/lib/proxmox-first-boot/proxmox-first-boot`
-to run §6.1's script by hand if it didn't already fire via `[first-boot]`.
+`VRK-answer.toml`): boot a plain, unmodified Proxmox ISO (mounted via iLO/iDRAC virtual media) → auto-install
+mode "fails" to fetch the answer file (expected, this is the mechanism, not an error) → drops to a root
+shell → `wget http://192.168.139.50/proxmox/select-pve-answer.sh && sh select-pve-answer.sh` (Fredericia
+Havn: `http://172.16.124.1:8000/proxmox/select-pve-answer.sh`) → follow the prompts → `exit` → installs
+unattended → on first login (root), `bash /var/lib/proxmox-first-boot/proxmox-first-boot` to run §6.1's
+script by hand if it didn't already fire via `[first-boot]`.
 
-**Why the automatic fetch "fails" at all:** `proxmox-fetch-from-url` (the raw installer boot
-parameter, used when booting a plain Proxmox ISO directly with no PXE/iPXE involved) sends the
-request as an HTTP POST — the node's system properties go in the body, so the answer file's
-`[[match]]` filters can key off them — not a GET. Neither `python3 -m http.server` (Fredericia Havn)
-nor `static-web-server.exe` (Edinburgh, §2.2) answer POST — both are plain static-file servers — so
-this raw fetch always lands as an error and the manual `wget` above (a GET) is the only way to
-actually get the file onto the node this way.
+`select-pve-answer.sh` (see its own header for the full detail) replaces what used to be a fully manual
+`wget -O /run/automatic-installer-answers http://.../VRK-answer.toml` — the operator had to know which
+provisioning network they were on and pick the right `${site-prefix}-answer.toml` vs
+`${site-prefix}-degraded.toml` by hand. The script instead detects the provisioning network itself
+(same gateway logic `menu.ipxe` uses), counts real physical disks to suggest `answer` vs `degraded`,
+fetches the right file, and verifies it looks like real TOML before saying it's safe to `exit`. Written
+in POSIX `sh` (BusyBox `ash` has no bash) — its gateway/disk-detection logic was tested directly against
+a real `busybox ash` interpreter before being committed, though the actual fetch against a genuine
+Proxmox installer environment hasn't been confirmed live yet.
 
-**The estate's actual, decided mechanism doesn't rely on that raw boot parameter at all.** See
-`docs/proxmox/pxe-proxmox-autoinstall-build-log.md` for the full real working session this was
-settled in (including the wrong turns): `proxmox-auto-install-assistant prepare-iso --fetch-from http
---url <toml-url> --pxe` bakes the answer-file URL into a per-site/mode `.iso` at build time — the
-installer still fetches it via HTTP POST at install time, but from a URL baked into the mounted ISO's
-own `/auto-installer-mode.toml`, never as a raw kernel parameter. That built `.iso` is mounted as
-iLO/iDRAC virtual media on the target host before boot (see `bootstrap/web/menu.ipxe`'s `:proxmox-ve`
-section); only the shared `vmlinuz`/`initrd.img` travel over PXE/HTTP.
+**Why the automatic fetch "fails" at all:** `proxmox-fetch-from-url` (the raw installer boot parameter)
+sends the request as an HTTP POST — the node's system properties go in the body, so the answer file's
+`[[match]]` filters can key off them — not a GET. Neither `python3 -m http.server` (Fredericia Havn) nor
+`static-web-server.exe` (Edinburgh, §2.2) answer POST — both are plain static-file servers — so this raw
+fetch always lands as an error and the shell drop is the only way in. `select-pve-answer.sh`'s own
+`wget` is a plain GET, same as the old fully-manual version — neither server needs to answer POST for
+this flow at all.
 
-The POST problem itself is real either way, and the same two tools close it without replacing either
-server:
-
-- `bootstrap/serve.py` — a genuine drop-in replacement for `python3 -m http.server` (same invocation,
-  same directory served) with `do_POST` aliased to `do_GET`. Confirmed **not load-bearing** for the
-  current design (all four built ISOs point their baked-in URL at Edinburgh's server regardless of
-  site — Fredericia's server only ever serves plain GETs under this flow) — still a reasonable thing
-  to have deployed for its own sake, just not on the critical path today.
-- `bootstrap/Start-ProxmoxAnswerShim.ps1` — for Edinburgh's `static-web-server.exe`, which can't be
-  given the same one-line treatment: a narrow `HttpListener` loop on its own port (`:8001`), serving
-  only the `*.toml` answer files, leaving `static-web-server.exe` untouched on its own port for
-  everything else (directory listings, `/debian`, `/alpine`, iPXE assets). **This is the one genuine
-  blocker left** before a real end-to-end test boot — nothing completes an automated install until
-  something answers that POST on `192.168.139.50:8001`.
-
-Confirmed so far only with `curl`/`Invoke-WebRequest` against the shim directly (see its own header
-for the exact commands, and its `v1.0.1` changelog for three real bugs a live `pwsh` test caught).
-Deploy it on the real Edinburgh box and test against an actual BMC-mounted ISO before trusting any of
-this for a real site build — see the build log's own "Still open" section for what's left.
+**A more automated approach — `proxmox-auto-install-assistant prepare-iso --fetch-from http --pxe`
+baking the answer-file URL into a per-site/mode `.iso`, delivered via BMC virtual media, no operator
+interaction needed — was built and confirmed working in pieces, then failed its first real end-to-end
+test boot outright (2026-07-18, blank cursor).** See `docs/proxmox/pxe-proxmox-autoinstall-build-log.md`
+for the full history, including the abandoned approach and why `select-pve-answer.sh` replaces it
+rather than debugging BMC delivery further: PVE nodes are built rarely enough, with an operator
+physically at the console for BMC virtual media anyway, that this trade made sense. `bootstrap/serve.py`
+and `bootstrap/Start-ProxmoxAnswerShim.ps1` (the two POST-capable server tools built for the abandoned
+approach) are both still real, tested, working tools — just no longer load-bearing for how Proxmox
+actually gets installed. Kept for whatever else might need a POST-capable static file server later.
 
 Useful debugging commands if `first-boot.sh` didn't run automatically or you need to inspect state
 afterward:
