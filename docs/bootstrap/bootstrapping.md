@@ -1118,25 +1118,42 @@ mechanism, not an error) → `wget -O /run/automatic-installer-answers http://19
 → `exit` → installs unattended → on first login (root), `bash /var/lib/proxmox-first-boot/proxmox-first-boot`
 to run §6.1's script by hand if it didn't already fire via `[first-boot]`.
 
-**Why the automatic fetch "fails" at all:** `proxmox-fetch-from-url` sends the request as an HTTP
-POST (the node's system properties go in the body, so the answer file's `[[match]]` filters can key
-off them), not a GET. Neither `python3 -m http.server` (Fredericia Havn) nor `static-web-server.exe`
-(Edinburgh, §2.2) answer POST — both are plain static-file servers — so the installer's own fetch
-always lands as an error and the manual `wget` above (a GET) is the only way to actually get the file
-onto the node today. Two small, narrowly-scoped tools close this gap without replacing either server:
+**Why the automatic fetch "fails" at all:** `proxmox-fetch-from-url` (the raw installer boot
+parameter, used when booting a plain Proxmox ISO directly with no PXE/iPXE involved) sends the
+request as an HTTP POST — the node's system properties go in the body, so the answer file's
+`[[match]]` filters can key off them — not a GET. Neither `python3 -m http.server` (Fredericia Havn)
+nor `static-web-server.exe` (Edinburgh, §2.2) answer POST — both are plain static-file servers — so
+this raw fetch always lands as an error and the manual `wget` above (a GET) is the only way to
+actually get the file onto the node this way.
+
+**The estate's actual, decided mechanism doesn't rely on that raw boot parameter at all.** See
+`docs/proxmox/pxe-proxmox-autoinstall-build-log.md` for the full real working session this was
+settled in (including the wrong turns): `proxmox-auto-install-assistant prepare-iso --fetch-from http
+--url <toml-url> --pxe` bakes the answer-file URL into a per-site/mode `.iso` at build time — the
+installer still fetches it via HTTP POST at install time, but from a URL baked into the mounted ISO's
+own `/auto-installer-mode.toml`, never as a raw kernel parameter. That built `.iso` is mounted as
+iLO/iDRAC virtual media on the target host before boot (see `bootstrap/web/menu.ipxe`'s `:proxmox-ve`
+section); only the shared `vmlinuz`/`initrd.img` travel over PXE/HTTP.
+
+The POST problem itself is real either way, and the same two tools close it without replacing either
+server:
 
 - `bootstrap/serve.py` — a genuine drop-in replacement for `python3 -m http.server` (same invocation,
-  same directory served) with `do_POST` aliased to `do_GET`, so the automatic fetch succeeds instead
-  of falling through to the manual step above.
-- `bootstrap/Start-ProxmoxAnswerShim.ps1` — for a box running `static-web-server.exe`, which can't be
-  given the same one-line treatment: a narrow `HttpListener` loop on its own port, serving only the
-  `*.toml` answer files, leaving `static-web-server.exe` untouched on its own port for everything else
-  (directory listings, `/debian`, `/alpine`, iPXE assets).
+  same directory served) with `do_POST` aliased to `do_GET`. Confirmed **not load-bearing** for the
+  current design (all four built ISOs point their baked-in URL at Edinburgh's server regardless of
+  site — Fredericia's server only ever serves plain GETs under this flow) — still a reasonable thing
+  to have deployed for its own sake, just not on the critical path today.
+- `bootstrap/Start-ProxmoxAnswerShim.ps1` — for Edinburgh's `static-web-server.exe`, which can't be
+  given the same one-line treatment: a narrow `HttpListener` loop on its own port (`:8001`), serving
+  only the `*.toml` answer files, leaving `static-web-server.exe` untouched on its own port for
+  everything else (directory listings, `/debian`, `/alpine`, iPXE assets). **This is the one genuine
+  blocker left** before a real end-to-end test boot — nothing completes an automated install until
+  something answers that POST on `192.168.139.50:8001`.
 
-Neither has been confirmed live against a real Proxmox node's automated fetch yet — verified so far
-only with `curl`/`Invoke-WebRequest` against both scripts directly (see each script's own header for
-the exact commands). Test against a real `proxmox-fetch-from-url` boot before relying on either to
-remove the manual `wget` step for good.
+Confirmed so far only with `curl`/`Invoke-WebRequest` against the shim directly (see its own header
+for the exact commands, and its `v1.0.1` changelog for three real bugs a live `pwsh` test caught).
+Deploy it on the real Edinburgh box and test against an actual BMC-mounted ISO before trusting any of
+this for a real site build — see the build log's own "Still open" section for what's left.
 
 Useful debugging commands if `first-boot.sh` didn't run automatically or you need to inspect state
 afterward:
