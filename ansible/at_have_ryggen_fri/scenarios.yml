@@ -39,6 +39,7 @@ scenarios:
       - bootstrap/web/provision/ansibleme.sh
       - bootstrap/serve.py
       - bootstrap/Start-ProxmoxAnswerShim.ps1
+      - bootstrap/web/proxmox/select-pve-answer.sh
       - ansible/playbooks/proxmox/bootstrap-new-node.yml
       - ansible/tasks/onboarded_check.yml
       - ansible/tasks/ssh_key_preflight.yml
@@ -81,11 +82,14 @@ scenarios:
         must_contain: "Circular-dependency warning"
         why: "This procedure presupposes a working Ansible control node -- the doc must keep explaining why that isn't actually circular for every case except bootstrapping the very first control node."
       - file: bootstrap/web/menu.ipxe
-        must_contain: "CONFIRM the matching site/mode ISO is mounted via iLO/BMC"
-        why: "Corrected 2026-07-18 (docs/proxmox/pxe-proxmox-autoinstall-build-log.md): the per-site/mode answer-file URL is baked into the mounted ISO at prepare-iso build time, not a kernel-line concern -- this menu has no visibility into which ISO is actually mounted, so the operator reminder is the only guard against booting the wrong site's ISO. Previously this assertion checked for a proxmox-auto-install-url= kernel parameter that turned out never to have been real (guessed by analogy to Debian's url= convention, never tested) -- if this reminder goes silently, a wrong-site install could proceed with nothing catching it."
+        must_contain: "Proxmox VE is not built via PXE"
+        why: "Corrected 2026-07-18: a BMC-mounted-ISO + PXE-delivered-vmlinuz/initrd.img approach was built, and confirmed live to fail outright (blank cursor). PVE is now built entirely outside PXE (plain ISO via iLO/BMC + select-pve-answer.sh at the installer's own root shell) -- this stub is the only thing stopping a future editor from reintroducing PXE-based Proxmox logic that's already been tried and confirmed not to work."
+      - file: bootstrap/web/proxmox/select-pve-answer.sh
+        must_contain: "/run/automatic-installer-answers"
+        why: "This is the one file whose entire job is getting the right answer file to the exact path Proxmox's automated installer actually reads from -- if this path drifts from what the installer expects, the script silently stops working while still reporting success."
       - file: docs/proxmox/pxe-proxmox-autoinstall-build-log.md
         must_contain: "BMC virtual media is the sole delivery method"
-        why: "This is the one document explaining WHY menu.ipxe's Proxmox section looks the way it does (BMC delivery, no proxmox-auto-install-url= parameter, Start-ProxmoxAnswerShim.ps1 as the remaining blocker) -- if this framing is lost, a future editor has no way to know the fictitious kernel-parameter approach was already tried and ruled out, and might reintroduce it."
+        why: "Historical record of the BMC/PXE approach that was tried, confirmed working in pieces, and then failed its first real end-to-end test -- kept as-is (not deleted) with a later dated entry recording the failure and the pivot to select-pve-answer.sh, so a future reader can see why that approach was abandoned rather than being tempted to retry it from scratch."
 
   - name: dns_bootstrap
     description: >
