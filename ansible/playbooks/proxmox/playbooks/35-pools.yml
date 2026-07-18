@@ -1,0 +1,118 @@
+---
+# =============================================================================
+# playbooks/35-pools.yml
+# Example Music Limited — Proxmox VE node: ensure one pool per site exists
+# =============================================================================
+# Ports bootstrap/web/proxmox/manage-pool.py's pool-creation logic into an
+# idempotent Ansible stage: one Proxmox pool per benarbejde/sites.csv site
+# code (FAL, CLD, AAR, ...), self-healing whenever a new site is added to
+# sites.csv -- the next site.yml run against any pvenode picks it up
+# automatically, rather than needing a human to remember to run
+# manage-pool.py --create by hand for every new site. manage-pool.py itself
+# is unchanged and still deployed (40-scripts.yml) for ad-hoc pool work this
+# stage doesn't cover (custom comments, non-site pools like FIREWALLS via
+# --match). Site-code validation matches manage-pool.py's own SITE_CODES
+# logic exactly -- every sites.csv row becomes a pool, no filtering, so a
+# legacy alias like BRD (West Berlin, same subnet as BER) gets its own pool
+# too, same as manage-pool.py would already do today. Not re-deriving new
+# business logic here, matching the existing tool's real behaviour.
+#
+# Deliberately deferred (2026-07-19, Robert's own call): eventually this
+# probably moves to reading from a benarbejde/*.json generated file instead
+# of sites.csv directly, matching this repo's broader single-source-of-truth
+# pattern -- not done now, sites.csv is still authoritative today.
+#
+# pvesh, not the Proxmox HTTP API / community.proxmox.proxmox_pool module --
+# no Ansible-side Proxmox API credential exists anywhere in this repo today
+# (token or root@pam password), and pvesh run locally as root (same
+# become:true SSH pattern every other PVE stage already uses) needs none --
+# it authenticates via the local PAM ticket transparently. --output-format
+# json and the double-dash long-flag style (--poolid/--comment) match the
+# two other real, working pvesh/pveum invocations already in this repo
+# (proxmox-zfs-vm-audit.py/pve-snapshot-check.py's pvesh get ... --output-
+# format json; bootstrap-new-node.yml's pvesh set ... --dns1/--dns2/--search).
+#
+# Pools are a CLUSTER-wide resource, not per-node -- run_once: true so
+# running site.yml against the whole pvenodes group at once (hosts:
+# "{{ target | default('pvenodes') }}", same default every other stage
+# uses) doesn't have every node racing to create the same missing pool at
+# the same moment.
+#
+# Always runs -- pvesh create /pools has no live-service impact, same
+# reasoning 30-example-music.yml/40-scripts.yml already use for their own
+# "Always" gating.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/35-pools.yml
+#
+# Tags: pools
+#
+# NOT YET TESTED against a real Proxmox node -- pvesh's exact CLI behaviour
+# (JSON shape from `pvesh get /pools`, exact accepted flag spelling for
+# `pvesh create /pools`) is inferred from manage-pool.py's own confirmed-
+# correct proxmoxer field names (poolid) and this repo's two other existing,
+# real pvesh/pveum invocations, not independently verified live. Confirm on
+# a real PVE node before trusting this for a real onboarding run.
+# =============================================================================
+# Changelog:
+#   2026-07-19  Initial file.
+# =============================================================================
+
+- name: Proxmox VE — ensure one pool per site
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+  gather_facts: false
+  run_once: true
+
+  vars:
+    sites_csv_src: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
+
+  tasks:
+
+    - name: Load sites.csv from the control node
+      delegate_to: localhost
+      become: false
+      ansible.builtin.read_csv:
+        path: "{{ sites_csv_src }}"
+      register: _sites_csv_raw
+      tags: pools
+
+    - name: Derive desired pool IDs (one per site code, uppercase)
+      ansible.builtin.set_fact:
+        _desired_pools: "{{ _sites_csv_raw.list | map(attribute='Site') | map('upper') | list }}"
+      tags: pools
+
+    - name: Query existing Proxmox pools
+      ansible.builtin.command: pvesh get /pools --output-format json
+      register: _existing_pools_raw
+      changed_when: false
+      tags: pools
+
+    - name: Derive existing pool IDs (uppercase)
+      ansible.builtin.set_fact:
+        _existing_pools: "{{ (_existing_pools_raw.stdout | from_json) | map(attribute='poolid') | map('upper') | list }}"
+      tags: pools
+
+    - name: Determine missing pools
+      ansible.builtin.set_fact:
+        _missing_pools: "{{ _desired_pools | difference(_existing_pools) }}"
+      tags: pools
+
+    - name: Report pool sync status
+      ansible.builtin.debug:
+        msg: >-
+          {{ (_c.G + '[+]' + _c.NC + ' All ' + (_desired_pools | length | string) + ' site pool(s) already exist -- nothing to do.')
+             if (_missing_pools | length == 0) else
+             (_c.C + '[*]' + _c.NC + ' Creating ' + (_missing_pools | length | string) + ' missing pool(s): ' + (_missing_pools | join(', '))) }}
+      tags: pools
+
+    - name: Create missing site pools
+      ansible.builtin.command: >-
+        pvesh create /pools --poolid {{ item }}
+        --comment {{ ('Example Music Limited -- ' + item + ' site pool, Ansible-managed (playbooks/proxmox/playbooks/35-pools.yml)') | quote }}
+      loop: "{{ _missing_pools }}"
+      loop_control:
+        label: "{{ item }}"
+      register: _pool_create
+      changed_when: _pool_create.rc == 0
+      tags: pools
