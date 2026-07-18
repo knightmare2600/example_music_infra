@@ -54,6 +54,13 @@
 #               "[role : task name]" line pause itself prints), and every prompt whose
 #               closing question was split onto its own line after a blank gap now
 #               has it folded onto the preceding line instead.
+#   2026-07-18  WireGuard hub bootstrap plan, items 2-4: general WG-role prompt no
+#               longer accepts hub-primary/hub-regional (CLD is the only hub, forced
+#               separately below) -- stale FAL/ODE/BRK help text and black-site banner
+#               line fixed too. Added hub-bootstrap detection (stat existing private
+#               key) and a CLD-only CONFIRM prompt, mirroring windows_dc's
+#               dc_is_forest_root guard -- consumed by 09_wireguard_deploy.yml to
+#               actually run key generation/wg0.conf write for a from-scratch hub.
 # =============================================================================
 
 # ── Environment (was 00_preflight.yml) ───────────────────────────────────────
@@ -84,7 +91,7 @@
       ║  This device carries ALL site provisioning traffic.          ║
       ║                                                              ║
       ║  Extra precautions apply:                                    ║
-      ║    - WireGuard: hub-regional (peers with FAL, ODE, BRK)     ║
+      ║    - WireGuard: hub (every other site peers with this one)  ║
       ║    - WAN 192.168.139.69 (EXAFWLVRK001) / LAN 192.168.69.x   ║
       ║      (free-form)                                             ║
       ║    - Static WAN IP is mandatory                              ║
@@ -105,6 +112,62 @@
 - name: "[Ask] Force WG role to hub-regional for CLD"
   ansible.builtin.set_fact:
     fw_wg_role: "hub-regional"
+  when: fw_is_black_site
+
+# ── Hub bootstrap detection (2026-07-18) ─────────────────────────────────────
+# Mirrors windows_dc's dc_is_forest_root guard: is this the estate's designated
+# WireGuard hub, and does it need setting up from scratch? Checked here (not
+# just in 09_wireguard_deploy.yml) because the confirmation prompt below needs
+# the result, and every other operator prompt lives in this file.
+
+- name: "[Ask] Check for existing hub private key"
+  ansible.builtin.stat:
+    path: /etc/wireguard/private.key
+  register: fw_hub_privkey_stat
+  when: fw_is_black_site
+
+- name: "[Ask] Set hub-already-bootstrapped fact"
+  ansible.builtin.set_fact:
+    fw_hub_already_bootstrapped: "{{ fw_is_black_site and fw_hub_privkey_stat.stat.exists }}"
+  when: fw_is_black_site
+
+- name: "[Ask] CONFIRM — bootstrap this hub's WireGuard interface"
+  ansible.builtin.pause:
+    prompt: >-
+
+      {%- set l1 = "  No existing hub config found on " + inventory_hostname + " (" + fw_site_code + ")" -%}
+      {%- set l2 = "  Set it up now? This generates a new keypair and writes" -%}
+      {%- set l3 = "  wg0.conf's [Interface] section. Peers are NOT templated --" -%}
+      {%- set l4 = "  they're added separately via add-wg-spoke.yml, per spoke." -%}
+      {{ _c.Y }}
+      ╔══════════════════════════════════════════════════════════════╗
+      ║{{ l1 }}{{ ' ' * (62 - l1|length) }}║
+      ║{{ ' ' * 62 }}║
+      ║{{ l2 }}{{ ' ' * (62 - l2|length) }}║
+      ║{{ l3 }}{{ ' ' * (62 - l3|length) }}║
+      ║{{ l4 }}{{ ' ' * (62 - l4|length) }}║
+      ╚══════════════════════════════════════════════════════════════╝
+      {{ _c.NC }}
+      Type CONFIRM to bootstrap the hub now, anything else to skip
+  register: fw_hub_bootstrap_prompt
+  when:
+    - fw_is_black_site
+    - not fw_hub_already_bootstrapped
+
+- name: "[Ask] Set hub-bootstrap-confirmed fact"
+  ansible.builtin.set_fact:
+    fw_hub_bootstrap_confirmed: >-
+      {{ fw_is_black_site and not fw_hub_already_bootstrapped
+         and (fw_hub_bootstrap_prompt.user_input | default('') | trim | upper == 'CONFIRM') }}
+
+- name: "[Ask] Log hub bootstrap decision"
+  ansible.builtin.debug:
+    msg: >-
+      {{ (_c.G + '[+]' + _c.NC + ' Existing hub WireGuard config found — leaving it alone.')
+         if fw_hub_already_bootstrapped else
+         ((_c.G + '[+]' + _c.NC + ' Hub WireGuard bootstrap CONFIRMED — key generation and wg0.conf write will run.')
+          if fw_hub_bootstrap_confirmed else
+          (_c.Y + '[!]' + _c.NC + ' Hub WireGuard bootstrap NOT confirmed — this hub still has no tunnel interface.')) }}
   when: fw_is_black_site
 
 # ── WAN interface confirmation (was 01_interfaces.yml) ───────────────────────
@@ -366,10 +429,9 @@
       {{ _c.C }}[*]{{ _c.NC }} Tunnel subnet  : {{ _c.G }}{{ fw_wg_tunnel_net }}{{ _c.NC }}
 
       Roles:
-        {{ _c.G }}hub-primary{{ _c.NC }}   — top-level hub (FAL)
-        {{ _c.G }}hub-regional{{ _c.NC }}  — regional hub (ODE, BRK)
-        {{ _c.G }}spoke{{ _c.NC }}         — satellite office (default for most sites)
+        {{ _c.G }}spoke{{ _c.NC }}         — satellite office, peers with the CLD hub (default for most sites)
         {{ _c.G }}none{{ _c.NC }}          — no WireGuard
+      Only the CLD black site can be a WireGuard hub — see it separately if this is EXAFWLCLD001.
       WireGuard role [default: {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}]
   register: fw_wg_role_prompt
   when: not fw_is_black_site
@@ -378,7 +440,7 @@
   ansible.builtin.set_fact:
     fw_wg_role: >-
       {%- set inp = fw_wg_role_prompt.user_input | default('') | trim | lower -%}
-      {%- if inp in ['hub-primary', 'hub-regional', 'spoke', 'none'] -%}{{ inp }}
+      {%- if inp in ['spoke', 'none'] -%}{{ inp }}
       {%- else -%}{{ fw_wg_role }}
       {%- endif -%}
   when: not fw_is_black_site

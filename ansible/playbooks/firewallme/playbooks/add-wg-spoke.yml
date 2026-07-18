@@ -34,6 +34,14 @@
 #      without a full restart
 #
 # Changelog:
+#   2026-07-18  Added a wait_for reachability check against the spoke's port 22 before
+#               the SSH key-fetch tasks -- previously an unreachable spoke (not yet up,
+#               or mid-maintenance) hit a raw SSH failure via failed_when instead of a
+#               clear, deferred message. Every task from the key fetch onward now skips
+#               cleanly instead, with a NOTE to re-run once the spoke answers. Mirrors
+#               the same fix in roles/firewall/tasks/10_register_spoke_on_hub.yml (the
+#               automatic path), which guards hub reachability instead since that one
+#               runs the other direction.
 #   2026-07-16  Robert: the real bug was never in this file's address derivation at all -- it was
 #               generate_inventory.py assigning the wrong address (site LAN .253) to
 #               EXAFWL<site>001's ansible_host, when every firewall is actually managed over its
@@ -182,6 +190,33 @@
         _spoke_lan_subnet: "192.168.{{ wg_site_octets[spoke_site] }}.0/24"
         _spoke_extra_subnets: "{{ wg_site_extra_subnets[spoke_site] | default([]) }}"
 
+    # ── Reachability guard (2026-07-18) ───────────────────────────────────────
+    # Every task below this point either SSHes into the spoke directly or writes
+    # to the hub on the strength of what that SSH fetch returned. Previously a
+    # spoke that wasn't up yet (or mid-maintenance) hit a raw SSH failure via
+    # failed_when further down instead of a clear, deferred message. wait_for
+    # against port 22 (the same management path this whole estate already uses,
+    # rather than trying to probe the spoke's ephemeral WireGuard port) catches
+    # that up front; every task from the key fetch onward is skipped, not failed,
+    # if the spoke doesn't answer.
+
+    - name: "[add-wg-spoke] Check spoke is reachable before fetching its keys"
+      ansible.builtin.wait_for:
+        host: "{{ _spoke_ip }}"
+        port: 22
+        timeout: 5
+      delegate_to: localhost
+      become: false
+      register: _spoke_reachable
+      ignore_errors: true
+
+    - name: "[add-wg-spoke] NOTE — spoke unreachable, registration deferred"
+      ansible.builtin.debug:
+        msg: >-
+          Spoke {{ spoke_site }} ({{ _spoke_ip }}) is not reachable on port 22 right now —
+          skipping key fetch and peer registration. Re-run this playbook once the spoke is up.
+      when: _spoke_reachable.failed | default(true)
+
     # ── Fetch spoke keys via SSH ──────────────────────────────────────────────
     # BUG FIX (2026-07-17): raw `ssh` in a shell task, delegated to localhost,
     # bypasses Ansible's own connection plugin entirely -- it never picks up
@@ -213,6 +248,7 @@
       register: _spoke_pubkey_raw
       delegate_to: localhost
       changed_when: false
+      when: not (_spoke_reachable.failed | default(true))
       failed_when: >-
         _spoke_pubkey_raw.rc != 0
         or not (_spoke_pubkey_raw.stdout | trim | regex_search('^[A-Za-z0-9+/]{43}=$'))
@@ -228,6 +264,7 @@
       register: _spoke_psk_raw
       delegate_to: localhost
       changed_when: false
+      when: not (_spoke_reachable.failed | default(true))
       failed_when: _spoke_psk_raw.rc != 0 or _spoke_psk_raw.stdout | trim == ''
 
     # BUG FIX (2026-07-17, third pass): Robert explicitly required an Endpoint line
@@ -250,6 +287,7 @@
       register: _spoke_listen_port_raw
       delegate_to: localhost
       changed_when: false
+      when: not (_spoke_reachable.failed | default(true))
       failed_when: _spoke_listen_port_raw.rc != 0 or _spoke_listen_port_raw.stdout | trim == ''
 
     - name: "[add-wg-spoke] Set key facts"
@@ -257,6 +295,7 @@
         _spoke_pubkey: "{{ _spoke_pubkey_raw.stdout | trim }}"
         _spoke_psk:    "{{ _spoke_psk_raw.stdout | trim }}"
         _spoke_listen_port: "{{ _spoke_listen_port_raw.stdout | trim }}"
+      when: not (_spoke_reachable.failed | default(true))
 
     - name: "[add-wg-spoke] Display fetched spoke details"
       ansible.builtin.debug:
@@ -266,6 +305,7 @@
           - "Tunnel IP     : {{ _spoke_tunnel_ip }}/32"
           - "LAN subnet    : {{ _spoke_lan_subnet }}{% if _spoke_extra_subnets %} + {{ _spoke_extra_subnets | join(', ') }}{% endif %}"
           - "Public key    : {{ _spoke_pubkey }}"
+      when: not (_spoke_reachable.failed | default(true))
 
     # ── Add/update peer block in wg0.conf ─────────────────────────────────────
     # blockinfile marker is keyed on spoke_site so each spoke has its own
@@ -297,6 +337,7 @@
           AllowedIPs   = {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet] + _spoke_extra_subnets) | join(', ') }}
           PersistentKeepalive = 25
       register: _wg_conf_changed
+      when: not (_spoke_reachable.failed | default(true))
 
     # ── Live-add peer (no restart needed) ─────────────────────────────────────
     # Write PSK to a tmpfile — `wg set` requires a file path, not stdin.
@@ -342,6 +383,7 @@
       become: false
       register: _topology_update
       changed_when: "'CHANGED' in _topology_update.stdout"
+      when: not (_spoke_reachable.failed | default(true))
 
     - name: "[add-wg-spoke] NOTE — wg_hub_topology updated, not committed"
       ansible.builtin.debug:
@@ -356,7 +398,9 @@
     - name: "[add-wg-spoke] Summary"
       ansible.builtin.debug:
         msg:
-          - "{{ '[ UPDATED ]' if _wg_conf_changed.changed else '[ NO CHANGE ]' }} {{ spoke_site }} peer block in /etc/wireguard/wg0.conf"
+          - >-
+            {{ '[ DEFERRED ] spoke unreachable — nothing was registered this run' if (_spoke_reachable.failed | default(true))
+               else ('[ UPDATED ]' if _wg_conf_changed.changed else '[ NO CHANGE ]') + ' ' + spoke_site + ' peer block in /etc/wireguard/wg0.conf' }}
           - "Next step: ensure the spoke's wg0.conf has this hub as its [Peer] and run:"
           - "  wg show wg0  — on the hub to verify the peer appears"
           - "  wg show wg0  — on the spoke to verify the handshake"
