@@ -252,7 +252,7 @@ The Dashboard displays:
 
 ```
 ./
-├── easyDNS-TUI-v0.4.0.ps1    # Main application
+├── easyDNS-TUI-v0.4.0.ps1     # Main application
 ├── Logs/                      # Application logs
 │   └── easyDNS_YYYYMMDD.log
 ├── Export/                    # Exported DNS records

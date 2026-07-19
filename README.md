@@ -10,13 +10,13 @@ This repository contains everything needed to take a site from bare metal to pro
 
 ```
 example_music_infra/
-├── ansible/          # Playbooks, inventory, group_vars, host_vars
-├── at_have_ryggen_fri/ # Repo-wide verification harness — run before merging anything
-├── benarbejde/      # Legwork in advance — shared data files (sites.csv, devices.csv)
-├── bootstrap/        # Day-zero site bootstrap toolkit
-├── docs/             # Operational documentation and runbooks
-├── hardware/         # Hardware reference documents
-└── .githooks/        # Pre-commit hooks — see One-time setup below
+├── ansible/             # Playbooks, inventory, group_vars, host_vars
+├── at_have_ryggen_fri/  # Repo-wide verification harness — run before merging anything
+├── benarbejde/          # Legwork in advance — shared data files (sites.csv, devices.csv)
+├── bootstrap/           # Day-zero site bootstrap toolkit
+├── docs/                # Operational documentation and runbooks
+├── hardware/            # Hardware reference documents
+└── .githooks/           # Pre-commit hooks — see One-time setup below
 ```
 
 ### One-time setup (per clone)
