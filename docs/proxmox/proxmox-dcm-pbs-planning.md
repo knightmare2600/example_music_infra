@@ -1,8 +1,8 @@
 # Proxmox Datacenter Manager & Backup Server — Planning
 
-**Document ID:** NET-PLAN-PDM-001  
-**Classification:** Internal — Network Operations  
-**Last Updated:** 2026-03-04  
+**Document ID:** NET-PLAN-PDM-001
+**Classification:** Internal — Network Operations
+**Last Updated:** 2026-07-19
 **Status:** PLANNING — not yet in implementation
 
 > This document covers two related Proxmox products: Proxmox Datacenter
@@ -10,6 +10,21 @@
 > future implementation. A lab evaluation of PDM using nested
 > virtualisation is the immediate next step — no production changes
 > until evaluation is complete and enterprise support licensing is in place.
+
+> **Reworked 2026-07-19 (Robert):** the original architecture below (dated March 2026) put one
+> PDM instance and one PBS instance at each of three "regional hubs" (FAL, ODE, BRK), with spoke
+> sites backing up to their nearest regional hub over WireGuard. That premise no longer holds —
+> as of the 2026-07-17/18 WireGuard rework, CLD is the **sole** WireGuard hub; FAL/ODE/BRK are
+> ordinary spokes like any other site (still real AD/DFS hubs, just not WireGuard ones — see
+> `ansible/README.md`'s WireGuard topology section). This revision replaces the three-hub design
+> with: **one centralised DCM instance at CLD** (`EXADCMCLD001`) managing every site, and
+> **one local PBS instance at every site, including CLD** (`EXAPBS<SITE>001`) — backup data never
+> leaves a site's own LAN, which removes the WireGuard-dependency-for-backups risk entirely rather
+> than just reducing it to "hub sites only." Every address below is a **proposed, collision-checked
+> reservation pending approval** — see the addressing note in each architecture section — not yet
+> written into `benarbejde/address_policy.json`. Once approved, follow
+> `docs/ansible/beginners_guide_to_ansible.md`'s "Renumbering / Reworking Live Conventions" section
+> for how to roll a new standard-slot convention out safely.
 
 ---
 
@@ -20,7 +35,7 @@
 3. [How They Fit Together](#how-they-fit-together)
 4. [Licensing — The Critical Constraint](#licensing--the-critical-constraint)
 5. [Lab Evaluation — Nested PVE](#lab-evaluation--nested-pve)
-6. [Planned Production Architecture — PDM](#planned-production-architecture--pdm)
+6. [Planned Production Architecture — DCM](#planned-production-architecture--dcm)
 7. [Planned Production Architecture — PBS](#planned-production-architecture--pbs)
 8. [Implementation Phasing](#implementation-phasing)
 9. [Related Documents](#related-documents)
@@ -35,16 +50,18 @@ and maintained by Proxmox Server Solutions GmbH (the same team that
 builds PVE itself), which gives it native integration that third-party
 tools like PegaProx cannot match.
 
-A single PDM instance connects to all PVE clusters across all sites
-via the Proxmox API. Each site's cluster appears as a "remote" in PDM.
-From one browser window you can see and manage every VM, container,
-node, storage pool, and backup datastore across the entire jukebox.internal
-estate.
+In this estate, PDM is deployed as a single instance, `EXADCMCLD001`, at
+CLD. It connects to every site's PVE cluster over the Proxmox API — the
+same path every other management tool in this estate uses to reach a
+site: over WireGuard, via CLD as the sole hub. Each site's cluster
+appears as a "remote" in PDM. From one browser window you can see and
+manage every VM, container, node, storage pool, and backup datastore
+across the entire jukebox.internal estate.
 
 **Key capabilities:**
 
 - Unified dashboard across all clusters and sites
-- Cross-cluster live migration (move a VM from FAL to ODE without downtime)
+- Cross-cluster live migration (move a VM from one site to another without downtime)
 - Centralised update management (see pending patches on all nodes, apply from one UI)
 - VM and storage resource balancing across nodes
 - Native Proxmox Backup Server integration — backup datastores appear
@@ -99,26 +116,34 @@ is a separate concern.
 
 ```
                     ┌─────────────────────┐
-                    │   PDM (at FAL)      │
-                    │   Single pane       │
-                    │   of glass          │
+                    │   EXADCMCLD001      │
+                    │   PDM — single      │
+                    │   pane of glass     │
                     └──────┬──────────────┘
-                           │ Proxmox API
-              ┌────────────┼────────────┐
-              ▼            ▼            ▼
-         FAL Cluster   ODE Cluster  BRK Cluster
-         (PVE nodes)   (PVE nodes)  (PVE nodes)
-              │            │            │
-              ▼            ▼            ▼
-         PBS at FAL    PBS at ODE   PBS at BRK
-         (local VM     (local VM    (local VM
-          backups)      backups)     backups)
+                           │ Proxmox API, over WireGuard via CLD (sole hub)
+         ┌─────────────────┼─────────────────┐
+         ▼                 ▼                 ▼
+    FAL Cluster        ODE Cluster       ... 53 site
+    (PVE nodes)        (PVE nodes)       clusters total
+         │                 │                 │
+         ▼                 ▼                 ▼
+    EXAPBSFAL001      EXAPBSODE001      EXAPBS<SITE>001
+    (local backup —   (local backup —   (local backup —
+     never leaves      never leaves      never leaves
+     FAL's LAN)         ODE's LAN)        that site's LAN)
 ```
 
-PDM sees everything — compute and backup — in one unified view.
-PBS instances are registered as remotes in PDM just like PVE clusters.
-A backup job running on FAL's PVE cluster, storing to FAL's PBS instance,
-shows up in PDM alongside the VM it's protecting.
+PDM sees everything — compute and backup — in one unified view, reached
+over WireGuard the same way any other management traffic reaches a
+site. **The backup data path is deliberately separate from the
+management path**: every site's PVE cluster backs up to that same
+site's own local PBS instance, over the LAN, with zero WireGuard
+involvement. PDM's visibility into backup status (job history,
+verification results, datastore usage) still travels over WireGuard —
+only the actual backup *data* stays local. A PBS instance is registered
+as a remote in PDM exactly like a PVE cluster is; a backup job at any
+site shows up in PDM alongside the VM it's protecting, regardless of
+which site either lives at.
 
 ---
 
@@ -157,6 +182,10 @@ for budget approval.
 Before committing to enterprise licensing, evaluate PDM by running a
 nested PVE instance inside an existing EXAPVEFAL001 VM. This costs
 nothing and carries zero production risk.
+
+> **The lab node stays at FAL deliberately** — FAL is just a convenient existing node for a
+> nested, non-production test VM, not a preview of production placement. The real, production
+> `EXADCMCLD001` will be built at CLD (see below), unrelated to where this lab evaluation happens.
 
 ### Nested PVE VM Specification
 
@@ -243,70 +272,111 @@ During the lab evaluation, test and document:
 
 ---
 
-## Planned Production Architecture — PDM
+## Planned Production Architecture — DCM
 
-Once licensing is in place, the production PDM deployment:
+Once licensing is in place, the production PDM deployment — this estate names it
+`EXADCMCLD001`, following the `Proxmox DCM` label `bootstrap/web/menu.ipxe` already uses for
+this product, rather than a bare `PDM` role code:
 
-### PDM Server
+### DCM Server
 
 | Parameter | Value |
 |-----------|-------|
-| Hostname | `EXAPDMFAL001` |
-| Location | FAL — centralised, all sites connect to this |
+| Hostname | `EXADCMCLD001` |
+| Location | CLD — centralised, every site connects here over WireGuard |
 | OS | PDM appliance (own ISO) or Debian |
 | vCPU | 4 |
 | RAM | 8 GB |
 | Disk | 40 GB |
-| IP | `192.168.76.13` |
-| Web UI | `https://192.168.76.13:8443` |
+| IP | `192.168.69.13` *(proposed — see addressing note below)* |
+| Web UI | `https://192.168.69.13:8443` |
+
+> **Addressing note:** `192.168.69.13` is checked collision-free against both
+> `benarbejde/address_policy.json`'s reserved ranges (`.1` RTR, `.2`–`.4` BMC, `.5`–`.7` PVE,
+> `.10`–`.11` DCS, `.15` PRV, `.48` SBC, `.82`–`.94` WAP, `.100`–`.249` DHCP, `.250`–`.252` SWI,
+> `.253`–`.254` FWL) and every real row in `benarbejde/devices.csv` (CLD's own existing
+> `.9` ANS, `.12` RDR, `.20` SVR, `.48` PBX×2, `.82` UFC). It sits next to CLD's other
+> management-plane singles (`.9` Ansible, `.12` Rudder) — a deliberate, memorable grouping, not
+> arbitrary. **This is a proposed reservation, not yet live** — DCM is CLD-only (one instance,
+> not a per-site role), so it belongs in `devices.csv` as a CLD-specific row once approved, the
+> same way `EXAANSCLD001`/`EXARDRCLD001` already are — it does **not** need a
+> `address_policy.json` `role_offsets`/`offsets_single` entry, since those are for conventions
+> repeated at every site.
 
 ### Remotes (Sites Managed)
 
-Each site's PVE cluster is registered as a remote in PDM.
-The connection travels over WireGuard for non-FAL sites.
+Every site's PVE cluster is registered as a remote in PDM, over WireGuard via CLD (the sole
+hub) for every non-CLD site. As of 2026-07-19, `benarbejde/sites.csv` lists **53 sites** — this
+number changes as the estate grows; re-derive it from `sites.csv` at rollout time rather than
+trusting this document's snapshot.
 
 | Remote name | Type | Address |
 |-------------|------|---------|
-| FAL-cluster | PVE | 192.168.76.5 |
-| ODE-cluster | PVE | 192.168.126.5 |
-| BRK-cluster | PVE | 192.168.136.5 |
-| FAL-backup | PBS | 192.168.76.14 |
-| ODE-backup | PBS | 192.168.126.14 |
-| BRK-backup | PBS | 192.168.136.14 |
-| (all spoke sites) | PVE | per network-inventory.md |
+| CLD-cluster | PVE | `192.168.69.5` (local — no WireGuard hop) |
+| FAL-cluster | PVE | `192.168.76.5` |
+| ODE-cluster | PVE | `192.168.126.5` |
+| BRK-cluster | PVE | `192.168.136.5` |
+| CLD-backup | PBS | `192.168.69.14` *(proposed)* |
+| FAL-backup | PBS | `192.168.76.14` *(proposed)* |
+| ODE-backup | PBS | `192.168.126.14` *(proposed)* |
+| BRK-backup | PBS | `192.168.136.14` *(proposed)* |
+| (every other site) | PVE + PBS | per `sites.csv` — `.5` (PVE) and `.14` (PBS, proposed) on that site's own `/24` |
 
 ---
 
 ## Planned Production Architecture — PBS
 
-One PBS instance per hub site minimum. Spoke sites back up to their
-regional hub PBS over WireGuard.
+**One PBS instance per site, no exceptions** — including CLD and, per Robert's 2026-07-19
+direction, VRK and FRD too. This is a genuine simplification over the old three-regional-hub
+design: every site's spec is now identical, and there is no "spoke vs hub" distinction to
+maintain in this document at all.
 
-### PBS Node Specification (per hub)
+### PBS Node Specification (identical at every site)
 
 | Parameter | Value |
 |-----------|-------|
-| Hostname pattern | `EXAPBSFAL001`, `EXAPBSODE001`, `EXAPBSBRK001` |
+| Hostname pattern | `EXAPBS<SITE>001` |
 | OS | Proxmox Backup Server (own ISO) |
 | vCPU | 4 |
 | RAM | 8 GB |
 | OS Disk | 32 GB |
-| Backup Datastore Disk | Size TBD — depends on VM count and retention |
-| IP convention | `192.168.<octet>.14` |
+| Backup Datastore Disk | Size TBD — depends on VM count and retention, per site |
+| IP convention | `192.168.<site-octet>.14` *(proposed — see addressing note below)* |
+
+> **Addressing note:** `.14` is checked collision-free against the same two sources as the DCM
+> address above — not reserved in `address_policy.json`, and not used by any real
+> `benarbejde/devices.csv` row at any site (the nearest neighbours, `.12` and `.13`, are already
+> taken at CLD/EDI by unrelated devices — `.14` sits cleanly between `DCS2` (`.11`) and `PRV`
+> (`.15`) in the existing "core infrastructure" cluster of low octets). **This is a proposed
+> reservation, not yet live.** Unlike DCM, PBS genuinely is a per-site standard-slot role —
+> once approved, the correct implementation is adding `"PBS": 14` to
+> `benarbejde/address_policy.json`'s `offsets_single` (and `"PBS"` to `connection_types.ssh`,
+> matching how `PVE`/`DCS`/`ANS` are already registered there), **not** a per-site
+> `devices.csv` row — `generate_inventory.py` and `bind9-dns.yml`'s standard-slot synthesis both
+> read `address_policy.json` as their single source of truth, so one JSON edit is genuinely all
+> the generator-side change needs to be (see `benarbejde/generate_inventory.py`'s own WAP/SWI
+> precedent). Follow `docs/ansible/beginners_guide_to_ansible.md`'s "Renumbering / Reworking Live
+> Conventions" checklist when actually rolling this out — this is exactly the class of change
+> that guide section exists for.
 
 ### Backup Architecture
 
 ```
-Spoke sites → backup to regional hub PBS over WireGuard
-Hub sites   → backup to local PBS, replicate to tape/S3 for off-site
+Every site backs up to its own local PBS — zero WireGuard dependency, zero cross-site
+backup traffic, full stop.
 
 FAL VMs  → EXAPBSFAL001 (local)
-EDI VMs  → EXAPBSFAL001 (over WireGuard — EDI is UK spoke)
-ODE VMs  → EXAPBSODE001 (local EU hub)
-MUN VMs  → EXAPBSODE001 (over WireGuard — MUN is EU spoke)
-BRK VMs  → EXAPBSBRK001 (local NA hub)
-NYC VMs  → EXAPBSBRK001 (over WireGuard — NYC is NA spoke)
+EDI VMs  → EXAPBSEDI001 (local — EDI is an ordinary spoke, same as every other site)
+ODE VMs  → EXAPBSODE001 (local)
+CLD VMs  → EXAPBSCLD001 (local)
+... every other site → its own EXAPBS<SITE>001 (local)
 ```
+
+This is a deliberate improvement over the old regional-hub design, not just a consequence of
+the WireGuard topology change: backup traffic previously had to cross a WAN link (spoke →
+regional hub) for every non-hub site; now it never does, for any site, anywhere. See
+"Risks and Mitigations" in `pdm-enterprise-proposal.md` for how this changes the WireGuard-
+instability risk assessment.
 
 ### Retention Policy (proposed)
 
@@ -317,7 +387,8 @@ NYC VMs  → EXAPBSBRK001 (over WireGuard — NYC is NA spoke)
 | Monthly | 6 months |
 | Yearly | 2 years |
 
-These are starting points — adjust per VM criticality and storage budget.
+These are starting points — adjust per VM criticality and storage budget. Unchanged from the
+original proposal; retention policy is independent of where each PBS instance physically sits.
 
 ---
 
@@ -325,13 +396,12 @@ These are starting points — adjust per VM criticality and storage budget.
 
 | Phase | Action | Prerequisite |
 |-------|--------|-------------|
-| Now | Lab evaluation — nested PVE + PDM | EXAPVEFAL001 online |
-| Budget approval | Enterprise support subscriptions purchased | Proposal approved |
-| PBS Phase 1 | Deploy EXAPBSFAL001 at FAL | Enterprise support active |
-| PBS Phase 2 | Deploy EXAPBSODE001 and EXAPBSBRK001 | PBS Phase 1 complete |
-| PDM Phase 1 | Deploy EXAPDMFAL001 | Enterprise support active on all clusters |
-| PDM Phase 2 | Register all site clusters as remotes | WireGuard fabric stable |
-| PDM Phase 3 | Configure RBAC, AD integration, automation hooks | PDM Phase 1-2 complete |
+| Now | Lab evaluation — nested PVE + PDM at FAL (see above) | EXAPVEFAL001 online |
+| Budget approval | Enterprise support subscriptions purchased (see `pdm-enterprise-proposal.md` for fleet-wide cost model — no more "hub nodes only" tier, since DCM/PBS aren't confined to specific sites any more) | Proposal approved |
+| DCM Phase 1 | `address_policy.json`/`devices.csv` reservations above made live; deploy `EXADCMCLD001` at CLD | Enterprise support active on CLD |
+| PBS Phase 1 | Deploy `EXAPBSCLD001` at CLD (co-located with DCM's own site — first real-world proof of the per-site pattern) | DCM Phase 1 complete |
+| PBS Phase 2 | Roll `EXAPBS<SITE>001` out across the remaining sites, one at a time, per the "Renumbering / Reworking Live Conventions" migration procedure — not a single estate-wide blast | Enterprise support active per site as it's onboarded |
+| DCM Phase 2 | Register every site's PVE cluster + local PBS as PDM remotes as each comes online; configure RBAC and AD auth | DCM Phase 1 + at least one PBS site complete |
 
 ---
 
@@ -340,6 +410,8 @@ These are starting points — adjust per VM criticality and storage budget.
 | Document | Relationship |
 |----------|-------------|
 | `pdm-enterprise-proposal.md` | Budget proposal for enterprise support licensing |
+| `ansible/README.md` | Current WireGuard topology (CLD sole hub) this design is built around |
+| `docs/ansible/beginners_guide_to_ansible.md` | "Renumbering / Reworking Live Conventions" — the rollout methodology for the proposed `.13`/`.14` addressing once approved |
 | `proxmox/pve-networking.md` | Network config PDM connects through |
 | `wireguard/wireguard-troubleshooting.md` | Cross-site PDM-to-cluster connectivity |
 | `network-inventory.md` | IP assignments for PDM and PBS nodes |
