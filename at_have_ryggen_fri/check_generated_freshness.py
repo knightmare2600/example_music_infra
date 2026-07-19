@@ -29,7 +29,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 BENARBEJDE = REPO_ROOT / "benarbejde"
 GENERATOR = BENARBEJDE / "generate_inventory.py"
 INVENTORY_DIR = REPO_ROOT / "ansible" / "configs" / "inventory"

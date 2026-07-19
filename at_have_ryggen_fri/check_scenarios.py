@@ -22,7 +22,7 @@ import sys
 import yaml
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS_FILE = Path(__file__).resolve().parent / "scenarios.yml"
 
 

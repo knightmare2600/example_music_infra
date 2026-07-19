@@ -14,12 +14,12 @@
 # 2026-07-13, see REGION_FILES below and docs/network-diagram.md's own header for why: GitHub's
 # mermaid renderer got unreliable with all 51 sites' diagrams on one page) between matching
 #   %% GENERATED:NEW-NETWORK:<SITE>:START / :END
-# markers by insert_into_docs(). ansible/at_have_ryggen_fri's freshness check (check 14) regenerates
+# markers by insert_into_docs(). at_have_ryggen_fri's freshness check (check 14) regenerates
 # into a scratch dir and diffs against what's committed -- this script is the single place that
 # logic lives; the check just calls it and compares.
 #
 # See docs/network-diagram.md's "Visual Standard" section for the shape/colour/symbol convention
-# this implements, and ansible/at_have_ryggen_fri/README.md's Backlog section for the overall plan.
+# this implements, and at_have_ryggen_fri/README.md's Backlog section for the overall plan.
 # ==================================================================================================
 
 import csv

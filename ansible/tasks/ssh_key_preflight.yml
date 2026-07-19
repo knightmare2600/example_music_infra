@@ -63,8 +63,13 @@
 #               ansible_user/ansible_port. Re-verified against a target that
 #               is provably NOT localhost this time.
 #   2026-07-12  Initial file. Robert's 5-point spec, all three layers
-#               (harness/at_have_ryggen_fri/check_ssh_keys.py, this file +
+#               (at_have_ryggen_fri/check_ssh_keys.py, this file +
 #               its two callers, docs/proxmox/Procedure-PVE-Node-Onboarding.md).
+#   2026-07-19  at_have_ryggen_fri/ moved from ansible/at_have_ryggen_fri/ to the repo
+#               root -- updated the run.sh reference below to match (also fixed a
+#               pre-existing stale "harness/" prefix on the changelog line above, from
+#               before this file settled on the real "ansible/at_have_ryggen_fri/" path
+#               originally -- neither location ever existed as "harness/").
 # =============================================================================
 
 - name: "[ssh-preflight] WARN — skipped via ssh_key_preflight_skip=true"
@@ -104,7 +109,7 @@
       {{ "does not exist" if (_sshpf_key_file | length > 0) else "is not set" }}
       on this control node. This is a showstopper, not a warning — nothing
       further will run against this host until it's fixed. Run
-      ansible/at_have_ryggen_fri/run.sh (check 11, check_ssh_keys.py) for
+      at_have_ryggen_fri/run.sh (check 11, check_ssh_keys.py) for
       guidance, including a scan of ~/.ssh/ for a plausible existing
       keypair. If none is found, generate a fresh one (matching
       bootstrap/web/provision/ansibleme.sh's own ssh-keygen invocation) —

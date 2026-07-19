@@ -2,6 +2,13 @@
 
 Danish: *"at have ryggen fri"* — to have your back covered.
 
+> **Moved 2026-07-19** from `ansible/at_have_ryggen_fri/` to here, the repo root — it always
+> checked the whole repo, not just the Ansible side (see below), so living inside `ansible/`
+> was misleading about its own scope. `REPO_ROOT` in every `check_*.py` and `run.sh` itself
+> is one directory level shallower as a result (`parents[1]`, not `parents[2]`) — if you're
+> picking up old notes/branches that still say `ansible/at_have_ryggen_fri/...`, that path no
+> longer exists.
+
 A verification harness for this whole repo — not just the Ansible side.
 Run it before merging anything that touches inventory, `group_vars`/
 `host_vars`, `ansible.cfg`, `benarbejde/`'s source-of-truth files, or
@@ -191,7 +198,7 @@ checked holds," not "this repo has no inaccuracies."
 ## Usage
 
 ```bash
-cd ansible/at_have_ryggen_fri
+cd at_have_ryggen_fri
 ./run.sh
 
 # Before an actual deployment (not just cloning the repo to read it):
