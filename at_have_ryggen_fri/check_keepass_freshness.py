@@ -43,7 +43,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 BENARBEJDE_DIR = REPO_ROOT / "benarbejde"
 CREDENTIALS_JSON = BENARBEJDE_DIR / "extracted_credentials.json"
 PUSH_SCRIPT = BENARBEJDE_DIR / "push_credentials_to_keepass.py"

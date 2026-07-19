@@ -32,7 +32,7 @@ import re
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 SITES_CSV = REPO_ROOT / "benarbejde" / "sites.csv"
 HUB_DATA_FILE = REPO_ROOT / "ansible/configs/inventory/group_vars/firewalls/main.yml"
 

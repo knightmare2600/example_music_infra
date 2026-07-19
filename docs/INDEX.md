@@ -27,7 +27,7 @@
 | Set up a RAC emulator VM | [lab/rac-emulator.md](lab/rac-emulator.md) |
 | Fix a ZFS disk | [proxmox/zfs-disk-replacement.md](proxmox/zfs-disk-replacement.md) |
 | Troubleshoot WireGuard | [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) |
-| Verify a change is safe before merging | [../ansible/at_have_ryggen_fri/README.md](../ansible/at_have_ryggen_fri/README.md) |
+| Verify a change is safe before merging | [../at_have_ryggen_fri/README.md](../at_have_ryggen_fri/README.md) |
 | Read about a past incident / outage | [INCIDENT-LOG.md](INCIDENT-LOG.md) |
 | Plan a site cutover without taking the network down | [network-cutover.md](network-cutover.md) |
 
@@ -284,7 +284,7 @@ that one directory.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
-| [../ansible/at_have_ryggen_fri/README.md](../ansible/at_have_ryggen_fri/README.md) | NET-QA-001 | `at_have_ryggen_fri` — repo-wide verification harness. YAML validity, `ansible-playbook --syntax-check`, file-reference integrity, inventory structure, `add_host` visibility, generated-file freshness, markdown link integrity, cross-file fact consistency, and the estate's bare-metal bootstrap scenarios. Run `ansible/at_have_ryggen_fri/run.sh` before merging anything that touches inventory, `group_vars`, `ansible.cfg`, `benarbejde/`, or `docs/` |
+| [../at_have_ryggen_fri/README.md](../at_have_ryggen_fri/README.md) | NET-QA-001 | `at_have_ryggen_fri` — repo-wide verification harness. YAML validity, `ansible-playbook --syntax-check`, file-reference integrity, inventory structure, `add_host` visibility, generated-file freshness, markdown link integrity, cross-file fact consistency, and the estate's bare-metal bootstrap scenarios. Run `at_have_ryggen_fri/run.sh` before merging anything that touches inventory, `group_vars`, `ansible.cfg`, `benarbejde/`, or `docs/` |
 
 ---
 

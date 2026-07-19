@@ -55,7 +55,7 @@ import sys
 import time
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 CACHE_FILE = Path(__file__).resolve().parent / "reports" / ".mermaid_cache.json"
 KROKI_URL = "https://kroki.io/mermaid/svg"
 
