@@ -38,7 +38,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:VIE:START
     subgraph NEW_VIE ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRVIE001 · RTR · .1"]
-      N_PRV["📦 EXAPRVVIE001 · PRV · .15"]
       N_SBC["🛡️ EXASBCVIE001 · SBC · .48"]
       N_DCS["🗝️ EXADCSVIE001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLVIE001 · FWL 1 · .253"]

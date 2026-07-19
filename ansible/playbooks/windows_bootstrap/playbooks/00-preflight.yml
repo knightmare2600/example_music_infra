@@ -11,12 +11,12 @@
 # ─────────
 # PHASE A — All control-node work (no SSH connection to target yet):
 #   A1  Resolve is_first_dc and persist vars_prompt facts
-#   A1b If target_hostname left blank, connect and read $env:COMPUTERNAME —
+#   A2  If target_hostname left blank, connect and read $env:COMPUTERNAME —
 #       the one Phase A step that does touch the target, see its own comment
-#   A2  Validate hostname format and parse site/role codes
-#   A3  Read sites.csv → derive subnet, gateway, site DC IP
-#   A4  DNS probe → decide dns_primary / dns_secondary (see below)
-#   A5  Pre-flight summary + operator confirm
+#   A3  Validate hostname format and parse site/role codes
+#   A4  Read sites.csv → derive subnet, gateway, site DC IP
+#   A5  DNS probe → decide dns_primary / dns_secondary (see below)
+#   A6  Pre-flight summary + operator confirm
 #
 # PHASE B — SSH connect and harden:
 #   B0  Failsafe: clear a pre-existing DefaultShell override via plain ssh,
@@ -44,7 +44,7 @@
 # PHASE I — Summary and hand-off to the rest of site.yml's chain
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# DNS decision (Phase A4)
+# DNS decision (Phase A5)
 # ─────────────────────────────────────────────────────────────────────────────
 # The correct DNS for the new static IP depends on what DCs are actually
 # reachable at run time.  A TCP 389 (LDAP) probe from the control node
@@ -102,14 +102,14 @@
 #               -- if DefaultShell isn't actually the problem, or the key isn't
 #               deployed yet, this is a silent no-op and B1 behaves exactly as
 #               before.
-#   2026-07-15  Robert: leaving the target_hostname prompt blank made A2's format
+#   2026-07-15  Robert: leaving the target_hostname prompt blank made A3's format
 #               assert fail immediately, bombing the whole play -- unlike target_ip,
 #               which already tolerates blank ("no change, use whatever's already
-#               there", assessed in Phase C once connected). Added A1b: when
+#               there", assessed in Phase C once connected). Added A2: when
 #               target_hostname is blank, connect early and read $env:COMPUTERNAME,
-#               then let it flow into A2's existing assert exactly like an
+#               then let it flow into A3's existing assert exactly like an
 #               operator-typed value would. Couldn't reuse Phase C's later read
-#               outright -- A2/A3/A4 (site/role parsing, sites.csv lookup, DNS
+#               outright -- A3/A4/A5 (site/role parsing, sites.csv lookup, DNS
 #               decision) all run before Phase B ever connects, so there's no
 #               live value yet at that point without connecting early. Operator
 #               is only stopped if the box's actual current name doesn't already
@@ -128,11 +128,11 @@
 #   2026-07-02  Fix ip_needs_change: was checking subnet membership only.
 #               Persist target_hostname and dj_temp_dns_ip as host facts.
 #   2026-07-03  Automated DNS decision — remove hardcoded dns_server var and
-#               dj_temp_dns_ip prompt. Phase A4 probes site DC and hub DCs via
+#               dj_temp_dns_ip prompt. Phase A5 probes site DC and hub DCs via
 #               TCP 389 and sets dns_primary / dns_secondary based on role,
 #               is_first_dc, and probe results. dj_temp_dns_ip is derived from
 #               dns_primary and passed forward to downstream plays as before.
-#               Pre-flight summary moved to after Phase A4 so operator sees
+#               Pre-flight summary moved to after Phase A5 so operator sees
 #               the decided DNS before confirming.  Task flow reorganised into
 #               named phases (A–I) matching the file header above.
 #   2026-07-09  Fixed hosts: — was bare "{{ target_hosts }}" with no fallback to
@@ -263,14 +263,14 @@
         vault_domain_join_password: "{{ vault_domain_join_password }}"
       no_log: true
 
-    # ── A1b — Blank hostname: read current from host, adopt if it's already valid ──
+    # ── A2 — Blank hostname: read current from host, adopt if it's already valid ──
     # target_ip's existing blank-tolerant pattern ("blank = no change, use whatever's
-    # already there") can't be copied as-is for hostname: A2 below parses site/role
-    # codes out of target_hostname, and A3/A4 (sites.csv lookup, DNS decision) both
+    # already there") can't be copied as-is for hostname: A3 below parses site/role
+    # codes out of target_hostname, and A4/A5 (sites.csv lookup, DNS decision) both
     # run long before Phase B ever connects to the box — there is no live value to
     # fall back to yet at that point in the file. So when target_hostname is left
     # blank, connect just long enough to read $env:COMPUTERNAME here instead, then
-    # let it flow into the *same* A2 assert as any operator-typed value. A2's
+    # let it flow into the *same* A3 assert as any operator-typed value. A3's
     # existing regex is still the one and only gate on acceptability — if the box's
     # actual current name doesn't already match the EXA convention, the assert
     # fails with its usual message, telling the operator to supply target_hostname
@@ -278,20 +278,20 @@
     # are already set in this play's vars: block, so this SSH call works fine here,
     # ahead of B1's own gather_facts.
 
-    - name: "[A1b] Target hostname left blank — read current hostname from host"
+    - name: "[A2] Target hostname left blank — read current hostname from host"
       ansible.windows.win_shell: $env:COMPUTERNAME
       register: _current_hostname_probe
       changed_when: false
       when: target_hostname | length == 0
 
-    - name: "[A1b] Adopt current hostname as target_hostname"
+    - name: "[A2] Adopt current hostname as target_hostname"
       set_fact:
         target_hostname: "{{ _current_hostname_probe.stdout | trim }}"
       when: target_hostname | length == 0
 
-    # ── A2 — Hostname validation and site/role parsing ─────────────────────────
+    # ── A3 — Hostname validation and site/role parsing ─────────────────────────
 
-    - name: "[A2] Validate hostname format"
+    - name: "[A3] Validate hostname format"
       assert:
         that:
           - target_hostname | length > 0
@@ -300,28 +300,28 @@
           '{{ target_hostname }}' is not a valid EXA hostname.
           Format: EXA[ROLE][SITE][NNN] — e.g. EXADCSLIV001, EXAWKSFAL001.
 
-    - name: "[A2] Parse site and role codes from hostname"
+    - name: "[A3] Parse site and role codes from hostname"
       set_fact:
         host_site_code: "{{ target_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first }}"
         host_role_code: "{{ target_hostname | upper | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\\1') | first }}"
 
-    # ── A3 — Read sites.csv and derive network details ─────────────────────────
+    # ── A4 — Read sites.csv and derive network details ─────────────────────────
 
-    - name: "[A3] Read sites.csv from control node"
+    - name: "[A4] Read sites.csv from control node"
       set_fact:
         site_data: "{{ lookup('file', sites_csv) | community.general.from_csv }}"
       delegate_to: localhost
 
-    - name: "[A3] Find site record for {{ host_site_code }}"
+    - name: "[A4] Find site record for {{ host_site_code }}"
       set_fact:
         site_record: "{{ site_data | selectattr('Site', 'equalto', host_site_code) | list | first | default({}) }}"
 
-    - name: "[A3] Fail if site code not found in sites.csv"
+    - name: "[A4] Fail if site code not found in sites.csv"
       fail:
         msg: "Site code '{{ host_site_code }}' not found in {{ sites_csv }}. Check the hostname."
       when: site_record | length == 0
 
-    - name: "[A3] Derive network defaults from sites.csv"
+    - name: "[A4] Derive network defaults from sites.csv"
       set_fact:
         site_subnet:  "{{ site_record.Subnet }}"
         site_gateway: "{{ site_record.Gateway }}"
@@ -331,7 +331,7 @@
         subnet_base:  "{{ site_record.Subnet | regex_replace('/\\d+$', '') | regex_replace('\\.\\d+$', '') }}"
         prefix_len:   "{{ site_record.Subnet.split('/')[1] }}"
 
-    # ── A4 — DNS probe: decide primary and secondary DNS ──────────────────────
+    # ── A5 — DNS probe: decide primary and secondary DNS ──────────────────────
     # All probes run from the Ansible control node (delegate_to: localhost).
     # Hub DC IPs come from the DC column of sites.csv — same source of truth
     # used everywhere else; no IPs hardcoded in this playbook.
@@ -348,11 +348,11 @@
     # [B0] failsafe below hit exactly this, and it turned out to be latent here
     # too: these two probes had simply never been exercised yet, since every
     # live test so far has had is_first_dc: yes, which skips them via their own
-    # when: condition. set_fact tasks (e.g. "[A3] Read sites.csv") don't need
+    # when: condition. set_fact tasks (e.g. "[A4] Read sites.csv") don't need
     # this -- lookup() always evaluates on the controller regardless of
     # connection, only command/shell dispatch through the connection plugin.
 
-    - name: "[A4] Build hub DC candidate list from sites.csv"
+    - name: "[A5] Build hub DC candidate list from sites.csv"
       set_fact:
         _hub_candidates:
           - site: "FAL"
@@ -364,7 +364,7 @@
       delegate_to: localhost
       become: false
 
-    - name: "[A4] Probe site DC {{ site_dc }} — TCP 389 (LDAP)"
+    - name: "[A5] Probe site DC {{ site_dc }} — TCP 389 (LDAP)"
       command: >
         bash -c 'timeout 3 bash -c "echo >/dev/tcp/{{ site_dc }}/389" 2>/dev/null
         && echo reachable || echo unreachable'
@@ -376,11 +376,11 @@
         ansible_connection: local
       when: not (host_role_code | upper == 'DCS' and is_first_dc | bool)
 
-    - name: "[A4] Set site DC reachability fact"
+    - name: "[A5] Set site DC reachability fact"
       set_fact:
         _site_dc_up: "{{ _site_dc_probe.stdout | default('unreachable') | trim == 'reachable' }}"
 
-    - name: "[A4] Probe hub DCs — TCP 389 (fallback when site DC not reachable)"
+    - name: "[A5] Probe hub DCs — TCP 389 (fallback when site DC not reachable)"
       command: >
         bash -c 'timeout 3 bash -c "echo >/dev/tcp/{{ item.ip }}/389" 2>/dev/null
         && echo reachable || echo unreachable'
@@ -397,7 +397,7 @@
         - not _site_dc_up | bool
         - not (host_role_code | upper == 'DCS' and is_first_dc | bool)
 
-    - name: "[A4] Select first reachable hub DC as primary fallback"
+    - name: "[A5] Select first reachable hub DC as primary fallback"
       set_fact:
         _hub_fallback_ip:   "{{ item.item.ip }}"
         _hub_fallback_site: "{{ item.item.site }}"
@@ -409,7 +409,7 @@
         - item.stdout | default('unreachable') | trim == 'reachable'
         - _hub_fallback_ip is not defined
 
-    - name: "[A4] Apply DNS decision"
+    - name: "[A5] Apply DNS decision"
       set_fact:
         dns_primary:    "{{ _primary }}"
         dns_secondary:  "{{ _secondary }}"
@@ -439,12 +439,12 @@
             no DC reachable — BIND9 only; domain join will likely fail
           {%- endif -%}
 
-    # ── A5 — Pre-flight summary and operator confirm ───────────────────────────
+    # ── A6 — Pre-flight summary and operator confirm ───────────────────────────
     # Runs on localhost. No SSH connection has been made to the target yet.
     # All site, DNS, and role information is now resolved — operator sees
     # the complete picture before confirming.
 
-    - name: "[A5] Pre-flight summary — confirm before connecting"
+    - name: "[A6] Pre-flight summary — confirm before connecting"
       ansible.builtin.pause:
         prompt: |-
 
@@ -503,7 +503,7 @@
         # connection error (UNREACHABLE), which failed_when: false above
         # cannot suppress, since the task never runs far enough to produce a
         # result to judge. Found live 2026-07-15: this exact task hit it on
-        # its very first real run, same day it was added -- see the two [A4]
+        # its very first real run, same day it was added -- see the two [A5]
         # probe tasks below, which had the identical latent bug already.
         ansible_connection: local
 
@@ -620,7 +620,7 @@
     # re-enables OpenSSH firewall rules (Windows resets these on IP change),
     # restarts sshd, then removes itself.
     #
-    # dns_primary and dns_secondary were decided by the Phase A4 probe.
+    # dns_primary and dns_secondary were decided by the Phase A5 probe.
     # dns_secondary is empty for forest-root DC builds — the secondary netsh
     # line is omitted in that case via the Jinja2 conditional below.
 

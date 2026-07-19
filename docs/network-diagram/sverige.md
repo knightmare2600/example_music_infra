@@ -38,7 +38,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:GOT:START
     subgraph NEW_GOT ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRGOT001 · RTR · .1"]
-      N_PRV["📦 EXAPRVGOT001 · PRV · .15"]
       N_SBC["🛡️ EXASBCGOT001 · SBC · .48"]
       N_DCS["🗝️ EXADCSGOT001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLGOT001 · FWL 1 · .253"]

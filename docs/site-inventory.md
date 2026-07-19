@@ -15,6 +15,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-19 | `EXANASFAL001`/`EXANASPER001`/`EXANASMEL001` marked retired — replaced by the new standard `.19` NAS/SAN slot (TrueNAS), rolled out per site rather than the old ad-hoc addressing (`.32`/`.50`/none). See `README.md`'s Addressing table and `docs/proxmox/proxmox-dcm-pbs-planning.md` for the full rationale, including why `.15` PRV was retired in the same change. |
 | 2026-07-12 | Fixed a second error in the same 10 sites' checklists (plus CLD): the firewall's IP was given as `.1` throughout, which is actually `RTR` (upstream router) per `address_policy.json`'s `role_offsets` — the firewall's real offset is `.253`/`.254`. Corrected all 10 standard-site entries to `.253`, matching `network-inventory.md`. CLD's `EXAFWLVRK001` line needed a different fix, not `.253` — it's the dual-interface exception, WAN/vRACK face at `.69`, LAN face (`EXAFWLCLD001`) at `.253`; corrected to state both explicitly rather than reuse the standard-site pattern verbatim. |
 | 2026-07-12 | Fixed build-order errors in 10 sites' Infrastructure Checklists (CLD, FAL, CLY, ABD, LND, BIR, ODE, LAX, SYD, MEL, AKL): the firewall line was listed before the Proxmox node line, but every site's firewall is a VM running on that site's PVE node (see `buildsheets/buildsheet-firewall.md` Step 1 — "Create the VM on Proxmox") — the hypervisor has to exist first. Reordered each to PVE node(s) → Firewall → DC, matching actual build dependency. CLD's checklist was also missing `EXAPVECLD001`/`EXADCSCLD001` entirely (both real, onboarded hosts per `ansible/configs/inventory/cld.ini`) — added in the correct position, and moved `EXADNSVRK001` ahead of the firewall to match the real first-site bootstrap order (PVE → DNS → firewall → DC). |
 | 2026-07-08 | Fixed CLD's checklist: several devices were listed with `192.168.139.x` (the vRACK octet range) when they're actually CLD-LAN-only (`192.168.69.x`) — Ansible/Rudder/WAC/PBX. Fixed `EXAPRVFAL001` -> `EXAPRVVRK001` (copy-paste error — FAL is a different site entirely). Fixed `EXAFWLCLD001` -> `EXAFWLVRK001` for the `.1` WireGuard-hub address specifically (same physical firewall, vRACK-facing role). Fixed stale forest name `jukebox.example` -> `jukebox.internal`. |
@@ -57,7 +58,7 @@
 - [CLD — Cloud / Provisioning](#cld--cloud--provisioning)
 
 ### 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland
-- [FAL — Falkirk *(Head Office)*](#fal--falkirk-head-office) ⭐ 3-node hub
+- [FAL — Falkirk *(Head Office)*](#fal--falkirk-head-office) ⭐ 3-node AD hub
 - [EDI — Edinburgh](#edi--edinburgh)
 - [GLA — Glasgow](#gla--glasgow)
 - [CLY — Clydebank](#cly--clydebank)
@@ -78,7 +79,7 @@
 
 ### 🇩🇰 Danmark
 - [CPH — København](#cph--kbenhavn)
-- [ODE — Odense](#ode--odense) ⭐ 3-node hub (EU)
+- [ODE — Odense](#ode--odense) ⭐ 3-node AD hub (EU)
 - [KGE — Køge](#kge--kge) ⚠️
 - [FAX — Faxe](#fax--faxe)
 - [KOR — Korsør](#kor--korsr)
@@ -104,7 +105,7 @@
 - [VIE — Vienna](#vie--vienna)
 
 ### 🇨🇦 Canada
-- [BRK — Brockville](#brk--brockville-ontario) ⭐ 3-node hub (NA/APAC)
+- [BRK — Brockville](#brk--brockville-ontario) ⭐ 3-node AD hub (NA/APAC)
 - [TOR — Toronto](#tor--toronto-ontario) ⚠️
 - [MTL — Montreal](#mtl--montreal-quebec)
 
@@ -130,7 +131,7 @@
 | Code | Site | Commissioned | Notes |
 |------|------|:------------:|-------|
 | CLD | Cloud / Provisioning | [ ] | |
-| FAL | Falkirk | [ ] | Head office · 3-node hub |
+| FAL | Falkirk | [ ] | Head office · 3-node AD hub |
 | EDI | Edinburgh | [ ] | ⚠️ EXADCSEDI003 unhealthy |
 | GLA | Glasgow | [ ] | |
 | CLY | Clydebank | [ ] | |
@@ -147,7 +148,7 @@
 | HUL | Hull | [ ] | |
 | COV | Coventry | [ ] | WAP/RTR only |
 | CPH | København | [ ] | |
-| ODE | Odense | [ ] | EU hub · 3-node |
+| ODE | Odense | [ ] | EU AD hub · 3-node |
 | KGE | Køge | [ ] | ⚠️ DC EOL/out of sync |
 | FAX | Faxe | [ ] | |
 | KOR | Korsør | [ ] | |
@@ -159,7 +160,7 @@
 | AMS | Amsterdam | [ ] | |
 | MIL | Milan | [ ] | |
 | VIE | Vienna | [ ] | |
-| BRK | Brockville | [ ] | NA/APAC hub · 3-node · ⚠️ DC stopped |
+| BRK | Brockville | [ ] | NA/APAC AD hub · 3-node · ⚠️ DC stopped |
 | TOR | Toronto | [ ] | ⚠️ DC stopped |
 | MTL | Montreal | [ ] | |
 | LAX | Los Angeles | [ ] | |
@@ -218,7 +219,7 @@ here, it's a MacBook running `http.server`, not a physical site).
 **Address:** Brockville Stadium, Hope Street, Falkirk  
 **Entity:** Example Music (Scotland) Ltd  
 **LAN:** `192.168.76.0/24` · **VPN:** `10.0.76.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 3 (hub) · **BMC pool:** `.2` `.3` `.4` all physical
+**PVE nodes:** 3 (AD hub) · **BMC pool:** `.2` `.3` `.4` all physical
 
 ### Infrastructure Checklist
 - [ ] `EXASWIFAL001` — Core switch 1 (`192.168.76.250`)
@@ -234,7 +235,7 @@ here, it's a MacBook running `http.server`, not a physical site).
 - [ ] `EXADCSFAL001` — DC primary (`192.168.76.10`) · PDC Emulator
 - [ ] `EXADCSFAL002` — DC secondary (`192.168.76.11`)
 - [ ] `EXASBCFAL001` — VOIP SBC (`192.168.76.48`) · trunks to `EXAPBXCLD001`
-- [ ] `EXANASFAL001` — NAS (`192.168.76.32`) · FreeNAS 13.0-U6
+- [ ] `EXANASFAL001` — **Retired 2026-07-19** (was `192.168.76.32`, FreeNAS) — replaced by the standard `EXANASFAL001` slot at `.19` (TrueNAS), not yet built
 - [ ] `EXATARFAL001` — Tape archiver (`192.168.76.33`) · Solaris Embedded
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool `.100`–`.249` confirmed active
@@ -433,7 +434,7 @@ here, it's a MacBook running `http.server`, not a physical site).
 - [ ] `EXADCSPER001` — DC (`192.168.173.10`)
 - [ ] `EXASBCPER001` — VOIP SBC (`192.168.173.48`) · trunks to `EXAPBXCLD001`
 - [ ] `EXANIXPER001` — Solaris 11.5 (`192.168.173.40`) · MIDI/Music archive
-- [ ] `EXANASPER001` — Synology NAS (`192.168.173.50`)
+- [ ] `EXANASPER001` — **Retired 2026-07-19** (was `192.168.173.50`, Synology) — replaced by the standard `EXANASPER001` slot at `.19` (TrueNAS), not yet built
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -826,7 +827,7 @@ here, it's a MacBook running `http.server`, not a physical site).
 ## ODE — Odense *(EU Hub)*
 
 **LAN:** `192.168.126.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 3 (EU hub) · **BMC pool:** `.2` `.3` `.4` all physical
+**PVE nodes:** 3 (EU AD hub) · **BMC pool:** `.2` `.3` `.4` all physical
 
 ### Infrastructure Checklist
 - [ ] `EXARACODE001` — BMC node 1 (`192.168.126.2`)
@@ -1198,7 +1199,7 @@ here, it's a MacBook running `http.server`, not a physical site).
 ## BRK — Brockville, Ontario *(NA/APAC Hub)*
 
 **LAN:** `192.168.136.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 3 (NA/APAC hub) · **BMC pool:** `.2` `.3` `.4` all physical
+**PVE nodes:** 3 (NA/APAC AD hub) · **BMC pool:** `.2` `.3` `.4` all physical
 
 > ⚠️ `EXADCSBRK001` — DNS, Netlogon and KDC services stopped.
 
@@ -1544,7 +1545,7 @@ here, it's a MacBook running `http.server`, not a physical site).
 ### Site-Specific Equipment
 - [ ] `EXALCDMEL001` — Samsung Signage display
 - [ ] `EXAPRNMEL001` — HP LaserJet
-- [ ] `EXANASMEL001` — Synology NAS · DSM 7.x
+- [ ] `EXANASMEL001` — **Retired 2026-07-19** (was Synology DSM 7.x, no fixed address) — replaced by the standard `EXANASMEL001` slot at `.19` (TrueNAS), not yet built
 
 ---
 

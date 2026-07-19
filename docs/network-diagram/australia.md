@@ -53,7 +53,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:SYD:START
     subgraph NEW_SYD ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRSYD001 · RTR · .1"]
-      N_PRV["📦 EXAPRVSYD001 · PRV · .15"]
       N_SBC["🛡️ EXASBCSYD001 · SBC · .48"]
       N_DCS["🗝️ EXADCSSYD001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLSYD001 · FWL 1 · .253"]
@@ -125,7 +124,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:MEL:START
     subgraph NEW_MEL ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRMEL001 · RTR · .1"]
-      N_PRV["📦 EXAPRVMEL001 · PRV · .15"]
       N_SBC["🛡️ EXASBCMEL001 · SBC · .48"]
       N_DCS["🗝️ EXADCSMEL001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLMEL001 · FWL 1 · .253"]
@@ -140,7 +138,6 @@ graph TD
       N_TAB["📱 EXATABMEL001 · iPad"]
       N_LCD["🖼️ EXALCDMEL001 · Signage display"]
       N_PRN["🖨️ EXAPRNMEL001 · LaserJet printer"]
-      N_NAS["🗃️ EXANASMEL001 · NAS"]
     end
     style NEW_MEL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:MEL:END

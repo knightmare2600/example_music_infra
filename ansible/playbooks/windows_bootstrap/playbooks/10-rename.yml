@@ -45,7 +45,7 @@
 #               None on no match) -- never a real boolean -- so `that:` was
 #               being handed a string, which this ansible-core version correctly
 #               rejects rather than silently truthy-coercing. 00-preflight.yml's
-#               own equivalent check ([A2] Validate hostname format) already gets
+#               own equivalent check ([A3] Validate hostname format) already gets
 #               this right with `is not none`; this file was just missing it.
 # =============================================================================
 

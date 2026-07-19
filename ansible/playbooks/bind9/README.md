@@ -4,7 +4,7 @@ Configures EXADNSVRK001 as the authoritative BIND9 DNS server for jukebox.intern
 
 ## Usage
 ```
-ansible-playbook -i ../../configs/inventory playbooks/bind9/bind9-dns.yml -e target=exasvrcld001 --ask-vault-pass
+ansible-playbook -i ../../configs/inventory playbooks/bind9/bind9-dns.yml -e target=exadnsvrk001 --ask-vault-pass
 ```
 
 ## Plays

@@ -1,8 +1,12 @@
 ---
 # =============================================================================
 # tasks/pswindowsupdate.yml
-# Example Music Limited — PSWindowsUpdate module (Stage 18)
-# Replicates Join-DomainAndBootstrap.ps1 Stage 18
+# Example Music Limited — PSWindowsUpdate module
+# Replicates Join-DomainAndBootstrap.ps1 Stage 18 (the legacy PS1 script's own number,
+# unchanged — an external, immutable fact). This file's own internal task-name label was
+# renumbered 2026-07-19 (18 -> 19, to make room for tasks/sac_ems.yml's former "17b"
+# becoming a real "18") — see docs/ansible/beginners_guide_to_ansible.md's "Renumbering /
+# Reworking Live Conventions" section.
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file (inline in 05-bootstrap.yml)
@@ -10,7 +14,7 @@
 #               playbooks/48-pswindowsupdate.yml share one source of truth.
 # =============================================================================
 
-- name: "[Stage 18] Install PSWindowsUpdate from PSGallery"
+- name: "[Stage 19] Install PSWindowsUpdate from PSGallery"
   ansible.windows.win_shell: |
     if (-not (Get-Module -ListAvailable PSWindowsUpdate)) {
       Install-Module PSWindowsUpdate -Scope AllUsers -Force -SkipPublisherCheck

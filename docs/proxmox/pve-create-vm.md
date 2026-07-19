@@ -205,7 +205,18 @@ The script queries `pvesm status` via the API, filters to storage that supports 
 - Used / free / total space
 - Active/inactive status
 
-The technician selects from the menu. The disk is created as a VirtIO SCSI device on the selected storage.
+The technician selects from the menu, then **Number of disks** (default 1, max 8 — added
+2026-07-19 for PVE test builds that need multiple disks). Each disk is created as a VirtIO SCSI
+device on the selected storage, at the same size. Slot allocation: the first disk is always
+`scsi0`; `scsi1` stays permanently reserved for the Windows VirtIO driver disk (attached
+automatically for Windows roles, see `virtio-driver-disk.md`) even when not attached; any
+additional data disks start at `scsi2` and increment from there, regardless of role — so a
+Windows VM with 3 data disks ends up with `scsi0`, `scsi1` (driver disk), `scsi2`, `scsi3`, `scsi4`.
+
+`discard=on` is set on every disk **only** when the selected storage is `zfspool` or `lvmthin` —
+the only backends that actually benefit from TRIM — matching
+`enable_vm_trim_discard.sh`'s own `BENEFITS_FROM_DISCARD` check. Other storage types get no
+`discard` flag at all rather than one that does nothing.
 
 ---
 

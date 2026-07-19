@@ -39,7 +39,7 @@ select between.
 | `playbooks/00-ad-preflight.yml` | Prompts for the target Domain Controller, stores it for every later stage to read back (see above) |
 | `playbooks/10-ad-schema.yml` | Creates the AD OU schema (additive only) |
 | `playbooks/20-ad-groups.yml` | Creates all AD security groups from `jukebox.example.tdf` (`$Script:rawDemoGroups`), under `OU=Security Groups,OU=IT Groups` |
-| `playbooks/30-ad-users.yml` | Creates AD user accounts from `jukebox.example.tdf` (`$Script:rawUsers`) |
+| `playbooks/30-ad-users.yml` | Creates AD user accounts from `jukebox.example.tdf` (`$Script:rawUsers`) — also normalises `CountryCode` to a 2-letter code + full name (`c`/`co`), skips 7 fields that are blank in the source data rather than sending an empty string, resolves each user's manager to a SamAccountName (same-OU match preferred, falls back to a flat name lookup for cross-OU managers), and sets/clears account lockout via `lockoutTime` |
 | `playbooks/40-ad-computers.yml` | Creates AD computer accounts from `ad_computers.json` |
 
 ## Dependencies

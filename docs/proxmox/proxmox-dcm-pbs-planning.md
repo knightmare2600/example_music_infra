@@ -37,8 +37,9 @@
 5. [Lab Evaluation — Nested PVE](#lab-evaluation--nested-pve)
 6. [Planned Production Architecture — DCM](#planned-production-architecture--dcm)
 7. [Planned Production Architecture — PBS](#planned-production-architecture--pbs)
-8. [Implementation Phasing](#implementation-phasing)
-9. [Related Documents](#related-documents)
+8. [Site Storage — NAS/SAN (TrueNAS)](#site-storage--nassan-truenas)
+9. [Implementation Phasing](#implementation-phasing)
+10. [Related Documents](#related-documents)
 
 ---
 
@@ -392,6 +393,75 @@ original proposal; retention policy is independent of where each PBS instance ph
 
 ---
 
+## Site Storage — NAS/SAN (TrueNAS)
+
+A separate, related decision made alongside the PBS work above (2026-07-19, Robert): general
+site storage (NAS/SAN — used interchangeably in this estate) also moves to a real per-site
+standard slot, and the vestigial `.15` PRV convention is retired in the same change.
+
+### Why `.15` PRV was retired, not just left alone
+
+`.15` PRV ("Provisioning Server") has been in `address_policy.json`'s `offsets_single` since
+this addressing scheme was first written, treated the same as `RTR`/`SBC` — a "single-instance
+infra role, always physically present at a real site" per `generate_inventory.py`'s own
+`DNS_SINGLE_ROLES` synthesis. Checked, not assumed: a real `--emit-devices-json` run showed
+every one of the 51 ordinary sites (i.e. every site except VRK and FRD) getting a synthesized
+`EXAPRV<SITE>001` DNS record at `.15` — and `benarbejde/devices.csv` has never had a single real
+`PRV` row for any of them. Provisioning in this estate is, and always has been, centralised at
+VRK (Edinburgh) and FRD (Fredericia Havn) — their own real `EXAPRVVRK001`/`EXAPRVFRD001` devices
+sit at `.1`/`.50` respectively via the `devices.csv`-exception path, entirely unrelated to this
+standard-slot mechanism, and are **unaffected** by this retirement. `.15` was dead for every
+ordinary site from day one; this just makes the addressing policy match reality.
+
+### The new `.19` NAS/SAN slot
+
+| Parameter | Value |
+|-----------|-------|
+| Hostname pattern | `EXANAS<SITE>001` |
+| IP convention | `192.168.<site-octet>.19` |
+| OS | TrueNAS (SCALE, most likely — CORE/SCALE choice not yet made) |
+| Deployment | One per site, no exceptions — same "identical everywhere" simplification as PBS |
+
+**Addressing check, same rigour as PBS's `.14`:** `.19` is free in both
+`benarbejde/address_policy.json` (not reserved by any existing range) and every real
+`benarbejde/devices.csv` row at every site — the nearest neighbours, `.16`/`.17`/`.18`, are
+already taken by unrelated ad-hoc devices at FAL/GLA/CPH. It sits in the same low-octet core
+cluster as PBS: `DCS1`/`DCS2` (`.10`/`.11`), `PBS` (`.14`), **NAS `.19`**.
+
+**Unlike PBS, this one is already live**, not proposed-pending-approval — `address_policy.json`
+was updated for real (PRV removed from `offsets_single`/`_addressing`/`connection_types.none`,
+NAS added), `generate_inventory.py`'s inventory/DNS synthesis regenerated across all 53 sites,
+and the 3 legacy ad-hoc NAS devices (`EXANASFAL001` at `.32`, `EXANASPER001` at `.50`,
+`EXANASMEL001` with no fixed address — all flagged `Legacy=yes`) removed from `devices.csv` and
+marked retired in `docs/site-inventory.md`. **`NAS` is deliberately NOT in `DNS_SINGLE_ROLES`**
+— unlike PVE/DCS/FWL, it isn't universally deployed yet, so treating it as "always real" would
+recreate the exact PRV mistake just fixed, for a different role. It gets the same treatment as
+`WAP`/`BMC`: a reserved, documented slot, synthesized into DNS only once a real `devices.csv`
+row confirms a device actually exists at that site.
+
+### Configuring TrueNAS once installed — `arensb/ansible-truenas`
+
+Checked directly (not assumed): [`arensb/ansible-truenas`](https://github.com/arensb/ansible-truenas)
+is a real, actively maintained Ansible collection (Apache-2.0, 17 releases, 568 commits) that
+configures an **already-installed, already-networked** TrueNAS system over its own
+API/middleware daemon (`midclt`/`client`) — hostname, services, jails, etc. **It has no
+bootstrap/install capability of its own** — getting TrueNAS onto bare metal in the first place
+is a separate problem this collection doesn't touch at all, the same shape as the Proxmox
+situation this repo already solved differently (`select-pve-answer.sh` + `first-boot.sh`, not
+an Ansible collection). Two distinct pieces of future work, not one:
+
+1. **Install**: iPXE-boot a bare box into TrueNAS's own installer, unattended if TrueNAS
+   supports it (not yet confirmed — needs the same kind of investigation this repo already did
+   for Proxmox's auto-install mechanism before assuming an approach will work).
+2. **Configure**: once installed and reachable, use `arensb/ansible-truenas` to set hostname,
+   pools/datasets/shares, users, and whatever else a real per-site TrueNAS needs — the same
+   two-phase shape as `first-boot.sh` (install-time) vs. the full Ansible role (everything
+   after) already established for Proxmox nodes.
+
+Deferred — not started, tracked in the repo-wide documentation-audit plan's section E.
+
+---
+
 ## Implementation Phasing
 
 | Phase | Action | Prerequisite |
@@ -402,6 +472,9 @@ original proposal; retention policy is independent of where each PBS instance ph
 | PBS Phase 1 | Deploy `EXAPBSCLD001` at CLD (co-located with DCM's own site — first real-world proof of the per-site pattern) | DCM Phase 1 complete |
 | PBS Phase 2 | Roll `EXAPBS<SITE>001` out across the remaining sites, one at a time, per the "Renumbering / Reworking Live Conventions" migration procedure — not a single estate-wide blast | Enterprise support active per site as it's onboarded |
 | DCM Phase 2 | Register every site's PVE cluster + local PBS as PDM remotes as each comes online; configure RBAC and AD auth | DCM Phase 1 + at least one PBS site complete |
+| NAS — done | `.19` addressing live in `address_policy.json`, legacy FAL/PER/MEL NAS retired | — (already complete, 2026-07-19) |
+| NAS — install (deferred) | Investigate unattended TrueNAS install via iPXE, same shape as Proxmox's own solved problem | Not started |
+| NAS — configure (deferred) | `arensb/ansible-truenas` role for per-site TrueNAS configuration, once installed | NAS — install complete |
 
 ---
 
