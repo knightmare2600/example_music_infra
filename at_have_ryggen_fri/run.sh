@@ -272,8 +272,8 @@ die()     { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 section() { echo; echo -e "${WHITE}── $* ──${NC}"; echo; }
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ANSIBLE_DIR="$(cd "${HERE}/.." && pwd)"
-REPO_ROOT="$(cd "${ANSIBLE_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${HERE}/.." && pwd)"
+ANSIBLE_DIR="${REPO_ROOT}/ansible"
 
 # ------------------------------------------------------------------------------
 # Report file — every run's full output (identical to what's on screen,
@@ -311,7 +311,7 @@ section "1. YAML validity — every git-tracked *.yml/*.yaml in the repo"
 yaml_errors=0
 while IFS= read -r -d '' f; do
   case "$f" in
-    ansible/at_have_ryggen_fri/*) continue ;;
+    at_have_ryggen_fri/*) continue ;;
   esac
   # Ansible-vault-encrypted values use a !vault YAML tag that plain PyYAML
   # doesn't know how to construct -- register a no-op constructor for it

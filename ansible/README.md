@@ -162,17 +162,13 @@ After adding a new device to `benarbejde/devices.csv`, re-run
 
 ## at_have_ryggen_fri/
 
-Verification harness — YAML validity, `--syntax-check`, file-reference
-integrity (`template:`/`copy:`/`include_tasks:`/etc actually resolve),
-inventory structure, and `add_host` visibility. Needs no real hosts, no
-vault password, no network beyond localhost. Run before merging anything
-that touches inventory, `group_vars`/`host_vars`, or `ansible.cfg`:
+**Moved 2026-07-19** to the repo root (`at_have_ryggen_fri/`, sibling to `ansible/`) — it
+always checked the whole repo, not just this directory, so living inside `ansible/` was
+misleading about its own scope. See `../at_have_ryggen_fri/README.md`; run it with:
 
 ```bash
-cd ansible/at_have_ryggen_fri && ./run.sh
+cd at_have_ryggen_fri && ./run.sh
 ```
-
-See `at_have_ryggen_fri/README.md` for what each check does and why.
 
 ---
 

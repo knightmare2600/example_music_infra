@@ -30,7 +30,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = REPO_ROOT / "ansible" / "configs" / "inventory"
 
 # Real hosts to spot-check -- deliberately spans sites both inside and

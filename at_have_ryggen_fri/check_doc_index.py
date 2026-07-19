@@ -49,7 +49,7 @@ import sys
 import urllib.parse
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = REPO_ROOT / "docs"
 INDEX_MD = DOCS_DIR / "INDEX.md"
 

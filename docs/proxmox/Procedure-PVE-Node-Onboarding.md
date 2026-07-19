@@ -293,7 +293,7 @@ Found the hard way, 2026-07-12: `bootstrap-new-node.yml` failed `UNREACHABLE` ag
 
 If you hit this:
 
-1. Run `ansible/at_have_ryggen_fri/run.sh --strict` (check 11, `check_ssh_keys.py`) — on the real control node this checks whether the configured private key is actually present, and if not, scans `~/.ssh/` for a plausible existing candidate (any `.pub` whose comment contains "exa").
+1. Run `at_have_ryggen_fri/run.sh --strict` (check 11, `check_ssh_keys.py`) — on the real control node this checks whether the configured private key is actually present, and if not, scans `~/.ssh/` for a plausible existing candidate (any `.pub` whose comment contains "exa").
 2. If a genuine, matching keypair turns up: **never** move or copy the private half into this repo, anywhere, full stop. Only the public half is ever committed/served, and only in these three places (keep all three in sync if the key is ever rotated):
    - `ansible/configs/ansible-id_rsa.pub` (gitignored locally, but read by `ansible.cfg`'s connection)
    - `bootstrap/web/ansible_sshkey.pub` (the one committed, HTTP-servable copy)

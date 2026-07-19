@@ -420,7 +420,7 @@
 
     - name: Register into the pvenodes group (site.yml's stages need its group_vars, e.g. pve_packages)
       # group_vars only auto-loads for a group that's part of the LOADED inventory path (see
-      # ansible/at_have_ryggen_fri/add_host_probe/inventory.ini's own comment on this) -- a bare
+      # at_have_ryggen_fri/add_host_probe/inventory.ini's own comment on this) -- a bare
       # "-i "1.2.3.4,"" ad-hoc inventory has no path for Ansible to find
       # configs/inventory/group_vars/pvenodes/ at all, regardless of group membership, which is
       # why 10-packages.yml's "Install management packages" task failed with 'pve_packages' is

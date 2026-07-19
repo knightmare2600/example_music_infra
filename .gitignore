@@ -46,7 +46,7 @@ env/
 
 *.retry
 ansible.log
-ansible/at_have_ryggen_fri/reports/.mermaid_cache.json
+at_have_ryggen_fri/reports/.mermaid_cache.json
 
 ###############################################################################
 # Logs

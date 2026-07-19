@@ -35,7 +35,7 @@ import sys
 import yaml
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 PLAYBOOKS_DIR = REPO_ROOT / "ansible" / "playbooks"
 DOCS_DIR = REPO_ROOT / "docs"
 ANSIBLE_README = REPO_ROOT / "ansible" / "README.md"

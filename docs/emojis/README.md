@@ -21,7 +21,7 @@ not silently swapped without explanation.
 **[unicode.org/emoji/charts/full-emoji-list.html](https://unicode.org/emoji/charts/full-emoji-list.html)**
 — every emoji, its code point, and how it renders across major platforms, one page. Pick a
 character, hand over the type code and the new symbol; each one gets a quick kroki.io round-trip
-before it's committed (see `ansible/at_have_ryggen_fri/check_mermaid.py`), same as every other
+before it's committed (see `at_have_ryggen_fri/check_mermaid.py`), same as every other
 diagram change in this repo.
 
 ## Curveball / novelty devices
@@ -106,4 +106,4 @@ diagram change in this repo.
 
 | Type | Symbol | Device | Status |
 |---|---|---|---|
-| — | ❓ | *(none currently)* | Placeholder used only when a genuinely new device type appears with no agreed symbol yet — see `ansible/at_have_ryggen_fri/README.md`'s Backlog section if one shows up |
+| — | ❓ | *(none currently)* | Placeholder used only when a genuinely new device type appears with no agreed symbol yet — see `at_have_ryggen_fri/README.md`'s Backlog section if one shows up |

@@ -11,6 +11,7 @@ This repository contains everything needed to take a site from bare metal to pro
 ```
 example_music_infra/
 ├── ansible/          # Playbooks, inventory, group_vars, host_vars
+├── at_have_ryggen_fri/ # Repo-wide verification harness — run before merging anything
 ├── benarbejde/      # Legwork in advance — shared data files (sites.csv, devices.csv)
 ├── bootstrap/        # Day-zero site bootstrap toolkit
 ├── docs/             # Operational documentation and runbooks
@@ -25,6 +26,27 @@ git config core.hooksPath .githooks
 ```
 
 This enables the pre-commit hook that keeps `bootstrap/web/proxmox/` in sync with `benarbejde/` for `sites.csv`, `devices.csv`, `address_policy.json`, and `begyndelse.json` — `benarbejde/` always wins; the hook copies it over and stages the result as part of your commit. Without it, the hook does not fire and the copies can drift.
+
+---
+
+## at_have_ryggen_fri/
+
+Danish: *"at have ryggen fri"* — to have your back covered. A verification harness for this
+whole repo, not just `ansible/` — YAML validity, `ansible-playbook --syntax-check`,
+file-reference integrity, inventory structure, `add_host` visibility, generated-file
+freshness (`benarbejde/` vs `ansible/configs/inventory/`), markdown link integrity,
+cross-file fact consistency, and the estate's bare-metal bootstrap scenarios. Needs no real
+hosts, no vault password, no network beyond localhost (one exception, opt-in — see its own
+README). Run before merging anything that touches inventory, `group_vars`/`host_vars`,
+`ansible.cfg`, `benarbejde/`'s source-of-truth files, or `docs/`:
+
+```bash
+cd at_have_ryggen_fri && ./run.sh
+```
+
+**Moved here 2026-07-19** from `ansible/at_have_ryggen_fri/` — it always covered the whole
+repo, so living inside `ansible/` was misleading about its own scope. See
+`at_have_ryggen_fri/README.md` for what each check does and why.
 
 ---
 

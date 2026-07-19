@@ -32,7 +32,7 @@ import sys
 import yaml
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 FEATURES_FILE = Path(__file__).resolve().parent / "features.yml"
 RUN_SH = Path(__file__).resolve().parent / "run.sh"
 
