@@ -267,37 +267,40 @@ Configures Linux firewall appliances (`EXAFWL*`). Ansible port of `firewallme.sh
 
 ### WireGuard topology
 
+**CLD is the sole hub — every other site, including FAL/ODE/BRK, is an ordinary spoke that
+connects directly to CLD.** Regional hubs were retired 2026-07-17 (see
+`ansible/configs/inventory/group_vars/firewalls/main.yml`'s own changelog and
+`wg_hub_topology`, the real source of truth: `CLD.spokes` holds all 43 real spokes, `FAL`/
+`ODE`/`BRK.spokes` are empty lists, kept only because `wg_hub_known_pubkeys`/`wg_hub_wan_ips`
+still record real facts about those boxes). There is no hub-to-hub mesh of any kind.
+
 | Role | Sites | Connects to |
 |------|-------|------------|
-| `hub-primary` | FAL | peers with ODE, BRK, CLD |
-| `hub-regional` | ODE, BRK, **CLD** | peers with FAL + other hub-regionals |
-| `spoke` | all other sites | connects to regional hub (FAL/ODE/BRK) |
+| `hub-regional` | **CLD only** — forced automatically for the black site, not offered as a choice for any other site | every other site connects to it directly |
+| `spoke` | every other site (default for all of them, including FAL/ODE/BRK) | CLD |
+| `none` | no WireGuard | — |
 
-**CLD is `hub-regional` (cloud management hub).** EXAFWLCLD001 peers directly with FAL, ODE,
-and BRK at the hub level — it has no site spokes of its own. All spoke firewalls' AllowedIPs
-automatically include CLD's subnets (`192.168.139.0/24` vRACK + `192.168.69.0/24` private LAN)
-via the `wg_management_hubs` injection in `00_preflight_4_post_ask.yml` (the AllowedIPs builder --
-moved here 2026-07-14 from the now-retired `03_wireguard_config.yml` as part of the
-"ask everything, then run" restructure, see `00_preflight_3_ask.yml`'s own header).
+EXAFWLCLD001 has no hub-level peers of its own — it just has 43 ordinary `[Peer]` entries, one
+per spoke, same as any hub would. All spoke firewalls' AllowedIPs automatically include CLD's
+subnets (`192.168.139.0/24` vRACK + `192.168.69.0/24` private LAN) via the `wg_management_hubs`
+injection (now `[CLD]` only) in `00_preflight_4_post_ask.yml` (the AllowedIPs builder — moved
+here 2026-07-14 from the now-retired `03_wireguard_config.yml` as part of the "ask everything,
+then run" restructure, see `00_preflight_3_ask.yml`'s own header).
 
-After building EXAFWLCLD001, register it on each hub and vice versa:
+Registering a spoke on CLD (same path for every site, FAL/ODE/BRK included — no special-casing):
 
 ```bash
-# Register CLD on each hub (run once per hub from EXAANSCLD001)
-for hub in EXAFWLFAL001 EXAFWLODE001 EXAFWLBRK001; do
-  ansible-playbook -i configs/inventory \
-    playbooks/firewallme/playbooks/add-wg-spoke.yml \
-    -e "target=${hub} spoke_site=CLD spoke_host=EXAFWLCLD001"
-done
-
-# Register each hub on CLD
-for hub_site in FAL ODE BRK; do
-  hub_host="EXAFWL${hub_site}001"
-  ansible-playbook -i configs/inventory \
-    playbooks/firewallme/playbooks/add-wg-spoke.yml \
-    -e "target=EXAFWLCLD001 spoke_site=${hub_site} spoke_host=${hub_host}"
-done
+ansible-playbook -i configs/inventory \
+  playbooks/firewallme/playbooks/add-wg-spoke.yml \
+  -e "target=EXAFWLCLD001 spoke_site=FAL spoke_host=EXAFWLFAL001"
 ```
+
+In practice this usually happens automatically as the last step of a spoke's own
+`90-firewall.yml` run (`10_register_spoke_on_hub.yml`), not as a separate manual step — the
+example above is for registering a spoke by hand (e.g. it was built before CLD existed, or the
+automatic registration was deferred). Both paths check CLD is actually reachable on port 22
+first (added 2026-07-18) and defer cleanly with a clear message instead of failing raw if it
+isn't up yet.
 
 After EXAFWLCLD001 is built, populate its public key in `group_vars/firewalls/main.yml`:
 ```bash
@@ -750,7 +753,7 @@ ansible-playbook -i configs/inventory \
 | WAN SSH | `n` | don't expose port 22 to the internet |
 | WAN activation | `n` | irrelevant (network stage is skipped, but answer anyway) |
 | WG role | `spoke` | |
-| Hub site | `ODE` or `FAL` | ODE for EU spokes; FAL for primary |
+| Hub site | `CLD` | the only hub every spoke connects to — see "WireGuard topology" above |
 | Hub pubkey | *(auto-fetched)* | confirm if it matches, paste manually if SSH fetch fails |
 | Summary confirm | `yes` | |
 | Reboot now? | **`n`** | LAN is not wired up yet — do not reboot yet |
@@ -835,23 +838,26 @@ ansible EXAFWLVIE001 -i configs/inventory -m shell -a "wg show && systemctl is-a
 ### Step 6 — Register as a spoke on the hub
 
 The node has WireGuard keys and `wg0.conf` pointing at the hub, but the hub has no
-`[Peer]` block for it yet. Run `add-wg-spoke.yml` from `EXAANSCLD001` against the hub:
+`[Peer]` block for it yet. Run `add-wg-spoke.yml` from `EXAANSCLD001` against CLD, the hub
+every spoke registers on:
 
 ```bash
 ansible-playbook -i configs/inventory \
   playbooks/firewallme/playbooks/add-wg-spoke.yml \
-  -e "target=EXAFWLFAL001 spoke_site=VIE spoke_host=EXAFWLVIE001"
+  -e "target=EXAFWLCLD001 spoke_site=VIE spoke_host=EXAFWLVIE001"
 ```
 
 This SSH-fetches the spoke's public key and PSK, appends a `[Peer]` block to the hub's
 `/etc/wireguard/wg0.conf` under the marker `# BEGIN ANSIBLE MANAGED BLOCK VIE`, and
 live-applies it via `wg set` — no hub restart needed. Re-running is safe; it updates
-only the VIE block and leaves all other peers untouched.
+only the VIE block and leaves all other peers untouched. Since 2026-07-18 it also checks
+CLD is reachable on port 22 first and defers cleanly with a clear message instead of
+failing raw if it isn't up yet.
 
 Verify the tunnel from the hub:
 
 ```bash
-ssh ansible@EXAFWLFAL001 'wg show wg0 | grep -A4 VIE'
+ssh ansible@EXAFWLCLD001 'wg show wg0 | grep -A4 VIE'
 ```
 
 ---

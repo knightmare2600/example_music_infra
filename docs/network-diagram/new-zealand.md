@@ -54,7 +54,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:AKL:START
     subgraph NEW_AKL ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRAKL001 · RTR · .1"]
-      N_PRV["📦 EXAPRVAKL001 · PRV · .15"]
       N_SBC["🛡️ EXASBCAKL001 · SBC · .48"]
       N_DCS["🗝️ EXADCSAKL001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLAKL001 · FWL 1 · .253"]

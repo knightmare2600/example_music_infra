@@ -2,11 +2,15 @@
 # =============================================================================
 # tasks/ps7_setup.yml
 # Example Music Limited — PS7 modules, profile, and terminal config
-# Replicates Join-DomainAndBootstrap.ps1 Stages 19, 20, 21, 22, 22b
+# Replicates Join-DomainAndBootstrap.ps1 Stages 19, 20, 21, 22, 22b (the legacy PS1 script's
+# own numbers, unchanged — an external, immutable fact). This file's own internal task-name
+# labels were renumbered 2026-07-19 (19->20, 20->21, 21->22, 22->23, 22b->24) to remove the
+# lettered sub-stage — see docs/ansible/beginners_guide_to_ansible.md's "Renumbering /
+# Reworking Live Conventions" section.
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
-#   2026-07-06  Stage 20 now includes tasks/fonts.yml instead of downloading
+#   2026-07-06  Stage 21 now includes tasks/fonts.yml instead of downloading
 #               font files individually from the internal asset server
 #               (which doesn't actually host them) — pulls the release zip
 #               from upstream (nerd-fonts on GitHub) instead. Shared with
@@ -14,14 +18,14 @@
 #               duplicated.
 # =============================================================================
 
-# ── Stage 19 — PS7 modules (AllUsers) ────────────────────────────────────────
+# ── Stage 20 — PS7 modules (AllUsers) ────────────────────────────────────────
 
-- name: "[Stage 19] Check PS7 is installed"
+- name: "[Stage 20] Check PS7 is installed"
   ansible.windows.win_stat:
     path: 'C:\Program Files\PowerShell\7\pwsh.exe'
   register: ps7_check
 
-- name: "[Stage 19] Install PS7 console modules (AllUsers scope)"
+- name: "[Stage 20] Install PS7 console modules (AllUsers scope)"
   ansible.windows.win_shell: |
     & "C:\Program Files\PowerShell\7\pwsh.exe" -NonInteractive -Command {
       $modules = @(
@@ -42,23 +46,23 @@
         }
       }
     }
-  register: stage19_result
-  changed_when: "'Installed:' in stage19_result.stdout"
+  register: stage20_result
+  changed_when: "'Installed:' in stage20_result.stdout"
   when: ps7_check.stat.exists
 
-- name: "[Stage 19] Show module install results"
+- name: "[Stage 20] Show module install results"
   debug:
-    msg: "{{ stage19_result.stdout_lines }}"
+    msg: "{{ stage20_result.stdout_lines }}"
   when: ps7_check.stat.exists
 
-# ── Stage 20 — JetBrainsMono Nerd Font ───────────────────────────────────────
+# ── Stage 21 — JetBrainsMono Nerd Font ───────────────────────────────────────
 
-- name: "[Stage 20] Include font deployment tasks"
+- name: "[Stage 21] Include font deployment tasks"
   include_tasks: fonts.yml
 
-# ── Stage 21 — PS7 AllUsersAllHosts profile ───────────────────────────────────
+# ── Stage 22 — PS7 AllUsersAllHosts profile ───────────────────────────────────
 
-- name: "[Stage 21] Write PS7 AllUsersAllHosts profile"
+- name: "[Stage 22] Write PS7 AllUsersAllHosts profile"
   ansible.windows.win_copy:
     dest: 'C:\Program Files\PowerShell\7\profile.ps1'
     content: |
@@ -90,20 +94,20 @@
       }
   when: ps7_check.stat.exists
 
-# ── Stage 22 — Hyper terminal config ─────────────────────────────────────────
+# ── Stage 23 — Hyper terminal config ─────────────────────────────────────────
 
-- name: "[Stage 22] Check Hyper is installed"
+- name: "[Stage 23] Check Hyper is installed"
   ansible.windows.win_stat:
     path: 'C:\Program Files\Hyper\Hyper.exe'
   register: hyper_check
 
-- name: "[Stage 22] Create Hyper config directory"
+- name: "[Stage 23] Create Hyper config directory"
   ansible.windows.win_file:
     path: 'C:\Users\Administrator\AppData\Roaming\Hyper'
     state: directory
   when: hyper_check.stat.exists
 
-- name: "[Stage 22] Write Hyper .hyper.js config"
+- name: "[Stage 23] Write Hyper .hyper.js config"
   ansible.windows.win_copy:
     dest: 'C:\Users\Administrator\AppData\Roaming\Hyper\.hyper.js'
     content: |
@@ -146,9 +150,9 @@
       };
   when: hyper_check.stat.exists
 
-# ── Stage 22b — Windows Terminal config ──────────────────────────────────────
+# ── Stage 24 — Windows Terminal config ──────────────────────────────────────
 
-- name: "[Stage 22b] Detect Windows Terminal install paths"
+- name: "[Stage 24] Detect Windows Terminal install paths"
   ansible.windows.win_shell: |
     $paths = @()
     # Chocolatey path
@@ -164,7 +168,7 @@
   register: wt_paths
   changed_when: false
 
-- name: "[Stage 22b] Write Windows Terminal settings.json to detected paths"
+- name: "[Stage 24] Write Windows Terminal settings.json to detected paths"
   ansible.windows.win_copy:
     dest: "{{ item }}\\settings.json"
     content: |

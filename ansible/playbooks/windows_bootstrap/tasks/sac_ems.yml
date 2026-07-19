@@ -1,8 +1,12 @@
 ---
 # =============================================================================
 # tasks/sac_ems.yml
-# Example Music Limited — SAC/EMS serial console (Stage 17b, Server OS only)
-# Replicates Join-DomainAndBootstrap.ps1 Stage 17b
+# Example Music Limited — SAC/EMS serial console (Server OS only)
+# Replicates Join-DomainAndBootstrap.ps1 Stage 17b (the legacy PS1 script's own number,
+# unchanged — an external, immutable fact). This file's own internal task-name label was
+# renumbered 2026-07-19 (17b -> 18) to remove the lettered sub-stage — see
+# docs/ansible/beginners_guide_to_ansible.md's "Renumbering / Reworking Live Conventions"
+# section.
 # =============================================================================
 # bcdedit {bootmgr} and {current} tokens must be passed via cmd /c to bypass
 # PowerShell's parser. win_shell runs via powershell.exe; single-quoted
@@ -43,7 +47,7 @@
 #               playbooks/78-sac-ems.yml share one source of truth.
 # =============================================================================
 
-- name: "[Stage 17b] Configure Windows Boot Manager serial redirect"
+- name: "[Stage 18] Configure Windows Boot Manager serial redirect"
   ansible.windows.win_shell: |
     cmd /c "bcdedit /set {bootmgr} displaybootmenu yes"
     cmd /c "bcdedit /set {bootmgr} timeout 10"
@@ -51,21 +55,21 @@
   changed_when: true
   when: is_server
 
-- name: "[Stage 17b] Configure EMS on current boot entry"
+- name: "[Stage 18] Configure EMS on current boot entry"
   ansible.windows.win_shell: |
     cmd /c "bcdedit /ems {current} on"
     cmd /c "bcdedit /emssettings EMSPORT:1 EMSBAUDRATE:115200"
   changed_when: true
   when: is_server
 
-- name: "[Stage 17b] Enable SAC service (sacsvr)"
+- name: "[Stage 18] Enable SAC service (sacsvr)"
   ansible.windows.win_service:
     name:       sacsvr
     start_mode: auto
     state:      started
   when: is_server
 
-- name: "[Stage 17b] Flag SAC/EMS verification for the end-of-run summary"
+- name: "[Stage 18] Flag SAC/EMS verification for the end-of-run summary"
   set_fact:
     sac_sol_verify_needed: true
   when: is_server

@@ -14,7 +14,7 @@
 #   .5-.7       PVE   Proxmox nodes
 #   .10         DCS1  Primary Domain Controller
 #   .11         DCS2  Secondary Domain Controller
-#   .15         PRV   Provisioning Server
+#   .19         NAS   Storage (NAS/SAN, e.g. TrueNAS)
 #   .48         SBC   VoIP Session Border Controller
 #   .100-.249   DHCP  DHCP Pool
 #   .250-.252   SWI   Switches
@@ -32,6 +32,18 @@
 #   EXA<ROLE><SITE><NNN>
 # ==================================================================================================
 # Changelog:
+#  2026-07-19  Robert: PRV retired from address_policy.json entirely (offsets_single, _addressing,
+#              connection_types.none, and DNS_SINGLE_ROLES below) -- confirmed via a real
+#              --emit-devices-json run that every one of the 51 ordinary sites was getting a
+#              synthesized EXAPRV<SITE>001 DNS record for a device that has never existed
+#              anywhere (devices.csv has zero real PRV rows outside VRK/FRD, whose real ones sit
+#              at .1/.50 via the devices.csv-exception path, untouched by this). Provisioning is
+#              genuinely centralised at VRK/FRD, not per-site -- the standard .15 slot was dead
+#              from the start. Added NAS (address_policy.json's new ".19") as its replacement
+#              slot for site storage (TrueNAS), deliberately NOT added to DNS_SINGLE_ROLES --
+#              same WAP/BMC treatment, since it isn't universally deployed yet either. Also
+#              removed the 3 legacy NAS devices.csv rows (FAL/PER/MEL, all flagged Legacy=yes) --
+#              considered retired, replaced by the new standard NAS slot going forward.
 #  2026-07-16  Robert, live: brt.ini had EXAFWLBRT001 and EXAFWLBRT002 both at 192.168.169.253 --
 #              the [firewalls] template used vals['FW'] (sites.csv's single LAN column) for BOTH
 #              hostnames instead of the already-correctly-computed vals['FWL1']/vals['FWL2']
@@ -733,7 +745,7 @@ def validate_csv_structure(rows):
 # ==================================================================================================
 # Only slots build_ini() shows UNCOMMENTED (confirmed real, not a "may not be built yet"
 # placeholder) are synthesized here:
-#   - RTR/PRV/SBC: single-instance infra roles, always physically present at a real site (even
+#   - RTR/SBC: single-instance infra roles, always physically present at a real site (even
 #     though they're not Ansible-managed/not rendered in the .ini at all)
 #   - FWL: both instances (FWL1/FWL2) are real in every site's .ini
 #   - DCS/PVE: only the FIRST instance is real in the .ini (DCS2/PVE2/PVE3 are commented —
@@ -741,11 +753,26 @@ def validate_csv_structure(rows):
 #     would be actively misleading, and WOULD collide with devices.csv's OWN numbering for real
 #     extra instances at that site (devices.csv's Number is chosen independently by whoever
 #     filled in the row, not guaranteed to skip index 1)
-#   - WKS/LAP "example" slots and BMC (all always commented/reference-only in the .ini) are never
-#     synthesized here for the same reason — see the Notes above about hostname collisions this
-#     caused in testing (e.g. a real devices.csv "WKS Number=1" at a non-standard octet
-#     legitimately reusing EXAWKS<SITE>001, the same hostname the "example" placeholder would use)
-DNS_SINGLE_ROLES = ["RTR", "PRV", "SBC"]
+#   - WKS/LAP "example" slots, BMC, and NAS (all always commented/reference-only in the .ini)
+#     are never synthesized here for the same reason — see the Notes above about hostname
+#     collisions this caused in testing (e.g. a real devices.csv "WKS Number=1" at a non-standard
+#     octet legitimately reusing EXAWKS<SITE>001, the same hostname the "example" placeholder
+#     would use)
+#
+# 2026-07-19, Robert: PRV removed from this list entirely (was here, alongside RTR/SBC, as an
+# "always physically present" role). Confirmed via a real --emit-devices-json run that this was
+# wrong for every one of the 51 ordinary sites: devices.csv has never had a single real PRV row
+# for any of them — only VRK and FRD have real ones (at .1/.50 respectively, via the devices.csv-
+# exception path, unrelated to this OFFSETS_SINGLE/DNS_SINGLE_ROLES mechanism and unaffected by
+# this removal), because provisioning is genuinely centralised at VRK/FRD, not per-site. Every
+# other site was getting a synthesized EXAPRV<SITE>001 DNS record for a device that never
+# existed — the exact class of bug this repo's own harness exists to catch, just never wired up
+# for this one. NAS (new, address_policy.json's ".19", replacing the 3 retired legacy NAS
+# devices at FAL/PER/MEL) is deliberately NOT added to this list either, for the WAP/BMC reason
+# above — it isn't universally deployed yet, so treating it as "always real" would recreate the
+# exact same mistake for a different role. Add it here later, once a real NAS/TrueNAS box is
+# confirmed present at every site, not before.
+DNS_SINGLE_ROLES = ["RTR", "SBC"]
 DNS_MULTI_ALL_INSTANCES = {"FWL"}
 # SWI joined 2026-07-14 (address_policy.json's .250-.252 range, previously documented in
 # _addressing but never wired into role_offsets): every site gets exactly one standard SWI
@@ -1094,7 +1121,7 @@ def generate(csv_path: Path, out_dir: Path, devices_path: Path):
 
     ## fixed single-role offsets
     vals["RTR"] = offset_ip(net, OFFSETS_SINGLE["RTR"])
-    vals["PRV"] = offset_ip(net, OFFSETS_SINGLE["PRV"])
+    vals["NAS"] = offset_ip(net, OFFSETS_SINGLE["NAS"])
     vals["SBC"] = offset_ip(net, OFFSETS_SINGLE["SBC"])
     vals["WKS1"] = offset_ip(net, OFFSETS_SINGLE["WKS"])
     vals["LAP1"] = offset_ip(net, OFFSETS_SINGLE["LAP"])

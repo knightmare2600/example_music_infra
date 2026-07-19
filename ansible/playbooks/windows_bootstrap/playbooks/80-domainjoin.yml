@@ -33,13 +33,13 @@
 # =============================================================================
 # Changelog:
 #   2026-07-14  Robert, live against EXADCSCLD001: prompted twice mid-run for the same
-#               decision -- once by 00-preflight.yml's automated Phase A4 DNS probe
+#               decision -- once by 00-preflight.yml's automated Phase A5 DNS probe
 #               (silent, no prompt, just decides), then again by this file's own
 #               vars_prompt for dj_temp_dns_ip. Root cause: 00-preflight.yml's own
 #               2026-07-03 changelog entry already says it "automated DNS decision --
 #               remove hardcoded dns_server var and dj_temp_dns_ip prompt... dj_temp_dns_ip
 #               is derived from dns_primary and passed forward to downstream plays as
-#               before" -- Phase A4 (line ~334) sets dj_temp_dns_ip as a persisted host
+#               before" -- Phase A5 (line ~334) sets dj_temp_dns_ip as a persisted host
 #               fact. This file's own vars_prompt for the identical variable name was
 #               never removed when that automation landed, so every chained run asked
 #               the operator a question that had already been silently decided upstream
@@ -102,7 +102,7 @@
   hosts: "{{ target | default('all') }}"
   gather_facts: true
   vars:
-    # 00-preflight.yml's Phase A4 already decides and persists this fact (as
+    # 00-preflight.yml's Phase A5 already decides and persists this fact (as
     # dns_primary / dj_temp_dns_ip) for every host reached via the normal
     # site.yml chain -- see this file's 2026-07-14 changelog entry. The
     # default here only matters when this file is run standalone, outside
@@ -145,7 +145,7 @@
         msg: >
           {{ exa_domain }} cannot be resolved and no DNS override IP was provided.
           Re-run with -e dj_temp_dns_ip=<ip> (e.g. 192.168.139.8) — this file no longer
-          prompts for it; see 00-preflight.yml's Phase A4 DNS decision output.
+          prompts for it; see 00-preflight.yml's Phase A5 DNS decision output.
       when:
         - not (is_first_dc | default(false) | bool)
         - dj_dns_check.stdout | trim == "unresolvable"

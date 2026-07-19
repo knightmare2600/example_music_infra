@@ -38,7 +38,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:OSL:START
     subgraph NEW_OSL ["🆕 New Network (current)"]
       N_RTR["📡 EXARTROSL001 · RTR · .1"]
-      N_PRV["📦 EXAPRVOSL001 · PRV · .15"]
       N_SBC["🛡️ EXASBCOSL001 · SBC · .48"]
       N_DCS["🗝️ EXADCSOSL001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLOSL001 · FWL 1 · .253"]

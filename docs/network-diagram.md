@@ -3,7 +3,7 @@
 > **Classification:** Internal — Infrastructure  
 > **Generated:** 2026-03-06 · **Old/New split + visual standard applied:** 2026-07-13 · **Split into per-region files:** 2026-07-13  
 > **Note:** WAPs and cameras confirmed at all 42 sites — marked TODO where full inventory pending.  
-> Legend: ⭐ = 3-node hub · ⚠️ = issue flagged · 🔴 = DC services stopped
+> Legend: ⭐ = 3-node AD hub (FAL/ODE/BRK — not a WireGuard hub; CLD is the sole WireGuard hub) · ⚠️ = issue flagged · 🔴 = DC services stopped
 
 > **This page is an index.** The actual diagrams live in [`network-diagram/`](network-diagram/) — one file per region, linked below. Confirmed 2026-07-13: GitHub's client-side mermaid renderer fails a handful of diagrams non-deterministically on a page with ~50 of them on it — the same content renders on one load and shows "Unable to render rich display" on the next (proved via byte-identical diagrams, GOT/OSL and SEA/SFO, behaving differently on the same load). Splitting into per-region files (1–9 diagrams each) keeps every page well inside what's already confirmed to render reliably. Every diagram is still verified to actually render, every commit, via a real `kroki.io` round-trip (`at_have_ryggen_fri`, check 13) — that check doesn't care how the file is split.
 
@@ -94,7 +94,7 @@ two or three. Shorter boxes, same information.
 
 ### 🇩🇰 [Danmark](network-diagram/danmark.md)
 - [CPH — København](network-diagram/danmark.md#cph--kbenhavn-)
-- [ODE — Odense *(EU Hub)*](network-diagram/danmark.md#ode--odense-eu-hub--)
+- [ODE — Odense *(EU AD Hub)*](network-diagram/danmark.md#ode--odense-eu-hub--)
 - [KGE — Køge](network-diagram/danmark.md#kge--kge--)
 - [FAX — Faxe](network-diagram/danmark.md#fax--faxe-)
 - [KOR — Korsør](network-diagram/danmark.md#kor--korsr-)
@@ -129,7 +129,7 @@ two or three. Shorter boxes, same information.
 - [BRT — Beirut](network-diagram/lebanon.md#brt--beirut-)
 
 ### 🇨🇦 [Canada](network-diagram/canada.md)
-- [BRK — Brockville *(NA/APAC Hub)*](network-diagram/canada.md#brk--brockville-naapac-hub--)
+- [BRK — Brockville *(NA/APAC AD Hub)*](network-diagram/canada.md#brk--brockville-naapac-hub--)
 - [TOR — Toronto](network-diagram/canada.md#tor--toronto--)
 - [MTL — Montreal](network-diagram/canada.md#mtl--montreal-)
 

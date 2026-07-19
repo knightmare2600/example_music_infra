@@ -1042,10 +1042,10 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
 | `EXASRV` | Server | `EXADNSVRK001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
-| `EXANAS` | NAS | `EXANASFAL001` |
+| `EXANAS` | NAS/SAN storage (e.g. TrueNAS) — standard `.19` slot at every site | `EXANAS<SITE>001` |
 | `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
 | `EXAPBX` | PBX | `EXAPBXCLD001` |
-| `EXAPRV` | Provisioning / bootstrap server | `EXAPRVFAL001` |
+| `EXAPRV` | Provisioning / bootstrap server — VRK/FRD only, not a per-site convention (retired 2026-07-19) | `EXAPRVVRK001` |
 | `EXAWAP` | WiFi Access Point | `EXAWAPFAL001` |
 | `EXAUFC` | UniFi Network Controller (CLD only — manages every site's WAPs) | `EXAUFCCLD001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |

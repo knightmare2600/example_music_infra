@@ -497,17 +497,25 @@
 
 - name: "[Ask] Prompt for spoke tunnel IP"
   ansible.builtin.pause:
-    prompt: "{{ _c.C }}[*]{{ _c.NC }} Spoke tunnel IP [{{ _c.G }}10.0.{{ fw_site_octet }}.2{{ _c.NC }}]"
+    prompt: "{{ _c.C }}[*]{{ _c.NC }} Spoke tunnel IP [{{ _c.G }}10.0.{{ fw_site_octet }}.1{{ _c.NC }}]"
   register: fw_wg_spoke_tunnel_ip_prompt
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
 
+# 2026-07-19, Robert: spoke default moved from .2 to .1, matching the hub's own tunnel-IP
+# convention within its own /24 (see docs/ansible/beginners_guide_to_ansible.md's
+# "Renumbering / Reworking Live Conventions" section for the full rationale and the safe
+# migration procedure for already-deployed spokes -- this default only affects NEW spoke
+# registrations; existing spokes keep .2 until deliberately migrated). Purely a readability
+# convention, not a protocol requirement -- confirmed safe: each site's 10.0.<octet>.0/24 is
+# a private, non-overlapping tunnel network, and the hub routes via an explicit /32 host
+# route (add-wg-spoke.yml), not subnet adjacency.
 - name: "[Ask] Set spoke tunnel IP"
   ansible.builtin.set_fact:
     fw_wg_tunnel_ip: >-
       {%- set inp = fw_wg_spoke_tunnel_ip_prompt.user_input | default('') | trim -%}
-      {{ inp if inp != '' else '10.0.' + fw_site_octet | string + '.2' }}
+      {{ inp if inp != '' else '10.0.' + fw_site_octet | string + '.1' }}
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'

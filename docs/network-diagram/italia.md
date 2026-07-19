@@ -38,7 +38,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:MIL:START
     subgraph NEW_MIL ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRMIL001 · RTR · .1"]
-      N_PRV["📦 EXAPRVMIL001 · PRV · .15"]
       N_SBC["🛡️ EXASBCMIL001 · SBC · .48"]
       N_DCS["🗝️ EXADCSMIL001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLMIL001 · FWL 1 · .253"]

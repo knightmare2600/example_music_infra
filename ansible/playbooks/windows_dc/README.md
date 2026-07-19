@@ -5,12 +5,14 @@ Example Music Limited — JUKEBOX domain
 ## Overview
 
 This module onboards a bare Windows Server host as an Additional Domain
-Controller in the `jukebox.internal` domain.  It mirrors the `windows_bootstrap`
-module for all generic stages (rename through OpenSSH), then adds DC-specific
-stages 00 onwards.
+Controller in the AD forest defined by `ad_forest.json` (`jukebox.internal` /
+`JUKEBOX` at time of writing).  It mirrors the `windows_bootstrap` module for
+all generic stages (rename through OpenSSH), then adds DC-specific stages 00
+onwards.
 
 `sites.csv` remains the single source of truth for site codes, subnets and
-hub topology.
+hub topology; `ad_forest.json` is the single source of truth for domain
+identity (FQDN, NetBIOS name) — see Credentials below.
 
 ---
 

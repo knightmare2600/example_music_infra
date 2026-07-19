@@ -256,6 +256,14 @@ ifreload -a
 
 > **No DHCP on the bridge.** The bridge itself has no IP and requests no DHCP. Each site's firewall VM is responsible for DHCP on that site's VLAN. The bridge just passes frames.
 
+> **Automated as of 2026-07-17:** `ansible/playbooks/proxmox/playbooks/36-vmbr1.yml` (stage of
+> `proxmox/site.yml`, always runs) idempotently writes this exact `vmbr1` stanza via a
+> self-marked `blockinfile` block — ported directly from the worked example above. It fails
+> loudly if `pve_vmbr1_uplink_iface` isn't set rather than guessing an uplink NIC, never touches
+> `vmbr0`, and deliberately never runs `ifreload` itself — review and apply manually as shown
+> below. The manual steps above remain accurate for a one-off/first node before Ansible is
+> managing it, or for understanding what the automation actually writes.
+
 ### Step 3 — Assign VMs to Site VLANs
 
 When creating or editing a VM, go to **Hardware → Network Device**. Set:

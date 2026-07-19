@@ -10,7 +10,6 @@ VRK,PRV,1,50,,none,,Provisioning server -- PXE / ISOs / Ansible keys / scripts,,
 VRK,FWL,1,69,,ssh,,Firewall WAN face (vRACK). LAN face 192.168.69.253,,no
 FAL,RDR,1,16,,ssh,,HID Signo badge reader,,yes
 FAL,SRV,1,20,,ssh,,Reserved -- standard convention slot,,yes
-FAL,NAS,1,32,FreeNAS 13.0-U6,ssh,,Primary storage,,yes
 FAL,TAR,1,33,Solaris Embedded,telnet,,Legacy tape archive,,yes
 FAL,LCD,1,50,Samsung Tizen,http,,Reception display,,yes
 FAL,VCU,1,51,Poly Studio X70,http,,Video conferencing,,yes
@@ -85,7 +84,6 @@ DUN,SUR,2,,Windows 11,winrm,,Surface,,yes
 DUN,PHN,1,,iOS,http,,Phone,,yes
 DUN,PHN,2,,iOS,http,,Phone,,yes
 PER,NIX,1,40,Solaris 11.5,ssh,,MIDI archive,,yes
-PER,NAS,1,50,Synology DSM 7.1,ssh,,NAS,,yes
 PER,MBP,1,,macOS,ssh,,MacBook,,yes
 PER,SUR,1,,Windows,winrm,,Surface,,yes
 PER,PHN,1,,Yealink T46G,http,,Phone 1,,yes
@@ -206,7 +204,6 @@ MEL,PHN,1,,iOS,http,,Phone,,yes
 MEL,TAB,1,,iPadOS,winrm,,iPad,,yes
 MEL,LCD,1,,Samsung,http,,Signage display,,yes
 MEL,PRN,1,,HP,snmp,,LaserJet printer,,yes
-MEL,NAS,1,,Synology DSM 7.x,ssh,,NAS,,yes
 AKL,FWL,1,254,FortiGate 7.x,ssh,,Site firewall,,yes
 AKL,SRV,1,20,Windows Server 2022,ssh,,Local server,,yes
 AKL,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes

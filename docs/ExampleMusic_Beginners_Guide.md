@@ -12,6 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-07-19 | §4's `.15` PRV row replaced with `.19` NAS. `.15` was never real for any ordinary site — confirmed via a real inventory-generation run that every non-VRK/FRD site was getting a synthesized `EXAPRV<SITE>001` DNS record for a device that has never existed; provisioning is genuinely centralised at VRK/FRD, not per-site (their own real `EXAPRVVRK001`/`EXAPRVFRD001` hostnames are untouched — unrelated devices.csv-exception rows, not this standard-slot convention). `.19` is new, for site storage (TrueNAS) — a real rollout, replacing 3 retired legacy NAS boxes (FAL/PER/MEL) that used to sit at inconsistent ad-hoc addresses. |
 | 2026-07-12 | §7.2 corrected — previously said the per-site build sequence was `FWL → DCS → (PVE hypervisors, ...)`, backwards, since the firewall and DC are both VMs and can't exist before the PVE node hosting them does. Also corrected "the firewall is built by running `firewallme.sh`" to name the Ansible playbook (`playbooks/firewallme/playbooks/90-firewall.yml`) as the first-instance path, `firewallme.sh` as the break-glass fallback — matches root `README.md`'s existing break-glass framing, which this section hadn't been brought in line with. Fixed a second, unrelated stale `192.168.139.68`→`.69` (CLD's FWL WAN face) that the 2026-07-08 entry below fixed in §4.1 but missed here. Added §7.2a documenting CLD/VRK's own build sequence (no site to replicate from yet) — PVE → `EXADNSVRK001` → firewall → `EXADCSCLD001`, the one DC build where `dc_is_first_in_forest` is answered yes. |
 | 2026-07-08 | Added section 4.2, `FRD` (Fredericia Havn) — the vRACK's standby provisioning network, not to be confused with `FRE` (the real Fredericia office). Fixed section 4.1's CLD IP table: DNS/PRV/the firewall's WAN face are `EXA*VRK001`-suffixed hostnames, not `EXA*CLD001` (devices.csv files them under `Site=VRK`); corrected the WAN face octet (`.69`, not `.68`); PBX is `EXAPBXCLD001`, not `EXACLDPBX001` (fixed a second time after an over-eager find/replace on this same changelog line corrupted it into a tautology). |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94`. Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD has no physical WiFi itself |
@@ -94,6 +95,7 @@ If `sites.csv` says a site's subnet is `192.168.76.0/24`, it is `192.168.76.0/24
 | `City` | Human-readable city name |
 | `Country` | Country name |
 | `CountryCode` | ISO country code |
+| `Province` | State/region/province name — e.g. `Scotland` |
 | `Subnet` | `/24` subnet — this is the LAN for the site |
 | `Gateway` | The `.253` address — the firewall LAN face |
 | `DC` | The `.10` address — the primary domain controller |
@@ -110,13 +112,13 @@ Malcolm asks: "What's the DC IP for FAL?"
 Jamie does not guess. Jamie runs:
 
 ```bash
-grep '^FAL,' bootstrap/web/proxmox/sites.csv | cut -d',' -f7
+grep '^FAL,' bootstrap/web/proxmox/sites.csv | cut -d',' -f8
 ```
 
 Or reads the CSV and finds:
 
 ```
-FAL,Falkirk,United Kingdom,UK,192.168.76.0/24,192.168.76.253,192.168.76.10,192.168.76.253,...
+FAL,Falkirk,United Kingdom,UK,Scotland,192.168.76.0/24,192.168.76.253,192.168.76.10,192.168.76.253,...
 ```
 
 The answer is `192.168.76.10`. That is the answer. That answer did not come from memory, a wiki, or a guess. It came from the known source of truth.
@@ -138,7 +140,7 @@ Every site in the estate follows the same IP addressing scheme within its `/24` 
 | `.7` | Proxmox VE node 3 | `EXAPVE<SITE>003` |
 | `.10` | Domain Controller — primary | `EXADCS<SITE>001` |
 | `.11` | Domain Controller — secondary | `EXADCS<SITE>002` |
-| `.15` | Ansible/PXE node (where present) | `EXAPRV<SITE>001` |
+| `.19` | Storage — NAS/SAN (e.g. TrueNAS) | `EXANAS<SITE>001` |
 | `.48` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBC<SITE>001` |
 | `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site | `EXAWAP<SITE>001`–`013` |
 | `.100`–`.249` | DHCP pool | — |

@@ -23,7 +23,8 @@
 | Build a firewall | [buildsheets/buildsheet-firewall.md](buildsheets/buildsheet-firewall.md) |
 | Build the Windows Admin node | [buildsheets/buildsheet-winadmin.md](buildsheets/buildsheet-winadmin.md) |
 | Build the Rudder server | [buildsheets/buildsheet-rudder.md](buildsheets/buildsheet-rudder.md) |
-| Set up WireGuard / DC deployment | [active-directory/ad-dc-wireguard-deployment.md](active-directory/ad-dc-wireguard-deployment.md) |
+| Set up WireGuard | [buildsheets/buildsheet-firewall.md](buildsheets/buildsheet-firewall.md) |
+| Promote a domain controller | [../ansible/playbooks/windows_dc/README.md](../ansible/playbooks/windows_dc/README.md) |
 | Set up a RAC emulator VM | [lab/rac-emulator.md](lab/rac-emulator.md) |
 | Fix a ZFS disk | [proxmox/zfs-disk-replacement.md](proxmox/zfs-disk-replacement.md) |
 | Troubleshoot WireGuard | [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) |
@@ -76,10 +77,8 @@ Active Directory configuration, tooling, and DNS management.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
-| [active-directory/ad-dc-wireguard-deployment.md](active-directory/ad-dc-wireguard-deployment.md) | NET-AD-DC-001 | AD DC promotion procedure + WireGuard site deployment — **required before DC buildsheet sign-off** |
+| [active-directory/ad-dc-wireguard-deployment.md](active-directory/ad-dc-wireguard-deployment.md) | NET-AD-DC-001 | **Historical artefact** — manual PowerShell DC promotion + WireGuard procedure predating `windows_dc`/firewall Ansible roles; forensic record only, not a live path |
 | [active-directory/corporate-livery.md](active-directory/corporate-livery.md) | NET-AD-LIV-001 | GPO-based corporate branding and livery deployment |
-| [active-directory/CSVDE_Property_Mapping_Analysis.md](active-directory/CSVDE_Property_Mapping_Analysis.md) | NET-AD-CSV-001 | CSVDE attribute mapping analysis for bulk AD imports |
-| [active-directory/demo_data_compatibility_analysis.md](active-directory/demo_data_compatibility_analysis.md) | NET-AD-DEMO-001 | Demo data compatibility analysis for AD test environments |
 | [active-directory/easyDNS-TUI-QuickStart.md](active-directory/easyDNS-TUI-QuickStart.md) | NET-AD-DNS-001 | easyDNS TUI quick start — Windows AD DNS management |
 | [active-directory/easyDNS-TUI-CHANGELOG.md](active-directory/easyDNS-TUI-CHANGELOG.md) | NET-AD-DNS-002 | easyDNS TUI changelog |
 | [active-directory/ExampleMusic_DFS_Procedure.md](active-directory/ExampleMusic_DFS_Procedure.md) | NET-AD-DFS-001 | DFS namespace and replication setup |
@@ -219,7 +218,8 @@ Proxmox VE administration, storage, networking, and planning documents.
 | [proxmox/pegaprox-evaluation.md](proxmox/pegaprox-evaluation.md) | NET-PVE-EVAL-001 | PegaProx evaluation notes |
 | [proxmox/pdm-enterprise-proposal.md](proxmox/pdm-enterprise-proposal.md) | NET-PVE-PDM-001 | Proxmox Datacenter Manager enterprise proposal |
 | [proxmox/NET-BMC-001-proxmoxbmc-setup.md](proxmox/NET-BMC-001-proxmoxbmc-setup.md) | NET-BMC-001 | Virtual BMC / IPMI emulation (`proxmoxbmc`) setup |
-| [proxmox/Procedure-PVE-Node-Onboarding.md](proxmox/Procedure-PVE-Node-Onboarding.md) | NET-PVE-ONBOARD-001 | PVE node onboarding procedure — `site.yml`'s eight stages, troubleshooting, SSH keypair recovery |
+| [proxmox/Procedure-PVE-Node-Onboarding.md](proxmox/Procedure-PVE-Node-Onboarding.md) | NET-PVE-ONBOARD-001 | PVE node onboarding procedure — `site.yml`'s ten stages, troubleshooting, SSH keypair recovery |
+| [proxmox/pxe-proxmox-autoinstall-build-log.md](proxmox/pxe-proxmox-autoinstall-build-log.md) | NET-PVE-AUTOINST-001 | Authoritative history of the PVE auto-install mechanism — abandoned BMC-ISO approach, current `select-pve-answer.sh` flow |
 | [proxmox/ExampleMusic_SLIC_Injection_Procedure_v1.0.md](proxmox/ExampleMusic_SLIC_Injection_Procedure_v1.0.md) | NET-PVE-SLIC-002 | Proxmox VM SLIC table injection and SMBIOS spoofing (SeaBIOS VMs) — distinct from NET-LAB-SLIC-001's BIOS-extraction/import procedure, not a duplicate |
 | [Proxmox Networking for VMware vSphere admins - Virtualization Howto.pdf](Proxmox%20Networking%20for%20VMware%20vSphere%20admins%20-%20Virtualization%20Howto.pdf) | NET-PVE-VMW-001 | Proxmox networking primer for VMware vSphere admins (external reference PDF) |
 | [VM204-disk-migration-runbook.md](VM204-disk-migration-runbook.md) | NET-PVE-DISK-001 | VM 1023 (EXASVRCLD01) disk right-sizing + PBS space-crisis runbook — SATA-hotplug/i440fx gotchas, ZFS zvol sizing, live Oracle DB handling, PBS GC grace-period behaviour (13 July 2026 session, real transcript) |
@@ -294,7 +294,7 @@ WireGuard VPN configuration and troubleshooting.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
-| [wireguard/NET-VPN-WG-001-wireguard-routing.md](wireguard/NET-VPN-WG-001-wireguard-routing.md) | NET-VPN-WG-001 | WireGuard inter-hub routing — fabric provisioning, AllowedIPs, re-keying |
+| [wireguard/NET-VPN-WG-001-wireguard-routing.md](wireguard/NET-VPN-WG-001-wireguard-routing.md) | NET-VPN-WG-001 | **Historical artefact (2026-07-19)** — describes the retired FAL/ODE/BRK three-hub mesh, not the current CLD-only topology. See `ansible/README.md`'s "WireGuard topology" section for the live model. |
 | [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) | NET-VPN-WG-002 | WireGuard troubleshooting guide — tunnel diagnostics, re-keying, common failures |
 | [wireguard/Troubleshooting-fwl-post-v2v.md](wireguard/Troubleshooting-fwl-post-v2v.md) | NET-FW-TROUBLESHOOT-001 | Firewall recovery after V2V migration — nftables/NetworkManager on Proxmox VE |
 

@@ -63,17 +63,17 @@ the playbook will prompt interactively before making any changes.
 
 ```bash
 # Copy the template and fill in real values
-cp group_vars/rudder_servers/vault.yml /tmp/rudder_vault_plain.yml
+cp configs/inventory/group_vars/rudder_servers/vault.yml /tmp/rudder_vault_plain.yml
 vim /tmp/rudder_vault_plain.yml
 
 # Generate bcrypt hash for the admin password
 htpasswd -bnBC 12 "" 'YourAdminPassword' | tr -d ':\n'
 
 # Encrypt
-ansible-vault encrypt group_vars/rudder_servers/vault.yml
+ansible-vault encrypt configs/inventory/group_vars/rudder_servers/vault.yml
 
 # Verify
-ansible-vault view group_vars/rudder_servers/vault.yml
+ansible-vault view configs/inventory/group_vars/rudder_servers/vault.yml
 ```
 
 > `rudder_api_token` can be left as `UNSET` for the first run.
@@ -97,7 +97,7 @@ ansible-playbook playbooks/rudder/rudder_server.yml \
 # Name: rudder-automation   Role: Read/Write
 # Copy the token
 
-ansible-vault edit group_vars/rudder_servers/vault.yml
+ansible-vault edit configs/inventory/group_vars/rudder_servers/vault.yml
 # Set rudder_api_token: "your-token-here"
 ```
 
@@ -127,7 +127,7 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 
 ## Variable reference
 
-### group_vars/rudder_servers/main.yml (non-secret)
+### configs/inventory/group_vars/rudder_servers/main.yml (non-secret)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -143,7 +143,7 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | `rudder_base_packages` | (list) | Base packages installed in section 3 |
 | `rudder_site_ufw_rules` | (list) | UFW rules for agent connectivity |
 
-### group_vars/rudder_servers/vault.yml (secrets — encrypted)
+### configs/inventory/group_vars/rudder_servers/vault.yml (secrets — encrypted)
 
 | Variable | Description |
 |----------|-------------|
