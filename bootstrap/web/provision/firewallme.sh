@@ -836,7 +836,13 @@ done
 
 WG_TUNNEL_NET="10.0.${WG_OCTET}.0/24"
 WG_HUB_DEFAULT_IP="10.0.${WG_OCTET}.1"
-WG_SPOKE_DEFAULT_IP="10.0.${WG_OCTET}.2"
+# 2026-07-19: spoke default moved from .2 to .1, matching the Ansible role's own convention
+# (see docs/ansible/beginners_guide_to_ansible.md, "Renumbering / Reworking Live Conventions").
+# NOT the same thing as SPOKE_TUNNEL_OCTET below (this site's own tunnel address within ITS
+# OWN /24, vs. SPOKE_TUNNEL_OCTET's sequential slot-numbering of OTHER spokes within THIS
+# hub's /24 when interactively building a hub -- different addressing scheme entirely,
+# deliberately left untouched).
+WG_SPOKE_DEFAULT_IP="10.0.${WG_OCTET}.1"
 DC_DNS="${SUBNET}.10"          # site DC — AD DNS primary for LAN clients
 
 # EXADNSVRK001's IP + the AD domain name -- looked up from begyndelse.json

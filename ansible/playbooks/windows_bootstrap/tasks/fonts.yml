@@ -18,8 +18,9 @@
 #               upstream zip and re-copied every font file every single time, even when
 #               already deployed from a previous run — no "already done" check existed at
 #               all. Worse than a single wasted run: this file is include_tasks'd from BOTH
-#               50-binaries.yml (tag fonts) AND tasks/ps7_setup.yml Stage 20 (via
-#               79-ps7-setup.yml) — a bare site.yml run with no --tags executes every play
+#               50-binaries.yml (tag fonts) AND tasks/ps7_setup.yml Stage 21 (renumbered
+#               2026-07-19, was Stage 20) (via 79-ps7-setup.yml) — a bare site.yml run with
+#               no --tags executes every play
 #               in sequence (see site.yml's 2026-07-06 changelog), so the full
 #               download-extract-deploy-registry sequence ran twice per host, back to back.
 #               Added a check-first task (are all exa_font_files already present in

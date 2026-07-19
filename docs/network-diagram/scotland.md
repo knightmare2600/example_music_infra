@@ -103,7 +103,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:FAL:START
     subgraph NEW_FAL ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRFAL001 · RTR · .1"]
-      N_PRV["📦 EXAPRVFAL001 · PRV · .15"]
       N_SBC["🛡️ EXASBCFAL001 · SBC · .48"]
       N_DCS["🗝️ EXADCSFAL001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLFAL001 · FWL 1 · .253"]
@@ -111,7 +110,6 @@ graph TD
       N_PVE["🗂️ EXAPVEFAL001 · PVE 1 · .5"]
       N_RDR["⚙️ EXARDRFAL001 · HID Signo badge reader · .16"]
       N_SRV["🗄️ EXASRVFAL001 · Reserved · .20"]
-      N_NAS["🗃️ EXANASFAL001 · Primary storage · .32"]
       N_TAR["💽 EXATARFAL001 · Legacy tape archive · .33"]
       N_LCD["🖼️ EXALCDFAL001 · Reception display · .50"]
       N_VCU["🎧 EXAVCUFAL001 · Video conferencing · .51"]
@@ -207,7 +205,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:EDI:START
     subgraph NEW_EDI ["🆕 New Network (current)"]
       N_RTR["📡 EXARTREDI001 · RTR · .1"]
-      N_PRV["📦 EXAPRVEDI001 · PRV · .15"]
       N_SBC["🛡️ EXASBCEDI001 · SBC · .48"]
       N_DCS["🗝️ EXADCSEDI001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLEDI001 · FWL 1 · .253"]
@@ -265,7 +262,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:GLA:START
     subgraph NEW_GLA ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRGLA001 · RTR · .1"]
-      N_PRV["📦 EXAPRVGLA001 · PRV · .15"]
       N_SBC["🛡️ EXASBCGLA001 · SBC · .48"]
       N_DCS["🗝️ EXADCSGLA001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLGLA001 · FWL 1 · .253"]
@@ -323,7 +319,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:CLY:START
     subgraph NEW_CLY ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRCLY001 · RTR · .1"]
-      N_PRV["📦 EXAPRVCLY001 · PRV · .15"]
       N_SBC["🛡️ EXASBCCLY001 · SBC · .48"]
       N_DCS["🗝️ EXADCSCLY001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLCLY001 · FWL 1 · .253"]
@@ -378,7 +373,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:DUN:START
     subgraph NEW_DUN ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRDUN001 · RTR · .1"]
-      N_PRV["📦 EXAPRVDUN001 · PRV · .15"]
       N_SBC["🛡️ EXASBCDUN001 · SBC · .48"]
       N_DCS["🗝️ EXADCSDUN001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLDUN001 · FWL 1 · .253"]
@@ -435,7 +429,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:PER:START
     subgraph NEW_PER ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRPER001 · RTR · .1"]
-      N_PRV["📦 EXAPRVPER001 · PRV · .15"]
       N_SBC["🛡️ EXASBCPER001 · SBC · .48"]
       N_DCS["🗝️ EXADCSPER001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLPER001 · FWL 1 · .253"]
@@ -443,7 +436,6 @@ graph TD
       N_PVE["🗂️ EXAPVEPER001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIPER001 · SWI 1 · .250"]
       N_NIX["🐧 EXANIXPER001 · MIDI archive · .40"]
-      N_NAS["🗃️ EXANASPER001 · NAS · .50"]
       N_MBP["💻 EXAMBPPER001 · MacBook"]
       N_SUR["🖊️ EXASURPER001 · Surface"]
       N_PHN["📞 EXAPHNPER001 · Phone 1"]
@@ -497,7 +489,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:ABD:START
     subgraph NEW_ABD ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRABD001 · RTR · .1"]
-      N_PRV["📦 EXAPRVABD001 · PRV · .15"]
       N_SBC["🛡️ EXASBCABD001 · SBC · .48"]
       N_DCS["🗝️ EXADCSABD001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLABD001 · FWL 1 · .253"]

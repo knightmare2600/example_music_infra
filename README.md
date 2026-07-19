@@ -78,7 +78,7 @@ These are the **Known source of truth** (0xDF). If any other source disagrees wi
 
 ### address_policy.json
 
-Machine-readable version of the [Addressing](#addressing) table below — `offsets_single` (RTR/PRV/SBC/WKS/LAP: one instance, fixed octet) and `role_offsets` (BMC/DCS/FWL/PVE: multiple instances, fixed octet list). This isn't new policy — it's the same data that used to live only as hardcoded Python dictionaries inside `generate_inventory.py`. It was pulled out into its own file so that `bind9-dns.yml` (Ansible/Jinja, a different language and runtime to the Python generator) can read the identical rule without a second, hand-maintained copy that could quietly drift out of sync.
+Machine-readable version of the [Addressing](#addressing) table below — `offsets_single` (RTR/NAS/SBC/WKS/LAP: one instance, fixed octet) and `role_offsets` (BMC/DCS/FWL/PVE: multiple instances, fixed octet list). This isn't new policy — it's the same data that used to live only as hardcoded Python dictionaries inside `generate_inventory.py`. It was pulled out into its own file so that `bind9-dns.yml` (Ansible/Jinja, a different language and runtime to the Python generator) can read the identical rule without a second, hand-maintained copy that could quietly drift out of sync.
 
 ---
 
@@ -96,7 +96,8 @@ The bootstrap network is always `192.168.139.0/24`. The bootstrap server runs at
 - Proxmox answer files — site-prefixed, one pair per provisioning server (`VRK-*` Edinburgh, `FRD-*` Fredericia Havn; `menu.ipxe`'s gateway detection picks the right pair automatically):
   - `VRK-answer.toml` / `FRD-answer.toml` — standard two-disk ZFS RAID1 install
   - `VRK-degraded.toml` / `FRD-degraded.toml` — single-disk ZFS RAID0 install for when the second disk hasn't arrived yet
-- `first-boot.sh` — post-install provisioning script, runs on first boot: ansible user + SSH key (so Ansible can reach the box at all) plus local-only convenience steps (apt repo fix, subscription-nag removal, MOTD, single-disk RAID warning). Everything else PVE-specific (hostname/network rewrite, V2V/VirtIO/proxmoxbmc tooling) moved to `ansible/playbooks/proxmox/bootstrap-new-node.yml` and `45-virt-tools.yml`, run once the node has a temporary DHCP IP
+- `select-pve-answer.sh` — POSIX `sh` script (BusyBox `ash`-compatible), run by the operator at the Proxmox installer's own root shell after mounting a plain ISO via iLO/iDRAC/BMC virtual media (Proxmox VE is no longer PXE-installed, see below): detects the site from the default gateway, counts real disks to suggest `answer` vs `degraded`, fetches and validates the matching answer file
+- `first-boot.sh` — post-install provisioning script, chained automatically via the answer file's own `[first-boot]` block: creates the `ansible` user + SSH key (so Ansible can reach the box at all), ensures `sshd` is present. That's the whole script now — apt repo fix, subscription-nag removal, MOTD, and the single-disk RAID warning (now an `-e pve_acknowledge_single_disk=true` flag) all moved to `ansible/playbooks/proxmox/` (`10-packages.yml`, `40-scripts.yml`, `00-preflight.yml`), run once the node has a temporary DHCP IP
 - `ansibleme.sh` — provisions the Ansible control node (`EXAANSCLD001`) from scratch — installs packages, deploys keys, clones the repo, places `sites.csv`/`devices.csv`/`begyndelse.json` at `/etc/example-music/`
 - `firewallme.sh` — interactive firewall bootstrap script, handles WireGuard key generation, site code lookup and peer configuration
 - `bindme.sh` — interactive BIND9 DNS server bootstrap script, generates forward/reverse zones from `sites.csv`/`devices.csv`
@@ -127,17 +128,21 @@ The bootstrap network is always `192.168.139.0/24`. The bootstrap server runs at
 2026-06-12 09:25:21 INFO server: http1 server is listening on http://192.168.139.50:80
 ```
 
-3. PXE boot target machine — it will chainload the iPXE menu from `192.168.139.50`
+3. **PXE-bootable targets** (Debian, Arch, etc.) chainload the iPXE menu from `192.168.139.50` and
+   select their install target there. **Proxmox VE is the exception** — nothing PXE-serves it any
+   more (see `docs/proxmox/pxe-proxmox-autoinstall-build-log.md` for why): mount a plain,
+   unmodified Proxmox VE ISO via iLO/iDRAC/BMC virtual media instead, boot it, and when
+   auto-install "fails" to fetch an answer file and drops to a root shell, run
+   `wget http://192.168.139.50/proxmox/select-pve-answer.sh && sh select-pve-answer.sh` and follow
+   its prompts
 
-4. Select install target (Proxmox VE RAID1 or degraded single-disk)
+4. Unattended install completes, node reboots
 
-5. Unattended install completes, node reboots
+5. `first-boot.sh` runs automatically (via the answer file's `[first-boot]` block, or PXE's own
+   post-install hook for other targets) — creates the `ansible` user + SSH key, nothing else
 
-6. `first-boot.sh` runs, configures the node, sets persistent DNS via `pvesh`
-
-7. If single-disk: operator is prompted to acknowledge the no-redundancy warning before proceeding
-
-8. Hand off to Ansible for full configuration
+6. Hand off to Ansible for full configuration (`playbooks/proxmox/bootstrap-new-node.yml` for PVE
+   nodes — see the `ansible/` section below)
 
 ---
 
@@ -182,7 +187,7 @@ ansible/
 | `linux/tools.yml` | Deploy common packages and `/etc/example-music/{sites,devices}.csv` to all Linux hosts |
 | `bind9/bind9-dns.yml` | Generate and deploy BIND9 zones from `devices.csv` |
 | `proxmox/bootstrap-new-node.yml` | One-time: give a brand-new PVE node (still on its preseed DHCP IP) its real hostname and static network config, from an operator-supplied build-sheet hostname. Run this first against the DHCP IP, then add the node to inventory and run `proxmox/site.yml` |
-| `proxmox/site.yml` | Onboard a new Proxmox VE node — Zabbix, packages, SSH, sudoers, `/etc/example-music/`, [proxmorph](https://github.com/IT-BAER/proxmorph) UI themes + sensor monitoring. Re-run safe: only refreshes packages/example-music/scripts on an already-onboarded node unless `-e pve_force_full_onboard=true` |
+| `proxmox/site.yml` | Onboard a new Proxmox VE node — Zabbix, packages, SSH, sudoers, `/etc/example-music/`, per-site Proxmox pool + `vmbr1` VLAN bridge, [proxmorph](https://github.com/IT-BAER/proxmorph) UI themes + sensor monitoring. Re-run safe: only refreshes packages/example-music/scripts/pools/vmbr1 on an already-onboarded node unless `-e pve_force_full_onboard=true` |
 | `windows_bootstrap/site.yml` | Full Windows host PostOOBE bootstrap — rename, static IP, domain join, packages, wallpaper |
 | `windows_dc/site.yml` | Promote a Windows Server to domain controller |
 | `windows_adschema/ad_schema.yml` | Create AD OUs, groups, computers and users from TDF data |
@@ -221,7 +226,7 @@ Unless explicitly stated otherwise, all deployments MUST conform to these conven
 | `.2–.4` | BMC / RAC — iDRAC, iLO, Redfish |
 | `.5–.7` | PVE — Proxmox VE nodes |
 | `.10–.11` | DCS — Domain Controllers |
-| `.15` | PRV — provisioning server |
+| `.19` | NAS — storage (NAS/SAN, e.g. TrueNAS) |
 | `.48` | SBC — VOIP SBC |
 | `.82–.94` | WAP — wireless access points (static; added 2026-07-08, moved off DHCP). Count varies per site — 1 to 13+ |
 | `.100–.249` | DHCP pool (`.101`/`.102` are documentation examples within the pool, not exclusive reservations) |
@@ -232,6 +237,13 @@ The authoritative source for site subnet allocations is `benarbejde/sites.csv` (
 
 This table is also encoded as data in `benarbejde/address_policy.json` — see [devices.csv is exceptions-only](#devices-csv-is-exceptions-only) above for how it's used.
 
+> **`.15` PRV retired 2026-07-19.** It was never real for any ordinary site — confirmed via a
+> real generation run that all 51 non-VRK/FRD sites were getting a synthesized
+> `EXAPRV<SITE>001` DNS record for a device that has never existed; provisioning is genuinely
+> centralised at VRK/FRD, not per-site. `.19` NAS is new, for site storage (TrueNAS) — a real
+> per-site rollout, replacing 3 retired legacy NAS boxes at FAL/PER/MEL that used to sit at
+> inconsistent ad-hoc addresses.
+
 ### Naming
 
 Format: `EXA` + `<ROLE>` + `<SITE>` + `<NNN>`
@@ -240,7 +252,7 @@ Example: `EXAFWLFAL001` — EXA estate, firewall, Falkirk, first unit.
 
 ### WireGuard
 
-WireGuard networks use `10.0.<site-octet>.0/24`. The firewall WireGuard endpoint is always `.1`. CLD is the **sole WireGuard hub** — every site connects directly to CLD. No site intermediates WireGuard traffic for another.
+WireGuard networks use `10.0.<site-octet>.0/24`. Every site's firewall — hub or spoke — is WireGuard endpoint `.1` within its own site's `/24` (e.g. CLD is `10.0.69.1`, FAL is `10.0.76.1`) — a spoke's `/24` never overlaps another site's, so there's no collision (as of 2026-07-19; older deployments not yet migrated are still on `.2` until re-run, see `docs/ansible/beginners_guide_to_ansible.md`'s "Renumbering / Reworking Live Conventions"). CLD is the **sole WireGuard hub** — every site connects directly to CLD. No site intermediates WireGuard traffic for another.
 
 ---
 

@@ -38,7 +38,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:AMS:START
     subgraph NEW_AMS ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRAMS001 · RTR · .1"]
-      N_PRV["📦 EXAPRVAMS001 · PRV · .15"]
       N_SBC["🛡️ EXASBCAMS001 · SBC · .48"]
       N_DCS["🗝️ EXADCSAMS001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLAMS001 · FWL 1 · .253"]

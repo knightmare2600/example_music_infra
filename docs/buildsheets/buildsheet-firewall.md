@@ -2,13 +2,17 @@
 
 **Doc ID:** NET-BUILD-FWL-001  
 **Last Updated:** 2026-07-12  
-**Applies to:** All site firewall/router VMs — hub-primary (FAL), hub-regional (ODE, BRK), spokes (all other sites)  
+**Applies to:** All site firewall/router VMs — CLD is the sole WireGuard hub; every other site, including FAL/ODE/BRK, is an ordinary spoke  
 **Playbook:** `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=<host> --ask-vault-pass` — the first-instance build/enforce path once the VM is Ansible-reachable (it comes up that way already, via the same `late_command.sh` ansible-user/SSH-key sliver every Debian install gets)  
 **Break-glass script:** `firewallme.sh` — hosted on bootstrap server at `http://192.168.139.50/firewallme.sh`. Kept for when Ansible genuinely can't reach the box (dead/replaced firewall, or the very first firewall at a brand-new site with no Ansible control node reachable at all). Steps 4 onward below document this path — see `ansible/playbooks/firewallme/` for the normal one.  
 **Cross-reference:** `active-directory/ad-dc-wireguard-deployment.md` (NET-AD-DC-001, historical — see `ansible/playbooks/windows_dc/README.md` for the live procedure) · `buildsheet-pve.md` (NET-BUILD-PVE-001)
 
-> ⚠️ **Build hubs before spokes.** FAL must be fully live before any spoke or regional hub can establish its WireGuard tunnel.  
-> Order: **FAL → ODE → BRK → all spokes**
+> ⚠️ **Build the hub before spokes.** CLD (`EXAFWLVRK001`/`EXAFWLCLD001`) must be fully live
+> before any spoke can establish its WireGuard tunnel — every spoke connects directly to CLD,
+> full stop, regional hubs (FAL/ODE/BRK) were retired 2026-07-17.  
+> Order: **CLD → all spokes, any order** (FAL/ODE/BRK included — see the "WireGuard topology"
+> section of `ansible/README.md` for the full detail and `docs/ansible/beginners_guide_to_ansible.md`'s
+> "Bootstrapping the Base Nodes" for a worked walkthrough)
 
 > **Fredericia Havn note:** `192.168.139.50` below is Edinburgh's bootstrap server. If you're
 > building at Fredericia Havn instead, it's `172.16.124.1:8000` (gateway `172.16.124.2`) — see
@@ -23,19 +27,13 @@
 graph TD
     WAN["🌐 WAN / Provisioning<br/>192.168.139.0/24<br/> bootstrap: 192.168.139.50"]
 
-    FAL["🏴󠁧󠁢󠁳󠁣󠁴󠁿 FAL — Falkirk<br/>hub-primary<br/>192.168.76.0/24 · wg: 10.0.76.1"]
-    ODE["🇩🇰 ODE — Odense<br/>hub-regional<br/>192.168.126.0/24 · wg: 10.0.126.1"]
-    BRK["🇨🇦 BRK — Brockville<br/>hub-regional<br/>192.168.136.0/24 · wg: 10.0.136.1"]
+    CLD["☁️ CLD — Cloud / Edinburgh<br/>sole WireGuard hub<br/>192.168.69.0/24 · wg: 10.0.69.1"]
 
-    WAN --> FAL
-    WAN --> ODE
-    WAN --> BRK
-    FAL <-->|WireGuard mesh| ODE
-    FAL <-->|WireGuard mesh| BRK
-    ODE <-->|WireGuard mesh| BRK
+    WAN --> CLD
 
-    subgraph UK ["🇬🇧 United Kingdom — FAL spokes"]
+    subgraph UK ["🇬🇧 United Kingdom"]
         direction TB
+        FAL["FAL · Falkirk · .76"]
         EDI["EDI · Edinburgh · .131"]
         GLA["GLA · Glasgow · .141"]
         CLY["CLY · Clydebank · .41"]
@@ -53,8 +51,9 @@ graph TD
         HAL["HAL · Halifax · .142"]
     end
 
-    subgraph EU ["🇪🇺 Europe — ODE spokes"]
+    subgraph EU ["🇪🇺 Europe"]
         direction TB
+        ODE["ODE · Odense · .126"]
         CPH["CPH · København · .231"]
         KGE["KGE · Køge · .65"]
         FAX["FAX · Faxe · .246"]
@@ -69,8 +68,9 @@ graph TD
         VIE["VIE · Vienna · .78"]
     end
 
-    subgraph NAAPAC ["🌎 Americas & APAC — BRK spokes"]
+    subgraph NAAPAC ["🌎 Americas & APAC"]
         direction TB
+        BRK["BRK · Brockville · .136"]
         TOR["TOR · Toronto · .164"]
         MTL["MTL · Montréal · .154"]
         NYC["NYC · New York · .212"]
@@ -84,21 +84,23 @@ graph TD
         AKL["AKL · Auckland · .93"]
     end
 
-    FAL --> UK
-    ODE --> EU
-    BRK --> NAAPAC
+    CLD --> UK
+    CLD --> EU
+    CLD --> NAAPAC
 
     classDef hub fill:#0072B2,stroke:#000000,color:#ffffff
     classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
-    class WAN,FAL,ODE,BRK hub
+    class WAN,CLD hub
     class MIA warn
     style UK fill:#56B4E9,stroke:#0072B2,color:#000000
     style EU fill:#F0E442,stroke:#E69F00,color:#000000
     style NAAPAC fill:#009E73,stroke:#000000,color:#ffffff
 ```
 
-> Spokes connect to their regional hub. UK/Ireland spokes → FAL, European spokes → ODE, Americas/APAC spokes → BRK.  
-> Regional hubs are fully meshed with FAL and each other for resilience.
+> Every site connects directly to CLD — including FAL/ODE/BRK, shown grouped by region above
+> for readability only, not because they intermediate for anyone. There is no hub-to-hub mesh
+> and no regional hub any more (retired 2026-07-17); FAL/ODE/BRK remain real **AD/DFS hubs**
+> for their regions (see `docs/ExampleMusic_Beginners_Guide.md`), just not WireGuard ones.
 
 ---
 
@@ -209,7 +211,7 @@ passwd
 `firewallme.sh` configures NAT, DHCP/DNS, WireGuard, Cockpit, SSH banner, and dynamic MOTD.
 
 ```bash
-wget http://192.168.139.50/firewallme.sh
+wget http://192.168.139.50/provision/firewallme.sh
 tofrodos firewallme.sh
 chmod 755 firewallme.sh
 sudo ./firewallme.sh
@@ -226,7 +228,15 @@ The script is interactive. It will prompt for the following — answers for each
 | Ansible/PXE last octet | `15` (standard) |
 | Internal DNS IP | Last octet of DC primary — e.g. `10` → `192.168.x.10` — leave blank if DC not yet built |
 | WAN SSH | `N` unless remote access required — if yes, restrict to source IP |
-| WireGuard role | `hub-primary` (FAL only) · `hub-regional` (ODE, BRK) · `spoke` (all others) · `none` |
+| WireGuard role | `hub-primary` · `hub-regional` · `spoke` · `none` — see the warning below |
+
+> ⚠️ **This break-glass script itself still offers all four role choices unrestricted — it
+> hasn't been touched since the regional hubs were retired.** The Ansible role
+> (`90-firewall.yml`) *has* been restricted: it only offers `spoke`/`none` for any site except
+> CLD, which is forced to the hub role automatically. Answering `hub-primary`/`hub-regional`
+> here for anything other than CLD will build a real, functioning hub that nothing else in the
+> estate expects or talks to — always answer `spoke` unless you are genuinely building CLD's
+> own firewall from this break-glass path.
 
 **WireGuard role-specific prompts:**
 
@@ -237,7 +247,7 @@ The script is interactive. It will prompt for the following — answers for each
 - Add spoke peers interactively, or skip and edit `/etc/wireguard/wg0.conf` later
 
 *Spoke:*
-- Tunnel IP (default: `10.0.<octet>.2`)
+- Tunnel IP (default: `10.0.<octet>.1`)
 - Hub site code (e.g. `FAL`, `ODE`, `BRK`) — endpoint and public key auto-fetched or pasted
 - Optional backup hub peers
 
@@ -307,13 +317,11 @@ sudo cat /etc/wireguard/private.key | wg pubkey
 # On the spoke — check tunnel is up and hub handshake received
 sudo wg show
 
-# Ping hub tunnel IP
-ping -c 3 10.0.76.1        # FAL hub-primary
-ping -c 3 10.0.126.1       # ODE hub-regional
-ping -c 3 10.0.136.1       # BRK hub-regional
+# Ping the hub tunnel IP — CLD is the only hub, every spoke pings the same address
+ping -c 3 10.0.69.1        # CLD
 
 # Ping hub LAN
-ping -c 3 192.168.76.10    # FAL DC
+ping -c 3 192.168.69.10    # CLD's own DC (EXADCSCLD001)
 
 # Check dnsmasq is serving DHCP/DNS
 dig ansible.jukebox.internal @192.168.<site-octet>.1
@@ -398,15 +406,14 @@ cat /etc/.i_am_a_firewall
 | CLD  | EXAFWLVRK001 | 192.168.69.253 (CLD LAN) / 192.168.139.69 (vRACK) | Cloud Infra | X    | X    | X    | X    | X    | X    | N/A  | X    |      |      | Hosted at OVH. Two internal interfaces, not one — see bootstrapping.md §1.2 |
 | PRV  | EXAFWLPRV001 | 192.168.139.253 | Cloud twin  | X    | X    | X    | X    | X    | X    | X    | X    |      |      | Legal fiction. Does not exist |
 
-### Hubs (build these next)
-
-| Site | Hostname | IP | Role | VM | OS | PW | FW | RB | WG | PR | VF | AN | OK | Notes |
-|------|----------|----|----|----|----|----|----|----|----|----|----|----|----|-------|
-| FAL | EXAFWLFAL001 | 192.168.76.253 | hub-primary | X | X    | X    | X    | X    | X    | N/A  | X    |      |      | Head Office · build first! |
-| ODE | EXAFWLODE001 | 192.168.126.253 | hub-regional | X | X    | X    | X    | X    | X    | X    | X    |      |      | EU Head Office peer with FAL |
-| BRK | EXAFWLBRK001 | 192.168.136.253 | hub-regional |      |      |      |      |      |      |      |      |      |      | NA/APAC Head Office · peer with FAL |
-
 ### Scotland
+
+> **FAL** (Falkirk) is included here now, not in a separate "Hubs" section — it's an ordinary
+> CLD spoke since regional hubs were retired 2026-07-17. Still the UK AD/DFS hub, just not a
+> WireGuard one. Its `WG`/`PR`/`VF` columns are cleared rather than carrying over pre-migration
+> ticks: a firewall already live before the retirement was **not** automatically re-pointed at
+> CLD (that's a real, live per-node operation, not a data-file edit — see
+> `group_vars/firewalls/main.yml`'s own changelog) — verify/redo these live before ticking them.
 
 | Site | Hostname | IP | VM | OS | PW | FW | RB | WG | PR | VF | AN | OK | Notes |
 |------|----------|----|----|----|----|----|----|----|----|----|----|----|----|
@@ -414,6 +421,7 @@ cat /etc/.i_am_a_firewall
 | CLY | EXAFWLCLY001 | 192.168.41.253 |      |      |      |      |      |      |      |      |      |      | |
 | DUN | EXAFWLDUN001 | 192.168.138.253 |      |      |      |      |      |      |      |      |      |      | |
 | EDI | EXAFWLEDI001 | 192.168.131.253 |      |      |      |      |      |      |      |      |      |      | |
+| FAL | EXAFWLFAL001 | 192.168.76.253 | X | X | X | X | X | ⚠️ | ⚠️ | ⚠️ |      |      | Head Office — formerly UK regional hub, now an ordinary CLD spoke; see note above |
 | GLA | EXAFWLGLA001 | 192.168.141.253 |      |      |      |      |      |      |      |      |      |      | |
 | PER | EXAFWLPER001 | 192.168.173.253 |      |      |      |      |      |      |      |      |      |      | |
 
@@ -439,6 +447,7 @@ cat /etc/.i_am_a_firewall
 | FAX | EXAFWLFAX001 | 192.168.246.253 |      |      |      |      |      |      |      |      |      |      | |
 | KGE | EXAFWLKGE001 | 192.168.65.253 |      |      |      |      |      |      |      |      |      |      | |
 | KOR | EXAFWLKOR001 | 192.168.238.253 |      |      |      |      |      |      |      |      |      |      | |
+| ODE | EXAFWLODE001 | 192.168.126.253 | X | X | X | X | X | ⚠️ | ⚠️ | ⚠️ |      |      | EU Head Office — formerly EU regional hub, now an ordinary CLD spoke; see Scotland section's note on FAL for why `WG`/`PR`/`VF` are cleared, not carried over |
 
 ### Deutschland
 
@@ -462,6 +471,7 @@ cat /etc/.i_am_a_firewall
 
 | Site | Hostname | IP | VM | OS | PW | FW | RB | WG | PR | VF | AN | OK | Notes |
 |------|----------|----|----|----|----|----|----|----|----|----|----|----|----|
+| BRK | EXAFWLBRK001 | 192.168.136.253 |      |      |      |      |      |      |      |      |      |      | NA/APAC Head Office — formerly NA/APAC regional hub, retired 2026-07-17, never actually built (no ticks in the old Hubs table either) — build as an ordinary CLD spoke |
 | MTL | EXAFWLMTL001 | 192.168.154.253 |      |      |      |      |      |      |      |      |      |      | Montréal |
 | TOR | EXAFWLTOR001 | 192.168.146.253 |      |      |      |      |      |      |      |      |      |      | Toronto |
 
@@ -519,7 +529,12 @@ see `docs/bootstrap/bootstrapping.md` §4.1a) serves:
 | `proxmox/` | Proxmox VE answer files, `first-boot.sh`, provisioning scripts |
 | `windows/` | Windows unattend/PostOOBE bootstrap files |
 
-> `firewallme.sh` lives at `bootstrap/web/provision/firewallme.sh` in this repo. The script contains reference WAN IPs and WireGuard public keys for FAL and ODE in its `HUB_KNOWN_PUBKEY` and `HUB_WAN_IP` tables — update these if either hub is rebuilt.
+> `firewallme.sh` lives at `bootstrap/web/provision/firewallme.sh` in this repo. The script
+> contains reference WAN IPs and WireGuard public keys for **all four** hub-era sites — `CLD`,
+> `FAL`, `ODE`, `BRK` — in its `HUB_KNOWN_PUBKEY` and `HUB_WAN_IP` tables, update the relevant
+> entry if any of them is rebuilt. Only `CLD`'s is actually load-bearing today (the sole real
+> hub) — the other three are kept as reference data only, same reasoning as
+> `group_vars/firewalls/main.yml`'s own `wg_hub_known_pubkeys`/`wg_hub_wan_ips`.
 
 ---
 

@@ -44,7 +44,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:CPH:START
     subgraph NEW_CPH ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRCPH001 · RTR · .1"]
-      N_PRV["📦 EXAPRVCPH001 · PRV · .15"]
       N_SBC["🛡️ EXASBCCPH001 · SBC · .48"]
       N_DCS["🗝️ EXADCSCPH001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLCPH001 · FWL 1 · .253"]
@@ -113,7 +112,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:ODE:START
     subgraph NEW_ODE ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRODE001 · RTR · .1"]
-      N_PRV["📦 EXAPRVODE001 · PRV · .15"]
       N_SBC["🛡️ EXASBCODE001 · SBC · .48"]
       N_DCS["🗝️ EXADCSODE001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLODE001 · FWL 1 · .253"]
@@ -163,7 +161,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:KGE:START
     subgraph NEW_KGE ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRKGE001 · RTR · .1"]
-      N_PRV["📦 EXAPRVKGE001 · PRV · .15"]
       N_SBC["🛡️ EXASBCKGE001 · SBC · .48"]
       N_DCS["🗝️ EXADCSKGE001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLKGE001 · FWL 1 · .253"]
@@ -212,7 +209,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:FAX:START
     subgraph NEW_FAX ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRFAX001 · RTR · .1"]
-      N_PRV["📦 EXAPRVFAX001 · PRV · .15"]
       N_SBC["🛡️ EXASBCFAX001 · SBC · .48"]
       N_DCS["🗝️ EXADCSFAX001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLFAX001 · FWL 1 · .253"]
@@ -257,7 +253,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:KOR:START
     subgraph NEW_KOR ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRKOR001 · RTR · .1"]
-      N_PRV["📦 EXAPRVKOR001 · PRV · .15"]
       N_SBC["🛡️ EXASBCKOR001 · SBC · .48"]
       N_DCS["🗝️ EXADCSKOR001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLKOR001 · FWL 1 · .253"]
@@ -302,7 +297,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:AAR:START
     subgraph NEW_AAR ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRAAR001 · RTR · .1"]
-      N_PRV["📦 EXAPRVAAR001 · PRV · .15"]
       N_SBC["🛡️ EXASBCAAR001 · SBC · .48"]
       N_DCS["🗝️ EXADCSAAR001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLAAR001 · FWL 1 · .253"]
@@ -347,7 +341,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:FRE:START
     subgraph NEW_FRE ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRFRE001 · RTR · .1"]
-      N_PRV["📦 EXAPRVFRE001 · PRV · .15"]
       N_SBC["🛡️ EXASBCFRE001 · SBC · .48"]
       N_DCS["🗝️ EXADCSFRE001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLFRE001 · FWL 1 · .253"]
@@ -403,7 +396,6 @@ graph TD
     %% GENERATED:NEW-NETWORK:NYB:START
     subgraph NEW_NYB ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRNYB001 · RTR · .1"]
-      N_PRV["📦 EXAPRVNYB001 · PRV · .15"]
       N_SBC["🛡️ EXASBCNYB001 · SBC · .48"]
       N_DCS["🗝️ EXADCSNYB001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLNYB001 · FWL 1 · .253"]

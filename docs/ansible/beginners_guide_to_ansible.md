@@ -565,6 +565,122 @@ worth investigating, not ignoring.
 
 ---
 
+## Renumbering / Reworking Live Conventions
+
+Idempotency (above) covers re-running a playbook with the **same** inputs. This section
+covers a different, riskier case: changing what the **default** or convention itself is —
+renumbering a scheme, renaming a role, moving a value from one file to another. The moment
+you change a default in code, you've created a split: every *new* thing built from that
+point on gets the new value, but everything already built and running still has the old one,
+until someone deliberately goes and migrates it. Code and live reality now disagree, and
+they'll keep disagreeing until you close the gap on purpose. This is a distinct category of
+change from ordinary feature work, and it deserves its own checklist — this section is that
+checklist, kept general on purpose, because WireGuard tunnel addressing won't be the last
+thing in this estate that needs renumbering or reworking.
+
+### The checklist
+
+1. **Find every place the old value is hardcoded or defaulted — not just the "obvious" file.**
+   Grep the whole repo, not just the Ansible role you're thinking about. This estate has more
+   than one implementation of some things: an Ansible role *and* a break-glass script that
+   predates it and still gets used (`firewallme.sh`, `bindme.sh`, `rudderme.sh`, `ansibleme.sh`
+   — see the top-level `README.md`'s bootstrap section for why they're kept). If the Ansible
+   default changes and the break-glass script's matching default doesn't, the next person who
+   reaches for the break-glass path (by design, exactly when Ansible *can't* help) builds
+   something inconsistent with everything Ansible now expects.
+
+2. **Don't trust a grep match at face value — read what the surrounding code actually does.**
+   A literal string match for the old value can turn up something that looks related but
+   isn't. (Real example, immediately below: `firewallme.sh` had *two* things containing
+   `.2` near WireGuard — only one of them was the convention being changed.) Skimming the
+   surrounding logic before editing is not optional here; a wrong edit in this category
+   doesn't fail loudly, it silently reworks the wrong thing.
+
+3. **Change every default together, in one commit.** A partial change — spoke default
+   updated, but the hub-side registration default left on the old value — doesn't fail
+   loudly. It creates a mismatch between what a newly-built spoke actually uses and what the
+   hub expects from it, and that class of mismatch tends to fail *silently* (traffic just
+   doesn't arrive, rather than an error telling you why) — worse than a hard failure, because
+   nothing points you at the cause.
+
+4. **Before touching anything already live, confirm there's a recovery path that doesn't
+   depend on the thing you're changing.** If the only way to reach a box is through the exact
+   mechanism you're about to change mid-flight, a mistake mid-migration can lock you out
+   entirely. If there's an independent path (see the worked example below), a mistake is just
+   something to fix on the next run, not an incident.
+
+5. **Migrate already-live instances one at a time, verifying each before moving to the
+   next.** Not a "re-run everything at once and see what happens" blast — confirm the first
+   one actually came back up correctly before doing the second.
+
+6. **Update every doc that states the old value as current, in the same pass** — not "later."
+   A doc that's briefly wrong because you haven't gotten to it yet is exactly how these drift
+   in the first place (see the repo-wide documentation audit this same guide's changelog
+   references).
+
+### Worked example: WireGuard spoke tunnel IP, `.2` → `.1` (2026-07-19)
+
+**What changed:** every site firewall's own WireGuard tunnel address, within its own
+`10.0.<site-octet>.0/24`, moves from `.2` to `.1` — matching the hub's (CLD's) own tunnel
+address within *its* `/24` (`10.0.69.1`). This is a **readability convention, not a protocol
+requirement** — confirmed safe before starting, not assumed: each site's `/24` is a private,
+non-overlapping tunnel network (FAL's `10.0.76.0/24` and CLD's `10.0.69.0/24` never collide,
+regardless of what last octet either uses), and the hub routes to each spoke via an explicit
+`/32` host route (`add-wg-spoke.yml`), not subnet adjacency. The payoff is purely human: any
+firewall's own wg0 address is now always `.1` in its own tunnel `/24`, full stop, instead of
+"`.1` if it's the hub, `.2` if it's a spoke."
+
+**Every place the old default lived (step 1 above, applied for real):**
+
+| File | What it was |
+|------|-------------|
+| `ansible/playbooks/firewallme/roles/firewall/tasks/00_preflight_3_ask.yml` | The interactive prompt's default, for a spoke's own tunnel IP |
+| `ansible/playbooks/firewallme/playbooks/add-wg-spoke.yml` | `spoke_tunnel_ip`'s default — what the **hub** registers as that peer's allowed source address |
+| `bootstrap/web/provision/firewallme.sh` | `WG_SPOKE_DEFAULT_IP` — the break-glass script's own mirror of the same prompt |
+
+**The trap step 2 warns about, hit for real while making this change:** `firewallme.sh` also
+has a `SPOKE_TUNNEL_OCTET=2` variable, a few hundred lines away from `WG_SPOKE_DEFAULT_IP`,
+that looks like the same thing on a bare grep for `.2`. It isn't. It's a sequential-slot
+counter used only when interactively building a **hub** and adding multiple spoke *peers* to
+it by hand — each new peer gets the next free octet **inside the hub's own `/24`**
+(`10.0.69.2`, `10.0.69.3`, ...), a completely different, older addressing scheme from a time
+before every site had its own `/24`. Changing it to match would have been wrong on two counts:
+wrong scheme, and it would have collided with the hub's own `.1` inside that same `/24`. It
+was read in full and left untouched.
+
+**Why this is safe to roll out to live spokes one at a time (step 4 above):** Ansible reaches
+every firewall over its VRK/WAN address, not over the WireGuard tunnel itself — nftables
+always allows SSH from the VRK network regardless of the WireGuard tunnel's state (see
+`group_vars/firewalls/main.yml`'s WAN-IP self-heal notes). A live spoke's WireGuard tunnel
+being briefly down mid-migration does **not** lock Ansible out of managing that box. The
+worst case is a temporary gap in that one site's cross-site traffic (AD replication, DFS, and
+similar) — not an incident, and always recoverable by re-running the same two playbooks.
+
+**Per-spoke migration procedure** (do this once per already-deployed spoke, one at a time):
+
+1. Re-run the firewall role against the spoke. This is a full interactive run — every prompt
+   in `00_preflight_3_ask.yml` fires again, not just the tunnel-IP one; accept the new `.1`
+   default when it's asked. This rewrites the spoke's `wg0.conf` `Address =` line and
+   restarts `wg-quick@wg0`.
+2. Re-run `add-wg-spoke.yml` against the hub (`EXAFWLCLD001`) for that site. This updates the
+   hub's `AllowedIPs` entry for that one spoke from `.2/32` to `.1/32` — the `blockinfile`
+   marker is per-site, so this only touches that spoke's own `[Peer]` block, nothing else on
+   the hub.
+3. Verify on both ends: `wg show wg0` should show a recent handshake; `ping` the other side's
+   tunnel IP.
+4. If it doesn't come back: nothing is lost. SSH access is unaffected (see above) — check
+   `journalctl -u wg-quick@wg0` on the spoke, then re-run both playbooks again. Neither is
+   destructive or one-shot.
+
+CLD's own hub tunnel IP is unaffected by any of this — it was already `.1`.
+
+**Practical takeaway for a beginner:** a changed default is not the same thing as a completed
+change. Everything built before the change still has the old value until someone deliberately
+migrates it — and the migration deserves at least as much care as the original code change,
+because it's the part that touches things already running.
+
+---
+
 ## Understanding `ansible.cfg`
 
 `ansible.cfg` is generated automatically by `ansibleme.sh` when the Ansible control node is
@@ -1015,6 +1131,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-07-09 | Major expansion: added "How This Repository Is Organised" (`benarbejde/` single source of truth), "Inventory and group_vars" (the `host_group_vars` plugin mechanism, why it only auto-loads from inside the loaded inventory path, and the symlink-rejected/real-move fix), "Dynamic Inventory Registration" (`add_host` in `windows_bootstrap`'s preflight), and "Idempotency" (the `target`/`target_hosts` `hosts:` pattern bug found in the 2026-07-09 chain audit). Rewrote "Understanding ansible.cfg" against the actual committed `ansible/ansible.cfg` (previous version was stale and internally inconsistent with the Colourised Output section below it — it showed `ansible.builtin.default` as the callback when `exa_pretty` had already been rolled out). Corrected "Understanding Sudo and Become": the previous version stated `become = True` as the current global setting — it is, and must stay, `False`; Linux-only escalation lives in `group_vars/linux/main.yml`, and a global `become = True` previously broke Windows connectivity in production. |
 | 2026-07-09 | While writing the `ansible.cfg` section against the real file, found `forks`/`timeout`/`retry_files_enabled`/`retry_files_save_path`/`display_skipped_hosts`/`display_failed_stderr` were textually inside the wrong `[section]` and silently inert — confirmed with `ansible.config.manager.ConfigManager`, not just by reading the file. Fixed the real `ansible/ansible.cfg` (all 6 now verified reading from the file), and added the "real lesson in ini section semantics" callout in "Understanding ansible.cfg" above. |
 | 2026-07-18 | Added "Bootstrapping the Base Nodes" — a worked, address-accurate walkthrough building `EXAANSCLD001`, `EXAPVECLD001`, `EXAFWLCLD001`, and `EXADCSCLD001` from a bare Proxmox hypervisor, plus `EXAFWLFAL001` as the WireGuard end-to-end proof. Every address traced against `sites.csv`/`devices.csv`/`address_policy.json` (caught and corrected one real discrepancy along the way: CLD's PVE1 slot is `192.168.69.5`, on CLD's own LAN, not `192.168.139.x`) and against `docs/proxmox/Procedure-PVE-Node-Onboarding.md`'s own worked example. Also found `docs/buildsheets/buildsheet-firewall.md`'s `wget` for `firewallme.sh` omits the real `/provision/` path segment — flagged, not fixed (out of scope for this section). |
+| 2026-07-19 | Added "Renumbering / Reworking Live Conventions" — a general checklist for any future change to a default/convention that already has live instances built against the old value (find every hardcoded copy including break-glass script mirrors, don't trust a grep match without reading the surrounding code, change every default together, confirm a recovery path independent of what's changing, migrate live instances one at a time, update docs in the same pass), with the 2026-07-19 WireGuard spoke tunnel IP change (`.2` → `.1`) as the first worked example — including a real trap hit while making it (`firewallme.sh`'s unrelated `SPOKE_TUNNEL_OCTET` legacy hub-building counter, which looked like the same convention on a bare grep and wasn't). |
 
 ---
 

@@ -12,7 +12,7 @@ New PVE nodes arrive in a known state from our PXE/iPXE first-boot installer: De
 
 > **If this node was built via `playbooks/proxmox/bootstrap-new-node.yml`** (the normal path for a brand-new node still on its DHCP IP), all of this already happened automatically — as of 2026-07-12 that playbook chains straight into this entire `site.yml` stage table in the same run, then reboots once at the end. You don't need to run anything from this procedure separately afterward. This procedure is for running/re-running `site.yml` on its own — a node built some other way, or a deliberate standalone refresh (see the "Forcing a full re-onboard" section below).
 
-`site.yml` chains eight numbered stages:
+`site.yml` chains ten numbered stages:
 
 | Stage | Purpose | Runs on a refresh of an already-onboarded node? |
 |---|---|---|
@@ -20,6 +20,8 @@ New PVE nodes arrive in a known state from our PXE/iPXE first-boot installer: De
 | `10-packages.yml` | Management packages (`apt`) | Always |
 | `20-ansible-access.yml` | ansible user, SSH key, sudoers, kvm group | **Only on first onboard**, or with `-e pve_force_full_onboard=true` |
 | `30-example-music.yml` | `/etc/example-music/{sites,devices}.csv` + `nodeinfo.json` | Always |
+| `35-pools.yml` | Ensures one Proxmox pool per `sites.csv` site code exists (`pvesh`, no API credential needed) | Always — `run_once` (cluster-wide resource) |
+| `36-vmbr1.yml` | Ensures the `vmbr1` VLAN-aware VM bridge exists in `/etc/network/interfaces`; never touches `vmbr0` (management) and never runs `ifreload` itself | Always — never applied live |
 | `40-scripts.yml` | Maintenance scripts, apt config, NIC-guard credentials dir | Always |
 | `45-virt-tools.yml` | V2V/VirtIO prerequisites, optional proxmoxbmc/BIOS ROM files (file placement only) | Always |
 | `46-proxmorph.yml` | proxmorph PVE web UI themes + optional hardware sensor monitoring | Always |
@@ -127,7 +129,13 @@ Enter the root password set during PXE install.
 
 ### Expected output (first-ever onboard — every stage runs)
 
-Six plays run in sequence, one per stage. Abbreviated:
+> **This transcript predates `35-pools.yml`/`36-vmbr1.yml`/`45-virt-tools.yml`/`46-proxmorph.yml`** —
+> at the time it was captured, `site.yml` chained six stages, not the ten in the table above. Real,
+> unedited output is kept rather than fabricated to match the current stage count; the pattern (one
+> play per stage, in order, `failed=0` on success) still holds — just expect four more `PLAY [...]`
+> blocks between "example-music deployment" and "Systemd units and Zabbix agent" on a current run.
+
+Six plays run in sequence, one per stage (as of when this was captured — see note above). Abbreviated:
 
 ```bash
 PLAY [Proxmox VE — Preflight (site lookup, onboarding-state detection)] ********
@@ -344,12 +352,14 @@ If `id ansible` fails on the new node, the first-boot script did not run or fail
 | `configs/ansible-id_rsa.pub` | Public key distributed to managed hosts |
 | `files/sudoer_ansible` | Sudoers drop-in deployed to each node |
 | `benarbejde/sites.csv`, `benarbejde/devices.csv` | Authoritative site/device registries, deployed to every node's `/etc/example-music/` |
-| `playbooks/proxmox/site.yml` | This procedure's entry point — chains the eight stages below |
+| `playbooks/proxmox/site.yml` | This procedure's entry point — chains the ten stages below |
 | `ansible/tasks/ssh_key_preflight.yml` | Real SSH connectivity preflight (showstopper) — used by both `bootstrap-new-node.yml` and `00-preflight.yml` |
 | `playbooks/proxmox/playbooks/00-preflight.yml` | SSH keypair check, then site lookup + onboarding-state detection |
 | `playbooks/proxmox/playbooks/10-packages.yml` | Management packages, apt repo fix, subscription nag removal |
 | `playbooks/proxmox/playbooks/20-ansible-access.yml` | User/SSH key/sudoers/kvm group (gated) |
 | `playbooks/proxmox/playbooks/30-example-music.yml` | `/etc/example-music/` — sites.csv, devices.csv, nodeinfo.json |
+| `playbooks/proxmox/playbooks/35-pools.yml` | Ensures one Proxmox pool per `sites.csv` site code exists (`pvesh`, `run_once`) |
+| `playbooks/proxmox/playbooks/36-vmbr1.yml` | Ensures the `vmbr1` VLAN-aware VM bridge exists; never touches `vmbr0`, never applies live |
 | `playbooks/proxmox/playbooks/40-scripts.yml` | Maintenance scripts, apt config, NIC-guard credentials dir, dynamic MOTD |
 | `playbooks/proxmox/playbooks/45-virt-tools.yml` | V2V/VirtIO prerequisites, optional proxmoxbmc/BIOS ROM files |
 | `playbooks/proxmox/playbooks/46-proxmorph.yml` | proxmorph PVE web UI themes + sensor monitoring |

@@ -24,7 +24,12 @@
 #
 # Optional vars:
 #   spoke_ip        — IP to SSH-fetch pubkey/PSK from, overrides spoke_host's ansible_host
-#   spoke_tunnel_ip — override default 10.0.<octet>.2 tunnel address
+#   spoke_tunnel_ip — override default 10.0.<octet>.1 tunnel address (was .2 before 2026-07-19 --
+#                     see docs/ansible/beginners_guide_to_ansible.md's "Renumbering / Reworking
+#                     Live Conventions" section. MUST match what the spoke's own
+#                     09_wireguard_deploy.yml actually wrote to its wg0.conf Address= line --
+#                     a mismatch here means the hub silently drops that spoke's traffic
+#                     (AllowedIPs is an inbound source filter, not just a route).
 #
 # What it does:
 #   1. Validates spoke_site exists in wg_site_octets
@@ -186,7 +191,7 @@
     - name: "[add-wg-spoke] Derive spoke network facts"
       ansible.builtin.set_fact:
         _spoke_octet:      "{{ wg_site_octets[spoke_site] }}"
-        _spoke_tunnel_ip:  "{{ spoke_tunnel_ip | default('10.0.' + wg_site_octets[spoke_site] | string + '.2') }}"
+        _spoke_tunnel_ip:  "{{ spoke_tunnel_ip | default('10.0.' + wg_site_octets[spoke_site] | string + '.1') }}"
         _spoke_lan_subnet: "192.168.{{ wg_site_octets[spoke_site] }}.0/24"
         _spoke_extra_subnets: "{{ wg_site_extra_subnets[spoke_site] | default([]) }}"
 

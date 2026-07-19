@@ -9,7 +9,7 @@
 
 ## ☁️  — Cloud / Provisioning
 
-**vRACK (`VRK`):** `192.168.139.0/24` · **CLD LAN:** `192.168.69.0/24` · **WireGuard VPN:** `10.0.139.0/24`
+**vRACK (`VRK`):** `192.168.139.0/24` · **CLD LAN:** `192.168.69.0/24` · **WireGuard VPN:** `10.0.69.0/24`
 **Role:** WireGuard hub — routes to all sites. Central PBX, Ansible, Rudder, WAC.
 CLD's own LAN is `192.168.69.0/24` — the vRACK (`192.168.139.0/24`) is a separate site code, `VRK`.  
 **Entity:** Example Music Limited · **Landline:** N/A · **Mobile:** N/A
@@ -28,7 +28,6 @@ graph TD
     style OLD_CLD fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:CLD:START
     subgraph NEW_CLD ["🆕 New Network (current)"]
-      N_PRV["📦 EXAPRVCLD001 · PRV · .15"]
       N_DCS["🗝️ EXADCSCLD001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLCLD001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLCLD002 · FWL 2 · .254"]
@@ -40,7 +39,7 @@ graph TD
       N_PBX["🔌 EXAPBXCLD001 · 3CX PBX · .48"]
       N_UFC["🎛️ EXAUFCCLD001 · UniFi Network Controller · .82"]
       N_DNS["🧭 EXADNSVRK001 · DNS/BIND server (VRK) · .8"]
-      N_PRV2["📦 EXAPRVVRK001 · Provisioning server (VRK) · .50"]
+      N_PRV["📦 EXAPRVVRK001 · Provisioning server (VRK) · .50"]
       N_FWL3["🧱 EXAFWLVRK001 · Firewall WAN face (vRACK) (VRK) · .69"]
     end
     style NEW_CLD fill:#E69F00,stroke:#D55E00,color:#000000

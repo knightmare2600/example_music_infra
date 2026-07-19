@@ -245,10 +245,11 @@
       tags: dc_promote
 
     # =========================================================================
-    # Stage 1a — Forest root install (operator-confirmed first DC only)
+    # Forest root install (operator-confirmed first DC only) — mutually
+    # exclusive with the additional-DC branch below (see dc_is_forest_root)
     # =========================================================================
 
-    - name: "── Stage 1a — Install-ADDSForest (forest root) ──"
+    - name: "── Forest root — Install-ADDSForest ──"
       ansible.builtin.debug:
         msg: >
           {{ _c.Y }}[!]{{ _c.NC }} Building {{ dc_domain_name | upper }} forest root on
@@ -294,10 +295,11 @@
       tags: dc_promote
 
     # =========================================================================
-    # Stage 1b — Additional DC promotion
+    # Additional DC promotion — mutually exclusive with the forest-root
+    # branch above (see dc_is_forest_root)
     # =========================================================================
 
-    - name: "── Stage 1b — Install-ADDSDomainController (additional DC) ──"
+    - name: "── Additional DC — Install-ADDSDomainController ──"
       ansible.builtin.debug:
         msg: >
           {{ _c.C }}[*]{{ _c.NC }} Promoting {{ inventory_hostname }} as

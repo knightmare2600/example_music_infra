@@ -5,12 +5,35 @@
 > **Forest:** `jukebox.internal`
 > **Last updated:** 2026-03-28
 
+> **⚠️ HISTORICAL ARTEFACT — not a live path (documented 2026-07-19).**
+> This entire document describes a three-hub mesh (FAL "hub-primary", ODE/BRK "hub-regional")
+> that was retired 2026-07-17 — see `ansible/configs/inventory/group_vars/firewalls/main.yml`'s
+> own changelog. **CLD is now the sole WireGuard hub; every other site, including FAL/ODE/BRK,
+> is an ordinary spoke that connects directly to CLD.** There is no hub-to-hub mesh of any kind
+> any more, which means the problem this whole document exists to solve — propagating
+> `AllowedIPs` for subnets reachable *through* another hub, several layers deep — no longer
+> exists at all: a single-hub topology has nothing to route through. Every technical detail
+> below (the topology diagram, the hub assignments table, every `AllowedIPs` rule and worked
+> `sed` fix, the BRK build checklist, the "Known Hub Endpoints" table) describes that retired
+> architecture and must not be followed for a live build.
+>
+> `firewallme.sh`'s own AllowedIPs-building logic this document describes has also been
+> superseded — that's now done by the Ansible role's `00_preflight_4_post_ask.yml`, driven by
+> `wg_management_hubs: [CLD]` (`group_vars/firewalls/main.yml`), which only ever injects CLD's
+> subnets, not a multi-hub chain. See `ansible/README.md`'s "WireGuard topology" section for the
+> current, accurate model, and `docs/ansible/beginners_guide_to_ansible.md`'s "Bootstrapping the
+> Base Nodes" section for a worked walkthrough of building CLD's hub and a spoke from scratch.
+> This document is left in place as a forensic record of the FAL/ODE/BRK mesh era and its
+> real, live-verified fixes at the time (2026-03-28) — it is not being actively maintained, and
+> the BRK section's `[PLACEHOLDER]`/`[PENDING]`/`[TODO]` markers will not be filled in.
+
 ---
 
 ## Changelog
 
 | Date       | Change |
 |------------|--------|
+| 2026-07-19 | Added the historical-artefact banner above — the three-hub mesh this whole document describes was retired 2026-07-17. Nothing below this line was rewritten; it's kept as a record of the FAL/ODE/BRK mesh era, not a live reference. |
 | 2026-03-28 | Manual fix procedure updated with exact commands verified in production. |
 |            | ODE CPH peer narrow AllowedIPs noted and fixed. CPH ListenPort added.   |
 |            | BRK placeholder sections added (build planned). |

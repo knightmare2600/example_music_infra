@@ -312,15 +312,19 @@ bootstrap/web/
 │   └── arm64/linux, arm64/initrd.gz     ← Debian netboot kernel+initrd (ARM64)
 │
 ├── proxmox/
+│   ├── select-pve-answer.sh      ← run at the installer's own root shell (BusyBox ash) after
+│   │                                mounting a plain Proxmox ISO via iLO/iDRAC/BMC virtual media
+│   │                                — detects site from the default gateway, offers answer/
+│   │                                degraded, fetches the matching *-answer.toml. No PXE menu
+│   │                                entry drives Proxmox install any more; see §4.5/§6.3.
 │   ├── VRK-answer.toml, FRD-answer.toml     ← PVE auto-install: ZFS RAID-1 (2 disks), one per site
 │   ├── VRK-degraded.toml, FRD-degraded.toml ← PVE auto-install: ZFS RAID-0 (1 disk, degraded), one per site
-│   ├── first-boot.sh            ← PVE post-install provisioning script
+│   ├── first-boot.sh            ← PVE post-install provisioning script, chained via each
+│   │                                answer.toml's own [first-boot] block
 │   ├── post-pve-install.sh, create-vm.py, convert-v2v.py, manage-pool.py, pve-bootorder.py, ...
 │   ├── sites.csv, devices.csv, address_policy.json, begyndelse.json, ad_forest.json
 │   │   ← synced copies of benarbejde/*, kept in sync by .githooks/pre-commit — edit the
 │   │     benarbejde/ originals, never these
-│   └── x86_64/boot/linux26, x86_64/boot/initrd
-│       ← Proxmox VE installer kernel+initrd (x86_64 only) — NOT committed, see below
 │
 ├── windows/
 │   ├── unattend/headlessunattend.xml    ← the one real unattend XML (see the Windows section)
@@ -341,7 +345,6 @@ references every one of them:
 
 | Menu entry | Expected directory | Needed for the PFY's plan (PVE/Ansible/DNS/FWL/Windows)? |
 |---|---|---|
-| Proxmox VE | `proxmox/x86_64/boot/linux26`, `proxmox/x86_64/boot/initrd` | **Yes** — required for scenario 1 |
 | Debian | `debian/x86_64/`, `debian/arm64/` | Already present — nothing to add |
 | Arch Linux | `arch/x86_64/` | Already present — nothing to add |
 | GParted | `gparted/${arch}/` | No |
@@ -353,11 +356,11 @@ references every one of them:
 | Spejder | `spejder/${arch}/` | No (separate external tool, see above) |
 | Auto-deploy | `autodeploy/` (optional — chain fails silently if absent) | No, unless you specifically want zero-touch MAC-based deploy |
 
-For the PFY's plan specifically: only the Proxmox VE installer kernel/initrd need to be added before
-testing scenario 1. Debian and Arch are already there. Extract the PVE kernel/initrd from the Proxmox
-VE ISO you download separately, same pattern as `windows_bootstrap`'s drop-in binaries (see
-`ansible/playbooks/windows_bootstrap/playbooks/files/README.md`). If you don't have a copy already,
-ask whoever owns this repo — do not guess a source and download a potentially tampered installer image.
+For the PFY's plan specifically: nothing above needs adding for Proxmox VE — it's no longer PXE-served
+at all (see §4.5/§6.3). Debian and Arch are already there. The only thing still needed for a real PVE
+install is a genuine, untampered Proxmox VE ISO, mounted via iLO/iDRAC/BMC virtual media — if you don't
+have a copy already, ask whoever owns this repo — do not guess a source and download a potentially
+tampered installer image.
 
 **Separately, `bootstrap/web/rocky/install.ks` appears to be dead** — an Anaconda-kickstart-based
 Rocky install approach, referenced from nowhere else in the repo, and superseded by the "custom
@@ -767,27 +770,21 @@ The default selection is **Boot local disk**, with a 30-second timeout. This mea
 
 ### 4.5 Proxmox VE boot entry
 
+> **PXE does not install Proxmox VE at all any more (since v2.5, 2026-07-18).** The kernel/initrd
+> auto-install approach shown in earlier revisions of this section was tried and abandoned — see
+> `docs/proxmox/pxe-proxmox-autoinstall-build-log.md` for the full history. The real, current
+> `:proxmox-ve` menu entry is a stub that tells the operator to mount a plain Proxmox ISO via
+> iLO/iDRAC/BMC virtual media instead, then run `select-pve-answer.sh` at the installer's own root
+> shell — see §6.3 for that full flow, which is the actual current procedure.
+
 ```ipxe
 :proxmox-ve
-iseq ${arch} arm64 && goto noarch-msg ||
-kernel ${boot-url}/proxmox/x86_64/boot/linux26 vga=791 video=vesafb:ywrap,mtrr ramdisk_size=16777216 proxmox-start-auto-installer=1 \
-proxmox-auto-install-mode=http proxmox-auto-install-url=${boot-url}/proxmox/${site-prefix}-answer.toml
-initrd ${boot-url}/proxmox/x86_64/boot/initrd
-boot
+echo Proxmox VE is not built via PXE -- mount a plain Proxmox ISO via iLO/BMC
+echo virtual media instead, then run select-pve-answer.sh at the installer's
+echo root shell. See docs/proxmox/pxe-proxmox-autoinstall-build-log.md.
+prompt Press any key to return to menu...
+goto main
 ```
-
-> **Correction (2026-07-11):** `proxmox-auto-install-url` uses `${site-prefix}-answer.toml`, not a bare
-> `answer.toml` — `${site-prefix}` (`VRK` or `FRD`) is set in the same gateway-detection block as
-> `${boot-url}` (§4.1) and selects which server-specific answer file to request. See §5.1 for why this
-> changed and `bootstrap/web/proxmox/VRK-answer.toml`/`FRD-answer.toml` for the real files.
-
-> **Correction (2026-07-10):** the path is `proxmox/x86_64/boot/` (arch-nested, matching `debian/x86_64/`'s
-> convention elsewhere in this tree), not a flat `proxmox/boot/` as previously shown here — quoted directly
-> from the real `bootstrap/web/menu.ipxe`. Proxmox VE is x86_64-only; the real menu entry checks `${arch}`
-> and redirects ARM64 hosts to a "not supported" message rather than attempting the boot. The
-> previously-referenced "manual interactive install" commented-out block does not exist in the real
-> `menu.ipxe` — there is no manual/interactive alternative entry today. If you need one, it would need to
-> be added, not just uncommented.
 
 
 ### Build ARM64 iPXE ISO for VMware Fusion (Apple Silicon)
@@ -1431,13 +1428,19 @@ After changing `bootstrap.ipxe`, the iPXE binary must be recompiled and redistri
 ## 10. Quick Reference — Deploy a New Proxmox Node
 
 1. **Prepare** — ensure `web/` is being served from `192.168.139.50` (or the real provisioning IP)
-2. **Check TOML** — the menu already selects the right site's `${site-prefix}-answer.toml` automatically (both disks present); to use the matching `*-degraded.toml` instead (shipping delays, one disk only), press Ctrl-B at boot and change `answer` to `degraded` in the URL (§5.3)
-3. **Boot** — attach iPXE ISO via IPMI virtual media (or physical USB), power on, select **Proxmox VE 9** from the menu
-4. **Install** — fully automated; takes approximately 5–10 minutes depending on disk speed
-5. **first-boot.sh** — runs automatically when the node comes up; provide hostname, IP, and site code when prompted
+2. **Boot** — mount a plain, unmodified Proxmox VE ISO via iLO/iDRAC/BMC virtual media, power on
+3. **Select answer file** — auto-install "fails" to fetch its answer file (expected — no PXE entry
+   drives this any more) and drops to a root shell; run
+   `wget http://192.168.139.50/proxmox/select-pve-answer.sh && sh select-pve-answer.sh`, follow its
+   prompts (it detects the site from the gateway and suggests `answer` vs `degraded` from the real
+   disk count), then `exit` — see §6.3 for the full flow
+4. **Install** — runs unattended once the answer file is confirmed; takes approximately 5–10 minutes
+   depending on disk speed
+5. **first-boot.sh** — runs automatically via the answer file's own `[first-boot]` block; no
+   prompts — it only creates the `ansible` user and ensures `sshd` is present (see §6.1)
 6. **Verify** — SSH to the node as `ansible` using the key from `ansible_sshkey.pub`; check `pvesh get /nodes` to confirm API is up
 7. **ZFS** — if degraded install, add second disk: `zpool attach rpool sda sdb` once the disk arrives
-8. **Proceed** — node is now ready for VM creation (`create-vm.py`) or V2V migration (`convert-v2v.py`)
+8. **Proceed** — run `ansible-playbook -i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml` per `first-boot.sh`'s own on-screen instructions (§6.1) — node is not fully onboarded until this completes
 
    
 

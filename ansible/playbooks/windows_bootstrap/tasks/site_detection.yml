@@ -12,7 +12,7 @@
 #               This file only ever runs downstream of 00-preflight.yml in the same
 #               chain (both consumers, 35-guest-tools.yml and 85-finish.yml, always
 #               come after it in site.yml's fixed order) -- 00-preflight.yml's own
-#               Phase A2 sets the hostname-derived site code as host_site_code, not
+#               Phase A3 sets the hostname-derived site code as host_site_code, not
 #               host_site. This file was referencing a variable that never existed
 #               anywhere in the codebase. Fixed to use the real name.
 # =============================================================================
