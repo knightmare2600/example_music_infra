@@ -49,7 +49,7 @@ top of the standard `ansible`/role-specific accounts.
 
 ```bash
 ansible-playbook playbooks/linux/rename-host.yml -i configs/inventory \
-  -e target=EXADNSCLD001 -e new_hostname=exadnsvrk001
+  -e target=EXADNSCLD001 -e new_hostname=EXADNSVRK001
 ```
 
 ---
