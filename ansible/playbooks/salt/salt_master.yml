@@ -563,8 +563,7 @@
           - "    3. salt-key -L on this host to see the new minion's unaccepted key"
           - "    4. salt-key -a <minion-name> to accept it"
           - "    5. salt '<minion-name>' test.ping to confirm check-in"
-          - "  Not yet built: Salt states/pillar source (benarbejde/ vs gitfs, see"
-          - "  playbooks/salt/README.md), SaltGUI web dashboard"
+          - "  Not yet built: SaltGUI web dashboard (see playbooks/salt/README.md)"
           - "════════════════════════════════════════════════════════════════"
 
   # ---------------------------------------------------------------------------
