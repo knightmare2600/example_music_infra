@@ -33,14 +33,17 @@
 #
 # Usage (run from ansible/ root):
 #   ansible-playbook -i configs/inventory playbooks/linux/rename-host.yml \
-#     -e target=EXADNSCLD001 -e new_hostname=exadnsvrk001
+#     -e target=EXADNSCLD001 -e new_hostname=EXADNSVRK001
 #
 # Required vars:
 #   target        -- inventory hostname to run against (however it's
 #                     currently reachable/named in inventory)
-#   new_hostname  -- the correct hostname to rename TO (lowercase, no
-#                     domain suffix -- matches convention elsewhere, e.g.
-#                     bind9-dns.yml's this_hostname)
+#   new_hostname  -- the correct hostname to rename TO, UPPERCASE, no
+#                     domain suffix -- this estate's hostnames are
+#                     uppercase on the box itself (/etc/hostname,
+#                     `hostname` command, VG name), not just in docs/
+#                     inventory. Passed through as-typed -- not
+#                     case-folded by this playbook.
 #
 # Tags: hostname, lvm, boot, reboot
 #
@@ -157,13 +160,16 @@
       when: _rename_confirm.user_input | trim | lower in ['n', 'no']
       tags: [hostname, lvm, boot, reboot]
 
-    # ── Hostname + /etc/hosts (same pattern as bootstrap-new-node.yml) ──────────
+    # ── Hostname + /etc/hosts ────────────────────────────────────────────────
+    # NOTE: this estate's hostnames are uppercase on the box itself, unlike
+    # bootstrap-new-node.yml's `target_hostname | lower` pattern -- deliberately
+    # NOT reused here. new_hostname is used exactly as given, no case-folding.
 
     - name: Write /etc/hostname
       ansible.builtin.copy:
         dest: /etc/hostname
         mode: "0644"
-        content: "{{ new_hostname | lower }}\n"
+        content: "{{ new_hostname }}\n"
       tags: hostname
 
     - name: Update /etc/hosts — remove stale 127.0.1.1 line
@@ -176,13 +182,13 @@
     - name: Update /etc/hosts — add fresh 127.0.1.1 line
       ansible.builtin.lineinfile:
         path: /etc/hosts
-        line: "127.0.1.1\t{{ new_hostname | lower }}.{{ _domain_fqdn }}\t{{ new_hostname | lower }}"
+        line: "127.0.1.1\t{{ new_hostname }}.{{ _domain_fqdn }}\t{{ new_hostname }}"
         insertafter: EOF
       tags: hostname
 
     - name: Apply hostname to the running system
       ansible.builtin.hostname:
-        name: "{{ new_hostname | lower }}"
+        name: "{{ new_hostname }}"
       tags: hostname
 
     # ── LVM rename + dependent boot config — skipped entirely if already correct ──

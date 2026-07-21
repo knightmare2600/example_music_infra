@@ -143,10 +143,10 @@ checkbind
 ### Edit the forward zone, check it, and reload in one step
 
 ```
-editzone
+sudo editzone
 ```
 
-This opens `vim /etc/bind/db.jukebox.internal`, then on write/quit runs `named-checkzone` and `rndc reload` automatically. If the check fails, the reload does not happen.
+This opens `vim /etc/bind/db.jukebox.internal`, then on write/quit runs `named-checkzone` and `rndc reload` automatically. If the check fails, the reload does not happen. `editzone` writes to `/etc/bind/`, so it must be run with `sudo` — it's a real script at `/usr/local/bin/editzone`, not a shell alias, so (unlike an alias) `sudo editzone` actually works.
 
 ### Watch the BIND log live
 
@@ -194,7 +194,7 @@ Do **not** edit the generated sections of the zone file by hand — your changes
 For hosts that are not in the SUFFIX_MAP (specialist devices, temporary VMs, extra management addresses, etc.) add records at the **bottom** of the zone file, below the generated block. The section is labelled clearly in the file.
 
 ```
-editzone
+sudo editzone
 ```
 
 Then scroll to the bottom and add your record, e.g.:
@@ -212,23 +212,29 @@ Increment the serial manually when editing by hand:
 ; After your edit, change it to:  2026032902
 ```
 
-Then save, let `editzone` check and reload, or run `checkbind` then `reloadbind`.
+Then save, let `sudo editzone` check and reload, or run `checkbind` then `reloadbind`.
 
 > **Important:** `bindme.sh` and `regen-zone.sh` overwrite the zone file completely. Back up your one-off records before re-running either script. The bottom of the file has a clearly marked one-off section — keep records there and note them somewhere safe (e.g. a comment in `sites.csv` or a brief note in this doc).
 
 ---
 
-## 6. Aliases Quick Reference
+## 6. Commands Quick Reference
 
-These are available in both **bash** and **zsh** for `root` and `ansible` users, sourced from `/etc/profile.d/bind-aliases.sh` and embedded in `.zshrc`.
+`reloadbind`/`checkbind`/`editzone` are real scripts at `/usr/local/bin/` (world-executable
+except `editzone`, which is root-only) — **not** shell aliases, specifically so `sudo editzone`
+actually works (shell aliases/functions are invisible to `sudo`, which execs a fresh,
+non-interactive process rather than sourcing any shell rc file — found the hard way live on this
+exact host, 2026-07-21). `bindstatus`/`bindlog` are still plain aliases, sourced from
+`/etc/profile.d/bind-aliases.sh` and embedded in `.zshrc` for both `root` and `ansible` — they're
+trivial one-liners with no root requirement, so the sudo problem never applied to them.
 
-| Alias         | What it does                                              |
-|---------------|-----------------------------------------------------------|
-| `reloadbind`  | `rndc reload jukebox.internal` — live zone reload         |
-| `checkbind`   | `named-checkzone` — syntax check, no reload               |
-| `editzone`    | `vim` + check + reload in one step                        |
-| `bindstatus`  | `systemctl status named`                                  |
-| `bindlog`     | `journalctl -u named -f` — follow the BIND log            |
+| Command       | What it does                                              | Needs `sudo`? |
+|---------------|-------------------------------------------------------------|:---:|
+| `reloadbind`  | `rndc reload jukebox.internal` — live zone reload         | No |
+| `checkbind`   | `named-checkzone` — syntax check, no reload               | No |
+| `editzone`    | `vim` + check + reload in one step                        | **Yes** |
+| `bindstatus`  | `systemctl status named`                                  | No |
+| `bindlog`     | `journalctl -u named -f` — follow the BIND log            | No |
 
 ---
 
@@ -268,7 +274,7 @@ The zone name for a PTR lookup on `192.168.X.Y` is `X.168.192.in-addr.arpa`. A m
 `bindme.sh` always writes serial `YYYYMMDDnn` where `nn=01`. If you run it twice on the same day the serial will not increment. Increment `nn` manually:
 
 ```
-editzone
+sudo editzone
 # Change e.g. 2026032901 to 2026032902 in the SOA block
 ```
 
