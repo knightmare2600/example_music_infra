@@ -282,12 +282,20 @@
       tags: always, network
       when: dns_interface == ""
       set_fact:
+        # BUG FIX (2026-07-21): this regex sits inside a YAML folded block scalar (>-), which
+        # (unlike a double-quoted string) never processes backslash escapes -- \\. survived as
+        # two literal backslashes plus a dot, meaning "match a literal backslash character",
+        # which can never match a real dotted-decimal IP. selectattr always returned empty, so
+        # this silently fell back to the hardcoded 'ens33' default on EVERY run, on every box,
+        # regardless of its real interface -- only surfaced now because this box's real
+        # interface (ens18) isn't literally named ens33, so the later ansible_facts[dns_interface]
+        # lookup had no such key and crashed. Single backslash is correct in a block scalar.
         dns_interface: >-
           {{
             ansible_interfaces
             | map('extract', ansible_facts)
             | selectattr('ipv4.address', 'defined')
-            | selectattr('ipv4.address', 'match', '^192\\.168\\.139\\.')
+            | selectattr('ipv4.address', 'match', '^192\.168\.139\.')
             | map(attribute='device')
             | first
             | default('ens33')
