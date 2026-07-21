@@ -19,17 +19,17 @@
 # whatever it actually finds backing root/swap, so it's correct even if a
 # host's VG naming has already drifted from its hostname some other way.
 #
-# NOT YET LIVE-TESTED. Take a PVE snapshot of the target VM before running --
-# a mistake here can leave a host unable to boot (recoverable via rescue
-# media, but avoidable). The order of operations below (vgrename while
-# mounted is safe -- fstab/resume-config must be corrected before
-# regenerating initramfs -- update-grub must run last, after fstab is
-# correct) is confirmed via research (vgrename is a well-documented safe
-# live operation; House of Brick's "Rename Root Volume Group" writeup and a
-# Debian-specific "vgrename, fix fstab/grub, update-initramfs -c -k all"
-# sequence), and update-initramfs's exact invocation matches a real,
-# already-tested run on this estate's own EXADNSCLD001 (2026-07-21) -- but
-# the playbook as a whole has not been run end-to-end yet.
+# Live-tested against EXADNSCLD001->EXADNSVRK001 (2026-07-21) -- hostname and VG
+# rename worked correctly; a real bug in swap detection (see changelog) left
+# /etc/fstab partially stale on that run, fixed below. Still take a PVE
+# snapshot of the target VM before running -- a mistake here can leave a host
+# unable to boot (recoverable via rescue media, but avoidable). The order of
+# operations below (vgrename while mounted is safe -- fstab/resume-config must
+# be corrected before regenerating initramfs -- update-grub must run last,
+# after fstab is correct) is confirmed via research (vgrename is a
+# well-documented safe live operation; House of Brick's "Rename Root Volume
+# Group" writeup and a Debian-specific "vgrename, fix fstab/grub,
+# update-initramfs -c -k all" sequence).
 #
 # Usage (run from ansible/ root):
 #   ansible-playbook -i configs/inventory playbooks/linux/rename-host.yml \
@@ -53,6 +53,26 @@
 #               name (see bind9-dns.yml's own 2026-07-08 changelog entry --
 #               this exact VRK-vs-CLD-branding question was already decided
 #               once; the live host just doesn't match that decision).
+#   2026-07-21  Hostname/hosts/VG tasks no longer lowercase new_hostname --
+#               this estate's hostnames are uppercase on the box itself, not
+#               just in docs/inventory naming. new_hostname is now used
+#               exactly as given throughout.
+#   2026-07-21  Fixed a real bug found on the first live run against
+#               EXADNSVRK001: swap detection used `findmnt -t swap`, which
+#               only sees swap that's currently active. This box's swap
+#               wasn't active when the play ran, so swap detection silently
+#               skipped, and /etc/fstab was left with a stale VG-name
+#               reference on its swap line (root's line was also affected,
+#               since the per-LV exact-match replace tasks were replaced by
+#               a simpler whole-VG-prefix replace as part of this same fix --
+#               see below). Swap is now detected by reading /etc/fstab
+#               directly (configured, not just active). The fstab/resume-conf
+#               replace tasks now match the whole "/dev/mapper/<VG>-" prefix
+#               rather than an exact per-LV path, so every LV under a VG is
+#               covered by one task instead of needing one exactly-matched
+#               task per LV that can individually miss one. Also added a
+#               cosmetic yellow highlight on "Current hostname" in the
+#               summary display when it differs from new_hostname.
 # =============================================================================
 
 - name: Linux — Rename host (hostname + LVM volume group + boot config)
@@ -90,11 +110,15 @@
       changed_when: false
       tags: [hostname, lvm, boot, reboot]
 
-    - name: Find the device backing active swap (if any)
-      ansible.builtin.command: findmnt -no SOURCE -t swap
+    - name: Find configured swap device from /etc/fstab (not just active swap)
+      # NOT findmnt -t swap -- that only sees swap that's actually turned on right
+      # now. A box whose swap wasn't active when this play ran (real case,
+      # 2026-07-21) would silently skip all swap detection below, leaving its
+      # fstab/resume-config swap line stale even though root's line got fixed.
+      # /etc/fstab is what's actually configured, active or not.
+      ansible.builtin.shell: awk '$3 == "swap" {print $1; exit}' /etc/fstab
       register: _swap_source
       changed_when: false
-      failed_when: false
       tags: [hostname, lvm, boot, reboot]
 
     - name: Fail if root isn't on an LVM device-mapper path
@@ -135,7 +159,7 @@
       ansible.builtin.debug:
         msg:
           - "{{ _c.W }}== Host Rename Summary =={{ _c.NC }}"
-          - "  Current hostname   : {{ _c.W }}{{ _current_hostname.stdout }}{{ _c.NC }}"
+          - "  Current hostname   : {{ (_c.Y if _current_hostname.stdout != new_hostname else _c.W) }}{{ _current_hostname.stdout }}{{ _c.NC }}"
           - "  New hostname       : {{ _c.G }}{{ new_hostname }}{{ _c.NC }}"
           - "  Root VG (found)    : {{ _c.W }}{{ _root_vg }}{{ _c.NC }} (LV: {{ _root_lv }})"
           - "  Swap VG (found)    : {{ _c.W }}{{ _swap_vg | default('none / not on LVM') }}{{ _c.NC }}{{ (' (LV: ' + _swap_lv + ')') if _swap_lv is defined else '' }}"
@@ -206,22 +230,28 @@
         - _swap_vg != _root_vg
       tags: lvm
 
-    - name: Update /etc/fstab — root device-mapper path
+    # Replacing the whole "/dev/mapper/<VG>-" prefix (not each LV path individually)
+    # covers every LV under that VG in one task -- root, swap, and anything else --
+    # rather than needing a separate, exactly-matched task per LV that can silently
+    # miss one (the LV-by-LV approach is what missed swap's fstab line in the real
+    # 2026-07-21 test, since swap detection itself had failed upstream).
+    - name: Update /etc/fstab — root VG's device-mapper prefix (covers every LV under it)
       ansible.builtin.replace:
         path: /etc/fstab
-        regexp: "/dev/mapper/{{ _root_vg }}-{{ _root_lv }}\\b"
-        replace: "/dev/mapper/{{ new_hostname }}-{{ _root_lv }}"
+        regexp: "/dev/mapper/{{ _root_vg }}-"
+        replace: "/dev/mapper/{{ new_hostname }}-"
       when: not _vg_already_correct
       tags: [lvm, boot]
 
-    - name: Update /etc/fstab — swap device-mapper path
+    - name: Update /etc/fstab — swap VG's device-mapper prefix (only if swap is on a separate VG)
       ansible.builtin.replace:
         path: /etc/fstab
-        regexp: "/dev/mapper/{{ _swap_vg }}-{{ _swap_lv }}\\b"
-        replace: "/dev/mapper/{{ new_hostname }}-{{ _swap_lv }}"
+        regexp: "/dev/mapper/{{ _swap_vg }}-"
+        replace: "/dev/mapper/{{ new_hostname }}-"
       when:
         - not _vg_already_correct
         - _swap_vg is defined
+        - _swap_vg != _root_vg
       tags: [lvm, boot]
 
     - name: Check for initramfs resume config
@@ -230,14 +260,25 @@
       register: _resume_conf
       tags: [lvm, boot]
 
-    - name: Update initramfs resume config (swap device changed)
+    - name: Update initramfs resume config — root VG's device-mapper prefix
       ansible.builtin.replace:
         path: /etc/initramfs-tools/conf.d/resume
-        regexp: "/dev/mapper/{{ _swap_vg }}-{{ _swap_lv }}\\b"
-        replace: "/dev/mapper/{{ new_hostname }}-{{ _swap_lv }}"
+        regexp: "/dev/mapper/{{ _root_vg }}-"
+        replace: "/dev/mapper/{{ new_hostname }}-"
+      when:
+        - not _vg_already_correct
+        - _resume_conf.stat.exists
+      tags: [lvm, boot]
+
+    - name: Update initramfs resume config — swap VG's device-mapper prefix (only if separate from root)
+      ansible.builtin.replace:
+        path: /etc/initramfs-tools/conf.d/resume
+        regexp: "/dev/mapper/{{ _swap_vg }}-"
+        replace: "/dev/mapper/{{ new_hostname }}-"
       when:
         - not _vg_already_correct
         - _swap_vg is defined
+        - _swap_vg != _root_vg
         - _resume_conf.stat.exists
       tags: [lvm, boot]
 
