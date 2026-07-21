@@ -1,0 +1,279 @@
+---
+# =============================================================================
+# playbooks/linux/rename-host.yml
+# Example Music Limited — Rename a Linux host (hostname + LVM-on-root layout)
+# =============================================================================
+# One-shot, standalone playbook for correcting a Linux VM that was built or
+# renamed incorrectly. Debian's installer names the root/swap LVM volume
+# group after the hostname at install time — a wrong hostname usually means
+# a wrong VG name too, and every place that references it (/etc/fstab,
+# initramfs's resume config, initramfs itself, GRUB) needs updating together
+# or the host can fail to boot.
+#
+# Deliberately NOT folded into linux/tools.yml (hosts: all, runs routinely)
+# -- this touches live LVM/boot configuration and must only ever run when
+# explicitly, deliberately invoked against one specific host.
+#
+# The actual VG/LV names are discovered live (findmnt on / and on active
+# swap), not assumed to equal the old hostname -- this playbook renames
+# whatever it actually finds backing root/swap, so it's correct even if a
+# host's VG naming has already drifted from its hostname some other way.
+#
+# NOT YET LIVE-TESTED. Take a PVE snapshot of the target VM before running --
+# a mistake here can leave a host unable to boot (recoverable via rescue
+# media, but avoidable). The order of operations below (vgrename while
+# mounted is safe -- fstab/resume-config must be corrected before
+# regenerating initramfs -- update-grub must run last, after fstab is
+# correct) is confirmed via research (vgrename is a well-documented safe
+# live operation; House of Brick's "Rename Root Volume Group" writeup and a
+# Debian-specific "vgrename, fix fstab/grub, update-initramfs -c -k all"
+# sequence), and update-initramfs's exact invocation matches a real,
+# already-tested run on this estate's own EXADNSCLD001 (2026-07-21) -- but
+# the playbook as a whole has not been run end-to-end yet.
+#
+# Usage (run from ansible/ root):
+#   ansible-playbook -i configs/inventory playbooks/linux/rename-host.yml \
+#     -e target=EXADNSCLD001 -e new_hostname=exadnsvrk001
+#
+# Required vars:
+#   target        -- inventory hostname to run against (however it's
+#                     currently reachable/named in inventory)
+#   new_hostname  -- the correct hostname to rename TO (lowercase, no
+#                     domain suffix -- matches convention elsewhere, e.g.
+#                     bind9-dns.yml's this_hostname)
+#
+# Tags: hostname, lvm, boot, reboot
+#
+# Changelog:
+#   2026-07-21  Initial version. Built after a live host was found running
+#               as EXADNSCLD001 when EXADNSVRK001 is the correct, settled
+#               name (see bind9-dns.yml's own 2026-07-08 changelog entry --
+#               this exact VRK-vs-CLD-branding question was already decided
+#               once; the live host just doesn't match that decision).
+# =============================================================================
+
+- name: Linux — Rename host (hostname + LVM volume group + boot config)
+  hosts: "{{ target }}"
+  become: true
+  gather_facts: true
+
+  vars:
+    ad_forest_json_path: "/etc/example-music/ad_forest.json"
+
+  tasks:
+
+    - name: Fail if new_hostname not provided
+      ansible.builtin.fail:
+        msg: "{{ _c.R }}[ERROR]{{ _c.NC }} -e new_hostname=<name> is required."
+      when: new_hostname is not defined or new_hostname | trim == ''
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Get current live hostname
+      ansible.builtin.command: hostname
+      register: _current_hostname
+      changed_when: false
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Read ad_forest.json for domain_fqdn (control node)
+      ansible.builtin.set_fact:
+        _domain_fqdn: "{{ (lookup('file', ad_forest_json_path) | from_json).domain_fqdn }}"
+      delegate_to: localhost
+      become: false
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Find the device backing the root filesystem
+      ansible.builtin.command: findmnt / -no SOURCE
+      register: _root_source
+      changed_when: false
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Find the device backing active swap (if any)
+      ansible.builtin.command: findmnt -no SOURCE -t swap
+      register: _swap_source
+      changed_when: false
+      failed_when: false
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Fail if root isn't on an LVM device-mapper path
+      ansible.builtin.fail:
+        msg: >-
+          {{ _c.R }}[ERROR]{{ _c.NC }} / is not on a /dev/mapper/<vg>-<lv> path
+          ({{ _root_source.stdout }}) -- this playbook only handles the
+          LVM-on-root layout every VM in this estate uses. Investigate manually.
+      when: "'/dev/mapper/' not in _root_source.stdout"
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Parse root VG/LV name from device-mapper path
+      ansible.builtin.set_fact:
+        _root_vg: "{{ _root_source.stdout | regex_replace('^/dev/mapper/([^-]+)-.+$', '\\1') }}"
+        _root_lv: "{{ _root_source.stdout | regex_replace('^/dev/mapper/[^-]+-(.+)$', '\\1') }}"
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Parse swap VG/LV name (if swap is on LVM)
+      ansible.builtin.set_fact:
+        _swap_vg: "{{ _swap_source.stdout | regex_replace('^/dev/mapper/([^-]+)-.+$', '\\1') }}"
+        _swap_lv: "{{ _swap_source.stdout | regex_replace('^/dev/mapper/[^-]+-(.+)$', '\\1') }}"
+      when: _swap_source.stdout is defined and '/dev/mapper/' in _swap_source.stdout
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Set fact — VG already renamed (idempotency check)
+      ansible.builtin.set_fact:
+        _vg_already_correct: "{{ _root_vg == new_hostname }}"
+      tags: [hostname, lvm, boot, reboot]
+
+    # ── Summary + confirmation gate (matches firewallme role's own convention) ──
+
+    - name: "[Summary] Display rename summary"
+      # Deliberately a plain list, not a bordered box -- the box style used elsewhere in this
+      # repo (e.g. firewallme's 00_preflight_5_confirm.yml) needs careful per-line padding
+      # computation to keep its right-hand border aligned, which that same file's own
+      # changelog records having to fix twice after real misalignment bugs. Not worth the
+      # same risk for a single-purpose summary here.
+      ansible.builtin.debug:
+        msg:
+          - "{{ _c.W }}== Host Rename Summary =={{ _c.NC }}"
+          - "  Current hostname   : {{ _c.W }}{{ _current_hostname.stdout }}{{ _c.NC }}"
+          - "  New hostname       : {{ _c.G }}{{ new_hostname }}{{ _c.NC }}"
+          - "  Root VG (found)    : {{ _c.W }}{{ _root_vg }}{{ _c.NC }} (LV: {{ _root_lv }})"
+          - "  Swap VG (found)    : {{ _c.W }}{{ _swap_vg | default('none / not on LVM') }}{{ _c.NC }}{{ (' (LV: ' + _swap_lv + ')') if _swap_lv is defined else '' }}"
+          - "  VG already correct : {{ (_c.G + 'yes -- LVM steps will be skipped') if _vg_already_correct else (_c.Y + 'no -- will rename') }}{{ _c.NC }}"
+          - "{{ _c.Y }}[!]{{ _c.NC }} This touches live LVM + boot config (fstab, initramfs, GRUB)."
+          - "{{ _c.Y }}[!]{{ _c.NC }} Take a PVE snapshot of this VM before continuing if you haven't."
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: "[Summary] Operator confirmation"
+      ansible.builtin.pause:
+        prompt: |-
+
+          {{ _c.Y }}[!]{{ _c.NC }} Review the summary above carefully. Nothing has been written yet.
+
+          Press {{ _c.G }}Enter{{ _c.NC }} to apply all changes, or type {{ _c.R }}no{{ _c.NC }} to abort
+      register: _rename_confirm
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: "[Summary] ABORT — operator did not confirm"
+      ansible.builtin.fail:
+        msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Aborted by operator."
+      when: _rename_confirm.user_input | trim | lower in ['n', 'no']
+      tags: [hostname, lvm, boot, reboot]
+
+    # ── Hostname + /etc/hosts (same pattern as bootstrap-new-node.yml) ──────────
+
+    - name: Write /etc/hostname
+      ansible.builtin.copy:
+        dest: /etc/hostname
+        mode: "0644"
+        content: "{{ new_hostname | lower }}\n"
+      tags: hostname
+
+    - name: Update /etc/hosts — remove stale 127.0.1.1 line
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1\s'
+        state: absent
+      tags: hostname
+
+    - name: Update /etc/hosts — add fresh 127.0.1.1 line
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "127.0.1.1\t{{ new_hostname | lower }}.{{ _domain_fqdn }}\t{{ new_hostname | lower }}"
+        insertafter: EOF
+      tags: hostname
+
+    - name: Apply hostname to the running system
+      ansible.builtin.hostname:
+        name: "{{ new_hostname | lower }}"
+      tags: hostname
+
+    # ── LVM rename + dependent boot config — skipped entirely if already correct ──
+
+    - name: Rename root volume group
+      ansible.builtin.command: "vgrename {{ _root_vg }} {{ new_hostname }}"
+      when: not _vg_already_correct
+      tags: lvm
+
+    - name: Rename swap volume group (only if it's a different VG from root)
+      ansible.builtin.command: "vgrename {{ _swap_vg }} {{ new_hostname }}"
+      when:
+        - not _vg_already_correct
+        - _swap_vg is defined
+        - _swap_vg != _root_vg
+      tags: lvm
+
+    - name: Update /etc/fstab — root device-mapper path
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: "/dev/mapper/{{ _root_vg }}-{{ _root_lv }}\\b"
+        replace: "/dev/mapper/{{ new_hostname }}-{{ _root_lv }}"
+      when: not _vg_already_correct
+      tags: [lvm, boot]
+
+    - name: Update /etc/fstab — swap device-mapper path
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: "/dev/mapper/{{ _swap_vg }}-{{ _swap_lv }}\\b"
+        replace: "/dev/mapper/{{ new_hostname }}-{{ _swap_lv }}"
+      when:
+        - not _vg_already_correct
+        - _swap_vg is defined
+      tags: [lvm, boot]
+
+    - name: Check for initramfs resume config
+      ansible.builtin.stat:
+        path: /etc/initramfs-tools/conf.d/resume
+      register: _resume_conf
+      tags: [lvm, boot]
+
+    - name: Update initramfs resume config (swap device changed)
+      ansible.builtin.replace:
+        path: /etc/initramfs-tools/conf.d/resume
+        regexp: "/dev/mapper/{{ _swap_vg }}-{{ _swap_lv }}\\b"
+        replace: "/dev/mapper/{{ new_hostname }}-{{ _swap_lv }}"
+      when:
+        - not _vg_already_correct
+        - _swap_vg is defined
+        - _resume_conf.stat.exists
+      tags: [lvm, boot]
+
+    - name: Regenerate initramfs for all installed kernels
+      ansible.builtin.command: update-initramfs -c -k all
+      when: not _vg_already_correct
+      changed_when: true
+      tags: boot
+
+    - name: Regenerate GRUB configuration
+      ansible.builtin.command: update-grub
+      when: not _vg_already_correct
+      changed_when: true
+      tags: boot
+
+    # ── Reboot to verify (same "ask now, act at the end" pattern as firewallme) ──
+
+    - name: "[Reboot] Prompt for reboot"
+      ansible.builtin.pause:
+        prompt: |-
+
+          {{ _c.Y }}[!]{{ _c.NC }} A reboot is strongly recommended now, to confirm the renamed VG
+          {{ _c.Y }}[!]{{ _c.NC }} actually boots cleanly under supervision -- rather than finding out
+          {{ _c.Y }}[!]{{ _c.NC }} at some later, unattended reboot. This runs at the end of this play
+          {{ _c.Y }}[!]{{ _c.NC }} if you say yes here -- you won't be asked again.
+
+          Reboot now to verify? [y/N]
+      register: _reboot_prompt
+      when: not _vg_already_correct
+      tags: reboot
+
+    - name: Reboot
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+      when:
+        - not _vg_already_correct
+        - _reboot_prompt.user_input | default('n') | lower | trim == 'y'
+      tags: reboot
+
+    - name: "[Summary] Done"
+      ansible.builtin.debug:
+        msg:
+          - "{{ _c.G }}[+]{{ _c.NC }} {{ _current_hostname.stdout }} -> {{ new_hostname }} complete."
+          - "{{ _c.Y }}[!]{{ _c.NC }} If you skipped the reboot, verify manually before trusting this fully."
+      tags: [hostname, lvm, boot, reboot]
