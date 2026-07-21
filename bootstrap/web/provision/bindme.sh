@@ -129,6 +129,19 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #            immediately after it's written, substituting the literal placeholder for the
 #            real value, rather than unquoting the whole heredoc (which would have broken
 #            every other $-expansion inside it the same way).
+# 2026-07-21 checkbind/reloadbind/editzone converted from profile.d shell functions/aliases to
+#            real scripts at /usr/local/bin/. Live-observed on EXADNSCLD001: `sudo editzone` ->
+#            "sudo: editzone: command not found". Shell functions/aliases only exist inside the
+#            interactive shell that sourced them -- sudo execs a brand-new, non-interactive
+#            process and never sources any shell rc file, so `sudo <function-name>` can never
+#            work, no matter how the function is defined. The function's own error message
+#            ("needs root... Re-run with sudo") was itself unfollowable advice for this exact
+#            reason. Real files on $PATH fix this properly (root-owned; editzone specifically
+#            0750 root:root, since it's the one that actually writes to /etc/bind/). This also
+#            retires the quoted-heredoc + post-hoc-sed-substitution workaround the 2026-07-17
+#            fix above needed -- real script files can use a normal (unquoted) heredoc directly,
+#            since there's no second later shell re-evaluating the same text. bindstatus/bindlog
+#            are unaffected (trivial, parameter-free, no root needed -- left as plain aliases).
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()    { echo -e "${CYAN}[*]${NC} $*"; }
 success() { echo -e "${GREEN}[+]${NC} $*"; }
@@ -455,112 +468,131 @@ setup_zsh_for ansible
 # ---------------------------------------------------------------
 # bash aliases  (profile.d -- picked up by bash and dash)
 # ---------------------------------------------------------------
-info "Writing BIND management aliases to /etc/profile.d/bind-aliases.sh ..."
+# BUG FIX (2026-07-21): checkbind/reloadbind/editzone used to be shell
+# functions/aliases sourced from here. Real, live-observed failure: `sudo
+# editzone` -> "sudo: editzone: command not found". Shell functions/aliases
+# only exist inside the interactive shell that sourced them -- sudo execs a
+# brand-new, non-interactive process and never sources any shell rc file, so
+# it has no visibility into them at all, no matter how they're defined. The
+# only fix is to make them real files on $PATH, which is what this now does
+# (root-owned, deployed to /usr/local/bin/, root-only where the operation
+# actually needs root). This also retires the old quoted-heredog +
+# post-hoc-sed-substitution dance the 2026-07-17 fix needed to work around
+# ${EXA_DOMAIN} not expanding inside a quoted alias/function body -- real
+# script files can just be written with a normal (unquoted) heredoc instead,
+# since there's no longer a second later shell re-evaluating the same text.
+info "Writing BIND management scripts to /usr/local/bin/ ..."
+
+cat > /usr/local/bin/reloadbind <<REL
+#!/bin/bash
+# reloadbind -- reloads ${EXA_DOMAIN} via rndc.
+set -euo pipefail
+if rndc reload ${EXA_DOMAIN}; then
+  echo "[+] Zone reloaded."
+else
+  echo "[!] Reload failed -- check: journalctl -u named -n 20" >&2
+  exit 1
+fi
+REL
+chown root:root /usr/local/bin/reloadbind
+chmod 0755 /usr/local/bin/reloadbind
+
+cat > /usr/local/bin/checkbind <<CHK
+#!/bin/bash
+# checkbind [zone-file] -- validates a BIND zone file with named-checkzone.
+# Defaults to db.${EXA_DOMAIN} if no argument given.
+# Accepts a bare filename (db.192.168.78) or a full path.
+set -euo pipefail
+
+_bind_zonename() {
+  local base="\${1#/etc/bind/}"
+  base="\${base#db.}"
+  if [[ "\$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)\$ ]]; then
+    echo "\${BASH_REMATCH[3]}.\${BASH_REMATCH[2]}.\${BASH_REMATCH[1]}.in-addr.arpa"
+  else
+    echo "\$base"
+  fi
+}
+
+file="\${1:-db.${EXA_DOMAIN}}"
+base="\${file##*/}"
+fullpath="/etc/bind/\${base}"
+
+if [[ ! -f "\$fullpath" ]]; then
+  echo "[!] Zone file not found: \${fullpath}" >&2
+  echo "    Available zone files:" >&2
+  ls /etc/bind/db.* 2>/dev/null | sed 's|/etc/bind/||' | sed 's/^/      /' >&2
+  exit 1
+fi
+
+zone=\$(_bind_zonename "\$base")
+echo "[*] Checking zone '\${zone}' using \${fullpath}..."
+named-checkzone "\$zone" "\$fullpath"
+CHK
+chown root:root /usr/local/bin/checkbind
+chmod 0755 /usr/local/bin/checkbind
+
+cat > /usr/local/bin/editzone <<EDIT
+#!/bin/bash
+# editzone [zone-file] -- opens a zone file in vim, validates it, reloads if
+# valid. Defaults to db.${EXA_DOMAIN} if no argument given. Writes to
+# /etc/bind/ -- must be run via: sudo editzone
+set -euo pipefail
+
+if [[ \$EUID -ne 0 ]]; then
+  echo "[!] This command writes to /etc/bind/ and needs root. Run: sudo editzone" >&2
+  exit 1
+fi
+
+_bind_zonename() {
+  local base="\${1#/etc/bind/}"
+  base="\${base#db.}"
+  if [[ "\$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)\$ ]]; then
+    echo "\${BASH_REMATCH[3]}.\${BASH_REMATCH[2]}.\${BASH_REMATCH[1]}.in-addr.arpa"
+  else
+    echo "\$base"
+  fi
+}
+
+file="\${1:-db.${EXA_DOMAIN}}"
+base="\${file##*/}"
+fullpath="/etc/bind/\${base}"
+
+if [[ ! -f "\$fullpath" ]]; then
+  echo "[!] Zone file not found: \${fullpath}" >&2
+  echo "    Available zone files:" >&2
+  ls /etc/bind/db.* 2>/dev/null | sed 's|/etc/bind/||' | sed 's/^/      /' >&2
+  exit 1
+fi
+
+zone=\$(_bind_zonename "\$base")
+echo "[*] Editing zone '\${zone}' -- \${fullpath}"
+
+vim "\$fullpath"
+
+echo "[*] Validating..."
+if named-checkzone "\$zone" "\$fullpath"; then
+  echo "[*] Reloading zone '\${zone}'..."
+  rndc reload "\$zone" && echo "[+] Zone '\${zone}' reloaded." || { echo "[!] rndc reload failed -- check: journalctl -u named -n 20" >&2; exit 1; }
+else
+  echo "[!] Validation failed -- zone NOT reloaded. Fix errors and re-run: checkbind \${base}" >&2
+  exit 1
+fi
+EDIT
+chown root:root /usr/local/bin/editzone
+chmod 0750 /usr/local/bin/editzone
+
+# bindstatus/bindlog are trivial, parameter-free, need no root -- left as
+# plain aliases, no sudo-interaction problem to fix.
 cat > /etc/profile.d/bind-aliases.sh <<'ALIASES'
-# Example Music -- BIND9 management aliases and functions
+# Example Music -- BIND9 management aliases
 # Written by bindme.sh  (auto-generated -- do not edit by hand)
 # Works in bash and zsh (sourced via /etc/profile.d)
-
-# Simple aliases -- no parameters needed
 alias bindstatus='systemctl status named'
 alias bindlog='journalctl -u named -f'
-alias reloadbind='rndc reload ${EXA_DOMAIN} && echo "[+] Zone reloaded." || echo "[!] Reload failed -- check: journalctl -u named -n 20"'
-
-# _bind_zonename FILE
-# Derives the BIND zone name from a db file basename.
-#   db.${EXA_DOMAIN}  -> ${EXA_DOMAIN}
-#   db.192.168.139       -> 139.168.192.in-addr.arpa
-#   db.192.168.78        -> 78.168.192.in-addr.arpa
-_bind_zonename() {
-  local base="${1#/etc/bind/}"   # strip path if passed
-  base="${base#db.}"             # strip leading db.
-  # Detect reverse zone pattern: three dotted octets e.g. 192.168.78
-  if [[ "$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-    echo "${BASH_REMATCH[3]}.${BASH_REMATCH[2]}.${BASH_REMATCH[1]}.in-addr.arpa"
-  else
-    echo "$base"
-  fi
-}
-
-# _bind_require_root
-# Exits with a clear error if not running as root.
-_bind_require_root() {
-  if [[ $EUID -ne 0 ]]; then
-    echo "[!] This command writes to /etc/bind/ and needs root. Re-run with sudo." >&2
-    return 1
-  fi
-}
-
-# checkbind [zone-file]
-# Runs named-checkzone against a zone file.
-# Defaults to db.${EXA_DOMAIN} if no argument given.
-# Accepts bare filename (db.192.168.78) or full path.
-checkbind() {
-  local file="${1:-db.${EXA_DOMAIN}}"
-  # Normalise: strip any path prefix so we always work from /etc/bind/
-  local base="${file##*/}"
-  local fullpath="/etc/bind/${base}"
-
-  if [[ ! -f "$fullpath" ]]; then
-    echo "[!] Zone file not found: ${fullpath}" >&2
-    echo "    Available zone files:" >&2
-    ls /etc/bind/db.* 2>/dev/null | sed 's|/etc/bind/||' | sed 's/^/      /' >&2
-    return 1
-  fi
-
-  local zone
-  zone=$(_bind_zonename "$base")
-  echo "[*] Checking zone '${zone}' using ${fullpath}..."
-  named-checkzone "$zone" "$fullpath"
-}
-
-# editzone [zone-file]
-# Opens a zone file in vim, then validates it, then reloads if valid.
-# Defaults to db.${EXA_DOMAIN} if no argument given.
-editzone() {
-  _bind_require_root || return 1
-
-  local file="${1:-db.${EXA_DOMAIN}}"
-  local base="${file##*/}"
-  local fullpath="/etc/bind/${base}"
-
-  if [[ ! -f "$fullpath" ]]; then
-    echo "[!] Zone file not found: ${fullpath}" >&2
-    echo "    Available zone files:" >&2
-    ls /etc/bind/db.* 2>/dev/null | sed 's|/etc/bind/||' | sed 's/^/      /' >&2
-    return 1
-  fi
-
-  local zone
-  zone=$(_bind_zonename "$base")
-  echo "[*] Editing zone '${zone}' -- ${fullpath}"
-
-  vim "$fullpath"
-
-  echo "[*] Validating..."
-  if named-checkzone "$zone" "$fullpath"; then
-    echo "[*] Reloading zone '${zone}'..."
-    rndc reload "$zone" && echo "[+] Zone '${zone}' reloaded." || echo "[!] rndc reload failed -- check: journalctl -u named -n 20" >&2
-  else
-    echo "[!] Validation failed -- zone NOT reloaded. Fix errors and re-run checkbind ${base}" >&2
-    return 1
-  fi
-}
 ALIASES
-# BUG FIX (2026-07-17): the heredoc above uses a quoted delimiter (<<'ALIASES')
-# deliberately, so the real function bodies ($1, ${base}, etc.) are written out
-# literally and only get evaluated later when the alias/function is actually
-# called -- not expanded now, against whatever's in bindme.sh's own shell state.
-# That same quoting means ${EXA_DOMAIN} above was ALSO never expanded -- it's
-# sitting in the written file as the literal 15-character string
-# "${EXA_DOMAIN}", and since this file is sourced fresh by /etc/profile.d in a
-# later login shell where EXA_DOMAIN was never set, it would have evaluated to
-# an empty string, not the real domain. Substituted after the fact instead of
-# unquoting the whole heredoc (which would have broken every other $-expansion
-# in it the same way).
-sed -i "s/\${EXA_DOMAIN}/${EXA_DOMAIN}/g" /etc/profile.d/bind-aliases.sh
 chmod 0644 /etc/profile.d/bind-aliases.sh
-success "BIND aliases written."
+success "BIND management scripts + aliases written."
 
 # ---------------------------------------------------------------
 # 1. Network interface detection

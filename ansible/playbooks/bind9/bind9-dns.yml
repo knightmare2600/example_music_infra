@@ -125,6 +125,13 @@
 #   2026-07-09  domain (both plays) now derived from benarbejde/ad_forest.json instead of a
 #               hardcoded "jukebox.internal" literal -- single source of truth, same file
 #               windows_dc/windows_bootstrap/windows_adschema/rudder_servers now all read.
+#   2026-07-21  reloadbind/checkbind/editzone converted from profile.d shell aliases to real
+#               scripts at /usr/local/bin/, matching bindme.sh's own fix. Real, live-observed
+#               failure: `sudo editzone` -> "sudo: editzone: command not found" -- shell aliases
+#               are invisible to sudo, which execs a fresh non-interactive process that never
+#               sources any shell rc file. Also closes a capability gap the old hardcoded-alias
+#               version had: checkbind/editzone now accept an optional [zone-file] argument, so
+#               reverse zones can be checked/edited too, not just the default forward zone.
 # =============================================================================
 
 - name: EXADNSVRK001 -- BIND9 DNS server
@@ -493,8 +500,131 @@
         state: started
 
   # ---------------------------------------------------------------------------
-  # 6. Shell aliases (bash + zsh)
+  # 6. Management scripts (reloadbind/checkbind/editzone) + aliases
   # ---------------------------------------------------------------------------
+  # BUG FIX (2026-07-21): reloadbind/checkbind/editzone used to be shell
+  # aliases here too. Real, live-observed failure: `sudo editzone` ->
+  # "sudo: editzone: command not found". Shell aliases only exist inside the
+  # interactive shell that sourced them -- sudo execs a brand-new,
+  # non-interactive process and never sources any shell rc file, so it has no
+  # visibility into them at all, no matter how they're defined. The only fix
+  # is real files on $PATH (root-owned, root-only where the operation needs
+  # root) -- see bootstrap/web/provision/bindme.sh's matching fix, ported
+  # here. This also closes a capability gap the old bare-alias version had:
+  # it only ever supported the default forward zone, hardcoded -- both
+  # scripts below accept an optional [zone-file] argument, so reverse zones
+  # can be checked/edited too.
+    - name: Deploy reloadbind script
+      tags: aliases
+      copy:
+        dest: /usr/local/bin/reloadbind
+        owner: root
+        group: root
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          # reloadbind -- reloads {{ domain }} via rndc.
+          set -euo pipefail
+          if rndc reload {{ domain }}; then
+            echo "[+] Zone reloaded."
+          else
+            echo "[!] Reload failed -- check: journalctl -u named -n 20" >&2
+            exit 1
+          fi
+
+    - name: Deploy checkbind script
+      tags: aliases
+      copy:
+        dest: /usr/local/bin/checkbind
+        owner: root
+        group: root
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          # checkbind [zone-file] -- validates a BIND zone file with named-checkzone.
+          # Defaults to db.{{ domain }} if no argument given.
+          # Accepts a bare filename (db.192.168.78) or a full path.
+          set -euo pipefail
+
+          _bind_zonename() {
+            local base="${1#/etc/bind/}"
+            base="${base#db.}"
+            if [[ "$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              echo "${BASH_REMATCH[3]}.${BASH_REMATCH[2]}.${BASH_REMATCH[1]}.in-addr.arpa"
+            else
+              echo "$base"
+            fi
+          }
+
+          file="${1:-db.{{ domain }}}"
+          base="${file##*/}"
+          fullpath="/etc/bind/${base}"
+
+          if [[ ! -f "$fullpath" ]]; then
+            echo "[!] Zone file not found: ${fullpath}" >&2
+            echo "    Available zone files:" >&2
+            ls /etc/bind/db.* 2>/dev/null | sed 's|/etc/bind/||' | sed 's/^/      /' >&2
+            exit 1
+          fi
+
+          zone=$(_bind_zonename "$base")
+          echo "[*] Checking zone '${zone}' using ${fullpath}..."
+          named-checkzone "$zone" "$fullpath"
+
+    - name: Deploy editzone script
+      tags: aliases
+      copy:
+        dest: /usr/local/bin/editzone
+        owner: root
+        group: root
+        mode: "0750"
+        content: |
+          #!/bin/bash
+          # editzone [zone-file] -- opens a zone file in vim, validates it, reloads if
+          # valid. Defaults to db.{{ domain }} if no argument given. Writes to
+          # /etc/bind/ -- must be run via: sudo editzone
+          set -euo pipefail
+
+          if [[ $EUID -ne 0 ]]; then
+            echo "[!] This command writes to /etc/bind/ and needs root. Run: sudo editzone" >&2
+            exit 1
+          fi
+
+          _bind_zonename() {
+            local base="${1#/etc/bind/}"
+            base="${base#db.}"
+            if [[ "$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              echo "${BASH_REMATCH[3]}.${BASH_REMATCH[2]}.${BASH_REMATCH[1]}.in-addr.arpa"
+            else
+              echo "$base"
+            fi
+          }
+
+          file="${1:-db.{{ domain }}}"
+          base="${file##*/}"
+          fullpath="/etc/bind/${base}"
+
+          if [[ ! -f "$fullpath" ]]; then
+            echo "[!] Zone file not found: ${fullpath}" >&2
+            echo "    Available zone files:" >&2
+            ls /etc/bind/db.* 2>/dev/null | sed 's|/etc/bind/||' | sed 's/^/      /' >&2
+            exit 1
+          fi
+
+          zone=$(_bind_zonename "$base")
+          echo "[*] Editing zone '${zone}' -- ${fullpath}"
+
+          vim "$fullpath"
+
+          echo "[*] Validating..."
+          if named-checkzone "$zone" "$fullpath"; then
+            echo "[*] Reloading zone '${zone}'..."
+            rndc reload "$zone" && echo "[+] Zone '${zone}' reloaded." || { echo "[!] rndc reload failed -- check: journalctl -u named -n 20" >&2; exit 1; }
+          else
+            echo "[!] Validation failed -- zone NOT reloaded. Fix errors and re-run: checkbind ${base}" >&2
+            exit 1
+          fi
+
     - name: Write BIND management aliases to /etc/profile.d
       tags: aliases
       copy:
@@ -504,13 +634,9 @@
           # Example Music -- BIND9 management aliases
           # Managed by Ansible bind9-dns.yml
           # Works in bash and zsh (sourced via /etc/profile.d)
+          # reloadbind/checkbind/editzone are real scripts at /usr/local/bin/,
+          # not aliases -- see the "Deploy ...script" tasks above for why.
 
-          alias reloadbind='rndc reload {{ domain }} && echo "[+] Zone reloaded." \
-            || echo "[!] Reload failed -- check: journalctl -u named -n 20"'
-          alias checkbind='named-checkzone {{ domain }} /etc/bind/db.{{ domain }}'
-          alias editzone='vim /etc/bind/db.{{ domain }} \
-            && named-checkzone {{ domain }} /etc/bind/db.{{ domain }} \
-            && rndc reload {{ domain }}'
           alias bindstatus='systemctl status named'
           alias bindlog='journalctl -u named -f'
 
