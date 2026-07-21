@@ -19,7 +19,7 @@
 
 | Date | Change |
 |------|--------|
-| 2026-07-08 | Fixed CLD/VRK subnet confusion throughout: several devices (Ansible/Rudder/WAC/PBX) were listed at `192.168.139.x` (the vRACK) when they're actually CLD-LAN-only (`192.168.69.x`); DNS/PRV/the WireGuard-hub firewall face genuinely are vRACK-resident and now use their `VRK`-suffixed names (`EXADNSVRK001`/`EXAPRVVRK001`/`EXAFWLVRK001`). Added `VRK` and `FRD` rows to the Global Site Summary, which previously had neither. Flagged (not reconciled) this section's own separate `EXASVRCLD002/003/004` numbering, which diverges from what's canonical elsewhere (`EXAANSCLD001`/`EXARDRCLD001`). |
+| 2026-07-08 | Fixed CLD/VRK subnet confusion throughout: several devices (Ansible/Rudder/WAC/PBX) were listed at `192.168.139.x` (the vRACK) when they're actually CLD-LAN-only (`192.168.69.x`); DNS/PRV/the WireGuard-hub firewall face genuinely are vRACK-resident and now use their `VRK`-suffixed names (`EXADNSVRK001`/`EXAPRVVRK001`/`EXAFWLVRK001`). Added `VRK` and `FRD` rows to the Global Site Summary, which previously had neither. Flagged (not reconciled) this section's own separate `EXASVRCLD002/003/004` numbering, which diverges from what's canonical elsewhere (`EXAANSCLD001`/`EXARUDCLD001`). |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94` (added to Standard IP Convention table, per-site checklist items updated). Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD has no physical WiFi itself |
 | 2026-03-29 | Merged `network-inventory.md` and `site-inventory.md` into single document. CLD EXASVR renumbering: 001=DNS, 002=WAC, 003=Ansible, 004=Rudder. ATL subnet corrected to `192.168.33.0/24` (sites.csv canonical). TOR subnet corrected to `192.168.146.0/24`. EXAPRVFAL001 renamed EXAPRVVRK001. EXAPRNGLA001 corrected hostname (was EXAPGLAGLA001 / EXAPRNZGLA001). EXAATTLAX001 corrected to EXAASTLAX001. EDI DC remediation plan added. BRD→BER rename plan documented. |
 | 2026-03-05 | Full review — subnets corrected against sites.csv; new sites added |
@@ -191,21 +191,21 @@ separate site code. See `docs/ExampleMusic_Beginners_Guide.md` §4.1.
 > ⚠️ **Hostname note:** `EXADNSVRK001` (DNS) and the former working name `EXASRVCLD001` differ by one transposed letter. The correct prefix is `EXASVR` throughout. See the warning at the top of this document.
 >
 > ⚠️ **This section's device numbering (`EXASVRCLD002`/`003`/`004`) predates and diverges from
-> what's now canonical elsewhere in this repo (`EXAANSCLD001` for Ansible, `EXARDRCLD001` for
+> what's now canonical elsewhere in this repo (`EXAANSCLD001` for Ansible, `EXARUDCLD001` for
 > Rudder) — flagged here, not reconciled, since that's a separate, larger naming question.
 
 ### Infrastructure Checklist
 
 - [ ] `EXAFWLVRK001` — Firewall / WireGuard hub (`192.168.139.1`, same physical firewall as `EXAFWLCLD001`) · CNAME `ovhfwl.knight139.co.uk`
 - [ ] `EXADNSVRK001` — DNS/BIND server (`192.168.139.8`) · `jukebox.internal` authoritative
-- [ ] `EXAPRVVRK001` — Provisioning server (`192.168.139.50`) · PXE · ISOs · Ansible keys · scripts
+- [ ] Provisioning server (`192.168.139.50`, bootstrap-only, no formal hostname) · PXE · ISOs · Ansible keys · scripts
 - [ ] `EXASVRCLD002` — Windows Admin Centre (`192.168.69.20`) · WS2022 · reaches all site DCs
-- [ ] `EXARDRCLD001` — Rudder configuration management (`192.168.69.12`)
+- [ ] `EXARUDCLD001` — Rudder configuration management (`192.168.69.12`)
 - [ ] `EXAPBXCLD001` — Central 3CX PBX (`192.168.69.48`) · all site SBCs trunk here
 - [ ] `EXAANSCLD001` — Ansible control node (`192.168.69.9`) · manages all sites
 - [ ] `EXAUFCCLD001` — UniFi Network Controller (`192.168.69.82`, CLD's **LAN** — not vRACK) · manages every site's WAPs
 - [ ] WireGuard routes verified to all site subnets
-- [ ] Ansible key distribution tested from `EXAPRVVRK001`
+- [ ] Ansible key distribution tested from the provisioning server (`192.168.139.50`)
 - [ ] Rudder agents checked in from test node
 - [ ] DNS self-test: `dig @192.168.139.8 exadnsvrk001.jukebox.internal`
 
@@ -213,9 +213,9 @@ separate site code. See `docs/ExampleMusic_Beginners_Guide.md` §4.1.
 |----------|------|----|----|-------|
 | `EXAFWLVRK001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` — same physical firewall as `EXAFWLCLD001` |
 | `EXADNSVRK001` | DNS/BIND server | Debian trixie | `192.168.139.8` | `jukebox.internal` authoritative |
-| `EXAPRVVRK001` | Provisioning server | — | `192.168.139.50` | PXE · ISOs · Ansible keys · scripts |
+| — (bootstrap-only, no formal hostname) | Provisioning server | — | `192.168.139.50` | PXE · ISOs · Ansible keys · scripts |
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.69.20` | Reaches all site DCs |
-| `EXARDRCLD001` | Rudder | Debian | `192.168.69.12` | Configuration management |
+| `EXARUDCLD001` | Rudder | Debian | `192.168.69.12` | Configuration management |
 | `EXAPBXCLD001` | Central PBX | 3CX | `192.168.69.48` | All site SBCs trunk here |
 | `EXAANSCLD001` | Ansible control node | Debian | `192.168.69.9` | Central Ansible — manages all sites |
 | `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. On CLD's **LAN** (`192.168.69.0/24`), not vRACK — CLD has no physical WiFi itself |
@@ -1616,7 +1616,7 @@ separate site code. See `docs/ExampleMusic_Beginners_Guide.md` §4.1.
 | `EXANAS` | NAS | `EXANASFAL001` |
 | `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
 | `EXAPBX` | PBX | `EXAPBXCLD001` |
-| `EXAPRV` | Provisioning / bootstrap server | `EXAPRVVRK001` |
+| `TMP` | Provisioning / bootstrap server (VRK/FRD only, no formal hostname) | `192.168.139.50` / `172.16.124.1` |
 | `EXAWAP` | WiFi Access Point | `EXAWAPFAL001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |
 | `EXALAP` | Laptop | `EXALAPFAL001` |

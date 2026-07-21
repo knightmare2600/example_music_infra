@@ -41,7 +41,7 @@ graph TD
       FWL <-->|"WireGuard tunnel"| VPN
 
       SW --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_LND fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:LND:START
@@ -107,7 +107,7 @@ graph TD
       FWL <-->|"WireGuard tunnel"| VPN
 
       SW1 --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_BIR fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:BIR:START
@@ -170,7 +170,7 @@ graph TD
       SW <-->|"WireGuard tunnel"| VPN
 
       SW --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_MCR fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:MCR:START
@@ -226,7 +226,7 @@ graph TD
       SW <-->|"WireGuard tunnel"| VPN
 
       SW --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_LIV fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:LIV:START
@@ -241,7 +241,7 @@ graph TD
       N_SVR["🗄️ EXASVRLIV001 · File server"]
       N_MBP["💻 EXAMBPLIV001 · MacBook Pro"]
       N_MAC["🍎 EXAMACLIV001 · iMac DISABLED"]
-      N_RDR["⚙️ EXARDRLIV002 · HID Signo badge reader"]
+      N_RDR["🔐 EXARDRLIV002 · HID Signo badge reader · .21"]
       N_BPS["🪪 EXABPSLIV001 · Badge programming workstation"]
     end
     style NEW_LIV fill:#E69F00,stroke:#D55E00,color:#000000
@@ -281,7 +281,7 @@ graph TD
       SW <-->|"WireGuard tunnel"| VPN
 
       SW --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_NEW fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:NEW:START
@@ -330,7 +330,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_SHE fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:SHE:START
@@ -375,7 +375,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_HAL fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:HAL:START
@@ -420,7 +420,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_HUL fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:HUL:START
@@ -466,7 +466,7 @@ graph TD
       RTR <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_COV fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:COV:START

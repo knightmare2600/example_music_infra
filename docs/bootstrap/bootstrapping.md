@@ -23,6 +23,8 @@
 | 2026-07-10 | §6 rewritten again, same day as the above but a separate, deliberate change (not a correction of an error): `first-boot.sh` was trimmed a second time, this time by design rather than as dead-code removal — applying the "foot in the door" principle explicitly to the ansible-user step, on top of what 2026-07-07 already did for hostname/rename. The script now does only enough for the `ansible` user to be SSH-reachable (sshd present, user created, SSH key installed, `NOPASSWD` sudoers); everything else (apt repo fix, subscription-nag removal, packages, VMware guest tools, `/etc/.environment` prompt, dynamic MOTD, single-disk ZFS check, kvm-group membership, dotfiles/zsh) moved into `ansible/playbooks/proxmox/playbooks/` (`00-preflight.yml`, `10-packages.yml`, `40-scripts.yml`) or `group_vars/pvenodes/main.yml`, reusing `20-ansible-access.yml`/`playbooks/linux/tools.yml` where they already covered the same ground redundantly. The single-disk ZFS console "type I UNDERSTAND" gate became an explicit `-e pve_acknowledge_single_disk=true` override flag in `00-preflight.yml`, for an auditable non-interactive run instead of a console-only prompt. §6.1 and §6.4 rewritten to match; §6.4's transcript is now ~15 lines instead of ~70. |
 | 2026-07-10 | Same day again, prompted by Robert noticing the `/etc/.environment` prompt just added to `00-preflight.yml` above was itself a legacy pattern worth cleaning up: every consumer across the whole estate (`bindme.sh`, `ansibleme.sh`, `firewallme.sh`, firewallme's `00_preflight.yml`, `bind9-dns.yml`, `rudder_server.yml`, and the just-added PVE preflight) only ever used `/etc/.environment` to seed one field — `nodeinfo.json`'s `environment` — which every one of them writes anyway. New shared task `ansible/tasks/nodeinfo_environment.yml` resolves the environment from an already-deployed `nodeinfo.json` if present, prompting only if not; the four Ansible-side duplicates of the old check/prompt/write block (firewallme, bind9, rudder, proxmox) were replaced with a one-line include. Also fixed a real latent bug this surfaced: `linux/tools.yml`'s best-effort `nodeinfo.json` write (runs on every Linux host, including a routine sweep after a role-specific play has already set a real environment) previously had no way to see an existing value and always fell back to `production`, silently clobbering a correctly-set `staging`/`development` marker if it ran after the role-specific play. Initially scoped to the Ansible side only, with the three bash break-glass scripts flagged as a follow-up (different `jq`-availability ordering in each). |
 | 2026-07-10 | Follow-up to the above, same day: the three bash break-glass scripts (`bindme.sh`, `ansibleme.sh`, `firewallme.sh`) migrated too. Each now checks its own `nodeinfo.json` first via `jq`, falls back to the legacy `/etc/.environment` file (for hosts already provisioned), then prompts — and no longer writes `/etc/.environment` itself. `bindme.sh` and `ansibleme.sh` already had `jq` installed before their environment block, so no reordering was needed; `firewallme.sh` didn't (its `BOOTSTRAP_PKGS` batch, which includes `jq`, doesn't install until later), so it got a small standalone defensive `jq` install immediately before the check, mirroring `bindme.sh`'s existing pattern for the same reason. `ansible/tasks/nodeinfo_environment.yml` also gained the same legacy-file fallback tier, so an Ansible run against a node that already has `/etc/.environment` but no `nodeinfo.json` yet reuses that value instead of re-prompting. `linux/tools.yml` now deletes `/etc/.environment` once `nodeinfo.json` has captured it (on the success path only — a host that isn't EXA-hostname-conformant yet keeps its file, since `nodeinfo.json` isn't written for it either). |
+| 2026-07-20 | Standard IP Convention table's `.15` PRV row replaced with `.19` NAS. `.15` was retired 2026-07-19 (see `README.md`'s Addressing table and `docs/proxmox/proxmox-dcm-pbs-planning.md`) — never real for any ordinary site, provisioning is centralised at VRK/FRD only, whose real `EXAPRVVRK001`/`EXAPRVFRD001` devices are untouched. Missed in the original sweep; caught on a follow-up pass. |
+| 2026-07-21 | VRK/FRD's provisioning servers (Type=`TMP` in `devices.csv`, formerly `PRV`) deliberately no longer have a formal `EXA<ROLE><SITE><NNN>` hostname or DNS record at all — Robert: these are bootstrap-only helpers, not real managed nodes, so they shouldn't carry the same identity every real node gets. Every `EXAPRVVRK001`/`EXAPRVFRD001` mention throughout this document replaced with the real IP (`192.168.139.50` / `172.16.124.1`) plus a plain description; the worked shell-prompt transcript's hostname likewise genericised to `provisioning-server`. |
 
 ---
 
@@ -42,7 +44,7 @@ Exceptions are noted in individual site entries.
 | `.7`          | PVE node 3                                                   | `EXAPVE<SITE>003`                     |
 | `.10`         | Domain Controller — primary                                  | `EXADCS<SITE>001`                     |
 | `.11`         | Domain Controller — secondary                                | `EXADCS<SITE>002`                     |
-| `.15`         | Provisioning server                                          | `EXAPRV<SITE>001`                     |
+| `.19`         | Storage — NAS/SAN (e.g. TrueNAS)                             | `EXANAS<SITE>001`                     |
 | `.48`         | VOIP SBC — trunks to `EXAPBXCLD001`                          | `EXASBC<SITE>001`                     |
 | `.82`–`.94`   | Wireless access points (static, one per WAP; count varies)   | `EXAWAP<SITE>00N`                     |
 | `.100`–`.249` | DHCP pool                                                    | —                                     |
@@ -118,12 +120,13 @@ This is a VM on `EXAPVECLD001`, sitting behind `EXAFWLVRK001` on `192.168.139.0/
 
 > **Correction (2026-07-10):** the line that originally stood here said this node "must be migrated to
 > `EXAANSCLD001` (the Ansible node) once that VM is commissioned." That was wrong even as a plan, not just
-> stale — `EXASTRPCLD001` was in fact superseded by **`EXAPRVVRK001`**, a permanent Linux provisioning
+> stale — `EXASTRPCLD001` was in fact superseded by a permanent Linux provisioning
 > server that keeps the same role (serving `web/` at `192.168.139.50`) and the same IP. `EXAANSCLD001` (the
 > Ansible control node) is a separate box entirely, on a different subnet (`192.168.69.0/24`, not
 > `192.168.139.0/24`) — see `benarbejde/begyndelse.json`'s `provisioning_edinburgh` and `ansible_control`
-> entries, which are two distinct hosts. **`EXASTRPCLD001` was decommissioned once `EXAPRVVRK001` took
-> over `192.168.139.50`.**
+> entries, which are two distinct hosts. **`EXASTRPCLD001` was decommissioned once the provisioning server took
+> over `192.168.139.50`.** (2026-07-21: that provisioning server has since been given no formal
+> hostname of its own either — see §1.5's own note — referenced by IP only from here on.)
 
 ### 1.4 Domain Registration and Public DNS
 
@@ -140,13 +143,13 @@ The following public DNS records exist:
 |---|---|---|---|
 | `exapvecld001.example.com` | A | `192.0.8.86` | Proxmox host — web UI, SSH |
 | `exafwlvrk001.example.com` | A | `192.0.8.131` | Firewall WAN IP |
-| `ansible.jukebox.internal` | A | `192.0.8.131` | Provisioning server name — resolves to EXAFWLVRK001's WAN IP (port-forwarded through to `192.168.139.50`, `EXAPRVVRK001`) |
+| `ansible.jukebox.internal` | A | `192.0.8.131` | Provisioning server name — resolves to EXAFWLVRK001's WAN IP (port-forwarded through to `192.168.139.50`, the provisioning server) |
 | `ansible.example.com` | CNAME | `ansible.jukebox.internal` | Alias |
 | `www.jukebox.internal` | CNAME | `ansible.jukebox.internal` | Fallback used by `bootstrap.ipxe` |
 
-The `ansible.jukebox.internal` A record is the one that matters for iPXE boot. The embedded `bootstrap.ipxe` script tries hostnames in this order: `ansible.jukebox.internal` → `www.jukebox.internal` → direct IP `192.168.139.50`. The CNAME aliases mean all three resolve correctly as long as public DNS is functioning. **Note:** despite the `ansible.*` name, this DNS record always points at the *provisioning* server (`EXAPRVVRK001`), never at the Ansible control node (`EXAANSCLD001`) — the two are separate hosts on separate subnets (see the correction in §1.3). The name predates that distinction and is being kept for compatibility with existing iPXE/preseed configs rather than renamed.
+The `ansible.jukebox.internal` A record is the one that matters for iPXE boot. The embedded `bootstrap.ipxe` script tries hostnames in this order: `ansible.jukebox.internal` → `www.jukebox.internal` → direct IP `192.168.139.50`. The CNAME aliases mean all three resolve correctly as long as public DNS is functioning. **Note:** despite the `ansible.*` name, this DNS record always points at the *provisioning* server (bootstrap-only, no formal hostname or internal DNS record of its own — this `ansible.jukebox.internal` alias is a separate, public-facing DNS name, not the internal `EXA<ROLE><SITE><NNN>` convention), never at the Ansible control node (`EXAANSCLD001`) — the two are separate hosts on separate subnets (see the correction in §1.3). The name predates that distinction and is being kept for compatibility with existing iPXE/preseed configs rather than renamed.
 
-Port forwarding on EXAFWLVRK001 forwards inbound HTTP (port `80/TCP`) on `192.0.8.131` through to `192.168.139.50` (`EXAPRVVRK001`).
+Port forwarding on EXAFWLVRK001 forwards inbound HTTP (port `80/TCP`) on `192.0.8.131` through to `192.168.139.50` (the provisioning server).
 
 ### 1.5 Network topology summary
 
@@ -164,7 +167,7 @@ Internet
     ├─ 192.168.139.0/24  (vRACK / provisioning subnet)
     │       │
     │       ├─ 192.168.139.8    EXADNSVRK001 (BIND9 — authoritative for jukebox.internal)
-    │       ├─ 192.168.139.50   EXAPRVVRK001 (provisioning HTTP server; was EXASTRPCLD001, decommissioned)
+    │       ├─ 192.168.139.50   provisioning HTTP server (bootstrap-only, no formal hostname; was EXASTRPCLD001, decommissioned)
     │       └─ 192.168.139.69   EXAFWLVRK001 (vRACK-facing face of the firewall above)
     │
     └─ 192.168.69.0/24   (CLD LAN)
@@ -190,7 +193,7 @@ The pipeline is:
 
 ```
 Internet → ansible.jukebox.internal (192.0.8.131, EXAFWLVRK001)
-               └─ port 80 forwarded to 192.168.139.50 (EXAPRVVRK001)
+               └─ port 80 forwarded to 192.168.139.50 (provisioning server, no formal hostname)
                     └─ static-web-server serving web/
                          └─ iPXE boot (embedded bootstrap.ipxe → chains to menu.ipxe)
                               ├─ Proxmox VE auto-install (VRK/FRD-answer.toml / -degraded.toml)
@@ -233,7 +236,7 @@ All of the above are available via Chocolatey on Windows (installed automaticall
 
 ### 2.2 Setting up the HTTP server
 
-The provisioning pipeline is driven by an HTTP server serving the `web/` directory tree. In production this runs permanently on EXAPRVVRK001. For field use from a laptop, use `static-web-server.exe`:
+The provisioning pipeline is driven by an HTTP server serving the `web/` directory tree. In production this runs permanently on the Edinburgh provisioning server (`192.168.139.50`, bootstrap-only, no formal hostname). For field use from a laptop, use `static-web-server.exe`:
 
 ```powershell
 PS> .\static-web-server.exe -d web\ -g info -a 192.168.139.50 --directory-listing
@@ -327,7 +330,17 @@ bootstrap/web/
 │   │     benarbejde/ originals, never these
 │
 ├── windows/
-│   ├── unattend/headlessunattend.xml    ← the one real unattend XML (see the Windows section)
+│   ├── unattend/headlessunattend.xml    ← the one real unattend XML (see the Windows section) --
+│   │                                        does NOT install Salt (see §8.3's note on why not)
+│   ├── Salt-Minion-Setup.msi            ← committed to git 2026-07-20 (AMD64, 3008.2,
+│   │                                        checksum-verified). NOT part of this Setup-time
+│   │                                        flow -- pushed later by ansible/playbooks/
+│   │                                        windows_bootstrap/playbooks/82-salt-minion.yml,
+│   │                                        over SSH, well after this file's own chain
+│   │                                        completes. See docs/buildsheets/
+│   │                                        buildsheet-salt-minion.md. ARM64 does not exist
+│   │                                        for Windows Salt minions (confirmed against the
+│   │                                        real package repo) -- AMD64/x86 only
 │   ├── PostOOBE.cmd, SetupComplete.cmd, Install-OpenSSH.ps1, Deploy-OpenSSH.cmd
 │   └── Join-DomainAndBootstrap.ps1      ← legacy; see the Windows section for current status
 │
@@ -385,7 +398,7 @@ Organise entries into groups as follows:
 Example Music.kdbx
 ├── Infrastructure
 ├──── CLD
-│   ├── EXAPRVVRK001 — root (provisioning HTTP server; was EXASTRPCLD001, decommissioned)
+│   ├── Provisioning server (192.168.139.50) — root (bootstrap-only, no formal hostname; was EXASTRPCLD001, decommissioned)
 │   ├── PVE root password (answer.toml hash source)
 │   └── Ansible user password (per-node if not key-only)
 │
@@ -472,8 +485,8 @@ exclusively, never a hardcoded IP:
 
 | Gateway seen | Environment | `${boot-url}` |
 |---|---|---|
-| `192.168.139.254` | Edinburgh — `EXAPRVVRK001` | `http://192.168.139.50` |
-| `172.16.124.2` | Fredericia — `EXAPRVFRD001` (see the file's own comment: *"Legal fiction — physically a MacBook running `python3 -m http.server 8000`, mirroring `/debian` from Edinburgh. Only the IP differs."*) | `http://172.16.124.1:8000` |
+| `192.168.139.254` | Edinburgh — `192.168.139.50` (bootstrap-only, no formal hostname) | `http://192.168.139.50` |
+| `172.16.124.2` | Fredericia — `172.16.124.1` (see the file's own comment: *"Legal fiction — physically a MacBook running `python3 -m http.server 8000`, mirroring `/debian` from Edinburgh. Only the IP differs."*) | `http://172.16.124.1:8000` |
 | anything else | falls back to Edinburgh with a warning | `http://192.168.139.50` |
 
 This matters for testing on an unfamiliar network segment: if the gateway
@@ -532,13 +545,13 @@ If all three fail, the script drops to an iPXE shell with diagnostic instruction
 **Compiling the iPXE binary** (run on a Linux build host):
 
 ```bash
-┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap]
+┌─[ansible@provisioning-server]─[C:\Users\Ansible\Desktop\Boottrap]
 └──╼ git clone https://github.com/ipxe/ipxe.git
 
-┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap]
+┌─[ansible@provisioning-server]─[C:\Users\Ansible\Desktop\Boottrap]
 └──╼cd ipxe/src
 
-┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@provisioning-server]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ cat bootstrap.ipxe
 #!ipxe
 ################################################
@@ -654,13 +667,13 @@ shell
 :end
 
 ## Enable BOTH serial console (115,200 8N1 and VGA at the same time)
-┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@provisioning-server]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ cat config/local/console.h
 #define CONSOLE_PCBIOS    /* VGA — interactive TUI */
 #define CONSOLE_SERIAL    /* COM1, 115200 8n1 — for FWL/RTR/SBC VMs */
 
 ## Enable colours and extra functions
-┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@provisioning-server]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ cat config/local/general.h
 #define CONSOLE_FRAMEBUFFER
 #define PING_CMD
@@ -670,23 +683,23 @@ shell
 #define NSLOOKUP_CMD
 #define ROUTE_CMD
 
-┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@provisioning-server]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ make bin/ipxe.iso EMBED=bootstrap.ipxe
 
 ## This is the iso you boot devices with
-┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@provisioning-server]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ copy bin/ipxe.iso ./ipxe.iso
 
 ## copy lkrn module too if that's what oyu want as a bootfile. It's 6 and 2x3
-┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@provisioning-server]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ copy bin/ipxe.lkrn.iso ./ipxe.lkrn
 
 # ISO (for CD/CDROM/IPMI virtual media):
-┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@provisioning-server]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ make bin/ipxe.iso EMBED=bootstrap.ipxe
 
 # USB image:
-┌─[ansible@EXAPRVVRK001]─[C:\Users\Ansible\Desktop\Boottrap/src]
+┌─[ansible@provisioning-server]─[C:\Users\Ansible\Desktop\Boottrap/src]
 └──╼ $ make bin/ipxe.usb EMBED=bootstrap.ipxe
 
 # PXE ROM (for DHCP/TFTP environments):
@@ -1387,6 +1400,30 @@ Renames the computer if needed, then calls `Add-Computer` to join the domain int
 **Stage 12 — Finish**
 
 Writes the sentinel file and reboots after 20 seconds.
+
+### 8.3 Salt minion — deliberately NOT part of this Setup-time flow
+
+Every Windows node (`WKS`/`LAP`/`SUR`/`SVR`/`DCS`) gets a Salt minion, but not through
+anything in this section. It was briefly wired into
+`headlessunattend.xml`'s `FirstLogonCommands` the same day this was written (2026-07-20), then
+moved out again before anything was built against it: the unattend XML sets `ComputerName` to
+`*` (a random Setup-time name) and `FirstLogonCommands` fires before any rename happens, so the
+Salt minion would have registered under that random name — `EXASLTCLD001` would have
+accumulated one dead/renamed key per build, needing manual `salt-key` cleanup forever.
+
+The real install is `ansible/playbooks/windows_bootstrap/playbooks/82-salt-minion.yml`,
+running over SSH near the end of the normal windows_bootstrap chain — well after
+`00-preflight.yml`'s Phase G has already renamed the host to its final `EXA<ROLE><SITE><NNN>`
+hostname, so the minion's identity is always correct, first time. See
+`docs/buildsheets/buildsheet-salt-minion.md` and `ansible/playbooks/salt/README.md` for the
+full mechanism, scope, and the manual fallback for endpoints that never go through
+windows_bootstrap at all.
+
+The MSI (`bootstrap/web/windows/Salt-Minion-Setup.msi`) is genuinely committed to this repo,
+though — see the tree entry above. Unlike most large binaries referenced from this file
+(§2.3's Debian/Proxmox netboot assets), this one's a deliberate exception: it's genuinely open
+source (Apache-2.0) and checksum-verified before being placed; see the buildsheet for the full
+reasoning.
 
 ---
 

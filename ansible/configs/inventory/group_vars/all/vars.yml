@@ -33,6 +33,14 @@ ad_forest_json_path: "/etc/example-music/ad_forest.json"
 # to get a file onto a box. exa_wallpaper_dest is just the destination path, still needed.
 exa_wallpaper_dest:  'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.png'
 
+# .bmp copy of the same image, for SetWallpaper.exe specifically (60-wallpaper.yml/
+# wintools/init.sls) -- ported 2026-07-21 from a dropped-in reference Salt state.
+# That tool's own embedded help text only shows .bmp examples (it's a
+# circa-1999/2000 console utility, predating PNG wallpaper support in the Windows
+# API it wraps) -- kept as a second file alongside the real .png rather than risk
+# it failing against a format it may not actually support.
+exa_wallpaper_dest_bmp: 'C:\Windows\Web\Wallpaper\ExampleMusic\corporate.bmp'
+
 # Domain -- see benarbejde/ad_forest.json (single source of truth)
 exa_domain:           "{{ (lookup('file', ad_forest_json_path) | from_json).domain_fqdn }}"
 exa_domain_join_user: "{{ (lookup('file', ad_forest_json_path) | from_json).netbios_name }}\\Administrator"

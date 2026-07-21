@@ -49,3 +49,11 @@ features:
       that add-wg-spoke.yml's live pubkey cross-check depends on.
     doc: docs/wireguard/NET-VPN-WG-001-wireguard-routing.md
     check: check_wireguard_hub_data.py
+
+  - name: salt_state_management
+    description: >
+      salt/states/ + salt/pillar/ content served to minions via gitfs/git_pillar
+      -- every .sls renders+parses, top.sls/pillar/top.sls targets resolve,
+      screenprint messagetype values are all real, every module is documented.
+    doc: salt/README.md
+    check: check_salt_states.py

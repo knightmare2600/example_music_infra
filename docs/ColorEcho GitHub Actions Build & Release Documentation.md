@@ -15,6 +15,11 @@ The workflow has **two jobs**:
 
 ## Full Workflow YAML
 
+> Verified 2026-07-21 against the live workflow file (`master` branch) — the version below was
+> stale (missing the `win-x86` matrix target entirely, and used `actions/create-release`/
+> `actions/upload-release-asset`, both archived/deprecated by GitHub years ago). Replaced with an
+> exact, current copy.
+
 ```yaml
 name: Build and Release ColorEcho
 
@@ -23,19 +28,24 @@ on:
   push:
     branches: [ main, master ]
 
+# Future-proof Node 24 opt-in (prevents deprecation warnings)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2025
+
     strategy:
       matrix:
-        rid: [win-x64, win-arm64]
+        rid: [win-x86, win-x64, win-arm64]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v1
+        uses: microsoft/setup-msbuild@v2
 
       - name: Restore NuGet
         working-directory: src
@@ -47,67 +57,59 @@ jobs:
         shell: pwsh
         run: msbuild ColorEcho.sln /p:Configuration=Release /p:Platform="Any CPU" /verbosity:minimal
 
-      - name: Zip Artifact
+      - name: Create ZIP
         working-directory: src
         shell: pwsh
         run: |
-          $zipPath = "bin\Release\ColorEcho-${{ matrix.rid }}.zip"
-          if (Test-Path $zipPath) { Remove-Item $zipPath }
-          Compress-Archive -Path "bin\Release\*" -DestinationPath $zipPath
-          Write-Host "Zipped $zipPath"
+          $outDir = "bin\Release"
+          $zipPath = "$outDir\ColorEcho-${{ matrix.rid }}.zip"
+
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+
+          Compress-Archive -Path "$outDir\*" -DestinationPath $zipPath
+          Write-Host "Created $zipPath"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ColorEcho-${{ matrix.rid }}
           path: src/bin/Release/ColorEcho-${{ matrix.rid }}.zip
+          if-no-files-found: error
+
 
   release:
-    runs-on: windows-latest
+    runs-on: windows-2025
     needs: build
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Download x64 artifact
-        uses: actions/download-artifact@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v5
         with:
-          name: ColorEcho-win-x64
-          path: ./artifacts/ColorEcho-win-x64
+          path: ./artifacts
+          merge-multiple: true
 
-      - name: Download ARM artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ColorEcho-win-arm64
-          path: ./artifacts/ColorEcho-win-arm64
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          release_name: ColorEcho v1.0.${{ github.run_number }}
-          body: Automated release with x64 and ARM builds.
-          draft: false
-          prerelease: false
+          name: ColorEcho v1.0.${{ github.run_number }}
+          body: |
+            Automated release:
+            - win-x86
+            - win-x64
+            - win-arm64
+
+          files: |
+            ./artifacts/ColorEcho-win-x86.zip
+            ./artifacts/ColorEcho-win-x64.zip
+            ./artifacts/ColorEcho-win-arm64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload x64 Release Asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/ColorEcho-win-x64/ColorEcho-win-x64.zip
-          asset_name: ColorEcho-win-x64.zip
-          asset_content_type: application/zip
-
-      - name: Upload ARM Release Asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/ColorEcho-win-arm64/ColorEcho-win-arm64.zip
-          asset_name: ColorEcho-win-arm64.zip
-          asset_content_type: application/zip
 ```
 
 ## Step-by-Step Breakdown
@@ -133,20 +135,20 @@ on:
 ```
 strategy:
   matrix:
-    rid: [win-x64, win-arm64]
+    rid: [win-x86, win-x64, win-arm64]
 ```
 
-- Defines a **matrix** of build targets: x64 and ARM.
+- Defines a **matrix** of build targets: x86, x64, and ARM.
 - Each matrix entry runs **independently**, allowing parallel builds.
 
-**Alternative:** Add `win-x86` or Linux/macOS RIDs.
+**Alternative:** Add Linux/macOS RIDs.
 
 ------
 
 ### Checkout Step
 
 ```
-- uses: actions/checkout@v4
+- uses: actions/checkout@v5
 ```
 
 - Checks out your repository code into the runner.
@@ -156,7 +158,7 @@ strategy:
 ### Setup MSBuild
 
 ```
-- uses: microsoft/setup-msbuild@v1
+- uses: microsoft/setup-msbuild@v2
 ```
 
 - Ensures the **full .NET Framework MSBuild** is available.
@@ -192,24 +194,25 @@ dotnet publish ColorEcho.csproj -c Release -r win-x64 --self-contained true
 
 ------
 
-### Zip Artifact
+### Create ZIP
 
 ```
-Compress-Archive -Path "bin\Release\*" -DestinationPath $zipPath
+Compress-Archive -Path "$outDir\*" -DestinationPath $zipPath
 ```
 
 - Packages compiled binaries into a **ZIP**.
-- `$zipPath` includes the RID (`win-x64`, `win-arm64`) in the filename.
+- `$zipPath` includes the RID (`win-x86`, `win-x64`, `win-arm64`) in the filename.
 
 ------
 
 ### Upload Artifact
 
 ```
-uses: actions/upload-artifact@v4
+uses: actions/upload-artifact@v5
 ```
 
 - Uploads the ZIPs for the **release job** to use.
+- `if-no-files-found: error` fails the job loudly if the zip step didn't actually produce a file.
 
 ------
 
@@ -217,38 +220,32 @@ uses: actions/upload-artifact@v4
 
 - **Depends on** `build` via `needs: build`.
 
-### Download Artifact
+### Download Artifacts
 
 ```
-uses: actions/download-artifact@v4
-path: ./artifacts/ColorEcho-win-x64
+uses: actions/download-artifact@v5
+with:
+  path: ./artifacts
+  merge-multiple: true
 ```
 
-- Downloads the ZIP into a subfolder.
+- Downloads **all** matrix artifacts in one step, flattened into a single `./artifacts` directory
+  (`merge-multiple: true`) — not one separate download step per RID.
 
 ------
 
 ### Create GitHub Release
 
 ```
-uses: actions/create-release@v1
+uses: softprops/action-gh-release@v2
 ```
 
-- Creates a new release with dynamic tag: `v1.0.${{ github.run_number }}`.
+- Creates a release with dynamic tag `v1.0.${{ github.run_number }}` **and** uploads all three
+  ZIPs in the same step (`files:` list) — the old two-step create-then-upload pattern
+  (`actions/create-release` + `actions/upload-release-asset`) is gone; both of those actions were
+  archived/deprecated by GitHub some time ago.
 
-**Alternative:** `draft: true` for review before publishing.
-
-------
-
-### Upload Release Assets
-
-```
-uses: actions/upload-release-asset@v1
-asset_path: ./artifacts/ColorEcho-win-x64/ColorEcho-win-x64.zip
-```
-
-- Attaches the ZIP to the release.
-- Repeat for ARM artifact.
+**Alternative:** add `draft: true` for review before publishing.
 
 ------
 
@@ -256,7 +253,7 @@ asset_path: ./artifacts/ColorEcho-win-x64/ColorEcho-win-x64.zip
 
 | Scenario                   | How to adapt                                                 |
 | -------------------------- | ------------------------------------------------------------ |
-| Add **x86 build**          | Add `win-x86` to the matrix                                  |
+| Add another RID             | Add it to the matrix (`win-x86`/`win-x64`/`win-arm64` are already all built) |
 | Switch to **Linux builds** | `runs-on: ubuntu-latest` and RIDs like `linux-x64`           |
 | Use **Go instead of .NET** | Replace MSBuild + NuGet with `go build -o bin/ColorEcho-${{ matrix.rid }}` |
 | Add **macOS build**        | `runs-on: macos-latest`, RIDs: `osx-x64` / `osx-arm64`       |

@@ -783,7 +783,7 @@ Name: PVE - VMs With Snapshots
 Type: Dependent item
 Master item: vfs.file.contents[/tmp/pve-snapshot-check.json]
 Key: pve.snapshot.vms.with.snapshots
-Type of information: Text (Was: Numeric (unsigned))
+Type of information: Numeric (unsigned)
 Preprocessing: JSONPath  $.summary.vms_with_snapshots
 Description: Count of QEMU VMs with at least one snapshot.
 
@@ -796,18 +796,6 @@ Key: pve.snapshot.lxc.with.snapshots
 Type of information: Numeric (unsigned)
 Preprocessing: JSONPath  $.summary.lxc_with_snapshots
 Description: Count of LXC containers with at least one snapshot.
-
-
----
-* **Name:** PVE - LXC containers with snapshots detected
-Expression: {host:pve.snapshot.lxc.with.snapshots.last()}>0
-
-* **Severity:** Warning (or Average, depending on your preference)
-
-* **Description:** {HOST.NAME} has {ITEM.LASTVALUE} LXC containers with snapshots
-
-* **Enabled:** Yes
-
 
 ---
 

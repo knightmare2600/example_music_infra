@@ -1,0 +1,588 @@
+---
+# =============================================================================
+# Example Music Limited — Salt Master Bootstrap Playbook
+# playbooks/salt/salt_master.yml
+#
+# Bootstraps EXASLTCLD001 (or any cloud-hosted Salt master) from a fresh
+# Debian Trixie install to a running Salt master. Same OS-provisioning path
+# as every other Debian service VM in this estate (EXARUDCLD001,
+# EXAANSCLD001) -- the ansible user + SSH key come from late_command.sh
+# during the Debian netinstall, not from this playbook.
+#
+# Structure mirrors playbooks/rudder/rudder_server.yml section-by-section,
+# minus everything specific to Rudder's own web UI/API (no LDAP skeleton, no
+# "push a baseline via REST API" section -- Salt states/pillar aren't built
+# yet, see playbooks/salt/README.md):
+#   1.  Hostname
+#   2.  Network — static IP (host_vars with interactive fallback)
+#   3.  Base packages
+#   4.  UFW firewall
+#   5.  Salt repository + salt-master install (version-pinned)
+#   6.  Master configuration (/etc/salt/master)
+#   7.  Node info file
+#
+# Usage
+# -----
+# First run (before ansible user exists, using root + password):
+#   ansible-playbook playbooks/salt/salt_master.yml \
+#     --limit salt_servers \
+#     --user root -k
+#
+# Subsequent runs (ansible user + key):
+#   ansible-playbook playbooks/salt/salt_master.yml \
+#     --limit salt_servers
+#
+# Dry-run (check mode):
+#   ansible-playbook playbooks/salt/salt_master.yml \
+#     --limit salt_servers --check --diff
+#
+# Inventory
+# ---------
+# Already in configs/inventory/salt.ini:
+#   [salt_servers]
+#   192.168.69.22   # EXASLTCLD001 — CLD Salt master
+#
+# Variables (see group_vars/salt_servers/main.yml and
+#            host_vars/EXASLTCLD001/main.yml for full list)
+# ----------------------------------------------------------
+# Required via host_vars or --extra-vars:
+#   salt_static_ip        Static IP for this Salt master
+#   salt_hostname         Hostname (e.g. EXASLTCLD001)
+#   salt_gateway          Default gateway
+#   salt_dns              DNS server (EXADNSVRK001, 192.168.139.8 -- same
+#                          plain BIND9 box every other CLD service VM uses,
+#                          not the AD DC -- Salt doesn't need LDAP)
+#
+# Version alignment
+# ------------------
+# group_vars/salt_servers/main.yml's salt_version_major (currently "3008")
+# pins this install to that major.x line via an apt preferences file
+# (Section 5). The Windows minion installer documented in
+# docs/buildsheets/buildsheet-salt-minion.md must be fetched from the same
+# major line -- master and minions running mismatched major versions is
+# an unsupported combination upstream. Bump both together.
+#
+# Idempotency
+# -----------
+# Every task is idempotent. Re-running against an already-configured master
+# is safe -- tasks that are already done report 'ok' and change nothing.
+#
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-07-20  Initial release. Sections 1-4 (hostname, static IP,
+#                     base packages, UFW) ported directly from
+#                     rudder_server.yml's equivalent sections -- same
+#                     class of host (single CLD-hosted Debian service VM),
+#                     no reason to design these independently. Section 5
+#                     installs from packages.broadcom.com (Salt Project's
+#                     post-Broadcom-acquisition package host -- repo.
+#                     saltproject.io no longer serves current releases),
+#                     pinned to salt_version_major via apt preferences
+#                     rather than a hand-guessed exact Debian package
+#                     suffix. auto_accept left False deliberately -- new
+#                     minion keys require a manual `salt-key -a`, matching
+#                     this repo's existing security-posture conventions
+#                     (see memory/feedback_security_posture_is_roberts_call
+#                     equivalent: don't flip auth/acceptance defaults for
+#                     convenience). No LDAP/API/baseline-push section --
+#                     Salt states/pillar source (benarbejde/ CSVs+JSON vs.
+#                     gitfs) not yet decided, see README.md.
+# =============================================================================
+
+- name: Bootstrap Salt master
+  hosts: salt_servers
+  become: true
+  gather_facts: true
+  ignore_unreachable: false
+
+  vars_files:
+    - ../../configs/inventory/group_vars/salt_servers/main.yml
+
+  pre_tasks:
+
+    # -------------------------------------------------------------------------
+    # Interactive fallback: if host_vars do not supply the IP or hostname,
+    # prompt the operator now (before any changes are made). Same pattern as
+    # rudder_server.yml's pre_tasks.
+    # -------------------------------------------------------------------------
+
+    - name: "Prompt for hostname if not set in host_vars"
+      pause:
+        prompt: >
+          Hostname for this Salt master is not set in host_vars.
+          Enter hostname (e.g. EXASLTCLD001)
+      register: _hostname_prompt
+      when: salt_hostname is not defined or salt_hostname == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "Set salt_hostname from prompt"
+      set_fact:
+        salt_hostname: "{{ _hostname_prompt.user_input | upper }}"
+      when: _hostname_prompt is not skipped
+
+    - name: "Prompt for static IP if not set in host_vars"
+      pause:
+        prompt: >
+          Static IP for {{ salt_hostname }} is not set in host_vars.
+          Enter static IP (e.g. 192.168.69.22)
+      register: _ip_prompt
+      when: salt_static_ip is not defined or salt_static_ip == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "Set salt_static_ip from prompt"
+      set_fact:
+        salt_static_ip: "{{ _ip_prompt.user_input }}"
+      when: _ip_prompt is not skipped
+
+    - name: "Prompt for gateway if not set in host_vars"
+      pause:
+        prompt: >
+          Gateway for {{ salt_hostname }} is not set in host_vars.
+          Enter gateway IP (e.g. 192.168.69.253)
+      register: _gw_prompt
+      when: salt_gateway is not defined or salt_gateway == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "Set salt_gateway from prompt"
+      set_fact:
+        salt_gateway: "{{ _gw_prompt.user_input }}"
+      when: _gw_prompt is not skipped
+
+    - name: "Validate required variables are now set"
+      assert:
+        that:
+          - salt_hostname is defined and salt_hostname != ""
+          - salt_static_ip is defined and salt_static_ip != ""
+          - salt_gateway is defined and salt_gateway != ""
+        fail_msg: >
+          salt_hostname, salt_static_ip, and salt_gateway must all be set.
+          Set them in host_vars/{{ inventory_hostname }}/main.yml or pass via
+          --extra-vars.
+        success_msg: "All required variables present — proceeding."
+
+  # ---------------------------------------------------------------------------
+  # Section 1 — Hostname
+  # ---------------------------------------------------------------------------
+
+  tasks:
+
+    - name: "1 | Set hostname"
+      hostname:
+        name: "{{ salt_hostname | lower }}"
+
+    - name: "1 | Add FQDN to /etc/hosts"
+      lineinfile:
+        path: /etc/hosts
+        regexp: "^127\\.0\\.1\\.1"
+        line: >-
+          127.0.1.1  {{ salt_hostname | lower }}.{{ salt_domain }}  {{ salt_hostname | lower }}
+        state: present
+
+  # ---------------------------------------------------------------------------
+  # Section 2 — Static IP via NetworkManager
+  # Same CLD-cloud caveat as rudder_server.yml -- ICMP may be filtered, check
+  # is best-effort, warns but does not fail.
+  # ---------------------------------------------------------------------------
+
+    - name: "2 | Install NetworkManager if missing"
+      apt:
+        name: network-manager
+        state: present
+        update_cache: true
+
+    - name: "2 | Check whether target IP is already in use (CLD best-effort)"
+      command: "ping -c1 -W1 {{ salt_static_ip }}"
+      register: _ping_check
+      changed_when: false
+      failed_when: false
+
+    - name: "2 | Check current IPs on this host"
+      command: hostname -I
+      register: _current_ips
+      changed_when: false
+
+    - name: "2 | Warn if target IP appears in use by another host"
+      fail:
+        msg: >
+          {{ salt_static_ip }} is responding to ping and is NOT assigned to
+          this host. Resolve the IP conflict before proceeding.
+          (If this is a cloud host and ICMP is filtered, this check may be a
+          false positive — in that case, remove this task and re-run.)
+      when:
+        - _ping_check.rc == 0
+        - salt_static_ip not in _current_ips.stdout.split()
+
+    - name: "2 | Warn if ping check is unreliable (cloud environment)"
+      debug:
+        msg: >-
+          [CLD] ping check returned rc={{ _ping_check.rc }}.
+          On cloud hosts ICMP may be filtered — IP conflict check is
+          best-effort only. Proceeding.
+      when: _ping_check.rc != 0
+
+    - name: "2 | Detect provisioning interface (first non-loopback with an IP)"
+      shell: |
+        for iface in $(ls /sys/class/net/); do
+          [[ "$iface" == "lo" ]] && continue
+          ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)\d+\.\d+\.\d+\.\d+' | head -1)
+          if [[ -n "$ip_addr" ]]; then
+            echo "$iface"
+            exit 0
+          fi
+        done
+        exit 1
+      register: _detected_iface
+      changed_when: false
+
+    - name: "2 | Set interface name fact"
+      set_fact:
+        _salt_iface: "{{ salt_network_interface | default(_detected_iface.stdout | trim) }}"
+
+    - name: "2 | Read interface MAC address"
+      slurp:
+        src: "/sys/class/net/{{ _salt_iface }}/address"
+      register: _iface_mac_raw
+
+    - name: "2 | Set MAC address fact"
+      set_fact:
+        _salt_mac: "{{ _iface_mac_raw.content | b64decode | trim }}"
+
+    - name: "2 | Pin interface name via systemd .link"
+      copy:
+        dest: "/etc/systemd/network/10-salt-prov.link"
+        content: |
+          # Example Music — Salt master interface pin
+          # Written by salt_master.yml on {{ ansible_date_time.iso8601 }}
+          # MAC: {{ _salt_mac }}  interface: {{ _salt_iface }}
+          [Match]
+          MACAddress={{ _salt_mac }}
+          [Link]
+          Name={{ _salt_iface }}
+        mode: "0644"
+
+    - name: "2 | Mask ifupdown to prevent conflict with NetworkManager"
+      systemd:
+        name: "networking.service"
+        masked: true
+        enabled: false
+      failed_when: false
+
+    - name: "2 | Remove interface from /etc/network/interfaces if present"
+      blockinfile:
+        path: /etc/network/interfaces
+        marker: "# {mark} ANSIBLE MANAGED — {{ _salt_iface }}"
+        block: ""
+        state: absent
+      failed_when: false
+
+    - name: "2 | Ensure NetworkManager manages interfaces"
+      ini_file:
+        path: /etc/NetworkManager/NetworkManager.conf
+        section: ifupdown
+        option: managed
+        value: "true"
+        no_extra_spaces: true
+        backup: true
+      notify: Restart NetworkManager
+
+    - name: "2 | Ensure NetworkManager is running"
+      systemd:
+        name: NetworkManager
+        state: started
+        enabled: true
+
+    - name: "2 | Delete stale NM static profile if it exists"
+      command: nmcli con delete salt-static
+      failed_when: false
+      changed_when: false
+
+    - name: "2 | Create static IP NM profile"
+      command: >
+        nmcli con add type ethernet ifname {{ _salt_iface }} con-name salt-static
+        ipv4.method manual
+        ipv4.addresses "{{ salt_static_ip }}/{{ salt_prefix | default('24') }}"
+        ipv4.gateway "{{ salt_gateway }}"
+        ipv4.dns "{{ salt_dns }}"
+        ipv4.dns-search "{{ salt_domain }}"
+        ipv6.method ignore
+        connection.autoconnect yes
+        connection.autoconnect-priority 100
+      register: _nm_add
+      changed_when: _nm_add.rc == 0
+
+    - name: "2 | Note — static IP takes effect on reboot"
+      debug:
+        msg: >-
+          Static IP {{ salt_static_ip }} written to NM profile 'salt-static'.
+          It takes effect on next reboot (safe over SSH).
+          At the local console run: nmcli con up salt-static
+
+  # ---------------------------------------------------------------------------
+  # Section 3 — Base packages
+  # ---------------------------------------------------------------------------
+
+    - name: "3 | Update apt cache"
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: "3 | Upgrade all packages"
+      apt:
+        upgrade: dist
+        dpkg_options: "force-confold,force-confdef"
+
+    - name: "3 | Install base packages"
+      apt:
+        name: "{{ salt_base_packages }}"
+        state: present
+        install_recommends: false
+        dpkg_options: "force-confold,force-confdef"
+
+  # ---------------------------------------------------------------------------
+  # Section 4 — UFW firewall
+  # ---------------------------------------------------------------------------
+
+    - name: "4 | Set UFW default — deny incoming"
+      ufw:
+        direction: incoming
+        policy: deny
+
+    - name: "4 | Set UFW default — allow outgoing"
+      ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: "4 | Allow SSH"
+      ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+        comment: SSH
+
+    - name: "4 | Allow Salt ports from all site subnets"
+      ufw:
+        rule: allow
+        src: "{{ item.subnet }}"
+        port: "{{ item.port }}"
+        proto: tcp
+        comment: "Salt {{ item.comment }}"
+      loop: "{{ salt_site_ufw_rules }}"
+
+    - name: "4 | Enable UFW"
+      ufw:
+        state: enabled
+
+  # ---------------------------------------------------------------------------
+  # Section 5 — Salt repository and master install
+  # Packages.broadcom.com is Salt Project's package host since the Broadcom
+  # acquisition -- repo.saltproject.io no longer serves current releases
+  # (confirmed 2026-07-20 against docs.saltproject.io's own install guide).
+  # Pinned to salt_version_major via apt preferences so master and minions
+  # stay on a matching major line -- see this file's header.
+  # ---------------------------------------------------------------------------
+
+    - name: "5 | Create apt keyrings directory"
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: "5 | Download Salt Project GPG key"
+      shell: >
+        curl -fsSL https://packages.broadcom.com/artifactory/api/security/keypair/SaltProjectKey/public
+        | gpg --dearmor > /etc/apt/keyrings/salt-archive-keyring.pgp
+      args:
+        creates: /etc/apt/keyrings/salt-archive-keyring.pgp
+
+    - name: "5 | Fetch Salt apt sources file"
+      get_url:
+        url: https://github.com/saltstack/salt-install-guide/releases/latest/download/salt.sources
+        dest: /etc/apt/sources.list.d/salt.sources
+        mode: "0644"
+      notify: Update apt cache
+
+    - name: "5 | Pin Salt packages to salt_version_major"
+      copy:
+        dest: /etc/apt/preferences.d/salt-pin
+        content: |
+          # Example Music — keep master/minion versions aligned
+          # Written by salt_master.yml -- see group_vars/salt_servers/main.yml's
+          # salt_version_major and docs/buildsheets/buildsheet-salt-minion.md
+          Package: salt-*
+          Pin: version {{ salt_version_major }}.*
+          Pin-Priority: 1001
+        mode: "0644"
+      notify: Update apt cache
+
+    - name: "5 | Update apt cache after adding Salt repo"
+      apt:
+        update_cache: true
+      changed_when: false
+
+    - name: "5 | Install salt-master"
+      apt:
+        name: salt-master
+        state: present
+        install_recommends: false
+        dpkg_options: "force-confold,force-confdef"
+
+    - name: "5 | Verify installed Salt version matches the pinned major line"
+      command: salt --version
+      register: _salt_version_check
+      changed_when: false
+
+    - name: "5 | Fail if installed version does not match salt_version_major"
+      assert:
+        that:
+          - "salt_version_major in _salt_version_check.stdout"
+        fail_msg: >
+          Installed Salt version ({{ _salt_version_check.stdout }}) does not
+          match salt_version_major ({{ salt_version_major }}). Check
+          /etc/apt/preferences.d/salt-pin and the apt repo state before
+          proceeding -- minions built against the wrong major line will not
+          talk to this master correctly.
+        success_msg: "Salt version confirmed on the {{ salt_version_major }}.x line."
+
+    - name: "5 | Enable and start salt-master"
+      systemd:
+        name: salt-master
+        state: started
+        enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Section 6 — Master configuration
+  # auto_accept deliberately False -- new minion keys require a manual
+  # `salt-key -a` (see docs/buildsheets/buildsheet-salt-minion.md's
+  # "Verifying check-in" section). Not something to flip for convenience.
+  #
+  # gitfs/git_pillar: states and pillar are served straight from this repo's
+  # own git remote -- salt/README.md called this "not yet built" as of
+  # 2026-07-20; wired up the same day once the delivery mechanism was
+  # settled. No credentials needed (gitfs_user/gitfs_privkey etc.) -- this
+  # repo is public, so a plain HTTPS remote is all gitfs/git_pillar need
+  # (see salt/README.md for the full reasoning). gitfs_root/git_pillar's
+  # own root: option point at salt/states and salt/pillar respectively,
+  # rather than the repo root, since this repo has plenty else in it.
+  # Deliberately NOT the hand-rolled "clone + cron + git pull +
+  # saltutil.refresh_pillar" approach found in a dropped-in Salt state
+  # while reviewing salt/cleanup/salt/salt/pillar.sls -- both gitfs and
+  # git_pillar handle their own sync natively, no separate script/cron
+  # needed.
+  # ---------------------------------------------------------------------------
+
+    - name: "6 | Write /etc/salt/master"
+      copy:
+        dest: /etc/salt/master
+        content: |
+          # Example Music — Salt master config
+          # Written by salt_master.yml on {{ ansible_date_time.iso8601 }}
+          interface: 0.0.0.0
+          publish_port: 4505
+          ret_port: 4506
+          auto_accept: {{ salt_master_auto_accept | default(false) }}
+          log_level: warning
+          log_level_logfile: info
+
+          # States served from this repo's own salt/states/ via gitfs -- public
+          # repo, no credentials needed (see salt/README.md).
+          fileserver_backend:
+            - gitfs
+          gitfs_remotes:
+            - {{ salt_gitfs_repo_url }}:
+              - root: salt/states
+
+          # Pillar served from this repo's own salt/pillar/ via git_pillar --
+          # same repo, separate mechanism from gitfs (ext_pillar, not
+          # fileserver_backend). Branch name (main) doubles as the pillar
+          # environment unless overridden with env: -- see salt/README.md.
+          ext_pillar:
+            - git:
+              - main {{ salt_gitfs_repo_url }}:
+                - root: salt/pillar
+        mode: "0644"
+        backup: true
+      notify: Restart salt-master
+
+  # ---------------------------------------------------------------------------
+  # Section 7 — Node info file
+  # ---------------------------------------------------------------------------
+
+    - name: "7 | Resolve environment"
+      include_tasks: ../../tasks/nodeinfo_environment.yml
+
+    - name: "7 | Set salt_environment"
+      set_fact:
+        salt_environment: "{{ resolved_environment }}"
+
+    - name: "7 | Ensure /etc/example-music directory exists"
+      file:
+        path: /etc/example-music
+        state: directory
+        mode: "0755"
+
+    - name: "7 | Write /etc/example-music/nodeinfo.json"
+      include_tasks: ../../tasks/nodeinfo.yml
+      vars:
+        nodeinfo_hostname: "{{ salt_hostname }}"
+        nodeinfo_role: "salt"
+        nodeinfo_site: "{{ salt_site_code }}"
+        nodeinfo_city: "{{ salt_site_city }}"
+        nodeinfo_country: "{{ salt_site_country }}"
+        nodeinfo_entity: "{{ salt_site_entity }}"
+        nodeinfo_environment: "{{ salt_environment | default('production') }}"
+        nodeinfo_bootstrapped_by: "salt_master.yml"
+        nodeinfo_extra:
+          static_ip: "{{ salt_static_ip }}"
+          salt_version_major: "{{ salt_version_major }}"
+          scope: "All Windows nodes (WKS/LAP/SUR/SVR/DCS) — FWL/PVE stay Ansible-only"
+
+  # ---------------------------------------------------------------------------
+  # Post-run summary
+  # ---------------------------------------------------------------------------
+
+    - name: "Summary"
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  SETUP COMPLETE — {{ salt_hostname }}"
+          - "════════════════════════════════════════════════════════════════"
+          - "  Site        : {{ salt_site_code }} — {{ salt_site_city }}, {{ salt_site_country }}"
+          - "  Hostname    : {{ salt_hostname }}"
+          - "  Static IP   : {{ salt_static_ip }} (active on next reboot)"
+          - "  Salt version: {{ salt_version_major }}.x (pinned)"
+          - "  Ports       : 4505/tcp (publish), 4506/tcp (return)"
+          - "════════════════════════════════════════════════════════════════"
+          - "  Remaining manual steps:"
+          - "    1. Confirm bootstrap/web/windows/Salt-Minion-Setup.msi is the"
+          - "       matching {{ salt_version_major }}.x build (buildsheet-salt-minion.md)"
+          - "    2. Build/onboard a client endpoint (unattend XML or manual fallback)"
+          - "    3. salt-key -L on this host to see the new minion's unaccepted key"
+          - "    4. salt-key -a <minion-name> to accept it"
+          - "    5. salt '<minion-name>' test.ping to confirm check-in"
+          - "  Not yet built: Salt states/pillar source (benarbejde/ vs gitfs, see"
+          - "  playbooks/salt/README.md), SaltGUI web dashboard"
+          - "════════════════════════════════════════════════════════════════"
+
+  # ---------------------------------------------------------------------------
+  # Handlers
+  # ---------------------------------------------------------------------------
+
+  handlers:
+
+    - name: Restart NetworkManager
+      systemd:
+        name: NetworkManager
+        state: restarted
+
+    - name: Update apt cache
+      apt:
+        update_cache: true
+
+    - name: Restart salt-master
+      systemd:
+        name: salt-master
+        state: restarted

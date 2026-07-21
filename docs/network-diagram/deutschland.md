@@ -41,7 +41,7 @@ graph TD
       RTR <-->|"WireGuard tunnel"| VPN
 
       SW --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_BON fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:BON:START
@@ -96,7 +96,7 @@ graph TD
       RTR <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_BER fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:BER:START
@@ -145,7 +145,7 @@ graph TD
       SW <-->|"WireGuard tunnel"| VPN
 
       SW --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_MUN fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:MUN:START
@@ -194,7 +194,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_DRS fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:DRS:START
@@ -238,7 +238,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_DUS fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:DUS:START

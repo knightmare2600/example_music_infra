@@ -137,7 +137,7 @@ manual address instead.
 | vCPU | 1 |
 | RAM | 1 GB |
 | Disk | 10 GB |
-| IP | `192.168.<site-octet>.15` |
+| IP | Next free slot in the `.2`/`.3`/`.4` BMC pool (see above) — `192.168.76.3` for FAL, a single-PVE-node site |
 | Service port | 443 (HTTPS, runs as root) |
 | Redfish web UI | `https://<RAC-IP>/redfish/v1/` |
 | Default credentials | `root` / `root_password` |
@@ -179,10 +179,10 @@ No desktop environment.
 
 ```bash
 # From your workstation or the provisioning server
-scp rac-setup.sh root@192.168.76.15:/root/
+scp rac-setup.sh root@192.168.76.3:/root/
 
 # SSH in and run
-ssh root@192.168.76.15
+ssh root@192.168.76.3
 bash /root/rac-setup.sh
 ```
 
@@ -210,7 +210,7 @@ It will then:
 
 ```bash
 # Quick smoke test — from the PVE node or any site workstation
-curl -sk https://192.168.76.15/redfish/v1/ | python3 -m json.tool | head -20
+curl -sk https://192.168.76.3/redfish/v1/ | python3 -m json.tool | head -20
 ```
 
 Expected output begins with the Redfish service root:
@@ -243,7 +243,7 @@ journalctl -u rac-emulator -n 50 --no-pager
 # From any node on the WireGuard fabric
 curl -sk \
     -u root:root_password \
-    https://192.168.76.15/redfish/v1/Systems/1/ \
+    https://192.168.76.3/redfish/v1/Systems/1/ \
     | python3 -m json.tool
 ```
 
@@ -254,7 +254,7 @@ power state.
 ### Check certificate
 
 ```bash
-openssl s_client -connect 192.168.76.15:443 -showcerts \
+openssl s_client -connect 192.168.76.3:443 -showcerts \
     </dev/null 2>/dev/null \
     | openssl x509 -noout -subject -dates
 ```
@@ -272,7 +272,7 @@ or adding the cert to your trust store.
 ### Browse the service root
 
 ```bash
-BASE="https://192.168.76.15"
+BASE="https://192.168.76.3"
 AUTH="-u root:root_password"
 
 curl -sk $AUTH $BASE/redfish/v1/ | python3 -m json.tool
@@ -351,7 +351,7 @@ curl -sk $AUTH $BASE/redfish/v1/Managers/1/ | python3 -m json.tool
 # Example Ansible task — get system facts from the RAC emulator
 - name: Get server facts from RAC emulator
   community.general.redfish_info:
-    baseuri: "192.168.76.15"
+    baseuri: "192.168.76.3"
     username: "root"
     password: "root_password"
     category: Systems
@@ -372,7 +372,7 @@ import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-BASE  = "https://192.168.76.15"
+BASE  = "https://192.168.76.3"
 AUTH  = ("root", "root_password")
 
 # Get system info
@@ -519,7 +519,7 @@ Key endpoints served by the emulator. All are GET unless noted.
 | Document | Relationship |
 |----------|-------------|
 | `proxmox/pve-create-vm.md` | VM creation via `create-vm.py` |
-| `network-inventory.md` | `.15` RAC IP convention per site |
+| `network-inventory.md` | `.2`/`.3`/`.4` BMC pool convention per site |
 | `management/rudder-setup.md` | Ansible/Rudder can target RAC endpoints for Redfish training |
 | `active-directory/ad-dc-wireguard-deployment.md` | WireGuard fabric RAC nodes sit on |
 

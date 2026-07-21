@@ -19,11 +19,11 @@ Example usage:
 
 1) Bulk create pools (password prompt):
 
-python3 manage-pool.py --host proxmox.example.com --user root@pam --create GLA EDI PRV --comment "Infrastructure pools"
+python3 manage-pool.py --host proxmox.example.com --user root@pam --create GLA EDI FAL --comment "Infrastructure pools"
 
 2) Bulk create pools (API token)
 
-python3 manage-pool.py --host pve.example.com --user root@pam --token-name poolmgr --token-value "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" --create GLA PRV --comment "Infrastructure pools"
+python3 manage-pool.py --host pve.example.com --user root@pam --token-name poolmgr --token-value "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" --create GLA FAL --comment "Infrastructure pools"
 
 3) List all VMs and Containers
 
@@ -33,9 +33,9 @@ python3 manage-pool.py --host proxmox.example.com --user root@pam --list
 
 python3 manage-pool.py --host proxmox.example.com --user root@pam --match "FW-*" --pool FIREWALLS
 
- 5.) Dry-run creating pools GLA, EDI, and PRV
+ 5.) Dry-run creating pools GLA, EDI, and FAL
  
- python3 manage-pool.py --host proxmox.example.com --user root@pam --dry-run GLA EDI PRV
+ python3 manage-pool.py --host proxmox.example.com --user root@pam --dry-run GLA EDI FAL
 
 ===============================================================================
 Authentication priority:
@@ -73,6 +73,15 @@ v1.3 - Safety enhancements
 v1.4 - Uppercase enforcement
     • All pool names automatically converted to uppercase
     • Prevents accidental mis-casing issues
+
+v1.5 - Correction (2026-07-20, Robert)
+    • v1.2's "PRV site code added for provisioning" was never a real site — confirmed
+      against sites.csv, no such row exists. PRV is a devices.csv device-role code
+      (provisioning server, VRK/FRD only — see benarbejde/role_codes.csv), not a
+      Proxmox site code; this script's own site-code validation (see below) would
+      correctly reject it if actually run. Replaced with a real third example (FAL)
+      in every usage example above -- the v1.2 entry itself is left as written,
+      since it's an accurate record of what shipped at the time, not a live claim.
 
 v1.5 - Confirmation preview
     • Pre-flight summary now shows pools in uppercase

@@ -1,0 +1,18 @@
+## Illustrative, generic per-habitat config for bespoke_app_install (see
+## ../install/init.sls) -- preserved pattern, not wired to any real app.
+## Every value below is a placeholder; whoever activates this for a real app
+## should source real endpoints from pillar (bespoke_app: ...) rather than
+## hardcoding them here, and add whatever fields that app's own config
+## format actually needs -- this just shows the shape (hostname/apptype
+## passed in via file.managed's `defaults:`, everything else read straight
+## from pillar, one file per habitat).
+
+{% set cfg = pillar.get('bespoke_app', {}) %}
+
+port: {{ cfg.get('port', 9087) }}
+hostname: "{{ hostname }}"
+apptype: "{{ apptype }}"
+baseurl: "http://127.0.0.1:{{ cfg.get('port', 9087) }}"
+cmsurl: "{{ cfg.get('production_cms_url', 'https://example.invalid/cms') }}"
+timezone: "{{ cfg.get('timezone', 'Europe/London') }}"
+mem: true

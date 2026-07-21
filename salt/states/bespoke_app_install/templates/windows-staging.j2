@@ -1,0 +1,13 @@
+## Staging counterpart of windows-production.j2 -- same illustrative/generic
+## caveats apply (see that file's own header comment). Only real difference
+## from production here is which pillar key backs cmsurl.
+
+{% set cfg = pillar.get('bespoke_app', {}) %}
+
+port: {{ cfg.get('port', 9087) }}
+hostname: "{{ hostname }}"
+apptype: "{{ apptype }}"
+baseurl: "http://127.0.0.1:{{ cfg.get('port', 9087) }}"
+cmsurl: "{{ cfg.get('staging_cms_url', 'https://staging.example.invalid/cms') }}"
+timezone: "{{ cfg.get('timezone', 'Europe/London') }}"
+mem: true

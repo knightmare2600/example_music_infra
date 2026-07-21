@@ -12,6 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-07-21 | §4/§4.2/§10.2/§11.3/Appendix all updated: VRK/FRD's provisioning servers (Type=`TMP` in `devices.csv`, formerly `PRV`) deliberately no longer have a formal `EXA<ROLE><SITE><NNN>` hostname or DNS record at all — Robert: these are bootstrap-only helpers, not real managed nodes, so they shouldn't carry the same identity every real node gets. Referenced by IP only from here on (`192.168.139.50` Edinburgh, `172.16.124.1` Fredericia Havn) — see `benarbejde/begyndelse.json`. |
 | 2026-07-19 | §4's `.15` PRV row replaced with `.19` NAS. `.15` was never real for any ordinary site — confirmed via a real inventory-generation run that every non-VRK/FRD site was getting a synthesized `EXAPRV<SITE>001` DNS record for a device that has never existed; provisioning is genuinely centralised at VRK/FRD, not per-site (their own real `EXAPRVVRK001`/`EXAPRVFRD001` hostnames are untouched — unrelated devices.csv-exception rows, not this standard-slot convention). `.19` is new, for site storage (TrueNAS) — a real rollout, replacing 3 retired legacy NAS boxes (FAL/PER/MEL) that used to sit at inconsistent ad-hoc addresses. |
 | 2026-07-12 | §7.2 corrected — previously said the per-site build sequence was `FWL → DCS → (PVE hypervisors, ...)`, backwards, since the firewall and DC are both VMs and can't exist before the PVE node hosting them does. Also corrected "the firewall is built by running `firewallme.sh`" to name the Ansible playbook (`playbooks/firewallme/playbooks/90-firewall.yml`) as the first-instance path, `firewallme.sh` as the break-glass fallback — matches root `README.md`'s existing break-glass framing, which this section hadn't been brought in line with. Fixed a second, unrelated stale `192.168.139.68`→`.69` (CLD's FWL WAN face) that the 2026-07-08 entry below fixed in §4.1 but missed here. Added §7.2a documenting CLD/VRK's own build sequence (no site to replicate from yet) — PVE → `EXADNSVRK001` → firewall → `EXADCSCLD001`, the one DC build where `dc_is_first_in_forest` is answered yes. |
 | 2026-07-08 | Added section 4.2, `FRD` (Fredericia Havn) — the vRACK's standby provisioning network, not to be confused with `FRE` (the real Fredericia office). Fixed section 4.1's CLD IP table: DNS/PRV/the firewall's WAN face are `EXA*VRK001`-suffixed hostnames, not `EXA*CLD001` (devices.csv files them under `Site=VRK`); corrected the WAN face octet (`.69`, not `.68`); PBX is `EXAPBXCLD001`, not `EXACLDPBX001` (fixed a second time after an over-eager find/replace on this same changelog line corrupted it into a tautology). |
@@ -173,16 +174,16 @@ The CLD IP table is reproduced here for reference. These are authoritative — v
 | `EXAFWLVRK001` (WAN) | `192.168.139.69` | vRACK | Firewall WAN face — same physical firewall as `EXAFWLCLD001`, its vRACK-facing interface |
 | `EXAFWLCLD001` (LAN) | `192.168.69.253` | LAN | Firewall LAN face |
 | `EXADNSVRK001` | `192.168.139.8` | vRACK | BIND9 — authoritative DNS for `jukebox.internal` |
-| `EXAPRVVRK001` | `192.168.139.50` | vRACK | Provisioning / PXE server (Edinburgh, primary) |
+| — (bootstrap-only, no formal hostname) | `192.168.139.50` | vRACK | Provisioning / PXE server (Edinburgh, primary) |
 | `EXAANSCLD001` | `192.168.69.9` | LAN | Ansible control node |
 | `EXADCSCLD001` | `192.168.69.10` | LAN | Domain Controller — primary |
 | `EXADCSCLD002` | `192.168.69.11` | LAN | Domain Controller — secondary |
-| `EXARDRCLD001` | `192.168.69.12` | LAN | Rudder configuration management server |
+| `EXARUDCLD001` | `192.168.69.12` | LAN | Rudder configuration management server |
 | `EXASVRCLD002` | `192.168.69.20` | LAN | Windows Admin Centre |
 | `EXAPBXCLD001` | `192.168.69.48` | LAN | Central 3CX PBX — reuses the empty SBC slot, since CLD has no SBC of its own |
 | `EXAUFCCLD001` | `192.168.69.82` | LAN | UniFi Network Controller — manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
 
-> **Common mistakes:** DNS/PRV/the firewall's WAN face are `VRK`-suffixed hostnames (`EXADNSVRK001`, `EXAPRVVRK001`, `EXAFWLVRK001`), not `CLD`-suffixed — devices.csv files them under `Site=VRK` since they're vRACK-resident, not CLD LAN. The FWL LAN face is `.69.253`, not `.69.1`. Rudder, WAC, PBX, and the Ansible node are on the **LAN** (`.69.x`) — not the vRACK, despite PBX and the UniFi controller both reusing octets (`.48`, `.82`) that are conventionally something else at a normal site.
+> **Common mistakes:** DNS/the firewall's WAN face are `VRK`-suffixed hostnames (`EXADNSVRK001`, `EXAFWLVRK001`), not `CLD`-suffixed — devices.csv files them under `Site=VRK` since they're vRACK-resident, not CLD LAN. The provisioning server (`192.168.139.50`) has no hostname at all, VRK-suffixed or otherwise — bootstrap-only, IP-referenced only. The FWL LAN face is `.69.253`, not `.69.1`. Rudder, WAC, PBX, and the Ansible node are on the **LAN** (`.69.x`) — not the vRACK, despite PBX and the UniFi controller both reusing octets (`.48`, `.82`) that are conventionally something else at a normal site.
 
 ### 4.2 FRD (Fredericia Havn) — the vRACK's backup
 
@@ -203,10 +204,10 @@ FRD's own IP table:
 
 | Hostname | IP | Role |
 |----------|----|------|
-| `EXAPRVFRD001` | `172.16.124.1` | Provisioning / PXE server (standby). Port 8000, not 80 — a real, fixed detail of the MacBook's `http.server` setup, not derivable from any convention |
+| — (bootstrap-only, no formal hostname) | `172.16.124.1` | Provisioning / PXE server (standby). Port 8000, not 80 — a real, fixed detail of the MacBook's `http.server` setup, not derivable from any convention |
 | `EXAPBXCLD002` | `172.16.124.48` | Secondary 3CX PBX, physically at Fredericia Havn — reuses the empty SBC slot, same reasoning as CLD's own PBX (`EXAPBXCLD001`) |
 
-> **Why is FRD's PBX hostnamed under CLD?** As of the 2026-07-11 network rework, CLD is "top of the tree" for the Pulsant DC / FRD Havn pairing — FRD Havn and (some of) Edinburgh's Pulsant-hosted nodes share OVH's vRACK fabric with CLD, so devices physically at FRD Havn are now hostnamed as CLD's next-numbered device (`EXAPBXCLD002`, following `EXAPBXCLD001`) while keeping their real IP on FRD's own `172.16.124.0/24` subnet — a `SubnetSite` override in `devices.csv`, resolved by `generate_inventory.py`. `EXAPRVFRD001` above deliberately keeps its own FRD-hostnamed identity — it's woven into FRD-specific lookups (`menu.ipxe`/`late_command.sh` gateway detection, `begyndelse.json`'s `provisioning_fredericia_havn`) in a way the PBX wasn't, so it wasn't folded in.
+> **Why is FRD's PBX hostnamed under CLD?** As of the 2026-07-11 network rework, CLD is "top of the tree" for the Pulsant DC / FRD Havn pairing — FRD Havn and (some of) Edinburgh's Pulsant-hosted nodes share OVH's vRACK fabric with CLD, so devices physically at FRD Havn are now hostnamed as CLD's next-numbered device (`EXAPBXCLD002`, following `EXAPBXCLD001`) while keeping their real IP on FRD's own `172.16.124.0/24` subnet — a `SubnetSite` override in `devices.csv`, resolved by `generate_inventory.py`. The provisioning server above was never folded in under CLD like the PBX was — it's woven into FRD-specific lookups (`menu.ipxe`/`late_command.sh` gateway detection, `begyndelse.json`'s `provisioning_fredericia_havn`) in a way the PBX wasn't. As of 2026-07-21 this is moot for renaming purposes anyway: it has no formal hostname to fold in or keep, VRK's own provisioning server included — both are IP-only now.
 
 ---
 
@@ -235,7 +236,7 @@ Example: `EXAFWLEDI001` — EXA estate, firewall role, Edinburgh site, first uni
 | `EXANAS` | NAS | `EXANASFAL001` |
 | `EXASBC` | VOIP SBC | `EXASBCFAL001` |
 | `EXAPBX` | PBX | `EXAPBXCLD001` |
-| `EXAPRV` | Provisioning / bootstrap server | `EXAPRVVRK001` |
+| `TMP` | Provisioning / bootstrap server (VRK/FRD only, no formal hostname) | `192.168.139.50` / `172.16.124.1` |
 | `EXAWAP` | WiFi access point | `EXAWAPFAL001` |
 | `EXAUFC` | UniFi Network Controller (CLD only) | `EXAUFCCLD001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |
@@ -374,7 +375,7 @@ Once CLD is fully commissioned:
 - `EXADCSCLD001` (`192.168.69.10`) is the forest root DC for `jukebox.internal`. Every other site's DC is a child domain DC that replicates from it.
 - `EXADNSVRK001` (`192.168.139.8`) is the authoritative BIND9 nameserver for `jukebox.internal`. Every site firewall forwards internal DNS queries to it across the WireGuard tunnel. It sits on the vRACK — every site FWL WAN interface can reach it directly without going through the LAN.
 - `EXAANSCLD001` (`192.168.69.9`) is the Ansible control node. It runs playbooks against the entire estate. Reachable on the CLD LAN via WireGuard.
-- `EXARDRCLD001` (`192.168.69.12`) is the Rudder configuration management server. All managed nodes report to it. Reachable on the CLD LAN via WireGuard.
+- `EXARUDCLD001` (`192.168.69.12`) is the Rudder configuration management server. All managed nodes report to it. Reachable on the CLD LAN via WireGuard.
 - `EXAPBXCLD001` (`192.168.69.48`) is the central 3CX PBX. Site SBCs (`EXASBC<SITE>001`) trunk to it.
 - `EXAUFCCLD001` (`192.168.69.82`) is the UniFi Network Controller. Every site's WAPs (`EXAWAP<SITE>001`+) check in to it — CLD has no physical WiFi of its own, it just hosts the management plane.
 
@@ -397,7 +398,7 @@ CLD → FAL → ODE → BRK → all spokes
 ```
 
 **CLD first, always.** CLD is the sole WireGuard hub. Without it:
-- There is no provisioning server (`EXAPRVVRK001` at `192.168.139.50`) to serve iPXE boot files, preseed configs, and the Ansible SSH key
+- There is no provisioning server (`192.168.139.50`) to serve iPXE boot files, preseed configs, and the Ansible SSH key
 - There is no DNS for `jukebox.internal`
 - There is no forest root DC — child domains cannot exist
 - There is no Ansible control node to run playbooks against anything
@@ -515,7 +516,7 @@ Once the firewall play completes and the FWL reboots, the WireGuard tunnel to CL
 With the FWL live and the WireGuard tunnel up, the site can talk to CLD. Now build the domain controller:
 
 1. Create the DC VM on the site PVE node
-2. Boot via iPXE (served from `EXAPRVVRK001` across the WireGuard tunnel)
+2. Boot via iPXE (served from the provisioning server, `192.168.139.50`, across the WireGuard tunnel)
 3. Debian installs unattended via `lvm.seed` / `late_command.sh`
 4. Run `windows_bootstrap/site.yml` — renames the host, assigns a static IP, and configures DNS (see below)
 5. Run the `windows_dc/site.yml` Ansible playbook from `EXAANSCLD001` — this promotes the VM to a DC (its `00-dc-preflight.yml` `dc_is_first_in_forest` prompt is how it distinguishes "join an existing forest" from "this is the very first DC", see §7.2a), joins it to the appropriate child domain, and configures AD replication back to `EXADCSCLD001`
@@ -842,7 +843,7 @@ The database MUST be stored on an encrypted volume or in a secure location. Do n
 
 ### 11.3 SSH key setup
 
-The Ansible user across the estate uses a shared SSH keypair. The public key is served from `EXAPRVVRK001` at `http://192.168.139.50/ansible_sshkey.pub` and installed into every provisioned node during the preseed/first-boot stage.
+The Ansible user across the estate uses a shared SSH keypair. The public key is served from the provisioning server at `http://192.168.139.50/ansible_sshkey.pub` and installed into every provisioned node during the preseed/first-boot stage.
 
 You MUST have the corresponding private key to run Ansible playbooks or SSH directly as the `ansible` user. Retrieve it from KeePassXC under **Bootstrap → Ansible SSH private key**:
 
@@ -865,7 +866,7 @@ For firewall testing locally in Fusion, use:
 - **Host-Only** network adapter for the LAN interface (isolated from the Mac's real network)
 - **Bridged** adapter for the WAN interface (reaches the real provisioning network, or another Host-Only net for an isolated WAN stub)
 
-The `firewallme.sh` script detects which interface has a `192.168.139.x` DHCP lease and uses that as WAN automatically. This detection works correctly in Fusion as long as the bridged adapter is on a network where `EXAPRVVRK001` is reachable.
+The `firewallme.sh` script detects which interface has a `192.168.139.x` DHCP lease and uses that as WAN automatically. This detection works correctly in Fusion as long as the bridged adapter is on a network where the provisioning server (`192.168.139.50`) is reachable.
 
 ---
 

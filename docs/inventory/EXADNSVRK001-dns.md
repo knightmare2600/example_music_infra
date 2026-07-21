@@ -65,15 +65,21 @@ CLD is a special case: suffix `.48` resolves to `exapbxcld001` (PBX), not `exasb
 The forward zone also contains **firewall WAN addresses** — see [Section 9](#9-how-the-addressing-scheme-works) — and the provisioning ancillary hosts:
 
 > **Correction (2026-07-10):** this table previously put every host below on `192.168.139.x` (vRACK). Only
-> `EXADNSVRK001` and `EXAPRVVRK001` actually live there — `EXAANSCLD001`, `EXASVRCLD002`, `EXARDRCLD001`,
+> `EXADNSVRK001` actually lives there (the provisioning server does too, but has no formal hostname —
+> see the 2026-07-21 correction below) — `EXAANSCLD001`, `EXASVRCLD002`, `EXARUDCLD001`,
 > and `EXAPBXCLD001` are all on `192.168.69.x` (CLD LAN), per `benarbejde/begyndelse.json`. The old
 > `exasvrcld003`/`exasvrcld004` names were also wrong — the real hostnames are `EXAANSCLD001` (Ansible) and
-> `EXARDRCLD001` (Rudder).
+> `EXARUDCLD001` (Rudder).
+>
+> **Correction (2026-07-21):** `exaprvvrk001.jukebox.internal` (below) no longer exists as a DNS
+> record at all — the provisioning server is a bootstrap-only helper, deliberately given no formal
+> `EXA<ROLE><SITE><NNN>` hostname or DNS record any more. It's still real, still at `192.168.139.50`,
+> just referenced by IP only now (see `benarbejde/begyndelse.json`'s `provisioning_edinburgh`).
 
 | Name                               | IP               | Purpose                   |
 |------------------------------------|------------------|---------------------------|
 | `exadnsvrk001.jukebox.internal`    | `192.168.139.8`  | DNS/BIND server (this host), vRACK      |
-| `exaprvvrk001.jukebox.internal`    | `192.168.139.50` | Provisioning / PXE server, vRACK        |
+| — (no DNS record — IP only)        | `192.168.139.50` | Provisioning / PXE server, vRACK, bootstrap-only |
 | `exaanscld001.jukebox.internal`    | `192.168.69.9`   | Ansible control node, CLD LAN           |
 | `exasvrcld002.jukebox.internal`    | `192.168.69.20`  | Windows Admin Centre, CLD LAN           |
 | `exardrcld001.jukebox.internal`    | `192.168.69.12`  | Rudder configuration management, CLD LAN |
@@ -88,7 +94,8 @@ Zone: `139.168.192.in-addr.arpa`
 This is a **dedicated, hand-built zone** — it is not produced by the per-site loop.
 It contains:
 
-- PTR records for the three ancillary hosts (`.10`, `.50`, `.69`)
+- PTR records for the two ancillary hosts (`.8`, `.69`) — the provisioning server (`.50`) has no
+  PTR record, bootstrap-only, IP-referenced only (2026-07-21)
 - PTR records for every site firewall's WAN address on the provisioning network
   (`192.168.139.{octet}` → `exafwl{site}001-wan.jukebox.internal.`)
 

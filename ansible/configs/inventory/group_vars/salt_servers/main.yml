@@ -1,0 +1,96 @@
+---
+# =============================================================================
+# group_vars/salt_servers/main.yml
+# Example Music Limited — Salt master group variables
+#
+# These apply to every host in [salt_servers]. Per-host overrides go in
+# host_vars/<hostname>/main.yml.
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-07-20  Initial release.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Domain -- derived from benarbejde/ad_forest.json (single source of truth),
+# same pattern as group_vars/rudder_servers/main.yml's rudder_domain. Only
+# used for /etc/hosts and MOTD here -- Salt itself doesn't need AD/LDAP.
+# -----------------------------------------------------------------------------
+salt_domain: "{{ (lookup('file', ad_forest_json_path | default('/etc/example-music/ad_forest.json')) | from_json).domain_fqdn }}"
+
+# -----------------------------------------------------------------------------
+# Salt version -- master and minions MUST run matching major.minor lines.
+# This pins the apt install to the 3008.x line via an apt preferences file
+# (Section 5 below) rather than an exact Debian package suffix, which would
+# be brittle to guess. If you bump this, you MUST also fetch a matching
+# 3008.x Windows installer and replace bootstrap/web/windows/Salt-Minion-
+# Setup.msi -- see docs/buildsheets/buildsheet-salt-minion.md, which
+# references this same value.
+# -----------------------------------------------------------------------------
+salt_version_major: "3008"
+
+# -----------------------------------------------------------------------------
+# This repo's own git remote -- states/pillar are served to the master
+# straight from here via gitfs/git_pillar (Section 6 of salt_master.yml).
+# Public repo, so a plain HTTPS URL is enough -- no credentials needed.
+# -----------------------------------------------------------------------------
+salt_gitfs_repo_url: "https://github.com/knightmare2600/example_music_infra.git"
+
+# -----------------------------------------------------------------------------
+# Base packages (mirrors group_vars/rudder_servers/main.yml's rudder_base_packages
+# -- same CLD-service-VM baseline, not reinvented independently)
+# -----------------------------------------------------------------------------
+salt_base_packages:
+  - vim
+  - git
+  - curl
+  - wget
+  - htop
+  - tree
+  - jq
+  - python3
+  - arping
+  - network-manager
+  - molly-guard
+  - fail2ban
+  - ufw
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - apt-transport-https
+
+# -----------------------------------------------------------------------------
+# sites.csv path on the Ansible control node (same resolution order as
+# group_vars/rudder_servers/main.yml's sites_csv_path)
+# -----------------------------------------------------------------------------
+sites_csv_path: "/etc/example-music/sites.csv"
+
+# -----------------------------------------------------------------------------
+# UFW: allow Salt publish/return ports from all site subnets -- minions are
+# Windows client endpoints anywhere in the estate, not just CLD. Built
+# dynamically from sites.csv in the playbook pre_tasks (same mechanism as
+# rudder_server.yml's _allowed_networks); this list covers the static
+# well-known Salt ports on both VPN and LAN address ranges.
+# -----------------------------------------------------------------------------
+salt_site_ufw_rules:
+  - subnet: "10.0.0.0/8"
+    port: "4505"
+    comment: "Salt publish port, all VPN"
+  - subnet: "10.0.0.0/8"
+    port: "4506"
+    comment: "Salt return port, all VPN"
+  - subnet: "192.168.0.0/16"
+    port: "4505"
+    comment: "Salt publish port, all LANs"
+  - subnet: "192.168.0.0/16"
+    port: "4506"
+    comment: "Salt return port, all LANs"
+
+# -----------------------------------------------------------------------------
+# Master config -- auto_accept deliberately left False (Salt's own secure
+# default). New minion keys are accepted by hand (salt-key -a), same posture
+# as this repo's existing "security posture is Robert's call" convention --
+# not something to flip for convenience. See buildsheet-salt-minion.md's
+# "Verifying check-in" section for the manual accept step.
+# -----------------------------------------------------------------------------
+salt_master_auto_accept: false

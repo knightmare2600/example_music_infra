@@ -4,9 +4,9 @@
 # Example Music Limited -- Enterprise Network Boot
 # Safe default: boot local disk after 30 seconds
 #
-# Boot server topology:
-#   192.168.139.50    Edinburgh datacentre  (EXAPRVVRK001, gateway .254)
-#   172.16.124.1:8000 Fredericia datacentre (EXAPRVFRD001, gateway .2)
+# Boot server topology (bootstrap-only helpers -- IP only, no formal hostname):
+#   192.168.139.50    Edinburgh datacentre  (gateway .254)
+#   172.16.124.1:8000 Fredericia datacentre (gateway .2)
 #                     Legal fiction -- physically a MacBook running
 #                     python3 -m http.server 8000, mirroring /debian
 #                     from Edinburgh. Only the IP differs.
@@ -16,6 +16,11 @@
 # ===========================================================================
 #
 # Version history:
+#
+#   v2.6   Dropped the EXAPRVVRK001/EXAPRVFRD001 hostname labels from the topology comment
+#          and the two env_* echo lines -- both provisioning servers are bootstrap-only
+#          helpers, deliberately given no formal EXA<ROLE><SITE><NNN> hostname or DNS record
+#          any more (2026-07-21, Robert). IP only, same as boot-url already was.
 #
 #   v2.5   PROXMOX VE reduced to a stub, matching PROXMOX DCM's existing pattern.
 #          v2.4's BMC-delivery approach was tested live 2026-07-18 and failed outright
@@ -170,13 +175,13 @@ iseq ${net0/gateway} 172.16.124.2    && goto env_fredericia ||
 goto env_fallback
 
 :env_edinburgh
-echo Environment: Edinburgh (EXAPRVVRK001)
+echo Environment: Edinburgh (192.168.139.50)
 set boot-url http://192.168.139.50
 set site-prefix VRK
 goto env_done
 
 :env_fredericia
-echo Environment: Fredericia (EXAPRVFRD001 - MacBook/Fusion NAT)
+echo Environment: Fredericia (172.16.124.1 - MacBook/Fusion NAT)
 set boot-url http://172.16.124.1:8000
 set site-prefix FRD
 goto env_done

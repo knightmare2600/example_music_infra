@@ -21,6 +21,46 @@ mattered to him, not open-source-licence purism.
 - `ExampleMusicWallpaper.png` — the corporate wallpaper image, used by
   `60-wallpaper.yml`. Platform-agnostic (same PNG regardless of CPU
   architecture), so it lives at the top level, not under an arch subfolder.
+- `bginfo.exe` — Microsoft Sysinternals BGInfo
+  (https://live.sysinternals.com/Bginfo.exe) — free-to-download, not open
+  source (same proprietary-Microsoft-freeware bar as ADExplorer/procexp/
+  Procmon below). No confirmed ARM64-native build in this drop (checked
+  2026-07-20, not assumed) — a `Bginfo64.exe` may exist upstream but wasn't
+  verified, so this stays a flat, non-arch-specific entry for now.
+- `FileHash.exe` — modern non-PowerShell replacement for `fciv.exe`
+  (https://brainwavecc.com/blogs/wpfd_file/filehash/) — third-party
+  freeware. Upstream ships both a 32-bit (`FileHash.exe`) and 64-bit
+  (`FileHash64.exe`) build; only the 64-bit build is kept here, renamed to
+  the flat `FileHash.exe` name — every real Windows box in this estate is
+  64-bit, so the 32-bit build was dropped rather than carried for no reason.
+- `dosdev.exe` — DOS device-name management utility. Source not specified
+  in the Salt state this was ported from (2026-07-20) — not re-sourced
+  independently; flagged here rather than guessed.
+- `DelProf2.exe` — deletes stale/old Windows user profiles
+  (https://helgeklein.com/download/) — third-party freeware, single build,
+  no ARM64 variant offered upstream.
+- `SetWallpaper.exe` — console wallpaper setter, ported 2026-07-21 while
+  reviewing a dropped-in reference Salt state. Circa 1999–2000 (Marty List/
+  OptimumX, per its own embedded strings — no upstream URL found, sourced
+  as-is from the dropped-in state). Syntax confirmed directly from its own
+  `strings` output, not guessed: `SetWallpaper.exe [/D:C|T|S] filename.bmp|/R`
+  (Centered/Tiled/Stretched, or `/R` to remove). Queued via a `RunOnce`
+  registry key by both `60-wallpaper.yml` (bootstrap) and Salt's
+  `wintools/init.sls` (ongoing, onchanges-gated) — same "can't apply over
+  this SSH/WinRM session, needs a real interactive logon" reasoning as
+  `setres.exe` in `85-finish.yml`. Two real, unresolved-until-live-tested
+  caveats: (1) every example in its own help text uses `.bmp` — old enough
+  it may predate PNG support in the API it wraps, so a `.bmp` copy of the
+  corporate wallpaper is shipped alongside the `.png`
+  (`exa_wallpaper_dest_bmp`, `group_vars/all/vars.yml`) specifically for
+  this tool; (2) it only supports the three legacy styles (Center/Tile/
+  Stretch), not the modern numeric `WallpaperStyle` codes our registry
+  enforcement uses (`"10"` = Fill) — invoked with `/D:S` (Stretch) as the
+  closest available match, not a true equivalent of Fill.
+
+All five of the above ported while reviewing a dropped-in reference
+Salt state — deployed via `binaries_flat` (`group_vars/windows/vars.yml`), not
+`binaries_extra`, since none of them are genuinely arch-specific.
 
 ## x86_64/ and arm64/
 

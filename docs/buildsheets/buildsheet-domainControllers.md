@@ -21,7 +21,8 @@ Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.0.1
 
 ### Chocolatey Packages (choco install)
 ```
-7zip  notepadplusplus.install  hyper  putty  winscp  far  powershell-core  rustdesk
+7zip.install  notepadplusplus.install  hyper  putty.install  winscp.install  far  powershell-core
+rustdesk.install  edit  sdelete  wget  busybox  vcredist-all  dotnetfx  sysinternals  windirstat
 ```
 
 > **RustDesk** is also pre-staged in `C:\DeployTools\utils\` on the WinPE image.  
@@ -29,21 +30,22 @@ Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.0.1
 
 ### PowerShell 7 Modules (Install-Module)
 ```
-PSWriteColor  PSConsoleTools  PSReadLine  CompletionPredictor  Terminal-Icons
+PSConsoleTools  PSWindowsUpdate  PSWriteColor  PSReadLine  Terminal-Icons  CompletionPredictor  NerdFonts
 ```
 
 ### Nerd Fonts
-```
-nerd-fonts-cascadiacode  (or preferred variant — via choco or oh-my-posh)
-```
 
-### RSAT / AD Management Tools (Add-WindowsCapability)
+Not a Chocolatey package — `tasks/fonts.yml` fetches JetBrains Mono Nerd Font directly from its
+upstream GitHub release zip (`exa_font_files`, `group_vars/all/vars.yml`) and deploys only the
+specific variants listed (Regular/Bold/BoldItalic/Italic/Mono-Regular).
+
+### RSAT / AD Management Tools (Install-WindowsFeature)
+
+Server OS installs RSAT via Server Manager features, not `Add-WindowsCapability` (that mechanism
+is for client/workstation OS — see `buildsheet-workstation.md`). DC promotion itself
+(`windows_dc/playbooks/10-dc-install-features.yml`) installs:
 ```
-Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
-Rsat.DNS.Tools~~~~0.0.1.0
-Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0
-Rsat.DFS.Tools~~~~0.0.1.0
-Rsat.DFSR.Tools~~~~0.0.1.0
+AD-Domain-Services  DNS  GPMC  RSAT-AD-Tools  RSAT-AD-PowerShell  RSAT-DNS-Server
 ```
 
 ### OpenSSH Boot Commands
@@ -93,7 +95,7 @@ report — and that report has been signed off on the DC Promotion Sheet.
 | Hostname | RDP | SF | SB | SR | CH | CP | P7 | PM | DJ | RS | DC | IP | RD | Notes |
 |----------|-----|----|----|----|----|----|----|----|----|----|----|----|----|----|
 | EXADCSFAL001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | HEAD OFFICE / PDC EMULATOR / FSMO |
-| EXADCSEDI001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | ⚠️ See Appendix A — legacy EXADCREDI001 to be decommissioned |
+| EXADCSEDI001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | ⚠️ See Appendix A — legacy EXADCREDI002/003 to be decommissioned |
 | EXADCSGLA001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | ⚠️ See Appendix A — legacy EXADCRGLA001 to be decommissioned |
 | EXADCSABD001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
 | EXADCSCLY001 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | |
@@ -205,7 +207,8 @@ for that site is promoted, replicated, and signed off.
 | Legacy Hostname | Site | Canonical Replacement | Status |
 |----------------|------|-----------------------|--------|
 | `EXADCRGLA001` | GLA | `EXADCSGLA001` | Pending rebuild |
-| `EXADCREDI001` | EDI | `EXADCSEDI001` | Pending rebuild |
+| `EXADCREDI002` | EDI | `EXADCSEDI001` | DC secondary needs rebuild (`.12`) |
+| `EXADCREDI003` | EDI | `EXADCSEDI001` | Decommission pending (`.13`) |
 | `EXADCRLND001` | LND | `EXADCSLND001` | Pending rebuild |
 | `EXADCRMCR001` | MCR | `EXADCSMCR001` | Pending rebuild |
 | `EXADCRLIV001` | LIV | `EXADCSLIV001` | Pending rebuild |

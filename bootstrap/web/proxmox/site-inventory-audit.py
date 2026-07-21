@@ -381,7 +381,8 @@ def _load_devices(csv_path=None):
   Returns a list of dicts: site, hostname (derived from Type+Site+Number,
   same convention as generate_inventory.py's build_hostname()), host_octet,
   role (= Type), os, connection_type (ssh/winrm/telnet/snmp/http/none, see
-  address_policy.json's connection_types), notes, subnet_base, full_ip
+  benarbejde/role_codes.csv's Code/ConnectionMethod columns -- moved out of
+  address_policy.json 2026-07-20), notes, subnet_base, full_ip
   (resolved from sites.csv; empty string if HostOctet is blank).
 
   Non-networked assets (blank HostOctet) are included with empty full_ip.
@@ -835,9 +836,10 @@ def _build_known_ancillary():
   """
   (site, ip, hostname, in_ansible, comment) for each known ancillary host, pulled from
   devices.csv via _load_devices(). in_ansible is derived from ConnectionType: ssh/winrm/telnet
-  are real Ansible connection methods, snmp/http/none are not (see address_policy.json's
-  connection_types) -- e.g. the provisioning server (ConnectionType=none, deliberately not
-  Ansible-managed) is correctly excluded from the generated [ancillary] inventory group.
+  are real Ansible connection methods, snmp/http/none are not (see benarbejde/role_codes.csv's
+  Code/ConnectionMethod columns) -- e.g. the provisioning server (ConnectionType=none,
+  deliberately not Ansible-managed) is correctly excluded from the generated [ancillary]
+  inventory group.
   """
   wanted = [("VRK", "DNS"), ("CLD", "SVR"), ("VRK", "PRV"), ("CLD", "ANS")]
   devices = _load_devices()

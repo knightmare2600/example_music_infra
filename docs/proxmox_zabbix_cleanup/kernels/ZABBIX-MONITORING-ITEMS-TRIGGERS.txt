@@ -111,7 +111,7 @@ REQUIRED_SCRIPT_LINES=(
     "atime +7 -delete"
     "logger -t"
     "Hoovering systemd journals"
-    "Hoovering old PVE kernels"
+    "Hoovering old Proxmox kernels"
 )
 
 REQUIRED_SERVICE_LINES=(

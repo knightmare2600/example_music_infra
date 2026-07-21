@@ -12,6 +12,11 @@
 ; Devices without a HostOctet (non-networked assets: vehicles, aircraft etc.)
 ; are emitted as comments so they remain documented without DNS resolution.
 ;
+; A device whose Type has a non-empty entry in role_codes.csv's DNSAlias column also gets a
+; CNAME for a friendly short name (e.g. SLT -> salt.{{ domain }} -> exasltcld001.{{ domain }}).
+; Added 2026-07-20 -- see benarbejde/generate_inventory.py's TYPE_DNS_ALIAS. Only a couple of
+; single-instance CLD-only services have one; most devices have none at all.
+;
 ; CLD/VRK/FRD:
 ;   A forward zone is just hostname->IP; it doesn't care what subnet an A
 ;   record's IP is on (that's a reverse-zone concern, handled separately per
@@ -81,6 +86,9 @@ $TTL {{ zone_ttl }}
 {% for dev in site_devs | sort(attribute='HostOctet') %}
 {% if dev.HostOctet != '' %}
 {{ "%-45s" | format(dev.Hostname | lower) }} IN  A  {{ dev.full_ip }}{{ '   ; ' + dev.Notes if dev.Notes else '' }}
+{% if dev.DNSAlias %}
+{{ "%-45s" | format(dev.DNSAlias) }} IN  CNAME  {{ dev.Hostname | lower }}.{{ domain }}.   ; friendly alias, role_codes.csv's DNSAlias column
+{% endif %}
 {% else %}
 ; NO-IP  {{ dev.Hostname | lower }}{{ '  -- ' + dev.Notes if dev.Notes else '' }}
 {% endif %}

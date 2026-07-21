@@ -1129,7 +1129,7 @@ _classify_host() {
   if [[ "$third_octet" == "139" ]]; then
     case "$last_octet" in
       8)     echo "srvnodes"     ; return ;;  # EXADNSVRK001 — DNS/BIND9
-      50)    echo "srvnodes"     ; return ;;  # EXAPRVVRK001 — provisioning/PXE
+      50)    echo "srvnodes"     ; return ;;  # provisioning/PXE server — bootstrap-only, no formal hostname
       69)    echo "srvnodes"     ; return ;;  # EXAFWLVRK001 — CLD firewall (vRACK WAN face)
       *)     echo "srvnodes"     ; return ;;  # other CLD infra on vRACK
     esac

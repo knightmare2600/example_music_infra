@@ -5,8 +5,8 @@
 # Uses in-target to run commands inside the installed system chroot
 #
 # Boot server detection mirrors bootstrap.ipxe and the preseed files:
-#   Gateway 172.16.124.2 -> Fredericia (EXAPRVFRD001, MacBook/Fusion NAT)
-#   Anything else        -> Edinburgh  (EXAPRVVRK001, 192.168.139.50)
+#   Gateway 172.16.124.2 -> Fredericia (172.16.124.1, MacBook/Fusion NAT)
+#   Anything else        -> Edinburgh  (192.168.139.50 -- bootstrap-only, no formal hostname)
 #
 # SSH key is fetched from whichever server is active.
 # To add a new environment: one if/elif block, nothing else changes.
@@ -32,6 +32,9 @@
 #         begyndelse.json is kept -- nothing else (no Ansible playbook) ever deploys it,
 #         so it remains the one file only late_command.sh makes available before Ansible
 #         exists on the box at all.
+#   v1.7  Dropped the EXAPRVVRK001/EXAPRVFRD001 hostname labels from the topology comment --
+#         both provisioning servers are bootstrap-only helpers, deliberately given no formal
+#         EXA<ROLE><SITE><NNN> hostname or DNS record any more (2026-07-21, Robert). IP only.
 # =============================================================================
 set -e
 

@@ -47,7 +47,7 @@ graph TD
       FWL <-->|"WireGuard tunnel"| VPN
 
       SW1 --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_SYD fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:SYD:START
@@ -118,7 +118,7 @@ graph TD
       FWL <-->|"WireGuard tunnel"| VPN
 
       SW1 --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_MEL fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:MEL:START
