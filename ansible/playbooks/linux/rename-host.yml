@@ -97,6 +97,22 @@
 #               fstab/resume-config found stale) instead of _vg_already_correct
 #               alone, for the same reason. Summary display extended to show
 #               fstab/resume-config staleness explicitly, not just the VG state.
+#   2026-07-21  Fixed update-grub failing on the very next live run against
+#               EXADNSVRK001, right after the fstab/vgs fixes above: "grub-probe:
+#               error: failed to get canonical path of `/dev/mapper/<old-VG>-root'."
+#               This is a documented, known limitation (Debian bug #865141;
+#               Red Hat has the identical KB for grub2-probe), NOT something
+#               fstab affects -- grub-probe resolves root via the kernel's live
+#               mountinfo, which (same mechanism as the vgs fix above) stays
+#               stale until the next reboot. update-grub now tolerates this
+#               specific failure (matched on grub-probe's exact error text) and
+#               works around it by hand-patching grub.cfg's existing VG-name
+#               references directly -- the documented fix on both trackers --
+#               rather than trying to regenerate via the broken grub-probe path.
+#               Any OTHER update-grub failure still fails the play loudly. The
+#               final summary now reminds the operator to re-run update-grub
+#               after rebooting, for a fully clean regeneration once mountinfo
+#               is correct again.
 # =============================================================================
 
 - name: Linux — Rename host (hostname + LVM volume group + boot config)
@@ -342,6 +358,43 @@
       ansible.builtin.command: update-grub
       when: _boot_config_needs_fix
       changed_when: true
+      failed_when: false
+      register: _update_grub_result
+      tags: boot
+
+    - name: Fail loudly if update-grub failed for a reason OTHER than the known vgrename/mountinfo bug
+      ansible.builtin.fail:
+        msg: >-
+          {{ _c.R }}[ERROR]{{ _c.NC }} update-grub failed for an unexpected reason -- not the
+          known vgrename/mountinfo-staleness bug this playbook works around below. Investigate
+          manually: {{ _update_grub_result.stderr }}
+      when:
+        - _boot_config_needs_fix
+        - _update_grub_result.rc != 0
+        - "'failed to get canonical path' not in _update_grub_result.stderr"
+      tags: boot
+
+    - name: Work around known vgrename/mountinfo-staleness bug -- hand-patch grub.cfg's stale VG-name prefix directly
+      # update-grub/grub-probe determine root's device via the kernel's live mountinfo, which
+      # (documented: Debian bug #865141, matches Red Hat's identical grub2-probe KB) does NOT
+      # update after a live vgrename until the next reboot -- grub-probe fails trying to
+      # canonicalize a /dev/mapper/<old-VG>-root path that no longer exists, even though the VG
+      # really has been renamed and every other tool (vgs, lvs, dmsetup) sees it correctly. The
+      # documented workaround on both trackers is exactly this: patch the EXISTING grub.cfg's
+      # already-correct-apart-from-the-VG-name content directly, rather than trying to regenerate
+      # it via the broken grub-probe path. This is a deliberate, one-off exception to "never
+      # hand-edit a generated file" for this specific known tool limitation -- a normal
+      # update-grub will succeed cleanly once this box has been rebooted (mountinfo is correct
+      # again then), and should be re-run at that point rather than relied on as a one-time fix.
+      ansible.builtin.replace:
+        path: /boot/grub/grub.cfg
+        regexp: "/dev/mapper/{{ item }}-"
+        replace: "/dev/mapper/{{ new_hostname }}-"
+      loop: "{{ _stale_fstab_vgs.stdout_lines }}"
+      when:
+        - _boot_config_needs_fix
+        - _update_grub_result.rc != 0
+        - "'failed to get canonical path' in _update_grub_result.stderr"
       tags: boot
 
     # ── Reboot to verify (same "ask now, act at the end" pattern as firewallme) ──
@@ -373,4 +426,5 @@
         msg:
           - "{{ _c.G }}[+]{{ _c.NC }} {{ _current_hostname.stdout }} -> {{ new_hostname }} complete."
           - "{{ _c.Y }}[!]{{ _c.NC }} If you skipped the reboot, verify manually before trusting this fully."
+          - "{{ (_c.Y + '[!]' + _c.NC + ' grub.cfg was hand-patched (vgrename/mountinfo bug workaround) -- run update-grub again after rebooting for a fully clean regeneration.') if (_update_grub_result is defined and _update_grub_result.rc | default(0) != 0) else '' }}"
       tags: [hostname, lvm, boot, reboot]
