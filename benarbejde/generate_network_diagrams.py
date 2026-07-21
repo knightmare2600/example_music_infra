@@ -69,38 +69,23 @@ CURVEBALL_TYPES = {'VND', 'MUS', 'PAY', 'COF', 'TEA', 'PMP', 'CLK', 'MIC', 'RAD'
 
 # Per-type Unicode symbols. "Feel" over "official" -- Robert's own framing, 2026-07-13: these are
 # not meant to be literal/precise device iconography, just evocative enough to scan quickly. Full
-# reasoning and a human-browsable legend live in docs/emojis/README.md -- update both together.
-# A few deliberate substitutions where the literal thing asked for isn't a real Unicode character
-# (no AT&T logo, no British phonebox, no Atari logo, no jukebox glyph -- confirmed via search, not
-# assumed) are called out in docs/emojis/README.md, not repeated here.
+# reasoning and a human-browsable legend live in docs/emojis/README.md -- both trace back to the
+# same source, so they can't drift.
+#
+# 2026-07-20: loaded from benarbejde/role_codes.csv's Code/Emoji columns instead of a hardcoded
+# dict here -- this used to be a second, hand-maintained copy of the same data
+# address_policy.json's connection_types and docs/emojis/README.md each also carried their own
+# version of (found while cleaning up the retired PRV convention: three places to keep in sync by
+# hand is exactly the kind of drift this repo's own harness exists to catch). role_codes.csv is
+# now the single source of truth for "what does this 3-letter code mean" across all three.
+ROLE_CODES_CSV = HERE / "role_codes.csv"
 PLACEHOLDER_SYMBOL = "❓"  # ❓ -- pending sign-off, do not guess a replacement
-TYPE_SYMBOLS = {
-    # curveball / novelty (agreed 2026-07-13, Phase 5)
-    'PAY': "☎️", 'MUS': "💿", 'VND': "🍫", 'DON': "🍩", 'COF': "🍵", 'TEA': "🫖",  # COF: teacup-without-handle -- reads more like a coffee mug than ☕ did, per Robert 2026-07-13
-    'BUS': "🚌", 'CAR': "🚗", 'TRK': "🚚", 'JET': "✈️", 'PMP': "⛽", 'CLK': "⏰",
-    'MIC': "🎤", 'RAD': "📻", 'MOO': "🎹", 'FCL': "🎹", 'AST': "🕹️", 'LIN': "🥁",
-    'TAR': "💽", 'NIX': "🐧", 'VCU': "🎧",
-    'TTY': "⌨️",   # moved off 🖥️ once WKS claimed it below -- VT320 terminal, keyboard-forward feel
 
-    # network infra
-    'RTR': "📡", 'FWL': "🧱", 'SWI': "🔀",   # FWL: brick -- "firewall" as a wall, per Robert 2026-07-13
+def _load_type_symbols():
+  with open(ROLE_CODES_CSV, newline="", encoding="utf-8") as f:
+    return {row["Code"]: row["Emoji"] for row in csv.DictReader(f)}
 
-    # servers / compute / management
-    'DCS': "🗝️", 'DCR': "🗝️",           # domain controller -- directory/auth, same role either naming
-    'SVR': "🗄️", 'SRV': "🗄️",           # generic server
-    'PVE': "🗂️",                        # hypervisor -- layered/stacked feel, distinct from generic server
-    'RDR': "⚙️",                        # Rudder config-mgmt OR badge reader (devices.csv reuses RDR for
-                                         # both) -- "control" fits either well enough
-    'RRY': "🔁", 'ANS': "🤖", 'PBX': "🔌", 'DNS': "🧭", 'PRV': "📦",
-    'NAS': "🗃️", 'SBC': "🛡️", 'UFC': "🎛️", 'RAC': "🔧",
-
-    # wireless
-    'WAP': "📶",
-
-    # endpoints
-    'WKS': "🖥️", 'LAP': "💻", 'MBP': "💻", 'TAB': "📱", 'SUR': "🖊️", 'PHN': "📞",
-    'PRN': "🖨️", 'CAM': "🎥", 'LCD': "🖼️", 'TVS': "📺", 'MAC': "🍎", 'BPS': "🪪",
-}
+TYPE_SYMBOLS = _load_type_symbols()
 
 # Terms that must never appear in a New Network label -- FSMO roles and health/low-disk-space
 # annotations stay old-infra-only (docs/network-inventory.md), by data-source construction (neither
@@ -169,8 +154,8 @@ def build_site_devices(site: str, net, devices_by_site: dict):
 
   # VRK has no diagram section of its own (it's the vRACK/provisioning layer, not a physical
   # site -- see docs/network-diagram/cld.md's own header) -- its real devices.csv rows
-  # (EXADNSVRK001/EXAPRVVRK001/EXAFWLVRK001) fold into CLD's page, the same way the old
-  # hand-drawn diagram always treated them as one combined view. Confirmed 2026-07-14: VRK has
+  # (EXADNSVRK001, its TMP provisioning server, EXAFWLVRK001) fold into CLD's page, the same way
+  # the old hand-drawn diagram always treated them as one combined view. Confirmed 2026-07-14: VRK has
   # zero entries in benarbejde/ad_computers.json (the real pre-project AD export), same as CLD
   # itself -- neither is legacy, both are purely current infrastructure.
   if site == "CLD":
@@ -211,7 +196,17 @@ def render_new_network_block(site: str, sites_row: dict, devices_by_site: dict) 
   lines = [f'    subgraph NEW_{site} ["\U0001F195 New Network (current)"]']
   seen_ids = {}
   for dev in devices:
-    parts = [dev["hostname"]]
+    if dev["type"] == "TMP":
+      # Bootstrap-only provisioning server (VRK/FRD only) -- deliberately
+      # never gets a formal EXA<ROLE><SITE><NNN> hostname (2026-07-21), unlike
+      # every other device here. No hostname part at all -- label_extra (its
+      # notes, e.g. "Provisioning server", plus " (VRK)" when folded into
+      # CLD's page below) and the .octet suffix already say enough; showing
+      # a computed IP here would need this device's own site's subnet, not
+      # necessarily the one `net` (this function's own site) refers to.
+      parts = []
+    else:
+      parts = [dev["hostname"]]
     if dev["label_extra"]:
       parts.append(dev["label_extra"])
     if dev["octet"]:

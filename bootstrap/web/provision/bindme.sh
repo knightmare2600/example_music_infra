@@ -31,7 +31,8 @@
 # resident on 192.168.139.0/24; CLD's own LAN devices -- ANS/RDR/WAC/PBX/UFC -- are on
 # 192.168.69.0/24 instead, see db.192.168.69 below):
 #   192.168.139.8    ${THIS_HOSTNAME}  (this DNS server)
-#   192.168.139.50   EXAPRVVRK001      (provisioning / PXE)
+#   192.168.139.50   provisioning / PXE server -- bootstrap-only, IP-referenced
+#                     only, no formal hostname (2026-07-21)
 #   192.168.139.69   EXAFWLVRK001      (CLD firewall — WAN face on vRACK)
 #   192.168.139.254  DC provider router (vRACK gateway — not EXA kit)
 #
@@ -239,8 +240,9 @@ load_begyndelse_json() {
   PBX_EDI_IP=$(jq -r '.pbx_edinburgh.ip'          "${json_path}")
   EXA_DOMAIN=$(jq -r '.domain_fqdn'               "${json_path}")
 
-  # Reverse-zone PTR records key on the last octet only, not the full IP
-  PRV_EDI_OCTET="${PRV_EDI_IP##*.}"
+  # Reverse-zone PTR records key on the last octet only, not the full IP.
+  # No PRV_EDI_OCTET here -- the provisioning server is bootstrap-only and
+  # deliberately never gets a DNS/PTR record (2026-07-21), unlike the others.
   ANS_OCTET="${ANS_IP##*.}"
   RDR_OCTET="${RDR_IP##*.}"
   WAC_OCTET="${WAC_IP##*.}"
@@ -875,7 +877,7 @@ success "named.conf.local written (1 forward + 1 provisioning + ${non_cld_count}
 # vRACK ancillary hosts (Site=VRK, 192.168.139.0/24) are added explicitly after the
 # generated block:
 #   .8   ${THIS_HOSTNAME}   (this server)
-#   .50  EXAPRVVRK001   (provisioning/PXE)
+#   .50  provisioning/PXE server -- bootstrap-only, no formal hostname (2026-07-21)
 #   .69  EXAFWLVRK001   (CLD firewall -- WAN face on vRACK)
 #
 # CLD LAN devices (Site=CLD, 192.168.69.0/24) are added separately, after the FWL WAN
@@ -941,12 +943,14 @@ ${THIS_HOSTNAME_LOWER}  IN  A  192.168.139.8
 ; Hardcoded -- not derived from the per-site suffix_map loop.
 ; CLD LAN (192.168.69.0/24) devices (ANS/RDR/WAC/PBX/UFC) are added after the
 ; suffix_map and FWL WAN sections below -- they are NOT vRACK-resident, only
-; DNS/PRV/FWL-WAN actually are (an earlier version of this script wrongly
+; DNS/FWL-WAN actually are (an earlier version of this script wrongly
 ; duplicated them here too, at the same host octets as their real LAN
 ; addresses -- a copy-paste mistake, not a genuine second vRACK-side
 ; interface. Fixed 2026-07-08, matching the same fix in bind9-dns.yml).
+; The provisioning server (${PRV_EDI_IP}) deliberately has NO A record here --
+; bootstrap-only helper, referenced by IP only (see begyndelse.json), never a
+; formal hostname (2026-07-21).
 exafwlvrk001  IN  A  192.168.139.69   ; CLD firewall (vRACK WAN face)
-exaprvvrk001  IN  A  ${PRV_EDI_IP}   ; Provisioning server (PXE)
 
 ; -- Firewall WAN addresses on provisioning network ------------
 ; Each site firewall (EXAFWL) has a WAN interface on 192.168.139.0/24.
@@ -1108,9 +1112,11 @@ success "Forward zone file written ($(grep -c 'IN  A' "${ZONE_FILE}") A records 
 # This zone covers 192.168.139.0/24 (the provisioning network).
 # It contains two sets of records:
 #
-#   (i)  vRACK ancillary hosts -- ${THIS_HOSTNAME} (.8), EXAPRVVRK001 (.50),
-#        EXAFWLVRK001 (.69). CLD LAN devices (ANS/DCs/RDR/WAC/PBX/UFC) are
-#        NOT in this zone -- see db.192.168.69 instead.
+#   (i)  vRACK ancillary hosts -- ${THIS_HOSTNAME} (.8), EXAFWLVRK001 (.69).
+#        The provisioning server (.50) is deliberately NOT here -- bootstrap-
+#        only, IP-referenced only, no formal hostname/PTR record (2026-07-21).
+#        CLD LAN devices (ANS/DCs/RDR/WAC/PBX/UFC) are NOT in this zone
+#        either -- see db.192.168.69 instead.
 #
 #   (ii) FWL WAN PTR records -- every site firewall has a WAN
 #        interface on this subnet.  The host octet equals the site
@@ -1137,8 +1143,10 @@ cat > "${PROV_REV_FILE}" <<PROVREVHDR
 ;
 ; PTR records:
 ;   .8   ${THIS_HOSTNAME}   -- DNS/BIND9 server
-;   .50  EXAPRVVRK001   -- provisioning / PXE server
 ;   .69  EXAFWLVRK001   -- CLD firewall, WAN face on vRACK
+;
+; .50 (the provisioning/PXE server) deliberately has NO PTR record here --
+; bootstrap-only helper, IP-referenced only, no formal hostname (2026-07-21).
 ;   .X   EXAFWL{site}001-wan  -- firewall WAN face for each site
 ;        where X = the site's /24 third octet (from sites.csv)
 ;
@@ -1163,9 +1171,10 @@ cat > "${PROV_REV_FILE}" <<PROVREVHDR
 
 ; -- vRACK ancillary hosts -------------------------------------
 ; CLD LAN devices (ANS/DCs/RDR/WAC/PBX/UFC) are on 192.168.69.0/24 --
-; see db.192.168.69 instead. Only DNS/PRV/FWL-WAN are actually vRACK-resident.
+; see db.192.168.69 instead. Only DNS/FWL-WAN are actually DNS-registered
+; here -- the provisioning server (.50) deliberately has no PTR record
+; (bootstrap-only, IP-referenced only, 2026-07-21).
 8     IN  PTR  ${THIS_HOSTNAME_LOWER}.${EXA_DOMAIN}.     ; DNS/BIND9 server (this host)
-${PRV_EDI_OCTET}    IN  PTR  exaprvvrk001.${EXA_DOMAIN}.               ; Provisioning / PXE
 69    IN  PTR  exafwlvrk001.${EXA_DOMAIN}.               ; CLD firewall (vRACK WAN face)
 
 ; -- Firewall WAN PTR records ----------------------------------

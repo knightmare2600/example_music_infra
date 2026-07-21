@@ -1,0 +1,104 @@
+---
+# =============================================================================
+# playbooks/82-salt-minion.yml
+# Example Music Limited — Salt minion install (all Windows nodes)
+# =============================================================================
+# Installs the Salt minion via the MSI already committed to
+# bootstrap/web/windows/Salt-Minion-Setup.msi, pointed at salt.{{ site_services.domain_fqdn }}
+# (the CNAME alias -- see benarbejde/role_codes.csv's DNSAlias column and bind9-dns.yml's
+# db.forward-zone.devices.j2 -- resolving to EXASLTCLD001). Uses the DNS name rather than a
+# hardcoded IP -- site_services (group_vars/all/site_services.yml) is already loaded for
+# every host regardless of OS, so no separate salt_master_ip var/file is needed; one less
+# hardcoded copy of the master's address to keep in sync (2026-07-20, Robert's explicit
+# "reduce hardcoded values where possible" instruction). DNS is already a hard dependency by
+# this point in the chain anyway -- domain join (80-domainjoin.yml, earlier) doesn't work
+# without it. Runs over SSH, well after 00-preflight.yml's Phase G (the actual rename -- see
+# that file's own README section and changelog; 10-rename.yml is NOT chained in the main
+# flow, standalone-only), so MINION_ID is always the real, final
+# EXA<ROLE><SITE><NNN> hostname -- never a random Setup-time name. Position
+# 82 (after 80-domainjoin.yml) is just for tidy ordering near the end of the
+# chain -- domain join itself isn't a dependency, only the rename is, and
+# that already happened at the very start of the chain.
+#
+# History: this was originally wired into bootstrap/web/windows/unattend/
+# headlessunattend.xml's FirstLogonCommands instead (2026-07-20, same day).
+# Moved here the same day, before anything was actually built against it,
+# once Robert spotted the real problem: headlessunattend.xml sets
+# ComputerName to "*" (a random Setup-time name) and FirstLogonCommands
+# fires before any Ansible rename step runs, so MINION_ID would have been
+# baked in as that random name -- EXASLTCLD001 would have accumulated one
+# dead/renamed key per build, needing manual salt-key cleanup forever.
+# Installing here instead, after 10-rename.yml, avoids the problem
+# structurally rather than needing any cleanup step. The unattend XML no
+# longer installs Salt at all.
+#
+# Scope (revised twice, same day): WKS/LAP/SUR (client endpoints), SVR
+# (member servers), AND DCS (domain controllers) -- Robert's explicit call,
+# after first excluding DCS then deciding it's fine to include. NOT
+# PVE/FWL/Linux generally. MAC/MBP (macOS) are explicitly future work, not
+# in scope yet -- Salt does support macOS minions, just not wired up here.
+#
+# hosts: windows_nodes -- covers windows_dc/windows_server/windows_desktop/
+# windows_laptop via generate_inventory.py's own windows_dc -> windows_server
+# -> windows -> windows_nodes chain, so this one group reaches every Windows
+# role in scope without listing each one individually.
+#
+# TAB (Tablet) is deliberately not called out specially -- it's folded into
+# windows_laptop by generate_inventory.py already (see that file's own
+# DEVICE_GROUP_MAP comment, 2026-07-20), conditional on devices.csv's OS
+# column actually saying Windows. A non-Windows TAB (the real ones today are
+# all Android/iPadOS) never reaches windows_bootstrap at all, so no separate
+# handling is needed here.
+#
+# Idempotency (confirmed, not assumed): win_copy checksums the MSI against what's already on
+# the target and skips the copy if unchanged; win_package checks the local MSI's product code
+# against installed products and skips the install if already present. Re-running this
+# playbook against an already-bootstrapped node does no work.
+#
+# FUTURE WORK -- custom grains (deferred, Robert has his own notes to bring back first, see
+# memory): when that lands, implement it as its OWN task(s), separate from the install task
+# above -- must not be nested inside or conditioned on "Salt wasn't already installed". Grains
+# configuration needs to be able to run and be verified/refreshed on every play run
+# regardless of whether this particular run happened to install Salt fresh or found it
+# already there -- conflating the two would mean grains silently never get (re-)applied on an
+# already-bootstrapped node.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/82-salt-minion.yml
+#
+# Tags: salt
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-07-20  Initial release.
+# =============================================================================
+
+- name: Windows — Salt minion install
+  hosts: "windows_nodes"
+  gather_facts: false
+  tasks:
+
+    - name: Copy Salt minion MSI to the target host
+      ansible.windows.win_copy:
+        src: "{{ playbook_dir }}/../../../../bootstrap/web/windows/Salt-Minion-Setup.msi"
+        dest: "C:\\Windows\\Temp\\Salt-Minion-Setup.msi"
+      tags: salt
+
+    # No product_id/creates_service needed -- path is a locally-accessible file, so
+    # win_package's own idempotency check reads the MSI's product code directly
+    # (confirmed against the module's own docs, not guessed). creates_service is
+    # documented as ignored for local MSI paths anyway (it's for the exe/URL/share case).
+    - name: Install Salt minion (MASTER/MINION_ID via MSI properties)
+      ansible.windows.win_package:
+        path: "C:\\Windows\\Temp\\Salt-Minion-Setup.msi"
+        arguments: >-
+          MASTER=salt.{{ site_services.domain_fqdn }}
+          MINION_ID={{ inventory_hostname | upper }}
+        state: present
+      tags: salt
+
+    - name: Remove staged MSI
+      ansible.windows.win_file:
+        path: "C:\\Windows\\Temp\\Salt-Minion-Setup.msi"
+        state: absent
+      tags: salt

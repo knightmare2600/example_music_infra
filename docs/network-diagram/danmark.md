@@ -38,7 +38,7 @@ graph TD
       RTR <-->|"WireGuard tunnel"| VPN
 
       SW --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_CPH fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:CPH:START
@@ -106,7 +106,7 @@ graph TD
       FWL -->|"WireGuard spokes"| VPN_EU
 
       PVE1 --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN_CLD
+      RRY -. "→ EXARUDCLD001" .-> VPN_CLD
     end
     style OLD_ODE fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:ODE:START
@@ -155,7 +155,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_KGE fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:KGE:START
@@ -203,7 +203,7 @@ graph TD
       RTR <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_FAX fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:FAX:START
@@ -247,7 +247,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_KOR fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:KOR:START
@@ -291,7 +291,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_AAR fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:AAR:START
@@ -335,7 +335,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_FRE fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:FRE:START
@@ -370,7 +370,7 @@ graph TD
     style OLD_FRD fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:FRD:START
     subgraph NEW_FRD ["🆕 New Network (current)"]
-      N_PRV["📦 EXAPRVFRD001 · Provisioning server (PXE, port 8000) · .1"]
+      N_TMP["📦 Provisioning server (PXE, port 8000) · .1"]
       N_PBX["🔌 EXAPBXCLD002 · Secondary 3CX PBX (hostnamed under CLD) · .48"]
     end
     style NEW_FRD fill:#E69F00,stroke:#D55E00,color:#000000

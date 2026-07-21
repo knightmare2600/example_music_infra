@@ -3,7 +3,7 @@
 # Example Music Limited — Rudder Server Bootstrap Playbook
 # playbooks/rudder/rudder_server.yml
 #
-# Ansible equivalent of rudderme.sh. Bootstraps EXARDRCLD001 (or any
+# Ansible equivalent of rudderme.sh. Bootstraps EXARUDCLD001 (or any
 # cloud-hosted Rudder server) from a fresh Debian Trixie install to a
 # fully configured Rudder management server.
 #
@@ -41,16 +41,16 @@
 #
 # Inventory
 # ---------
-# Add EXARDRCLD001 to configs/inventory:
+# Add EXARUDCLD001 to configs/inventory:
 #   [rudder_servers]
-#   192.168.69.12   # EXARDRCLD001 — CLD Rudder server
+#   192.168.69.12   # EXARUDCLD001 — CLD Rudder server
 #
 # Variables (see group_vars/rudder_servers/main.yml and
-#            host_vars/EXARDRCLD001/main.yml for full list)
+#            host_vars/EXARUDCLD001/main.yml for full list)
 # ----------------------------------------------------------
 # Required via host_vars or --extra-vars:
 #   rudder_static_ip        Static IP for this Rudder server
-#   rudder_hostname         Hostname (e.g. EXARDRCLD001)
+#   rudder_hostname         Hostname (e.g. EXARUDCLD001)
 #   rudder_gateway          Default gateway
 #   rudder_dns              DNS server (EXADNSVRK001, 192.168.139.8 -- NOT the AD DC; a plain
 #                            BIND9 box, not domain-joined, doesn't speak LDAP. Kept separate
@@ -69,7 +69,7 @@
 #
 # CLD note
 # --------
-# EXARDRCLD001 lives in the cloud. The static IP task uses shell-level
+# EXARUDCLD001 lives in the cloud. The static IP task uses shell-level
 # ping checks before assigning — same pattern as rudderme.sh ip_in_use().
 # On some cloud providers ICMP is filtered; the task emits a warning and
 # proceeds rather than failing.
@@ -130,7 +130,7 @@
       pause:
         prompt: >
           Hostname for this Rudder server is not set in host_vars.
-          Enter hostname (e.g. EXARDRCLD001)
+          Enter hostname (e.g. EXARUDCLD001)
       register: _hostname_prompt
       when: rudder_hostname is not defined or rudder_hostname == ""
       delegate_to: localhost

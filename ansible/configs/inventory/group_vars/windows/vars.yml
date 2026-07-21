@@ -33,6 +33,19 @@
 # server in the first place.
 binaries_common: []
 
+# Binaries deployed to C:\Windows\ on every host, single build, no arch subfolder --
+# same treatment as ExampleMusicWallpaper.png (playbooks/60-wallpaper.yml), not
+# binaries_common/binaries_extra's arch-pair mechanism, since none of these have a
+# genuine ARM64 build available upstream (confirmed 2026-07-20, checked directly --
+# see files/README.md for each one's real source). Format: { src, dest } — both
+# just the filename, no arch-folder prefix.
+binaries_flat:
+  - { src: "bginfo.exe",       dest: "bginfo.exe" }
+  - { src: "FileHash.exe",     dest: "FileHash.exe" }
+  - { src: "dosdev.exe",       dest: "dosdev.exe" }
+  - { src: "DelProf2.exe",     dest: "DelProf2.exe" }
+  - { src: "SetWallpaper.exe", dest: "SetWallpaper.exe" }
+
 # Registry keys applied to every Windows host
 registry_common:
   - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',              name: EnableLUA,                    data: 1,  type: dword }

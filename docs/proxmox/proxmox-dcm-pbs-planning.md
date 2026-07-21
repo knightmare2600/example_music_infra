@@ -300,7 +300,7 @@ this product, rather than a bare `PDM` role code:
 > management-plane singles (`.9` Ansible, `.12` Rudder) — a deliberate, memorable grouping, not
 > arbitrary. **This is a proposed reservation, not yet live** — DCM is CLD-only (one instance,
 > not a per-site role), so it belongs in `devices.csv` as a CLD-specific row once approved, the
-> same way `EXAANSCLD001`/`EXARDRCLD001` already are — it does **not** need a
+> same way `EXAANSCLD001`/`EXARUDCLD001` already are — it does **not** need a
 > `address_policy.json` `role_offsets`/`offsets_single` entry, since those are for conventions
 > repeated at every site.
 
@@ -347,16 +347,20 @@ maintain in this document at all.
 > **Addressing note:** `.14` is checked collision-free against the same two sources as the DCM
 > address above — not reserved in `address_policy.json`, and not used by any real
 > `benarbejde/devices.csv` row at any site (the nearest neighbours, `.12` and `.13`, are already
-> taken at CLD/EDI by unrelated devices — `.14` sits cleanly between `DCS2` (`.11`) and `PRV`
-> (`.15`) in the existing "core infrastructure" cluster of low octets). **This is a proposed
+> taken at CLD/EDI by unrelated devices — `.14` sits cleanly between `DCS2` (`.11`) and `NAS`
+> (`.19`, the retired `.15` PRV convention's replacement — see the Site Storage section below)
+> in the existing "core infrastructure" cluster of low octets). **This is a proposed
 > reservation, not yet live.** Unlike DCM, PBS genuinely is a per-site standard-slot role —
 > once approved, the correct implementation is adding `"PBS": 14` to
-> `benarbejde/address_policy.json`'s `offsets_single` (and `"PBS"` to `connection_types.ssh`,
-> matching how `PVE`/`DCS`/`ANS` are already registered there), **not** a per-site
+> `benarbejde/address_policy.json`'s `offsets_single` (and a `PBS` row to
+> `benarbejde/role_codes.csv`, `ConnectionMethod=ssh` — matching how `PVE`/`DCS`/`ANS` are
+> already registered there; role/connection-method metadata moved out of `address_policy.json`
+> into `role_codes.csv` on 2026-07-20, see that file's own header), **not** a per-site
 > `devices.csv` row — `generate_inventory.py` and `bind9-dns.yml`'s standard-slot synthesis both
-> read `address_policy.json` as their single source of truth, so one JSON edit is genuinely all
-> the generator-side change needs to be (see `benarbejde/generate_inventory.py`'s own WAP/SWI
-> precedent). Follow `docs/ansible/beginners_guide_to_ansible.md`'s "Renumbering / Reworking Live
+> read `address_policy.json` as their single source of truth for addressing, so one JSON edit
+> (plus the `role_codes.csv` row) is genuinely all the generator-side change needs to be (see
+> `benarbejde/generate_inventory.py`'s own WAP/SWI precedent). Follow
+> `docs/ansible/beginners_guide_to_ansible.md`'s "Renumbering / Reworking Live
 > Conventions" checklist when actually rolling this out — this is exactly the class of change
 > that guide section exists for.
 
@@ -408,10 +412,13 @@ infra role, always physically present at a real site" per `generate_inventory.py
 every one of the 51 ordinary sites (i.e. every site except VRK and FRD) getting a synthesized
 `EXAPRV<SITE>001` DNS record at `.15` — and `benarbejde/devices.csv` has never had a single real
 `PRV` row for any of them. Provisioning in this estate is, and always has been, centralised at
-VRK (Edinburgh) and FRD (Fredericia Havn) — their own real `EXAPRVVRK001`/`EXAPRVFRD001` devices
-sit at `.1`/`.50` respectively via the `devices.csv`-exception path, entirely unrelated to this
-standard-slot mechanism, and are **unaffected** by this retirement. `.15` was dead for every
-ordinary site from day one; this just makes the addressing policy match reality.
+VRK (Edinburgh) and FRD (Fredericia Havn) — their own real provisioning servers (`192.168.139.50`
+and `172.16.124.1` respectively — corrected 2026-07-21, this was previously stated backwards)
+sit at those addresses via the `devices.csv`-exception path, entirely unrelated to this
+standard-slot mechanism, and are **unaffected** by this retirement (though as of 2026-07-21 they
+are, separately, given no formal `EXA<ROLE><SITE><NNN>` hostname or DNS record at all any more —
+see `README.md`'s Addressing table). `.15` was dead for every ordinary site from day one; this
+just makes the addressing policy match reality.
 
 ### The new `.19` NAS/SAN slot
 
@@ -438,6 +445,15 @@ marked retired in `docs/site-inventory.md`. **`NAS` is deliberately NOT in `DNS_
 recreate the exact PRV mistake just fixed, for a different role. It gets the same treatment as
 `WAP`/`BMC`: a reserved, documented slot, synthesized into DNS only once a real `devices.csv`
 row confirms a device actually exists at that site.
+
+> **Follow-up, 2026-07-20:** `address_policy.json`'s `connection_types` block referenced above
+> (2026-07-19's PRV-removal note) no longer exists at all — role/connection-method metadata for
+> every device Type code moved to a new file, `benarbejde/role_codes.csv`, consolidating what
+> used to be three separately hand-maintained copies of overlapping data (`address_policy.json`'s
+> `connection_types`, `generate_network_diagrams.py`'s `TYPE_SYMBOLS`, `docs/emojis/README.md`).
+> `NAS`'s `ConnectionMethod` is `ssh` there, same value as before — this is a pure consolidation,
+> not a behaviour change (verified: regenerated diagrams and inventory both byte-identical
+> before/after). See `README.md`'s `role_codes.csv` section for the full rationale.
 
 ### Configuring TrueNAS once installed — `arensb/ansible-truenas`
 

@@ -741,29 +741,35 @@
       set_fact:
         _permanent_groups: "{{ _role_group_map[host_role_code | upper] | default([]) }}"
       vars:
-        # Full group list, most-specific first — passed to add_host directly
-        # rather than relying on configs/inventory's own [group:children]
-        # relationships existing for every role. They don't: cld.ini/fal.ini/
-        # liv.ini only ever define windows_dc -> windows_server -> windows ->
-        # windows_nodes (DC onboarding) -- windows_desktop/windows_laptop are
-        # never linked into windows/windows_nodes anywhere in this repo today.
-        # Listing the full chain here sidesteps that gap entirely rather than
-        # also fixing it, and doesn't depend on which .ini files are loaded.
+        # Full group list, most-specific first — passed to add_host directly rather than
+        # relying on configs/inventory's own [group:children] relationships existing for
+        # every role. Belt-and-braces: as of 2026-07-20, generate_inventory.py's own
+        # windows:children DOES link windows_desktop/windows_laptop/windows_server into
+        # windows/windows_nodes (confirmed directly against a real site .ini) — this
+        # comment previously claimed otherwise (stale, corrected here) — but listing the
+        # full chain explicitly still doesn't hurt, and doesn't depend on which .ini files
+        # happen to be loaded for this particular run.
+        #
+        # TAB added 2026-07-20, same treatment as SUR (windows_laptop) — see
+        # generate_inventory.py's DEVICE_GROUP_MAP comment: only a genuinely Windows-OS
+        # tablet ever reaches this file at all (Android/iPadOS tablets don't run
+        # windows_bootstrap), so no OS check is needed here specifically.
         _role_group_map:
           DCS: [windows_dc, windows_server, windows, windows_nodes]
           SRV: [windows_server, windows, windows_nodes]
           WKS: [windows_desktop, windows, windows_nodes]
           LAP: [windows_laptop, windows, windows_nodes]
           SUR: [windows_laptop, windows, windows_nodes]
+          TAB: [windows_laptop, windows, windows_nodes]
 
     - name: "[H2] Fail — unrecognised role code, cannot determine permanent groups"
       fail:
         msg: >
           Role code '{{ host_role_code }}' (parsed from {{ target_hostname | upper }}) isn't
-          one of the known windows_bootstrap roles (DCS, SRV, WKS, LAP, SUR). Cannot determine
-          which permanent inventory groups to register this host into for the rest of this run —
-          group_vars/windows*/ would not resolve correctly downstream. Check the hostname, or
-          add this role to _role_group_map above if it's a genuinely new one.
+          one of the known windows_bootstrap roles (DCS, SRV, WKS, LAP, SUR, TAB). Cannot
+          determine which permanent inventory groups to register this host into for the rest
+          of this run — group_vars/windows*/ would not resolve correctly downstream. Check
+          the hostname, or add this role to _role_group_map above if it's a genuinely new one.
       when: _permanent_groups | length == 0
 
     - name: "[H2] Register into {{ _permanent_groups | join(', ') }} for the rest of this run"

@@ -16,6 +16,9 @@
 # binaries_extra  (group_vars/windows_server/desktop/laptop) is host-type
 # specific. Each entry in binaries_extra specifies src_amd64 and src_arm64
 # separately since filenames are not consistent across arches.
+# binaries_flat   (group_vars/windows) is for single-build tools with no
+# genuine ARM64 variant available upstream at all — no arch subfolder,
+# same pattern as ExampleMusicWallpaper.png in 60-wallpaper.yml.
 #
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/50-binaries.yml
@@ -23,6 +26,15 @@
 # Tags: binaries, fonts
 # =============================================================================
 # Changelog:
+#   2026-07-20  Added binaries_flat + its deploy task -- bginfo.exe/FileHash.exe/
+#               dosdev.exe/DelProf2.exe, ported over while reviewing a dropped-in
+#               reference Salt state. None of the four have a genuine ARM64
+#               build upstream (checked directly, not assumed) so they don't
+#               fit binaries_extra's arch-pair mechanism --
+#               FileHash specifically had a 64-bit/32-bit choice in the Salt
+#               state (env-driven, not arch-driven); took the 64-bit build only,
+#               dropped the 32-bit variant and the env-based selection logic,
+#               since every real Windows box in this estate is 64-bit anyway.
 #   2026-06-20  Initial file
 #   2026-07-06  Fonts now come from tasks/fonts.yml (upstream nerd-fonts GH
 #               release zip) instead of individual files from the internal
@@ -69,6 +81,17 @@
 
     - name: Include dua-cli deployment tasks
       include_tasks: ../tasks/dua_cli.yml
+      tags: binaries
+
+    # ── Flat binaries (single build, no arch subfolder at all) ─────────────────
+
+    - name: Deploy flat (arch-agnostic) binaries
+      ansible.windows.win_copy:
+        src:  "{{ item.src }}"
+        dest: "C:\\Windows\\{{ item.dest }}"
+      loop: "{{ binaries_flat | default([]) }}"
+      loop_control:
+        label: "{{ item.dest }}"
       tags: binaries
 
     # ── Host-type-specific binaries (arch-aware, different filenames) ─────────

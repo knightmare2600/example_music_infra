@@ -12,6 +12,8 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-20 | Added `EXASLTCLD001` (Salt master, `192.168.69.22`) to the CLD LAN table — added to `devices.csv` the same day, missing from this doc until now. Also reachable as `salt.jukebox.internal` (new CNAME, `benarbejde/role_codes.csv`'s `DNSAlias` column). |
+| 2026-07-20 | Rudder's role code split: `RDR` now means exclusively "Reader" (badge reader, physical, standard `.21` slot, new); the Rudder config-mgmt meaning moved to a new code, `RUD` — `EXARDRCLD001` is now `EXARUDCLD001`. Ironically reverses the 2026-07-08 entry below, which "fixed" `EXARUDCLD001` back to `EXARDRCLD001` as a typo — it wasn't; `RDR` just hadn't collided with badge readers yet at the time. Safe to do as a straight rename (not a live migration) since no Rudder infrastructure has actually been built yet — see `docs/proxmox/proxmox-dcm-pbs-planning.md` and `benarbejde/role_codes.csv` for the full rationale. |
 | 2026-07-12 | FAL's "Completion checklist" listed the firewall as installed before the Proxmox nodes — backwards, since the firewall is a VM hosted on Proxmox (see `buildsheets/buildsheet-firewall.md` Step 1). Reordered. |
 | 2026-07-08 | Fixed both "Cloud / Provisioning" sections, which wrongly labelled CLD's own LAN subnet as `192.168.139.0/24` (that's `VRK`, the vRACK — CLD's own LAN is `192.168.69.0/24`), a leftover from before the CLD/VRK split existed. Restructured into three clearly separated subsections (vRACK/CLD LAN/FRD); added `FRD` (Fredericia Havn) and `VRK` rows to the Global Site Summary, which previously had neither. Fixed `EXARUDCLD001` -> `EXARDRCLD001` (typo). Fixed stale forest name `jukebox.example` -> `jukebox.internal` (this repo's domain rename completed some time ago; this reference was never updated). |
 | 2026-07-08 | WAPs moved off DHCP to static `.82`–`.94` (added to Standard IP Convention table). Per-site `**WAPs:**` lines updated. Added `EXAUFCCLD001` (UniFi Network Controller, CLD LAN `192.168.69.82`) — manages every site's WAPs; CLD itself has no physical WiFi |
@@ -39,7 +41,7 @@ Exceptions are noted in individual site entries.
 | `.7` | PVE node 3 | `EXAPVE<SITE>003` |
 | `.10` | Domain Controller — primary | `EXADCS<SITE>001` |
 | `.11` | Domain Controller — secondary | `EXADCS<SITE>002` |
-| `.12` | Rudder Relay (Rudder Server on CLD) | `EXARRY<SITE>001` / `EXARDRCLD001` |
+| `.12` | Rudder Relay (Rudder Server on CLD) | `EXARRY<SITE>001` / `EXARUDCLD001` |
 | `.48` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBC<SITE>001` |
 | `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site | `EXAWAP<SITE>001`–`013` |
 | `.100`–`.249` | DHCP pool | — |
@@ -67,7 +69,7 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 |----------|------|----|----|-------|
 | `EXAFWLVRK001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` — same physical firewall as `EXAFWLCLD001` |
 | `EXADNSVRK001` | DNS / BIND9 server | Debian | `192.168.139.8` | Authoritative DNS for `jukebox.internal` |
-| `EXAPRVVRK001` | Provisioning / bootstrap | — | `192.168.139.50` | Serves Ansible keys, ISOs, scripts |
+| — (bootstrap-only, no formal hostname) | Provisioning / bootstrap | — | `192.168.139.50` | Serves Ansible keys, ISOs, scripts |
 | `EXAFWLVRK001` (WAN face) | Firewall — vRACK WAN | — | `192.168.139.69` | Same device as `EXAFWLCLD001` (LAN face, `192.168.69.253`) |
 
 **CLD LAN — `CLD`, `192.168.69.0/24`**
@@ -75,7 +77,8 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 | Hostname | Role | OS | IP | Notes |
 |----------|------|----|----|-------|
 | `EXAANSCLD001` | Ansible control node | Debian | `192.168.69.9` | Ansible — manages all sites |
-| `EXARDRCLD001` | Rudder Server | Debian | `192.168.69.12` | Configuration management — see NET-MGMT-RUDDER-001 |
+| `EXARUDCLD001` | Rudder Server | Debian | `192.168.69.12` | Configuration management — see NET-MGMT-RUDDER-001 |
+| `EXASLTCLD001` | Salt master | Debian | `192.168.69.22` | Config mgmt for all Windows nodes (client, server, DC) — see `ansible/playbooks/salt/README.md`. Also reachable as `salt.jukebox.internal` (CNAME) |
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.69.20` | WAC — reaches all site DCs and Windows nodes |
 | `EXAPBXCLD001` | Central PBX | — | `192.168.69.48` | 3CX PBX — all site SBCs trunk here |
 | `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
@@ -84,7 +87,7 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 
 | Hostname | Role | IP | Notes |
 |----------|------|----|-------|
-| `EXAPRVFRD001` | Provisioning / bootstrap (standby) | `172.16.124.1` | Port 8000, not 80 |
+| — (bootstrap-only, no formal hostname) | Provisioning / bootstrap (standby) | `172.16.124.1` | Port 8000, not 80 |
 | `EXAPBXCLD002` | Secondary 3CX PBX | `172.16.124.48` | Physically at Fredericia Havn — hostnamed under CLD as part of the 2026-07-11 Pulsant DC / FRD Havn network rework (renamed from `EXAPBXFRD001`). Reuses the empty SBC slot, same pattern as CLD's own PBX (`EXAPBXCLD001`) |
 
 ---
@@ -1045,7 +1048,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 | `EXANAS` | NAS/SAN storage (e.g. TrueNAS) — standard `.19` slot at every site | `EXANAS<SITE>001` |
 | `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
 | `EXAPBX` | PBX | `EXAPBXCLD001` |
-| `EXAPRV` | Provisioning / bootstrap server — VRK/FRD only, not a per-site convention (retired 2026-07-19) | `EXAPRVVRK001` |
+| `TMP` | Provisioning / bootstrap server — VRK/FRD only, not a per-site convention (was `PRV`, retired as a per-site convention 2026-07-19; VRK/FRD's own two devices deliberately given no formal hostname 2026-07-21) | `192.168.139.50` (VRK), `172.16.124.1` (FRD) — IP only |
 | `EXAWAP` | WiFi Access Point | `EXAWAPFAL001` |
 | `EXAUFC` | UniFi Network Controller (CLD only — manages every site's WAPs) | `EXAUFCCLD001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |

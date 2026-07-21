@@ -1,0 +1,57 @@
+Code,Name,Category,ConnectionMethod,Emoji,DNSAlias,Notes
+RTR,Router,Network Infrastructure,telnet,📡,,Upstream/ISP gateway — standard slot .1
+FWL,Firewall,Network Infrastructure,ssh,🧱,,Standard slots .253 (FWL1) / .254 (FWL2)
+SWI,Switch,Network Infrastructure,snmp,🔀,,Standard slots .250-.252
+BMC,BMC / iDRAC / iLO / Redfish,Network Infrastructure,snmp,🔧,,Standard slots .2-.4. Not a devices.csv Type — synthesized directly from the standard-slot policy; RAC is its legacy devices.csv-row equivalent (see below)
+RAC,BMC / iDRAC / iLO (legacy) / RAC emulator,Network Infrastructure,snmp,🔧,,Legacy devices.csv Type — being decommissioned in favour of the BMC standard slot; excluded from generation (ALWAYS_EXCLUDE_TYPES in generate_inventory.py). Same symbol as BMC
+WAP,Wireless access point,Wireless,snmp,📶,,"Standard slots .82-.94 (static since 2026-07-08, moved off DHCP). Count varies per site (1-13+)"
+DCS,Domain controller (current naming),Servers / Compute / Management,ssh,🗝️,,Standard slots .10 (DCS1) / .11 (DCS2)
+DCR,Domain controller (legacy naming),Servers / Compute / Management,ssh,🗝️,,Legacy alias for DCS — devices.csv rows using DCR are typos and treated as DCS. Same symbol as DCS
+PVE,Proxmox hypervisor node,Servers / Compute / Management,ssh,🗂️,,Standard slots .5-.7. Not a devices.csv Type (ALWAYS_EXCLUDE_TYPES) — handled by the standard template + group_vars/pvenodes/ directly
+SVR,Generic server,Servers / Compute / Management,ssh,🗄️,,Same symbol as SRV
+SRV,Generic server,Servers / Compute / Management,ssh,🗄️,,Same symbol as SVR
+NAS,Storage (NAS/SAN — e.g. TrueNAS),Servers / Compute / Management,ssh,🗃️,,"Standard slot .19 (added 2026-07-19, replacing the retired .15 PRV convention)"
+SBC,VOIP Session Border Controller,Servers / Compute / Management,ssh,🛡️,,"Standard slot .48. ""Border controller"" — a boundary/edge device"
+PBX,Phone exchange (3CX PBX),Servers / Compute / Management,ssh,🔌,,
+DNS,DNS server,Servers / Compute / Management,ssh,🧭,,
+ANS,Ansible control node,Servers / Compute / Management,ssh,🤖,ansible,
+RUD,Rudder (config mgmt),Servers / Compute / Management,ssh,⚙️,,"Standard slot .12 (single instance — CLD only). Was RDR until 2026-07-20, split apart because devices.csv reused the same three letters for a genuinely different thing (badge readers) — see RDR below. Proxmox VM"
+SLT,Salt master (config mgmt — all Windows nodes),Servers / Compute / Management,ssh,🧂,salt,"CLD only (EXASLTCLD001, .22). Manages WKS/LAP/SUR/SVR/DCS minions via ansible/playbooks/windows_bootstrap/playbooks/82-salt-minion.yml (targets windows_nodes) -- TAB only when devices.csv's OS column says Windows (most real TAB rows are Android/iPadOS); MAC/MBP are future plans, not current scope. FWL/PVE stay Ansible-only, no Syndic tier at current scale (2026-07-20)"
+RDR,Reader — badge reader,Endpoints,ssh,🔐,,"Standard slot .21 (added 2026-07-20). Real devices at FAL/LIV before the standard slot existed (FAL still at its original .16, not yet migrated). Physical HID Signo hardware, not a Proxmox VM — was previously conflated with Rudder under the same RDR code, now split (see RUD above)"
+RRY,Rudder Relay,Servers / Compute / Management,ssh,🔁,,"Not yet in use anywhere in devices.csv — planned/future role, listed for when it appears"
+UFC,UniFi Network Controller (WiFi mgmt),Servers / Compute / Management,snmp,🎛️,,CLD-only — manages every site's WAPs; CLD has no physical WiFi itself
+TMP,Temporary/bootstrap-only provisioning server,Servers / Compute / Management,none,📦,,"VRK/FRD only — real devices (192.168.139.50, 172.16.124.1) via the devices.csv-exception path. Deliberately NOT given a formal EXA<ROLE><SITE><NNN> hostname or DNS record (2026-07-21, Robert: these are bootstrap-only helpers, not real managed nodes -- referenced by IP only, e.g. via benarbejde/begyndelse.json). NOT a per-site standard slot either (was PRV, retired as a standard slot 2026-07-19 — see README.md's Addressing table); ConnectionType explicitly ""none"" in devices.csv (a plain HTTP file server, not SSH-managed)"
+TAR,Tape archive,Servers / Compute / Management,telnet,💽,,
+WKS,Workstation,Endpoints,winrm,🖥️,,Standard slot .101 (example)
+LAP,Laptop,Endpoints,winrm,💻,,Standard slot .102 (example). Same symbol as MBP
+MBP,MacBook Pro,Endpoints,ssh,💻,,Same symbol as LAP
+MAC,Apple/iMac,Endpoints,ssh,🍎,,"Generic red-apple emoji, not Apple Inc.'s trademarked logo"
+NIX,MIDI archive (*nix-adjacent),Endpoints,ssh,🐧,,
+TAB,Tablet,Endpoints,winrm,📱,,
+SUR,Microsoft Surface,Endpoints,winrm,🖊️,,Stylus — Surface devices are known for pen input
+PHN,Office/desk phone,Endpoints,http,📞,,Distinct from PAY's payphone and PBX's exchange
+PRN,Printer,Endpoints,snmp,🖨️,,
+CAM,CCTV camera,Endpoints,http,🎥,,
+LCD,Digital signage / display,Endpoints,http,🖼️,,
+TVS,TV display,Endpoints,http,📺,,
+BPS,Badge programming station,Endpoints,http,🪪,,
+VCU,Video conferencing unit,Endpoints,http,🎧,,
+PAY,Payphone,Curveball / Novelty,none,☎️,,No AT&T logo or British red-phonebox glyph exists in Unicode — telephone receiver instead
+MUS,Jukebox,Curveball / Novelty,none,💿,,No jukebox glyph exists in Unicode either — optical disc instead
+VND,Vending machine,Curveball / Novelty,none,🍫,,
+DON,Doughnut vending,Curveball / Novelty,http,🍩,,
+COF,Coffee machine,Curveball / Novelty,http,🍵,,"Teacup-without-handle. Was ☕, changed 2026-07-13"
+TEA,Tea/coffee machine,Curveball / Novelty,http,🫖,,
+BUS,Tour bus,Curveball / Novelty,none,🚌,,
+CAR,Car,Curveball / Novelty,none,🚗,,
+TRK,Truck,Curveball / Novelty,none,🚚,,
+JET,Jet,Curveball / Novelty,none,✈️,,The generic airport-signage aeroplane
+PMP,Petrol pump,Curveball / Novelty,none,⛽,,
+CLK,Embedded NTP clock,Curveball / Novelty,http,⏰,,Deliberately not the mantel-clock emoji — that's the Old Network box's own symbol
+MIC,Microphone,Curveball / Novelty,none,🎤,,
+RAD,Radio,Curveball / Novelty,none,📻,,
+MOO,Moog synth,Curveball / Novelty,none,🎹,,"Same symbol as FCL — both ""a keyboard"""
+FCL,Fairlight CMI,Curveball / Novelty,none,🎹,,Same symbol as MOO
+AST,Atari ST,Curveball / Novelty,none,🕹️,,No Atari logo in Unicode — joystick as a non-trademarked stand-in
+LIN,Drum machine,Curveball / Novelty,none,🥁,,
+TTY,VT320 serial terminal,Curveball / Novelty,none,⌨️,,

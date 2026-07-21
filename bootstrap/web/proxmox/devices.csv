@@ -1,12 +1,13 @@
 Site,Type,Number,HostOctet,OS,ConnectionType,Managed,Notes,SubnetSite,Legacy
 CLD,ANS,1,9,Debian,ssh,,Ansible control node -- manages all sites,,no
-CLD,RDR,1,12,Debian,ssh,,Rudder configuration management server,,no
+CLD,RUD,1,12,Debian,ssh,,Rudder configuration management server,,no
+CLD,SLT,1,22,Debian,ssh,,Salt master -- manages Windows client endpoints (WKS/LAP/TAB/SUR/MAC/MBP) only; FWL/DCS/SVR/PVE stay Ansible-only,,no
 CLD,SVR,2,20,Windows Server 2022,ssh,,Windows Admin Centre -- reaches all site DCs,,no
 CLD,PBX,1,48,,ssh,,3CX PBX. No SBC in CLD so put the PBX there instead,,no
-FRD,PRV,1,1,,none,,"Provisioning server (PXE, port 8000) -- legal fiction, physically a MacBook running python3 -m http.server 8000, mirroring /debian from Edinburgh. Detected via gateway 172.16.124.2 in menu.ipxe/late_command.sh; octet .1 here (not the standard .15 PRV slot) matches the real boot-url",,no
+FRD,TMP,1,1,,none,,"Provisioning server (PXE, port 8000) -- legal fiction, physically a MacBook running python3 -m http.server 8000, mirroring /debian from Edinburgh. Detected via gateway 172.16.124.2 in menu.ipxe/late_command.sh; octet .1 here (not the standard .15 PRV slot) matches the real boot-url. Bootstrap-only -- no formal hostname/DNS record (2026-07-21)",,no
 CLD,PBX,2,48,,ssh,,"Secondary 3CX PBX -- physically at Fredericia Havn (FRD Havn), hostnamed under CLD as part of the 2026-07-11 Pulsant DC / FRD Havn CLD network rework. No SBC on FRD's network either -- same reuse-the-empty-SBC-slot pattern as CLD's own PBX (CLD,PBX,1). Real IP stays on FRD's own subnet via SubnetSite.",FRD,no
 VRK,DNS,1,8,Debian trixie,ssh,,DNS/BIND server -- jukebox.internal authoritative,,no
-VRK,PRV,1,50,,none,,Provisioning server -- PXE / ISOs / Ansible keys / scripts,,no
+VRK,TMP,1,50,,none,,Provisioning server -- PXE / ISOs / Ansible keys / scripts. Bootstrap-only -- no formal hostname/DNS record (2026-07-21),,no
 VRK,FWL,1,69,,ssh,,Firewall WAN face (vRACK). LAN face 192.168.69.253,,no
 FAL,RDR,1,16,,ssh,,HID Signo badge reader,,yes
 FAL,SRV,1,20,,ssh,,Reserved -- standard convention slot,,yes
@@ -130,7 +131,7 @@ LIV,SWI,1,250,Cisco Catalyst 9200,snmp,,Core switch,,yes
 LIV,SVR,1,,Windows Server 2022,ssh,,File server,,yes
 LIV,MBP,1,,macOS Tahoe,ssh,,MacBook Pro,,no
 LIV,MAC,1,,macOS,ssh,,iMac DISABLED,,no
-LIV,RDR,2,,,ssh,,HID Signo badge reader,,yes
+LIV,RDR,2,21,,ssh,,HID Signo badge reader,,yes
 LIV,BPS,1,,,http,,Badge programming workstation,,yes
 NEW,SWI,1,250,TP-Link JetStream,snmp,,Access switch,,yes
 NEW,SRV,1,,Windows Server 2022,ssh,,File/print server,,yes

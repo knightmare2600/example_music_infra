@@ -1,0 +1,34 @@
+---
+# =============================================================================
+# host_vars/EXASLTCLD001/main.yml
+# Example Music Limited — host-specific variables for the CLD Salt master
+#
+# These override group_vars/salt_servers/main.yml for this host only.
+# If salt_static_ip or salt_hostname are absent or empty here, the playbook
+# will prompt the operator interactively before making any changes -- same
+# fallback pattern as host_vars/EXARUDCLD001/main.yml.
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-07-20  Initial release.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Identity
+# -----------------------------------------------------------------------------
+salt_hostname:    "EXASLTCLD001"
+salt_static_ip:   "192.168.69.22"
+salt_gateway:     "192.168.69.253"
+salt_dns:         "192.168.139.8"
+salt_prefix:      "24"
+
+# Network interface to configure (leave blank to auto-detect).
+salt_network_interface: ""
+
+# -----------------------------------------------------------------------------
+# Site metadata — shown in MOTD and /etc/example-music/nodeinfo.json
+# -----------------------------------------------------------------------------
+salt_site_code:    "CLD"
+salt_site_city:    "Edinburgh"
+salt_site_country: "Scotland"
+salt_site_entity:  "Example Music Limited"

@@ -4,18 +4,35 @@
 
 ansible_user:        ansible
 # Common packages deployed to every Linux host
+# 2026-07-20: bind9-host/htop/telnet/molly-guard added -- found missing while
+# comparing against a dropped-in Salt lintools.sls state (see salt/cleanup/).
+# molly-guard widened here from being rudder_servers/salt_servers-only (their
+# own base_packages lists still have their own explicit entry, untouched --
+# those playbooks don't consume common_packages at all, so this doesn't
+# create a duplicate for them, just extends the same protection everywhere
+# else too).
+# 2026-07-21: aptitude/unattended-upgrades added -- Robert's explicit call
+# while auditing the same dropped-in lintools.sls, which had unattended-
+# upgrades config Salt-side. Config itself (which settings to enable) lives
+# in linux/tools.yml's "Configure unattended-upgrades" task, not here.
 common_packages:
+  - aptitude
+  - bind9-host
   - curl
   - dnsutils
   - git
   - git-lfs
   - grc
+  - htop
   - jq
   - mc
+  - molly-guard
   - net-tools
   - nmap
+  - telnet
   - tmux
   - tree
+  - unattended-upgrades
   - vim
   - wget
   - yamllint

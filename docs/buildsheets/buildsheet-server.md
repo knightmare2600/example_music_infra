@@ -39,7 +39,11 @@ automatically, via WMI `Win32_ComputerSystem.Manufacturer` plus loaded-driver si
 
 ## Baseline Packages (Chocolatey)
 
-All member servers receive the standard baseline. Role-specific software is added manually or via Rudder post-join.
+All member servers receive the standard baseline (`choco_packages_common`,
+`40-choco-packages.yml`). Role-specific software is added manually or via Salt (Chocolatey-driven
+installs and local-account housekeeping for WKS/LAP/SUR/SVR/DCS — see
+`buildsheet-salt-minion.md`/`salt/README.md`), not Rudder — there is no automated Rudder-agent
+onboarding path for Windows today.
 
 | Package | Notes |
 |---------|-------|
@@ -50,34 +54,48 @@ All member servers receive the standard baseline. Role-specific software is adde
 | `winscp.install` | |
 | `far` | File manager |
 | `powershell-core` | PS7 |
-| `rustdesk` | Remote support — replaces VNC |
-| `dua-cli` | Disk usage |
+| `rustdesk.install` | Remote support — replaces VNC |
+| `edit` | |
+| `sdelete` | |
+| `wget` | |
+| `busybox` | |
+| `vcredist-all` | |
+| `dotnetfx` | |
+| `sysinternals` | |
+| `windirstat` | |
+| `dua-cli` | Disk usage — NOT a Chocolatey package; fetched directly from its GitHub release by `tasks/dua_cli.yml`, dropped at `C:\Windows\dua.exe` |
 
 ## PowerShell 7 Modules
 
 | Module |
 |--------|
 | `PSConsoleTools` |
+| `PSWindowsUpdate` |
 | `PSWriteColor` |
 | `PSReadLine` |
 | `Terminal-Icons` |
 | `CompletionPredictor` |
-| `PSWindowsUpdate` |
+| `NerdFonts` |
 
 ## RSAT
 
-| Capability |
-|-----------|
-| `RSAT.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0` |
-| `RSAT.DNS.Tools~~~~0.0.1.0` |
-| `RSAT.GroupPolicy.Management.Tools~~~~0.0.1.0` |
+Server OS installs RSAT via `Install-WindowsFeature` (Server Manager), not the
+`Add-WindowsCapability` mechanism client OSes use (see `buildsheet-workstation.md` for that one):
+
+| Feature |
+|---------|
+| `RSAT-AD-PowerShell` |
+| `RSAT-AD-AdminCenter` |
+| `RSAT-ADDS-Tools` |
+| `RSAT-DNS-Server` |
+| `GPMC` |
 
 ---
 
 ## Role-Specific Notes
 
 ### File / NAS-adjacent member servers
-- NAS devices (`.32` at each site) are not built via this sheet — see `buildsheet-nas.md` (pending)
+- NAS devices (`.19` at each site, standard slot added 2026-07-19) are not built via this sheet — see `buildsheet-nas.md` (pending)
 - If deploying a Windows file server to supplement NAS, add the `FS-FileServer` role:
   ```powershell
   Install-WindowsFeature FS-FileServer -IncludeManagementTools

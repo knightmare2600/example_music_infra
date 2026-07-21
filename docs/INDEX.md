@@ -23,6 +23,7 @@
 | Build a firewall | [buildsheets/buildsheet-firewall.md](buildsheets/buildsheet-firewall.md) |
 | Build the Windows Admin node | [buildsheets/buildsheet-winadmin.md](buildsheets/buildsheet-winadmin.md) |
 | Build the Rudder server | [buildsheets/buildsheet-rudder.md](buildsheets/buildsheet-rudder.md) |
+| Install a Salt minion (Windows WKS/LAP/SUR/SVR/DCS) | [buildsheets/buildsheet-salt-minion.md](buildsheets/buildsheet-salt-minion.md) |
 | Set up WireGuard | [buildsheets/buildsheet-firewall.md](buildsheets/buildsheet-firewall.md) |
 | Promote a domain controller | [../ansible/playbooks/windows_dc/README.md](../ansible/playbooks/windows_dc/README.md) |
 | Set up a RAC emulator VM | [lab/rac-emulator.md](lab/rac-emulator.md) |
@@ -146,6 +147,7 @@ a buildsheet feeds up to the commissioning record in `site-inventory.md`.
 | [buildsheets/buildsheet-firewall.md](buildsheets/buildsheet-firewall.md) | NET-BUILD-FWL-001 | Firewall build checklist — all sites with known hardware |
 | [buildsheets/buildsheet-pve.md](buildsheets/buildsheet-pve.md) | NET-BUILD-PVE-001 | Proxmox VE node build checklist |
 | [buildsheets/buildsheet-rudder.md](buildsheets/buildsheet-rudder.md) | NET-BUILD-RUDDER-001 | Rudder server build checklist + inline install procedure |
+| [buildsheets/buildsheet-salt-minion.md](buildsheets/buildsheet-salt-minion.md) | NET-BUILD-SALT-MINION-001 | Salt minion install (Windows WKS/LAP/SUR/SVR/DCS — widened 2026-07-20, was client-endpoints-only) — automated + manual fallback |
 | [buildsheets/buildsheet-winadmin.md](buildsheets/buildsheet-winadmin.md) | NET-BUILD-WIN-001 | Windows Admin Centre node build checklist (Desktop Experience) |
 
 > **Pending:** `buildsheet-nas.md` — NAS build checklist — not yet started. No fixed octet
@@ -267,8 +269,19 @@ here for discoverability:
 
 - `WindowsHygiene.xml` — triggers `ansible/playbooks/windows_hygiene/site.yml --tags pagefile`
   by name. See `ansible/playbooks/windows_hygiene/README.md`'s "Zabbix integration" section.
-- `zabbix_template_proxmox_nicguard.yaml` — monitors the NIC-guard credentials/units deployed by
-  `ansible/playbooks/proxmox/playbooks/40-scripts.yml`. See `ansible/playbooks/proxmox/README.md`.
+- `zabbix_template_proxmox_nicguard.yaml` — monitors the NIC-guard units deployed by
+  `ansible/playbooks/proxmox/playbooks/50-systemd-units.yml` (credentials/script placed by
+  `40-scripts.yml`, units deployed by `50-systemd-units.yml`). See `ansible/playbooks/proxmox/README.md`.
+
+---
+
+## `vehicles/`
+
+Not indexed above (reference photos, not documentation — same carve-out as `zabbix_templates/`
+above). Real, consumed files, listed here for discoverability: reference photos for the
+curveball/novelty devices in `benarbejde/devices.csv` (see `vehicles/README.md`).
+[`non-it-equipment.md`](vehicles/non-it-equipment.md) is real documentation, not a bare photo
+carve-out — real company assets with no IT/network footprint (no `devices.csv` row).
 
 ---
 
@@ -309,7 +322,7 @@ maintain the original much) and catalogued rather than left as an orphan.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
-| [ColorEcho GitHub Actions Build & Release Documentation.md](ColorEcho%20GitHub%20Actions%20Build%20%26%20Release%20Documentation.md) | — | GitHub Actions build/release pipeline for `ColorEcho` (ARM64 port, patches merged upstream) — win-x64/win-arm64 matrix build, release automation |
+| [ColorEcho GitHub Actions Build & Release Documentation.md](ColorEcho%20GitHub%20Actions%20Build%20%26%20Release%20Documentation.md) | — | GitHub Actions build/release pipeline for `ColorEcho` (ARM64 port, patches merged upstream) — win-x86/win-x64/win-arm64 matrix build, release automation |
 
 ---
 

@@ -46,6 +46,7 @@ already-bootstrapped host later without a full re-bootstrap:
 | `78-sac-ems.yml` | `sac_ems` | SAC/EMS serial console (Server OS only) |
 | `79-ps7-setup.yml` | `ps7_setup` | PS7 modules, fonts, profile, terminal config |
 | `80-domainjoin.yml` | `domainjoin` | Join JUKEBOX domain |
+| `82-salt-minion.yml` | `salt` | Salt minion install (all Windows nodes — WKS/LAP/SUR/SVR/DCS) — see `ansible/playbooks/salt/README.md` and `docs/buildsheets/buildsheet-salt-minion.md` |
 | `85-finish.yml` | `finish` | Remote-access summary + final reboot |
 
 A bare `site.yml` run with no `--tags` runs every play above in sequence —

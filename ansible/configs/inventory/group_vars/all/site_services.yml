@@ -18,12 +18,10 @@
 site_services:
   domain_fqdn: "jukebox.internal"
   provisioning_edinburgh:
-    hostname: "EXAPRVVRK001"
     ip: "192.168.139.50"
     subnet: "192.168.139.0/24"
     url: "http://192.168.139.50"
   provisioning_fredericia_havn:
-    hostname: "EXAPRVFRD001"
     ip: "172.16.124.1"
     subnet: "172.16.124.0/24"
     url: "http://172.16.124.1:8000"
@@ -40,8 +38,11 @@ site_services:
     hostname: "EXAPBXCLD002"
     ip: "172.16.124.48"
   rudder:
-    hostname: "EXARDRCLD001"
+    hostname: "EXARUDCLD001"
     ip: "192.168.69.12"
   wac:
     hostname: "EXASVRCLD002"
     ip: "192.168.69.20"
+  salt:
+    hostname: "EXASLTCLD001"
+    ip: "192.168.69.22"

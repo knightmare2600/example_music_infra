@@ -25,6 +25,16 @@
 #               provisioning server) replaced with win_copy from files/ —
 #               that pattern only existed for the pre-Ansible bootstrap
 #               scripts, which had no other way to get a file onto a box.
+#   2026-07-21  Added SetWallpaper.exe RunOnce queue, ported while reviewing
+#               a dropped-in reference Salt state — a real console tool that
+#               forces an immediate wallpaper refresh, on top of the
+#               RUNDLL32 broadcast this file already did. Queued via
+#               RunOnce (see files/README.md for the tool's own confirmed
+#               syntax and its two open caveats: .bmp-only support unverified
+#               against modern Windows, and no true "Fill" style equivalent)
+#               rather than run directly over this SSH/WinRM session — same
+#               "no attached interactive display" reasoning as setres.exe in
+#               85-finish.yml.
 # =============================================================================
 
 - name: Windows — Corporate wallpaper and dark mode
@@ -43,6 +53,12 @@
         src:  ExampleMusicWallpaper.png
         dest: "{{ exa_wallpaper_dest }}"
       register: wallpaper_download
+      tags: wallpaper
+
+    - name: Push corporate wallpaper (.bmp copy, for SetWallpaper.exe)
+      ansible.windows.win_copy:
+        src:  ExampleMusicWallpaper.bmp
+        dest: "{{ exa_wallpaper_dest_bmp }}"
       tags: wallpaper
 
     - name: Set wallpaper via PersonalizationCSP (applies to all users)
@@ -84,6 +100,19 @@
       ansible.windows.win_shell: |
         RUNDLL32.EXE user32.dll,UpdatePerUserSystemParameters ,1 ,True
       changed_when: false
+      when: wallpaper_download is changed
+      tags: wallpaper
+
+    - name: Queue SetWallpaper.exe for next interactive logon
+      # RunOnce, not run directly -- same reasoning as setres.exe in
+      # 85-finish.yml: no attached interactive display over this SSH/WinRM
+      # session for the tool to act on. Only queued when the wallpaper
+      # actually changed this run, not on every routine re-apply.
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
+        name: ExaSetWallpaper
+        data: 'C:\Windows\SetWallpaper.exe /D:S {{ exa_wallpaper_dest_bmp }}'
+        type: string
       when: wallpaper_download is changed
       tags: wallpaper
 

@@ -35,7 +35,11 @@ automatically, via WMI `Win32_ComputerSystem.Manufacturer` plus loaded-driver si
 > Use `autounattend_win11.xml` — the ARM64 WinPE build procedure is in `bootstrap/WinPE ARM64 Build Procedure.md`.
 
 ### Baseline Packages (Chocolatey)
-All Win11 endpoints receive the standard baseline. Further software is managed by **Rudder** post-join.
+All Win11 endpoints receive the standard baseline (`choco_packages_common` + `choco_packages_gui`,
+`40-choco-packages.yml`). Further software is managed by Salt (Chocolatey-driven installs and
+local-account housekeeping for WKS/LAP/SUR/SVR/DCS — see `buildsheet-salt-minion.md`/
+`salt/README.md`), not Rudder — there is no automated Rudder-agent onboarding path for Windows
+today.
 
 | Package | Notes |
 |---------|-------|
@@ -46,17 +50,31 @@ All Win11 endpoints receive the standard baseline. Further software is managed b
 | `winscp.install` | |
 | `far` | File manager |
 | `powershell-core` | PS7 |
-| `rustdesk` | Remote support — replaces VNC |
-| `dua-cli` | Disk usage |
+| `rustdesk.install` | Remote support — replaces VNC |
+| `edit` | |
+| `sdelete` | |
+| `wget` | |
+| `busybox` | |
+| `vcredist-all` | |
+| `dotnetfx` | |
+| `sysinternals` | |
+| `windirstat` | |
+| `googlechrome` | GUI-conditional |
+| `firefox` | GUI-conditional |
+| `vlc` | GUI-conditional |
+| `windows-terminal` | GUI-conditional |
+| `dua-cli` | Disk usage — NOT a Chocolatey package; fetched directly from its GitHub release by `tasks/dua_cli.yml`, dropped at `C:\Windows\dua.exe` |
 
 ### PowerShell 7 Modules
 | Module | Notes |
 |--------|-------|
 | `PSConsoleTools` | |
+| `PSWindowsUpdate` | |
 | `PSWriteColor` | |
 | `PSReadLine` | |
 | `Terminal-Icons` | |
 | `CompletionPredictor` | |
+| `NerdFonts` | |
 
 ### RSAT (workstations only — skip on pure endpoints if not needed)
 | Capability | Notes |
@@ -74,11 +92,10 @@ All Win11 endpoints receive the standard baseline. Further software is managed b
 
 | HN | Site | IP | RD | SF | SB | SR | CH | CP | P7 | PM | DJ | OU | RS | RD2 | LPS | OK |
 |----|------|----|----|----|----|----|----|----|----|----|----|----|----|----|-----|----|
-| EXAWKSFAL001 | FAL | 192.168.76.100 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| EXAWKSFAL002 | FAL | 192.168.76.101 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| EXAWKSFAL003 | FAL | 192.168.76.102 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| EXALAPFAL001 | FAL | 192.168.76.103 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| EXASURFAL001 | FAL | DHCP | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | — | [ ] | [ ] | [ ] |
+| EXAWKSFAL001 | FAL | 192.168.76.100 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
+| EXAWKSFAL003 | FAL | 192.168.76.102 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
+| EXALAPFAL001 | FAL | 192.168.76.103 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
+| EXASURFAL001 | FAL | 192.168.76.104 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | — | [ ] | [ ] | [ ] |
 | EXAWKSGLA001 | GLA | 192.168.141.150 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | EXAWKSGLA002 | GLA | 192.168.141.151 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | EXALAPGLA001 | GLA | 192.168.141.152 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
@@ -107,7 +124,7 @@ All Win11 endpoints receive the standard baseline. Further software is managed b
 | EXAWKSMEL001 | MEL | 192.168.61.41 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 
 > MacBooks (EXAMBP\*) are not built via this sheet — macOS endpoints are enrolled via MDM.  
-> Add new endpoints as they are deployed. Rudder handles post-join configuration drift.
+> Add new endpoints as they are deployed. Salt handles post-join configuration drift for Windows nodes.
 
 ---
 

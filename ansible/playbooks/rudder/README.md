@@ -12,7 +12,7 @@ the existing `example_music_infra` repo structure under `ansible/`.
 
 | File | What it does |
 |------|-------------|
-| `rudder_server.yml` | Bootstraps EXARDRCLD001: hostname, static IP, packages, UFW, Rudder install, LDAP skeleton, Cockpit, MOTD, sentinel |
+| `rudder_server.yml` | Bootstraps EXARUDCLD001: hostname, static IP, packages, UFW, Rudder install, LDAP skeleton, Cockpit, MOTD, sentinel |
 | `rudder_relay.yml` | Installs `rudder-server-relay` on ODE/BRK relay nodes (future) |
 | `rudder_onboard.yml` | Installs the Rudder agent on a Linux node and registers it via API |
 
@@ -32,7 +32,7 @@ ansible/
 │   └── rudder_relays/
 │       └── main.yml
 ├── host_vars/
-│   └── EXARDRCLD001/
+│   └── EXARUDCLD001/
 │       └── main.yml                   ← IP, hostname, site metadata
 ├── playbooks/
 │   └── rudder/
@@ -53,7 +53,7 @@ Append the content of `inventory_snippet.ini` to `configs/inventory`.
 
 ### Step 2 — Populate host_vars
 
-`host_vars/EXARDRCLD001/main.yml` is pre-filled for the CLD server.
+`host_vars/EXARUDCLD001/main.yml` is pre-filled for the CLD server.
 For each additional relay or server, create a matching `host_vars/<hostname>/main.yml`.
 
 If `rudder_static_ip` or `rudder_hostname` are absent from `host_vars`,
@@ -151,11 +151,11 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | `rudder_api_token` | Rudder REST API token (set after first UI login) |
 | `rudder_ldap_bind_pass` | Password for `svc_rudder_ldap` AD account |
 
-### host_vars/EXARDRCLD001/main.yml (per-host)
+### host_vars/EXARUDCLD001/main.yml (per-host)
 
 | Variable | Example | Description |
 |----------|---------|-------------|
-| `rudder_hostname` | `EXARDRCLD001` | Hostname (uppercase, EXA convention) |
+| `rudder_hostname` | `EXARUDCLD001` | Hostname (uppercase, EXA convention) |
 | `rudder_static_ip` | `192.168.69.12` | Static IP for this node |
 | `rudder_gateway` | `192.168.69.253` | Default gateway |
 | `rudder_dns` | `192.168.139.8` | DNS — BIND9 on vRACK, reachable from CLD LAN (*not* the AD DC — see below) |
@@ -189,7 +189,7 @@ run `nmcli con up rudder-static` to apply without rebooting.
 
 ### CLD IP conflict check
 
-`EXARDRCLD001` is cloud-hosted. Some cloud providers filter ICMP within the
+`EXARUDCLD001` is cloud-hosted. Some cloud providers filter ICMP within the
 virtual network, so the ping-based IP conflict check may return a false
 negative. The playbook emits a warning in that case rather than failing —
 the operator is expected to verify the IP is free via the cloud console.

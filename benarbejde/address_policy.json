@@ -7,6 +7,7 @@
     ".10":       "DCS1  Primary Domain Controller",
     ".11":       "DCS2  Secondary Domain Controller",
     ".19":       "NAS   Storage (NAS/SAN, e.g. TrueNAS)",
+    ".21":       "RDR   Badge reader",
     ".48":       "SBC   VoIP Session Border Controller",
     ".100-.249": "DHCP  DHCP Pool (.101/.102 shown below are documentation examples within this pool, not exclusive reservations)",
     ".250-.252": "SWI   Switches",
@@ -17,6 +18,7 @@
   "offsets_single": {
     "RTR": 1,
     "NAS": 19,
+    "RDR": 21,
     "SBC": 48,
     "WKS": 101,
     "LAP": 102
@@ -28,14 +30,5 @@
     "PVE": [5, 6, 7],
     "SWI": [250, 251, 252],
     "WAP": [82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
-  },
-  "_connection_types_comment": "How Ansible (or other tooling, for snmp/http) reaches a devices.csv Type. ssh/winrm/telnet are real Ansible connection methods -- a device with one of these is treated as manageable. snmp/http are NOT Ansible connection methods (Ansible can't task-execute over them) -- these are monitoring/query protocols only, the device is never treated as Ansible-managed regardless of OS. none means no network connection of any kind applies (vehicles, instruments, etc). Added 2026-07-08.",
-  "connection_types": {
-    "ssh":    ["MBP", "MAC", "NIX", "DCS", "SRV", "SVR", "FWL", "ANS", "DNS", "NAS", "PBX", "SBC", "RDR"],
-    "telnet": ["RTR", "TAR"],
-    "winrm":  ["WKS", "LAP", "TAB", "SUR"],
-    "snmp":   ["PRN", "SWI", "UFC"],
-    "http":   ["BPS", "CAM", "CLK", "COF", "DON", "LCD", "PHN", "TEA", "TVS", "VCU"],
-    "none":   ["AST", "FCL", "BUS", "JET", "MOO", "LIN", "MIC", "MUS", "PAY", "PMP", "RAD", "TRK", "TTY", "VND", "CAR"]
   }
 }

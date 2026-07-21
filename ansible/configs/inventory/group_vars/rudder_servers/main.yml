@@ -19,7 +19,7 @@
 #                     DC's /etc/hosts entry and its LDAP connection URL, a real bug (see that
 #                     file's own changelog). Every rudder_servers host still needs its own
 #                     host_vars override for both -- this default is a fallback, not a
-#                     universally-correct value; see host_vars/EXARDRCLD001/main.yml.
+#                     universally-correct value; see host_vars/EXARUDCLD001/main.yml.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
