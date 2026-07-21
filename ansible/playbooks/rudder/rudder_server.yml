@@ -107,6 +107,24 @@
 #                     already correctly overrides to EXADCSCLD001/rudder_dc_ip in host_vars;
 #                     future site relays get their own host_vars override the same way, not
 #                     a shared group_vars default.
+# v1.3.0  2026-07-21  FIXED REAL BUG: _allowed_networks_list (Section 7, POSTed to the Rudder
+#                     API to set which subnets are allowed to reach it) has been an empty list
+#                     on every run, ever -- three compounding bugs. (1) selectattr('subnet',
+#                     ...)/map(attribute='subnet') used the wrong case; sites.csv's real column
+#                     is "Subnet" (capital S), so these always selected zero rows. (2) The regex
+#                     patterns sat inside a YAML folded block scalar (>-), which never processes
+#                     backslash escapes -- \\d/\\. survived as literal double-backslashes,
+#                     matching "a literal backslash character", never a real IP, even once the
+#                     case was fixed. (3) The first regex_replace's replacement referenced
+#                     capture group 3 (\\3) when the pattern only has 2 groups -- masked
+#                     entirely by bugs 1-2, since the pattern never matched to begin with. Found
+#                     while chasing an unrelated dns_interface bug in bind9-dns.yml that turned
+#                     out to be the exact same root cause (bug 2). sites.csv's Subnet column is
+#                     already normalized ("x.y.z.0/24"), so the LAN half of the list now uses it
+#                     directly instead of a redundant round-trip through a regex that was never
+#                     going to be simpler than the source data; the WireGuard-internal
+#                     10.0.<third-octet>.0/24 alias half now correctly matches the real
+#                     /24-suffixed format.
 # =============================================================================
 
 - name: Bootstrap Rudder server
@@ -199,20 +217,36 @@
       set_fact:
         _allowed_networks: "{{ _allowed_networks_list }}"
       vars:
+        # BUG FIX (2026-07-21, found while chasing an unrelated dns_interface bug in
+        # bind9-dns.yml that turned out to be the same root cause): this expression sat inside
+        # a YAML folded block scalar (>-), which never processes backslash escapes -- \\d/\\.
+        # survived as literal double-backslashes, meaning "match a literal backslash character",
+        # never matching a real IP. selectattr('subnet', ...)/map(attribute='subnet') also used
+        # the wrong case -- sites.csv's real column is "Subnet" (capital S), so these always
+        # selected zero rows regardless of the regex bug. And the first regex_replace's
+        # replacement referenced group 3 (\\3) when the pattern only has 2 capture groups --
+        # masked entirely by the other two bugs, since the pattern never matched to begin with.
+        # All three bugs together meant _allowed_networks has been an empty list on every run,
+        # ever -- Section 7 below POSTs this to the Rudder API, replacing whatever was
+        # previously configured with an empty allowed-networks list. sites.csv's Subnet column
+        # is already normalized ("x.y.z.0/24"), so the first list just uses it directly instead
+        # of a redundant (and triply-buggy) regex round-trip; the second list still derives the
+        # WireGuard-internal 10.0.<third-octet>.0/24 alias, now correctly matching the real
+        # /24-suffixed format.
         _allowed_networks_list: >-
           {{
             (
               _sites_raw.list
-              | selectattr('subnet', 'defined')
-              | map(attribute='subnet')
+              | selectattr('Subnet', 'defined')
+              | map(attribute='Subnet')
               | select('match', '^[0-9]')
-              | map('regex_replace', '^(\\d+\\.\\d+\\.)(\\d+)\\.\\d+$', '\\1\\3.0/24')
               | list
-              + _sites_raw.list
-              | selectattr('subnet', 'defined')
-              | map(attribute='subnet')
+              +
+              _sites_raw.list
+              | selectattr('Subnet', 'defined')
+              | map(attribute='Subnet')
               | select('match', '^[0-9]')
-              | map('regex_replace', '^\\d+\\.\\d+\\.(\\d+)\\.\\d+$', '10.0.\\1.0/24')
+              | map('regex_replace', '^\d+\.\d+\.(\d+)\.\d+(?:/\d+)?$', '10.0.\1.0/24')
               | list
             ) | unique | sort
           }}
