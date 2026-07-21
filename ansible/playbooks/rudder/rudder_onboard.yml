@@ -39,7 +39,7 @@
 #                    Used to determine which relay to assign the node to.
 #                    CLD nodes connect directly to the root server — CLD is
 #                    "top of the tree" (2026-07-11: the Rudder root server
-#                    itself lives at CLD, 192.168.69.12/EXARDRCLD001, and CLD
+#                    itself lives at CLD, 192.168.69.12/EXARUDCLD001, and CLD
 #                    now spans multiple physical facilities — CLD001-numbered
 #                    devices in the Pulsant DC, CLD002+ in FRD Havn — so CLD
 #                    is the natural no-relay-hop site, not FAL).
@@ -61,7 +61,7 @@
 #                     and already accepted), detailed per-host report.
 # v1.1.0  2026-07-11  CLD replaces FAL as the no-relay "top of the tree" site
 #                     for network rework — Rudder root already lives at CLD
-#                     (192.168.69.12/EXARDRCLD001); FAL now behaves like any
+#                     (192.168.69.12/EXARUDCLD001); FAL now behaves like any
 #                     other spoke site and needs a relay UUID like ODE/BRK if
 #                     it doesn't already have a direct path to root. See
 #                     project notes for the Pulsant DC / FRD Havn CLD split.
@@ -86,7 +86,7 @@
     # Relay assignment map — site code → relay policy server.
     # CLD nodes connect directly to the root server (no entry needed) — CLD is
     # "top of the tree" (2026-07-11 network rework: root already lives at CLD,
-    # 192.168.69.12/EXARDRCLD001). ODE, BRK, and FAL UUIDs must be set after
+    # 192.168.69.12/EXARUDCLD001). ODE, BRK, and FAL UUIDs must be set after
     # relays are deployed and promoted — FAL is included here (empty by
     # default, same as ODE/BRK before their relays existed) so it falls
     # through to the root server directly until/unless a FAL relay is stood

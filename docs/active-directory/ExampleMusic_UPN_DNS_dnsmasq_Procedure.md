@@ -3,10 +3,11 @@
 > **Classification:** Internal — Infrastructure
 > **Forest / AD Domain:** `jukebox.internal` (single domain — all machines join here)
 > **UPN suffixes / internal DNS zones:** `example.net` · `example.org` · `example.com`
-> **Provisioning network:** `192.168.139.0/24` (Edinburgh/`EXAPRVVRK001`) — Fredericia Havn has its
-> own separate provisioning server (`172.16.124.1:8000`/`EXAPRVFRD001`) not covered by this
-> procedure; this document's `provisioning.example.*` DNS records and reverse-zone entries are
-> Edinburgh-specific.
+> **Provisioning network:** `192.168.139.0/24` (Edinburgh, `192.168.139.50`) — Fredericia Havn has its
+> own separate provisioning server (`172.16.124.1:8000`), not covered by this procedure. Neither
+> provisioning server has a formal hostname or DNS record of its own (2026-07-21) — this
+> procedure's `provisioning.example.*` A record and PTR record (§6.3/§7.2) were retired the same
+> day, for the same reason.
 > **Credentials:** See password manager — do **not** store passwords in this document
 
 > **Architecture note:** `example.net`, `example.org`, and `example.com` are **not** Active Directory child domains. They exist in this infrastructure as (a) UPN suffixes so users can log in with email-format credentials, and (b) internal DNS zones so these names resolve to internal services rather than their real public owners. All machines — servers, workstations, and DCs — join `jukebox.internal` directly.
@@ -17,6 +18,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-21 | Retired §6.3 (`provisioning.*` A record) and §7.2 (provisioning PTR record) — the provisioning server (VRK, `192.168.139.50`; Type=`TMP` in `devices.csv`, formerly `PRV`) is a bootstrap-only helper, deliberately given no formal `EXA<ROLE><SITE><NNN>` hostname or DNS record at all any more, in this AD-integrated zone or the BIND9 zone (`bootstrap/web/provision/bindme.sh`, same date). Scope/Key Servers/DNS Records tables, prerequisites, testing steps, and the checklist updated to match. |
 | 2026-07-12 | Flagged the `192.168.139.0/24`/`192.168.139.50` references throughout as Edinburgh/VRK-specific — this document never mentioned Fredericia Havn's separate provisioning server (`172.16.124.1:8000`/`EXAPRVFRD001`) at all, which read as if `192.168.139.50` were the estate's only provisioning server. |
 | 2026-03-08 | Initial document — UPN suffixes, internal DNS zones, per-site reverse zones, dnsmasq DHCP dynamic DNS |
 | 2026-03-14 | Clarified that example.* are UPN suffixes / DNS zones only, not AD child domains. Added DNS zone pre-creation requirement before domain join. Updated EXADCSODE001 status. ODE reverse zone created and verified. |
@@ -59,7 +61,7 @@ This procedure covers three related but distinct configurations that together al
 Adds `example.com`, `example.org`, and `example.net` as alternative User Principal Name (UPN) suffixes to the `jukebox.internal` forest. This allows AD user accounts to have a login name matching their email address (e.g. `j.smith@example.com`) rather than the internal forest name (`j.smith@jukebox.internal`). A user logging in from any site — including visiting another country's office — will authenticate successfully with their email-format UPN.
 
 **Part B — Internal DNS Zones**
-Creates AD-integrated DNS zones for `example.com`, `example.org`, and `example.net` on all domain controllers. These are **internal-only** zones — they are not authoritative for public DNS and do not affect external resolution. They exist so that internal services (e.g. `provisioning.example.com`) resolve correctly on the estate. All zones replicate forest-wide automatically via AD replication, so a record added on any DC is visible on all DCs within the normal AD replication interval.
+Creates AD-integrated DNS zones for `example.com`, `example.org`, and `example.net` on all domain controllers. These are **internal-only** zones — they are not authoritative for public DNS and do not affect external resolution. They exist so that internal services resolve correctly on the estate under these UPN-suffix names. All zones replicate forest-wide automatically via AD replication, so a record added on any DC is visible on all DCs within the normal AD replication interval.
 
 > **Important dependency:** These zones must be created on the primary DC **before** any machine attempts to join `jukebox.internal` with a UPN or service referencing `example.net/org/com`. If the zones do not exist, Windows DNS forwards these queries to the public internet, resolves them to Cloudflare/IANA addresses, and domain join or authentication operations fail. The AD domain join itself (to `jukebox.internal`) does not require these zones — but any post-join operations referencing the example.* names do.
 
@@ -81,9 +83,7 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 
 - UPN suffix registration for `example.com`, `example.org`, `example.net` on the `jukebox.internal` forest
 - AD-integrated forward DNS zones for all three domains, forest-wide replication
-- Initial DNS records: `provisioning.*` A records in all three zones
 - Per-site `/24` reverse zones on each site's primary DC, forest-wide replication
-- PTR record for `EXAPRVVRK001` (`192.168.139.50`) in the CLD reverse zone
 - Windows DNS dynamic update permissions — non-secure, restricted to `.253` per site
 - dnsmasq configuration: DHCP, local DNS, DNS forwarding to DC, `nsupdate` dynamic update script
 - Verification of forest-wide replication for all zones
@@ -95,6 +95,8 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 - Email routing or MX record configuration
 - AD user account creation or UPN assignment to existing users (separate procedure)
 - CLD site DC and reverse zone (pending — see reminder at end of document)
+- A `provisioning.*` A record or a PTR record for the provisioning server — retired 2026-07-21,
+  see §6.3/§7.2
 
 ---
 
@@ -105,8 +107,7 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 | Hostname | IP | Site | Role in this procedure |
 |----------|----|------|----------------------|
 | `EXADCSFAL001` | `192.168.76.10` | FAL | Primary DC — run forest-wide config from here |
-| `EXADCSCLD001` | `192.168.69.10` | CLD | Hosts `139.168.192.in-addr.arpa` and provisioning records |
-| `EXAPRVVRK001` | `192.168.139.50` | VRK | Provisioning web server — DNS target for `provisioning.*` |
+| `EXADCSCLD001` | `192.168.69.10` | CLD | Hosts `139.168.192.in-addr.arpa` |
 | `EXAFWL<SITE>001` | `192.168.<SITE>.253` | All | dnsmasq DHCP+DNS, sends nsupdate to DC |
 | `EXADCS<SITE>001` | `192.168.<SITE>.10` | All | Receives dynamic DNS updates from firewall |
 
@@ -134,14 +135,10 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 
 > ℹ As additional sites are built out and their DCs promoted, add the corresponding reverse zone to that site's DC following the pattern in section 6.
 
-### 3.3 Initial DNS Records
+### 3.3 Initial DNS Records — retired 2026-07-21
 
-| Zone | Record type | Name | Value |
-|------|-------------|------|-------|
-| `example.com` | A | `provisioning` | `192.168.139.50` |
-| `example.org` | A | `provisioning` | `192.168.139.50` |
-| `example.net` | A | `provisioning` | `192.168.139.50` |
-| `139.168.192.in-addr.arpa` | PTR | `50` | `EXAPRVVRK001.jukebox.internal.` |
+This table used to list a `provisioning` A record (all three zones) and a PTR record for the
+provisioning server. Retired — see §6.3/§7.2.
 
 ---
 
@@ -150,10 +147,9 @@ Configures the `EXAFWL???001` firewall nodes (Debian Trixie, running dnsmasq at 
 1. `jukebox.internal` forest is operational at Windows Server 2022 functional level
 2. All DCs listed in section 3.1 are promoted and AD replication is healthy — verify with `dcdiag /test:replications` on `EXADCSFAL001`
 3. DNS role is installed and running on all DCs (`Get-Service DNS` returns `Running` on all)
-4. `EXAPRVVRK001` is online at `192.168.139.50` and reachable from all sites via WireGuard
-5. SSH access to each `EXAFWL???001` node is available for dnsmasq configuration
-6. `bind9-dnsutils` package available on all firewall nodes (provides `nsupdate`)
-7. Windows DNS dynamic updates are currently set to **Secure only** by default — this procedure changes them to **Nonsecure and Secure** restricted by ACL. Confirm this is acceptable before proceeding.
+4. SSH access to each `EXAFWL???001` node is available for dnsmasq configuration
+5. `bind9-dnsutils` package available on all firewall nodes (provides `nsupdate`)
+6. Windows DNS dynamic updates are currently set to **Secure only** by default — this procedure changes them to **Nonsecure and Secure** restricted by ACL. Confirm this is acceptable before proceeding.
 
 > ⚠ These procedures make forest-wide changes to AD and DNS. Run them from `EXADCSFAL001` during a maintenance window. Changes replicate automatically — they cannot easily be scoped to a single DC.
 
@@ -262,24 +258,13 @@ foreach ($dc in $dcs) {
 }
 ```
 
-### 6.3 Add Initial DNS Records
+### 6.3 Add Initial DNS Records — retired 2026-07-21
 
-Add the `provisioning` A record to all three forward zones, pointing to `EXAPRVVRK001`:
-
-```powershell
-$zones = @('example.com', 'example.org', 'example.net')
-
-foreach ($zone in $zones) {
-  Add-DnsServerResourceRecordA -ZoneName $zone -Name 'provisioning' -IPv4Address '192.168.139.50' -ComputerName 'EXADCSFAL001' -TimeToLive '01:00:00'
-  Write-Host "Added provisioning A record to $zone"
-}
-```
-
-Verify:
-
-```powershell
-foreach ($zone in $zones) { Resolve-DnsName "provisioning.$zone" -Server 192.168.76.10 }
-```
+This section used to add a `provisioning` A record (pointing at `192.168.139.50`) to all three
+forward zones. Retired, per the same 2026-07-21 decision that removed the equivalent BIND9 A
+record (see `bootstrap/web/provision/bindme.sh`) — the provisioning server is a bootstrap-only
+helper, deliberately given no formal DNS registration anywhere, in either DNS system. It's still
+real, still reachable at `192.168.139.50` — just not resolvable by any name any more.
 
 ---
 
@@ -317,21 +302,11 @@ foreach ($entry in $reverseZones) {
 }
 ```
 
-### 7.2 Add the Provisioning PTR Record
+### 7.2 Add the Provisioning PTR Record — retired 2026-07-21
 
-Add the PTR record for `EXAPRVVRK001` to the CLD reverse zone:
-
-```powershell
-Add-DnsServerResourceRecordPtr -ZoneName '139.168.192.in-addr.arpa' -Name '50' -PtrDomainName 'EXAPRVVRK001.jukebox.internal.' -ComputerName 'EXADCSCLD001' -TimeToLive '01:00:00'
-```
-
-Verify:
-
-```powershell
-Resolve-DnsName '192.168.139.50' -Server 192.168.76.10
-```
-
-Expected output: `EXAPRVVRK001.jukebox.internal`
+This section used to add a PTR record (`.50` → `EXAPRVVRK001.jukebox.internal.`) to the CLD
+reverse zone. Retired, same reasoning and same date as §6.3 above — no formal DNS registration
+for the provisioning server anywhere any more, forward or reverse.
 
 ### 7.3 Set Dynamic Update ACLs on Reverse Zones
 
@@ -653,23 +628,10 @@ foreach ($dc in $dcs) {
 }
 ```
 
-### 9.3 Provisioning A Record Resolution
+### 9.3/9.4 Provisioning A/PTR Record Resolution — retired 2026-07-21
 
-```powershell
-# Test from FAL DC — should resolve to 192.168.139.50 for all three zones
-Resolve-DnsName 'provisioning.example.com' -Server 192.168.76.10
-Resolve-DnsName 'provisioning.example.org' -Server 192.168.76.10
-Resolve-DnsName 'provisioning.example.net' -Server 192.168.76.10
-```
-
-### 9.4 Reverse Zone Replication and PTR Resolution
-
-```powershell
-# PTR lookup for provisioning server — should work from any DC
-Resolve-DnsName '192.168.139.50' -Server 192.168.76.10
-Resolve-DnsName '192.168.139.50' -Server 192.168.231.10  # CPH DC
-Resolve-DnsName '192.168.139.50' -Server 192.168.136.10  # BRK DC
-```
+These sections used to verify the `provisioning.*` A record and its PTR record. Retired along
+with §6.3/§7.2 — nothing to test any more.
 
 ### 9.5 Test dnsmasq DHCP and Dynamic DNS Update
 
@@ -780,7 +742,7 @@ EOF
 
 - Verify DHCP option 6 (dns-server) in `lan.conf` lists `.253` first, then `.10`
 - Check client's actual DNS config: `ipconfig /all` (Windows) or `resolvectl status` (Linux)
-- Verify dnsmasq is forwarding to the DC: `dig @192.168.76.253 provisioning.example.com` should return `192.168.139.50`
+- Verify dnsmasq is forwarding to the DC: `dig @192.168.76.253 <any real record in example.com/.org/.net>` should resolve correctly (the worked `provisioning.example.com` example this used to reference was retired 2026-07-21 along with §6.3)
 
 ---
 
@@ -795,19 +757,16 @@ EOF
 | 5 | Forward zone `example.org` created — forest-wide, nonsecure dynamic update | ✅ Done 2026-03-13 |
 | 6 | Forward zone `example.net` created — forest-wide, nonsecure dynamic update | ✅ Done 2026-03-13 |
 | 7 | All three forward zones confirmed replicated to all DCs | ☐ |
-| 8 | `provisioning.example.com/org/net` A records added → `192.168.139.50` | ☐ |
-| 9 | A record resolution confirmed from FAL, ODE, BRK DCs | ☐ |
-| 10 | Reverse zone created on each site DC (13 zones + CLD) | ✅ ODE done 2026-03-14 — remaining sites pending DC promotion |
-| 11 | PTR record for `EXAPRVVRK001` added to `139.168.192.in-addr.arpa` | ☐ |
+| 8 | Reverse zone created on each site DC (13 zones + CLD) | ✅ ODE done 2026-03-14 — remaining sites pending DC promotion |
 | -- | PTR record for EXADCSODE001 (192.168.126.10) added to `126.168.192.in-addr.arpa` | ✅ Done 2026-03-14 |
-| 12 | PTR resolution for `192.168.139.50` confirmed from FAL, CPH, BRK DCs | ☐ |
 | -- | PTR resolution for `192.168.126.10` confirmed from EXADCSODE001 | ✅ Done 2026-03-14 |
-| 13 | `lan.conf` deployed and validated on all `EXAFWL???001` nodes | ☐ |
-| 14 | `dhcp-dnsupdate.sh` deployed and executable on all `EXAFWL???001` nodes | ☐ |
-| 15 | dnsmasq restarted and enabled on all firewall nodes | ☐ |
-| 16 | Test DHCP lease issued — A and PTR records confirmed on DC | ☐ |
-| 17 | Cross-site PTR resolution confirmed (FAL device resolved from ODE DC) | ☐ |
-| 18 | UPN login tested — user signs in with `@example.com` UPN successfully | ☐ |
+| 9 | `lan.conf` deployed and validated on all `EXAFWL???001` nodes | ☐ |
+| 10 | `dhcp-dnsupdate.sh` deployed and executable on all `EXAFWL???001` nodes | ☐ |
+| 11 | dnsmasq restarted and enabled on all firewall nodes | ☐ |
+| 12 | Test DHCP lease issued — A and PTR records confirmed on DC | ☐ |
+| 13 | Cross-site PTR resolution confirmed (FAL device resolved from ODE DC) | ☐ |
+| 14 | UPN login tested — user signs in with `@example.com` UPN successfully | ☐ |
+| -- | Items 8/11/12 (provisioning A/PTR records) retired 2026-07-21 — see §6.3/§7.2 | -- |
 
 ---
 
@@ -829,7 +788,7 @@ EOF
 | `EXANAS` | NAS | `EXANASFAL001` |
 | `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
 | `EXAPBX` | PBX | `EXAPBXCLD001` |
-| `EXAPRV` | Provisioning / bootstrap server | `EXAPRVFAL001` |
+| `TMP` | Provisioning / bootstrap server (VRK/FRD only, no formal hostname) | `192.168.139.50` / `172.16.124.1` |
 | `EXAWAP` | WiFi Access Point | `EXAWAPFAL001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |
 | `EXALAP` | Laptop | `EXALAPFAL001` |

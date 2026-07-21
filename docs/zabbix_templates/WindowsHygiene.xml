@@ -68,7 +68,7 @@
           <history>30d</history>
           <trends>90d</trends>
           <value_type>TEXT</value_type>
-          <description>Chassis Type: 10=Laptop, 3/4/6/7=Desktop/Server</description>
+          <description>Chassis Type: 9=Laptop, 10=Notebook, 14/30/31/32=other laptop-like (see 00-preflight.yml's is_laptop), 3/4/6/7=Desktop/Server</description>
           <preprocessing>
             <step>
               <type>REGEX</type>

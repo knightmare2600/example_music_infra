@@ -58,10 +58,12 @@ together (or via `site.yml`) rather than standalone.
 
 ## Zabbix integration
 
-`docs/zabbix_templates/WindowsHygiene.xml` is a Zabbix template that triggers
-`windows_hygiene/site.yml --tags pagefile` by name (via a scheduled/remote-command item) — the
-tag names in the table above are a stable interface this template depends on; don't rename them
-without updating the template too.
+`docs/zabbix_templates/WindowsHygiene.xml` is a Zabbix template whose trigger *descriptions*
+name `windows_hygiene/site.yml --tags pagefile` by name, telling a human what to run when the
+trigger fires — there is no remote-command item or Zabbix action in the template, so this is
+not automated; someone has to read the trigger and run the playbook themselves. The tag names in
+the table above are still a stable interface this template's trigger text depends on; don't
+rename them without updating the template too.
 
 ---
 

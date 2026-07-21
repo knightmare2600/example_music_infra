@@ -40,7 +40,7 @@
 | `.7` | PVE node 3 (FAL/ODE/BRK only) |
 | `.10` | DC primary |
 | `.11` | DC secondary |
-| `.12` | Rudder Relay (`EXARRY<SITE>001`) / Rudder Server on CLD (`EXARDRCLD001`) |
+| `.12` | Rudder Relay (`EXARRY<SITE>001`) / Rudder Server on CLD (`EXARUDCLD001`) |
 | `.48` | VOIP SBC — trunks to `EXAPBXCLD001` |
 | `.82`–`.94` | WAPs (static, added 2026-07-08 — moved off DHCP). Count varies per site |
 | `.100`–`.249` | DHCP pool |
@@ -186,18 +186,19 @@ See `docs/ExampleMusic_Beginners_Guide.md` §4.1 for the full CLD/VRK split, and
 here, it's a MacBook running `http.server`, not a physical site).
 
 ### Infrastructure Checklist
-- [ ] `EXAPVECLD001` — Proxmox node online (`192.168.69.5`) · ZFS RAID1 — build this first, everything below except `EXAPRVVRK001`/`EXAANSCLD001` runs as a VM on top of it
+- [ ] `EXAPVECLD001` — Proxmox node online (`192.168.69.5`) · ZFS RAID1 — build this first, everything below except the provisioning server (`192.168.139.50`, bootstrap-only, no formal hostname)/`EXAANSCLD001` runs as a VM on top of it
 - [ ] `EXADNSVRK001` — DNS/BIND9 server online (`192.168.139.8`)
 - [ ] `EXAFWLVRK001` — Firewall / WireGuard hub online (`192.168.139.69`, WAN/vRACK face — same physical firewall as `EXAFWLCLD001`, whose LAN face is `192.168.69.253`)
 - [ ] `EXADCSCLD001` — Domain Controller online (`192.168.69.10`) — first DC in the forest; see `windows_bootstrap/site.yml` then `windows_dc/site.yml`'s `dc_is_first_in_forest` prompt
-- [ ] `EXAPRVVRK001` — Provisioning server online (`192.168.139.50`)
+- [ ] Provisioning server online (`192.168.139.50` — bootstrap-only, no formal hostname)
 - [ ] `EXAANSCLD001` — Ansible control node online (`192.168.69.9`)
-- [ ] `EXARDRCLD001` — Rudder Server online (`192.168.69.12`)
+- [ ] `EXARUDCLD001` — Rudder Server online (`192.168.69.12`)
+- [ ] `EXASLTCLD001` — Salt master online (`192.168.69.22`) — manages all Windows nodes estate-wide, see `ansible/playbooks/salt/README.md`
 - [ ] `EXASVRCLD002` — Windows Admin Centre deployed (`192.168.69.20`)
 - [ ] `EXAPBXCLD001` — Central 3CX PBX online (`192.168.69.48`)
 - [ ] `EXAUFCCLD001` — UniFi Network Controller online (`192.168.69.82`, CLD's **LAN** — not vRACK; manages every site's WAPs)
 - [ ] WireGuard routes verified to all site subnets
-- [ ] Ansible key distribution tested from `EXAPRVVRK001`
+- [ ] Ansible key distribution tested from the provisioning server (`192.168.139.50`)
 - [ ] Rudder agents checked in from test node
 
 ### ZFS / Storage

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+## Live-computed pending-updates count for the login MOTD, since Debian has
+## no equivalent of Ubuntu's update-notifier-common. Ported 2026-07-21 from a
+## dropped-in Salt lintools.sls state, which also had a second, cron-cached
+## version of this same check (dropped -- Robert's call: live-computed only,
+## to avoid showing two possibly-disagreeing update counts at login).
+##
+## This can be split out into security and non-security counts -- move the
+## wc line and grep on/-v "security" if that's ever wanted.
+UPDATES_AVAILABLE=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l)
+
+if [ "$UPDATES_AVAILABLE" -gt 0 ]; then
+  echo "$UPDATES_AVAILABLE updates available."
+else
+  echo "No updates available."
+fi

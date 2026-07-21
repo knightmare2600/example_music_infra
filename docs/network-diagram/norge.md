@@ -32,7 +32,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_OSL fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:OSL:START

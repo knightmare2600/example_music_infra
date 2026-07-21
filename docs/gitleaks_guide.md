@@ -67,25 +67,42 @@ Exit code:
 
 ---
 
-## 6. Reduce False Positives (.gitleaksignore)
+## 6. Reduce False Positives
 
-Create a file called:
+Two different files, for two different kinds of false positive — don't confuse them:
 
-.gitleaksignore
+### Ignoring a specific finding — `.gitleaksignore`
 
-Example:
+`.gitleaksignore` entries are **not** glob patterns or literal strings — each line must be a
+**fingerprint** in the form `<commit>:<file>:<rule-id>:<line>`, e.g.:
 
 ```
-# Ignore test files
-test-data/
-*.example
-
-# Ignore known fake keys
-FAKE_API_KEY_123456
-
-# Ignore hashes in documentation
-docs/
+cd5226711335c68be1e720b318b7bc3135a30eb2:cmd/generate/config/rules/sidekiq-secret.go:sidekiq-secret:23
 ```
+
+Get the real fingerprint for a specific finding you want to ignore by running a scan with a JSON
+report first (see Section 4) — each finding in the report already has a `Fingerprint` field in
+exactly this format; copy it verbatim into `.gitleaksignore`.
+
+### Ignoring a whole path/pattern — `.gitleaks.toml`
+
+To exclude entire paths, extensions, or known-fake test strings (`test-data/`, `*.example`,
+`docs/`, a specific fake key), use a `.gitleaks.toml` config's `[[allowlists]]` block instead —
+`.gitleaksignore` has no path/glob mechanism at all:
+
+```toml
+[[allowlists]]
+paths = [
+  '''test-data/.*''',
+  '''.*\.example$''',
+  '''docs/.*''',
+]
+regexes = [
+  '''FAKE_API_KEY_123456''',
+]
+```
+
+Then run scans with `gitleaks detect --config .gitleaks.toml ...`.
 
 ---
 
@@ -123,11 +140,12 @@ This works out of the box if you're using Git for Windows.
 
 ### Option B — PowerShell Hook
 
-Create:
+Git only ever looks for and executes a file literally named `pre-commit` (no extension) in the
+hooks directory — it has no built-in way to discover or run a `.ps1`-suffixed file. `.git/hooks`
+is also already git's default hooks path; running `git config core.hooksPath .git/hooks` changes
+nothing. To actually run PowerShell logic, `pre-commit` itself must be a shim that invokes it:
 
-```
-.git/hooks/pre-commit.ps1
-```
+Create `.git/hooks/pre-commit.ps1` (the real logic):
 
 ```powershell
 Write-Host "Running Gitleaks scan..."
@@ -143,11 +161,15 @@ Write-Host "✅ No secrets detected."
 exit 0
 ```
 
-Then configure Git to use PowerShell hooks:
+Create `.git/hooks/pre-commit` (the shim git actually invokes — no extension, must be executable):
 
-```powershell
-git config core.hooksPath .git/hooks
+```bash
+#!/bin/sh
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(dirname "$0")/pre-commit.ps1"
+exit $?
 ```
+
+No `core.hooksPath` change needed — this is the default path already.
 
 ---
 
@@ -164,7 +186,7 @@ Create `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.18.0
+    rev: v8.30.1  # check https://github.com/gitleaks/gitleaks/releases for the current latest
     hooks:
       - id: gitleaks
 ```

@@ -1,4 +1,4 @@
-# Build Sheet — Rudder Configuration Management Node (EXARDRCLD001)
+# Build Sheet — Rudder Configuration Management Node (EXARUDCLD001)
 
 **Document ID:** NET-BUILD-RUDDER-001  
 **Classification:** Internal — Network Operations  
@@ -11,7 +11,7 @@
 
 ### Node Details
 ```
-Hostname : EXARDRCLD001
+Hostname : EXARUDCLD001
 IP       : 192.168.69.12
 Network  : CLD (192.168.69.0/24)
 OS       : Debian GNU/Linux 13 (Trixie)
@@ -21,9 +21,9 @@ Role     : Rudder root server — configuration management for all sites
 ### Prerequisites
 - CLD network reachable (`EXAFWLCLD001` up, WireGuard fabric operational)
 - DNS resolving `jukebox.internal` from CLD network
-- Ansible user exists with key from `EXAPRVVRK001` (`192.168.139.50` — or `172.16.124.1:8000` at
+- Ansible user exists with key from the provisioning server (`192.168.139.50` — or `172.16.124.1:8000` at
   Fredericia Havn, see `docs/bootstrap/bootstrapping.md` §4.1a)
-- Port `443` and `5309` open inbound from all site subnets (Rudder agent comms)
+- Ports `443`/`5309` (and, for relay/Cockpit use, `5310`/`9090`) open inbound from all site subnets (Rudder agent comms)
 
 ### Rudder Installation — automated (`ansible/playbooks/rudder/rudder_server.yml`)
 
@@ -70,10 +70,17 @@ Web UI available at: `https://192.168.69.12/rudder`
 Default credentials: set on first login — store in password manager immediately.
 
 ### Post-Install Configuration
-- Set the server FQDN: `EXARDRCLD001.jukebox.internal`
+- Set the server FQDN: `EXARUDCLD001.jukebox.internal`
 - Configure allowed networks — all site `/24` subnets plus CLD `192.168.69.0/24`
 - Import existing techniques and rules if migrating (see NET-MGMT-RUDDER-001)
 - Verify agent check-in from `EXAANSCLD001` (Ansible control node) as a test node
+- **Section 12 (Windows baseline) runs automatically, no manual step needed:**
+  `rudder_server.yml` creates a dynamic "Windows Nodes" group (OS type = Windows), pushes two
+  real techniques via the Rudder REST API (`exa_windows_security_policy` — Defender/SmartScreen/
+  Windows-Update lockdown; `exa_pswindowsupdate`), and creates/updates directives + an "EXA
+  Windows baseline" rule binding them together, idempotently on every run. To add a binary to the
+  Defender exclusion list: add it to `rudder_windows_excluded_binaries`
+  (`group_vars/rudder_servers/main.yml`) and re-run the playbook.
 
 ### Rudder Agent Install (on managed nodes)
 
@@ -95,11 +102,15 @@ rudder agent server 192.168.69.12
 
 ### Firewall Rules Required
 ```
-Inbound to EXARDRCLD001:
+Inbound to EXARUDCLD001:
+  22/tcp    — SSH
+  80/tcp    — HTTP redirect (to 443)
   443/tcp   — Web UI + agent HTTPS reporting
-  5309/tcp  — Rudder agent CFEngine comms
+  5309/tcp  — Rudder agent CFEngine comms (server to agent)
+  5310/tcp  — Rudder relay communication
+  9090/tcp  — Cockpit web UI
 
-Outbound from EXARDRCLD001:
+Outbound from EXARUDCLD001:
   Any — for package downloads, git, API calls to managed nodes
 ```
 
@@ -107,9 +118,9 @@ Outbound from EXARDRCLD001:
 
 ## Build Checklist
 
-| Hostname | Hostname Set | Static IP Set | Ansible User Created + SSH Key Installed from EXAPRVVRK001 | Debian Trixie Installed and Updated | UFW Configured (Ports 22, 443, 5309 Open) | Rudder APT Repository Added and Signed | rudder-server Package Installed | rudder-server Service Running and Enabled | FQDN Set to EXARDRCLD001.jukebox.internal | Allowed Networks Configured (All Site /24s + CLD) | Web UI Admin Password Set and Stored in Password Manager | Test Agent Checked In and Accepted | Existing Rules / Techniques Imported | Notes |
+| Hostname | Hostname Set | Static IP Set | Ansible User Created + SSH Key Installed from provisioning server (192.168.139.50) | Debian Trixie Installed and Updated | UFW Configured (Ports 22, 80, 443, 5309, 5310, 9090 Open) | Rudder APT Repository Added and Signed | rudder-server Package Installed | rudder-server Service Running and Enabled | FQDN Set to EXARUDCLD001.jukebox.internal | Allowed Networks Configured (All Site /24s + CLD) | Web UI Admin Password Set and Stored in Password Manager | Test Agent Checked In and Accepted | Existing Rules / Techniques Imported | Notes |
 |----------|------------------------------|------------------------------------|------------------------------------------------------------|--------------------------------------|-------------------------------------------|----------------------------------------|------------------------------|-------------------------------------------|-------------------------------------------|-----------------------------------------------|--------------------------------------------------|----------------------------------|----------------------------------|------|
-| **EXARDRCLD001** | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | Rudder root server |
+| **EXARUDCLD001** | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | - [ ] | Rudder root server |
 
 ---
 

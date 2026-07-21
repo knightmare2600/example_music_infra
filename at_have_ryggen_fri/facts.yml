@@ -49,10 +49,14 @@ facts:
       2026-07-11 CLD/FRD Pulsant-vRACK network rework, devices physically at FRD Havn are
       hostnamed under CLD (SubnetSite override in devices.csv, resolved by
       generate_inventory.py's find_device()/render_device_line()) while keeping their real IP
-      on FRD's own 172.16.124.0/24 subnet. EXAPRVFRD001 (the provisioning server) deliberately
-      was NOT renamed -- it's woven into FRD-specific lookups (menu.ipxe/late_command.sh
-      gateway detection, begyndelse.json's provisioning_fredericia_havn) that a rename would
-      have broken; only the PBX (a plain lookup("FRD", "PBX") with no such coupling) moved.
+      on FRD's own 172.16.124.0/24 subnet. FRD's provisioning server (172.16.124.1) was
+      deliberately NOT moved under CLD -- it's woven into FRD-specific lookups (menu.ipxe/
+      late_command.sh gateway detection, begyndelse.json's provisioning_fredericia_havn) that a
+      rename would have broken; only the PBX (a plain lookup("FRD", "PBX") with no such
+      coupling) moved. As of 2026-07-21 this is moot for renaming purposes anyway -- the
+      provisioning server (Type=TMP, formerly PRV) deliberately has no formal
+      EXA<ROLE><SITE><NNN> hostname at all any more, VRK's included -- see provisioning_server_ip
+      below.
     value: "EXAPBXCLD002"
     source: "benarbejde/devices.csv (CLD,PBX,2,48,...,FRD), generate_inventory.py's SubnetSite handling"
     asserted_in:
@@ -82,7 +86,7 @@ facts:
   - name: rudder_top_of_tree_site
     description: >-
       CLD, not FAL, is the Rudder relay-exempt "top of the tree" site -- Rudder root already
-      lives at CLD (EXARDRCLD001, 192.168.69.12) and CLD is where the 2026-07-11 network rework
+      lives at CLD (EXARUDCLD001, 192.168.69.12) and CLD is where the 2026-07-11 network rework
       is centring the estate (CLD001-numbered devices in the Pulsant DC, CLD002+ in FRD Havn).
       FAL was hardcoded as the no-relay site before this change; it now behaves like ODE/BRK
       (a relay-map entry, empty/unset by default, falling through to direct-to-root until a
@@ -114,12 +118,12 @@ facts:
 
   - name: rudder_server_hostname
     description: >-
-      The real Rudder configuration-management server hostname is EXARDRCLD001
+      The real Rudder configuration-management server hostname is EXARUDCLD001
       (Site=CLD, Role=RDR, 192.168.69.12) -- found wrong as EXASRVFAL002/
       EXASVRCLD003/EXASVRCLD004/EXASVRCLD003 (four different wrong forms) across
       rudder-setup.md, buildsheet-rudder.md, and network-inventory-merged.md,
       2026-07-11.
-    value: "EXARDRCLD001"
+    value: "EXARUDCLD001"
     source: "benarbejde/devices.csv (CLD,RDR,1,12), ansible/configs/inventory/rudder.ini"
     asserted_in:
       - docs/management/rudder-setup.md
@@ -156,9 +160,11 @@ facts:
       Files that only list the device in an inventory/architecture table (network-inventory.md,
       site-inventory.md, network-diagram.md, EXADNSVRK001-dns.md, network-inventory-merged.md,
       buildsheet-rudder.md) are deliberately excluded -- FRD is a different physical device, not
-      a second IP for EXAPRVVRK001, so it doesn't belong in a table describing that specific
-      device. ExampleMusic_UPN_DNS_dnsmasq_Procedure.md is also excluded -- provisioning.* DNS
-      A/PTR records are deliberately Edinburgh-only, FRD is never DNS-registered.
+      a second IP for Edinburgh's own provisioning server, so it doesn't belong in a table
+      describing that specific device. ExampleMusic_UPN_DNS_dnsmasq_Procedure.md is also
+      excluded -- provisioning.* DNS A/PTR records don't exist for either provisioning server
+      (2026-07-21: Edinburgh's own A/PTR record, previously the only one of the two, was
+      removed too -- neither is DNS-registered any more, not just FRD).
       ExampleMusic_Beginners_Guide.md already has its own full §4.2 explanation, not just a
       cross-reference, so isn't in this list either.
     value: "172.16.124.1:8000"
@@ -177,14 +183,18 @@ facts:
       - docs/lab/rac-emulator.md
       - docs/active-directory/corporate-livery.md
 
-  - name: provisioning_server_hostname
+  - name: provisioning_server_ip
     description: >-
-      The real provisioning server hostname is EXAPRVVRK001 (Site=VRK, Role=PRV in
-      devices.csv) -- found wrong as EXAPROVCLD001 (wrong role code AND wrong site) in 2 docs,
-      and as EXAPRVSCOTCLD001 (fictional, doesn't match any devices.csv naming pattern) in a
-      third, all on 2026-07-11.
-    value: "EXAPRVVRK001"
-    source: "benarbejde/devices.csv (VRK,PRV,1,50)"
+      Edinburgh's provisioning server is referenced by IP only, 192.168.139.50 -- it has no
+      formal EXA<ROLE><SITE><NNN> hostname or DNS record (Type=TMP in devices.csv, formerly
+      PRV; renamed 2026-07-21, Robert: these are bootstrap-only helpers, not real managed
+      nodes, so they shouldn't carry the same formal identity every real node gets).
+      Superseded a now-retired "provisioning_server_hostname" fact from 2026-07-11 (which
+      asserted a hostname, EXAPRVVRK001, that found its way wrong as EXAPROVCLD001/
+      EXAPRVSCOTCLD001 in a few docs that day) -- that whole premise (a formal hostname
+      existing at all) is gone now, not just the specific string checked.
+    value: "192.168.139.50"
+    source: "benarbejde/devices.csv (VRK,TMP,1,50), benarbejde/begyndelse.json (provisioning_edinburgh.ip)"
     asserted_in:
       - docs/bootstrap/ExampleMusic_ExaRescue_ARM64_Build_Procedure.md
       - docs/active-directory/ExampleMusic_UPN_DNS_dnsmasq_Procedure.md

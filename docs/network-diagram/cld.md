@@ -34,12 +34,13 @@ graph TD
       N_PVE["🗂️ EXAPVECLD001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWICLD001 · SWI 1 · .250"]
       N_ANS["🤖 EXAANSCLD001 · Ansible control node · .9"]
-      N_RDR["⚙️ EXARDRCLD001 · Rudder configuration management server · .12"]
+      N_RUD["⚙️ EXARUDCLD001 · Rudder configuration management server · .12"]
+      N_SLT["🧂 EXASLTCLD001 · Salt master · .22"]
       N_SVR["🗄️ EXASVRCLD002 · Windows Admin Centre · .20"]
       N_PBX["🔌 EXAPBXCLD001 · 3CX PBX · .48"]
       N_UFC["🎛️ EXAUFCCLD001 · UniFi Network Controller · .82"]
       N_DNS["🧭 EXADNSVRK001 · DNS/BIND server (VRK) · .8"]
-      N_PRV["📦 EXAPRVVRK001 · Provisioning server (VRK) · .50"]
+      N_TMP["📦 Provisioning server (VRK) · .50"]
       N_FWL3["🧱 EXAFWLVRK001 · Firewall WAN face (vRACK) (VRK) · .69"]
     end
     style NEW_CLD fill:#E69F00,stroke:#D55E00,color:#000000

@@ -97,7 +97,7 @@ graph TD
       FWL <-->|"WireGuard tunnel"| VPN_CLD
 
       SW1 --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN_CLD
+      RRY -. "→ EXARUDCLD001" .-> VPN_CLD
     end
     style OLD_FAL fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:FAL:START
@@ -108,7 +108,7 @@ graph TD
       N_FWL["🧱 EXAFWLFAL001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLFAL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEFAL001 · PVE 1 · .5"]
-      N_RDR["⚙️ EXARDRFAL001 · HID Signo badge reader · .16"]
+      N_RDR["🔐 EXARDRFAL001 · HID Signo badge reader · .16"]
       N_SRV["🗄️ EXASRVFAL001 · Reserved · .20"]
       N_TAR["💽 EXATARFAL001 · Legacy tape archive · .33"]
       N_LCD["🖼️ EXALCDFAL001 · Reception display · .50"]
@@ -199,7 +199,7 @@ graph TD
       RTR <-->|"WireGuard tunnel"| VPN
 
       SW1 --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_EDI fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:EDI:START
@@ -256,7 +256,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_GLA fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:GLA:START
@@ -313,7 +313,7 @@ graph TD
       FWL <-->|"WireGuard tunnel"| VPN
 
       SW --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_CLY fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:CLY:START
@@ -367,7 +367,7 @@ graph TD
       RTR <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_DUN fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:DUN:START
@@ -423,7 +423,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_PER fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:PER:START
@@ -483,7 +483,7 @@ graph TD
       FWL <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_ABD fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:ABD:START

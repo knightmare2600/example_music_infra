@@ -32,6 +32,32 @@
 #   EXA<ROLE><SITE><NNN>
 # ==================================================================================================
 # Changelog:
+#  2026-07-20  Robert: added role_codes.csv's new DNSAlias column (Type -> friendly short DNS
+#              name, e.g. SLT -> "salt") as TYPE_DNS_ALIAS, loaded the same way as
+#              TYPE_CONNECTION. --emit-devices-json now includes each device's own Type and
+#              DNSAlias so bind9-dns.yml's devices.csv-driven zone can emit a CNAME for the
+#              handful of roles that have one -- see db.forward-zone.devices.j2. Also added
+#              "salt" (CLD's SLT row) to compute_site_services(), which both begyndelse.json
+#              and site_services.yml derive from -- was missing entirely, so nothing had a
+#              single source of truth for the Salt master's address; windows_bootstrap now
+#              reads the DNS alias instead of a separately-hardcoded IP (see
+#              group_vars/windows_nodes's removal and 82-salt-minion.yml).
+#              Also properly CSV-quoted role_codes.csv's Notes column -- it had unescaped
+#              commas in ~9 rows since it was first written (harmless in practice, since every
+#              existing reader only accesses fields before Notes via DictReader, but genuinely
+#              ambiguous CSV; fixed while every row was being touched for the new column
+#              anyway rather than left to bite whoever reads Notes programmatically first).
+#  2026-07-20  Robert: SUR (Microsoft Surface) now folds into windows_laptop -- DEVICE_GROUP_MAP
+#              never had a SUR entry, so real SUR devices were silently falling into the generic
+#              site_devices catch-all, even though windows_bootstrap/playbooks/00-preflight.yml's
+#              own _role_group_map and group_vars/windows_laptop/vars.yml's own header have
+#              treated SUR as windows_laptop all along -- the generator was the one place that
+#              never got the memo. TAB (Tablet) added too, but conditionally: only folds into
+#              windows_laptop when devices.csv's OS column actually says Windows -- real TAB rows
+#              are mostly Android/iPadOS, and treating TAB as blanket-Windows would have pulled
+#              those into a Windows-only inventory group. Found while wiring Salt (Windows client
+#              endpoint config mgmt) scope up correctly -- see ansible/playbooks/windows_bootstrap/
+#              playbooks/82-salt-minion.yml.
 #  2026-07-19  Robert: PRV retired from address_policy.json entirely (offsets_single, _addressing,
 #              connection_types.none, and DNS_SINGLE_ROLES below) -- confirmed via a real
 #              --emit-devices-json run that every one of the 51 ordinary sites was getting a
@@ -227,9 +253,10 @@ OFFSETS_SINGLE = {}
 ROLE_OFFSETS = {}
 STANDARD_OFFSETS = {}
 TYPE_CONNECTION = {}
+TYPE_DNS_ALIAS = {}
 
-def load_address_policy(policy_path: Path):
-  global OFFSETS_SINGLE, ROLE_OFFSETS, TYPE_CONNECTION
+def load_address_policy(policy_path: Path, role_codes_path: Path = None):
+  global OFFSETS_SINGLE, ROLE_OFFSETS, TYPE_CONNECTION, TYPE_DNS_ALIAS
   if not policy_path.exists():
     raise ValueError(
       f"address_policy.json not found at {policy_path} — this is the shared source of truth "
@@ -240,12 +267,27 @@ def load_address_policy(policy_path: Path):
   OFFSETS_SINGLE = data["offsets_single"]
   ROLE_OFFSETS = data["role_offsets"]
 
-  # TYPE_CONNECTION: Type -> ConnectionType (ssh/winrm/telnet/snmp/http/none), flattened from
-  # address_policy.json's connection_types. Single source of truth — not a second copy.
+  # TYPE_CONNECTION: Type -> ConnectionType (ssh/winrm/telnet/snmp/http/none). 2026-07-20: moved
+  # from address_policy.json's own connection_types block (removed) to role_codes.csv's
+  # Code/ConnectionMethod columns — role/type metadata belongs there, not in the addressing
+  # policy file, and role_codes.csv is also generate_network_diagrams.py's TYPE_SYMBOLS source
+  # now, so there's exactly one place this data lives instead of three (found drifted by one
+  # entry, MBP, while consolidating — exactly the kind of thing keeping three hand-maintained
+  # copies in sync eventually causes).
   TYPE_CONNECTION.clear()
-  for conn, types in data.get("connection_types", {}).items():
-    for t in types:
-      TYPE_CONNECTION[t] = conn
+  TYPE_DNS_ALIAS.clear()
+  role_codes_path = role_codes_path or (policy_path.parent / "role_codes.csv")
+  if role_codes_path.exists():
+    with open(role_codes_path, newline="", encoding="utf-8") as f:
+      for row in csv.DictReader(f):
+        TYPE_CONNECTION[row["Code"]] = row["ConnectionMethod"]
+        # DNSAlias: Type -> short friendly DNS name (e.g. SLT -> "salt"), added 2026-07-20.
+        # Only a couple of roles have one (single-instance CLD-only services worth a nicer
+        # name than the full EXA<ROLE><SITE><NNN> hostname) -- empty for everything else.
+        # bind9-dns.yml's devices.csv-driven zone (db.forward-zone.devices.j2) emits a CNAME
+        # for any device whose Type has a non-empty alias here.
+        if row.get("DNSAlias"):
+          TYPE_DNS_ALIAS[row["Code"]] = row["DNSAlias"]
 
   # STANDARD_OFFSETS: derived from the address policy just loaded (not a second, separately-
   # maintained copy — inventory_devices.py used to keep its own STANDARD_SINGLE/STANDARD_MULTI
@@ -253,19 +295,29 @@ def load_address_policy(policy_path: Path):
   # the same source instead). A devices.csv row whose Type+HostOctet exactly matches one of these
   # is already rendered by the standard template for that site — skip it rather than duplicate it.
   #
-  # SWI is exempted (2026-07-14): unlike DCS/PVE/RTR/FWL (whose devices.csv rows, if any existed,
-  # would carry nothing the generic placeholder doesn't already say) or WAP (deliberately accepts
-  # losing per-device Notes given its 1-13+ per-site count, see the WAP block below), SWI's real
-  # devices.csv rows carry real vendor/model data (Cisco Catalyst 9300, "Core switch", etc.) for
-  # 15 sites today. Excluding them here would silently replace that with a generic "Standard SWI
-  # slot 1" placeholder in the .ini's reference block — a real data loss, not a dedup. The
-  # opposite-direction collision (don't synthesize a placeholder for a site that already has a
-  # real SWI row) is instead handled in compute_standard_devices_for_site()'s caller.
+  # FULL_RENDER_TYPES are exempted from that skip — their real devices.csv rows always render
+  # fully in [site_devices] (real Notes, real Managed status) instead of being silently dropped
+  # or demoted to a generic placeholder, even when the octet matches the standard slot exactly.
+  #   - SWI (exempted 2026-07-14): real devices.csv rows carry real vendor/model data (Cisco
+  #     Catalyst 9300, "Core switch", etc.) for 15 sites — a generic "Standard SWI slot 1"
+  #     placeholder would be a real data loss, not a dedup.
+  #   - NAS/RDR/BMC/WAP (exempted 2026-07-20, Robert): found the hard way — NAS and BMC have no
+  #     .ini template section at all, so a real devices.csv row landing exactly on their standard
+  #     octet doesn't get demoted to a placeholder, it silently VANISHES from the .ini entirely
+  #     (caught live: moving LIV's real badge reader onto RDR's new .21 standard slot made it
+  #     disappear from liv.ini with nothing to show for it). Robert's call, explicitly: "by
+  #     omission it makes a gap that trips us up in future, whereas by explicitly being there,
+  #     even if not managed we can't conflate, confuse or omit them" — WAP included, even though
+  #     it does have a template block (see wap_block below, now skips octets a real row already
+  #     covers instead of listing both).
   STANDARD_OFFSETS.clear()
+  FULL_RENDER_TYPES = {"SWI", "NAS", "RDR", "BMC", "WAP"}
   for role, offset in OFFSETS_SINGLE.items():
+    if role in FULL_RENDER_TYPES:
+      continue
     STANDARD_OFFSETS.setdefault(role, set()).add(offset)
   for role, offsets in ROLE_OFFSETS.items():
-    if role == "SWI":
+    if role in FULL_RENDER_TYPES:
       continue
     STANDARD_OFFSETS.setdefault(role, set()).update(offsets)
 
@@ -282,9 +334,24 @@ ALWAYS_EXCLUDE_TYPES = {"RAC", "PVE"}
 # Known Type -> existing inventory group, for devices.csv rows that ARE Ansible-managed. Anything
 # manageable but not in this map (e.g. a one-off NAS or Rudder relay) falls into a generic
 # per-site [site_devices] group instead of a made-up group nothing else references.
+#
+# SUR (Microsoft Surface) folds into windows_laptop, not a new "windows_surface" group --
+# windows_bootstrap/playbooks/00-preflight.yml's own _role_group_map already treats SUR as
+# windows_laptop (SUR: [windows_laptop, windows, windows_nodes]), as does group_vars/
+# windows_laptop/vars.yml's own header ("Variables for Windows laptop/tablet hosts (LAP,
+# SUR)") -- this map just never had the SUR row to match, so real SUR devices were silently
+# falling into the generic site_devices catch-all instead of windows_laptop. Fixed 2026-07-20.
+#
+# TAB (Tablet) is NOT unconditionally Windows -- real devices.csv rows are mostly Android
+# ("Galaxy Tab") or iPadOS ("iPad"); only fold into windows_laptop when the OS column
+# actually says Windows (see the TAB-specific override in load_devices() below). A non-
+# Windows TAB stays in the generic site_devices catch-all, same as any other non-Windows
+# endpoint -- there is no such thing as "Windows tablet" as a blanket assumption here.
 DEVICE_GROUP_MAP = {
   "WKS": "windows_desktop",
   "LAP": "windows_laptop",
+  "SUR": "windows_laptop",
+  "TAB": "windows_laptop",  # only when OS says Windows -- see override below
   "SVR": "windows_server",
   "DCS": "windows_dc",
   "FWL": "firewalls",
@@ -332,7 +399,7 @@ ALLOWED_SITE_OVERLAP = {
 
 ## Cloud/hub "black swan" sites (CLD, FRD — see site-inventory-audit.py's own black-swan
 ## handling) have no real standalone Router device; the standard template's Router slot (.1)
-## is a documentation-only placeholder for them, not a real device. FRD's actual devices.csv PRV
+## is a documentation-only placeholder for them, not a real device. FRD's actual devices.csv TMP
 ## row legitimately claims .1 (the real boot-url, per menu.ipxe/late_command.sh) — registering
 ## the fictional Router slot first would collide with it. Skip that one registration for these
 ## sites; every other standard-slot registration (Gateway/DC/FW) still happens as normal.
@@ -432,9 +499,10 @@ ANSIBLE_CAPABLE_CONNECTIONS = {"ssh", "winrm", "telnet"}
 
 def is_managed(row: dict) -> bool:
   """
-  Priority: Managed column (explicit operator override) > ConnectionType (address_policy.json's
-  per-Type connection_types — a deliberate signal, not a guess) > OS-based guess (fallback for
-  rows predating ConnectionType, or a Type with no entry in connection_types).
+  Priority: Managed column (explicit operator override) > ConnectionType (the row's own explicit
+  value — a deliberate signal, not a guess; benarbejde/role_codes.csv's Code/ConnectionMethod
+  columns document what each Type's ConnectionType should be) > OS-based guess (fallback for
+  rows predating ConnectionType, or a Type with no entry in role_codes.csv).
   """
   flag = row.get("Managed", "").strip().lower()
   if flag in ("yes", "y", "true", "1"):
@@ -507,11 +575,17 @@ def load_devices(devices_path: Path):
     else:
       stats["included_reference"] += 1
 
+    _group = DEVICE_GROUP_MAP.get(dtype, "site_devices")
+    if dtype == "TAB" and "windows" not in r.get("OS", "").strip().lower():
+      # TAB covers Android/iPadOS tablets as well as Windows ones -- only a real Windows
+      # OS string earns a spot in windows_laptop; blank/Android/iPadOS stays generic.
+      _group = "site_devices"
+
     devices_by_site.setdefault(site, []).append({
       "hostname": build_hostname(dtype, site, number),
       "octet": octet,
       "type": dtype,
-      "group": DEVICE_GROUP_MAP.get(dtype, "site_devices"),
+      "group": _group,
       "managed": managed,
       "needs_review": review,
       "os": r.get("OS", ""),
@@ -536,6 +610,15 @@ def render_device_line(net: IP, dev: dict) -> str:
   if conn in ("snmp", "http"):
     notes_parts.append(f"reachable via {conn.upper()}")
   note = f"  # {' -- '.join(notes_parts)}" if notes_parts else ""
+
+  # TMP (VRK/FRD's bootstrap-only provisioning servers) deliberately never gets a formal
+  # EXA<ROLE><SITE><NNN> hostname (2026-07-21, Robert) -- unlike every OTHER ConnectionType=none
+  # device here (payphones, jukeboxes, etc.), where a hostname-style label IS the point. IP only,
+  # no leading "#" of its own -- the caller (build_ini's reference_lines join) already adds one.
+  if dev["type"] == "TMP":
+    if dev["octet"] is None:
+      return f"(no HostOctet in devices.csv){note}"
+    return f"{offset_ip(net, dev['octet'])}{note}"
 
   if dev["octet"] is None:
     return f"# {dev['hostname']}  (no HostOctet in devices.csv){note}"
@@ -566,6 +649,23 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
   reference_lines = []
   review_lines = []
 
+  # BMC (.2-.4): same skip-if-a-real-row-already-covers-it treatment as WAP below, added
+  # 2026-07-20 for the same reason -- BMC now flows through the normal site_devices path (see
+  # FULL_RENDER_TYPES) if a real row is ever added, so this generic 3-line placeholder must not
+  # also list the same octet, or the same physical device shows up twice.
+  real_bmc_octets = {dev["octet"] for dev in site_devices if dev["type"] == "BMC"}
+  bmc_offsets = ROLE_OFFSETS.get("BMC", [])
+  bmc_lines = "\n".join(
+    f"# {hostnames[f'BMC{i}']}  {vals[f'BMC{i}']}"
+    for i, off in enumerate(bmc_offsets, start=1)
+    if off not in real_bmc_octets
+  )
+  bmc_block = (
+    "# Out-of-band management (iDRAC/iLO/Redfish) — not Ansible-managed, for\n"
+    "# reference only:\n"
+    f"{bmc_lines}"
+  ) if bmc_lines else "# Out-of-band management (iDRAC/iLO/Redfish) — all slots have real devices.csv entries below."
+
   # WAP (.82-.94, added 2026-07-08): count varies per site (unlike BMC/DCS/PVE/FWL's fixed
   # count), so every slot is commented/reference-only, never confirmed-real — matches BMC's
   # treatment. Rendered from ROLE_OFFSETS directly rather than hardcoded so this doesn't drift
@@ -584,9 +684,16 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
       "# site, not a physical location that serves wireless clients)."
     )
   else:
-    wap_count = len(ROLE_OFFSETS.get("WAP", []))
+    # 2026-07-20: skip any slot a real devices.csv WAP row already covers (see FULL_RENDER_TYPES
+    # above) -- WAP rows now render fully via the normal site_devices path below, so listing the
+    # same octet again here as a generic "you might put one here" placeholder would just
+    # duplicate it.
+    real_wap_octets = {dev["octet"] for dev in site_devices if dev["type"] == "WAP"}
+    wap_offsets = ROLE_OFFSETS.get("WAP", [])
     wap_lines = "\n".join(
-      f"# {hostnames[f'WAP{i}']}  {vals[f'WAP{i}']}" for i in range(1, wap_count + 1)
+      f"# {hostnames[f'WAP{i}']}  {vals[f'WAP{i}']}"
+      for i, off in enumerate(wap_offsets, start=1)
+      if off not in real_wap_octets
     )
     wap_block = (
       "# Wireless access points (.82-.94, static) — count varies per site, not\n"
@@ -711,11 +818,7 @@ windows_laptop
 [windows_nodes:children]
 windows
 {extra_group_blocks}
-# Out-of-band management (iDRAC/iLO/Redfish) — not Ansible-managed, for
-# reference only:
-# {hostnames['BMC1']}  {vals['BMC1']}
-# {hostnames['BMC2']}  {vals['BMC2']}
-# {hostnames['BMC3']}  {vals['BMC3']}
+{bmc_block}
 
 {wap_block}
 {other_devices_block}"""
@@ -784,8 +887,9 @@ DNS_MULTI_FIRST_INSTANCE_ONLY = {"DCS", "PVE", "SWI"}
 def compute_standard_devices_for_site(site: str, net: IP, real_device_types: frozenset = frozenset()):
   """
   Returns every confirmed-real standard-slot device for one site as a flat list of dicts
-  (Site, Hostname, HostOctet, Notes) — the same addresses build_ini() derives for the ones it
-  shows uncommented, just shaped for JSON consumption instead of f-string interpolation.
+  (Site, Hostname, HostOctet, Type, DNSAlias, Notes) — the same addresses build_ini() derives
+  for the ones it shows uncommented, just shaped for JSON consumption instead of f-string
+  interpolation.
 
   real_device_types: Types this site already has a genuine devices.csv row for (caller's
   responsibility to compute from devices_by_site). Used to suppress synthesizing a standard
@@ -803,6 +907,8 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
       "Site": site,
       "Hostname": build_hostname(role, site, 1),
       "HostOctet": str(OFFSETS_SINGLE[role]),
+      "Type": role,
+      "DNSAlias": TYPE_DNS_ALIAS.get(role, ""),
       "Notes": f"Standard {role} slot",
     })
   for role, offsets in ROLE_OFFSETS.items():
@@ -819,6 +925,8 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
         "Site": site,
         "Hostname": build_hostname(role, site, i),
         "HostOctet": str(offset),
+        "Type": role,
+        "DNSAlias": TYPE_DNS_ALIAS.get(role, ""),
         "Notes": f"Standard {role} slot {i}",
       })
   return devices
@@ -907,6 +1015,12 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
         "SubnetSite": dev["subnet_site"] or "",
         "Hostname": dev["hostname"],
         "HostOctet": str(dev["octet"]) if dev["octet"] is not None else "",
+        # Type/DNSAlias added 2026-07-20 so bind9-dns.yml's devices.csv-driven zone can emit
+        # a CNAME for the handful of roles with a friendly short name (role_codes.csv's
+        # DNSAlias column) -- e.g. SLT -> "salt". Empty string for everything else, same
+        # "empty not None" convention as SubnetSite above.
+        "Type": dev["type"],
+        "DNSAlias": TYPE_DNS_ALIAS.get(dev["type"], ""),
         "Notes": dev["notes"],
       })
 
@@ -978,34 +1092,44 @@ def compute_site_services(csv_path: Path, devices_path: Path, ad_forest_path: Pa
       result["subnet"] = str(nets[site])
     return result
 
-  prv_edi = lookup("VRK", "PRV", with_subnet=True)
-  prv_frd = lookup("FRD", "PRV", with_subnet=True)
+  tmp_edi = lookup("VRK", "TMP", with_subnet=True)
+  tmp_frd = lookup("FRD", "TMP", with_subnet=True)
   dns = lookup("VRK", "DNS")
   ans = lookup("CLD", "ANS")
   pbx_edi = lookup("CLD", "PBX")
   pbx_frd = lookup("FRD", "PBX")
-  rdr = lookup("CLD", "RDR")
+  rdr = lookup("CLD", "RUD")  # 2026-07-20: Type renamed RDR -> RUD (badge readers kept RDR)
   wac = lookup("CLD", "SVR")
+  slt = lookup("CLD", "SLT")
 
   # Port 8000 is a real, fixed detail of the Fredericia Havn MacBook's python3 http.server setup
   # (menu.ipxe/late_command.sh both hardcode it too) -- not derivable from devices.csv, which has
   # no port column. Documented here for reference even though nothing currently consumes these
   # URLs directly -- windows_bootstrap's assets moved to a local files/ win_copy (2026-07-08),
   # since HTTP-fetching from the provisioning server was only ever a pre-Ansible bootstrap thing.
-  if prv_edi:
-    prv_edi["url"] = f"http://{prv_edi['ip']}"
-  if prv_frd:
-    prv_frd["url"] = f"http://{prv_frd['ip']}:8000"
+  if tmp_edi:
+    tmp_edi["url"] = f"http://{tmp_edi['ip']}"
+  if tmp_frd:
+    tmp_frd["url"] = f"http://{tmp_frd['ip']}:8000"
+
+  # These two are bootstrap-only helpers (2026-07-21, Robert) -- deliberately never get a formal
+  # EXA<ROLE><SITE><NNN> hostname or DNS record, unlike every other entry here. Drop "hostname"
+  # (the only field lookup() gives every other row) so nothing downstream can accidentally treat
+  # one as a real, named, DNS-resolvable node -- IP/subnet/url only.
+  for tmp in (tmp_edi, tmp_frd):
+    if tmp:
+      tmp.pop("hostname", None)
 
   result = {
-    "provisioning_edinburgh": prv_edi,
-    "provisioning_fredericia_havn": prv_frd,
+    "provisioning_edinburgh": tmp_edi,
+    "provisioning_fredericia_havn": tmp_frd,
     "dns": dns,
     "ansible_control": ans,
     "pbx_edinburgh": pbx_edi,
     "pbx_fredericia_havn": pbx_frd,
     "rudder": rdr,
     "wac": wac,
+    "salt": slt,
   }
 
   if ad_forest_path is not None and ad_forest_path.exists():
@@ -1079,6 +1203,46 @@ def emit_begyndelse_json(csv_path: Path, devices_path: Path, ad_forest_path: Pat
     **services,
   }
   return json.dumps(payload, indent=2) + "\n"
+
+def emit_site_grains_pillar(csv_path: Path) -> str:
+  """
+  Returns the full text of salt/pillar/sites.sls -- a Site -> {city, country, entity} lookup,
+  read directly from sites.csv's own City/Country/Entity columns. No hand-duplication: Entity
+  genuinely varies per site (real regional legal suffixes -- ApS for Denmark, Ltd for Scotland/
+  England, GmbH for Germany, B.V. for Netherlands, LLC. for the US, etc. -- not a single global
+  company name), so this has to read the real column per site rather than assume one string
+  fits everywhere. Consumed by salt/states/grains/init.sls to populate city/country/entity
+  custom grains from a minion's own site code, the same way every other role in this estate
+  (Rudder, Salt master itself, etc.) already gets site_city/site_country/site_entity -- via a
+  real sites.csv lookup, not baked into the hostname.
+  """
+  rows = list(csv.DictReader(csv_path.open()))
+  validate_csv_structure(rows)
+
+  sites = {
+    r["Site"]: {"city": r["City"], "country": r["Country"], "entity": r["Entity"]}
+    for r in rows
+  }
+
+  lines = [
+    "# =============================================================================",
+    "# salt/pillar/sites.sls",
+    "# Example Music Limited — Site -> {city, country, entity} lookup",
+    "# =============================================================================",
+    "# THIS FILE IS AUTOMATICALLY GENERATED by benarbejde/generate_inventory.py",
+    "# --emit-site-grains-pillar. Source: sites.csv (single source of truth) -- do not",
+    "# hand-edit, regenerate instead. Consumed by salt/states/grains/init.sls.",
+    "# =============================================================================",
+    "",
+    "sites:",
+  ]
+  for site in sorted(sites):
+    data = sites[site]
+    lines.append(f"  {site}:")
+    lines.append(f"    city: \"{data['city']}\"")
+    lines.append(f"    country: \"{data['country']}\"")
+    lines.append(f"    entity: \"{data['entity']}\"")
+  return "\n".join(lines) + "\n"
 
 # ==================================================================================================
 # Generator
@@ -1218,6 +1382,11 @@ def main():
     help="Path to address_policy.json (default: address_policy.json next to sites.csv)"
   )
   parser.add_argument(
+    "--role-codes", type=Path, default=None,
+    help="Path to role_codes.csv (default: role_codes.csv next to sites.csv). Type -> "
+         "ConnectionMethod for TYPE_CONNECTION."
+  )
+  parser.add_argument(
     "--ad-forest", type=Path, default=None,
     help="Path to ad_forest.json (default: ad_forest.json next to sites.csv). Used by "
          "--emit-group-vars/--emit-begyndelse-json to add a domain_fqdn field."
@@ -1250,14 +1419,26 @@ def main():
     "--begyndelse-out", type=Path, default=None,
     help="Path to write with --emit-begyndelse-json (default: begyndelse.json next to sites.csv)."
   )
+  parser.add_argument(
+    "--emit-site-grains-pillar", action="store_true",
+    help="Write salt/pillar/sites.sls — a Site -> {city, country, entity} lookup derived "
+         "directly from sites.csv, for Salt's custom grains state (salt/states/grains/init.sls) "
+         "to read instead of parsing this data out of a hostname/minion-ID scheme."
+  )
+  parser.add_argument(
+    "--site-grains-pillar-out", type=Path, default=None,
+    help="Path to write with --emit-site-grains-pillar (default: salt/pillar/sites.sls, "
+         "resolved relative to this script's own location)."
+  )
   args = parser.parse_args()
 
   devices_path = args.devices if args.devices is not None else args.csv.parent / "devices.csv"
   policy_path = args.policy if args.policy is not None else args.csv.parent / "address_policy.json"
+  role_codes_path = args.role_codes if args.role_codes is not None else args.csv.parent / "role_codes.csv"
   ad_forest_path = args.ad_forest if args.ad_forest is not None else args.csv.parent / "ad_forest.json"
 
   try:
-    load_address_policy(policy_path)
+    load_address_policy(policy_path, role_codes_path)
     if args.emit_devices_json:
       emit_devices_for_dns(args.csv, devices_path)
     elif args.emit_group_vars:
@@ -1273,6 +1454,13 @@ def main():
       begyndelse_out.parent.mkdir(parents=True, exist_ok=True)
       begyndelse_out.write_text(emit_begyndelse_json(args.csv, devices_path, ad_forest_path))
       msg("green", f"Wrote {begyndelse_out}")
+    elif args.emit_site_grains_pillar:
+      site_grains_pillar_out = args.site_grains_pillar_out or (
+        Path(__file__).resolve().parent.parent / "salt" / "pillar" / "sites.sls"
+      )
+      site_grains_pillar_out.parent.mkdir(parents=True, exist_ok=True)
+      site_grains_pillar_out.write_text(emit_site_grains_pillar(args.csv))
+      msg("green", f"Wrote {site_grains_pillar_out}")
     else:
       generate(args.csv, args.out, devices_path)
   except Exception as e:

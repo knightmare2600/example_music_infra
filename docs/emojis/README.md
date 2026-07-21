@@ -3,8 +3,11 @@
 > **Classification:** Internal — Infrastructure  
 > **Applies to:** [`../network-diagram.md`](../network-diagram.md) — every node in every Old
 > Network and New Network box  
-> **Generated from:** `benarbejde/generate_network_diagrams.py`'s `TYPE_SYMBOLS` dict — this file
-> is the human-readable legend for that table; keep both in sync if either changes
+> **Source of truth:** `benarbejde/role_codes.csv`'s `Code`/`Emoji` columns (also what
+> `generate_network_diagrams.py`'s `TYPE_SYMBOLS` loads directly, 2026-07-20 — no more hardcoded
+> Python dict to drift from this doc) — this file is the human-readable legend; keep both in
+> sync if either changes. `at_have_ryggen_fri` check 20 (`check_role_codes.py`) verifies they
+> agree, every run.
 
 **These are "feel," not "official."** Robert's framing, 2026-07-13: nobody is trying to draw
 precise device iconography here, just something evocative enough to scan a 50-node diagram
@@ -55,6 +58,7 @@ diagram change in this repo.
 | RTR | 📡 | Router | |
 | FWL | 🧱 | Firewall | Brick — a firewall as a wall. Was 🔥 (the "firewall" pun); changed 2026-07-13 per Robert |
 | SWI | 🔀 | Switch | |
+| BMC | 🔧 | BMC / iDRAC / iLO / Redfish | Standard `.2`-`.4` slots — same symbol as RAC (its legacy devices.csv-row equivalent) |
 
 ## Servers / compute / management
 
@@ -65,12 +69,13 @@ diagram change in this repo.
 | SVR | 🗄️ | Generic server | |
 | SRV | 🗄️ | Generic server | Same symbol as SVR |
 | PVE | 🗂️ | Proxmox hypervisor node | Layered/stacked feel, deliberately distinct from a generic server |
-| RDR | ⚙️ | Rudder (config mgmt) **or** badge reader | `devices.csv` reuses the `RDR` type code for both a genuinely different things — "control" fits either reasonably well |
+| RUD | ⚙️ | Rudder (config mgmt) | Standard `.12` slot, CLD only. Was `RDR` until 2026-07-20 — split apart because `devices.csv` reused the same three letters for badge readers too (see RDR under Endpoints below) |
 | RRY | 🔁 | Rudder Relay | |
+| SLT | 🧂 | Salt master (config mgmt — all Windows nodes) | CLD only (`EXASLTCLD001`, `.22`). Manages `WKS`/`LAP`/`SUR`/`SVR`/`DCS` — `TAB` only if genuinely Windows, `MAC`/`MBP` future plans. `FWL`/`PVE` stay Ansible-only, no Syndic tier at current scale |
 | ANS | 🤖 | Ansible control node | |
 | PBX | 🔌 | Phone exchange (3CX PBX) | |
 | DNS | 🧭 | DNS server | |
-| PRV | 📦 | Provisioning server | |
+| TMP | 📦 | Temporary/bootstrap-only provisioning server | VRK/FRD only — IP-referenced, no formal `EXA<ROLE><SITE><NNN>` hostname or DNS record |
 | NAS | 🗃️ | Network storage | |
 | SBC | 🛡️ | Session Border Controller | "Border controller" — a boundary/edge device |
 | UFC | 🎛️ | UniFi Network Controller (WiFi mgmt) | |
@@ -88,6 +93,7 @@ diagram change in this repo.
 | Type | Symbol | Device | Notes |
 |---|---|---|---|
 | WKS | 🖥️ | Workstation | |
+| RDR | 🔐 | Reader — badge reader | Standard `.21` slot (added 2026-07-20). Was conflated with Rudder under the same `RDR` code — see RUD under Servers/compute/management above |
 | LAP | 💻 | Laptop | |
 | MBP | 💻 | MacBook Pro | Same symbol as LAP |
 | TAB | 📱 | Tablet | |

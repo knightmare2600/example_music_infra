@@ -92,11 +92,11 @@ boot_url=""
 if [ "$gateway" = "192.168.139.254" ]; then
   site_prefix="VRK"
   boot_url="http://192.168.139.50"
-  msg_ok "Detected gateway ${gateway} -- Edinburgh (EXAPRVVRK001)"
+  msg_ok "Detected gateway ${gateway} -- Edinburgh (192.168.139.50)"
 elif [ "$gateway" = "172.16.124.2" ]; then
   site_prefix="FRD"
   boot_url="http://172.16.124.1:8000"
-  msg_ok "Detected gateway ${gateway} -- Fredericia Havn (EXAPRVFRD001)"
+  msg_ok "Detected gateway ${gateway} -- Fredericia Havn (172.16.124.1)"
 else
   msg_warn "Gateway '${gateway:-<none detected>}' doesn't match a known provisioning network."
   printf "Enter site prefix manually [VRK/FRD]: "

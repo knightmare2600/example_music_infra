@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# host_vars/EXARDRCLD001/main.yml
+# host_vars/EXARUDCLD001/main.yml
 # Example Music Limited — host-specific variables for the CLD Rudder server
 #
 # These override group_vars/rudder_servers/main.yml for this host only.
@@ -22,7 +22,7 @@
 # -----------------------------------------------------------------------------
 # Identity
 # -----------------------------------------------------------------------------
-rudder_hostname:    "EXARDRCLD001"
+rudder_hostname:    "EXARUDCLD001"
 rudder_static_ip:   "192.168.69.12"
 rudder_gateway:     "192.168.69.253"
 rudder_dns:         "192.168.139.8"

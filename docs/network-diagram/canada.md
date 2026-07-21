@@ -54,7 +54,7 @@ graph TD
       RTR -->|"WireGuard spokes"| VPN_NA
 
       PVE1 --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN_CLD
+      RRY -. "→ EXARUDCLD001" .-> VPN_CLD
     end
     style OLD_BRK fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:BRK:START
@@ -104,7 +104,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_TOR fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:TOR:START
@@ -151,7 +151,7 @@ graph TD
       PVE <-->|"WireGuard tunnel"| VPN
 
       PVE --> RRY
-      RRY -. "→ EXARDRCLD001" .-> VPN
+      RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_MTL fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:MTL:START

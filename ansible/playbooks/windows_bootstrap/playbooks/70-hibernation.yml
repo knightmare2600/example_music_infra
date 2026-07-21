@@ -1,7 +1,7 @@
 ---
 # =============================================================================
 # playbooks/70-hibernation.yml
-# Example Music Limited — Power management (hibernation, pagefile, SConfig)
+# Example Music Limited — Power management (hibernation, pagefile, disk, SConfig)
 # =============================================================================
 # Applies the correct hibernation policy based on exa_hibernation_enabled
 # from group_vars:
@@ -9,9 +9,10 @@
 #   windows_desktop: false  (disabled)
 #   windows_laptop:  true   (enabled)
 #
-# Also clears the pagefile at shutdown and (Server OS only) disables
-# SConfig auto-launch at logon — same "power management" theme as
-# hibernation, folded in here rather than a separate file.
+# Also clears the pagefile at shutdown, disables hard disk spin-down, and
+# (Server OS only) disables SConfig auto-launch at logon — same "power
+# management" theme as hibernation, folded in here rather than a separate
+# file.
 #
 # Join-DomainAndBootstrap.ps1 Stage 6 disables hibernation unconditionally.
 # Run this playbook after bootstrap on LAP/SUR devices to re-enable it.
@@ -22,6 +23,12 @@
 # Tags: hibernation
 # =============================================================================
 # Changelog:
+#   2026-07-20  Added disk spin-down disable (powercfg /Change -disk-timeout-ac 0) --
+#               ported from a dropped-in reference Salt state while reviewing it;
+#               no existing task touched this setting and no conflict with
+#               screenlock.yml (that's monitor-timeout only), unlike the
+#               monitor/standby-timeout settings from the same source, which
+#               were dropped for exactly that conflict.
 #   2026-06-20  Initial file
 #   2026-07-06  Folded in pagefile-at-shutdown and SConfig auto-launch
 #               (Stage 6) — same power management theme as hibernation.
@@ -52,6 +59,11 @@
         msg: >
           Hibernation {{ 'ENABLED' if exa_hibernation_enabled | default(false) | bool else 'DISABLED' }}
           on {{ inventory_hostname }}
+      tags: hibernation
+
+    - name: Disable disk spin-down (all hosts)
+      ansible.windows.win_shell: powercfg /Change -disk-timeout-ac 0
+      changed_when: true
       tags: hibernation
 
     - name: Detect OS product type (1=Workstation 2=DC 3=Server)

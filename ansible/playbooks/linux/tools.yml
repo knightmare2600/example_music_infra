@@ -212,6 +212,92 @@
         update_cache: true
         cache_valid_time: 3600
 
+    # -------------------------------------------------------------------------
+    # Ported 2026-07-21 while auditing a dropped-in Salt lintools.sls state,
+    # which set the same 5 options Salt-side -- Robert's call to move it to
+    # Ansible instead, since it's a one-time config file, not ongoing drift
+    # Salt needs to keep correcting. Values (and the file itself) confirmed
+    # against the real unattended-upgrades 2.12 package template
+    # (/usr/share/unattended-upgrades/50unattended-upgrades) -- every line
+    # below already exists there, commented out with "//"; each regexp
+    # matches either the commented or already-uncommented form so this stays
+    # idempotent across repeat runs and across a host that had it hand-edited
+    # before. Automatic-Reboot's regexp requires a space right after the
+    # option name specifically so it doesn't also match
+    # Automatic-Reboot-Time/-WithUsers, which have "-" immediately after
+    # instead of whitespace.
+    #
+    # NOTE: /etc/apt/apt.conf.d/50unattended-upgrades is a dpkg conffile --
+    # editing it here means a future package upgrade may prompt to keep vs.
+    # replace it (standard Debian conffile behaviour, not a bug in this task).
+    # -------------------------------------------------------------------------
+    - name: Configure unattended-upgrades (50unattended-upgrades)
+      ansible.builtin.lineinfile:
+        path:   /etc/apt/apt.conf.d/50unattended-upgrades
+        regexp: "{{ item.regexp }}"
+        line:   "{{ item.line }}"
+        state:  present
+      loop:
+        - regexp: '^//?\s*Unattended-Upgrade::AutoFixInterruptedDpkg\s+".*'
+          line:   'Unattended-Upgrade::AutoFixInterruptedDpkg "true";'
+        - regexp: '^//?\s*Unattended-Upgrade::Remove-Unused-Kernel-Packages\s+".*'
+          line:   'Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";'
+        - regexp: '^//?\s*Unattended-Upgrade::Remove-New-Unused-Dependencies\s+".*'
+          line:   'Unattended-Upgrade::Remove-New-Unused-Dependencies "true";'
+        - regexp: '^//?\s*Unattended-Upgrade::Automatic-Reboot\s+".*'
+          line:   'Unattended-Upgrade::Automatic-Reboot "false";'
+        - regexp: '^//?\s*Unattended-Upgrade::Automatic-Reboot-Time\s+".*'
+          line:   'Unattended-Upgrade::Automatic-Reboot-Time "02:00";'
+      loop_control:
+        label: "{{ item.line }}"
+
+    # -------------------------------------------------------------------------
+    # 20auto-upgrades enables the periodic timer itself -- 50unattended-upgrades
+    # above only controls behaviour once unattended-upgrades actually runs.
+    # A plain `apt install unattended-upgrades` does NOT create this file (only
+    # ships an inert template under /usr/share/unattended-upgrades/) -- found
+    # 2026-07-21 double-checking the above against a real installed package,
+    # after the fact. Without this, apt's systemd timer never fires
+    # unattended-upgrade at all, making the whole 50unattended-upgrades config
+    # a no-op on a fresh host. create: true since the file doesn't exist yet
+    # on a fresh install; regexp still guards against a hand-edited host.
+    # -------------------------------------------------------------------------
+    - name: Configure unattended-upgrades (20auto-upgrades -- enables the periodic timer)
+      ansible.builtin.lineinfile:
+        path:   /etc/apt/apt.conf.d/20auto-upgrades
+        regexp: "{{ item.regexp }}"
+        line:   "{{ item.line }}"
+        state:  present
+        create: true
+      loop:
+        - regexp: '^//?\s*APT::Periodic::Update-Package-Lists\s+".*'
+          line:   'APT::Periodic::Update-Package-Lists "1";'
+        - regexp: '^//?\s*APT::Periodic::Unattended-Upgrade\s+".*'
+          line:   'APT::Periodic::Unattended-Upgrade "1";'
+      loop_control:
+        label: "{{ item.line }}"
+
+    # -------------------------------------------------------------------------
+    # Login MOTD "N updates available" banner -- also ported 2026-07-21 from
+    # the same dropped-in lintools.sls, which had this as a cron job (daily
+    # apt-get upgrade --simulate, cached to a file) plus a script that just
+    # cat'd that file. Live-computed instead here (Robert's call) -- no cron
+    # job, no cached file, just a straight apt list --upgradable at login.
+    # -------------------------------------------------------------------------
+    - name: Deploy update-motd script
+      ansible.builtin.copy:
+        src:   files/update-motd
+        dest:  /usr/local/bin/update-motd
+        owner: root
+        group: root
+        mode:  '0755'
+
+    - name: Link update-motd into /etc/update-motd.d
+      ansible.builtin.file:
+        src:   /usr/local/bin/update-motd
+        dest:  /etc/update-motd.d/98-update-status
+        state: link
+
     - name: Set default shell to zsh for ansible user
       user:
         name: ansible

@@ -5,7 +5,7 @@ Example Music Limited — Internal Infrastructure
 
 Why this exists
 ----------------
-Fredericia Havn's provisioning server (EXAPRVFRD001 — physically a MacBook, see
+Fredericia Havn's provisioning server (172.16.124.1 — physically a MacBook, see
 docs/bootstrap/bootstrapping.md §4.1a) runs `python3 -m http.server 8000` to mirror
 Edinburgh's `web/` tree. That's fine for iPXE/preseed/first-boot.sh fetches — they're
 all plain GET. Proxmox VE's own automated installer is the one client on this network

@@ -34,28 +34,32 @@ Site nodes   : DHCP or static per site convention
 
 ### Chocolatey Packages (choco install)
 ```
-7zip  notepadplusplus.install  hyper  putty  winscp  far  pwsh googlechrome  firefox  vscode  git  wireshark  sysinternals
+7zip.install  notepadplusplus.install  hyper  putty.install  winscp.install  far  powershell-core
+rustdesk.install  edit  sdelete  wget  busybox  vcredist-all  dotnetfx  sysinternals  windirstat
+googlechrome  firefox  vlc  windows-terminal
 ```
+
+This is the same `choco_packages_common` + `choco_packages_gui` baseline every server/GUI-capable
+host gets (`40-choco-packages.yml`) — there is no separate WAC-specific package list; role-based
+extras were removed from that playbook entirely 2026-07-12. `vscode`/`git`/`wireshark` are **not**
+automated by anything in this repo — install manually if wanted.
 
 ### PowerShell 7 Modules (Install-Module)
 ```
-PSWriteColor  ConsoleTools  PSReadLine  CompletionPredictor  Terminal-Icons
+PSConsoleTools  PSWindowsUpdate  PSWriteColor  PSReadLine  Terminal-Icons  CompletionPredictor  NerdFonts
 ```
 
 ### Nerd Fonts
-```
-nerd-fonts-cascadiacode
-```
 
-### RSAT Tools (Add-WindowsCapability)
+Not a Chocolatey package — `tasks/fonts.yml` fetches JetBrains Mono Nerd Font directly from its
+upstream GitHub release zip (`exa_font_files`, `group_vars/all/vars.yml`).
+
+### RSAT Tools (Install-WindowsFeature)
+
+Server OS installs RSAT via Server Manager features, not `Add-WindowsCapability` (that mechanism
+is for client/workstation OS):
 ```
-Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
-Rsat.DNS.Tools~~~~0.0.1.0
-Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0
-Rsat.DFS.Tools~~~~0.0.1.0
-Rsat.DFSR.Tools~~~~0.0.1.0
-Rsat.DHCP.Tools~~~~0.0.1.0
-Rsat.FailoverCluster.Management.Tools~~~~0.0.1.0
+RSAT-AD-PowerShell  RSAT-AD-AdminCenter  RSAT-ADDS-Tools  RSAT-DNS-Server  GPMC
 ```
 
 ### Windows Admin Centre
