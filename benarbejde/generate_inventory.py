@@ -32,6 +32,17 @@
 #   EXA<ROLE><SITE><NNN>
 # ==================================================================================================
 # Changelog:
+#  2026-07-21  Fixed a real EXAFWLVRK001 duplicate-hostname collision found live in vrk.ini: two
+#              entries, two different IPs (.139 and .69). Root cause was two-fold -- VRK's own
+#              standard-slot FWL1 used the generic "this site's own octet within VRK's network"
+#              formula, which for VRK itself (whose subnet IS the vRACK network) produced a
+#              nonsensical self-referential 192.168.139.139 instead of the real
+#              devices.csv-documented .69 address; and the standard-slot FWL1 line had no
+#              skip-if-a-real-row-already-covers-it guard the way BMC/WAP already do, so it kept
+#              rendering alongside devices.csv's own VRK,FWL,1,69 row under the identical
+#              hostname. VRK now uses the same find_device()-based lookup CLD already used for
+#              its own FWL1 WAN address, and the [firewalls] block now skips the standard-slot
+#              FWL1 line whenever a real devices.csv row already covers instance 1.
 #  2026-07-20  Robert: added role_codes.csv's new DNSAlias column (Type -> friendly short DNS
 #              name, e.g. SLT -> "salt") as TYPE_DNS_ALIAS, loaded the same way as
 #              TYPE_CONNECTION. --emit-devices-json now includes each device's own Type and
@@ -702,6 +713,21 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
       f"{wap_lines}"
     )
 
+  # FWL1 collision guard (2026-07-21, same skip-if-a-real-row-already-covers-it pattern as
+  # BMC/WAP above): VRK's own devices.csv row (VRK,FWL,1,69 -- the vRACK firewall's own WAN
+  # face) computes to the exact same hostname as the standard-template FWL1 line below (both
+  # role=FWL, instance=1) -- found live as a real EXAFWLVRK001 duplicate-hostname collision in
+  # vrk.ini, two entries with two different IPs (fixed the wrong IP above; this fixes the
+  # duplicate line itself). Only VRK has a real devices.csv FWL row today, but this is written
+  # generically -- any other site that ever gets one is covered the same way.
+  fwl1_covered_by_real_device = any(
+    dev["type"] == "FWL" and dev["hostname"] == hostnames["FWL1"] for dev in site_devices
+  )
+  fwl1_line = (
+    f"{hostnames['FWL1']}  ansible_host={vals['FWL1']}  ansible_user=ansible  ansible_connection=ssh\n"
+    if not fwl1_covered_by_real_device else ""
+  )
+
   for dev in site_devices:
     line = render_device_line(dev.get("_net", net), dev)
     if dev["needs_review"]:
@@ -789,8 +815,7 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
 # ==================================================================================================
 
 [firewalls]
-{hostnames['FWL1']}  ansible_host={vals['FWL1']}  ansible_user=ansible  ansible_connection=ssh
-{hostnames['FWL2']}  ansible_host={vals['FWL2']}  ansible_user=ansible  ansible_connection=ssh{extra_for('firewalls')}
+{fwl1_line}{hostnames['FWL2']}  ansible_host={vals['FWL2']}  ansible_user=ansible  ansible_connection=ssh{extra_for('firewalls')}
 
 [windows_dc]
 {hostnames['DCS1']}  ansible_host={vals['DCS1']}
@@ -1313,7 +1338,15 @@ def generate(csv_path: Path, out_dir: Path, devices_path: Path):
     # provisioning network" section, including its own CLD special case reproduced here: CLD's
     # WAN address comes from devices.csv's real VRK,FWL,1 row, not the site-octet pattern below,
     # since CLD's own subnet is the LAN side, not the vRACK.
-    if site == "CLD":
+    #
+    # VRK is the SAME special case as CLD, not the generic else-branch below (fixed 2026-07-21,
+    # found live as a real EXAFWLVRK001 duplicate-hostname collision with two different IPs in
+    # vrk.ini): the else-branch's "this site's own octet within VRK's network" formula is meant
+    # for a normal remote site; fed VRK's own site (whose subnet IS the vRACK network, octet
+    # 139), it produced the nonsensical self-referential 192.168.139.139 instead of the real
+    # devices.csv-documented address (.69) the devices.csv row itself already renders separately
+    # under the same hostname -- hence the collision.
+    if site in ("CLD", "VRK"):
       cld_fwl_wan = find_device(devices_by_site, "VRK", "FWL")
       vals["FWL1"] = offset_ip(site_to_net["VRK"], cld_fwl_wan["octet"])
     else:
