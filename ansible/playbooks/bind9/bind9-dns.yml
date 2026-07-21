@@ -132,10 +132,26 @@
 #               sources any shell rc file. Also closes a capability gap the old hardcoded-alias
 #               version had: checkbind/editzone now accept an optional [zone-file] argument, so
 #               reverse zones can be checked/edited too, not just the default forward zone.
+#   2026-07-21  Fixed both plays' hosts: exadnsvrk001 (lowercase) -- confirmed via
+#               ansible-inventory that this NEVER matched the real inventory (host is
+#               EXADNSVRK001, uppercase, in vrk.ini; Ansible host-pattern matching is
+#               case-sensitive) -- would have silently matched zero hosts, empty PLAY RECAP,
+#               no error. Found while re-running this playbook against the live DNS server
+#               after fixing its hostname/VG naming elsewhere (rename-host.yml). Also fixed
+#               this_hostname: "exadnsvrk001" -> "EXADNSVRK001" -- this var sets /etc/hostname
+#               and /etc/hosts directly (ansible.builtin.hostname task below), so leaving it
+#               lowercase would have silently re-lowercased the box's hostname on every run,
+#               undoing the uppercase-hostname fix. This does NOT touch actual DNS zone-record
+#               content -- that's separately, deliberately lowercased per-device from
+#               devices.csv (db.forward-zone.devices.j2's dev.Hostname | lower, standard DNS
+#               zone-file convention) regardless of this_hostname's value. The two dig
+#               self-test tasks now explicitly lowercase this_hostname when comparing against
+#               zone content, to match that convention instead of a case-sensitive Jinja
+#               substring check silently failing against a real, correctly-generated zone.
 # =============================================================================
 
 - name: EXADNSVRK001 -- BIND9 DNS server
-  hosts: exadnsvrk001
+  hosts: EXADNSVRK001
   become: true
 
   vars:
@@ -147,7 +163,7 @@
     sites_csv_path: "/etc/example-music/sites.csv"
     devices_csv_path: "/etc/example-music/devices.csv"
     bind_zone_dir: "/etc/bind"
-    this_hostname: "exadnsvrk001"
+    this_hostname: "EXADNSVRK001"
     ad_forest_json_path: "/etc/example-music/ad_forest.json"
     domain: "{{ (lookup('file', ad_forest_json_path) | from_json).domain_fqdn }}"
 
@@ -841,9 +857,13 @@
   # ---------------------------------------------------------------------------
   # 9. Verify -- quick dig self-test
   # ---------------------------------------------------------------------------
+    # Zone records are deliberately lowercase (db.forward-zone.devices.j2's dev.Hostname |
+    # lower -- standard DNS zone-file convention, unrelated to this_hostname's own uppercase
+    # box-identity convention above) -- lowercase this_hostname here to match what's actually
+    # in the zone, rather than a case-sensitive Jinja substring check silently failing.
     - name: Self-test DNS -- forward lookup
       tags: service, reload
-      command: "dig @127.0.0.1 +short {{ this_hostname }}.{{ domain }}"
+      command: "dig @127.0.0.1 +short {{ this_hostname | lower }}.{{ domain }}"
       register: dig_result
       changed_when: false
       failed_when: dns_ip not in dig_result.stdout
@@ -853,7 +873,7 @@
       command: "dig @127.0.0.1 +short -x {{ dns_ip }}"
       register: dig_ptr
       changed_when: false
-      failed_when: this_hostname not in dig_ptr.stdout
+      failed_when: this_hostname | lower not in dig_ptr.stdout
 
   # ---------------------------------------------------------------------------
   # Handlers
@@ -963,12 +983,12 @@
 # =============================================================================
 
 - name: EXADNSVRK001 -- Full zone generation from devices.csv
-  hosts: exadnsvrk001
+  hosts: EXADNSVRK001
   become: true
 
   vars:
     dns_ip: "192.168.139.8"
-    this_hostname: "exadnsvrk001"
+    this_hostname: "EXADNSVRK001"
     ad_forest_json_path: "/etc/example-music/ad_forest.json"
     domain: "{{ (lookup('file', ad_forest_json_path) | from_json).domain_fqdn }}"
     bind_zone_dir: "/etc/bind"
