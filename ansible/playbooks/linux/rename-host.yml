@@ -73,6 +73,30 @@
 #               task per LV that can individually miss one. Also added a
 #               cosmetic yellow highlight on "Current hostname" in the
 #               summary display when it differs from new_hostname.
+#   2026-07-21  Fixed a real bug found re-running this playbook against
+#               EXADNSVRK001 after the VG had already been successfully renamed
+#               but the box hadn't been rebooted yet: findmnt / -no SOURCE keeps
+#               reporting the ORIGINAL mount-time device string for an
+#               already-mounted filesystem, unchanged by a later live vgrename --
+#               it only catches up on remount/reboot. _vg_already_correct was
+#               being computed from that stale value, came out false, and the
+#               playbook tried to vgrename a VG that no longer existed under its
+#               old name (vgrename failed: "already exists in filesystem", since
+#               the target name was already taken by the rename that had already
+#               happened). _vg_already_correct is now computed from a live `vgs`
+#               query instead, which is never stale. Separately, and regardless
+#               of that fix: the fstab/resume-config replace tasks are no longer
+#               gated on _vg_already_correct at all -- they now detect stale
+#               VG-name prefixes directly from each file's own current content
+#               and fix exactly those, so a partially-completed previous run
+#               (VG renamed, but fstab left stale by the swap-detection bug
+#               above) gets fully corrected on retry instead of being skipped
+#               because the VG-rename step alone looked "already done".
+#               initramfs/GRUB regen and the reboot prompt are now gated on a
+#               combined _boot_config_needs_fix fact (VG rename needed OR
+#               fstab/resume-config found stale) instead of _vg_already_correct
+#               alone, for the same reason. Summary display extended to show
+#               fstab/resume-config staleness explicitly, not just the VG state.
 # =============================================================================
 
 - name: Linux — Rename host (hostname + LVM volume group + boot config)
@@ -143,9 +167,63 @@
       when: _swap_source.stdout is defined and '/dev/mapper/' in _swap_source.stdout
       tags: [hostname, lvm, boot, reboot]
 
-    - name: Set fact — VG already renamed (idempotency check)
+    - name: Query current live VG name(s) from LVM directly (not findmnt)
+      # findmnt / -no SOURCE (above) reports the mount-time source string, which the
+      # kernel keeps reporting UNCHANGED for an already-mounted filesystem even after
+      # a live vgrename -- it only catches up on remount/reboot. Real, live-observed
+      # bug (2026-07-21): re-running this playbook after a successful rename but
+      # before a reboot found findmnt still reporting the OLD VG name, so
+      # _vg_already_correct came out false, and it tried to vgrename a VG that no
+      # longer existed under that name ("already exists in filesystem" from vgrename,
+      # since the target name was already taken by the very rename that had already
+      # happened). vgs asks LVM directly, so it's never stale like this.
+      ansible.builtin.shell: vgs --noheadings -o vg_name | tr -d ' ' | sort -u
+      register: _live_vgs
+      changed_when: false
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Set fact — VG already renamed (idempotency check, from live LVM state)
       ansible.builtin.set_fact:
-        _vg_already_correct: "{{ _root_vg == new_hostname }}"
+        _vg_already_correct: "{{ new_hostname in _live_vgs.stdout_lines }}"
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Check for initramfs resume config
+      ansible.builtin.stat:
+        path: /etc/initramfs-tools/conf.d/resume
+      register: _resume_conf
+      tags: [hostname, lvm, boot, reboot]
+
+    # ── Self-healing fstab/resume-config staleness detection ────────────────────
+    # Deliberately NOT gated on _vg_already_correct or on _root_vg/_swap_vg (both
+    # can be stale post-rename-pre-reboot, per the findmnt note above). Instead
+    # this reads each file's own current content directly -- correct regardless of
+    # whether the VG rename already happened, already got fixed, or is being retried
+    # after a previous incomplete run (the exact real scenario found 2026-07-21: VG
+    # already renamed, but fstab was still left referencing the old name by an
+    # earlier bug, now fixed, in how swap was detected).
+
+    - name: Find any stale (non-new_hostname) device-mapper VG-name prefixes in /etc/fstab
+      ansible.builtin.shell: >-
+        grep -ohP '(?<=/dev/mapper/)[^-]+(?=-)' /etc/fstab | sort -u | grep -v -x -F '{{ new_hostname }}' || true
+      register: _stale_fstab_vgs
+      changed_when: false
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Find any stale (non-new_hostname) device-mapper VG-name prefixes in the resume config
+      ansible.builtin.shell: >-
+        grep -ohP '(?<=/dev/mapper/)[^-]+(?=-)' /etc/initramfs-tools/conf.d/resume
+        | sort -u | grep -v -x -F '{{ new_hostname }}' || true
+      register: _stale_resume_vgs
+      changed_when: false
+      when: _resume_conf.stat.exists
+      tags: [hostname, lvm, boot, reboot]
+
+    - name: Set fact — whether any boot-relevant config is stale and needs fixing this run
+      ansible.builtin.set_fact:
+        _boot_config_needs_fix: >-
+          {{ (not _vg_already_correct)
+             or (_stale_fstab_vgs.stdout_lines | length > 0)
+             or (_resume_conf.stat.exists and _stale_resume_vgs.stdout_lines | default([]) | length > 0) }}
       tags: [hostname, lvm, boot, reboot]
 
     # ── Summary + confirmation gate (matches firewallme role's own convention) ──
@@ -163,7 +241,10 @@
           - "  New hostname       : {{ _c.G }}{{ new_hostname }}{{ _c.NC }}"
           - "  Root VG (found)    : {{ _c.W }}{{ _root_vg }}{{ _c.NC }} (LV: {{ _root_lv }})"
           - "  Swap VG (found)    : {{ _c.W }}{{ _swap_vg | default('none / not on LVM') }}{{ _c.NC }}{{ (' (LV: ' + _swap_lv + ')') if _swap_lv is defined else '' }}"
-          - "  VG already correct : {{ (_c.G + 'yes -- LVM steps will be skipped') if _vg_already_correct else (_c.Y + 'no -- will rename') }}{{ _c.NC }}"
+          - "  VG rename needed   : {{ (_c.G + 'no -- already ' + new_hostname) if _vg_already_correct else (_c.Y + 'yes') }}{{ _c.NC }}"
+          - "  /etc/fstab stale   : {{ (_c.Y + 'yes -- ' + (_stale_fstab_vgs.stdout_lines | join(', '))) if (_stale_fstab_vgs.stdout_lines | length > 0) else (_c.G + 'no') }}{{ _c.NC }}"
+          - "  resume-conf stale  : {{ (_c.Y + 'yes -- ' + (_stale_resume_vgs.stdout_lines | default([]) | join(', '))) if (_resume_conf.stat.exists and _stale_resume_vgs.stdout_lines | default([]) | length > 0) else (_c.G + 'no / not present') }}{{ _c.NC }}"
+          - "  Boot config fix    : {{ (_c.G + 'nothing to do -- all steps below will be skipped') if not _boot_config_needs_fix else (_c.Y + 'needed -- see above') }}{{ _c.NC }}"
           - "{{ _c.Y }}[!]{{ _c.NC }} This touches live LVM + boot config (fstab, initramfs, GRUB)."
           - "{{ _c.Y }}[!]{{ _c.NC }} Take a PVE snapshot of this VM before continuing if you haven't."
       tags: [hostname, lvm, boot, reboot]
@@ -230,67 +311,36 @@
         - _swap_vg != _root_vg
       tags: lvm
 
-    # Replacing the whole "/dev/mapper/<VG>-" prefix (not each LV path individually)
-    # covers every LV under that VG in one task -- root, swap, and anything else --
-    # rather than needing a separate, exactly-matched task per LV that can silently
-    # miss one (the LV-by-LV approach is what missed swap's fstab line in the real
-    # 2026-07-21 test, since swap detection itself had failed upstream).
-    - name: Update /etc/fstab — root VG's device-mapper prefix (covers every LV under it)
+    # Self-healing: replace whatever stale VG-name prefix(es) were actually found in
+    # each file (per the detection tasks above), not the VG name(s) findmnt/fstab
+    # happened to parse at play start -- correct even on a retry after a previous
+    # partially-completed run, which is the exact scenario that motivated this.
+    - name: Replace each stale VG-name prefix found in /etc/fstab
       ansible.builtin.replace:
         path: /etc/fstab
-        regexp: "/dev/mapper/{{ _root_vg }}-"
+        regexp: "/dev/mapper/{{ item }}-"
         replace: "/dev/mapper/{{ new_hostname }}-"
-      when: not _vg_already_correct
+      loop: "{{ _stale_fstab_vgs.stdout_lines }}"
       tags: [lvm, boot]
 
-    - name: Update /etc/fstab — swap VG's device-mapper prefix (only if swap is on a separate VG)
-      ansible.builtin.replace:
-        path: /etc/fstab
-        regexp: "/dev/mapper/{{ _swap_vg }}-"
-        replace: "/dev/mapper/{{ new_hostname }}-"
-      when:
-        - not _vg_already_correct
-        - _swap_vg is defined
-        - _swap_vg != _root_vg
-      tags: [lvm, boot]
-
-    - name: Check for initramfs resume config
-      ansible.builtin.stat:
-        path: /etc/initramfs-tools/conf.d/resume
-      register: _resume_conf
-      tags: [lvm, boot]
-
-    - name: Update initramfs resume config — root VG's device-mapper prefix
+    - name: Replace each stale VG-name prefix found in the resume config
       ansible.builtin.replace:
         path: /etc/initramfs-tools/conf.d/resume
-        regexp: "/dev/mapper/{{ _root_vg }}-"
+        regexp: "/dev/mapper/{{ item }}-"
         replace: "/dev/mapper/{{ new_hostname }}-"
-      when:
-        - not _vg_already_correct
-        - _resume_conf.stat.exists
-      tags: [lvm, boot]
-
-    - name: Update initramfs resume config — swap VG's device-mapper prefix (only if separate from root)
-      ansible.builtin.replace:
-        path: /etc/initramfs-tools/conf.d/resume
-        regexp: "/dev/mapper/{{ _swap_vg }}-"
-        replace: "/dev/mapper/{{ new_hostname }}-"
-      when:
-        - not _vg_already_correct
-        - _swap_vg is defined
-        - _swap_vg != _root_vg
-        - _resume_conf.stat.exists
+      loop: "{{ _stale_resume_vgs.stdout_lines | default([]) }}"
+      when: _resume_conf.stat.exists
       tags: [lvm, boot]
 
     - name: Regenerate initramfs for all installed kernels
       ansible.builtin.command: update-initramfs -c -k all
-      when: not _vg_already_correct
+      when: _boot_config_needs_fix
       changed_when: true
       tags: boot
 
     - name: Regenerate GRUB configuration
       ansible.builtin.command: update-grub
-      when: not _vg_already_correct
+      when: _boot_config_needs_fix
       changed_when: true
       tags: boot
 
@@ -307,14 +357,14 @@
 
           Reboot now to verify? [y/N]
       register: _reboot_prompt
-      when: not _vg_already_correct
+      when: _boot_config_needs_fix
       tags: reboot
 
     - name: Reboot
       ansible.builtin.reboot:
         reboot_timeout: 300
       when:
-        - not _vg_already_correct
+        - _boot_config_needs_fix
         - _reboot_prompt.user_input | default('n') | lower | trim == 'y'
       tags: reboot
 
