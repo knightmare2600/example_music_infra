@@ -148,6 +148,35 @@
 #               self-test tasks now explicitly lowercase this_hostname when comparing against
 #               zone content, to match that convention instead of a case-sensitive Jinja
 #               substring check silently failing against a real, correctly-generated zone.
+#   2026-07-21  Fixed the dns_interface autodetection regex ('^192\\.168\\.139\\.') silently
+#               never matching anything, on every run, on every box -- see this file's own
+#               "Detect provisioning network interface" task comment for the full root cause
+#               (a double-backslash inside a YAML folded block scalar, which never processes
+#               escapes, unlike a double-quoted string).
+#   2026-07-22  CRITICAL LIVE BUG, SESSION-KILLING: Section 2's NetworkManager tasks used to
+#               `nmcli connection delete prov-static` then recreate + unconditionally `nmcli
+#               connection up` on EVERY run, regardless of whether the IP was already correct --
+#               tearing down and rebuilding the live connection every single time. Live-observed
+#               on EXADNSVRK001: this killed the SSH session mid-play, since Ansible always
+#               connects via this exact interface/IP (ansible_host is dns_ip) -- there's no other
+#               path in for a real remote run. Robert: "it's clear you're not listening to me
+#               about the times when IPs change" -- this is the same class of hazard
+#               roles/firewall/tasks/06_network_manager.yml was rebuilt to avoid on 2026-07-09/
+#               2026-07-16/2026-07-17 (see that file's own changelog), and should have been
+#               applied here from the start rather than left on the old raw-nmcli pattern.
+#               Rebuilt to match that file's exact session-safe design: a templated
+#               .nmconnection keyfile (templates/prov-static.nmconnection.j2) for real
+#               idempotency -- the write task reports unchanged when nothing differs, unlike
+#               nmcli add/delete which always "changes" something -- applied via `nmcli
+#               connection reload` (re-reads profile files, does not tear down an active
+#               connection) instead of delete+recreate, and a live-address-mismatch check
+#               (mirrors 06_network_manager.yml's nm_wan_activate_would_strand_session exactly)
+#               before ever running `nmcli connection up` -- the one command that actually pushes
+#               a changed address onto a live interface. A genuine IP correction is now written
+#               to disk and reported clearly, never applied live out from under the exact session
+#               running the play. Verified via scratch-test reproduction of the strand-detection
+#               logic across all three real scenarios (already correct, wrong live IP, fresh box
+#               with no live IP yet) before touching the real file.
 # =============================================================================
 
 - name: EXADNSVRK001 -- BIND9 DNS server
@@ -380,31 +409,68 @@
           [Link]
           Name={{ dns_interface }}
 
-    - name: Remove any existing prov-static NM connection
-      tags: network
-      command: nmcli connection delete prov-static
-      failed_when: false
-      changed_when: false
+    # BUG FIX (2026-07-21/22): this used to `nmcli connection delete prov-static` followed by
+    # recreate + unconditional `nmcli connection up` on EVERY run -- tearing down and rebuplding
+    # the live connection regardless of whether the IP was already correct. Live-observed on
+    # EXADNSVRK001: this killed the SSH session mid-play, since Ansible always connects via this
+    # exact interface/IP (ansible_host is dns_ip) -- there is no other path in. Rebuilt to match
+    # roles/firewall/tasks/06_network_manager.yml's own established, session-safe pattern: a
+    # templated .nmconnection keyfile for real idempotency (task reports unchanged when nothing
+    # differs, unlike nmcli add/delete which always "changes" something), applied via `nmcli
+    # connection reload` (re-reads profile files, does not tear down an active connection) rather
+    # than delete+recreate, and a live-address-mismatch check before ever running `nmcli
+    # connection up` -- which IS what actually pushes a changed address onto a live interface --
+    # so a genuine IP correction is written to disk and reported, never applied live out from
+    # under the exact session that's running this play.
 
-    - name: Configure static IP via NetworkManager
+    - name: "[NM] Detect current live IP on the provisioning interface"
       tags: network
-      community.general.nmcli:
-        conn_name: prov-static
-        ifname: "{{ dns_interface }}"
-        type: ethernet
-        ip4: "{{ dns_ip }}/24"
-        gw4: "{{ dns_gateway }}"
-        dns4:
-          - "127.0.0.1"
-        dns4_search:
-          - "{{ domain }}"
-        autoconnect: true
-        state: present
+      ansible.builtin.shell: |
+        nmcli -g IP4.ADDRESS dev show {{ dns_interface }} 2>/dev/null | head -1 | cut -d/ -f1
+      register: _prov_ip_live
+      changed_when: false
+      failed_when: false
+
+    - name: "[NM] Set flag -- would bringing this connection up now strand this session?"
+      tags: network
+      ansible.builtin.set_fact:
+        _prov_activate_would_strand_session: >-
+          {{
+            _prov_ip_live.stdout | trim != ''
+            and _prov_ip_live.stdout | trim != dns_ip
+          }}
+
+    - name: Write prov-static NetworkManager connection profile
+      tags: network
+      ansible.builtin.template:
+        src: prov-static.nmconnection.j2
+        dest: /etc/NetworkManager/system-connections/prov-static.nmconnection
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Reload NetworkManager connections
+
+    - name: "[NM] Flush handlers (reload NM connection state, if the profile actually changed)"
+      tags: network
+      ansible.builtin.meta: flush_handlers
+
+    - name: "[NM] NOTE -- provisioning IP correction needs a reboot (or manual con up) to take effect"
+      tags: network
+      ansible.builtin.debug:
+        msg: >-
+          {{ _c.Y }}[!]{{ _c.NC }} Provisioning IP is changing from {{ _prov_ip_live.stdout | trim }}
+          to {{ dns_ip }} on {{ dns_interface }} -- this session is connected via that same
+          interface, so bringing the connection up now would drop it mid-play. The corrected
+          profile has been written to disk -- nothing has been applied live. Reboot this host,
+          or run `nmcli connection up prov-static` yourself from a session that isn't riding
+          {{ dns_interface }} (e.g. console/out-of-band), once you're ready to apply it.
+      when: _prov_activate_would_strand_session
 
     - name: Bring up prov-static connection
       tags: network
-      command: nmcli connection up prov-static
+      ansible.builtin.command: nmcli connection up prov-static
       changed_when: false
+      when: not _prov_activate_would_strand_session
 
   # ---------------------------------------------------------------------------
   # 3. BIND9 configuration files
@@ -897,6 +963,12 @@
         name: ssh
         state: restarted
 
+    # Mirrors roles/firewall/tasks/06_network_manager.yml's own handler exactly -- re-reads
+    # connection profile files from disk, does not tear down an active connection.
+    - name: Reload NetworkManager connections
+      ansible.builtin.command: nmcli connection reload
+      changed_when: true
+
 
 # =============================================================================
 # Templates required by this playbook
@@ -923,6 +995,13 @@
 # ─────────────────────────────
 # Per-site reverse zone template.  item = one row from sites list.
 # Loops suffix_map to produce PTR records.
+#
+# templates/prov-static.nmconnection.j2
+# ──────────────────────────────────────
+# NetworkManager keyfile for this box's own provisioning-network static IP
+# (Section 2).  Mirrors roles/firewall/tasks/06_network_manager.yml's
+# wan.nmconnection.j2/lan.nmconnection.j2 -- written for real idempotency and
+# applied via `nmcli connection reload`, never delete+recreate.
 #
 # See templates/ directory for full template content.
 # =============================================================================

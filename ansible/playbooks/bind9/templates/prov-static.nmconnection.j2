@@ -1,0 +1,21 @@
+[connection]
+id=prov-static
+uuid={{ (inventory_hostname + '-prov-static') | to_uuid }}
+type=ethernet
+interface-name={{ dns_interface }}
+autoconnect=true
+autoconnect-priority=100
+
+[ethernet]
+
+[ipv4]
+address1={{ dns_ip }}/24,{{ dns_gateway }}
+method=manual
+dns=127.0.0.1;
+dns-search={{ domain }};
+
+[ipv6]
+addr-gen-mode=default
+method=ignore
+
+[proxy]
