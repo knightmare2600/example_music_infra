@@ -17,6 +17,16 @@
 #
 # Version history:
 #
+#   v2.7   Added :lods -- Projekt LODS, Robert's own hand-rolled live Proxmox
+#          installer distro, built separately from this repo's own automation.
+#          NOT a revival of the Proxmox-official auto-install PXE approach
+#          :proxmox-ve's own history (v2.3-v2.5 below) already tried and
+#          abandoned after a failed live test -- different distro, different
+#          mechanism, confirmed by Robert directly (2026-07-23). Wired to use
+#          ${boot-url}/${site-prefix} like every other entry rather than the
+#          hardcoded IP/VRK originally given, matching this file's own
+#          established per-site answer-file convention.
+#
 #   v2.6   Dropped the EXAPRVVRK001/EXAPRVFRD001 hostname labels from the topology comment
 #          and the two env_* echo lines -- both provisioning servers are bootstrap-only
 #          helpers, deliberately given no formal EXA<ROLE><SITE><NNN> hostname or DNS record
@@ -245,6 +255,7 @@ item --gap --
 item --gap --         -- Hypervisors --
 item proxmox-ve       Proxmox VE 9   (x86_64 only)
 item proxmox-dcm      Proxmox DCM 9  (x86_64 only)
+item lods             Projekt LODS  (custom live Proxmox installer, x86_64 only)
 item --gap --
 item --gap --         -- Utilities --
 item gparted          GParted Live
@@ -502,6 +513,23 @@ goto main
 echo Proxmox DCM boot not yet configured
 prompt Press any key to return to menu...
 goto main
+
+# ===========================================================================
+# PROJEKT LODS
+# Robert's own hand-rolled live Proxmox installer distro, built separately --
+# NOT the Proxmox-official auto-install ISO path that :proxmox-ve's own
+# history (see that section's comment, v2.3-v2.5) already tried via PXE and
+# abandoned after a failed live test. Different distro, different mechanism.
+# Uses ${boot-url}/${site-prefix} like every other entry here rather than a
+# hardcoded IP/site -- ${site-prefix}-answer.toml matches the same per-site
+# answer-file convention already established above (env_edinburgh/
+# env_fredericia set it to VRK/FRD respectively).
+# ===========================================================================
+:lods
+iseq ${arch} arm64 && goto noarch-msg ||
+kernel ${boot-url}/proxmox/lods/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml
+initrd ${boot-url}/proxmox/lods/installer-initrd.img
+boot
 
 # ===========================================================================
 # GPARTED
