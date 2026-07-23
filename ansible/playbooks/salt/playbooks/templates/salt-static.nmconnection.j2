@@ -1,0 +1,21 @@
+[connection]
+id=salt-static
+uuid={{ (inventory_hostname + '-salt-static') | to_uuid }}
+type=ethernet
+interface-name={{ _salt_iface }}
+autoconnect=true
+autoconnect-priority=100
+
+[ethernet]
+
+[ipv4]
+address1={{ salt_static_ip }}/{{ salt_prefix | default('24') }},{{ salt_gateway }}
+method=manual
+dns={{ salt_dns }};
+dns-search={{ salt_domain }};
+
+[ipv6]
+addr-gen-mode=default
+method=ignore
+
+[proxy]

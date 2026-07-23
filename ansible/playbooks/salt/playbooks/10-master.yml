@@ -1,57 +1,35 @@
 ---
 # =============================================================================
-# Example Music Limited — Salt Master Bootstrap Playbook
-# playbooks/salt/salt_master.yml
-#
+# playbooks/10-master.yml
+# Example Music Limited — Salt master install + configuration
+# =============================================================================
 # Bootstraps EXASLTCLD001 (or any cloud-hosted Salt master) from a fresh
 # Debian Trixie install to a running Salt master. Same OS-provisioning path
 # as every other Debian service VM in this estate (EXARUDCLD001,
 # EXAANSCLD001) -- the ansible user + SSH key come from late_command.sh
 # during the Debian netinstall, not from this playbook.
 #
-# Structure mirrors playbooks/rudder/rudder_server.yml section-by-section,
-# minus everything specific to Rudder's own web UI/API (no LDAP skeleton, no
-# "push a baseline via REST API" section -- Salt states/pillar aren't built
-# yet, see playbooks/salt/README.md):
+# The install/master-config half of what used to be the single monolithic
+# salt_master.yml (see this module's site.yml for the full numbered-stage
+# history) -- hostname/IP/gateway prompting now lives in 00-preflight.yml,
+# salt-api/SaltGUI now lives in 20-saltgui.yml.
+#
+# Sections:
 #   1.  Hostname
-#   2.  Network — static IP (host_vars with interactive fallback)
+#   2.  Network — static IP (host_vars with interactive fallback via 00-preflight.yml)
 #   3.  Base packages
 #   4.  UFW firewall
 #   5.  Salt repository + salt-master install (version-pinned)
 #   6.  Master configuration (/etc/salt/master)
 #   7.  Node info file
 #
-# Usage
-# -----
-# First run (before ansible user exists, using root + password):
-#   ansible-playbook playbooks/salt/salt_master.yml \
-#     --limit salt_servers \
-#     --user root -k
+# Needs 00-preflight.yml's facts (salt_hostname/salt_static_ip/salt_gateway)
+# -- run together, or via site.yml, rather than standalone.
 #
-# Subsequent runs (ansible user + key):
-#   ansible-playbook playbooks/salt/salt_master.yml \
-#     --limit salt_servers
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/salt/playbooks/10-master.yml
 #
-# Dry-run (check mode):
-#   ansible-playbook playbooks/salt/salt_master.yml \
-#     --limit salt_servers --check --diff
-#
-# Inventory
-# ---------
-# Already in configs/inventory/salt.ini:
-#   [salt_servers]
-#   192.168.69.22   # EXASLTCLD001 — CLD Salt master
-#
-# Variables (see group_vars/salt_servers/main.yml and
-#            host_vars/EXASLTCLD001/main.yml for full list)
-# ----------------------------------------------------------
-# Required via host_vars or --extra-vars:
-#   salt_static_ip        Static IP for this Salt master
-#   salt_hostname         Hostname (e.g. EXASLTCLD001)
-#   salt_gateway          Default gateway
-#   salt_dns              DNS server (EXADNSVRK001, 192.168.139.8 -- same
-#                          plain BIND9 box every other CLD service VM uses,
-#                          not the AD DC -- Salt doesn't need LDAP)
+# Tags: master
 #
 # Version alignment
 # ------------------
@@ -66,11 +44,11 @@
 # -----------
 # Every task is idempotent. Re-running against an already-configured master
 # is safe -- tasks that are already done report 'ok' and change nothing.
-#
 # =============================================================================
 # Version history
 # =============================================================================
-# v1.0.0  2026-07-20  Initial release. Sections 1-4 (hostname, static IP,
+# v1.0.0  2026-07-20  Initial release, as part of the single monolithic
+#                     salt_master.yml. Sections 1-4 (hostname, static IP,
 #                     base packages, UFW) ported directly from
 #                     rudder_server.yml's equivalent sections -- same
 #                     class of host (single CLD-hosted Debian service VM),
@@ -85,84 +63,34 @@
 #                     this repo's existing security-posture conventions
 #                     (see memory/feedback_security_posture_is_roberts_call
 #                     equivalent: don't flip auth/acceptance defaults for
-#                     convenience). No LDAP/API/baseline-push section --
-#                     Salt states/pillar source (benarbejde/ CSVs+JSON vs.
-#                     gitfs) not yet decided, see README.md.
+#                     convenience).
+#   2026-07-22  Session-safe NetworkManager rework (Section 2) -- this used
+#               to `nmcli con delete salt-static` + `nmcli con add ...` on
+#               EVERY run, unconditionally, with no idempotency check at
+#               all. nmcli deactivates an active connection before deleting
+#               it, so re-running this against a box already on
+#               salt-static (any run after the first reboot) would drop
+#               exactly the connection Ansible's own SSH session might be
+#               riding -- the same class of bug found and fixed live in
+#               bind9-dns.yml on EXADNSVRK001. Rebuilt to the same
+#               templated-.nmconnection-keyfile + `nmcli connection reload`
+#               + live-address-mismatch strand-check pattern.
+#   2026-07-22  Split out of the single monolithic salt_master.yml into this
+#               numbered-stage chain (00-preflight/10-master/20-saltgui +
+#               site.yml), matching the convention already used by
+#               proxmox/windows_bootstrap/windows_dc, so salt-api/SaltGUI
+#               (20-saltgui.yml) could be added as its own self-contained
+#               stage rather than growing the one file further.
 # =============================================================================
 
-- name: Bootstrap Salt master
+- name: Salt master — install and configure
   hosts: salt_servers
   become: true
   gather_facts: true
   ignore_unreachable: false
 
   vars_files:
-    - ../../configs/inventory/group_vars/salt_servers/main.yml
-
-  pre_tasks:
-
-    # -------------------------------------------------------------------------
-    # Interactive fallback: if host_vars do not supply the IP or hostname,
-    # prompt the operator now (before any changes are made). Same pattern as
-    # rudder_server.yml's pre_tasks.
-    # -------------------------------------------------------------------------
-
-    - name: "Prompt for hostname if not set in host_vars"
-      pause:
-        prompt: >
-          Hostname for this Salt master is not set in host_vars.
-          Enter hostname (e.g. EXASLTCLD001)
-      register: _hostname_prompt
-      when: salt_hostname is not defined or salt_hostname == ""
-      delegate_to: localhost
-      become: false
-
-    - name: "Set salt_hostname from prompt"
-      set_fact:
-        salt_hostname: "{{ _hostname_prompt.user_input | upper }}"
-      when: _hostname_prompt is not skipped
-
-    - name: "Prompt for static IP if not set in host_vars"
-      pause:
-        prompt: >
-          Static IP for {{ salt_hostname }} is not set in host_vars.
-          Enter static IP (e.g. 192.168.69.22)
-      register: _ip_prompt
-      when: salt_static_ip is not defined or salt_static_ip == ""
-      delegate_to: localhost
-      become: false
-
-    - name: "Set salt_static_ip from prompt"
-      set_fact:
-        salt_static_ip: "{{ _ip_prompt.user_input }}"
-      when: _ip_prompt is not skipped
-
-    - name: "Prompt for gateway if not set in host_vars"
-      pause:
-        prompt: >
-          Gateway for {{ salt_hostname }} is not set in host_vars.
-          Enter gateway IP (e.g. 192.168.69.253)
-      register: _gw_prompt
-      when: salt_gateway is not defined or salt_gateway == ""
-      delegate_to: localhost
-      become: false
-
-    - name: "Set salt_gateway from prompt"
-      set_fact:
-        salt_gateway: "{{ _gw_prompt.user_input }}"
-      when: _gw_prompt is not skipped
-
-    - name: "Validate required variables are now set"
-      assert:
-        that:
-          - salt_hostname is defined and salt_hostname != ""
-          - salt_static_ip is defined and salt_static_ip != ""
-          - salt_gateway is defined and salt_gateway != ""
-        fail_msg: >
-          salt_hostname, salt_static_ip, and salt_gateway must all be set.
-          Set them in host_vars/{{ inventory_hostname }}/main.yml or pass via
-          --extra-vars.
-        success_msg: "All required variables present — proceeding."
+    - ../../../configs/inventory/group_vars/salt_servers/main.yml
 
   # ---------------------------------------------------------------------------
   # Section 1 — Hostname
@@ -256,7 +184,7 @@
         dest: "/etc/systemd/network/10-salt-prov.link"
         content: |
           # Example Music — Salt master interface pin
-          # Written by salt_master.yml on {{ ansible_date_time.iso8601 }}
+          # Written by 10-master.yml on {{ ansible_date_time.iso8601 }}
           # MAC: {{ _salt_mac }}  interface: {{ _salt_iface }}
           [Match]
           MACAddress={{ _salt_mac }}
@@ -295,31 +223,71 @@
         state: started
         enabled: true
 
-    - name: "2 | Delete stale NM static profile if it exists"
-      command: nmcli con delete salt-static
-      failed_when: false
+    # BUG FIX (2026-07-22): this used to `nmcli con delete salt-static` followed by
+    # `nmcli con add ...` on EVERY run, unconditionally, with no check of the live/on-disk
+    # profile state at all (changed_when was always true). nmcli deactivates an active
+    # connection before deleting it, so re-running this playbook against a box already on
+    # salt-static (i.e. any run after the first reboot) would drop exactly the connection
+    # Ansible's own SSH session might be riding — the same class of bug found and fixed live
+    # in bind9-dns.yml on EXADNSVRK001 (see that file's own 2026-07-21/22 changelog), and the
+    # identical copy-pasted pattern also found and fixed the same day in rudder_server.yml.
+    # Rebuilt to match that established session-safe pattern: a templated .nmconnection
+    # keyfile for real idempotency (task reports unchanged when nothing differs), applied via
+    # `nmcli connection reload` (re-reads profile files, does not tear down an active
+    # connection) rather than delete+recreate, and a live-address-mismatch check before ever
+    # running `nmcli connection up` — the one command that actually pushes a changed address
+    # onto a live interface — so a genuine IP correction is written to disk and reported,
+    # never applied live out from under the exact session running this play.
+
+    - name: "2 | Detect current live IP on the salt interface"
+      tags: network
+      ansible.builtin.shell: |
+        nmcli -g IP4.ADDRESS dev show {{ _salt_iface }} 2>/dev/null | head -1 | cut -d/ -f1
+      register: _salt_ip_live
       changed_when: false
+      failed_when: false
 
-    - name: "2 | Create static IP NM profile"
-      command: >
-        nmcli con add type ethernet ifname {{ _salt_iface }} con-name salt-static
-        ipv4.method manual
-        ipv4.addresses "{{ salt_static_ip }}/{{ salt_prefix | default('24') }}"
-        ipv4.gateway "{{ salt_gateway }}"
-        ipv4.dns "{{ salt_dns }}"
-        ipv4.dns-search "{{ salt_domain }}"
-        ipv6.method ignore
-        connection.autoconnect yes
-        connection.autoconnect-priority 100
-      register: _nm_add
-      changed_when: _nm_add.rc == 0
+    - name: "2 | Set flag — would bringing salt-static up now strand this session?"
+      tags: network
+      ansible.builtin.set_fact:
+        _salt_activate_would_strand_session: >-
+          {{
+            _salt_ip_live.stdout | trim != ''
+            and _salt_ip_live.stdout | trim != salt_static_ip
+          }}
 
-    - name: "2 | Note — static IP takes effect on reboot"
+    - name: "2 | Write salt-static NetworkManager connection profile"
+      tags: network
+      ansible.builtin.template:
+        src: salt-static.nmconnection.j2
+        dest: /etc/NetworkManager/system-connections/salt-static.nmconnection
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Reload NetworkManager connections
+
+    - name: "2 | Flush handlers (reload NM connection state, if the profile actually changed)"
+      tags: network
+      ansible.builtin.meta: flush_handlers
+
+    - name: "2 | Note — salt static IP correction needs a reboot (or manual con up) to take effect"
+      tags: network
       debug:
         msg: >-
-          Static IP {{ salt_static_ip }} written to NM profile 'salt-static'.
-          It takes effect on next reboot (safe over SSH).
-          At the local console run: nmcli con up salt-static
+          Salt static IP is changing from {{ _salt_ip_live.stdout | trim }} to
+          {{ salt_static_ip }} on {{ _salt_iface }} — this session may be connected via
+          that same interface, so bringing the connection up now would risk dropping it
+          mid-play. The corrected profile has been written to disk — nothing has been
+          applied live. Reboot this host, or run `nmcli connection up salt-static`
+          yourself from a session that isn't riding {{ _salt_iface }} (e.g. console/
+          out-of-band), once you're ready to apply it.
+      when: _salt_activate_would_strand_session
+
+    - name: "2 | Bring up salt-static connection"
+      tags: network
+      command: nmcli connection up salt-static
+      changed_when: false
+      when: not _salt_activate_would_strand_session
 
   # ---------------------------------------------------------------------------
   # Section 3 — Base packages
@@ -410,7 +378,7 @@
         dest: /etc/apt/preferences.d/salt-pin
         content: |
           # Example Music — keep master/minion versions aligned
-          # Written by salt_master.yml -- see group_vars/salt_servers/main.yml's
+          # Written by 10-master.yml -- see group_vars/salt_servers/main.yml's
           # salt_version_major and docs/buildsheets/buildsheet-salt-minion.md
           Package: salt-*
           Pin: version {{ salt_version_major }}.*
@@ -467,11 +435,12 @@
   # (see salt/README.md for the full reasoning). gitfs_root/git_pillar's
   # own root: option point at salt/states and salt/pillar respectively,
   # rather than the repo root, since this repo has plenty else in it.
-  # Deliberately NOT the hand-rolled "clone + cron + git pull +
-  # saltutil.refresh_pillar" approach found in a dropped-in Salt state
-  # while reviewing salt/cleanup/salt/salt/pillar.sls -- both gitfs and
-  # git_pillar handle their own sync natively, no separate script/cron
-  # needed.
+  #
+  # SaltGUI's own external_auth/netapi_enable_clients/rest_cherrypy settings
+  # live in a SEPARATE drop-in, /etc/salt/master.d/saltgui.conf, written by
+  # 20-saltgui.yml -- not here. Salt merges every *.conf under master.d/
+  # automatically, so that stage stays cleanly decoupled from this one and
+  # only applies once it has actually run.
   # ---------------------------------------------------------------------------
 
     - name: "6 | Write /etc/salt/master"
@@ -479,7 +448,7 @@
         dest: /etc/salt/master
         content: |
           # Example Music — Salt master config
-          # Written by salt_master.yml on {{ ansible_date_time.iso8601 }}
+          # Written by 10-master.yml on {{ ansible_date_time.iso8601 }}
           interface: 0.0.0.0
           publish_port: 4505
           ret_port: 4506
@@ -512,7 +481,7 @@
   # ---------------------------------------------------------------------------
 
     - name: "7 | Resolve environment"
-      include_tasks: ../../tasks/nodeinfo_environment.yml
+      include_tasks: ../../../tasks/nodeinfo_environment.yml
 
     - name: "7 | Set salt_environment"
       set_fact:
@@ -525,7 +494,7 @@
         mode: "0755"
 
     - name: "7 | Write /etc/example-music/nodeinfo.json"
-      include_tasks: ../../tasks/nodeinfo.yml
+      include_tasks: ../../../tasks/nodeinfo.yml
       vars:
         nodeinfo_hostname: "{{ salt_hostname }}"
         nodeinfo_role: "salt"
@@ -534,7 +503,7 @@
         nodeinfo_country: "{{ salt_site_country }}"
         nodeinfo_entity: "{{ salt_site_entity }}"
         nodeinfo_environment: "{{ salt_environment | default('production') }}"
-        nodeinfo_bootstrapped_by: "salt_master.yml"
+        nodeinfo_bootstrapped_by: "10-master.yml"
         nodeinfo_extra:
           static_ip: "{{ salt_static_ip }}"
           salt_version_major: "{{ salt_version_major }}"
@@ -548,11 +517,11 @@
       debug:
         msg:
           - "════════════════════════════════════════════════════════════════"
-          - "  SETUP COMPLETE — {{ salt_hostname }}"
+          - "  SALT MASTER SETUP COMPLETE — {{ salt_hostname }}"
           - "════════════════════════════════════════════════════════════════"
           - "  Site        : {{ salt_site_code }} — {{ salt_site_city }}, {{ salt_site_country }}"
           - "  Hostname    : {{ salt_hostname }}"
-          - "  Static IP   : {{ salt_static_ip }} (active on next reboot)"
+          - "  Static IP   : {{ salt_static_ip }} ({{ 'active' if not _salt_activate_would_strand_session | default(false) else 'active on next reboot, or run: nmcli connection up salt-static' }})"
           - "  Salt version: {{ salt_version_major }}.x (pinned)"
           - "  Ports       : 4505/tcp (publish), 4506/tcp (return)"
           - "════════════════════════════════════════════════════════════════"
@@ -563,7 +532,7 @@
           - "    3. salt-key -L on this host to see the new minion's unaccepted key"
           - "    4. salt-key -a <minion-name> to accept it"
           - "    5. salt '<minion-name>' test.ping to confirm check-in"
-          - "  Not yet built: SaltGUI web dashboard (see playbooks/salt/README.md)"
+          - "  Next stage: playbooks/salt/playbooks/20-saltgui.yml (salt-api + SaltGUI)"
           - "════════════════════════════════════════════════════════════════"
 
   # ---------------------------------------------------------------------------
@@ -576,6 +545,10 @@
       systemd:
         name: NetworkManager
         state: restarted
+
+    - name: Reload NetworkManager connections
+      ansible.builtin.command: nmcli connection reload
+      changed_when: true
 
     - name: Update apt cache
       apt:

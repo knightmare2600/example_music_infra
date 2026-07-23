@@ -90,7 +90,7 @@ already has, not the target machine pulling one over the network.
 > AMD64 (or 32-bit x86) only, regardless of the 3008.x line staying current.
 
 > **Version alignment — read before fetching a replacement.** `EXASLTCLD001` (the master,
-> `ansible/playbooks/salt/salt_master.yml`) pins its Debian package install to
+> `ansible/playbooks/salt/playbooks/10-master.yml`) pins its Debian package install to
 > `group_vars/salt_servers/main.yml`'s `salt_version_major` (currently `3008`). The Windows
 > installer here **must be from the same major line** — master and minions on mismatched
 > major versions is an unsupported combination upstream. If you bump one, bump both, in the
@@ -147,7 +147,7 @@ add `/quiet /norestart` if a fully silent run is wanted.
 
 ## Verifying check-in
 
-`ansible/playbooks/salt/salt_master.yml` is fully built (v1.0.0, incl. gitfs/git_pillar) — this
+`ansible/playbooks/salt/site.yml` is fully built (incl. gitfs/git_pillar and SaltGUI) — this
 step assumes the physical/cloud host it targets, `EXASLTCLD001`, has actually been provisioned
 and that playbook run against it. If it hasn't yet, do that first.
 
@@ -199,7 +199,7 @@ Outbound from every Windows node (client, server, DC):
 | Document | Relevance |
 |----------|-----------|
 | `ansible/playbooks/windows_bootstrap/README.md` | Where `82-salt-minion.yml` sits in the overall chain |
-| `ansible/playbooks/salt/README.md` | Salt master build (`salt_master.yml`), version-alignment details |
+| `ansible/playbooks/salt/README.md` | Salt master build (`site.yml`'s numbered-stage chain), version-alignment details |
 | `salt/README.md` | States/pillar layout, gitfs/git_pillar delivery mechanism, `screenprint` module |
 | `benarbejde/role_codes.csv` (`SLT` row) | Salt master role code, standard `.22` slot, scope note |
 | `benarbejde/generate_inventory.py` (`DEVICE_GROUP_MAP` comment) | Why `SUR`→`windows_laptop` and `TAB` is conditional on OS |
