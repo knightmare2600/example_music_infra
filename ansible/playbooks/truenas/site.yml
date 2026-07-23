@@ -1,0 +1,62 @@
+---
+# =============================================================================
+# truenas/site.yml
+# Example Music Limited — TrueNAS (site NAS/SAN) onboarding
+# =============================================================================
+# Configures an already-installed, already-networked TrueNAS box (the .19
+# standard slot, EXANAS<SITE>001) via arensb/ansible-truenas. Install is NOT
+# done here and never will be -- this collection has no bootstrap/install
+# capability of its own (checked directly against its real module list,
+# 2026-07-22), matching the manual-install decision already made for TrueNAS
+# (see docs/proxmox/proxmox-dcm-pbs-planning.md's Site Storage section).
+# Robert installs by hand, then completes TrueNAS's own web-UI first-run
+# setup (admin password, static .19 IP, SSH enabled, at least one pool
+# created) before this playbook ever touches the box.
+#
+# No network/IP reconfiguration happens anywhere in this chain -- the
+# collection has no interface/IP module at all, so unlike bind9-dns.yml/
+# rudder_server.yml/salt's own NM session-safety pattern, there is nothing
+# here for that pattern to apply to.
+#
+# Playbook order (00 = preflight, "before take off"; major steps of 10) --
+# matches the convention already used by proxmox/windows_bootstrap/salt:
+#   00-preflight   SSH keypair connectivity check + hostname/site lookup
+#   10-access       Dedicated ansible automation account, hostname, nodeinfo
+#   20-storage      Pools/datasets/shares — deliberately minimal, see that
+#                    file's own header (no real per-site spec exists yet)
+#
+# Run once per new TrueNAS box, as root via SSH password:
+#   ansible-playbook playbooks/truenas/site.yml \
+#     -i configs/inventory --limit truenas_servers --user=root -k
+#
+# Subsequent runs (ansible user + key):
+#   ansible-playbook playbooks/truenas/site.yml \
+#     -i configs/inventory --limit truenas_servers
+#
+# Standalone plays can also be run directly without site.yml, e.g.:
+#   ansible-playbook playbooks/truenas/playbooks/20-storage.yml -i configs/inventory
+# (10-access.yml and 20-storage.yml both need 00-preflight.yml's facts --
+# run those together, or via site.yml, rather than standalone.)
+#
+# Tags: preflight, access, storage
+#
+# NOT YET TESTED against a real TrueNAS box, and no real devices.csv NAS row
+# exists yet -- the truenas_servers group this targets currently has zero
+# members in every generated .ini. Also unresolved: CORE vs SCALE (per
+# proxmox-dcm-pbs-planning.md, not yet decided), and whether
+# /etc/example-music/nodeinfo.json actually survives a TrueNAS boot-
+# environment rollback/upgrade the way it does on a plain Debian box --
+# unverified either way.
+# =============================================================================
+# Changelog:
+#   2026-07-22  Initial file.
+# =============================================================================
+
+- import_playbook: playbooks/00-preflight.yml
+  tags: preflight
+
+- import_playbook: playbooks/10-access.yml
+  tags: access
+
+- import_playbook: playbooks/20-storage.yml
+  tags: storage

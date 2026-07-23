@@ -1,0 +1,86 @@
+---
+# =============================================================================
+# playbooks/20-storage.yml
+# Example Music Limited — TrueNAS: pools/datasets/shares
+# =============================================================================
+# DELIBERATELY MINIMAL. There is no benarbejde/ spec yet for what
+# datasets/shares each site's NAS actually needs -- inventing one here would
+# be guessing at real business requirements this repo's own conventions
+# explicitly avoid doing (see benarbejde/extracted_credentials.json's own
+# "never invented, guessed, or defaulted without a real source" rule,
+# same principle applied here to storage layout, not credentials). This
+# creates exactly one general-purpose dataset as a safe, reviewable
+# starting point -- treat it as a placeholder to build on once real
+# per-site requirements exist, not a finished design.
+#
+# Pool creation is NOT done here and arensb/ansible-truenas has no module
+# for it at all (checked its full module list, 2026-07-22 -- 24 modules,
+# none create a pool) -- which disks form a pool is a hardware-specific,
+# one-time decision made through TrueNAS's own web UI during initial setup,
+# same "install-time, hands-off, out of band" treatment this repo already
+# gives Proxmox's rpool/vmbr0. nas_pool_name (host_vars, no default here on
+# purpose) must name a pool that already exists.
+#
+# Needs 00-preflight.yml/10-access.yml to have already run -- run together,
+# or via site.yml, rather than standalone.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/truenas/playbooks/20-storage.yml
+#
+# Tags: storage
+#
+# NOT YET TESTED against a real TrueNAS box. Parameter names ARE confirmed --
+# checked against `ansible-doc -j arensb.truenas.filesystem`'s real argspec
+# (arensb.truenas 2.0.3 installed locally 2026-07-22), not just the
+# collection's rendered docs. syntax-check passes against the installed
+# collection. What's still unverified is purely behavioural -- whether this
+# actually creates the dataset correctly against a real middleware daemon.
+# =============================================================================
+# Changelog:
+#   2026-07-22  Initial file.
+# =============================================================================
+
+- name: TrueNAS — storage (pools/datasets/shares)
+  hosts: truenas_servers
+  become: true
+  gather_facts: false
+  ignore_unreachable: false
+
+  environment:
+    middleware_method: midclt
+
+  pre_tasks:
+
+    - name: "Validate nas_pool_name is set"
+      assert:
+        that:
+          - nas_pool_name is defined and nas_pool_name != ""
+        fail_msg: >
+          nas_pool_name must be set in host_vars/{{ inventory_hostname }}/main.yml --
+          this is the name of a pool already created through TrueNAS's own web UI
+          (see this file's own header; there is no Ansible module to create one).
+        success_msg: "nas_pool_name={{ nas_pool_name }} — proceeding."
+
+  tasks:
+
+    - name: "1 | Ensure a general-purpose dataset exists"
+      arensb.truenas.filesystem:
+        name: "{{ nas_pool_name }}/general"
+        type: FILESYSTEM
+        comments: "Ansible-managed placeholder dataset — real per-site layout not yet specified"
+        create_ancestors: true
+        state: present
+
+    - name: "Summary"
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  STORAGE SETUP COMPLETE — {{ inventory_hostname }}"
+          - "════════════════════════════════════════════════════════════════"
+          - "  Pool     : {{ nas_pool_name }}"
+          - "  Dataset  : {{ nas_pool_name }}/general (placeholder only)"
+          - "════════════════════════════════════════════════════════════════"
+          - "  NOT DONE: real per-site dataset/share layout — this stage only"
+          - "  creates one general-purpose dataset until a real spec exists."
+          - "  No shares (NFS/SMB) configured at all yet."
+          - "════════════════════════════════════════════════════════════════"

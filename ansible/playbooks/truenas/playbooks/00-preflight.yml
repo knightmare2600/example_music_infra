@@ -1,0 +1,111 @@
+---
+# =============================================================================
+# playbooks/00-preflight.yml
+# Example Music Limited — TrueNAS preflight
+# =============================================================================
+# Two plays, matching the "00-preflight" convention already used by
+# proxmox/playbooks/00-preflight.yml, windows_bootstrap/, windows_dc/, and
+# salt/playbooks/00-preflight.yml:
+#
+#   Play 1 — real SSH keypair connectivity check (tasks/ssh_key_preflight.yml),
+#            auto-skipped for the documented password-authenticated
+#            first-ever-onboard path (site.yml run as --user=root -k).
+#   Play 2 — hostname parse (EXANAS<SITE>001 -- tasks/hostname_facts.yml,
+#            already generic across every EXA[ROLE][SITE][NNN] hostname, no
+#            TrueNAS-specific change needed) + sites.csv lookup for
+#            city/country/entity, mirroring proxmox/00-preflight.yml's Play 2
+#            -- NAS is a per-site standard-slot role like PVE, not a single
+#            fixed CLD host like Salt/Rudder, so there's no hostname/IP to
+#            prompt for here (that comes from devices.csv once a real row
+#            exists, same as any other per-site role).
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/truenas/playbooks/00-preflight.yml
+#
+# Tags: preflight
+#
+# PRESUMPTION, not verified: this assumes root SSH (or an equivalent account)
+# is already reachable by the time this runs -- i.e. Robert has already
+# completed TrueNAS's own web-UI first-run setup (admin password, static
+# .19 IP, SSH service enabled) out of band, the same "already-installed,
+# already-networked" scope arensb/ansible-truenas itself documents. This
+# playbook has no bootstrap/install capability and never will.
+# =============================================================================
+# Changelog:
+#   2026-07-22  Initial file.
+# =============================================================================
+
+- name: TrueNAS — Preflight (SSH keypair connectivity check)
+  hosts: truenas_servers
+  gather_facts: false
+  tasks:
+    - name: Real SSH connectivity check using the configured key
+      include_tasks: ../../../tasks/ssh_key_preflight.yml
+      vars:
+        # Auto-skip for the documented password-authenticated first-ever-onboard
+        # path (site.yml run as --user=root -k) -- a broken/missing private key
+        # is irrelevant when this run isn't using one at all. Neither var is
+        # ever set on a genuinely key-based run.
+        ssh_key_preflight_skip: "{{ (ansible_ssh_pass is defined) or ((ansible_password | default('')) != '') }}"
+      tags: preflight
+
+- name: TrueNAS — Preflight (site lookup)
+  hosts: truenas_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    sites_csv_src: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
+
+  tasks:
+
+    - name: Include hostname facts
+      include_tasks: ../../../tasks/hostname_facts.yml
+      tags: preflight
+
+    - name: Load sites.csv
+      read_csv:
+        path: "{{ sites_csv_src }}"
+      register: nas_sites_raw
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags: preflight
+
+    - name: Look up this node's site row
+      set_fact:
+        nas_site_row: "{{ nas_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
+      tags: preflight
+
+    - name: WARN — site code not found in sites.csv
+      debug:
+        msg: >
+          host_site='{{ host_site }}' (parsed from hostname
+          '{{ inventory_hostname }}') was not found in sites.csv.
+          nodeinfo.json city/country/entity fields will be blank.
+      when: nas_site_row == {}
+      tags: preflight
+
+    - name: Set site enrichment facts
+      set_fact:
+        nas_city: "{{ nas_site_row.City | default('') }}"
+        nas_country: "{{ nas_site_row.Country | default('') }}"
+        nas_entity: "{{ nas_site_row.Entity | default('') }}"
+      tags: preflight
+
+    - name: "[Preflight] Resolve environment"
+      ansible.builtin.include_tasks: ../../../tasks/nodeinfo_environment.yml
+      tags: preflight
+
+    - name: "[Preflight] Set nas_environment"
+      ansible.builtin.set_fact:
+        nas_environment: "{{ resolved_environment }}"
+      tags: preflight
+
+    - name: Show preflight summary
+      debug:
+        msg:
+          - "Host      : {{ inventory_hostname }} (site={{ host_site }})"
+          - "Site data : city={{ nas_city }} country={{ nas_country }} entity={{ nas_entity }}"
+          - "Environment: {{ nas_environment }}"
+      tags: preflight

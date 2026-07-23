@@ -366,6 +366,13 @@ DEVICE_GROUP_MAP = {
   "SVR": "windows_server",
   "DCS": "windows_dc",
   "FWL": "firewalls",
+  # NAS (2026-07-22, ansible/playbooks/truenas/ added the same day): without this, a real
+  # devices.csv NAS row would fall into the generic site_devices catch-all instead of a
+  # targetable group -- matches FWL/DCS/etc's own treatment. No real row exists yet (the
+  # .19 slot is reserved, not deployed -- see docs/proxmox/proxmox-dcm-pbs-planning.md's
+  # Site Storage section), so this has no effect on any currently-generated .ini until one
+  # is added.
+  "NAS": "truenas_servers",
 }
 
 # Manageability default when devices.csv's own Managed column is blank (true for every row at the
@@ -374,7 +381,8 @@ DEVICE_GROUP_MAP = {
 # reasonable signal that this is something we'd actually run Ansible against; an appliance OS
 # (or no OS at all — a switch, a coffee machine, a payment terminal) is not.
 MANAGEABLE_OS_PATTERN = re.compile(
-  r"windows|debian|ubuntu|trixie|bookworm|bullseye|noble|red ?hat|rhel|centos|rocky|almalinux",
+  r"windows|debian|ubuntu|trixie|bookworm|bullseye|noble|red ?hat|rhel|centos|rocky|almalinux"
+  r"|truenas",
   re.IGNORECASE,
 )
 
@@ -713,19 +721,41 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
       f"{wap_lines}"
     )
 
-  # FWL1 collision guard (2026-07-21, same skip-if-a-real-row-already-covers-it pattern as
-  # BMC/WAP above): VRK's own devices.csv row (VRK,FWL,1,69 -- the vRACK firewall's own WAN
-  # face) computes to the exact same hostname as the standard-template FWL1 line below (both
-  # role=FWL, instance=1) -- found live as a real EXAFWLVRK001 duplicate-hostname collision in
-  # vrk.ini, two entries with two different IPs (fixed the wrong IP above; this fixes the
-  # duplicate line itself). Only VRK has a real devices.csv FWL row today, but this is written
-  # generically -- any other site that ever gets one is covered the same way.
-  fwl1_covered_by_real_device = any(
-    dev["type"] == "FWL" and dev["hostname"] == hostnames["FWL1"] for dev in site_devices
-  )
+  # Standard-slot collision guard (originally added 2026-07-21 for FWL1/EXAFWLVRK001 only --
+  # VRK's own devices.csv row (VRK,FWL,1,69, the vRACK firewall's own WAN face) computed to the
+  # exact same hostname as the standard-template FWL1 line, a real EXAFWLVRK001 duplicate-
+  # hostname collision in vrk.ini. Swept 2026-07-22 to every other role+instance line in this
+  # function that was still unconditional/unguarded, after the identical bug turned up live in
+  # fal.ini for EXAWKSFAL001 and EXALAPFAL001 (commented placeholder vs. real device row, same
+  # hostname, two different IPs). PVE1-3 don't need this: PVE is in ALWAYS_EXCLUDE_TYPES, so no
+  # devices.csv PVE row ever reaches site_devices to collide with. BMC/WAP already had their own
+  # (octet-based) guards before this and are left as-is.
+  def covered_by_real_device(dtype, hostname):
+    return any(dev["type"] == dtype and dev["hostname"] == hostname for dev in site_devices)
+
   fwl1_line = (
     f"{hostnames['FWL1']}  ansible_host={vals['FWL1']}  ansible_user=ansible  ansible_connection=ssh\n"
-    if not fwl1_covered_by_real_device else ""
+    if not covered_by_real_device("FWL", hostnames["FWL1"]) else ""
+  )
+  fwl2_line = (
+    f"{hostnames['FWL2']}  ansible_host={vals['FWL2']}  ansible_user=ansible  ansible_connection=ssh"
+    if not covered_by_real_device("FWL", hostnames["FWL2"]) else ""
+  )
+  dcs1_line = (
+    f"{hostnames['DCS1']}  ansible_host={vals['DCS1']}\n"
+    if not covered_by_real_device("DCS", hostnames["DCS1"]) else ""
+  )
+  dcs2_line = (
+    f"# {hostnames['DCS2']}  ansible_host={vals['DCS2']}"
+    if not covered_by_real_device("DCS", hostnames["DCS2"]) else ""
+  )
+  wks1_line = (
+    f"# {hostnames['WKS1']}  ansible_host={vals['WKS1']}"
+    if not covered_by_real_device("WKS", hostnames["WKS1"]) else ""
+  )
+  lap1_line = (
+    f"# {hostnames['LAP1']}  ansible_host={vals['LAP1']}"
+    if not covered_by_real_device("LAP", hostnames["LAP1"]) else ""
   )
 
   for dev in site_devices:
@@ -815,20 +845,19 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
 # ==================================================================================================
 
 [firewalls]
-{fwl1_line}{hostnames['FWL2']}  ansible_host={vals['FWL2']}  ansible_user=ansible  ansible_connection=ssh{extra_for('firewalls')}
+{fwl1_line}{fwl2_line}{extra_for('firewalls')}
 
 [windows_dc]
-{hostnames['DCS1']}  ansible_host={vals['DCS1']}
-# {hostnames['DCS2']}  ansible_host={vals['DCS2']}{extra_for('windows_dc')}
+{dcs1_line}{dcs2_line}{extra_for('windows_dc')}
 
 [windows_server:children]
 windows_dc
 {windows_server_extra_block}
 [windows_desktop]
-# {hostnames['WKS1']}  ansible_host={vals['WKS1']}{extra_for('windows_desktop')}
+{wks1_line}{extra_for('windows_desktop')}
 
 [windows_laptop]
-# {hostnames['LAP1']}  ansible_host={vals['LAP1']}{extra_for('windows_laptop')}
+{lap1_line}{extra_for('windows_laptop')}
 
 [pvenodes]
 {hostnames['PVE1']}  ansible_host={vals['PVE1']}
@@ -1269,6 +1298,26 @@ def emit_site_grains_pillar(csv_path: Path) -> str:
     lines.append(f"    entity: \"{data['entity']}\"")
   return "\n".join(lines) + "\n"
 
+
+def emit_sites_json(csv_path: Path) -> str:
+  """
+  Prints one Proxmox pool ID per sites.csv row (the site code itself, uppercased -- matches
+  bootstrap/web/proxmox/manage-pool.py's own SITE_CODES naming exactly, no prefix or other
+  transform) as a JSON array to stdout. Added 2026-07-22 so
+  playbooks/proxmox/playbooks/35-pools.yml can stop reading sites.csv directly (deferred from
+  2026-07-19 -- see that file's own header comment: "eventually this probably moves to reading
+  from a benarbejde/*.json generated file instead of sites.csv directly"). The pool-ID
+  derivation now lives here, the one place site-code-derived facts get computed, instead of
+  being re-derived ad hoc in the playbook's own Jinja (map('upper')). Deliberately just the pool
+  IDs, not the full row -- pool creation is the only consumer today and needs nothing else from
+  sites.csv; add fields here if a future consumer needs them, rather than shipping unused ones
+  now.
+  """
+  rows = list(csv.DictReader(csv_path.open()))
+  validate_csv_structure(rows)
+  pool_ids = sorted({r["Site"].strip().upper() for r in rows if r["Site"].strip()})
+  return json.dumps(pool_ids)
+
 # ==================================================================================================
 # Generator
 # ==================================================================================================
@@ -1431,6 +1480,12 @@ def main():
          "generate DNS records from the exact same data the .ini generator uses."
   )
   parser.add_argument(
+    "--emit-sites-json", action="store_true",
+    help="Print the list of Proxmox pool IDs (one per sites.csv row, site code uppercased) as a "
+         "JSON array to stdout — used by playbooks/proxmox/playbooks/35-pools.yml instead of "
+         "reading sites.csv directly."
+  )
+  parser.add_argument(
     "--emit-group-vars", action="store_true",
     help="Write ansible/configs/inventory/group_vars/all/site_services.yml — well-known service "
          "addresses (provisioning servers, DNS, Ansible control node, PBX, Rudder, WAC) derived "
@@ -1474,6 +1529,8 @@ def main():
     load_address_policy(policy_path, role_codes_path)
     if args.emit_devices_json:
       emit_devices_for_dns(args.csv, devices_path)
+    elif args.emit_sites_json:
+      print(emit_sites_json(args.csv))
     elif args.emit_group_vars:
       group_vars_out = args.group_vars_out or (
         Path(__file__).resolve().parent.parent / "ansible" / "configs" / "inventory" / "group_vars"

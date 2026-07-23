@@ -1,0 +1,117 @@
+---
+# =============================================================================
+# playbooks/10-access.yml
+# Example Music Limited — TrueNAS: ansible automation account + hostname + nodeinfo
+# =============================================================================
+# Gets a TrueNAS box under full, ongoing Ansible management: the dedicated
+# `ansible` automation account (matching every other host in this estate --
+# key/sudo-only, NOT the root account this play authenticates as on a first
+# run), hostname, and /etc/example-music/nodeinfo.json.
+#
+# arensb.truenas.user manages TrueNAS's own middleware-tracked accounts, not
+# a plain /etc/passwd entry -- linux/tools.yml's ansible.builtin.user tasks
+# do NOT apply here and must never be pointed at a TrueNAS host.
+#
+# sudo/sudo_nopasswd (real boolean parameters, confirmed 2026-07-22 against
+# the installed collection's own argspec via `ansible-doc -j
+# arensb.truenas.user` -- an earlier draft of this file guessed at
+# sudo_commands_nopasswd: [ALL] instead, a real but different parameter
+# that only grants sudo for a literal command named "ALL", not blanket
+# access; caught before it shipped by checking the real module, not just
+# the collection's rendered docs) grant full passwordless sudo, matching
+# every other host's "ansible has passwordless sudo" convention in this
+# estate exactly.
+#
+# First run (before the ansible account exists, using root + password):
+#   ansible-playbook playbooks/truenas/playbooks/10-access.yml \
+#     --limit truenas_servers --user root -k
+# Subsequent runs (ansible user + key):
+#   ansible-playbook playbooks/truenas/playbooks/10-access.yml \
+#     --limit truenas_servers
+#
+# Needs 00-preflight.yml's facts (host_site/nas_city/nas_country/nas_entity/
+# nas_environment) -- run together, or via site.yml, rather than standalone.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/truenas/playbooks/10-access.yml
+#
+# Tags: access
+#
+# NOT YET TESTED against a real TrueNAS box. Parameter names ARE confirmed --
+# arensb.truenas 2.0.3 installed locally 2026-07-22 and every parameter used
+# below checked against `ansible-doc -j arensb.truenas.user`/`.hostname`'s
+# real argspec, not just the collection's rendered docs (which is how the
+# sudo/sudo_nopasswd fix above was caught). syntax-check passes against the
+# installed collection. What's still unverified is purely behavioural --
+# whether these calls actually do the right thing against a real
+# middleware daemon.
+# =============================================================================
+# Changelog:
+#   2026-07-22  Initial file.
+# =============================================================================
+
+- name: TrueNAS — ansible account, hostname, nodeinfo
+  hosts: truenas_servers
+  become: true
+  gather_facts: false
+  ignore_unreachable: false
+
+  environment:
+    # midclt over client -- "older, more established" per the collection's own README,
+    # vs. client being described there as "newer, faster but less-tested." Matches this
+    # repo's general preference for the more conservative option on anything touching a
+    # box's own config store (same reasoning as auto_accept: false elsewhere).
+    middleware_method: midclt
+
+  tasks:
+
+    - name: "1 | Ensure ansible automation account exists"
+      arensb.truenas.user:
+        name: ansible
+        comment: "Ansible automation account"
+        create_group: true
+        shell: /usr/bin/bash
+        ssh_authorized_keys:
+          - "{{ exa_ansible_pub_key }}"
+        password_disabled: true
+        sudo: true
+        sudo_nopasswd: true
+        state: present
+
+    - name: "2 | Set hostname fact (EXANAS<SITE>NNN, parsed by 00-preflight's hostname_facts.yml)"
+      ansible.builtin.set_fact:
+        nas_hostname: "EXA{{ host_role }}{{ host_site }}{{ host_num }}"
+
+    - name: "2 | Set hostname"
+      arensb.truenas.hostname:
+        name: "{{ nas_hostname | lower }}"
+
+    - name: "3 | Ensure /etc/example-music directory exists"
+      ansible.builtin.file:
+        path: /etc/example-music
+        state: directory
+        mode: "0755"
+
+    - name: "3 | Write /etc/example-music/nodeinfo.json"
+      include_tasks: ../../../tasks/nodeinfo.yml
+      vars:
+        nodeinfo_hostname: "{{ nas_hostname }}"
+        nodeinfo_role: "truenas"
+        nodeinfo_site: "{{ host_site }}"
+        nodeinfo_city: "{{ nas_city }}"
+        nodeinfo_country: "{{ nas_country }}"
+        nodeinfo_entity: "{{ nas_entity }}"
+        nodeinfo_environment: "{{ nas_environment | default('production') }}"
+        nodeinfo_bootstrapped_by: "truenas/playbooks/10-access.yml"
+        nodeinfo_extra:
+          role_note: "Site NAS/SAN, .19 standard slot"
+
+    - name: "Summary"
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  ANSIBLE ACCESS SETUP COMPLETE — {{ nas_hostname }}"
+          - "════════════════════════════════════════════════════════════════"
+          - "  Site        : {{ host_site }} — {{ nas_city }}, {{ nas_country }}"
+          - "  Next stage  : playbooks/truenas/playbooks/20-storage.yml"
+          - "════════════════════════════════════════════════════════════════"

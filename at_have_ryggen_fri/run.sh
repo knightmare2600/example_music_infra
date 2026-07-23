@@ -131,6 +131,29 @@
 #      value) sitting silently uncaught in one of the ported files -- this
 #      is the check that would have caught it without needing a human to
 #      spot it by eye.
+#  22. check_duplicate_devices.py -- every generated ansible/configs/inventory/
+#      <site>.ini and generate_inventory.py --emit-devices-json's merged output
+#      for the same hostname appearing twice at two different IPs: a standard-
+#      slot template line and a real devices.csv row colliding on the same
+#      role+instance number. Added 2026-07-22 after this exact bug turned up
+#      live twice -- EXAFWLVRK001 in vrk.ini (904ddd0) and EXAWKSFAL001/
+#      EXALAPFAL001 in fal.ini, both found only by eye, with nothing
+#      previously checking for it automatically. bind9-dns.yml's zone
+#      templates consume --emit-devices-json via a Jinja `first` filter,
+#      which would silently pick one IP and drop the other rather than
+#      erroring -- this check is the only thing that catches that class of
+#      bug before it reaches a live zone file.
+#  23. check_network_session_safety.py -- every ansible/playbooks/ and
+#      ansible/tasks/ YAML file for the nmcli delete+recreate-same-connection
+#      antipattern (Tier 1, hard fail) and ungated `nmcli connection up
+#      <profile>` on a profile this same file templates (Tier 2,
+#      informational unless --strict). Added 2026-07-22 after the exact same
+#      bug -- unconditional `nmcli con delete X` + `nmcli con add ... con-name
+#      X` on every run, no idempotency check, always reporting "changed" --
+#      turned up live in bind9-dns.yml (killed Robert's SSH session on
+#      EXADNSVRK001), then the identical copy-pasted pattern in
+#      rudder_server.yml and salt/playbooks/10-master.yml, all fixed by hand
+#      with nothing catching a fourth instance automatically.
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -288,6 +311,28 @@
 #               directly instead of hardcoding a copy; this check keeps the
 #               third (docs/emojis/README.md, deliberately still hand-
 #               maintained prose) honest against it.
+#   2026-07-22  Added check_duplicate_devices.py (section 22), during a sweep
+#               for other instances of the EXAFWLVRK001-style collision (904ddd0)
+#               across every standard-slot role in generate_inventory.py's
+#               build_ini(). Found two more, live, uncaught: EXAWKSFAL001 and
+#               EXALAPFAL001 in fal.ini, each with a commented placeholder and
+#               a real devices.csv row at different IPs. Fixed the same guard
+#               pattern generically (FWL2/DCS1/DCS2/WKS1/LAP1, alongside
+#               FWL1) and added this check so a future role or devices.csv
+#               edit can't reintroduce the class silently.
+#   2026-07-22  Added check_network_session_safety.py (section 23) --
+#               deferred item from the bind9-dns.yml SSH-session-kill
+#               incident, picked up after the identical delete+recreate
+#               pattern was found and fixed by hand a second and third time
+#               (rudder_server.yml, salt/playbooks/10-master.yml) in the
+#               same week. Verified it has real teeth: 0 Tier 1 hits against
+#               the three now-fixed files, 1 honest Tier 2 finding against
+#               roles/firewall/tasks/06_network_manager.yml's own reviewed
+#               `nmcli con up lan` (no strand-check, but LAN is never the
+#               interface Ansible's session rides -- a human judgement call
+#               this script can't know, hence Tier 2 not Tier 1), and a hard
+#               Tier 1 fail when tested against a reconstructed copy of the
+#               original broken rudder_server.yml snippet.
 # ==============================================================================
 set -uo pipefail
 
@@ -726,6 +771,37 @@ else
   echo "$out"
   fail "Salt state issue(s) found -- see above."
   FAILED_CHECKS+=("check_salt_states.py")
+fi
+
+section "22. Duplicate hostname/IP collisions — check_duplicate_devices.py"
+
+if out=$(python3 "${HERE}/check_duplicate_devices.py"); then
+  echo "$out"
+  success "No standard-slot template line collides with a real devices.csv row on the same hostname."
+else
+  echo "$out"
+  fail "Duplicate hostname/IP collision(s) found -- see above."
+  FAILED_CHECKS+=("check_duplicate_devices.py")
+fi
+
+section "23. Network session safety — check_network_session_safety.py"
+
+net_out=$(python3 "${HERE}/check_network_session_safety.py")
+net_rc=$?
+echo "$net_out"
+net_tier2_count=$(echo "$net_out" | grep -oE '^[0-9]+ informational finding' | grep -oE '^[0-9]+' || true)
+if [[ $net_rc -ne 0 ]]; then
+  fail "nmcli delete+recreate-same-connection antipattern found -- see above."
+  FAILED_CHECKS+=("check_network_session_safety.py")
+elif [[ -n "$net_tier2_count" && "$net_tier2_count" -gt 0 ]]; then
+  if $STRICT; then
+    fail "${net_tier2_count} ungated nmcli connection-up finding(s) -- see above. Failing because --strict was passed."
+    FAILED_CHECKS+=("check_network_session_safety.py (--strict: ungated connection-up)")
+  else
+    warn "${net_tier2_count} ungated nmcli connection-up finding(s) (see above) -- informational, confirm by hand. Re-run with --strict to fail on this."
+  fi
+else
+  success "No nmcli delete+recreate or ungated connection-up findings."
 fi
 
 # ------------------------------------------------------------------------------

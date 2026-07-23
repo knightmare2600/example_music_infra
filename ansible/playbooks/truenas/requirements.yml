@@ -1,0 +1,9 @@
+# requirements.yml
+# Install with: ansible-galaxy collection install -r requirements.yml
+#
+# Provides the TrueNAS-specific modules used by playbooks/00-preflight.yml,
+# playbooks/10-access.yml, and playbooks/20-storage.yml.
+
+collections:
+  - name: arensb.truenas   # arensb.truenas.user/hostname/filesystem
+    version: ">=2.0.0"
