@@ -109,6 +109,18 @@ The script provides:
 
 ## 5.3 Script (Production Baseline)
 
+> **Materialised 2026-07-22:** this code block is now also a real file,
+> `benarbejde/kpcli_wrapper.py` (byte-for-byte the corrected version below,
+> plus a header pointing back here) — previously it only existed here, as
+> doc-embedded code, never an actual path anyone could run. First real
+> caller: `playbooks/salt/playbooks/20-saltgui.yml`'s post-run summary,
+> which prints the exact `add` invocation for the new `saltgui` local
+> account's credential — same "human-triggered script, never an Ansible
+> task" posture as `push_credentials_to_keepass.py` (§7a), used here instead
+> of that script's own `extracted_credentials.json` flow because this is a
+> one-off local service-account login, not a devices.csv-shaped hardware
+> credential `GROUP_FOR_ROLE` has a mapping for.
+
 ```python
 #!/usr/bin/env python3
 
