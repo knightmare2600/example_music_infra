@@ -479,9 +479,15 @@ twice on 2026-07-20: first widened from "client endpoints only" to include `SVR`
 Rudder plan's broader documented scope above — nothing was ever built under that scope,
 which is why the earlier `RDR`→`RUD` role-code rename was safe.
 
+Numbered-stage chain (2026-07-22, `salt/site.yml` orchestrator — matches
+`proxmox`/`windows_bootstrap`/`windows_dc`'s own `00-preflight`/major-step-of-10 convention):
+
 | Playbook | What it does |
 |----------|-------------|
-| `salt_master.yml` | Bootstraps EXASLTCLD001 — hostname, static IP, packages, UFW, Salt master install (version-pinned), master config, sentinel |
+| `salt/site.yml` | Orchestrator — imports the three stages below in order |
+| `salt/playbooks/00-preflight.yml` | SSH keypair connectivity check + prompts/validates required host variables |
+| `salt/playbooks/10-master.yml` | Hostname, static IP, packages, UFW, Salt master install (version-pinned), master config, nodeinfo |
+| `salt/playbooks/20-saltgui.yml` | `salt-api` + SaltGUI web dashboard — dedicated local PAM account, not `ansible` |
 
 Minions are installed by `ansible/playbooks/windows_bootstrap/playbooks/
 82-salt-minion.yml` (not by anything in `playbooks/salt/`), targeting `windows_nodes`
@@ -509,7 +515,7 @@ masters (not expected at current scale — see Notes below) create
 **Step 3 — First run (root login, before ansible user exists)**
 
 ```bash
-ansible-playbook playbooks/salt/salt_master.yml \
+ansible-playbook playbooks/salt/site.yml \
   --limit salt_servers \
   --user root -k
 ```
@@ -533,6 +539,8 @@ salt '<minion-name>' test.ping # confirm check-in
 | `salt_version_major` | `3008` | Pinned major line — bump together with the Windows minion installer, see `buildsheet-salt-minion.md` |
 | `salt_master_auto_accept` | `false` | New minion keys require manual `salt-key -a` — deliberately not auto-accepted |
 | `sites_csv_path` | `/etc/example-music/sites.csv` | Path to sites.csv on control node |
+| `salt_saltgui_user` | `saltgui` | Dedicated local PAM account for SaltGUI login — not `ansible` |
+| `salt_saltgui_port` | `8080` | `rest_cherrypy` listener port |
 
 **host_vars/EXASLTCLD001/main.yml**
 
@@ -558,13 +566,42 @@ slot — `.22` is *not* a per-site convention, unlike `NAS`'s `.19` or `RDR`'s `
 `salt_version_major` pins the apt install via `/etc/apt/preferences.d/salt-pin` rather
 than an exact Debian package suffix (which would be brittle to guess correctly). The
 playbook asserts the installed version matches after install. Bump this value and the
-Windows installer together — see `salt_master.yml`'s own header.
+Windows installer together — see `playbooks/10-master.yml`'s own header.
 
 **States/pillar source not yet decided**
 Whether Salt states/pillar live under a new top-level `salt/` directory sourced from
 `benarbejde/`'s CSVs+JSON, or are served via `gitfs` directly from this repo, is an open
 question — not implemented yet. This playbook only gets the master running; it doesn't
 push any state.
+
+---
+
+## truenas
+
+Configures an already-installed, already-networked site NAS/SAN
+(`EXANAS<SITE>001`, the `.19` standard slot) via `arensb/ansible-truenas`.
+Install is not done here and never will be — the collection has no
+bootstrap/install capability of its own; Robert installs TrueNAS by hand,
+then completes its own web-UI first-run setup before this runs. No
+network/IP reconfiguration happens anywhere in this chain — the collection
+has no interface/IP module at all, unlike the NM session-safety pattern
+`bind9`/`rudder`/`salt` all needed.
+
+| Playbook | What it does |
+|----------|-------------|
+| `truenas/site.yml` | Orchestrator — imports the three stages below in order |
+| `truenas/playbooks/00-preflight.yml` | SSH keypair connectivity check + hostname/site lookup |
+| `truenas/playbooks/10-access.yml` | Dedicated `ansible` automation account, hostname, nodeinfo |
+| `truenas/playbooks/20-storage.yml` | Pools/datasets/shares — deliberately minimal, no real per-site spec exists yet |
+
+**No real device exists yet** — `truenas_servers` (`generate_inventory.py`'s
+`DEVICE_GROUP_MAP`) is populated automatically once a real `devices.csv`
+`Type=NAS` row exists, same mechanism `firewalls`/`windows_dc`/etc already
+use, but has zero members in every currently-generated `.ini`. See
+`truenas/README.md` for full usage and the open, unresolved items (CORE vs
+SCALE, nodeinfo.json persistence across a TrueNAS boot-environment
+rollback, real dataset/share layout) — none of this has run against a real
+box.
 
 ---
 

@@ -466,15 +466,18 @@ is a separate problem this collection doesn't touch at all, the same shape as th
 situation this repo already solved differently (`select-pve-answer.sh` + `first-boot.sh`, not
 an Ansible collection). Two distinct pieces of future work, not one:
 
-1. **Install**: iPXE-boot a bare box into TrueNAS's own installer, unattended if TrueNAS
-   supports it (not yet confirmed — needs the same kind of investigation this repo already did
-   for Proxmox's auto-install mechanism before assuming an approach will work).
-2. **Configure**: once installed and reachable, use `arensb/ansible-truenas` to set hostname,
-   pools/datasets/shares, users, and whatever else a real per-site TrueNAS needs — the same
-   two-phase shape as `first-boot.sh` (install-time) vs. the full Ansible role (everything
-   after) already established for Proxmox nodes.
-
-Deferred — not started, tracked in the repo-wide documentation-audit plan's section E.
+1. **Install** — resolved 2026-07-21: manual, box by box, not iPXE-automated. Investigated
+   directly against TrueNAS's own community forums — neither CORE (FreeBSD-based) nor SCALE
+   (Debian-based) has any answer-file/kickstart hook in their installer, in any form (ISO, PXE,
+   or USB). Manual install sidesteps this rather than chasing a fragile netboot path. See
+   `at_have_ryggen_fri`/memory `project_truenas_manual_install_ansible_followup` for the full
+   investigation.
+2. **Configure** — built 2026-07-22: `ansible/playbooks/truenas/` (`site.yml` +
+   `00-preflight`/`10-access`/`20-storage`, `arensb/ansible-truenas`) sets hostname, the
+   dedicated `ansible` automation account, nodeinfo, and a placeholder dataset. No network/IP
+   task anywhere — the collection has no interface module at all. Not yet run against a real
+   box; `20-storage.yml` deliberately creates only one general-purpose dataset until a real
+   per-site dataset/share layout is defined. See `ansible/playbooks/truenas/README.md`.
 
 ---
 
@@ -489,8 +492,8 @@ Deferred — not started, tracked in the repo-wide documentation-audit plan's se
 | PBS Phase 2 | Roll `EXAPBS<SITE>001` out across the remaining sites, one at a time, per the "Renumbering / Reworking Live Conventions" migration procedure — not a single estate-wide blast | Enterprise support active per site as it's onboarded |
 | DCM Phase 2 | Register every site's PVE cluster + local PBS as PDM remotes as each comes online; configure RBAC and AD auth | DCM Phase 1 + at least one PBS site complete |
 | NAS — done | `.19` addressing live in `address_policy.json`, legacy FAL/PER/MEL NAS retired | — (already complete, 2026-07-19) |
-| NAS — install (deferred) | Investigate unattended TrueNAS install via iPXE, same shape as Proxmox's own solved problem | Not started |
-| NAS — configure (deferred) | `arensb/ansible-truenas` role for per-site TrueNAS configuration, once installed | NAS — install complete |
+| NAS — install | Manual install, box by box — no working answer-file/PXE mechanism exists for CORE or SCALE (investigated 2026-07-21, confirmed via TrueNAS's own community forums) | — (decision made, 2026-07-21) |
+| NAS — configure | `ansible/playbooks/truenas/` (`arensb/ansible-truenas`, site.yml + 00-preflight/10-access/20-storage) built 2026-07-22 — not yet run against a real box, no real per-site dataset/share layout defined yet | NAS — install complete on at least one site |
 
 ---
 

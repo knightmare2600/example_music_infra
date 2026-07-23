@@ -17,10 +17,12 @@
 # too, same as manage-pool.py would already do today. Not re-deriving new
 # business logic here, matching the existing tool's real behaviour.
 #
-# Deliberately deferred (2026-07-19, Robert's own call): eventually this
-# probably moves to reading from a benarbejde/*.json generated file instead
-# of sites.csv directly, matching this repo's broader single-source-of-truth
-# pattern -- not done now, sites.csv is still authoritative today.
+# JSON-file rework (2026-07-22, previously deferred 2026-07-19): pool IDs are now sourced from
+# generate_inventory.py --emit-sites-json, shelled out live on the control node -- the same
+# on-the-fly-generation pattern bind9-dns.yml already uses for --emit-devices-json, rather than
+# a second committed JSON file that needs its own freshness check. sites.csv is no longer read
+# directly here; generate_inventory.py owns the site-code-uppercasing derivation, matching this
+# repo's broader single-source-of-truth pattern.
 #
 # pvesh, not the Proxmox HTTP API / community.proxmox.proxmox_pool module --
 # no Ansible-side Proxmox API credential exists anywhere in this repo today
@@ -56,6 +58,9 @@
 # =============================================================================
 # Changelog:
 #   2026-07-19  Initial file.
+#   2026-07-22  Reworked to read pool IDs from generate_inventory.py --emit-sites-json instead
+#               of sites.csv directly (this file's own header previously deferred that). The
+#               uppercase-site-code derivation now lives in the generator, not re-derived here.
 # =============================================================================
 
 - name: Proxmox VE — ensure one pool per site
@@ -65,21 +70,23 @@
   run_once: true
 
   vars:
+    generate_inventory_script: "{{ playbook_dir }}/../../../../benarbejde/generate_inventory.py"
     sites_csv_src: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
 
   tasks:
 
-    - name: Load sites.csv from the control node
+    - name: Compute desired pool IDs via generate_inventory.py --emit-sites-json
       delegate_to: localhost
       become: false
-      ansible.builtin.read_csv:
-        path: "{{ sites_csv_src }}"
-      register: _sites_csv_raw
+      ansible.builtin.command: >
+        python3 {{ generate_inventory_script }} {{ sites_csv_src }} --emit-sites-json
+      register: _desired_pools_raw
+      changed_when: false
       tags: pools
 
-    - name: Derive desired pool IDs (one per site code, uppercase)
+    - name: Parse desired pool IDs
       ansible.builtin.set_fact:
-        _desired_pools: "{{ _sites_csv_raw.list | map(attribute='Site') | map('upper') | list }}"
+        _desired_pools: "{{ _desired_pools_raw.stdout | from_json }}"
       tags: pools
 
     - name: Query existing Proxmox pools
