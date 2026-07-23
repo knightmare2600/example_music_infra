@@ -1,0 +1,21 @@
+[connection]
+id=rudder-static
+uuid={{ (inventory_hostname + '-rudder-static') | to_uuid }}
+type=ethernet
+interface-name={{ _rudder_iface }}
+autoconnect=true
+autoconnect-priority=100
+
+[ethernet]
+
+[ipv4]
+address1={{ rudder_static_ip }}/{{ rudder_prefix | default('24') }},{{ rudder_gateway }}
+method=manual
+dns={{ rudder_dns }};
+dns-search={{ rudder_domain }};
+
+[ipv6]
+addr-gen-mode=default
+method=ignore
+
+[proxy]
