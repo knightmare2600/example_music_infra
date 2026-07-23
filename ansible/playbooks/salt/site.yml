@@ -1,0 +1,54 @@
+---
+# =============================================================================
+# salt/site.yml
+# Example Music Limited — Salt master onboarding
+# =============================================================================
+# Bootstraps a Salt master (EXASLTCLD001, or any future cloud-hosted one)
+# from a fresh Debian Trixie install to a running Salt master with SaltGUI.
+#
+# Playbook order (00 = preflight, "before take off"; major steps of 10) --
+# matches the convention already used by proxmox/windows_bootstrap/windows_dc:
+#   00-preflight    SSH keypair connectivity check + required-variable prompts
+#   10-master       Hostname, static IP, packages, UFW, Salt master install,
+#                    master config, nodeinfo
+#   20-saltgui       salt-api + SaltGUI web dashboard (dedicated PAM account)
+#
+# Run once per new Salt master, as root via SSH password:
+#   ansible-playbook playbooks/salt/site.yml \
+#     -i configs/inventory --limit salt_servers --user=root -k
+#
+# Subsequent runs (ansible user + key):
+#   ansible-playbook playbooks/salt/site.yml \
+#     -i configs/inventory --limit salt_servers
+#
+# Dry-run (check mode):
+#   ansible-playbook playbooks/salt/site.yml \
+#     -i configs/inventory --limit salt_servers --check --diff
+#
+# Standalone plays can also be run directly without site.yml, e.g.:
+#   ansible-playbook playbooks/salt/playbooks/20-saltgui.yml -i configs/inventory
+# (10-master.yml and 20-saltgui.yml both need 00-preflight.yml's facts --
+# run those together, or via site.yml, rather than standalone.)
+#
+# Tags: preflight, master, saltgui
+# =============================================================================
+# Changelog:
+#   2026-07-22  Initial file — replaces the single monolithic salt_master.yml
+#               with this numbered-stage chain (00-preflight, 10-master,
+#               20-saltgui), matching the 00-preflight/major-step-of-10
+#               convention used by proxmox/windows_dc/windows_bootstrap.
+#               Added 20-saltgui.yml (salt-api + SaltGUI web dashboard,
+#               salt/README.md's own "Not yet built" item) as its own stage
+#               rather than growing the single file further -- local PAM
+#               auth via a dedicated saltgui account, not the ansible
+#               automation account (see that file's own header for why).
+# =============================================================================
+
+- import_playbook: playbooks/00-preflight.yml
+  tags: preflight
+
+- import_playbook: playbooks/10-master.yml
+  tags: master
+
+- import_playbook: playbooks/20-saltgui.yml
+  tags: saltgui

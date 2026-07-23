@@ -50,7 +50,7 @@ This repo is public (`github.com/knightmare2600/example_music_infra`), so the
 master reads `states/` and `pillar/` straight from the plain HTTPS clone URL —
 no deploy key, no token, nothing to leak, since anyone can already read a
 public repo. Salt's actual git-backed mechanisms are two separate things, not
-one, both now configured in `ansible/playbooks/salt/salt_master.yml`'s
+one, both now configured in `ansible/playbooks/salt/playbooks/10-master.yml`'s
 Section 6:
 
 - **`gitfs`** (fileserver backend) — serves `states/` (`gitfs_root: salt/states`).
