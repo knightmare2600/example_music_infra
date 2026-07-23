@@ -31,7 +31,7 @@ salt_version_major: "3008"
 
 # -----------------------------------------------------------------------------
 # This repo's own git remote -- states/pillar are served to the master
-# straight from here via gitfs/git_pillar (Section 6 of salt_master.yml).
+# straight from here via gitfs/git_pillar (Section 6 of playbooks/10-master.yml).
 # Public repo, so a plain HTTPS URL is enough -- no credentials needed.
 # -----------------------------------------------------------------------------
 salt_gitfs_repo_url: "https://github.com/knightmare2600/example_music_infra.git"
@@ -94,3 +94,15 @@ salt_site_ufw_rules:
 # "Verifying check-in" section for the manual accept step.
 # -----------------------------------------------------------------------------
 salt_master_auto_accept: false
+
+# -----------------------------------------------------------------------------
+# SaltGUI (playbooks/salt/playbooks/20-saltgui.yml) -- salt_saltgui_user is a
+# DEDICATED local Unix/PAM account, deliberately not the ansible automation
+# account (see linux/tools.yml's "Ensure ansible account isn't locked" task --
+# ansible is key/sudo-only with no real password by design; reusing it here
+# would mean a compromised SaltGUI login also compromises the account that
+# holds passwordless sudo over SSH). salt_saltgui_port is the rest_cherrypy
+# listener port -- chosen as unused elsewhere in this repo's UFW rules.
+# -----------------------------------------------------------------------------
+salt_saltgui_user: "saltgui"
+salt_saltgui_port: 8080

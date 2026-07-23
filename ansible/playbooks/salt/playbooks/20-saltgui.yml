@@ -1,0 +1,262 @@
+---
+# =============================================================================
+# playbooks/20-saltgui.yml
+# Example Music Limited — Salt master: salt-api + SaltGUI web dashboard
+# =============================================================================
+# Installs salt-api and erwindon/SaltGUI (https://github.com/erwindon/SaltGUI)
+# -- a plain static web app served directly by salt-api's own built-in
+# rest_cherrypy server, no separate web server and no npm/node build step
+# needed (confirmed against upstream's own install docs 2026-07-22 --
+# saltgui/ ships pre-built, ready to serve, "release" tag is the latest
+# stable). This was salt/README.md's own "Not yet built" item.
+#
+# Auth: local PAM, via a DEDICATED Unix account (salt_saltgui_user, default
+# "saltgui", group_vars/salt_servers/main.yml) -- NOT the ansible automation
+# account. ansible is deliberately key/sudo-only with no real password (see
+# linux/tools.yml's "Ensure ansible account isn't locked" task and its
+# 2026-07-16 changelog entry -- clearing the admin lock bug never enabled
+# password auth on that account, on purpose). Reusing ansible here would
+# mean a compromised SaltGUI login also compromises the account that holds
+# passwordless sudo over SSH on every Linux node in the estate.
+#
+# saltgui's own password is prompted for below (never generated or stored
+# by this playbook) and shown ONCE in this play's summary, along with the
+# exact benarbejde/kpcli_wrapper.py `add` command to file it into
+# Example Music.kdbx yourself afterward -- a human-triggered script, never
+# an Ansible task, per docs/Example Music Limited — KeePassXC CLI
+# Automation.md §7a's one-way credential flow. Not
+# benarbejde/extracted_credentials.json/push_credentials_to_keepass.py --
+# that pair is shaped for devices.csv-style hardware credentials
+# (push_credentials_to_keepass.py's GROUP_FOR_ROLE has no mapping for a
+# local service-account login like this one); kpcli_wrapper.py's general
+# `add <path> <username>` is the documented tool for anything else.
+#
+# saltgui's shell is nologin -- a valid PAM password is enough for salt-api's
+# own PAM check (it authenticates via python-pam directly, never opens a
+# real shell session), so there's no reason this account should also be able
+# to get an interactive console/SSH session.
+#
+# external_auth ACL (in /etc/salt/master.d/saltgui.conf, NOT the base
+# /etc/salt/master file 10-master.yml owns -- Salt merges every *.conf under
+# master.d/ automatically, so this stays cleanly decoupled and only applies
+# once this stage has actually run):
+#   saltgui: ['.*', '@runner', '@wheel', '@jobs']
+# Full access for now -- single-operator estate, one human behind this
+# account. Narrow the ACL if/when a second SaltGUI user is ever added.
+#
+# netapi_enable_clients required for Salt 3006+ (this master pins to 3008.x,
+# see group_vars/salt_servers/main.yml's salt_version_major) -- without it,
+# salt-api's REST endpoints reject every call regardless of a correct eauth
+# login.
+#
+# TLS: disable_ssl: true for now, matching upstream's own quickest-path
+# example. Upstream's docs explicitly recommend TLS for any production
+# deployment -- NOT done here, flagged in this play's own summary rather
+# than silently shipped as if it were a finished, hardened state. Revisit
+# before treating this as anything beyond an internal, VPN/LAN-only tool.
+#
+# Control-node prerequisite: the password_hash Jinja filter below needs
+# passlib installed on the CONTROL node (not the target) for a real sha512
+# hash -- confirmed present on this control node 2026-07-22 (passlib 1.7.4).
+#
+# Needs 00-preflight.yml's facts (salt_hostname/salt_static_ip) and
+# 10-master.yml to have already configured the Salt apt repo -- run
+# together, or via site.yml, rather than standalone.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/salt/playbooks/20-saltgui.yml
+#
+# Tags: saltgui
+#
+# NOT YET TESTED against a real Salt master -- salt-api's exact rest_cherrypy
+# config keys and SaltGUI's exact app/static path layout are taken from
+# upstream's own install docs, not independently verified live. Confirm on
+# a real master before trusting this for anything beyond a first pass.
+# =============================================================================
+# Changelog:
+#   2026-07-22  Initial file.
+# =============================================================================
+
+- name: Salt master — salt-api + SaltGUI
+  hosts: salt_servers
+  become: true
+  gather_facts: false
+  ignore_unreachable: false
+
+  vars_files:
+    - ../../../configs/inventory/group_vars/salt_servers/main.yml
+
+  pre_tasks:
+
+    - name: "Prompt for the saltgui account's password if not set"
+      pause:
+        prompt: >
+          Password for the new local '{{ salt_saltgui_user }}' PAM/SaltGUI-login
+          account is not set. Enter a password now (shown once in this play's
+          summary -- add it to benarbejde/extracted_credentials.json and push
+          it into KeePassXC yourself afterward; this playbook never writes to
+          either).
+        echo: false
+      register: _saltgui_pw_prompt
+      when: salt_saltgui_password is not defined or salt_saltgui_password == ""
+      delegate_to: localhost
+      no_log: true
+
+    - name: "Set salt_saltgui_password from prompt"
+      set_fact:
+        salt_saltgui_password: "{{ _saltgui_pw_prompt.user_input }}"
+      when: _saltgui_pw_prompt is not skipped
+      no_log: true
+
+    - name: "Validate required variables are now set"
+      assert:
+        that:
+          - salt_saltgui_password is defined and salt_saltgui_password != ""
+        fail_msg: >
+          salt_saltgui_password must be set -- pass via --extra-vars or
+          answer the prompt above.
+        success_msg: "saltgui account password present — proceeding."
+
+  tasks:
+
+  # ---------------------------------------------------------------------------
+  # Section 1 — salt-api package
+  # ---------------------------------------------------------------------------
+
+    - name: "1 | Install salt-api"
+      apt:
+        name: salt-api
+        state: present
+        install_recommends: false
+        dpkg_options: "force-confold,force-confdef"
+
+  # ---------------------------------------------------------------------------
+  # Section 2 — dedicated saltgui local account (PAM login only, see header)
+  # ---------------------------------------------------------------------------
+
+    - name: "2 | Create dedicated saltgui local account"
+      ansible.builtin.user:
+        name: "{{ salt_saltgui_user }}"
+        password: "{{ salt_saltgui_password | password_hash('sha512') }}"
+        shell: /usr/sbin/nologin
+        system: false
+        state: present
+        update_password: always
+      no_log: true
+
+  # ---------------------------------------------------------------------------
+  # Section 3 — fetch SaltGUI (pre-built static files, no npm/node build)
+  # ---------------------------------------------------------------------------
+
+    - name: "3 | Clone SaltGUI (release tag) to /srv/saltgui"
+      ansible.builtin.git:
+        repo: https://github.com/erwindon/SaltGUI.git
+        dest: /srv/saltgui
+        version: release
+        depth: 1
+        force: true
+
+  # ---------------------------------------------------------------------------
+  # Section 4 — salt-api / SaltGUI config (drop-in, master.d/ -- see header
+  # for why this is separate from 10-master.yml's own /etc/salt/master)
+  # ---------------------------------------------------------------------------
+
+    - name: "4 | Write /etc/salt/master.d/saltgui.conf"
+      ansible.builtin.copy:
+        dest: /etc/salt/master.d/saltgui.conf
+        content: |
+          # Example Music — salt-api / SaltGUI config
+          # Written by 20-saltgui.yml -- see that file's own header for the
+          # full reasoning (dedicated PAM account, ACL, TLS caveat).
+          external_auth:
+            pam:
+              {{ salt_saltgui_user }}:
+                - .*
+                - '@runner'
+                - '@wheel'
+                - '@jobs'
+
+          netapi_enable_clients:
+            - local
+            - local_async
+            - runner
+            - wheel
+
+          rest_cherrypy:
+            port: {{ salt_saltgui_port }}
+            host: 0.0.0.0
+            disable_ssl: true
+            app: /srv/saltgui/saltgui/index.html
+            static: /srv/saltgui/saltgui/static
+            static_path: /static
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Restart salt-master
+        - Restart salt-api
+
+  # ---------------------------------------------------------------------------
+  # Section 5 — UFW: allow the SaltGUI port from the same ranges Salt's own
+  # publish/return ports already allow (group_vars/salt_servers/main.yml's
+  # salt_site_ufw_rules) -- same "who can reach management services on this
+  # box" boundary already established for Salt itself.
+  # ---------------------------------------------------------------------------
+
+    - name: "5 | Allow SaltGUI port from all site subnets"
+      ufw:
+        rule: allow
+        src: "{{ item }}"
+        port: "{{ salt_saltgui_port }}"
+        proto: tcp
+        comment: "SaltGUI web dashboard"
+      loop:
+        - "10.0.0.0/8"
+        - "192.168.0.0/16"
+
+  # ---------------------------------------------------------------------------
+  # Section 6 — enable + start salt-api
+  # ---------------------------------------------------------------------------
+
+    - name: "6 | Enable and start salt-api"
+      systemd:
+        name: salt-api
+        state: started
+        enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Post-run summary
+  # ---------------------------------------------------------------------------
+
+    - name: "Summary"
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  SALTGUI SETUP COMPLETE — {{ salt_hostname }}"
+          - "════════════════════════════════════════════════════════════════"
+          - "  URL          : http://{{ salt_static_ip }}:{{ salt_saltgui_port }}"
+          - "  Login user   : {{ salt_saltgui_user }}"
+          - "  Login pass   : {{ salt_saltgui_password }}"
+          - "  (shown once — nothing here writes to KeePass. File it yourself:)"
+          - ""
+          - "    python3 benarbejde/kpcli_wrapper.py \"~/KeePassXC/Example Music.kdbx\" \\"
+          - "      add \"Infrastructure/{{ salt_site_code }}/{{ salt_hostname }}-saltgui\" {{ salt_saltgui_user }}"
+          - ""
+          - "  (prompts for the vault password, then this entry's password — enter"
+          - "   the one shown above)"
+          - "════════════════════════════════════════════════════════════════"
+          - "  NOT DONE: TLS. disable_ssl: true for now — see this file's own"
+          - "  header. Do not expose this port beyond VPN/LAN before revisiting."
+          - "════════════════════════════════════════════════════════════════"
+
+  handlers:
+
+    - name: Restart salt-master
+      systemd:
+        name: salt-master
+        state: restarted
+
+    - name: Restart salt-api
+      systemd:
+        name: salt-api
+        state: restarted

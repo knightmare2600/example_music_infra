@@ -1,0 +1,111 @@
+---
+# =============================================================================
+# playbooks/00-preflight.yml
+# Example Music Limited — Salt master preflight
+# =============================================================================
+# Two plays, matching the same "00-preflight" convention already used by
+# proxmox/playbooks/00-preflight.yml and windows_bootstrap/playbooks/00-preflight.yml:
+#
+#   Play 1 — real SSH keypair connectivity check (tasks/ssh_key_preflight.yml),
+#            auto-skipped for the documented password-authenticated first-ever-
+#            onboard path (site.yml run as --user=root -k).
+#   Play 2 — validates/prompts for the required host-specific variables
+#            (salt_hostname, salt_static_ip, salt_gateway) that both
+#            10-master.yml and 20-saltgui.yml need. Moved here, unchanged in
+#            behaviour, from salt_master.yml's own pre_tasks — this module's
+#            single-monolithic-file predecessor before the numbered-stage
+#            restructure (see site.yml's own changelog).
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/salt/playbooks/00-preflight.yml
+#
+# Tags: preflight
+# =============================================================================
+# Changelog:
+#   2026-07-22  Initial file — split out of the single monolithic
+#               salt_master.yml as part of the numbered-stage restructure
+#               (00-preflight/10-master/20-saltgui + site.yml), matching the
+#               convention already used by proxmox/windows_bootstrap/windows_dc.
+# =============================================================================
+
+- name: Salt master — Preflight (SSH keypair connectivity check)
+  hosts: salt_servers
+  gather_facts: false
+  tasks:
+    - name: Real SSH connectivity check using the configured key
+      include_tasks: ../../../tasks/ssh_key_preflight.yml
+      vars:
+        # Auto-skip for the documented password-authenticated first-ever-onboard
+        # path (site.yml run as --user=root -k) -- a broken/missing private key
+        # is irrelevant when this run isn't using one at all. Neither var is
+        # ever set on a genuinely key-based run.
+        ssh_key_preflight_skip: "{{ (ansible_ssh_pass is defined) or ((ansible_password | default('')) != '') }}"
+      tags: preflight
+
+- name: Salt master — Preflight (required variables)
+  hosts: salt_servers
+  gather_facts: false
+  become: false
+
+  tasks:
+
+    - name: "Prompt for hostname if not set in host_vars"
+      pause:
+        prompt: >
+          Hostname for this Salt master is not set in host_vars.
+          Enter hostname (e.g. EXASLTCLD001)
+      register: _hostname_prompt
+      when: salt_hostname is not defined or salt_hostname == ""
+      delegate_to: localhost
+      tags: preflight
+
+    - name: "Set salt_hostname from prompt"
+      set_fact:
+        salt_hostname: "{{ _hostname_prompt.user_input | upper }}"
+      when: _hostname_prompt is not skipped
+      tags: preflight
+
+    - name: "Prompt for static IP if not set in host_vars"
+      pause:
+        prompt: >
+          Static IP for {{ salt_hostname }} is not set in host_vars.
+          Enter static IP (e.g. 192.168.69.22)
+      register: _ip_prompt
+      when: salt_static_ip is not defined or salt_static_ip == ""
+      delegate_to: localhost
+      tags: preflight
+
+    - name: "Set salt_static_ip from prompt"
+      set_fact:
+        salt_static_ip: "{{ _ip_prompt.user_input }}"
+      when: _ip_prompt is not skipped
+      tags: preflight
+
+    - name: "Prompt for gateway if not set in host_vars"
+      pause:
+        prompt: >
+          Gateway for {{ salt_hostname }} is not set in host_vars.
+          Enter gateway IP (e.g. 192.168.69.253)
+      register: _gw_prompt
+      when: salt_gateway is not defined or salt_gateway == ""
+      delegate_to: localhost
+      tags: preflight
+
+    - name: "Set salt_gateway from prompt"
+      set_fact:
+        salt_gateway: "{{ _gw_prompt.user_input }}"
+      when: _gw_prompt is not skipped
+      tags: preflight
+
+    - name: "Validate required variables are now set"
+      assert:
+        that:
+          - salt_hostname is defined and salt_hostname != ""
+          - salt_static_ip is defined and salt_static_ip != ""
+          - salt_gateway is defined and salt_gateway != ""
+        fail_msg: >
+          salt_hostname, salt_static_ip, and salt_gateway must all be set.
+          Set them in host_vars/{{ inventory_hostname }}/main.yml or pass via
+          --extra-vars.
+        success_msg: "All required variables present — proceeding."
+      tags: preflight
