@@ -5,6 +5,7 @@ type=ethernet
 interface-name={{ fw_wan_iface }}
 autoconnect=true
 autoconnect-priority=100
+autoconnect-retries=-1
 
 [ethernet]
 
@@ -17,6 +18,7 @@ method=auto
 {% endif %}
 dns={{ fw_cld_dns }};{{ fw_inet_dns }};
 dns-search={{ fw_domain }};
+route-metric=100
 
 [ipv6]
 addr-gen-mode=default
