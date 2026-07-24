@@ -427,12 +427,35 @@ finishes, `10_register_spoke_on_hub.yml` automatically registers `EXAFWLFAL001` 
 work) checks that hub is actually reachable on port 22 first, deferring cleanly with a clear
 message rather than failing raw if CLD isn't up yet.
 
+> The spoke's own tunnel IP (default `10.0.<site-octet>.1`, offered at the prompt) is what
+> gets written into the hub's `[Peer]` `AllowedIPs` and used in the live `wg set` call — as of
+> `6c3527b` (2026-07-24) this is validated as a real IPv4 address before either happens.
+> Before that fix, anything mistyped or pasted into that prompt propagated unchecked all the
+> way to a live `wg set` command on the hub, which failed with an opaque non-zero exit instead
+> of a clear error at the point of bad input.
+
 Verify the tunnel from either end:
 
 ```bash
 sudo wg show                    # both ends — look for a recent handshake
 ping -c 3 10.0.69.1              # from FAL, to CLD's hub tunnel address
 ```
+
+> **This is not enough on its own — verify real LAN-to-LAN traffic too.** A recent handshake
+> and a successful ping to the hub's own tunnel address prove the tunnel is up; they do **not**
+> prove a spoke can actually reach anything *behind* the hub's LAN. Found live 2026-07-24,
+> `EXAFWLBRT001` → `EXAFWLCLD001`: `wg show` looked perfect on both ends, and the spoke could
+> even reach the hub's own firewall LAN IP directly — but every real LAN client behind the hub
+> (`EXAANSCLD001`, `EXADCSCLD001`) was 100% unreachable, port `filtered`. Root cause:
+> `07_nftables.yml`'s `wg0` forward rules were gated `and not fw_is_black_site` — since CLD
+> *is* the black site, the one hub node had zero rules permitting `wg0 → LAN` forwarding, so
+> its own `policy drop` silently ate every packet. Fixed in `19dd5da`; every build from that
+> commit onward is unaffected, but the lesson stands regardless — always finish a WireGuard
+> verification with a real LAN-client test, not just a tunnel-level one:
+> ```bash
+> ping -c 4 192.168.69.9          # from the spoke, to a real host behind the hub's LAN
+> nmap -p22 -Pn 192.168.69.9      # -Pn matters: ICMP alone can look like "host down"
+> ```
 
 **What this whole walkthrough demonstrates:** `benarbejde/` as the single source of truth
 (every address above came from `sites.csv`, `devices.csv`, or `address_policy.json` — none
@@ -1132,6 +1155,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-07-09 | While writing the `ansible.cfg` section against the real file, found `forks`/`timeout`/`retry_files_enabled`/`retry_files_save_path`/`display_skipped_hosts`/`display_failed_stderr` were textually inside the wrong `[section]` and silently inert — confirmed with `ansible.config.manager.ConfigManager`, not just by reading the file. Fixed the real `ansible/ansible.cfg` (all 6 now verified reading from the file), and added the "real lesson in ini section semantics" callout in "Understanding ansible.cfg" above. |
 | 2026-07-18 | Added "Bootstrapping the Base Nodes" — a worked, address-accurate walkthrough building `EXAANSCLD001`, `EXAPVECLD001`, `EXAFWLCLD001`, and `EXADCSCLD001` from a bare Proxmox hypervisor, plus `EXAFWLFAL001` as the WireGuard end-to-end proof. Every address traced against `sites.csv`/`devices.csv`/`address_policy.json` (caught and corrected one real discrepancy along the way: CLD's PVE1 slot is `192.168.69.5`, on CLD's own LAN, not `192.168.139.x`) and against `docs/proxmox/Procedure-PVE-Node-Onboarding.md`'s own worked example. Also found `docs/buildsheets/buildsheet-firewall.md`'s `wget` for `firewallme.sh` omits the real `/provision/` path segment — flagged, not fixed (out of scope for this section). |
 | 2026-07-19 | Added "Renumbering / Reworking Live Conventions" — a general checklist for any future change to a default/convention that already has live instances built against the old value (find every hardcoded copy including break-glass script mirrors, don't trust a grep match without reading the surrounding code, change every default together, confirm a recovery path independent of what's changing, migrate live instances one at a time, update docs in the same pass), with the 2026-07-19 WireGuard spoke tunnel IP change (`.2` → `.1`) as the first worked example — including a real trap hit while making it (`firewallme.sh`'s unrelated `SPOKE_TUNNEL_OCTET` legacy hub-building counter, which looked like the same convention on a bare grep and wasn't). |
+| 2026-07-24 | Reviewed "5. Proving WireGuard end-to-end" against a real live WireGuard debug session (`EXAFWLCLD001`/`EXAFWLBRT001`) — the core walkthrough was already accurate, but the verification step only checked tunnel-level health (`wg show`, ping the hub's own tunnel address), which is exactly what looked perfect for hours while a real bug (CLD's `nftables` black-site exclusion dropping all `wg0 → LAN` forward traffic, `19dd5da`) silently blocked every spoke from reaching anything behind the hub's LAN. Added a callout with the real LAN-client test that actually catches this class of bug, plus a short note on the tunnel-IP input validation added the same session (`6c3527b`). |
 
 ---
 
