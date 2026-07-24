@@ -47,6 +47,23 @@
 #               verified by rendering the real Jinja template with representative
 #               values and checking brace balance (13 open, 13 close) before trusting
 #               it; nft itself isn't installed in this sandbox to run -c directly.
+#   2026-07-24  Robert, live (EXAFWLBRT001 -> EXAFWLCLD001 LAN clients): both the wg0 input
+#               block and the wg0 forward block (WireGuard <-> LAN, WireGuard <-> WAN hub
+#               re-routing) were gated `fw_wg_role != 'none' and not fw_is_black_site`. CLD
+#               IS the black site -- so on the one box that's the WireGuard hub for the
+#               entire estate, this whole block was skipped, and the forward chain's
+#               default policy is drop. Confirmed live: a spoke (BRT) could reach CLD's own
+#               firewall LAN IP directly (that's egress through CLD's permissive output
+#               chain landing on the spoke's own input chain, unaffected), but not any real
+#               LAN client behind CLD (EXAANSCLD001, EXADCSCLD001, ...) -- 100% packet loss,
+#               port shows filtered, exactly what a forward-chain drop looks like. Same class
+#               of bug as the wg-quick@wg0 black-site exclusion found and fixed 2026-07-17
+#               (638608e) -- a blanket "isolate CLD" exclusion sweeping up something every
+#               WireGuard-enabled node needs, CLD most of all since it's also meant to be
+#               re-routing traffic *between* spokes (see the "hub re-routing" comment on the
+#               WAN half of this same block). Removed `and not fw_is_black_site` from both
+#               conditions -- CLD gets the same wg0 input/forward rules as any other
+#               WireGuard-enabled node now.
 # =============================================================================
 
 - name: "[nftables] Detect current session's outbound interface (safety check before reload)"
@@ -167,7 +184,7 @@
       {% endif %}
 
           # ── WireGuard interface inbound ───────────────────────────────
-      {% if fw_wg_role != 'none' and not fw_is_black_site %}
+      {% if fw_wg_role != 'none' %}
           # WireGuard tunnel — allow management protocols
           iifname "wg0" tcp dport 22 accept    comment "SSH over WG tunnel"
           iifname "wg0" tcp dport 9090 accept  comment "Cockpit over WG tunnel"
@@ -194,7 +211,7 @@
           # WAN → LAN (return traffic)
           iifname "{{ fw_wan_iface }}" oifname "{{ fw_lan_iface }}" ct state { established, related } accept
 
-      {% if fw_wg_role != 'none' and not fw_is_black_site %}
+      {% if fw_wg_role != 'none' %}
           # WireGuard ↔ LAN
           iifname "wg0" oifname "{{ fw_lan_iface }}" accept
           iifname "{{ fw_lan_iface }}" oifname "wg0" accept
