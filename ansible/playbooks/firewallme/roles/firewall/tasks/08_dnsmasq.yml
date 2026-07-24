@@ -216,13 +216,38 @@
     mode: '0755'
 
 - name: "[dnsmasq] Write wait-for-lan drop-in"
+  # BUG FIX (2026-07-24, found live on EXAFWLCLD001 after a reboot): this only ever had the
+  # [Unit] After=/Wants= ordering below -- sys-subsystem-net-devices-{iface}.device only
+  # tracks kernel-level device existence, NOT that an IP address has actually been assigned
+  # to it. firewallme.sh's own version of this file (the source-of-truth this role is a port
+  # of) has always had an ExecStartPre poll loop (up to 30s) plus Restart=on-failure/
+  # RestartSec=5 to self-heal if it still loses the race -- this port never carried that half
+  # over, only the ordering half. The Ansible-run-time LAN-IP poll added earlier
+  # (06_network_manager.yml, "[NM] Wait for LAN interface to obtain an IP address") only
+  # helps during a live ansible-playbook run; it does nothing at actual boot time, when
+  # systemd starts dnsmasq on its own via these unit dependencies with no Ansible task around
+  # to wait first. Confirmed live: "failed to create listening socket for {{ fw_lan_ip }}:
+  # Cannot assign requested address" immediately after a reboot. Also added
+  # NetworkManager-wait-online.service to After=/Wants=, present in firewallme.sh's version
+  # but missing here too.
   ansible.builtin.copy:
     dest: /etc/systemd/system/dnsmasq.service.d/wait-for-lan.conf
     mode: '0644'
     content: |
       [Unit]
-      After=network-online.target sys-subsystem-net-devices-{{ fw_lan_iface }}.device
-      Wants=network-online.target sys-subsystem-net-devices-{{ fw_lan_iface }}.device
+      After=network-online.target NetworkManager-wait-online.service sys-subsystem-net-devices-{{ fw_lan_iface }}.device
+      Wants=network-online.target NetworkManager-wait-online.service
+
+      [Service]
+      ExecStartPre=/bin/bash -c '\
+        for i in $(seq 1 30); do \
+          ip addr show {{ fw_lan_iface }} 2>/dev/null | grep -q "{{ fw_lan_ip }}" && exit 0; \
+          sleep 1; \
+        done; \
+        echo "dnsmasq pre-start: {{ fw_lan_ip }} not yet on {{ fw_lan_iface }} after 30s -- starting anyway" >&2; \
+        exit 0'
+      Restart=on-failure
+      RestartSec=5
   notify: restart dnsmasq
 
 - name: "[dnsmasq] Reload systemd daemon after drop-in"
