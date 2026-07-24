@@ -25,6 +25,20 @@
 #               other write. Added a chattr -i step immediately before the removal task
 #               (failed_when: false -- harmless no-op on a first run where the file
 #               either doesn't exist yet or was never made immutable).
+#   2026-07-24  Robert, live (EXAFWLCLD001): removed the enable-tftp/tftp-root=/srv/tftp/
+#               dhcp-boot=pxelinux.0 block entirely. Found live when this box's dnsmasq
+#               failed to start on its first-ever restart since initial boot ("TFTP
+#               directory /srv/tftp inaccessible") -- nothing ever created that directory.
+#               First fix was to just create it, but Robert confirmed directly: TFTP isn't
+#               actually used anywhere in this estate's real boot flow (that's HTTP --
+#               dhcp-option=tag:ipxe-client,option:bootfile-name,http://.../bootstrap.ipxe,
+#               below). Checked repo-wide for anything else depending on this: the only
+#               other "pxelinux.0" hit is menu.ipxe's unrelated HDT entry (served over
+#               HTTP, nothing to do with this dnsmasq config), and the only other TFTP hit
+#               is docs/bootstrap/TFTPD64_Debian_Headless_Rescue_Guide.md, an explicitly
+#               standalone Windows rescue-lab guide unrelated to this role. Same class of
+#               dead boot-mechanism config as the boot.ipxe/lvm.seed cluster removed
+#               2026-07-12 -- confirmed unused, removed outright rather than patched.
 # =============================================================================
 
 - name: "[dnsmasq] Disable systemd-resolved (conflicts with dnsmasq on port 53)"
@@ -54,22 +68,6 @@
       nameserver 127.0.0.1
       search {{ fw_site_code | lower }}.{{ fw_domain }} {{ fw_domain }}
     attributes: "+i"   # immutable — prevent NM overwriting
-
-# BUG FIX (2026-07-24, found live on EXAFWLCLD001): the config below enables TFTP with
-# tftp-root=/srv/tftp for CLD specifically, but nothing ever created that directory. dnsmasq
-# --test only validates config syntax -- the TFTP root's existence is checked at actual
-# ExecStart time, which is why this never surfaced until dnsmasq's first-ever live restart
-# (this box's dnsmasq had only ever started once, at boot, since it was first provisioned).
-# Whether the TFTP/pxelinux.0 path here is still genuinely needed (the real DHCP-boot
-# mechanism this repo uses is HTTP -- see bootfile-name,http://.../bootstrap.ipxe below) or
-# vestigial from an earlier design is a separate question, not decided here -- this only
-# makes the already-declared config actually startable.
-- name: "[dnsmasq] Ensure TFTP root exists (CLD only)"
-  ansible.builtin.file:
-    path: /srv/tftp
-    state: directory
-    mode: '0755'
-  when: fw_site_code == 'CLD'
 
 - name: "[dnsmasq] Write /etc/dnsmasq.d/exa-firewall.conf"
   ansible.builtin.copy:
@@ -153,13 +151,6 @@
 
       # Ansible control node
       # dhcp-host=<ansible-mac>,EXAANSCLD001,{{ fw_ansible_ip }}
-
-      # --- TFTP / PXE (CLD provisioning network only) ---
-      {% if fw_site_code == 'CLD' %}
-      enable-tftp
-      tftp-root=/srv/tftp
-      dhcp-boot=pxelinux.0
-      {% endif %}
 
       # --- Logging ---
       log-queries
