@@ -87,12 +87,12 @@
       ╔══════════════════════════════════════════════════════════════╗
       ║  *** BLACK SITE — CLD PROVISIONING NETWORK ***               ║
       ║                                                              ║
-      ║  This is EXAFWLCLD001 — the cloud management hub firewall.  ║
+      ║  This is EXAFWLCLD001 — the cloud management hub firewall.   ║
       ║  This device carries ALL site provisioning traffic.          ║
       ║                                                              ║
       ║  Extra precautions apply:                                    ║
-      ║    - WireGuard: hub (every other site peers with this one)  ║
-      ║    - WAN 192.168.139.69 (EXAFWLVRK001) / LAN 192.168.69.x   ║
+      ║    - WireGuard: hub (every other site peers with this one)   ║
+      ║    - WAN 192.168.139.69 (EXAFWLVRK001) / LAN 192.168.69.x    ║
       ║      (free-form)                                             ║
       ║    - Static WAN IP is mandatory                              ║
       ║    - All changes require explicit confirmation               ║
@@ -274,7 +274,13 @@
 - name: "[Ask] CLD: validate and set LAN IP"
   ansible.builtin.assert:
     that:
-      - fw_cld_lan_ip_prompt.user_input | trim | regex_search('^(\d{1,3}\.){3}\d{1,3}$')
+      # BUG FIX (2026-07-24, found live): regex_search() is a filter that returns the
+      # matched substring (or None), not a boolean -- ansible-core strictly requires a real
+      # boolean result here and fails outright the moment a valid IP is actually entered
+      # ("Conditional result (True) was derived from value of type 'str'"), the opposite of
+      # what this check is supposed to gate on. `is match(...)` is the correct Jinja test for
+      # a boolean regex result.
+      - fw_cld_lan_ip_prompt.user_input | trim is match('^(\d{1,3}\.){3}\d{1,3}$')
     fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Enter a valid IPv4 address."
   when: fw_is_black_site
 
