@@ -7,6 +7,16 @@
 # cert, restrict to LAN only (nftables already covers this).
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-07-24  Robert: this file never actually restricted the socket bind itself, unlike
+#               firewallme.sh's own cockpit.socket.d/override.conf (ListenStream={{ fw_lan_ip
+#               }}:9090). Not previously causing a visible failure -- the stock unit binds
+#               wildcard (0.0.0.0:9090), which can't hit "Cannot assign requested address"
+#               the way dnsmasq's specific-IP bind did, and nftables already blocks WAN
+#               access to 9090 regardless -- but the socket itself wasn't enforcing LAN-only
+#               the way the shell script's version does. Added the same drop-in, matching
+#               firewallme.sh exactly (no ExecStartPre poll needed here -- the shell script's
+#               own version relies on NetworkManager-wait-online.service ordering plus
+#               Restart=on-failure alone, not the extra poll dnsmasq's boot-time race needed).
 # =============================================================================
 
 - name: "[Cockpit] Enable cockpit.socket"
@@ -14,6 +24,32 @@
     name: cockpit.socket
     enabled: true
     state: started
+
+- name: "[Cockpit] Create cockpit.socket systemd drop-in directory"
+  ansible.builtin.file:
+    path: /etc/systemd/system/cockpit.socket.d
+    state: directory
+    mode: '0755'
+
+- name: "[Cockpit] Write cockpit.socket LAN-only bind drop-in"
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/cockpit.socket.d/override.conf
+    mode: '0644'
+    content: |
+      [Unit]
+      After=network-online.target NetworkManager-wait-online.service
+      Wants=network-online.target
+
+      [Socket]
+      ListenStream=
+      ListenStream={{ fw_lan_ip }}:9090
+      Restart=on-failure
+      RestartSec=5s
+  notify: restart cockpit
+
+- name: "[Cockpit] Reload systemd daemon after drop-in"
+  ansible.builtin.systemd:
+    daemon_reload: true
 
 - name: "[Cockpit] Write cockpit.conf (no TLS redirect, LAN only)"
   ansible.builtin.copy:
