@@ -126,8 +126,11 @@
         {%- set plain = "  DHCP range   : " + fw_dhcp_start + " – " + fw_dhcp_end -%}
         {{ _c.G }}║{{ _c.NC }}  DHCP range   : {{ _c.G }}{{ fw_dhcp_start }} – {{ fw_dhcp_end }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
       - >-
-        {%- set plain = "  WAN DNS      : " + fw_cld_dns + ", " + fw_inet_dns -%}
-        {{ _c.G }}║{{ _c.NC }}  WAN DNS      : {{ _c.G }}{{ fw_cld_dns }}, {{ fw_inet_dns }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+        {%- set plain = "  Upstream DNS : " + fw_dc_dns + ", " + fw_cld_dns -%}
+        {{ _c.G }}║{{ _c.NC }}  Upstream DNS : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_cld_dns }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
+      - >-
+        {%- set plain = "  DNS fallback : " + fw_inet_dns + ", 1.1.1.1" -%}
+        {{ _c.G }}║{{ _c.NC }}  DNS fallback : {{ _c.G }}{{ fw_inet_dns }}, 1.1.1.1{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}
       - >-
         {%- set plain = "  LAN DNS      : " + fw_dc_dns + ", " + fw_cld_dns -%}
         {{ _c.G }}║{{ _c.NC }}  LAN DNS      : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_cld_dns }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.G }}║{{ _c.NC }}

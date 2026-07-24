@@ -77,9 +77,20 @@
       local=/{{ fw_site_code | lower }}.{{ fw_domain }}/
       expand-hosts
 
-      # Upstream DNS — site DC first, then central BIND9
+      # Upstream DNS — site DC, then central BIND9 (VRK), then internet fallback.
+      # BUG FIX (2026-07-24, found live on EXAFWLCLD001): fw_inet_dns (9.9.9.9) was already
+      # computed (00_preflight_1_derive.yml) and shown in the Configuration Summary as if
+      # active ("WAN DNS: ..., 9.9.9.9"), but never actually written into this file at all --
+      # there was no internet fallback tier whatsoever, only the two internal servers below.
+      # 1.1.1.1 never existed anywhere in this role. Robert confirmed the intended chain live:
+      # VRK BIND9 -> 9.9.9.9 -> 1.1.1.1. strict-order added so dnsmasq actually tries these in
+      # the order listed (its default behaviour without it is best-effort, not a guaranteed
+      # fallback sequence).
+      strict-order
       server={{ fw_dc_dns }}
       server={{ fw_cld_dns }}
+      server={{ fw_inet_dns }}
+      server=1.1.1.1
 
       # DNSSEC
       dnssec
