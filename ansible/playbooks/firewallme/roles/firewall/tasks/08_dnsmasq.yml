@@ -97,10 +97,22 @@
       # active ("WAN DNS: ..., 9.9.9.9"), but never actually written into this file at all --
       # there was no internet fallback tier whatsoever, only the two internal servers below.
       # 1.1.1.1 never existed anywhere in this role. Robert confirmed the intended chain live:
-      # VRK BIND9 -> 9.9.9.9 -> 1.1.1.1. strict-order added so dnsmasq actually tries these in
-      # the order listed (its default behaviour without it is best-effort, not a guaranteed
-      # fallback sequence).
-      strict-order
+      # site DC -> VRK BIND9 -> 9.9.9.9 -> 1.1.1.1.
+      #
+      # REGRESSION + FIX, same day: this originally also added `strict-order` to force that
+      # exact sequence. Confirmed live this broke resolution entirely -- the site DC
+      # (fw_dc_dns) was ALREADY first in this list before today (unchanged by this fix) and
+      # was already unreachable (unrelated to anything in this role -- confirmed separately,
+      # not this file's concern). Without strict-order, dnsmasq's documented default
+      # behaviour is "best-effort": it favours servers known to be up and works around one
+      # that's consistently dead, which is exactly why resolution had been working despite
+      # the dead DC. strict-order removes that self-healing -- it forces every single query
+      # through the full list in strict sequence, so the dead first server blocked every
+      # query instead of being silently skipped. Proven live: dig against fw_dc_dns timed
+      # out, dig against fw_cld_dns answered correctly in 4ms, and removing strict-order
+      # (this edit) is what actually restores working resolution -- not a DC promotion, not
+      # anything upstream. Removed. The listed order below is still what's tried first when
+      # a server IS reachable; it just no longer blocks hard on one that isn't.
       server={{ fw_dc_dns }}
       server={{ fw_cld_dns }}
       server={{ fw_inet_dns }}
