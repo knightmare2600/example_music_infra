@@ -30,14 +30,18 @@ $TTL {{ zone_ttl }}
 @   IN  NS   {{ this_hostname }}.{{ domain }}.
 
 ; ── DNS server itself ─────────────────────────────────────────
-{{ "%-13s" | format(this_hostname) }} IN  A  {{ dns_ip }}
+{{ "%-13s" | format(this_hostname | lower) }} IN  A  {{ dns_ip }}
 
 ; ── CLD / VRK / FRD black swan hosts ──────────────────────────
 ; Derived from devices.csv (see bind9-dns.yml's cld_black_swan_hosts set_fact). A forward
 ; zone doesn't care what subnet any of these are actually on (CLD's own LAN, the real vRACK,
 ; or the Fredericia Havn vRACK stand-in) -- that's a reverse-zone concern, handled separately.
+; BUG FIX (2026-07-24): this_hostname is always uppercase ("EXADNSVRK001"), h.name is always
+; lowercase (built via item.Hostname | lower in bind9-dns.yml) -- comparing them directly never
+; matched, so this exclusion never fired and the DNS server's own record was written twice
+; (once here, once via this loop). Both sides lowercased now.
 {% for h in cld_black_swan_hosts %}
-{% if h.name != this_hostname %}
+{% if h.name != this_hostname | lower %}
 {{ "%-45s" | format(h.name) }} IN  A  {{ h.ip }}   ; {{ h.comment }}
 {% endif %}
 {% endfor %}
