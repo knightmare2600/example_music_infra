@@ -116,8 +116,8 @@
         {%- set plain = "  DNS fallback  : " + fw_inet_dns + ", 1.1.1.1" -%}
         {{ _c.C }}║{{ _c.NC }}  DNS fallback  : {{ _c.G }}{{ fw_inet_dns }}, 1.1.1.1{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.C }}║{{ _c.NC }}
       - >-
-        {%- set plain = "  LAN DNS       : " + fw_dc_dns + ", " + fw_cld_dns -%}
-        {{ _c.C }}║{{ _c.NC }}  LAN DNS       : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_cld_dns }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.C }}║{{ _c.NC }}
+        {%- set plain = "  LAN DNS       : " + fw_dc_dns + ", " + fw_inet_dns -%}
+        {{ _c.C }}║{{ _c.NC }}  LAN DNS       : {{ _c.G }}{{ fw_dc_dns }}, {{ fw_inet_dns }}{{ _c.NC }}{{ ' ' * (62 - plain|length) }}{{ _c.C }}║{{ _c.NC }}
       - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
       - >-
         {%- set plain = "  WireGuard     : " + fw_wg_role -%}
