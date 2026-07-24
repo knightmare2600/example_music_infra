@@ -61,6 +61,18 @@
 #               key) and a CLD-only CONFIRM prompt, mirroring windows_dc's
 #               dc_is_forest_root guard -- consumed by 09_wireguard_deploy.yml to
 #               actually run key generation/wg0.conf write for a from-scratch hub.
+#   2026-07-24  Robert, live (EXAFWLBRT001): "[Hub register] Live-add peer via wg set"
+#               failed with a non-zero exit. Traced back to fw_wg_tunnel_ip holding an
+#               invalid value at the point the hub tunnel-IP/spoke tunnel-IP prompts were
+#               answered -- unlike almost every other risky prompt in this file (WAN static
+#               IP, CLD LAN IP), neither "[Ask] Set hub WG facts" nor "[Ask] Set spoke
+#               tunnel IP" had any validation at all; whatever string was entered went
+#               straight through, unchecked, all the way to a live `wg set ... allowed-ips
+#               {{ fw_wg_tunnel_ip }}/32` command on the hub (10_register_spoke_on_hub.yml)
+#               where it finally failed loudly instead of being caught at the point of bad
+#               input. Added validation to both, matching the CLD LAN IP pattern
+#               ("is match(...)", not regex_search() -- see that task's own 2026-07-24 note
+#               on why).
 # =============================================================================
 
 # ── Environment (was 00_preflight.yml) ───────────────────────────────────────
@@ -495,6 +507,13 @@
       {{ inp if inp != '' else '51820' }}
   when: fw_wg_role in ['hub-primary', 'hub-regional']
 
+- name: "[Ask] Validate hub tunnel IP"
+  ansible.builtin.assert:
+    that:
+      - fw_wg_tunnel_ip is match('^(\d{1,3}\.){3}\d{1,3}$')
+    fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} '{{ fw_wg_tunnel_ip }}' is not a valid IPv4 address for the hub tunnel IP (e.g. 10.0.{{ fw_site_octet }}.1) -- no port, no CIDR suffix."
+  when: fw_wg_role in ['hub-primary', 'hub-regional']
+
 # ── Spoke prompts ─────────────────────────────────────────────────────────────
 # Robert, 2026-07-17: the Known Hubs box used to be baked into this same pause
 # task's prompt text, so the task-start banner (printed once, before ANY of a
@@ -537,6 +556,15 @@
     fw_wg_tunnel_ip: >-
       {%- set inp = fw_wg_spoke_tunnel_ip_prompt.user_input | default('') | trim -%}
       {{ inp if inp != '' else '10.0.' + fw_site_octet | string + '.1' }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+
+- name: "[Ask] Validate spoke tunnel IP"
+  ansible.builtin.assert:
+    that:
+      - fw_wg_tunnel_ip is match('^(\d{1,3}\.){3}\d{1,3}$')
+    fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} '{{ fw_wg_tunnel_ip }}' is not a valid IPv4 address for the spoke tunnel IP (e.g. 10.0.{{ fw_site_octet }}.1) -- no port, no CIDR suffix."
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
