@@ -5,6 +5,7 @@ type=ethernet
 interface-name={{ fw_lan_iface }}
 autoconnect=true
 autoconnect-priority=100
+autoconnect-retries=-1
 
 [ethernet]
 
@@ -12,6 +13,7 @@ autoconnect-priority=100
 address1={{ fw_lan_ip }}/24
 method=manual
 never-default=true
+route-metric=200
 
 [ipv6]
 addr-gen-mode=default
