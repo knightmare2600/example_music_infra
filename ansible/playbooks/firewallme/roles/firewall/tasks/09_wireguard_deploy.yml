@@ -56,6 +56,20 @@
 #               unconditionally skipped forever regardless of whether CLD's tunnel
 #               interface actually exists yet. Peer management stays entirely with
 #               add-wg-spoke.yml/10_register_spoke_on_hub.yml, unchanged.
+#   2026-07-24  Robert, flagged during the same day's nftables black-site audit: the hub's
+#               [Interface] PreDown used `nft flush chain inet filter input`/`forward` --
+#               a WHOLE-CHAIN flush, not scoped to wg0. Any wg-quick restart/stop on a hub
+#               would have wiped every firewall rule in those chains (LAN<->WAN, SSH, DHCP,
+#               everything), not just the WireGuard-related ones PostUp added, leaving the
+#               box firewalled-open (or entirely unreachable, depending on which chain and
+#               when) until the static nftables.conf got reloaded again. Dormant, never
+#               actually triggered live (gated behind fw_hub_bootstrap_confirmed, which
+#               didn't fire during this session's runs) -- fixed before it could bite.
+#               Changed to `nft delete rule` matching each PostUp add one-for-one, mirroring
+#               the SPOKE's own [Interface] block a few tasks below, which already used this
+#               narrow, correct pattern (confirmed live-working, EXAFWLBRT001's wg-quick log
+#               this same session) -- the hub's version was the one that diverged, not the
+#               spoke's.
 # =============================================================================
 
 - name: "[WireGuard] Skip — not applicable (role=none or black site not bootstrapping)"
@@ -210,8 +224,9 @@
       PostUp   = nft add rule inet filter input iifname "wg0" accept
       PostUp   = nft add rule inet filter forward iifname "wg0" accept
       PostUp   = nft add rule inet filter forward oifname "wg0" accept
-      PreDown  = nft flush chain inet filter input
-      PreDown  = nft flush chain inet filter forward
+      PreDown  = nft delete rule inet filter input iifname "wg0" accept
+      PreDown  = nft delete rule inet filter forward iifname "wg0" accept
+      PreDown  = nft delete rule inet filter forward oifname "wg0" accept
   when:
     - fw_wg_role in ['hub-primary', 'hub-regional']
     - not fw_is_black_site or fw_hub_bootstrap_confirmed
