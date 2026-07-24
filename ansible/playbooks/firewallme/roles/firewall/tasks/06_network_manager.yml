@@ -91,6 +91,22 @@
 #               reboot unconditionally -- there is no live-safe path for this role as
 #               currently operated (every session rides WAN), so there is nothing to
 #               branch on.
+#   2026-07-24  Full re-read of firewallme.sh against this port (Robert's request, in
+#               doubt after a run of live fixes) turned up a real gap: firewallme.sh's
+#               2026-06-28 changelog entry #1 added connection.autoconnect-retries -1
+#               and ipv4.route-metric (WAN=100, LAN=200) specifically "so NM never
+#               gives up on boot and default route is always WAN" -- a production
+#               bug fix. Neither setting existed anywhere in wan.nmconnection.j2 or
+#               lan.nmconnection.j2 (checked, genuinely absent, not just under a
+#               different keyfile key). Without autoconnect-retries=-1, NM can give up
+#               retrying a profile that failed to come up on first boot attempt (e.g.
+#               a slow WAN DHCP lease) and never bring it up again without manual
+#               intervention -- the exact failure mode the shell script's fix exists
+#               to prevent. route-metric added to match; never-default=true on LAN
+#               already achieved the same practical outcome for the default-route
+#               half of that fix, so this closes the remaining gap rather than
+#               changing existing behaviour. rudder/salt roles' own .nmconnection
+#               templates have the same gap -- out of scope here, not yet fixed.
 # =============================================================================
 
 # ── Remove stale auto-created NM connections for our interfaces ───────────────
