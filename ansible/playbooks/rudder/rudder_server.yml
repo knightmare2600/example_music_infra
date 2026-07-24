@@ -422,6 +422,12 @@
             and _rudder_ip_live.stdout | trim != rudder_static_ip
           }}
 
+    # 2026-07-24: added autoconnect-retries=-1 to rudder-static.nmconnection.j2 -- found
+    # missing during a firewall-role nmconnection audit the same day (that role's own
+    # firewallme.sh source of truth documents this as a real boot-reliability fix, "NM never
+    # gives up on boot"). route-metric NOT added here -- unlike the dual WAN/LAN firewall,
+    # this is a single-NIC static-IP box with its own gateway, no second interface competing
+    # for the default route, so route-metric would be inert config, not a real fix.
     - name: "2 | Write rudder-static NetworkManager connection profile"
       tags: network
       ansible.builtin.template:
