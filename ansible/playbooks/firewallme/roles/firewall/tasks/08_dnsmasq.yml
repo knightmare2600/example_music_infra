@@ -113,7 +113,14 @@
       # --- DHCP ---
       dhcp-range={{ fw_dhcp_start }},{{ fw_dhcp_end }},12h
       dhcp-option=option:router,{{ fw_lan_ip }}
-      dhcp-option=option:dns-server,{{ fw_dc_dns }},{{ fw_cld_dns }}
+      # DC + internet fallback only -- NOT fw_cld_dns. LAN client machines have no route to
+      # 192.168.139.0/24 (the provisioning/vRack network CLD_DNS lives on) unless traffic
+      # happens to cross WireGuard, unlike the firewall itself, which sits on that network
+      # directly via WAN. Matches firewallme.sh's dhcp-option=6 (line ~1637), whose own
+      # comment states this explicitly. Found 2026-07-24 on a full re-read of firewallme.sh
+      # against this port -- fw_cld_dns was wrongly handed to DHCP clients here as their
+      # second resolver, which would stall (not fail over) if the site DC went down.
+      dhcp-option=option:dns-server,{{ fw_dc_dns }},{{ fw_inet_dns }}
       dhcp-option=option:domain-name,{{ fw_site_code | lower }}.{{ fw_domain }}
 
       # Authoritative — reply NACK to unknown leases
