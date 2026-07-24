@@ -185,7 +185,12 @@
 #               running from before the play started -- "Enable and start named" reported
 #               unchanged), testing stale/pre-existing zone data instead of what this run just
 #               wrote. Added an explicit meta: flush_handlers before section 9, mirroring section
-#               2's own flush pattern rather than relying on end-of-play timing.
+#               2's own flush pattern rather than relying on end-of-play timing. CONFIRMED LIVE
+#               the same day: full clean run against EXADNSVRK001, failed=0, first time ever.
+#   2026-07-24  Added a post-run Summary task (matching rudder_server.yml/salt's 10-master.yml,
+#               both fixed the same week) -- this play previously had no end-of-run recap at
+#               all, only a mid-play "[NM] NOTE" debug task that fires solely when the strand-
+#               check trips, easy to miss scrolled past 819 zone-file records' worth of output.
 # =============================================================================
 
 - name: EXADNSVRK001 -- BIND9 DNS server
@@ -970,6 +975,24 @@
       register: dig_ptr
       changed_when: false
       failed_when: this_hostname | lower not in dig_ptr.stdout
+
+  # ---------------------------------------------------------------------------
+  # Post-run summary
+  # Added 2026-07-24 -- unlike rudder_server.yml/salt's 10-master.yml (both fixed the same
+  # week), this play had no end-of-run recap at all, only the mid-play "[NM] NOTE" debug task
+  # (section 2) that fires ONLY when the strand-check trips -- easy to miss in a long scroll of
+  # 819-record zone output. Matches those two files' "active / active on next reboot" pattern.
+  # ---------------------------------------------------------------------------
+    - name: "Summary"
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  BIND9 DNS SETUP COMPLETE — {{ this_hostname }}"
+          - "════════════════════════════════════════════════════════════════"
+          - "  Zone        : {{ domain }}"
+          - "  DNS IP      : {{ dns_ip }} ({{ 'active' if not _prov_activate_would_strand_session | default(false) else 'active on next reboot, or run: nmcli connection up prov-static' }})"
+          - "  Self-test   : forward + PTR lookups both passed"
+          - "════════════════════════════════════════════════════════════════"
 
   # ---------------------------------------------------------------------------
   # Handlers
