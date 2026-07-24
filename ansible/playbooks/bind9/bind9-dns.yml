@@ -177,6 +177,15 @@
 #               running the play. Verified via scratch-test reproduction of the strand-detection
 #               logic across all three real scenarios (already correct, wrong live IP, fresh box
 #               with no live IP yet) before touching the real file.
+#   2026-07-24  Fixed the self-test (section 9) failing on EXADNSVRK001's first ever full run --
+#               every zone-file write task (named.conf.local, forward zone, every reverse zone)
+#               notifies "Reload named", but nothing flushed handlers between those writes and
+#               the self-test; handlers only run at end-of-play by default, so `dig` was querying
+#               the still-running, not-yet-reloaded named process (this box's named was already
+#               running from before the play started -- "Enable and start named" reported
+#               unchanged), testing stale/pre-existing zone data instead of what this run just
+#               wrote. Added an explicit meta: flush_handlers before section 9, mirroring section
+#               2's own flush pattern rather than relying on end-of-play timing.
 # =============================================================================
 
 - name: EXADNSVRK001 -- BIND9 DNS server
@@ -931,6 +940,19 @@
   # ---------------------------------------------------------------------------
   # 9. Verify -- quick dig self-test
   # ---------------------------------------------------------------------------
+    # BUG FIX (2026-07-24, found live on EXADNSVRK001's first ever successful full run):
+    # every zone-file write task above (named.conf.local, forward zone, every reverse zone)
+    # does `notify: Reload named` -- but Ansible only runs notified handlers at the END of
+    # the play by default, and there was no `meta: flush_handlers` anywhere between those
+    # writes and this section. named was already running from before this play started (the
+    # "Enable and start named" task reported unchanged), so the self-test below queried the
+    # STILL-RUNNING, not-yet-reloaded named process -- testing stale/pre-existing zone data,
+    # not what this run just wrote. Explicit flush here, mirroring the NM section's own
+    # `meta: flush_handlers` (2. Network, above) rather than waiting on end-of-play timing.
+    - name: "[Verify] Flush handlers (reload named with the zone files just written)"
+      tags: service, reload
+      ansible.builtin.meta: flush_handlers
+
     # Zone records are deliberately lowercase (db.forward-zone.devices.j2's dev.Hostname |
     # lower -- standard DNS zone-file convention, unrelated to this_hostname's own uppercase
     # box-identity convention above) -- lowercase this_hostname here to match what's actually
