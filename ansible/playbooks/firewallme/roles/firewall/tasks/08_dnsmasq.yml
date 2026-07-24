@@ -118,9 +118,20 @@
       server={{ fw_inet_dns }}
       server=1.1.1.1
 
-      # DNSSEC
-      dnssec
-      trust-anchor=.,20326,8,2,E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D
+      # BUG FIX (2026-07-24, found live on EXAFWLCLD001, Robert's explicit call): DNSSEC
+      # validation removed entirely. firewallme.sh (the source of truth this role is a port
+      # of) never enables dnssec/trust-anchor anywhere -- confirmed by grep, genuinely absent.
+      # This port added it independently at some point before today's changelog history
+      # starts, and it was silently rejecting legitimate internal AD records the whole time:
+      # jukebox.internal is a private internal domain with no real DNSSEC signing and no real
+      # chain of trust from the actual root (.internal isn't a delegated public TLD), so
+      # dnsmasq could neither prove it validly signed nor cleanly prove a legitimate insecure
+      # delegation -- landed on BOGUS and refused to return an otherwise-correct answer.
+      # Confirmed via dnsmasq's own query log: "validation exaanscld001.jukebox.internal is
+      # BOGUS" after a correct answer was already obtained from fw_cld_dns. This explains
+      # every earlier symptom tonight where a direct query straight to an upstream server
+      # (bypassing dnsmasq's validation layer) always worked, but anything going through
+      # dnsmasq itself (127.0.0.1) did not.
 
       # --- DHCP ---
       dhcp-range={{ fw_dhcp_start }},{{ fw_dhcp_end }},12h
