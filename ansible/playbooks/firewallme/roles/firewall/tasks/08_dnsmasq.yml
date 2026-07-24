@@ -55,6 +55,22 @@
       search {{ fw_site_code | lower }}.{{ fw_domain }} {{ fw_domain }}
     attributes: "+i"   # immutable — prevent NM overwriting
 
+# BUG FIX (2026-07-24, found live on EXAFWLCLD001): the config below enables TFTP with
+# tftp-root=/srv/tftp for CLD specifically, but nothing ever created that directory. dnsmasq
+# --test only validates config syntax -- the TFTP root's existence is checked at actual
+# ExecStart time, which is why this never surfaced until dnsmasq's first-ever live restart
+# (this box's dnsmasq had only ever started once, at boot, since it was first provisioned).
+# Whether the TFTP/pxelinux.0 path here is still genuinely needed (the real DHCP-boot
+# mechanism this repo uses is HTTP -- see bootfile-name,http://.../bootstrap.ipxe below) or
+# vestigial from an earlier design is a separate question, not decided here -- this only
+# makes the already-declared config actually startable.
+- name: "[dnsmasq] Ensure TFTP root exists (CLD only)"
+  ansible.builtin.file:
+    path: /srv/tftp
+    state: directory
+    mode: '0755'
+  when: fw_site_code == 'CLD'
+
 - name: "[dnsmasq] Write /etc/dnsmasq.d/exa-firewall.conf"
   ansible.builtin.copy:
     dest: /etc/dnsmasq.d/exa-firewall.conf
