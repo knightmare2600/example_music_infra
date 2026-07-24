@@ -315,6 +315,25 @@
   changed_when: nm_lan_up.rc == 0
   failed_when: nm_lan_up.rc != 0
 
+# BUG FIX (2026-07-24, found live on EXAFWLCLD001): unlike WAN (which already polls for its IP
+# right above), nothing here ever verified the LAN interface actually had its address before
+# later tasks ran -- 08_dnsmasq.yml writes/restarts dnsmasq bound to {{ fw_lan_ip }}
+# (listen-address=), several tasks later in the same play. `nmcli con up lan` reporting success
+# only means NetworkManager accepted the activation request, not that the kernel has finished
+# committing the address yet -- dnsmasq restarting in that narrow window failed outright
+# ("Cannot assign requested address"). This only ever bit once config content changed enough to
+# trigger a live dnsmasq restart mid-play; at normal boot, dnsmasq only ever starts once, when
+# ordering happens to already be settled. Same poll pattern as WAN, unconditional (LAN is always
+# brought up, unlike WAN's fw_wan_activate gate).
+- name: "[NM] Wait for LAN interface to obtain an IP address"
+  ansible.builtin.shell: |
+    nmcli -g IP4.ADDRESS dev show {{ fw_lan_iface }} | head -1 | cut -d/ -f1
+  register: nm_lan_ip_poll
+  until: nm_lan_ip_poll.stdout | trim != ''
+  retries: 30
+  delay: 1
+  changed_when: false
+
 - name: "[NM] NOTE — WAN activation skipped"
   ansible.builtin.debug:
     msg: >
