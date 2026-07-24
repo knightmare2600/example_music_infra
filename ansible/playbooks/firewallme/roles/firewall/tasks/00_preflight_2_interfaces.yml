@@ -32,8 +32,15 @@
 # =============================================================================
 
 - name: "[Interfaces] List all non-loopback interfaces"
+  # BUG FIX (2026-07-24, found live on EXAFWLCLD001): wg0 was never excluded here, so it
+  # flowed through into fw_available_ifaces -> fw_lan_candidates (00_preflight_3_ask.yml only
+  # excludes fw_wan_iface, nothing else) and got offered as a normal-looking LAN interface
+  # choice -- but wg0 is always this role's own separately-managed WireGuard tunnel (hardcoded
+  # by name throughout 09_wireguard_deploy.yml), never a real LAN/WAN candidate, and has no
+  # real MAC address -- "[Derive] Get LAN MAC" (00_preflight_4_post_ask.yml) crashed the moment
+  # it was picked. Excluded at the same point lo already is.
   ansible.builtin.shell: |
-    ip -o link show | awk -F': ' '{print $2}' | grep -v '^lo$' | grep -v '@'
+    ip -o link show | awk -F': ' '{print $2}' | grep -v '^lo$' | grep -v '^wg0$' | grep -v '@'
   register: fw_all_ifaces_raw
   changed_when: false
 

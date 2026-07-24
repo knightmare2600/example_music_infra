@@ -89,6 +89,13 @@
     - not fw_is_black_site
     - fw_hub_reachable.failed | default(true)
 
+# BUG FIX (2026-07-24, found live on EXAFWLCLD001): all four tasks below already correctly
+# guard on `fw_wg_role == 'spoke'` in their `when:` -- but Ansible templates `delegate_to`
+# BEFORE evaluating `when:`, not after, so on a hub node (fw_wg_hub_ip is only ever set for a
+# spoke) the task crashed with "'fw_wg_hub_ip' is undefined" before the guard ever got a chance
+# to skip it. `| default(inventory_hostname)` makes the delegate target resolve to something
+# harmless (itself) when unset -- the task still never actually runs its module logic on a hub,
+# since `when:` still correctly evaluates to false, this only fixes the early templating crash.
 - name: "[Hub register] Add/update this spoke's [Peer] block on its hub"
   ansible.builtin.blockinfile:
     path: /etc/wireguard/wg0.conf
@@ -103,7 +110,7 @@
       Endpoint     = {{ fw_wan_static_ip }}:{{ fw_wg_listen_port_raw.stdout | trim }}
       AllowedIPs   = {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(', ') }}
       PersistentKeepalive = 25
-  delegate_to: "{{ fw_wg_hub_ip }}"
+  delegate_to: "{{ fw_wg_hub_ip | default(inventory_hostname) }}"
   become: true
   register: fw_hub_peer_block
   when:
@@ -116,7 +123,7 @@
     dest: "/tmp/.wg-psk-{{ fw_site_code }}"
     content: "{{ fw_wg_psk }}"
     mode: '0600'
-  delegate_to: "{{ fw_wg_hub_ip }}"
+  delegate_to: "{{ fw_wg_hub_ip | default(inventory_hostname) }}"
   become: true
   when:
     - fw_wg_role == 'spoke'
@@ -128,7 +135,7 @@
     wg set wg0 peer {{ fw_wg_pubkey }} \
       preshared-key /tmp/.wg-psk-{{ fw_site_code }} \
       allowed-ips {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(',') }}
-  delegate_to: "{{ fw_wg_hub_ip }}"
+  delegate_to: "{{ fw_wg_hub_ip | default(inventory_hostname) }}"
   become: true
   changed_when: true
   when:
@@ -140,7 +147,7 @@
   ansible.builtin.file:
     path: "/tmp/.wg-psk-{{ fw_site_code }}"
     state: absent
-  delegate_to: "{{ fw_wg_hub_ip }}"
+  delegate_to: "{{ fw_wg_hub_ip | default(inventory_hostname) }}"
   become: true
   when:
     - fw_wg_role == 'spoke'
