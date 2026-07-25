@@ -17,7 +17,7 @@
 #
 # Version history:
 #
-#   v2.7   Added :lods -- Projekt LODS, Robert's own hand-rolled live Proxmox
+#   v2.7   Added :klargoring -- Projekt klargoring, Robert's own hand-rolled live Proxmox
 #          installer distro, built separately from this repo's own automation.
 #          NOT a revival of the Proxmox-official auto-install PXE approach
 #          :proxmox-ve's own history (v2.3-v2.5 below) already tried and
@@ -255,7 +255,7 @@ item --gap --
 item --gap --         -- Hypervisors --
 item proxmox-ve       Proxmox VE 9   (x86_64 only)
 item proxmox-dcm      Proxmox DCM 9  (x86_64 only)
-item lods             Projekt LODS  (custom live Proxmox installer, x86_64 only)
+item klargoring             Projekt klargoring  (custom live Proxmox installer, x86_64 only)
 item --gap --
 item --gap --         -- Utilities --
 item gparted          GParted Live
@@ -515,7 +515,7 @@ prompt Press any key to return to menu...
 goto main
 
 # ===========================================================================
-# PROJEKT LODS
+# PROJEKT klargoring
 # Robert's own hand-rolled live Proxmox installer distro, built separately --
 # NOT the Proxmox-official auto-install ISO path that :proxmox-ve's own
 # history (see that section's comment, v2.3-v2.5) already tried via PXE and
@@ -525,10 +525,10 @@ goto main
 # answer-file convention already established above (env_edinburgh/
 # env_fredericia set it to VRK/FRD respectively).
 # ===========================================================================
-:lods
+:klargoring
 iseq ${arch} arm64 && goto noarch-msg ||
-kernel ${boot-url}/proxmox/lods/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml
-initrd ${boot-url}/proxmox/lods/installer-initrd.img
+kernel ${boot-url}/proxmox/klargoring/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml confirm-wipe no-reboot
+initrd ${boot-url}/proxmox/klargoring/installer-initrd.img
 boot
 
 # ===========================================================================
