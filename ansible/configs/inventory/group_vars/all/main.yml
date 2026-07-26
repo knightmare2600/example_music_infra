@@ -15,11 +15,16 @@ ansible_user:        ansible
 # while auditing the same dropped-in lintools.sls, which had unattended-
 # upgrades config Salt-side. Config itself (which settings to enable) lives
 # in linux/tools.yml's "Configure unattended-upgrades" task, not here.
+# 2026-07-26: dnsutils -> bind9-dnsutils. Found live: dnsutils is a
+# transitional/virtual package on this estate's Debian 13 (Trixie) base --
+# the real package providing dig/nslookup/nsupdate is bind9-dnsutils now.
+# bind9-host (added 2026-07-20, above) is the separate split-out package
+# for the host command specifically -- unaffected, still correct as-is.
 common_packages:
   - aptitude
+  - bind9-dnsutils
   - bind9-host
   - curl
-  - dnsutils
   - git
   - git-lfs
   - grc
