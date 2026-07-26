@@ -30,16 +30,22 @@
 #   20-storage         Pools/datasets/shares — deliberately minimal, see that
 #                      file's own header (no real per-site spec exists yet)
 #
-# First run, brand new box where SSH doesn't work yet (needs
-# group_vars/truenas_servers/vault.yml's REST credentials):
+# First run, brand new box where SSH doesn't work yet, credentials from
+# vault (group_vars/truenas_servers/vault.yml already populated):
 #   ansible-playbook playbooks/truenas/site.yml \
 #     -i configs/inventory --limit <hostname> --ask-vault-pass
-#   # rest-bootstrap enables SSH, then 00-preflight/10-access/20-storage run
-#   # as root+password automatically in the same invocation -- but root's
-#   # SSH password still needs supplying via -k or ansible_password for
-#   # THOSE stages; rest-bootstrap's REST call and the SSH connection that
-#   # follows are separate credentials even though they're usually the same
-#   # value in practice.
+#
+# First run, vault not populated yet -- rest-bootstrap's own leading play
+# prompts interactively instead (blank username = root):
+#   ansible-playbook playbooks/truenas/site.yml \
+#     -i configs/inventory --limit <hostname>
+#
+#   # Either way, rest-bootstrap enables SSH, then 00-preflight/10-access/
+#   # 20-storage run as root+password automatically in the same invocation
+#   # -- but root's SSH password still needs supplying via -k or
+#   # ansible_password for THOSE stages; rest-bootstrap's REST call and the
+#   # SSH connection that follows are separate credentials even though
+#   # they're usually the same value in practice.
 #
 # First run, SSH already enabled via the web-UI wizard (rest-bootstrap not
 # needed):
