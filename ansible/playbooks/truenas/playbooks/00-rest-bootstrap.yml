@@ -1,0 +1,197 @@
+---
+# =============================================================================
+# playbooks/00-rest-bootstrap.yml
+# Example Music Limited — TrueNAS: enable SSH via the REST API
+# =============================================================================
+# Runs BEFORE 00-preflight.yml, and before any SSH connection is attempted at
+# all. Exists because TrueNAS's own web-UI first-run wizard does not reliably
+# leave SSH enabled (confirmed live against EXANASFAL001, 2026-07-26 — the
+# box answered on its admin web UI/REST API but refused every SSH attempt,
+# contradicting this module's original 2026-07-22 assumption that "SSH
+# enabled" is always part of that wizard). This play closes that gap using
+# TrueNAS's REST API (`https://<host>/api/v2.0/...`), which is a genuinely
+# separate, remote-capable API from the one `arensb.truenas` uses — that
+# collection only ever talks to the middleware over a LOCAL Unix socket
+# (confirmed by reading its module_utils source directly, 2026-07-26 — see
+# generate_inventory.py-adjacent memory/changelog for the full trail), so it
+# cannot do what this play does and was never a candidate for it.
+#
+# Endpoint shapes below are read directly from this box's own OpenAPI spec
+# (docs/api2.txt, fetched by Robert and pasted in — 610 real paths, not
+# hand-coded from training data or rendered docs):
+#   - securitySchemes: HTTP Basic only (no bearer/API-key scheme declared) —
+#     an API key, if used instead of the admin password, is presented AS the
+#     Basic-auth password.
+#   - GET/PUT /ssh has no `rootlogin` field in this TrueNAS version — root
+#     SSH login control isn't exposed here, consistent with recent SCALE
+#     releases moving away from direct root login. Not touched by this play.
+#   - POST /service/start takes {"service": "<name>"} (string, not an id).
+#   - PUT /service/id/{id_} takes an INTEGER id -- "ssh" as a bare string
+#     does not work here, unlike /service/start. The numeric id has to be
+#     resolved first via GET /service and matching service=="ssh".
+#   - GET /user and GET /service take no server-side filter query param in
+#     this spec (limit/offset/count/sort only) — list-then-filter
+#     client-side, not a filtered query.
+#
+# Deliberately does NOT create the `ansible` account here. `10-access.yml`
+# already does that correctly, over the SSH connection this play exists to
+# unlock, via arensb.truenas.user — with real sudo/sudo_nopasswd booleans
+# confirmed against the installed collection's own argspec. The REST
+# /user POST schema in api2.txt has no equivalent blanket-sudo boolean (only
+# `sudo_commands`/`sudo_commands_nopasswd` command arrays), so re-implementing
+# account creation here would mean guessing at a weaker, differently-shaped
+# mechanism for something already solved properly one stage later — not
+# worth it for a one-time bootstrap step.
+#
+# delegate_to: localhost + the explicit `ansible_connection: local` override
+# on every task below is NOT optional, even though `hosts: truenas_servers`
+# alone might look sufficient: this exact inventory line sets
+# `ansible_connection=ssh` as a HOST var (fal.ini), which sits at HIGHER
+# precedence than delegate_to alone or a play-level `connection:` keyword —
+# without the per-task override, every uri: task would still try to SSH to
+# the (not-yet-reachable) target to run the HTTP call FROM there, which is
+# exactly backwards for a play whose whole purpose is "SSH doesn't work yet."
+# Same reasoning `hostvars[inventory_hostname].ansible_host` is used instead
+# of the bare magic var — inside a delegated task, the bare var resolves
+# against the DELEGATE's (localhost's) own context, not the real target's.
+# Both traps previously found and fixed the hard way elsewhere in this
+# estate (see ssh_key_preflight.yml / feedback memory on both).
+#
+# Credentials: `truenas_rest_bootstrap_user`/`_password`, vault-encrypted in
+# group_vars/truenas_servers/vault.yml (see that file's own header) — the
+# same admin account/password Robert set during TrueNAS's own web-UI
+# first-run wizard, matching this module's existing "root + password" first-
+# touch precedent (10-access.yml), just over REST instead of SSH.
+#
+# validate_certs: false — TrueNAS's own first-run web UI cert is self-signed
+# by design (no CA involved), same presumption rudder_server.yml already
+# makes against its own local-only first-run API (127.0.0.1/rudder/api).
+# Override via `-e truenas_rest_validate_certs=true` if a real cert is
+# fitted later.
+#
+# Every action here is idempotent — starting an already-running service or
+# enabling an already-enabled one is a no-op guarded by `when:`, so re-running
+# this stage against a box where SSH already works is harmless (it just
+# needs the vault credential to still be valid). Skip it entirely with
+# `--skip-tags rest-bootstrap` once SSH is confirmed working.
+#
+# check_mode: false on tasks 0/1 (the two GET calls) is deliberate, not an
+# oversight -- caught live while testing against a scratch mock API server:
+# without it, --check mode returns a simulated stub instead of performing
+# the real (read-only, side-effect-free) GET, and the very next task's
+# set_fact blows up trying to read `.json` off that stub. GETs are safe to
+# always run for real; only the POST/PUT tasks below (which DO have side
+# effects) stay gated behind `when: not ansible_check_mode`.
+#
+# Only ever run this against ONE host at a time (`--limit <hostname>`) —
+# each TrueNAS box has its own independently-set admin password, so a single
+# vault entry can't correctly serve a multi-host batch run.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory \
+#     playbooks/truenas/playbooks/00-rest-bootstrap.yml \
+#     --limit EXANASFAL001 --ask-vault-pass
+# =============================================================================
+# Changelog:
+#   2026-07-26  Initial file.
+# =============================================================================
+
+- name: "TrueNAS — REST bootstrap (enable SSH)"
+  hosts: truenas_servers
+  gather_facts: false
+
+  vars:
+    truenas_rest_validate_certs: false
+
+  tasks:
+
+    - name: "0 | Confirm REST API is reachable and credentials are valid"
+      ansible.builtin.uri:
+        url: "https://{{ hostvars[inventory_hostname].ansible_host }}/api/v2.0/system/info"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        status_code: 200
+      register: _truenas_system_info
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+
+    - name: "1 | List services (to find ssh's numeric id and current state)"
+      ansible.builtin.uri:
+        url: "https://{{ hostvars[inventory_hostname].ansible_host }}/api/v2.0/service"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        status_code: 200
+      register: _truenas_services
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+
+    - name: "1 | Identify the ssh service entry"
+      ansible.builtin.set_fact:
+        _truenas_ssh_service: "{{ _truenas_services.json | selectattr('service', 'equalto', 'ssh') | list | first }}"
+
+    - name: "2 | Start the SSH service"
+      ansible.builtin.uri:
+        url: "https://{{ hostvars[inventory_hostname].ansible_host }}/api/v2.0/service/start"
+        method: POST
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        body_format: json
+        body:
+          service: ssh
+        status_code: 200
+      when:
+        - _truenas_ssh_service.state != "RUNNING"
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "3 | Enable the SSH service at boot"
+      ansible.builtin.uri:
+        url: "https://{{ hostvars[inventory_hostname].ansible_host }}/api/v2.0/service/id/{{ _truenas_ssh_service.id }}"
+        method: PUT
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        body_format: json
+        body:
+          enable: true
+        status_code: 200
+      when:
+        - not _truenas_ssh_service.enable
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "--check mode notice"
+      ansible.builtin.debug:
+        msg: >-
+          Check mode: would start/enable the SSH service via REST API if
+          needed (current state={{ _truenas_ssh_service.state }},
+          enable={{ _truenas_ssh_service.enable }}).
+      when: ansible_check_mode
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "  REST BOOTSTRAP COMPLETE — {{ inventory_hostname }}"
+          - "════════════════════════════════════════════════════════════════"
+          - "  TrueNAS version : {{ _truenas_system_info.json.version | default('unknown') }}"
+          - "  SSH service     : state={{ _truenas_ssh_service.state }} enable={{ _truenas_ssh_service.enable }} (before this run)"
+          - "  Next stage      : re-run as root+password over SSH (-k) to continue via 00-preflight.yml/10-access.yml"
+          - "════════════════════════════════════════════════════════════════"
