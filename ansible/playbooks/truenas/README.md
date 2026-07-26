@@ -55,7 +55,7 @@ ansible-playbook playbooks/truenas/site.yml \
 ```
 
 First run, vault not populated yet — `00-rest-bootstrap.yml`'s own leading
-play prompts interactively instead (blank username = root):
+play prompts interactively instead (blank username = truenas_admin):
 ```bash
 ansible-playbook playbooks/truenas/site.yml \
   --limit <hostname>

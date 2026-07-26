@@ -32,20 +32,26 @@
 # login -- human-run, never Ansible, see
 # push_credentials_to_keepass.py/kpcli_wrapper.py's own headers):
 #   python3 benarbejde/kpcli_wrapper.py "~/KeePassXC/Example Music.kdbx" \
-#     add "Infrastructure/<SITE>/EXANAS<SITE>001-rest-bootstrap" root
+#     add "Infrastructure/<SITE>/EXANAS<SITE>001-rest-bootstrap" truenas_admin
 # (prompts for the vault password, then this entry's password -- enter the
 # same value as truenas_rest_bootstrap_password above.)
 # =============================================================================
 # Version history
 # =============================================================================
+# v1.0.1  2026-07-26  Fixed the username default -- confirmed directly by Robert that
+#                     the web-UI first-run wizard's local admin account is always
+#                     truenas_admin, not root (root is the SSH first-touch account
+#                     10-access.yml uses, a different interface entirely -- the
+#                     original value here was a wrong guess by analogy, not confirmed).
 # v1.0.0  2026-07-26  Initial release.
 # =============================================================================
 
-# TrueNAS admin account used for HTTP Basic auth against the REST API.
-# Presumption, matching this module's existing "root + password" first-touch
-# convention (10-access.yml) — override per-box if the web-UI first-run
-# wizard created a different local admin username instead of allowing root.
-truenas_rest_bootstrap_user: "root"
+# TrueNAS admin account used for HTTP Basic auth against the REST API. Confirmed by
+# Robert, 2026-07-26 -- the web-UI first-run wizard's local admin account is always
+# named truenas_admin (not root -- that's a different account, used by 10-access.yml's
+# later SSH first-touch, not this one). The account's password is set by Robert during
+# that same first-boot wizard.
+truenas_rest_bootstrap_user: "truenas_admin"
 
 # TrueNAS admin account password, set during the web-UI first-run wizard.
 truenas_rest_bootstrap_password: "REPLACE_WITH_TRUENAS_ADMIN_PASSWORD"
