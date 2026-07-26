@@ -10,8 +10,10 @@
 # 2026-07-22), matching the manual-install decision already made for TrueNAS
 # (see docs/proxmox/proxmox-dcm-pbs-planning.md's Site Storage section).
 # Robert installs by hand, then completes TrueNAS's own web-UI first-run
-# setup (admin password, static .19 IP, SSH enabled, at least one pool
-# created) before this playbook ever touches the box.
+# setup (admin password, static .19 IP, at least one pool created) before
+# this playbook ever touches the box. **SSH is NOT reliably part of that
+# wizard** -- confirmed live against EXANASFAL001, 2026-07-26, which is why
+# rest-bootstrap exists below.
 #
 # No network/IP reconfiguration happens anywhere in this chain -- the
 # collection has no interface/IP module at all, so unlike bind9-dns.yml/
@@ -20,37 +22,57 @@
 #
 # Playbook order (00 = preflight, "before take off"; major steps of 10) --
 # matches the convention already used by proxmox/windows_bootstrap/salt:
-#   00-preflight   SSH keypair connectivity check + hostname/site lookup
-#   10-access       Dedicated ansible automation account, hostname, nodeinfo
-#   20-storage      Pools/datasets/shares — deliberately minimal, see that
-#                    file's own header (no real per-site spec exists yet)
+#   00-rest-bootstrap  Enable SSH via TrueNAS's REST API -- only needed if
+#                      SSH doesn't already work; see that file's own header
+#                      for why this is a separate API from arensb.truenas
+#   00-preflight       SSH keypair connectivity check + hostname/site lookup
+#   10-access          Dedicated ansible automation account, hostname, nodeinfo
+#   20-storage         Pools/datasets/shares — deliberately minimal, see that
+#                      file's own header (no real per-site spec exists yet)
 #
-# Run once per new TrueNAS box, as root via SSH password:
+# First run, brand new box where SSH doesn't work yet (needs
+# group_vars/truenas_servers/vault.yml's REST credentials):
 #   ansible-playbook playbooks/truenas/site.yml \
-#     -i configs/inventory --limit truenas_servers --user=root -k
+#     -i configs/inventory --limit <hostname> --ask-vault-pass
+#   # rest-bootstrap enables SSH, then 00-preflight/10-access/20-storage run
+#   # as root+password automatically in the same invocation -- but root's
+#   # SSH password still needs supplying via -k or ansible_password for
+#   # THOSE stages; rest-bootstrap's REST call and the SSH connection that
+#   # follows are separate credentials even though they're usually the same
+#   # value in practice.
+#
+# First run, SSH already enabled via the web-UI wizard (rest-bootstrap not
+# needed):
+#   ansible-playbook playbooks/truenas/site.yml \
+#     -i configs/inventory --limit <hostname> --user=root -k --skip-tags rest-bootstrap
 #
 # Subsequent runs (ansible user + key):
 #   ansible-playbook playbooks/truenas/site.yml \
-#     -i configs/inventory --limit truenas_servers
+#     -i configs/inventory --limit <hostname> --skip-tags rest-bootstrap
 #
 # Standalone plays can also be run directly without site.yml, e.g.:
 #   ansible-playbook playbooks/truenas/playbooks/20-storage.yml -i configs/inventory
 # (10-access.yml and 20-storage.yml both need 00-preflight.yml's facts --
 # run those together, or via site.yml, rather than standalone.)
 #
-# Tags: preflight, access, storage
+# Tags: rest-bootstrap, preflight, access, storage
 #
-# NOT YET TESTED against a real TrueNAS box, and no real devices.csv NAS row
-# exists yet -- the truenas_servers group this targets currently has zero
-# members in every generated .ini. Also unresolved: CORE vs SCALE (per
-# proxmox-dcm-pbs-planning.md, not yet decided), and whether
-# /etc/example-music/nodeinfo.json actually survives a TrueNAS boot-
-# environment rollback/upgrade the way it does on a plain Debian box --
-# unverified either way.
+# NOT YET RUN end-to-end against a real TrueNAS box (rest-bootstrap is new,
+# untested against live middleware). CORE vs SCALE is resolved -- SCALE
+# (Debian-based), confirmed against EXANASFAL001 (the first real box,
+# 2026-07-26). Still unresolved: whether /etc/example-music/nodeinfo.json
+# survives a TrueNAS boot-environment rollback/upgrade the way it does on a
+# plain Debian box -- unverified either way.
 # =============================================================================
 # Changelog:
+#   2026-07-26  Added playbooks/00-rest-bootstrap.yml (enable SSH via REST
+#               API) + group_vars/truenas_servers/vault.yml, ahead of
+#               00-preflight.yml -- see that file's own header for why.
 #   2026-07-22  Initial file.
 # =============================================================================
+
+- import_playbook: playbooks/00-rest-bootstrap.yml
+  tags: rest-bootstrap
 
 - import_playbook: playbooks/00-preflight.yml
   tags: preflight

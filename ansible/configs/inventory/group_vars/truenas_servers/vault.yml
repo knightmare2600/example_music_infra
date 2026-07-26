@@ -1,0 +1,39 @@
+---
+# =============================================================================
+# group_vars/truenas_servers/vault.yml
+# Example Music Limited — TrueNAS REST API bootstrap secrets
+#
+# THIS FILE MUST BE ENCRYPTED WITH ansible-vault BEFORE COMMITTING.
+#
+# Encrypt:
+#   ansible-vault encrypt group_vars/truenas_servers/vault.yml
+#
+# Edit in place:
+#   ansible-vault edit group_vars/truenas_servers/vault.yml
+#
+# Used only by playbooks/truenas/playbooks/00-rest-bootstrap.yml — the
+# one-time REST API call (https://<host>/api/v2.0/...) that enables SSH
+# before any SSH connection can be made at all. This is the SAME admin
+# account/password set during TrueNAS's own web-UI first-run wizard, not a
+# separate credential — nothing here writes back to TrueNAS's own account
+# store beyond starting/enabling the ssh service.
+#
+# Once SSH is confirmed working, ongoing management uses the dedicated
+# `ansible` automation account (key-only, created by 10-access.yml) instead
+# — this vault entry is only consulted for that one bootstrap stage
+# (`--skip-tags rest-bootstrap` to bypass it on later runs against an
+# already-working box).
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-07-26  Initial release.
+# =============================================================================
+
+# TrueNAS admin account used for HTTP Basic auth against the REST API.
+# Presumption, matching this module's existing "root + password" first-touch
+# convention (10-access.yml) — override per-box if the web-UI first-run
+# wizard created a different local admin username instead of allowing root.
+truenas_rest_bootstrap_user: "root"
+
+# TrueNAS admin account password, set during the web-UI first-run wizard.
+truenas_rest_bootstrap_password: "REPLACE_WITH_TRUENAS_ADMIN_PASSWORD"
