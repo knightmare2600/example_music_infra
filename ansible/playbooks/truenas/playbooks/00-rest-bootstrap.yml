@@ -1,20 +1,45 @@
 ---
 # =============================================================================
 # playbooks/00-rest-bootstrap.yml
-# Example Music Limited — TrueNAS: enable SSH via the REST API
+# Example Music Limited — TrueNAS: enable SSH + align static IP via the REST API
 # =============================================================================
 # Runs BEFORE 00-preflight.yml, and before any SSH connection is attempted at
 # all. Exists because TrueNAS's own web-UI first-run wizard does not reliably
-# leave SSH enabled (confirmed live against EXANASFAL001, 2026-07-26 — the
-# box answered on its admin web UI/REST API but refused every SSH attempt,
-# contradicting this module's original 2026-07-22 assumption that "SSH
-# enabled" is always part of that wizard). This play closes that gap using
+# leave SSH enabled, and (confirmed live against EXANASFAL001, 2026-07-26)
+# does not require the static IP step either -- a fresh box is commonly still
+# sitting on its original DHCP address, not yet on the standard-slot static
+# address `devices.csv`/inventory expects. This play closes BOTH gaps using
 # TrueNAS's REST API (`https://<host>/api/v2.0/...`), which is a genuinely
 # separate, remote-capable API from the one `arensb.truenas` uses — that
 # collection only ever talks to the middleware over a LOCAL Unix socket
 # (confirmed by reading its module_utils source directly, 2026-07-26 — see
 # generate_inventory.py-adjacent memory/changelog for the full trail), so it
 # cannot do what this play does and was never a candidate for it.
+#
+# Same overall shape as windows_bootstrap/playbooks/00-preflight.yml's own
+# "connect at current/DHCP address, discover/confirm target, align, then
+# reconnect at the final address" pattern (Robert's explicit instruction,
+# 2026-07-26: "much like windows bootstrap brings the device into alignment
+# and sets it proper IP") -- adapted for REST instead of WinRM/PowerShell:
+#   - Windows discovers its OWN current IP live via a fact after connecting
+#     (Get-NetIPAddress); TrueNAS's REST API needs an explicit reachable URL
+#     BEFORE any such discovery is possible, so `truenas_current_ip` is
+#     resolved the same way the credentials are (vault/-e, else an
+#     interactive prompt) rather than read live.
+#   - Windows applies the IP change as a boot-time scheduled task, because an
+#     in-band change drops the session instantly with no safety net of its
+#     own. TrueNAS's REST API has a BETTER, built-in mechanism for exactly
+#     this — `/interface/commit` (rollback: true, checkin_timeout: 300s
+#     below) applies the change immediately but auto-reverts unless
+#     `/interface/checkin` is called from a connection that proves the new
+#     config actually works, within the timeout. Used here instead of a
+#     scheduled task/reboot -- TrueNAS already solved this, no need to
+#     reinvent Windows' workaround for a platform that doesn't need it.
+#   - Windows flips its own `ansible_host` fact and reconnects via
+#     `wait_for_connection` after a manual operator `pause` confirm. This
+#     play does the REST equivalent: poll `hostvars[inventory_hostname].
+#     ansible_host` (the FINAL target address) with `until`/`retries` until
+#     it answers, then checkin from there.
 #
 # Endpoint shapes below are read directly from this box's own OpenAPI spec
 # (docs/api2.txt, fetched by Robert and pasted in — 610 real paths, not
@@ -32,6 +57,21 @@
 #   - GET /user and GET /service take no server-side filter query param in
 #     this spec (limit/offset/count/sort only) — list-then-filter
 #     client-side, not a filtered query.
+#   - /interface's own `id` IS the interface name (a string, e.g. "eno1"),
+#     unlike /service's numeric id -- confirmed from the schema directly, no
+#     separate id-lookup step needed the way /service/id/{id_} needs one.
+#   - PUT /interface/id/{id_}'s `aliases` list takes {type, address, netmask}
+#     (netmask as a CIDR-prefix integer, e.g. 24, not a dotted mask) --
+#     paired with `ipv4_dhcp: false` to actually switch off DHCP on that
+#     interface, not just add a static alias alongside it.
+#   - PUT /network/configuration's `ipv4gateway`/`nameserver1` are the
+#     system-wide default gateway/primary DNS -- separate from the
+#     per-interface alias, both need setting.
+#   - POST /interface/commit's `checkin_timeout` (seconds, default 60) is
+#     TrueNAS's own built-in safety net -- if /interface/checkin isn't
+#     called within this window, TrueNAS reverts the interface change
+#     automatically. Set to 300 below to give this play's own poll loop
+#     comfortable room, not because the default is wrong.
 #
 # Deliberately does NOT create the `ansible` account here. `10-access.yml`
 # already does that correctly, over the SSH connection this play exists to
@@ -42,6 +82,19 @@
 # account creation here would mean guessing at a weaker, differently-shaped
 # mechanism for something already solved properly one stage later — not
 # worth it for a one-time bootstrap step.
+#
+# SSH is enabled BEFORE the IP alignment runs, deliberately -- if the IP
+# change goes wrong in a way TrueNAS's own rollback doesn't cleanly catch,
+# Robert still has a working SSH fallback at `truenas_current_ip` to fix
+# things by hand. Never reorder this.
+#
+# Interface selection is intentionally conservative, not clever: this play
+# will only ever auto-pick a target interface when there is EXACTLY ONE
+# non-fake (`fake: false`) interface on the box. Bare-metal EXANASFAL001 is
+# expected to only have one, but if a box ever has more, this refuses to
+# guess -- re-run with `-e truenas_target_interface=<name>` instead. Matches
+# this estate's existing "showstopper over silent wrong-guess" convention
+# (see ssh_key_preflight.yml's own "no kill like overkill" precedent).
 #
 # delegate_to: localhost + the explicit `ansible_connection: local` override
 # on every task below is NOT optional, even though `hosts: truenas_servers`
@@ -57,18 +110,21 @@
 # Both traps previously found and fixed the hard way elsewhere in this
 # estate (see ssh_key_preflight.yml / feedback memory on both).
 #
-# Credentials: `truenas_rest_bootstrap_user`/`_password`, resolved by the
-# leading "resolve credentials" play below -- from vault-encrypted
-# group_vars/truenas_servers/vault.yml if already populated (see that file's
-# own header), or -e, and otherwise via an interactive ansible.builtin.pause
-# prompt (username default: root if left blank -- TrueNAS doesn't fix this
-# name in software, it's whatever Robert typed into the web-UI first-run
-# wizard, so this can't be hardcoded; checked against docs/api2.txt's full
-# 610-path spec directly, 2026-07-26 -- it only ever says "local
-# administrator account", never a concrete name, confirming this really is
-# per-install and not something to guess at). Same admin account/password
-# either way, matching this module's existing "root + password" first-touch
-# precedent (10-access.yml), just over REST instead of SSH.
+# Credentials + current IP: `truenas_rest_bootstrap_user`/`_password`/
+# `truenas_current_ip`, resolved by the leading "resolve bootstrap
+# parameters" play below -- from vault-encrypted
+# group_vars/truenas_servers/vault.yml (credentials only -- there's no
+# sensible way to pre-populate "current DHCP IP" in a static file) or -e,
+# and otherwise via an interactive ansible.builtin.pause prompt. Username
+# default: root if left blank -- TrueNAS doesn't fix this name in software,
+# it's whatever Robert typed into the web-UI first-run wizard, so this can't
+# be hardcoded; checked against docs/api2.txt's full 610-path spec directly,
+# 2026-07-26 -- it only ever says "local administrator account", never a
+# concrete name, confirming this really is per-install and not something to
+# guess at. `truenas_current_ip` blank means "already reachable at its final
+# target address" (defaults to hostvars[inventory_hostname].ansible_host) --
+# inverse of windows_bootstrap's target_ip-blank-means-no-change convention,
+# same idea applied to the other address.
 #
 # vars_prompt was tried first and rejected -- ansible-core 2.19.4 (installed
 # here) does not support a `when:` key on vars_prompt entries at all
@@ -78,12 +134,12 @@
 # vars_prompt one) does the same job. pause's own `default:` parameter was
 # also tried and is NOT supported in this version either ("Unsupported
 # parameters... Supported parameters include: echo, minutes, prompt,
-# seconds") -- the blank-input-means-root fallback is done in the
-# set_fact's own Jinja `default(..., true)` chain instead, further down.
-# Both of these were caught by actually running the prompt through a real
-# pty (python's pty.openpty(), not piped stdin -- piped stdin makes Ansible
-# skip waiting entirely and silently return an empty user_input, which
-# looks like success but isn't representative of a real terminal session).
+# seconds") -- blank-input fallbacks are done in each set_fact's own Jinja
+# `default(..., true)` chain instead, further down. Both of these were
+# caught by actually running the prompt through a real pty (python's
+# pty.openpty(), not piped stdin -- piped stdin makes Ansible skip waiting
+# entirely and silently return an empty user_input, which looks like
+# success but isn't representative of a real terminal session).
 #
 # validate_certs: false — TrueNAS's own first-run web UI cert is self-signed
 # by design (no CA involved), same presumption rudder_server.yml already
@@ -92,37 +148,67 @@
 # fitted later.
 #
 # Every action here is idempotent — starting an already-running service or
-# enabling an already-enabled one is a no-op guarded by `when:`, so re-running
-# this stage against a box where SSH already works is harmless (it just
-# needs the vault credential to still be valid). Skip it entirely with
-# `--skip-tags rest-bootstrap` once SSH is confirmed working.
+# enabling an already-enabled one is a no-op guarded by `when:`, and the
+# whole IP-alignment section is skipped outright once truenas_current_ip
+# already equals the target address, so re-running this stage against an
+# already-aligned box is harmless (it just needs the vault credential to
+# still be valid). Skip it entirely with `--skip-tags rest-bootstrap` once
+# SSH is confirmed working.
 #
-# check_mode: false on tasks 0/1 (the two GET calls) is deliberate, not an
-# oversight -- caught live while testing against a scratch mock API server:
-# without it, --check mode returns a simulated stub instead of performing
-# the real (read-only, side-effect-free) GET, and the very next task's
-# set_fact blows up trying to read `.json` off that stub. GETs are safe to
-# always run for real; only the POST/PUT tasks below (which DO have side
-# effects) stay gated behind `when: not ansible_check_mode`.
+# check_mode: false on every GET task is deliberate, not an oversight --
+# caught live while testing against a scratch mock API server: without it,
+# --check mode returns a simulated stub instead of performing the real
+# (read-only, side-effect-free) GET, and the very next task's set_fact blows
+# up trying to read `.json` off that stub. GETs are safe to always run for
+# real; every POST/PUT task below (which DOES have side effects) stays
+# gated behind `when: not ansible_check_mode`.
+#
+# NOT LIVE-TESTED against a real TrueNAS box's actual interface/commit/
+# checkin behaviour -- only against a hand-rolled scratch mock server, which
+# cannot faithfully reproduce TrueNAS's real rollback timing. Recommend
+# keeping physical/console access to the box available the first time the
+# IP-alignment section actually runs, in case something needs a manual
+# recovery step the mock couldn't have caught.
 #
 # Only ever run this against ONE host at a time (`--limit <hostname>`) —
-# each TrueNAS box has its own independently-set admin username/password, so
-# neither the vault entry nor the interactive prompt (which, per the
-# pause-needs-serial:1 precedent already established elsewhere in this
-# estate, only ever collects one answer per batch) can correctly serve a
+# each TrueNAS box has its own independently-set admin username/password/
+# current IP, so neither the vault entry nor the interactive prompts (which,
+# per the pause-needs-serial:1 precedent already established elsewhere in
+# this estate, only ever collect one answer per batch) can correctly serve a
 # multi-host run.
 #
-# Usage, credentials from vault:
+# Usage, credentials from vault, box already on its target static IP:
 #   ansible-playbook -i configs/inventory \
 #     playbooks/truenas/playbooks/00-rest-bootstrap.yml \
 #     --limit EXANASFAL001 --ask-vault-pass
 #
-# Usage, credentials typed interactively (vault not populated yet):
+# Usage, fresh box still on DHCP, everything typed interactively:
 #   ansible-playbook -i configs/inventory \
 #     playbooks/truenas/playbooks/00-rest-bootstrap.yml \
 #     --limit EXANASFAL001
+#   # prompts for username/password, then "current reachable IP" -- give the
+#   # DHCP address here; leave blank only if already on the target address.
 # =============================================================================
 # Changelog:
+#   2026-07-26  Added IP-alignment (interface + gateway/DNS + commit/checkin)
+#               -- Robert: the box is genuinely still on its DHCP address,
+#               and the play needs to bring it into alignment with its
+#               target static IP, mirroring windows_bootstrap's own
+#               current-address/target-address split. Gateway/netmask come
+#               from sites.csv's own Gateway/Subnet columns (same source
+#               windows_bootstrap already uses via site_record.Gateway);
+#               nameserver1 is the estate's one real central bind9 server,
+#               EXADNSVRK001 (192.168.139.8) -- confirmed already reachable
+#               cross-site (see the DNS rename/bind9-dns.yml session-state
+#               memory, live-confirmed 2026-07-24), not windows_bootstrap's
+#               own AD-specific LDAP-probe logic, which doesn't apply here
+#               (TrueNAS isn't domain-joining, it just needs a working
+#               general-purpose resolver). Also includes
+#               tasks/hostname_facts.yml (host_site) at the top of the
+#               second play, needed for that sites.csv lookup -- caught
+#               before ever running this: this play runs BEFORE
+#               00-preflight.yml, which is normally what sets host_site, so
+#               it doesn't exist here yet without this include.
 #   2026-07-26  Added the "resolve credentials" play (interactive
 #               ansible.builtin.pause prompt, only if not already supplied
 #               via vault/-e) -- the original version hard-depended on
@@ -131,7 +217,7 @@
 #   2026-07-26  Initial file.
 # =============================================================================
 
-- name: "TrueNAS — REST bootstrap (resolve credentials)"
+- name: "TrueNAS — REST bootstrap (resolve parameters)"
   hosts: truenas_servers
   gather_facts: false
   serial: 1
@@ -153,7 +239,17 @@
       when: truenas_rest_bootstrap_password is not defined
       no_log: true
 
-    - name: "Resolve credential facts"
+    - name: "Prompt for the box's CURRENT reachable IP (if not already set via -e)"
+      ansible.builtin.pause:
+        prompt: >-
+          TrueNAS's CURRENT reachable IP (its DHCP address, if not yet moved
+          to its target {{ hostvars[inventory_hostname].ansible_host }} slot
+          -- blank if it's already there)
+        echo: true
+      register: _truenas_current_ip_prompt
+      when: truenas_current_ip is not defined
+
+    - name: "Resolve parameter facts"
       ansible.builtin.set_fact:
         truenas_rest_bootstrap_user: >-
           {{ truenas_rest_bootstrap_user
@@ -161,20 +257,29 @@
         truenas_rest_bootstrap_password: >-
           {{ truenas_rest_bootstrap_password
              | default(_truenas_pass_prompt.user_input | default('', true)) }}
+        truenas_current_ip: >-
+          {{ truenas_current_ip
+             | default(_truenas_current_ip_prompt.user_input
+                        | default(hostvars[inventory_hostname].ansible_host, true)) }}
       no_log: true
 
-- name: "TrueNAS — REST bootstrap (enable SSH)"
+- name: "TrueNAS — REST bootstrap (enable SSH, align IP)"
   hosts: truenas_servers
   gather_facts: false
 
   vars:
     truenas_rest_validate_certs: false
+    truenas_target_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
+    truenas_ip_already_aligned: "{{ truenas_current_ip == truenas_target_ip }}"
 
   tasks:
 
+    - name: "Include hostname facts (host_site, needed by the sites.csv lookup below)"
+      ansible.builtin.include_tasks: ../../../tasks/hostname_facts.yml
+
     - name: "0 | Confirm REST API is reachable and credentials are valid"
       ansible.builtin.uri:
-        url: "https://{{ hostvars[inventory_hostname].ansible_host }}/api/v2.0/system/info"
+        url: "https://{{ truenas_current_ip }}/api/v2.0/system/info"
         method: GET
         user: "{{ truenas_rest_bootstrap_user }}"
         password: "{{ truenas_rest_bootstrap_password }}"
@@ -189,7 +294,7 @@
 
     - name: "1 | List services (to find ssh's numeric id and current state)"
       ansible.builtin.uri:
-        url: "https://{{ hostvars[inventory_hostname].ansible_host }}/api/v2.0/service"
+        url: "https://{{ truenas_current_ip }}/api/v2.0/service"
         method: GET
         user: "{{ truenas_rest_bootstrap_user }}"
         password: "{{ truenas_rest_bootstrap_password }}"
@@ -208,7 +313,7 @@
 
     - name: "2 | Start the SSH service"
       ansible.builtin.uri:
-        url: "https://{{ hostvars[inventory_hostname].ansible_host }}/api/v2.0/service/start"
+        url: "https://{{ truenas_current_ip }}/api/v2.0/service/start"
         method: POST
         user: "{{ truenas_rest_bootstrap_user }}"
         password: "{{ truenas_rest_bootstrap_password }}"
@@ -227,7 +332,7 @@
 
     - name: "3 | Enable the SSH service at boot"
       ansible.builtin.uri:
-        url: "https://{{ hostvars[inventory_hostname].ansible_host }}/api/v2.0/service/id/{{ _truenas_ssh_service.id }}"
+        url: "https://{{ truenas_current_ip }}/api/v2.0/service/id/{{ _truenas_ssh_service.id }}"
         method: PUT
         user: "{{ truenas_rest_bootstrap_user }}"
         password: "{{ truenas_rest_bootstrap_password }}"
@@ -244,12 +349,192 @@
       vars:
         ansible_connection: local
 
+    - name: "4 | Load this site's row from sites.csv (gateway/subnet)"
+      ansible.builtin.read_csv:
+        path: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
+      register: _truenas_sites_raw
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+      when: not truenas_ip_already_aligned | bool
+
+    - name: "4 | Set site addressing facts"
+      ansible.builtin.set_fact:
+        _truenas_site_row: "{{ _truenas_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first }}"
+      when: not truenas_ip_already_aligned | bool
+
+    - name: "4 | Derive gateway/netmask facts"
+      ansible.builtin.set_fact:
+        _truenas_gateway: "{{ _truenas_site_row.Gateway }}"
+        _truenas_netmask: "{{ _truenas_site_row.Subnet.split('/')[1] | int }}"
+      when: not truenas_ip_already_aligned | bool
+
+    - name: "5 | List interfaces (to find the one to configure)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_current_ip }}/api/v2.0/interface"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        status_code: 200
+      register: _truenas_interfaces
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+      when: not truenas_ip_already_aligned | bool
+
+    - name: "5 | Identify non-fake (physical) interfaces"
+      ansible.builtin.set_fact:
+        _truenas_real_ifaces: "{{ _truenas_interfaces.json | rejectattr('fake', 'equalto', true) | list }}"
+      when: not truenas_ip_already_aligned | bool
+
+    - name: "5 | Refuse to guess if the target interface is ambiguous"
+      ansible.builtin.fail:
+        msg: >-
+          Found {{ _truenas_real_ifaces | length }} non-virtual interface(s)
+          ({{ _truenas_real_ifaces | map(attribute='name') | join(', ') }}) --
+          refusing to guess which one to configure. Re-run with
+          -e truenas_target_interface=<name> to specify it explicitly.
+      when:
+        - not truenas_ip_already_aligned | bool
+        - truenas_target_interface is not defined
+        - _truenas_real_ifaces | length != 1
+
+    - name: "5 | Set target interface fact"
+      ansible.builtin.set_fact:
+        _truenas_target_iface: "{{ truenas_target_interface | default(_truenas_real_ifaces[0].name) }}"
+      when: not truenas_ip_already_aligned | bool
+
+    - name: "6 | Set the target static alias + disable DHCP on that interface"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_current_ip }}/api/v2.0/interface/id/{{ _truenas_target_iface }}"
+        method: PUT
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        body_format: json
+        body:
+          ipv4_dhcp: false
+          aliases:
+            - type: INET
+              address: "{{ truenas_target_ip }}"
+              netmask: "{{ _truenas_netmask }}"
+        status_code: 200
+      when:
+        - not truenas_ip_already_aligned | bool
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "7 | Set the default gateway and primary DNS"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_current_ip }}/api/v2.0/network/configuration"
+        method: PUT
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        body_format: json
+        body:
+          ipv4gateway: "{{ _truenas_gateway }}"
+          nameserver1: "192.168.139.8"
+        status_code: 200
+      when:
+        - not truenas_ip_already_aligned | bool
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "8 | Commit the interface change (auto-reverts if checkin doesn't happen)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_current_ip }}/api/v2.0/interface/commit"
+        method: POST
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        body_format: json
+        body:
+          rollback: true
+          checkin_timeout: 300
+        status_code: 200
+      when:
+        - not truenas_ip_already_aligned | bool
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "9 | Poll the target IP until the REST API answers there"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip }}/api/v2.0/system/info"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        status_code: 200
+        timeout: 10
+      register: _truenas_target_reachable
+      until: _truenas_target_reachable is success
+      retries: 24
+      delay: 10
+      ignore_errors: true
+      when:
+        - not truenas_ip_already_aligned | bool
+        - not ansible_check_mode
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+
+    - name: "10 | Checkin — confirm the new config works, cancel the auto-revert"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip }}/api/v2.0/interface/checkin"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        status_code: 200
+      when:
+        - not truenas_ip_already_aligned | bool
+        - not ansible_check_mode
+        - _truenas_target_reachable is success
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "10 | FAIL — target IP never came up, TrueNAS will auto-revert"
+      ansible.builtin.fail:
+        msg: >-
+          {{ truenas_target_ip }} never answered after committing the
+          interface change -- did NOT check in, so TrueNAS will
+          automatically revert to the previous config (interface/commit's
+          checkin_timeout=300s) if it hasn't already. The box should still
+          be reachable at {{ truenas_current_ip }} once that happens; re-run
+          this play once you've worked out what went wrong.
+      when:
+        - not truenas_ip_already_aligned | bool
+        - not ansible_check_mode
+        - _truenas_target_reachable is not success
+
     - name: "--check mode notice"
       ansible.builtin.debug:
         msg: >-
-          Check mode: would start/enable the SSH service via REST API if
-          needed (current state={{ _truenas_ssh_service.state }},
-          enable={{ _truenas_ssh_service.enable }}).
+          Check mode: would start/enable the SSH service if needed (current
+          state={{ _truenas_ssh_service.state }},
+          enable={{ _truenas_ssh_service.enable }}){{
+            ", and align the IP from " ~ truenas_current_ip ~ " to " ~ truenas_target_ip
+            if not truenas_ip_already_aligned | bool else
+            " (IP already aligned, nothing to do there)"
+          }}.
       when: ansible_check_mode
 
     - name: Summary
@@ -260,5 +545,6 @@
           - "════════════════════════════════════════════════════════════════"
           - "  TrueNAS version : {{ _truenas_system_info.json.version | default('unknown') }}"
           - "  SSH service     : state={{ _truenas_ssh_service.state }} enable={{ _truenas_ssh_service.enable }} (before this run)"
+          - "  IP alignment    : {{ 'already on ' ~ truenas_target_ip ~ ', nothing to do' if truenas_ip_already_aligned | bool else (truenas_current_ip ~ ' -> ' ~ truenas_target_ip ~ ' (checked in)' if not ansible_check_mode else 'not run in check mode') }}"
           - "  Next stage      : re-run as root+password over SSH (-k) to continue via 00-preflight.yml/10-access.yml"
           - "════════════════════════════════════════════════════════════════"
