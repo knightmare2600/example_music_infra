@@ -9,18 +9,25 @@ site NAS/SAN (`EXANAS<SITE>001`, the `.19` standard slot — see
 no bootstrap/install capability of its own (checked directly against its
 real module list, 2026-07-22) — Robert installs TrueNAS by hand, box by box
 (no working answer-file/PXE mechanism exists for either CORE or SCALE),
-then completes TrueNAS's own web-UI first-run setup (admin password, static
-`.19` IP, at least one pool created) before any of this runs. **SSH is NOT
-reliably part of that wizard** — confirmed live against `EXANASFAL001`,
-2026-07-26 — so `playbooks/00-rest-bootstrap.yml` enables it via TrueNAS's
-REST API first, if needed.
+then completes TrueNAS's own web-UI first-run setup (admin password, at
+least one pool created) before any of this runs. **Neither SSH nor the
+static `.19` IP are reliably part of that wizard** — confirmed live against
+`EXANASFAL001`, 2026-07-26, which was still on its original DHCP address —
+so `playbooks/00-rest-bootstrap.yml` handles both via TrueNAS's REST API
+first, if needed.
 
-**No network/IP reconfiguration happens anywhere in this chain.** The
-collection has no interface/IP module at all — `arensb.truenas.filesystem`/
-`.hostname`/`.user` and everything else in it only ever talk to TrueNAS's
-own middleware daemon (`midclt`/`client`), never `nmcli` or an equivalent.
-Unlike `bind9-dns.yml`/`rudder_server.yml`/`salt/`'s own NM session-safety
-pattern, there's nothing here for that pattern to apply to.
+**`arensb.truenas` itself still does no network/IP reconfiguration** — that
+collection has no interface/IP module at all, `.filesystem`/`.hostname`/
+`.user` and everything else in it only ever talk to TrueNAS's own
+middleware daemon (`midclt`/`client`), never `nmcli` or an equivalent.
+`00-rest-bootstrap.yml` is the one exception, over REST instead — it can set
+the interface's static alias, disable DHCP, and set the default gateway/DNS,
+using TrueNAS's own built-in `/interface/commit` + `/interface/checkin`
+safety net (auto-reverts if the box doesn't answer at its new address within
+a timeout) rather than this estate's usual NM session-safety pattern
+(`bind9-dns.yml`/`rudder_server.yml`/`salt/`), which doesn't apply here —
+TrueNAS's own middleware already solves the same "don't strand the session"
+problem, natively, better than a bolted-on Ansible-side check could.
 
 ---
 
@@ -31,7 +38,7 @@ Numbered-stage chain, matching `proxmox`/`salt`/`windows_bootstrap`'s own
 
 | File | What it does |
 |------|-------------|
-| `playbooks/00-rest-bootstrap.yml` | Enable SSH via TrueNAS's REST API — only needed if SSH doesn't already work; a genuinely separate API from `arensb.truenas` (local-socket-only), see that file's own header |
+| `playbooks/00-rest-bootstrap.yml` | Enable SSH + align the static IP (interface/gateway/DNS) via TrueNAS's REST API — only needed if the box isn't already reachable there; a genuinely separate API from `arensb.truenas` (local-socket-only), see that file's own header |
 | `playbooks/00-preflight.yml` | SSH keypair connectivity check + hostname/site lookup |
 | `playbooks/10-access.yml` | Dedicated `ansible` automation account (`arensb.truenas.user`, not `linux/tools.yml` — TrueNAS accounts are middleware-managed, not `/etc/passwd`), hostname, nodeinfo.json |
 | `playbooks/20-storage.yml` | Pools/datasets/shares — deliberately minimal, see that file's own header (no real per-site spec exists yet) |
