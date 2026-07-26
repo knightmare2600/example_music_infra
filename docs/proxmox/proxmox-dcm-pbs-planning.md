@@ -426,7 +426,7 @@ just makes the addressing policy match reality.
 |-----------|-------|
 | Hostname pattern | `EXANAS<SITE>001` |
 | IP convention | `192.168.<site-octet>.19` |
-| OS | TrueNAS (SCALE, most likely — CORE/SCALE choice not yet made) |
+| OS | TrueNAS SCALE (Debian-based) — confirmed against the first real box, `EXANASFAL001`, 2026-07-26 |
 | Deployment | One per site, no exceptions — same "identical everywhere" simplification as PBS |
 
 **Addressing check, same rigour as PBS's `.14`:** `.19` is free in both
@@ -491,9 +491,31 @@ an Ansible collection). Two distinct pieces of future work, not one:
 2. **Configure** — built 2026-07-22: `ansible/playbooks/truenas/` (`site.yml` +
    `00-preflight`/`10-access`/`20-storage`, `arensb/ansible-truenas`) sets hostname, the
    dedicated `ansible` automation account, nodeinfo, and a placeholder dataset. No network/IP
-   task anywhere — the collection has no interface module at all. Not yet run against a real
-   box; `20-storage.yml` deliberately creates only one general-purpose dataset until a real
-   per-site dataset/share layout is defined. See `ansible/playbooks/truenas/README.md`.
+   task anywhere — the collection has no interface module at all. `20-storage.yml` deliberately
+   creates only one general-purpose dataset until a real per-site dataset/share layout is
+   defined. See `ansible/playbooks/truenas/README.md`.
+
+> **Follow-up, 2026-07-26 — first real box, and a genuine bootstrap gap found live:**
+> `EXANASFAL001` installed (bare metal, `192.168.76.19`), the first real `truenas_servers`
+> member. Live testing found the web-UI first-run wizard does NOT reliably leave SSH enabled or
+> set the static `.19` IP — the box was still reachable only at its original DHCP address.
+> `arensb/ansible-truenas` can't fix either gap (confirmed by reading its `module_utils` source
+> directly — every backend talks to TrueNAS's middleware over a LOCAL Unix socket, meaning
+> Ansible already has to be running ON the box before any of it works). Added
+> `truenas/playbooks/00-rest-bootstrap.yml`, a new stage ahead of `00-preflight.yml`, using
+> TrueNAS's genuinely separate, remote-capable REST API (`https://<host>/api/v2.0/...`,
+> endpoint shapes read directly from the box's own OpenAPI spec) to enable SSH and align the
+> interface/gateway/DNS to the target static IP — using TrueNAS's own built-in
+> `/interface/commit`+`/interface/checkin` safety net (auto-reverts if the box doesn't answer at
+> its new address within a timeout) rather than reinventing one. Prompts interactively for the
+> admin username/password/current IP if not already supplied via a vault entry
+> (`group_vars/truenas_servers/vault.yml`) — the admin account is `truenas_admin`, confirmed
+> directly by Robert, not `root` (an earlier version guessed `root` by analogy with
+> `10-access.yml`'s later SSH first-touch, a different account on a different interface).
+> Verified against scratch mock servers (credential resolution, IP-alignment success/failure/
+> already-aligned paths, check-mode correctness) — not yet run against the real box. See
+> `ansible/playbooks/truenas/README.md` and memory `project_truenas_manual_install_ansible_followup`
+> for the full detail.
 
 ---
 
@@ -508,8 +530,8 @@ an Ansible collection). Two distinct pieces of future work, not one:
 | PBS Phase 2 | Roll `EXAPBS<SITE>001` out across the remaining sites, one at a time, per the "Renumbering / Reworking Live Conventions" migration procedure — not a single estate-wide blast | Enterprise support active per site as it's onboarded |
 | DCM Phase 2 | Register every site's PVE cluster + local PBS as PDM remotes as each comes online; configure RBAC and AD auth | DCM Phase 1 + at least one PBS site complete |
 | NAS — done | `.19` addressing live in `address_policy.json`, legacy FAL/PER/MEL NAS retired | — (already complete, 2026-07-19) |
-| NAS — install | Manual install, box by box — no working answer-file/PXE mechanism exists for CORE or SCALE (investigated 2026-07-21, confirmed via TrueNAS's own community forums) | — (decision made, 2026-07-21) |
-| NAS — configure | `ansible/playbooks/truenas/` (`arensb/ansible-truenas`, site.yml + 00-preflight/10-access/20-storage) built 2026-07-22 — not yet run against a real box, no real per-site dataset/share layout defined yet | NAS — install complete on at least one site |
+| NAS — install | Manual install, box by box — no working answer-file/PXE mechanism exists for CORE or SCALE (investigated 2026-07-21, confirmed via TrueNAS's own community forums). First real box, `EXANASFAL001`, installed 2026-07-26 | — (decision made, 2026-07-21; first install done 2026-07-26) |
+| NAS — configure | `ansible/playbooks/truenas/` (`site.yml` + `00-rest-bootstrap`/`00-preflight`/`10-access`/`20-storage`) built 2026-07-22, REST-bootstrap stage added 2026-07-26 — not yet run against a real box, no real per-site dataset/share layout defined yet | NAS — install complete on at least one site (met, `EXANASFAL001`) |
 
 ---
 
