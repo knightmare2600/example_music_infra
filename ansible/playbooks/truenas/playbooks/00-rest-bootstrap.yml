@@ -116,12 +116,15 @@
 # group_vars/truenas_servers/vault.yml (credentials only -- there's no
 # sensible way to pre-populate "current DHCP IP" in a static file) or -e,
 # and otherwise via an interactive ansible.builtin.pause prompt. Username
-# default: root if left blank -- TrueNAS doesn't fix this name in software,
-# it's whatever Robert typed into the web-UI first-run wizard, so this can't
-# be hardcoded; checked against docs/api2.txt's full 610-path spec directly,
-# 2026-07-26 -- it only ever says "local administrator account", never a
-# concrete name, confirming this really is per-install and not something to
-# guess at. `truenas_current_ip` blank means "already reachable at its final
+# default: truenas_admin if left blank -- confirmed directly by Robert,
+# 2026-07-26: the web-UI first-run wizard's local admin account is always
+# named `truenas_admin`, not `root` (an earlier version of this file guessed
+# `root`, by analogy with 10-access.yml's SSH first-touch convention -- wrong
+# guess, a different account on a different interface; docs/api2.txt's spec
+# never names the account at all, checked directly, so this genuinely had to
+# come from Robert rather than the spec). The account's password is set by
+# Robert during that same first-boot wizard. `truenas_current_ip` blank
+# means "already reachable at its final
 # target address" (defaults to hostvars[inventory_hostname].ansible_host) --
 # inverse of windows_bootstrap's target_ip-blank-means-no-change convention,
 # same idea applied to the other address.
@@ -190,6 +193,13 @@
 #   # DHCP address here; leave blank only if already on the target address.
 # =============================================================================
 # Changelog:
+#   2026-07-26  Robert confirmed directly: the web-UI first-run wizard's local admin
+#               account is always truenas_admin, not root -- root is a different
+#               account, used later by 10-access.yml's SSH first-touch, not this REST
+#               API. The original "root" default here was a wrong guess by analogy
+#               with that later convention, never confirmed against a real box.
+#               Changed the blank-input default (prompt text + Jinja fallback) and
+#               group_vars/truenas_servers/vault.yml's own default to truenas_admin.
 #   2026-07-26  Fixed a real bug found on Robert's first live attempt against
 #               EXANASFAL001: the username/password prompts used
 #               `truenas_rest_bootstrap_user/_password is not defined` as
@@ -253,7 +263,7 @@
 
     - name: "Prompt for REST API username (if not already set via vault/-e)"
       ansible.builtin.pause:
-        prompt: "TrueNAS admin username for the REST API (blank = root)"
+        prompt: "TrueNAS admin username for the REST API (blank = truenas_admin)"
         echo: true
       register: _truenas_user_prompt
       when: not _truenas_vault_configured
@@ -280,7 +290,7 @@
       ansible.builtin.set_fact:
         truenas_rest_bootstrap_user: >-
           {{ truenas_rest_bootstrap_user if _truenas_vault_configured
-             else (_truenas_user_prompt.user_input | default('root', true)) }}
+             else (_truenas_user_prompt.user_input | default('truenas_admin', true)) }}
         truenas_rest_bootstrap_password: >-
           {{ truenas_rest_bootstrap_password if _truenas_vault_configured
              else (_truenas_pass_prompt.user_input | default('', true)) }}

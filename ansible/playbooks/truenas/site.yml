@@ -36,7 +36,7 @@
 #     -i configs/inventory --limit <hostname> --ask-vault-pass
 #
 # First run, vault not populated yet -- rest-bootstrap's own leading play
-# prompts interactively instead (blank username = root):
+# prompts interactively instead (blank username = truenas_admin):
 #   ansible-playbook playbooks/truenas/site.yml \
 #     -i configs/inventory --limit <hostname>
 #
