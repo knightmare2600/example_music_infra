@@ -529,6 +529,38 @@
       ansible.builtin.getent:
         database: passwd
 
+    # -------------------------------------------------------------------------
+    # Robert, 2026-07-26 (live --check --diff, EXAPVEVRK001): the dotfile-deploy tasks
+    # below trust whatever /home/* accounts already exist on the live box -- a real account
+    # (thesneak) got dotfiles maintained even though it was never typed into this run's
+    # extra_users_input prompt, because it already existed from some earlier point.
+    # Explicit call: keep that behaviour (don't restrict deployment to a known list), but
+    # make it visible instead of silent -- warn on any /home/* account that isn't the
+    # ansible user or in this run's extra_users, rather than quietly configuring it forever
+    # with no one noticing it's there.
+    # -------------------------------------------------------------------------
+    - name: "Identify /home/* accounts not explicitly known to this playbook"
+      ansible.builtin.set_fact:
+        _unexpected_home_accounts: >-
+          {%- set known = ['ansible'] + extra_users -%}
+          {%- set result = [] -%}
+          {%- for user, info in ansible_facts.getent_passwd.items() -%}
+            {%- if info[4] is match('^/home/') and user not in known -%}
+              {%- set _ = result.append(user) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | join(', ') }}
+
+    - name: "WARN — dotfiles will be maintained for account(s) not explicitly known to this playbook"
+      ansible.builtin.debug:
+        msg: >-
+          {{ _c.Y }}[!]{{ _c.NC }} {{ _unexpected_home_accounts }} -- not the ansible user or
+          in this run's extra_users_input, but has a /home/* homedir and will get dotfiles
+          maintained (gitconfig/tmux.conf/vimrc/.vim/zshrc) the same as any known account.
+          If this is a pre-existing, wanted account, no action needed. If it's unexpected,
+          investigate before it's silently configured further.
+      when: _unexpected_home_accounts | length > 0
+
     - name: Deploy .gitconfig to all user home directories
       ansible.builtin.copy:
         src:   files/gitconfig
