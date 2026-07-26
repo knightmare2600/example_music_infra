@@ -39,11 +39,15 @@ graph TD
     subgraph NEW_MIL ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRMIL001 · RTR · .1"]
       N_SBC["🛡️ EXASBCMIL001 · SBC · .48"]
+      N_NAS["🗃️ EXANASMIL001 · NAS · .19"]
+      N_RDR["🔐 EXARDRMIL001 · RDR · .21"]
+      N_BMC["🔧 EXABMCMIL001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSMIL001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLMIL001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLMIL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEMIL001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIMIL001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPMIL001 · WAP 1 · .82"]
     end
     style NEW_MIL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:MIL:END

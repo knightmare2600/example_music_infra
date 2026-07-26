@@ -32,6 +32,17 @@
 #   EXA<ROLE><SITE><NNN>
 # ==================================================================================================
 # Changelog:
+#  2026-07-26  Robert's explicit policy call: NAS/RDR/BMC/WAP joined DNS_MULTI_FIRST_INSTANCE_ONLY
+#              (matching SWI's existing "every site has one, even if not physically racked yet"
+#              treatment) -- previously excluded 2026-07-20 on "not universally deployed yet"
+#              reasoning, which is a true fact but not a reason to withhold synthesis; unlike PRV
+#              (structurally only ever exists at VRK/FRD), these are roles every real site WILL
+#              have. Also fixed a real collision this surfaced: CLD's real UFC (UniFi Network
+#              Controller) row sits on WAP1's own octet, which the generic real_device_types
+#              suppression doesn't catch (it matches on Type, and "UFC" != "WAP") -- added "WAP"
+#              to SUPPRESSED_STANDARD_ROLES["CLD"] alongside the existing "SBC" entry, same
+#              pattern as PBX's own SBC-slot reuse. Caught before generating real DNS records,
+#              not after.
 #  2026-07-21  Fixed a real EXAFWLVRK001 duplicate-hostname collision found live in vrk.ini: two
 #              entries, two different IPs (.139 and .69). Root cause was two-fold -- VRK's own
 #              standard-slot FWL1 used the generic "this site's own octet within VRK's network"
@@ -910,11 +921,11 @@ def validate_csv_structure(rows):
 #     would be actively misleading, and WOULD collide with devices.csv's OWN numbering for real
 #     extra instances at that site (devices.csv's Number is chosen independently by whoever
 #     filled in the row, not guaranteed to skip index 1)
-#   - WKS/LAP "example" slots, BMC, and NAS (all always commented/reference-only in the .ini)
-#     are never synthesized here for the same reason — see the Notes above about hostname
-#     collisions this caused in testing (e.g. a real devices.csv "WKS Number=1" at a non-standard
-#     octet legitimately reusing EXAWKS<SITE>001, the same hostname the "example" placeholder
-#     would use)
+#   - WKS/LAP "example" slots are never synthesized here, ever — a real devices.csv "WKS
+#     Number=1" at a non-standard octet legitimately reuses EXAWKS<SITE>001, the same hostname
+#     the "example" placeholder would use; unlike NAS/RDR/BMC/WAP below, there's no way to tell
+#     apart "the standard slot" from "a real device that happens to claim the standard hostname"
+#     for these two specifically, so they stay permanently excluded from synthesis.
 #
 # 2026-07-19, Robert: PRV removed from this list entirely (was here, alongside RTR/SBC, as an
 # "always physically present" role). Confirmed via a real --emit-devices-json run that this was
@@ -923,20 +934,33 @@ def validate_csv_structure(rows):
 # exception path, unrelated to this OFFSETS_SINGLE/DNS_SINGLE_ROLES mechanism and unaffected by
 # this removal), because provisioning is genuinely centralised at VRK/FRD, not per-site. Every
 # other site was getting a synthesized EXAPRV<SITE>001 DNS record for a device that never
-# existed — the exact class of bug this repo's own harness exists to catch, just never wired up
-# for this one. NAS (new, address_policy.json's ".19", replacing the 3 retired legacy NAS
-# devices at FAL/PER/MEL) is deliberately NOT added to this list either, for the WAP/BMC reason
-# above — it isn't universally deployed yet, so treating it as "always real" would recreate the
-# exact same mistake for a different role. Add it here later, once a real NAS/TrueNAS box is
-# confirmed present at every site, not before.
-DNS_SINGLE_ROLES = ["RTR", "SBC"]
+# existed — the exact class of bug this repo's own harness exists to catch. PRV is a genuinely
+# different case from what follows: provisioning is structurally centralised at 2 sites only, so
+# "every site has one" was never true for it, at any point in time.
+#
+# 2026-07-26, Robert's explicit policy call: NAS/RDR/BMC/WAP were previously excluded from
+# synthesis on 2026-07-20 with the reasoning "not universally deployed yet" -- correct as a fact
+# (EXANASFAL001 is, as of this same day, the very first real NAS box in the whole estate), but
+# wrong as a reason to withhold synthesis. Robert's own framing: every real site WILL eventually
+# have a NAS, a badge reader, switches, WAPs, and BMCs -- not yet physically present is not the
+# same as PRV's "structurally will never exist here," and SWI (added 2026-07-14, same treatment
+# below) already proved this distinction out in practice with zero problems. Brought all four up
+# to SWI's exact treatment -- NAS/RDR join DNS_SINGLE_ROLES (they're OFFSETS_SINGLE roles, same
+# shape as RTR/SBC, not ROLE_OFFSETS -- confirmed live before committing: adding them to
+# DNS_MULTI_FIRST_INSTANCE_ONLY instead was dead code, since that set is only ever consumed by a
+# loop over ROLE_OFFSETS.items(), which NAS/RDR were never in; caught via --emit-devices-json
+# showing 1-2 entries instead of ~51 before this was fixed). BMC/WAP genuinely are ROLE_OFFSETS
+# roles, so DNS_MULTI_FIRST_INSTANCE_ONLY is the correct list for them.
+DNS_SINGLE_ROLES = ["RTR", "SBC", "NAS", "RDR"]
 DNS_MULTI_ALL_INSTANCES = {"FWL"}
 # SWI joined 2026-07-14 (address_policy.json's .250-.252 range, previously documented in
 # _addressing but never wired into role_offsets): every site gets exactly one standard SWI
 # placeholder synthesized (first instance only, same as DCS/PVE) — Robert's "every site has one
 # of these, even if it's not physically racked yet" point. .251/.252 stay reserved headroom for
 # the sites that grow to 2-3 units via a real devices.csv row, same as they already do today.
-DNS_MULTI_FIRST_INSTANCE_ONLY = {"DCS", "PVE", "SWI"}
+# BMC/WAP joined 2026-07-26 for the identical reason -- see the note above (NAS/RDR joined
+# DNS_SINGLE_ROLES instead, not this set -- different underlying offsets shape).
+DNS_MULTI_FIRST_INSTANCE_ONLY = {"DCS", "PVE", "SWI", "BMC", "WAP"}
 
 def compute_standard_devices_for_site(site: str, net: IP, real_device_types: frozenset = frozenset()):
   """
@@ -1006,8 +1030,16 @@ NON_STANDARD_SITES = {"VRK", "FRD"}
 # the SBC octet, since CLD has no SBC of its own — same pattern as the UniFi controller reusing
 # WAP1's octet). Suppress just those specific standard roles per site, so the fictional
 # standard-slot entry doesn't collide in the DNS output with the real device sitting there.
+# 2026-07-26: added "WAP" alongside the existing "SBC" suppression -- CLD's real UFC
+# (UniFi Network Controller) row sits on WAP1's own octet (.82), same deliberate slot-reuse
+# pattern as PBX reusing the empty SBC octet. The generic real_device_types suppression
+# (compute_standard_devices_for_site's own docstring) only matches on Type, so a real "UFC"
+# row does NOT suppress a synthesized "WAP" placeholder by itself -- confirmed by checking
+# CLD's actual devices.csv rows before adding WAP/BMC to DNS_MULTI_FIRST_INSTANCE_ONLY, since
+# without this fix CLD would get a phantom EXAWAPCLD001 DNS record colliding with the real
+# EXAUFCCLD001 at the exact same IP.
 SUPPRESSED_STANDARD_ROLES = {
-  "CLD": {"SBC"},
+  "CLD": {"SBC", "WAP"},
 }
 
 def emit_devices_for_dns(csv_path: Path, devices_path: Path):

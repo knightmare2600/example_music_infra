@@ -39,11 +39,15 @@ graph TD
     subgraph NEW_GOT ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRGOT001 · RTR · .1"]
       N_SBC["🛡️ EXASBCGOT001 · SBC · .48"]
+      N_NAS["🗃️ EXANASGOT001 · NAS · .19"]
+      N_RDR["🔐 EXARDRGOT001 · RDR · .21"]
+      N_BMC["🔧 EXABMCGOT001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSGOT001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLGOT001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLGOT002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEGOT001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIGOT001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPGOT001 · WAP 1 · .82"]
     end
     style NEW_GOT fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:GOT:END

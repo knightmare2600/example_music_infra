@@ -39,11 +39,15 @@ graph TD
     subgraph NEW_VIE ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRVIE001 · RTR · .1"]
       N_SBC["🛡️ EXASBCVIE001 · SBC · .48"]
+      N_NAS["🗃️ EXANASVIE001 · NAS · .19"]
+      N_RDR["🔐 EXARDRVIE001 · RDR · .21"]
+      N_BMC["🔧 EXABMCVIE001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSVIE001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLVIE001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLVIE002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEVIE001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIVIE001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPVIE001 · WAP 1 · .82"]
     end
     style NEW_VIE fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:VIE:END
