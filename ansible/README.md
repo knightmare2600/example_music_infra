@@ -320,6 +320,17 @@ ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall
   -e target=EXAFWLKGE001 --ask-vault-pass
 ```
 
+### SSH key preflight
+
+`90-firewall.yml` imports `../../ssh_preflight_with_fallback.yml` first, before its own
+`gather_facts: true` attempts a real connection — if the current Ansible SSH key is
+rejected, it prompts for a fallback password (only useful if the account's password was
+already manually unlocked out-of-band for recovery) instead of just dying `UNREACHABLE`.
+A working answer lets the run continue and pushes the real key back automatically; a
+blank answer skips just that host. Shared with `linux/tools.yml`'s identical mechanism
+(`playbooks/ssh_preflight_with_fallback.yml` + `tasks/refresh_ansible_ssh_key.yml`) — see
+`firewallme/README.md`'s own "SSH key preflight" section for the full detail.
+
 ### Tags
 
 `firewall`, `preflight`, `interfaces`, `wan`, `wireguard`, `confirm`,
@@ -578,30 +589,34 @@ push any state.
 
 ## truenas
 
-Configures an already-installed, already-networked site NAS/SAN
-(`EXANAS<SITE>001`, the `.19` standard slot) via `arensb/ansible-truenas`.
-Install is not done here and never will be — the collection has no
-bootstrap/install capability of its own; Robert installs TrueNAS by hand,
-then completes its own web-UI first-run setup before this runs. No
-network/IP reconfiguration happens anywhere in this chain — the collection
-has no interface/IP module at all, unlike the NM session-safety pattern
-`bind9`/`rudder`/`salt` all needed.
+Configures an already-installed site NAS/SAN (`EXANAS<SITE>001`, the `.19`
+standard slot). Install is not done here and never will be — Robert
+installs TrueNAS by hand, then completes its own web-UI first-run setup
+(admin password, at least one pool) before this runs. **Neither SSH nor the
+static `.19` IP are reliably part of that wizard** — confirmed live against
+`EXANASFAL001`, 2026-07-26 — so the first stage below handles both via
+TrueNAS's REST API before anything else touches the box. The other three
+stages then use `arensb/ansible-truenas`, which has no network/IP module at
+all (local-socket-only middleware connection, can't do what the REST stage
+does) — no NM session-safety pattern applies to those, TrueNAS's own
+`/interface/commit`+`/interface/checkin` safety net covers the REST stage
+instead.
 
 | Playbook | What it does |
 |----------|-------------|
-| `truenas/site.yml` | Orchestrator — imports the three stages below in order |
+| `truenas/site.yml` | Orchestrator — imports the four stages below in order |
+| `truenas/playbooks/00-rest-bootstrap.yml` | Enable SSH + align the static IP (interface/gateway/DNS) via TrueNAS's REST API — only needed if the box isn't already reachable there. Prompts for the admin username (`truenas_admin` by default — confirmed by Robert, not `root`), password, and current/DHCP IP if not already supplied via vault/-e |
 | `truenas/playbooks/00-preflight.yml` | SSH keypair connectivity check + hostname/site lookup |
 | `truenas/playbooks/10-access.yml` | Dedicated `ansible` automation account, hostname, nodeinfo |
 | `truenas/playbooks/20-storage.yml` | Pools/datasets/shares — deliberately minimal, no real per-site spec exists yet |
 
-**No real device exists yet** — `truenas_servers` (`generate_inventory.py`'s
-`DEVICE_GROUP_MAP`) is populated automatically once a real `devices.csv`
-`Type=NAS` row exists, same mechanism `firewalls`/`windows_dc`/etc already
-use, but has zero members in every currently-generated `.ini`. See
-`truenas/README.md` for full usage and the open, unresolved items (CORE vs
-SCALE, nodeinfo.json persistence across a TrueNAS boot-environment
-rollback, real dataset/share layout) — none of this has run against a real
-box.
+First real device, `EXANASFAL001` (`192.168.76.19`), installed 2026-07-26 —
+`truenas_servers` (`generate_inventory.py`'s `DEVICE_GROUP_MAP`) has its
+first real member. See `truenas/README.md` for full usage and the open,
+unresolved items (nodeinfo.json persistence across a TrueNAS
+boot-environment rollback, real dataset/share layout) — `00-rest-bootstrap.yml`
+is verified against scratch mock servers only, the other three stages have
+never run against a real box.
 
 ---
 
