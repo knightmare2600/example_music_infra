@@ -190,6 +190,27 @@
 #   # DHCP address here; leave blank only if already on the target address.
 # =============================================================================
 # Changelog:
+#   2026-07-26  Fixed a real bug found on Robert's first live attempt against
+#               EXANASFAL001: the username/password prompts used
+#               `truenas_rest_bootstrap_user/_password is not defined` as
+#               their when: guard, but group_vars/truenas_servers/vault.yml
+#               ALWAYS defines both (as "root" / "REPLACE_WITH_TRUENAS_
+#               ADMIN_PASSWORD") the moment that file exists, whether or not
+#               Robert has ever edited it -- so the prompts silently never
+#               fired, and the literal placeholder password was sent to the
+#               real box, producing a genuine 401 that looked like it might
+#               be a design problem but was actually this. Fixed by adding a
+#               `_truenas_vault_configured` fact (checks the password
+#               against the known placeholder sentinel, not just
+#               definedness) and gating both prompts AND the resolve-facts
+#               fallback logic on it, so a real -e/vault value is still
+#               respected but an untouched placeholder no longer silently
+#               wins. Re-verified against the REAL inventory tree this time
+#               (`-i configs/inventory`, not a standalone scratch .ini) --
+#               the earlier mock tests never caught this because a
+#               standalone scratch inventory never loads
+#               configs/inventory/group_vars/ at all, so the bug was
+#               invisible to them by construction.
 #   2026-07-26  Added IP-alignment (interface + gateway/DNS + commit/checkin)
 #               -- Robert: the box is genuinely still on its DHCP address,
 #               and the play needs to bring it into alignment with its
@@ -224,19 +245,25 @@
 
   tasks:
 
+    - name: "Determine whether the vault actually has real credentials"
+      ansible.builtin.set_fact:
+        _truenas_vault_configured: >-
+          {{ (truenas_rest_bootstrap_password | default(''))
+             not in ['', 'REPLACE_WITH_TRUENAS_ADMIN_PASSWORD'] }}
+
     - name: "Prompt for REST API username (if not already set via vault/-e)"
       ansible.builtin.pause:
         prompt: "TrueNAS admin username for the REST API (blank = root)"
         echo: true
       register: _truenas_user_prompt
-      when: truenas_rest_bootstrap_user is not defined
+      when: not _truenas_vault_configured
 
     - name: "Prompt for REST API password (if not already set via vault/-e)"
       ansible.builtin.pause:
         prompt: "TrueNAS admin password for the REST API"
         echo: false
       register: _truenas_pass_prompt
-      when: truenas_rest_bootstrap_password is not defined
+      when: not _truenas_vault_configured
       no_log: true
 
     - name: "Prompt for the box's CURRENT reachable IP (if not already set via -e)"
@@ -252,11 +279,11 @@
     - name: "Resolve parameter facts"
       ansible.builtin.set_fact:
         truenas_rest_bootstrap_user: >-
-          {{ truenas_rest_bootstrap_user
-             | default(_truenas_user_prompt.user_input | default('root', true)) }}
+          {{ truenas_rest_bootstrap_user if _truenas_vault_configured
+             else (_truenas_user_prompt.user_input | default('root', true)) }}
         truenas_rest_bootstrap_password: >-
-          {{ truenas_rest_bootstrap_password
-             | default(_truenas_pass_prompt.user_input | default('', true)) }}
+          {{ truenas_rest_bootstrap_password if _truenas_vault_configured
+             else (_truenas_pass_prompt.user_input | default('', true)) }}
         truenas_current_ip: >-
           {{ truenas_current_ip
              | default(_truenas_current_ip_prompt.user_input
