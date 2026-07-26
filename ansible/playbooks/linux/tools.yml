@@ -134,6 +134,17 @@
 #               multi-host parallel batch), it got its own dedicated "Resolve environment"
 #               serial: 1 play too, rather than living inside the much heavier, fully
 #               parallel "Deploy common tools" play. See that play's own header comment.
+#   2026-07-26  Robert, live (EXAPVEVRK001, --check --diff -v): "Deploy .gitconfig to all
+#               user home directories" (and the 4 other dotfile-deploy tasks alongside it)
+#               failed outright on EVERY loop item -- not just the ones that should have
+#               been skipped. Same bug class as several others fixed live this session
+#               (regex_search() returns the matched string or None, never a real boolean;
+#               recent ansible-core rejects a non-boolean when: result outright), but this
+#               was in this file the whole time and should have been caught by the sweep
+#               done earlier the same session when the same fix landed elsewhere -- missed
+#               it. All 5 `when: item.value[4] | regex_search('^/home/')` -> `is match(...)`.
+#               The new "Identify /home/* accounts..." task added the same session already
+#               used `is match(...)` correctly, so it wasn't affected.
 
 - name: SSH preflight
   hosts: all
@@ -585,7 +596,7 @@
         group: "{{ item.key }}"
         mode:  '0644'
       loop: "{{ ansible_facts.getent_passwd | dict2items }}"
-      when: item.value[4] | regex_search('^/home/')
+      when: item.value[4] is match('^/home/')
       loop_control:
         label: "{{ item.key }}"
 
@@ -597,7 +608,7 @@
         group: "{{ item.key }}"
         mode:  '0644'
       loop: "{{ ansible_facts.getent_passwd | dict2items }}"
-      when: item.value[4] | regex_search('^/home/')
+      when: item.value[4] is match('^/home/')
       loop_control:
         label: "{{ item.key }}"
 
@@ -609,7 +620,7 @@
         group: "{{ item.key }}"
         mode:  '0644'
       loop: "{{ ansible_facts.getent_passwd | dict2items }}"
-      when: item.value[4] | regex_search('^/home/')
+      when: item.value[4] is match('^/home/')
       loop_control:
         label: "{{ item.key }}"
 
@@ -622,7 +633,7 @@
         mode:           '0644'
         directory_mode: '0755'
       loop: "{{ ansible_facts.getent_passwd | dict2items }}"
-      when: item.value[4] | regex_search('^/home/')
+      when: item.value[4] is match('^/home/')
       loop_control:
         label: "{{ item.key }}"
 
@@ -634,7 +645,7 @@
         group: "{{ item.key }}"
         mode:  '0644'
       loop: "{{ ansible_facts.getent_passwd | dict2items }}"
-      when: item.value[4] | regex_search('^/home/')
+      when: item.value[4] is match('^/home/')
       loop_control:
         label: "{{ item.key }}"
 
