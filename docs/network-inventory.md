@@ -1045,7 +1045,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
 | `EXASRV` | Server | `EXADNSVRK001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
-| `EXANAS` | NAS/SAN storage (e.g. TrueNAS) — standard `.19` slot at every site | `EXANAS<SITE>001` |
+| `EXANAS` | NAS/SAN storage (e.g. TrueNAS) — standard `.19` slot | `EXANAS<SITE>001` |
 | `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
 | `EXAPBX` | PBX | `EXAPBXCLD001` |
 | `TMP` | Provisioning / bootstrap server — VRK/FRD only, not a per-site convention (was `PRV`, retired as a per-site convention 2026-07-19; VRK/FRD's own two devices deliberately given no formal hostname 2026-07-21) | `192.168.139.50` (VRK), `172.16.124.1` (FRD) — IP only |

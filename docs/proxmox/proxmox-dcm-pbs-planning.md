@@ -440,11 +440,12 @@ was updated for real (PRV removed from `offsets_single`/`_addressing`/`connectio
 NAS added), `generate_inventory.py`'s inventory/DNS synthesis regenerated across all 53 sites,
 and the 3 legacy ad-hoc NAS devices (`EXANASFAL001` at `.32`, `EXANASPER001` at `.50`,
 `EXANASMEL001` with no fixed address — all flagged `Legacy=yes`) removed from `devices.csv` and
-marked retired in `docs/site-inventory.md`. **`NAS` is deliberately NOT in `DNS_SINGLE_ROLES`**
+marked retired in `docs/site-inventory.md`. ~~**`NAS` is deliberately NOT in `DNS_SINGLE_ROLES`**
 — unlike PVE/DCS/FWL, it isn't universally deployed yet, so treating it as "always real" would
 recreate the exact PRV mistake just fixed, for a different role. It gets the same treatment as
 `WAP`/`BMC`: a reserved, documented slot, synthesized into DNS only once a real `devices.csv`
-row confirms a device actually exists at that site.
+row confirms a device actually exists at that site.~~ **Superseded, 2026-07-26 — see the
+follow-up below.**
 
 > **Follow-up, 2026-07-20:** `address_policy.json`'s `connection_types` block referenced above
 > (2026-07-19's PRV-removal note) no longer exists at all — role/connection-method metadata for
@@ -454,6 +455,21 @@ row confirms a device actually exists at that site.
 > `NAS`'s `ConnectionMethod` is `ssh` there, same value as before — this is a pure consolidation,
 > not a behaviour change (verified: regenerated diagrams and inventory both byte-identical
 > before/after). See `README.md`'s `role_codes.csv` section for the full rationale.
+
+> **Follow-up, 2026-07-26 — Robert's explicit policy call, reversing the above:** `NAS` (and
+> `RDR`/`BMC`/`WAP`, same reasoning) now ARE in the DNS-synthesis lists
+> (`generate_inventory.py`'s `DNS_SINGLE_ROLES`/`DNS_MULTI_FIRST_INSTANCE_ONLY`). The original
+> reasoning above ("not universally deployed yet, so treating it as always real would recreate
+> the PRV mistake") was a true fact but the wrong conclusion — PRV is structurally centralised
+> at 2 sites only and will never exist elsewhere; NAS/RDR/BMC/WAP are roles every real site
+> WILL eventually have, just not all physically racked yet. That's exactly `SWI`'s own
+> treatment since 2026-07-14, which had already proven the distinction out with zero problems.
+> `EXANASFAL001` (installed the same day, the first real NAS box in the estate) is what
+> triggered re-examining this. See `generate_inventory.py`'s own 2026-07-26 changelog entry for
+> the full detail, including a real collision this surfaced (CLD's UniFi Network Controller
+> sits on WAP1's own octet by design, needed an explicit suppression entry) and a real bug
+> caught before it touched any generated file (NAS/RDR needed `DNS_SINGLE_ROLES`, not
+> `DNS_MULTI_FIRST_INSTANCE_ONLY` — different underlying offsets shape than BMC/WAP/SWI).
 
 ### Configuring TrueNAS once installed — `arensb/ansible-truenas`
 
