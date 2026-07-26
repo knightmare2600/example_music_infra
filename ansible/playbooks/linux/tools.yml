@@ -98,6 +98,11 @@
 #               which "Deploy common tools" then excludes entirely -- skips that
 #               one host cleanly rather than failing the whole run or wasting a
 #               doomed reconnect attempt.
+#   2026-07-26  Add /etc/example-music deploy for role_codes.csv -- create-vm.py's
+#               ROLE_CODES switched from a hardcoded dict to loading this file (same
+#               drift class as every other benarbejde/ CSV this playbook already
+#               deploys: found live missing SLT, the Salt master role, added
+#               2026-07-20 but never wired into the VM-creation script).
 
 - name: SSH preflight
   hosts: all
@@ -178,6 +183,7 @@
     extra_users: "{{ extra_users_input.split() }}"
     sites_csv_src:     "{{ playbook_dir }}/../../../benarbejde/sites.csv"
     devices_csv_src:   "{{ playbook_dir }}/../../../benarbejde/devices.csv"
+    role_codes_csv_src: "{{ playbook_dir }}/../../../benarbejde/role_codes.csv"
     address_policy_src: "{{ playbook_dir }}/../../../benarbejde/address_policy.json"
     ad_forest_src:     "{{ playbook_dir }}/../../../benarbejde/ad_forest.json"
     ad_groups_src:     "{{ playbook_dir }}/../../../benarbejde/ad_groups.json"
@@ -323,6 +329,18 @@
       ansible.builtin.copy:
         src:   "{{ devices_csv_src }}"
         dest:  /etc/example-music/devices.csv
+        owner: root
+        group: root
+        mode:  '0644'
+
+    # Added 2026-07-26 alongside create-vm.py's ROLE_CODES switching from a hardcoded dict
+    # to loading role_codes.csv -- this is the Ansible-managed half of that fix's search
+    # path (the other half is the pre-commit hook's bootstrap/web/proxmox/role_codes.csv
+    # sync, for when create-vm.py is run standalone from the served copy instead).
+    - name: Deploy role_codes.csv to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ role_codes_csv_src }}"
+        dest:  /etc/example-music/role_codes.csv
         owner: root
         group: root
         mode:  '0644'

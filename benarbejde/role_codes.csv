@@ -55,3 +55,8 @@ FCL,Fairlight CMI,Curveball / Novelty,none,🎹,,Same symbol as MOO
 AST,Atari ST,Curveball / Novelty,none,🕹️,,No Atari logo in Unicode — joystick as a non-trademarked stand-in
 LIN,Drum machine,Curveball / Novelty,none,🥁,,
 TTY,VT320 serial terminal,Curveball / Novelty,none,⌨️,,
+ILO,Integrated Lights-Out (HP iLO),Network Infrastructure,snmp,🔧,,"Added 2026-07-26, Robert's explicit instruction -- kept as its own code, distinct from BMC's generic iDRAC/iLO/Redfish consolidation above (see BMC row). Same symbol as BMC/RAC."
+IOT,IoT / miscellaneous embedded device,Endpoints,http,📟,,Added 2026-07-26 -- catch-all for embedded devices that don't fit an existing code
+MID,MIDI sequencer / workstation,Curveball / Novelty,none,🎚️,,"Added 2026-07-26 -- distinct from NIX (""MIDI archive (*nix-adjacent)"", an archival Unix-like device, not a sequencer)"
+OBS,Outside broadcast station,Curveball / Novelty,none,🎬,,Added 2026-07-26
+SYN,"Synthesizer (e.g. Moog, Korg, Yamaha)",Curveball / Novelty,none,🎹,,"Added 2026-07-26 -- generic synth code, distinct from MOO (Moog specifically) and FCL (Fairlight CMI specifically). Same symbol as MOO/FCL -- all three ""a keyboard"""

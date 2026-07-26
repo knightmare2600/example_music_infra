@@ -108,7 +108,14 @@ Changelog:
                 crashed in dry-run mode because disk_size was only assigned
                 inside the non-dry-run branch. Initialised to 0 before the
                 conditional so the space check is always safe.
-
+    2026-07-26  ROLE_CODES was a hardcoded dict, maintained independently of
+                role_codes.csv (benarbejde/) and of create-vm.py's own copy of the
+                same dict -- confirmed drifted: SLT (Salt master, live since
+                2026-07-20) was missing entirely; ILO/IOT/MID/OBS/SYN existed only
+                in this dict and create-vm.py's, not in role_codes.csv until added
+                the same day. Switched to loading from role_codes.csv via
+                _load_role_codes(), same search-path pattern as _load_sites() above
+                (same fix as create-vm.py). SLT added to SERIAL_CONSOLE_ROLES.
 
 
 Options:
@@ -231,57 +238,56 @@ SITE_SUBNETS = {code: s["subnet"]  for code, s in SITES.items() if s["subnet"] !
 SITE_CODES   = set(SITES.keys())
 
 
-ROLE_CODES = {
-    "AST": "Atari ST (Retro Hardware)",
-    "BPS": "Badge Programming Station",
-    "CAM": "Security Camera",
-    "CLK": "Time Clock / Punch Clock",
-    "COF": "Coffee Machine",
-    "DCS": "Domain Controller",
-    "DON": "Donut Vending Machine (Tim Hortons compatible)",
-    "FCL": "Fairlight CMI Sampler",
-    "FWL": "Firewall Appliance",
-    "ILO": "Integrated Lights-Out (HP iLO)",
-    "IOT": "IoT / Miscellaneous Embedded Device",
-    "LAP": "Laptop (Windows)",
-    "LCD": "LCD Wallboard / Information Display",
-    "LIN": "LinnDrum Drum Machine",
-    "MAC": "macOS Desktop",
-    "MBP": "MacBook Pro",
-    "MIC": "Microphone (IP/Dante Audio)",
-    "MID": "MIDI Sequencer / Workstation",
-    "MUS": "Music Workstation / Studio System / Jukebox",
-    "NAS": "Network Attached Storage",
-    "NIX": "Unix/Linux/Solaris System",
-    "OBS": "Outside Broadcast Station",
-    "PAY": "Payphone",
-    "PBX": "PBX (Telephone Server)",
-    "PHN": "Mobile / Desk Phone",
-    "PMP": "Petrol Pump",
-    "PRN": "Printer / MFD",
-    "PVE": "Proxmox VE Node",
-    "RAC": "Remote Access Controller (Dell iDRAC)",
-    "RAD": "Radio Transmitter / Broadcast",
-    "RDR": "Card Reader / Badge Reader",
-    "RTR": "Router",
-    "SBC": "Session Border Controller",
-    "SRV": "Server (General Purpose)",
-    "SUR": "Microsoft Surface Device",
-    "SVR": "Server (Legacy / Non-Proxmox)",
-    "SWI": "Network Switch",
-    "SYN": "Synthesizer (e.g. Moog)",
-    "TAB": "Tablet",
-    "TAR": "Tape Archiver",
-    "TEA": "Internet Connected Tea/Coffee Machine (RFC2324)",
-    "TTY": "Teletype / Serial Terminal / VDU",
-    "TVS": "Television / Digital Signage",
-    "VCU": "Video Conferencing Unit",
-    "VND": "Vending Machine",
-    "WAP": "Wireless Access Point",
-    "WKS": "Workstation (Desktop)",
-}
+# -----------------------------------------------------------------------------
+# Role codes -- loaded from role_codes.csv (benarbejde/), same single source
+# of truth create-vm.py now uses (2026-07-26, same fix, same reason: this was
+# a hardcoded dict maintained independently of role_codes.csv, confirmed
+# drifted -- SLT missing here entirely, ILO/IOT/MID/OBS/SYN existed only in
+# this dict and create-vm.py's own copy, not in role_codes.csv at all until
+# added the same day). Same search-path pattern as _load_sites() above.
+# -----------------------------------------------------------------------------
 
-SERIAL_CONSOLE_ROLES = {"FWL", "RTR", "SBC", "PBX", "NIX"}
+def _load_role_codes(csv_path=None):
+    """
+    Load role code -> display name mapping from role_codes.csv.
+    Searches: script directory, cwd, /etc/example-music/role_codes.csv.
+    Override with ROLE_CODES_CSV environment variable or csv_path argument.
+    """
+    if csv_path is None:
+        csv_path = _os.environ.get("ROLE_CODES_CSV")
+    if csv_path is None:
+        script_dir = _os.path.dirname(_os.path.abspath(__file__))
+        candidates = [
+            _os.path.join(script_dir, "role_codes.csv"),
+            _os.path.join(_os.getcwd(), "role_codes.csv"),
+            "/etc/example-music/role_codes.csv",
+        ]
+        for p in candidates:
+            if _os.path.isfile(p):
+                csv_path = p
+                break
+
+    if not csv_path or not _os.path.isfile(csv_path):
+        print("ERROR: role_codes.csv not found.")
+        print("  Looked in: script directory, cwd, /etc/example-music/role_codes.csv")
+        print("  Set ROLE_CODES_CSV=/path/to/role_codes.csv to override.")
+        import sys; sys.exit(1)
+
+    codes = {}
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        for row in _csv_mod.DictReader(f):
+            code = row["Code"].strip().upper()
+            codes[code] = row["Name"].strip()
+    return codes
+
+ROLE_CODES = _load_role_codes()
+
+# SLT added 2026-07-26, matching create-vm.py's own SERIAL_CONSOLE_ROLES update the same
+# day -- same class of role (SSH-managed, singleton config-mgmt Linux server) as RUD, which
+# this set does NOT include either (unlike create-vm.py's) -- a pre-existing discrepancy
+# between the two scripts' SERIAL_CONSOLE_ROLES membership, flagged not fixed, out of scope
+# for this pass (this file has never had ANS/RRY/RUD in this set at all).
+SERIAL_CONSOLE_ROLES = {"FWL", "RTR", "SBC", "PBX", "NIX", "SLT"}
 
 # =============================================================================
 # BIOS ROM DESCRIPTIONS
