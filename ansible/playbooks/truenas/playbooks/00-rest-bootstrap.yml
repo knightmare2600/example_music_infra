@@ -57,11 +57,33 @@
 # Both traps previously found and fixed the hard way elsewhere in this
 # estate (see ssh_key_preflight.yml / feedback memory on both).
 #
-# Credentials: `truenas_rest_bootstrap_user`/`_password`, vault-encrypted in
-# group_vars/truenas_servers/vault.yml (see that file's own header) — the
-# same admin account/password Robert set during TrueNAS's own web-UI
-# first-run wizard, matching this module's existing "root + password" first-
-# touch precedent (10-access.yml), just over REST instead of SSH.
+# Credentials: `truenas_rest_bootstrap_user`/`_password`, resolved by the
+# leading "resolve credentials" play below -- from vault-encrypted
+# group_vars/truenas_servers/vault.yml if already populated (see that file's
+# own header), or -e, and otherwise via an interactive ansible.builtin.pause
+# prompt (username default: root if left blank -- TrueNAS doesn't fix this
+# name in software, it's whatever Robert typed into the web-UI first-run
+# wizard, so this can't be hardcoded; checked against docs/api2.txt's full
+# 610-path spec directly, 2026-07-26 -- it only ever says "local
+# administrator account", never a concrete name, confirming this really is
+# per-install and not something to guess at). Same admin account/password
+# either way, matching this module's existing "root + password" first-touch
+# precedent (10-access.yml), just over REST instead of SSH.
+#
+# vars_prompt was tried first and rejected -- ansible-core 2.19.4 (installed
+# here) does not support a `when:` key on vars_prompt entries at all
+# ("Invalid vars_prompt data structure, found unsupported key 'when'"),
+# confirmed by actually running it, not assumed from docs. A leading
+# ansible.builtin.pause task with a real when: (a normal task keyword, not a
+# vars_prompt one) does the same job. pause's own `default:` parameter was
+# also tried and is NOT supported in this version either ("Unsupported
+# parameters... Supported parameters include: echo, minutes, prompt,
+# seconds") -- the blank-input-means-root fallback is done in the
+# set_fact's own Jinja `default(..., true)` chain instead, further down.
+# Both of these were caught by actually running the prompt through a real
+# pty (python's pty.openpty(), not piped stdin -- piped stdin makes Ansible
+# skip waiting entirely and silently return an empty user_input, which
+# looks like success but isn't representative of a real terminal session).
 #
 # validate_certs: false — TrueNAS's own first-run web UI cert is self-signed
 # by design (no CA involved), same presumption rudder_server.yml already
@@ -84,17 +106,62 @@
 # effects) stay gated behind `when: not ansible_check_mode`.
 #
 # Only ever run this against ONE host at a time (`--limit <hostname>`) —
-# each TrueNAS box has its own independently-set admin password, so a single
-# vault entry can't correctly serve a multi-host batch run.
+# each TrueNAS box has its own independently-set admin username/password, so
+# neither the vault entry nor the interactive prompt (which, per the
+# pause-needs-serial:1 precedent already established elsewhere in this
+# estate, only ever collects one answer per batch) can correctly serve a
+# multi-host run.
 #
-# Usage:
+# Usage, credentials from vault:
 #   ansible-playbook -i configs/inventory \
 #     playbooks/truenas/playbooks/00-rest-bootstrap.yml \
 #     --limit EXANASFAL001 --ask-vault-pass
+#
+# Usage, credentials typed interactively (vault not populated yet):
+#   ansible-playbook -i configs/inventory \
+#     playbooks/truenas/playbooks/00-rest-bootstrap.yml \
+#     --limit EXANASFAL001
 # =============================================================================
 # Changelog:
+#   2026-07-26  Added the "resolve credentials" play (interactive
+#               ansible.builtin.pause prompt, only if not already supplied
+#               via vault/-e) -- the original version hard-depended on
+#               group_vars/truenas_servers/vault.yml always being populated
+#               first, with no fallback if it wasn't.
 #   2026-07-26  Initial file.
 # =============================================================================
+
+- name: "TrueNAS — REST bootstrap (resolve credentials)"
+  hosts: truenas_servers
+  gather_facts: false
+  serial: 1
+
+  tasks:
+
+    - name: "Prompt for REST API username (if not already set via vault/-e)"
+      ansible.builtin.pause:
+        prompt: "TrueNAS admin username for the REST API (blank = root)"
+        echo: true
+      register: _truenas_user_prompt
+      when: truenas_rest_bootstrap_user is not defined
+
+    - name: "Prompt for REST API password (if not already set via vault/-e)"
+      ansible.builtin.pause:
+        prompt: "TrueNAS admin password for the REST API"
+        echo: false
+      register: _truenas_pass_prompt
+      when: truenas_rest_bootstrap_password is not defined
+      no_log: true
+
+    - name: "Resolve credential facts"
+      ansible.builtin.set_fact:
+        truenas_rest_bootstrap_user: >-
+          {{ truenas_rest_bootstrap_user
+             | default(_truenas_user_prompt.user_input | default('root', true)) }}
+        truenas_rest_bootstrap_password: >-
+          {{ truenas_rest_bootstrap_password
+             | default(_truenas_pass_prompt.user_input | default('', true)) }}
+      no_log: true
 
 - name: "TrueNAS — REST bootstrap (enable SSH)"
   hosts: truenas_servers
