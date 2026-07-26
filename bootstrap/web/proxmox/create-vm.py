@@ -90,6 +90,16 @@ Changelog:
                 NOT independently tested against a real Proxmox node for any of the three -- no
                 live API access from this environment. Confirm against a real node before relying
                 on this for a real build.
+    2026-07-26  ROLE_CODES was a hardcoded dict, maintained independently of role_codes.csv
+                (benarbejde/) -- confirmed drifted both directions: SLT (Salt master, live in the
+                estate since 2026-07-20) was missing here entirely, while ILO/IOT/MID/OBS/SYN
+                existed only here, not in role_codes.csv. Added the five missing codes to
+                role_codes.csv and switched this script to load ROLE_CODES from it via a new
+                _load_role_codes(), same search-path pattern as _load_sites() (script dir, cwd,
+                /etc/example-music/role_codes.csv, $ROLE_CODES_CSV env var, or --role-codes-csv).
+                Adding/renaming a role code is now a role_codes.csv edit, no code change. SLT
+                added to SERIAL_CONSOLE_ROLES alongside RUD (same class of role -- CLD-only,
+                SSH-managed, singleton config-mgmt Linux server).
 
 
 Usage:
@@ -228,62 +238,64 @@ SITE_OCTET  = {code: s["octet"]   for code, s in SITES.items() if s["octet"] is 
 SITE_CITY   = {code: s["city"]    for code, s in SITES.items()}
 SITE_COUNTRY= {code: s["country"] for code, s in SITES.items()}
 
-ROLE_CODES = {
-    "ANS": "Ansible Host",
-    "AST": "Atari ST (Retro Hardware)",
-    "BPS": "Badge Programming Station",
-    "CAM": "Security Camera",
-    "CLK": "Time Clock / Punch Clock",
-    "COF": "Coffee Machine",
-    "DCS": "Domain Controller",
-    "DNS": "DNS Server",
-    "DON": "Donut Vending Machine (Tim Hortons compatible)",
-    "FCL": "Fairlight CMI Sampler",
-    "FWL": "Firewall Appliance",
-    "ILO": "Integrated Lights-Out (HP iLO)",
-    "IOT": "IoT / Miscellaneous Embedded Device",
-    "LAP": "Laptop (Windows)",
-    "LCD": "LCD Wallboard / Information Display",
-    "LIN": "LinnDrum Drum Machine",
-    "MAC": "macOS Desktop",
-    "MBP": "MacBook Pro",
-    "MIC": "Microphone (IP/Dante Audio)",
-    "MID": "MIDI Sequencer / Workstation",
-    "MUS": "Music Workstation / Studio System / Jukebox",
-    "NAS": "Network Attached Storage",
-    "NIX": "Unix/Linux/Solaris System",
-    "OBS": "Outside Broadcast Station",
-    "PAY": "Payphone",
-    "PBX": "PBX (Telephone Server)",
-    "PHN": "Mobile / Desk Phone",
-    "PMP": "Petrol Pump",
-    "PRN": "Printer / MFD",
-    "PVE": "Proxmox VE Node",
-    "RAC": "Remote Access Controller (Dell iDRAC)",
-    "RAD": "Radio Transmitter / Broadcast",
-    "RDR": "Card Reader / Badge Reader",
-    "RTR": "Router",
-    "RRY": "Rudder Relay",
-    "RUD": "Rudder Server",
-    "SBC": "Session Border Controller",
-    "SRV": "Server (General Purpose)",
-    "SUR": "Microsoft Surface Device",
-    "SVR": "Server (Legacy / Non-Proxmox)",
-    "SWI": "Network Switch",
-    "SYN": "Synthesizer (e.g. Moog, Korg, Yamaha)",
-    "TAB": "Tablet",
-    "TAR": "Tape Archiver",
-    "TEA": "Internet Connected Tea/Coffee Machine (RFC2324)",
-    "TTY": "Teletype / Serial Terminal / VDU",
-    "TVS": "Television / Digital Signage",
-    "VCU": "Video Conferencing Unit",
-    "VND": "Vending Machine",
-    "WAP": "Wireless Access Point",
-    "WKS": "Workstation (Desktop)",
-}
+# -----------------------------------------------------------------------------
+# Role codes -- loaded from role_codes.csv (benarbejde/), the same single
+# source of truth generate_inventory.py and the docs harness already use.
+#
+# BUG FIX (2026-07-26): this used to be a hardcoded dict, maintained
+# independently of role_codes.csv -- confirmed drifted both directions: SLT
+# (Salt master, live in the estate since 2026-07-20) was missing here entirely,
+# while ILO/IOT/MID/OBS/SYN existed only here and not in role_codes.csv at all.
+# Added the five missing codes to role_codes.csv (Robert's explicit call) and
+# switched this to load from the CSV, same pattern as _load_sites() above --
+# adding or renaming a role code is now a role_codes.csv edit, no code change.
+# -----------------------------------------------------------------------------
+
+def _load_role_codes(csv_path=None):
+    """
+    Load role code -> display name mapping from role_codes.csv.
+    Searches: $ROLE_CODES_CSV env var, script directory, cwd,
+    /etc/example-music/role_codes.csv.
+    Returns dict keyed by role code.
+    """
+    if csv_path is None:
+        env_path = _os.environ.get("ROLE_CODES_CSV")
+        if env_path and _os.path.isfile(env_path):
+            csv_path = env_path
+        else:
+            script_dir = _os.path.dirname(_os.path.abspath(__file__))
+            candidates = [
+                _os.path.join(script_dir, "role_codes.csv"),
+                _os.path.join(_os.getcwd(), "role_codes.csv"),
+                "/etc/example-music/role_codes.csv",
+            ]
+            for p in candidates:
+                if _os.path.isfile(p):
+                    csv_path = p
+                    break
+
+    if not csv_path or not _os.path.isfile(csv_path):
+        print("ERROR: role_codes.csv not found.")
+        print("  Searched: $ROLE_CODES_CSV env var, script directory, cwd,")
+        print("            /etc/example-music/role_codes.csv")
+        print("  Options:")
+        print("    export ROLE_CODES_CSV=/path/to/role_codes.csv")
+        print("    place role_codes.csv alongside this script")
+        print("    pass --role-codes-csv <path>")
+        import sys
+        sys.exit(1)
+
+    codes = {}
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        for row in _csv.DictReader(f):
+            code = row["Code"].strip().upper()
+            codes[code] = row["Name"].strip()
+    return codes
+
+ROLE_CODES = _load_role_codes()
 
 # Roles that get serial console by default
-SERIAL_CONSOLE_ROLES = {"ANS", "FWL", "NIX", "PBX", "RTR", "RRY", "RUD", "SBC"}
+SERIAL_CONSOLE_ROLES = {"ANS", "FWL", "NIX", "PBX", "RTR", "RRY", "RUD", "SBC", "SLT"}
 
 # Roles that get two NICs (WAN + LAN)
 DUAL_NIC_ROLES = {"FWL", "RTR"}
@@ -400,6 +412,8 @@ def parse_args():
                         help="Log file path (default: ~/pve-vm-create.log)")
     parser.add_argument("--sites-csv",    dest="sites_csv", default=None,
                         help="Path to sites.csv (default: auto-detect alongside script or in cwd)")
+    parser.add_argument("--role-codes-csv", dest="role_codes_csv", default=None,
+                        help="Path to role_codes.csv (default: auto-detect alongside script or in cwd)")
     return parser.parse_args()
 
 # =============================================================================
@@ -1954,13 +1968,18 @@ def main():
     print()
 
     # ── Reload sites if --sites-csv was passed ────────────────────────────────
-    global SITES, SITE_OCTET, SITE_CITY, SITE_COUNTRY
+    global SITES, SITE_OCTET, SITE_CITY, SITE_COUNTRY, ROLE_CODES
     if args.sites_csv:
         SITES        = _load_sites(args.sites_csv)
         SITE_OCTET   = {code: s["octet"]   for code, s in SITES.items() if s["octet"] is not None}
         SITE_CITY    = {code: s["city"]    for code, s in SITES.items()}
         SITE_COUNTRY = {code: s["country"] for code, s in SITES.items()}
         ok(f"Sites loaded from {args.sites_csv} ({len(SITES)} sites)")
+
+    # ── Reload role codes if --role-codes-csv was passed ──────────────────────
+    if args.role_codes_csv:
+        ROLE_CODES = _load_role_codes(args.role_codes_csv)
+        ok(f"Role codes loaded from {args.role_codes_csv} ({len(ROLE_CODES)} codes)")
 
     # ── Connect once ──────────────────────────────────────────────────────────
     section("CONNECTING TO PROXMOX")
