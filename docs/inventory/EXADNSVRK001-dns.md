@@ -58,9 +58,18 @@ Contains one A record per standard role address per site. The host-to-suffix map
 | `.250` | EXASWI   | `exaswigla001.jukebox.internal`   |
 | `.251` | EXASWI   | `exaswigla002.jukebox.internal`   |
 | `.252` | EXASWI   | `exaswigla003.jukebox.internal`   |
-| `.253` | EXAFWL   | `exafwlgla001.jukebox.internal`   |
+| `.253` | EXAFWL   | `exafwlgla001-lan.jukebox.internal` |
 
 CLD is a special case: suffix `.48` resolves to `exapbxcld001` (PBX), not `exasbc`.
+
+> **Correction (2026-07-26):** the `.253` row above used to be the bare `exafwlgla001` name.
+> Robert, live: `host exafwlams001` returned `.253` (LAN) when Ansible's own inventory has meant
+> the VRK/provisioning address (`192.168.139.{octet}`) under that exact bare hostname since
+> 2026-07-16 — DNS and the `.ini` generator had silently diverged on what the bare name means.
+> Fixed by making DNS match Ansible's convention: **bare `exafwl<site>001` is now the VRK/WAN
+> address** (see the row below), and the old bare-meant-LAN record moved to its own `-lan`
+> suffix, mirroring the existing `-wan` naming (kept, now redundant with bare but harmless). See
+> `benarbejde/generate_inventory.py`'s own changelog for the full detail.
 
 The forward zone also contains **firewall WAN addresses** — see [Section 9](#9-how-the-addressing-scheme-works) — and the provisioning ancillary hosts:
 
@@ -84,7 +93,7 @@ The forward zone also contains **firewall WAN addresses** — see [Section 9](#9
 | `exasvrcld002.jukebox.internal`    | `192.168.69.20`  | Windows Admin Centre, CLD LAN           |
 | `exardrcld001.jukebox.internal`    | `192.168.69.12`  | Rudder configuration management, CLD LAN |
 | `exapbxcld001.jukebox.internal`    | `192.168.69.48`  | Central 3CX PBX, CLD LAN                |
-| `exafwl{site}001-wan.jukebox.internal` | `192.168.139.{octet}` | Each site's FWL WAN face  |
+| `exafwl{site}001.jukebox.internal` | `192.168.139.{octet}` | Each site's FWL WAN/provisioning face — canonical bare name since 2026-07-26, matches Ansible's own inventory; `exafwl{site}001-wan` also still resolves to the same address (kept for compatibility) |
 
 ### Reverse zone — provisioning network
 
@@ -97,7 +106,7 @@ It contains:
 - PTR records for the two ancillary hosts (`.8`, `.69`) — the provisioning server (`.50`) has no
   PTR record, bootstrap-only, IP-referenced only (2026-07-21)
 - PTR records for every site firewall's WAN address on the provisioning network
-  (`192.168.139.{octet}` → `exafwl{site}001-wan.jukebox.internal.`)
+  (`192.168.139.{octet}` → `exafwl{site}001.jukebox.internal.` — bare name since 2026-07-26)
 
 It does **not** duplicate the site-level PTR records for `192.168.139.x` addresses that happen to fall in the normal SUFFIX_MAP (e.g. `.1`, `.253`). Those belong in the site's own reverse zone.
 
