@@ -40,11 +40,18 @@ Numbered-stage chain, matching `proxmox`/`salt`/`windows_bootstrap`'s own
 
 ## Usage
 
-First run, brand new box where SSH doesn't work yet (needs
-`group_vars/truenas_servers/vault.yml`'s REST credentials):
+First run, brand new box where SSH doesn't work yet, credentials from vault
+(`group_vars/truenas_servers/vault.yml` already populated):
 ```bash
 ansible-playbook playbooks/truenas/site.yml \
   --limit <hostname> --ask-vault-pass
+```
+
+First run, vault not populated yet — `00-rest-bootstrap.yml`'s own leading
+play prompts interactively instead (blank username = root):
+```bash
+ansible-playbook playbooks/truenas/site.yml \
+  --limit <hostname>
 ```
 
 First run, SSH already enabled via the web-UI wizard (rest-bootstrap not needed):
