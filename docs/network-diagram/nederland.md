@@ -43,7 +43,7 @@ graph TD
       N_RDR["🔐 EXARDRAMS001 · RDR · .21"]
       N_BMC["🔧 EXABMCAMS001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSAMS001 · DCS 1 · .10"]
-      N_FWL["🧱 EXAFWLAMS001 · FWL 1 · .253"]
+      N_FWL["🧱 EXAFWLAMS001 · LAN face · .253"]
       N_FWL2["🧱 EXAFWLAMS002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEAMS001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIAMS001 · SWI 1 · .250"]

@@ -20,7 +20,13 @@
 ;
 ;   (b) FWL WAN addresses -- every site firewall has a WAN interface here.
 ;       Host octet = site subnet third octet (e.g. EDI .131 -> .139.131).
-;       -wan suffix distinguishes from the LAN-facing address.
+;       This is now the CANONICAL bare exafwl<site>001 name (Robert, 2026-07-26 --
+;       matches Ansible's own inventory, which has always used this address under
+;       the bare hostname; DNS previously disagreed and used it under a "-wan"
+;       suffix instead, with the bare name pointing at the LAN face -- the LAN
+;       face now lives under its own "-lan" suffix, see db.forward-zone.devices.j2
+;       and db.site-reverse.devices.j2). CLD is unaffected -- its WAN face already
+;       has its own distinct, real devices.csv-driven hostname (EXAFWLVRK001).
 ;
 ;   This zone is generated separately and NOT by the per-site loop.
 ;   CLD's own subnet is this zone -- there is no separate CLD site reverse.
@@ -50,7 +56,8 @@ $TTL {{ zone_ttl }}
 ; ── FWL WAN PTR records (192.168.139.{octet} per site) ───────
 ; CLD special case: vRACK WAN comes from devices.csv (all_devices' EXAFWLVRK001 entry), not the
 ; CLD LAN octet -- CLD's own subnet is the LAN side, not the vRACK.
-; Sorted by octet ascending.
+; Sorted by octet ascending. Non-CLD targets the bare exafwl<site>001 name, not "-wan" --
+; matches Ansible's own inventory convention for this hostname (Robert, 2026-07-26).
 {% set cld_wan_octet = (all_devices | selectattr('Hostname', 'equalto', 'EXAFWLVRK001') | map(attribute='full_ip') | first).split('.')[3] %}
 {% for site in sites_raw.list
    | rejectattr('Site', 'equalto', 'BRD')
@@ -61,6 +68,6 @@ $TTL {{ zone_ttl }}
 {% if site.Site == 'CLD' %}
 {{ "%-5s" | format(cld_wan_octet) }} IN  PTR  {{ "%-50s" | format('exafwlcld001-wan.' + domain + '.') }} ; CLD ({{ site.City }}) -- vRACK WAN (same interface as exafwlvrk001)
 {% else %}
-{{ "%-5s" | format(octet) }} IN  PTR  {{ "%-50s" | format('exafwl' + site.Site | lower + '001-wan.' + domain + '.') }} ; {{ site.Site }} ({{ site.City }})
+{{ "%-5s" | format(octet) }} IN  PTR  {{ "%-50s" | format('exafwl' + site.Site | lower + '001.' + domain + '.') }} ; {{ site.Site }} ({{ site.City }}) -- WAN/provisioning face
 {% endif %}
 {% endfor %}

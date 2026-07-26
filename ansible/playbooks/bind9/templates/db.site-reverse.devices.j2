@@ -28,8 +28,18 @@ $TTL {{ zone_ttl }}
 @   IN  NS   {{ this_hostname }}.{{ domain }}.
 
 ; ── PTR records (192.168.{{ site_octet }}.x) ─────────────────
+; Excludes any device with a SubnetSite override pointing elsewhere -- its real IP isn't on
+; THIS site's own subnet (e.g. EXAFWLAMS001's bare hostname is now the VRK/provisioning-network
+; WAN face, SubnetSite=VRK, Robert 2026-07-26 -- without this filter it would leak a bogus PTR
+; in here at octet {{ site_octet }} itself, since HostOctet is reused as the site's own
+; identifying position within 192.168.139.0/24, not a real position within THIS subnet).
+; Generalises the pre-existing "SubnetSite not handled by the reverse-zone templates" gap
+; (see generate_inventory.py's emit_devices_for_dns() docstring, 2026-07-11) -- that case was
+; safe by coincidence only (the one device using it, CLD's PBX-2, never reaches this template
+; at all since CLD is excluded from the per-site loop entirely); this one genuinely does.
 {% set site_devs = all_devices
    | selectattr('Site', 'equalto', item)
+   | rejectattr('SubnetSite', 'defined')
    | sort(attribute='HostOctet') | list %}
 {% for dev in site_devs %}
 {% if dev.HostOctet != '' %}
