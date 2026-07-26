@@ -22,6 +22,22 @@ ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall
 `firewall`, `preflight`, `interfaces`, `wan`, `wireguard`, `confirm`,
 `packages`, `network`, `nftables`, `dnsmasq`, `ssh`, `cockpit`, `finish`
 
+## SSH key preflight (2026-07-26)
+
+`90-firewall.yml` imports `../../ssh_preflight_with_fallback.yml` first, before its own
+`gather_facts: true` ever attempts a real connection. Real live failure that prompted this
+(`EXAFWLAMS001`): the Ansible SSH key was rejected outright, and the play just died
+`UNREACHABLE` with no recovery path. Now: tests the current key, and if it's rejected,
+prompts for a fallback password (only useful if the account's password was already
+manually unlocked out-of-band for recovery — every node's `ansible` account has a locked
+password and passwordless sudo by design). A working answer lets the main play connect via
+password instead; a blank answer skips that host cleanly (`hosts: ...:!ssh_preflight_skip`)
+rather than failing the whole run. Once connected, `pre_tasks` pushes the real key back and
+re-verifies it works, so the next run won't need the fallback again. Shared with
+`linux/tools.yml`, which had the identical mechanism built in 2026-07-16 — extracted into
+`ansible/playbooks/ssh_preflight_with_fallback.yml` / `ansible/tasks/refresh_ansible_ssh_key.yml`
+this same day rather than duplicated a second time.
+
 ## Safety model (2026-07-09 hardening pass)
 
 Running Ansible tasks *over SSH on the box being reconfigured* has a failure mode

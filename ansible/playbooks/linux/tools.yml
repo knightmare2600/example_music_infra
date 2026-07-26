@@ -145,68 +145,15 @@
 #               it. All 5 `when: item.value[4] | regex_search('^/home/')` -> `is match(...)`.
 #               The new "Identify /home/* accounts..." task added the same session already
 #               used `is match(...)` correctly, so it wasn't affected.
+#   2026-07-26  Extracted the "SSH preflight" play and the "[Preflight] Refresh Ansible SSH
+#               key"/"Ensure ansible account isn't locked" tasks out into
+#               ../ssh_preflight_with_fallback.yml / ../../tasks/refresh_ansible_ssh_key.yml --
+#               no functional change here, this file now imports/includes them. Done because
+#               firewallme/playbooks/90-firewall.yml needed the exact same recovery flow after a
+#               real live SSH key rejection (EXAFWLAMS001) -- a second caller made keeping this
+#               logic duplicated in one file not worth it.
 
-- name: SSH preflight
-  hosts: all
-  gather_facts: false
-  serial: 1   # see 2026-07-16 changelog -- required for pause: to register a
-              # distinct result per host; only this lightweight play pays that
-              # serialisation cost, not the heavier play below.
-  vars:
-    _preflight_key: "{{ ansible_ssh_private_key_file | default(lookup('env', 'HOME') + '/ansible/configs/ansible-id_rsa') }}"
-
-  tasks:
-
-    - name: "[Preflight] Test SSH connectivity with the current key"
-      # Delegated plain ssh, not ansible.builtin.ping -- see 2026-07-16 changelog
-      # point 2. Never touches Ansible's own per-host connection state, so a
-      # failing host is never marked unreachable here.
-      ansible.builtin.command: >
-        ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no
-            -i {{ _preflight_key }}
-            {{ ansible_user | default('ansible') }}@{{ ansible_host | default(inventory_hostname) }}
-            true
-      register: _ssh_preflight
-      delegate_to: localhost
-      changed_when: false
-      failed_when: false
-      vars:
-        ansible_connection: local
-
-    - name: "[Preflight] Key auth failed -- prompt for a fallback password"
-      ansible.builtin.pause:
-        prompt: |-
-
-          ── SSH preflight failed for {{ inventory_hostname }} ───────────────────
-            The current Ansible SSH key was rejected (or the host didn't respond)
-            connecting as {{ ansible_user | default('ansible') }}.
-            Every Linux node's ansible user has a locked password and passwordless
-            sudo by design -- this only helps if that account's password has
-            already been manually unlocked/set out-of-band for recovery.
-            Enter it now to continue this host, or leave blank to skip it.
-          ─────────────────────────────────────────────────────────────────────
-          Password (masked, blank to skip this host)
-        echo: false
-      register: _ssh_preflight_pw
-      when: _ssh_preflight.rc != 0
-
-    - name: "[Preflight] Apply fallback password for this run"
-      ansible.builtin.set_fact:
-        ansible_password: "{{ _ssh_preflight_pw.user_input }}"
-      no_log: true
-      when:
-        - _ssh_preflight_pw is not skipped
-        - _ssh_preflight_pw.user_input | default('') | length > 0
-
-    - name: "[Preflight] Mark host to be skipped -- no working key and no password given"
-      ansible.builtin.add_host:
-        name:   "{{ inventory_hostname }}"
-        groups: ssh_preflight_skip
-      delegate_to: localhost
-      changed_when: false
-      when:
-        - _ssh_preflight.rc != 0
-        - _ssh_preflight_pw.user_input | default('') | length == 0
+- import_playbook: ../ssh_preflight_with_fallback.yml
 
 # -------------------------------------------------------------------------------------------------
 # BUG FIX (2026-07-26, Robert): the environment prompt (nodeinfo_environment.yml) is a per-host
@@ -259,24 +206,8 @@
 
   tasks:
 
-    - name: "[Preflight] Refresh Ansible SSH key"
-      ansible.posix.authorized_key:
-        user:  ansible
-        key:   "{{ exa_ansible_pub_key }}"
-        state: present
-
-    - name: "[Preflight] Ensure ansible account isn't locked"
-      # firewallme.sh used to call `passwd -l ansible` right after creation, intending
-      # "key/sudo only" -- but a locked account is rejected by pam_unix's account phase for
-      # EVERY login method under UsePAM yes, not just password, so it blocked SSH key auth and
-      # console login too. Fixed at the source (2026-07-16, see firewallme.sh's own changelog),
-      # but any node already created under the old, buggy behaviour needs healing here too --
-      # password_lock: false uses usermod, not passwd, so it doesn't hit passwd -u's "would
-      # result in a passwordless account" refusal on an account that never had a real hash.
-      # This never sets or enables a real password -- only clears the administrative lock flag.
-      ansible.builtin.user:
-        name:          ansible
-        password_lock: false
+    - name: "[Preflight] Refresh SSH key + heal locked account"
+      ansible.builtin.include_tasks: ../../tasks/refresh_ansible_ssh_key.yml
 
     - name: Install common packages
       apt:
