@@ -28,6 +28,9 @@ graph TD
     style OLD_CLD fill:#56B4E9,stroke:#0072B2,color:#000000
     %% GENERATED:NEW-NETWORK:CLD:START
     subgraph NEW_CLD ["🆕 New Network (current)"]
+      N_NAS["🗃️ EXANASCLD001 · NAS · .19"]
+      N_RDR["🔐 EXARDRCLD001 · RDR · .21"]
+      N_BMC["🔧 EXABMCCLD001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSCLD001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLCLD001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLCLD002 · FWL 2 · .254"]

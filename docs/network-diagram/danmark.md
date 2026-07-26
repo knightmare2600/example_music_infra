@@ -45,10 +45,14 @@ graph TD
     subgraph NEW_CPH ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRCPH001 · RTR · .1"]
       N_SBC["🛡️ EXASBCCPH001 · SBC · .48"]
+      N_NAS["🗃️ EXANASCPH001 · NAS · .19"]
+      N_RDR["🔐 EXARDRCPH001 · RDR · .21"]
+      N_BMC["🔧 EXABMCCPH001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSCPH001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLCPH001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLCPH002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVECPH001 · PVE 1 · .5"]
+      N_WAP["📶 EXAWAPCPH001 · WAP 1 · .82"]
       N_CLK["⏰ EXACLKCPH001 · NTP clock · .18"]
       N_TVS["📺 EXATVSCPH001 · Display · .17"]
       N_SWI["🔀 EXASWICPH001 · Office switch · .250"]
@@ -113,11 +117,15 @@ graph TD
     subgraph NEW_ODE ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRODE001 · RTR · .1"]
       N_SBC["🛡️ EXASBCODE001 · SBC · .48"]
+      N_NAS["🗃️ EXANASODE001 · NAS · .19"]
+      N_RDR["🔐 EXARDRODE001 · RDR · .21"]
+      N_BMC["🔧 EXABMCODE001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSODE001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLODE001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLODE002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEODE001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIODE001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPODE001 · WAP 1 · .82"]
       N_MUS["💿 EXAMUSODE001 · Jukebox · .60"]
       N_MAC["🍎 EXAMACODE001 · iMac"]
       N_MBP["💻 EXAMBPODE002 · MacBook Pro"]
@@ -162,11 +170,15 @@ graph TD
     subgraph NEW_KGE ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRKGE001 · RTR · .1"]
       N_SBC["🛡️ EXASBCKGE001 · SBC · .48"]
+      N_NAS["🗃️ EXANASKGE001 · NAS · .19"]
+      N_RDR["🔐 EXARDRKGE001 · RDR · .21"]
+      N_BMC["🔧 EXABMCKGE001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSKGE001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLKGE001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLKGE002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEKGE001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIKGE001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPKGE001 · WAP 1 · .82"]
       N_PRN["🖨️ EXAPRNKGE001 · Printer"]
     end
     style NEW_KGE fill:#E69F00,stroke:#D55E00,color:#000000
@@ -210,11 +222,15 @@ graph TD
     subgraph NEW_FAX ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRFAX001 · RTR · .1"]
       N_SBC["🛡️ EXASBCFAX001 · SBC · .48"]
+      N_NAS["🗃️ EXANASFAX001 · NAS · .19"]
+      N_RDR["🔐 EXARDRFAX001 · RDR · .21"]
+      N_BMC["🔧 EXABMCFAX001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSFAX001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLFAX001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLFAX002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEFAX001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIFAX001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPFAX001 · WAP 1 · .82"]
     end
     style NEW_FAX fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:FAX:END
@@ -254,11 +270,15 @@ graph TD
     subgraph NEW_KOR ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRKOR001 · RTR · .1"]
       N_SBC["🛡️ EXASBCKOR001 · SBC · .48"]
+      N_NAS["🗃️ EXANASKOR001 · NAS · .19"]
+      N_RDR["🔐 EXARDRKOR001 · RDR · .21"]
+      N_BMC["🔧 EXABMCKOR001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSKOR001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLKOR001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLKOR002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEKOR001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIKOR001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPKOR001 · WAP 1 · .82"]
     end
     style NEW_KOR fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:KOR:END
@@ -298,11 +318,15 @@ graph TD
     subgraph NEW_AAR ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRAAR001 · RTR · .1"]
       N_SBC["🛡️ EXASBCAAR001 · SBC · .48"]
+      N_NAS["🗃️ EXANASAAR001 · NAS · .19"]
+      N_RDR["🔐 EXARDRAAR001 · RDR · .21"]
+      N_BMC["🔧 EXABMCAAR001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSAAR001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLAAR001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLAAR002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEAAR001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIAAR001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPAAR001 · WAP 1 · .82"]
     end
     style NEW_AAR fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:AAR:END
@@ -342,11 +366,15 @@ graph TD
     subgraph NEW_FRE ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRFRE001 · RTR · .1"]
       N_SBC["🛡️ EXASBCFRE001 · SBC · .48"]
+      N_NAS["🗃️ EXANASFRE001 · NAS · .19"]
+      N_RDR["🔐 EXARDRFRE001 · RDR · .21"]
+      N_BMC["🔧 EXABMCFRE001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSFRE001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLFRE001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLFRE002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEFRE001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIFRE001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPFRE001 · WAP 1 · .82"]
     end
     style NEW_FRE fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:FRE:END
@@ -397,11 +425,15 @@ graph TD
     subgraph NEW_NYB ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRNYB001 · RTR · .1"]
       N_SBC["🛡️ EXASBCNYB001 · SBC · .48"]
+      N_NAS["🗃️ EXANASNYB001 · NAS · .19"]
+      N_RDR["🔐 EXARDRNYB001 · RDR · .21"]
+      N_BMC["🔧 EXABMCNYB001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSNYB001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLNYB001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLNYB002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVENYB001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWINYB001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPNYB001 · WAP 1 · .82"]
     end
     style NEW_NYB fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:NYB:END

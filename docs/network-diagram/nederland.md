@@ -39,11 +39,15 @@ graph TD
     subgraph NEW_AMS ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRAMS001 · RTR · .1"]
       N_SBC["🛡️ EXASBCAMS001 · SBC · .48"]
+      N_NAS["🗃️ EXANASAMS001 · NAS · .19"]
+      N_RDR["🔐 EXARDRAMS001 · RDR · .21"]
+      N_BMC["🔧 EXABMCAMS001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSAMS001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLAMS001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLAMS002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEAMS001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIAMS001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPAMS001 · WAP 1 · .82"]
     end
     style NEW_AMS fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:AMS:END
