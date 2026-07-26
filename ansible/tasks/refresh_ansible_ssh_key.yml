@@ -1,0 +1,89 @@
+---
+# =============================================================================
+# tasks/refresh_ansible_ssh_key.yml
+# Example Music Limited — push the current Ansible pubkey + heal a locked account
+# =============================================================================
+# Extracted 2026-07-26 from linux/tools.yml's "Deploy common tools" play
+# (built 2026-07-16, no functional change to those two tasks) -- pairs with
+# playbooks/ssh_preflight_with_fallback.yml: run this AFTER that play (or
+# any real connection is already established, by key or by the password
+# fallback), with `become: true` already active in the calling play.
+#
+# Runs UNCONDITIONALLY, not just as a failure-recovery step -- if the real
+# authoritative pubkey (exa_ansible_pub_key, group_vars/all/vars.yml) has
+# been rotated since a box was built, this keeps every managed box in sync
+# automatically. ansible.posix.authorized_key/password_lock: false are both
+# already idempotent (state: present / no-op if already unlocked), so
+# running this every time a caller connects costs nothing on a healthy box.
+#
+# "[[ Ensure ansible account isn't locked ]]" heals the exact bug
+# firewallme.sh used to have (see that script's own changelog, fixed
+# 2026-07-16): `passwd -l ansible` right after account creation, intending
+# "key/sudo only", but a locked account is rejected by pam_unix's account
+# phase for EVERY login method under UsePAM yes, not just password -- so it
+# blocked SSH key auth and console login too, not just password auth as
+# intended. password_lock: false uses usermod, not passwd, so it doesn't
+# hit passwd -u's "would result in a passwordless account" refusal on an
+# account that never had a real password hash. This never sets or enables a
+# real password -- only clears the administrative lock flag.
+#
+# "[[ Re-verify SSH now works with the key ]]" is new here, not part of the
+# original linux/tools.yml version -- Robert's explicit ask (2026-07-26,
+# firewallme/EXAFWLAMS001): after pushing the key back via the
+# password-authenticated connection, actually prove the key works again
+# within this same run, not just trust that authorized_key succeeded.
+# Informational only (failed_when: false) -- the CURRENT connection (however
+# it got established) keeps working regardless of what this check finds, so
+# a failure here doesn't need to abort the run; it just tells the operator
+# clearly whether the NEXT run will be able to use the key or will hit this
+# same recovery path again.
+# =============================================================================
+# Changelog:
+#   2026-07-26  Same port fix as ssh_preflight_with_fallback.yml's own
+#               changelog explains -- the new re-verify command below had
+#               the identical gap (never included -o Port=), caught testing
+#               against a real throwaway sshd on a non-default port.
+#   2026-07-26  Extracted from linux/tools.yml into a shared, includable task
+#               file, with a new re-verify-with-key step added -- Robert's
+#               explicit ask when wiring this into firewallme.
+#   2026-07-16  Built inside linux/tools.yml (original location, key-refresh
+#               task only -- no re-verify step existed there).
+# =============================================================================
+
+- name: "[Preflight] Refresh Ansible SSH key"
+  ansible.posix.authorized_key:
+    user:  ansible
+    key:   "{{ exa_ansible_pub_key }}"
+    state: present
+
+- name: "[Preflight] Ensure ansible account isn't locked"
+  ansible.builtin.user:
+    name:          ansible
+    password_lock: false
+
+- name: "[Preflight] Re-verify SSH now works with the key"
+  ansible.builtin.command: >
+    ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no
+        -o Port={{ ansible_port | default(22) }}
+        -i {{ ansible_ssh_private_key_file | default(lookup('env', 'HOME') + '/ansible/configs/ansible-id_rsa') }}
+        {{ ansible_user | default('ansible') }}@{{ ansible_host | default(inventory_hostname) }}
+        true
+  register: _ssh_key_reverify
+  delegate_to: localhost
+  changed_when: false
+  failed_when: false
+  vars:
+    ansible_connection: local
+  when: (ansible_password | default('')) | length > 0
+
+- name: "[Preflight] Report re-verify result"
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'Key auth confirmed working for ' ~ inventory_hostname ~
+         ' -- future runs will not need the password fallback.'
+         if _ssh_key_reverify.rc == 0 else
+         'Key auth STILL failing for ' ~ inventory_hostname ~
+         ' after pushing the key -- next run will hit this same password prompt again.
+         Check the key was actually written (authorized_keys on the box) and that
+         sshd is accepting it.' }}
+  when: _ssh_key_reverify is not skipped

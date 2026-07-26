@@ -32,16 +32,37 @@
 #               at all — moved those two here as real vars_prompt. Everything else
 #               stays pause-based in 00_preflight_3_ask.yml, with an inline note there
 #               explaining exactly why each one can't follow.
+#   2026-07-26  Robert, real live failure against EXAFWLAMS001: SSH key rejected outright
+#               ("Permission denied (publickey,password)") during gather_facts, and this
+#               play just died UNREACHABLE with no recovery path -- gather_facts: true
+#               above is the very first connection attempt, so a bad key had nowhere to
+#               fail gracefully. Added ../../ssh_preflight_with_fallback.yml (import_playbook,
+#               runs first): tests the current key, and if it's rejected, prompts for a
+#               fallback password (only useful if the account's password was already
+#               manually unlocked out-of-band for recovery -- same posture as
+#               linux/tools.yml's identical mechanism, extracted into a shared file this
+#               same day specifically so this play could reuse it rather than duplicate
+#               it). A working password becomes ansible_password, which this play's own
+#               gather_facts picks up automatically (facts persist across plays in one
+#               run); a blank answer adds the host to ssh_preflight_skip, which hosts:
+#               below now excludes. Once connected, pre_tasks pushes the real key back
+#               and re-verifies it works, so a follow-up run won't need the fallback again.
 # =============================================================================
 
+- import_playbook: ../../ssh_preflight_with_fallback.yml
+
 - name: Example Music — Firewall configuration
-  hosts: "{{ target | default('all') }}"
+  hosts: "{{ target | default('all') }}:!ssh_preflight_skip"
   gather_facts: true
   become: true
   # vars from group_vars/firewalls/main.yml (wg_site_octets, hub tables) and
   # group_vars/all/colours.yml are auto-loaded — no explicit vars_files needed.
   # group_vars are resolved before vars_prompt runs, so colour codes (_c.*) below
   # render correctly despite no facts having been gathered yet.
+
+  pre_tasks:
+    - name: "[Preflight] Refresh SSH key + heal locked account"
+      ansible.builtin.include_tasks: ../../../tasks/refresh_ansible_ssh_key.yml
 
   vars_prompt:
     # No colour codes here (unlike every pause prompt elsewhere in this role) --
