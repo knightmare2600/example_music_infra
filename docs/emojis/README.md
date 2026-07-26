@@ -47,8 +47,11 @@ diagram change in this repo.
 | RAD | 📻 | Radio | |
 | MOO | 🎹 | Moog synth | Same symbol as FCL — both "a keyboard," per Robert |
 | FCL | 🎹 | Fairlight CMI | Same symbol as MOO |
+| SYN | 🎹 | Synthesizer (e.g. Moog, Korg, Yamaha) | Added 2026-07-26 — generic synth code, distinct from MOO (Moog specifically) and FCL (Fairlight CMI specifically). Same symbol as both — all three "a keyboard" |
 | AST | 🕹️ | Atari ST | No Atari logo in Unicode — joystick as a non-trademarked stand-in for the same retro-computing era |
 | LIN | 🥁 | Drum machine | |
+| MID | 🎚️ | MIDI sequencer / workstation | Added 2026-07-26 — distinct from NIX ("MIDI archive (*nix-adjacent)"), an archival Unix-like device, not a sequencer |
+| OBS | 🎬 | Outside broadcast station | Added 2026-07-26 |
 | TTY | ⌨️ | VT320 serial terminal | |
 
 ## Network infrastructure
@@ -59,6 +62,7 @@ diagram change in this repo.
 | FWL | 🧱 | Firewall | Brick — a firewall as a wall. Was 🔥 (the "firewall" pun); changed 2026-07-13 per Robert |
 | SWI | 🔀 | Switch | |
 | BMC | 🔧 | BMC / iDRAC / iLO / Redfish | Standard `.2`-`.4` slots — same symbol as RAC (its legacy devices.csv-row equivalent) |
+| ILO | 🔧 | Integrated Lights-Out (HP iLO) | Added 2026-07-26 — kept as its own code, distinct from BMC's generic iDRAC/iLO/Redfish consolidation above. Same symbol as BMC/RAC |
 
 ## Servers / compute / management
 
@@ -107,6 +111,7 @@ diagram change in this repo.
 | BPS | 🪪 | Badge programming station | |
 | NIX | 🐧 | MIDI archive (\*nix-adjacent) | |
 | VCU | 🎧 | Video conferencing unit | |
+| IOT | 📟 | IoT / miscellaneous embedded device | Added 2026-07-26 — catch-all for embedded devices that don't fit an existing code |
 
 ## Not yet decided
 
