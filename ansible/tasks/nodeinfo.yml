@@ -34,9 +34,19 @@
 #               rudder_site_city, etc). Also wired into linux/tools.yml so
 #               every Linux host gets a base nodeinfo.json, not just the
 #               three roles that had their own bespoke version.
+#   2026-07-26  Tagged the one task here `always`, same fix and same reason
+#               as ansible/tasks/nodeinfo_environment.yml's own 2026-07-26
+#               changelog entry: bind9-dns.yml includes this file via a task
+#               tagged `always`, which doesn't reliably propagate to an
+#               untagged child under a dynamic include_tasks with an active
+#               --tags filter (ansible-core 2.19.4, confirmed). Silent here
+#               rather than fatal (nothing in the same run reads the file
+#               back), but still means nodeinfo.json silently doesn't get
+#               written on a --tags-filtered run that omits "always".
 # =============================================================================
 
 - name: "Write /etc/example-music/nodeinfo.json"
+  tags: always
   ansible.builtin.copy:
     dest: /etc/example-music/nodeinfo.json
     mode: '0444'

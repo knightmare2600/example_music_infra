@@ -35,14 +35,30 @@
 #               once. linux/tools.yml deletes /etc/.environment once
 #               nodeinfo.json has captured it, so this fallback is expected
 #               to stop firing naturally as the estate is swept.
+#   2026-07-26  Robert, live (bind9-dns.yml --tags zones-full,reload):
+#               'resolved_environment' is undefined at the caller's own
+#               set_fact, despite a valid nodeinfo.json present -- reproduced
+#               locally on ansible-core 2.19.4. Every caller includes this
+#               file via a task tagged `tags: always`, on the assumption that
+#               "always" propagates down to these tasks since none of them
+#               carry their own tags -- it doesn't, reliably, for a dynamic
+#               include_tasks under an active --tags filter that doesn't also
+#               match "always": the include statement itself runs (it has the
+#               tag), but its untagged children get filtered out same as any
+#               other untagged task, so nothing in here ever executes and
+#               resolved_environment never gets set. Fixed by tagging every
+#               task in this file `always` directly, rather than relying on
+#               inheritance from whichever caller happens to include it.
 # =============================================================================
 
 - name: "[Environment] Check for existing /etc/example-music/nodeinfo.json"
+  tags: always
   ansible.builtin.stat:
     path: /etc/example-music/nodeinfo.json
   register: _nodeinfo_env_file
 
 - name: "[Environment] Read existing nodeinfo.json"
+  tags: always
   ansible.builtin.slurp:
     src: /etc/example-music/nodeinfo.json
   register: _nodeinfo_env_content
@@ -50,17 +66,20 @@
   changed_when: false
 
 - name: "[Environment] Set environment from existing nodeinfo.json"
+  tags: always
   ansible.builtin.set_fact:
     resolved_environment: "{{ (_nodeinfo_env_content.content | b64decode | from_json).environment | default('') }}"
   when: _nodeinfo_env_file.stat.exists
 
 - name: "[Environment] Check for legacy /etc/.environment"
+  tags: always
   ansible.builtin.stat:
     path: /etc/.environment
   register: _nodeinfo_env_legacy_file
   when: resolved_environment | default('') == ''
 
 - name: "[Environment] Read legacy /etc/.environment"
+  tags: always
   ansible.builtin.slurp:
     src: /etc/.environment
   register: _nodeinfo_env_legacy_content
@@ -71,6 +90,7 @@
   changed_when: false
 
 - name: "[Environment] Set environment from legacy /etc/.environment"
+  tags: always
   ansible.builtin.set_fact:
     resolved_environment: "{{ _nodeinfo_env_legacy_content.content | b64decode | trim }}"
   when:
@@ -78,12 +98,14 @@
     - _nodeinfo_env_legacy_content is not skipped
 
 - name: "[Environment] Prompt for environment (no nodeinfo.json or legacy file)"
+  tags: always
   ansible.builtin.pause:
     prompt: "Environment ((p)roduction, (s)taging, (d)evelopment) [default: production]"
   register: _nodeinfo_env_prompt
   when: resolved_environment | default('') == ''
 
 - name: "[Environment] Set environment from prompt"
+  tags: always
   ansible.builtin.set_fact:
     resolved_environment: >-
       {%- set e = _nodeinfo_env_prompt.user_input | default('p') | lower | trim -%}
