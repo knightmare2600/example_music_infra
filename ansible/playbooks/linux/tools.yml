@@ -124,10 +124,16 @@
 #   2026-07-26  Robert, same live session: the environment prompt fired mid-run (after
 #               packages/CSV deploys/dotfile prep), not up front with extra_users_input --
 #               broke the "ask everything up front" convention used everywhere else in this
-#               repo. Pulled the nodeinfo_environment.yml include to the top of the task
-#               list -- it never actually depended on hostname_facts.yml or anything else
-#               in the block it used to sit inside. See "Resolve environment (asked up
-#               front)" below.
+#               repo. First fix moved the nodeinfo_environment.yml include to the top of
+#               "Deploy common tools" -- it never actually depended on hostname_facts.yml or
+#               anything else in the block it used to sit inside. Robert then asked about
+#               serial: (was it needed?) and confirmed the follow-up fix: since the prompt
+#               is an ansible.builtin.pause task, same class as "SSH preflight" above (which
+#               was already split into its own serial: 1 play, 2026-07-16, for exactly this
+#               reason -- pause doesn't reliably register a result for every host in a
+#               multi-host parallel batch), it got its own dedicated "Resolve environment"
+#               serial: 1 play too, rather than living inside the much heavier, fully
+#               parallel "Deploy common tools" play. See that play's own header comment.
 
 - name: SSH preflight
   hosts: all
@@ -191,6 +197,31 @@
         - _ssh_preflight.rc != 0
         - _ssh_preflight_pw.user_input | default('') | length == 0
 
+# -------------------------------------------------------------------------------------------------
+# BUG FIX (2026-07-26, Robert): the environment prompt (nodeinfo_environment.yml) is a per-host
+# ansible.builtin.pause task -- the same class of task "SSH preflight" above was already split
+# into its own serial: 1 play on 2026-07-16 (see that play's own header comment): pause does not
+# reliably register a result for every host in a multi-host batch hitting it at once, confirmed
+# live back then, only one host in the batch ever gets a real answer back. The environment prompt
+# was moved to the top of "Deploy common tools" earlier the same day as this fix -- harmless
+# against a single --limit'd host (what's been tested so far), but "Deploy common tools" has no
+# serial: of its own, so a genuine multi-host run would hit exactly the bug SSH preflight already
+# exists to avoid. Given its own dedicated, serial: 1 play, matching that established pattern --
+# resolved_environment set here persists into "Deploy common tools" below the same way
+# ssh_preflight_skip group membership and ansible_password already do (facts carry across plays
+# for the same host within one playbook run). The heavy play stays fully parallel, unaffected --
+# only this lightweight prompt pays the serial: 1 cost, same tradeoff already made for SSH
+# preflight.
+# -------------------------------------------------------------------------------------------------
+- name: Resolve environment
+  hosts: "{{ groups['all'] | difference(groups['ssh_preflight_skip'] | default([])) }}"
+  become: true
+  serial: 1
+
+  tasks:
+    - name: "Resolve environment (asked up front, one host at a time so the prompt is reliable)"
+      include_tasks: ../../tasks/nodeinfo_environment.yml
+
 - name: Deploy common tools
   hosts: "{{ groups['all'] | difference(groups['ssh_preflight_skip'] | default([])) }}"
   become: true
@@ -216,21 +247,6 @@
     ad_computers_src:  "{{ playbook_dir }}/../../../benarbejde/ad_computers.json"
 
   tasks:
-
-    # BUG FIX (2026-07-26, Robert, live --check --diff): the environment prompt used to
-    # fire wherever nodeinfo_environment.yml happened to be include_tasks'd from -- deep in
-    # this play, well after packages/CSV deploys/dotfile prep had already run, breaking the
-    # "ask everything up front" convention used everywhere else in this repo (firewallme's
-    # 00_preflight_3_ask.yml, windows_dc's bundled vars_prompt). nodeinfo_environment.yml
-    # doesn't actually depend on hostname_facts.yml or anything else that block does --
-    # it was just nested inside the same block for unrelated reasons. Pulled out here,
-    # right alongside extra_users_input's vars_prompt above, so both prompts fire before any
-    # real work starts. The later include_tasks call (in "Write nodeinfo.json (best-effort)"
-    # below) is unchanged and becomes a harmless no-op once resolved_environment is already
-    # set -- every task inside nodeinfo_environment.yml already gates on
-    # resolved_environment being unset, so nothing re-prompts.
-    - name: "Resolve environment (asked up front)"
-      include_tasks: ../../tasks/nodeinfo_environment.yml
 
     - name: "[Preflight] Refresh Ansible SSH key"
       ansible.posix.authorized_key:
