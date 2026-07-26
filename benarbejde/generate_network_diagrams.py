@@ -138,9 +138,24 @@ def build_site_devices(site: str, net, devices_by_site: dict):
       dtype = re.match(r'EXA([A-Z]{3})', d["Hostname"]).group(1)
       if dtype == 'RTR' and site in gi.NO_STANDARD_ROUTER_SITES:
         continue  # documentation-only placeholder for DNS purposes, not a real device here
+      if d.get("SubnetSite"):
+        # FWL1's bare hostname now DNS-synthesizes at the VRK/provisioning-network address
+        # (Robert, 2026-07-26 -- matches Ansible's own inventory convention for this
+        # hostname), a second, DNS-only entry alongside the real -LAN one for the same
+        # physical device. One box per physical firewall on a site diagram, not two --
+        # skip anything the generator marked as living on a different subnet than this
+        # site's own (the -LAN entry, with no SubnetSite key, is what actually gets drawn).
+        continue
       out.append({
-        "hostname": d["Hostname"], "type": dtype, "octet": d["HostOctet"],
-        "label_extra": d["Notes"].replace("Standard ", "").replace(" slot", ""),
+        # -LAN suffix is a DNS-only disambiguator (see above) -- strip it for the diagram
+        # label, this is still just "the firewall", not a second device. Same for the Notes
+        # text: the full "this is what the bare hostname meant before..." explanation belongs
+        # in the DNS zone file's comment, not a compact diagram label.
+        "hostname": d["Hostname"].removesuffix("-LAN"), "type": dtype, "octet": d["HostOctet"],
+        "label_extra": (
+          "LAN face" if d["Hostname"].endswith("-LAN")
+          else d["Notes"].replace("Standard ", "").replace(" slot", "")
+        ),
         "subnet_site": None, "is_foreign": False,
       })
 

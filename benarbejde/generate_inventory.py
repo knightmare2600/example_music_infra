@@ -999,6 +999,43 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
     else:
       continue  # e.g. BMC — always commented/reference-only, never synthesized for DNS
     for i, offset in selected:
+      # FWL1's bare hostname is the VRK/provisioning-network WAN address, not the site's own
+      # LAN slot -- matching build_ini()'s own vals["FWL1"] convention exactly (Ansible itself
+      # connects via this address; confirmed live 2026-07-16 against a genuinely remote site,
+      # BRT -- LAN isn't routable pre-tunnel). Robert, 2026-07-26, live: `host exafwlams001`
+      # returned the LAN address while Ansible's own inventory meant the VRK one under the
+      # exact same hostname -- DNS and the .ini generator had silently diverged on what the
+      # bare name means. Fixed by making DNS match the .ini's convention (Robert's explicit
+      # choice, not assumed): bare hostname now gets the VRK address here, and a second,
+      # -LAN-suffixed entry (own HostOctet, no SubnetSite) carries what the bare hostname used
+      # to mean, mirroring the existing `-wan` naming pattern already used in the DNS templates.
+      # CLD is excluded (matches build_ini()'s own `if site in ("CLD", "VRK")` branch) -- CLD's
+      # WAN face already has its own distinct, real devices.csv-driven hostname (EXAFWLVRK001,
+      # Site=VRK), it was never ambiguous under EXAFWLCLD001 the way ordinary sites are, so
+      # doesn't need the same dual-entry treatment.
+      if role == "FWL" and i == 1 and site != "CLD":
+        site_octet = int(net.strNormal(0).split("/")[0].split(".")[2])
+        devices.append({
+          "Site": site,
+          "Hostname": build_hostname(role, site, i),
+          "HostOctet": str(site_octet),
+          "SubnetSite": "VRK",
+          "Type": role,
+          "DNSAlias": TYPE_DNS_ALIAS.get(role, ""),
+          "Notes": f"Standard {role} slot {i} -- WAN/provisioning-network face, matches "
+                   f"Ansible's own inventory convention for this hostname; LAN face is "
+                   f"{build_hostname(role, site, i)}-LAN",
+        })
+        devices.append({
+          "Site": site,
+          "Hostname": f"{build_hostname(role, site, i)}-LAN",
+          "HostOctet": str(offset),
+          "Type": role,
+          "DNSAlias": "",
+          "Notes": f"Standard {role} slot {i} -- LAN face (this is what the bare hostname "
+                   f"meant before 2026-07-26)",
+        })
+        continue
       devices.append({
         "Site": site,
         "Hostname": build_hostname(role, site, i),
