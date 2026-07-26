@@ -113,6 +113,14 @@
 #               when: "'unattended-upgrades' in ansible_facts.packages" gate on both --
 #               Ansible's equivalent of Puppet's require Package[...] dependency pattern,
 #               Robert's own framing for what he wanted here.
+#   2026-07-26  Robert, same live --check --diff session: "Link update-motd into
+#               /etc/update-motd.d" failed under --check ("src file does not exist") --
+#               its src is written by the immediately preceding copy task, which --check
+#               only simulates, never actually writes. Added when: not ansible_check_mode
+#               so a dry run reports this honestly (skipped, precondition can't be
+#               evaluated) instead of a scary red failure; unchanged on a real apply.
+#               Repo-wide grep confirms this is the only state: link task anywhere --
+#               isolated fix, not a wider pattern this time.
 
 - name: SSH preflight
   hosts: all
@@ -327,11 +335,23 @@
         group: root
         mode:  '0755'
 
+    # BUG FIX (2026-07-26, found live on EXAPVEVRK001, --check --diff): this task's src is
+    # the file the preceding "Deploy update-motd script" task creates -- under --check that
+    # copy is only simulated, never actually written, so on a host that's never had this
+    # deployed before, ansible.builtin.file (state: link) checked the real filesystem for a
+    # source that check mode never really created and failed loudly ("src file does not
+    # exist"). Not a real failure and not something a retry or force=yes should paper over
+    # -- it's an inherent limitation of dry-running two dependent tasks together, not a bug
+    # in the tasks themselves. Skipping under check mode is the honest answer: this task's
+    # precondition genuinely can't be evaluated without the previous task's real side
+    # effect, so there's nothing meaningful to report either way. Still runs for real,
+    # unchanged, on every normal apply.
     - name: Link update-motd into /etc/update-motd.d
       ansible.builtin.file:
         src:   /usr/local/bin/update-motd
         dest:  /etc/update-motd.d/98-update-status
         state: link
+      when: not ansible_check_mode
 
     - name: Set default shell to zsh for ansible user
       user:
