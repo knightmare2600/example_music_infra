@@ -158,6 +158,7 @@ graph TD
       N_JET3["✈️ EXAJETFAL003 · Jet 3"]
       N_JET4["✈️ EXAJETFAL004 · Jet 4"]
       N_JET5["✈️ EXAJETFAL005 · Jet 5"]
+      N_NAS["🗃️ EXANASFAL001 · Site NAS/SAN — EXANASFAL001 (.19 standard slot) — install... · .19"]
     end
     style NEW_FAL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:FAL:END
