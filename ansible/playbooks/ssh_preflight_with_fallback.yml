@@ -13,6 +13,21 @@
 #   - import_playbook: ../ssh_preflight_with_fallback.yml   # from playbooks/<module>/
 #   - import_playbook: ../../ssh_preflight_with_fallback.yml  # from playbooks/<module>/playbooks/
 #
+# hosts: "{{ target | default('all') }}" -- matches firewallme's own established
+# -e target=<host> scoping convention, so importing this in front of
+# firewallme/playbooks/90-firewall.yml actually scopes to just that host, not
+# every host in inventory. linux/tools.yml never sets `target` at all, so this
+# still defaults to 'all' there, scoped the way that file's own header always
+# documented -- via --limit at the CLI, not -e target=. Real live bug caught
+# 2026-07-26 (Robert, mid-run against EXAFWLAMS001): this was hardcoded to
+# `hosts: all` when first extracted, silently ignoring -e target= entirely and
+# looping the password prompt through every single host in inventory before
+# ever reaching the one actually requested -- exactly the same class of
+# mistake already made once earlier the same session, telling Robert to use
+# -e target= against linux/tools.yml itself (which never supported it, only
+# --limit does) -- caught there, then reintroduced here anyway when writing
+# this file from scratch.
+#
 # Tests the CURRENT key first (plain ssh, delegate_to: localhost, BatchMode=yes
 # so it can never hang on a password prompt). If that works, does nothing --
 # the caller's own next play connects normally, at no extra cost beyond one
@@ -54,6 +69,14 @@
 # until a password fact (if needed) is already in hand.
 # =============================================================================
 # Changelog:
+#   2026-07-26  Real live bug (Robert, mid-run against EXAFWLAMS001): hosts: was hardcoded
+#               to `all`, ignoring firewallme's own -e target= scoping convention entirely
+#               -- looped the password prompt through every host in inventory
+#               (EXASRVAKL001, EXASRVBIR001, EXAANSCLD001, ...) before ever reaching the
+#               one actually requested. Fixed to hosts: "{{ target | default('all') }}",
+#               matching firewallme/playbooks/90-firewall.yml's own second play exactly;
+#               linux/tools.yml (which never sets target) is unaffected, still scoped via
+#               --limit as always.
 #   2026-07-26  Fixed a real, pre-existing gap found while testing this
 #               extraction against a real throwaway sshd: the ssh test
 #               command never included a port option at all, silently always
@@ -70,7 +93,7 @@
 # =============================================================================
 
 - name: SSH preflight
-  hosts: all
+  hosts: "{{ target | default('all') }}"
   gather_facts: false
   serial: 1
   vars:
