@@ -191,6 +191,10 @@
 #               both fixed the same week) -- this play previously had no end-of-run recap at
 #               all, only a mid-play "[NM] NOTE" debug task that fires solely when the strand-
 #               check trips, easy to miss scrolled past 819 zone-file records' worth of output.
+#   2026-07-26  dnsutils -> bind9-dnsutils. Found live: dnsutils is a transitional/virtual
+#               package on this estate's Debian 13 (Trixie) base -- the real package
+#               providing dig/nslookup/nsupdate is bind9-dnsutils now. bind9utils (RNDC/
+#               named-checkconf tools, no hyphen -- a different package) unaffected.
 # =============================================================================
 
 - name: EXADNSVRK001 -- BIND9 DNS server
@@ -360,7 +364,7 @@
         name:
           - bind9
           - bind9utils
-          - dnsutils
+          - bind9-dnsutils
           - arping
           - iproute2
           - network-manager
