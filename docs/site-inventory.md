@@ -236,7 +236,7 @@ here, it's a MacBook running `http.server`, not a physical site).
 - [ ] `EXADCSFAL001` — DC primary (`192.168.76.10`) · PDC Emulator
 - [ ] `EXADCSFAL002` — DC secondary (`192.168.76.11`)
 - [ ] `EXASBCFAL001` — VOIP SBC (`192.168.76.48`) · trunks to `EXAPBXCLD001`
-- [ ] `EXANASFAL001` — **Retired 2026-07-19** (was `192.168.76.32`, FreeNAS) — replaced by the standard `EXANASFAL001` slot at `.19` (TrueNAS), not yet built
+- [ ] `EXANASFAL001` — installed 2026-07-26 (bare metal, TrueNAS SCALE) at the standard `.19` slot, replacing the retired legacy FreeNAS box (was `192.168.76.32`) — Ansible onboarding in progress, not yet complete
 - [ ] `EXATARFAL001` — Tape archiver (`192.168.76.33`) · Solaris Embedded
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool `.100`–`.249` confirmed active

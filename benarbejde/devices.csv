@@ -60,6 +60,7 @@ FAL,JET,2,,,none,,Jet 2,,review
 FAL,JET,3,,,none,,Jet 3,,review
 FAL,JET,4,,,none,,Jet 4,,review
 FAL,JET,5,,,none,,Jet 5,,review
+FAL,NAS,1,19,TrueNAS SCALE,ssh,yes,"Site NAS/SAN — EXANASFAL001 (.19 standard slot) — installed 2026-07-26, bare metal — replaces the retired legacy FreeNAS box (was .32)",,
 EDI,DCR,2,12,Windows Server 2022,ssh,,DC secondary needs rebuild corrected to .12,,yes
 EDI,DCR,3,13,Windows Server 2022,ssh,,DECOMMISSION PENDING corrected to .13,,yes
 EDI,WKS,1,150,Windows 10 Pro 22H2,winrm,,Shared desktop,,yes
