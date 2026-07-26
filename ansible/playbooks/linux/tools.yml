@@ -103,6 +103,16 @@
 #               drift class as every other benarbejde/ CSV this playbook already
 #               deploys: found live missing SLT, the Salt master role, added
 #               2026-07-20 but never wired into the VM-creation script).
+#   2026-07-26  Robert, live (EXAPVEVRK001): both unattended-upgrades config tasks used to
+#               run unconditionally regardless of whether the package was actually
+#               installed -- some nodes deliberately don't have it, a legitimate state, not
+#               something to correct. 50unattended-upgrades hard-failed outright (no
+#               create: true, file genuinely doesn't exist without the package);
+#               20auto-upgrades would have silently written periodic-timer config for a
+#               package that isn't there to act on it. Added a package_facts gather +
+#               when: "'unattended-upgrades' in ansible_facts.packages" gate on both --
+#               Ansible's equivalent of Puppet's require Package[...] dependency pattern,
+#               Robert's own framing for what he wanted here.
 
 - name: SSH preflight
   hosts: all
@@ -219,6 +229,23 @@
         cache_valid_time: 3600
 
     # -------------------------------------------------------------------------
+    # BUG FIX (2026-07-26, found live on EXAPVEVRK001): both tasks below used to run
+    # unconditionally, regardless of whether the unattended-upgrades package was actually
+    # installed. Some nodes deliberately don't have it (upgrades applied manually/on a
+    # different schedule) -- that's a legitimate, intentional state, not something to
+    # correct. 50unattended-upgrades has no create: true, so lineinfile hard-failed
+    # outright ("does not exist") on a host without the package; 20auto-upgrades DOES have
+    # create: true so it would have silently written periodic-timer config for a package
+    # that isn't there to act on it -- same underlying problem, just a quieter symptom.
+    # Robert's own framing: Puppet's require Package[...] dependency pattern. Ansible's
+    # equivalent is package_facts (gathers ansible_facts.packages) + a when: gate -- both
+    # tasks below now skip cleanly, not fail or misconfigure, when the package is absent.
+    # -------------------------------------------------------------------------
+    - name: Gather installed package facts
+      ansible.builtin.package_facts:
+        manager: apt
+
+    # -------------------------------------------------------------------------
     # Ported 2026-07-21 while auditing a dropped-in Salt lintools.sls state,
     # which set the same 5 options Salt-side -- Robert's call to move it to
     # Ansible instead, since it's a one-time config file, not ongoing drift
@@ -243,6 +270,7 @@
         regexp: "{{ item.regexp }}"
         line:   "{{ item.line }}"
         state:  present
+      when: "'unattended-upgrades' in ansible_facts.packages"
       loop:
         - regexp: '^//?\s*Unattended-Upgrade::AutoFixInterruptedDpkg\s+".*'
           line:   'Unattended-Upgrade::AutoFixInterruptedDpkg "true";'
@@ -275,6 +303,7 @@
         line:   "{{ item.line }}"
         state:  present
         create: true
+      when: "'unattended-upgrades' in ansible_facts.packages"
       loop:
         - regexp: '^//?\s*APT::Periodic::Update-Package-Lists\s+".*'
           line:   'APT::Periodic::Update-Package-Lists "1";'
