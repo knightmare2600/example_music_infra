@@ -56,10 +56,14 @@ graph TD
     subgraph NEW_LAX ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRLAX001 · RTR · .1"]
       N_SBC["🛡️ EXASBCLAX001 · SBC · .48"]
+      N_NAS["🗃️ EXANASLAX001 · NAS · .19"]
+      N_RDR["🔐 EXARDRLAX001 · RDR · .21"]
+      N_BMC["🔧 EXABMCLAX001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSLAX001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLLAX001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLLAX002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVELAX001 · PVE 1 · .5"]
+      N_WAP["📶 EXAWAPLAX001 · WAP 1 · .82"]
       N_SRV["🗄️ EXASRVLAX001 · Local services DB · .20"]
       N_MUS["💿 EXAMUSLAX001 · Synth · .70"]
       N_MUS2["💿 EXAMUSLAX002 · Drum machine · .71"]
@@ -114,11 +118,15 @@ graph TD
     subgraph NEW_NYC ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRNYC001 · RTR · .1"]
       N_SBC["🛡️ EXASBCNYC001 · SBC · .48"]
+      N_NAS["🗃️ EXANASNYC001 · NAS · .19"]
+      N_RDR["🔐 EXARDRNYC001 · RDR · .21"]
+      N_BMC["🔧 EXABMCNYC001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSNYC001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLNYC001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLNYC002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVENYC001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWINYC001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPNYC001 · WAP 1 · .82"]
     end
     style NEW_NYC fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:NYC:END
@@ -161,11 +169,15 @@ graph TD
     subgraph NEW_NJC ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRNJC001 · RTR · .1"]
       N_SBC["🛡️ EXASBCNJC001 · SBC · .48"]
+      N_NAS["🗃️ EXANASNJC001 · NAS · .19"]
+      N_RDR["🔐 EXARDRNJC001 · RDR · .21"]
+      N_BMC["🔧 EXABMCNJC001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSNJC001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLNJC001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLNJC002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVENJC001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWINJC001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPNJC001 · WAP 1 · .82"]
     end
     style NEW_NJC fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:NJC:END
@@ -209,11 +221,15 @@ graph TD
     subgraph NEW_MIA ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRMIA001 · RTR · .1"]
       N_SBC["🛡️ EXASBCMIA001 · SBC · .48"]
+      N_NAS["🗃️ EXANASMIA001 · NAS · .19"]
+      N_RDR["🔐 EXARDRMIA001 · RDR · .21"]
+      N_BMC["🔧 EXABMCMIA001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSMIA001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLMIA001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLMIA002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEMIA001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIMIA001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPMIA001 · WAP 1 · .82"]
       N_COF["🍵 EXACOFMIA001 · Coffee machine · .60"]
       N_LAP["💻 EXALAPMIA001 · MacBook"]
     end
@@ -256,11 +272,15 @@ graph TD
     subgraph NEW_ATL ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRATL001 · RTR · .1"]
       N_SBC["🛡️ EXASBCATL001 · SBC · .48"]
+      N_NAS["🗃️ EXANASATL001 · NAS · .19"]
+      N_RDR["🔐 EXARDRATL001 · RDR · .21"]
+      N_BMC["🔧 EXABMCATL001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSATL001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLATL001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLATL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEATL001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIATL001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPATL001 · WAP 1 · .82"]
     end
     style NEW_ATL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:ATL:END
@@ -303,11 +323,15 @@ graph TD
     subgraph NEW_CHI ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRCHI001 · RTR · .1"]
       N_SBC["🛡️ EXASBCCHI001 · SBC · .48"]
+      N_NAS["🗃️ EXANASCHI001 · NAS · .19"]
+      N_RDR["🔐 EXARDRCHI001 · RDR · .21"]
+      N_BMC["🔧 EXABMCCHI001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSCHI001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLCHI001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLCHI002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVECHI001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWICHI001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPCHI001 · WAP 1 · .82"]
     end
     style NEW_CHI fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:CHI:END
@@ -335,11 +359,15 @@ graph TD
     subgraph NEW_SEA ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRSEA001 · RTR · .1"]
       N_SBC["🛡️ EXASBCSEA001 · SBC · .48"]
+      N_NAS["🗃️ EXANASSEA001 · NAS · .19"]
+      N_RDR["🔐 EXARDRSEA001 · RDR · .21"]
+      N_BMC["🔧 EXABMCSEA001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSSEA001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLSEA001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLSEA002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVESEA001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWISEA001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPSEA001 · WAP 1 · .82"]
     end
     style NEW_SEA fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:SEA:END
@@ -365,11 +393,15 @@ graph TD
     subgraph NEW_SFO ["🆕 New Network (current)"]
       N_RTR["📡 EXARTRSFO001 · RTR · .1"]
       N_SBC["🛡️ EXASBCSFO001 · SBC · .48"]
+      N_NAS["🗃️ EXANASSFO001 · NAS · .19"]
+      N_RDR["🔐 EXARDRSFO001 · RDR · .21"]
+      N_BMC["🔧 EXABMCSFO001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSSFO001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLSFO001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLSFO002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVESFO001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWISFO001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPSFO001 · WAP 1 · .82"]
     end
     style NEW_SFO fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:SFO:END

@@ -39,11 +39,15 @@ graph TD
     subgraph NEW_OSL ["🆕 New Network (current)"]
       N_RTR["📡 EXARTROSL001 · RTR · .1"]
       N_SBC["🛡️ EXASBCOSL001 · SBC · .48"]
+      N_NAS["🗃️ EXANASOSL001 · NAS · .19"]
+      N_RDR["🔐 EXARDROSL001 · RDR · .21"]
+      N_BMC["🔧 EXABMCOSL001 · BMC 1 · .2"]
       N_DCS["🗝️ EXADCSOSL001 · DCS 1 · .10"]
       N_FWL["🧱 EXAFWLOSL001 · FWL 1 · .253"]
       N_FWL2["🧱 EXAFWLOSL002 · FWL 2 · .254"]
       N_PVE["🗂️ EXAPVEOSL001 · PVE 1 · .5"]
       N_SWI["🔀 EXASWIOSL001 · SWI 1 · .250"]
+      N_WAP["📶 EXAWAPOSL001 · WAP 1 · .82"]
     end
     style NEW_OSL fill:#E69F00,stroke:#D55E00,color:#000000
     %% GENERATED:NEW-NETWORK:OSL:END
