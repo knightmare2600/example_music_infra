@@ -1,0 +1,129 @@
+---
+# =============================================================================
+# playbooks/ssh_preflight_with_fallback.yml
+# Example Music Limited — SSH key preflight, with a password-fallback recovery path
+# =============================================================================
+# Extracted 2026-07-26 from linux/tools.yml's "SSH preflight" play (built
+# 2026-07-16, no functional change here) -- wiring the same recovery flow
+# into firewallme/playbooks/90-firewall.yml (a real live failure, EXAFWLAMS001,
+# key rejected) was the second caller that made duplicating this worthwhile
+# to avoid instead. Import this BEFORE any play that needs a real SSH/become
+# connection to succeed:
+#
+#   - import_playbook: ../ssh_preflight_with_fallback.yml   # from playbooks/<module>/
+#   - import_playbook: ../../ssh_preflight_with_fallback.yml  # from playbooks/<module>/playbooks/
+#
+# Tests the CURRENT key first (plain ssh, delegate_to: localhost, BatchMode=yes
+# so it can never hang on a password prompt). If that works, does nothing --
+# the caller's own next play connects normally, at no extra cost beyond one
+# quick localhost-side ssh call per host.
+#
+# If the key fails, prompts (ansible.builtin.pause) for a fallback password --
+# this only ever helps if the target account's password has already been
+# manually unlocked/set out-of-band for recovery; every managed Linux/
+# firewall node's `ansible` account has a locked password and passwordless
+# sudo by design. A real answer sets `ansible_password`, which persists as a
+# host fact for the rest of THIS playbook run (including every later play
+# that targets the same host) -- Ansible's own connection layer picks it up
+# automatically from here on, no further wiring needed in the caller. A
+# blank answer adds the host to the `ssh_preflight_skip` group instead, so
+# the caller's own `hosts:` pattern should end in `:!ssh_preflight_skip` to
+# skip that host cleanly rather than failing the whole run or wasting a
+# doomed reconnect attempt on it.
+#
+# Once connected (by whichever method), pair this with
+# tasks/refresh_ansible_ssh_key.yml in the caller's own next play/pre_tasks
+# to actually push the real key back and heal a locked account -- this file
+# only tests and falls back, it never writes anything itself.
+#
+# `serial: 1` is required, not optional -- confirmed live, 2026-07-16:
+# ansible.builtin.pause does not reliably register a result for every host
+# in a normal parallel multi-host batch hitting it at once; only one host in
+# the batch ever got a real answer back, regardless of
+# ignore_unreachable/ignore_errors/meta: clear_host_errors on earlier tasks.
+# Only THIS lightweight play pays the serialisation cost -- the caller's own
+# heavier play after it stays fully parallel, unaffected.
+#
+# ansible.builtin.ping was tried as the connectivity test and rejected --
+# confirmed live: a real per-host connection attempt like that marks a
+# failing host unreachable in Ansible's own internal state for the rest of
+# THAT play, and ignore_unreachable/ignore_errors on that one task does NOT
+# undo it for later tasks against the same host (meta: clear_host_errors
+# didn't either). A plain delegate_to: localhost ssh command avoids this
+# entirely -- Ansible's own connection layer never touches the real target
+# until a password fact (if needed) is already in hand.
+# =============================================================================
+# Changelog:
+#   2026-07-26  Fixed a real, pre-existing gap found while testing this
+#               extraction against a real throwaway sshd: the ssh test
+#               command never included a port option at all, silently always
+#               testing port 22 regardless of ansible_port. No real host in
+#               this estate currently sets a non-default ansible_port (only
+#               windows_nodes/connection.yml does, and Windows never goes
+#               through this preflight), so this had zero live impact so
+#               far -- but worth fixing now this file is used more widely.
+#               Added -o Port={{ ansible_port | default(22) }}.
+#   2026-07-26  Extracted from linux/tools.yml into a shared, importable play
+#               -- firewallme/playbooks/90-firewall.yml is the second caller
+#               (EXAFWLAMS001, real live SSH key rejection).
+#   2026-07-16  Built inside linux/tools.yml (original location).
+# =============================================================================
+
+- name: SSH preflight
+  hosts: all
+  gather_facts: false
+  serial: 1
+  vars:
+    _preflight_key: "{{ ansible_ssh_private_key_file | default(lookup('env', 'HOME') + '/ansible/configs/ansible-id_rsa') }}"
+
+  tasks:
+
+    - name: "[Preflight] Test SSH connectivity with the current key"
+      # Delegated plain ssh, not ansible.builtin.ping -- see header comment above.
+      ansible.builtin.command: >
+        ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no
+            -o Port={{ ansible_port | default(22) }}
+            -i {{ _preflight_key }}
+            {{ ansible_user | default('ansible') }}@{{ ansible_host | default(inventory_hostname) }}
+            true
+      register: _ssh_preflight
+      delegate_to: localhost
+      changed_when: false
+      failed_when: false
+      vars:
+        ansible_connection: local
+
+    - name: "[Preflight] Key auth failed -- prompt for a fallback password"
+      ansible.builtin.pause:
+        prompt: |-
+
+          ── SSH preflight failed for {{ inventory_hostname }} ───────────────────
+            The current Ansible SSH key was rejected (or the host didn't respond)
+            connecting as {{ ansible_user | default('ansible') }}.
+            Every node's ansible user has a locked password and passwordless
+            sudo by design -- this only helps if that account's password has
+            already been manually unlocked/set out-of-band for recovery.
+            Enter it now to continue this host, or leave blank to skip it.
+          ─────────────────────────────────────────────────────────────────────
+          Password (masked, blank to skip this host)
+        echo: false
+      register: _ssh_preflight_pw
+      when: _ssh_preflight.rc != 0
+
+    - name: "[Preflight] Apply fallback password for this run"
+      ansible.builtin.set_fact:
+        ansible_password: "{{ _ssh_preflight_pw.user_input }}"
+      no_log: true
+      when:
+        - _ssh_preflight_pw is not skipped
+        - _ssh_preflight_pw.user_input | default('') | length > 0
+
+    - name: "[Preflight] Mark host to be skipped -- no working key and no password given"
+      ansible.builtin.add_host:
+        name:   "{{ inventory_hostname }}"
+        groups: ssh_preflight_skip
+      delegate_to: localhost
+      changed_when: false
+      when:
+        - _ssh_preflight.rc != 0
+        - _ssh_preflight_pw.user_input | default('') | length == 0
