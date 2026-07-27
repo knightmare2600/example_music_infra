@@ -170,6 +170,16 @@
     ansible_user:       "{{ dc_local_user }}"
     ansible_password:   "{{ dc_local_password }}"
 
+  # NOTE (2026-07-27): vars_prompt's defaults below read ad_forest.json directly via
+  # lookup('file', ...) -- this happens before pre_tasks ever runs (vars_prompt evaluates
+  # earliest in every Ansible play, structurally, regardless of YAML key order), so the
+  # example_music_freshness_gate.yml gate added to pre_tasks below CANNOT intercept THIS
+  # specific read. A stale/missing ad_forest.json here surfaces as a raw Jinja/JSON error at
+  # prompt-render time, not the gate's clear message. Deliberately left as-is (Robert's
+  # explicit call): closing it fully would mean moving the domain/netbios default derivation
+  # out of vars_prompt into a set_fact after the gate, changing this play's existing
+  # interactive prompt behaviour -- out of scope for "add a gate". The gate below still
+  # covers every OTHER read of ad_forest.json and sites.csv in this play's tasks:.
   vars_prompt:
     - name: dc_domain_name
       prompt: "AD domain FQDN"
@@ -219,6 +229,13 @@
       prompt: "Populate AD with demo users/groups/computers after promotion? (yes/no)"
       private: false
       default: "no"
+
+  pre_tasks:
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv, ad_forest.json]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../.."
 
   tasks:
 
