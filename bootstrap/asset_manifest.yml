@@ -8,10 +8,19 @@
 # harness (at_have_ryggen_fri/check_bootstrap_assets.py stays read-only,
 # offline) -- fetching is always an explicit, separate ansible-playbook run.
 #
-# Assets with NO real upstream (Robert's own custom builds: Arch's airootfs,
-# the WinPE .wim, rockylinux's custom initrd) are deliberately NOT here --
-# those are git-lfs candidates, not fetch candidates. See
-# docs (TODO once written) / this repo's memory for the full audit.
+# Assets with NO real upstream (Robert's own custom build: Arch's airootfs)
+# are deliberately NOT here -- that's a git-lfs candidate, not a fetch
+# candidate. See docs (TODO once written) / this repo's memory for the full
+# audit.
+#
+# The WinPE .wim is deliberately NOT here and NEVER goes in this repo at
+# all, LFS or otherwise -- Robert confirmed 2026-07-27 this repo cannot
+# redistribute it (Microsoft ADK licensing). wimboot (the loader that
+# streams it, github.com/ipxe/wimboot) IS fetched below -- it's GPL2, no
+# Microsoft code in it, unaffected. See .gitignore's matching hard exclusion.
+#
+# rockylinux/ is also NOT here for now -- Robert deleted his local copy
+# 2026-07-27, revisiting later.
 #
 # source_type: github_release
 #   Queries the GitHub Releases API fresh every run and uses the API's own

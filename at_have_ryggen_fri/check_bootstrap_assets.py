@@ -271,7 +271,11 @@ def main():
         manifest_dests = load_manifest_dests()
         print(f"{len(missing)} boot binary issue(s) (informational; --strict fails on this):")
         for m in missing:
-            if m in manifest_dests:
+            if m.endswith(".wim"):
+                print(f"  bootstrap/web/{m}  [LICENSING -- cannot be committed to this repo "
+                      f"at all, LFS or otherwise (Microsoft ADK terms); build locally, never "
+                      f"drop in]")
+            elif m in manifest_dests:
                 print(f"  bootstrap/web/{m}  [fetchable: {FETCH_PLAYBOOK}]")
             else:
                 print(f"  bootstrap/web/{m}  [no fetch source configured -- manual drop-in "
