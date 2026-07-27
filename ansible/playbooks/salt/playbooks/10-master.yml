@@ -92,6 +92,14 @@
   vars_files:
     - ../../../configs/inventory/group_vars/salt_servers/main.yml
 
+  pre_tasks:
+
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv, ad_forest.json]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../.."
+
   # ---------------------------------------------------------------------------
   # Section 1 — Hostname
   # ---------------------------------------------------------------------------

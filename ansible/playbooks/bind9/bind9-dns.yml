@@ -244,6 +244,13 @@
       - { suffix: 253, prefix: "exafwl", seq: 1 }
 
   pre_tasks:
+    - name: Gate on /etc/example-music/* freshness
+      tags: always
+      include_tasks: ../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv, devices.csv, ad_forest.json]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../.."
+
     # -------------------------------------------------------------------------
     # Load and parse sites.csv on the control node.
     # Produces: sites  (list of dicts with keys: site, city, country, octet,
@@ -1140,6 +1147,13 @@
     # vRACK ancillary PTRs are hardcoded in db.192.168.139.devices.j2.
 
   pre_tasks:
+    - name: Gate on /etc/example-music/* freshness
+      tags: always
+      include_tasks: ../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv, devices.csv, ad_forest.json]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../.."
+
     - name: Load sites.csv
       tags: always
       delegate_to: localhost

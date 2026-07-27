@@ -123,6 +123,13 @@
   # Hub tables (wg_hub_known_pubkeys etc.) come from group_vars/firewalls/main.yml
   # (auto-loaded). wg_site_octets is built below, at runtime -- see changelog.
 
+  pre_tasks:
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../.."
+
   vars:
     spoke_ansible_user: ansible
     # Matches roles/firewall/defaults/main.yml's own default -- this standalone play has

@@ -123,6 +123,14 @@
   vars:
     ad_forest_json_path: "/etc/example-music/ad_forest.json"
 
+  pre_tasks:
+
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [ad_forest.json]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../.."
+
   tasks:
 
     - name: Fail if new_hostname not provided
