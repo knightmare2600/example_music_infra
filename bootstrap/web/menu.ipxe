@@ -17,6 +17,12 @@
 #
 # Version history:
 #
+#   v2.8   Bumped OpenBSD 7.5 -> 7.9 (all three :openbsd-* entries). 7.5 no longer exists on
+#          cdn.openbsd.org at all (confirmed live, 2026-07-27, while building
+#          bootstrap/asset_manifest.yml's fetch-on-demand entries) -- the mirror only carries
+#          7.7/7.8/7.9. Robert's explicit call to bump rather than chase the archive mirror
+#          for a version this stale.
+#
 #   v2.7   Added :klargoring -- Projekt klargoring, Robert's own hand-rolled live Proxmox
 #          installer distro, built separately from this repo's own automation.
 #          NOT a revival of the Proxmox-official auto-install PXE approach
@@ -248,9 +254,9 @@ item arch-auto-s      Arch    Auto install  (ttyS0 serial)
 item arch-ssh-s       Arch    Install  (SSH + ttyS0 serial)
 item --gap --
 item --gap --         -- OpenBSD --
-item openbsd-auto     OpenBSD 7.5  Auto install
-item openbsd-auto-s   OpenBSD 7.5  Auto install  (ttyS0 serial)
-item openbsd-inter-s  OpenBSD 7.5  Interactive   (ttyS0 serial)
+item openbsd-auto     OpenBSD 7.9  Auto install
+item openbsd-auto-s   OpenBSD 7.9  Auto install  (ttyS0 serial)
+item openbsd-inter-s  OpenBSD 7.9  Interactive   (ttyS0 serial)
 item --gap --
 item --gap --         -- Hypervisors --
 item proxmox-ve       Proxmox VE 9   (x86_64 only)
@@ -460,19 +466,19 @@ boot
 # OPENBSD
 # ===========================================================================
 :openbsd-auto
-set base ${boot-url}/openbsd/7.5/${arch}
+set base ${boot-url}/openbsd/7.9/${arch}
 echo OpenBSD AUTO (${arch}) from ${base}
 kernel ${base}/bsd.rd
 boot
 
 :openbsd-auto-s
-set base ${boot-url}/openbsd/7.5/${arch}
+set base ${boot-url}/openbsd/7.9/${arch}
 echo OpenBSD AUTO SERIAL (${arch}) from ${base}
 kernel ${base}/bsd.rd
 boot
 
 :openbsd-inter-s
-set base ${boot-url}/openbsd/7.5/${arch}
+set base ${boot-url}/openbsd/7.9/${arch}
 echo OpenBSD INTERACTIVE SERIAL (${arch}) from ${base}
 kernel ${base}/bsd.rd
 boot
