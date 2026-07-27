@@ -223,3 +223,15 @@ benarbejde/.keepassxc_master_password
 ###############################################################################
 
 legwork/
+
+###############################################################################
+# ansible/playbooks/bootstrap_assets/fetch-assets.yml's scratch download dir
+# -- deliberately not /tmp (can be tmpfs-backed with too little room for a
+# large archive_extract download; found live, 2026-07-27). .cache/ itself
+# stays git-tracked (.gitkeep) so check_playbook_dir_paths.py's "{{
+# playbook_dir }}/../.../X must exist" rule holds -- only its ephemeral
+# per-run contents are ignored.
+###############################################################################
+
+.cache/*
+!.cache/.gitkeep

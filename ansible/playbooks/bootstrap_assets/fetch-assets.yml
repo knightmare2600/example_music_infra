@@ -30,14 +30,27 @@
 # real and present on every asset checked (ipxe/wimboot, knightmare2600/
 # Spejder, knightmare2600/klargoring).
 #
-# archive_extract's exact archive_member paths are the manifest's own
-# best-known guess from upstream documentation, not yet confirmed against a
-# real downloaded archive -- see the manifest's own comment on this. Treat
-# a failure in that specific block as "the guessed internal path was wrong,
-# go look at the real zip," not as a bug in this playbook's mechanism.
+# archive_extract confirmed live 2026-07-27 against gparted's real 647MB
+# zip -- three real bugs found and fixed in the process, none of them the
+# guessed internal archive paths (those were right first time): a URL
+# ending in a trailing /download segment (SourceForge's own convention)
+# defeating a naive `| basename` filename derivation, a scratch dir
+# defaulting to /tmp (which can be tmpfs-backed with too little room for a
+# large download -- now a git-tracked .cache/ subfolder on the repo's own
+# filesystem instead), and unarchive's dest needing to exist as a real
+# directory before extraction, which nothing had created yet.
 # ==============================================================================
 # Changelog:
 #   2026-07-27  Initial file.
+#   2026-07-27  archive_extract confirmed live against gparted's real zip.
+#               Fixed: SourceForge's trailing /download defeating basename
+#               filename derivation; scratch dir moved off /tmp (tmpfs, too
+#               small for a 647MB download) to a git-tracked .cache/
+#               subfolder; unarchive's dest directory not being created
+#               before extraction. Also hardened _manifest.assets access
+#               with default([]) after a manifest containing only
+#               archives: (no assets: key at all) crashed the github_release
+#               block during testing.
 # ==============================================================================
 
 - name: Fetch bootstrap/web/ boot assets from their real upstream sources
@@ -49,6 +62,19 @@
   vars:
     _manifest: "{{ lookup('file', playbook_dir + '/../../../bootstrap/asset_manifest.yml') | from_yaml }}"
     _web_dir: "{{ playbook_dir }}/../../../bootstrap/web"
+    # Deliberately NOT /tmp -- on a tmpfs-backed /tmp (common on constrained dev
+    # boxes/sandboxes) a large archive_extract download can exceed available
+    # RAM-backed space even when the real disk has plenty of room (found live,
+    # 2026-07-27: gparted's 647MB zip vs. a 618MB-free tmpfs /tmp). Defaults to
+    # a gitignored scratch dir on the same filesystem as the repo checkout
+    # itself. Override with -e _cache_dir=/path if a specific run needs to.
+    # _cache_dir itself is a stable, git-tracked (.gitkeep) location --
+    # at_have_ryggen_fri's playbook-dir-path harness check needs every
+    # playbook_dir-relative expression to resolve to something real on disk.
+    # The actual per-run ephemeral work happens in _scratch_dir, a subfolder
+    # underneath it that this playbook creates and destroys every run.
+    _cache_dir: "{{ playbook_dir }}/../../../.cache"
+    _scratch_dir: "{{ _cache_dir }}/bootstrap_asset_fetch"
 
   tasks:
     # =========================================================================
@@ -57,7 +83,7 @@
     - name: "[github_release] Stat existing destination files"
       ansible.builtin.stat:
         path: "{{ _web_dir }}/{{ item.dest }}"
-      loop: "{{ _manifest.assets | selectattr('source_type', 'equalto', 'github_release') | list }}"
+      loop: "{{ _manifest.assets | default([]) | selectattr('source_type', 'equalto', 'github_release') | list }}"
       loop_control:
         label: "{{ item.dest }}"
       register: _gh_dest_stat
@@ -107,7 +133,7 @@
     - name: "[url_with_checksum_file] Stat existing destination files"
       ansible.builtin.stat:
         path: "{{ _web_dir }}/{{ item.dest }}"
-      loop: "{{ _manifest.assets | selectattr('source_type', 'equalto', 'url_with_checksum_file') | list }}"
+      loop: "{{ _manifest.assets | default([]) | selectattr('source_type', 'equalto', 'url_with_checksum_file') | list }}"
       loop_control:
         label: "{{ item.dest }}"
       register: _cf_dest_stat
@@ -175,8 +201,8 @@
         state: directory
         mode: '0755'
       loop:
-        - /tmp/bootstrap_asset_fetch
-        - /tmp/bootstrap_asset_fetch/extracted
+        - "{{ _scratch_dir }}"
+        - "{{ _scratch_dir }}/extracted"
 
     - name: "[archive_extract] Ensure member destination directories exist"
       ansible.builtin.file:
@@ -191,17 +217,26 @@
     - name: "[archive_extract] Download each needed archive to a scratch path"
       ansible.builtin.get_url:
         url: "{{ item.url }}"
-        dest: "/tmp/bootstrap_asset_fetch/{{ item.url | basename | regex_replace('[?#].*$', '') }}"
+        dest: "{{ _scratch_dir }}/{{ item.url | regex_replace('/download/?$', '') | basename | regex_replace('[?#].*$', '') }}"
         mode: '0644'
       loop: "{{ _ar_needed }}"
       loop_control:
         label: "{{ item.url }}"
       register: _ar_downloaded
 
+    - name: "[archive_extract] Ensure each archive's own extraction directory exists"
+      ansible.builtin.file:
+        path: "{{ _scratch_dir }}/extracted/{{ item.dest | basename }}.d"
+        state: directory
+        mode: '0755'
+      loop: "{{ _ar_downloaded.results }}"
+      loop_control:
+        label: "{{ item.item.url }}"
+
     - name: "[archive_extract] Extract each downloaded archive"
       ansible.builtin.unarchive:
         src: "{{ item.dest }}"
-        dest: "/tmp/bootstrap_asset_fetch/extracted/{{ item.dest | basename }}.d"
+        dest: "{{ _scratch_dir }}/extracted/{{ item.dest | basename }}.d"
         remote_src: true
       loop: "{{ _ar_downloaded.results }}"
       loop_control:
@@ -209,7 +244,7 @@
 
     - name: "[archive_extract] Copy each member out to its real destination"
       ansible.builtin.copy:
-        src: "/tmp/bootstrap_asset_fetch/extracted/{{ item.0.url | basename | regex_replace('[?#].*$', '') }}.d/{{ item.1.archive_path }}"
+        src: "{{ _scratch_dir }}/extracted/{{ item.0.url | regex_replace('/download/?$', '') | basename | regex_replace('[?#].*$', '') }}.d/{{ item.1.archive_path }}"
         dest: "{{ _web_dir }}/{{ item.1.dest }}"
         remote_src: true
         mode: '0644'
@@ -220,7 +255,7 @@
 
     - name: "[archive_extract] Clean up scratch directory"
       ansible.builtin.file:
-        path: /tmp/bootstrap_asset_fetch
+        path: "{{ _scratch_dir }}"
         state: absent
       when: _ar_needed | length > 0
 

@@ -157,12 +157,10 @@ assets:
 # -- GParted Live (real upstream: SourceForge) --------------------------------
 # x86_64 only -- GParted Live has never published an arm64 build (verified
 # 2026-07-27). One archive serves three destination files; downloaded once,
-# not once per member. archive_member paths are the best-known guess from
-# gparted.org's own livepxe.php documentation (which itself says to verify
-# against the archive's own syslinux.cfg, since this can differ between
-# versions) -- confirm for real against the actual zip contents before
-# trusting this blindly; see ansible/playbooks/bootstrap_assets/fetch-assets.yml's
-# own testing notes.
+# not once per member. archive_member paths confirmed for real 2026-07-27
+# (live run, actual 647MB zip, `file` on each extracted member: genuine
+# SquashFS/cpio/bzImage) -- gparted.org's own livepxe.php documentation was
+# right first time.
 archives:
   - url: https://sourceforge.net/projects/gparted/files/gparted-live-stable/1.8.1-3/gparted-live-1.8.1-3-amd64.zip/download
     members:
