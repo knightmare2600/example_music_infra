@@ -95,7 +95,7 @@ scratchpad*
 
 ###############################################################################
 # Supersede the "Generated Linux boot files" exclusion above, for the
-# specific paths bootstrap/asset_manifest.yml's fetch-on-demand mechanism
+# specific paths benarbejde/asset_manifest.json's fetch-on-demand mechanism
 # populates -- Robert's explicit call 2026-07-27: these DO get committed
 # (via git-lfs, see .gitattributes), not left fetch-only. The original rule
 # above still applies everywhere else in the repo; this only re-includes
