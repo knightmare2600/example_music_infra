@@ -8,15 +8,15 @@
     "here is auto-run by the harness (at_have_ryggen_fri/check_bootstrap_assets.py stays",
     "read-only, offline) -- fetching is always an explicit, separate script run.",
     "",
-    "Assets with NO real upstream (Robert's own custom build: Arch's airootfs) are deliberately",
-    "not here -- that's a git-lfs candidate, not a fetch candidate.",
+    "Arch Linux, Rocky Linux, and Ubuntu (Alpine dd-writer) menu.ipxe entries were removed",
+    "entirely 2026-07-27 (Robert's call) -- none had real working assets (Ubuntu/Rocky had none",
+    "committed at all; Arch's own airootfs.sfs/initramfs-linux were literal placeholder stub",
+    "files, not real assets). See menu.ipxe's own v2.10 changelog entry.",
     "",
     "The WinPE .wim is deliberately NOT here and NEVER goes in this repo at all, LFS or",
     "otherwise -- this repo cannot redistribute it (Microsoft ADK licensing). wimboot (the loader",
     "that streams it, github.com/ipxe/wimboot) IS fetched below -- it's GPL2, no Microsoft code",
     "in it, unaffected. See .gitignore's matching hard exclusion.",
-    "",
-    "rockylinux/ is also NOT here for now -- deleted pending revisit.",
     "",
     "source_type github_release: queries the GitHub Releases API fresh every run and uses the",
     "API's own per-asset 'digest' field for checksum verification -- nothing hardcoded here to go",
@@ -30,7 +30,15 @@
     "OpenBSD's SHA256).",
     "",
     "archives[]: one download serves multiple destination files via members[] -- fetched once,",
-    "not once per member.",
+    "not once per member. checksum_file_url/checksum_file_entry are OPTIONAL on an archives[]",
+    "entry (added 2026-07-27 for the hdt/ entry below, same format-agnostic extraction as",
+    "url_with_checksum_file) -- omit both to skip verification, as gparted's entry below still",
+    "does (pre-existing gap, not fixed in this pass: SourceForge doesn't publish a convenient",
+    "checksum file for gparted-live the way kernel.org does for syslinux).",
+    "",
+    "archives[] only supports .zip extraction (unzip / Expand-Archive) -- prefer a .zip release",
+    "over .tar.xz/.tar.gz where the upstream offers a choice, rather than adding tar support to",
+    "all 3 platform scripts for one entry.",
     "",
     "GParted Live is x86_64 only -- it has never published an arm64 build.",
     "",
@@ -46,7 +54,12 @@
     "            benarbejde/'s other JSON files (ad_forest.json, address_policy.json, etc.), not",
     "            off in bootstrap/ where nothing else JSON-shaped lives. The consuming scripts",
     "            (bootstrap/setup-workstation-{linux,macos}.sh,",
-    "            bootstrap/Setup-Workstation.ps1) stay in bootstrap/ -- only the data moved."
+    "            bootstrap/Setup-Workstation.ps1) stay in bootstrap/ -- only the data moved.",
+    "2026-07-27  Added the hdt/ archive entry (SYSLINUX 6.03 -- lpxelinux.0, hdt.c32,",
+    "            libcom32.c32, libutil.c32) and dropped the earlier note about rockylinux/ being",
+    "            deferred -- Rocky Linux's menu.ipxe entries were removed entirely, not deferred.",
+    "            Arch/Rocky/Ubuntu removal itself needed no manifest changes -- none of those had",
+    "            manifest entries (Arch = custom build, Rocky/Ubuntu = never had a fetch source)."
   ],
 
   "assets": [
@@ -96,6 +109,18 @@
         { "archive_path": "live/vmlinuz", "dest": "gparted/x86_64/vmlinuz" },
         { "archive_path": "live/initrd.img", "dest": "gparted/x86_64/initrd.img" },
         { "archive_path": "live/filesystem.squashfs", "dest": "gparted/x86_64/filesystem.squashfs" }
+      ]
+    },
+    {
+      "_comment": "SYSLINUX 6.03 (last stable release) -- pxelinux.0's own follow-up fetches (config, .c32 modules) expect TFTP; lpxelinux.0 is SYSLINUX's HTTP-native build, matching this repo's HTTP-only web server. x86_64/BIOS only -- HDT itself is a legacy BIOS tool, no arm64 build exists. .zip release used (not .tar.xz) so the existing unzip/Expand-Archive extraction path works unmodified across all 3 platform scripts -- confirmed byte-for-byte same file layout as the .tar.xz release, just without the syslinux-6.03/ prefix directory.",
+      "url": "https://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-6.03.zip",
+      "checksum_file_url": "https://www.kernel.org/pub/linux/utils/boot/syslinux/sha256sums.asc",
+      "checksum_file_entry": "syslinux-6.03.zip",
+      "members": [
+        { "archive_path": "bios/core/lpxelinux.0", "dest": "hdt/lpxelinux.0" },
+        { "archive_path": "bios/com32/hdt/hdt.c32", "dest": "hdt/hdt.c32" },
+        { "archive_path": "bios/com32/lib/libcom32.c32", "dest": "hdt/libcom32.c32" },
+        { "archive_path": "bios/com32/libutil/libutil.c32", "dest": "hdt/libutil.c32" }
       ]
     }
   ]
