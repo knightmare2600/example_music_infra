@@ -154,6 +154,30 @@
 #      EXADNSVRK001), then the identical copy-pasted pattern in
 #      rudder_server.yml and salt/playbooks/10-master.yml, all fixed by hand
 #      with nothing catching a fourth instance automatically.
+#  24. check_control_node_freshness.py -- if /etc/example-music/ exists on
+#      the machine this harness is being run from, hash-compares every file
+#      linux/tools.yml deploys there (sites.csv, devices.csv, role_codes.csv,
+#      address_policy.json, ad_forest.json, ad_groups.json, ad_users.json,
+#      ad_computers.json) against its benarbejde/ source. Skips cleanly if
+#      /etc/example-music/ doesn't exist (not the control node). Added
+#      2026-07-27 after bind9-dns.yml crashed live with a raw Python
+#      KeyError -- traced to the Ansible control node's own served
+#      address_policy.json predating a benarbejde/ schema change, because
+#      linux/tools.yml hadn't been re-run against the control node itself.
+#      This is the offline half of that fix; the in-playbook half is
+#      ansible/tasks/example_music_freshness_gate.yml, included by every
+#      playbook that reads /etc/example-music/* at runtime.
+#  25. check_bootstrap_assets.py -- two tiers. Tier 1 (always hard fail):
+#      bootstrap/web/proxmox/*.toml answer files, derived from
+#      select-pve-answer.sh's own site_prefix/variant literals rather than
+#      hand-copied a third time (check_ssh_keys.py's ANSWER_TOMLS is the
+#      existing copy). Tier 2 (informational unless --strict): kernel/
+#      initrd/iPXE-fetched boot binaries referenced by bootstrap/web/
+#      menu.ipxe, with the small set of enumerable iPXE variables it uses
+#      expanded programmatically. 192.168.139.50 isn't a fixed host to
+#      detect (README.md: it's a role a technician's laptop assumes
+#      temporarily via static-web-server.exe), so this reuses the existing
+#      --strict idiom instead of any IP-based check. Added 2026-07-27.
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -333,16 +357,44 @@
 #               this script can't know, hence Tier 2 not Tier 1), and a hard
 #               Tier 1 fail when tested against a reconstructed copy of the
 #               original broken rudder_server.yml snippet.
+#   2026-07-27  Added check_control_node_freshness.py (section 24), after
+#               tracing a live bind9-dns.yml crash to the control node's own
+#               stale /etc/example-music/address_policy.json (every real
+#               consumer reads it via delegate_to: localhost or
+#               lookup('file', ...), which always evaluates on the
+#               controller regardless of the play's target host). Verified
+#               against a scratch /etc/example-music/-equivalent: clean
+#               match silent, a tampered file caught, missing files caught,
+#               correct exit codes both ways.
+#   2026-07-27  Added check_bootstrap_assets.py (section 25) and extended
+#               --strict's own doc comment to mention it. Robert's ask: same
+#               idiom, applied to bootstrap/web/'s two asset classes (always-
+#               required TOML answer files vs. context-dependent kernel/
+#               initrd/iPXE binaries). Writing the menu.ipxe parser found
+#               three real bugs in itself before it was trusted: a
+#               documentation comment's "url=..." placeholder text getting
+#               scanned as a real reference, `chain --autofree <url>`'s flag
+#               token captured instead of the actual URL, and iPXE's
+#               ${var:filter} colon syntax (${mac:hexhyp}) not being
+#               recognised as a variable at all -- each fixed and re-verified
+#               against the real file, output hand-checked line for line
+#               against a full manual read of menu.ipxe before wiring in
+#               pass/fail. Also surfaced, not fixed here: arch-auto's
+#               initramfs-linux.img reference vs. the tracked file's real
+#               name (initramfs-linux, no extension) -- a pre-existing
+#               mismatch the check now catches on every run.
 # ==============================================================================
 set -uo pipefail
 
 # --strict: promotes "expected, informational" warnings (missing drop-in
-# binaries, unindexed docs) to real failures. Added 2026-07-10 after Robert
-# pointed out that burying 20 missing ARM64/x86_64 binaries as a generic
-# "expected on a fresh clone" yellow line is the wrong default for someone
-# actually about to deploy, not just cloning the repo to read it. Default
-# behaviour (no flag) is unchanged -- still safe to run on a bare clone with
-# nothing dropped in yet.
+# binaries, unindexed docs, local SSH keypair issues, KeePass vault drift,
+# ungated nmcli connection-up findings, missing menu.ipxe-referenced boot
+# binaries) to real failures. Added 2026-07-10 after Robert pointed out that
+# burying 20 missing ARM64/x86_64 binaries as a generic "expected on a fresh
+# clone" yellow line is the wrong default for someone actually about to
+# deploy, not just cloning the repo to read it. Default behaviour (no flag)
+# is unchanged -- still safe to run on a bare clone with nothing dropped in
+# yet.
 # --no-report: skip writing the report file (see below) -- for callers that
 # only want the terminal output (e.g. piping into something else already).
 STRICT=false
@@ -802,6 +854,43 @@ elif [[ -n "$net_tier2_count" && "$net_tier2_count" -gt 0 ]]; then
   fi
 else
   success "No nmcli delete+recreate or ungated connection-up findings."
+fi
+
+# ------------------------------------------------------------------------------
+# 24. Control node's own /etc/example-music/* freshness
+# ------------------------------------------------------------------------------
+section "24. Control node freshness — check_control_node_freshness.py"
+
+if cnf_out=$(python3 "${HERE}/check_control_node_freshness.py"); then
+  echo "$cnf_out"
+  success "Control node's /etc/example-music/*, if present, matches benarbejde/*."
+else
+  echo "$cnf_out"
+  fail "Control node's /etc/example-music/* has drifted from benarbejde/* -- see above."
+  FAILED_CHECKS+=("check_control_node_freshness.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 25. Bootstrap assets
+# ------------------------------------------------------------------------------
+section "25. Bootstrap assets — check_bootstrap_assets.py"
+
+assets_out=$(python3 "${HERE}/check_bootstrap_assets.py")
+assets_rc=$?
+echo "$assets_out"
+boot_binary_missing_count=$(echo "$assets_out" | grep -oE '^[0-9]+ boot binary issue' | grep -oE '^[0-9]+' || true)
+if [[ $assets_rc -ne 0 ]]; then
+  fail "Required TOML/preseed answer file(s) missing -- see above."
+  FAILED_CHECKS+=("check_bootstrap_assets.py")
+elif [[ -n "$boot_binary_missing_count" && "$boot_binary_missing_count" -gt 0 ]]; then
+  if $STRICT; then
+    fail "${boot_binary_missing_count} boot binary asset(s) missing -- see above. Failing because --strict was passed: you said you're about to deploy, not just reading the repo."
+    FAILED_CHECKS+=("check_bootstrap_assets.py (--strict: boot binaries missing)")
+  else
+    warn "${boot_binary_missing_count} boot binary asset(s) missing (see above) -- expected unless you're about to package the bootstrap kit. Re-run with --strict before an actual deployment."
+  fi
+else
+  success "All required TOML/preseed files present; all menu.ipxe-referenced boot binaries present."
 fi
 
 # ------------------------------------------------------------------------------

@@ -89,6 +89,12 @@
       meta: end_play
       when: (populate_ad | default('no')) | lower not in ['yes', 'y']
 
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [ad_computers.json]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../.."
+
     - name: "Fail — no target Domain Controller resolved"
       fail:
         msg: >

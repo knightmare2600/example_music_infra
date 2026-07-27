@@ -1,0 +1,93 @@
+---
+# =============================================================================
+# ansible/tasks/example_music_freshness_gate.yml
+# Example Music Limited — Fail loudly if /etc/example-music/* is missing or
+# stale on the Ansible control node, instead of crashing cryptically later
+# =============================================================================
+# Triggered by a real live crash (2026-07-26): bind9-dns.yml died with a raw
+# Python KeyError running generate_inventory.py against
+# /etc/example-music/address_policy.json. Traced to the control node's OWN
+# served copy predating a benarbejde/ schema change -- linux/tools.yml (the
+# only thing that deploys benarbejde/* to /etc/example-music/*) hadn't been
+# re-run against the control node itself in a while, even though its own git
+# checkout was current.
+#
+# Every real consumer of /etc/example-music/* across this repo's 12 affected
+# playbooks reads it via delegate_to: localhost or a bare lookup('file', ...)
+# (the latter always evaluates on the controller regardless of delegate_to --
+# confirmed via ansible/tasks/ad_forest_facts.yml's own delegate_to:
+# localhost, and windows_dc/playbooks/00-dc-preflight.yml's own comment on
+# this exact point). So this gate never needs to compare against the play's
+# remote target host -- it's always "the control node's own copy vs. the
+# control node's own benarbejde/ source," regardless of what host the
+# including play actually targets.
+#
+# Sets: nothing. Either passes silently, or fails the whole play with a
+# clear, actionable message -- matching the "showstopper over silent
+# wrong-guess" precedent used by ansible/tasks/onboarded_check.yml and the
+# SSH keypair guard-rail.
+#
+# Usage: include from pre_tasks, as the FIRST entry, before setting
+# example_music_gate_files/example_music_gate_repo_root:
+#
+#   pre_tasks:
+#     - name: Gate on /etc/example-music/* freshness
+#       include_tasks: ../../tasks/example_music_freshness_gate.yml
+#       vars:
+#         example_music_gate_files: [sites.csv, ad_forest.json]
+#         example_music_gate_repo_root: "{{ playbook_dir }}/../../.."
+#
+# example_music_gate_repo_root is deliberately computed by the INCLUDING
+# playbook, not here -- a shared file can't know its caller's own nesting
+# depth. This also means check_playbook_dir_paths.py (at_have_ryggen_fri
+# check 12) validates every caller's depth automatically, for free.
+#
+# Offline counterpart: at_have_ryggen_fri/check_control_node_freshness.py
+# checks the same underlying fact (control node's served copy vs.
+# benarbejde/) without ever running a playbook, so drift is caught by the
+# harness before any of these 12 playbooks are even run.
+# =============================================================================
+# Changelog:
+#   2026-07-27  Initial file.
+# =============================================================================
+
+- name: "[example-music-gate] Stat deployed /etc/example-music/<file>"
+  tags: always
+  ansible.builtin.stat:
+    path: "/etc/example-music/{{ item }}"
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_connection: local
+  loop: "{{ example_music_gate_files }}"
+  register: _em_gate_deployed
+
+- name: "[example-music-gate] Stat benarbejde/<file> source"
+  tags: always
+  ansible.builtin.stat:
+    path: "{{ example_music_gate_repo_root }}/benarbejde/{{ item }}"
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_connection: local
+  loop: "{{ example_music_gate_files }}"
+  register: _em_gate_source
+
+- name: "[example-music-gate] FAIL — missing or stale against benarbejde/"
+  tags: always
+  ansible.builtin.fail:
+    msg: >-
+      /etc/example-music/{{ item.0 }} is missing or stale on the Ansible
+      control node relative to benarbejde/{{ item.0 }} in this checkout.
+      This is read via delegate_to: localhost / lookup('file', ...), not
+      from {{ inventory_hostname }} -- refresh the CONTROL NODE's copy:
+      ansible-playbook ansible/playbooks/linux/tools.yml --limit
+      EXAANSCLD001 (or whichever host you're actually running
+      ansible-playbook from).
+  loop: "{{ example_music_gate_files | zip(_em_gate_deployed.results, _em_gate_source.results) | list }}"
+  loop_control:
+    label: "{{ item.0 }}"
+  when: >-
+    not item.1.stat.exists or
+    not item.2.stat.exists or
+    item.1.stat.checksum != item.2.stat.checksum

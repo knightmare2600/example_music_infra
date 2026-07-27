@@ -242,6 +242,13 @@
     sites_csv: "/etc/example-music/sites.csv"
     dns_bind9: "192.168.139.8"   # CLD BIND9 — upstream resolver for jukebox.internal
 
+  pre_tasks:
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../.."
+
   tasks:
 
     # =========================================================================
