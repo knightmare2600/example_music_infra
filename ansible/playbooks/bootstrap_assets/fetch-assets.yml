@@ -1,0 +1,235 @@
+---
+# ==============================================================================
+# ansible/playbooks/bootstrap_assets/fetch-assets.yml
+# Example Music Limited — Fetch bootstrap/web/'s upstream-sourced boot assets
+# ==============================================================================
+# Populates bootstrap/web/ from ../../../bootstrap/asset_manifest.yml instead
+# of vendoring large binaries into git — every entry has a real upstream
+# (Robert's own GitHub repos, or a genuine official mirror), verified by
+# checksum every run, never trusted blindly. See the manifest's own header
+# comment for the full source_type reference.
+#
+# Always hosts: localhost, connection: local -- this only ever writes into
+# THIS checkout's own bootstrap/web/, it never touches a managed host. Run
+# it directly:
+#
+#   ansible-playbook ansible/playbooks/bootstrap_assets/fetch-assets.yml
+#
+# Idempotent: every source_type stats its destination(s) first and only
+# fetches what's actually missing -- matches this repo's standing
+# "don't change what isn't broken" rule. Re-running with everything already
+# present does nothing.
+#
+# Deliberately NOT run by the harness (at_have_ryggen_fri/run.sh) or by
+# check_bootstrap_assets.py -- both stay read-only/offline by design. This
+# playbook is always an explicit, separate, human-triggered action.
+#
+# github_release entries use GitHub's Release API `digest` field for
+# checksum verification, fetched fresh every run -- confirmed live
+# (2026-07-27, raw API JSON, not just a summarised fetch) that this field is
+# real and present on every asset checked (ipxe/wimboot, knightmare2600/
+# Spejder, knightmare2600/klargoring).
+#
+# archive_extract's exact archive_member paths are the manifest's own
+# best-known guess from upstream documentation, not yet confirmed against a
+# real downloaded archive -- see the manifest's own comment on this. Treat
+# a failure in that specific block as "the guessed internal path was wrong,
+# go look at the real zip," not as a bug in this playbook's mechanism.
+# ==============================================================================
+# Changelog:
+#   2026-07-27  Initial file.
+# ==============================================================================
+
+- name: Fetch bootstrap/web/ boot assets from their real upstream sources
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+
+  vars:
+    _manifest: "{{ lookup('file', playbook_dir + '/../../../bootstrap/asset_manifest.yml') | from_yaml }}"
+    _web_dir: "{{ playbook_dir }}/../../../bootstrap/web"
+
+  tasks:
+    # =========================================================================
+    # source_type: github_release
+    # =========================================================================
+    - name: "[github_release] Stat existing destination files"
+      ansible.builtin.stat:
+        path: "{{ _web_dir }}/{{ item.dest }}"
+      loop: "{{ _manifest.assets | selectattr('source_type', 'equalto', 'github_release') | list }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      register: _gh_dest_stat
+
+    - name: "[github_release] Determine which entries actually need fetching"
+      ansible.builtin.set_fact:
+        _gh_missing: "{{ _gh_dest_stat.results | rejectattr('stat.exists') | map(attribute='item') | list }}"
+
+    - name: "[github_release] Ensure destination directories exist"
+      ansible.builtin.file:
+        path: "{{ (_web_dir + '/' + item.dest) | dirname }}"
+        state: directory
+        mode: '0755'
+      loop: "{{ _gh_missing }}"
+      loop_control:
+        label: "{{ item.dest }}"
+
+    - name: "[github_release] Query release metadata"
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ item.repo }}/releases/{{ 'latest' if item.tag == 'latest' else 'tags/' + item.tag }}"
+        return_content: true
+      loop: "{{ _gh_missing }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      register: _gh_release_meta
+
+    - name: "[github_release] Fetch + verify against the release's own digest"
+      ansible.builtin.get_url:
+        url: >-
+          {{ (rmeta.content | from_json).assets
+             | selectattr('name', 'equalto', rmeta.item.asset_name)
+             | map(attribute='browser_download_url') | first }}
+        dest: "{{ _web_dir }}/{{ rmeta.item.dest }}"
+        checksum: >-
+          {{ (rmeta.content | from_json).assets
+             | selectattr('name', 'equalto', rmeta.item.asset_name)
+             | map(attribute='digest') | first }}
+        mode: '0644'
+      loop: "{{ _gh_release_meta.results }}"
+      loop_control:
+        loop_var: rmeta
+        label: "{{ rmeta.item.dest }}"
+
+    # =========================================================================
+    # source_type: url_with_checksum_file
+    # =========================================================================
+    - name: "[url_with_checksum_file] Stat existing destination files"
+      ansible.builtin.stat:
+        path: "{{ _web_dir }}/{{ item.dest }}"
+      loop: "{{ _manifest.assets | selectattr('source_type', 'equalto', 'url_with_checksum_file') | list }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      register: _cf_dest_stat
+
+    - name: "[url_with_checksum_file] Determine which entries actually need fetching"
+      ansible.builtin.set_fact:
+        _cf_missing: "{{ _cf_dest_stat.results | rejectattr('stat.exists') | map(attribute='item') | list }}"
+
+    - name: "[url_with_checksum_file] Ensure destination directories exist"
+      ansible.builtin.file:
+        path: "{{ (_web_dir + '/' + item.dest) | dirname }}"
+        state: directory
+        mode: '0755'
+      loop: "{{ _cf_missing }}"
+      loop_control:
+        label: "{{ item.dest }}"
+
+    - name: "[url_with_checksum_file] Fetch the checksum file's text"
+      ansible.builtin.uri:
+        url: "{{ item.checksum_file_url }}"
+        return_content: true
+      loop: "{{ _cf_missing }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      register: _cf_checksum_meta
+
+    - name: "[url_with_checksum_file] Fetch + verify against the extracted hash"
+      ansible.builtin.get_url:
+        url: "{{ cfmeta.item.url }}"
+        dest: "{{ _web_dir }}/{{ cfmeta.item.dest }}"
+        # Format-agnostic on purpose -- see the manifest's own header comment.
+        # A SHA256 hash is always a 64-hex-char string regardless of whether
+        # the line around it reads "<hash>  <path>" or "SHA256 (<file>) = <hash>".
+        checksum: >-
+          sha256:{{
+            (cfmeta.content.splitlines()
+              | select('search', cfmeta.item.checksum_file_entry | regex_escape)
+              | first)
+            | regex_search('[0-9a-fA-F]{64}')
+          }}
+        mode: '0644'
+      loop: "{{ _cf_checksum_meta.results }}"
+      loop_control:
+        loop_var: cfmeta
+        label: "{{ cfmeta.item.dest }}"
+
+    # =========================================================================
+    # source_type: archive_extract (top-level `archives:`, not `assets:`)
+    # =========================================================================
+    - name: "[archive_extract] Stat existing member destination files"
+      ansible.builtin.stat:
+        path: "{{ _web_dir }}/{{ item.1.dest }}"
+      loop: "{{ _manifest.archives | default([]) | subelements('members') }}"
+      loop_control:
+        label: "{{ item.1.dest }}"
+      register: _ar_dest_stat
+
+    - name: "[archive_extract] Determine which archives have at least one missing member"
+      ansible.builtin.set_fact:
+        _ar_needed: "{{ _ar_dest_stat.results | rejectattr('stat.exists') | map(attribute='item') | map(attribute='0') | list | unique(attribute='url') }}"
+
+    - name: "[archive_extract] Ensure scratch + destination directories exist"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /tmp/bootstrap_asset_fetch
+        - /tmp/bootstrap_asset_fetch/extracted
+
+    - name: "[archive_extract] Ensure member destination directories exist"
+      ansible.builtin.file:
+        path: "{{ (_web_dir + '/' + item.1.dest) | dirname }}"
+        state: directory
+        mode: '0755'
+      loop: "{{ _manifest.archives | default([]) | subelements('members') }}"
+      loop_control:
+        label: "{{ item.1.dest }}"
+      when: item.0 in _ar_needed
+
+    - name: "[archive_extract] Download each needed archive to a scratch path"
+      ansible.builtin.get_url:
+        url: "{{ item.url }}"
+        dest: "/tmp/bootstrap_asset_fetch/{{ item.url | basename | regex_replace('[?#].*$', '') }}"
+        mode: '0644'
+      loop: "{{ _ar_needed }}"
+      loop_control:
+        label: "{{ item.url }}"
+      register: _ar_downloaded
+
+    - name: "[archive_extract] Extract each downloaded archive"
+      ansible.builtin.unarchive:
+        src: "{{ item.dest }}"
+        dest: "/tmp/bootstrap_asset_fetch/extracted/{{ item.dest | basename }}.d"
+        remote_src: true
+      loop: "{{ _ar_downloaded.results }}"
+      loop_control:
+        label: "{{ item.item.url }}"
+
+    - name: "[archive_extract] Copy each member out to its real destination"
+      ansible.builtin.copy:
+        src: "/tmp/bootstrap_asset_fetch/extracted/{{ item.0.url | basename | regex_replace('[?#].*$', '') }}.d/{{ item.1.archive_path }}"
+        dest: "{{ _web_dir }}/{{ item.1.dest }}"
+        remote_src: true
+        mode: '0644'
+      loop: "{{ _manifest.archives | default([]) | subelements('members') }}"
+      loop_control:
+        label: "{{ item.1.dest }}"
+      when: item.0 in _ar_needed
+
+    - name: "[archive_extract] Clean up scratch directory"
+      ansible.builtin.file:
+        path: /tmp/bootstrap_asset_fetch
+        state: absent
+      when: _ar_needed | length > 0
+
+    # =========================================================================
+    - name: Summary
+      ansible.builtin.debug:
+        msg: >-
+          Fetched {{ _gh_missing | length }} github_release,
+          {{ _cf_missing | length }} url_with_checksum_file,
+          {{ _ar_needed | length }} archive(s) covering
+          {{ _manifest.archives | default([]) | subelements('members') | selectattr('0', 'in', _ar_needed) | list | length }}
+          archive member(s). Everything else was already present.
