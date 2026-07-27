@@ -3,6 +3,16 @@
 # Example Music Limited — Fetch-on-demand manifest for bootstrap/web/ boot
 # assets that have a real upstream, instead of vendoring them into git
 # ==============================================================================
+# PENDING REMOVAL, 2026-07-27: bootstrap/asset_manifest.json is now the
+# canonical copy (confirmed byte-for-byte identical assets[]/archives[] via
+# a real deep-compare, not just eyeballed) -- JSON parses natively in bash
+# (jq) and PowerShell (ConvertFrom-Json), this doesn't. Kept alongside the
+# JSON copy ONLY until ansible/playbooks/bootstrap_assets/fetch-assets.yml
+# (the sole remaining consumer of THIS file) is retired in favour of the 3
+# native platform scripts replacing it. Edit the JSON copy, not this one --
+# this one is frozen, dead weight walking. See project memory
+# (project_workstation_setup_scripts.md) for the retirement plan.
+# ==============================================================================
 # Consumed by ansible/playbooks/bootstrap_assets/fetch-assets.yml. Every path
 # below is relative to bootstrap/web/. Nothing in here is auto-run by the
 # harness (at_have_ryggen_fri/check_bootstrap_assets.py stays read-only,
