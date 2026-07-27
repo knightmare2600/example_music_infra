@@ -9,7 +9,7 @@
 #      MacBook Pros today, so this is the platform that matters most for
 #      real, current use.
 #   2. Populate bootstrap/web/'s upstream-sourced boot assets from
-#      bootstrap/asset_manifest.json -- the same job
+#      benarbejde/asset_manifest.json -- the same job
 #      ansible/playbooks/bootstrap_assets/fetch-assets.yml used to do, ported
 #      to bash because ansible-playbook cannot run natively on Windows at
 #      all (a hard, long-standing Ansible limitation) -- one native script
@@ -46,7 +46,7 @@
 # skip-if-already-correct. Safe to re-run any time.
 #
 # Every fetch is checksum-verified before being trusted -- see
-# bootstrap/asset_manifest.json's own header for exactly how, per
+# benarbejde/asset_manifest.json's own header for exactly how, per
 # source_type. Never trust a download on HTTP status alone.
 #
 # Usage:
@@ -75,7 +75,7 @@ set -euo pipefail
 # -- Paths --------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-MANIFEST="${REPO_ROOT}/bootstrap/asset_manifest.json"
+MANIFEST="${REPO_ROOT}/benarbejde/asset_manifest.json"
 WEB_DIR="${REPO_ROOT}/bootstrap/web"
 CACHE_DIR="${REPO_ROOT}/.cache/bootstrap_asset_fetch"
 
@@ -146,7 +146,7 @@ install_deps() {
 
 # ==============================================================================
 # 2. Asset fetch -- three source_type handlers, matching
-#    bootstrap/asset_manifest.json's own header exactly. Logic identical to
+#    benarbejde/asset_manifest.json's own header exactly. Logic identical to
 #    setup-workstation-linux.sh except sha256sum -> shasum -a 256 (macOS has
 #    no sha256sum by default at all).
 # ==============================================================================
@@ -217,7 +217,7 @@ fetch_url_with_checksum_file() {
     return 1
   fi
 
-  # Format-agnostic on purpose -- see bootstrap/asset_manifest.json's own
+  # Format-agnostic on purpose -- see benarbejde/asset_manifest.json's own
   # header. A SHA256 hash is always a 64-hex-char string regardless of
   # whether the surrounding line reads "<hash>  <path>" (GNU, Debian's
   # SHA256SUMS) or "SHA256 (<file>) = <hash>" (BSD, OpenBSD's SHA256).
