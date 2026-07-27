@@ -236,6 +236,9 @@ item debian-auto-s    Debian  Auto install  (ttyS0 serial)
 item debian-ssh-s     Debian  Auto install  (SSH + ttyS0 serial)
 item debian-test      Debian  [TEST] seed file relocation fix -- try this first
 item --gap --
+item --gap --         -- 3CX Phone System --
+item 3cx-install      3CX Phone System  Auto install  (Debian Bookworm base)
+item --gap --
 item --gap --         -- Ubuntu --
 item ubuntu-auto      Ubuntu  Auto install
 item ubuntu-auto-s    Ubuntu  Auto install  (ttyS0 serial)
@@ -297,23 +300,23 @@ boot
 #   netcfg/choose_interface=auto
 # ===========================================================================
 :debian-auto
-kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
-initrd ${boot-url}/debian/${arch}/initrd.gz
+kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
+initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
 boot
 
 :debian-ssh
-kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
-initrd ${boot-url}/debian/${arch}/initrd.gz
+kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
+initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
 boot
 
 :debian-auto-s
-kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
-initrd ${boot-url}/debian/${arch}/initrd.gz
+kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
+initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
 boot
 
 :debian-ssh-s
-kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
-initrd ${boot-url}/debian/${arch}/initrd.gz
+kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
+initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
 boot
 
 # 2026-07-08: lvm-bios.seed/lvm-efi.seed were missing from this served
@@ -324,8 +327,39 @@ boot
 # clearly-labelled test of the fix -- pick this one first; the four above
 # are untouched and should also now work identically once this is confirmed.
 :debian-test
-kernel ${boot-url}/debian/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
-initrd ${boot-url}/debian/${arch}/initrd.gz
+kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
+initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
+boot
+
+# ===========================================================================
+# 3CX PHONE SYSTEM
+# 3CX's own official netboot recipe (bootstrap/web/3cx/boot.txt, vendor-supplied
+# alongside this build), translated from isolinux APPEND syntax into iPXE's
+# separate kernel/initrd commands -- the underlying parameters are unchanged.
+#
+# Kernel: 3CX ship a stock Debian 12 (Bookworm) amd64 netboot kernel --
+# confirmed 2026-07-27 via `file` against a known snapshot.debian.org Bookworm
+# netboot build (exact version string + byte-identical checksum). Since it's
+# genuine unmodified Debian, it's filed under debian/bookworm/ rather than
+# duplicated here -- same file, same reasoning as debian/trixie/ above just a
+# different release. initrd.gz is 3CX's own custom build (checksum + size
+# differ from stock Debian) so that one stays under 3cx/.
+#
+# url= points at this server's own copy of 3CX's preseed rather than
+# downloads-global.3cx.com, matching this file's established pattern of
+# self-hosting rather than depending on an external download server staying
+# up. The preseed file itself is unmodified vendor content -- note its own
+# late_command still fetches post-install_12.5.0_a29bc3d.txt live from
+# downloads-global.3cx.com during the install (that happens after this kernel
+# has already booted, outside iPXE's control; a local copy of that file also
+# sits alongside the preseed in 3cx/ if this ever needs to be fully offline).
+#
+# x86_64 only -- 3CX does not publish an arm64 installer.
+# ===========================================================================
+:3cx-install
+iseq ${arch} arm64 && goto noarch-msg ||
+kernel ${boot-url}/debian/bookworm/x86_64/linux vga=788 ipv6.disable=1 auto=true priority=high url=${boot-url}/3cx/preseed_12.5.0_a29bc3d.txt --- quiet THREECXMARKER=DEBIAN-3CX-ISO
+initrd ${boot-url}/3cx/initrd.gz
 boot
 
 # ===========================================================================

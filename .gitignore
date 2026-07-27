@@ -100,6 +100,12 @@ scratchpad*
 # (via git-lfs, see .gitattributes), not left fetch-only. The original rule
 # above still applies everywhere else in the repo; this only re-includes
 # these named directories.
+#
+# bootstrap/web/3cx/** is the same exception for a different reason -- not
+# fetch-on-demand (no manifest entry, Robert supplied these files directly),
+# but its initrd.gz was still silently caught by **/initrd* above until
+# found here 2026-07-27 -- same bug class this section already exists to
+# guard against, just a directory the original sweep hadn't reached yet.
 ###############################################################################
 
 !bootstrap/web/spejder/**
@@ -108,6 +114,7 @@ scratchpad*
 !bootstrap/web/gparted/**
 !bootstrap/web/debian/**
 !bootstrap/web/winpe/**/wimboot*
+!bootstrap/web/3cx/**
 
 ###############################################################################
 # Generated WinPE output
