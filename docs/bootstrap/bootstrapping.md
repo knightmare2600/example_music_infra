@@ -27,6 +27,7 @@
 | 2026-07-21 | VRK/FRD's provisioning servers (Type=`TMP` in `devices.csv`, formerly `PRV`) deliberately no longer have a formal `EXA<ROLE><SITE><NNN>` hostname or DNS record at all — Robert: these are bootstrap-only helpers, not real managed nodes, so they shouldn't carry the same identity every real node gets. Every `EXAPRVVRK001`/`EXAPRVFRD001` mention throughout this document replaced with the real IP (`192.168.139.50` / `172.16.124.1`) plus a plain description; the worked shell-prompt transcript's hostname likewise genericised to `provisioning-server`. |
 | 2026-07-27 | §2.3's `web/` directory tree and "not committed" table updated for the `debian/` split into `trixie/` (current-stable, fetched via `benarbejde/asset_manifest.json`) and `bookworm/` (3CX's installer kernel, confirmed genuine unmodified Debian and moved here rather than duplicated), plus a new `3cx/` entry (3CX Phone System's own installer, custom initrd + preseed, driving `menu.ipxe`'s new `:3cx-install` entry). Note: this section's older "already present"/"not committed" framing predates several since-completed sessions of `benarbejde/asset_manifest.json` fetch work (Spejder, klargoring, wimboot, OpenBSD, gparted now genuinely committed via git-lfs) and still shows stale detail elsewhere (e.g. OpenBSD `7.5`, `rocky/` vs the real `rockylinux/`) — not corrected in this pass, flagged for a full re-sweep of this table separately. |
 | 2026-07-27 | Follow-up to the above, same day: full re-sweep of §2.3's asset table against the real `bootstrap/web/` tree and `check_bootstrap_assets.py`'s live output, first since 2026-07-10. Fixed OpenBSD `7.5`→`7.9` and the `rocky/`/`rockylinux/` conflation (`rocky/` holds only a dead `install.ks`; the real, menu-referenced `rockylinux/` doesn't exist yet). Added rows for `proxmox/klargoring/` (present, wasn't in the table at all — post-dates the table's last edit) and corrected several "No"/blank statuses to reflect what's actually now committed via git-lfs (Spejder, klargoring, wimboot loaders, OpenBSD, GParted x86_64). Real find while re-verifying against the filesystem rather than trusting the table: `arch/x86_64/airootfs.sfs` and `initramfs-linux` are literal placeholder text files ("x86_64 airootfs.sfs goes here"), not real assets — only `vmlinuz-linux` is a genuine committed kernel — so the Arch entry was previously marked "already present" when it doesn't actually boot. Flagged in the table, not built (Robert's own custom airootfs, needs building not fetching — separate task). Confirmed `alpine`/`ubuntu` menu entries are Robert-confirmed obsolete, not a gap to fill. |
+| 2026-07-27 | Second follow-up, same day, acting on Robert's direct decisions rather than just flagging them: Arch Linux, Rocky Linux, and Ubuntu (Alpine dd-writer) removed entirely — `bootstrap/web/arch/`, `bootstrap/web/rocky/install.ks`, the Ubuntu apkovl-build script, the Arch PXE setup doc, and the corresponding `menu.ipxe` sections all deleted (`menu.ipxe` v2.10). Fixed a real, previously-undiagnosed bug in `:hdt` along the way — it chained to `pxelinux.0`, which needs TFTP for its own follow-up fetches, and this server has no TFTP daemon anywhere; switched to `lpxelinux.0` (SYSLINUX's HTTP-native PXELINUX build), added a `benarbejde/asset_manifest.json` archive entry for it plus `hdt.c32`/`libcom32.c32`/`libutil.c32` (SYSLINUX 6.03), and a local `bootstrap/web/hdt/pxelinux.cfg/default` auto-booting `hdt.c32`. This surfaced a second real gap: `archives[]` entries had no checksum-verification support at all in any of the 3 fetch scripts despite "every fetch is checksum-verified" being this repo's own stated principle (gparted's entry was already silently unverified) — added optional `checksum_file_url`/`checksum_file_entry` support to `fetch_archive`/`Invoke-ArchiveFetch` in all three scripts, wired it for the new hdt/ entry (real end-to-end test: fetch, checksum-verify, extract, all passed), left gparted's entry as a documented, pre-existing gap since SourceForge doesn't publish an equivalent checksum file. Also added `bootstrap/web/winpe/README.txt` explaining why the `.wim`s are never committed, so an empty `winpe/` doesn't read as a mistake. `gparted/arm64/` intentionally left alone — Robert is building a real arm64 image separately, not wired in until it exists and can be tested. §2.3's tree/table and §4.4's quoted menu transcript updated to match. |
 
 ---
 
@@ -370,43 +371,48 @@ bootstrap/web/
 ├── provision/
 │   └── ansibleme.sh, bindme.sh, firewallme.sh, rudderme.sh   ← break-glass bootstrap scripts
 │
-├── arch/x86_64/          ← Arch Linux netboot assets (vmlinuz-linux is real; airootfs.sfs and
-│                            initramfs-linux are still placeholder stub files, see table below —
-│                            arm64 doesn't exist yet at all)
 ├── openbsd/7.9/{x86_64,arm64}/  ← OpenBSD bsd.rd, both arches, fetched via
 │                                    benarbejde/asset_manifest.json
 ├── gparted/x86_64/       ← GParted Live, fetched via benarbejde/asset_manifest.json (x86_64
-│                            only — GParted Live has never published an arm64 build)
+│                            only — GParted Live has never published an arm64 build; a real
+│                            arm64 build is separately in progress outside this repo, not
+│                            wired in yet)
 ├── winpe/{x86_64,arm64}/ ← wimboot loader binaries only (fetched via benarbejde/
-│                            asset_manifest.json); the actual boot_x64.wim/boot_arm64.wim are
-│                            NEVER committed here, see the table below
-├── spejder/{x86_64,arm64}/  ← Spejder hardware-provisioning runtime, fetched via
-│                                benarbejde/asset_manifest.json
-└── rocky/                ← contains only a dead install.ks (see note below the table) — NOT
-                             the same as rockylinux/, which menu.ipxe actually references and
-                             which doesn't exist yet
+│                            asset_manifest.json); README.txt in this directory explains why
+│                            the actual boot_x64.wim/boot_arm64.wim are never committed here
+├── hdt/                  ← lpxelinux.0 + hdt.c32/libcom32.c32/libutil.c32 (SYSLINUX 6.03,
+│                            fetched via benarbejde/asset_manifest.json) plus a local
+│                            pxelinux.cfg/default auto-booting hdt.c32 — see menu.ipxe's
+│                            :hdt entry comment for why lpxelinux.0 (HTTP-native), not
+│                            pxelinux.0 (TFTP-only, this server has no TFTP daemon)
+└── spejder/{x86_64,arm64}/  ← Spejder hardware-provisioning runtime, fetched via
+                                 benarbejde/asset_manifest.json
 ```
+
+Arch Linux, Rocky Linux, and Ubuntu (Alpine dd-writer) are **gone entirely** as of 2026-07-27 —
+Robert's explicit call: none of the three had real working assets (Ubuntu/Rocky never had any
+committed at all; Arch's own `airootfs.sfs`/`initramfs-linux` were literal placeholder stub files,
+not real assets — only the kernel was genuine). `bootstrap/web/arch/`, `bootstrap/web/rocky/`
+(which only ever held a dead `install.ks`), the Ubuntu apkovl-build script, and the Arch PXE
+setup doc were all deleted alongside the corresponding `menu.ipxe` sections (see its own v2.10
+changelog entry). If any of these come back later it'll be with a real, working
+asset behind it, not a placeholder.
 
 **Asset status vs `menu.ipxe`** (installer kernels/initrds and full ISOs — hundreds of MB to
 multiple GB each — are committed via git-lfs where a real source exists, see
 [[project_bootstrap_asset_sourcing_strategy]]/`benarbejde/asset_manifest.json`, rather than kept
 out of git entirely as this section originally said on 2026-07-10). Re-checked directly against
-the real tree and `at_have_ryggen_fri/check_bootstrap_assets.py`'s live output, 2026-07-27 — this
-table drifted out of sync with several sessions of fetch work between 2026-07-10 and now, this is
-the first full re-sweep since:
+the real tree and `at_have_ryggen_fri/check_bootstrap_assets.py`'s live output, 2026-07-27:
 
 | Menu entry | Expected directory | Status |
 |---|---|---|
 | Debian | `debian/trixie/x86_64/`, `debian/trixie/arm64/` | Present (git-lfs, fetched via manifest) |
 | 3CX Phone System | `3cx/` (installer initrd + preseed), kernel shared with `debian/bookworm/x86_64/` | Present (custom initrd git-lfs; kernel shared with Debian, see above) |
-| Arch Linux | `arch/x86_64/`, `arch/arm64/` | **x86_64 partially present** — `vmlinuz-linux` is a real committed kernel, but `airootfs.sfs`/`initramfs-linux` are still literal placeholder text files ("x86_64 airootfs.sfs goes here"), not real assets — this entry does not actually boot yet despite the directory existing. `arm64` doesn't exist at all. No fetch source (Robert's own custom build) — needs building, not fetching. |
 | Projekt klargoring | `proxmox/klargoring/` | Present (git-lfs, fetched via manifest) |
-| GParted | `gparted/x86_64/` | Present (git-lfs, fetched via manifest). `gparted/arm64/` will never exist — GParted Live has never published an arm64 build, this is not a gap. |
-| WinPE (x86_64/ARM64) | `winpe/x86_64/`, `winpe/arm64/` | wimboot loader binaries present (git-lfs, fetched via manifest). The actual `boot_x64.wim`/`boot_arm64.wim` can **never** be committed here at all, LFS or otherwise — Microsoft ADK licensing terms; build locally via `Build-WinPE.ps1` from a legitimately-licensed local ADK install. Not needed for the PFY's plan — Windows Server 2022 uses the unattend-XML path (§7), not this WinPE menu entry. |
-| Ubuntu | `alpine/`, `ubuntu/` (Alpine dd-writer pattern — see the file's own header comment) | Missing, and per Robert (2026-07-27) these `menu.ipxe` entries are **obsolete** — not a gap to fill, a stale menu entry to eventually remove. Not touched here; flagged, not fixed. |
-| Rocky Linux | `rockylinux/${arch}/` | Missing entirely — no fetch source configured yet. `rocky/install.ks` (a different, dead Anaconda-kickstart approach, see note below) is not a substitute. |
+| GParted | `gparted/x86_64/` | Present (git-lfs, fetched via manifest). `gparted/arm64/` — Robert is building a real arm64 image separately; hold off wiring it in here until that lands and can be tested. |
+| WinPE (x86_64/ARM64) | `winpe/x86_64/`, `winpe/arm64/` | wimboot loader binaries present (git-lfs, fetched via manifest). The actual `boot_x64.wim`/`boot_arm64.wim` can **never** be committed here at all, LFS or otherwise — Microsoft ADK licensing terms; see `winpe/README.txt`. Not needed for the PFY's plan — Windows Server 2022 uses the unattend-XML path (§7), not this WinPE menu entry. |
 | OpenBSD | `openbsd/7.9/${arch}/` | Present (git-lfs, fetched via manifest). Bumped from a hardcoded `7.5` in an earlier pass — `cdn.openbsd.org` no longer carries 7.5 at all. |
-| Hardware Detection Tool | `hdt/` | Missing — no fetch source configured. Lowest priority, not part of the PFY's plan. |
+| Hardware Detection Tool | `hdt/` | Present (git-lfs, fetched via manifest — SYSLINUX 6.03's `lpxelinux.0`/`hdt.c32`/`libcom32.c32`/`libutil.c32`, plus a locally-authored `pxelinux.cfg/default`). `menu.ipxe`'s `:hdt` entry also fixed alongside this — it was chaining to `pxelinux.0`, which needs TFTP for its own follow-up fetches and this server has none; switched to `lpxelinux.0` (HTTP-native). |
 | Spejder | `spejder/${arch}/` | Present (git-lfs, fetched via manifest; separate external tool, see above) |
 | Auto-deploy | `autodeploy/` (optional — chain fails silently if absent) | Missing, and fine to leave missing unless you specifically want zero-touch MAC-based deploy |
 
@@ -415,18 +421,10 @@ add `--strict` to fail the build on any gap — this table is a snapshot, that c
 truth.
 
 For the PFY's plan specifically: nothing above needs adding for Proxmox VE — it's no longer PXE-served
-at all (see §4.5/§6.3). Debian is already there in full; Arch's kernel is present but its
-airootfs/initramfs are still placeholder stubs (not part of the PFY's plan either way). The only thing still needed for a real PVE
+at all (see §4.5/§6.3). Debian is already there in full. The only thing still needed for a real PVE
 install is a genuine, untampered Proxmox VE ISO, mounted via iLO/iDRAC/BMC virtual media — if you don't
 have a copy already, ask whoever owns this repo — do not guess a source and download a potentially
 tampered installer image.
-
-**Separately, `bootstrap/web/rocky/install.ks` appears to be dead** — an Anaconda-kickstart-based
-Rocky install approach, referenced from nowhere else in the repo, and superseded by the "custom
-installer initrd" approach `menu.ipxe`'s own Rocky section comments describe (which expects
-`rockylinux/`, a different, not-yet-populated directory). Not touched here — Rocky isn't part of the
-PFY's plan — but flagged since it's confusing to find two different, seemingly-competing Rocky
-approaches if you go looking.
 
 ---
 
@@ -756,11 +754,12 @@ Pre-built binaries for common configurations are in `x86_64/ipxe.iso` and `arm64
 
 ### 4.4 Boot menu (`menu.ipxe`)
 
-> **Correction (2026-07-10):** the entry list below was significantly out of date — missing
-> Ubuntu and OpenBSD entirely, missing the "Spejder" entry, and still listing "PhoenixPE
-> Environment" for what the real file's own changelog records as replaced back at v1.8
-> ("Replace PhoenixPE entry with lean custom WinPE build"). The real file is at v2.2 as of
-> this correction — quoted directly from `bootstrap/web/menu.ipxe`, not reconstructed.
+> **Correction (2026-07-27):** the entry list below was out of date again — still showing
+> Ubuntu/Rocky Linux/Arch Linux (all three removed entirely this date, Robert's call — none
+> had real working assets behind them, see the asset table in §2.3), missing "3CX Phone
+> System" and "Projekt klargoring" entirely, and still saying OpenBSD 7.5 (bumped to 7.9
+> 2026-07-27, see menu.ipxe's own v2.8 changelog entry). The real file is at v2.10 as of this
+> correction — quoted directly from `bootstrap/web/menu.ipxe`, not reconstructed.
 
 The remote boot menu offers the following entries (grouped exactly as the real menu groups them):
 
@@ -776,31 +775,18 @@ The remote boot menu offers the following entries (grouped exactly as the real m
   Debian  Auto install  (SSH + ttyS0 serial)
   Debian  [TEST] seed file relocation fix -- try this first
 
--- Ubuntu --
-  Ubuntu  Auto install
-  Ubuntu  Auto install  (ttyS0 serial)
-  Ubuntu  Auto install  (SSH + ttyS0 serial)
-
--- Rocky Linux --
-  Rocky   Auto install
-  Rocky   Auto install  (SSH console)
-  Rocky   Auto install  (ttyS0 serial)
-  Rocky   Auto install  (SSH + ttyS0 serial)
-
--- Arch Linux --
-  Arch    Auto install
-  Arch    Install  (SSH console)
-  Arch    Auto install  (ttyS0 serial)
-  Arch    Install  (SSH + ttyS0 serial)
+-- 3CX Phone System --
+  3CX Phone System  Auto install  (Debian Bookworm base)
 
 -- OpenBSD --
-  OpenBSD 7.5  Auto install
-  OpenBSD 7.5  Auto install  (ttyS0 serial)
-  OpenBSD 7.5  Interactive   (ttyS0 serial)
+  OpenBSD 7.9  Auto install
+  OpenBSD 7.9  Auto install  (ttyS0 serial)
+  OpenBSD 7.9  Interactive   (ttyS0 serial)
 
 -- Hypervisors --
   Proxmox VE 9   (x86_64 only)
   Proxmox DCM 9  (x86_64 only)             ← not yet configured, returns to menu
+  Projekt klargoring  (custom live Proxmox installer, x86_64 only)
 
 -- Utilities --
   GParted Live

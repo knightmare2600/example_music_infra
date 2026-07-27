@@ -347,7 +347,8 @@ function Invoke-UrlWithChecksumFileFetch {
 }
 
 function Invoke-ArchiveFetch {
-    param([string]$Url, [array]$Members)  # Members: array of @{archive_path=...; dest=...}
+    param([string]$Url, [array]$Members, [string]$ChecksumFileUrl, [string]$ChecksumFileEntry)
+    # Members: array of @{archive_path=...; dest=...}. ChecksumFileUrl empty/$null = skip verification.
 
     $anyMissing = $false
     foreach ($m in $Members) {
@@ -368,6 +369,31 @@ function Invoke-ArchiveFetch {
 
     Write-Info "Fetching archive $archiveFilename..."
     & curl.exe -fsSL -o $archiveLocal $Url
+
+    if ($ChecksumFileUrl) {
+        # Format-agnostic on purpose -- see Invoke-UrlWithChecksumFileFetch above /
+        # benarbejde/asset_manifest.json's own header.
+        $checksumText = Invoke-RestMethod -Uri $ChecksumFileUrl
+        $matchingLine = ($checksumText -split "`n") | Where-Object { $_ -like "*$ChecksumFileEntry*" } | Select-Object -First 1
+        if (-not $matchingLine) {
+            Write-Err2 "  Could not find a checksum line for '$ChecksumFileEntry' in $ChecksumFileUrl"
+            Remove-Item $archiveLocal -Force
+            throw "Checksum entry not found: $ChecksumFileEntry"
+        }
+        $hashMatch = [regex]::Match($matchingLine, '[0-9a-fA-F]{64}')
+        if (-not $hashMatch.Success) {
+            Write-Err2 "  No 64-hex-char SHA256 found on the matching line for '$ChecksumFileEntry'"
+            Remove-Item $archiveLocal -Force
+            throw "Checksum not found on matching line: $ChecksumFileEntry"
+        }
+        $expectedHash = $hashMatch.Value.ToLower()
+        $actualHash = Get-Sha256 -Path $archiveLocal
+        if ($actualHash -ne $expectedHash) {
+            Write-Err2 "  CHECKSUM MISMATCH for ${archiveFilename}: expected $expectedHash, got $actualHash"
+            Remove-Item $archiveLocal -Force
+            throw "Checksum mismatch: $archiveFilename"
+        }
+    }
 
     New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
     Expand-Archive -Path $archiveLocal -DestinationPath $extractDir -Force
@@ -407,7 +433,8 @@ function Get-MissingAssets {
     }
 
     foreach ($archive in ($data.archives)) {
-        Invoke-ArchiveFetch -Url $archive.url -Members $archive.members
+        Invoke-ArchiveFetch -Url $archive.url -Members $archive.members `
+            -ChecksumFileUrl $archive.checksum_file_url -ChecksumFileEntry $archive.checksum_file_entry
     }
 
     Write-Ok "Asset fetch complete."

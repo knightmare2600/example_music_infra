@@ -241,8 +241,9 @@ fetch_url_with_checksum_file() {
 }
 
 fetch_archive() {
-  # $1 = archive url, remaining args = "archive_path|dest" pairs
-  local url="$1"; shift
+  # $1 = archive url, $2 = checksum_file_url (empty string = skip verification),
+  # $3 = checksum_file_entry, remaining args = "archive_path|dest" pairs
+  local url="$1" checksum_file_url="$2" checksum_file_entry="$3"; shift 3
 
   local any_missing=false
   local pair dest
@@ -268,6 +269,27 @@ fetch_archive() {
 
   msg_info "Fetching archive ${archive_filename}..."
   curl -fsSL -o "$archive_path_local" "$url"
+
+  if [[ -n "$checksum_file_url" ]]; then
+    local checksum_text expected_hash actual_hash
+    if ! checksum_text="$(curl -fsSL "$checksum_file_url")"; then
+      msg_error "  Failed to fetch checksum file ${checksum_file_url}"
+      rm -f "$archive_path_local"
+      return 1
+    fi
+    expected_hash="$(grep -F "$checksum_file_entry" <<<"$checksum_text" | grep -oE '[0-9a-fA-F]{64}' | head -1)"
+    if [[ -z "$expected_hash" ]]; then
+      msg_error "  Could not find a checksum for '${checksum_file_entry}' in ${checksum_file_url}"
+      rm -f "$archive_path_local"
+      return 1
+    fi
+    actual_hash="$(sha256_of "$archive_path_local")"
+    if [[ "$actual_hash" != "$expected_hash" ]]; then
+      msg_error "  CHECKSUM MISMATCH for ${archive_filename}: expected ${expected_hash}, got ${actual_hash}"
+      rm -f "$archive_path_local"
+      return 1
+    fi
+  fi
 
   mkdir -p "$extract_dir"
   unzip -q -o "$archive_path_local" -d "$extract_dir"
@@ -307,13 +329,15 @@ fetch_assets() {
   archive_count="$(jq '.archives // [] | length' "$MANIFEST")"
   local i
   for (( i=0; i<archive_count; i++ )); do
-    local url
+    local url checksum_file_url checksum_file_entry
     url="$(jq -r ".archives[$i].url" "$MANIFEST")"
+    checksum_file_url="$(jq -r ".archives[$i].checksum_file_url // empty" "$MANIFEST")"
+    checksum_file_entry="$(jq -r ".archives[$i].checksum_file_entry // empty" "$MANIFEST")"
     local pairs=()
     while IFS=$'\t' read -r archive_path dest; do
       pairs+=("${archive_path}|${dest}")
     done < <(jq -r ".archives[$i].members[] | [.archive_path, .dest] | @tsv" "$MANIFEST")
-    fetch_archive "$url" "${pairs[@]}"
+    fetch_archive "$url" "$checksum_file_url" "$checksum_file_entry" "${pairs[@]}"
   done
 
   msg_ok "Asset fetch complete."
