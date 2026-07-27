@@ -47,7 +47,7 @@ printed and counted but never fail the run by themselves -- run.sh's
 --strict flag escalates that count.
 
 2026-07-27: each missing Tier 2 entry is now cross-referenced against
-bootstrap/asset_manifest.json -- if a fetch-on-demand source is configured
+benarbejde/asset_manifest.json -- if a fetch-on-demand source is configured
 for it, the message names the 3 platform setup scripts that can fetch it
 (bootstrap/setup-workstation-{linux,macos}.sh, bootstrap/
 Setup-Workstation.ps1 -- these replaced ansible/playbooks/bootstrap_assets/
@@ -70,7 +70,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 BOOTSTRAP_WEB = REPO_ROOT / "bootstrap" / "web"
 SELECT_ANSWER_SH = BOOTSTRAP_WEB / "proxmox" / "select-pve-answer.sh"
 MENU_IPXE = BOOTSTRAP_WEB / "menu.ipxe"
-ASSET_MANIFEST = REPO_ROOT / "bootstrap" / "asset_manifest.json"
+ASSET_MANIFEST = REPO_ROOT / "benarbejde" / "asset_manifest.json"
 FETCH_SCRIPTS = [
     "./bootstrap/setup-workstation-linux.sh",
     "./bootstrap/setup-workstation-macos.sh",
@@ -231,7 +231,7 @@ def collect_referenced_assets():
 
 
 def load_manifest_dests():
-    """Every `dest` bootstrap/asset_manifest.json covers, from both its flat
+    """Every `dest` benarbejde/asset_manifest.json covers, from both its flat
     `assets` list and its `archives -> members -> dest` entries. Missing or
     unparseable manifest -> empty set, not an error (the manifest is
     optional infrastructure for this check, not a hard dependency of it)."""

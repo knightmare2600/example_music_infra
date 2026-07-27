@@ -8,7 +8,7 @@ Two jobs, one script:
   1. Install/confirm the tool set docs/ExampleMusic_Beginners_Guide.md §11
      requires on an engineer's own machine, via Chocolatey.
   2. Populate bootstrap/web/'s upstream-sourced boot assets from
-     bootstrap/asset_manifest.json -- the same job
+     benarbejde/asset_manifest.json -- the same job
      ansible/playbooks/bootstrap_assets/fetch-assets.yml used to do. Ported
      natively to PowerShell because ansible-playbook cannot run on Windows
      at all (a hard, long-standing Ansible limitation, not a repo gap) --
@@ -132,7 +132,7 @@ $DoAssets = -not $DepsOnly
 # -- Paths ---------------------------------------------------------------------
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot  = Split-Path -Parent $ScriptDir
-$Manifest  = Join-Path $RepoRoot 'bootstrap\asset_manifest.json'
+$Manifest  = Join-Path $RepoRoot 'benarbejde\asset_manifest.json'
 $WebDir    = Join-Path $RepoRoot 'bootstrap\web'
 $CacheDir  = Join-Path $RepoRoot '.cache\bootstrap_asset_fetch'
 
@@ -263,7 +263,7 @@ function Set-WindowsTerminalFont {
 
 # ==============================================================================
 # 2. Asset fetch -- three source_type handlers, matching
-#    bootstrap/asset_manifest.json's own header exactly
+#    benarbejde/asset_manifest.json's own header exactly
 # ==============================================================================
 
 function Get-Sha256 {
@@ -317,7 +317,7 @@ function Invoke-UrlWithChecksumFileFetch {
 
     $checksumText = Invoke-RestMethod -Uri $ChecksumFileUrl
 
-    # Format-agnostic on purpose -- see bootstrap/asset_manifest.json's own
+    # Format-agnostic on purpose -- see benarbejde/asset_manifest.json's own
     # header. A SHA256 hash is always a 64-hex-char string regardless of
     # whether the surrounding line reads "<hash>  <path>" (GNU, Debian's
     # SHA256SUMS) or "SHA256 (<file>) = <hash>" (BSD, OpenBSD's SHA256).

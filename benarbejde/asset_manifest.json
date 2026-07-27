@@ -1,6 +1,6 @@
 {
   "_readme": [
-    "bootstrap/asset_manifest.json -- Example Music Limited -- fetch-on-demand manifest for",
+    "benarbejde/asset_manifest.json -- Example Music Limited -- fetch-on-demand manifest for",
     "bootstrap/web/ boot assets that have a real upstream, instead of vendoring them into git.",
     "",
     "Consumed by bootstrap/setup-workstation-linux.sh, bootstrap/setup-workstation-macos.sh, and",
@@ -40,7 +40,13 @@
     "            natively in bash (jq) and PowerShell (ConvertFrom-Json) without an extra",
     "            dependency -- ansible/playbooks/bootstrap_assets/fetch-assets.yml (the Ansible",
     "            playbook this replaces) is being retired since ansible-playbook cannot run",
-    "            natively on Windows at all."
+    "            natively on Windows at all.",
+    "2026-07-27  Moved from bootstrap/asset_manifest.json to benarbejde/asset_manifest.json --",
+    "            Robert's call: this is raw source-of-truth data, belongs alongside",
+    "            benarbejde/'s other JSON files (ad_forest.json, address_policy.json, etc.), not",
+    "            off in bootstrap/ where nothing else JSON-shaped lives. The consuming scripts",
+    "            (bootstrap/setup-workstation-{linux,macos}.sh,",
+    "            bootstrap/Setup-Workstation.ps1) stay in bootstrap/ -- only the data moved."
   ],
 
   "assets": [
