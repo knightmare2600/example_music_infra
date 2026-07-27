@@ -91,3 +91,30 @@
 *.woff2       binary
 *.ttf         binary
 *.otf         binary
+
+###############################################################################
+# bootstrap/web/ boot assets -- git-lfs (2026-07-27)
+###############################################################################
+# By directory, not extension -- kernel binaries here are routinely
+# extensionless by convention (vmlinuz, linux-x86_64, wimboot, bsd.rd),
+# so filename-based rules would miss most of what actually needs tracking.
+# Populated either by ansible/playbooks/bootstrap_assets/fetch-assets.yml
+# (bootstrap/asset_manifest.yml's real-upstream entries -- Spejder,
+# klargoring, wimboot, Debian, OpenBSD, gparted) or dropped in by hand
+# (Robert's own custom builds with no upstream: Arch's airootfs, the
+# WinPE .wim, rockylinux's custom initrd). Either way, once a file lands
+# under these paths it goes through LFS, not a plain git blob -- keeps this
+# repo's normal git history small regardless of source. Existing tracked
+# files under bootstrap/web/debian/ predate this rule and were NOT
+# retroactively migrated (that rewrites git history -- a separate, more
+# invasive decision, not bundled into this one).
+bootstrap/web/spejder/**             filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/proxmox/klargoring/**  filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/debian/**              filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/openbsd/**             filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/gparted/**             filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/rockylinux/**          filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/winpe/**               filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/arch/**/airootfs.sfs   filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/arch/**/vmlinuz-linux  filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/arch/**/initramfs-linux* filter=lfs diff=lfs merge=lfs -text

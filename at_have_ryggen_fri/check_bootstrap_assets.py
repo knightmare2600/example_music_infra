@@ -45,16 +45,30 @@ from Tier 2 entirely -- that's Tier 1's domain, not a boot binary.
 Exit code: 0 unless a Tier 1 (TOML) file is missing. Tier 2 issues are
 printed and counted but never fail the run by themselves -- run.sh's
 --strict flag escalates that count.
+
+2026-07-27: each missing Tier 2 entry is now cross-referenced against
+bootstrap/asset_manifest.yml -- if a fetch-on-demand source is configured
+for it, the message names the fetch playbook
+(ansible/playbooks/bootstrap_assets/fetch-assets.yml); if not, it says so
+explicitly rather than leaving the operator to guess whether "missing" means
+"run one command" or "needs real work" (a manual drop-in or git-lfs). This
+check still never fetches anything itself -- stays read-only/offline, same
+as every other check in this harness. Fetching is always a separate,
+explicit ansible-playbook invocation.
 """
 import itertools
 import re
 import sys
 from pathlib import Path
 
+import yaml
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BOOTSTRAP_WEB = REPO_ROOT / "bootstrap" / "web"
 SELECT_ANSWER_SH = BOOTSTRAP_WEB / "proxmox" / "select-pve-answer.sh"
 MENU_IPXE = BOOTSTRAP_WEB / "menu.ipxe"
+ASSET_MANIFEST = REPO_ROOT / "bootstrap" / "asset_manifest.yml"
+FETCH_PLAYBOOK = "ansible-playbook ansible/playbooks/bootstrap_assets/fetch-assets.yml"
 
 # The only enumerable iPXE variables menu.ipxe's asset paths actually use.
 KNOWN_VAR_VALUES = {
@@ -209,6 +223,24 @@ def collect_referenced_assets():
     return sorted(resolved_paths), sorted(skipped_dynamic)
 
 
+def load_manifest_dests():
+    """Every `dest` bootstrap/asset_manifest.yml covers, from both its flat
+    `assets:` list and its `archives: -> members -> dest` entries. Missing or
+    unparseable manifest -> empty set, not an error (the manifest is
+    optional infrastructure for this check, not a hard dependency of it)."""
+    if not ASSET_MANIFEST.exists():
+        return set()
+    try:
+        manifest = yaml.safe_load(ASSET_MANIFEST.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError:
+        return set()
+
+    dests = {a["dest"] for a in manifest.get("assets", []) if "dest" in a}
+    for archive in manifest.get("archives", []):
+        dests.update(m["dest"] for m in archive.get("members", []) if "dest" in m)
+    return dests
+
+
 def check_boot_binaries():
     if not MENU_IPXE.exists():
         return [f"{MENU_IPXE.relative_to(REPO_ROOT)} doesn't exist -- can't check referenced "
@@ -236,9 +268,14 @@ def main():
           f"genuinely dynamic reference(s) (unresolvable ${{...}} tokens, e.g. per-MAC "
           f"autodeploy).")
     if missing:
+        manifest_dests = load_manifest_dests()
         print(f"{len(missing)} boot binary issue(s) (informational; --strict fails on this):")
         for m in missing:
-            print(f"  bootstrap/web/{m}")
+            if m in manifest_dests:
+                print(f"  bootstrap/web/{m}  [fetchable: {FETCH_PLAYBOOK}]")
+            else:
+                print(f"  bootstrap/web/{m}  [no fetch source configured -- manual drop-in "
+                      f"or git-lfs]")
     else:
         print("All resolved boot binary references exist.")
 
