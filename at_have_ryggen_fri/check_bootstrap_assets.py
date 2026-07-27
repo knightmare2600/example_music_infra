@@ -47,28 +47,35 @@ printed and counted but never fail the run by themselves -- run.sh's
 --strict flag escalates that count.
 
 2026-07-27: each missing Tier 2 entry is now cross-referenced against
-bootstrap/asset_manifest.yml -- if a fetch-on-demand source is configured
-for it, the message names the fetch playbook
-(ansible/playbooks/bootstrap_assets/fetch-assets.yml); if not, it says so
-explicitly rather than leaving the operator to guess whether "missing" means
-"run one command" or "needs real work" (a manual drop-in or git-lfs). This
-check still never fetches anything itself -- stays read-only/offline, same
-as every other check in this harness. Fetching is always a separate,
-explicit ansible-playbook invocation.
+bootstrap/asset_manifest.json -- if a fetch-on-demand source is configured
+for it, the message names the 3 platform setup scripts that can fetch it
+(bootstrap/setup-workstation-{linux,macos}.sh, bootstrap/
+Setup-Workstation.ps1 -- these replaced ansible/playbooks/bootstrap_assets/
+fetch-assets.yml entirely, since ansible-playbook cannot run natively on
+Windows at all); if not, it says so explicitly rather than leaving the
+operator to guess whether "missing" means "run one command" or "needs real
+work" (a manual drop-in or git-lfs). This check still never fetches
+anything itself -- stays read-only/offline, same as every other check in
+this harness. Fetching is always a separate, explicit script run. Reads
+the JSON manifest (not YAML) -- stdlib json, no PyYAML dependency needed
+any more.
 """
 import itertools
+import json
 import re
 import sys
 from pathlib import Path
-
-import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BOOTSTRAP_WEB = REPO_ROOT / "bootstrap" / "web"
 SELECT_ANSWER_SH = BOOTSTRAP_WEB / "proxmox" / "select-pve-answer.sh"
 MENU_IPXE = BOOTSTRAP_WEB / "menu.ipxe"
-ASSET_MANIFEST = REPO_ROOT / "bootstrap" / "asset_manifest.yml"
-FETCH_PLAYBOOK = "ansible-playbook ansible/playbooks/bootstrap_assets/fetch-assets.yml"
+ASSET_MANIFEST = REPO_ROOT / "bootstrap" / "asset_manifest.json"
+FETCH_SCRIPTS = [
+    "./bootstrap/setup-workstation-linux.sh",
+    "./bootstrap/setup-workstation-macos.sh",
+    ".\\bootstrap\\Setup-Workstation.ps1",
+]
 
 # The only enumerable iPXE variables menu.ipxe's asset paths actually use.
 KNOWN_VAR_VALUES = {
@@ -224,15 +231,15 @@ def collect_referenced_assets():
 
 
 def load_manifest_dests():
-    """Every `dest` bootstrap/asset_manifest.yml covers, from both its flat
-    `assets:` list and its `archives: -> members -> dest` entries. Missing or
+    """Every `dest` bootstrap/asset_manifest.json covers, from both its flat
+    `assets` list and its `archives -> members -> dest` entries. Missing or
     unparseable manifest -> empty set, not an error (the manifest is
     optional infrastructure for this check, not a hard dependency of it)."""
     if not ASSET_MANIFEST.exists():
         return set()
     try:
-        manifest = yaml.safe_load(ASSET_MANIFEST.read_text(encoding="utf-8")) or {}
-    except yaml.YAMLError:
+        manifest = json.loads(ASSET_MANIFEST.read_text(encoding="utf-8")) or {}
+    except json.JSONDecodeError:
         return set()
 
     dests = {a["dest"] for a in manifest.get("assets", []) if "dest" in a}
@@ -269,6 +276,7 @@ def main():
           f"autodeploy).")
     if missing:
         manifest_dests = load_manifest_dests()
+        fetchable_count = sum(1 for m in missing if m in manifest_dests and not m.endswith(".wim"))
         print(f"{len(missing)} boot binary issue(s) (informational; --strict fails on this):")
         for m in missing:
             if m.endswith(".wim"):
@@ -276,10 +284,15 @@ def main():
                       f"at all, LFS or otherwise (Microsoft ADK terms); build locally, never "
                       f"drop in]")
             elif m in manifest_dests:
-                print(f"  bootstrap/web/{m}  [fetchable: {FETCH_PLAYBOOK}]")
+                print(f"  bootstrap/web/{m}  [fetchable]")
             else:
                 print(f"  bootstrap/web/{m}  [no fetch source configured -- manual drop-in "
                       f"or git-lfs]")
+        if fetchable_count:
+            print(f"\n{fetchable_count} of the above are fetchable -- run whichever matches "
+                  f"your platform:")
+            for script in FETCH_SCRIPTS:
+                print(f"  {script}")
     else:
         print("All resolved boot binary references exist.")
 
