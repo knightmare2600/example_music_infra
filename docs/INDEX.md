@@ -114,7 +114,6 @@ Procedures for provisioning new sites and nodes from scratch.
 | [bootstrap/ExampleMusic_Procedure_iPXE_ARM64_ISO.md](bootstrap/ExampleMusic_Procedure_iPXE_ARM64_ISO.md) | NET-BOOT-IPXEISO-001 | Building an ARM64 iPXE boot ISO |
 | [bootstrap/WinPE_DaRT_Build_Guide.md](bootstrap/WinPE_DaRT_Build_Guide.md) | NET-BOOT-DART-001 | WinPE + DaRT 10 build guide |
 | [bootstrap/cecho_dartparse_build_guide.md](bootstrap/cecho_dartparse_build_guide.md) | NET-BOOT-CECHO-001 | `cecho`/`dartparse` build procedure — binaries required by WinPE's `startnet.cmd` |
-| [arch-pxe-setup.md](arch-pxe-setup.md) | NET-BOOT-ARCH-001 | Arch Linux PXE boot setup |
 | [Windows 11 Deployment - Using MDT 8456 with Windows ADK 24H2 (Build 26100) - Deployment Research.pdf](Windows%2011%20Deployment%20-%20Using%20MDT%208456%20with%20Windows%20ADK%2024H2%20%28Build%2026100%29%20-%20Deployment%20Research.pdf) | NET-BOOT-MDT-001 | Windows 11 MDT/ADK deployment research (external reference PDF) |
 
 **DeployTools scripts** (hosted on `\\EXADCSCPH001\DeployTools` — future DFS):

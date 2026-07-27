@@ -102,18 +102,21 @@
 # bootstrap/Setup-Workstation.ps1 (benarbejde/asset_manifest.json's
 # real-upstream entries -- Spejder, klargoring, wimboot, Debian, OpenBSD,
 # gparted) or dropped in by hand -- Robert's own custom builds with no
-# upstream (Arch's airootfs), or third-party vendor downloads not worth a
-# manifest entry (3cx/, supplied directly by Robert 2026-07-27; its kernel
-# turned out to be genuine unmodified Debian Bookworm and lives at
-# debian/bookworm/x86_64/linux instead, see menu.ipxe's :3cx-install comment).
+# upstream (none currently in this repo -- Arch's airootfs was the one
+# example, removed entirely 2026-07-27, see menu.ipxe's v2.10 changelog),
+# or third-party vendor downloads not worth a manifest entry (3cx/, supplied
+# directly by Robert 2026-07-27; its kernel turned out to be genuine
+# unmodified Debian Bookworm and lives at debian/bookworm/x86_64/linux
+# instead, see menu.ipxe's :3cx-install comment).
 # Either way, once a file lands under these paths it goes through LFS, not a
 # plain git blob -- keeps this repo's normal git history small regardless of
 # source. Existing tracked files under bootstrap/web/debian/ predate this
 # rule and were NOT retroactively migrated (that rewrites git history -- a
 # separate, more invasive decision, not bundled into this one).
 #
-# rockylinux/ deliberately NOT tracked here -- Robert deleted his local copy
-# 2026-07-27, revisiting later. Re-add the rule when that work resumes.
+# rockylinux/ and arch/ deliberately NOT tracked here -- both removed entirely 2026-07-27
+# (Robert's call, see menu.ipxe's v2.10 changelog entry), not deferred. Re-add rules for
+# either only if a real, working asset comes back behind them.
 #
 # winpe/ is scoped to wimboot* ONLY, not the whole directory -- wimboot
 # itself (github.com/ipxe/wimboot) is GPL2, no Microsoft code in it, fine to
@@ -128,6 +131,4 @@ bootstrap/web/openbsd/**             filter=lfs diff=lfs merge=lfs -text
 bootstrap/web/gparted/**             filter=lfs diff=lfs merge=lfs -text
 bootstrap/web/winpe/**/wimboot*      filter=lfs diff=lfs merge=lfs -text
 bootstrap/web/3cx/**                 filter=lfs diff=lfs merge=lfs -text
-bootstrap/web/arch/**/airootfs.sfs   filter=lfs diff=lfs merge=lfs -text
-bootstrap/web/arch/**/vmlinuz-linux  filter=lfs diff=lfs merge=lfs -text
-bootstrap/web/arch/**/initramfs-linux* filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/hdt/**                 filter=lfs diff=lfs merge=lfs -text

@@ -17,6 +17,25 @@
 #
 # Version history:
 #
+#   v2.10  Removed Ubuntu (:ubuntu-*, Alpine dd-writer pattern), Rocky Linux (:rocky-*), and
+#          Arch Linux (:arch-*) entirely -- Robert's explicit call, 2026-07-27: none of these
+#          were real/working (Ubuntu/Rocky had no committed assets at all; Arch's own
+#          airootfs.sfs/initramfs-linux were still literal placeholder stub files, not real
+#          assets -- see docs/bootstrap/bootstrapping.md's asset table). bootstrap/web/arch/,
+#          bootstrap/web/rocky/install.ks, bootstrap/web/build-ubuntu-writer-apkovl.sh, and
+#          docs/arch-pxe-setup.md all deleted alongside this. Also fixed :hdt -- it was
+#          chaining to pxelinux.0, which expects TFTP for its own follow-up fetches (this
+#          server is HTTP-only, no TFTP daemon anywhere in this repo, so this was never going
+#          to work); switched to lpxelinux.0, SYSLINUX's HTTP-native PXELINUX build, fetched
+#          via benarbejde/asset_manifest.json alongside hdt.c32/libcom32.c32/libutil.c32.
+#
+#   v2.9   Added :3cx-install (3CX Phone System, translated from bootstrap/web/3cx/boot.txt's
+#          isolinux APPEND syntax) and inserted trixie/ into every :debian-* kernel/initrd
+#          path, matching bootstrap/web/debian/'s split into trixie/+bookworm/ subfolders --
+#          3CX's own installer kernel turned out to be genuine unmodified Debian 12
+#          (Bookworm), confirmed byte-identical to a known snapshot.debian.org build, so it
+#          lives at debian/bookworm/x86_64/linux rather than being duplicated under 3cx/.
+#
 #   v2.8   Bumped OpenBSD 7.5 -> 7.9 (all three :openbsd-* entries). 7.5 no longer exists on
 #          cdn.openbsd.org at all (confirmed live, 2026-07-27, while building
 #          benarbejde/asset_manifest.json's fetch-on-demand entries) -- the mirror only carries
@@ -239,23 +258,6 @@ item --gap --
 item --gap --         -- 3CX Phone System --
 item 3cx-install      3CX Phone System  Auto install  (Debian Bookworm base)
 item --gap --
-item --gap --         -- Ubuntu --
-item ubuntu-auto      Ubuntu  Auto install
-item ubuntu-auto-s    Ubuntu  Auto install  (ttyS0 serial)
-item ubuntu-ssh-s     Ubuntu  Auto install  (SSH + ttyS0 serial)
-item --gap --
-item --gap --         -- Rocky Linux --
-item rocky-auto       Rocky   Auto install
-item rocky-ssh        Rocky   Auto install  (SSH console)
-item rocky-auto-s     Rocky   Auto install  (ttyS0 serial)
-item rocky-ssh-s      Rocky   Auto install  (SSH + ttyS0 serial)
-item --gap --
-item --gap --         -- Arch Linux --
-item arch-auto        Arch    Auto install
-item arch-ssh         Arch    Install  (SSH console)
-item arch-auto-s      Arch    Auto install  (ttyS0 serial)
-item arch-ssh-s       Arch    Install  (SSH + ttyS0 serial)
-item --gap --
 item --gap --         -- OpenBSD --
 item openbsd-auto     OpenBSD 7.9  Auto install
 item openbsd-auto-s   OpenBSD 7.9  Auto install  (ttyS0 serial)
@@ -360,140 +362,6 @@ boot
 iseq ${arch} arm64 && goto noarch-msg ||
 kernel ${boot-url}/debian/bookworm/x86_64/linux vga=788 ipv6.disable=1 auto=true priority=high url=${boot-url}/3cx/preseed_12.5.0_a29bc3d.txt --- quiet THREECXMARKER=DEBIAN-3CX-ISO
 initrd ${boot-url}/3cx/initrd.gz
-boot
-
-# ===========================================================================
-# UBUNTU
-# Approach: Alpine Linux lts netboot acts as a thin write-to-disk helper.
-# It boots into RAM, streams the Ubuntu 24.04 minimal cloud image
-# (~247 MB amd64 / ~216 MB arm64) via wget|dd onto the target disk, then
-# reboots. Ubuntu boots from disk; cloud-init reads user-data/meta-data from
-# the nocloud seed at ${boot-url}/ubuntu/ on first boot.
-#
-# This avoids the Subiquity live installer (~1.1 GB squashfs) entirely.
-# The Ubuntu minimal cloud image is a pre-installed system, not an installer.
-#
-# Storage drivers passed via modules= so the Alpine initramfs loads them
-# before the local service runs -- no depmod or apk install needed at runtime.
-#   mptspi      -- VMware Workstation / Fusion (LSI Logic emulated SCSI)
-#   virtio_scsi -- Proxmox virtio-scsi
-#   virtio_blk  -- Proxmox virtio-blk
-#   ata_piix    -- IDE fallback
-#
-# Files required on provisioning server:
-#   alpine/x86_64/vmlinuz-lts        -- Alpine lts kernel (amd64)
-#   alpine/x86_64/initramfs-lts      -- Alpine lts initramfs (amd64)
-#   alpine/x86_64/modloop-lts        -- Alpine lts kernel modules (amd64)
-#   alpine/aarch64/vmlinuz-lts       -- Alpine lts kernel (arm64)
-#   alpine/aarch64/initramfs-lts     -- Alpine lts initramfs (arm64)
-#   alpine/aarch64/modloop-lts       -- Alpine lts kernel modules (arm64)
-#   alpine/ubuntu-writer.apkovl.tar.gz  -- dd-writer apkovl (arch-neutral)
-#   ubuntu/ubuntu-24.04-minimal-cloudimg-amd64.img
-#   ubuntu/ubuntu-24.04-minimal-cloudimg-arm64.img
-#   ubuntu/user-data                 -- cloud-init #cloud-config seed
-#   ubuntu/meta-data                 -- cloud-init nocloud metadata
-#
-# Alpine netboot files (pin to v3.23):
-#   https://dl-cdn.alpinelinux.org/alpine/v3.23/releases/x86_64/netboot/
-#   https://dl-cdn.alpinelinux.org/alpine/v3.23/releases/aarch64/netboot/
-# Ubuntu minimal images:
-#   https://cloud-images.ubuntu.com/minimal/releases/noble/release/
-#
-# Ref -- Alpine PXE boot:        https://wiki.alpinelinux.org/wiki/PXE_boot
-# Ref -- apkovl format:          https://wiki.alpinelinux.org/wiki/Alpine_local_backup
-# Ref -- cloud-init nocloud:     https://cloudinit.readthedocs.io/en/latest/reference/datasources/nocloud.html
-# ===========================================================================
-
-# Alpine arch path: iPXE uses x86_64/arm64; Alpine releases use x86_64/aarch64
-:ubuntu-auto
-set alpine-arch ${arch}
-iseq ${arch} arm64 && set alpine-arch aarch64 ||
-
-kernel ${boot-url}/alpine/${alpine-arch}/vmlinuz-virt ip=dhcp root=/dev/ram0 modules=loop,squashfs,virtio_scsi,virtio_blk alpine_repo=https://dl-cdn.alpinelinux.org/alpine/v3.23/main modloop=${boot-url}/alpine/${alpine-arch}/modloop-virt apkovl=${boot-url}/alpine/ubuntu-writer.apkovl.tar.gz quiet
-initrd ${boot-url}/alpine/${alpine-arch}/initramfs-virt
-boot
-
-:ubuntu-auto-s
-set alpine-arch ${arch}
-iseq ${arch} arm64 && set alpine-arch aarch64 ||
-kernel ${boot-url}/alpine/${alpine-arch}/vmlinuz-lts ip=dhcp modules=loop,squashfs,mptspi,virtio_scsi,virtio_blk,ata_piix quiet nomodeset alpine_repo=https://dl-cdn.alpinelinux.org/alpine/v3.23/main modloop=${boot-url}/alpine/${alpine-arch}/modloop-lts apkovl=${boot-url}/alpine/ubuntu-writer.apkovl.tar.gz initrd=initramfs-lts console=ttyS0,115200n8
-initrd ${boot-url}/alpine/${alpine-arch}/initramfs-lts
-boot
-
-:ubuntu-ssh-s
-set alpine-arch ${arch}
-iseq ${arch} arm64 && set alpine-arch aarch64 ||
-kernel ${boot-url}/alpine/${alpine-arch}/vmlinuz-lts ip=dhcp modules=loop,squashfs,mptspi,virtio_scsi,virtio_blk,ata_piix quiet nomodeset alpine_repo=https://dl-cdn.alpinelinux.org/alpine/v3.23/main modloop=${boot-url}/alpine/${alpine-arch}/modloop-lts apkovl=${boot-url}/alpine/ubuntu-writer.apkovl.tar.gz initrd=initramfs-lts console=tty0 console=ttyS0,115200n8
-initrd ${boot-url}/alpine/${alpine-arch}/initramfs-lts
-boot
-
-# ===========================================================================
-# ROCKY LINUX — custom installer initrd
-# No Anaconda. No inst.repo. No inst.stage2. No install.img.
-# The custom initrd IS the installer — it partitions, extracts
-# the Container-Base rootfs, installs grub, injects firstboot,
-# and reboots. vmlinuz is the standard Rocky kernel, unchanged.
-# ${arch} normalised to aarch64 for arm64 below.
-# rd.multipath=0 rd.luks=0 prevent dracut probing delays.
-# rd.driver.blacklist=dm_mod prevents dracut-pre-udev attempting
-# to modprobe dm_mod which is built into the Rocky 9 kernel and
-# has no .ko file — causes fatal boot failure without this.
-# ===========================================================================
-:rocky-auto
-set rocky-arch ${arch}
-iseq ${arch} arm64 && set rocky-arch aarch64 ||
-kernel ${boot-url}/rockylinux/${arch}/vmlinuz rd.multipath=0 rd.luks=0 rd.driver.blacklist=dm_mod ip=dhcp quiet
-initrd ${boot-url}/rockylinux/${arch}/initrd.img
-boot
-
-:rocky-ssh
-set rocky-arch ${arch}
-iseq ${arch} arm64 && set rocky-arch aarch64 ||
-kernel ${boot-url}/rockylinux/${arch}/vmlinuz rd.multipath=0 rd.luks=0 rd.driver.blacklist=dm_mod ip=dhcp
-initrd ${boot-url}/rockylinux/${arch}/initrd.img
-boot
-
-:rocky-auto-s
-set rocky-arch ${arch}
-iseq ${arch} arm64 && set rocky-arch aarch64 ||
-kernel ${boot-url}/rockylinux/${arch}/vmlinuz rd.multipath=0 rd.luks=0 rd.driver.blacklist=dm_mod ip=dhcp console=ttyS0,115200n8 console=tty0 quiet
-initrd ${boot-url}/rockylinux/${arch}/initrd.img
-boot
-
-:rocky-ssh-s
-set rocky-arch ${arch}
-iseq ${arch} arm64 && set rocky-arch aarch64 ||
-kernel ${boot-url}/rockylinux/${arch}/vmlinuz rd.multipath=0 rd.luks=0 rd.driver.blacklist=dm_mod ip=dhcp console=ttyS0,115200n8 console=tty0
-initrd ${boot-url}/rockylinux/${arch}/initrd.img
-boot
-
-# ===========================================================================
-# ARCH LINUX
-# Requires a custom airootfs with the arch-autoinstall systemd service baked
-# in for the auto entries. See arch-pxe-setup.md for build instructions.
-# SSH entries use the standard upstream airootfs -- no custom build needed.
-# Label is :arch-linux (not :arch) to avoid shadowing the ${arch} variable.
-# archiso_http_srv must be a bare http://host:port/ URL with trailing slash.
-# Uses ${boot-url} — do not hardcode the IP here.
-# ===========================================================================
-:arch-auto
-kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=${boot-url}/ copytoram arch-autoinstall locale=en_GB.UTF-8 keymap=uk timezone=Europe/London
-initrd ${boot-url}/arch/${arch}/initramfs-linux.img
-boot
-
-:arch-ssh
-kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=${boot-url}/ copytoram locale=en_GB.UTF-8 keymap=uk timezone=Europe/London systemd.unit=multi-user.target
-initrd ${boot-url}/arch/${arch}/initramfs-linux.img
-boot
-
-:arch-auto-s
-kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=${boot-url}/ copytoram arch-autoinstall locale=en_GB.UTF-8 keymap=uk timezone=Europe/London console=ttyS0,115200n8
-initrd ${boot-url}/arch/${arch}/initramfs-linux.img
-boot
-
-:arch-ssh-s
-kernel ${boot-url}/arch/${arch}/vmlinuz-linux ip=dhcp archisobasedir=arch archiso_http_srv=${boot-url}/ copytoram locale=en_GB.UTF-8 keymap=uk timezone=Europe/London systemd.unit=multi-user.target console=tty0 console=ttyS0,115200n8
-initrd ${boot-url}/arch/${arch}/initramfs-linux.img
 boot
 
 # ===========================================================================
@@ -632,10 +500,19 @@ boot
 
 # ===========================================================================
 # HDT  (x86_64 only)
+# iPXE cannot run .c32 COM32 modules directly -- hdt.c32 (and its
+# libcom32.c32/libutil.c32 dependencies) only work under a real SYSLINUX-
+# family loader. Chains to lpxelinux.0, not pxelinux.0 -- this server is
+# HTTP-only (no TFTP daemon anywhere in this repo), and lpxelinux.0 is
+# SYSLINUX's own HTTP-native PXELINUX build, so it can fetch
+# hdt/pxelinux.cfg/default (and hdt.c32 itself) the same way iPXE just
+# fetched it, over plain HTTP. Plain pxelinux.0 expects TFTP for those
+# follow-up fetches and would hang here -- confirmed 2026-07-27 this was
+# never going to work as originally written.
 # ===========================================================================
 :hdt
 iseq ${arch} arm64 && goto noarch-msg ||
-chain ${boot-url}/hdt/pxelinux.0
+chain ${boot-url}/hdt/lpxelinux.0
 
 # ===========================================================================
 # SYSTEM

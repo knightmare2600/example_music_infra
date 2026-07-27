@@ -174,7 +174,6 @@ facts:
       - docs/buildsheets/buildsheet-firewall.md
       - docs/management/rudder-setup.md
       - docs/proxmox/pve-networking.md
-      - docs/arch-pxe-setup.md
       - docs/bootstrap/ipxe-build.md
       - docs/bootstrap/ExampleMusic_ExaRescue_ARM64_Build_Procedure.md
       - docs/bootstrap/ExampleMusic_Procedure_iPXE_ARM64_ISO.md
