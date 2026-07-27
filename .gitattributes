@@ -98,10 +98,11 @@
 # By directory, not extension -- kernel binaries here are routinely
 # extensionless by convention (vmlinuz, linux-x86_64, wimboot, bsd.rd),
 # so filename-based rules would miss most of what actually needs tracking.
-# Populated either by ansible/playbooks/bootstrap_assets/fetch-assets.yml
-# (bootstrap/asset_manifest.yml's real-upstream entries -- Spejder,
-# klargoring, wimboot, Debian, OpenBSD, gparted) or dropped in by hand
-# (Robert's own custom builds with no upstream: Arch's airootfs). Either way,
+# Populated either by bootstrap/setup-workstation-{linux,macos}.sh /
+# bootstrap/Setup-Workstation.ps1 (benarbejde/asset_manifest.json's
+# real-upstream entries -- Spejder, klargoring, wimboot, Debian, OpenBSD,
+# gparted) or dropped in by hand (Robert's own custom builds with no
+# upstream: Arch's airootfs). Either way,
 # once a file lands under these paths it goes through LFS, not a plain git
 # blob -- keeps this repo's normal git history small regardless of source.
 # Existing tracked files under bootstrap/web/debian/ predate this rule and

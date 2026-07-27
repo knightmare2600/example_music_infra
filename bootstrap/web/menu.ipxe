@@ -19,7 +19,7 @@
 #
 #   v2.8   Bumped OpenBSD 7.5 -> 7.9 (all three :openbsd-* entries). 7.5 no longer exists on
 #          cdn.openbsd.org at all (confirmed live, 2026-07-27, while building
-#          bootstrap/asset_manifest.yml's fetch-on-demand entries) -- the mirror only carries
+#          benarbejde/asset_manifest.json's fetch-on-demand entries) -- the mirror only carries
 #          7.7/7.8/7.9. Robert's explicit call to bump rather than chase the archive mirror
 #          for a version this stale.
 #
