@@ -25,6 +25,7 @@
 | 2026-07-10 | Follow-up to the above, same day: the three bash break-glass scripts (`bindme.sh`, `ansibleme.sh`, `firewallme.sh`) migrated too. Each now checks its own `nodeinfo.json` first via `jq`, falls back to the legacy `/etc/.environment` file (for hosts already provisioned), then prompts — and no longer writes `/etc/.environment` itself. `bindme.sh` and `ansibleme.sh` already had `jq` installed before their environment block, so no reordering was needed; `firewallme.sh` didn't (its `BOOTSTRAP_PKGS` batch, which includes `jq`, doesn't install until later), so it got a small standalone defensive `jq` install immediately before the check, mirroring `bindme.sh`'s existing pattern for the same reason. `ansible/tasks/nodeinfo_environment.yml` also gained the same legacy-file fallback tier, so an Ansible run against a node that already has `/etc/.environment` but no `nodeinfo.json` yet reuses that value instead of re-prompting. `linux/tools.yml` now deletes `/etc/.environment` once `nodeinfo.json` has captured it (on the success path only — a host that isn't EXA-hostname-conformant yet keeps its file, since `nodeinfo.json` isn't written for it either). |
 | 2026-07-20 | Standard IP Convention table's `.15` PRV row replaced with `.19` NAS. `.15` was retired 2026-07-19 (see `README.md`'s Addressing table and `docs/proxmox/proxmox-dcm-pbs-planning.md`) — never real for any ordinary site, provisioning is centralised at VRK/FRD only, whose real `EXAPRVVRK001`/`EXAPRVFRD001` devices are untouched. Missed in the original sweep; caught on a follow-up pass. |
 | 2026-07-21 | VRK/FRD's provisioning servers (Type=`TMP` in `devices.csv`, formerly `PRV`) deliberately no longer have a formal `EXA<ROLE><SITE><NNN>` hostname or DNS record at all — Robert: these are bootstrap-only helpers, not real managed nodes, so they shouldn't carry the same identity every real node gets. Every `EXAPRVVRK001`/`EXAPRVFRD001` mention throughout this document replaced with the real IP (`192.168.139.50` / `172.16.124.1`) plus a plain description; the worked shell-prompt transcript's hostname likewise genericised to `provisioning-server`. |
+| 2026-07-27 | §2.3's `web/` directory tree and "not committed" table updated for the `debian/` split into `trixie/` (current-stable, fetched via `benarbejde/asset_manifest.json`) and `bookworm/` (3CX's installer kernel, confirmed genuine unmodified Debian and moved here rather than duplicated), plus a new `3cx/` entry (3CX Phone System's own installer, custom initrd + preseed, driving `menu.ipxe`'s new `:3cx-install` entry). Note: this section's older "already present"/"not committed" framing predates several since-completed sessions of `benarbejde/asset_manifest.json` fetch work (Spejder, klargoring, wimboot, OpenBSD, gparted now genuinely committed via git-lfs) and still shows stale detail elsewhere (e.g. OpenBSD `7.5`, `rocky/` vs the real `rockylinux/`) — not corrected in this pass, flagged for a full re-sweep of this table separately. |
 
 ---
 
@@ -311,8 +312,29 @@ bootstrap/web/
 ├── debian/
 │   ├── late_command.sh          ← Debian post-install hook
 │   ├── lvm.seed / lvm-bios.seed / lvm-efi.seed
-│   ├── x86_64/linux, x86_64/initrd.gz   ← Debian netboot kernel+initrd (AMD64)
-│   └── arm64/linux, arm64/initrd.gz     ← Debian netboot kernel+initrd (ARM64)
+│   ├── trixie/x86_64/linux, trixie/x86_64/initrd.gz  ← Debian netboot kernel+initrd (AMD64),
+│   │                                current stable — fetched via benarbejde/asset_manifest.json
+│   ├── trixie/arm64/linux, trixie/arm64/initrd.gz    ← same, ARM64
+│   └── bookworm/x86_64/linux    ← NOT fetched — this is 3CX's own installer kernel (see 3cx/
+│                                    below), confirmed byte-identical to genuine Debian 12
+│                                    (Bookworm) 2026-07-27 and moved here rather than duplicated.
+│                                    No initrd here: 3CX's initrd.gz is a custom build, stays in
+│                                    3cx/ (see below). Split into trixie/+bookworm/ subfolders
+│                                    2026-07-27 to keep the two releases apart now that a second
+│                                    one exists.
+│
+├── 3cx/
+│   ├── boot.txt                 ← 3CX's own vendor netboot recipe (isolinux APPEND syntax) —
+│   │                                translated into menu.ipxe's :3cx-install entry, not run
+│   │                                directly
+│   ├── preseed_*.txt            ← 3CX's vendor preseed, unmodified; menu.ipxe's url= points at
+│   │                                this local copy rather than 3CX's downloads-global.3cx.com
+│   ├── post-install_*.txt       ← local copy of the post-install script the preseed's own
+│   │                                late_command still fetches live from 3CX during install
+│   │                                (unmodified vendor content, outside iPXE's control)
+│   ├── initrd.gz                ← 3CX's custom installer initrd (confirmed NOT stock Debian)
+│   └── 3cx_key.pub, 3CXPhoneSystem20.exe, 3cx.sh  ← supplied by Robert alongside the above,
+│                                    not part of the netboot chain itself
 │
 ├── proxmox/
 │   ├── select-pve-answer.sh      ← run at the installer's own root shell (BusyBox ash) after
@@ -358,7 +380,8 @@ references every one of them:
 
 | Menu entry | Expected directory | Needed for the PFY's plan (PVE/Ansible/DNS/FWL/Windows)? |
 |---|---|---|
-| Debian | `debian/x86_64/`, `debian/arm64/` | Already present — nothing to add |
+| Debian | `debian/trixie/x86_64/`, `debian/trixie/arm64/` | Already present — nothing to add |
+| 3CX Phone System | `3cx/` (installer initrd + preseed), kernel shared with `debian/bookworm/x86_64/` | Already present — nothing to add |
 | Arch Linux | `arch/x86_64/` | Already present — nothing to add |
 | GParted | `gparted/${arch}/` | No |
 | WinPE (x86_64/ARM64) | `winpe/x86_64/`, `winpe/arm64/` | No — Windows Server 2022 uses the unattend-XML path (§7), not this WinPE menu entry |
