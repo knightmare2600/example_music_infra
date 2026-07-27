@@ -12,6 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-07-27 | §11 rewritten — no longer presumes every engineer has a MacBook Pro. §11.1 now leads with the 3 automated setup scripts (`bootstrap/setup-workstation-{macos,linux}.sh`, `bootstrap/Setup-Workstation.ps1`), which install the tool set AND populate `bootstrap/web/`'s boot assets from `benarbejde/asset_manifest.json` — replaces the old Ansible-only `fetch-assets.yml`, since `ansible-playbook` cannot run natively on Windows at all. The original macOS `brew install` table stays as a reference/manual-fallback, now explicitly labelled as such rather than presented as the only path. |
 | 2026-07-21 | §4/§4.2/§10.2/§11.3/Appendix all updated: VRK/FRD's provisioning servers (Type=`TMP` in `devices.csv`, formerly `PRV`) deliberately no longer have a formal `EXA<ROLE><SITE><NNN>` hostname or DNS record at all — Robert: these are bootstrap-only helpers, not real managed nodes, so they shouldn't carry the same identity every real node gets. Referenced by IP only from here on (`192.168.139.50` Edinburgh, `172.16.124.1` Fredericia Havn) — see `benarbejde/begyndelse.json`. |
 | 2026-07-19 | §4's `.15` PRV row replaced with `.19` NAS. `.15` was never real for any ordinary site — confirmed via a real inventory-generation run that every non-VRK/FRD site was getting a synthesized `EXAPRV<SITE>001` DNS record for a device that has never existed; provisioning is genuinely centralised at VRK/FRD, not per-site (their own real `EXAPRVVRK001`/`EXAPRVFRD001` hostnames are untouched — unrelated devices.csv-exception rows, not this standard-slot convention). `.19` is new, for site storage (TrueNAS) — a real rollout, replacing 3 retired legacy NAS boxes (FAL/PER/MEL) that used to sit at inconsistent ad-hoc addresses. |
 | 2026-07-12 | §7.2 corrected — previously said the per-site build sequence was `FWL → DCS → (PVE hypervisors, ...)`, backwards, since the firewall and DC are both VMs and can't exist before the PVE node hosting them does. Also corrected "the firewall is built by running `firewallme.sh`" to name the Ansible playbook (`playbooks/firewallme/playbooks/90-firewall.yml`) as the first-instance path, `firewallme.sh` as the break-glass fallback — matches root `README.md`'s existing break-glass framing, which this section hadn't been brought in line with. Fixed a second, unrelated stale `192.168.139.68`→`.69` (CLD's FWL WAN face) that the 2026-07-08 entry below fixed in §4.1 but missed here. Added §7.2a documenting CLD/VRK's own build sequence (no site to replicate from yet) — PVE → `EXADNSVRK001` → firewall → `EXADCSCLD001`, the one DC build where `dc_is_first_in_forest` is answered yes. |
@@ -787,9 +788,38 @@ Until all of the above are true: the existing infrastructure at that site is run
 
 ## 11. Engineer Workstation
 
-Malcolm and Jamie both have MacBook Pros with VMware Fusion. This section covers what needs to be installed and configured before you can do anything useful.
+Malcolm and Jamie both run MacBook Pros with VMware Fusion today — most of this section still
+speaks from that reality (§11.4's VMware testing walkthrough, most of §11.1's own reference
+table). A technician turning up with a Windows Surface or a Linux laptop is provisioned the same
+way, just via a different one of the three setup scripts below. This section covers what needs to
+be installed and configured before you can do anything useful, on whichever platform you actually
+have.
 
-### 11.1 Required tools
+### 11.1 Automated setup
+
+Run the script matching your platform from a fresh clone of this repo:
+
+| Platform | Script |
+|----------|--------|
+| macOS | `./bootstrap/setup-workstation-macos.sh` |
+| Linux (Debian-flavour presumed) | `./bootstrap/setup-workstation-linux.sh` |
+| Windows | `.\bootstrap\Setup-Workstation.ps1` (elevated/Administrator PowerShell) |
+
+Each does two things: installs the tool set below via the platform's own package manager
+(Homebrew / apt / Chocolatey), and populates `bootstrap/web/`'s boot assets from
+`benarbejde/asset_manifest.json` — the same checksum-verified fetch `check_bootstrap_assets.py`
+(harness check 25) tells you is missing, without needing Ansible installed at all (`ansible-
+playbook` cannot run natively on Windows — the reason there are three scripts here instead of one
+playbook). Safe to re-run any time — every step skips anything already correct.
+
+Pass `-DepsOnly`/`--deps-only` or `-AssetsOnly`/`--assets-only` (flag spelling matches the
+platform's own convention) to run just one half.
+
+Each script's own header comment is the authoritative, detailed reference for exactly what it
+installs and how the asset fetch works — read it before wondering "what does this actually do."
+The table below is what `setup-workstation-macos.sh` installs specifically, kept here because it
+predates the script and is still a useful quick-reference / manual-install fallback if you'd
+rather not run it.
 
 | Tool | Purpose | Install |
 |------|---------|---------|
@@ -805,6 +835,13 @@ Malcolm and Jamie both have MacBook Pros with VMware Fusion. This section covers
 | Virt-viewer | SPICE viewer for VM console access via Proxmox | `brew install virt-viewer` |
 | `jq` | JSON parsing — useful for Proxmox API and `nodeinfo.json` queries | `brew install jq` |
 | `wg` | WireGuard tools — key generation, peer inspection | `brew install wireguard-tools` |
+| `ansible` | Run playbooks directly from your own machine, not just via `EXAANSCLD001` | `brew install ansible` |
+
+Linux swaps Homebrew for `apt` and drops VMware Fusion/iTerm2 (no Linux equivalent — use whatever
+terminal your distro ships). Windows swaps Homebrew for Chocolatey and adds PuTTY, WinSCP, PSTools,
+Windows Terminal, and a JetBrains Mono Nerd Font instead — see `Setup-Workstation.ps1`'s own header
+for the exact package list, including the `curl`-is-actually-`Invoke-WebRequest`-in-disguise trap
+its download logic works around.
 
 ### 11.2 KeePassXC database structure
 
