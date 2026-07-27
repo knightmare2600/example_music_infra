@@ -26,6 +26,7 @@
 | 2026-07-20 | Standard IP Convention table's `.15` PRV row replaced with `.19` NAS. `.15` was retired 2026-07-19 (see `README.md`'s Addressing table and `docs/proxmox/proxmox-dcm-pbs-planning.md`) — never real for any ordinary site, provisioning is centralised at VRK/FRD only, whose real `EXAPRVVRK001`/`EXAPRVFRD001` devices are untouched. Missed in the original sweep; caught on a follow-up pass. |
 | 2026-07-21 | VRK/FRD's provisioning servers (Type=`TMP` in `devices.csv`, formerly `PRV`) deliberately no longer have a formal `EXA<ROLE><SITE><NNN>` hostname or DNS record at all — Robert: these are bootstrap-only helpers, not real managed nodes, so they shouldn't carry the same identity every real node gets. Every `EXAPRVVRK001`/`EXAPRVFRD001` mention throughout this document replaced with the real IP (`192.168.139.50` / `172.16.124.1`) plus a plain description; the worked shell-prompt transcript's hostname likewise genericised to `provisioning-server`. |
 | 2026-07-27 | §2.3's `web/` directory tree and "not committed" table updated for the `debian/` split into `trixie/` (current-stable, fetched via `benarbejde/asset_manifest.json`) and `bookworm/` (3CX's installer kernel, confirmed genuine unmodified Debian and moved here rather than duplicated), plus a new `3cx/` entry (3CX Phone System's own installer, custom initrd + preseed, driving `menu.ipxe`'s new `:3cx-install` entry). Note: this section's older "already present"/"not committed" framing predates several since-completed sessions of `benarbejde/asset_manifest.json` fetch work (Spejder, klargoring, wimboot, OpenBSD, gparted now genuinely committed via git-lfs) and still shows stale detail elsewhere (e.g. OpenBSD `7.5`, `rocky/` vs the real `rockylinux/`) — not corrected in this pass, flagged for a full re-sweep of this table separately. |
+| 2026-07-27 | Follow-up to the above, same day: full re-sweep of §2.3's asset table against the real `bootstrap/web/` tree and `check_bootstrap_assets.py`'s live output, first since 2026-07-10. Fixed OpenBSD `7.5`→`7.9` and the `rocky/`/`rockylinux/` conflation (`rocky/` holds only a dead `install.ks`; the real, menu-referenced `rockylinux/` doesn't exist yet). Added rows for `proxmox/klargoring/` (present, wasn't in the table at all — post-dates the table's last edit) and corrected several "No"/blank statuses to reflect what's actually now committed via git-lfs (Spejder, klargoring, wimboot loaders, OpenBSD, GParted x86_64). Real find while re-verifying against the filesystem rather than trusting the table: `arch/x86_64/airootfs.sfs` and `initramfs-linux` are literal placeholder text files ("x86_64 airootfs.sfs goes here"), not real assets — only `vmlinuz-linux` is a genuine committed kernel — so the Arch entry was previously marked "already present" when it doesn't actually boot. Flagged in the table, not built (Robert's own custom airootfs, needs building not fetching — separate task). Confirmed `alpine`/`ubuntu` menu entries are Robert-confirmed obsolete, not a gap to fill. |
 
 ---
 
@@ -369,31 +370,53 @@ bootstrap/web/
 ├── provision/
 │   └── ansibleme.sh, bindme.sh, firewallme.sh, rudderme.sh   ← break-glass bootstrap scripts
 │
-├── arch/x86_64/          ← Arch Linux netboot assets
-└── rocky/                ← Rocky Linux netboot assets
+├── arch/x86_64/          ← Arch Linux netboot assets (vmlinuz-linux is real; airootfs.sfs and
+│                            initramfs-linux are still placeholder stub files, see table below —
+│                            arm64 doesn't exist yet at all)
+├── openbsd/7.9/{x86_64,arm64}/  ← OpenBSD bsd.rd, both arches, fetched via
+│                                    benarbejde/asset_manifest.json
+├── gparted/x86_64/       ← GParted Live, fetched via benarbejde/asset_manifest.json (x86_64
+│                            only — GParted Live has never published an arm64 build)
+├── winpe/{x86_64,arm64}/ ← wimboot loader binaries only (fetched via benarbejde/
+│                            asset_manifest.json); the actual boot_x64.wim/boot_arm64.wim are
+│                            NEVER committed here, see the table below
+├── spejder/{x86_64,arm64}/  ← Spejder hardware-provisioning runtime, fetched via
+│                                benarbejde/asset_manifest.json
+└── rocky/                ← contains only a dead install.ks (see note below the table) — NOT
+                             the same as rockylinux/, which menu.ipxe actually references and
+                             which doesn't exist yet
 ```
 
-**Not committed to this repo** (installer kernels/initrds and full ISOs — hundreds of MB to
-multiple GB each, deliberately kept out of git). Confirmed 2026-07-10 by checking the real tree
-directly, not assumed — **none of the following directories exist yet**, even though `menu.ipxe`
-references every one of them:
+**Asset status vs `menu.ipxe`** (installer kernels/initrds and full ISOs — hundreds of MB to
+multiple GB each — are committed via git-lfs where a real source exists, see
+[[project_bootstrap_asset_sourcing_strategy]]/`benarbejde/asset_manifest.json`, rather than kept
+out of git entirely as this section originally said on 2026-07-10). Re-checked directly against
+the real tree and `at_have_ryggen_fri/check_bootstrap_assets.py`'s live output, 2026-07-27 — this
+table drifted out of sync with several sessions of fetch work between 2026-07-10 and now, this is
+the first full re-sweep since:
 
-| Menu entry | Expected directory | Needed for the PFY's plan (PVE/Ansible/DNS/FWL/Windows)? |
+| Menu entry | Expected directory | Status |
 |---|---|---|
-| Debian | `debian/trixie/x86_64/`, `debian/trixie/arm64/` | Already present — nothing to add |
-| 3CX Phone System | `3cx/` (installer initrd + preseed), kernel shared with `debian/bookworm/x86_64/` | Already present — nothing to add |
-| Arch Linux | `arch/x86_64/` | Already present — nothing to add |
-| GParted | `gparted/${arch}/` | No |
-| WinPE (x86_64/ARM64) | `winpe/x86_64/`, `winpe/arm64/` | No — Windows Server 2022 uses the unattend-XML path (§7), not this WinPE menu entry |
-| Ubuntu | `alpine/`, `ubuntu/` (Alpine dd-writer pattern — see the file's own header comment) | No |
-| Rocky Linux | `rockylinux/${arch}/` | No |
-| OpenBSD | `openbsd/7.5/${arch}/` | No |
-| Hardware Detection Tool | `hdt/` | No |
-| Spejder | `spejder/${arch}/` | No (separate external tool, see above) |
-| Auto-deploy | `autodeploy/` (optional — chain fails silently if absent) | No, unless you specifically want zero-touch MAC-based deploy |
+| Debian | `debian/trixie/x86_64/`, `debian/trixie/arm64/` | Present (git-lfs, fetched via manifest) |
+| 3CX Phone System | `3cx/` (installer initrd + preseed), kernel shared with `debian/bookworm/x86_64/` | Present (custom initrd git-lfs; kernel shared with Debian, see above) |
+| Arch Linux | `arch/x86_64/`, `arch/arm64/` | **x86_64 partially present** — `vmlinuz-linux` is a real committed kernel, but `airootfs.sfs`/`initramfs-linux` are still literal placeholder text files ("x86_64 airootfs.sfs goes here"), not real assets — this entry does not actually boot yet despite the directory existing. `arm64` doesn't exist at all. No fetch source (Robert's own custom build) — needs building, not fetching. |
+| Projekt klargoring | `proxmox/klargoring/` | Present (git-lfs, fetched via manifest) |
+| GParted | `gparted/x86_64/` | Present (git-lfs, fetched via manifest). `gparted/arm64/` will never exist — GParted Live has never published an arm64 build, this is not a gap. |
+| WinPE (x86_64/ARM64) | `winpe/x86_64/`, `winpe/arm64/` | wimboot loader binaries present (git-lfs, fetched via manifest). The actual `boot_x64.wim`/`boot_arm64.wim` can **never** be committed here at all, LFS or otherwise — Microsoft ADK licensing terms; build locally via `Build-WinPE.ps1` from a legitimately-licensed local ADK install. Not needed for the PFY's plan — Windows Server 2022 uses the unattend-XML path (§7), not this WinPE menu entry. |
+| Ubuntu | `alpine/`, `ubuntu/` (Alpine dd-writer pattern — see the file's own header comment) | Missing, and per Robert (2026-07-27) these `menu.ipxe` entries are **obsolete** — not a gap to fill, a stale menu entry to eventually remove. Not touched here; flagged, not fixed. |
+| Rocky Linux | `rockylinux/${arch}/` | Missing entirely — no fetch source configured yet. `rocky/install.ks` (a different, dead Anaconda-kickstart approach, see note below) is not a substitute. |
+| OpenBSD | `openbsd/7.9/${arch}/` | Present (git-lfs, fetched via manifest). Bumped from a hardcoded `7.5` in an earlier pass — `cdn.openbsd.org` no longer carries 7.5 at all. |
+| Hardware Detection Tool | `hdt/` | Missing — no fetch source configured. Lowest priority, not part of the PFY's plan. |
+| Spejder | `spejder/${arch}/` | Present (git-lfs, fetched via manifest; separate external tool, see above) |
+| Auto-deploy | `autodeploy/` (optional — chain fails silently if absent) | Missing, and fine to leave missing unless you specifically want zero-touch MAC-based deploy |
+
+For the exact live count of what's missing right now, run `at_have_ryggen_fri/run.sh` (check 25) or
+add `--strict` to fail the build on any gap — this table is a snapshot, that check is the source of
+truth.
 
 For the PFY's plan specifically: nothing above needs adding for Proxmox VE — it's no longer PXE-served
-at all (see §4.5/§6.3). Debian and Arch are already there. The only thing still needed for a real PVE
+at all (see §4.5/§6.3). Debian is already there in full; Arch's kernel is present but its
+airootfs/initramfs are still placeholder stubs (not part of the PFY's plan either way). The only thing still needed for a real PVE
 install is a genuine, untampered Proxmox VE ISO, mounted via iLO/iDRAC/BMC virtual media — if you don't
 have a copy already, ask whoever owns this repo — do not guess a source and download a potentially
 tampered installer image.
