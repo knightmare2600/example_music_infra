@@ -81,6 +81,20 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-07-28  Follow-up, later same day: full first-DC run against EXADCSCLD001 completed
+#               end to end for the first time ever (ok=143 changed=16 skipped=72 failed=0), but
+#               [B0] still showed the "PowerShell: not found" error masked by failed_when: false
+#               -- a second, separate leaking variable (ansible_shell_type, inherited "powershell"
+#               from this play's own vars: block) that ansible_connection: local alone never
+#               reset, same bug class ansible/tasks/example_music_freshness_gate.yml's own
+#               changelog documents from earlier the same day. This means B0's real "clear
+#               DefaultShell via plain ssh" logic has never actually executed on ANY run to date
+#               -- added ansible_shell_type: sh to B0 and both [A5] DNS probe tasks (which had the
+#               identical gap, unexercised so far since every live test has been a first-DC build
+#               that skips them). Swept the rest of windows_bootstrap/windows_dc/windows_adschema
+#               for the same pattern -- also found and fixed
+#               windows_adschema/tasks/ad_collection_check.yml and
+#               windows_dc/tasks/dc_source_resolution.yml.
 #   2026-07-28  Robert, live against EXADCSCLD001 again: target_hostname's vars_prompt had no
 #               default, so re-running with -e target=EXADCSCLD001 still meant retyping the
 #               exact same value a second time at the prompt. Defaulted it from target_hosts/
@@ -392,6 +406,12 @@
       become: false
       vars:
         ansible_connection: local
+        # Second, separate override needed alongside ansible_connection: local --
+        # this play's own ansible_shell_type: powershell (below) makes Ansible
+        # dispatch this task as if to a PowerShell target even while running
+        # locally -- found live 2026-07-28, same bug class as [B0] below and
+        # ansible/tasks/example_music_freshness_gate.yml's own changelog.
+        ansible_shell_type: sh
       when: not (host_role_code | upper == 'DCS' and is_first_dc | bool)
 
     - name: "[A5] Set site DC reachability fact"
@@ -411,6 +431,7 @@
       become: false
       vars:
         ansible_connection: local
+        ansible_shell_type: sh
       when:
         - not _site_dc_up | bool
         - not (host_role_code | upper == 'DCS' and is_first_dc | bool)
@@ -524,6 +545,19 @@
         # its very first real run, same day it was added -- see the two [A5]
         # probe tasks below, which had the identical latent bug already.
         ansible_connection: local
+        # Second, separate override, found live 2026-07-28 -- ansible_connection:
+        # local alone does NOT reset ansible_shell_type, and this play's own
+        # ansible_shell_type: powershell (below) made this task try to dispatch
+        # the ssh command as if to a PowerShell target even while running
+        # locally, failing with "PowerShell: not found" before the real ssh
+        # command ever ran at all -- masked by failed_when: false the whole
+        # time since 2026-07-15. This means B0's actual "clear DefaultShell via
+        # plain ssh" logic has never genuinely executed on any run to date;
+        # every prior "[B0] ran, [B1] connected fine" observation only proves
+        # [B1] didn't need B0's help, not that B0 itself worked. Same bug
+        # class as ansible/tasks/example_music_freshness_gate.yml's own
+        # changelog -- see that file for the full explanation.
+        ansible_shell_type: sh
 
     - name: "[B1] Gather facts (first SSH connection to target)"
       ansible.windows.setup:
