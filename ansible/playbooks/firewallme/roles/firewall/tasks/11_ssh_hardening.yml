@@ -6,6 +6,12 @@
 # Mirrors firewallme.sh SSH section: sshd_config hardening, banner,
 # ansible user authorized_keys.
 # Changelog:
+#   2026-07-28  Follow-up, same day: Robert asked to flip fw_ssh_password_auth_enabled's
+#               default itself (defaults/main.yml) to true -- password auth is now ON by
+#               default for every firewall run unless a specific run passes
+#               -e fw_ssh_password_auth_enabled=false. Supersedes the "opt-in true, default
+#               false" framing in the entry directly below; no code change needed in this
+#               file itself, both directives already template off the same variable.
 #   2026-07-28  Robert, test environment: PasswordAuthentication/
 #               ChallengeResponseAuthentication now gated on
 #               fw_ssh_password_auth_enabled (default false, matches real-world
