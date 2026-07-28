@@ -2,6 +2,15 @@
 
 Configures Linux firewall appliances (EXAFWL*). Ansible port of firewallme.sh.
 
+## Dependencies
+Install galaxy collections first:
+```
+ansible-galaxy collection install -r requirements.yml
+```
+(`ansible.posix` ships bundled with the full `ansible` package, already installed by this repo's
+own `bootstrap/setup-workstation-*` scripts -- normally already present, declared here for
+completeness on a control node set up a different way.)
+
 ## Usage
 
 Run from the `ansible/` root:

@@ -894,6 +894,20 @@ else
 fi
 
 # ------------------------------------------------------------------------------
+# 26. Ansible collection requirements
+# ------------------------------------------------------------------------------
+section "26. Collection requirements — check_collection_requirements.py"
+
+if colreq_out=$(python3 "${HERE}/check_collection_requirements.py"); then
+  echo "$colreq_out"
+  success "Every collection module used is declared in a requirements.yml, and every requirements.yml is documented with its install command."
+else
+  echo "$colreq_out"
+  fail "A collection module is used without a matching requirements.yml entry, or a requirements.yml exists undocumented -- see above."
+  FAILED_CHECKS+=("check_collection_requirements.py")
+fi
+
+# ------------------------------------------------------------------------------
 # Summary
 # ------------------------------------------------------------------------------
 section "Summary"
