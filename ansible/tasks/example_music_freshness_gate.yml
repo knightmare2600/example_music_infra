@@ -48,6 +48,22 @@
 # harness before any of these 12 playbooks are even run.
 # =============================================================================
 # Changelog:
+#   2026-07-28  Robert, live (EXAANSCLD001, running against EXADCSCLD001): the two `stat` tasks
+#               below failed with "Module result deserialization failed: No start of json char
+#               found" / stderr "PowerShell: not found" -- the `windows_nodes` group sets
+#               ansible_shell_type: powershell (group_vars/windows_nodes/connection.yml), and
+#               `vars: ansible_connection: local` only overrides the connection plugin, not that
+#               sibling variable, so the local delegate still built its module-execution wrapper
+#               assuming PowerShell even on this Linux control node. Same bug class as
+#               [[feedback_delegate_localhost_connection_override]] (2026-07-15), a different
+#               leaking variable this time. Added `ansible_shell_type: sh` alongside
+#               `ansible_connection: local` on both stat tasks. Swept every other
+#               delegate_to:localhost shared task file (ssh_key_preflight.yml,
+#               refresh_ansible_ssh_key.yml, ad_forest_facts.yml) for the same gap -- neither of
+#               the first two is ever called from a Windows-targeted play (Proxmox/TrueNAS/Salt/
+#               Linux/firewallme only), so not actually exposed; ad_forest_facts.yml only uses
+#               set_fact/lookup('file', ...)/debug, none of which ship a module to the remote
+#               shell at all, so shell_type is irrelevant there regardless of caller.
 #   2026-07-27  Initial file.
 # =============================================================================
 
@@ -59,6 +75,7 @@
   become: false
   vars:
     ansible_connection: local
+    ansible_shell_type: sh
   loop: "{{ example_music_gate_files }}"
   register: _em_gate_deployed
 
@@ -70,6 +87,7 @@
   become: false
   vars:
     ansible_connection: local
+    ansible_shell_type: sh
   loop: "{{ example_music_gate_files }}"
   register: _em_gate_source
 
