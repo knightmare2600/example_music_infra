@@ -5,8 +5,8 @@
 # =============================================================================
 # Gets a TrueNAS box under full, ongoing Ansible management: the dedicated
 # `ansible` automation account (matching every other host in this estate --
-# key/sudo-only, NOT the root account this play authenticates as on a first
-# run), hostname, and /etc/example-music/nodeinfo.json.
+# key/sudo-only, NOT the truenas_admin account this play authenticates as on
+# a first run), hostname, and /etc/example-music/nodeinfo.json.
 #
 # arensb.truenas.user manages TrueNAS's own middleware-tracked accounts, not
 # a plain /etc/passwd entry -- linux/tools.yml's ansible.builtin.user tasks
@@ -22,9 +22,10 @@
 # every other host's "ansible has passwordless sudo" convention in this
 # estate exactly.
 #
-# First run (before the ansible account exists, using root + password):
+# First run (before the ansible account exists, using truenas_admin + password --
+# root is never usable here, no root password is ever set on these boxes):
 #   ansible-playbook playbooks/truenas/playbooks/10-access.yml \
-#     --limit truenas_servers --user root -k
+#     --limit truenas_servers --user truenas_admin -k
 # Subsequent runs (ansible user + key):
 #   ansible-playbook playbooks/truenas/playbooks/10-access.yml \
 #     --limit truenas_servers
@@ -47,6 +48,13 @@
 # middleware daemon.
 # =============================================================================
 # Changelog:
+#   2026-07-28  Robert, live against EXANASFAL001: corrected the "root + password" first-run
+#               convention to truenas_admin -- root SSH was an unverified presumption, now
+#               confirmed wrong (no root password is ever set on these boxes; the web-UI/API
+#               account is truenas_admin). Also caught, same run: this box's control node
+#               didn't have arensb.truenas installed at all -- ansible-galaxy collection
+#               install -r playbooks/truenas/requirements.yml needed before this file can run,
+#               separate from the credentials fix.
 #   2026-07-22  Initial file.
 # =============================================================================
 

@@ -33,24 +33,24 @@
 # First run, brand new box where SSH doesn't work yet, credentials from
 # vault (group_vars/truenas_servers/vault.yml already populated):
 #   ansible-playbook playbooks/truenas/site.yml \
-#     -i configs/inventory --limit <hostname> --ask-vault-pass
+#     -i configs/inventory --limit <hostname> --user=truenas_admin -k --ask-vault-pass
 #
 # First run, vault not populated yet -- rest-bootstrap's own leading play
 # prompts interactively instead (blank username = truenas_admin):
 #   ansible-playbook playbooks/truenas/site.yml \
-#     -i configs/inventory --limit <hostname>
+#     -i configs/inventory --limit <hostname> --user=truenas_admin -k
 #
 #   # Either way, rest-bootstrap enables SSH, then 00-preflight/10-access/
-#   # 20-storage run as root+password automatically in the same invocation
-#   # -- but root's SSH password still needs supplying via -k or
-#   # ansible_password for THOSE stages; rest-bootstrap's REST call and the
-#   # SSH connection that follows are separate credentials even though
-#   # they're usually the same value in practice.
+#   # 20-storage run as truenas_admin+password automatically in the same
+#   # invocation -- but that account's SSH password still needs supplying
+#   # via -k or ansible_password for THOSE stages; rest-bootstrap's REST call
+#   # and the SSH connection that follows are separate credentials even
+#   # though they're usually the same value in practice.
 #
 # First run, SSH already enabled via the web-UI wizard (rest-bootstrap not
 # needed):
 #   ansible-playbook playbooks/truenas/site.yml \
-#     -i configs/inventory --limit <hostname> --user=root -k --skip-tags rest-bootstrap
+#     -i configs/inventory --limit <hostname> --user=truenas_admin -k --skip-tags rest-bootstrap
 #
 # Subsequent runs (ansible user + key):
 #   ansible-playbook playbooks/truenas/site.yml \
@@ -71,6 +71,12 @@
 # plain Debian box -- unverified either way.
 # =============================================================================
 # Changelog:
+#   2026-07-28  Robert, live against EXANASFAL001: corrected every usage example from
+#               --user=root to --user=truenas_admin -- root SSH was always a presumption
+#               (00-preflight.yml's own header flagged it as "not verified"), and it's now
+#               confirmed wrong: TrueNAS SCALE's web-UI/API account is truenas_admin, no root
+#               password is ever set on these boxes. Same correction applied throughout
+#               10-access.yml/00-rest-bootstrap.yml/00-preflight.yml/vault.yml's comments.
 #   2026-07-26  Added playbooks/00-rest-bootstrap.yml (enable SSH via REST
 #               API) + group_vars/truenas_servers/vault.yml, ahead of
 #               00-preflight.yml -- see that file's own header for why.
