@@ -81,6 +81,12 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-07-28  Robert, live against EXADCSCLD001 again: target_hostname's vars_prompt had no
+#               default, so re-running with -e target=EXADCSCLD001 still meant retyping the
+#               exact same value a second time at the prompt. Defaulted it from target_hosts/
+#               target (same priority as this play's own hosts: line) -- Enter now accepts it,
+#               typing something else still overrides, and clearing it still reaches A2's
+#               existing blank-triggers-live-$env:COMPUTERNAME-read path unchanged.
 #   2026-07-15  Robert, live against EXADCSCLD001 again: DefaultShell/
 #               DefaultShellCommandOption kept reappearing before Ansible's very
 #               first connection, three times over, despite 75-openssh.yml's fix
@@ -217,9 +223,14 @@
       prompt: "Domain join password (Domain Admin)"
 
     - name: target_hostname
-      prompt: "Target hostname (EXA[ROLE][SITE][NNN], e.g. EXADCSCLD001)"
+      prompt: "Target hostname (EXA[ROLE][SITE][NNN], e.g. EXADCSCLD001) — blank re-detects live"
       private: false
-      default: ""
+      # Pre-fills from -e target=/-e target_hosts= (same priority as this play's own
+      # hosts: line above) so re-running against an already-named host doesn't require
+      # retyping what was just given on the command line -- Enter accepts it, or clear
+      # it and hit Enter for A2's own blank-triggers-live-$env:COMPUTERNAME-read path
+      # below (still fully available, just no longer the only low-effort option).
+      default: "{{ target_hosts | default(target | default('')) }}"
 
     - name: is_first_dc_input
       prompt: "Is this the FIRST domain controller being built for this site? (yes/no — no for all other host types)"
