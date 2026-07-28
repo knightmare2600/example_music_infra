@@ -27,6 +27,28 @@ file's real location and confirmed to point at something that actually
 exists on disk -- the same "independent source of truth" tier-1 philosophy
 as check_references.py, applied to the one path pattern it doesn't cover.
 
+Found 2026-07-28, a second variant of the same gap: 11 of 12 real callers of
+ansible/tasks/example_music_freshness_gate.yml passed "{{ playbook_dir
+}}/../.." (etc) as example_music_gate_repo_root -- a BARE playbook_dir
+expression with no trailing path fragment at all, assigned to an
+intermediate vars: entry. The suffix ("/benarbejde/{{ item }}") is only
+appended later, inside the shared gate file itself, using a different
+variable name entirely -- so the original PATTERN below (which requires a
+literal trailing segment in the SAME string) never matched these lines,
+and the bug (every one but bind9-dns.yml was off by exactly one level
+short) was invisible to this check the whole time it existed. Caught live,
+not by this harness -- windows_bootstrap/site.yml crashed against a real
+control node with a "missing benarbejde/sites.csv" false positive. Added
+GATE_ROOT_PATTERN below to close this specific instance of the gap: any
+bare "{{ playbook_dir }}" plus one or more /.. segments, assigned to
+example_music_gate_repo_root, is resolved and confirmed to contain a real
+benarbejde/ directory (the one suffix this variable is ever actually
+combined with). Both patterns skip comment lines (a leading # after
+stripping whitespace) -- example_music_freshness_gate.yml's own header has
+a worked usage example containing this exact literal string, which would
+otherwise self-match as a phantom failure the same way a similar comment
+once did for a different check in this harness.
+
 Exit code: 0 if every playbook_dir-relative path resolves, 1 otherwise.
 """
 import re
@@ -40,6 +62,13 @@ ANSIBLE_DIR = REPO_ROOT / "ansible"
 # fragment up to whitespace, a quote, or a closing brace.
 PATTERN = re.compile(r"\{\{\s*playbook_dir\s*\}\}((?:/\.\.)+)/([^\s\"'{}]+)")
 
+# example_music_gate_repo_root: "{{ playbook_dir }}(/..)+ " -- bare, no
+# trailing path fragment, only ever combined with /benarbejde later inside
+# ansible/tasks/example_music_freshness_gate.yml itself.
+GATE_ROOT_PATTERN = re.compile(
+    r"example_music_gate_repo_root:\s*[\"']\{\{\s*playbook_dir\s*\}\}((?:/\.\.)+)[\"']"
+)
+
 
 def main():
     checked = 0
@@ -47,14 +76,25 @@ def main():
 
     for rel in subprocess_git_ls_files():
         path = REPO_ROOT / rel
-        text = path.read_text(encoding="utf-8", errors="replace")
-        for match in PATTERN.finditer(text):
-            up_segments, tail = match.groups()
-            checked += 1
-            levels = up_segments.count("/..")
-            resolved = (path.parent / ("../" * levels) / tail).resolve()
-            if not resolved.exists():
-                failures.append((rel, match.group(0), levels, resolved))
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.strip().startswith("#"):
+                continue
+
+            for match in PATTERN.finditer(line):
+                up_segments, tail = match.groups()
+                checked += 1
+                levels = up_segments.count("/..")
+                resolved = (path.parent / ("../" * levels) / tail).resolve()
+                if not resolved.exists():
+                    failures.append((rel, match.group(0), levels, resolved))
+
+            for match in GATE_ROOT_PATTERN.finditer(line):
+                up_segments = match.group(1)
+                checked += 1
+                levels = up_segments.count("/..")
+                resolved = (path.parent / ("../" * levels) / "benarbejde").resolve()
+                if not resolved.exists():
+                    failures.append((rel, match.group(0), levels, resolved))
 
     print(f"Checked {checked} playbook_dir-relative path expression(s).")
 
