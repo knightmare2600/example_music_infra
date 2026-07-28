@@ -9,7 +9,7 @@
 #
 #   Play 1 — real SSH keypair connectivity check (tasks/ssh_key_preflight.yml),
 #            auto-skipped for the documented password-authenticated
-#            first-ever-onboard path (site.yml run as --user=root -k).
+#            first-ever-onboard path (site.yml run as --user=truenas_admin -k).
 #   Play 2 — hostname parse (EXANAS<SITE>001 -- tasks/hostname_facts.yml,
 #            already generic across every EXA[ROLE][SITE][NNN] hostname, no
 #            TrueNAS-specific change needed) + sites.csv lookup for
@@ -24,14 +24,20 @@
 #
 # Tags: preflight
 #
-# PRESUMPTION, not verified: this assumes root SSH (or an equivalent account)
-# is already reachable by the time this runs -- i.e. Robert has already
-# completed TrueNAS's own web-UI first-run setup (admin password, static
-# .19 IP, SSH service enabled) out of band, the same "already-installed,
-# already-networked" scope arensb/ansible-truenas itself documents. This
-# playbook has no bootstrap/install capability and never will.
+# CONFIRMED live 2026-07-28 against EXANASFAL001 (was a presumption before this): SSH access
+# for the first-ever-onboard path is via truenas_admin, not root -- no root password is ever
+# set on these boxes, TrueNAS SCALE's web-UI/API account is truenas_admin throughout. This
+# still assumes Robert has already completed TrueNAS's own web-UI first-run setup (admin
+# password, static .19 IP or a reachable DHCP address, SSH service enabled via the wizard or
+# 00-rest-bootstrap.yml) out of band, the same "already-installed, already-networked" scope
+# arensb/ansible-truenas itself documents. This playbook has no bootstrap/install capability
+# and never will.
 # =============================================================================
 # Changelog:
+#   2026-07-28  Robert, live against EXANASFAL001: the "PRESUMPTION, not verified" note above
+#               resolved -- root SSH was never usable (no root password ever set on these
+#               boxes), truenas_admin is the correct first-touch account. Confirmed, not just
+#               presumed, going forward.
 #   2026-07-22  Initial file.
 # =============================================================================
 
@@ -43,9 +49,9 @@
       include_tasks: ../../../tasks/ssh_key_preflight.yml
       vars:
         # Auto-skip for the documented password-authenticated first-ever-onboard
-        # path (site.yml run as --user=root -k) -- a broken/missing private key
-        # is irrelevant when this run isn't using one at all. Neither var is
-        # ever set on a genuinely key-based run.
+        # path (site.yml run as --user=truenas_admin -k) -- a broken/missing
+        # private key is irrelevant when this run isn't using one at all.
+        # Neither var is ever set on a genuinely key-based run.
         ssh_key_preflight_skip: "{{ (ansible_ssh_pass is defined) or ((ansible_password | default('')) != '') }}"
       tags: preflight
 
