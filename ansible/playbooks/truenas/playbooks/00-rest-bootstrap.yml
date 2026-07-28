@@ -193,6 +193,19 @@
 #   # DHCP address here; leave blank only if already on the target address.
 # =============================================================================
 # Changelog:
+#   2026-07-28  Second follow-up, same day, real live re-run against EXANASFAL001 with the
+#               commit-before-gateway reorder in place: step 7 (commit) itself now timed out
+#               after 30s ("Connection failure: The read operation timed out") -- this earlier
+#               changelog entry's own comment ("this POST's own request/response completes
+#               over the connection already established there") was wrong, corrected now.
+#               Committing IS the moment TrueNAS drops truenas_current_ip and switches to the
+#               new static-only address, so the response has nowhere to travel back over once
+#               that happens mid-request -- a timeout here is the EXPECTED outcome of a
+#               successful commit, not a real failure. Added ignore_errors: true to the commit
+#               task (the poll task right after it is the actual proof commit worked, not this
+#               task's own HTTP status) plus a debug line reporting which outcome happened, so
+#               a genuinely different failure doesn't get silently swallowed alongside the
+#               expected one. Not yet re-run live to confirm -- next step.
 #   2026-07-28  Follow-up, same day, real live run against EXANASFAL001: interface commit +
 #               gateway/DNS steps reordered. The old order set the gateway BEFORE committing
 #               the interface change -- TrueNAS's gateway validation checks LIVE interface
@@ -500,11 +513,17 @@
         ansible_connection: local
 
     - name: "7 | Commit the interface change (auto-reverts if checkin doesn't happen)"
-      # Still targets truenas_current_ip -- this POST's own request/response completes over
-      # the connection already established there before the interface actually switches
-      # addresses at the OS level. Starts TrueNAS's own checkin_timeout=300s revert clock;
-      # everything from here to the checkin task at the bottom needs to complete within that
-      # window (a handful of HTTP calls, comfortably inside it).
+      # Still targets truenas_current_ip. CORRECTED 2026-07-28, confirmed live: this call's
+      # own HTTP response does NOT reliably come back -- committing IS the moment TrueNAS
+      # drops truenas_current_ip and switches ens18 to the new static-only address, so the
+      # response has nowhere to travel back over once that happens mid-request. Confirmed
+      # live against EXANASFAL001: 30s timeout, "Connection failure: The read operation
+      # timed out" -- not a real failure, the expected outcome of a successful commit.
+      # ignore_errors: true below is deliberate -- the poll task right after this one is the
+      # actual proof the commit worked (does the box answer at the new address at all), not
+      # this task's own HTTP status. Starts TrueNAS's own checkin_timeout=300s revert clock
+      # regardless of whether this response makes it back; everything from here to the
+      # checkin task at the bottom needs to complete within that window.
       ansible.builtin.uri:
         url: "https://{{ truenas_current_ip }}/api/v2.0/interface/commit"
         method: POST
@@ -521,8 +540,21 @@
         - not truenas_ip_already_aligned | bool
         - not ansible_check_mode
       delegate_to: localhost
+      ignore_errors: true
+      register: _truenas_commit_result
       vars:
         ansible_connection: local
+
+    - name: "7 | Report commit call outcome (informational -- the poll below is the real proof)"
+      ansible.builtin.debug:
+        msg: >-
+          Commit call {{ 'returned cleanly' if _truenas_commit_result is success else
+          ('did not return a clean response (' ~ (_truenas_commit_result.msg | default('unknown')) ~
+          ') -- expected if the interface actually switched addresses mid-request') }}.
+          Polling {{ truenas_target_ip }} next to confirm either way.
+      when:
+        - not truenas_ip_already_aligned | bool
+        - not ansible_check_mode
 
     - name: "8 | Poll the target IP until the REST API answers there"
       ansible.builtin.uri:
