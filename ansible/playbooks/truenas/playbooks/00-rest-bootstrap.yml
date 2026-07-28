@@ -193,6 +193,12 @@
 #   # DHCP address here; leave blank only if already on the target address.
 # =============================================================================
 # Changelog:
+#   2026-07-28  Robert, live against EXANASFAL001: the 2026-07-26 entry below said root was
+#               "a different account, used later by 10-access.yml's SSH first-touch" -- that
+#               was itself wrong, corrected now. No root password is ever set on these boxes;
+#               truenas_admin is the account for BOTH this REST call and the SSH first-touch
+#               stage. site.yml/10-access.yml/00-preflight.yml/vault.yml's own comments and
+#               usage examples corrected to match, this run.
 #   2026-07-26  Robert confirmed directly: the web-UI first-run wizard's local admin
 #               account is always truenas_admin, not root -- root is a different
 #               account, used later by 10-access.yml's SSH first-touch, not this REST
@@ -583,5 +589,5 @@
           - "  TrueNAS version : {{ _truenas_system_info.json.version | default('unknown') }}"
           - "  SSH service     : state={{ _truenas_ssh_service.state }} enable={{ _truenas_ssh_service.enable }} (before this run)"
           - "  IP alignment    : {{ 'already on ' ~ truenas_target_ip ~ ', nothing to do' if truenas_ip_already_aligned | bool else (truenas_current_ip ~ ' -> ' ~ truenas_target_ip ~ ' (checked in)' if not ansible_check_mode else 'not run in check mode') }}"
-          - "  Next stage      : re-run as root+password over SSH (-k) to continue via 00-preflight.yml/10-access.yml"
+          - "  Next stage      : re-run as truenas_admin+password over SSH (-k) to continue via 00-preflight.yml/10-access.yml"
           - "════════════════════════════════════════════════════════════════"

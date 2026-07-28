@@ -38,6 +38,11 @@
 # =============================================================================
 # Version history
 # =============================================================================
+# v1.0.2  2026-07-28  The v1.0.1 note below said root was "the SSH first-touch account
+#                     10-access.yml uses, a different interface entirely" -- that was itself
+#                     wrong, confirmed live against EXANASFAL001: no root password is ever set
+#                     on these boxes, truenas_admin is the account for BOTH the REST call this
+#                     file's variables serve AND the SSH first-touch stage in 10-access.yml.
 # v1.0.1  2026-07-26  Fixed the username default -- confirmed directly by Robert that
 #                     the web-UI first-run wizard's local admin account is always
 #                     truenas_admin, not root (root is the SSH first-touch account
