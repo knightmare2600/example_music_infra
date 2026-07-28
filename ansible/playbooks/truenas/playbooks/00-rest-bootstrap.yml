@@ -193,6 +193,21 @@
 #   # DHCP address here; leave blank only if already on the target address.
 # =============================================================================
 # Changelog:
+#   2026-07-28  Follow-up, same day, real live run against EXANASFAL001: interface commit +
+#               gateway/DNS steps reordered. The old order set the gateway BEFORE committing
+#               the interface change -- TrueNAS's gateway validation checks LIVE interface
+#               state, not the pending/staged change, so it 422'd with "Gateway ... is
+#               unreachable" (the box genuinely wasn't on the target subnet yet at that
+#               point). Also, PUT /interface/id/{id}'s aliases list REPLACES the interface's
+#               addresses entirely -- once committed, truenas_current_ip (the old DHCP
+#               address) stops answering at all, not just loses its gateway. Fixed by moving
+#               commit immediately after the interface-alias PUT, then polling
+#               truenas_target_ip until it answers, THEN setting gateway/DNS there (not
+#               truenas_current_ip), THEN checkin -- checkin is now deliberately the last
+#               step, only confirming (cancelling TrueNAS's own auto-revert) once BOTH the
+#               interface move and the gateway/DNS update have succeeded, so a failure in
+#               either one falls through to TrueNAS's own revert instead of confirming a
+#               half-configured box. Not yet re-run live to confirm -- next step.
 #   2026-07-28  Robert, live against EXANASFAL001: the 2026-07-26 entry below said root was
 #               "a different account, used later by 10-access.yml's SSH first-touch" -- that
 #               was itself wrong, corrected now. No root password is ever set on these boxes;
@@ -452,6 +467,16 @@
       when: not truenas_ip_already_aligned | bool
 
     - name: "6 | Set the target static alias + disable DHCP on that interface"
+      # PUT replaces this interface's whole alias list -- once committed (step 7), the
+      # DHCP-assigned truenas_current_ip is gone, not just supplemented. This task itself
+      # still targets truenas_current_ip because at THIS point the change is only staged
+      # (TrueNAS's own "pending interface changes" queue), not yet applied -- confirmed live
+      # 2026-07-28 against EXANASFAL001: GET /interface showed the new alias under the
+      # top-level (pending) `aliases` while `state.aliases` (live) still showed the old DHCP
+      # address, and PUT /network/configuration's gateway validation rejected the new
+      # gateway as "unreachable" at that point -- it checks LIVE interface state, not
+      # pending. This is why gateway/DNS moved below, after commit + poll confirm the box is
+      # actually live on the new subnet.
       ansible.builtin.uri:
         url: "https://{{ truenas_current_ip }}/api/v2.0/interface/id/{{ _truenas_target_iface }}"
         method: PUT
@@ -474,27 +499,12 @@
       vars:
         ansible_connection: local
 
-    - name: "7 | Set the default gateway and primary DNS"
-      ansible.builtin.uri:
-        url: "https://{{ truenas_current_ip }}/api/v2.0/network/configuration"
-        method: PUT
-        user: "{{ truenas_rest_bootstrap_user }}"
-        password: "{{ truenas_rest_bootstrap_password }}"
-        force_basic_auth: true
-        validate_certs: "{{ truenas_rest_validate_certs }}"
-        body_format: json
-        body:
-          ipv4gateway: "{{ _truenas_gateway }}"
-          nameserver1: "192.168.139.8"
-        status_code: 200
-      when:
-        - not truenas_ip_already_aligned | bool
-        - not ansible_check_mode
-      delegate_to: localhost
-      vars:
-        ansible_connection: local
-
-    - name: "8 | Commit the interface change (auto-reverts if checkin doesn't happen)"
+    - name: "7 | Commit the interface change (auto-reverts if checkin doesn't happen)"
+      # Still targets truenas_current_ip -- this POST's own request/response completes over
+      # the connection already established there before the interface actually switches
+      # addresses at the OS level. Starts TrueNAS's own checkin_timeout=300s revert clock;
+      # everything from here to the checkin task at the bottom needs to complete within that
+      # window (a handful of HTTP calls, comfortably inside it).
       ansible.builtin.uri:
         url: "https://{{ truenas_current_ip }}/api/v2.0/interface/commit"
         method: POST
@@ -514,7 +524,7 @@
       vars:
         ansible_connection: local
 
-    - name: "9 | Poll the target IP until the REST API answers there"
+    - name: "8 | Poll the target IP until the REST API answers there"
       ansible.builtin.uri:
         url: "https://{{ truenas_target_ip }}/api/v2.0/system/info"
         method: GET
@@ -537,7 +547,40 @@
       vars:
         ansible_connection: local
 
+    - name: "9 | Set the default gateway and primary DNS (now that the box is live there)"
+      # Deliberately runs against truenas_target_ip, AFTER commit + a confirmed-reachable
+      # poll -- not truenas_current_ip, and not before commit. TrueNAS's gateway validation
+      # checks LIVE interface state; before commit, the box isn't actually on the target
+      # subnet yet and 422s with "Gateway ... is unreachable" (confirmed live 2026-07-28).
+      # No ignore_errors here on purpose: if this fails, the play stops before the checkin
+      # task below ever runs, so TrueNAS's own checkin_timeout auto-revert is what undoes
+      # the interface change -- deliberately not confirming (checking in) a half-finished
+      # config where the interface moved but the gateway didn't.
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip }}/api/v2.0/network/configuration"
+        method: PUT
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        body_format: json
+        body:
+          ipv4gateway: "{{ _truenas_gateway }}"
+          nameserver1: "192.168.139.8"
+        status_code: 200
+      when:
+        - not truenas_ip_already_aligned | bool
+        - not ansible_check_mode
+        - _truenas_target_reachable is success
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
     - name: "10 | Checkin — confirm the new config works, cancel the auto-revert"
+      # Deliberately the LAST step before this changes from "provisional" to "confirmed" --
+      # only fires once BOTH the interface move (poll success above) AND the gateway/DNS
+      # update (task above) have succeeded, so a failure in either one falls through to
+      # TrueNAS's own auto-revert instead of leaving a half-configured box confirmed as-is.
       ansible.builtin.uri:
         url: "https://{{ truenas_target_ip }}/api/v2.0/interface/checkin"
         method: GET
@@ -554,7 +597,7 @@
       vars:
         ansible_connection: local
 
-    - name: "10 | FAIL — target IP never came up, TrueNAS will auto-revert"
+    - name: "11 | FAIL — target IP never came up, TrueNAS will auto-revert"
       ansible.builtin.fail:
         msg: >-
           {{ truenas_target_ip }} never answered after committing the
