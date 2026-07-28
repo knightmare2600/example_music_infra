@@ -1,0 +1,10 @@
+# requirements.yml
+# Install with: ansible-galaxy collection install -r requirements.yml
+#
+# These collections provide the Windows modules used by windows_hygiene.
+
+collections:
+  - name: ansible.windows        # win_regedit, win_shell
+    version: ">=2.0.0"
+  - name: chocolatey.chocolatey  # win_chocolatey
+    version: ">=1.5.0"

@@ -27,6 +27,12 @@ across the whole fleet.
 
 ---
 
+## Dependencies
+Install galaxy collections first:
+```
+ansible-galaxy collection install -r requirements.yml
+```
+
 ## Usage
 
 Run from the `ansible/` root.
