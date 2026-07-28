@@ -1,11 +1,19 @@
 ---
 # =============================================================================
-# roles/firewall/tasks/10_ssh_hardening.yml
+# roles/firewall/tasks/11_ssh_hardening.yml
 # Example Music Limited — SSH hardening and banner
 # =============================================================================
 # Mirrors firewallme.sh SSH section: sshd_config hardening, banner,
 # ansible user authorized_keys.
 # Changelog:
+#   2026-07-28  Robert, test environment: PasswordAuthentication/
+#               ChallengeResponseAuthentication now gated on
+#               fw_ssh_password_auth_enabled (default false, matches real-world
+#               posture -- key-only stays the default for every firewall).
+#               Override with -e fw_ssh_password_auth_enabled=true for test
+#               boxes only, never by changing this default itself. Corrected
+#               this file's own stale header filename (said 10_, file is 11_)
+#               while touching it.
 #   2026-06-20  Initial file
 #   2026-06-29  Replace static /etc/motd with dynamic MOTD via PAM update-motd.d;
 #               add /etc/update-motd.d/10-examplemusic (ASCII art, network table,
@@ -27,8 +35,8 @@
     block: |
       # Example Music Limited — {{ inventory_hostname }}
       PermitRootLogin              no
-      PasswordAuthentication       no
-      ChallengeResponseAuthentication no
+      PasswordAuthentication       {{ 'yes' if fw_ssh_password_auth_enabled | default(false) else 'no' }}
+      ChallengeResponseAuthentication {{ 'yes' if fw_ssh_password_auth_enabled | default(false) else 'no' }}
       PubkeyAuthentication         yes
       AuthorizedKeysFile           .ssh/authorized_keys
       PermitEmptyPasswords         no

@@ -34,6 +34,14 @@ fw_wan_ssh_enabled: false
 # Source IP restriction for WAN SSH (empty = allow all)
 fw_wan_ssh_src: ""
 
+# Whether sshd accepts password/keyboard-interactive auth at all, on top of
+# the key-only default. FALSE (key-only, PasswordAuthentication no) matches
+# real-world security posture and is the default for every firewall. Robert's
+# explicit call, 2026-07-28: override to true for test-environment boxes only
+# (-e fw_ssh_password_auth_enabled=true) -- never flip this default itself,
+# see feedback_security_posture_is_roberts_call in project memory.
+fw_ssh_password_auth_enabled: false
+
 # Central BIND9 DNS server (EXADNSVRK001) and internet fallback (Quad9, survives
 # a CLD/VRK outage) — set as facts in 00_preflight_1_derive.yml from site_services.yml
 # (ansible/configs/inventory/group_vars/all/site_services.yml, generated from devices.csv), not
