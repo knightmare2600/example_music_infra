@@ -39,6 +39,12 @@
 # the target DC has Ansible connectivity.
 # =============================================================================
 # Changelog:
+#   2026-07-28  Added ansible_shell_type: sh alongside the existing ansible_connection: local
+#               override -- found live, same bug class as
+#               ansible/tasks/example_music_freshness_gate.yml's own changelog: the connection
+#               override alone doesn't reset ansible_shell_type, and windows_nodes' inherited
+#               ansible_shell_type: powershell made this task fail with "PowerShell: not found"
+#               (masked by ignore_errors: true) instead of ever actually probing candidate DCs.
 #   2026-06-25  Initial file
 #   2026-07-06  Forest-root eligibility was hardcoded to dc_site_role ==
 #               'hub_cld' (i.e. only the CLD site could ever become forest
@@ -124,8 +130,15 @@
     # ansible_connection: local default, so Ansible would try to SSH from
     # the control node to itself as the Windows Administrator user. See
     # windows_bootstrap/playbooks/00-preflight.yml's 2026-07-15 changelog for
-    # the live failure this exact pattern caused there.
+    # the live failure this exact pattern caused there. ansible_shell_type: sh
+    # is a second, separate override needed alongside it -- ansible_connection:
+    # local alone doesn't reset ansible_shell_type, and windows_nodes'
+    # ansible_shell_type: powershell makes this task try to dispatch via
+    # PowerShell even while running locally on this Linux control node --
+    # found live 2026-07-28, see example_music_freshness_gate.yml's changelog
+    # for the first instance of this exact bug class.
     ansible_connection: local
+    ansible_shell_type: sh
 
 - name: "[Source] Show probe results"
   debug:
