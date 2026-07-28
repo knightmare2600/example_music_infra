@@ -1,0 +1,11 @@
+# requirements.yml
+# Install with: ansible-galaxy collection install -r requirements.yml
+#
+# These collections provide the Windows modules used by windows_dc's DC
+# promotion chain (Install-ADDSForest/-DomainController is run via
+# win_shell -- raw PowerShell, not a dedicated microsoft.ad module -- but
+# win_feature/win_reboot/win_shell themselves still come from ansible.windows).
+
+collections:
+  - name: ansible.windows        # win_feature, win_reboot, win_shell
+    version: ">=2.0.0"

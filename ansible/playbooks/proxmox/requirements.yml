@@ -1,0 +1,13 @@
+# requirements.yml
+# Install with: ansible-galaxy collection install -r requirements.yml
+#
+# ansible.posix ships bundled with the full "ansible" package (as opposed to
+# the minimal "ansible-core") -- this repo's own bootstrap/setup-workstation-*
+# scripts install that full package, so this collection is normally already
+# present without a separate install step. Declared explicitly anyway for
+# consistency and for any control node set up a different way (e.g. a bare
+# ansible-core install), where it would genuinely be missing.
+
+collections:
+  - name: ansible.posix          # authorized_key
+    version: ">=1.5.0"

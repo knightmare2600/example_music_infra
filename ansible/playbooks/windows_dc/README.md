@@ -60,6 +60,12 @@ In-between/minor steps, if ever needed, would be `11`/`12`/`13`, `21`/`22`/`23`,
 
 ---
 
+## Dependencies
+Install galaxy collections first:
+```
+ansible-galaxy collection install -r requirements.yml
+```
+
 ## Usage
 
 Run from the `ansible/` root. The DC onboarding inventory for each site lives in

@@ -35,6 +35,15 @@ quick file-map, not a duplicate of that doc; keep the detailed procedure there.
 
 ---
 
+## Dependencies
+Install galaxy collections first:
+```
+ansible-galaxy collection install -r requirements.yml
+```
+(`ansible.posix` ships bundled with the full `ansible` package, already installed by this repo's
+own `bootstrap/setup-workstation-*` scripts -- normally already present, declared here for
+completeness on a control node set up a different way.)
+
 ## Usage
 
 Run from the `ansible/` root — see `docs/proxmox/Procedure-PVE-Node-Onboarding.md` for the full
