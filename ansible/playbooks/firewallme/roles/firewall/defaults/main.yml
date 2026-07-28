@@ -5,6 +5,10 @@
 # =============================================================================
 # Override any of these in group_vars, host_vars, or -e at runtime.
 # Changelog:
+#   2026-07-28  fw_ssh_password_auth_enabled default flipped false -> true, Robert's explicit
+#               call -- password auth now on by default for every firewall run, opt out per
+#               run with -e fw_ssh_password_auth_enabled=false. Shipped default-false the same
+#               day, a few hours earlier, before this follow-up ask.
 #   2026-06-20  Initial file
 #   2026-06-26  Add sites_csv_path default for dynamic wg_site_octets loading
 # =============================================================================
@@ -35,12 +39,14 @@ fw_wan_ssh_enabled: false
 fw_wan_ssh_src: ""
 
 # Whether sshd accepts password/keyboard-interactive auth at all, on top of
-# the key-only default. FALSE (key-only, PasswordAuthentication no) matches
-# real-world security posture and is the default for every firewall. Robert's
-# explicit call, 2026-07-28: override to true for test-environment boxes only
-# (-e fw_ssh_password_auth_enabled=true) -- never flip this default itself,
-# see feedback_security_posture_is_roberts_call in project memory.
-fw_ssh_password_auth_enabled: false
+# key auth. TRUE (PasswordAuthentication yes) by Robert's explicit call,
+# 2026-07-28 -- applies to every firewall run unless a specific run
+# overrides it with -e fw_ssh_password_auth_enabled=false. Originally shipped
+# default-false/opt-in-true the same day; Robert then asked to flip the
+# default itself, so this now needs an explicit =false per run to get
+# key-only PasswordAuthentication no. See feedback_security_posture_is_roberts_call
+# in project memory -- this default is his call, not mine, and he's made it.
+fw_ssh_password_auth_enabled: true
 
 # Central BIND9 DNS server (EXADNSVRK001) and internet fallback (Quad9, survives
 # a CLD/VRK outage) — set as facts in 00_preflight_1_derive.yml from site_services.yml
