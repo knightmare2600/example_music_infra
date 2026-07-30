@@ -56,7 +56,7 @@ graph TD
 
 ```mermaid
 graph TD
-    T_VRK{{"☁️ VRK — vRACK, 192.168.139.0/24"}}
+    T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRCLD001 · RTR · .1"]
     T_SWI["🔀 EXASWICLD001 · SWI 1 · .250"]
     T_BMC1["🔧 EXABMCCLD001 · BMC 1 · .2"]
@@ -79,17 +79,39 @@ graph TD
     T_RTR --> T_BMC2
     T_RTR --> T_PVE1
     T_RTR --> T_PVE2
+    T_SWI ~~~ T_BMC1
+    T_BMC1 ~~~ T_BMC2
     T_PVE1 --> T_OTHER
     T_PVE1 --> T_ANS
+    T_ANS ~~~ T_DCS
     T_PVE1 --> T_DCS
+    T_DCS ~~~ T_NAS
     T_PVE1 --> T_NAS
+    T_NAS ~~~ T_SVR
     T_PVE1 --> T_SVR
+    T_SVR ~~~ T_SLT
     T_PVE1 --> T_SLT
+    T_SLT ~~~ T_PBX
     T_PVE1 --> T_PBX
+    T_PBX ~~~ T_UFC
     T_PVE1 --> T_UFC
+    T_UFC ~~~ T_FWL
     T_PVE1 --> T_FWL
 
-    style T_VRK fill:#56B4E9,stroke:#0072B2,color:#000000
-    style T_BMC2 fill:#E69F00,stroke:#D55E00,color:#000000,stroke-dasharray: 5 5
-    style T_PVE2 fill:#E69F00,stroke:#D55E00,color:#000000,stroke-dasharray: 5 5
+    style T_VRK fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_RTR fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_SWI fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_BMC1 fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_BMC2 fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_PVE1 fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_PVE2 fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_OTHER fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_ANS fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_DCS fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_NAS fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_SVR fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_SLT fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_PBX fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_UFC fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_FWL fill:#E69F00,stroke:#D55E00,color:#000000
 ```
