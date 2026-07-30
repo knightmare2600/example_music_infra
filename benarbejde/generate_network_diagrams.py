@@ -45,11 +45,14 @@ DOCS_DIR = HERE.parent / "docs" / "network-diagram"
 # prototype for an eventual per-site template -- same "no diagram section here" treatment as
 # BRD/VRK above, not an oversight. Revisit if/when the topology-sketch approach gets its own
 # generator instead of being hand-maintained.
+# ODE dropped from danmark.md's list the same day for the same reason -- it's the second
+# hand-drawn topology sketch, proving the pattern out on a "regular" (non-CLD) site. The other 8
+# Danish sites in that file still generate normally; only ODE's block is excluded.
 REGION_FILES = {
   "cld.md": [],
   "scotland.md": ["FAL", "EDI", "GLA", "CLY", "DUN", "PER", "ABD"],
   "england.md": ["LND", "BIR", "MCR", "LIV", "NEW", "SHE", "HAL", "HUL", "COV"],
-  "danmark.md": ["CPH", "ODE", "KGE", "FAX", "KOR", "AAR", "FRE", "FRD", "NYB"],
+  "danmark.md": ["CPH", "KGE", "FAX", "KOR", "AAR", "FRE", "FRD", "NYB"],
   "deutschland.md": ["BON", "BER", "MUN", "DRS", "DUS"],
   "sverige.md": ["GOT"],
   "norge.md": ["OSL"],
