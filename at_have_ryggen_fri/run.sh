@@ -26,7 +26,7 @@
 #      windows_bootstrap/00-preflight.yml's Phase H2 depends on).
 #   6. check_generated_freshness.py -- configs/inventory/*.ini, site_services.yml,
 #      begyndelse.json, and salt/pillar/sites.sls are re-derivable byte-for-byte
-#      from benarbejde/sites.csv+devices.csv+address_policy.json+ad_forest.json --
+#      from benarbejde/sites.csv+devices.csv+address_policy.csv+ad_forest.json --
 #      catches "edited the source, forgot to regenerate."
 #   7. check_doc_index.py   -- every relative link in every git-tracked *.md
 #      file in the whole repo (not just docs/) resolves to a real file
@@ -77,7 +77,7 @@
 #      file per region -- split 2026-07-13, see docs/network-diagram.md's
 #      own header for why; wrapped in %% GENERATED:NEW-NETWORK:<SITE>:
 #      START/END marker comments) is re-derivable byte-for-byte from
-#      benarbejde/sites.csv+devices.csv+address_policy.json via
+#      benarbejde/sites.csv+devices.csv+address_policy.csv via
 #      generate_network_diagrams.py -- same "edited the source, forgot to
 #      regenerate" class check 6 already catches for the Ansible inventory,
 #      applied to the diagrams.
@@ -157,7 +157,7 @@
 #  24. check_control_node_freshness.py -- if /etc/example-music/ exists on
 #      the machine this harness is being run from, hash-compares every file
 #      linux/tools.yml deploys there (sites.csv, devices.csv, role_codes.csv,
-#      address_policy.json, ad_forest.json, ad_groups.json, ad_users.json,
+#      address_policy.csv, ad_forest.json, ad_groups.json, ad_users.json,
 #      ad_computers.json) against its benarbejde/ source. Skips cleanly if
 #      /etc/example-music/ doesn't exist (not the control node). Added
 #      2026-07-27 after bind9-dns.yml crashed live with a raw Python

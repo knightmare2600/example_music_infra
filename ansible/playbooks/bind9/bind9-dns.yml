@@ -1175,7 +1175,7 @@
           }}
 
     # devices.csv is exceptions-only as of 2026-07-07 (see generate_inventory.py and
-    # address_policy.json). all_devices (the merged, deduplicated device list -- standard-slot
+    # address_policy.csv). all_devices (the merged, deduplicated device list -- standard-slot
     # synthesis + devices.csv exceptions, full_ip resolved, BRD/VRK special-cased) is computed
     # once, in Play 1's pre_tasks (tags: always, so it runs regardless of which tags this play
     # actually needs) -- shared as a fact rather than recomputed here a second time.

@@ -42,18 +42,25 @@ graph TD
 ## 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
 
 ```mermaid
+%% GENERATED:TOPOLOGY:CLD:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRCLD001 · RTR · 192.168.69.1"]
+    T_RTR["📡 EXARTRCLD001 · RTR 1 · 192.168.69.1"]
+    T_VRK --> T_RTR
+    T_BMC["🔧 EXABMCCLD001 · BMC 1 · 192.168.69.2"]
+    T_RTR --> T_BMC
+    T_PVE["🗂️ EXAPVECLD001 · PVE 1 · 192.168.69.5"]
+    T_RTR --> T_PVE
     T_SWI["🔀 EXASWICLD001 · SWI 1 · 192.168.69.250"]
-    T_BMC1["🔧 EXABMCCLD001 · BMC 1 · 192.168.69.2"]
+    T_RTR --> T_SWI
     T_BMC2["🔧 EXABMCCLD002 · BMC 2 · 192.168.69.3 — planned"]
-    T_PVE1["🗂️ EXAPVECLD001 · PVE 1 · 192.168.69.5"]
+    T_RTR --> T_BMC2
     T_PVE2["🗂️ EXAPVECLD002 · PVE 2 · 192.168.69.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASCLD001 · NAS · 192.168.69.19"]
     T_RDR["🔐 EXARDRCLD001 · RDR · 192.168.69.21"]
-    T_OTHER["📎 Other devices — PHN / WKS / LAP / etc."]
+    T_SWI --> T_NAS --> T_RDR
     T_ANS["🤖 EXAANSCLD001 · Ansible control node · 192.168.69.9"]
     T_DCS["🗝️ EXADCSCLD001 · DCS 1 · 192.168.69.10"]
     T_SVR["🗄️ EXASVRCLD002 · Windows Admin Centre · 192.168.69.20"]
@@ -61,29 +68,16 @@ graph TD
     T_PBX["🔌 EXAPBXCLD001 · 3CX PBX · 192.168.69.48"]
     T_UFC["🎛️ EXAUFCCLD001 · UniFi Network Controller · 192.168.69.82"]
     T_FWL["🧱 EXAFWLCLD001 · FWL 1 · 192.168.69.253"]
-
-    T_VRK --> T_RTR
-    T_RTR --> T_SWI
-    T_RTR --> T_PVE1
-    T_RTR --> T_PVE2
-    T_SWI ~~~ T_BMC1
-
-    T_RTR --> T_BMC1 --> T_BMC2 --> T_OTHER
-
-    T_SWI --> T_NAS --> T_RDR
-
-    T_PVE1 --> T_ANS --> T_DCS --> T_SVR --> T_SLT --> T_PBX --> T_UFC --> T_FWL
-
+    T_PVE --> T_ANS --> T_DCS --> T_SVR --> T_SLT --> T_PBX --> T_UFC --> T_FWL
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_PVE1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_ANS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -91,4 +85,5 @@ graph TD
     style T_PBX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_UFC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:CLD:END
 ```
