@@ -84,24 +84,8 @@ graph TD
     T_SWI ~~~ T_BMC1
     T_BMC1 ~~~ T_BMC2
 
-    subgraph SWI_DEVICES [" "]
-      direction TB
-      T_NAS
-      T_RDR
-    end
     T_SWI --> T_NAS --> T_RDR
 
-    subgraph PVE1_VMS [" "]
-      direction TB
-      T_OTHER
-      T_ANS
-      T_DCS
-      T_SVR
-      T_SLT
-      T_PBX
-      T_UFC
-      T_FWL
-    end
     T_PVE1 --> T_OTHER --> T_ANS --> T_DCS --> T_SVR --> T_SLT --> T_PBX --> T_UFC --> T_FWL
 
     style T_VRK fill:#E69F00,stroke:#D55E00,color:#000000
@@ -121,6 +105,4 @@ graph TD
     style T_PBX fill:#E69F00,stroke:#D55E00,color:#000000
     style T_UFC fill:#E69F00,stroke:#D55E00,color:#000000
     style T_FWL fill:#E69F00,stroke:#D55E00,color:#000000
-    style SWI_DEVICES fill:transparent,stroke:transparent
-    style PVE1_VMS fill:transparent,stroke:transparent
 ```
