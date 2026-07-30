@@ -77,16 +77,15 @@ graph TD
 
     T_VRK --> T_RTR
     T_RTR --> T_SWI
-    T_RTR --> T_BMC1
-    T_RTR --> T_BMC2
     T_RTR --> T_PVE1
     T_RTR --> T_PVE2
     T_SWI ~~~ T_BMC1
-    T_BMC1 ~~~ T_BMC2
+
+    T_RTR --> T_BMC1 --> T_BMC2 --> T_OTHER
 
     T_SWI --> T_NAS --> T_RDR
 
-    T_PVE1 --> T_OTHER --> T_ANS --> T_DCS --> T_SVR --> T_SLT --> T_PBX --> T_UFC --> T_FWL
+    T_PVE1 --> T_ANS --> T_DCS --> T_SVR --> T_SLT --> T_PBX --> T_UFC --> T_FWL
 
     style T_VRK fill:#E69F00,stroke:#D55E00,color:#000000
     style T_RTR fill:#E69F00,stroke:#D55E00,color:#000000
