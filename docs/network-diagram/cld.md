@@ -64,10 +64,11 @@ graph TD
     T_BMC2["🔧 EXABMCCLD002 · BMC 2 · 192.168.69.3 — planned"]
     T_PVE1["🗂️ EXAPVECLD001 · PVE 1 · 192.168.69.5"]
     T_PVE2["🗂️ EXAPVECLD002 · PVE 2 · 192.168.69.6 — planned"]
+    T_NAS["🗃️ EXANASCLD001 · NAS · 192.168.69.19"]
+    T_RDR["🔐 EXARDRCLD001 · RDR · 192.168.69.21"]
     T_OTHER["📎 Other devices — PHN / WKS / LAP / etc."]
     T_ANS["🤖 EXAANSCLD001 · Ansible control node · 192.168.69.9"]
     T_DCS["🗝️ EXADCSCLD001 · DCS 1 · 192.168.69.10"]
-    T_NAS["🗃️ EXANASCLD001 · NAS · 192.168.69.19"]
     T_SVR["🗄️ EXASVRCLD002 · Windows Admin Centre · 192.168.69.20"]
     T_SLT["🧂 EXASLTCLD001 · Salt master · 192.168.69.22"]
     T_PBX["🔌 EXAPBXCLD001 · 3CX PBX · 192.168.69.48"]
@@ -82,22 +83,26 @@ graph TD
     T_RTR --> T_PVE2
     T_SWI ~~~ T_BMC1
     T_BMC1 ~~~ T_BMC2
-    T_PVE1 --> T_OTHER
-    T_PVE1 --> T_ANS
-    T_ANS ~~~ T_DCS
-    T_PVE1 --> T_DCS
-    T_DCS ~~~ T_NAS
-    T_PVE1 --> T_NAS
-    T_NAS ~~~ T_SVR
-    T_PVE1 --> T_SVR
-    T_SVR ~~~ T_SLT
-    T_PVE1 --> T_SLT
-    T_SLT ~~~ T_PBX
-    T_PVE1 --> T_PBX
-    T_PBX ~~~ T_UFC
-    T_PVE1 --> T_UFC
-    T_UFC ~~~ T_FWL
-    T_PVE1 --> T_FWL
+
+    subgraph SWI_DEVICES [" "]
+      direction TB
+      T_NAS
+      T_RDR
+    end
+    T_SWI --> T_NAS --> T_RDR
+
+    subgraph PVE1_VMS [" "]
+      direction TB
+      T_OTHER
+      T_ANS
+      T_DCS
+      T_SVR
+      T_SLT
+      T_PBX
+      T_UFC
+      T_FWL
+    end
+    T_PVE1 --> T_OTHER --> T_ANS --> T_DCS --> T_SVR --> T_SLT --> T_PBX --> T_UFC --> T_FWL
 
     style T_VRK fill:#E69F00,stroke:#D55E00,color:#000000
     style T_RTR fill:#E69F00,stroke:#D55E00,color:#000000
@@ -106,13 +111,16 @@ graph TD
     style T_BMC2 fill:#E69F00,stroke:#D55E00,color:#000000
     style T_PVE1 fill:#E69F00,stroke:#D55E00,color:#000000
     style T_PVE2 fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_NAS fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_RDR fill:#E69F00,stroke:#D55E00,color:#000000
     style T_OTHER fill:#E69F00,stroke:#D55E00,color:#000000
     style T_ANS fill:#E69F00,stroke:#D55E00,color:#000000
     style T_DCS fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_NAS fill:#E69F00,stroke:#D55E00,color:#000000
     style T_SVR fill:#E69F00,stroke:#D55E00,color:#000000
     style T_SLT fill:#E69F00,stroke:#D55E00,color:#000000
     style T_PBX fill:#E69F00,stroke:#D55E00,color:#000000
     style T_UFC fill:#E69F00,stroke:#D55E00,color:#000000
     style T_FWL fill:#E69F00,stroke:#D55E00,color:#000000
+    style SWI_DEVICES fill:transparent,stroke:transparent
+    style PVE1_VMS fill:transparent,stroke:transparent
 ```
