@@ -54,28 +54,6 @@ graph TD
 
 ## 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
 
-> **Draft, 2026-07-30.** Robert sketched this by hand as an ASCII diagram to fix the layout/flow he
-> wants before any topology view gets built into `generate_network_diagrams.py` proper. This block
-> is a first attempt at the same shape in real mermaid, hand-maintained (not marker-wrapped, so
-> regeneration won't touch it) — for review, not final. Reads: `VRK` is the vRACK boundary the
-> whole CLD network hangs off; `EXARTRCLD001` is the gateway router; `EXASWICLD001`/BMC pair/PVE
-> pair all connect off the router; `EXAPVECLD001` hosts everything below it as VMs, fanning out from
-> `EXAANSCLD001`. Dashed nodes (`EXABMCCLD002`, `EXAPVECLD002`) are the "not yet in production,
-> future expansion" items from Robert's sketch.
->
-> **Open questions before this is final** (the original ASCII was genuinely ambiguous at this level
-> of detail, called out rather than guessed silently):
-> - Does `EXASWICLD001` branch directly off the router, same as the BMC/PVE pairs, or off something
->   else? Drawn as a direct router child here.
-> - Is the DCS/NAS/SVR/SLT/PBX/UFC/FWL1 block really a flat fan-out all hanging off
->   `EXAANSCLD001` (drawn that way below, reading the repeated `|--|` ladder in the ASCII as
->   siblings, not a chain), or did you mean something more specific by the ordering?
-> - Not included yet, pending your call on whether/how they fit into this view: `EXARDRCLD001`
->   (badge reader), `EXAFWLCLD002` (2nd firewall, confirmed not yet in use), VRK's own real devices
->   (`EXADNSVRK001`, `EXAFWLVRK001` WAN face, the provisioning server), and `EXARUDCLD001` (Rudder —
->   confirmed dormant/reference-only, see `project_rudder_dormant_docs_correction` in memory food for
->   thought on whether it belongs in a *current* topology view at all).
-
 ```mermaid
 graph TD
     T_VRK{{"☁️ VRK — vRACK, 192.168.139.0/24"}}
@@ -103,13 +81,13 @@ graph TD
     T_RTR --> T_PVE2
     T_PVE1 --> T_OTHER
     T_PVE1 --> T_ANS
-    T_ANS --> T_DCS
-    T_ANS --> T_NAS
-    T_ANS --> T_SVR
-    T_ANS --> T_SLT
-    T_ANS --> T_PBX
-    T_ANS --> T_UFC
-    T_ANS --> T_FWL
+    T_PVE1 --> T_DCS
+    T_PVE1 --> T_NAS
+    T_PVE1 --> T_SVR
+    T_PVE1 --> T_SLT
+    T_PVE1 --> T_PBX
+    T_PVE1 --> T_UFC
+    T_PVE1 --> T_FWL
 
     style T_VRK fill:#56B4E9,stroke:#0072B2,color:#000000
     style T_BMC2 fill:#E69F00,stroke:#D55E00,color:#000000,stroke-dasharray: 5 5
