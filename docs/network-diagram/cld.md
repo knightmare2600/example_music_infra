@@ -9,16 +9,25 @@
 
 ## ☁️  — Cloud / Provisioning
 
-**vRACK (`VRK`):** `192.168.139.0/24` · **CLD LAN:** `192.168.69.0/24` · **WireGuard VPN:** `10.0.69.0/24`
-**Role:** WireGuard hub — routes to all sites. Central PBX, Ansible, Rudder, WAC.
-CLD's own LAN is `192.168.69.0/24` — the vRACK (`192.168.139.0/24`) is a separate site code, `VRK`.  
-**Entity:** Example Music Limited · **Landline:** N/A · **Mobile:** N/A
+```
+vRACK (VRK):   192.168.139.0/24
+CLD LAN:       192.168.69.0/24
+WireGuard VPN: 10.0.69.0/24
+Role:          WireGuard hub — routes to all sites.
+Central PBX, Ansible, WAC. CLD's own LAN is 192.168.69.0/24 — the vRACK (192.168.139.0/24) is a separate site code, VRK.
+Entity: Example Music Limited
+Landline: N/A
+Mobile: N/A
+```
 
 > **CLD and VRK never had a legacy network — confirmed, not assumed.** Neither appears anywhere in
 > `benarbejde/ad_computers.json` (the real pre-project Active Directory export the TDF file
 > captured) — zero entries for either site code. Both are purely current infrastructure, added as
-> part of this project. The box below reflects that; VRK's real devices (it has no diagram section
-> of its own) now show up in the New Network box, folded in by `generate_network_diagrams.py`.
+> part of this project. The box below reflects that. The auto-generated "New Network" box (which
+> used to fold VRK's real devices in — `EXADNSVRK001`, its provisioning server, `EXAFWLVRK001`)
+> has been retired in favour of the hand-drawn topology sketch further down; that sketch currently
+> represents VRK only as a single boundary node, not its individual devices — a known
+> simplification, not an omission to chase down.
 
 ```mermaid
 graph TD
@@ -26,28 +35,6 @@ graph TD
       N_OLD_NOTE["Confirmed via benarbejde/ad_computers.json: zero pre-project AD entries for CLD or VRK."]
     end
     style OLD_CLD fill:#56B4E9,stroke:#0072B2,color:#000000
-    %% GENERATED:NEW-NETWORK:CLD:START
-    subgraph NEW_CLD ["🆕 New Network (current)"]
-      N_NAS["🗃️ EXANASCLD001 · NAS · .19"]
-      N_RDR["🔐 EXARDRCLD001 · RDR · .21"]
-      N_BMC["🔧 EXABMCCLD001 · BMC 1 · .2"]
-      N_DCS["🗝️ EXADCSCLD001 · DCS 1 · .10"]
-      N_FWL["🧱 EXAFWLCLD001 · FWL 1 · .253"]
-      N_FWL2["🧱 EXAFWLCLD002 · FWL 2 · .254"]
-      N_PVE["🗂️ EXAPVECLD001 · PVE 1 · .5"]
-      N_SWI["🔀 EXASWICLD001 · SWI 1 · .250"]
-      N_ANS["🤖 EXAANSCLD001 · Ansible control node · .9"]
-      N_RUD["⚙️ EXARUDCLD001 · Rudder configuration management server · .12"]
-      N_SLT["🧂 EXASLTCLD001 · Salt master · .22"]
-      N_SVR["🗄️ EXASVRCLD002 · Windows Admin Centre · .20"]
-      N_PBX["🔌 EXAPBXCLD001 · 3CX PBX · .48"]
-      N_UFC["🎛️ EXAUFCCLD001 · UniFi Network Controller · .82"]
-      N_DNS["🧭 EXADNSVRK001 · DNS/BIND server (VRK) · .8"]
-      N_TMP["📦 Provisioning server (VRK) · .50"]
-      N_FWL3["🧱 EXAFWLVRK001 · Firewall WAN face (vRACK) (VRK) · .69"]
-    end
-    style NEW_CLD fill:#E69F00,stroke:#D55E00,color:#000000
-    %% GENERATED:NEW-NETWORK:CLD:END
 ```
 
 ---
@@ -87,21 +74,21 @@ graph TD
 
     T_PVE1 --> T_ANS --> T_DCS --> T_SVR --> T_SLT --> T_PBX --> T_UFC --> T_FWL
 
-    style T_VRK fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_RTR fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_SWI fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_BMC1 fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_BMC2 fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_PVE1 fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_PVE2 fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_NAS fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_RDR fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_OTHER fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_ANS fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_DCS fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_SVR fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_SLT fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_PBX fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_UFC fill:#E69F00,stroke:#D55E00,color:#000000
-    style T_FWL fill:#E69F00,stroke:#D55E00,color:#000000
+    style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ANS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SLT fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PBX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_UFC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 ```

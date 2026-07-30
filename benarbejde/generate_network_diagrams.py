@@ -40,8 +40,13 @@ DOCS_DIR = HERE.parent / "docs" / "network-diagram"
 # under docs/network-diagram/ (split 2026-07-13 from the former single network-diagram.md).
 # BRD (legacy alias for BER) and VRK (already inside CLD's diagram) deliberately have no entry --
 # neither has its own diagram section anywhere, same as before the split.
+# CLD deliberately has no entry either, as of 2026-07-30: Robert replaced its auto-generated New
+# Network box with a hand-drawn topology sketch (see docs/network-diagram/cld.md directly) as the
+# prototype for an eventual per-site template -- same "no diagram section here" treatment as
+# BRD/VRK above, not an oversight. Revisit if/when the topology-sketch approach gets its own
+# generator instead of being hand-maintained.
 REGION_FILES = {
-  "cld.md": ["CLD"],
+  "cld.md": [],
   "scotland.md": ["FAL", "EDI", "GLA", "CLY", "DUN", "PER", "ABD"],
   "england.md": ["LND", "BIR", "MCR", "LIV", "NEW", "SHE", "HAL", "HUL", "COV"],
   "danmark.md": ["CPH", "ODE", "KGE", "FAX", "KOR", "AAR", "FRE", "FRD", "NYB"],
