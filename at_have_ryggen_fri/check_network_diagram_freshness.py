@@ -9,7 +9,7 @@ generate_network_diagrams.py's REGION_FILES), wrapped in
 "%% GENERATED:NEW-NETWORK:<SITE>:START/END" marker comments. This regenerates
 every site's block into a scratch copy of the whole directory and diffs each
 file against its committed version -- any difference means sites.csv,
-devices.csv, or address_policy.json changed (or a New Network box was
+devices.csv, or address_policy.csv changed (or a New Network box was
 hand-edited) without regenerating, the same drift class
 check_generated_freshness.py already catches for the Ansible inventory files.
 
@@ -70,7 +70,7 @@ def main():
                 drifted.append(f"{committed_path.name}: differs from a fresh regeneration (first difference around line {first_diff + 1})")
 
     print(f"Regenerated every site's New Network block from benarbejde/sites.csv+devices.csv"
-          f"+address_policy.json into a scratch copy of {DOCS_DIR.relative_to(REPO_ROOT)}/, "
+          f"+address_policy.csv into a scratch copy of {DOCS_DIR.relative_to(REPO_ROOT)}/, "
           f"diffed each region file against its committed version.")
     print(result.stdout.strip())
 

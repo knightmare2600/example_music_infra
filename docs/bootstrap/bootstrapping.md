@@ -55,7 +55,7 @@ Exceptions are noted in individual site entries.
 | `.253`        | Firewall — primary (FWL1). **This is the site's actual gateway/internet-facing device, not `.1`.** | `EXAFWL<SITE>001` |
 | `.254`        | Firewall — secondary (FWL2)                                  | `EXAFWL<SITE>002`                     |
 
-> **Role codes match `benarbejde/address_policy.json`, the single source of truth this table is derived from — if the two ever disagree, `address_policy.json` is correct and this table needs fixing, not the other way round.**
+> **Role codes match `benarbejde/address_policy.csv`, the single source of truth this table is derived from — if the two ever disagree, `address_policy.json` is correct and this table needs fixing, not the other way round.**
 >
 > **BMC pool:** `.2`/`.3`/`.4` are shared between physical DRAC/iLO interfaces and the RAC emulator VM (a training/lab tool — see `docs/lab/rac-emulator.md` — not a real BMC control plane). Physical PVE node BMCs consume from `.2` upward; the RAC VM (`EXARAC<SITE>00N`) takes the next free slot.
 >

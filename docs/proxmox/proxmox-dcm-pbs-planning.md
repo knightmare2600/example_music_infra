@@ -22,7 +22,7 @@
 > leaves a site's own LAN, which removes the WireGuard-dependency-for-backups risk entirely rather
 > than just reducing it to "hub sites only." Every address below is a **proposed, collision-checked
 > reservation pending approval** — see the addressing note in each architecture section — not yet
-> written into `benarbejde/address_policy.json`. Once approved, follow
+> written into `benarbejde/address_policy.csv`. Once approved, follow
 > `docs/ansible/beginners_guide_to_ansible.md`'s "Renumbering / Reworking Live Conventions" section
 > for how to roll a new standard-slot convention out safely.
 
@@ -293,7 +293,7 @@ this product, rather than a bare `PDM` role code:
 | Web UI | `https://192.168.69.13:8443` |
 
 > **Addressing note:** `192.168.69.13` is checked collision-free against both
-> `benarbejde/address_policy.json`'s reserved ranges (`.1` RTR, `.2`–`.4` BMC, `.5`–`.7` PVE,
+> `benarbejde/address_policy.csv`'s reserved ranges (`.1` RTR, `.2`–`.4` BMC, `.5`–`.7` PVE,
 > `.10`–`.11` DCS, `.15` PRV, `.48` SBC, `.82`–`.94` WAP, `.100`–`.249` DHCP, `.250`–`.252` SWI,
 > `.253`–`.254` FWL) and every real row in `benarbejde/devices.csv` (CLD's own existing
 > `.9` ANS, `.12` RDR, `.20` SVR, `.48` PBX×2, `.82` UFC). It sits next to CLD's other
@@ -352,7 +352,7 @@ maintain in this document at all.
 > in the existing "core infrastructure" cluster of low octets). **This is a proposed
 > reservation, not yet live.** Unlike DCM, PBS genuinely is a per-site standard-slot role —
 > once approved, the correct implementation is adding `"PBS": 14` to
-> `benarbejde/address_policy.json`'s `offsets_single` (and a `PBS` row to
+> `benarbejde/address_policy.csv`'s `offsets_single` (and a `PBS` row to
 > `benarbejde/role_codes.csv`, `ConnectionMethod=ssh` — matching how `PVE`/`DCS`/`ANS` are
 > already registered there; role/connection-method metadata moved out of `address_policy.json`
 > into `role_codes.csv` on 2026-07-20, see that file's own header), **not** a per-site
@@ -430,7 +430,7 @@ just makes the addressing policy match reality.
 | Deployment | One per site, no exceptions — same "identical everywhere" simplification as PBS |
 
 **Addressing check, same rigour as PBS's `.14`:** `.19` is free in both
-`benarbejde/address_policy.json` (not reserved by any existing range) and every real
+`benarbejde/address_policy.csv` (not reserved by any existing range) and every real
 `benarbejde/devices.csv` row at every site — the nearest neighbours, `.16`/`.17`/`.18`, are
 already taken by unrelated ad-hoc devices at FAL/GLA/CPH. It sits in the same low-octet core
 cluster as PBS: `DCS1`/`DCS2` (`.10`/`.11`), `PBS` (`.14`), **NAS `.19`**.

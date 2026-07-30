@@ -118,50 +118,47 @@ graph TD
 ### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
 
 ```mermaid
+%% GENERATED:TOPOLOGY:ODE:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRODE001 · RTR · 192.168.126.1"]
+    T_VRK --> T_RTR
+    T_BMC["🔧 EXABMCODE001 · BMC 1 · 192.168.126.2"]
+    T_RTR --> T_BMC
+    T_PVE["🗂️ EXAPVEODE001 · PVE 1 · 192.168.126.5"]
+    T_RTR --> T_PVE
     T_SWI["🔀 EXASWIODE001 · SWI 1 · 192.168.126.250"]
-    T_BMC1["🔧 EXABMCODE001 · BMC 1 · 192.168.126.2"]
-    T_PVE1["🗂️ EXAPVEODE001 · PVE 1 · 192.168.126.5"]
+    T_RTR --> T_SWI
     T_NAS["🗃️ EXANASODE001 · NAS · 192.168.126.19"]
     T_RDR["🔐 EXARDRODE001 · RDR · 192.168.126.21"]
     T_MUS["💿 EXAMUSODE001 · Jukebox · 192.168.126.60"]
     T_WAP["📶 EXAWAPODE001 · WAP 1 · 192.168.126.82"]
+    T_SWI --> T_NAS --> T_RDR --> T_MUS --> T_WAP
+    T_DCS["🗝️ EXADCSODE001 · DCS 1 · 192.168.126.10"]
+    T_SBC["🛡️ EXASBCODE001 · SBC · 192.168.126.48"]
+    T_FWL["🧱 EXAFWLODE001 · LAN face · 192.168.126.253"]
+    T_FWL2["🧱 EXAFWLODE002 · FWL 2 · 192.168.126.254 — planned"]
+    T_PVE --> T_DCS --> T_SBC --> T_FWL --> T_FWL2
     T_MAC["🍎 EXAMACODE001 · iMac"]
     T_MBP["💻 EXAMBPODE002 · MacBook Pro"]
-    T_DCS["🗝️ EXADCSODE001 · DCS 1 · 192.168.126.10"]
-    T_SBC["🛡️ EXASBCODE001 · SBC · 192.168.126.48 — trunks to EXAPBXCLD001"]
-    T_FWL["🧱 EXAFWLODE001 · FWL 1 · 192.168.126.253"]
-    T_FWL2["🧱 EXAFWLODE002 · FWL 2 · 192.168.126.254 — planned"]
-
-    T_VRK --> T_RTR
-    T_RTR --> T_SWI
-    T_RTR --> T_PVE1
-    T_SWI ~~~ T_BMC1
-
-    T_RTR --> T_BMC1 --> T_MAC --> T_MBP
-
-    T_SWI --> T_NAS --> T_RDR --> T_MUS --> T_WAP
-
-    T_PVE1 --> T_DCS --> T_SBC --> T_FWL --> T_FWL2
-
+    T_BMC --> T_MAC --> T_MBP
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_PVE1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MUS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_MAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_MAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:ODE:END
 ```
 
 ---
@@ -426,13 +423,33 @@ graph TD
       N_OLD_NOTE["This is a new-build site. · No prior/legacy network existed before commissioning."]
     end
     style OLD_FRD fill:#56B4E9,stroke:#0072B2,color:#000000
-    %% GENERATED:NEW-NETWORK:FRD:START
-    subgraph NEW_FRD ["🆕 New Network (current)"]
-      N_TMP["📦 Provisioning server (PXE, port 8000) · .1"]
-      N_PBX["🔌 EXAPBXCLD002 · Secondary 3CX PBX (hostnamed under CLD) · .48"]
-    end
-    style NEW_FRD fill:#E69F00,stroke:#D55E00,color:#000000
-    %% GENERATED:NEW-NETWORK:FRD:END
+```
+
+### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+
+> Robert, 2026-07-30: FRD is "literally just online, it's a legal function but we treat it like a
+> fallback VRK site." `172.16.124.253` (`sites.csv`'s `FW` field) doesn't have a real device yet —
+> unlike VRK's own `.254` (confirmed OVH's, not ours), this one is genuinely planned, mirroring
+> VRK's own `EXAFWLVRK001`. `EXAPBXCLD002` is confirmed to belong here — hostnamed under CLD,
+> physically at FRD. Robert's own words on the naming: "note the naming convention, this might
+> cause some shenanigans, if it does you have my permission to call it `EXAPBXFRD001`" — not
+> renamed here, no actual conflict has come up; this is standing permission for later, not
+> something exercised pre-emptively.
+
+```mermaid
+%% GENERATED:TOPOLOGY:FRD:START
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    T_FRD["☁️ FRD — Fredericia Havn network fabric, 172.16.124.0/24"]
+    T_TMP["📦 Provisioning server (PXE, port 8000) · 172.16.124.1"]
+    T_PBX["🔌 EXAPBXCLD002 · Secondary 3CX PBX (hostnamed under CLD) · 172.16.124.48"]
+    T_FWL["🧱 EXAFWLFRD001 · FWL 1 · 172.16.124.253 — planned"]
+    T_FRD --> T_TMP --> T_PBX --> T_FWL
+    style T_FRD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TMP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PBX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:FRD:END
 ```
 
 ---
@@ -443,7 +460,7 @@ graph TD
 **PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** ODE  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 80 400 0xxx · **Mobile:** +45 200 900 2xxx
 
-> **New-build site.** No legacy infrastructure ever existed here — see the "New Build Location" box below in place of "Old Network." Standard-slot addresses are allocated in `benarbejde/address_policy.json`/`sites.csv` the same as any other site (this is what makes the .ini/DNS generation already treat them as real, per the generated-file-freshness harness check) but no `devices.csv` exception rows exist yet — nothing beyond the standard template has been confirmed built on site.
+> **New-build site.** No legacy infrastructure ever existed here — see the "New Build Location" box below in place of "Old Network." Standard-slot addresses are allocated in `benarbejde/address_policy.csv`/`sites.csv` the same as any other site (this is what makes the .ini/DNS generation already treat them as real, per the generated-file-freshness harness check) but no `devices.csv` exception rows exist yet — nothing beyond the standard template has been confirmed built on site.
 
 ```mermaid
 graph TD

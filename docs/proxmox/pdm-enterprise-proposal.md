@@ -141,7 +141,7 @@ PDM-to-cluster and PDM-to-PBS **status/management** traffic for every non-CLD si
 ### Addressing (proposed, pending approval)
 
 `EXADCMCLD001` at `192.168.69.13`; `EXAPBS<SITE>001` at `192.168.<site-octet>.14` on each
-site's own subnet — both collision-checked against `benarbejde/address_policy.json` and every
+site's own subnet — both collision-checked against `benarbejde/address_policy.csv` and every
 real `benarbejde/devices.csv` row. Full rationale, exact collision checks, and the rollout
 procedure (once approved) are in `proxmox/proxmox-dcm-pbs-planning.md`.
 
@@ -180,7 +180,7 @@ Proxmox enterprise support is licensed per CPU socket per year. Current pricing 
 > **This table is deliberately a formula, not a fixed number** — the old (March 2026) version of
 > this proposal counted "~30 sites" and three hub tiers; the real count is 53 sites today and
 > growing, and there is no hub tier left to count separately. Re-derive actual node/socket counts
-> from `pvesh get /nodes` or `benarbejde/address_policy.json`'s PVE slots at the point of ordering
+> from `pvesh get /nodes` or `benarbejde/address_policy.csv`'s PVE slots at the point of ordering
 > — this document should never be the source of truth for a live socket count. Each physical CPU
 > socket requires one licence. Most 1U/2U servers are single or dual socket. Check with hardware
 > vendor or `ipmitool`.
@@ -219,7 +219,7 @@ Network Engineering recommends the following actions for approval:
 | 1 | Approve lab evaluation of PDM using nested virtualisation on existing hardware (zero cost) | Immediate |
 | 2 | Approve budget for Proxmox VE Enterprise Support for CLD's PVE node(s) | Q2 2026 |
 | 3 | Approve deployment of `EXADCMCLD001` and `EXAPBSCLD001` at CLD | Q2 2026 |
-| 4 | Approve the `.13`/`.14` addressing reservations in `proxmox/proxmox-dcm-pbs-planning.md` for write-in to `benarbejde/address_policy.json`/`devices.csv` | Q2 2026 |
+| 4 | Approve the `.13`/`.14` addressing reservations in `proxmox/proxmox-dcm-pbs-planning.md` for write-in to `benarbejde/address_policy.csv`/`devices.csv` | Q2 2026 |
 | 5 | Approve incremental fleet-wide rollout (Phase 2), paced per available budget, not deferred to a fixed future quarter | Q3 2026+ |
 
 > This proposal covers infrastructure licensing only. Application-level backup (file shares, databases, Microsoft 365) is a separate workstream and is not in scope for this document.

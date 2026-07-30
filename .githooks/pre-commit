@@ -5,7 +5,7 @@
 # overwritten to match and staged as part of the same commit. Two groups:
 #
 #   benarbejde/ -> bootstrap/web/proxmox/ (sites.csv, devices.csv,
-#   address_policy.json, begyndelse.json, ad_forest.json, role_codes.csv) --
+#   address_policy.csv, begyndelse.json, ad_forest.json, role_codes.csv) --
 #   so the preseed web server can serve them during PXE installs, and so
 #   create-vm.py's own script-directory search path finds role_codes.csv when
 #   run standalone from this served copy (added 2026-07-26, alongside
@@ -53,7 +53,7 @@ sync_from_source() {
 
 sync_from_source "sites.csv"
 sync_from_source "devices.csv"
-sync_from_source "address_policy.json"
+sync_from_source "address_policy.csv"
 sync_from_source "begyndelse.json"
 sync_from_source "ad_forest.json"
 sync_from_source "role_codes.csv"

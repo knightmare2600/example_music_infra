@@ -29,17 +29,17 @@ Mobile: N/A
 > row there has a real `ConnectionMethod`). Not a gap; do not add a row for it.
 
 ```mermaid
+%% GENERATED:TOPOLOGY:VRK:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK network fabric, 192.168.139.0/24"]
-    T_DNS["🧭 EXADNSVRK001 · DNS · 192.168.139.8"]
-    T_TMP["📦 Provisioning server (no formal hostname) · 192.168.139.50"]
-    T_FWL["🧱 EXAFWLVRK001 · FWL WAN face · 192.168.139.69 — same physical device as EXAFWLCLD001"]
-
+    T_DNS["🧭 EXADNSVRK001 · DNS/BIND server · 192.168.139.8"]
+    T_TMP["📦 Provisioning server · 192.168.139.50"]
+    T_FWL["🧱 EXAFWLVRK001 · Firewall WAN face, same physical device as EXAFWLCLD001 · 192.168.139.69"]
     T_VRK --> T_DNS --> T_TMP --> T_FWL
-
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DNS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TMP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:VRK:END
 ```

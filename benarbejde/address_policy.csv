@@ -1,0 +1,33 @@
+Type,Octet,Multi,Notes
+RTR,1,no,Upstream router
+NAS,19,no,"Storage (NAS/SAN, e.g. TrueNAS)"
+RDR,21,no,Badge reader
+SBC,48,no,VoIP Session Border Controller
+WKS,101,no,Workstation
+LAP,102,no,Laptop
+BMC,2,yes,iDRAC / iLO / Redfish
+BMC,3,yes,iDRAC / iLO / Redfish
+BMC,4,yes,iDRAC / iLO / Redfish
+DCS,10,yes,Primary Domain Controller
+DCS,11,yes,Secondary Domain Controller
+FWL,253,yes,Firewall primary
+FWL,254,yes,Firewall secondary
+PVE,5,yes,Proxmox nodes
+PVE,6,yes,Proxmox nodes
+PVE,7,yes,Proxmox nodes
+SWI,250,yes,Switches
+SWI,251,yes,Switches
+SWI,252,yes,Switches
+WAP,82,yes,"Wireless access points (static -- added 2026-07-08, moved off DHCP). Count varies per site (1 to 13+); devices.csv rows at these octets are treated as standard-slot and excluded from the .ini/DNS output the same way BMC is -- only the generic commented placeholder lines show, per-device Notes are not preserved for slots at this range."
+WAP,83,yes,Wireless access point
+WAP,84,yes,Wireless access point
+WAP,85,yes,Wireless access point
+WAP,86,yes,Wireless access point
+WAP,87,yes,Wireless access point
+WAP,88,yes,Wireless access point
+WAP,89,yes,Wireless access point
+WAP,90,yes,Wireless access point
+WAP,91,yes,Wireless access point
+WAP,92,yes,Wireless access point
+WAP,93,yes,Wireless access point
+WAP,94,yes,Wireless access point

@@ -13,7 +13,7 @@ All four say, in their own header comment, "do not hand-edit, regenerate
 instead" -- but nothing previously checked that anyone actually did. This
 script regenerates all four into a scratch directory and diffs them
 against the committed versions. Any difference means benarbejde/sites.csv,
-devices.csv, address_policy.json, or ad_forest.json changed without a
+devices.csv, address_policy.csv, or ad_forest.json changed without a
 regeneration -- a real bug (the committed files are now describing a
 world that no longer matches their own source of truth), not a style
 nitpick.
@@ -48,7 +48,7 @@ SITE_GRAINS_PILLAR = REPO_ROOT / "salt" / "pillar" / "sites.sls"
 # Checked as "must be byte-identical to the canonical benarbejde/ copy", not independently
 # regenerated.
 PROXMOX_SERVED_DIR = REPO_ROOT / "bootstrap" / "web" / "proxmox"
-SERVED_COPIES = ["begyndelse.json", "devices.csv", "sites.csv", "address_policy.json", "ad_forest.json"]
+SERVED_COPIES = ["begyndelse.json", "devices.csv", "sites.csv", "address_policy.csv", "ad_forest.json"]
 
 NOT_GENERATOR_OWNED = {"main.ini", "rudder.ini", "salt.ini"}
 
@@ -131,7 +131,7 @@ def main():
                 drifted.append(f"bootstrap/web/proxmox/{name} (served copy) differs from benarbejde/{name}")
 
     print("Regenerated configs/inventory/*.ini, site_services.yml, begyndelse.json, and "
-          "salt/pillar/sites.sls from benarbejde/sites.csv+devices.csv+address_policy.json+"
+          "salt/pillar/sites.sls from benarbejde/sites.csv+devices.csv+address_policy.csv+"
           "ad_forest.json, diffed against committed versions (including the served copies under "
           "bootstrap/web/proxmox/, which must stay byte-identical to their benarbejde/ originals).")
 

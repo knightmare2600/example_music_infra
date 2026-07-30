@@ -12,7 +12,7 @@
 # idempotently re-writable by Ansible from here on (ansible_managed: true,
 # bootstrapped_by: proxmox/site.yml).
 #
-# sites.csv/devices.csv/address_policy.json are copied from benarbejde/ (the
+# sites.csv/devices.csv/address_policy.csv are copied from benarbejde/ (the
 # git checkout on the control node) — the same authoritative source
 # playbooks/linux/tools.yml uses, not a possibly-stale already-deployed copy.
 #
@@ -60,7 +60,7 @@
   vars:
     sites_csv_src:      "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
     devices_csv_src:    "{{ playbook_dir }}/../../../../benarbejde/devices.csv"
-    address_policy_src: "{{ playbook_dir }}/../../../../benarbejde/address_policy.json"
+    address_policy_src: "{{ playbook_dir }}/../../../../benarbejde/address_policy.csv"
 
   tasks:
 
@@ -91,10 +91,10 @@
         mode:  '0644'
       tags: example_music
 
-    - name: Deploy address_policy.json to /etc/example-music
+    - name: Deploy address_policy.csv to /etc/example-music
       ansible.builtin.copy:
         src:   "{{ address_policy_src }}"
-        dest:  /etc/example-music/address_policy.json
+        dest:  /etc/example-music/address_policy.csv
         owner: root
         group: root
         mode:  '0644'
