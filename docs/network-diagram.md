@@ -72,6 +72,9 @@ two or three. Shorter boxes, same information.
 ### ☁️ [Cloud (CLD)](network-diagram/cld.md)
 - [CLD — Cloud / Provisioning](network-diagram/cld.md#cld--cloud--provisioning)
 
+### ☁️ [vRACK (VRK)](network-diagram/vrk.md)
+- [VRK — vRACK](network-diagram/vrk.md#--vrack)
+
 ### 🏴󠁧󠁢󠁳󠁣󠁴󠁿 [Scotland](network-diagram/scotland.md)
 - [FAL — Falkirk *(Head Office)*](network-diagram/scotland.md#fal--falkirk-head-office--)
 - [EDI — Edinburgh](network-diagram/scotland.md#edi--edinburgh--)

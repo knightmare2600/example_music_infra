@@ -46,6 +46,7 @@
 | [linux-recovery-runbook.md](linux-recovery-runbook.md) | OPS-RECOVERY-001 | Recovering a Linux node where the `ansible` account is rejected entirely (console and SSH both) — GRUB rescue mode, unlock, verify |
 | [network-diagram.md](network-diagram.md) | NET-DIAG-001 | Per-site network diagrams index — Visual Standard, emoji legend, links to every region file below. Split from one 51-diagram file into per-region files 2026-07-13 (GitHub's mermaid renderer got unreliable with that many diagrams on one page) |
 | [network-diagram/cld.md](network-diagram/cld.md) | NET-DIAG-001-CLD | Cloud (CLD) network diagram |
+| [network-diagram/vrk.md](network-diagram/vrk.md) | NET-DIAG-001-VRK | vRACK (VRK) network diagram — special case, only 3 real devices, no standard-slot synthesis |
 | [network-diagram/scotland.md](network-diagram/scotland.md) | NET-DIAG-001-SCT | Scotland network diagrams (FAL, EDI, GLA, CLY, DUN, PER, ABD) |
 | [network-diagram/england.md](network-diagram/england.md) | NET-DIAG-001-ENG | England network diagrams (LND, BIR, MCR, LIV, NEW, SHE, HAL, HUL, COV) |
 | [network-diagram/danmark.md](network-diagram/danmark.md) | NET-DIAG-001-DNK | Danmark network diagrams (CPH, ODE, KGE, FAX, KOR, AAR, FRE, FRD, NYB) |
