@@ -207,7 +207,7 @@
     # ansible/tasks/ssh_key_preflight.yml) -- every earlier attempt failed at
     # connect time, before this Load sites.csv task was ever reached.
     sites_csv_src: "{{ playbook_dir }}/../../../benarbejde/sites.csv"
-    address_policy_src: "{{ playbook_dir }}/../../../benarbejde/address_policy.json"
+    address_policy_src: "{{ playbook_dir }}/../../../benarbejde/address_policy.csv"
     ad_forest_src: "{{ playbook_dir }}/../../../benarbejde/ad_forest.json"
 
   vars_prompt:
@@ -275,9 +275,14 @@
           - _site_row != {}
         fail_msg: "Site code '{{ host_site }}' (parsed from {{ target_hostname }}) was not found in sites.csv."
 
-    - name: Load address_policy.json
-      ansible.builtin.set_fact:
-        _address_policy: "{{ lookup('file', address_policy_src) | from_json }}"
+    # read_csv, not lookup('file', ...) | from_json -- address_policy.csv (JSON until
+    # 2026-07-30) is one row per octet (Type,Octet,Multi,Notes), same shape sites.csv above
+    # already loads this same way; no reason for two different loading mechanisms for two
+    # sibling CSVs in the same playbook.
+    - name: Load address_policy.csv
+      ansible.builtin.read_csv:
+        path: "{{ address_policy_src }}"
+      register: _address_policy_raw
       delegate_to: localhost
       become: false
 
@@ -287,10 +292,13 @@
       delegate_to: localhost
       become: false
 
-    - name: Derive expected static IP from address_policy.json's PVE offsets
+    - name: Derive expected static IP from address_policy.csv's PVE offsets
       ansible.builtin.set_fact:
         _subnet_base: "{{ _site_row.Subnet.split('.')[0:3] | join('.') }}"
-        _pve_offsets: "{{ _address_policy.role_offsets.PVE }}"
+        _pve_offsets: >-
+          {{ _address_policy_raw.list
+             | selectattr('Type', 'equalto', 'PVE')
+             | map(attribute='Octet') | map('int') | list }}
 
     - name: Abort if host_num is out of range for the PVE offset list
       ansible.builtin.assert:
@@ -299,7 +307,7 @@
           - (host_num | int) <= (_pve_offsets | length)
         fail_msg: >-
           host_num={{ host_num }} (parsed from {{ target_hostname }}) has no
-          matching entry in address_policy.json's PVE offsets ({{ _pve_offsets }}) —
+          matching entry in address_policy.csv's PVE offsets ({{ _pve_offsets }}) —
           check the instance number in the hostname.
 
     - name: Set derived static IP + gateway

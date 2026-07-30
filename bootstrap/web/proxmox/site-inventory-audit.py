@@ -300,7 +300,7 @@ EXA_DOMAIN = _load_domain()
 
 # =============================================================================
 # DEVICES.CSV -- exceptions only as of 2026-07-07 (see benarbejde/generate_inventory.py
-# and benarbejde/address_policy.json) -- it does NOT contain a row for every
+# and benarbejde/address_policy.csv) -- it does NOT contain a row for every
 # standard-slot device (router, BMC, PVE node, DC, provisioning server, SBC,
 # firewall) any more, only devices that don't fit that pattern.
 # =============================================================================
@@ -327,25 +327,25 @@ EXA_DOMAIN = _load_domain()
 
 def _load_address_policy(policy_path=None):
   """
-  Load the standard addressing convention from address_policy.json.
+  Load the standard addressing convention from address_policy.csv (JSON until 2026-07-30 --
+  same on-disk format change as devices.csv/sites.csv/role_codes.csv already went through
+  earlier; this was the last one still JSON). One row per octet: Type,Octet,Multi,Notes.
   Searches: same directory as this script, then cwd, then
-  /etc/example-music/address_policy.json. Override with ADDRESS_POLICY_JSON
+  /etc/example-music/address_policy.csv. Override with ADDRESS_POLICY_CSV
   environment variable or policy_path argument.
 
   Returns a flat {octet_str: TYPE} dict (e.g. {"1": "RTR", "10": "DCS", ...}) --
   this is the single source of truth also used by generate_inventory.py and
   bind9-dns.yml; do not hardcode a second copy of these offsets here.
   """
-  import json as _json_mod
-
   if policy_path is None:
-    policy_path = _os.environ.get("ADDRESS_POLICY_JSON")
+    policy_path = _os.environ.get("ADDRESS_POLICY_CSV")
   if policy_path is None:
     script_dir = _os.path.dirname(_os.path.abspath(__file__))
     candidates = [
-      _os.path.join(script_dir, "address_policy.json"),
-      _os.path.join(_os.getcwd(), "address_policy.json"),
-      "/etc/example-music/address_policy.json",
+      _os.path.join(script_dir, "address_policy.csv"),
+      _os.path.join(_os.getcwd(), "address_policy.csv"),
+      "/etc/example-music/address_policy.csv",
     ]
     for p in candidates:
       if _os.path.isfile(p):
@@ -353,21 +353,16 @@ def _load_address_policy(policy_path=None):
         break
 
   if not policy_path or not _os.path.isfile(policy_path):
-    print("WARNING: address_policy.json not found -- convention-conflict checks "
+    print("WARNING: address_policy.csv not found -- convention-conflict checks "
           "in --validate-devices will be skipped.")
-    print("  Looked in: script directory, cwd, /etc/example-music/address_policy.json")
-    print("  Set ADDRESS_POLICY_JSON=/path/to/address_policy.json to override.")
+    print("  Looked in: script directory, cwd, /etc/example-music/address_policy.csv")
+    print("  Set ADDRESS_POLICY_CSV=/path/to/address_policy.csv to override.")
     return {}
 
-  with open(policy_path, encoding="utf-8") as f:
-    data = _json_mod.load(f)
-
   suffix_role = {}
-  for role, offset in data.get("offsets_single", {}).items():
-    suffix_role[str(offset)] = role
-  for role, offsets in data.get("role_offsets", {}).items():
-    for offset in offsets:
-      suffix_role[str(offset)] = role
+  with open(policy_path, newline="", encoding="utf-8") as f:
+    for row in _csv_mod.DictReader(f):
+      suffix_role[row["Octet"].strip()] = row["Type"].strip()
   return suffix_role
 
 def _load_devices(csv_path=None):
@@ -453,7 +448,7 @@ def validate_devices(devices, sites=None):
     - HostOctet is numeric (when present)
     - No duplicate full IPs within a site (excluding blank octets)
     - Warns if HostOctet falls inside DHCP pool (.100-.249) for non-CLD/FRD sites
-    - Warns if HostOctet conflicts with address_policy.json's standard
+    - Warns if HostOctet conflicts with address_policy.csv's standard
       assignment for a different role
 
   CLD/FRD rows bypass convention checks -- see CLD BLACK SWAN note.
@@ -463,7 +458,7 @@ def validate_devices(devices, sites=None):
 
   hostname_re = re.compile(r"^EXA[A-Z]{3}[A-Z]{3}[0-9]{3}$")
 
-  # octet -> expected Type, loaded from address_policy.json (the same source
+  # octet -> expected Type, loaded from address_policy.csv (the same source
   # generate_inventory.py and bind9-dns.yml use) -- not a separately
   # maintained copy that can drift, and not the old .1/.254 assignment this
   # dict used to hardcode (RTR is .1, FWL is .253/.254 -- see

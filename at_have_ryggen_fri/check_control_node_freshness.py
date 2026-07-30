@@ -44,7 +44,7 @@ SERVED_FILES = [
     "sites.csv",
     "devices.csv",
     "role_codes.csv",
-    "address_policy.json",
+    "address_policy.csv",
     "ad_forest.json",
     "ad_groups.json",
     "ad_users.json",

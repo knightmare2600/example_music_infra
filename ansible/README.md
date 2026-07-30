@@ -218,7 +218,7 @@ ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --tags zones
 
 `devices.csv` is **exceptions-only** — it does not contain a row for every router, DC, PVE
 node, SBC or firewall, because those are all fully predictable from
-`benarbejde/address_policy.json` + `sites.csv` (see the root `README.md`'s
+`benarbejde/address_policy.csv` + `sites.csv` (see the root `README.md`'s
 [Addressing](../README.md#addressing) section). Play 2 does not read `devices.csv` directly
 and try to work out what's "standard" in Jinja — instead its very first `pre_task` shells out to:
 

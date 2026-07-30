@@ -198,7 +198,7 @@
     sites_csv_src:     "{{ playbook_dir }}/../../../benarbejde/sites.csv"
     devices_csv_src:   "{{ playbook_dir }}/../../../benarbejde/devices.csv"
     role_codes_csv_src: "{{ playbook_dir }}/../../../benarbejde/role_codes.csv"
-    address_policy_src: "{{ playbook_dir }}/../../../benarbejde/address_policy.json"
+    address_policy_src: "{{ playbook_dir }}/../../../benarbejde/address_policy.csv"
     ad_forest_src:     "{{ playbook_dir }}/../../../benarbejde/ad_forest.json"
     ad_groups_src:     "{{ playbook_dir }}/../../../benarbejde/ad_groups.json"
     ad_users_src:      "{{ playbook_dir }}/../../../benarbejde/ad_users.json"
@@ -374,10 +374,10 @@
         group: root
         mode:  '0644'
 
-    - name: Deploy address_policy.json to /etc/example-music
+    - name: Deploy address_policy.csv to /etc/example-music
       ansible.builtin.copy:
         src:   "{{ address_policy_src }}"
-        dest:  /etc/example-music/address_policy.json
+        dest:  /etc/example-music/address_policy.csv
         owner: root
         group: root
         mode:  '0644'

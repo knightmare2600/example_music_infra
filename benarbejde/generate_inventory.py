@@ -267,10 +267,13 @@ def msg(col, text):
 # ==================================================================================================
 # Address Policy
 # ==================================================================================================
-# Loaded at runtime from address_policy.json (sibling to sites.csv by default) — this is the
-# single source of truth shared with bind9-dns.yml (Play 2 synthesises the same standard-slot
-# devices for DNS, independently, from the same file). Do not hardcode a second copy here; if
-# these dicts are empty, load_address_policy() hasn't run yet (see main()).
+# Loaded at runtime from address_policy.csv (sibling to sites.csv by default; JSON until
+# 2026-07-30, see load_address_policy()'s own docstring) — this is the single source of truth
+# for standard-slot synthesis. bind9-dns.yml's own DNS records come from this same policy too,
+# but only indirectly, via this script's --emit-devices-json (bind9-dns.yml never parses
+# address_policy.csv itself — confirmed 2026-07-30, see feedback_check_dont_guess_known_source_
+# of_truth in memory for why that distinction got checked rather than assumed). Do not hardcode
+# a second copy here; if these dicts are empty, load_address_policy() hasn't run yet (see main()).
 OFFSETS_SINGLE = {}
 ROLE_OFFSETS = {}
 STANDARD_OFFSETS = {}
@@ -278,16 +281,31 @@ TYPE_CONNECTION = {}
 TYPE_DNS_ALIAS = {}
 
 def load_address_policy(policy_path: Path, role_codes_path: Path = None):
+  """Reads address_policy.csv (one row per octet: Type,Octet,Multi,Notes) and rebuilds the exact
+  same OFFSETS_SINGLE (Type -> single int)/ROLE_OFFSETS (Type -> list[int]) shape every consumer
+  already expects -- the on-disk format changed 2026-07-30 (JSON -> CSV, matching every other
+  data file in this directory), the in-memory shape and everyone downstream of it did not.
+  Multi=no rows go to OFFSETS_SINGLE (one octet per Type, last one wins if duplicated -- not
+  expected, but no crash either); Multi=yes rows accumulate into ROLE_OFFSETS in file order.
+  The old JSON's ".100-.249 DHCP pool" documentation-only entry was never consumed by any code
+  (not in offsets_single or role_offsets either) -- correctly has no equivalent row here."""
   global OFFSETS_SINGLE, ROLE_OFFSETS, TYPE_CONNECTION, TYPE_DNS_ALIAS
   if not policy_path.exists():
     raise ValueError(
-      f"address_policy.json not found at {policy_path} — this is the shared source of truth "
+      f"address_policy.csv not found at {policy_path} — this is the shared source of truth "
       f"for the standard address policy (also used by bind9-dns.yml); it must exist alongside "
       f"sites.csv."
     )
-  data = json.loads(policy_path.read_text())
-  OFFSETS_SINGLE = data["offsets_single"]
-  ROLE_OFFSETS = data["role_offsets"]
+  OFFSETS_SINGLE = {}
+  ROLE_OFFSETS = {}
+  with open(policy_path, newline="", encoding="utf-8") as f:
+    for row in csv.DictReader(f):
+      role = row["Type"].strip()
+      octet = int(row["Octet"].strip())
+      if row["Multi"].strip().lower() in ("yes", "y", "true", "1"):
+        ROLE_OFFSETS.setdefault(role, []).append(octet)
+      else:
+        OFFSETS_SINGLE[role] = octet
 
   # TYPE_CONNECTION: Type -> ConnectionType (ssh/winrm/telnet/snmp/http/none). 2026-07-20: moved
   # from address_policy.json's own connection_types block (removed) to role_codes.csv's
@@ -563,7 +581,7 @@ def load_devices(devices_path: Path):
   apply as a separate preprocessing pass (standard-offset rows, RAC/PVE rows).
   """
   stats = {
-    "total": 0, "excluded_standard": 0, "excluded_always": 0,
+    "total": 0, "excluded_standard": 0, "excluded_always": 0, "excluded_planned": 0,
     "included_managed": 0, "included_reference": 0, "needs_review": 0,
   }
   devices_by_site = {}
@@ -580,6 +598,17 @@ def load_devices(devices_path: Path):
     site = r["Site"].strip()
     dtype = r["Type"].strip().upper()
     octet_raw = r["HostOctet"].strip()
+
+    # Planned=yes rows (2026-07-30) are hardware that doesn't exist yet -- known expansion slots
+    # Robert has told us about directly (e.g. CLD's second BMC/PVE), not derived or guessed. Never
+    # surfaced to any real consumer of this function (DNS zones, Ansible inventory, every existing
+    # harness check) -- only benarbejde/generate_network_diagrams.py reads them, via its own
+    # separate load_planned_devices(), specifically to draw them differently on a diagram. Keeping
+    # the exclusion here (not in each individual consumer) means a new consumer of load_devices()
+    # can't forget to filter these out and accidentally treat non-existent hardware as real.
+    if (r.get("Planned") or "").strip().lower() in ("yes", "y", "true", "1"):
+      stats["excluded_planned"] += 1
+      continue
 
     if dtype in ALWAYS_EXCLUDE_TYPES:
       stats["excluded_always"] += 1
@@ -1530,7 +1559,7 @@ def main():
   )
   parser.add_argument(
     "--policy", type=Path, default=None,
-    help="Path to address_policy.json (default: address_policy.json next to sites.csv)"
+    help="Path to address_policy.csv (default: address_policy.csv next to sites.csv)"
   )
   parser.add_argument(
     "--role-codes", type=Path, default=None,
@@ -1590,7 +1619,7 @@ def main():
   args = parser.parse_args()
 
   devices_path = args.devices if args.devices is not None else args.csv.parent / "devices.csv"
-  policy_path = args.policy if args.policy is not None else args.csv.parent / "address_policy.json"
+  policy_path = args.policy if args.policy is not None else args.csv.parent / "address_policy.csv"
   role_codes_path = args.role_codes if args.role_codes is not None else args.csv.parent / "role_codes.csv"
   ad_forest_path = args.ad_forest if args.ad_forest is not None else args.csv.parent / "ad_forest.json"
 

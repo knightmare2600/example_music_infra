@@ -236,7 +236,7 @@ facts:
       files' legend rows normalised to identical wording so this one fact value catches all
       three at once.
     value: "Firewall — primary"
-    source: "benarbejde/address_policy.json (role_offsets.FWL = [253, 254])"
+    source: "benarbejde/address_policy.csv (Type=FWL rows, octets 253/254)"
     asserted_in:
       - docs/site-inventory.md
       - docs/network-inventory.md
@@ -247,7 +247,7 @@ facts:
       The router (RTR) lives at .1 within a site's /24 -- a different device from the
       firewall (see fwl_octet_role above). Same 2026-07-12 find/fix.
     value: "Router / upstream gateway"
-    source: "benarbejde/address_policy.json (role_offsets.RTR = 1)"
+    source: "benarbejde/address_policy.csv (Type=RTR row, octet 1)"
     asserted_in:
       - docs/site-inventory.md
       - docs/network-inventory.md

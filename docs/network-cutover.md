@@ -17,7 +17,7 @@
 
 ## 1. RTR/FWL octet swap — the big one
 
-**18 of 47 sites' Old Network diagrams have the router and firewall's octets backwards** relative to the current, correct convention in `benarbejde/address_policy.json` (`RTR` = `.1`, `FWL` = `.253`/`.254`). The old diagrams show the router at `.254` and the firewall at `.1` — the opposite way round.
+**18 of 47 sites' Old Network diagrams have the router and firewall's octets backwards** relative to the current, correct convention in `benarbejde/address_policy.csv` (`RTR` = `.1`, `FWL` = `.253`/`.254`). The old diagrams show the router at `.254` and the firewall at `.1` — the opposite way round.
 
 **Affected sites:** ABD, AKL, BER, BIR, BON, BRK, CLY, COV, CPH, DUN, EDI, FAL, FAX, LAX, LND, MEL, ODE, SYD
 

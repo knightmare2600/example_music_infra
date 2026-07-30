@@ -240,7 +240,7 @@ Unless explicitly stated otherwise, all deployments MUST conform to these conven
 
 The authoritative source for site subnet allocations is `benarbejde/sites.csv` (and its sync copy at `bootstrap/web/proxmox/sites.csv`). If any other source disagrees, `sites.csv` wins.
 
-This table is also encoded as data in `benarbejde/address_policy.json` — see [devices.csv is exceptions-only](#devices-csv-is-exceptions-only) above for how it's used.
+This table is also encoded as data in `benarbejde/address_policy.csv` — see [devices.csv is exceptions-only](#devices-csv-is-exceptions-only) above for how it's used.
 
 > **`.15` PRV retired 2026-07-19.** It was never real for any ordinary site — confirmed via a
 > real generation run that all 51 non-VRK/FRD sites were getting a synthesized

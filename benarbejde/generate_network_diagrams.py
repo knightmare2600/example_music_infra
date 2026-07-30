@@ -5,7 +5,7 @@
 #
 # Generates the "New Network (current)" mermaid subgraph for each site in sites.csv, from the same
 # single source of truth generate_inventory.py uses for the real Ansible inventory (sites.csv +
-# devices.csv + address_policy.json + ad_forest.json) -- not a second, hand-maintained data model.
+# devices.csv + address_policy.csv + ad_forest.json) -- not a second, hand-maintained data model.
 # Reuses generate_inventory.py's own building blocks (compute_standard_devices_for_site(),
 # load_devices(), NON_STANDARD_SITES, NO_STANDARD_ROUTER_SITES, ALWAYS_EXCLUDE_TYPES) rather than
 # re-deriving which devices are real -- if those rules change, this picks the change up for free.
@@ -33,7 +33,7 @@ import generate_inventory as gi
 
 SITES_CSV = HERE / "sites.csv"
 DEVICES_CSV = HERE / "devices.csv"
-ADDRESS_POLICY = HERE / "address_policy.json"
+ADDRESS_POLICY = HERE / "address_policy.csv"
 DOCS_DIR = HERE.parent / "docs" / "network-diagram"
 
 # Which region file each site's New Network block lives in -- must match the actual file layout
@@ -46,13 +46,15 @@ DOCS_DIR = HERE.parent / "docs" / "network-diagram"
 # BRD/VRK above, not an oversight. Revisit if/when the topology-sketch approach gets its own
 # generator instead of being hand-maintained.
 # ODE dropped from danmark.md's list the same day for the same reason -- it's the second
-# hand-drawn topology sketch, proving the pattern out on a "regular" (non-CLD) site. The other 8
-# Danish sites in that file still generate normally; only ODE's block is excluded.
+# hand-drawn topology sketch, proving the pattern out on a "regular" (non-CLD) site. FRD dropped
+# the same way shortly after -- the third, a NON_STANDARD_SITES site treated as a fallback VRK
+# (see docs/network-diagram/danmark.md's own FRD section for the detail). The other 7 Danish
+# sites in that file still generate normally; only ODE/FRD's blocks are excluded.
 REGION_FILES = {
   "cld.md": [],
   "scotland.md": ["FAL", "EDI", "GLA", "CLY", "DUN", "PER", "ABD"],
   "england.md": ["LND", "BIR", "MCR", "LIV", "NEW", "SHE", "HAL", "HUL", "COV"],
-  "danmark.md": ["CPH", "KGE", "FAX", "KOR", "AAR", "FRE", "FRD", "NYB"],
+  "danmark.md": ["CPH", "KGE", "FAX", "KOR", "AAR", "FRE", "NYB"],
   "deutschland.md": ["BON", "BER", "MUN", "DRS", "DUS"],
   "sverige.md": ["GOT"],
   "norge.md": ["OSL"],
@@ -270,6 +272,380 @@ def generate_all(sites_csv=SITES_CSV, devices_csv=DEVICES_CSV, policy=ADDRESS_PO
   """Returns {site: new_network_block_text} for every site in sites.csv."""
   sites, devices_by_site = load_all(sites_csv, devices_csv, policy)
   return {site: render_new_network_block(site, row, devices_by_site) for site, row in sites.items()}
+
+
+# ==================================================================================================
+# Topology sketch generator -- 2026-07-30, prototyped by hand for CLD/ODE/VRK/FRD (see those
+# files' git history the same day) before being turned into this generalised version. Produces the
+# right-angle, single-column-per-branch, black/white style built out in that hand-authored round,
+# from the same real+planned device data every other generator function here already uses -- not a
+# second copy of "what devices exist."
+# ==================================================================================================
+
+# Type -> its topology parent Type. Keyed off the device TYPE, not the site, so CLD "looking
+# different" from ODE falls out naturally from which types are present, not from special-casing
+# CLD in code (confirmed against both real builds before writing this down). Anything not listed
+# here falls into the generic "other endpoints" bucket, parented under BMC1 -- see
+# OTHER_BUCKET_PARENT below. RTR itself has no entry -- it's the root, parented under the site's
+# own top-level cloud node instead (see render_topology_block()).
+TOPOLOGY_PARENT_TYPE = {
+  "SWI": "RTR", "BMC": "RTR", "PVE": "RTR",
+  "NAS": "SWI", "RDR": "SWI", "MUS": "SWI", "WAP": "SWI",
+  "DCS": "PVE", "SBC": "PVE", "PBX": "PVE", "ANS": "PVE", "RUD": "PVE",
+  "SLT": "PVE", "SVR": "PVE", "UFC": "PVE", "FWL": "PVE",
+}
+OTHER_BUCKET_PARENT = "BMC"
+
+# Canonical child order within each branch -- matches the order Robert confirmed for CLD/ODE.
+# Anything of a listed parent-Type not named here (a type this template hasn't seen yet) is
+# appended after, in devices.csv row order -- never dropped, just unordered relative to these.
+SWI_CHILD_ORDER = ["NAS", "RDR", "MUS", "WAP"]
+PVE_CHILD_ORDER = ["ANS", "DCS", "RUD", "SVR", "SLT", "PBX", "SBC", "UFC", "FWL"]
+
+# Above this many real "other bucket" devices (types with no TOPOLOGY_PARENT_TYPE entry), collapse
+# them into one generic "Other devices" node instead of one box each -- matches CLD's placeholder
+# (0 real ones) vs ODE's MAC/MBP (2, shown individually) precedent. Untested above 3 real devices
+# against an actual busy site (e.g. FAL's 5 workstations + vending machines + phones) -- flagged,
+# not guessed, when that site gets ported.
+OTHER_BUCKET_THRESHOLD = 3
+
+# Real devices.csv rows that still shouldn't appear on a *current-state* topology diagram --
+# confirmed dormant, not a data error (see the "RUD" entry's own role_codes.csv row, and
+# project_rudder_dormant_docs_correction in memory: Robert confirmed 2026-07-30 the Rudder server
+# is code-only/unused on the live network). Same shape as generate_inventory.py's own
+# ALWAYS_EXCLUDE_TYPES -- a static set checked every run, so a future regeneration can't silently
+# reintroduce it; if a type's dormant status ever changes, this line is the one place to update.
+TOPOLOGY_EXCLUDE_TYPES = {"RUD"}
+
+TOPOLOGY_STYLE = "fill:#000000,stroke:#FFFFFF,color:#FFFFFF"
+
+
+def load_planned_devices(site: str, devices_csv=DEVICES_CSV):
+  """Planned=yes rows for one site, straight from devices.csv -- deliberately NOT via
+  gi.load_devices() (which excludes them for every real consumer, see that function's own
+  comment). Same dict shape as build_site_devices()'s entries, plus "planned": True, so both can
+  feed the same rendering code without the renderer needing two different shapes to handle."""
+  out = []
+  with open(devices_csv, newline="", encoding="utf-8") as f:
+    for r in csv.DictReader(f):
+      if r["Site"].strip() != site:
+        continue
+      if (r.get("Planned") or "").strip().lower() not in ("yes", "y", "true", "1"):
+        continue
+      dtype = r["Type"].strip().upper()
+      try:
+        number = int(r["Number"])
+      except (KeyError, ValueError):
+        number = 1
+      out.append({
+        "hostname": gi.build_hostname(dtype, site, number),
+        "type": dtype, "octet": r["HostOctet"].strip(),
+        # "{Type} {N}" -- matches the clean "FWL 1"/"BMC 1" label real synthesized devices get
+        # (build_site_devices() turns "Standard FWL slot 1" into the same shape), rather than
+        # surfacing this row's own free-text Notes (would show "Not yet built" as the label).
+        "label_extra": f"{dtype} {number}",
+        "subnet_site": None, "is_foreign": False, "planned": True,
+      })
+  return out
+
+
+def _topology_symbol(dtype: str) -> str:
+  if dtype in TYPE_SYMBOLS:
+    return TYPE_SYMBOLS[dtype]
+  if dtype in CURVEBALL_TYPES:
+    return PLACEHOLDER_SYMBOL
+  raise ValueError(f"Device type {dtype!r} has no entry in TYPE_SYMBOLS")
+
+
+def _octet_int(dev: dict):
+  """dev['octet'] is a string for standard-slot-synthesized entries (build_site_devices() copies
+  compute_standard_devices_for_site()'s HostOctet straight through) but an int for devices.csv-
+  exception entries (gi.load_devices() parses HostOctet itself) -- same inconsistency already
+  present in the data build_site_devices() returns, not introduced here. None if absent/blank."""
+  octet = dev.get("octet")
+  if octet is None or octet == "":
+    return None
+  return int(octet) if str(octet).isdigit() else None
+
+
+def _topology_label(dev: dict, net) -> str:
+  """Unlike render_new_network_block()'s labels (octet only, by design), Robert's explicit call
+  for the topology style is full IPs -- bare octets are ambiguous about which subnet, and that
+  ambiguity is exactly what he flagged as a real problem once already this session."""
+  symbol = _topology_symbol(dev["type"])
+  parts = [] if dev["type"] == "TMP" else [dev["hostname"]]
+  if dev.get("label_extra"):
+    parts.append(dev["label_extra"])
+  octet_int = _octet_int(dev)
+  if octet_int is not None and net is not None:
+    parts.append(gi.offset_ip(net, octet_int))
+  elif dev.get("octet"):
+    parts.append(f'.{dev["octet"]}')
+  label = " · ".join(parts)
+  if dev.get("planned"):
+    label += " — planned"
+  if BANNED_TERMS.search(label):
+    raise ValueError(f"Banned FSMO/health term found in topology label: {label!r}")
+  return f"{symbol} {label}".strip()
+
+
+def _first_instance(devices: list, dtype: str):
+  """The device this type's children attach to -- always the lowest-octet real instance (PVE1,
+  not PVE2; SWI1, not SWI2/3), matching every hand-built example so far, none of which ever hung
+  a service off a *second* PVE/SWI/BMC instance."""
+  candidates = [d for d in devices if d["type"] == dtype]
+  if not candidates:
+    return None
+  return min(candidates, key=lambda d: _octet_int(d) if _octet_int(d) is not None else 999)
+
+
+def _drop_unbuilt_extra_fwl(devices: list, devices_by_site: dict, site: str) -> list:
+  """FWL is the one type where BOTH standard slots (FWL1 .253, FWL2 .254) get synthesized for
+  every site unconditionally (ROLE_OFFSETS, not the DNS_MULTI_FIRST_INSTANCE_ONLY gate everything
+  else uses) -- a permanent address reservation, not a signal a second unit is actually racked.
+  Confirmed 2026-07-30 against ODE: build_site_devices() handed back a real-looking FWL2 entry
+  Robert had already told us doesn't exist yet, which then collided with the deliberately-added
+  Planned=yes row for the same address. Keep FWL1 always; drop any FWL instance beyond it unless
+  it's backed by an actual devices.csv row for this site (real hardware) -- the Planned mechanism
+  is what puts it back for sites where Robert's confirmed it's coming."""
+  real_hostnames = {d["hostname"] for d in devices_by_site.get(site, [])}
+  fwls = sorted(
+    (d for d in devices if d["type"] == "FWL"),
+    key=lambda d: _octet_int(d) if _octet_int(d) is not None else 999,
+  )
+  keep = set()
+  for i, d in enumerate(fwls):
+    if i == 0 or d["hostname"] in real_hostnames:
+      keep.add(id(d))
+  return [d for d in devices if d["type"] != "FWL" or id(d) in keep]
+
+
+def render_topology_block(site: str, sites_row: dict, devices_by_site: dict) -> str:
+  """The hand-drawn-style topology sketch, generalised. Returns mermaid text (graph TD onward, no
+  outer fence -- caller embeds it same as render_new_network_block())."""
+  try:
+    net = gi.validate_cidr(sites_row["Subnet"])
+  except ValueError:
+    net = None
+
+  real = build_site_devices(site, net, devices_by_site) if net is not None else []
+  # build_site_devices() folds VRK's own real devices into CLD's list (its "(VRK)" suffix is the
+  # only marker) -- fine for the old octet-only box, but their real IPs are on VRK's own subnet
+  # (192.168.139.x), not CLD's, and this renderer computes full IPs from CLD's `net`. Confirmed
+  # live 2026-07-30: without this filter EXADNSVRK001 renders as "192.168.69.8", a wrong address.
+  # VRK has its own dedicated topology diagram now (docs/network-diagram/vrk.md) -- matches what
+  # was actually hand-built and approved for CLD, which never included these either.
+  real = [d for d in real if not d.get("label_extra", "").endswith(" (VRK)")]
+  real = [d for d in real if d["type"] not in TOPOLOGY_EXCLUDE_TYPES]
+  real = _drop_unbuilt_extra_fwl(real, devices_by_site, site)
+  planned = load_planned_devices(site)
+  all_devices = real + planned
+
+  node_ids = {}
+  seen_ids = {}
+  def node_id_for(dev):
+    key = (dev["type"], dev["hostname"])
+    if key in node_ids:
+      return node_ids[key]
+    base = f"T_{dev['type']}"
+    seen_ids[base] = seen_ids.get(base, 0) + 1
+    nid = base if seen_ids[base] == 1 else f"{base}{seen_ids[base]}"
+    node_ids[key] = nid
+    return nid
+
+  lines = ["%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%", "graph TD"]
+  style_lines = []
+
+  def emit_node(nid, dev, label_net):
+    lines.append(f'    {nid}["{_topology_label(dev, label_net)}"]')
+    style_lines.append(f'    style {nid} {TOPOLOGY_STYLE}')
+
+  def emit_chain(nids):
+    if len(nids) > 1:
+      lines.append("    " + " --> ".join(nids))
+
+  # -- Special case: VRK/FRD have no RTR/SWI/BMC/PVE hierarchy at all, just whatever real (+
+  # planned) devices exist, chained flat under a single self-labelled network node. --
+  if site in gi.NON_STANDARD_SITES:
+    root_id = f"T_{site}"
+    site_label = "vRACK" if site == "VRK" else sites_row.get("City", site)
+    root_dev_label = f"☁️ {site} — {site_label} network fabric, {sites_row['Subnet']}"
+    lines.append(f'    {root_id}["{root_dev_label}"]')
+    style_lines.append(f'    style {root_id} {TOPOLOGY_STYLE}')
+    chain = [root_id]
+    for dev in all_devices:
+      nid = node_id_for(dev)
+      emit_node(nid, dev, net)
+      chain.append(nid)
+    emit_chain(chain)
+    lines.extend(style_lines)
+    return "\n".join(lines)
+
+  # -- Regular/black-swan sites: VRK cloud -> RTR -> {SWI-branch, BMC-branch, PVE-branch...} --
+  vrk_id = "T_VRK"
+  lines.append(f'    {vrk_id}["☁️ VRK — vRACK, 192.168.139.0/24"]')
+  style_lines.append(f'    style {vrk_id} {TOPOLOGY_STYLE}')
+
+  rtr = _first_instance(all_devices, "RTR")
+  if rtr is None and net is not None:
+    # build_site_devices() drops RTR entirely for NO_STANDARD_ROUTER_SITES (CLD/FRD) -- "not a
+    # real device, documentation-only" for the flat New Network box's purposes. Robert's own CLD
+    # sketch put EXARTRCLD001 at the top of the topology anyway (the structural anchor point,
+    # regardless of whether it's "real" in the strict devices.csv sense) -- synthesize it here,
+    # topology-view only, matching that confirmed precedent rather than silently dropping it.
+    rtr = {
+      "hostname": gi.build_hostname("RTR", site, 1), "type": "RTR",
+      "octet": str(gi.OFFSETS_SINGLE["RTR"]), "label_extra": "RTR 1",
+      "subnet_site": None, "is_foreign": False,
+    }
+    all_devices = [rtr] + all_devices
+  if rtr is None:
+    lines.extend(style_lines)
+    return "\n".join(lines)
+  rtr_id = node_id_for(rtr)
+  emit_node(rtr_id, rtr, net)
+  lines.append(f'    {vrk_id} --> {rtr_id}')
+
+  hub_devices = [d for d in all_devices if TOPOLOGY_PARENT_TYPE.get(d["type"]) == "RTR"]
+  for dev in hub_devices:
+    nid = node_id_for(dev)
+    emit_node(nid, dev, net)
+    lines.append(f'    {rtr_id} --> {nid}')
+
+  # SWI branch: NAS/RDR/MUS/WAP, in canonical order, chained under SWI1 specifically.
+  swi1 = _first_instance(all_devices, "SWI")
+  if swi1:
+    branch = [d for d in all_devices if TOPOLOGY_PARENT_TYPE.get(d["type"]) == "SWI"]
+    branch.sort(key=lambda d: SWI_CHILD_ORDER.index(d["type"]) if d["type"] in SWI_CHILD_ORDER else 99)
+    chain = [node_id_for(swi1)]
+    for dev in branch:
+      nid = node_id_for(dev)
+      emit_node(nid, dev, net)
+      chain.append(nid)
+    emit_chain(chain)
+
+  # PVE branch: services/VMs, in canonical order, chained under PVE1 specifically.
+  pve1 = _first_instance(all_devices, "PVE")
+  if pve1:
+    branch = [d for d in all_devices if TOPOLOGY_PARENT_TYPE.get(d["type"]) == "PVE"]
+    branch.sort(key=lambda d: PVE_CHILD_ORDER.index(d["type"]) if d["type"] in PVE_CHILD_ORDER else 99)
+    chain = [node_id_for(pve1)]
+    for dev in branch:
+      nid = node_id_for(dev)
+      emit_node(nid, dev, net)
+      chain.append(nid)
+    emit_chain(chain)
+
+  # "Other" bucket: anything with no TOPOLOGY_PARENT_TYPE entry, chained under BMC1 specifically
+  # (matches CLD's empty placeholder / ODE's MAC+MBP precedent). Individually named up to
+  # OTHER_BUCKET_THRESHOLD real devices, collapsed into one generic node above that.
+  bmc1 = _first_instance(all_devices, OTHER_BUCKET_PARENT)
+  if bmc1:
+    other = [d for d in all_devices if d["type"] not in TOPOLOGY_PARENT_TYPE and d["type"] != "RTR"]
+    chain = [node_id_for(bmc1)]
+    if not other:
+      pass
+    elif len(other) <= OTHER_BUCKET_THRESHOLD:
+      for dev in other:
+        nid = node_id_for(dev)
+        emit_node(nid, dev, net)
+        chain.append(nid)
+    else:
+      nid = "T_OTHER"
+      lines.append(f'    {nid}["\U0001F4CE Other devices — {len(other)} confirmed, see devices.csv"]')
+      style_lines.append(f'    style {nid} {TOPOLOGY_STYLE}')
+      chain.append(nid)
+    emit_chain(chain)
+
+  lines.extend(style_lines)
+  return "\n".join(lines)
+
+
+# Sites ported to the hand-drawn-then-generalised topology style, 2026-07-30 (see each file's own
+# git history the same day) -- CLD/VRK get their own standalone file, ODE/FRD share danmark.md
+# with 7 untouched sites still on the old flat-box style. Add an entry here once a new site's
+# topology section has been hand-verified once, same process as these four.
+TOPOLOGY_SITES = {"CLD": "cld.md", "VRK": "vrk.md", "ODE": "danmark.md", "FRD": "danmark.md"}
+
+TOPOLOGY_MARKER_START = "%% GENERATED:TOPOLOGY:{site}:START"
+TOPOLOGY_MARKER_END = "%% GENERATED:TOPOLOGY:{site}:END"
+
+
+def insert_topology_into_docs(docs_dir=DOCS_DIR, sites_csv=SITES_CSV, devices_csv=DEVICES_CSV, policy=ADDRESS_POLICY):
+  """Marker-wraps and (re)writes each TOPOLOGY_SITES site's topology mermaid block, same
+  idempotent shape as insert_into_docs() for the flat New Network box. Scopes its search to that
+  site's own "## <CODE> --...\\n...\\n## <next site>" section first (danmark.md has two sites both
+  titled "### Topology sketch...", identically -- without scoping, a naive search would find
+  ODE's heading and FRD's interchangeably). Returns (inserted, replaced, missing) site-code lists.
+  """
+  sites, devices_by_site = load_all(sites_csv, devices_csv, policy)
+
+  by_file = {}
+  for site, fname in TOPOLOGY_SITES.items():
+    by_file.setdefault(fname, []).append(site)
+
+  inserted, replaced, missing = [], [], []
+
+  for fname, site_codes in by_file.items():
+    docs_path = docs_dir / fname
+    text = docs_path.read_text(encoding="utf-8")
+
+    for site in site_codes:
+      block = render_topology_block(site, sites[site], devices_by_site)
+      # No indent, unlike the flat New Network box's markers -- that one sits nested inside a
+      # subgraph; this is a standalone top-level `graph TD`, flush left like every hand-authored
+      # version of it already committed.
+      start_marker = TOPOLOGY_MARKER_START.format(site=site)
+      end_marker = TOPOLOGY_MARKER_END.format(site=site)
+      wrapped = f"{start_marker}\n{block}\n{end_marker}"
+
+      # Scope to this site's own section: from its own "## <CODE> --" header (or, for a
+      # single-site file like cld.md/vrk.md, the whole file) up to the next top-level "## " header.
+      site_header_re = re.compile(r'^## ' + re.escape(site) + r'\b.*$', re.MULTILINE)
+      m = site_header_re.search(text)
+      if m:
+        next_header = re.search(r'^## (?!' + re.escape(site) + r'\b)', text[m.end():], re.MULTILINE)
+        section_end = m.end() + next_header.start() if next_header else len(text)
+        section_start = m.start()
+      else:
+        section_start, section_end = 0, len(text)
+      section = text[section_start:section_end]
+
+      start_idx = section.find(start_marker)
+      if start_idx != -1:
+        end_idx = section.find(end_marker, start_idx)
+        if end_idx == -1:
+          raise ValueError(f"{site}: found TOPOLOGY START marker but no matching END marker in {fname}")
+        end_idx += len(end_marker)
+        new_section = section[:start_idx] + wrapped + section[end_idx:]
+        text = text[:section_start] + new_section + text[section_end:]
+        replaced.append(site)
+        continue
+
+      # No markers yet -- first run against hand-authored content. Replace the mermaid fence
+      # immediately following "Topology sketch" within this site's own section, where that
+      # heading exists (cld.md/danmark.md) -- vrk.md never got a separate heading for it (only
+      # one mermaid fence in the whole file), so fall back to the last fence in the section.
+      fence_re = re.compile(r'Topology sketch.*?\n\n```mermaid\n.*?\n```', re.DOTALL)
+      m2 = fence_re.search(section)
+      if m2 is not None:
+        heading_end = section.index("```mermaid\n", m2.start()) + len("```mermaid\n")
+        fence_close = section.index("\n```", heading_end)
+      else:
+        all_fences = list(re.finditer(r'```mermaid\n.*?\n```', section, re.DOTALL))
+        if not all_fences:
+          missing.append(site)
+          continue
+        last = all_fences[-1]
+        heading_end = last.start() + len("```mermaid\n")
+        fence_close = section.index("\n```", heading_end)
+      new_section = section[:heading_end] + wrapped + section[fence_close:]
+      text = text[:section_start] + new_section + text[section_end:]
+      inserted.append(site)
+
+    docs_path.write_text(text, encoding="utf-8")
+
+  return inserted, replaced, missing
 
 
 # %% is mermaid's real comment syntax -- an HTML <!-- --> comment is NOT valid inside a flowchart
