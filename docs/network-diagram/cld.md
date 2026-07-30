@@ -55,23 +55,24 @@ graph TD
 ## 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
 
 ```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRCLD001 · RTR · .1"]
-    T_SWI["🔀 EXASWICLD001 · SWI 1 · .250"]
-    T_BMC1["🔧 EXABMCCLD001 · BMC 1 · .2"]
-    T_BMC2["🔧 EXABMCCLD002 · BMC 2 · .3 — planned"]
-    T_PVE1["🗂️ EXAPVECLD001 · PVE 1 · .5"]
-    T_PVE2["🗂️ EXAPVECLD002 · PVE 2 · ? — planned"]
+    T_RTR["📡 EXARTRCLD001 · RTR · 192.168.69.1"]
+    T_SWI["🔀 EXASWICLD001 · SWI 1 · 192.168.69.250"]
+    T_BMC1["🔧 EXABMCCLD001 · BMC 1 · 192.168.69.2"]
+    T_BMC2["🔧 EXABMCCLD002 · BMC 2 · 192.168.69.3 — planned"]
+    T_PVE1["🗂️ EXAPVECLD001 · PVE 1 · 192.168.69.5"]
+    T_PVE2["🗂️ EXAPVECLD002 · PVE 2 · 192.168.69.6 — planned"]
     T_OTHER["📎 Other devices — PHN / WKS / LAP / etc."]
-    T_ANS["🤖 EXAANSCLD001 · Ansible control node · .9"]
-    T_DCS["🗝️ EXADCSCLD001 · DCS 1 · .10"]
-    T_NAS["🗃️ EXANASCLD001 · NAS · .19"]
-    T_SVR["🗄️ EXASVRCLD002 · Windows Admin Centre · .20"]
-    T_SLT["🧂 EXASLTCLD001 · Salt master · .22"]
-    T_PBX["🔌 EXAPBXCLD001 · 3CX PBX · .48"]
-    T_UFC["🎛️ EXAUFCCLD001 · UniFi Network Controller · .82"]
-    T_FWL["🧱 EXAFWLCLD001 · FWL 1 · .253"]
+    T_ANS["🤖 EXAANSCLD001 · Ansible control node · 192.168.69.9"]
+    T_DCS["🗝️ EXADCSCLD001 · DCS 1 · 192.168.69.10"]
+    T_NAS["🗃️ EXANASCLD001 · NAS · 192.168.69.19"]
+    T_SVR["🗄️ EXASVRCLD002 · Windows Admin Centre · 192.168.69.20"]
+    T_SLT["🧂 EXASLTCLD001 · Salt master · 192.168.69.22"]
+    T_PBX["🔌 EXAPBXCLD001 · 3CX PBX · 192.168.69.48"]
+    T_UFC["🎛️ EXAUFCCLD001 · UniFi Network Controller · 192.168.69.82"]
+    T_FWL["🧱 EXAFWLCLD001 · FWL 1 · 192.168.69.253"]
 
     T_VRK --> T_RTR
     T_RTR --> T_SWI
