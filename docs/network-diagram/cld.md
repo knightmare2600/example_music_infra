@@ -54,6 +54,10 @@ graph TD
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWICLD001 · SWI 1 · 192.168.69.250"]
     T_RTR --> T_SWI
+    T_SWI2["🔀 EXASWICLD002 · SWI 2 · 192.168.69.251"]
+    T_RTR --> T_SWI2
+    T_SWI3["🔀 EXASWICLD003 · SWI 3 · 192.168.69.252"]
+    T_RTR --> T_SWI3
     T_BMC2["🔧 EXABMCCLD002 · BMC 2 · 192.168.69.3 — planned"]
     T_RTR --> T_BMC2
     T_PVE2["🗂️ EXAPVECLD002 · PVE 2 · 192.168.69.6 — planned"]
@@ -74,6 +78,8 @@ graph TD
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF

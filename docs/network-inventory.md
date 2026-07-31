@@ -76,18 +76,25 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 
 | Hostname | Role | OS | IP | Notes |
 |----------|------|----|----|-------|
+| `EXABMCCLD001` | BMC / iDRAC / iLO / Redfish | — | `192.168.69.2` | Standard BMC slot 1 — real hardware in an Edinburgh datacentre |
 | `EXAANSCLD001` | Ansible control node | Debian | `192.168.69.9` | Ansible — manages all sites |
-| `EXARUDCLD001` | Rudder Server | Debian | `192.168.69.12` | Configuration management — see NET-MGMT-RUDDER-001 |
-| `EXASLTCLD001` | Salt master | Debian | `192.168.69.22` | Config mgmt for all Windows nodes (client, server, DC) — see `ansible/playbooks/salt/README.md`. Also reachable as `salt.jukebox.internal` (CNAME) |
+| `EXARUDCLD001` | Rudder Server | Debian | `192.168.69.12` | Not in active use — dormant, kept as reference code only, see NET-MGMT-RUDDER-001 |
+| `EXANASCLD001` | Storage (NAS/SAN) | — | `192.168.69.19` | Standard NAS slot |
+| `EXARDRCLD001` | Badge reader | — | `192.168.69.21` | Standard RDR slot |
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.69.20` | WAC — reaches all site DCs and Windows nodes |
+| `EXASLTCLD001` | Salt master | Debian | `192.168.69.22` | Config mgmt for all Windows nodes (client, server, DC) — see `ansible/playbooks/salt/README.md`. Also reachable as `salt.jukebox.internal` (CNAME) |
 | `EXAPBXCLD001` | Central PBX | — | `192.168.69.48` | 3CX PBX — all site SBCs trunk here |
 | `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
+| `EXASWICLD001` | Switch | — | `192.168.69.250` | Standard SWI slot 1 |
+| `EXAFWLCLD002` | Firewall (secondary) | — | `192.168.69.254` | Standard FWL slot 2 — not yet built |
 
 **FRD — Fredericia Havn (standby), `172.16.124.0/24`**
 
 | Hostname | Role | IP | Notes |
 |----------|------|----|-------|
 | — (bootstrap-only, no formal hostname) | Provisioning / bootstrap (standby) | `172.16.124.1` | Port 8000, not 80 |
+| `EXAPVEFRD001` | Proxmox VE node | `172.16.124.5` | Small Intel NUC — part of FRD's real "site kit" alongside the switch below, despite FRD being otherwise a legal-fiction single-MacBook provisioning network (confirmed by Robert, 2026-07-30) |
+| `EXASWIFRD001` | Switch | `172.16.124.250` | 48-port — part of the site kit alongside the NUC above |
 | `EXAPBXCLD002` | Secondary 3CX PBX | `172.16.124.48` | Physically at Fredericia Havn — hostnamed under CLD as part of the 2026-07-11 Pulsant DC / FRD Havn network rework (renamed from `EXAPBXFRD001`). Reuses the empty SBC slot, same pattern as CLD's own PBX (`EXAPBXCLD001`) |
 
 ---
@@ -104,7 +111,7 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 | BRD | West Berlin | West Germany (FRG) | `192.168.113.0/24` | `example.net` | Legacy site |
 | BRK | Brockville | Ontario, Canada | `192.168.136.0/24` | `example.net` | |
 | CHI | Chicago | Illinois, USA | `192.168.214.0/24` | `example.net` | |
-| CLD | Cloud / Provisioning (LAN) | Korsbaek, DK | `192.168.69.0/24` | `<blank / NULL>` | DCs, Ansible, Rudder, WAC, PBX, UniFi controller |
+| CLD | Cloud / Provisioning (LAN) | Korsbaek, DK | `192.168.69.0/24` | `<blank / NULL>` | DCs, Ansible, WAC, PBX, UniFi controller (Rudder present but dormant, not in active use) |
 | CLY | Clydebank | Scotland, UK | `192.168.41.0/24` | `example.net` | |
 | COV | Coventry | England, UK | `192.168.247.0/24` | `example.net` | WAP/RTR only |
 | CPH | København | Danmark | `192.168.231.0/24` | `example.com/net` | |
@@ -112,7 +119,7 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 | EDI | Edinburgh | Scotland, UK | `192.168.131.0/24` | `example.org/net` | Multiple DCs — check replication health |
 | FAL | Falkirk | Scotland, UK | `192.168.76.0/24` | `example.net` | **Head Office** — Brockville Stadium |
 | FAX | Faxe | Danmark | `192.168.246.0/24` | `example.net` | |
-| FRD | Fredericia Havn (standby vRACK) | Danmark | `172.16.124.0/24` | `<blank / NULL>` | Standby provisioning network — not `FRE`, the real Fredericia office. Legal fiction, physically the same MacBook running `http.server` |
+| FRD | Fredericia Havn (standby vRACK) | Danmark | `172.16.124.0/24` | `<blank / NULL>` | Standby provisioning network — not `FRE`, the real Fredericia office. Legal fiction run off a MacBook (`http.server`), but has a real "site kit" too — NUC running Proxmox VE + a 48-port switch, see FRD row above |
 | GLA | Glasgow | Scotland, UK | `192.168.141.0/24` | `example.net` | Regional DC hub |
 | GOT | Gothenburg | Sweden | `192.168.46.0/24` | `example.net` | |
 | HAL | Halifax | England, UK | `192.168.142.0/24` | `example.net` | |

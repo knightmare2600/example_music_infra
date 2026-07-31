@@ -225,3 +225,7 @@ CLD,BMC,2,3,,none,,"Not yet built -- planned expansion slot (2026-07-30, Robert)
 CLD,PVE,2,6,,none,,"Not yet built -- planned expansion slot (2026-07-30, Robert)",,no,yes
 ODE,FWL,2,254,,none,,"Not yet built -- planned second firewall (2026-07-30, Robert)",,no,yes
 FRD,FWL,1,253,,none,,"Not yet built -- planned first firewall for this fallback vRACK site (2026-07-30, Robert)",,no,yes
+FRD,PVE,1,5,,ssh,,"Small Intel NUC running Proxmox VE -- part of the site kit alongside the 48-port switch, despite FRD being otherwise a legal-fiction single-MacBook provisioning network (2026-07-30, Robert). Vendor/model TBD.",,no,
+FRD,SWI,1,250,,snmp,,"48-port switch -- part of the site kit alongside the NUC (2026-07-30, Robert). Vendor/model TBD.",,no,
+ODE,SWI,2,251,,snmp,,"Second switch -- confirmed real (2026-07-30, Robert). Vendor/model TBD.",,no,
+BRK,SWI,2,251,,snmp,,"Second switch -- confirmed real (2026-07-30, Robert). Vendor/model TBD.",,no,
