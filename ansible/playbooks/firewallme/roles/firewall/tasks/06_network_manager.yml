@@ -107,6 +107,13 @@
 #               half of that fix, so this closes the remaining gap rather than
 #               changing existing behaviour. rudder/salt roles' own .nmconnection
 #               templates have the same gap -- out of scope here, not yet fixed.
+#   2026-07-31  check_network_session_safety.py flagged "[NM] Bring up LAN interface" as
+#               ungated. The check's specific worry (Ansible's own session getting stranded)
+#               is a false positive -- ansible_host is always the WAN/vRACK address, confirmed
+#               even for CLD's dual-named EXAFWLCLD001 -- but going through it found a real,
+#               related gap: no live-address-mismatch strand-check for LAN, unlike WAN's above.
+#               Added the same detect-and-defer pattern, just protecting the site's downstream
+#               devices from a silently-repointed gateway instead of this session specifically.
 # =============================================================================
 
 # ── Remove stale auto-created NM connections for our interfaces ───────────────
@@ -301,6 +308,44 @@
          else 'You said no to a reboot earlier — that is respected, nothing is being rebooted automatically. Reboot this host yourself when it is safe to, or this correction will not take effect.' }}
   when: nm_wan_activate_would_strand_session
 
+# ── Detect a live LAN address mismatch before activating (2026-07-31) ─────────
+# check_network_session_safety.py (Tier 2) flagged "[NM] Bring up LAN interface" below as
+# ungated. The check's specific worry -- Ansible's own SSH session getting stranded -- is a
+# false positive here: ansible_host is the WAN/vRACK address for every firewall inventory entry,
+# confirmed even for CLD's dual-named EXAFWLCLD001 (ansible_host=192.168.139.69, the WAN face, not
+# the LAN one at .253) -- so this session can never be riding fw_lan_iface. But going through it
+# surfaced a real, related gap: unlike WAN (which detects a live address change and defers to
+# reboot instead of applying it, see above), LAN had no equivalent -- a genuine LAN IP correction
+# (e.g. a wrong-instance octet fix) would apply live and silently repoint the gateway address for
+# every device at this site mid-play, no warning given. Same detect-and-defer pattern as WAN,
+# just for the site's downstream devices instead of this session specifically.
+
+- name: "[NM] Detect LAN interface's current live address"
+  ansible.builtin.shell: |
+    nmcli -g IP4.ADDRESS dev show {{ fw_lan_iface }} 2>/dev/null | head -1 | cut -d/ -f1
+  register: nm_lan_ip_live
+  changed_when: false
+  failed_when: false
+
+- name: "[NM] Set flag — would activating LAN now change its live address?"
+  ansible.builtin.set_fact:
+    nm_lan_activate_would_change_live_address: >-
+      {{
+        nm_lan_ip_live.stdout | trim != ''
+        and nm_lan_ip_live.stdout | trim != fw_lan_ip
+      }}
+
+- name: "[NM] NOTE — LAN address correction needs a reboot to take effect"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _c.Y }}[!]{{ _c.NC }} LAN address is changing from {{ nm_lan_ip_live.stdout | trim }}
+      to {{ fw_lan_ip }} — activating it now would silently repoint the gateway for every
+      device on this site's LAN mid-run. The corrected profile is written to disk —
+      nothing has been rebooted.
+      {{ 'A reboot was requested earlier and will apply this when it happens.' if fw_reboot_requested
+         else 'You said no to a reboot earlier — that is respected, nothing is being rebooted automatically. Reboot this host yourself when it is safe to, or this correction will not take effect.' }}
+  when: nm_lan_activate_would_change_live_address
+
 # ── Bring up interfaces — WAN first, then LAN ─────────────────────────────────
 # BUG FIX (mirrors firewallme.sh 2026-04-25 + 2026-06-14): WAN must come up and
 # be polled for a live IP before LAN is activated. The original order (LAN then
@@ -330,6 +375,7 @@
   register: nm_lan_up
   changed_when: nm_lan_up.rc == 0
   failed_when: nm_lan_up.rc != 0
+  when: not nm_lan_activate_would_change_live_address
 
 # BUG FIX (2026-07-24, found live on EXAFWLCLD001): unlike WAN (which already polls for its IP
 # right above), nothing here ever verified the LAN interface actually had its address before
