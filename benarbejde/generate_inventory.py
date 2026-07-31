@@ -1156,8 +1156,18 @@ NON_STANDARD_SITES = {"VRK", "FRD"}
 # CLD's actual devices.csv rows before adding WAP/BMC to DNS_MULTI_FIRST_INSTANCE_ONLY, since
 # without this fix CLD would get a phantom EXAWAPCLD001 DNS record colliding with the real
 # EXAUFCCLD001 at the exact same IP.
+# 2026-07-31: AKL/SYD added -- backfilling real WAP counts from ad_computers.json (the AD
+# computer-object export, now the source of truth for these device lists per Robert) found both
+# sites' real EXACAM<SITE>001 camera genuinely sits at .82, the same octet WAP1's synthesized
+# default always uses. Same collision shape as CLD's SBC/WAP reuse above, just WAP-on-CAM instead
+# of WAP-on-UFC -- resolved the same way: suppress the synthesized WAP1 placeholder, add a real
+# devices.csv WAP1 row at the next free octet (.84 for both) instead. Every other backfilled site
+# had no such collision, so WAP1 stays at the synthesized default (.82) there -- only WAP2+ needed
+# real rows.
 SUPPRESSED_STANDARD_ROLES = {
   "CLD": {"SBC", "WAP"},
+  "AKL": {"WAP"},
+  "SYD": {"WAP"},
 }
 
 def emit_devices_for_dns(csv_path: Path, devices_path: Path):
