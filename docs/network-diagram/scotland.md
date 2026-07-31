@@ -259,11 +259,9 @@ graph TD
     T_SBC["🛡️ EXASBCEDI001<br/>SBC<br/>192.168.131.48"]
     T_FWL["🧱 EXAFWLEDI001<br/>LAN Face<br/>192.168.131.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTH_DCR["🗝️ EXADCREDI002-003<br/>2 x Domain Controller (legacy Naming)s<br/>192.168.131.12-13"]
     T_WKS["🖥️ EXAWKSEDI001<br/>Shared Desktop<br/>192.168.131.150"]
     T_LAP["💻 EXALAPEDI098<br/>Pool Laptop<br/>192.168.131.108"]
     T_TEA["🫖 EXATEAEDI001<br/>Coffee Machine<br/>192.168.131.60"]
-    T_OTH_DCR --> T_LAP
     T_WKS --> T_TEA
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -278,7 +276,6 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TEA fill:#000000,stroke:#FFFFFF,color:#FFFFFF
