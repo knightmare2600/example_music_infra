@@ -686,6 +686,11 @@ graph TD
 > rule. WAP/CAM both confirmed genuinely never-installed — planned, never built, arriving fresh
 > with the new network.
 
+> 🚨 **Migration priority — Tier 3.** `EXADCRNEW001` (AD, never given real users/shares) and
+> `EXASRVNEW001` (file/print, never configured, still on DHCP) — no live users depending on
+> either today. Still counts toward the estate-wide rollout: a new `EXADCSNEW001` build
+> promoting and replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`).
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
@@ -818,6 +823,10 @@ graph TD
 > sharpest hardware-inadequacy signal so far. WAP/CAM/Endpoints all confirmed genuinely
 > never-installed — everything arrives fresh with the new build.
 
+> 🚨 **Migration priority — Tier 4.** Hardware inadequate from the outset (consumer OptiPlex
+> tower) — no in-place remediation possible. A new `EXADCSSHE001` build promotes and replicates
+> against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`) on proper server hardware.
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
@@ -927,6 +936,10 @@ graph TD
 > — Windows Server on a consumer desktop tower, same as Sheffield. WAP/CAM/Endpoints all
 > confirmed genuinely never-installed.
 
+> 🚨 **Migration priority — Tier 4.** Hardware inadequate from the outset (consumer OptiPlex
+> tower) — no in-place remediation possible. A new `EXADCSHAL001` build promotes and replicates
+> against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`) on proper server hardware.
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
@@ -1034,6 +1047,10 @@ graph TD
 > **Corrected against Robert's real facts, 2026-07-31.** Same shape as SHE/HAL: nothing built, no
 > hypervisor, no real BMC (`EXARACHUL001` removed). `EXADCSHUL001` was another OptiPlex special.
 > WAP/CAM/Endpoints all confirmed genuinely never-installed.
+
+> 🚨 **Migration priority — Tier 4.** Hardware inadequate from the outset (consumer OptiPlex
+> tower) — no in-place remediation possible. A new `EXADCSHUL001` build promotes and replicates
+> against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`) on proper server hardware.
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%

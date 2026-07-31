@@ -22,6 +22,10 @@
 > confirmed genuinely real and in active use — not new-build bleed, and not still-boxed like
 > several other sites — subsumed straight into the new build's UniFi controller.
 
+> 🚨 **Migration priority — Tier 1.** DC "built and left in a bad state" — services stopped.
+> Not a repair candidate — the fix is a new `EXADCSAKL001` build promoting and replicating
+> against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node.
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD

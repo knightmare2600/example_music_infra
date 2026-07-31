@@ -26,6 +26,10 @@
 > local infra server, MacBook, workstation, phone, iPad, WAP, coffee-area camera, signage, and
 > printer) confirmed real via `devices.csv`.
 
+> 🚨 **Migration priority — Tier 1.** DNS/Netlogon/KDC stopped on the ESX-hosted DC. Not a
+> repair candidate — the fix is a new `EXADCSSYD001` build promoting and replicating against
+> `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node.
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
@@ -207,6 +211,10 @@ graph TD
 > (`EXANASMEL001`, Synology) confirmed real — replaced by a new TrueNAS node on new hardware, but
 > the old Synology itself genuinely existed (missing from `devices.csv` for some other reason,
 > not fabrication). WAPs confirmed never used — still in their boxes.
+
+> 🚨 **Migration priority — Tier 1.** DNS/Netlogon/KDC stopped on the ESX-hosted DC. Not a
+> repair candidate — the fix is a new `EXADCSMEL001` build promoting and replicating against
+> `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node.
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%

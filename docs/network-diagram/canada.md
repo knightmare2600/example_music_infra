@@ -27,6 +27,12 @@
 > standalone box, per Robert: "the DC node was on this vcentre." Laptop, WAP, and both vending
 > machines (donut, maple syrup) all confirmed real.
 
+> 🚨 **Migration priority — Tier 1 (highest).** DNS/Netlogon/KDC stopped on the NA/APAC hub
+> site's own DC. Not a repair candidate — the fix is a new `EXADCSBRK001` build promoting and
+> replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node;
+> the whole point of building `EXADCSCLD001` as forest root was to get every site's DC talking
+> to it and replicating around, independent of whatever state the old box was in.
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
@@ -201,6 +207,14 @@ graph TD
 > and `EXADCSTOR001` — services stopped, and genuinely running on DHCP. Second iLO hostname
 > (`EXARACTOR002`) follows the standard numbering convention, not independently confirmed
 > per-device — flag if wrong. WAP/CAM confirmed genuinely never-installed.
+
+> 🚨 **Migration priority — Tier 1.** `EXADCSTOR001` — services stopped and running on DHCP.
+> Not a repair candidate — the fix is a new `EXADCSTOR001` build promoting and replicating
+> against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node.
+>
+> 🚩 **Governance flag — undocumented node.** `EXADCRTOR028` — no-one on record knew this DC
+> existed until this audit. Confirm its decommission status directly rather than presuming it's
+> gone just because the new build never referenced it.
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
