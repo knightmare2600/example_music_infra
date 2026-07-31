@@ -14,6 +14,87 @@
 > ⚠️ `EXADCSLAX001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (US) LLC. · **Landline:** +1 213 555 xxxx · **Mobile:** +1 213 555 xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). BMC/hypervisor confirmed Dell iDRAC9 (kept as originally
+> documented — HP was a same-day slip, corrected). `EXADCSLAX001` was genuinely deployed and
+> running, then someone physically disconnected it — that's what produced the services-stopped
+> state, a different failure mode from CLY/DUN's "never touched" hardware. Two real corrections
+> from the original box: the Atari ST (used for MIDI mixing) is `EXAASTLAX001` with its real 🕹️
+> symbol, not `EXATTYLAX001`/⌨️ as originally shown; and the Moog/LinnDrum/Fairlight now use the
+> same specific types/emoji as BIR (`MOO`/`LIN`/`FCL`) instead of a generic `MUS`/💿 — Robert:
+> "supposed to match what BIR has." WAPs (×3) confirmed never deployed — "didn't have any real
+> networking to speak of" on the wireless side specifically (the wired FWL/switches/RTR/server
+> are all separately confirmed real via `devices.csv`).
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRLAX001<br/>Cisco ISR 4331<br/>192.168.213.254"]
+    O_INET --> O_RTR
+    O_FWL["🧱 EXAFWLLAX001<br/>Palo Alto PAN-OS 10.x<br/>192.168.213.1"]
+    O_RTR --> O_FWL
+    O_SW1["🔀 EXASWILAX001<br/>Cisco 9300<br/>192.168.213.250"]
+    O_SW2["🔀 EXASWILAX002<br/>Cisco 2960<br/>192.168.213.251"]
+    O_FWL --> O_SW1
+    O_FWL --> O_SW2
+
+    O_RAC["🔧 EXARACLAX001<br/>Dell iDRAC9<br/>192.168.213.2"]
+    O_DC["🔴🗝️ EXADCSLAX001<br/>DC · deployed, then physically disconnected — services stopped<br/>192.168.213.10"]
+    O_SRV["🗄️ EXASRVLAX001<br/>Rocky Linux, Local Services/DB<br/>192.168.213.20"]
+    O_SW1 --> O_DC
+    O_RAC -.->|"manages"| O_DC
+    O_SW1 --> O_SRV
+
+    O_MBP["💻 EXAMBPLAX001<br/>MacBook Pro<br/>192.168.213.41"]
+    O_TAB["📱 EXATABLAX001<br/>iPad, Setlists<br/>192.168.213.61"]
+    O_PHN["📞 EXAPHNLAX001<br/>Android Phone<br/>No IP Address"]
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_MOO["🎹 EXAMOOLAX001<br/>Moog One Synthesizer<br/>192.168.213.70"]
+    O_LIN["🥁 EXALINLAX001<br/>LinnDrum LM-2<br/>192.168.213.71"]
+    O_FCL["🎹 EXAFCLLAX001<br/>Fairlight CMI IIx<br/>192.168.213.72"]
+    O_AST["🕹️ EXAASTLAX001<br/>Atari ST, MIDI Mixing<br/>192.168.213.73"]
+    O_PAY["☎️ EXAPAYLAX001<br/>Lobby Payphone<br/>192.168.213.74"]
+    O_LCD["🖼️ EXALCDLAX001<br/>NEC PlasmaSync Display<br/>192.168.213.75"]
+    O_SW2 --> O_MBP
+    O_SW2 --> O_TAB
+    O_SW2 --> O_PHN
+    O_SW2 --> O_WAP
+    O_SW2 --> O_CAM
+    O_SW2 --> O_MOO
+    O_SW2 --> O_LIN
+    O_SW2 --> O_FCL
+    O_SW2 --> O_AST
+    O_SW2 --> O_PAY
+    O_SW2 --> O_LCD
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MOO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LIN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FCL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_AST fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_LAX ["🕰️ Old Network (legacy)"]
@@ -53,6 +134,8 @@ graph TD
     end
     style OLD_LAX fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -128,6 +211,36 @@ graph TD
 > ⚠️ `EXADCSNYC001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (US) LLC. · **Landline:** +1 212 500 0xxx · **Mobile:** +1 917 900 2xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** No SBC; no `RRY`; no WireGuard on old
+> infra — standing corrections. Despite `devices.csv` having zero rows for NYC (which turned out
+> to mean "expansion office" for most other sites checked this pass), NYC genuinely had a broken
+> DC: `EXADCSNYC001` ran on an OptiPlex, bare metal, DNS/Netlogon/KDC services stopped — kept as
+> the real, sharp migration-priority signal it is. No real BMC (consumer OptiPlex, `EXARACNYC001`
+> removed, matching SHE/HAL/HUL's treatment). WAP/CAM confirmed genuinely never-installed.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_DC["🔴🗝️ EXADCSNYC001<br/>DC · DNS/Netlogon/KDC services stopped, Dell OptiPlex bare metal<br/>192.168.212.10"]
+    O_INET --> O_DC
+
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_INET --> O_WAP
+    O_INET --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_NYC ["🕰️ Old Network (legacy)"]
@@ -151,6 +264,8 @@ graph TD
     end
     style OLD_NYC fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -197,33 +312,22 @@ graph TD
 
 ---
 
-## NJC — New Jersey ⚠️ 🚕
+## NJC — New Jersey 🚕
 
 **LAN:** `192.168.201.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **VPN parent:** BRK  
-> ⚠️ `EXADCSNJC001` — DNS, Netlogon and KDC services stopped.  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
 **Entity:** Example Music (US) LLC. · **Landline:** +1 201 400 0xxx · **Mobile:** +1 908 900 2xxx
+
+> **New-build site — corrected 2026-07-31.** The previous "Old Network" box here — including its
+> `⚠️` DC-services-stopped warning, identical wording to NYC's real one — was entirely fabricated
+> template content. Robert confirmed: NJC was genuinely blank, the warning was copy-paste, not an
+> independently observed fact. Converted to the same "New Build Location" placeholder pattern
+> used for FRD/NYB/SEA/SFO/FRE/DRS/DUS/GOT/OSL/AMS/MIL/VIE/BRT/MTL.
 
 ```mermaid
 graph TD
-    subgraph OLD_NJC ["🕰️ Old Network (legacy)"]
-      INET["🌐 Internet"]
-      RAC["🔧 EXARACNJC001 · BMC node 1 · .2"]
-      PVE["🗂️ EXAPVENJC001 · Proxmox node 1 · .5"]
-      DC["🔴 🗝️ EXADCSNJC001 · DC · Services stopped · .10"]
-      SBC["🛡️ EXASBCNJC001 · 3CX SBC → CLD PBX · .48"]
-      RRY["🔁 EXARRYNJC001 · Rudder Relay · .12"]
-      WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
-      CAM["CAMs TODO"]
-      VPN["🔗 WireGuard → BRK"]
-
-      INET --> PVE --> DC & SBC
-      RAC -.->|"manages"| PVE
-      PVE --> WAP & CAM
-      PVE <-->|"WireGuard tunnel"| VPN
-
-      PVE --> RRY
-      RRY -. "→ EXARUDCLD001" .-> VPN
+    subgraph OLD_NJC ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site. · No prior/legacy network existed before commissioning."]
     end
     style OLD_NJC fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
@@ -279,6 +383,35 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** BRK  
 **Entity:** Example Music (US) LLC. · **Landline:** +1 305 555 xxxx · **Mobile:** +1 786 555 xxxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** No hypervisor, no BMC, no DC, no SBC, no
+> `RRY`, no WireGuard — Robert: "literally a MacBook and a Cuban coffee machine in an empty
+> office." Only two real devices existed here at all. WAP/CAM confirmed never installed.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_LAP["💻 EXALAPMIA001<br/>macOS Sonoma Laptop<br/>192.168.135.21"]
+    O_COF["🍵 EXACOFMIA001<br/>Cuban Covfefe Machine, VxWorks<br/>192.168.135.60"]
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_INET --> O_LAP
+    O_INET --> O_COF
+    O_INET --> O_WAP
+    O_INET --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_COF fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_MIA ["🕰️ Old Network (legacy)"]
@@ -304,6 +437,8 @@ graph TD
     end
     style OLD_MIA fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -354,33 +489,21 @@ graph TD
 
 ---
 
-## ATL — Atlanta ⚠️ 🍑
+## ATL — Atlanta 🍑
 
 **LAN:** `192.168.33.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **VPN parent:** BRK  
-> ⚠️ `EXADCSATL001` — DNS, Netlogon and KDC services stopped.  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
 **Entity:** Example Music (US) LLC. · **Landline:** +1 334 300 0xxx · **Mobile:** +1 770 900 2xxx
+
+> **New-build site — corrected 2026-07-31.** Same fabricated template content and copy-pasted
+> DC-services-stopped warning as NJC — Robert confirmed ATL was genuinely blank. Converted to the
+> same "New Build Location" placeholder pattern used for
+> FRD/NYB/SEA/SFO/FRE/DRS/DUS/GOT/OSL/AMS/MIL/VIE/BRT/MTL/NJC.
 
 ```mermaid
 graph TD
-    subgraph OLD_ATL ["🕰️ Old Network (legacy)"]
-      INET["🌐 Internet"]
-      RAC["🔧 EXARACATL001 · BMC node 1 · .2"]
-      PVE["🗂️ EXAPVEATL001 · Proxmox node 1 · .5"]
-      DC["🔴 🗝️ EXADCSATL001 · DC · Services stopped · .10"]
-      SBC["🛡️ EXASBCATL001 · 3CX SBC → CLD PBX · .48"]
-      RRY["🔁 EXARRYATL001 · Rudder Relay · .12"]
-      WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
-      CAM["CAMs TODO"]
-      VPN["🔗 WireGuard → BRK"]
-
-      INET --> PVE --> DC & SBC
-      RAC -.->|"manages"| PVE
-      PVE --> WAP & CAM
-      PVE <-->|"WireGuard tunnel"| VPN
-
-      PVE --> RRY
-      RRY -. "→ EXARUDCLD001" .-> VPN
+    subgraph OLD_ATL ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site. · No prior/legacy network existed before commissioning."]
     end
     style OLD_ATL fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
@@ -430,33 +553,21 @@ graph TD
 
 ---
 
-## CHI — Chicago ⚠️ 🏠
+## CHI — Chicago 🏠
 
 **LAN:** `192.168.214.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **VPN parent:** BRK  
-> ⚠️ `EXADCSCHI001` — DNS, Netlogon and KDC services stopped.  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
 **Entity:** Example Music (US) LLC. · **Landline:** +1 312 555 xxxx · **Mobile:** +1 773 900 xxxx
+
+> **New-build site — corrected 2026-07-31.** Same fabricated template content and copy-pasted
+> DC-services-stopped warning as NJC/ATL — Robert confirmed CHI was genuinely blank. Converted to
+> the same "New Build Location" placeholder pattern used for
+> FRD/NYB/SEA/SFO/FRE/DRS/DUS/GOT/OSL/AMS/MIL/VIE/BRT/MTL/NJC/ATL.
 
 ```mermaid
 graph TD
-    subgraph OLD_CHI ["🕰️ Old Network (legacy)"]
-      INET["🌐 Internet"]
-      RAC["🔧 EXARACCHI001 · BMC node 1 · .2"]
-      PVE["🗂️ EXAPVECHI001 · Proxmox node 1 · .5"]
-      DC["🔴 🗝️ EXADCSCHI001 · DC · Services stopped · .10"]
-      SBC["🛡️ EXASBCCHI001 · 3CX SBC → CLD PBX · .48"]
-      RRY["🔁 EXARRYCHI001 · Rudder Relay · .12"]
-      WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
-      CAM["CAMs TODO"]
-      VPN["🔗 WireGuard → BRK"]
-
-      INET --> PVE --> DC & SBC
-      RAC -.->|"manages"| PVE
-      PVE --> WAP & CAM
-      PVE <-->|"WireGuard tunnel"| VPN
-
-      PVE --> RRY
-      RRY -. "→ EXARUDCLD001" .-> VPN
+    subgraph OLD_CHI ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site. · No prior/legacy network existed before commissioning."]
     end
     style OLD_CHI fill:#56B4E9,stroke:#0072B2,color:#000000
 ```

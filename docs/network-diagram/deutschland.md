@@ -14,6 +14,59 @@
 **Note:** Hosts Schema Master + Domain Naming Master  
 **Entity:** Example Music (Deutschland) GmbH · **Landline:** +49 228 555 xxx · **Mobile:** +49 211 xxx xxxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). Octet collision resolved — `.2` belongs to `EXARACBON001`
+> (real), not `EXAVCUBON001`; the VCU turned out to be new-build-supplied kit with "no business
+> being in the old network" at all — removed entirely (it uses DHCP in the new build, explaining
+> the stray octet clash). `EXADCSBON001` (Schema Master, Domain Naming Master) confirmed real,
+> bare metal on the HP ML310e attached to the Dell iDRAC9. Workstation, both laptops (including
+> the ⚠️ disabled ThinkPad), CCTV camera, display, and WAPs all confirmed real and kept.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRBON001<br/>Cisco ISR 4331<br/>192.168.228.254"]
+    O_INET --> O_RTR
+    O_SW["🔀 EXASWIBON001<br/>Cisco 2960X<br/>192.168.228.250"]
+    O_RTR --> O_SW
+
+    O_RAC["🔧 EXARACBON001<br/>Dell iDRAC9<br/>192.168.228.2"]
+    O_DC["🗝️ EXADCSBON001<br/>DC · Schema Master, DN Master, HP ML310e bare metal<br/>192.168.228.10"]
+    O_SW --> O_RAC
+    O_RAC -.->|"manages"| O_DC
+
+    O_WKS["🖥️ EXAWKSBON001<br/>Finance WKS<br/>192.168.228.151"]
+    O_LAP1["💻 ⚠️ EXALAPBON001<br/>ThinkPad, disabled<br/>192.168.228.150"]
+    O_LAP2["💻 EXALAPBON002<br/>Finance Laptop<br/>192.168.228.153"]
+    O_CAM["🎥 EXACAMBON001<br/>Axis P3245-LVE CCTV<br/>192.168.228.17"]
+    O_TV["📺 EXATVSBON001<br/>Samsung 65in<br/>192.168.228.18"]
+    O_WAP["📶 EXAWAPBON001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
+    O_SW --> O_WKS
+    O_SW --> O_LAP1
+    O_SW --> O_LAP2
+    O_SW --> O_CAM
+    O_SW --> O_TV
+    O_SW --> O_WAP
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LAP1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_BON ["🕰️ Old Network (legacy)"]
@@ -45,6 +98,8 @@ graph TD
     end
     style OLD_BON fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -109,6 +164,52 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** ODE  
 **Entity:** Example Music (Deutschland) GmbH · **Landline:** +49 311 555 xxx · **Mobile:** +49 211 xxx xxxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). All three "servers" were Dell OptiPlex consumer PCs —
+> `EXADCSBER001` (PDC Emulator/RID-Infra Master), `EXASRVBER001` (WS2019 Legacy App Server), and
+> `EXANIXBER001` (Debian 12), all confirmed separate real devices. `EXARACBER001` "was called RAC
+> but wasn't a real RAC" — a basic PCI remote-power-on add-in card, not a genuine enterprise
+> BMC/iLO/iDRAC; kept as `RAC` type (role_codes.csv's own definition already covers "RAC
+> emulator") with that nuance stated plainly. Replaced by a proper PVE-hosted hypervisor in the
+> new build. WAPs (×2) confirmed never opened — still shrink-wrapped — moved straight into the
+> new UniFi controller cluster rather than ever deployed on old infra.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRBER001<br/>Cisco ISR 4331<br/>192.168.113.254"]
+    O_INET --> O_RTR
+
+    O_RAC["🔧 EXARACBER001<br/>PCI remote-power card on OptiPlex, not a real BMC<br/>192.168.113.2"]
+    O_DC["🗝️ EXADCSBER001<br/>DC · PDC Emulator, RID/Infra Master, WS2019, Dell OptiPlex<br/>192.168.113.10"]
+    O_RTR --> O_RAC
+    O_RAC -.->|"manages"| O_DC
+
+    O_SRV["🗄️ EXASRVBER001<br/>WS2019 Legacy App Server, Dell OptiPlex<br/>192.168.113.21"]
+    O_NIX["🐧 EXANIXBER001<br/>Debian 12, Dell OptiPlex<br/>192.168.113.22"]
+    O_WAP["📶 WAPs — never opened, moved straight into new UniFi controller cluster"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_RTR --> O_SRV
+    O_RTR --> O_NIX
+    O_RTR --> O_WAP
+    O_RTR --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_NIX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_BER ["🕰️ Old Network (legacy)"]
@@ -135,6 +236,8 @@ graph TD
     end
     style OLD_BER fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -187,6 +290,45 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** ODE  
 **Entity:** Example Music (Deutschland) GmbH · **Landline:** +49 893 555 33xx · **Mobile:** +49 893 555 99xx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). No DC, no hypervisor, no BMC ever existed here — Robert:
+> "if you didn't find them then no, they are not there" (confirmed against `devices.csv`, which
+> only has the switch and endpoints, nothing BMC/DC-shaped). `EXARACMUN001`/`EXADCSMUN001`
+> removed entirely. WAP confirmed never deployed. Switch, hot-desk WKS, and both pool laptops
+> (including `⚠️ LAPS expired 61d`, kept per the standing rule) all confirmed real.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_SW["🔀 EXASWIMUN001<br/>Cisco 9200<br/>192.168.189.250"]
+    O_INET --> O_SW
+
+    O_WKS["🖥️ EXAWKSMUN001<br/>Hot Desk WKS<br/>192.168.189.150"]
+    O_LAP1["💻 EXALAPMUN001<br/>Pool Laptop<br/>192.168.189.151"]
+    O_LAP2["💻 ⚠️ EXALAPMUN002<br/>Pool Laptop, LAPS expired 61d<br/>192.168.189.152"]
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_SW --> O_WKS
+    O_SW --> O_LAP1
+    O_SW --> O_LAP2
+    O_SW --> O_WAP
+    O_SW --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LAP1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_MUN ["🕰️ Old Network (legacy)"]
@@ -215,6 +357,8 @@ graph TD
     end
     style OLD_MUN fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -268,29 +412,20 @@ graph TD
 ## DRS — Dresden 🕺
 
 **LAN:** `192.168.153.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **VPN parent:** ODE  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** ODE  
 **Entity:** Example Music (Deutschland) GmbH · **Landline:** +49 351 555 xxx · **Mobile:** +49 172 xxx xxxx
+
+> **New-build site — corrected 2026-07-31.** The previous "Old Network" box here was entirely
+> fabricated template content, not real history — zero real `devices.csv` rows exist for DRS,
+> and Robert confirmed: "it's an expansion office." Converted to the same "New Build Location"
+> placeholder pattern used for FRD/NYB/SEA/SFO/FRE. Standard-slot addresses are allocated the
+> same as any other site, but no `devices.csv` exception rows exist yet — nothing beyond the
+> standard template has been confirmed built here.
 
 ```mermaid
 graph TD
-    subgraph OLD_DRS ["🕰️ Old Network (legacy)"]
-      INET["🌐 Internet"]
-      RAC["🔧 EXARACDRS001 · BMC node 1 · .2"]
-      PVE["🗂️ EXAPVEDRS001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSDRS001 · DC · .10"]
-      SBC["🛡️ EXASBCDRS001 · 3CX SBC → CLD PBX · .48"]
-      RRY["🔁 EXARRYDRS001 · Rudder Relay · .12"]
-      WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
-      CAM["CAMs TODO"]
-      VPN["🔗 WireGuard → ODE"]
-
-      INET --> PVE --> DC & SBC
-      RAC -.->|"manages"| PVE
-      PVE --> WAP & CAM
-      PVE <-->|"WireGuard tunnel"| VPN
-
-      PVE --> RRY
-      RRY -. "→ EXARUDCLD001" .-> VPN
+    subgraph OLD_DRS ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site. · No prior/legacy network existed before commissioning."]
     end
     style OLD_DRS fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
@@ -343,29 +478,19 @@ graph TD
 ## DUS — Düsseldorf 👗
 
 **LAN:** `192.168.211.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **VPN parent:** ODE  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** ODE  
 **Entity:** Example Music (Deutschland) GmbH · **Landline:** +49 211 555 xxx · **Mobile:** +49 172 xxx xxxx
+
+> **New-build site — corrected 2026-07-31.** The previous "Old Network" box here was entirely
+> fabricated template content — zero real `devices.csv` rows exist for DUS, and Robert confirmed
+> it's an expansion office. Converted to the same "New Build Location" placeholder pattern used
+> for FRD/NYB/SEA/SFO/FRE/DRS. Standard-slot addresses are allocated the same as any other site,
+> but no `devices.csv` exception rows exist yet.
 
 ```mermaid
 graph TD
-    subgraph OLD_DUS ["🕰️ Old Network (legacy)"]
-      INET["🌐 Internet"]
-      RAC["🔧 EXARACDUS001 · BMC node 1 · .2"]
-      PVE["🗂️ EXAPVEDUS001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSDUS001 · DC · .10"]
-      SBC["🛡️ EXASBCDUS001 · 3CX SBC → CLD PBX · .48"]
-      RRY["🔁 EXARRYDUS001 · Rudder Relay · .12"]
-      WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
-      CAM["CAMs TODO"]
-      VPN["🔗 WireGuard → ODE"]
-
-      INET --> PVE --> DC & SBC
-      RAC -.->|"manages"| PVE
-      PVE --> WAP & CAM
-      PVE <-->|"WireGuard tunnel"| VPN
-
-      PVE --> RRY
-      RRY -. "→ EXARUDCLD001" .-> VPN
+    subgraph OLD_DUS ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site. · No prior/legacy network existed before commissioning."]
     end
     style OLD_DUS fill:#56B4E9,stroke:#0072B2,color:#000000
 ```

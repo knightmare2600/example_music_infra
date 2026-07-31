@@ -139,3 +139,8 @@ bootstrap/web/hdt/**                 filter=lfs diff=lfs merge=lfs -text
 # non-web location for the same reason as everything else in this section -- keep it out of normal
 # git history.
 bootstrap/amt-sdk/**                 filter=lfs diff=lfs merge=lfs -text
+
+# Robert's own file, dropped directly in bootstrap/ (not a subfolder like amt-sdk/) -- a Windows
+# tool to assist migrating ESX to PVE, ~43.5MB. Filename-specific rule rather than moving it into
+# a new subdirectory of its own -- not reorganising a file the way Robert placed it without asking.
+bootstrap/starwindconverter.exe      filter=lfs diff=lfs merge=lfs -text
