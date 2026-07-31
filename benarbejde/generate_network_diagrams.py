@@ -97,6 +97,28 @@ def _load_type_symbols():
 
 TYPE_SYMBOLS = _load_type_symbols()
 
+# Code -> singular display name, same role_codes.csv source as TYPE_SYMBOLS -- used only for the
+# "Other" bucket's grouped-count labels (e.g. "5x Cars"), added 2026-07-30 alongside that feature.
+def _load_type_names():
+  with open(ROLE_CODES_CSV, newline="", encoding="utf-8") as f:
+    return {row["Code"]: row["Name"] for row in csv.DictReader(f)}
+
+TYPE_NAMES = _load_type_names()
+
+# A handful of role_codes.csv Names don't naively pluralize well (BUS's "Tour bus" -> "Tour buss"
+# with a bare +s) or read better shortened for a compact diagram label (PHN's full "Office/desk
+# phone" -> "Office phones", matching Robert's own hand-built FAL prototype exactly). Only override
+# what's actually been hit -- not a guess at every possible irregular plural in role_codes.csv.
+TOPOLOGY_PLURAL_OVERRIDES = {"BUS": "Tour buses", "PHN": "Office phones"}
+
+
+def _pluralize_type_name(name: str) -> str:
+  if name.endswith(("s", "x", "z", "ch", "sh")):
+    return name + "es"
+  if len(name) > 1 and name.endswith("y") and name[-2] not in "aeiou":
+    return name[:-1] + "ies"
+  return name + "s"
+
 # Terms that must never appear in a New Network label -- FSMO roles and health/low-disk-space
 # annotations stay old-infra-only (docs/network-inventory.md), by data-source construction (neither
 # sites.csv nor devices.csv carries this information at all) but enforced here too as a defensive
@@ -298,29 +320,21 @@ def generate_all(sites_csv=SITES_CSV, devices_csv=DEVICES_CSV, policy=ADDRESS_PO
 # Type -> its topology parent Type. Keyed off the device TYPE, not the site, so CLD "looking
 # different" from ODE falls out naturally from which types are present, not from special-casing
 # CLD in code (confirmed against both real builds before writing this down). Anything not listed
-# here falls into the generic "other endpoints" bucket, parented under BMC1 -- see
-# OTHER_BUCKET_PARENT below. RTR itself has no entry -- it's the root, parented under the site's
-# own top-level cloud node instead (see render_topology_block()).
+# here falls into the "Other" bucket -- a floating, disconnected two-column group, not parented
+# under anything (see render_topology_block()'s own "Other" bucket section). RTR itself has no
+# entry -- it's the root, parented under the site's own top-level cloud node instead.
 TOPOLOGY_PARENT_TYPE = {
   "SWI": "RTR", "BMC": "RTR", "PVE": "RTR",
   "NAS": "SWI", "RDR": "SWI", "MUS": "SWI", "WAP": "SWI",
   "DCS": "PVE", "SBC": "PVE", "PBX": "PVE", "ANS": "PVE", "RUD": "PVE",
   "SLT": "PVE", "SVR": "PVE", "UFC": "PVE", "FWL": "PVE",
 }
-OTHER_BUCKET_PARENT = "BMC"
 
 # Canonical child order within each branch -- matches the order Robert confirmed for CLD/ODE.
 # Anything of a listed parent-Type not named here (a type this template hasn't seen yet) is
 # appended after, in devices.csv row order -- never dropped, just unordered relative to these.
 SWI_CHILD_ORDER = ["NAS", "RDR", "MUS", "WAP"]
 PVE_CHILD_ORDER = ["ANS", "DCS", "RUD", "SVR", "SLT", "PBX", "SBC", "UFC", "FWL"]
-
-# Above this many real "other bucket" devices (types with no TOPOLOGY_PARENT_TYPE entry), collapse
-# them into one generic "Other devices" node instead of one box each -- matches CLD's placeholder
-# (0 real ones) vs ODE's MAC/MBP (2, shown individually) precedent. Untested above 3 real devices
-# against an actual busy site (e.g. FAL's 5 workstations + vending machines + phones) -- flagged,
-# not guessed, when that site gets ported.
-OTHER_BUCKET_THRESHOLD = 3
 
 # Real devices.csv rows that still shouldn't appear on a *current-state* topology diagram --
 # confirmed dormant, not a data error (see the "RUD" entry's own role_codes.csv row, and
@@ -400,6 +414,53 @@ def _topology_label(dev: dict, net) -> str:
   if BANNED_TERMS.search(label):
     raise ValueError(f"Banned FSMO/health term found in topology label: {label!r}")
   return f"{symbol} {label}".strip()
+
+
+def _compress_ranges(values: list) -> list:
+  """[1, 2, 3, 6, 7] -> [(1, 3), (6, 7)]. Caller formats each (start, end) pair -- hostname
+  instance numbers need zero-padding (002-005), IP octets don't (.63-.66), so the padding choice
+  isn't baked in here."""
+  vals = sorted(set(values))
+  if not vals:
+    return []
+  ranges = []
+  start = prev = vals[0]
+  for v in vals[1:]:
+    if v == prev + 1:
+      prev = v
+      continue
+    ranges.append((start, prev))
+    start = prev = v
+  ranges.append((start, prev))
+  return ranges
+
+
+def _topology_other_group_label(dtype: str, group: list) -> str:
+  """Grouped label for 2+ real devices.csv rows of the same 'Other' bucket type -- one box with a
+  count (e.g. '5x Cars · EXACARFAL001-005 · No IP Address') instead of one box per real row.
+  Ports Robert's hand-built FAL prototype (docs/network-diagram/scotland.md, confirmed 2026-07-30)
+  into the generator -- see render_topology_block's 'Other' bucket comment for the full story."""
+  symbol = _topology_symbol(dtype)
+  name = TOPOLOGY_PLURAL_OVERRIDES.get(dtype) or _pluralize_type_name(TYPE_NAMES.get(dtype, dtype))
+  # Number isn't a field build_site_devices() hands back (only hostname/type/octet/label_extra/
+  # subnet_site/is_foreign) -- parsed back out of the hostname's own EXA<TYPE><SITE><NNN> trailing
+  # digits rather than threading a new field through every caller for this one label.
+  numbers = [int(re.search(r'(\d+)$', d["hostname"]).group(1)) for d in group]
+  hostname_prefix = re.sub(r'\d+$', '', group[0]["hostname"])
+  num_str = ",".join(
+    f"{a:03d}" if a == b else f"{a:03d}-{b:03d}" for a, b in _compress_ranges(numbers)
+  )
+  octets = [o for o in (_octet_int(d) for d in group) if o is not None]
+  if octets:
+    ip_str = ",".join(
+      f".{a}" if a == b else f".{a}-.{b}" for a, b in _compress_ranges(octets)
+    )
+  else:
+    ip_str = "No IP Address"
+  label = f"{symbol} {len(group)}x {name} · {hostname_prefix}{num_str} · {ip_str}"
+  if BANNED_TERMS.search(label):
+    raise ValueError(f"Banned FSMO/health term found in topology label: {label!r}")
+  return label
 
 
 def _first_instance(devices: list, dtype: str):
@@ -549,26 +610,36 @@ def render_topology_block(site: str, sites_row: dict, devices_by_site: dict) -> 
       chain.append(nid)
     emit_chain(chain)
 
-  # "Other" bucket: anything with no TOPOLOGY_PARENT_TYPE entry, chained under BMC1 specifically
-  # (matches CLD's empty placeholder / ODE's MAC+MBP precedent). Individually named up to
-  # OTHER_BUCKET_THRESHOLD real devices, collapsed into one generic node above that.
-  bmc1 = _first_instance(all_devices, OTHER_BUCKET_PARENT)
-  if bmc1:
-    other = [d for d in all_devices if d["type"] not in TOPOLOGY_PARENT_TYPE and d["type"] != "RTR"]
-    chain = [node_id_for(bmc1)]
-    if not other:
-      pass
-    elif len(other) <= OTHER_BUCKET_THRESHOLD:
-      for dev in other:
-        nid = node_id_for(dev)
-        emit_node(nid, dev, net)
-        chain.append(nid)
-    else:
-      nid = "T_OTHER"
-      lines.append(f'    {nid}["\U0001F4CE Other devices — {len(other)} confirmed, see devices.csv"]')
-      style_lines.append(f'    style {nid} {TOPOLOGY_STYLE}')
-      chain.append(nid)
-    emit_chain(chain)
+  # "Other" bucket: anything with no TOPOLOGY_PARENT_TYPE entry -- curveball/novelty devices and
+  # endpoints with no defined place in the RTR/SWI/PVE hierarchy. Floats as its own disconnected
+  # group (2026-07-30, Robert: "these random devices can just be 'floating'" -- no implied parent
+  # relationship to BMC or anything else; an earlier version chained it under BMC1, which is what
+  # this replaced). One box per TYPE, not per real devices.csv row -- FAL alone has 46 of these
+  # (5x cars, 5x trucks, 5x jets...), grouped with a count in the label (e.g. "5x Cars") to stay
+  # readable, matching Robert's own hand-built FAL prototype (scotland.md) which this generalises.
+  # Laid out in two columns (alternating by first-seen type order), each column its own simple
+  # top-to-bottom chain -- no cross-column edges: an earlier attempt used invisible ~~~ rank-hint
+  # edges between corresponding rows to align the columns, which Robert found rendered as a
+  # diagonal cascade/waterfall instead of a clean grid -- removed, two independent chains only.
+  other = [d for d in all_devices if d["type"] not in TOPOLOGY_PARENT_TYPE and d["type"] != "RTR"]
+  if other:
+    groups = {}
+    for dev in other:
+      groups.setdefault(dev["type"], []).append(dev)
+
+    left, right = [], []
+    for i, (dtype, group) in enumerate(groups.items()):
+      if len(group) == 1:
+        nid = node_id_for(group[0])
+        emit_node(nid, group[0], net)
+      else:
+        nid = f"T_OTH_{dtype}"
+        lines.append(f'    {nid}["{_topology_other_group_label(dtype, group)}"]')
+        style_lines.append(f'    style {nid} {TOPOLOGY_STYLE}')
+      (left if i % 2 == 0 else right).append(nid)
+
+    emit_chain(left)
+    emit_chain(right)
 
   lines.extend(style_lines)
   return "\n".join(lines)

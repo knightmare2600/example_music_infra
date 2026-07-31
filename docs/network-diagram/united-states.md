@@ -84,8 +84,15 @@ graph TD
     T_SBC["🛡️ EXASBCLAX001 · SBC · 192.168.213.48"]
     T_FWL["🧱 EXAFWLLAX001 · LAN face · 192.168.213.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 7 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_SRV["🗄️ EXASRVLAX001 · Local services DB · 192.168.213.20"]
+    T_AST["🕹️ EXAASTLAX001 · Atari ST · 192.168.213.73"]
+    T_PAY["☎️ EXAPAYLAX001 · Payphone · 192.168.213.74"]
+    T_LCD["🖼️ EXALCDLAX001 · Status wallboard · 192.168.213.75"]
+    T_MBP["💻 EXAMBPLAX001 · MacBook Pro"]
+    T_TAB["📱 EXATABLAX001 · iPad"]
+    T_PHN["📞 EXAPHNLAX001 · Phone"]
+    T_SRV --> T_PAY --> T_MBP --> T_PHN
+    T_AST --> T_LCD --> T_TAB
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -102,7 +109,13 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_AST fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:LAX:END
 ```
 
@@ -321,7 +334,6 @@ graph TD
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_COF["🍵 EXACOFMIA001 · Coffee machine · 192.168.135.60"]
     T_LAP["💻 EXALAPMIA001 · MacBook"]
-    T_BMC --> T_COF --> T_LAP
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF

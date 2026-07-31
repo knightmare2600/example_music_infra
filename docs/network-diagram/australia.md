@@ -79,8 +79,17 @@ graph TD
     T_SBC["🛡️ EXASBCSYD001 · SBC · 192.168.29.48"]
     T_FWL["🧱 EXAFWLSYD001 · LAN face · 192.168.29.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 10 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_SRV["🗄️ EXASRVSYD001 · Local infra server · 192.168.29.20"]
+    T_MBP["💻 EXAMBPSYD001 · MacBook Pro"]
+    T_WKS["🖥️ EXAWKSSYD001 · Workstation"]
+    T_PHN["📞 EXAPHNSYD001 · Phone"]
+    T_TAB["📱 EXATABSYD001 · iPad"]
+    T_LCD["🖼️ EXALCDSYD001 · LG Signage wallboard"]
+    T_PRN["🖨️ EXAPRNSYD001 · Laser printer"]
+    T_OTH_CAM["🎥 2x CCTV cameras · EXACAMSYD001-002 · No IP Address"]
+    T_COF["🍵 EXACOFSYD001 · Coffee machine"]
+    T_SRV --> T_WKS --> T_TAB --> T_PRN --> T_COF
+    T_MBP --> T_PHN --> T_LCD --> T_OTH_CAM
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -94,7 +103,15 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_COF fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:SYD:END
 ```
 
@@ -171,8 +188,15 @@ graph TD
     T_SBC["🛡️ EXASBCMEL001 · SBC · 192.168.61.48"]
     T_FWL["🧱 EXAFWLMEL001 · LAN face · 192.168.61.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 7 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_SRV["🗄️ EXASRVMEL001 · Local file and print server · 192.168.61.20"]
+    T_MBP["💻 EXAMBPMEL001 · MacBook Pro"]
+    T_WKS["🖥️ EXAWKSMEL001 · Workstation"]
+    T_PHN["📞 EXAPHNMEL001 · Phone"]
+    T_TAB["📱 EXATABMEL001 · iPad"]
+    T_LCD["🖼️ EXALCDMEL001 · Signage display"]
+    T_PRN["🖨️ EXAPRNMEL001 · LaserJet printer"]
+    T_SRV --> T_WKS --> T_TAB --> T_PRN
+    T_MBP --> T_PHN --> T_LCD
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -186,6 +210,12 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:MEL:END
 ```
