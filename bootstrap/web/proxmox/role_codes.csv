@@ -8,6 +8,7 @@ WAP,Wireless access point,Wireless,snmp,📶,,"Standard slots .82-.94 (static si
 DCS,Domain controller (current naming),Servers / Compute / Management,ssh,🗝️,,Standard slots .10 (DCS1) / .11 (DCS2)
 DCR,Domain controller (legacy naming),Servers / Compute / Management,ssh,🗝️,,Legacy alias for DCS — devices.csv rows using DCR are typos and treated as DCS. Same symbol as DCS
 PVE,Proxmox hypervisor node,Servers / Compute / Management,ssh,🗂️,,Standard slots .5-.7. Not a devices.csv Type (ALWAYS_EXCLUDE_TYPES) — handled by the standard template + group_vars/pvenodes/ directly
+ESX,VMware ESXi hypervisor (legacy),Servers / Compute / Management,ssh,💾,,Added 2026-07-31 for old-network diagram restyling -- found live at FAL (EXAESXFAL001, single HP ML310e host), not PVE as the original hand-written box wrongly assumed. No VMware logo usable (trademarked, same rule as Cisco/AT&T/Atari elsewhere in this file) -- generic floppy disk, Robert's call, deliberately distinct from PVE's 🗂️
 SVR,Generic server,Servers / Compute / Management,ssh,🗄️,,Same symbol as SRV
 SRV,Generic server,Servers / Compute / Management,ssh,🗄️,,Same symbol as SVR
 NAS,Storage (NAS/SAN — e.g. TrueNAS),Servers / Compute / Management,ssh,🗃️,,"Standard slot .19 (added 2026-07-19, replacing the retired .15 PRV convention)"
