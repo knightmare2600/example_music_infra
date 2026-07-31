@@ -23,6 +23,16 @@ with a parse error) is ALWAYS a hard failure, regardless of --strict --
 that's a real, unambiguous bug in the diagram, same tier as check 3's
 broken file references.
 
+2026-07-31: a real stall (kroki.io's render endpoint unreachable from wherever this ran, 133
+uncached diagrams, each paying its own full 20s per-call timeout in sequence) took over 40
+minutes to finish. Added kroki_reachable(), a single ~8s pre-flight probe against the real
+/mermaid/svg endpoint (a plain GET to kroki.io's root was tried first and confirmed useless --
+the root answers fine even when the render endpoint itself times out completely) -- if that
+probe fails, every uncached diagram is reported as a network issue immediately instead of
+individually timing out. Robert: rendering is a nice-to-have, not worth a robust retry/backoff
+system for -- a broken/uncheckable diagram committed for a human to eyeball is an acceptable
+fallback, so this stays a cheap probe.
+
 Results are cached by content hash in reports/.mermaid_cache.json
 (gitignored) -- kroki.io is a free public service, and re-submitting all
 49+ diagrams on every single harness run when almost none of them changed
@@ -87,6 +97,32 @@ def save_cache(cache):
     CACHE_FILE.write_text(json.dumps(cache, indent=2, sort_keys=True))
 
 
+def kroki_reachable():
+    """Quick reachability probe (2026-07-31). MUST hit the actual render endpoint, not just
+    kroki.io's root -- confirmed live the first version of this function (a plain GET to
+    https://kroki.io/) got that wrong: the root resolves and answers instantly even when the
+    real /mermaid/svg POST endpoint times out completely, so that version of the probe always
+    reported "reachable" and the run still paid every diagram's full 20s timeout in sequence
+    (133 diagrams that morning -- ~45 minutes, the exact stall this was meant to fix). Fixed to
+    POST a trivial one-line diagram at the real endpoint with a short timeout instead -- if
+    kroki.io's render path is down, this fails in ~8s and every uncached diagram is reported as
+    a network issue immediately. Robert, 2026-07-31: rendering is a nice-to-have, not worth a
+    robust retry/backoff system -- a broken/uncheckable diagram committed for a human to eyeball
+    is an acceptable fallback, so this stays a cheap probe."""
+    try:
+        result = subprocess.run(
+            ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+             "--connect-timeout", "5", "--max-time", "8",
+             "-H", "Content-Type: text/plain",
+             "--data-binary", "graph TD\\nA-->B",
+             KROKI_URL],
+            capture_output=True, text=True, timeout=12,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.returncode == 0 and result.stdout.strip() == "200"
+
+
 def render_via_kroki(diagram_text):
     """Returns (ok, detail). ok=True means it rendered. ok=False + detail
     distinguishes a genuine syntax error from a network failure via the
@@ -132,9 +168,19 @@ def main():
     network_issues = []
     checked_live = 0
 
+    uncached = [d for d in diagrams if not (d[3] in cache and cache[d[3]] == "ok")]
+    reachable = kroki_reachable() if uncached else True
+    if uncached and not reachable:
+        print(f"kroki.io unreachable (pre-flight probe failed) -- skipping all {len(uncached)} "
+              f"uncached diagram(s) rather than paying each one's full per-call timeout.")
+        for rel_path, i, _, _ in uncached:
+            network_issues.append((rel_path, i, "NETWORK: kroki.io unreachable (pre-flight probe failed)"))
+
     for rel_path, i, block, h in diagrams:
         if h in cache and cache[h] == "ok":
             continue
+        if not reachable:
+            continue  # already recorded as a network issue above
         ok, detail = render_via_kroki(block)
         checked_live += 1
         time.sleep(0.3)  # be a considerate citizen of a free public service
