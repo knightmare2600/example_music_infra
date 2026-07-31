@@ -39,7 +39,7 @@ graph TD
 
 ---
 
-## 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+## 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:CLD:START

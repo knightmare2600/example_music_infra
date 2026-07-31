@@ -59,7 +59,7 @@ graph TD
     style OLD_BRK fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:BRK:START
@@ -142,7 +142,7 @@ graph TD
     style OLD_TOR fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:TOR:START
@@ -220,7 +220,7 @@ graph TD
     style OLD_MTL fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:MTL:START

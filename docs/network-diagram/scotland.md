@@ -102,7 +102,7 @@ graph TD
     style OLD_FAL fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:FAL:START
@@ -191,7 +191,7 @@ graph TD
     style OLD_EDI fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:EDI:START
@@ -274,7 +274,7 @@ graph TD
     style OLD_GLA fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:GLA:START
@@ -361,7 +361,7 @@ graph TD
     style OLD_CLY fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:CLY:START
@@ -445,7 +445,7 @@ graph TD
     style OLD_DUN fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:DUN:START
@@ -531,7 +531,7 @@ graph TD
     style OLD_PER fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:PER:START
@@ -616,7 +616,7 @@ graph TD
     style OLD_ABD fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:ABD:START
