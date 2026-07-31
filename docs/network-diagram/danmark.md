@@ -43,7 +43,7 @@ graph TD
     style OLD_CPH fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:CPH:START
@@ -145,7 +145,7 @@ graph TD
     style OLD_ODE fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:ODE:START
@@ -231,7 +231,7 @@ graph TD
     style OLD_KGE fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:KGE:START
@@ -310,7 +310,7 @@ graph TD
     style OLD_FAX fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:FAX:START
@@ -385,7 +385,7 @@ graph TD
     style OLD_KOR fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:KOR:START
@@ -460,7 +460,7 @@ graph TD
     style OLD_AAR fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:AAR:START
@@ -535,7 +535,7 @@ graph TD
     style OLD_FRE fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:FRE:START
@@ -598,7 +598,7 @@ graph TD
     style OLD_FRD fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 > Robert, 2026-07-30: FRD is "literally just online, it's a legal function but we treat it like a
 > fallback VRK site." `172.16.124.253` (`sites.csv`'s `FW` field) doesn't have a real device yet —
@@ -647,7 +647,7 @@ graph TD
     style OLD_NYB fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:NYB:START

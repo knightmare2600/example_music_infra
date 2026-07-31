@@ -54,7 +54,7 @@ graph TD
     style OLD_LAX fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:LAX:START
@@ -139,7 +139,7 @@ graph TD
     style OLD_NYC fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:NYC:START
@@ -215,7 +215,7 @@ graph TD
     style OLD_NJC fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:NJC:START
@@ -292,7 +292,7 @@ graph TD
     style OLD_MIA fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:MIA:START
@@ -373,7 +373,7 @@ graph TD
     style OLD_ATL fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:ATL:START
@@ -449,7 +449,7 @@ graph TD
     style OLD_CHI fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:CHI:START
@@ -510,7 +510,7 @@ graph TD
     style OLD_SEA fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:SEA:START
@@ -571,7 +571,7 @@ graph TD
     style OLD_SFO fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
 
-### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
 ```mermaid
 %% GENERATED:TOPOLOGY:SFO:START
