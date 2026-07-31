@@ -15,6 +15,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-31 | Full reconciliation against `check_doc_role_coverage.py` (check 28)'s 355 findings across 42 sites. Three fixes, in order: (1) renamed `EXARAC<SITE>001` → `EXABMC<SITE>001` estate-wide (41 sites) and deleted the fictional `EXARAC<SITE>002` "RAC emulator VM" line — never backed by real hardware on single/dual-node sites; FAL/ODE/BRK's genuine physical BMC2 (and BMC3) were restored under the new naming rather than deleted, confirmed real via their 3-PVE-node hub status. Also dropped the RAC-emulator-VM language from the per-site header summary line (38 sites) and the Quick Reference table's `.3` row. (2) Fixed `EXARTR<SITE>001`'s octet — every existing line read `.254` (FWL's real octet), ground truth is `.1`; the 2026-07-12 fix above only ever corrected FWL's line, never RTR's. (3) Renamed stale `EXADCR<SITE>001`/`002` → `EXADCS<SITE>001`/`002` on 6 sites (GLA, LND, BIR, MCR, LIV, NEW) with no real `devices.csv` DCR row backing them — distinct from EDI's and TOR's genuine DCR devices, which check 29 tracks separately and were left as DCR. With those three fixes applied, appended the remaining genuinely-missing standard-slot lines (second FWL, NAS, RDR, SWI, WAP, RTR, occasional DCS/one-offs) per site, sourced directly from `generate_inventory.py`'s real device list. Check 28 now passes clean (0/355 remaining). |
 | 2026-07-19 | `EXANASFAL001`/`EXANASPER001`/`EXANASMEL001` marked retired — replaced by the new standard `.19` NAS/SAN slot (TrueNAS), rolled out per site rather than the old ad-hoc addressing (`.32`/`.50`/none). See `README.md`'s Addressing table and `docs/proxmox/proxmox-dcm-pbs-planning.md` for the full rationale, including why `.15` PRV was retired in the same change. |
 | 2026-07-12 | Fixed a second error in the same 10 sites' checklists (plus CLD): the firewall's IP was given as `.1` throughout, which is actually `RTR` (upstream router) per `address_policy.json`'s `role_offsets` — the firewall's real offset is `.253`/`.254`. Corrected all 10 standard-site entries to `.253`, matching `network-inventory.md`. CLD's `EXAFWLVRK001` line needed a different fix, not `.253` — it's the dual-interface exception, WAN/vRACK face at `.69`, LAN face (`EXAFWLCLD001`) at `.253`; corrected to state both explicitly rather than reuse the standard-site pattern verbatim. |
 | 2026-07-12 | Fixed build-order errors in 10 sites' Infrastructure Checklists (CLD, FAL, CLY, ABD, LND, BIR, ODE, LAX, SYD, MEL, AKL): the firewall line was listed before the Proxmox node line, but every site's firewall is a VM running on that site's PVE node (see `buildsheets/buildsheet-firewall.md` Step 1 — "Create the VM on Proxmox") — the hypervisor has to exist first. Reordered each to PVE node(s) → Firewall → DC, matching actual build dependency. CLD's checklist was also missing `EXAPVECLD001`/`EXADCSCLD001` entirely (both real, onboarded hosts per `ansible/configs/inventory/cld.ini`) — added in the correct position, and moved `EXADNSVRK001` ahead of the firewall to match the real first-site bootstrap order (PVE → DNS → firewall → DC). |
@@ -33,7 +34,7 @@
 |---------|------|
 | `.1` | Router / upstream gateway |
 | `.2` | BMC pool slot 1 — physical DRAC/iLO (PVE node 1) |
-| `.3` | BMC pool slot 2 — physical (PVE node 2) or RAC emulator VM on single-node sites |
+| `.3` | BMC pool slot 2 — physical (PVE node 2) on hub sites only |
 | `.4` | BMC pool slot 3 — physical (PVE node 3) on hub sites only |
 | `.5` | PVE node 1 |
 | `.6` | PVE node 2 (hub sites) |
@@ -201,6 +202,8 @@ here, it's a MacBook running `http.server`, not a physical site).
 - [ ] `EXAUFCCLD001` — UniFi Network Controller online (`192.168.69.82`, CLD's **LAN** — not vRACK; manages every site's WAPs)
 - [ ] `EXASWICLD001` — Core switch online (`192.168.69.250`) — standard SWI slot 1
 - [ ] `EXAFWLCLD002` — Secondary firewall (`192.168.69.254`, standard FWL slot 2) — not yet built, planned
+- [ ] `EXASWICLD002` — Switch 2 (`192.168.69.251`)
+- [ ] `EXASWICLD003` — Switch 3 (`192.168.69.252`)
 - [ ] WireGuard routes verified to all site subnets
 - [ ] Ansible key distribution tested from the provisioning server (`192.168.139.50`)
 
@@ -231,10 +234,10 @@ kept as reference code only, not a build-checklist item.
 ### Infrastructure Checklist
 - [ ] `EXASWIFAL001` — Core switch 1 (`192.168.76.250`)
 - [ ] `EXASWIFAL002` — Core switch 2 (`192.168.76.251`)
-- [ ] `EXARTRFAL001` — WAN edge router (`192.168.76.254`)
-- [ ] `EXARACFAL001` — BMC node 1 (`192.168.76.2`) · Dell iDRAC9
-- [ ] `EXARACFAL002` — BMC node 2 (`192.168.76.3`) · Dell iDRAC9
-- [ ] `EXARACFAL003` — BMC node 3 (`192.168.76.4`) · Dell iDRAC9
+- [ ] `EXARTRFAL001` — WAN edge router (`192.168.76.1`)
+- [ ] `EXABMCFAL001` — BMC node 1 (`192.168.76.2`) · Dell iDRAC9
+- [ ] `EXABMCFAL002` — BMC node 2 (`192.168.76.3`) · Dell iDRAC9
+- [ ] `EXABMCFAL003` — BMC node 3 (`192.168.76.4`) · Dell iDRAC9
 - [ ] `EXAPVEFAL001` — Proxmox node 1 (`192.168.76.5`) · ZFS RAID1
 - [ ] `EXAPVEFAL002` — Proxmox node 2 (`192.168.76.6`) · ZFS RAID1
 - [ ] `EXAPVEFAL003` — Proxmox node 3 (`192.168.76.7`) · ZFS RAID1
@@ -244,6 +247,9 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXASBCFAL001` — VOIP SBC (`192.168.76.48`) · trunks to `EXAPBXCLD001`
 - [ ] `EXANASFAL001` — installed 2026-07-26 (bare metal, TrueNAS SCALE) at the standard `.19` slot, replacing the retired legacy FreeNAS box (was `192.168.76.32`) — Ansible onboarding in progress, not yet complete
 - [ ] `EXATARFAL001` — Tape archiver (`192.168.76.33`) · Solaris Embedded
+- [ ] `EXAFWLFAL002` — Firewall secondary (`192.168.76.254`)
+- [ ] `EXASRVFAL001` — Reserved — standard convention slot (`192.168.76.20`)
+- [ ] `EXASWIFAL003` — Switch 3 (`192.168.76.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool `.100`–`.249` confirmed active
 - [ ] DNS resolving `jukebox.internal` from site
@@ -294,19 +300,26 @@ kept as reference code only, not a build-checklist item.
 ## EDI — Edinburgh
 
 **LAN:** `192.168.131.0/24` · **Domain:** `example.org` / `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSEDI003` — DFSR stopped, C: drive 5% free. Immediate action required.
 
 ### Infrastructure Checklist
-- [ ] `EXARTREDI001` — WAN edge router (`192.168.131.254`)
+- [ ] `EXARTREDI001` — WAN edge router (`192.168.131.1`)
 - [ ] `EXASWIEDI001` — Switch 1 (`192.168.131.250`) · Cisco 2960X
 - [ ] `EXASWIEDI002` — Switch 2 (`192.168.131.251`) · Cisco 2960X
-- [ ] `EXARACEDI001` — BMC node 1 (`192.168.131.2`) · Dell iDRAC9
-- [ ] `EXARACEDI002` — RAC emulator VM (`192.168.131.3`)
+- [ ] `EXABMCEDI001` — BMC node 1 (`192.168.131.2`) · Dell iDRAC9
 - [ ] `EXAPVEEDI001` — Proxmox node 1 (`192.168.131.5`) · ZFS RAID1
 - [ ] `EXADCSEDI003` — DC (`192.168.131.11`) ⚠️ DFSR stopped — resolve before sign-off
 - [ ] `EXASBCEDI001` — VOIP SBC (`192.168.131.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXADCREDI002` — DC secondary needs rebuild corrected to .12 (`192.168.131.12`)
+- [ ] `EXADCREDI003` — DECOMMISSION PENDING corrected to .13 (`192.168.131.13`)
+- [ ] `EXADCSEDI001` — DC (`192.168.131.10`)
+- [ ] `EXAFWLEDI001` — Firewall (`192.168.131.253`)
+- [ ] `EXAFWLEDI002` — Firewall secondary (`192.168.131.254`)
+- [ ] `EXANASEDI001` — Storage (NAS/SAN) — standard NAS slot (`192.168.131.19`)
+- [ ] `EXARDREDI001` — Badge reader — standard RDR slot (`192.168.131.21`)
+- [ ] `EXASWIEDI003` — Switch 3 (`192.168.131.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -331,14 +344,22 @@ kept as reference code only, not a build-checklist item.
 ## GLA — Glasgow
 
 **LAN:** `192.168.141.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACGLA001` — BMC node 1 (`192.168.141.2`)
-- [ ] `EXARACGLA002` — RAC emulator VM (`192.168.141.3`)
+- [ ] `EXABMCGLA001` — BMC node 1 (`192.168.141.2`)
 - [ ] `EXAPVEGLA001` — Proxmox node 1 (`192.168.141.5`) · ZFS RAID1
-- [ ] `EXADCRGLA001` — DC (`192.168.141.10`) · Schema/Domain Naming Master/PDC Emulator
+- [ ] `EXADCSGLA001` — DC (`192.168.141.10`) · Schema/Domain Naming Master/PDC Emulator
 - [ ] `EXASBCGLA001` — VOIP SBC (`192.168.141.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLGLA001` — Firewall (`192.168.141.253`)
+- [ ] `EXAFWLGLA002` — Firewall secondary (`192.168.141.254`)
+- [ ] `EXANASGLA001` — Storage (NAS/SAN) — standard NAS slot (`192.168.141.19`)
+- [ ] `EXAPRNGLA001` — Main floor printer (`192.168.141.16`)
+- [ ] `EXARDRGLA001` — Badge reader — standard RDR slot (`192.168.141.21`)
+- [ ] `EXARTRGLA001` — WAN edge router (`192.168.141.1`)
+- [ ] `EXASWIGLA001` — Switch 1 (`192.168.141.250`)
+- [ ] `EXASWIGLA002` — Switch 2 (`192.168.141.251`)
+- [ ] `EXASWIGLA003` — Switch 3 (`192.168.141.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -350,6 +371,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVEGLA001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPGLA001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAWKSGLA001` — Workstation (`192.168.141.150`) · Hot desk
 - [ ] `EXAWKSGLA002` — Workstation (`192.168.141.151`) · Hot desk
 - [ ] `EXALAPGLA001` — Laptop (`192.168.141.152`)
@@ -363,19 +385,23 @@ kept as reference code only, not a build-checklist item.
 ## CLY — Clydebank
 
 **LAN:** `192.168.41.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
 - [ ] `EXASWICLY001` — Core switch (`192.168.41.250`) · Cisco 9300
-- [ ] `EXARTRCLY001` — WAN edge router (`192.168.41.254`)
-- [ ] `EXARACCLY001` — BMC node 1 (`192.168.41.2`) · HPE iLO5
-- [ ] `EXARACCLY002` — RAC emulator VM (`192.168.41.3`)
+- [ ] `EXARTRCLY001` — WAN edge router (`192.168.41.1`)
+- [ ] `EXABMCCLY001` — BMC node 1 (`192.168.41.2`) · HPE iLO5
 - [ ] `EXAPVECLY001` — Proxmox node 1 (`192.168.41.5`) · ZFS RAID1
 - [ ] `EXAFWLCLY001` — Firewall (`192.168.41.253`) · FortiOS 7.6.5
 - [ ] `EXADCSCLY001` — DC primary (`192.168.41.10`)
 - [ ] `EXADCSCLY002` — DC secondary (`192.168.41.11`)
 - [ ] `EXASRVCLY001` — Rocky Linux server (`192.168.41.20`) · Oracle DB
 - [ ] `EXASBCCLY001` — VOIP SBC (`192.168.41.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLCLY002` — Firewall secondary (`192.168.41.254`)
+- [ ] `EXANASCLY001` — Storage (NAS/SAN) — standard NAS slot (`192.168.41.19`)
+- [ ] `EXARDRCLY001` — Badge reader — standard RDR slot (`192.168.41.21`)
+- [ ] `EXASWICLY002` — Switch 2 (`192.168.41.251`)
+- [ ] `EXASWICLY003` — Switch 3 (`192.168.41.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -400,15 +426,21 @@ kept as reference code only, not a build-checklist item.
 ## DUN — Dundee
 
 **LAN:** `192.168.138.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARTRDUN001` — WAN edge router (`192.168.138.254`)
-- [ ] `EXARACDUN001` — BMC node 1 (`192.168.138.2`)
-- [ ] `EXARACDUN002` — RAC emulator VM (`192.168.138.3`)
+- [ ] `EXARTRDUN001` — WAN edge router (`192.168.138.1`)
+- [ ] `EXABMCDUN001` — BMC node 1 (`192.168.138.2`)
 - [ ] `EXAPVEDUN001` — Proxmox node 1 (`192.168.138.5`) · ZFS RAID1
 - [ ] `EXADCSDUN001` — DC (`192.168.138.10`)
 - [ ] `EXASBCDUN001` — VOIP SBC (`192.168.138.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLDUN001` — Firewall (`192.168.138.253`)
+- [ ] `EXAFWLDUN002` — Firewall secondary (`192.168.138.254`)
+- [ ] `EXANASDUN001` — Storage (NAS/SAN) — standard NAS slot (`192.168.138.19`)
+- [ ] `EXARDRDUN001` — Badge reader — standard RDR slot (`192.168.138.21`)
+- [ ] `EXASWIDUN001` — Switch 1 (`192.168.138.250`)
+- [ ] `EXASWIDUN002` — Switch 2 (`192.168.138.251`)
+- [ ] `EXASWIDUN003` — Switch 3 (`192.168.138.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -432,16 +464,22 @@ kept as reference code only, not a build-checklist item.
 ## PER — Perth
 
 **LAN:** `192.168.173.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACPER001` — BMC node 1 (`192.168.173.2`)
-- [ ] `EXARACPER002` — RAC emulator VM (`192.168.173.3`)
+- [ ] `EXABMCPER001` — BMC node 1 (`192.168.173.2`)
 - [ ] `EXAPVEPER001` — Proxmox node 1 (`192.168.173.5`) · ZFS RAID1
 - [ ] `EXADCSPER001` — DC (`192.168.173.10`)
 - [ ] `EXASBCPER001` — VOIP SBC (`192.168.173.48`) · trunks to `EXAPBXCLD001`
 - [ ] `EXANIXPER001` — Solaris 11.5 (`192.168.173.40`) · MIDI/Music archive
 - [ ] `EXANASPER001` — **Retired 2026-07-19** (was `192.168.173.50`, Synology) — replaced by the standard `EXANASPER001` slot at `.19` (TrueNAS), not yet built
+- [ ] `EXAFWLPER001` — Firewall (`192.168.173.253`)
+- [ ] `EXAFWLPER002` — Firewall secondary (`192.168.173.254`)
+- [ ] `EXARDRPER001` — Badge reader — standard RDR slot (`192.168.173.21`)
+- [ ] `EXARTRPER001` — WAN edge router (`192.168.173.1`)
+- [ ] `EXASWIPER001` — Switch 1 (`192.168.173.250`)
+- [ ] `EXASWIPER002` — Switch 2 (`192.168.173.251`)
+- [ ] `EXASWIPER003` — Switch 3 (`192.168.173.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -453,6 +491,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVEPER001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPPER001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAMBPPER001` — MacBook Pro
 - [ ] `EXASURPER001` — Surface
 - [ ] `EXAPHNPER001`–`004` — Yealink T46G phones
@@ -467,16 +506,21 @@ kept as reference code only, not a build-checklist item.
 ## ABD — Aberdeen
 
 **LAN:** `192.168.224.0/24` · **Domain:** `example.org`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARTRABD001` — WAN edge router (`192.168.224.254`)
-- [ ] `EXARACABD001` — BMC node 1 (`192.168.224.2`)
-- [ ] `EXARACABD002` — RAC emulator VM (`192.168.224.3`)
+- [ ] `EXARTRABD001` — WAN edge router (`192.168.224.1`)
+- [ ] `EXABMCABD001` — BMC node 1 (`192.168.224.2`)
 - [ ] `EXAPVEABD001` — Proxmox node 1 (`192.168.224.5`) · ZFS RAID1
 - [ ] `EXAFWLABD001` — Firewall (`192.168.224.253`) · Cisco ASA 5506-X
 - [ ] `EXADCSABD001` — DC (`192.168.224.10`)
 - [ ] `EXASBCABD001` — VOIP SBC (`192.168.224.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLABD002` — Firewall secondary (`192.168.224.254`)
+- [ ] `EXANASABD001` — Storage (NAS/SAN) — standard NAS slot (`192.168.224.19`)
+- [ ] `EXARDRABD001` — Badge reader — standard RDR slot (`192.168.224.21`)
+- [ ] `EXASWIABD001` — Switch 1 (`192.168.224.250`)
+- [ ] `EXASWIABD002` — Switch 2 (`192.168.224.251`)
+- [ ] `EXASWIABD003` — Switch 3 (`192.168.224.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -506,17 +550,21 @@ kept as reference code only, not a build-checklist item.
 ## LND — London
 
 **LAN:** `192.168.20.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
 - [ ] `EXASWILND001` — Core switch (`192.168.20.250`) · Cisco 9300
-- [ ] `EXARTRLND001` — WAN edge router (`192.168.20.254`)
-- [ ] `EXARACLND001` — BMC node 1 (`192.168.20.2`) · Dell iDRAC9
-- [ ] `EXARACLND002` — RAC emulator VM (`192.168.20.3`)
+- [ ] `EXARTRLND001` — WAN edge router (`192.168.20.1`)
+- [ ] `EXABMCLND001` — BMC node 1 (`192.168.20.2`) · Dell iDRAC9
 - [ ] `EXAPVELND001` — Proxmox node 1 (`192.168.20.5`) · ZFS RAID1
 - [ ] `EXAFWLLND001` — Firewall (`192.168.20.253`) · Cisco ASA 5516-X
-- [ ] `EXADCRLND001` — DC (`192.168.20.10`) · RID Master · Infrastructure Master
+- [ ] `EXADCSLND001` — DC (`192.168.20.10`) · RID Master · Infrastructure Master
 - [ ] `EXASBCLND001` — VOIP SBC (`192.168.20.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLLND002` — Firewall secondary (`192.168.20.254`)
+- [ ] `EXANASLND001` — Storage (NAS/SAN) — standard NAS slot (`192.168.20.19`)
+- [ ] `EXARDRLND001` — Badge reader — standard RDR slot (`192.168.20.21`)
+- [ ] `EXASWILND002` — Switch 2 (`192.168.20.251`)
+- [ ] `EXASWILND003` — Switch 3 (`192.168.20.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -528,6 +576,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVELND001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPLND001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAWKSLND001` — Workstation (`192.168.20.150`)
 - [ ] `EXAPRNLND001` — Xerox WorkCentre
 
@@ -541,20 +590,23 @@ kept as reference code only, not a build-checklist item.
 ## BIR — Birmingham
 
 **LAN:** `192.168.121.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
 - [ ] `EXASWIBIR001` — Core switch (`192.168.121.250`) · Cisco 9300
 - [ ] `EXASWIBIR002` — Access switch (`192.168.121.251`)
-- [ ] `EXARTRBIR001` — WAN edge router (`192.168.121.254`)
-- [ ] `EXARACBIR001` — BMC node 1 (`192.168.121.2`) · Dell DRAC
-- [ ] `EXARACBIR002` — RAC emulator VM (`192.168.121.3`)
+- [ ] `EXARTRBIR001` — WAN edge router (`192.168.121.1`)
+- [ ] `EXABMCBIR001` — BMC node 1 (`192.168.121.2`) · Dell DRAC
 - [ ] `EXAPVEBIR001` — Proxmox node 1 (`192.168.121.5`) · ZFS RAID1
 - [ ] `EXAFWLBIR001` — Firewall (`192.168.121.253`) · Palo Alto PAN-OS
-- [ ] `EXADCRBIR001` — DC primary (`192.168.121.10`)
-- [ ] `EXADCRBIR002` — DC secondary (`192.168.121.11`)
+- [ ] `EXADCSBIR001` — DC primary (`192.168.121.10`)
+- [ ] `EXADCSBIR002` — DC secondary (`192.168.121.11`)
 - [ ] `EXASRVBIR001` — Rocky Linux server (`192.168.121.20`) · Oracle DB
 - [ ] `EXASBCBIR001` — VOIP SBC (`192.168.121.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLBIR002` — Firewall secondary (`192.168.121.254`)
+- [ ] `EXANASBIR001` — Storage (NAS/SAN) — standard NAS slot (`192.168.121.19`)
+- [ ] `EXARDRBIR001` — Badge reader — standard RDR slot (`192.168.121.21`)
+- [ ] `EXASWIBIR003` — Switch 3 (`192.168.121.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -584,16 +636,22 @@ kept as reference code only, not a build-checklist item.
 ## MCR — Manchester
 
 **LAN:** `192.168.161.0/24` · **Domain:** `example.org`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
 - [ ] `EXASWIMCR001` — Distribution switch (`192.168.161.250`) · Cisco 9300
-- [ ] `EXARACMCR001` — BMC node 1 (`192.168.161.2`) · HPE iLO5
-- [ ] `EXARACMCR002` — RAC emulator VM (`192.168.161.3`)
+- [ ] `EXABMCMCR001` — BMC node 1 (`192.168.161.2`) · HPE iLO5
 - [ ] `EXAPVEMCR001` — Proxmox node 1 (`192.168.161.5`) · ZFS RAID1
-- [ ] `EXADCRMCR001` — DC primary (`192.168.161.10`) · PDC Emulator · RID/Infra Master
+- [ ] `EXADCSMCR001` — DC primary (`192.168.161.10`) · PDC Emulator · RID/Infra Master
 - [ ] `EXADCSMCR002` — DC secondary (`192.168.161.11`)
 - [ ] `EXASBCMCR001` — VOIP SBC (`192.168.161.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLMCR001` — Firewall (`192.168.161.253`)
+- [ ] `EXAFWLMCR002` — Firewall secondary (`192.168.161.254`)
+- [ ] `EXANASMCR001` — Storage (NAS/SAN) — standard NAS slot (`192.168.161.19`)
+- [ ] `EXARDRMCR001` — Badge reader — standard RDR slot (`192.168.161.21`)
+- [ ] `EXARTRMCR001` — WAN edge router (`192.168.161.1`)
+- [ ] `EXASWIMCR002` — Switch 2 (`192.168.161.251`)
+- [ ] `EXASWIMCR003` — Switch 3 (`192.168.161.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -605,6 +663,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVEMCR001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPMCR001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXALAPMCR001`–`002` — Win11 laptops
 - [ ] `EXAWKSMCR001`–`002` — Win10 desktops
 - [ ] `EXAPRNMCR001` — Printer
@@ -617,15 +676,20 @@ kept as reference code only, not a build-checklist item.
 ## LIV — Liverpool
 
 **LAN:** `192.168.151.0/24` · **Domain:** `example.org`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
 - [ ] `EXASWILIV001` — Core switch (`192.168.151.250`) · Cisco 9200
-- [ ] `EXARACLIV001` — BMC node 1 (`192.168.151.2`) · HPE iLO5
-- [ ] `EXARACLIV002` — RAC emulator VM (`192.168.151.3`)
+- [ ] `EXABMCLIV001` — BMC node 1 (`192.168.151.2`) · HPE iLO5
 - [ ] `EXAPVELIV001` — Proxmox node 1 (`192.168.151.5`) · ZFS RAID1
-- [ ] `EXADCRLIV001` — DC (`192.168.151.10`) · WS2025
+- [ ] `EXADCSLIV001` — DC (`192.168.151.10`) · WS2025
 - [ ] `EXASBCLIV001` — VOIP SBC (`192.168.151.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLLIV001` — Firewall (`192.168.151.253`)
+- [ ] `EXAFWLLIV002` — Firewall secondary (`192.168.151.254`)
+- [ ] `EXANASLIV001` — Storage (NAS/SAN) — standard NAS slot (`192.168.151.19`)
+- [ ] `EXARTRLIV001` — WAN edge router (`192.168.151.1`)
+- [ ] `EXASWILIV002` — Switch 2 (`192.168.151.251`)
+- [ ] `EXASWILIV003` — Switch 3 (`192.168.151.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -637,6 +701,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVELIV001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPLIV001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXASVRLIV001` — WS2022 file server
 - [ ] `EXAMBPLIV001` — MacBook Pro · macOS Tahoe
 - [ ] `EXAMACLIV001` — iMac ⚠️ disabled/maintenance
@@ -651,15 +716,21 @@ kept as reference code only, not a build-checklist item.
 ## NEW — Newcastle
 
 **LAN:** `192.168.191.0/24` · **Domain:** `example.org`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
 - [ ] `EXASWINEW001` — Access switch (`192.168.191.250`) · TP-Link JetStream
-- [ ] `EXARACNEW001` — BMC node 1 (`192.168.191.2`) · Dell iDRAC9
-- [ ] `EXARACNEW002` — RAC emulator VM (`192.168.191.3`)
+- [ ] `EXABMCNEW001` — BMC node 1 (`192.168.191.2`) · Dell iDRAC9
 - [ ] `EXAPVENEW001` — Proxmox node 1 (`192.168.191.5`) · ZFS RAID1
-- [ ] `EXADCRNEW001` — DC (`192.168.191.10`)
+- [ ] `EXADCSNEW001` — DC (`192.168.191.10`)
 - [ ] `EXASBCNEW001` — VOIP SBC (`192.168.191.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLNEW001` — Firewall (`192.168.191.253`)
+- [ ] `EXAFWLNEW002` — Firewall secondary (`192.168.191.254`)
+- [ ] `EXANASNEW001` — Storage (NAS/SAN) — standard NAS slot (`192.168.191.19`)
+- [ ] `EXARDRNEW001` — Badge reader — standard RDR slot (`192.168.191.21`)
+- [ ] `EXARTRNEW001` — WAN edge router (`192.168.191.1`)
+- [ ] `EXASWINEW002` — Switch 2 (`192.168.191.251`)
+- [ ] `EXASWINEW003` — Switch 3 (`192.168.191.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -671,6 +742,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVENEW001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPNEW001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXASRVNEW001` — WS2022 file/print server
 - [ ] `EXAWKSNEW099` — Win11 workstation ⚠️ LAPS expired
 
@@ -682,14 +754,21 @@ kept as reference code only, not a build-checklist item.
 ## SHE — Sheffield
 
 **LAN:** `192.168.114.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACSHE001` — BMC node 1 (`192.168.114.2`)
-- [ ] `EXARACSHE002` — RAC emulator VM (`192.168.114.3`)
+- [ ] `EXABMCSHE001` — BMC node 1 (`192.168.114.2`)
 - [ ] `EXAPVESHE001` — Proxmox node 1 (`192.168.114.5`) · ZFS RAID1
 - [ ] `EXADCSSHE001` — DC (`192.168.114.10`)
 - [ ] `EXASBCSHE001` — VOIP SBC (`192.168.114.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLSHE001` — Firewall (`192.168.114.253`)
+- [ ] `EXAFWLSHE002` — Firewall secondary (`192.168.114.254`)
+- [ ] `EXANASSHE001` — Storage (NAS/SAN) — standard NAS slot (`192.168.114.19`)
+- [ ] `EXARDRSHE001` — Badge reader — standard RDR slot (`192.168.114.21`)
+- [ ] `EXARTRSHE001` — WAN edge router (`192.168.114.1`)
+- [ ] `EXASWISHE001` — Switch 1 (`192.168.114.250`)
+- [ ] `EXASWISHE002` — Switch 2 (`192.168.114.251`)
+- [ ] `EXASWISHE003` — Switch 3 (`192.168.114.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -701,6 +780,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVESHE001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPSHE001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 <!-- To be documented -->
 
 ### Site-Specific Equipment
@@ -711,14 +791,21 @@ kept as reference code only, not a build-checklist item.
 ## HAL — Halifax
 
 **LAN:** `192.168.142.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACHAL001` — BMC node 1 (`192.168.142.2`)
-- [ ] `EXARACHAL002` — RAC emulator VM (`192.168.142.3`)
+- [ ] `EXABMCHAL001` — BMC node 1 (`192.168.142.2`)
 - [ ] `EXAPVEHAL001` — Proxmox node 1 (`192.168.142.5`) · ZFS RAID1
 - [ ] `EXADCSHAL001` — DC (`192.168.142.10`)
 - [ ] `EXASBCHAL001` — VOIP SBC (`192.168.142.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLHAL001` — Firewall (`192.168.142.253`)
+- [ ] `EXAFWLHAL002` — Firewall secondary (`192.168.142.254`)
+- [ ] `EXANASHAL001` — Storage (NAS/SAN) — standard NAS slot (`192.168.142.19`)
+- [ ] `EXARDRHAL001` — Badge reader — standard RDR slot (`192.168.142.21`)
+- [ ] `EXARTRHAL001` — WAN edge router (`192.168.142.1`)
+- [ ] `EXASWIHAL001` — Switch 1 (`192.168.142.250`)
+- [ ] `EXASWIHAL002` — Switch 2 (`192.168.142.251`)
+- [ ] `EXASWIHAL003` — Switch 3 (`192.168.142.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -730,6 +817,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVEHAL001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPHAL001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 <!-- To be documented -->
 
 ### Site-Specific Equipment
@@ -740,14 +828,21 @@ kept as reference code only, not a build-checklist item.
 ## HUL — Hull
 
 **LAN:** `192.168.148.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACHUL001` — BMC node 1 (`192.168.148.2`)
-- [ ] `EXARACHUL002` — RAC emulator VM (`192.168.148.3`)
+- [ ] `EXABMCHUL001` — BMC node 1 (`192.168.148.2`)
 - [ ] `EXAPVEHUL001` — Proxmox node 1 (`192.168.148.5`) · ZFS RAID1
 - [ ] `EXADCSHUL001` — DC (`192.168.148.10`)
 - [ ] `EXASBCHUL001` — VOIP SBC (`192.168.148.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLHUL001` — Firewall (`192.168.148.253`)
+- [ ] `EXAFWLHUL002` — Firewall secondary (`192.168.148.254`)
+- [ ] `EXANASHUL001` — Storage (NAS/SAN) — standard NAS slot (`192.168.148.19`)
+- [ ] `EXARDRHUL001` — Badge reader — standard RDR slot (`192.168.148.21`)
+- [ ] `EXARTRHUL001` — WAN edge router (`192.168.148.1`)
+- [ ] `EXASWIHUL001` — Switch 1 (`192.168.148.250`)
+- [ ] `EXASWIHUL002` — Switch 2 (`192.168.148.251`)
+- [ ] `EXASWIHUL003` — Switch 3 (`192.168.148.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -759,6 +854,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVEHUL001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPHUL001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 <!-- To be documented -->
 
 ### Site-Specific Equipment
@@ -769,17 +865,23 @@ kept as reference code only, not a build-checklist item.
 ## COV — Coventry
 
 **LAN:** `192.168.247.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM  
+**PVE nodes:** 1 · **BMC pool:** `.2` physical  
 *Note: WAP/RTR-only site — minimal infrastructure.*
 
 ### Infrastructure Checklist
-- [ ] `EXARTRCOV001` — WAN edge router (`192.168.247.254`) · Cisco ISR 4331
-- [ ] `EXARACCOV001` — BMC node 1 (`192.168.247.2`)
-- [ ] `EXARACCOV002` — RAC emulator VM (`192.168.247.3`)
+- [ ] `EXARTRCOV001` — WAN edge router (`192.168.247.1`) · Cisco ISR 4331
+- [ ] `EXABMCCOV001` — BMC node 1 (`192.168.247.2`)
 - [ ] `EXAPVECOV001` — Proxmox node 1 (`192.168.247.5`) · ZFS RAID1
 - [ ] `EXADCSCOV001` — DC (`192.168.247.10`)
 - [ ] `EXASBCCOV001` — VOIP SBC (`192.168.247.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPCOV001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] `EXAFWLCOV001` — Firewall (`192.168.247.253`)
+- [ ] `EXAFWLCOV002` — Firewall secondary (`192.168.247.254`)
+- [ ] `EXANASCOV001` — Storage (NAS/SAN) — standard NAS slot (`192.168.247.19`)
+- [ ] `EXARDRCOV001` — Badge reader — standard RDR slot (`192.168.247.21`)
+- [ ] `EXASWICOV001` — Switch 1 (`192.168.247.250`)
+- [ ] `EXASWICOV002` — Switch 2 (`192.168.247.251`)
+- [ ] `EXASWICOV003` — Switch 3 (`192.168.247.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -802,18 +904,23 @@ kept as reference code only, not a build-checklist item.
 ## CPH — København
 
 **LAN:** `192.168.231.0/24` · **Domain:** `example.com` / `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
 - [ ] `EXASWICPH001` — Office switch (`192.168.231.250`) · TP-Link JetStream
-- [ ] `EXARTRCPH001` — WAN edge router (`192.168.231.254`)
-- [ ] `EXARACCPH001` — BMC node 1 (`192.168.231.2`) · Dell iDRAC9
-- [ ] `EXARACCPH002` — RAC emulator VM (`192.168.231.3`)
+- [ ] `EXARTRCPH001` — WAN edge router (`192.168.231.1`)
+- [ ] `EXABMCCPH001` — BMC node 1 (`192.168.231.2`) · Dell iDRAC9
 - [ ] `EXAPVECPH001` — Proxmox node 1 (`192.168.231.5`) · ZFS RAID1
 - [ ] `EXADCSCPH001` — DC primary (`192.168.231.10`) · example.com
 - [ ] `EXADCSCPH002` — DC secondary (`192.168.231.11`) · example.net
 - [ ] `EXASBCCPH001` — VOIP SBC (`192.168.231.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPCPH001`–`003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] `EXAFWLCPH001` — Firewall (`192.168.231.253`)
+- [ ] `EXAFWLCPH002` — Firewall secondary (`192.168.231.254`)
+- [ ] `EXANASCPH001` — Storage (NAS/SAN) — standard NAS slot (`192.168.231.19`)
+- [ ] `EXARDRCPH001` — Badge reader — standard RDR slot (`192.168.231.21`)
+- [ ] `EXASWICPH002` — Switch 2 (`192.168.231.251`)
+- [ ] `EXASWICPH003` — Switch 3 (`192.168.231.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -837,9 +944,9 @@ kept as reference code only, not a build-checklist item.
 **PVE nodes:** 3 (EU AD hub) · **BMC pool:** `.2` `.3` `.4` all physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACODE001` — BMC node 1 (`192.168.126.2`)
-- [ ] `EXARACODE002` — BMC node 2 (`192.168.126.3`)
-- [ ] `EXARACODE003` — BMC node 3 (`192.168.126.4`)
+- [ ] `EXABMCODE001` — BMC node 1 (`192.168.126.2`)
+- [ ] `EXABMCODE002` — BMC node 2 (`192.168.126.3`)
+- [ ] `EXABMCODE003` — BMC node 3 (`192.168.126.4`)
 - [ ] `EXAPVEODE001` — Proxmox node 1 (`192.168.126.5`) · ZFS RAID1
 - [ ] `EXAPVEODE002` — Proxmox node 2 (`192.168.126.6`) · ZFS RAID1
 - [ ] `EXAPVEODE003` — Proxmox node 3 (`192.168.126.7`) · ZFS RAID1
@@ -848,6 +955,13 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXADCSODE002` — DC secondary (`192.168.126.11`)
 - [ ] `EXASBCODE001` — VOIP SBC (`192.168.126.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPODE001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] `EXAFWLODE002` — Firewall secondary (`192.168.126.254`)
+- [ ] `EXANASODE001` — Storage (NAS/SAN) — standard NAS slot (`192.168.126.19`)
+- [ ] `EXARDRODE001` — Badge reader — standard RDR slot (`192.168.126.21`)
+- [ ] `EXARTRODE001` — WAN edge router (`192.168.126.1`)
+- [ ] `EXASWIODE001` — Switch 1 (`192.168.126.250`)
+- [ ] `EXASWIODE002` — Switch 2 (`192.168.126.251`)
+- [ ] `EXASWIODE003` — Switch 3 (`192.168.126.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -870,17 +984,24 @@ kept as reference code only, not a build-checklist item.
 ## KGE — Køge
 
 **LAN:** `192.168.65.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSKGE001` — out of sync 27 days, Windows Server 2016 EOL, disk space low.
 
 ### Infrastructure Checklist
-- [ ] `EXARACKGE001` — BMC node 1 (`192.168.65.2`)
-- [ ] `EXARACKGE002` — RAC emulator VM (`192.168.65.3`)
+- [ ] `EXABMCKGE001` — BMC node 1 (`192.168.65.2`)
 - [ ] `EXAPVEKGE001` — Proxmox node 1 (`192.168.65.5`) · ZFS RAID1
 - [ ] `EXADCSKGE001` — DC (`192.168.65.10`) ⚠️ WS2016 EOL — rebuild required
 - [ ] `EXASBCKGE001` — VOIP SBC (`192.168.65.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAP `EXAWAPKGE001` — Ubiquiti UniFi U6-Pro
+- [ ] `EXAFWLKGE001` — Firewall (`192.168.65.253`)
+- [ ] `EXAFWLKGE002` — Firewall secondary (`192.168.65.254`)
+- [ ] `EXANASKGE001` — Storage (NAS/SAN) — standard NAS slot (`192.168.65.19`)
+- [ ] `EXARDRKGE001` — Badge reader — standard RDR slot (`192.168.65.21`)
+- [ ] `EXARTRKGE001` — WAN edge router (`192.168.65.1`)
+- [ ] `EXASWIKGE001` — Switch 1 (`192.168.65.250`)
+- [ ] `EXASWIKGE002` — Switch 2 (`192.168.65.251`)
+- [ ] `EXASWIKGE003` — Switch 3 (`192.168.65.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -900,16 +1021,22 @@ kept as reference code only, not a build-checklist item.
 ## FAX — Faxe
 
 **LAN:** `192.168.246.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARTRFAX001` — WAN edge router (`192.168.246.254`)
-- [ ] `EXARACFAX001` — BMC node 1 (`192.168.246.2`)
-- [ ] `EXARACFAX002` — RAC emulator VM (`192.168.246.3`)
+- [ ] `EXARTRFAX001` — WAN edge router (`192.168.246.1`)
+- [ ] `EXABMCFAX001` — BMC node 1 (`192.168.246.2`)
 - [ ] `EXAPVEFAX001` — Proxmox node 1 (`192.168.246.5`) · ZFS RAID1
 - [ ] `EXADCSFAX001` — DC (`192.168.246.10`)
 - [ ] `EXASBCFAX001` — VOIP SBC (`192.168.246.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPFAX001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] `EXAFWLFAX001` — Firewall (`192.168.246.253`)
+- [ ] `EXAFWLFAX002` — Firewall secondary (`192.168.246.254`)
+- [ ] `EXANASFAX001` — Storage (NAS/SAN) — standard NAS slot (`192.168.246.19`)
+- [ ] `EXARDRFAX001` — Badge reader — standard RDR slot (`192.168.246.21`)
+- [ ] `EXASWIFAX001` — Switch 1 (`192.168.246.250`)
+- [ ] `EXASWIFAX002` — Switch 2 (`192.168.246.251`)
+- [ ] `EXASWIFAX003` — Switch 3 (`192.168.246.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -926,14 +1053,21 @@ kept as reference code only, not a build-checklist item.
 ## KOR — Korsør
 
 **LAN:** `192.168.238.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACKOR001` — BMC node 1 (`192.168.238.2`)
-- [ ] `EXARACKOR002` — RAC emulator VM (`192.168.238.3`)
+- [ ] `EXABMCKOR001` — BMC node 1 (`192.168.238.2`)
 - [ ] `EXAPVEKOR001` — Proxmox node 1 (`192.168.238.5`) · ZFS RAID1
 - [ ] `EXADCSKOR001` — DC (`192.168.238.10`)
 - [ ] `EXASBCKOR001` — VOIP SBC (`192.168.238.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLKOR001` — Firewall (`192.168.238.253`)
+- [ ] `EXAFWLKOR002` — Firewall secondary (`192.168.238.254`)
+- [ ] `EXANASKOR001` — Storage (NAS/SAN) — standard NAS slot (`192.168.238.19`)
+- [ ] `EXARDRKOR001` — Badge reader — standard RDR slot (`192.168.238.21`)
+- [ ] `EXARTRKOR001` — WAN edge router (`192.168.238.1`)
+- [ ] `EXASWIKOR001` — Switch 1 (`192.168.238.250`)
+- [ ] `EXASWIKOR002` — Switch 2 (`192.168.238.251`)
+- [ ] `EXASWIKOR003` — Switch 3 (`192.168.238.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -941,6 +1075,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVEKOR001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPKOR001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -956,17 +1093,22 @@ kept as reference code only, not a build-checklist item.
 ## BON — Bonn
 
 **LAN:** `192.168.228.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
 - [ ] `EXASWIBON001` — Office switch (`192.168.228.250`) · Cisco 2960X
-- [ ] `EXARTRBON001` — WAN edge router (`192.168.228.254`)
-- [ ] `EXARACBON001` — BMC node 1 (`192.168.228.2`) · Dell iDRAC9
-- [ ] `EXARACBON002` — RAC emulator VM (`192.168.228.3`)
+- [ ] `EXARTRBON001` — WAN edge router (`192.168.228.1`)
+- [ ] `EXABMCBON001` — BMC node 1 (`192.168.228.2`) · Dell iDRAC9
 - [ ] `EXAPVEBON001` — Proxmox node 1 (`192.168.228.5`) · ZFS RAID1
 - [ ] `EXADCSBON001` — DC (`192.168.228.10`) · **Schema Master · Domain Naming Master**
 - [ ] `EXASBCBON001` — VOIP SBC (`192.168.228.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPBON001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] `EXAFWLBON001` — Firewall (`192.168.228.253`)
+- [ ] `EXAFWLBON002` — Firewall secondary (`192.168.228.254`)
+- [ ] `EXANASBON001` — Storage (NAS/SAN) — standard NAS slot (`192.168.228.19`)
+- [ ] `EXARDRBON001` — Badge reader — standard RDR slot (`192.168.228.21`)
+- [ ] `EXASWIBON002` — Switch 2 (`192.168.228.251`)
+- [ ] `EXASWIBON003` — Switch 3 (`192.168.228.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -990,16 +1132,22 @@ kept as reference code only, not a build-checklist item.
 ## BER — West Berlin (Formally BRD)
 
 **LAN:** `192.168.113.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARTRBER001` — WAN edge router (`192.168.113.254`)
-- [ ] `EXARACBER001` — BMC node 1 (`192.168.113.2`)
-- [ ] `EXARACBER002` — RAC emulator VM (`192.168.113.3`)
+- [ ] `EXARTRBER001` — WAN edge router (`192.168.113.1`)
+- [ ] `EXABMCBER001` — BMC node 1 (`192.168.113.2`)
 - [ ] `EXAPVEBER001` — Proxmox node 1 (`192.168.113.5`) · ZFS RAID1
 - [ ] `EXADCSBER001` — DC (`192.168.113.10`) · WS2019 · PDC Emulator · RID/Infra Master
 - [ ] `EXASBCBER001` — VOIP SBC (`192.168.113.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPBER001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] `EXAFWLBER001` — Firewall (`192.168.113.253`)
+- [ ] `EXAFWLBER002` — Firewall secondary (`192.168.113.254`)
+- [ ] `EXANASBER001` — Storage (NAS/SAN) — standard NAS slot (`192.168.113.19`)
+- [ ] `EXARDRBER001` — Badge reader — standard RDR slot (`192.168.113.21`)
+- [ ] `EXASWIBER001` — Switch 1 (`192.168.113.250`)
+- [ ] `EXASWIBER002` — Switch 2 (`192.168.113.251`)
+- [ ] `EXASWIBER003` — Switch 3 (`192.168.113.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1020,15 +1168,21 @@ kept as reference code only, not a build-checklist item.
 ## MUN — Munich
 
 **LAN:** `192.168.189.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
 - [ ] `EXASWIMUN001` — Access switch (`192.168.189.250`) · Cisco 9200
-- [ ] `EXARACMUN001` — BMC node 1 (`192.168.189.2`) · HPE iLO5
-- [ ] `EXARACMUN002` — RAC emulator VM (`192.168.189.3`)
+- [ ] `EXABMCMUN001` — BMC node 1 (`192.168.189.2`) · HPE iLO5
 - [ ] `EXAPVEMUN001` — Proxmox node 1 (`192.168.189.5`) · ZFS RAID1
 - [ ] `EXADCSMUN001` — DC (`192.168.189.10`)
 - [ ] `EXASBCMUN001` — VOIP SBC (`192.168.189.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLMUN001` — Firewall (`192.168.189.253`)
+- [ ] `EXAFWLMUN002` — Firewall secondary (`192.168.189.254`)
+- [ ] `EXANASMUN001` — Storage (NAS/SAN) — standard NAS slot (`192.168.189.19`)
+- [ ] `EXARDRMUN001` — Badge reader — standard RDR slot (`192.168.189.21`)
+- [ ] `EXARTRMUN001` — WAN edge router (`192.168.189.1`)
+- [ ] `EXASWIMUN002` — Switch 2 (`192.168.189.251`)
+- [ ] `EXASWIMUN003` — Switch 3 (`192.168.189.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1038,6 +1192,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVEMUN001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPMUN001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAWKSMUN001` — Win11 hot desk
 - [ ] `EXALAPMUN001` — Win11 pool laptop
 - [ ] `EXALAPMUN002` — Win11 laptop ⚠️ LAPS expired 61 days
@@ -1056,14 +1211,21 @@ kept as reference code only, not a build-checklist item.
 ## GOT — Gothenburg
 
 **LAN:** `192.168.46.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACGOT001` — BMC node 1 (`192.168.46.2`)
-- [ ] `EXARACGOT002` — RAC emulator VM (`192.168.46.3`)
+- [ ] `EXABMCGOT001` — BMC node 1 (`192.168.46.2`)
 - [ ] `EXAPVEGOT001` — Proxmox node 1 (`192.168.46.5`) · ZFS RAID1
 - [ ] `EXADCSGOT001` — DC (`192.168.46.10`)
 - [ ] `EXASBCGOT001` — VOIP SBC (`192.168.46.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLGOT001` — Firewall (`192.168.46.253`)
+- [ ] `EXAFWLGOT002` — Firewall secondary (`192.168.46.254`)
+- [ ] `EXANASGOT001` — Storage (NAS/SAN) — standard NAS slot (`192.168.46.19`)
+- [ ] `EXARDRGOT001` — Badge reader — standard RDR slot (`192.168.46.21`)
+- [ ] `EXARTRGOT001` — WAN edge router (`192.168.46.1`)
+- [ ] `EXASWIGOT001` — Switch 1 (`192.168.46.250`)
+- [ ] `EXASWIGOT002` — Switch 2 (`192.168.46.251`)
+- [ ] `EXASWIGOT003` — Switch 3 (`192.168.46.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1071,6 +1233,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVEGOT001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPGOT001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1086,14 +1251,21 @@ kept as reference code only, not a build-checklist item.
 ## OSL — Oslo
 
 **LAN:** `192.168.47.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACOSL001` — BMC node 1 (`192.168.47.2`)
-- [ ] `EXARACOSL002` — RAC emulator VM (`192.168.47.3`)
+- [ ] `EXABMCOSL001` — BMC node 1 (`192.168.47.2`)
 - [ ] `EXAPVEOSL001` — Proxmox node 1 (`192.168.47.5`) · ZFS RAID1
 - [ ] `EXADCSOSL001` — DC (`192.168.47.10`)
 - [ ] `EXASBCOSL001` — VOIP SBC (`192.168.47.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLOSL001` — Firewall (`192.168.47.253`)
+- [ ] `EXAFWLOSL002` — Firewall secondary (`192.168.47.254`)
+- [ ] `EXANASOSL001` — Storage (NAS/SAN) — standard NAS slot (`192.168.47.19`)
+- [ ] `EXARDROSL001` — Badge reader — standard RDR slot (`192.168.47.21`)
+- [ ] `EXARTROSL001` — WAN edge router (`192.168.47.1`)
+- [ ] `EXASWIOSL001` — Switch 1 (`192.168.47.250`)
+- [ ] `EXASWIOSL002` — Switch 2 (`192.168.47.251`)
+- [ ] `EXASWIOSL003` — Switch 3 (`192.168.47.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1101,6 +1273,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVEOSL001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPOSL001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1116,14 +1291,21 @@ kept as reference code only, not a build-checklist item.
 ## AMS — Amsterdam
 
 **LAN:** `192.168.31.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACAMS001` — BMC node 1 (`192.168.31.2`)
-- [ ] `EXARACAMS002` — RAC emulator VM (`192.168.31.3`)
+- [ ] `EXABMCAMS001` — BMC node 1 (`192.168.31.2`)
 - [ ] `EXAPVEAMS001` — Proxmox node 1 (`192.168.31.5`) · ZFS RAID1
 - [ ] `EXADCSAMS001` — DC (`192.168.31.10`)
 - [ ] `EXASBCAMS001` — VOIP SBC (`192.168.31.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLAMS001` — Firewall (`192.168.31.253`)
+- [ ] `EXAFWLAMS002` — Firewall secondary (`192.168.31.254`)
+- [ ] `EXANASAMS001` — Storage (NAS/SAN) — standard NAS slot (`192.168.31.19`)
+- [ ] `EXARDRAMS001` — Badge reader — standard RDR slot (`192.168.31.21`)
+- [ ] `EXARTRAMS001` — WAN edge router (`192.168.31.1`)
+- [ ] `EXASWIAMS001` — Switch 1 (`192.168.31.250`)
+- [ ] `EXASWIAMS002` — Switch 2 (`192.168.31.251`)
+- [ ] `EXASWIAMS003` — Switch 3 (`192.168.31.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1131,6 +1313,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVEAMS001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPAMS001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1146,14 +1331,21 @@ kept as reference code only, not a build-checklist item.
 ## MIL — Milan
 
 **LAN:** `192.168.39.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACMIL001` — BMC node 1 (`192.168.39.2`)
-- [ ] `EXARACMIL002` — RAC emulator VM (`192.168.39.3`)
+- [ ] `EXABMCMIL001` — BMC node 1 (`192.168.39.2`)
 - [ ] `EXAPVEMIL001` — Proxmox node 1 (`192.168.39.5`) · ZFS RAID1
 - [ ] `EXADCSMIL001` — DC (`192.168.39.10`)
 - [ ] `EXASBCMIL001` — VOIP SBC (`192.168.39.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLMIL001` — Firewall (`192.168.39.253`)
+- [ ] `EXAFWLMIL002` — Firewall secondary (`192.168.39.254`)
+- [ ] `EXANASMIL001` — Storage (NAS/SAN) — standard NAS slot (`192.168.39.19`)
+- [ ] `EXARDRMIL001` — Badge reader — standard RDR slot (`192.168.39.21`)
+- [ ] `EXARTRMIL001` — WAN edge router (`192.168.39.1`)
+- [ ] `EXASWIMIL001` — Switch 1 (`192.168.39.250`)
+- [ ] `EXASWIMIL002` — Switch 2 (`192.168.39.251`)
+- [ ] `EXASWIMIL003` — Switch 3 (`192.168.39.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1161,6 +1353,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVEMIL001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPMIL001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1176,14 +1371,21 @@ kept as reference code only, not a build-checklist item.
 ## VIE — Vienna
 
 **LAN:** `192.168.78.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACVIE001` — BMC node 1 (`192.168.78.2`)
-- [ ] `EXARACVIE002` — RAC emulator VM (`192.168.78.3`)
+- [ ] `EXABMCVIE001` — BMC node 1 (`192.168.78.2`)
 - [ ] `EXAPVEVIE001` — Proxmox node 1 (`192.168.78.5`) · ZFS RAID1
 - [ ] `EXADCSVIE001` — DC (`192.168.78.10`)
 - [ ] `EXASBCVIE001` — VOIP SBC (`192.168.78.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLVIE001` — Firewall (`192.168.78.253`)
+- [ ] `EXAFWLVIE002` — Firewall secondary (`192.168.78.254`)
+- [ ] `EXANASVIE001` — Storage (NAS/SAN) — standard NAS slot (`192.168.78.19`)
+- [ ] `EXARDRVIE001` — Badge reader — standard RDR slot (`192.168.78.21`)
+- [ ] `EXARTRVIE001` — WAN edge router (`192.168.78.1`)
+- [ ] `EXASWIVIE001` — Switch 1 (`192.168.78.250`)
+- [ ] `EXASWIVIE002` — Switch 2 (`192.168.78.251`)
+- [ ] `EXASWIVIE003` — Switch 3 (`192.168.78.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1191,6 +1393,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVEVIE001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPVIE001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1211,16 +1416,23 @@ kept as reference code only, not a build-checklist item.
 > ⚠️ `EXADCSBRK001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXARTRBRK001` — WAN edge router (`192.168.136.254`)
-- [ ] `EXARACBRK001` — BMC node 1 (`192.168.136.2`)
-- [ ] `EXARACBRK002` — BMC node 2 (`192.168.136.3`)
-- [ ] `EXARACBRK003` — BMC node 3 (`192.168.136.4`)
+- [ ] `EXARTRBRK001` — WAN edge router (`192.168.136.1`)
+- [ ] `EXABMCBRK001` — BMC node 1 (`192.168.136.2`)
+- [ ] `EXABMCBRK002` — BMC node 2 (`192.168.136.3`)
+- [ ] `EXABMCBRK003` — BMC node 3 (`192.168.136.4`)
 - [ ] `EXAPVEBRK001` — Proxmox node 1 (`192.168.136.5`) · ZFS RAID1
 - [ ] `EXAPVEBRK002` — Proxmox node 2 (`192.168.136.6`) · ZFS RAID1
 - [ ] `EXAPVEBRK003` — Proxmox node 3 (`192.168.136.7`) · ZFS RAID1
 - [ ] `EXADCSBRK001` — DC (`192.168.136.10`) ⚠️ Services stopped — resolve before sign-off
 - [ ] `EXASBCBRK001` — VOIP SBC (`192.168.136.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAP `EXAWAPBRK001` — Ubiquiti UniFi U6-Pro
+- [ ] `EXAFWLBRK001` — Firewall (`192.168.136.253`)
+- [ ] `EXAFWLBRK002` — Firewall secondary (`192.168.136.254`)
+- [ ] `EXANASBRK001` — Storage (NAS/SAN) — standard NAS slot (`192.168.136.19`)
+- [ ] `EXARDRBRK001` — Badge reader — standard RDR slot (`192.168.136.21`)
+- [ ] `EXASWIBRK001` — Switch 1 (`192.168.136.250`)
+- [ ] `EXASWIBRK002` — Switch 2 (`192.168.136.251`)
+- [ ] `EXASWIBRK003` — Switch 3 (`192.168.136.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1243,16 +1455,23 @@ kept as reference code only, not a build-checklist item.
 ## TOR — Toronto, Ontario
 
 **LAN:** `192.168.146.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSTOR001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXARACTOR001` — BMC node 1 (`192.168.146.2`)
-- [ ] `EXARACTOR002` — RAC emulator VM (`192.168.146.3`)
+- [ ] `EXABMCTOR001` — BMC node 1 (`192.168.146.2`)
 - [ ] `EXAPVETOR001` — Proxmox node 1 (`192.168.146.5`) · ZFS RAID1
 - [ ] `EXADCSTOR001` — DC (`192.168.146.10`) ⚠️ Services stopped
 - [ ] `EXASBCTOR001` — VOIP SBC (`192.168.146.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLTOR001` — Firewall (`192.168.146.253`)
+- [ ] `EXAFWLTOR002` — Firewall secondary (`192.168.146.254`)
+- [ ] `EXANASTOR001` — Storage (NAS/SAN) — standard NAS slot (`192.168.146.19`)
+- [ ] `EXARDRTOR001` — Badge reader — standard RDR slot (`192.168.146.21`)
+- [ ] `EXARTRTOR001` — WAN edge router (`192.168.146.1`)
+- [ ] `EXASWITOR001` — Switch 1 (`192.168.146.250`)
+- [ ] `EXASWITOR002` — Switch 2 (`192.168.146.251`)
+- [ ] `EXASWITOR003` — Switch 3 (`192.168.146.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1260,6 +1479,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVETOR001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPTOR001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1269,14 +1491,21 @@ kept as reference code only, not a build-checklist item.
 ## MTL — Montreal, Quebec
 
 **LAN:** `192.168.154.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACMTL001` — BMC node 1 (`192.168.154.2`)
-- [ ] `EXARACMTL002` — RAC emulator VM (`192.168.154.3`)
+- [ ] `EXABMCMTL001` — BMC node 1 (`192.168.154.2`)
 - [ ] `EXAPVEMTL001` — Proxmox node 1 (`192.168.154.5`) · ZFS RAID1
 - [ ] `EXADCSMTL001` — DC (`192.168.154.10`)
 - [ ] `EXASBCMTL001` — VOIP SBC (`192.168.154.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLMTL001` — Firewall (`192.168.154.253`)
+- [ ] `EXAFWLMTL002` — Firewall secondary (`192.168.154.254`)
+- [ ] `EXANASMTL001` — Storage (NAS/SAN) — standard NAS slot (`192.168.154.19`)
+- [ ] `EXARDRMTL001` — Badge reader — standard RDR slot (`192.168.154.21`)
+- [ ] `EXARTRMTL001` — WAN edge router (`192.168.154.1`)
+- [ ] `EXASWIMTL001` — Switch 1 (`192.168.154.250`)
+- [ ] `EXASWIMTL002` — Switch 2 (`192.168.154.251`)
+- [ ] `EXASWIMTL003` — Switch 3 (`192.168.154.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1284,6 +1513,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVEMTL001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPMTL001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1299,22 +1531,26 @@ kept as reference code only, not a build-checklist item.
 ## LAX — Los Angeles, California
 
 **LAN:** `192.168.213.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSLAX001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
 - [ ] `EXASWILAX001` — Core switch (`192.168.213.250`) · Cisco 9300
 - [ ] `EXASWILAX002` — Access switch (`192.168.213.251`) · Cisco 2960
-- [ ] `EXARTRLAX001` — WAN edge router (`192.168.213.254`)
-- [ ] `EXARACLAX001` — BMC node 1 (`192.168.213.2`) · Dell iDRAC9
-- [ ] `EXARACLAX002` — RAC emulator VM (`192.168.213.3`)
+- [ ] `EXARTRLAX001` — WAN edge router (`192.168.213.1`)
+- [ ] `EXABMCLAX001` — BMC node 1 (`192.168.213.2`) · Dell iDRAC9
 - [ ] `EXAPVELAX001` — Proxmox node 1 (`192.168.213.5`) · ZFS RAID1
 - [ ] `EXAFWLLAX001` — Firewall (`192.168.213.253`) · Palo Alto PAN-OS 10.x
 - [ ] `EXADCSLAX001` — DC (`192.168.213.10`) ⚠️ Services stopped
 - [ ] `EXASRVLAX001` — Rocky Linux server (`192.168.213.20`) · local services/DB
 - [ ] `EXASBCLAX001` — VOIP SBC (`192.168.213.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPLAX001`–`003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] `EXAASTLAX001` — Atari ST (`192.168.213.73`)
+- [ ] `EXAFWLLAX002` — Firewall secondary (`192.168.213.254`)
+- [ ] `EXANASLAX001` — Storage (NAS/SAN) — standard NAS slot (`192.168.213.19`)
+- [ ] `EXARDRLAX001` — Badge reader — standard RDR slot (`192.168.213.21`)
+- [ ] `EXASWILAX003` — Switch 3 (`192.168.213.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1342,16 +1578,23 @@ kept as reference code only, not a build-checklist item.
 ## NYC — New York, NY
 
 **LAN:** `192.168.212.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSNYC001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXARACNYC001` — BMC node 1 (`192.168.212.2`)
-- [ ] `EXARACNYC002` — RAC emulator VM (`192.168.212.3`)
+- [ ] `EXABMCNYC001` — BMC node 1 (`192.168.212.2`)
 - [ ] `EXAPVENYC001` — Proxmox node 1 (`192.168.212.5`) · ZFS RAID1
 - [ ] `EXADCSNYC001` — DC (`192.168.212.10`) ⚠️ Services stopped
 - [ ] `EXASBCNYC001` — VOIP SBC (`192.168.212.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLNYC001` — Firewall (`192.168.212.253`)
+- [ ] `EXAFWLNYC002` — Firewall secondary (`192.168.212.254`)
+- [ ] `EXANASNYC001` — Storage (NAS/SAN) — standard NAS slot (`192.168.212.19`)
+- [ ] `EXARDRNYC001` — Badge reader — standard RDR slot (`192.168.212.21`)
+- [ ] `EXARTRNYC001` — WAN edge router (`192.168.212.1`)
+- [ ] `EXASWINYC001` — Switch 1 (`192.168.212.250`)
+- [ ] `EXASWINYC002` — Switch 2 (`192.168.212.251`)
+- [ ] `EXASWINYC003` — Switch 3 (`192.168.212.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1359,6 +1602,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVENYC001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPNYC001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1368,16 +1614,23 @@ kept as reference code only, not a build-checklist item.
 ## NJC — Camden, New Jersey
 
 **LAN:** `192.168.201.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSNJC001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXARACNJC001` — BMC node 1 (`192.168.201.2`)
-- [ ] `EXARACNJC002` — RAC emulator VM (`192.168.201.3`)
+- [ ] `EXABMCNJC001` — BMC node 1 (`192.168.201.2`)
 - [ ] `EXAPVENJC001` — Proxmox node 1 (`192.168.201.5`) · ZFS RAID1
 - [ ] `EXADCSNJC001` — DC (`192.168.201.10`) ⚠️ Services stopped
 - [ ] `EXASBCNJC001` — VOIP SBC (`192.168.201.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLNJC001` — Firewall (`192.168.201.253`)
+- [ ] `EXAFWLNJC002` — Firewall secondary (`192.168.201.254`)
+- [ ] `EXANASNJC001` — Storage (NAS/SAN) — standard NAS slot (`192.168.201.19`)
+- [ ] `EXARDRNJC001` — Badge reader — standard RDR slot (`192.168.201.21`)
+- [ ] `EXARTRNJC001` — WAN edge router (`192.168.201.1`)
+- [ ] `EXASWINJC001` — Switch 1 (`192.168.201.250`)
+- [ ] `EXASWINJC002` — Switch 2 (`192.168.201.251`)
+- [ ] `EXASWINJC003` — Switch 3 (`192.168.201.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1385,6 +1638,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVENJC001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPNJC001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1394,14 +1650,21 @@ kept as reference code only, not a build-checklist item.
 ## MIA — Miami, Florida
 
 **LAN:** `192.168.135.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 ### Infrastructure Checklist
-- [ ] `EXARACMIA001` — BMC node 1 (`192.168.135.2`)
-- [ ] `EXARACMIA002` — RAC emulator VM (`192.168.135.3`)
+- [ ] `EXABMCMIA001` — BMC node 1 (`192.168.135.2`)
 - [ ] `EXAPVEMIA001` — Proxmox node 1 (`192.168.135.5`) · ZFS RAID1
 - [ ] `EXADCSMIA001` — DC (`192.168.135.10`) · pending build
 - [ ] `EXASBCMIA001` — VOIP SBC (`192.168.135.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLMIA001` — Firewall (`192.168.135.253`)
+- [ ] `EXAFWLMIA002` — Firewall secondary (`192.168.135.254`)
+- [ ] `EXANASMIA001` — Storage (NAS/SAN) — standard NAS slot (`192.168.135.19`)
+- [ ] `EXARDRMIA001` — Badge reader — standard RDR slot (`192.168.135.21`)
+- [ ] `EXARTRMIA001` — WAN edge router (`192.168.135.1`)
+- [ ] `EXASWIMIA001` — Switch 1 (`192.168.135.250`)
+- [ ] `EXASWIMIA002` — Switch 2 (`192.168.135.251`)
+- [ ] `EXASWIMIA003` — Switch 3 (`192.168.135.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1411,6 +1674,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVEMIA001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPMIA001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXALAPMIA001` — MacBook · macOS Sonoma
 
 ### Site-Specific Equipment
@@ -1422,16 +1686,23 @@ kept as reference code only, not a build-checklist item.
 ## ATL — Athens, Georgia
 
 **LAN:** `192.168.33.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSATL001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXARACATL001` — BMC node 1 (`192.168.33.2`)
-- [ ] `EXARACATL002` — RAC emulator VM (`192.168.33.3`)
+- [ ] `EXABMCATL001` — BMC node 1 (`192.168.33.2`)
 - [ ] `EXAPVEATL001` — Proxmox node 1 (`192.168.33.5`) · ZFS RAID1
 - [ ] `EXADCSATL001` — DC (`192.168.33.10`) ⚠️ Services stopped
 - [ ] `EXASBCATL001` — VOIP SBC (`192.168.33.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLATL001` — Firewall (`192.168.33.253`)
+- [ ] `EXAFWLATL002` — Firewall secondary (`192.168.33.254`)
+- [ ] `EXANASATL001` — Storage (NAS/SAN) — standard NAS slot (`192.168.33.19`)
+- [ ] `EXARDRATL001` — Badge reader — standard RDR slot (`192.168.33.21`)
+- [ ] `EXARTRATL001` — WAN edge router (`192.168.33.1`)
+- [ ] `EXASWIATL001` — Switch 1 (`192.168.33.250`)
+- [ ] `EXASWIATL002` — Switch 2 (`192.168.33.251`)
+- [ ] `EXASWIATL003` — Switch 3 (`192.168.33.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1439,6 +1710,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVEATL001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPATL001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1448,16 +1722,23 @@ kept as reference code only, not a build-checklist item.
 ## CHI — Chicago, Illinois
 
 **LAN:** `192.168.214.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSCHI001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
-- [ ] `EXARACCHI001` — BMC node 1 (`192.168.214.2`)
-- [ ] `EXARACCHI002` — RAC emulator VM (`192.168.214.3`)
+- [ ] `EXABMCCHI001` — BMC node 1 (`192.168.214.2`)
 - [ ] `EXAPVECHI001` — Proxmox node 1 (`192.168.214.5`) · ZFS RAID1
 - [ ] `EXADCSCHI001` — DC (`192.168.214.10`) ⚠️ Services stopped
 - [ ] `EXASBCCHI001` — VOIP SBC (`192.168.214.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLCHI001` — Firewall (`192.168.214.253`)
+- [ ] `EXAFWLCHI002` — Firewall secondary (`192.168.214.254`)
+- [ ] `EXANASCHI001` — Storage (NAS/SAN) — standard NAS slot (`192.168.214.19`)
+- [ ] `EXARDRCHI001` — Badge reader — standard RDR slot (`192.168.214.21`)
+- [ ] `EXARTRCHI001` — WAN edge router (`192.168.214.1`)
+- [ ] `EXASWICHI001` — Switch 1 (`192.168.214.250`)
+- [ ] `EXASWICHI002` — Switch 2 (`192.168.214.251`)
+- [ ] `EXASWICHI003` — Switch 3 (`192.168.214.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1465,6 +1746,9 @@ kept as reference code only, not a build-checklist item.
 | Node | Pool | Config | Disk 1 | Disk 2 | Status | Disk 1 boots solo | Disk 2 boots solo |
 |------|------|--------|--------|--------|--------|:-----------------:|:-----------------:|
 | EXAPVECHI001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
+
+### Endpoints Checklist
+- [ ] WAPs `EXAWAPCHI001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -1480,21 +1764,25 @@ kept as reference code only, not a build-checklist item.
 ## SYD — Sydney, NSW
 
 **LAN:** `192.168.29.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSSYD001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
 - [ ] `EXASWISYD001` — Core switch (`192.168.29.250`) · Cisco 9300
 - [ ] `EXASWISYD002` — Access switch (`192.168.29.251`) · Cisco 2960
-- [ ] `EXARACSYD001` — BMC node 1 (`192.168.29.2`) · Dell iDRAC9
-- [ ] `EXARACSYD002` — RAC emulator VM (`192.168.29.3`)
+- [ ] `EXABMCSYD001` — BMC node 1 (`192.168.29.2`) · Dell iDRAC9
 - [ ] `EXAPVESYD001` — Proxmox node 1 (`192.168.29.5`) · ZFS RAID1
 - [ ] `EXAFWLSYD001` — Firewall (`192.168.29.253`) · FortiGate 7.x
 - [ ] `EXADCSSYD001` — DC (`192.168.29.10`) ⚠️ Services stopped
 - [ ] `EXASRVSYD001` — WS2022 server (`192.168.29.20`) · local infra
 - [ ] `EXASBCSYD001` — VOIP SBC (`192.168.29.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAP `EXAWAPSYD001` — Ubiquiti UniFi
+- [ ] `EXAFWLSYD002` — Firewall secondary (`192.168.29.254`)
+- [ ] `EXANASSYD001` — Storage (NAS/SAN) — standard NAS slot (`192.168.29.19`)
+- [ ] `EXARDRSYD001` — Badge reader — standard RDR slot (`192.168.29.21`)
+- [ ] `EXARTRSYD001` — WAN edge router (`192.168.29.1`)
+- [ ] `EXASWISYD003` — Switch 3 (`192.168.29.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1521,20 +1809,23 @@ kept as reference code only, not a build-checklist item.
 ## MEL — Melbourne, VIC
 
 **LAN:** `192.168.61.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSMEL001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
 - [ ] `EXASWIMEL001` — Core switch (`192.168.61.250`) · Cisco 9300
 - [ ] `EXASWIMEL002` — Access switch (`192.168.61.251`) · Cisco 2960
-- [ ] `EXARACMEL001` — BMC node 1 (`192.168.61.2`) · HPE iLO5
-- [ ] `EXARACMEL002` — RAC emulator VM (`192.168.61.3`)
+- [ ] `EXABMCMEL001` — BMC node 1 (`192.168.61.2`) · HPE iLO5
 - [ ] `EXAPVEMEL001` — Proxmox node 1 (`192.168.61.5`) · ZFS RAID1
 - [ ] `EXAFWLMEL001` — Firewall (`192.168.61.253`) · FortiGate 7.x
 - [ ] `EXADCSMEL001` — DC (`192.168.61.10`) ⚠️ Services stopped
 - [ ] `EXASRVMEL001` — WS2022 server (`192.168.61.20`) · local file/print
 - [ ] `EXASBCMEL001` — VOIP SBC (`192.168.61.48`) · trunks to `EXAPBXCLD001`
+- [ ] `EXAFWLMEL002` — Firewall secondary (`192.168.61.254`)
+- [ ] `EXARDRMEL001` — Badge reader — standard RDR slot (`192.168.61.21`)
+- [ ] `EXARTRMEL001` — WAN edge router (`192.168.61.1`)
+- [ ] `EXASWIMEL003` — Switch 3 (`192.168.61.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
@@ -1544,6 +1835,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVEMEL001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
+- [ ] WAPs `EXAWAPMEL001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAMBPMEL001` — MacBook Pro
 - [ ] `EXAWKSMEL001` — Win11 workstation
 - [ ] `EXAPHNMEL001` — iOS phone
@@ -1565,22 +1857,25 @@ kept as reference code only, not a build-checklist item.
 ## AKL — Auckland
 
 **LAN:** `192.168.93.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical, `.3` RAC emulator VM
+**PVE nodes:** 1 · **BMC pool:** `.2` physical
 
 > ⚠️ `EXADCSAKL001` — DNS, Netlogon and KDC services stopped.
 
 ### Infrastructure Checklist
 - [ ] `EXASWIAKL001` — Core switch (`192.168.93.250`) · Cisco 9300
 - [ ] `EXASWIAKL002` — Access switch (`192.168.93.251`) · Cisco 2960
-- [ ] `EXARTRAKL001` — WAN edge router (`192.168.93.254`)
-- [ ] `EXARACAKL001` — BMC node 1 (`192.168.93.2`) · HPE iLO5
-- [ ] `EXARACAKL002` — RAC emulator VM (`192.168.93.3`)
+- [ ] `EXARTRAKL001` — WAN edge router (`192.168.93.1`)
+- [ ] `EXABMCAKL001` — BMC node 1 (`192.168.93.2`) · HPE iLO5
 - [ ] `EXAPVEAKL001` — Proxmox node 1 (`192.168.93.5`) · ZFS RAID1
 - [ ] `EXAFWLAKL001` — Firewall (`192.168.93.253`) · FortiGate 7.x
 - [ ] `EXADCSAKL001` — DC (`192.168.93.10`) ⚠️ Services stopped
 - [ ] `EXASRVAKL001` — WS2022 server (`192.168.93.20`) · local server
 - [ ] `EXASBCAKL001` — VOIP SBC (`192.168.93.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPAKL001`–`002` — Ubiquiti UniFi — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] `EXAFWLAKL002` — Firewall secondary (`192.168.93.254`)
+- [ ] `EXANASAKL001` — Storage (NAS/SAN) — standard NAS slot (`192.168.93.19`)
+- [ ] `EXARDRAKL001` — Badge reader — standard RDR slot (`192.168.93.21`)
+- [ ] `EXASWIAKL003` — Switch 3 (`192.168.93.252`)
 - [ ] WireGuard tunnel verified
 
 ### ZFS Status
