@@ -16,6 +16,12 @@
 #       packages, network, nftables, dnsmasq, ssh, cockpit, finish
 #
 # Changelog:
+#   2026-07-31  Added serial: 1 to the main play -- 00_preflight_3_ask.yml's
+#               ansible.builtin.pause tasks only register one shared answer across a
+#               parallel multi-host batch; a single -e target=<host> run (every
+#               documented example above) is unaffected. Same bug class already
+#               fixed in ssh_preflight_with_fallback.yml on 2026-07-16, never carried
+#               through to this play itself until now.
 #   2026-06-20  Initial file
 #   2026-06-20  Added vars_files for colour constants and wireguard hub data
 #   2026-07-16  Robert: "vars_prompt do it now" (asked again — 2026-07-14's restructure
@@ -55,6 +61,14 @@
   hosts: "{{ target | default('all') }}:!ssh_preflight_skip"
   gather_facts: true
   become: true
+  # serial: 1 (2026-07-31) -- 00_preflight_3_ask.yml's ~15 ansible.builtin.pause
+  # tasks only register one shared answer across a whole parallel batch, same bug
+  # class already fixed in ssh_preflight_with_fallback.yml on 2026-07-16 (see that
+  # file's header). A single -e target=<host> run is unaffected -- one host in the
+  # batch either way -- this only changes behaviour for a multi-host/no-target run,
+  # from silently sharing one operator's answers across every firewall to a proper
+  # full pass per host before the next one starts.
+  serial: 1
   # vars from group_vars/firewalls/main.yml (wg_site_octets, hub tables) and
   # group_vars/all/colours.yml are auto-loaded — no explicit vars_files needed.
   # group_vars are resolved before vars_prompt runs, so colour codes (_c.*) below
