@@ -345,6 +345,10 @@ graph TD
 > `EXADCSEDI001` in the new build). Coffee machine, workstation, and laptop all confirmed real
 > and carried into the new build, kept as-is.
 
+> 🚨 **Migration priority — Tier 2.** DFSR stopped, C: drive at 5% free — "disaster zone." Same
+> remediation path as Tier 1: `EXADCSEDI001` (the new build's replacement) promotes and
+> replicates against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not patching this box.
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
@@ -792,6 +796,10 @@ graph TD
 > WAPs already had vendor/model on record (Ubiquiti UniFi U6-Pro); the camera's exact count/model
 > isn't on record here, only that it's the same as the new hardware and made the move.
 
+> 🚨 **Migration priority — Tier 2.** Windows Server 2003 — 20+ years past EOL. Same remediation
+> path as Tier 1: a new `EXADCSDUN001` build promoting and replicating against `EXADCSCLD001`
+> (`ansible/playbooks/windows_dc/`), not patching this box.
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
@@ -931,6 +939,10 @@ graph TD
 > all confirmed real and moving to the new build. WAP confirmed real Ubiquiti hardware, purchased
 > and coming over — count wasn't given, so left unstated rather than guessed. CAM confirmed
 > genuinely `TODO` in GLA's sense — didn't exist yet, new build adds it fresh.
+
+> 🚨 **Migration priority — Tier 3.** DC never switched on at all — no live users depending on
+> it today. Still counts toward the estate-wide rollout: a new `EXADCSPER001` build promoting
+> and replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`).
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
@@ -1086,6 +1098,10 @@ graph TD
 > ever existed. Kept the OS version as a real migration-priority signal (2008R2 is long past
 > EOL). MacBooks, iPhones, and WAPs (real Ubiquiti hardware, already there) all confirmed moving
 > to the new build as-is.
+
+> 🚨 **Migration priority — Tier 2.** Windows Server 2008R2, long past EOL, bare metal with no
+> ESX layer. Same remediation path as Tier 1: a new `EXADCSABD001` build promoting and
+> replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not patching this box.
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%

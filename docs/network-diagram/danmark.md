@@ -341,6 +341,10 @@ graph TD
 > EOL/out-of-sync/disk-space warning kept per the migration-priority rule. WAP and printer both
 > confirmed real, moving over as-is.
 
+> 🚨 **Migration priority — Tier 2.** WS2016 EOL, 27 days out of AD sync, disk space low. Same
+> remediation path as Tier 1: a new `EXADCSKGE001` build promoting and replicating against
+> `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not patching this box.
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
@@ -454,6 +458,10 @@ graph TD
 > no `RRY`; no WireGuard on old infra). Bare metal, same as KGE — no ESX layer.
 > `EXADCSFAX001` "was there but totally unused" — present, never adopted. WAPs (×2) confirmed
 > real, moving over.
+
+> 🚨 **Migration priority — Tier 3.** DC built, never used — no live users depending on it
+> today. Still counts toward the estate-wide rollout: a new `EXADCSFAX001` build promoting and
+> replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`).
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
