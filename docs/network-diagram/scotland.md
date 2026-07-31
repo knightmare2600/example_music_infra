@@ -150,19 +150,8 @@ graph TD
     T_OTH18["🚗 5x Cars · EXACARFAL001-005 · No IP Address"]
     T_OTH19["🚚 5x Trucks · EXATRKFAL001-005 · No IP Address"]
     T_OTH20["✈️ 5x Jets · EXAJETFAL001-005 · No IP Address"]
-    T_BMC --> T_OTH1
     T_OTH1 --> T_OTH3 --> T_OTH5 --> T_OTH7 --> T_OTH9 --> T_OTH11 --> T_OTH13 --> T_OTH15 --> T_OTH17 --> T_OTH19
     T_OTH2 --> T_OTH4 --> T_OTH6 --> T_OTH8 --> T_OTH10 --> T_OTH12 --> T_OTH14 --> T_OTH16 --> T_OTH18 --> T_OTH20
-    T_OTH1 ~~~ T_OTH2
-    T_OTH3 ~~~ T_OTH4
-    T_OTH5 ~~~ T_OTH6
-    T_OTH7 ~~~ T_OTH8
-    T_OTH9 ~~~ T_OTH10
-    T_OTH11 ~~~ T_OTH12
-    T_OTH13 ~~~ T_OTH14
-    T_OTH15 ~~~ T_OTH16
-    T_OTH17 ~~~ T_OTH18
-    T_OTH19 ~~~ T_OTH20
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
