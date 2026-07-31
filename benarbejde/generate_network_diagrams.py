@@ -113,11 +113,19 @@ TOPOLOGY_PLURAL_OVERRIDES = {"BUS": "Tour buses", "PHN": "Office phones"}
 
 
 def _pluralize_type_name(name: str) -> str:
-  if name.endswith(("s", "x", "z", "ch", "sh")):
-    return name + "es"
-  if len(name) > 1 and name.endswith("y") and name[-2] not in "aeiou":
-    return name[:-1] + "ies"
-  return name + "s"
+  # Several role_codes.csv Names carry a trailing " (...)" qualifier (NAS's "Storage (NAS/SAN --
+  # e.g. TrueNAS)", DCR's "Domain controller (legacy naming)"...) -- pluralizing the whole string
+  # naively tacks the "s" on after the closing paren ("...naming)s"). Split it off, pluralize the
+  # real word, reattach.
+  m = re.match(r'^(.+?)(\s*\([^)]*\))?$', name)
+  base, suffix = m.group(1), m.group(2) or ""
+  if base.endswith(("s", "x", "z", "ch", "sh")):
+    base += "es"
+  elif len(base) > 1 and base.endswith("y") and base[-2] not in "aeiou":
+    base = base[:-1] + "ies"
+  else:
+    base += "s"
+  return base + suffix
 
 # Terms that must never appear in a New Network label -- FSMO roles and health/low-disk-space
 # annotations stay old-infra-only (docs/network-inventory.md), by data-source construction (neither
@@ -342,7 +350,19 @@ PVE_CHILD_ORDER = ["ANS", "DCS", "RUD", "SVR", "SLT", "PBX", "SBC", "UFC", "FWL"
 # is code-only/unused on the live network). Same shape as generate_inventory.py's own
 # ALWAYS_EXCLUDE_TYPES -- a static set checked every run, so a future regeneration can't silently
 # reintroduce it; if a type's dormant status ever changes, this line is the one place to update.
-TOPOLOGY_EXCLUDE_TYPES = {"RUD"}
+#
+# DCR added 2026-07-31 -- Robert: "legacy devices have seeped into the new diagrams which isn't
+# suppsoed [sic] ot happen, we are deploying new hypervisors, new DCS new SBCs etc." Every real
+# DCR row in devices.csv today is genuinely legacy/broken, not just a differently-coded current DC:
+# EDI's two ("DC secondary needs rebuild", "DECOMMISSION PENDING") and TOR's one ("Undocumented
+# legacy AD install found on site, no-one on record knew it existed"). role_codes.csv's own DCR
+# row claims "devices.csv rows using DCR are typos and treated as DCS" -- that was never actually
+# implemented (DCR was never in TOPOLOGY_PARENT_TYPE either, it fell into the "Other" bucket by
+# omission, not design) and doesn't match what's actually in the data. Flagged to Robert, not
+# silently reinterpreted -- if a genuinely-current DC is ever mistyped as DCR instead of DCS, this
+# exclusion would hide it too; the real fix for that case is correcting the devices.csv row's Type,
+# not carving out an exception here.
+TOPOLOGY_EXCLUDE_TYPES = {"RUD", "DCR"}
 
 TOPOLOGY_STYLE = "fill:#000000,stroke:#FFFFFF,color:#FFFFFF"
 

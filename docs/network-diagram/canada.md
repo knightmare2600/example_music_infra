@@ -169,7 +169,6 @@ graph TD
     T_SBC["🛡️ EXASBCTOR001<br/>SBC<br/>192.168.146.48"]
     T_FWL["🧱 EXAFWLTOR001<br/>LAN Face<br/>192.168.146.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_DCR["🗝️ EXADCRTOR028<br/>Undocumented Legacy AD Install Found On Site, No-one On R...<br/>No IP Address"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -183,7 +182,6 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:TOR:END
 ```
 
