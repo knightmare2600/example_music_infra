@@ -73,6 +73,7 @@ diagram change in this repo.
 | SVR | 🗄️ | Generic server | |
 | SRV | 🗄️ | Generic server | Same symbol as SVR |
 | PVE | 🗂️ | Proxmox hypervisor node | Layered/stacked feel, deliberately distinct from a generic server |
+| ESX | 💾 | VMware ESXi hypervisor (legacy) | Added 2026-07-31 for old-network diagram restyling — found live at FAL (single HP ML310e host), not `PVE` as the original hand-written box wrongly assumed. No VMware logo usable (trademarked, same rule as Cisco/AT&T/Atari elsewhere in this legend) — generic floppy disk, Robert's call, deliberately distinct from `PVE`'s 🗂️ |
 | RUD | ⚙️ | Rudder (config mgmt) | Standard `.12` slot, CLD only. Was `RDR` until 2026-07-20 — split apart because `devices.csv` reused the same three letters for badge readers too (see RDR under Endpoints below) |
 | RRY | 🔁 | Rudder Relay | |
 | SLT | 🧂 | Salt master (config mgmt — all Windows nodes) | CLD only (`EXASLTCLD001`, `.22`). Manages `WKS`/`LAP`/`SUR`/`SVR`/`DCS` — `TAB` only if genuinely Windows, `MAC`/`MBP` future plans. `FWL`/`PVE` stay Ansible-only, no Syndic tier at current scale |

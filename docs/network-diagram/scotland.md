@@ -14,6 +14,134 @@
 **PVE nodes:** 3 (hub) · **VPN parent:** CLD (primary head node)  
 **Entity:** Example Music (Scotland) Ltd · **Landline:** +44 1324 500 0xxx · **Mobile:** +44 7700 903 2xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Prototype only** — hand-built to agree the visual convention before generalising into
+> `generate_network_diagrams.py`. Right-angle edges, black/white boxes, three-line `<br/>` labels,
+> full IPs, no subgraph nesting (subgraphs clip edges — the same lesson learned building the new
+> topology sketches). Devices with genuinely distinct real descriptions (the vending machines,
+> phones) are NOT grouped by count the way the new diagram's "Other" bucket is — that grouping
+> exists there because synthesized devices.csv Notes are generic/repetitive; these aren't, so
+> collapsing them would lose real information. `RDR`'s emoji is now 🔐 (the current
+> `role_codes.csv` symbol), not the original box's own ad-hoc ⚙️ — a visual-only change.
+>
+> **Corrected against Robert's real facts, 2026-07-31** — the original hand-written box (kept
+> below for reference) had real content errors, not just style ones, present since this repo's
+> initial commit: a 3-node Proxmox cluster + 3x Dell iDRAC9 BMC pool that never existed (real
+> legacy hardware was a single HP ML310e running VMware ESXi, `EXAESXFAL001`, managed by a single
+> HP iLO, `EXAILOFAL001` — new `ESX` type added to `role_codes.csv`/`docs/emojis/README.md`); an
+> SBC implying VOIP that never existed (phones were POTS lines directly on the network, no SBC at
+> all); a Rudder Relay that was planned but dropped in favour of Salt and never actually built,
+> "never got off the drawing board"; and a WireGuard tunnel to CLD, which is real but **only on
+> each site's new infrastructure** — old sites had zero connectivity to each other or to CLD, in
+> any form. All four removed/corrected here. This is exactly the kind of drift the harness and a
+> known source of truth exist to catch — going through the other 45 sites' boxes the same way,
+> one at a time, is the current plan.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRFAL001<br/>Cisco ISR 4331<br/>192.168.76.254"]
+    O_INET --> O_RTR
+    O_FWL["🧱 EXAFWLFAL001<br/>FortiOS<br/>192.168.76.1"]
+    O_RTR --> O_FWL
+    O_SW1["🔀 EXASWIFAL001<br/>Cisco 9300<br/>192.168.76.250"]
+    O_SW2["🔀 EXASWIFAL002<br/>Cisco 9300<br/>192.168.76.251"]
+    O_FWL --> O_SW1
+    O_FWL --> O_SW2
+
+    O_ILO["🔧 EXAILOFAL001<br/>HP iLO<br/>192.168.76.2"]
+    O_ESX["💾 EXAESXFAL001<br/>HP ML310e, 32GB RAM, VMware ESXi<br/>192.168.76.5"]
+    O_SW1 --> O_ESX
+    O_ILO -.->|"manages"| O_ESX
+
+    O_DC1["🗝️ EXADCSFAL001<br/>DC · PDC Emulator<br/>192.168.76.10"]
+    O_DC2["🗝️ EXADCSFAL002<br/>DC Secondary<br/>192.168.76.11"]
+    O_SW1 --> O_DC1
+    O_SW1 --> O_DC2
+
+    O_NAS["🗃️ EXANASFAL001<br/>FreeNAS 13.0-U6<br/>192.168.76.32"]
+    O_TAR["💽 EXATARFAL001<br/>Tape Archiver<br/>192.168.76.33"]
+    O_SW1 --> O_NAS
+    O_SW1 --> O_TAR
+
+    O_WKS1["🖥️ EXAWKSFAL001<br/>Mixing Desk WKS<br/>192.168.76.100"]
+    O_WAP["📶 WAPs x6<br/>Ubiquiti UniFi U6-Pro<br/>192.168.76.5-10"]
+    O_LCD["🖼️ EXALCDFAL001<br/>Samsung Tizen Display<br/>192.168.76.50"]
+    O_SW2 --> O_WKS1
+    O_SW2 --> O_WAP
+    O_SW2 --> O_LCD
+
+    O_WKS2["🖥️ EXAWKSFAL002<br/>Reel-to-Reel WKS<br/>192.168.76.101"]
+    O_LAP["💻 EXALAPFAL001<br/>Production Laptop<br/>192.168.76.103"]
+    O_PHN["📞 EXAPHNFAL001-003<br/>Staff Phones<br/>No IP Address"]
+    O_TAB["📱 EXATABFAL001<br/>Tablet<br/>No IP Address"]
+    O_CAM2["🎥 EXACAMFAL002<br/>Axis, Studio Hallway<br/>192.168.76.71"]
+    O_CAM4["🎥 EXACAMFAL004<br/>Axis, Loading Bay<br/>192.168.76.73"]
+    O_VCU["🎧 EXAVCUFAL001<br/>Poly Studio X70<br/>192.168.76.51"]
+    O_PAY["☎️ EXAPAYFAL001<br/>GPO Kiosk No.6 Payphone<br/>192.168.76.95"]
+    O_VND1["🍩 EXADONFAL001<br/>Tim Hortons Vending<br/>192.168.76.62"]
+    O_VND3["🍫 EXAVNDFAL003<br/>McCowans Dispenser<br/>192.168.76.64"]
+    O_VND5["🍫 EXAVNDFAL005<br/>¼lb Confectionery<br/>192.168.76.66"]
+    O_CLK["⏰ EXACLKFAL001<br/>NTP Clock<br/>192.168.76.80"]
+    O_WKS2 --> O_LAP --> O_PHN --> O_TAB --> O_CAM2 --> O_CAM4 --> O_VCU --> O_PAY --> O_VND1 --> O_VND3 --> O_VND5 --> O_CLK
+
+    O_WKS3["🖥️ EXAWKSFAL003<br/>Shared Editing WKS<br/>192.168.76.102"]
+    O_SUR["🖊️ EXASURFAL001<br/>Microsoft Surface<br/>192.168.76.104"]
+    O_PHN2["📞 EXAPHNFAL006-007<br/>Yealink T58A<br/>No IP Address"]
+    O_CAM1["🎥 EXACAMFAL001<br/>Axis, Front Entrance<br/>192.168.76.70"]
+    O_CAM3["🎥 EXACAMFAL003<br/>Axis, Car Park<br/>192.168.76.72"]
+    O_RDR["🔐 EXARDRFAL001<br/>HID Signo Badge Reader<br/>192.168.76.16"]
+    O_JKB["💿 EXAMUSFAL001<br/>Pureline 128V Jukebox<br/>192.168.76.67"]
+    O_COF["🫖 EXATEAFAL001<br/>Smart Coffee Machine<br/>192.168.76.61"]
+    O_VND2["🍫 EXAVNDFAL002<br/>Irn-Bru Machine<br/>192.168.76.63"]
+    O_VND4["🍫 EXAVNDFAL004<br/>Mrs Tily Dispenser<br/>192.168.76.65"]
+    O_PMP["⛽ EXAPMPFAL001<br/>Networked Petrol Pump<br/>192.168.76.60"]
+    O_WKS3 --> O_SUR --> O_PHN2 --> O_CAM1 --> O_CAM3 --> O_RDR --> O_JKB --> O_COF --> O_VND2 --> O_VND4 --> O_PMP
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM4 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VCU fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VND1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VND3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VND5 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CLK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_JKB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_COF fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VND2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VND4 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PMP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_FAL ["🕰️ Old Network (legacy)"]
@@ -101,6 +229,8 @@ graph TD
     end
     style OLD_FAL fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
