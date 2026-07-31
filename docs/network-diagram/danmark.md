@@ -13,6 +13,57 @@
 **PVE nodes:** 1 · **VPN parent:** ODE  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 00 000 xxx · **Mobile:** +45 2x xxx xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
+> PVE; no SBC; no `RRY`; no WireGuard on old infra). Real working ESX box confirmed
+> (`EXAESXCPH001`), managed by the Dell iDRAC9 already on record (`EXARACCPH001`, kept as `RAC`).
+> Both DCs (dual-domain, example.com/example.net) hosted on it. NTP clock, TV display, and WAPs
+> (×3, real count already on record) all kept as-is.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRCPH001<br/>Cisco ISR 4331<br/>192.168.231.254"]
+    O_INET --> O_RTR
+    O_SW["🔀 EXASWICPH001<br/>TP-Link JetStream<br/>192.168.231.250"]
+    O_RTR --> O_SW
+
+    O_RAC["🔧 EXARACCPH001<br/>Dell iDRAC9<br/>192.168.231.2"]
+    O_ESX["💾 EXAESXCPH001<br/>VMware ESXi<br/>192.168.231.5"]
+    O_DC1["🗝️ EXADCSCPH001<br/>DC · example.com<br/>192.168.231.10"]
+    O_DC2["🗝️ EXADCSCPH002<br/>DC · example.net<br/>192.168.231.11"]
+    O_SW --> O_ESX
+    O_RAC -.->|"manages"| O_ESX
+    O_ESX --> O_DC1
+    O_ESX --> O_DC2
+
+    O_NTP["⏰ EXACLKCPH001<br/>Meinberg LANTIME M300, NTP Clock<br/>192.168.231.18"]
+    O_TV["📺 EXATVSCPH001<br/>Bella Kronik 42X, DR/TV2<br/>192.168.231.17"]
+    O_WAP["📶 EXAWAPCPH001-003<br/>3x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_SW --> O_NTP
+    O_SW --> O_TV
+    O_SW --> O_WAP
+    O_SW --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_NTP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_CPH ["🕰️ Old Network (legacy)"]
@@ -42,6 +93,8 @@ graph TD
     end
     style OLD_CPH fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -98,6 +151,79 @@ graph TD
 **PVE nodes:** 3 (EU hub) · **VPN parent:** CLD (EU backup)  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 00 000 xxx · **Mobile:** +45 2x xxx xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra — including ODE's own hub/spoke relay to the EU sites,
+> confirmed the same "old sites had zero connectivity to each other, in any form" rule applies
+> even at the hub). Unlike FAL, ODE's 3-node cluster was **real** — genuine VMware ESXi on 3x HP
+> ML310e, managed by 3x HP iLO (kept as `RAC`, corrected from generic "BMC node N" to the real
+> vendor) — plus a new detail: a central VMware vCenter (`EXAVCTODE001`) managing the whole
+> cluster, a new `VCT` type added to `role_codes.csv`/`docs/emojis/README.md`. iMac, MacBook Pro,
+> jukebox, and WAPs (×2, real, moved over) all confirmed real.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_FWL["🧱 EXAFWLODE001<br/>Cisco ASA 5506-X<br/>192.168.126.1"]
+    O_INET --> O_FWL
+
+    O_ILO1["🔧 EXARACODE001<br/>HP iLO 1<br/>192.168.126.2"]
+    O_ILO2["🔧 EXARACODE002<br/>HP iLO 2<br/>192.168.126.3"]
+    O_ILO3["🔧 EXARACODE003<br/>HP iLO 3<br/>192.168.126.4"]
+    O_ESX1["💾 EXAESXODE001<br/>HP ML310e, VMware ESXi 1<br/>192.168.126.5"]
+    O_ESX2["💾 EXAESXODE002<br/>HP ML310e, VMware ESXi 2<br/>192.168.126.6"]
+    O_ESX3["💾 EXAESXODE003<br/>HP ML310e, VMware ESXi 3<br/>192.168.126.7"]
+    O_VCT["🛰️ EXAVCTODE001<br/>VMware vCenter · cluster management<br/>IP not recorded"]
+    O_FWL --> O_ESX1
+    O_FWL --> O_ESX2
+    O_FWL --> O_ESX3
+    O_FWL --> O_VCT
+    O_ILO1 -.->|"manages"| O_ESX1
+    O_ILO2 -.->|"manages"| O_ESX2
+    O_ILO3 -.->|"manages"| O_ESX3
+    O_VCT -.->|"manages"| O_ESX1
+    O_VCT -.->|"manages"| O_ESX2
+    O_VCT -.->|"manages"| O_ESX3
+
+    O_DC1["🗝️ EXADCSODE001<br/>DC PDC, RID/Infra Master<br/>192.168.126.10"]
+    O_DC2["🗝️ EXADCSODE002<br/>DC Secondary<br/>192.168.126.11"]
+    O_FWL --> O_DC1
+    O_FWL --> O_DC2
+
+    O_MAC["🍎 EXAMACODE001<br/>iMac, macOS Tahoe<br/>192.168.126.150"]
+    O_MBP["💻 EXAMBPODE002<br/>MacBook Pro<br/>192.168.126.151"]
+    O_JKB["💿 EXAMUSODE001<br/>Pureline 128V Jukebox<br/>192.168.126.60"]
+    O_WAP["📶 EXAWAPODE001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_FWL --> O_MAC
+    O_FWL --> O_MBP
+    O_FWL --> O_JKB
+    O_FWL --> O_WAP
+    O_FWL --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ILO1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ILO2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ILO3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VCT fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_JKB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_ODE ["🕰️ Old Network (legacy)"]
@@ -142,6 +268,9 @@ graph TD
       RRY -. "→ EXARUDCLD001" .-> VPN_CLD
     end
     style OLD_ODE fill:#56B4E9,stroke:#0072B2,color:#000000
+```
+
+</details>
 ```
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
@@ -204,6 +333,41 @@ graph TD
 > ⚠️ DC out of sync 27 days · WS2016 EOL · disk space low — rebuild required  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 00 000 xxx · **Mobile:** +45 2x xxx xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). No hypervisor here — `EXADCSKGE001` ran WS2016 bare metal
+> directly on the RAC-managed hardware, same shape as ABD's Server 2008R2 box. The real ⚠️
+> EOL/out-of-sync/disk-space warning kept per the migration-priority rule. WAP and printer both
+> confirmed real, moving over as-is.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RAC["🔧 EXARACKGE001<br/>BMC<br/>192.168.65.2"]
+    O_DC["⚠️🗝️ EXADCSKGE001<br/>DC · WS2016 EOL, 27 days out of sync, disk space low, bare metal<br/>192.168.65.10"]
+    O_INET --> O_RAC
+    O_RAC -.->|"manages"| O_DC
+
+    O_WAP["📶 EXAWAPKGE001<br/>Ubiquiti UniFi U6-Pro<br/>No IP Address"]
+    O_PRN["🖨️ EXAPRNKGE001<br/>HP LaserJet MFP M528<br/>192.168.65.16"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_INET --> O_WAP
+    O_INET --> O_PRN
+    O_INET --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_KGE ["🕰️ Old Network (legacy)"]
@@ -228,6 +392,8 @@ graph TD
     end
     style OLD_KGE fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -282,6 +448,40 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** ODE  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 00 000 xxx · **Mobile:** +45 2x xxx xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). Bare metal, same as KGE — no ESX layer.
+> `EXADCSFAX001` "was there but totally unused" — present, never adopted. WAPs (×2) confirmed
+> real, moving over.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRFAX001<br/>Cisco ISR 4331<br/>192.168.246.254"]
+    O_INET --> O_RTR
+    O_RAC["🔧 EXARACFAX001<br/>BMC<br/>192.168.246.2"]
+    O_DC["⚠️🗝️ EXADCSFAX001<br/>DC · present but never used, bare metal<br/>192.168.246.10"]
+    O_RTR --> O_RAC
+    O_RAC -.->|"manages"| O_DC
+
+    O_WAP["📶 EXAWAPFAX001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_RTR --> O_WAP
+    O_RTR --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_FAX ["🕰️ Old Network (legacy)"]
@@ -306,6 +506,8 @@ graph TD
     end
     style OLD_FAX fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -358,6 +560,37 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** ODE  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 00 000 xxx · **Mobile:** +45 2x xxx xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). Another HP ML310e/iLO pair — but bare metal, DC OS
+> installed directly, no ESX layer (same shape as KGE/FAX). WAP confirmed real — physically
+> there, never actually connected to anything, brought over regardless.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RAC["🔧 EXARACKOR001<br/>HP iLO<br/>192.168.238.2"]
+    O_DC["🗝️ EXADCSKOR001<br/>DC · HP ML310e, bare metal<br/>192.168.238.10"]
+    O_INET --> O_RAC
+    O_RAC -.->|"manages"| O_DC
+
+    O_WAP["📶 EXAWAPKOR001<br/>Ubiquiti UniFi U6-Pro · never connected<br/>No IP Address"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_INET --> O_WAP
+    O_INET --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_KOR ["🕰️ Old Network (legacy)"]
@@ -381,6 +614,8 @@ graph TD
     end
     style OLD_KOR fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -433,6 +668,39 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** ODE  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 00 000 xxx · **Mobile:** +45 2x xxx xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). Unused hardware — **presumed** the same HP ML310e/iLO
+> pattern as every other bare-metal site so far, since it's been that combo every time; flag if
+> AAR was actually different. `EXADCSAAR001` was installed on the bare metal, same as
+> KOR/KGE/FAX/ABD — corrected after initially, wrongly, dropping the DC entirely. WAP confirmed
+> never installed — "still in its box" — put to use only in the new build.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RAC["🔧 EXARACAAR001<br/>HP iLO<br/>192.168.86.2"]
+    O_DC["🗝️ EXADCSAAR001<br/>DC · HP ML310e, bare metal<br/>192.168.86.10"]
+    O_INET --> O_RAC
+    O_RAC -.->|"manages"| O_DC
+
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_INET --> O_WAP
+    O_INET --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_AAR ["🕰️ Old Network (legacy)"]
@@ -456,6 +724,8 @@ graph TD
     end
     style OLD_AAR fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -505,29 +775,21 @@ graph TD
 ## FRE — Fredericia 🏯
 
 **LAN:** `192.168.75.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **VPN parent:** ODE  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** ODE  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 75 xx xx xx · **Mobile:** +45 2x xx xx xx
+
+> **New-build site — corrected 2026-07-31.** The previous "Old Network" box here (RAC/PVE/DC/
+> SBC/RRY/WAP/CAM) was entirely fabricated template content, not real history — zero real
+> `devices.csv` rows exist for FRE, and Robert confirmed: "as far as I know FRE had nothing, it
+> was a new expansion office." Converted to the same "New Build Location" placeholder pattern
+> already used for FRD/NYB/SEA/SFO. Standard-slot addresses are allocated in
+> `benarbejde/address_policy.csv`/`sites.csv` the same as any other site, but no `devices.csv`
+> exception rows exist yet — nothing beyond the standard template has been confirmed built here.
 
 ```mermaid
 graph TD
-    subgraph OLD_FRE ["🕰️ Old Network (legacy)"]
-      INET["🌐 Internet"]
-      RAC["🔧 EXARACFRE001 · BMC node 1 · .2"]
-      PVE["🗂️ EXAPVEFRE001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSFRE001 · DC · .10"]
-      SBC["🛡️ EXASBCFRE001 · 3CX SBC → CLD PBX · .48"]
-      RRY["🔁 EXARRYFRE001 · Rudder Relay · .12"]
-      WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
-      CAM["CAMs TODO"]
-      VPN["🔗 WireGuard → ODE"]
-
-      INET --> PVE --> DC & SBC
-      RAC -.->|"manages"| PVE
-      PVE --> WAP & CAM
-      PVE <-->|"WireGuard tunnel"| VPN
-
-      PVE --> RRY
-      RRY -. "→ EXARUDCLD001" .-> VPN
+    subgraph OLD_FRE ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site. · No prior/legacy network existed before commissioning."]
     end
     style OLD_FRE fill:#56B4E9,stroke:#0072B2,color:#000000
 ```

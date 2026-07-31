@@ -10,29 +10,18 @@
 ## MIL — Milan 👔
 
 **LAN:** `192.168.39.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **VPN parent:** ODE  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** ODE  
 **Entity:** Example Music (Italia) S.p.a. · **Landline:** N/A · **Mobile:** N/A
+
+> **New-build site — corrected 2026-07-31.** The previous "Old Network" box here was entirely
+> fabricated template content — zero real `devices.csv` rows exist for MIL, and Robert confirmed
+> it's an expansion office. Converted to the same "New Build Location" placeholder pattern used
+> for FRD/NYB/SEA/SFO/FRE/DRS/DUS/GOT/OSL/AMS.
 
 ```mermaid
 graph TD
-    subgraph OLD_MIL ["🕰️ Old Network (legacy)"]
-      INET["🌐 Internet"]
-      RAC["🔧 EXARACMIL001 · BMC node 1 · .2"]
-      PVE["🗂️ EXAPVEMIL001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSMIL001 · DC · .10"]
-      SBC["🛡️ EXASBCMIL001 · 3CX SBC → CLD PBX · .48"]
-      RRY["🔁 EXARRYMIL001 · Rudder Relay · .12"]
-      WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
-      CAM["CAMs TODO"]
-      VPN["🔗 WireGuard → ODE"]
-
-      INET --> PVE --> DC & SBC
-      RAC -.->|"manages"| PVE
-      PVE --> WAP & CAM
-      PVE <-->|"WireGuard tunnel"| VPN
-
-      PVE --> RRY
-      RRY -. "→ EXARUDCLD001" .-> VPN
+    subgraph OLD_MIL ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site. · No prior/legacy network existed before commissioning."]
     end
     style OLD_MIL fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
