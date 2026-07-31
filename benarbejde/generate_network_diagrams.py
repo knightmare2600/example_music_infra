@@ -395,25 +395,51 @@ def _octet_int(dev: dict):
   return int(octet) if str(octet).isdigit() else None
 
 
+def _title_case_preserve_acronyms(text: str) -> str:
+  """Capitalise each word, leaving already-uppercase words (acronyms: CCTV, HID, NTP...) and
+  alphanumeric ones (VT320) untouched -- str.title()/str.capitalize() would mangle 'CCTV' into
+  'Cctv'."""
+  def cap_word(w):
+    if w.isupper() or any(c.isdigit() for c in w):
+      return w
+    return w[:1].upper() + w[1:]
+  return " ".join(cap_word(w) for w in text.split())
+
+
+def _format_ip_ranges(net, octets: list) -> str:
+  """Full IP for the first octet, then just the trailing octet(s)/range(s) for the rest -- e.g.
+  four cameras at .70-.73 on a /24 -> '192.168.76.70-73', not the ambiguous bare '.70-.73'
+  (Robert, 2026-07-31: 'omitted the subnet, which is a big no no') or the verbose repeated-prefix
+  '192.168.76.70-192.168.76.73'."""
+  ranges = _compress_ranges(octets)
+  base = str(gi.offset_ip(net, ranges[0][0])).rsplit(".", 1)[0]
+  parts = [f"{a}" if a == b else f"{a}-{b}" for a, b in ranges]
+  return f"{base}.{','.join(parts)}"
+
+
 def _topology_label(dev: dict, net) -> str:
-  """Unlike render_new_network_block()'s labels (octet only, by design), Robert's explicit call
-  for the topology style is full IPs -- bare octets are ambiguous about which subnet, and that
-  ambiguity is exactly what he flagged as a real problem once already this session."""
+  """Three-line label (Robert, 2026-07-31: single-line boxes read "crowded") -- hostname (with
+  the emoji) on line 1, description on line 2 (title-cased, acronyms preserved), full IP (or "No
+  IP Address") on line 3. <br/> is mermaid's own line-break syntax inside a node label. Full IPs
+  only, never a bare octet -- ambiguous about which subnet, flagged as a real problem more than
+  once this session."""
   symbol = _topology_symbol(dev["type"])
-  parts = [] if dev["type"] == "TMP" else [dev["hostname"]]
+  hostname_line = f"{symbol} {dev['hostname']}" if dev["type"] != "TMP" else symbol
+  lines = [hostname_line]
   if dev.get("label_extra"):
-    parts.append(dev["label_extra"])
+    lines.append(_title_case_preserve_acronyms(dev["label_extra"]))
   octet_int = _octet_int(dev)
   if octet_int is not None and net is not None:
-    parts.append(gi.offset_ip(net, octet_int))
-  elif dev.get("octet"):
-    parts.append(f'.{dev["octet"]}')
-  label = " · ".join(parts)
+    ip_line = gi.offset_ip(net, octet_int)
+  else:
+    ip_line = "No IP Address"
   if dev.get("planned"):
-    label += " — planned"
+    ip_line += " — planned"
+  lines.append(ip_line)
+  label = "<br/>".join(lines)
   if BANNED_TERMS.search(label):
     raise ValueError(f"Banned FSMO/health term found in topology label: {label!r}")
-  return f"{symbol} {label}".strip()
+  return label
 
 
 def _compress_ranges(values: list) -> list:
@@ -435,11 +461,12 @@ def _compress_ranges(values: list) -> list:
   return ranges
 
 
-def _topology_other_group_label(dtype: str, group: list) -> str:
-  """Grouped label for 2+ real devices.csv rows of the same 'Other' bucket type -- one box with a
-  count (e.g. '5x Cars · EXACARFAL001-005 · No IP Address') instead of one box per real row.
-  Ports Robert's hand-built FAL prototype (docs/network-diagram/scotland.md, confirmed 2026-07-30)
-  into the generator -- see render_topology_block's 'Other' bucket comment for the full story."""
+def _topology_other_group_label(dtype: str, group: list, net) -> str:
+  """Grouped label for 2+ real devices.csv rows of the same 'Other' bucket type -- one three-line
+  box with a count (hostname range / '4 x CCTV Cameras' / full-IP range) instead of one box per
+  real row. Ports Robert's hand-built FAL prototype (docs/network-diagram/scotland.md, 2026-07-30)
+  into the generator, then the 2026-07-31 three-line/full-IP-range style pass (the bare-octet
+  ".70-.73" this originally produced was the "omitted the subnet" bug Robert flagged)."""
   symbol = _topology_symbol(dtype)
   name = TOPOLOGY_PLURAL_OVERRIDES.get(dtype) or _pluralize_type_name(TYPE_NAMES.get(dtype, dtype))
   # Number isn't a field build_site_devices() hands back (only hostname/type/octet/label_extra/
@@ -451,13 +478,16 @@ def _topology_other_group_label(dtype: str, group: list) -> str:
     f"{a:03d}" if a == b else f"{a:03d}-{b:03d}" for a, b in _compress_ranges(numbers)
   )
   octets = [o for o in (_octet_int(d) for d in group) if o is not None]
-  if octets:
-    ip_str = ",".join(
-      f".{a}" if a == b else f".{a}-.{b}" for a, b in _compress_ranges(octets)
-    )
+  if octets and net is not None:
+    ip_line = _format_ip_ranges(net, octets)
   else:
-    ip_str = "No IP Address"
-  label = f"{symbol} {len(group)}x {name} · {hostname_prefix}{num_str} · {ip_str}"
+    ip_line = "No IP Address"
+  lines = [
+    f"{symbol} {hostname_prefix}{num_str}",
+    f"{len(group)} x {_title_case_preserve_acronyms(name)}",
+    ip_line,
+  ]
+  label = "<br/>".join(lines)
   if BANNED_TERMS.search(label):
     raise ValueError(f"Banned FSMO/health term found in topology label: {label!r}")
   return label
@@ -634,7 +664,7 @@ def render_topology_block(site: str, sites_row: dict, devices_by_site: dict) -> 
         emit_node(nid, group[0], net)
       else:
         nid = f"T_OTH_{dtype}"
-        lines.append(f'    {nid}["{_topology_other_group_label(dtype, group)}"]')
+        lines.append(f'    {nid}["{_topology_other_group_label(dtype, group, net)}"]')
         style_lines.append(f'    style {nid} {TOPOLOGY_STYLE}')
       (left if i % 2 == 0 else right).append(nid)
 

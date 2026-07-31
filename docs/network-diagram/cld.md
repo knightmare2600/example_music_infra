@@ -46,32 +46,32 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRCLD001 · RTR 1 · 192.168.69.1"]
+    T_RTR["📡 EXARTRCLD001<br/>RTR 1<br/>192.168.69.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCCLD001 · BMC 1 · 192.168.69.2"]
+    T_BMC["🔧 EXABMCCLD001<br/>BMC 1<br/>192.168.69.2"]
     T_RTR --> T_BMC
-    T_PVE["🗂️ EXAPVECLD001 · PVE 1 · 192.168.69.5"]
+    T_PVE["🗂️ EXAPVECLD001<br/>PVE 1<br/>192.168.69.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWICLD001 · SWI 1 · 192.168.69.250"]
+    T_SWI["🔀 EXASWICLD001<br/>SWI 1<br/>192.168.69.250"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWICLD002 · SWI 2 · 192.168.69.251"]
+    T_SWI2["🔀 EXASWICLD002<br/>SWI 2<br/>192.168.69.251"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWICLD003 · SWI 3 · 192.168.69.252"]
+    T_SWI3["🔀 EXASWICLD003<br/>SWI 3<br/>192.168.69.252"]
     T_RTR --> T_SWI3
-    T_BMC2["🔧 EXABMCCLD002 · BMC 2 · 192.168.69.3 — planned"]
+    T_BMC2["🔧 EXABMCCLD002<br/>BMC 2<br/>192.168.69.3 — planned"]
     T_RTR --> T_BMC2
-    T_PVE2["🗂️ EXAPVECLD002 · PVE 2 · 192.168.69.6 — planned"]
+    T_PVE2["🗂️ EXAPVECLD002<br/>PVE 2<br/>192.168.69.6 — planned"]
     T_RTR --> T_PVE2
-    T_NAS["🗃️ EXANASCLD001 · NAS · 192.168.69.19"]
-    T_RDR["🔐 EXARDRCLD001 · RDR · 192.168.69.21"]
+    T_NAS["🗃️ EXANASCLD001<br/>NAS<br/>192.168.69.19"]
+    T_RDR["🔐 EXARDRCLD001<br/>RDR<br/>192.168.69.21"]
     T_SWI --> T_NAS --> T_RDR
-    T_ANS["🤖 EXAANSCLD001 · Ansible control node · 192.168.69.9"]
-    T_DCS["🗝️ EXADCSCLD001 · DCS 1 · 192.168.69.10"]
-    T_SVR["🗄️ EXASVRCLD002 · Windows Admin Centre · 192.168.69.20"]
-    T_SLT["🧂 EXASLTCLD001 · Salt master · 192.168.69.22"]
-    T_PBX["🔌 EXAPBXCLD001 · 3CX PBX · 192.168.69.48"]
-    T_UFC["🎛️ EXAUFCCLD001 · UniFi Network Controller · 192.168.69.82"]
-    T_FWL["🧱 EXAFWLCLD001 · FWL 1 · 192.168.69.253"]
+    T_ANS["🤖 EXAANSCLD001<br/>Ansible Control Node<br/>192.168.69.9"]
+    T_DCS["🗝️ EXADCSCLD001<br/>DCS 1<br/>192.168.69.10"]
+    T_SVR["🗄️ EXASVRCLD002<br/>Windows Admin Centre<br/>192.168.69.20"]
+    T_SLT["🧂 EXASLTCLD001<br/>Salt Master<br/>192.168.69.22"]
+    T_PBX["🔌 EXAPBXCLD001<br/>3CX PBX<br/>192.168.69.48"]
+    T_UFC["🎛️ EXAUFCCLD001<br/>UniFi Network Controller<br/>192.168.69.82"]
+    T_FWL["🧱 EXAFWLCLD001<br/>FWL 1<br/>192.168.69.253"]
     T_PVE --> T_ANS --> T_DCS --> T_SVR --> T_SLT --> T_PBX --> T_UFC --> T_FWL
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
