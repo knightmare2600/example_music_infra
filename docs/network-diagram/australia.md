@@ -59,35 +59,35 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRSYD001 · RTR · 192.168.29.1"]
+    T_RTR["📡 EXARTRSYD001<br/>RTR<br/>192.168.29.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCSYD001 · BMC 1 · 192.168.29.2"]
+    T_BMC["🔧 EXABMCSYD001<br/>BMC 1<br/>192.168.29.2"]
     T_RTR --> T_BMC
-    T_PVE["🗂️ EXAPVESYD001 · PVE 1 · 192.168.29.5"]
+    T_PVE["🗂️ EXAPVESYD001<br/>PVE 1<br/>192.168.29.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWISYD003 · SWI 3 · 192.168.29.252"]
+    T_SWI["🔀 EXASWISYD003<br/>SWI 3<br/>192.168.29.252"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWISYD001 · Core switch · 192.168.29.250"]
+    T_SWI2["🔀 EXASWISYD001<br/>Core Switch<br/>192.168.29.250"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWISYD002 · Access switch · 192.168.29.251"]
+    T_SWI3["🔀 EXASWISYD002<br/>Access Switch<br/>192.168.29.251"]
     T_RTR --> T_SWI3
-    T_NAS["🗃️ EXANASSYD001 · NAS · 192.168.29.19"]
-    T_RDR["🔐 EXARDRSYD001 · RDR · 192.168.29.21"]
-    T_WAP["📶 EXAWAPSYD001 · WAP 1 · 192.168.29.82"]
+    T_NAS["🗃️ EXANASSYD001<br/>NAS<br/>192.168.29.19"]
+    T_RDR["🔐 EXARDRSYD001<br/>RDR<br/>192.168.29.21"]
+    T_WAP["📶 EXAWAPSYD001<br/>WAP 1<br/>192.168.29.82"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSSYD001 · DCS 1 · 192.168.29.10"]
-    T_SBC["🛡️ EXASBCSYD001 · SBC · 192.168.29.48"]
-    T_FWL["🧱 EXAFWLSYD001 · LAN face · 192.168.29.253"]
+    T_DCS["🗝️ EXADCSSYD001<br/>DCS 1<br/>192.168.29.10"]
+    T_SBC["🛡️ EXASBCSYD001<br/>SBC<br/>192.168.29.48"]
+    T_FWL["🧱 EXAFWLSYD001<br/>LAN Face<br/>192.168.29.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_SRV["🗄️ EXASRVSYD001 · Local infra server · 192.168.29.20"]
-    T_MBP["💻 EXAMBPSYD001 · MacBook Pro"]
-    T_WKS["🖥️ EXAWKSSYD001 · Workstation"]
-    T_PHN["📞 EXAPHNSYD001 · Phone"]
-    T_TAB["📱 EXATABSYD001 · iPad"]
-    T_LCD["🖼️ EXALCDSYD001 · LG Signage wallboard"]
-    T_PRN["🖨️ EXAPRNSYD001 · Laser printer"]
-    T_OTH_CAM["🎥 2x CCTV cameras · EXACAMSYD001-002 · No IP Address"]
-    T_COF["🍵 EXACOFSYD001 · Coffee machine"]
+    T_SRV["🗄️ EXASRVSYD001<br/>Local Infra Server<br/>192.168.29.20"]
+    T_MBP["💻 EXAMBPSYD001<br/>MacBook Pro<br/>No IP Address"]
+    T_WKS["🖥️ EXAWKSSYD001<br/>Workstation<br/>No IP Address"]
+    T_PHN["📞 EXAPHNSYD001<br/>Phone<br/>No IP Address"]
+    T_TAB["📱 EXATABSYD001<br/>IPad<br/>No IP Address"]
+    T_LCD["🖼️ EXALCDSYD001<br/>LG Signage Wallboard<br/>No IP Address"]
+    T_PRN["🖨️ EXAPRNSYD001<br/>Laser Printer<br/>No IP Address"]
+    T_OTH_CAM["🎥 EXACAMSYD001-002<br/>2 x CCTV Cameras<br/>No IP Address"]
+    T_COF["🍵 EXACOFSYD001<br/>Coffee Machine<br/>No IP Address"]
     T_SRV --> T_WKS --> T_TAB --> T_PRN --> T_COF
     T_MBP --> T_PHN --> T_LCD --> T_OTH_CAM
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -168,33 +168,33 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRMEL001 · RTR · 192.168.61.1"]
+    T_RTR["📡 EXARTRMEL001<br/>RTR<br/>192.168.61.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCMEL001 · BMC 1 · 192.168.61.2"]
+    T_BMC["🔧 EXABMCMEL001<br/>BMC 1<br/>192.168.61.2"]
     T_RTR --> T_BMC
-    T_PVE["🗂️ EXAPVEMEL001 · PVE 1 · 192.168.61.5"]
+    T_PVE["🗂️ EXAPVEMEL001<br/>PVE 1<br/>192.168.61.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWIMEL003 · SWI 3 · 192.168.61.252"]
+    T_SWI["🔀 EXASWIMEL003<br/>SWI 3<br/>192.168.61.252"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWIMEL001 · Core switch · 192.168.61.250"]
+    T_SWI2["🔀 EXASWIMEL001<br/>Core Switch<br/>192.168.61.250"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWIMEL002 · Access switch · 192.168.61.251"]
+    T_SWI3["🔀 EXASWIMEL002<br/>Access Switch<br/>192.168.61.251"]
     T_RTR --> T_SWI3
-    T_NAS["🗃️ EXANASMEL001 · NAS · 192.168.61.19"]
-    T_RDR["🔐 EXARDRMEL001 · RDR · 192.168.61.21"]
-    T_WAP["📶 EXAWAPMEL001 · WAP 1 · 192.168.61.82"]
+    T_NAS["🗃️ EXANASMEL001<br/>NAS<br/>192.168.61.19"]
+    T_RDR["🔐 EXARDRMEL001<br/>RDR<br/>192.168.61.21"]
+    T_WAP["📶 EXAWAPMEL001<br/>WAP 1<br/>192.168.61.82"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSMEL001 · DCS 1 · 192.168.61.10"]
-    T_SBC["🛡️ EXASBCMEL001 · SBC · 192.168.61.48"]
-    T_FWL["🧱 EXAFWLMEL001 · LAN face · 192.168.61.253"]
+    T_DCS["🗝️ EXADCSMEL001<br/>DCS 1<br/>192.168.61.10"]
+    T_SBC["🛡️ EXASBCMEL001<br/>SBC<br/>192.168.61.48"]
+    T_FWL["🧱 EXAFWLMEL001<br/>LAN Face<br/>192.168.61.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_SRV["🗄️ EXASRVMEL001 · Local file and print server · 192.168.61.20"]
-    T_MBP["💻 EXAMBPMEL001 · MacBook Pro"]
-    T_WKS["🖥️ EXAWKSMEL001 · Workstation"]
-    T_PHN["📞 EXAPHNMEL001 · Phone"]
-    T_TAB["📱 EXATABMEL001 · iPad"]
-    T_LCD["🖼️ EXALCDMEL001 · Signage display"]
-    T_PRN["🖨️ EXAPRNMEL001 · LaserJet printer"]
+    T_SRV["🗄️ EXASRVMEL001<br/>Local File And Print Server<br/>192.168.61.20"]
+    T_MBP["💻 EXAMBPMEL001<br/>MacBook Pro<br/>No IP Address"]
+    T_WKS["🖥️ EXAWKSMEL001<br/>Workstation<br/>No IP Address"]
+    T_PHN["📞 EXAPHNMEL001<br/>Phone<br/>No IP Address"]
+    T_TAB["📱 EXATABMEL001<br/>IPad<br/>No IP Address"]
+    T_LCD["🖼️ EXALCDMEL001<br/>Signage Display<br/>No IP Address"]
+    T_PRN["🖨️ EXAPRNMEL001<br/>LaserJet Printer<br/>No IP Address"]
     T_SRV --> T_WKS --> T_TAB --> T_PRN
     T_MBP --> T_PHN --> T_LCD
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
