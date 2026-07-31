@@ -72,7 +72,6 @@ graph TD
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_CLK["⏰ EXACLKCPH001 · NTP clock · 192.168.231.18"]
     T_TVS["📺 EXATVSCPH001 · Display · 192.168.231.17"]
-    T_BMC --> T_CLK --> T_TVS
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -176,7 +175,6 @@ graph TD
     T_PVE --> T_DCS --> T_SBC --> T_FWL --> T_FWL2
     T_MAC["🍎 EXAMACODE001 · iMac"]
     T_MBP["💻 EXAMBPODE002 · MacBook Pro"]
-    T_BMC --> T_MAC --> T_MBP
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -259,7 +257,6 @@ graph TD
     T_FWL["🧱 EXAFWLKGE001 · LAN face · 192.168.65.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_PRN["🖨️ EXAPRNKGE001 · Printer"]
-    T_BMC --> T_PRN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF

@@ -130,28 +130,29 @@ graph TD
     T_SBC["🛡️ EXASBCFAL001 · SBC · 192.168.76.48"]
     T_FWL["🧱 EXAFWLFAL001 · LAN face · 192.168.76.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTH1["💽 EXATARFAL001 · Legacy tape archive · 192.168.76.33"]
-    T_OTH2["🖼️ EXALCDFAL001 · Reception display · 192.168.76.50"]
-    T_OTH3["🎧 EXAVCUFAL001 · Video conferencing · 192.168.76.51"]
-    T_OTH4["⛽ EXAPMPFAL001 · Networked petrol pump · 192.168.76.60"]
-    T_OTH5["🫖 EXATEAFAL001 · Smart coffee machine · 192.168.76.61"]
-    T_OTH6["🍩 EXADONFAL001 · Donut vending · 192.168.76.62"]
-    T_OTH7["🍫 4x Vending machines · EXAVNDFAL002-005 · .63-.66"]
-    T_OTH8["🎥 4x CCTV cameras · EXACAMFAL001-004 · .70-.73"]
-    T_OTH9["⏰ EXACLKFAL001 · Embedded NTP clock · 192.168.76.80"]
-    T_OTH10["☎️ EXAPAYFAL001 · GPO Kiosk No.6 payphone · 192.168.76.95"]
-    T_OTH11["🖥️ 2x Workstations · EXAWKSFAL001,003 · .100,.102"]
-    T_OTH12["💻 EXALAPFAL001 · Production laptop · 192.168.76.103"]
-    T_OTH13["🖊️ EXASURFAL001 · Microsoft Surface · 192.168.76.104"]
-    T_OTH14["📞 5x Office phones · EXAPHNFAL001-003,006-007 · No IP Address"]
-    T_OTH15["📱 EXATABFAL001 · Tablet · No IP Address"]
-    T_OTH16["⌨️ EXATTYFAL001 · VT320 serial terminal · No IP Address"]
-    T_OTH17["🚌 3x Tour buses · EXABUSFAL001-003 · No IP Address"]
-    T_OTH18["🚗 5x Cars · EXACARFAL001-005 · No IP Address"]
-    T_OTH19["🚚 5x Trucks · EXATRKFAL001-005 · No IP Address"]
-    T_OTH20["✈️ 5x Jets · EXAJETFAL001-005 · No IP Address"]
-    T_OTH1 --> T_OTH3 --> T_OTH5 --> T_OTH7 --> T_OTH9 --> T_OTH11 --> T_OTH13 --> T_OTH15 --> T_OTH17 --> T_OTH19
-    T_OTH2 --> T_OTH4 --> T_OTH6 --> T_OTH8 --> T_OTH10 --> T_OTH12 --> T_OTH14 --> T_OTH16 --> T_OTH18 --> T_OTH20
+    T_SRV["🗄️ EXASRVFAL001 · Reserved · 192.168.76.20"]
+    T_TAR["💽 EXATARFAL001 · Legacy tape archive · 192.168.76.33"]
+    T_LCD["🖼️ EXALCDFAL001 · Reception display · 192.168.76.50"]
+    T_VCU["🎧 EXAVCUFAL001 · Video conferencing · 192.168.76.51"]
+    T_PMP["⛽ EXAPMPFAL001 · Networked petrol pump · 192.168.76.60"]
+    T_TEA["🫖 EXATEAFAL001 · Smart coffee machine · 192.168.76.61"]
+    T_DON["🍩 EXADONFAL001 · Donut vending · 192.168.76.62"]
+    T_OTH_VND["🍫 4x Vending machines · EXAVNDFAL002-005 · .63-.66"]
+    T_OTH_CAM["🎥 4x CCTV cameras · EXACAMFAL001-004 · .70-.73"]
+    T_CLK["⏰ EXACLKFAL001 · Embedded NTP clock · 192.168.76.80"]
+    T_PAY["☎️ EXAPAYFAL001 · GPO Kiosk No.6 payphone · 192.168.76.95"]
+    T_OTH_WKS["🖥️ 2x Workstations · EXAWKSFAL001,003 · .100,.102"]
+    T_LAP["💻 EXALAPFAL001 · Production laptop · 192.168.76.103"]
+    T_SUR["🖊️ EXASURFAL001 · Microsoft Surface · 192.168.76.104"]
+    T_OTH_PHN["📞 5x Office phones · EXAPHNFAL001-003,006-007 · No IP Address"]
+    T_TAB["📱 EXATABFAL001 · Tablet"]
+    T_TTY["⌨️ EXATTYFAL001 · VT320 serial terminal"]
+    T_OTH_BUS["🚌 3x Tour buses · EXABUSFAL001-003 · No IP Address"]
+    T_OTH_CAR["🚗 5x Cars · EXACARFAL001-005 · No IP Address"]
+    T_OTH_TRK["🚚 5x Trucks · EXATRKFAL001-005 · No IP Address"]
+    T_OTH_JET["✈️ 5x Jets · EXAJETFAL001-005 · No IP Address"]
+    T_SRV --> T_LCD --> T_PMP --> T_DON --> T_OTH_CAM --> T_PAY --> T_LAP --> T_OTH_PHN --> T_TTY --> T_OTH_CAR --> T_OTH_JET
+    T_TAR --> T_VCU --> T_TEA --> T_OTH_VND --> T_CLK --> T_OTH_WKS --> T_SUR --> T_TAB --> T_OTH_BUS --> T_OTH_TRK
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -166,26 +167,27 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH4 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH5 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH6 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH7 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH8 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH9 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH10 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH11 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH12 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH13 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH14 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH15 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH16 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH17 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH18 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH19 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTH20 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TAR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_VCU fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PMP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TEA fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DON fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_VND fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_CLK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TTY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_BUS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_CAR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_TRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_JET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:FAL:END
 ```
 
@@ -257,8 +259,12 @@ graph TD
     T_SBC["🛡️ EXASBCEDI001 · SBC · 192.168.131.48"]
     T_FWL["🧱 EXAFWLEDI001 · LAN face · 192.168.131.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 5 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_OTH_DCR["🗝️ 2x Domain controller (legacy naming)s · EXADCREDI002-003 · .12-.13"]
+    T_WKS["🖥️ EXAWKSEDI001 · Shared desktop · 192.168.131.150"]
+    T_LAP["💻 EXALAPEDI098 · Pool laptop · 192.168.131.108"]
+    T_TEA["🫖 EXATEAEDI001 · Coffee machine · 192.168.131.60"]
+    T_OTH_DCR --> T_LAP
+    T_WKS --> T_TEA
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -272,7 +278,10 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TEA fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:EDI:END
 ```
 
@@ -340,8 +349,10 @@ graph TD
     T_SBC["🛡️ EXASBCGLA001 · SBC · 192.168.141.48"]
     T_FWL["🧱 EXAFWLGLA001 · LAN face · 192.168.141.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 4 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_PRN["🖨️ EXAPRNGLA001 · Main floor printer · 192.168.141.16"]
+    T_OTH_WKS["🖥️ 2x Workstations · EXAWKSGLA001-002 · .150-.151"]
+    T_LAP["💻 EXALAPGLA001 · Pool laptop · 192.168.141.152"]
+    T_PRN --> T_LAP
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -355,7 +366,9 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:GLA:END
 ```
 
@@ -427,8 +440,12 @@ graph TD
     T_SBC["🛡️ EXASBCCLY001 · SBC · 192.168.41.48"]
     T_FWL["🧱 EXAFWLCLY001 · LAN face · 192.168.41.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 4 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_SRV["🗄️ EXASRVCLY001 · Oracle DB server · 192.168.41.20"]
+    T_SUR["🖊️ EXASURCLY001 · Surface"]
+    T_PHN["📞 EXAPHNCLY001 · Phone"]
+    T_TAB["📱 EXATABCLY001 · Android tablet"]
+    T_SRV --> T_PHN
+    T_SUR --> T_TAB
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -442,7 +459,10 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:CLY:END
 ```
 
@@ -511,8 +531,8 @@ graph TD
     T_SBC["🛡️ EXASBCDUN001 · SBC · 192.168.138.48"]
     T_FWL["🧱 EXAFWLDUN001 · LAN face · 192.168.138.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 4 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_OTH_SUR["🖊️ 2x Microsoft Surfaces · EXASURDUN001-002 · No IP Address"]
+    T_OTH_PHN["📞 2x Office phones · EXAPHNDUN001-002 · No IP Address"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -526,7 +546,8 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:DUN:END
 ```
 
@@ -597,8 +618,14 @@ graph TD
     T_SBC["🛡️ EXASBCPER001 · SBC · 192.168.173.48"]
     T_FWL["🧱 EXAFWLPER001 · LAN face · 192.168.173.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 9 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_NIX["🐧 EXANIXPER001 · MIDI archive · 192.168.173.40"]
+    T_MBP["💻 EXAMBPPER001 · MacBook"]
+    T_SUR["🖊️ EXASURPER001 · Surface"]
+    T_OTH_PHN["📞 4x Office phones · EXAPHNPER001-004 · No IP Address"]
+    T_PRN["🖨️ EXAPRNPER001 · Printer"]
+    T_VND["🍫 EXAVNDPER001 · Vending machine"]
+    T_NIX --> T_SUR --> T_PRN
+    T_MBP --> T_OTH_PHN --> T_VND
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -612,7 +639,12 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NIX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_VND fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:PER:END
 ```
 
@@ -682,8 +714,8 @@ graph TD
     T_SBC["🛡️ EXASBCABD001 · SBC · 192.168.224.48"]
     T_FWL["🧱 EXAFWLABD001 · LAN face · 192.168.224.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 4 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_OTH_MBP["💻 2x MacBook Pros · EXAMBPABD001-002 · No IP Address"]
+    T_OTH_PHN["📞 2x Office phones · EXAPHNABD001-002 · No IP Address"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -697,6 +729,7 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:ABD:END
 ```

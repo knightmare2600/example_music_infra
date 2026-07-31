@@ -89,7 +89,7 @@ graph TD
     T_DON["🍩 EXADONBRK001 · Donut vending · 192.168.136.60"]
     T_LAP["💻 EXALAPBRK001 · Tour laptop"]
     T_VND["🍫 EXAVNDBRK001 · Vending machine"]
-    T_BMC --> T_DON --> T_LAP --> T_VND
+    T_DON --> T_VND
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -170,7 +170,6 @@ graph TD
     T_FWL["🧱 EXAFWLTOR001 · LAN face · 192.168.146.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_DCR["🗝️ EXADCRTOR028 · Undocumented legacy AD install found on site, no-one on r..."]
-    T_BMC --> T_DCR
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
