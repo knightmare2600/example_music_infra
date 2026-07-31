@@ -14,6 +14,81 @@
 > ⚠️ `EXADCSAKL001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (New Zealand) Tapui · **Landline:** +64 9 300 0xxx · **Mobile:** +64 21 900 2xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). Real, working ESX on HP hardware, HPE iLO5-managed. The
+> DC's "services stopped" warning confirmed real — "built and left in a bad state." Both WAPs
+> confirmed genuinely real and in active use — not new-build bleed, and not still-boxed like
+> several other sites — subsumed straight into the new build's UniFi controller.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRAKL001<br/>Cisco ISR 4331<br/>192.168.93.254"]
+    O_INET --> O_RTR
+    O_FWL["🧱 EXAFWLAKL001<br/>FortiGate 7.x<br/>192.168.93.1"]
+    O_RTR --> O_FWL
+    O_SW1["🔀 EXASWIAKL001<br/>Cisco 9300<br/>192.168.93.250"]
+    O_SW2["🔀 EXASWIAKL002<br/>Cisco 2960<br/>192.168.93.251"]
+    O_FWL --> O_SW1
+    O_FWL --> O_SW2
+
+    O_RAC["🔧 EXARACAKL001<br/>HPE iLO5<br/>192.168.93.2"]
+    O_ESX["💾 EXAESXAKL001<br/>HP Server, VMware ESXi<br/>192.168.93.5"]
+    O_DC["🔴🗝️ EXADCSAKL001<br/>DC · services stopped, left in a bad state<br/>192.168.93.10"]
+    O_SRV["🗄️ EXASRVAKL001<br/>WS2022 Local Server<br/>192.168.93.20"]
+    O_SW1 --> O_ESX
+    O_RAC -.->|"manages"| O_ESX
+    O_ESX --> O_DC
+    O_ESX --> O_SRV
+
+    O_WKS["🖥️ EXAWKSAKL001<br/>Win11 Workstation<br/>192.168.93.40"]
+    O_MBP["💻 EXAMBPAKL001<br/>MacBook Pro<br/>192.168.93.41"]
+    O_PHN["📞 EXAPHNAKL001<br/>Android Phone<br/>No IP Address"]
+    O_TAB["📱 EXATABAKL001<br/>iPad<br/>192.168.93.60"]
+    O_WAP1["📶 EXAWAPAKL001<br/>Ubiquiti UniFi<br/>No IP Address"]
+    O_WAP2["📶 EXAWAPAKL002<br/>Ubiquiti UniFi<br/>No IP Address"]
+    O_CAM["🎥 EXACAMAKL001<br/>Axis Camera<br/>192.168.93.82"]
+    O_LCD["🖼️ EXALCDAKL001<br/>Samsung Signage<br/>192.168.93.70"]
+    O_PRN["🖨️ EXAPRNAKL001<br/>HP LaserJet<br/>192.168.93.80"]
+    O_COF["🍵 EXACOFAKL001<br/>Smart Coffee Machine<br/>192.168.93.83"]
+    O_SW2 --> O_WKS
+    O_SW2 --> O_MBP
+    O_SW2 --> O_PHN
+    O_SW2 --> O_TAB
+    O_SW2 --> O_WAP1
+    O_SW2 --> O_WAP2
+    O_SW2 --> O_CAM
+    O_SW2 --> O_LCD
+    O_SW2 --> O_PRN
+    O_SW2 --> O_COF
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_COF fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_AKL ["🕰️ Old Network (legacy)"]
@@ -52,6 +127,8 @@ graph TD
     end
     style OLD_AKL fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 

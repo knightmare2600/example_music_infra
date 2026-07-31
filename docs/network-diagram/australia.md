@@ -14,6 +14,79 @@
 > ⚠️ `EXADCSSYD001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (Australia) Pty Ltd · **Landline:** +61 2 9000 0xxx · **Mobile:** +61 400 900 2xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). BMC confirmed Dell iDRAC9 (kept as documented — HP was a
+> same-day slip, same pattern as LAX). Real ESX, and `EXADCSSYD001` genuinely ran as a VM on it —
+> the "services stopped" state is real, kept. `EXACAMSYD002` (reception camera) removed — Robert:
+> "it's bleed, we added CCTV as part of the new build" — confirmed by `devices.csv`'s own
+> `Legacy=no` flag on that specific row; also resolves an octet collision with the coffee machine
+> (`.83`), which keeps its real IP now the bleed is gone. Everything else (FWL, both switches,
+> local infra server, MacBook, workstation, phone, iPad, WAP, coffee-area camera, signage, and
+> printer) confirmed real via `devices.csv`.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_FWL["🧱 EXAFWLSYD001<br/>FortiGate 7.x<br/>192.168.29.1"]
+    O_INET --> O_FWL
+    O_SW1["🔀 EXASWISYD001<br/>Cisco 9300<br/>192.168.29.250"]
+    O_SW2["🔀 EXASWISYD002<br/>Cisco 2960<br/>192.168.29.251"]
+    O_FWL --> O_SW1
+    O_FWL --> O_SW2
+
+    O_RAC["🔧 EXARACSYD001<br/>Dell iDRAC9<br/>192.168.29.2"]
+    O_ESX["💾 EXAESXSYD001<br/>Dell Server, VMware ESXi<br/>192.168.29.5"]
+    O_DC["🔴🗝️ EXADCSSYD001<br/>DC · services stopped, hosted as an ESX VM<br/>192.168.29.10"]
+    O_SRV["🗄️ EXASRVSYD001<br/>WS2022 Local Infra<br/>192.168.29.20"]
+    O_SW1 --> O_ESX
+    O_RAC -.->|"manages"| O_ESX
+    O_ESX --> O_DC
+    O_SW1 --> O_SRV
+
+    O_MBP["💻 EXAMBPSYD001<br/>MacBook Pro<br/>192.168.29.40"]
+    O_WKS["🖥️ EXAWKSSYD001<br/>Win11 Workstation<br/>192.168.29.41"]
+    O_PHN["📞 EXAPHNSYD001<br/>Android Phone<br/>No IP Address"]
+    O_TAB["📱 EXATABSYD001<br/>iPad, Setlists<br/>192.168.29.60"]
+    O_WAP["📶 EXAWAPSYD001<br/>Ubiquiti UniFi<br/>No IP Address"]
+    O_CAM1["🎥 EXACAMSYD001<br/>Hikvision, Coffee Cam<br/>192.168.29.82"]
+    O_LCD["🖼️ EXALCDSYD001<br/>LG Signage Wallboard<br/>192.168.29.70"]
+    O_PRN["🖨️ EXAPRNSYD001<br/>Brother Laser Printer<br/>192.168.29.80"]
+    O_COF["🍵 EXACOFSYD001<br/>Smart Coffee Machine, RFC2324<br/>192.168.29.83"]
+    O_SW2 --> O_MBP
+    O_SW2 --> O_WKS
+    O_SW2 --> O_PHN
+    O_SW2 --> O_TAB
+    O_SW2 --> O_WAP
+    O_SW2 --> O_CAM1
+    O_SW2 --> O_LCD
+    O_SW2 --> O_PRN
+    O_SW2 --> O_COF
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_COF fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_SYD ["🕰️ Old Network (legacy)"]
@@ -51,6 +124,8 @@ graph TD
     end
     style OLD_SYD fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -124,6 +199,76 @@ graph TD
 > ⚠️ `EXADCSMEL001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (Australia) Pty Ltd · **Landline:** +61 3 9000 0xxx · **Mobile:** +61 400 901 2xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). Real, working ESX (HPE iLO5-managed), replaced by a new
+> node in the new build. The DC's "services stopped" warning confirmed real. NAS
+> (`EXANASMEL001`, Synology) confirmed real — replaced by a new TrueNAS node on new hardware, but
+> the old Synology itself genuinely existed (missing from `devices.csv` for some other reason,
+> not fabrication). WAPs confirmed never used — still in their boxes.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_FWL["🧱 EXAFWLMEL001<br/>FortiGate 7.x<br/>192.168.61.1"]
+    O_INET --> O_FWL
+    O_SW1["🔀 EXASWIMEL001<br/>Cisco 9300<br/>192.168.61.250"]
+    O_SW2["🔀 EXASWIMEL002<br/>Cisco 2960<br/>192.168.61.251"]
+    O_FWL --> O_SW1
+    O_FWL --> O_SW2
+
+    O_RAC["🔧 EXARACMEL001<br/>HPE iLO5<br/>192.168.61.2"]
+    O_ESX["💾 EXAESXMEL001<br/>VMware ESXi<br/>192.168.61.5"]
+    O_DC["🔴🗝️ EXADCSMEL001<br/>DC · services stopped<br/>192.168.61.10"]
+    O_SRV["🗄️ EXASRVMEL001<br/>WS2022 File/Print<br/>192.168.61.20"]
+    O_SW1 --> O_ESX
+    O_RAC -.->|"manages"| O_ESX
+    O_ESX --> O_DC
+    O_ESX --> O_SRV
+
+    O_MBP["💻 EXAMBPMEL001<br/>MacBook Pro<br/>192.168.61.40"]
+    O_WKS["🖥️ EXAWKSMEL001<br/>Win11 Workstation<br/>192.168.61.41"]
+    O_PHN["📞 EXAPHNMEL001<br/>iOS Phone<br/>No IP Address"]
+    O_TAB["📱 EXATABMEL001<br/>iPad<br/>192.168.61.60"]
+    O_WAP["📶 WAPs — none yet, still boxed on old infra"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_LCD["🖼️ EXALCDMEL001<br/>Samsung Signage<br/>192.168.61.70"]
+    O_PRN["🖨️ EXAPRNMEL001<br/>HP LaserJet<br/>192.168.61.80"]
+    O_NAS["🗃️ EXANASMEL001<br/>Synology NAS, DSM 7.x<br/>192.168.61.81"]
+    O_SW2 --> O_MBP
+    O_SW2 --> O_WKS
+    O_SW2 --> O_PHN
+    O_SW2 --> O_TAB
+    O_SW2 --> O_WAP
+    O_SW2 --> O_CAM
+    O_SW2 --> O_LCD
+    O_SW2 --> O_PRN
+    O_SW2 --> O_NAS
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_MEL ["🕰️ Old Network (legacy)"]
@@ -160,6 +305,8 @@ graph TD
     end
     style OLD_MEL fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 

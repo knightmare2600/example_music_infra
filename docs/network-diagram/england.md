@@ -13,6 +13,66 @@
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 207 496 0xxx · **Mobile:** +44 770 090 0xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
+> PVE; no SBC; no `RRY`; no WireGuard on old infra). More unused hardware — the Dell iDRAC9
+> (`EXARACLND001`) never had a hypervisor built on it (kept as `RAC`, not `ILO` — unlike FAL, the
+> vendor here was never disputed, so no swap). `EXADCRLND001` confirmed real legacy-naming DC,
+> RID/Infra Master, migrating to `EXADCSLND001`. Hot-desk WKS, both printers (including the
+> "ProCAT Steno Writer" court device), the BBC office radio, and the Shure SM7/Dante mic all
+> confirmed real and moving over. WAP corrected to "none yet" — unlike CLY/DUN/PER/ABD, London's
+> WAPs genuinely never existed on old infra, arriving fresh with the new build.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRLND001<br/>Cisco ISR 4331<br/>192.168.20.254"]
+    O_INET --> O_RTR
+    O_FWL["🧱 EXAFWLLND001<br/>Cisco ASA 5516-X<br/>192.168.20.1"]
+    O_RTR --> O_FWL
+    O_SW["🔀 EXASWILND001<br/>Cisco 9300<br/>192.168.20.250"]
+    O_FWL --> O_SW
+
+    O_RAC["🔧 EXARACLND001<br/>Dell iDRAC9 · no host ever built<br/>192.168.20.2"]
+    O_DC["🗝️ EXADCRLND001<br/>DC · RID/Infra Master<br/>192.168.20.10"]
+    O_SW --> O_RAC
+    O_SW --> O_DC
+
+    O_WKS["🖥️ EXAWKSLND001<br/>Hot Desk WKS<br/>192.168.20.150"]
+    O_PRN1["🖨️ EXAPRNLND001<br/>Xerox WorkCentre<br/>192.168.20.16"]
+    O_PRN2["🖨️ EXAPRNLND002<br/>ProCAT Steno Writer · Court Device<br/>No IP Address"]
+    O_RAD["📻 EXARADLND001<br/>BBC Office Radio Mk II<br/>192.168.20.80"]
+    O_MIC["🎤 EXAMICLND001<br/>Shure SM7 Microphone, Dante Audio<br/>192.168.20.81"]
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_SW --> O_WKS
+    O_SW --> O_PRN1
+    O_SW --> O_PRN2
+    O_SW --> O_RAD
+    O_SW --> O_MIC
+    O_SW --> O_WAP
+    O_SW --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PRN1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PRN2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MIC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_LND ["🕰️ Old Network (legacy)"]
@@ -45,6 +105,8 @@ graph TD
     end
     style OLD_LND fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -107,6 +169,91 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 121 496 0xxx · **Mobile:** +44 7700 900 2xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
+> PVE; no SBC; no `RRY`; no WireGuard on old infra). BIR is the first England site with a
+> genuinely **working** old hypervisor rather than the CLY/DUN/PER/ABD/LND "unused hardware"
+> pattern — real Dell server, VMware ESXi, managed by the Dell DRAC already on record
+> (`EXARACBIR001`, unchanged). `EXADCRBIR001`/`002` confirmed real, both rebuilt as `DCS` in the
+> new build. MacBook Pro, Galaxy Tab, phone, WAPs (real, already there, moving over), and the
+> full vintage-gear collection (Moog One, LinnDrum, Fairlight CMI, Atari ST, GPO payphone, NEC
+> PlasmaSync) all confirmed real and moving with the rest.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRBIR001<br/>Cisco ISR 4331<br/>192.168.121.254"]
+    O_INET --> O_RTR
+    O_FWL["🧱 EXAFWLBIR001<br/>Palo Alto PAN-OS<br/>192.168.121.1"]
+    O_RTR --> O_FWL
+    O_SW1["🔀 EXASWIBIR001<br/>Cisco 9300<br/>192.168.121.250"]
+    O_SW2["🔀 EXASWIBIR002<br/>Access Switch<br/>192.168.121.251"]
+    O_FWL --> O_SW1
+    O_FWL --> O_SW2
+
+    O_RAC["🔧 EXARACBIR001<br/>Dell DRAC<br/>192.168.121.2"]
+    O_ESX["💾 EXAESXBIR001<br/>Dell server, VMware ESXi<br/>192.168.121.5"]
+    O_DC1["🗝️ EXADCRBIR001<br/>DC Primary<br/>192.168.121.10"]
+    O_DC2["🗝️ EXADCRBIR002<br/>DC Secondary<br/>192.168.121.11"]
+    O_SRV["🗄️ EXASRVBIR001<br/>Rocky Linux, Oracle DB<br/>192.168.121.20"]
+    O_SW1 --> O_ESX
+    O_RAC -.->|"manages"| O_ESX
+    O_ESX --> O_DC1
+    O_ESX --> O_DC2
+    O_ESX --> O_SRV
+
+    O_MBP["💻 EXAMBPBIR001<br/>MacBook Pro<br/>192.168.121.41"]
+    O_TAB["📱 EXATABBIR001<br/>Samsung Galaxy Tab<br/>192.168.121.61"]
+    O_PHN["📞 EXAPHNBIR001<br/>Samsung S25 Ultra<br/>No IP Address"]
+    O_WAP["📶 EXAWAPBIR001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_SW2 --> O_MBP
+    O_SW2 --> O_TAB
+    O_SW2 --> O_PHN
+    O_SW2 --> O_WAP
+    O_SW2 --> O_CAM
+
+    O_MOO["🎹 EXAMOOBIR001<br/>Moog One Synthesizer<br/>192.168.121.70"]
+    O_LIN["🥁 EXALINBIR001<br/>LinnDrum LM-2<br/>192.168.121.71"]
+    O_FCL["🎹 EXAFCLBIR001<br/>Fairlight CMI IIx<br/>192.168.121.72"]
+    O_AST["🕹️ EXAASTBIR001<br/>Atari ST, MIDI<br/>192.168.121.73"]
+    O_PAY["☎️ EXAPAYBIR001<br/>GPO Kiosk No.6 Payphone<br/>192.168.121.74"]
+    O_LCD["🖼️ EXALCDBIR001<br/>NEC PlasmaSync NOC Display<br/>192.168.121.75"]
+    O_SW2 --> O_MOO
+    O_SW2 --> O_LIN
+    O_SW2 --> O_FCL
+    O_SW2 --> O_AST
+    O_SW2 --> O_PAY
+    O_SW2 --> O_LCD
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MOO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LIN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FCL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_AST fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_BIR ["🕰️ Old Network (legacy)"]
@@ -147,6 +294,8 @@ graph TD
     end
     style OLD_BIR fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -221,6 +370,67 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 161 715 xxxx · **Mobile:** +44 770 090 6xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
+> PVE; no SBC; no `RRY`; no WireGuard on old infra). Both DCs were genuinely `DCR` — the box's
+> own `EXADCSMCR002` was a naming inconsistency, corrected to `EXADCRMCR002`; both get real new
+> `EXADCSMCR001-002` builds on the new PVE nodes. Real, working hypervisor this time — an HP
+> server (`EXAESXMCR001`) managed by the HPE iLO5 already on record (`EXARACMCR001`, kept as
+> `RAC` — real vendor, unchanged from the original box). WAPs
+> confirmed the LND-style case — the old entry was just a "marker," never real old hardware,
+> installed fresh on the new build. Laptops, workstations, and printer all confirmed real and
+> moving over.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_SW["🔀 EXASWIMCR001<br/>Cisco 9300<br/>192.168.161.250"]
+    O_INET --> O_SW
+
+    O_RAC["🔧 EXARACMCR001<br/>HPE iLO5<br/>192.168.161.2"]
+    O_ESX["💾 EXAESXMCR001<br/>HP Server, VMware ESXi<br/>192.168.161.5"]
+    O_DC1["🗝️ EXADCRMCR001<br/>DC PDC, RID/Infra Master<br/>192.168.161.10"]
+    O_DC2["🗝️ EXADCRMCR002<br/>DC Secondary<br/>192.168.161.11"]
+    O_SW --> O_ESX
+    O_RAC -.->|"manages"| O_ESX
+    O_ESX --> O_DC1
+    O_ESX --> O_DC2
+
+    O_LAP1["💻 EXALAPMCR001<br/>Win11 Laptop<br/>192.168.161.19"]
+    O_LAP2["💻 EXALAPMCR002<br/>Win11 Laptop<br/>192.168.161.150"]
+    O_WKS1["🖥️ EXAWKSMCR001<br/>Front Desk WKS<br/>192.168.161.152"]
+    O_WKS2["🖥️ EXAWKSMCR002<br/>Finance WKS<br/>192.168.161.153"]
+    O_PRN["🖨️ EXAPRNMCR001<br/>Network Printer<br/>192.168.161.16"]
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_SW --> O_LAP1
+    O_SW --> O_LAP2
+    O_SW --> O_WKS1
+    O_SW --> O_WKS2
+    O_SW --> O_PRN
+    O_SW --> O_WAP
+    O_SW --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LAP1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_MCR ["🕰️ Old Network (legacy)"]
@@ -252,6 +462,8 @@ graph TD
     end
     style OLD_MCR fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -311,6 +523,62 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 151 496 0xxx · **Mobile:** +44 770 090 5xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
+> PVE; no SBC; no `RRY`; no WireGuard on old infra). Real working hypervisor — HP ML310e + HP
+> iLO, ESXi actually running. `EXADCRLIV001`'s "WS2025" is real, but for an unusual reason:
+> **Liverpool built it unauthorized**, off their own initiative, not through the standard
+> process — kept as a real governance flag, not just a health one. The site also put all its
+> file shares directly on that same DC (Robert: "we are fine with that but the known source of
+> truth for that IP is `EXADCRLIV001`") — the box's separate `EXASVRLIV001` "WS2022 File Server"
+> node was a duplicate representation of the same physical device at the same IP, not a second
+> real one — removed. `EXAMACLIV001`'s `⚠️ disabled` status kept per the migration-priority rule.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_SW["🔀 EXASWILIV001<br/>Cisco 9200<br/>192.168.151.250"]
+    O_INET --> O_SW
+
+    O_RAC["🔧 EXARACLIV001<br/>HPE iLO5<br/>192.168.151.2"]
+    O_ESX["💾 EXAESXLIV001<br/>HP ML310e, VMware ESXi<br/>192.168.151.5"]
+    O_SW --> O_ESX
+    O_RAC -.->|"manages"| O_ESX
+
+    O_DC["🗝️ EXADCRLIV001<br/>DC, WS2025 · unauthorized build, also hosts file shares<br/>192.168.151.10"]
+    O_SW --> O_DC
+
+    O_MBP["💻 EXAMBPLIV001<br/>MacBook Pro, macOS Tahoe<br/>192.168.151.150"]
+    O_MAC["🍎 EXAMACLIV001<br/>⚠️ iMac, disabled<br/>192.168.151.152"]
+    O_RDR["⚙️ EXARDRLIV002<br/>HID Signo Badge Reader<br/>192.168.151.16"]
+    O_BPS["🪪 EXABPSLIV001<br/>Badge Programming WKS<br/>192.168.151.17"]
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_SW --> O_MBP
+    O_SW --> O_MAC
+    O_SW --> O_RDR
+    O_SW --> O_BPS
+    O_SW --> O_WAP
+    O_SW --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_BPS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_LIV ["🕰️ Old Network (legacy)"]
@@ -341,6 +609,8 @@ graph TD
     end
     style OLD_LIV fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -402,6 +672,57 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 191 496 0xxx · **Mobile:** +44 770 090 9xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). The consumer-grade TP-Link JetStream switch is genuinely
+> real (replaced by a proper one on upgrade). Real working hypervisor — `EXAESXNEW001`
+> (VMware ESXi) managed by `EXARACNEW001` (Dell iDRAC9) — and a nice piece of continuity: that
+> same physical hardware was later repurposed as a new-build PVE node, `EXAPVENEW002`. Both
+> `EXADCRNEW001` and `EXASRVNEW001` were technically built and running (AD services / WS2022
+> File-Print) but **never actually configured with real users, shares, or even a static IP** —
+> the file server was running on DHCP. Kept as real, sharp migration-priority signals — this
+> wasn't a working site, it was a shell. `EXAWKSNEW099`'s LAPS-expired flag kept per the standing
+> rule. WAP/CAM both confirmed genuinely never-installed — planned, never built, arriving fresh
+> with the new network.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_SW["🔀 EXASWINEW001<br/>TP-Link JetStream<br/>192.168.191.250"]
+    O_INET --> O_SW
+
+    O_RAC["🔧 EXARACNEW001<br/>Dell iDRAC9<br/>192.168.191.2"]
+    O_ESX["💾 EXAESXNEW001<br/>VMware ESXi · hardware later reused as EXAPVENEW002<br/>192.168.191.5"]
+    O_SW --> O_ESX
+    O_RAC -.->|"manages"| O_ESX
+
+    O_DC["⚠️🗝️ EXADCRNEW001<br/>DC · AD running, no real users/shares ever set up<br/>192.168.191.10"]
+    O_SRV["⚠️🗄️ EXASRVNEW001<br/>WS2022 File/Print Server · never configured, on DHCP<br/>192.168.191.21"]
+    O_WKS["⚠️🖥️ EXAWKSNEW099<br/>Win11 WKS · LAPS expired<br/>192.168.191.161"]
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_SW --> O_DC
+    O_SW --> O_SRV
+    O_SW --> O_WKS
+    O_SW --> O_WAP
+    O_SW --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_NEW ["🕰️ Old Network (legacy)"]
@@ -429,6 +750,8 @@ graph TD
     end
     style OLD_NEW fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -485,6 +808,40 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 114 250 0xxx · **Mobile:** +44 7700 905 2xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
+> no `RRY`; no WireGuard on old infra). Sheffield was genuinely as bare as the original box
+> suggested — Robert: "nothing existed." No hypervisor, no BMC (`EXARACSHE001` removed — a
+> consumer desktop tower has no out-of-band management to represent). `EXADCSSHE001` was
+> "literally just Windows Server running on an old Dell OptiPlex tower" — kept, plainly, as the
+> sharpest hardware-inadequacy signal so far. WAP/CAM/Endpoints all confirmed genuinely
+> never-installed — everything arrives fresh with the new build.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_DC["⚠️🗝️ EXADCSSHE001<br/>DC · Windows Server on a Dell OptiPlex tower<br/>192.168.114.10"]
+    O_INET --> O_DC
+
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_EP["🖥️ Endpoints — none yet, new build only"]
+    O_INET --> O_WAP
+    O_INET --> O_CAM
+    O_INET --> O_EP
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_EP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_SHE ["🕰️ Old Network (legacy)"]
@@ -509,6 +866,8 @@ graph TD
     end
     style OLD_SHE fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -561,6 +920,37 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 1422 200 0xxx · **Mobile:** +44 7700 904 2xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Same shape as SHE: "nothing built."
+> No hypervisor, no BMC (`EXARACHAL001` removed). `EXADCSHAL001` was another "OptiPlex special"
+> — Windows Server on a consumer desktop tower, same as Sheffield. WAP/CAM/Endpoints all
+> confirmed genuinely never-installed.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_DC["⚠️🗝️ EXADCSHAL001<br/>DC · Windows Server on a Dell OptiPlex tower<br/>192.168.142.10"]
+    O_INET --> O_DC
+
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_EP["🖥️ Endpoints — none yet, new build only"]
+    O_INET --> O_WAP
+    O_INET --> O_CAM
+    O_INET --> O_EP
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_EP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_HAL ["🕰️ Old Network (legacy)"]
@@ -585,6 +975,8 @@ graph TD
     end
     style OLD_HAL fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -637,6 +1029,36 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 1482 300 0xxx · **Mobile:** +44 7700 902 2xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Same shape as SHE/HAL: nothing built, no
+> hypervisor, no real BMC (`EXARACHUL001` removed). `EXADCSHUL001` was another OptiPlex special.
+> WAP/CAM/Endpoints all confirmed genuinely never-installed.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_DC["⚠️🗝️ EXADCSHUL001<br/>DC · Windows Server on a Dell OptiPlex tower<br/>192.168.148.10"]
+    O_INET --> O_DC
+
+    O_WAP["📶 WAPs — none yet, new build only"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_EP["🖥️ Endpoints — none yet, new build only"]
+    O_INET --> O_WAP
+    O_INET --> O_CAM
+    O_INET --> O_EP
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_EP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_HUL ["🕰️ Old Network (legacy)"]
@@ -661,6 +1083,8 @@ graph TD
     end
     style OLD_HUL fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 
@@ -714,6 +1138,33 @@ graph TD
 *Note: WAP/RTR-only site — minimal infrastructure.*  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 247 765 0xxx · **Mobile:** +44 7700 901 2xxx
 
+### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+
+> **Corrected against Robert's real facts, 2026-07-31.** Robert: "COV only had a WAP/RTR
+> initially" — confirms the page's own "WAP/RTR-only site" note over the box's own fuller
+> content. No hypervisor, no BMC, no DC, no SBC ever existed here — all removed, along with the
+> standing `RRY`/WireGuard corrections. WAP (×2) confirmed genuinely real, kept as-is.
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRCOV001<br/>Cisco ISR 4331<br/>192.168.247.254"]
+    O_INET --> O_RTR
+    O_WAP["📶 EXAWAPCOV001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
+    O_CAM["🎥 CAMs — none yet, new build only"]
+    O_RTR --> O_WAP
+    O_RTR --> O_CAM
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+```
+
+<details>
+<summary>Original hand-maintained Old Network box (pre-restyle, kept for reference during prototype review)</summary>
+
 ```mermaid
 graph TD
     subgraph OLD_COV ["🕰️ Old Network (legacy)"]
@@ -738,6 +1189,8 @@ graph TD
     end
     style OLD_COV fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
+
+</details>
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
 

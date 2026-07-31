@@ -10,29 +10,18 @@
 ## AMS — Amsterdam 🚲
 
 **LAN:** `192.168.31.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **VPN parent:** ODE  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** ODE  
 **Entity:** Example Music (Nederland) B.V. · **Landline:** N/A · **Mobile:** N/A
+
+> **New-build site — corrected 2026-07-31.** The previous "Old Network" box here was entirely
+> fabricated template content — zero real `devices.csv` rows exist for AMS, and Robert confirmed
+> it's an expansion office. Converted to the same "New Build Location" placeholder pattern used
+> for FRD/NYB/SEA/SFO/FRE/DRS/DUS/GOT/OSL.
 
 ```mermaid
 graph TD
-    subgraph OLD_AMS ["🕰️ Old Network (legacy)"]
-      INET["🌐 Internet"]
-      RAC["🔧 EXARACAMS001 · BMC node 1 · .2"]
-      PVE["🗂️ EXAPVEAMS001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSAMS001 · DC · .10"]
-      SBC["🛡️ EXASBCAMS001 · 3CX SBC → CLD PBX · .48"]
-      RRY["🔁 EXARRYAMS001 · Rudder Relay · .12"]
-      WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
-      CAM["CAMs TODO"]
-      VPN["🔗 WireGuard → ODE"]
-
-      INET --> PVE --> DC & SBC
-      RAC -.->|"manages"| PVE
-      PVE --> WAP & CAM
-      PVE <-->|"WireGuard tunnel"| VPN
-
-      PVE --> RRY
-      RRY -. "→ EXARUDCLD001" .-> VPN
+    subgraph OLD_AMS ["🏗️ New Build Location — no legacy infrastructure existed here"]
+      N_OLD_NOTE["This is a new-build site. · No prior/legacy network existed before commissioning."]
     end
     style OLD_AMS fill:#56B4E9,stroke:#0072B2,color:#000000
 ```
