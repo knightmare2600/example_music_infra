@@ -180,26 +180,32 @@
 ## CLD — Cloud / Provisioning
 
 **vRACK (`VRK`):** `192.168.139.0/24` · **CLD LAN:** `192.168.69.0/24`
-**Role:** WireGuard hub — routes to all sites. Central PBX, Ansible, Rudder, WAC.
+**Role:** WireGuard hub — routes to all sites. Central PBX, Ansible, WAC.
 See `docs/ExampleMusic_Beginners_Guide.md` §4.1 for the full CLD/VRK split, and §4.2 for `FRD`
 (Fredericia Havn, a separate standby provisioning network — not tracked as a build checklist
 here, it's a MacBook running `http.server`, not a physical site).
 
 ### Infrastructure Checklist
+- [ ] `EXABMCCLD001` — BMC / iDRAC online (`192.168.69.2`) — real hardware in an Edinburgh datacentre, standard BMC slot 1
 - [ ] `EXAPVECLD001` — Proxmox node online (`192.168.69.5`) · ZFS RAID1 — build this first, everything below except the provisioning server (`192.168.139.50`, bootstrap-only, no formal hostname)/`EXAANSCLD001` runs as a VM on top of it
 - [ ] `EXADNSVRK001` — DNS/BIND9 server online (`192.168.139.8`)
 - [ ] `EXAFWLVRK001` — Firewall / WireGuard hub online (`192.168.139.69`, WAN/vRACK face — same physical firewall as `EXAFWLCLD001`, whose LAN face is `192.168.69.253`)
 - [ ] `EXADCSCLD001` — Domain Controller online (`192.168.69.10`) — first DC in the forest; see `windows_bootstrap/site.yml` then `windows_dc/site.yml`'s `dc_is_first_in_forest` prompt
 - [ ] Provisioning server online (`192.168.139.50` — bootstrap-only, no formal hostname)
 - [ ] `EXAANSCLD001` — Ansible control node online (`192.168.69.9`)
-- [ ] `EXARUDCLD001` — Rudder Server online (`192.168.69.12`)
+- [ ] `EXANASCLD001` — Storage (NAS/SAN) online (`192.168.69.19`) — standard NAS slot
+- [ ] `EXARDRCLD001` — Badge reader online (`192.168.69.21`) — standard RDR slot
 - [ ] `EXASLTCLD001` — Salt master online (`192.168.69.22`) — manages all Windows nodes estate-wide, see `ansible/playbooks/salt/README.md`
 - [ ] `EXASVRCLD002` — Windows Admin Centre deployed (`192.168.69.20`)
 - [ ] `EXAPBXCLD001` — Central 3CX PBX online (`192.168.69.48`)
 - [ ] `EXAUFCCLD001` — UniFi Network Controller online (`192.168.69.82`, CLD's **LAN** — not vRACK; manages every site's WAPs)
+- [ ] `EXASWICLD001` — Core switch online (`192.168.69.250`) — standard SWI slot 1
+- [ ] `EXAFWLCLD002` — Secondary firewall (`192.168.69.254`, standard FWL slot 2) — not yet built, planned
 - [ ] WireGuard routes verified to all site subnets
 - [ ] Ansible key distribution tested from the provisioning server (`192.168.139.50`)
-- [ ] Rudder agents checked in from test node
+
+`EXARUDCLD001` (Rudder Server, `192.168.69.12`) is **not in active use** — confirmed dormant,
+kept as reference code only, not a build-checklist item.
 
 ### ZFS / Storage
 *Not applicable — CLD nodes are cloud-hosted VMs.*

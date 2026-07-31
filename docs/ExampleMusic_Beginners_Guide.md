@@ -12,6 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-07-30 | §4.2/FRD's IP table updated — FRD has a real "site kit" alongside its legal-fiction MacBook: a small Intel NUC running Proxmox VE (`EXAPVEFRD001`) and a 48-port switch (`EXASWIFRD001`), confirmed by Robert. Previously described as "physically the same MacBook" with no other real hardware, now corrected — same drift class as the CLD NAS/RDR/BMC gaps fixed the same day. |
 | 2026-07-27 | §11 rewritten — no longer presumes every engineer has a MacBook Pro. §11.1 now leads with the 3 automated setup scripts (`bootstrap/setup-workstation-{macos,linux}.sh`, `bootstrap/Setup-Workstation.ps1`), which install the tool set AND populate `bootstrap/web/`'s boot assets from `benarbejde/asset_manifest.json` — replaces the old Ansible-only `fetch-assets.yml`, since `ansible-playbook` cannot run natively on Windows at all. The original macOS `brew install` table stays as a reference/manual-fallback, now explicitly labelled as such rather than presented as the only path. |
 | 2026-07-21 | §4/§4.2/§10.2/§11.3/Appendix all updated: VRK/FRD's provisioning servers (Type=`TMP` in `devices.csv`, formerly `PRV`) deliberately no longer have a formal `EXA<ROLE><SITE><NNN>` hostname or DNS record at all — Robert: these are bootstrap-only helpers, not real managed nodes, so they shouldn't carry the same identity every real node gets. Referenced by IP only from here on (`192.168.139.50` Edinburgh, `172.16.124.1` Fredericia Havn) — see `benarbejde/begyndelse.json`. |
 | 2026-07-19 | §4's `.15` PRV row replaced with `.19` NAS. `.15` was never real for any ordinary site — confirmed via a real inventory-generation run that every non-VRK/FRD site was getting a synthesized `EXAPRV<SITE>001` DNS record for a device that has never existed; provisioning is genuinely centralised at VRK/FRD, not per-site (their own real `EXAPRVVRK001`/`EXAPRVFRD001` hostnames are untouched — unrelated devices.csv-exception rows, not this standard-slot convention). `.19` is new, for site storage (TrueNAS) — a real rollout, replacing 3 retired legacy NAS boxes (FAL/PER/MEL) that used to sit at inconsistent ad-hoc addresses. |
@@ -173,24 +174,29 @@ The CLD IP table is reproduced here for reference. These are authoritative — v
 | Hostname | IP | Network | Role |
 |----------|----|---------|------|
 | `EXAFWLVRK001` (WAN) | `192.168.139.69` | vRACK | Firewall WAN face — same physical firewall as `EXAFWLCLD001`, its vRACK-facing interface |
+| `EXABMCCLD001` | `192.168.69.2` | LAN | BMC / iDRAC — real hardware in an Edinburgh datacentre, standard BMC slot 1 |
 | `EXAFWLCLD001` (LAN) | `192.168.69.253` | LAN | Firewall LAN face |
+| `EXAFWLCLD002` | `192.168.69.254` | LAN | Secondary firewall — standard FWL slot 2, not yet built |
 | `EXADNSVRK001` | `192.168.139.8` | vRACK | BIND9 — authoritative DNS for `jukebox.internal` |
 | — (bootstrap-only, no formal hostname) | `192.168.139.50` | vRACK | Provisioning / PXE server (Edinburgh, primary) |
 | `EXAANSCLD001` | `192.168.69.9` | LAN | Ansible control node |
 | `EXADCSCLD001` | `192.168.69.10` | LAN | Domain Controller — primary |
 | `EXADCSCLD002` | `192.168.69.11` | LAN | Domain Controller — secondary |
-| `EXARUDCLD001` | `192.168.69.12` | LAN | Rudder configuration management server |
+| `EXARUDCLD001` | `192.168.69.12` | LAN | Rudder — **not in active use**, dormant, kept as reference code only |
+| `EXANASCLD001` | `192.168.69.19` | LAN | Storage (NAS/SAN) — standard NAS slot |
+| `EXARDRCLD001` | `192.168.69.21` | LAN | Badge reader — standard RDR slot |
 | `EXASVRCLD002` | `192.168.69.20` | LAN | Windows Admin Centre |
 | `EXAPBXCLD001` | `192.168.69.48` | LAN | Central 3CX PBX — reuses the empty SBC slot, since CLD has no SBC of its own |
 | `EXAUFCCLD001` | `192.168.69.82` | LAN | UniFi Network Controller — manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
+| `EXASWICLD001` | `192.168.69.250` | LAN | Core switch — standard SWI slot 1 |
 
-> **Common mistakes:** DNS/the firewall's WAN face are `VRK`-suffixed hostnames (`EXADNSVRK001`, `EXAFWLVRK001`), not `CLD`-suffixed — devices.csv files them under `Site=VRK` since they're vRACK-resident, not CLD LAN. The provisioning server (`192.168.139.50`) has no hostname at all, VRK-suffixed or otherwise — bootstrap-only, IP-referenced only. The FWL LAN face is `.69.253`, not `.69.1`. Rudder, WAC, PBX, and the Ansible node are on the **LAN** (`.69.x`) — not the vRACK, despite PBX and the UniFi controller both reusing octets (`.48`, `.82`) that are conventionally something else at a normal site.
+> **Common mistakes:** DNS/the firewall's WAN face are `VRK`-suffixed hostnames (`EXADNSVRK001`, `EXAFWLVRK001`), not `CLD`-suffixed — devices.csv files them under `Site=VRK` since they're vRACK-resident, not CLD LAN. The provisioning server (`192.168.139.50`) has no hostname at all, VRK-suffixed or otherwise — bootstrap-only, IP-referenced only. The FWL LAN face is `.69.253`, not `.69.1`. WAC, PBX, and the Ansible node are on the **LAN** (`.69.x`) — not the vRACK, despite PBX and the UniFi controller both reusing octets (`.48`, `.82`) that are conventionally something else at a normal site. Rudder (`EXARUDCLD001`) is also LAN-resident, but not in active use — see its own row above.
 
 ### 4.2 FRD (Fredericia Havn) — the vRACK's backup
 
 **`FRD` is not the same as `FRE`.** `FRE` is the real Fredericia office, near the train station — a normal site like any other. `FRD` (Fredericia Havn — "havn" is Danish for harbour/port) is a second, standby provisioning network, modelled the same way `VRK` is: a special infrastructure site code, not a real office, with its own row in `sites.csv`.
 
-In-story, it's presented as a second OVH-style vRACK, providing redundancy if Edinburgh (`VRK`) is unreachable. In reality it's a legal fiction — physically the same MacBook running `python3 -m http.server`, mirroring `/debian` from Edinburgh. Only the IP differs. `menu.ipxe`/`late_command.sh` detect which one to use by checking the booting machine's own network gateway:
+In-story, it's presented as a second OVH-style vRACK, providing redundancy if Edinburgh (`VRK`) is unreachable. In reality the provisioning role itself is a legal fiction — physically the same MacBook running `python3 -m http.server`, mirroring `/debian` from Edinburgh. Only the IP differs. Alongside that MacBook, though, FRD has a real "site kit": a small Intel NUC running Proxmox VE (`EXAPVEFRD001`) and a 48-port switch (`EXASWIFRD001`) — confirmed by Robert 2026-07-30. `menu.ipxe`/`late_command.sh` detect which one to use by checking the booting machine's own network gateway:
 
 | Gateway | Environment | Boot server |
 |---------|-------------|-------------|
@@ -206,6 +212,8 @@ FRD's own IP table:
 | Hostname | IP | Role |
 |----------|----|------|
 | — (bootstrap-only, no formal hostname) | `172.16.124.1` | Provisioning / PXE server (standby). Port 8000, not 80 — a real, fixed detail of the MacBook's `http.server` setup, not derivable from any convention |
+| `EXAPVEFRD001` | `172.16.124.5` | Proxmox VE node — small Intel NUC, part of the real site kit |
+| `EXASWIFRD001` | `172.16.124.250` | 48-port switch — part of the real site kit |
 | `EXAPBXCLD002` | `172.16.124.48` | Secondary 3CX PBX, physically at Fredericia Havn — reuses the empty SBC slot, same reasoning as CLD's own PBX (`EXAPBXCLD001`) |
 
 > **Why is FRD's PBX hostnamed under CLD?** As of the 2026-07-11 network rework, CLD is "top of the tree" for the Pulsant DC / FRD Havn pairing — FRD Havn and (some of) Edinburgh's Pulsant-hosted nodes share OVH's vRACK fabric with CLD, so devices physically at FRD Havn are now hostnamed as CLD's next-numbered device (`EXAPBXCLD002`, following `EXAPBXCLD001`) while keeping their real IP on FRD's own `172.16.124.0/24` subnet — a `SubnetSite` override in `devices.csv`, resolved by `generate_inventory.py`. The provisioning server above was never folded in under CLD like the PBX was — it's woven into FRD-specific lookups (`menu.ipxe`/`late_command.sh` gateway detection, `begyndelse.json`'s `provisioning_fredericia_havn`) in a way the PBX wasn't. As of 2026-07-21 this is moot for renaming purposes anyway: it has no formal hostname to fold in or keep, VRK's own provisioning server included — both are IP-only now.

@@ -402,6 +402,12 @@ DEVICE_GROUP_MAP = {
   # Site Storage section), so this has no effect on any currently-generated .ini until one
   # is added.
   "NAS": "truenas_servers",
+  # PVE (2026-07-30, alongside ALWAYS_EXCLUDE_TYPES's narrow NON_STANDARD_SITES carve-out):
+  # a real devices.csv PVE row (currently only EXAPVEFRD001) needs group_vars/pvenodes/'s own
+  # vars (pve_packages, template IDs, storage pool) the same as every standard-template PVE
+  # node already gets -- without this it would fall into the generic site_devices catch-all
+  # and silently miss all of that.
+  "PVE": "pvenodes",
 }
 
 # Manageability default when devices.csv's own Managed column is blank (true for every row at the
@@ -610,12 +616,26 @@ def load_devices(devices_path: Path):
       stats["excluded_planned"] += 1
       continue
 
-    if dtype in ALWAYS_EXCLUDE_TYPES:
+    # PVE is unconditionally excluded for every regular site (real PVE nodes come from the
+    # standard template + group_vars/pvenodes/, never devices.csv) -- but VRK/FRD structurally
+    # have no standard template at all (NON_STANDARD_SITES), so a real PVE there has no other way
+    # to ever reach the real Ansible inventory. Narrow exception, 2026-07-30, after FRD's real
+    # site kit (a NUC running Proxmox, confirmed by Robert) turned out to have no path to being
+    # represented anywhere -- RAC stays unconditionally excluded regardless of site.
+    if dtype in ALWAYS_EXCLUDE_TYPES and not (dtype == "PVE" and site in NON_STANDARD_SITES):
       stats["excluded_always"] += 1
       continue
 
     octet = int(octet_raw) if octet_raw.isdigit() else None
-    if octet is not None and octet in STANDARD_OFFSETS.get(dtype, set()):
+    # Same NON_STANDARD_SITES carve-out as the ALWAYS_EXCLUDE_TYPES check above, applied here too
+    # (2026-07-30 fix): STANDARD_OFFSETS['PVE'] is {5,6,7} regardless of site, but VRK/FRD never
+    # go through compute_standard_devices_for_site() at all (see the `site not in
+    # NON_STANDARD_SITES` guard around that call), so there is no standard-template PVE row for
+    # this check to be deduplicating against there -- without this, FRD's real EXAPVEFRD001 at
+    # octet 5 was silently vanishing here, having already survived the ALWAYS_EXCLUDE_TYPES check
+    # just above.
+    if (octet is not None and octet in STANDARD_OFFSETS.get(dtype, set())
+        and not (dtype == "PVE" and site in NON_STANDARD_SITES)):
       stats["excluded_standard"] += 1
       continue
 
@@ -797,6 +817,23 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
     f"# {hostnames['LAP1']}  ansible_host={vals['LAP1']}"
     if not covered_by_real_device("LAP", hostnames["LAP1"]) else ""
   )
+  # PVE1-3 never needed this guard before 2026-07-30 -- PVE was in ALWAYS_EXCLUDE_TYPES
+  # unconditionally, so no devices.csv PVE row ever reached site_devices to collide with. The
+  # narrow NON_STANDARD_SITES exception (real hardware at VRK/FRD, e.g. EXAPVEFRD001) broke that
+  # invariant -- without this guard, extra_group_blocks below would render a SECOND, duplicate
+  # `[pvenodes]` header for the exact same hostname instead of folding into this one.
+  pve1_line = (
+    f"{hostnames['PVE1']}  ansible_host={vals['PVE1']}\n"
+    if not covered_by_real_device("PVE", hostnames["PVE1"]) else ""
+  )
+  pve2_line = (
+    f"# {hostnames['PVE2']}  ansible_host={vals['PVE2']}\n"
+    if not covered_by_real_device("PVE", hostnames["PVE2"]) else ""
+  )
+  pve3_line = (
+    f"# {hostnames['PVE3']}  ansible_host={vals['PVE3']}"
+    if not covered_by_real_device("PVE", hostnames["PVE3"]) else ""
+  )
 
   for dev in site_devices:
     line = render_device_line(dev.get("_net", net), dev)
@@ -809,7 +846,7 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
 
   extra_group_blocks = ""
   for group, lines in managed_by_group.items():
-    if group in ("windows_desktop", "windows_laptop", "windows_server", "windows_dc", "firewalls"):
+    if group in ("windows_desktop", "windows_laptop", "windows_server", "windows_dc", "firewalls", "pvenodes"):
       # These groups already exist above with their standard-template entries — append to
       # the SAME group rather than declaring it a second time (INI parsers merge repeated
       # group headers, but keeping it readable matters more than being clever here).
@@ -900,9 +937,7 @@ windows_dc
 {lap1_line}{extra_for('windows_laptop')}
 
 [pvenodes]
-{hostnames['PVE1']}  ansible_host={vals['PVE1']}
-# {hostnames['PVE2']}  ansible_host={vals['PVE2']}
-# {hostnames['PVE3']}  ansible_host={vals['PVE3']}
+{pve1_line}{pve2_line}{pve3_line}{extra_for('pvenodes')}
 
 [windows:children]
 windows_server
@@ -981,17 +1016,24 @@ def validate_csv_structure(rows):
 # showing 1-2 entries instead of ~51 before this was fixed). BMC/WAP genuinely are ROLE_OFFSETS
 # roles, so DNS_MULTI_FIRST_INSTANCE_ONLY is the correct list for them.
 DNS_SINGLE_ROLES = ["RTR", "SBC", "NAS", "RDR"]
-DNS_MULTI_ALL_INSTANCES = {"FWL"}
-# SWI joined 2026-07-14 (address_policy.json's .250-.252 range, previously documented in
-# _addressing but never wired into role_offsets): every site gets exactly one standard SWI
-# placeholder synthesized (first instance only, same as DCS/PVE) — Robert's "every site has one
-# of these, even if it's not physically racked yet" point. .251/.252 stay reserved headroom for
-# the sites that grow to 2-3 units via a real devices.csv row, same as they already do today.
-# BMC/WAP joined 2026-07-26 for the identical reason -- see the note above (NAS/RDR joined
-# DNS_SINGLE_ROLES instead, not this set -- different underlying offsets shape).
-DNS_MULTI_FIRST_INSTANCE_ONLY = {"DCS", "PVE", "SWI", "BMC", "WAP"}
+# SWI moved here 2026-07-30 (was DNS_MULTI_FIRST_INSTANCE_ONLY, first-instance-only, since
+# 2026-07-14) -- Robert's explicit call: treat SWI exactly like FWL, every site always gets DNS
+# records for all 3 standard slots regardless of how many switches are actually racked. Real
+# volume consequence, confirmed and accepted knowingly, not a guess: ~90 new placeholder A
+# records estate-wide for hardware that doesn't exist yet at most sites. Robert: "this is fine,
+# because they are DNS records... Jamie the PFY can do some DNS lookups and look at our
+# documentation" when it's time to actually rack a second/third switch somewhere. WAP
+# deliberately NOT given the same treatment -- stays first-instance-only below, real counts
+# (1 to 13+) are the UniFi controller's own concern, DNS only needs to guarantee at least one
+# exists, which DNS_MULTI_FIRST_INSTANCE_ONLY already does.
+DNS_MULTI_ALL_INSTANCES = {"FWL", "SWI"}
+# BMC/WAP joined 2026-07-26 -- see the note above (NAS/RDR joined DNS_SINGLE_ROLES instead, not
+# this set -- different underlying offsets shape). PVE/DCS stay first-instance-only: no
+# equivalent "always synthesize headroom" case has been made for either.
+DNS_MULTI_FIRST_INSTANCE_ONLY = {"DCS", "PVE", "BMC", "WAP"}
 
-def compute_standard_devices_for_site(site: str, net: IP, real_device_types: frozenset = frozenset()):
+def compute_standard_devices_for_site(site: str, net: IP, real_device_types: frozenset = frozenset(),
+                                       real_device_octets: dict = None):
   """
   Returns every confirmed-real standard-slot device for one site as a flat list of dicts
   (Site, Hostname, HostOctet, Type, DNSAlias, Notes) — the same addresses build_ini() derives
@@ -1000,15 +1042,24 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
 
   real_device_types: Types this site already has a genuine devices.csv row for (caller's
   responsibility to compute from devices_by_site). Used to suppress synthesizing a standard
-  placeholder that would collide with a real, more-informative devices.csv entry -- currently
-  only matters for SWI, whose devices.csv rows (unlike DCS/PVE, which never have any) carry real
-  vendor/model data worth keeping instead of a generic "Standard SWI slot 1" placeholder.
+  placeholder for DNS_SINGLE_ROLES (RTR/SBC/NAS/RDR) -- these only ever have one instance, so
+  "any real row for this type" and "this specific instance is real" are the same question there.
+
+  real_device_octets: {Type: frozenset(real octets)} -- the per-instance equivalent, used for
+  ROLE_OFFSETS roles (SWI/FWL/BMC/PVE/DCS/WAP) instead of real_device_types. Found live
+  2026-07-30, when SWI moved from first-instance-only to DNS_MULTI_ALL_INSTANCES (every site
+  always gets all 3 standard slots, matching FWL): the old blanket-per-role suppression silently
+  dropped ODE/BRK's auto-synthesized SWI1 the moment either site gained a real SWI2 row, because
+  it only ever checked "does this TYPE have any real row," never "does THIS octet have one."
+  A role not present in this dict gets no per-instance suppression at all (every offset
+  synthesizes) -- callers that only care about DNS_SINGLE_ROLES can omit this entirely.
   """
-  suppressed = SUPPRESSED_STANDARD_ROLES.get(site, set()) | real_device_types
+  real_device_octets = real_device_octets or {}
+  site_suppressed = SUPPRESSED_STANDARD_ROLES.get(site, set())
 
   devices = []
   for role in DNS_SINGLE_ROLES:
-    if role in suppressed:
+    if role in site_suppressed or role in real_device_types:
       continue
     devices.append({
       "Site": site,
@@ -1019,12 +1070,13 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
       "Notes": f"Standard {role} slot",
     })
   for role, offsets in ROLE_OFFSETS.items():
-    if role in suppressed:
+    if role in site_suppressed:
       continue
+    real_octets_here = real_device_octets.get(role, frozenset())
     if role in DNS_MULTI_ALL_INSTANCES:
-      selected = list(enumerate(offsets, start=1))
+      selected = [(i, o) for i, o in enumerate(offsets, start=1) if o not in real_octets_here]
     elif role in DNS_MULTI_FIRST_INSTANCE_ONLY:
-      selected = [(1, offsets[0])]
+      selected = [] if offsets[0] in real_octets_here else [(1, offsets[0])]
     else:
       continue  # e.g. BMC — always commented/reference-only, never synthesized for DNS
     for i, offset in selected:
@@ -1136,11 +1188,19 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
   # Loaded before the standard-slot synthesis loop below (not after, as this used to be ordered)
   # so compute_standard_devices_for_site() can be told, per site, which Types already have a real
   # devices.csv row -- currently only matters for SWI (see that function's own docstring).
+  # real_octets_by_site is the per-instance version (added 2026-07-30 alongside SWI's move to
+  # DNS_MULTI_ALL_INSTANCES) -- without it, a site with a real SWI2 row would silently lose its
+  # still-synthesized SWI1 in the live DNS zone, not just a diagram.
   devices_by_site, _stats = load_devices(devices_path)
   real_types_by_site = {
     site: {dev["type"] for dev in site_devices}
     for site, site_devices in devices_by_site.items()
   }
+  real_octets_by_site = {}
+  for site, site_devices in devices_by_site.items():
+    for dev in site_devices:
+      if dev["octet"] is not None:
+        real_octets_by_site.setdefault(site, {}).setdefault(dev["type"], set()).add(int(dev["octet"]))
 
   subnet_base = {}
   all_devices = []
@@ -1153,7 +1213,8 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
     if r["Site"] in NON_STANDARD_SITES:
       continue  # e.g. VRK — no standard-convention devices, only its real devices.csv rows
     all_devices.extend(compute_standard_devices_for_site(
-      r["Site"], net, real_device_types=real_types_by_site.get(r["Site"], frozenset())
+      r["Site"], net, real_device_types=real_types_by_site.get(r["Site"], frozenset()),
+      real_device_octets=real_octets_by_site.get(r["Site"], {}),
     ))
 
   for site, site_devices in devices_by_site.items():
@@ -1625,6 +1686,19 @@ def main():
 
   try:
     load_address_policy(policy_path, role_codes_path)
+    # Each of these five modes is exclusive with the others -- --emit-devices-json/--emit-sites-json
+    # print machine-readable data to stdout instead of writing files; --emit-group-vars/
+    # --emit-begyndelse-json/--emit-site-grains-pillar each write exactly one, narrowly-scoped
+    # side-effect file. check_generated_freshness.py relies on this: it calls the generator four
+    # separate times, each with its own scratch-dir `-o`/`--*-out` path, to verify one output at a
+    # time in isolation. A 2026-07-30 attempt to make these additive (so a single CLI invocation
+    # combining `-o` with all three --emit-* flags, as check_generated_freshness.py's own fix hint
+    # below reads if taken too literally, would do everything in one line) broke that isolation --
+    # generate() started running as a side effect of check_generated_freshness.py's own narrowly-
+    # scoped --emit-group-vars-only sub-call, targeting the default `-o` (~/ansible/configs/
+    # inventory, outside this repo entirely) and silently writing 52 stray .ini files there.
+    # Reverted; run these as four SEPARATE commands (see the fix hint text) if regenerating
+    # everything, not one combined line.
     if args.emit_devices_json:
       emit_devices_for_dns(args.csv, devices_path)
     elif args.emit_sites_json:

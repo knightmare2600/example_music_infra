@@ -32,8 +32,14 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = REPO_ROOT / "docs" / "network-diagram"
 
-NEW_NETWORK_BLOCK_RE = re.compile(
-    r'%% GENERATED:NEW-NETWORK:(\w+):START\n(.*?)\n\s*%% GENERATED:NEW-NETWORK:\1:END',
+# Matches both the original flat-box marker (GENERATED:NEW-NETWORK, orange, octet-only labels)
+# and the topology-sketch marker (GENERATED:TOPOLOGY, black/white, full IPs, right-angle edges --
+# rolled out to every site 2026-07-30). Both wrap real device content the same two invariants
+# below apply to; TOPOLOGY_SITES in generate_network_diagrams.py deliberately keeps a site
+# revertible to the flat-box style individually, so this check can't assume only one marker kind
+# will ever be present.
+GENERATED_BLOCK_RE = re.compile(
+    r'%% GENERATED:(?:NEW-NETWORK|TOPOLOGY):(\w+):START\n(.*?)\n\s*%% GENERATED:(?:NEW-NETWORK|TOPOLOGY):\1:END',
     re.DOTALL,
 )
 
@@ -44,7 +50,13 @@ BANNED_TERMS = re.compile(r'FSMO|DFSR|low disk|OOS \d|EOL\b|UNHEALTHY|out of syn
 # with something that isn't plain ASCII text."
 NODE_LINE_RE = re.compile(r'^\s*(\w+)\["(.*)"\]\s*$')
 LEADING_EMOJI_RE = re.compile(r'^[^\x00-\x7F]')
-NON_NODE_LINE_RE = re.compile(r'^\s*(subgraph|end|style|classDef|class)\b|^\s*$')
+# subgraph/end/style/classDef/class -- the flat-box format's own structural lines. graph/%%{init --
+# topology blocks' own header (graph TD, the stepAfter curve directive). Edge lines (T_A --> T_B,
+# possibly chained A --> B --> C, or invisible T_A ~~~ T_B ranking hints) -- topology blocks' own
+# connections, which the flat-box format never had at all (no edges, just a flat node list).
+NON_NODE_LINE_RE = re.compile(
+    r'^\s*(subgraph|end|style|classDef|class|graph)\b|^\s*%%|^\s*$|-->|~~~',
+)
 PLACEHOLDER_NODE_RE = re.compile(r'^\s*N_EMPTY\[')
 
 
@@ -52,11 +64,11 @@ def main():
     blocks = []
     for path in sorted(DOCS_DIR.glob("*.md")):
         text = path.read_text(encoding="utf-8")
-        for site, body in NEW_NETWORK_BLOCK_RE.findall(text):
+        for site, body in GENERATED_BLOCK_RE.findall(text):
             blocks.append((path.name, site, body))
 
     if not blocks:
-        print(f"No New Network blocks found under {DOCS_DIR.relative_to(REPO_ROOT)}/ -- "
+        print(f"No generated diagram blocks found under {DOCS_DIR.relative_to(REPO_ROOT)}/ -- "
               f"check the marker regex against the current file format.")
         return 1
 
@@ -66,10 +78,10 @@ def main():
     for fname, site, body in blocks:
         if BANNED_TERMS.search(body):
             hit = BANNED_TERMS.search(body).group(0)
-            banned_hits.append(f"{fname}/{site}: found banned term {hit!r} inside its New Network block")
+            banned_hits.append(f"{fname}/{site}: found banned term {hit!r} inside its generated diagram block")
 
         for line in body.splitlines():
-            if NON_NODE_LINE_RE.match(line) or PLACEHOLDER_NODE_RE.match(line):
+            if NON_NODE_LINE_RE.search(line) or PLACEHOLDER_NODE_RE.match(line):
                 continue
             m = NODE_LINE_RE.match(line)
             if not m:
@@ -78,7 +90,7 @@ def main():
             if not LEADING_EMOJI_RE.match(m.group(2)):
                 bad_shapes.append(f"{fname}/{site}: node has no leading emoji symbol -- {line.strip()!r}")
 
-    print(f"Checked {len(blocks)} New Network block(s) across {DOCS_DIR.relative_to(REPO_ROOT)}/ "
+    print(f"Checked {len(blocks)} generated diagram block(s) across {DOCS_DIR.relative_to(REPO_ROOT)}/ "
           f"for banned FSMO/health terms and shape/symbol-convention compliance.")
 
     if banned_hits or bad_shapes:

@@ -43,29 +43,29 @@ DOCS_DIR = HERE.parent / "docs" / "network-diagram"
 # CLD deliberately has no entry either, as of 2026-07-30: Robert replaced its auto-generated New
 # Network box with a hand-drawn topology sketch (see docs/network-diagram/cld.md directly) as the
 # prototype for an eventual per-site template -- same "no diagram section here" treatment as
-# BRD/VRK above, not an oversight. Revisit if/when the topology-sketch approach gets its own
-# generator instead of being hand-maintained.
-# ODE dropped from danmark.md's list the same day for the same reason -- it's the second
-# hand-drawn topology sketch, proving the pattern out on a "regular" (non-CLD) site. FRD dropped
-# the same way shortly after -- the third, a NON_STANDARD_SITES site treated as a fallback VRK
-# (see docs/network-diagram/danmark.md's own FRD section for the detail). The other 7 Danish
-# sites in that file still generate normally; only ODE/FRD's blocks are excluded.
+# BRD/VRK above, not an oversight.
+# ODE/FRD dropped from danmark.md's list the same day, then every remaining site across every
+# region file the same way shortly after -- the full rollout, once the pattern had been proven on
+# CLD (black-swan)/ODE (regular)/VRK+FRD (NON_STANDARD_SITES). All 53 sites now render via
+# render_topology_block()/TOPOLOGY_SITES below instead of this dict -- every list here is
+# deliberately empty, kept only so a region file can still be found if a topology-only site's
+# devices ever need tracing back to which file its "Old Network" box lives in.
 REGION_FILES = {
   "cld.md": [],
-  "scotland.md": ["FAL", "EDI", "GLA", "CLY", "DUN", "PER", "ABD"],
-  "england.md": ["LND", "BIR", "MCR", "LIV", "NEW", "SHE", "HAL", "HUL", "COV"],
-  "danmark.md": ["CPH", "KGE", "FAX", "KOR", "AAR", "FRE", "NYB"],
-  "deutschland.md": ["BON", "BER", "MUN", "DRS", "DUS"],
-  "sverige.md": ["GOT"],
-  "norge.md": ["OSL"],
-  "nederland.md": ["AMS"],
-  "italia.md": ["MIL"],
-  "osterreich.md": ["VIE"],
-  "lebanon.md": ["BRT"],
-  "canada.md": ["BRK", "TOR", "MTL"],
-  "united-states.md": ["LAX", "NYC", "NJC", "MIA", "ATL", "CHI", "SEA", "SFO"],
-  "australia.md": ["SYD", "MEL"],
-  "new-zealand.md": ["AKL"],
+  "scotland.md": [],
+  "england.md": [],
+  "danmark.md": [],
+  "deutschland.md": [],
+  "sverige.md": [],
+  "norge.md": [],
+  "nederland.md": [],
+  "italia.md": [],
+  "osterreich.md": [],
+  "lebanon.md": [],
+  "canada.md": [],
+  "united-states.md": [],
+  "australia.md": [],
+  "new-zealand.md": [],
 }
 SITE_TO_REGION_FILE = {site: fname for fname, sites in REGION_FILES.items() for site in sites}
 
@@ -113,12 +113,18 @@ def node_box(node_id: str, label: str) -> str:
 def short_note(notes: str) -> str:
   """First clause of a devices.csv Notes field -- these are often a full sentence or more of
   free-text context (e.g. the CLD/FRD PBX row), not diagram-label length. Split on the first
-  ' -- ' or '. ', whichever comes first; cap at 60 chars either way."""
+  ' -- ', '. ', or ' — ' (em dash), whichever comes first; cap at 60 chars either way.
+  Em dash added 2026-07-30 -- found live during the topology rollout: FAL's real NAS Notes
+  ("Site NAS/SAN — EXANASFAL001 (.19 standard slot) — installed...") uses em dashes as its
+  actual clause separator, which this function didn't recognise, so it fell through to a hard
+  60-char truncation instead of a clean first-clause cut -- a pre-existing bug, not new to the
+  topology renderer (the same garbled label was already sitting in the committed flat New
+  Network box for FAL/TOR before this fix)."""
   notes = (notes or "").strip()
   if not notes:
     return ""
   cut = len(notes)
-  for sep in (" -- ", ". "):
+  for sep in (" -- ", ". ", " — "):
     idx = notes.find(sep)
     if idx != -1:
       cut = min(cut, idx)
@@ -140,11 +146,18 @@ def build_site_devices(site: str, net, devices_by_site: dict):
   # Which Types this site already has a real devices.csv row for -- passed to
   # compute_standard_devices_for_site() so it doesn't synthesize a generic "Standard SWI slot 1"
   # placeholder that would duplicate/shadow a real, more-informative devices.csv SWI entry (see
-  # that function's own docstring; matters for SWI today, 2026-07-14).
+  # that function's own docstring; matters for SWI today, 2026-07-14). real_octets is the
+  # per-instance version (added 2026-07-30 alongside SWI's move to DNS_MULTI_ALL_INSTANCES) --
+  # without it, a site with a real SWI2 row would lose its still-synthesized SWI1 too.
   real_types = {dev["type"] for dev in devices_by_site.get(site, [])}
+  real_octets = {}
+  for dev in devices_by_site.get(site, []):
+    if dev["octet"] is not None:
+      real_octets.setdefault(dev["type"], set()).add(int(dev["octet"]))
 
   if site not in gi.NON_STANDARD_SITES:
-    for d in gi.compute_standard_devices_for_site(site, net, real_device_types=real_types):
+    for d in gi.compute_standard_devices_for_site(
+        site, net, real_device_types=real_types, real_device_octets=real_octets):
       dtype = re.match(r'EXA([A-Z]{3})', d["Hostname"]).group(1)
       if dtype == 'RTR' and site in gi.NO_STANDARD_ROUTER_SITES:
         continue  # documentation-only placeholder for DNS purposes, not a real device here
@@ -561,11 +574,65 @@ def render_topology_block(site: str, sites_row: dict, devices_by_site: dict) -> 
   return "\n".join(lines)
 
 
-# Sites ported to the hand-drawn-then-generalised topology style, 2026-07-30 (see each file's own
-# git history the same day) -- CLD/VRK get their own standalone file, ODE/FRD share danmark.md
-# with 7 untouched sites still on the old flat-box style. Add an entry here once a new site's
-# topology section has been hand-verified once, same process as these four.
-TOPOLOGY_SITES = {"CLD": "cld.md", "VRK": "vrk.md", "ODE": "danmark.md", "FRD": "danmark.md"}
+# Every site is on the topology style as of 2026-07-30 -- CLD (black-swan)/ODE (regular)/
+# VRK+FRD (NON_STANDARD_SITES) proved the pattern by hand first, then the remaining 48 rolled out
+# together in one pass. CLD/VRK keep their own standalone file; every other site's block lives in
+# its existing shared region file (see each file's own git history the same day for the full
+# restructuring). Kept as an explicit dict (not "every REGION_FILES site") so a site can be
+# reverted to the old flat-box style individually without touching the others, if that's ever
+# needed.
+TOPOLOGY_SITES = {
+  "CLD": "cld.md", "VRK": "vrk.md", "FRD": "danmark.md", "ODE": "danmark.md",
+  "FAL": "scotland.md",
+  "EDI": "scotland.md",
+  "GLA": "scotland.md",
+  "CLY": "scotland.md",
+  "DUN": "scotland.md",
+  "PER": "scotland.md",
+  "ABD": "scotland.md",
+  "LND": "england.md",
+  "BIR": "england.md",
+  "MCR": "england.md",
+  "LIV": "england.md",
+  "NEW": "england.md",
+  "SHE": "england.md",
+  "HAL": "england.md",
+  "HUL": "england.md",
+  "COV": "england.md",
+  "CPH": "danmark.md",
+  "KGE": "danmark.md",
+  "FAX": "danmark.md",
+  "KOR": "danmark.md",
+  "AAR": "danmark.md",
+  "FRE": "danmark.md",
+  "NYB": "danmark.md",
+  "BON": "deutschland.md",
+  "BER": "deutschland.md",
+  "MUN": "deutschland.md",
+  "DRS": "deutschland.md",
+  "DUS": "deutschland.md",
+  "GOT": "sverige.md",
+  "OSL": "norge.md",
+  "AMS": "nederland.md",
+  "MIL": "italia.md",
+  "VIE": "osterreich.md",
+  "BRT": "lebanon.md",
+  "BRK": "canada.md",
+  "TOR": "canada.md",
+  "MTL": "canada.md",
+  "LAX": "united-states.md",
+  "NYC": "united-states.md",
+  "NJC": "united-states.md",
+  "MIA": "united-states.md",
+  "ATL": "united-states.md",
+  "CHI": "united-states.md",
+  "SEA": "united-states.md",
+  "SFO": "united-states.md",
+  "SYD": "australia.md",
+  "MEL": "australia.md",
+  "AKL": "new-zealand.md",
+}
+
 
 TOPOLOGY_MARKER_START = "%% GENERATED:TOPOLOGY:{site}:START"
 TOPOLOGY_MARKER_END = "%% GENERATED:TOPOLOGY:{site}:END"
@@ -728,10 +795,16 @@ def insert_into_docs(docs_dir=DOCS_DIR, sites_csv=SITES_CSV, devices_csv=DEVICES
 def main():
   if "--write" in sys.argv:
     inserted, replaced, missing = insert_into_docs()
-    print(f"Inserted (new): {len(inserted)} {inserted}")
-    print(f"Replaced (existing marker or bare block): {len(replaced)} {replaced}")
+    print(f"Flat New Network boxes -- inserted (new): {len(inserted)} {inserted}")
+    print(f"Flat New Network boxes -- replaced (existing marker or bare block): {len(replaced)} {replaced}")
     if missing:
       print(f"MISSING -- no Old Network box and no existing New Network block found, skipped: {missing}", file=sys.stderr)
+
+    t_inserted, t_replaced, t_missing = insert_topology_into_docs()
+    print(f"Topology sketches -- inserted (new): {len(t_inserted)} {t_inserted}")
+    print(f"Topology sketches -- replaced (existing marker or bare block): {len(t_replaced)} {t_replaced}")
+    if t_missing:
+      print(f"MISSING -- no Topology sketch heading/fence and no existing marker found, skipped: {t_missing}", file=sys.stderr)
     return
 
   blocks = generate_all()
