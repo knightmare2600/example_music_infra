@@ -66,29 +66,29 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRBRK001 · RTR · 192.168.136.1"]
+    T_RTR["📡 EXARTRBRK001<br/>RTR<br/>192.168.136.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCBRK001 · BMC 1 · 192.168.136.2"]
+    T_BMC["🔧 EXABMCBRK001<br/>BMC 1<br/>192.168.136.2"]
     T_RTR --> T_BMC
-    T_PVE["🗂️ EXAPVEBRK001 · PVE 1 · 192.168.136.5"]
+    T_PVE["🗂️ EXAPVEBRK001<br/>PVE 1<br/>192.168.136.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWIBRK001 · SWI 1 · 192.168.136.250"]
+    T_SWI["🔀 EXASWIBRK001<br/>SWI 1<br/>192.168.136.250"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWIBRK003 · SWI 3 · 192.168.136.252"]
+    T_SWI2["🔀 EXASWIBRK003<br/>SWI 3<br/>192.168.136.252"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWIBRK002 · Second switch · 192.168.136.251"]
+    T_SWI3["🔀 EXASWIBRK002<br/>Second Switch<br/>192.168.136.251"]
     T_RTR --> T_SWI3
-    T_NAS["🗃️ EXANASBRK001 · NAS · 192.168.136.19"]
-    T_RDR["🔐 EXARDRBRK001 · RDR · 192.168.136.21"]
-    T_WAP["📶 EXAWAPBRK001 · WAP 1 · 192.168.136.82"]
+    T_NAS["🗃️ EXANASBRK001<br/>NAS<br/>192.168.136.19"]
+    T_RDR["🔐 EXARDRBRK001<br/>RDR<br/>192.168.136.21"]
+    T_WAP["📶 EXAWAPBRK001<br/>WAP 1<br/>192.168.136.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSBRK001 · DCS 1 · 192.168.136.10"]
-    T_SBC["🛡️ EXASBCBRK001 · SBC · 192.168.136.48"]
-    T_FWL["🧱 EXAFWLBRK001 · LAN face · 192.168.136.253"]
+    T_DCS["🗝️ EXADCSBRK001<br/>DCS 1<br/>192.168.136.10"]
+    T_SBC["🛡️ EXASBCBRK001<br/>SBC<br/>192.168.136.48"]
+    T_FWL["🧱 EXAFWLBRK001<br/>LAN Face<br/>192.168.136.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_DON["🍩 EXADONBRK001 · Donut vending · 192.168.136.60"]
-    T_LAP["💻 EXALAPBRK001 · Tour laptop"]
-    T_VND["🍫 EXAVNDBRK001 · Vending machine"]
+    T_DON["🍩 EXADONBRK001<br/>Donut Vending<br/>192.168.136.60"]
+    T_LAP["💻 EXALAPBRK001<br/>Tour Laptop<br/>No IP Address"]
+    T_VND["🍫 EXAVNDBRK001<br/>Vending Machine<br/>No IP Address"]
     T_DON --> T_VND
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -149,27 +149,27 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRTOR001 · RTR · 192.168.146.1"]
+    T_RTR["📡 EXARTRTOR001<br/>RTR<br/>192.168.146.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCTOR001 · BMC 1 · 192.168.146.2"]
+    T_BMC["🔧 EXABMCTOR001<br/>BMC 1<br/>192.168.146.2"]
     T_RTR --> T_BMC
-    T_PVE["🗂️ EXAPVETOR001 · PVE 1 · 192.168.146.5"]
+    T_PVE["🗂️ EXAPVETOR001<br/>PVE 1<br/>192.168.146.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWITOR001 · SWI 1 · 192.168.146.250"]
+    T_SWI["🔀 EXASWITOR001<br/>SWI 1<br/>192.168.146.250"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWITOR002 · SWI 2 · 192.168.146.251"]
+    T_SWI2["🔀 EXASWITOR002<br/>SWI 2<br/>192.168.146.251"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWITOR003 · SWI 3 · 192.168.146.252"]
+    T_SWI3["🔀 EXASWITOR003<br/>SWI 3<br/>192.168.146.252"]
     T_RTR --> T_SWI3
-    T_NAS["🗃️ EXANASTOR001 · NAS · 192.168.146.19"]
-    T_RDR["🔐 EXARDRTOR001 · RDR · 192.168.146.21"]
-    T_WAP["📶 EXAWAPTOR001 · WAP 1 · 192.168.146.82"]
+    T_NAS["🗃️ EXANASTOR001<br/>NAS<br/>192.168.146.19"]
+    T_RDR["🔐 EXARDRTOR001<br/>RDR<br/>192.168.146.21"]
+    T_WAP["📶 EXAWAPTOR001<br/>WAP 1<br/>192.168.146.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSTOR001 · DCS 1 · 192.168.146.10"]
-    T_SBC["🛡️ EXASBCTOR001 · SBC · 192.168.146.48"]
-    T_FWL["🧱 EXAFWLTOR001 · LAN face · 192.168.146.253"]
+    T_DCS["🗝️ EXADCSTOR001<br/>DCS 1<br/>192.168.146.10"]
+    T_SBC["🛡️ EXASBCTOR001<br/>SBC<br/>192.168.146.48"]
+    T_FWL["🧱 EXAFWLTOR001<br/>LAN Face<br/>192.168.146.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_DCR["🗝️ EXADCRTOR028 · Undocumented legacy AD install found on site, no-one on r..."]
+    T_DCR["🗝️ EXADCRTOR028<br/>Undocumented Legacy AD Install Found On Site, No-one On R...<br/>No IP Address"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -226,25 +226,25 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRMTL001 · RTR · 192.168.154.1"]
+    T_RTR["📡 EXARTRMTL001<br/>RTR<br/>192.168.154.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCMTL001 · BMC 1 · 192.168.154.2"]
+    T_BMC["🔧 EXABMCMTL001<br/>BMC 1<br/>192.168.154.2"]
     T_RTR --> T_BMC
-    T_PVE["🗂️ EXAPVEMTL001 · PVE 1 · 192.168.154.5"]
+    T_PVE["🗂️ EXAPVEMTL001<br/>PVE 1<br/>192.168.154.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWIMTL001 · SWI 1 · 192.168.154.250"]
+    T_SWI["🔀 EXASWIMTL001<br/>SWI 1<br/>192.168.154.250"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWIMTL002 · SWI 2 · 192.168.154.251"]
+    T_SWI2["🔀 EXASWIMTL002<br/>SWI 2<br/>192.168.154.251"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWIMTL003 · SWI 3 · 192.168.154.252"]
+    T_SWI3["🔀 EXASWIMTL003<br/>SWI 3<br/>192.168.154.252"]
     T_RTR --> T_SWI3
-    T_NAS["🗃️ EXANASMTL001 · NAS · 192.168.154.19"]
-    T_RDR["🔐 EXARDRMTL001 · RDR · 192.168.154.21"]
-    T_WAP["📶 EXAWAPMTL001 · WAP 1 · 192.168.154.82"]
+    T_NAS["🗃️ EXANASMTL001<br/>NAS<br/>192.168.154.19"]
+    T_RDR["🔐 EXARDRMTL001<br/>RDR<br/>192.168.154.21"]
+    T_WAP["📶 EXAWAPMTL001<br/>WAP 1<br/>192.168.154.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSMTL001 · DCS 1 · 192.168.154.10"]
-    T_SBC["🛡️ EXASBCMTL001 · SBC · 192.168.154.48"]
-    T_FWL["🧱 EXAFWLMTL001 · LAN face · 192.168.154.253"]
+    T_DCS["🗝️ EXADCSMTL001<br/>DCS 1<br/>192.168.154.10"]
+    T_SBC["🛡️ EXASBCMTL001<br/>SBC<br/>192.168.154.48"]
+    T_FWL["🧱 EXAFWLMTL001<br/>LAN Face<br/>192.168.154.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF

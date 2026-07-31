@@ -33,9 +33,9 @@ Mobile: N/A
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK network fabric, 192.168.139.0/24"]
-    T_DNS["🧭 EXADNSVRK001 · DNS/BIND server · 192.168.139.8"]
-    T_TMP["📦 Provisioning server · 192.168.139.50"]
-    T_FWL["🧱 EXAFWLVRK001 · Firewall WAN face, same physical device as EXAFWLCLD001 · 192.168.139.69"]
+    T_DNS["🧭 EXADNSVRK001<br/>DNS/BIND Server<br/>192.168.139.8"]
+    T_TMP["📦<br/>Provisioning Server<br/>192.168.139.50"]
+    T_FWL["🧱 EXAFWLVRK001<br/>Firewall WAN Face, Same Physical Device As EXAFWLCLD001<br/>192.168.139.69"]
     T_VRK --> T_DNS --> T_TMP --> T_FWL
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DNS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
