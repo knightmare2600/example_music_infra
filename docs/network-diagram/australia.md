@@ -152,7 +152,7 @@ graph TD
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASSYD001<br/>NAS<br/>192.168.29.19"]
     T_RDR["🔐 EXARDRSYD001<br/>RDR<br/>192.168.29.21"]
-    T_WAP["📶 EXAWAPSYD001<br/>WAP 1<br/>192.168.29.82"]
+    T_WAP["📶 EXAWAPSYD001<br/>Wireless Access Point<br/>192.168.29.84"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSSYD001<br/>DCS 1<br/>192.168.29.10"]
     T_SBC["🛡️ EXASBCSYD001<br/>SBC<br/>192.168.29.48"]
@@ -165,7 +165,7 @@ graph TD
     T_TAB["📱 EXATABSYD001<br/>IPad<br/>No IP Address"]
     T_LCD["🖼️ EXALCDSYD001<br/>LG Signage Wallboard<br/>No IP Address"]
     T_PRN["🖨️ EXAPRNSYD001<br/>Laser Printer<br/>No IP Address"]
-    T_OTH_CAM["🎥 EXACAMSYD001-002<br/>2 x CCTV Cameras<br/>No IP Address"]
+    T_OTH_CAM["🎥 EXACAMSYD001-002<br/>2 x CCTV Cameras<br/>192.168.29.82,85"]
     T_COF["🍵 EXACOFSYD001<br/>Coffee Machine<br/>No IP Address"]
     T_SRV --> T_WKS --> T_TAB --> T_PRN --> T_COF
     T_MBP --> T_PHN --> T_LCD --> T_OTH_CAM

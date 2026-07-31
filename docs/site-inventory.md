@@ -271,7 +271,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAPHNFAL001`–`003` — Phones
 - [ ] `EXAPHNFAL006`–`007` — Yealink T58A phones
 - [ ] `EXATABFAL001` — Tablet
-- [ ] WAPs `EXAWAPFAL001`–`006` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPFAL001`, `EXAWAPFAL002`, `EXAWAPFAL003`, `EXAWAPFAL004`, `EXAWAPFAL005`, `EXAWAPFAL006` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Security & Building Systems
 - [ ] `EXACAMFAL001` — Camera (`192.168.76.70`) · Front entrance
@@ -333,7 +333,7 @@ kept as reference code only, not a build-checklist item.
 ### Endpoints Checklist
 - [ ] `EXAWKSEDI001` — Workstation (`192.168.131.150`)
 - [ ] `EXALAPEDI098` — Laptop (`192.168.131.108`)
-- [ ] WAPs `EXAWAPEDI001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPEDI001`, `EXAWAPEDI002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 - [ ] `EXATEAEDI001` — Siemens EQ700 coffee machine (`192.168.131.60`)
@@ -416,7 +416,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXASURCLY001` — Surface
 - [ ] `EXAPHNCLY001` — iOS device
 - [ ] `EXASURCLY002` — Android tablet
-- [ ] WAPs `EXAWAPCLY001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPCLY001`, `EXAWAPCLY002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -454,7 +454,7 @@ kept as reference code only, not a build-checklist item.
 ### Endpoints Checklist
 - [ ] `EXASURDUN001`–`002` — Surfaces
 - [ ] `EXAPHNDUN001`–`002` — iOS devices
-- [ ] WAPs `EXAWAPDUN001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPDUN001`, `EXAWAPDUN002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -534,7 +534,7 @@ kept as reference code only, not a build-checklist item.
 ### Endpoints Checklist
 - [ ] `EXAMBPABD001`–`002` — MacBooks
 - [ ] `EXAPHNABD001`–`002` — iPhones
-- [ ] WAPs `EXAWAPABD001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPABD001`, `EXAWAPABD002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 <!-- To be documented -->
@@ -621,7 +621,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAMBPBIR001` — MacBook
 - [ ] `EXATABBIR001` — Samsung Galaxy Tab
 - [ ] `EXAPHNBIR001` — Samsung S25
-- [ ] WAPs `EXAWAPBIR001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPBIR001`, `EXAWAPBIR002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
 - [ ] `EXAMOOBIR001` — Moog One synthesizer (`192.168.121.70`) · MIDI
@@ -874,7 +874,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAPVECOV001` — Proxmox node 1 (`192.168.247.5`) · ZFS RAID1
 - [ ] `EXADCSCOV001` — DC (`192.168.247.10`)
 - [ ] `EXASBCCOV001` — VOIP SBC (`192.168.247.48`) · trunks to `EXAPBXCLD001`
-- [ ] WAPs `EXAWAPCOV001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPCOV001`, `EXAWAPCOV002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAFWLCOV001` — Firewall (`192.168.247.253`)
 - [ ] `EXAFWLCOV002` — Firewall secondary (`192.168.247.254`)
 - [ ] `EXANASCOV001` — Storage (NAS/SAN) — standard NAS slot (`192.168.247.19`)
@@ -914,7 +914,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXADCSCPH001` — DC primary (`192.168.231.10`) · example.com
 - [ ] `EXADCSCPH002` — DC secondary (`192.168.231.11`) · example.net
 - [ ] `EXASBCCPH001` — VOIP SBC (`192.168.231.48`) · trunks to `EXAPBXCLD001`
-- [ ] WAPs `EXAWAPCPH001`–`003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPCPH001`, `EXAWAPCPH002`, `EXAWAPCPH003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAFWLCPH001` — Firewall (`192.168.231.253`)
 - [ ] `EXAFWLCPH002` — Firewall secondary (`192.168.231.254`)
 - [ ] `EXANASCPH001` — Storage (NAS/SAN) — standard NAS slot (`192.168.231.19`)
@@ -954,7 +954,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXADCSODE001` — DC primary (`192.168.126.10`) · PDC Emulator · RID/Infra Master
 - [ ] `EXADCSODE002` — DC secondary (`192.168.126.11`)
 - [ ] `EXASBCODE001` — VOIP SBC (`192.168.126.48`) · trunks to `EXAPBXCLD001`
-- [ ] WAPs `EXAWAPODE001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPODE001`, `EXAWAPODE002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAFWLODE002` — Firewall secondary (`192.168.126.254`)
 - [ ] `EXANASODE001` — Storage (NAS/SAN) — standard NAS slot (`192.168.126.19`)
 - [ ] `EXARDRODE001` — Badge reader — standard RDR slot (`192.168.126.21`)
@@ -1029,7 +1029,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAPVEFAX001` — Proxmox node 1 (`192.168.246.5`) · ZFS RAID1
 - [ ] `EXADCSFAX001` — DC (`192.168.246.10`)
 - [ ] `EXASBCFAX001` — VOIP SBC (`192.168.246.48`) · trunks to `EXAPBXCLD001`
-- [ ] WAPs `EXAWAPFAX001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPFAX001`, `EXAWAPFAX002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAFWLFAX001` — Firewall (`192.168.246.253`)
 - [ ] `EXAFWLFAX002` — Firewall secondary (`192.168.246.254`)
 - [ ] `EXANASFAX001` — Storage (NAS/SAN) — standard NAS slot (`192.168.246.19`)
@@ -1102,7 +1102,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAPVEBON001` — Proxmox node 1 (`192.168.228.5`) · ZFS RAID1
 - [ ] `EXADCSBON001` — DC (`192.168.228.10`) · **Schema Master · Domain Naming Master**
 - [ ] `EXASBCBON001` — VOIP SBC (`192.168.228.48`) · trunks to `EXAPBXCLD001`
-- [ ] WAPs `EXAWAPBON001`–`002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPBON001`, `EXAWAPBON002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAFWLBON001` — Firewall (`192.168.228.253`)
 - [ ] `EXAFWLBON002` — Firewall secondary (`192.168.228.254`)
 - [ ] `EXANASBON001` — Storage (NAS/SAN) — standard NAS slot (`192.168.228.19`)
@@ -1545,7 +1545,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXADCSLAX001` — DC (`192.168.213.10`) ⚠️ Services stopped
 - [ ] `EXASRVLAX001` — Rocky Linux server (`192.168.213.20`) · local services/DB
 - [ ] `EXASBCLAX001` — VOIP SBC (`192.168.213.48`) · trunks to `EXAPBXCLD001`
-- [ ] WAPs `EXAWAPLAX001`–`003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPLAX001`, `EXAWAPLAX002`, `EXAWAPLAX003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAASTLAX001` — Atari ST (`192.168.213.73`)
 - [ ] `EXAFWLLAX002` — Firewall secondary (`192.168.213.254`)
 - [ ] `EXANASLAX001` — Storage (NAS/SAN) — standard NAS slot (`192.168.213.19`)
@@ -1871,7 +1871,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXADCSAKL001` — DC (`192.168.93.10`) ⚠️ Services stopped
 - [ ] `EXASRVAKL001` — WS2022 server (`192.168.93.20`) · local server
 - [ ] `EXASBCAKL001` — VOIP SBC (`192.168.93.48`) · trunks to `EXAPBXCLD001`
-- [ ] WAPs `EXAWAPAKL001`–`002` — Ubiquiti UniFi — static, `.82`–`.94` range (see Standard IP Convention)
+- [ ] WAPs `EXAWAPAKL001`, `EXAWAPAKL002`, `EXAWAPAKL003` — Ubiquiti UniFi — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAFWLAKL002` — Firewall secondary (`192.168.93.254`)
 - [ ] `EXANASAKL001` — Storage (NAS/SAN) — standard NAS slot (`192.168.93.19`)
 - [ ] `EXARDRAKL001` — Badge reader — standard RDR slot (`192.168.93.21`)

@@ -166,7 +166,9 @@ graph TD
     T_MUS2["💿 EXAMUSLAX002<br/>Drum Machine<br/>192.168.213.71"]
     T_MUS3["💿 EXAMUSLAX003<br/>Fairlight CMI<br/>192.168.213.72"]
     T_WAP["📶 EXAWAPLAX001<br/>WAP 1<br/>192.168.213.82"]
-    T_SWI2 --> T_NAS --> T_RDR --> T_MUS --> T_MUS2 --> T_MUS3 --> T_WAP
+    T_WAP2["📶 EXAWAPLAX002<br/>Wireless Access Point<br/>192.168.213.83"]
+    T_WAP3["📶 EXAWAPLAX003<br/>Wireless Access Point<br/>192.168.213.84"]
+    T_SWI2 --> T_NAS --> T_RDR --> T_MUS --> T_MUS2 --> T_MUS3 --> T_WAP --> T_WAP2 --> T_WAP3
     T_DCS["🗝️ EXADCSLAX001<br/>DCS 1<br/>192.168.213.10"]
     T_SBC["🛡️ EXASBCLAX001<br/>SBC<br/>192.168.213.48"]
     T_FWL["🧱 EXAFWLLAX001<br/>LAN Face<br/>192.168.213.253"]
@@ -193,6 +195,8 @@ graph TD
     style T_MUS2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MUS3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
