@@ -28,6 +28,10 @@
 > networking to speak of" on the wireless side specifically (the wired FWL/switches/RTR/server
 > are all separately confirmed real via `devices.csv`).
 
+> 🚨 **Migration priority — Tier 1.** DC deployed then physically disconnected — services
+> stopped. Not a repair candidate — the fix is a new `EXADCSLAX001` build promoting and
+> replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node.
+
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
@@ -219,6 +223,10 @@ graph TD
 > DC: `EXADCSNYC001` ran on an OptiPlex, bare metal, DNS/Netlogon/KDC services stopped — kept as
 > the real, sharp migration-priority signal it is. No real BMC (consumer OptiPlex, `EXARACNYC001`
 > removed, matching SHE/HAL/HUL's treatment). WAP/CAM confirmed genuinely never-installed.
+
+> 🚨 **Migration priority — Tier 1.** DNS/Netlogon/KDC stopped on OptiPlex bare metal. Not a
+> repair candidate — the fix is a new `EXADCSNYC001` build promoting and replicating against
+> `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node.
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
