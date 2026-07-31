@@ -123,7 +123,8 @@ graph TD
     T_NAS["🗃️ EXANASBON001<br/>NAS<br/>192.168.228.19"]
     T_RDR["🔐 EXARDRBON001<br/>RDR<br/>192.168.228.21"]
     T_WAP["📶 EXAWAPBON001<br/>WAP 1<br/>192.168.228.82"]
-    T_SWI3 --> T_NAS --> T_RDR --> T_WAP
+    T_WAP2["📶 EXAWAPBON002<br/>Wireless Access Point<br/>192.168.228.83"]
+    T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSBON001<br/>DCS 1<br/>192.168.228.10"]
     T_SBC["🛡️ EXASBCBON001<br/>SBC<br/>192.168.228.48"]
     T_FWL["🧱 EXAFWLBON001<br/>LAN Face<br/>192.168.228.253"]
@@ -131,7 +132,7 @@ graph TD
     T_OTH_LAP["💻 EXALAPBON001-002<br/>2 x Laptops<br/>No IP Address"]
     T_WKS["🖥️ EXAWKSBON001<br/>Finance Workstation<br/>No IP Address"]
     T_VCU["🎧 EXAVCUBON001<br/>Boardroom Video Conferencing<br/>No IP Address"]
-    T_CAM["🎥 EXACAMBON001<br/>CCTV Camera<br/>No IP Address"]
+    T_CAM["🎥 EXACAMBON001<br/>CCTV Camera<br/>192.168.228.17"]
     T_TVS["📺 EXATVSBON001<br/>Display<br/>No IP Address"]
     T_OTH_LAP --> T_VCU --> T_TVS
     T_WKS --> T_CAM
@@ -145,6 +146,7 @@ graph TD
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF

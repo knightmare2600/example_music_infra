@@ -118,7 +118,9 @@ graph TD
     T_NAS["🗃️ EXANASCPH001<br/>NAS<br/>192.168.231.19"]
     T_RDR["🔐 EXARDRCPH001<br/>RDR<br/>192.168.231.21"]
     T_WAP["📶 EXAWAPCPH001<br/>WAP 1<br/>192.168.231.82"]
-    T_SWI3 --> T_NAS --> T_RDR --> T_WAP
+    T_WAP2["📶 EXAWAPCPH002<br/>Wireless Access Point<br/>192.168.231.83"]
+    T_WAP3["📶 EXAWAPCPH003<br/>Wireless Access Point<br/>192.168.231.84"]
+    T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2 --> T_WAP3
     T_DCS["🗝️ EXADCSCPH001<br/>DCS 1<br/>192.168.231.10"]
     T_SBC["🛡️ EXASBCCPH001<br/>SBC<br/>192.168.231.48"]
     T_FWL["🧱 EXAFWLCPH001<br/>LAN Face<br/>192.168.231.253"]
@@ -135,6 +137,8 @@ graph TD
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -296,7 +300,8 @@ graph TD
     T_RDR["🔐 EXARDRODE001<br/>RDR<br/>192.168.126.21"]
     T_MUS["💿 EXAMUSODE001<br/>Jukebox<br/>192.168.126.60"]
     T_WAP["📶 EXAWAPODE001<br/>WAP 1<br/>192.168.126.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_MUS --> T_WAP
+    T_WAP2["📶 EXAWAPODE002<br/>Wireless Access Point<br/>192.168.126.83"]
+    T_SWI --> T_NAS --> T_RDR --> T_MUS --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSODE001<br/>DCS 1<br/>192.168.126.10"]
     T_SBC["🛡️ EXASBCODE001<br/>SBC<br/>192.168.126.48"]
     T_FWL["🧱 EXAFWLODE001<br/>LAN Face<br/>192.168.126.253"]
@@ -315,6 +320,7 @@ graph TD
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MUS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -539,7 +545,8 @@ graph TD
     T_NAS["🗃️ EXANASFAX001<br/>NAS<br/>192.168.246.19"]
     T_RDR["🔐 EXARDRFAX001<br/>RDR<br/>192.168.246.21"]
     T_WAP["📶 EXAWAPFAX001<br/>WAP 1<br/>192.168.246.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_WAP2["📶 EXAWAPFAX002<br/>Wireless Access Point<br/>192.168.246.83"]
+    T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSFAX001<br/>DCS 1<br/>192.168.246.10"]
     T_SBC["🛡️ EXASBCFAX001<br/>SBC<br/>192.168.246.48"]
     T_FWL["🧱 EXAFWLFAX001<br/>LAN Face<br/>192.168.246.253"]
@@ -554,6 +561,7 @@ graph TD
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
