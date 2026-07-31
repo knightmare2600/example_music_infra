@@ -73,8 +73,12 @@ graph TD
     T_SBC["🛡️ EXASBCLND001 · SBC · 192.168.20.48"]
     T_FWL["🧱 EXAFWLLND001 · LAN face · 192.168.20.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 5 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_RAD["📻 EXARADLND001 · BBC Office Radio Mk II · 192.168.20.80"]
+    T_MIC["🎤 EXAMICLND001 · Shure SM7 via Dante audio · 192.168.20.81"]
+    T_WKS["🖥️ EXAWKSLND001 · Workstation · 192.168.20.150"]
+    T_OTH_PRN["🖨️ 2x Printers · EXAPRNLND001-002 · No IP Address"]
+    T_RAD --> T_WKS
+    T_MIC --> T_OTH_PRN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -88,7 +92,10 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_MIC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:LND:END
 ```
 
@@ -168,8 +175,18 @@ graph TD
     T_SBC["🛡️ EXASBCBIR001 · SBC · 192.168.121.48"]
     T_FWL["🧱 EXAFWLBIR001 · LAN face · 192.168.121.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 10 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_SRV["🗄️ EXASRVBIR001 · Oracle DB · 192.168.121.20"]
+    T_MOO["🎹 EXAMOOBIR001 · Moog synth · 192.168.121.70"]
+    T_LIN["🥁 EXALINBIR001 · Drum machine · 192.168.121.71"]
+    T_FCL["🎹 EXAFCLBIR001 · Fairlight CMI · 192.168.121.72"]
+    T_AST["🕹️ EXAASTBIR001 · Atari ST · 192.168.121.73"]
+    T_PAY["☎️ EXAPAYBIR001 · Payphone · 192.168.121.74"]
+    T_LCD["🖼️ EXALCDBIR001 · NOC display · 192.168.121.75"]
+    T_MBP["💻 EXAMBPBIR001 · MacBook"]
+    T_TAB["📱 EXATABBIR001 · Galaxy Tab"]
+    T_PHN["📞 EXAPHNBIR001 · Samsung S25"]
+    T_SRV --> T_LIN --> T_AST --> T_LCD --> T_TAB
+    T_MOO --> T_FCL --> T_PAY --> T_MBP --> T_PHN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -183,7 +200,16 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_MOO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_LIN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FCL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_AST fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:BIR:END
 ```
 
@@ -254,8 +280,10 @@ graph TD
     T_SBC["🛡️ EXASBCMCR001 · SBC · 192.168.161.48"]
     T_FWL["🧱 EXAFWLMCR001 · LAN face · 192.168.161.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 5 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_OTH_LAP["💻 2x Laptops · EXALAPMCR001-002 · No IP Address"]
+    T_OTH_WKS["🖥️ 2x Workstations · EXAWKSMCR001-002 · No IP Address"]
+    T_PRN["🖨️ EXAPRNMCR001 · Printer"]
+    T_OTH_LAP --> T_PRN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -269,7 +297,9 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:MCR:END
 ```
 
@@ -343,7 +373,7 @@ graph TD
     T_MBP["💻 EXAMBPLIV001 · MacBook Pro"]
     T_MAC["🍎 EXAMACLIV001 · iMac DISABLED"]
     T_BPS["🪪 EXABPSLIV001 · Badge programming workstation"]
-    T_BMC --> T_MBP --> T_MAC --> T_BPS
+    T_MBP --> T_BPS
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -429,7 +459,6 @@ graph TD
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_SRV["🗄️ EXASRVNEW001 · File/print server"]
     T_WKS["🖥️ EXAWKSNEW099 · LAPS password expired"]
-    T_BMC --> T_SRV --> T_WKS
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF

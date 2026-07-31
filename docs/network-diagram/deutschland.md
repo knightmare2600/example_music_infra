@@ -73,8 +73,13 @@ graph TD
     T_SBC["🛡️ EXASBCBON001 · SBC · 192.168.228.48"]
     T_FWL["🧱 EXAFWLBON001 · LAN face · 192.168.228.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 6 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_OTH_LAP["💻 2x Laptops · EXALAPBON001-002 · No IP Address"]
+    T_WKS["🖥️ EXAWKSBON001 · Finance workstation"]
+    T_VCU["🎧 EXAVCUBON001 · Boardroom video conferencing"]
+    T_CAM["🎥 EXACAMBON001 · CCTV camera"]
+    T_TVS["📺 EXATVSBON001 · Display"]
+    T_OTH_LAP --> T_VCU --> T_TVS
+    T_WKS --> T_CAM
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -88,7 +93,11 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_VCU fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_TVS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:BON:END
 ```
 
@@ -235,9 +244,7 @@ graph TD
     T_FWL["🧱 EXAFWLMUN001 · LAN face · 192.168.189.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_WKS["🖥️ EXAWKSMUN001 · Hot desk workstation"]
-    T_LAP["💻 EXALAPMUN001 · Pool laptop"]
-    T_LAP2["💻 EXALAPMUN002 · LAPS expired"]
-    T_BMC --> T_WKS --> T_LAP --> T_LAP2
+    T_OTH_LAP["💻 2x Laptops · EXALAPMUN001-002 · No IP Address"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -252,8 +259,7 @@ graph TD
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_LAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:MUN:END
 ```
 
