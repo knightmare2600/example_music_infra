@@ -165,6 +165,7 @@ Vendor documentation and hardware reference.
 |------|--------|-------------|
 | [hardware/S210-X12RS_UG.pdf](hardware/S210-X12RS_UG.pdf) | HW-REF-001 | Supermicro S210-X12RS user guide |
 | [hardware/ExampleMusic_ASAv_Proxmox_Procedure.md](hardware/ExampleMusic_ASAv_Proxmox_Procedure.md) | HW-REF-002 | Cisco ASAv QEMU VM on Proxmox |
+| [hardware/ExampleMusic_Intel_vPro_AMT_NUC_Procedure.md](hardware/ExampleMusic_Intel_vPro_AMT_NUC_Procedure.md) | HW-REF-003 | Enabling Intel vPro AMT (incl. KVM) on `EXAPVEFRD001`'s 7th-gen NUC — planned, not yet exercised |
 
 ---
 

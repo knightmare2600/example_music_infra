@@ -139,10 +139,19 @@ def main():
         print(f"\n{len(drifted)} generated file(s) have drifted from their source of truth:")
         for d in drifted:
             print(f"  - {d}")
-        print("\nRun: python3 benarbejde/generate_inventory.py benarbejde/sites.csv "
-              "-o ansible/configs/inventory --devices benarbejde/devices.csv "
-              "(and --emit-group-vars / --emit-begyndelse-json / --emit-site-grains-pillar) "
-              "to fix. If any bootstrap/web/proxmox/ served copy drifted, "
+        print("\nEach --emit-* flag is its own exclusive mode (see generate_inventory.py's own "
+              "main()) -- run these as FOUR SEPARATE commands to fix, not one combined line:\n"
+              "  python3 benarbejde/generate_inventory.py benarbejde/sites.csv "
+              "-o ansible/configs/inventory --devices benarbejde/devices.csv\n"
+              "  python3 benarbejde/generate_inventory.py benarbejde/sites.csv "
+              "--devices benarbejde/devices.csv --emit-group-vars\n"
+              "  python3 benarbejde/generate_inventory.py benarbejde/sites.csv "
+              "--devices benarbejde/devices.csv --emit-begyndelse-json\n"
+              "  python3 benarbejde/generate_inventory.py benarbejde/sites.csv "
+              "--devices benarbejde/devices.csv --emit-site-grains-pillar\n"
+              "The first command will prompt to overwrite each existing .ini -- answer y, or "
+              "pipe `yes y |` in front of it for a non-interactive shell. If any "
+              "bootstrap/web/proxmox/ served copy drifted, "
               "cp benarbejde/<file> bootstrap/web/proxmox/<file> afterward for each one -- "
               "they're served copies, not independently regenerated.")
         return 1

@@ -908,6 +908,33 @@ else
 fi
 
 # ------------------------------------------------------------------------------
+# 27. SubnetSite/Site mismatches (informational, never fails)
+# ------------------------------------------------------------------------------
+section "27. SubnetSite mismatches — check_subnet_site_mismatch.py"
+
+subnet_out=$(python3 "${HERE}/check_subnet_site_mismatch.py")
+echo "$subnet_out"
+
+# ------------------------------------------------------------------------------
+# 28. Doc role coverage (informational unless --strict)
+# ------------------------------------------------------------------------------
+section "28. Doc role coverage — check_doc_role_coverage.py"
+
+docrole_out=$(python3 "${HERE}/check_doc_role_coverage.py")
+echo "$docrole_out"
+docrole_count=$(echo "$docrole_out" | grep -oE '^[0-9]+ informational finding' | grep -oE '^[0-9]+' || true)
+if [[ -n "$docrole_count" && "$docrole_count" -gt 0 ]]; then
+  if $STRICT; then
+    fail "${docrole_count} device(s) missing from their own site-inventory.md section -- see above. Failing because --strict was passed."
+    FAILED_CHECKS+=("check_doc_role_coverage.py (--strict: doc coverage gaps)")
+  else
+    warn "${docrole_count} device(s) missing from their own site-inventory.md section (see above) -- expected until that doc catch-up happens. Re-run with --strict to fail on this."
+  fi
+else
+  success "Every real, addressed device is mentioned in its own site's site-inventory.md section."
+fi
+
+# ------------------------------------------------------------------------------
 # Summary
 # ------------------------------------------------------------------------------
 section "Summary"

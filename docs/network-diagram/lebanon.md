@@ -35,20 +35,47 @@ graph TD
       RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_BRT fill:#56B4E9,stroke:#0072B2,color:#000000
-    %% GENERATED:NEW-NETWORK:BRT:START
-    subgraph NEW_BRT ["🆕 New Network (current)"]
-      N_RTR["📡 EXARTRBRT001 · RTR · .1"]
-      N_SBC["🛡️ EXASBCBRT001 · SBC · .48"]
-      N_NAS["🗃️ EXANASBRT001 · NAS · .19"]
-      N_RDR["🔐 EXARDRBRT001 · RDR · .21"]
-      N_BMC["🔧 EXABMCBRT001 · BMC 1 · .2"]
-      N_DCS["🗝️ EXADCSBRT001 · DCS 1 · .10"]
-      N_FWL["🧱 EXAFWLBRT001 · LAN face · .253"]
-      N_FWL2["🧱 EXAFWLBRT002 · FWL 2 · .254"]
-      N_PVE["🗂️ EXAPVEBRT001 · PVE 1 · .5"]
-      N_SWI["🔀 EXASWIBRT001 · SWI 1 · .250"]
-      N_WAP["📶 EXAWAPBRT001 · WAP 1 · .82"]
-    end
-    style NEW_BRT fill:#E69F00,stroke:#D55E00,color:#000000
-    %% GENERATED:NEW-NETWORK:BRT:END
+```
+
+### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+
+```mermaid
+%% GENERATED:TOPOLOGY:BRT:START
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
+    T_RTR["📡 EXARTRBRT001 · RTR · 192.168.169.1"]
+    T_VRK --> T_RTR
+    T_BMC["🔧 EXABMCBRT001 · BMC 1 · 192.168.169.2"]
+    T_RTR --> T_BMC
+    T_PVE["🗂️ EXAPVEBRT001 · PVE 1 · 192.168.169.5"]
+    T_RTR --> T_PVE
+    T_SWI["🔀 EXASWIBRT001 · SWI 1 · 192.168.169.250"]
+    T_RTR --> T_SWI
+    T_SWI2["🔀 EXASWIBRT002 · SWI 2 · 192.168.169.251"]
+    T_RTR --> T_SWI2
+    T_SWI3["🔀 EXASWIBRT003 · SWI 3 · 192.168.169.252"]
+    T_RTR --> T_SWI3
+    T_NAS["🗃️ EXANASBRT001 · NAS · 192.168.169.19"]
+    T_RDR["🔐 EXARDRBRT001 · RDR · 192.168.169.21"]
+    T_WAP["📶 EXAWAPBRT001 · WAP 1 · 192.168.169.82"]
+    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_DCS["🗝️ EXADCSBRT001 · DCS 1 · 192.168.169.10"]
+    T_SBC["🛡️ EXASBCBRT001 · SBC · 192.168.169.48"]
+    T_FWL["🧱 EXAFWLBRT001 · LAN face · 192.168.169.253"]
+    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:BRT:END
 ```

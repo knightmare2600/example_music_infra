@@ -57,27 +57,56 @@ graph TD
       RRY -. "→ EXARUDCLD001" .-> VPN_CLD
     end
     style OLD_BRK fill:#56B4E9,stroke:#0072B2,color:#000000
-    %% GENERATED:NEW-NETWORK:BRK:START
-    subgraph NEW_BRK ["🆕 New Network (current)"]
-      N_RTR["📡 EXARTRBRK001 · RTR · .1"]
-      N_SBC["🛡️ EXASBCBRK001 · SBC · .48"]
-      N_NAS["🗃️ EXANASBRK001 · NAS · .19"]
-      N_RDR["🔐 EXARDRBRK001 · RDR · .21"]
-      N_BMC["🔧 EXABMCBRK001 · BMC 1 · .2"]
-      N_DCS["🗝️ EXADCSBRK001 · DCS 1 · .10"]
-      N_FWL["🧱 EXAFWLBRK001 · LAN face · .253"]
-      N_FWL2["🧱 EXAFWLBRK002 · FWL 2 · .254"]
-      N_PVE["🗂️ EXAPVEBRK001 · PVE 1 · .5"]
-      N_SWI["🔀 EXASWIBRK001 · SWI 1 · .250"]
-      N_WAP["📶 EXAWAPBRK001 · WAP 1 · .82"]
-      N_DON["🍩 EXADONBRK001 · Donut vending · .60"]
-      N_LAP["💻 EXALAPBRK001 · Tour laptop"]
-      N_VND["🍫 EXAVNDBRK001 · Vending machine"]
-    end
-    style NEW_BRK fill:#E69F00,stroke:#D55E00,color:#000000
-    %% GENERATED:NEW-NETWORK:BRK:END
-    classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
-    class DC warn
+```
+
+### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+
+```mermaid
+%% GENERATED:TOPOLOGY:BRK:START
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
+    T_RTR["📡 EXARTRBRK001 · RTR · 192.168.136.1"]
+    T_VRK --> T_RTR
+    T_BMC["🔧 EXABMCBRK001 · BMC 1 · 192.168.136.2"]
+    T_RTR --> T_BMC
+    T_PVE["🗂️ EXAPVEBRK001 · PVE 1 · 192.168.136.5"]
+    T_RTR --> T_PVE
+    T_SWI["🔀 EXASWIBRK001 · SWI 1 · 192.168.136.250"]
+    T_RTR --> T_SWI
+    T_SWI2["🔀 EXASWIBRK003 · SWI 3 · 192.168.136.252"]
+    T_RTR --> T_SWI2
+    T_SWI3["🔀 EXASWIBRK002 · Second switch · 192.168.136.251"]
+    T_RTR --> T_SWI3
+    T_NAS["🗃️ EXANASBRK001 · NAS · 192.168.136.19"]
+    T_RDR["🔐 EXARDRBRK001 · RDR · 192.168.136.21"]
+    T_WAP["📶 EXAWAPBRK001 · WAP 1 · 192.168.136.82"]
+    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_DCS["🗝️ EXADCSBRK001 · DCS 1 · 192.168.136.10"]
+    T_SBC["🛡️ EXASBCBRK001 · SBC · 192.168.136.48"]
+    T_FWL["🧱 EXAFWLBRK001 · LAN face · 192.168.136.253"]
+    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    T_DON["🍩 EXADONBRK001 · Donut vending · 192.168.136.60"]
+    T_LAP["💻 EXALAPBRK001 · Tour laptop"]
+    T_VND["🍫 EXAVNDBRK001 · Vending machine"]
+    T_BMC --> T_DON --> T_LAP --> T_VND
+    style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DON fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_VND fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:BRK:END
 ```
 
 ---
@@ -111,25 +140,52 @@ graph TD
       RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_TOR fill:#56B4E9,stroke:#0072B2,color:#000000
-    %% GENERATED:NEW-NETWORK:TOR:START
-    subgraph NEW_TOR ["🆕 New Network (current)"]
-      N_RTR["📡 EXARTRTOR001 · RTR · .1"]
-      N_SBC["🛡️ EXASBCTOR001 · SBC · .48"]
-      N_NAS["🗃️ EXANASTOR001 · NAS · .19"]
-      N_RDR["🔐 EXARDRTOR001 · RDR · .21"]
-      N_BMC["🔧 EXABMCTOR001 · BMC 1 · .2"]
-      N_DCS["🗝️ EXADCSTOR001 · DCS 1 · .10"]
-      N_FWL["🧱 EXAFWLTOR001 · LAN face · .253"]
-      N_FWL2["🧱 EXAFWLTOR002 · FWL 2 · .254"]
-      N_PVE["🗂️ EXAPVETOR001 · PVE 1 · .5"]
-      N_SWI["🔀 EXASWITOR001 · SWI 1 · .250"]
-      N_WAP["📶 EXAWAPTOR001 · WAP 1 · .82"]
-      N_DCR["🗝️ EXADCRTOR028 · Undocumented legacy AD install found on site, no-one on r..."]
-    end
-    style NEW_TOR fill:#E69F00,stroke:#D55E00,color:#000000
-    %% GENERATED:NEW-NETWORK:TOR:END
-    classDef warn fill:#D55E00,stroke:#000000,color:#ffffff
-    class DC warn
+```
+
+### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+
+```mermaid
+%% GENERATED:TOPOLOGY:TOR:START
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
+    T_RTR["📡 EXARTRTOR001 · RTR · 192.168.146.1"]
+    T_VRK --> T_RTR
+    T_BMC["🔧 EXABMCTOR001 · BMC 1 · 192.168.146.2"]
+    T_RTR --> T_BMC
+    T_PVE["🗂️ EXAPVETOR001 · PVE 1 · 192.168.146.5"]
+    T_RTR --> T_PVE
+    T_SWI["🔀 EXASWITOR001 · SWI 1 · 192.168.146.250"]
+    T_RTR --> T_SWI
+    T_SWI2["🔀 EXASWITOR002 · SWI 2 · 192.168.146.251"]
+    T_RTR --> T_SWI2
+    T_SWI3["🔀 EXASWITOR003 · SWI 3 · 192.168.146.252"]
+    T_RTR --> T_SWI3
+    T_NAS["🗃️ EXANASTOR001 · NAS · 192.168.146.19"]
+    T_RDR["🔐 EXARDRTOR001 · RDR · 192.168.146.21"]
+    T_WAP["📶 EXAWAPTOR001 · WAP 1 · 192.168.146.82"]
+    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_DCS["🗝️ EXADCSTOR001 · DCS 1 · 192.168.146.10"]
+    T_SBC["🛡️ EXASBCTOR001 · SBC · 192.168.146.48"]
+    T_FWL["🧱 EXAFWLTOR001 · LAN face · 192.168.146.253"]
+    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    T_DCR["🗝️ EXADCRTOR028 · Undocumented legacy AD install found on site, no-one on r..."]
+    T_BMC --> T_DCR
+    style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:TOR:END
 ```
 
 ---
@@ -162,20 +218,47 @@ graph TD
       RRY -. "→ EXARUDCLD001" .-> VPN
     end
     style OLD_MTL fill:#56B4E9,stroke:#0072B2,color:#000000
-    %% GENERATED:NEW-NETWORK:MTL:START
-    subgraph NEW_MTL ["🆕 New Network (current)"]
-      N_RTR["📡 EXARTRMTL001 · RTR · .1"]
-      N_SBC["🛡️ EXASBCMTL001 · SBC · .48"]
-      N_NAS["🗃️ EXANASMTL001 · NAS · .19"]
-      N_RDR["🔐 EXARDRMTL001 · RDR · .21"]
-      N_BMC["🔧 EXABMCMTL001 · BMC 1 · .2"]
-      N_DCS["🗝️ EXADCSMTL001 · DCS 1 · .10"]
-      N_FWL["🧱 EXAFWLMTL001 · LAN face · .253"]
-      N_FWL2["🧱 EXAFWLMTL002 · FWL 2 · .254"]
-      N_PVE["🗂️ EXAPVEMTL001 · PVE 1 · .5"]
-      N_SWI["🔀 EXASWIMTL001 · SWI 1 · .250"]
-      N_WAP["📶 EXAWAPMTL001 · WAP 1 · .82"]
-    end
-    style NEW_MTL fill:#E69F00,stroke:#D55E00,color:#000000
-    %% GENERATED:NEW-NETWORK:MTL:END
+```
+
+### 🗺️ Topology sketch (draft, hand-drawn — not yet generated)
+
+```mermaid
+%% GENERATED:TOPOLOGY:MTL:START
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
+    T_RTR["📡 EXARTRMTL001 · RTR · 192.168.154.1"]
+    T_VRK --> T_RTR
+    T_BMC["🔧 EXABMCMTL001 · BMC 1 · 192.168.154.2"]
+    T_RTR --> T_BMC
+    T_PVE["🗂️ EXAPVEMTL001 · PVE 1 · 192.168.154.5"]
+    T_RTR --> T_PVE
+    T_SWI["🔀 EXASWIMTL001 · SWI 1 · 192.168.154.250"]
+    T_RTR --> T_SWI
+    T_SWI2["🔀 EXASWIMTL002 · SWI 2 · 192.168.154.251"]
+    T_RTR --> T_SWI2
+    T_SWI3["🔀 EXASWIMTL003 · SWI 3 · 192.168.154.252"]
+    T_RTR --> T_SWI3
+    T_NAS["🗃️ EXANASMTL001 · NAS · 192.168.154.19"]
+    T_RDR["🔐 EXARDRMTL001 · RDR · 192.168.154.21"]
+    T_WAP["📶 EXAWAPMTL001 · WAP 1 · 192.168.154.82"]
+    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_DCS["🗝️ EXADCSMTL001 · DCS 1 · 192.168.154.10"]
+    T_SBC["🛡️ EXASBCMTL001 · SBC · 192.168.154.48"]
+    T_FWL["🧱 EXAFWLMTL001 · LAN face · 192.168.154.253"]
+    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:MTL:END
 ```

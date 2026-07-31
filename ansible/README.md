@@ -343,6 +343,10 @@ blank answer skips just that host. Shared with `linux/tools.yml`'s identical mec
 Deploys and manages the Rudder configuration management server across the estate.
 Ansible equivalent of `rudderme.sh`.
 
+**Not in active use** — confirmed dormant, 2026-07-30. Kept as reference code
+("we tried this and here's some code if you want it"), not currently driving
+any live infrastructure.
+
 | Playbook | What it does |
 |----------|-------------|
 | `rudder_server.yml` | Bootstraps EXARUDCLD001 — hostname, static IP, packages, UFW, Rudder install, LDAP skeleton, Cockpit, MOTD, sentinel |

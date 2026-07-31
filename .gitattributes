@@ -132,3 +132,10 @@ bootstrap/web/gparted/**             filter=lfs diff=lfs merge=lfs -text
 bootstrap/web/winpe/**/wimboot*      filter=lfs diff=lfs merge=lfs -text
 bootstrap/web/3cx/**                 filter=lfs diff=lfs merge=lfs -text
 bootstrap/web/hdt/**                 filter=lfs diff=lfs merge=lfs -text
+
+# Not PXE/HTTP-served (not under bootstrap/web/) -- a downloaded vendor SDK tool for the Intel
+# vPro AMT KVM procedure (docs/hardware/ExampleMusic_Intel_vPro_AMT_NUC_Procedure.md), run from an
+# admin's own Windows machine, not fetched by any boot script. ~59.5MB, LFS regardless of its
+# non-web location for the same reason as everything else in this section -- keep it out of normal
+# git history.
+bootstrap/amt-sdk/**                 filter=lfs diff=lfs merge=lfs -text
