@@ -130,8 +130,39 @@ graph TD
     T_SBC["🛡️ EXASBCFAL001 · SBC · 192.168.76.48"]
     T_FWL["🧱 EXAFWLFAL001 · LAN face · 192.168.76.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTHER["📎 Other devices — 46 confirmed, see devices.csv"]
-    T_BMC --> T_OTHER
+    T_OTH1["💽 EXATARFAL001 · Legacy tape archive · 192.168.76.33"]
+    T_OTH2["🖼️ EXALCDFAL001 · Reception display · 192.168.76.50"]
+    T_OTH3["🎧 EXAVCUFAL001 · Video conferencing · 192.168.76.51"]
+    T_OTH4["⛽ EXAPMPFAL001 · Networked petrol pump · 192.168.76.60"]
+    T_OTH5["🫖 EXATEAFAL001 · Smart coffee machine · 192.168.76.61"]
+    T_OTH6["🍩 EXADONFAL001 · Donut vending · 192.168.76.62"]
+    T_OTH7["🍫 4x Vending machines · EXAVNDFAL002-005 · .63-.66"]
+    T_OTH8["🎥 4x CCTV cameras · EXACAMFAL001-004 · .70-.73"]
+    T_OTH9["⏰ EXACLKFAL001 · Embedded NTP clock · 192.168.76.80"]
+    T_OTH10["☎️ EXAPAYFAL001 · GPO Kiosk No.6 payphone · 192.168.76.95"]
+    T_OTH11["🖥️ 2x Workstations · EXAWKSFAL001,003 · .100,.102"]
+    T_OTH12["💻 EXALAPFAL001 · Production laptop · 192.168.76.103"]
+    T_OTH13["🖊️ EXASURFAL001 · Microsoft Surface · 192.168.76.104"]
+    T_OTH14["📞 5x Office phones · EXAPHNFAL001-003,006-007 · No IP Address"]
+    T_OTH15["📱 EXATABFAL001 · Tablet · No IP Address"]
+    T_OTH16["⌨️ EXATTYFAL001 · VT320 serial terminal · No IP Address"]
+    T_OTH17["🚌 3x Tour buses · EXABUSFAL001-003 · No IP Address"]
+    T_OTH18["🚗 5x Cars · EXACARFAL001-005 · No IP Address"]
+    T_OTH19["🚚 5x Trucks · EXATRKFAL001-005 · No IP Address"]
+    T_OTH20["✈️ 5x Jets · EXAJETFAL001-005 · No IP Address"]
+    T_BMC --> T_OTH1
+    T_OTH1 --> T_OTH3 --> T_OTH5 --> T_OTH7 --> T_OTH9 --> T_OTH11 --> T_OTH13 --> T_OTH15 --> T_OTH17 --> T_OTH19
+    T_OTH2 --> T_OTH4 --> T_OTH6 --> T_OTH8 --> T_OTH10 --> T_OTH12 --> T_OTH14 --> T_OTH16 --> T_OTH18 --> T_OTH20
+    T_OTH1 ~~~ T_OTH2
+    T_OTH3 ~~~ T_OTH4
+    T_OTH5 ~~~ T_OTH6
+    T_OTH7 ~~~ T_OTH8
+    T_OTH9 ~~~ T_OTH10
+    T_OTH11 ~~~ T_OTH12
+    T_OTH13 ~~~ T_OTH14
+    T_OTH15 ~~~ T_OTH16
+    T_OTH17 ~~~ T_OTH18
+    T_OTH19 ~~~ T_OTH20
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -146,7 +177,26 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_OTHER fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH4 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH5 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH6 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH7 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH8 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH9 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH10 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH11 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH12 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH13 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH14 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH15 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH16 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH17 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH18 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH19 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH20 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:FAL:END
 ```
 
