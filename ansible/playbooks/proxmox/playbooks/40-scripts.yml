@@ -21,10 +21,19 @@
 # bootstrap/web/proxmox/ in the git checkout, not files/ above) directly to
 # /usr/local/bin/ -- create-vm.py, convert-v2v.py, manage-pool.py,
 # site-inventory-audit.py, bulk_iso_upload.py, pve-bootorder.py,
-# virt-v2v-vmdp.sh. These used to be fetched by first-boot.sh over HTTP from
-# the provisioning web server; now they come straight from the control
-# node's own checkout, same single-source-of-truth pattern as
-# sites.csv/devices.csv deployment.
+# virt-v2v-vmdp.sh, create-pve-users.py, zfs-disk-replace.sh. These used to
+# be fetched by first-boot.sh over HTTP from the provisioning web server; now
+# they come straight from the control node's own checkout, same
+# single-source-of-truth pattern as sites.csv/devices.csv deployment.
+#
+# create-pve-users.py and zfs-disk-replace.sh added 2026-08-01 (Robert, live
+# on EXAPVECLD001): both scripts already existed in the repo, unchanged, but
+# were never in this deploy loop -- found sitting unmanaged in ~/ instead of
+# /usr/local/bin/, alongside a few genuinely stale duplicates from before
+# this task existed (create-vm.py_old etc., cleaned up by hand). first-boot.sh
+# is deliberately NOT deployed here -- it's what bootstraps the ansible
+# account/SSH access in the first place, so Ansible can't be the thing that
+# puts it there.
 #
 # NIC guard credentials: the replica-nic-guard script reads its Proxmox API
 # credentials from /etc/proxmox-replica-nic-guard/auth.env (not deployed by
@@ -45,6 +54,13 @@
 # Tags: scripts
 # =============================================================================
 # Changelog:
+#   2026-08-01  Added create-pve-users.py and zfs-disk-replace.sh to the deploy loop --
+#               Robert, live on EXAPVECLD001: both already existed unchanged in the repo,
+#               but were never wired in here, so they'd only ever ended up on that one
+#               box by hand, in ~/ rather than /usr/local/bin/. Also added
+#               python3-paramiko to group_vars/pvenodes/main.yml's pve_packages --
+#               create-pve-users.py's optional SSH-based Linux user creation needs it,
+#               was missing.
 #   2026-07-06  Initial file — extracted from pve_onboard.yml as part of the
 #               numbered-stage split (see 00-preflight.yml). Always runs,
 #               even on a refresh-only pass against an already-onboarded node.
@@ -89,6 +105,8 @@
         - bulk_iso_upload.py
         - pve-bootorder.py
         - virt-v2v-vmdp.sh
+        - create-pve-users.py
+        - zfs-disk-replace.sh
       tags: scripts
 
     - name: Deploy PVE scripts to /usr/local/bin
