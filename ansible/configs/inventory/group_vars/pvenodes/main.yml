@@ -7,6 +7,9 @@ pve_packages:
   - jq
   - python3-proxmoxer
   - python3-requests
+  - python3-paramiko  # create-pve-users.py's optional SSH-based Linux user creation --
+                      # the import is try/except-guarded, but silently skips that step
+                      # without this installed
   - python3-virtualenv
   - sudo
   - unattended-upgrades
