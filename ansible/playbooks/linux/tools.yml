@@ -152,6 +152,17 @@
 #               firewallme/playbooks/90-firewall.yml needed the exact same recovery flow after a
 #               real live SSH key rejection (EXAFWLAMS001) -- a second caller made keeping this
 #               logic duplicated in one file not worth it.
+#   2026-08-01  Robert, live (EXAANSCLD001/EXADNSVRK001): "Usage: prompt <options>" printed
+#               after every single command. Root cause: files/zshrc's promptinit/ZSH_THEME
+#               (removed same day, v1.13) collided with bootstrap/web/server-prompts.zsh's own
+#               set_prompt() function -- same name, different purpose, whichever gets (re)defined
+#               last in the shell startup chain wins. server-prompts.zsh is already wired into
+#               /etc/zsh/zshrc SYSTEM-WIDE at first boot by bootstrap/web/late_command.sh (covers
+#               every shell on the node, including `sudo -s`) -- that global copy was never
+#               broken, only this per-user one ever collided with it. Robert: "we don't need to
+#               provision our own zshrc... use the global one, which works just fine." Disabled
+#               the "Deploy .zshrc to all user home directories" task -- commented out, not
+#               deleted, in case per-user zsh customisation is wanted again later.
 
 - import_playbook: ../ssh_preflight_with_fallback.yml
 
@@ -568,17 +579,31 @@
       loop_control:
         label: "{{ item.key }}"
 
-    - name: Deploy .zshrc to all user home directories
-      ansible.builtin.copy:
-        src:   files/zshrc
-        dest:  "{{ item.value[4] }}/.zshrc"
-        owner: "{{ item.key }}"
-        group: "{{ item.key }}"
-        mode:  '0644'
-      loop: "{{ ansible_facts.getent_passwd | dict2items }}"
-      when: item.value[4] is match('^/home/')
-      loop_control:
-        label: "{{ item.key }}"
+    # Per-user .zshrc deployment DISABLED, 2026-08-01 (Robert). Root cause of the
+    # "Usage: prompt <options>" bug printed after every command on EXAANSCLD001/
+    # EXADNSVRK001: this file's promptinit/ZSH_THEME (fixed 2026-08-01, v1.13) collided
+    # with bootstrap/web/server-prompts.zsh's own set_prompt() function -- same name,
+    # different purpose, whichever gets (re)defined last in the shell startup chain wins.
+    # server-prompts.zsh is already wired into /etc/zsh/zshrc SYSTEM-WIDE at first boot
+    # by bootstrap/web/late_command.sh (covers every shell on the node, including
+    # `sudo -s`, per docs/bootstrap/bootstrapping.md) -- that global copy was never
+    # broken, only this per-user one calling promptinit ever collided with it. Robert:
+    # "we don't need to provision our own zshrc... use the global one, which works just
+    # fine." files/zshrc and this task are kept, commented out rather than deleted, in
+    # case a genuine need for per-user zsh customisation comes up again -- re-enabling
+    # would need the promptinit/ZSH_THEME removal (already done, v1.13) to stay in place.
+    #
+    # - name: Deploy .zshrc to all user home directories
+    #   ansible.builtin.copy:
+    #     src:   files/zshrc
+    #     dest:  "{{ item.value[4] }}/.zshrc"
+    #     owner: "{{ item.key }}"
+    #     group: "{{ item.key }}"
+    #     mode:  '0644'
+    #   loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+    #   when: item.value[4] is match('^/home/')
+    #   loop_control:
+    #     label: "{{ item.key }}"
 
     - name: Configure systemd-journald — vacuum period and max size
       ansible.builtin.lineinfile:
