@@ -583,7 +583,7 @@
       loop_control:
         label: "{{ item.key }}"
 
-    # Per-user .zshrc deployment DISABLED, 2026-08-01 (Robert). Root cause of the
+    # Per-user .zshrc with REAL content DISABLED, 2026-08-01 (Robert). Root cause of the
     # "Usage: prompt <options>" bug printed after every command on EXAANSCLD001/
     # EXADNSVRK001: this file's promptinit/ZSH_THEME (fixed 2026-08-01, v1.13) collided
     # with bootstrap/web/server-prompts.zsh's own set_prompt() function -- same name,
@@ -611,6 +611,25 @@
     #   when: item.value[4] is match('^/home/')
     #   loop_control:
     #     label: "{{ item.key }}"
+
+    # BUG FIX, 2026-08-01 (Robert, live): zsh runs zsh-newuser-install automatically
+    # whenever NONE of .zshenv/.zprofile/.zshrc/.zlogin exist in $HOME -- deleting
+    # ~/.zshrc outright (to stop it fighting server-prompts.zsh, see above) reintroduced
+    # that wizard on every single login instead. Real fix isn't "no file" -- it's "a
+    # trivial file that isn't real config." force: false so a genuinely customised
+    # ~/.zshrc (should anyone ever want one) is never clobbered by this.
+    - name: Deploy placeholder .zshrc (suppresses zsh-newuser-install, no real config)
+      ansible.builtin.copy:
+        content: "# Intentionally minimal -- see /etc/zsh/zshrc and /usr/local/bin/server-prompts.zsh for the real shell config.\n"
+        dest:  "{{ item.value[4] }}/.zshrc"
+        owner: "{{ item.key }}"
+        group: "{{ item.key }}"
+        mode:  '0644'
+        force: false
+      loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+      when: item.value[4] is match('^/home/')
+      loop_control:
+        label: "{{ item.key }}"
 
     - name: Deploy server-prompts scripts (system-wide shell prompt + QoL config)
       ansible.builtin.copy:
