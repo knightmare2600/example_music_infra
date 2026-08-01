@@ -11,6 +11,12 @@
 ## 25 May 2026  v1.10  Rework MacOS shim                                      ##
 ## 30 May 2026  v1.11  Midnight Commander solarized support                   ##
 ## 07 Jun 2026  v1.12  Correct arrow key tomfoolery in PuTTY noodle build     ##
+## 01 Aug 2026  v1.13  Drop promptinit/ZSH_THEME -- never actually selected a ##
+##                     theme (no `prompt <name>` call anywhere), just left   ##
+##                     `set_prompt` registered in precmd_functions with no   ##
+##                     args -- "Usage: prompt <options>" printed after every ##
+##                     single command. Our real PROMPT is hand-defined below ##
+##                     and never depended on promptinit at all.             ##
 ##                                                                            ##
 ##----------------------------------------------------------------------------##
 
@@ -18,7 +24,6 @@
 HISTFILE=~/.histfile
 HISTSIZE=1000
 SAVEHIST=1000
-ZSH_THEME="parrot"
 
 ## Key bindings. Uses emacs mode for consistency across Linux/MacOS/PuTTY CTRL +
 ## Arrow bindings only work if terminal sends proper escape sequences.
@@ -34,7 +39,6 @@ bindkey "\e[1;5D" backward-word
 
 ## Completion system
 zstyle ':completion:*' menu select
-autoload -U promptinit && promptinit
 autoload -Uz compinit
 
 ## compinit -u allows insecure completion dirs (common on mixed systems) a safer
