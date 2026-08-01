@@ -36,10 +36,12 @@ graph TD
     T_DNS["🧭 EXADNSVRK001<br/>DNS/BIND Server<br/>192.168.139.8"]
     T_TMP["📦<br/>Provisioning Server<br/>192.168.139.50"]
     T_FWL["🧱 EXAFWLVRK001<br/>Firewall WAN Face, Same Physical Device As EXAFWLCLD001<br/>192.168.139.69"]
-    T_VRK --> T_DNS --> T_TMP --> T_FWL
+    T_PVE["🗂️ EXAPVEVRK001<br/>Proxmox VE Node On The VRACK Provisioning Network (2026-0...<br/>192.168.139.5"]
+    T_VRK --> T_DNS --> T_TMP --> T_FWL --> T_PVE
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DNS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TMP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:VRK:END
 ```
