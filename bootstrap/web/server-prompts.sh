@@ -4,6 +4,13 @@
 # Solarized dark, glaucoma-friendly. High contrast, muted but distinct colours.
 # =============================================================================
 #
+# 2026-08-01 (Robert): also carries the same ls/grep colour aliases as the zsh
+# sibling script, for consistency between bash and zsh sessions on the same
+# node. See server-prompts.zsh's own 2026-08-01 note for the fuller rationale
+# (this script's zsh sibling is now the single home for shell quality-of-life
+# config, not a second competing ~/.zshrc). No fg() shim here -- bash already
+# accepts a bare job number (fg 1), only zsh needs the %1 translation.
+#
 # WHAT IT DOES
 #   Sets PS1 to colour-coded   user@host[path]$   based on:
 #     - environment (production / staging / unknown)
@@ -70,6 +77,13 @@
 #     printf '\e[0m\n'
 #
 # =============================================================================
+
+# ---------------------------------------------------------------
+# Aliases
+# ---------------------------------------------------------------
+alias ls='ls --color=auto'
+alias ll='ls -lah'
+alias grep='grep --color=auto'
 
 # ---------------------------------------------------------------
 # Detect environment - checks Ansible-managed marker files

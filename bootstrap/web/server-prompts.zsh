@@ -4,6 +4,18 @@
 # Solarized dark, glaucoma-friendly. High contrast, muted but distinct colours.
 # =============================================================================
 #
+# 2026-08-01 (Robert): also the single home for general zsh shell quality-of-life
+# (history, PuTTY-safe keybindings, completion, ls/grep colours, the bash-compat
+# fg() shim) -- these used to live in a second, separately-deployed ~/.zshrc
+# (ansible/playbooks/linux/tools.yml), which is how a real bug happened: that
+# file's own promptinit call collided with this script's set_prompt() (same
+# function name, different purpose -- whichever got defined last in the shell
+# startup chain won). Rather than keep two systems that can fight over the same
+# shell, this is now the only one -- deployed system-wide at first boot
+# (bootstrap/web/late_command.sh, into /etc/zsh/zshrc, covers every shell on the
+# node including `sudo -s`) and kept in sync afterward by
+# ansible/playbooks/linux/tools.yml the same way create-vm.py etc. already are.
+#
 # WHAT IT DOES
 #   Sets PROMPT to colour-coded   user@host[path]$   based on:
 #     - environment (production / staging / unknown)
@@ -93,6 +105,61 @@
 #     interpreted by zsh at draw time.
 #
 # =============================================================================
+
+# ---------------------------------------------------------------
+# History
+# ---------------------------------------------------------------
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+
+# ---------------------------------------------------------------
+# Key bindings -- emacs mode, PuTTY noodle-build-safe arrow/word movement.
+# Real live fix, not guessed -- noodle build sends escape sequences the zsh
+# defaults don't recognise.
+# ---------------------------------------------------------------
+bindkey -e
+bindkey "\e[1~" beginning-of-line
+bindkey "\e[4~" end-of-line
+bindkey '^[[D' backward-char
+bindkey '^[[C' forward-char
+bindkey '^[OD' backward-char
+bindkey '^[OC' forward-char
+bindkey "\e[1;5C" forward-word
+bindkey "\e[1;5D" backward-word
+
+# ---------------------------------------------------------------
+# Completion
+# ---------------------------------------------------------------
+zstyle ':completion:*' menu select
+autoload -Uz compinit
+compinit -u
+
+# ---------------------------------------------------------------
+# Bash-like fg compatibility -- bash accepts a bare job number (fg 1), zsh
+# requires %1. Only needed here, not in the bash sibling script.
+# ---------------------------------------------------------------
+fg() {
+  if [[ "$*" =~ ^[0-9]+$ ]]; then
+    builtin fg %"$*"
+  else
+    builtin fg "$@"
+  fi
+}
+
+# ---------------------------------------------------------------
+# Aliases
+# ---------------------------------------------------------------
+alias ls='ls --color=auto'
+alias ll='ls -lah'
+alias grep='grep --color=auto'
+
+# ---------------------------------------------------------------
+# Shell behaviour
+# ---------------------------------------------------------------
+setopt CHECK_JOBS
+setopt CHECK_RUNNING_JOBS
+setopt interactive_comments
 
 # ---------------------------------------------------------------
 # Detect environment - checks Ansible-managed marker files

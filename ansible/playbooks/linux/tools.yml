@@ -159,10 +159,14 @@
 #               last in the shell startup chain wins. server-prompts.zsh is already wired into
 #               /etc/zsh/zshrc SYSTEM-WIDE at first boot by bootstrap/web/late_command.sh (covers
 #               every shell on the node, including `sudo -s`) -- that global copy was never
-#               broken, only this per-user one ever collided with it. Robert: "we don't need to
-#               provision our own zshrc... use the global one, which works just fine." Disabled
-#               the "Deploy .zshrc to all user home directories" task -- commented out, not
-#               deleted, in case per-user zsh customisation is wanted again later.
+#               broken, only this per-user one ever collided with it. Disabled the "Deploy
+#               .zshrc to all user home directories" task -- commented out, not deleted, in
+#               case per-user zsh customisation is wanted again later. Robert, same day, second
+#               pass: rather than just walk away from the collision, folded files/zshrc's
+#               genuinely useful content (bindkeys, compinit, ls/grep aliases, fg() shim,
+#               HISTFILE) INTO server-prompts.zsh/.sh instead, and added a task to deploy/
+#               refresh both from the git checkout on every run -- one system-wide,
+#               Ansible-kept-in-sync shell config instead of two that can fight each other.
 
 - import_playbook: ../ssh_preflight_with_fallback.yml
 
@@ -584,14 +588,17 @@
     # EXADNSVRK001: this file's promptinit/ZSH_THEME (fixed 2026-08-01, v1.13) collided
     # with bootstrap/web/server-prompts.zsh's own set_prompt() function -- same name,
     # different purpose, whichever gets (re)defined last in the shell startup chain wins.
-    # server-prompts.zsh is already wired into /etc/zsh/zshrc SYSTEM-WIDE at first boot
-    # by bootstrap/web/late_command.sh (covers every shell on the node, including
-    # `sudo -s`, per docs/bootstrap/bootstrapping.md) -- that global copy was never
-    # broken, only this per-user one calling promptinit ever collided with it. Robert:
-    # "we don't need to provision our own zshrc... use the global one, which works just
-    # fine." files/zshrc and this task are kept, commented out rather than deleted, in
-    # case a genuine need for per-user zsh customisation comes up again -- re-enabling
-    # would need the promptinit/ZSH_THEME removal (already done, v1.13) to stay in place.
+    # Rather than keep two systems that can fight over the same shell, Robert's call: fold
+    # this file's genuinely useful content (bindkeys, compinit, ls/grep aliases, the fg()
+    # shim, HISTFILE) INTO server-prompts.zsh/.sh instead (done, same day) -- those are
+    # already wired into /etc/zsh/zshrc + /etc/bash.bashrc SYSTEM-WIDE at first boot by
+    # bootstrap/web/late_command.sh (covers every shell on the node, including `sudo -s`),
+    # and are now kept in sync afterward by the "Deploy server-prompts scripts" task below,
+    # the same way create-vm.py etc. already are. files/zshrc and this task are kept,
+    # commented out rather than deleted, in case a genuine need for a SEPARATE per-user
+    # zsh config comes up again -- re-enabling would need the promptinit/ZSH_THEME removal
+    # (already done, v1.13) to stay in place, and would reintroduce the same two-systems
+    # risk unless whatever it's for doesn't overlap with server-prompts.zsh/.sh.
     #
     # - name: Deploy .zshrc to all user home directories
     #   ansible.builtin.copy:
@@ -604,6 +611,17 @@
     #   when: item.value[4] is match('^/home/')
     #   loop_control:
     #     label: "{{ item.key }}"
+
+    - name: Deploy server-prompts scripts (system-wide shell prompt + QoL config)
+      ansible.builtin.copy:
+        src:  "{{ playbook_dir }}/../../../bootstrap/web/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - server-prompts.zsh
+        - server-prompts.sh
 
     - name: Configure systemd-journald — vacuum period and max size
       ansible.builtin.lineinfile:
