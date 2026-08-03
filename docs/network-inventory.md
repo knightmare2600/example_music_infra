@@ -284,18 +284,25 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 #### EDI — Edinburgh
 **LAN:** `192.168.131.0/24` · **Domain:** `example.org` / `example.net`
 
-> ⚠️ `EXADCSEDI003` — DFSR stopped, C: drive at 5% free space. Requires immediate attention.
+> This site also has legacy-naming domain controllers pending rebuild/decommission
+> (`EXADCREDI002`/`EXADCREDI003`) — not shown below (this section covers current/live
+> infrastructure only), see `docs/network-diagram/scotland.md`'s Old Network section for
+> EDI and `at_have_ryggen_fri/check_dcr_devices.py`'s output for current status.
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXARTREDI001` | Router | Cisco ISR 4331 | `192.168.131.254` | WAN edge |
+| `EXARTREDI001` | Router | Cisco ISR 4331 | `192.168.131.1` | WAN edge |
+| `EXAFWLEDI001` | Firewall | Debian Linux (PVE VM) | `192.168.131.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWIEDI001` | Switch | Cisco Catalyst 2960X | `192.168.131.250` | Floor switch |
 | `EXASWIEDI002` | Switch | Cisco Catalyst 2960X | `192.168.131.251` | 48-port |
-| `EXARACEDI001` | iDRAC | Dell iDRAC9 | `192.168.131.2` | BMC |
-| `EXADCSEDI003` | DC | Windows Server 2022 | `192.168.131.11` | ⚠️ UNHEALTHY — DFSR stopped, C: 5% free |
-| `EXASBCEDI001` | VOIP SBC | 3CX SBC Debian | `192.168.131.48` | Trunks to `EXAPBXCLD001` |
+| `EXABMCEDI001` | BMC | — | `192.168.131.2` | Standard BMC slot 1 |
+| `EXAPVEEDI001` | Proxmox | — | `192.168.131.5` | PVE node 1 |
+| `EXADCSEDI001` | DC | — | `192.168.131.10` | Domain Controller |
+| `EXASBCEDI001` | VOIP SBC | — | `192.168.131.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASEDI001` | NAS | — | `192.168.131.19` | Standard NAS slot |
+| `EXARDREDI001` | Badge reader | — | `192.168.131.21` | Standard RDR slot |
 
 **Endpoints:**
 
@@ -304,7 +311,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 | `EXAWKSEDI001` | Workstation | Windows 10 Pro 22H2 | `192.168.131.150` | Shared desktop |
 | `EXALAPEDI098` | Laptop | Windows 11 Pro 24H2 | `192.168.131.108` | Pool laptop |
 
-**WAPs:** `EXAWAPEDI001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPEDI001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
 **IoT:** `EXATEAEDI001` — Siemens EQ700 Coffee Machine (`192.168.131.60`)
 
@@ -313,11 +320,24 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 #### GLA — Glasgow
 **LAN:** `192.168.141.0/24` · **Domain:** `example.net`
 
+> This site also has a legacy-naming domain controller (`EXADCRGLA001`, Schema/Domain Naming
+> Master, PDC Emulator) — not shown below (this section covers current/live infrastructure
+> only), see `docs/network-diagram/scotland.md`'s Old Network section for GLA.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCRGLA001` | DC | Windows Server 2022 | `192.168.141.10` | Schema Master · Domain Naming Master · PDC Emulator |
+| `EXARTRGLA001` | Router | — | `192.168.141.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLGLA001` | Firewall | Debian Linux (PVE VM) | `192.168.141.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIGLA001` | Switch | — | `192.168.141.250` | Standard SWI slot 1 |
+| `EXABMCGLA001` | BMC | — | `192.168.141.2` | Standard BMC slot 1 |
+| `EXAPVEGLA001` | Proxmox | — | `192.168.141.5` | PVE node 1 |
+| `EXADCSGLA001` | DC | — | `192.168.141.10` | Domain Controller |
+| `EXASBCGLA001` | VOIP SBC | — | `192.168.141.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASGLA001` | NAS | — | `192.168.141.19` | Standard NAS slot |
+| `EXARDRGLA001` | Badge reader | — | `192.168.141.21` | Standard RDR slot |
+| `EXAPRNGLA001` | Printer | HP LaserJet Pro | `192.168.141.16` | Main floor printer |
 
 **Endpoints:**
 
@@ -326,43 +346,62 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 | `EXAWKSGLA001` | Workstation | Windows 11 Pro | `192.168.141.150` | Hot desk |
 | `EXAWKSGLA002` | Workstation | Windows 11 Pro | `192.168.141.151` | Hot desk |
 | `EXALAPGLA001` | Laptop | Windows 11 Pro | `192.168.141.152` | Pool device |
-| `EXAPGLAGLA001` | Printer | HP LaserJet Pro | `192.168.141.16` | Main floor |
+
+**WAPs:** `EXAWAPGLA001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
 #### CLY — Clydebank
 **LAN:** `192.168.41.0/24` · **Domain:** `example.net`
 
+> This site also has legacy-naming domain controllers (`EXADCRCLY001`/`EXADCRCLY002`,
+> Primary/Secondary — neither ever had a host built) — not shown below (this section covers
+> current/live infrastructure only), see `docs/network-diagram/scotland.md`'s Old Network
+> section for CLY.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXAFWLCLY001` | Firewall | FortiOS 7.6.5 | `192.168.41.1` | VPN gateway |
+| `EXARTRCLY001` | Router | FortiOS 7.6.5 | `192.168.41.1` | WAN edge |
+| `EXAFWLCLY001` | Firewall | Debian Linux (PVE VM) | `192.168.41.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWICLY001` | Switch | Cisco Catalyst 9300 | `192.168.41.250` | Core switch |
-| `EXARTRCLY001` | Router | Cisco ISR 4331 | `192.168.41.254` | WAN edge |
-| `EXARACLY001` | iLO | HPE iLO5 | `192.168.41.2` | BMC |
-| `EXADCSCLY001` | DC | Windows Server 2022 | `192.168.41.10` | Global Catalog |
-| `EXADCSCLY002` | DC | Windows Server 2022 | `192.168.41.11` | Global Catalog |
+| `EXABMCCLY001` | BMC | — | `192.168.41.2` | Standard BMC slot 1 |
+| `EXAPVECLY001` | Proxmox | — | `192.168.41.5` | PVE node 1 |
+| `EXADCSCLY001` | DC | — | `192.168.41.10` | Domain Controller |
 | `EXASRVCLY001` | Server | Rocky Linux | `192.168.41.20` | Oracle DB |
-| `EXASBCCLY001` | VOIP SBC | 3CX SBC Debian | `192.168.41.48` | Trunks to `EXAPBXCLD001` |
+| `EXASBCCLY001` | VOIP SBC | — | `192.168.41.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASCLY001` | NAS | — | `192.168.41.19` | Standard NAS slot |
+| `EXARDRCLY001` | Badge reader | — | `192.168.41.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPCLY001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPCLY001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
-**Endpoints:** `EXASURCLY001` (Surface), `EXAPHNCLY001` (iOS), `EXASURCLY002` (Android tablet)
+**Endpoints:** `EXASURCLY001` (Surface), `EXAPHNCLY001` (iOS), `EXATABCLY001` (Android tablet)
 
 ---
 
 #### DUN — Dundee
 **LAN:** `192.168.138.0/24` · **Domain:** `example.net`
 
+> This site also has a legacy-naming domain controller (`EXADCRDUN001`, Windows Server 2003,
+> unmaintained) — not shown below (this section covers current/live infrastructure only), see
+> `docs/network-diagram/scotland.md`'s Old Network section for DUN.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXARTRDUN001` | Router | Cisco ISR 4331 | `192.168.138.254` | WAN edge |
-| `EXADCSDUN001` | DC | Windows Server 2022 | `192.168.138.10` | Global Catalog |
+| `EXARTRDUN001` | Router | Cisco ISR 4331 | `192.168.138.1` | WAN edge |
+| `EXAFWLDUN001` | Firewall | Debian Linux (PVE VM) | `192.168.138.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIDUN001` | Switch | — | `192.168.138.250` | Standard SWI slot 1 |
+| `EXABMCDUN001` | BMC | — | `192.168.138.2` | Standard BMC slot 1 |
+| `EXAPVEDUN001` | Proxmox | — | `192.168.138.5` | PVE node 1 |
+| `EXADCSDUN001` | DC | — | `192.168.138.10` | Domain Controller |
+| `EXASBCDUN001` | VOIP SBC | — | `192.168.138.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASDUN001` | NAS | — | `192.168.138.19` | Standard NAS slot |
+| `EXARDRDUN001` | Badge reader | — | `192.168.138.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPDUN001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPDUN001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
 **Endpoints:** `EXASURDUN001–002` (Surface/Win11), `EXAPHNDUN001–002` (iOS)
 
@@ -371,32 +410,56 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 #### PER — Perth
 **LAN:** `192.168.173.0/24` · **Domain:** `example.net`
 
+> This site also has a legacy-naming domain controller (`EXADCRPER001`, physical HP ML310e,
+> never switched on) — not shown below (this section covers current/live infrastructure only),
+> see `docs/network-diagram/scotland.md`'s Old Network section for PER.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSPER001` | DC | Windows Server 2022 | `192.168.173.10` | Global Catalog |
-| `EXASBCPER001` | VOIP SBC | 3CX SBC Debian | `192.168.173.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRPER001` | Router | — | `192.168.173.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLPER001` | Firewall | Debian Linux (PVE VM) | `192.168.173.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIPER001` | Switch | — | `192.168.173.250` | Standard SWI slot 1 |
+| `EXABMCPER001` | BMC | — | `192.168.173.2` | Standard BMC slot 1 |
+| `EXAPVEPER001` | Proxmox | — | `192.168.173.5` | PVE node 1 |
+| `EXADCSPER001` | DC | — | `192.168.173.10` | Domain Controller |
+| `EXASBCPER001` | VOIP SBC | — | `192.168.173.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASPER001` | NAS | — | `192.168.173.19` | Standard NAS slot — the old Synology at `.50` this doc previously listed is retired |
+| `EXARDRPER001` | Badge reader | — | `192.168.173.21` | Standard RDR slot |
 | `EXANIXPER001` | Unix | Solaris 11.5 | `192.168.173.40` | MIDI/Music archive — Fiction Factory |
-| `EXANASPER001` | NAS | Synology DSM 7.1 | `192.168.173.50` | User profiles & music archive |
+| `EXAPRNPER001` | Printer | HP MFP | `192.168.173.20` | — |
 
-**Endpoints:** `EXAMBPPER001` (MacBook Pro), `EXASURPER001` (Surface), `EXAPHNPER001–004` (Yealink T46G)
+**WAPs:** `EXAWAPPER001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
-**IoT:** `EXAPRNPER001` (HP MFP), `EXAVNDPER001` (Scone Palace vending — Embedded SP100)
+**Endpoints:** `EXAMBPPER001` (MacBook), `EXASURPER001` (Surface), `EXAPHNPER001–004` (Yealink T46G)
+
+**IoT:** `EXAVNDPER001` (Scone Palace vending — Embedded SP100)
 
 ---
 
 #### ABD — Aberdeen
 **LAN:** `192.168.224.0/24` · **Domain:** `example.org`
 
+> This site also has a legacy-naming domain controller (`EXADCRABD001`, Windows Server 2008R2,
+> bare metal, no hypervisor layer) — not shown below (this section covers current/live
+> infrastructure only), see `docs/network-diagram/scotland.md`'s Old Network section for ABD.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXAFWLABD001` | Firewall | Cisco ASA 5506-X | `192.168.224.1` | Edge firewall |
-| `EXARTRABD001` | Router | Cisco ISR 4331 | `192.168.224.254` | WAN edge |
+| `EXARTRABD001` | Router | Cisco ASA 5506-X | `192.168.224.1` | WAN edge |
+| `EXAFWLABD001` | Firewall | Debian Linux (PVE VM) | `192.168.224.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIABD001` | Switch | — | `192.168.224.250` | Standard SWI slot 1 |
+| `EXABMCABD001` | BMC | — | `192.168.224.2` | Standard BMC slot 1 |
+| `EXAPVEABD001` | Proxmox | — | `192.168.224.5` | PVE node 1 |
+| `EXADCSABD001` | DC | — | `192.168.224.10` | Domain Controller |
+| `EXASBCABD001` | VOIP SBC | — | `192.168.224.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASABD001` | NAS | — | `192.168.224.19` | Standard NAS slot |
+| `EXARDRABD001` | Badge reader | — | `192.168.224.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPABD001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPABD001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
 **Endpoints:** `EXAMBPABD001–002` (MacBooks), `EXAPHNABD001–002` (iPhones)
 
