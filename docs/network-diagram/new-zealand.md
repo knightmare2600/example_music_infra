@@ -30,7 +30,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRAKL001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.93.1"]
+    O_RTR["📡 EXARTRAKL001<br/>FortiGate 7.x, router/firewall combo<br/>192.168.93.1"]
     O_INET --> O_RTR
     O_SW1["🔀 EXASWIAKL001<br/>Cisco 9300<br/>192.168.93.250"]
     O_SW2["🔀 EXASWIAKL002<br/>Cisco 2960<br/>192.168.93.251"]
