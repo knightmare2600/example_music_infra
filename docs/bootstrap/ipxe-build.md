@@ -5,6 +5,7 @@
 | Date | Change |
 |---|---|
 | 2026-03-03 | Initial document — dual-console build (VGA + serial), config/local override, deployment to Proxmox storage |
+| 2026-08-03 | Corrected against the real repo, found stale during a full docs/ audit: the embedded script is `bootstrap.ipxe`, not the `proxmox.ipxe` this document previously named throughout (that filename doesn't exist anywhere in this repo — see `docs/bootstrap/bootstrapping.md` §4.3 for the real, current build transcript). The deployed ISO's real naming convention is `ipxe_amd64.iso`/`ipxe_arm64.iso` (confirmed against `bootstrap/web/proxmox/create-vm.py`'s auto-select logic, which matches on those substrings), not the `ipxe-proxmox.iso` previously used here. Also: Proxmox VE itself is **no longer installed via this iPXE chain at all** (abandoned 2026-07-18, see `bootstrapping.md` §4.5/§6.3 — a plain Proxmox ISO is mounted via BMC virtual media and `select-pve-answer.sh` run manually instead). This ISO is still real and still used — for booting *guest* VMs (Debian, Windows via WinPE, etc.) through `menu.ipxe` — the general iPXE-build mechanics below (dual console, `config/local/` override) are unaffected by any of this; treat `bootstrapping.md` §4.3 as the authoritative build procedure if this doc and that one ever disagree. |
 
 
 **Example Music Limited — Internal Infrastructure**
@@ -15,7 +16,14 @@ This runbook covers building a custom iPXE ISO with an embedded boot script, inc
 
 ## Background
 
-The iPXE ISO attached to every VM at creation time (`ide2`) is a custom build with the `proxmox.ipxe` script baked in. When the VM boots cold with an empty disk, it falls through to the ISO, runs the script, and chainloads the Proxmox automated installer from `http://192.168.139.50`.
+> **Correction (2026-08-03):** the embedded script referenced throughout this document as
+> `proxmox.ipxe` is really `bootstrap.ipxe` — see the changelog above. "Chainloads the Proxmox
+> automated installer" below is also stale: Proxmox VE is installed via BMC virtual media +
+> `select-pve-answer.sh` now, not PXE chainload (`bootstrapping.md` §4.5/§6.3) — this ISO's
+> current real job is booting *guest* VMs (Debian, Windows, etc.) through `menu.ipxe`, not
+> installing Proxmox VE itself.
+
+The iPXE ISO attached to every VM at creation time (`ide2`) is a custom build with the `bootstrap.ipxe` script baked in. When the VM boots cold with an empty disk, it falls through to the ISO, runs the script, and chains to `menu.ipxe` for whichever OS is being installed on that VM.
 
 > **Fredericia Havn note:** `192.168.139.50` throughout this doc is Edinburgh's provisioning
 > server. If you're building/deploying at Fredericia Havn instead, it's `172.16.124.1:8000`
@@ -108,12 +116,12 @@ cat config/local/console.h
 ## Building the ISO
 
 Run this from the `src/` directory. Adjust the `EMBED` path to wherever your
-`proxmox.ipxe` script lives.
+`bootstrap.ipxe` script lives.
 
 ```bash
 cd /path/to/ipxe/src
 
-make bin/ipxe.iso EMBED=/path/to/proxmox/proxmox.ipxe
+make bin/ipxe.iso EMBED=/path/to/proxmox/bootstrap.ipxe
 ```
 
 The build takes 1–3 minutes. Output will be `bin/ipxe.iso`.
@@ -123,7 +131,7 @@ The build takes 1–3 minutes. Output will be `bin/ipxe.iso`.
 ```bash
 cd /opt/ipxe/src
 
-make bin/ipxe.iso EMBED=/srv/www/proxmox/proxmox.ipxe
+make bin/ipxe.iso EMBED=/srv/www/proxmox/bootstrap.ipxe
 ```
 
 ### Confirming the build succeeded
@@ -140,30 +148,30 @@ ls -lh bin/ipxe.iso
 Copy the finished ISO to the Proxmox storage that `create-vm.py` presents at the ISO selection step. Typically this is the `local` storage ISO directory:
 
 ```bash
-scp bin/ipxe.iso root@192.168.139.50:/var/lib/vz/template/iso/ipxe-proxmox.iso
+scp bin/ipxe.iso root@192.168.139.50:/var/lib/vz/template/iso/ipxe_amd64.iso
 ```
 
 Or if building directly on the Proxmox node:
 
 ```bash
-cp bin/ipxe.iso /var/lib/vz/template/iso/ipxe-proxmox.iso
+cp bin/ipxe.iso /var/lib/vz/template/iso/ipxe_amd64.iso
 ```
 
 The script will enumerate available ISOs from that path — the new build will appear in the selection menu automatically.
 
-> **Naming convention:** `ipxe-proxmox.iso` — keep this consistent so existing
+> **Naming convention:** `ipxe_amd64.iso` — keep this consistent so existing
 > VMs that reference it by name are not broken when you rebuild.
 
 ---
 
 ## Rebuilding After Changes
 
-If `proxmox.ipxe` changes (e.g. new bootstrap server IP, new menu options), rebuild the ISO:
+If `bootstrap.ipxe` changes (e.g. new bootstrap server IP, new menu options), rebuild the ISO:
 
 ```bash
 cd /path/to/ipxe/src
-make bin/ipxe.iso EMBED=/path/to/proxmox/proxmox.ipxe
-scp bin/ipxe.iso root@192.168.139.50:/var/lib/vz/template/iso/ipxe-proxmox.iso
+make bin/ipxe.iso EMBED=/path/to/proxmox/bootstrap.ipxe
+scp bin/ipxe.iso root@192.168.139.50:/var/lib/vz/template/iso/ipxe_amd64.iso
 ```
 
 No other changes are needed. The `config/local/console.h` override persists and does not need to be recreated.
@@ -174,7 +182,7 @@ No other changes are needed. The `config/local/console.h` override persists and 
 cd /path/to/ipxe
 git pull
 cd src
-make bin/ipxe.iso EMBED=/path/to/proxmox/proxmox.ipxe
+make bin/ipxe.iso EMBED=/path/to/proxmox/bootstrap.ipxe
 ```
 
 The `config/local/` directory is not tracked by git and will not be touched by `git pull`. Your console override survives.
@@ -227,10 +235,10 @@ The `EMBED` path is wrong or the script has a syntax error. Check:
 
 ```bash
 # Verify script exists at the path you passed to EMBED
-ls -lh /path/to/proxmox/proxmox.ipxe
+ls -lh /path/to/proxmox/bootstrap.ipxe
 
 # Verify it starts with the iPXE shebang
-head -1 /path/to/proxmox/proxmox.ipxe
+head -1 /path/to/proxmox/bootstrap.ipxe
 # Should output: #!ipxe
 ```
 
@@ -252,8 +260,8 @@ EOF
 
 # Build
 cd /path/to/ipxe/src
-make bin/ipxe.iso EMBED=/path/to/proxmox/proxmox.ipxe
+make bin/ipxe.iso EMBED=/path/to/proxmox/bootstrap.ipxe
 
 # Deploy
-cp bin/ipxe.iso /var/lib/vz/template/iso/ipxe-proxmox.iso
+cp bin/ipxe.iso /var/lib/vz/template/iso/ipxe_amd64.iso
 ```

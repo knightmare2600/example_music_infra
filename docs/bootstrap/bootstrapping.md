@@ -1511,9 +1511,7 @@ After changing `bootstrap.ipxe`, the iPXE binary must be recompiled and redistri
 7. **ZFS** — if degraded install, add second disk: `zpool attach rpool sda sdb` once the disk arrives
 8. **Proceed** — run `ansible-playbook -i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml` per `first-boot.sh`'s own on-screen instructions (§6.1) — node is not fully onboarded until this completes
 
-   
+---
 
-   
-   
-
-   *Example Music Limited — Internal Infrastructure Documentation*   *Do not distribute outside the organisation*cloud
+*Example Music Limited — Internal Infrastructure Documentation*
+*Do not distribute outside the organisation*
