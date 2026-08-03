@@ -34,12 +34,12 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_FWL["🧱 EXAFWLSYD001<br/>FortiGate 7.x<br/>192.168.29.1"]
-    O_INET --> O_FWL
+    O_RTR["📡 EXARTRSYD001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.29.1"]
+    O_INET --> O_RTR
     O_SW1["🔀 EXASWISYD001<br/>Cisco 9300<br/>192.168.29.250"]
     O_SW2["🔀 EXASWISYD002<br/>Cisco 2960<br/>192.168.29.251"]
-    O_FWL --> O_SW1
-    O_FWL --> O_SW2
+    O_RTR --> O_SW1
+    O_RTR --> O_SW2
 
     O_RAC["🔧 EXARACSYD001<br/>Dell iDRAC9<br/>192.168.29.2"]
     O_ESX["💾 EXAESXSYD001<br/>Dell Server, VMware ESXi<br/>192.168.29.5"]
@@ -70,7 +70,7 @@ graph TD
     O_SW2 --> O_COF
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -220,12 +220,12 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_FWL["🧱 EXAFWLMEL001<br/>FortiGate 7.x<br/>192.168.61.1"]
-    O_INET --> O_FWL
+    O_RTR["📡 EXARTRMEL001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.61.1"]
+    O_INET --> O_RTR
     O_SW1["🔀 EXASWIMEL001<br/>Cisco 9300<br/>192.168.61.250"]
     O_SW2["🔀 EXASWIMEL002<br/>Cisco 2960<br/>192.168.61.251"]
-    O_FWL --> O_SW1
-    O_FWL --> O_SW2
+    O_RTR --> O_SW1
+    O_RTR --> O_SW2
 
     O_RAC["🔧 EXARACMEL001<br/>HPE iLO5<br/>192.168.61.2"]
     O_ESX["💾 EXAESXMEL001<br/>VMware ESXi<br/>192.168.61.5"]
@@ -256,7 +256,7 @@ graph TD
     O_SW2 --> O_NAS
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
