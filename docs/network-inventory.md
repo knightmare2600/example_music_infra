@@ -731,18 +731,25 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 #### CPH — København
 **LAN:** `192.168.231.0/24` · **Domain:** `example.com` / `example.net`
 
+> This site also has legacy-naming domain controllers (`EXADCRCPH001`/`EXADCRCPH002`,
+> example.com/example.net) — not shown below (this section covers current/live infrastructure
+> only), see `docs/network-diagram/danmark.md`'s Old Network section for CPH.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
+| `EXARTRCPH001` | Router | Cisco ISR 4331 | `192.168.231.1` | WAN edge |
+| `EXAFWLCPH001` | Firewall | Debian Linux (PVE VM) | `192.168.231.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWICPH001` | Switch | TP-Link JetStream | `192.168.231.250` | Office switch |
-| `EXARTRCPH001` | Router | Cisco ISR 4331 | `192.168.231.254` | WAN edge |
-| `EXARACCPH001` | iDRAC | Dell iDRAC9 | `192.168.231.2` | BMC |
-| `EXADCSCPH001` | DC | Windows Server 2022 | `192.168.231.10` | example.com |
-| `EXADCSCPH002` | DC | Windows Server 2022 | `192.168.231.11` | example.net |
-| `EXASBCCPH001` | VOIP SBC | 3CX SBC Debian | `192.168.231.48` | Trunks to `EXAPBXCLD001` |
+| `EXABMCCPH001` | BMC | — | `192.168.231.2` | Standard BMC slot 1 |
+| `EXAPVECPH001` | Proxmox | — | `192.168.231.5` | PVE node 1 |
+| `EXADCSCPH001` | DC | — | `192.168.231.10` | Domain Controller |
+| `EXASBCCPH001` | VOIP SBC | — | `192.168.231.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASCPH001` | NAS | — | `192.168.231.19` | Standard NAS slot |
+| `EXARDRCPH001` | Badge reader | — | `192.168.231.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPCPH001–003` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPCPH001–003` · Ubiquiti UniFi U6-Pro — static, `.82`–`.84`
 
 **IoT:** `EXACLKCPH001` (Meinberg LANTIME M300 NTP `192.168.231.18`), `EXATVSCPH001` (Bella Kronik 42X `192.168.231.17`)
 
@@ -751,63 +758,106 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 #### ODE — Odense
 **LAN:** `192.168.126.0/24` · **Domain:** `example.net`
 
+> This site also has legacy-naming domain controllers (`EXADCRODE001`/`EXADCRODE002`, PDC/RID/
+> Infra Master and Secondary) — not shown below (this section covers current/live infrastructure
+> only), see `docs/network-diagram/danmark.md`'s Old Network section for ODE.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXAFWLODE001` | Firewall | Cisco ASA 5506-X | `192.168.126.1` | Edge firewall |
-| `EXADCSODE001` | DC | Windows Server 2022 | `192.168.126.10` | PDC Emulator · RID Master · Infrastructure Master |
-| `EXADCSODE002` | DC | Windows Server 2022 | `192.168.126.11` | Global Catalog |
-| `EXASBCODE001` | VOIP SBC | 3CX SBC Debian | `192.168.126.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRODE001` | Router | Cisco ASA 5506-X | `192.168.126.1` | WAN edge |
+| `EXAFWLODE001` | Firewall | Debian Linux (PVE VM) | `192.168.126.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIODE001` | Switch | — | `192.168.126.250` | Standard SWI slot 1 |
+| `EXASWIODE002` | Switch | — | `192.168.126.251` | Second switch — confirmed real, vendor/model TBD |
+| `EXABMCODE001` | BMC | — | `192.168.126.2` | Standard BMC slot 1 |
+| `EXAPVEODE001` | Proxmox | — | `192.168.126.5` | PVE node 1 |
+| `EXADCSODE001` | DC | — | `192.168.126.10` | Domain Controller |
+| `EXASBCODE001` | VOIP SBC | — | `192.168.126.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASODE001` | NAS | — | `192.168.126.19` | Standard NAS slot |
+| `EXARDRODE001` | Badge reader | — | `192.168.126.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPODE001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPODE001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
 **Endpoints:** `EXAMACODE001` (iMac macOS Tahoe), `EXAMBPODE002` (MacBook Pro)
 
-**IoT:** `EXAMUSODE001` — Pureline 128V Retro Vinyl Jukebox (`192.168.126.60`) *(First Hotel Grand Odense)*
+**IoT:** `EXAMUSODE001` — Jukebox (`192.168.126.60`)
 
 ---
 
 #### KGE — Køge
 **LAN:** `192.168.65.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSKGE001` — replication warning, last sync 27 days ago. Windows Server 2016 (EOL). Disk space low.
+> This site also has a legacy-naming domain controller (`EXADCRKGE001`, WS2016 EOL, 27 days out
+> of sync, disk space low, bare metal) — not shown below (this section covers current/live
+> infrastructure only), see `docs/network-diagram/danmark.md`'s Old Network section for KGE.
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSKGE001` | DC | Windows Server 2016 | `192.168.65.10` | ⚠️ Out of sync · EOL OS |
+| `EXARTRKGE001` | Router | — | `192.168.65.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLKGE001` | Firewall | Debian Linux (PVE VM) | `192.168.65.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIKGE001` | Switch | — | `192.168.65.250` | Standard SWI slot 1 |
+| `EXABMCKGE001` | BMC | — | `192.168.65.2` | Standard BMC slot 1 |
+| `EXAPVEKGE001` | Proxmox | — | `192.168.65.5` | PVE node 1 |
+| `EXADCSKGE001` | DC | — | `192.168.65.10` | Domain Controller |
+| `EXASBCKGE001` | VOIP SBC | — | `192.168.65.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASKGE001` | NAS | — | `192.168.65.19` | Standard NAS slot |
+| `EXARDRKGE001` | Badge reader | — | `192.168.65.21` | Standard RDR slot |
+| `EXAPRNKGE001` | Printer | HP LaserJet MFP M528 | `192.168.65.16` | — |
 
-**WAPs:** `EXAWAPKGE001` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
-
-**Other:** `EXAPRNKGE001` (HP LaserJet MFP M528)
+**WAPs:** `EXAWAPKGE001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
 #### FAX — Faxe
 **LAN:** `192.168.246.0/24` · **Domain:** `example.net`
 
+> This site also has a legacy-naming domain controller (`EXADCRFAX001`, present but never used,
+> bare metal) — not shown below (this section covers current/live infrastructure only), see
+> `docs/network-diagram/danmark.md`'s Old Network section for FAX.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXARTFFAX001` | Router | Cisco ISR 4331 | `192.168.246.254` | WAN edge |
-| `EXADCSFAX001` | DC | Windows Server 2022 | `192.168.246.10` | — |
+| `EXARTRFAX001` | Router | Cisco ISR 4331 | `192.168.246.1` | WAN edge |
+| `EXAFWLFAX001` | Firewall | Debian Linux (PVE VM) | `192.168.246.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIFAX001` | Switch | — | `192.168.246.250` | Standard SWI slot 1 |
+| `EXABMCFAX001` | BMC | — | `192.168.246.2` | Standard BMC slot 1 |
+| `EXAPVEFAX001` | Proxmox | — | `192.168.246.5` | PVE node 1 |
+| `EXADCSFAX001` | DC | — | `192.168.246.10` | Domain Controller |
+| `EXASBCFAX001` | VOIP SBC | — | `192.168.246.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASFAX001` | NAS | — | `192.168.246.19` | Standard NAS slot |
+| `EXARDRFAX001` | Badge reader | — | `192.168.246.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPFAX001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPFAX001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
 ---
 
 #### KOR — Korsør
 **LAN:** `192.168.238.0/24` · **Domain:** `example.net`
 
+> This site also has a legacy-naming domain controller (`EXADCRKOR001`, HP ML310e, bare metal)
+> — not shown below (this section covers current/live infrastructure only), see
+> `docs/network-diagram/danmark.md`'s Old Network section for KOR.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSKOR001` | DC | Windows Server 2022 | `192.168.238.10` | — |
-| `EXASBCKOR001` | VOIP SBC | 3CX SBC Debian | `192.168.238.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRKOR001` | Router | — | `192.168.238.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLKOR001` | Firewall | Debian Linux (PVE VM) | `192.168.238.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIKOR001` | Switch | — | `192.168.238.250` | Standard SWI slot 1 |
+| `EXABMCKOR001` | BMC | — | `192.168.238.2` | Standard BMC slot 1 |
+| `EXAPVEKOR001` | Proxmox | — | `192.168.238.5` | PVE node 1 |
+| `EXADCSKOR001` | DC | — | `192.168.238.10` | Domain Controller |
+| `EXASBCKOR001` | VOIP SBC | — | `192.168.238.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASKOR001` | NAS | — | `192.168.238.19` | Standard NAS slot |
+| `EXARDRKOR001` | Badge reader | — | `192.168.238.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPKOR001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
