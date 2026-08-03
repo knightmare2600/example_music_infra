@@ -5,6 +5,11 @@
 **Last Updated:** 2026-03-05  
 **Signed off by:** ___________________________  Date: ___________
 
+> **Status: no longer planned.** Robert confirmed (2026-07-30) that Rudder is not in use on the
+> live network and rollout is not planned: "we tried this and here's some code if you want it
+> but we're not using it." This buildsheet and the automation it describes are kept as reference
+> material, not a build-in-progress — see `management/rudder-setup.md` for the fuller note.
+
 ---
 
 ## Standard Build Reference

@@ -12,7 +12,15 @@
 
 ### Unattend XML
 Use `autounattend2022.xml` or `autounattend_2022gui.xml` from `C:\DeployTools\unattend_xml\`  
-DeployTools share: `\\EXADCSCPH001\DeployTools` (Z: drive — mapped by `PostOOBE.cmd` as `JUKEBOX\Administrator`)
+
+> **Correction (2026-08-03):** the real, current `PostOOBE.cmd` does **not** map a `Z:` drive —
+> it runs `Join-DomainAndBootstrap.ps1` directly from a hardcoded UNC path (`\\DC01\deploytools\`),
+> no credential env var, no unmap step. Also: `PostOOBE.cmd`'s `\\DC01\deploytools\` and the
+> script's own `$DeployToolsShare` (`\\EXADCSCPH001\DeployTools`) are two different, unreconciled
+> UNC paths — `DC01` doesn't follow this estate's `EXA*` convention and no `DCS` host is defined
+> for `CPH` in `devices.csv`. See `docs/bootstrap/bootstrapping.md` §8.1 for the full detail —
+> this whole path is also a historical artefact, superseded by `windows_bootstrap`, not a live
+> build procedure any more.
 
 ### Windows Optional Features
 ```powershell
@@ -198,6 +206,15 @@ that report is complete and signed off.
 > Do not propagate legacy names into new DNS records, AD objects, or documentation.
 
 ### DCR → DCS (Legacy Regional DCs — Rebuild in Progress)
+
+> **Table below is a stale, incomplete snapshot (found 2026-08-03) — only 8 sites listed.**
+> `at_have_ryggen_fri/run.sh` section 29 (`check_dcr_devices.py`) is the live, authoritative
+> source: it found **38 real `EXADCR*` devices across ~30 sites** the same session this note
+> was added — CPH (x2), ODE (x2), TOR (x2), KGE, FAX, KOR, AAR, BON, BER, MEL, SYD, AKL, DUN,
+> PER, ABD, CLY (x2), HAL, HUL, SHE, LAX, NYC, BRK, FAL (x2), and more, on top of the 8 below.
+> Run that check for the current, complete list and each device's real notes/status rather than
+> trusting this table as exhaustive — it was not kept in sync as new sites' legacy DCR devices
+> were discovered in `devices.csv`.
 
 The following DCs exist under the legacy `EXADCR*` naming scheme. They are functional but  
 will be replaced by new `EXADCS*` builds as part of this rollout. Until decommissioned,  
