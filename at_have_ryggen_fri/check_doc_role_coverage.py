@@ -154,6 +154,27 @@ def bounded_section(path: Path, start_pattern: str, end_pattern: str) -> str:
     return rest[:end.start()] if end else rest
 
 
+RANGE_MENTION_RE = re.compile(r'(EXA[A-Z]{3}[A-Z]{3})(\d{3})[-–](\d{3})')
+
+
+def expand_range_mentions(text: str) -> set:
+    """Several docs deliberately group consecutive same-Type devices into one grouped mention
+    instead of listing every hostname individually (e.g. 'EXAWAPFAL001-006', or two ranges in one
+    line: 'EXAPHNFAL001-003 EXAPHNFAL006-007') -- both an en dash and a plain hyphen show up across
+    the real docs. A literal substring check against every real hostname false-positives on every
+    one of these (found live 2026-08-04, checking FAL specifically: EXAWAPFAL002-006 flagged
+    'missing' when the doc already covers them via 'EXAWAPFAL001-006'). Expands every such mention
+    in a block of text into the individual hostnames it implies, so those count as covered."""
+    covered = set()
+    for prefix, start, end in RANGE_MENTION_RE.findall(text):
+        start_n, end_n = int(start), int(end)
+        if end_n < start_n or end_n - start_n > 100:
+            continue  # not a real range (or a false match on unrelated dashed digits) -- skip
+        for n in range(start_n, end_n + 1):
+            covered.add(f"{prefix}{n:03d}")
+    return covered
+
+
 def check_per_site(real_by_site, doc_sections, doc_label):
     """Returns (checked_count, findings) for one file's per-site header coverage."""
     checked = 0
@@ -162,7 +183,9 @@ def check_per_site(real_by_site, doc_sections, doc_label):
         if site not in doc_sections:
             continue
         checked += 1
-        missing = sorted(h for h in hostnames if h not in doc_sections[site])
+        section = doc_sections[site]
+        covered_by_range = expand_range_mentions(section)
+        missing = sorted(h for h in hostnames if h not in section and h not in covered_by_range)
         if missing:
             findings.append((site, missing))
     return checked, findings
@@ -172,7 +195,8 @@ def check_combined_section(hostnames, section_text, label):
     """Returns sorted missing hostnames from one bounded section (CLD's combined coverage)."""
     if not section_text:
         return None  # section not found at all -- different problem, not this check's job
-    return sorted(h for h in hostnames if h not in section_text)
+    covered_by_range = expand_range_mentions(section_text)
+    return sorted(h for h in hostnames if h not in section_text and h not in covered_by_range)
 
 
 def main():
