@@ -116,7 +116,7 @@ graph TD
     T_WAP2["📶 EXAWAPCPH002<br/>Wireless Access Point<br/>192.168.231.83"]
     T_WAP3["📶 EXAWAPCPH003<br/>Wireless Access Point<br/>192.168.231.84"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2 --> T_WAP3
-    T_DCS["🗝️ EXADCRCPH001<br/>DCS 1<br/>192.168.231.10"]
+    T_DCS["🗝️ EXADCSCPH001<br/>DCS 1<br/>192.168.231.10"]
     T_SBC["🛡️ EXASBCCPH001<br/>SBC<br/>192.168.231.48"]
     T_FWL["🧱 EXAFWLCPH001<br/>LAN Face<br/>192.168.231.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -290,13 +290,13 @@ graph TD
     T_WAP["📶 EXAWAPODE001<br/>WAP 1<br/>192.168.126.82"]
     T_WAP2["📶 EXAWAPODE002<br/>Wireless Access Point<br/>192.168.126.83"]
     T_SWI --> T_NAS --> T_RDR --> T_MUS --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCRODE001<br/>DCS 1<br/>192.168.126.10"]
+    T_DCS["🗝️ EXADCSODE001<br/>DCS 1<br/>192.168.126.10"]
     T_SBC["🛡️ EXASBCODE001<br/>SBC<br/>192.168.126.48"]
     T_FWL["🧱 EXAFWLODE001<br/>LAN Face<br/>192.168.126.253"]
     T_FWL2["🧱 EXAFWLODE002<br/>FWL 2<br/>192.168.126.254 — planned"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL --> T_FWL2
-    T_MAC["🍎 EXAMACODE001<br/>IMac<br/>No IP Address"]
-    T_MBP["💻 EXAMBPODE002<br/>MacBook Pro<br/>No IP Address"]
+    T_MAC["🍎 EXAMACODE001<br/>IMac<br/>192.168.126.150"]
+    T_MBP["💻 EXAMBPODE002<br/>MacBook Pro<br/>192.168.126.151"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -416,11 +416,11 @@ graph TD
     T_RDR["🔐 EXARDRKGE001<br/>RDR<br/>192.168.65.21"]
     T_WAP["📶 EXAWAPKGE001<br/>WAP 1<br/>192.168.65.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRKGE001<br/>DCS 1<br/>192.168.65.10"]
+    T_DCS["🗝️ EXADCSKGE001<br/>DCS 1<br/>192.168.65.10"]
     T_SBC["🛡️ EXASBCKGE001<br/>SBC<br/>192.168.65.48"]
     T_FWL["🧱 EXAFWLKGE001<br/>LAN Face<br/>192.168.65.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_PRN["🖨️ EXAPRNKGE001<br/>Printer<br/>No IP Address"]
+    T_PRN["🖨️ EXAPRNKGE001<br/>Printer<br/>192.168.65.16"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -530,7 +530,7 @@ graph TD
     T_WAP["📶 EXAWAPFAX001<br/>WAP 1<br/>192.168.246.82"]
     T_WAP2["📶 EXAWAPFAX002<br/>Wireless Access Point<br/>192.168.246.83"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCRFAX001<br/>DCS 1<br/>192.168.246.10"]
+    T_DCS["🗝️ EXADCSFAX001<br/>DCS 1<br/>192.168.246.10"]
     T_SBC["🛡️ EXASBCFAX001<br/>SBC<br/>192.168.246.48"]
     T_FWL["🧱 EXAFWLFAX001<br/>LAN Face<br/>192.168.246.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -639,7 +639,7 @@ graph TD
     T_RDR["🔐 EXARDRKOR001<br/>RDR<br/>192.168.238.21"]
     T_WAP["📶 EXAWAPKOR001<br/>WAP 1<br/>192.168.238.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRKOR001<br/>DCS 1<br/>192.168.238.10"]
+    T_DCS["🗝️ EXADCSKOR001<br/>DCS 1<br/>192.168.238.10"]
     T_SBC["🛡️ EXASBCKOR001<br/>SBC<br/>192.168.238.48"]
     T_FWL["🧱 EXAFWLKOR001<br/>LAN Face<br/>192.168.238.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -749,7 +749,7 @@ graph TD
     T_RDR["🔐 EXARDRAAR001<br/>RDR<br/>192.168.86.21"]
     T_WAP["📶 EXAWAPAAR001<br/>WAP 1<br/>192.168.86.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRAAR001<br/>DCS 1<br/>192.168.86.10"]
+    T_DCS["🗝️ EXADCSAAR001<br/>DCS 1<br/>192.168.86.10"]
     T_SBC["🛡️ EXASBCAAR001<br/>SBC<br/>192.168.86.48"]
     T_FWL["🧱 EXAFWLAAR001<br/>LAN Face<br/>192.168.86.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL

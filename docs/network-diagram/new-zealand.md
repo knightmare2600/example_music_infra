@@ -151,19 +151,19 @@ graph TD
     T_WAP2["📶 EXAWAPAKL002<br/>Wireless Access Point<br/>192.168.93.85"]
     T_WAP3["📶 EXAWAPAKL003<br/>Wireless Access Point<br/>192.168.93.86"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2 --> T_WAP3
-    T_DCS["🗝️ EXADCRAKL001<br/>DCS 1<br/>192.168.93.10"]
+    T_DCS["🗝️ EXADCSAKL001<br/>DCS 1<br/>192.168.93.10"]
     T_SBC["🛡️ EXASBCAKL001<br/>SBC<br/>192.168.93.48"]
     T_FWL["🧱 EXAFWLAKL001<br/>LAN Face<br/>192.168.93.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_SRV["🗄️ EXASRVAKL001<br/>Local Server<br/>192.168.93.20"]
-    T_WKS["🖥️ EXAWKSAKL001<br/>Workstation<br/>No IP Address"]
-    T_MBP["💻 EXAMBPAKL001<br/>MacBook Pro<br/>No IP Address"]
+    T_WKS["🖥️ EXAWKSAKL001<br/>Workstation<br/>192.168.93.40"]
+    T_MBP["💻 EXAMBPAKL001<br/>MacBook Pro<br/>192.168.93.41"]
     T_PHN["📞 EXAPHNAKL001<br/>Phone<br/>No IP Address"]
-    T_TAB["📱 EXATABAKL001<br/>IPad<br/>No IP Address"]
-    T_LCD["🖼️ EXALCDAKL001<br/>Signage Display<br/>No IP Address"]
-    T_PRN["🖨️ EXAPRNAKL001<br/>LaserJet Printer<br/>No IP Address"]
+    T_TAB["📱 EXATABAKL001<br/>IPad<br/>192.168.93.60"]
+    T_LCD["🖼️ EXALCDAKL001<br/>Signage Display<br/>192.168.93.70"]
+    T_PRN["🖨️ EXAPRNAKL001<br/>LaserJet Printer<br/>192.168.93.80"]
     T_CAM["🎥 EXACAMAKL001<br/>Camera<br/>192.168.93.82"]
-    T_COF["🍵 EXACOFAKL001<br/>Coffee Machine<br/>No IP Address"]
+    T_COF["🍵 EXACOFAKL001<br/>Coffee Machine<br/>192.168.93.83"]
     T_SRV --> T_MBP --> T_TAB --> T_PRN --> T_COF
     T_WKS --> T_PHN --> T_LCD --> T_CAM
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
