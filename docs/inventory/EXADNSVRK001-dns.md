@@ -91,7 +91,7 @@ The forward zone also contains **firewall WAN addresses** — see [Section 9](#9
 | — (no DNS record — IP only)        | `192.168.139.50` | Provisioning / PXE server, vRACK, bootstrap-only |
 | `exaanscld001.jukebox.internal`    | `192.168.69.9`   | Ansible control node, CLD LAN           |
 | `exasvrcld002.jukebox.internal`    | `192.168.69.20`  | Windows Admin Centre, CLD LAN           |
-| `exardrcld001.jukebox.internal`    | `192.168.69.12`  | Rudder configuration management, CLD LAN |
+| `exarudcld001.jukebox.internal`    | `192.168.69.12`  | Rudder configuration management (dormant — not in active use, kept as reference code only), CLD LAN |
 | `exapbxcld001.jukebox.internal`    | `192.168.69.48`  | Central 3CX PBX, CLD LAN                |
 | `exafwl{site}001.jukebox.internal` | `192.168.139.{octet}` | Each site's FWL WAN/provisioning face — canonical bare name since 2026-07-26, matches Ansible's own inventory; `exafwl{site}001-wan` also still resolves to the same address (kept for compatibility) |
 
