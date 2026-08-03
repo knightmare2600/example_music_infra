@@ -153,7 +153,7 @@ Every site follows this addressing scheme within its `/24` subnet.
 | `EXASWI`            | Switch                                        | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site/regional)             | `EXADCSFAL001` |
 | `EXAPVE`            | Proxmox VE node                               | `EXAPVEFAL001` |
-| `EXASRV`            | Server                                        | `EXADNSVRK001` |
+| `EXASRV`            | Server                                        | `EXASRVFAL001` |
 | `EXARAC`            | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS`            | NAS                                           | `EXANASFAL001` |
 | `EXASBC`            | VOIP SBC — trunks to `EXAPBXCLD001`           | `EXASBCFAL001` |
