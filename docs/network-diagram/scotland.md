@@ -39,101 +39,95 @@
 > one at a time, is the current plan.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:FAL:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRFAL001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.1.1"]
-    O_INET --> O_RTR
-    O_SW1["🔀 EXASWIFAL001<br/>Cisco 9300<br/>192.168.76.250"]
-    O_SW2["🔀 EXASWIFAL002<br/>Cisco 9300<br/>192.168.76.251"]
-    O_RTR --> O_SW1
-    O_RTR --> O_SW2
-
-    O_RAC["🔧 EXARACFAL001<br/>HP iLO<br/>192.168.76.2"]
+    O_RTR["📡 EXARTRFAL001<br/>Cisco ISR 4331 · WAN edge, router/firewall combo (off FAL's own subnet, Ro...<br/>192.168.1.1"]
+    O_SWI1["🔀 EXASWIFAL001<br/>Cisco Catalyst 9300 · Core switch 1<br/>192.168.76.250"]
+    O_SWI2["🔀 EXASWIFAL002<br/>Cisco Catalyst 9300 · Core switch 2<br/>192.168.76.251"]
+    O_CLK["⏰ EXACLKFAL001<br/>Embedded NTP clock<br/>192.168.76.80"]
+    O_DCR1["🗝️ EXADCRFAL001<br/>DC · PDC Emulator<br/>192.168.76.10"]
+    O_DCR2["🗝️ EXADCRFAL002<br/>DC Secondary<br/>192.168.76.11"]
+    O_DON["🍩 EXADONFAL001<br/>VxWorks · Donut vending<br/>192.168.76.62"]
     O_ESX["💾 EXAESXFAL001<br/>HP ML310e, 32GB RAM, VMware ESXi<br/>192.168.76.5"]
-    O_SW1 --> O_ESX
-    O_RAC -.->|"manages"| O_ESX
-
-    O_DC1["🗝️ EXADCSFAL001<br/>DC · PDC Emulator<br/>192.168.76.10"]
-    O_DC2["🗝️ EXADCSFAL002<br/>DC Secondary<br/>192.168.76.11"]
-    O_SW1 --> O_DC1
-    O_SW1 --> O_DC2
-
-    O_NAS["🗃️ EXANASFAL001<br/>FreeNAS 13.0-U6<br/>192.168.76.32"]
-    O_TAR["💽 EXATARFAL001<br/>Tape Archiver<br/>192.168.76.33"]
-    O_SW1 --> O_NAS
-    O_SW1 --> O_TAR
-
-    O_WKS1["🖥️ EXAWKSFAL001<br/>Mixing Desk WKS<br/>192.168.76.100"]
-    O_WAP["📶 WAPs x6<br/>Ubiquiti UniFi U6-Pro<br/>192.168.76.5-10"]
-    O_LCD["🖼️ EXALCDFAL001<br/>Samsung Tizen Display<br/>192.168.76.50"]
-    O_SW2 --> O_WKS1
-    O_SW2 --> O_WAP
-    O_SW2 --> O_LCD
-
-    O_WKS2["🖥️ EXAWKSFAL002<br/>Reel-to-Reel WKS<br/>192.168.76.101"]
-    O_LAP["💻 EXALAPFAL001<br/>Production Laptop<br/>192.168.76.103"]
-    O_PHN["📞 EXAPHNFAL001-003<br/>Staff Phones<br/>No IP Address"]
+    O_LAP["💻 EXALAPFAL001<br/>Windows 11 Pro 23H2 · Production laptop<br/>192.168.76.103"]
+    O_LCD["🖼️ EXALCDFAL001<br/>Samsung Tizen · Reception display<br/>192.168.76.50"]
+    O_MUS["💿 EXAMUSFAL001<br/>Jukebox<br/>192.168.76.67"]
+    O_PAY["☎️ EXAPAYFAL001<br/>GPO Kiosk No.6 payphone<br/>192.168.76.95"]
+    O_PMP["⛽ EXAPMPFAL001<br/>Networked petrol pump<br/>192.168.76.60"]
+    O_RAC["🔧 EXARACFAL001<br/>HP iLO<br/>192.168.76.2"]
+    O_RDR["🔐 EXARDRFAL001<br/>HID Signo badge reader<br/>192.168.76.16"]
+    O_SRV["🗄️ EXASRVFAL001<br/>Reserved<br/>192.168.76.20"]
+    O_SUR["🖊️ EXASURFAL001<br/>Windows 11 23H2 · Microsoft Surface<br/>192.168.76.104"]
     O_TAB["📱 EXATABFAL001<br/>Tablet<br/>No IP Address"]
-    O_CAM2["🎥 EXACAMFAL002<br/>Axis, Studio Hallway<br/>192.168.76.71"]
-    O_CAM4["🎥 EXACAMFAL004<br/>Axis, Loading Bay<br/>192.168.76.73"]
-    O_VCU["🎧 EXAVCUFAL001<br/>Poly Studio X70<br/>192.168.76.51"]
-    O_PAY["☎️ EXAPAYFAL001<br/>GPO Kiosk No.6 Payphone<br/>192.168.76.95"]
-    O_VND1["🍩 EXADONFAL001<br/>Tim Hortons Vending<br/>192.168.76.62"]
-    O_VND3["🍫 EXAVNDFAL003<br/>McCowans Dispenser<br/>192.168.76.64"]
-    O_VND5["🍫 EXAVNDFAL005<br/>¼lb Confectionery<br/>192.168.76.66"]
-    O_CLK["⏰ EXACLKFAL001<br/>NTP Clock<br/>192.168.76.80"]
-    O_WKS2 --> O_LAP --> O_PHN --> O_TAB --> O_CAM2 --> O_CAM4 --> O_VCU --> O_PAY --> O_VND1 --> O_VND3 --> O_VND5 --> O_CLK
-
-    O_WKS3["🖥️ EXAWKSFAL003<br/>Shared Editing WKS<br/>192.168.76.102"]
-    O_SUR["🖊️ EXASURFAL001<br/>Microsoft Surface<br/>192.168.76.104"]
-    O_PHN2["📞 EXAPHNFAL006-007<br/>Yealink T58A<br/>No IP Address"]
-    O_CAM1["🎥 EXACAMFAL001<br/>Axis, Front Entrance<br/>192.168.76.70"]
-    O_CAM3["🎥 EXACAMFAL003<br/>Axis, Car Park<br/>192.168.76.72"]
-    O_RDR["🔐 EXARDRFAL001<br/>HID Signo Badge Reader<br/>192.168.76.16"]
-    O_JKB["💿 EXAMUSFAL001<br/>Pureline 128V Jukebox<br/>192.168.76.67"]
-    O_COF["🫖 EXATEAFAL001<br/>Smart Coffee Machine<br/>192.168.76.61"]
-    O_VND2["🍫 EXAVNDFAL002<br/>Irn-Bru Machine<br/>192.168.76.63"]
-    O_VND4["🍫 EXAVNDFAL004<br/>Mrs Tily Dispenser<br/>192.168.76.65"]
-    O_PMP["⛽ EXAPMPFAL001<br/>Networked Petrol Pump<br/>192.168.76.60"]
-    O_WKS3 --> O_SUR --> O_PHN2 --> O_CAM1 --> O_CAM3 --> O_RDR --> O_JKB --> O_COF --> O_VND2 --> O_VND4 --> O_PMP
+    O_TAR["💽 EXATARFAL001<br/>Solaris Embedded · Legacy tape archive<br/>192.168.76.33"]
+    O_TEA["🫖 EXATEAFAL001<br/>Smart coffee machine<br/>192.168.76.61"]
+    O_TTY["⌨️ EXATTYFAL001<br/>VT320 serial terminal<br/>No IP Address"]
+    O_VCU["🎧 EXAVCUFAL001<br/>Poly Studio X70 · Video conferencing<br/>192.168.76.51"]
+    O_CAM["🎥 EXACAMFAL001-004<br/>4 x CCTV Cameras<br/>192.168.76.70-73"]
+    O_PHN["📞 EXAPHNFAL001-003,006-007<br/>5 x Office Phones<br/>No IP Address"]
+    O_VND["🍫 EXAVNDFAL002-005<br/>4 x Vending Machines<br/>192.168.76.63-66"]
+    O_WAP["📶 EXAWAPFAL001-006<br/>6 x Wireless Access Points<br/>192.168.76.82-87"]
+    O_WKS["🖥️ EXAWKSFAL001,003<br/>2 x Workstations<br/>192.168.76.100,102"]
+    O_INET --> O_RTR
+    O_RTR --> O_SWI1
+    O_RTR --> O_SWI2
+    O_SWI1 --> O_CLK
+    O_SWI1 --> O_DCR1
+    O_SWI1 --> O_DCR2
+    O_SWI1 --> O_DON
+    O_SWI1 --> O_ESX
+    O_SWI1 --> O_LAP
+    O_SWI1 --> O_LCD
+    O_SWI1 --> O_MUS
+    O_SWI1 --> O_PAY
+    O_SWI1 --> O_PMP
+    O_SWI1 --> O_RAC
+    O_RAC -.->|"manages"| O_ESX
+    O_SWI1 --> O_RDR
+    O_SWI1 --> O_SRV
+    O_SWI1 --> O_SUR
+    O_SWI1 --> O_TAB
+    O_SWI1 --> O_TAR
+    O_SWI1 --> O_TEA
+    O_SWI1 --> O_TTY
+    O_SWI1 --> O_VCU
+    O_SWI1 --> O_CAM
+    O_SWI1 --> O_PHN
+    O_SWI1 --> O_VND
+    O_SWI1 --> O_WAP
+    O_SWI1 --> O_WKS
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_TAR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WKS1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WKS2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM4 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_VCU fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_VND1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_VND3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_VND5 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_CLK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WKS3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PHN2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_JKB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_COF fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_VND2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_VND4 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DON fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MUS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PMP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TEA fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TTY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VCU fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VND fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:FAL:END
 ```
 
 <details>
@@ -161,8 +155,8 @@ graph TD
       end
 
       subgraph DC ["Domain Controllers"]
-          DC1["🗝️ EXADCSFAL001 · DC · PDC Emulator · .10"]
-          DC2["🗝️ EXADCSFAL002 · DC secondary · .11"]
+          DC1["🗝️ EXADCRFAL001 · DC · PDC Emulator · .10"]
+          DC2["🗝️ EXADCRFAL002 · DC secondary · .11"]
       end
 
       subgraph INFRA ["Infrastructure"]
@@ -258,7 +252,7 @@ graph TD
     T_WAP5["📶 EXAWAPFAL005<br/>Wireless Access Point<br/>192.168.76.86"]
     T_WAP6["📶 EXAWAPFAL006<br/>Wireless Access Point<br/>192.168.76.87"]
     T_SWI2 --> T_NAS --> T_RDR --> T_MUS --> T_WAP --> T_WAP2 --> T_WAP3 --> T_WAP4 --> T_WAP5 --> T_WAP6
-    T_DCS["🗝️ EXADCSFAL001<br/>DCS 1<br/>192.168.76.10"]
+    T_DCS["🗝️ EXADCRFAL001<br/>DCS 1<br/>192.168.76.10"]
     T_SBC["🛡️ EXASBCFAL001<br/>SBC<br/>192.168.76.48"]
     T_FWL["🧱 EXAFWLFAL001<br/>LAN Face<br/>192.168.76.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -357,45 +351,44 @@ graph TD
 > replicates against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not patching this box.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:EDI:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTREDI001<br/>Cisco ISR 4331<br/>192.168.131.1"]
-    O_INET --> O_RTR
-    O_SW1["🔀 EXASWIEDI001<br/>Cisco 2960X<br/>192.168.131.250"]
-    O_SW2["🔀 EXASWIEDI002<br/>Cisco 2960X<br/>192.168.131.251"]
-    O_RTR --> O_SW1
-    O_RTR --> O_SW2
-
-    O_RAC["🔧 EXARACEDI001<br/>Dell iDRAC9<br/>192.168.131.2"]
+    O_RTR["📡 EXARTREDI001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.131.1"]
+    O_SWI1["🔀 EXASWIEDI001<br/>Cisco Catalyst 2960X · Floor switch<br/>192.168.131.250"]
+    O_SWI2["🔀 EXASWIEDI002<br/>Cisco Catalyst 2960X · 48-port switch<br/>192.168.131.251"]
+    O_DCR2["🗝️ EXADCREDI002<br/>Windows Server 2022 · DC secondary needs rebuild corrected to .12<br/>192.168.131.12"]
+    O_DCR3["🗝️ EXADCREDI003<br/>Windows Server 2022 · DECOMMISSION PENDING corrected to .13<br/>192.168.131.13"]
     O_ESX["💾 EXAESXEDI001<br/>VMware ESXi<br/>192.168.131.5"]
-    O_DC["⚠️🗝️ EXADCSEDI003<br/>DC · DFSR stopped, C: 5% free<br/>192.168.131.11"]
-    O_SW1 --> O_ESX --> O_DC
+    O_LAP["💻 EXALAPEDI098<br/>Windows 11 Pro 24H2 · Pool laptop<br/>192.168.131.108"]
+    O_RAC["🔧 EXARACEDI001<br/>Dell iDRAC9<br/>192.168.131.2"]
+    O_TEA["🫖 EXATEAEDI001<br/>Siemens EQ700 · Coffee machine<br/>192.168.131.60"]
+    O_WKS["🖥️ EXAWKSEDI001<br/>Windows 10 Pro 22H2 · Shared desktop<br/>192.168.131.150"]
+    O_INET --> O_RTR
+    O_RTR --> O_SWI1
+    O_RTR --> O_SWI2
+    O_SWI1 --> O_DCR2
+    O_SWI1 --> O_DCR3
+    O_SWI1 --> O_ESX
+    O_SWI1 --> O_LAP
+    O_SWI1 --> O_RAC
     O_RAC -.->|"manages"| O_ESX
-
-    O_WKS["🖥️ EXAWKSEDI001<br/>Workstation<br/>192.168.131.150"]
-    O_LAP["💻 EXALAPEDI098<br/>Pool Laptop<br/>192.168.131.108"]
-    O_WAP["📶 3x Cisco WAP121<br/>Wireless access points<br/>IP not recorded"]
-    O_CAM["🎥 Cameras<br/>Count/vendor not recorded (TODO)<br/>IP not recorded"]
-    O_COF["🫖 EXATEAEDI001<br/>Siemens EQ700 Coffee Machine<br/>192.168.131.60"]
-    O_SW2 --> O_WKS
-    O_SW2 --> O_LAP
-    O_SW2 --> O_WAP
-    O_SW2 --> O_CAM
-    O_SW2 --> O_COF
+    O_SWI1 --> O_TEA
+    O_SWI1 --> O_WKS
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_COF fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TEA fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:EDI:END
 ```
 
 <details>
@@ -649,46 +642,40 @@ graph TD
 > up. `DC1`/`DC2` will be shut down once rebuilt under the same hostnames in the new build.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:CLY:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRCLY001<br/>FortiOS 7.6.5, router/firewall combo<br/>192.168.41.1"]
-    O_INET --> O_RTR
-    O_SW["🔀 EXASWICLY001<br/>Cisco 9300<br/>192.168.41.250"]
-    O_RTR --> O_SW
-
+    O_RTR["📡 EXARTRCLY001<br/>FortiOS 7.6.5 · WAN edge, router/firewall combo<br/>192.168.41.1"]
+    O_SWI["🔀 EXASWICLY001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.41.250"]
+    O_DCR1["🗝️ EXADCRCLY001<br/>DC Primary<br/>192.168.41.10"]
+    O_DCR2["🗝️ EXADCRCLY002<br/>DC Secondary<br/>192.168.41.11"]
+    O_PHN["📞 EXAPHNCLY001<br/>iOS · Phone<br/>No IP Address"]
     O_RAC["🔧 EXARACCLY001<br/>HPE iLO5 · no host ever built<br/>192.168.41.2"]
-    O_DC1["🗝️ EXADCSCLY001<br/>DC Primary<br/>192.168.41.10"]
-    O_DC2["🗝️ EXADCSCLY002<br/>DC Secondary<br/>192.168.41.11"]
-    O_SRV["🗄️ EXASRVCLY001<br/>Rocky Linux, Oracle DB<br/>192.168.41.20"]
-    O_SW --> O_RAC
-    O_SW --> O_DC1
-    O_SW --> O_DC2
-    O_SW --> O_SRV
-
-    O_SUR["🖊️ EXASURCLY001<br/>Microsoft Surface<br/>192.168.41.51"]
-    O_PHN["📞 EXAPHNCLY001<br/>iOS Handset<br/>No IP Address"]
-    O_TAB["🖊️ EXATABCLY001<br/>Android Tablet<br/>No IP Address"]
-    O_WAP["📶 EXAWAPCLY001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
-    O_CAM["🎥 CAMs TODO"]
-    O_SW --> O_SUR
-    O_SW --> O_PHN
-    O_SW --> O_TAB
-    O_SW --> O_WAP
-    O_SW --> O_CAM
+    O_SRV["🗄️ EXASRVCLY001<br/>Rocky Linux · Oracle DB server<br/>192.168.41.20"]
+    O_SUR["🖊️ EXASURCLY001<br/>Windows 11 · Surface<br/>192.168.41.51"]
+    O_TAB["📱 EXATABCLY001<br/>Android · Android tablet<br/>No IP Address"]
+    O_INET --> O_RTR
+    O_RTR --> O_SWI
+    O_SWI --> O_DCR2
+    O_SWI --> O_PHN
+    O_SWI --> O_RAC
+    O_RAC -.->|"manages"| O_DCR1
+    O_SWI --> O_SRV
+    O_SWI --> O_SUR
+    O_SWI --> O_TAB
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:CLY:END
 ```
 
 <details>
@@ -703,8 +690,8 @@ graph TD
       SW["🔀 EXASWICLY001 · Cisco 9300 · .250"]
       RAC["🔧 EXARACCLY001 · HPE iLO5 · .2"]
       PVE["🗂️ EXAPVECLY001 · Proxmox node 1 · .5"]
-      DC1["🗝️ EXADCSCLY001 · DC primary · .10"]
-      DC2["🗝️ EXADCSCLY002 · DC secondary · .11"]
+      DC1["🗝️ EXADCRCLY001 · DC primary · .10"]
+      DC2["🗝️ EXADCRCLY002 · DC secondary · .11"]
       SRV["🗄️ EXASRVCLY001 · Rocky Linux · Oracle DB · .20"]
       SBC["🛡️ EXASBCCLY001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYCLY001 · Rudder Relay · .12"]
@@ -753,7 +740,7 @@ graph TD
     T_WAP["📶 EXAWAPCLY001<br/>WAP 1<br/>192.168.41.82"]
     T_WAP2["📶 EXAWAPCLY002<br/>Wireless Access Point<br/>192.168.41.83"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCSCLY001<br/>DCS 1<br/>192.168.41.10"]
+    T_DCS["🗝️ EXADCRCLY001<br/>DCS 1<br/>192.168.41.10"]
     T_SBC["🛡️ EXASBCCLY001<br/>SBC<br/>192.168.41.48"]
     T_FWL["🧱 EXAFWLCLY001<br/>LAN Face<br/>192.168.41.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -797,7 +784,7 @@ graph TD
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
 > PVE; no SBC; no `RRY`; no WireGuard on old infra). Like CLY: real hardware was an HP ML310e +
 > HP iLO (`EXARACDUN001`), but it "sat unused in a room" — never actually deployed as a running
-> hypervisor, so no `ESX` node here either. `EXADCSDUN001` was a genuinely alarming find — a
+> hypervisor, so no `ESX` node here either. `EXADCRDUN001` was a genuinely alarming find — a
 > **Windows Server 2003 box nobody was even logging into** — kept as a real warning (same
 > migration-priority signal as EDI's DFSR/disk-space one), replaced by a new build under the same
 > hostname. WAPs and camera(s) both confirmed real and physically moving to the new network —
@@ -805,44 +792,32 @@ graph TD
 > isn't on record here, only that it's the same as the new hardware and made the move.
 
 > 🚨 **Migration priority — Tier 2.** Windows Server 2003 — 20+ years past EOL. Same remediation
-> path as Tier 1: a new `EXADCSDUN001` build promoting and replicating against `EXADCSCLD001`
+> path as Tier 1: a new `EXADCRDUN001` build promoting and replicating against `EXADCSCLD001`
 > (`ansible/playbooks/windows_dc/`), not patching this box.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:DUN:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRDUN001<br/>Cisco ISR 4331<br/>192.168.138.1"]
-    O_INET --> O_RTR
-
+    O_RTR["📡 EXARTRDUN001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.138.1"]
+    O_DCR["🗝️ EXADCRDUN001<br/>DC · Windows Server 2003, unmaintained<br/>192.168.138.10"]
     O_RAC["🔧 EXARACDUN001<br/>HP iLO on HP ML310e · never deployed<br/>192.168.138.2"]
-    O_DC["⚠️🗝️ EXADCSDUN001<br/>DC · Windows Server 2003, unmaintained<br/>192.168.138.10"]
+    O_PHN["📞 EXAPHNDUN001-002<br/>2 x Office Phones<br/>No IP Address"]
+    O_SUR["🖊️ EXASURDUN001-002<br/>2 x Microsoft Surfaces<br/>192.168.138.51-52"]
+    O_INET --> O_RTR
     O_RTR --> O_RAC
-    O_RTR --> O_DC
-
-    O_SUR1["🖊️ EXASURDUN001<br/>Surface<br/>192.168.138.51"]
-    O_SUR2["🖊️ EXASURDUN002<br/>Surface<br/>192.168.138.52"]
-    O_PHN1["📞 EXAPHNDUN001<br/>iOS Phone<br/>No IP Address"]
-    O_PHN2["📞 EXAPHNDUN002<br/>iOS Phone<br/>No IP Address"]
-    O_WAP["📶 EXAWAPDUN001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
-    O_CAM["🎥 Camera(s)<br/>Same model as new hardware · count/model not recorded<br/>No IP Address"]
-    O_RTR --> O_SUR1
-    O_RTR --> O_SUR2
-    O_RTR --> O_PHN1
-    O_RTR --> O_PHN2
-    O_RTR --> O_WAP
-    O_RTR --> O_CAM
+    O_RAC -.->|"manages"| O_DCR
+    O_RTR --> O_PHN
+    O_RTR --> O_SUR
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SUR1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SUR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PHN1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PHN2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:DUN:END
 ```
 
 <details>
@@ -855,7 +830,7 @@ graph TD
       RTR["📡 EXARTRDUN001 · Cisco ISR 4331 · .254"]
       RAC["🔧 EXARACDUN001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVEDUN001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSDUN001 · DC · .10"]
+      DC["🗝️ EXADCRDUN001 · DC · .10"]
       SBC["🛡️ EXASBCDUN001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYDUN001 · Rudder Relay · .12"]
       SUR1["🖊️ EXASURDUN001 · Surface · .51"]
@@ -904,7 +879,7 @@ graph TD
     T_WAP["📶 EXAWAPDUN001<br/>WAP 1<br/>192.168.138.82"]
     T_WAP2["📶 EXAWAPDUN002<br/>Wireless Access Point<br/>192.168.138.83"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCSDUN001<br/>DCS 1<br/>192.168.138.10"]
+    T_DCS["🗝️ EXADCRDUN001<br/>DCS 1<br/>192.168.138.10"]
     T_SBC["🛡️ EXASBCDUN001<br/>SBC<br/>192.168.138.48"]
     T_FWL["🧱 EXAFWLDUN001<br/>LAN Face<br/>192.168.138.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -942,7 +917,7 @@ graph TD
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
 > PVE; no SBC; no `RRY`; no WireGuard on old infra). PER is the most extreme "never actually
 > ran" case so far: the BMC/hypervisor pair was the same unused HP ML310e pattern as CLY/DUN, and
-> even the DC (`EXADCSPER001`) — a physical HP ML310e of its own — **was never switched on at
+> even the DC (`EXADCRPER001`) — a physical HP ML310e of its own — **was never switched on at
 > all**. Kept as a real node with that fact stated plainly (the sharpest version yet of the
 > migration-priority signal — nothing here was ever live). NIX, NAS, MacBooks, Surface, phones,
 > printer, and the vending machine (`devices.csv` already has this one resolved as real/current)
@@ -951,7 +926,7 @@ graph TD
 > genuinely `TODO` in GLA's sense — didn't exist yet, new build adds it fresh.
 
 > 🚨 **Migration priority — Tier 3.** DC never switched on at all — no live users depending on
-> it today. Still counts toward the estate-wide rollout: a new `EXADCSPER001` build promoting
+> it today. Still counts toward the estate-wide rollout: a new `EXADCRPER001` build promoting
 > and replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`).
 
 ```mermaid
@@ -959,7 +934,7 @@ graph TD
 graph TD
     O_INET["🌐 Internet"]
     O_RAC["🔧 EXARACPER001<br/>HP iLO on HP ML310e · never deployed<br/>192.168.173.2"]
-    O_DC["⚠️🗝️ EXADCSPER001<br/>DC · physical HP ML310e, never switched on<br/>192.168.173.10"]
+    O_DC["⚠️🗝️ EXADCRPER001<br/>DC · physical HP ML310e, never switched on<br/>192.168.173.10"]
     O_NIX["🐧 EXANIXPER001<br/>Solaris 11.5, MIDI/Music Archive<br/>192.168.173.40"]
     O_NAS["🗃️ EXANASPER001<br/>Synology NAS<br/>192.168.173.50"]
     O_INET --> O_RAC
@@ -1005,7 +980,7 @@ graph TD
       INET["🌐 Internet"]
       RAC["🔧 EXARACPER001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVEPER001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSPER001 · DC · .10"]
+      DC["🗝️ EXADCRPER001 · DC · .10"]
       SBC["🛡️ EXASBCPER001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYPER001 · Rudder Relay · .12"]
       NIX["🐧 EXANIXPER001 · Solaris 11.5 · MIDI/Music Archive · .40"]
@@ -1056,7 +1031,7 @@ graph TD
     T_RDR["🔐 EXARDRPER001<br/>RDR<br/>192.168.173.21"]
     T_WAP["📶 EXAWAPPER001<br/>WAP 1<br/>192.168.173.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSPER001<br/>DCS 1<br/>192.168.173.10"]
+    T_DCS["🗝️ EXADCRPER001<br/>DCS 1<br/>192.168.173.10"]
     T_SBC["🛡️ EXASBCPER001<br/>SBC<br/>192.168.173.48"]
     T_FWL["🧱 EXAFWLPER001<br/>LAN Face<br/>192.168.173.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -1103,51 +1078,39 @@ graph TD
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
 > PVE; no SBC; no `RRY`; no WireGuard on old infra; `CAM TODO` now defaults to "not yet built,
 > new-network-only" going forward unless corrected per-site). Same unused HP ML310e/iLO pattern
-> as CLY/DUN/PER — but unlike those, this one *was* pressed into service: `EXADCSABD001` ran
+> as CLY/DUN/PER — but unlike those, this one *was* pressed into service: `EXADCRABD001` ran
 > **Windows Server 2008R2 bare metal directly on that hardware**, no ESX/virtualization layer
 > ever existed. Kept the OS version as a real migration-priority signal (2008R2 is long past
 > EOL). MacBooks, iPhones, and WAPs (real Ubiquiti hardware, already there) all confirmed moving
 > to the new build as-is.
 
 > 🚨 **Migration priority — Tier 2.** Windows Server 2008R2, long past EOL, bare metal with no
-> ESX layer. Same remediation path as Tier 1: a new `EXADCSABD001` build promoting and
+> ESX layer. Same remediation path as Tier 1: a new `EXADCRABD001` build promoting and
 > replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not patching this box.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:ABD:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRABD001<br/>Cisco ASA 5506-X, router/firewall combo<br/>192.168.224.1"]
-    O_INET --> O_RTR
-
+    O_RTR["📡 EXARTRABD001<br/>Cisco ASA 5506-X · WAN edge, router/firewall combo<br/>192.168.224.1"]
+    O_DCR["🗝️ EXADCRABD001<br/>DC · Windows Server 2008R2, bare metal, no ESX layer<br/>192.168.224.10"]
     O_RAC["🔧 EXARACABD001<br/>HP iLO on HP ML310e<br/>192.168.224.2"]
-    O_DC["⚠️🗝️ EXADCSABD001<br/>DC · Windows Server 2008R2, bare metal, no ESX layer<br/>192.168.224.10"]
+    O_MBP["💻 EXAMBPABD001-002<br/>2 x MacBook Pros<br/>192.168.224.124,137"]
+    O_PHN["📞 EXAPHNABD001-002<br/>2 x Office Phones<br/>No IP Address"]
+    O_INET --> O_RTR
     O_RTR --> O_RAC
-    O_RAC -.->|"manages"| O_DC
-
-    O_MBP1["💻 EXAMBPABD001<br/>MacBook<br/>192.168.224.137"]
-    O_MBP2["💻 EXAMBPABD002<br/>MacBook<br/>192.168.224.124"]
-    O_PHN1["📞 EXAPHNABD001<br/>Corporate iPhone<br/>No IP Address"]
-    O_PHN2["📞 EXAPHNABD002<br/>Corporate iPhone<br/>No IP Address"]
-    O_WAP["📶 EXAWAPABD001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
-    O_CAM["🎥 CAMs — none yet, new build only"]
-    O_RTR --> O_MBP1
-    O_RTR --> O_MBP2
-    O_RTR --> O_PHN1
-    O_RTR --> O_PHN2
-    O_RTR --> O_WAP
-    O_RTR --> O_CAM
+    O_RAC -.->|"manages"| O_DCR
+    O_RTR --> O_MBP
+    O_RTR --> O_PHN
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_MBP1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_MBP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PHN1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PHN2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:ABD:END
 ```
 
 <details>
@@ -1161,7 +1124,7 @@ graph TD
       RTR["📡 EXARTRABD001 · Cisco ISR 4331 · .254"]
       RAC["🔧 EXARACABD001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVEABD001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSABD001 · DC · .10"]
+      DC["🗝️ EXADCRABD001 · DC · .10"]
       SBC["🛡️ EXASBCABD001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYABD001 · Rudder Relay · .12"]
       MBP1["💻 EXAMBPABD001 · MacBook · .137"]
@@ -1210,7 +1173,7 @@ graph TD
     T_WAP["📶 EXAWAPABD001<br/>WAP 1<br/>192.168.224.82"]
     T_WAP2["📶 EXAWAPABD002<br/>Wireless Access Point<br/>192.168.224.83"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCSABD001<br/>DCS 1<br/>192.168.224.10"]
+    T_DCS["🗝️ EXADCRABD001<br/>DCS 1<br/>192.168.224.10"]
     T_SBC["🛡️ EXASBCABD001<br/>SBC<br/>192.168.224.48"]
     T_FWL["🧱 EXAFWLABD001<br/>LAN Face<br/>192.168.224.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
