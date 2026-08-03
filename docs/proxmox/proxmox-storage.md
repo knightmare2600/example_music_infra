@@ -241,14 +241,14 @@ Every provisioned PVE node has `/etc/example-music/nodeinfo.json` (read-only, mo
     "role": "proxmox",
     "site": "FAL",
     "city": "Falkirk",
-    "country": "Scotland",
+    "country": "United Kingdom",
     "entity": "Example Music (Scotland) Ltd",
     "ansible_managed": false,
     "bootstrapped_at": "2026-02-25T17:00:00Z",
     "bootstrapped_by": "first-boot.sh",
     "environment": "production",
     "node_ip": "192.168.76.5",
-    "gateway": "192.168.76.254"
+    "gateway": "192.168.76.253"
 }
 ```
 
