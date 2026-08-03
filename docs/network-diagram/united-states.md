@@ -504,17 +504,20 @@ graph TD
 **PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
 **Entity:** Example Music (US) LLC. · **Landline:** +1 334 300 0xxx · **Mobile:** +1 770 900 2xxx
 
-> **New-build site — corrected 2026-07-31.** Same fabricated template content and copy-pasted
-> DC-services-stopped warning as NJC — Robert confirmed ATL was genuinely blank. Converted to the
-> same "New Build Location" placeholder pattern used for
-> FRD/NYB/SEA/SFO/FRE/DRS/DUS/GOT/OSL/AMS/MIL/VIE/BRT/MTL/NJC.
+> **Empty office, single router — corrected 2026-08-03.** Robert: "Atlanta was a mess, by
+> 'new build' we meant the office had a router plugged in to the internet and literally an
+> empty office." The real pre-project AD export confirms a genuine `EXARTRATL001` (Cisco ISR
+> 4331, WAN edge router) existed before commissioning — no other legacy infrastructure did.
 
 ```mermaid
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
-    subgraph OLD_ATL ["🏗️ New Build Location — no legacy infrastructure existed here"]
-      N_OLD_NOTE["This is a new-build site. · No prior/legacy network existed before commissioning."]
-    end
-    style OLD_ATL fill:#56B4E9,stroke:#0072B2,color:#000000
+    O_INET["🌐 Internet"]
+    O_RTR["📡 EXARTRATL001<br/>Cisco ISR 4331, WAN edge router<br/>192.168.33.1"]
+    O_INET --> O_RTR
+
+    style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 ```
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
