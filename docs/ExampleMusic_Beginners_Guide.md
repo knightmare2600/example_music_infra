@@ -179,15 +179,18 @@ The CLD IP table is reproduced here for reference. These are authoritative — v
 | `EXAFWLCLD002` | `192.168.69.254` | LAN | Secondary firewall — standard FWL slot 2, not yet built |
 | `EXADNSVRK001` | `192.168.139.8` | vRACK | BIND9 — authoritative DNS for `jukebox.internal` |
 | — (bootstrap-only, no formal hostname) | `192.168.139.50` | vRACK | Provisioning / PXE server (Edinburgh, primary) |
+| `EXAPVEVRK001` | `192.168.139.5` | vRACK | Proxmox VE node — Quanta S210-X22RQ (confirmed by Robert, 2026-08-01) |
+| `EXABMCVRK001` | `192.168.139.215` | vRACK | BMC for `EXAPVEVRK001` — SuperMicro card on the Quanta chassis (confirmed by Robert, 2026-08-01) |
 | `EXAANSCLD001` | `192.168.69.9` | LAN | Ansible control node |
-| `EXADCSCLD001` | `192.168.69.10` | LAN | Domain Controller — primary |
-| `EXADCSCLD002` | `192.168.69.11` | LAN | Domain Controller — secondary |
+| `EXADCSCLD001` | `192.168.69.10` | LAN | Domain Controller — standard DCS slot 1 |
 | `EXARUDCLD001` | `192.168.69.12` | LAN | Rudder — **not in active use**, dormant, kept as reference code only |
 | `EXANASCLD001` | `192.168.69.19` | LAN | Storage (NAS/SAN) — standard NAS slot |
 | `EXARDRCLD001` | `192.168.69.21` | LAN | Badge reader — standard RDR slot |
 | `EXASVRCLD002` | `192.168.69.20` | LAN | Windows Admin Centre |
+| `EXASLTCLD001` | `192.168.69.22` | LAN | Salt master — config mgmt for Windows client endpoints estate-wide, also reachable as `salt.jukebox.internal` (CNAME) |
 | `EXAPBXCLD001` | `192.168.69.48` | LAN | Central 3CX PBX — reuses the empty SBC slot, since CLD has no SBC of its own |
 | `EXAUFCCLD001` | `192.168.69.82` | LAN | UniFi Network Controller — manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
+| `EXAPVECLD001` | `192.168.69.5` | LAN | Proxmox VE node 1 |
 | `EXASWICLD001` | `192.168.69.250` | LAN | Core switch — standard SWI slot 1 |
 
 > **Common mistakes:** DNS/the firewall's WAN face are `VRK`-suffixed hostnames (`EXADNSVRK001`, `EXAFWLVRK001`), not `CLD`-suffixed — devices.csv files them under `Site=VRK` since they're vRACK-resident, not CLD LAN. The provisioning server (`192.168.139.50`) has no hostname at all, VRK-suffixed or otherwise — bootstrap-only, IP-referenced only. The FWL LAN face is `.69.253`, not `.69.1`. WAC, PBX, and the Ansible node are on the **LAN** (`.69.x`) — not the vRACK, despite PBX and the UniFi controller both reusing octets (`.48`, `.82`) that are conventionally something else at a normal site. Rudder (`EXARUDCLD001`) is also LAN-resident, but not in active use — see its own row above.
