@@ -70,6 +70,8 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 | `EXAFWLVRK001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` — same physical firewall as `EXAFWLCLD001` |
 | `EXADNSVRK001` | DNS / BIND9 server | Debian | `192.168.139.8` | Authoritative DNS for `jukebox.internal` |
 | — (bootstrap-only, no formal hostname) | Provisioning / bootstrap | — | `192.168.139.50` | Serves Ansible keys, ISOs, scripts |
+| `EXAPVEVRK001` | Proxmox VE node | — | `192.168.139.5` | Quanta S210-X22RQ (confirmed by Robert, 2026-08-01) |
+| `EXABMCVRK001` | BMC | — | `192.168.139.215` | SuperMicro BMC for `EXAPVEVRK001` — chassis is Quanta, BMC card is SuperMicro (confirmed by Robert, 2026-08-01) |
 | `EXAFWLVRK001` (WAN face) | Firewall — vRACK WAN | — | `192.168.139.69` | Same device as `EXAFWLCLD001` (LAN face, `192.168.69.253`) |
 
 **CLD LAN — `CLD`, `192.168.69.0/24`**
@@ -78,6 +80,7 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 |----------|------|----|----|-------|
 | `EXABMCCLD001` | BMC / iDRAC / iLO / Redfish | — | `192.168.69.2` | Standard BMC slot 1 — real hardware in an Edinburgh datacentre |
 | `EXAANSCLD001` | Ansible control node | Debian | `192.168.69.9` | Ansible — manages all sites |
+| `EXADCSCLD001` | Domain Controller | — | `192.168.69.10` | Standard DCS slot 1 |
 | `EXARUDCLD001` | Rudder Server | Debian | `192.168.69.12` | Not in active use — dormant, kept as reference code only, see NET-MGMT-RUDDER-001 |
 | `EXANASCLD001` | Storage (NAS/SAN) | — | `192.168.69.19` | Standard NAS slot |
 | `EXARDRCLD001` | Badge reader | — | `192.168.69.21` | Standard RDR slot |
@@ -85,8 +88,11 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 | `EXASLTCLD001` | Salt master | Debian | `192.168.69.22` | Config mgmt for all Windows nodes (client, server, DC) — see `ansible/playbooks/salt/README.md`. Also reachable as `salt.jukebox.internal` (CNAME) |
 | `EXAPBXCLD001` | Central PBX | — | `192.168.69.48` | 3CX PBX — all site SBCs trunk here |
 | `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
+| `EXAPVECLD001` | Proxmox VE node | — | `192.168.69.5` | PVE node 1 |
 | `EXASWICLD001` | Switch | — | `192.168.69.250` | Standard SWI slot 1 |
 | `EXAFWLCLD002` | Firewall (secondary) | — | `192.168.69.254` | Standard FWL slot 2 — not yet built |
+| `EXABMCCLD002` | BMC (secondary) | — | `192.168.69.3` | Planned expansion slot — not yet built (Robert, 2026-07-30) |
+| `EXAPVECLD002` | Proxmox VE node (secondary) | — | `192.168.69.6` | Planned expansion slot — not yet built (Robert, 2026-07-30) |
 
 **FRD — Fredericia Havn (standby), `172.16.124.0/24`**
 
@@ -96,6 +102,7 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 | `EXAPVEFRD001` | Proxmox VE node | `172.16.124.5` | Small Intel NUC — part of FRD's real "site kit" alongside the switch below, despite FRD being otherwise a legal-fiction single-MacBook provisioning network (confirmed by Robert, 2026-07-30) |
 | `EXASWIFRD001` | Switch | `172.16.124.250` | 48-port — part of the site kit alongside the NUC above |
 | `EXAPBXCLD002` | Secondary 3CX PBX | `172.16.124.48` | Physically at Fredericia Havn — hostnamed under CLD as part of the 2026-07-11 Pulsant DC / FRD Havn network rework (renamed from `EXAPBXFRD001`). Reuses the empty SBC slot, same pattern as CLD's own PBX (`EXAPBXCLD001`) |
+| `EXAFWLFRD001` | Firewall | `172.16.124.253` | Planned first firewall for this fallback vRACK site — not yet built (Robert, 2026-07-30) |
 
 ---
 
