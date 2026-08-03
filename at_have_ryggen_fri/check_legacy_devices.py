@@ -9,6 +9,13 @@ the 33 real Old Network diagram sections in docs/network-diagram/*.md. It
 deliberately does NOT feed generate_inventory.py or any generated .ini:
 nothing in it is live, managed, or DNS-resolvable.
 
+RTR joined the allowed Types 2026-08-04 for one confirmed exception: FAL's
+old Cisco ISR 4331 was decommissioned and its real historical hostname
+(EXARTRFAL001) was subsequently reused by the *different* physical
+FortiGate that replaced it (now devices.csv's own FAL,RTR,1 row) -- a
+genuine hostname-reuse case, not the usual RTR continuity every other site
+has (where the same physical device just changed IP old->new).
+
 This file exists as a direct consequence of the EXAFWLFAL001 mess found
 2026-08-03: a hand-built Old Network diagram invented a fictional device
 under a hostname that turned out to collide with a real, live, current
@@ -29,7 +36,10 @@ Checks:
   5. No row's computed hostname (EXA<Type><Site><Number:03d>) collides with
      a hostname the live generated inventory (--emit-devices-json) actually
      uses -- the specific bug class this file exists to prevent from
-     recurring.
+     recurring -- except the narrow, explicitly-confirmed cases in
+     ALLOWED_HOSTNAME_REUSE below (a real historical hostname genuinely
+     reused by a different physical device after the original was
+     decommissioned, not a fictional-device collision).
 
 Exit code: 1 if any check fails, 0 otherwise.
 """
@@ -46,7 +56,23 @@ SITES_CSV = BENARBEJDE / "sites.csv"
 GENERATOR = BENARBEJDE / "generate_inventory.py"
 
 REQUIRED_COLUMNS = {"Site", "Type", "Number", "HostOctet", "OS", "Notes", "SubnetSite"}
-ALLOWED_TYPES = {"RAC", "ESX", "VCT"}
+# RAC/ESX/VCT never have a live counterpart at all. RTR added 2026-08-04 for FAL specifically --
+# a genuine hostname-reuse exception (EXARTRFAL001 was the old decommissioned Cisco's real
+# historical name, then reused by the *different* physical FortiGate that replaced it) rather
+# than the usual RTR continuity every other site has. Not a general invitation for RTR/SWI/etc.
+# rows here -- those still belong in devices.csv's own Legacy=yes rows wherever the physical
+# device genuinely persisted old->new.
+ALLOWED_TYPES = {"RAC", "ESX", "VCT", "RTR"}
+
+# Confirmed real, intentional hostname reuse -- NOT a fictional-device-collides-with-real-device
+# bug. FAL's old Cisco ISR 4331 (EXARTRFAL001, decommissioned) had its real historical hostname
+# reused by the different physical FortiGate that replaced it as FAL's live router (devices.csv
+# FAL,RTR,1 -- shows up in --emit-devices-json as the generic "Standard RTR slot" synthesis, since
+# the FortiGate's own devices.csv row sits at the same octet and gets excluded by
+# generate_inventory.py's STANDARD_OFFSETS dedup the same as every other site's real RTR row).
+# Robert confirmed this directly, 2026-08-04 -- add a new (Site, Type, Number) tuple here only for
+# an equally explicitly-confirmed case, never to silence a check result without that confirmation.
+ALLOWED_HOSTNAME_REUSE = {("FAL", "RTR", 1)}
 
 
 def load_site_codes():
@@ -116,7 +142,7 @@ def main():
         if not (site and rtype and number.isdigit()):
             continue
         hostname = f"EXA{rtype}{site}{int(number):03d}"
-        if hostname in live_hostnames:
+        if hostname in live_hostnames and (site, rtype, int(number)) not in ALLOWED_HOSTNAME_REUSE:
             problems.append(
                 f"{hostname}: collides with a real, live hostname in the generated inventory -- "
                 f"this is exactly the EXAFWLFAL001 bug class legacy-devices.csv exists to prevent; "
