@@ -34,7 +34,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRSYD001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.29.1"]
+    O_RTR["📡 EXARTRSYD001<br/>FortiGate 7.x, router/firewall combo<br/>192.168.29.1"]
     O_INET --> O_RTR
     O_SW1["🔀 EXASWISYD001<br/>Cisco 9300<br/>192.168.29.250"]
     O_SW2["🔀 EXASWISYD002<br/>Cisco 2960<br/>192.168.29.251"]
@@ -220,7 +220,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRMEL001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.61.1"]
+    O_RTR["📡 EXARTRMEL001<br/>FortiGate 7.x, router/firewall combo<br/>192.168.61.1"]
     O_INET --> O_RTR
     O_SW1["🔀 EXASWIMEL001<br/>Cisco 9300<br/>192.168.61.250"]
     O_SW2["🔀 EXASWIMEL002<br/>Cisco 2960<br/>192.168.61.251"]

@@ -28,7 +28,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRLND001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.20.1"]
+    O_RTR["📡 EXARTRLND001<br/>Cisco ASA 5516-X, router/firewall combo<br/>192.168.20.1"]
     O_INET --> O_RTR
     O_SW["🔀 EXASWILND001<br/>Cisco 9300<br/>192.168.20.250"]
     O_RTR --> O_SW
@@ -181,7 +181,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBIR001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.121.1"]
+    O_RTR["📡 EXARTRBIR001<br/>Palo Alto PanOS, router/firewall combo<br/>192.168.121.1"]
     O_INET --> O_RTR
     O_SW1["🔀 EXASWIBIR001<br/>Cisco 9300<br/>192.168.121.250"]
     O_SW2["🔀 EXASWIBIR002<br/>Access Switch<br/>192.168.121.251"]
