@@ -996,8 +996,17 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSGOT001` | DC | Windows Server 2022 | `192.168.46.10` | — |
-| `EXASBCGOT001` | VOIP SBC | 3CX SBC Debian | `192.168.46.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRGOT001` | Router | — | `192.168.46.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLGOT001` | Firewall | Debian Linux (PVE VM) | `192.168.46.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIGOT001` | Switch | — | `192.168.46.250` | Standard SWI slot 1 |
+| `EXABMCGOT001` | BMC | — | `192.168.46.2` | Standard BMC slot 1 |
+| `EXAPVEGOT001` | Proxmox | — | `192.168.46.5` | PVE node 1 |
+| `EXADCSGOT001` | DC | — | `192.168.46.10` | Domain Controller |
+| `EXASBCGOT001` | VOIP SBC | — | `192.168.46.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASGOT001` | NAS | — | `192.168.46.19` | Standard NAS slot |
+| `EXARDRGOT001` | Badge reader | — | `192.168.46.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPGOT001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
@@ -1012,8 +1021,17 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSOSL001` | DC | Windows Server 2022 | `192.168.47.10` | — |
-| `EXASBCOSL001` | VOIP SBC | 3CX SBC Debian | `192.168.47.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTROSL001` | Router | — | `192.168.47.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLOSL001` | Firewall | Debian Linux (PVE VM) | `192.168.47.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIOSL001` | Switch | — | `192.168.47.250` | Standard SWI slot 1 |
+| `EXABMCOSL001` | BMC | — | `192.168.47.2` | Standard BMC slot 1 |
+| `EXAPVEOSL001` | Proxmox | — | `192.168.47.5` | PVE node 1 |
+| `EXADCSOSL001` | DC | — | `192.168.47.10` | Domain Controller |
+| `EXASBCOSL001` | VOIP SBC | — | `192.168.47.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASOSL001` | NAS | — | `192.168.47.19` | Standard NAS slot |
+| `EXARDROSL001` | Badge reader | — | `192.168.47.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPOSL001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
@@ -1028,8 +1046,17 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSAMS001` | DC | Windows Server 2022 | `192.168.31.10` | — |
-| `EXASBCAMS001` | VOIP SBC | 3CX SBC Debian | `192.168.31.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRAMS001` | Router | — | `192.168.31.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLAMS001` | Firewall | Debian Linux (PVE VM) | `192.168.31.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIAMS001` | Switch | — | `192.168.31.250` | Standard SWI slot 1 |
+| `EXABMCAMS001` | BMC | — | `192.168.31.2` | Standard BMC slot 1 |
+| `EXAPVEAMS001` | Proxmox | — | `192.168.31.5` | PVE node 1 |
+| `EXADCSAMS001` | DC | — | `192.168.31.10` | Domain Controller |
+| `EXASBCAMS001` | VOIP SBC | — | `192.168.31.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASAMS001` | NAS | — | `192.168.31.19` | Standard NAS slot |
+| `EXARDRAMS001` | Badge reader | — | `192.168.31.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPAMS001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
@@ -1044,8 +1071,17 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSMIL001` | DC | Windows Server 2022 | `192.168.39.10` | — |
-| `EXASBCMIL001` | VOIP SBC | 3CX SBC Debian | `192.168.39.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRMIL001` | Router | — | `192.168.39.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLMIL001` | Firewall | Debian Linux (PVE VM) | `192.168.39.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIMIL001` | Switch | — | `192.168.39.250` | Standard SWI slot 1 |
+| `EXABMCMIL001` | BMC | — | `192.168.39.2` | Standard BMC slot 1 |
+| `EXAPVEMIL001` | Proxmox | — | `192.168.39.5` | PVE node 1 |
+| `EXADCSMIL001` | DC | — | `192.168.39.10` | Domain Controller |
+| `EXASBCMIL001` | VOIP SBC | — | `192.168.39.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASMIL001` | NAS | — | `192.168.39.19` | Standard NAS slot |
+| `EXARDRMIL001` | Badge reader | — | `192.168.39.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPMIL001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
@@ -1060,8 +1096,42 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSVIE001` | DC | Windows Server 2022 | `192.168.78.10` | — |
-| `EXASBCVIE001` | VOIP SBC | 3CX SBC Debian | `192.168.78.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRVIE001` | Router | — | `192.168.78.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLVIE001` | Firewall | Debian Linux (PVE VM) | `192.168.78.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIVIE001` | Switch | — | `192.168.78.250` | Standard SWI slot 1 |
+| `EXABMCVIE001` | BMC | — | `192.168.78.2` | Standard BMC slot 1 |
+| `EXAPVEVIE001` | Proxmox | — | `192.168.78.5` | PVE node 1 |
+| `EXADCSVIE001` | DC | — | `192.168.78.10` | Domain Controller |
+| `EXASBCVIE001` | VOIP SBC | — | `192.168.78.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASVIE001` | NAS | — | `192.168.78.19` | Standard NAS slot |
+| `EXARDRVIE001` | Badge reader | — | `192.168.78.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPVIE001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+---
+
+### 🇱🇧 Lebanon
+
+---
+
+#### BRT — Beirut
+**LAN:** `192.168.169.0/24` · **Domain:** `example.net`
+
+**Infrastructure:**
+
+| Hostname | Role | OS / Model | IP | Notes |
+|----------|------|------------|----|-------|
+| `EXARTRBRT001` | Router | — | `192.168.169.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLBRT001` | Firewall | Debian Linux (PVE VM) | `192.168.169.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIBRT001` | Switch | — | `192.168.169.250` | Standard SWI slot 1 |
+| `EXABMCBRT001` | BMC | — | `192.168.169.2` | Standard BMC slot 1 |
+| `EXAPVEBRT001` | Proxmox | — | `192.168.169.5` | PVE node 1 |
+| `EXADCSBRT001` | DC | — | `192.168.169.10` | Domain Controller |
+| `EXASBCBRT001` | VOIP SBC | — | `192.168.169.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASBRT001` | NAS | — | `192.168.169.19` | Standard NAS slot |
+| `EXARDRBRT001` | Badge reader | — | `192.168.169.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPBRT001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
