@@ -112,7 +112,7 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 |------|----------|---------|-----------|--------|-------|
 | ABD | Aberdeen | Scotland, UK | `192.168.224.0/24` | `example.org` | Satellite office |
 | AMS | Amsterdam | Netherlands | `192.168.31.0/24` | `example.net` | |
-| ATL | Athens, GA | USA | `192.168.33.0/24` | `example.net` | |
+| ATL | Atlanta | USA | `192.168.33.0/24` | `example.net` | |
 | BIR | Birmingham | England, UK | `192.168.121.0/24` | `example.net` | |
 | BON | Bonn | West Germany (FRG) | `192.168.228.0/24` | `example.net` | Schema Master / Domain Naming Master |
 | BRD | West Berlin | West Germany (FRG) | `192.168.113.0/24` | `example.net` | Legacy site |
