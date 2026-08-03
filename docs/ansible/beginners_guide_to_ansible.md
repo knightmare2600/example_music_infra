@@ -466,6 +466,101 @@ across a Debian firewall, a Debian hypervisor, and a Windows domain controller.
 
 ---
 
+## Real-World Invocations — Day 2: Already-Onboarded Hosts
+
+Everything above is day 0 — a box with no history, reachable only by a temporary address,
+becoming a managed estate member for the first time. Once a host is genuinely onboarded
+(a real, correct `.ini` entry, DNS resolves its hostname, the `ansible` key already works),
+the same playbooks get invoked differently: no `-e ansible_host=` override, no `add_host`
+dance — just `-e target=<hostname>`, or nothing at all if the group default is right. Three
+real invocations from this estate's own operational history, each chosen because something
+about it isn't obvious from the command alone.
+
+### Firewall — a routine re-run against a host that already exists
+
+```bash
+ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml \
+  -e target=EXAFWLCLD001 --ask-vault-pass
+```
+
+That's the whole difference from the from-scratch form in step 3 above — no `ansible_host`
+override, because `configs/inventory/cld.ini` already resolves `EXAFWLCLD001` to its real,
+final address. Every prompt in `00_preflight_3_ask.yml` still runs the same way; nothing
+about being a re-run skips them.
+
+One thing worth knowing before running this against more than one host at once (leaving
+`target` unset, or pointing it at a group): `90-firewall.yml`'s main play carries `serial: 1`
+(added 2026-07-31). Every prompt in that role is an `ansible.builtin.pause` task, and pause
+does not reliably register a separate answer for each host in a parallel batch — confirmed
+live, in a different play, back on 2026-07-16 (see `ssh_preflight_with_fallback.yml`'s own
+header) — only one host in the batch actually gets what you type; every other host silently
+inherits the same answer. A single `-e target=<host>` run was never affected (one host in the
+batch either way); `serial: 1` only changes what happens the moment more than one firewall is
+targeted in the same invocation, turning that from a silent correctness bug into a proper
+one-host-at-a-time pass.
+
+### Domain controller — re-running to confirm a fix actually held
+
+```bash
+ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
+  -e target=EXADCSCLD001
+```
+
+The full form (no `--skip-tags bootstrap`) — worth knowing *why* that matters here rather
+than the narrower "DC stages only" form from `windows_dc/README.md`: `windows_bootstrap`'s
+`00-preflight.yml` carries a failsafe (`[B0]`) for a recurring, never-fully-explained bug
+where a Windows box ends up with `DefaultShell=pwsh.exe` set, which breaks every
+module-based Ansible connection outright (`pwsh -SSHServerMode` doesn't parse Ansible's
+`-EncodedCommand` invocation the way PowerShell 5.1 does). B0 lives in the `bootstrap` tag —
+skip it, and a box already in that broken state has nothing left to rescue it.
+
+B0 itself had a real bug of its own for weeks: a `delegate_to: localhost` task doesn't reset
+`ansible_shell_type` back to local just because `ansible_connection: local` is set alongside
+it — the play's own Windows-target value leaked through, so B0's actual `ssh ... reg delete
+DefaultShell` command never executed at all, silently swallowed by its own `failed_when:
+false`. Fixed 2026-07-28. **Confirmed live for the first time 2026-08-01**: a real DC hit the
+broken `DefaultShell` state, this exact command's B0 stage caught it and corrected it, and a
+second run of the identical command afterward connected and completed cleanly — proof the
+fix holds, not just that the bug it used to have is gone.
+
+### Full BIND9 rebuild — `EXADNSVRK001`
+
+```bash
+ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml
+```
+
+No tags at all — every play in the file runs, base install/config included, not just zone
+generation. This is the one to reach for after adding real `devices.csv` rows that need to
+show up in DNS (as opposed to a routine refresh of already-correct zone content, which only
+needs `--tags zones-full,reload`).
+
+**The trap this file's own header warns about, hit for real this session**: an earlier,
+narrower run used `--tags zones,reload` — `zones` (Play 1) is superseded by `zones-full`
+(Play 2) and only ever regenerates zones from its own old, hardcoded `SUFFIX_MAP`. It never
+reads `devices.csv` at all, so two freshly-added devices (`EXAPVEVRK001`, `EXABMCVRK001`)
+sat correctly in the repo's generated data but never made it into the live zone — `host
+exapvevrk001 192.168.139.8` kept returning `NXDOMAIN` until the full, untagged run above
+actually ran `zones-full`.
+
+Real captured output from that run, confirming success:
+
+```text
+[+]   EXADNSVRK001      ════════════════════════════════════════════════════════════════
+                        BIND9 DNS SETUP COMPLETE — EXADNSVRK001
+                      ════════════════════════════════════════════════════════════════
+                        Zone        : jukebox.internal
+                        DNS IP      : 192.168.139.8 (active)
+                        Self-test   : forward + PTR lookups both passed
+                      ════════════════════════════════════════════════════════════════
+```
+
+```bash
+$ host exapvevrk001 192.168.139.8
+exapvevrk001.jukebox.internal has address 192.168.139.5
+```
+
+---
+
 ## Understanding an Ansible Playbook Command
 
 The following command was executed:
@@ -1156,6 +1251,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-07-18 | Added "Bootstrapping the Base Nodes" — a worked, address-accurate walkthrough building `EXAANSCLD001`, `EXAPVECLD001`, `EXAFWLCLD001`, and `EXADCSCLD001` from a bare Proxmox hypervisor, plus `EXAFWLFAL001` as the WireGuard end-to-end proof. Every address traced against `sites.csv`/`devices.csv`/`address_policy.json` (caught and corrected one real discrepancy along the way: CLD's PVE1 slot is `192.168.69.5`, on CLD's own LAN, not `192.168.139.x`) and against `docs/proxmox/Procedure-PVE-Node-Onboarding.md`'s own worked example. Also found `docs/buildsheets/buildsheet-firewall.md`'s `wget` for `firewallme.sh` omits the real `/provision/` path segment — flagged, not fixed (out of scope for this section). |
 | 2026-07-19 | Added "Renumbering / Reworking Live Conventions" — a general checklist for any future change to a default/convention that already has live instances built against the old value (find every hardcoded copy including break-glass script mirrors, don't trust a grep match without reading the surrounding code, change every default together, confirm a recovery path independent of what's changing, migrate live instances one at a time, update docs in the same pass), with the 2026-07-19 WireGuard spoke tunnel IP change (`.2` → `.1`) as the first worked example — including a real trap hit while making it (`firewallme.sh`'s unrelated `SPOKE_TUNNEL_OCTET` legacy hub-building counter, which looked like the same convention on a bare grep and wasn't). |
 | 2026-07-24 | Reviewed "5. Proving WireGuard end-to-end" against a real live WireGuard debug session (`EXAFWLCLD001`/`EXAFWLBRT001`) — the core walkthrough was already accurate, but the verification step only checked tunnel-level health (`wg show`, ping the hub's own tunnel address), which is exactly what looked perfect for hours while a real bug (CLD's `nftables` black-site exclusion dropping all `wg0 → LAN` forward traffic, `19dd5da`) silently blocked every spoke from reaching anything behind the hub's LAN. Added a callout with the real LAN-client test that actually catches this class of bug, plus a short note on the tunnel-IP input validation added the same session (`6c3527b`). |
+| 2026-08-03 | Added "Real-World Invocations — Day 2: Already-Onboarded Hosts", three worked examples of the same playbooks used above but invoked against hosts that already exist, per Robert's request: a routine firewall re-run (`90-firewall.yml`, plus why `serial: 1` — added 2026-07-31 — matters the moment more than one host is targeted at once, not for a single `-e target=`); a domain controller re-run confirming the `windows_bootstrap` `[B0]` DefaultShell failsafe actually holds after its own `ansible_shell_type` bug was fixed (`00-preflight.yml`'s `bootstrap` tag has to run, so this is the full form, not `windows_dc/README.md`'s narrower "DC stages only"); and a full, untagged `bind9-dns.yml` rebuild of `EXADNSVRK001`, including the real `--tags zones,reload` trap hit this session (the old, superseded Play 1 — never reads `devices.csv`, so two freshly-added devices sat correctly generated but never made it into the live zone until the full run actually ran `zones-full`), with the real captured completion banner and `host` lookup proving it worked. |
 
 ---
 
