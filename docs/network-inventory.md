@@ -472,16 +472,25 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 #### LND — London
 **LAN:** `192.168.20.0/24` · **Domain:** `example.net`
 
+> This site also has a legacy-naming domain controller (`EXADCRLND001`, RID/Infra Master) — not
+> shown below (this section covers current/live infrastructure only), see
+> `docs/network-diagram/england.md`'s Old Network section for LND.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXAFWLLND001` | Firewall | Cisco ASA 5516-X | `192.168.20.1` | Perimeter firewall · VPN gateway |
+| `EXARTRLND001` | Router | Cisco ASA 5516-X | `192.168.20.1` | WAN edge |
+| `EXAFWLLND001` | Firewall | Debian Linux (PVE VM) | `192.168.20.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWILND001` | Switch | Cisco Catalyst 9300 | `192.168.20.250` | Core switch |
-| `EXARTRLND001` | Router | Cisco ISR 4331 | `192.168.20.254` | WAN edge |
-| `EXARACLND001` | iDRAC | Dell iDRAC9 | `192.168.20.2` | BMC |
-| `EXADCRLND001` | DC | Windows Server 2022 | `192.168.20.10` | RID Master · Infrastructure Master |
-| `EXASBCLND001` | VOIP SBC | 3CX SBC Debian | `192.168.20.48` | Trunks to `EXAPBXCLD001` |
+| `EXABMCLND001` | BMC | — | `192.168.20.2` | Standard BMC slot 1 |
+| `EXAPVELND001` | Proxmox | — | `192.168.20.5` | PVE node 1 |
+| `EXADCSLND001` | DC | — | `192.168.20.10` | Domain Controller |
+| `EXASBCLND001` | VOIP SBC | — | `192.168.20.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASLND001` | NAS | — | `192.168.20.19` | Standard NAS slot |
+| `EXARDRLND001` | Badge reader | — | `192.168.20.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPLND001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 **Endpoints:** `EXAWKSLND001` (Win11 hot desk `192.168.20.150`), `EXAPRNLND001` (Xerox WorkCentre)
 
@@ -498,21 +507,27 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 #### BIR — Birmingham
 **LAN:** `192.168.121.0/24` · **Domain:** `example.net`
 
+> This site also has legacy-naming domain controllers (`EXADCRBIR001`/`EXADCRBIR002`,
+> Primary/Secondary) — not shown below (this section covers current/live infrastructure only),
+> see `docs/network-diagram/england.md`'s Old Network section for BIR.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXAFWLBIR001` | Firewall | Palo Alto PAN-OS | `192.168.121.1` | VPN gateway |
+| `EXARTRBIR001` | Router | Palo Alto PanOS | `192.168.121.1` | WAN edge |
+| `EXAFWLBIR001` | Firewall | Debian Linux (PVE VM) | `192.168.121.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWIBIR001` | Switch | Cisco Catalyst 9300 | `192.168.121.250` | Core switch |
 | `EXASWIBIR002` | Switch | Cisco Catalyst 48-port | `192.168.121.251` | Access switch |
-| `EXARTRBIR001` | Router | Cisco ISR 4331 | `192.168.121.254` | WAN edge |
-| `EXARACBIR001` | DRAC | Dell DRAC | `192.168.121.2` | BMC |
-| `EXADCRBIR001` | DC | Windows Server 2022 | `192.168.121.10` | Global Catalog |
-| `EXADCRBIR002` | DC | Windows Server 2022 | `192.168.121.11` | Global Catalog |
+| `EXABMCBIR001` | BMC | — | `192.168.121.2` | Standard BMC slot 1 |
+| `EXAPVEBIR001` | Proxmox | — | `192.168.121.5` | PVE node 1 |
+| `EXADCSBIR001` | DC | — | `192.168.121.10` | Domain Controller |
 | `EXASRVBIR001` | Server | Rocky Linux | `192.168.121.20` | Oracle DB |
-| `EXASBCBIR001` | VOIP SBC | 3CX SBC Debian | `192.168.121.48` | Trunks to `EXAPBXCLD001` |
+| `EXASBCBIR001` | VOIP SBC | — | `192.168.121.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASBIR001` | NAS | — | `192.168.121.19` | Standard NAS slot |
+| `EXARDRBIR001` | Badge reader | — | `192.168.121.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPBIR001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPBIR001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
 **Endpoints:** `EXAMBPBIR001` (MacBook), `EXATABBIR001` (Samsung Galaxy Tab), `EXAPHNBIR001` (Samsung S25)
 
@@ -532,96 +547,180 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 #### MCR — Manchester
 **LAN:** `192.168.161.0/24` · **Domain:** `example.org`
 
+> This site also has legacy-naming domain controllers (`EXADCRMCR001`/`EXADCRMCR002`, PDC/RID/
+> Infra Master and Secondary) — not shown below (this section covers current/live
+> infrastructure only), see `docs/network-diagram/england.md`'s Old Network section for MCR.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
+| `EXARTRMCR001` | Router | — | `192.168.161.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLMCR001` | Firewall | Debian Linux (PVE VM) | `192.168.161.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWIMCR001` | Switch | Cisco Catalyst 9300 | `192.168.161.250` | Distribution switch |
-| `EXARACMCR001` | iLO | HPE iLO5 | `192.168.161.2` | BMC |
-| `EXADCRMCR001` | DC | Windows Server 2022 | `192.168.161.10` | PDC Emulator · RID Master · Infrastructure Master |
-| `EXADCSMCR002` | DC | Windows Server 2022 | `192.168.161.11` | Global Catalog |
-| `EXASBCMCR001` | VOIP SBC | 3CX SBC Debian | `192.168.161.48` | Trunks to `EXAPBXCLD001` |
+| `EXABMCMCR001` | BMC | — | `192.168.161.2` | Standard BMC slot 1 |
+| `EXAPVEMCR001` | Proxmox | — | `192.168.161.5` | PVE node 1 |
+| `EXADCSMCR001` | DC | — | `192.168.161.10` | Domain Controller |
+| `EXASBCMCR001` | VOIP SBC | — | `192.168.161.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASMCR001` | NAS | — | `192.168.161.19` | Standard NAS slot |
+| `EXARDRMCR001` | Badge reader | — | `192.168.161.21` | Standard RDR slot |
 
-**Endpoints:** `EXALAPMCR001–002` (Win11 laptops), `EXAWKSMCR001–002` (Win10 desktops), `EXAPRNMCR001` (printer)
+**WAPs:** `EXAWAPMCR001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+**Endpoints:** `EXALAPMCR001` (Win11 laptop, `192.168.161.19` — shares NAS's standard octet, a
+confirmed real exception), `EXALAPMCR002` (Win11 laptop, `.150`), `EXAWKSMCR001–002` (Win10
+desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 ---
 
 #### LIV — Liverpool
 **LAN:** `192.168.151.0/24` · **Domain:** `example.org`
 
+> This site also has a legacy-naming domain controller (`EXADCRLIV001`, WS2025, unauthorized
+> build, also hosts file shares) — not shown below (this section covers current/live
+> infrastructure only), see `docs/network-diagram/england.md`'s Old Network section for LIV.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
+| `EXARTRLIV001` | Router | — | `192.168.151.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLLIV001` | Firewall | Debian Linux (PVE VM) | `192.168.151.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWILIV001` | Switch | Cisco Catalyst 9200 | `192.168.151.250` | Core switch |
-| `EXARACLIV001` | iLO | HPE iLO5 | `192.168.151.2` | BMC |
-| `EXADCRLIV001` | DC | Windows Server 2025 | `192.168.151.10` | Global Catalog |
-| `EXASBCLIV001` | VOIP SBC | 3CX SBC Debian | `192.168.151.48` | Trunks to `EXAPBXCLD001` |
+| `EXABMCLIV001` | BMC | — | `192.168.151.2` | Standard BMC slot 1 |
+| `EXAPVELIV001` | Proxmox | — | `192.168.151.5` | PVE node 1 |
+| `EXADCSLIV001` | DC | — | `192.168.151.10` | Domain Controller |
+| `EXASBCLIV001` | VOIP SBC | — | `192.168.151.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASLIV001` | NAS | — | `192.168.151.19` | Standard NAS slot |
+| `EXARDRLIV002` | Badge reader | — | `192.168.151.21` | HID Signo |
 
-**Endpoints:** `EXASVRLIV001` (Win Server 2022 file server), `EXAMBPLIV001` (MacBook Pro — macOS Tahoe), `EXAMACLIV001` (iMac — **disabled, maintenance**)
+**WAPs:** `EXAWAPLIV001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
-**Security:** `EXARDRLIV002` (HID Signo badge reader), `EXABPSLIV001` (badge programming workstation)
+**Endpoints:** `EXASVRLIV001` (Win Server 2022 file server), `EXAMBPLIV001` (MacBook Pro — macOS Tahoe), `EXAMACLIV001` (iMac — **disabled**)
+
+**Security:** `EXABPSLIV001` (badge programming workstation, `192.168.151.17`)
 
 ---
 
 #### NEW — Newcastle
 **LAN:** `192.168.191.0/24` · **Domain:** `example.org`
 
+> This site also has a legacy-naming domain controller (`EXADCRNEW001`, AD running, no real
+> users/shares ever set up) — not shown below (this section covers current/live infrastructure
+> only), see `docs/network-diagram/england.md`'s Old Network section for NEW.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
+| `EXARTRNEW001` | Router | — | `192.168.191.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLNEW001` | Firewall | Debian Linux (PVE VM) | `192.168.191.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWINEW001` | Switch | TP-Link JetStream | `192.168.191.250` | Access switch |
-| `EXARACNEW001` | iDRAC | Dell iDRAC9 | `192.168.191.2` | BMC |
-| `EXADCRNEW001` | DC | Windows Server 2022 | `192.168.191.10` | Global Catalog |
-| `EXASBCNEW001` | VOIP SBC | 3CX SBC Debian | `192.168.191.48` | Trunks to `EXAPBXCLD001` |
+| `EXABMCNEW001` | BMC | — | `192.168.191.2` | Standard BMC slot 1 |
+| `EXAPVENEW001` | Proxmox | — | `192.168.191.5` | PVE node 1 |
+| `EXADCSNEW001` | DC | — | `192.168.191.10` | Domain Controller |
+| `EXASBCNEW001` | VOIP SBC | — | `192.168.191.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASNEW001` | NAS | — | `192.168.191.19` | Standard NAS slot |
 
-**Endpoints:** `EXASRVNEW001` (Win Server 2022 file/print), `EXAWKSNEW099` (Win11 — ⚠️ LAPS password expired)
+**WAPs:** `EXAWAPNEW001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+**Endpoints:** `EXASRVNEW001` (Win Server 2022 file/print, `192.168.191.21` — real device sitting on RDR's usual standard octet; no separate badge reader confirmed built here), `EXAWKSNEW099` (Win11 — ⚠️ LAPS password expired)
 
 ---
 
 #### COV — Coventry
 **LAN:** `192.168.247.0/24` · **Domain:** `example.net`
 
-**Infrastructure:** `EXARTRCOV001` (Cisco ISR 4331 — `192.168.247.254`)
+**Infrastructure:**
 
-**WAPs:** `EXAWAPCOV001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+| Hostname | Role | OS / Model | IP | Notes |
+|----------|------|------------|----|-------|
+| `EXARTRCOV001` | Router | Cisco ISR 4331 | `192.168.247.1` | WAN edge — no server infra at this site |
+| `EXAFWLCOV001` | Firewall | Debian Linux (PVE VM) | `192.168.247.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWICOV001` | Switch | — | `192.168.247.250` | Standard SWI slot 1 |
+| `EXABMCCOV001` | BMC | — | `192.168.247.2` | Standard BMC slot 1 |
+| `EXAPVECOV001` | Proxmox | — | `192.168.247.5` | PVE node 1 |
+| `EXADCSCOV001` | DC | — | `192.168.247.10` | Domain Controller |
+| `EXASBCCOV001` | VOIP SBC | — | `192.168.247.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASCOV001` | NAS | — | `192.168.247.19` | Standard NAS slot |
+| `EXARDRCOV001` | Badge reader | — | `192.168.247.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPCOV001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
 ---
 
 #### HAL — Halifax
 **LAN:** `192.168.142.0/24` · **Domain:** `example.net`
 
+> This site also has a legacy-naming domain controller (`EXADCRHAL001`, Windows Server on a
+> Dell OptiPlex tower) — not shown below (this section covers current/live infrastructure
+> only), see `docs/network-diagram/england.md`'s Old Network section for HAL.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSHAL001` | DC | Windows Server 2022 | `192.168.142.10` | — |
-| `EXASBCHAL001` | VOIP SBC | 3CX SBC Debian | `192.168.142.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRHAL001` | Router | — | `192.168.142.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLHAL001` | Firewall | Debian Linux (PVE VM) | `192.168.142.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIHAL001` | Switch | — | `192.168.142.250` | Standard SWI slot 1 |
+| `EXABMCHAL001` | BMC | — | `192.168.142.2` | Standard BMC slot 1 |
+| `EXAPVEHAL001` | Proxmox | — | `192.168.142.5` | PVE node 1 |
+| `EXADCSHAL001` | DC | — | `192.168.142.10` | Domain Controller |
+| `EXASBCHAL001` | VOIP SBC | — | `192.168.142.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASHAL001` | NAS | — | `192.168.142.19` | Standard NAS slot |
+| `EXARDRHAL001` | Badge reader | — | `192.168.142.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPHAL001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
 #### HUL — Hull
 **LAN:** `192.168.148.0/24` · **Domain:** `example.net`
 
+> This site also has a legacy-naming domain controller (`EXADCRHUL001`, Windows Server on a
+> Dell OptiPlex tower) — not shown below (this section covers current/live infrastructure
+> only), see `docs/network-diagram/england.md`'s Old Network section for HUL.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSHUL001` | DC | Windows Server 2022 | `192.168.148.10` | — |
-| `EXASBCHUL001` | VOIP SBC | 3CX SBC Debian | `192.168.148.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRHUL001` | Router | — | `192.168.148.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLHUL001` | Firewall | Debian Linux (PVE VM) | `192.168.148.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIHUL001` | Switch | — | `192.168.148.250` | Standard SWI slot 1 |
+| `EXABMCHUL001` | BMC | — | `192.168.148.2` | Standard BMC slot 1 |
+| `EXAPVEHUL001` | Proxmox | — | `192.168.148.5` | PVE node 1 |
+| `EXADCSHUL001` | DC | — | `192.168.148.10` | Domain Controller |
+| `EXASBCHUL001` | VOIP SBC | — | `192.168.148.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASHUL001` | NAS | — | `192.168.148.19` | Standard NAS slot |
+| `EXARDRHUL001` | Badge reader | — | `192.168.148.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPHUL001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
 #### SHE — Sheffield
 **LAN:** `192.168.114.0/24` · **Domain:** `example.net`
 
+> This site also has a legacy-naming domain controller (`EXADCRSHE001`, Windows Server on a
+> Dell OptiPlex tower) — not shown below (this section covers current/live infrastructure
+> only), see `docs/network-diagram/england.md`'s Old Network section for SHE.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSSHE001` | DC | Windows Server 2022 | `192.168.114.10` | — |
-| `EXASBCSHE001` | VOIP SBC | 3CX SBC Debian | `192.168.114.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRSHE001` | Router | — | `192.168.114.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLSHE001` | Firewall | Debian Linux (PVE VM) | `192.168.114.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWISHE001` | Switch | — | `192.168.114.250` | Standard SWI slot 1 |
+| `EXABMCSHE001` | BMC | — | `192.168.114.2` | Standard BMC slot 1 |
+| `EXAPVESHE001` | Proxmox | — | `192.168.114.5` | PVE node 1 |
+| `EXADCSSHE001` | DC | — | `192.168.114.10` | Domain Controller |
+| `EXASBCSHE001` | VOIP SBC | — | `192.168.114.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASSHE001` | NAS | — | `192.168.114.19` | Standard NAS slot |
+| `EXARDRSHE001` | Badge reader | — | `192.168.114.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPSHE001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
