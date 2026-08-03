@@ -1225,22 +1225,28 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 #### LAX — Los Angeles, California
 **LAN:** `192.168.213.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSLAX001` — DNS, Netlogon and KDC services stopped.
+> This site also has a legacy-naming domain controller (`EXADCRLAX001`, deployed then
+> physically disconnected — services stopped) — not shown below (this section covers
+> current/live infrastructure only), see `docs/network-diagram/united-states.md`'s Old Network
+> section for LAX.
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXAFWLLAX001` | Firewall | Palo Alto PAN-OS 10.x | `192.168.213.1` | VPN gateway |
+| `EXARTRLAX001` | Router | Palo Alto PAN-OS 10.x | `192.168.213.1` | WAN edge |
+| `EXAFWLLAX001` | Firewall | Debian Linux (PVE VM) | `192.168.213.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWILAX001` | Switch | Cisco Catalyst 9300 | `192.168.213.250` | Core switch |
 | `EXASWILAX002` | Switch | Cisco Catalyst 2960 | `192.168.213.251` | Access switch |
-| `EXARTRLAX001` | Router | Cisco ISR 4331 | `192.168.213.254` | WAN edge |
-| `EXARACLAX001` | iDRAC | Dell iDRAC9 | `192.168.213.2` | BMC |
-| `EXADCSLAX001` | DC | Windows Server 2022 | `192.168.213.10` | ⚠️ Services stopped |
+| `EXABMCLAX001` | BMC | — | `192.168.213.2` | Standard BMC slot 1 |
+| `EXAPVELAX001` | Proxmox | — | `192.168.213.5` | PVE node 1 |
+| `EXADCSLAX001` | DC | — | `192.168.213.10` | Domain Controller |
 | `EXASRVLAX001` | Server | Rocky Linux 9.x | `192.168.213.20` | Local services / DB |
-| `EXASBCLAX001` | VOIP SBC | 3CX SBC Debian | `192.168.213.48` | Trunks to `EXAPBXCLD001` |
+| `EXASBCLAX001` | VOIP SBC | — | `192.168.213.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASLAX001` | NAS | — | `192.168.213.19` | Standard NAS slot |
+| `EXARDRLAX001` | Badge reader | — | `192.168.213.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPLAX001–003` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPLAX001–003` · Ubiquiti UniFi U6-Pro — static, `.82`–`.84`
 
 **Endpoints:** `EXAMBPLAX001` (MacBook Pro), `EXATABLAX001` (iPad setlists), `EXAPHNLAX001` (Android)
 
@@ -1248,77 +1254,176 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 | Hostname | Type | IP | Notes |
 |----------|------|----|-------|
-| `EXAMUSLAX001` | Moog One | `192.168.213.70` | Synthesizer |
-| `EXAMUSLAX002` | LinnDrum LM-2 | `192.168.213.71` | Drum machine — EPROM v7 |
-| `EXAMUSLAX003` | Fairlight CMI IIx | `192.168.213.72` | Sampler — QDOS 2.x |
-| `EXAATTLAX001` | Atari ST | `192.168.213.73` | MIDI sequencing — TOS 1.04 |
-| `EXAPAYLAX001` | Payphone | `192.168.213.74` | Lobby payphone — SIP gateway |
-| `EXALCDLAX001` | LCD Display | `192.168.213.75` | NEC PlasmaSync status wallboard |
+| `EXAMUSLAX001` | Synth | `192.168.213.70` | — |
+| `EXAMUSLAX002` | Drum machine | `192.168.213.71` | — |
+| `EXAMUSLAX003` | Fairlight CMI | `192.168.213.72` | — |
+| `EXAASTLAX001` | Atari ST | `192.168.213.73` | MIDI sequencing — TOS 1.04 |
+| `EXAPAYLAX001` | Payphone | `192.168.213.74` | — |
+| `EXALCDLAX001` | LCD Display | `192.168.213.75` | Status wallboard — NEC PlasmaSync |
 
 ---
 
 #### NYC — New York, NY
 **LAN:** `192.168.212.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSNYC001` — DNS, Netlogon and KDC services stopped.
+> This site also has a legacy-naming domain controller (`EXADCRNYC001`, DNS/Netlogon/KDC
+> services stopped, Dell OptiPlex bare metal) — not shown below (this section covers
+> current/live infrastructure only), see `docs/network-diagram/united-states.md`'s Old Network
+> section for NYC.
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSNYC001` | DC | Windows Server 2022 | `192.168.212.10` | ⚠️ Services stopped |
-| `EXASBCNYC001` | VOIP SBC | 3CX SBC Debian | `192.168.212.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRNYC001` | Router | — | `192.168.212.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLNYC001` | Firewall | Debian Linux (PVE VM) | `192.168.212.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWINYC001` | Switch | — | `192.168.212.250` | Standard SWI slot 1 |
+| `EXABMCNYC001` | BMC | — | `192.168.212.2` | Standard BMC slot 1 |
+| `EXAPVENYC001` | Proxmox | — | `192.168.212.5` | PVE node 1 |
+| `EXADCSNYC001` | DC | — | `192.168.212.10` | Domain Controller |
+| `EXASBCNYC001` | VOIP SBC | — | `192.168.212.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASNYC001` | NAS | — | `192.168.212.19` | Standard NAS slot |
+| `EXARDRNYC001` | Badge reader | — | `192.168.212.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPNYC001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
 
 ---
 
 #### NJC — Camden, New Jersey
 **LAN:** `192.168.201.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSNJC001` — DNS, Netlogon and KDC services stopped.
-
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSNJC001` | DC | Windows Server 2022 | `192.168.201.10` | ⚠️ Services stopped |
-| `EXASBCNJC001` | VOIP SBC | 3CX SBC Debian | `192.168.201.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRNJC001` | Router | — | `192.168.201.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLNJC001` | Firewall | Debian Linux (PVE VM) | `192.168.201.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWINJC001` | Switch | — | `192.168.201.250` | Standard SWI slot 1 |
+| `EXABMCNJC001` | BMC | — | `192.168.201.2` | Standard BMC slot 1 |
+| `EXAPVENJC001` | Proxmox | — | `192.168.201.5` | PVE node 1 |
+| `EXADCSNJC001` | DC | — | `192.168.201.10` | Domain Controller |
+| `EXASBCNJC001` | VOIP SBC | — | `192.168.201.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASNJC001` | NAS | — | `192.168.201.19` | Standard NAS slot |
+| `EXARDRNJC001` | Badge reader | — | `192.168.201.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPNJC001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
 
 ---
 
 #### MIA — Miami, Florida
 **LAN:** `192.168.135.0/24` · **Domain:** `example.net`
 
-**Endpoints:** `EXALAPMIA001` (MacBook — macOS Sonoma)
+**Infrastructure:**
 
-**IoT:** `EXACOFMIA001` (Cuban Covfefe machine — VxWorks `192.168.135.60`)
+| Hostname | Role | OS / Model | IP | Notes |
+|----------|------|------------|----|-------|
+| `EXARTRMIA001` | Router | — | `192.168.135.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLMIA001` | Firewall | Debian Linux (PVE VM) | `192.168.135.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIMIA001` | Switch | — | `192.168.135.250` | Standard SWI slot 1 |
+| `EXABMCMIA001` | BMC | — | `192.168.135.2` | Standard BMC slot 1 |
+| `EXAPVEMIA001` | Proxmox | — | `192.168.135.5` | PVE node 1 |
+| `EXADCSMIA001` | DC | — | `192.168.135.10` | Domain Controller |
+| `EXASBCMIA001` | VOIP SBC | — | `192.168.135.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASMIA001` | NAS | — | `192.168.135.19` | Standard NAS slot |
+
+**WAPs:** `EXAWAPMIA001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+**Endpoints:** `EXALAPMIA001` (MacBook, macOS Sonoma, `192.168.135.21` — real device sitting on RDR's usual standard octet; no separate badge reader confirmed built here)
+
+**IoT:** `EXACOFMIA001` (Coffee machine — VxWorks, `192.168.135.60`)
+
 
 ---
 
-#### ATL — Athens, Georgia
+#### ATL — Atlanta, Georgia
 **LAN:** `192.168.33.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSATL001` — DNS, Netlogon and KDC services stopped.
+> Empty office, single router — Robert: "the office had a router plugged in to the internet and
+> literally an empty office." No other legacy infrastructure existed here, see
+> `docs/network-diagram/united-states.md`'s Old Network section for ATL.
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSATL001` | DC | Windows Server 2022 | `192.168.33.10` | ⚠️ Services stopped |
-| `EXASBCATL001` | VOIP SBC | 3CX SBC Debian | `192.168.33.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRATL001` | Router | Cisco ISR 4331 | `192.168.33.1` | WAN edge |
+| `EXAFWLATL001` | Firewall | Debian Linux (PVE VM) | `192.168.33.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIATL001` | Switch | — | `192.168.33.250` | Standard SWI slot 1 |
+| `EXABMCATL001` | BMC | — | `192.168.33.2` | Standard BMC slot 1 |
+| `EXAPVEATL001` | Proxmox | — | `192.168.33.5` | PVE node 1 |
+| `EXADCSATL001` | DC | — | `192.168.33.10` | Domain Controller |
+| `EXASBCATL001` | VOIP SBC | — | `192.168.33.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASATL001` | NAS | — | `192.168.33.19` | Standard NAS slot |
+| `EXARDRATL001` | Badge reader | — | `192.168.33.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPATL001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
 
 ---
 
 #### CHI — Chicago, Illinois
 **LAN:** `192.168.214.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSCHI001` — DNS, Netlogon and KDC services stopped.
+**Infrastructure:**
+
+| Hostname | Role | OS / Model | IP | Notes |
+|----------|------|------------|----|-------|
+| `EXARTRCHI001` | Router | — | `192.168.214.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLCHI001` | Firewall | Debian Linux (PVE VM) | `192.168.214.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWICHI001` | Switch | — | `192.168.214.250` | Standard SWI slot 1 |
+| `EXABMCCHI001` | BMC | — | `192.168.214.2` | Standard BMC slot 1 |
+| `EXAPVECHI001` | Proxmox | — | `192.168.214.5` | PVE node 1 |
+| `EXADCSCHI001` | DC | — | `192.168.214.10` | Domain Controller |
+| `EXASBCCHI001` | VOIP SBC | — | `192.168.214.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASCHI001` | NAS | — | `192.168.214.19` | Standard NAS slot |
+| `EXARDRCHI001` | Badge reader | — | `192.168.214.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPCHI001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+
+---
+
+#### SEA — Seattle, Washington
+**LAN:** `192.168.206.0/24` · **Domain:** `example.net`
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSCHI001` | DC | Windows Server 2022 | `192.168.214.10` | ⚠️ Services stopped |
-| `EXASBCCHI001` | VOIP SBC | 3CX SBC Debian | `192.168.214.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRSEA001` | Router | — | `192.168.206.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLSEA001` | Firewall | Debian Linux (PVE VM) | `192.168.206.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWISEA001` | Switch | — | `192.168.206.250` | Standard SWI slot 1 |
+| `EXABMCSEA001` | BMC | — | `192.168.206.2` | Standard BMC slot 1 |
+| `EXAPVESEA001` | Proxmox | — | `192.168.206.5` | PVE node 1 |
+| `EXADCSSEA001` | DC | — | `192.168.206.10` | Domain Controller |
+| `EXASBCSEA001` | VOIP SBC | — | `192.168.206.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASSEA001` | NAS | — | `192.168.206.19` | Standard NAS slot |
+| `EXARDRSEA001` | Badge reader | — | `192.168.206.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPSEA001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+---
+
+#### SFO — San Francisco, California
+**LAN:** `192.168.145.0/24` · **Domain:** `example.net`
+
+**Infrastructure:**
+
+| Hostname | Role | OS / Model | IP | Notes |
+|----------|------|------------|----|-------|
+| `EXARTRSFO001` | Router | — | `192.168.145.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLSFO001` | Firewall | Debian Linux (PVE VM) | `192.168.145.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWISFO001` | Switch | — | `192.168.145.250` | Standard SWI slot 1 |
+| `EXABMCSFO001` | BMC | — | `192.168.145.2` | Standard BMC slot 1 |
+| `EXAPVESFO001` | Proxmox | — | `192.168.145.5` | PVE node 1 |
+| `EXADCSSFO001` | DC | — | `192.168.145.10` | Domain Controller |
+| `EXASBCSFO001` | VOIP SBC | — | `192.168.145.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASSFO001` | NAS | — | `192.168.145.19` | Standard NAS slot |
+| `EXARDRSFO001` | Badge reader | — | `192.168.145.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPSFO001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
