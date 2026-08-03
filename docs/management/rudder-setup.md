@@ -25,7 +25,7 @@
 
 1. [Prerequisites](#1-prerequisites)
 2. [Node Specification and Values](#2-node-specification-and-values)
-3. [Create the VM — EXARUDCLD001](#3-create-the-vm--exardrcld001)
+3. [Create the VM — EXARUDCLD001](#3-create-the-vm--exarudcld001)
 4. [Install Debian Trixie](#4-install-debian-trixie)
 5. [Post-Install Base Configuration](#5-post-install-base-configuration)
 6. [Install Rudder Server](#6-install-rudder-server)
