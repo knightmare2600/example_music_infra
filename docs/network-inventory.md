@@ -1142,19 +1142,28 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 #### BRK — Brockville, Ontario
 **LAN:** `192.168.136.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSBRK001` — DNS, Netlogon and KDC services stopped.
+> This site also has a legacy-naming domain controller (`EXADCRBRK001`, DNS/Netlogon/KDC
+> services stopped, hosted on the vCenter cluster) — not shown below (this section covers
+> current/live infrastructure only), see `docs/network-diagram/canada.md`'s Old Network section
+> for BRK.
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXARTRBRK001` | Router | Cisco ISR 4331 | `192.168.136.254` | WAN edge |
-| `EXADCSBRK001` | DC | Windows Server 2022 | `192.168.136.10` | ⚠️ Services stopped |
-| `EXASBCBRK001` | VOIP SBC | 3CX SBC Debian | `192.168.136.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRBRK001` | Router | Cisco ISR 4331 | `192.168.136.1` | WAN edge |
+| `EXAFWLBRK001` | Firewall | Debian Linux (PVE VM) | `192.168.136.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIBRK001` | Switch | — | `192.168.136.250` | Standard SWI slot 1 |
+| `EXASWIBRK002` | Switch | — | `192.168.136.251` | Second switch — confirmed real, vendor/model TBD |
+| `EXABMCBRK001` | BMC | — | `192.168.136.2` | Standard BMC slot 1 |
+| `EXAPVEBRK001` | Proxmox | — | `192.168.136.5` | PVE node 1 |
+| `EXADCSBRK001` | DC | — | `192.168.136.10` | Domain Controller |
+| `EXASBCBRK001` | VOIP SBC | — | `192.168.136.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASBRK001` | NAS | — | `192.168.136.19` | Standard NAS slot |
 
-**WAPs:** `EXAWAPBRK001` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPBRK001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
-**Endpoints:** `EXALAPBRK001` (Win11 tour laptop), `EXAVNDBRK001` (Maple syrup vending — XPe)
+**Endpoints:** `EXALAPBRK001` (Win11 tour laptop, `192.168.136.21` — real device sitting on RDR's usual standard octet; no separate badge reader confirmed built here), `EXAVNDBRK001` (Maple syrup vending — XPe)
 
 **IoT:** `EXADONBRK001` (Tim Hortons Donut vending — VxWorks `192.168.136.60`)
 
@@ -1163,14 +1172,28 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 #### TOR — Toronto, Ontario
 **LAN:** `192.168.146.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSTOR001` — DNS, Netlogon and KDC services stopped.
+> This site also has two legacy-naming domain controllers — `EXADCRTOR001` (DNS/Netlogon/KDC
+> services stopped, on DHCP, HP ML310e bare metal) and `EXADCRTOR028` (undocumented legacy AD
+> install, no-one on record knew it existed until found; HostOctet genuinely unknown, needs
+> on-site discovery) — not shown below (this section covers current/live infrastructure only),
+> see `docs/network-diagram/canada.md`'s Old Network section for TOR and
+> `at_have_ryggen_fri/check_dcr_devices.py`'s output for current status.
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSTOR001` | DC | Windows Server 2022 | `192.168.146.10` | ⚠️ Services stopped |
-| `EXASBCTOR001` | VOIP SBC | 3CX SBC Debian | `192.168.146.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRTOR001` | Router | — | `192.168.146.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLTOR001` | Firewall | Debian Linux (PVE VM) | `192.168.146.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWITOR001` | Switch | — | `192.168.146.250` | Standard SWI slot 1 |
+| `EXABMCTOR001` | BMC | — | `192.168.146.2` | Standard BMC slot 1 |
+| `EXAPVETOR001` | Proxmox | — | `192.168.146.5` | PVE node 1 |
+| `EXADCSTOR001` | DC | — | `192.168.146.10` | Domain Controller |
+| `EXASBCTOR001` | VOIP SBC | — | `192.168.146.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASTOR001` | NAS | — | `192.168.146.19` | Standard NAS slot |
+| `EXARDRTOR001` | Badge reader | — | `192.168.146.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPTOR001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
@@ -1181,8 +1204,17 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXADCSMTL001` | DC | Windows Server 2022 | `192.168.154.10` | — |
-| `EXASBCMTL001` | VOIP SBC | 3CX SBC Debian | `192.168.154.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRMTL001` | Router | — | `192.168.154.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLMTL001` | Firewall | Debian Linux (PVE VM) | `192.168.154.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIMTL001` | Switch | — | `192.168.154.250` | Standard SWI slot 1 |
+| `EXABMCMTL001` | BMC | — | `192.168.154.2` | Standard BMC slot 1 |
+| `EXAPVEMTL001` | Proxmox | — | `192.168.154.5` | PVE node 1 |
+| `EXADCSMTL001` | DC | — | `192.168.154.10` | Domain Controller |
+| `EXASBCMTL001` | VOIP SBC | — | `192.168.154.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASMTL001` | NAS | — | `192.168.154.19` | Standard NAS slot |
+| `EXARDRMTL001` | Badge reader | — | `192.168.154.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPMTL001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
