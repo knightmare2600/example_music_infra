@@ -11,14 +11,14 @@
 
 **LAN:** `192.168.213.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
-> ⚠️ `EXADCSLAX001` — DNS, Netlogon and KDC services stopped.  
+> ⚠️ `EXADCRLAX001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (US) LLC. · **Landline:** +1 213 555 xxxx · **Mobile:** +1 213 555 xxx
 
 ### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra). BMC/hypervisor confirmed Dell iDRAC9 (kept as originally
-> documented — HP was a same-day slip, corrected). `EXADCSLAX001` was genuinely deployed and
+> documented — HP was a same-day slip, corrected). `EXADCRLAX001` was genuinely deployed and
 > running, then someone physically disconnected it — that's what produced the services-stopped
 > state, a different failure mode from CLY/DUN's "never touched" hardware. Two real corrections
 > from the original box: the Atari ST (used for MIDI mixing) is `EXAASTLAX001` with its real 🕹️
@@ -29,68 +29,53 @@
 > are all separately confirmed real via `devices.csv`).
 
 > 🚨 **Migration priority — Tier 1.** DC deployed then physically disconnected — services
-> stopped. Not a repair candidate — the fix is a new `EXADCSLAX001` build promoting and
+> stopped. Not a repair candidate — the fix is a new `EXADCRLAX001` build promoting and
 > replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:LAX:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRLAX001<br/>Palo Alto PAN-OS 10.x, router/firewall combo<br/>192.168.213.1"]
-    O_INET --> O_RTR
-    O_SW1["🔀 EXASWILAX001<br/>Cisco 9300<br/>192.168.213.250"]
-    O_SW2["🔀 EXASWILAX002<br/>Cisco 2960<br/>192.168.213.251"]
-    O_RTR --> O_SW1
-    O_RTR --> O_SW2
-
+    O_RTR["📡 EXARTRLAX001<br/>Palo Alto PAN-OS 10.x · WAN edge, router/firewall combo<br/>192.168.213.1"]
+    O_SWI1["🔀 EXASWILAX001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.213.250"]
+    O_SWI2["🔀 EXASWILAX002<br/>Cisco Catalyst 2960 · Access switch<br/>192.168.213.251"]
+    O_DCR["🗝️ EXADCRLAX001<br/>DC · deployed, then physically disconnected<br/>192.168.213.10"]
+    O_LCD["🖼️ EXALCDLAX001<br/>NEC PlasmaSync · Status wallboard<br/>192.168.213.75"]
+    O_MBP["💻 EXAMBPLAX001<br/>macOS · MacBook Pro<br/>192.168.213.41"]
+    O_PAY["☎️ EXAPAYLAX001<br/>Payphone<br/>192.168.213.74"]
+    O_PHN["📞 EXAPHNLAX001<br/>Android · Phone<br/>No IP Address"]
     O_RAC["🔧 EXARACLAX001<br/>Dell iDRAC9<br/>192.168.213.2"]
-    O_DC["🔴🗝️ EXADCSLAX001<br/>DC · deployed, then physically disconnected — services stopped<br/>192.168.213.10"]
-    O_SRV["🗄️ EXASRVLAX001<br/>Rocky Linux, Local Services/DB<br/>192.168.213.20"]
-    O_SW1 --> O_DC
-    O_RAC -.->|"manages"| O_DC
-    O_SW1 --> O_SRV
-
-    O_MBP["💻 EXAMBPLAX001<br/>MacBook Pro<br/>192.168.213.41"]
-    O_TAB["📱 EXATABLAX001<br/>iPad, Setlists<br/>192.168.213.61"]
-    O_PHN["📞 EXAPHNLAX001<br/>Android Phone<br/>No IP Address"]
-    O_WAP["📶 WAPs — none yet, new build only"]
-    O_CAM["🎥 CAMs — none yet, new build only"]
-    O_MOO["🎹 EXAMOOLAX001<br/>Moog One Synthesizer<br/>192.168.213.70"]
-    O_LIN["🥁 EXALINLAX001<br/>LinnDrum LM-2<br/>192.168.213.71"]
-    O_FCL["🎹 EXAFCLLAX001<br/>Fairlight CMI IIx<br/>192.168.213.72"]
-    O_AST["🕹️ EXAASTLAX001<br/>Atari ST, MIDI Mixing<br/>192.168.213.73"]
-    O_PAY["☎️ EXAPAYLAX001<br/>Lobby Payphone<br/>192.168.213.74"]
-    O_LCD["🖼️ EXALCDLAX001<br/>NEC PlasmaSync Display<br/>192.168.213.75"]
-    O_SW2 --> O_MBP
-    O_SW2 --> O_TAB
-    O_SW2 --> O_PHN
-    O_SW2 --> O_WAP
-    O_SW2 --> O_CAM
-    O_SW2 --> O_MOO
-    O_SW2 --> O_LIN
-    O_SW2 --> O_FCL
-    O_SW2 --> O_AST
-    O_SW2 --> O_PAY
-    O_SW2 --> O_LCD
+    O_SRV["🗄️ EXASRVLAX001<br/>Rocky Linux 9.x · Local services DB<br/>192.168.213.20"]
+    O_TAB["📱 EXATABLAX001<br/>iPadOS · iPad<br/>192.168.213.61"]
+    O_MUS["💿 EXAMUSLAX001-003<br/>3 x Jukeboxes<br/>192.168.213.70-72"]
+    O_INET --> O_RTR
+    O_RTR --> O_SWI1
+    O_RTR --> O_SWI2
+    O_SWI1 --> O_LCD
+    O_SWI1 --> O_MBP
+    O_SWI1 --> O_PAY
+    O_SWI1 --> O_PHN
+    O_SWI1 --> O_RAC
+    O_RAC -.->|"manages"| O_DCR
+    O_SWI1 --> O_SRV
+    O_SWI1 --> O_TAB
+    O_SWI1 --> O_MUS
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_MOO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_LIN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FCL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_AST fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MUS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:LAX:END
 ```
 
 <details>
@@ -106,7 +91,7 @@ graph TD
       RTR["📡 EXARTRLAX001 · Cisco ISR 4331 · .254"]
       RAC["🔧 EXARACLAX001 · Dell iDRAC9 · .2"]
       PVE["🗂️ EXAPVELAX001 · Proxmox node 1 · .5"]
-      DC["🔴 🗝️ EXADCSLAX001 · DC · Services stopped · .10"]
+      DC["🔴 🗝️ EXADCRLAX001 · DC · Services stopped · .10"]
       SRV["🗄️ EXASRVLAX001 · Rocky Linux · Local services/DB · .20"]
       SBC["🛡️ EXASBCLAX001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYLAX001 · Rudder Relay · .12"]
@@ -166,7 +151,7 @@ graph TD
     T_WAP2["📶 EXAWAPLAX002<br/>Wireless Access Point<br/>192.168.213.83"]
     T_WAP3["📶 EXAWAPLAX003<br/>Wireless Access Point<br/>192.168.213.84"]
     T_SWI2 --> T_NAS --> T_RDR --> T_MUS --> T_MUS2 --> T_MUS3 --> T_WAP --> T_WAP2 --> T_WAP3
-    T_DCS["🗝️ EXADCSLAX001<br/>DCS 1<br/>192.168.213.10"]
+    T_DCS["🗝️ EXADCRLAX001<br/>DCS 1<br/>192.168.213.10"]
     T_SBC["🛡️ EXASBCLAX001<br/>SBC<br/>192.168.213.48"]
     T_FWL["🧱 EXAFWLLAX001<br/>LAN Face<br/>192.168.213.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -213,7 +198,7 @@ graph TD
 
 **LAN:** `192.168.212.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
-> ⚠️ `EXADCSNYC001` — DNS, Netlogon and KDC services stopped.  
+> ⚠️ `EXADCRNYC001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (US) LLC. · **Landline:** +1 212 500 0xxx · **Mobile:** +1 917 900 2xxx
 
 ### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
@@ -221,19 +206,19 @@ graph TD
 > **Corrected against Robert's real facts, 2026-07-31.** No SBC; no `RRY`; no WireGuard on old
 > infra — standing corrections. Despite `devices.csv` having zero rows for NYC (which turned out
 > to mean "expansion office" for most other sites checked this pass), NYC genuinely had a broken
-> DC: `EXADCSNYC001` ran on an OptiPlex, bare metal, DNS/Netlogon/KDC services stopped — kept as
+> DC: `EXADCRNYC001` ran on an OptiPlex, bare metal, DNS/Netlogon/KDC services stopped — kept as
 > the real, sharp migration-priority signal it is. No real BMC (consumer OptiPlex, `EXARACNYC001`
 > removed, matching SHE/HAL/HUL's treatment). WAP/CAM confirmed genuinely never-installed.
 
 > 🚨 **Migration priority — Tier 1.** DNS/Netlogon/KDC stopped on OptiPlex bare metal. Not a
-> repair candidate — the fix is a new `EXADCSNYC001` build promoting and replicating against
+> repair candidate — the fix is a new `EXADCRNYC001` build promoting and replicating against
 > `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node.
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_DC["🔴🗝️ EXADCSNYC001<br/>DC · DNS/Netlogon/KDC services stopped, Dell OptiPlex bare metal<br/>192.168.212.10"]
+    O_DC["🔴🗝️ EXADCRNYC001<br/>DC · DNS/Netlogon/KDC services stopped, Dell OptiPlex bare metal<br/>192.168.212.10"]
     O_INET --> O_DC
 
     O_WAP["📶 WAPs — none yet, new build only"]
@@ -256,7 +241,7 @@ graph TD
       INET["🌐 Internet"]
       RAC["🔧 EXARACNYC001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVENYC001 · Proxmox node 1 · .5"]
-      DC["🔴 🗝️ EXADCSNYC001 · DC · Services stopped · .10"]
+      DC["🔴 🗝️ EXADCRNYC001 · DC · Services stopped · .10"]
       SBC["🛡️ EXASBCNYC001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYNYC001 · Rudder Relay · .12"]
       WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
@@ -299,7 +284,7 @@ graph TD
     T_RDR["🔐 EXARDRNYC001<br/>RDR<br/>192.168.212.21"]
     T_WAP["📶 EXAWAPNYC001<br/>WAP 1<br/>192.168.212.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSNYC001<br/>DCS 1<br/>192.168.212.10"]
+    T_DCS["🗝️ EXADCRNYC001<br/>DCS 1<br/>192.168.212.10"]
     T_SBC["🛡️ EXASBCNYC001<br/>SBC<br/>192.168.212.48"]
     T_FWL["🧱 EXAFWLNYC001<br/>LAN Face<br/>192.168.212.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -510,14 +495,16 @@ graph TD
 > 4331, WAN edge router) existed before commissioning — no other legacy infrastructure did.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:ATL:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRATL001<br/>Cisco ISR 4331, WAN edge router<br/>192.168.33.1"]
+    O_RTR["📡 EXARTRATL001<br/>Cisco ISR 4331 · WAN edge router<br/>192.168.33.1"]
     O_INET --> O_RTR
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:ATL:END
 ```
 
 ### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
