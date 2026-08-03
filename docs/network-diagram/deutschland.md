@@ -122,15 +122,15 @@ graph TD
     T_WAP["📶 EXAWAPBON001<br/>WAP 1<br/>192.168.228.82"]
     T_WAP2["📶 EXAWAPBON002<br/>Wireless Access Point<br/>192.168.228.83"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCRBON001<br/>DCS 1<br/>192.168.228.10"]
+    T_DCS["🗝️ EXADCSBON001<br/>DCS 1<br/>192.168.228.10"]
     T_SBC["🛡️ EXASBCBON001<br/>SBC<br/>192.168.228.48"]
     T_FWL["🧱 EXAFWLBON001<br/>LAN Face<br/>192.168.228.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTH_LAP["💻 EXALAPBON001-002<br/>2 x Laptops<br/>No IP Address"]
-    T_WKS["🖥️ EXAWKSBON001<br/>Finance Workstation<br/>No IP Address"]
+    T_OTH_LAP["💻 EXALAPBON001-002<br/>2 x Laptops<br/>192.168.228.153"]
+    T_WKS["🖥️ EXAWKSBON001<br/>Finance Workstation<br/>192.168.228.151"]
     T_VCU["🎧 EXAVCUBON001<br/>Boardroom Video Conferencing<br/>No IP Address"]
     T_CAM["🎥 EXACAMBON001<br/>CCTV Camera<br/>192.168.228.17"]
-    T_TVS["📺 EXATVSBON001<br/>Display<br/>No IP Address"]
+    T_TVS["📺 EXATVSBON001<br/>Display<br/>192.168.228.18"]
     T_OTH_LAP --> T_VCU --> T_TVS
     T_WKS --> T_CAM
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -249,7 +249,7 @@ graph TD
     T_RDR["🔐 EXARDRBER001<br/>RDR<br/>192.168.113.21"]
     T_WAP["📶 EXAWAPBER001<br/>WAP 1<br/>192.168.113.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRBER001<br/>DCS 1<br/>192.168.113.10"]
+    T_DCS["🗝️ EXADCSBER001<br/>DCS 1<br/>192.168.113.10"]
     T_SBC["🛡️ EXASBCBER001<br/>SBC<br/>192.168.113.48"]
     T_FWL["🧱 EXAFWLBER001<br/>LAN Face<br/>192.168.113.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -374,8 +374,8 @@ graph TD
     T_SBC["🛡️ EXASBCMUN001<br/>SBC<br/>192.168.189.48"]
     T_FWL["🧱 EXAFWLMUN001<br/>LAN Face<br/>192.168.189.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_WKS["🖥️ EXAWKSMUN001<br/>Hot Desk Workstation<br/>No IP Address"]
-    T_OTH_LAP["💻 EXALAPMUN001-002<br/>2 x Laptops<br/>No IP Address"]
+    T_WKS["🖥️ EXAWKSMUN001<br/>Hot Desk Workstation<br/>192.168.189.150"]
+    T_OTH_LAP["💻 EXALAPMUN001-002<br/>2 x Laptops<br/>192.168.189.151-152"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF

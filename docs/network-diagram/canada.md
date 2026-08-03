@@ -152,7 +152,7 @@ graph TD
     T_RDR["🔐 EXARDRBRK001<br/>RDR<br/>192.168.136.21"]
     T_WAP["📶 EXAWAPBRK001<br/>WAP 1<br/>192.168.136.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRBRK001<br/>DCS 1<br/>192.168.136.10"]
+    T_DCS["🗝️ EXADCSBRK001<br/>DCS 1<br/>192.168.136.10"]
     T_SBC["🛡️ EXASBCBRK001<br/>SBC<br/>192.168.136.48"]
     T_FWL["🧱 EXAFWLBRK001<br/>LAN Face<br/>192.168.136.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -286,7 +286,7 @@ graph TD
     T_RDR["🔐 EXARDRTOR001<br/>RDR<br/>192.168.146.21"]
     T_WAP["📶 EXAWAPTOR001<br/>WAP 1<br/>192.168.146.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRTOR001<br/>DCS 1<br/>192.168.146.10"]
+    T_DCS["🗝️ EXADCSTOR001<br/>DCS 1<br/>192.168.146.10"]
     T_SBC["🛡️ EXASBCTOR001<br/>SBC<br/>192.168.146.48"]
     T_FWL["🧱 EXAFWLTOR001<br/>LAN Face<br/>192.168.146.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL

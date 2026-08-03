@@ -1,5 +1,6 @@
 Site,Type,Number,HostOctet,OS,ConnectionType,Managed,Notes,SubnetSite,Legacy,Migrating,Planned
 CLD,ANS,1,9,Debian,ssh,,Ansible control node -- manages all sites,,no,,
+CLD,SWI,1,250,TP-Link,snmp,,"48-port switch (Robert, 2026-08-04)",,no,,
 CLD,RUD,1,12,Debian,ssh,,Rudder configuration management server,,no,,
 CLD,SLT,1,22,Debian,ssh,,Salt master -- manages Windows client endpoints (WKS/LAP/TAB/SUR/MAC/MBP) only; FWL/DCS/SVR/PVE stay Ansible-only,,no,,
 CLD,SVR,2,20,Windows Server 2022,ssh,,Windows Admin Centre -- reaches all site DCs,,no,,
