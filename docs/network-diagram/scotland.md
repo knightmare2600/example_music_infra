@@ -42,14 +42,12 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRFAL001<br/>Cisco ISR 4331<br/>192.168.76.254"]
+    O_RTR["📡 EXARTRFAL001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.76.1"]
     O_INET --> O_RTR
-    O_FWL["🧱 EXAFWLFAL001<br/>FortiOS<br/>192.168.76.1"]
-    O_RTR --> O_FWL
     O_SW1["🔀 EXASWIFAL001<br/>Cisco 9300<br/>192.168.76.250"]
     O_SW2["🔀 EXASWIFAL002<br/>Cisco 9300<br/>192.168.76.251"]
-    O_FWL --> O_SW1
-    O_FWL --> O_SW2
+    O_RTR --> O_SW1
+    O_RTR --> O_SW2
 
     O_ILO["🔧 EXAILOFAL001<br/>HP iLO<br/>192.168.76.2"]
     O_ESX["💾 EXAESXFAL001<br/>HP ML310e, 32GB RAM, VMware ESXi<br/>192.168.76.5"]
@@ -102,7 +100,6 @@ graph TD
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -363,7 +360,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTREDI001<br/>Cisco ISR 4331<br/>192.168.131.254"]
+    O_RTR["📡 EXARTREDI001<br/>Cisco ISR 4331<br/>192.168.131.1"]
     O_INET --> O_RTR
     O_SW1["🔀 EXASWIEDI001<br/>Cisco 2960X<br/>192.168.131.250"]
     O_SW2["🔀 EXASWIEDI002<br/>Cisco 2960X<br/>192.168.131.251"]
@@ -655,12 +652,10 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRCLY001<br/>Cisco ISR 4331<br/>192.168.41.254"]
+    O_RTR["📡 EXARTRCLY001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.41.1"]
     O_INET --> O_RTR
-    O_FWL["🧱 EXAFWLCLY001<br/>FortiOS 7.6.5<br/>192.168.41.1"]
-    O_RTR --> O_FWL
     O_SW["🔀 EXASWICLY001<br/>Cisco 9300<br/>192.168.41.250"]
-    O_FWL --> O_SW
+    O_RTR --> O_SW
 
     O_ILO["🔧 EXARACCLY001<br/>HPE iLO5 · no host ever built<br/>192.168.41.2"]
     O_DC1["🗝️ EXADCSCLY001<br/>DC Primary<br/>192.168.41.10"]
@@ -684,7 +679,6 @@ graph TD
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -818,7 +812,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRDUN001<br/>Cisco ISR 4331<br/>192.168.138.254"]
+    O_RTR["📡 EXARTRDUN001<br/>Cisco ISR 4331<br/>192.168.138.1"]
     O_INET --> O_RTR
 
     O_ILO["🔧 EXAILODUN001<br/>HP iLO on HP ML310e · never deployed<br/>192.168.138.2"]
@@ -1123,14 +1117,12 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRABD001<br/>Cisco ISR 4331<br/>192.168.224.254"]
+    O_RTR["📡 EXARTRABD001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.224.1"]
     O_INET --> O_RTR
-    O_FWL["🧱 EXAFWLABD001<br/>Cisco ASA 5506-X<br/>192.168.224.1"]
-    O_RTR --> O_FWL
 
     O_ILO["🔧 EXARACABD001<br/>HP iLO on HP ML310e<br/>192.168.224.2"]
     O_DC["⚠️🗝️ EXADCSABD001<br/>DC · Windows Server 2008R2, bare metal, no ESX layer<br/>192.168.224.10"]
-    O_FWL --> O_ILO
+    O_RTR --> O_ILO
     O_ILO -.->|"manages"| O_DC
 
     O_MBP1["💻 EXAMBPABD001<br/>MacBook<br/>192.168.224.137"]
@@ -1139,16 +1131,15 @@ graph TD
     O_PHN2["📞 EXAPHNABD002<br/>Corporate iPhone<br/>No IP Address"]
     O_WAP["📶 EXAWAPABD001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
     O_CAM["🎥 CAMs — none yet, new build only"]
-    O_FWL --> O_MBP1
-    O_FWL --> O_MBP2
-    O_FWL --> O_PHN1
-    O_FWL --> O_PHN2
-    O_FWL --> O_WAP
-    O_FWL --> O_CAM
+    O_RTR --> O_MBP1
+    O_RTR --> O_MBP2
+    O_RTR --> O_PHN1
+    O_RTR --> O_PHN2
+    O_RTR --> O_WAP
+    O_RTR --> O_CAM
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_MBP1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF

@@ -28,12 +28,10 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRLND001<br/>Cisco ISR 4331<br/>192.168.20.254"]
+    O_RTR["📡 EXARTRLND001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.20.1"]
     O_INET --> O_RTR
-    O_FWL["🧱 EXAFWLLND001<br/>Cisco ASA 5516-X<br/>192.168.20.1"]
-    O_RTR --> O_FWL
     O_SW["🔀 EXASWILND001<br/>Cisco 9300<br/>192.168.20.250"]
-    O_FWL --> O_SW
+    O_RTR --> O_SW
 
     O_RAC["🔧 EXARACLND001<br/>Dell iDRAC9 · no host ever built<br/>192.168.20.2"]
     O_DC["🗝️ EXADCRLND001<br/>DC · RID/Infra Master<br/>192.168.20.10"]
@@ -57,7 +55,6 @@ graph TD
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -184,14 +181,12 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBIR001<br/>Cisco ISR 4331<br/>192.168.121.254"]
+    O_RTR["📡 EXARTRBIR001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.121.1"]
     O_INET --> O_RTR
-    O_FWL["🧱 EXAFWLBIR001<br/>Palo Alto PAN-OS<br/>192.168.121.1"]
-    O_RTR --> O_FWL
     O_SW1["🔀 EXASWIBIR001<br/>Cisco 9300<br/>192.168.121.250"]
     O_SW2["🔀 EXASWIBIR002<br/>Access Switch<br/>192.168.121.251"]
-    O_FWL --> O_SW1
-    O_FWL --> O_SW2
+    O_RTR --> O_SW1
+    O_RTR --> O_SW2
 
     O_RAC["🔧 EXARACBIR001<br/>Dell DRAC<br/>192.168.121.2"]
     O_ESX["💾 EXAESXBIR001<br/>Dell server, VMware ESXi<br/>192.168.121.5"]
@@ -230,7 +225,6 @@ graph TD
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -1168,7 +1162,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRCOV001<br/>Cisco ISR 4331<br/>192.168.247.254"]
+    O_RTR["📡 EXARTRCOV001<br/>Cisco ISR 4331<br/>192.168.247.1"]
     O_INET --> O_RTR
     O_WAP["📶 EXAWAPCOV001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
     O_CAM["🎥 CAMs — none yet, new build only"]

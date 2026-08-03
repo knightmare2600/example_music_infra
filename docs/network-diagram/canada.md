@@ -37,7 +37,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBRK001<br/>Cisco ISR 4331<br/>192.168.136.254"]
+    O_RTR["📡 EXARTRBRK001<br/>Cisco ISR 4331<br/>192.168.136.1"]
     O_INET --> O_RTR
 
     O_ILO1["🔧 EXARACBRK001<br/>HP iLO 1<br/>192.168.136.2"]
