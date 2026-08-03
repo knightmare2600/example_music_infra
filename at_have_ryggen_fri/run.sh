@@ -178,6 +178,17 @@
 #      detect (README.md: it's a role a technician's laptop assumes
 #      temporarily via static-web-server.exe), so this reuses the existing
 #      --strict idiom instead of any IP-based check. Added 2026-07-27.
+#  30. check_legacy_devices.py -- benarbejde/legacy-devices.csv (old-network-
+#      only core infra with no live counterpart: RAC/iLO/iDRAC, ESXi hosts,
+#      vCenter) for structural validity, unknown Site codes, duplicate rows,
+#      Types outside RAC/ESX/VCT, and -- the main point -- any row whose
+#      computed hostname collides with a real hostname in the live generated
+#      inventory. Added 2026-08-03 directly because of the EXAFWLFAL001 mess:
+#      a hand-built Old Network diagram invented a device under a hostname
+#      that turned out to already belong to a real, live, current device.
+#      legacy-devices.csv exists to hold genuinely-dead old-network hardware
+#      separately from devices.csv's live rows; this check is what keeps that
+#      separation honest.
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -383,6 +394,15 @@
 #               initramfs-linux.img reference vs. the tracked file's real
 #               name (initramfs-linux, no extension) -- a pre-existing
 #               mismatch the check now catches on every run.
+#   2026-08-03  Added check_legacy_devices.py (section 30) alongside the new
+#               benarbejde/legacy-devices.csv. Direct follow-on from the
+#               EXAFWLFAL001 discovery during the Old Network RTR/FWL
+#               re-audit: a hand-built diagram's fictional device shared a
+#               hostname with a real live one. RTR/SWI turned out to already
+#               have real devices.csv continuity (Legacy=yes rows); RAC/ESX/
+#               VCT never did -- legacy-devices.csv gives them a home, and
+#               this check guards the boundary so a future row here can never
+#               silently collide with the live generated inventory again.
 # ==============================================================================
 set -uo pipefail
 
@@ -941,6 +961,20 @@ section "29. DCR devices — check_dcr_devices.py"
 
 dcr_out=$(python3 "${HERE}/check_dcr_devices.py")
 echo "$dcr_out"
+
+# ------------------------------------------------------------------------------
+# 30. legacy-devices.csv structure + live-hostname collision guard
+# ------------------------------------------------------------------------------
+section "30. Legacy devices — check_legacy_devices.py"
+
+if out=$(python3 "${HERE}/check_legacy_devices.py"); then
+  echo "$out"
+  success "legacy-devices.csv is structurally sound and collides with nothing live."
+else
+  echo "$out"
+  fail "legacy-devices.csv problem(s) found -- see above."
+  FAILED_CHECKS+=("check_legacy_devices.py")
+fi
 
 # ------------------------------------------------------------------------------
 # Summary

@@ -29,7 +29,7 @@
 > below for reference) had real content errors, not just style ones, present since this repo's
 > initial commit: a 3-node Proxmox cluster + 3x Dell iDRAC9 BMC pool that never existed (real
 > legacy hardware was a single HP ML310e running VMware ESXi, `EXAESXFAL001`, managed by a single
-> HP iLO, `EXAILOFAL001` — new `ESX` type added to `role_codes.csv`/`docs/emojis/README.md`); an
+> HP iLO, `EXARACFAL001` — new `ESX` type added to `role_codes.csv`/`docs/emojis/README.md`); an
 > SBC implying VOIP that never existed (phones were POTS lines directly on the network, no SBC at
 > all); a Rudder Relay that was planned but dropped in favour of Salt and never actually built,
 > "never got off the drawing board"; and a WireGuard tunnel to CLD, which is real but **only on
@@ -49,10 +49,10 @@ graph TD
     O_RTR --> O_SW1
     O_RTR --> O_SW2
 
-    O_ILO["🔧 EXAILOFAL001<br/>HP iLO<br/>192.168.76.2"]
+    O_RAC["🔧 EXARACFAL001<br/>HP iLO<br/>192.168.76.2"]
     O_ESX["💾 EXAESXFAL001<br/>HP ML310e, 32GB RAM, VMware ESXi<br/>192.168.76.5"]
     O_SW1 --> O_ESX
-    O_ILO -.->|"manages"| O_ESX
+    O_RAC -.->|"manages"| O_ESX
 
     O_DC1["🗝️ EXADCSFAL001<br/>DC · PDC Emulator<br/>192.168.76.10"]
     O_DC2["🗝️ EXADCSFAL002<br/>DC Secondary<br/>192.168.76.11"]
@@ -102,7 +102,7 @@ graph TD
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -501,7 +501,7 @@ graph TD
 > estate-wide (applied without re-asking from here on): hypervisor was ESX/VMware everywhere,
 > never PVE/Proxmox; SBC never existed at any old site, full stop. `RRY`/WireGuard already
 > confirmed the same way. Here: real hardware another HP ML310e (`EXAESXGLA001`) + HP iLO
-> (`EXAILOGLA001`), same reference pair as FAL. `EXADCRGLA001` confirmed real (genuinely
+> (`EXARACGLA001`), same reference pair as FAL. `EXADCRGLA001` confirmed real (genuinely
 > legacy-naming, not a data error) — will be migrated to a new host, `EXADCSGLA001`. Printer,
 > laptop, workstations confirmed real and moving to the new build. WAP/CAM confirmed genuinely
 > `TODO` in the strict sense — no old hardware existed at all, new build adds them fresh (not
@@ -511,10 +511,10 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_ILO["🔧 EXAILOGLA001<br/>HP iLO<br/>192.168.141.2"]
+    O_RAC["🔧 EXARACGLA001<br/>HP iLO<br/>192.168.141.2"]
     O_ESX["💾 EXAESXGLA001<br/>HP ML310e, VMware ESXi<br/>192.168.141.5"]
     O_INET --> O_ESX
-    O_ILO -.->|"manages"| O_ESX
+    O_RAC -.->|"manages"| O_ESX
 
     O_DC["🗝️ EXADCRGLA001<br/>DC · Schema/DN Master, PDC Emulator<br/>192.168.141.10"]
     O_WKS1["🖥️ EXAWKSGLA001<br/>Hot Desk WKS<br/>192.168.141.150"]
@@ -531,7 +531,7 @@ graph TD
     O_CAM["🎥 CAMs — none yet, new build only"]
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_WKS1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -657,11 +657,11 @@ graph TD
     O_SW["🔀 EXASWICLY001<br/>Cisco 9300<br/>192.168.41.250"]
     O_RTR --> O_SW
 
-    O_ILO["🔧 EXARACCLY001<br/>HPE iLO5 · no host ever built<br/>192.168.41.2"]
+    O_RAC["🔧 EXARACCLY001<br/>HPE iLO5 · no host ever built<br/>192.168.41.2"]
     O_DC1["🗝️ EXADCSCLY001<br/>DC Primary<br/>192.168.41.10"]
     O_DC2["🗝️ EXADCSCLY002<br/>DC Secondary<br/>192.168.41.11"]
     O_SRV["🗄️ EXASRVCLY001<br/>Rocky Linux, Oracle DB<br/>192.168.41.20"]
-    O_SW --> O_ILO
+    O_SW --> O_RAC
     O_SW --> O_DC1
     O_SW --> O_DC2
     O_SW --> O_SRV
@@ -680,7 +680,7 @@ graph TD
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -796,7 +796,7 @@ graph TD
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
 > PVE; no SBC; no `RRY`; no WireGuard on old infra). Like CLY: real hardware was an HP ML310e +
-> HP iLO (`EXAILODUN001`), but it "sat unused in a room" — never actually deployed as a running
+> HP iLO (`EXARACDUN001`), but it "sat unused in a room" — never actually deployed as a running
 > hypervisor, so no `ESX` node here either. `EXADCSDUN001` was a genuinely alarming find — a
 > **Windows Server 2003 box nobody was even logging into** — kept as a real warning (same
 > migration-priority signal as EDI's DFSR/disk-space one), replaced by a new build under the same
@@ -815,9 +815,9 @@ graph TD
     O_RTR["📡 EXARTRDUN001<br/>Cisco ISR 4331<br/>192.168.138.1"]
     O_INET --> O_RTR
 
-    O_ILO["🔧 EXAILODUN001<br/>HP iLO on HP ML310e · never deployed<br/>192.168.138.2"]
+    O_RAC["🔧 EXARACDUN001<br/>HP iLO on HP ML310e · never deployed<br/>192.168.138.2"]
     O_DC["⚠️🗝️ EXADCSDUN001<br/>DC · Windows Server 2003, unmaintained<br/>192.168.138.10"]
-    O_RTR --> O_ILO
+    O_RTR --> O_RAC
     O_RTR --> O_DC
 
     O_SUR1["🖊️ EXASURDUN001<br/>Surface<br/>192.168.138.51"]
@@ -835,7 +835,7 @@ graph TD
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SUR1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SUR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -958,11 +958,11 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_ILO["🔧 EXARACPER001<br/>HP iLO on HP ML310e · never deployed<br/>192.168.173.2"]
+    O_RAC["🔧 EXARACPER001<br/>HP iLO on HP ML310e · never deployed<br/>192.168.173.2"]
     O_DC["⚠️🗝️ EXADCSPER001<br/>DC · physical HP ML310e, never switched on<br/>192.168.173.10"]
     O_NIX["🐧 EXANIXPER001<br/>Solaris 11.5, MIDI/Music Archive<br/>192.168.173.40"]
     O_NAS["🗃️ EXANASPER001<br/>Synology NAS<br/>192.168.173.50"]
-    O_INET --> O_ILO
+    O_INET --> O_RAC
     O_INET --> O_DC
     O_INET --> O_NIX
     O_INET --> O_NAS
@@ -983,7 +983,7 @@ graph TD
     O_INET --> O_CAM
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_NIX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -1120,10 +1120,10 @@ graph TD
     O_RTR["📡 EXARTRABD001<br/>Cisco ASA 5506-X, router/firewall combo<br/>192.168.224.1"]
     O_INET --> O_RTR
 
-    O_ILO["🔧 EXARACABD001<br/>HP iLO on HP ML310e<br/>192.168.224.2"]
+    O_RAC["🔧 EXARACABD001<br/>HP iLO on HP ML310e<br/>192.168.224.2"]
     O_DC["⚠️🗝️ EXADCSABD001<br/>DC · Windows Server 2008R2, bare metal, no ESX layer<br/>192.168.224.10"]
-    O_RTR --> O_ILO
-    O_ILO -.->|"manages"| O_DC
+    O_RTR --> O_RAC
+    O_RAC -.->|"manages"| O_DC
 
     O_MBP1["💻 EXAMBPABD001<br/>MacBook<br/>192.168.224.137"]
     O_MBP2["💻 EXAMBPABD002<br/>MacBook<br/>192.168.224.124"]
@@ -1140,7 +1140,7 @@ graph TD
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_MBP1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_MBP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
