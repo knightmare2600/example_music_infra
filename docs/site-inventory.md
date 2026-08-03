@@ -115,7 +115,7 @@
 - [NYC — New York](#nyc--new-york-ny) ⚠️
 - [NJC — New Jersey](#njc--camden-new-jersey) ⚠️
 - [MIA — Miami](#mia--miami-florida)
-- [ATL — Athens, GA](#atl--athens-georgia) ⚠️
+- [ATL — Atlanta, GA](#atl--atlanta-georgia) ⚠️
 - [CHI — Chicago](#chi--chicago-illinois) ⚠️
 
 ### 🇦🇺 Australia
@@ -168,7 +168,7 @@
 | NYC | New York | [ ] | ⚠️ DC stopped |
 | NJC | New Jersey | [ ] | ⚠️ DC stopped |
 | MIA | Miami | [ ] | |
-| ATL | Athens, GA | [ ] | ⚠️ DC stopped |
+| ATL | Atlanta, GA | [ ] | ⚠️ DC stopped |
 | CHI | Chicago | [ ] | ⚠️ DC stopped |
 | SYD | Sydney | [ ] | ⚠️ DC stopped |
 | MEL | Melbourne | [ ] | ⚠️ DC stopped |
@@ -1685,7 +1685,7 @@ kept as reference code only, not a build-checklist item.
 
 ---
 
-## ATL — Athens, Georgia
+## ATL — Atlanta, Georgia
 
 **LAN:** `192.168.33.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **BMC pool:** `.2` physical
