@@ -217,32 +217,30 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 **Completion checklist:**
 - [x] Switch installed and configured
 - [x] Router installed and configured
-- [x] Remote access consoles configured (x2)
-- [x] Proxmox nodes provisioned (x2)
+- [x] Remote access console configured
+- [x] Proxmox node provisioned
 - [x] Firewall installed and configured (VM on Proxmox)
-- [x] Domain Controllers provisioned (x2)
-- [ ] Proxmox nodes upgraded to ZFS RAID1
-- [ ] Boot independence tested (both nodes)
+- [x] Domain Controller provisioned
+- [ ] Proxmox node upgraded to ZFS RAID1
 - [ ] VPN tunnel verified
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXAFWLFAL001` | Firewall | FortiOS | `192.168.76.253` | VPN gateway · WireGuard `10.0.76.1` |
+| `EXAFWLFAL001` | Firewall | Debian Linux (PVE VM) | `192.168.76.253` | nftables + WireGuard — site-to-site VPN, replaced RTR's earlier VPN role. Same pattern at every site (Robert, 2026-08-04) |
 | `EXASWIFAL001` | Switch | Cisco Catalyst 9300 | `192.168.76.250` | Core switch |
 | `EXASWIFAL002` | Switch | Cisco Catalyst 9300 | `192.168.76.251` | Core switch 2 |
-| `EXARTRFAL001` | Router | Cisco ISR 4331 | `192.168.76.254` | WAN edge |
-| `EXARACFAL001` | DRAC/iLO | Dell iDRAC9 | `192.168.76.2` | BMC — PVE node 1 |
-| `EXARACFAL002` | DRAC/iLO | Dell iDRAC9 | `192.168.76.3` | BMC — PVE node 2 |
-| `EXAPVEFAL001` | Proxmox | Proxmox VE 8.3 | `192.168.76.5` | PVE node 1 · Web UI: https://192.168.76.5:8006 |
-| `EXAPVEFAL002` | Proxmox | Proxmox VE 8.3 | `192.168.76.6` | PVE node 2 · Web UI: https://192.168.76.6:8006 |
-| `EXADCSFAL001` | DC | Windows Server 2022 | `192.168.76.10` | PDC Emulator · Global Catalog |
-| `EXADCSFAL002` | DC | Windows Server 2022 | `192.168.76.11` | Global Catalog |
-| `EXASBCFAL001` | VOIP SBC | 3CX SBC Debian | `192.168.76.48` | Trunks to `EXAPBXCLD001` |
-| `EXANASFAL001` | NAS | FreeNAS 13.0-U6 | `192.168.76.32` | Primary storage |
-| `EXAPRVFAL001` | Provisioning server | — | `192.168.139.50` | Bootstrap server — on CLD network |
+| `EXARTRFAL001` | Router | FortiGate | `192.168.76.1` | WAN edge — renamed/moved from `EXARTRFAL02` (`192.168.79.1/24`) when it took over primary-router duty from the decommissioned original Cisco ISR 4331 |
+| `EXABMCFAL001` | BMC | — | `192.168.76.2` | Standard BMC slot 1 |
+| `EXAPVEFAL001` | Proxmox | — | `192.168.76.5` | PVE node 1 |
+| `EXADCSFAL001` | DC | — | `192.168.76.10` | Domain Controller |
+| `EXASBCFAL001` | VOIP SBC | — | `192.168.76.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASFAL001` | NAS | TrueNAS SCALE | `192.168.76.19` | Site NAS/SAN — installed 2026-07-26, bare metal, replaces the retired legacy FreeNAS box (was `.32`) |
+| `EXASRVFAL001` | Server | — | `192.168.76.20` | Reserved — standard convention slot, not yet in use |
 | `EXATARFAL001` | Tape Archiver | Solaris Embedded | `192.168.76.33` | Legacy tape archive |
+
+> The shared cross-site provisioning server (`192.168.139.50`) has no formal hostname or DNS record — bootstrap-only, IP-referenced only (see §4.1 of the Beginners Guide). It's not specific to this site, so it's not listed as an Infrastructure row above.
 
 **Endpoints:**
 
@@ -254,7 +252,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 | `EXALAPFAL001` | Laptop | Windows 11 Pro 23H2 | `192.168.76.103` | Production laptop |
 | `EXASURFAL001` | Surface | Windows 11 23H2 | `192.168.76.104` | Microsoft Surface |
 
-**WAPs:** `EXAWAPFAL001–006` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPFAL001–006` · Ubiquiti UniFi U6-Pro — static, `.82`–`.87`
 
 **Security & IoT:**
 
