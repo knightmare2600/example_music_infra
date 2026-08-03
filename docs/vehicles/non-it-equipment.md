@@ -13,7 +13,7 @@ More categories (boardroom equipment, etc.) to be added here later.
 |---|---|
 | `EXAVANFAX001.png` | Company van, Fax |
 | `EXACARBON001.png` | Company car, Bonn |
-| `EXACARBRK001.png` | Company car, Brooklyn |
+| `EXACARBRK001.png` | Company car, Brockville |
 | `EXACARMIA001.png` | Company car, Miami |
 | `EXACARODE001.png` | Company car, Odense |
 
