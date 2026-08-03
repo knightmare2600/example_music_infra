@@ -170,7 +170,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRODE001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.126.1"]
+    O_RTR["📡 EXARTRODE001<br/>Cisco ASA 5506-X, router/firewall combo<br/>192.168.126.1"]
     O_INET --> O_RTR
 
     O_ILO1["🔧 EXARACODE001<br/>HP iLO 1<br/>192.168.126.2"]

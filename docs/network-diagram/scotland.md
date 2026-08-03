@@ -652,7 +652,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRCLY001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.41.1"]
+    O_RTR["📡 EXARTRCLY001<br/>FortiOS 7.6.5, router/firewall combo<br/>192.168.41.1"]
     O_INET --> O_RTR
     O_SW["🔀 EXASWICLY001<br/>Cisco 9300<br/>192.168.41.250"]
     O_RTR --> O_SW
@@ -1117,7 +1117,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRABD001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.224.1"]
+    O_RTR["📡 EXARTRABD001<br/>Cisco ASA 5506-X, router/firewall combo<br/>192.168.224.1"]
     O_INET --> O_RTR
 
     O_ILO["🔧 EXARACABD001<br/>HP iLO on HP ML310e<br/>192.168.224.2"]
