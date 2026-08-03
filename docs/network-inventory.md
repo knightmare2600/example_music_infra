@@ -1434,48 +1434,64 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 #### SYD — Sydney, NSW
 **LAN:** `192.168.29.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSSYD001` — DNS, Netlogon and KDC services stopped.
+> This site also has a legacy-naming domain controller (`EXADCRSYD001`, services stopped,
+> hosted as an ESX VM) — not shown below (this section covers current/live infrastructure
+> only), see `docs/network-diagram/australia.md`'s Old Network section for SYD.
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXAFWLSYD001` | Firewall | FortiGate 7.x | `192.168.29.1` | Site firewall |
+| `EXARTRSYD001` | Router | FortiGate 7.x | `192.168.29.1` | WAN edge |
+| `EXAFWLSYD001` | Firewall | Debian Linux (PVE VM) | `192.168.29.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWISYD001` | Switch | Cisco Catalyst 9300 | `192.168.29.250` | Core switch |
 | `EXASWISYD002` | Switch | Cisco Catalyst 2960 | `192.168.29.251` | Access switch |
-| `EXARACSYD001` | iDRAC | Dell iDRAC9 | `192.168.29.2` | BMC |
-| `EXADCSSYD001` | DC | Windows Server 2022 | `192.168.29.10` | ⚠️ Services stopped |
+| `EXABMCSYD001` | BMC | — | `192.168.29.2` | Standard BMC slot 1 |
+| `EXAPVESYD001` | Proxmox | — | `192.168.29.5` | PVE node 1 |
+| `EXADCSSYD001` | DC | — | `192.168.29.10` | Domain Controller |
 | `EXASRVSYD001` | Server | Windows Server 2022 | `192.168.29.20` | Local infra |
-| `EXASBCSYD001` | VOIP SBC | 3CX SBC | `192.168.29.48` | Trunks to `EXAPBXCLD001` |
+| `EXASBCSYD001` | VOIP SBC | — | `192.168.29.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASSYD001` | NAS | — | `192.168.29.19` | Standard NAS slot |
+| `EXARDRSYD001` | Badge reader | — | `192.168.29.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPSYD001` · Ubiquiti UniFi — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPSYD001` · Ubiquiti UniFi U6-Pro — static, `.84`
 
 **Endpoints:** `EXAMBPSYD001` (MacBook Pro), `EXAWKSSYD001` (Win11), `EXAPHNSYD001` (Android), `EXATABSYD001` (iPad)
 
-**IoT:** `EXALCDSYD001` (LG Signage wallboard), `EXAPRNSYD001` (Brother Laser), `EXACAMSYD001` (Hikvision camera), `EXACOFSYD001` (Smart coffee machine)
+**IoT:** `EXALCDSYD001` (LG Signage wallboard), `EXAPRNSYD001` (Brother Laser), `EXACAMSYD001` (Hikvision camera), `EXACAMSYD002` (Hikvision camera — reception), `EXACOFSYD001` (Smart coffee machine)
+
 
 ---
 
 #### MEL — Melbourne, VIC
 **LAN:** `192.168.61.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSMEL001` — DNS, Netlogon and KDC services stopped.
+> This site also has a legacy-naming domain controller (`EXADCRMEL001`, services stopped) —
+> not shown below (this section covers current/live infrastructure only), see
+> `docs/network-diagram/australia.md`'s Old Network section for MEL.
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXAFWLMEL001` | Firewall | FortiGate 7.x | `192.168.61.1` | Site firewall |
+| `EXARTRMEL001` | Router | FortiGate 7.x | `192.168.61.1` | WAN edge |
+| `EXAFWLMEL001` | Firewall | Debian Linux (PVE VM) | `192.168.61.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWIMEL001` | Switch | Cisco Catalyst 9300 | `192.168.61.250` | Core switch |
 | `EXASWIMEL002` | Switch | Cisco Catalyst 2960 | `192.168.61.251` | Access switch |
-| `EXARACMEL001` | iLO | HPE iLO5 | `192.168.61.2` | BMC |
-| `EXADCSMEL001` | DC | Windows Server 2022 | `192.168.61.10` | ⚠️ Services stopped |
+| `EXABMCMEL001` | BMC | — | `192.168.61.2` | Standard BMC slot 1 |
+| `EXAPVEMEL001` | Proxmox | — | `192.168.61.5` | PVE node 1 |
+| `EXADCSMEL001` | DC | — | `192.168.61.10` | Domain Controller |
 | `EXASRVMEL001` | Server | Windows Server 2022 | `192.168.61.20` | Local file & print |
-| `EXASBCMEL001` | VOIP SBC | 3CX SBC | `192.168.61.48` | Trunks to `EXAPBXCLD001` |
+| `EXASBCMEL001` | VOIP SBC | — | `192.168.61.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASMEL001` | NAS | — | `192.168.61.19` | Standard NAS slot |
+| `EXARDRMEL001` | Badge reader | — | `192.168.61.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPMEL001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 **Endpoints:** `EXAMBPMEL001` (MacBook Pro), `EXAWKSMEL001` (Win11), `EXAPHNMEL001` (iOS), `EXATABMEL001` (iPad)
 
-**IoT:** `EXALCDMEL001` (Samsung Signage), `EXAPRNMEL001` (HP LaserJet), `EXANASMEL001` (Synology DSM 7.x)
+**IoT:** `EXALCDMEL001` (Samsung Signage), `EXAPRNMEL001` (HP LaserJet)
+
 
 ---
 
@@ -1486,22 +1502,27 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 #### AKL — Auckland
 **LAN:** `192.168.93.0/24` · **Domain:** `example.net`
 
-> ⚠️ `EXADCSAKL001` — DNS, Netlogon and KDC services stopped.
+> This site also has a legacy-naming domain controller (`EXADCRAKL001`, services stopped, left
+> in a bad state) — not shown below (this section covers current/live infrastructure only),
+> see `docs/network-diagram/new-zealand.md`'s Old Network section for AKL.
 
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXAFWLAKL001` | Firewall | FortiGate 7.x | `192.168.93.1` | Site firewall |
+| `EXARTRAKL001` | Router | FortiGate 7.x | `192.168.93.1` | WAN edge |
+| `EXAFWLAKL001` | Firewall | Debian Linux (PVE VM) | `192.168.93.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWIAKL001` | Switch | Cisco Catalyst 9300 | `192.168.93.250` | Core switch |
 | `EXASWIAKL002` | Switch | Cisco Catalyst 2960 | `192.168.93.251` | Access switch |
-| `EXARTRAKL001` | Router | Cisco ISR 4331 | `192.168.93.254` | WAN edge |
-| `EXARACAKL001` | iLO | HPE iLO5 | `192.168.93.2` | BMC |
-| `EXADCSAKL001` | DC | Windows Server 2022 | `192.168.93.10` | ⚠️ Services stopped |
+| `EXABMCAKL001` | BMC | — | `192.168.93.2` | Standard BMC slot 1 |
+| `EXAPVEAKL001` | Proxmox | — | `192.168.93.5` | PVE node 1 |
+| `EXADCSAKL001` | DC | — | `192.168.93.10` | Domain Controller |
 | `EXASRVAKL001` | Server | Windows Server 2022 | `192.168.93.20` | Local server |
-| `EXASBCAKL001` | VOIP SBC | 3CX SBC | `192.168.93.48` | Trunks to `EXAPBXCLD001` |
+| `EXASBCAKL001` | VOIP SBC | — | `192.168.93.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASAKL001` | NAS | — | `192.168.93.19` | Standard NAS slot |
+| `EXARDRAKL001` | Badge reader | — | `192.168.93.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPAKL001`, `EXAWAPAKL002` · Ubiquiti UniFi — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPAKL001–003` · Ubiquiti UniFi U6-Pro — static, `.84`–`.86`
 
 **Endpoints:** `EXAWKSAKL001` (Win11), `EXAMBPAKL001` (MacBook Pro), `EXAPHNAKL001` (Android), `EXATABAKL001` (iPad)
 
@@ -1511,16 +1532,22 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 ## ⚠️ Known Issues & Actions Required
 
+All devices below are legacy-naming (`EXADCR...`) domain controllers, not current/live ones —
+see each site's own section above and `at_have_ryggen_fri/check_dcr_devices.py`'s output for the
+harness-tracked view of these.
+
 | Priority | Site | Device | Issue |
 |----------|------|--------|-------|
-| 🔴 Critical | EDI | `EXADCSEDI003` | DFSR stopped · C: drive 5% free · holds RID Master / Infrastructure Master |
-| 🔴 Critical | KGE | `EXADCSKGE001` | No replication for 27 days · Windows Server 2016 (EOL) · disk space low |
-| 🟠 High | BRK, TOR, NYC, NJC, ATL, LAX, CHI, SYD, MEL, AKL | Multiple DCs | DNS, Netlogon, KDC all stopped — requires investigation |
+| 🔴 Critical | EDI | `EXADCREDI003` | DECOMMISSION PENDING (corrected octet `.13`) |
+| 🟠 High | EDI | `EXADCREDI002` | DC secondary needs rebuild (corrected octet `.12`) |
+| 🟠 High | KGE | `EXADCRKGE001` | No replication for 27 days · Windows Server 2016 (EOL) · disk space low |
+| 🟠 High | BRK, TOR, LAX, NYC, SYD, MEL, AKL | `EXADCR<SITE>001` | DNS, Netlogon, KDC all stopped — requires investigation |
+| 🟠 High | TOR | `EXADCRTOR028` | Undocumented legacy AD install, found by accident — HostOctet genuinely unknown, needs on-site discovery |
 | 🟡 Medium | NEW | `EXAWKSNEW099` | LAPS password expired |
-| 🟡 Medium | MUN | `EXALAPMUN002` | LAPS expired 61 days ago · last logged on 95 days ago |
-| 🟡 Medium | FAL | `EXAPVEFAL001–002` | Not yet on ZFS RAID1 · boot independence test pending |
-| 🔵 Info | BIR, LAX | Instruments | Atari ST, Fairlight CMI, LinnDrum on production LAN — no security controls |
-| 🔵 Info | FAL | Vending | 3x NT4 Embedded vending machines on production network |
+| 🟡 Medium | MUN | `EXALAPMUN002` | LAPS expired |
+| 🟡 Medium | FAL | `EXAPVEFAL001` | Not yet on ZFS RAID1 |
+| 🔵 Info | BIR, LAX | Instruments | Atari ST, Fairlight CMI, Moog/drum machines on production LAN — no security controls |
+| 🔵 Info | FAL | Vending | 4x legacy-embedded-OS vending machines (NT4 Embedded/NT4/XPe) on production network |
 
 ---
 
