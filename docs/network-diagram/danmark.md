@@ -25,7 +25,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRCPH001<br/>Cisco ISR 4331<br/>192.168.231.254"]
+    O_RTR["📡 EXARTRCPH001<br/>Cisco ISR 4331<br/>192.168.231.1"]
     O_INET --> O_RTR
     O_SW["🔀 EXASWICPH001<br/>TP-Link JetStream<br/>192.168.231.250"]
     O_RTR --> O_SW
@@ -170,8 +170,8 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_FWL["🧱 EXAFWLODE001<br/>Cisco ASA 5506-X<br/>192.168.126.1"]
-    O_INET --> O_FWL
+    O_RTR["📡 EXARTRODE001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.126.1"]
+    O_INET --> O_RTR
 
     O_ILO1["🔧 EXARACODE001<br/>HP iLO 1<br/>192.168.126.2"]
     O_ILO2["🔧 EXARACODE002<br/>HP iLO 2<br/>192.168.126.3"]
@@ -180,10 +180,10 @@ graph TD
     O_ESX2["💾 EXAESXODE002<br/>HP ML310e, VMware ESXi 2<br/>192.168.126.6"]
     O_ESX3["💾 EXAESXODE003<br/>HP ML310e, VMware ESXi 3<br/>192.168.126.7"]
     O_VCT["🛰️ EXAVCTODE001<br/>VMware vCenter · cluster management<br/>IP not recorded"]
-    O_FWL --> O_ESX1
-    O_FWL --> O_ESX2
-    O_FWL --> O_ESX3
-    O_FWL --> O_VCT
+    O_RTR --> O_ESX1
+    O_RTR --> O_ESX2
+    O_RTR --> O_ESX3
+    O_RTR --> O_VCT
     O_ILO1 -.->|"manages"| O_ESX1
     O_ILO2 -.->|"manages"| O_ESX2
     O_ILO3 -.->|"manages"| O_ESX3
@@ -193,22 +193,22 @@ graph TD
 
     O_DC1["🗝️ EXADCSODE001<br/>DC PDC, RID/Infra Master<br/>192.168.126.10"]
     O_DC2["🗝️ EXADCSODE002<br/>DC Secondary<br/>192.168.126.11"]
-    O_FWL --> O_DC1
-    O_FWL --> O_DC2
+    O_RTR --> O_DC1
+    O_RTR --> O_DC2
 
     O_MAC["🍎 EXAMACODE001<br/>iMac, macOS Tahoe<br/>192.168.126.150"]
     O_MBP["💻 EXAMBPODE002<br/>MacBook Pro<br/>192.168.126.151"]
     O_JKB["💿 EXAMUSODE001<br/>Pureline 128V Jukebox<br/>192.168.126.60"]
     O_WAP["📶 EXAWAPODE001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
     O_CAM["🎥 CAMs — none yet, new build only"]
-    O_FWL --> O_MAC
-    O_FWL --> O_MBP
-    O_FWL --> O_JKB
-    O_FWL --> O_WAP
-    O_FWL --> O_CAM
+    O_RTR --> O_MAC
+    O_RTR --> O_MBP
+    O_RTR --> O_JKB
+    O_RTR --> O_WAP
+    O_RTR --> O_CAM
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ILO1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ILO2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ILO3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -473,7 +473,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRFAX001<br/>Cisco ISR 4331<br/>192.168.246.254"]
+    O_RTR["📡 EXARTRFAX001<br/>Cisco ISR 4331<br/>192.168.246.1"]
     O_INET --> O_RTR
     O_RAC["🔧 EXARACFAX001<br/>BMC<br/>192.168.246.2"]
     O_DC["⚠️🗝️ EXADCSFAX001<br/>DC · present but never used, bare metal<br/>192.168.246.10"]

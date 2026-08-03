@@ -28,7 +28,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBON001<br/>Cisco ISR 4331<br/>192.168.228.254"]
+    O_RTR["📡 EXARTRBON001<br/>Cisco ISR 4331<br/>192.168.228.1"]
     O_INET --> O_RTR
     O_SW["🔀 EXASWIBON001<br/>Cisco 2960X<br/>192.168.228.250"]
     O_RTR --> O_SW
@@ -182,7 +182,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBER001<br/>Cisco ISR 4331<br/>192.168.113.254"]
+    O_RTR["📡 EXARTRBER001<br/>Cisco ISR 4331<br/>192.168.113.1"]
     O_INET --> O_RTR
 
     O_RAC["🔧 EXARACBER001<br/>PCI remote-power card on OptiPlex, not a real BMC<br/>192.168.113.2"]

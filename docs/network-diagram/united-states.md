@@ -36,14 +36,12 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRLAX001<br/>Cisco ISR 4331<br/>192.168.213.254"]
+    O_RTR["📡 EXARTRLAX001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.213.1"]
     O_INET --> O_RTR
-    O_FWL["🧱 EXAFWLLAX001<br/>Palo Alto PAN-OS 10.x<br/>192.168.213.1"]
-    O_RTR --> O_FWL
     O_SW1["🔀 EXASWILAX001<br/>Cisco 9300<br/>192.168.213.250"]
     O_SW2["🔀 EXASWILAX002<br/>Cisco 2960<br/>192.168.213.251"]
-    O_FWL --> O_SW1
-    O_FWL --> O_SW2
+    O_RTR --> O_SW1
+    O_RTR --> O_SW2
 
     O_RAC["🔧 EXARACLAX001<br/>Dell iDRAC9<br/>192.168.213.2"]
     O_DC["🔴🗝️ EXADCSLAX001<br/>DC · deployed, then physically disconnected — services stopped<br/>192.168.213.10"]
@@ -77,7 +75,6 @@ graph TD
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF

@@ -30,14 +30,12 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRAKL001<br/>Cisco ISR 4331<br/>192.168.93.254"]
+    O_RTR["📡 EXARTRAKL001<br/>Cisco ISR 4331, router/firewall combo<br/>192.168.93.1"]
     O_INET --> O_RTR
-    O_FWL["🧱 EXAFWLAKL001<br/>FortiGate 7.x<br/>192.168.93.1"]
-    O_RTR --> O_FWL
     O_SW1["🔀 EXASWIAKL001<br/>Cisco 9300<br/>192.168.93.250"]
     O_SW2["🔀 EXASWIAKL002<br/>Cisco 2960<br/>192.168.93.251"]
-    O_FWL --> O_SW1
-    O_FWL --> O_SW2
+    O_RTR --> O_SW1
+    O_RTR --> O_SW2
 
     O_RAC["🔧 EXARACAKL001<br/>HPE iLO5<br/>192.168.93.2"]
     O_ESX["💾 EXAESXAKL001<br/>HP Server, VMware ESXi<br/>192.168.93.5"]
@@ -71,7 +69,6 @@ graph TD
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
