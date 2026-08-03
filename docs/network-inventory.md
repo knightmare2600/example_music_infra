@@ -1567,7 +1567,8 @@ harness-tracked view of these.
 | `EXASWI` | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site/regional) | `EXADCSFAL001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASRV` | Server | `EXADNSVRK001` |
+| `EXASRV` | Server | `EXASRVFAL001` |
+| `EXASVR` | Server — distinct from `EXASRV`, not a typo/legacy form of it (`role_codes.csv` lists both as separate, deliberately symbol-sharing codes) | `EXASVRCLD002` (WAC), `EXASVRLIV001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS/SAN storage (e.g. TrueNAS) — standard `.19` slot | `EXANAS<SITE>001` |
 | `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
