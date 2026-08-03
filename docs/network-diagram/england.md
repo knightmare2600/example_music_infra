@@ -25,46 +25,37 @@
 > WAPs genuinely never existed on old infra, arriving fresh with the new build.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:LND:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRLND001<br/>Cisco ASA 5516-X, router/firewall combo<br/>192.168.20.1"]
-    O_INET --> O_RTR
-    O_SW["🔀 EXASWILND001<br/>Cisco 9300<br/>192.168.20.250"]
-    O_RTR --> O_SW
-
+    O_RTR["📡 EXARTRLND001<br/>Cisco ASA 5516-X · WAN edge, router/firewall combo<br/>192.168.20.1"]
+    O_SWI["🔀 EXASWILND001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.20.250"]
+    O_DCR["🗝️ EXADCRLND001<br/>DC · RID/Infra Master<br/>192.168.20.10"]
+    O_MIC["🎤 EXAMICLND001<br/>Shure SM7 via Dante audio<br/>192.168.20.81"]
     O_RAC["🔧 EXARACLND001<br/>Dell iDRAC9 · no host ever built<br/>192.168.20.2"]
-    O_DC["🗝️ EXADCRLND001<br/>DC · RID/Infra Master<br/>192.168.20.10"]
-    O_SW --> O_RAC
-    O_SW --> O_DC
-
-    O_WKS["🖥️ EXAWKSLND001<br/>Hot Desk WKS<br/>192.168.20.150"]
-    O_PRN1["🖨️ EXAPRNLND001<br/>Xerox WorkCentre<br/>192.168.20.16"]
-    O_PRN2["🖨️ EXAPRNLND002<br/>ProCAT Steno Writer · Court Device<br/>No IP Address"]
     O_RAD["📻 EXARADLND001<br/>BBC Office Radio Mk II<br/>192.168.20.80"]
-    O_MIC["🎤 EXAMICLND001<br/>Shure SM7 Microphone, Dante Audio<br/>192.168.20.81"]
-    O_WAP["📶 WAPs — none yet, new build only"]
-    O_CAM["🎥 CAMs — none yet, new build only"]
-    O_SW --> O_WKS
-    O_SW --> O_PRN1
-    O_SW --> O_PRN2
-    O_SW --> O_RAD
-    O_SW --> O_MIC
-    O_SW --> O_WAP
-    O_SW --> O_CAM
+    O_WKS["🖥️ EXAWKSLND001<br/>Windows 11 · Workstation<br/>192.168.20.150"]
+    O_PRN["🖨️ EXAPRNLND001-002<br/>2 x Printers<br/>192.168.20.16"]
+    O_INET --> O_RTR
+    O_RTR --> O_SWI
+    O_SWI --> O_MIC
+    O_SWI --> O_RAC
+    O_RAC -.->|"manages"| O_DCR
+    O_SWI --> O_RAD
+    O_SWI --> O_WKS
+    O_SWI --> O_PRN
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PRN1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PRN2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_MIC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:LND:END
 ```
 
 <details>
@@ -178,71 +169,65 @@ graph TD
 > PlasmaSync) all confirmed real and moving with the rest.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:BIR:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBIR001<br/>Palo Alto PanOS, router/firewall combo<br/>192.168.121.1"]
-    O_INET --> O_RTR
-    O_SW1["🔀 EXASWIBIR001<br/>Cisco 9300<br/>192.168.121.250"]
-    O_SW2["🔀 EXASWIBIR002<br/>Access Switch<br/>192.168.121.251"]
-    O_RTR --> O_SW1
-    O_RTR --> O_SW2
-
-    O_RAC["🔧 EXARACBIR001<br/>Dell DRAC<br/>192.168.121.2"]
+    O_RTR["📡 EXARTRBIR001<br/>Palo Alto PanOS · WAN edge, router/firewall combo<br/>192.168.121.1"]
+    O_SWI1["🔀 EXASWIBIR001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.121.250"]
+    O_SWI2["🔀 EXASWIBIR002<br/>Cisco Catalyst 48-port · Access switch<br/>192.168.121.251"]
+    O_AST["🕹️ EXAASTBIR001<br/>TOS 1.04 · Atari ST<br/>192.168.121.73"]
+    O_DCR1["🗝️ EXADCRBIR001<br/>DC Primary<br/>192.168.121.10"]
+    O_DCR2["🗝️ EXADCRBIR002<br/>DC Secondary<br/>192.168.121.11"]
     O_ESX["💾 EXAESXBIR001<br/>Dell server, VMware ESXi<br/>192.168.121.5"]
-    O_DC1["🗝️ EXADCRBIR001<br/>DC Primary<br/>192.168.121.10"]
-    O_DC2["🗝️ EXADCRBIR002<br/>DC Secondary<br/>192.168.121.11"]
-    O_SRV["🗄️ EXASRVBIR001<br/>Rocky Linux, Oracle DB<br/>192.168.121.20"]
-    O_SW1 --> O_ESX
+    O_FCL["🎹 EXAFCLBIR001<br/>QDOS 2.x · Fairlight CMI<br/>192.168.121.72"]
+    O_LCD["🖼️ EXALCDBIR001<br/>NEC PlasmaSync · NOC display<br/>192.168.121.75"]
+    O_LIN["🥁 EXALINBIR001<br/>Drum machine<br/>192.168.121.71"]
+    O_MBP["💻 EXAMBPBIR001<br/>macOS · MacBook<br/>192.168.121.41"]
+    O_MOO["🎹 EXAMOOBIR001<br/>Moog synth<br/>192.168.121.70"]
+    O_PAY["☎️ EXAPAYBIR001<br/>Payphone<br/>192.168.121.74"]
+    O_PHN["📞 EXAPHNBIR001<br/>Android · Samsung S25<br/>No IP Address"]
+    O_RAC["🔧 EXARACBIR001<br/>Dell DRAC<br/>192.168.121.2"]
+    O_SRV["🗄️ EXASRVBIR001<br/>Rocky Linux · Oracle DB<br/>192.168.121.20"]
+    O_TAB["📱 EXATABBIR001<br/>Android · Galaxy Tab<br/>192.168.121.61"]
+    O_INET --> O_RTR
+    O_RTR --> O_SWI1
+    O_RTR --> O_SWI2
+    O_SWI1 --> O_AST
+    O_SWI1 --> O_DCR1
+    O_SWI1 --> O_DCR2
+    O_SWI1 --> O_ESX
+    O_SWI1 --> O_FCL
+    O_SWI1 --> O_LCD
+    O_SWI1 --> O_LIN
+    O_SWI1 --> O_MBP
+    O_SWI1 --> O_MOO
+    O_SWI1 --> O_PAY
+    O_SWI1 --> O_PHN
+    O_SWI1 --> O_RAC
     O_RAC -.->|"manages"| O_ESX
-    O_ESX --> O_DC1
-    O_ESX --> O_DC2
-    O_ESX --> O_SRV
-
-    O_MBP["💻 EXAMBPBIR001<br/>MacBook Pro<br/>192.168.121.41"]
-    O_TAB["📱 EXATABBIR001<br/>Samsung Galaxy Tab<br/>192.168.121.61"]
-    O_PHN["📞 EXAPHNBIR001<br/>Samsung S25 Ultra<br/>No IP Address"]
-    O_WAP["📶 EXAWAPBIR001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
-    O_CAM["🎥 CAMs — none yet, new build only"]
-    O_SW2 --> O_MBP
-    O_SW2 --> O_TAB
-    O_SW2 --> O_PHN
-    O_SW2 --> O_WAP
-    O_SW2 --> O_CAM
-
-    O_MOO["🎹 EXAMOOBIR001<br/>Moog One Synthesizer<br/>192.168.121.70"]
-    O_LIN["🥁 EXALINBIR001<br/>LinnDrum LM-2<br/>192.168.121.71"]
-    O_FCL["🎹 EXAFCLBIR001<br/>Fairlight CMI IIx<br/>192.168.121.72"]
-    O_AST["🕹️ EXAASTBIR001<br/>Atari ST, MIDI<br/>192.168.121.73"]
-    O_PAY["☎️ EXAPAYBIR001<br/>GPO Kiosk No.6 Payphone<br/>192.168.121.74"]
-    O_LCD["🖼️ EXALCDBIR001<br/>NEC PlasmaSync NOC Display<br/>192.168.121.75"]
-    O_SW2 --> O_MOO
-    O_SW2 --> O_LIN
-    O_SW2 --> O_FCL
-    O_SW2 --> O_AST
-    O_SW2 --> O_PAY
-    O_SW2 --> O_LCD
+    O_SWI1 --> O_SRV
+    O_SWI1 --> O_TAB
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_MOO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_LIN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_FCL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_AST fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_FCL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LIN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MOO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:BIR:END
 ```
 
 <details>
@@ -814,20 +799,20 @@ graph TD
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra). Sheffield was genuinely as bare as the original box
 > suggested — Robert: "nothing existed." No hypervisor, no BMC (`EXARACSHE001` removed — a
-> consumer desktop tower has no out-of-band management to represent). `EXADCSSHE001` was
+> consumer desktop tower has no out-of-band management to represent). `EXADCRSHE001` was
 > "literally just Windows Server running on an old Dell OptiPlex tower" — kept, plainly, as the
 > sharpest hardware-inadequacy signal so far. WAP/CAM/Endpoints all confirmed genuinely
 > never-installed — everything arrives fresh with the new build.
 
 > 🚨 **Migration priority — Tier 4.** Hardware inadequate from the outset (consumer OptiPlex
-> tower) — no in-place remediation possible. A new `EXADCSSHE001` build promotes and replicates
+> tower) — no in-place remediation possible. A new `EXADCRSHE001` build promotes and replicates
 > against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`) on proper server hardware.
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_DC["⚠️🗝️ EXADCSSHE001<br/>DC · Windows Server on a Dell OptiPlex tower<br/>192.168.114.10"]
+    O_DC["⚠️🗝️ EXADCRSHE001<br/>DC · Windows Server on a Dell OptiPlex tower<br/>192.168.114.10"]
     O_INET --> O_DC
 
     O_WAP["📶 WAPs — none yet, new build only"]
@@ -853,7 +838,7 @@ graph TD
       INET["🌐 Internet"]
       RAC["🔧 EXARACSHE001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVESHE001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSSHE001 · DC · .10"]
+      DC["🗝️ EXADCRSHE001 · DC · .10"]
       SBC["🛡️ EXASBCSHE001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYSHE001 · Rudder Relay · .12"]
       WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
@@ -897,7 +882,7 @@ graph TD
     T_RDR["🔐 EXARDRSHE001<br/>RDR<br/>192.168.114.21"]
     T_WAP["📶 EXAWAPSHE001<br/>WAP 1<br/>192.168.114.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSSHE001<br/>DCS 1<br/>192.168.114.10"]
+    T_DCS["🗝️ EXADCRSHE001<br/>DCS 1<br/>192.168.114.10"]
     T_SBC["🛡️ EXASBCSHE001<br/>SBC<br/>192.168.114.48"]
     T_FWL["🧱 EXAFWLSHE001<br/>LAN Face<br/>192.168.114.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -928,19 +913,19 @@ graph TD
 ### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Same shape as SHE: "nothing built."
-> No hypervisor, no BMC (`EXARACHAL001` removed). `EXADCSHAL001` was another "OptiPlex special"
+> No hypervisor, no BMC (`EXARACHAL001` removed). `EXADCRHAL001` was another "OptiPlex special"
 > — Windows Server on a consumer desktop tower, same as Sheffield. WAP/CAM/Endpoints all
 > confirmed genuinely never-installed.
 
 > 🚨 **Migration priority — Tier 4.** Hardware inadequate from the outset (consumer OptiPlex
-> tower) — no in-place remediation possible. A new `EXADCSHAL001` build promotes and replicates
+> tower) — no in-place remediation possible. A new `EXADCRHAL001` build promotes and replicates
 > against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`) on proper server hardware.
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_DC["⚠️🗝️ EXADCSHAL001<br/>DC · Windows Server on a Dell OptiPlex tower<br/>192.168.142.10"]
+    O_DC["⚠️🗝️ EXADCRHAL001<br/>DC · Windows Server on a Dell OptiPlex tower<br/>192.168.142.10"]
     O_INET --> O_DC
 
     O_WAP["📶 WAPs — none yet, new build only"]
@@ -966,7 +951,7 @@ graph TD
       INET["🌐 Internet"]
       RAC["🔧 EXARACHAL001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVEHAL001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSHAL001 · DC · .10"]
+      DC["🗝️ EXADCRHAL001 · DC · .10"]
       SBC["🛡️ EXASBCHAL001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYHAL001 · Rudder Relay · .12"]
       WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
@@ -1010,7 +995,7 @@ graph TD
     T_RDR["🔐 EXARDRHAL001<br/>RDR<br/>192.168.142.21"]
     T_WAP["📶 EXAWAPHAL001<br/>WAP 1<br/>192.168.142.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSHAL001<br/>DCS 1<br/>192.168.142.10"]
+    T_DCS["🗝️ EXADCRHAL001<br/>DCS 1<br/>192.168.142.10"]
     T_SBC["🛡️ EXASBCHAL001<br/>SBC<br/>192.168.142.48"]
     T_FWL["🧱 EXAFWLHAL001<br/>LAN Face<br/>192.168.142.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -1041,18 +1026,18 @@ graph TD
 ### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Same shape as SHE/HAL: nothing built, no
-> hypervisor, no real BMC (`EXARACHUL001` removed). `EXADCSHUL001` was another OptiPlex special.
+> hypervisor, no real BMC (`EXARACHUL001` removed). `EXADCRHUL001` was another OptiPlex special.
 > WAP/CAM/Endpoints all confirmed genuinely never-installed.
 
 > 🚨 **Migration priority — Tier 4.** Hardware inadequate from the outset (consumer OptiPlex
-> tower) — no in-place remediation possible. A new `EXADCSHUL001` build promotes and replicates
+> tower) — no in-place remediation possible. A new `EXADCRHUL001` build promotes and replicates
 > against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`) on proper server hardware.
 
 ```mermaid
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_DC["⚠️🗝️ EXADCSHUL001<br/>DC · Windows Server on a Dell OptiPlex tower<br/>192.168.148.10"]
+    O_DC["⚠️🗝️ EXADCRHUL001<br/>DC · Windows Server on a Dell OptiPlex tower<br/>192.168.148.10"]
     O_INET --> O_DC
 
     O_WAP["📶 WAPs — none yet, new build only"]
@@ -1078,7 +1063,7 @@ graph TD
       INET["🌐 Internet"]
       RAC["🔧 EXARACHUL001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVEHUL001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSHUL001 · DC · .10"]
+      DC["🗝️ EXADCRHUL001 · DC · .10"]
       SBC["🛡️ EXASBCHUL001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYHUL001 · Rudder Relay · .12"]
       WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
@@ -1122,7 +1107,7 @@ graph TD
     T_RDR["🔐 EXARDRHUL001<br/>RDR<br/>192.168.148.21"]
     T_WAP["📶 EXAWAPHUL001<br/>WAP 1<br/>192.168.148.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSHUL001<br/>DCS 1<br/>192.168.148.10"]
+    T_DCS["🗝️ EXADCRHUL001<br/>DCS 1<br/>192.168.148.10"]
     T_SBC["🛡️ EXASBCHUL001<br/>SBC<br/>192.168.148.48"]
     T_FWL["🧱 EXAFWLHUL001<br/>LAN Face<br/>192.168.148.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -1159,20 +1144,16 @@ graph TD
 > standing `RRY`/WireGuard corrections. WAP (×2) confirmed genuinely real, kept as-is.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:COV:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRCOV001<br/>Cisco ISR 4331<br/>192.168.247.1"]
+    O_RTR["📡 EXARTRCOV001<br/>Cisco ISR 4331 · WAN edge no server infra<br/>192.168.247.1"]
     O_INET --> O_RTR
-    O_WAP["📶 EXAWAPCOV001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
-    O_CAM["🎥 CAMs — none yet, new build only"]
-    O_RTR --> O_WAP
-    O_RTR --> O_CAM
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:COV:END
 ```
 
 <details>

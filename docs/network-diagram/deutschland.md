@@ -20,48 +20,45 @@
 > no `RRY`; no WireGuard on old infra). Octet collision resolved — `.2` belongs to `EXARACBON001`
 > (real), not `EXAVCUBON001`; the VCU turned out to be new-build-supplied kit with "no business
 > being in the old network" at all — removed entirely (it uses DHCP in the new build, explaining
-> the stray octet clash). `EXADCSBON001` (Schema Master, Domain Naming Master) confirmed real,
+> the stray octet clash). `EXADCRBON001` (Schema Master, Domain Naming Master) confirmed real,
 > bare metal on the HP ML310e attached to the Dell iDRAC9. Workstation, both laptops (including
 > the ⚠️ disabled ThinkPad), CCTV camera, display, and WAPs all confirmed real and kept.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:BON:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBON001<br/>Cisco ISR 4331<br/>192.168.228.1"]
-    O_INET --> O_RTR
-    O_SW["🔀 EXASWIBON001<br/>Cisco 2960X<br/>192.168.228.250"]
-    O_RTR --> O_SW
-
+    O_RTR["📡 EXARTRBON001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.228.1"]
+    O_SWI["🔀 EXASWIBON001<br/>Cisco Catalyst 2960X · Office switch<br/>192.168.228.250"]
+    O_CAM["🎥 EXACAMBON001<br/>Axis P3245-LVE · CCTV camera<br/>192.168.228.17"]
+    O_DCR["🗝️ EXADCRBON001<br/>DC · Schema Master, DN Master, HP ML310e bare metal<br/>192.168.228.10"]
+    O_LAP["💻 EXALAPBON002<br/>Windows 11 · Finance laptop<br/>192.168.228.153"]
     O_RAC["🔧 EXARACBON001<br/>Dell iDRAC9<br/>192.168.228.2"]
-    O_DC["🗝️ EXADCSBON001<br/>DC · Schema Master, DN Master, HP ML310e bare metal<br/>192.168.228.10"]
-    O_SW --> O_RAC
-    O_RAC -.->|"manages"| O_DC
-
-    O_WKS["🖥️ EXAWKSBON001<br/>Finance WKS<br/>192.168.228.151"]
-    O_LAP1["💻 ⚠️ EXALAPBON001<br/>ThinkPad, disabled<br/>192.168.228.150"]
-    O_LAP2["💻 EXALAPBON002<br/>Finance Laptop<br/>192.168.228.153"]
-    O_CAM["🎥 EXACAMBON001<br/>Axis P3245-LVE CCTV<br/>192.168.228.17"]
-    O_TV["📺 EXATVSBON001<br/>Samsung 65in<br/>192.168.228.18"]
-    O_WAP["📶 EXAWAPBON001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
-    O_SW --> O_WKS
-    O_SW --> O_LAP1
-    O_SW --> O_LAP2
-    O_SW --> O_CAM
-    O_SW --> O_TV
-    O_SW --> O_WAP
+    O_TVS["📺 EXATVSBON001<br/>Samsung 65in · Display<br/>192.168.228.18"]
+    O_VCU["🎧 EXAVCUBON001<br/>Poly Studio X70 · Boardroom video conferencing<br/>No IP Address"]
+    O_WKS["🖥️ EXAWKSBON001<br/>Windows 11 · Finance workstation<br/>192.168.228.151"]
+    O_INET --> O_RTR
+    O_RTR --> O_SWI
+    O_SWI --> O_CAM
+    O_SWI --> O_LAP
+    O_SWI --> O_RAC
+    O_RAC -.->|"manages"| O_DCR
+    O_SWI --> O_TVS
+    O_SWI --> O_VCU
+    O_SWI --> O_WKS
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_LAP1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_LAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_TV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TVS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VCU fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:BON:END
 ```
 
 <details>
@@ -75,7 +72,7 @@ graph TD
       RTR["📡 EXARTRBON001 · Cisco ISR 4331 · .254"]
       RAC["🔧 EXARACBON001 · Dell iDRAC9 · .2"]
       PVE["🗂️ EXAPVEBON001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSBON001 · DC · Schema Master · DN Master · .10"]
+      DC["🗝️ EXADCRBON001 · DC · Schema Master · DN Master · .10"]
       SBC["🛡️ EXASBCBON001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYBON001 · Rudder Relay · .12"]
       WKS["🖥️ EXAWKSBON001 · Finance WKS · .151"]
@@ -125,7 +122,7 @@ graph TD
     T_WAP["📶 EXAWAPBON001<br/>WAP 1<br/>192.168.228.82"]
     T_WAP2["📶 EXAWAPBON002<br/>Wireless Access Point<br/>192.168.228.83"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCSBON001<br/>DCS 1<br/>192.168.228.10"]
+    T_DCS["🗝️ EXADCRBON001<br/>DCS 1<br/>192.168.228.10"]
     T_SBC["🛡️ EXASBCBON001<br/>SBC<br/>192.168.228.48"]
     T_FWL["🧱 EXAFWLBON001<br/>LAN Face<br/>192.168.228.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -170,7 +167,7 @@ graph TD
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra). All three "servers" were Dell OptiPlex consumer PCs —
-> `EXADCSBER001` (PDC Emulator/RID-Infra Master), `EXASRVBER001` (WS2019 Legacy App Server), and
+> `EXADCRBER001` (PDC Emulator/RID-Infra Master), `EXASRVBER001` (WS2019 Legacy App Server), and
 > `EXANIXBER001` (Debian 12), all confirmed separate real devices. `EXARACBER001` "was called RAC
 > but wasn't a real RAC" — a basic PCI remote-power-on add-in card, not a genuine enterprise
 > BMC/iLO/iDRAC; kept as `RAC` type (role_codes.csv's own definition already covers "RAC
@@ -179,34 +176,22 @@ graph TD
 > new UniFi controller cluster rather than ever deployed on old infra.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:BER:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBER001<br/>Cisco ISR 4331<br/>192.168.113.1"]
-    O_INET --> O_RTR
-
+    O_RTR["📡 EXARTRBER001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.113.1"]
+    O_DCR["🗝️ EXADCRBER001<br/>DC · PDC Emulator, RID/Infra Master, WS2019, Dell OptiPlex<br/>192.168.113.10"]
     O_RAC["🔧 EXARACBER001<br/>PCI remote-power card on OptiPlex, not a real BMC<br/>192.168.113.2"]
-    O_DC["🗝️ EXADCSBER001<br/>DC · PDC Emulator, RID/Infra Master, WS2019, Dell OptiPlex<br/>192.168.113.10"]
+    O_INET --> O_RTR
     O_RTR --> O_RAC
-    O_RAC -.->|"manages"| O_DC
-
-    O_SRV["🗄️ EXASRVBER001<br/>WS2019 Legacy App Server, Dell OptiPlex<br/>192.168.113.21"]
-    O_NIX["🐧 EXANIXBER001<br/>Debian 12, Dell OptiPlex<br/>192.168.113.22"]
-    O_WAP["📶 WAPs — never opened, moved straight into new UniFi controller cluster"]
-    O_CAM["🎥 CAMs — none yet, new build only"]
-    O_RTR --> O_SRV
-    O_RTR --> O_NIX
-    O_RTR --> O_WAP
-    O_RTR --> O_CAM
+    O_RAC -.->|"manages"| O_DCR
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_NIX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:BER:END
 ```
 
 <details>
@@ -219,7 +204,7 @@ graph TD
       RTR["📡 EXARTRBER001 · Cisco ISR 4331 · .254"]
       RAC["🔧 EXARACBER001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVEBER001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSBER001 · DC · PDC Emulator · RID/Infra Master WS2019 · .10"]
+      DC["🗝️ EXADCRBER001 · DC · PDC Emulator · RID/Infra Master WS2019 · .10"]
       SBC["🛡️ EXASBCBER001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYBER001 · Rudder Relay · .12"]
       SRV["🗄️ EXASRVBER001 · WS2019 Legacy App Server · .21"]
@@ -264,7 +249,7 @@ graph TD
     T_RDR["🔐 EXARDRBER001<br/>RDR<br/>192.168.113.21"]
     T_WAP["📶 EXAWAPBER001<br/>WAP 1<br/>192.168.113.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSBER001<br/>DCS 1<br/>192.168.113.10"]
+    T_DCS["🗝️ EXADCRBER001<br/>DCS 1<br/>192.168.113.10"]
     T_SBC["🛡️ EXASBCBER001<br/>SBC<br/>192.168.113.48"]
     T_FWL["🧱 EXAFWLBER001<br/>LAN Face<br/>192.168.113.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL

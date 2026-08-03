@@ -260,6 +260,13 @@ def render_new_network_block(site: str, sites_row: dict, devices_by_site: dict) 
     net = None
 
   devices = build_site_devices(site, net, devices_by_site) if net is not None else []
+  # Same exclusion render_topology_block() applies via TOPOLOGY_EXCLUDE_TYPES (defined further
+  # down this file) -- DCR rows carry real historical FSMO/health-status detail that's fine for
+  # the Old Network but must never reach a *current*-infrastructure box. This path predates that
+  # exclusion (added 2026-07-31 for the topology renderer only) -- DCR rows added here 2026-08-03
+  # for the Old Network's own DCS->DCR rename hit this gap immediately (BANNED_TERMS correctly
+  # crashed on KGE's "27 days out of sync, disk space low" DCR row before this fix).
+  devices = [d for d in devices if d["type"] not in TOPOLOGY_EXCLUDE_TYPES]
 
   lines = [f'    subgraph NEW_{site} ["\U0001F195 New Network (current)"]']
   seen_ids = {}
@@ -827,6 +834,391 @@ def insert_topology_into_docs(docs_dir=DOCS_DIR, sites_csv=SITES_CSV, devices_cs
         last = all_fences[-1]
         heading_end = last.start() + len("```mermaid\n")
         fence_close = section.index("\n```", heading_end)
+      new_section = section[:heading_end] + wrapped + section[fence_close:]
+      text = text[:section_start] + new_section + text[section_end:]
+      inserted.append(site)
+
+    docs_path.write_text(text, encoding="utf-8")
+
+  return inserted, replaced, missing
+
+
+# ==================================================================================================
+# Old Network generator -- 2026-08-03, following the RTR/FWL AD re-audit (see
+# benarbejde/legacy-devices.csv's own header and this file's git history the same day).
+# Generalises the ~30 hand-built "Old Network (legacy, hand restyled -- prototype, not yet
+# generated)" sections into the same generate-from-source-of-truth pattern render_topology_block()
+# already uses, from two real data sources instead of one:
+#   - devices.csv rows with Legacy=yes -- device classes that persisted continuously from the old
+#     network into the new one (RTR, SWI, and every ordinary devices.csv exception Type: WKS, PHN,
+#     CAM, WAP, SRV...). Read directly here (load_legacy_standard_devices()), NOT via
+#     gi.load_devices() -- that function's STANDARD_OFFSETS dedup silently drops any row whose
+#     octet matches the *new* network's standard slot for that Type, which is exactly what RTR's
+#     real historic octet (.1) and SWI's (.250/.251) do (see address_policy.csv) -- every Legacy
+#     RTR/SWI row would vanish before ever reaching this renderer otherwise. Confirmed empirically
+#     2026-08-03 against FAL specifically (see IPOverride below).
+#   - legacy-devices.csv -- device classes with no live counterpart at all (RAC/iLO/iDRAC, ESX,
+#     VCT), see that file's own header.
+#
+# IPOverride convention: a devices.csv Notes field containing "IPOverride: X.X.X.X" overrides the
+# normal HostOctet+site-subnet IP computation entirely. Exists for exactly one confirmed case so
+# far -- FAL's real old EXARTRFAL001, genuinely squatting off its own subnet at 192.168.1.1 (Robert
+# 2026-08-03: same disaster-zone pattern as FALCAM's static .1.1) -- kept as a Notes convention,
+# not a new devices.csv column, because it's a single known exception, not a pattern.
+#
+# NOT yet covered: old-network domain controllers (Type=DCS). DCS is a standard-slot synthesized
+# type for the new network (address_policy.csv: .10/.11 -- same continuity-collision shape as
+# RTR/SWI), and no old DCS row has been through the same AD-cross-reference rigor RTR got before
+# being trusted -- rendering old DC nodes needs that same verification pass first, not a rushed
+# guess. Sites whose hand-built diagram has an O_DC/O_DC1/O_DC2 node will lose it in the generated
+# version until that follow-up lands -- flagged, not silently dropped.
+#
+# Also a deliberate, disclosed simplification: several hand-built diagrams split devices across
+# TWO old switches (e.g. SYD's server-stuff-under-SW1, endpoint-stuff-under-SW2), a distinction no
+# data source records (only "a switch existed", never "which switch this device was on"). Every
+# non-RTR/SWI device attaches to the first SWI instance uniformly here rather than guessing a split.
+# ==================================================================================================
+
+LEGACY_DEVICES_CSV = HERE / "legacy-devices.csv"
+
+OLD_NETWORK_STYLE = TOPOLOGY_STYLE  # identical black/white convention, same constant, not a second copy
+
+IP_OVERRIDE_RE = re.compile(r'IPOverride:\s*(\d{1,3}(?:\.\d{1,3}){3})')
+
+
+def load_legacy_standard_devices(site: str, devices_csv=DEVICES_CSV):
+  """Legacy=yes devices.csv rows for one site, read directly (bypassing gi.load_devices() -- see
+  this section's own header for why). Returns dicts shaped: hostname, type, number, octet (string
+  or None), ip_override (string or None), os, notes -- same shape load_legacy_extra_devices()
+  returns, so render_old_network_block() doesn't need to handle two different shapes."""
+  out = []
+  with open(devices_csv, newline="", encoding="utf-8") as f:
+    for r in csv.DictReader(f):
+      if r["Site"].strip() != site:
+        continue
+      if (r.get("Legacy") or "").strip().lower() != "yes":
+        continue
+      dtype = r["Type"].strip().upper()
+      try:
+        number = int(r["Number"])
+      except (KeyError, ValueError):
+        continue
+      notes = r.get("Notes", "") or ""
+      ip_override = None
+      m = IP_OVERRIDE_RE.search(notes)
+      if m:
+        ip_override = m.group(1)
+        notes = (notes[:m.start()] + notes[m.end():]).strip(" -,()")
+      octet_raw = r["HostOctet"].strip()
+      out.append({
+        "hostname": gi.build_hostname(dtype, site, number), "type": dtype, "number": number,
+        "octet": octet_raw or None, "ip_override": ip_override,
+        "os": (r.get("OS") or "").strip(), "notes": notes.strip(),
+      })
+  return out
+
+
+def load_legacy_extra_devices(site: str, legacy_csv=LEGACY_DEVICES_CSV):
+  """legacy-devices.csv rows (RAC/ESX/VCT -- old-network-only core infra with no live devices.csv
+  counterpart, see that file's own header) for one site. Same dict shape as
+  load_legacy_standard_devices() so both feed the same renderer."""
+  out = []
+  if not legacy_csv.exists():
+    return out
+  with open(legacy_csv, newline="", encoding="utf-8") as f:
+    for r in csv.DictReader(f):
+      if r["Site"].strip() != site:
+        continue
+      dtype = r["Type"].strip().upper()
+      try:
+        number = int(r["Number"])
+      except (KeyError, ValueError):
+        continue
+      octet_raw = (r.get("HostOctet") or "").strip()
+      out.append({
+        "hostname": gi.build_hostname(dtype, site, number), "type": dtype, "number": number,
+        "octet": octet_raw or None, "ip_override": None,
+        "os": (r.get("OS") or "").strip(), "notes": (r.get("Notes") or "").strip(),
+      })
+  return out
+
+
+def load_old_network_devices(site: str, devices_csv=DEVICES_CSV, legacy_csv=LEGACY_DEVICES_CSV):
+  return load_legacy_standard_devices(site, devices_csv) + load_legacy_extra_devices(site, legacy_csv)
+
+
+def old_network_sites(devices_csv=DEVICES_CSV, legacy_csv=LEGACY_DEVICES_CSV):
+  """Every site with at least one Legacy=yes devices.csv row or legacy-devices.csv row --
+  dynamically derived, not a hand-maintained dict like TOPOLOGY_SITES, because "which sites have
+  real old-network data" is itself a fact those two files already carry; hand-maintaining a third
+  copy of that list would be exactly the kind of drift this repo's harness exists to catch."""
+  sites = set()
+  with open(devices_csv, newline="", encoding="utf-8") as f:
+    for r in csv.DictReader(f):
+      if (r.get("Legacy") or "").strip().lower() == "yes":
+        sites.add(r["Site"].strip())
+  if legacy_csv.exists():
+    with open(legacy_csv, newline="", encoding="utf-8") as f:
+      for r in csv.DictReader(f):
+        sites.add(r["Site"].strip())
+  return sites
+
+
+def _old_network_ip(dev: dict, net) -> str:
+  if dev.get("ip_override"):
+    return dev["ip_override"]
+  octet = dev.get("octet")
+  if not octet or not str(octet).isdigit() or net is None:
+    return "No IP Address"
+  return str(gi.offset_ip(net, int(octet)))
+
+
+def _old_network_label(dev: dict, net) -> str:
+  """Unlike _topology_label()/render_new_network_block()'s labels, BANNED_TERMS is deliberately
+  NOT enforced here (Robert, 2026-08-03): the New Network ban exists to keep FSMO/health-status
+  chatter out of *current* documentation, but the Old Network is explicitly historical -- "DFSR
+  stopped, C: 5% free", "27 days out of sync" etc. are real, informative operational history for
+  dead infrastructure, not live-network noise. Stripping it would lose real content for no safety
+  benefit; the New Network generator's own ban is untouched."""
+  symbol = _topology_symbol(dev["type"])
+  lines = [f"{symbol} {dev['hostname']}"]
+  desc = dev.get("os") or ""
+  short_notes = short_note(dev.get("notes") or "")
+  if short_notes:
+    desc = f"{desc} · {short_notes}" if desc else short_notes
+  if desc:
+    lines.append(desc)
+  lines.append(_old_network_ip(dev, net))
+  return "<br/>".join(lines)
+
+
+def _old_network_group_label(dtype: str, group: list, net) -> str:
+  """Same shape as _topology_other_group_label() (hostname range / count+name / IP range) for 2+
+  same-Type devices at a site -- e.g. ABD's real committed "EXAWAPABD001-002 / 2x Ubiquiti UniFi
+  U6-Pro / No IP Address" WAP box, generalised. No BANNED_TERMS check, same reasoning as
+  _old_network_label(). RAC/ESX/DCR are never passed here -- render_old_network_block() keeps
+  those individual so the manages-edge/bare-metal logic still has one node per real device."""
+  symbol = _topology_symbol(dtype)
+  name = TOPOLOGY_PLURAL_OVERRIDES.get(dtype) or _pluralize_type_name(TYPE_NAMES.get(dtype, dtype))
+  numbers = sorted(d["number"] for d in group)
+  hostname_prefix = re.sub(r'\d+$', '', group[0]["hostname"])
+  num_str = ",".join(
+    f"{a:03d}" if a == b else f"{a:03d}-{b:03d}" for a, b in _compress_ranges(numbers)
+  )
+  octets = [int(o) for d in group if (o := d.get("octet")) and str(o).isdigit()]
+  overrides = [d["ip_override"] for d in group if d.get("ip_override")]
+  if overrides and not octets:
+    ip_line = overrides[0] if len(set(overrides)) == 1 else "No IP Address"
+  elif octets and net is not None:
+    ip_line = _format_ip_ranges(net, octets)
+  else:
+    ip_line = "No IP Address"
+  lines = [
+    f"{symbol} {hostname_prefix}{num_str}",
+    f"{len(group)} x {_title_case_preserve_acronyms(name)}",
+    ip_line,
+  ]
+  return "<br/>".join(lines)
+
+
+def render_old_network_block(site: str, sites_row: dict, devices_csv=DEVICES_CSV, legacy_csv=LEGACY_DEVICES_CSV):
+  """Returns the Old Network mermaid text (graph TD onward, no outer fence -- same convention as
+  render_topology_block()), or None if this site has no old-network data, or no real RTR recorded
+  (caller skips both cases -- never fabricates a router, see the RTR/FWL audit's own conclusion
+  that some sites' old diagrams genuinely have nothing to show and that's fine as-is).
+
+  Hierarchy: Internet -> RTR -> {each SWI directly}; everything else attaches to the first SWI if
+  one exists, else straight to RTR (matches ODE/ATL's real no-switch-layer structure). RAC gets a
+  dotted "manages" edge to the ESX sharing its Number, mirroring every hand-built diagram's own
+  convention -- see this section's header for the dual-switch simplification this implies.
+  """
+  try:
+    net = gi.validate_cidr(sites_row["Subnet"])
+  except ValueError:
+    net = None
+
+  devices = load_old_network_devices(site, devices_csv, legacy_csv)
+  if not devices:
+    return None
+
+  rtr = _first_instance(devices, "RTR")
+  if rtr is None:
+    return None
+
+  type_counts = {}
+  for dev in devices:
+    type_counts[dev["type"]] = type_counts.get(dev["type"], 0) + 1
+
+  node_ids = {}
+  def node_id_for(dev):
+    key = (dev["type"], dev["number"])
+    if key in node_ids:
+      return node_ids[key]
+    nid = f"O_{dev['type']}" if type_counts[dev["type"]] == 1 else f"O_{dev['type']}{dev['number']}"
+    node_ids[key] = nid
+    return nid
+
+  lines = ["%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%", "graph TD"]
+  style_lines = []
+  edges = []
+
+  def emit_node(dev):
+    nid = node_id_for(dev)
+    lines.append(f'    {nid}["{_old_network_label(dev, net)}"]')
+    style_lines.append(f'    style {nid} {OLD_NETWORK_STYLE}')
+    return nid
+
+  inet_id = "O_INET"
+  lines.append(f'    {inet_id}["\U0001F310 Internet"]')
+  style_lines.append(f'    style {inet_id} {OLD_NETWORK_STYLE}')
+
+  rtr_id = emit_node(rtr)
+  edges.append(f'{inet_id} --> {rtr_id}')
+
+  swis = sorted([d for d in devices if d["type"] == "SWI"], key=lambda d: d["number"])
+  swi_ids = []
+  for swi in swis:
+    sid = emit_node(swi)
+    swi_ids.append(sid)
+    edges.append(f'{rtr_id} --> {sid}')
+
+  attach_id = swi_ids[0] if swi_ids else rtr_id
+  esxs_by_number = {d["number"]: d for d in devices if d["type"] == "ESX"}
+  dcrs = sorted([d for d in devices if d["type"] == "DCR"], key=lambda d: d["number"])
+  # Bare-metal pattern (ABD/TOR: a RAC/iLO managing a DC directly, no hypervisor layer at all) --
+  # only applies when the site has no ESX to attach the RAC to instead. Which specific DCR is
+  # VM-hosted-on-ESX vs standalone genuinely varies per site with no reliable signal in the data
+  # to derive it (confirmed against ODE, which has both ESX *and* DCR but chains DCR straight off
+  # RTR, not through ESX) -- so every DCR beyond the bare-metal-RAC case attaches directly, the
+  # same disclosed simplification as the SW1/SW2 split above.
+  bare_metal_dc = dcrs[0] if (dcrs and not esxs_by_number) else None
+
+  rest = sorted(
+    (d for d in devices if d["type"] not in ("RTR", "SWI")),
+    key=lambda d: (d["type"], d["number"]),
+  )
+
+  # Group 2+ same-Type devices into one box (matches the New Network topology's own "Other"
+  # bucket grouping, and every hand-built diagram that already did this for WAP/CAM, e.g. ABD's
+  # real "EXAWAPABD001-002 / 2x Ubiquiti UniFi U6-Pro"). RAC/ESX/DCR stay individual regardless of
+  # count -- the manages-edge/bare-metal-DC logic above needs one real node per device for those.
+  NEVER_GROUP = {"RAC", "ESX", "DCR"}
+  groups = {}
+  singles = []
+  for dev in rest:
+    if dev["type"] in NEVER_GROUP:
+      singles.append(dev)
+    else:
+      groups.setdefault(dev["type"], []).append(dev)
+
+  grouped_rest = list(singles)
+  group_nodes = []  # (dtype, group) pairs rendered as one box, in Type order
+  for dtype in sorted(groups):
+    group = groups[dtype]
+    if len(group) == 1:
+      grouped_rest.append(group[0])
+    else:
+      group_nodes.append((dtype, group))
+  grouped_rest.sort(key=lambda d: (d["type"], d["number"]))
+
+  for dev in grouped_rest:
+    if dev is bare_metal_dc:
+      nid = node_id_for(dev)
+      lines.append(f'    {nid}["{_old_network_label(dev, net)}"]')
+      style_lines.append(f'    style {nid} {OLD_NETWORK_STYLE}')
+      continue  # arrives only via the RAC "manages" edge below, no direct attach_id edge
+    nid = emit_node(dev)
+    edges.append(f'{attach_id} --> {nid}')
+    if dev["type"] == "RAC":
+      if dev["number"] in esxs_by_number:
+        edges.append(f'{nid} -.->|"manages"| {node_id_for(esxs_by_number[dev["number"]])}')
+      elif bare_metal_dc is not None:
+        edges.append(f'{nid} -.->|"manages"| {node_id_for(bare_metal_dc)}')
+
+  for dtype, group in group_nodes:
+    nid = f"O_{dtype}"
+    lines.append(f'    {nid}["{_old_network_group_label(dtype, group, net)}"]')
+    style_lines.append(f'    style {nid} {OLD_NETWORK_STYLE}')
+    edges.append(f'{attach_id} --> {nid}')
+
+  lines.extend(f'    {e}' for e in edges)
+  lines.append("")
+  lines.extend(style_lines)
+  return "\n".join(lines)
+
+
+OLDNET_MARKER_START = "%% GENERATED:OLDNETWORK:{site}:START"
+OLDNET_MARKER_END = "%% GENERATED:OLDNETWORK:{site}:END"
+
+
+def insert_old_network_into_docs(docs_dir=DOCS_DIR, sites_csv=SITES_CSV, devices_csv=DEVICES_CSV,
+                                  legacy_csv=LEGACY_DEVICES_CSV):
+  """Marker-wraps and (re)writes each old-network site's Old Network mermaid block, same
+  idempotent shape as insert_topology_into_docs(). Site list comes from old_network_sites() (data-
+  derived), file location from TOPOLOGY_SITES (every old-network site already has a topology entry
+  -- it's a real, currently-onboarded site by definition). Scopes its search to that site's own
+  section first, same reason insert_topology_into_docs() does. Returns (inserted, replaced,
+  missing) site-code lists."""
+  sites, _ = load_all(sites_csv, devices_csv, ADDRESS_POLICY)
+
+  candidate_sites = sorted(old_network_sites(devices_csv, legacy_csv))
+  by_file = {}
+  for site in candidate_sites:
+    fname = TOPOLOGY_SITES.get(site)
+    if fname is None:
+      continue
+    by_file.setdefault(fname, []).append(site)
+
+  inserted, replaced, missing = [], [], []
+
+  for fname, site_codes in by_file.items():
+    docs_path = docs_dir / fname
+    text = docs_path.read_text(encoding="utf-8")
+
+    for site in site_codes:
+      block = render_old_network_block(site, sites[site], devices_csv, legacy_csv)
+      if block is None:
+        missing.append(site)
+        continue
+
+      start_marker = OLDNET_MARKER_START.format(site=site)
+      end_marker = OLDNET_MARKER_END.format(site=site)
+      wrapped = f"{start_marker}\n{block}\n{end_marker}"
+
+      site_header_re = re.compile(r'^## ' + re.escape(site) + r'\b.*$', re.MULTILINE)
+      m = site_header_re.search(text)
+      if m:
+        next_header = re.search(r'^## (?!' + re.escape(site) + r'\b)', text[m.end():], re.MULTILINE)
+        section_end = m.end() + next_header.start() if next_header else len(text)
+        section_start = m.start()
+      else:
+        section_start, section_end = 0, len(text)
+      section = text[section_start:section_end]
+
+      start_idx = section.find(start_marker)
+      if start_idx != -1:
+        end_idx = section.find(end_marker, start_idx)
+        if end_idx == -1:
+          raise ValueError(f"{site}: found OLDNETWORK START marker but no matching END marker in {fname}")
+        end_idx += len(end_marker)
+        new_section = section[:start_idx] + wrapped + section[end_idx:]
+        text = text[:section_start] + new_section + text[section_end:]
+        replaced.append(site)
+        continue
+
+      # No markers yet -- first run against hand-authored content. The Old Network fence is always
+      # the FIRST ```mermaid fence in this site's section (the Topology sketch fence, matched by
+      # insert_topology_into_docs()'s own heading search, always comes later) -- excluding any
+      # fence embedded inside a collapsed <details> reference block, which sits after the live one.
+      details_idx = section.find("<details>")
+      search_region = section[:details_idx] if details_idx != -1 else section
+      all_fences = list(re.finditer(r'```mermaid\n.*?\n```', search_region, re.DOTALL))
+      if not all_fences:
+        missing.append(site)
+        continue
+      first = all_fences[0]
+      heading_end = first.start() + len("```mermaid\n")
+      fence_close = section.index("\n```", heading_end)
       new_section = section[:heading_end] + wrapped + section[fence_close:]
       text = text[:section_start] + new_section + text[section_end:]
       inserted.append(site)

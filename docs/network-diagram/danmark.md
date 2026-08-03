@@ -22,43 +22,38 @@
 > (×3, real count already on record) all kept as-is.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:CPH:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRCPH001<br/>Cisco ISR 4331<br/>192.168.231.1"]
-    O_INET --> O_RTR
-    O_SW["🔀 EXASWICPH001<br/>TP-Link JetStream<br/>192.168.231.250"]
-    O_RTR --> O_SW
-
-    O_RAC["🔧 EXARACCPH001<br/>Dell iDRAC9<br/>192.168.231.2"]
+    O_RTR["📡 EXARTRCPH001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.231.1"]
+    O_SWI["🔀 EXASWICPH001<br/>TP-Link JetStream · Office switch<br/>192.168.231.250"]
+    O_CLK["⏰ EXACLKCPH001<br/>Meinberg LANTIME M300 · NTP clock<br/>192.168.231.18"]
+    O_DCR1["🗝️ EXADCRCPH001<br/>DC · example.com<br/>192.168.231.10"]
+    O_DCR2["🗝️ EXADCRCPH002<br/>DC · example.net<br/>192.168.231.11"]
     O_ESX["💾 EXAESXCPH001<br/>VMware ESXi<br/>192.168.231.5"]
-    O_DC1["🗝️ EXADCSCPH001<br/>DC · example.com<br/>192.168.231.10"]
-    O_DC2["🗝️ EXADCSCPH002<br/>DC · example.net<br/>192.168.231.11"]
-    O_SW --> O_ESX
+    O_RAC["🔧 EXARACCPH001<br/>Dell iDRAC9<br/>192.168.231.2"]
+    O_TVS["📺 EXATVSCPH001<br/>Bella Kronik 42X · Display<br/>192.168.231.17"]
+    O_INET --> O_RTR
+    O_RTR --> O_SWI
+    O_SWI --> O_CLK
+    O_SWI --> O_DCR1
+    O_SWI --> O_DCR2
+    O_SWI --> O_ESX
+    O_SWI --> O_RAC
     O_RAC -.->|"manages"| O_ESX
-    O_ESX --> O_DC1
-    O_ESX --> O_DC2
-
-    O_NTP["⏰ EXACLKCPH001<br/>Meinberg LANTIME M300, NTP Clock<br/>192.168.231.18"]
-    O_TV["📺 EXATVSCPH001<br/>Bella Kronik 42X, DR/TV2<br/>192.168.231.17"]
-    O_WAP["📶 EXAWAPCPH001-003<br/>3x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
-    O_CAM["🎥 CAMs — none yet, new build only"]
-    O_SW --> O_NTP
-    O_SW --> O_TV
-    O_SW --> O_WAP
-    O_SW --> O_CAM
+    O_SWI --> O_TVS
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CLK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_NTP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_TV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TVS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:CPH:END
 ```
 
 <details>
@@ -72,8 +67,8 @@ graph TD
       RTR["📡 EXARTRCPH001 · Cisco ISR 4331 · .254"]
       RAC["🔧 EXARACCPH001 · Dell iDRAC9 · .2"]
       PVE["🗂️ EXAPVECPH001 · Proxmox node 1 · .5"]
-      DC1["🗝️ EXADCSCPH001 · DC · example.com · .10"]
-      DC2["🗝️ EXADCSCPH002 · DC · example.net · .11"]
+      DC1["🗝️ EXADCRCPH001 · DC · example.com · .10"]
+      DC2["🗝️ EXADCRCPH002 · DC · example.net · .11"]
       SBC["🛡️ EXASBCCPH001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYCPH001 · Rudder Relay · .12"]
       NTP["⏰ EXACLKCPH001 · Meinberg LANTIME M300 · NTP Clock · .18"]
@@ -121,7 +116,7 @@ graph TD
     T_WAP2["📶 EXAWAPCPH002<br/>Wireless Access Point<br/>192.168.231.83"]
     T_WAP3["📶 EXAWAPCPH003<br/>Wireless Access Point<br/>192.168.231.84"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2 --> T_WAP3
-    T_DCS["🗝️ EXADCSCPH001<br/>DCS 1<br/>192.168.231.10"]
+    T_DCS["🗝️ EXADCRCPH001<br/>DCS 1<br/>192.168.231.10"]
     T_SBC["🛡️ EXASBCCPH001<br/>SBC<br/>192.168.231.48"]
     T_FWL["🧱 EXAFWLCPH001<br/>LAN Face<br/>192.168.231.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -167,62 +162,55 @@ graph TD
 > jukebox, and WAPs (×2, real, moved over) all confirmed real.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:ODE:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRODE001<br/>Cisco ASA 5506-X, router/firewall combo<br/>192.168.126.1"]
-    O_INET --> O_RTR
-
-    O_ILO1["🔧 EXARACODE001<br/>HP iLO 1<br/>192.168.126.2"]
-    O_ILO2["🔧 EXARACODE002<br/>HP iLO 2<br/>192.168.126.3"]
-    O_ILO3["🔧 EXARACODE003<br/>HP iLO 3<br/>192.168.126.4"]
+    O_RTR["📡 EXARTRODE001<br/>Cisco ASA 5506-X · WAN edge, router/firewall combo<br/>192.168.126.1"]
+    O_DCR1["🗝️ EXADCRODE001<br/>DC PDC, RID/Infra Master<br/>192.168.126.10"]
+    O_DCR2["🗝️ EXADCRODE002<br/>DC Secondary<br/>192.168.126.11"]
     O_ESX1["💾 EXAESXODE001<br/>HP ML310e, VMware ESXi 1<br/>192.168.126.5"]
     O_ESX2["💾 EXAESXODE002<br/>HP ML310e, VMware ESXi 2<br/>192.168.126.6"]
     O_ESX3["💾 EXAESXODE003<br/>HP ML310e, VMware ESXi 3<br/>192.168.126.7"]
-    O_VCT["🛰️ EXAVCTODE001<br/>VMware vCenter · cluster management<br/>IP not recorded"]
+    O_MAC["🍎 EXAMACODE001<br/>macOS Tahoe · iMac<br/>192.168.126.150"]
+    O_MBP["💻 EXAMBPODE002<br/>macOS · MacBook Pro<br/>192.168.126.151"]
+    O_MUS["💿 EXAMUSODE001<br/>Jukebox<br/>192.168.126.60"]
+    O_RAC1["🔧 EXARACODE001<br/>HP iLO 1<br/>192.168.126.2"]
+    O_RAC2["🔧 EXARACODE002<br/>HP iLO 2<br/>192.168.126.3"]
+    O_RAC3["🔧 EXARACODE003<br/>HP iLO 3<br/>192.168.126.4"]
+    O_VCT["🛰️ EXAVCTODE001<br/>VMware vCenter · cluster management; IP not recorded in original hand-buil...<br/>No IP Address"]
+    O_INET --> O_RTR
+    O_RTR --> O_DCR1
+    O_RTR --> O_DCR2
     O_RTR --> O_ESX1
     O_RTR --> O_ESX2
     O_RTR --> O_ESX3
-    O_RTR --> O_VCT
-    O_ILO1 -.->|"manages"| O_ESX1
-    O_ILO2 -.->|"manages"| O_ESX2
-    O_ILO3 -.->|"manages"| O_ESX3
-    O_VCT -.->|"manages"| O_ESX1
-    O_VCT -.->|"manages"| O_ESX2
-    O_VCT -.->|"manages"| O_ESX3
-
-    O_DC1["🗝️ EXADCSODE001<br/>DC PDC, RID/Infra Master<br/>192.168.126.10"]
-    O_DC2["🗝️ EXADCSODE002<br/>DC Secondary<br/>192.168.126.11"]
-    O_RTR --> O_DC1
-    O_RTR --> O_DC2
-
-    O_MAC["🍎 EXAMACODE001<br/>iMac, macOS Tahoe<br/>192.168.126.150"]
-    O_MBP["💻 EXAMBPODE002<br/>MacBook Pro<br/>192.168.126.151"]
-    O_JKB["💿 EXAMUSODE001<br/>Pureline 128V Jukebox<br/>192.168.126.60"]
-    O_WAP["📶 EXAWAPODE001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
-    O_CAM["🎥 CAMs — none yet, new build only"]
     O_RTR --> O_MAC
     O_RTR --> O_MBP
-    O_RTR --> O_JKB
-    O_RTR --> O_WAP
-    O_RTR --> O_CAM
+    O_RTR --> O_MUS
+    O_RTR --> O_RAC1
+    O_RAC1 -.->|"manages"| O_ESX1
+    O_RTR --> O_RAC2
+    O_RAC2 -.->|"manages"| O_ESX2
+    O_RTR --> O_RAC3
+    O_RAC3 -.->|"manages"| O_ESX3
+    O_RTR --> O_VCT
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_VCT fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_MAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_JKB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_MUS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VCT fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:ODE:END
 ```
 
 <details>
@@ -246,8 +234,8 @@ graph TD
           PVE3["🗂️ EXAPVEODE003 · Proxmox node 3 · .7"]
       end
 
-      DC1["🗝️ EXADCSODE001 · DC PDC · RID/Infra Master · .10"]
-      DC2["🗝️ EXADCSODE002 · DC secondary · .11"]
+      DC1["🗝️ EXADCRODE001 · DC PDC · RID/Infra Master · .10"]
+      DC2["🗝️ EXADCRODE002 · DC secondary · .11"]
       SBC["🛡️ EXASBCODE001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYODE001 · Rudder Relay · .12"]
       MAC["🍎 EXAMACODE001 · iMac · macOS Tahoe · .150"]
@@ -302,7 +290,7 @@ graph TD
     T_WAP["📶 EXAWAPODE001<br/>WAP 1<br/>192.168.126.82"]
     T_WAP2["📶 EXAWAPODE002<br/>Wireless Access Point<br/>192.168.126.83"]
     T_SWI --> T_NAS --> T_RDR --> T_MUS --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCSODE001<br/>DCS 1<br/>192.168.126.10"]
+    T_DCS["🗝️ EXADCRODE001<br/>DCS 1<br/>192.168.126.10"]
     T_SBC["🛡️ EXASBCODE001<br/>SBC<br/>192.168.126.48"]
     T_FWL["🧱 EXAFWLODE001<br/>LAN Face<br/>192.168.126.253"]
     T_FWL2["🧱 EXAFWLODE002<br/>FWL 2<br/>192.168.126.254 — planned"]
@@ -342,13 +330,13 @@ graph TD
 ### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
-> no `RRY`; no WireGuard on old infra). No hypervisor here — `EXADCSKGE001` ran WS2016 bare metal
+> no `RRY`; no WireGuard on old infra). No hypervisor here — `EXADCRKGE001` ran WS2016 bare metal
 > directly on the RAC-managed hardware, same shape as ABD's Server 2008R2 box. The real ⚠️
 > EOL/out-of-sync/disk-space warning kept per the migration-priority rule. WAP and printer both
 > confirmed real, moving over as-is.
 
 > 🚨 **Migration priority — Tier 2.** WS2016 EOL, 27 days out of AD sync, disk space low. Same
-> remediation path as Tier 1: a new `EXADCSKGE001` build promoting and replicating against
+> remediation path as Tier 1: a new `EXADCRKGE001` build promoting and replicating against
 > `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not patching this box.
 
 ```mermaid
@@ -356,7 +344,7 @@ graph TD
 graph TD
     O_INET["🌐 Internet"]
     O_RAC["🔧 EXARACKGE001<br/>BMC<br/>192.168.65.2"]
-    O_DC["⚠️🗝️ EXADCSKGE001<br/>DC · WS2016 EOL, 27 days out of sync, disk space low, bare metal<br/>192.168.65.10"]
+    O_DC["⚠️🗝️ EXADCRKGE001<br/>DC · WS2016 EOL, 27 days out of sync, disk space low, bare metal<br/>192.168.65.10"]
     O_INET --> O_RAC
     O_RAC -.->|"manages"| O_DC
 
@@ -384,7 +372,7 @@ graph TD
       INET["🌐 Internet"]
       RAC["🔧 EXARACKGE001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVEKGE001 · Proxmox node 1 · .5"]
-      DC["⚠️ 🗝️ EXADCSKGE001 · DC · WS2016 EOL · OOS 27d · .10"]
+      DC["⚠️ 🗝️ EXADCRKGE001 · DC · WS2016 EOL · OOS 27d · .10"]
       SBC["🛡️ EXASBCKGE001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYKGE001 · Rudder Relay · .12"]
       WAP["📶 EXAWAPKGE001 · Ubiquiti UniFi U6-Pro"]
@@ -428,7 +416,7 @@ graph TD
     T_RDR["🔐 EXARDRKGE001<br/>RDR<br/>192.168.65.21"]
     T_WAP["📶 EXAWAPKGE001<br/>WAP 1<br/>192.168.65.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSKGE001<br/>DCS 1<br/>192.168.65.10"]
+    T_DCS["🗝️ EXADCRKGE001<br/>DCS 1<br/>192.168.65.10"]
     T_SBC["🛡️ EXASBCKGE001<br/>SBC<br/>192.168.65.48"]
     T_FWL["🧱 EXAFWLKGE001<br/>LAN Face<br/>192.168.65.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -462,35 +450,30 @@ graph TD
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra). Bare metal, same as KGE — no ESX layer.
-> `EXADCSFAX001` "was there but totally unused" — present, never adopted. WAPs (×2) confirmed
+> `EXADCRFAX001` "was there but totally unused" — present, never adopted. WAPs (×2) confirmed
 > real, moving over.
 
 > 🚨 **Migration priority — Tier 3.** DC built, never used — no live users depending on it
-> today. Still counts toward the estate-wide rollout: a new `EXADCSFAX001` build promoting and
+> today. Still counts toward the estate-wide rollout: a new `EXADCRFAX001` build promoting and
 > replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`).
 
 ```mermaid
+%% GENERATED:OLDNETWORK:FAX:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRFAX001<br/>Cisco ISR 4331<br/>192.168.246.1"]
-    O_INET --> O_RTR
+    O_RTR["📡 EXARTRFAX001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.246.1"]
+    O_DCR["🗝️ EXADCRFAX001<br/>DC · present but never used, bare metal<br/>192.168.246.10"]
     O_RAC["🔧 EXARACFAX001<br/>BMC<br/>192.168.246.2"]
-    O_DC["⚠️🗝️ EXADCSFAX001<br/>DC · present but never used, bare metal<br/>192.168.246.10"]
+    O_INET --> O_RTR
     O_RTR --> O_RAC
-    O_RAC -.->|"manages"| O_DC
-
-    O_WAP["📶 EXAWAPFAX001-002<br/>2x Ubiquiti UniFi U6-Pro<br/>No IP Address"]
-    O_CAM["🎥 CAMs — none yet, new build only"]
-    O_RTR --> O_WAP
-    O_RTR --> O_CAM
+    O_RAC -.->|"manages"| O_DCR
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:FAX:END
 ```
 
 <details>
@@ -503,7 +486,7 @@ graph TD
       RTR["📡 EXARTRFAX001 · Cisco ISR 4331 · .254"]
       RAC["🔧 EXARACFAX001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVEFAX001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSFAX001 · DC · .10"]
+      DC["🗝️ EXADCRFAX001 · DC · .10"]
       SBC["🛡️ EXASBCFAX001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYFAX001 · Rudder Relay · .12"]
       WAP["WAPs x2 · Ubiquiti UniFi U6-Pro"]
@@ -547,7 +530,7 @@ graph TD
     T_WAP["📶 EXAWAPFAX001<br/>WAP 1<br/>192.168.246.82"]
     T_WAP2["📶 EXAWAPFAX002<br/>Wireless Access Point<br/>192.168.246.83"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCSFAX001<br/>DCS 1<br/>192.168.246.10"]
+    T_DCS["🗝️ EXADCRFAX001<br/>DCS 1<br/>192.168.246.10"]
     T_SBC["🛡️ EXASBCFAX001<br/>SBC<br/>192.168.246.48"]
     T_FWL["🧱 EXAFWLFAX001<br/>LAN Face<br/>192.168.246.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -588,7 +571,7 @@ graph TD
 graph TD
     O_INET["🌐 Internet"]
     O_RAC["🔧 EXARACKOR001<br/>HP iLO<br/>192.168.238.2"]
-    O_DC["🗝️ EXADCSKOR001<br/>DC · HP ML310e, bare metal<br/>192.168.238.10"]
+    O_DC["🗝️ EXADCRKOR001<br/>DC · HP ML310e, bare metal<br/>192.168.238.10"]
     O_INET --> O_RAC
     O_RAC -.->|"manages"| O_DC
 
@@ -613,7 +596,7 @@ graph TD
       INET["🌐 Internet"]
       RAC["🔧 EXARACKOR001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVEKOR001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSKOR001 · DC · .10"]
+      DC["🗝️ EXADCRKOR001 · DC · .10"]
       SBC["🛡️ EXASBCKOR001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYKOR001 · Rudder Relay · .12"]
       WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
@@ -656,7 +639,7 @@ graph TD
     T_RDR["🔐 EXARDRKOR001<br/>RDR<br/>192.168.238.21"]
     T_WAP["📶 EXAWAPKOR001<br/>WAP 1<br/>192.168.238.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSKOR001<br/>DCS 1<br/>192.168.238.10"]
+    T_DCS["🗝️ EXADCRKOR001<br/>DCS 1<br/>192.168.238.10"]
     T_SBC["🛡️ EXASBCKOR001<br/>SBC<br/>192.168.238.48"]
     T_FWL["🧱 EXAFWLKOR001<br/>LAN Face<br/>192.168.238.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -689,7 +672,7 @@ graph TD
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra). Unused hardware — **presumed** the same HP ML310e/iLO
 > pattern as every other bare-metal site so far, since it's been that combo every time; flag if
-> AAR was actually different. `EXADCSAAR001` was installed on the bare metal, same as
+> AAR was actually different. `EXADCRAAR001` was installed on the bare metal, same as
 > KOR/KGE/FAX/ABD — corrected after initially, wrongly, dropping the DC entirely. WAP confirmed
 > never installed — "still in its box" — put to use only in the new build.
 
@@ -698,7 +681,7 @@ graph TD
 graph TD
     O_INET["🌐 Internet"]
     O_RAC["🔧 EXARACAAR001<br/>HP iLO<br/>192.168.86.2"]
-    O_DC["🗝️ EXADCSAAR001<br/>DC · HP ML310e, bare metal<br/>192.168.86.10"]
+    O_DC["🗝️ EXADCRAAR001<br/>DC · HP ML310e, bare metal<br/>192.168.86.10"]
     O_INET --> O_RAC
     O_RAC -.->|"manages"| O_DC
 
@@ -723,7 +706,7 @@ graph TD
       INET["🌐 Internet"]
       RAC["🔧 EXARACAAR001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVEAAR001 · Proxmox node 1 · .5"]
-      DC["🗝️ EXADCSAAR001 · DC · .10"]
+      DC["🗝️ EXADCRAAR001 · DC · .10"]
       SBC["🛡️ EXASBCAAR001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYAAR001 · Rudder Relay · .12"]
       WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
@@ -766,7 +749,7 @@ graph TD
     T_RDR["🔐 EXARDRAAR001<br/>RDR<br/>192.168.86.21"]
     T_WAP["📶 EXAWAPAAR001<br/>WAP 1<br/>192.168.86.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSAAR001<br/>DCS 1<br/>192.168.86.10"]
+    T_DCS["🗝️ EXADCRAAR001<br/>DCS 1<br/>192.168.86.10"]
     T_SBC["🛡️ EXASBCAAR001<br/>SBC<br/>192.168.86.48"]
     T_FWL["🧱 EXAFWLAAR001<br/>LAN Face<br/>192.168.86.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL

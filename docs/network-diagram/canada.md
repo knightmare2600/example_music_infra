@@ -11,7 +11,7 @@
 
 **LAN:** `192.168.136.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 3 (NA/APAC hub) · **VPN parent:** CLD (NA/APAC backup)  
-> ⚠️ `EXADCSBRK001` — DNS, Netlogon and KDC services stopped.  
+> ⚠️ `EXADCRBRK001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (Canada) Inc. · **Landline:** +1 613 555 6xxx · **Mobile:** +1 613 555 6xxx
 
 ### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
@@ -28,65 +28,55 @@
 > machines (donut, maple syrup) all confirmed real.
 
 > 🚨 **Migration priority — Tier 1 (highest).** DNS/Netlogon/KDC stopped on the NA/APAC hub
-> site's own DC. Not a repair candidate — the fix is a new `EXADCSBRK001` build promoting and
+> site's own DC. Not a repair candidate — the fix is a new `EXADCRBRK001` build promoting and
 > replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node;
 > the whole point of building `EXADCSCLD001` as forest root was to get every site's DC talking
 > to it and replicating around, independent of whatever state the old box was in.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:BRK:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBRK001<br/>Cisco ISR 4331<br/>192.168.136.1"]
-    O_INET --> O_RTR
-
-    O_ILO1["🔧 EXARACBRK001<br/>HP iLO 1<br/>192.168.136.2"]
-    O_ILO2["🔧 EXARACBRK002<br/>HP iLO 2<br/>192.168.136.3"]
-    O_ILO3["🔧 EXARACBRK003<br/>HP iLO 3<br/>192.168.136.4"]
+    O_RTR["📡 EXARTRBRK001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.136.1"]
+    O_DCR["🗝️ EXADCRBRK001<br/>DC · DNS/Netlogon/KDC services stopped, hosted on the vCe...<br/>192.168.136.10"]
+    O_DON["🍩 EXADONBRK001<br/>VxWorks · Donut vending<br/>192.168.136.60"]
     O_ESX1["💾 EXAESXBRK001<br/>HP ML310e, VMware ESXi 1<br/>192.168.136.5"]
     O_ESX2["💾 EXAESXBRK002<br/>HP ML310e, VMware ESXi 2<br/>192.168.136.6"]
     O_ESX3["💾 EXAESXBRK003<br/>HP ML310e, VMware ESXi 3<br/>192.168.136.7"]
-    O_VCT["🛰️ EXAVCTBRK001<br/>VMware vCenter · cluster management<br/>IP not recorded"]
+    O_LAP["💻 EXALAPBRK001<br/>Windows 11 · Tour laptop<br/>192.168.136.21"]
+    O_RAC1["🔧 EXARACBRK001<br/>HP iLO 1<br/>192.168.136.2"]
+    O_RAC2["🔧 EXARACBRK002<br/>HP iLO 2<br/>192.168.136.3"]
+    O_RAC3["🔧 EXARACBRK003<br/>HP iLO 3<br/>192.168.136.4"]
+    O_VCT["🛰️ EXAVCTBRK001<br/>VMware vCenter · cluster management; IP not recorded in original hand-buil...<br/>No IP Address"]
+    O_INET --> O_RTR
+    O_RTR --> O_DCR
+    O_RTR --> O_DON
     O_RTR --> O_ESX1
     O_RTR --> O_ESX2
     O_RTR --> O_ESX3
-    O_RTR --> O_VCT
-    O_ILO1 -.->|"manages"| O_ESX1
-    O_ILO2 -.->|"manages"| O_ESX2
-    O_ILO3 -.->|"manages"| O_ESX3
-    O_VCT -.->|"manages"| O_ESX1
-    O_VCT -.->|"manages"| O_ESX2
-    O_VCT -.->|"manages"| O_ESX3
-
-    O_DC["🔴🗝️ EXADCSBRK001<br/>DC · DNS/Netlogon/KDC services stopped, hosted on the vCenter cluster<br/>192.168.136.10"]
-    O_VCT --> O_DC
-
-    O_LAP["💻 EXALAPBRK001<br/>Win11 Tour Laptop<br/>192.168.136.21"]
-    O_WAP["📶 EXAWAPBRK001<br/>Ubiquiti UniFi U6-Pro<br/>No IP Address"]
-    O_CAM["🎥 CAMs — none yet, new build only"]
-    O_VND1["🍩 EXADONBRK001<br/>Tim Hortons Donut Vending<br/>192.168.136.60"]
-    O_VND2["🍫 EXAVNDBRK001<br/>Maple Syrup Vending<br/>192.168.136.61"]
     O_RTR --> O_LAP
-    O_RTR --> O_WAP
-    O_RTR --> O_CAM
-    O_RTR --> O_VND1
-    O_RTR --> O_VND2
+    O_RTR --> O_RAC1
+    O_RAC1 -.->|"manages"| O_ESX1
+    O_RTR --> O_RAC2
+    O_RAC2 -.->|"manages"| O_ESX2
+    O_RTR --> O_RAC3
+    O_RAC3 -.->|"manages"| O_ESX3
+    O_RTR --> O_VCT
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_ILO3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DON fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_VCT fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_VND1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_VND2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_VCT fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:BRK:END
 ```
 
 <details>
@@ -110,7 +100,7 @@ graph TD
           PVE3["🗂️ EXAPVEBRK003 · Proxmox node 3 · .7"]
       end
 
-      DC["🔴 🗝️ EXADCSBRK001 · DC · Services stopped · .10"]
+      DC["🔴 🗝️ EXADCRBRK001 · DC · Services stopped · .10"]
       SBC["🛡️ EXASBCBRK001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYBRK001 · Rudder Relay · .12"]
       LAP["💻 EXALAPBRK001 · Win11 Tour Laptop · .21"]
@@ -162,7 +152,7 @@ graph TD
     T_RDR["🔐 EXARDRBRK001<br/>RDR<br/>192.168.136.21"]
     T_WAP["📶 EXAWAPBRK001<br/>WAP 1<br/>192.168.136.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSBRK001<br/>DCS 1<br/>192.168.136.10"]
+    T_DCS["🗝️ EXADCRBRK001<br/>DCS 1<br/>192.168.136.10"]
     T_SBC["🛡️ EXASBCBRK001<br/>SBC<br/>192.168.136.48"]
     T_FWL["🧱 EXAFWLBRK001<br/>LAN Face<br/>192.168.136.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -204,12 +194,12 @@ graph TD
 > separate HP ML310e boxes with iLO cards, both decommissioned once the new network was up: the
 > already-known `EXADCRTOR028` ("undocumented... no-one on record knew it existed", excluded
 > from the *new* topology diagrams via check 29 but real, historical content that belongs here),
-> and `EXADCSTOR001` — services stopped, and genuinely running on DHCP. Second iLO hostname
+> and `EXADCRTOR001` — services stopped, and genuinely running on DHCP. Second iLO hostname
 > (`EXARACTOR002`) follows the standard numbering convention, not independently confirmed
 > per-device — flag if wrong. WAP/CAM confirmed genuinely never-installed.
 
-> 🚨 **Migration priority — Tier 1.** `EXADCSTOR001` — services stopped and running on DHCP.
-> Not a repair candidate — the fix is a new `EXADCSTOR001` build promoting and replicating
+> 🚨 **Migration priority — Tier 1.** `EXADCRTOR001` — services stopped and running on DHCP.
+> Not a repair candidate — the fix is a new `EXADCRTOR001` build promoting and replicating
 > against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node.
 >
 > 🚩 **Governance flag — undocumented node.** `EXADCRTOR028` — no-one on record knew this DC
@@ -226,7 +216,7 @@ graph TD
     O_INET --> O_RAC1
 
     O_RAC2["🔧 EXARACTOR002<br/>HP iLO<br/>192.168.146.3"]
-    O_DC["🔴🗝️ EXADCSTOR001<br/>DC · DNS/Netlogon/KDC services stopped, on DHCP, HP ML310e bare metal<br/>192.168.146.11"]
+    O_DC["🔴🗝️ EXADCRTOR001<br/>DC · DNS/Netlogon/KDC services stopped, on DHCP, HP ML310e bare metal<br/>192.168.146.11"]
     O_RAC2 -.->|"manages"| O_DC
     O_INET --> O_RAC2
 
@@ -253,7 +243,7 @@ graph TD
       INET["🌐 Internet"]
       RAC["🔧 EXARACTOR001 · BMC node 1 · .2"]
       PVE["🗂️ EXAPVETOR001 · Proxmox node 1 · .5"]
-      DC["🔴 🗝️ EXADCSTOR001 · DC · Services stopped · .10"]
+      DC["🔴 🗝️ EXADCRTOR001 · DC · Services stopped · .10"]
       SBC["🛡️ EXASBCTOR001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYTOR001 · Rudder Relay · .12"]
       WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
@@ -296,7 +286,7 @@ graph TD
     T_RDR["🔐 EXARDRTOR001<br/>RDR<br/>192.168.146.21"]
     T_WAP["📶 EXAWAPTOR001<br/>WAP 1<br/>192.168.146.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCSTOR001<br/>DCS 1<br/>192.168.146.10"]
+    T_DCS["🗝️ EXADCRTOR001<br/>DCS 1<br/>192.168.146.10"]
     T_SBC["🛡️ EXASBCTOR001<br/>SBC<br/>192.168.146.48"]
     T_FWL["🧱 EXAFWLTOR001<br/>LAN Face<br/>192.168.146.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL

@@ -11,7 +11,7 @@
 
 **LAN:** `192.168.93.0/24` · **Domain:** `example.net`  
 **PVE nodes:** 1 · **VPN parent:** BRK  
-> ⚠️ `EXADCSAKL001` — DNS, Netlogon and KDC services stopped.  
+> ⚠️ `EXADCRAKL001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (New Zealand) Tapui · **Landline:** +64 9 300 0xxx · **Mobile:** +64 21 900 2xxx
 
 ### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
@@ -23,68 +23,63 @@
 > several other sites — subsumed straight into the new build's UniFi controller.
 
 > 🚨 **Migration priority — Tier 1.** DC "built and left in a bad state" — services stopped.
-> Not a repair candidate — the fix is a new `EXADCSAKL001` build promoting and replicating
+> Not a repair candidate — the fix is a new `EXADCRAKL001` build promoting and replicating
 > against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`), not restoring this node.
 
 ```mermaid
+%% GENERATED:OLDNETWORK:AKL:START
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRAKL001<br/>FortiGate 7.x, router/firewall combo<br/>192.168.93.1"]
-    O_INET --> O_RTR
-    O_SW1["🔀 EXASWIAKL001<br/>Cisco 9300<br/>192.168.93.250"]
-    O_SW2["🔀 EXASWIAKL002<br/>Cisco 2960<br/>192.168.93.251"]
-    O_RTR --> O_SW1
-    O_RTR --> O_SW2
-
-    O_RAC["🔧 EXARACAKL001<br/>HPE iLO5<br/>192.168.93.2"]
+    O_RTR["📡 EXARTRAKL001<br/>FortiGate 7.x · WAN edge, router/firewall combo<br/>192.168.93.1"]
+    O_SWI1["🔀 EXASWIAKL001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.93.250"]
+    O_SWI2["🔀 EXASWIAKL002<br/>Cisco Catalyst 2960 · Access switch<br/>192.168.93.251"]
+    O_CAM["🎥 EXACAMAKL001<br/>Axis · Camera<br/>192.168.93.82"]
+    O_COF["🍵 EXACOFAKL001<br/>Coffee machine<br/>192.168.93.83"]
+    O_DCR["🗝️ EXADCRAKL001<br/>DC · services stopped, left in a bad state<br/>192.168.93.10"]
     O_ESX["💾 EXAESXAKL001<br/>HP Server, VMware ESXi<br/>192.168.93.5"]
-    O_DC["🔴🗝️ EXADCSAKL001<br/>DC · services stopped, left in a bad state<br/>192.168.93.10"]
-    O_SRV["🗄️ EXASRVAKL001<br/>WS2022 Local Server<br/>192.168.93.20"]
-    O_SW1 --> O_ESX
+    O_LCD["🖼️ EXALCDAKL001<br/>Samsung · Signage display<br/>192.168.93.70"]
+    O_MBP["💻 EXAMBPAKL001<br/>macOS · MacBook Pro<br/>192.168.93.41"]
+    O_PHN["📞 EXAPHNAKL001<br/>Android · Phone<br/>No IP Address"]
+    O_PRN["🖨️ EXAPRNAKL001<br/>HP · LaserJet printer<br/>192.168.93.80"]
+    O_RAC["🔧 EXARACAKL001<br/>HPE iLO5<br/>192.168.93.2"]
+    O_SRV["🗄️ EXASRVAKL001<br/>Windows Server 2022 · Local server<br/>192.168.93.20"]
+    O_TAB["📱 EXATABAKL001<br/>iPadOS · iPad<br/>192.168.93.60"]
+    O_WKS["🖥️ EXAWKSAKL001<br/>Windows 11 · Workstation<br/>192.168.93.40"]
+    O_INET --> O_RTR
+    O_RTR --> O_SWI1
+    O_RTR --> O_SWI2
+    O_SWI1 --> O_CAM
+    O_SWI1 --> O_COF
+    O_SWI1 --> O_DCR
+    O_SWI1 --> O_ESX
+    O_SWI1 --> O_LCD
+    O_SWI1 --> O_MBP
+    O_SWI1 --> O_PHN
+    O_SWI1 --> O_PRN
+    O_SWI1 --> O_RAC
     O_RAC -.->|"manages"| O_ESX
-    O_ESX --> O_DC
-    O_ESX --> O_SRV
-
-    O_WKS["🖥️ EXAWKSAKL001<br/>Win11 Workstation<br/>192.168.93.40"]
-    O_MBP["💻 EXAMBPAKL001<br/>MacBook Pro<br/>192.168.93.41"]
-    O_PHN["📞 EXAPHNAKL001<br/>Android Phone<br/>No IP Address"]
-    O_TAB["📱 EXATABAKL001<br/>iPad<br/>192.168.93.60"]
-    O_WAP1["📶 EXAWAPAKL001<br/>Ubiquiti UniFi<br/>No IP Address"]
-    O_WAP2["📶 EXAWAPAKL002<br/>Ubiquiti UniFi<br/>No IP Address"]
-    O_CAM["🎥 EXACAMAKL001<br/>Axis Camera<br/>192.168.93.82"]
-    O_LCD["🖼️ EXALCDAKL001<br/>Samsung Signage<br/>192.168.93.70"]
-    O_PRN["🖨️ EXAPRNAKL001<br/>HP LaserJet<br/>192.168.93.80"]
-    O_COF["🍵 EXACOFAKL001<br/>Smart Coffee Machine<br/>192.168.93.83"]
-    O_SW2 --> O_WKS
-    O_SW2 --> O_MBP
-    O_SW2 --> O_PHN
-    O_SW2 --> O_TAB
-    O_SW2 --> O_WAP1
-    O_SW2 --> O_WAP2
-    O_SW2 --> O_CAM
-    O_SW2 --> O_LCD
-    O_SW2 --> O_PRN
-    O_SW2 --> O_COF
+    O_SWI1 --> O_SRV
+    O_SWI1 --> O_TAB
+    O_SWI1 --> O_WKS
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SW2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_COF fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_ESX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_DC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_COF fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:OLDNETWORK:AKL:END
 ```
 
 <details>
@@ -100,7 +95,7 @@ graph TD
       RTR["📡 EXARTRAKL001 · Cisco ISR 4331 · .254"]
       RAC["🔧 EXARACAKL001 · HPE iLO5 · .2"]
       PVE["🗂️ EXAPVEAKL001 · Proxmox node 1 · .5"]
-      DC["🔴 🗝️ EXADCSAKL001 · DC · Services stopped · .10"]
+      DC["🔴 🗝️ EXADCRAKL001 · DC · Services stopped · .10"]
       SRV["🗄️ EXASRVAKL001 · WS2022 Local Server · .20"]
       SBC["🛡️ EXASBCAKL001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYAKL001 · Rudder Relay · .12"]
@@ -156,7 +151,7 @@ graph TD
     T_WAP2["📶 EXAWAPAKL002<br/>Wireless Access Point<br/>192.168.93.85"]
     T_WAP3["📶 EXAWAPAKL003<br/>Wireless Access Point<br/>192.168.93.86"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2 --> T_WAP3
-    T_DCS["🗝️ EXADCSAKL001<br/>DCS 1<br/>192.168.93.10"]
+    T_DCS["🗝️ EXADCRAKL001<br/>DCS 1<br/>192.168.93.10"]
     T_SBC["🛡️ EXASBCAKL001<br/>SBC<br/>192.168.93.48"]
     T_FWL["🧱 EXAFWLAKL001<br/>LAN Face<br/>192.168.93.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
