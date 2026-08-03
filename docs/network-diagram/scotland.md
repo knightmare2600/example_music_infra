@@ -245,14 +245,14 @@ graph TD
     T_NAS["🗃️ EXANASFAL001<br/>Site NAS/SAN<br/>192.168.76.19"]
     T_RDR["🔐 EXARDRFAL001<br/>HID Signo Badge Reader<br/>192.168.76.16"]
     T_MUS["💿 EXAMUSFAL001<br/>Jukebox<br/>192.168.76.67"]
-    T_WAP["📶 EXAWAPFAL001<br/>WAP 1<br/>192.168.76.82"]
-    T_WAP2["📶 EXAWAPFAL002<br/>Wireless Access Point<br/>192.168.76.83"]
-    T_WAP3["📶 EXAWAPFAL003<br/>Wireless Access Point<br/>192.168.76.84"]
-    T_WAP4["📶 EXAWAPFAL004<br/>Wireless Access Point<br/>192.168.76.85"]
-    T_WAP5["📶 EXAWAPFAL005<br/>Wireless Access Point<br/>192.168.76.86"]
-    T_WAP6["📶 EXAWAPFAL006<br/>Wireless Access Point<br/>192.168.76.87"]
+    T_WAP["📶 EXAWAPFAL002<br/>Wireless Access Point<br/>192.168.76.83"]
+    T_WAP2["📶 EXAWAPFAL003<br/>Wireless Access Point<br/>192.168.76.84"]
+    T_WAP3["📶 EXAWAPFAL004<br/>Wireless Access Point<br/>192.168.76.85"]
+    T_WAP4["📶 EXAWAPFAL005<br/>Wireless Access Point<br/>192.168.76.86"]
+    T_WAP5["📶 EXAWAPFAL006<br/>Wireless Access Point<br/>192.168.76.87"]
+    T_WAP6["📶 EXAWAPFAL001<br/>Wireless Access Point<br/>192.168.76.82"]
     T_SWI2 --> T_NAS --> T_RDR --> T_MUS --> T_WAP --> T_WAP2 --> T_WAP3 --> T_WAP4 --> T_WAP5 --> T_WAP6
-    T_DCS["🗝️ EXADCRFAL001<br/>DCS 1<br/>192.168.76.10"]
+    T_DCS["🗝️ EXADCSFAL001<br/>DCS 1<br/>192.168.76.10"]
     T_SBC["🛡️ EXASBCFAL001<br/>SBC<br/>192.168.76.48"]
     T_FWL["🧱 EXAFWLFAL001<br/>LAN Face<br/>192.168.76.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -267,7 +267,7 @@ graph TD
     T_OTH_CAM["🎥 EXACAMFAL001-004<br/>4 x CCTV Cameras<br/>192.168.76.70-73"]
     T_CLK["⏰ EXACLKFAL001<br/>Embedded NTP Clock<br/>192.168.76.80"]
     T_PAY["☎️ EXAPAYFAL001<br/>GPO Kiosk No.6 Payphone<br/>192.168.76.95"]
-    T_OTH_WKS["🖥️ EXAWKSFAL001,003<br/>2 x Workstations<br/>192.168.76.100,102"]
+    T_OTH_WKS["🖥️ EXAWKSFAL001-003<br/>3 x Workstations<br/>192.168.76.100-102"]
     T_LAP["💻 EXALAPFAL001<br/>Production Laptop<br/>192.168.76.103"]
     T_SUR["🖊️ EXASURFAL001<br/>Microsoft Surface<br/>192.168.76.104"]
     T_OTH_PHN["📞 EXAPHNFAL001-003,006-007<br/>5 x Office Phones<br/>No IP Address"]
@@ -740,12 +740,12 @@ graph TD
     T_WAP["📶 EXAWAPCLY001<br/>WAP 1<br/>192.168.41.82"]
     T_WAP2["📶 EXAWAPCLY002<br/>Wireless Access Point<br/>192.168.41.83"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCRCLY001<br/>DCS 1<br/>192.168.41.10"]
+    T_DCS["🗝️ EXADCSCLY001<br/>DCS 1<br/>192.168.41.10"]
     T_SBC["🛡️ EXASBCCLY001<br/>SBC<br/>192.168.41.48"]
     T_FWL["🧱 EXAFWLCLY001<br/>LAN Face<br/>192.168.41.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_SRV["🗄️ EXASRVCLY001<br/>Oracle DB Server<br/>192.168.41.20"]
-    T_SUR["🖊️ EXASURCLY001<br/>Surface<br/>No IP Address"]
+    T_SUR["🖊️ EXASURCLY001<br/>Surface<br/>192.168.41.51"]
     T_PHN["📞 EXAPHNCLY001<br/>Phone<br/>No IP Address"]
     T_TAB["📱 EXATABCLY001<br/>Android Tablet<br/>No IP Address"]
     T_SRV --> T_PHN
@@ -879,11 +879,11 @@ graph TD
     T_WAP["📶 EXAWAPDUN001<br/>WAP 1<br/>192.168.138.82"]
     T_WAP2["📶 EXAWAPDUN002<br/>Wireless Access Point<br/>192.168.138.83"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCRDUN001<br/>DCS 1<br/>192.168.138.10"]
+    T_DCS["🗝️ EXADCSDUN001<br/>DCS 1<br/>192.168.138.10"]
     T_SBC["🛡️ EXASBCDUN001<br/>SBC<br/>192.168.138.48"]
     T_FWL["🧱 EXAFWLDUN001<br/>LAN Face<br/>192.168.138.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTH_SUR["🖊️ EXASURDUN001-002<br/>2 x Microsoft Surfaces<br/>No IP Address"]
+    T_OTH_SUR["🖊️ EXASURDUN001-002<br/>2 x Microsoft Surfaces<br/>192.168.138.51-52"]
     T_OTH_PHN["📞 EXAPHNDUN001-002<br/>2 x Office Phones<br/>No IP Address"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -1031,15 +1031,15 @@ graph TD
     T_RDR["🔐 EXARDRPER001<br/>RDR<br/>192.168.173.21"]
     T_WAP["📶 EXAWAPPER001<br/>WAP 1<br/>192.168.173.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRPER001<br/>DCS 1<br/>192.168.173.10"]
+    T_DCS["🗝️ EXADCSPER001<br/>DCS 1<br/>192.168.173.10"]
     T_SBC["🛡️ EXASBCPER001<br/>SBC<br/>192.168.173.48"]
     T_FWL["🧱 EXAFWLPER001<br/>LAN Face<br/>192.168.173.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_NIX["🐧 EXANIXPER001<br/>MIDI Archive<br/>192.168.173.40"]
-    T_MBP["💻 EXAMBPPER001<br/>MacBook<br/>No IP Address"]
-    T_SUR["🖊️ EXASURPER001<br/>Surface<br/>No IP Address"]
-    T_OTH_PHN["📞 EXAPHNPER001-004<br/>4 x Office Phones<br/>No IP Address"]
-    T_PRN["🖨️ EXAPRNPER001<br/>Printer<br/>No IP Address"]
+    T_MBP["💻 EXAMBPPER001<br/>MacBook<br/>192.168.173.70"]
+    T_SUR["🖊️ EXASURPER001<br/>Surface<br/>192.168.173.71"]
+    T_OTH_PHN["📞 EXAPHNPER001-004<br/>4 x Office Phones<br/>192.168.173.80"]
+    T_PRN["🖨️ EXAPRNPER001<br/>Printer<br/>192.168.173.20"]
     T_VND["🍫 EXAVNDPER001<br/>Vending Machine<br/>No IP Address"]
     T_NIX --> T_SUR --> T_PRN
     T_MBP --> T_OTH_PHN --> T_VND
@@ -1173,11 +1173,11 @@ graph TD
     T_WAP["📶 EXAWAPABD001<br/>WAP 1<br/>192.168.224.82"]
     T_WAP2["📶 EXAWAPABD002<br/>Wireless Access Point<br/>192.168.224.83"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
-    T_DCS["🗝️ EXADCRABD001<br/>DCS 1<br/>192.168.224.10"]
+    T_DCS["🗝️ EXADCSABD001<br/>DCS 1<br/>192.168.224.10"]
     T_SBC["🛡️ EXASBCABD001<br/>SBC<br/>192.168.224.48"]
     T_FWL["🧱 EXAFWLABD001<br/>LAN Face<br/>192.168.224.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTH_MBP["💻 EXAMBPABD001-002<br/>2 x MacBook Pros<br/>No IP Address"]
+    T_OTH_MBP["💻 EXAMBPABD001-002<br/>2 x MacBook Pros<br/>192.168.224.124,137"]
     T_OTH_PHN["📞 EXAPHNABD001-002<br/>2 x Office Phones<br/>No IP Address"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF

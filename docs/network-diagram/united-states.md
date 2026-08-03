@@ -151,7 +151,7 @@ graph TD
     T_WAP2["📶 EXAWAPLAX002<br/>Wireless Access Point<br/>192.168.213.83"]
     T_WAP3["📶 EXAWAPLAX003<br/>Wireless Access Point<br/>192.168.213.84"]
     T_SWI2 --> T_NAS --> T_RDR --> T_MUS --> T_MUS2 --> T_MUS3 --> T_WAP --> T_WAP2 --> T_WAP3
-    T_DCS["🗝️ EXADCRLAX001<br/>DCS 1<br/>192.168.213.10"]
+    T_DCS["🗝️ EXADCSLAX001<br/>DCS 1<br/>192.168.213.10"]
     T_SBC["🛡️ EXASBCLAX001<br/>SBC<br/>192.168.213.48"]
     T_FWL["🧱 EXAFWLLAX001<br/>LAN Face<br/>192.168.213.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -159,8 +159,8 @@ graph TD
     T_AST["🕹️ EXAASTLAX001<br/>Atari ST<br/>192.168.213.73"]
     T_PAY["☎️ EXAPAYLAX001<br/>Payphone<br/>192.168.213.74"]
     T_LCD["🖼️ EXALCDLAX001<br/>Status Wallboard<br/>192.168.213.75"]
-    T_MBP["💻 EXAMBPLAX001<br/>MacBook Pro<br/>No IP Address"]
-    T_TAB["📱 EXATABLAX001<br/>IPad<br/>No IP Address"]
+    T_MBP["💻 EXAMBPLAX001<br/>MacBook Pro<br/>192.168.213.41"]
+    T_TAB["📱 EXATABLAX001<br/>IPad<br/>192.168.213.61"]
     T_PHN["📞 EXAPHNLAX001<br/>Phone<br/>No IP Address"]
     T_SRV --> T_PAY --> T_MBP --> T_PHN
     T_AST --> T_LCD --> T_TAB
@@ -284,7 +284,7 @@ graph TD
     T_RDR["🔐 EXARDRNYC001<br/>RDR<br/>192.168.212.21"]
     T_WAP["📶 EXAWAPNYC001<br/>WAP 1<br/>192.168.212.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRNYC001<br/>DCS 1<br/>192.168.212.10"]
+    T_DCS["🗝️ EXADCSNYC001<br/>DCS 1<br/>192.168.212.10"]
     T_SBC["🛡️ EXASBCNYC001<br/>SBC<br/>192.168.212.48"]
     T_FWL["🧱 EXAFWLNYC001<br/>LAN Face<br/>192.168.212.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL

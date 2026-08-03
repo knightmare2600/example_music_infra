@@ -52,11 +52,11 @@ graph TD
     T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVECLD001<br/>PVE 1<br/>192.168.69.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWICLD001<br/>SWI 1<br/>192.168.69.250"]
+    T_SWI["🔀 EXASWICLD002<br/>SWI 2<br/>192.168.69.251"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWICLD002<br/>SWI 2<br/>192.168.69.251"]
+    T_SWI2["🔀 EXASWICLD003<br/>SWI 3<br/>192.168.69.252"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWICLD003<br/>SWI 3<br/>192.168.69.252"]
+    T_SWI3["🔀 EXASWICLD001<br/>48-port Switch (Robert, 2026-08-04)<br/>192.168.69.250"]
     T_RTR --> T_SWI3
     T_BMC2["🔧 EXABMCCLD002<br/>BMC 2<br/>192.168.69.3 — planned"]
     T_RTR --> T_BMC2
@@ -64,7 +64,7 @@ graph TD
     T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASCLD001<br/>NAS<br/>192.168.69.19"]
     T_RDR["🔐 EXARDRCLD001<br/>RDR<br/>192.168.69.21"]
-    T_SWI --> T_NAS --> T_RDR
+    T_SWI3 --> T_NAS --> T_RDR
     T_ANS["🤖 EXAANSCLD001<br/>Ansible Control Node<br/>192.168.69.9"]
     T_DCS["🗝️ EXADCSCLD001<br/>DCS 1<br/>192.168.69.10"]
     T_SVR["🗄️ EXASVRCLD002<br/>Windows Admin Centre<br/>192.168.69.20"]

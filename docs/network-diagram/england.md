@@ -126,7 +126,7 @@ graph TD
     T_RAD["📻 EXARADLND001<br/>BBC Office Radio Mk II<br/>192.168.20.80"]
     T_MIC["🎤 EXAMICLND001<br/>Shure SM7 Via Dante Audio<br/>192.168.20.81"]
     T_WKS["🖥️ EXAWKSLND001<br/>Workstation<br/>192.168.20.150"]
-    T_OTH_PRN["🖨️ EXAPRNLND001-002<br/>2 x Printers<br/>No IP Address"]
+    T_OTH_PRN["🖨️ EXAPRNLND001-002<br/>2 x Printers<br/>192.168.20.16"]
     T_RAD --> T_WKS
     T_MIC --> T_OTH_PRN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -311,8 +311,8 @@ graph TD
     T_AST["🕹️ EXAASTBIR001<br/>Atari ST<br/>192.168.121.73"]
     T_PAY["☎️ EXAPAYBIR001<br/>Payphone<br/>192.168.121.74"]
     T_LCD["🖼️ EXALCDBIR001<br/>NOC Display<br/>192.168.121.75"]
-    T_MBP["💻 EXAMBPBIR001<br/>MacBook<br/>No IP Address"]
-    T_TAB["📱 EXATABBIR001<br/>Galaxy Tab<br/>No IP Address"]
+    T_MBP["💻 EXAMBPBIR001<br/>MacBook<br/>192.168.121.41"]
+    T_TAB["📱 EXATABBIR001<br/>Galaxy Tab<br/>192.168.121.61"]
     T_PHN["📞 EXAPHNBIR001<br/>Samsung S25<br/>No IP Address"]
     T_SRV --> T_LIN --> T_AST --> T_LCD --> T_TAB
     T_MOO --> T_FCL --> T_PAY --> T_MBP --> T_PHN
@@ -473,9 +473,9 @@ graph TD
     T_SBC["🛡️ EXASBCMCR001<br/>SBC<br/>192.168.161.48"]
     T_FWL["🧱 EXAFWLMCR001<br/>LAN Face<br/>192.168.161.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_OTH_LAP["💻 EXALAPMCR001-002<br/>2 x Laptops<br/>No IP Address"]
-    T_OTH_WKS["🖥️ EXAWKSMCR001-002<br/>2 x Workstations<br/>No IP Address"]
-    T_PRN["🖨️ EXAPRNMCR001<br/>Printer<br/>No IP Address"]
+    T_OTH_LAP["💻 EXALAPMCR001-002<br/>2 x Laptops<br/>192.168.161.150"]
+    T_OTH_WKS["🖥️ EXAWKSMCR001-002<br/>2 x Workstations<br/>192.168.161.152-153"]
+    T_PRN["🖨️ EXAPRNMCR001<br/>Printer<br/>192.168.161.16"]
     T_OTH_LAP --> T_PRN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -623,7 +623,7 @@ graph TD
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_MBP["💻 EXAMBPLIV001<br/>MacBook Pro<br/>No IP Address"]
     T_MAC["🍎 EXAMACLIV001<br/>IMac DISABLED<br/>No IP Address"]
-    T_BPS["🪪 EXABPSLIV001<br/>Badge Programming Workstation<br/>No IP Address"]
+    T_BPS["🪪 EXABPSLIV001<br/>Badge Programming Workstation<br/>192.168.151.17"]
     T_MBP --> T_BPS
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -767,7 +767,7 @@ graph TD
     T_FWL["🧱 EXAFWLNEW001<br/>LAN Face<br/>192.168.191.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_SRV["🗄️ EXASRVNEW001<br/>File/print Server<br/>No IP Address"]
-    T_WKS["🖥️ EXAWKSNEW099<br/>LAPS Password Expired<br/>No IP Address"]
+    T_WKS["🖥️ EXAWKSNEW099<br/>LAPS Password Expired<br/>192.168.191.161"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -882,7 +882,7 @@ graph TD
     T_RDR["🔐 EXARDRSHE001<br/>RDR<br/>192.168.114.21"]
     T_WAP["📶 EXAWAPSHE001<br/>WAP 1<br/>192.168.114.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRSHE001<br/>DCS 1<br/>192.168.114.10"]
+    T_DCS["🗝️ EXADCSSHE001<br/>DCS 1<br/>192.168.114.10"]
     T_SBC["🛡️ EXASBCSHE001<br/>SBC<br/>192.168.114.48"]
     T_FWL["🧱 EXAFWLSHE001<br/>LAN Face<br/>192.168.114.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -995,7 +995,7 @@ graph TD
     T_RDR["🔐 EXARDRHAL001<br/>RDR<br/>192.168.142.21"]
     T_WAP["📶 EXAWAPHAL001<br/>WAP 1<br/>192.168.142.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRHAL001<br/>DCS 1<br/>192.168.142.10"]
+    T_DCS["🗝️ EXADCSHAL001<br/>DCS 1<br/>192.168.142.10"]
     T_SBC["🛡️ EXASBCHAL001<br/>SBC<br/>192.168.142.48"]
     T_FWL["🧱 EXAFWLHAL001<br/>LAN Face<br/>192.168.142.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
@@ -1107,7 +1107,7 @@ graph TD
     T_RDR["🔐 EXARDRHUL001<br/>RDR<br/>192.168.148.21"]
     T_WAP["📶 EXAWAPHUL001<br/>WAP 1<br/>192.168.148.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
-    T_DCS["🗝️ EXADCRHUL001<br/>DCS 1<br/>192.168.148.10"]
+    T_DCS["🗝️ EXADCSHUL001<br/>DCS 1<br/>192.168.148.10"]
     T_SBC["🛡️ EXASBCHUL001<br/>SBC<br/>192.168.148.48"]
     T_FWL["🧱 EXAFWLHUL001<br/>LAN Face<br/>192.168.148.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
