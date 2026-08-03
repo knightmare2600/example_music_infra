@@ -154,7 +154,7 @@ def bounded_section(path: Path, start_pattern: str, end_pattern: str) -> str:
     return rest[:end.start()] if end else rest
 
 
-RANGE_MENTION_RE = re.compile(r'(EXA[A-Z]{3}[A-Z]{3})(\d{3})[-–](\d{3})')
+RANGE_MENTION_RE = re.compile(r'(EXA[A-Z]{3}[A-Z]{3})(\d{3})`?\s*[-–]\s*`?(\d{3})')
 
 
 def expand_range_mentions(text: str) -> set:
