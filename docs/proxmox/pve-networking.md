@@ -39,7 +39,7 @@
 | 76 | FAL | Falkirk *(Head Office)* | UK | `192.168.76.0/24` |
 | 78 | VIE | Vienna | AT | `192.168.78.0/24` |
 | 93 | AKL | Auckland | NZ | `192.168.93.0/24` |
-| 113 | BRD | West Berlin | DE | `192.168.113.0/24` |
+| 113 | BER | Berlin | DE | `192.168.113.0/24` |
 | 114 | SHE | Sheffield | UK | `192.168.114.0/24` |
 | 121 | BIR | Birmingham | UK | `192.168.121.0/24` |
 | 126 | ODE | Odense | DK | `192.168.126.0/24` |
@@ -192,7 +192,7 @@ Proxmox's officially documented approach is to edit `/etc/network/interfaces` di
 # 20  = LND  London          192.168.20.0/24
 # 29  = SYD  Sydney          192.168.29.0/24
 # 31  = AMS  Amsterdam       192.168.31.0/24
-# 33  = ATL  Georgia AL      192.168.33.0/24
+# 33  = ATL  Atlanta         192.168.33.0/24
 # 39  = MIL  Milan           192.168.39.0/24
 # 41  = CLY  Clydebank       192.168.41.0/24
 # 46  = GOT  Gothenburg      192.168.46.0/24
