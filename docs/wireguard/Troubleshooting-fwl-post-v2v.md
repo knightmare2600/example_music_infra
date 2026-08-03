@@ -626,6 +626,12 @@ ssh ansible@<WAN_IP>
 
 ### Step 9 — Verify WireGuard
 
+> **Note (2026-08-03):** the worked examples in Steps 9-10 below (GLA↔FAL) reflect the FAL/ODE/BRK
+> three-hub topology, retired 2026-07-17 — CLD is the sole WireGuard hub today, and GLA's real
+> peer is CLD, not FAL. The technique (checking `wg show`, bouncing `wg0`, cross-hub `nmap` tests)
+> is unaffected and still applies against whatever the real current hub is — see
+> `docs/wireguard/NET-VPN-WG-001-wireguard-routing.md`'s banner for the full topology change.
+
 WireGuard is managed by `wg-quick`, not NetworkManager. Even after `NetworkManager` and `nftables` are fixed, the WireGuard tunnel may still be down for one of two reasons:
 
 - The spoke's `wg0.conf` has the wrong hub endpoint IP (common if hub was also recently migrated and its WAN IP changed)
@@ -786,7 +792,13 @@ Then update the NM profiles and nftables config one final time to use `eth0`/`et
 ## 9. Related Documents
 
 - `NET-VIRT-V2V-001` — VMware to Proxmox V2V Migration Procedure
-- `NET-VPN-WG-001` — WireGuard Provisioning and Re-keying
+- `NET-VPN-WG-001` (`docs/wireguard/NET-VPN-WG-001-wireguard-routing.md`) — WireGuard inter-hub
+  routing; note this is now a historical artefact describing the retired FAL/ODE/BRK three-hub
+  mesh (CLD is the sole hub today) — the WireGuard steps in this document (9/10) remain valid
+  as generic wg0/nftables troubleshooting technique, but their worked examples (GLA↔FAL) reflect
+  that retired topology, not current live peer relationships
+- `NET-VPN-WG-002` (`docs/wireguard/wireguard-troubleshooting.md`) — general WireGuard systemd/
+  config troubleshooting, not topology-specific
 - `docs/bootstrap/bootstrapping.md` — Proxmox Node First-Boot Provisioning
 
 ---
