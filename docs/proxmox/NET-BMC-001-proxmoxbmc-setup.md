@@ -7,6 +7,8 @@
 > **Provisioning network:** `192.168.139.0/24`
 > **Credentials:** See password manager — do **not** store passwords in this document
 
+> **Teaching example, not a real device:** `EXACOFCLY001` (VMID 1069), used throughout this document as the worked example, is fictional — CLY has no real coffee machine on the network. It exists purely to illustrate the proxmoxbmc registration/config workflow end-to-end with a memorable, low-stakes device. Substitute a real hostname/VMID for actual use.
+
 ---
 
 ## Reference / Helpers

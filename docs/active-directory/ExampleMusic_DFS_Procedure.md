@@ -697,12 +697,12 @@ Use this checklist to track progress through the deployment:
 | `EXASWI` | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site/regional) | `EXADCSFAL001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASRV` | Server | `EXASRVCLD001` |
+| `EXASRV` | Server | `EXADNSVRK001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS | `EXANASFAL001` |
 | `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |
 | `EXAPBX` | PBX | `EXAPBXCLD001` |
-| `EXAPRV` | Provisioning / bootstrap server | `EXAPRVFAL001` |
+| `TMP` | Provisioning / bootstrap server — VRK/FRD only, not a per-site convention (was `PRV`, retired 2026-07-19; VRK/FRD's own devices given no formal hostname 2026-07-21) | `192.168.139.50` (VRK), `172.16.124.1` (FRD) — IP only |
 | `EXAWAP` | WiFi Access Point | `EXAWAPFAL001` |
 | `EXAWKS` | Workstation | `EXAWKSFAL001` |
 | `EXALAP` | Laptop | `EXALAPFAL001` |
