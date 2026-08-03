@@ -920,8 +920,10 @@ def load_legacy_standard_devices(site: str, devices_csv=DEVICES_CSV):
 
 def load_legacy_extra_devices(site: str, legacy_csv=LEGACY_DEVICES_CSV):
   """legacy-devices.csv rows (RAC/ESX/VCT -- old-network-only core infra with no live devices.csv
-  counterpart, see that file's own header) for one site. Same dict shape as
-  load_legacy_standard_devices() so both feed the same renderer."""
+  counterpart -- plus, since 2026-08-04, a site-specific RTR/etc. hostname-reuse exception, see
+  that file's own header) for one site. Same dict shape as load_legacy_standard_devices() so both
+  feed the same renderer, including the same IPOverride Notes convention (FAL's old Cisco lives
+  here specifically because it needs it: 192.168.1.1, off its own subnet)."""
   out = []
   if not legacy_csv.exists():
     return out
@@ -934,11 +936,17 @@ def load_legacy_extra_devices(site: str, legacy_csv=LEGACY_DEVICES_CSV):
         number = int(r["Number"])
       except (KeyError, ValueError):
         continue
+      notes = r.get("Notes", "") or ""
+      ip_override = None
+      m = IP_OVERRIDE_RE.search(notes)
+      if m:
+        ip_override = m.group(1)
+        notes = (notes[:m.start()] + notes[m.end():]).strip(" -,()")
       octet_raw = (r.get("HostOctet") or "").strip()
       out.append({
         "hostname": gi.build_hostname(dtype, site, number), "type": dtype, "number": number,
-        "octet": octet_raw or None, "ip_override": None,
-        "os": (r.get("OS") or "").strip(), "notes": (r.get("Notes") or "").strip(),
+        "octet": octet_raw or None, "ip_override": ip_override,
+        "os": (r.get("OS") or "").strip(), "notes": notes.strip(),
       })
   return out
 
