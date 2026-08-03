@@ -189,6 +189,17 @@
 #      legacy-devices.csv exists to hold genuinely-dead old-network hardware
 #      separately from devices.csv's live rows; this check is what keeps that
 #      separation honest.
+#  31. check_topology_diagram_freshness.py -- render_topology_block()'s
+#      "Topology sketch" mermaid block (insert_topology_into_docs()), the
+#      sibling generator to check 14's flat "New Network" box
+#      (insert_into_docs()) -- same regenerate-into-scratch-and-diff
+#      technique. Added 2026-08-04 after check 14's own blind spot let 22
+#      sites' *current* topology sketches silently drift and show the stale,
+#      pre-rename `EXADCR<SITE>001` hostname mislabeled as "DCS 1" (the
+#      legacy/pending-decommission DC's hostname displayed as if it were the
+#      real current domain controller) -- caught only by hand while adding
+#      CLD's real switch vendor and manually regenerating to check the
+#      result, nothing in the harness would have caught it otherwise.
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -403,6 +414,18 @@
 #               VCT never did -- legacy-devices.csv gives them a home, and
 #               this check guards the boundary so a future row here can never
 #               silently collide with the live generated inventory again.
+#   2026-08-04  Added check_topology_diagram_freshness.py (section 31).
+#               Robert confirmed CLD's real switch vendor (TP-Link,
+#               48-port); adding it to devices.csv and manually
+#               regenerating docs/network-diagram/ to check the result
+#               surfaced that insert_topology_into_docs() (the Topology
+#               sketch generator) had silently drifted across 22 sites --
+#               check 14 only ever covered the flat New Network box's own
+#               generator, never this one. Real damage found: several
+#               sites' current topology sketches were showing the stale,
+#               pre-rename EXADCR<SITE>001 hostname mislabeled as "DCS 1",
+#               left over from this session's earlier DCS->DCR rename work
+#               with nothing re-running the generator afterward.
 # ==============================================================================
 set -uo pipefail
 
@@ -974,6 +997,20 @@ else
   echo "$out"
   fail "legacy-devices.csv problem(s) found -- see above."
   FAILED_CHECKS+=("check_legacy_devices.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 31. Topology diagram freshness — check_topology_diagram_freshness.py
+# ------------------------------------------------------------------------------
+section "31. Topology diagram freshness — check_topology_diagram_freshness.py"
+
+if out=$(python3 "${HERE}/check_topology_diagram_freshness.py"); then
+  echo "$out"
+  success "docs/network-diagram/*.md's Topology sketch blocks are fresh."
+else
+  echo "$out"
+  fail "docs/network-diagram/*.md's Topology sketch block(s) have drifted from sites.csv/devices.csv -- see above."
+  FAILED_CHECKS+=("check_topology_diagram_freshness.py")
 fi
 
 # ------------------------------------------------------------------------------
