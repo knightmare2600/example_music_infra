@@ -101,16 +101,6 @@ Server OS installs RSAT via `Install-WindowsFeature` (Server Manager), not the
   Install-WindowsFeature FS-FileServer -IncludeManagementTools
   ```
 
-### RRAS / Dial-up Gateway
-- Planned for Psion Series 3 and legacy dial-up connectivity (FAL initially)
-- Platform TBD: Windows RRAS or Linux SLIP — buildsheet will be created once platform is decided
-- Reserve hostname `EXARRSFAL001` / IP `192.168.76.20` (verify against network inventory)
-- Add `RemoteAccess` + `RSAT-RemoteAccess` roles if Windows:
-  ```powershell
-  Install-WindowsFeature RemoteAccess, RSAT-RemoteAccess -IncludeManagementTools
-  Install-RemoteAccess -VpnType RoutingOnly
-  ```
-
 ### Print servers
 - Add `Print-Server` + `Print-Internet` roles as required
 - Printer drivers should be staged in DeployTools under a `\drivers\` subfolder (create if needed)
@@ -133,7 +123,6 @@ Install-WindowsFeature <RoleName> -IncludeManagementTools -IncludeAllSubFeature
 
 | Hostname | Site | IP | OS | HV | SF | SVC | CH | CP | P7 | PM | RS | DJ | OU | RD | RL | LPS | OK |
 |----------|------|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|-----|
-| EXARRSFAL001 | FAL | 192.168.76.20 | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | RRAS | [ ] | [ ] |
 | *(add as deployed)* | | | | | | | | | | | | | | | | | |
 
 ---
