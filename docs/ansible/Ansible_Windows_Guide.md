@@ -68,6 +68,10 @@ SSH is the default connection method (see [Windows Connectivity](#windows-connec
 ansible/
 ├── ansible.cfg                                  ← project config (SSH settings, collection paths)
 │
+├── tasks/
+│   └── hostname_facts.yml                       ← EXA[ROLE][SITE][NNN] hostname parsing, shared
+│                                                    across playbook sets (windows_bootstrap, windows_dc, ...)
+│
 ├── configs/inventory/
 │   ├── main.ini                                 ← top-level inventory, includes the per-site files
 │   ├── cld.ini / fal.ini / liv.ini               ← one file per site
@@ -91,7 +95,6 @@ ansible/
     ├── handlers/main.yml                          ← reboot, restart sshd/rdp, apply wallpaper
     ├── tasks/                                     ← shared logic included by multiple stages
     │   ├── arch_facts.yml                        ← CPU arch detection (AMD64/ARM64 → x86_64/arm64)
-    │   ├── hostname_facts.yml                     ← EXA[ROLE][SITE][NNN] hostname parsing
     │   ├── preflight.yml                          ← DC/DNS/URL reachability checks (used by 00-preflight.yml)
     │   ├── site_detection.yml                     ← hypervisor + IP-to-site mapping
     │   ├── guest_tools.yml                         ← VMware/QEMU guest tools
@@ -117,6 +120,7 @@ ansible/
         ├── 78-sac-ems.yml                         ← SAC/EMS serial console (Server OS only)
         ├── 79-ps7-setup.yml                       ← PS7 modules, fonts, profile, terminal config
         ├── 80-domainjoin.yml                      ← domain join
+        ├── 82-salt-minion.yml                      ← Salt minion install (all Windows nodes)
         └── 85-finish.yml                          ← remote-access summary + final reboot
 ```
 
@@ -356,7 +360,7 @@ See `playbooks/windows_bootstrap/README.md`'s "00-preflight.yml — DNS decision
 
 ### What Happens After Preflight
 
-Every stage from `15-locale-timezone.yml` onward runs unattended (no further prompts), in the order listed in [Project Layout](#project-layout) above — locale/timezone, registry hardening, telemetry suppression, Chocolatey, guest tools, packages, RSAT, PSWindowsUpdate, binaries/fonts, wallpaper, hibernation policy, OpenSSH, RDP, SAC/EMS (server only), PS7 setup, domain join, and finally the summary + reboot in `85-finish.yml`. (`10-rename.yml` used to sit between preflight and this unattended run, but it had its own independent hostname prompt — so this "unattended from here" claim was already one stage off even before 2026-07-14, when `10-rename.yml` was removed from the chain entirely; `00-preflight.yml`'s own Phase G now does the rename, using the answer already given up front.):
+Every stage from `15-locale-timezone.yml` onward runs unattended (no further prompts), in the order listed in [Project Layout](#project-layout) above — locale/timezone, registry hardening, telemetry suppression, Chocolatey, guest tools, packages, RSAT, PSWindowsUpdate, binaries/fonts, wallpaper, hibernation policy, OpenSSH, RDP, SAC/EMS (server only), PS7 setup, domain join, Salt minion install, and finally the summary + reboot in `85-finish.yml`. (`10-rename.yml` used to sit between preflight and this unattended run, but it had its own independent hostname prompt — so this "unattended from here" claim was already one stage off even before 2026-07-14, when `10-rename.yml` was removed from the chain entirely; `00-preflight.yml`'s own Phase G now does the rename, using the answer already given up front.):
 
 ```text
 ══════════════════════════════════════════════════════════
