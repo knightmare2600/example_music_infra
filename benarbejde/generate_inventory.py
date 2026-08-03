@@ -350,8 +350,18 @@ def load_address_policy(policy_path: Path, role_codes_path: Path = None):
   #     even if not managed we can't conflate, confuse or omit them" — WAP included, even though
   #     it does have a template block (see wap_block below, now skips octets a real row already
   #     covers instead of listing both).
+  #   - SBC/WKS/LAP (exempted 2026-08-04): same bug class, found the same way -- FAL,WKS,2
+  #     (EXAWKSFAL002, "Reel-to-Reel Recorder 24-track", a real, confirmed-still-there device)
+  #     silently vanished from fal.ini entirely when added at devices.csv's WKS Number=2, because
+  #     its HostOctet (.101) exactly matches WKS's standard-slot octet -- same class of gap as
+  #     RDR/NAS/BMC, just never swept to the rest of address_policy.csv's Multi=no roles when
+  #     those three were fixed. RTR deliberately NOT added here: every current RTR row in
+  #     devices.csv is old-network Legacy=yes data (see generate_network_diagrams.py's Old
+  #     Network generator), not a live/current exception row -- exposing it here would surface
+  #     historical vendor detail into the *current*-network .ini across ~19 sites, a separate,
+  #     bigger decision than this fix, not something to fold in silently.
   STANDARD_OFFSETS.clear()
-  FULL_RENDER_TYPES = {"SWI", "NAS", "RDR", "BMC", "WAP"}
+  FULL_RENDER_TYPES = {"SWI", "NAS", "RDR", "BMC", "WAP", "SBC", "WKS", "LAP"}
   for role, offset in OFFSETS_SINGLE.items():
     if role in FULL_RENDER_TYPES:
       continue
