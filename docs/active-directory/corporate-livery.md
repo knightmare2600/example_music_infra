@@ -305,7 +305,7 @@ Save as `jukebox.bgi`. Set background to semi-transparent black, font to white S
 
 Home drives are mapped to `\\jukebox.internal\homes\%username%` via Group Policy Preferences (GPP) Drive Maps. GPP drive maps are more flexible than legacy logon scripts — they support item-level targeting, reconnect on next logon, and show up in File Explorer with a label.
 
-> **Pre-requisite:** The `homes` DFS namespace and underlying share on the SRV nodes must exist before enabling this policy. See `dfs-replication.md` for the share and namespace setup. Until the SRV nodes are built, comment out or disable this GPO.
+> **Pre-requisite:** The `homes` DFS namespace and underlying share on the SRV nodes must exist before enabling this policy. See `ExampleMusic_DFS_Procedure.md` for the share and namespace setup. Until the SRV nodes are built, comment out or disable this GPO.
 
 ### Configure via GPMC (GUI)
 
@@ -951,7 +951,7 @@ foreach ($path in $checks) {
 | Document | Relationship |
 |----------|-------------|
 | `active-directory/ad-dc-wireguard-deployment.md` | AD must be deployed before any GPO work |
-| `dfs-replication.md` | H: drive mapping depends on DFS namespace and SRV shares |
+| `ExampleMusic_DFS_Procedure.md` | H: drive mapping depends on DFS namespace and SRV shares |
 | `buildsheets/buildsheet-domainControllers.md` | RSAT tools must be installed before GPMC is available |
 | `network-inventory.md` | Node IPs for SSH key verification |
 

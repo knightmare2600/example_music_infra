@@ -225,19 +225,16 @@ The network inventory currently records the West Berlin site as `BRD` in some pl
 | `EXADCSBRD001` | `EXADCSBER001` | Update DNS, AD site object, inventory |
 | `BRD` site code | `BER` | Update any references in site-inventory.md, network-inventory.md |
 
-### SVR → SRV (Server Role Prefix)
+### SVR vs SRV — Not a Legacy/Canonical Pair
 
-If you encounter any hostnames using `EXASVR*`, the canonical prefix is `EXASRV*`.  
-Update DNS and AD computer object names when rebuilding.
-
-| Legacy pattern | Canonical pattern | Example |
-|---------------|-------------------|---------|
-| `EXASVR<SITE><N>` | `EXASRV<SITE><N>` | `EXASVRCLD001` → `EXASRVCLD001` |
-
-> Note: `EXASVRCLD002` (Windows Admin Centre) in the network inventory is already
-> using the legacy pattern and should be corrected on next rebuild. `EXASVRCLD001`/
-> `EXASVRCLD003` don't currently exist in `devices.csv` -- an earlier version of
-> this note claimed all three did.
+Corrected 2026-08-03 — an earlier version of this section wrongly claimed `EXASVR*` was a
+legacy pattern to be renamed to `EXASRV*` on rebuild. That is not the case: `role_codes.csv`
+lists `SVR` and `SRV` as two separate, deliberately symbol-sharing "Generic server" role
+codes, and `devices.csv` has real, current devices under both — `EXASVRCLD002` (Windows
+Admin Centre) and `EXASVRLIV001` (LIV file server) under `SVR`; `EXASRVFAL001` (reserved),
+`EXASRVCLY001`, `EXASRVBIR001`, and others under `SRV`. **Do not rename `EXASVRCLD002` or
+`EXASVRLIV001` on rebuild** — both are correctly named as-is. See `network-inventory.md`'s
+Naming Convention Reference table for both prefixes' current worked examples.
 
 ---
 

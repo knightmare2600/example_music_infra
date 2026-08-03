@@ -1442,7 +1442,7 @@ This exemption is permanent and is not a future roadmap item.
 | `active-directory/ad-dc-wireguard-deployment.md` | AD must be deployed before LDAP auth can be configured |
 | `proxmox/pve-create-vm.md` | `create-vm.py` used to provision EXARUDCLD001 (on-prem) |
 | `active-directory/corporate-livery.md` | Rudder and GPO are complementary — GPO for domain policy, Rudder for package and config management |
-| `dfs/dfs-replication.md` | SRV nodes managed by Rudder agents |
+| `active-directory/ExampleMusic_DFS_Procedure.md` | SRV nodes managed by Rudder agents |
 | `network-inventory.md` | Node IPs and site assignments |
 | `wireguard/wireguard-troubleshooting.md` | Agent-to-server connectivity travels over WireGuard for cross-site nodes |
 
