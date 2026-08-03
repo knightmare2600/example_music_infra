@@ -2,7 +2,7 @@
 
 **Doc ID:** NET-BUILD-SRV-001  
 **Last Updated:** 2026-03-05  
-**Applies to:** WS2022 Standard / Core member servers — file servers, print servers, RRAS, utility servers  
+**Applies to:** WS2022 Standard / Core member servers — file servers, print servers, utility servers  
 **Cross-reference:** `buildsheet-domainControllers.md` for DC builds · `buildsheet-workstation.md` (NET-BUILD-WKS-001) for Win11 endpoints  
 **Deploy workflow:** unattend XML → OpenSSH reachable → `ansible/playbooks/windows_bootstrap/site.yml`
 (`preinit.cmd`/`SetupComplete.cmd`/`PostOOBE.cmd`/`Join-DomainAndBootstrap.ps1` are a
