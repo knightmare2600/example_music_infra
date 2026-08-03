@@ -868,19 +868,27 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 #### BON — Bonn
 **LAN:** `192.168.228.0/24` · **Domain:** `example.net`
 
+> This site also has a legacy-naming domain controller (`EXADCRBON001`, Schema Master, DN
+> Master, HP ML310e bare metal) — not shown below (this section covers current/live
+> infrastructure only), see `docs/network-diagram/deutschland.md`'s Old Network section for BON.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
+| `EXARTRBON001` | Router | Cisco ISR 4331 | `192.168.228.1` | WAN edge |
+| `EXAFWLBON001` | Firewall | Debian Linux (PVE VM) | `192.168.228.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWIBON001` | Switch | Cisco Catalyst 2960X | `192.168.228.250` | Office switch |
-| `EXARTRBON001` | Router | Cisco ISR 4331 | `192.168.228.254` | WAN edge |
-| `EXARACBON001` | iDRAC | Dell iDRAC9 | `192.168.228.2` | BMC |
-| `EXADCSBON001` | DC | Windows Server 2022 | `192.168.228.10` | **Schema Master · Domain Naming Master** |
-| `EXASBCBON001` | VOIP SBC | 3CX SBC Debian | `192.168.228.48` | Trunks to `EXAPBXCLD001` |
+| `EXABMCBON001` | BMC | — | `192.168.228.2` | Standard BMC slot 1 |
+| `EXAPVEBON001` | Proxmox | — | `192.168.228.5` | PVE node 1 |
+| `EXADCSBON001` | DC | — | `192.168.228.10` | Domain Controller |
+| `EXASBCBON001` | VOIP SBC | — | `192.168.228.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASBON001` | NAS | — | `192.168.228.19` | Standard NAS slot |
+| `EXARDRBON001` | Badge reader | — | `192.168.228.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPBON001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPBON001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
-**Endpoints:** `EXALAPBON001` (ThinkPad — **disabled, maintenance**), `EXAWKSBON001` (Win11 finance), `EXALAPBON002` (Win11 finance)
+**Endpoints:** `EXALAPBON001` (ThinkPad — **disabled**), `EXAWKSBON001` (Win11 finance), `EXALAPBON002` (Win11 finance)
 
 **IoT:** `EXAVCUBON001` (Poly Studio X70 boardroom), `EXACAMBON001` (Axis P3245-LVE CCTV), `EXATVSBON001` (Samsung 65")
 
@@ -889,17 +897,26 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 #### BRD — West Berlin
 **LAN:** `192.168.113.0/24` · **Domain:** `example.net`
 
+> **Being consolidated into BER** — relocating there, possible decommission after the move
+> (Robert, 2026-07-31). This section reflects current state, not the post-move plan.
+
 **Infrastructure:**
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
-| `EXARTRBRD001` | Router | Cisco ISR 4331 | `192.168.113.254` | WAN edge |
-| `EXADCSBRD001` | DC | Windows Server 2019 | `192.168.113.10` | PDC Emulator · RID Master · Infrastructure Master |
-| `EXASBCBRD001` | VOIP SBC | 3CX SBC Debian | `192.168.113.48` | Trunks to `EXAPBXCLD001` |
+| `EXARTRBRD001` | Router | Cisco ISR 4331 | `192.168.113.1` | WAN edge |
+| `EXAFWLBRD001` | Firewall | Debian Linux (PVE VM) | `192.168.113.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIBRD001` | Switch | — | `192.168.113.250` | Standard SWI slot 1 |
+| `EXABMCBRD001` | BMC | — | `192.168.113.2` | Standard BMC slot 1 |
+| `EXAPVEBRD001` | Proxmox | — | `192.168.113.5` | PVE node 1 |
+| `EXADCSBRD001` | DC | — | `192.168.113.10` | Domain Controller |
+| `EXASBCBRD001` | VOIP SBC | — | `192.168.113.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASBRD001` | NAS | — | `192.168.113.19` | Standard NAS slot |
+| `EXARDRBRD001` | Badge reader | — | `192.168.113.21` | Standard RDR slot |
 
-**WAPs:** `EXAWAPBRD001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see [Standard IP Convention](#standard-ip-convention))
+**WAPs:** `EXAWAPBRD001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
-**Endpoints:** `EXASRVBRD001` (WS2019 legacy app server), `EXANIXBRD001` (Debian 12)
+**Endpoints:** `EXASRVBRD001` (legacy app server, Windows Server 2019), `EXANIXBRD001` (Debian 12 server)
 
 ---
 
@@ -910,12 +927,61 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 | Hostname | Role | OS / Model | IP | Notes |
 |----------|------|------------|----|-------|
+| `EXARTRMUN001` | Router | — | `192.168.189.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLMUN001` | Firewall | Debian Linux (PVE VM) | `192.168.189.253` | nftables + WireGuard — site-to-site VPN |
 | `EXASWIMUN001` | Switch | Cisco Catalyst 9200 | `192.168.189.250` | Access switch |
-| `EXARACMUN001` | iLO | HPE iLO5 | `192.168.189.2` | BMC |
-| `EXADCSMUN001` | DC | Windows Server 2022 | `192.168.189.10` | Global Catalog |
-| `EXASBCMUN001` | VOIP SBC | 3CX SBC Debian | `192.168.189.48` | Trunks to `EXAPBXCLD001` |
+| `EXABMCMUN001` | BMC | — | `192.168.189.2` | Standard BMC slot 1 |
+| `EXAPVEMUN001` | Proxmox | — | `192.168.189.5` | PVE node 1 |
+| `EXADCSMUN001` | DC | — | `192.168.189.10` | Domain Controller |
+| `EXASBCMUN001` | VOIP SBC | — | `192.168.189.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASMUN001` | NAS | — | `192.168.189.19` | Standard NAS slot |
+| `EXARDRMUN001` | Badge reader | — | `192.168.189.21` | Standard RDR slot |
 
-**Endpoints:** `EXAWKSMUN001` (Win11 hot desk), `EXALAPMUN001` (Win11 pool), `EXALAPMUN002` (Win11 — ⚠️ LAPS expired 61 days ago)
+**WAPs:** `EXAWAPMUN001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+**Endpoints:** `EXAWKSMUN001` (Win11 hot desk), `EXALAPMUN001` (Win11 pool), `EXALAPMUN002` (Win11 — ⚠️ LAPS expired)
+
+---
+
+#### DRS — Dresden
+**LAN:** `192.168.153.0/24` · **Domain:** `example.net`
+
+**Infrastructure:**
+
+| Hostname | Role | OS / Model | IP | Notes |
+|----------|------|------------|----|-------|
+| `EXARTRDRS001` | Router | — | `192.168.153.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLDRS001` | Firewall | Debian Linux (PVE VM) | `192.168.153.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIDRS001` | Switch | — | `192.168.153.250` | Standard SWI slot 1 |
+| `EXABMCDRS001` | BMC | — | `192.168.153.2` | Standard BMC slot 1 |
+| `EXAPVEDRS001` | Proxmox | — | `192.168.153.5` | PVE node 1 |
+| `EXADCSDRS001` | DC | — | `192.168.153.10` | Domain Controller |
+| `EXASBCDRS001` | VOIP SBC | — | `192.168.153.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASDRS001` | NAS | — | `192.168.153.19` | Standard NAS slot |
+| `EXARDRDRS001` | Badge reader | — | `192.168.153.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPDRS001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+---
+
+#### DUS — Düsseldorf
+**LAN:** `192.168.211.0/24` · **Domain:** `example.net`
+
+**Infrastructure:**
+
+| Hostname | Role | OS / Model | IP | Notes |
+|----------|------|------------|----|-------|
+| `EXARTRDUS001` | Router | — | `192.168.211.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLDUS001` | Firewall | Debian Linux (PVE VM) | `192.168.211.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIDUS001` | Switch | — | `192.168.211.250` | Standard SWI slot 1 |
+| `EXABMCDUS001` | BMC | — | `192.168.211.2` | Standard BMC slot 1 |
+| `EXAPVEDUS001` | Proxmox | — | `192.168.211.5` | PVE node 1 |
+| `EXADCSDUS001` | DC | — | `192.168.211.10` | Domain Controller |
+| `EXASBCDUS001` | VOIP SBC | — | `192.168.211.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASDUS001` | NAS | — | `192.168.211.19` | Standard NAS slot |
+| `EXARDRDUS001` | Badge reader | — | `192.168.211.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPDUS001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 
