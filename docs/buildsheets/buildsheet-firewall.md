@@ -4,7 +4,7 @@
 **Last Updated:** 2026-07-12  
 **Applies to:** All site firewall/router VMs — CLD is the sole WireGuard hub; every other site, including FAL/ODE/BRK, is an ordinary spoke  
 **Playbook:** `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=<host> --ask-vault-pass` — the first-instance build/enforce path once the VM is Ansible-reachable (it comes up that way already, via the same `late_command.sh` ansible-user/SSH-key sliver every Debian install gets)  
-**Break-glass script:** `firewallme.sh` — hosted on bootstrap server at `http://192.168.139.50/firewallme.sh`. Kept for when Ansible genuinely can't reach the box (dead/replaced firewall, or the very first firewall at a brand-new site with no Ansible control node reachable at all). Steps 4 onward below document this path — see `ansible/playbooks/firewallme/` for the normal one.  
+**Break-glass script:** `firewallme.sh` — hosted on bootstrap server at `http://192.168.139.50/provision/firewallme.sh`. Kept for when Ansible genuinely can't reach the box (dead/replaced firewall, or the very first firewall at a brand-new site with no Ansible control node reachable at all). Steps 4 onward below document this path — see `ansible/playbooks/firewallme/` for the normal one.  
 **Cross-reference:** `active-directory/ad-dc-wireguard-deployment.md` (NET-AD-DC-001, historical — see `ansible/playbooks/windows_dc/README.md` for the live procedure) · `buildsheet-pve.md` (NET-BUILD-PVE-001)
 
 > ⚠️ **Build the hub before spokes.** CLD (`EXAFWLVRK001`/`EXAFWLCLD001`) must be fully live
@@ -71,14 +71,14 @@ graph TD
     subgraph NAAPAC ["🌎 Americas & APAC"]
         direction TB
         BRK["BRK · Brockville · .136"]
-        TOR["TOR · Toronto · .164"]
+        TOR["TOR · Toronto · .146"]
         MTL["MTL · Montréal · .154"]
         NYC["NYC · New York · .212"]
         LAX["LAX · Los Angeles · .213"]
         MIA["MIA · Miami · .135 ⚠️"]
         NJC["NJC · New Jersey · .201"]
         CHI["CHI · Chicago · .214"]
-        ATL["ATL · Athens GA · .44"]
+        ATL["ATL · Atlanta · .33"]
         SYD["SYD · Sydney · .29"]
         MEL["MEL · Melbourne · .61"]
         AKL["AKL · Auckland · .93"]
