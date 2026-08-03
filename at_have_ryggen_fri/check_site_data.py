@@ -160,6 +160,13 @@ def main():
                     continue  # every site's firewall also has a WAN IP on the provisioning
                               # network at 192.168.139.<site's own octet> -- documented,
                               # deliberate convention, see EXADNSVRK001-dns.md. Not a mismatch.
+                if code == "FAL" and base == "192.168" and int(o2) == 1 and int(o3) == 1:
+                    continue  # EXARTRFAL001's real old-network IP, confirmed 2026-08-03 (Robert):
+                              # genuinely squatted off FAL's own subnet at 192.168.1.1, same
+                              # disaster-zone pattern as FALCAM's static .1.1 -- devices.csv
+                              # records this via the IPOverride Notes convention (see
+                              # generate_network_diagrams.py's Old Network generator header), not
+                              # a data error here.
                 if int(o2) != expected_octet:
                     mismatches.append((doc, lineno, code, f"{base}.{o2}.{o3}", expected_base, expected_octet))
 
