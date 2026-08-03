@@ -7,6 +7,8 @@
 
 ---
 
+> **Status: no longer planned.** Robert confirmed (2026-07-30) that Rudder is not in use on the live network and rollout is not planned: "we tried this and here's some code if you want it but we're not using it." This document, the `rudder_onboard.yml`/`rudder_server.yml` playbooks, and `rudderme.sh` are kept in the repository as reference material only — not a build-in-progress. Treat everything below as "here's how it would be done if this were revived," not as a live checklist.
+
 > **Architecture note:** The Rudder server (`EXARUDCLD001`) is a dedicated, single-function node. It does not serve files, host other services, or run any workloads beyond Rudder. PVE hypervisor nodes are explicitly exempt from Rudder management — they are infrastructure substrate and are managed via Proxmox's own tooling only.
 >
 > **Java note:** The Rudder server runs Java (it is a Scala/Lift web application — this cannot be avoided on the server). The Rudder agent installed on Linux nodes (firewall VMs, Debian servers) is pure C/shell with zero Java dependency. Java never touches any node except `EXARUDCLD001`.

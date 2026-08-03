@@ -32,7 +32,7 @@
 ### EDI — Edinburgh, `.12`
 
 - **Old Network:** `EXARRYEDI001` — Rudder Relay
-- **New Network:** `EXADCSEDI002` — secondary Domain Controller (a `devices.csv` exception row explicitly assigns `.12` here: *"DC secondary needs rebuild corrected to .12"*)
+- **New Network:** `EXADCREDI002` — legacy-naming secondary Domain Controller, needs rebuild (a `devices.csv` exception row explicitly assigns `.12` here: *"DC secondary needs rebuild corrected to .12"* — `DCR` since this session's DCS→DCR rename, not `DCS`: it's pending rebuild, not a live current DC)
 
 **What to do on site:** Don't assume `.12` is still the Rudder Relay. Confirm what's physically there before cabling — if it's genuinely the DC rebuild, the Rudder Relay needs a new home; if it's still the Rudder Relay, `devices.csv` needs correcting, not the diagram.
 

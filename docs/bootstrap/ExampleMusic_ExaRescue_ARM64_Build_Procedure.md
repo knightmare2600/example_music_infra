@@ -1061,7 +1061,7 @@ ZFS pools are not standard partitions and GParted may not display them as mounta
 | `EXAFWL` | Firewall | `EXAFWLFAL001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
 | `EXADCS` | Domain Controller | `EXADCSFAL001` |
-| `EXAPRV` | Provisioning server | `EXAPRVFAL001` |
+| `TMP` | Provisioning / bootstrap server — VRK/FRD only, not a per-site convention (was `PRV`, retired 2026-07-19) | `192.168.139.50` (VRK), `172.16.124.1` (FRD) — IP only |
 | `EXAMBP` | MacBook Pro | `EXAMBPFAL001` |
 
 ---
