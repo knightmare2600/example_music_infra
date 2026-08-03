@@ -31,7 +31,7 @@
 | CLD (vRACK) | `192.168.139.0/24` | — | — | `192.168.139.69` |
 | ATL | `192.168.33.0/24` | `192.168.33.1` | `192.168.33.10` | `192.168.33.253` |
 
-> **Note:** All other sites can be found in the master CSV (`sites_extended.csv`).  
+> **Note:** All other sites can be found in the master CSV (`sites.csv`).  
 > **CLD is dual-subnet.** LAN (`192.168.69.x`) hosts domain-joined machines (DC at `.10`, Ansible at `.9`, FWL at `.253`). vRACK (`192.168.139.x`) is the provisioning network — key addresses: `.8` BIND9/DNS, `.50` PXE, `.68` FWL WAN interface.  
 
 ---
@@ -57,11 +57,18 @@
 <details>
 <summary>💻 Code Helpers (click to expand)</summary>
 
+> **Not implemented:** `site_ip.py`/`site_ip.sh` don't exist anywhere in this repo (checked
+> 2026-07-11) — these are illustrative of what a helper *could* look like, not a real, runnable
+> tool. Look up values against `sites.csv` directly until/unless one gets built. The `Template`
+> columns in the CSV Reference table below are also illustrative, not real `sites.csv` columns
+> (the real file's header is `Site,City,Country,CountryCode,Province,Subnet,Gateway,DC,FW,
+> Landline,Mobile,Timezone,AnsibleRegion,Entity`).
+
 #### **Python**
 
 ```python
 from site_ip import SiteIP, SiteHostnames
-hosts = SiteHostnames("sites_extended.csv")
+hosts = SiteHostnames("sites.csv")
 print(hosts.get_ip("ATL", "DC"))       # 192.168.33.10
 print(hosts.get_hostname("CLD", ".48")) # EXAPBXCLD001
 ```
@@ -84,7 +91,7 @@ Get-SiteHostname -Site CLD -IPSuffix .48  # EXAPBXCLD001
 
 ### CSV Reference
 
-**File:** `sites_extended.csv`
+**File:** `sites.csv`
 
 **Key columns:**
 
@@ -106,7 +113,7 @@ Get-SiteHostname -Site CLD -IPSuffix .48  # EXAPBXCLD001
 | `DC2Template`      | `.11` host template                  |
 | `SBC_PBX_Template` | `.48` host template (SBC or CLD PBX) |
 
-> **Tip:** Update `sites_extended.csv` to add new sites, subnets, or host templates. All helper scripts reference this CSV dynamically.
+> **Tip:** Update `sites.csv` to add new sites, subnets, or host templates. All helper scripts reference this CSV dynamically.
 
 ------
 
