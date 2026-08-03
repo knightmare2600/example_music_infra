@@ -945,13 +945,13 @@ echo "$docrole_out"
 docrole_count=$(echo "$docrole_out" | grep -oE '^[0-9]+ informational finding' | grep -oE '^[0-9]+' || true)
 if [[ -n "$docrole_count" && "$docrole_count" -gt 0 ]]; then
   if $STRICT; then
-    fail "${docrole_count} device(s) missing from their own site-inventory.md section -- see above. Failing because --strict was passed."
+    fail "${docrole_count} finding(s) across site-inventory.md/network-inventory.md/the Beginners Guide -- see above. Failing because --strict was passed."
     FAILED_CHECKS+=("check_doc_role_coverage.py (--strict: doc coverage gaps)")
   else
-    warn "${docrole_count} device(s) missing from their own site-inventory.md section (see above) -- expected until that doc catch-up happens. Re-run with --strict to fail on this."
+    warn "${docrole_count} finding(s) across site-inventory.md/network-inventory.md/the Beginners Guide (see above) -- expected until that doc catch-up happens. Re-run with --strict to fail on this."
   fi
 else
-  success "Every real, addressed device is mentioned in its own site's site-inventory.md section."
+  success "Every real, addressed device is mentioned in its own site's/section's coverage across all three hand-maintained docs."
 fi
 
 # ------------------------------------------------------------------------------
