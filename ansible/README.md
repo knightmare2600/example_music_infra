@@ -54,6 +54,7 @@ ansible/
 │   ├── bind9/                  — BIND9 authoritative DNS
 │   ├── firewallme/             — Linux firewall/router setup
 │   ├── linux/                  — Common tools/dotfiles for every Linux host
+│   ├── meshcentral/            — MeshCentral remote management server
 │   ├── proxmox/                — Proxmox VE node onboarding + management
 │   ├── rudder/                 — Rudder configuration management
 │   ├── salt/                   — Salt master (Windows client-endpoint minions only)
@@ -337,6 +338,40 @@ blank answer skips just that host. Shared with `linux/tools.yml`'s identical mec
 
 `firewall`, `preflight`, `interfaces`, `wan`, `wireguard`, `confirm`,
 `packages`, `network`, `nftables`, `dnsmasq`, `ssh`, `cockpit`, `finish`
+
+---
+
+## meshcentral
+
+Remote management platform, phase 1/2 (Robert's brief, 2026-08-04 — see
+project notes for the full spec). Bootstraps `EXAMSHCLD001`, a single CLD-LAN
+MeshCentral server providing remote desktop, remote terminal, interactive
+PowerShell/CMD, Linux shell access, and file transfer across the estate.
+Does **not** replace SaltStack (config management) or Chocolatey (Windows
+package management) — a pure remote-access platform, same non-negotiable
+split of responsibilities the whole platform brief specifies.
+
+TLS is self-signed (MeshCentral's own zero-config default) rather than Let's
+Encrypt — confirmed with Robert that this box is strictly internal/
+WireGuard-only, so ACME's public-DNS + inbound-80/443 requirement can't be
+satisfied here.
+
+Structure mirrors `rudder_server.yml`'s proven shape for a single-instance,
+CLD-only, Debian Trixie server: hostname → static IP (session-safe
+NetworkManager pattern) → base packages → UFW, then MeshCentral-specific
+steps (Node.js, npm install, config, systemd, MOTD, nodeinfo). See
+`playbooks/meshcentral/README.md` for the full quickstart.
+
+| Playbook | What it does |
+|----------|-------------|
+| `meshcentral/meshcentral_server.yml` | Bootstraps EXAMSHCLD001 — hostname, static IP, packages, UFW, Node.js, MeshCentral install (npm, dedicated non-root user), config.json (self-signed TLS), systemd, MOTD, nodeinfo |
+
+**Not yet live-tested against real hardware** — no Debian Trixie box
+available to test against directly as of 2026-08-04. See the playbook's own
+header and `playbooks/meshcentral/README.md`'s "Not yet built" section.
+
+**TacticalRMM, reverse proxy, monitoring, logging, backups, hardening,
+disaster recovery** — later phases of the platform brief, not started.
 
 ---
 

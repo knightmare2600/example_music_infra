@@ -18,9 +18,9 @@ regeneration -- a real bug (the committed files are now describing a
 world that no longer matches their own source of truth), not a style
 nitpick.
 
-main.ini, rudder.ini, and salt.ini are NOT generator output (they come from
-ansibleme.sh's discovery scan / hand-curation) and are deliberately
-excluded from this check.
+main.ini, rudder.ini, salt.ini, and meshcentral.ini are NOT generator output
+(they come from ansibleme.sh's discovery scan / hand-curation) and are
+deliberately excluded from this check.
 
 Exit code: 0 if every generated file matches a fresh regeneration, 1 if
 any has drifted.
@@ -50,7 +50,7 @@ SITE_GRAINS_PILLAR = REPO_ROOT / "salt" / "pillar" / "sites.sls"
 PROXMOX_SERVED_DIR = REPO_ROOT / "bootstrap" / "web" / "proxmox"
 SERVED_COPIES = ["begyndelse.json", "devices.csv", "sites.csv", "address_policy.csv", "ad_forest.json"]
 
-NOT_GENERATOR_OWNED = {"main.ini", "rudder.ini", "salt.ini"}
+NOT_GENERATOR_OWNED = {"main.ini", "rudder.ini", "salt.ini", "meshcentral.ini"}
 
 
 def run(args):

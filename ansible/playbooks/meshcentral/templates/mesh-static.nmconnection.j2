@@ -1,0 +1,22 @@
+[connection]
+id=mesh-static
+uuid={{ (inventory_hostname + '-mesh-static') | to_uuid }}
+type=ethernet
+interface-name={{ _mesh_iface }}
+autoconnect=true
+autoconnect-priority=100
+autoconnect-retries=-1
+
+[ethernet]
+
+[ipv4]
+address1={{ mesh_static_ip }}/{{ mesh_prefix | default('24') }},{{ mesh_gateway }}
+method=manual
+dns={{ mesh_dns }};
+dns-search={{ mesh_domain }};
+
+[ipv6]
+addr-gen-mode=default
+method=ignore
+
+[proxy]
