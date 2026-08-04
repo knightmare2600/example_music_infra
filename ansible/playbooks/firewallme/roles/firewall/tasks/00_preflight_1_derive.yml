@@ -58,6 +58,18 @@
   ansible.builtin.set_fact:
     fw_site_octet: "{{ wg_site_octets[fw_site_code] | default('') }}"
 
+- name: "[Preflight] Look up this site's row (city/country/entity/street/postal_code for nodeinfo.json)"
+  ansible.builtin.set_fact:
+    fw_site_row: "{{ _sites_csv_raw.list | selectattr('Site', 'equalto', fw_site_code) | list | first | default({}) }}"
+
+- name: "[Preflight] Derive site facts for nodeinfo.json"
+  ansible.builtin.set_fact:
+    fw_site_city: "{{ fw_site_row.City | default('') }}"
+    fw_site_country: "{{ fw_site_row.Country | default('') }}"
+    fw_site_entity: "{{ fw_site_row.Entity | default('Example Music') }}"
+    fw_site_street: "{{ fw_site_row.Street | default('') }}"
+    fw_site_postal_code: "{{ fw_site_row.PostalCode | default('') }}"
+
 - name: "[Preflight] FAIL — site code not in known site map"
   ansible.builtin.fail:
     msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Site code '{{ fw_site_code }}' not found in wg_site_octets (checked {{ sites_csv_path }})."

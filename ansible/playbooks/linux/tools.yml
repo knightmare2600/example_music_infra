@@ -463,6 +463,8 @@
             nodeinfo_city: "{{ _tools_site_row.City | default('') }}"
             nodeinfo_country: "{{ _tools_site_row.Country | default('') }}"
             nodeinfo_entity: "{{ _tools_site_row.Entity | default('') }}"
+            nodeinfo_street: "{{ _tools_site_row.Street | default('') }}"
+            nodeinfo_postal_code: "{{ _tools_site_row.PostalCode | default('') }}"
             nodeinfo_environment: "{{ resolved_environment }}"
             nodeinfo_bootstrapped_by: "linux/tools.yml"
 

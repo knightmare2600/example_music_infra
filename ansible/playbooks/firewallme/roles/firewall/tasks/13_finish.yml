@@ -33,6 +33,14 @@
 #               visibly ran reads exactly like "the reboot didn't happen" when it did.
 #               Renamed to "[Finish] NOTE — no reboot occurred this run" so the task's own
 #               name and its own skip status never say the opposite of what happened.
+#   2026-08-04  Fixed fw_site_city/_country/_entity -- referenced here since the 2026-07-07
+#               refactor into the shared nodeinfo.yml task, but never actually set anywhere
+#               in this role (the site-row lookup got lost in that refactor). Every firewall's
+#               nodeinfo.json has been silently writing blank city/country and the generic
+#               "Example Music" entity fallback instead of real per-site values. Fixed in
+#               00_preflight_1_derive.yml (fw_site_row lookup, same pattern as proxmox's
+#               pve_site_row/linux's _tools_site_row). Also added fw_site_street/
+#               fw_site_postal_code there and here, part of Robert's site-address rollout.
 # =============================================================================
 
 # ── Node info file ────────────────────────────────────────────────────────────
@@ -51,6 +59,8 @@
     nodeinfo_city: "{{ fw_site_city | default('') }}"
     nodeinfo_country: "{{ fw_site_country | default('') }}"
     nodeinfo_entity: "{{ fw_site_entity | default('Example Music') }}"
+    nodeinfo_street: "{{ fw_site_street | default('') }}"
+    nodeinfo_postal_code: "{{ fw_site_postal_code | default('') }}"
     nodeinfo_environment: "{{ fw_environment }}"
     nodeinfo_bootstrapped_by: "90-firewall.yml"
     nodeinfo_extra:

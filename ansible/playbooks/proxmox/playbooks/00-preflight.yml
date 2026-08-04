@@ -168,6 +168,8 @@
         pve_city:   "{{ pve_site_row.City | default('') }}"
         pve_country: "{{ pve_site_row.Country | default('') }}"
         pve_entity: "{{ pve_site_row.Entity | default('') }}"
+        pve_street: "{{ pve_site_row.Street | default('') }}"
+        pve_postal_code: "{{ pve_site_row.PostalCode | default('') }}"
       tags: preflight
 
     - name: Check whether this node has already been onboarded

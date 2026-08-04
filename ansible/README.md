@@ -460,6 +460,8 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | `rudder_site_city` | `Edinburgh` | Site city (used in MOTD) |
 | `rudder_site_country` | `Scotland` | Site country (used in MOTD) |
 | `rudder_site_entity` | `Example Music Limited` | Entity name (used in MOTD) |
+| `rudder_site_street` | `7 Claylands Road` | Site street (nodeinfo.json only, not shown in MOTD) |
+| `rudder_site_postal_code` | `EH28 8LF` | Site postal code (nodeinfo.json only, not shown in MOTD) |
 
 ### Notes
 
