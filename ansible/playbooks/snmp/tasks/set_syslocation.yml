@@ -1,0 +1,92 @@
+---
+# =============================================================================
+# ansible/playbooks/snmp/tasks/set_syslocation.yml
+# Example Music Limited — per-device sysLocation GET/compare/SET
+# =============================================================================
+# Included in a loop by sysinfo.yml, once per SNMP-managed devices.csv row (var:
+# `device`). Deliberately touches exactly one OID, sysLocation.0
+# (.1.3.6.1.2.1.1.6.0) -- part of SNMPv2-MIB's base "system" group, RFC 1213/3418,
+# identical on every compliant agent regardless of vendor. Nothing here ever reads
+# or writes any other OID, on any device -- if this file is ever extended to cover
+# sysContact/sysName too, extend the allow-list explicitly, don't loosen this into
+# a general-purpose SNMP write task.
+#
+# GET first, SET only if the current value is actually wrong -- same idempotent
+# "don't touch what's already right" pattern as everything else in this estate.
+# The SET step is a plain ansible.builtin.command, which Ansible skips automatically
+# under --check (same as every other command/shell task) -- so `--check` is a safe
+# way to preview what would change before running for real.
+# =============================================================================
+
+- name: "Look up {{ device.Site }}'s site row"
+  ansible.builtin.set_fact:
+    _site_row: "{{ _snmp_sites_raw.list | selectattr('Site', 'equalto', device.Site) | list | first | default({}) }}"
+
+- name: "Skip — site {{ device.Site }} not found in sites.csv"
+  ansible.builtin.debug:
+    msg: "Site code {{ device.Site }} not found in sites.csv, skipping {{ device.Type }}{{ device.Number }}."
+  when: _site_row == {}
+
+- name: "Derive {{ device.Site }}/{{ device.Type }}{{ device.Number }}'s IP and desired sysLocation"
+  ansible.builtin.set_fact:
+    _device_ip: "192.168.{{ _site_row.Subnet.split('.')[2] }}.{{ device.HostOctet }}"
+    _desired_location: >-
+      {{ [_site_row.Street, _site_row.City, _site_row.PostalCode, _site_row.Country] | select | join(', ') }}
+  when: _site_row != {}
+
+- name: "GET current sysLocation on {{ device.Site }}/{{ device.Type }}{{ device.Number }}"
+  ansible.builtin.command:
+    argv:
+      - snmpget
+      - -v2c
+      - -c
+      - "{{ vault_snmp_write_community }}"
+      - -Ovq
+      - -t
+      - "3"
+      - -r
+      - "1"
+      - "{{ _device_ip }}"
+      - sysLocation.0
+  register: _current_location
+  changed_when: false
+  failed_when: false
+  when: _site_row != {}
+
+- name: "Report unreachable device"
+  ansible.builtin.debug:
+    msg: >-
+      {{ device.Site }}/{{ device.Type }}{{ device.Number }} ({{ _device_ip }}) did not
+      respond to SNMP GET — skipped (offline, wrong community, or ACL-blocked). stderr:
+      {{ _current_location.stderr | default('') }}
+  when: _site_row != {} and _current_location.rc != 0
+
+- name: "SET sysLocation on {{ device.Site }}/{{ device.Type }}{{ device.Number }}"
+  ansible.builtin.command:
+    argv:
+      - snmpset
+      - -v2c
+      - -c
+      - "{{ vault_snmp_write_community }}"
+      - -t
+      - "3"
+      - -r
+      - "1"
+      - "{{ _device_ip }}"
+      - sysLocation.0
+      - s
+      - "{{ _desired_location }}"
+  when: >-
+    _site_row != {}
+    and _current_location.rc == 0
+    and (_current_location.stdout | trim | trim('"')) != _desired_location
+  register: _snmp_set_result
+  changed_when: true
+
+- name: "sysLocation already correct on {{ device.Site }}/{{ device.Type }}{{ device.Number }}"
+  ansible.builtin.debug:
+    msg: "{{ device.Site }}/{{ device.Type }}{{ device.Number }} ({{ _device_ip }}) sysLocation already reads: {{ _current_location.stdout | trim | trim('\"') }}"
+  when: >-
+    _site_row != {}
+    and _current_location.rc == 0
+    and (_current_location.stdout | trim | trim('"')) == _desired_location

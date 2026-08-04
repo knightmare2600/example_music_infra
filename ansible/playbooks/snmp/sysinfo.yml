@@ -1,0 +1,126 @@
+---
+# =============================================================================
+# ansible/playbooks/snmp/sysinfo.yml
+# Example Music Limited — SNMP sysLocation rollout (Phase 1 of the SNMP plan)
+# =============================================================================
+# Sets sysLocation (standard SNMPv2-MIB OID .1.3.6.1.2.1.1.6.0, RFC 1213/3418 --
+# identical across every vendor, not device-specific) on every devices.csv row with
+# ConnectionType=snmp (switches, network printers -- ~36 devices as of 2026-08-04,
+# mostly Cisco/TP-Link/HP), to match that site's real address from sites.csv's
+# Street/City/PostalCode/Country columns.
+#
+# Deliberately does NOT touch sysContact or sysName -- no source-of-truth value
+# exists yet for a per-site contact, and sysName often already carries a meaningful
+# vendor-configured value on real hardware that shouldn't be silently overwritten.
+# Add both later, once there's a real value to write, following this same pattern.
+#
+# Scope, by design: this ONLY ever GETs/SETs sysLocation.0. No other OID is read or
+# written, on any device, ever -- see set_syslocation.yml's own header for the full
+# safety reasoning. This is Phase 1 of a two-phase plan; Phase 2 (Zabbix monitoring,
+# cross-vendor stats via Zabbix's own built-in templates) is separate, later, and
+# does not touch this file.
+#
+# Requires:
+#   - net-snmp tools (snmpget/snmpset) on the control node -- NOT installed by this
+#     playbook. Install with: apt install snmp  (Debian/Ubuntu)
+#   - vault_snmp_write_community populated with a real value in
+#     configs/inventory/group_vars/all/vault.yml (currently "CHANGEME") -- the SNMP
+#     v2c write community actually configured on these switches. If none is
+#     configured yet, that has to happen on the switches themselves first (out of
+#     scope for this playbook -- it only ever speaks to what's already there).
+#
+# NOT YET LIVE-TESTED against real hardware as of 2026-08-04 -- the GET side is
+# read-only and safe to run any time; the SET side only fires when a value is
+# genuinely wrong, and ansible.builtin.command skips under --check like every other
+# command/shell task, so a --check run first is a safe way to see what WOULD change
+# before trusting it. Recommend testing against a single switch with --limit-style
+# scoping (see below) before running unattended against all ~36.
+#
+# Usage:
+#   ansible-playbook playbooks/snmp/sysinfo.yml --ask-vault-pass --check   # dry run, see what would change
+#   ansible-playbook playbooks/snmp/sysinfo.yml --ask-vault-pass           # for real
+#   ansible-playbook playbooks/snmp/sysinfo.yml --ask-vault-pass -e snmp_site_filter=FAL
+#                                                                          # one site only, for first live test
+# =============================================================================
+# Changelog:
+#   2026-08-04  Initial file -- Phase 1 of Robert's SNMP rollout, following the
+#               site-address work (sites.csv Street/PostalCode, commit 01f6d54).
+# =============================================================================
+
+- name: "Set SNMP sysLocation from sites.csv on every SNMP-managed device"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    sites_csv_path: "{{ playbook_dir }}/../../../benarbejde/sites.csv"
+    devices_csv_path: "{{ playbook_dir }}/../../../benarbejde/devices.csv"
+
+  tasks:
+    - name: Confirm net-snmp tools are installed on the control node
+      ansible.builtin.command: "which {{ item }}"
+      loop: [snmpget, snmpset]
+      register: _snmp_bin_check
+      changed_when: false
+      failed_when: false
+
+    - name: FAIL — net-snmp tools missing
+      ansible.builtin.fail:
+        msg: >-
+          '{{ item.item }}' not found on the control node. Install the 'snmp'
+          package (apt install snmp on Debian/Ubuntu) and re-run — this playbook
+          will not install it for you.
+      loop: "{{ _snmp_bin_check.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: item.rc != 0
+
+    - name: FAIL — vault_snmp_write_community not set
+      ansible.builtin.fail:
+        msg: >-
+          vault_snmp_write_community is still "CHANGEME" in
+          configs/inventory/group_vars/all/vault.yml. Set the real SNMP v2c write
+          community configured on these switches before running this for real.
+      when: vault_snmp_write_community | default('CHANGEME') == 'CHANGEME'
+
+    - name: Load sites.csv (known source of truth)
+      ansible.builtin.read_csv:
+        path: "{{ sites_csv_path }}"
+      register: _snmp_sites_raw
+
+    - name: Load devices.csv (known source of truth)
+      ansible.builtin.read_csv:
+        path: "{{ devices_csv_path }}"
+      register: _snmp_devices_raw
+
+    - name: Build the list of SNMP-managed devices with a real HostOctet
+      ansible.builtin.set_fact:
+        _snmp_targets_all: >-
+          {{
+            _snmp_devices_raw.list
+            | selectattr('ConnectionType', 'equalto', 'snmp')
+            | selectattr('HostOctet', 'ne', '')
+            | list
+          }}
+
+    - name: Narrow to one site if snmp_site_filter was given (-e snmp_site_filter=FAL)
+      ansible.builtin.set_fact:
+        _snmp_targets: >-
+          {{
+            _snmp_targets_all | selectattr('Site', 'equalto', snmp_site_filter) | list
+            if snmp_site_filter is defined
+            else _snmp_targets_all
+          }}
+
+    - name: Report devices skipped for having no HostOctet (can't derive an IP)
+      ansible.builtin.debug:
+        msg: "Skipping {{ item.Site }}/{{ item.Type }}{{ item.Number }} — ConnectionType=snmp but no HostOctet, can't derive an address."
+      loop: "{{ _snmp_devices_raw.list | selectattr('ConnectionType', 'equalto', 'snmp') | selectattr('HostOctet', 'equalto', '') | list }}"
+      loop_control:
+        label: "{{ item.Site }}/{{ item.Type }}{{ item.Number }}"
+
+    - name: "Set sysLocation on {{ _snmp_targets | length }} device(s)"
+      ansible.builtin.include_tasks: tasks/set_syslocation.yml
+      loop: "{{ _snmp_targets }}"
+      loop_control:
+        loop_var: device
+        label: "{{ device.Site }}/{{ device.Type }}{{ device.Number }}"
