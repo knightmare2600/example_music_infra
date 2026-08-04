@@ -10,8 +10,18 @@
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
+#   2026-08-04  Added vault_snmp_write_community -- SNMP v2c write community string used
+#               ONLY by playbooks/snmp/sysinfo.yml to SET sysLocation/sysContact on the
+#               ~36 devices.csv rows with ConnectionType=snmp (switches, network printers).
+#               Deliberately a separate string from any read-only monitoring community
+#               (e.g. Zabbix's, once that exists) -- keep them different so a leaked
+#               monitoring credential can never write anything. Where the device supports
+#               it (most managed switches), also scope this community to an SNMP view
+#               restricted to the sysLocation/sysContact/sysName OID subtree at the device
+#               config level, not just in this playbook's own allow-list.
 # =============================================================================
 
 vault_local_admin_password:   "CHANGEME"
 vault_domain_join_password:   "CHANGEME"
 vault_winrm_password:         "CHANGEME"
+vault_snmp_write_community:   "CHANGEME"
