@@ -58,7 +58,7 @@ graph TD
     O_PMP["⛽ EXAPMPFAL001<br/>Networked petrol pump<br/>192.168.76.60"]
     O_RAC["🔧 EXARACFAL001<br/>HP iLO<br/>192.168.76.2"]
     O_RDR["🔐 EXARDRFAL001<br/>HID Signo badge reader<br/>192.168.76.16"]
-    O_SRV["🗄️ EXASRVFAL001<br/>Reserved<br/>192.168.76.20"]
+    O_SRV["🗄️ EXASVRFAL001<br/>Reserved<br/>192.168.76.20"]
     O_SUR["🖊️ EXASURFAL001<br/>Windows 11 23H2 · Microsoft Surface<br/>192.168.76.104"]
     O_TAB["📱 EXATABFAL001<br/>Tablet<br/>No IP Address"]
     O_TAR["💽 EXATARFAL001<br/>Solaris Embedded · Legacy tape archive<br/>192.168.76.33"]
@@ -253,10 +253,10 @@ graph TD
     T_WAP6["📶 EXAWAPFAL001<br/>Wireless Access Point<br/>192.168.76.82"]
     T_SWI2 --> T_NAS --> T_RDR --> T_MUS --> T_WAP --> T_WAP2 --> T_WAP3 --> T_WAP4 --> T_WAP5 --> T_WAP6
     T_DCS["🗝️ EXADCSFAL001<br/>DCS 1<br/>192.168.76.10"]
+    T_SVR["🗄️ EXASVRFAL001<br/>Reserved<br/>192.168.76.20"]
     T_SBC["🛡️ EXASBCFAL001<br/>SBC<br/>192.168.76.48"]
     T_FWL["🧱 EXAFWLFAL001<br/>LAN Face<br/>192.168.76.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_SRV["🗄️ EXASRVFAL001<br/>Reserved<br/>192.168.76.20"]
+    T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_TAR["💽 EXATARFAL001<br/>Legacy Tape Archive<br/>192.168.76.33"]
     T_LCD["🖼️ EXALCDFAL001<br/>Reception Display<br/>192.168.76.50"]
     T_VCU["🎧 EXAVCUFAL001<br/>Video Conferencing<br/>192.168.76.51"]
@@ -277,8 +277,8 @@ graph TD
     T_OTH_CAR["🚗 EXACARFAL001-005<br/>5 x Cars<br/>No IP Address"]
     T_OTH_TRK["🚚 EXATRKFAL001-005<br/>5 x Trucks<br/>No IP Address"]
     T_OTH_JET["✈️ EXAJETFAL001-005<br/>5 x Jets<br/>No IP Address"]
-    T_SRV --> T_LCD --> T_PMP --> T_DON --> T_OTH_CAM --> T_PAY --> T_LAP --> T_OTH_PHN --> T_TTY --> T_OTH_CAR --> T_OTH_JET
     T_TAR --> T_VCU --> T_TEA --> T_OTH_VND --> T_CLK --> T_OTH_WKS --> T_SUR --> T_TAB --> T_OTH_BUS --> T_OTH_TRK
+    T_LCD --> T_PMP --> T_DON --> T_OTH_CAM --> T_PAY --> T_LAP --> T_OTH_PHN --> T_TTY --> T_OTH_CAR --> T_OTH_JET
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -296,9 +296,9 @@ graph TD
     style T_WAP5 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP6 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TAR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_VCU fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -652,7 +652,7 @@ graph TD
     O_DCR2["🗝️ EXADCRCLY002<br/>DC Secondary<br/>192.168.41.11"]
     O_PHN["📞 EXAPHNCLY001<br/>iOS · Phone<br/>No IP Address"]
     O_RAC["🔧 EXARACCLY001<br/>HPE iLO5 · no host ever built<br/>192.168.41.2"]
-    O_SRV["🗄️ EXASRVCLY001<br/>Rocky Linux · Oracle DB server<br/>192.168.41.20"]
+    O_SRV["🗄️ EXASVRCLY001<br/>Rocky Linux · Oracle DB server<br/>192.168.41.20"]
     O_SUR["🖊️ EXASURCLY001<br/>Windows 11 · Surface<br/>192.168.41.51"]
     O_TAB["📱 EXATABCLY001<br/>Android · Android tablet<br/>No IP Address"]
     O_INET --> O_RTR
@@ -692,7 +692,7 @@ graph TD
       PVE["🗂️ EXAPVECLY001 · Proxmox node 1 · .5"]
       DC1["🗝️ EXADCRCLY001 · DC primary · .10"]
       DC2["🗝️ EXADCRCLY002 · DC secondary · .11"]
-      SRV["🗄️ EXASRVCLY001 · Rocky Linux · Oracle DB · .20"]
+      SRV["🗄️ EXASVRCLY001 · Rocky Linux · Oracle DB · .20"]
       SBC["🛡️ EXASBCCLY001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYCLY001 · Rudder Relay · .12"]
       SUR["🖊️ EXASURCLY001 · Microsoft Surface · .51"]
@@ -741,14 +741,13 @@ graph TD
     T_WAP2["📶 EXAWAPCLY002<br/>Wireless Access Point<br/>192.168.41.83"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSCLY001<br/>DCS 1<br/>192.168.41.10"]
+    T_SVR["🗄️ EXASVRCLY001<br/>Oracle DB Server<br/>192.168.41.20"]
     T_SBC["🛡️ EXASBCCLY001<br/>SBC<br/>192.168.41.48"]
     T_FWL["🧱 EXAFWLCLY001<br/>LAN Face<br/>192.168.41.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_SRV["🗄️ EXASRVCLY001<br/>Oracle DB Server<br/>192.168.41.20"]
+    T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_SUR["🖊️ EXASURCLY001<br/>Surface<br/>192.168.41.51"]
     T_PHN["📞 EXAPHNCLY001<br/>Phone<br/>No IP Address"]
     T_TAB["📱 EXATABCLY001<br/>Android Tablet<br/>No IP Address"]
-    T_SRV --> T_PHN
     T_SUR --> T_TAB
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -762,9 +761,9 @@ graph TD
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF

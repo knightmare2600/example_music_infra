@@ -248,14 +248,14 @@ ansible@EXAPVECLD001:~> python3 convert-v2v.py --host 192.168.139.5 --user root@
     PHN   Mobile / Desk Phone                       PMP   Petrol Pump                               PRN   Printer / MFD
     PVE   Proxmox VE Node                           RAC   Remote Access Controller (Dell iDRAC)     RAD   Radio Transmitter / Broadcast
     RDR   Card Reader / Badge Reader                RTR   Router                                    SBC   Session Border Controller
-    SRV   Server (General Purpose)                  SUR   Microsoft Surface Device                  SVR   Server (Legacy / Non-Proxmox)
+    SRV   Server (Legacy)                            SUR   Microsoft Surface Device                  SVR   Server (General Purpose)
     SWI   Network Switch                            SYN   Synthesizer (e.g. Moog)                   TAB   Tablet
     TAR   Tape Archiver                             TEA   Internet Connected Tea/Coffee Machine (RFC2324)  TTY   Teletype / Serial Terminal / VDU
     TVS   Television / Digital Signage              VCU   Video Conferencing Unit                   VND   Vending Machine
     WAP   Wireless Access Point                     WKS   Workstation (Desktop)
 
   [i] Suggested role based on VMX guest OS: NIX
-  Role code (e.g. FWL, NIX, SRV) [NIX]: FWL
+  Role code (e.g. FWL, NIX, SVR) [NIX]: FWL
 
   Known site codes:
     ABD Aberdeen            AKL Auckland            AMS Amsterdam           BER West Berlin         BIR Birmingham          BON Bonn
@@ -777,7 +777,7 @@ sudo wg-quick down wg0 && sudo wg-quick up wg0
 
 | Item | Value |
 |------|-------|
-| Source VM name | `EXASRVFAL001` (placeholder) |
+| Source VM name | `EXASVRFAL001` (placeholder) |
 | Guest OS | Windows Server 2022 Standard |
 | Role | General purpose server |
 | VMware NIC(s) | 1 × `e1000` or `vmxnet3` |
@@ -816,7 +816,7 @@ There are two approaches, covered below:
 
 ```
 [PENDING OUTPUT — Windows VM not yet available]
-Command : type C:\Users\<user>\Documents\Virtual Machines\EXASRVFAL001\EXASRVFAL001.vmx
+Command : type C:\Users\<user>\Documents\Virtual Machines\EXASVRFAL001\EXASVRFAL001.vmx
           (on Windows host) or cat after copying to Linux
 Capture : Full VMX contents
 Note    : guestOS line will be something like "windows9srv-64" or "windows2019srvnext-64"
@@ -832,7 +832,7 @@ Command : python3 convert-v2v.py --host 192.168.76.x --user root@pam \
               --ssh-key ~/.ssh/id_rsa
 Capture : Full session
 Note    : Select OS type 5 (Windows Server 2022 / w2k22) when prompted
-          Select SRV as role
+          Select SVR as role
 ```
 
 ---
@@ -843,7 +843,7 @@ This is where Windows diverges from Linux. Expected log output for a Windows gue
 
 ```
 [PENDING OUTPUT — Windows VM not yet available]
-Command : cat /tmp/v2v-EXASRVFAL001.log
+Command : cat /tmp/v2v-EXASVRFAL001.log
 Capture : Full log
 ```
 
@@ -881,7 +881,7 @@ If the warning appears, proceed to Approach B below.
 # https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/
 
 virt-v2v \
-  -i vmx EXASRVFAL001.vmx \
+  -i vmx EXASVRFAL001.vmx \
   -o local -of raw -os /tmp/v2v-output \
   --win-virtio-drivers /path/to/virtio-win.iso \
   -v

@@ -558,7 +558,7 @@ def select_role():
             return True
         return f"Unknown role code. See list above."
 
-    role = prompt("Role code (e.g. FWL, SRV, NIX)", validator=validate_role)
+    role = prompt("Role code (e.g. FWL, SVR, NIX)", validator=validate_role)
     return role.upper()
 
 def select_site():

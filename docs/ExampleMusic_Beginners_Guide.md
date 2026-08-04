@@ -243,7 +243,7 @@ Example: `EXAFWLEDI001` — EXA estate, firewall role, Edinburgh site, first uni
 | `EXADCS` | Domain Controller (site) | `EXADCSFAL001` |
 | `EXADCR` | Domain Controller (regional) | `EXADCRLND001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASRV` | Member server | `EXASRVFAL001` |
+| `EXASVR` | Member server | `EXASVRFAL001` |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS | `EXANASFAL001` |
 | `EXASBC` | VOIP SBC | `EXASBCFAL001` |

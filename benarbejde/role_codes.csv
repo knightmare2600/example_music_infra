@@ -10,8 +10,8 @@ DCR,Domain controller (legacy naming),Servers / Compute / Management,ssh,🗝️
 PVE,Proxmox hypervisor node,Servers / Compute / Management,ssh,🗂️,,Standard slots .5-.7. Not a devices.csv Type (ALWAYS_EXCLUDE_TYPES) — handled by the standard template + group_vars/pvenodes/ directly
 ESX,VMware ESXi hypervisor (legacy),Servers / Compute / Management,ssh,💾,,Added 2026-07-31 for old-network diagram restyling -- found live at FAL (EXAESXFAL001, single HP ML310e host), not PVE as the original hand-written box wrongly assumed. No VMware logo usable (trademarked, same rule as Cisco/AT&T/Atari elsewhere in this file) -- generic floppy disk, Robert's call, deliberately distinct from PVE's 🗂️
 VCT,VMware vCenter (legacy cluster management),Servers / Compute / Management,https,🛰️,,Added 2026-07-31 -- found live at ODE (EXAVCTODE001), the real 3-node ESXi cluster's central management console. No VMware logo usable, same rule as ESX above -- satellite dish (a central controller directing distributed hosts), unassigned elsewhere, flagged for confirmation same as ESX's floppy disk
-SVR,Generic server,Servers / Compute / Management,ssh,🗄️,,Same symbol as SRV
-SRV,Generic server,Servers / Compute / Management,ssh,🗄️,,Same symbol as SVR
+SVR,Generic server,Servers / Compute / Management,ssh,🗄️,,Current code for a generic/general-purpose server. Same symbol as SRV — SRV is the legacy predecessor, corrected 2026-08-04 (Robert's call, after an earlier commit had the direction backwards; see buildsheet-domainControllers.md)
+SRV,Generic server (legacy),Servers / Compute / Management,ssh,🗄️,,Legacy alias for SVR — retired 2026-08-04, no live devices.csv rows use it any more. Same symbol as SVR
 NAS,Storage (NAS/SAN — e.g. TrueNAS),Servers / Compute / Management,ssh,🗃️,,"Standard slot .19 (added 2026-07-19, replacing the retired .15 PRV convention)"
 SBC,VOIP Session Border Controller,Servers / Compute / Management,ssh,🛡️,,"Standard slot .48. ""Border controller"" — a boundary/edge device"
 PBX,Phone exchange (3CX PBX),Servers / Compute / Management,ssh,🔌,,

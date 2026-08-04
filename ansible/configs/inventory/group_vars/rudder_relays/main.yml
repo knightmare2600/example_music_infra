@@ -3,7 +3,7 @@
 # group_vars/rudder_relays/main.yml
 # Example Music Limited — Rudder relay group variables
 #
-# Applies to hosts in [rudder_relays] (EXASRVODE001, EXASRVBRK001).
+# Applies to hosts in [rudder_relays] (EXASVRODE001, EXASVRBRK001).
 # Relay nodes use rudder-server-relay package instead of rudder-server.
 # Most config is inherited from rudder_servers; this file overrides
 # the install package name and relay-specific settings.

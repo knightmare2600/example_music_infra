@@ -43,7 +43,7 @@ graph TD
     O_PHN["📞 EXAPHNAKL001<br/>Android · Phone<br/>No IP Address"]
     O_PRN["🖨️ EXAPRNAKL001<br/>HP · LaserJet printer<br/>192.168.93.80"]
     O_RAC["🔧 EXARACAKL001<br/>HPE iLO5<br/>192.168.93.2"]
-    O_SRV["🗄️ EXASRVAKL001<br/>Windows Server 2022 · Local server<br/>192.168.93.20"]
+    O_SRV["🗄️ EXASVRAKL001<br/>Windows Server 2022 · Local server<br/>192.168.93.20"]
     O_TAB["📱 EXATABAKL001<br/>iPadOS · iPad<br/>192.168.93.60"]
     O_WKS["🖥️ EXAWKSAKL001<br/>Windows 11 · Workstation<br/>192.168.93.40"]
     O_INET --> O_RTR
@@ -96,7 +96,7 @@ graph TD
       RAC["🔧 EXARACAKL001 · HPE iLO5 · .2"]
       PVE["🗂️ EXAPVEAKL001 · Proxmox node 1 · .5"]
       DC["🔴 🗝️ EXADCRAKL001 · DC · Services stopped · .10"]
-      SRV["🗄️ EXASRVAKL001 · WS2022 Local Server · .20"]
+      SRV["🗄️ EXASVRAKL001 · WS2022 Local Server · .20"]
       SBC["🛡️ EXASBCAKL001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYAKL001 · Rudder Relay · .12"]
       WKS["🖥️ EXAWKSAKL001 · Win11 Workstation · .40"]
@@ -152,10 +152,10 @@ graph TD
     T_WAP3["📶 EXAWAPAKL003<br/>Wireless Access Point<br/>192.168.93.86"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2 --> T_WAP3
     T_DCS["🗝️ EXADCSAKL001<br/>DCS 1<br/>192.168.93.10"]
+    T_SVR["🗄️ EXASVRAKL001<br/>Local Server<br/>192.168.93.20"]
     T_SBC["🛡️ EXASBCAKL001<br/>SBC<br/>192.168.93.48"]
     T_FWL["🧱 EXAFWLAKL001<br/>LAN Face<br/>192.168.93.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_SRV["🗄️ EXASRVAKL001<br/>Local Server<br/>192.168.93.20"]
+    T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_WKS["🖥️ EXAWKSAKL001<br/>Workstation<br/>192.168.93.40"]
     T_MBP["💻 EXAMBPAKL001<br/>MacBook Pro<br/>192.168.93.41"]
     T_PHN["📞 EXAPHNAKL001<br/>Phone<br/>No IP Address"]
@@ -164,8 +164,8 @@ graph TD
     T_PRN["🖨️ EXAPRNAKL001<br/>LaserJet Printer<br/>192.168.93.80"]
     T_CAM["🎥 EXACAMAKL001<br/>Camera<br/>192.168.93.82"]
     T_COF["🍵 EXACOFAKL001<br/>Coffee Machine<br/>192.168.93.83"]
-    T_SRV --> T_MBP --> T_TAB --> T_PRN --> T_COF
     T_WKS --> T_PHN --> T_LCD --> T_CAM
+    T_MBP --> T_TAB --> T_PRN --> T_COF
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -179,9 +179,9 @@ graph TD
     style T_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF

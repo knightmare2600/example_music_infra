@@ -47,7 +47,7 @@ graph TD
     O_PHN["📞 EXAPHNSYD001<br/>Android · Phone<br/>No IP Address"]
     O_PRN["🖨️ EXAPRNSYD001<br/>Brother · Laser printer<br/>192.168.29.80"]
     O_RAC["🔧 EXARACSYD001<br/>Dell iDRAC9<br/>192.168.29.2"]
-    O_SRV["🗄️ EXASRVSYD001<br/>Windows Server 2022 · Local infra server<br/>192.168.29.20"]
+    O_SRV["🗄️ EXASVRSYD001<br/>Windows Server 2022 · Local infra server<br/>192.168.29.20"]
     O_TAB["📱 EXATABSYD001<br/>iPadOS · iPad<br/>192.168.29.60"]
     O_WKS["🖥️ EXAWKSSYD001<br/>Windows 11 · Workstation<br/>192.168.29.41"]
     O_INET --> O_RTR
@@ -99,7 +99,7 @@ graph TD
       RAC["🔧 EXARACSYD001 · Dell iDRAC9 · .2"]
       PVE["🗂️ EXAPVESYD001 · Proxmox node 1 · .5"]
       DC["🔴 🗝️ EXADCRSYD001 · DC · Services stopped · .10"]
-      SRV["🗄️ EXASRVSYD001 · WS2022 Local Infra · .20"]
+      SRV["🗄️ EXASVRSYD001 · WS2022 Local Infra · .20"]
       SBC["🛡️ EXASBCSYD001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYSYD001 · Rudder Relay · .12"]
       MBP["💻 EXAMBPSYD001 · MacBook Pro · .40"]
@@ -153,10 +153,10 @@ graph TD
     T_WAP["📶 EXAWAPSYD001<br/>Wireless Access Point<br/>192.168.29.84"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSSYD001<br/>DCS 1<br/>192.168.29.10"]
+    T_SVR["🗄️ EXASVRSYD001<br/>Local Infra Server<br/>192.168.29.20"]
     T_SBC["🛡️ EXASBCSYD001<br/>SBC<br/>192.168.29.48"]
     T_FWL["🧱 EXAFWLSYD001<br/>LAN Face<br/>192.168.29.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_SRV["🗄️ EXASRVSYD001<br/>Local Infra Server<br/>192.168.29.20"]
+    T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_MBP["💻 EXAMBPSYD001<br/>MacBook Pro<br/>192.168.29.40"]
     T_WKS["🖥️ EXAWKSSYD001<br/>Workstation<br/>192.168.29.41"]
     T_PHN["📞 EXAPHNSYD001<br/>Phone<br/>No IP Address"]
@@ -165,8 +165,8 @@ graph TD
     T_PRN["🖨️ EXAPRNSYD001<br/>Laser Printer<br/>192.168.29.80"]
     T_OTH_CAM["🎥 EXACAMSYD001-002<br/>2 x CCTV Cameras<br/>192.168.29.82,85"]
     T_COF["🍵 EXACOFSYD001<br/>Coffee Machine<br/>192.168.29.83"]
-    T_SRV --> T_WKS --> T_TAB --> T_PRN --> T_COF
     T_MBP --> T_PHN --> T_LCD --> T_OTH_CAM
+    T_WKS --> T_TAB --> T_PRN --> T_COF
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -178,9 +178,9 @@ graph TD
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -229,7 +229,7 @@ graph TD
     O_PHN["📞 EXAPHNMEL001<br/>iOS · Phone<br/>No IP Address"]
     O_PRN["🖨️ EXAPRNMEL001<br/>HP · LaserJet printer<br/>192.168.61.80"]
     O_RAC["🔧 EXARACMEL001<br/>HPE iLO5<br/>192.168.61.2"]
-    O_SRV["🗄️ EXASRVMEL001<br/>Windows Server 2022 · Local file and print server<br/>192.168.61.20"]
+    O_SRV["🗄️ EXASVRMEL001<br/>Windows Server 2022 · Local file and print server<br/>192.168.61.20"]
     O_TAB["📱 EXATABMEL001<br/>iPadOS · iPad<br/>192.168.61.60"]
     O_WKS["🖥️ EXAWKSMEL001<br/>Windows 11 · Workstation<br/>192.168.61.41"]
     O_INET --> O_RTR
@@ -277,7 +277,7 @@ graph TD
       RAC["🔧 EXARACMEL001 · HPE iLO5 · .2"]
       PVE["🗂️ EXAPVEMEL001 · Proxmox node 1 · .5"]
       DC["🔴 🗝️ EXADCRMEL001 · DC · Services stopped · .10"]
-      SRV["🗄️ EXASRVMEL001 · WS2022 File/Print · .20"]
+      SRV["🗄️ EXASVRMEL001 · WS2022 File/Print · .20"]
       SBC["🛡️ EXASBCMEL001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYMEL001 · Rudder Relay · .12"]
       MBP["💻 EXAMBPMEL001 · MacBook Pro · .40"]
@@ -330,18 +330,18 @@ graph TD
     T_WAP["📶 EXAWAPMEL001<br/>WAP 1<br/>192.168.61.82"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSMEL001<br/>DCS 1<br/>192.168.61.10"]
+    T_SVR["🗄️ EXASVRMEL001<br/>Local File And Print Server<br/>192.168.61.20"]
     T_SBC["🛡️ EXASBCMEL001<br/>SBC<br/>192.168.61.48"]
     T_FWL["🧱 EXAFWLMEL001<br/>LAN Face<br/>192.168.61.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_SRV["🗄️ EXASRVMEL001<br/>Local File And Print Server<br/>192.168.61.20"]
+    T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_MBP["💻 EXAMBPMEL001<br/>MacBook Pro<br/>192.168.61.40"]
     T_WKS["🖥️ EXAWKSMEL001<br/>Workstation<br/>192.168.61.41"]
     T_PHN["📞 EXAPHNMEL001<br/>Phone<br/>No IP Address"]
     T_TAB["📱 EXATABMEL001<br/>IPad<br/>192.168.61.60"]
     T_LCD["🖼️ EXALCDMEL001<br/>Signage Display<br/>192.168.61.70"]
     T_PRN["🖨️ EXAPRNMEL001<br/>LaserJet Printer<br/>192.168.61.80"]
-    T_SRV --> T_WKS --> T_TAB --> T_PRN
     T_MBP --> T_PHN --> T_LCD
+    T_WKS --> T_TAB --> T_PRN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -353,9 +353,9 @@ graph TD
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
