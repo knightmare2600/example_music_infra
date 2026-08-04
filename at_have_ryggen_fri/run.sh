@@ -200,6 +200,18 @@
 #      real current domain controller) -- caught only by hand while adding
 #      CLD's real switch vendor and manually regenerating to check the
 #      result, nothing in the harness would have caught it otherwise.
+#  32. check_old_network_freshness.py -- render_old_network_block()'s
+#      "Old Network" mermaid block (insert_old_network_into_docs()), the
+#      sibling generator to check 31's "Topology sketch" -- same
+#      regenerate-into-scratch-and-diff technique. Added 2026-08-04:
+#      insert_old_network_into_docs() had existed, fully built, since before
+#      the 2026-07-31 restyling, but was never called from main() -- the
+#      GENERATED:OLDNETWORK marker already in every site's doc implied
+#      freshness that check 31's own predecessor gap (see above) proves
+#      doesn't happen by itself. Real drift had already accumulated by the
+#      time this was noticed and wired in the same day (a workstation
+#      devices.csv had gained, and an edited router note, both missing from
+#      FAL's frozen Old Network box).
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -415,6 +427,10 @@
 #               this check guards the boundary so a future row here can never
 #               silently collide with the live generated inventory again.
 #   2026-08-04  Added check_topology_diagram_freshness.py (section 31).
+#   2026-08-04  Added check_old_network_freshness.py (section 32) -- same day,
+#               same class of gap: insert_old_network_into_docs() was wired
+#               into generate_network_diagrams.py's main() for the first time,
+#               this check keeps it honest going forward.
 #               Robert confirmed CLD's real switch vendor (TP-Link,
 #               48-port); adding it to devices.csv and manually
 #               regenerating docs/network-diagram/ to check the result
@@ -1011,6 +1027,20 @@ else
   echo "$out"
   fail "docs/network-diagram/*.md's Topology sketch block(s) have drifted from sites.csv/devices.csv -- see above."
   FAILED_CHECKS+=("check_topology_diagram_freshness.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 32. Old Network diagram freshness — check_old_network_freshness.py
+# ------------------------------------------------------------------------------
+section "32. Old Network diagram freshness — check_old_network_freshness.py"
+
+if out=$(python3 "${HERE}/check_old_network_freshness.py"); then
+  echo "$out"
+  success "docs/network-diagram/*.md's Old Network blocks are fresh."
+else
+  echo "$out"
+  fail "docs/network-diagram/*.md's Old Network block(s) have drifted from devices.csv/legacy-devices.csv -- see above."
+  FAILED_CHECKS+=("check_old_network_freshness.py")
 fi
 
 # ------------------------------------------------------------------------------

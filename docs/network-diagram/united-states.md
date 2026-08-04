@@ -46,7 +46,7 @@ graph TD
     O_PAY["☎️ EXAPAYLAX001<br/>Payphone<br/>192.168.213.74"]
     O_PHN["📞 EXAPHNLAX001<br/>Android · Phone<br/>No IP Address"]
     O_RAC["🔧 EXARACLAX001<br/>Dell iDRAC9<br/>192.168.213.2"]
-    O_SRV["🗄️ EXASVRLAX001<br/>Rocky Linux 9.x · Local services DB<br/>192.168.213.20"]
+    O_SVR["🗄️ EXASVRLAX001<br/>Rocky Linux 9.x · Local services DB<br/>192.168.213.20"]
     O_TAB["📱 EXATABLAX001<br/>iPadOS · iPad<br/>192.168.213.61"]
     O_MUS["💿 EXAMUSLAX001-003<br/>3 x Jukeboxes<br/>192.168.213.70-72"]
     O_INET --> O_RTR
@@ -58,7 +58,7 @@ graph TD
     O_SWI1 --> O_PHN
     O_SWI1 --> O_RAC
     O_RAC -.->|"manages"| O_DCR
-    O_SWI1 --> O_SRV
+    O_SWI1 --> O_SVR
     O_SWI1 --> O_TAB
     O_SWI1 --> O_MUS
 
@@ -72,7 +72,7 @@ graph TD
     style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_MUS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:OLDNETWORK:LAX:END

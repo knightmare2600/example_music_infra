@@ -1326,6 +1326,18 @@ def main():
     print(f"Topology sketches -- replaced (existing marker or bare block): {len(t_replaced)} {t_replaced}")
     if t_missing:
       print(f"MISSING -- no Topology sketch heading/fence and no existing marker found, skipped: {t_missing}", file=sys.stderr)
+
+    # Wired in 2026-08-04 (Robert's call) -- insert_old_network_into_docs() existed, fully built,
+    # since before this file's 2026-07-31 restyling, but was never called from here. The
+    # GENERATED:OLDNETWORK markers already in docs/network-diagram/*.md implied this ran on every
+    # --write same as the topology sketch below; it didn't, and real drift had already
+    # accumulated (confirmed: FAL's Old Network box was missing a workstation devices.csv had
+    # gained, and a router note added earlier the same day this got wired in).
+    o_inserted, o_replaced, o_missing = insert_old_network_into_docs()
+    print(f"Old Network boxes -- inserted (new): {len(o_inserted)} {o_inserted}")
+    print(f"Old Network boxes -- replaced (existing marker or bare block): {len(o_replaced)} {o_replaced}")
+    if o_missing:
+      print(f"Old Network boxes -- no RTR/old-network data, nothing to render (expected for some sites): {len(o_missing)} {o_missing}")
     return
 
   blocks = generate_all()

@@ -43,7 +43,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRFAL001<br/>Cisco ISR 4331 · WAN edge, router/firewall combo (off FAL's own subnet, Ro...<br/>192.168.1.1"]
+    O_RTR["📡 EXARTRFAL001<br/>Cisco ISR 4331 · WAN edge, router/firewall combo<br/>192.168.1.1"]
     O_SWI1["🔀 EXASWIFAL001<br/>Cisco Catalyst 9300 · Core switch 1<br/>192.168.76.250"]
     O_SWI2["🔀 EXASWIFAL002<br/>Cisco Catalyst 9300 · Core switch 2<br/>192.168.76.251"]
     O_CLK["⏰ EXACLKFAL001<br/>Embedded NTP clock<br/>192.168.76.80"]
@@ -58,8 +58,8 @@ graph TD
     O_PMP["⛽ EXAPMPFAL001<br/>Networked petrol pump<br/>192.168.76.60"]
     O_RAC["🔧 EXARACFAL001<br/>HP iLO<br/>192.168.76.2"]
     O_RDR["🔐 EXARDRFAL001<br/>HID Signo badge reader<br/>192.168.76.16"]
-    O_SRV["🗄️ EXASVRFAL001<br/>Reserved<br/>192.168.76.20"]
     O_SUR["🖊️ EXASURFAL001<br/>Windows 11 23H2 · Microsoft Surface<br/>192.168.76.104"]
+    O_SVR["🗄️ EXASVRFAL001<br/>Reserved<br/>192.168.76.20"]
     O_TAB["📱 EXATABFAL001<br/>Tablet<br/>No IP Address"]
     O_TAR["💽 EXATARFAL001<br/>Solaris Embedded · Legacy tape archive<br/>192.168.76.33"]
     O_TEA["🫖 EXATEAFAL001<br/>Smart coffee machine<br/>192.168.76.61"]
@@ -69,7 +69,7 @@ graph TD
     O_PHN["📞 EXAPHNFAL001-003,006-007<br/>5 x Office Phones<br/>No IP Address"]
     O_VND["🍫 EXAVNDFAL002-005<br/>4 x Vending Machines<br/>192.168.76.63-66"]
     O_WAP["📶 EXAWAPFAL001-006<br/>6 x Wireless Access Points<br/>192.168.76.82-87"]
-    O_WKS["🖥️ EXAWKSFAL001,003<br/>2 x Workstations<br/>192.168.76.100,102"]
+    O_WKS["🖥️ EXAWKSFAL001-003<br/>3 x Workstations<br/>192.168.76.100-102"]
     O_INET --> O_RTR
     O_RTR --> O_SWI1
     O_RTR --> O_SWI2
@@ -86,8 +86,8 @@ graph TD
     O_SWI1 --> O_RAC
     O_RAC -.->|"manages"| O_ESX
     O_SWI1 --> O_RDR
-    O_SWI1 --> O_SRV
     O_SWI1 --> O_SUR
+    O_SWI1 --> O_SVR
     O_SWI1 --> O_TAB
     O_SWI1 --> O_TAR
     O_SWI1 --> O_TEA
@@ -115,8 +115,8 @@ graph TD
     style O_PMP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TAR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TEA fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -652,8 +652,8 @@ graph TD
     O_DCR2["🗝️ EXADCRCLY002<br/>DC Secondary<br/>192.168.41.11"]
     O_PHN["📞 EXAPHNCLY001<br/>iOS · Phone<br/>No IP Address"]
     O_RAC["🔧 EXARACCLY001<br/>HPE iLO5 · no host ever built<br/>192.168.41.2"]
-    O_SRV["🗄️ EXASVRCLY001<br/>Rocky Linux · Oracle DB server<br/>192.168.41.20"]
     O_SUR["🖊️ EXASURCLY001<br/>Windows 11 · Surface<br/>192.168.41.51"]
+    O_SVR["🗄️ EXASVRCLY001<br/>Rocky Linux · Oracle DB server<br/>192.168.41.20"]
     O_TAB["📱 EXATABCLY001<br/>Android · Android tablet<br/>No IP Address"]
     O_INET --> O_RTR
     O_RTR --> O_SWI
@@ -661,8 +661,8 @@ graph TD
     O_SWI --> O_PHN
     O_SWI --> O_RAC
     O_RAC -.->|"manages"| O_DCR1
-    O_SWI --> O_SRV
     O_SWI --> O_SUR
+    O_SWI --> O_SVR
     O_SWI --> O_TAB
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -672,8 +672,8 @@ graph TD
     style O_DCR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:OLDNETWORK:CLY:END
 ```
