@@ -869,6 +869,8 @@
         nodeinfo_city: "{{ rudder_site_city }}"
         nodeinfo_country: "{{ rudder_site_country }}"
         nodeinfo_entity: "{{ rudder_site_entity }}"
+        nodeinfo_street: "{{ rudder_site_street | default('') }}"
+        nodeinfo_postal_code: "{{ rudder_site_postal_code | default('') }}"
         nodeinfo_environment: "{{ rudder_environment | default('production') }}"
         nodeinfo_bootstrapped_by: "rudder_server.yml"
         nodeinfo_extra:

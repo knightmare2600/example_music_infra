@@ -21,6 +21,7 @@
 # Optional vars:
 #   nodeinfo_hostname     default: inventory_hostname
 #   nodeinfo_city/country/entity   default: '' (site not found in sites.csv)
+#   nodeinfo_street/postal_code    default: '' (site not found, or sites.csv column blank)
 #   nodeinfo_environment  default: 'production'
 #   nodeinfo_extra        default: {} — role-specific fields, merged in last
 #                         so they can override a base field if a caller ever
@@ -43,6 +44,10 @@
 #               rather than fatal (nothing in the same run reads the file
 #               back), but still means nodeinfo.json silently doesn't get
 #               written on a --tags-filtered run that omits "always".
+#   2026-08-04  street/postal_code added -- same sites.csv lookup every caller already
+#               does for city/country/entity, just two more columns (Robert's site-address
+#               rollout). Windows gets the equivalent via Salt custom grains instead of a
+#               second nodeinfo.json (salt/states/grains/init.sls), not duplicated here.
 # =============================================================================
 
 - name: "Write /etc/example-music/nodeinfo.json"
@@ -62,6 +67,8 @@
           'city':             nodeinfo_city | default(''),
           'country':          nodeinfo_country | default(''),
           'entity':           nodeinfo_entity | default(''),
+          'street':           nodeinfo_street | default(''),
+          'postal_code':      nodeinfo_postal_code | default(''),
           'ansible_managed':  true,
           'bootstrapped_at':  ansible_date_time.iso8601,
           'bootstrapped_by':  nodeinfo_bootstrapped_by,

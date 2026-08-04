@@ -108,6 +108,8 @@
         nodeinfo_city: "{{ pve_city | default('') }}"
         nodeinfo_country: "{{ pve_country | default('') }}"
         nodeinfo_entity: "{{ pve_entity | default('') }}"
+        nodeinfo_street: "{{ pve_street | default('') }}"
+        nodeinfo_postal_code: "{{ pve_postal_code | default('') }}"
         nodeinfo_environment: "{{ pve_environment | default('production') }}"
         nodeinfo_bootstrapped_by: "proxmox/site.yml"
         nodeinfo_extra:
