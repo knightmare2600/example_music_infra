@@ -306,7 +306,7 @@ ip_in_use() {
 echo
 echo -e "${CYAN}╔══════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║      Example Music: BIND9 DNS Server Setup           ║${NC}"
-echo -e "${CYAN}║      EXASRVCLD001  --  ${EXA_DOMAIN}              ║${NC}"
+echo -e "${CYAN}║      EXADNSVRK001  --  ${EXA_DOMAIN}              ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════════════╝${NC}"
 echo
 echo -e "${YELLOW}  Running on hostname: ${GREEN}$(hostname)${NC}"
@@ -730,7 +730,7 @@ if [[ "${CURRENT_HOSTNAME}" =~ ^[Ee][Xx][Aa] ]]; then
   info "Detected EXA-convention hostname: ${SUGGESTED_HOSTNAME}"
 else
   # Default suggestion for the DNS server role
-  SUGGESTED_HOSTNAME="EXASRVCLD001"
+  SUGGESTED_HOSTNAME="EXADNSVRK001"
   warn "Current hostname '${CURRENT_HOSTNAME}' does not match EXA* convention."
 fi
 

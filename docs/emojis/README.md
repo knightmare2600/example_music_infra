@@ -70,8 +70,8 @@ diagram change in this repo.
 |---|---|---|---|
 | DCS | 🗝️ | Domain controller (current naming) | |
 | DCR | 🗝️ | Domain controller (legacy naming) | Same symbol as DCS — same role |
-| SVR | 🗄️ | Generic server | |
-| SRV | 🗄️ | Generic server | Same symbol as SVR |
+| SVR | 🗄️ | Generic server (current naming) | |
+| SRV | 🗄️ | Generic server (legacy naming) | Same symbol as SVR — same role. Corrected 2026-08-04, direction had flip-flopped twice before |
 | PVE | 🗂️ | Proxmox hypervisor node | Layered/stacked feel, deliberately distinct from a generic server |
 | ESX | 💾 | VMware ESXi hypervisor (legacy) | Added 2026-07-31 for old-network diagram restyling — found live at FAL (single HP ML310e host), not `PVE` as the original hand-written box wrongly assumed. No VMware logo usable (trademarked, same rule as Cisco/AT&T/Atari elsewhere in this legend) — generic floppy disk, Robert's call, deliberately distinct from `PVE`'s 🗂️ |
 | VCT | 🛰️ | VMware vCenter (legacy cluster management) | Added 2026-07-31 — found live at ODE, the real 3-node ESXi cluster's central management console. No VMware logo usable, same rule as `ESX` above — satellite dish (a central controller directing distributed hosts) |

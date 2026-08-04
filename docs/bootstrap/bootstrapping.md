@@ -1318,7 +1318,7 @@ The `lvm.seed` preseed file drives a fully automated Debian installation with:
 - GRUB installed to `/dev/sda`
 - On completion, fetches and runs `late_command.sh` from the provisioning server
 
-The hostname is **not** set by the preseed — the installer will prompt for it. This is intentional: it ensures each machine gets its correct EXA-convention name rather than a generic placeholder. To supply a hostname without a prompt (for fully automated deploys), add `netcfg/get_hostname=EXASRVXXX001` to the kernel command line in the iPXE menu entry.
+The hostname is **not** set by the preseed — the installer will prompt for it. This is intentional: it ensures each machine gets its correct EXA-convention name rather than a generic placeholder. To supply a hostname without a prompt (for fully automated deploys), add `netcfg/get_hostname=EXASVRXXX001` to the kernel command line in the iPXE menu entry.
 
 ### 7.2 late_command.sh
 

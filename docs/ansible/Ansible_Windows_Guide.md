@@ -138,7 +138,7 @@ Ansible inventory maps hosts to groups. The Windows playbooks use four groups, o
 # configs/inventory/mcr.ini (illustrative — actual per-site files are cld.ini/fal.ini/liv.ini)
 
 [windows_server]
-EXASRVMCR001  ansible_host=192.168.161.20
+EXASVRMCR001  ansible_host=192.168.161.20
 EXADCSMCR001  ansible_host=192.168.161.10
 
 [windows_desktop]
@@ -584,7 +584,7 @@ ansible@EXAANSCLD001:~> ansible -i configs/inventory EXAWKSMCR001 \
   -a "src=/home/ansible/tool.exe dest=C:\\Windows\\tool.exe"
 
 # Restart a service
-ansible@EXAANSCLD001:~> ansible -i configs/inventory EXASRVMCR001 \
+ansible@EXAANSCLD001:~> ansible -i configs/inventory EXASVRMCR001 \
   -m ansible.windows.win_service \
   -a "name=spooler state=restarted"
 ```

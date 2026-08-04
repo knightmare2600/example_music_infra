@@ -46,7 +46,7 @@ graph TD
     O_PAY["☎️ EXAPAYLAX001<br/>Payphone<br/>192.168.213.74"]
     O_PHN["📞 EXAPHNLAX001<br/>Android · Phone<br/>No IP Address"]
     O_RAC["🔧 EXARACLAX001<br/>Dell iDRAC9<br/>192.168.213.2"]
-    O_SRV["🗄️ EXASRVLAX001<br/>Rocky Linux 9.x · Local services DB<br/>192.168.213.20"]
+    O_SRV["🗄️ EXASVRLAX001<br/>Rocky Linux 9.x · Local services DB<br/>192.168.213.20"]
     O_TAB["📱 EXATABLAX001<br/>iPadOS · iPad<br/>192.168.213.61"]
     O_MUS["💿 EXAMUSLAX001-003<br/>3 x Jukeboxes<br/>192.168.213.70-72"]
     O_INET --> O_RTR
@@ -92,7 +92,7 @@ graph TD
       RAC["🔧 EXARACLAX001 · Dell iDRAC9 · .2"]
       PVE["🗂️ EXAPVELAX001 · Proxmox node 1 · .5"]
       DC["🔴 🗝️ EXADCRLAX001 · DC · Services stopped · .10"]
-      SRV["🗄️ EXASRVLAX001 · Rocky Linux · Local services/DB · .20"]
+      SRV["🗄️ EXASVRLAX001 · Rocky Linux · Local services/DB · .20"]
       SBC["🛡️ EXASBCLAX001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYLAX001 · Rudder Relay · .12"]
       MBP["💻 EXAMBPLAX001 · MacBook Pro · .41"]
@@ -152,18 +152,18 @@ graph TD
     T_WAP3["📶 EXAWAPLAX003<br/>Wireless Access Point<br/>192.168.213.84"]
     T_SWI2 --> T_NAS --> T_RDR --> T_MUS --> T_MUS2 --> T_MUS3 --> T_WAP --> T_WAP2 --> T_WAP3
     T_DCS["🗝️ EXADCSLAX001<br/>DCS 1<br/>192.168.213.10"]
+    T_SVR["🗄️ EXASVRLAX001<br/>Local Services DB<br/>192.168.213.20"]
     T_SBC["🛡️ EXASBCLAX001<br/>SBC<br/>192.168.213.48"]
     T_FWL["🧱 EXAFWLLAX001<br/>LAN Face<br/>192.168.213.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_SRV["🗄️ EXASRVLAX001<br/>Local Services DB<br/>192.168.213.20"]
+    T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_AST["🕹️ EXAASTLAX001<br/>Atari ST<br/>192.168.213.73"]
     T_PAY["☎️ EXAPAYLAX001<br/>Payphone<br/>192.168.213.74"]
     T_LCD["🖼️ EXALCDLAX001<br/>Status Wallboard<br/>192.168.213.75"]
     T_MBP["💻 EXAMBPLAX001<br/>MacBook Pro<br/>192.168.213.41"]
     T_TAB["📱 EXATABLAX001<br/>IPad<br/>192.168.213.61"]
     T_PHN["📞 EXAPHNLAX001<br/>Phone<br/>No IP Address"]
-    T_SRV --> T_PAY --> T_MBP --> T_PHN
     T_AST --> T_LCD --> T_TAB
+    T_PAY --> T_MBP --> T_PHN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -180,9 +180,9 @@ graph TD
     style T_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_AST fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF

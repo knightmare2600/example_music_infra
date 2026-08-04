@@ -4,6 +4,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-04 | Role/site codes table corrected — `SRV`/`SVR` had drifted from this doc's own 2026-03-03 entry below (a 2026-07-11 fix, commit `b00b376`, flipped the direction without updating this table; Robert then confirmed the final direction 2026-08-04). Current: `SVR` general purpose/current, `SRV` legacy — the 2026-03-03 row below is left as originally written, not edited, per this doc's own history-is-never-deleted convention |
 | 2026-03-01 | Initial document — create-vm.py reference, role/site codes, hardware defaults, networking |
 | 2026-03-03 | BRD renamed to BER, TOR added (192.168.146.0/24) |
 | 2026-03-03 | Role codes: added AST, DCS, DRM→LIN, FCL, IOT, LIN, MIC, MID, NAS, OBS, PAY, PVE, RAD, SMP→FCL, SYN; removed DRM/SMP |
@@ -153,9 +154,9 @@ The script:
 | `RDR` | Card Reader / Badge Reader |
 | `RTR` | Router |
 | `SBC` | Session Border Controller |
-| `SRV` | Server (General Purpose — Windows) |
+| `SRV` | Server (Legacy) |
 | `SUR` | Microsoft Surface Device |
-| `SVR` | Server (Legacy / Non-Proxmox) |
+| `SVR` | Server (General Purpose — Windows) |
 | `SWI` | Network Switch |
 | `SYN` | Synthesizer (e.g. Moog) |
 | `TAB` | Tablet |
@@ -309,7 +310,7 @@ Every VM creation (and dry run) is appended to the log file (default: `~/pve-vm-
 
 ```
 2026-03-01T10:23:45Z  VMID=1001  NAME=EXAFWLFAL001  NODE=EXAPVEFAL001  OS=other  CPU=2c  RAM=2048MB  DISK=20GB@local-zfs  CONSOLE=serial  NICS=[net0=vmbr0; net1=vmbr1(VLAN76)]
-2026-03-01T10:31:12Z  [DRY-RUN] VMID=1002  NAME=EXASRVFAL001  NODE=EXAPVEFAL001  OS=l26  CPU=4c  RAM=4096MB  DISK=60GB@local-zfs  CONSOLE=vga  NICS=[net0=vmbr1(VLAN76)]
+2026-03-01T10:31:12Z  [DRY-RUN] VMID=1002  NAME=EXASVRFAL001  NODE=EXAPVEFAL001  OS=l26  CPU=4c  RAM=4096MB  DISK=60GB@local-zfs  CONSOLE=vga  NICS=[net0=vmbr1(VLAN76)]
 ```
 
 Specify a custom log path with `--log /path/to/logfile.log`.

@@ -41,7 +41,7 @@
     fail_msg: >
       Hostname '{{ target_hostname | default(ansible_hostname | default(inventory_hostname)) }}'
       does not match EXA[ROLE][SITE][NNN] convention.
-      Examples: EXAWKSGLA001, EXASRVCLD002, EXALAPCPH003.
+      Examples: EXAWKSGLA001, EXASVRCLD002, EXALAPCPH003.
     success_msg: "Hostname valid: role={{ host_role }} site={{ host_site }} num={{ host_num }}"
 
 - name: Debug — hostname facts

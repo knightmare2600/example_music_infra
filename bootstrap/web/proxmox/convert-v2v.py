@@ -25,6 +25,15 @@ Supports three execution modes (auto-detected):
       Script offers to switch to this if virt-v2v is missing locally.
 
 Changelog:
+    2026-08-04  Role guesser default corrected SRV -> SVR (Robert's call, after
+                repo history showed the two role codes' legacy/current direction
+                had been flip-flopped at least once already): the "SRV\b|SERVER\b"
+                keyword match and both guest-OS-fallback defaults now return SVR,
+                matching devices.csv/ad_computers.json/role_codes.csv. SRV is kept
+                as a recognised code (priority-1 EXA-naming extraction still returns
+                it verbatim for any source machine already named EXASRV*) but is no
+                longer a guess target. Also added missing SVR to SERVER_ROLES
+                (BMC/IPMI emulation suggestion) -- SRV was there, SVR wasn't.
     2026-03-22  Serial console guest OS advisory added -- after import, prints
                 tailored steps for Linux (GRUB+getty) or Windows (bcdedit+EMS/SAC).
                 Only shown when serial console is selected. print_serial_advisory().
@@ -990,7 +999,7 @@ def select_role(suggested=None):
         info(f"Suggested role based on VMX guest OS: {C.W}{suggested}{C.NC}")
     def validate_role(v):
         return True if v.upper() in ROLE_CODES else "Unknown role code."
-    role = prompt("Role code (e.g. FWL, NIX, SRV)", default=suggested, validator=validate_role)
+    role = prompt("Role code (e.g. FWL, NIX, SVR)", default=suggested, validator=validate_role)
     return role.upper()
 
 def select_site(suggested=None):
@@ -1017,7 +1026,7 @@ def guess_role_from_vmx(hw):
     1. EXA naming convention EXARRRSSS### - extract RRR directly (authoritative)
     2. Word-boundary keyword matching on display name
     3. Guest OS fallback
-    4. Default: SRV
+    4. Default: SVR
     """
     name  = hw["display_name"].upper().strip()
     guest = hw["guest_os_raw"].lower()
@@ -1042,7 +1051,7 @@ def guess_role_from_vmx(hw):
         (r"\bWAP\b",                          "WAP"),
         (r"\bSWI\b|\bSWITCH\b",            "SWI"),
         (r"\bNIX\b|\bLINUX\b",             "NIX"),
-        (r"\bSRV\b|\bSERVER\b",            "SRV"),
+        (r"\bSRV\b|\bSERVER\b",            "SVR"),
     ]
     for pattern, role in keyword_map:
         if _re.search(pattern, name):
@@ -1053,9 +1062,9 @@ def guess_role_from_vmx(hw):
             or "centos" in guest or "rocky" in guest or "alma" in guest:
         return "NIX"
     if "windows" in guest or "win" in guest:
-        return "SRV"
+        return "SVR"
 
-    return "SRV"
+    return "SVR"
 
 
 def guess_site_from_vmx(hw, vmx_path):
@@ -1485,7 +1494,7 @@ def select_bmc_v2v(role, hw):
     print()
 
     # Suggest yes for server roles that would have had physical BMCs
-    SERVER_ROLES = {"DCS", "SRV", "APP", "FSR", "SQL", "WEB", "MON", "ANS"}
+    SERVER_ROLES = {"DCS", "SRV", "SVR", "APP", "FSR", "SQL", "WEB", "MON", "ANS"}
     suggested = role.upper() in SERVER_ROLES
     default   = "y" if suggested else "n"
 

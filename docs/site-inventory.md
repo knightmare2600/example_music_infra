@@ -250,7 +250,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXANASFAL001` — installed 2026-07-26 (bare metal, TrueNAS SCALE) at the standard `.19` slot, replacing the retired legacy FreeNAS box (was `192.168.76.32`) — Ansible onboarding in progress, not yet complete
 - [ ] `EXATARFAL001` — Tape archiver (`192.168.76.33`) · Solaris Embedded
 - [ ] `EXAFWLFAL002` — Firewall secondary (`192.168.76.254`)
-- [ ] `EXASRVFAL001` — Reserved — standard convention slot (`192.168.76.20`)
+- [ ] `EXASVRFAL001` — Reserved — standard convention slot (`192.168.76.20`)
 - [ ] `EXASWIFAL003` — Switch 3 (`192.168.76.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool `.100`–`.249` confirmed active
@@ -397,7 +397,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAFWLCLY001` — Firewall (`192.168.41.253`) · FortiOS 7.6.5
 - [ ] `EXADCSCLY001` — DC primary (`192.168.41.10`)
 - [ ] `EXADCSCLY002` — DC secondary (`192.168.41.11`)
-- [ ] `EXASRVCLY001` — Rocky Linux server (`192.168.41.20`) · Oracle DB
+- [ ] `EXASVRCLY001` — Rocky Linux server (`192.168.41.20`) · Oracle DB
 - [ ] `EXASBCCLY001` — VOIP SBC (`192.168.41.48`) · trunks to `EXAPBXCLD001`
 - [ ] `EXAFWLCLY002` — Firewall secondary (`192.168.41.254`)
 - [ ] `EXANASCLY001` — Storage (NAS/SAN) — standard NAS slot (`192.168.41.19`)
@@ -603,7 +603,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAFWLBIR001` — Firewall (`192.168.121.253`) · Palo Alto PAN-OS
 - [ ] `EXADCSBIR001` — DC primary (`192.168.121.10`)
 - [ ] `EXADCSBIR002` — DC secondary (`192.168.121.11`)
-- [ ] `EXASRVBIR001` — Rocky Linux server (`192.168.121.20`) · Oracle DB
+- [ ] `EXASVRBIR001` — Rocky Linux server (`192.168.121.20`) · Oracle DB
 - [ ] `EXASBCBIR001` — VOIP SBC (`192.168.121.48`) · trunks to `EXAPBXCLD001`
 - [ ] `EXAFWLBIR002` — Firewall secondary (`192.168.121.254`)
 - [ ] `EXANASBIR001` — Storage (NAS/SAN) — standard NAS slot (`192.168.121.19`)
@@ -745,7 +745,7 @@ kept as reference code only, not a build-checklist item.
 
 ### Endpoints Checklist
 - [ ] WAPs `EXAWAPNEW001` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
-- [ ] `EXASRVNEW001` — WS2022 file/print server
+- [ ] `EXASVRNEW001` — WS2022 file/print server
 - [ ] `EXAWKSNEW099` — Win11 workstation ⚠️ LAPS expired
 
 ### Site-Specific Equipment
@@ -1159,7 +1159,7 @@ kept as reference code only, not a build-checklist item.
 | EXAPVEBER001 | rpool | mirror-0 | sda3 | sdb3 | | [ ] | [ ] |
 
 ### Endpoints Checklist
-- [ ] `EXASRVBER001` — WS2019 legacy app server
+- [ ] `EXASVRBER001` — WS2019 legacy app server
 - [ ] `EXANIXBER001` — Debian 12 server
 
 ### Site-Specific Equipment
@@ -1545,7 +1545,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAPVELAX001` — Proxmox node 1 (`192.168.213.5`) · ZFS RAID1
 - [ ] `EXAFWLLAX001` — Firewall (`192.168.213.253`) · Palo Alto PAN-OS 10.x
 - [ ] `EXADCSLAX001` — DC (`192.168.213.10`) ⚠️ Services stopped
-- [ ] `EXASRVLAX001` — Rocky Linux server (`192.168.213.20`) · local services/DB
+- [ ] `EXASVRLAX001` — Rocky Linux server (`192.168.213.20`) · local services/DB
 - [ ] `EXASBCLAX001` — VOIP SBC (`192.168.213.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPLAX001`, `EXAWAPLAX002`, `EXAWAPLAX003` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAASTLAX001` — Atari ST (`192.168.213.73`)
@@ -1777,7 +1777,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAPVESYD001` — Proxmox node 1 (`192.168.29.5`) · ZFS RAID1
 - [ ] `EXAFWLSYD001` — Firewall (`192.168.29.253`) · FortiGate 7.x
 - [ ] `EXADCSSYD001` — DC (`192.168.29.10`) ⚠️ Services stopped
-- [ ] `EXASRVSYD001` — WS2022 server (`192.168.29.20`) · local infra
+- [ ] `EXASVRSYD001` — WS2022 server (`192.168.29.20`) · local infra
 - [ ] `EXASBCSYD001` — VOIP SBC (`192.168.29.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAP `EXAWAPSYD001` — Ubiquiti UniFi
 - [ ] `EXAFWLSYD002` — Firewall secondary (`192.168.29.254`)
@@ -1822,7 +1822,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAPVEMEL001` — Proxmox node 1 (`192.168.61.5`) · ZFS RAID1
 - [ ] `EXAFWLMEL001` — Firewall (`192.168.61.253`) · FortiGate 7.x
 - [ ] `EXADCSMEL001` — DC (`192.168.61.10`) ⚠️ Services stopped
-- [ ] `EXASRVMEL001` — WS2022 server (`192.168.61.20`) · local file/print
+- [ ] `EXASVRMEL001` — WS2022 server (`192.168.61.20`) · local file/print
 - [ ] `EXASBCMEL001` — VOIP SBC (`192.168.61.48`) · trunks to `EXAPBXCLD001`
 - [ ] `EXAFWLMEL002` — Firewall secondary (`192.168.61.254`)
 - [ ] `EXARDRMEL001` — Badge reader — standard RDR slot (`192.168.61.21`)
@@ -1871,7 +1871,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAPVEAKL001` — Proxmox node 1 (`192.168.93.5`) · ZFS RAID1
 - [ ] `EXAFWLAKL001` — Firewall (`192.168.93.253`) · FortiGate 7.x
 - [ ] `EXADCSAKL001` — DC (`192.168.93.10`) ⚠️ Services stopped
-- [ ] `EXASRVAKL001` — WS2022 server (`192.168.93.20`) · local server
+- [ ] `EXASVRAKL001` — WS2022 server (`192.168.93.20`) · local server
 - [ ] `EXASBCAKL001` — VOIP SBC (`192.168.93.48`) · trunks to `EXAPBXCLD001`
 - [ ] WAPs `EXAWAPAKL001`, `EXAWAPAKL002`, `EXAWAPAKL003` — Ubiquiti UniFi — static, `.82`–`.94` range (see Standard IP Convention)
 - [ ] `EXAFWLAKL002` — Firewall secondary (`192.168.93.254`)

@@ -75,7 +75,7 @@ KNOWN_HOSTNAME_EXCEPTIONS = {
     # written differently) used in a generic PowerShell/kernel-cmdline example,
     # not a claim that XXX is a real site.
     ("docs/active-directory/ExampleMusic_UPN_DNS_dnsmasq_Procedure.md", "EXADCSXXX001"),
-    ("docs/bootstrap/bootstrapping.md", "EXASRVXXX001"),
+    ("docs/bootstrap/bootstrapping.md", "EXASVRXXX001"),
     # A deliberately non-EXA-convention example hostname (illustrating a
     # pre-existing/legacy machine being adopted into Ansible, not a site-named
     # one) -- its IP (192.168.161.99) is genuinely on MCR's subnet, "OLD" is
