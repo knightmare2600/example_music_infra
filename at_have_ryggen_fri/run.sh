@@ -212,6 +212,15 @@
 #      time this was noticed and wired in the same day (a workstation
 #      devices.csv had gained, and an edited router note, both missing from
 #      FAL's frozen Old Network box).
+#  33. check_gitleaks.py -- scans the full git history for secrets via
+#      gitleaks (github.com/gitleaks/gitleaks). Robert's ask, 2026-08-04:
+#      hook gitleaks into the harness itself, not just a pre-push hook.
+#      Found live: there was no pre-push hook either -- docs/gitleaks_guide.md
+#      was a manual how-to reference, gitleaks was never actually wired into
+#      anything in this repo. Host-local-tool pattern (informational if
+#      gitleaks isn't installed, --strict fails on that) -- but a genuine
+#      finding is ALWAYS a hard failure regardless of --strict, there's no
+#      "soft" leaked credential. Uses .gitleaks.toml's allowlist (repo root).
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -442,6 +451,13 @@
 #               pre-rename EXADCR<SITE>001 hostname mislabeled as "DCS 1",
 #               left over from this session's earlier DCS->DCR rename work
 #               with nothing re-running the generator afterward.
+#   2026-08-04  Added check_gitleaks.py (section 33) -- Robert's ask, hook
+#               gitleaks into the harness, not just a pre-push hook. Found
+#               live: there was no pre-push hook either, gitleaks was never
+#               actually wired into anything despite docs/gitleaks_guide.md
+#               existing as a manual how-to. New .gitleaks.toml allowlist,
+#               conservative (checked-safe paths only, not a broad docs/ or
+#               benarbejde/ exclusion).
 # ==============================================================================
 set -uo pipefail
 
@@ -1041,6 +1057,26 @@ else
   echo "$out"
   fail "docs/network-diagram/*.md's Old Network block(s) have drifted from devices.csv/legacy-devices.csv -- see above."
   FAILED_CHECKS+=("check_old_network_freshness.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 33. Secret scanning — check_gitleaks.py
+# ------------------------------------------------------------------------------
+section "33. Secret scanning — check_gitleaks.py"
+
+gitleaks_args=()
+$STRICT && gitleaks_args+=("--strict")
+if out=$(python3 "${HERE}/check_gitleaks.py" "${gitleaks_args[@]}"); then
+  echo "$out"
+  success "No secrets found (or gitleaks isn't installed on this host, informational only)."
+else
+  echo "$out"
+  if echo "$out" | grep -q "potential secret(s) found"; then
+    fail "gitleaks found real finding(s) -- see above. This is ALWAYS a hard failure, regardless of --strict."
+  else
+    fail "gitleaks is not installed on this host -- failing because --strict was passed."
+  fi
+  FAILED_CHECKS+=("check_gitleaks.py")
 fi
 
 # ------------------------------------------------------------------------------
