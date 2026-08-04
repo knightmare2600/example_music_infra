@@ -1,0 +1,9 @@
+# requirements.yml
+# Install with: ansible-galaxy collection install -r requirements.yml
+#
+# Provides community.general.npm, used by meshcentral_server.yml's Section 6
+# (installing/updating MeshCentral itself).
+
+collections:
+  - name: community.general
+    version: ">=8.0.0"
