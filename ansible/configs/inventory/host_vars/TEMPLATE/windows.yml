@@ -39,18 +39,17 @@ win_domain_join_password: !vault |
   <replace with encrypted value>
 
 # ----------------------------------------------------------------------------
-# NODE INFO — written to C:\ProgramData\example-music\nodeinfo.json
-# These enrich the node info file beyond what can be auto-detected.
-# All optional — omit to leave the field empty in the JSON.
+# NODE INFO — this section previously documented win_entity/win_city/
+# win_country/win_environment vars said to enrich a
+# C:\ProgramData\example-music\nodeinfo.json / environment.txt on this host.
+# Removed 2026-08-04: none of the four were ever actually read by any task in
+# windows_bootstrap/ -- confirmed by grep, no writer for either file exists.
+# Vapourware from before Salt was in scope for Windows endpoints. Per Robert's
+# call, per-node metadata (city/country/entity/street/postal_code) on Windows
+# now comes from Salt custom grains instead (salt/states/grains/init.sls,
+# sourced from sites.csv via the same pattern nodeinfo.json uses on Linux) --
+# no host_vars override needed, it's automatic from the minion's own hostname.
 # ----------------------------------------------------------------------------
-# win_entity:  "Example Music (Scotland) Ltd"
-# win_city:    "Falkirk"
-# win_country: "Scotland"
-
-# Environment — production (default), staging, or development.
-# If omitted the playbook prompts once and writes
-# C:\ProgramData\example-music\environment.txt for future runs.
-# win_environment: production
 
 # ----------------------------------------------------------------------------
 # OPTIONAL OVERRIDES
