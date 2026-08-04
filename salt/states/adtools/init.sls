@@ -1,8 +1,10 @@
 ## salt/states/adtools/init.sls
-## Example Music Limited — PS-easyIT AD/Exchange admin tool suite deployment
+## Example Music Limited — PowerShell admin tool suite deployment (PS-easyIT +
+## console-pwsh)
 ##
-## Deploys a set of standalone PowerShell/WPF GUI admin tools (github.com/PS-easyIT,
-## NOT the easyDNS domain registrar -- see project notes) into C:\ADTools\<tool>\ on
+## Deploys a set of standalone PowerShell admin tools (github.com/PS-easyIT, NOT the
+## easyDNS domain registrar -- see project notes; plus github.com/satorisage/
+## console-pwsh) into C:\ADTools\<tool>\ on
 ## whichever Windows minion(s) this state is targeted at. Robert's own framing: not a
 ## replacement for Ansible/Salt driving these tasks directly -- these are ready-to-use
 ## GUI tools for when a junior admin isn't confident with raw PowerShell yet.
@@ -13,14 +15,17 @@
 ##   salt 'EXADCS*' state.apply adtools
 ##   salt -G 'nodetype:DCS' state.apply adtools   (once/if an equivalent grain exists)
 ##
-## Each tool is a single (or paired) .ps1 WPF GUI script with no installer/package
-## manager -- confirmed 2026-08-04 by checking every repo's own README before writing
-## this (easyDNS, easyADPW, easyADGroups, easyFolder, easyEXO,
-## easyEXCH-ProxyMailAddresses). Downloaded straight from GitHub's own archive zip
-## (no local file_roots staging needed) via archive.extracted, same module
-## bespoke_app_install/ already uses in this repo -- enforce_toplevel (default True)
-## strips the repo-main/ wrapper folder GitHub zips always have, so the tool's real
-## files land directly in C:\ADTools\<tool>\, not one level too deep.
+## Each tool is a single (or paired) script with no installer/package manager --
+## confirmed 2026-08-04 by checking every repo's own README before writing this
+## (easyDNS, easyADPW, easyADGroups, easyFolder, easyEXO,
+## easyEXCH-ProxyMailAddresses -- all standalone .ps1 WPF GUI scripts; console-pwsh,
+## added same day, is a pwsh 7+ menu/console tool instead -- "MSP Console",
+## Exchange Online/Entra ID/Azure admin, github.com/satorisage/console-pwsh, entry
+## point Start-MSPConsole.ps1, not WPF). Downloaded straight from GitHub's own
+## archive zip (no local file_roots staging needed) via archive.extracted, same
+## module bespoke_app_install/ already uses in this repo -- enforce_toplevel
+## (default True) strips the repo-main/ wrapper folder GitHub zips always have, so
+## each tool's real files land directly in C:\ADTools\<tool>\, not one level too deep.
 ##
 ## PowerShell_Certificate (PS-easyIT's own CERTUM code-signing cert, which easyEXO at
 ## least pulls in at startup) is deliberately EXCLUDED from this list -- Robert's call,
@@ -62,12 +67,13 @@ adtools_base_dir:
   'easyFolder':                    'https://github.com/PS-easyIT/easyFolder/archive/refs/heads/main.zip',
   'easyEXO':                       'https://github.com/PS-easyIT/easyEXO/archive/refs/heads/main.zip',
   'easyEXCH-ProxyMailAddresses':   'https://github.com/PS-easyIT/easyEXCH-ProxyMailAddresses/archive/refs/heads/main.zip',
+  'console-pwsh':                  'https://github.com/satorisage/console-pwsh/archive/refs/heads/main.zip',
 } %}
-## All six confirmed default_branch=main via the GitHub API 2026-08-04 (checked
-## easyDNS/easyFolder/easyEXCH-ProxyMailAddresses directly, assumed consistent org-wide
-## for the rest -- if a future tool in this list ever uses a different default branch,
-## this URL will 404 and the archive.extracted state below will fail loudly, not
-## silently deploy nothing).
+## All seven confirmed default_branch=main via the GitHub API 2026-08-04 (checked
+## easyDNS/easyFolder/easyEXCH-ProxyMailAddresses/console-pwsh directly, assumed
+## consistent org-wide for the rest of PS-easyIT -- if a future tool in this list
+## ever uses a different default branch, this URL will 404 and the
+## archive.extracted state below will fail loudly, not silently deploy nothing).
 
 {%- for tool, url in adtools.items() %}
 adtools_{{ tool }}:
