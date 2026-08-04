@@ -1147,10 +1147,6 @@ win_domain_join_user: Administrator
 win_domain_join_password: !vault |
   $ANSIBLE_VAULT;1.1;AES256
   <replace — see below>
-
-win_entity:  "Example Music A/S"
-win_city:    "Liverpool"
-win_country: "England"
 ```
 
 There's no `win_domain`/`win_ou_path` to set — every host joins the single forest domain
@@ -1205,7 +1201,10 @@ ansible-playbook -i configs/inventory \
 5. Installs Chocolatey and standard tooling
 6. Applies registry hardening, wallpaper, hibernation policy
 7. Domain-joins to `jukebox.internal` under `OU=Domain Controllers,OU=LIV`, reboots
-8. Writes `C:\ProgramData\example-music\nodeinfo.json` (`ansible_managed: true`)
+8. Installs the Salt minion (`82-salt-minion.yml`) — per-site metadata (city/country/entity/
+   street/postal_code) arrives later via Salt custom grains once a state.apply run applies
+   `salt/states/grains/`, not during this bootstrap sequence itself (grains rollout is
+   deferred, see that playbook's own changelog)
 
 The node is now domain-joined but still a plain member server.
 
