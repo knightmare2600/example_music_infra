@@ -1,0 +1,46 @@
+# =============================================================================
+# .gitleaks.toml
+# Example Music Limited — gitleaks allowlist
+# =============================================================================
+# Deliberately conservative -- only excludes paths/patterns CONFIRMED safe
+# (checked, not guessed) before this file was written, 2026-08-04. Nothing
+# here excludes docs/ or benarbejde/ wholesale; a broad exclusion would risk
+# masking a genuine leak in either directory. See at_have_ryggen_fri/
+# check_gitleaks.py (section 33) for how this gets used, and
+# docs/gitleaks_guide.md for the general gitleaks how-to this repo already
+# had (a manual reference guide, not previously wired into anything).
+#
+# First real run against actual gitleaks (not done here -- gitleaks isn't
+# installed in this environment) will likely surface more false positives
+# than this file currently excludes. Add them here (whole paths/patterns) or
+# to .gitleaksignore (single findings, via the fingerprint gitleaks' own JSON
+# report gives you) as they come up -- don't guess ahead of a real finding.
+# =============================================================================
+
+[[allowlists]]
+description = "Confirmed-fictional/placeholder content, checked before excluding"
+paths = [
+  # Deliberately fake SSH key -- literal inline warning: "Aye right! Put your
+  # own SSH key in here AND EXCLUDE IT FROM THE REPO!!" -- checked the file
+  # content directly before adding this, not assumed from the path name.
+  '''sanitized/ansible_ssh_id_rsa''',
+
+  # Fictional AD export data for this repo's teaching-lab estate (jukebox.internal)
+  # -- MSLAPS-Password/similar fields are synthetic per-device fake values, not
+  # real credentials. See benarbejde/parse_tdf.py's own header for what these are.
+  '''benarbejde/jukebox\.example\.tdf''',
+  '''benarbejde/ad_users\.json''',
+  '''benarbejde/ad_groups\.json''',
+  '''benarbejde/ad_computers\.json''',
+
+  # .env.example -- template with placeholder values by convention, not a real .env
+  # (the real .env pattern is already gitignored, this is the checked-in template).
+  '''.*\.env\.example$''',
+]
+regexes = [
+  # Vault placeholder value -- ansible/configs/inventory/group_vars/*/vault.yml
+  # files ship with this literal string until someone fills in a real secret
+  # and encrypts the file with ansible-vault before committing (see each
+  # vault.yml's own header). Not a real credential by definition.
+  '''CHANGEME''',
+]
