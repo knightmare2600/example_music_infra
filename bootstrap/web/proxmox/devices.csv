@@ -2,6 +2,8 @@ Site,Type,Number,HostOctet,OS,ConnectionType,Managed,Notes,SubnetSite,Legacy,Mig
 CLD,ANS,1,9,Debian,ssh,,Ansible control node -- manages all sites,,no,,
 CLD,SWI,1,250,TP-Link,snmp,,"48-port switch (Robert, 2026-08-04)",,no,,
 CLD,RUD,1,12,Debian,ssh,,Rudder configuration management server,,no,,
+CLD,MSH,1,13,Debian trixie,ssh,,"MeshCentral -- remote desktop/terminal/PowerShell/CMD/Linux shell/file transfer platform (Robert, 2026-08-04). Remote management platform build, phase 1/2.",,no,,
+CLD,RMM,1,14,Debian trixie,ssh,,"TacticalRMM -- endpoint inventory/monitoring/alerting/dashboards (Robert, 2026-08-04). Not config management or software deployment -- Salt/Chocolatey stay responsible for those. Remote management platform build, phase 1/3.",,no,,
 CLD,SLT,1,22,Debian,ssh,,Salt master -- manages Windows client endpoints (WKS/LAP/TAB/SUR/MAC/MBP) only; FWL/DCS/SVR/PVE stay Ansible-only,,no,,
 CLD,SVR,2,20,Windows Server 2022,ssh,,Windows Admin Centre -- reaches all site DCs,,no,,
 CLD,PBX,1,48,,ssh,,3CX PBX. No SBC in CLD so put the PBX there instead,,no,,
