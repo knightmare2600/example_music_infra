@@ -1,0 +1,22 @@
+[connection]
+id=rmm-static
+uuid={{ (inventory_hostname + '-rmm-static') | to_uuid }}
+type=ethernet
+interface-name={{ _rmm_iface }}
+autoconnect=true
+autoconnect-priority=100
+autoconnect-retries=-1
+
+[ethernet]
+
+[ipv4]
+address1={{ rmm_static_ip }}/{{ rmm_prefix | default('24') }},{{ rmm_gateway }}
+method=manual
+dns={{ rmm_dns }};
+dns-search={{ rmm_domain }};
+
+[ipv6]
+addr-gen-mode=default
+method=ignore
+
+[proxy]

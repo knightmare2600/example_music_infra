@@ -1,0 +1,501 @@
+---
+# =============================================================================
+# Example Music Limited — TacticalRMM Server Prep Playbook
+# playbooks/tacticalrmm/tacticalrmm_server.yml
+#
+# Remote management platform, phase 3 (Robert's brief, 2026-08-04 — see project
+# notes). Prepares EXARMMCLD001 (hostname, static IP, base packages, firewall)
+# ready for TacticalRMM's own official install.sh — which this playbook
+# deliberately does NOT run. See "Why the install itself isn't here" below.
+#
+# Structure mirrors meshcentral_server.yml / rudder_server.yml's proven
+# sections 1-4 (same single-instance, CLD-only, Debian shape):
+#   1. Hostname
+#   2. Network — static IP (session-safe NetworkManager pattern)
+#   3. Base packages
+#   4. UFW firewall (80/443 only — install.sh's own nginx needs these open
+#      before it runs; SSH already allowed)
+#   5. Dynamic MOTD
+#   6. Node info file
+#
+# Why the install itself isn't here
+# ----------------------------------
+# TacticalRMM's official install.sh (github.com/amidaware/tacticalrmm) has no
+# scriptable path: it's interactive-only, prompting for the root domain, three
+# subdomains (frontend/backend/mesh), an email address, and Django admin
+# credentials, and it displays a TOTP barcode mid-install. No flags, env vars,
+# or config file bypass this. Force-automating an interactive vendor installer
+# via expect was considered and rejected (Robert's call, 2026-08-04) — the
+# risk of a script dying partway through, after install.sh has already made
+# irreversible changes, outweighs the convenience. Treated the same way this
+# estate already treats bindme.sh/rudderme.sh: a documented, deliberate manual
+# step, not a gap to force-close.
+#
+# What Robert needs to do by hand after this playbook — see README.md for
+# the full walkthrough (OS-check patch, exact prompt answers, DNS records).
+#
+# Debian Trixie caveat
+# ---------------------
+# install.sh's own OS check only allows Debian 11/12 or Ubuntu 22.04 — Trixie
+# is rejected outright. Checked the actual script (not guessed): PostgreSQL's
+# apt repo is added via a $codename-parameterised URL (not hardcoded to
+# bookworm/bullseye), and Python is built from source at a pinned version
+# (3.11.8) rather than relying on the OS's own python3 package — neither of
+# those is genuinely Trixie-incompatible on their face. The version gate reads
+# like an untested support allowlist, not a hard technical wall. Robert's call
+# (2026-08-04): try Trixie anyway, patch the one guard rather than downgrade
+# to bookworm. Genuinely untested — see README.md for the exact patch.
+#
+# Usage
+# -----
+# First run (before ansible user exists, using root + password):
+#   ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml \
+#     --limit tacticalrmm_servers \
+#     --user root -k
+#
+# Subsequent runs:
+#   ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml \
+#     --limit tacticalrmm_servers
+#
+# Idempotency
+# -----------
+# Every task is idempotent. Re-running against an already-prepped server is
+# safe.
+#
+# NOT YET LIVE-TESTED as of 2026-08-04 — no Debian Trixie box available to
+# test against. Sections 1-4 are a direct, proven adaptation of
+# rudder_server.yml's/meshcentral_server.yml's own live-tested network
+# pattern (variable names changed only). The Trixie/TacticalRMM combination
+# itself is genuinely unverified — see the caveat above.
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-08-04  Initial release.
+# =============================================================================
+
+- name: Prep TacticalRMM server
+  hosts: tacticalrmm_servers
+  become: true
+  gather_facts: true
+  ignore_unreachable: false
+
+  vars_files:
+    - ../../configs/inventory/group_vars/tacticalrmm_servers/main.yml
+
+  pre_tasks:
+
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv, ad_forest.json]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../.."
+
+    - name: "Prompt for hostname if not set in host_vars"
+      pause:
+        prompt: >
+          Hostname for this TacticalRMM server is not set in host_vars.
+          Enter hostname (e.g. EXARMMCLD001)
+      register: _hostname_prompt
+      when: rmm_hostname is not defined or rmm_hostname == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "Set rmm_hostname from prompt"
+      set_fact:
+        rmm_hostname: "{{ _hostname_prompt.user_input | upper }}"
+      when: _hostname_prompt is not skipped
+
+    - name: "Prompt for static IP if not set in host_vars"
+      pause:
+        prompt: >
+          Static IP for {{ rmm_hostname }} is not set in host_vars.
+          Enter static IP (e.g. 192.168.69.14)
+      register: _ip_prompt
+      when: rmm_static_ip is not defined or rmm_static_ip == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "Set rmm_static_ip from prompt"
+      set_fact:
+        rmm_static_ip: "{{ _ip_prompt.user_input }}"
+      when: _ip_prompt is not skipped
+
+    - name: "Prompt for gateway if not set in host_vars"
+      pause:
+        prompt: >
+          Gateway for {{ rmm_hostname }} is not set in host_vars.
+          Enter gateway IP (e.g. 192.168.69.253)
+      register: _gw_prompt
+      when: rmm_gateway is not defined or rmm_gateway == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "Set rmm_gateway from prompt"
+      set_fact:
+        rmm_gateway: "{{ _gw_prompt.user_input }}"
+      when: _gw_prompt is not skipped
+
+    - name: "Validate required variables are now set"
+      assert:
+        that:
+          - rmm_hostname is defined and rmm_hostname != ""
+          - rmm_static_ip is defined and rmm_static_ip != ""
+          - rmm_gateway is defined and rmm_gateway != ""
+        fail_msg: >
+          rmm_hostname, rmm_static_ip, and rmm_gateway must all be set.
+          Set them in host_vars/{{ inventory_hostname }}/main.yml or pass via
+          --extra-vars.
+        success_msg: "All required variables present — proceeding."
+
+  tasks:
+
+  # ---------------------------------------------------------------------------
+  # Section 1 — Hostname
+  # ---------------------------------------------------------------------------
+
+    - name: "1 | Set hostname"
+      hostname:
+        name: "{{ rmm_hostname | lower }}"
+
+    - name: "1 | Add FQDN to /etc/hosts"
+      lineinfile:
+        path: /etc/hosts
+        regexp: "^127\\.0\\.1\\.1"
+        line: >-
+          127.0.1.1  {{ rmm_hostname | lower }}.{{ rmm_domain }}  {{ rmm_hostname | lower }}
+        state: present
+
+  # ---------------------------------------------------------------------------
+  # Section 2 — Static IP via NetworkManager
+  # Session-safe templated-keyfile+reload+strand-check pattern — same as
+  # rudder_server.yml/meshcentral_server.yml Section 2.
+  # ---------------------------------------------------------------------------
+
+    - name: "2 | Install NetworkManager if missing"
+      apt:
+        name: network-manager
+        state: present
+        update_cache: true
+
+    - name: "2 | Check whether target IP is already in use (CLD best-effort)"
+      command: "ping -c1 -W1 {{ rmm_static_ip }}"
+      register: _ping_check
+      changed_when: false
+      failed_when: false
+
+    - name: "2 | Check current IPs on this host"
+      command: hostname -I
+      register: _current_ips
+      changed_when: false
+
+    - name: "2 | Warn if target IP appears in use by another host"
+      fail:
+        msg: >
+          {{ rmm_static_ip }} is responding to ping and is NOT assigned to
+          this host. Resolve the IP conflict before proceeding.
+          (If this is a cloud host and ICMP is filtered, this check may be a
+          false positive — in that case, remove this task and re-run.)
+      when:
+        - _ping_check.rc == 0
+        - rmm_static_ip not in _current_ips.stdout.split()
+
+    - name: "2 | Warn if ping check is unreliable (cloud environment)"
+      debug:
+        msg: >-
+          [CLD] ping check returned rc={{ _ping_check.rc }}.
+          On cloud hosts ICMP may be filtered — IP conflict check is
+          best-effort only. Proceeding.
+      when: _ping_check.rc != 0
+
+    - name: "2 | Detect provisioning interface (first non-loopback with an IP)"
+      shell: |
+        for iface in $(ls /sys/class/net/); do
+          [[ "$iface" == "lo" ]] && continue
+          ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)\d+\.\d+\.\d+\.\d+' | head -1)
+          if [[ -n "$ip_addr" ]]; then
+            echo "$iface"
+            exit 0
+          fi
+        done
+        exit 1
+      register: _detected_iface
+      changed_when: false
+
+    - name: "2 | Set interface name fact"
+      set_fact:
+        _rmm_iface: "{{ rmm_network_interface | default(_detected_iface.stdout | trim) }}"
+
+    - name: "2 | Read interface MAC address"
+      slurp:
+        src: "/sys/class/net/{{ _rmm_iface }}/address"
+      register: _iface_mac_raw
+
+    - name: "2 | Set MAC address fact"
+      set_fact:
+        _rmm_mac: "{{ _iface_mac_raw.content | b64decode | trim }}"
+
+    - name: "2 | Pin interface name via systemd .link"
+      copy:
+        dest: "/etc/systemd/network/10-rmm-prov.link"
+        content: |
+          # Example Music — TacticalRMM server interface pin
+          # Written by tacticalrmm_server.yml on {{ ansible_date_time.iso8601 }}
+          # MAC: {{ _rmm_mac }}  interface: {{ _rmm_iface }}
+          [Match]
+          MACAddress={{ _rmm_mac }}
+          [Link]
+          Name={{ _rmm_iface }}
+        mode: "0644"
+
+    - name: "2 | Mask ifupdown to prevent conflict with NetworkManager"
+      systemd:
+        name: "networking.service"
+        masked: true
+        enabled: false
+      failed_when: false
+
+    - name: "2 | Remove interface from /etc/network/interfaces if present"
+      blockinfile:
+        path: /etc/network/interfaces
+        marker: "# {mark} ANSIBLE MANAGED — {{ _rmm_iface }}"
+        block: ""
+        state: absent
+      failed_when: false
+
+    - name: "2 | Ensure NetworkManager manages interfaces"
+      ini_file:
+        path: /etc/NetworkManager/NetworkManager.conf
+        section: ifupdown
+        option: managed
+        value: "true"
+        no_extra_spaces: true
+        backup: true
+      notify: Restart NetworkManager
+
+    - name: "2 | Ensure NetworkManager is running"
+      systemd:
+        name: NetworkManager
+        state: started
+        enabled: true
+
+    - name: "2 | Detect current live IP on the rmm interface"
+      tags: network
+      ansible.builtin.shell: |
+        nmcli -g IP4.ADDRESS dev show {{ _rmm_iface }} 2>/dev/null | head -1 | cut -d/ -f1
+      register: _rmm_ip_live
+      changed_when: false
+      failed_when: false
+
+    - name: "2 | Set flag — would bringing rmm-static up now strand this session?"
+      tags: network
+      ansible.builtin.set_fact:
+        _rmm_activate_would_strand_session: >-
+          {{
+            _rmm_ip_live.stdout | trim != ''
+            and _rmm_ip_live.stdout | trim != rmm_static_ip
+          }}
+
+    - name: "2 | Write rmm-static NetworkManager connection profile"
+      tags: network
+      ansible.builtin.template:
+        src: rmm-static.nmconnection.j2
+        dest: /etc/NetworkManager/system-connections/rmm-static.nmconnection
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Reload NetworkManager connections
+
+    - name: "2 | Flush handlers (reload NM connection state, if the profile actually changed)"
+      tags: network
+      ansible.builtin.meta: flush_handlers
+
+    - name: "2 | Note — rmm static IP correction needs a reboot (or manual con up) to take effect"
+      tags: network
+      debug:
+        msg: >-
+          TacticalRMM static IP is changing from {{ _rmm_ip_live.stdout | trim }} to
+          {{ rmm_static_ip }} on {{ _rmm_iface }} — this session may be connected via
+          that same interface, so bringing the connection up now would risk dropping it
+          mid-play. The corrected profile has been written to disk — nothing has been
+          applied live. Reboot this host, or run `nmcli connection up rmm-static`
+          yourself from a session that isn't riding {{ _rmm_iface }} (e.g. console/
+          out-of-band), once you're ready to apply it.
+      when: _rmm_activate_would_strand_session
+
+    - name: "2 | Bring up rmm-static connection"
+      tags: network
+      command: nmcli connection up rmm-static
+      changed_when: false
+      when: not _rmm_activate_would_strand_session
+
+  # ---------------------------------------------------------------------------
+  # Section 3 — Base packages
+  # ---------------------------------------------------------------------------
+
+    - name: "3 | Update apt cache"
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: "3 | Upgrade all packages"
+      apt:
+        upgrade: dist
+        dpkg_options: "force-confold,force-confdef"
+
+    - name: "3 | Install base packages"
+      apt:
+        name: "{{ rmm_base_packages }}"
+        state: present
+        install_recommends: false
+        dpkg_options: "force-confold,force-confdef"
+
+  # ---------------------------------------------------------------------------
+  # Section 4 — UFW firewall
+  # install.sh's own nginx needs 80/443 open when it runs (manually, later) --
+  # opened here so the box is genuinely ready for that step, nothing else to
+  # configure network-side first.
+  # ---------------------------------------------------------------------------
+
+    - name: "4 | Set UFW default — deny incoming"
+      ufw:
+        direction: incoming
+        policy: deny
+
+    - name: "4 | Set UFW default — allow outgoing"
+      ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: "4 | Allow SSH"
+      ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+        comment: SSH
+
+    - name: "4 | Allow TacticalRMM HTTPS"
+      ufw:
+        rule: allow
+        port: "443"
+        proto: tcp
+        comment: TacticalRMM HTTPS
+
+    - name: "4 | Allow TacticalRMM HTTP (redirect / ACME, if ever used)"
+      ufw:
+        rule: allow
+        port: "80"
+        proto: tcp
+        comment: TacticalRMM HTTP
+
+    - name: "4 | Enable UFW"
+      ufw:
+        state: enabled
+
+  # ---------------------------------------------------------------------------
+  # Section 5 — Dynamic MOTD
+  # ---------------------------------------------------------------------------
+
+    - name: "5 | Write dynamic MOTD script"
+      copy:
+        dest: /etc/update-motd.d/10-examplemusic
+        mode: "0755"
+        content: |
+          #!/usr/bin/env bash
+          WH='\033[1;37m'; YL='\033[1;33m'; GR='\033[0;32m'; CY='\033[0;36m'; NC='\033[0m'
+          UPTIME=$(uptime -p)
+          LOAD=$(cut -d' ' -f1-3 /proc/loadavg)
+          MEM_TOTAL=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
+          MEM_FREE=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
+          MEM_USED=$(( MEM_TOTAL - MEM_FREE ))
+          DISK=$(df -h / | awk 'NR==2{print $3" used of "$2" ("$5")"}')
+          RMM_INSTALLED="not yet installed (see playbooks/tacticalrmm/README.md)"
+          [[ -d /rmm ]] && RMM_INSTALLED="installed"
+          echo -e "
+          ${WH}╔══════════════════════════════════════════════════════════════╗${NC}
+          ${WH}║     EXAMPLE MUSIC LIMITED: $(printf '%-35s' "${HOSTNAME}")║${NC}
+          ${WH}╚══════════════════════════════════════════════════════════════╝${NC}
+
+            ${YL}Site     :${NC} {{ rmm_site_code }}: {{ rmm_site_city }}, {{ rmm_site_country }}
+            ${YL}Entity   :${NC} {{ rmm_site_entity }}
+            ${YL}Role     :${NC} TacticalRMM endpoint monitoring server
+
+            ${WH}── TacticalRMM ──────────────────────────────────────────────${NC}
+              ${CY}Status${NC}     : ${GR}${RMM_INSTALLED}${NC}
+              ${CY}Web UI${NC}     : ${GR}https://{{ rmm_frontend_subdomain }}.{{ rmm_domain }}${NC} (once installed)
+              ${CY}Install${NC}    : ${GR}see playbooks/tacticalrmm/README.md${NC}
+
+            ${WH}── System ───────────────────────────────────────────────────${NC}
+              ${CY}Uptime${NC}     : ${GR}${UPTIME}${NC}
+              ${CY}Load${NC}       : ${GR}${LOAD}${NC}
+              ${CY}Memory${NC}     : ${GR}${MEM_USED}MB${NC} used of ${MEM_TOTAL}MB
+              ${CY}Disk /${NC}     : ${GR}${DISK}${NC}
+          "
+
+    - name: "5 | Enable MOTD in sshd_config"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PrintMotd"
+        line: "PrintMotd yes"
+        state: present
+      notify: Restart SSH
+
+    - name: "5 | Write MOTD profile.d hook"
+      copy:
+        dest: /etc/profile.d/motd.sh
+        mode: "0755"
+        content: |
+          [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
+
+  # ---------------------------------------------------------------------------
+  # Section 6 — Node info file
+  # ---------------------------------------------------------------------------
+
+    - name: "6 | Resolve environment"
+      include_tasks: ../../tasks/nodeinfo_environment.yml
+
+    - name: "6 | Set rmm_environment"
+      set_fact:
+        rmm_environment: "{{ resolved_environment }}"
+
+    - name: "6 | Ensure /etc/example-music directory exists"
+      file:
+        path: /etc/example-music
+        state: directory
+        mode: "0755"
+
+    - name: "6 | Write /etc/example-music/nodeinfo.json"
+      include_tasks: ../../tasks/nodeinfo.yml
+      vars:
+        nodeinfo_hostname: "{{ rmm_hostname }}"
+        nodeinfo_role: "tacticalrmm"
+        nodeinfo_site: "{{ rmm_site_code }}"
+        nodeinfo_city: "{{ rmm_site_city }}"
+        nodeinfo_country: "{{ rmm_site_country }}"
+        nodeinfo_entity: "{{ rmm_site_entity }}"
+        nodeinfo_street: "{{ rmm_site_street | default('') }}"
+        nodeinfo_postal_code: "{{ rmm_site_postal_code | default('') }}"
+        nodeinfo_environment: "{{ rmm_environment | default('production') }}"
+        nodeinfo_bootstrapped_by: "tacticalrmm_server.yml"
+        nodeinfo_extra:
+          static_ip: "{{ rmm_static_ip }}"
+          rmm_install_status: "manual step required — see playbooks/tacticalrmm/README.md"
+
+  # ---------------------------------------------------------------------------
+  # Handlers
+  # ---------------------------------------------------------------------------
+
+  handlers:
+
+    - name: Restart NetworkManager
+      systemd:
+        name: NetworkManager
+        state: restarted
+
+    - name: Reload NetworkManager connections
+      ansible.builtin.command: nmcli connection reload
+      changed_when: true
+
+    - name: Restart SSH
+      systemd:
+        name: ssh
+        state: restarted

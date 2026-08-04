@@ -59,6 +59,7 @@ ansible/
 │   ├── rudder/                 — Rudder configuration management
 │   ├── salt/                   — Salt master (Windows client-endpoint minions only)
 │   ├── snmp/                   — SNMP sysLocation rollout (switches/printers)
+│   ├── tacticalrmm/            — TacticalRMM server prep (install itself is manual)
 │   ├── truenas/                — TrueNAS SCALE storage onboarding
 │   ├── windows_adschema/       — AD OU schema, groups, users, computer accounts
 │   ├── windows_bootstrap/      — Windows node bootstrap (workstations + servers)
@@ -684,6 +685,36 @@ ansible-playbook playbooks/snmp/sysinfo.yml --ask-vault-pass
 **Not yet live-tested against real hardware** — the GET side is read-only and safe to
 run any time; the SET side only fires when a value is genuinely wrong. Test against a
 single switch (Step 3/4 above) before trusting it unattended against all ~36 devices.
+
+---
+
+## tacticalrmm
+
+Remote management platform, phase 3 (Robert's brief, 2026-08-04 — see project
+notes). Preps `EXARMMCLD001` for TacticalRMM's own official installer —
+endpoint inventory/monitoring/alerting/dashboards/reporting. Explicitly
+**not** for config management or software deployment, those stay
+SaltStack/Chocolatey's job, same non-negotiable split the whole platform
+brief specifies.
+
+The actual TacticalRMM install (`install.sh`) is deliberately **not**
+automated here — it's interactive-only with no scriptable path (prompts for
+domains/email/admin credentials, displays a TOTP barcode mid-install), so
+it's treated as a documented manual step, same as `bindme.sh`/`rudderme.sh`.
+See `playbooks/tacticalrmm/README.md` for the full walkthrough, including
+the Debian Trixie OS-check patch (upstream only lists Debian 11/12/Ubuntu
+22.04 as supported — checked the actual script, the restriction reads like
+an untested allowlist rather than a real technical wall, but the combination
+is genuinely unverified) and the DNS requirements (three subdomains needed;
+only one is auto-generated via `role_codes.csv`'s `DNSAlias`, the other two
+need manual zone additions).
+
+| Playbook | What it does |
+|----------|-------------|
+| `tacticalrmm/tacticalrmm_server.yml` | Preps EXARMMCLD001 — hostname, static IP, packages, UFW (80/443), MOTD, nodeinfo. Does NOT run install.sh |
+
+**Not yet live-tested against real hardware, Trixie or otherwise** — no box
+available to test against as of 2026-08-04.
 
 ---
 

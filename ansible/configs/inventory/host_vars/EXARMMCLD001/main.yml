@@ -1,0 +1,37 @@
+---
+# =============================================================================
+# host_vars/EXARMMCLD001/main.yml
+# Example Music Limited — host-specific variables for the CLD TacticalRMM server
+#
+# These override group_vars/tacticalrmm_servers/main.yml for this host only.
+# If rmm_static_ip or rmm_hostname are absent or empty here, the playbook
+# will prompt the operator interactively before making any changes -- same
+# pattern as EXARUDCLD001/main.yml and EXAMSHCLD001/main.yml.
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-08-04  Initial release. Remote management platform, phase 3.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Identity
+# -----------------------------------------------------------------------------
+rmm_hostname:   "EXARMMCLD001"
+rmm_static_ip:  "192.168.69.14"
+rmm_gateway:    "192.168.69.253"
+rmm_dns:        "192.168.139.8"
+rmm_prefix:     "24"
+
+# Network interface to configure (leave blank to auto-detect).
+rmm_network_interface: ""
+
+# -----------------------------------------------------------------------------
+# Site metadata — shown in MOTD and /etc/example-music/nodeinfo.json
+# Matches CLD's real address (see benarbejde/sites.csv, commit 01f6d54).
+# -----------------------------------------------------------------------------
+rmm_site_code:    "CLD"
+rmm_site_city:    "Edinburgh"
+rmm_site_country: "Scotland"
+rmm_site_entity:  "Example Music Limited"
+rmm_site_street:       "7 Claylands Road"
+rmm_site_postal_code:  "EH28 8LF"
