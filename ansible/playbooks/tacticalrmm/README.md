@@ -80,24 +80,18 @@ domain (`jukebox.internal`):
 
 | Subdomain | Purpose | Auto-generated? |
 |---|---|---|
-| `rmm.jukebox.internal` | Frontend web UI | **Yes** — `role_codes.csv`'s `RMM` row has `DNSAlias=rmm`, so `bind9-dns.yml` generates this CNAME automatically on its next run |
-| `api.jukebox.internal` | Backend API | **No** — manual addition needed |
-| `mesh.jukebox.internal` | TacticalRMM's own bundled MeshCentral | **No** — manual addition needed (this name was freed from the standalone `EXAMSHCLD001` build specifically for this — see `role_codes.csv`'s `MSH` row notes) |
+| `rmm.jukebox.internal` | Frontend web UI | **Yes** — `role_codes.csv`'s `RMM` row has `DNSAlias=rmm` |
+| `api.jukebox.internal` | Backend API | **Yes** — `bind9-dns.yml`'s `bind9_extra_cnames` var |
+| `mesh.jukebox.internal` | TacticalRMM's own bundled MeshCentral | **Yes** — `bind9-dns.yml`'s `bind9_extra_cnames` var (this name was freed from the standalone `EXAMSHCLD001` build specifically for this — see `role_codes.csv`'s `MSH` row notes) |
 
-`role_codes.csv`'s `DNSAlias` column is one-alias-per-role-code, so it can't
-represent all three from a single row. `api`/`mesh` need adding to
-`db.forward-zone.devices.j2`'s deployed output by hand, in the same style
-the template already generates for `rmm`:
-
-```
-api                                          IN  CNAME  exarmmcld001.jukebox.internal.
-mesh                                         IN  CNAME  exarmmcld001.jukebox.internal.
-```
-
-**Important**: `bind9-dns.yml` manages this zone file wholesale — a manual
-edit will be silently overwritten the next time that playbook runs. Re-add
-both lines after any future `bind9-dns.yml` run until this gets a proper
-extra-aliases mechanism (not built — flagged, not fixed, see project notes).
+All three are now generated on every `bind9-dns.yml --tags zones-full` run —
+no manual DNS step. `role_codes.csv`'s `DNSAlias` column is one-alias-per-
+role-code, so it only ever covers `rmm`; `api`/`mesh` come from a small
+`bind9_extra_cnames` list in `bind9-dns.yml`'s own `vars:` (added 2026-08-04,
+Robert: "add these records to the bind9 playbook" — the alternative, hand-
+editing the deployed zone file, would have been silently overwritten on the
+next run same as any other Ansible-templated file). Add more entries there
+if another device ever needs a second/third friendly name.
 
 ## Quick start
 
