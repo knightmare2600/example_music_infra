@@ -47,7 +47,7 @@ graph TD
     O_PHN["📞 EXAPHNSYD001<br/>Android · Phone<br/>No IP Address"]
     O_PRN["🖨️ EXAPRNSYD001<br/>Brother · Laser printer<br/>192.168.29.80"]
     O_RAC["🔧 EXARACSYD001<br/>Dell iDRAC9<br/>192.168.29.2"]
-    O_SRV["🗄️ EXASVRSYD001<br/>Windows Server 2022 · Local infra server<br/>192.168.29.20"]
+    O_SVR["🗄️ EXASVRSYD001<br/>Windows Server 2022 · Local infra server<br/>192.168.29.20"]
     O_TAB["📱 EXATABSYD001<br/>iPadOS · iPad<br/>192.168.29.60"]
     O_WKS["🖥️ EXAWKSSYD001<br/>Windows 11 · Workstation<br/>192.168.29.41"]
     O_INET --> O_RTR
@@ -63,7 +63,7 @@ graph TD
     O_SWI1 --> O_PRN
     O_SWI1 --> O_RAC
     O_RAC -.->|"manages"| O_ESX
-    O_SWI1 --> O_SRV
+    O_SWI1 --> O_SVR
     O_SWI1 --> O_TAB
     O_SWI1 --> O_WKS
 
@@ -80,7 +80,7 @@ graph TD
     style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:OLDNETWORK:SYD:END
@@ -229,7 +229,7 @@ graph TD
     O_PHN["📞 EXAPHNMEL001<br/>iOS · Phone<br/>No IP Address"]
     O_PRN["🖨️ EXAPRNMEL001<br/>HP · LaserJet printer<br/>192.168.61.80"]
     O_RAC["🔧 EXARACMEL001<br/>HPE iLO5<br/>192.168.61.2"]
-    O_SRV["🗄️ EXASVRMEL001<br/>Windows Server 2022 · Local file and print server<br/>192.168.61.20"]
+    O_SVR["🗄️ EXASVRMEL001<br/>Windows Server 2022 · Local file and print server<br/>192.168.61.20"]
     O_TAB["📱 EXATABMEL001<br/>iPadOS · iPad<br/>192.168.61.60"]
     O_WKS["🖥️ EXAWKSMEL001<br/>Windows 11 · Workstation<br/>192.168.61.41"]
     O_INET --> O_RTR
@@ -243,7 +243,7 @@ graph TD
     O_SWI1 --> O_PRN
     O_SWI1 --> O_RAC
     O_RAC -.->|"manages"| O_ESX
-    O_SWI1 --> O_SRV
+    O_SWI1 --> O_SVR
     O_SWI1 --> O_TAB
     O_SWI1 --> O_WKS
 
@@ -258,7 +258,7 @@ graph TD
     style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:OLDNETWORK:MEL:END

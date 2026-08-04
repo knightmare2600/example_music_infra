@@ -188,7 +188,7 @@ graph TD
     O_PAY["☎️ EXAPAYBIR001<br/>Payphone<br/>192.168.121.74"]
     O_PHN["📞 EXAPHNBIR001<br/>Android · Samsung S25<br/>No IP Address"]
     O_RAC["🔧 EXARACBIR001<br/>Dell DRAC<br/>192.168.121.2"]
-    O_SRV["🗄️ EXASVRBIR001<br/>Rocky Linux · Oracle DB<br/>192.168.121.20"]
+    O_SVR["🗄️ EXASVRBIR001<br/>Rocky Linux · Oracle DB<br/>192.168.121.20"]
     O_TAB["📱 EXATABBIR001<br/>Android · Galaxy Tab<br/>192.168.121.61"]
     O_INET --> O_RTR
     O_RTR --> O_SWI1
@@ -206,7 +206,7 @@ graph TD
     O_SWI1 --> O_PHN
     O_SWI1 --> O_RAC
     O_RAC -.->|"manages"| O_ESX
-    O_SWI1 --> O_SRV
+    O_SWI1 --> O_SVR
     O_SWI1 --> O_TAB
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -225,7 +225,7 @@ graph TD
     style O_PAY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:OLDNETWORK:BIR:END
 ```

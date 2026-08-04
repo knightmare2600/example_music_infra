@@ -43,7 +43,7 @@ graph TD
     O_PHN["📞 EXAPHNAKL001<br/>Android · Phone<br/>No IP Address"]
     O_PRN["🖨️ EXAPRNAKL001<br/>HP · LaserJet printer<br/>192.168.93.80"]
     O_RAC["🔧 EXARACAKL001<br/>HPE iLO5<br/>192.168.93.2"]
-    O_SRV["🗄️ EXASVRAKL001<br/>Windows Server 2022 · Local server<br/>192.168.93.20"]
+    O_SVR["🗄️ EXASVRAKL001<br/>Windows Server 2022 · Local server<br/>192.168.93.20"]
     O_TAB["📱 EXATABAKL001<br/>iPadOS · iPad<br/>192.168.93.60"]
     O_WKS["🖥️ EXAWKSAKL001<br/>Windows 11 · Workstation<br/>192.168.93.40"]
     O_INET --> O_RTR
@@ -59,7 +59,7 @@ graph TD
     O_SWI1 --> O_PRN
     O_SWI1 --> O_RAC
     O_RAC -.->|"manages"| O_ESX
-    O_SWI1 --> O_SRV
+    O_SWI1 --> O_SVR
     O_SWI1 --> O_TAB
     O_SWI1 --> O_WKS
 
@@ -76,7 +76,7 @@ graph TD
     style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style O_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:OLDNETWORK:AKL:END
