@@ -17,6 +17,11 @@
 ; Added 2026-07-20 -- see benarbejde/generate_inventory.py's TYPE_DNS_ALIAS. Only a couple of
 ; single-instance CLD-only services have one; most devices have none at all.
 ;
+; A device needing MORE than one friendly name (DNSAlias is one-per-role-code) gets its extras
+; from bind9-dns.yml's own bind9_extra_cnames var instead -- see the "Extra CNAMEs" section
+; near the bottom of this template. Added 2026-08-04 for TacticalRMM's api/mesh subdomains
+; (rmm comes from RMM's own DNSAlias; api/mesh don't fit that one-alias model).
+;
 ; CLD/VRK/FRD:
 ;   A forward zone is just hostname->IP; it doesn't care what subnet an A
 ;   record's IP is on (that's a reverse-zone concern, handled separately per
@@ -108,6 +113,17 @@ $TTL {{ zone_ttl }}
 {% set octet = site.Subnet.split('.')[2] %}
 ; {{ site.Site }} -- 192.168.{{ octet }}.100-199
 $GENERATE 100-199 dhcp${-99,2,d}.{{ site.Site | lower }} IN A 192.168.{{ octet }}.$
+{% endfor %}
+
+; ── Extra CNAMEs (bind9_extra_cnames) ─────────────────────────
+; For devices needing more than one friendly name -- role_codes.csv's
+; DNSAlias column above is one-alias-per-role-code, so anything past the
+; first has to come from here instead. Source: bind9-dns.yml's own
+; bind9_extra_cnames var, not devices.csv/role_codes.csv -- add entries
+; there, not by hand-editing a deployed zone file (this section
+; regenerates on every run like everything else here).
+{% for extra in bind9_extra_cnames | default([]) %}
+{{ "%-45s" | format(extra.alias) }} IN  CNAME  {{ extra.target | lower }}.{{ domain }}.   ; {{ extra.comment | default('') }}
 {% endfor %}
 
 ; ── One-off records -- add below, DO NOT edit above ──────────

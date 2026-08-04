@@ -1146,6 +1146,25 @@
     # CLD LAN is now in sites.csv so sites_by_code['CLD'] resolves normally.
     # vRACK ancillary PTRs are hardcoded in db.192.168.139.devices.j2.
 
+    # Extra CNAMEs that role_codes.csv's DNSAlias column can't express -- that
+    # column is one-alias-per-role-code, so a device needing more than one
+    # friendly name (e.g. TacticalRMM's three subdomains -- rmm/api/mesh --
+    # all pointing at EXARMMCLD001, only "rmm" of which comes from RMM's own
+    # DNSAlias) needs its extras listed here instead. Added 2026-08-04 (Robert:
+    # "add these records to the bind9 playbook") after the alternative --
+    # hand-editing the deployed zone file -- turned out to just get silently
+    # overwritten on the next run, same as any other Ansible-templated file.
+    # Rendered into db.forward-zone.devices.j2's "One-off records" section, so
+    # it's regenerated (and preserved) on every run like everything else in
+    # the zone, not a manual edit that has to be redone.
+    bind9_extra_cnames:
+      - alias: "api"
+        target: "EXARMMCLD001"
+        comment: "TacticalRMM backend API subdomain"
+      - alias: "mesh"
+        target: "EXARMMCLD001"
+        comment: "TacticalRMM's bundled MeshCentral subdomain"
+
   pre_tasks:
     - name: Gate on /etc/example-music/* freshness
       tags: always
