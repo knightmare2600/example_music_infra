@@ -846,6 +846,8 @@ graph TD
 
 > **New-build site.** No legacy infrastructure ever existed here — see the "New Build Location" box below in place of "Old Network." Fredericia Havn is a legal fiction run off a MacBook (`python3 -m http.server 8000` as a PXE mirror) — but it has a real "site kit" alongside that: a small Intel NUC running Proxmox VE (`EXAPVEFRD001`) and a 48-port switch (`EXASWIFRD001`), confirmed by Robert 2026-07-30. Also physically here, though hostnamed under CLD: a secondary 3CX PBX (`EXAPBXCLD002`) — see `benarbejde/generate_inventory.py`'s `NON_STANDARD_SITES`/`SubnetSite` handling.
 >
+> **Broadened 2026-08-04 (Robert):** FRD isn't just a standby for VRK's provisioning role — think of CLD (Edinburgh) as "cloud site #1" and FRD as its DR sister site generally, the place the estate falls over to if CLD becomes unreachable. `EXAPBXCLD002` above (`EXAPBXFRD001` standing in for CLD's own PBX) is the concrete real example already in place, not a hypothetical. See `docs/ExampleMusic_Beginners_Guide.md` §4.2 for the full explanation.
+>
 > **Possible future addition:** a QNAP NAS may be added to the site kit, to support either Proxmox Backup Server or a VMware→Proxmox migration path (Robert, 2026-07-30). Proxmox VE already ships an official, built-in migration tool for this — the Import Wizard (since 8.2, connects directly to the ESXi API and imports a VM with on-the-fly disk conversion via Datacenter → Storage → Add → ESXi, then right-click → Import; see https://pve.proxmox.com/wiki/Migrate_to_Proxmox_VE). Nothing bespoke is needed here — not yet built, no timeline.
 
 ```mermaid

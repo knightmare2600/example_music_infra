@@ -58,9 +58,16 @@ Exceptions are noted in individual site entries.
 ## Cloud / Provisioning Network — CLD / VRK / FRD
 
 CLD (Edinburgh, OVH datacentre) has two networks, each its own site code in `sites.csv` — its
-own LAN (`CLD`) and the OVH vRACK provisioning network (`VRK`). `FRD` (Fredericia Havn) is a
-second, standby provisioning network, same idea as `VRK`, at a different site entirely — see
-`docs/ExampleMusic_Beginners_Guide.md` §4.2.
+own LAN (`CLD`) and the OVH vRACK provisioning network (`VRK`). `FRD` (Fredericia Havn) started
+as a second, standby provisioning network, same idea as `VRK` — but broadened 2026-08-04 (Robert):
+FRD is CLD's DR sister site generally, not just VRK's backup. Think of CLD as "cloud site #1" —
+FRD is where the estate falls over to if CLD becomes unreachable, with `EXAPBXCLD002`
+(`EXAPBXFRD001` standing in for CLD's own PBX) already a real, concrete instance of that, not a
+hypothetical. `sites.csv` reflects this at the data level too — FRD shares CLD/VRK's
+`AnsibleRegion=cloud_site`/`Entity=Example Music Limited`, not the normal Danish
+`dk_site`/`Example Music (Danmark) ApS` classification `FRE` (the real Fredericia office — not
+the same site, see below) and every other Danish office gets. See
+`docs/ExampleMusic_Beginners_Guide.md` §4.2 for the full explanation.
 
 **vRACK — `VRK`, `192.168.139.0/24`**
 **WireGuard hub** — routes to all sites. Any node that can reach `192.168.139.1` can reach any site subnet.
@@ -87,6 +94,8 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.69.20` | WAC — reaches all site DCs and Windows nodes |
 | `EXASLTCLD001` | Salt master | Debian | `192.168.69.22` | Config mgmt for all Windows nodes (client, server, DC) — see `ansible/playbooks/salt/README.md`. Also reachable as `salt.jukebox.internal` (CNAME) |
 | `EXAPBXCLD001` | Central PBX | — | `192.168.69.48` | 3CX PBX — all site SBCs trunk here |
+| `EXAMSHCLD001` | MeshCentral | Debian trixie | `192.168.69.13` | Remote desktop/terminal/PowerShell/CMD/Linux shell/file transfer — added 2026-08-04, remote management platform phase 1/2. No longer the primary remote-access path (TacticalRMM's own bundled MeshCentral is), role being reconsidered |
+| `EXARMMCLD001` | TacticalRMM | Debian trixie | `192.168.69.14` | Endpoint inventory/monitoring/alerting/dashboards — added 2026-08-04, remote management platform phase 3. NOT config management or software deployment, Salt/Chocolatey stay responsible for those |
 | `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
 | `EXAPVECLD001` | Proxmox VE node | — | `192.168.69.5` | PVE node 1 |
 | `EXASWICLD001` | Switch | — | `192.168.69.250` | Standard SWI slot 1 |
@@ -94,7 +103,7 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 | `EXABMCCLD002` | BMC (secondary) | — | `192.168.69.3` | Planned expansion slot — not yet built (Robert, 2026-07-30) |
 | `EXAPVECLD002` | Proxmox VE node (secondary) | — | `192.168.69.6` | Planned expansion slot — not yet built (Robert, 2026-07-30) |
 
-**FRD — Fredericia Havn (standby), `172.16.124.0/24`**
+**FRD — Fredericia Havn (CLD's DR sister site), `172.16.124.0/24`**
 
 | Hostname | Role | IP | Notes |
 |----------|------|----|-------|
@@ -126,7 +135,7 @@ second, standby provisioning network, same idea as `VRK`, at a different site en
 | EDI | Edinburgh | Scotland, UK | `192.168.131.0/24` | `example.org/net` | Multiple DCs — check replication health |
 | FAL | Falkirk | Scotland, UK | `192.168.76.0/24` | `example.net` | **Head Office** — Brockville Stadium |
 | FAX | Faxe | Danmark | `192.168.246.0/24` | `example.net` | |
-| FRD | Fredericia Havn (standby vRACK) | Danmark | `172.16.124.0/24` | `<blank / NULL>` | Standby provisioning network — not `FRE`, the real Fredericia office. Legal fiction run off a MacBook (`http.server`), but has a real "site kit" too — NUC running Proxmox VE + a 48-port switch, see FRD row above |
+| FRD | Fredericia Havn (CLD's DR sister site) | Danmark | `172.16.124.0/24` | `<blank / NULL>` | CLD's DR sister site — not `FRE`, the real Fredericia office. Started as VRK's standby provisioning network (still real — legal fiction run off a MacBook, `http.server`), broadened 2026-08-04 to the general failover role, with a real "site kit" too — NUC running Proxmox VE + a 48-port switch, see FRD row above |
 | GLA | Glasgow | Scotland, UK | `192.168.141.0/24` | `example.net` | Regional DC hub |
 | GOT | Gothenburg | Sweden | `192.168.46.0/24` | `example.net` | |
 | HAL | Halifax | England, UK | `192.168.142.0/24` | `example.net` | |

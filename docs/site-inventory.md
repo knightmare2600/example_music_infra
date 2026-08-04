@@ -183,8 +183,10 @@
 **vRACK (`VRK`):** `192.168.139.0/24` · **CLD LAN:** `192.168.69.0/24`
 **Role:** WireGuard hub — routes to all sites. Central PBX, Ansible, WAC.
 See `docs/ExampleMusic_Beginners_Guide.md` §4.1 for the full CLD/VRK split, and §4.2 for `FRD`
-(Fredericia Havn, a separate standby provisioning network — not tracked as a build checklist
-here, it's a MacBook running `http.server`, not a physical site).
+(Fredericia Havn — CLD's DR sister site, broadened 2026-08-04 beyond just VRK's provisioning
+backup; `EXAPBXCLD002` standing in for CLD's own PBX is a real, current example of the failover
+relationship. Not tracked as a build checklist here — it has its own real devices, but this
+section covers CLD specifically).
 
 ### Infrastructure Checklist
 - [ ] `EXABMCCLD001` — BMC / iDRAC online (`192.168.69.2`) — real hardware in an Edinburgh datacentre, standard BMC slot 1
@@ -202,6 +204,8 @@ here, it's a MacBook running `http.server`, not a physical site).
 - [ ] `EXASVRCLD002` — Windows Admin Centre deployed (`192.168.69.20`)
 - [ ] `EXAPBXCLD001` — Central 3CX PBX online (`192.168.69.48`)
 - [ ] `EXAUFCCLD001` — UniFi Network Controller online (`192.168.69.82`, CLD's **LAN** — not vRACK; manages every site's WAPs)
+- [ ] `EXAMSHCLD001` — MeshCentral online (`192.168.69.13`) — remote desktop/terminal/PowerShell/CMD/Linux shell/file transfer, added 2026-08-04. Not yet live-tested — see `ansible/playbooks/meshcentral/README.md`
+- [ ] `EXARMMCLD001` — TacticalRMM online (`192.168.69.14`) — endpoint inventory/monitoring/alerting, added 2026-08-04. VM prep only; the actual `install.sh` run is a separate manual step, not yet live-tested — see `ansible/playbooks/tacticalrmm/README.md`
 - [ ] `EXASWICLD001` — Core switch online (`192.168.69.250`) — standard SWI slot 1
 - [ ] `EXAFWLCLD002` — Secondary firewall (`192.168.69.254`, standard FWL slot 2) — not yet built, planned
 - [ ] `EXASWICLD002` — Switch 2 (`192.168.69.251`)
