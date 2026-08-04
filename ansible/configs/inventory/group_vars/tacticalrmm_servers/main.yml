@@ -1,0 +1,56 @@
+---
+# =============================================================================
+# group_vars/tacticalrmm_servers/main.yml
+# Example Music Limited — TacticalRMM server group variables
+#
+# These apply to every host in [tacticalrmm_servers].
+# Per-host overrides go in host_vars/<hostname>/main.yml.
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-08-04  Initial release. Remote management platform, phase 3.
+#                     VM prep only -- see playbooks/tacticalrmm/README.md for
+#                     why the actual TacticalRMM install itself isn't here.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Domain -- derived from benarbejde/ad_forest.json (single source of truth),
+# same pattern as rudder_servers/main.yml's rudder_domain.
+# -----------------------------------------------------------------------------
+rmm_domain: "{{ (lookup('file', ad_forest_json_path | default('/etc/example-music/ad_forest.json')) | from_json).domain_fqdn }}"
+
+# -----------------------------------------------------------------------------
+# Base packages -- deliberately minimal. install.sh (run manually, see
+# README.md) installs its own PostgreSQL/Node.js/Python/nginx stack; this
+# list is just general-purpose box hygiene, not TacticalRMM prerequisites.
+# -----------------------------------------------------------------------------
+rmm_base_packages:
+  - vim
+  - git
+  - curl
+  - wget
+  - htop
+  - tree
+  - jq
+  - network-manager
+  - molly-guard
+  - fail2ban
+  - ufw
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+# -----------------------------------------------------------------------------
+# sites.csv path on the Ansible control node — same resolution as
+# rudder_servers/main.yml's sites_csv_path.
+# -----------------------------------------------------------------------------
+sites_csv_path: "/etc/example-music/sites.csv"
+
+# -----------------------------------------------------------------------------
+# The three subdomains install.sh will prompt for -- documented here as the
+# single source of truth for what to type at the prompts, not consumed by
+# any task (the install itself is manual). See README.md.
+# -----------------------------------------------------------------------------
+rmm_frontend_subdomain: "rmm"
+rmm_backend_subdomain:  "api"
+rmm_mesh_subdomain:     "mesh"
