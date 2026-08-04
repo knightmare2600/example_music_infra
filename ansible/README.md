@@ -57,6 +57,8 @@ ansible/
 │   ├── proxmox/                — Proxmox VE node onboarding + management
 │   ├── rudder/                 — Rudder configuration management
 │   ├── salt/                   — Salt master (Windows client-endpoint minions only)
+│   ├── snmp/                   — SNMP sysLocation rollout (switches/printers)
+│   ├── truenas/                — TrueNAS SCALE storage onboarding
 │   ├── windows_adschema/       — AD OU schema, groups, users, computer accounts
 │   ├── windows_bootstrap/      — Windows node bootstrap (workstations + servers)
 │   ├── windows_dc/             — Domain Controller promotion
@@ -590,6 +592,63 @@ Whether Salt states/pillar live under a new top-level `salt/` directory sourced 
 `benarbejde/`'s CSVs+JSON, or are served via `gitfs` directly from this repo, is an open
 question — not implemented yet. This playbook only gets the master running; it doesn't
 push any state.
+
+---
+
+## snmp
+
+Phase 1 of Robert's SNMP rollout (2026-08-04, following the site-address work —
+`sites.csv`'s `Street`/`PostalCode` columns, commit `01f6d54`): sets `sysLocation`
+(standard SNMPv2-MIB OID `.1.3.6.1.2.1.1.6.0`, RFC 1213/3418 — identical across every
+vendor, not a per-device thing) on every `devices.csv` row with `ConnectionType=snmp`
+(switches, network printers — ~36 devices, mostly Cisco/TP-Link/HP) to match that
+site's real address. GET before SET, only writes if the value's actually wrong.
+
+Deliberately scoped to exactly one OID — see `playbooks/snmp/tasks/set_syslocation.yml`'s
+own header. `sysContact`/`sysName` are explicitly out of scope for now: no source-of-truth
+value exists yet for a per-site contact, and `sysName` often already carries a meaningful
+vendor-configured value on real hardware that shouldn't be silently overwritten.
+
+Phase 2 (cross-vendor monitoring via Zabbix, once that exists) is separate and later —
+Zabbix's own built-in vendor templates handle OID differences, not custom MIB parsing
+here.
+
+| Playbook | What it does |
+|----------|-------------|
+| `snmp/sysinfo.yml` | Loads `sites.csv`+`devices.csv`, GETs current `sysLocation` on every SNMP-managed device, SETs it only where wrong |
+
+### Quick start
+
+**Step 1 — Install net-snmp tools on the control node** (not done by this playbook):
+```bash
+apt install snmp
+```
+
+**Step 2 — Set the real SNMP write community**
+
+```bash
+ansible-vault edit configs/inventory/group_vars/all/vault.yml
+# vault_snmp_write_community: "CHANGEME"  -- replace with the real value
+```
+If no write community is configured on the switches yet, that has to happen on the
+switches themselves first — this playbook only ever speaks to what's already there.
+
+**Step 3 — Dry run against one site first**
+
+```bash
+ansible-playbook playbooks/snmp/sysinfo.yml --ask-vault-pass --check -e snmp_site_filter=FAL
+```
+
+**Step 4 — For real, one site, then everywhere**
+
+```bash
+ansible-playbook playbooks/snmp/sysinfo.yml --ask-vault-pass -e snmp_site_filter=FAL
+ansible-playbook playbooks/snmp/sysinfo.yml --ask-vault-pass
+```
+
+**Not yet live-tested against real hardware** — the GET side is read-only and safe to
+run any time; the SET side only fires when a value is genuinely wrong. Test against a
+single switch (Step 3/4 above) before trusting it unattended against all ~36 devices.
 
 ---
 
