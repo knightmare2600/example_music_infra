@@ -188,7 +188,7 @@ graph TD
     O_PAY["☎️ EXAPAYBIR001<br/>Payphone<br/>192.168.121.74"]
     O_PHN["📞 EXAPHNBIR001<br/>Android · Samsung S25<br/>No IP Address"]
     O_RAC["🔧 EXARACBIR001<br/>Dell DRAC<br/>192.168.121.2"]
-    O_SRV["🗄️ EXASRVBIR001<br/>Rocky Linux · Oracle DB<br/>192.168.121.20"]
+    O_SRV["🗄️ EXASVRBIR001<br/>Rocky Linux · Oracle DB<br/>192.168.121.20"]
     O_TAB["📱 EXATABBIR001<br/>Android · Galaxy Tab<br/>192.168.121.61"]
     O_INET --> O_RTR
     O_RTR --> O_SWI1
@@ -245,7 +245,7 @@ graph TD
       PVE["🗂️ EXAPVEBIR001 · Proxmox node 1 · .5"]
       DC1["🗝️ EXADCRBIR001 · DC primary · .10"]
       DC2["🗝️ EXADCRBIR002 · DC secondary · .11"]
-      SRV["🗄️ EXASRVBIR001 · Rocky Linux · Oracle DB · .20"]
+      SRV["🗄️ EXASVRBIR001 · Rocky Linux · Oracle DB · .20"]
       SBC["🛡️ EXASBCBIR001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYBIR001 · Rudder Relay · .12"]
       MBP["💻 EXAMBPBIR001 · MacBook Pro · .41"]
@@ -301,10 +301,10 @@ graph TD
     T_WAP2["📶 EXAWAPBIR002<br/>Wireless Access Point<br/>192.168.121.83"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSBIR001<br/>DCS 1<br/>192.168.121.10"]
+    T_SVR["🗄️ EXASVRBIR001<br/>Oracle DB<br/>192.168.121.20"]
     T_SBC["🛡️ EXASBCBIR001<br/>SBC<br/>192.168.121.48"]
     T_FWL["🧱 EXAFWLBIR001<br/>LAN Face<br/>192.168.121.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_SRV["🗄️ EXASRVBIR001<br/>Oracle DB<br/>192.168.121.20"]
+    T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_MOO["🎹 EXAMOOBIR001<br/>Moog Synth<br/>192.168.121.70"]
     T_LIN["🥁 EXALINBIR001<br/>Drum Machine<br/>192.168.121.71"]
     T_FCL["🎹 EXAFCLBIR001<br/>Fairlight CMI<br/>192.168.121.72"]
@@ -314,8 +314,8 @@ graph TD
     T_MBP["💻 EXAMBPBIR001<br/>MacBook<br/>192.168.121.41"]
     T_TAB["📱 EXATABBIR001<br/>Galaxy Tab<br/>192.168.121.61"]
     T_PHN["📞 EXAPHNBIR001<br/>Samsung S25<br/>No IP Address"]
-    T_SRV --> T_LIN --> T_AST --> T_LCD --> T_TAB
     T_MOO --> T_FCL --> T_PAY --> T_MBP --> T_PHN
+    T_LIN --> T_AST --> T_LCD --> T_TAB
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -328,9 +328,9 @@ graph TD
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MOO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_LIN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FCL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -660,7 +660,7 @@ graph TD
 > real (replaced by a proper one on upgrade). Real working hypervisor — `EXAESXNEW001`
 > (VMware ESXi) managed by `EXARACNEW001` (Dell iDRAC9) — and a nice piece of continuity: that
 > same physical hardware was later repurposed as a new-build PVE node, `EXAPVENEW002`. Both
-> `EXADCRNEW001` and `EXASRVNEW001` were technically built and running (AD services / WS2022
+> `EXADCRNEW001` and `EXASVRNEW001` were technically built and running (AD services / WS2022
 > File-Print) but **never actually configured with real users, shares, or even a static IP** —
 > the file server was running on DHCP. Kept as real, sharp migration-priority signals — this
 > wasn't a working site, it was a shell. `EXAWKSNEW099`'s LAPS-expired flag kept per the standing
@@ -668,7 +668,7 @@ graph TD
 > with the new network.
 
 > 🚨 **Migration priority — Tier 3.** `EXADCRNEW001` (AD, never given real users/shares) and
-> `EXASRVNEW001` (file/print, never configured, still on DHCP) — no live users depending on
+> `EXASVRNEW001` (file/print, never configured, still on DHCP) — no live users depending on
 > either today. Still counts toward the estate-wide rollout: a new `EXADCSNEW001` build
 > promoting and replicating against `EXADCSCLD001` (`ansible/playbooks/windows_dc/`).
 
@@ -685,7 +685,7 @@ graph TD
     O_RAC -.->|"manages"| O_ESX
 
     O_DC["⚠️🗝️ EXADCRNEW001<br/>DC · AD running, no real users/shares ever set up<br/>192.168.191.10"]
-    O_SRV["⚠️🗄️ EXASRVNEW001<br/>WS2022 File/Print Server · never configured, on DHCP<br/>192.168.191.21"]
+    O_SRV["⚠️🗄️ EXASVRNEW001<br/>WS2022 File/Print Server · never configured, on DHCP<br/>192.168.191.21"]
     O_WKS["⚠️🖥️ EXAWKSNEW099<br/>Win11 WKS · LAPS expired<br/>192.168.191.161"]
     O_WAP["📶 WAPs — none yet, new build only"]
     O_CAM["🎥 CAMs — none yet, new build only"]
@@ -719,7 +719,7 @@ graph TD
       DC["🗝️ EXADCRNEW001 · DC · .10"]
       SBC["🛡️ EXASBCNEW001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYNEW001 · Rudder Relay · .12"]
-      SRV["🗄️ EXASRVNEW001 · WS2022 File/Print Server · .21"]
+      SRV["🗄️ EXASVRNEW001 · WS2022 File/Print Server · .21"]
       WKS["⚠️ 🖥️ EXAWKSNEW099 · Win11 WKS · LAPS expired · .161"]
       WAP["WAPs TODO · Ubiquiti UniFi U6-Pro"]
       CAM["CAMs TODO"]
@@ -763,10 +763,10 @@ graph TD
     T_WAP["📶 EXAWAPNEW001<br/>WAP 1<br/>192.168.191.82"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSNEW001<br/>DCS 1<br/>192.168.191.10"]
+    T_SVR["🗄️ EXASVRNEW001<br/>File/print Server<br/>No IP Address"]
     T_SBC["🛡️ EXASBCNEW001<br/>SBC<br/>192.168.191.48"]
     T_FWL["🧱 EXAFWLNEW001<br/>LAN Face<br/>192.168.191.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
-    T_SRV["🗄️ EXASRVNEW001<br/>File/print Server<br/>No IP Address"]
+    T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_WKS["🖥️ EXAWKSNEW099<br/>LAPS Password Expired<br/>192.168.191.161"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -779,9 +779,9 @@ graph TD
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_SRV fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:NEW:END
 ```

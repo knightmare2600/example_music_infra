@@ -70,7 +70,7 @@
           - target_hostname | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$') is not none
         fail_msg: >
           '{{ target_hostname }}' is not a valid EXA hostname.
-          Format: EXA[ROLE][SITE][NNN] — e.g. EXAWKSGLA001, EXASRVCLD002.
+          Format: EXA[ROLE][SITE][NNN] — e.g. EXAWKSGLA001, EXASVRCLD002.
       when: target_hostname != ""
 
     - name: Skip if already named correctly

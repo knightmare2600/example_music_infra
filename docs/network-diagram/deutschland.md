@@ -167,7 +167,7 @@ graph TD
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra). All three "servers" were Dell OptiPlex consumer PCs —
-> `EXADCRBER001` (PDC Emulator/RID-Infra Master), `EXASRVBER001` (WS2019 Legacy App Server), and
+> `EXADCRBER001` (PDC Emulator/RID-Infra Master), `EXASVRBER001` (WS2019 Legacy App Server), and
 > `EXANIXBER001` (Debian 12), all confirmed separate real devices. `EXARACBER001` "was called RAC
 > but wasn't a real RAC" — a basic PCI remote-power-on add-in card, not a genuine enterprise
 > BMC/iLO/iDRAC; kept as `RAC` type (role_codes.csv's own definition already covers "RAC
@@ -207,7 +207,7 @@ graph TD
       DC["🗝️ EXADCRBER001 · DC · PDC Emulator · RID/Infra Master WS2019 · .10"]
       SBC["🛡️ EXASBCBER001 · 3CX SBC → CLD PBX · .48"]
       RRY["🔁 EXARRYBER001 · Rudder Relay · .12"]
-      SRV["🗄️ EXASRVBER001 · WS2019 Legacy App Server · .21"]
+      SRV["🗄️ EXASVRBER001 · WS2019 Legacy App Server · .21"]
       NIX["🐧 EXANIXBER001 · Debian 12 Server · .22"]
       WAP["WAPs x2 · Ubiquiti UniFi U6-Pro"]
       CAM["CAMs TODO"]

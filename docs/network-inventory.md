@@ -244,7 +244,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 | `EXADCSFAL001` | DC | — | `192.168.76.10` | Domain Controller |
 | `EXASBCFAL001` | VOIP SBC | — | `192.168.76.48` | Trunks to `EXAPBXCLD001` |
 | `EXANASFAL001` | NAS | TrueNAS SCALE | `192.168.76.19` | Site NAS/SAN — installed 2026-07-26, bare metal, replaces the retired legacy FreeNAS box (was `.32`) |
-| `EXASRVFAL001` | Server | — | `192.168.76.20` | Reserved — standard convention slot, not yet in use |
+| `EXASVRFAL001` | Server | — | `192.168.76.20` | Reserved — standard convention slot, not yet in use |
 | `EXATARFAL001` | Tape Archiver | Solaris Embedded | `192.168.76.33` | Legacy tape archive |
 
 > The shared cross-site provisioning server (`192.168.139.50`) has no formal hostname or DNS record — bootstrap-only, IP-referenced only (see §4.1 of the Beginners Guide). It's not specific to this site, so it's not listed as an Infrastructure row above.
@@ -376,7 +376,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 | `EXABMCCLY001` | BMC | — | `192.168.41.2` | Standard BMC slot 1 |
 | `EXAPVECLY001` | Proxmox | — | `192.168.41.5` | PVE node 1 |
 | `EXADCSCLY001` | DC | — | `192.168.41.10` | Domain Controller |
-| `EXASRVCLY001` | Server | Rocky Linux | `192.168.41.20` | Oracle DB |
+| `EXASVRCLY001` | Server | Rocky Linux | `192.168.41.20` | Oracle DB |
 | `EXASBCCLY001` | VOIP SBC | — | `192.168.41.48` | Trunks to `EXAPBXCLD001` |
 | `EXANASCLY001` | NAS | — | `192.168.41.19` | Standard NAS slot |
 | `EXARDRCLY001` | Badge reader | — | `192.168.41.21` | Standard RDR slot |
@@ -529,7 +529,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 | `EXABMCBIR001` | BMC | — | `192.168.121.2` | Standard BMC slot 1 |
 | `EXAPVEBIR001` | Proxmox | — | `192.168.121.5` | PVE node 1 |
 | `EXADCSBIR001` | DC | — | `192.168.121.10` | Domain Controller |
-| `EXASRVBIR001` | Server | Rocky Linux | `192.168.121.20` | Oracle DB |
+| `EXASVRBIR001` | Server | Rocky Linux | `192.168.121.20` | Oracle DB |
 | `EXASBCBIR001` | VOIP SBC | — | `192.168.121.48` | Trunks to `EXAPBXCLD001` |
 | `EXANASBIR001` | NAS | — | `192.168.121.19` | Standard NAS slot |
 | `EXARDRBIR001` | Badge reader | — | `192.168.121.21` | Standard RDR slot |
@@ -631,7 +631,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 **WAPs:** `EXAWAPNEW001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
-**Endpoints:** `EXASRVNEW001` (Win Server 2022 file/print, `192.168.191.21` — real device sitting on RDR's usual standard octet; no separate badge reader confirmed built here), `EXAWKSNEW099` (Win11 — ⚠️ LAPS password expired)
+**Endpoints:** `EXASVRNEW001` (Win Server 2022 file/print, `192.168.191.21` — real device sitting on RDR's usual standard octet; no separate badge reader confirmed built here), `EXAWKSNEW099` (Win11 — ⚠️ LAPS password expired)
 
 ---
 
@@ -923,7 +923,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 **WAPs:** `EXAWAPBRD001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
-**Endpoints:** `EXASRVBRD001` (legacy app server, Windows Server 2019), `EXANIXBRD001` (Debian 12 server)
+**Endpoints:** `EXASVRBRD001` (legacy app server, Windows Server 2019), `EXANIXBRD001` (Debian 12 server)
 
 ---
 
@@ -1248,7 +1248,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 | `EXABMCLAX001` | BMC | — | `192.168.213.2` | Standard BMC slot 1 |
 | `EXAPVELAX001` | Proxmox | — | `192.168.213.5` | PVE node 1 |
 | `EXADCSLAX001` | DC | — | `192.168.213.10` | Domain Controller |
-| `EXASRVLAX001` | Server | Rocky Linux 9.x | `192.168.213.20` | Local services / DB |
+| `EXASVRLAX001` | Server | Rocky Linux 9.x | `192.168.213.20` | Local services / DB |
 | `EXASBCLAX001` | VOIP SBC | — | `192.168.213.48` | Trunks to `EXAPBXCLD001` |
 | `EXANASLAX001` | NAS | — | `192.168.213.19` | Standard NAS slot |
 | `EXARDRLAX001` | Badge reader | — | `192.168.213.21` | Standard RDR slot |
@@ -1456,7 +1456,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 | `EXABMCSYD001` | BMC | — | `192.168.29.2` | Standard BMC slot 1 |
 | `EXAPVESYD001` | Proxmox | — | `192.168.29.5` | PVE node 1 |
 | `EXADCSSYD001` | DC | — | `192.168.29.10` | Domain Controller |
-| `EXASRVSYD001` | Server | Windows Server 2022 | `192.168.29.20` | Local infra |
+| `EXASVRSYD001` | Server | Windows Server 2022 | `192.168.29.20` | Local infra |
 | `EXASBCSYD001` | VOIP SBC | — | `192.168.29.48` | Trunks to `EXAPBXCLD001` |
 | `EXANASSYD001` | NAS | — | `192.168.29.19` | Standard NAS slot |
 | `EXARDRSYD001` | Badge reader | — | `192.168.29.21` | Standard RDR slot |
@@ -1488,7 +1488,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 | `EXABMCMEL001` | BMC | — | `192.168.61.2` | Standard BMC slot 1 |
 | `EXAPVEMEL001` | Proxmox | — | `192.168.61.5` | PVE node 1 |
 | `EXADCSMEL001` | DC | — | `192.168.61.10` | Domain Controller |
-| `EXASRVMEL001` | Server | Windows Server 2022 | `192.168.61.20` | Local file & print |
+| `EXASVRMEL001` | Server | Windows Server 2022 | `192.168.61.20` | Local file & print |
 | `EXASBCMEL001` | VOIP SBC | — | `192.168.61.48` | Trunks to `EXAPBXCLD001` |
 | `EXANASMEL001` | NAS | — | `192.168.61.19` | Standard NAS slot |
 | `EXARDRMEL001` | Badge reader | — | `192.168.61.21` | Standard RDR slot |
@@ -1524,7 +1524,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 | `EXABMCAKL001` | BMC | — | `192.168.93.2` | Standard BMC slot 1 |
 | `EXAPVEAKL001` | Proxmox | — | `192.168.93.5` | PVE node 1 |
 | `EXADCSAKL001` | DC | — | `192.168.93.10` | Domain Controller |
-| `EXASRVAKL001` | Server | Windows Server 2022 | `192.168.93.20` | Local server |
+| `EXASVRAKL001` | Server | Windows Server 2022 | `192.168.93.20` | Local server |
 | `EXASBCAKL001` | VOIP SBC | — | `192.168.93.48` | Trunks to `EXAPBXCLD001` |
 | `EXANASAKL001` | NAS | — | `192.168.93.19` | Standard NAS slot |
 | `EXARDRAKL001` | Badge reader | — | `192.168.93.21` | Standard RDR slot |
@@ -1567,8 +1567,7 @@ harness-tracked view of these.
 | `EXASWI` | Switch | `EXASWIFAL001` |
 | `EXADCS` / `EXADCR` | Domain Controller (site/regional) | `EXADCSFAL001` |
 | `EXAPVE` | Proxmox VE node | `EXAPVEFAL001` |
-| `EXASRV` | Server | `EXASRVFAL001` |
-| `EXASVR` | Server — distinct from `EXASRV`, not a typo/legacy form of it (`role_codes.csv` lists both as separate, deliberately symbol-sharing codes) | `EXASVRCLD002` (WAC), `EXASVRLIV001` |
+| `EXASVR` | Server | `EXASVRFAL001` (WAC: `EXASVRCLD002`) |
 | `EXARAC` | Remote Access Console (DRAC/iLO/RAC emulator) | `EXARACFAL001` |
 | `EXANAS` | NAS/SAN storage (e.g. TrueNAS) — standard `.19` slot | `EXANAS<SITE>001` |
 | `EXASBC` | VOIP SBC — trunks to `EXAPBXCLD001` | `EXASBCFAL001` |

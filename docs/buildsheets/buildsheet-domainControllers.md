@@ -242,16 +242,25 @@ The network inventory currently records the West Berlin site as `BRD` in some pl
 | `EXADCSBRD001` | `EXADCSBER001` | Update DNS, AD site object, inventory |
 | `BRD` site code | `BER` | Update any references in site-inventory.md, network-inventory.md |
 
-### SVR vs SRV — Not a Legacy/Canonical Pair
+### SVR vs SRV — SVR Is Current, SRV Is Legacy
 
-Corrected 2026-08-03 — an earlier version of this section wrongly claimed `EXASVR*` was a
-legacy pattern to be renamed to `EXASRV*` on rebuild. That is not the case: `role_codes.csv`
-lists `SVR` and `SRV` as two separate, deliberately symbol-sharing "Generic server" role
-codes, and `devices.csv` has real, current devices under both — `EXASVRCLD002` (Windows
-Admin Centre) and `EXASVRLIV001` (LIV file server) under `SVR`; `EXASRVFAL001` (reserved),
-`EXASRVCLY001`, `EXASRVBIR001`, and others under `SRV`. **Do not rename `EXASVRCLD002` or
-`EXASVRLIV001` on rebuild** — both are correctly named as-is. See `network-inventory.md`'s
-Naming Convention Reference table for both prefixes' current worked examples.
+Corrected 2026-08-04 (Robert's call) — two earlier versions of this section both got the
+direction wrong, in opposite ways: an original version said `EXASVR*` was legacy and should
+be renamed to `EXASRV*`; a 2026-08-03 correction of that then over-corrected to say neither
+was legacy, that both were permanently coexisting codes. Repo history (`docs/proxmox/pve-create-vm.md`'s
+own 2026-03-03 changelog, and commit `b00b376`) showed the *original* intent had actually
+been the reverse of both — `SRV` current, `SVR` legacy — but with no way to settle which of
+the three conflicting accounts reflected reality, Robert made the definitive call: **`SVR` is
+the current code, `SRV` is retired.**
+
+Every real device that used to carry `EXASRV*` has been renamed to `EXASVR*` in `devices.csv`,
+`ad_computers.json`, and `role_codes.csv` (2026-08-04): `EXASVRFAL001` (reserved slot),
+`EXASVRCLY001`, `EXASVRBIR001`, `EXASVRBRD001`, `EXASVRLAX001`, `EXASVRSYD001`,
+`EXASVRMEL001`, `EXASVRAKL001` — joining the two devices that were already correctly `SVR`,
+`EXASVRCLD002` (Windows Admin Centre) and `EXASVRLIV001` (LIV file server). `SRV` remains
+defined in `role_codes.csv` as a legacy alias only, for reading old references — no current
+`devices.csv` row uses it. See `network-inventory.md`'s Naming Convention Reference table for
+the current worked example.
 
 ---
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Example Music Limited — Rudder Server Bootstrap Script
-# EXASRVFAL002 (or CLD-hosted Rudder server)
+# EXARUDCLD001 (CLD-hosted Rudder server)
 #
 # Mirrors the style and structure of ansibleme.sh:
 #   - Interactive, idempotent, run as root
@@ -240,7 +240,7 @@ if [[ "${CURRENT_HOSTNAME}" =~ ^[Ee][Xx][Aa] ]]; then
   SUGGESTED_HOSTNAME="${CURRENT_HOSTNAME^^}"
   info "Detected EXA-convention hostname: ${SUGGESTED_HOSTNAME}"
 else
-  SUGGESTED_HOSTNAME="EXASRVCLD001"
+  SUGGESTED_HOSTNAME="EXARUDCLD001"
   warn "Current hostname '${CURRENT_HOSTNAME}' does not match EXA* convention."
 fi
 

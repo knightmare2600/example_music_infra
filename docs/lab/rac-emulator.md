@@ -104,7 +104,7 @@ manual address instead.
 | `.6` | PVE node 2 |
 | `.7` | PVE node 3 |
 | `.10` | Domain Controller (EXADCS) |
-| `.11`+ | SRV nodes (EXASRV) |
+| `.11`+ | SVR nodes (EXASVR) |
 | `.2`–`.99` | Static allocation range |
 | `.100`–`.249` | DHCP pool |
 | `.250`–`.252` | RT switches |

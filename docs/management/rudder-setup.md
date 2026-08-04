@@ -125,19 +125,19 @@ ufw allow from 10.0.0.0/8 to any port 5309 proto tcp comment "Rudder CFEngine"
 
 > **Disk sizing:** Rudder's PostgreSQL report database grows with managed nodes and retention period. The Rudder documentation estimates ~76–114 GB for 500 nodes with 50 directives each. At current `jukebox.internal` scale, 30 GB is adequate; plan to expand `/var` if the node count exceeds ~100.
 
-### EXASRVODE001 — ODE Relay (future)
+### EXASVRODE001 — ODE Relay (future)
 
 | Parameter | Value |
 |-----------|-------|
-| Hostname | `EXASRVODE001` |
+| Hostname | `EXASVRODE001` |
 | Function | Rudder relay — EU hub |
 | IP | `192.168.126.12` |
 
-### EXASRVBRK001 — BRK Relay (future)
+### EXASVRBRK001 — BRK Relay (future)
 
 | Parameter | Value |
 |-----------|-------|
-| Hostname | `EXASRVBRK001` |
+| Hostname | `EXASVRBRK001` |
 | Function | Rudder relay — NA hub |
 | IP | `192.168.136.12` |
 
@@ -1302,8 +1302,8 @@ rudder_relay_uuid:
 | Node accepted in Rudder UI | EXAFWLFAL001 | [ ] |
 | Windows agent installed | EXADCSFAL001 | [ ] |
 | Node accepted in Rudder UI | EXADCSFAL001 | [ ] |
-| Windows agent installed | EXASRVFAL001 | [ ] |
-| Node accepted in Rudder UI | EXASRVFAL001 | [ ] |
+| Windows agent installed | EXASVRFAL001 | [ ] |
+| Node accepted in Rudder UI | EXASVRFAL001 | [ ] |
 | Node groups created | EXARUDCLD001 | [ ] |
 | Core package rule applied and compliant | All Windows FAL | [ ] |
 
@@ -1311,7 +1311,7 @@ rudder_relay_uuid:
 
 | Task | Node | Status |
 |------|------|--------|
-| Relay installed | EXASRVODE001 | [ ] |
+| Relay installed | EXASVRODE001 | [ ] |
 | Relay promoted in Rudder UI | | [ ] |
 | Linux agent installed | EXAFWLODE001 | [ ] |
 | Windows agent installed | EXADCSODE001 | [ ] |
@@ -1321,7 +1321,7 @@ rudder_relay_uuid:
 
 | Task | Node | Status |
 |------|------|--------|
-| Relay installed | EXASRVBRK001 | [ ] |
+| Relay installed | EXASVRBRK001 | [ ] |
 | Relay promoted in Rudder UI | | [ ] |
 | Linux agent installed | EXAFWLBRK001 | [ ] |
 | Windows agent installed | EXADCSBRK001 | [ ] |

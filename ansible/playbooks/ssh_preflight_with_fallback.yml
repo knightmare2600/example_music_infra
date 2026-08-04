@@ -72,7 +72,7 @@
 #   2026-07-26  Real live bug (Robert, mid-run against EXAFWLAMS001): hosts: was hardcoded
 #               to `all`, ignoring firewallme's own -e target= scoping convention entirely
 #               -- looped the password prompt through every host in inventory
-#               (EXASRVAKL001, EXASRVBIR001, EXAANSCLD001, ...) before ever reaching the
+#               (EXASVRAKL001, EXASVRBIR001, EXAANSCLD001, ...) before ever reaching the
 #               one actually requested. Fixed to hosts: "{{ target | default('all') }}",
 #               matching firewallme/playbooks/90-firewall.yml's own second play exactly;
 #               linux/tools.yml (which never sets target) is unaffected, still scoped via
