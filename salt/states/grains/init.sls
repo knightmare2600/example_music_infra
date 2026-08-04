@@ -39,6 +39,13 @@
 ##     call, same convention as wintools/init.sls and audit/init.sls -- silent
 ##     on a routine run where the rendered grains file already matched, only
 ##     speaks up the moment it actually had to (re)write the file.
+##   - street/postal_code grains added 2026-08-04 -- same sites.csv-lookup pattern as
+##     city/country/entity above, sourced from sites.csv's new Street/PostalCode columns
+##     (benarbejde/generate_inventory.py --emit-site-grains-pillar). This is the Windows-side
+##     half of the site-address rollout; Linux gets the same two fields via nodeinfo.yml's
+##     nodeinfo.json. Deliberately NOT a separate C:\ProgramData\example-music\nodeinfo.json --
+##     Robert's call: grains are already the known source of truth for this kind of per-node
+##     metadata on Windows, no need for a second competing file.
 
 {% set minion_id = grains['id'] %}
 {% set role_code = minion_id[3:6] %}
@@ -56,6 +63,8 @@ render_custom_grains:
         city: "{{ site.get('city', '') }}"
         country: "{{ site.get('country', '') }}"
         entity: "{{ site.get('entity', '') }}"
+        street: "{{ site.get('street', '') }}"
+        postal_code: "{{ site.get('postal_code', '') }}"
         habitat: {{ habitat }}
 
 notify_render_custom_grains:

@@ -165,6 +165,8 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | `rudder_site_city` | `Edinburgh` | Site city (used in MOTD) |
 | `rudder_site_country` | `Scotland` | Site country (used in MOTD) |
 | `rudder_site_entity` | `Example Music Limited` | Entity name (used in MOTD) |
+| `rudder_site_street` | `7 Claylands Road` | Site street (nodeinfo.json only, not shown in MOTD) |
+| `rudder_site_postal_code` | `EH28 8LF` | Site postal code (nodeinfo.json only, not shown in MOTD) |
 | `rudder_dc_hostname` | `EXADCSCLD001` | AD DC this server authenticates LDAP against — matches the group_vars default here, but every `rudder_servers` host needs its own explicit value (a relay at another site uses that site's own DC) |
 | `rudder_dc_ip` | `192.168.69.10` | That DC's real IP — used for the `/etc/hosts` fallback entry written before this node's own DNS resolver is configured |
 
