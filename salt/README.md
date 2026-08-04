@@ -20,12 +20,16 @@ salt/
 │   ├── wintools/
 │   ├── grains/
 │   ├── audit/
-│   └── bespoke_app_install/  ← generic, NOT in top.sls — see its own
-│                               install/init.sls header for why
+│   ├── bespoke_app_install/  ← generic, NOT in top.sls — see its own
+│   │                           install/init.sls header for why
+│   └── adtools/       ← PS-easyIT AD/Exchange admin tool suite, NOT in
+│                         top.sls either — apply explicitly per minion, see
+│                         its own init.sls header
 └── pillar/
     ├── top.sls        ← pillar top file (target-match -> pillar-data list)
-    └── sites.sls      ← generated, Site -> {city, country, entity} lookup
-                          (benarbejde/generate_inventory.py --emit-site-grains-pillar)
+    └── sites.sls      ← generated, Site -> {city, country, entity, street,
+                          postal_code} lookup (benarbejde/generate_inventory.py
+                          --emit-site-grains-pillar)
 ```
 
 `_modules/` (and `_grains/`, `_states/`, etc. if any ever get added) live at
