@@ -77,6 +77,8 @@ diagram change in this repo.
 | VCT | 🛰️ | VMware vCenter (legacy cluster management) | Added 2026-07-31 — found live at ODE, the real 3-node ESXi cluster's central management console. No VMware logo usable, same rule as `ESX` above — satellite dish (a central controller directing distributed hosts) |
 | RUD | ⚙️ | Rudder (config mgmt) | Standard `.12` slot, CLD only. Was `RDR` until 2026-07-20 — split apart because `devices.csv` reused the same three letters for badge readers too (see RDR under Endpoints below) |
 | RRY | 🔁 | Rudder Relay | |
+| MSH | 🖧 | MeshCentral (remote console/desktop platform) | Added 2026-08-04 — single instance, CLD only (`EXAMSHCLD001`, `.13`). Remote desktop/terminal/PowerShell+CMD/Linux shell/file transfer — does not replace Salt, config mgmt stays Salt's job. Part of the remote management platform build |
+| RMM | 📊 | TacticalRMM (endpoint monitoring/inventory) | Added 2026-08-04 — single instance, CLD only (`EXARMMCLD001`, `.14`). Monitoring/alerting/dashboards/reporting only, explicitly not config mgmt or software deployment (Salt/Chocolatey stay responsible). Part of the remote management platform build |
 | SLT | 🧂 | Salt master (config mgmt — all Windows nodes) | CLD only (`EXASLTCLD001`, `.22`). Manages `WKS`/`LAP`/`SUR`/`SVR`/`DCS` — `TAB` only if genuinely Windows, `MAC`/`MBP` future plans. `FWL`/`PVE` stay Ansible-only, no Syndic tier at current scale |
 | ANS | 🤖 | Ansible control node | |
 | PBX | 🔌 | Phone exchange (3CX PBX) | |
