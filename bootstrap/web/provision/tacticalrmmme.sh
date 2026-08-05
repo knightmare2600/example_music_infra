@@ -28,6 +28,15 @@
 #                     existing-install, DNS). Fetch/patch, answer cheat-sheet,
 #                     TOTP capture, and credential banner phases not yet
 #                     written -- see PLAN-tacticalrmmme.md.
+# v1.0.1  2026-08-05  Add static-IP activation check (Robert, live, building
+#                     EXARMMCLD001): freshly provisioned VMs come up on DHCP,
+#                     and tacticalrmm_server.yml's static-IP task is
+#                     deliberately session-safe -- it can leave the box on
+#                     DHCP until a manual reboot/nmcli-up if activating
+#                     immediately would strand the SSH session. Original
+#                     EXPECTED_IP constant was only ever used to validate DNS
+#                     records, never to check this box actually holds that
+#                     IP yet. Same hostname -I pattern rudderme.sh uses.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -83,7 +92,21 @@ if [[ "${CURRENT_HOSTNAME^^}" != "${EXPECTED_HOSTNAME}" ]]; then
 fi
 success "Hostname confirmed: ${EXPECTED_HOSTNAME}"
 
-# 1b. RAM check — install.sh itself hard-fails partway through with
+# 1b. Static IP activation check -- freshly provisioned VMs come up on DHCP,
+# and tacticalrmm_server.yml's own static-IP task is deliberately
+# session-safe: if activating the rmm-static NetworkManager profile would
+# strand the SSH session it's running over, it only writes the profile to
+# disk and leaves the box on DHCP until a manual reboot or
+# `nmcli connection up rmm-static`. Catch that window here rather than
+# letting install.sh bind everything to a DHCP lease that changes later --
+# same live-IP-detection pattern rudderme.sh uses (hostname -I).
+CURRENT_IPS=$(hostname -I)
+if ! echo "${CURRENT_IPS}" | grep -qw "${EXPECTED_IP}"; then
+  die "This box is not currently holding its static IP (${EXPECTED_IP}) -- current address(es): ${CURRENT_IPS}. tacticalrmm_server.yml's static-IP profile is written but not yet active (it never auto-activates if doing so risks stranding the session). Run 'nmcli connection up rmm-static' or reboot this host, confirm it comes up on ${EXPECTED_IP}, then re-run this script."
+fi
+success "Static IP confirmed live: ${EXPECTED_IP}"
+
+# 1c. RAM check — install.sh itself hard-fails partway through with
 # "ERROR: A minimum of 4GB of RAM is required", but only after several
 # minutes of apt work and, per the first live run, after the TOTP QR code
 # had already been generated once. Catch this in under a second instead.
@@ -93,13 +116,13 @@ if [[ "${TOTAL_RAM_MB}" -lt "${MIN_RAM_MB}" ]]; then
 fi
 success "RAM check passed: ${TOTAL_RAM_MB}MB available (minimum ${MIN_RAM_MB}MB)."
 
-# 1c. Existing-install check
+# 1d. Existing-install check
 if [[ -d "${RMM_INSTALL_DIR}" ]]; then
   die "${RMM_INSTALL_DIR} already exists -- TacticalRMM appears to be already installed on this box. Refusing to run install.sh again blind. If a reinstall is genuinely intended, remove or move ${RMM_INSTALL_DIR} first and re-run."
 fi
 success "No existing install found at ${RMM_INSTALL_DIR}."
 
-# 1d. DNS resolution check — the whole reason this section exists: verify
+# 1e. DNS resolution check — the whole reason this section exists: verify
 # all three subdomains resolve, and resolve to this box's own IP, before
 # install.sh gets anywhere near them.
 info "Checking DNS records resolve to ${EXPECTED_IP} before continuing..."
