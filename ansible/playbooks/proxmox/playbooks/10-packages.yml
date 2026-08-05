@@ -82,11 +82,22 @@
       when: item.stat.exists
       tags: packages
 
+    # Codename derived from ansible_distribution_release (a fact this play
+    # already gathers by default), not hardcoded. Found live, 2026-08-05
+    # (Robert, EXAPVECLD001/inventory EXAPVEVRK001): this line used to be a
+    # literal "trixie" string that had *never* been anything else since the
+    # task was written -- it never attempted OS detection, it just guessed
+    # and got lucky until a node came along whose apt state predated
+    # Ansible entirely (a stale "jessie" line survived from the box's
+    # original PVE ISO/template, years before this task ever ran). A
+    # hardcoded literal would eventually do the same wrong thing on any
+    # future PVE node that isn't trixie -- silently writing a
+    # codename-mismatched repo line, the same class of breakage.
     - name: Add Proxmox no-subscription repo
       ansible.builtin.copy:
         content: |
           # Proxmox VE no-subscription repository - added by Ansible (10-packages.yml)
-          deb http://download.proxmox.com/debian/pve trixie pve-no-subscription
+          deb http://download.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-no-subscription
         dest: /etc/apt/sources.list.d/pve-no-subscription.list
         owner: root
         group: root
