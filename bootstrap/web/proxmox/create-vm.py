@@ -544,12 +544,18 @@ def select_role():
     print()
     print(f"  {C.W}Role codes:{C.NC}")
     codes = sorted(ROLE_CODES.keys())
+    # Column width sized to the longest description actually in
+    # ROLE_CODES, not a hardcoded literal -- a hardcoded width silently
+    # breaks column alignment the next time a role code with a longer
+    # description is added. Found live, 2026-08-05 (Robert): MSH's
+    # 45-character description overflowed the old hardcoded 40.
+    desc_width = max(len(v) for v in ROLE_CODES.values())
     # Print in 3 columns
     for i in range(0, len(codes), 3):
         row = codes[i:i+3]
         line = ""
         for code in row:
-            line += f"  {C.CY}{code:4}{C.NC}  {ROLE_CODES[code]:<40}"
+            line += f"  {C.CY}{code:4}{C.NC}  {ROLE_CODES[code]:<{desc_width}}"
         print(f"  {line}")
     print()
 
