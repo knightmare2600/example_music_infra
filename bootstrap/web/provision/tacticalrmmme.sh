@@ -36,7 +36,15 @@
 #                     immediately would strand the SSH session. Original
 #                     EXPECTED_IP constant was only ever used to validate DNS
 #                     records, never to check this box actually holds that
-#                     IP yet. Same hostname -I pattern rudderme.sh uses.
+#                     IP yet.
+# v1.0.2  2026-08-05  Reworked the above (Robert: "go re-read firewallme.sh,
+#                     notice how it detects NICs and prompts for IPs") --
+#                     a flat die() on IP mismatch wasn't it. Now detects and
+#                     tables available interfaces and offers to activate
+#                     rmm-static interactively, same detect-then-prompt shape
+#                     and SSH-session wording as firewallme.sh's WAN
+#                     interface detection/activation prompt, rather than just
+#                     pointing the operator at a command to run elsewhere.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -97,14 +105,57 @@ success "Hostname confirmed: ${EXPECTED_HOSTNAME}"
 # session-safe: if activating the rmm-static NetworkManager profile would
 # strand the SSH session it's running over, it only writes the profile to
 # disk and leaves the box on DHCP until a manual reboot or
-# `nmcli connection up rmm-static`. Catch that window here rather than
-# letting install.sh bind everything to a DHCP lease that changes later --
-# same live-IP-detection pattern rudderme.sh uses (hostname -I).
+# `nmcli connection up rmm-static`. Rather than just dying and pointing the
+# operator elsewhere, detect interfaces and offer to activate it right here
+# -- same detect-then-prompt shape as firewallme.sh's WAN interface
+# detection/activation (Robert, 2026-08-05: "go re-read firewallme.sh,
+# notice how it detects NICs and prompts for IPs").
 CURRENT_IPS=$(hostname -I)
-if ! echo "${CURRENT_IPS}" | grep -qw "${EXPECTED_IP}"; then
-  die "This box is not currently holding its static IP (${EXPECTED_IP}) -- current address(es): ${CURRENT_IPS}. tacticalrmm_server.yml's static-IP profile is written but not yet active (it never auto-activates if doing so risks stranding the session). Run 'nmcli connection up rmm-static' or reboot this host, confirm it comes up on ${EXPECTED_IP}, then re-run this script."
+if echo "${CURRENT_IPS}" | grep -qw "${EXPECTED_IP}"; then
+  success "Static IP confirmed live: ${EXPECTED_IP}"
+else
+  warn "This box is not currently holding its static IP (${EXPECTED_IP})."
+  echo
+  echo -e "${CYAN}Available network interfaces:${NC}"
+  echo -e "${CYAN}──────────────────────────────────────────────────────────────${NC}"
+  for iface_path in /sys/class/net/*/; do
+    iface=$(basename "${iface_path}")
+    [[ "${iface}" == "lo" ]] && continue
+    mac=$(cat "/sys/class/net/${iface}/address" 2>/dev/null) || mac="??:??:??:??:??:??"
+    ip_addr=$(ip -4 addr show "${iface}" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' | head -1) || ip_addr=""
+    state=$(cat "/sys/class/net/${iface}/operstate" 2>/dev/null) || state="unknown"
+    if [[ -n "${ip_addr}" ]]; then
+      printf "  ${GREEN}%-14s${NC}  MAC: %s   IP: %-22s [%s]\n" "${iface}" "${mac}" "${ip_addr}" "${state}"
+    else
+      printf "  ${YELLOW}%-14s${NC}  MAC: %s   IP: %-22s [%s]\n" "${iface}" "${mac}" "(no address)" "${state}"
+    fi
+  done
+  echo -e "${CYAN}──────────────────────────────────────────────────────────────${NC}"
+  echo
+
+  if ! nmcli -g NAME connection show 2>/dev/null | grep -qx "rmm-static"; then
+    die "No 'rmm-static' NetworkManager profile found on this box. tacticalrmm_server.yml has not been run against it yet (or failed before writing the profile) -- run that playbook first, then re-run this script."
+  fi
+
+  warn "The 'rmm-static' NetworkManager profile exists but is not active."
+  warn "If you are connected via SSH over the interface it's bound to,"
+  warn "activating it now may drop your session."
+  warn "If you say N, bring it up yourself afterwards with:  nmcli connection up rmm-static"
+  echo
+  read -rp "  Activate rmm-static now? [y/N]: " RMM_ACTIVATE_ANSWER
+  if [[ "${RMM_ACTIVATE_ANSWER,,}" == "y" ]]; then
+    info "Activating rmm-static..."
+    nmcli connection up rmm-static
+    CURRENT_IPS=$(hostname -I)
+    if echo "${CURRENT_IPS}" | grep -qw "${EXPECTED_IP}"; then
+      success "Static IP confirmed live: ${EXPECTED_IP}"
+    else
+      die "rmm-static was activated but ${EXPECTED_IP} still isn't live -- current address(es): ${CURRENT_IPS}. Check the profile (nmcli connection show rmm-static) before continuing."
+    fi
+  else
+    die "Static IP not active -- activate rmm-static (or reboot) and confirm ${EXPECTED_IP} comes up, then re-run this script."
+  fi
 fi
-success "Static IP confirmed live: ${EXPECTED_IP}"
 
 # 1c. RAM check — install.sh itself hard-fails partway through with
 # "ERROR: A minimum of 4GB of RAM is required", but only after several
