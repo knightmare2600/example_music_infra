@@ -108,8 +108,8 @@ ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml \
   --user root -k
 ```
 
-**Step 4 — DNS**: run `bind9-dns.yml` (generates the `rmm` CNAME
-automatically), then manually add the `api`/`mesh` CNAMEs above.
+**Step 4 — DNS**: run `bind9-dns.yml --tags zones-full` (generates all three
+CNAMEs — `rmm`/`api`/`mesh` — automatically, no manual step).
 
 **Step 5 — Manual install** (on `EXARMMCLD001` itself, over SSH):
 
@@ -138,8 +138,6 @@ inbound-80/443 requirement can't be satisfied here.
 
 ## Not yet built
 
-- **Automated DNS for `api`/`mesh`** — manual per above, see the note about
-  `bind9-dns.yml` overwriting hand edits.
 - **Live-tested against real hardware, Trixie or otherwise.** Sections 1-4
   (hostname/network/packages/firewall) are a direct, proven adaptation of
   `rudder_server.yml`'s/`meshcentral_server.yml`'s own live-tested pattern.
