@@ -1143,6 +1143,16 @@
   # configured identity), ported via git config, not skipped.
   # ---------------------------------------------------------------------------
 
+    # create_home: true -- real live bug, EXARMMCLD001, 2026-08-06: with
+    # create_home: false, /etc/passwd still points this user's home at
+    # /home/tacticalrmm (Ansible's user module sets that path regardless),
+    # but the directory itself was never created. npm (Section 14, run as
+    # this user) needs a writable $HOME to cache into (~/.npm/) and failed
+    # outright (EACCES trying to mkdir a home directory that doesn't
+    # exist). Standard practice for a service account that runs
+    # language-ecosystem tooling (npm/pip) needing somewhere to cache --
+    # nologin shell already blocks interactive login regardless of whether
+    # a home directory exists.
     - name: "12 | Create dedicated tacticalrmm service user"
       user:
         name: "{{ rmm_service_user }}"
@@ -1150,7 +1160,7 @@
         shell: /usr/sbin/nologin
         groups: www-data
         append: true
-        create_home: false
+        create_home: true
 
     # Real live bug, EXARMMCLD001, 2026-08-06: on the first run this cloned
     # as root, then a later task reassigned /rmm to rmm_service_user. On the
