@@ -3,6 +3,15 @@
 # Example Music Limited — TacticalRMM Break-Glass Install Wrapper
 # EXARMMCLD001 (CLD-hosted TacticalRMM server)
 #
+# PARKED, 2026-08-06 -- NOT the current intended path. Robert reversed
+# direction after actually running this against EXARMMCLD001: install.sh is
+# being fully reimplemented as idempotent Ansible tasks directly in
+# tacticalrmm_server.yml instead of wrapped -- see PLAN-tacticalrmmme.md's
+# "2026-08-06 pivot" section for the full reasoning. This file is kept in
+# the repo (not deleted) as a fallback in case the Ansible-native rebuild
+# hits something genuinely easier to leave to the upstream installer, but
+# nothing below this point should be treated as the live plan.
+#
 # Wraps the upstream install.sh (github.com/amidaware/tacticalrmm) -- does NOT
 # reimplement anything it does. install.sh remains the single source of truth
 # for package installs, repo clones, DB setup, and Django migrations; this

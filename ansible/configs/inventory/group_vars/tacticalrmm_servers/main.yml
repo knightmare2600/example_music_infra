@@ -20,9 +20,12 @@
 rmm_domain: "{{ (lookup('file', ad_forest_json_path | default('/etc/example-music/ad_forest.json')) | from_json).domain_fqdn }}"
 
 # -----------------------------------------------------------------------------
-# Base packages -- deliberately minimal. install.sh (run manually, see
-# README.md) installs its own PostgreSQL/Node.js/Python/nginx stack; this
-# list is just general-purpose box hygiene, not TacticalRMM prerequisites.
+# Base packages -- deliberately minimal, general-purpose box hygiene, not
+# TacticalRMM's own prerequisites. Was: "install.sh (run manually) installs
+# its own PostgreSQL/Node.js/Python/nginx stack" -- superseded 2026-08-06,
+# see PLAN-tacticalrmmme.md's "2026-08-06 pivot". Those packages become this
+# group's own tasks as the Ansible-native install is built out phase by
+# phase; this list isn't where they'll land once that happens.
 # -----------------------------------------------------------------------------
 rmm_base_packages:
   - vim
@@ -47,9 +50,11 @@ rmm_base_packages:
 sites_csv_path: "/etc/example-music/sites.csv"
 
 # -----------------------------------------------------------------------------
-# The three subdomains install.sh will prompt for -- documented here as the
-# single source of truth for what to type at the prompts, not consumed by
-# any task (the install itself is manual). See README.md.
+# The three subdomains install.sh would have prompted for interactively --
+# now consumed directly by tacticalrmm_server.yml's Section 7 (confirmed to
+# the operator, not re-prompted -- see PLAN-tacticalrmmme.md's "2026-08-06
+# pivot" for why re-asking an already-fixed, DNS-verified value would be a
+# regression, not a faithful port).
 # -----------------------------------------------------------------------------
 rmm_frontend_subdomain: "rmm"
 rmm_backend_subdomain:  "api"

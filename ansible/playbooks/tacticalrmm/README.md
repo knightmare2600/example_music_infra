@@ -1,5 +1,15 @@
 # playbooks/tacticalrmm/
 
+> **2026-08-06 pivot — the section below is being superseded, in progress.**
+> `install.sh` is being fully reimplemented as idempotent Ansible tasks
+> directly in `tacticalrmm_server.yml`, not wrapped/run manually. See
+> `PLAN-tacticalrmmme.md`'s "2026-08-06 pivot" section for the full
+> reasoning and the phased build order. Phase 1 (all install prompts +
+> secret generation, Section 7/8 of the playbook) is done; the rest of
+> "Why the actual install isn't automated here" below still describes
+> `install.sh`'s own constraints accurately, it just no longer describes
+> what this repo does about them.
+
 Preps `EXARMMCLD001` (hostname, static IP, base packages, firewall) for
 TacticalRMM's own official installer. Remote management platform, phase 3 —
 see `ansible/README.md`'s `## meshcentral` section and project notes for the
@@ -10,7 +20,7 @@ reporting only — explicitly **not** config management or software
 deployment, those stay SaltStack/Chocolatey's job (same non-negotiable split
 the whole platform brief specifies).
 
-## Why the actual install isn't automated here
+## Why the actual install isn't automated here (superseded, see banner above)
 
 TacticalRMM's `install.sh` (github.com/amidaware/tacticalrmm) has no
 scriptable path — checked the real script, not guessed. It's
