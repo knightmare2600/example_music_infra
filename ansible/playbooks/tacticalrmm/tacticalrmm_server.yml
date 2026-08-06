@@ -501,7 +501,173 @@
         nodeinfo_bootstrapped_by: "tacticalrmm_server.yml"
         nodeinfo_extra:
           static_ip: "{{ rmm_static_ip }}"
-          rmm_install_status: "manual step required — see playbooks/tacticalrmm/README.md"
+          rmm_install_status: "VM prep + Phase 1 (prompts/secrets) done — see PLAN-tacticalrmmme.md for remaining phases"
+
+  # ---------------------------------------------------------------------------
+  # Section 7 — TacticalRMM install: prompts
+  # Ansible-native install build, Phase 1 (Robert, 2026-08-06: "fatten up
+  # this playbook... so it asks me all the questions and so on up front then
+  # we take each step out of install.sh and turn it into an ansible step" --
+  # see PLAN-tacticalrmmme.md's "2026-08-06 pivot"). Every value install.sh
+  # would normally ask for interactively, gathered up front instead of
+  # scattered across the 31-step install. Subdomains/root domain are NOT
+  # re-prompted -- already fixed, DNS-verified estate facts (role_codes.csv's
+  # RMM/MSH DNSAlias + bind9-dns.yml's bind9_extra_cnames), re-asking a known
+  # value would just invite a typo'd duplicate of data with one home already.
+  # ---------------------------------------------------------------------------
+
+    - name: "7 | Prompt for admin/notification email if not set"
+      pause:
+        prompt: "Admin/notification email for Django and MeshCentral [webmaster@{{ rmm_domain }}]"
+      register: _admin_email_prompt
+      when: rmm_admin_email is not defined or rmm_admin_email == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "7 | Set rmm_admin_email"
+      set_fact:
+        rmm_admin_email: "{{ (_admin_email_prompt.user_input | trim) if (_admin_email_prompt.user_input | default('') | trim != '') else ('webmaster@' + rmm_domain) }}"
+      when: _admin_email_prompt is not skipped
+
+    - name: "7 | Prompt for Django admin username if not set"
+      pause:
+        prompt: "Django admin username [admin]"
+      register: _django_user_prompt
+      when: rmm_django_admin_user is not defined or rmm_django_admin_user == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "7 | Set rmm_django_admin_user"
+      set_fact:
+        rmm_django_admin_user: "{{ (_django_user_prompt.user_input | trim) if (_django_user_prompt.user_input | default('') | trim != '') else 'admin' }}"
+      when: _django_user_prompt is not skipped
+
+    # Django's own createsuperuser, run interactively (install.sh's real
+    # mechanism), prompts its own "Password:"/"Password (again):" pair --
+    # not visible as a read/prompt line in install.sh's own source, it's
+    # Django's management command doing it. Reimplementing this
+    # non-interactively (--noinput + DJANGO_SUPERUSER_PASSWORD env var, a
+    # later phase) needs the password captured up front instead -- same
+    # double-entry confirmation, just moved here rather than nested inside
+    # a running management command partway through the install.
+    - name: "7 | Prompt for Django admin password"
+      pause:
+        prompt: "Django admin password (input hidden, min 8 characters)"
+        echo: false
+      register: _django_pass_prompt
+      delegate_to: localhost
+      become: false
+      no_log: true
+
+    - name: "7 | Prompt for Django admin password (confirm)"
+      pause:
+        prompt: "Confirm Django admin password (input hidden)"
+        echo: false
+      register: _django_pass_confirm_prompt
+      delegate_to: localhost
+      become: false
+      no_log: true
+
+    - name: "7 | Validate password confirmation matches"
+      assert:
+        that:
+          - _django_pass_prompt.user_input == _django_pass_confirm_prompt.user_input
+          - _django_pass_prompt.user_input | length >= 8
+        fail_msg: "Passwords did not match, or were under 8 characters -- re-run and try again. Nothing has been changed yet."
+        success_msg: "Password confirmed."
+      no_log: true
+
+    - name: "7 | Set rmm_django_admin_password"
+      set_fact:
+        rmm_django_admin_password: "{{ _django_pass_prompt.user_input }}"
+      no_log: true
+
+    - name: "7 | Confirm install facts (fixed + just-gathered)"
+      debug:
+        msg:
+          - "Root domain              : {{ rmm_domain }}"
+          - "Frontend subdomain       : {{ rmm_frontend_subdomain }}.{{ rmm_domain }}"
+          - "Backend subdomain        : {{ rmm_backend_subdomain }}.{{ rmm_domain }}"
+          - "Mesh subdomain           : {{ rmm_mesh_subdomain }}.{{ rmm_domain }}"
+          - "Admin/notification email : {{ rmm_admin_email }}"
+          - "Django admin username    : {{ rmm_django_admin_user }}"
+          - "Django admin password    : (confirmed, not displayed)"
+
+  # ---------------------------------------------------------------------------
+  # Section 8 — TacticalRMM install: secret generation
+  # install.sh generates 6 random secrets in memory and uses them once,
+  # same run (Django secret key, admin URL, MeshCentral password, two
+  # PostgreSQL username/password pairs, MeshCentral username). An idempotent
+  # Ansible re-run can't regenerate these each time -- would invalidate the
+  # already-configured database users/Django install the moment a later
+  # phase actually creates them. lookup('password', <path>, ...) generates
+  # once and returns the same value read back from that path on every
+  # subsequent run -- the standard Ansible idiom for exactly this. Lookups
+  # execute on the machine running ansible-playbook (the control node,
+  # EXAANSCLD001), NOT the remote target -- deliberate: the secret needs to
+  # survive regardless of which host gets re-provisioned, and the control
+  # node is where this estate already trusts long-lived material to sit
+  # (KeePassXC, SSH keys). Root-only directory, mode 0600 files (lookup's
+  # own default).
+  #
+  # Exact character sets (letters/lowercase/alphanumeric, lengths) are as
+  # described in install.sh's own generation logic, confirmed via WebFetch
+  # against the real script 2026-08-06 -- not independently re-verified
+  # byte-for-byte against its tr/openssl invocations. ascii_letters+digits
+  # chosen over install.sh's unknown-but-presumably-similar exact charset
+  # for django_secret_key/mesh_password/pg_password -- a safe superset that
+  # won't break shell/config-file/URL quoting either way.
+  # ---------------------------------------------------------------------------
+
+    - name: "8 | Ensure secrets directory exists (control node)"
+      file:
+        path: /root/.tacticalrmm_ansible_secrets
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+
+    - name: "8 | Generate/read Django secret key"
+      set_fact:
+        rmm_django_secret_key: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/django_secret_key', length=80, chars=['ascii_letters', 'digits']) }}"
+      no_log: true
+
+    - name: "8 | Generate/read admin URL path"
+      set_fact:
+        rmm_admin_url: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/admin_url', length=70, chars=['ascii_lowercase', 'digits']) }}"
+      no_log: true
+
+    - name: "8 | Generate/read MeshCentral password"
+      set_fact:
+        rmm_mesh_password: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/mesh_password', length=25, chars=['ascii_letters', 'digits']) }}"
+      no_log: true
+
+    - name: "8 | Generate/read MeshCentral username"
+      set_fact:
+        rmm_mesh_username: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/mesh_username', length=8, chars=['ascii_lowercase']) }}"
+      no_log: true
+
+    - name: "8 | Generate/read TacticalRMM PostgreSQL user/password"
+      set_fact:
+        rmm_pg_user: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/pg_user', length=8, chars=['ascii_lowercase']) }}"
+        rmm_pg_password: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/pg_password', length=20, chars=['ascii_letters', 'digits']) }}"
+      no_log: true
+
+    - name: "8 | Generate/read MeshCentral PostgreSQL user/password"
+      set_fact:
+        rmm_mesh_pg_user: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/mesh_pg_user', length=8, chars=['ascii_lowercase']) }}"
+        rmm_mesh_pg_password: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/mesh_pg_password', length=20, chars=['ascii_letters', 'digits']) }}"
+      no_log: true
+
+    - name: "8 | Confirm secrets were generated (values not displayed)"
+      debug:
+        msg: >-
+          8 secret(s) generated/read from /root/.tacticalrmm_ansible_secrets/
+          on the control node -- django_secret_key, admin_url, mesh_password,
+          mesh_username, pg_user, pg_password, mesh_pg_user, mesh_pg_password.
+          Not displayed here; a final credentials banner (a later phase) will
+          print what actually needs to go in KeePass -- most of these are
+          internal-only DB/config values, not operator-facing logins.
 
   # ---------------------------------------------------------------------------
   # Handlers
