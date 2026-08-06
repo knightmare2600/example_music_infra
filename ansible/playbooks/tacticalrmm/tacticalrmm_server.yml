@@ -1219,6 +1219,71 @@
       become_user: "{{ rmm_service_user }}"
 
   # ---------------------------------------------------------------------------
+  # Section 13 — TacticalRMM install: NATS server + nats-api
+  # Ansible-native install build, Phase 6 (install.sh steps 13, 16).
+  #
+  # NATS_SERVER_VER isn't a fixed constant anywhere in install.sh -- it's
+  # read dynamically from the just-cloned repo's own
+  # /rmm/api/tacticalrmm/tacticalrmm/settings.py (confirmed against the
+  # real current file: `NATS_SERVER_VER = "2.14.2"`), so whatever version
+  # TacticalRMM itself is pinned to at clone time is what gets installed --
+  # ported the same way, not hardcoded here, so this doesn't silently drift
+  # from whatever /rmm actually needs as upstream bumps it.
+  #
+  # nats-api is NOT downloaded separately -- confirmed against the real
+  # repo (github.com/amidaware/tacticalrmm/tree/master/natsapi/bin): the
+  # prebuilt binary already ships inside the just-cloned /rmm checkout
+  # itself (natsapi/bin/nats-api or natsapi/bin/nats-api-arm64), install.sh
+  # just copies whichever matches this host's arch. Uses copy:
+  # remote_src: true (checksums the source, idempotent by design) rather
+  # than a raw shell cp.
+  # ---------------------------------------------------------------------------
+
+    - name: "13 | Read NATS_SERVER_VER from the cloned repo's settings.py"
+      command: grep '^NATS_SERVER_VER' /rmm/api/tacticalrmm/tacticalrmm/settings.py
+      register: _rmm_nats_ver_line
+      changed_when: false
+
+    - name: "13 | Extract NATS version number"
+      set_fact:
+        rmm_nats_version: "{{ (_rmm_nats_ver_line.stdout | regex_search('\"([^\"]+)\"', '\\1'))[0] }}"
+
+    - name: "13 | Determine NATS/nats-api arch-specific names"
+      set_fact:
+        _rmm_nats_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}"
+        _rmm_natsapi_binary: "{{ 'nats-api' if ansible_architecture == 'x86_64' else 'nats-api-arm64' }}"
+
+    - name: "13 | Download NATS server release"
+      unarchive:
+        src: "https://github.com/nats-io/nats-server/releases/download/v{{ rmm_nats_version }}/nats-server-v{{ rmm_nats_version }}-linux-{{ _rmm_nats_arch }}.tar.gz"
+        dest: /tmp
+        remote_src: true
+        creates: "/tmp/nats-server-v{{ rmm_nats_version }}-linux-{{ _rmm_nats_arch }}/nats-server"
+
+    - name: "13 | Install nats-server binary"
+      copy:
+        src: "/tmp/nats-server-v{{ rmm_nats_version }}-linux-{{ _rmm_nats_arch }}/nats-server"
+        dest: /usr/local/bin/nats-server
+        mode: "0755"
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        remote_src: true
+
+    - name: "13 | Clean up NATS server download"
+      file:
+        path: "/tmp/nats-server-v{{ rmm_nats_version }}-linux-{{ _rmm_nats_arch }}"
+        state: absent
+
+    - name: "13 | Install nats-api binary (ships inside the cloned /rmm repo, not downloaded)"
+      copy:
+        src: "/rmm/natsapi/bin/{{ _rmm_natsapi_binary }}"
+        dest: /usr/local/bin/nats-api
+        mode: "0755"
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        remote_src: true
+
+  # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------
 
