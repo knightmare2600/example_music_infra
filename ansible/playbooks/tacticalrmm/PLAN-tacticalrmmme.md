@@ -1,8 +1,9 @@
 # Plan: TacticalRMM as an end-to-end Ansible install
 
 **Status: superseded direction as of 2026-08-06 — see "2026-08-06 pivot" below.**
-**Phase 1 (question-gathering + secret generation) and Phase 2 (compatibility
-checks + base packages) DONE. Phases 3-13 not started.**
+**Phase 1 (question-gathering + secret generation), Phase 2 (compatibility
+checks + base packages), and Phase 3 (nginx/NodeJS/Python 3.11.8/Redis/Git)
+DONE. Phases 4-13 not started.**
 
 ## 2026-08-06 pivot
 
@@ -115,7 +116,7 @@ one at a time, don't jump ahead.
 |---|---|---|
 | 1. Prompts + secret generation | 3, 4 (partial — email/admin user/password only) | **DONE, this session** |
 | 2. Compatibility checks + base packages | 1, 2 | **DONE, this session** |
-| 3. Nginx, NodeJS, Python 3.11.8, Redis, Git | 7, 8, 9, 10 | Not started |
+| 3. Nginx, NodeJS, Python 3.11.8, Redis, Git | 7, 8, 9, 10 | **DONE, this session** |
 | 4. PostgreSQL 18 + databases | 11 | Not started |
 | 5. Repo clones | 12 | Not started |
 | 6. NATS server + nats-api binaries | 13, 16 | Not started |

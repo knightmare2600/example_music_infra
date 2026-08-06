@@ -744,6 +744,174 @@
         success_msg: "Locale OK (UTF-8 found)."
 
   # ---------------------------------------------------------------------------
+  # Section 10 — TacticalRMM install: nginx, NodeJS, Python 3.11.8, Redis, Git
+  # Ansible-native install build, Phase 3 (install.sh steps 7-10). Every
+  # GPG key URL, repo line, package name, and Python build flag below was
+  # pulled from the real, current install.sh via WebFetch 2026-08-06, not
+  # guessed -- including confirming nginx.org actually publishes a real
+  # `trixie` repo (curled its dists/ listing directly) before trusting the
+  # osname/codename substitution would work on this box.
+  #
+  # $osname/$codename (install.sh's own `lsb_release -si`/`-sc`) map
+  # directly to Ansible facts this play already gathers --
+  # ansible_distribution | lower / ansible_distribution_release -- no need
+  # to shell out to lsb_release separately.
+  #
+  # GPG key + apt source pattern matches the established house idiom
+  # (rudder_server.yml's own "Download Rudder GPG key" task): shell +
+  # `creates:` for idempotency, not the deprecated apt_key module.
+  # ---------------------------------------------------------------------------
+
+    - name: "10 | Ensure /etc/apt/keyrings exists"
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: "10 | Fetch nginx GPG key"
+      shell: >
+        wget -qO - https://nginx.org/keys/nginx_signing.key
+        | gpg --dearmor -o /etc/apt/keyrings/nginx-archive-keyring.gpg
+      args:
+        creates: /etc/apt/keyrings/nginx-archive-keyring.gpg
+
+    - name: "10 | Add nginx apt repository"
+      copy:
+        dest: /etc/apt/sources.list.d/nginx.list
+        content: >
+          deb [signed-by=/etc/apt/keyrings/nginx-archive-keyring.gpg]
+          http://nginx.org/packages/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} nginx
+        mode: "0644"
+      register: _rmm_nginx_repo
+
+    - name: "10 | Update apt cache (nginx repo added)"
+      apt:
+        update_cache: true
+      when: _rmm_nginx_repo.changed
+
+    - name: "10 | Install nginx"
+      apt:
+        name: nginx
+        state: present
+
+    - name: "10 | Write nginx.conf (install.sh's own content, verbatim)"
+      copy:
+        dest: /etc/nginx/nginx.conf
+        mode: "0644"
+        content: |
+          worker_rlimit_nofile 1000000;
+          user www-data;
+          worker_processes auto;
+          pid /run/nginx.pid;
+          include /etc/nginx/modules-enabled/*.conf;
+
+          events {
+                  worker_connections 4096;
+          }
+
+          http {
+                  sendfile on;
+                  tcp_nopush on;
+                  types_hash_max_size 2048;
+                  server_names_hash_bucket_size 256;
+                  include /etc/nginx/mime.types;
+                  default_type application/octet-stream;
+                  ssl_protocols TLSv1.2 TLSv1.3;
+                  ssl_prefer_server_ciphers on;
+                  access_log /var/log/nginx/access.log;
+                  error_log /var/log/nginx/error.log;
+                  gzip on;
+                  include /etc/nginx/conf.d/*.conf;
+                  include /etc/nginx/sites-enabled/*;
+          }
+
+    - name: "10 | Stop nginx (no site configs/certs yet -- install.sh leaves it down too)"
+      systemd:
+        name: nginx
+        state: stopped
+
+    - name: "10 | Fetch NodeSource GPG key"
+      shell: >
+        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+      args:
+        creates: /etc/apt/keyrings/nodesource.gpg
+
+    - name: "10 | Add NodeSource apt repository (Node 24.x, matching install.sh's own NODE_MAJOR)"
+      copy:
+        dest: /etc/apt/sources.list.d/nodesource.list
+        content: "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main\n"
+        mode: "0644"
+      register: _rmm_nodesource_repo
+
+    - name: "10 | Update apt cache (NodeSource repo added)"
+      apt:
+        update_cache: true
+      when: _rmm_nodesource_repo.changed
+
+    - name: "10 | Install NodeJS"
+      apt:
+        name: nodejs
+        state: present
+
+    - name: "10 | Upgrade npm to latest"
+      community.general.npm:
+        name: npm
+        global: true
+        state: latest
+
+    - name: "10 | Install Python 3.11.8 build dependencies"
+      apt:
+        name:
+          - build-essential
+          - zlib1g-dev
+          - libncurses5-dev
+          - libgdbm-dev
+          - libnss3-dev
+          - libssl-dev
+          - libreadline-dev
+          - libffi-dev
+          - libsqlite3-dev
+          - libbz2-dev
+        state: present
+
+    - name: "10 | Download Python 3.11.8 source"
+      get_url:
+        url: https://www.python.org/ftp/python/3.11.8/Python-3.11.8.tgz
+        dest: /root/Python-3.11.8.tgz
+        mode: "0644"
+
+    # altinstall (not install) -- preserves the system's own default python3,
+    # confirmed from install.sh's real source, not assumed. Gated entirely
+    # behind a single `creates:` check on the resulting binary -- the whole
+    # extract+configure+make+altinstall sequence takes several minutes and
+    # is atomic in intent, no value in checking each sub-step separately.
+    - name: "10 | Extract, build, and altinstall Python 3.11.8"
+      shell: |
+        set -e
+        cd /root
+        tar -xf Python-3.11.8.tgz
+        cd Python-3.11.8
+        ./configure --enable-optimizations
+        make -j "$(nproc)"
+        make altinstall
+      args:
+        creates: /usr/local/bin/python3.11
+
+    - name: "10 | Clean up Python 3.11.8 source files"
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /root/Python-3.11.8
+        - /root/Python-3.11.8.tgz
+
+    - name: "10 | Install Redis (Git already covered by rmm_base_packages)"
+      apt:
+        name: redis
+        state: present
+
+  # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------
 

@@ -1,0 +1,9 @@
+# requirements.yml
+# Install with: ansible-galaxy collection install -r requirements.yml
+#
+# Provides community.general.npm, used by tacticalrmm_server.yml's Section 10
+# (upgrading npm itself as part of the NodeJS install, install.sh step 8).
+
+collections:
+  - name: community.general
+    version: ">=8.0.0"
