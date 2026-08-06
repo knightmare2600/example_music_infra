@@ -641,20 +641,32 @@
         rmm_mesh_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=25, chars=['ascii_letters', 'digits']) }}"
       no_log: true
 
-    - name: "8 | Generate MeshCentral username (ephemeral, this run only)"
+    # rmm_mesh_username/rmm_pg_user/rmm_mesh_pg_user are FIXED, not ephemeral
+    # -- real live bug, EXARMMCLD001, 2026-08-06: a re-run's "Create X
+    # PostgreSQL role" task ran AGAIN and printed a SECOND, different set of
+    # credentials, because the role NAME itself was one of these ephemeral
+    # /dev/null-generated values. The "does this role already exist" check
+    # was always asking about a brand-new random name every run -- it could
+    # never find the previous run's role, so every re-run created a fresh
+    # orphan and abandoned the last one. install.sh gets away with a random
+    # username because it's a one-shot script, run once, never re-run
+    # idempotently -- that assumption doesn't hold here. Usernames/account
+    # names used as an existence-check LOOKUP KEY need a stable identity
+    # across runs; only the genuinely one-shot SECRET VALUES (passwords,
+    # the Django secret key, the admin URL) are safe to stay ephemeral.
+    - name: "8 | Set fixed MeshCentral username (must be stable across runs -- used as an existence-check key)"
       set_fact:
-        rmm_mesh_username: "{{ lookup('ansible.builtin.password', '/dev/null', length=8, chars=['ascii_lowercase']) }}"
-      no_log: true
+        rmm_mesh_username: "meshcentral"
 
-    - name: "8 | Generate TacticalRMM PostgreSQL user/password (ephemeral, this run only)"
+    - name: "8 | Set fixed TacticalRMM PostgreSQL username + generate its password (ephemeral)"
       set_fact:
-        rmm_pg_user: "{{ lookup('ansible.builtin.password', '/dev/null', length=8, chars=['ascii_lowercase']) }}"
+        rmm_pg_user: "tacticalrmm"
         rmm_pg_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20, chars=['ascii_letters', 'digits']) }}"
       no_log: true
 
-    - name: "8 | Generate MeshCentral PostgreSQL user/password (ephemeral, this run only)"
+    - name: "8 | Set fixed MeshCentral PostgreSQL username + generate its password (ephemeral)"
       set_fact:
-        rmm_mesh_pg_user: "{{ lookup('ansible.builtin.password', '/dev/null', length=8, chars=['ascii_lowercase']) }}"
+        rmm_mesh_pg_user: "meshcentral"
         rmm_mesh_pg_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20, chars=['ascii_letters', 'digits']) }}"
       no_log: true
 
