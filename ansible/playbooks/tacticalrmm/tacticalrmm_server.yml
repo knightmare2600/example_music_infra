@@ -850,7 +850,47 @@
         global: true
         state: latest
 
-    - name: "10 | Install Python 3.11.8 build dependencies"
+    # Python provisioning -- codename-aware, added 2026-08-06 after Robert
+    # questioned why this unconditionally builds from source when Debian
+    # ships Python natively. install.sh always builds 3.11.8 from source on
+    # every OS it supports, but that's only strictly NECESSARY where nothing
+    # in Django 4.2's own officially-supported range (Python 3.8-3.12,
+    # confirmed against Django's real docs, not guessed) is available as a
+    # native package. Checked each codename against the real Debian/Ubuntu
+    # package archives, not assumed:
+    #   bullseye (Debian 11) -> python3.9   (in range)
+    #   bookworm (Debian 12) -> python3.11  (in range -- same major.minor
+    #                           install.sh itself pins, just a different
+    #                           patch release)
+    #   jammy    (Ubuntu 22.04) -> python3.10 (in range)
+    #   trixie   (Debian 13) -> only python3.13 exists at all, OUT of
+    #                           range -- no native shortcut exists, this is
+    #                           the one codename that genuinely needs the
+    #                           from-source build (not just "for
+    #                           consistency" the way install.sh frames it
+    #                           for its own officially-supported OSes).
+    # Anything not in this map falls back to building from source too --
+    # the same safe-by-default choice install.sh itself makes.
+    - name: "10 | Determine native in-range Python package for this codename"
+      set_fact:
+        _rmm_native_python: >-
+          {{
+            {
+              'bullseye': 'python3.9',
+              'bookworm': 'python3.11',
+              'jammy':    'python3.10',
+            }[ansible_distribution_release] | default('', true)
+          }}
+
+    - name: "10 | Install native Python package (codename has one in Django 4.2's supported range)"
+      apt:
+        name:
+          - "{{ _rmm_native_python }}"
+          - "{{ _rmm_native_python }}-venv"
+        state: present
+      when: _rmm_native_python != ''
+
+    - name: "10 | Install Python 3.11.8 build dependencies (no native in-range package for this codename)"
       apt:
         name:
           - build-essential
@@ -864,12 +904,14 @@
           - libsqlite3-dev
           - libbz2-dev
         state: present
+      when: _rmm_native_python == ''
 
     - name: "10 | Download Python 3.11.8 source"
       get_url:
         url: https://www.python.org/ftp/python/3.11.8/Python-3.11.8.tgz
         dest: /root/Python-3.11.8.tgz
         mode: "0644"
+      when: _rmm_native_python == ''
 
     # altinstall (not install) -- preserves the system's own default python3,
     # confirmed from install.sh's real source, not assumed. Gated entirely
@@ -887,6 +929,7 @@
         make altinstall
       args:
         creates: /usr/local/bin/python3.11
+      when: _rmm_native_python == ''
 
     - name: "10 | Clean up Python 3.11.8 source files"
       file:
@@ -895,6 +938,17 @@
       loop:
         - /root/Python-3.11.8
         - /root/Python-3.11.8.tgz
+      when: _rmm_native_python == ''
+
+    # Later phases (backend venv creation) need to know which interpreter to
+    # use regardless of which path provisioned it -- apt-installed binaries
+    # live at /usr/bin/python3.X, the from-source altinstall lives at
+    # /usr/local/bin/python3.11. One fact, set here once, so nothing further
+    # down the playbook needs to re-derive this or care which path ran.
+    - name: "10 | Set rmm_python_bin fact for later phases"
+      set_fact:
+        rmm_python_bin: >-
+          {{ ('/usr/bin/' + _rmm_native_python) if _rmm_native_python != '' else '/usr/local/bin/python3.11' }}
 
     - name: "10 | Install Redis (Git already covered by rmm_base_packages)"
       apt:
