@@ -17,6 +17,17 @@
 #
 # Version history:
 #
+#   v2.11  :klargoring now supports arm64, following PVE 9.2's own arm64 release
+#          (https://pve.proxmox.com/wiki/Roadmap, Robert, 2026-08-06). klargoring's real
+#          GitHub release (github.com/knightmare2600/klargoring) publishes asymmetric
+#          filenames per arch (amd64: vmlinuz/installer-initrd.img, arm64: vmlinuz-arm64/
+#          installer-initrd-arm64.img) -- confirmed against the actual
+#          klargoring-20260806-trixie-4 release, not guessed. Split into :klargoring-amd64/
+#          :klargoring-arm64 sublabels with fully-literal paths rather than ${arch}-style
+#          variable indirection, so check_bootstrap_assets.py's indirection resolver (not
+#          per-branch-scoped) can't cross-product three independent variables into asset
+#          paths iPXE would never actually request. Dropped the "(x86_64 only)" item label.
+#
 #   v2.10  Removed Ubuntu (:ubuntu-*, Alpine dd-writer pattern), Rocky Linux (:rocky-*), and
 #          Arch Linux (:arch-*) entirely -- Robert's explicit call, 2026-07-27: none of these
 #          were real/working (Ubuntu/Rocky had no committed assets at all; Arch's own
@@ -266,7 +277,7 @@ item --gap --
 item --gap --         -- Hypervisors --
 item proxmox-ve       Proxmox VE 9   (x86_64 only)
 item proxmox-dcm      Proxmox DCM 9  (x86_64 only)
-item klargoring             Projekt klargoring  (custom live Proxmox installer, x86_64 only)
+item klargoring             Projekt klargoring  (custom live Proxmox installer, x86_64 or ARM64)
 item --gap --
 item --gap --         -- Utilities --
 item gparted          GParted Live
@@ -432,11 +443,34 @@ goto main
 # hardcoded IP/site -- ${site-prefix}-answer.toml matches the same per-site
 # answer-file convention already established above (env_edinburgh/
 # env_fredericia set it to VRK/FRD respectively).
+#
+# ARM64 added 2026-08-06 (Robert, following PVE 9.2's own arm64 release --
+# https://pve.proxmox.com/wiki/Roadmap). Unlike debian/gparted/openbsd's own
+# per-arch subfolders (identically-named files, ${arch} alone resolves the
+# path), klargoring's real GitHub release
+# (github.com/knightmare2600/klargoring) publishes asymmetric filenames --
+# vmlinuz/installer-initrd.img (unsuffixed) for amd64, vmlinuz-arm64/
+# installer-initrd-arm64.img for arm64 -- confirmed against the actual
+# klargoring-20260806-trixie-4 release assets, not guessed. Branches to two
+# separate labels with fully-literal kernel/initrd paths rather than
+# ${arch}-style variable indirection -- three independent indirected
+# variables (dir/vmlinuz/initrd name) would let check_bootstrap_assets.py's
+# indirection resolver (not per-section/per-branch-scoped) cross-product
+# them into 8 combinations instead of the 2 real ones, silently asserting 4
+# asset paths iPXE could never actually request. Literal paths sidestep that
+# entirely -- each label is exactly what gets requested, nothing to resolve.
 # ===========================================================================
 :klargoring
-iseq ${arch} arm64 && goto noarch-msg ||
-kernel ${boot-url}/proxmox/klargoring/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml confirm-wipe no-reboot
-initrd ${boot-url}/proxmox/klargoring/installer-initrd.img
+iseq ${arch} arm64 && goto klargoring-arm64 || goto klargoring-amd64
+
+:klargoring-amd64
+kernel ${boot-url}/proxmox/klargoring/amd64/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml confirm-wipe no-reboot
+initrd ${boot-url}/proxmox/klargoring/amd64/installer-initrd.img
+boot
+
+:klargoring-arm64
+kernel ${boot-url}/proxmox/klargoring/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml confirm-wipe no-reboot
+initrd ${boot-url}/proxmox/klargoring/arm64/installer-initrd-arm64.img
 boot
 
 # ===========================================================================
