@@ -681,6 +681,69 @@
           KeePassXC yourself afterward with benarbejde/kpcli_wrapper.py.
 
   # ---------------------------------------------------------------------------
+  # Section 9 — TacticalRMM install: compatibility checks
+  # Ansible-native install build, Phase 2 (install.sh steps 1-2). Uses facts
+  # this play already gathers (gather_facts: true) instead of install.sh's
+  # own shell-script checks -- same information, idiomatic Ansible form.
+  #
+  # Deliberately NOT ported (see PLAN-tacticalrmmme.md's "What stays out of
+  # scope"): LXC/Turnkey Linux/Webmin rejection (not applicable to this
+  # estate's Proxmox-VM-only deployment model), the non-root-user check
+  # (Ansible always runs as root via become on the target, the opposite of
+  # install.sh's own assumption of a sudo-capable non-root login), and
+  # install.sh's own remote-version self-update check (irrelevant --
+  # install.sh itself is never invoked).
+  #
+  # Also deliberately NOT ported here: install.sh's "existing install"
+  # refusal. tacticalrmmme.sh's break-glass design needed to hard-refuse a
+  # blind re-run against a populated box; this Ansible-native design is
+  # meant to be genuinely idempotent instead -- the phase that actually
+  # clones the rmm repo (a later phase) is where that idempotency belongs
+  # (skip-if-already-cloned), not a hard stop here that would block every
+  # legitimate re-run forever after the first successful install.
+  # ---------------------------------------------------------------------------
+
+    - name: "9 | Assert supported CPU architecture"
+      assert:
+        that:
+          - ansible_architecture in ['x86_64', 'aarch64']
+        fail_msg: "Unsupported architecture '{{ ansible_architecture }}' -- TacticalRMM requires x86_64 or aarch64."
+        success_msg: "Architecture OK: {{ ansible_architecture }}"
+
+    - name: "9 | Assert minimum 4GB RAM"
+      assert:
+        that:
+          - ansible_memtotal_mb >= 4096
+        fail_msg: "Only {{ ansible_memtotal_mb }}MB RAM available -- TacticalRMM requires at least 4096MB. Resize the VM before continuing."
+        success_msg: "RAM OK: {{ ansible_memtotal_mb }}MB"
+
+    - name: "9 | Assert supported OS"
+      assert:
+        that:
+          - >-
+            (ansible_distribution == 'Debian' and ansible_distribution_major_version in ['11', '12', '13'])
+            or (ansible_distribution == 'Ubuntu' and ansible_distribution_version == '22.04')
+        fail_msg: >-
+          {{ ansible_distribution }} {{ ansible_distribution_version }} is not supported --
+          TacticalRMM's upstream installer only allows Debian 11/12 or Ubuntu 22.04. Debian 13
+          (Trixie) is allowed here as this estate's own tested exception (see README.md's
+          "Debian Trixie" section) -- PostgreSQL/NATS/MeshCentral are all version-parameterised
+          or built from source, nothing found genuinely Trixie-incompatible.
+        success_msg: "OS OK: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+    - name: "9 | Check locale is UTF-8"
+      command: locale
+      register: _rmm_locale_check
+      changed_when: false
+
+    - name: "9 | Assert UTF-8 locale"
+      assert:
+        that:
+          - _rmm_locale_check.stdout is regex('(?m)^LANG=.*UTF-8')
+        fail_msg: "System LANG does not appear to be UTF-8 -- TacticalRMM/Django require it. `locale` output: {{ _rmm_locale_check.stdout }}"
+        success_msg: "Locale OK (UTF-8 found)."
+
+  # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------
 
