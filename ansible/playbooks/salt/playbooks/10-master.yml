@@ -171,6 +171,8 @@
           fi
         done
         exit 1
+      args:
+        executable: /bin/bash
       register: _detected_iface
       changed_when: false
 
