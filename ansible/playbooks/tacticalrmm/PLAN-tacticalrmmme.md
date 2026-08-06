@@ -1,9 +1,9 @@
 # Plan: TacticalRMM as an end-to-end Ansible install
 
 **Status: superseded direction as of 2026-08-06 — see "2026-08-06 pivot" below.**
-**Phases 1-6 (prompts/secrets, compatibility checks + base packages, nginx/
+**Phases 1-7 (prompts/secrets, compatibility checks + base packages, nginx/
 NodeJS/Python 3.11.8/Redis/Git, PostgreSQL 18 + databases, repo clones,
-NATS server + nats-api) DONE. Phases 7-13 not started.**
+NATS server + nats-api, MeshCentral files) DONE. Phases 8-13 not started.**
 
 ## 2026-08-06 pivot
 
@@ -120,7 +120,7 @@ one at a time, don't jump ahead.
 | 4. PostgreSQL 18 + databases | 11 | **DONE, this session** |
 | 5. Repo clones | 12 | **DONE, this session** |
 | 6. NATS server + nats-api binaries | 13, 16 | **DONE, this session** |
-| 7. MeshCentral install (files, not yet running) | 14 | Not started |
+| 7. MeshCentral install (files, not yet running) | 14 | **DONE, this session** |
 | 8. Django settings + backend install/migrate | 15, 17 | Not started |
 | 9. Superuser + TOTP | 18 | Not started — see below |
 | 10. Systemd units + celery.conf | 19, 20 | Not started |

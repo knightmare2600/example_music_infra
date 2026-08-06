@@ -1284,6 +1284,124 @@
         remote_src: true
 
   # ---------------------------------------------------------------------------
+  # Section 14 — TacticalRMM install: MeshCentral files
+  # Ansible-native install build, Phase 7 (install.sh step 14). Only the
+  # files -- npm install and package/config.json -- not running MeshCentral
+  # itself yet (that's a later phase, first-boot polling + account setup).
+  #
+  # MESH_VER read dynamically from the cloned repo's settings.py, same
+  # pattern and same reasoning as NATS_SERVER_VER in Section 13 (confirmed
+  # against the real current file: MESH_VER = "1.2.0") -- not hardcoded, so
+  # it can't drift from whatever /rmm actually pins.
+  #
+  # config.json password consistency -- the one genuinely tricky part of
+  # this phase: config.json bakes in rmm_mesh_pg_password, one of Section
+  # 8's EPHEMERAL secrets (regenerated fresh every single run). If this
+  # file got rewritten on some later run, it would contain a password that
+  # was never actually applied to PostgreSQL -- the real role's password is
+  # whatever was live the run it was actually created (Section 11), not
+  # whatever Section 8 happens to regenerate today. Gated on the exact same
+  # condition Section 11 uses to decide whether it's creating the
+  # MeshCentral role THIS run (_rmm_mesh_pg_role_check) -- config.json can
+  # only ever get written in the same run the matching password is actually
+  # applied, never a run where it's stale. force: false is a second,
+  # defense-in-depth layer on top of that gate, not a replacement for it --
+  # protects a manually-recreated file even if the gate's own logic is ever
+  # wrong.
+  # ---------------------------------------------------------------------------
+
+    - name: "14 | Create /meshcentral/meshcentral-data"
+      file:
+        path: /meshcentral/meshcentral-data
+        state: directory
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        mode: "0755"
+
+    - name: "14 | Read MESH_VER from the cloned repo's settings.py"
+      command: grep '^MESH_VER' /rmm/api/tacticalrmm/tacticalrmm/settings.py
+      register: _rmm_mesh_ver_line
+      changed_when: false
+
+    - name: "14 | Extract MeshCentral version number"
+      set_fact:
+        rmm_mesh_version: "{{ (_rmm_mesh_ver_line.stdout | regex_search('\"([^\"]+)\"', '\\1'))[0] }}"
+
+    - name: "14 | Write /meshcentral/package.json"
+      copy:
+        dest: /meshcentral/package.json
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        mode: "0644"
+        content: >-
+          {{
+            {
+              "dependencies": {
+                "archiver": "7.0.1",
+                "meshcentral": rmm_mesh_version,
+                "otplib": "12.0.1",
+                "pg": "8.16.3"
+              }
+            } | to_nice_json
+          }}
+
+    - name: "14 | Write MeshCentral config.json (only the run its Postgres role is actually created)"
+      copy:
+        dest: /meshcentral/meshcentral-data/config.json
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        mode: "0644"
+        force: false
+        content: >-
+          {{
+            {
+              "settings": {
+                "cert": (rmm_mesh_subdomain + "." + rmm_domain),
+                "WANonly": true,
+                "minify": 1,
+                "port": 4430,
+                "aliasPort": 443,
+                "redirPort": 800,
+                "allowLoginToken": true,
+                "allowFraming": true,
+                "agentPing": 35,
+                "allowHighQualityDesktop": true,
+                "tlsOffload": "127.0.0.1",
+                "agentCoreDump": false,
+                "compression": false,
+                "wsCompression": false,
+                "agentWsCompression": false,
+                "maxInvalidLogin": {"time": 5, "count": 5, "coolofftime": 30},
+                "autoBackup": false,
+                "postgres": {
+                  "user": rmm_mesh_pg_user,
+                  "password": rmm_mesh_pg_password,
+                  "port": "5432",
+                  "host": "localhost"
+                }
+              },
+              "domains": {
+                "": {
+                  "title": "Tactical RMM",
+                  "title2": "Tactical RMM",
+                  "newAccounts": false,
+                  "certUrl": ("https://" + rmm_mesh_subdomain + "." + rmm_domain + ":443/"),
+                  "geoLocation": true,
+                  "cookieIpCheck": false,
+                  "mstsc": true
+                }
+              }
+            } | to_nice_json
+          }}
+      when: _rmm_mesh_pg_role_check.stdout | trim != '1'
+      no_log: true
+
+    - name: "14 | Run npm install in /meshcentral"
+      community.general.npm:
+        path: /meshcentral
+      become_user: "{{ rmm_service_user }}"
+
+  # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------
 
