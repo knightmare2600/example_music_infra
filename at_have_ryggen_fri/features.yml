@@ -57,3 +57,13 @@ features:
       screenprint messagetype values are all real, every module is documented.
     doc: salt/README.md
     check: check_salt_states.py
+
+  - name: data_refresh_workflow
+    description: >
+      Which playbooks need re-running against which hosts after a
+      benarbejde/ data change -- the doc's list of playbooks gated by
+      ansible/tasks/example_music_freshness_gate.yml (+ linux/tools.yml,
+      the actual /etc/example-music/* deployer) must stay in sync with
+      what's actually gated in the repo.
+    doc: docs/refresh-after-data-changes.md
+    check: check_data_refresh_doc_coverage.py

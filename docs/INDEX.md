@@ -44,6 +44,8 @@
 | [site-inventory.md](site-inventory.md) | NET-SITE-001 | Per-site commissioning checklists — build tracking, ZFS status, endpoint and equipment sign-off |
 | [INCIDENT-LOG.md](INCIDENT-LOG.md) | OPS-INC-001 | Blameless incident log — chronological, oldest first; what went wrong, root cause, and what changed as a result |
 | [linux-recovery-runbook.md](linux-recovery-runbook.md) | OPS-RECOVERY-001 | Recovering a Linux node where the `ansible` account is rejected entirely (console and SSH both) — GRUB rescue mode, unlock, verify |
+| [adding-a-new-device.md](adding-a-new-device.md) | OPS-DEVICE-001 | Step-by-step workflow for adding a new device — role code, free-octet finder, devices.csv row, regenerating every derived artefact, harness verification |
+| [refresh-after-data-changes.md](refresh-after-data-changes.md) | OPS-REFRESH-001 | Which playbooks need re-running against which hosts after a `benarbejde/` data change — what the freshness gate already protects automatically vs. the real remaining gap (PVE nodes' own local `/etc/example-music/*` copy) |
 | [network-diagram.md](network-diagram.md) | NET-DIAG-001 | Per-site network diagrams index — Visual Standard, emoji legend, links to every region file below. Split from one 51-diagram file into per-region files 2026-07-13 (GitHub's mermaid renderer got unreliable with that many diagrams on one page) |
 | [network-diagram/cld.md](network-diagram/cld.md) | NET-DIAG-001-CLD | Cloud (CLD) network diagram |
 | [network-diagram/vrk.md](network-diagram/vrk.md) | NET-DIAG-001-VRK | vRACK (VRK) network diagram — special case, only 3 real devices, no standard-slot synthesis |
@@ -349,6 +351,9 @@ maintain the original much) and catalogued rather than left as an orphan.
 | `NET-BRAND-*` | Branding / livery |
 | `NET-TOOL-*` | General tooling guides (not estate-specific infra) |
 | `OPS-INC-*` | Incident log |
+| `OPS-RECOVERY-*` | Linux account/SSH recovery |
+| `OPS-DEVICE-*` | Adding a new device to the estate |
+| `OPS-REFRESH-*` | Post-data-change playbook refresh workflow |
 
 ---
 
