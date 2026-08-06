@@ -256,13 +256,34 @@
         enabled: false
       failed_when: false
 
-    - name: "2 | Remove interface from /etc/network/interfaces if present"
-      blockinfile:
+    - name: "2 | Check for /etc/network/interfaces"
+      stat:
         path: /etc/network/interfaces
-        marker: "# {mark} ANSIBLE MANAGED — {{ _rmm_iface }}"
-        block: ""
-        state: absent
-      failed_when: false
+      register: _rmm_interfaces_file
+
+    - name: "2 | Remove ifupdown stanza for {{ _rmm_iface }} from /etc/network/interfaces"
+      # blockinfile (previous approach) only ever removes a block IT previously inserted
+      # with a matching marker -- it can never touch genuine pre-existing ifupdown content
+      # like the "allow-hotplug ens18 / iface ens18 inet dhcp" every fresh Debian box ships
+      # with, so it silently did nothing. Real live bug, EXARMMCLD001, 2026-08-06: masking
+      # networking.service does NOT stop allow-hotplug's own udev-triggered ifup mechanism,
+      # so the leftover DHCP stanza kept assigning a second "secondary dynamic" address on
+      # the same interface as rmm-static's manual one, surviving a full reboot. Same sed
+      # approach as firewallme/roles/firewall/tasks/06_network_manager.yml's own proven fix
+      # for the identical problem -- targets the real stanza syntax directly.
+      shell: |
+        set -e
+        if grep -qE "^(auto|allow-|iface)\s+{{ _rmm_iface }}\b" /etc/network/interfaces; then
+          sed -i "/^auto\s\+{{ _rmm_iface }}\b/d"      /etc/network/interfaces
+          sed -i "/^allow-.*\s{{ _rmm_iface }}\b/d"     /etc/network/interfaces
+          sed -i "/^iface[[:space:]]\+{{ _rmm_iface }}\b/,/^[^[:space:]]/d" /etc/network/interfaces
+          echo 1
+        else
+          echo 0
+        fi
+      register: _rmm_interfaces_cleaned
+      changed_when: _rmm_interfaces_cleaned.stdout | trim == '1'
+      when: _rmm_interfaces_file.stat.exists
 
     - name: "2 | Ensure NetworkManager manages interfaces"
       ini_file:
