@@ -56,9 +56,16 @@ The version gate itself is a simple `if` block early in the script comparing
 found in the package-install logic looks genuinely Trixie-incompatible — this
 reads like an untested support allowlist, not a hard technical wall. Robert's
 call, 2026-08-04: try Trixie anyway, with the guard patched, rather than
-downgrade `EXARMMCLD001` to bookworm. **Genuinely unverified** — the one
-thing that couldn't be checked without a live run is whether
-`apt.postgresql.org`'s PGDG repo actually publishes a `trixie-pgdg` build yet.
+downgrade `EXARMMCLD001` to bookworm.
+
+**Update, 2026-08-06 — confirmed, not just presumed anymore:** `apt.postgresql.org`
+genuinely publishes a `trixie-pgdg` repo (curled its `dists/` listing
+directly), and `postgresql-18` is really in it (curled the `trixie-pgdg`
+Packages index, real version strings returned). Resolved while building
+`tacticalrmm_server.yml`'s Section 11 (Ansible-native PostgreSQL install,
+see `PLAN-tacticalrmmme.md`'s "2026-08-06 pivot") — the whole
+"genuinely unverified" framing below described the now-superseded manual
+`install.sh` path; kept for the parked wrapper's own historical context.
 
 ### Patching the OS check
 
