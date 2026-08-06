@@ -244,7 +244,7 @@
 
     - name: "2 | Set interface name fact"
       set_fact:
-        _mesh_iface: "{{ mesh_network_interface | default(_detected_iface.stdout | trim) }}"
+        _mesh_iface: "{{ mesh_network_interface | default(_detected_iface.stdout | trim, true) }}"
 
     - name: "2 | Read interface MAC address"
       slurp:

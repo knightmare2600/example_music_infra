@@ -225,7 +225,7 @@
 
     - name: "2 | Set interface name fact"
       set_fact:
-        _rmm_iface: "{{ rmm_network_interface | default(_detected_iface.stdout | trim) }}"
+        _rmm_iface: "{{ rmm_network_interface | default(_detected_iface.stdout | trim, true) }}"
 
     - name: "2 | Read interface MAC address"
       slurp:
