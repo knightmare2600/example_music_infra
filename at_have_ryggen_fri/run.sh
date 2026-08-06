@@ -234,6 +234,16 @@
 #      defined but never used by any devices.csv row (informational by
 #      default -- a code can legitimately exist ahead of any device using it,
 #      e.g. RRY).
+#  35. check_data_refresh_doc_coverage.py -- docs/refresh-after-data-changes.md
+#      (Robert, 2026-08-06: "it needs a small doc and harness checks to boot,
+#      where it says 'the following playbooks need run on the following
+#      hosts'") names every playbook that includes ansible/tasks/
+#      example_music_freshness_gate.yml, plus linux/tools.yml itself (the
+#      only playbook that actually deploys benarbejde/* to
+#      /etc/example-music/*). HARD FAIL if a future gated playbook, or
+#      linux/tools.yml, stops being named there. Cannot and does not check
+#      any live host's actual on-disk staleness -- see the doc's own final
+#      section for why that's structurally out of scope for this harness.
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -478,6 +488,11 @@
 #               cause was a stale deployed CSV on that host, but exposed a
 #               genuine harness gap regardless -- devices.csv Type values
 #               were never cross-checked against role_codes.csv Codes).
+#               Also added check_data_refresh_doc_coverage.py (section 35) +
+#               docs/refresh-after-data-changes.md and
+#               docs/adding-a-new-device.md + benarbejde/suggest_free_ip.py --
+#               same session, Robert's four-point ask about the harness after
+#               the same live incident.
 # ==============================================================================
 set -uo pipefail
 
@@ -1117,6 +1132,20 @@ else
     fail "role_codes.csv Code(s) unused by any devices.csv row -- see above. Failing because --strict was passed."
   fi
   FAILED_CHECKS+=("check_role_code_usage.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 35. Data refresh doc coverage — check_data_refresh_doc_coverage.py
+# ------------------------------------------------------------------------------
+section "35. Data refresh doc coverage — check_data_refresh_doc_coverage.py"
+
+if out=$(python3 "${HERE}/check_data_refresh_doc_coverage.py"); then
+  echo "$out"
+  success "Every gated playbook and linux/tools.yml are named in docs/refresh-after-data-changes.md."
+else
+  echo "$out"
+  fail "docs/refresh-after-data-changes.md is missing a gated playbook -- see above."
+  FAILED_CHECKS+=("check_data_refresh_doc_coverage.py")
 fi
 
 # ------------------------------------------------------------------------------
