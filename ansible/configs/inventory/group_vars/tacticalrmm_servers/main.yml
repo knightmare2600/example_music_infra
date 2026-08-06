@@ -21,12 +21,25 @@ rmm_domain: "{{ (lookup('file', ad_forest_json_path | default('/etc/example-musi
 
 # -----------------------------------------------------------------------------
 # Base packages -- general-purpose box hygiene PLUS install.sh's own step-1
-# base package list (dirmngr/software-properties-common/openssl added
-# 2026-08-06, Ansible-native install Phase 2 -- curl/wget/jq/gnupg/
-# lsb-release/ca-certificates were already here, no duplicate needed).
-# PostgreSQL/Node.js/Python-from-source/nginx (install.sh's later steps)
-# become this group's own tasks as further phases land, not this list --
-# see PLAN-tacticalrmmme.md's "2026-08-06 pivot" for the full phase order.
+# base package list (dirmngr/openssl added 2026-08-06, Ansible-native install
+# Phase 2 -- curl/wget/jq/gnupg/lsb-release/ca-certificates were already
+# here, no duplicate needed). PostgreSQL/Node.js/Python-from-source/nginx
+# (install.sh's later steps) become this group's own tasks as further
+# phases land, not this list -- see PLAN-tacticalrmmme.md's "2026-08-06
+# pivot" for the full phase order.
+#
+# software-properties-common (also in install.sh's own step-1 list)
+# deliberately dropped, 2026-08-06 -- real live failure against
+# EXARMMCLD001: "No package matching 'software-properties-common' is
+# available". Confirmed via sources.debian.org, not guessed: the
+# software-properties source package has builds for bookworm/bullseye/
+# .../sid, nothing for trixie -- genuinely absent from Debian's own repos
+# on this OS, not a mirror/cache glitch. Also confirmed via WebFetch against
+# the real install.sh that `add-apt-repository` (the one tool this package
+# provides) is never actually called anywhere in the script -- it does all
+# its own repo setup the same manual GPG-key + apt source-list-file way
+# Section 10 already replicates. Dead weight on Trixie, not a real
+# dependency -- dropped rather than chasing a substitute.
 # -----------------------------------------------------------------------------
 rmm_base_packages:
   - vim
@@ -44,7 +57,6 @@ rmm_base_packages:
   - gnupg
   - lsb-release
   - dirmngr
-  - software-properties-common
   - openssl
 
 # -----------------------------------------------------------------------------
