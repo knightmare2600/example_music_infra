@@ -75,3 +75,12 @@ sites_csv_path: "/etc/example-music/sites.csv"
 rmm_frontend_subdomain: "rmm"
 rmm_backend_subdomain:  "api"
 rmm_mesh_subdomain:     "mesh"
+
+# -----------------------------------------------------------------------------
+# Dedicated service user (Section 12) -- install.sh itself never creates one
+# (everything runs as $USER, whichever human ran the installer via sudo),
+# which doesn't translate to this play's all-root Ansible execution model.
+# Owns /rmm + the community-scripts checkout; later phases' systemd units
+# (uwsgi/daphne/celery/celerybeat) run as this user, group www-data.
+# -----------------------------------------------------------------------------
+rmm_service_user: "tacticalrmm"

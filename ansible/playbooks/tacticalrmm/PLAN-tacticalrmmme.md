@@ -1,9 +1,9 @@
 # Plan: TacticalRMM as an end-to-end Ansible install
 
 **Status: superseded direction as of 2026-08-06 — see "2026-08-06 pivot" below.**
-**Phases 1-4 (prompts/secrets, compatibility checks + base packages, nginx/
-NodeJS/Python 3.11.8/Redis/Git, PostgreSQL 18 + databases) DONE. Phases
-5-13 not started.**
+**Phases 1-5 (prompts/secrets, compatibility checks + base packages, nginx/
+NodeJS/Python 3.11.8/Redis/Git, PostgreSQL 18 + databases, repo clones)
+DONE. Phases 6-13 not started.**
 
 ## 2026-08-06 pivot
 
@@ -118,7 +118,7 @@ one at a time, don't jump ahead.
 | 2. Compatibility checks + base packages | 1, 2 | **DONE, this session** |
 | 3. Nginx, NodeJS, Python 3.11.8, Redis, Git | 7, 8, 9, 10 | **DONE, this session** |
 | 4. PostgreSQL 18 + databases | 11 | **DONE, this session** |
-| 5. Repo clones | 12 | Not started |
+| 5. Repo clones | 12 | **DONE, this session** |
 | 6. NATS server + nats-api binaries | 13, 16 | Not started |
 | 7. MeshCentral install (files, not yet running) | 14 | Not started |
 | 8. Django settings + backend install/migrate | 15, 17 | Not started |
@@ -180,6 +180,19 @@ phase) prints what needs to go in KeePass, once, matching
 - `--use-own-cert` path — no external cert to provide.
 - Turnkey/Webmin/LXC rejection checks — not applicable to this estate's
   Proxmox-VM-only deployment model, safe to drop rather than port.
+
+## Deliberate deviation: dedicated service user (Phase 5, carries to Phase 10)
+
+install.sh creates no dedicated service user at all — every later systemd
+unit (`rmm`/`daphne`/etc.) runs as `${USER}` (whichever human ran the
+installer via sudo), group `www-data`. That doesn't translate to this
+play's all-root Ansible execution model, and running the real services as
+root would be worse than install.sh's own non-root intent, not equivalent
+to it. Phase 5 creates a dedicated system account instead
+(`rmm_service_user`, default `tacticalrmm`, no login shell) — owns `/rmm`
+and the community-scripts checkout now; Phase 10's systemd units need to
+use `User={{ rmm_service_user }}` / `Group=www-data` instead of
+install.sh's own `${USER}`, not a plain port.
 
 ## Original plan (2026-08-05, superseded — kept for history)
 
