@@ -221,6 +221,19 @@
 #      gitleaks isn't installed, --strict fails on that) -- but a genuine
 #      finding is ALWAYS a hard failure regardless of --strict, there's no
 #      "soft" leaked credential. Uses .gitleaks.toml's allowlist (repo root).
+#  34. check_role_code_usage.py -- benarbejde/devices.csv's own Type column
+#      cross-referenced against benarbejde/role_codes.csv's Code column (the
+#      pair check_role_codes.py, check 20, does NOT cover -- that one only
+#      cross-checks role_codes.csv against docs/emojis/README.md's legend).
+#      Found live 2026-08-05/06 (Robert, building EXARMMCLD001): create-vm.py
+#      hit "Unknown role code" against a live PVE node -- turned out to be a
+#      stale deployed /etc/example-music/role_codes.csv on that one host, not
+#      a repo bug, but it exposed a real gap: nothing checked devices.csv's
+#      Types against role_codes.csv's Codes at all. HARD FAIL on any unknown
+#      Type; --strict additionally fails on role_codes.csv Codes that are
+#      defined but never used by any devices.csv row (informational by
+#      default -- a code can legitimately exist ahead of any device using it,
+#      e.g. RRY).
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -458,6 +471,13 @@
 #               existing as a manual how-to. New .gitleaks.toml allowlist,
 #               conservative (checked-safe paths only, not a broad docs/ or
 #               benarbejde/ exclusion).
+#   2026-08-06  Added check_role_code_usage.py (section 34) -- Robert: "the
+#               harness needs checks that check the CSV files to see if any
+#               new codes have appeared, or any are missing from it," after
+#               a live "Unknown role code" incident on EXAPVEVRK001 (root
+#               cause was a stale deployed CSV on that host, but exposed a
+#               genuine harness gap regardless -- devices.csv Type values
+#               were never cross-checked against role_codes.csv Codes).
 # ==============================================================================
 set -uo pipefail
 
@@ -1077,6 +1097,26 @@ else
     fail "gitleaks is not installed on this host -- failing because --strict was passed."
   fi
   FAILED_CHECKS+=("check_gitleaks.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 34. Role code usage — check_role_code_usage.py
+# ------------------------------------------------------------------------------
+section "34. Role code usage — check_role_code_usage.py"
+
+rcu_args=()
+$STRICT && rcu_args+=("--strict")
+if out=$(python3 "${HERE}/check_role_code_usage.py" "${rcu_args[@]}"); then
+  echo "$out"
+  success "Every devices.csv Type has a matching role_codes.csv Code."
+else
+  echo "$out"
+  if echo "$out" | grep -q "no matching role_codes.csv Code"; then
+    fail "devices.csv Type(s) with no matching role_codes.csv Code -- see above."
+  else
+    fail "role_codes.csv Code(s) unused by any devices.csv row -- see above. Failing because --strict was passed."
+  fi
+  FAILED_CHECKS+=("check_role_code_usage.py")
 fi
 
 # ------------------------------------------------------------------------------
