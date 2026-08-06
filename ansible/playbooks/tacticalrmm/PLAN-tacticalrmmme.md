@@ -140,18 +140,37 @@ silently regenerate a TOTP secret the operator already scanned into an
 authenticator app) — needs a guard (skip TOTP generation if the superuser
 account already exists) before this phase is built, not after.
 
-## Secret persistence (Phase 1's other real design question)
+## Secret persistence — corrected 2026-08-06, real live catch
 
-install.sh generates 6 random secrets in memory and uses them once, same
-run. An idempotent Ansible re-run can't regenerate them each time (would
-invalidate the already-configured database users/Django install) — Phase 1
-generates each one via `lookup('password', <path>, ...)`, which persists
-to a file next to the play and returns the same value on every subsequent
-run. Chosen path: `/root/.tacticalrmm_ansible_secrets/<name>` — root-only,
-outside `/rmm`/`/meshcentral` entirely, never templated into a world-
-readable file directly. Final credentials banner (still to design, matches
-the wrapper's original Phase 5 intent) prints these for KeePass entry —
-generated, never auto-pushed, per the estate's one-way KeePass flow.
+First attempt at this got it wrong twice over: generated secrets via
+`lookup('password', <path>, ...)` pointed at `/root/.tacticalrmm_ansible_
+secrets/<name>` on the control node, to persist across re-runs. Failed
+live — `EXAANSCLD001` runs Ansible as the `ansible` user, not root, on
+purpose, and `delegate_to: localhost`/`become: false` can never write to
+`/root/*` there. Robert's correction went further than the path bug
+though: inventing a private Ansible-only secret store at all was the wrong
+instinct. This estate already has a specific, deliberate posture for
+locally-generated secrets — `docs/Example Music Limited — KeePassXC CLI
+Automation.md` §7a's one-way flow (Ansible MUST NEVER write to KeePass; a
+read-only lookup plugin is listed under §9 Future Enhancements, doesn't
+exist yet) — and a real, working precedent for exactly this situation:
+`salt/playbooks/20-saltgui.yml`. Its pattern: generate/prompt the secret,
+use it immediately in the same run to configure the real thing, print it
+**once** in a final banner, and the human runs `benarbejde/kpcli_
+wrapper.py` themselves afterward to file it into KeePassXC. Nothing
+Ansible-managed ever touches disk.
+
+Section 8 now generates each secret via `lookup('password', '/dev/null',
+...)` — the standard Ansible idiom for a genuinely ephemeral random value,
+verified locally (two calls return different values, nothing persisted).
+Idempotency for whatever later phase actually creates the PostgreSQL
+roles/writes `local_settings.py` with these is that phase's own problem —
+solved by checking the target's already-deployed state first (e.g.
+`postgresql_user`'s `no_password_changes`, or reading an existing
+`local_settings.py`'s `SECRET_KEY` back rather than overwriting it), not
+by a secret store here. Final credentials banner (still to design, later
+phase) prints what needs to go in KeePass, once, matching
+`20-saltgui.yml`'s own convention exactly.
 
 ## What stays out of scope
 
