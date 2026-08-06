@@ -40,14 +40,17 @@
 #
 # Usage
 # -----
-# First run (before ansible user/static IP exist, using root + password):
-#   ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml \
-#     --limit tacticalrmm_servers \
-#     --user root -k -e ansible_host=<current DHCP IP>
-#
-# Subsequent runs (once the box holds its static IP):
 #   ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml \
 #     --limit tacticalrmm_servers
+#
+# No --user root -k needed, ever -- the ansible user's SSH key is already
+# installed during the box's own PXE/preseed Debian install (Robert,
+# 2026-08-06, correcting a wrong assumption repeated through several runs
+# this session). No -e ansible_host= override needed either once the box
+# holds its real static IP (matching what's already in
+# host_vars/<hostname>/main.yml) -- only relevant for the very first
+# minutes of a genuinely fresh VM's life, before tacticalrmm_server.yml's
+# own Section 2 has even run once.
 #
 # Idempotency
 # -----------
@@ -136,6 +139,221 @@
           Set them in host_vars/{{ inventory_hostname }}/main.yml or pass via
           --extra-vars.
         success_msg: "All required variables present — proceeding."
+
+    # ---------------------------------------------------------------------------
+    # 9 | Compatibility checks (install.sh steps 1-2)
+    # MOVED into pre_tasks, 2026-08-06 -- Robert: "pre-flight checks exist
+    # literally to ask all the questions up front, but you ask halfway
+    # through the playbook, in direct contradiction to what we have as an
+    # established setup." Right call -- these were sitting after Sections
+    # 1-6 (hostname/network/packages/firewall all already applied), so a
+    # RAM/arch/OS failure only got caught after real changes had already
+    # been made to the box, exactly backwards from what a pre-flight check
+    # is for. Same tasks, same facts (gather_facts: true runs before
+    # pre_tasks, not after -- nothing lost by the move), just correctly
+    # positioned now, alongside the existing hostname/IP/gateway prompts
+    # this convention was already established for.
+    #
+    # Deliberately NOT ported (see PLAN-tacticalrmmme.md's "What stays out
+    # of scope"): LXC/Turnkey Linux/Webmin rejection (not applicable to
+    # this estate's Proxmox-VM-only deployment model), the non-root-user
+    # check (Ansible always runs as root via become on the target, the
+    # opposite of install.sh's own assumption of a sudo-capable non-root
+    # login), and install.sh's own remote-version self-update check
+    # (irrelevant -- install.sh itself is never invoked). Also not
+    # ported: install.sh's "existing install" refusal -- this
+    # Ansible-native design is meant to be genuinely idempotent instead,
+    # the phase that actually clones the rmm repo is where that
+    # idempotency belongs (skip-if-already-cloned), not a hard stop here.
+    # ---------------------------------------------------------------------------
+
+    - name: "9 | Assert supported CPU architecture"
+      assert:
+        that:
+          - ansible_architecture in ['x86_64', 'aarch64']
+        fail_msg: "Unsupported architecture '{{ ansible_architecture }}' -- TacticalRMM requires x86_64 or aarch64."
+        success_msg: "Architecture OK: {{ ansible_architecture }}"
+
+    - name: "9 | Assert minimum 4GB RAM"
+      assert:
+        that:
+          - ansible_memtotal_mb >= 4096
+        fail_msg: "Only {{ ansible_memtotal_mb }}MB RAM available -- TacticalRMM requires at least 4096MB. Resize the VM before continuing."
+        success_msg: "RAM OK: {{ ansible_memtotal_mb }}MB"
+
+    - name: "9 | Assert supported OS"
+      assert:
+        that:
+          - >-
+            (ansible_distribution == 'Debian' and ansible_distribution_major_version in ['11', '12', '13'])
+            or (ansible_distribution == 'Ubuntu' and ansible_distribution_version == '22.04')
+        fail_msg: >-
+          {{ ansible_distribution }} {{ ansible_distribution_version }} is not supported --
+          TacticalRMM's upstream installer only allows Debian 11/12 or Ubuntu 22.04. Debian 13
+          (Trixie) is allowed here as this estate's own tested exception (see README.md's
+          "Debian Trixie" section) -- PostgreSQL/NATS/MeshCentral are all version-parameterised
+          or built from source, nothing found genuinely Trixie-incompatible.
+        success_msg: "OS OK: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+    - name: "9 | Check locale is UTF-8"
+      command: locale
+      register: _rmm_locale_check
+      changed_when: false
+
+    - name: "9 | Assert UTF-8 locale"
+      assert:
+        that:
+          - _rmm_locale_check.stdout is regex('(?m)^LANG=.*UTF-8')
+        fail_msg: "System LANG does not appear to be UTF-8 -- TacticalRMM/Django require it. `locale` output: {{ _rmm_locale_check.stdout }}"
+        success_msg: "Locale OK (UTF-8 found)."
+
+    # ---------------------------------------------------------------------------
+    # 7 | Prompts -- MOVED into pre_tasks, 2026-08-06, same reasoning as
+    # the compatibility checks above. Every value install.sh would normally
+    # ask for interactively, gathered up front instead of scattered across
+    # the 31-step install. Subdomains/root domain are NOT re-prompted --
+    # already fixed, DNS-verified estate facts (role_codes.csv's RMM/MSH
+    # DNSAlias + bind9-dns.yml's bind9_extra_cnames), re-asking a known
+    # value would just invite a typo'd duplicate of data with one home
+    # already.
+    #
+    # Django admin PASSWORD is no longer prompted -- Robert, 2026-08-06:
+    # "Django passwords, like all others, can be generated by ansible, is
+    # that not why ansible is used for automation... you'll literally have
+    # the ability to generate random passwords AND save them, no?" Right
+    # call -- there's no real reason a human needs to invent/type/confirm
+    # this one when it can be generated exactly like the other 6 secrets
+    # and handed back via the credentials banner (a later phase, once
+    # superuser creation is built) the same way the PostgreSQL passwords
+    # already are. Email and username stay prompted -- those are genuine
+    # per-run identity choices, not secrets to generate.
+    # ---------------------------------------------------------------------------
+
+    - name: "7 | Prompt for admin/notification email if not set"
+      pause:
+        prompt: "Admin/notification email for Django and MeshCentral [webmaster@{{ rmm_domain }}]"
+      register: _admin_email_prompt
+      when: rmm_admin_email is not defined or rmm_admin_email == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "7 | Set rmm_admin_email"
+      set_fact:
+        rmm_admin_email: "{{ (_admin_email_prompt.user_input | trim) if (_admin_email_prompt.user_input | default('') | trim != '') else ('webmaster@' + rmm_domain) }}"
+      when: _admin_email_prompt is not skipped
+
+    - name: "7 | Prompt for Django admin username if not set"
+      pause:
+        prompt: "Django admin username [admin]"
+      register: _django_user_prompt
+      when: rmm_django_admin_user is not defined or rmm_django_admin_user == ""
+      delegate_to: localhost
+      become: false
+
+    - name: "7 | Set rmm_django_admin_user"
+      set_fact:
+        rmm_django_admin_user: "{{ (_django_user_prompt.user_input | trim) if (_django_user_prompt.user_input | default('') | trim != '') else 'admin' }}"
+      when: _django_user_prompt is not skipped
+
+    # ---------------------------------------------------------------------------
+    # 8 | Secret generation -- MOVED into pre_tasks, 2026-08-06, same
+    # reasoning as above. install.sh generates 6 secrets in memory and uses
+    # them once, same run (Django secret key, admin URL, MeshCentral
+    # password, two PostgreSQL username/password pairs, MeshCentral
+    # username) -- this now generates 7, the Django admin password folded
+    # in the same way (see the prompts note above for why it's no longer
+    # asked for). All via lookup('password', '/dev/null', ...), the
+    # standard Ansible idiom for "genuinely random value, no persistence
+    # anywhere" (verified locally: two calls return different values,
+    # nothing written to disk). Idempotency for whatever LATER phase
+    # actually creates the PostgreSQL roles/Django superuser/writes
+    # local_settings.py with these is THAT phase's own problem to solve by
+    # checking the target's already-deployed state first -- not solved by
+    # regenerating-and-persisting a secret store here. See docs/Example
+    # Music Limited — KeePassXC CLI Automation.md §7a and
+    # salt/playbooks/20-saltgui.yml for why this estate never lets Ansible
+    # write to KeePass or invent a parallel secret store either.
+    #
+    # rmm_mesh_username/rmm_pg_user/rmm_mesh_pg_user are FIXED, not
+    # ephemeral -- real live bug, EXARMMCLD001, 2026-08-06: a re-run's
+    # "Create X PostgreSQL role" task ran again and printed a SECOND,
+    # different set of credentials, because the role NAME itself was one
+    # of these ephemeral values. Usernames/account names used as an
+    # existence-check LOOKUP KEY need a stable identity across runs; only
+    # genuinely one-shot SECRET VALUES are safe to stay ephemeral.
+    #
+    # Exact character sets (letters/lowercase/alphanumeric, lengths) for
+    # django_secret_key/admin_url/mesh_password/pg_password/mesh_pg_password
+    # are as described in install.sh's own generation logic, confirmed via
+    # WebFetch against the real script -- not independently re-verified
+    # byte-for-byte against its tr/openssl invocations, but a safe superset
+    # that won't break shell/config-file/URL quoting either way.
+    # rmm_django_admin_password (not one of install.sh's own secrets -- it
+    # normally comes from a human at Django's own interactive
+    # createsuperuser prompt) uses the same charset/length as
+    # rmm_pg_password, no special reasoning behind that choice beyond
+    # consistency.
+    # ---------------------------------------------------------------------------
+
+    - name: "8 | Generate Django secret key (ephemeral, this run only)"
+      set_fact:
+        rmm_django_secret_key: "{{ lookup('ansible.builtin.password', '/dev/null', length=80, chars=['ascii_letters', 'digits']) }}"
+      no_log: true
+
+    - name: "8 | Generate admin URL path (ephemeral, this run only)"
+      set_fact:
+        rmm_admin_url: "{{ lookup('ansible.builtin.password', '/dev/null', length=70, chars=['ascii_lowercase', 'digits']) }}"
+      no_log: true
+
+    - name: "8 | Generate MeshCentral password (ephemeral, this run only)"
+      set_fact:
+        rmm_mesh_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=25, chars=['ascii_letters', 'digits']) }}"
+      no_log: true
+
+    - name: "8 | Generate Django admin password (ephemeral, this run only)"
+      set_fact:
+        rmm_django_admin_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20, chars=['ascii_letters', 'digits']) }}"
+      no_log: true
+
+    - name: "8 | Set fixed MeshCentral username (must be stable across runs -- used as an existence-check key)"
+      set_fact:
+        rmm_mesh_username: "meshcentral"
+
+    - name: "8 | Set fixed TacticalRMM PostgreSQL username + generate its password (ephemeral)"
+      set_fact:
+        rmm_pg_user: "tacticalrmm"
+        rmm_pg_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20, chars=['ascii_letters', 'digits']) }}"
+      no_log: true
+
+    - name: "8 | Set fixed MeshCentral PostgreSQL username + generate its password (ephemeral)"
+      set_fact:
+        rmm_mesh_pg_user: "meshcentral"
+        rmm_mesh_pg_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20, chars=['ascii_letters', 'digits']) }}"
+      no_log: true
+
+    - name: "7/8 | Confirm install facts (fixed + just-gathered/generated)"
+      debug:
+        msg:
+          - "Root domain              : {{ rmm_domain }}"
+          - "Frontend subdomain       : {{ rmm_frontend_subdomain }}.{{ rmm_domain }}"
+          - "Backend subdomain        : {{ rmm_backend_subdomain }}.{{ rmm_domain }}"
+          - "Mesh subdomain           : {{ rmm_mesh_subdomain }}.{{ rmm_domain }}"
+          - "Admin/notification email : {{ rmm_admin_email }}"
+          - "Django admin username    : {{ rmm_django_admin_user }}"
+          - "Django admin password    : (auto-generated, not displayed -- shown once in a later phase's credentials banner)"
+
+    - name: "8 | Confirm secrets were generated (values not displayed)"
+      debug:
+        msg: >-
+          9 secret(s) generated for this run -- django_secret_key, admin_url,
+          mesh_password, django_admin_password, mesh_username, pg_user,
+          pg_password, mesh_pg_user, mesh_pg_password. Not displayed here; a
+          later phase that actually creates the PostgreSQL roles/Django
+          install will use them, and a final credentials banner will print
+          what needs to go in KeePass -- shown once, matching
+          salt/playbooks/20-saltgui.yml's own precedent. Nothing here writes
+          to KeePass or anywhere else -- file it into KeePassXC yourself
+          afterward with benarbejde/kpcli_wrapper.py.
 
   tasks:
 
@@ -492,258 +710,6 @@
         nodeinfo_extra:
           static_ip: "{{ rmm_static_ip }}"
           rmm_install_status: "VM prep + Phase 1 (prompts/secrets) done — see PLAN-tacticalrmmme.md for remaining phases"
-
-  # ---------------------------------------------------------------------------
-  # Section 7 — TacticalRMM install: prompts
-  # Ansible-native install build, Phase 1 (Robert, 2026-08-06: "fatten up
-  # this playbook... so it asks me all the questions and so on up front then
-  # we take each step out of install.sh and turn it into an ansible step" --
-  # see PLAN-tacticalrmmme.md's "2026-08-06 pivot"). Every value install.sh
-  # would normally ask for interactively, gathered up front instead of
-  # scattered across the 31-step install. Subdomains/root domain are NOT
-  # re-prompted -- already fixed, DNS-verified estate facts (role_codes.csv's
-  # RMM/MSH DNSAlias + bind9-dns.yml's bind9_extra_cnames), re-asking a known
-  # value would just invite a typo'd duplicate of data with one home already.
-  # ---------------------------------------------------------------------------
-
-    - name: "7 | Prompt for admin/notification email if not set"
-      pause:
-        prompt: "Admin/notification email for Django and MeshCentral [webmaster@{{ rmm_domain }}]"
-      register: _admin_email_prompt
-      when: rmm_admin_email is not defined or rmm_admin_email == ""
-      delegate_to: localhost
-      become: false
-
-    - name: "7 | Set rmm_admin_email"
-      set_fact:
-        rmm_admin_email: "{{ (_admin_email_prompt.user_input | trim) if (_admin_email_prompt.user_input | default('') | trim != '') else ('webmaster@' + rmm_domain) }}"
-      when: _admin_email_prompt is not skipped
-
-    - name: "7 | Prompt for Django admin username if not set"
-      pause:
-        prompt: "Django admin username [admin]"
-      register: _django_user_prompt
-      when: rmm_django_admin_user is not defined or rmm_django_admin_user == ""
-      delegate_to: localhost
-      become: false
-
-    - name: "7 | Set rmm_django_admin_user"
-      set_fact:
-        rmm_django_admin_user: "{{ (_django_user_prompt.user_input | trim) if (_django_user_prompt.user_input | default('') | trim != '') else 'admin' }}"
-      when: _django_user_prompt is not skipped
-
-    # Django's own createsuperuser, run interactively (install.sh's real
-    # mechanism), prompts its own "Password:"/"Password (again):" pair --
-    # not visible as a read/prompt line in install.sh's own source, it's
-    # Django's management command doing it. Reimplementing this
-    # non-interactively (--noinput + DJANGO_SUPERUSER_PASSWORD env var, a
-    # later phase) needs the password captured up front instead -- same
-    # double-entry confirmation, just moved here rather than nested inside
-    # a running management command partway through the install.
-    - name: "7 | Prompt for Django admin password"
-      pause:
-        prompt: "Django admin password (input hidden, min 8 characters)"
-        echo: false
-      register: _django_pass_prompt
-      delegate_to: localhost
-      become: false
-      no_log: true
-
-    - name: "7 | Prompt for Django admin password (confirm)"
-      pause:
-        prompt: "Confirm Django admin password (input hidden)"
-        echo: false
-      register: _django_pass_confirm_prompt
-      delegate_to: localhost
-      become: false
-      no_log: true
-
-    - name: "7 | Validate password confirmation matches"
-      assert:
-        that:
-          - _django_pass_prompt.user_input == _django_pass_confirm_prompt.user_input
-          - _django_pass_prompt.user_input | length >= 8
-        fail_msg: "Passwords did not match, or were under 8 characters -- re-run and try again. Nothing has been changed yet."
-        success_msg: "Password confirmed."
-      no_log: true
-
-    - name: "7 | Set rmm_django_admin_password"
-      set_fact:
-        rmm_django_admin_password: "{{ _django_pass_prompt.user_input }}"
-      no_log: true
-
-    - name: "7 | Confirm install facts (fixed + just-gathered)"
-      debug:
-        msg:
-          - "Root domain              : {{ rmm_domain }}"
-          - "Frontend subdomain       : {{ rmm_frontend_subdomain }}.{{ rmm_domain }}"
-          - "Backend subdomain        : {{ rmm_backend_subdomain }}.{{ rmm_domain }}"
-          - "Mesh subdomain           : {{ rmm_mesh_subdomain }}.{{ rmm_domain }}"
-          - "Admin/notification email : {{ rmm_admin_email }}"
-          - "Django admin username    : {{ rmm_django_admin_user }}"
-          - "Django admin password    : (confirmed, not displayed)"
-
-  # ---------------------------------------------------------------------------
-  # Section 8 — TacticalRMM install: secret generation
-  # REWORKED 2026-08-06 -- the first version of this section wrote generated
-  # secrets to a file (/root/.tacticalrmm_ansible_secrets/ on the control
-  # node) so re-runs could read the same value back. Two real problems,
-  # both Robert's live catch: (1) EXAANSCLD001 runs Ansible as the `ansible`
-  # user, not root, on purpose -- delegate_to: localhost with become: false
-  # can never write to /root/* there, which is exactly what failed live;
-  # (2) more fundamentally, inventing a private Ansible-only secret store at
-  # all was the wrong instinct -- this estate already has a specific,
-  # deliberate posture for exactly this (docs/Example Music Limited —
-  # KeePassXC CLI Automation.md §7a, "one-way flow": Ansible MUST NEVER
-  # write to KeePass, and a read-only lookup plugin is listed under §9
-  # Future Enhancements -- doesn't exist yet either). The one real working
-  # precedent for "an Ansible play needs a locally-generated secret" is
-  # salt/playbooks/20-saltgui.yml: generate/prompt it, use it immediately
-  # in the SAME run to configure the real thing, print it ONCE in a final
-  # banner, and the human runs benarbejde/kpcli_wrapper.py themselves
-  # afterward to file it -- nothing Ansible-managed ever touches disk.
-  # Following that pattern exactly here instead.
-  #
-  # install.sh generates these 6 secrets in memory and uses them once, same
-  # run (Django secret key, admin URL, MeshCentral password, two PostgreSQL
-  # username/password pairs, MeshCentral username) -- this section does the
-  # same, via lookup('password', '/dev/null', ...), the standard Ansible
-  # idiom for "genuinely random value, no persistence anywhere" (verified
-  # locally: two calls return different values, nothing written to disk).
-  # Idempotency for whatever LATER phase actually creates the PostgreSQL
-  # roles/writes local_settings.py with these is THAT phase's own problem to
-  # solve by checking the target's already-deployed state first (e.g.
-  # postgresql_user's no_password_changes, or reading an existing
-  # local_settings.py's SECRET_KEY back rather than overwriting it) -- not
-  # solved by regenerating-and-persisting a secret store here.
-  #
-  # Exact character sets (letters/lowercase/alphanumeric, lengths) are as
-  # described in install.sh's own generation logic, confirmed via WebFetch
-  # against the real script 2026-08-06 -- not independently re-verified
-  # byte-for-byte against its tr/openssl invocations. ascii_letters+digits
-  # chosen over install.sh's unknown-but-presumably-similar exact charset
-  # for django_secret_key/mesh_password/pg_password -- a safe superset that
-  # won't break shell/config-file/URL quoting either way.
-  # ---------------------------------------------------------------------------
-
-    - name: "8 | Generate Django secret key (ephemeral, this run only)"
-      set_fact:
-        rmm_django_secret_key: "{{ lookup('ansible.builtin.password', '/dev/null', length=80, chars=['ascii_letters', 'digits']) }}"
-      no_log: true
-
-    - name: "8 | Generate admin URL path (ephemeral, this run only)"
-      set_fact:
-        rmm_admin_url: "{{ lookup('ansible.builtin.password', '/dev/null', length=70, chars=['ascii_lowercase', 'digits']) }}"
-      no_log: true
-
-    - name: "8 | Generate MeshCentral password (ephemeral, this run only)"
-      set_fact:
-        rmm_mesh_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=25, chars=['ascii_letters', 'digits']) }}"
-      no_log: true
-
-    # rmm_mesh_username/rmm_pg_user/rmm_mesh_pg_user are FIXED, not ephemeral
-    # -- real live bug, EXARMMCLD001, 2026-08-06: a re-run's "Create X
-    # PostgreSQL role" task ran AGAIN and printed a SECOND, different set of
-    # credentials, because the role NAME itself was one of these ephemeral
-    # /dev/null-generated values. The "does this role already exist" check
-    # was always asking about a brand-new random name every run -- it could
-    # never find the previous run's role, so every re-run created a fresh
-    # orphan and abandoned the last one. install.sh gets away with a random
-    # username because it's a one-shot script, run once, never re-run
-    # idempotently -- that assumption doesn't hold here. Usernames/account
-    # names used as an existence-check LOOKUP KEY need a stable identity
-    # across runs; only the genuinely one-shot SECRET VALUES (passwords,
-    # the Django secret key, the admin URL) are safe to stay ephemeral.
-    - name: "8 | Set fixed MeshCentral username (must be stable across runs -- used as an existence-check key)"
-      set_fact:
-        rmm_mesh_username: "meshcentral"
-
-    - name: "8 | Set fixed TacticalRMM PostgreSQL username + generate its password (ephemeral)"
-      set_fact:
-        rmm_pg_user: "tacticalrmm"
-        rmm_pg_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20, chars=['ascii_letters', 'digits']) }}"
-      no_log: true
-
-    - name: "8 | Set fixed MeshCentral PostgreSQL username + generate its password (ephemeral)"
-      set_fact:
-        rmm_mesh_pg_user: "meshcentral"
-        rmm_mesh_pg_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20, chars=['ascii_letters', 'digits']) }}"
-      no_log: true
-
-    - name: "8 | Confirm secrets were generated (values not displayed)"
-      debug:
-        msg: >-
-          8 secret(s) generated for this run -- django_secret_key, admin_url,
-          mesh_password, mesh_username, pg_user, pg_password, mesh_pg_user,
-          mesh_pg_password. Not displayed here; a later phase that actually
-          creates the PostgreSQL roles/Django install will use them, and a
-          final credentials banner will print what needs to go in KeePass --
-          shown once, matching salt/playbooks/20-saltgui.yml's own precedent.
-          Nothing here writes to KeePass or anywhere else -- file it into
-          KeePassXC yourself afterward with benarbejde/kpcli_wrapper.py.
-
-  # ---------------------------------------------------------------------------
-  # Section 9 — TacticalRMM install: compatibility checks
-  # Ansible-native install build, Phase 2 (install.sh steps 1-2). Uses facts
-  # this play already gathers (gather_facts: true) instead of install.sh's
-  # own shell-script checks -- same information, idiomatic Ansible form.
-  #
-  # Deliberately NOT ported (see PLAN-tacticalrmmme.md's "What stays out of
-  # scope"): LXC/Turnkey Linux/Webmin rejection (not applicable to this
-  # estate's Proxmox-VM-only deployment model), the non-root-user check
-  # (Ansible always runs as root via become on the target, the opposite of
-  # install.sh's own assumption of a sudo-capable non-root login), and
-  # install.sh's own remote-version self-update check (irrelevant --
-  # install.sh itself is never invoked).
-  #
-  # Also deliberately NOT ported here: install.sh's "existing install"
-  # refusal. tacticalrmmme.sh's break-glass design needed to hard-refuse a
-  # blind re-run against a populated box; this Ansible-native design is
-  # meant to be genuinely idempotent instead -- the phase that actually
-  # clones the rmm repo (a later phase) is where that idempotency belongs
-  # (skip-if-already-cloned), not a hard stop here that would block every
-  # legitimate re-run forever after the first successful install.
-  # ---------------------------------------------------------------------------
-
-    - name: "9 | Assert supported CPU architecture"
-      assert:
-        that:
-          - ansible_architecture in ['x86_64', 'aarch64']
-        fail_msg: "Unsupported architecture '{{ ansible_architecture }}' -- TacticalRMM requires x86_64 or aarch64."
-        success_msg: "Architecture OK: {{ ansible_architecture }}"
-
-    - name: "9 | Assert minimum 4GB RAM"
-      assert:
-        that:
-          - ansible_memtotal_mb >= 4096
-        fail_msg: "Only {{ ansible_memtotal_mb }}MB RAM available -- TacticalRMM requires at least 4096MB. Resize the VM before continuing."
-        success_msg: "RAM OK: {{ ansible_memtotal_mb }}MB"
-
-    - name: "9 | Assert supported OS"
-      assert:
-        that:
-          - >-
-            (ansible_distribution == 'Debian' and ansible_distribution_major_version in ['11', '12', '13'])
-            or (ansible_distribution == 'Ubuntu' and ansible_distribution_version == '22.04')
-        fail_msg: >-
-          {{ ansible_distribution }} {{ ansible_distribution_version }} is not supported --
-          TacticalRMM's upstream installer only allows Debian 11/12 or Ubuntu 22.04. Debian 13
-          (Trixie) is allowed here as this estate's own tested exception (see README.md's
-          "Debian Trixie" section) -- PostgreSQL/NATS/MeshCentral are all version-parameterised
-          or built from source, nothing found genuinely Trixie-incompatible.
-        success_msg: "OS OK: {{ ansible_distribution }} {{ ansible_distribution_version }}"
-
-    - name: "9 | Check locale is UTF-8"
-      command: locale
-      register: _rmm_locale_check
-      changed_when: false
-
-    - name: "9 | Assert UTF-8 locale"
-      assert:
-        that:
-          - _rmm_locale_check.stdout is regex('(?m)^LANG=.*UTF-8')
-        fail_msg: "System LANG does not appear to be UTF-8 -- TacticalRMM/Django require it. `locale` output: {{ _rmm_locale_check.stdout }}"
-        success_msg: "Locale OK (UTF-8 found)."
 
   # ---------------------------------------------------------------------------
   # Section 10 — TacticalRMM install: nginx, NodeJS, Python 3.11.8, Redis, Git
