@@ -1,72 +1,62 @@
 ---
 # =============================================================================
-# Example Music Limited — TacticalRMM Server Prep Playbook
+# Example Music Limited — TacticalRMM Server Prep + Install Playbook
 # playbooks/tacticalrmm/tacticalrmm_server.yml
 #
 # Remote management platform, phase 3 (Robert's brief, 2026-08-04 — see project
 # notes). Prepares EXARMMCLD001 (hostname, static IP, base packages, firewall)
-# ready for TacticalRMM's own official install.sh — which this playbook
-# deliberately does NOT run. See "Why the install itself isn't here" below.
+# AND fully installs TacticalRMM itself — upstream install.sh is never run.
 #
-# Structure mirrors meshcentral_server.yml / rudder_server.yml's proven
-# sections 1-4 (same single-instance, CLD-only, Debian shape):
-#   1. Hostname
-#   2. Network — static IP (session-safe NetworkManager pattern)
-#   3. Base packages
-#   4. UFW firewall (80/443 only — install.sh's own nginx needs these open
-#      before it runs; SSH already allowed)
-#   5. Dynamic MOTD
-#   6. Node info file
+# 2026-08-06 pivot: earlier design wrapped install.sh with a break-glass
+# script instead of reimplementing it (see git history / PLAN-tacticalrmmme.md's
+# "Original plan" section for that reasoning). Robert, after running that
+# wrapper live and finding it just stopped before doing anything: "the
+# entire point of having an ansible playbook... was so we could dispense
+# with their install script and make it into an end-to-end ansible
+# playbook." Full step-by-step mapping from the real install.sh to this
+# playbook's sections lives in PLAN-tacticalrmmme.md's "2026-08-06 pivot"
+# section (source of truth for phase status) — this header just points
+# there rather than duplicating a table that will drift.
 #
-# Why the install itself isn't here
-# ----------------------------------
-# TacticalRMM's official install.sh (github.com/amidaware/tacticalrmm) has no
-# scriptable path: it's interactive-only, prompting for the root domain, three
-# subdomains (frontend/backend/mesh), an email address, and Django admin
-# credentials, and it displays a TOTP barcode mid-install. No flags, env vars,
-# or config file bypass this. Force-automating an interactive vendor installer
-# via expect was considered and rejected (Robert's call, 2026-08-04) — the
-# risk of a script dying partway through, after install.sh has already made
-# irreversible changes, outweighs the convenience. Treated the same way this
-# estate already treats bindme.sh/rudderme.sh: a documented, deliberate manual
-# step, not a gap to force-close.
+# Sections 1-6: VM prep, structure mirrors meshcentral_server.yml/
+# rudder_server.yml's proven pattern (hostname, session-safe static IP,
+# base packages, UFW, MOTD, node info file). Sections 7+: the Ansible-native
+# reimplementation of install.sh itself, phase by phase.
 #
-# What Robert needs to do by hand after this playbook — see README.md for
-# the full walkthrough (OS-check patch, exact prompt answers, DNS records).
-#
-# Debian Trixie caveat
-# ---------------------
-# install.sh's own OS check only allows Debian 11/12 or Ubuntu 22.04 — Trixie
-# is rejected outright. Checked the actual script (not guessed): PostgreSQL's
-# apt repo is added via a $codename-parameterised URL (not hardcoded to
-# bookworm/bullseye), and Python is built from source at a pinned version
-# (3.11.8) rather than relying on the OS's own python3 package — neither of
-# those is genuinely Trixie-incompatible on their face. The version gate reads
-# like an untested support allowlist, not a hard technical wall. Robert's call
-# (2026-08-04): try Trixie anyway, patch the one guard rather than downgrade
-# to bookworm. Genuinely untested — see README.md for the exact patch.
+# Debian Trixie — CONFIRMED WORKING, not just presumed
+# -------------------------------------------------------
+# install.sh's own OS check only allows Debian 11/12 or Ubuntu 22.04 —
+# Trixie is rejected outright by the upstream script (irrelevant now that
+# install.sh is never invoked, but this estate's own compatibility checks
+# in Section 9 explicitly allow Debian 13/Trixie as a deliberate, tested
+# exception). Every genuinely Trixie-specific risk has been checked against
+# real upstream sources, not assumed: nginx.org publishes a real `trixie`
+# repo (curled its dists/ listing), apt.postgresql.org publishes a real
+# `trixie-pgdg` repo with `postgresql-18` actually in it (curled the
+# Packages index, real version strings), Python 3.11.8 builds from source
+# regardless of OS. Confirmed live against EXARMMCLD001 through Phase 4 as
+# of 2026-08-06 — see PLAN-tacticalrmmme.md for exactly how far the build
+# has progressed.
 #
 # Usage
 # -----
-# First run (before ansible user exists, using root + password):
+# First run (before ansible user/static IP exist, using root + password):
 #   ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml \
 #     --limit tacticalrmm_servers \
-#     --user root -k
+#     --user root -k -e ansible_host=<current DHCP IP>
 #
-# Subsequent runs:
+# Subsequent runs (once the box holds its static IP):
 #   ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml \
 #     --limit tacticalrmm_servers
 #
 # Idempotency
 # -----------
-# Every task is idempotent. Re-running against an already-prepped server is
-# safe.
-#
-# NOT YET LIVE-TESTED as of 2026-08-04 — no Debian Trixie box available to
-# test against. Sections 1-4 are a direct, proven adaptation of
-# rudder_server.yml's/meshcentral_server.yml's own live-tested network
-# pattern (variable names changed only). The Trixie/TacticalRMM combination
-# itself is genuinely unverified — see the caveat above.
+# Every task is idempotent — re-running against an already-prepped/partially-
+# installed server is safe. Secrets generated in Section 8 are ephemeral
+# (regenerated fresh every run, lookup('password', '/dev/null', ...)) and
+# only become "real" the run a later section actually consumes them to
+# create something (a PostgreSQL role, a Django install) — see Section 8's
+# and Section 11's own comments for why.
 # =============================================================================
 # Version history
 # =============================================================================
@@ -910,6 +900,159 @@
       apt:
         name: redis
         state: present
+
+  # ---------------------------------------------------------------------------
+  # Section 11 — TacticalRMM install: PostgreSQL 18 + two databases
+  # Ansible-native install build, Phase 4 (install.sh step 11). Every GPG key
+  # URL, repo line, and psql command pulled from the real, current
+  # install.sh via WebFetch 2026-08-06. Also resolves the one thing
+  # README.md's "Debian Trixie caveat" flagged as genuinely unverified --
+  # whether apt.postgresql.org actually publishes a trixie-pgdg build:
+  # confirmed directly (curled dists/ -- trixie-pgdg exists; curled the
+  # trixie-pgdg Packages index -- postgresql-18 is really in it, real
+  # version strings returned, not a guess).
+  #
+  # No existing PostgreSQL-provisioning pattern anywhere else in this repo
+  # to follow (checked first) -- and adding the community.postgresql
+  # collection + psycopg on the target for one host's two databases is more
+  # new-dependency weight than this warrants. Uses the exact same mechanism
+  # install.sh itself does instead: individual `psql -c "..."` commands,
+  # just run via become_user: postgres (this play already runs become:
+  # true/root, so no need for install.sh's own `sudo -iu postgres` wrapping)
+  # rather than install.sh's linear one-shot-and-done shape. Idempotency
+  # comes from an explicit existence check before CREATE DATABASE/CREATE
+  # USER -- the ALTER ROLE/GRANT statements that follow are only run
+  # together with a fresh CREATE USER (same atomic "set this role up" unit
+  # install.sh treats them as), not re-run against an already-configured
+  # role on every play.
+  #
+  # Credentials banner (Robert, 2026-08-06: "there is no reason whatsoever
+  # that ansible can't do this itself AND print the banner") -- prints the
+  # two PostgreSQL role passwords ONLY when this run actually just created
+  # them. Deliberate: rmm_pg_password/rmm_mesh_pg_password are generated
+  # fresh (ephemeral, /dev/null-backed) on every single run -- printing them
+  # unconditionally on a re-run against an already-configured role would
+  # show a value that was never actually applied to PostgreSQL at all,
+  # actively wrong to file into KeePass. Only true the run a role is first
+  # created, which is exactly when it needs capturing.
+  # ---------------------------------------------------------------------------
+
+    - name: "11 | Fetch PostgreSQL GPG key"
+      shell: >
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        | gpg --dearmor -o /etc/apt/keyrings/postgresql-archive-keyring.gpg
+      args:
+        creates: /etc/apt/keyrings/postgresql-archive-keyring.gpg
+
+    - name: "11 | Add PostgreSQL apt repository"
+      copy:
+        dest: /etc/apt/sources.list.d/pgdg.list
+        content: >
+          deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}
+          signed-by=/etc/apt/keyrings/postgresql-archive-keyring.gpg]
+          https://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+        mode: "0644"
+      register: _rmm_pgdg_repo
+
+    - name: "11 | Update apt cache (PostgreSQL repo added)"
+      apt:
+        update_cache: true
+      when: _rmm_pgdg_repo.changed
+
+    - name: "11 | Install PostgreSQL 18"
+      apt:
+        name: postgresql-18
+        state: present
+
+    - name: "11 | Ensure PostgreSQL is enabled and running"
+      systemd:
+        name: postgresql
+        enabled: true
+        state: started
+
+    # --- TacticalRMM database + role -------------------------------------
+
+    - name: "11 | Check if tacticalrmm database exists"
+      command: psql -tAc "SELECT 1 FROM pg_database WHERE datname='tacticalrmm'"
+      become_user: postgres
+      register: _rmm_pg_db_check
+      changed_when: false
+
+    - name: "11 | Create tacticalrmm database"
+      command: psql -c "CREATE DATABASE tacticalrmm"
+      become_user: postgres
+      when: _rmm_pg_db_check.stdout | trim != '1'
+
+    - name: "11 | Check if TacticalRMM PostgreSQL role exists"
+      command: "psql -tAc \"SELECT 1 FROM pg_roles WHERE rolname='{{ rmm_pg_user }}'\""
+      become_user: postgres
+      register: _rmm_pg_role_check
+      changed_when: false
+
+    - name: "11 | Create TacticalRMM PostgreSQL role + configure it (first time only)"
+      command: "{{ item }}"
+      become_user: postgres
+      loop:
+        - "psql -c \"CREATE USER {{ rmm_pg_user }} WITH PASSWORD '{{ rmm_pg_password }}'\""
+        - "psql -c \"ALTER ROLE {{ rmm_pg_user }} SET client_encoding TO 'utf8'\""
+        - "psql -c \"ALTER ROLE {{ rmm_pg_user }} SET default_transaction_isolation TO 'read committed'\""
+        - "psql -c \"ALTER ROLE {{ rmm_pg_user }} SET timezone TO 'UTC'\""
+        - "psql -c \"GRANT ALL PRIVILEGES ON DATABASE tacticalrmm TO {{ rmm_pg_user }}\""
+        - "psql -c \"ALTER DATABASE tacticalrmm OWNER TO {{ rmm_pg_user }}\""
+        - "psql -c \"GRANT USAGE, CREATE ON SCHEMA PUBLIC TO {{ rmm_pg_user }}\""
+      when: _rmm_pg_role_check.stdout | trim != '1'
+      no_log: true
+
+    # --- MeshCentral database + role --------------------------------------
+
+    - name: "11 | Check if meshcentral database exists"
+      command: psql -tAc "SELECT 1 FROM pg_database WHERE datname='meshcentral'"
+      become_user: postgres
+      register: _rmm_mesh_pg_db_check
+      changed_when: false
+
+    - name: "11 | Create meshcentral database"
+      command: psql -c "CREATE DATABASE meshcentral"
+      become_user: postgres
+      when: _rmm_mesh_pg_db_check.stdout | trim != '1'
+
+    - name: "11 | Check if MeshCentral PostgreSQL role exists"
+      command: "psql -tAc \"SELECT 1 FROM pg_roles WHERE rolname='{{ rmm_mesh_pg_user }}'\""
+      become_user: postgres
+      register: _rmm_mesh_pg_role_check
+      changed_when: false
+
+    - name: "11 | Create MeshCentral PostgreSQL role + configure it (first time only)"
+      command: "{{ item }}"
+      become_user: postgres
+      loop:
+        - "psql -c \"CREATE USER {{ rmm_mesh_pg_user }} WITH PASSWORD '{{ rmm_mesh_pg_password }}'\""
+        - "psql -c \"ALTER ROLE {{ rmm_mesh_pg_user }} SET client_encoding TO 'utf8'\""
+        - "psql -c \"ALTER ROLE {{ rmm_mesh_pg_user }} SET default_transaction_isolation TO 'read committed'\""
+        - "psql -c \"ALTER ROLE {{ rmm_mesh_pg_user }} SET timezone TO 'UTC'\""
+        - "psql -c \"GRANT ALL PRIVILEGES ON DATABASE meshcentral TO {{ rmm_mesh_pg_user }}\""
+        - "psql -c \"ALTER DATABASE meshcentral OWNER TO {{ rmm_mesh_pg_user }}\""
+        - "psql -c \"GRANT USAGE, CREATE ON SCHEMA PUBLIC TO {{ rmm_mesh_pg_user }}\""
+      when: _rmm_mesh_pg_role_check.stdout | trim != '1'
+      no_log: true
+
+    # --- Credentials banner (only when something was actually just created) ---
+
+    - name: "11 | Credentials banner -- PostgreSQL roles just created this run"
+      debug:
+        msg:
+          - "=================================================================="
+          - "PostgreSQL credentials created THIS RUN -- file into KeePassXC now"
+          - "(benarbejde/kpcli_wrapper.py), these will not be shown again:"
+          - "=================================================================="
+          - "TacticalRMM DB role : {{ rmm_pg_user }}"
+          - "TacticalRMM DB pass : {{ rmm_pg_password }}"
+          - "MeshCentral DB role : {{ rmm_mesh_pg_user }}"
+          - "MeshCentral DB pass : {{ rmm_mesh_pg_password }}"
+          - "=================================================================="
+      when: >-
+        _rmm_pg_role_check.stdout | trim != '1'
+        or _rmm_mesh_pg_role_check.stdout | trim != '1'
 
   # ---------------------------------------------------------------------------
   # Handlers
