@@ -20,12 +20,13 @@
 rmm_domain: "{{ (lookup('file', ad_forest_json_path | default('/etc/example-music/ad_forest.json')) | from_json).domain_fqdn }}"
 
 # -----------------------------------------------------------------------------
-# Base packages -- deliberately minimal, general-purpose box hygiene, not
-# TacticalRMM's own prerequisites. Was: "install.sh (run manually) installs
-# its own PostgreSQL/Node.js/Python/nginx stack" -- superseded 2026-08-06,
-# see PLAN-tacticalrmmme.md's "2026-08-06 pivot". Those packages become this
-# group's own tasks as the Ansible-native install is built out phase by
-# phase; this list isn't where they'll land once that happens.
+# Base packages -- general-purpose box hygiene PLUS install.sh's own step-1
+# base package list (dirmngr/software-properties-common/openssl added
+# 2026-08-06, Ansible-native install Phase 2 -- curl/wget/jq/gnupg/
+# lsb-release/ca-certificates were already here, no duplicate needed).
+# PostgreSQL/Node.js/Python-from-source/nginx (install.sh's later steps)
+# become this group's own tasks as further phases land, not this list --
+# see PLAN-tacticalrmmme.md's "2026-08-06 pivot" for the full phase order.
 # -----------------------------------------------------------------------------
 rmm_base_packages:
   - vim
@@ -42,6 +43,9 @@ rmm_base_packages:
   - ca-certificates
   - gnupg
   - lsb-release
+  - dirmngr
+  - software-properties-common
+  - openssl
 
 # -----------------------------------------------------------------------------
 # sites.csv path on the Ansible control node — same resolution as
