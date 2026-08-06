@@ -121,9 +121,11 @@ static IP `192.168.69.14`, CLD LAN.
 
 ```bash
 ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml \
-  --limit tacticalrmm_servers \
-  --user root -k
+  --limit tacticalrmm_servers
 ```
+
+No `--user root -k` needed — the `ansible` user's SSH key is already
+installed during the box's own PXE/preseed Debian install.
 
 **Step 4 — DNS**: run `bind9-dns.yml --tags zones-full` (generates all three
 CNAMEs — `rmm`/`api`/`mesh` — automatically, no manual step).
