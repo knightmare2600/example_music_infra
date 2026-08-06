@@ -595,20 +595,37 @@
 
   # ---------------------------------------------------------------------------
   # Section 8 — TacticalRMM install: secret generation
-  # install.sh generates 6 random secrets in memory and uses them once,
-  # same run (Django secret key, admin URL, MeshCentral password, two
-  # PostgreSQL username/password pairs, MeshCentral username). An idempotent
-  # Ansible re-run can't regenerate these each time -- would invalidate the
-  # already-configured database users/Django install the moment a later
-  # phase actually creates them. lookup('password', <path>, ...) generates
-  # once and returns the same value read back from that path on every
-  # subsequent run -- the standard Ansible idiom for exactly this. Lookups
-  # execute on the machine running ansible-playbook (the control node,
-  # EXAANSCLD001), NOT the remote target -- deliberate: the secret needs to
-  # survive regardless of which host gets re-provisioned, and the control
-  # node is where this estate already trusts long-lived material to sit
-  # (KeePassXC, SSH keys). Root-only directory, mode 0600 files (lookup's
-  # own default).
+  # REWORKED 2026-08-06 -- the first version of this section wrote generated
+  # secrets to a file (/root/.tacticalrmm_ansible_secrets/ on the control
+  # node) so re-runs could read the same value back. Two real problems,
+  # both Robert's live catch: (1) EXAANSCLD001 runs Ansible as the `ansible`
+  # user, not root, on purpose -- delegate_to: localhost with become: false
+  # can never write to /root/* there, which is exactly what failed live;
+  # (2) more fundamentally, inventing a private Ansible-only secret store at
+  # all was the wrong instinct -- this estate already has a specific,
+  # deliberate posture for exactly this (docs/Example Music Limited —
+  # KeePassXC CLI Automation.md §7a, "one-way flow": Ansible MUST NEVER
+  # write to KeePass, and a read-only lookup plugin is listed under §9
+  # Future Enhancements -- doesn't exist yet either). The one real working
+  # precedent for "an Ansible play needs a locally-generated secret" is
+  # salt/playbooks/20-saltgui.yml: generate/prompt it, use it immediately
+  # in the SAME run to configure the real thing, print it ONCE in a final
+  # banner, and the human runs benarbejde/kpcli_wrapper.py themselves
+  # afterward to file it -- nothing Ansible-managed ever touches disk.
+  # Following that pattern exactly here instead.
+  #
+  # install.sh generates these 6 secrets in memory and uses them once, same
+  # run (Django secret key, admin URL, MeshCentral password, two PostgreSQL
+  # username/password pairs, MeshCentral username) -- this section does the
+  # same, via lookup('password', '/dev/null', ...), the standard Ansible
+  # idiom for "genuinely random value, no persistence anywhere" (verified
+  # locally: two calls return different values, nothing written to disk).
+  # Idempotency for whatever LATER phase actually creates the PostgreSQL
+  # roles/writes local_settings.py with these is THAT phase's own problem to
+  # solve by checking the target's already-deployed state first (e.g.
+  # postgresql_user's no_password_changes, or reading an existing
+  # local_settings.py's SECRET_KEY back rather than overwriting it) -- not
+  # solved by regenerating-and-persisting a secret store here.
   #
   # Exact character sets (letters/lowercase/alphanumeric, lengths) are as
   # described in install.sh's own generation logic, confirmed via WebFetch
@@ -619,55 +636,49 @@
   # won't break shell/config-file/URL quoting either way.
   # ---------------------------------------------------------------------------
 
-    - name: "8 | Ensure secrets directory exists (control node)"
-      file:
-        path: /root/.tacticalrmm_ansible_secrets
-        state: directory
-        mode: "0700"
-      delegate_to: localhost
-      become: false
-
-    - name: "8 | Generate/read Django secret key"
+    - name: "8 | Generate Django secret key (ephemeral, this run only)"
       set_fact:
-        rmm_django_secret_key: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/django_secret_key', length=80, chars=['ascii_letters', 'digits']) }}"
+        rmm_django_secret_key: "{{ lookup('ansible.builtin.password', '/dev/null', length=80, chars=['ascii_letters', 'digits']) }}"
       no_log: true
 
-    - name: "8 | Generate/read admin URL path"
+    - name: "8 | Generate admin URL path (ephemeral, this run only)"
       set_fact:
-        rmm_admin_url: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/admin_url', length=70, chars=['ascii_lowercase', 'digits']) }}"
+        rmm_admin_url: "{{ lookup('ansible.builtin.password', '/dev/null', length=70, chars=['ascii_lowercase', 'digits']) }}"
       no_log: true
 
-    - name: "8 | Generate/read MeshCentral password"
+    - name: "8 | Generate MeshCentral password (ephemeral, this run only)"
       set_fact:
-        rmm_mesh_password: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/mesh_password', length=25, chars=['ascii_letters', 'digits']) }}"
+        rmm_mesh_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=25, chars=['ascii_letters', 'digits']) }}"
       no_log: true
 
-    - name: "8 | Generate/read MeshCentral username"
+    - name: "8 | Generate MeshCentral username (ephemeral, this run only)"
       set_fact:
-        rmm_mesh_username: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/mesh_username', length=8, chars=['ascii_lowercase']) }}"
+        rmm_mesh_username: "{{ lookup('ansible.builtin.password', '/dev/null', length=8, chars=['ascii_lowercase']) }}"
       no_log: true
 
-    - name: "8 | Generate/read TacticalRMM PostgreSQL user/password"
+    - name: "8 | Generate TacticalRMM PostgreSQL user/password (ephemeral, this run only)"
       set_fact:
-        rmm_pg_user: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/pg_user', length=8, chars=['ascii_lowercase']) }}"
-        rmm_pg_password: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/pg_password', length=20, chars=['ascii_letters', 'digits']) }}"
+        rmm_pg_user: "{{ lookup('ansible.builtin.password', '/dev/null', length=8, chars=['ascii_lowercase']) }}"
+        rmm_pg_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20, chars=['ascii_letters', 'digits']) }}"
       no_log: true
 
-    - name: "8 | Generate/read MeshCentral PostgreSQL user/password"
+    - name: "8 | Generate MeshCentral PostgreSQL user/password (ephemeral, this run only)"
       set_fact:
-        rmm_mesh_pg_user: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/mesh_pg_user', length=8, chars=['ascii_lowercase']) }}"
-        rmm_mesh_pg_password: "{{ lookup('ansible.builtin.password', '/root/.tacticalrmm_ansible_secrets/mesh_pg_password', length=20, chars=['ascii_letters', 'digits']) }}"
+        rmm_mesh_pg_user: "{{ lookup('ansible.builtin.password', '/dev/null', length=8, chars=['ascii_lowercase']) }}"
+        rmm_mesh_pg_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20, chars=['ascii_letters', 'digits']) }}"
       no_log: true
 
     - name: "8 | Confirm secrets were generated (values not displayed)"
       debug:
         msg: >-
-          8 secret(s) generated/read from /root/.tacticalrmm_ansible_secrets/
-          on the control node -- django_secret_key, admin_url, mesh_password,
-          mesh_username, pg_user, pg_password, mesh_pg_user, mesh_pg_password.
-          Not displayed here; a final credentials banner (a later phase) will
-          print what actually needs to go in KeePass -- most of these are
-          internal-only DB/config values, not operator-facing logins.
+          8 secret(s) generated for this run -- django_secret_key, admin_url,
+          mesh_password, mesh_username, pg_user, pg_password, mesh_pg_user,
+          mesh_pg_password. Not displayed here; a later phase that actually
+          creates the PostgreSQL roles/Django install will use them, and a
+          final credentials banner will print what needs to go in KeePass --
+          shown once, matching salt/playbooks/20-saltgui.yml's own precedent.
+          Nothing here writes to KeePass or anywhere else -- file it into
+          KeePassXC yourself afterward with benarbejde/kpcli_wrapper.py.
 
   # ---------------------------------------------------------------------------
   # Handlers
