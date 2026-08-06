@@ -1109,6 +1109,84 @@
         or _rmm_mesh_pg_role_check.stdout | trim != '1'
 
   # ---------------------------------------------------------------------------
+  # Section 12 — TacticalRMM install: repo clones + service user
+  # Ansible-native install build, Phase 5 (install.sh step 12).
+  #
+  # Real gap in install.sh itself, not ported: it creates NO dedicated
+  # service user at all -- everything (including the later uwsgi/daphne
+  # systemd units) runs as ${USER}, whichever human happened to run the
+  # installer via sudo, group www-data. That doesn't translate to this
+  # play's execution model (Ansible runs entirely as root via become:
+  # true), and running the actual services as root would be worse than
+  # install.sh's own non-root intent, not equivalent to it. Creates a
+  # dedicated system account (rmm_service_user, no login shell) instead --
+  # owns /rmm and the community-scripts checkout, and later phases' systemd
+  # units run as this user rather than root or an ambiguous "$USER".
+  #
+  # Uses ansible.builtin.git (idempotent by design -- handles "already
+  # cloned, already on the right branch" natively) rather than raw shell
+  # git clone commands. install.sh's own `git config user.email/user.name`
+  # inside each repo is real and needed (later git operations against these
+  # checkouts -- e.g. community-scripts pulling updates -- fail without a
+  # configured identity), ported via git config, not skipped.
+  # ---------------------------------------------------------------------------
+
+    - name: "12 | Create dedicated tacticalrmm service user"
+      user:
+        name: "{{ rmm_service_user }}"
+        system: true
+        shell: /usr/sbin/nologin
+        groups: www-data
+        append: true
+        create_home: false
+
+    - name: "12 | Clone tacticalrmm repo to /rmm"
+      git:
+        repo: https://github.com/amidaware/tacticalrmm.git
+        dest: /rmm
+        version: master
+
+    - name: "12 | Configure git identity in /rmm (needed for later git operations against this checkout)"
+      command: "{{ item }}"
+      args:
+        chdir: /rmm
+      loop:
+        - 'git config user.email "admin@example.com"'
+        - 'git config user.name "Bob"'
+      changed_when: true
+
+    - name: "12 | Ensure /rmm is owned by the service user"
+      file:
+        path: /rmm
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        recurse: true
+        state: directory
+
+    - name: "12 | Clone community-scripts repo"
+      git:
+        repo: https://github.com/amidaware/community-scripts.git
+        dest: /opt/trmm-community-scripts
+        version: main
+
+    - name: "12 | Configure git identity in community-scripts (needed for later git operations against this checkout)"
+      command: "{{ item }}"
+      args:
+        chdir: /opt/trmm-community-scripts
+      loop:
+        - 'git config user.email "admin@example.com"'
+        - 'git config user.name "Bob"'
+      changed_when: true
+
+    - name: "12 | Ensure community-scripts is owned by the service user"
+      file:
+        path: /opt/trmm-community-scripts
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        recurse: true
+        state: directory
+
+  # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------
 
