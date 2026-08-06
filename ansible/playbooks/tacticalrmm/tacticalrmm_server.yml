@@ -1378,6 +1378,152 @@
       become_user: "{{ rmm_service_user }}"
 
   # ---------------------------------------------------------------------------
+  # Section 15 — TacticalRMM install: self-signed cert, Django settings,
+  # backend venv + migrations
+  # Ansible-native install build, Phase 8 (install.sh steps 5 [--insecure
+  # cert path only -- EXARMMCLD001 is internal/WireGuard-only, same
+  # reasoning as EXAMSHCLD001's own TLS choice], 15, 17).
+  #
+  # local_settings.py password consistency -- same class of problem as
+  # config.json in Section 14: this file bakes in rmm_pg_password, one of
+  # Section 8's ephemeral secrets. Gated on the exact same condition
+  # Section 11 uses to decide whether it's creating the TacticalRMM
+  # PostgreSQL role THIS run (_rmm_pg_role_check) -- can never end up with
+  # a password that was never actually applied. force: false as a second,
+  # defense-in-depth layer, not a replacement for the gate. MESH_TOKEN_KEY
+  # and the ADMIN_ENABLED=False flip are NOT written here -- both are
+  # genuinely later-phase concerns (MeshCentral's own first-boot token
+  # generation, and install.sh's own final cleanup step), appended/edited
+  # by those phases when they land, not invented early.
+  #
+  # SETUPTOOLS_VER/WHEEL_VER read dynamically from the cloned repo's
+  # settings.py, same pattern as NATS_SERVER_VER/MESH_VER (Sections 13/14)
+  # -- confirmed against the real current file (80.9.0/0.45.1) -- not
+  # hardcoded, so this can't silently drift from whatever /rmm actually
+  # pins.
+  #
+  # Uses rmm_python_bin (set in Section 10) rather than a hardcoded
+  # python3.11 -- resolves correctly whether Python was apt-installed
+  # (bullseye/bookworm/jammy) or built from source (trixie), matching the
+  # codename-aware provisioning already built there.
+  #
+  # ansible.builtin.pip's virtualenv: parameter creates /rmm/api/env on its
+  # first invocation (idempotent -- reused, not recreated, by every
+  # subsequent pip task and by the manage.py commands after) rather than a
+  # separate raw `python -m venv` shell step.
+  # ---------------------------------------------------------------------------
+
+    - name: "15 | Ensure /etc/ssl/tactical exists"
+      file:
+        path: /etc/ssl/tactical
+        state: directory
+        mode: "0755"
+
+    - name: "15 | Generate self-signed certificate (--insecure path -- EXARMMCLD001 is internal-only)"
+      command: >-
+        openssl req -x509 -newkey rsa:4096 -sha256 -days 3650
+        -nodes -keyout /etc/ssl/tactical/key.pem -out /etc/ssl/tactical/cert.pem
+        -subj "/CN={{ rmm_domain }}"
+        -addext "subjectAltName=DNS:{{ rmm_domain }},DNS:*.{{ rmm_domain }}"
+      args:
+        creates: /etc/ssl/tactical/cert.pem
+
+    - name: "15 | Write /rmm/api/tacticalrmm/local_settings.py (only the run its Postgres role is actually created)"
+      copy:
+        dest: /rmm/api/tacticalrmm/local_settings.py
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        mode: "0640"
+        force: false
+        content: |
+          SECRET_KEY = "{{ rmm_django_secret_key }}"
+
+          DEBUG = False
+
+          ALLOWED_HOSTS = ['{{ rmm_backend_subdomain }}.{{ rmm_domain }}']
+
+          ADMIN_URL = "{{ rmm_admin_url }}/"
+
+          CORS_ORIGIN_WHITELIST = [
+              "https://{{ rmm_frontend_subdomain }}.{{ rmm_domain }}"
+          ]
+
+          DATABASES = {
+              'default': {
+                  'ENGINE': 'django.db.backends.postgresql',
+                  'NAME': 'tacticalrmm',
+                  'USER': '{{ rmm_pg_user }}',
+                  'PASSWORD': '{{ rmm_pg_password }}',
+                  'HOST': 'localhost',
+                  'PORT': '5432',
+              }
+          }
+
+          MESH_USERNAME = "{{ rmm_mesh_username }}"
+          MESH_SITE = "https://{{ rmm_mesh_subdomain }}.{{ rmm_domain }}"
+          ADMIN_ENABLED = True
+
+          TRMM_INSECURE = True
+
+          CERT_FILE = "/etc/ssl/tactical/cert.pem"
+          KEY_FILE = "/etc/ssl/tactical/key.pem"
+      when: _rmm_pg_role_check.stdout | trim != '1'
+      no_log: true
+
+    - name: "15 | Install weasyprint system dependencies"
+      apt:
+        name: "{{ ['libpango-1.0-0', 'libharfbuzz0b', 'libpangoft2-1.0-0'] if ansible_distribution == 'Ubuntu' else ['libpango-1.0-0', 'libpangoft2-1.0-0'] }}"
+        state: present
+
+    - name: "15 | Read SETUPTOOLS_VER/WHEEL_VER from the cloned repo's settings.py"
+      command: "{{ item }}"
+      loop:
+        - "grep '^SETUPTOOLS_VER' /rmm/api/tacticalrmm/tacticalrmm/settings.py"
+        - "grep '^WHEEL_VER' /rmm/api/tacticalrmm/tacticalrmm/settings.py"
+      register: _rmm_pip_ver_lines
+      changed_when: false
+
+    - name: "15 | Extract setuptools/wheel version numbers"
+      set_fact:
+        rmm_setuptools_version: "{{ (_rmm_pip_ver_lines.results[0].stdout | regex_search('\"([^\"]+)\"', '\\1'))[0] }}"
+        rmm_wheel_version: "{{ (_rmm_pip_ver_lines.results[1].stdout | regex_search('\"([^\"]+)\"', '\\1'))[0] }}"
+
+    - name: "15 | Upgrade pip in the backend venv (creates /rmm/api/env on first run)"
+      pip:
+        name: pip==25.1
+        virtualenv: /rmm/api/env
+        virtualenv_command: "{{ rmm_python_bin }} -m venv"
+      become_user: "{{ rmm_service_user }}"
+
+    - name: "15 | Install pinned setuptools/wheel in the backend venv"
+      pip:
+        name:
+          - "setuptools=={{ rmm_setuptools_version }}"
+          - "wheel=={{ rmm_wheel_version }}"
+        virtualenv: /rmm/api/env
+      become_user: "{{ rmm_service_user }}"
+
+    - name: "15 | Install backend Python dependencies from requirements.txt"
+      pip:
+        requirements: /rmm/api/tacticalrmm/requirements.txt
+        virtualenv: /rmm/api/env
+      become_user: "{{ rmm_service_user }}"
+
+    - name: "15 | Run Django backend setup (migrate, schemas, static, NATS/uWSGI conf, chocos/community scripts)"
+      command: "/rmm/api/env/bin/python manage.py {{ item }}"
+      args:
+        chdir: /rmm/api/tacticalrmm
+      loop:
+        - migrate
+        - generate_json_schemas
+        - collectstatic --no-input
+        - create_natsapi_conf
+        - create_uwsgi_conf
+        - load_chocos
+        - load_community_scripts
+      become_user: "{{ rmm_service_user }}"
+
+  # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------
 
