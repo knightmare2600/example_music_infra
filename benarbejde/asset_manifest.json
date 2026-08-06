@@ -59,7 +59,17 @@
     "            libcom32.c32, libutil.c32) and dropped the earlier note about rockylinux/ being",
     "            deferred -- Rocky Linux's menu.ipxe entries were removed entirely, not deferred.",
     "            Arch/Rocky/Ubuntu removal itself needed no manifest changes -- none of those had",
-    "            manifest entries (Arch = custom build, Rocky/Ubuntu = never had a fetch source)."
+    "            manifest entries (Arch = custom build, Rocky/Ubuntu = never had a fetch source).",
+    "2026-08-06  klargoring entries reworked for arm64 (PVE 9.2's own arm64 release, Robert --",
+    "            https://pve.proxmox.com/wiki/Roadmap). The real upstream release",
+    "            (github.com/knightmare2600/klargoring, checked live: klargoring-20260806-",
+    "            trixie-4) publishes vmlinuz-amd64/vmlinuz-arm64 etc, not the old unsuffixed",
+    "            'vmlinuz' this manifest previously pointed at -- that asset name no longer",
+    "            exists upstream at all, so the pre-existing amd64 entries were already stale,",
+    "            not just missing arm64 coverage. dest paths now match menu.ipxe v2.11's",
+    "            klargoring/amd64/ + klargoring/arm64/ split. Added KERNEL_VERSION-{amd64,arm64}",
+    "            too (not consumed by any code, but a real published release asset worth",
+    "            keeping fetchable alongside its vmlinuz/initrd)."
   ],
 
   "assets": [
@@ -68,8 +78,12 @@
     { "dest": "spejder/x86_64/initramfs-x86_64.cpio.zst", "source_type": "github_release", "repo": "knightmare2600/Spejder", "tag": "latest", "asset_name": "initramfs-x86_64.cpio.zst" },
     { "dest": "spejder/arm64/initramfs-arm64.cpio.zst", "source_type": "github_release", "repo": "knightmare2600/Spejder", "tag": "latest", "asset_name": "initramfs-arm64.cpio.zst" },
 
-    { "dest": "proxmox/klargoring/vmlinuz", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "vmlinuz" },
-    { "dest": "proxmox/klargoring/installer-initrd.img", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "installer-initrd.img" },
+    { "dest": "proxmox/klargoring/amd64/vmlinuz", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "vmlinuz-amd64" },
+    { "dest": "proxmox/klargoring/amd64/installer-initrd.img", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "installer-initrd-amd64.img" },
+    { "dest": "proxmox/klargoring/amd64/KERNEL_VERSION", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "KERNEL_VERSION-amd64" },
+    { "dest": "proxmox/klargoring/arm64/vmlinuz-arm64", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "vmlinuz-arm64" },
+    { "dest": "proxmox/klargoring/arm64/installer-initrd-arm64.img", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "installer-initrd-arm64.img" },
+    { "dest": "proxmox/klargoring/arm64/KERNEL_VERSION-arm64", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "KERNEL_VERSION-arm64" },
 
     { "dest": "winpe/x86_64/wimboot", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot" },
     { "dest": "winpe/x86_64/wimboot.i386", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot.i386" },
