@@ -1152,13 +1152,38 @@
         append: true
         create_home: false
 
-    - name: "12 | Clone tacticalrmm repo to /rmm"
+    # Real live bug, EXARMMCLD001, 2026-08-06: on the first run this cloned
+    # as root, then a later task reassigned /rmm to rmm_service_user. On the
+    # SECOND run, the git module (running as root, Ansible's default) tried
+    # to verify/update origin's URL inside a directory it no longer owned --
+    # git's own "dubious ownership" safety check (CVE-2022-24765's fix)
+    # correctly refused. Root cause was task ordering, not a missing
+    # existence check: git IS idempotent about "already cloned", it just
+    # never got the chance to prove it. Fixed properly by having
+    # rmm_service_user own the directory from before the clone even starts,
+    # so the same user performs every git operation against it, this run
+    # and every future one -- not by re-chowning afterward each time.
+    #
+    # Directories are pre-created as root first (a non-root user can't
+    # mkdir directly under / or /opt -- both are root-owned, mode 0755) so
+    # the actual clone/config below can then run entirely as
+    # rmm_service_user with no ownership mismatch at any point.
+    - name: "12 | Pre-create /rmm owned by the service user"
+      file:
+        path: /rmm
+        state: directory
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        mode: "0755"
+
+    - name: "12 | Clone tacticalrmm repo to /rmm (as the service user)"
       git:
         repo: https://github.com/amidaware/tacticalrmm.git
         dest: /rmm
         version: master
+      become_user: "{{ rmm_service_user }}"
 
-    - name: "12 | Configure git identity in /rmm (needed for later git operations against this checkout)"
+    - name: "12 | Configure git identity in /rmm (as the service user)"
       command: "{{ item }}"
       args:
         chdir: /rmm
@@ -1166,22 +1191,24 @@
         - 'git config user.email "admin@example.com"'
         - 'git config user.name "Bob"'
       changed_when: true
+      become_user: "{{ rmm_service_user }}"
 
-    - name: "12 | Ensure /rmm is owned by the service user"
+    - name: "12 | Pre-create /opt/trmm-community-scripts owned by the service user"
       file:
-        path: /rmm
+        path: /opt/trmm-community-scripts
+        state: directory
         owner: "{{ rmm_service_user }}"
         group: "{{ rmm_service_user }}"
-        recurse: true
-        state: directory
+        mode: "0755"
 
-    - name: "12 | Clone community-scripts repo"
+    - name: "12 | Clone community-scripts repo (as the service user)"
       git:
         repo: https://github.com/amidaware/community-scripts.git
         dest: /opt/trmm-community-scripts
         version: main
+      become_user: "{{ rmm_service_user }}"
 
-    - name: "12 | Configure git identity in community-scripts (needed for later git operations against this checkout)"
+    - name: "12 | Configure git identity in community-scripts (as the service user)"
       command: "{{ item }}"
       args:
         chdir: /opt/trmm-community-scripts
@@ -1189,14 +1216,7 @@
         - 'git config user.email "admin@example.com"'
         - 'git config user.name "Bob"'
       changed_when: true
-
-    - name: "12 | Ensure community-scripts is owned by the service user"
-      file:
-        path: /opt/trmm-community-scripts
-        owner: "{{ rmm_service_user }}"
-        group: "{{ rmm_service_user }}"
-        recurse: true
-        state: directory
+      become_user: "{{ rmm_service_user }}"
 
   # ---------------------------------------------------------------------------
   # Handlers
