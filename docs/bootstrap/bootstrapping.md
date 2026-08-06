@@ -408,7 +408,7 @@ the real tree and `at_have_ryggen_fri/check_bootstrap_assets.py`'s live output, 
 |---|---|---|
 | Debian | `debian/trixie/x86_64/`, `debian/trixie/arm64/` | Present (git-lfs, fetched via manifest) |
 | 3CX Phone System | `3cx/` (installer initrd + preseed), kernel shared with `debian/bookworm/x86_64/` | Present (custom initrd git-lfs; kernel shared with Debian, see above) |
-| Projekt klargoring | `proxmox/klargoring/` | Present (git-lfs, fetched via manifest) |
+| Projekt klargoring | `proxmox/klargoring/amd64/`, `proxmox/klargoring/arm64/` | Present (git-lfs, fetched via manifest). arm64 added 2026-08-06 following PVE 9.2's own arm64 release — asymmetric filenames per arch (real upstream release, not identically-named ${arch} subfolders like Debian/OpenBSD/GParted), see menu.ipxe's v2.11 changelog entry. |
 | GParted | `gparted/x86_64/` | Present (git-lfs, fetched via manifest). `gparted/arm64/` — Robert is building a real arm64 image separately; hold off wiring it in here until that lands and can be tested. |
 | WinPE (x86_64/ARM64) | `winpe/x86_64/`, `winpe/arm64/` | wimboot loader binaries present (git-lfs, fetched via manifest). The actual `boot_x64.wim`/`boot_arm64.wim` can **never** be committed here at all, LFS or otherwise — Microsoft ADK licensing terms; see `winpe/README.txt`. Not needed for the PFY's plan — Windows Server 2022 uses the unattend-XML path (§7), not this WinPE menu entry. |
 | OpenBSD | `openbsd/7.9/${arch}/` | Present (git-lfs, fetched via manifest). Bumped from a hardcoded `7.5` in an earlier pass — `cdn.openbsd.org` no longer carries 7.5 at all. |
@@ -760,6 +760,10 @@ Pre-built binaries for common configurations are in `x86_64/ipxe.iso` and `arm64
 > System" and "Projekt klargoring" entirely, and still saying OpenBSD 7.5 (bumped to 7.9
 > 2026-07-27, see menu.ipxe's own v2.8 changelog entry). The real file is at v2.10 as of this
 > correction — quoted directly from `bootstrap/web/menu.ipxe`, not reconstructed.
+>
+> **Correction (2026-08-06):** "Projekt klargoring" line updated — no longer "x86_64 only",
+> arm64 support added following PVE 9.2's own arm64 release (see menu.ipxe's v2.11 changelog
+> entry). Real file is at v2.11 as of this correction.
 
 The remote boot menu offers the following entries (grouped exactly as the real menu groups them):
 
@@ -786,7 +790,7 @@ The remote boot menu offers the following entries (grouped exactly as the real m
 -- Hypervisors --
   Proxmox VE 9   (x86_64 only)
   Proxmox DCM 9  (x86_64 only)             ← not yet configured, returns to menu
-  Projekt klargoring  (custom live Proxmox installer, x86_64 only)
+  Projekt klargoring  (custom live Proxmox installer, x86_64 or ARM64)
 
 -- Utilities --
   GParted Live
