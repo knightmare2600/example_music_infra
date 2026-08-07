@@ -244,6 +244,21 @@
 #      linux/tools.yml, stops being named there. Cannot and does not check
 #      any live host's actual on-disk staleness -- see the doc's own final
 #      section for why that's structurally out of scope for this harness.
+#  36. check_required_tools.py -- generalises the same host-local-tool
+#      pattern (checks 11/13/33 each hand-roll it for ONE tool) across every
+#      tool a control-node script actually needs, informational unless
+#      --strict. Robert's ask, 2026-08-06: "the harness is supposed to keep
+#      track of what packages are needed and check if they are installed
+#      based on host OS" after kpcli_wrapper.py failed outright
+#      (keepassxc-cli missing) with nothing having warned beforehand.
+#      Deliberately scoped to control-node tools only (keepassxc-cli, so
+#      far) -- NOT bootstrap/web/provision/*.sh's own target-host tool
+#      needs (bc, nmcli, wg, ...), which already self-heal via their own
+#      `command -v X || BOOTSTRAP_PKGS+=(x)` + apt-get pattern on whatever
+#      box is actually being provisioned; checking for those on the control
+#      node wouldn't mean anything. See
+#      PLAN-harness-and-bootstrap-backlog-2026-08-06.md item 1 for the
+#      fuller scoping discussion.
 #
 # Nothing here touches a real host or needs a vault password. ONE exception to
 # "network access beyond localhost": check 13 (check_mermaid.py) genuinely
@@ -493,6 +508,14 @@
 #               docs/adding-a-new-device.md + benarbejde/suggest_free_ip.py --
 #               same session, Robert's four-point ask about the harness after
 #               the same live incident.
+#   2026-08-07  Added check_required_tools.py (section 36) -- generalises
+#               the same host-local-tool pattern (checks 11/13/33) across
+#               every control-node tool a script needs, starting with
+#               keepassxc-cli (the exact gap from the 2026-08-06 incident
+#               that prompted this). Deliberately scoped to control-node
+#               tools only, not bootstrap/web/provision/*.sh's own
+#               already-self-healing target-host tool needs -- see that
+#               check's own header for the full scoping reasoning.
 # ==============================================================================
 set -uo pipefail
 
@@ -1146,6 +1169,22 @@ else
   echo "$out"
   fail "docs/refresh-after-data-changes.md is missing a gated playbook -- see above."
   FAILED_CHECKS+=("check_data_refresh_doc_coverage.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 36. Required host-local tools — check_required_tools.py
+# ------------------------------------------------------------------------------
+section "36. Required host-local tools — check_required_tools.py"
+
+rt_args=()
+$STRICT && rt_args+=("--strict")
+if out=$(python3 "${HERE}/check_required_tools.py" "${rt_args[@]}"); then
+  echo "$out"
+  success "All required host-local tools present (or missing tools are informational only)."
+else
+  echo "$out"
+  fail "Required host-local tool(s) missing -- see above. Failing because --strict was passed."
+  FAILED_CHECKS+=("check_required_tools.py")
 fi
 
 # ------------------------------------------------------------------------------
