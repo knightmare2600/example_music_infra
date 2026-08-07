@@ -1887,6 +1887,14 @@
           WantedBy=multi-user.target
       notify: Reload systemd daemon
 
+    - name: "17 | Ensure /etc/conf.d exists"
+      file:
+        path: /etc/conf.d
+        state: directory
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        mode: "0755"
+
     - name: "17 | Write /etc/conf.d/celery.conf"
       copy:
         dest: /etc/conf.d/celery.conf
