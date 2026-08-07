@@ -1755,6 +1755,235 @@
           - "=================================================================="
       when: _rmm_superuser_check.rc != 0
 
+  # Section 17 — TacticalRMM install: systemd units + celery.conf
+  # Ansible-native install build, Phase 10 (install.sh steps 19, 20). Writes
+  # only -- deliberately does NOT enable or start any of these units. Verified
+  # against the real install.sh, not guessed: nats.service in particular is
+  # only ever `systemctl start`ed after a much later step (`manage.py
+  # reload_nats`, which generates /rmm/api/tacticalrmm/nats-rmm.conf --
+  # traced through reload_nats.py -> tacticalrmm/utils.py's reload_nats()
+  # function to confirm this, since the config file's origin isn't obvious
+  # from install.sh alone) -- starting it now would just crash-loop against
+  # a config file that doesn't exist yet. install.sh itself doesn't
+  # enable/start rmm/daphne/celery/celerybeat/nginx until its own step 23
+  # either, well after every unit file and every nginx site config exists.
+  # That whole enable/start sequence is a later phase here too (Phase 12).
+  #
+  # User={{ rmm_service_user }} / Group=www-data (rmm.service, daphne.service
+  # only) matches install.sh's own hardcoded Group=www-data on just these
+  # two units. Every other unit uses Group={{ rmm_service_user }} -- install.sh
+  # itself uses Group=${USER} there (same value as User=), which for a
+  # dedicated service account named "tacticalrmm" resolves to a "tacticalrmm"
+  # primary group of the same name, exactly matching Section 12's own
+  # rmm_service_user account (already confirmed live: primary group
+  # "tacticalrmm", gid 988) -- not a re-interpretation, the same behaviour
+  # install.sh's ${USER}:${USER} pattern always produced.
+  #
+  # /var/log/celery is created here, directly before celery.service/
+  # celerybeat.service reference it -- install.sh itself creates this
+  # directory much earlier (during repo cloning), but Ansible task order
+  # doesn't need to mirror shell execution order, only the dependency itself
+  # (directory exists before the unit files that reference paths inside it
+  # are written), matching this file's own established pattern elsewhere
+  # (e.g. Section 14 creating /meshcentral/meshcentral-data immediately
+  # before config.json needs it).
+    - name: "17 | Ensure /var/log/celery exists"
+      file:
+        path: /var/log/celery
+        state: directory
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        mode: "0755"
+
+    - name: "17 | Write rmm.service (uwsgi)"
+      copy:
+        dest: /etc/systemd/system/rmm.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=tacticalrmm uwsgi daemon
+          After=network.target postgresql.service
+
+          [Service]
+          User={{ rmm_service_user }}
+          Group=www-data
+          WorkingDirectory=/rmm/api/tacticalrmm
+          Environment="PATH=/rmm/api/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          ExecStart=/rmm/api/env/bin/uwsgi --ini app.ini
+          Restart=always
+          RestartSec=10s
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd daemon
+
+    - name: "17 | Write daphne.service (uvicorn/websocket)"
+      copy:
+        dest: /etc/systemd/system/daphne.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=uvicorn daemon v1
+          After=network.target
+
+          [Service]
+          User={{ rmm_service_user }}
+          Group=www-data
+          WorkingDirectory=/rmm/api/tacticalrmm
+          Environment="PATH=/rmm/api/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          ExecStart=/rmm/api/env/bin/uvicorn --uds /rmm/daphne.sock --forwarded-allow-ips='*' tacticalrmm.asgi:application
+          ExecStartPre=rm -f /rmm/daphne.sock
+          ExecStartPre=rm -f /rmm/daphne.sock.lock
+          Restart=always
+          RestartSec=3s
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd daemon
+
+    - name: "17 | Write nats.service"
+      copy:
+        dest: /etc/systemd/system/nats.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=NATS Server
+          After=network.target
+
+          [Service]
+          PrivateTmp=true
+          Type=simple
+          ExecStart=/usr/local/bin/nats-server -c /rmm/api/tacticalrmm/nats-rmm.conf
+          ExecReload=/usr/bin/kill -s HUP $MAINPID
+          ExecStop=/usr/bin/kill -s SIGINT $MAINPID
+          User={{ rmm_service_user }}
+          Group={{ rmm_service_user }}
+          Restart=always
+          RestartSec=5s
+          LimitNOFILE=1000000
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd daemon
+
+    - name: "17 | Write nats-api.service"
+      copy:
+        dest: /etc/systemd/system/nats-api.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=TacticalRMM Nats Api v1
+          After=nats.service
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/local/bin/nats-api
+          User={{ rmm_service_user }}
+          Group={{ rmm_service_user }}
+          Restart=always
+          RestartSec=5s
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd daemon
+
+    - name: "17 | Write /etc/conf.d/celery.conf"
+      copy:
+        dest: /etc/conf.d/celery.conf
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        mode: "0644"
+        content: |
+          CELERYD_NODES="w1"
+
+          CELERY_BIN="/rmm/api/env/bin/celery"
+
+          CELERY_APP="tacticalrmm"
+
+          CELERYD_MULTI="multi"
+
+          CELERYD_OPTS="--time-limit=86400 --autoscale=20,2"
+
+          CELERYD_PID_FILE="/rmm/api/tacticalrmm/%n.pid"
+          CELERYD_LOG_FILE="/var/log/celery/%n%I.log"
+          CELERYD_LOG_LEVEL="ERROR"
+
+          CELERYBEAT_PID_FILE="/rmm/api/tacticalrmm/beat.pid"
+          CELERYBEAT_LOG_FILE="/var/log/celery/beat.log"
+
+    - name: "17 | Write celery.service"
+      copy:
+        dest: /etc/systemd/system/celery.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Celery Service V2
+          After=network.target redis-server.service postgresql.service
+
+          [Service]
+          Type=forking
+          User={{ rmm_service_user }}
+          Group={{ rmm_service_user }}
+          EnvironmentFile=/etc/conf.d/celery.conf
+          WorkingDirectory=/rmm/api/tacticalrmm
+          ExecStart=/bin/sh -c '${CELERY_BIN} -A $CELERY_APP multi start $CELERYD_NODES --pidfile=${CELERYD_PID_FILE} --logfile=${CELERYD_LOG_FILE} --loglevel="${CELERYD_LOG_LEVEL}" $CELERYD_OPTS'
+          ExecStop=/bin/sh -c '${CELERY_BIN} multi stopwait $CELERYD_NODES --pidfile=${CELERYD_PID_FILE} --loglevel="${CELERYD_LOG_LEVEL}"'
+          ExecReload=/bin/sh -c '${CELERY_BIN} -A $CELERY_APP multi restart $CELERYD_NODES --pidfile=${CELERYD_PID_FILE} --logfile=${CELERYD_LOG_FILE} --loglevel="${CELERYD_LOG_LEVEL}" $CELERYD_OPTS'
+          Restart=always
+          RestartSec=10s
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd daemon
+
+    - name: "17 | Write celerybeat.service"
+      copy:
+        dest: /etc/systemd/system/celerybeat.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Celery Beat Service V4
+          After=network.target redis-server.service postgresql.service
+
+          [Service]
+          Type=simple
+          User={{ rmm_service_user }}
+          Group={{ rmm_service_user }}
+          EnvironmentFile=/etc/conf.d/celery.conf
+          WorkingDirectory=/rmm/api/tacticalrmm
+          ExecStart=/bin/sh -c '${CELERY_BIN} -A ${CELERY_APP} beat --pidfile=${CELERYBEAT_PID_FILE} --logfile=${CELERYBEAT_LOG_FILE} --loglevel=${CELERYD_LOG_LEVEL}'
+          ExecStartPre=rm -f /rmm/api/tacticalrmm/beat.pid
+          ExecStartPre=rm -f /rmm/api/tacticalrmm/celerybeat-schedule
+          Restart=always
+          RestartSec=10s
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd daemon
+
+    - name: "17 | Write meshcentral.service"
+      copy:
+        dest: /etc/systemd/system/meshcentral.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=MeshCentral Server
+          After=network.target postgresql.service nginx.service
+          [Service]
+          Type=simple
+          LimitNOFILE=1000000
+          ExecStart=/usr/bin/node node_modules/meshcentral
+          Environment=NODE_ENV=production
+          WorkingDirectory=/meshcentral
+          User={{ rmm_service_user }}
+          Group={{ rmm_service_user }}
+          Restart=always
+          RestartSec=10s
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd daemon
+
   # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------
@@ -1774,3 +2003,7 @@
       systemd:
         name: ssh
         state: restarted
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: true
