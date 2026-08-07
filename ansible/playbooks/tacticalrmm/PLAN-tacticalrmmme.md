@@ -6,7 +6,10 @@ NodeJS/Python 3.11.8/Redis/Git, PostgreSQL 18 + databases, repo clones,
 NATS server + nats-api, MeshCentral files, Django settings + backend
 install) DONE and live-verified against EXARMMCLD001 2026-08-07 (`manage.py
 migrate` + the rest of the Section 15 loop all rc=0). Phase 9 (superuser +
-TOTP) built 2026-08-07, not yet live-tested. Phases 10-13 not started.**
+TOTP) also built and live-verified the same day -- superuser+installer
+account created, TOTP secret generated, barcode displayed, backup file
+written, both credentials banners fired, failed=0. Phases 10-13 not
+started.**
 
 ## 2026-08-06 pivot
 
@@ -125,7 +128,7 @@ one at a time, don't jump ahead.
 | 6. NATS server + nats-api binaries | 13, 16 | **DONE, this session** |
 | 7. MeshCentral install (files, not yet running) | 14 | **DONE, this session** |
 | 8. Django settings + backend install/migrate | 15, 17 | **DONE, live-verified 2026-08-07** |
-| 9. Superuser + TOTP | 18 | **Built 2026-08-07, not yet live-tested** — see below |
+| 9. Superuser + TOTP | 18 | **Built + live-verified 2026-08-07** — see below |
 | 10. Systemd units + celery.conf | 19, 20 | Not started |
 | 11. Nginx site configs + enable | 21, 22 | Not started |
 | 12. Service start + MeshCentral first-boot sequence | 23, 24, 25, 26 | Not started |
@@ -133,7 +136,10 @@ one at a time, don't jump ahead.
 
 ## TOTP handling (Robert's flagged risk area, observation 3)
 
-**Built 2026-08-07 (Section 16), not yet live-tested.** Real constraints
+**Built + live-verified 2026-08-07 (Section 16), against EXARMMCLD001 --
+superuser+installer account created, TOTP secret generated, barcode
+displayed with a clean leading blank line, backup file written, both
+credentials banners fired, failed=0.** Real constraints
 confirmed against `install.sh` and the real `generate_totp.py`/`models.py`
 source (not guessed): `generate_totp` only prints a random base32 value
 and touches no database table -- the secret only actually gets bound to
