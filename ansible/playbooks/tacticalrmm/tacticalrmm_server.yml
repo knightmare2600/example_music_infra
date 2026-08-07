@@ -1488,26 +1488,46 @@
         rmm_setuptools_version: "{{ (_rmm_pip_ver_lines.results[0].stdout | regex_search('\"([^\"]+)\"', '\\1'))[0] }}"
         rmm_wheel_version: "{{ (_rmm_pip_ver_lines.results[1].stdout | regex_search('\"([^\"]+)\"', '\\1'))[0] }}"
 
-    - name: "15 | Upgrade pip in the backend venv (creates /rmm/api/env on first run)"
-      pip:
-        name: pip==25.1
-        virtualenv: /rmm/api/env
-        virtualenv_command: "{{ rmm_python_bin }} -m venv"
+    # Real live bug, EXARMMCLD001, 2026-08-07: ansible.builtin.pip's
+    # virtualenv: parameter failed outright -- "Failed to import the
+    # required Python library (packaging) on exarmmcld001's Python
+    # /usr/bin/python3.13". That's Ansible's OWN auto-detected system
+    # interpreter (used for the module's internal virtualenv-detection/
+    # version-comparison logic), not the venv being created -- packaging
+    # isn't installed there and was never going to be. Sidestepped the
+    # whole virtualenv: auto-creation mechanism instead: create the venv
+    # explicitly (idempotent via creates:), then point pip at its own venv
+    # binary directly via executable: -- shells out to that binary rather
+    # than doing Python-level introspection in Ansible's system
+    # interpreter, so this class of bug can't recur.
+    - name: "15 | Create the backend venv"
+      command: "{{ rmm_python_bin }} -m venv /rmm/api/env"
+      args:
+        creates: /rmm/api/env/bin/python
       become_user: "{{ rmm_service_user }}"
+
+    # command, not the pip module -- even with executable: pointed at the
+    # venv's own pip, ansible.builtin.pip's own code path may still need
+    # `packaging` importable in Ansible's system interpreter for other
+    # internal logic (version-spec comparisons), and that's not a risk
+    # worth re-testing live a second time. Shelling out directly to the
+    # venv's pip binary has no such dependency on anything outside the
+    # venv itself -- also a closer, more literal match to install.sh's own
+    # real commands (pip install --no-cache-dir pip==25.1, etc).
+    - name: "15 | Upgrade pip in the backend venv"
+      command: /rmm/api/env/bin/pip install --no-cache-dir pip==25.1
+      become_user: "{{ rmm_service_user }}"
+      changed_when: true
 
     - name: "15 | Install pinned setuptools/wheel in the backend venv"
-      pip:
-        name:
-          - "setuptools=={{ rmm_setuptools_version }}"
-          - "wheel=={{ rmm_wheel_version }}"
-        virtualenv: /rmm/api/env
+      command: "/rmm/api/env/bin/pip install --no-cache-dir setuptools=={{ rmm_setuptools_version }} wheel=={{ rmm_wheel_version }}"
       become_user: "{{ rmm_service_user }}"
+      changed_when: true
 
     - name: "15 | Install backend Python dependencies from requirements.txt"
-      pip:
-        requirements: /rmm/api/tacticalrmm/requirements.txt
-        virtualenv: /rmm/api/env
+      command: /rmm/api/env/bin/pip install --no-cache-dir -r /rmm/api/tacticalrmm/requirements.txt
       become_user: "{{ rmm_service_user }}"
+      changed_when: true
 
     - name: "15 | Run Django backend setup (migrate, schemas, static, NATS/uWSGI conf, chocos/community scripts)"
       command: "/rmm/api/env/bin/python manage.py {{ item }}"
