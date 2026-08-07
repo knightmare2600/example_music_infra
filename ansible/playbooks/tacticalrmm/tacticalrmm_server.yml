@@ -1992,6 +1992,292 @@
           WantedBy=multi-user.target
       notify: Reload systemd daemon
 
+  # Section 18 — TacticalRMM install: nginx site configs + frontend web build
+  # Ansible-native install build, Phase 11 (install.sh steps 21, 22 -- PLUS a
+  # step genuinely missing from this file's original 31-step audit, found
+  # while researching this phase: frontend.conf's `root /var/www/rmm/dist;`
+  # needs the actual React SPA build downloaded and extracted there first,
+  # or it just 404s. install.sh does this via
+  # `WEB_VERSION=$(manage.py get_config webversion)` +
+  # `WEBTAR_URL=$(manage.py get_webtar_url)` + wget/tar, chronologically
+  # BEFORE the superuser prompt (this file's own Section 16) -- built here
+  # instead, since Ansible task order only needs to satisfy the real
+  # dependency (frontend.conf needs /var/www/rmm/dist populated), not
+  # install.sh's own shell-execution chronology, matching this file's
+  # established pattern elsewhere (e.g. /var/log/celery in Section 17).
+  #
+  # get_webtar_url lives in an "ee" (Enterprise Edition)-licensed Django app
+  # (api/tacticalrmm/ee/reporting/) -- checked the real source (not
+  # guessed) before trusting install.sh calls it safely for a plain
+  # self-hosted install: it returns a public, unauthenticated GitHub
+  # Releases URL (`github.com/amidaware/tacticalrmm-web/releases/...`)
+  # UNLESS a paid CodeSignToken row already exists in the database, which
+  # nothing in this estate's install ever creates. Confirmed the
+  # `reporting` app's migrations already ran cleanly in Section 15's real
+  # live output (Phase 8), so the app is genuinely active here regardless
+  # of EE licensing -- only specific paid features inside it are gated,
+  # not this command.
+  #
+  # /etc/nginx/sites-available and sites-enabled don't exist by default on
+  # this build -- confirmed against install.sh: it explicitly `mkdir -p`s
+  # both right after writing nginx.conf, because the nginx.org upstream
+  # package (Section 10's own apt source, not Debian's stock nginx) doesn't
+  # ship the Debian sites-available/sites-enabled convention the way
+  # Debian's own nginx package does.
+    - name: "18 | Ensure /etc/nginx/sites-available and sites-enabled exist"
+      file:
+        path: "/etc/nginx/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - sites-available
+        - sites-enabled
+
+    - name: "18 | Write nginx backend site config (rmm.conf)"
+      copy:
+        dest: /etc/nginx/sites-available/rmm.conf
+        mode: "0644"
+        content: |
+          server_tokens off;
+
+          upstream tacticalrmm {
+              server unix:////rmm/api/tacticalrmm/tacticalrmm.sock;
+          }
+
+          map $http_user_agent $ignore_ua {
+              "~python-requests.*" 0;
+              "~go-resty.*" 0;
+              default 1;
+          }
+
+          server {
+              listen 80;
+              listen [::]:80;
+              server_name {{ rmm_backend_subdomain }}.{{ rmm_domain }};
+              return 301 https://$server_name$request_uri;
+          }
+
+          server {
+              listen 443 ssl reuseport;
+              listen [::]:443 ssl;
+              server_name {{ rmm_backend_subdomain }}.{{ rmm_domain }};
+              client_max_body_size 300M;
+              access_log /rmm/api/tacticalrmm/tacticalrmm/private/log/access.log combined if=$ignore_ua;
+              error_log /rmm/api/tacticalrmm/tacticalrmm/private/log/error.log;
+              ssl_certificate /etc/ssl/tactical/cert.pem;
+              ssl_certificate_key /etc/ssl/tactical/key.pem;
+
+              ssl_protocols TLSv1.2 TLSv1.3;
+              ssl_prefer_server_ciphers on;
+              ssl_ciphers EECDH+AESGCM:EDH+AESGCM;
+              ssl_ecdh_curve secp384r1;
+              add_header X-Content-Type-Options nosniff;
+
+              location /static/ {
+                  root /rmm/api/tacticalrmm;
+                  add_header "Access-Control-Allow-Origin" "https://{{ rmm_frontend_subdomain }}.{{ rmm_domain }}";
+              }
+
+              location /private/ {
+                  internal;
+                  add_header "Access-Control-Allow-Origin" "https://{{ rmm_frontend_subdomain }}.{{ rmm_domain }}";
+                  alias /rmm/api/tacticalrmm/tacticalrmm/private/;
+              }
+
+              location /assets/ {
+                  internal;
+                  add_header "Access-Control-Allow-Origin" "https://{{ rmm_frontend_subdomain }}.{{ rmm_domain }}";
+                  alias /opt/tactical/reporting/assets/;
+              }
+
+              location ~ ^/ws/ {
+                  proxy_pass http://unix:/rmm/daphne.sock;
+
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+
+                  proxy_redirect     off;
+                  proxy_set_header   Host $host;
+                  proxy_set_header   X-Real-IP $remote_addr;
+                  proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header   X-Forwarded-Host $server_name;
+              }
+
+              location ~ ^/natsws {
+                  proxy_pass http://127.0.0.1:9235;
+                  proxy_http_version 1.1;
+
+                  proxy_set_header Host $host;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_set_header X-Forwarded-Host $host:$server_port;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+
+              location / {
+                  uwsgi_pass  tacticalrmm;
+                  include     /etc/nginx/uwsgi_params;
+                  uwsgi_read_timeout 300s;
+                  uwsgi_ignore_client_abort on;
+              }
+          }
+
+    - name: "18 | Symlink rmm.conf into sites-enabled"
+      file:
+        src: /etc/nginx/sites-available/rmm.conf
+        dest: /etc/nginx/sites-enabled/rmm.conf
+        state: link
+
+    - name: "18 | Write nginx MeshCentral site config (meshcentral.conf)"
+      copy:
+        dest: /etc/nginx/sites-available/meshcentral.conf
+        mode: "0644"
+        content: |
+          server {
+            listen 80;
+            listen [::]:80;
+            server_name {{ rmm_mesh_subdomain }}.{{ rmm_domain }};
+            return 301 https://$server_name$request_uri;
+          }
+
+          server {
+
+              listen 443 ssl;
+              listen [::]:443 ssl;
+              proxy_send_timeout 330s;
+              proxy_read_timeout 330s;
+              server_name {{ rmm_mesh_subdomain }}.{{ rmm_domain }};
+              ssl_certificate /etc/ssl/tactical/cert.pem;
+              ssl_certificate_key /etc/ssl/tactical/key.pem;
+
+              ssl_session_cache shared:WEBSSL:10m;
+
+              ssl_protocols TLSv1.2 TLSv1.3;
+              ssl_prefer_server_ciphers on;
+              ssl_ciphers EECDH+AESGCM:EDH+AESGCM;
+              ssl_ecdh_curve secp384r1;
+              add_header X-Content-Type-Options nosniff;
+
+              location / {
+                  proxy_pass http://127.0.0.1:4430/;
+                  proxy_http_version 1.1;
+
+                  proxy_set_header Host $host;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_set_header X-Forwarded-Host $host:$server_port;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+
+    - name: "18 | Symlink meshcentral.conf into sites-enabled"
+      file:
+        src: /etc/nginx/sites-available/meshcentral.conf
+        dest: /etc/nginx/sites-enabled/meshcentral.conf
+        state: link
+
+    - name: "18 | Check if the frontend web build is already extracted"
+      stat:
+        path: /var/www/rmm/dist/env-config.js
+      register: _rmm_frontend_check
+
+    - name: "18 | Get WEB_VERSION from the installed backend"
+      command: /rmm/api/env/bin/python manage.py get_config webversion
+      args:
+        chdir: /rmm/api/tacticalrmm
+      become_user: "{{ rmm_service_user }}"
+      register: _rmm_web_version
+      changed_when: false
+      when: not _rmm_frontend_check.stat.exists
+
+    - name: "18 | Get the frontend web build tarball URL"
+      command: /rmm/api/env/bin/python manage.py get_webtar_url
+      args:
+        chdir: /rmm/api/tacticalrmm
+      become_user: "{{ rmm_service_user }}"
+      register: _rmm_webtar_url
+      changed_when: false
+      when: not _rmm_frontend_check.stat.exists
+
+    - name: "18 | Ensure /var/www/rmm exists"
+      file:
+        path: /var/www/rmm
+        state: directory
+        mode: "0755"
+      when: not _rmm_frontend_check.stat.exists
+
+    - name: "18 | Download and extract the frontend web build"
+      unarchive:
+        src: "{{ _rmm_webtar_url.stdout | trim }}"
+        dest: /var/www/rmm
+        remote_src: true
+      when: not _rmm_frontend_check.stat.exists
+
+    - name: "18 | Write /var/www/rmm/dist/env-config.js"
+      copy:
+        dest: /var/www/rmm/dist/env-config.js
+        mode: "0644"
+        content: |
+          window._env_ = {PROD_URL: "https://{{ rmm_backend_subdomain }}.{{ rmm_domain }}"}
+      when: not _rmm_frontend_check.stat.exists
+
+    - name: "18 | Set ownership of /var/www/rmm/dist to www-data"
+      file:
+        path: /var/www/rmm/dist
+        owner: www-data
+        group: www-data
+        recurse: true
+      when: not _rmm_frontend_check.stat.exists
+
+    - name: "18 | Write nginx frontend site config (frontend.conf)"
+      copy:
+        dest: /etc/nginx/sites-available/frontend.conf
+        mode: "0644"
+        content: |
+          server {
+              server_name {{ rmm_frontend_subdomain }}.{{ rmm_domain }};
+              charset utf-8;
+              location / {
+                  root /var/www/rmm/dist;
+                  try_files $uri $uri/ /index.html;
+                  add_header Cache-Control "no-store, no-cache, must-revalidate";
+                  add_header Pragma "no-cache";
+              }
+              error_log  /var/log/nginx/frontend-error.log;
+              access_log /var/log/nginx/frontend-access.log;
+
+              listen 443 ssl;
+              listen [::]:443 ssl;
+              ssl_certificate /etc/ssl/tactical/cert.pem;
+              ssl_certificate_key /etc/ssl/tactical/key.pem;
+
+              ssl_protocols TLSv1.2 TLSv1.3;
+              ssl_prefer_server_ciphers on;
+              ssl_ciphers EECDH+AESGCM:EDH+AESGCM;
+              ssl_ecdh_curve secp384r1;
+              add_header X-Content-Type-Options nosniff;
+          }
+
+          server {
+              if ($host = {{ rmm_frontend_subdomain }}.{{ rmm_domain }}) {
+                  return 301 https://$host$request_uri;
+              }
+
+              listen 80;
+              listen [::]:80;
+              server_name {{ rmm_frontend_subdomain }}.{{ rmm_domain }};
+              return 404;
+          }
+
+    - name: "18 | Symlink frontend.conf into sites-enabled"
+      file:
+        src: /etc/nginx/sites-available/frontend.conf
+        dest: /etc/nginx/sites-enabled/frontend.conf
+        state: link
+
   # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------

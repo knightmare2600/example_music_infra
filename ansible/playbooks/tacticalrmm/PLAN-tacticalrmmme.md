@@ -12,7 +12,10 @@ written, both credentials banners fired, failed=0. Phase 10 (systemd units +
 celery.conf) also built and live-verified the same day -- writes only,
 does not enable/start anything (see below for why); found and fixed a real
 live bug along the way (/etc/conf.d didn't exist on Debian, install.sh
-mkdir's it explicitly). Phases 11-13 not started.**
+mkdir's it explicitly). Phase 11 (nginx site configs + frontend web build)
+built the same day, not yet live-tested -- also found a genuinely missing
+step (17a, frontend build download) not in the original 31-step audit.
+Phases 12-13 not started.**
 
 ## 2026-08-06 pivot
 
@@ -87,6 +90,15 @@ enumerated in full. 31 logical steps, in order:
     setuptools/wheel, `requirements.txt`, migrations, JSON schemas,
     `collectstatic`, NATS API config, uWSGI config, Chocolatey/community
     script loading.
+17a. **Frontend web build download** — genuinely missing from this list
+    until 2026-08-07, found while researching Phase 11. `WEB_VERSION`/
+    `WEBTAR_URL` via `manage.py get_config webversion` / `get_webtar_url`,
+    tarball downloaded + extracted to `/var/www/rmm/dist`, `env-config.js`
+    written, `chown www-data:www-data`. `frontend.conf` (step 21) serves
+    directly from this directory and 404s without it. See "Phase 11" section
+    below for the full finding, including why `get_webtar_url` living in
+    an Enterprise-Edition-licensed app doesn't block a plain self-hosted
+    install.
 18. **Superuser + TOTP** — prompts for Django admin username, creates
     superuser + installer account, generates TOTP secret, displays
     barcode, waits for confirmation. **The one place Robert flagged as
@@ -133,7 +145,7 @@ one at a time, don't jump ahead.
 | 8. Django settings + backend install/migrate | 15, 17 | **DONE, live-verified 2026-08-07** |
 | 9. Superuser + TOTP | 18 | **Built + live-verified 2026-08-07** — see below |
 | 10. Systemd units + celery.conf | 19, 20 | **Built + live-verified 2026-08-07** |
-| 11. Nginx site configs + enable | 21, 22 | Not started |
+| 11. Nginx site configs + enable | 21, 22 (+ 17a, found missing) | **Built 2026-08-07, not yet live-tested** — see below |
 | 12. Service start + MeshCentral first-boot sequence | 23, 24, 25, 26 | Not started |
 | 13. NATS init/sync + final cleanup + completion report | 27, 28, 29, 30, 31 | Not started |
 
@@ -265,6 +277,39 @@ the very last thing done in that block, strictly after
 that doesn't exist. This repo's own Phase 13 (NATS init/sync + final
 cleanup) is where `reload_nats`'s equivalent needs to run, before anything
 tries to start this unit.
+
+## Phase 11 -- frontend web build download, missing from the original audit
+
+Built 2026-08-07 (Section 18): nginx site configs for backend
+(`rmm.conf`)/MeshCentral (`meshcentral.conf`)/frontend (`frontend.conf`),
+`sites-available`→`sites-enabled` symlinks, and the frontend web build
+download+extract that step 17a above documents. Not yet live-tested.
+
+Confirmed `/etc/nginx/sites-available`/`sites-enabled` don't exist on this
+build without an explicit `mkdir` -- the nginx.org upstream package
+(Section 10's own apt source) doesn't ship the Debian-style
+sites-available/sites-enabled convention; `install.sh` itself `mkdir -p`s
+both right after writing `nginx.conf`, ported the same way.
+
+`frontend.conf`'s `root /var/www/rmm/dist;` was the thing that surfaced
+the missing step 17a: nothing in the original 31-step enumeration
+downloads the actual React SPA build. Traced it in `install.sh`:
+`WEB_VERSION=$(manage.py get_config webversion)` /
+`WEBTAR_URL=$(manage.py get_webtar_url)`, then `wget`+`tar` into
+`/var/www/rmm`, `env-config.js` written with the backend URL, `chown
+www-data:www-data -R` on `dist/`. `get_webtar_url` turned out to live in
+`api/tacticalrmm/ee/reporting/` (Enterprise Edition-licensed code) --
+checked the actual command source before trusting `install.sh` calls it
+safely for a plain self-hosted install: it returns a public,
+unauthenticated GitHub Releases URL
+(`github.com/amidaware/tacticalrmm-web/releases/...`) unless a paid
+`CodeSignToken` database row already exists, which nothing in this
+estate's install ever creates -- confirmed the `reporting` app's own
+migrations already ran cleanly in Phase 8's real live output, so the app
+is genuinely active regardless of EE licensing, only specific paid
+features inside it are gated. Gated the whole download+extract+chown
+block on `/var/www/rmm/dist/env-config.js` not already existing, same
+existence-check idiom used throughout this file.
 
 ## What stays out of scope
 
