@@ -13,8 +13,10 @@
 > and live-verified too, same day. Phase 11 (nginx site configs + frontend
 > web build -- see PLAN-tacticalrmmme.md's "Phase 11" section for a
 > genuinely missing step found while building it) is built, not yet
-> live-tested. Phases 12-13 (service start + MeshCentral first boot, NATS
-> init + cleanup) are not started. The rest
+> live-tested. Phase 12 (service start + MeshCentral first boot -- see
+> PLAN-tacticalrmmme.md's "Phase 12" section for two deliberate deviations
+> from install.sh's own approach) is built too, not yet live-tested.
+> Phase 13 (NATS init + cleanup) is not started. The rest
 > of "Why the actual install isn't automated here" below still describes
 > `install.sh`'s own constraints accurately, it just no longer describes
 > what this repo does about them.

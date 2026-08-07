@@ -2278,6 +2278,184 @@
         dest: /etc/nginx/sites-enabled/frontend.conf
         state: link
 
+  # Section 19 — TacticalRMM install: service start + MeshCentral first boot
+  # Ansible-native install build, Phase 12 (install.sh steps 23-26).
+  # Confirmed against the real install.sh, not guessed.
+  #
+  # DEVIATION from install.sh's own "enable, stop, start" loop for
+  # rmm/daphne/celery/celerybeat/nginx: uses `state: started` (start if not
+  # already running), not `state: restarted`. install.sh unconditionally
+  # stops-then-starts every one of these on every run, harmless for a
+  # script that's genuinely one-shot -- but this playbook is meant to stay
+  # safely re-runnable, and blindly restarting live services (dropping
+  # in-flight uWSGI/websocket connections, celery workers) on every
+  # ongoing maintenance run would be a real regression, not a faithful
+  # port. First run here still starts everything correctly since nothing
+  # is running yet. Picking up a config change made in an earlier section
+  # (local_settings.py/systemd units/nginx configs) without a full
+  # playbook re-run needing to blindly restart every service is a
+  # follow-up worth wiring as proper notify: handlers on those
+  # config-writing tasks -- not done here, out of this phase's scope,
+  # noted in PLAN-tacticalrmmme.md.
+  #
+  # Two separate first-boot gates, matching install.sh's own two distinct
+  # later steps (25 vs 26), not conflated into one:
+  #   - MESH_TOKEN_KEY presence in local_settings.py gates the restart +
+  #     readiness-wait + --logintokenkey dance (step 25).
+  #   - A marker file this playbook writes itself
+  #     (meshcentral-data/.trmm_admin_setup_done) gates account creation +
+  #     AddDeviceGroup (step 26) -- MeshCentral's own CLI has no clean
+  #     "does this account already exist" query to check against instead,
+  #     so this playbook owns the idempotency the same way Section 16 does
+  #     for the Django superuser (via manage.py) where a native check
+  #     exists, and the way every other one-time-action in this file
+  #     already does when it doesn't.
+  #
+  # Readiness wait uses `journalctl -u meshcentral.service --no-pager -n
+  # 100` (last 100 lines), not install.sh's own `-b` (entire boot) --
+  # `-b` risks matching a stale "ready" line from a much earlier boot-time
+  # start on a re-run, giving a false-positive before the just-issued
+  # restart has actually produced a fresh one. Bounded via retries/delay
+  # (5 minutes total, matching the comment in install.sh itself that first
+  # boot "can take anywhere from a few seconds to a few minutes") rather
+  # than install.sh's own unbounded while-loop -- an Ansible play that can
+  # hang forever on a genuine failure is worse than one that fails loudly
+  # with a clear timeout.
+  #
+  # install.sh's own `sleep 1`/`sleep 3`/`sleep 5` calls between steps are
+  # not ported -- each command here runs synchronously via Ansible's
+  # command module (blocks until the child process fully exits), so there
+  # is no race condition an artificial sleep would be covering for.
+    - name: "19 | Enable and start rmm/daphne/celery/celerybeat/nginx"
+      systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - rmm
+        - daphne
+        - celery
+        - celerybeat
+        - nginx
+
+    - name: "19 | Enable meshcentral (not started yet)"
+      systemd:
+        name: meshcentral
+        enabled: true
+
+    - name: "19 | Check if MESH_TOKEN_KEY is already in local_settings.py"
+      command: grep -q '^MESH_TOKEN_KEY' /rmm/api/tacticalrmm/tacticalrmm/local_settings.py
+      register: _rmm_mesh_token_check
+      changed_when: false
+      failed_when: false
+
+    - name: "19 | Restart meshcentral (first boot -- generates certs, installs plugins)"
+      systemd:
+        name: meshcentral
+        state: restarted
+      when: _rmm_mesh_token_check.rc != 0
+
+    - name: "19 | Wait for MeshCentral to report ready (first boot)"
+      command: journalctl -u meshcentral.service --no-pager -n 100
+      register: _rmm_mesh_ready_1
+      until: "'MeshCentral HTTP server running on port' in _rmm_mesh_ready_1.stdout"
+      retries: 60
+      delay: 5
+      changed_when: false
+      when: _rmm_mesh_token_check.rc != 0
+
+    - name: "19 | Ensure meshcentral is started (already past first boot)"
+      systemd:
+        name: meshcentral
+        state: started
+      when: _rmm_mesh_token_check.rc == 0
+
+    - name: "19 | Generate MeshCentral login token key"
+      command: node /meshcentral/node_modules/meshcentral --logintokenkey
+      become_user: "{{ rmm_service_user }}"
+      register: _rmm_mesh_token_key
+      changed_when: true
+      when: _rmm_mesh_token_check.rc != 0
+      no_log: true
+
+    - name: "19 | Append MESH_TOKEN_KEY to local_settings.py"
+      lineinfile:
+        path: /rmm/api/tacticalrmm/tacticalrmm/local_settings.py
+        regexp: '^MESH_TOKEN_KEY = '
+        line: 'MESH_TOKEN_KEY = "{{ _rmm_mesh_token_key.stdout | trim }}"'
+        insertafter: EOF
+      when: _rmm_mesh_token_check.rc != 0
+      no_log: true
+
+    - name: "19 | Check if the MeshCentral admin account has already been set up"
+      stat:
+        path: /meshcentral/meshcentral-data/.trmm_admin_setup_done
+      register: _rmm_mesh_account_check
+
+    - name: "19 | Stop meshcentral before account setup"
+      systemd:
+        name: meshcentral
+        state: stopped
+      when: not _rmm_mesh_account_check.stat.exists
+
+    - name: "19 | Create the MeshCentral admin account"
+      command: >-
+        node node_modules/meshcentral --createaccount {{ rmm_mesh_username }}
+        --pass {{ rmm_mesh_password }} --email {{ rmm_admin_email }}
+      args:
+        chdir: /meshcentral
+      become_user: "{{ rmm_service_user }}"
+      when: not _rmm_mesh_account_check.stat.exists
+      no_log: true
+
+    - name: "19 | Promote the MeshCentral account to admin"
+      command: "node node_modules/meshcentral --adminaccount {{ rmm_mesh_username }}"
+      args:
+        chdir: /meshcentral
+      become_user: "{{ rmm_service_user }}"
+      when: not _rmm_mesh_account_check.stat.exists
+
+    - name: "19 | Start meshcentral after account setup"
+      systemd:
+        name: meshcentral
+        state: started
+      when: not _rmm_mesh_account_check.stat.exists
+
+    - name: "19 | Wait for MeshCentral to report ready (after account setup)"
+      command: journalctl -u meshcentral.service --no-pager -n 100
+      register: _rmm_mesh_ready_2
+      until: "'MeshCentral HTTP server running on port' in _rmm_mesh_ready_2.stdout"
+      retries: 60
+      delay: 5
+      changed_when: false
+      when: not _rmm_mesh_account_check.stat.exists
+
+    - name: "19 | Add the TacticalRMM device group in MeshCentral"
+      command: >-
+        node node_modules/meshcentral/meshctrl.js
+        --url wss://{{ rmm_mesh_subdomain }}.{{ rmm_domain }}:443
+        --loginuser {{ rmm_mesh_username }} --loginpass {{ rmm_mesh_password }}
+        AddDeviceGroup --name TacticalRMM
+      args:
+        chdir: /meshcentral
+      become_user: "{{ rmm_service_user }}"
+      when: not _rmm_mesh_account_check.stat.exists
+      no_log: true
+
+    - name: "19 | Mark MeshCentral admin account setup complete"
+      copy:
+        dest: /meshcentral/meshcentral-data/.trmm_admin_setup_done
+        owner: "{{ rmm_service_user }}"
+        group: "{{ rmm_service_user }}"
+        mode: "0644"
+        content: |
+          Written by tacticalrmm_server.yml -- do not delete. Marks that the
+          MeshCentral admin account, admin promotion, and TacticalRMM device
+          group were already created, so a re-run of this playbook doesn't
+          repeat account creation (MeshCentral's own CLI has no clean "does
+          this account already exist" check to gate on instead).
+      when: not _rmm_mesh_account_check.stat.exists
+
   # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------
