@@ -1707,20 +1707,34 @@
 
     # generate_barcode.py's own source (confirmed, not guessed) shells out to
     # `qr` via subprocess.run(..., shell=True) to render the ASCII barcode --
-    # `qr` is the qrcode pip package's own console-script entry point
-    # (already confirmed installed, Section 15's requirements.txt), living
-    # at /rmm/api/env/bin/qr, NOT an apt package (install.sh never installs
-    # one either). Real live bug caught 2026-08-07: invoking the venv's
-    # python directly (as every other manage.py task in this file does) is
-    # correct for imports, but does nothing for a shelled-out subprocess's
-    # own PATH lookup -- install.sh always `source`s the venv first for
-    # exactly this reason. Without it, `qr` silently fails to be found
-    # (subprocess.run's result is never checked by generate_barcode.py, so
-    # this raised no error, just rendered nothing) -- confirmed harmless to
-    # the actual TOTP enrolment itself: the same source shows
-    # `user.totp_key = code; user.save(...)` runs unconditionally, BEFORE
-    # the barcode subprocess call, so the account is bound to the secret
-    # regardless of whether the visual barcode ever renders.
+    # `qr` is the qrcode pip package's own console-script entry point.
+    # qrcode==8.2 is already in the venv via Section 15's requirements.txt,
+    # but that copy's own console-script only lands on PATH if the venv is
+    # activated first (install.sh always `source`s it before any manage.py
+    # call, for exactly this reason) -- this playbook's other manage.py
+    # tasks correctly invoke the venv's python directly instead (no
+    # activation needed for imports), which is what left `qr` unreachable
+    # here specifically. Real live bug, 2026-08-07: subprocess.run's result
+    # is never checked by generate_barcode.py, so the missing `qr` raised no
+    # error, just rendered nothing -- harmless to the actual TOTP enrolment
+    # itself (user.totp_key gets set unconditionally, before the barcode
+    # subprocess call), but left no visible barcode to scan. Robert's own
+    # live fix: `sudo pip3.11 install qrcode` -- a second, system-wide copy
+    # (there's no apt package providing this specific console-script;
+    # install.sh doesn't install one either), landing `qr` at
+    # /usr/local/bin/qr, already on the default PATH for every user with no
+    # venv activation required. Folded in as Robert verified it, in place of
+    # this task's own earlier PATH-prepend fix.
+    # Deliberately NOT gated on _rmm_superuser_check -- unlike the rest of
+    # this section, a package install is safe to repeat and this keeps `qr`
+    # available for the backup file's own documented regenerate command
+    # even long after the superuser account (and this section's own gate)
+    # has permanently gone the other way.
+    - name: "16 | Install qrcode system-wide (provides the qr console-script generate_barcode.py shells out to)"
+      pip:
+        name: qrcode
+        executable: pip3.11
+
     - name: "16 | Render the TOTP barcode (manage.py generate_barcode)"
       command: >-
         /rmm/api/env/bin/python manage.py generate_barcode
@@ -1728,18 +1742,25 @@
         {{ rmm_frontend_subdomain }}.{{ rmm_domain }}
       args:
         chdir: /rmm/api/tacticalrmm
-      environment:
-        PATH: "/rmm/api/env/bin:{{ ansible_env.PATH }}"
       become_user: "{{ rmm_service_user }}"
       register: _rmm_totp_barcode
       when: _rmm_superuser_check.rc != 0
       no_log: true
 
-    - name: "16 | Back up the TOTP secret to a root-only file (Robert, 2026-08-07 -- durable backup, not just a one-time terminal display)"
+    # Backup location moved from /root/ to /home/ansible/, 2026-08-07,
+    # Robert: "I get you were trying to be safety conscious but... still...."
+    # -- the ansible user already has to sudo for anything root-owned
+    # anyway, so root-only bought little real protection here over
+    # ansible-only, at the cost of an extra sudo for every routine read of
+    # this file. Also now appends the actual rendered barcode (Robert's own
+    # explicit ask), not just the raw secret + regenerate instructions --
+    # safe to rely on now that "16 | Install qrcode system-wide" above
+    # guarantees `qr` is genuinely on PATH before this task runs.
+    - name: "16 | Back up the TOTP secret + barcode to an ansible-only file (Robert, 2026-08-07 -- durable backup, not just a one-time terminal display)"
       copy:
-        dest: /root/.tacticalrmm_totp_backup.txt
-        owner: root
-        group: root
+        dest: /home/ansible/.tacticalrmm_totp_backup.txt
+        owner: ansible
+        group: ansible
         mode: "0600"
         content: |
           TacticalRMM TOTP enrolment secret -- generated {{ ansible_date_time.iso8601 }}
@@ -1751,13 +1772,12 @@
           account (generate_barcode.py writes totp_key immediately, before
           it even tries to render the barcode) -- add it to an
           authenticator app as a manual/setup-key entry and log in with the
-          resulting code, no need to scan anything first.
+          resulting code, no need to scan the barcode below at all.
 
-          Scan the barcode Ansible printed at the time of this run into an
-          authenticator app instead if you'd rather, or re-render it any
-          time with (the venv must be activated first -- qr, the barcode
-          renderer, is a pip console-script, not on PATH otherwise):
-            sudo -u {{ rmm_service_user }} bash -c "cd /rmm/api/tacticalrmm && source /rmm/api/env/bin/activate && python manage.py generate_barcode {{ _rmm_totp_secret.stdout | trim }} {{ rmm_django_admin_user }} {{ rmm_frontend_subdomain }}.{{ rmm_domain }}"
+          {{ _rmm_totp_barcode.stdout }}
+
+          Re-render this any time with:
+            sudo -u {{ rmm_service_user }} bash -c "cd /rmm/api/tacticalrmm && /rmm/api/env/bin/python manage.py generate_barcode {{ _rmm_totp_secret.stdout | trim }} {{ rmm_django_admin_user }} {{ rmm_frontend_subdomain }}.{{ rmm_domain }}"
       when: _rmm_superuser_check.rc != 0
       no_log: true
 
@@ -1772,8 +1792,8 @@
           - "=================================================================="
           - "Django superuser created THIS RUN -- scan the barcode above into"
           - "an authenticator app now, it will not be shown again by this"
-          - "playbook. A backup of the raw secret is also saved to:"
-          - "  /root/.tacticalrmm_totp_backup.txt (root-only, 0600)"
+          - "playbook. A backup of the raw secret and barcode is also saved to:"
+          - "  /home/ansible/.tacticalrmm_totp_backup.txt (ansible-only, 0600)"
           - "=================================================================="
           - "Django admin username : {{ rmm_django_admin_user }}"
           - "Django admin password : {{ rmm_django_admin_password }}"
