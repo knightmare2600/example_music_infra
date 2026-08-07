@@ -2400,8 +2400,31 @@
         state: restarted
       when: _rmm_mesh_token_check.rc != 0
 
+    # Real live bug, 2026-08-07: the earlier `-n 100` (last 100 lines) design
+    # was meant to avoid matching a stale "ready" line from a much earlier
+    # boot on a re-run (see this section's own header comment), but wasn't
+    # tight enough for THIS restart -- confirmed live, the readiness check
+    # right after MeshCentral's account-setup restart matched a "ready" line
+    # left over from the FIRST-boot restart moments earlier, still within
+    # the last 100 lines, letting "19 | Add the TacticalRMM device group"
+    # proceed before MeshCentral's control channel had actually finished
+    # restarting -- it silently created nothing (rc=0, no error) even
+    # though the same command run manually, seconds later once MeshCentral
+    # really was ready, worked first try. Fixed with `--since`, an exact
+    # timestamp captured on the target host itself right after the restart
+    # command returns -- this can never match a line older than the restart
+    # that's actually being waited for, closing the race properly instead
+    # of just narrowing its window.
+    - name: "19 | Record restart timestamp (first boot)"
+      command: date +%s
+      register: _rmm_mesh_restart_epoch_1
+      changed_when: false
+      when: _rmm_mesh_token_check.rc != 0
+
     - name: "19 | Wait for MeshCentral to report ready (first boot)"
-      command: journalctl -u meshcentral.service --no-pager -n 100
+      command: >-
+        journalctl -u meshcentral.service --no-pager
+        --since "@{{ _rmm_mesh_restart_epoch_1.stdout | trim }}"
       register: _rmm_mesh_ready_1
       until: "'MeshCentral HTTP server running on port' in _rmm_mesh_ready_1.stdout"
       retries: 60
@@ -2466,8 +2489,16 @@
         state: started
       when: not _rmm_mesh_account_check.stat.exists
 
+    - name: "19 | Record restart timestamp (after account setup)"
+      command: date +%s
+      register: _rmm_mesh_restart_epoch_2
+      changed_when: false
+      when: not _rmm_mesh_account_check.stat.exists
+
     - name: "19 | Wait for MeshCentral to report ready (after account setup)"
-      command: journalctl -u meshcentral.service --no-pager -n 100
+      command: >-
+        journalctl -u meshcentral.service --no-pager
+        --since "@{{ _rmm_mesh_restart_epoch_2.stdout | trim }}"
       register: _rmm_mesh_ready_2
       until: "'MeshCentral HTTP server running on port' in _rmm_mesh_ready_2.stdout"
       retries: 60
@@ -2475,6 +2506,18 @@
       changed_when: false
       when: not _rmm_mesh_account_check.stat.exists
 
+    # Real live bug, 2026-08-07: this task previously reported changed=true
+    # (rc=0) without actually creating the group -- confirmed live via
+    # meshctrl.js ListDeviceGroups after the fact, only a pre-existing "CLD"
+    # group existed, "TacticalRMM" was never really there. Root-caused to
+    # the readiness-wait race fixed just above: this ran before MeshCentral
+    # had genuinely finished restarting, so the createmesh action never
+    # actually landed even though the command itself exited cleanly. Not
+    # re-verified end to end since the readiness fix landed -- if this still
+    # silently no-ops even with the race closed, that's a second, separate
+    # bug (meshctrl.js's own exit code not reflecting the server's real
+    # response) needing its own fix, not assumed solved by the timing fix
+    # alone.
     - name: "19 | Add the TacticalRMM device group in MeshCentral"
       command: >-
         node node_modules/meshcentral/meshctrl.js
@@ -2484,8 +2527,36 @@
       args:
         chdir: /meshcentral
       become_user: "{{ rmm_service_user }}"
+      register: _rmm_mesh_add_group
       when: not _rmm_mesh_account_check.stat.exists
       no_log: true
+
+    - name: "19 | Verify the TacticalRMM device group actually landed"
+      command: >-
+        node node_modules/meshcentral/meshctrl.js
+        --url wss://{{ rmm_mesh_subdomain }}.{{ rmm_domain }}:443
+        --loginuser {{ rmm_mesh_username }} --loginpass {{ rmm_mesh_password }}
+        ListDeviceGroups
+      args:
+        chdir: /meshcentral
+      become_user: "{{ rmm_service_user }}"
+      register: _rmm_mesh_group_list
+      changed_when: false
+      when: not _rmm_mesh_account_check.stat.exists
+      no_log: true
+
+    - name: "19 | Fail loudly if the TacticalRMM device group still isn't really there"
+      fail:
+        msg: >-
+          AddDeviceGroup exited cleanly but "TacticalRMM" isn't in
+          ListDeviceGroups's own output -- this is the exact silent-failure
+          class already found live 2026-08-07 (a race with MeshCentral's
+          own restart, since fixed above), so don't trust a clean exit code
+          here without checking. If this fires again after that fix, it's a
+          second, separate cause -- investigate live, don't just re-run.
+      when:
+        - not _rmm_mesh_account_check.stat.exists
+        - "'TacticalRMM' not in _rmm_mesh_group_list.stdout"
 
     - name: "19 | Mark MeshCentral admin account setup complete"
       copy:
