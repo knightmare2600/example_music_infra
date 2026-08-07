@@ -1321,7 +1321,33 @@
             } | to_nice_json
           }}
 
-    - name: "14 | Write MeshCentral config.json (only the run its Postgres role is actually created)"
+    # REWORKED 2026-08-07 -- real live bug: config.json's write never fired
+    # even once. The gate assumed config.json and the Postgres role always
+    # get created "the same run" -- true in the idealised fresh-box case,
+    # false in practice: the meshcentral role was created back during
+    # Phase 4's own testing, before this section existed at all, so
+    # _rmm_mesh_pg_role_check.stdout | trim != '1' has never been true
+    # since and never will be again for this role. Decoupled the two:
+    # config.json's own existence is now the one thing that matters
+    # (force: false already guarantees "never overwrite once written"), and
+    # immediately before writing it for the first time, the role's password
+    # is explicitly (re)synced to match whatever's about to be written --
+    # correct regardless of whether the role happened to be created this
+    # run, a past run, or years ago. This also means Django's own migrate
+    # (Section 15) hit the identical bug for local_settings.py -- same fix
+    # applied there.
+    - name: "14 | Check if config.json already exists"
+      stat:
+        path: /meshcentral/meshcentral-data/config.json
+      register: _rmm_mesh_config_check
+
+    - name: "14 | Sync MeshCentral PostgreSQL role password (only if config.json doesn't exist yet)"
+      command: "psql -c \"ALTER ROLE {{ rmm_mesh_pg_user }} WITH PASSWORD '{{ rmm_mesh_pg_password }}'\""
+      become_user: postgres
+      when: not _rmm_mesh_config_check.stat.exists
+      no_log: true
+
+    - name: "14 | Write MeshCentral config.json (only the first time -- force: false)"
       copy:
         dest: /meshcentral/meshcentral-data/config.json
         owner: "{{ rmm_service_user }}"
@@ -1369,7 +1395,6 @@
               }
             } | to_nice_json
           }}
-      when: _rmm_mesh_pg_role_check.stdout | trim != '1'
       no_log: true
 
     - name: "14 | Run npm install in /meshcentral"
@@ -1428,7 +1453,30 @@
       args:
         creates: /etc/ssl/tactical/cert.pem
 
-    - name: "15 | Write /rmm/api/tacticalrmm/local_settings.py (only the run its Postgres role is actually created)"
+    # REWORKED 2026-08-07 -- real live bug: this task's write never fired
+    # even once. install.sh's own manage.py migrate hard-failed with
+    # "IndexError: list index out of range" on ALLOWED_HOSTS[0] --
+    # local_settings.py had literally never been written to disk. Same
+    # root cause and same fix as Section 14's config.json: gating on "was
+    # the Postgres role just created THIS run" assumed the role and the
+    # settings file always get created together, which broke down because
+    # the tacticalrmm role was actually created back during Phase 4's own
+    # testing, before this section existed. Decoupled: local_settings.py's
+    # own existence is now what matters (force: false already guarantees
+    # write-once), and the role's password is explicitly (re)synced to
+    # match immediately before the first-ever write.
+    - name: "15 | Check if local_settings.py already exists"
+      stat:
+        path: /rmm/api/tacticalrmm/local_settings.py
+      register: _rmm_local_settings_check
+
+    - name: "15 | Sync TacticalRMM PostgreSQL role password (only if local_settings.py doesn't exist yet)"
+      command: "psql -c \"ALTER ROLE {{ rmm_pg_user }} WITH PASSWORD '{{ rmm_pg_password }}'\""
+      become_user: postgres
+      when: not _rmm_local_settings_check.stat.exists
+      no_log: true
+
+    - name: "15 | Write /rmm/api/tacticalrmm/local_settings.py (only the first time -- force: false)"
       copy:
         dest: /rmm/api/tacticalrmm/local_settings.py
         owner: "{{ rmm_service_user }}"
@@ -1467,7 +1515,6 @@
 
           CERT_FILE = "/etc/ssl/tactical/cert.pem"
           KEY_FILE = "/etc/ssl/tactical/key.pem"
-      when: _rmm_pg_role_check.stdout | trim != '1'
       no_log: true
 
     - name: "15 | Install weasyprint system dependencies"
