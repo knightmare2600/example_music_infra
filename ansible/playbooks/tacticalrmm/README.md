@@ -206,6 +206,29 @@ mesh device group name...", check what device groups actually exist
 completion banner / KeePass) and create the missing one directly rather
 than re-running the whole playbook.
 
+**Moving an agent to a different Client/Site** (e.g. an agent installed
+under the default `TacticalRMM` Client/Site, moved to a real one like
+`CLD`): confirmed against the real backend source, not guessed —
+`Agent` only has a `site` field (no separate `client` field; a Site
+belongs to a Client, so moving the Site moves the Client too), writable
+via the same per-agent update endpoint the web UI itself uses.
+
+1. In the dashboard tree, right-click the agent (or double-click,
+   depending on your dashboard's own configured default double-click
+   action) → **Edit Agent**.
+2. Pick the target Site (under the target Client) in the Site dropdown,
+   save.
+
+If the target Client/Site doesn't exist yet, create it first (**Clients
+→ + Add Client**, then **+ Add Site** under it) — purely a web-UI-managed
+organisational structure, nothing in this repo generates or expects
+specific Client/Site values.
+
+There is **no bulk "move to site" action** — the bulk-actions endpoint
+(`actions/bulk/`) only covers running commands/scripts across many
+agents at once, not reassigning Site/Client. For a single agent, the
+per-agent Edit dialog above is the only path anyway.
+
 ## Not yet built
 
 - **`EXAMSHCLD001` (standalone MeshCentral) role reconsideration.** Built and
