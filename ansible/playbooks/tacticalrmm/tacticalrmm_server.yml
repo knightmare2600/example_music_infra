@@ -1397,6 +1397,19 @@
           }}
       no_log: true
 
+    - name: "14 | Credentials banner -- MeshCentral PostgreSQL password just (re)synced this run"
+      debug:
+        msg:
+          - "=================================================================="
+          - "MeshCentral PostgreSQL password (re)synced THIS RUN -- file into"
+          - "KeePassXC now (benarbejde/kpcli_wrapper.py), these will not be"
+          - "shown again:"
+          - "=================================================================="
+          - "MeshCentral DB role : {{ rmm_mesh_pg_user }}"
+          - "MeshCentral DB pass : {{ rmm_mesh_pg_password }}"
+          - "=================================================================="
+      when: not _rmm_mesh_config_check.stat.exists
+
     - name: "14 | Run npm install in /meshcentral"
       community.general.npm:
         path: /meshcentral
@@ -1516,6 +1529,19 @@
           CERT_FILE = "/etc/ssl/tactical/cert.pem"
           KEY_FILE = "/etc/ssl/tactical/key.pem"
       no_log: true
+
+    - name: "15 | Credentials banner -- TacticalRMM PostgreSQL password just (re)synced this run"
+      debug:
+        msg:
+          - "=================================================================="
+          - "TacticalRMM PostgreSQL password (re)synced THIS RUN -- file into"
+          - "KeePassXC now (benarbejde/kpcli_wrapper.py), these will not be"
+          - "shown again:"
+          - "=================================================================="
+          - "TacticalRMM DB role : {{ rmm_pg_user }}"
+          - "TacticalRMM DB pass : {{ rmm_pg_password }}"
+          - "=================================================================="
+      when: not _rmm_local_settings_check.stat.exists
 
     - name: "15 | Install weasyprint system dependencies"
       apt:
