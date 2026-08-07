@@ -14,6 +14,20 @@ them into one check.
 
 ## 1. Host-local required-tool checks (generalise the existing pattern)
 
+**BUILT 2026-08-07 (check 36, `check_required_tools.py`).** Robert's own
+scoping answer, live: check for `keepassxc-cli`/`keepassxc-full` on
+Debian, `keepassxc` on macOS/Windows; concern this primarily with
+"Problem A" (control-node tools) over "Problem B" (validating each
+provisioning script's own self-heal list) -- Problem B not started, still
+open. Seeded with `keepassxc-cli` only (the confirmed real gap); `bc` was
+reconsidered and correctly excluded -- it's a `bootstrap/web/provision/`
+target-host tool that already self-heals via its own `command -v bc ||
+BOOTSTRAP_PKGS+=(bc)` pattern, not a control-node requirement at all (see
+that check's own header for the full scoping reasoning). Hand-maintained
+`REQUIRED_TOOLS` dict, not auto-derived from scanning `subprocess.run()`
+call sites -- considered and rejected, see the check's own header.
+
+
 **Precedent already exists, just never generalised**: `check_gitleaks.py`
 (check 33), `check_ssh_keys.py` (check 11), and `check_mermaid.py` (check 13)
 each already implement the exact right shape for ONE tool each — informational
