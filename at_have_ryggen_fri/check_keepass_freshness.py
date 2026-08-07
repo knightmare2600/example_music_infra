@@ -23,7 +23,7 @@ clone will never have, so only the JSON side can be a hard, always-on check.
     otherwise fail silently (skipped, not erred) when the push script runs.
 
   Tier 2 (host-local, best-effort, informational unless --strict):
-    If this host has both the live vault (~/KeePassXC/Example Music.kdbx)
+    If this host has both the live vault (~/KeePassXC/ExampleMusic.kdbx)
     and the automation master-password file
     (benarbejde/.keepassxc_master_password) available, runs
     push_credentials_to_keepass.py --dry-run and fails informationally if it
@@ -48,7 +48,7 @@ BENARBEJDE_DIR = REPO_ROOT / "benarbejde"
 CREDENTIALS_JSON = BENARBEJDE_DIR / "extracted_credentials.json"
 PUSH_SCRIPT = BENARBEJDE_DIR / "push_credentials_to_keepass.py"
 MASTER_PASSWORD_FILE = BENARBEJDE_DIR / ".keepassxc_master_password"
-DEFAULT_DB = Path.home() / "KeePassXC" / "Example Music.kdbx"
+DEFAULT_DB = Path.home() / "KeePassXC" / "ExampleMusic.kdbx"
 
 REQUIRED_FIELDS = ("hostname", "site", "role", "credential")
 # Kept in sync by hand with push_credentials_to_keepass.py's GROUP_FOR_ROLE --
