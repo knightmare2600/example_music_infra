@@ -9,8 +9,10 @@ migrate` + the rest of the Section 15 loop all rc=0). Phase 9 (superuser +
 TOTP) also built and live-verified the same day -- superuser+installer
 account created, TOTP secret generated, barcode displayed, backup file
 written, both credentials banners fired, failed=0. Phase 10 (systemd units +
-celery.conf) built the same day, not yet live-tested -- writes only, does
-not enable/start anything (see below for why). Phases 11-13 not started.**
+celery.conf) also built and live-verified the same day -- writes only,
+does not enable/start anything (see below for why); found and fixed a real
+live bug along the way (/etc/conf.d didn't exist on Debian, install.sh
+mkdir's it explicitly). Phases 11-13 not started.**
 
 ## 2026-08-06 pivot
 
@@ -130,7 +132,7 @@ one at a time, don't jump ahead.
 | 7. MeshCentral install (files, not yet running) | 14 | **DONE, this session** |
 | 8. Django settings + backend install/migrate | 15, 17 | **DONE, live-verified 2026-08-07** |
 | 9. Superuser + TOTP | 18 | **Built + live-verified 2026-08-07** — see below |
-| 10. Systemd units + celery.conf | 19, 20 | **Built 2026-08-07, not yet live-tested** |
+| 10. Systemd units + celery.conf | 19, 20 | **Built + live-verified 2026-08-07** |
 | 11. Nginx site configs + enable | 21, 22 | Not started |
 | 12. Service start + MeshCentral first-boot sequence | 23, 24, 25, 26 | Not started |
 | 13. NATS init/sync + final cleanup + completion report | 27, 28, 29, 30, 31 | Not started |
