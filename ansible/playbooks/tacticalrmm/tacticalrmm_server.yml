@@ -1632,6 +1632,116 @@
         - load_community_scripts
       become_user: "{{ rmm_service_user }}"
 
+  # Section 16 — TacticalRMM install: Django superuser + TOTP enrollment
+  # Ansible-native install build, Phase 9 (install.sh step 18). Robert's own
+  # flagged risk area -- the TOTP secret is generated server-side, rendered
+  # as an ASCII barcode, and a human scans it into an authenticator app.
+  # There is no way to skip this and no way to regenerate the same secret
+  # later; a re-run must NOT silently create a second superuser or display a
+  # fresh, different secret once one already exists. Confirmed against the
+  # real install.sh and the real generate_totp.py/models.py source (not
+  # guessed): `generate_totp` only prints a random base32 value and touches
+  # no database table -- the secret only actually gets bound to the
+  # account's own totp_key field later, during the operator's own first
+  # browser login (TacticalRMM's own enrolment screen), which is genuinely
+  # outside this playbook's reach. So the one thing that must never repeat
+  # is the account-creation + secret-display step itself, guarded on
+  # whether the Django superuser account already exists -- not on whether
+  # totp_key is already set (this playbook can't see that moment).
+    - name: "16 | Check if the Django superuser account already exists"
+      command: >-
+        /rmm/api/env/bin/python manage.py shell -c
+        "from django.contrib.auth import get_user_model; import sys;
+        sys.exit(0 if get_user_model().objects.filter(username='{{ rmm_django_admin_user }}').exists() else 1)"
+      args:
+        chdir: /rmm/api/tacticalrmm
+      become_user: "{{ rmm_service_user }}"
+      register: _rmm_superuser_check
+      changed_when: false
+      failed_when: false
+
+    - name: "16 | Create the Django superuser account (--noinput, password from Section 8)"
+      command: >-
+        /rmm/api/env/bin/python manage.py createsuperuser --noinput
+        --username {{ rmm_django_admin_user }} --email {{ rmm_admin_email }}
+      args:
+        chdir: /rmm/api/tacticalrmm
+      environment:
+        DJANGO_SUPERUSER_PASSWORD: "{{ rmm_django_admin_password }}"
+      become_user: "{{ rmm_service_user }}"
+      when: _rmm_superuser_check.rc != 0
+      no_log: true
+
+    - name: "16 | Create the installer account (manage.py create_installer_user)"
+      command: /rmm/api/env/bin/python manage.py create_installer_user
+      args:
+        chdir: /rmm/api/tacticalrmm
+      become_user: "{{ rmm_service_user }}"
+      when: _rmm_superuser_check.rc != 0
+
+    - name: "16 | Generate the TOTP secret (manage.py generate_totp)"
+      command: /rmm/api/env/bin/python manage.py generate_totp
+      args:
+        chdir: /rmm/api/tacticalrmm
+      become_user: "{{ rmm_service_user }}"
+      register: _rmm_totp_secret
+      when: _rmm_superuser_check.rc != 0
+      no_log: true
+
+    - name: "16 | Render the TOTP barcode (manage.py generate_barcode)"
+      command: >-
+        /rmm/api/env/bin/python manage.py generate_barcode
+        {{ _rmm_totp_secret.stdout | trim }} {{ rmm_django_admin_user }}
+        {{ rmm_frontend_subdomain }}.{{ rmm_domain }}
+      args:
+        chdir: /rmm/api/tacticalrmm
+      become_user: "{{ rmm_service_user }}"
+      register: _rmm_totp_barcode
+      when: _rmm_superuser_check.rc != 0
+      no_log: true
+
+    - name: "16 | Back up the TOTP secret to a root-only file (Robert, 2026-08-07 -- durable backup, not just a one-time terminal display)"
+      copy:
+        dest: /root/.tacticalrmm_totp_backup.txt
+        owner: root
+        group: root
+        mode: "0600"
+        content: |
+          TacticalRMM TOTP enrolment secret -- generated {{ ansible_date_time.iso8601 }}
+          Username : {{ rmm_django_admin_user }}
+          Domain   : {{ rmm_frontend_subdomain }}.{{ rmm_domain }}
+          Secret   : {{ _rmm_totp_secret.stdout | trim }}
+
+          Scan the barcode Ansible printed at the time of this run into an
+          authenticator app, or re-render it any time with:
+            /rmm/api/env/bin/python manage.py generate_barcode {{ _rmm_totp_secret.stdout | trim }} {{ rmm_django_admin_user }} {{ rmm_frontend_subdomain }}.{{ rmm_domain }}
+          (run as {{ rmm_service_user }}, chdir /rmm/api/tacticalrmm)
+
+          This secret is not bound to the account yet -- it only becomes
+          active once entered during your own first browser login to
+          TacticalRMM's own enrolment screen.
+      when: _rmm_superuser_check.rc != 0
+      no_log: true
+
+    - name: "16 | Display the TOTP barcode -- scan this now, it will not be shown again"
+      debug:
+        msg: "{{ '\n' + _rmm_totp_barcode.stdout + '\n' }}"
+      when: _rmm_superuser_check.rc != 0
+
+    - name: "16 | Credentials banner -- Django superuser + TOTP backup location"
+      debug:
+        msg:
+          - "=================================================================="
+          - "Django superuser created THIS RUN -- scan the barcode above into"
+          - "an authenticator app now, it will not be shown again by this"
+          - "playbook. A backup of the raw secret is also saved to:"
+          - "  /root/.tacticalrmm_totp_backup.txt (root-only, 0600)"
+          - "=================================================================="
+          - "Django admin username : {{ rmm_django_admin_user }}"
+          - "Django admin password : {{ rmm_django_admin_password }}"
+          - "=================================================================="
+      when: _rmm_superuser_check.rc != 0
+
   # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------
