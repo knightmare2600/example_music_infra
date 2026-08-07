@@ -10,8 +10,11 @@
 > (superuser+TOTP) is built and live-verified too, same day; Phase 10
 > (systemd units + celery.conf, write-only -- see PLAN-tacticalrmmme.md's
 > "Phase 10" section for why nothing gets enabled/started yet) is built
-> and live-verified too, same day. Phases 11-13 (nginx configs, service start +
-> MeshCentral first boot, NATS init + cleanup) are not started. The rest
+> and live-verified too, same day. Phase 11 (nginx site configs + frontend
+> web build -- see PLAN-tacticalrmmme.md's "Phase 11" section for a
+> genuinely missing step found while building it) is built, not yet
+> live-tested. Phases 12-13 (service start + MeshCentral first boot, NATS
+> init + cleanup) are not started. The rest
 > of "Why the actual install isn't automated here" below still describes
 > `install.sh`'s own constraints accurately, it just no longer describes
 > what this repo does about them.
