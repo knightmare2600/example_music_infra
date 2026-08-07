@@ -1652,15 +1652,19 @@
   # There is no way to skip this and no way to regenerate the same secret
   # later; a re-run must NOT silently create a second superuser or display a
   # fresh, different secret once one already exists. Confirmed against the
-  # real install.sh and the real generate_totp.py/models.py source (not
-  # guessed): `generate_totp` only prints a random base32 value and touches
-  # no database table -- the secret only actually gets bound to the
-  # account's own totp_key field later, during the operator's own first
-  # browser login (TacticalRMM's own enrolment screen), which is genuinely
-  # outside this playbook's reach. So the one thing that must never repeat
-  # is the account-creation + secret-display step itself, guarded on
-  # whether the Django superuser account already exists -- not on whether
-  # totp_key is already set (this playbook can't see that moment).
+  # real install.sh and the real generate_totp.py/models.py/
+  # generate_barcode.py source (not guessed): `generate_totp` only prints a
+  # random base32 value and touches no database table, but generate_barcode
+  # DOES -- `user.totp_key = code; user.save(...)` runs immediately and
+  # unconditionally, before it even attempts to render the barcode. So this
+  # playbook's own "16 | Render the TOTP barcode" task is what actually
+  # binds the secret to the account, not a later browser enrolment step
+  # (corrected 2026-08-07 -- an earlier version of this comment claimed the
+  # opposite, not re-verified against the real source at the time it was
+  # written). The guard (whether the Django superuser account already
+  # exists) is still exactly right, just for the right reason: it stops a
+  # re-run from creating a second account and binding a second, different
+  # secret -- not because this playbook "can't see" the binding moment.
     - name: "16 | Check if the Django superuser account already exists"
       command: >-
         /rmm/api/env/bin/python manage.py shell -c
@@ -1701,6 +1705,22 @@
       when: _rmm_superuser_check.rc != 0
       no_log: true
 
+    # generate_barcode.py's own source (confirmed, not guessed) shells out to
+    # `qr` via subprocess.run(..., shell=True) to render the ASCII barcode --
+    # `qr` is the qrcode pip package's own console-script entry point
+    # (already confirmed installed, Section 15's requirements.txt), living
+    # at /rmm/api/env/bin/qr, NOT an apt package (install.sh never installs
+    # one either). Real live bug caught 2026-08-07: invoking the venv's
+    # python directly (as every other manage.py task in this file does) is
+    # correct for imports, but does nothing for a shelled-out subprocess's
+    # own PATH lookup -- install.sh always `source`s the venv first for
+    # exactly this reason. Without it, `qr` silently fails to be found
+    # (subprocess.run's result is never checked by generate_barcode.py, so
+    # this raised no error, just rendered nothing) -- confirmed harmless to
+    # the actual TOTP enrolment itself: the same source shows
+    # `user.totp_key = code; user.save(...)` runs unconditionally, BEFORE
+    # the barcode subprocess call, so the account is bound to the secret
+    # regardless of whether the visual barcode ever renders.
     - name: "16 | Render the TOTP barcode (manage.py generate_barcode)"
       command: >-
         /rmm/api/env/bin/python manage.py generate_barcode
@@ -1708,6 +1728,8 @@
         {{ rmm_frontend_subdomain }}.{{ rmm_domain }}
       args:
         chdir: /rmm/api/tacticalrmm
+      environment:
+        PATH: "/rmm/api/env/bin:{{ ansible_env.PATH }}"
       become_user: "{{ rmm_service_user }}"
       register: _rmm_totp_barcode
       when: _rmm_superuser_check.rc != 0
@@ -1725,14 +1747,17 @@
           Domain   : {{ rmm_frontend_subdomain }}.{{ rmm_domain }}
           Secret   : {{ _rmm_totp_secret.stdout | trim }}
 
-          Scan the barcode Ansible printed at the time of this run into an
-          authenticator app, or re-render it any time with:
-            /rmm/api/env/bin/python manage.py generate_barcode {{ _rmm_totp_secret.stdout | trim }} {{ rmm_django_admin_user }} {{ rmm_frontend_subdomain }}.{{ rmm_domain }}
-          (run as {{ rmm_service_user }}, chdir /rmm/api/tacticalrmm)
+          This secret is ALREADY bound to the {{ rmm_django_admin_user }}
+          account (generate_barcode.py writes totp_key immediately, before
+          it even tries to render the barcode) -- add it to an
+          authenticator app as a manual/setup-key entry and log in with the
+          resulting code, no need to scan anything first.
 
-          This secret is not bound to the account yet -- it only becomes
-          active once entered during your own first browser login to
-          TacticalRMM's own enrolment screen.
+          Scan the barcode Ansible printed at the time of this run into an
+          authenticator app instead if you'd rather, or re-render it any
+          time with (the venv must be activated first -- qr, the barcode
+          renderer, is a pip console-script, not on PATH otherwise):
+            sudo -u {{ rmm_service_user }} bash -c "cd /rmm/api/tacticalrmm && source /rmm/api/env/bin/activate && python manage.py generate_barcode {{ _rmm_totp_secret.stdout | trim }} {{ rmm_django_admin_user }} {{ rmm_frontend_subdomain }}.{{ rmm_domain }}"
       when: _rmm_superuser_check.rc != 0
       no_log: true
 

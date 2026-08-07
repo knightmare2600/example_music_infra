@@ -153,17 +153,39 @@ displayed with a clean leading blank line, backup file written, both
 credentials banners fired, failed=0.** Real constraints
 confirmed against `install.sh` and the real `generate_totp.py`/`models.py`
 source (not guessed): `generate_totp` only prints a random base32 value
-and touches no database table -- the secret only actually gets bound to
-the account's `totp_key` field later, during the operator's own first
-browser login (TacticalRMM's own enrolment screen), which is outside this
-playbook's reach entirely. So the guard is on whether the Django superuser
-account already exists (`manage.py shell` querying
-`get_user_model().objects.filter(username=...)`), not on `totp_key` --
-this playbook can never see the moment that field gets set. A re-run once
-the account exists skips superuser creation, installer-account creation,
-TOTP generation, and barcode display/backup entirely -- no risk of
-generating a second, different secret after the operator has already
-scanned one in.
+and touches no database table.
+
+**Correction, 2026-08-07 (live, Robert hit the actual `generate_barcode`
+bug below and this got checked properly as a result):** the passage
+that used to sit here claimed the secret only gets bound to the
+account's `totp_key` field later, during the operator's own first
+browser login -- that was wrong, not re-verified against the real
+source at the time it was written. Checked `generate_barcode.py`
+directly: `user.totp_key = code; user.save(update_fields=["totp_key"])`
+runs immediately and unconditionally, BEFORE the command even attempts
+to render the barcode -- so the secret is bound to the account the
+moment this playbook's own `generate_barcode` task runs, not later in
+a browser. The guard (whether the Django superuser account already
+exists) is still correct and still needed -- just for the right
+reason: it stops a re-run from creating a second account and binding a
+second, different secret, not because the playbook "can't see" the
+binding moment (it's the one causing it).
+
+`generate_barcode.py` also shells out to `qr` (the `qrcode` pip
+package's own console-script, already in the venv from Section 15's
+`requirements.txt` -- not an apt package, `install.sh` doesn't install
+one either) via `subprocess.run(..., shell=True)`, PATH-dependent. Real
+live bug, 2026-08-07: this task called the venv's Python directly
+(correct for imports, matches every other `manage.py` task in this
+file) but never put `/rmm/api/env/bin` on `PATH` for that subprocess
+call -- `install.sh` always `source`s the venv first for exactly this
+reason. `qr` silently failed to be found; `generate_barcode.py` never
+checks the subprocess result, so nothing errored, the barcode just
+never rendered -- while `totp_key` was still correctly set (per the
+correction above), Robert had no visible barcode to scan and manually
+re-ran the command later, hitting the same PATH gap directly. Fixed by
+adding `environment: PATH: "/rmm/api/env/bin:{{ ansible_env.PATH }}"`
+to the task.
 
 `createsuperuser` runs `--noinput` with `DJANGO_SUPERUSER_PASSWORD` set
 from Section 8's already-ephemeral `rmm_django_admin_password` -- avoids
