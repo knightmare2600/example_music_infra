@@ -15,7 +15,9 @@ live bug along the way (/etc/conf.d didn't exist on Debian, install.sh
 mkdir's it explicitly). Phase 11 (nginx site configs + frontend web build)
 built the same day, not yet live-tested -- also found a genuinely missing
 step (17a, frontend build download) not in the original 31-step audit.
-Phases 12-13 not started.**
+Phase 12 (service start + MeshCentral first boot) built the same day too,
+not yet live-tested -- two deliberate deviations from install.sh's own
+approach, see below. Phase 13 not started.**
 
 ## 2026-08-06 pivot
 
@@ -146,7 +148,7 @@ one at a time, don't jump ahead.
 | 9. Superuser + TOTP | 18 | **Built + live-verified 2026-08-07** — see below |
 | 10. Systemd units + celery.conf | 19, 20 | **Built + live-verified 2026-08-07** |
 | 11. Nginx site configs + enable | 21, 22 (+ 17a, found missing) | **Built 2026-08-07, not yet live-tested** — see below |
-| 12. Service start + MeshCentral first-boot sequence | 23, 24, 25, 26 | Not started |
+| 12. Service start + MeshCentral first-boot sequence | 23, 24, 25, 26 | **Built 2026-08-07, not yet live-tested** — see below |
 | 13. NATS init/sync + final cleanup + completion report | 27, 28, 29, 30, 31 | Not started |
 
 ## TOTP handling (Robert's flagged risk area, observation 3)
@@ -310,6 +312,51 @@ is genuinely active regardless of EE licensing, only specific paid
 features inside it are gated. Gated the whole download+extract+chown
 block on `/var/www/rmm/dist/env-config.js` not already existing, same
 existence-check idiom used throughout this file.
+
+## Phase 12 -- service start + MeshCentral first boot, two deliberate deviations
+
+Built 2026-08-07 (Section 19): enables + starts
+rmm/daphne/celery/celerybeat/nginx, enables + first-boots MeshCentral,
+generates and appends `MESH_TOKEN_KEY` to `local_settings.py`, creates the
+MeshCentral admin account + promotes it + adds the "TacticalRMM" device
+group. Not yet live-tested.
+
+**Deviation 1 -- `state: started`, not `state: restarted`.** install.sh
+unconditionally stops-then-starts rmm/daphne/celery/celerybeat/nginx on
+every run, harmless for a script that only ever runs once. This playbook
+is meant to stay safely re-runnable -- blindly restarting live services
+(dropping in-flight uWSGI/websocket connections, celery workers) on every
+ongoing maintenance run would be a real regression, not a faithful port.
+First run here still starts everything correctly since nothing is running
+yet. **Known gap, not closed here:** picking up a config change made in
+Sections 15/17/18 (local_settings.py, systemd units, nginx configs)
+without a full restart currently needs a manual restart, or a future full
+re-run of this section however it's invoked next -- wiring proper
+`notify:` handlers onto those earlier config-writing tasks (mapping each
+config to exactly which service(s) it affects) is real, scoped follow-up
+work, deliberately not done as part of "Phase 12", not forgotten.
+
+**Deviation 2 -- readiness check uses `journalctl -u meshcentral.service
+--no-pager -n 100` (last 100 lines), not install.sh's own `-b` (entire
+current boot).** `-b` risks matching a stale "ready" line from a much
+earlier start within the same boot on a re-run, giving a false-positive
+before the just-issued restart has actually produced a fresh one. Also
+bounded (retries: 60, delay: 5 -- 5 minutes total, matching install.sh's
+own comment that first boot "can take anywhere from a few seconds to a
+few minutes") rather than install.sh's unbounded while-loop -- a play
+that can hang forever on a genuine failure is worse than one that fails
+loudly with a clear timeout.
+
+Two separate first-boot gates, matching install.sh's own two distinct
+steps (25 vs 26), not conflated: `MESH_TOKEN_KEY` presence in
+`local_settings.py` gates the restart + readiness-wait + `--logintokenkey`
+dance; a marker file this playbook writes itself
+(`meshcentral-data/.trmm_admin_setup_done`) gates account creation +
+`AddDeviceGroup` -- MeshCentral's own CLI has no clean "does this account
+already exist" query to check against instead, so this playbook owns that
+idempotency itself, same class of problem Section 16 already solved for
+the Django superuser (there, a native `manage.py shell` check exists to
+use instead).
 
 ## What stays out of scope
 
