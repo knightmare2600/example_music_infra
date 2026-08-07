@@ -5,7 +5,7 @@
 #
 # Authoritative source: benarbejde/extracted_credentials.json
 #
-# One-way flow only: benarbejde/ -> Example Music.kdbx. This script is the sole writer into the
+# One-way flow only: benarbejde/ -> ExampleMusic.kdbx. This script is the sole writer into the
 # KeePass database on the benarbejde/ side of that flow. Nothing in ansible/ MUST ever call
 # keepassxc-cli add/edit/rm -- Ansible only reads (see docs/Example Music Limited — KeePassXC CLI
 # Automation.md §7a). Robert's explicit instruction (2026-07-14): "I'd rather NOT have ansible
@@ -43,6 +43,15 @@
 #              roles, Django admin, MeshCentral admin) the same way SBC already covers other
 #              non-network-gear infrastructure hosts -- one entry per distinct credential, not
 #              one entry per hostname, since a single server can hold several.
+#  2026-08-07  Renamed the default vault filename from "Example Music.kdbx" to "ExampleMusic.kdbx"
+#              (default path still ~/KeePassXC/) -- Robert: a space in a filename is "playing with
+#              fire" on Unix/macOS shell usage. No functional risk in THIS script specifically
+#              (subprocess calls already use list-argv, not shell=True string interpolation, so the
+#              space was never actually exploitable here) but a real day-to-day hazard for anyone
+#              typing a raw shell command against the file by hand. This is a rename of the
+#              EXPECTED filename only -- does not touch/rename any real, live .kdbx file, which
+#              lives wherever Robert actually keeps it; he renames that copy himself, or overrides
+#              --db to point at whatever the real file is still called.
 # ==================================================================================================
 
 import argparse
@@ -52,7 +61,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEFAULT_DB = Path.home() / "KeePassXC" / "Example Music.kdbx"
+DEFAULT_DB = Path.home() / "KeePassXC" / "ExampleMusic.kdbx"
 DEFAULT_CREDENTIALS_JSON = Path(__file__).parent / "extracted_credentials.json"
 DEFAULT_MASTER_PASSWORD_FILE = Path(__file__).parent / ".keepassxc_master_password"
 

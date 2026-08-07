@@ -18,7 +18,7 @@
 # both the database unlock password and any entry password via getpass, never
 # accepts either via CLI arguments or a non-interactive flag. Never call this
 # from an Ansible task -- §7a's one-way credential flow (benarbejde/ ->
-# Example Music.kdbx -> Ansible/tooling reads, never the reverse) explicitly
+# ExampleMusic.kdbx -> Ansible/tooling reads, never the reverse) explicitly
 # permits "a human-triggered script, never an Ansible task" for writes; this
 # is that script, for anything that doesn't fit push_credentials_to_keepass.py's
 # devices.csv-shaped extracted_credentials.json flow (e.g. a one-off local

@@ -351,7 +351,7 @@ python kpcli_wrapper.py vault.kdbx add "Infrastructure/Proxmox/node1" root
 > anything, so the flow is from the folder with those JSON and CSVs towards the ansible stuff."*
 > This section makes that a documented, checked rule rather than a one-off remark.
 
-- **Data flows one direction only: `benarbejde/` → `Example Music.kdbx` → Ansible/tooling reads.**
+- **Data flows one direction only: `benarbejde/` → `ExampleMusic.kdbx` → Ansible/tooling reads.**
   There is no reverse path. Nothing in `ansible/` MUST ever call `keepassxc-cli add`,
   `keepassxc-cli edit`, or `keepassxc-cli rm` — Ansible plays, roles, and lookups only ever
   **read** a credential (`keepassxc-cli show`/`clip`, or a future lookup plugin built on the
@@ -406,7 +406,7 @@ python kpcli_wrapper.py vault.kdbx add "Infrastructure/Proxmox/node1" root
 
 # 8a. Master Password Backup & Recovery
 
-> **This section did not exist before `Example Music.kdbx` did.** The moment a real master
+> **This section did not exist before `ExampleMusic.kdbx` did.** The moment a real master
 > password is generated for a real database, "where does this live if the one person who knows it
 > forgets it, or leaves" stops being theoretical. This is a business-continuity control, not an
 > afterthought — a lost master password with no backup means every credential the database holds
@@ -454,7 +454,7 @@ python kpcli_wrapper.py vault.kdbx add "Infrastructure/Proxmox/node1" root
 
 ## 8a.4 Automation/scripted access copy
 
-Any tooling that needs to unlock `Example Music.kdbx` unattended (a provisioning script reading a
+Any tooling that needs to unlock `ExampleMusic.kdbx` unattended (a provisioning script reading a
 BMC credential, a scheduled report) needs the master password available to a process, not just to
 a human with an envelope. 8a.1's "MUST NOT store alongside the `.kdbx`" rule is about not defeating
 the encryption by keeping the key on the same access path as the file it protects — it does not
@@ -471,7 +471,7 @@ mean the password can have no machine-readable copy anywhere. A third copy exist
   `ansible/configs/ansible-id_rsa` — a real secret that tooling needs to read, kept local-only,
   gitignored, never embedded in a script or committed config.
 - **Risk, stated plainly, not hidden**: anyone who compromises a machine holding this file AND
-  gets a copy of `Example Music.kdbx` has the whole database. This is accepted as a **managed
+  gets a copy of `ExampleMusic.kdbx` has the whole database. This is accepted as a **managed
   risk** — traded off against the alternative of no unattended automation access at all. It is
   managed by: the file only ever existing on machines that also run provisioning tooling (not
   laptops, not anything with broader exposure), `chmod 600`, and it being the first thing rotated

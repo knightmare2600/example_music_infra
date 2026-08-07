@@ -867,7 +867,7 @@ under `Network → IPMI / BMC` (a switch isn't a BMC), so they get their own `Ne
 group instead:
 
 ```
-Example Music.kdbx
+ExampleMusic.kdbx
 ├── Infrastructure
 │   ├── CLD
 │   │   ├── EXAPVECLD001 — root (PVE host)

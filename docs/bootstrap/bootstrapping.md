@@ -439,7 +439,7 @@ Create a KeePassXC database (`.kdbx`) at the start of each estate deployment. Ke
 Organise entries into groups as follows:
 
 ```cmd
-Example Music.kdbx
+ExampleMusic.kdbx
 ├── Infrastructure
 ├──── CLD
 │   ├── Provisioning server (192.168.139.50) — root (bootstrap-only, no formal hostname; was EXASTRPCLD001, decommissioned)
