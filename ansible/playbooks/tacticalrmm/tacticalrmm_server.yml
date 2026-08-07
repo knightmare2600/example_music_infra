@@ -1478,9 +1478,25 @@
     # own existence is now what matters (force: false already guarantees
     # write-once), and the role's password is explicitly (re)synced to
     # match immediately before the first-ever write.
+    #
+    # SECOND BUG, same symptom, found 2026-08-07 after the above fix still
+    # hit the identical IndexError live: settings.py's own
+    # `from .local_settings import *` (confirmed via the real settings.py,
+    # not guessed) is a relative import inside the `tacticalrmm` package --
+    # it resolves to tacticalrmm/tacticalrmm/local_settings.py, one
+    # directory deeper than manage.py's own tacticalrmm/tacticalrmm/. This
+    # task was writing to tacticalrmm/local_settings.py (manage.py's own
+    # chdir level) instead -- silently never imported, `with
+    # suppress(ImportError)` swallowed it with no error. Confirmed correct
+    # path against install.sh's own $local_settings variable.
+    - name: "15 | Remove stray local_settings.py written to the wrong (one-level-too-shallow) path by an earlier bug"
+      file:
+        path: /rmm/api/tacticalrmm/local_settings.py
+        state: absent
+
     - name: "15 | Check if local_settings.py already exists"
       stat:
-        path: /rmm/api/tacticalrmm/local_settings.py
+        path: /rmm/api/tacticalrmm/tacticalrmm/local_settings.py
       register: _rmm_local_settings_check
 
     - name: "15 | Sync TacticalRMM PostgreSQL role password (only if local_settings.py doesn't exist yet)"
@@ -1489,9 +1505,9 @@
       when: not _rmm_local_settings_check.stat.exists
       no_log: true
 
-    - name: "15 | Write /rmm/api/tacticalrmm/local_settings.py (only the first time -- force: false)"
+    - name: "15 | Write /rmm/api/tacticalrmm/tacticalrmm/local_settings.py (only the first time -- force: false)"
       copy:
-        dest: /rmm/api/tacticalrmm/local_settings.py
+        dest: /rmm/api/tacticalrmm/tacticalrmm/local_settings.py
         owner: "{{ rmm_service_user }}"
         group: "{{ rmm_service_user }}"
         mode: "0640"
