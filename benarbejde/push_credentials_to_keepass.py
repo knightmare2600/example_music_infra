@@ -33,6 +33,16 @@
 #              firewalls/routers, etc.) where the Notes field is the only place to record which
 #              real hostnames a shared entry actually covers, plus secondary fields like a Cisco
 #              enable password or a vendor cheatsheet URL that don't fit username/password alone.
+#  2026-08-07  Added RMM role (Infrastructure/{site}, same template as SBC) -- Robert, live,
+#              after tacticalrmm_server.yml's first full end-to-end run against EXARMMCLD001:
+#              "fix the entire setup and harness so it can, in fact, add passwords to keepassxc".
+#              This script already was that mechanism (non-interactive, master password from a
+#              file, no getpass in the normal path) -- kpcli_wrapper.py's own interactive-only
+#              design was correctly left untouched; this file is the one meant for exactly this.
+#              Covers application/service-account credentials for a role-coded server (Postgres
+#              roles, Django admin, MeshCentral admin) the same way SBC already covers other
+#              non-network-gear infrastructure hosts -- one entry per distinct credential, not
+#              one entry per hostname, since a single server can hold several.
 # ==================================================================================================
 
 import argparse
@@ -54,6 +64,7 @@ GROUP_FOR_ROLE = {
   "FWL": "Network/Firewalls",
   "SBC": "Infrastructure/{site}",
   "PHN": "Network/Phones",
+  "RMM": "Infrastructure/{site}",
 }
 
 

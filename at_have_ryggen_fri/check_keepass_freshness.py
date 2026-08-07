@@ -53,7 +53,7 @@ DEFAULT_DB = Path.home() / "KeePassXC" / "Example Music.kdbx"
 REQUIRED_FIELDS = ("hostname", "site", "role", "credential")
 # Kept in sync by hand with push_credentials_to_keepass.py's GROUP_FOR_ROLE --
 # both files agree this is a known, small, deliberately-curated set.
-KNOWN_ROLES = {"RAC", "ILO", "SWI", "RTR", "FWL", "SBC", "PHN"}
+KNOWN_ROLES = {"RAC", "ILO", "SWI", "RTR", "FWL", "SBC", "PHN", "RMM"}
 
 
 def check_credentials_json():
