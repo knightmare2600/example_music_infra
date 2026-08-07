@@ -4,9 +4,12 @@
 > `install.sh` is being fully reimplemented as idempotent Ansible tasks
 > directly in `tacticalrmm_server.yml`, not wrapped/run manually. See
 > `PLAN-tacticalrmmme.md`'s "2026-08-06 pivot" section for the full
-> reasoning and the phased build order. Phase 1 (all install prompts +
-> secret generation, Section 7/8 of the playbook) is done; the rest of
-> "Why the actual install isn't automated here" below still describes
+> reasoning and the phased build order. Phases 1-8 (prompts/secrets
+> through Django settings + backend install/migrate) are done and
+> live-verified against `EXARMMCLD001` as of 2026-08-07; Phases 9-13
+> (superuser+TOTP, systemd units, nginx configs, service start +
+> MeshCentral first boot, NATS init + cleanup) are not started. The rest
+> of "Why the actual install isn't automated here" below still describes
 > `install.sh`'s own constraints accurately, it just no longer describes
 > what this repo does about them.
 

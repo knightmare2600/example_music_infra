@@ -4,7 +4,9 @@
 **Phases 1-8 (prompts/secrets, compatibility checks + base packages, nginx/
 NodeJS/Python 3.11.8/Redis/Git, PostgreSQL 18 + databases, repo clones,
 NATS server + nats-api, MeshCentral files, Django settings + backend
-install) DONE. Phases 9-13 not started.**
+install) DONE and live-verified against EXARMMCLD001 2026-08-07 (`manage.py
+migrate` + the rest of the Section 15 loop all rc=0). Phases 9-13 not
+started.**
 
 ## 2026-08-06 pivot
 
@@ -122,7 +124,7 @@ one at a time, don't jump ahead.
 | 5. Repo clones | 12 | **DONE, this session** |
 | 6. NATS server + nats-api binaries | 13, 16 | **DONE, this session** |
 | 7. MeshCentral install (files, not yet running) | 14 | **DONE, this session** |
-| 8. Django settings + backend install/migrate | 15, 17 | **DONE, this session** |
+| 8. Django settings + backend install/migrate | 15, 17 | **DONE, live-verified 2026-08-07** |
 | 9. Superuser + TOTP | 18 | Not started — see below |
 | 10. Systemd units + celery.conf | 19, 20 | Not started |
 | 11. Nginx site configs + enable | 21, 22 | Not started |
@@ -174,6 +176,35 @@ solved by checking the target's already-deployed state first (e.g.
 by a secret store here. Final credentials banner (still to design, later
 phase) prints what needs to go in KeePass, once, matching
 `20-saltgui.yml`'s own convention exactly.
+
+## Phase 8 live confirmation — two real bugs, 2026-08-07
+
+`manage.py migrate` hard-failed live with `IndexError: list index out of
+range` on `settings.py`'s own `ALLOWED_HOSTS[0]` -- two distinct root
+causes, found and fixed one after the other, both against real
+`EXARMMCLD001` runs, not guessed:
+
+1. **Write gate never fired.** Sections 14/15 originally gated writing
+   `config.json`/`local_settings.py` on "was the Postgres role just
+   created THIS run" -- false once the roles already existed from earlier
+   Phase 4 testing, so the files had literally never been written.
+   Decoupled the gate onto the settings file's own existence (`stat` +
+   `force: false`), with the Postgres role's password explicitly
+   `ALTER ROLE`'d to match immediately before the first-ever write. Fixed
+   for both sections; credentials banners added for the password-sync
+   path (Section 11's own banner only covers role *creation*, not this
+   resync-on-first-write case).
+2. **Wrong path, once the write did fire.** `local_settings.py` was still
+   landing at `/rmm/api/tacticalrmm/local_settings.py` -- but
+   `settings.py`'s own `from .local_settings import *` (confirmed via the
+   real settings.py source, not guessed) is a relative import *inside*
+   the `tacticalrmm` package, resolving to
+   `/rmm/api/tacticalrmm/tacticalrmm/local_settings.py`, one directory
+   deeper. `with suppress(ImportError)` upstream swallowed the miss
+   silently -- same exact traceback as bug 1, from an unrelated cause.
+   Confirmed the correct path against `install.sh`'s own `$local_settings`
+   variable before fixing. Section 14's `config.json` path was swept for
+   the same class of bug and found correct -- no matching issue there.
 
 ## What stays out of scope
 
