@@ -2456,6 +2456,97 @@
           this account already exist" check to gate on instead).
       when: not _rmm_mesh_account_check.stat.exists
 
+  # Section 20 — TacticalRMM install: NATS init/sync, admin UI lockdown,
+  # completion report
+  # Ansible-native install build, Phase 13 (install.sh steps 27-31, the
+  # final phase). Confirmed against the real install.sh, not guessed.
+  #
+  # Gated on /rmm/api/tacticalrmm/nats-rmm.conf's own existence -- the
+  # exact file `manage.py reload_nats` generates (traced in Phase 10's own
+  # comments), so its presence is a precise proxy for "has this whole NATS
+  # init block (initial_db_setup/reload_nats/sync_mesh_with_trmm) already
+  # run", matching the same existence-check idiom used throughout this
+  # file rather than inventing a separate marker file.
+  #
+  # Django admin UI lockdown (`ADMIN_ENABLED = False`) uses lineinfile's
+  # own native idempotency -- no custom gate needed, it just won't rewrite
+  # a line that already says False. Its restart of
+  # rmm/daphne/celery/celerybeat is wired as a real notify: handler,
+  # firing only when this line actually changes -- unlike Section 19's
+  # initial service bring-up (deliberately not blindly restarting live
+  # services every run), THIS restart is genuinely necessary whenever it
+  # fires: Django only reads local_settings.py at process start, so an
+  # in-place edit does nothing until the process restarts. A live example
+  # of the notify:-handler pattern flagged as a broader follow-up in
+  # Phase 12's own PLAN-tacticalrmmme.md section.
+  #
+  # NAT/hairpin guidance from install.sh's own completion message is
+  # deliberately not ported -- this estate has no port-forwarded/public-
+  # facing scenario for EXARMMCLD001 to warn about; it's internal-DNS +
+  # WireGuard-routed only (same reasoning already established in this
+  # file's own README for why --insecure/self-signed was chosen over
+  # Let's Encrypt). MeshCentral credentials in the completion banner are
+  # gated on the same _rmm_mesh_account_check used in Section 19 -- only
+  # meaningful/accurate on the actual first-time creation run, since
+  # rmm_mesh_password is one of Section 8's ephemeral secrets and would
+  # print a fresh, wrong value on every later re-run once account creation
+  # is already skipped.
+    - name: "20 | Check if NATS has already been initialised"
+      stat:
+        path: /rmm/api/tacticalrmm/nats-rmm.conf
+      register: _rmm_nats_init_check
+
+    - name: "20 | Run NATS init (initial_db_setup, reload_nats, sync_mesh_with_trmm)"
+      command: "/rmm/api/env/bin/python manage.py {{ item }}"
+      args:
+        chdir: /rmm/api/tacticalrmm
+      become_user: "{{ rmm_service_user }}"
+      loop:
+        - initial_db_setup
+        - reload_nats
+        - sync_mesh_with_trmm
+      when: not _rmm_nats_init_check.stat.exists
+
+    - name: "20 | Start nats.service (config now exists)"
+      systemd:
+        name: nats
+        state: started
+      when: not _rmm_nats_init_check.stat.exists
+
+    - name: "20 | Enable and start nats-api.service"
+      systemd:
+        name: nats-api
+        enabled: true
+        state: started
+
+    - name: "20 | Disable the Django admin UI (ADMIN_ENABLED = False)"
+      lineinfile:
+        path: /rmm/api/tacticalrmm/tacticalrmm/local_settings.py
+        regexp: '^ADMIN_ENABLED = '
+        line: "ADMIN_ENABLED = False"
+      notify: Restart TacticalRMM backend services
+
+    - name: "20 | Completion report"
+      debug:
+        msg:
+          - "=================================================================="
+          - "TacticalRMM installation complete!"
+          - "=================================================================="
+          - "Web UI : https://{{ rmm_frontend_subdomain }}.{{ rmm_domain }}"
+          - "=================================================================="
+
+    - name: "20 | Completion report -- MeshCentral credentials (first-time creation run only)"
+      debug:
+        msg:
+          - "=================================================================="
+          - "MeshCentral account created THIS RUN -- these will not be shown"
+          - "again by this playbook:"
+          - "=================================================================="
+          - "MeshCentral username : {{ rmm_mesh_username }}"
+          - "MeshCentral password : {{ rmm_mesh_password }}"
+          - "=================================================================="
+      when: not _rmm_mesh_account_check.stat.exists
+
   # ---------------------------------------------------------------------------
   # Handlers
   # ---------------------------------------------------------------------------
@@ -2479,3 +2570,13 @@
     - name: Reload systemd daemon
       systemd:
         daemon_reload: true
+
+    - name: Restart TacticalRMM backend services
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - rmm
+        - daphne
+        - celery
+        - celerybeat
