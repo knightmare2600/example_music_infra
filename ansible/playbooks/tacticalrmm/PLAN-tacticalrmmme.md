@@ -8,8 +8,9 @@ install) DONE and live-verified against EXARMMCLD001 2026-08-07 (`manage.py
 migrate` + the rest of the Section 15 loop all rc=0). Phase 9 (superuser +
 TOTP) also built and live-verified the same day -- superuser+installer
 account created, TOTP secret generated, barcode displayed, backup file
-written, both credentials banners fired, failed=0. Phases 10-13 not
-started.**
+written, both credentials banners fired, failed=0. Phase 10 (systemd units +
+celery.conf) built the same day, not yet live-tested -- writes only, does
+not enable/start anything (see below for why). Phases 11-13 not started.**
 
 ## 2026-08-06 pivot
 
@@ -129,7 +130,7 @@ one at a time, don't jump ahead.
 | 7. MeshCentral install (files, not yet running) | 14 | **DONE, this session** |
 | 8. Django settings + backend install/migrate | 15, 17 | **DONE, live-verified 2026-08-07** |
 | 9. Superuser + TOTP | 18 | **Built + live-verified 2026-08-07** — see below |
-| 10. Systemd units + celery.conf | 19, 20 | Not started |
+| 10. Systemd units + celery.conf | 19, 20 | **Built 2026-08-07, not yet live-tested** |
 | 11. Nginx site configs + enable | 21, 22 | Not started |
 | 12. Service start + MeshCentral first-boot sequence | 23, 24, 25, 26 | Not started |
 | 13. NATS init/sync + final cleanup + completion report | 27, 28, 29, 30, 31 | Not started |
@@ -235,6 +236,33 @@ causes, found and fixed one after the other, both against real
    Confirmed the correct path against `install.sh`'s own `$local_settings`
    variable before fixing. Section 14's `config.json` path was swept for
    the same class of bug and found correct -- no matching issue there.
+
+## Phase 10 -- why nats.service is write-only here, not enable/start too
+
+Built 2026-08-07 (Section 17): all 7 systemd unit files
+(rmm/daphne/nats/nats-api/celery/celerybeat/meshcentral) + `/etc/conf.d/
+celery.conf`, written only -- no `systemctl enable`/`start` of anything.
+Confirmed against the real `install.sh`, not guessed: none of these units
+get enabled/started until its own step 23 (a separate, later block in the
+script, well after every unit file and nginx site config already exists) --
+this repo's own Phase 12 is the equivalent point.
+
+`nats.service`'s `ExecStart` references `/rmm/api/tacticalrmm/nats-rmm.conf`,
+a file that does not exist yet at this point and won't until much later.
+Traced its actual origin through three layers, since `install.sh` itself
+never writes it directly: `manage.py reload_nats` (a step inside
+`install.sh`'s own step 27, "NATS init") calls `reload_nats()` in
+`tacticalrmm/utils.py`, which is the function that actually generates
+`nats-rmm.conf` and only then signals `nats-server` to reload -- confirmed
+by reading that function's real source, not the management command
+wrapper alone. `install.sh` itself: `systemctl enable nats.service` happens
+early (alongside the other units), but `systemctl start nats.service` is
+the very last thing done in that block, strictly after
+`initial_db_setup`/`reload_nats`/`sync_mesh_with_trmm` all run. Starting
+`nats.service` any earlier than that would crash-loop against a config file
+that doesn't exist. This repo's own Phase 13 (NATS init/sync + final
+cleanup) is where `reload_nats`'s equivalent needs to run, before anything
+tries to start this unit.
 
 ## What stays out of scope
 

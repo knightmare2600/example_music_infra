@@ -7,9 +7,11 @@
 > reasoning and the phased build order. Phases 1-8 (prompts/secrets
 > through Django settings + backend install/migrate) are done and
 > live-verified against `EXARMMCLD001` as of 2026-08-07; Phase 9
-> (superuser+TOTP) is built and live-verified too, same day; Phases 10-13
-> (systemd units, nginx configs, service start + MeshCentral first boot,
-> NATS init + cleanup) are not started. The rest
+> (superuser+TOTP) is built and live-verified too, same day; Phase 10
+> (systemd units + celery.conf, write-only -- see PLAN-tacticalrmmme.md's
+> "Phase 10" section for why nothing gets enabled/started yet) is built,
+> not yet live-tested. Phases 11-13 (nginx configs, service start +
+> MeshCentral first boot, NATS init + cleanup) are not started. The rest
 > of "Why the actual install isn't automated here" below still describes
 > `install.sh`'s own constraints accurately, it just no longer describes
 > what this repo does about them.
