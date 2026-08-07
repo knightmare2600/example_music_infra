@@ -125,7 +125,7 @@ if another device ever needs a second/third friendly name.
 **Step 2 — host_vars are pre-filled** (`host_vars/EXARMMCLD001/main.yml`) —
 static IP `192.168.69.14`, CLD LAN.
 
-**Step 3 — VM prep (this playbook)**
+**Step 3 — full install (this playbook)**
 
 ```bash
 ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml \
@@ -133,35 +133,78 @@ ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml \
 ```
 
 No `--user root -k` needed — the `ansible` user's SSH key is already
-installed during the box's own PXE/preseed Debian install.
+installed during the box's own PXE/preseed Debian install. This one
+playbook now does the entire install end to end (VM prep through NATS
+init and the completion report — see the banner at the top of this file
+and `PLAN-tacticalrmmme.md` for the full phase breakdown) — there is no
+separate manual `install.sh` step any more, superseded 2026-08-06 and
+confirmed live end to end 2026-08-07.
+
+`--insecure` (baked into the playbook, Section 15) generates a
+self-signed certificate instead of requesting Let's Encrypt — same
+reasoning as `EXAMSHCLD001`'s own TLS choice: `EXARMMCLD001` is strictly
+internal/WireGuard-only, ACME's public-DNS + inbound-80/443 requirement
+can't be satisfied here.
 
 **Step 4 — DNS**: run `bind9-dns.yml --tags zones-full` (generates all three
 CNAMEs — `rmm`/`api`/`mesh` — automatically, no manual step).
 
-**Step 5 — Manual install** (on `EXARMMCLD001` itself, over SSH):
+**Step 5 — Deploy an agent to an endpoint**
 
-```bash
-curl -o install.sh https://raw.githubusercontent.com/amidaware/tacticalrmm/master/install.sh
-# Patch the OS check -- see above
-chmod +x install.sh
-./install.sh --insecure
+From the TacticalRMM web UI (`https://rmm.jukebox.internal`): **Agents →
++ Add Agent**, pick the target Client/Site and agent type
+(`server`/`workstation` — match the actual endpoint, don't default to
+`server`). This generates a **signed, time-limited download URL** (expires
+within about an hour) and a matching one-time `--auth` deployment token —
+copy both fresh each time, neither is reusable and neither belongs in a
+committed doc or script.
+
+On the Windows endpoint (PowerShell, confirmed live 2026-08-07):
+
+```powershell
+# 1. Download the installer -- <signed-url> and the version/arch in the
+#    filename both come straight from the web UI dialog above, copy exactly
+iwr '<signed-download-url-from-web-ui>' -OutFile tacticalagent-v<version>-windows-<arch>.exe
+
+# 2. Silent install of the installer itself
+tacticalagent-v<version>-windows-<arch>.exe /VERYSILENT /SUPPRESSMSGBOXES
+
+# 3. Brief pause -- lets the installer settle before the next step registers
+#    the agent with the backend
+ping 127.0.0.1 -n 7
+
+# 4. Register the agent with EXARMMCLD001
+"C:\Program Files\TacticalAgent\tacticalrmm.exe" -m install `
+  --api https://api.jukebox.internal `
+  --client-id <client-id> --site-id <site-id> `
+  --agent-type server `
+  --auth <auth-token-from-step-1> `
+  --rdp --ping --insecure
 ```
 
-When prompted:
+`--insecure` is **required** here too — same self-signed cert as the
+server itself; omitting it fails the install. `--rdp`/`--ping` are
+optional per-endpoint feature toggles (enable RDP, respond to ICMP), not
+required for a successful install.
 
-| Prompt | Answer |
-|---|---|
-| Root domain | `jukebox.internal` |
-| Frontend (rmm) subdomain | `rmm` |
-| Backend (api) subdomain | `api` |
-| Mesh subdomain | `mesh` |
-| Email address | (Robert's own — used only for cert metadata under `--insecure`, not a real Let's Encrypt registration) |
-| Django admin username | (Robert's choice) |
+**Troubleshooting — "Unable to download the mesh agent from the RMM."**
+A real bug hit live 2026-08-07, root-caused and fixed in
+`tacticalrmm_server.yml` (see `PLAN-tacticalrmmme.md`'s Phase 12 section):
+a race in the playbook's own MeshCentral-readiness check let
+`AddDeviceGroup` run before MeshCentral had actually finished restarting,
+so the `TacticalRMM` device group silently never got created despite the
+task reporting success. Diagnose directly rather than guessing:
 
-`--insecure` generates a self-signed certificate instead of requesting
-Let's Encrypt — same reasoning as `EXAMSHCLD001`'s own TLS choice:
-`EXARMMCLD001` is strictly internal/WireGuard-only, ACME's public-DNS +
-inbound-80/443 requirement can't be satisfied here.
+```bash
+sudo -u tacticalrmm bash -c "cd /rmm/api/tacticalrmm && /rmm/api/env/bin/python manage.py check_mesh"
+```
+
+Walks the exact same code path the agent installer hits and reports
+exactly which stage fails. If it stops at "Error: you are using a custom
+mesh device group name...", check what device groups actually exist
+(`meshctrl.js ... ListDeviceGroups`, credentials in the MeshCentral
+completion banner / KeePass) and create the missing one directly rather
+than re-running the whole playbook.
 
 ## Not yet built
 
