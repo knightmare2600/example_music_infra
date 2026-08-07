@@ -4,19 +4,17 @@
 > `install.sh` is being fully reimplemented as idempotent Ansible tasks
 > directly in `tacticalrmm_server.yml`, not wrapped/run manually. See
 > `PLAN-tacticalrmmme.md`'s "2026-08-06 pivot" section for the full
-> reasoning and the phased build order. Phases 1-8 (prompts/secrets
-> through Django settings + backend install/migrate) are done and
-> live-verified against `EXARMMCLD001` as of 2026-08-07; Phase 9
-> (superuser+TOTP) is built and live-verified too, same day; Phase 10
-> (systemd units + celery.conf, write-only -- see PLAN-tacticalrmmme.md's
-> "Phase 10" section for why nothing gets enabled/started yet) is built
-> and live-verified too, same day. Phase 11 (nginx site configs + frontend
-> web build -- see PLAN-tacticalrmmme.md's "Phase 11" section for a
-> genuinely missing step found while building it) is built, not yet
-> live-tested. Phase 12 (service start + MeshCentral first boot -- see
-> PLAN-tacticalrmmme.md's "Phase 12" section for two deliberate deviations
-> from install.sh's own approach) is built too, not yet live-tested.
-> Phase 13 (NATS init + cleanup) is not started. The rest
+> reasoning and the phased build order. **All 13 phases / all 31
+> install.sh steps are now built as of 2026-08-07.** Phases 1-9
+> (prompts/secrets through superuser+TOTP) are live-verified against
+> `EXARMMCLD001`, `failed=0` throughout. Phases 10-13 (systemd units,
+> nginx configs + frontend build, service start + MeshCentral first boot,
+> NATS init + completion report) are built and harness-clean but not yet
+> live-tested end to end -- see `PLAN-tacticalrmmme.md`'s own per-phase
+> sections for what was found/decided along the way, including two
+> deliberate deviations from install.sh's own approach (Phase 12) and one
+> genuinely missing step the original 31-step audit didn't catch (17a,
+> Phase 11). The rest
 > of "Why the actual install isn't automated here" below still describes
 > `install.sh`'s own constraints accurately, it just no longer describes
 > what this repo does about them.

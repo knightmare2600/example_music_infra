@@ -1,23 +1,18 @@
 # Plan: TacticalRMM as an end-to-end Ansible install
 
 **Status: superseded direction as of 2026-08-06 — see "2026-08-06 pivot" below.**
-**Phases 1-8 (prompts/secrets, compatibility checks + base packages, nginx/
-NodeJS/Python 3.11.8/Redis/Git, PostgreSQL 18 + databases, repo clones,
-NATS server + nats-api, MeshCentral files, Django settings + backend
-install) DONE and live-verified against EXARMMCLD001 2026-08-07 (`manage.py
-migrate` + the rest of the Section 15 loop all rc=0). Phase 9 (superuser +
-TOTP) also built and live-verified the same day -- superuser+installer
-account created, TOTP secret generated, barcode displayed, backup file
-written, both credentials banners fired, failed=0. Phase 10 (systemd units +
-celery.conf) also built and live-verified the same day -- writes only,
-does not enable/start anything (see below for why); found and fixed a real
-live bug along the way (/etc/conf.d didn't exist on Debian, install.sh
-mkdir's it explicitly). Phase 11 (nginx site configs + frontend web build)
-built the same day, not yet live-tested -- also found a genuinely missing
-step (17a, frontend build download) not in the original 31-step audit.
-Phase 12 (service start + MeshCentral first boot) built the same day too,
-not yet live-tested -- two deliberate deviations from install.sh's own
-approach, see below. Phase 13 not started.**
+**All 13 phases / all 31 install.sh steps (+ step 17a, found missing) are
+now built as of 2026-08-07.** Phases 1-9 (through superuser + TOTP) are
+live-verified against EXARMMCLD001, `failed=0` throughout, real bugs found
+and fixed along the way (see each phase's own section below). Phases
+10-13 (systemd units, nginx configs + frontend build, service start +
+MeshCentral first boot, NATS init + completion report) are built and
+harness-clean but **not yet live-tested end to end** -- next step is a
+real run against EXARMMCLD001 covering all of them in one pass. See each
+phase's own section below for what was found/decided along the way,
+including two deliberate deviations from install.sh's own approach
+(Phase 12) and one genuinely missing step the original 31-step audit
+didn't catch (17a, Phase 11).
 
 ## 2026-08-06 pivot
 
@@ -149,7 +144,7 @@ one at a time, don't jump ahead.
 | 10. Systemd units + celery.conf | 19, 20 | **Built + live-verified 2026-08-07** |
 | 11. Nginx site configs + enable | 21, 22 (+ 17a, found missing) | **Built 2026-08-07, not yet live-tested** — see below |
 | 12. Service start + MeshCentral first-boot sequence | 23, 24, 25, 26 | **Built 2026-08-07, not yet live-tested** — see below |
-| 13. NATS init/sync + final cleanup + completion report | 27, 28, 29, 30, 31 | Not started |
+| 13. NATS init/sync + final cleanup + completion report | 27, 28, 29, 30, 31 | **Built 2026-08-07, not yet live-tested** — see below |
 
 ## TOTP handling (Robert's flagged risk area, observation 3)
 
@@ -357,6 +352,45 @@ already exist" query to check against instead, so this playbook owns that
 idempotency itself, same class of problem Section 16 already solved for
 the Django superuser (there, a native `manage.py shell` check exists to
 use instead).
+
+## Phase 13 -- NATS init/sync, admin UI lockdown, completion report (final phase)
+
+Built 2026-08-07 (Section 20) -- **all 13 phases / all 31 install.sh
+steps (+ step 17a) are now built.** Not yet live-tested end to end.
+
+Gated on `/rmm/api/tacticalrmm/nats-rmm.conf`'s own existence -- the
+exact file `manage.py reload_nats` generates (see Phase 10's own section
+above), so its presence is a precise, already-established proxy for
+"has `initial_db_setup`/`reload_nats`/`sync_mesh_with_trmm` already run",
+rather than a new marker file. `nats.service` only gets `state: started`
+inside this same gate -- the config it needs to not crash-loop on
+(`nats-rmm.conf`) is the exact thing this block just created.
+
+`ADMIN_ENABLED = False` uses `lineinfile`'s own native idempotency (won't
+rewrite a line that already says `False`) rather than a custom gate. Its
+restart of `rmm`/`daphne`/`celery`/`celerybeat` is wired as a real
+`notify:` handler, firing only when that line actually changes --
+Django only reads `local_settings.py` at process start, so this restart
+is genuinely necessary whenever it fires, unlike Section 19's initial
+service bring-up (deliberately not restarting live services on every
+run). A concrete instance of the `notify:`-handler pattern flagged as a
+broader follow-up in Phase 12's own section above -- this one narrow
+case is wired up now because the trigger condition (the line actually
+changing) is precise and easy to get right; the general case (mapping
+every config file to exactly which services it affects) is still the
+scoped follow-up work, not done.
+
+Completion report split into two `debug` tasks: a general one (frontend
+URL) shown every run, and a MeshCentral-credentials one gated on the same
+`_rmm_mesh_account_check` used in Section 19 -- `rmm_mesh_password` is
+one of Section 8's ephemeral secrets, so printing it unconditionally on
+every re-run (once account creation is already skipped) would show a
+fresh, wrong value that no longer matches the live account's real
+password. install.sh's own NAT/hairpin guidance is deliberately not
+ported -- `EXARMMCLD001` has no port-forwarded/public-facing scenario to
+warn about, internal-DNS + WireGuard-routed only, same reasoning already
+established elsewhere in this repo for why `--insecure`/self-signed was
+chosen over Let's Encrypt.
 
 ## What stays out of scope
 
