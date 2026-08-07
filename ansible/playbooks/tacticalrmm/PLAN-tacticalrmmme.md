@@ -5,8 +5,8 @@
 NodeJS/Python 3.11.8/Redis/Git, PostgreSQL 18 + databases, repo clones,
 NATS server + nats-api, MeshCentral files, Django settings + backend
 install) DONE and live-verified against EXARMMCLD001 2026-08-07 (`manage.py
-migrate` + the rest of the Section 15 loop all rc=0). Phases 9-13 not
-started.**
+migrate` + the rest of the Section 15 loop all rc=0). Phase 9 (superuser +
+TOTP) built 2026-08-07, not yet live-tested. Phases 10-13 not started.**
 
 ## 2026-08-06 pivot
 
@@ -125,7 +125,7 @@ one at a time, don't jump ahead.
 | 6. NATS server + nats-api binaries | 13, 16 | **DONE, this session** |
 | 7. MeshCentral install (files, not yet running) | 14 | **DONE, this session** |
 | 8. Django settings + backend install/migrate | 15, 17 | **DONE, live-verified 2026-08-07** |
-| 9. Superuser + TOTP | 18 | Not started — see below |
+| 9. Superuser + TOTP | 18 | **Built 2026-08-07, not yet live-tested** — see below |
 | 10. Systemd units + celery.conf | 19, 20 | Not started |
 | 11. Nginx site configs + enable | 21, 22 | Not started |
 | 12. Service start + MeshCentral first-boot sequence | 23, 24, 25, 26 | Not started |
@@ -133,17 +133,41 @@ one at a time, don't jump ahead.
 
 ## TOTP handling (Robert's flagged risk area, observation 3)
 
-Not designed yet — needs its own decision before Phase 9 starts. Real
-constraints from the actual script: the TOTP secret is generated
-server-side (Django management command), the barcode is ASCII-rendered to
-the terminal, and a human scans/records it before continuing — there is no
-way to skip this and no way to regenerate it without visiting the account
-again. Ansible's `debug`/`pause` can display captured stdout and block for
-confirmation the same way, but this is the one step where "idempotent
-re-run" and "one-time secret" are in real tension (a re-run must NOT
-silently regenerate a TOTP secret the operator already scanned into an
-authenticator app) — needs a guard (skip TOTP generation if the superuser
-account already exists) before this phase is built, not after.
+**Built 2026-08-07 (Section 16), not yet live-tested.** Real constraints
+confirmed against `install.sh` and the real `generate_totp.py`/`models.py`
+source (not guessed): `generate_totp` only prints a random base32 value
+and touches no database table -- the secret only actually gets bound to
+the account's `totp_key` field later, during the operator's own first
+browser login (TacticalRMM's own enrolment screen), which is outside this
+playbook's reach entirely. So the guard is on whether the Django superuser
+account already exists (`manage.py shell` querying
+`get_user_model().objects.filter(username=...)`), not on `totp_key` --
+this playbook can never see the moment that field gets set. A re-run once
+the account exists skips superuser creation, installer-account creation,
+TOTP generation, and barcode display/backup entirely -- no risk of
+generating a second, different secret after the operator has already
+scanned one in.
+
+`createsuperuser` runs `--noinput` with `DJANGO_SUPERUSER_PASSWORD` set
+from Section 8's already-ephemeral `rmm_django_admin_password` -- avoids
+Ansible needing to handle an interactive TTY password prompt at all, and
+matches Robert's own instruction that Django passwords are Ansible's to
+generate like any other secret.
+
+Display + backup, per Robert's explicit ask (2026-08-07): the raw barcode
+is echoed via `debug` with a leading/trailing blank line so the module's
+own "msg:" header line doesn't run into row 1 of the barcode's character
+grid, AND the raw secret is additionally written to a root-only
+(`0600`, `owner: root`) file on the target host,
+`/root/.tacticalrmm_totp_backup.txt` -- "cover our arses" durable backup,
+not just a one-time terminal display. The file also documents the exact
+`generate_barcode` invocation needed to re-render the same barcode later
+if the terminal output is lost before scanning. Not KeePass-routed --
+this is a target-host operational backup file, not a control-node secret
+store, so the one-way-flow policy (`docs/Example Music Limited —
+KeePassXC CLI Automation.md` §7a) doesn't apply the same way it does to
+Section 8's control-node-adjacent secrets; still never committed to git
+since it never leaves the target host.
 
 ## Secret persistence — corrected 2026-08-06, real live catch
 
