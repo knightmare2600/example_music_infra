@@ -92,14 +92,39 @@ first.
 
 ## 4. KeePassXC master password file
 
-**Checked, not a bug in this checkout**: `benarbejde/.keepassxc_master_
-password` is correctly gitignored (confirmed: `.gitignore` line 215, never
-appears in `git log --all`, mode `0600`), and its content in this checkout
-already matches the value Robert gave live (`J6t0&GbpDta#9#1#f%l21KGt`).
-Nothing to fix here structurally. The actual failure has to be a stale copy
-of this same gitignored (never-git-synced) file on whichever specific host
-Robert was running the KeePass scripts from — needs him to check/update that
-host's own local copy directly, not something fixable via a commit.
+**RESOLVED 2026-08-07 — real root cause found, was not what it looked like.**
+The original 2026-08-06 finding ("not a bug in this checkout, master
+password file is correctly gitignored and matches") was correct as far as it
+went, but incomplete — checked EXAANSCLD001 itself live and found the real
+problem: `~/KeePassXC/` doesn't exist there at all. `keepassxc-cli` IS now
+installed there (`/usr/bin/keepassxc-cli` — that part of the original
+2026-08-06 complaint is independently resolved, presumably fixed separately
+since then). The actual root cause: **the vault database itself was never
+created.** Robert's own mental model was that Ansible/the harness were
+"fattening up" the vault automatically as playbooks ran — corrected live:
+nothing in this repo's design ever creates a `.kdbx` file from scratch, by
+design (the one-way flow's whole point is that automation only ever adds
+entries into an already-human-created vault; creating the database itself
+is a one-time, human, out-of-band step via the real KeePassXC app or
+`keepassxc-cli db-create`, deliberately not something any script here does).
+
+A real, populated vault (genuine pre-existing entries, e.g. `EXARACEDI001`)
+was confirmed reachable from a different environment during this session's
+own KeePass push work — so a real vault does exist somewhere, just not on
+EXAANSCLD001. Robert to locate/create the actual vault and place it wherever
+he wants `push_credentials_to_keepass.py` to run from.
+
+Side finding, same investigation: `benarbejde/.keepassxc_master_password` on
+EXAANSCLD001 is 26 bytes vs the known-correct 25-byte value elsewhere, and
+was modified 2026-08-07 (today), not 2026-07-14 like the known-good copy —
+genuinely different content, not just a stale-mtime false alarm. Not yet
+explained; worth a byte-level diff once the vault question is settled, since
+the master password is moot until a real database exists to unlock.
+
+Also fixed the same day: renamed the default vault filename from
+`Example Music.kdbx` to `ExampleMusic.kdbx` (Robert: a space in a filename
+is "playing with fire" on Unix/macOS) — code + docs updated, no live file
+touched.
 
 ## Explicitly not started
 
