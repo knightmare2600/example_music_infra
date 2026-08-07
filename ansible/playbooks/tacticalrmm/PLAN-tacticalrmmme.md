@@ -1,18 +1,17 @@
 # Plan: TacticalRMM as an end-to-end Ansible install
 
 **Status: superseded direction as of 2026-08-06 — see "2026-08-06 pivot" below.**
-**All 13 phases / all 31 install.sh steps (+ step 17a, found missing) are
-now built as of 2026-08-07.** Phases 1-9 (through superuser + TOTP) are
-live-verified against EXARMMCLD001, `failed=0` throughout, real bugs found
-and fixed along the way (see each phase's own section below). Phases
-10-13 (systemd units, nginx configs + frontend build, service start +
-MeshCentral first boot, NATS init + completion report) are built and
-harness-clean but **not yet live-tested end to end** -- next step is a
-real run against EXARMMCLD001 covering all of them in one pass. See each
-phase's own section below for what was found/decided along the way,
-including two deliberate deviations from install.sh's own approach
-(Phase 12) and one genuinely missing step the original 31-step audit
-didn't catch (17a, Phase 11).
+**CONFIRMED LIVE END TO END, 2026-08-07.** All 13 phases / all 31
+install.sh steps (+ step 17a, found missing) built, and a full run of
+`tacticalrmm_server.yml` against `EXARMMCLD001` covering Phases 10-13 in
+one pass completed with `failed=0` (ok=170, changed=39, skipped=39) on
+the first real attempt -- MeshCentral first boot, admin account creation,
+`AddDeviceGroup`, NATS init, admin UI lockdown, and the final backend
+service restart all succeeded. Phases 1-9 were already independently
+live-verified earlier the same day. See each phase's own section below
+for what was found/decided along the way, including two deliberate
+deviations from install.sh's own approach (Phase 12) and one genuinely
+missing step the original 31-step audit didn't catch (17a, Phase 11).
 
 ## 2026-08-06 pivot
 
@@ -142,9 +141,9 @@ one at a time, don't jump ahead.
 | 8. Django settings + backend install/migrate | 15, 17 | **DONE, live-verified 2026-08-07** |
 | 9. Superuser + TOTP | 18 | **Built + live-verified 2026-08-07** — see below |
 | 10. Systemd units + celery.conf | 19, 20 | **Built + live-verified 2026-08-07** |
-| 11. Nginx site configs + enable | 21, 22 (+ 17a, found missing) | **Built 2026-08-07, not yet live-tested** — see below |
-| 12. Service start + MeshCentral first-boot sequence | 23, 24, 25, 26 | **Built 2026-08-07, not yet live-tested** — see below |
-| 13. NATS init/sync + final cleanup + completion report | 27, 28, 29, 30, 31 | **Built 2026-08-07, not yet live-tested** — see below |
+| 11. Nginx site configs + enable | 21, 22 (+ 17a, found missing) | **Built + live-verified 2026-08-07** — see below |
+| 12. Service start + MeshCentral first-boot sequence | 23, 24, 25, 26 | **Built + live-verified 2026-08-07** — see below |
+| 13. NATS init/sync + final cleanup + completion report | 27, 28, 29, 30, 31 | **Built + live-verified 2026-08-07** — see below |
 
 ## TOTP handling (Robert's flagged risk area, observation 3)
 
@@ -391,6 +390,34 @@ ported -- `EXARMMCLD001` has no port-forwarded/public-facing scenario to
 warn about, internal-DNS + WireGuard-routed only, same reasoning already
 established elsewhere in this repo for why `--insecure`/self-signed was
 chosen over Let's Encrypt.
+
+## Phases 11-13 live confirmation, 2026-08-07 -- full end-to-end run, first attempt
+
+One real `tacticalrmm_server.yml` run against `EXARMMCLD001` (no `-k`,
+key auth worked cleanly per the SSH preflight gate) covered Phases 11-13
+in a single pass -- `failed=0`, `ok=170`, `changed=39`, `skipped=39`.
+Nothing needed a second fix. Confirmed live, not just harness-clean:
+
+- `rmm`/`daphne`/`celery`/`celerybeat`/`nginx` all started cleanly on
+  first bring-up (confirmed running/active in the transcript's own
+  systemd status output for each).
+- MeshCentral's first boot generated its own certs
+  (`mesh.jukebox.internal`, real SHA384 hashes in the journal) and
+  reported ready inside the 5-minute bound -- actual wall-clock time was
+  well under a minute (cert generation + code-signing + startup all
+  finished by the "MeshCentral HTTP server running on port 4430, alias
+  port 443" line, ~23 seconds after the unit started).
+- MeshCentral admin account created, promoted, `AddDeviceGroup` succeeded
+  over WSS, `.trmm_admin_setup_done` marker written.
+- `initial_db_setup`/`reload_nats`/`sync_mesh_with_trmm` all ran clean;
+  `nats.service` started successfully against the freshly-generated
+  `nats-rmm.conf`; `nats-api.service` enabled and started.
+- `ADMIN_ENABLED = False` applied, `notify:`-triggered restart of the
+  four backend services fired correctly (confirmed in the handler output
+  -- all four show `"state": "restarted"` in `invocation.module_args`,
+  not just `started`).
+- Completion report printed the frontend URL and (first-run only)
+  MeshCentral credentials, both banners gated correctly.
 
 ## What stays out of scope
 

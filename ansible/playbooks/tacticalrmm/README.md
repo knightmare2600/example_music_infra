@@ -4,17 +4,16 @@
 > `install.sh` is being fully reimplemented as idempotent Ansible tasks
 > directly in `tacticalrmm_server.yml`, not wrapped/run manually. See
 > `PLAN-tacticalrmmme.md`'s "2026-08-06 pivot" section for the full
-> reasoning and the phased build order. **All 13 phases / all 31
-> install.sh steps are now built as of 2026-08-07.** Phases 1-9
-> (prompts/secrets through superuser+TOTP) are live-verified against
-> `EXARMMCLD001`, `failed=0` throughout. Phases 10-13 (systemd units,
-> nginx configs + frontend build, service start + MeshCentral first boot,
-> NATS init + completion report) are built and harness-clean but not yet
-> live-tested end to end -- see `PLAN-tacticalrmmme.md`'s own per-phase
-> sections for what was found/decided along the way, including two
-> deliberate deviations from install.sh's own approach (Phase 12) and one
-> genuinely missing step the original 31-step audit didn't catch (17a,
-> Phase 11). The rest
+> reasoning and the phased build order. **CONFIRMED LIVE END TO END,
+> 2026-08-07.** All 13 phases / all 31 install.sh steps built, and a full
+> real run against `EXARMMCLD001` covering Phases 10-13 in one pass
+> completed `failed=0` on the first attempt -- MeshCentral first boot,
+> NATS init, admin UI lockdown, and the final service restart all
+> succeeded. See `PLAN-tacticalrmmme.md`'s own per-phase sections for
+> what was found/decided along the way, including two deliberate
+> deviations from install.sh's own approach (Phase 12) and one genuinely
+> missing step the original 31-step audit didn't catch (17a, Phase 11).
+> The rest
 > of "Why the actual install isn't automated here" below still describes
 > `install.sh`'s own constraints accurately, it just no longer describes
 > what this repo does about them.
@@ -166,10 +165,6 @@ inbound-80/443 requirement can't be satisfied here.
 
 ## Not yet built
 
-- **Live-tested against real hardware, Trixie or otherwise.** Sections 1-4
-  (hostname/network/packages/firewall) are a direct, proven adaptation of
-  `rudder_server.yml`'s/`meshcentral_server.yml`'s own live-tested pattern.
-  The Trixie/TacticalRMM combination is genuinely unverified — see above.
 - **`EXAMSHCLD001` (standalone MeshCentral) role reconsideration.** Built and
   working (phase 1/2), but no longer the primary remote-access path now that
   TacticalRMM's bundled MeshCentral is the intended one — revisit later,
