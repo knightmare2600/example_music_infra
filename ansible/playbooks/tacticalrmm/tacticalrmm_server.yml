@@ -52,6 +52,14 @@
 # minutes of a genuinely fresh VM's life, before tacticalrmm_server.yml's
 # own Section 2 has even run once.
 #
+# SSH preflight (2026-08-07, Robert): this play never used to import
+# ssh_preflight_with_fallback.yml the way linux/tools.yml and firewallme's
+# 90-firewall.yml both already do -- Robert's own "more elegant" existing
+# work, pointed out live rather than reinvented here. Tests the current
+# key first (plain ssh, delegate_to: localhost); only if that fails does
+# it fall back to prompting for a password. Never assume -k/--ask-pass is
+# needed -- this play's own key test decides that, not a standing habit.
+#
 # Idempotency
 # -----------
 # Every task is idempotent — re-running against an already-prepped/partially-
@@ -64,10 +72,15 @@
 # Version history
 # =============================================================================
 # v1.0.0  2026-08-04  Initial release.
+# v1.1.0  2026-08-07  Import ssh_preflight_with_fallback.yml -- key-first,
+#                     password-fallback-only-if-needed, matching
+#                     linux/tools.yml/firewallme's own established pattern.
 # =============================================================================
 
+- import_playbook: ../ssh_preflight_with_fallback.yml
+
 - name: Prep TacticalRMM server
-  hosts: tacticalrmm_servers
+  hosts: "tacticalrmm_servers:!ssh_preflight_skip"
   become: true
   gather_facts: true
   ignore_unreachable: false
