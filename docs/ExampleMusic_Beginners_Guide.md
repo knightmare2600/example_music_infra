@@ -12,6 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-08-08 | Added §7.4 — bootstrapping a standalone Linux management server (Salt/Rudder/TacticalRMM). Real live incident: `linux/tools.yml -e target=<host>` silently ran against the entire Linux fleet instead of one host (`target` does nothing for that playbook — it targets `groups['all']` unless `--limit` is passed), and failed on an unrelated unreachable host. Documents that `linux/tools.yml` never sets hostname/static IP (confirmed by watching a full real run), the actual role-specific commands for Salt/TacticalRMM/Rudder, that `--ask-vault-pass` is needed for every playbook in this repo (`group_vars/all/vault.yml` always auto-loads), and a verified table of the 4 different, non-interchangeable `--limit`/`-e target=`/`-e target_hosts=` patterns actually used across playbook families. |
 | 2026-08-04 | §4.2 broadened — FRD isn't just VRK's provisioning backup, it's CLD's DR sister site generally (Robert: think of CLD as "cloud site #1", FRD as the site the estate falls over to if CLD becomes unreachable, `EXAPBXCLD002`/`EXAPBXFRD001` standing in for CLD's own PBX being the concrete real example, not hypothetical). The provisioning-network redundancy already documented here is the first piece of that relationship, not the whole of it. `network-inventory.md`, `site-inventory.md`, and `network-diagram/danmark.md` updated to match. |
 | 2026-07-30 | §4.2/FRD's IP table updated — FRD has a real "site kit" alongside its legal-fiction MacBook: a small Intel NUC running Proxmox VE (`EXAPVEFRD001`) and a 48-port switch (`EXASWIFRD001`), confirmed by Robert. Previously described as "physically the same MacBook" with no other real hardware, now corrected — same drift class as the CLD NAS/RDR/BMC gaps fixed the same day. |
 | 2026-07-27 | §11 rewritten — no longer presumes every engineer has a MacBook Pro. §11.1 now leads with the 3 automated setup scripts (`bootstrap/setup-workstation-{macos,linux}.sh`, `bootstrap/Setup-Workstation.ps1`), which install the tool set AND populate `bootstrap/web/`'s boot assets from `benarbejde/asset_manifest.json` — replaces the old Ansible-only `fetch-assets.yml`, since `ansible-playbook` cannot run natively on Windows at all. The original macOS `brew install` table stays as a reference/manual-fallback, now explicitly labelled as such rather than presented as the only path. |
@@ -614,6 +615,86 @@ Existing site (running, untouched)
 ```
 
 The existing infrastructure does not know or care that the new infrastructure is being built alongside it. Users do not notice. You build, test, and verify in parallel, then cut over cleanly.
+
+### 7.4 Bootstrapping a standalone Linux management server (Salt, Rudder, TacticalRMM)
+
+§7.2/§7.3 above are about building a full *site* (PVE → FWL → DCS). This section is
+the other common case: a single CLD-only Linux management server —
+`EXASLTCLD001` (Salt), `EXARUDCLD001` (Rudder, currently dormant), `EXARMMCLD001`
+(TacticalRMM). The mental model is always the same three steps, but the exact
+command for each step is genuinely different per playbook family, and mixing
+them up produces confusing failures, not helpful errors — this section exists
+because that happened live, 2026-08-08, and cost real time working it out.
+
+**Step 1 — PXE install.** Debian from preseed. The box comes up on DHCP with
+the `ansible` user and SSH key already installed (`late_command.sh`'s own
+sliver) — no manual step needed to reach it.
+
+**Step 2 — `linux/tools.yml` (optional, order-flexible).** Installs the
+common tool set, dotfiles, and `/etc/example-music/*` files every Linux host
+gets. **This step does NOT set the hostname or a static IP** — confirmed by
+watching a real run end to end, 2026-08-08: its task list is packages,
+unattended-upgrades, MOTD, shell, `/etc/example-music/*`, `nodeinfo.json`,
+dotfiles, journald — nothing networking-related at all. Safe to run before or
+after Step 3; running it *after* is simpler (the box is already at its real
+static IP by then, so inventory matches with no override needed):
+
+```bash
+ansible-playbook -i configs/inventory playbooks/linux/tools.yml \
+  --limit EXASLTCLD001 --ask-vault-pass
+```
+
+If you run this *before* Step 3 (box still on DHCP), add
+`-e ansible_host=<current-DHCP-IP>` — see the gotchas below for why, and
+check the box's actual current lease (`ip addr show`, or your DHCP server's
+lease list) rather than guessing it hasn't changed since the last time you
+looked.
+
+**Step 3 — The role-specific playbook. This is the one that actually renames
+the box and sets its real static IP**, reading the target hostname/IP from
+that role's own `host_vars/<hostname>/main.yml` (a value already written into
+the repo — not looked up live from DNS/BIND9 at runtime, despite that being a
+reasonable thing to expect; nothing in this repo currently does that).
+
+| Role | First run (before `ansible` user exists / password auth) | Subsequent runs |
+|------|------------------------------------------------------------|------------------|
+| Salt master | `ansible-playbook playbooks/salt/site.yml --limit salt_servers --user root -k --ask-vault-pass` | `ansible-playbook playbooks/salt/site.yml --limit salt_servers --ask-vault-pass` |
+| TacticalRMM | `ansible-playbook playbooks/tacticalrmm/tacticalrmm_server.yml --limit tacticalrmm_servers --ask-vault-pass` (no `--user root -k` ever needed — see that playbook's own README) | same |
+| Rudder (dormant) | `ansible-playbook playbooks/rudder/rudder_server.yml --limit rudder_servers --user root -k --ask-vault-pass` | `ansible-playbook playbooks/rudder/rudder_server.yml --limit rudder_servers --ask-vault-pass` |
+
+All three run from `ansible/`, with `-i configs/inventory` (or rely on
+`ansible.cfg`'s default if that's already set up). If the box is still on
+DHCP at this point, add `-e ansible_host=<current-DHCP-IP>` to the first-run
+command the same way as Step 2.
+
+**Two gotchas that will otherwise cost you real time:**
+
+1. **`--ask-vault-pass` is needed for every single playbook run in this repo,
+   no exceptions** — including ones whose own tasks don't obviously touch
+   anything secret. `group_vars/all/vault.yml` is a real, existing file, and
+   Ansible auto-loads every `group_vars/all/*` file for every play
+   regardless of role. Leaving it off a playbook that doesn't strictly need
+   it isn't an error, but you won't know that in advance without checking —
+   default to always including it.
+2. **`--limit` and `-e target=` (or `-e target_hosts=`) are NOT
+   interchangeable, and different playbook families use different ones. Using
+   the wrong one for a given playbook doesn't error clearly — it silently
+   does the wrong thing.** Confirmed by reading each playbook's own real
+   usage, not assumed:
+
+   | Playbook family | Real pattern |
+   |---|---|
+   | PVE bootstrap (`proxmox/bootstrap-new-node.yml`) | ad-hoc raw IP: `-i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>"` |
+   | Windows bootstrap (`windows_bootstrap/site.yml`) | ad-hoc raw IP: `-i <dhcp-ip>, -e target_hosts=<dhcp-ip>` — note `target_hosts`, not `target` |
+   | Firewall (`firewallme/playbooks/90-firewall.yml`) | named inventory + `-e target=<hostname>`, no `--limit` at all |
+   | Salt / Rudder / TacticalRMM / `linux/tools.yml` | named inventory + `--limit <group-or-hostname>` — `-e target=` does nothing here |
+
+   `linux/tools.yml` specifically targets the *entire* Linux fleet
+   (`hosts: groups['all']`) unless you pass `--limit` — the live incident
+   this section exists because of was exactly this: `-e target=EXASLTCLD001`
+   (correct for firewall, wrong here) silently ran against every Linux host
+   in the inventory instead of the one intended, and failed when an
+   unrelated, unreachable host came up in the batch.
 
 ---
 
