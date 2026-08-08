@@ -94,8 +94,7 @@ the same site, see below) and every other Danish office gets. See
 | `EXASVRCLD002` | Windows Admin Centre | Windows Server 2022 | `192.168.69.20` | WAC — reaches all site DCs and Windows nodes |
 | `EXASLTCLD001` | Salt master | Debian | `192.168.69.22` | Config mgmt for all Windows nodes (client, server, DC) — see `ansible/playbooks/salt/README.md`. Also reachable as `salt.jukebox.internal` (CNAME) |
 | `EXAPBXCLD001` | Central PBX | — | `192.168.69.48` | 3CX PBX — all site SBCs trunk here |
-| `EXAMSHCLD001` | MeshCentral | Debian trixie | `192.168.69.13` | Remote desktop/terminal/PowerShell/CMD/Linux shell/file transfer — added 2026-08-04, remote management platform phase 1/2. No longer the primary remote-access path (TacticalRMM's own bundled MeshCentral is), role being reconsidered |
-| `EXARMMCLD001` | TacticalRMM | Debian trixie | `192.168.69.14` | Endpoint inventory/monitoring/alerting/dashboards — added 2026-08-04, remote management platform phase 3. NOT config management or software deployment, Salt/Chocolatey stay responsible for those |
+| `EXARMMCLD001` | TacticalRMM | Debian trixie | `192.168.69.14` | Endpoint inventory/monitoring/alerting/dashboards — added 2026-08-04, remote management platform phase 3. NOT config management or software deployment, Salt/Chocolatey stay responsible for those. Bundled MeshCentral confirmed 2026-08-08 as a full replacement for the standalone `EXAMSHCLD001` build (RETIRED, was `192.168.69.13` — freed for reuse) |
 | `EXAUFCCLD001` | UniFi Network Controller | Debian trixie | `192.168.69.82` | Manages every site's WAPs. CLD has no physical WiFi itself; `.82` is WAP1's reserved octet elsewhere, deliberately reused here for the controller |
 | `EXAPVECLD001` | Proxmox VE node | — | `192.168.69.5` | PVE node 1 |
 | `EXASWICLD001` | Switch | — | `192.168.69.250` | Standard SWI slot 1 |
