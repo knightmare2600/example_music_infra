@@ -805,6 +805,7 @@
                   include /etc/nginx/conf.d/*.conf;
                   include /etc/nginx/sites-enabled/*;
           }
+      notify: Reload nginx
 
     - name: "10 | Stop nginx (no site configs/certs yet -- install.sh leaves it down too)"
       systemd:
@@ -1558,6 +1559,7 @@
           CERT_FILE = "/etc/ssl/tactical/cert.pem"
           KEY_FILE = "/etc/ssl/tactical/key.pem"
       no_log: true
+      notify: Restart TacticalRMM backend services
 
     - name: "15 | Credentials banner -- TacticalRMM PostgreSQL password just (re)synced this run"
       debug:
@@ -1860,7 +1862,9 @@
 
           [Install]
           WantedBy=multi-user.target
-      notify: Reload systemd daemon
+      notify:
+        - Reload systemd daemon
+        - Restart TacticalRMM backend services
 
     - name: "17 | Write daphne.service (uvicorn/websocket)"
       copy:
@@ -1884,7 +1888,9 @@
 
           [Install]
           WantedBy=multi-user.target
-      notify: Reload systemd daemon
+      notify:
+        - Reload systemd daemon
+        - Restart TacticalRMM backend services
 
     - name: "17 | Write nats.service"
       copy:
@@ -1909,7 +1915,9 @@
 
           [Install]
           WantedBy=multi-user.target
-      notify: Reload systemd daemon
+      notify:
+        - Reload systemd daemon
+        - Restart NATS services
 
     - name: "17 | Write nats-api.service"
       copy:
@@ -1930,7 +1938,9 @@
 
           [Install]
           WantedBy=multi-user.target
-      notify: Reload systemd daemon
+      notify:
+        - Reload systemd daemon
+        - Restart NATS services
 
     - name: "17 | Ensure /etc/conf.d exists"
       file:
@@ -1987,7 +1997,9 @@
 
           [Install]
           WantedBy=multi-user.target
-      notify: Reload systemd daemon
+      notify:
+        - Reload systemd daemon
+        - Restart TacticalRMM backend services
 
     - name: "17 | Write celerybeat.service"
       copy:
@@ -2012,7 +2024,9 @@
 
           [Install]
           WantedBy=multi-user.target
-      notify: Reload systemd daemon
+      notify:
+        - Reload systemd daemon
+        - Restart TacticalRMM backend services
 
     - name: "17 | Write meshcentral.service"
       copy:
@@ -2035,7 +2049,9 @@
 
           [Install]
           WantedBy=multi-user.target
-      notify: Reload systemd daemon
+      notify:
+        - Reload systemd daemon
+        - Restart MeshCentral
 
   # Section 18 — TacticalRMM install: nginx site configs + frontend web build
   # Ansible-native install build, Phase 11 (install.sh steps 21, 22 -- PLUS a
@@ -2168,12 +2184,14 @@
                   uwsgi_ignore_client_abort on;
               }
           }
+      notify: Reload nginx
 
     - name: "18 | Symlink rmm.conf into sites-enabled"
       file:
         src: /etc/nginx/sites-available/rmm.conf
         dest: /etc/nginx/sites-enabled/rmm.conf
         state: link
+      notify: Reload nginx
 
     - name: "18 | Write nginx MeshCentral site config (meshcentral.conf)"
       copy:
@@ -2217,12 +2235,14 @@
                   proxy_set_header X-Forwarded-Proto $scheme;
               }
           }
+      notify: Reload nginx
 
     - name: "18 | Symlink meshcentral.conf into sites-enabled"
       file:
         src: /etc/nginx/sites-available/meshcentral.conf
         dest: /etc/nginx/sites-enabled/meshcentral.conf
         state: link
+      notify: Reload nginx
 
     - name: "18 | Check if the frontend web build is already extracted"
       stat:
@@ -2316,12 +2336,14 @@
               server_name {{ rmm_frontend_subdomain }}.{{ rmm_domain }};
               return 404;
           }
+      notify: Reload nginx
 
     - name: "18 | Symlink frontend.conf into sites-enabled"
       file:
         src: /etc/nginx/sites-available/frontend.conf
         dest: /etc/nginx/sites-enabled/frontend.conf
         state: link
+      notify: Reload nginx
 
   # Section 19 — TacticalRMM install: service start + MeshCentral first boot
   # Ansible-native install build, Phase 12 (install.sh steps 23-26).
@@ -2338,10 +2360,18 @@
   # port. First run here still starts everything correctly since nothing
   # is running yet. Picking up a config change made in an earlier section
   # (local_settings.py/systemd units/nginx configs) without a full
-  # playbook re-run needing to blindly restart every service is a
-  # follow-up worth wiring as proper notify: handlers on those
-  # config-writing tasks -- not done here, out of this phase's scope,
-  # noted in PLAN-tacticalrmmme.md.
+  # playbook re-run needing to blindly restart every service --
+  # RETROFITTED 2026-08-08 (Robert's ask, item 5 of that day's backlog):
+  # every local_settings.py write/append, every rmm/daphne/celery/
+  # celerybeat/nats/nats-api/meshcentral systemd unit write, and every
+  # nginx.conf/site-config/symlink write now carries the right notify:
+  # handler(s) (see the Handlers section at the bottom of this file --
+  # "Restart TacticalRMM backend services", "Restart NATS services",
+  # "Restart MeshCentral", "Reload nginx", alongside the pre-existing
+  # "Reload systemd daemon"). Section 19's own first-boot `state: started`
+  # loop below is deliberately untouched -- it's the correct, distinct
+  # behaviour for a box with nothing running yet; the notify: handlers only
+  # ever fire on a re-run where one of those files genuinely changed.
   #
   # Two separate first-boot gates, matching install.sh's own two distinct
   # later steps (25 vs 26), not conflated into one:
@@ -2454,6 +2484,7 @@
         insertafter: EOF
       when: _rmm_mesh_token_check.rc != 0
       no_log: true
+      notify: Restart TacticalRMM backend services
 
     - name: "19 | Check if the MeshCentral admin account has already been set up"
       stat:
@@ -2592,9 +2623,10 @@
   # initial service bring-up (deliberately not blindly restarting live
   # services every run), THIS restart is genuinely necessary whenever it
   # fires: Django only reads local_settings.py at process start, so an
-  # in-place edit does nothing until the process restarts. A live example
-  # of the notify:-handler pattern flagged as a broader follow-up in
-  # Phase 12's own PLAN-tacticalrmmme.md section.
+  # in-place edit does nothing until the process restarts. This was the
+  # one example of the notify:-handler pattern already in place before the
+  # 2026-08-08 retrofit generalised it to every other config-writing task
+  # in this file -- see Section 19's own header comment above.
   #
   # NAT/hairpin guidance from install.sh's own completion message is
   # deliberately not ported -- this estate has no port-forwarded/public-
@@ -2696,3 +2728,21 @@
         - daphne
         - celery
         - celerybeat
+
+    - name: Restart NATS services
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - nats
+        - nats-api
+
+    - name: Restart MeshCentral
+      systemd:
+        name: meshcentral
+        state: restarted
+
+    - name: Reload nginx
+      systemd:
+        name: nginx
+        state: reloaded
