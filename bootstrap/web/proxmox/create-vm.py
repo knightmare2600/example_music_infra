@@ -100,6 +100,19 @@ Changelog:
                 Adding/renaming a role code is now a role_codes.csv edit, no code change. SLT
                 added to SERIAL_CONSOLE_ROLES alongside RUD (same class of role -- CLD-only,
                 SSH-managed, singleton config-mgmt Linux server).
+    2026-08-08  BUG FIX, Robert, live on EXAPVEVRK001 (real regression from the 2026-07-19 disk-
+                count/discard changes, first genuine live run since): create_vm() fired the disk
+                and CD-ROM config.put() calls immediately after qemu.post() (VM creation) returned,
+                with nothing waiting for the async creation task to actually finish first. Proxmox
+                keeps a newly-created VM locked (lock=create) until that task completes -- both
+                calls failed with "500 Internal Server Error: VM is locked (create)", while
+                console/NIC configuration a few calls later succeeded, since by then the (short)
+                creation task had finished on its own. Confirmed via the real terminal output, not
+                guessed. Added wait_for_task() -- polls the creation task's own UPID via the
+                Proxmox tasks API until it genuinely reports "stopped", bounded to 60s, before any
+                config.put() call is issued. Same class of fix as the MeshCentral device-group race
+                fixed the same week in the TacticalRMM build: a fire-and-forget async API call
+                succeeding does not mean the server-side effect has landed yet.
 
 
 Usage:
@@ -142,6 +155,7 @@ import json
 import os
 import sys
 import re
+import time
 
 try:
     from proxmoxer import ProxmoxAPI
@@ -505,6 +519,46 @@ def select_node(proxmox, args):
 
     choice = int(prompt("Select node", validator=validate_node))
     return nodes[choice - 1]["node"]
+
+# =============================================================================
+# TASK POLLING
+# =============================================================================
+
+def wait_for_task(proxmox, node, upid, timeout=60, poll_interval=1):
+    """Block until a Proxmox async task (identified by its UPID) actually
+    finishes, instead of trusting that the API call which launched it
+    returning means the underlying work is done.
+
+    BUG FIX (2026-08-08, Robert, live on EXAPVEVRK001): qemu.post() (VM
+    creation) returns immediately with a UPID while Proxmox creates the VM
+    asynchronously in the background -- the VM stays locked (lock=create)
+    until that task genuinely completes. create_vm() used to fire the very
+    next config.put() calls (disk, then CD-ROM) immediately after post()
+    returned, with nothing waiting for the lock to clear first. Confirmed
+    live: both calls failed with "500 Internal Server Error: VM is locked
+    (create)", while console/NIC configuration a few calls later succeeded,
+    since by then the (very short) creation task had finished on its own --
+    a genuine race, not a syntax bug, exactly the same class of "a fire-
+    and-forget API call succeeding doesn't mean the server-side effect has
+    landed yet" issue as the MeshCentral device-group race fixed the same
+    week in the TacticalRMM build. Bounded retry (default 60s), not an
+    infinite wait -- a genuine failure (task errors out, or never finishes)
+    should surface as a clear timeout, not hang the script forever."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            status = proxmox.nodes(node).tasks(upid).status.get()
+        except Exception as e:
+            warn(f"Could not poll task {upid}: {e} -- proceeding without confirmation.")
+            return
+        if status.get("status") == "stopped":
+            exitstatus = status.get("exitstatus", "")
+            if exitstatus != "OK":
+                warn(f"Task {upid} finished with a non-OK exit status: {exitstatus!r}")
+            return
+        time.sleep(poll_interval)
+    warn(f"Task {upid} did not complete within {timeout}s -- proceeding anyway, "
+         f"but the VM may still be locked.")
 
 # =============================================================================
 # VM NAME / ID HANDLING
@@ -1620,7 +1674,7 @@ def create_vm(proxmox, node, cfg, dry_run=False):
             args_parts.append("-device ipmi-bmc-sim,id=bmc0 -device isa-ipmi-bt,bmc=bmc0")
         extra_args = " ".join(args_parts)
 
-        proxmox.nodes(node).qemu.post(
+        create_upid = proxmox.nodes(node).qemu.post(
             vmid    = vmid,
             name    = cfg["name"],
             ostype  = cfg["ostype"],
@@ -1637,6 +1691,13 @@ def create_vm(proxmox, node, cfg, dry_run=False):
             **({"pool": cfg["pool"]} if cfg["pool"] else {}),
             **({"args": extra_args} if extra_args else {}),
         )
+        # VM creation is asynchronous -- the VM stays locked (lock=create)
+        # until this task actually finishes. Wait for it before issuing any
+        # config.put() calls below (disk/CD-ROM especially -- see
+        # wait_for_task()'s own header for the real bug this fixes).
+        if create_upid:
+            step("Waiting for VM creation task to finish...")
+            wait_for_task(proxmox, node, create_upid)
         ok(f"VM {vmid} created")
         if cfg.get("bmc_type"):
             bmc_port = 6000 + vmid
