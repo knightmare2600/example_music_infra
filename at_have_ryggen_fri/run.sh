@@ -258,14 +258,21 @@
 #      track of what packages are needed and check if they are installed
 #      based on host OS" after kpcli_wrapper.py failed outright
 #      (keepassxc-cli missing) with nothing having warned beforehand.
-#      Deliberately scoped to control-node tools only (keepassxc-cli, so
-#      far) -- NOT bootstrap/web/provision/*.sh's own target-host tool
-#      needs (bc, nmcli, wg, ...), which already self-heal via their own
+#      Deliberately scoped to control-node tools only -- NOT
+#      bootstrap/web/provision/*.sh's own target-host tool needs (bc, nmcli,
+#      wg, ...), which already self-heal via their own
 #      `command -v X || BOOTSTRAP_PKGS+=(x)` + apt-get pattern on whatever
 #      box is actually being provisioned; checking for those on the control
 #      node wouldn't mean anything. See
 #      PLAN-harness-and-bootstrap-backlog-2026-08-06.md item 1 for the
-#      fuller scoping discussion.
+#      fuller scoping discussion. Extended 2026-08-08 with a second
+#      check_type (python_module, via importlib.util.find_spec -- a PATH
+#      binary check can never find a Python library) after passlib turned
+#      out missing on the real EXAANSCLD001: playbooks/salt/playbooks/
+#      20-saltgui.yml's own header already documented needing it for the
+#      password_hash Jinja filter, but nothing ever actually checked for
+#      it, and the real failure mode was a generic, undiagnostic "unknown
+#      error" with no hint at the real cause.
 #  37. check_workstation_tool_versions.py -- benarbejde/asset_manifest.json's
 #      workstation_tools[] (fyrtaarn, Robert's own BMC controller app) pinned
 #      tag checked against the real upstream GitHub release: every listed
@@ -568,6 +575,14 @@
 #               (hard fail if not) and whether the pin is behind the real
 #               latest release (informational, --strict promotes -- bumping
 #               a pin is Robert's own deliberate call, not automatic).
+#   2026-08-08  Extended check_required_tools.py (section 36) with a second
+#               check_type (python_module) after passlib turned out missing
+#               on the real EXAANSCLD001 -- 20-saltgui.yml's own header
+#               already documented needing it, nothing ever checked. Real
+#               symptom: a generic "unknown error" on the password_hash
+#               Jinja filter, no hint at the actual cause. shutil.which()
+#               can never find a Python module, hence the new check_type
+#               rather than just a new REQUIRED_TOOLS entry.
 # ==============================================================================
 set -uo pipefail
 

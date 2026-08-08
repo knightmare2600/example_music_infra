@@ -45,15 +45,27 @@ Debian ships the CLI either as its own `keepassxc-cli` package or bundled
 inside `keepassxc-full`, depending on release/repo, not a plain
 `keepassxc` the way brew/choco's single package covers both GUI and CLI.
 
+passlib (check_type: python_module, added 2026-08-08) is a real live gap
+found the hard way: `playbooks/salt/playbooks/20-saltgui.yml`'s own header
+already documented this exact prerequisite ("the password_hash Jinja filter
+... needs passlib installed on the CONTROL node") but nothing ever actually
+checked for it -- confirmed missing on the real EXAANSCLD001, causing a
+generic, undiagnostic "unknown error" when the `user` module tried to
+template `salt_saltgui_password | password_hash('sha512')`. A Python
+module isn't a PATH binary -- `shutil.which()` can never find it -- so this
+needed a second check_type, not just a new REQUIRED_TOOLS entry.
+
 Exit code: 0 unless a required tool is missing (informational; --strict
 promotes any missing tool to a hard failure).
 """
+import importlib.util
 import platform
 import shutil
 import sys
 
 REQUIRED_TOOLS = {
     "keepassxc-cli": {
+        "check_type": "binary",
         "required_by": [
             "benarbejde/kpcli_wrapper.py",
             "benarbejde/push_credentials_to_keepass.py",
@@ -62,6 +74,19 @@ REQUIRED_TOOLS = {
             "Linux": "apt install keepassxc-cli (or keepassxc-full, if keepassxc-cli isn't in your repo)",
             "Darwin": "brew install keepassxc",
             "Windows": "choco install keepassxc",
+        },
+    },
+    "passlib": {
+        "check_type": "python_module",
+        "required_by": [
+            "ansible/playbooks/salt/playbooks/20-saltgui.yml "
+            "(password_hash Jinja filter, control-node side only -- not needed on the target)",
+        ],
+        "install": {
+            "Linux": "apt install python3-passlib",
+            "Darwin": "brew install python3 && python3 -m pip install --user passlib "
+                      "(no Homebrew formula for the module itself)",
+            "Windows": "python -m pip install --user passlib",
         },
     },
 }
@@ -76,12 +101,19 @@ def install_line_for_this_os(tool_install: dict) -> str:
     return "\n".join(f"  {os_name}: {cmd}" for os_name, cmd in tool_install.items())
 
 
+def is_present(tool: str, check_type: str) -> str | None:
+    """Returns the thing found (path or module name) if present, else None."""
+    if check_type == "python_module":
+        return tool if importlib.util.find_spec(tool) is not None else None
+    return shutil.which(tool)
+
+
 def main() -> int:
     strict = "--strict" in sys.argv
 
     missing = []
     for tool, info in REQUIRED_TOOLS.items():
-        found = shutil.which(tool)
+        found = is_present(tool, info.get("check_type", "binary"))
         if found:
             print(f"OK: {tool} ({found})")
             continue
