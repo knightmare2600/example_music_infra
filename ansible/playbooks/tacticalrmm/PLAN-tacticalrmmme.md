@@ -344,13 +344,22 @@ is meant to stay safely re-runnable -- blindly restarting live services
 (dropping in-flight uWSGI/websocket connections, celery workers) on every
 ongoing maintenance run would be a real regression, not a faithful port.
 First run here still starts everything correctly since nothing is running
-yet. **Known gap, not closed here:** picking up a config change made in
-Sections 15/17/18 (local_settings.py, systemd units, nginx configs)
-without a full restart currently needs a manual restart, or a future full
-re-run of this section however it's invoked next -- wiring proper
-`notify:` handlers onto those earlier config-writing tasks (mapping each
-config to exactly which service(s) it affects) is real, scoped follow-up
-work, deliberately not done as part of "Phase 12", not forgotten.
+yet. **RETROFITTED 2026-08-08** (Robert's ask, post-LAX-onboarding backlog
+item 5): every config-writing task in Sections 10/15/17/18/19/20
+(local_settings.py write + MESH_TOKEN_KEY append, every rmm/daphne/celery/
+celerybeat/nats/nats-api/meshcentral systemd unit, nginx.conf + every
+site config + its sites-enabled symlink) now carries the right `notify:`
+handler(s), mapped to exactly which service(s) each config affects --
+"Restart TacticalRMM backend services" (rmm/daphne/celery/celerybeat),
+"Restart NATS services" (nats/nats-api), "Restart MeshCentral", "Reload
+nginx" (a graceful `systemctl reload`, not a full restart), alongside the
+pre-existing "Reload systemd daemon". Section 19's own `state: started`
+first-boot loop is unchanged -- still correct, distinct behaviour for a
+box with nothing running yet; the notify: handlers only fire on a re-run
+where one of those files genuinely changed. Every `notify:` name
+cross-checked against the handlers block (no typos/dangling references)
+and the whole file re-passed `ansible-playbook --syntax-check` before
+landing.
 
 **Deviation 2 -- readiness check uses `journalctl -u meshcentral.service
 --no-pager -n 100` (last 100 lines), not install.sh's own `-b` (entire
