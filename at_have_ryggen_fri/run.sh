@@ -111,6 +111,13 @@
 #      known-good pubkey cross-check for every spoke built against it.
 #      Added 2026-07-14 after the wrong CLD WAN IP was found live, during
 #      the EXAFWLBRT001 firewallme test, with nothing to have caught it.
+#      Extended 2026-08-08 after a live EXAFWLLAX001 bug: the AllowedIPs
+#      builder included every spoke's own subnet in its own [Peer] entry
+#      (wg_hub_topology[hub]['spokes'] includes the spoke itself), so
+#      wg-quick installed a second, competing kernel route to the box's own
+#      LAN. Now also guards the fix's source line stays in place, and checks
+#      wg_hub_topology itself for duplicate spokes within a hub, a spoke
+#      double-booked across hubs, or a hub listed as its own spoke.
 #  20. check_role_codes.py -- benarbejde/role_codes.csv (every device-role code's
 #      name/category/connection-method/emoji, added 2026-07-20 consolidating
 #      three separate hand-maintained copies -- one already found drifted, MBP
@@ -516,6 +523,23 @@
 #               tools only, not bootstrap/web/provision/*.sh's own
 #               already-self-healing target-host tool needs -- see that
 #               check's own header for the full scoping reasoning.
+#   2026-08-08  Extended check_wireguard_hub_data.py (section 17) after a live
+#               EXAFWLLAX001 bug: every spoke's own subnet ended up in its own
+#               [Peer] AllowedIPs (wg_hub_topology[hub]['spokes'] includes the
+#               spoke itself), so wg-quick installed a second, competing
+#               kernel route to the box's own LAN, dropping LAN-client
+#               traffic through the tunnel while the firewall's own
+#               self-sourced traffic worked fine. Robert, after confirming
+#               the fix live: "add a test for that type of issue to the
+#               harness ... is there anywhere in the codebase that fights
+#               itself or adds duplicate things at variance with each
+#               other?" Added a source-level regression guard on the fixed
+#               line plus a data-level self-consistency check on
+#               wg_hub_topology (duplicate spokes within one hub, a spoke
+#               double-booked across two hubs, a hub listed as its own
+#               spoke) -- the general shape of "a topology-loop-based
+#               generator that doesn't exclude its own subject," not just
+#               the one instance already fixed.
 # ==============================================================================
 set -uo pipefail
 
@@ -892,7 +916,7 @@ section "17. WireGuard hub data — check_wireguard_hub_data.py"
 
 if out=$(python3 "${HERE}/check_wireguard_hub_data.py"); then
   echo "$out"
-  success "Hub WAN IPs match sites.csv's convention; no blank known-good pubkeys."
+  success "Hub WAN IPs match sites.csv's convention; no blank known-good pubkeys; wg_hub_topology self-consistent."
 else
   echo "$out"
   fail "WireGuard hub reference data has drifted -- see above."
