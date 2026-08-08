@@ -1,5 +1,14 @@
 # playbooks/meshcentral/
 
+> **RETIRED 2026-08-08.** `EXAMSHCLD001` decommissioned and removed from
+> live inventory — TacticalRMM's own bundled MeshCentral
+> (`playbooks/tacticalrmm/`) is a confirmed, real-use replacement (Robert
+> used it for actual remote-access work 2026-08-07/08). `EXAMSHCLD001`'s
+> `192.168.69.13` address is free for reuse. This playbook and the rest of
+> this README are kept as historical/reference material, not deleted — see
+> `playbooks/tacticalrmm/README.md`'s own "EXAMSHCLD001 — RETIRED" section
+> for the full decision.
+
 Bootstraps `EXAMSHCLD001` (or any MeshCentral server) from a fresh Debian
 Trixie install to a running MeshCentral remote management server. Remote
 management platform, phase 1/2 — see `ansible/README.md`'s `## meshcentral`

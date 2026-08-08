@@ -11,6 +11,13 @@
 # Version history
 # =============================================================================
 # v1.0.0  2026-08-04  Initial release. Remote management platform, phase 1/2.
+# v1.1.0  2026-08-08  RETIRED. EXAMSHCLD001 removed from cld.ini/meshcentral.ini
+#                     -- Ansible never loads this file for a real run anymore
+#                     (host_vars only load for hosts present in inventory).
+#                     Kept as historical/reference material alongside
+#                     playbooks/meshcentral/, not deleted. See
+#                     playbooks/tacticalrmm/README.md's "EXAMSHCLD001 —
+#                     RETIRED" section for the full decision.
 # =============================================================================
 
 # -----------------------------------------------------------------------------

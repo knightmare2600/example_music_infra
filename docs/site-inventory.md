@@ -204,8 +204,7 @@ section covers CLD specifically).
 - [ ] `EXASVRCLD002` — Windows Admin Centre deployed (`192.168.69.20`)
 - [ ] `EXAPBXCLD001` — Central 3CX PBX online (`192.168.69.48`)
 - [ ] `EXAUFCCLD001` — UniFi Network Controller online (`192.168.69.82`, CLD's **LAN** — not vRACK; manages every site's WAPs)
-- [ ] `EXAMSHCLD001` — MeshCentral online (`192.168.69.13`) — remote desktop/terminal/PowerShell/CMD/Linux shell/file transfer, added 2026-08-04. Not yet live-tested — see `ansible/playbooks/meshcentral/README.md`
-- [ ] `EXARMMCLD001` — TacticalRMM online (`192.168.69.14`) — endpoint inventory/monitoring/alerting, added 2026-08-04. VM prep only; the actual `install.sh` run is a separate manual step, not yet live-tested — see `ansible/playbooks/tacticalrmm/README.md`
+- [ ] `EXARMMCLD001` — TacticalRMM online (`192.168.69.14`) — endpoint inventory/monitoring/alerting, added 2026-08-04. Confirmed live end to end 2026-08-07, incl. a real agent deployment and real remote-access use via its own bundled MeshCentral 2026-08-07/08 (which replaced the standalone `EXAMSHCLD001` build, RETIRED — see `ansible/playbooks/tacticalrmm/README.md`)
 - [ ] `EXASWICLD001` — Core switch online (`192.168.69.250`) — standard SWI slot 1
 - [ ] `EXAFWLCLD002` — Secondary firewall (`192.168.69.254`, standard FWL slot 2) — not yet built, planned
 - [ ] `EXASWICLD002` — Switch 2 (`192.168.69.251`)
