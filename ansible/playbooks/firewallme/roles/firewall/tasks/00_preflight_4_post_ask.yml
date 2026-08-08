@@ -12,6 +12,31 @@
 # "ask everything, then run" restructure (see 00_preflight_3_ask.yml's own header),
 # since both need the FINAL fw_wan_iface/fw_lan_iface/fw_wg_hub_site/fw_wg_role
 # values, not the pre-override detected/default ones.
+#
+# BUG FIX (2026-08-08, Robert, live on EXAFWLLAX001): all_sites was built as
+# [hub] + wg_hub_topology[hub]['spokes'] with no exclusion of the current spoke's
+# own fw_site_code -- since wg_hub_topology[hub]['spokes'] lists every spoke under
+# that hub, including whichever spoke this AllowedIPs list is being generated
+# for. Every spoke's own [Peer] AllowedIPs therefore included its own subnets
+# (10.0.<own_octet>.0/24, 192.168.<own_octet>.0/24), which wg-quick then installs
+# as real kernel routes via wg0 -- a second, competing route to the box's own
+# directly-connected LAN alongside the correct one via fw_lan_iface. Confirmed
+# live: LAX's own `ip route show` had both "192.168.213.0/24 dev wg0 scope link"
+# and "192.168.213.0/24 dev ens19 ... metric 200" simultaneously. Symptom: the
+# firewall's own self-sourced traffic (ping/nmap run on the box itself) worked
+# fine in every direction (never touches this route at all -- self-sourced
+# traffic doesn't need the "packet arrives on wg0, forward back out fw_lan_iface
+# to a real LAN client" hop), but real LAN client traffic through the tunnel
+# failed 100% -- return packets destined for a LAN client were ambiguously
+# routed, competing against the bogus wg0 route for the box's own subnet,
+# instead of reliably forwarding out fw_lan_iface. DHCP/ARP to the firewall
+# itself kept working throughout, since those are pure L2/broadcast and never
+# touch this routing table at all -- which is what made this look like a
+# DNS/lease problem at first rather than a routing one. Fixed by excluding
+# fw_site_code from all_sites before the subnet-building loop runs. This
+# template is shared by every spoke -- every existing spoke's wg0.conf almost
+# certainly has this same self-referential route and needs regenerating, not
+# just LAX.
 # =============================================================================
 
 - name: "[Derive] Get WAN MAC"
@@ -40,7 +65,7 @@
       {%- set hub = fw_wg_hub_site -%}
       {%- set parts = [] -%}
       {%- set topo = wg_hub_topology[hub]['spokes'] | default([]) -%}
-      {%- set all_sites = [hub] + topo -%}
+      {%- set all_sites = ([hub] + topo) | reject('equalto', fw_site_code) | list -%}
       {%- for code in all_sites -%}
         {%- set octet = wg_site_octets[code] | default('') -%}
         {%- if octet != '' -%}
