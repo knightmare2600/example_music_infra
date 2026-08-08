@@ -3,13 +3,18 @@
 # bootstrap/setup-workstation-macos.sh
 # Example Music Limited — Engineer workstation setup (macOS)
 # ==============================================================================
-# Two jobs, one script:
+# Three jobs, one script:
 #   1. Install/confirm the tool set docs/ExampleMusic_Beginners_Guide.md §11
 #      requires on an engineer's own machine — Malcolm and Jamie both run
 #      MacBook Pros today, so this is the platform that matters most for
 #      real, current use.
-#   2. Populate bootstrap/web/'s upstream-sourced boot assets from
-#      benarbejde/asset_manifest.json -- the same job
+#   2. Install pinned-version workstation tools (currently: fyrtaarn, Robert's
+#      own BMC controller app) from benarbejde/asset_manifest.json's
+#      workstation_tools[] -- checksum-verified against the GitHub Releases
+#      API, reinstalled automatically if the installed binary doesn't match
+#      the manifest's pinned tag.
+#   3. Populate bootstrap/web/'s upstream-sourced boot assets from
+#      benarbejde/asset_manifest.json's assets[]/archives[] -- the same job
 #      ansible/playbooks/bootstrap_assets/fetch-assets.yml used to do, ported
 #      to bash because ansible-playbook cannot run natively on Windows at
 #      all (a hard, long-standing Ansible limitation) -- one native script
@@ -68,6 +73,14 @@
 #               no Linux equivalent), `shasum -a 256` instead of
 #               `sha256sum`. Fetch logic itself unchanged from the proven
 #               Linux version.
+#   2026-08-08  Added install_workstation_tools() (job 2, fyrtaarn) -- ported
+#               from setup-workstation-linux.sh, sha256sum -> sha256_of()
+#               like the rest of this file. Also handles /usr/local/bin's
+#               inconsistent ownership across Intel/Apple Silicon Homebrew
+#               installs (detects writability, uses sudo only if needed)
+#               rather than assuming either way -- a real macOS-specific
+#               difference from the Linux version, same "reasoned, not yet
+#               executed on real macOS" caveat as the rest of this file.
 # ==============================================================================
 
 set -euo pipefail
@@ -307,6 +320,104 @@ fetch_archive() {
   rm -rf "$CACHE_DIR"
 }
 
+# ==============================================================================
+# 3. Workstation tools -- benarbejde/asset_manifest.json's workstation_tools[]
+#    (added 2026-08-08, Robert -- real locally-run tools, not boot assets;
+#    see that file's own _readme note for the full reasoning). Logic
+#    identical to setup-workstation-linux.sh except sha256sum -> sha256_of().
+# ==============================================================================
+# Deliberately NOT the same "skip if file already exists" idempotency as
+# fetch_github_release() above -- these are pinned-version tools a harness
+# check nudges Robert to bump over time (check_workstation_tool_versions.py),
+# and a bumped pin needs to actually take effect on the next run without a
+# manual `rm` first. Verifies the INSTALLED binary's checksum against the
+# manifest's pinned tag/asset every run and only reinstalls on mismatch.
+install_workstation_tools() {
+  if [[ ! -f "$MANIFEST" ]]; then
+    msg_error "Manifest not found: ${MANIFEST}"
+    exit 1
+  fi
+
+  local goos goarch platform_key
+  goos="darwin"
+  case "$(uname -m)" in
+    x86_64) goarch="amd64" ;;
+    arm64)  goarch="arm64" ;;
+    *)
+      msg_warn "Unrecognised architecture $(uname -m) -- skipping workstation_tools install (no matching asset)."
+      return 0
+      ;;
+  esac
+  platform_key="${goos}-${goarch}"
+
+  local name repo tag asset_name
+  while IFS=$'\t' read -r name repo tag; do
+    asset_name="$(jq -r --arg t "$name" --arg k "$platform_key" '.workstation_tools[] | select(.name == $t) | .assets[$k] // empty' "$MANIFEST")"
+    if [[ -z "$asset_name" ]]; then
+      msg_warn "${name}: no asset for ${platform_key} in the manifest -- skipping."
+      continue
+    fi
+
+    local install_dir="/usr/local/bin"
+    local install_path="${install_dir}/${name}"
+
+    msg_info "Checking ${name} (${repo}@${tag}, ${platform_key})..."
+
+    local api_url meta digest expected_hash
+    api_url="https://api.github.com/repos/${repo}/releases/tags/${tag}"
+    if ! meta="$(curl -fsSL "$api_url")"; then
+      msg_error "  Failed to query ${api_url}"
+      continue
+    fi
+    digest="$(jq -r --arg n "$asset_name" '.assets[] | select(.name == $n) | .digest' <<<"$meta")"
+    expected_hash="${digest#sha256:}"
+    if [[ -z "$expected_hash" ]]; then
+      msg_error "  Asset '${asset_name}' not found in ${repo}@${tag}'s release"
+      continue
+    fi
+
+    if [[ -f "$install_path" ]]; then
+      local current_hash
+      current_hash="$(sha256_of "$install_path")"
+      if [[ "$current_hash" == "$expected_hash" ]]; then
+        msg_ok "  ${name} already at ${tag} (sha256:${current_hash})"
+        continue
+      fi
+      msg_info "  Installed ${name} doesn't match pinned ${tag} -- reinstalling."
+    fi
+
+    local download_url
+    download_url="$(jq -r --arg n "$asset_name" '.assets[] | select(.name == $n) | .browser_download_url' <<<"$meta")"
+
+    # /usr/local/bin's ownership is inconsistent across Macs, unlike Linux
+    # (always root-owned there): Homebrew on Intel chowns it to the current
+    # user so `brew install` never needs sudo; Homebrew on Apple Silicon
+    # uses /opt/homebrew instead and leaves /usr/local/bin root-owned.
+    # Detect rather than assume either way.
+    local use_sudo=""
+    if [[ ! -d "$install_dir" ]] || [[ ! -w "$install_dir" ]]; then
+      use_sudo="sudo"
+    fi
+    $use_sudo mkdir -p "$install_dir"
+
+    local tmp_path
+    tmp_path="$(mktemp)"
+    curl -fsSL -o "$tmp_path" "$download_url"
+
+    local actual_hash
+    actual_hash="$(sha256_of "$tmp_path")"
+    if [[ "$actual_hash" != "$expected_hash" ]]; then
+      msg_error "  CHECKSUM MISMATCH for ${name}: expected ${expected_hash}, got ${actual_hash}"
+      rm -f "$tmp_path"
+      continue
+    fi
+
+    $use_sudo install -m 0755 "$tmp_path" "$install_path"
+    rm -f "$tmp_path"
+    msg_ok "  ${name} installed to ${install_path} (${tag}, sha256:${actual_hash})"
+  done < <(jq -r '.workstation_tools[] | [.name, .repo, .tag] | @tsv' "$MANIFEST")
+}
+
 fetch_assets() {
   if [[ ! -f "$MANIFEST" ]]; then
     msg_error "Manifest not found: ${MANIFEST}"
@@ -346,6 +457,7 @@ fetch_assets() {
 # ==============================================================================
 main() {
   $DO_DEPS && install_deps
+  $DO_DEPS && install_workstation_tools
   $DO_ASSETS && fetch_assets
   msg_ok "Done."
 }
