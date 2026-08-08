@@ -17,6 +17,16 @@
 # Tags: packages
 # =============================================================================
 # Changelog:
+#   2026-08-08  Fixed a real live duplicate-repo warning (Robert, EXAPVEVRK001):
+#               the no-subscription repo task wrote the legacy .list file
+#               unconditionally, never checking whether PVE 9's own default
+#               DEB822 proxmox.sources already provides pve-no-subscription --
+#               it does on any node installed from a current PVE 9 ISO, so apt
+#               ended up configuring the same repo twice. Now checks first
+#               (grep against proxmox.sources), only writes the legacy file if
+#               it's genuinely missing, and removes it if proxmox.sources
+#               already covers it (cleans up every already-onboarded node too,
+#               not just future ones).
 #   2026-07-14  Added a heads-up debug message before "Install management packages" --
 #               a real run against EXAPVEGOT001 took ~9 minutes on this one task alone
 #               (apt cache refresh + package install/upgrade), long enough that an
@@ -93,7 +103,27 @@
     # hardcoded literal would eventually do the same wrong thing on any
     # future PVE node that isn't trixie -- silently writing a
     # codename-mismatched repo line, the same class of breakage.
-    - name: Add Proxmox no-subscription repo
+    # BUG FIX (2026-08-08, Robert, live on EXAPVEVRK001): this task used to write
+    # the legacy .list file unconditionally, with no check for whether PVE 9's
+    # own default DEB822 /etc/apt/sources.list.d/proxmox.sources already provides
+    # pve-no-subscription -- it does, on any node installed from a current PVE 9
+    # ISO. The result was apt configuring the exact same repo twice, one real
+    # component from two files: "Target Packages (pve-no-subscription/binary-
+    # amd64/Packages) is configured multiple times in proxmox.sources:1 and
+    # pve-no-subscription.list:2". Same class of gap the pve-enterprise/ceph
+    # handling above already closed for itself (checks both the legacy .list and
+    # DEB822 .sources forms before acting) -- this repo just never got the same
+    # treatment. Not fatal (a W: warning, not an error), but real duplicate
+    # config worth not writing in the first place.
+    - name: Check whether proxmox.sources (DEB822, PVE 9 default) already provides pve-no-subscription
+      ansible.builtin.command:
+        cmd: grep -q pve-no-subscription /etc/apt/sources.list.d/proxmox.sources
+      register: pve_sources_has_no_sub
+      changed_when: false
+      failed_when: false
+      tags: packages
+
+    - name: Add Proxmox no-subscription repo (legacy .list -- only if proxmox.sources doesn't already provide it)
       ansible.builtin.copy:
         content: |
           # Proxmox VE no-subscription repository - added by Ansible (10-packages.yml)
@@ -102,6 +132,17 @@
         owner: root
         group: root
         mode: '0644'
+      when: pve_sources_has_no_sub.rc != 0
+      tags: packages
+
+    # Cleans up a node that already has BOTH (every node onboarded before this
+    # fix existed, including EXAPVEVRK001 itself) -- proxmox.sources already
+    # covers it, the separately-added .list file is now pure duplication.
+    - name: Remove legacy pve-no-subscription.list if proxmox.sources already provides it
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/pve-no-subscription.list
+        state: absent
+      when: pve_sources_has_no_sub.rc == 0
       tags: packages
 
     # ── Subscription nag removal ──────────────────────────────────────────
