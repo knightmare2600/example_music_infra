@@ -201,6 +201,7 @@ Configuration management, automation, and orchestration.
 |------|--------|-------------|
 | [management/rudder-setup.md](management/rudder-setup.md) | NET-MGMT-RUDDER-001 | Rudder full configuration guide — techniques, rules, node management |
 | [management/Example Music — Keeping Three Ansible Nodes in Sync.md](management/Example%20Music%20—%20Keeping%20Three%20Ansible%20Nodes%20in%20Sync.md) | NET-MGMT-ANS-001 | Ansible multi-node synchronisation patterns |
+| [management/TacticalRMM_Beginners_Guide.md](management/TacticalRMM_Beginners_Guide.md) | NET-MGMT-RMM-001 | TacticalRMM day-to-day usage — login, deploying/moving agents, troubleshooting the mesh-agent-download bug |
 
 ---
 
