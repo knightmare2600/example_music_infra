@@ -84,7 +84,7 @@ wg_hub_default_port: 51820
 # elsewhere in this file to also have a spokes: entry here.
 wg_hub_topology:
   CLD:
-    spokes: [AAR, ABD, AKL, AMS, ATL, BER, BIR, BON, BRT, CHI, CLY, COV, CPH, DRS, DUN, DUS, EDI, FAX, FRE, GLA, GOT, HAL, HUL, KGE, KOR, LAX, LIV, LND, MCR, MEL, MIA, MIL, MTL, MUN, NEW, NJC, NYC, OSL, PER, SHE, SYD, TOR, VIE]
+    spokes: [AAR, ABD, AKL, AMS, ATL, BER, BIR, BON, BRK, BRT, CHI, CLY, COV, CPH, DRS, DUN, DUS, EDI, FAL, FAX, FRE, GLA, GOT, HAL, HUL, KGE, KOR, LAX, LIV, LND, MCR, MEL, MIA, MIL, MTL, MUN, NEW, NJC, NYC, ODE, OSL, PER, SHE, SYD, TOR, VIE]
   FAL:
     spokes: []
   ODE:
