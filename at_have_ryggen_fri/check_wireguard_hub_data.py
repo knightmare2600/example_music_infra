@@ -26,6 +26,26 @@ cross-checks it live rather than trusting a static file). Only flags a
 key that's blank for a hub that has a real WAN IP on record, since a blank
 entry silently skips the known-good cross-check for every spoke built
 against that hub.
+
+2026-08-08, Robert, live (EXAFWLLAX001): a real, live bug -- the AllowedIPs
+builder in roles/firewall/tasks/00_preflight_4_post_ask.yml looped over
+`[hub] + wg_hub_topology[hub]['spokes']` with no exclusion of the spoke this
+list was being built FOR. Every spoke's own site code is a member of its
+hub's own spokes: list (LAX is in CLD's), so every spoke's [Peer] AllowedIPs
+included its own subnet -- wg-quick then installed that as a second, competing
+kernel route to the box's own directly-connected LAN, racing the correct one
+via fw_lan_iface. Symptom: LAN clients got 100% packet loss reaching anything
+off their own subnet through the tunnel, while the firewall's own self-sourced
+traffic (never touching this route) worked fine -- looked exactly like a
+DNS/DHCP-lease bug at first. Fixed by adding `| reject('equalto',
+fw_site_code) | list` to the all_sites derivation. Two checks added here
+after that fix, following Robert's own framing ("is there anywhere in the
+codebase that fights itself or adds duplicate things at variance with each
+other"): a source-level regression guard on the exact fixed line (below), and
+a data-level self-consistency check on wg_hub_topology itself (duplicate
+spoke entries within one hub, a site double-booked across two hubs, or a hub
+listed as its own spoke) -- the general shape of "a topology/loop-based
+generator that doesn't exclude its own subject" this bug belongs to.
 """
 import csv
 import re
@@ -35,6 +55,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SITES_CSV = REPO_ROOT / "benarbejde" / "sites.csv"
 HUB_DATA_FILE = REPO_ROOT / "ansible/configs/inventory/group_vars/firewalls/main.yml"
+ALLOWED_IPS_TASK_FILE = (
+    REPO_ROOT
+    / "ansible/playbooks/firewallme/roles/firewall/tasks/00_preflight_4_post_ask.yml"
+)
 
 
 def load_site_octets():
@@ -68,6 +92,85 @@ def load_hub_data():
     return parse_block("wg_hub_wan_ips"), parse_block("wg_hub_known_pubkeys")
 
 
+def load_hub_topology():
+    """Minimal, targeted parse of the wg_hub_topology: block -- same
+    dependency-free reasoning as load_hub_data() above. Returns
+    {HUB: [spoke, spoke, ...]}, preserving duplicates exactly as written
+    (duplicate detection is the caller's job, not this parser's)."""
+    text = HUB_DATA_FILE.read_text(encoding="utf-8")
+    m = re.search(r"^wg_hub_topology:\n((?:  \w+:\n    spokes:.*\n)+)", text, re.MULTILINE)
+    if not m:
+        return {}
+    topology = {}
+    for hub_m in re.finditer(r"^  (\w+):\n    spokes:\s*\[([^\]]*)\]", m.group(1), re.MULTILINE):
+        hub = hub_m.group(1)
+        raw = hub_m.group(2).strip()
+        spokes = [s.strip() for s in raw.split(",") if s.strip()] if raw else []
+        topology[hub] = spokes
+    return topology
+
+
+def check_allowed_ips_self_reference_guard():
+    """Source-level regression guard: the AllowedIPs derivation this file's
+    own docstring describes fixing must still exclude the current site from
+    its own all_sites list. Grep-based on purpose (see
+    check_network_session_safety.py for the same established pattern in this
+    harness) -- cheap, exact, and catches the one thing that actually broke
+    live: someone reverting or copy-pasting the pre-fix line."""
+    if not ALLOWED_IPS_TASK_FILE.exists():
+        return [f"{ALLOWED_IPS_TASK_FILE.relative_to(REPO_ROOT)} does not exist -- AllowedIPs self-reference guard can't run."]
+
+    text = ALLOWED_IPS_TASK_FILE.read_text(encoding="utf-8")
+    m = re.search(r"set all_sites = (.+?)-%\}", text)
+    if not m:
+        return [
+            f"{ALLOWED_IPS_TASK_FILE.relative_to(REPO_ROOT)}: no 'set all_sites =' line found -- "
+            f"the AllowedIPs derivation this check guards may have moved or been rewritten; update this check."
+        ]
+    expr = m.group(1)
+    if "fw_site_code" not in expr:
+        return [
+            f"{ALLOWED_IPS_TASK_FILE.relative_to(REPO_ROOT)}: all_sites derivation ({expr.strip()}) no longer "
+            f"excludes fw_site_code -- this is the exact self-referential-route bug fixed live on EXAFWLLAX001 "
+            f"2026-08-08 (a spoke's own subnet ends up in its own [Peer] AllowedIPs, wg-quick installs it as a "
+            f"second competing kernel route to the box's own LAN). Restore the "
+            f"'| reject(\"equalto\", fw_site_code) | list' filter."
+        ]
+    return []
+
+
+def check_topology_self_consistency(topology):
+    """Data-level checks on wg_hub_topology itself -- the general 'duplicate
+    or self-referential entry' shape the live AllowedIPs bug belongs to,
+    independent of whether the Jinja that consumes this data currently
+    filters correctly."""
+    failures = []
+    seen_under = {}  # site -> [hubs it appears under]
+
+    for hub, spokes in topology.items():
+        if hub in spokes:
+            failures.append(f"wg_hub_topology.{hub}.spokes lists {hub} as its own spoke -- a hub can't be a spoke of itself.")
+
+        counts = {}
+        for s in spokes:
+            counts[s] = counts.get(s, 0) + 1
+        for s, n in counts.items():
+            if n > 1:
+                failures.append(f"wg_hub_topology.{hub}.spokes lists {s} {n} times -- duplicate entry.")
+
+        for s in set(spokes):
+            seen_under.setdefault(s, set()).add(hub)
+
+    for site, hubs in seen_under.items():
+        if len(hubs) > 1:
+            failures.append(
+                f"{site} appears as a spoke under more than one hub ({', '.join(sorted(hubs))}) -- "
+                f"a spoke can only have one [Peer] entry pointing at one hub at a time."
+            )
+
+    return failures
+
+
 def main():
     failures = []
 
@@ -78,9 +181,14 @@ def main():
 
     site_octets = load_site_octets()
     wan_ips, pubkeys = load_hub_data()
+    topology = load_hub_topology()
+
+    failures += check_allowed_ips_self_reference_guard()
+    failures += check_topology_self_consistency(topology)
 
     if not wan_ips:
-        return [f"Could not parse wg_hub_wan_ips out of {HUB_DATA_FILE.relative_to(REPO_ROOT)} -- format may have changed."]
+        failures.append(f"Could not parse wg_hub_wan_ips out of {HUB_DATA_FILE.relative_to(REPO_ROOT)} -- format may have changed.")
+        return failures
 
     for hub, recorded_ip in wan_ips.items():
         octet = site_octets.get(hub)
@@ -113,5 +221,9 @@ if __name__ == "__main__":
         for f in failures:
             print(f"  {f}")
         sys.exit(1)
-    print("wg_hub_wan_ips matches sites.csv's own subnet-octet convention for every hub; no blank known-good pubkeys.")
+    print(
+        "wg_hub_wan_ips matches sites.csv's own subnet-octet convention for every hub; "
+        "no blank known-good pubkeys; AllowedIPs self-reference guard intact; "
+        "wg_hub_topology has no duplicate/double-booked/self-referential spokes."
+    )
     sys.exit(0)
