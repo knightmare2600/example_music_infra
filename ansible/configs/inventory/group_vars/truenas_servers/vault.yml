@@ -31,7 +31,7 @@
 # tool, same posture 20-saltgui.yml's own summary uses for the saltgui
 # login -- human-run, never Ansible, see
 # push_credentials_to_keepass.py/kpcli_wrapper.py's own headers):
-#   python3 benarbejde/kpcli_wrapper.py "~/KeePassXC/Example Music.kdbx" \
+#   python3 benarbejde/kpcli_wrapper.py ~/KeePassXC/ExampleMusic.kdbx \
 #     add "Infrastructure/<SITE>/EXANAS<SITE>001-rest-bootstrap" truenas_admin
 # (prompts for the vault password, then this entry's password -- enter the
 # same value as truenas_rest_bootstrap_password above.)

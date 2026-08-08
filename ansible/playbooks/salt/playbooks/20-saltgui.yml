@@ -22,7 +22,7 @@
 # saltgui's own password is prompted for below (never generated or stored
 # by this playbook) and shown ONCE in this play's summary, along with the
 # exact benarbejde/kpcli_wrapper.py `add` command to file it into
-# Example Music.kdbx yourself afterward -- a human-triggered script, never
+# ExampleMusic.kdbx yourself afterward -- a human-triggered script, never
 # an Ansible task, per docs/Example Music Limited — KeePassXC CLI
 # Automation.md §7a's one-way credential flow. Not
 # benarbejde/extracted_credentials.json/push_credentials_to_keepass.py --
@@ -239,7 +239,7 @@
           - "  Login pass   : {{ salt_saltgui_password }}"
           - "  (shown once — nothing here writes to KeePass. File it yourself:)"
           - ""
-          - "    python3 benarbejde/kpcli_wrapper.py \"~/KeePassXC/Example Music.kdbx\" \\"
+          - "    python3 benarbejde/kpcli_wrapper.py ~/KeePassXC/ExampleMusic.kdbx \\"
           - "      add \"Infrastructure/{{ salt_site_code }}/{{ salt_hostname }}-saltgui\" {{ salt_saltgui_user }}"
           - ""
           - "  (prompts for the vault password, then this entry's password — enter"
