@@ -266,11 +266,26 @@
 #      node wouldn't mean anything. See
 #      PLAN-harness-and-bootstrap-backlog-2026-08-06.md item 1 for the
 #      fuller scoping discussion.
+#  37. check_workstation_tool_versions.py -- benarbejde/asset_manifest.json's
+#      workstation_tools[] (fyrtaarn, Robert's own BMC controller app) pinned
+#      tag checked against the real upstream GitHub release: every listed
+#      per-platform asset still exists under the pinned tag (hard fail if
+#      not -- a broken pin), and whether the pin is behind the real 'latest'
+#      release (informational, --strict promotes). Robert's ask, 2026-08-08,
+#      after asking for fyrtaarn to be wired into the 3 workstation setup
+#      scripts: "have the harness check for new versions, verify checksums,
+#      all the usual spangly stuff." Checksum verification itself already
+#      happens live in the setup scripts (GitHub API digest field, same as
+#      assets[]'s github_release handling) -- this check doesn't duplicate
+#      that, it checks the pin's own structural validity and freshness.
 #
-# Nothing here touches a real host or needs a vault password. ONE exception to
-# "network access beyond localhost": check 13 (check_mermaid.py) genuinely
-# needs to reach kroki.io to render-test every mermaid diagram -- see its own
-# header for why a local syntax guess isn't good enough. Everything else is
+# Nothing here touches a real host or needs a vault password. Two exceptions
+# to "network access beyond localhost": check 13 (check_mermaid.py) needs to
+# reach kroki.io to render-test every mermaid diagram, and check 37
+# (check_workstation_tool_versions.py) needs the GitHub API to check
+# workstation_tools[] pins against real upstream releases -- see their own
+# headers for why a local guess isn't good enough. Both are network-optional
+# (unreachable = informational skip, not a hard failure). Everything else is
 # still safe to run any time, by anyone, on any clone, no network required.
 #
 # Usage:
@@ -540,6 +555,19 @@
 #               spoke) -- the general shape of "a topology-loop-based
 #               generator that doesn't exclude its own subject," not just
 #               the one instance already fixed.
+#   2026-08-08  Added check_workstation_tool_versions.py (section 37), Robert:
+#               "have the harness check for new versions, verify checksums,
+#               all the usual spangly stuff" after asking for fyrtaarn (his
+#               own BMC controller app, github.com/knightmare2600/fyrtaarn)
+#               to be wired into the 3 workstation setup scripts via a new
+#               benarbejde/asset_manifest.json workstation_tools[] category.
+#               Checksum verification itself lives in the setup scripts
+#               (live GitHub API digest, same pattern as assets[]'s
+#               github_release handling) -- this check's own job is
+#               structural: every pinned-tag asset still exists upstream
+#               (hard fail if not) and whether the pin is behind the real
+#               latest release (informational, --strict promotes -- bumping
+#               a pin is Robert's own deliberate call, not automatic).
 # ==============================================================================
 set -uo pipefail
 
@@ -1209,6 +1237,22 @@ else
   echo "$out"
   fail "Required host-local tool(s) missing -- see above. Failing because --strict was passed."
   FAILED_CHECKS+=("check_required_tools.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 37. Workstation tool versions — check_workstation_tool_versions.py
+# ------------------------------------------------------------------------------
+section "37. Workstation tool versions — check_workstation_tool_versions.py"
+
+wtv_args=()
+$STRICT && wtv_args+=("--strict")
+if out=$(python3 "${HERE}/check_workstation_tool_versions.py" "${wtv_args[@]}"); then
+  echo "$out"
+  success "workstation_tools[] pins are structurally valid (missing-upstream/stale-pin findings are informational unless --strict)."
+else
+  echo "$out"
+  fail "A workstation_tools[] pin is broken (asset removed upstream), or --strict was passed and a pin is stale -- see above."
+  FAILED_CHECKS+=("check_workstation_tool_versions.py")
 fi
 
 # ------------------------------------------------------------------------------

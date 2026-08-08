@@ -4,11 +4,17 @@
 bootstrap/Setup-Workstation.ps1
 Example Music Limited — Engineer workstation setup (Windows)
 ==============================================================================
-Two jobs, one script:
+Three jobs, one script:
   1. Install/confirm the tool set docs/ExampleMusic_Beginners_Guide.md §11
      requires on an engineer's own machine, via Chocolatey.
-  2. Populate bootstrap/web/'s upstream-sourced boot assets from
-     benarbejde/asset_manifest.json -- the same job
+  2. Install pinned-version workstation tools (currently: fyrtaarn, Robert's
+     own BMC controller app) from benarbejde/asset_manifest.json's
+     workstation_tools[] -- checksum-verified against the GitHub Releases
+     API, reinstalled automatically if the installed binary doesn't match
+     the manifest's pinned tag. Installed to C:\Tools\<name>\, added to the
+     Machine PATH.
+  3. Populate bootstrap/web/'s upstream-sourced boot assets from
+     benarbejde/asset_manifest.json's assets[]/archives[] -- the same job
      ansible/playbooks/bootstrap_assets/fetch-assets.yml used to do. Ported
      natively to PowerShell because ansible-playbook cannot run on Windows
      at all (a hard, long-standing Ansible limitation, not a repo gap) --
@@ -114,6 +120,13 @@ Changelog:
               results against live wimboot/OpenBSD sources and a synthetic
               multi-member zip. Windows-only parts (Chocolatey, curl.exe,
               elevation check, Windows Terminal paths) remain unverified.
+  2026-08-08  Added Install-WorkstationTools (job 2, fyrtaarn) -- same
+              Get-Sha256/Invoke-RestMethod/curl.exe pattern as the asset-fetch
+              functions below. Installs to C:\Tools\<name>\<name>.exe
+              (matching docs/gitleaks_guide.md's existing manual convention)
+              and registers it on the Machine PATH -- safe at Machine scope
+              since Install-Dependencies already enforces an elevated session
+              before this ever runs.
 ==============================================================================
 #>
 
@@ -262,7 +275,98 @@ function Set-WindowsTerminalFont {
 }
 
 # ==============================================================================
-# 2. Asset fetch -- three source_type handlers, matching
+# 2. Workstation tools -- benarbejde/asset_manifest.json's workstation_tools[]
+#    (added 2026-08-08, Robert -- real locally-run tools, not boot assets;
+#    see that file's own _readme note for the full reasoning)
+# ==============================================================================
+# Deliberately NOT the same "skip if already exists" idempotency as
+# Invoke-GithubReleaseFetch below -- these are pinned-version tools a harness
+# check nudges Robert to bump over time (check_workstation_tool_versions.py),
+# and a bumped pin needs to actually take effect on the next run without a
+# manual delete first. Verifies the INSTALLED binary's checksum against the
+# manifest's pinned tag/asset every run and only reinstalls on mismatch.
+# Installs to C:\Tools\<name>\<name>.exe, matching this repo's existing
+# C:\Tools\<name>\ convention (see docs/gitleaks_guide.md) -- and adds
+# C:\Tools\<name>\ to the Machine PATH so the tool runs bare, not just via
+# full path. Machine-scope is safe here: this whole script already requires
+# an elevated session (Test-IsAdministrator, checked before this ever runs).
+function Install-WorkstationTools {
+    if (-not (Test-Path $Manifest)) {
+        Write-Err2 "Manifest not found: $Manifest"
+        exit 1
+    }
+
+    $goarch = switch ($env:PROCESSOR_ARCHITECTURE) {
+        'AMD64' { 'amd64' }
+        'ARM64' { 'arm64' }
+        default {
+            Write-Warn2 "Unrecognised architecture $($env:PROCESSOR_ARCHITECTURE) -- skipping workstation_tools install (no matching asset)."
+            return
+        }
+    }
+    $platformKey = "windows-$goarch"
+
+    $data = Get-Content $Manifest -Raw | ConvertFrom-Json
+    foreach ($tool in $data.workstation_tools) {
+        $name = $tool.name
+        $repo = $tool.repo
+        $tag = $tool.tag
+        $assetName = $tool.assets.$platformKey
+        if (-not $assetName) {
+            Write-Warn2 "${name}: no asset for $platformKey in the manifest -- skipping."
+            continue
+        }
+
+        $installDir = "C:\Tools\$name"
+        $installPath = Join-Path $installDir "$name.exe"
+
+        Write-Info "Checking $name ($repo@$tag, $platformKey)..."
+
+        $apiUrl = "https://api.github.com/repos/$repo/releases/tags/$tag"
+        try {
+            $meta = Invoke-RestMethod -Uri $apiUrl -Headers @{ 'User-Agent' = 'example-music-setup-workstation' }
+        } catch {
+            Write-Err2 "  Failed to query $apiUrl"
+            continue
+        }
+        $asset = $meta.assets | Where-Object { $_.name -eq $assetName }
+        if (-not $asset) {
+            Write-Err2 "  Asset '$assetName' not found in $repo@$tag's release"
+            continue
+        }
+        $expectedHash = ($asset.digest -replace '^sha256:', '')
+
+        if (Test-Path $installPath) {
+            $currentHash = Get-Sha256 -Path $installPath
+            if ($currentHash -eq $expectedHash) {
+                Write-Ok "  $name already at $tag (sha256:$currentHash)"
+                continue
+            }
+            Write-Info "  Installed $name doesn't match pinned $tag -- reinstalling."
+        }
+
+        New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+        & curl.exe -fsSL -o $installPath $asset.browser_download_url
+
+        $actualHash = Get-Sha256 -Path $installPath
+        if ($actualHash -ne $expectedHash) {
+            Write-Err2 "  CHECKSUM MISMATCH for ${name}: expected $expectedHash, got $actualHash"
+            Remove-Item $installPath -Force
+            continue
+        }
+        Write-Ok "  $name installed to $installPath ($tag, sha256:$actualHash)"
+
+        $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+        if (($machinePath -split ';') -notcontains $installDir) {
+            [Environment]::SetEnvironmentVariable('Path', "$machinePath;$installDir", 'Machine')
+            $env:Path = "$env:Path;$installDir"
+            Write-Ok "  Added $installDir to the Machine PATH."
+        }
+    }
+}
+
+# ==============================================================================
+# 3. Asset fetch -- three source_type handlers, matching
 #    benarbejde/asset_manifest.json's own header exactly
 # ==============================================================================
 
@@ -442,5 +546,6 @@ function Get-MissingAssets {
 
 # ==============================================================================
 if ($DoDeps)   { Install-Dependencies }
+if ($DoDeps)   { Install-WorkstationTools }
 if ($DoAssets) { Get-MissingAssets }
 Write-Ok "Done."

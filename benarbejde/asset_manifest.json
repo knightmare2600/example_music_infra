@@ -42,6 +42,19 @@
     "",
     "GParted Live is x86_64 only -- it has never published an arm64 build.",
     "",
+    "workstation_tools[]: a SEPARATE category from assets[]/archives[] above -- these are real",
+    "locally-run tools installed onto an engineer's own machine (alongside install_deps()'s",
+    "apt/brew/choco packages in each setup script), not boot assets served from bootstrap/web/.",
+    "Each entry is pinned to an exact tag (never 'latest' -- Robert's own tool, reproducible",
+    "builds matter more here than always grabbing newest), with a per-platform asset_name map",
+    "keyed 'goos-goarch' (matches Go's own GOOS/GOARCH naming, which is how fyrtaarn's own release",
+    "pipeline names its build artifacts). Checksum verification uses the same GitHub Releases API",
+    "'digest' field as assets[]'s github_release handling -- nothing hardcoded to go stale.",
+    "check_workstation_tool_versions.py (at_have_ryggen_fri/) checks the pinned tag against the",
+    "real upstream 'latest' release and flags drift -- informational, since bumping the pin is a",
+    "deliberate human decision (a new release might need testing before every engineer's machine",
+    "picks it up), not something to silently auto-adopt.",
+    "",
     "Changelog:",
     "2026-07-27  Migrated from asset_manifest.yml (same schema, same verified URLs/tags/paths --",
     "            see project memory for the research trail). JSON instead of YAML so this parses",
@@ -69,7 +82,14 @@
     "            not just missing arm64 coverage. dest paths now match menu.ipxe v2.11's",
     "            klargoring/amd64/ + klargoring/arm64/ split. Added KERNEL_VERSION-{amd64,arm64}",
     "            too (not consumed by any code, but a real published release asset worth",
-    "            keeping fetchable alongside its vmlinuz/initrd)."
+    "            keeping fetchable alongside its vmlinuz/initrd).",
+    "2026-08-08  Added workstation_tools[] (new category, see _readme note above) with fyrtaarn",
+    "            (github.com/knightmare2600/fyrtaarn, Robert's own BMC controller app) -- pinned",
+    "            0.0.7.8, checked live against the real release (10 platform binaries + a",
+    "            SHA256SUMS.txt, all digests cross-verified against the GitHub API's own per-asset",
+    "            digest field before this entry was written). Robert: 'use that inside of those",
+    "            deployment scripts we wrote, and also have the harness check for new versions,",
+    "            verify checksums, all the usual spangly stuff.'"
   ],
 
   "assets": [
@@ -136,6 +156,27 @@
         { "archive_path": "bios/com32/lib/libcom32.c32", "dest": "hdt/libcom32.c32" },
         { "archive_path": "bios/com32/libutil/libutil.c32", "dest": "hdt/libutil.c32" }
       ]
+    }
+  ],
+
+  "workstation_tools": [
+    {
+      "name": "fyrtaarn",
+      "_comment": "Robert's own BMC controller app, self-contained Go binary, no runtime deps. Installed to /usr/local/bin/fyrtaarn (Linux/macOS) or C:\\Tools\\fyrtaarn\\fyrtaarn.exe (Windows, matching this repo's existing C:\\Tools\\<name>\\ convention -- see docs/gitleaks_guide.md). The 3 workstation setup scripts only consume linux-amd64/linux-arm64/darwin-amd64/darwin-arm64/windows-amd64/windows-arm64 -- the remaining entries (armv7, mips64el, mipsel, ppc64) are real published SBC/embedded builds kept here for completeness and for check_workstation_tool_versions.py's own existence/checksum verification, not currently installed by any script.",
+      "repo": "knightmare2600/fyrtaarn",
+      "tag": "0.0.7.8",
+      "assets": {
+        "linux-amd64": "fyrtaarn-linux-amd64",
+        "linux-arm64": "fyrtaarn-linux-arm64",
+        "linux-armv7": "fyrtaarn-linux-armv7",
+        "linux-mips64el": "fyrtaarn-linux-mips64el",
+        "linux-mipsel": "fyrtaarn-linux-mipsel",
+        "linux-ppc64": "fyrtaarn-linux-ppc64",
+        "darwin-amd64": "fyrtaarn-darwin-amd64",
+        "darwin-arm64": "fyrtaarn-darwin-arm64",
+        "windows-amd64": "fyrtaarn-windows-amd64.exe",
+        "windows-arm64": "fyrtaarn-windows-arm64.exe"
+      }
     }
   ]
 }
