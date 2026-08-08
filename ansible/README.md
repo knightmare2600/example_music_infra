@@ -344,13 +344,22 @@ blank answer skips just that host. Shared with `linux/tools.yml`'s identical mec
 
 ## meshcentral
 
+> **RETIRED 2026-08-08.** `EXAMSHCLD001` decommissioned and removed from
+> live inventory — TacticalRMM's own bundled MeshCentral (`## tacticalrmm`
+> below) is a confirmed, real-use replacement (Robert used it for actual
+> remote-access work 2026-08-07/08). This section and `playbooks/
+> meshcentral/` are kept as historical/reference material, not deleted —
+> see `playbooks/tacticalrmm/README.md`'s "EXAMSHCLD001 — RETIRED" section
+> for the full decision.
+
 Remote management platform, phase 1/2 (Robert's brief, 2026-08-04 — see
-project notes for the full spec). Bootstraps `EXAMSHCLD001`, a single CLD-LAN
-MeshCentral server providing remote desktop, remote terminal, interactive
-PowerShell/CMD, Linux shell access, and file transfer across the estate.
-Does **not** replace SaltStack (config management) or Chocolatey (Windows
-package management) — a pure remote-access platform, same non-negotiable
-split of responsibilities the whole platform brief specifies.
+project notes for the full spec). Bootstrapped `EXAMSHCLD001`, a single
+CLD-LAN MeshCentral server providing remote desktop, remote terminal,
+interactive PowerShell/CMD, Linux shell access, and file transfer across
+the estate. Does **not** replace SaltStack (config management) or
+Chocolatey (Windows package management) — a pure remote-access platform,
+same non-negotiable split of responsibilities the whole platform brief
+specifies.
 
 TLS is self-signed (MeshCentral's own zero-config default) rather than Let's
 Encrypt — confirmed with Robert that this box is strictly internal/
@@ -365,14 +374,10 @@ steps (Node.js, npm install, config, systemd, MOTD, nodeinfo). See
 
 | Playbook | What it does |
 |----------|-------------|
-| `meshcentral/meshcentral_server.yml` | Bootstraps EXAMSHCLD001 — hostname, static IP, packages, UFW, Node.js, MeshCentral install (npm, dedicated non-root user), config.json (self-signed TLS), systemd, MOTD, nodeinfo |
+| `meshcentral/meshcentral_server.yml` | Bootstrapped EXAMSHCLD001 — hostname, static IP, packages, UFW, Node.js, MeshCentral install (npm, dedicated non-root user), config.json (self-signed TLS), systemd, MOTD, nodeinfo |
 
-**Not yet live-tested against real hardware** — no Debian Trixie box
-available to test against directly as of 2026-08-04. See the playbook's own
-header and `playbooks/meshcentral/README.md`'s "Not yet built" section.
-
-**TacticalRMM, reverse proxy, monitoring, logging, backups, hardening,
-disaster recovery** — later phases of the platform brief, not started.
+**Reverse proxy, monitoring, logging, backups, hardening, disaster
+recovery** — later phases of the platform brief, not started.
 
 ---
 

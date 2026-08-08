@@ -231,9 +231,18 @@ per-agent Edit dialog above is the only path anyway.
 
 ## Not yet built
 
-- **`EXAMSHCLD001` (standalone MeshCentral) role reconsideration.** Built and
-  working (phase 1/2), but no longer the primary remote-access path now that
-  TacticalRMM's bundled MeshCentral is the intended one — revisit later,
-  not decided yet.
 - **Reverse proxy, monitoring, logging, backups, hardening, disaster
   recovery** — later phases of the platform brief, not started.
+
+## `EXAMSHCLD001` (standalone MeshCentral) — RETIRED 2026-08-08
+
+Decided, not just "revisit later" anymore: Robert used TacticalRMM's own
+bundled MeshCentral for real remote-access work on 2026-08-07/08 and
+confirmed it's a full replacement -- standalone `EXAMSHCLD001` is no longer
+needed. Removed from live inventory (`configs/inventory/cld.ini`,
+`configs/inventory/meshcentral.ini`, `host_vars/EXAMSHCLD001/`) -- its
+`192.168.69.13` address is free for reuse. `playbooks/meshcentral/` itself
+is kept as historical/reference material (see that role's own README,
+retitled RETIRED), not deleted -- same treatment this estate already gives
+other retired-but-real infrastructure (e.g. the FAL/ODE/BRK WireGuard hubs
+in `group_vars/firewalls/main.yml`).
