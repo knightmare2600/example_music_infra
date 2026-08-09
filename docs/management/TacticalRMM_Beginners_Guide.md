@@ -55,12 +55,35 @@ If none of these three entries exist yet in your own KeePassXC vault, that's a s
 
 ## 4. Deploying an Agent to an Endpoint
 
-This is the thing you'll do most often. Full detail (including the exact PowerShell commands) lives in `ansible/playbooks/tacticalrmm/README.md`'s "Step 5" — this section is the short version, worth knowing without going and reading that file every time.
+This is the thing you'll do most often.
 
 1. In the web UI: **Agents → + Add Agent**. Pick the target **Client** and **Site** (create them first under **Clients → + Add Client** / **+ Add Site** if they don't exist yet — nothing in this repo pre-creates Client/Site structure, it's purely web-UI-managed), and the agent type — `server` or `workstation`, matching the actual endpoint, don't default to `server` out of habit.
 2. This generates a **signed, time-limited download URL** (expires within about an hour) and a matching one-time `--auth` deployment token. Copy both fresh, every time — neither is reusable, and neither belongs in a committed doc, a script, or a chat message that outlives the deployment.
-3. On the endpoint, download and run the installer, then register the agent with the `--auth` token — see the README's Step 5 for the exact commands (they differ slightly by whether it's the first time an agent's been deployed to that endpoint or a reinstall).
-4. `--insecure` is required on the registration step too — same self-signed certificate as the server itself. Omitting it fails the install outright, not silently.
+
+On the Windows endpoint, in `pwsh.exe` (not `powershell.exe`):
+
+```powershell
+# 1. Download the installer -- <signed-url> and the version/arch in the
+#    filename both come straight from the web UI dialog above, copy exactly
+iwr '<signed-download-url-from-web-ui>' -OutFile tacticalagent-v<version>-windows-<arch>.exe
+
+# 2. Silent install of the installer itself
+tacticalagent-v<version>-windows-<arch>.exe /VERYSILENT /SUPPRESSMSGBOXES
+
+# 3. Brief pause -- lets the installer settle before the next step registers
+#    the agent with the backend
+ping 127.0.0.1 -n 7
+
+# 4. Register the agent with EXARMMCLD001
+"C:\Program Files\TacticalAgent\tacticalrmm.exe" -m install `
+  --api https://api.jukebox.internal `
+  --client-id <client-id> --site-id <site-id> `
+  --agent-type server `
+  --auth <auth-token-from-step-1> `
+  --rdp --ping --insecure
+```
+
+`--insecure` is **required** on the registration step too — same self-signed certificate as the server itself; omitting it fails the install outright, not silently. `--rdp`/`--ping` are optional per-endpoint feature toggles (enable RDP, respond to ICMP), not required for a successful install. `--client-id`/`--site-id` are the numeric IDs from the web UI's Add Agent dialog, not the Client/Site names themselves.
 
 **If the install fails with "Unable to download the mesh agent from the RMM"** — see §6 below before assuming the whole build is broken. This is a known, understood failure mode with a specific fix, not a sign the server needs rebuilding.
 
@@ -97,7 +120,27 @@ node node_modules/meshcentral/meshctrl.js --url wss://mesh.jukebox.internal:443 
   --loginuser <user> --loginpass <pass> ListDeviceGroups
 ```
 
-If `TacticalRMM` genuinely isn't listed, create it directly with `AddDeviceGroup` rather than re-running the whole playbook — see the README's own Troubleshooting section for the exact command shape. Don't assume a clean exit code from any `meshctrl.js` command proves the action landed server-side — verify with a read-back command like `ListDeviceGroups` immediately after, the same lesson this exact bug taught during the original build.
+If `TacticalRMM` genuinely isn't listed, create it directly rather than re-running the whole playbook, as the `tacticalrmm` service user, from `/meshcentral`:
+
+```bash
+sudo -u tacticalrmm bash -c '
+  cd /meshcentral
+  node node_modules/meshcentral/meshctrl.js \
+    --url wss://mesh.jukebox.internal:443 \
+    --loginuser <user> --loginpass <pass> \
+    AddDeviceGroup --name TacticalRMM
+'
+```
+
+(credentials from KeePassXC, `EXARMMCLD001-meshcentral-admin`)
+
+**Don't stop there and assume it worked.** A clean exit code from `meshctrl.js` is not proof the group actually landed server-side — that's exactly the class of bug this whole failure mode traces back to (the original build's own `AddDeviceGroup` call also exited 0 without the group actually existing, due to a readiness-check race). Always verify with a read-back immediately after:
+
+```bash
+sudo -u tacticalrmm bash -c "cd /meshcentral && node node_modules/meshcentral/meshctrl.js --url wss://mesh.jukebox.internal:443 --loginuser <user> --loginpass <pass> ListDeviceGroups"
+```
+
+Confirm `TacticalRMM` genuinely appears in the output before considering this fixed.
 
 ---
 
@@ -105,8 +148,8 @@ If `TacticalRMM` genuinely isn't listed, create it directly with `AddDeviceGroup
 
 | I need to… | Go to |
 |-----------|-------|
-| Deploy an agent, full command detail | `ansible/playbooks/tacticalrmm/README.md` §"Step 5" |
-| Understand how `EXARMMCLD001` was built | `ansible/playbooks/tacticalrmm/README.md`, `ansible/playbooks/tacticalrmm/PLAN-tacticalrmmme.md` |
+| Deploy or move an agent, troubleshoot the mesh-agent bug | §4/§5/§6 above — this document is now the complete, self-contained reference for all of it |
+| Understand how `EXARMMCLD001` was built, or rebuild it | `ansible/playbooks/tacticalrmm/README.md`, `ansible/playbooks/tacticalrmm/PLAN-tacticalrmmme.md` |
 | Learn the general TacticalRMM web UI (dashboards, alert policies, automated tasks) | `https://docs.tacticalrmm.com` — upstream, not this repo |
 | Understand why standalone MeshCentral (`EXAMSHCLD001`) is gone | `ansible/playbooks/tacticalrmm/README.md`'s "EXAMSHCLD001 — RETIRED" section |
 | Find a site's IP / subnet / naming convention | [ExampleMusic_Beginners_Guide.md](../ExampleMusic_Beginners_Guide.md) — the estate-wide guide this document is a companion to |
