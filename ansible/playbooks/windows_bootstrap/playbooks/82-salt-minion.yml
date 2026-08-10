@@ -80,13 +80,25 @@
 # re-applying those three PRs (or whatever they've evolved into) by hand. See
 # docs/buildsheets/buildsheet-salt-minion.md for the full caveat.
 #
-# FUTURE WORK -- custom grains (deferred, Robert has his own notes to bring back first, see
-# memory): when that lands, implement it as its OWN task(s), separate from the install task
-# above -- must not be nested inside or conditioned on "Salt wasn't already installed". Grains
-# configuration needs to be able to run and be verified/refreshed on every play run
-# regardless of whether this particular run happened to install Salt fresh or found it
-# already there -- conflating the two would mean grains silently never get (re-)applied on an
-# already-bootstrapped node.
+# Custom grains: NOT this file's job, and not future work either -- already built and live
+# (2026-07-20) as salt/states/grains/init.sls, wired into salt/states/top.sls for every
+# minion. This comment previously called it deferred future work; that was stale by the time
+# it mattered -- corrected 2026-08-10. See docs/management/Salt_Beginners_Guide.md's
+# "Automatic Highstate" and "Querying and Confirming Custom Grains" sections for where the
+# rendered file actually lives and how to check it, and the automatic-highstate config below
+# for how grains/wintools actually get applied without someone remembering to run state.apply
+# by hand.
+#
+# Automatic highstate (added 2026-08-10): salt/states/top.sls declares wintools+grains for
+# every minion, but nothing on the master or minion triggers state.apply on its own --
+# without this, those states only ever apply if a human runs `salt <target> state.apply`
+# from the master. Fixed by dropping a minion.d/ config include (Salt's own convention --
+# default_include: minion.d/*.conf is the out-of-the-box minion default, merges alongside
+# the base minion file the MSI's own MASTER/MINION_ID properties write) setting
+# startup_states: highstate (applies once when the minion service starts -- covers the very
+# first check-in right after this playbook runs) plus a periodic schedule: block (re-applies
+# on an interval after that, so a stale grains file from a later rename/site move, or drifted
+# wintools state, self-heals without needing anyone to remember to trigger it by hand).
 #
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/82-salt-minion.yml
@@ -106,6 +118,13 @@
 #                     salt_minion_msi_filenames map (real vendor/build
 #                     filenames, not just an arch suffix) and both MSIs
 #                     bumped to 3008.0, resolving v1.1.0's version mismatch.
+# v1.3.0  2026-08-10  Automatic highstate -- drops a minion.d/ config
+#                     include (startup_states: highstate + a periodic
+#                     schedule: block) so top.sls's wintools+grains states
+#                     actually apply on their own instead of needing a
+#                     manual `salt <target> state.apply`. Removed the
+#                     stale "custom grains deferred" header comment --
+#                     grains have been live since 2026-07-20.
 # =============================================================================
 
 - name: Windows — Salt minion install
@@ -121,6 +140,13 @@
     salt_minion_msi_filenames:
       x86_64: Salt-Minion-3008.0-Py3-AMD64.msi
       arm64: Salt-Minion-3008.0-Py3-ARM64.msi
+
+    # First, conservative default -- re-applies top.sls's wintools+grains states every hour,
+    # splayed over 5 minutes so a fleet-wide restart/reboot doesn't have every minion hit the
+    # master in the same instant. No existing convention to match elsewhere in this repo
+    # (nothing else schedules a recurring Salt job); adjust here if an hour proves too
+    # frequent/infrequent once this is live.
+    salt_minion_highstate_interval_minutes: 60
 
   tasks:
 
@@ -160,4 +186,46 @@
       ansible.windows.win_file:
         path: "C:\\Windows\\Temp\\Salt-Minion-Setup.msi"
         state: absent
+      tags: salt
+
+    # Salt's own out-of-the-box minion default is default_include: minion.d/*.conf -- any
+    # .conf dropped here merges alongside the base minion file the MSI's MASTER/MINION_ID
+    # properties already wrote, same "config.d/ drop-in" pattern 20-saltgui.yml already uses
+    # on the master side (/etc/salt/master.d/saltgui.conf). Ensuring the directory exists
+    # first rather than assuming the installer created it -- confirmed it normally does, but
+    # this is one win_file task, cheap insurance against a future installer change silently
+    # breaking the win_copy below.
+    - name: Ensure minion.d config drop-in directory exists
+      ansible.windows.win_file:
+        path: "C:\\ProgramData\\Salt Project\\Salt\\conf\\minion.d"
+        state: directory
+      tags: salt
+
+    # See this file's own "Automatic highstate" header section for why this exists.
+    - name: Configure automatic highstate (startup + periodic schedule)
+      ansible.windows.win_copy:
+        content: |
+          # Written by 82-salt-minion.yml -- see docs/management/Salt_Beginners_Guide.md's
+          # "Automatic Highstate" section for what this does and why.
+          startup_states: highstate
+
+          schedule:
+            example_music_periodic_highstate:
+              function: state.apply
+              minutes: {{ salt_minion_highstate_interval_minutes }}
+              splay: 300
+        dest: "C:\\ProgramData\\Salt Project\\Salt\\conf\\minion.d\\example-music-schedule.conf"
+      register: _salt_minion_schedule_conf
+      tags: salt
+
+    # Only takes effect on the minion's next start -- restart it now rather than leaving the
+    # newly-written config inert until the box next reboots. Only fires when the config
+    # genuinely changed (win_copy's own idempotency), matching this repo's standing
+    # "don't change if not broken" convention -- a routine re-run against an
+    # already-configured node does no work and doesn't bounce the service.
+    - name: Restart Salt minion service to pick up schedule config
+      ansible.windows.win_service:
+        name: salt-minion
+        state: restarted
+      when: _salt_minion_schedule_conf.changed
       tags: salt
