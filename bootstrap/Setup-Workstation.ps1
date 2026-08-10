@@ -127,6 +127,9 @@ Changelog:
               and registers it on the Machine PATH -- safe at Machine scope
               since Install-Dependencies already enforces an elevated session
               before this ever runs.
+  2026-08-10  Added winevdm to the package list -- Robert's ask, 16-bit
+              Windows app compatibility layer. Confirmed as a real, current
+              Chocolatey package (0.8.1 on the community feed) before adding.
 ==============================================================================
 #>
 
@@ -192,7 +195,8 @@ function Install-Dependencies {
         'pstools',
         'microsoft-windows-terminal',   # confirmed real package ID, 2026-07-27
         'nerd-fonts-jetbrainsmono',      # confirmed real package ID, 2026-07-27 -- NOT the deprecated JetBrainsMonoNF
-        'powershell-core'
+        'powershell-core',
+        'winevdm'                        # 16-bit Windows app compatibility layer, Robert's ask, 2026-08-10
     )
     choco install -y @packages
 
