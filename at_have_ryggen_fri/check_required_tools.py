@@ -55,6 +55,18 @@ template `salt_saltgui_password | password_hash('sha512')`. A Python
 module isn't a PATH binary -- `shutil.which()` can never find it -- so this
 needed a second check_type, not just a new REQUIRED_TOOLS entry.
 
+snmpget/snmpset (added 2026-08-10, Robert's own ask while reviewing the SNMP
+Phase 1 backlog): `ansible/playbooks/snmp/sysinfo.yml` already fails loudly
+with its own real error message if either is missing (a `which` loop in its
+own pre_tasks, same intent as this harness check) -- added here too so the
+gap surfaces before an operator gets as far as running the playbook, same
+"catch it proactively" reasoning as every other entry. Two separate entries,
+not one -- sysinfo.yml checks GET/SET tooling independently, matched here at
+the same granularity. Windows has no confirmed Chocolatey package for
+either (checked, not guessed -- only `snmpb`, an unrelated MIB browser, came
+up) -- the install line points at net-snmp's own Windows binaries instead of
+inventing a package-manager one-liner that doesn't exist.
+
 Exit code: 0 unless a required tool is missing (informational; --strict
 promotes any missing tool to a hard failure).
 """
@@ -87,6 +99,30 @@ REQUIRED_TOOLS = {
             "Darwin": "brew install python3 && python3 -m pip install --user passlib "
                       "(no Homebrew formula for the module itself)",
             "Windows": "python -m pip install --user passlib",
+        },
+    },
+    "snmpget": {
+        "check_type": "binary",
+        "required_by": [
+            "ansible/playbooks/snmp/sysinfo.yml (GET side of the sysLocation rollout)",
+        ],
+        "install": {
+            "Linux": "apt install snmp",
+            "Darwin": "brew install net-snmp (keg-only -- add $(brew --prefix net-snmp)/bin to PATH)",
+            "Windows": "no Chocolatey package confirmed -- download the Windows binaries "
+                       "directly from https://net-snmp.sourceforge.io/download.html",
+        },
+    },
+    "snmpset": {
+        "check_type": "binary",
+        "required_by": [
+            "ansible/playbooks/snmp/sysinfo.yml (SET side of the sysLocation rollout)",
+        ],
+        "install": {
+            "Linux": "apt install snmp",
+            "Darwin": "brew install net-snmp (keg-only -- add $(brew --prefix net-snmp)/bin to PATH)",
+            "Windows": "no Chocolatey package confirmed -- download the Windows binaries "
+                       "directly from https://net-snmp.sourceforge.io/download.html",
         },
     },
 }
