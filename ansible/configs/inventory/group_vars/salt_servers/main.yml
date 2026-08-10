@@ -22,10 +22,11 @@ salt_domain: "{{ (lookup('file', ad_forest_json_path | default('/etc/example-mus
 # Salt version -- master and minions MUST run matching major.minor lines.
 # This pins the apt install to the 3008.x line via an apt preferences file
 # (Section 5 below) rather than an exact Debian package suffix, which would
-# be brittle to guess. If you bump this, you MUST also fetch a matching
-# 3008.x Windows installer and replace bootstrap/web/windows/Salt-Minion-
-# Setup.msi -- see docs/buildsheets/buildsheet-salt-minion.md, which
-# references this same value.
+# be brittle to guess. If you bump this, you MUST also fetch matching
+# Windows installers for both bootstrap/web/windows/x86_64/ and .../arm64/
+# (real vendor/build filenames, e.g. Salt-Minion-3008.0-Py3-AMD64.msi -- see
+# docs/buildsheets/buildsheet-salt-minion.md, which references this same
+# value) and update 82-salt-minion.yml's salt_minion_msi_filenames map.
 # -----------------------------------------------------------------------------
 salt_version_major: "3008"
 
