@@ -49,6 +49,20 @@ a worked usage example containing this exact literal string, which would
 otherwise self-match as a phantom failure the same way a similar comment
 once did for a different check in this harness.
 
+Found 2026-08-10, a third variant: 82-salt-minion.yml's ARM64-support change
+introduced the first playbook_dir path with a genuine RUNTIME Jinja
+expression embedded in the trailing filename ("Salt-Minion-Setup-
+{{ host_arch }}.msi", host_arch resolved per-target at play time, not
+knowable statically). The original tail pattern excluded "{"/"}" outright,
+so it silently truncated the match at "Salt-Minion-Setup-" and reported a
+real, correctly-committed file as unresolvable -- a false positive, not a
+real bug. Fixed generically rather than special-cased to this one file:
+the tail pattern now matches a complete {{ ... }} block as a unit, and
+resolution substitutes any embedded Jinja expression with a glob wildcard,
+requiring at least one real file to match rather than one exact literal
+path -- holds for any future playbook_dir path with a runtime-templated
+segment, not just this one.
+
 Exit code: 0 if every playbook_dir-relative path resolves, 1 otherwise.
 """
 import re
@@ -58,9 +72,33 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ANSIBLE_DIR = REPO_ROOT / "ansible"
 
+JINJA_EXPR = re.compile(r"\{\{[^{}]*\}\}")
+
+
+def path_exists(base_dir, tail):
+    """A literal tail must exist exactly. A tail containing a runtime Jinja
+    expression (e.g. "Salt-Minion-Setup-{{ host_arch }}.msi") can't be
+    resolved to one real path statically -- substitute each {{ ... }} with
+    a glob wildcard instead and require at least one real file to match,
+    so a genuinely broken path (typo, wrong directory) still fails while a
+    correct runtime-templated one passes."""
+    if not JINJA_EXPR.search(tail):
+        resolved = (base_dir / tail).resolve()
+        return resolved.exists(), resolved
+    glob_pattern = JINJA_EXPR.sub("*", tail)
+    resolved = (base_dir / glob_pattern).resolve()
+    matches = list(base_dir.glob(glob_pattern))
+    return len(matches) > 0, resolved
+
 # {{ playbook_dir }}, then one or more /.. segments, then a trailing path
-# fragment up to whitespace, a quote, or a closing brace.
-PATTERN = re.compile(r"\{\{\s*playbook_dir\s*\}\}((?:/\.\.)+)/([^\s\"'{}]+)")
+# fragment up to whitespace or a quote. The fragment itself may contain a
+# runtime Jinja expression (e.g. "Salt-Minion-Setup-{{ host_arch }}.msi",
+# added 2026-08-10 for ARM64 Salt minion support) -- matched as a complete
+# {{ ... }} unit (internal spaces allowed) rather than excluded outright,
+# since the original tail pattern stopped dead at the first "{" and
+# silently truncated the match instead of flagging it as unresolvable.
+TAIL = r"(?:[^\s\"'{}]|\{\{[^{}]*\}\})+"
+PATTERN = re.compile(r"\{\{\s*playbook_dir\s*\}\}((?:/\.\.)+)/(" + TAIL + r")")
 
 # example_music_gate_repo_root: "{{ playbook_dir }}(/..)+ " -- bare, no
 # trailing path fragment, only ever combined with /benarbejde later inside
@@ -84,8 +122,9 @@ def main():
                 up_segments, tail = match.groups()
                 checked += 1
                 levels = up_segments.count("/..")
-                resolved = (path.parent / ("../" * levels) / tail).resolve()
-                if not resolved.exists():
+                base_dir = (path.parent / ("../" * levels)).resolve()
+                exists, resolved = path_exists(base_dir, tail)
+                if not exists:
                     failures.append((rel, match.group(0), levels, resolved))
 
             for match in GATE_ROOT_PATTERN.finditer(line):

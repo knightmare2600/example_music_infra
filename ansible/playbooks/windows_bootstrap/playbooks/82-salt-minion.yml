@@ -55,6 +55,22 @@
 # against installed products and skips the install if already present. Re-running this
 # playbook against an already-bootstrapped node does no work.
 #
+# ARM64 (added 2026-08-10, Robert): reuses tasks/arch_facts.yml's own host_arch fact/naming
+# convention (x86_64/arm64/x86, matching 50-binaries.yml's established pattern) rather than
+# inventing a new one -- two arch-suffixed MSIs now live side by side in bootstrap/web/windows/
+# (Salt-Minion-Setup-x86_64.msi, Salt-Minion-Setup-arm64.msi), selected by the same host_arch
+# fact every other arch-aware Windows playbook already uses. Unlike the x86_64 build (Salt
+# Project's own official release, SHA256-verified against Broadcom's response header -- see
+# docs/buildsheets/buildsheet-salt-minion.md), the arm64 build is NOT an official upstream
+# release -- native Windows arm64 support for the Salt minion doesn't exist upstream yet.
+# It's a custom build tracking three still-OPEN, unmerged PRs (salt#70003, relenv#318,
+# pymssql#1013 -- confirmed live against the GitHub API before this comment was written, all
+# three genuinely open, none merged) that together add the arm64 build capability. Treat this
+# build as experimental: it can't be refreshed the same "fetch + verify vendor checksum" way
+# as the x86_64 one, since there's no vendor release to fetch from -- rebuilding it means
+# re-applying those three PRs (or whatever they've evolved into) by hand. See that same
+# buildsheet section for the full caveat.
+#
 # FUTURE WORK -- custom grains (deferred, Robert has his own notes to bring back first, see
 # memory): when that lands, implement it as its OWN task(s), separate from the install task
 # above -- must not be nested inside or conditioned on "Salt wasn't already installed". Grains
@@ -71,6 +87,11 @@
 # Version history
 # =============================================================================
 # v1.0.0  2026-07-20  Initial release.
+# v1.1.0  2026-08-10  ARM64 support -- host_arch-based MSI selection (reuses
+#                     tasks/arch_facts.yml/50-binaries.yml's own convention),
+#                     Salt-Minion-Setup-x86_64.msi renamed from the previous
+#                     unsuffixed filename, Salt-Minion-Setup-arm64.msi added
+#                     (custom build, see header for the real caveat).
 # =============================================================================
 
 - name: Windows — Salt minion install
@@ -78,9 +99,22 @@
   gather_facts: false
   tasks:
 
+    - name: Detect CPU architecture
+      include_tasks: ../tasks/arch_facts.yml
+      tags: salt
+
+    - name: Fail loudly on an architecture with no Salt minion MSI at all
+      ansible.builtin.fail:
+        msg: >-
+          host_arch={{ host_arch }} has no Salt minion MSI in
+          bootstrap/web/windows/ -- only x86_64 (official) and arm64
+          (custom build, see this playbook's own header) exist.
+      when: host_arch not in ['x86_64', 'arm64']
+      tags: salt
+
     - name: Copy Salt minion MSI to the target host
       ansible.windows.win_copy:
-        src: "{{ playbook_dir }}/../../../../bootstrap/web/windows/Salt-Minion-Setup.msi"
+        src: "{{ playbook_dir }}/../../../../bootstrap/web/windows/Salt-Minion-Setup-{{ host_arch }}.msi"
         dest: "C:\\Windows\\Temp\\Salt-Minion-Setup.msi"
       tags: salt
 
