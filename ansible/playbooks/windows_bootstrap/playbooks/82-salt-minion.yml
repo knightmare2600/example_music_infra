@@ -125,6 +125,12 @@
 #                     manual `salt <target> state.apply`. Removed the
 #                     stale "custom grains deferred" header comment --
 #                     grains have been live since 2026-07-20.
+# v1.3.1  2026-08-10  bootstrap/web/windows/x86_64/ renamed to .../amd64/
+#                     by Robert, same day -- added salt_minion_msi_dirs to
+#                     map host_arch to the real folder name rather than
+#                     assuming they match. Rest of that folder's own
+#                     contents/naming deliberately untouched -- more
+#                     cleanup still to come there, not this file's job.
 # =============================================================================
 
 - name: Windows — Salt minion install
@@ -140,6 +146,16 @@
     salt_minion_msi_filenames:
       x86_64: Salt-Minion-3008.0-Py3-AMD64.msi
       arm64: Salt-Minion-3008.0-Py3-ARM64.msi
+
+    # bootstrap/web/windows/x86_64/ renamed to .../amd64/ by Robert (2026-08-10, same day) --
+    # host_arch itself (tasks/arch_facts.yml) still resolves to "x86_64", so this maps that
+    # value to the real on-disk folder name rather than assuming they match. arm64's folder
+    # wasn't renamed, so it maps to itself. Deliberately only fixing this path lookup, not
+    # arch_facts.yml/50-binaries.yml or the rest of that folder's own contents/naming --
+    # Robert's explicit "don't touch it yet", there's more cleanup still to come there.
+    salt_minion_msi_dirs:
+      x86_64: amd64
+      arm64: arm64
 
     # First, conservative default -- re-applies top.sls's wintools+grains states every hour,
     # splayed over 5 minutes so a fleet-wide restart/reboot doesn't have every minion hit the
@@ -165,7 +181,7 @@
 
     - name: Copy Salt minion MSI to the target host
       ansible.windows.win_copy:
-        src: "{{ playbook_dir }}/../../../../bootstrap/web/windows/{{ host_arch }}/{{ salt_minion_msi_filenames[host_arch] }}"
+        src: "{{ playbook_dir }}/../../../../bootstrap/web/windows/{{ salt_minion_msi_dirs[host_arch] }}/{{ salt_minion_msi_filenames[host_arch] }}"
         dest: "C:\\Windows\\Temp\\Salt-Minion-Setup.msi"
       tags: salt
 
