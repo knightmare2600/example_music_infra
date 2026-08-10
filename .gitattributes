@@ -144,3 +144,14 @@ bootstrap/amt-sdk/**                 filter=lfs diff=lfs merge=lfs -text
 # tool to assist migrating ESX to PVE, ~43.5MB. Filename-specific rule rather than moving it into
 # a new subdirectory of its own -- not reorganising a file the way Robert placed it without asking.
 bootstrap/starwindconverter.exe      filter=lfs diff=lfs merge=lfs -text
+
+# Salt Windows minion installers, dropped directly in bootstrap/web/windows/ (2026-08-10) -- the
+# x86_64 one is an official Salt Project release (45MB), the arm64 one is Robert's own custom
+# build tracking 3 still-unmerged upstream PRs (70MB, see docs/buildsheets/
+# buildsheet-salt-minion.md and 82-salt-minion.yml). Pattern-scoped to these two files, not the
+# whole windows/ directory -- that directory also holds scripts/unattend XML that should stay
+# plain git-tracked text, not go through the LFS filter. Not retroactively migrated (same
+# "prospective only, not a history rewrite" call already made for bootstrap/web/debian/ etc.
+# above) -- these two files' own existing commits predate this rule; only re-committed here so
+# they're LFS-backed going forward.
+bootstrap/web/windows/Salt-Minion-Setup-*.msi filter=lfs diff=lfs merge=lfs -text
