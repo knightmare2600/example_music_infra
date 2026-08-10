@@ -71,6 +71,12 @@
 # re-applying those three PRs (or whatever they've evolved into) by hand. See that same
 # buildsheet section for the full caveat.
 #
+# KNOWN, UNRESOLVED VERSION MISMATCH: confirmed directly from the committed MSI's own internal
+# metadata, the arm64 build is "Salt Minion 3007.0+0na.fc35254" (a 3007.x dev build) -- not the
+# 3008.x line group_vars/salt_servers/main.yml's salt_version_major pins the master to. Flagged,
+# not fixed or worked around -- whether this actually works against a 3008.x master is genuinely
+# unconfirmed, not just unlikely-but-probably-fine. See the buildsheet's own callout.
+#
 # FUTURE WORK -- custom grains (deferred, Robert has his own notes to bring back first, see
 # memory): when that lands, implement it as its OWN task(s), separate from the install task
 # above -- must not be nested inside or conditioned on "Salt wasn't already installed". Grains
