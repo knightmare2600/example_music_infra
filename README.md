@@ -349,6 +349,18 @@ Native ARM64 binaries for tools that either lacked them entirely or only offered
 | [proxmoxbmc](https://github.com/knightmare2600/proxmoxbmc) | Fork adding Debian `.deb` packaging, which was conspicuously absent |
 | [ScreenRes](https://github.com/knightmare2600/ScreenRes) | WinPE native ARM64 binary — handy when travelling with an M1 MacBook |
 
+## Upstream Contributions
+
+Pull requests submitted directly to other projects' own repositories — no separate fork or port repo of mine involved, just patches sent upstream. Distinct from Porting Work above (which are my own maintained forks/ports).
+
+| Project | Pull Request | Description |
+|---|---|---|
+| [salt](https://github.com/saltstack/salt) | [#70003](https://github.com/saltstack/salt/pull/70003) | Add native Windows arm64 minion MSI support |
+| [relenv](https://github.com/saltstack/relenv) | [#318](https://github.com/saltstack/relenv/pull/318) | Windows arm64 support (Salt's own relocatable Python environment builder — a real dependency of the minion build pipeline) |
+| [pymssql](https://github.com/pymssql/pymssql) | [#1013](https://github.com/pymssql/pymssql/pull/1013) | Add native Windows arm64 wheel builds (a Salt dependency needed for the ARM64 build to complete at all) |
+
+All three are open, unmerged as of 2026-08-10 — together they're what made a native ARM64 Windows Salt minion build possible at all. Used here to produce a custom `Salt-Minion-Setup-arm64.msi` (see `docs/buildsheets/buildsheet-salt-minion.md`) ahead of any of this landing in an official upstream release.
+
 ## Silly Season
 
 Because the pointy wee guy with heating problems downstairs (the devil) makes work for idle hands, and the motto of [my town](https://en.wikipedia.org/wiki/List_of_mottos) is:
