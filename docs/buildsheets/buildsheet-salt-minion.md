@@ -2,7 +2,7 @@
 
 **Document ID:** NET-BUILD-SALT-MINION-001
 **Classification:** Internal — Network Operations
-**Last Updated:** 2026-07-20
+**Last Updated:** 2026-08-10 — ARM64 minion support added (custom build, see its own callout below; not an official Salt Project release)
 **Signed off by:** ___________________________  Date: ___________
 
 ---
@@ -67,7 +67,7 @@ buildsheet's manual fallback below is for everything else (existing fleet, hand-
 
 ## Getting the installer onto the provisioning server / into the repo
 
-`bootstrap/web/windows/Salt-Minion-Setup.msi` (AMD64, 3008.2) is fetched and **committed to
+`bootstrap/web/windows/Salt-Minion-Setup-x86_64.msi` (3008.2) is fetched and **committed to
 this repo** — SHA256 verified against Broadcom's own `X-Checksum-Sha256` response header
 (`bcfdd77f35fe62b1402ce9d4920c087d1703c44f2f3d6cde6761c8ab127a17fa`) before being placed here,
 same "don't guess a source, verify before trusting a binary" standard already applied to
@@ -77,26 +77,46 @@ binaries aren't committed" convention (see `docs/bootstrap/bootstrapping.md` §2
 README.md` already used to justify committing the Sysinternals/jq/etc. binaries, and Salt's
 installers are Apache-2.0, an easier call than those.
 
-`82-salt-minion.yml` pushes this committed MSI directly via `win_copy` (`{{ playbook_dir
-}}/../../../../bootstrap/web/windows/Salt-Minion-Setup.msi`) — no HTTP fetch, no VRK
-provisioning server involved for this specific step, since it's Ansible pushing a file it
-already has, not the target machine pulling one over the network.
+`82-salt-minion.yml` pushes the arch-matching committed MSI directly via `win_copy` (detects
+`host_arch` via `tasks/arch_facts.yml`, same convention `50-binaries.yml` already established,
+then selects `Salt-Minion-Setup-{{ host_arch }}.msi`) — no HTTP fetch, no VRK provisioning
+server involved for this specific step, since it's Ansible pushing a file it already has, not
+the target machine pulling one over the network.
 
-> **ARM64 does not exist for Windows Salt minions.** Checked directly against the real
-> `packages.broadcom.com` directory listing for 3008.2 (2026-07-20) — only four files are
-> published: `Salt-Minion-3008.2-Py3-AMD64-Setup.exe`, `Salt-Minion-3008.2-Py3-AMD64.msi`,
-> and 32-bit `x86` equivalents of both. No ARM64 build in any format. Salt's ARM64 packaging
-> (confirmed via the Salt Project's own downloads page) is Linux-only; Windows minions are
-> AMD64 (or 32-bit x86) only, regardless of the 3008.x line staying current.
+> **ARM64 — real now, but read this before assuming it's "just another build."**
+> `Salt-Minion-Setup-arm64.msi` exists in this repo (added 2026-08-10, Robert) and
+> `82-salt-minion.yml` will use it automatically on an ARM64 target — but it is **not** an
+> official Salt Project release. Checked directly against the real `packages.broadcom.com`
+> directory listing for 3008.2: only four files are published there — AMD64 and 32-bit `x86`
+> builds of the `.exe`/`.msi`, nothing ARM64. Native Windows ARM64 support for the Salt
+> minion doesn't exist upstream yet; it's tracked across three still-**open**, unmerged pull
+> requests (confirmed live against the GitHub API before writing this, all three genuinely
+> open, none merged as of 2026-08-10):
+>
+> - [salt#70003](https://github.com/saltstack/salt/pull/70003) — "Add native Windows arm64
+>   minion MSI support"
+> - [relenv#318](https://github.com/saltstack/relenv/pull/318) — "Windows arm64 support"
+>   (relenv is Salt's own relocatable Python environment builder, a real dependency of the
+>   minion build pipeline)
+> - [pymssql#1013](https://github.com/pymssql/pymssql/pull/1013) — "Add native Windows arm64
+>   wheel builds" (a Salt dependency, needed for the build to complete on ARM64 at all)
+>
+> `Salt-Minion-Setup-arm64.msi` is a custom build assembled using these three in-progress
+> patches together. Treat it as experimental: there's no vendor release to re-fetch if it
+> needs updating (unlike the x86_64 build below), no vendor-published checksum to verify it
+> against, and the three PRs it depends on could still change materially, get abandoned, or
+> land upstream in a different shape before merging. Rebuilding it means re-applying whatever
+> those PRs have evolved into by hand, not re-running a fetch script. See the root `README.md`'s
+> "Upstream Contributions" section for the same three links in context.
 
 > **Version alignment — read before fetching a replacement.** `EXASLTCLD001` (the master,
 > `ansible/playbooks/salt/playbooks/10-master.yml`) pins its Debian package install to
-> `group_vars/salt_servers/main.yml`'s `salt_version_major` (currently `3008`). The Windows
-> installer here **must be from the same major line** — master and minions on mismatched
-> major versions is an unsupported combination upstream. If you bump one, bump both, in the
-> same change.
+> `group_vars/salt_servers/main.yml`'s `salt_version_major` (currently `3008`). Both Windows
+> installers here **must be from the same major line** as the master — master and minions on
+> mismatched major versions is an unsupported combination upstream. If you bump one, bump
+> all three (master, x86_64 minion, arm64 minion), in the same change.
 
-To refresh when `salt_version_major` bumps:
+To refresh the **x86_64** build when `salt_version_major` bumps:
 
 ```
 1. Fetch the matching-major-line Windows installer from Salt Project's repository:
@@ -106,11 +126,15 @@ To refresh when `salt_version_major` bumps:
     no longer serves current releases)
 2. Verify the SHA256 against the download response's own X-Checksum-Sha256 header (or
    packages.broadcom.com's published checksum) before trusting the file
-3. Rename to Salt-Minion-Setup.msi (generic, version-free name — matches the fixed filename
-   82-salt-minion.yml and the manual fallback below both reference, so this file can be
-   refreshed in place without editing either)
-4. Replace bootstrap/web/windows/Salt-Minion-Setup.msi and commit
+3. Name it Salt-Minion-Setup-x86_64.msi (matches the host_arch-based filename
+   82-salt-minion.yml and the manual fallback below both expect)
+4. Replace bootstrap/web/windows/Salt-Minion-Setup-x86_64.msi and commit
 ```
+
+Refreshing the **arm64** build is not a fetch-and-verify process — see the ARM64 callout
+above. It means re-applying the current state of the three referenced PRs (or their eventual
+merged/superseded form) and rebuilding, then replacing
+`bootstrap/web/windows/Salt-Minion-Setup-arm64.msi` by hand.
 
 ## Manual fallback — installing on an already-deployed endpoint
 
@@ -119,12 +143,14 @@ or a `TAB` row that turns out to be Windows after all and needs a one-off manual
 before `generate_inventory.py` is re-run to pick it up properly).
 
 ```powershell
-# Run as Administrator. Fetch the MSI from wherever it's reachable -- e.g. a share, or
-# copy it over directly -- there is no HTTP endpoint serving it (see above, this isn't
-# fetched over the network by the automated path either).
+# Run as Administrator. Fetch the MSI matching this machine's own architecture from wherever
+# it's reachable -- e.g. a share, or copy it over directly -- there is no HTTP endpoint
+# serving either (see above, this isn't fetched over the network by the automated path either).
+# Use Salt-Minion-Setup-x86_64.msi or Salt-Minion-Setup-arm64.msi as appropriate -- check
+# $env:PROCESSOR_ARCHITECTURE if unsure which this machine actually is.
 
 Start-Process msiexec.exe -ArgumentList `
-  "/i", "C:\path\to\Salt-Minion-Setup.msi", `
+  "/i", "C:\path\to\Salt-Minion-Setup-x86_64.msi", `
   "MASTER=salt.jukebox.internal", "MINION_ID=$env:COMPUTERNAME" -Wait
 ```
 
@@ -203,6 +229,7 @@ Outbound from every Windows node (client, server, DC):
 | `salt/README.md` | States/pillar layout, gitfs/git_pillar delivery mechanism, `screenprint` module |
 | `benarbejde/role_codes.csv` (`SLT` row) | Salt master role code, standard `.22` slot, scope note |
 | `benarbejde/generate_inventory.py` (`DEVICE_GROUP_MAP` comment) | Why `SUR`→`windows_laptop` and `TAB` is conditional on OS |
+| Root `README.md`'s "Upstream Contributions" section | The three in-progress PRs (salt/relenv/pymssql) the ARM64 minion build depends on |
 
 ---
 

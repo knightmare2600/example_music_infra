@@ -11,6 +11,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-08-10 | §3.2 corrected — ARM64 Windows Salt minions are now real, via a custom build Robert added (`Salt-Minion-Setup-arm64.msi`) tracking 3 still-open upstream PRs. Previous "ARM64 does not exist" claim was accurate for the *official* release at the time, but the section didn't leave room for a self-built alternative — now covers both paths explicitly. |
 | 2026-08-08 | Initial version — companion to [ExampleMusic_Beginners_Guide.md](../ExampleMusic_Beginners_Guide.md) and [TacticalRMM_Beginners_Guide.md](TacticalRMM_Beginners_Guide.md), written after `EXASLTCLD001` and SaltGUI were both confirmed live end to end. |
 
 ---
@@ -52,29 +53,29 @@ Any Windows box built through the normal `windows_bootstrap` chain gets its Salt
 
 A node built *before* Salt existed as an option, or built outside the `windows_bootstrap` chain, needs the minion installed by hand. This is the case worth knowing well, since it's the one you'll actually run yourself.
 
-**Get the installer.** Run as Administrator, in `pwsh.exe` (not `powershell.exe`):
+**If the target is x86_64** — the common case — get the official Salt Project installer. Run as Administrator, in `pwsh.exe` (not `powershell.exe`):
 
 ```powershell
-iwr 'https://packages.broadcom.com/artifactory/saltproject-generic/windows/3008.2/Salt-Minion-3008.2-Py3-AMD64.msi' -OutFile Salt-Minion-Setup.msi
+iwr 'https://packages.broadcom.com/artifactory/saltproject-generic/windows/3008.2/Salt-Minion-3008.2-Py3-AMD64.msi' -OutFile Salt-Minion-Setup-x86_64.msi
 ```
 
 **Verify it before trusting it** — never skip this for a binary you're about to run as Administrator:
 
 ```powershell
-Get-FileHash Salt-Minion-Setup.msi -Algorithm SHA256
+Get-FileHash Salt-Minion-Setup-x86_64.msi -Algorithm SHA256
 ```
 
 Compare the output against `bcfdd77f35fe62b1402ce9d4920c087d1703c44f2f3d6cde6761c8ab127a17fa` (Broadcom's own published checksum for this exact build, confirmed live against their real `X-Checksum-Sha256` response header before this doc was written — don't trust it just because it's written down here, re-verify against Broadcom's own header if it's been a while). If they don't match, delete the file and start over — don't proceed.
 
-> **ARM64 does not exist for Windows Salt minions.** Only AMD64 and 32-bit x86 builds are published, ever — checked directly against Broadcom's real directory listing. If a node is genuinely ARM64 Windows, there's no Salt minion for it at all.
+> **If the target is ARM64** — genuinely different, read this rather than trying the `iwr` above. Native Windows ARM64 Salt minion builds don't exist upstream at all yet (nothing published on Broadcom's site — checked directly). What exists instead is a **custom build already committed to this repo**, `bootstrap/web/windows/Salt-Minion-Setup-arm64.msi`, assembled by tracking three still-open, unmerged upstream PRs ([salt#70003](https://github.com/saltstack/salt/pull/70003), [relenv#318](https://github.com/saltstack/relenv/pull/318), [pymssql#1013](https://github.com/pymssql/pymssql/pull/1013)). There's nothing to `iwr` from a vendor and no vendor checksum to verify against — copy the file itself from the repo/provisioning share instead. Treat it as experimental — see `docs/buildsheets/buildsheet-salt-minion.md`'s own ARM64 callout for the full caveat before relying on it for anything production-critical.
 >
-> **Version alignment matters.** `EXASLTCLD001` (the master) is pinned to major version `3008` (`group_vars/salt_servers/main.yml`'s `salt_version_major`). The minion **must** be from the same major line — mismatched major versions between master and minions is unsupported upstream. If that pin ever changes, get the matching minion version, not just whatever's newest on Broadcom's site.
+> **Version alignment matters, for both architectures.** `EXASLTCLD001` (the master) is pinned to major version `3008` (`group_vars/salt_servers/main.yml`'s `salt_version_major`). Whichever minion you're installing **must** be from the same major line — mismatched major versions between master and minions is unsupported upstream. If that pin ever changes, get the matching minion version, not just whatever's newest.
 
-**Install it:**
+**Install it** (adjust the filename for your target's actual architecture):
 
 ```powershell
 Start-Process msiexec.exe -ArgumentList `
-  "/i", "Salt-Minion-Setup.msi", `
+  "/i", "Salt-Minion-Setup-x86_64.msi", `
   "MASTER=salt.jukebox.internal", "MINION_ID=$env:COMPUTERNAME" -Wait
 ```
 
