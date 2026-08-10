@@ -3,8 +3,9 @@
 # playbooks/82-salt-minion.yml
 # Example Music Limited — Salt minion install (all Windows nodes)
 # =============================================================================
-# Installs the Salt minion via the MSI already committed to
-# bootstrap/web/windows/Salt-Minion-Setup.msi, pointed at salt.{{ site_services.domain_fqdn }}
+# Installs the Salt minion via the arch-matching MSI already committed to
+# bootstrap/web/windows/{x86_64,arm64}/ (see this file's own ARM64 header note below for the
+# real filenames), pointed at salt.{{ site_services.domain_fqdn }}
 # (the CNAME alias -- see benarbejde/role_codes.csv's DNSAlias column and bind9-dns.yml's
 # db.forward-zone.devices.j2 -- resolving to EXASLTCLD001). Uses the DNS name rather than a
 # hardcoded IP -- site_services (group_vars/all/site_services.yml) is already loaded for
@@ -57,25 +58,27 @@
 #
 # ARM64 (added 2026-08-10, Robert): reuses tasks/arch_facts.yml's own host_arch fact/naming
 # convention (x86_64/arm64/x86, matching 50-binaries.yml's established pattern) rather than
-# inventing a new one -- two arch-suffixed MSIs now live side by side in bootstrap/web/windows/
-# (Salt-Minion-Setup-x86_64.msi, Salt-Minion-Setup-arm64.msi), selected by the same host_arch
-# fact every other arch-aware Windows playbook already uses. Unlike the x86_64 build (Salt
-# Project's own official release, SHA256-verified against Broadcom's response header -- see
-# docs/buildsheets/buildsheet-salt-minion.md), the arm64 build is NOT an official upstream
-# release -- native Windows arm64 support for the Salt minion doesn't exist upstream yet.
-# It's a custom build tracking three still-OPEN, unmerged PRs (salt#70003, relenv#318,
-# pymssql#1013 -- confirmed live against the GitHub API before this comment was written, all
-# three genuinely open, none merged) that together add the arm64 build capability. Treat this
-# build as experimental: it can't be refreshed the same "fetch + verify vendor checksum" way
-# as the x86_64 one, since there's no vendor release to fetch from -- rebuilding it means
-# re-applying those three PRs (or whatever they've evolved into) by hand. See that same
-# buildsheet section for the full caveat.
+# inventing a new one. bootstrap/web/windows/ restructured into per-architecture subfolders
+# the same day (bootstrap/web/windows/{x86_64,arm64}/, also matching 50-binaries.yml's own
+# files/{x86_64,arm64}/ layout) -- real filenames differ per arch (Salt Project's own release
+# naming, "...-Py3-AMD64.msi"/"...-Py3-ARM64.msi"), not just an arch suffix, so selection uses
+# an explicit salt_minion_msi_filenames map (mirrors 50-binaries.yml's own src_amd64/src_arm64
+# pattern for exactly this "filenames aren't consistent across arches" reason) rather than a
+# single Jinja-templated pattern.
 #
-# KNOWN, UNRESOLVED VERSION MISMATCH: confirmed directly from the committed MSI's own internal
-# metadata, the arm64 build is "Salt Minion 3007.0+0na.fc35254" (a 3007.x dev build) -- not the
-# 3008.x line group_vars/salt_servers/main.yml's salt_version_major pins the master to. Flagged,
-# not fixed or worked around -- whether this actually works against a 3008.x master is genuinely
-# unconfirmed, not just unlikely-but-probably-fine. See the buildsheet's own callout.
+# Both are now version 3008.0, matching the master's own salt_version_major pin -- no version
+# mismatch. x86_64 is Salt Project's own official Broadcom release (SHA256-verified against
+# their response header, 842a03fa627ad51c6fd95fd0801cf771df05281cd8ea0eedf823a2d4f9ca7704,
+# 2026-08-10). arm64 is still NOT an official upstream release -- native Windows arm64 support
+# for the Salt minion doesn't exist in any Broadcom-published build -- it's a custom compile
+# Robert built tracking three still-OPEN, unmerged PRs (salt#70003, relenv#318, pymssql#1013 --
+# confirmed live against the GitHub API, all three genuinely open, none merged as of
+# 2026-08-10) that together add arm64 build capability, freshly recompiled 2026-08-10 with the
+# pymssql fix included and confirmed by Robert as good. Treat the arm64 build as experimental
+# regardless of the version match: it can't be refreshed the same "fetch + verify vendor
+# checksum" way as x86_64, since there's no vendor release to fetch from -- rebuilding it means
+# re-applying those three PRs (or whatever they've evolved into) by hand. See
+# docs/buildsheets/buildsheet-salt-minion.md for the full caveat.
 #
 # FUTURE WORK -- custom grains (deferred, Robert has his own notes to bring back first, see
 # memory): when that lands, implement it as its OWN task(s), separate from the install task
@@ -98,11 +101,27 @@
 #                     Salt-Minion-Setup-x86_64.msi renamed from the previous
 #                     unsuffixed filename, Salt-Minion-Setup-arm64.msi added
 #                     (custom build, see header for the real caveat).
+# v1.2.0  2026-08-10  bootstrap/web/windows/ restructured into per-arch
+#                     subfolders same day -- switched to an explicit
+#                     salt_minion_msi_filenames map (real vendor/build
+#                     filenames, not just an arch suffix) and both MSIs
+#                     bumped to 3008.0, resolving v1.1.0's version mismatch.
 # =============================================================================
 
 - name: Windows — Salt minion install
   hosts: "windows_nodes"
   gather_facts: false
+
+  vars:
+    # Real vendor/build filenames -- not consistent across arches, so an explicit map,
+    # not a single Jinja-templated pattern. Same reasoning as 50-binaries.yml's own
+    # src_amd64/src_arm64 keys. Update both the filename AND the SHA256 comment above
+    # (x86_64 only -- arm64 has no vendor checksum to verify against, see header) if
+    # either ever gets refreshed.
+    salt_minion_msi_filenames:
+      x86_64: Salt-Minion-3008.0-Py3-AMD64.msi
+      arm64: Salt-Minion-3008.0-Py3-ARM64.msi
+
   tasks:
 
     - name: Detect CPU architecture
@@ -112,15 +131,15 @@
     - name: Fail loudly on an architecture with no Salt minion MSI at all
       ansible.builtin.fail:
         msg: >-
-          host_arch={{ host_arch }} has no Salt minion MSI in
-          bootstrap/web/windows/ -- only x86_64 (official) and arm64
-          (custom build, see this playbook's own header) exist.
-      when: host_arch not in ['x86_64', 'arm64']
+          host_arch={{ host_arch }} has no Salt minion MSI mapped in
+          salt_minion_msi_filenames -- only x86_64 and arm64 exist under
+          bootstrap/web/windows/ (see this playbook's own header).
+      when: host_arch not in salt_minion_msi_filenames
       tags: salt
 
     - name: Copy Salt minion MSI to the target host
       ansible.windows.win_copy:
-        src: "{{ playbook_dir }}/../../../../bootstrap/web/windows/Salt-Minion-Setup-{{ host_arch }}.msi"
+        src: "{{ playbook_dir }}/../../../../bootstrap/web/windows/{{ host_arch }}/{{ salt_minion_msi_filenames[host_arch] }}"
         dest: "C:\\Windows\\Temp\\Salt-Minion-Setup.msi"
       tags: salt
 
