@@ -153,5 +153,18 @@ bootstrap/starwindconverter.exe      filter=lfs diff=lfs merge=lfs -text
 # plain git-tracked text, not go through the LFS filter. Not retroactively migrated (same
 # "prospective only, not a history rewrite" call already made for bootstrap/web/debian/ etc.
 # above) -- these two files' own existing commits predate this rule; only re-committed here so
-# they're LFS-backed going forward.
+# they're LFS-backed going forward. Superseded 2026-08-10, same day -- see the
+# bootstrap/web/windows/arm64|x86_64/** rule below, Robert restructured this into
+# per-architecture subfolders (matching 50-binaries.yml's own files/{x86_64,arm64}/
+# convention) instead of individual arch-suffixed filenames at the top level.
 bootstrap/web/windows/Salt-Minion-Setup-*.msi filter=lfs diff=lfs merge=lfs -text
+
+# Windows tool binaries by architecture, dropped directly in bootstrap/web/windows/
+# {arm64,x86_64}/ (2026-08-10, Robert) -- ~281MB in arm64/ alone. Whole-directory rule,
+# unlike the single-file Salt pattern above: every real file under either subfolder is a
+# binary tool (Sysinternals, jq, VMware tools, WindowsTerminal, etc.), matching this
+# section's own established "genuinely open source / freely redistributable, no
+# manifest-driven fetch" precedent -- not a mix of scripts and binaries the way the
+# windows/ directory itself is, so no narrower pattern is needed here.
+bootstrap/web/windows/arm64/**   filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/windows/x86_64/**  filter=lfs diff=lfs merge=lfs -text
