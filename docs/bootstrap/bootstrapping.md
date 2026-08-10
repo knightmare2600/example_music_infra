@@ -356,15 +356,19 @@ bootstrap/web/
 ├── windows/
 │   ├── unattend/headlessunattend.xml    ← the one real unattend XML (see the Windows section) --
 │   │                                        does NOT install Salt (see §8.3's note on why not)
-│   ├── Salt-Minion-Setup.msi            ← committed to git 2026-07-20 (AMD64, 3008.2,
-│   │                                        checksum-verified). NOT part of this Setup-time
-│   │                                        flow -- pushed later by ansible/playbooks/
-│   │                                        windows_bootstrap/playbooks/82-salt-minion.yml,
-│   │                                        over SSH, well after this file's own chain
-│   │                                        completes. See docs/buildsheets/
-│   │                                        buildsheet-salt-minion.md. ARM64 does not exist
-│   │                                        for Windows Salt minions (confirmed against the
-│   │                                        real package repo) -- AMD64/x86 only
+│   ├── Salt-Minion-Setup-x86_64.msi     ← committed to git 2026-07-20 (3008.2, official Salt
+│   │                                        Project release, checksum-verified). NOT part of
+│   │                                        this Setup-time flow -- pushed later by ansible/
+│   │                                        playbooks/windows_bootstrap/playbooks/
+│   │                                        82-salt-minion.yml, over SSH, well after this
+│   │                                        file's own chain completes. See docs/buildsheets/
+│   │                                        buildsheet-salt-minion.md.
+│   ├── Salt-Minion-Setup-arm64.msi      ← added 2026-08-10 -- a CUSTOM build, not an official
+│   │                                        release (native Windows arm64 Salt minion support
+│   │                                        doesn't exist upstream yet, tracks 3 still-open
+│   │                                        PRs -- see buildsheet-salt-minion.md's own caveat
+│   │                                        and the root README's "Upstream Contributions"
+│   │                                        section)
 │   ├── PostOOBE.cmd, SetupComplete.cmd, Install-OpenSSH.ps1, Deploy-OpenSSH.cmd
 │   └── Join-DomainAndBootstrap.ps1      ← legacy; see the Windows section for current status
 │
@@ -1455,11 +1459,12 @@ hostname, so the minion's identity is always correct, first time. See
 full mechanism, scope, and the manual fallback for endpoints that never go through
 windows_bootstrap at all.
 
-The MSI (`bootstrap/web/windows/Salt-Minion-Setup.msi`) is genuinely committed to this repo,
-though — see the tree entry above. Unlike most large binaries referenced from this file
-(§2.3's Debian/Proxmox netboot assets), this one's a deliberate exception: it's genuinely open
-source (Apache-2.0) and checksum-verified before being placed; see the buildsheet for the full
-reasoning.
+Both MSIs (`bootstrap/web/windows/Salt-Minion-Setup-{x86_64,arm64}.msi`) are genuinely
+committed to this repo, though — see the tree entry above. Unlike most large binaries
+referenced from this file (§2.3's Debian/Proxmox netboot assets), these are a deliberate
+exception: genuinely open source (Apache-2.0). The `x86_64` build is checksum-verified against
+Salt Project's own official release; see the buildsheet for the full reasoning and the arm64
+build's own, different caveat (a custom build, not an official release).
 
 ---
 
