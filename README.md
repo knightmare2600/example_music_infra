@@ -359,7 +359,7 @@ Pull requests submitted directly to other projects' own repositories — no sepa
 | [relenv](https://github.com/saltstack/relenv) | [#318](https://github.com/saltstack/relenv/pull/318) | Windows arm64 support (Salt's own relocatable Python environment builder — a real dependency of the minion build pipeline) |
 | [pymssql](https://github.com/pymssql/pymssql) | [#1013](https://github.com/pymssql/pymssql/pull/1013) | Add native Windows arm64 wheel builds (a Salt dependency needed for the ARM64 build to complete at all) |
 
-All three are open, unmerged as of 2026-08-10 — together they're what made a native ARM64 Windows Salt minion build possible at all. Used here to produce a custom `Salt-Minion-Setup-arm64.msi` (see `docs/buildsheets/buildsheet-salt-minion.md`) ahead of any of this landing in an official upstream release.
+All three are open, unmerged as of 2026-08-10 — together they're what made a native ARM64 Windows Salt minion build possible at all. Used here to produce a custom `Salt-Minion-3008.0-Py3-ARM64.msi` (see `docs/buildsheets/buildsheet-salt-minion.md`) ahead of any of this landing in an official upstream release.
 
 ## Silly Season
 
