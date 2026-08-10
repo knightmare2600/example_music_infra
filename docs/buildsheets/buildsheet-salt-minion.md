@@ -2,7 +2,7 @@
 
 **Document ID:** NET-BUILD-SALT-MINION-001
 **Classification:** Internal — Network Operations
-**Last Updated:** 2026-08-10 — ARM64 minion support added (custom build, see its own callout below; not an official Salt Project release)
+**Last Updated:** 2026-08-10 — ARM64 minion support added (custom build, see its own callout below; not an official Salt Project release; also a confirmed 3007.x vs the master's 3008.x pin, flagged not resolved)
 **Signed off by:** ___________________________  Date: ___________
 
 ---
@@ -108,6 +108,16 @@ the target machine pulling one over the network.
 > land upstream in a different shape before merging. Rebuilding it means re-applying whatever
 > those PRs have evolved into by hand, not re-running a fetch script. See the root `README.md`'s
 > "Upstream Contributions" section for the same three links in context.
+
+> **VERSION MISMATCH — flagged, not resolved.** Confirmed directly from the committed MSI's
+> own internal metadata (not just its filename): this is `Salt Minion 3007.0+0na.fc35254` — a
+> **3007.x** development build (the `+0na.fc35254` suffix is a local/dev build identifier, not
+> a tagged release), not the `3008.x` line `salt_version_major` pins the master to. Per the
+> "Version alignment" warning immediately below, master/minion major-version mismatches are
+> an unsupported combination upstream. This wasn't corrected or worked around here — it's
+> genuinely unclear whether it's usable as-is until confirmed against a real minion check-in.
+> Robert's own call whether to run with it, wait for a 3008-line ARM64 build once the three
+> PRs above actually land, or drop the master's own pin to 3007 to match.
 
 > **Version alignment — read before fetching a replacement.** `EXASLTCLD001` (the master,
 > `ansible/playbooks/salt/playbooks/10-master.yml`) pins its Debian package install to
