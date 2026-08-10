@@ -30,6 +30,11 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-08-10  Added winevdm to choco_packages_gui (Robert's ask -- 16-bit
+#               Windows app compatibility layer, GUI tier since 16-bit
+#               software needs a desktop, never installed on Server Core).
+#               Verified as a real, current Chocolatey package (0.8.1 on the
+#               community feed) before adding.
 #   2026-07-12  Moved nmap from the role-gated choco_packages_server list to
 #               choco_packages_common (matching the 2026-07-06 precedent of
 #               doing exactly this for putty/winscp: "role split was
@@ -181,6 +186,7 @@
       - firefox
       - vlc
       - windows-terminal
+      - winevdm
 
   tasks:
 
