@@ -14,6 +14,7 @@
 | 2026-08-10 | §3.2 corrected — ARM64 Windows Salt minions are now real, via a custom build Robert added (`Salt-Minion-3008.0-Py3-ARM64.msi`) tracking 3 still-open upstream PRs. Previous "ARM64 does not exist" claim was accurate for the *official* release at the time, but the section didn't leave room for a self-built alternative — now covers both paths explicitly. |
 | 2026-08-10 | §3.2 updated again, same day — `bootstrap/web/windows/` restructured into per-arch subfolders (`{x86_64,arm64}/`), both MSIs now real vendor/build filenames, and the earlier 3007.x-vs-3008.x version mismatch is resolved (both `3008.0`, arm64 recompiled with the pymssql fix, confirmed good by Robert). |
 | 2026-08-10 | New §6 "Automatic Highstate" and §7 "Querying and Confirming Custom Grains" added — `82-salt-minion.yml` now drops a `minion.d/` schedule config so `top.sls`'s `wintools`+`grains` states actually apply on their own (previously nothing triggered `state.apply` at all, ever, without a human running it by hand). Old §6/§7 renumbered to §8/§9. |
+| 2026-08-11 | New §3.3 — running `82-salt-minion.yml` against a single existing host via `--limit` (not `-e target=`, which this playbook's static `hosts: windows_nodes` doesn't respond to). Confirmed with Robert: Salt scope is every Windows node, no DCS/SVR exclusion — `cld.ini`'s `EXASLTCLD001` comment claiming otherwise was itself wrong, fixed same day. |
 | 2026-08-08 | Initial version — companion to [ExampleMusic_Beginners_Guide.md](../ExampleMusic_Beginners_Guide.md) and [TacticalRMM_Beginners_Guide.md](TacticalRMM_Beginners_Guide.md), written after `EXASLTCLD001` and SaltGUI were both confirmed live end to end. |
 
 ---
@@ -84,6 +85,18 @@ Start-Process msiexec.exe -ArgumentList `
 `salt.jukebox.internal` is a CNAME to `EXASLTCLD001` — use it, not a hardcoded IP, so this keeps working if the master's own address ever changes. If this endpoint genuinely has no working DNS yet, use `MASTER=192.168.69.22` instead.
 
 `MINION_ID=$env:COMPUTERNAME` is important — it's what makes the minion identify itself with the box's real hostname (e.g. `EXADCSCLD001`) rather than Salt's own default. Confirm `$env:COMPUTERNAME` is actually correct *before* running this — if the box hasn't been renamed yet, fix that first, don't install Salt against a wrong name you'll have to clean up later with `salt-key -d`.
+
+### 3.3 Or: run `82-salt-minion.yml` against just this one host via Ansible
+
+The actually-recommended way to onboard a single existing node, rather than the raw `msiexec` above — same install, but also gets the `minion.d/` automatic-highstate config (§6) and the already-installed/version-mismatch checks (v1.4.0) that the manual path above doesn't:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/82-salt-minion.yml --limit EXADCSCLD001
+```
+
+**Use `--limit`, not `-e target=`.** Unlike `80-domainjoin.yml` (`hosts: "{{ target | default('all') }}"`), this playbook's `hosts:` is the static group `windows_nodes` — `-e target=<host>` has no effect on it at all and would run against every Windows node in inventory instead of just the one you meant. `--limit` is the standard Ansible mechanism that works regardless of what `hosts:` says.
+
+Scope is deliberately every Windows node — WKS/LAP/SUR/SVR/DCS alike, no exclusions (Robert's confirmed call, 2026-08-11; an older inventory comment on `EXASLTCLD001` in `cld.ini` claiming DCS/SVR stay Ansible-only was itself wrong/stale and has been corrected).
 
 ---
 
