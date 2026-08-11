@@ -110,24 +110,42 @@
 #               an identically-named env unless overridden). Pre-existing
 #               since this file's first commit, not caused by the disk-bloat
 #               fix above -- simply never reached before now.
-#   2026-08-11  Still the same day -- real live bug #3, and this one's still
-#               OPEN: fixing bug #2 above didn't resolve state.apply.
-#               cp.list_master/cp.envs correctly listed top.sls as present;
-#               cp.get_file/state.apply could not actually fetch it. Isolated
-#               to gitfs_depth/git_pillar_depth: 1 specifically (added the
-#               same day for the disk-bloat fix) -- removed both, keeping
-#               gitfs_provider/git_pillar_provider: gitcli, and file serving
-#               started working. Apparent genuine bug in gitcli's shallow-
-#               clone file-content-fetch path (listing a shallow tree doesn't
-#               need full blob content; fetching a specific file's content
-#               does), not something this file's own config can work around.
-#               Running WITHOUT depth: full-history clones are back --
-#               NOT accepted as permanent, see docs/INCIDENT-LOG.md's
-#               INC-2026-08-11-SALT-DISK-FULL. Revisit: try a small non-1
-#               depth (2, 5?) in case depth=1 specifically is what breaks
-#               it rather than shallow cloning generally, or reconsider the
-#               Ansible-push/dedicated-slim-repo options once grains/
-#               automatic-highstate are confirmed genuinely working.
+#   2026-08-11  Still the same day -- real live bug #3, root cause now
+#               CONFIRMED (not a hypothesis): removing gitfs_depth/
+#               git_pillar_depth didn't fix cp.get_file/state.apply either --
+#               same failure, proving depth was never the actual cause.
+#               Inspected the master's own bare git_pillar clone directly
+#               (raw `git --git-dir=... log/branch`, bypassing every Salt
+#               abstraction): `remotes/origin/main` had the real, correct
+#               data, but HEAD pointed at a local `master` branch that had
+#               NEVER BEEN CREATED -- "your current branch 'master' does not
+#               have any commits yet". gitcli's own clone-construction logic
+#               never points HEAD at the branch it actually fetches (git's
+#               own historical default branch name, "master", which this
+#               repo has never had) -- a real bug in the gitcli provider
+#               itself, not fixable from this file's config. Listing
+#               operations (cp.list_master, fileserver.file_list) resolve
+#               via the explicit branch/env config and worked fine the whole
+#               time; anything relying on HEAD implicitly (individual file
+#               fetch, git_pillar's own root-path validation -- "Root path
+#               'salt/pillar' not present ... skipping", logged every single
+#               update cycle in the master's own journal) failed the whole
+#               time, for the same underlying reason.
+#
+#               FIXED by switching provider entirely, gitfs_provider/
+#               git_pillar_provider: gitcli -> pygit2 (mature, correct clone
+#               semantics -- python3-pygit2 added to Section 5's package
+#               install). Real, known tradeoff, not hidden: pygit2 does NOT
+#               support gitfs_depth/git_pillar_depth at all (confirmed
+#               against Salt's own docs -- shallow clone is gitcli-only) --
+#               full-history clones are back, same ~3GB-class cost as
+#               docs/INCIDENT-LOG.md's INC-2026-08-11-SALT-DISK-FULL
+#               describes, accepted as the cost of using a provider that
+#               actually works correctly. Revisit the Ansible-push/
+#               dedicated-slim-repo options from that incident's own
+#               write-up if the disk cost becomes a live problem again --
+#               don't reach for gitcli + depth again without a confirmed
+#               upstream fix for the HEAD-construction bug found here.
 # =============================================================================
 
 - name: Salt master — install and configure
@@ -483,6 +501,16 @@
         install_recommends: false
         dpkg_options: "force-confold,force-confdef"
 
+    # Needed for gitfs_provider/git_pillar_provider: pygit2 below -- see Section 6's own
+    # header comment for the real, live-diagnosed reason gitcli isn't used (a genuine bug in
+    # how it constructs its bare clone's HEAD ref, found 2026-08-11).
+    - name: "5 | Install python3-pygit2 (gitfs/git_pillar provider)"
+      apt:
+        name: python3-pygit2
+        state: present
+        install_recommends: false
+        dpkg_options: "force-confold,force-confdef"
+
     - name: "5 | Verify installed Salt version matches the pinned major line"
       command: salt --version
       register: _salt_version_check
@@ -521,33 +549,34 @@
   # own root: option point at salt/states and salt/pillar respectively,
   # rather than the repo root, since this repo has plenty else in it.
   #
-  # gitfs_provider/git_pillar_provider explicitly "gitcli" (added 2026-08-11,
-  # real live problem found on EXASLTCLD001 -- /var/cache/salt/master/
-  # {gitfs,git_pillar} hit 3.1GB combined). Root cause: gitfs/git_pillar do a
-  # FULL-HISTORY clone by default, and this repo's history permanently
-  # carries every large binary ever committed before it was LFS-tracked (LFS
-  # migration here is "prospective only, not a history rewrite" -- see
-  # .gitattributes). Confirmed live this master already runs gitcli by
-  # accident (neither pygit2 nor gitpython installed, Salt 3008.0's own
-  # documented fallback) -- pinned explicitly rather than relying on that
-  # staying true by chance. gitcli itself needs nothing beyond the system
-  # git binary (already present via this playbook's own base packages).
-  #
-  # gitfs_depth/git_pillar_depth: 1 (shallow clone) were ALSO added the same
-  # day, cutting the caches to ~685MB -- then REMOVED again a few hours
-  # later, same day, once live testing found a real, reproducible gitcli
-  # bug: with depth: 1 set, cp.list_master/cp.envs correctly LIST top.sls as
-  # present, but cp.get_file/state.apply cannot actually FETCH its content
-  # ("Could not find file 'salt://top.sls' in saltenv 'base'" even though
-  # the same file is listed as existing one line earlier in the same debug
-  # session). Listing a shallow clone's tree doesn't need full blob content;
-  # fetching a specific file's content does -- gitcli (brand new in 3008.0)
-  # appears to have a genuine bug in that specific combination. Confirmed by
-  # removing only the depth settings (provider stayed gitcli) and re-testing
-  # -- see docs/INCIDENT-LOG.md's INC-2026-08-11-SALT-DISK-FULL for the full
-  # story. Running WITHOUT depth means full-history clones again -- NOT a
-  # permanent acceptance of that, see this file's own changelog for the
-  # still-open follow-up.
+  # gitfs_provider/git_pillar_provider: pygit2 (2026-08-11 -- started as
+  # "gitcli", ended as "pygit2" the same day; see this file's own changelog
+  # for the full, real story of why). Original problem: gitfs/git_pillar's
+  # default full-history clone of this repo hit 3.1GB combined on
+  # /var/cache/salt/master/{gitfs,git_pillar} (this repo's history
+  # permanently carries every large binary committed before it was
+  # LFS-tracked -- LFS migration here is "prospective only, not a history
+  # rewrite", see .gitattributes) -- see docs/INCIDENT-LOG.md's
+  # INC-2026-08-11-SALT-DISK-FULL. gitcli + gitfs_depth/git_pillar_depth: 1
+  # (shallow clone, gitcli-only -- pygit2/gitpython don't support it) fixed
+  # that, briefly, but live testing then found a genuine BUG in gitcli
+  # itself: it never points its bare clone's HEAD at the branch it actually
+  # fetches, leaving HEAD dangling at git's own historical default branch
+  # name ("master"), which this repo has never had. Confirmed directly
+  # against the raw git objects on disk (`git --git-dir=... branch/log`,
+  # bypassing Salt entirely) -- the real data was correctly present under
+  # remotes/origin/main the whole time; every operation relying on HEAD
+  # implicitly (individual file fetch, git_pillar's own root-path
+  # validation) failed for that reason, regardless of the depth setting
+  # (removing depth did NOT fix it -- ruled out live, not assumed).
+  # gitcli is brand new in Salt 3008.0 -- genuinely less battle-tested, and
+  # this is a real bug in it, not something this file's config can work
+  # around. Switched provider to pygit2 instead (python3-pygit2, Section 5)
+  # -- mature, correct clone semantics. Real tradeoff, not hidden: pygit2
+  # doesn't support depth at all, so full-history clones are back, same
+  # cost as the original incident, accepted here as the price of a provider
+  # that actually works. Don't reach for gitcli + depth again without a
+  # confirmed upstream fix for the HEAD-construction bug found here.
   #
   # SaltGUI's own external_auth/netapi_enable_clients/rest_cherrypy settings
   # live in a SEPARATE drop-in, /etc/salt/master.d/saltgui.conf, written by
@@ -570,11 +599,9 @@
           log_level_logfile: info
 
           # States served from this repo's own salt/states/ via gitfs -- public
-          # repo, no credentials needed (see salt/README.md). provider: gitcli
-          # -- see this section's own header comment for the full "why", and
-          # why depth: 1 (the shallow-clone disk-bloat fix) isn't set right
-          # now, despite being genuinely wanted -- a real gitcli bug found the
-          # same day, still unresolved.
+          # repo, no credentials needed (see salt/README.md). provider: pygit2
+          # -- see this section's own header comment for the full "why"
+          # (a real, confirmed gitcli bug, not a config choice made lightly).
           #
           # gitfs_base: main (added 2026-08-11, real live bug -- Robert's first
           # ever successful state.apply against a real minion, EXADCSCLD001,
@@ -589,7 +616,7 @@
           # "the master branch is implicitly mapped to the base environment."
           fileserver_backend:
             - gitfs
-          gitfs_provider: gitcli
+          gitfs_provider: pygit2
           gitfs_base: main
           gitfs_remotes:
             - {{ salt_gitfs_repo_url }}:
@@ -597,8 +624,7 @@
 
           # Pillar served from this repo's own salt/pillar/ via git_pillar --
           # same repo, separate mechanism from gitfs (ext_pillar, not
-          # fileserver_backend). Same gitcli + shallow-clone reasoning as
-          # gitfs above.
+          # fileserver_backend). Same pygit2 reasoning as gitfs above.
           #
           # env: base (added 2026-08-11, same real bug/fix as gitfs_base
           # above) -- git_pillar's own per-remote branch name ("main" here)
@@ -609,7 +635,7 @@
           # country lookup would silently render blank instead of failing
           # loudly, since grains/init.sls's own Jinja uses safe .get()
           # fallbacks throughout.
-          git_pillar_provider: gitcli
+          git_pillar_provider: pygit2
           ext_pillar:
             - git:
               - main {{ salt_gitfs_repo_url }}:
