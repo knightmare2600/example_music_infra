@@ -6,11 +6,11 @@
 # Pushes binaries from files/<arch>/ directly via win_copy and deploys
 # them to C:\Windows\ (globally on PATH).
 #
-# Arch detection maps ansible_architecture to the folder convention used
-# by detect_cpu.ps1 and detect_cpu.cmd:
-#   AMD64  -> x86_64
-#   ARM64  -> arm64
-#   32-bit -> x86
+# Arch detection (tasks/arch_facts.yml) maps ansible_architecture2 to the folder convention
+# used by detect_cpu.ps1 and detect_cpu.cmd -- NOT ansible_architecture, which only reports
+# OS bitness on Windows (can't tell AMD64 from ARM64, both report "64-bit"). Real bug, found
+# live 2026-08-11 (see arch_facts.yml's own changelog) -- this file inherited the same
+# silent mismap since 2026-06-20, fixed at the shared source, not patched here separately.
 #
 # binaries_common (group_vars/windows) applies to all hosts.
 # binaries_extra  (group_vars/windows_server/desktop/laptop) is host-type

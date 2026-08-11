@@ -4,31 +4,56 @@
 # Example Music Limited — CPU architecture detection
 # Included by playbooks that need host_arch.
 # =============================================================================
-# Maps ansible_architecture (AMD64/ARM64/32-bit) to the files/ folder
-# convention used by playbooks/files/{x86_64,arm64}/ and detect_cpu.ps1/.cmd:
-#   AMD64  -> x86_64
-#   ARM64  -> arm64
-#   32-bit -> x86
+# Maps ansible_architecture2 to the files/ folder convention used by
+# playbooks/files/{x86_64,arm64}/ and detect_cpu.ps1/.cmd. Deliberately
+# ansible_architecture2, NOT ansible_architecture -- see the 2026-08-11
+# changelog entry below, this was a real live bug for nearly two months.
 # =============================================================================
 # Changelog:
 #   2026-06-20  Initial file
 #   2026-07-08  Removed binary_base_url (was "{{ exa_asset_base }}/{{ host_arch }}", an HTTP
 #               base URL) -- 50-binaries.yml now win_copy's from files/{{ host_arch }}/ directly,
 #               that pattern only existed for the pre-Ansible bootstrap scripts.
+#   2026-08-11  REAL BUG, found live (Robert, first-ever live run of 82-salt-minion.yml,
+#               EXADCSCLD001): this file mapped ansible_architecture ('AMD64'/'ARM64'/
+#               '32-bit') to host_arch -- but on Windows, ansible.windows.setup's
+#               ansible_architecture fact reports OS BITNESS ('64-bit'/'32-bit'), not CPU
+#               architecture. It CANNOT distinguish AMD64 from ARM64 -- both report
+#               '64-bit'. Every original branch here fell straight through to the 'x86'
+#               default on every real Windows box, 64-bit or not, since this file's very
+#               first commit (2026-06-20) -- NOT scoped to 82-salt-minion.yml, every one of
+#               this task's 5 other real consumers (50-binaries.yml, 35-guest-tools.yml,
+#               85-finish.yml, dua_cli.yml, plus this file's own arm64 branch) inherited the
+#               same silent mismap, never caught because nothing using this had been run
+#               live before. Confirmed via the real live facts dump: ansible_architecture2
+#               (a SEPARATE fact the ansible.windows collection provides specifically for
+#               this reason) correctly reported "x86_64" on that same run. Fixed to use
+#               ansible_architecture2 directly (already matches this file's own x86_64/arm64
+#               naming convention, no translation table needed) and fail loudly on any value
+#               that isn't x86_64/arm64/x86, rather than silently defaulting to x86 again --
+#               the ARM64 case has still never been observed live, only reasoned about; if
+#               ansible_architecture2 reports something unexpected for a real ARM64 box, this
+#               will say so explicitly rather than mismapping it a second, different way.
 # =============================================================================
 
 - name: Gather facts (arch detection)
   ansible.windows.setup:
-  when: ansible_architecture is not defined
+  when: ansible_architecture2 is not defined
+
+- name: Fail loudly on an unrecognised ansible_architecture2 value
+  ansible.builtin.fail:
+    msg: >-
+      ansible_architecture2={{ ansible_architecture2 }} doesn't match any known value
+      (x86_64/arm64/x86) -- can't safely derive host_arch for this target. Check what
+      ansible.windows.setup actually reported (see the -vv fact dump) and extend this
+      file's mapping rather than guessing.
+  when: ansible_architecture2 | lower not in ['x86_64', 'arm64', 'x86']
 
 - name: Set host_arch fact
   set_fact:
-    host_arch: >-
-      {{ 'arm64'  if ansible_architecture == 'ARM64' else
-         'x86_64' if ansible_architecture == 'AMD64' else
-         'x86' }}
+    host_arch: "{{ ansible_architecture2 | lower }}"
 
 - name: Debug — arch detection result
   debug:
-    msg: "Architecture: {{ ansible_architecture }} -> host_arch: {{ host_arch }}"
+    msg: "Architecture: {{ ansible_architecture2 }} -> host_arch: {{ host_arch }}"
   tags: [never, debug]
