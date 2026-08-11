@@ -97,6 +97,19 @@
 #                 sudo systemctl stop salt-master
 #                 sudo rm -rf /var/cache/salt/master/gitfs /var/cache/salt/master/git_pillar
 #                 sudo systemctl start salt-master
+#               See docs/INCIDENT-LOG.md's INC-2026-08-11-SALT-DISK-FULL for
+#               the full incident write-up.
+#   2026-08-11  Later the same day -- real live bug #2: Robert's first ever
+#               successful state.apply against a real minion (EXADCSCLD001,
+#               key just accepted via SaltGUI) failed outright: "No Top file
+#               or master_tops data matches found." Added gitfs_base: main
+#               and git_pillar's own env: base -- neither backend had
+#               anything mapped to the "base" saltenv/pillarenv at all
+#               (gitfs defaults to a branch literally named "master", which
+#               doesn't exist in this repo; git_pillar's branch name maps to
+#               an identically-named env unless overridden). Pre-existing
+#               since this file's first commit, not caused by the disk-bloat
+#               fix above -- simply never reached before now.
 # =============================================================================
 
 - name: Salt master — install and configure
@@ -536,25 +549,48 @@
           # repo, no credentials needed (see salt/README.md). provider:
           # gitcli + depth: 1 -- shallow clone, see this section's own header
           # comment for the full "why" (real disk-bloat fix, 2026-08-11).
+          #
+          # gitfs_base: main (added 2026-08-11, real live bug -- Robert's first
+          # ever successful state.apply against a real minion, EXADCSCLD001,
+          # failed with "No Top file or master_tops data matches found").
+          # gitfs's own default gitfs_base is the branch literally named
+          # "master" -- this repo only has "main", so without this, gitfs had
+          # NOTHING mapped to the "base" saltenv at all, and top.sls only ever
+          # declares content under base:. Pre-existing since this file's first
+          # commit (2026-07-20), not caused by today's gitcli/depth change --
+          # simply never reached before, every earlier live attempt failed at
+          # an earlier step in the chain. Confirmed against Salt's own docs:
+          # "the master branch is implicitly mapped to the base environment."
           fileserver_backend:
             - gitfs
           gitfs_provider: gitcli
           gitfs_depth: 1
+          gitfs_base: main
           gitfs_remotes:
             - {{ salt_gitfs_repo_url }}:
               - root: salt/states
 
           # Pillar served from this repo's own salt/pillar/ via git_pillar --
           # same repo, separate mechanism from gitfs (ext_pillar, not
-          # fileserver_backend). Branch name (main) doubles as the pillar
-          # environment unless overridden with env: -- see salt/README.md.
-          # Same gitcli + shallow-clone reasoning as gitfs above.
+          # fileserver_backend). Same gitcli + shallow-clone reasoning as
+          # gitfs above.
+          #
+          # env: base (added 2026-08-11, same real bug/fix as gitfs_base
+          # above) -- git_pillar's own per-remote branch name ("main" here)
+          # maps to a pillarenv of the SAME name by default, not "base",
+          # unless explicitly overridden. Without this, salt/pillar/top.sls's
+          # own base: entries would be equally invisible -- grains would
+          # still apply (the state itself doesn't fail) but every site/city/
+          # country lookup would silently render blank instead of failing
+          # loudly, since grains/init.sls's own Jinja uses safe .get()
+          # fallbacks throughout.
           git_pillar_provider: gitcli
           git_pillar_depth: 1
           ext_pillar:
             - git:
               - main {{ salt_gitfs_repo_url }}:
                 - root: salt/pillar
+                - env: base
         mode: "0644"
         backup: true
       notify: Restart salt-master
