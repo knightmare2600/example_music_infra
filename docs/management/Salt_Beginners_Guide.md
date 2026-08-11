@@ -15,6 +15,7 @@
 | 2026-08-10 | §3.2 updated again, same day — `bootstrap/web/windows/` restructured into per-arch subfolders (`{x86_64,arm64}/`), both MSIs now real vendor/build filenames, and the earlier 3007.x-vs-3008.x version mismatch is resolved (both `3008.0`, arm64 recompiled with the pymssql fix, confirmed good by Robert). |
 | 2026-08-10 | New §6 "Automatic Highstate" and §7 "Querying and Confirming Custom Grains" added — `82-salt-minion.yml` now drops a `minion.d/` schedule config so `top.sls`'s `wintools`+`grains` states actually apply on their own (previously nothing triggered `state.apply` at all, ever, without a human running it by hand). Old §6/§7 renumbered to §8/§9. |
 | 2026-08-11 | New §3.3 — running `82-salt-minion.yml` against a single existing host via `--limit` (not `-e target=`, which this playbook's static `hosts: windows_nodes` doesn't respond to). Confirmed with Robert: Salt scope is every Windows node, no DCS/SVR exclusion — `cld.ini`'s `EXASLTCLD001` comment claiming otherwise was itself wrong, fixed same day. |
+| 2026-08-11 | New §9–§13 added: real command-line `state.apply` examples, verifying gitfs/git_pillar delivery is healthy, forcing a refresh, recovering from a full disk, and recovering a `salt-master` that won't start — all written up after `EXADCSCLD001`'s first real end-to-end `state.apply` succeeded the same day, following a full disk-full/delivery-failure saga (see `docs/INCIDENT-LOG.md`'s `INC-2026-08-11-SALT-DISK-FULL`). Old §9 (Quick Reference) renumbered to §14, updated with links to all five new sections. |
 | 2026-08-08 | Initial version — companion to [ExampleMusic_Beginners_Guide.md](../ExampleMusic_Beginners_Guide.md) and [TacticalRMM_Beginners_Guide.md](TacticalRMM_Beginners_Guide.md), written after `EXASLTCLD001` and SaltGUI were both confirmed live end to end. |
 
 ---
@@ -220,7 +221,178 @@ I haven't personally driven SaltGUI's UI live to confirm exactly which panel bro
 
 ---
 
-## 9. Quick Reference
+## 9. Applying State From the Command Line — Real Commands
+
+Everything here is exactly what actually worked, live, against a real minion (`EXADCSCLD001`, 2026-08-11) — not theoretical syntax. Run all of these **on the master** (`EXASLTCLD001`), as `sudo`.
+
+```bash
+# 1. Confirm the minion is actually reachable before anything else
+sudo salt EXADCSCLD001 test.ping
+
+# 2. Apply top.sls (wintools + grains) right now, don't wait for the hourly schedule (§6)
+sudo salt EXADCSCLD001 state.apply
+
+# 3. Read back what actually landed
+sudo salt EXADCSCLD001 grains.items                                          # everything
+sudo salt EXADCSCLD001 grains.item nodetype city country entity street postal_code habitat   # just the custom ones, no noise
+```
+
+`state.apply`'s output is long — for each state ID it shows `Result`, `Comment`, and (if anything actually changed) a `diff`. The line that matters most is the summary at the very end:
+
+```
+Summary for EXADCSCLD001
+-------------
+Succeeded: 19 (changed=3)
+Failed:     0
+-------------
+```
+
+`Failed: 0` is what you're checking for. `changed=3` just means 3 of the 19 states genuinely did something (e.g. wrote a new grains file) — a routine re-run against an already-correct minion will show `changed=0` and that's equally healthy, not a problem.
+
+Targeting more than one minion works the normal Salt way — a glob, or a grain match:
+
+```bash
+sudo salt 'EXADCS*' state.apply           # every DC
+sudo salt -G 'nodetype:DCS' state.apply   # same thing, by grain (nodetype is populated by the grains state itself)
+```
+
+*(SaltGUI's own equivalent job-run panel — not yet documented here, coming once it's actually been driven through it live.)*
+
+---
+
+## 10. Verifying the Master's Git-Backed Delivery Is Healthy
+
+States and pillar are served from this repo via `gitfs`/`git_pillar` — both maintain their own local clone under `/var/cache/salt/master/{gitfs,git_pillar}`, refreshed from GitHub. This section is the direct, evidence-based way to check that mechanism is actually working, not just assume it because the master is running.
+
+**The most direct check — from the minion's own perspective, live, no assumptions:**
+
+```powershell
+# On the minion itself (as Administrator)
+& "C:\Program Files\Salt Project\Salt\salt-call.exe" cp.envs        # should show: local: [base]
+& "C:\Program Files\Salt Project\Salt\salt-call.exe" cp.list_master # should list top.sls, wintools/init.sls, grains/init.sls, etc.
+& "C:\Program Files\Salt Project\Salt\salt-call.exe" cp.get_file salt://top.sls C:\Windows\Temp\test-top.sls
+Get-Content C:\Windows\Temp\test-top.sls   # should show real YAML content, not an empty/missing file
+```
+
+**Listing and fetching are genuinely different operations in Salt, and can disagree** — this is exactly what happened on 2026-08-11 (see `docs/INCIDENT-LOG.md`'s `INC-2026-08-11-SALT-DISK-FULL`): `cp.list_master` correctly listed `top.sls`, while `cp.get_file` for that exact same file returned nothing. If you only check listing, you can be fooled into thinking delivery is healthy when it isn't — always confirm with an actual `cp.get_file` fetch, not just a listing.
+
+**From the master itself:**
+
+```bash
+sudo salt-run fileserver.envs           # should show: - base
+sudo salt-run fileserver.file_list base # should list the same content as cp.list_master above
+```
+
+**If `state.apply` fails with `"No Top file or master_tops data matches found"`** but the checks above look fine — the master-dispatched `-l debug` output won't help (state compilation happens client-side on the minion, the master only ever sees the minion's one-line final answer). Get the minion's own debug trace instead:
+
+```powershell
+& "C:\Program Files\Salt Project\Salt\salt-call.exe" state.apply -l debug 2>&1 | Select-Object -Last 150
+```
+
+Look for a line like `Could not find file 'salt://top.sls' in saltenv 'base'` and, just above it, `the 'file_roots' configuration is: {'base': []}`. If you see that alongside a working `cp.list_master`, this is the exact same class of problem found and fixed on 2026-08-11 — see §10.1 below for the two confirmed real causes, in the order to check them.
+
+### 10.1 Known real causes of "listing works, fetching doesn't" (check in this order)
+
+**1. Missing `git-lfs` filter registration.** This repo's `.gitattributes` defines real `filter=lfs` rules (large binaries elsewhere in the repo, unrelated to `salt/states`/`salt/pillar` themselves) — if `git-lfs` isn't installed and registered, git's handling of the *whole* repository checkout can misbehave, not just the specific LFS-tracked files. Check:
+
+```bash
+which git-lfs
+sudo git config --system --get filter.lfs.clean
+```
+
+Both should return real output. If either is missing, `10-master.yml`'s Section 5 already installs `git-lfs` and runs `git lfs install --system --skip-smudge` (the `--skip-smudge` keeps LFS-tracked files as small pointers rather than downloading their real content — don't drop that flag, it's what keeps this master's disk footprint from ballooning further). Re-running `10-master.yml` fixes this on its own if it's ever missing:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/salt/playbooks/10-master.yml \
+  --ask-vault-pass --start-at-task="5 | Install git-lfs"
+```
+
+**2. `gitfs_base`/`env: base` not set.** Check `/etc/salt/master` for these two lines:
+
+```bash
+grep -A1 'gitfs_base\|env: base' /etc/salt/master
+```
+
+`gitfs`'s own default `gitfs_base` is a branch literally named `master` — this repo only has `main`, so without `gitfs_base: main` explicitly set, `gitfs` has nothing mapped to the `base` saltenv at all. `git_pillar`'s per-remote branch name maps to a pillarenv of the *same* name unless explicitly overridden with `env: base` — same problem, same fix, different config block. Both are already set in `10-master.yml`'s Section 6 as of 2026-08-11 — if they're ever missing (e.g. hand-edited away, or a much older master rebuilt from an outdated checkout), re-run:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/salt/playbooks/10-master.yml \
+  --ask-vault-pass --start-at-task="6 | Write /etc/salt/master"
+```
+
+**3. `gitfs_provider`/`git_pillar_provider: gitcli`, and shallow clone.** Do **not** use these together — `gitcli` has a confirmed real bug (2026-08-11) where its bare clone never points `HEAD` at the branch it actually fetched, leaving it dangling at a branch this repo doesn't have. This makes listing operations work (they resolve via explicit branch config) while individual file fetches silently fail (they rely on `HEAD` implicitly). `10-master.yml` pins `gitfs_provider`/`git_pillar_provider: gitpython` specifically to avoid this — if you ever see `gitcli` in `/etc/salt/master`, that's a regression, not a valid alternative. Neither `gitpython` nor `pygit2` support shallow clones (`gitfs_depth`/`git_pillar_depth`) at all — that's `gitcli`-only, and `gitcli` isn't safe to use here until this is fixed upstream.
+
+---
+
+## 11. Forcing a Refresh ("re-pulling")
+
+Both `gitfs` and `git_pillar` sync automatically on their own schedule — but if you've just pushed a change to `salt/states/` or `salt/pillar/` and don't want to wait:
+
+```bash
+sudo salt-run fileserver.update    # gitfs -- states
+```
+
+There's no separate one-line runner for forcing a `git_pillar` refresh outside its own schedule — it updates on the same background cycle as `gitfs`. If you need pillar data refreshed on a *minion* after a master-side pillar change (the master already has the new data, but the minion is holding a stale copy from its last check-in):
+
+```bash
+sudo salt EXADCSCLD001 saltutil.refresh_pillar
+```
+
+**This does NOT do a fresh git clone — it's a real incremental update, confirmed not just assumed** (2026-08-11): running `fileserver.update` twice in a row with nothing changed upstream left both the total cache size and an existing file's exact modification time completely unchanged between runs. It behaves like an ordinary `git pull`, not a rebuild-from-scratch — routine use of this command will not grow the cache over time. It will only grow if genuinely new large content lands in the repo (expected, not a leak).
+
+---
+
+## 12. If the Master's Disk Fills Up
+
+See `docs/INCIDENT-LOG.md`'s `INC-2026-08-11-SALT-DISK-FULL` for the full story of why this happened once already. Quick diagnosis and recovery:
+
+```bash
+# Check what's actually using the space
+sudo du -h --max-depth=1 /var/cache/salt/master
+
+# gitfs/git_pillar are both PURE CACHES -- safe to delete entirely, Salt regenerates
+# them from GitHub on next use. Not authoritative data, nothing is lost.
+sudo systemctl stop salt-master
+sudo rm -rf /var/cache/salt/master/gitfs /var/cache/salt/master/git_pillar
+sudo systemctl start salt-master
+sudo salt-run fileserver.update
+```
+
+**Current expected size, as of 2026-08-11, both fully rebuilt from scratch**: `gitfs` ~575MB, `git_pillar` ~5.6GB (`git_pillar` checks out the *entire* repository rather than just `salt/pillar/`, a known, accepted inefficiency — see the incident log's own Root Cause section for why this isn't being chased further right now). Total, ~6.2GB. If you see numbers wildly larger than this after a clean rebuild, something new has regressed — don't assume it's normal, investigate with §10's diagnostic commands.
+
+**If this happens again and you can't even log in**: the disk-full lockout blocks new sessions but the root account can usually still get in via the reserved-blocks margin ext4 keeps for root — try `ssh` as `ansible` first, and if that's rejected too, console/out-of-band access is the fallback (see `docs/linux-recovery-runbook.md` for the general pattern, not specific to Salt).
+
+**Root filesystem headroom**: extended by +10GB on 2026-08-11 as an independent safety margin (`lvextend -L+10240M /dev/mapper/EXASLTCLD001`, followed by a filesystem grow to match). Check current headroom any time with `df -h /`.
+
+---
+
+## 13. If `salt-master` Won't Start At All
+
+Real example, 2026-08-11: switching `gitfs_provider` to a provider that turned out to be invisible to Salt's own bundled Python took `salt-master` down completely, crash-looping on every restart attempt. First move, always:
+
+```bash
+sudo systemctl status salt-master
+sudo journalctl -u salt-master -n 30 --no-pager
+```
+
+Look for a `[CRITICAL]` line near the bottom — Salt's own pre-flight checks are usually explicit about what failed (e.g. `Master failed pre flight checks, exiting`, with the real reason logged just above it). Common real causes seen so far:
+
+- **`No suitable gitfs provider module is installed`** — `gitfs_provider`/`git_pillar_provider` is set to something not actually available to Salt's own runtime. **Important**: Salt ships its own bundled, self-contained Python (relenv), completely separate from the system's `/usr/bin/python3` — `apt install python3-<whatever>` does **nothing** for Salt's own provider modules. Check what Salt itself says is available (the crash log names it directly, e.g. `GitPython is installed, you may wish to set gitfs_provider to 'gitpython'`) rather than guessing or installing system packages.
+- **A syntax error in `/etc/salt/master`** — `salt-master` will refuse to start and usually say so plainly. `10-master.yml`'s Section 6 always keeps a `.bak` backup (`backup: true` on the `copy` task) if you need to compare against the last-known-good version by hand: `ls -la /etc/salt/master.*`.
+
+**Recovery**: fix the actual cause (usually a provider/config value), then re-apply via Ansible rather than hand-editing the live file — keeps the repo as the source of truth, not a one-off manual patch that drifts:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/salt/playbooks/10-master.yml \
+  --ask-vault-pass --start-at-task="6 | Write /etc/salt/master"
+sudo systemctl status salt-master   # confirm it's genuinely staying up, not just restarting once
+```
+
+Watch it for a minute after — a master that starts cleanly once but crashes again on its own internal retry logic will show that in `journalctl -u salt-master -f`, not just in the immediate `systemctl status` output.
+
+---
+
+## 14. Quick Reference
 
 | I need to… | Go to |
 |-----------|-------|
@@ -230,6 +402,12 @@ I haven't personally driven SaltGUI's UI live to confirm exactly which panel bro
 | See what a specific state actually does | `salt/states/<name>/init.sls` — each has its own header comment |
 | Query or confirm a minion's custom grains | §7 above |
 | Check/adjust the automatic highstate schedule | §6 above |
+| Apply state from the command line, real examples | §9 above |
+| Check gitfs/git_pillar are actually delivering content | §10 above |
+| Force a refresh without waiting for the schedule | §11 above |
+| The master's disk filled up | §12 above |
+| `salt-master` won't start at all | §13 above |
+| Full incident write-up for the 2026-08-11 disk-full/delivery saga | `docs/INCIDENT-LOG.md`'s `INC-2026-08-11-SALT-DISK-FULL` |
 | Understand the full docs index | [INDEX.md](../INDEX.md) |
 
 ---
