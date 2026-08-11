@@ -80,14 +80,26 @@
 # re-applying those three PRs (or whatever they've evolved into) by hand. See
 # docs/buildsheets/buildsheet-salt-minion.md for the full caveat.
 #
-# Custom grains: NOT this file's job, and not future work either -- already built and live
-# (2026-07-20) as salt/states/grains/init.sls, wired into salt/states/top.sls for every
-# minion. This comment previously called it deferred future work; that was stale by the time
-# it mattered -- corrected 2026-08-10. See docs/management/Salt_Beginners_Guide.md's
-# "Automatic Highstate" and "Querying and Confirming Custom Grains" sections for where the
-# rendered file actually lives and how to check it, and the automatic-highstate config below
-# for how grains/wintools actually get applied without someone remembering to run state.apply
-# by hand.
+# Custom grains: this file does NOT write the grains file itself, and never has. That's
+# salt/states/grains/init.sls's job, applied via Salt's own state.apply (already built and
+# live since 2026-07-20, wired into salt/states/top.sls for every minion) -- this file only
+# ever installs the minion binary and the automatic-highstate config below, which is what
+# actually CAUSES grains to get applied without someone running state.apply by hand. See
+# docs/management/Salt_Beginners_Guide.md's "Automatic Highstate" and "Querying and
+# Confirming Custom Grains" sections for where the rendered file actually lives and how to
+# check it.
+#
+# Ordering caveat, unverified: the very first startup_states: highstate this playbook
+# triggers (via the service restart below) fires before anyone's accepted the new minion's
+# key on the master (auto_accept is deliberately false) -- that first attempt almost
+# certainly fails to reach the master at all. Not a bug this file can fix by itself: Salt
+# minions retry their master connection continuously by design, but whether a FAILED
+# startup_states attempt specifically gets retried once the key's later accepted, versus only
+# ever firing once at process start, hasn't been confirmed against real Salt behaviour. The
+# periodic schedule: block below is the actual backstop either way -- worst case, grains land
+# up to salt_minion_highstate_interval_minutes after key acceptance, not immediately. Accept
+# the key promptly, or run `salt <target> state.apply` by hand right after accepting, if
+# grains are needed sooner than that.
 #
 # Automatic highstate (added 2026-08-10): salt/states/top.sls declares wintools+grains for
 # every minion, but nothing on the master or minion triggers state.apply on its own --
@@ -131,6 +143,19 @@
 #                     assuming they match. Rest of that folder's own
 #                     contents/naming deliberately untouched -- more
 #                     cleanup still to come there, not this file's job.
+# v1.4.0  2026-08-11  Explicit already-installed/version-mismatch handling,
+#                     per Robert's direct ask. Previously relied entirely
+#                     on win_package's own ProductCode-based idempotency,
+#                     which can't tell "wrong version installed" from
+#                     "nothing installed" -- a version bump changes the
+#                     ProductCode too, so a mismatched minion would have
+#                     hit a blind, unverified msiexec /i attempt. Added a
+#                     registry-based version check before touching
+#                     anything: skip entirely if the correct version's
+#                     already there, fail loudly (don't guess/auto-upgrade)
+#                     if a different version is. Also clarified the
+#                     header's own custom-grains section with the real
+#                     key-acceptance/first-highstate ordering caveat.
 # =============================================================================
 
 - name: Windows — Salt minion install
@@ -146,6 +171,15 @@
     salt_minion_msi_filenames:
       x86_64: Salt-Minion-3008.0-Py3-AMD64.msi
       arm64: Salt-Minion-3008.0-Py3-ARM64.msi
+
+    # Kept in sync BY HAND with the version baked into the two filenames above -- same
+    # documented duplication-point convention salt/states/audit/init.sls's own header already
+    # uses for its "3008" hardcode (no shared var scope between Ansible and Salt). Used below
+    # to detect an out-of-date minion -- distinct from win_package's own ProductCode-based
+    # idempotency, which can't tell "wrong version installed" from "nothing installed at all"
+    # (a version bump normally changes the MSI's ProductCode too, so win_package alone would
+    # just see "this exact ProductCode isn't present" and blindly attempt msiexec /i again).
+    salt_minion_expected_version: "3008.0"
 
     # bootstrap/web/windows/x86_64/ renamed to .../amd64/ by Robert (2026-08-10, same day) --
     # host_arch itself (tasks/arch_facts.yml) still resolves to "x86_64", so this maps that
@@ -179,16 +213,53 @@
       when: host_arch not in salt_minion_msi_filenames
       tags: salt
 
+    # Registry-based, not win_package's own ProductCode check -- reads what's actually
+    # installed BEFORE deciding whether to touch anything, so a version mismatch (see the
+    # next task) can be caught explicitly rather than letting win_package blindly attempt an
+    # msiexec /i against a ProductCode it doesn't recognise. DisplayName pattern ('Salt
+    # Minion*') matches Salt's own installer naming, reasoned from the MSI's own metadata
+    # (see docs/buildsheets/buildsheet-salt-minion.md's "Subject: Salt Minion X.Y.Z..." check)
+    # -- NOT independently confirmed against a real installed minion's actual Add/Remove
+    # Programs entry yet. Verify this task's own output the first time this runs for real.
+    - name: Check for an already-installed Salt minion (any version)
+      ansible.windows.win_shell: >-
+        (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+        -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like 'Salt Minion*' } |
+        Select-Object -First 1 -ExpandProperty DisplayVersion)
+      register: _salt_minion_installed_version
+      changed_when: false
+      tags: salt
+
+    # Answers Robert's "what happens on 3007 vs 3008" question: previously, nothing checked
+    # this at all -- win_package would just attempt msiexec /i blind (see the task above's own
+    # comment). Now it stops here instead. Deliberately NOT an automatic upgrade attempt --
+    # master/minion major-version mismatches are already documented as unsupported upstream
+    # (group_vars/salt_servers/main.yml), and whether an in-place MSI upgrade even works
+    # cleanly for this installer has never been confirmed. That's a considered decision for a
+    # human, not something to guess at silently.
+    - name: Fail loudly if an installed Salt minion doesn't match the expected version
+      ansible.builtin.fail:
+        msg: >-
+          Salt minion {{ _salt_minion_installed_version.stdout | trim }} is already installed
+          on {{ inventory_hostname }}, but this playbook expects
+          {{ salt_minion_expected_version }} (salt_minion_expected_version, kept in sync with
+          salt_minion_msi_filenames above). Not proceeding -- decide by hand whether to
+          uninstall the old version first, or whether the version pin itself needs revisiting.
+      when:
+        - _salt_minion_installed_version.stdout | trim != ""
+        - _salt_minion_installed_version.stdout | trim != salt_minion_expected_version
+      tags: salt
+
+    # Explicit skip, not reliance on win_package's own implicit ProductCode idempotency --
+    # Robert's own ask: if the correct version is already installed, don't touch it at all,
+    # not even a no-op copy+msiexec run.
     - name: Copy Salt minion MSI to the target host
       ansible.windows.win_copy:
         src: "{{ playbook_dir }}/../../../../bootstrap/web/windows/{{ salt_minion_msi_dirs[host_arch] }}/{{ salt_minion_msi_filenames[host_arch] }}"
         dest: "C:\\Windows\\Temp\\Salt-Minion-Setup.msi"
+      when: _salt_minion_installed_version.stdout | trim == ""
       tags: salt
 
-    # No product_id/creates_service needed -- path is a locally-accessible file, so
-    # win_package's own idempotency check reads the MSI's product code directly
-    # (confirmed against the module's own docs, not guessed). creates_service is
-    # documented as ignored for local MSI paths anyway (it's for the exe/URL/share case).
     - name: Install Salt minion (MASTER/MINION_ID via MSI properties)
       ansible.windows.win_package:
         path: "C:\\Windows\\Temp\\Salt-Minion-Setup.msi"
@@ -196,12 +267,14 @@
           MASTER=salt.{{ site_services.domain_fqdn }}
           MINION_ID={{ inventory_hostname | upper }}
         state: present
+      when: _salt_minion_installed_version.stdout | trim == ""
       tags: salt
 
     - name: Remove staged MSI
       ansible.windows.win_file:
         path: "C:\\Windows\\Temp\\Salt-Minion-Setup.msi"
         state: absent
+      when: _salt_minion_installed_version.stdout | trim == ""
       tags: salt
 
     # Salt's own out-of-the-box minion default is default_include: minion.d/*.conf -- any
