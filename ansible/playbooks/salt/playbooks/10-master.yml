@@ -132,14 +132,28 @@
 #               update cycle in the master's own journal) failed the whole
 #               time, for the same underlying reason.
 #
-#               FIXED by switching provider entirely, gitfs_provider/
-#               git_pillar_provider: gitcli -> pygit2 (mature, correct clone
-#               semantics -- python3-pygit2 added to Section 5's package
-#               install). Real, known tradeoff, not hidden: pygit2 does NOT
-#               support gitfs_depth/git_pillar_depth at all (confirmed
-#               against Salt's own docs -- shallow clone is gitcli-only) --
-#               full-history clones are back, same ~3GB-class cost as
-#               docs/INCIDENT-LOG.md's INC-2026-08-11-SALT-DISK-FULL
+#               First fix attempt: gitfs_provider/git_pillar_provider:
+#               gitcli -> pygit2, plus `apt install python3-pygit2`. WRONG --
+#               salt-master then failed to start at all ("No suitable gitfs
+#               provider module is installed", a real, live outage, not a
+#               config no-op) because Salt ships its OWN bundled,
+#               self-contained Python (relenv), entirely separate from the
+#               system's /usr/bin/python3 -- installing a system apt package
+#               does nothing for Salt's own runtime. Should have checked
+#               this before recommending it; the earlier "confirm gitcli is
+#               active by accident" check (`python3 -c "import pygit2"`)
+#               was itself checking the wrong Python the whole time.
+#
+#               REAL FIX: the master's own crash log said plainly,
+#               unprompted, that GitPython IS already present in Salt's
+#               bundled environment -- switched gitfs_provider/
+#               git_pillar_provider to gitpython instead (no package install
+#               needed at all, confirmed already available rather than
+#               guessed). Real, known tradeoff, not hidden: like pygit2,
+#               gitpython does NOT support gitfs_depth/git_pillar_depth
+#               (shallow clone is gitcli-only, confirmed against Salt's own
+#               docs) -- full-history clones are back, same ~3GB-class cost
+#               as docs/INCIDENT-LOG.md's INC-2026-08-11-SALT-DISK-FULL
 #               describes, accepted as the cost of using a provider that
 #               actually works correctly. Revisit the Ansible-push/
 #               dedicated-slim-repo options from that incident's own
@@ -501,16 +515,16 @@
         install_recommends: false
         dpkg_options: "force-confold,force-confdef"
 
-    # Needed for gitfs_provider/git_pillar_provider: pygit2 below -- see Section 6's own
-    # header comment for the real, live-diagnosed reason gitcli isn't used (a genuine bug in
-    # how it constructs its bare clone's HEAD ref, found 2026-08-11).
-    - name: "5 | Install python3-pygit2 (gitfs/git_pillar provider)"
-      apt:
-        name: python3-pygit2
-        state: present
-        install_recommends: false
-        dpkg_options: "force-confold,force-confdef"
-
+    # gitfs_provider/git_pillar_provider: gitpython below -- see Section 6's own header
+    # comment for the real, live-diagnosed reason gitcli isn't used (a genuine bug in how it
+    # constructs its bare clone's HEAD ref, found 2026-08-11). No package install needed here
+    # -- Salt ships its OWN bundled, self-contained Python (relenv), entirely separate from
+    # the system's /usr/bin/python3. `apt install python3-pygit2` (tried first, same day) does
+    # nothing for Salt's own runtime, confirmed the hard way: salt-master crashed outright on
+    # startup ("No suitable gitfs provider module is installed") despite the system package
+    # being genuinely installed. Its own crash log said GitPython IS already present in Salt's
+    # bundled environment -- switched to gitpython instead of chasing the correct way to pip-
+    # install pygit2 into that bundled env, since nothing needs adding for this to work.
     - name: "5 | Verify installed Salt version matches the pinned major line"
       command: salt --version
       register: _salt_version_check
@@ -549,34 +563,42 @@
   # own root: option point at salt/states and salt/pillar respectively,
   # rather than the repo root, since this repo has plenty else in it.
   #
-  # gitfs_provider/git_pillar_provider: pygit2 (2026-08-11 -- started as
-  # "gitcli", ended as "pygit2" the same day; see this file's own changelog
-  # for the full, real story of why). Original problem: gitfs/git_pillar's
-  # default full-history clone of this repo hit 3.1GB combined on
-  # /var/cache/salt/master/{gitfs,git_pillar} (this repo's history
-  # permanently carries every large binary committed before it was
-  # LFS-tracked -- LFS migration here is "prospective only, not a history
-  # rewrite", see .gitattributes) -- see docs/INCIDENT-LOG.md's
+  # gitfs_provider/git_pillar_provider: gitpython (2026-08-11 -- started as
+  # "gitcli", briefly "pygit2", ended as "gitpython" the same day; see this
+  # file's own changelog for the full, real story of why). Original
+  # problem: gitfs/git_pillar's default full-history clone of this repo hit
+  # 3.1GB combined on /var/cache/salt/master/{gitfs,git_pillar} (this
+  # repo's history permanently carries every large binary committed before
+  # it was LFS-tracked -- LFS migration here is "prospective only, not a
+  # history rewrite", see .gitattributes) -- see docs/INCIDENT-LOG.md's
   # INC-2026-08-11-SALT-DISK-FULL. gitcli + gitfs_depth/git_pillar_depth: 1
-  # (shallow clone, gitcli-only -- pygit2/gitpython don't support it) fixed
-  # that, briefly, but live testing then found a genuine BUG in gitcli
-  # itself: it never points its bare clone's HEAD at the branch it actually
-  # fetches, leaving HEAD dangling at git's own historical default branch
-  # name ("master"), which this repo has never had. Confirmed directly
-  # against the raw git objects on disk (`git --git-dir=... branch/log`,
-  # bypassing Salt entirely) -- the real data was correctly present under
-  # remotes/origin/main the whole time; every operation relying on HEAD
-  # implicitly (individual file fetch, git_pillar's own root-path
-  # validation) failed for that reason, regardless of the depth setting
-  # (removing depth did NOT fix it -- ruled out live, not assumed).
+  # (shallow clone, gitcli-only -- neither pygit2 nor gitpython support it)
+  # fixed that, briefly, but live testing then found a genuine BUG in
+  # gitcli itself: it never points its bare clone's HEAD at the branch it
+  # actually fetches, leaving HEAD dangling at git's own historical default
+  # branch name ("master"), which this repo has never had. Confirmed
+  # directly against the raw git objects on disk (`git --git-dir=...
+  # branch/log`, bypassing Salt entirely) -- the real data was correctly
+  # present under remotes/origin/main the whole time; every operation
+  # relying on HEAD implicitly (individual file fetch, git_pillar's own
+  # root-path validation) failed for that reason, regardless of the depth
+  # setting (removing depth did NOT fix it -- ruled out live, not assumed).
   # gitcli is brand new in Salt 3008.0 -- genuinely less battle-tested, and
   # this is a real bug in it, not something this file's config can work
-  # around. Switched provider to pygit2 instead (python3-pygit2, Section 5)
-  # -- mature, correct clone semantics. Real tradeoff, not hidden: pygit2
-  # doesn't support depth at all, so full-history clones are back, same
-  # cost as the original incident, accepted here as the price of a provider
-  # that actually works. Don't reach for gitcli + depth again without a
-  # confirmed upstream fix for the HEAD-construction bug found here.
+  # around.
+  #
+  # First switch attempt was pygit2 (python3-pygit2 via apt) -- WRONG, took
+  # salt-master down outright ("No suitable gitfs provider module is
+  # installed"), because Salt ships its own bundled, self-contained Python
+  # (relenv) -- a system apt package is invisible to it. Its own crash log
+  # said GitPython was already present in that bundled environment, so
+  # gitpython is what's actually configured here -- no package install
+  # needed, confirmed available rather than guessed. Real tradeoff, not
+  # hidden: like pygit2, gitpython doesn't support depth at all, so
+  # full-history clones are back, same cost as the original incident,
+  # accepted here as the price of a provider that actually works. Don't
+  # reach for gitcli + depth again without a confirmed upstream fix for the
+  # HEAD-construction bug found here.
   #
   # SaltGUI's own external_auth/netapi_enable_clients/rest_cherrypy settings
   # live in a SEPARATE drop-in, /etc/salt/master.d/saltgui.conf, written by
@@ -599,7 +621,7 @@
           log_level_logfile: info
 
           # States served from this repo's own salt/states/ via gitfs -- public
-          # repo, no credentials needed (see salt/README.md). provider: pygit2
+          # repo, no credentials needed (see salt/README.md). provider: gitpython
           # -- see this section's own header comment for the full "why"
           # (a real, confirmed gitcli bug, not a config choice made lightly).
           #
@@ -616,7 +638,7 @@
           # "the master branch is implicitly mapped to the base environment."
           fileserver_backend:
             - gitfs
-          gitfs_provider: pygit2
+          gitfs_provider: gitpython
           gitfs_base: main
           gitfs_remotes:
             - {{ salt_gitfs_repo_url }}:
@@ -624,7 +646,7 @@
 
           # Pillar served from this repo's own salt/pillar/ via git_pillar --
           # same repo, separate mechanism from gitfs (ext_pillar, not
-          # fileserver_backend). Same pygit2 reasoning as gitfs above.
+          # fileserver_backend). Same gitpython reasoning as gitfs above.
           #
           # env: base (added 2026-08-11, same real bug/fix as gitfs_base
           # above) -- git_pillar's own per-remote branch name ("main" here)
@@ -635,7 +657,7 @@
           # country lookup would silently render blank instead of failing
           # loudly, since grains/init.sls's own Jinja uses safe .get()
           # fallbacks throughout.
-          git_pillar_provider: pygit2
+          git_pillar_provider: gitpython
           ext_pillar:
             - git:
               - main {{ salt_gitfs_repo_url }}:
