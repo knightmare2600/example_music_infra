@@ -525,6 +525,38 @@
     # being genuinely installed. Its own crash log said GitPython IS already present in Salt's
     # bundled environment -- switched to gitpython instead of chasing the correct way to pip-
     # install pygit2 into that bundled env, since nothing needs adding for this to work.
+    # This repo's .gitattributes defines real filter=lfs rules (large binaries elsewhere in
+    # the repo, unrelated to salt/states|pillar themselves) -- if git-lfs was never installed
+    # AND `git lfs install` never run to register that filter system-wide, checkout behaviour
+    # for this repo is untested/unverified territory, not just "LFS files stay as pointers"
+    # (which is the desired behaviour and still true after this -- see below). Robert's own
+    # catch, 2026-08-11, after both gitcli and gitpython failed to serve file content
+    # identically -- a repo-wide git mechanism unrelated to either provider fits the evidence
+    # better than anything tried before it.
+    - name: "5 | Install git-lfs"
+      apt:
+        name: git-lfs
+        state: present
+        install_recommends: false
+        dpkg_options: "force-confold,force-confdef"
+
+    - name: "5 | Check current git-lfs filter registration"
+      command: git config --system --get filter.lfs.clean
+      register: _git_lfs_filter_check
+      changed_when: false
+      failed_when: false
+
+    # --skip-smudge: registers the filter (so git no longer treats it as undefined/missing)
+    # WITHOUT actually downloading real LFS blob content on checkout -- LFS-tracked files
+    # still stay as small pointers, matching this file's own established "keep the master's
+    # disk footprint small" reasoning. --system, not --global, since salt-master's own git
+    # operations don't run as a normal interactive user with a HOME-scoped git config.
+    # Idempotency: `git config --get` exits non-zero when the key isn't set at all -- only
+    # register the filter if it's genuinely missing, rather than reporting changed every run.
+    - name: "5 | Register git-lfs filter system-wide (pointers only, no smudge)"
+      command: git lfs install --system --skip-smudge
+      when: _git_lfs_filter_check.rc != 0
+
     - name: "5 | Verify installed Salt version matches the pinned major line"
       command: salt --version
       register: _salt_version_check
