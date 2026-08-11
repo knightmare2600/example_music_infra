@@ -23,9 +23,53 @@ Newest incident at the top, oldest at the bottom — read bottom-to-top for chro
 
 | Incident ID | Date | Summary |
 |---|---|---|
+| [INC-2026-08-11-SALT-DISK-FULL](#inc-2026-08-11-salt-disk-full--root-filesystem-filled-by-an-oversized-git-clone-on-the-salt-master) | 2026-08-11 | The Salt master's root filesystem filled completely, blocking all login, because its git-based state/pillar delivery was cloning the estate's entire infrastructure repository in full |
 | [INC-2026-07-16-ANSIBLE-LOCK](#inc-2026-07-16-ansible-lock--ansible-account-administratively-locked-out-on-a-live-firewall-node) | 2026-07-16 | The `ansible` account's administrative lock rejected every login method, not just password, on a live firewall node |
 | [INC-2026-07-12-SSH-KEY](#inc-2026-07-12-ssh-key--lost-ssh-keypair-delayed-pve-node-deployment-in-scandinavia) | 2026-07-12 | Lost/forgotten SSH keypair delayed PVE node deployment in Scandinavia |
 | [INC-2026-04-03-BMC-CREDS](#inc-2026-04-03-bmc-creds--mismatched-bmc-credentials-on-a-newly-delivered-fal-server) | 2026-04-03 | Vendor delivered the wrong physical chassis under otherwise-correct paperwork — documented BMC credentials didn't work on arrival at FAL |
+
+---
+
+## INC-2026-08-11-SALT-DISK-FULL — Root filesystem filled by an oversized git clone on the Salt master
+
+### Incident Background
+
+**Date:** 11 August 2026
+**Scope:** The Salt master (EXASLTCLD001)
+**Cause (summary):** Salt's git-based state and pillar delivery had been cloning the estate's entire infrastructure repository in full — including years of large binaries the repository still carries in its history from before it adopted Git LFS — until the root filesystem filled completely.
+
+An engineer went to sign in to the Salt master and every login attempt was rejected outright. Investigation traced the cause to the root filesystem being completely full — roughly 3GB of the space in use sat under a single pair of directories, `/var/cache/salt/master/gitfs` and `/var/cache/salt/master/git_pillar`, Salt's own local caches for the git-backed mechanisms that serve its states and pillar data.
+
+### Root Cause & Mitigation
+
+Salt's `gitfs` (fileserver) and `git_pillar` (pillar) backends each maintain their own persistent local clone of the git repository they're configured against, refreshed incrementally after the first clone — not unlike an ordinary `git pull`. The problem was not that either kept re-downloading everything on every update; it was that the *one* clone each maintained was, by default, a full-history clone of a repository whose history permanently carries a large amount of binary content committed before the repository adopted Git LFS (that migration was deliberately prospective-only, not a history rewrite, so the old content never left). Salt only ever needed a handful of small text files from two subdirectories, but was downloading — and retaining — the repository's entire history regardless.
+
+Root cause confirmed directly, not assumed: an identical local clone of the same repository measured the same size independently, confirming the repository's own history was the source, not anything specific to how the master had been configured.
+
+The fix has two parts, both landed the same day:
+
+- Salt supports a shallow-clone option (`gitfs_depth`/`git_pillar_depth`), but it only takes effect on one of its three possible git-handling backends (`gitcli`, which shells out to the system `git` binary) — the other two do not honour it at all. Checking what this master actually had installed showed neither of the other two backends' required libraries were present, meaning it had already been using the shallow-clone-capable backend the whole time, by accident, never as a deliberate choice. That backend and the shallow-clone depth were then pinned explicitly in configuration, rather than continuing to rely on that being true by chance.
+- The two existing caches, both full-history, did not shrink on their own — they were cleared once and allowed to regenerate under the new shallow-clone setting.
+
+Combined, this cut the two caches from roughly 3GB to under 700MB — the large majority of the problem. A smaller amount of unavoidable overhead remains, because Salt's shallow-clone option only limits *history* depth, not which parts of the repository's current content get pulled down — as long as it's cloning this repository at all, it will always pull the repository's entire current tree, not just the two subdirectories it actually uses. Removing that remainder entirely would need a larger change — the Salt master fetching its states/pillar a different way entirely, or a separate, dedicated repository containing only what Salt needs — assessed as not proportionate to build for the amount of space still involved, once the disk-full risk itself was resolved.
+
+As an immediate, independent safety margin — not a fix for the underlying cause, but sound practice regardless of it — the root logical volume on the Salt master was also extended by 10GB.
+
+### Lessons Learned
+
+- **Nothing was watching free disk space on this host, so a slow, entirely predictable growth had no chance to be caught before it became a full lockout.** The underlying cache had been growing since the day this delivery mechanism was first configured; nothing flagged it at 50% full, or 80%, or 95% — the first signal was the disk hitting 100% and blocking login outright. Estate-wide disk/resource monitoring (already an open piece of work — see the SNMP/Zabbix monitoring rollout notes) would have caught this at a much earlier, much calmer point.
+- **A tool's own caching behaviour is not necessarily proportionate to the size of what it's actually meant to be caching.** Two small directories of text files resulted in gigabytes of on-disk cache, because the caching mechanism's design (a full git clone) was never scoped to the small thing it was actually being used for.
+- **When a default behaviour turns out to be relying on which optional components happen to be absent, that's worth pinning down explicitly, not left to chance** — this master had been using the one backend capable of a smaller footprint the entire time, purely because two unrelated Python libraries were never installed. That was a lucky accident, not a decision anyone had made, and the moment either library gets installed for an unrelated reason in future, the behaviour would silently change back without anyone choosing that.
+
+### Improvements Made
+
+- The Salt master's git-based fileserver and pillar delivery are now explicitly configured for shallow, rather than full-history, clones — cutting the affected caches from roughly 3GB to under 700MB, with the mechanism and the reasoning behind it fully documented alongside the configuration itself.
+- The root logical volume on the Salt master was extended by 10GB as an independent safety margin.
+- This incident is now on record as a concrete example of why disk/resource monitoring belongs on the estate's roadmap — a low-cost, entirely preventable class of failure that a basic threshold alert would have caught with days or weeks of advance warning instead of zero.
+
+### Executive Summary
+
+The Salt master became completely unreachable when its root filesystem filled up, traced to gigabytes of accumulated cache from a git-based delivery mechanism that had been cloning the estate's entire infrastructure repository in full — far more than it actually needed — since the day it was first configured. Nothing had been watching free disk space on this host, so the growth went unnoticed until it caused a full lockout rather than being caught early. The delivery mechanism has been reconfigured to a much smaller, shallow-clone footprint, cutting the affected caches by roughly three-quarters, and the root filesystem was given an independent safety margin on top. The remaining, much smaller footprint is accepted as a reasonable cost of the current approach rather than eliminated entirely, since doing so would need a larger change disproportionate to the space still involved. The clearest lasting lesson is the absence of basic disk-space monitoring on this host — and, by extension, elsewhere in the estate — which is now recorded as a concrete case for prioritising that work.
 
 ---
 
