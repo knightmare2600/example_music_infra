@@ -67,6 +67,16 @@ Both replace a hand-rolled "clone the repo + cron job running `git pull` +
 while reviewing `salt/cleanup/salt/salt/pillar.sls` — neither gitfs nor
 git_pillar need that; they sync from the git remote natively on their own.
 
+**Shallow clone (added 2026-08-11, real live disk-bloat fix)**: both are
+configured with `provider: gitcli` + `depth: 1` — a full-history clone of
+this repo is 3GB+ (it permanently carries every large binary ever committed
+before it was LFS-tracked; LFS migration here is prospective-only, not a
+history rewrite), which gitfs/git_pillar were downloading in full for the
+sake of a handful of small `states/`/`pillar/` text files. `depth: 1` only
+has an effect on the `gitcli` provider, not `pygit2`/`gitpython` — see
+`10-master.yml`'s own Section 6 header comment for the full reasoning and
+the one-time cache-clear command needed after this landed.
+
 ## Pillar and secrets
 
 This repo is public. Nothing genuinely sensitive goes in `pillar/` in
