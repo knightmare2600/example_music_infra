@@ -81,6 +81,22 @@
 #               proxmox/windows_bootstrap/windows_dc, so salt-api/SaltGUI
 #               (20-saltgui.yml) could be added as its own self-contained
 #               stage rather than growing the one file further.
+#   2026-08-11  Real live disk-bloat fix -- gitfs_provider/git_pillar_provider
+#               explicitly pinned to gitcli, gitfs_depth/git_pillar_depth: 1
+#               added (shallow clone). Found live: /var/cache/salt/master/
+#               {gitfs,git_pillar} on EXASLTCLD001 hit 3.1GB combined --
+#               both backends were full-history-cloning this repo (which
+#               permanently carries every large binary ever committed
+#               before it was LFS-tracked) for the sake of a handful of
+#               small salt/states+salt/pillar text files. Confirmed live
+#               this master already runs gitcli by accident (neither
+#               pygit2 nor gitpython installed, Salt 3008.0's own
+#               documented fallback) -- pinned explicitly rather than
+#               relying on that staying true by chance. Existing caches
+#               don't shrink retroactively -- run once after this lands:
+#                 sudo systemctl stop salt-master
+#                 sudo rm -rf /var/cache/salt/master/gitfs /var/cache/salt/master/git_pillar
+#                 sudo systemctl start salt-master
 # =============================================================================
 
 - name: Salt master — install and configure
@@ -474,6 +490,28 @@
   # own root: option point at salt/states and salt/pillar respectively,
   # rather than the repo root, since this repo has plenty else in it.
   #
+  # gitfs_provider/git_pillar_provider explicitly "gitcli", and gitfs_depth/
+  # git_pillar_depth: 1 (added 2026-08-11, real live problem found on
+  # EXASLTCLD001 -- /var/cache/salt/master/{gitfs,git_pillar} hit 3.1GB
+  # combined). Root cause: gitfs/git_pillar do a FULL-HISTORY clone by
+  # default, and this repo's history permanently carries every large binary
+  # ever committed before it was LFS-tracked (LFS migration here is
+  # "prospective only, not a history rewrite" -- see .gitattributes) --
+  # Salt only ever needs the current tip of salt/states+salt/pillar, a
+  # handful of small text files, but was pulling down gigabytes of
+  # unrelated history regardless. gitfs_depth/git_pillar_depth (shallow
+  # clone -- only the latest commit's objects, not full history) ONLY has
+  # an effect on the gitcli provider, NOT pygit2/gitpython (confirmed
+  # against Salt's own current docs) -- explicitly pinning the provider
+  # here rather than relying on this master having neither pygit2 nor
+  # gitpython installed by accident (confirmed live, 2026-08-11: neither
+  # is present, so this master was already running gitcli, just never on
+  # purpose -- `python3 -c "import pygit2"` / `"import git"` both
+  # ModuleNotFoundError). gitcli itself needs nothing beyond the system
+  # git binary (already present via this playbook's own base packages).
+  # Existing caches don't shrink retroactively -- see this file's own
+  # changelog for the one-time clear command run after this landed.
+  #
   # SaltGUI's own external_auth/netapi_enable_clients/rest_cherrypy settings
   # live in a SEPARATE drop-in, /etc/salt/master.d/saltgui.conf, written by
   # 20-saltgui.yml -- not here. Salt merges every *.conf under master.d/
@@ -495,9 +533,13 @@
           log_level_logfile: info
 
           # States served from this repo's own salt/states/ via gitfs -- public
-          # repo, no credentials needed (see salt/README.md).
+          # repo, no credentials needed (see salt/README.md). provider:
+          # gitcli + depth: 1 -- shallow clone, see this section's own header
+          # comment for the full "why" (real disk-bloat fix, 2026-08-11).
           fileserver_backend:
             - gitfs
+          gitfs_provider: gitcli
+          gitfs_depth: 1
           gitfs_remotes:
             - {{ salt_gitfs_repo_url }}:
               - root: salt/states
@@ -506,6 +548,9 @@
           # same repo, separate mechanism from gitfs (ext_pillar, not
           # fileserver_backend). Branch name (main) doubles as the pillar
           # environment unless overridden with env: -- see salt/README.md.
+          # Same gitcli + shallow-clone reasoning as gitfs above.
+          git_pillar_provider: gitcli
+          git_pillar_depth: 1
           ext_pillar:
             - git:
               - main {{ salt_gitfs_repo_url }}:
