@@ -285,6 +285,20 @@
 #      happens live in the setup scripts (GitHub API digest field, same as
 #      assets[]'s github_release handling) -- this check doesn't duplicate
 #      that, it checks the pin's own structural validity and freshness.
+#  38. check_windows_arch_fact.py -- flags any bare ansible_architecture
+#      usage under a windows_* playbook directory. Real bug, found live
+#      2026-08-11: on Windows, this fact reports OS bitness ('64-bit'/
+#      '32-bit'), not CPU architecture -- it can't distinguish AMD64 from
+#      ARM64 at all. tasks/arch_facts.yml (shared by 6 files) silently
+#      mismapped host_arch to 'x86' on every real Windows box since
+#      2026-06-20, never caught because nothing depending on it had been
+#      run live before Robert's first real 82-salt-minion.yml run against
+#      EXADCSCLD001. Fixed to use ansible_architecture2 instead. Robert's
+#      direct ask: "you aso need to add harness checks to catch stuff like
+#      that too." Directory-scoped, not a blanket ban on the fact name --
+#      it's a genuinely correct CPU-architecture fact on Linux (real usage
+#      in playbooks/tacticalrmm/tacticalrmm_server.yml, deliberately not
+#      flagged).
 #
 # Nothing here touches a real host or needs a vault password. Two exceptions
 # to "network access beyond localhost": check 13 (check_mermaid.py) needs to
@@ -583,6 +597,15 @@
 #               Jinja filter, no hint at the actual cause. shutil.which()
 #               can never find a Python module, hence the new check_type
 #               rather than just a new REQUIRED_TOOLS entry.
+#   2026-08-11  Added check_windows_arch_fact.py (section 38) after a real,
+#               live bug: ansible_architecture reports OS bitness on
+#               Windows, not CPU architecture, silently mismapping
+#               host_arch to 'x86' on every Windows box since 2026-06-20 --
+#               caught on Robert's first live 82-salt-minion.yml run
+#               against EXADCSCLD001. Fixed at the shared arch_facts.yml
+#               source (ansible_architecture2 instead); this check catches
+#               any future reintroduction of the broken fact under a
+#               windows_* directory.
 # ==============================================================================
 set -uo pipefail
 
@@ -1268,6 +1291,20 @@ else
   echo "$out"
   fail "A workstation_tools[] pin is broken (asset removed upstream), or --strict was passed and a pin is stale -- see above."
   FAILED_CHECKS+=("check_workstation_tool_versions.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 38. Windows ansible_architecture fact usage — check_windows_arch_fact.py
+# ------------------------------------------------------------------------------
+section "38. Windows ansible_architecture fact usage — check_windows_arch_fact.py"
+
+if out=$(python3 "${HERE}/check_windows_arch_fact.py"); then
+  echo "$out"
+  success "No bare ansible_architecture usage under any windows_* directory."
+else
+  echo "$out"
+  fail "Bare ansible_architecture usage found under a windows_* directory -- see above."
+  FAILED_CHECKS+=("check_windows_arch_fact.py")
 fi
 
 # ------------------------------------------------------------------------------
