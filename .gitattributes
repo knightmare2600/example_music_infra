@@ -166,5 +166,15 @@ bootstrap/web/windows/Salt-Minion-Setup-*.msi filter=lfs diff=lfs merge=lfs -tex
 # section's own established "genuinely open source / freely redistributable, no
 # manifest-driven fetch" precedent -- not a mix of scripts and binaries the way the
 # windows/ directory itself is, so no narrower pattern is needed here.
+# x86_64/ renamed to amd64/ same day (2026-08-11) -- this rule is now inert (nothing lives
+# at x86_64/ any more) but left in place rather than deleted; the amd64/ folder itself isn't
+# whole-directory LFS-tracked yet, on purpose -- see the single-file rule immediately below.
 bootstrap/web/windows/arm64/**   filter=lfs diff=lfs merge=lfs -text
 bootstrap/web/windows/x86_64/**  filter=lfs diff=lfs merge=lfs -text
+
+# Salt x86_64 minion MSI only, at its new post-rename path (2026-08-11) -- single-file
+# pattern, NOT a whole-directory bootstrap/web/windows/amd64/** rule like arm64's above.
+# The rest of amd64/'s contents are still being reorganised by Robert and deliberately not
+# committed/LFS-tracked yet -- only this one file, which 82-salt-minion.yml already depends
+# on, needed fixing now. Broaden to a directory rule once amd64/ itself is ready to commit.
+bootstrap/web/windows/amd64/Salt-Minion-3008.0-Py3-AMD64.msi filter=lfs diff=lfs merge=lfs -text
