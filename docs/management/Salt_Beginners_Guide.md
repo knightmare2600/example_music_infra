@@ -17,6 +17,7 @@
 | 2026-08-11 | New §3.3 — running `82-salt-minion.yml` against a single existing host via `--limit` (not `-e target=`, which this playbook's static `hosts: windows_nodes` doesn't respond to). Confirmed with Robert: Salt scope is every Windows node, no DCS/SVR exclusion — `cld.ini`'s `EXASLTCLD001` comment claiming otherwise was itself wrong, fixed same day. |
 | 2026-08-11 | New §9–§13 added: real command-line `state.apply` examples, verifying gitfs/git_pillar delivery is healthy, forcing a refresh, recovering from a full disk, and recovering a `salt-master` that won't start — all written up after `EXADCSCLD001`'s first real end-to-end `state.apply` succeeded the same day, following a full disk-full/delivery-failure saga (see `docs/INCIDENT-LOG.md`'s `INC-2026-08-11-SALT-DISK-FULL`). Old §9 (Quick Reference) renumbered to §14, updated with links to all five new sections. |
 | 2026-08-12 | §7 and its quick-reference command updated — two new custom grains added, `country_code` and `office_name`, and `street` renamed to `street_address`. `office_name` is deliberately blank for most sites (only set where a site genuinely has a distinct venue/building name, not just a street address) — `sites.csv` gained a new `OfficeName` column, split by hand per-site (not a mechanical comma-split) from 14 sites whose `Street` column used to mix a venue name in with the actual address. |
+| 2026-08-12 | New §8.1 — running `state.apply`/`test.ping` from SaltGUI's own browser Command-box, sourced from SaltGUI's official docs (not yet independently confirmed against a live login here — flagged explicitly as such). Quick Reference updated with a link. |
 | 2026-08-08 | Initial version — companion to [ExampleMusic_Beginners_Guide.md](../ExampleMusic_Beginners_Guide.md) and [TacticalRMM_Beginners_Guide.md](TacticalRMM_Beginners_Guide.md), written after `EXASLTCLD001` and SaltGUI were both confirmed live end to end. |
 
 ---
@@ -202,7 +203,7 @@ salt '<minion-name>' schedule.list
 
 ---
 
-## 8. SaltGUI — why states might not show up yet
+## 8. SaltGUI — why states might not show up yet, and how to run jobs from it
 
 If you've logged into SaltGUI and don't see `salt/states/`'s content anywhere, there are two genuinely different, unrelated reasons, worth telling apart:
 
@@ -219,6 +220,20 @@ If `fileserver.file_list` shows the real contents of `salt/states/` (e.g. `top.s
 **2. SaltGUI has no minions to show anything against yet.** Most of SaltGUI's own panels (Minions, Grains, Jobs) are inherently sparse or empty until at least one minion has actually checked in — which, if you're reading this section before completing §5, hasn't happened yet. This isn't a states-sync problem at all; it's the expected look of a SaltGUI dashboard with zero accepted minions. Accept a key and run a real `test.ping`/`state.apply` first, then check SaltGUI again.
 
 I haven't personally driven SaltGUI's UI live to confirm exactly which panel browses raw file-server content (it may not have a dedicated "browse states" view at all — its own scope is more job/minion/key management than a file browser) — if `fileserver.file_list` above confirms the sync is genuinely fine, treat that as the authoritative answer over whatever SaltGUI's UI does or doesn't show.
+
+### 8.1 Running `state.apply`/`test.ping` from SaltGUI (the §9 equivalent, in the browser)
+
+**Source: SaltGUI's own official documentation ([erwindon.github.io/SaltGUI](https://erwindon.github.io/SaltGUI/), [github.com/erwindon/SaltGUI](https://github.com/erwindon/SaltGUI)), not yet independently confirmed by actually clicking through a live login here** — if anything below doesn't match what you actually see, that's the real answer; fix this section to match, don't trust this over your own screen.
+
+**The Command-box** is the general way to run anything — click the **`>_`** icon, top-right corner, from any page. It opens an overlay with a target field and a command field:
+
+- **Target**: a single minion name (`EXADCSCLD001`), a glob (`EXADCS*`), a compound expression, or a nodegroup. Typing `##connected` auto-fills every currently-connected minion — the GUI equivalent of `salt '*'`.
+- **Command**: a plain module.function for a minion-targeted call (`test.ping`, `state.apply`) — same as the CLI. Master-side runner/wheel calls need their own prefix: `runners.fileserver.update` (the §11 "force a refresh" equivalent), `wheel.key.finger`.
+- Selecting row(s) in a table first (e.g. ticking a minion's checkbox on the **Minions** page) and *then* opening the command-box pre-fills the target field with that selection, rather than typing the name by hand.
+- Two run modes: normal (waits, shows the result once the job completes — same as the CLI's default blocking behaviour) or asynchronous (returns immediately with a progress indicator, check the **Jobs** page for the result once it lands — the GUI equivalent of `--async` + `salt-run jobs.lookup_jid`).
+- Output appears directly in the command-box overlay once the job completes.
+
+**Other relevant pages**, per the official docs: **Minions** (status, checkboxes for multi-select, right-click/dropdown menus on rows for common actions without opening the command-box by hand), **Jobs** (last 7 on the main dashboard, up to 50 on the dedicated Jobs page, filterable), **Highstate** (an overview of every minion's current state/highstate status — likely the most direct place to confirm `state.apply` actually landed cleanly across the fleet, faster than checking minions one at a time), **Grains**/**Pillars** (per-minion values — pillar data is hidden by default, has to be deliberately shown).
 
 ---
 
@@ -257,7 +272,7 @@ sudo salt 'EXADCS*' state.apply           # every DC
 sudo salt -G 'nodetype:DCS' state.apply   # same thing, by grain (nodetype is populated by the grains state itself)
 ```
 
-*(SaltGUI's own equivalent job-run panel — not yet documented here, coming once it's actually been driven through it live.)*
+SaltGUI's own equivalent — the browser Command-box, same targeting options — is documented in §8.1.
 
 ---
 
@@ -404,6 +419,7 @@ Watch it for a minute after — a master that starts cleanly once but crashes ag
 | Query or confirm a minion's custom grains | §7 above |
 | Check/adjust the automatic highstate schedule | §6 above |
 | Apply state from the command line, real examples | §9 above |
+| Run `state.apply`/`test.ping` from SaltGUI's browser UI | §8.1 above |
 | Check gitfs/git_pillar are actually delivering content | §10 above |
 | Force a refresh without waiting for the schedule | §11 above |
 | The master's disk filled up | §12 above |
