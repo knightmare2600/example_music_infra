@@ -18,6 +18,7 @@
 | 2026-08-11 | New §9–§13 added: real command-line `state.apply` examples, verifying gitfs/git_pillar delivery is healthy, forcing a refresh, recovering from a full disk, and recovering a `salt-master` that won't start — all written up after `EXADCSCLD001`'s first real end-to-end `state.apply` succeeded the same day, following a full disk-full/delivery-failure saga (see `docs/INCIDENT-LOG.md`'s `INC-2026-08-11-SALT-DISK-FULL`). Old §9 (Quick Reference) renumbered to §14, updated with links to all five new sections. |
 | 2026-08-12 | §7 and its quick-reference command updated — two new custom grains added, `country_code` and `office_name`, and `street` renamed to `street_address`. `office_name` is deliberately blank for most sites (only set where a site genuinely has a distinct venue/building name, not just a street address) — `sites.csv` gained a new `OfficeName` column, split by hand per-site (not a mechanical comma-split) from 14 sites whose `Street` column used to mix a venue name in with the actual address. |
 | 2026-08-12 | New §8.1 — running `state.apply`/`test.ping` from SaltGUI's own browser Command-box, sourced from SaltGUI's official docs (not yet independently confirmed against a live login here — flagged explicitly as such). Quick Reference updated with a link. |
+| 2026-08-12 | New Appendix A — signing/purging+regenerating a minion key, applying just the `grains` state on its own, and the full real list of `salt/states/` with a worked SaltGUI example (`state.apply audit`). |
 | 2026-08-08 | Initial version — companion to [ExampleMusic_Beginners_Guide.md](../ExampleMusic_Beginners_Guide.md) and [TacticalRMM_Beginners_Guide.md](TacticalRMM_Beginners_Guide.md), written after `EXASLTCLD001` and SaltGUI were both confirmed live end to end. |
 
 ---
@@ -425,7 +426,79 @@ Watch it for a minute after — a master that starts cleanly once but crashes ag
 | The master's disk filled up | §12 above |
 | `salt-master` won't start at all | §13 above |
 | Full incident write-up for the 2026-08-11 disk-full/delivery saga | `docs/INCIDENT-LOG.md`'s `INC-2026-08-11-SALT-DISK-FULL` |
+| How do I sign/purge/regenerate a minion key, apply just the grains state, or find/apply another state | Appendix A below |
 | Understand the full docs index | [INDEX.md](../INDEX.md) |
+
+---
+
+## Appendix A — Common "How Do I…" Tasks
+
+### A.1 Sign (accept) a minion's key
+
+**CLI** — the proven, reliable path (already used throughout §5):
+
+```bash
+sudo salt-key -L                    # lists everything: Accepted / Denied / Unaccepted / Rejected
+sudo salt-key -a EXADCSCLD001       # accept one, by name
+sudo salt-key -A                    # accept ALL pending -- use with real caution, this repo runs
+                                     # auto_accept: false deliberately (§5), don't make this a habit
+```
+
+**SaltGUI**, per the official docs (not yet independently confirmed here — see §8.1's own caveat): the **Keys** page lists key state; use the panel's **[✔]** button to show a checkbox column, tick the pending key(s), then use the resulting panel-menu to accept. The **Issues** page also surfaces unaccepted keys as a flagged issue with its own suggested-remedy menu. If the exact button labels don't match what you see, the Command-box (§8.1) fallback via Salt's own `wheel` module should work regardless of the Keys page's exact layout — `wheel.key.accept` — but the precise argument syntax inside SaltGUI's command-box specifically hasn't been confirmed; `salt-key -a` above is the one to actually rely on.
+
+### A.2 Purge a minion's key and generate/sign a new one
+
+Real scenario: a minion was rebuilt, renamed, or its key is suspect, and you want it to present a genuinely fresh identity rather than reuse the old one.
+
+```bash
+# 1. On the master -- remove the old accepted key
+sudo salt-key -d EXADCSCLD001
+```
+
+```powershell
+# 2. On the MINION itself (you need local access here -- once its key is
+#    deleted from the master, the master can no longer reach it to run this
+#    remotely). Two real options, either works:
+
+# Option A -- Salt's own purpose-built function for this:
+& "C:\Program Files\Salt Project\Salt\salt-call.exe" saltutil.regen_keys
+Restart-Service salt-minion
+
+# Option B -- manual, same end result: delete the keypair, let the service
+# regenerate one fresh on next start (matches the real conf path from §4's table):
+Remove-Item "C:\ProgramData\Salt Project\Salt\conf\pki\minion\*" -Force
+Restart-Service salt-minion
+```
+
+```bash
+# 3. Back on the master -- the new key shows up as unaccepted, same as any new minion
+sudo salt-key -L
+sudo salt-key -a EXADCSCLD001
+```
+
+### A.3 Apply just the custom grains state (not the whole highstate)
+
+`state.apply` with no name runs *everything* in `top.sls` (`wintools`+`grains` together, per §5/§6). To touch **only** the grains state — e.g. after a `sites.csv` change, without also re-asserting every `wintools` registry key:
+
+```bash
+sudo salt EXADCSCLD001 state.apply grains
+```
+
+Same file, same mechanism as always (`salt/states/grains/init.sls`) — this still triggers the `onchanges`-gated minion restart if the rendered grains file genuinely changed (§7's own restart-delay caveat still applies). **SaltGUI equivalent** (§8.1): Command-box, target `EXADCSCLD001`, command `state.apply grains`.
+
+### A.4 What other Salt states exist, and an example applying one via SaltGUI
+
+Real, current list — every subdirectory under `salt/states/` (each has its own header comment explaining exactly what it does):
+
+| State | Auto-applied via `top.sls`? | What it does |
+|---|---|---|
+| `wintools` | Yes, every minion | Windows power-management registry keys + the local `ansible` break-glass admin account |
+| `grains` | Yes, every minion | Custom site/role grains — see §7 |
+| `audit` | No — on demand only | Read-only "what's missing/wrong" diagnostic report, no changes made |
+| `adtools` | No — on demand only | Deploys the PS-easyIT admin tool suite (+`console-pwsh`) to `C:\ADTools\` |
+| `bespoke_app_install` | No — preserved but **not active** | Generic bespoke-app installer/redeployer; not wired into `top.sls`, no real pillar data configured for it in this estate |
+
+**Example — running `audit` (the most generally useful on-demand one) via SaltGUI**: open the Command-box (§8.1), target `EXADCSCLD001` (or a glob for several minions at once), command `state.apply audit`, run in normal mode. Output — a colourised pass/warning/error report per check, not a list of changed resources like a normal state run — appears inline in the command-box overlay once it completes.
 
 ---
 
