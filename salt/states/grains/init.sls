@@ -46,6 +46,20 @@
 ##     nodeinfo.json. Deliberately NOT a separate C:\ProgramData\example-music\nodeinfo.json --
 ##     Robert's call: grains are already the known source of truth for this kind of per-node
 ##     metadata on Windows, no need for a second competing file.
+##   - office_name/country_code/street->street_address, 2026-08-12 (Robert): sites.csv's own
+##     Street column used to mix a venue/building name in with the actual street address for
+##     14 sites (e.g. "Brockville Stadium, 1876 Hope Street") -- Robert split these by hand,
+##     per site, into sites.csv's new OfficeName column plus a corrected Street value (NOT a
+##     mechanical comma-split -- a few of the original values had a comma for an unrelated
+##     reason, e.g. an Italian "Piazza Name, number" address format, not a venue name).
+##     country_code was already a real sites.csv column (CountryCode), just not previously
+##     piped into this pillar. `street` grain renamed to `street_address` throughout (matches
+##     the source CSV column's own meaning now that it's genuinely just the street, not a
+##     mixed venue+street string) -- NOT extended to the Linux-side nodeinfo.json equivalent
+##     in this pass, deliberately out of scope (Robert's ask was Salt grains specifically);
+##     nodeinfo.json's own `street`/`postal_code` fields will pick up the corrected
+##     (venue-stripped) Street values automatically via the same sites.csv, without
+##     office_name/country_code, until/unless that's extended separately.
 
 {% set minion_id = grains['id'] %}
 {% set role_code = minion_id[3:6] %}
@@ -62,8 +76,10 @@ render_custom_grains:
         nodetype: {{ role_code }}
         city: "{{ site.get('city', '') }}"
         country: "{{ site.get('country', '') }}"
+        country_code: "{{ site.get('country_code', '') }}"
         entity: "{{ site.get('entity', '') }}"
-        street: "{{ site.get('street', '') }}"
+        office_name: "{{ site.get('office_name', '') }}"
+        street_address: "{{ site.get('street_address', '') }}"
         postal_code: "{{ site.get('postal_code', '') }}"
         habitat: {{ habitat }}
 

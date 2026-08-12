@@ -267,7 +267,11 @@ check_custom_grains_file_exists:
 
 ## Check if any of our real custom grains (see salt/states/grains/init.sls) are blank --
 ## happens if the grains file exists but is stale/wasn't refreshed after a site/role change.
-{% for grain in ['nodetype', 'city', 'country', 'entity', 'habitat'] %}
+## postal_code/office_name deliberately excluded -- both have real, legitimate blanks in
+## sites.csv (a handful of sites have no postcode on record; most sites have no venue/office
+## name at all, only a plain street address), so checking them here would false-positive on
+## normal data, not just genuinely stale grains.
+{% for grain in ['nodetype', 'city', 'country', 'country_code', 'entity', 'street_address', 'habitat'] %}
 {% set grain_value = salt['grains.get'](grain, '') %}
 {% if grain_value == '' %}
 check_grain_{{ grain }}_not_blank:
