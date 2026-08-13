@@ -134,8 +134,8 @@
   ignore_unreachable: false
 
   vars_files:
-    - ../../group_vars/rudder_servers/main.yml
-    - ../../group_vars/rudder_servers/vault.yml
+    - ../../configs/inventory/group_vars/rudder_servers/main.yml
+    - ../../configs/inventory/group_vars/rudder_servers/vault.yml
 
   pre_tasks:
 

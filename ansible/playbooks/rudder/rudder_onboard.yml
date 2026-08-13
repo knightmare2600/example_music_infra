@@ -74,8 +74,8 @@
   serial: "{{ rudder_onboard_serial | default(5) }}"
 
   vars_files:
-    - ../../group_vars/rudder_servers/main.yml
-    - ../../group_vars/rudder_servers/vault.yml
+    - ../../configs/inventory/group_vars/rudder_servers/main.yml
+    - ../../configs/inventory/group_vars/rudder_servers/vault.yml
 
   vars:
     rudder_root_server:    "192.168.69.12"
