@@ -12,7 +12,7 @@
   hosts: "{{ target | default('pvenodes') }}"
   become: true
   vars_files:
-    - ../../group_vars/pvenodes/main.yml
+    - ../../configs/inventory/group_vars/pvenodes/main.yml
 
   vars:
     images:

@@ -206,7 +206,7 @@
       default: ""
 
   vars_files:
-    - ../../group_vars/all/main.yml
+    - ../../configs/inventory/group_vars/all/main.yml
 
   vars:
     extra_users: "{{ extra_users_input.split() }}"
