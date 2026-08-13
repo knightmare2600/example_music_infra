@@ -299,6 +299,21 @@
 #      it's a genuinely correct CPU-architecture fact on Linux (real usage
 #      in playbooks/tacticalrmm/tacticalrmm_server.yml, deliberately not
 #      flagged).
+#  39. check_hardcoded_site_metadata.py -- flags any host_vars/*/*.yml file
+#      defining a hand-typed <prefix>_site_(city|country|country_code|
+#      entity|office_name|street|postal_code) key. Real bug, found live
+#      2026-08-13: salt/rudder/tacticalrmm all hardcoded their site's
+#      Country as "Scotland" instead of deriving it live from sites.csv --
+#      wrong, CLD's real Country is "Global" (a virtual/cloud site). One of
+#      the three's own host_vars comment even claimed it had been checked
+#      against sites.csv at the time -- didn't stop it drifting wrong
+#      regardless. Converted all 3 to the same live-lookup pattern
+#      proxmox/truenas/firewallme/linux/bind9-dns already used, removed the
+#      hand-typed blocks entirely. Robert's own words: "everything is
+#      supposed to use sites.csv... hard-coding stuff is very 1970s and
+#      verboten here." EXAMSHCLD001 is a deliberate, narrow, documented
+#      exception -- retired 2026-08-08, dead code, its leftover hand-typed
+#      block was never converted and isn't worth the effort.
 #
 # Nothing here touches a real host or needs a vault password. Two exceptions
 # to "network access beyond localhost": check 13 (check_mermaid.py) needs to
@@ -606,6 +621,16 @@
 #               source (ansible_architecture2 instead); this check catches
 #               any future reintroduction of the broken fact under a
 #               windows_* directory.
+#   2026-08-13  Added check_hardcoded_site_metadata.py (section 39) after a
+#               real, live bug: salt/rudder/tacticalrmm all hand-typed
+#               their site's Country as "Scotland" in host_vars instead of
+#               deriving it live from sites.csv -- wrong, CLD's real
+#               Country is "Global". Converted all 3 to the same
+#               live-lookup pattern proxmox/truenas/firewallme/linux/
+#               bind9-dns already used; this check catches any future
+#               reintroduction of a hand-typed site-metadata key in
+#               host_vars. EXAMSHCLD001 is a documented, narrow exception
+#               (retired, dead code).
 # ==============================================================================
 set -uo pipefail
 
@@ -1305,6 +1330,20 @@ else
   echo "$out"
   fail "Bare ansible_architecture usage found under a windows_* directory -- see above."
   FAILED_CHECKS+=("check_windows_arch_fact.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 39. Hardcoded site metadata in host_vars — check_hardcoded_site_metadata.py
+# ------------------------------------------------------------------------------
+section "39. Hardcoded site metadata in host_vars — check_hardcoded_site_metadata.py"
+
+if out=$(python3 "${HERE}/check_hardcoded_site_metadata.py"); then
+  echo "$out"
+  success "No hand-typed site-metadata keys found in host_vars."
+else
+  echo "$out"
+  fail "Hand-typed site-metadata key(s) found in host_vars -- see above."
+  FAILED_CHECKS+=("check_hardcoded_site_metadata.py")
 fi
 
 # ------------------------------------------------------------------------------
