@@ -5,6 +5,26 @@
 # =============================================================================
 # Override any of these in group_vars, host_vars, or -e at runtime.
 # Changelog:
+#   2026-08-13  Added fw_noninteractive -- Robert's batch-run ask (backlog item, picked
+#               up this date): "vars_prompt do it now" already made 00_preflight_3_ask.yml's
+#               ~20 pause tasks skippable per-prompt via fw_<name>_override extra-vars; this
+#               flag additionally skips every prompt that HAS a safe computed default without
+#               needing an override typed out per host. Three deliberate exceptions, none
+#               silenced by this flag -- Robert's explicit calls, all 2026-08-13:
+#                 1. WAN mode's noninteractive default is STATIC, not the interactive
+#                    default of DHCP -- see 00_preflight_3_ask.yml's "[Ask] Set WAN mode
+#                    from prompt" task.
+#                 2. A hub pubkey that differs from the known-good key on file is NEVER
+#                    auto-accepted -- the play fails loudly instead of silently trusting a
+#                    possibly-rebuilt or MITM'd hub.
+#                 3. WireGuard keys are NEVER generated automatically for a hub bootstrap --
+#                    the play fails loudly and tells the operator to run interactively (or
+#                    pass -e fw_hub_bootstrap_override=CONFIRM as a deliberate, explicit
+#                    opt-in) rather than ever bootstrapping silently.
+#               The CLD black-site CONFIRM and the final apply confirmation (not part of
+#               this role -- see 00_preflight_5_confirm.yml) are untouched by this flag
+#               entirely, same as before -- always interactive, no override exists for
+#               either.
 #   2026-07-28  fw_ssh_password_auth_enabled default flipped false -> true, Robert's explicit
 #               call -- password auth now on by default for every firewall run, opt out per
 #               run with -e fw_ssh_password_auth_enabled=false. Shipped default-false the same
@@ -12,6 +32,16 @@
 #   2026-06-20  Initial file
 #   2026-06-26  Add sites_csv_path default for dynamic wg_site_octets loading
 # =============================================================================
+
+# Batch/unattended mode -- when true, every 00_preflight_3_ask.yml prompt that has a safe
+# computed default is skipped and that default used, instead of pausing. Does NOT touch the
+# CLD black-site CONFIRM or the final apply confirmation (00_preflight_5_confirm.yml) -- those
+# stay interactive always. Does NOT auto-accept a mismatched hub pubkey or auto-bootstrap a
+# hub's WireGuard keys either -- both fail the play loudly instead, since neither has a safe
+# default to silently pick. See this file's 2026-08-13 changelog entry above for the full list.
+# Per-prompt overrides (fw_<name>_override extra-vars, see 00_preflight_3_ask.yml's own header)
+# work independently of this flag, interactive or not.
+fw_noninteractive: false
 
 # Path to sites.csv on the Ansible control node.
 # Used by 00_preflight_1_derive.yml to build wg_site_octets at runtime.

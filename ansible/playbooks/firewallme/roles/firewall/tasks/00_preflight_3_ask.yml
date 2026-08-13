@@ -73,6 +73,31 @@
 #               input. Added validation to both, matching the CLD LAN IP pattern
 #               ("is match(...)", not regex_search() -- see that task's own 2026-07-24 note
 #               on why).
+#   2026-08-13  Batch-run + prompt-defaults feature (backlog item, picked up this date).
+#               Every prompt below now supports two independent escape hatches, checked in
+#               this order:
+#                 1. fw_<name>_override extra-var (e.g. -e fw_wan_mode_override=static) --
+#                    skips just that one prompt, uses the supplied value directly, works
+#                    whether or not fw_noninteractive is set. Lets an operator pre-answer one
+#                    known-constant question without going fully unattended.
+#                 2. fw_noninteractive=true (see roles/firewall/defaults/main.yml) -- skips
+#                    every prompt that has a safe computed default and uses that default,
+#                    same value Enter would already give interactively.
+#               Three prompts have NO safe default and are deliberately excluded from (2) --
+#               each fails the play loudly instead of guessing, Robert's explicit calls, all
+#               2026-08-13:
+#                 - WAN mode: noninteractive default is STATIC, not DHCP (DHCP is the
+#                   interactive default, kept as-is for a human pressing Enter -- an
+#                   unattended batch run must not silently pick an address that can change
+#                   under it).
+#                 - Hub pubkey mismatch against the known-good key on file -- never
+#                   auto-accepted, possible hub rebuild or worse, needs a human or an
+#                   explicit fw_wg_hub_pubkey_override.
+#                 - Hub WireGuard bootstrap (generating a fresh keypair from scratch) --
+#                   never automatic, needs a human or an explicit
+#                   fw_hub_bootstrap_override=CONFIRM.
+#               The CLD black-site CONFIRM further up this file is untouched by any of this
+#               -- always interactive, no override, same as before.
 # =============================================================================
 
 # ── Environment (was 00_preflight.yml) ───────────────────────────────────────
@@ -165,12 +190,26 @@
   when:
     - fw_is_black_site
     - not fw_hub_already_bootstrapped
+    - fw_hub_bootstrap_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
+
+- name: "[Ask] ABORT — noninteractive hub bootstrap needs an explicit override"
+  ansible.builtin.fail:
+    msg: |-
+      {{ _c.R }}[ERROR]{{ _c.NC }} This hub has no existing WireGuard keypair, and fw_noninteractive is set.
+      WireGuard keys are never generated automatically -- re-run interactively, or pass
+      -e fw_hub_bootstrap_override=CONFIRM if you have deliberately decided to bootstrap this hub now.
+  when:
+    - fw_is_black_site
+    - not fw_hub_already_bootstrapped
+    - fw_hub_bootstrap_override is not defined
+    - fw_noninteractive | default(false) | bool
 
 - name: "[Ask] Set hub-bootstrap-confirmed fact"
   ansible.builtin.set_fact:
     fw_hub_bootstrap_confirmed: >-
       {{ fw_is_black_site and not fw_hub_already_bootstrapped
-         and (fw_hub_bootstrap_prompt.user_input | default('') | trim | upper == 'CONFIRM') }}
+         and ((fw_hub_bootstrap_override | default(fw_hub_bootstrap_prompt.user_input | default(''))) | trim | upper == 'CONFIRM') }}
 
 - name: "[Ask] Log hub bootstrap decision"
   ansible.builtin.debug:
@@ -191,7 +230,10 @@
       {{ _c.C }}[*]{{ _c.NC }} WAN interface is {{ _c.G }}{{ fw_wan_iface_detected }}{{ _c.NC }} ({{ fw_wan_ip_detected }}, MAC: {{ fw_wan_mac_detected }})
       {{ _c.C }}    Connected to 192.168.139.0/24 (provisioning network){{ _c.NC }} — press {{ _c.G }}Enter{{ _c.NC }} to confirm or type a different interface name
   register: fw_wan_override
-  when: fw_wan_detected
+  when:
+    - fw_wan_detected
+    - fw_wan_iface_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 - name: "[Ask] Prompt for WAN interface (not auto-detected)"
   ansible.builtin.pause:
@@ -200,12 +242,31 @@
       {{ _c.Y }}[!]{{ _c.NC }} This may mean the provisioning network is not reachable, or DHCP hasn't completed.
       {{ _c.C }}    Available interfaces: {{ fw_available_ifaces | join(', ') }}{{ _c.NC }} — enter the WAN interface name (default: {{ _c.G }}{{ fw_available_ifaces[0] | default('ens33') }}{{ _c.NC }})
   register: fw_wan_manual
-  when: not fw_wan_detected
+  when:
+    - not fw_wan_detected
+    - fw_wan_iface_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
+
+# No safe default exists here -- WAN wasn't auto-detected AND no override was supplied, so a
+# noninteractive run has no principled value to pick (fw_available_ifaces[0] is just "first
+# available", not necessarily WAN). Fails loud rather than guessing wrong on a live network path.
+- name: "[Ask] ABORT — noninteractive with no WAN interface detected or overridden"
+  ansible.builtin.fail:
+    msg: |-
+      {{ _c.R }}[ERROR]{{ _c.NC }} WAN interface could not be auto-detected, fw_noninteractive is set, and no
+      fw_wan_iface_override was supplied. No safe default exists for which interface is WAN -- re-run
+      interactively, or pass -e fw_wan_iface_override=<iface>.
+  when:
+    - not fw_wan_detected
+    - fw_wan_iface_override is not defined
+    - fw_noninteractive | default(false) | bool
 
 - name: "[Ask] Set final WAN interface"
   ansible.builtin.set_fact:
     fw_wan_iface: >-
-      {%- if fw_wan_detected -%}
+      {%- if fw_wan_iface_override is defined -%}
+        {{ fw_wan_iface_override }}
+      {%- elif fw_wan_detected -%}
         {%- set override = fw_wan_override.user_input | default('') | trim -%}
         {{ override if override != '' else fw_wan_iface_detected }}
       {%- else -%}
@@ -227,12 +288,19 @@
   ansible.builtin.pause:
     prompt: "Enter the LAN interface name (default: {{ _c.G }}{{ fw_lan_candidates[0] | default('ens34') }}{{ _c.NC }})"
   register: fw_lan_prompt
+  when:
+    - fw_lan_iface_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 - name: "[Ask] Set final LAN interface"
   ansible.builtin.set_fact:
     fw_lan_iface: >-
-      {%- set inp = fw_lan_prompt.user_input | default('') | trim -%}
-      {{ inp if inp != '' else (fw_lan_candidates[0] | default('ens34')) }}
+      {%- if fw_lan_iface_override is defined -%}
+        {{ fw_lan_iface_override }}
+      {%- else -%}
+        {%- set inp = fw_lan_prompt.user_input | default('') | trim -%}
+        {{ inp if inp != '' else (fw_lan_candidates[0] | default('ens34')) }}
+      {%- endif -%}
 
 - name: "[Ask] FAIL — LAN and WAN cannot be the same"
   ansible.builtin.fail:
@@ -291,11 +359,22 @@
       {{ _c.C }}  LAN is not on {{ fw_subnet }}.0/24 — enter the full LAN IP.{{ _c.NC }}
       {{ _c.C }}  Known value from sites.csv: {{ _c.G }}{{ fw_cld_lan_ip_default | default('none on record') }}{{ _c.NC }} — press Enter to accept or type a different IP
   register: fw_cld_lan_ip_prompt
-  when: fw_is_black_site
+  when:
+    - fw_is_black_site
+    - fw_cld_lan_ip_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
+# No extra noninteractive fail-loud task needed here -- "[Ask] CLD: validate LAN IP" just
+# below already fails cleanly if fw_cld_lan_ip_default was blank (no sites.csv value on
+# record), same outcome as every other "no safe default" case in this file.
 - name: "[Ask] CLD: resolve final LAN IP (prompt answer, or sites.csv default if blank)"
   ansible.builtin.set_fact:
-    fw_cld_lan_ip_resolved: "{{ fw_cld_lan_ip_prompt.user_input | trim if (fw_cld_lan_ip_prompt.user_input | trim != '') else fw_cld_lan_ip_default }}"
+    fw_cld_lan_ip_resolved: >-
+      {%- if fw_cld_lan_ip_override is defined -%}{{ fw_cld_lan_ip_override }}
+      {%- else -%}
+      {%- set inp = fw_cld_lan_ip_prompt.user_input | default('') | trim -%}
+      {{ inp if inp != '' else fw_cld_lan_ip_default }}
+      {%- endif -%}
   when: fw_is_black_site
 
 - name: "[Ask] CLD: validate LAN IP"
@@ -340,11 +419,26 @@
 
       WAN mode — {{ _c.G }}DHCP{{ _c.NC }} or {{ _c.G }}static{{ _c.NC }}? [DHCP/static] (default: DHCP)
   register: fw_wan_mode_prompt
-  when: not fw_is_black_site
+  when:
+    - not fw_is_black_site
+    - fw_wan_mode_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
+# Robert, 2026-08-13: noninteractive's default is STATIC, deliberately NOT the same default
+# (DHCP) a human pressing Enter gets -- an unattended batch run must not silently pick an
+# address that can change under it. fw_wan_mode_override always wins outright either way,
+# interactive or not, so a batch run that genuinely wants DHCP everywhere still can with
+# -e fw_wan_mode_override=dhcp.
 - name: "[Ask] Set WAN mode from prompt"
   ansible.builtin.set_fact:
-    fw_wan_mode: "{{ 'static' if fw_wan_mode_prompt.user_input | default('') | lower | trim == 'static' else 'dhcp' }}"
+    fw_wan_mode: >-
+      {%- if fw_wan_mode_override is defined -%}
+        {{ 'static' if fw_wan_mode_override | lower | trim == 'static' else 'dhcp' }}
+      {%- elif fw_noninteractive | default(false) | bool -%}
+        static
+      {%- else -%}
+        {{ 'static' if fw_wan_mode_prompt.user_input | default('') | lower | trim == 'static' else 'dhcp' }}
+      {%- endif -%}
   when: not fw_is_black_site
 
 - name: "[Ask] Log DHCP selection"
@@ -367,22 +461,34 @@
       {{ _c.C }}    This is EXAFWL{{ fw_site_code }}001-wan's reserved address per DNS/devices.csv{{ _c.NC }}
       {{ _c.C }}    (192.168.139.<site-octet> is this site's fixed convention, not guessed) — press {{ _c.G }}Enter{{ _c.NC }} to accept or type a different IP{{ _c.NC }}
   register: fw_wan_ip_override
-  when: fw_wan_mode == 'static'
+  when:
+    - fw_wan_mode == 'static'
+    - fw_wan_static_ip_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 - name: "[Ask] Prompt to override static WAN gateway"
   ansible.builtin.pause:
     prompt: "{{ _c.C }}[*]{{ _c.NC }} WAN gateway [{{ _c.G }}{{ fw_wan_static_gw }}{{ _c.NC }}]"
   register: fw_wan_gw_override
-  when: fw_wan_mode == 'static'
+  when:
+    - fw_wan_mode == 'static'
+    - fw_wan_static_gw_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 - name: "[Ask] Set final static WAN IP and GW"
   ansible.builtin.set_fact:
     fw_wan_static_ip: >-
+      {%- if fw_wan_static_ip_override is defined -%}{{ fw_wan_static_ip_override }}
+      {%- else -%}
       {%- set ov = fw_wan_ip_override.user_input | default('') | trim -%}
       {{ ov if ov != '' else fw_wan_static_ip }}
+      {%- endif -%}
     fw_wan_static_gw: >-
+      {%- if fw_wan_static_gw_override is defined -%}{{ fw_wan_static_gw_override }}
+      {%- else -%}
       {%- set ov = fw_wan_gw_override.user_input | default('') | trim -%}
       {{ ov if ov != '' else fw_wan_static_gw }}
+      {%- endif -%}
   when: fw_wan_mode == 'static'
 
 - name: "[Ask] Log static WAN confirmed"
@@ -396,44 +502,59 @@
   ansible.builtin.pause:
     prompt: "{{ _c.C }}[*]{{ _c.NC }} Ansible/PXE server IP (last octet or full IP) — derived: {{ _c.G }}{{ fw_ansible_ip }}{{ _c.NC }}, press Enter to accept"
   register: fw_ansible_prompt
+  when:
+    - fw_ansible_ip_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 - name: "[Ask] Set Ansible IP"
   ansible.builtin.set_fact:
     fw_ansible_ip: >-
+      {%- if fw_ansible_ip_override is defined -%}{{ fw_ansible_ip_override }}
+      {%- else -%}
       {%- set inp = fw_ansible_prompt.user_input | default('') | trim -%}
       {%- if inp == '' -%}{{ fw_ansible_ip }}
       {%- elif inp | regex_search('^\d{1,3}$') -%}{{ fw_subnet }}.{{ inp }}
       {%- else -%}{{ inp }}
       {%- endif -%}
+      {%- endif -%}
 
 # ── WAN SSH ───────────────────────────────────────────────────────────────────
 # Asked as a real vars_prompt in 90-firewall.yml (fw_wan_ssh_answer) — unconditional,
 # no runtime-derived default, one of only two prompts in this whole file that
-# qualifies (see this file's 2026-07-16 changelog entry above).
-
+# qualifies (see this file's 2026-07-16 changelog entry above). vars_prompt itself has
+# no when: clause and no per-prompt-override mechanism (that's exactly why it can't be
+# used for anything else in this file) -- fw_wan_ssh_override is applied here, after the
+# fact, so it wins regardless of whatever vars_prompt did. fw_wan_ssh_answer's own
+# vars_prompt default ("n") already covers fw_noninteractive without any extra logic --
+# whether Ansible's vars_prompt reliably falls back to its default rather than hanging
+# when stdin isn't a TTY is UNVERIFIED; a genuinely unattended batch run should pass
+# -e fw_wan_ssh_override=n explicitly rather than rely on that.
 - name: "[Ask] Set WAN SSH flag"
   ansible.builtin.set_fact:
-    fw_wan_ssh_enabled: "{{ fw_wan_ssh_answer | default('n') | lower | trim == 'y' }}"
+    fw_wan_ssh_enabled: "{{ (fw_wan_ssh_override | default(fw_wan_ssh_answer | default('n'))) | lower | trim == 'y' }}"
 
 - name: "[Ask] Prompt for WAN SSH source restriction"
   ansible.builtin.pause:
     prompt: "Restrict WAN SSH to a specific source IP? (leave blank to allow all)"
   register: fw_wan_ssh_src_prompt
-  when: fw_wan_ssh_enabled
+  when:
+    - fw_wan_ssh_enabled
+    - fw_wan_ssh_src_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 - name: "[Ask] Set WAN SSH source"
   ansible.builtin.set_fact:
-    fw_wan_ssh_src: "{{ fw_wan_ssh_src_prompt.user_input | default('') | trim }}"
+    fw_wan_ssh_src: "{{ fw_wan_ssh_src_override | default(fw_wan_ssh_src_prompt.user_input | default('')) | trim }}"
   when: fw_wan_ssh_enabled
 
 # ── WAN activation gate ───────────────────────────────────────────────────────
 # Asked as a real vars_prompt in 90-firewall.yml (fw_wan_activate_answer) —
 # unconditional, no runtime-derived default, the other of the two prompts in this
-# file that qualifies (see this file's 2026-07-16 changelog entry above).
-
+# file that qualifies (see this file's 2026-07-16 changelog entry above). Same
+# override-after-the-fact + unverified-vars_prompt-tty-fallback caveat as WAN SSH above.
 - name: "[Ask] Set WAN activation flag"
   ansible.builtin.set_fact:
-    fw_wan_activate: "{{ fw_wan_activate_answer | default('n') | lower | trim == 'y' }}"
+    fw_wan_activate: "{{ (fw_wan_activate_override | default(fw_wan_activate_answer | default('n'))) | lower | trim == 'y' }}"
 
 - name: "[Ask] Log WAN activation state"
   ansible.builtin.debug:
@@ -467,14 +588,21 @@
       Only the CLD black site can be a WireGuard hub — see it separately if this is EXAFWLCLD001.
       WireGuard role [default: {{ _c.G }}{{ fw_wg_role }}{{ _c.NC }}]
   register: fw_wg_role_prompt
-  when: not fw_is_black_site
+  when:
+    - not fw_is_black_site
+    - fw_wg_role_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 - name: "[Ask] Set WG role from prompt"
   ansible.builtin.set_fact:
     fw_wg_role: >-
-      {%- set inp = fw_wg_role_prompt.user_input | default('') | trim | lower -%}
-      {%- if inp in ['spoke', 'none'] -%}{{ inp }}
-      {%- else -%}{{ fw_wg_role }}
+      {%- if fw_wg_role_override is defined and fw_wg_role_override | lower | trim in ['spoke', 'none'] -%}
+        {{ fw_wg_role_override | lower | trim }}
+      {%- else -%}
+        {%- set inp = fw_wg_role_prompt.user_input | default('') | trim | lower -%}
+        {%- if inp in ['spoke', 'none'] -%}{{ inp }}
+        {%- else -%}{{ fw_wg_role }}
+        {%- endif -%}
       {%- endif -%}
   when: not fw_is_black_site
 
@@ -489,22 +617,34 @@
   ansible.builtin.pause:
     prompt: "{{ _c.C }}[*]{{ _c.NC }} Hub tunnel IP [{{ _c.G }}10.0.{{ fw_site_octet }}.1{{ _c.NC }}]"
   register: fw_wg_hub_tunnel_ip_prompt
-  when: fw_wg_role in ['hub-primary', 'hub-regional']
+  when:
+    - fw_wg_role in ['hub-primary', 'hub-regional']
+    - fw_wg_hub_tunnel_ip_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 - name: "[Ask] Prompt hub listen port"
   ansible.builtin.pause:
     prompt: "{{ _c.C }}[*]{{ _c.NC }} WireGuard listen port [{{ _c.G }}51820{{ _c.NC }}]"
   register: fw_wg_port_prompt
-  when: fw_wg_role in ['hub-primary', 'hub-regional']
+  when:
+    - fw_wg_role in ['hub-primary', 'hub-regional']
+    - fw_wg_port_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 - name: "[Ask] Set hub WG facts"
   ansible.builtin.set_fact:
     fw_wg_tunnel_ip: >-
+      {%- if fw_wg_hub_tunnel_ip_override is defined -%}{{ fw_wg_hub_tunnel_ip_override }}
+      {%- else -%}
       {%- set inp = fw_wg_hub_tunnel_ip_prompt.user_input | default('') | trim -%}
       {{ inp if inp != '' else '10.0.' + fw_site_octet | string + '.1' }}
+      {%- endif -%}
     fw_wg_port: >-
+      {%- if fw_wg_port_override is defined -%}{{ fw_wg_port_override }}
+      {%- else -%}
       {%- set inp = fw_wg_port_prompt.user_input | default('') | trim -%}
       {{ inp if inp != '' else '51820' }}
+      {%- endif -%}
   when: fw_wg_role in ['hub-primary', 'hub-regional']
 
 - name: "[Ask] Validate hub tunnel IP"
@@ -543,6 +683,8 @@
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
+    - fw_wg_spoke_tunnel_ip_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 # 2026-07-19, Robert: spoke default moved from .2 to .1, matching the hub's own tunnel-IP
 # convention within its own /24 (see docs/ansible/beginners_guide_to_ansible.md's
@@ -555,8 +697,11 @@
 - name: "[Ask] Set spoke tunnel IP"
   ansible.builtin.set_fact:
     fw_wg_tunnel_ip: >-
+      {%- if fw_wg_spoke_tunnel_ip_override is defined -%}{{ fw_wg_spoke_tunnel_ip_override }}
+      {%- else -%}
       {%- set inp = fw_wg_spoke_tunnel_ip_prompt.user_input | default('') | trim -%}
       {{ inp if inp != '' else '10.0.' + fw_site_octet | string + '.1' }}
+      {%- endif -%}
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
@@ -583,6 +728,8 @@
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
+    - fw_wg_hub_site_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
 
 # BUG FIX (2026-07-17): `.user_input | default('CLD')` never actually applied on
 # Enter -- Jinja's default() filter only replaces genuinely undefined values, not
@@ -596,8 +743,11 @@
 - name: "[Ask] Set hub site code"
   ansible.builtin.set_fact:
     fw_wg_hub_site: >-
+      {%- if fw_wg_hub_site_override is defined -%}{{ fw_wg_hub_site_override | upper }}
+      {%- else -%}
       {%- set inp = fw_wg_hub_site_prompt.user_input | default('') | trim -%}
       {{ (inp if inp != '' else 'CLD') | upper }}
+      {%- endif -%}
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
@@ -625,16 +775,40 @@
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
+    - fw_wg_hub_endpoint_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
+
+# No safe default exists when the selected hub's WAN IP isn't in wg_hub_wan_ips (blank
+# fw_wg_hub_default_endpoint) and no override was supplied -- fails loud rather than
+# writing a blank/broken hub endpoint into wg0.conf.
+- name: "[Ask] ABORT — noninteractive with no known WAN IP for selected hub"
+  ansible.builtin.fail:
+    msg: |-
+      {{ _c.R }}[ERROR]{{ _c.NC }} No known WAN endpoint for hub {{ fw_wg_hub_site }}, fw_noninteractive is set, and
+      no fw_wg_hub_endpoint_override was supplied. No safe default exists -- re-run interactively,
+      or pass -e fw_wg_hub_endpoint_override=<ip>:<port>.
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+    - fw_wg_hub_endpoint_override is not defined
+    - fw_wg_hub_default_endpoint | default('') == ''
+    - fw_noninteractive | default(false) | bool
 
 - name: "[Ask] Set hub endpoint and IP"
   ansible.builtin.set_fact:
     fw_wg_hub_endpoint: >-
+      {%- if fw_wg_hub_endpoint_override is defined -%}{{ fw_wg_hub_endpoint_override }}
+      {%- else -%}
       {%- set inp = fw_wg_hub_endpoint_prompt.user_input | default('') | trim -%}
       {{ inp if inp != '' else fw_wg_hub_default_endpoint }}
+      {%- endif -%}
     fw_wg_hub_ip: >-
+      {%- if fw_wg_hub_endpoint_override is defined -%}{{ fw_wg_hub_endpoint_override.split(':')[0] }}
+      {%- else -%}
       {%- set inp = fw_wg_hub_endpoint_prompt.user_input | default('') | trim -%}
       {%- set ep = inp if inp != '' else fw_wg_hub_default_endpoint -%}
       {{ ep.split(':')[0] }}
+      {%- endif -%}
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
@@ -728,6 +902,45 @@
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
+    - fw_wg_hub_pubkey_override is not defined
+    - not (fw_noninteractive | default(false) | bool)
+
+# Robert, 2026-08-13, explicit: a live key that DIFFERS from the known-good key on file is
+# NEVER auto-accepted under fw_noninteractive -- possible hub rebuild, possible something
+# worse, needs a human to look at it (or an explicit fw_wg_hub_pubkey_override, a deliberate
+# opt-in). Fails loud rather than silently trusting it.
+- name: "[Ask] ABORT — noninteractive with a hub pubkey mismatch"
+  ansible.builtin.fail:
+    msg: |-
+      {{ _c.R }}[ERROR]{{ _c.NC }} Live WireGuard pubkey fetched from hub {{ fw_wg_hub_site }} DIFFERS from the
+      known-good key on file, and fw_noninteractive is set. This is never auto-accepted -- re-run
+      interactively to review and confirm, or pass -e fw_wg_hub_pubkey_override=<key> if you have
+      independently verified the new key.
+        Known : {{ wg_hub_known_pubkeys[fw_wg_hub_site] | default('') }}
+        Live  : {{ fw_wg_hub_pubkey_live | default('') }}
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+    - fw_wg_hub_pubkey_override is not defined
+    - fw_noninteractive | default(false) | bool
+    - fw_wg_hub_pubkey_live | default('') != ''
+    - wg_hub_known_pubkeys[fw_wg_hub_site] | default('') != ''
+    - fw_wg_hub_pubkey_live != wg_hub_known_pubkeys[fw_wg_hub_site]
+
+# Same principle, the other no-safe-default case: SSH fetch failed AND there's no known-good
+# key on file either -- nothing to fall back to at all.
+- name: "[Ask] ABORT — noninteractive with no usable hub pubkey"
+  ansible.builtin.fail:
+    msg: |-
+      {{ _c.R }}[ERROR]{{ _c.NC }} No live or known-good WireGuard pubkey available for hub {{ fw_wg_hub_site }},
+      and fw_noninteractive is set. Re-run interactively, or pass -e fw_wg_hub_pubkey_override=<key>.
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+    - fw_wg_hub_pubkey_override is not defined
+    - fw_noninteractive | default(false) | bool
+    - fw_wg_hub_pubkey_live | default('') == ''
+    - wg_hub_known_pubkeys[fw_wg_hub_site] | default('') == ''
 
 # Robert, 2026-07-17: pressing Enter used to only accept the LIVE-fetched key --
 # if SSH fetch failed, that's empty, so Enter silently produced no key at all
@@ -739,15 +952,26 @@
 - name: "[Ask] Set final hub pubkey"
   ansible.builtin.set_fact:
     fw_wg_hub_pubkey: >-
-      {%- set inp = fw_wg_hub_pubkey_confirm.user_input | default('') | trim -%}
       {%- set known = wg_hub_known_pubkeys[fw_wg_hub_site] | default('') -%}
+      {%- if fw_wg_hub_pubkey_override is defined -%}
+      {{ fw_wg_hub_pubkey_override }}
+      {%- else -%}
+      {%- set inp = fw_wg_hub_pubkey_confirm.user_input | default('') | trim -%}
       {%- if inp == '' or inp | lower == 'accept' -%}
       {{ fw_wg_hub_pubkey_live if fw_wg_hub_pubkey_live != '' else known }}
       {%- else -%}{{ inp }}
       {%- endif -%}
+      {%- endif -%}
+    # An explicit override counts as "typed" too -- the cross-hub mix-up check just below
+    # exists precisely to catch a pasted-the-wrong-hub's-key mistake, and a mistake typed
+    # into -e is exactly as possible as one typed into the interactive prompt.
     fw_wg_hub_pubkey_was_typed: >-
+      {%- if fw_wg_hub_pubkey_override is defined -%}
+      true
+      {%- else -%}
       {%- set inp = fw_wg_hub_pubkey_confirm.user_input | default('') | trim -%}
       {{ inp != '' and inp | lower != 'accept' }}
+      {%- endif -%}
   when:
     - not fw_is_black_site
     - fw_wg_role == 'spoke'
@@ -787,6 +1011,20 @@
     - fw_wg_role == 'spoke'
     - fw_wg_hub_pubkey_was_typed | bool
     - fw_wg_hub_pubkey_crosshub_site | default('') != ''
+    - not (fw_noninteractive | default(false) | bool)
+
+# fw_wg_hub_pubkey_override counts as "typed" above, so an override that turns out to belong
+# to a different known hub needs the same treatment as a mistyped interactive paste -- can't
+# ask under fw_noninteractive, so it fails loud instead of silently using the wrong hub's key.
+- name: "[Ask] ABORT — noninteractive cross-hub key mix-up detected"
+  ansible.builtin.fail:
+    msg: "{{ _c.R }}[ERROR]{{ _c.NC }} fw_wg_hub_pubkey_override belongs to {{ fw_wg_hub_pubkey_crosshub_site }}, not {{ fw_wg_hub_site }}, and fw_noninteractive is set -- re-run interactively, or correct the override."
+  when:
+    - not fw_is_black_site
+    - fw_wg_role == 'spoke'
+    - fw_wg_hub_pubkey_was_typed | bool
+    - fw_wg_hub_pubkey_crosshub_site | default('') != ''
+    - fw_noninteractive | default(false) | bool
 
 - name: "[Ask] FAIL — cross-hub key mix-up not confirmed"
   ansible.builtin.fail:
@@ -796,6 +1034,7 @@
     - fw_wg_role == 'spoke'
     - fw_wg_hub_pubkey_was_typed | bool
     - fw_wg_hub_pubkey_crosshub_site | default('') != ''
+    - not (fw_noninteractive | default(false) | bool)
     - fw_wg_hub_pubkey_crosshub_confirm.user_input | default('') | trim | lower != 'yes'
 
 - name: "[Ask] FAIL — no valid hub pubkey"
