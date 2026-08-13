@@ -16,6 +16,20 @@
 #       packages, network, nftables, dnsmasq, ssh, cockpit, finish
 #
 # Changelog:
+#   2026-08-13  Batch-run + prompt-defaults feature (backlog item, picked up this date; see
+#               roles/firewall/tasks/00_preflight_3_ask.yml's own 2026-08-13 changelog entry
+#               for the full mechanism). This play's own two vars_prompt entries below
+#               (fw_wan_ssh_answer, fw_wan_activate_answer) are unaffected structurally --
+#               they stay real vars_prompt, per Robert's 2026-07-16 call, since vars_prompt
+#               can't take a when: clause the way everything else in this role does. Instead,
+#               00_preflight_3_ask.yml's "[Ask] Set WAN SSH flag"/"[Ask] Set WAN activation
+#               flag" tasks now check fw_wan_ssh_override / fw_wan_activate_override first and
+#               use that instead of whatever vars_prompt returned, giving these two the same
+#               per-prompt-override escape hatch as every other prompt in the role. Whether
+#               Ansible's vars_prompt reliably falls back to its own "n" default (rather than
+#               hanging) when stdin isn't a TTY is UNVERIFIED -- for a genuinely unattended
+#               run, pass both overrides explicitly (-e fw_wan_ssh_override=n
+#               -e fw_wan_activate_override=n) rather than relying on that.
 #   2026-07-31  Added serial: 1 to the main play -- 00_preflight_3_ask.yml's
 #               ansible.builtin.pause tasks only register one shared answer across a
 #               parallel multi-host batch; a single -e target=<host> run (every
