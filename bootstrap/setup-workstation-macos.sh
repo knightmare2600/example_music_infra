@@ -58,15 +58,27 @@
 #   ./bootstrap/setup-workstation-macos.sh              # deps + assets
 #   ./bootstrap/setup-workstation-macos.sh --deps-only   # skip asset fetch
 #   ./bootstrap/setup-workstation-macos.sh --assets-only # skip dependency install
+#   ./bootstrap/setup-workstation-macos.sh --refresh     # force re-fetch every asset/archive,
+#                                                         # even if its dest file(s) already exist
 #
 # Requires: bash (macOS ships an old bash 3.2 as /bin/bash by default due
 # to GPLv3 licensing avoidance -- this script only uses bash 3.2-compatible
 # syntax deliberately, no associative arrays or other 4.x+ features), curl
 # (pre-installed), unzip (pre-installed). jq is installed by this script's
 # own dependency step if missing -- there is no reasonable bootstrap order
-# where jq is needed before Homebrew itself exists.
+# where jq is needed before Homebrew itself exists. 7z (p7zip formula) is
+# also installed by this script -- needed for archives[] entries that are
+# .iso rather than .zip (currently just the debian/ mini.iso entries).
 # ==============================================================================
 # Changelog:
+#   2026-08-13  Robert's idea: archives[] can now be a .iso (7z extraction),
+#               not just .zip -- see benarbejde/asset_manifest.json's own
+#               2026-08-13 changelog entry for the full reasoning (debian/
+#               mini.iso replacing the old separately-fetched linux/initrd.gz
+#               pair). Added --refresh (forces every fetch, bypassing the
+#               skip-if-already-present check) and p7zip to install_deps().
+#               Same "reasoned, not yet executed on real macOS" caveat as
+#               the rest of this file.
 #   2026-07-27  Initial file. Ported from setup-workstation-linux.sh (live-
 #               tested same day) -- Homebrew instead of apt, full §11.1
 #               tool table instead of the Linux subset (VMware Fusion has
@@ -94,10 +106,12 @@ CACHE_DIR="${REPO_ROOT}/.cache/bootstrap_asset_fetch"
 
 DO_DEPS=true
 DO_ASSETS=true
+FORCE_REFRESH=false
 for arg in "$@"; do
   case "$arg" in
     --deps-only)   DO_ASSETS=false ;;
     --assets-only) DO_DEPS=false ;;
+    --refresh)     FORCE_REFRESH=true ;;
     *) echo "Unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
@@ -141,7 +155,7 @@ install_deps() {
   # the cask installs the GUI .app, this formula installs keepassxc-cli.
   # Both are required; this is not a duplicate. See §11.1's own table.
   brew install \
-    git git-lfs jq unzip \
+    git git-lfs jq unzip p7zip \
     ansible \
     keepassxc \
     ipcalc \
@@ -151,7 +165,8 @@ install_deps() {
   git lfs install
 
   msg_ok "Dependencies installed/confirmed: VMware Fusion, iTerm2, KeePassXC (GUI + CLI)," \
-         "Wireshark, git, git-lfs, jq, ansible, ipcalc, virt-viewer, wireguard-tools."
+         "Wireshark, git, git-lfs, jq, unzip, p7zip (7z, for .iso archives[] entries)," \
+         "ansible, ipcalc, virt-viewer, wireguard-tools."
   msg_info "OpenSSH is pre-installed on macOS -- nothing to do."
   msg_info "WinSCP has no macOS build at all (Windows-only) -- use the built-in scp/sftp CLI," \
            "or 'brew install --cask filezilla'/'cyberduck' if a GUI SFTP client is wanted."
@@ -172,7 +187,7 @@ fetch_github_release() {
   local dest="$1" repo="$2" tag="$3" asset_name="$4"
   local full_dest="${WEB_DIR}/${dest}"
 
-  if [[ -f "$full_dest" ]]; then
+  if [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" ]]; then
     return 0
   fi
 
@@ -218,7 +233,7 @@ fetch_url_with_checksum_file() {
   local dest="$1" url="$2" checksum_file_url="$3" checksum_file_entry="$4"
   local full_dest="${WEB_DIR}/${dest}"
 
-  if [[ -f "$full_dest" ]]; then
+  if [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" ]]; then
     return 0
   fi
 
@@ -264,7 +279,7 @@ fetch_archive() {
     dest="${pair#*|}"
     [[ -f "${WEB_DIR}/${dest}" ]] || any_missing=true
   done
-  if [[ "$any_missing" == "false" ]]; then
+  if [[ "$FORCE_REFRESH" == "false" && "$any_missing" == "false" ]]; then
     return 0
   fi
 
@@ -305,13 +320,21 @@ fetch_archive() {
   fi
 
   mkdir -p "$extract_dir"
-  unzip -q -o "$archive_path_local" -d "$extract_dir"
+  # .zip (unzip) and .iso (7z -- Homebrew's p7zip formula, reads ISO9660
+  # natively, same as it reads zip/tar/rar/etc) are the two archive types
+  # this repo's manifest currently uses. See benarbejde/asset_manifest.json's
+  # own _readme note for why .iso was added 2026-08-13 (debian/ mini.iso).
+  case "$archive_filename" in
+    *.iso) 7z x -y -o"${extract_dir}" "$archive_path_local" >/dev/null ;;
+    *.zip) unzip -q -o "$archive_path_local" -d "$extract_dir" ;;
+    *) msg_error "  Don't know how to extract ${archive_filename} (not .zip or .iso)"; return 1 ;;
+  esac
 
   for pair in "$@"; do
     local archive_path="${pair%|*}"
     dest="${pair#*|}"
     local full_dest="${WEB_DIR}/${dest}"
-    [[ -f "$full_dest" ]] && continue
+    [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" ]] && continue
     mkdir -p "$(dirname "$full_dest")"
     cp "${extract_dir}/${archive_path}" "$full_dest"
     msg_ok "  ${dest} (from ${archive_filename})"
