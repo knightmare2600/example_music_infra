@@ -219,6 +219,44 @@
       delegate_to: localhost
       become: false
 
+    # site code/city/country/country_code/entity/office_name/street_address/postal_code
+    # (added 2026-08-13) -- derived live from sites.csv (reusing _sites_raw above, already
+    # loaded for the subnet-list build below -- no second read_csv needed), same pattern
+    # proxmox/truenas/firewallme/linux already use, NOT hand-typed host_vars
+    # (rudder_site_code/city/country/entity used to be static values in host_vars/
+    # EXARUDCLD001/main.yml -- removed the same day, Robert's explicit call: "everything is
+    # supposed to use sites.csv... hard-coding is verboten here").
+    - name: "Parse site code from hostname"
+      include_tasks: ../../tasks/hostname_facts.yml
+      vars:
+        target_hostname: "{{ rudder_hostname }}"
+
+    - name: "Set rudder_site_code from parsed hostname"
+      set_fact:
+        rudder_site_code: "{{ host_site }}"
+
+    - name: "Look up this site's row"
+      set_fact:
+        _rudder_site_row: "{{ _sites_raw.list | selectattr('Site', 'equalto', rudder_site_code) | list | first | default({}) }}"
+
+    - name: "WARN — site code not found in sites.csv"
+      debug:
+        msg: >
+          rudder_site_code='{{ rudder_site_code }}' (parsed from hostname
+          '{{ rudder_hostname }}') was not found in sites.csv. nodeinfo.json's
+          city/country/entity/etc fields will be blank.
+      when: _rudder_site_row == {}
+
+    - name: "Set site enrichment facts"
+      set_fact:
+        rudder_site_city:         "{{ _rudder_site_row.City | default('') }}"
+        rudder_site_country:      "{{ _rudder_site_row.Country | default('') }}"
+        rudder_site_country_code: "{{ _rudder_site_row.CountryCode | default('') }}"
+        rudder_site_entity:       "{{ _rudder_site_row.Entity | default('') }}"
+        rudder_site_office_name:  "{{ _rudder_site_row.OfficeName | default('') }}"
+        rudder_site_street:       "{{ _rudder_site_row.Street | default('') }}"
+        rudder_site_postal_code:  "{{ _rudder_site_row.PostalCode | default('') }}"
+
     - name: "Build clean subnet list from sites.csv (LAN + WireGuard)"
       set_fact:
         _allowed_networks: "{{ _allowed_networks_list }}"
@@ -892,8 +930,10 @@
         nodeinfo_site: "{{ rudder_site_code }}"
         nodeinfo_city: "{{ rudder_site_city }}"
         nodeinfo_country: "{{ rudder_site_country }}"
+        nodeinfo_country_code: "{{ rudder_site_country_code | default('') }}"
         nodeinfo_entity: "{{ rudder_site_entity }}"
-        nodeinfo_street: "{{ rudder_site_street | default('') }}"
+        nodeinfo_office_name: "{{ rudder_site_office_name | default('') }}"
+        nodeinfo_street_address: "{{ rudder_site_street | default('') }}"
         nodeinfo_postal_code: "{{ rudder_site_postal_code | default('') }}"
         nodeinfo_environment: "{{ rudder_environment | default('production') }}"
         nodeinfo_bootstrapped_by: "rudder_server.yml"

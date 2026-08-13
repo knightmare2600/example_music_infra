@@ -108,7 +108,11 @@
         nodeinfo_site: "{{ host_site }}"
         nodeinfo_city: "{{ nas_city }}"
         nodeinfo_country: "{{ nas_country }}"
+        nodeinfo_country_code: "{{ nas_country_code | default('') }}"
         nodeinfo_entity: "{{ nas_entity }}"
+        nodeinfo_office_name: "{{ nas_office_name | default('') }}"
+        nodeinfo_street_address: "{{ nas_street | default('') }}"
+        nodeinfo_postal_code: "{{ nas_postal_code | default('') }}"
         nodeinfo_environment: "{{ nas_environment | default('production') }}"
         nodeinfo_bootstrapped_by: "truenas/playbooks/10-access.yml"
         nodeinfo_extra:

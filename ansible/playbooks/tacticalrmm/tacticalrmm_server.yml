@@ -153,6 +153,51 @@
           --extra-vars.
         success_msg: "All required variables present — proceeding."
 
+    # site code/city/country/country_code/entity/office_name/street_address/postal_code
+    # (added 2026-08-13) -- derived live from sites.csv, same pattern proxmox/truenas/
+    # firewallme/linux already use, NOT hand-typed host_vars (rmm_site_code/city/country/
+    # entity used to be static values in host_vars/EXARMMCLD001/main.yml -- removed the
+    # same day, Robert's explicit call: "everything is supposed to use sites.csv...
+    # hard-coding is verboten here").
+    - name: "Parse site code from hostname"
+      include_tasks: ../../tasks/hostname_facts.yml
+      vars:
+        target_hostname: "{{ rmm_hostname }}"
+
+    - name: "Set rmm_site_code from parsed hostname"
+      set_fact:
+        rmm_site_code: "{{ host_site }}"
+
+    - name: "Load sites.csv"
+      read_csv:
+        path: "{{ sites_csv_path }}"
+      register: _rmm_sites_raw
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: "Look up this site's row"
+      set_fact:
+        _rmm_site_row: "{{ _rmm_sites_raw.list | selectattr('Site', 'equalto', rmm_site_code) | list | first | default({}) }}"
+
+    - name: "WARN — site code not found in sites.csv"
+      debug:
+        msg: >
+          rmm_site_code='{{ rmm_site_code }}' (parsed from hostname '{{ rmm_hostname }}')
+          was not found in sites.csv. nodeinfo.json's city/country/entity/etc fields will
+          be blank.
+      when: _rmm_site_row == {}
+
+    - name: "Set site enrichment facts"
+      set_fact:
+        rmm_site_city:         "{{ _rmm_site_row.City | default('') }}"
+        rmm_site_country:      "{{ _rmm_site_row.Country | default('') }}"
+        rmm_site_country_code: "{{ _rmm_site_row.CountryCode | default('') }}"
+        rmm_site_entity:       "{{ _rmm_site_row.Entity | default('') }}"
+        rmm_site_office_name:  "{{ _rmm_site_row.OfficeName | default('') }}"
+        rmm_site_street:       "{{ _rmm_site_row.Street | default('') }}"
+        rmm_site_postal_code:  "{{ _rmm_site_row.PostalCode | default('') }}"
+
     # ---------------------------------------------------------------------------
     # 9 | Compatibility checks (install.sh steps 1-2)
     # MOVED into pre_tasks, 2026-08-06 -- Robert: "pre-flight checks exist
@@ -715,8 +760,10 @@
         nodeinfo_site: "{{ rmm_site_code }}"
         nodeinfo_city: "{{ rmm_site_city }}"
         nodeinfo_country: "{{ rmm_site_country }}"
+        nodeinfo_country_code: "{{ rmm_site_country_code | default('') }}"
         nodeinfo_entity: "{{ rmm_site_entity }}"
-        nodeinfo_street: "{{ rmm_site_street | default('') }}"
+        nodeinfo_office_name: "{{ rmm_site_office_name | default('') }}"
+        nodeinfo_street_address: "{{ rmm_site_street | default('') }}"
         nodeinfo_postal_code: "{{ rmm_site_postal_code | default('') }}"
         nodeinfo_environment: "{{ rmm_environment | default('production') }}"
         nodeinfo_bootstrapped_by: "tacticalrmm_server.yml"

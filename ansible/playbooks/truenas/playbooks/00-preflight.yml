@@ -96,7 +96,11 @@
       set_fact:
         nas_city: "{{ nas_site_row.City | default('') }}"
         nas_country: "{{ nas_site_row.Country | default('') }}"
+        nas_country_code: "{{ nas_site_row.CountryCode | default('') }}"
         nas_entity: "{{ nas_site_row.Entity | default('') }}"
+        nas_office_name: "{{ nas_site_row.OfficeName | default('') }}"
+        nas_street: "{{ nas_site_row.Street | default('') }}"
+        nas_postal_code: "{{ nas_site_row.PostalCode | default('') }}"
       tags: preflight
 
     - name: "[Preflight] Resolve environment"

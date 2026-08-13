@@ -724,7 +724,11 @@
         nodeinfo_site: "{{ salt_site_code }}"
         nodeinfo_city: "{{ salt_site_city }}"
         nodeinfo_country: "{{ salt_site_country }}"
+        nodeinfo_country_code: "{{ salt_site_country_code }}"
         nodeinfo_entity: "{{ salt_site_entity }}"
+        nodeinfo_office_name: "{{ salt_site_office_name }}"
+        nodeinfo_street_address: "{{ salt_site_street }}"
+        nodeinfo_postal_code: "{{ salt_site_postal_code }}"
         nodeinfo_environment: "{{ salt_environment | default('production') }}"
         nodeinfo_bootstrapped_by: "10-master.yml"
         nodeinfo_extra:

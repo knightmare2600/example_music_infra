@@ -11,6 +11,16 @@
 # Version history
 # =============================================================================
 # v1.0.0  2026-07-20  Initial release.
+# v1.1.0  2026-08-13  Removed the hand-typed salt_site_code/city/country/entity
+#                     block -- now derived live from sites.csv by
+#                     00-preflight.yml (same pattern proxmox/truenas/
+#                     firewallme/linux already use), not hand-duplicated
+#                     here. Real bug this catches: salt_site_country was
+#                     hardcoded "Scotland" -- wrong, sites.csv's real
+#                     Country value for CLD is "Global" (a virtual/cloud
+#                     site, not a physical UK location). Robert's explicit
+#                     call: "everything is supposed to use sites.csv...
+#                     hard-coding is verboten here."
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -24,11 +34,3 @@ salt_prefix:      "24"
 
 # Network interface to configure (leave blank to auto-detect).
 salt_network_interface: ""
-
-# -----------------------------------------------------------------------------
-# Site metadata — shown in MOTD and /etc/example-music/nodeinfo.json
-# -----------------------------------------------------------------------------
-salt_site_code:    "CLD"
-salt_site_city:    "Edinburgh"
-salt_site_country: "Scotland"
-salt_site_entity:  "Example Music Limited"

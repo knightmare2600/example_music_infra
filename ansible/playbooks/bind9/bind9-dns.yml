@@ -944,7 +944,11 @@
         nodeinfo_site: "CLD"
         nodeinfo_city: "{{ _dns_site_row.City | default('') }}"
         nodeinfo_country: "{{ _dns_site_row.Country | default('') }}"
+        nodeinfo_country_code: "{{ _dns_site_row.CountryCode | default('') }}"
         nodeinfo_entity: "{{ _dns_site_row.Entity | default('') }}"
+        nodeinfo_office_name: "{{ _dns_site_row.OfficeName | default('') }}"
+        nodeinfo_street_address: "{{ _dns_site_row.Street | default('') }}"
+        nodeinfo_postal_code: "{{ _dns_site_row.PostalCode | default('') }}"
         nodeinfo_environment: "{{ dns_environment | default('production') }}"
         nodeinfo_bootstrapped_by: "bind9-dns.yml"
         nodeinfo_extra:
