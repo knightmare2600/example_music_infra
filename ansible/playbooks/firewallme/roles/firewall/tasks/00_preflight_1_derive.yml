@@ -66,7 +66,9 @@
   ansible.builtin.set_fact:
     fw_site_city: "{{ fw_site_row.City | default('') }}"
     fw_site_country: "{{ fw_site_row.Country | default('') }}"
+    fw_site_country_code: "{{ fw_site_row.CountryCode | default('') }}"
     fw_site_entity: "{{ fw_site_row.Entity | default('Example Music') }}"
+    fw_site_office_name: "{{ fw_site_row.OfficeName | default('') }}"
     fw_site_street: "{{ fw_site_row.Street | default('') }}"
     fw_site_postal_code: "{{ fw_site_row.PostalCode | default('') }}"
 

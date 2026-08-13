@@ -109,3 +109,55 @@
           --extra-vars.
         success_msg: "All required variables present — proceeding."
       tags: preflight
+
+    # site code/city/country/country_code/entity/office_name/street_address/postal_code (added
+    # 2026-08-13) -- derived live from sites.csv, same pattern proxmox/truenas/firewallme/
+    # linux already use, NOT hand-typed host_vars (salt_site_code/city/country/entity used to
+    # be static values in host_vars/EXASLTCLD001/main.yml -- removed the same day, Robert's
+    # explicit call: "everything is supposed to use sites.csv... hard-coding is verboten
+    # here"). target_hostname isn't set this early in this file's own chain, but salt_hostname
+    # is guaranteed set by the assert above, same convention hostname_facts.yml itself expects.
+    - name: "Parse site code from hostname"
+      include_tasks: ../../../tasks/hostname_facts.yml
+      vars:
+        target_hostname: "{{ salt_hostname }}"
+      tags: preflight
+
+    - name: "Set salt_site_code from parsed hostname"
+      set_fact:
+        salt_site_code: "{{ host_site }}"
+      tags: preflight
+
+    - name: "Load sites.csv"
+      read_csv:
+        path: "{{ sites_csv_path }}"
+      register: _salt_sites_raw
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags: preflight
+
+    - name: "Look up this site's row"
+      set_fact:
+        _salt_site_row: "{{ _salt_sites_raw.list | selectattr('Site', 'equalto', salt_site_code) | list | first | default({}) }}"
+      tags: preflight
+
+    - name: "WARN — site code not found in sites.csv"
+      debug:
+        msg: >
+          salt_site_code='{{ salt_site_code }}' (parsed from hostname '{{ salt_hostname }}')
+          was not found in sites.csv. nodeinfo.json's city/country/entity/etc fields will be
+          blank.
+      when: _salt_site_row == {}
+      tags: preflight
+
+    - name: "Set site enrichment facts"
+      set_fact:
+        salt_site_city:         "{{ _salt_site_row.City | default('') }}"
+        salt_site_country:      "{{ _salt_site_row.Country | default('') }}"
+        salt_site_country_code: "{{ _salt_site_row.CountryCode | default('') }}"
+        salt_site_entity:       "{{ _salt_site_row.Entity | default('') }}"
+        salt_site_office_name:  "{{ _salt_site_row.OfficeName | default('') }}"
+        salt_site_street:       "{{ _salt_site_row.Street | default('') }}"
+        salt_site_postal_code:  "{{ _salt_site_row.PostalCode | default('') }}"
+      tags: preflight
