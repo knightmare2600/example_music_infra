@@ -17,6 +17,14 @@
 #                     to CLD, see that file's changelog) -- kept explicit here anyway,
 #                     matching every other var on this host, rather than relying on it
 #                     falling through silently.
+# v1.2.0  2026-08-13  Removed the hand-typed rudder_site_code/city/country/entity/street/
+#                     postal_code block -- now derived live from sites.csv by
+#                     rudder_server.yml itself (same pattern proxmox/truenas/firewallme/
+#                     linux already use), not hand-duplicated here. Real bug this catches:
+#                     rudder_site_country was hardcoded "Scotland" -- wrong, sites.csv's
+#                     real Country value for CLD is "Global" (a virtual/cloud site, not a
+#                     physical UK location). Robert's explicit call: "everything is
+#                     supposed to use sites.csv... hard-coding is verboten here."
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -33,14 +41,5 @@ rudder_prefix:      "24"
 # the wrong one.
 rudder_network_interface: ""
 
-# -----------------------------------------------------------------------------
-# Site metadata — shown in MOTD and /etc/example-music/nodeinfo.json
-# -----------------------------------------------------------------------------
-rudder_site_code:    "CLD"
-rudder_site_city:    "Edinburgh"
-rudder_site_country: "Scotland"
-rudder_site_entity:  "Example Music Limited"
-rudder_site_street:       "7 Claylands Road"
-rudder_site_postal_code:  "EH28 8LF"
 rudder_dc_hostname:  "EXADCSCLD001"
 rudder_dc_ip:        "192.168.69.10"

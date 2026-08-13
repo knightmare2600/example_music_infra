@@ -20,8 +20,8 @@
 #
 # Optional vars:
 #   nodeinfo_hostname     default: inventory_hostname
-#   nodeinfo_city/country/entity   default: '' (site not found in sites.csv)
-#   nodeinfo_street/postal_code    default: '' (site not found, or sites.csv column blank)
+#   nodeinfo_city/country/country_code/entity/office_name   default: '' (site not found in sites.csv)
+#   nodeinfo_street_address/postal_code   default: '' (site not found, or sites.csv column blank)
 #   nodeinfo_environment  default: 'production'
 #   nodeinfo_extra        default: {} — role-specific fields, merged in last
 #                         so they can override a base field if a caller ever
@@ -48,6 +48,18 @@
 #               does for city/country/entity, just two more columns (Robert's site-address
 #               rollout). Windows gets the equivalent via Salt custom grains instead of a
 #               second nodeinfo.json (salt/states/grains/init.sls), not duplicated here.
+#   2026-08-13  office_name/country_code added, street renamed to street_address -- matches
+#               the same fields added to Salt's own custom grains 2026-08-12
+#               (salt/states/grains/init.sls). Same day, every caller of this file that was
+#               still hand-typing its own city/country/entity into host_vars (salt, rudder,
+#               tacticalrmm) converted to a live sites.csv lookup instead, matching the
+#               pattern proxmox/truenas/firewallme/linux/bind9-dns already used -- Robert's
+#               explicit call: "everything is supposed to use sites.csv... hard-coding stuff
+#               is very 1970s and verboten here." meshcentral_server.yml deliberately NOT
+#               converted -- EXAMSHCLD001 was retired 2026-08-08, dead code, not worth the
+#               effort. bind9-dns.yml also gained street_address/postal_code/office_name/
+#               country_code for the first time here -- it never passed the address fields
+#               at all before this, a separate pre-existing gap found while doing this sweep.
 # =============================================================================
 
 - name: "Write /etc/example-music/nodeinfo.json"
@@ -66,8 +78,10 @@
           'site':             nodeinfo_site,
           'city':             nodeinfo_city | default(''),
           'country':          nodeinfo_country | default(''),
+          'country_code':     nodeinfo_country_code | default(''),
           'entity':           nodeinfo_entity | default(''),
-          'street':           nodeinfo_street | default(''),
+          'office_name':      nodeinfo_office_name | default(''),
+          'street_address':   nodeinfo_street_address | default(''),
           'postal_code':      nodeinfo_postal_code | default(''),
           'ansible_managed':  true,
           'bootstrapped_at':  ansible_date_time.iso8601,

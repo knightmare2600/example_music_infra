@@ -167,7 +167,9 @@
       set_fact:
         pve_city:   "{{ pve_site_row.City | default('') }}"
         pve_country: "{{ pve_site_row.Country | default('') }}"
+        pve_country_code: "{{ pve_site_row.CountryCode | default('') }}"
         pve_entity: "{{ pve_site_row.Entity | default('') }}"
+        pve_office_name: "{{ pve_site_row.OfficeName | default('') }}"
         pve_street: "{{ pve_site_row.Street | default('') }}"
         pve_postal_code: "{{ pve_site_row.PostalCode | default('') }}"
       tags: preflight

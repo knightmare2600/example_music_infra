@@ -242,7 +242,11 @@ Every provisioned PVE node has `/etc/example-music/nodeinfo.json` (read-only, mo
     "site": "FAL",
     "city": "Falkirk",
     "country": "United Kingdom",
+    "country_code": "UK",
     "entity": "Example Music (Scotland) Ltd",
+    "office_name": "Brockville Stadium",
+    "street_address": "1876 Hope Street",
+    "postal_code": "FK1 1AA",
     "ansible_managed": false,
     "bootstrapped_at": "2026-02-25T17:00:00Z",
     "bootstrapped_by": "first-boot.sh",
@@ -251,6 +255,8 @@ Every provisioned PVE node has `/etc/example-music/nodeinfo.json` (read-only, mo
     "gateway": "192.168.76.253"
 }
 ```
+
+`office_name` is blank (`""`) for most sites — only set where a site genuinely has a distinct venue/building name (see `benarbejde/sites.csv`'s own `OfficeName` column). FAL's shown here since it's one of the sites that does.
 
 `ansible_managed` is `false` when written by `first-boot.sh`. Ansible playbooks that subsequently manage the node should update it to `true`.
 

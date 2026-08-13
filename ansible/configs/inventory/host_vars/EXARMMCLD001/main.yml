@@ -11,6 +11,17 @@
 # Version history
 # =============================================================================
 # v1.0.0  2026-08-04  Initial release. Remote management platform, phase 3.
+# v1.1.0  2026-08-13  Removed the hand-typed rmm_site_code/city/country/entity/street/
+#                     postal_code block -- now derived live from sites.csv by
+#                     tacticalrmm_server.yml itself (same pattern proxmox/truenas/
+#                     firewallme/linux already use), not hand-duplicated here. Real bug
+#                     this catches: rmm_site_country was hardcoded "Scotland" -- wrong,
+#                     sites.csv's real Country value for CLD is "Global" (a virtual/cloud
+#                     site, not a physical UK location) -- present even though this
+#                     block's own comment claimed it had been checked against sites.csv at
+#                     the time. Exactly the drift risk hand-duplication creates, even when
+#                     someone tries to keep it honest. Robert's explicit call: "everything
+#                     is supposed to use sites.csv... hard-coding is verboten here."
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -24,14 +35,3 @@ rmm_prefix:     "24"
 
 # Network interface to configure (leave blank to auto-detect).
 rmm_network_interface: ""
-
-# -----------------------------------------------------------------------------
-# Site metadata — shown in MOTD and /etc/example-music/nodeinfo.json
-# Matches CLD's real address (see benarbejde/sites.csv, commit 01f6d54).
-# -----------------------------------------------------------------------------
-rmm_site_code:    "CLD"
-rmm_site_city:    "Edinburgh"
-rmm_site_country: "Scotland"
-rmm_site_entity:  "Example Music Limited"
-rmm_site_street:       "7 Claylands Road"
-rmm_site_postal_code:  "EH28 8LF"
