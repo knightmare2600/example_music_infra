@@ -97,6 +97,8 @@ Usage:
   .\bootstrap\Setup-Workstation.ps1                # deps + assets
   .\bootstrap\Setup-Workstation.ps1 -DepsOnly       # skip asset fetch
   .\bootstrap\Setup-Workstation.ps1 -AssetsOnly     # skip dependency install
+  .\bootstrap\Setup-Workstation.ps1 -Refresh        # force re-fetch every asset/archive,
+                                                     # even if its dest file(s) already exist
 
 Chocolatey package installs need an elevated (Administrator) PowerShell --
 this script checks for elevation and exits with a clear message if it
@@ -104,6 +106,16 @@ isn't, rather than failing partway through with a confusing permissions
 error.
 ==============================================================================
 Changelog:
+  2026-08-13  Robert's idea: archives[] can now be a .iso (extracted via
+              Mount-DiskImage, native, no extra dependency), not just .zip
+              -- see benarbejde/asset_manifest.json's own 2026-08-13
+              changelog entry for the full reasoning (debian/ mini.iso
+              replacing the old separately-fetched linux/initrd.gz pair).
+              Added -Refresh (forces every fetch, bypassing the
+              skip-if-already-present check). Mount-DiskImage/Dismount-
+              DiskImage are Storage-module cmdlets built into Windows 8+/
+              PowerShell 5.1+ -- no Chocolatey package needed, unlike the
+              Linux/macOS scripts' 7z addition for the same job.
   2026-07-27  Initial file. Fetch logic ported from
               ansible/playbooks/bootstrap_assets/fetch-assets.yml (live-
               tested against every real source this manifest covers) via
@@ -136,7 +148,8 @@ Changelog:
 [CmdletBinding()]
 param(
     [switch]$DepsOnly,
-    [switch]$AssetsOnly
+    [switch]$AssetsOnly,
+    [switch]$Refresh
 )
 
 $ErrorActionPreference = 'Stop'
@@ -144,6 +157,7 @@ $ProgressPreference = 'SilentlyContinue'  # see header -- defensive, belt-and-br
 
 $DoDeps = -not $AssetsOnly
 $DoAssets = -not $DepsOnly
+$ForceRefresh = $Refresh.IsPresent
 
 # -- Paths ---------------------------------------------------------------------
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -383,7 +397,7 @@ function Invoke-GithubReleaseFetch {
     param([string]$Dest, [string]$Repo, [string]$Tag, [string]$AssetName)
 
     $fullDest = Join-Path $WebDir $Dest
-    if (Test-Path $fullDest) { return }
+    if (-not $ForceRefresh -and (Test-Path $fullDest)) { return }
 
     $apiUrl = if ($Tag -eq 'latest') {
         "https://api.github.com/repos/$Repo/releases/latest"
@@ -419,7 +433,7 @@ function Invoke-UrlWithChecksumFileFetch {
     param([string]$Dest, [string]$Url, [string]$ChecksumFileUrl, [string]$ChecksumFileEntry)
 
     $fullDest = Join-Path $WebDir $Dest
-    if (Test-Path $fullDest) { return }
+    if (-not $ForceRefresh -and (Test-Path $fullDest)) { return }
 
     Write-Info "Fetching $Dest..."
 
@@ -462,7 +476,7 @@ function Invoke-ArchiveFetch {
     foreach ($m in $Members) {
         if (-not (Test-Path (Join-Path $WebDir $m.dest))) { $anyMissing = $true }
     }
-    if (-not $anyMissing) { return }
+    if (-not $ForceRefresh -and -not $anyMissing) { return }
 
     # SourceForge (and some other hosts) serve real download links ending in
     # a trailing /download segment, not a filename -- strip it before
@@ -504,11 +518,30 @@ function Invoke-ArchiveFetch {
     }
 
     New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
-    Expand-Archive -Path $archiveLocal -DestinationPath $extractDir -Force
+    # .zip (Expand-Archive) and .iso (Mount-DiskImage, native, no extra dependency), added
+    # 2026-08-13 -- see benarbejde/asset_manifest.json's own _readme note for why (debian/
+    # mini.iso replacing the old separately-fetched linux/initrd.gz pair). Mount-DiskImage/
+    # Get-Volume/Dismount-DiskImage are Storage-module cmdlets built into Windows 8+/
+    # PowerShell 5.1+ -- unlike setup-workstation-{linux,macos}.sh, no extra package (7z)
+    # needed here.
+    if ($archiveFilename -like '*.iso') {
+        $diskImage = Mount-DiskImage -ImagePath $archiveLocal -PassThru
+        try {
+            $isoDriveLetter = ($diskImage | Get-Volume).DriveLetter
+            Copy-Item -Path "${isoDriveLetter}:\*" -Destination $extractDir -Recurse -Force
+        } finally {
+            Dismount-DiskImage -ImagePath $archiveLocal | Out-Null
+        }
+    } elseif ($archiveFilename -like '*.zip') {
+        Expand-Archive -Path $archiveLocal -DestinationPath $extractDir -Force
+    } else {
+        Write-Err2 "  Don't know how to extract $archiveFilename (not .zip or .iso)"
+        throw "Unknown archive type: $archiveFilename"
+    }
 
     foreach ($m in $Members) {
         $fullDest = Join-Path $WebDir $m.dest
-        if (Test-Path $fullDest) { continue }
+        if (-not $ForceRefresh -and (Test-Path $fullDest)) { continue }
         $destDir = Split-Path -Parent $fullDest
         New-Item -ItemType Directory -Path $destDir -Force | Out-Null
         # archive_path uses forward slashes in the manifest (matches the

@@ -36,9 +36,15 @@
     "does (pre-existing gap, not fixed in this pass: SourceForge doesn't publish a convenient",
     "checksum file for gparted-live the way kernel.org does for syslinux).",
     "",
-    "archives[] only supports .zip extraction (unzip / Expand-Archive) -- prefer a .zip release",
-    "over .tar.xz/.tar.gz where the upstream offers a choice, rather than adding tar support to",
-    "all 3 platform scripts for one entry.",
+    "archives[] supports .zip extraction (unzip / Expand-Archive) and, added 2026-08-13, .iso",
+    "extraction (7z on Linux/macOS; Mount-DiskImage, native, on Windows -- no extra dependency",
+    "there). Prefer a .zip release over .tar.xz/.tar.gz where the upstream offers a choice, rather",
+    "than adding tar support to all 3 platform scripts for one entry.",
+    "",
+    "--refresh: all 3 setup scripts now accept this flag, which forces every assets[]/archives[]",
+    "entry to re-fetch even if its dest file(s) already exist (workstation_tools[] already always",
+    "re-checks its own checksum every run regardless, so --refresh changes nothing there). Default",
+    "behaviour unchanged -- skip-if-already-present, same as before.",
     "",
     "GParted Live is x86_64 only -- it has never published an arm64 build.",
     "",
@@ -56,6 +62,18 @@
     "picks it up), not something to silently auto-adopt.",
     "",
     "Changelog:",
+    "2026-08-13  Robert's idea: replaced the 4 debian/trixie/*/{ linux, initrd.gz } per-file",
+    "            url_with_checksum_file entries with 4 archives[] entries that extract both from",
+    "            the upstream mini.iso instead (bookworm+trixie x86_64+arm64). The old approach",
+    "            fetched linux/initrd.gz independently, which could fall out of version-sync with",
+    "            each other -- a real live kernel/initrd mismatch had already been worked around by",
+    "            hand once. mini.iso ships both from the same debian-cd build, coherently versioned",
+    "            by construction, closing the gap at the root instead of re-fetching by hand after",
+    "            each Debian point release. Verified live before writing these entries: downloaded",
+    "            the real trixie/amd64 mini.iso, confirmed /linux and /initrd.gz sit at the ISO",
+    "            root (no subdirectory), and that both are byte-identical to what was already",
+    "            hand-placed on disk. Also gave bookworm/'s files (hand-placed, never in this",
+    "            manifest before) their first real manifest coverage.",
     "2026-07-27  Migrated from asset_manifest.yml (same schema, same verified URLs/tags/paths --",
     "            see project memory for the research trail). JSON instead of YAML so this parses",
     "            natively in bash (jq) and PowerShell (ConvertFrom-Json) without an extra",
@@ -109,23 +127,6 @@
     { "dest": "winpe/x86_64/wimboot.i386", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot.i386" },
     { "dest": "winpe/arm64/wimboot.arm64", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot.arm64" },
 
-    { "dest": "debian/trixie/x86_64/linux", "source_type": "url_with_checksum_file",
-      "url": "https://ftp.debian.org/debian/dists/stable/main/installer-amd64/current/images/netboot/debian-installer/amd64/linux",
-      "checksum_file_url": "https://ftp.debian.org/debian/dists/stable/main/installer-amd64/current/images/SHA256SUMS",
-      "checksum_file_entry": "./netboot/debian-installer/amd64/linux" },
-    { "dest": "debian/trixie/x86_64/initrd.gz", "source_type": "url_with_checksum_file",
-      "url": "https://ftp.debian.org/debian/dists/stable/main/installer-amd64/current/images/netboot/debian-installer/amd64/initrd.gz",
-      "checksum_file_url": "https://ftp.debian.org/debian/dists/stable/main/installer-amd64/current/images/SHA256SUMS",
-      "checksum_file_entry": "./netboot/debian-installer/amd64/initrd.gz" },
-    { "dest": "debian/trixie/arm64/linux", "source_type": "url_with_checksum_file",
-      "url": "https://ftp.debian.org/debian/dists/stable/main/installer-arm64/current/images/netboot/debian-installer/arm64/linux",
-      "checksum_file_url": "https://ftp.debian.org/debian/dists/stable/main/installer-arm64/current/images/SHA256SUMS",
-      "checksum_file_entry": "./netboot/debian-installer/arm64/linux" },
-    { "dest": "debian/trixie/arm64/initrd.gz", "source_type": "url_with_checksum_file",
-      "url": "https://ftp.debian.org/debian/dists/stable/main/installer-arm64/current/images/netboot/debian-installer/arm64/initrd.gz",
-      "checksum_file_url": "https://ftp.debian.org/debian/dists/stable/main/installer-arm64/current/images/SHA256SUMS",
-      "checksum_file_entry": "./netboot/debian-installer/arm64/initrd.gz" },
-
     { "dest": "openbsd/7.9/x86_64/bsd.rd", "source_type": "url_with_checksum_file",
       "url": "https://cdn.openbsd.org/pub/OpenBSD/7.9/amd64/bsd.rd",
       "checksum_file_url": "https://cdn.openbsd.org/pub/OpenBSD/7.9/amd64/SHA256",
@@ -137,6 +138,46 @@
   ],
 
   "archives": [
+    {
+      "_comment": "Debian netboot mini.iso, x86_64. Replaces the old per-file linux/initrd.gz url_with_checksum_file entries (removed 2026-08-13) -- those were fetched independently and could genuinely fall out of version-sync with each other (the real cause of a live kernel/initrd mismatch, worked around by hand at the time). mini.iso ships both in one Debian-built, coherently-versioned image -- extract from it instead, same debian-cd build, same guarantee they match. Verified live 2026-08-13: extracted /linux and /initrd.gz from a real downloaded mini.iso, byte-identical to what was already hand-placed on disk. 'stable' in the URL (not 'trixie') matches the existing convention already used by klargoring/openbsd entries above -- Debian's own alias for whatever the current stable release is; dest stays 'trixie' since that's the current stable codename, same gap as before if/when the next stable release ships (not fixed in this pass).",
+      "url": "https://ftp.debian.org/debian/dists/stable/main/installer-amd64/current/images/netboot/mini.iso",
+      "checksum_file_url": "https://ftp.debian.org/debian/dists/stable/main/installer-amd64/current/images/SHA256SUMS",
+      "checksum_file_entry": "./netboot/mini.iso",
+      "members": [
+        { "archive_path": "linux", "dest": "debian/trixie/x86_64/linux" },
+        { "archive_path": "initrd.gz", "dest": "debian/trixie/x86_64/initrd.gz" }
+      ]
+    },
+    {
+      "_comment": "Debian netboot mini.iso, arm64 -- same reasoning as the x86_64 entry above.",
+      "url": "https://ftp.debian.org/debian/dists/stable/main/installer-arm64/current/images/netboot/mini.iso",
+      "checksum_file_url": "https://ftp.debian.org/debian/dists/stable/main/installer-arm64/current/images/SHA256SUMS",
+      "checksum_file_entry": "./netboot/mini.iso",
+      "members": [
+        { "archive_path": "linux", "dest": "debian/trixie/arm64/linux" },
+        { "archive_path": "initrd.gz", "dest": "debian/trixie/arm64/initrd.gz" }
+      ]
+    },
+    {
+      "_comment": "Debian netboot mini.iso, bookworm x86_64 -- bookworm/'s files existed on disk before this manifest tracked them at all (hand-placed); this is the first manifest coverage they've ever had.",
+      "url": "https://ftp.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/mini.iso",
+      "checksum_file_url": "https://ftp.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/SHA256SUMS",
+      "checksum_file_entry": "./netboot/mini.iso",
+      "members": [
+        { "archive_path": "linux", "dest": "debian/bookworm/x86_64/linux" },
+        { "archive_path": "initrd.gz", "dest": "debian/bookworm/x86_64/initrd.gz" }
+      ]
+    },
+    {
+      "_comment": "Debian netboot mini.iso, bookworm arm64 -- same reasoning as the bookworm x86_64 entry above.",
+      "url": "https://ftp.debian.org/debian/dists/bookworm/main/installer-arm64/current/images/netboot/mini.iso",
+      "checksum_file_url": "https://ftp.debian.org/debian/dists/bookworm/main/installer-arm64/current/images/SHA256SUMS",
+      "checksum_file_entry": "./netboot/mini.iso",
+      "members": [
+        { "archive_path": "linux", "dest": "debian/bookworm/arm64/linux" },
+        { "archive_path": "initrd.gz", "dest": "debian/bookworm/arm64/initrd.gz" }
+      ]
+    },
     {
       "url": "https://sourceforge.net/projects/gparted/files/gparted-live-stable/1.8.1-3/gparted-live-1.8.1-3-amd64.zip/download",
       "members": [

@@ -40,13 +40,23 @@
 #   ./bootstrap/setup-workstation-linux.sh              # deps + assets
 #   ./bootstrap/setup-workstation-linux.sh --deps-only   # skip asset fetch
 #   ./bootstrap/setup-workstation-linux.sh --assets-only # skip dependency install
+#   ./bootstrap/setup-workstation-linux.sh --refresh     # force re-fetch every asset/archive,
+#                                                         # even if its dest file(s) already exist
 #
-# Requires: bash, sudo (for apt), curl, jq, unzip -- if jq/curl/unzip
-# themselves are missing, the dependency-install step installs them too
-# (bootstrapped via a plain `apt-get install`, no chicken-and-egg problem
-# since apt itself needs none of these).
+# Requires: bash, sudo (for apt), curl, jq, unzip, 7z (p7zip/7zip package,
+# needed for archives[] entries that are .iso rather than .zip -- currently
+# just the debian/ mini.iso entries) -- if these are missing, the
+# dependency-install step installs them too (bootstrapped via a plain
+# `apt-get install`, no chicken-and-egg problem since apt itself needs none
+# of these).
 # ==============================================================================
 # Changelog:
+#   2026-08-13  Robert's idea: archives[] can now be a .iso (7z extraction),
+#               not just .zip -- see benarbejde/asset_manifest.json's own
+#               2026-08-13 changelog entry for the full reasoning (debian/
+#               mini.iso replacing the old separately-fetched linux/initrd.gz
+#               pair). Added --refresh (forces every fetch, bypassing the
+#               skip-if-already-present check) and 7z to install_deps().
 #   2026-07-27  Initial file. Fetch logic ported from
 #               ansible/playbooks/bootstrap_assets/fetch-assets.yml, which
 #               was live-tested against every real source this manifest
@@ -76,10 +86,12 @@ CACHE_DIR="${REPO_ROOT}/.cache/bootstrap_asset_fetch"
 
 DO_DEPS=true
 DO_ASSETS=true
+FORCE_REFRESH=false
 for arg in "$@"; do
   case "$arg" in
     --deps-only)   DO_ASSETS=false ;;
     --assets-only) DO_DEPS=false ;;
+    --refresh)     FORCE_REFRESH=true ;;
     *) echo "Unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
@@ -115,7 +127,7 @@ install_deps() {
 
   sudo apt-get update
   sudo apt-get install -y \
-    git git-lfs curl jq unzip \
+    git git-lfs curl jq unzip 7zip \
     ansible \
     keepassxc \
     wireguard-tools \
@@ -125,8 +137,9 @@ install_deps() {
 
   git lfs install
 
-  msg_ok "Dependencies installed/confirmed: git, git-lfs, curl, jq, unzip, ansible, keepassxc" \
-         "(keepassxc-cli bundled on Debian), wireguard-tools, virt-viewer, wireshark, ipcalc."
+  msg_ok "Dependencies installed/confirmed: git, git-lfs, curl, jq, unzip, 7zip (7z, for .iso" \
+         "archives[] entries), ansible, keepassxc (keepassxc-cli bundled on Debian)," \
+         "wireguard-tools, virt-viewer, wireshark, ipcalc."
   msg_info "No native Linux equivalent for VMware Fusion or iTerm2 -- skipped (macOS-only tools," \
            "see docs/ExampleMusic_Beginners_Guide.md §11)."
 }
@@ -140,7 +153,7 @@ fetch_github_release() {
   local dest="$1" repo="$2" tag="$3" asset_name="$4"
   local full_dest="${WEB_DIR}/${dest}"
 
-  if [[ -f "$full_dest" ]]; then
+  if [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" ]]; then
     return 0
   fi
 
@@ -186,7 +199,7 @@ fetch_url_with_checksum_file() {
   local dest="$1" url="$2" checksum_file_url="$3" checksum_file_entry="$4"
   local full_dest="${WEB_DIR}/${dest}"
 
-  if [[ -f "$full_dest" ]]; then
+  if [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" ]]; then
     return 0
   fi
 
@@ -232,7 +245,7 @@ fetch_archive() {
     dest="${pair#*|}"
     [[ -f "${WEB_DIR}/${dest}" ]] || any_missing=true
   done
-  if [[ "$any_missing" == "false" ]]; then
+  if [[ "$FORCE_REFRESH" == "false" && "$any_missing" == "false" ]]; then
     return 0
   fi
 
@@ -271,13 +284,21 @@ fetch_archive() {
   fi
 
   mkdir -p "$extract_dir"
-  unzip -q -o "$archive_path_local" -d "$extract_dir"
+  # .zip (unzip) and .iso (7z -- p7zip/7zip package, reads ISO9660 natively,
+  # same as it reads zip/tar/rar/etc) are the two archive types this repo's
+  # manifest currently uses. See benarbejde/asset_manifest.json's own
+  # _readme note for why .iso was added 2026-08-13 (debian/ mini.iso).
+  case "$archive_filename" in
+    *.iso) 7z x -y -o"${extract_dir}" "$archive_path_local" >/dev/null ;;
+    *.zip) unzip -q -o "$archive_path_local" -d "$extract_dir" ;;
+    *) msg_error "  Don't know how to extract ${archive_filename} (not .zip or .iso)"; return 1 ;;
+  esac
 
   for pair in "$@"; do
     archive_path="${pair%|*}"
     dest="${pair#*|}"
     local full_dest="${WEB_DIR}/${dest}"
-    [[ -f "$full_dest" ]] && continue
+    [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" ]] && continue
     mkdir -p "$(dirname "$full_dest")"
     cp "${extract_dir}/${archive_path}" "$full_dest"
     msg_ok "  ${dest} (from ${archive_filename})"
