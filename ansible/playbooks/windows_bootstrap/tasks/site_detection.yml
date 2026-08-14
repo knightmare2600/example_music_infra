@@ -6,6 +6,23 @@
 # Replicates Join-DomainAndBootstrap.ps1 Stages 1 and 2
 # =============================================================================
 # Changelog:
+#   2026-08-14  Robert, live (EXADCSLAX001): "Match octet to site code" reported a
+#               false MISMATCH -- octet 213 (LAX) "not found in site map". Root
+#               cause: octet_map was a hand-typed dict covering only 15 of the real
+#               ~53 sites in sites.csv -- the exact "hardcode instead of deriving
+#               from sites.csv" anti-pattern banned elsewhere this session (see
+#               check_hardcoded_site_metadata.py / at_have_ryggen_fri check 39),
+#               just in a different shape (an inline Jinja dict literal here, not a
+#               host_vars key -- check 39's regex never had a chance to catch this
+#               one). detected_site is purely informational (grepped: not
+#               referenced anywhere outside this file's own debug message; the
+#               hostname-derived host_site_code is what's actually used everywhere
+#               else in the chain), so this was never a functional bug -- just a
+#               confusing, wrong warning. Fixed by deriving detected_site live from
+#               site_data (already loaded from sites.csv by 00-preflight.yml's
+#               Phase A4 and still in scope this far into the same run -- no second
+#               read_csv needed), matching each site's Subnet's third octet instead
+#               of a hand-typed subset.
 #   2026-06-20  Initial file
 #   2026-07-14  Fixed a real bug found live (EXADCSCLD001, forest-root DC build):
 #               "Show site detection result" crashed with "'host_site' is undefined".
@@ -68,13 +85,8 @@
 - name: "[Stage 2] Match octet to site code"
   set_fact:
     detected_site: >-
-      {%- set octet_map = {
-        '76':  'FAL', '231': 'CPH', '126': 'ODE', '136': 'BRK',
-        '161': 'MCR', '151': 'LIV', '141': 'GLA', '191': 'NEW',
-        '65':  'KGE', '246': 'FAX', '146': 'TOR', '154': 'MTL',
-        '29':  'SYD', '69':  'CLD', '33':  'ATL'
-      } -%}
-      {{ octet_map.get(host_subnet_octet, 'UNKNOWN') }}
+      {%- set matches = site_data | selectattr('Subnet', 'search', '^(\d+\.){2}' + host_subnet_octet + '\.\d+/') | list -%}
+      {{ matches[0].Site if matches | length > 0 else 'UNKNOWN' }}
 
 - name: "[Stage 2] WARN — subnet octet not in known site map"
   debug:
