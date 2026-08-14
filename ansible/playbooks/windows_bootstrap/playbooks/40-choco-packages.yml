@@ -30,6 +30,21 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-08-14  Removed sysinternals. Live against EXADCSLAX001: `choco install
+#               sysinternals` failed with a SHA256 checksum mismatch against the
+#               real SysinternalsSuite.zip served from download.sysinternals.com
+#               right now. Root cause is upstream, not fixable from this
+#               playbook: Microsoft updates that zip in place at a fixed URL
+#               without versioning it, and the Chocolatey community package's
+#               baked-in checksum doesn't always get updated in sync -- a real,
+#               recurring problem, not a one-off (multiple GitHub issues on
+#               chocolatey-community/chocolatey-packages document the exact same
+#               failure recurring across different package versions: #2751,
+#               #2596, #1325). Same situation and same call as nmap's removal
+#               below (2026-07-14) -- Robert's call: drop it from automated
+#               onboarding entirely rather than leave an occasionally-broken
+#               package in the chain; install manually on any host that
+#               specifically needs it.
 #   2026-08-14  Robert, live (EXADCSLAX001, same run as 30-chocolatey.yml's
 #               identical fix that same day): "Get currently installed
 #               Chocolatey packages" failed with "choco : The term 'choco' is
@@ -189,7 +204,6 @@
       - busybox
       - vcredist-all
       - dotnetfx
-      - sysinternals
       - windirstat
 
     # GUI-dependent (browsers etc.) — installed on Client OS always, and on
