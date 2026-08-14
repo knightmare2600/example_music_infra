@@ -30,6 +30,20 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-08-14  Robert, live (EXADCSLAX001, same run as 30-chocolatey.yml's
+#               identical fix that same day): "Get currently installed
+#               Chocolatey packages" failed with "choco : The term 'choco' is
+#               not recognized" -- proof Ansible's winrm connection plugin
+#               reuses one shell across the WHOLE ansible-playbook run, not
+#               just within one play as 30-chocolatey.yml's own fix comment
+#               assumed. Chocolatey was installed several plays earlier in
+#               this same run; this play's shell still hadn't picked up the
+#               updated Machine PATH. Same fix: re-read PATH explicitly
+#               before calling choco. Swept the rest of this file and the
+#               whole windows_bootstrap chain for any other bare `choco`
+#               shell call -- this was the only other one (the actual package
+#               installs below use the chocolatey.chocolatey.win_chocolatey
+#               module, not a bare shell call, so unaffected).
 #   2026-08-10  Added winevdm to choco_packages_gui (Robert's ask -- 16-bit
 #               Windows app compatibility layer, GUI tier since 16-bit
 #               software needs a desktop, never installed on Server Core).
@@ -203,7 +217,9 @@
       tags: choco_packages
 
     - name: Get currently installed Chocolatey packages (single local, no-network call)
-      ansible.windows.win_shell: choco list --limit-output
+      ansible.windows.win_shell: |
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        choco list --limit-output
       register: choco_installed_raw
       changed_when: false
       tags: choco_packages

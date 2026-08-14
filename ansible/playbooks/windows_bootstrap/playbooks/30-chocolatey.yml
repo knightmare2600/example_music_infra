@@ -24,13 +24,14 @@
 #               re-reading Machine+User PATH from the environment explicitly
 #               at the top of this task's own script, rather than relying on
 #               choco.exe already being resolvable via the shell's stale
-#               inherited PATH. 40-choco-packages.yml's actual package installs
-#               use the chocolatey.chocolatey.win_chocolatey module (not a bare
-#               `choco` shell call), so they're not exposed to this; its own
-#               `choco list --limit-output` task runs in a separate play
-#               (fresh WinRM shell), so not fixed here without evidence it's
-#               actually hit the same way -- see this task's own comment if it
-#               ever does.
+#               inherited PATH. CORRECTION, same day: originally assumed
+#               40-choco-packages.yml's own `choco list --limit-output` task
+#               was safe since it runs in a separate play (fresh WinRM shell)
+#               -- wrong, proven live: it hit this exact same failure in the
+#               same ansible-playbook run. Ansible's winrm connection plugin
+#               reuses one shell for the WHOLE run, not just within a play.
+#               Fixed there too, same pattern -- see that file's own
+#               2026-08-14 changelog entry.
 #   2026-06-20  Initial file
 # =============================================================================
 
