@@ -19,6 +19,22 @@
 # playbooks/78-sac-ems.yml).
 # =============================================================================
 # Changelog:
+#   2026-08-14  Robert, live (EXADCSLAX001): "Enable SAC service (sacsvr)" failed --
+#               "Unhandled exception... Failed to start service". Root cause: the two
+#               bcdedit tasks just above only take effect on the NEXT boot -- they
+#               don't retroactively activate serial console redirection for the
+#               CURRENTLY running session. sacsvr genuinely cannot start until a
+#               reboot has happened with those BCD settings in effect, and no reboot
+#               has occurred yet at this point in the chain on a host whose hostname/
+#               IP were already correct (the [H] reboot branches in 00-preflight.yml
+#               only fire on an actual change). Deterministic, not a flake -- would
+#               fail this way on every fresh Server build. Dropped `state: started`
+#               (an unreachable target state at this point in the run) and kept only
+#               `start_mode: auto`, so the service is configured to come up on its
+#               own at the next boot -- exactly the same reboot the 2026-07-14 fix
+#               below already defers SOL verification to. Consistent with this
+#               file's own established "defer to post-reboot, don't block the run on
+#               it" philosophy, not a new pattern.
 #   2026-07-14  Robert, live against EXADCSCLD001: the "Prompt operator — confirm SAC
 #               visible via SOL" pause: task blocked the ENTIRE playbook run waiting on
 #               Enter, mid-chain, on every single run (not just first-time setup).
@@ -62,11 +78,10 @@
   changed_when: true
   when: is_server
 
-- name: "[Stage 18] Enable SAC service (sacsvr)"
+- name: "[Stage 18] Enable SAC service (sacsvr) — auto-start on next boot"
   ansible.windows.win_service:
     name:       sacsvr
     start_mode: auto
-    state:      started
   when: is_server
 
 - name: "[Stage 18] Flag SAC/EMS verification for the end-of-run summary"
