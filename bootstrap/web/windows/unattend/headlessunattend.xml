@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
+<!-- ******************************************************************************************* -->
+<!-- ** VirtIO guest driver injection: NOT part of this unattend.xml, a manual WinPE step.    ** -->
+<!-- **                                                                                       ** -->
+<!-- ** Windows has no true "in-target" equivalent for running an MSI against an unbooted,    ** -->
+<!-- ** offline image (Windows Installer needs a live OS). RunSynchronousCommand's ordering   ** -->
+<!-- ** relative to the built-in image-apply step is undocumented by Microsoft, so this is    ** -->
+<!-- ** deliberately NOT automated in this XML. Run manually in WinPE, after setup.exe        ** -->
+<!-- ** /noreboot applies this XML's image to C:\ and before rebooting into it:               ** -->
+<!-- **                                                                                       ** -->
+<!-- **   dism /Image:C:\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse                       ** -->
+<!-- **                                                                                       ** -->
+<!-- ** Source: X:\Tools\Drivers (virtio-win driver files, staged in WinPE).                  ** -->
+<!-- ** Target: C:\ (the OS this XML just applied).                                           ** -->
+<!-- ******************************************************************************************* -->
 <!--
 Sample answer file for headless deployment
   1. Edit answer file to include your information; password, product key, language etc.
@@ -20,25 +34,40 @@ Sample answer file for headless deployment
                     <CommandLine>dism /online /add-capability /capabilityname:OpenSSH.Server~~~~0.0.1.0 /source:D:\ /limitaccess</CommandLine>
                     <Order>2</Order>
                 </SynchronousCommand>
+                <!-- Add-WindowsCapability -Online -Name 'OpenSSH.Client~~~~0.0.1.0' -->
                 <SynchronousCommand wcm:action="add">
-                    <CommandLine>timeout /t 120 /nobreak</CommandLine>
+                    <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand QQBkAGQALQBXAGkAbgBkAG8AdwBzAEMAYQBwAGEAYgBpAGwAaQB0AHkAIAAtAE8AbgBsAGkAbgBlACAALQBOAGEAbQBlACAAJwBPAHAAZQBuAFMAUwBIAC4AQwBsAGkAZQBuAHQAfgB+AH4AfgAwAC4AMAAuADEALgAwACcA</CommandLine>
                     <Order>3</Order>
                 </SynchronousCommand>
+                <!-- Set-Service -Name sshd -StartupType 'Automatic' -->
                 <SynchronousCommand wcm:action="add">
-                    <CommandLine>netsh advfirewall firewall set rule group="OpenSSH Server" new enable=yes</CommandLine>
+                    <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand UwBlAHQALQBTAGUAcgB2AGkAYwBlACAALQBOAGEAbQBlACAAcwBzAGgAZAAgAC0AUwB0AGEAcgB0AHUAcABUAHkAcABlACAAJwBBAHUAdABvAG0AYQB0AGkAYwAnAA==</CommandLine>
                     <Order>4</Order>
                 </SynchronousCommand>
+                <!-- Start-Service sshd -->
                 <SynchronousCommand wcm:action="add">
-                    <CommandLine>sc config sshd start= auto</CommandLine>
+                    <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand UwB0AGEAcgB0AC0AUwBlAHIAdgBpAGMAZQAgAHMAcwBoAGQA</CommandLine>
                     <Order>5</Order>
                 </SynchronousCommand>
                 <SynchronousCommand wcm:action="add">
-                    <CommandLine>sc start sshd</CommandLine>
+                    <CommandLine>timeout /t 120 /nobreak</CommandLine>
                     <Order>6</Order>
                 </SynchronousCommand>
                 <SynchronousCommand wcm:action="add">
-                    <CommandLine>shutdown /L</CommandLine>
+                    <CommandLine>netsh advfirewall firewall set rule group="OpenSSH Server" new enable=yes</CommandLine>
                     <Order>7</Order>
+                </SynchronousCommand>
+                <SynchronousCommand wcm:action="add">
+                    <CommandLine>sc config sshd start= auto</CommandLine>
+                    <Order>8</Order>
+                </SynchronousCommand>
+                <SynchronousCommand wcm:action="add">
+                    <CommandLine>sc start sshd</CommandLine>
+                    <Order>9</Order>
+                </SynchronousCommand>
+                <SynchronousCommand wcm:action="add">
+                    <CommandLine>shutdown /L</CommandLine>
+                    <Order>10</Order>
                 </SynchronousCommand>
             </FirstLogonCommands>
             <UserAccounts>
