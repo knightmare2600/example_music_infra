@@ -13,6 +13,24 @@
 # Tags: chocolatey
 # =============================================================================
 # Changelog:
+#   2026-08-14  Robert, live (EXADCSLAX001): "Confirm Chocolatey version" failed
+#               with "choco : The term 'choco' is not recognized" immediately
+#               after "Install Chocolatey" reported changed=true, rc=0 -- the
+#               installer genuinely ran and updated the Machine PATH via the
+#               registry, but Ansible's winrm connection plugin reuses one
+#               WinRM shell across every task within a play, and that shell's
+#               own process environment doesn't refresh mid-session just
+#               because a later task updated HKLM's Environment key. Fixed by
+#               re-reading Machine+User PATH from the environment explicitly
+#               at the top of this task's own script, rather than relying on
+#               choco.exe already being resolvable via the shell's stale
+#               inherited PATH. 40-choco-packages.yml's actual package installs
+#               use the chocolatey.chocolatey.win_chocolatey module (not a bare
+#               `choco` shell call), so they're not exposed to this; its own
+#               `choco list --limit-output` task runs in a separate play
+#               (fresh WinRM shell), so not fixed here without evidence it's
+#               actually hit the same way -- see this task's own comment if it
+#               ever does.
 #   2026-06-20  Initial file
 # =============================================================================
 
@@ -37,7 +55,9 @@
       tags: chocolatey
 
     - name: Confirm Chocolatey version
-      ansible.windows.win_shell: choco --version
+      ansible.windows.win_shell: |
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        choco --version
       register: choco_version
       changed_when: false
       tags: chocolatey
