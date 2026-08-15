@@ -631,6 +631,23 @@
 #               reintroduction of a hand-typed site-metadata key in
 #               host_vars. EXAMSHCLD001 is a documented, narrow exception
 #               (retired, dead code).
+#   2026-08-15  Added check_windows_guest_tools_staging.py (section 40) after
+#               a real, live bug: Detect-Platform.cmd's :KVM label had an
+#               arm64 early-exit ("not supported, logged and skipped") --
+#               Proxmox now supports arm64 hosts, and Deploy-OpenSSH.cmd
+#               (the WinPE-phase staging script) never fetched the VirtIO/
+#               QEMU guest-agent MSIs for arm64 in the first place. Fixed:
+#               both scripts now deploy the same amd64 MSIs on arm64 KVM
+#               guests too (Windows 11/Server 2025 ARM64 run amd64 MSIs
+#               fine under x64 emulation, confirmed live by Robert -- no
+#               native arm64 build exists yet from either upstream
+#               project). This check encodes that specific invariant --
+#               Detect-Platform.cmd installs both files unconditionally, so
+#               Deploy-OpenSSH.cmd must stage both for both architectures --
+#               so it can't silently regress again. Verified live before
+#               wiring in: temporarily reintroduced the exact original gap
+#               (removed the arm64 staging block), confirmed exit 1 with
+#               the correct message, reverted.
 # ==============================================================================
 set -uo pipefail
 
@@ -1344,6 +1361,20 @@ else
   echo "$out"
   fail "Hand-typed site-metadata key(s) found in host_vars -- see above."
   FAILED_CHECKS+=("check_hardcoded_site_metadata.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 40. Windows guest-tools staging — check_windows_guest_tools_staging.py
+# ------------------------------------------------------------------------------
+section "40. Windows guest-tools staging — check_windows_guest_tools_staging.py"
+
+if out=$(python3 "${HERE}/check_windows_guest_tools_staging.py"); then
+  echo "$out"
+  success "Detect-Platform.cmd's required KVM/Proxmox driver files are staged for every architecture it installs them on."
+else
+  echo "$out"
+  fail "A KVM/Proxmox driver file Detect-Platform.cmd installs isn't staged for an architecture it needs -- see above."
+  FAILED_CHECKS+=("check_windows_guest_tools_staging.py")
 fi
 
 # ------------------------------------------------------------------------------

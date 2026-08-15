@@ -23,6 +23,15 @@
 ::  - Warnings: yellow  {0e}
 ::  - OK/success: green  {0a}
 ::  - Info/banners: cyan  {03}
+:: 1.4.0   2026-08-15   Robert: two fixes.
+::  - Server layout's x86_64/ folder was renamed to amd64/ (matches the real
+::    bootstrap/web/windows/ layout) -- every download path here still said
+::    x86_64/, so every architecture's downloads were broken, not just arm64.
+::  - arm64 now also stages qemu-ga-x86_64.msi + virtio-win-gt-x64.msi (same
+::    amd64 builds as x86_64 -- Windows 11/Server 2025 ARM64 run them fine
+::    under x64 emulation, confirmed live; no native arm64 build exists yet
+::    from either upstream project). Detect-Platform.cmd installs them
+::    unconditionally now -- see that file's own 1.1.0 changelog entry.
 ::  - Prompts: white  {0f}
 ::
 :: Purpose
@@ -70,9 +79,9 @@
 ::   http://<SERVER>/windows/Detect-Platform.cmd
 ::   http://<SERVER>/windows/SetupComplete.cmd
 ::   http://<SERVER>/windows/Install-OpenSSH.ps1
-::   http://<SERVER>/windows/x86_64/qemu-ga-x86_64.msi
-::   http://<SERVER>/windows/x86_64/virtio-win-gt-x64.msi
-::   http://<SERVER>/windows/x86_64/VMware-tools-13.0.10-25056151-x64.exe
+::   http://<SERVER>/windows/amd64/qemu-ga-x86_64.msi
+::   http://<SERVER>/windows/amd64/virtio-win-gt-x64.msi
+::   http://<SERVER>/windows/amd64/VMware-tools-13.0.10-25056151-x64.exe
 ::   http://<SERVER>/windows/arm64/VMware-tools-13.0.10-25056151-arm.exe
 ::
 :: Log file (WinPE)
@@ -93,7 +102,7 @@ setlocal EnableDelayedExpansion
 :: Script metadata
 :: ------------------------------------------------------------------------------
 set "SCRIPT_NAME=Deploy-OpenSSH.cmd"
-set "SCRIPT_VERSION=1.3.0"
+set "SCRIPT_VERSION=1.4.0"
 set "ORG_NAME=Example Music Limited"
 
 :: ------------------------------------------------------------------------------
@@ -409,7 +418,7 @@ cecho.exe {03} "[INFO] Downloading drivers for %ARCH%..." {\n}{##}
 
 if "%ARCH%"=="x86_64" (
   echo [%DATE% %TIME%] Fetching qemu-ga-x86_64.msi >> "%LOGFILE%"
-  certutil.exe -urlcache -f "%BASE_URL%/x86_64/qemu-ga-x86_64.msi" "!TARGET_DRIVERS!\qemu-ga-x86_64.msi" >> "%LOGFILE%" 2>&1
+  certutil.exe -urlcache -f "%BASE_URL%/amd64/qemu-ga-x86_64.msi" "!TARGET_DRIVERS!\qemu-ga-x86_64.msi" >> "%LOGFILE%" 2>&1
   if errorlevel 1 (
     echo [%DATE% %TIME%] ERROR: Failed to download qemu-ga-x86_64.msi >> "%LOGFILE%"
     cecho.exe {04} "[ERROR] Failed to download qemu-ga-x86_64.msi" {\n}{##}
@@ -418,7 +427,7 @@ if "%ARCH%"=="x86_64" (
   cecho.exe {0a} "[ OK ] qemu-ga-x86_64.msi" {\n}{##}
 
   echo [%DATE% %TIME%] Fetching virtio-win-gt-x64.msi >> "%LOGFILE%"
-  certutil.exe -urlcache -f "%BASE_URL%/x86_64/virtio-win-gt-x64.msi" "!TARGET_DRIVERS!\virtio-win-gt-x64.msi" >> "%LOGFILE%" 2>&1
+  certutil.exe -urlcache -f "%BASE_URL%/amd64/virtio-win-gt-x64.msi" "!TARGET_DRIVERS!\virtio-win-gt-x64.msi" >> "%LOGFILE%" 2>&1
   if errorlevel 1 (
     echo [%DATE% %TIME%] ERROR: Failed to download virtio-win-gt-x64.msi >> "%LOGFILE%"
     cecho.exe {04} "[ERROR] Failed to download virtio-win-gt-x64.msi" {\n}{##}
@@ -427,7 +436,7 @@ if "%ARCH%"=="x86_64" (
   cecho.exe {0a} "[ OK ] virtio-win-gt-x64.msi" {\n}{##}
 
   echo [%DATE% %TIME%] Fetching VMware-tools-13.0.10-25056151-x64.exe >> "%LOGFILE%"
-  certutil.exe -urlcache -f "%BASE_URL%/x86_64/VMware-tools-13.0.10-25056151-x64.exe" "!TARGET_DRIVERS!\VMware-tools-13.0.10-25056151-x64.exe" >> "%LOGFILE%" 2>&1
+  certutil.exe -urlcache -f "%BASE_URL%/amd64/VMware-tools-13.0.10-25056151-x64.exe" "!TARGET_DRIVERS!\VMware-tools-13.0.10-25056151-x64.exe" >> "%LOGFILE%" 2>&1
   if errorlevel 1 (
     echo [%DATE% %TIME%] ERROR: Failed to download VMware-tools-13.0.10-25056151-x64.exe >> "%LOGFILE%"
     cecho.exe {04} "[ERROR] Failed to download VMware-tools-13.0.10-25056151-x64.exe" {\n}{##}
@@ -445,6 +454,29 @@ if "%ARCH%"=="arm64" (
     goto :ABORT
   )
   cecho.exe {0a} "[ OK ] VMware-tools-13.0.10-25056151-arm.exe" {\n}{##}
+
+  :: KVM/Proxmox on arm64: no native arm64 build exists yet from virtio-win or the
+  :: QEMU guest agent project (checked live, 2026-08-15) -- stage the same amd64
+  :: MSIs used on x86_64. Windows 11 ARM64 / Server 2025 ARM64 run them fine under
+  :: x64 emulation (confirmed live). Detect-Platform.cmd installs these
+  :: unconditionally regardless of arch -- see that file's own 1.1.0 changelog.
+  echo [%DATE% %TIME%] Fetching qemu-ga-x86_64.msi (amd64 build, arm64 runs it under x64 emulation) >> "%LOGFILE%"
+  certutil.exe -urlcache -f "%BASE_URL%/amd64/qemu-ga-x86_64.msi" "!TARGET_DRIVERS!\qemu-ga-x86_64.msi" >> "%LOGFILE%" 2>&1
+  if errorlevel 1 (
+    echo [%DATE% %TIME%] ERROR: Failed to download qemu-ga-x86_64.msi >> "%LOGFILE%"
+    cecho.exe {04} "[ERROR] Failed to download qemu-ga-x86_64.msi" {\n}{##}
+    goto :ABORT
+  )
+  cecho.exe {0a} "[ OK ] qemu-ga-x86_64.msi" {\n}{##}
+
+  echo [%DATE% %TIME%] Fetching virtio-win-gt-x64.msi (amd64 build, arm64 runs it under x64 emulation) >> "%LOGFILE%"
+  certutil.exe -urlcache -f "%BASE_URL%/amd64/virtio-win-gt-x64.msi" "!TARGET_DRIVERS!\virtio-win-gt-x64.msi" >> "%LOGFILE%" 2>&1
+  if errorlevel 1 (
+    echo [%DATE% %TIME%] ERROR: Failed to download virtio-win-gt-x64.msi >> "%LOGFILE%"
+    cecho.exe {04} "[ERROR] Failed to download virtio-win-gt-x64.msi" {\n}{##}
+    goto :ABORT
+  )
+  cecho.exe {0a} "[ OK ] virtio-win-gt-x64.msi" {\n}{##}
 )
 echo+
 
@@ -468,6 +500,8 @@ echo+
 
 if "%ARCH%"=="arm64" (
   if NOT exist "!TARGET_DRIVERS!\VMware-tools-13.0.10-25056151-arm.exe" set VERIFY_OK=0
+  if NOT exist "!TARGET_DRIVERS!\qemu-ga-x86_64.msi"                    set VERIFY_OK=0
+  if NOT exist "!TARGET_DRIVERS!\virtio-win-gt-x64.msi"                 set VERIFY_OK=0
 echo+
 )
 

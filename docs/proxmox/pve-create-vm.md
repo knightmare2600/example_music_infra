@@ -4,6 +4,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-15 | Documented an existing, previously-undocumented limitation: `create-vm.py` only ever creates x86_64 guests (no `--arch` flag, no `machine=` parameter, BIOS/firmware selection only knows SeaBIOS/OVMF-x86). Proxmox VE now supports arm64 hosts (PVE 9.2+) -- arm64 KVM guest creation is a real, parked TODO (needs `machine=virt`, OVMF-aarch64 firmware, and real hardware to test against). Not implemented yet, deliberately -- Robert's own call, needs testing against real arm64 Proxmox hardware first |
 | 2026-08-04 | Role/site codes table corrected — `SRV`/`SVR` had drifted from this doc's own 2026-03-03 entry below (a 2026-07-11 fix, commit `b00b376`, flipped the direction without updating this table; Robert then confirmed the final direction 2026-08-04). Current: `SVR` general purpose/current, `SRV` legacy — the 2026-03-03 row below is left as originally written, not edited, per this doc's own history-is-never-deleted convention |
 | 2026-03-01 | Initial document — create-vm.py reference, role/site codes, hardware defaults, networking |
 | 2026-03-03 | BRD renamed to BER, TOR added (192.168.146.0/24) |
@@ -25,6 +26,8 @@
 ## Overview
 
 `create-vm.py` is an interactive Python script for creating VMs on a Proxmox node following the `EXA[ROLE][SITE][NNN]` naming convention. It runs anywhere Python is available — the Proxmox node itself, a Windows workstation, a Mac, a Linux laptop — and communicates entirely via the Proxmox REST API using `proxmoxer`.
+
+> **TODO (2026-08-15):** x86_64 guests only, currently — no `--arch` flag, no `machine=` parameter (always the default x86_64 machine type), BIOS/firmware selection only knows SeaBIOS/OVMF-x86. Proxmox VE now supports arm64 hosts (PVE 9.2+), so arm64 guest creation is a real gap, not just a hypothetical one — deliberately parked pending testing against real arm64 Proxmox hardware, not implemented blind.
 
 `proxmoxer` is installed on all PVE nodes via `pve_packages` in `group_vars/pvenodes/main.yml` (installed by `10-packages.yml`, not `first-boot.sh` -- see that script's 2026-07-10 trim).
 
