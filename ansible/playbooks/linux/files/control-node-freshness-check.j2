@@ -1,0 +1,24 @@
+#!/bin/bash
+
+## Periodic (systemd-timer-driven) control-node freshness check. Same
+## underlying check as control-node-freshness-motd.j2 (this box's login
+## banner), but this one runs in the background on a schedule -- see Robert,
+## 2026-08-14: "runs automatically... users are reminded... if time is a
+## factor" -- so staleness gets caught even if nobody happens to log into this
+## box for a while, not just at the next SSH login.
+##
+## Always exits 0 -- staleness is expected, handled state, not a service
+## failure; exiting non-zero here would make every routine drift show up as a
+## "failed" systemd unit, which is the wrong signal.
+REPO_ROOT="{{ example_music_repo_root }}"
+CHECK="${REPO_ROOT}/at_have_ryggen_fri/check_control_node_freshness.py"
+
+if [ -f "$CHECK" ]; then
+  OUT=$(python3 "$CHECK" 2>&1)
+  RC=$?
+  if [ "$RC" -ne 0 ]; then
+    wall "[Example Music] /etc/example-music/* is stale on $(hostname) -- refresh: ansible-playbook ansible/playbooks/linux/tools.yml --limit $(hostname)"
+  fi
+fi
+
+exit 0

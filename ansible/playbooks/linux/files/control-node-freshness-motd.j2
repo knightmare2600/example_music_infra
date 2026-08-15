@@ -1,0 +1,23 @@
+#!/bin/bash
+
+## Live-computed control-node freshness reminder for the login MOTD.
+## Checks /etc/example-music/* against benarbejde/* in the real git checkout on
+## THIS box, right now, on every login -- catches drift before a gated playbook
+## run hits it instead of after. See at_have_ryggen_fri/check_control_node_
+## freshness.py's own docstring for the live crash (2026-07-26) that originally
+## motivated this check, and its own 2026-08-14 changelog for why this MOTD
+## hook exists (Robert: "hooking into the harness so it reminds us"). Deployed
+## by ansible/playbooks/linux/tools.yml -- host_role == 'ans' hosts only,
+## REPO_ROOT below is resolved and baked in at Ansible deploy time, not
+## hardcoded here.
+REPO_ROOT="{{ example_music_repo_root }}"
+CHECK="${REPO_ROOT}/at_have_ryggen_fri/check_control_node_freshness.py"
+
+if [ -f "$CHECK" ]; then
+  OUT=$(python3 "$CHECK" 2>/dev/null)
+  RC=$?
+  if [ "$RC" -ne 0 ]; then
+    echo -e "\033[1;33m[!] /etc/example-music/* is stale relative to benarbejde/ -- refresh:\033[0m"
+    echo "$OUT" | grep -- '-- refresh:' | sed 's/^/      /'
+  fi
+fi

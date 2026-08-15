@@ -1,0 +1,6 @@
+[Unit]
+Description=Example Music control-node /etc/example-music/* freshness check (see control-node-freshness-check script)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/control-node-freshness-check
