@@ -648,6 +648,27 @@
 #               wiring in: temporarily reintroduced the exact original gap
 #               (removed the arm64 staging block), confirmed exit 1 with
 #               the correct message, reverted.
+#   2026-08-15  Extended check_windows_guest_tools_staging.py (still section
+#               40) same day: real native arm64 MSIs turned up
+#               (github.com/knightmare2600/virtio-win-guest-tools-installer),
+#               so Detect-Platform.cmd/Deploy-OpenSSH.cmd were rewritten to
+#               try them first and fall back to the amd64-under-emulation
+#               path above only if native install fails (see that project's
+#               own memory/commit history) -- the check's amd64-fallback
+#               invariant above still holds, staging is just conditional on
+#               the native files now, not unconditional as first written.
+#               Added a second, independent half to the same check: the two
+#               native MSIs are vendored directly into the repo via git-lfs
+#               (bootstrap/web/windows/arm64/), not fetched on demand, so a
+#               checkout that never ran `git lfs pull` leaves tiny pointer
+#               stubs in their place instead of real binaries -- silently,
+#               with no error anywhere else. This check now also verifies
+#               both files exist and are not unresolved LFS pointer stubs,
+#               and tells the operator to run `git lfs pull` if not. Verified
+#               live before wiring in: moved the real file aside (missing
+#               case) and separately replaced it with a real LFS pointer
+#               stub's exact byte content (unresolved-checkout case), each
+#               confirmed exit 1 with the correct message, reverted, exit 0.
 # ==============================================================================
 set -uo pipefail
 
@@ -1370,10 +1391,10 @@ section "40. Windows guest-tools staging — check_windows_guest_tools_staging.p
 
 if out=$(python3 "${HERE}/check_windows_guest_tools_staging.py"); then
   echo "$out"
-  success "Detect-Platform.cmd's required KVM/Proxmox driver files are staged for every architecture it installs them on."
+  success "Detect-Platform.cmd's required KVM/Proxmox driver files are staged for every architecture it installs them on, and the vendored native arm64 MSIs are real LFS content, not pointer stubs."
 else
   echo "$out"
-  fail "A KVM/Proxmox driver file Detect-Platform.cmd installs isn't staged for an architecture it needs -- see above."
+  fail "A KVM/Proxmox driver file isn't staged for an architecture it needs, or a vendored native arm64 MSI is missing/an unresolved git-lfs pointer -- see above."
   FAILED_CHECKS+=("check_windows_guest_tools_staging.py")
 fi
 

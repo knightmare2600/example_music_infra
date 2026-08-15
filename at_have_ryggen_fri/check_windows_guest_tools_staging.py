@@ -36,8 +36,22 @@ Tools files are legitimately arch-specific (a real arm64 build exists, a real
 x64 build exists, they're different binaries) and are correctly asymmetric
 between the two scripts; this check doesn't touch that part.
 
+Second half, added 2026-08-15 same day (Robert: "add some additional harness
+checks to ensure they are in place, and if not, grab them"): the two native
+arm64 MSIs are committed directly into this repo (bootstrap/web/windows/arm64/,
+git-lfs -- NOT one of benarbejde/asset_manifest.json's fetch-on-demand assets,
+those exist specifically for things deliberately NOT vendored into git, and
+these two now are). "Grab them if missing" in this context means detecting a
+checkout that never pulled the real LFS content (a common, easy-to-hit state --
+see this repo's own git-stash-and-lfs caution precedent) and telling the
+operator `git lfs pull`, not fetching from an external URL -- there's nothing
+external to fetch from for a vendored file. Checks the file is present AND is
+not a raw, unresolved LFS pointer stub (~130 bytes of text starting
+"version https://git-lfs.github.com/spec/v1", not a real multi-MB MSI).
+
 Exit code: 0 if both amd64 fallback files are staged for both x86_64 and arm64
-in Deploy-OpenSSH.cmd, 1 otherwise.
+in Deploy-OpenSSH.cmd, AND both native arm64 MSIs are present as real,
+LFS-resolved files. 1 otherwise.
 """
 import re
 import sys
@@ -45,9 +59,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEPLOY_OPENSSH = REPO_ROOT / "bootstrap" / "web" / "windows" / "Deploy-OpenSSH.cmd"
+ARM64_DIR = REPO_ROOT / "bootstrap" / "web" / "windows" / "arm64"
 
 REQUIRED_FALLBACK_FILES = ["virtio-win-gt-x64.msi", "qemu-ga-x86_64.msi"]
 OPTIONAL_NATIVE_FILES = ["virtio-win-gt-arm64.msi", "qemu-ga-arm64.msi"]
+LFS_POINTER_SIGNATURE = b"version https://git-lfs.github.com/spec/v1"
 
 
 def extract_staged_files(text, arch_label):
@@ -102,6 +118,35 @@ def main():
     else:
         print("Native arm64 MSIs not staged (optional -- Detect-Platform.cmd falls back to "
               "amd64 cleanly if they're absent, this is not a failure).")
+
+    lfs_missing = []
+    for fname in OPTIONAL_NATIVE_FILES:
+        fpath = ARM64_DIR / fname
+        if not fpath.is_file():
+            lfs_missing.append(f"{fname} does not exist at {fpath.relative_to(REPO_ROOT)}")
+            continue
+        with fpath.open("rb") as f:
+            head = f.read(len(LFS_POINTER_SIGNATURE))
+        if head == LFS_POINTER_SIGNATURE:
+            lfs_missing.append(
+                f"{fname} is an unresolved git-lfs pointer stub, not the real MSI"
+            )
+
+    if lfs_missing:
+        print(f"\n{len(lfs_missing)} issue(s) found with the vendored native arm64 MSIs:")
+        for m in lfs_missing:
+            print(f"  - {m}")
+        print(
+            "\nBoth MSIs are committed directly into this repo via git-lfs "
+            f"({ARM64_DIR.relative_to(REPO_ROOT)}/) -- they are not fetched on demand the way "
+            "benarbejde/asset_manifest.json's assets are, that file is explicitly scoped to "
+            "assets NOT vendored into git. Run `git lfs pull` to fetch the real content, then "
+            "re-run this check."
+        )
+        return 1
+
+    print(f"Both native arm64 MSIs ({', '.join(OPTIONAL_NATIVE_FILES)}) are present in "
+          f"{ARM64_DIR.relative_to(REPO_ROOT)}/ as real, LFS-resolved content.")
 
     return 0
 
