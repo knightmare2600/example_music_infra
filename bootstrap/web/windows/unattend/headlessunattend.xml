@@ -1,25 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
-<!-- ******************************************************************************************* -->
-<!-- ** VirtIO guest driver injection: NOT part of this unattend.xml, a manual WinPE step.    ** -->
-<!-- **                                                                                       ** -->
-<!-- ** Windows has no true "in-target" equivalent for running an MSI against an unbooted,    ** -->
-<!-- ** offline image (Windows Installer needs a live OS). RunSynchronousCommand's ordering   ** -->
-<!-- ** relative to the built-in image-apply step is undocumented by Microsoft, so this is    ** -->
-<!-- ** deliberately NOT automated in this XML. Run manually in WinPE, after setup.exe        ** -->
-<!-- ** /noreboot applies this XML's image to C:\ and before rebooting into it:               ** -->
-<!-- **                                                                                       ** -->
-<!-- **   dism /Image:C:\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse                       ** -->
-<!-- **                                                                                       ** -->
-<!-- ** Source: X:\Tools\Drivers (virtio-win driver files, staged in WinPE).                  ** -->
-<!-- ** Target: C:\ (the OS this XML just applied).                                           ** -->
-<!-- ******************************************************************************************* -->
 <!--
-Sample answer file for headless deployment
-  1. Edit answer file to include your information; password, product key, language etc.
-  2. Run setup using the /unattend:answer_file command line parameter where answer_file is the path to the answer file
-	ex. setup.exe /unattend:\\server\share\unattend.xml
-  3. See the Windows Automated Installation Kit for additional guidance on unattended installation and headless deployment
+       
+ **********************************************************************************************************************
+ ** VirtIO guest driver injection: NOT part of this unattend.xml, a manual WinPE step.                               **
+ **                                                                                                                  **
+ ** Sample answer file for headless deployment                                                                       **
+ ** 1. Edit answer file to include your information; password, product key, language etc.                            **
+ ** 2. Run setup using the /unattend:answer_file parameter, where answer_file is the XML path, e.g.                  **
+ **    setup.exe /unattend:\\server\share\unattend.xml /noreboot                                                     **
+ ** 3. See the Windows Automated Installation Kit for additional guidance on unattendedinstallation and headless     **
+ **    deployment.                                                                                                   **
+ **                                                                                                                  **
+ ** Windows has no "in-target" equivalent for running an MSI against an unbooted, offline image (Windows Installer   **
+ ** needs a live OS). RunSynchronousCommand's ordering relative to the built-in image-apply step is undocumented by  **
+ ** Microsoft, it's deliberately NOT automated in this XML. Run manually in WinPE, after setup.exe /noreboot applies **
+ ** this XML's image to C:\ and before rebooting into it:                                                            **
+ **                                                                                                                  **
+ ** set "SERVER=192.168.139.50"                                                                                      **
+ ** set "BASE=http://%SERVER%/windows"                                                                               **
+ ** set "SCRIPTS=C:\Windows\Setup\Scripts"                                                                           **
+ **                                                                                                                  **
+ ** certutil.exe -urlcache -f "%BASE%/unattend/headlessunattend.xml" X:\headlessunattend.xml                         **
+ ** Y:\Sources\setup.exe /unattend:X:\headlessunattend.xml /noreboot                                                 **
+ **                                                                                                                  **
+ ** mkdir "%SCRIPTS%"                                                                                                **
+ ** dism /Image:C:\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse                                                    **
+ ** certutil.exe -urlcache -f "%BASE%/SetupComplete.cmd" "%SCRIPTS%\SetupComplete.cmd"                               **
+ ** certutil.exe -urlcache -f "%BASE%/Detect-Platform.cmd" "%SCRIPTS%\Detect-Platform.cmd"                           **
+ ** certutil.exe -urlcache -f "%BASE%/Install-OpenSSH.ps1" "%SCRIPTS%\Install-OpenSSH.ps1"                           **
+ **                                                                                                                  **
+ ** Source: X:\Tools\Drivers (virtio-win driver files, staged in WinPE). Target: C:\ (the OS this XML just applied). **
+ **********************************************************************************************************************
+	
 
   NOTE: This sample will wipe disk 0 and clear all data on the disk. 
 -->
