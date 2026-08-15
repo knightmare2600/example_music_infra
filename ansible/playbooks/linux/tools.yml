@@ -167,6 +167,22 @@
 #               HISTFILE) INTO server-prompts.zsh/.sh instead, and added a task to deploy/
 #               refresh both from the git checkout on every run -- one system-wide,
 #               Ansible-kept-in-sync shell config instead of two that can fight each other.
+#   2026-08-14  Robert: "we need to make sure we get a friendly reminder to re-run [linux/
+#               tools.yml against the control node]... hooking into the harness so it reminds
+#               us." at_have_ryggen_fri/check_control_node_freshness.py (check 24) already did
+#               the actual comparison, offline, since 2026-07-27 -- it just never got a chance
+#               to run anywhere except a bare git checkout, since it only does anything when
+#               /etc/example-music/ exists locally. Added two host_role=='ans'-gated ways it
+#               now actually gets exercised on the real control node: (1) a third, independent
+#               /etc/update-motd.d/ script (15-control-node-freshness, alongside the existing
+#               10-examplemusic banner and 98-update-status) that runs it live on every SSH
+#               login, matching update-motd's own "no cron job, no cached file, live-computed"
+#               precedent a few tasks below; (2) a systemd service+timer (hourly,
+#               control-node-freshness-check.{service,timer}) that runs it in the background too
+#               and `wall`s a warning if stale, so drift gets caught even between logins -- "so
+#               users are reminded... if time is a factor." Matches this repo's own established
+#               systemd-timer convention (proxmox/playbooks/50-systemd-units.yml), not a new
+#               cron-based pattern this repo doesn't otherwise use.
 
 - import_playbook: ../ssh_preflight_with_fallback.yml
 
@@ -486,6 +502,76 @@
               Skipping nodeinfo.json for {{ inventory_hostname }} — hostname
               doesn't match EXA[ROLE][SITE][NNN] yet (expected for hosts still
               mid-bootstrap). Re-run once it's been renamed.
+
+    # -------------------------------------------------------------------------
+    # Control-node freshness reminders (2026-08-14, Robert) — host_role == 'ans' only
+    # (i.e. EXAANSCLD001 today; see the file-level 2026-08-14 changelog entry above for
+    # the full why). Both just wrap at_have_ryggen_fri/check_control_node_freshness.py,
+    # already-existing since 2026-07-27 — this doesn't duplicate its comparison logic,
+    # only gets it actually run somewhere that matters. REPO_ROOT is resolved from
+    # playbook_dir the same 3-levels-up way sites_csv_src/devices_csv_src already are
+    # above, not hardcoded, and baked into the deployed scripts at template time.
+    # -------------------------------------------------------------------------
+    - name: Set repo root fact for freshness-check scripts
+      ansible.builtin.set_fact:
+        example_music_repo_root: "{{ playbook_dir }}/../../.."
+      when: host_role | default('') | lower == 'ans'
+
+    - name: Deploy control-node freshness MOTD script
+      ansible.builtin.template:
+        src:   files/control-node-freshness-motd.j2
+        dest:  /usr/local/bin/control-node-freshness-motd
+        owner: root
+        group: root
+        mode:  '0755'
+      when: host_role | default('') | lower == 'ans'
+
+    # Same --check/--diff caveat as "Link update-motd into /etc/update-motd.d" below --
+    # the src this depends on is only simulated under check mode, never really written.
+    - name: Link control-node freshness script into /etc/update-motd.d
+      ansible.builtin.file:
+        src:   /usr/local/bin/control-node-freshness-motd
+        dest:  /etc/update-motd.d/15-control-node-freshness
+        state: link
+      when:
+        - host_role | default('') | lower == 'ans'
+        - not ansible_check_mode
+
+    - name: Deploy control-node freshness systemd check script
+      ansible.builtin.template:
+        src:   files/control-node-freshness-check.j2
+        dest:  /usr/local/bin/control-node-freshness-check
+        owner: root
+        group: root
+        mode:  '0755'
+      when: host_role | default('') | lower == 'ans'
+
+    - name: Deploy control-node freshness systemd unit files
+      ansible.builtin.copy:
+        src:   "files/{{ item }}"
+        dest:  "/etc/systemd/system/{{ item }}"
+        owner: root
+        group: root
+        mode:  '0644'
+      loop:
+        - control-node-freshness-check.service
+        - control-node-freshness-check.timer
+      when: host_role | default('') | lower == 'ans'
+      register: _freshness_units
+
+    - name: Reload systemd if freshness check units changed
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when:
+        - host_role | default('') | lower == 'ans'
+        - _freshness_units is changed
+
+    - name: Enable and start the control-node freshness check timer
+      ansible.builtin.systemd:
+        name:    control-node-freshness-check.timer
+        enabled: true
+        state:   started
+      when: host_role | default('') | lower == 'ans'
 
     # -------------------------------------------------------------------------
     # Optional user creation — runs before getent so new accounts are included
