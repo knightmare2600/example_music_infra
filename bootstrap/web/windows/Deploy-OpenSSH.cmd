@@ -33,6 +33,15 @@
 ::    from either upstream project). Detect-Platform.cmd installs them
 ::    unconditionally now -- see that file's own 1.1.0 changelog entry.
 ::  - Prompts: white  {0f}
+:: 1.5.0   2026-08-15   Robert: real native arm64 MSIs now exist (see
+::                      Detect-Platform.cmd's own 1.2.0 changelog entry for the
+::                      full verification). arm64 now also fetches
+::                      virtio-win-gt-arm64.msi + qemu-ga-arm64.msi -- explicitly
+::                      experimental/untested on real hardware, so a download
+::                      failure here logs a warning and continues rather than
+::                      :ABORT like every other download in this script;
+::                      Detect-Platform.cmd falls back to the amd64 builds if
+::                      these never landed or the install itself fails.
 ::
 :: Purpose
 :: -------
@@ -83,6 +92,8 @@
 ::   http://<SERVER>/windows/amd64/virtio-win-gt-x64.msi
 ::   http://<SERVER>/windows/amd64/VMware-tools-13.0.10-25056151-x64.exe
 ::   http://<SERVER>/windows/arm64/VMware-tools-13.0.10-25056151-arm.exe
+::   http://<SERVER>/windows/arm64/virtio-win-gt-arm64.msi   (native, experimental, optional)
+::   http://<SERVER>/windows/arm64/qemu-ga-arm64.msi          (native, experimental, optional)
 ::
 :: Log file (WinPE)
 :: ----------------
@@ -102,7 +113,7 @@ setlocal EnableDelayedExpansion
 :: Script metadata
 :: ------------------------------------------------------------------------------
 set "SCRIPT_NAME=Deploy-OpenSSH.cmd"
-set "SCRIPT_VERSION=1.4.0"
+set "SCRIPT_VERSION=1.5.0"
 set "ORG_NAME=Example Music Limited"
 
 :: ------------------------------------------------------------------------------
@@ -455,11 +466,35 @@ if "%ARCH%"=="arm64" (
   )
   cecho.exe {0a} "[ OK ] VMware-tools-13.0.10-25056151-arm.exe" {\n}{##}
 
-  :: KVM/Proxmox on arm64: no native arm64 build exists yet from virtio-win or the
-  :: QEMU guest agent project (checked live, 2026-08-15) -- stage the same amd64
-  :: MSIs used on x86_64. Windows 11 ARM64 / Server 2025 ARM64 run them fine under
-  :: x64 emulation (confirmed live). Detect-Platform.cmd installs these
-  :: unconditionally regardless of arch -- see that file's own 1.1.0 changelog.
+  :: KVM/Proxmox on arm64: try the real native arm64 MSIs first (2026-08-15,
+  :: github.com/knightmare2600/virtio-win-guest-tools-installer arm64-preview-0.1.0
+  :: -- verified for real: SHA256 matched, PE header machine field of the binaries
+  :: inside confirmed genuine ARM64 code). Explicitly experimental/untested on real
+  :: hardware, so download failure here is NOT fatal, unlike every other download
+  :: in this script -- log and continue rather than :ABORT. Detect-Platform.cmd's
+  :: own `if exist` check (1.2.0 changelog entry) falls back to the amd64 builds
+  :: below if these never landed or the install itself fails on the box.
+  echo [%DATE% %TIME%] Fetching virtio-win-gt-arm64.msi (native, experimental) >> "%LOGFILE%"
+  certutil.exe -urlcache -f "%BASE_URL%/arm64/virtio-win-gt-arm64.msi" "!TARGET_DRIVERS!\virtio-win-gt-arm64.msi" >> "%LOGFILE%" 2>&1
+  if errorlevel 1 (
+    echo [%DATE% %TIME%] WARNING: Failed to download virtio-win-gt-arm64.msi -- Detect-Platform.cmd will fall back to the amd64 build. >> "%LOGFILE%"
+    cecho.exe {0e} "[ WARN ] Failed to download virtio-win-gt-arm64.msi -- will fall back to amd64 at first boot." {\n}{##}
+  ) else (
+    cecho.exe {0a} "[ OK ] virtio-win-gt-arm64.msi (native, experimental)" {\n}{##}
+  )
+
+  echo [%DATE% %TIME%] Fetching qemu-ga-arm64.msi (native, experimental) >> "%LOGFILE%"
+  certutil.exe -urlcache -f "%BASE_URL%/arm64/qemu-ga-arm64.msi" "!TARGET_DRIVERS!\qemu-ga-arm64.msi" >> "%LOGFILE%" 2>&1
+  if errorlevel 1 (
+    echo [%DATE% %TIME%] WARNING: Failed to download qemu-ga-arm64.msi -- Detect-Platform.cmd will fall back to the amd64 build. >> "%LOGFILE%"
+    cecho.exe {0e} "[ WARN ] Failed to download qemu-ga-arm64.msi -- will fall back to amd64 at first boot." {\n}{##}
+  ) else (
+    cecho.exe {0a} "[ OK ] qemu-ga-arm64.msi (native, experimental)" {\n}{##}
+  )
+
+  :: amd64 fallback builds -- always staged regardless of whether the native
+  :: arm64 downloads above succeeded, since Detect-Platform.cmd needs them
+  :: available either way (missing/failed native install falls back to these).
   echo [%DATE% %TIME%] Fetching qemu-ga-x86_64.msi (amd64 build, arm64 runs it under x64 emulation) >> "%LOGFILE%"
   certutil.exe -urlcache -f "%BASE_URL%/amd64/qemu-ga-x86_64.msi" "!TARGET_DRIVERS!\qemu-ga-x86_64.msi" >> "%LOGFILE%" 2>&1
   if errorlevel 1 (
