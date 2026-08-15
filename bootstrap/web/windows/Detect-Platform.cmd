@@ -6,6 +6,14 @@
 :: Version History
 :: ---------------
 :: 1.0.0   2026-06-28   Initial release
+:: 1.1.0   2026-08-15   Robert: Proxmox now supports arm64 hosts (PVE 9.2+), so arm64 KVM guests
+::                      are a real combination. virtio-win/qemu-ga don't publish native arm64
+::                      builds yet (checked live) -- but Windows 11 ARM64 and Windows Server 2025
+::                      ARM64 both support x86_64 app emulation, and the existing amd64 MSIs
+::                      install and run correctly under it (confirmed live). Removed the arm64
+::                      early-exit in :KVM -- both architectures now install the identical amd64
+::                      MSIs. TODO: switch to native arm64 artifacts if/when virtio-win or the
+::                      QEMU guest agent project ever publish them.
 ::
 :: Purpose
 :: -------
@@ -25,7 +33,10 @@
 ::   x86_64 + KVM/Proxmox  - virtio-win-gt-x64.msi + qemu-ga-x86_64.msi
 ::   x86_64 + VMware        - VMware-tools-13.0.10-25056151-x64.exe
 ::   arm64  + VMware        - VMware-tools-13.0.10-25056151-arm.exe
-::   arm64  + KVM/Proxmox   - not supported (logged and skipped)
+::   arm64  + KVM/Proxmox   - virtio-win-gt-x64.msi + qemu-ga-x86_64.msi, same amd64 builds as
+::                            x86_64, installed under Windows' built-in x64 emulation -- no
+::                            native arm64 build exists yet from either upstream project (see
+::                            1.1.0 changelog entry above)
 ::
 :: Log file
 :: --------
@@ -37,7 +48,7 @@
 setlocal EnableDelayedExpansion
 
 set "SCRIPT_NAME=Detect-Platform.cmd"
-set "SCRIPT_VERSION=1.0.0"
+set "SCRIPT_VERSION=1.1.0"
 set "DRIVER_DIR=C:\ProgramData\ExampleMusic\Drivers"
 set "LOG_DIR=C:\ProgramData\ExampleMusic\Logs"
 set "LOGFILE=%LOG_DIR%\Detect-Platform.log"
@@ -98,16 +109,15 @@ echo  [WARN] Unknown platform detected. No guest tools installed.
 goto :DETECT_END
 
 :: ------------------------------------------------------------------------------
-:: KVM / Proxmox  (x86_64 only - arm64 not supported)
+:: KVM / Proxmox  (x86_64 native, arm64 under Windows' built-in x64 emulation --
+:: see 1.1.0 changelog entry above. Same amd64 MSIs, same install calls, either way.)
 :: ------------------------------------------------------------------------------
 :KVM
+call :LOG "KVM/Proxmox detected. ARCH=%ARCH%"
 if /i "%ARCH%"=="arm64" (
-    call :LOG "WARNING: KVM/Proxmox detected on arm64 - no guest tools available for this combination."
-    echo  [WARN] KVM/Proxmox on arm64 is not supported. No guest tools installed.
-    goto :DETECT_END
+    call :LOG "arm64 KVM guest -- installing amd64 guest tools under Windows' x64 emulation."
+    echo   Note: installing amd64 guest tools under x64 emulation (no native arm64 build yet).
 )
-
-call :LOG "KVM/Proxmox + x86_64 detected."
 
 call :MSI "%DRIVER_DIR%\virtio-win-gt-x64.msi" "%LOG_DIR%\virtio-win-gt-x64.log" "VirtIO guest tools"
 call :MSI "%DRIVER_DIR%\qemu-ga-x86_64.msi"    "%LOG_DIR%\qemu-ga-x86_64.log"   "QEMU guest agent"
