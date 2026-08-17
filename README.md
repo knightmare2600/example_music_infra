@@ -361,6 +361,13 @@ Pull requests submitted directly to other projects' own repositories — no sepa
 
 All three are open, unmerged as of 2026-08-10 — together they're what made a native ARM64 Windows Salt minion build possible at all. Used here to produce a custom `Salt-Minion-3008.0-Py3-ARM64.msi` (see `docs/buildsheets/buildsheet-salt-minion.md`) ahead of any of this landing in an official upstream release.
 
+| Project | Pull Request | Description |
+|---|---|---|
+| [clonezilla](https://github.com/stevenshiau/clonezilla) | [#187](https://github.com/stevenshiau/clonezilla/pull/187) | Add arm64 support to `create-gparted-live` (grub-efi-arm64, EFI-only image type, `bootaa64.efi` detection, ttyAMA0 serial console + autologin/systemd boot fixes) |
+| [virtio-win-guest-tools-installer](https://github.com/virtio-win/virtio-win-guest-tools-installer) | [#100](https://github.com/virtio-win/virtio-win-guest-tools-installer/pull/100) | Add native Windows arm64 VirtIO driver + QEMU guest agent MSI builds (8 WHQL-signed drivers, VSS-enabled qemu-ga, self-signed pvpanic, arch-detecting bundler) |
+
+Both open, unmerged as of 2026-08-17 — verified for real (checksum + PE-header machine-code checks on every binary) and functionally tested (virtio-win's own PR notes a real Windows 11 ARM64 guest under Proxmox VE) ahead of landing upstream. Used here to produce `bootstrap/web/gparted/arm64/`'s GParted Live build and `bootstrap/web/windows/arm64/{virtio-win-gt-arm64.msi,qemu-ga-arm64.msi}` respectively.
+
 ## Silly Season
 
 Because the pointy wee guy with heating problems downstairs (the devil) makes work for idle hands, and the motto of [my town](https://en.wikipedia.org/wiki/List_of_mottos) is:
