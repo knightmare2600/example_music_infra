@@ -42,6 +42,16 @@
 ::                      :ABORT like every other download in this script;
 ::                      Detect-Platform.cmd falls back to the amd64 builds if
 ::                      these never landed or the install itself fails.
+:: 1.6.0   2026-08-18   arm64 Proxmox host support, sweep item 3: headlessunattend.xml's
+::                      <component> blocks are all processorArchitecture="amd64" --
+::                      Windows Setup silently skips any component that doesn't match the
+::                      image being installed, so this file was applying NONE of its
+::                      settings (not just OpenSSH/RDP, DiskConfiguration/ImageInstall
+::                      too) on an arm64 install. Step 3 now fetches
+::                      headlessunattend-arm64.xml instead when %ARCH%==arm64 (same
+::                      settings, processorArchitecture="arm64" throughout) -- same
+::                      %ARCH% variable Step 1 already detects, destination path on the
+::                      WinPE disk unchanged either way.
 ::
 :: Purpose
 :: -------
@@ -84,7 +94,8 @@
 ::
 :: Provisioning server layout expected
 :: ------------------------------------
-::   http://<SERVER>/windows/unattend/headlessunattend.xml
+::   http://<SERVER>/windows/unattend/headlessunattend.xml         (amd64)
+::   http://<SERVER>/windows/unattend/headlessunattend-arm64.xml   (arm64)
 ::   http://<SERVER>/windows/Detect-Platform.cmd
 ::   http://<SERVER>/windows/SetupComplete.cmd
 ::   http://<SERVER>/windows/Install-OpenSSH.ps1
@@ -113,7 +124,7 @@ setlocal EnableDelayedExpansion
 :: Script metadata
 :: ------------------------------------------------------------------------------
 set "SCRIPT_NAME=Deploy-OpenSSH.cmd"
-set "SCRIPT_VERSION=1.5.0"
+set "SCRIPT_VERSION=1.6.0"
 set "ORG_NAME=Example Music Limited"
 
 :: ------------------------------------------------------------------------------
@@ -190,18 +201,30 @@ echo+
 
 :: ------------------------------------------------------------------------------
 :: Step 3: Download headlessunattend.xml to WinPE RAM disk
+::
+:: arm64 (2026-08-18, sweep item 3): headlessunattend.xml's <component> blocks are all
+:: processorArchitecture="amd64" -- Windows Setup silently skips any component that
+:: doesn't match the image being installed, so on an arm64 target this file was applying
+:: NONE of its settings at all. headlessunattend-arm64.xml is the arm64 twin (identical
+:: settings, processorArchitecture="arm64" throughout). Same %ARCH% variable Step 1
+:: already detected -- source filename picked here, destination stays
+:: %SYSTEMDRIVE%\headlessunattend.xml either way (Setup.exe /unattend: doesn't care what
+:: it was called on the server).
 :: ------------------------------------------------------------------------------
-cecho.exe {03} "[INFO] Downloading headlessunattend.xml..." {\n}{##}
-echo [%DATE% %TIME%] Fetching headlessunattend.xml >> "%LOGFILE%"
+set "UNATTEND_SRC=headlessunattend.xml"
+if "%ARCH%"=="arm64" set "UNATTEND_SRC=headlessunattend-arm64.xml"
 
-certutil.exe -urlcache -f "%BASE_URL%/unattend/headlessunattend.xml" "%SYSTEMDRIVE%\headlessunattend.xml" >> "%LOGFILE%" 2>&1
+cecho.exe {03} "[INFO] Downloading %UNATTEND_SRC%..." {\n}{##}
+echo [%DATE% %TIME%] Fetching %UNATTEND_SRC% >> "%LOGFILE%"
+
+certutil.exe -urlcache -f "%BASE_URL%/unattend/%UNATTEND_SRC%" "%SYSTEMDRIVE%\headlessunattend.xml" >> "%LOGFILE%" 2>&1
 if errorlevel 1 (
-  echo [%DATE% %TIME%] ERROR: Failed to download headlessunattend.xml >> "%LOGFILE%"
-  cecho.exe {04} "[ERROR] Failed to download headlessunattend.xml" {\n}{##}
+  echo [%DATE% %TIME%] ERROR: Failed to download %UNATTEND_SRC% >> "%LOGFILE%"
+  cecho.exe {04} "[ERROR] Failed to download %UNATTEND_SRC%" {\n}{##}
   goto :ABORT
 )
-cecho.exe {0a} "[ OK ] %SYSTEMDRIVE%\headlessunattend.xml" {\n}{##}
-echo [%DATE% %TIME%] headlessunattend.xml saved to %SYSTEMDRIVE%\headlessunattend.xml >> "%LOGFILE%"
+cecho.exe {0a} "[ OK ] %SYSTEMDRIVE%\headlessunattend.xml (from %UNATTEND_SRC%)" {\n}{##}
+echo [%DATE% %TIME%] %UNATTEND_SRC% saved to %SYSTEMDRIVE%\headlessunattend.xml >> "%LOGFILE%"
 echo+
 
 :: ------------------------------------------------------------------------------

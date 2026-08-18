@@ -3,12 +3,13 @@
 <!--
 
  **********************************************************************************************************************
- ** amd64-only. arm64 targets need ./headlessunattend-arm64.xml instead — identical settings, but with               **
- ** processorArchitecture="arm64" on every <component>. Windows Setup matches components by processorArchitecture    **
- ** against the image being installed and silently SKIPS any that don't match (found 2026-08-18, sweep item 3 —      **
- ** this file was never applying ANY of its settings on an arm64 install, not just the OpenSSH/RDP/autologon bits    **
- ** but DiskConfiguration and ImageInstall too, since Microsoft-Windows-Setup is itself architecture-tagged).         **
- **                                                                                                                  **
+ ** arm64 twin of ../headlessunattend.xml — identical settings, processorArchitecture="arm64" throughout instead of  **
+ ** amd64. Windows Setup matches <component> blocks by processorArchitecture against the image being installed and   **
+ ** silently SKIPS any that don't match (added 2026-08-18, sweep item 3 — the amd64-only original was never applied  **
+ ** on an arm64 install at all: not just the OpenSSH/RDP/autologon bits, but DiskConfiguration and ImageInstall too,  **
+ ** since Microsoft-Windows-Setup is itself an architecture-tagged component in the windowsPE pass). Real arm64       **
+ ** Windows Server media confirmed available (A64FRE build, efi/boot/bootaa64.efi present) before writing this.       **
+ **                                                                                                                   **
  ** VirtIO guest driver injection: NOT part of this unattend.xml, a manual WinPE step.                               **
  **                                                                                                                  **
  ** Sample answer file for headless deployment                                                                       **
@@ -27,7 +28,7 @@
  ** set "BASE=http://%SERVER%/windows"                                                                               **
  ** set "SCRIPTS=C:\Windows\Setup\Scripts"                                                                           **
  **                                                                                                                  **
- ** certutil.exe -urlcache -f "%BASE%/unattend/headlessunattend.xml" X:\headlessunattend.xml                         **
+ ** certutil.exe -urlcache -f "%BASE%/unattend/headlessunattend-arm64.xml" X:\headlessunattend.xml                   **
  ** Y:\Sources\setup.exe /unattend:X:\headlessunattend.xml /noreboot                                                 **
  **                                                                                                                  **
  ** mkdir "%SCRIPTS%"                                                                                                **
@@ -38,12 +39,12 @@
  **                                                                                                                  **
  ** Source: X:\Tools\Drivers (virtio-win driver files, staged in WinPE). Target: C:\ (the OS this XML just applied). **
  **********************************************************************************************************************
-	
 
-  NOTE: This sample will wipe disk 0 and clear all data on the disk. 
+
+  NOTE: This sample will wipe disk 0 and clear all data on the disk.
 -->
     <settings pass="oobeSystem">
-        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <FirstLogonCommands>
                 <SynchronousCommand wcm:action="add">
                     <CommandLine>netsh advfirewall firewall set rule group="Remote Desktop" new enable=yes</CommandLine>
@@ -98,10 +99,10 @@
         </component>
     </settings>
     <settings pass="specialize">
-        <component name="Microsoft-Windows-TerminalServices-LocalSessionManager" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <component name="Microsoft-Windows-TerminalServices-LocalSessionManager" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <fDenyTSConnections>false</fDenyTSConnections>
         </component>
-        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <AutoLogon>
                 <Password>
                     <Value>Password1!</Value>
@@ -113,12 +114,12 @@
             </AutoLogon>
             <ComputerName>*<!-- * GENERATES A RANDOM NAME, MODIFY TO SPECIFY A NAME --></ComputerName>
         </component>
-        <component name="Microsoft-Windows-TerminalServices-RDP-WinStationExtensions" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <component name="Microsoft-Windows-TerminalServices-RDP-WinStationExtensions" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <UserAuthentication>0</UserAuthentication>
         </component>
     </settings>
     <settings pass="windowsPE">
-        <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <component name="Microsoft-Windows-Setup" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <DiskConfiguration>
                 <Disk wcm:action="add">
                     <CreatePartitions>
@@ -152,14 +153,14 @@
             </UserData>
             <EnableNetwork>false<!-- CHANGE TO TRUE IF USING A NETWORK SHARE FOR UNATTEND OR DRIVERS --></EnableNetwork>
         </component>
-        <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <SetupUILanguage>
                 <UILanguage>en-US</UILanguage>
             </SetupUILanguage>
             <UILanguage>en-GB</UILanguage>
         </component>
 <!--
-        <component name="Microsoft-Windows-PnpCustomizationsWinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <component name="Microsoft-Windows-PnpCustomizationsWinPE" processorArchitecture="arm64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <DriverPaths>
                 <PathAndCredentials wcm:action="add" wcm:keyValue="1">
                     <Path>INSERT DRIVER PATH</Path>

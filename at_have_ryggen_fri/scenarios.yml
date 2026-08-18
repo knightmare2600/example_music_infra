@@ -19,8 +19,9 @@
 # these to be fixed until they actually are):
 #   - Scenario 4's per-edition unattend XML files (autounattend_2022core.xml
 #     etc, referenced by several buildsheets) don't exist yet -- only
-#     headlessunattend.xml, the one real, generic file, does. Deferred
-#     pending real files being supplied.
+#     headlessunattend.xml (amd64) and its arm64 twin headlessunattend-arm64.xml
+#     (added 2026-08-18), the two real, generic files, do. Deferred pending
+#     real per-edition files being supplied.
 #   - Scenario 1 has no real scripted iLO/DRAC/Redfish procedure -- manual
 #     virtual-media mounting is the actual, current, accepted method.
 
@@ -130,6 +131,7 @@ scenarios:
       Ansible reachable via SSH from the very first run.
     requires_files:
       - bootstrap/web/windows/unattend/headlessunattend.xml
+      - bootstrap/web/windows/unattend/headlessunattend-arm64.xml
       - ansible/configs/inventory/group_vars/windows_nodes/connection.yml
     content_assertions:
       - file: bootstrap/web/windows/unattend/headlessunattend.xml
@@ -138,3 +140,12 @@ scenarios:
       - file: bootstrap/web/windows/unattend/headlessunattend.xml
         must_contain: "sc start sshd"
         why: "Installing the capability isn't enough -- the service has to actually be started for SSH to be reachable on first boot."
+      - file: bootstrap/web/windows/unattend/headlessunattend-arm64.xml
+        must_contain: "OpenSSH.Server"
+        why: "arm64 twin (added 2026-08-18, sweep item 3) -- same reasoning as the amd64 file above, checked separately since they're independent files that could drift apart."
+      - file: bootstrap/web/windows/unattend/headlessunattend-arm64.xml
+        must_contain: "sc start sshd"
+        why: "Same reasoning as the amd64 file above -- installing the capability isn't enough, the service has to actually start."
+      - file: bootstrap/web/windows/unattend/headlessunattend-arm64.xml
+        must_contain: 'processorArchitecture="arm64"'
+        why: "The whole point of this file existing separately -- if it silently reverted to amd64 (e.g. a careless copy-paste fix), Windows Setup would skip every one of its components again on an arm64 install, same as the original bug."
