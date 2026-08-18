@@ -8,12 +8,28 @@
 
 ---
 
+> **LEGACY — 2026-08-18.** This procedure existed for one reason: GParted Live never published an
+> arm64 build, so ExaRescue was built as a Fluxbox-based substitute (§1). That premise is gone —
+> Robert patched `create-gparted-live` itself and submitted it upstream
+> ([stevenshiau/clonezilla#187](https://github.com/stevenshiau/clonezilla/pull/187), open as of
+> this note), then built a real arm64 GParted Live from that branch. It's already sitting in
+> `bootstrap/web/gparted/arm64/` (untracked pending a September git-lfs commit — August's LFS
+> bandwidth quota is used up). `menu.ipxe`'s existing `:gparted` label needs no changes for it —
+> confirmed live, see §5 below, which already documents that.
+>
+> Left in place rather than deleted — the `live-build` recipe, package list, and dotfile/hook setup
+> here may still be useful reference if a richer toolset than stock GParted Live (zsh/tmux/ntfsfix/
+> zpool, §2.1) is ever wanted again. Not being actively built or maintained.
+
+---
+
 ## Changelog
 
 | Date | Change |
 |------|--------|
 | 2026-03-09 | Initial document |
 | 2026-03-10 | Replaced XFCE with Fluxbox; replaced mousepad with Featherpad; removed Firefox |
+| 2026-08-18 | **Marked LEGACY.** See banner below — real arm64 GParted Live now exists, this procedure's whole reason for existing is gone. |
 
 ---
 

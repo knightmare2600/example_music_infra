@@ -113,7 +113,7 @@ Procedures for provisioning new sites and nodes from scratch.
 | [bootstrap/TFTPD64_Debian_Headless_Rescue_Guide.md](bootstrap/TFTPD64_Debian_Headless_Rescue_Guide.md) | NET-BOOT-TFTP-001 | TFTPD64 setup on Debian for headless PXE rescue |
 | [bootstrap/WinPE ARM64 Build Procedure.md](bootstrap/WinPE%20ARM64%20Build%20Procedure.md) | NET-BOOT-WINPE-001 | WinPE ARM64 build — deployment and recovery media |
 | [bootstrap/bootstrapping.md](bootstrap/bootstrapping.md) | NET-BOOT-FULL-001 | Full infrastructure bootstrapping guide — provisioning server, iPXE, first-boot scripts, real command transcripts |
-| [bootstrap/ExampleMusic_ExaRescue_ARM64_Build_Procedure.md](bootstrap/ExampleMusic_ExaRescue_ARM64_Build_Procedure.md) | NET-BOOT-RESCUE-001 | ExaRescue arm64 live rescue image build procedure |
+| [bootstrap/ExampleMusic_ExaRescue_ARM64_Build_Procedure.md](bootstrap/ExampleMusic_ExaRescue_ARM64_Build_Procedure.md) | NET-BOOT-RESCUE-001 | ExaRescue arm64 live rescue image build procedure — **legacy**, superseded by real arm64 GParted Live (see banner) |
 | [bootstrap/ExampleMusic_Procedure_iPXE_ARM64_ISO.md](bootstrap/ExampleMusic_Procedure_iPXE_ARM64_ISO.md) | NET-BOOT-IPXEISO-001 | Building an ARM64 iPXE boot ISO |
 | [bootstrap/WinPE_DaRT_Build_Guide.md](bootstrap/WinPE_DaRT_Build_Guide.md) | NET-BOOT-DART-001 | WinPE + DaRT 10 build guide |
 | [bootstrap/cecho_dartparse_build_guide.md](bootstrap/cecho_dartparse_build_guide.md) | NET-BOOT-CECHO-001 | `cecho`/`dartparse` build procedure — binaries required by WinPE's `startnet.cmd` |
