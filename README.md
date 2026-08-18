@@ -342,9 +342,9 @@ Native ARM64 binaries for tools that either lacked them entirely or only offered
 
 | Repository | Description |
 |---|---|
-| [dua-cli](https://github.com/knightmare2600/dua-cli) | Additional ARM64 ports of this disk usage analyser |
+| [dua-cli](https://github.com/knightmare2600/dua-cli) | Additional ARM64 ports of this disk usage analyser; Windows arm64 CI build also submitted upstream — see Upstream Contributions below |
 | [jq](https://github.com/knightmare2600/jq) | Native ARM64 binary for the indispensable JSON processor |
-| [NTop](https://github.com/knightmare2600/NTop) | Native ARM64 binaries for the `ntop` network monitor |
+| [NTop](https://github.com/knightmare2600/NTop) | Native ARM64 binaries for the `ntop` network monitor; Windows arm64 CI build also submitted upstream — see Upstream Contributions below |
 | [ColorEcho](https://github.com/knightmare2600/ColorEcho) | ARM64 port of `colorecho`; patches submitted and merged upstream |
 | [proxmoxbmc](https://github.com/knightmare2600/proxmoxbmc) | Fork adding Debian `.deb` packaging, which was conspicuously absent |
 | [ScreenRes](https://github.com/knightmare2600/ScreenRes) | WinPE native ARM64 binary — handy when travelling with an M1 MacBook |
@@ -367,6 +367,14 @@ All three are open, unmerged as of 2026-08-10 — together they're what made a n
 | [virtio-win-guest-tools-installer](https://github.com/virtio-win/virtio-win-guest-tools-installer) | [#100](https://github.com/virtio-win/virtio-win-guest-tools-installer/pull/100) | Add native Windows arm64 VirtIO driver + QEMU guest agent MSI builds (8 WHQL-signed drivers, VSS-enabled qemu-ga, self-signed pvpanic, arch-detecting bundler) |
 
 Both open, unmerged as of 2026-08-17 — verified for real (checksum + PE-header machine-code checks on every binary) and functionally tested (virtio-win's own PR notes a real Windows 11 ARM64 guest under Proxmox VE) ahead of landing upstream. Used here to produce `bootstrap/web/gparted/arm64/`'s GParted Live build and `bootstrap/web/windows/arm64/{virtio-win-gt-arm64.msi,qemu-ga-arm64.msi}` respectively.
+
+| Project | Pull Request | Status | Description |
+|---|---|---|---|
+| [pvetui](https://github.com/devnullvoid/pvetui) | [#134](https://github.com/devnullvoid/pvetui/pull/134) | Merged | Add ARM (ARMv6/v7, Orange Pi) release targets to `.goreleaser.yaml` |
+| [dua-cli](https://github.com/Byron/dua-cli) | [#335](https://github.com/Byron/dua-cli/pull/335) | Closed, not merged | Native Windows arm64 CI build — maintainer couldn't review/test it and it inadvertently broke the auto-release-on-tag feature |
+| [NTop](https://github.com/gsass1/NTop) | [#82](https://github.com/gsass1/NTop/pull/82) | Open | Native Windows arm64 CI build + release workflow |
+
+dua-cli and NTop are the same ARM64 work already maintained as forks under Porting Work above, submitted upstream to the real projects — one rejected, one still pending, neither merged, which is exactly why the forks above remain the actual source for this repo's own use. pvetui is unrelated to the Windows-arm64 theme running through the rest of this table (Orange Pi/ARMv6-v7 Linux release targets, not Windows) — included here as it's the same kind of standalone upstream PR, not part of any of this repo's own build chains.
 
 ## Silly Season
 
