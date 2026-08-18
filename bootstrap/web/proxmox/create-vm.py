@@ -147,6 +147,27 @@ Changelog:
                 path and GUEST_AGENT_MSI constant -- deliberately out of scope for this pass, same
                 item-1/item-3 split as the original sweep; see that script's own changelog if/when
                 it gets the same treatment.
+    2026-08-18  CORRECTION, same day, found via Robert's first real end-to-end run against his
+                arm64 node: detect_node_arch() (added above, same day) originally called
+                nodes(node).execute.post(command="uname -m") and silently fell back to x86_64 when
+                that failed -- meaning the FIRST real test run never actually exercised any of the
+                new arm64 code (machine=virt, the seabios/ovmf prompt) at all; the VM it created
+                and booted did so via the plain x86_64 path, on an arm64 node, which happened to
+                work because that node's own implicit default machine type is apparently already
+                arm64-safe -- not proof the new code path works, since it never ran.
+                Root cause, confirmed via pvesh usage and live schema-error probing on the real
+                node: /nodes/<node>/execute is NOT a shell-command runner -- it's a batch API-call
+                endpoint (each entry is {"method", "path", "args"}, invoking other PVE API calls).
+                select_bios_rom()'s pre-existing ROM enumeration (`ls /usr/share/kvm/*.ROM` via the
+                same call pattern) has been silently broken the same way this whole time, masked by
+                its own try/except falling back to a static ROM list -- not fixed here, flagged as
+                a separate, pre-existing, out-of-scope finding.
+                Fixed by switching detect_node_arch() to GET /nodes/<node>/status and reading
+                current-kernel.machine -- PVE's own structured `uname -m`, confirmed live
+                (current-kernel.machine="aarch64", pveversion="pve-manager/9.2.9/..."), no shell
+                exec involved at all. Not yet re-run against the real node after this fix --
+                confirm the arm64 branches (Machine: virt in the summary, the seabios/ovmf prompt)
+                actually fire before treating item 1 as verified.
 
 
 Usage:
@@ -556,36 +577,48 @@ def select_node(proxmox, args):
 
 def detect_node_arch(proxmox, node):
     """
-    Detect the target node's real CPU architecture via `uname -m` over the
-    same nodes(node).execute.post() endpoint select_bios_rom() already uses
-    to enumerate BIOS ROMs. A Proxmox node is one fixed architecture, so this
-    is asked once per session (main() calls it right after select_node()),
-    not per-VM -- more reliable than asking the operator to declare something
-    the node itself already knows, and cheaper than pattern-matching a CPU
-    model string out of /nodes/<node>/status.
+    Detect the target node's real CPU architecture via GET /nodes/<node>/status,
+    reading current-kernel.machine (PVE's own structured uname -m, native JSON,
+    no shell exec involved). A Proxmox node is one fixed architecture, so this
+    is asked once per session (main() calls it right after select_node()), not
+    per-VM -- more reliable than asking the operator to declare something the
+    node itself already knows.
+
+    2026-08-18, corrected same day it was written: originally called
+    nodes(node).execute.post(command="uname -m") -- the same call pattern
+    select_bios_rom() already used (unsuccessfully) to enumerate BIOS ROMs.
+    Verified live against Robert's real arm64 node that /nodes/<node>/execute
+    is NOT a shell-command runner at all -- pvesh usage confirms it's a batch
+    API-call endpoint (each entry is {"method", "path", "args"}, invoking other
+    PVE API calls, not arbitrary shell commands). Neither this function's
+    `uname -m` nor select_bios_rom()'s pre-existing `ls /usr/share/kvm/*.ROM`
+    were ever things that endpoint could run -- both built on a wrong premise
+    about what it does, not a parameter-naming slip. select_bios_rom()'s ROM
+    enumeration has silently never worked because of this (masked by its own
+    try/except falling back to the static known-ROM list); left as a separate,
+    pre-existing, out-of-scope finding -- not fixed here.
 
     Returns "arm64" or "x86_64" -- same two literal strings menu.ipxe's own
     ${arch} variable uses everywhere else in this repo. Falls back to
-    "x86_64" (this script's long-standing implicit assumption) if the
-    execute endpoint is unavailable, with a warning -- never silently
-    guesses arm64.
+    "x86_64" (this script's long-standing implicit assumption) if the status
+    call fails or returns something unrecognised, with a warning -- never
+    silently guesses arm64.
     """
     try:
-        result = proxmox.nodes(node).execute.post(command="uname -m")
-        output = result.get("data", "") if isinstance(result, dict) else str(result)
-        output = output.strip().lower()
+        status = proxmox.nodes(node).status.get()
+        machine = status.get("current-kernel", {}).get("machine", "").strip().lower()
     except Exception as e:
         warn(f"Could not detect node architecture ({e}) -- assuming x86_64.")
         return "x86_64"
 
-    if output in ("aarch64", "arm64"):
-        ok(f"Node architecture: arm64 ({output})")
+    if machine in ("aarch64", "arm64"):
+        ok(f"Node architecture: arm64 ({machine})")
         return "arm64"
-    if output in ("x86_64", "amd64"):
-        ok(f"Node architecture: x86_64 ({output})")
+    if machine in ("x86_64", "amd64"):
+        ok(f"Node architecture: x86_64 ({machine})")
         return "x86_64"
 
-    warn(f"Unrecognised node architecture '{output}' -- assuming x86_64.")
+    warn(f"Unrecognised node architecture '{machine}' -- assuming x86_64.")
     return "x86_64"
 
 # =============================================================================
