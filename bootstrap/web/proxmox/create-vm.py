@@ -113,6 +113,40 @@ Changelog:
                 config.put() call is issued. Same class of fix as the MeshCentral device-group race
                 fixed the same week in the TacticalRMM build: a fire-and-forget async API call
                 succeeding does not mean the server-side effect has landed yet.
+    2026-08-18  arm64 Proxmox host support, item 1 of the sweep parked 2026-08-15 (see
+                docs/proxmox/pve-create-vm.md changelog) -- Robert has a real arm64 PVE node now.
+                This script never set a `machine` API param at all (always inherited the node's
+                default, i440fx/q35 -- neither exists on arm64 KVM, which needs machine=virt).
+                New detect_node_arch() runs `uname -m` on the target node via the same
+                nodes(node).execute.post() endpoint select_bios_rom() already used, called once in
+                main() right after select_node() -- a node is one fixed architecture, so this is
+                cheaper and more reliable than asking the operator or pattern-matching a CPU model
+                string. build_vm_config()/create_vm() now set machine="virt" for arm64 targets,
+                nothing for x86_64 (preserves existing behaviour exactly -- still no explicit
+                machine= sent, still whatever the node defaults to).
+                select_bios_rom()'s ROM_DESCRIPTIONS menu is entirely Dell-SLIC-modded x86 SeaBIOS/
+                UEFI ROM files -- meaningless on arm64 (no Dell licensing tricks apply, and the
+                actual .ROM files enumerated from /usr/share/kvm/ on an arm64 node would never match
+                any of them anyway). arm64 now gets a separate, simpler seabios-vs-ovmf prompt with
+                no ROM file involved -- Robert's own explicit call (not silently defaulted): both
+                bios types are real, verified-booting options on his node (`qm create --machine virt
+                --bios seabios|ovmf` then `qm start`+`qm terminal`, confirmed live), not a guess --
+                original assumption here was that arm64 KVM is UEFI-only like real ARM hardware
+                usually is; PVE's own schema (and Robert's live boot test) disagreed, corrected
+                before shipping rather than assumed.
+                select_iso()'s auto-default (added 2026-07-19 specifically to STOP arm64 ISOs being
+                silently pre-selected for x86_64 VMs) now also flips the other way on an arm64 node
+                -- prefers ipxe_arm64.iso there, ipxe_amd64.iso everywhere else, same two-pass
+                pattern. The 2026-05-29 comment claiming "Proxmox has no arm64 build so (yet)" is
+                corrected -- it did from PVE 9.2, this script just hadn't caught up.
+                NOT independently tested against a real Proxmox node beyond the qm create/config/
+                start calls Robert ran directly -- this script's own create_vm()/select_bios_rom()/
+                select_iso() code paths themselves have not yet been run end-to-end against the
+                arm64 node. Confirm with a real --dry-run then a real create before relying on this.
+                convert-v2v.py has the identical machine= gap plus a hardcoded amd64-only driver
+                path and GUEST_AGENT_MSI constant -- deliberately out of scope for this pass, same
+                item-1/item-3 split as the original sweep; see that script's own changelog if/when
+                it gets the same treatment.
 
 
 Usage:
@@ -520,6 +554,40 @@ def select_node(proxmox, args):
     choice = int(prompt("Select node", validator=validate_node))
     return nodes[choice - 1]["node"]
 
+def detect_node_arch(proxmox, node):
+    """
+    Detect the target node's real CPU architecture via `uname -m` over the
+    same nodes(node).execute.post() endpoint select_bios_rom() already uses
+    to enumerate BIOS ROMs. A Proxmox node is one fixed architecture, so this
+    is asked once per session (main() calls it right after select_node()),
+    not per-VM -- more reliable than asking the operator to declare something
+    the node itself already knows, and cheaper than pattern-matching a CPU
+    model string out of /nodes/<node>/status.
+
+    Returns "arm64" or "x86_64" -- same two literal strings menu.ipxe's own
+    ${arch} variable uses everywhere else in this repo. Falls back to
+    "x86_64" (this script's long-standing implicit assumption) if the
+    execute endpoint is unavailable, with a warning -- never silently
+    guesses arm64.
+    """
+    try:
+        result = proxmox.nodes(node).execute.post(command="uname -m")
+        output = result.get("data", "") if isinstance(result, dict) else str(result)
+        output = output.strip().lower()
+    except Exception as e:
+        warn(f"Could not detect node architecture ({e}) -- assuming x86_64.")
+        return "x86_64"
+
+    if output in ("aarch64", "arm64"):
+        ok(f"Node architecture: arm64 ({output})")
+        return "arm64"
+    if output in ("x86_64", "amd64"):
+        ok(f"Node architecture: x86_64 ({output})")
+        return "x86_64"
+
+    warn(f"Unrecognised node architecture '{output}' -- assuming x86_64.")
+    return "x86_64"
+
 # =============================================================================
 # TASK POLLING
 # =============================================================================
@@ -693,7 +761,7 @@ def select_storage(proxmox, node):
 # ISO SELECTION
 # =============================================================================
 
-def select_iso(proxmox, node, label="ISO", required=True):
+def select_iso(proxmox, node, node_arch="x86_64", label="ISO", required=True):
     """List ISOs in local storage, return selection or None."""
     try:
         isos = proxmox.nodes(node).storage("local").content.get(content="iso")
@@ -726,27 +794,36 @@ def select_iso(proxmox, node, label="ISO", required=True):
             return True
         return f"Enter a number between {min_choice} and {max_choice}"
 
-    # Auto-select iPXE ISO — prefer ipxe_amd64.iso explicitly (Proxmox has no arm64 build,
-    # and this script only ever creates x86_64 guests regardless — see OS_TYPES). Two-pass:
-    # first look for amd64, then fall back to any ipxe match that ISN'T arm64.
+    # Auto-select iPXE ISO — prefer the ISO matching the target node's own architecture
+    # (arm64 node → ipxe_arm64.iso, x86_64 node → ipxe_amd64.iso). Two-pass: first look
+    # for an exact arch match, then fall back to any ipxe match that ISN'T the OTHER
+    # architecture (so a mislabelled/ambiguous volid never gets silently pre-selected).
     #
     # BUG FIX (2026-07-19): the fallback pass used to match on "ipxe" alone, with no
     # architecture check at all — if only ipxe_arm64.iso existed in local storage (e.g.
     # amd64 not uploaded yet), it would be silently pre-selected as the default for any
-    # VM, x86_64 included. The first pass already can't match an arm64-named file (it
-    # requires "amd64" in the same volid), but the fallback needed the same exclusion
-    # explicitly rather than relying on "amd64 not being there" to also mean "arm64 isn't
-    # either" — those are independent facts about what's actually in local storage.
+    # VM, x86_64 included. The first pass already can't match a wrong-arch-named file (it
+    # requires the target arch string in the same volid), but the fallback needed the same
+    # exclusion explicitly rather than relying on "amd64 not being there" to also mean
+    # "arm64 isn't either" — those are independent facts about what's actually in local
+    # storage.
+    #
+    # 2026-08-18: was hardcoded to amd64-preferred/arm64-excluded regardless of the
+    # target node — wrong on an arm64 node, where ipxe_amd64.iso can't even boot (i440fx/
+    # q35 don't exist there). Now driven by node_arch, detected once per session via
+    # detect_node_arch().
+    other_arch = "amd64" if node_arch == "arm64" else "arm64"
+    this_arch  = "arm64" if node_arch == "arm64" else "amd64"
     default = None
     volids  = [(i, iso.get("volid", "").lower()) for i, iso in enumerate(isos, 1)]
     for i, volid in volids:
-        if "ipxe" in volid and "amd64" in volid:
+        if "ipxe" in volid and this_arch in volid:
             default = str(i)
-            info(f"ipxe_amd64 ISO detected — pre-selected as option {i}")
+            info(f"ipxe_{this_arch} ISO detected — pre-selected as option {i}")
             break
     if default is None:
         for i, volid in volids:
-            if "ipxe" in volid and "arm64" not in volid:
+            if "ipxe" in volid and other_arch not in volid:
                 default = str(i)
                 info(f"iPXE ISO detected — pre-selected as option {i}")
                 break
@@ -1353,7 +1430,7 @@ def _describe_rom(filename):
             return desc
     return "Custom ROM"
 
-def select_bios_rom(proxmox, node):
+def select_bios_rom(proxmox, node, node_arch="x86_64"):
     """
     Enumerate .ROM files in /usr/share/kvm/ on the Proxmox node and present
     a selection menu. Returns (bios_type, rom_path) where bios_type is
@@ -1365,7 +1442,33 @@ def select_bios_rom(proxmox, node):
         args: -bios /usr/share/kvm/FILENAME.ROM
     for EFI ROMs (Proxmox handles OVMF via the bios=ovmf config key separately,
     but custom EFI ROMs require the args override).
+
+    arm64 (2026-08-18): ROM_DESCRIPTIONS below is entirely Dell-SLIC-modded x86
+    ROM files -- meaningless on arm64, no Dell licensing tricks apply and the
+    real .ROM files on an arm64 node would never match any of these names
+    anyway. arm64 gets a separate, simpler seabios-vs-ovmf prompt instead, no
+    ROM file involved -- Robert's explicit call, not a silent default: both are
+    real, verified-booting options on his node (`qm create --machine virt
+    --bios seabios|ovmf` then `qm start`+`qm terminal`, confirmed live).
     """
+    if node_arch == "arm64":
+        section("BIOS")
+        print()
+        print(f"  {C.W}arm64 target -- no Dell-SLIC ROM menu applies here.{C.NC}")
+        print(f"  {C.CY}  1{C.NC}  seabios  (default -- matches x86_64's own default; verified booting)")
+        print(f"  {C.CY}  2{C.NC}  ovmf     (UEFI; also verified booting)")
+        print()
+
+        def validate_arm64_bios(v):
+            if v in ("1", "2"):
+                return True
+            return "Enter 1 or 2"
+
+        choice = prompt("Select BIOS", default="1", validator=validate_arm64_bios)
+        bios_type = "seabios" if choice == "1" else "ovmf"
+        ok(f"BIOS: {bios_type}")
+        return bios_type, None
+
     section("BIOS ROM")
 
     # Query the node for .ROM files in /usr/share/kvm/
@@ -1524,7 +1627,7 @@ def print_serial_advisory(vmid, ostype, console, bmc_type=None):
 def build_vm_config(vmid, name, role, site, hw, storage, console,
                     nics, ostype, ipxe_iso, pool=None, driver_disk=None,
                     virtio_iso=None, bios_type="seabios", bios_rom=None,
-                    storage_type=None):
+                    storage_type=None, machine=None):
     bmc_type = hw.get("bmc_type")
     """Build the full VM config dict for display and creation."""
 
@@ -1542,6 +1645,7 @@ def build_vm_config(vmid, name, role, site, hw, storage, console,
         "balloon": 0,
         "bios":    bios_type,
         "bios_rom": bios_rom,  # None = default SeaBIOS; path = custom ROM via args
+        "machine": machine,   # None = node default (x86_64: i440fx/q35); "virt" for arm64
         "bmc_type":  bmc_type,   # None = no BMC; kcs or bt = IPMI interface type
         "boot":    boot_order,
         "onboot":  0,
@@ -1584,6 +1688,7 @@ def print_summary(cfg, dry_run=False):
     print(f"  {C.W}Hardware{C.NC}")
     print(f"    {C.CY}CPU    :{C.NC} {cfg['sockets']} socket(s) × {cfg['cores']} core(s) = {cfg['sockets'] * cfg['cores']} vCPU(s), type=host")
     print(f"    {C.CY}RAM    :{C.NC} {cfg['memory']}MB (ballooning disabled)")
+    print(f"    {C.CY}Machine:{C.NC} {cfg['machine']}" if cfg.get("machine") else f"    {C.CY}Machine:{C.NC} (node default)")
     _disk_count = cfg.get("disk_count", 1)
     _disk_discard = cfg.get("storage_type") in ("zfspool", "lvmthin")
     _disk_slots = ["scsi0"] + [f"scsi{i}" for i in range(2, 2 + _disk_count - 1)]
@@ -1690,6 +1795,7 @@ def create_vm(proxmox, node, cfg, dry_run=False):
             scsihw  = "virtio-scsi-pci",
             **({"pool": cfg["pool"]} if cfg["pool"] else {}),
             **({"args": extra_args} if extra_args else {}),
+            **({"machine": cfg["machine"]} if cfg.get("machine") else {}),
         )
         # VM creation is asynchronous -- the VM stays locked (lock=create)
         # until this task actually finishes. Wait for it before issuing any
@@ -1867,7 +1973,7 @@ def write_log(log_file, cfg, node, dry_run=False):
 # MAIN
 # =============================================================================
 
-def create_one_vm(args, proxmox, node):
+def create_one_vm(args, proxmox, node, node_arch="x86_64"):
     """Run through the VM creation questions for a single VM. Returns True on success."""
 
     # ── VM identity ───────────────────────────────────────────────────────────
@@ -1935,7 +2041,7 @@ def create_one_vm(args, proxmox, node):
     # ── ISO ───────────────────────────────────────────────────────────────────
     section("iPXE ISO")
     info("Select the iPXE ISO to attach for PXE boot fallback.")
-    ipxe_iso = select_iso(proxmox, node, label="iPXE ISO", required=False)
+    ipxe_iso = select_iso(proxmox, node, node_arch=node_arch, label="iPXE ISO", required=False)
 
     if not confirm("Accept ISO selection?", default="y"):
         err("Aborted by user.")
@@ -1953,7 +2059,12 @@ def create_one_vm(args, proxmox, node):
     pool = select_pool(proxmox, site)
 
     # ── BIOS ROM (optional) ───────────────────────────────────────────────────
-    bios_type, bios_rom = select_bios_rom(proxmox, node)
+    bios_type, bios_rom = select_bios_rom(proxmox, node, node_arch=node_arch)
+
+    # ── Machine type ─────────────────────────────────────────────────────────
+    # arm64 KVM has no i440fx/q35 -- needs machine=virt explicitly. x86_64 gets
+    # None here, same as always, so the node's own default is used unchanged.
+    machine = "virt" if node_arch == "arm64" else None
 
     # ── Driver disk (Windows roles only) ─────────────────────────────────────
     driver_disk = select_driver_disk(proxmox, node, role)
@@ -1968,7 +2079,7 @@ def create_one_vm(args, proxmox, node):
         nics=nics, ostype=ostype, ipxe_iso=ipxe_iso, pool=pool,
         driver_disk=driver_disk, virtio_iso=virtio_iso,
         bios_type=bios_type, bios_rom=bios_rom,
-        storage_type=storage_type,
+        storage_type=storage_type, machine=machine,
     )
 
     # ── Final summary and confirmation ────────────────────────────────────────
@@ -2055,11 +2166,12 @@ def main():
 
     proxmox = connect(args)
     node    = select_node(proxmox, args)
+    node_arch = detect_node_arch(proxmox, node)
 
     # ── VM creation loop ──────────────────────────────────────────────────────
     vm_count = 0
     while True:
-        create_one_vm(args, proxmox, node)
+        create_one_vm(args, proxmox, node, node_arch=node_arch)
         vm_count += 1
 
         if not args.bulk:
