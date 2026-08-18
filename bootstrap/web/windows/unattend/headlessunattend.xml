@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
 <!--
-       
+
  **********************************************************************************************************************
+ ** amd64-only. arm64 targets need ./headlessunattend-arm64.xml instead — identical settings, but with               **
+ ** processorArchitecture="arm64" on every <component>. Windows Setup matches components by processorArchitecture    **
+ ** against the image being installed and silently SKIPS any that don't match (found 2026-08-18, sweep item 3 —      **
+ ** this file was never applying ANY of its settings on an arm64 install, not just the OpenSSH/RDP/autologon bits    **
+ ** but DiskConfiguration and ImageInstall too, since Microsoft-Windows-Setup is itself architecture-tagged).         **
+ **                                                                                                                  **
  ** VirtIO guest driver injection: NOT part of this unattend.xml, a manual WinPE step.                               **
  **                                                                                                                  **
  ** Sample answer file for headless deployment                                                                       **
