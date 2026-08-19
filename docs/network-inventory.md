@@ -2,7 +2,7 @@
 
 > **Classification:** Internal — Infrastructure  
 > **Forest:** `jukebox.internal`  
-> **Domains:** `example.net` · `example.org` · `example.com`  
+> **UPN suffixes:** `example.net` · `example.org` · `example.com` (forest-wide alternate login suffixes, not per-site domains — see `docs/active-directory/ExampleMusic_UPN_DNS_dnsmasq_Procedure.md`)  
 > **Provisioning network:** `192.168.139.0/24`  
 > **Credentials:** See password manager — do **not** store passwords in this document
 
@@ -12,6 +12,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-08-19 | Removed the `Domain` column from the Global Site Summary and Domain Controllers — Summary tables, and the `**Domain:**` line from all ~44 per-site sections. Checked first: `ad_forest.json` confirms a single real join domain (`jukebox.internal`); `ad_users.json` confirms all 357 real users have a `@jukebox.internal` UPN, none `@example.*`; `ExampleMusic_UPN_DNS_dnsmasq_Procedure.md` confirms `example.net`/`.org`/`.com` are forest-wide alternate UPN suffixes and DNS alias zones, explicitly not tied to site or physical location. The removed column/lines weren't derived from any current source and didn't correspond to anything real. Header `**Domains:**` line reworded to `**UPN suffixes:**` with a pointer to the real procedure doc. While removing MCR's "PDC Emulator for example.org" note (part of the same fictional per-domain framing), found a much bigger pre-existing problem: the DC Summary table's `FSMO Roles` column claims PDC Emulator for six different DCs and Schema Master/Domain Naming Master for two — impossible in a single-domain forest (exactly one holder per role). `buildsheet-domainControllers.md:107` names `EXADCSFAL001` alone as the real "PDC EMULATOR / FSMO" holder, but doesn't cover the other 4 roles. **Not resolved in this pass** — flagged inline above the DC Summary table; needs a decision on the real per-role holders before the column can be corrected. |
 | 2026-08-19 | Global Site Summary was missing 8 real `sites.csv` sites entirely — AAR, BRT, DRS, DUS, FRE, NYB, SEA, SFO — found during the exhaustive docs re-audit while fixing the same gap in the superseded `network-inventory-merged.md` copy; this file (the real, current one) turned out to have the identical gap. Added all 8, diffed precisely against `sites.csv` afterward (53/53 exact match, zero missing/extra). Also added a separate `BER` row — the 2026-03-05 entry below claims "BRD renamed BER throughout", but the table still only had `BRD`, no `BER`, right up until this fix; `sites.csv` has both as genuinely separate rows (`BER` current, `BRD` an explicit legacy alias, same subnet) and the real tooling (`site-inventory-audit.py`) treats them that way, not as one having replaced the other. Cross-referenced both rows to each other. Also fixed `AKL` sitting out of alphabetical order at the very end of the table (after `VRK`) — moved to its correct position between `ABD` and `AMS`. `Domain` column values for the 9 new rows are inferred from the table's own overwhelming default (`example.net`, ~40 of 53 existing rows) — this column isn't derived from any current source (`sites.csv`, `devices.csv`, `ad_users.json` all lack it; likely a legacy pre-`jukebox.internal` entity-domain marker), so treat these 9 as reasonable defaults, not independently confirmed. |
 | 2026-07-20 | Added `EXASLTCLD001` (Salt master, `192.168.69.22`) to the CLD LAN table — added to `devices.csv` the same day, missing from this doc until now. Also reachable as `salt.jukebox.internal` (new CNAME, `benarbejde/role_codes.csv`'s `DNSAlias` column). |
 | 2026-07-20 | Rudder's role code split: `RDR` now means exclusively "Reader" (badge reader, physical, standard `.21` slot, new); the Rudder config-mgmt meaning moved to a new code, `RUD` — `EXARDRCLD001` is now `EXARUDCLD001`. Ironically reverses the 2026-07-08 entry below, which "fixed" `EXARUDCLD001` back to `EXARDRCLD001` as a typo — it wasn't; `RDR` just hadn't collided with badge readers yet at the time. Safe to do as a straight rename (not a live migration) since no Rudder infrastructure has actually been built yet — see `docs/proxmox/proxmox-dcm-pbs-planning.md` and `benarbejde/role_codes.csv` for the full rationale. |
@@ -117,103 +118,113 @@ the same site, see below) and every other Danish office gets. See
 
 ## Global Site Summary
 
-| Code | Location | City & Country | LAN Subnet | Domain | Notes |
-|------|----------|---------|-----------|--------|-------|
-| AAR | Aarhus | Danmark | `192.168.86.0/24` | `example.net` |  |
-| ABD | Aberdeen | Scotland, UK | `192.168.224.0/24` | `example.org` | Satellite office |
-| AKL | Auckland | New Zealand | `192.168.93.0/24` | `example.net` | |
-| AMS | Amsterdam | Netherlands | `192.168.31.0/24` | `example.net` | |
-| ATL | Atlanta | USA | `192.168.33.0/24` | `example.net` | |
-| BER | Berlin | West Germany (FRG) | `192.168.113.0/24` | `example.net` | Real, current Berlin site -- BRD (West Berlin) is a legacy alias for this same site/subnet, kept for v2v/historical reasons, not a second office |
-| BIR | Birmingham | England, UK | `192.168.121.0/24` | `example.net` | |
-| BON | Bonn | West Germany (FRG) | `192.168.228.0/24` | `example.net` | Schema Master / Domain Naming Master |
-| BRD | West Berlin | West Germany (FRG) | `192.168.113.0/24` | `example.net` | Legacy alias for BER above -- same site/subnet, not a second office |
-| BRK | Brockville | Ontario, Canada | `192.168.136.0/24` | `example.net` | |
-| BRT | Beirut | Lebanon | `192.168.169.0/24` | `example.net` |  |
-| CHI | Chicago | Illinois, USA | `192.168.214.0/24` | `example.net` | |
-| CLD | Cloud / Provisioning (LAN) | Korsbaek, DK | `192.168.69.0/24` | `<blank / NULL>` | DCs, Ansible, WAC, PBX, UniFi controller (Rudder present but dormant, not in active use) |
-| CLY | Clydebank | Scotland, UK | `192.168.41.0/24` | `example.net` | |
-| COV | Coventry | England, UK | `192.168.247.0/24` | `example.net` | WAP/RTR only |
-| CPH | København | Danmark | `192.168.231.0/24` | `example.com/net` | |
-| DRS | Dresden | West Germany (FRG) | `192.168.153.0/24` | `example.net` |  |
-| DUN | Dundee | Scotland, UK | `192.168.138.0/24` | `example.net` | |
-| DUS | Dusseldorf | West Germany (FRG) | `192.168.211.0/24` | `example.net` |  |
-| EDI | Edinburgh | Scotland, UK | `192.168.131.0/24` | `example.org/net` | Multiple DCs — check replication health |
-| FAL | Falkirk | Scotland, UK | `192.168.76.0/24` | `example.net` | **Head Office** — Brockville Stadium |
-| FAX | Faxe | Danmark | `192.168.246.0/24` | `example.net` | |
-| FRD | Fredericia Havn (CLD's DR sister site) | Danmark | `172.16.124.0/24` | `<blank / NULL>` | CLD's DR sister site — not `FRE`, the real Fredericia office. Started as VRK's standby provisioning network (still real — legal fiction run off a MacBook, `http.server`), broadened 2026-08-04 to the general failover role, with a real "site kit" too — NUC running Proxmox VE + a 48-port switch, see FRD row above |
-| FRE | Fredericia | Danmark | `192.168.75.0/24` | `example.net` | The real Fredericia office -- not FRD, CLD's DR sister site (see FRD row) |
-| GLA | Glasgow | Scotland, UK | `192.168.141.0/24` | `example.net` | Regional DC hub |
-| GOT | Gothenburg | Sweden | `192.168.46.0/24` | `example.net` | |
-| HAL | Halifax | England, UK | `192.168.142.0/24` | `example.net` | |
-| HUL | Hull | England, UK | `192.168.148.0/24` | `example.net` | |
-| KGE | Køge | Danmark | `192.168.65.0/24` | `example.net` | DC replication WARNING |
-| KOR | Korsør | Danmark | `192.168.238.0/24` | `example.net` | |
-| LAX | Los Angeles | California, USA | `192.168.213.0/24` | `example.net` | |
-| LIV | Liverpool | England, UK | `192.168.151.0/24` | `example.org` | |
-| LND | London | England, UK | `192.168.20.0/24` | `example.net` | Regional DC hub |
-| MCR | Manchester | England, UK | `192.168.161.0/24` | `example.org` | PDC Emulator for example.org |
-| MEL | Melbourne | Victoria, AU | `192.168.61.0/24` | `example.net` | |
-| MIA | Miami | Florida, USA | `192.168.135.0/24` | `example.net` | |
-| MIL | Milan | Italy | `192.168.39.0/24` | `example.net` | |
-| MTL | Montreal | Quebec, Canada | `192.168.154.0/24` | `example.net` | |
-| MUN | Munich | West Germany (FRG) | `192.168.189.0/24` | `example.net` | |
-| NEW | Newcastle | England, UK | `192.168.191.0/24` | `example.org` | |
-| NJC | Camden, NJ | New Jersey, USA | `192.168.201.0/24` | `example.net` | |
-| NYB | Nyborg | Danmark | `192.168.90.0/24` | `example.net` |  |
-| NYC | New York | New York, USA | `192.168.212.0/24` | `example.net` | |
-| ODE | Odense | Danmark | `192.168.126.0/24` | `example.net` | PDC Emulator for DK |
-| OSL | Oslo | Norway | `192.168.47.0/24` | `example.net` | |
-| PER | Perth | Scotland, UK | `192.168.173.0/24` | `example.net` | Solaris archive server |
-| SEA | Seattle | Washington, USA | `192.168.206.0/24` | `example.net` |  |
-| SFO | San Francisco | California, USA | `192.168.145.0/24` | `example.net` |  |
-| SHE | Sheffield | England, UK | `192.168.114.0/24` | `example.net` | |
-| SYD | Sydney | NSW, Australia | `192.168.29.0/24` | `example.net` | |
-| TOR | Toronto | Ontario, Canada | `192.168.146.0/24` | `example.net` | |
-| VIE | Vienna | Austria | `192.168.78.0/24` | `example.net` | |
-| VRK | OVH vRACK (Edinburgh) | Scotland, UK | `192.168.139.0/24` | `<blank / NULL>` | Provisioning network — DNS, PXE/provisioning server, FWL WAN face. Not a real office |
+| Code | Location | City & Country | LAN Subnet | Notes |
+|------|----------|---------|-----------|-------|
+| AAR | Aarhus | Danmark | `192.168.86.0/24` |  |
+| ABD | Aberdeen | Scotland, UK | `192.168.224.0/24` | Satellite office |
+| AKL | Auckland | New Zealand | `192.168.93.0/24` | |
+| AMS | Amsterdam | Netherlands | `192.168.31.0/24` | |
+| ATL | Atlanta | USA | `192.168.33.0/24` | |
+| BER | Berlin | West Germany (FRG) | `192.168.113.0/24` | Real, current Berlin site -- BRD (West Berlin) is a legacy alias for this same site/subnet, kept for v2v/historical reasons, not a second office |
+| BIR | Birmingham | England, UK | `192.168.121.0/24` | |
+| BON | Bonn | West Germany (FRG) | `192.168.228.0/24` | Schema Master / Domain Naming Master |
+| BRD | West Berlin | West Germany (FRG) | `192.168.113.0/24` | Legacy alias for BER above -- same site/subnet, not a second office |
+| BRK | Brockville | Ontario, Canada | `192.168.136.0/24` | |
+| BRT | Beirut | Lebanon | `192.168.169.0/24` |  |
+| CHI | Chicago | Illinois, USA | `192.168.214.0/24` | |
+| CLD | Cloud / Provisioning (LAN) | Korsbaek, DK | `192.168.69.0/24` | DCs, Ansible, WAC, PBX, UniFi controller (Rudder present but dormant, not in active use) |
+| CLY | Clydebank | Scotland, UK | `192.168.41.0/24` | |
+| COV | Coventry | England, UK | `192.168.247.0/24` | WAP/RTR only |
+| CPH | København | Danmark | `192.168.231.0/24` | |
+| DRS | Dresden | West Germany (FRG) | `192.168.153.0/24` |  |
+| DUN | Dundee | Scotland, UK | `192.168.138.0/24` | |
+| DUS | Dusseldorf | West Germany (FRG) | `192.168.211.0/24` |  |
+| EDI | Edinburgh | Scotland, UK | `192.168.131.0/24` | Multiple DCs — check replication health |
+| FAL | Falkirk | Scotland, UK | `192.168.76.0/24` | **Head Office** — Brockville Stadium |
+| FAX | Faxe | Danmark | `192.168.246.0/24` | |
+| FRD | Fredericia Havn (CLD's DR sister site) | Danmark | `172.16.124.0/24` | CLD's DR sister site — not `FRE`, the real Fredericia office. Started as VRK's standby provisioning network (still real — legal fiction run off a MacBook, `http.server`), broadened 2026-08-04 to the general failover role, with a real "site kit" too — NUC running Proxmox VE + a 48-port switch, see FRD row above |
+| FRE | Fredericia | Danmark | `192.168.75.0/24` | The real Fredericia office -- not FRD, CLD's DR sister site (see FRD row) |
+| GLA | Glasgow | Scotland, UK | `192.168.141.0/24` | Regional DC hub |
+| GOT | Gothenburg | Sweden | `192.168.46.0/24` | |
+| HAL | Halifax | England, UK | `192.168.142.0/24` | |
+| HUL | Hull | England, UK | `192.168.148.0/24` | |
+| KGE | Køge | Danmark | `192.168.65.0/24` | DC replication WARNING |
+| KOR | Korsør | Danmark | `192.168.238.0/24` | |
+| LAX | Los Angeles | California, USA | `192.168.213.0/24` | |
+| LIV | Liverpool | England, UK | `192.168.151.0/24` | |
+| LND | London | England, UK | `192.168.20.0/24` | Regional DC hub |
+| MCR | Manchester | England, UK | `192.168.161.0/24` | ⚠️ FSMO Roles conflict — see DC Summary table below |
+| MEL | Melbourne | Victoria, AU | `192.168.61.0/24` | |
+| MIA | Miami | Florida, USA | `192.168.135.0/24` | |
+| MIL | Milan | Italy | `192.168.39.0/24` | |
+| MTL | Montreal | Quebec, Canada | `192.168.154.0/24` | |
+| MUN | Munich | West Germany (FRG) | `192.168.189.0/24` | |
+| NEW | Newcastle | England, UK | `192.168.191.0/24` | |
+| NJC | Camden, NJ | New Jersey, USA | `192.168.201.0/24` | |
+| NYB | Nyborg | Danmark | `192.168.90.0/24` |  |
+| NYC | New York | New York, USA | `192.168.212.0/24` | |
+| ODE | Odense | Danmark | `192.168.126.0/24` | PDC Emulator for DK |
+| OSL | Oslo | Norway | `192.168.47.0/24` | |
+| PER | Perth | Scotland, UK | `192.168.173.0/24` | Solaris archive server |
+| SEA | Seattle | Washington, USA | `192.168.206.0/24` |  |
+| SFO | San Francisco | California, USA | `192.168.145.0/24` |  |
+| SHE | Sheffield | England, UK | `192.168.114.0/24` | |
+| SYD | Sydney | NSW, Australia | `192.168.29.0/24` | |
+| TOR | Toronto | Ontario, Canada | `192.168.146.0/24` | |
+| VIE | Vienna | Austria | `192.168.78.0/24` | |
+| VRK | OVH vRACK (Edinburgh) | Scotland, UK | `192.168.139.0/24` | Provisioning network — DNS, PXE/provisioning server, FWL WAN face. Not a real office |
 
 ---
 
 ## Domain Controllers — Summary
 
-| Hostname | Site | Domain | IP | FSMO Roles | Health |
-|----------|------|--------|----|-----------|--------|
-| `EXADCRGLA001` | GLA | example.net | `192.168.141.10` | Schema Master, Domain Naming Master, PDC Emulator | ✅ Healthy |
-| `EXADCREDI001` | EDI | example.net | `192.168.131.10` | PDC Emulator, RID Master, Infrastructure Master | ✅ Healthy |
-| `EXADCRLND001` | LND | example.net | `192.168.20.10` | RID Master, Infrastructure Master | ✅ Healthy |
-| `EXADCRNEW001` | NEW | example.org | `192.168.191.10` | — | ✅ Healthy |
-| `EXADCRLIV001` | LIV | example.org | `192.168.151.10` | — | ✅ Healthy |
-| `EXADCRMCR001` | MCR | example.org | `192.168.161.10` | PDC Emulator, RID Master, Infrastructure Master | ✅ Healthy |
-| `EXADCSMCR002` | MCR | example.org | `192.168.161.11` | — | ✅ Healthy |
-| `EXADCRBIR001` | BIR | example.net | `192.168.121.10` | — | ✅ Healthy |
-| `EXADCRBIR002` | BIR | example.net | `192.168.121.11` | — | ✅ Healthy |
-| `EXADCSCLY001` | CLY | example.net | `192.168.41.10` | — | ✅ Healthy |
-| `EXADCSCLY002` | CLY | example.net | `192.168.41.11` | — | ✅ Healthy |
-| `EXADCSEDI003` | EDI | example.net | `192.168.131.11` | RID Master, Infrastructure Master | ⚠️ **UNHEALTHY** — DFSR stopped, C: 5% free |
-| `EXADCSDUN001` | DUN | example.net | `192.168.138.10` | — | ✅ Healthy |
-| `EXADCSPER001` | PER | example.net | `192.168.173.10` | — | ✅ Healthy |
-| `EXADCSFAL001` | FAL | example.net | `192.168.76.10` | PDC Emulator | ✅ Healthy |
-| `EXADCSFAL002` | FAL | example.net | `192.168.76.11` | — | ✅ Healthy |
-| `EXADCSCPH001` | CPH | example.com | `192.168.231.10` | — | ✅ Healthy |
-| `EXADCSCPH002` | CPH | example.net | `192.168.231.11` | — | ✅ Healthy |
-| `EXADCSKGE001` | KGE | example.net | `192.168.65.10` | — | ⚠️ **WARNING** — out of sync, last replicated 27 days ago |
-| `EXADCSODE001` | ODE | example.net | `192.168.126.10` | PDC Emulator, RID Master, Infrastructure Master | ✅ Healthy |
-| `EXADCSODE002` | ODE | example.net | `192.168.126.11` | — | ✅ Healthy |
-| `EXADCSFAX001` | FAX | example.net | `192.168.246.10` | — | ✅ Healthy |
-| `EXADCSBON001` | BON | example.net | `192.168.228.10` | Schema Master, Domain Naming Master | ✅ Healthy |
-| `EXADCSBRD001` | BRD | example.net | `192.168.113.10` | PDC Emulator, RID Master, Infrastructure Master | ✅ Healthy |
-| `EXADCSMUN001` | MUN | example.net | `192.168.189.10` | — | ✅ Healthy |
-| `EXADCSBRK001` | BRK | example.net | `192.168.136.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSTOR001` | TOR | example.net | `192.168.146.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSNYC001` | NYC | example.net | `192.168.212.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSNJC001` | NJC | example.net | `192.168.201.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSATL001` | ATL | example.net | `192.168.33.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSLAX001` | LAX | example.net | `192.168.213.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSCHI001` | CHI | example.net | `192.168.214.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSSYD001` | SYD | example.net | `192.168.29.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSMEL001` | MEL | example.net | `192.168.61.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
-| `EXADCSAKL001` | AKL | example.net | `192.168.93.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+> ⚠️ **FSMO Roles conflict, found 2026-08-19, NOT resolved:** the table below shows PDC Emulator
+> claimed by six DCs (GLA/EDI/FAL/ODE/MCR/BRD) and Schema Master/Domain Naming Master claimed by
+> two (GLA/BON) — impossible in a single-domain forest, where each of the 5 FSMO roles has exactly
+> one holder. `docs/buildsheets/buildsheet-domainControllers.md:107` names `EXADCSFAL001` alone as
+> "HEAD OFFICE / PDC EMULATOR / FSMO", which is the only cross-referenced source of truth found for
+> this and doesn't cover the other 4 roles. The `FSMO Roles` column below likely dates from an
+> older multi-domain design (see the `Domains` → `UPN suffixes` fix in this same changelog entry)
+> and was never reconciled after the move to single-domain `jukebox.internal`. Not corrected here —
+> needs a decision on which DC genuinely holds each of the 5 roles before the column can be fixed.
+
+| Hostname | Site | IP | FSMO Roles | Health |
+|----------|------|----|-----------|--------|
+| `EXADCRGLA001` | GLA | `192.168.141.10` | Schema Master, Domain Naming Master, PDC Emulator | ✅ Healthy |
+| `EXADCREDI001` | EDI | `192.168.131.10` | PDC Emulator, RID Master, Infrastructure Master | ✅ Healthy |
+| `EXADCRLND001` | LND | `192.168.20.10` | RID Master, Infrastructure Master | ✅ Healthy |
+| `EXADCRNEW001` | NEW | `192.168.191.10` | — | ✅ Healthy |
+| `EXADCRLIV001` | LIV | `192.168.151.10` | — | ✅ Healthy |
+| `EXADCRMCR001` | MCR | `192.168.161.10` | PDC Emulator, RID Master, Infrastructure Master | ✅ Healthy |
+| `EXADCSMCR002` | MCR | `192.168.161.11` | — | ✅ Healthy |
+| `EXADCRBIR001` | BIR | `192.168.121.10` | — | ✅ Healthy |
+| `EXADCRBIR002` | BIR | `192.168.121.11` | — | ✅ Healthy |
+| `EXADCSCLY001` | CLY | `192.168.41.10` | — | ✅ Healthy |
+| `EXADCSCLY002` | CLY | `192.168.41.11` | — | ✅ Healthy |
+| `EXADCSEDI003` | EDI | `192.168.131.11` | RID Master, Infrastructure Master | ⚠️ **UNHEALTHY** — DFSR stopped, C: 5% free |
+| `EXADCSDUN001` | DUN | `192.168.138.10` | — | ✅ Healthy |
+| `EXADCSPER001` | PER | `192.168.173.10` | — | ✅ Healthy |
+| `EXADCSFAL001` | FAL | `192.168.76.10` | PDC Emulator | ✅ Healthy |
+| `EXADCSFAL002` | FAL | `192.168.76.11` | — | ✅ Healthy |
+| `EXADCSCPH001` | CPH | `192.168.231.10` | — | ✅ Healthy |
+| `EXADCSCPH002` | CPH | `192.168.231.11` | — | ✅ Healthy |
+| `EXADCSKGE001` | KGE | `192.168.65.10` | — | ⚠️ **WARNING** — out of sync, last replicated 27 days ago |
+| `EXADCSODE001` | ODE | `192.168.126.10` | PDC Emulator, RID Master, Infrastructure Master | ✅ Healthy |
+| `EXADCSODE002` | ODE | `192.168.126.11` | — | ✅ Healthy |
+| `EXADCSFAX001` | FAX | `192.168.246.10` | — | ✅ Healthy |
+| `EXADCSBON001` | BON | `192.168.228.10` | Schema Master, Domain Naming Master | ✅ Healthy |
+| `EXADCSBRD001` | BRD | `192.168.113.10` | PDC Emulator, RID Master, Infrastructure Master | ✅ Healthy |
+| `EXADCSMUN001` | MUN | `192.168.189.10` | — | ✅ Healthy |
+| `EXADCSBRK001` | BRK | `192.168.136.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSTOR001` | TOR | `192.168.146.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSNYC001` | NYC | `192.168.212.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSNJC001` | NJC | `192.168.201.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSATL001` | ATL | `192.168.33.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSLAX001` | LAX | `192.168.213.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSCHI001` | CHI | `192.168.214.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSSYD001` | SYD | `192.168.29.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSMEL001` | MEL | `192.168.61.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
+| `EXADCSAKL001` | AKL | `192.168.93.10` | — | ⚠️ DNS/Netlogon/KDC stopped |
 
 > ⚠️ **Action required:** Multiple DCs showing DNS/Netlogon/KDC stopped across NA, AU, and NZ sites.
 > `EXADCSEDI003` is critically low on disk space with DFSR stopped.
@@ -237,7 +248,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 
 #### FAL — Falkirk *(Head Office)*
 **Address:** Brockville Stadium, 1876 Hope Street, Falkirk  
-**LAN:** `192.168.76.0/24` · **VPN:** `10.0.76.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.76.0/24` · **VPN:** `10.0.76.0/24`
 
 **Completion checklist:**
 - [x] Switch installed and configured
@@ -307,7 +318,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 ---
 
 #### EDI — Edinburgh
-**LAN:** `192.168.131.0/24` · **Domain:** `example.org` / `example.net`
+**LAN:** `192.168.131.0/24`
 
 > This site also has legacy-naming domain controllers pending rebuild/decommission
 > (`EXADCREDI002`/`EXADCREDI003`) — not shown below (this section covers current/live
@@ -343,7 +354,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 ---
 
 #### GLA — Glasgow
-**LAN:** `192.168.141.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.141.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRGLA001`, Schema/Domain Naming
 > Master, PDC Emulator) — not shown below (this section covers current/live infrastructure
@@ -377,7 +388,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 ---
 
 #### CLY — Clydebank
-**LAN:** `192.168.41.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.41.0/24`
 
 > This site also has legacy-naming domain controllers (`EXADCRCLY001`/`EXADCRCLY002`,
 > Primary/Secondary — neither ever had a host built) — not shown below (this section covers
@@ -406,7 +417,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 ---
 
 #### DUN — Dundee
-**LAN:** `192.168.138.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.138.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRDUN001`, Windows Server 2003,
 > unmaintained) — not shown below (this section covers current/live infrastructure only), see
@@ -433,7 +444,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 ---
 
 #### PER — Perth
-**LAN:** `192.168.173.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.173.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRPER001`, physical HP ML310e,
 > never switched on) — not shown below (this section covers current/live infrastructure only),
@@ -464,7 +475,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 ---
 
 #### ABD — Aberdeen
-**LAN:** `192.168.224.0/24` · **Domain:** `example.org`
+**LAN:** `192.168.224.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRABD001`, Windows Server 2008R2,
 > bare metal, no hypervisor layer) — not shown below (this section covers current/live
@@ -495,7 +506,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 ---
 
 #### LND — London
-**LAN:** `192.168.20.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.20.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRLND001`, RID/Infra Master) — not
 > shown below (this section covers current/live infrastructure only), see
@@ -530,7 +541,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 ---
 
 #### BIR — Birmingham
-**LAN:** `192.168.121.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.121.0/24`
 
 > This site also has legacy-naming domain controllers (`EXADCRBIR001`/`EXADCRBIR002`,
 > Primary/Secondary) — not shown below (this section covers current/live infrastructure only),
@@ -570,7 +581,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 ---
 
 #### MCR — Manchester
-**LAN:** `192.168.161.0/24` · **Domain:** `example.org`
+**LAN:** `192.168.161.0/24`
 
 > This site also has legacy-naming domain controllers (`EXADCRMCR001`/`EXADCRMCR002`, PDC/RID/
 > Infra Master and Secondary) — not shown below (this section covers current/live
@@ -599,7 +610,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### LIV — Liverpool
-**LAN:** `192.168.151.0/24` · **Domain:** `example.org`
+**LAN:** `192.168.151.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRLIV001`, WS2025, unauthorized
 > build, also hosts file shares) — not shown below (this section covers current/live
@@ -628,7 +639,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### NEW — Newcastle
-**LAN:** `192.168.191.0/24` · **Domain:** `example.org`
+**LAN:** `192.168.191.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRNEW001`, AD running, no real
 > users/shares ever set up) — not shown below (this section covers current/live infrastructure
@@ -654,7 +665,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### COV — Coventry
-**LAN:** `192.168.247.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.247.0/24`
 
 **Infrastructure:**
 
@@ -675,7 +686,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### HAL — Halifax
-**LAN:** `192.168.142.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.142.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRHAL001`, Windows Server on a
 > Dell OptiPlex tower) — not shown below (this section covers current/live infrastructure
@@ -700,7 +711,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### HUL — Hull
-**LAN:** `192.168.148.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.148.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRHUL001`, Windows Server on a
 > Dell OptiPlex tower) — not shown below (this section covers current/live infrastructure
@@ -725,7 +736,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### SHE — Sheffield
-**LAN:** `192.168.114.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.114.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRSHE001`, Windows Server on a
 > Dell OptiPlex tower) — not shown below (this section covers current/live infrastructure
@@ -754,7 +765,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### CPH — København
-**LAN:** `192.168.231.0/24` · **Domain:** `example.com` / `example.net`
+**LAN:** `192.168.231.0/24`
 
 > This site also has legacy-naming domain controllers (`EXADCRCPH001`/`EXADCRCPH002`,
 > example.com/example.net) — not shown below (this section covers current/live infrastructure
@@ -781,7 +792,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### ODE — Odense
-**LAN:** `192.168.126.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.126.0/24`
 
 > This site also has legacy-naming domain controllers (`EXADCRODE001`/`EXADCRODE002`, PDC/RID/
 > Infra Master and Secondary) — not shown below (this section covers current/live infrastructure
@@ -811,7 +822,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### KGE — Køge
-**LAN:** `192.168.65.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.65.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRKGE001`, WS2016 EOL, 27 days out
 > of sync, disk space low, bare metal) — not shown below (this section covers current/live
@@ -837,7 +848,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### FAX — Faxe
-**LAN:** `192.168.246.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.246.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRFAX001`, present but never used,
 > bare metal) — not shown below (this section covers current/live infrastructure only), see
@@ -862,7 +873,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### KOR — Korsør
-**LAN:** `192.168.238.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.238.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRKOR001`, HP ML310e, bare metal)
 > — not shown below (this section covers current/live infrastructure only), see
@@ -891,7 +902,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### BON — Bonn
-**LAN:** `192.168.228.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.228.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRBON001`, Schema Master, DN
 > Master, HP ML310e bare metal) — not shown below (this section covers current/live
@@ -920,7 +931,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### BRD — West Berlin
-**LAN:** `192.168.113.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.113.0/24`
 
 > **Being consolidated into BER** — relocating there, possible decommission after the move
 > (Robert, 2026-07-31). This section reflects current state, not the post-move plan.
@@ -946,7 +957,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### MUN — Munich
-**LAN:** `192.168.189.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.189.0/24`
 
 **Infrastructure:**
 
@@ -969,7 +980,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### DRS — Dresden
-**LAN:** `192.168.153.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.153.0/24`
 
 **Infrastructure:**
 
@@ -990,7 +1001,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### DUS — Düsseldorf
-**LAN:** `192.168.211.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.211.0/24`
 
 **Infrastructure:**
 
@@ -1015,7 +1026,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### GOT — Gothenburg
-**LAN:** `192.168.46.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.46.0/24`
 
 **Infrastructure:**
 
@@ -1040,7 +1051,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### OSL — Oslo
-**LAN:** `192.168.47.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.47.0/24`
 
 **Infrastructure:**
 
@@ -1065,7 +1076,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### AMS — Amsterdam
-**LAN:** `192.168.31.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.31.0/24`
 
 **Infrastructure:**
 
@@ -1090,7 +1101,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### MIL — Milan
-**LAN:** `192.168.39.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.39.0/24`
 
 **Infrastructure:**
 
@@ -1115,7 +1126,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### VIE — Vienna
-**LAN:** `192.168.78.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.78.0/24`
 
 **Infrastructure:**
 
@@ -1140,7 +1151,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### BRT — Beirut
-**LAN:** `192.168.169.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.169.0/24`
 
 **Infrastructure:**
 
@@ -1165,7 +1176,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### BRK — Brockville, Ontario
-**LAN:** `192.168.136.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.136.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRBRK001`, DNS/Netlogon/KDC
 > services stopped, hosted on the vCenter cluster) — not shown below (this section covers
@@ -1195,7 +1206,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### TOR — Toronto, Ontario
-**LAN:** `192.168.146.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.146.0/24`
 
 > This site also has two legacy-naming domain controllers — `EXADCRTOR001` (DNS/Netlogon/KDC
 > services stopped, on DHCP, HP ML310e bare metal) and `EXADCRTOR028` (undocumented legacy AD
@@ -1223,7 +1234,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### MTL — Montreal, Quebec
-**LAN:** `192.168.154.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.154.0/24`
 
 **Infrastructure:**
 
@@ -1248,7 +1259,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### LAX — Los Angeles, California
-**LAN:** `192.168.213.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.213.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRLAX001`, deployed then
 > physically disconnected — services stopped) — not shown below (this section covers
@@ -1289,7 +1300,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### NYC — New York, NY
-**LAN:** `192.168.212.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.212.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRNYC001`, DNS/Netlogon/KDC
 > services stopped, Dell OptiPlex bare metal) — not shown below (this section covers
@@ -1316,7 +1327,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### NJC — Camden, New Jersey
-**LAN:** `192.168.201.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.201.0/24`
 
 **Infrastructure:**
 
@@ -1338,7 +1349,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### MIA — Miami, Florida
-**LAN:** `192.168.135.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.135.0/24`
 
 **Infrastructure:**
 
@@ -1363,7 +1374,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### ATL — Atlanta, Georgia
-**LAN:** `192.168.33.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.33.0/24`
 
 > Empty office, single router — Robert: "the office had a router plugged in to the internet and
 > literally an empty office." No other legacy infrastructure existed here, see
@@ -1389,7 +1400,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### CHI — Chicago, Illinois
-**LAN:** `192.168.214.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.214.0/24`
 
 **Infrastructure:**
 
@@ -1411,7 +1422,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### SEA — Seattle, Washington
-**LAN:** `192.168.206.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.206.0/24`
 
 **Infrastructure:**
 
@@ -1432,7 +1443,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### SFO — San Francisco, California
-**LAN:** `192.168.145.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.145.0/24`
 
 **Infrastructure:**
 
@@ -1457,7 +1468,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### SYD — Sydney, NSW
-**LAN:** `192.168.29.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.29.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRSYD001`, services stopped,
 > hosted as an ESX VM) — not shown below (this section covers current/live infrastructure
@@ -1489,7 +1500,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### MEL — Melbourne, VIC
-**LAN:** `192.168.61.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.61.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRMEL001`, services stopped) —
 > not shown below (this section covers current/live infrastructure only), see
@@ -1525,7 +1536,7 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 ---
 
 #### AKL — Auckland
-**LAN:** `192.168.93.0/24` · **Domain:** `example.net`
+**LAN:** `192.168.93.0/24`
 
 > This site also has a legacy-naming domain controller (`EXADCRAKL001`, services stopped, left
 > in a bad state) — not shown below (this section covers current/live infrastructure only),
