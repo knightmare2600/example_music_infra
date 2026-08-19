@@ -192,9 +192,21 @@ if ! id ansible &>/dev/null; then
     chmod 0440 /etc/sudoers.d/ansible
 fi
 
+## Detect boot server by gateway IP -- same logic as bootstrap.ipxe/late_command.sh,
+## added 2026-08-19 (this script used to hardcode Edinburgh's IP unconditionally, so
+## it silently fetched the wrong key at Fredericia Havn -- the docs/lab/rac-emulator.md
+## note pointing at the alternate IP never actually worked until this fix).
+GW=$(ip route | awk '/default/ {print $3}')
+if [ "$GW" = "172.16.124.2" ]; then
+  BOOT_SERVER="http://172.16.124.1:8000"
+else
+  BOOT_SERVER="http://192.168.139.50"
+fi
+info "Boot server detected: ${BOOT_SERVER} (gateway: ${GW})"
+
 mkdir -p /home/ansible/.ssh
 chmod 700 /home/ansible/.ssh
-wget -qO - http://192.168.139.50/ansible_sshkey.pub \
+wget -qO - "${BOOT_SERVER}/ansible_sshkey.pub" \
     >> /home/ansible/.ssh/authorized_keys
 chmod 600 /home/ansible/.ssh/authorized_keys
 chown -R ansible:ansible /home/ansible/.ssh
