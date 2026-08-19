@@ -226,40 +226,46 @@ systemctl restart wg-quick@wg0
 
 ---
 
-## Fix: Using `firewallme.sh` with systemd Integration
+## Fix: `wg-quick@wg0`'s systemd Drop-In (as actually implemented in `firewallme.sh`)
 
-`firewallme.sh` is the site hardening/firewall script. It should both apply iptables/nftables rules **and** ensure WireGuard is running. The systemd integration block should be added near the end of the script, after firewall rules are applied.
+The real problem this section is describing is narrower than a generic "make sure the unit is enabled" script: `wg-quick@.service` ships with `After=network.target`, which is satisfied the moment the network subsystem initialises — long before any interface actually has an IP. On boot, `wg-quick` tries to resolve the hub's `Endpoint` before the network is really up, fails, and leaves `wg0` permanently down until manually restarted.
 
-### What was added to `firewallme.sh`
+### The actual fix, `firewallme.sh` (`bootstrap/web/provision/firewallme.sh`)
+
+`firewallme.sh` writes a systemd drop-in for `wg-quick@wg0.service` — it does not touch `systemctl enable`/`start` directly with a bare is-enabled/is-active check the way a generic script might:
 
 ```bash
-# ─── WireGuard systemd integration ───────────────────────────────────────────
-# Ensure wg-quick@wg0 is enabled and running after firewall rules are applied.
-# Interface names: WAN=eth0, LAN=eth1, VPN=wg0
+mkdir -p /etc/systemd/system/wg-quick@wg0.service.d
+cat > /etc/systemd/system/wg-quick@wg0.service.d/wait-online.conf <<EOF
+[Unit]
+After=network-online.target NetworkManager-wait-online.service
+Wants=network-online.target
 
-WG_IFACE="wg0"
-
-echo "[*] Ensuring WireGuard systemd unit is enabled for ${WG_IFACE}..."
-
-# Enable at boot if not already
-if ! systemctl is-enabled --quiet "wg-quick@${WG_IFACE}"; then
-    systemctl enable "wg-quick@${WG_IFACE}"
-    echo "[+] Enabled wg-quick@${WG_IFACE}"
-else
-    echo "[=] wg-quick@${WG_IFACE} already enabled"
-fi
-
-# Start/restart if not active
-if ! systemctl is-active --quiet "wg-quick@${WG_IFACE}"; then
-    systemctl start "wg-quick@${WG_IFACE}"
-    echo "[+] Started wg-quick@${WG_IFACE}"
-else
-    echo "[=] wg-quick@${WG_IFACE} already active"
-fi
-# ─────────────────────────────────────────────────────────────────────────────
+[Service]
+# 5s settle time after NM reports ready — allows route table to stabilise
+# before wg-quick attempts endpoint resolution.
+ExecStartPre=/bin/sleep 5
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=3
+EOF
+systemctl daemon-reload
 ```
 
-This ensures that whenever `firewallme.sh` is run (at boot via rc.local, cron, or manually), WireGuard is also guaranteed to be up.
+`After=network-online.target NetworkManager-wait-online.service` makes systemd wait until NetworkManager reports all required interfaces are genuinely online, not just that the network subsystem exists. The `ExecStartPre=/bin/sleep 5` settle period covers a residual race where route-table updates are still in progress even after NM reports ready. `Restart=on-failure`/`RestartSec=10` self-heals the rare case where `wg-quick` still loses the race; `StartLimitBurst=3` stops a tight restart loop if the hub is genuinely unreachable.
+
+Whether the unit is started immediately depends on the operator's `WAN_ACTIVATE` answer during the `firewallme.sh` run:
+
+```bash
+if [[ "$WAN_ACTIVATE" == true ]]; then
+  systemctl enable --now wg-quick@wg0
+else
+  systemctl enable wg-quick@wg0    # enabled for next boot, not started now — safe on an active SSH session
+fi
+```
+
+This ensures that whenever `firewallme.sh` provisions or re-runs on a firewall, `wg-quick@wg0` is enabled correctly and — once the drop-in's ordering constraint is satisfied — comes up reliably on boot, without racing NetworkManager.
 
 ---
 

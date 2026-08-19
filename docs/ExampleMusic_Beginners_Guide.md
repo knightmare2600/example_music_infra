@@ -101,6 +101,9 @@ If `sites.csv` says a site's subnet is `192.168.76.0/24`, it is `192.168.76.0/24
 | `Country` | Country name |
 | `CountryCode` | ISO country code |
 | `Province` | State/region/province name — e.g. `Scotland` |
+| `OfficeName` | Venue/building name — blank unless the site has a distinct one (e.g. `Brockville Stadium`) |
+| `Street` | Street address |
+| `PostalCode` | Postal/ZIP code |
 | `Subnet` | `/24` subnet — this is the LAN for the site |
 | `Gateway` | The `.253` address — the firewall LAN face |
 | `DC` | The `.10` address — the primary domain controller |
@@ -117,8 +120,10 @@ Malcolm asks: "What's the DC IP for FAL?"
 Jamie does not guess. Jamie runs:
 
 ```bash
-grep '^FAL,' bootstrap/web/proxmox/sites.csv | cut -d',' -f8
+grep '^FAL,' bootstrap/web/proxmox/sites.csv | cut -d',' -f11
 ```
+
+(Field 11 as of this writing — `Site,City,Country,CountryCode,Province,OfficeName,Street,PostalCode,Subnet,Gateway,DC,...`. This is exactly the kind of thing that drifts when a column gets inserted — `OfficeName`/`Street`/`PostalCode` were added 2026-08-04/2026-08-12, which is what shifted `DC` from field 8 to field 11. If this command ever returns something that doesn't look like an IP, check the real header first — `head -1 bootstrap/web/proxmox/sites.csv` — rather than assume the field number.)
 
 Or reads the CSV and finds:
 

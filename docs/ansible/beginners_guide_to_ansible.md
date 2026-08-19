@@ -69,7 +69,7 @@ root, outside `ansible/` entirely:
 |------|------------|
 | `sites.csv` | One row per site — subnet, gateway, city, country, entity, timezone |
 | `devices.csv` | **Exceptions only** — a device row is only needed if it doesn't fit the standard addressing convention |
-| `address_policy.json` | The standard addressing convention (which host-role gets which octet offset) as data |
+| `address_policy.csv` | The standard addressing convention (which host-role gets which octet offset) as data |
 | `begyndelse.json` | Well-known service addresses (DNS, Ansible control node, PBX, Rudder…) for consumers that run *before* Ansible exists on a box (`bindme.sh`, `ansibleme.sh`) |
 | `ad_forest.json` | AD forest identity — domain FQDN, NetBIOS name, DNS forwarders — single source for what used to be three separately hardcoded variables. `domain_fqdn` is genuinely changeable — every consumer derives from it rather than hardcoding `jukebox.internal` — one edit here (e.g. to an illustrative `disco.internal`, not a real value) is all a rename would take, no other file should need touching |
 | `generate_inventory.py` | Reads all of the above, writes `ansible/configs/inventory/*.ini` (one file per site) plus `group_vars/all/site_services.yml` |
@@ -92,7 +92,7 @@ unrelated mechanisms. Mixing them up is an easy, recurring source of confusion:
    (`bindme.sh`, early preseed/unattend stages). Fires automatically on every commit.
 2. **`ansible/playbooks/linux/tools.yml` → `/etc/example-music/` on every Ansible-managed
    Linux host.** Feeds consumers that are themselves Ansible plays — `sites.csv`,
-   `devices.csv`, `address_policy.json`, `ad_forest.json`, and the TDF-derived `ad_*.json`
+   `devices.csv`, `address_policy.csv`, `ad_forest.json`, and the TDF-derived `ad_*.json`
    files all go here identically, via the same `copy:` task pattern in the same playbook.
    This is a normal Ansible run, not automatic — it needs to have actually been run (or
    re-run) against a given host for that host's `/etc/example-music/` copy to be current.
@@ -282,7 +282,7 @@ does for every other Linux box in this estate (see `docs/bootstrap/bootstrapping
 `late_command.sh` already drops an `ansible` system user and the estate's SSH key onto it
 during that same install, before anything Ansible-related has run. In this walkthrough the
 box comes up on `192.168.69.222` — a DHCP lease from CLD's own LAN pool (`.100`–`.249` per
-`address_policy.json`), not the shared `192.168.139.0/24` provisioning network the firewalls
+`address_policy.csv`), not the shared `192.168.139.0/24` provisioning network the firewalls
 land on, since this VM was given a single NIC on CLD's LAN bridge rather than a dual-homed
 WAN/LAN pair.
 
@@ -326,7 +326,7 @@ ansible-playbook -i "192.168.139.243," -i configs/inventory \
 
 You'll be asked to confirm the target hostname (`EXAPVECLD001`) and the derived static IP
 before anything changes. That derivation matters here: `EXAPVECLD001` is CLD's standard PVE1
-slot (`address_policy.json`'s `PVE` role offset, `.5`) **within CLD's own LAN subnet**,
+slot (`address_policy.csv`'s `PVE` role offset, `.5`) **within CLD's own LAN subnet**,
 `192.168.69.0/24` — so the confirmed address is `192.168.69.5`, not a `192.168.139.x`
 address. `configs/inventory/cld.ini` already has this exact entry
 (`EXAPVECLD001 ansible_host=192.168.69.5`, generated straight from `sites.csv` — nothing to
@@ -458,7 +458,7 @@ ping -c 3 10.0.69.1              # from FAL, to CLD's hub tunnel address
 > ```
 
 **What this whole walkthrough demonstrates:** `benarbejde/` as the single source of truth
-(every address above came from `sites.csv`, `devices.csv`, or `address_policy.json` — none
+(every address above came from `sites.csv`, `devices.csv`, or `address_policy.csv` — none
 were invented), `add_host` resolving group membership for a host that doesn't exist in any
 `.ini` file yet, and the same core idea — a fresh box reachable only by its temporary address
 becoming a fully-managed, correctly-configured estate member — playing out identically
@@ -1248,7 +1248,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-06-20 | Added colourised output section — `exa_pretty` callback and `group_vars/all/colours.yml` |
 | 2026-07-09 | Major expansion: added "How This Repository Is Organised" (`benarbejde/` single source of truth), "Inventory and group_vars" (the `host_group_vars` plugin mechanism, why it only auto-loads from inside the loaded inventory path, and the symlink-rejected/real-move fix), "Dynamic Inventory Registration" (`add_host` in `windows_bootstrap`'s preflight), and "Idempotency" (the `target`/`target_hosts` `hosts:` pattern bug found in the 2026-07-09 chain audit). Rewrote "Understanding ansible.cfg" against the actual committed `ansible/ansible.cfg` (previous version was stale and internally inconsistent with the Colourised Output section below it — it showed `ansible.builtin.default` as the callback when `exa_pretty` had already been rolled out). Corrected "Understanding Sudo and Become": the previous version stated `become = True` as the current global setting — it is, and must stay, `False`; Linux-only escalation lives in `group_vars/linux/main.yml`, and a global `become = True` previously broke Windows connectivity in production. |
 | 2026-07-09 | While writing the `ansible.cfg` section against the real file, found `forks`/`timeout`/`retry_files_enabled`/`retry_files_save_path`/`display_skipped_hosts`/`display_failed_stderr` were textually inside the wrong `[section]` and silently inert — confirmed with `ansible.config.manager.ConfigManager`, not just by reading the file. Fixed the real `ansible/ansible.cfg` (all 6 now verified reading from the file), and added the "real lesson in ini section semantics" callout in "Understanding ansible.cfg" above. |
-| 2026-07-18 | Added "Bootstrapping the Base Nodes" — a worked, address-accurate walkthrough building `EXAANSCLD001`, `EXAPVECLD001`, `EXAFWLCLD001`, and `EXADCSCLD001` from a bare Proxmox hypervisor, plus `EXAFWLFAL001` as the WireGuard end-to-end proof. Every address traced against `sites.csv`/`devices.csv`/`address_policy.json` (caught and corrected one real discrepancy along the way: CLD's PVE1 slot is `192.168.69.5`, on CLD's own LAN, not `192.168.139.x`) and against `docs/proxmox/Procedure-PVE-Node-Onboarding.md`'s own worked example. Also found `docs/buildsheets/buildsheet-firewall.md`'s `wget` for `firewallme.sh` omits the real `/provision/` path segment — flagged, not fixed (out of scope for this section). |
+| 2026-07-18 | Added "Bootstrapping the Base Nodes" — a worked, address-accurate walkthrough building `EXAANSCLD001`, `EXAPVECLD001`, `EXAFWLCLD001`, and `EXADCSCLD001` from a bare Proxmox hypervisor, plus `EXAFWLFAL001` as the WireGuard end-to-end proof. Every address traced against `sites.csv`/`devices.csv`/`address_policy.csv` (caught and corrected one real discrepancy along the way: CLD's PVE1 slot is `192.168.69.5`, on CLD's own LAN, not `192.168.139.x`) and against `docs/proxmox/Procedure-PVE-Node-Onboarding.md`'s own worked example. Also found `docs/buildsheets/buildsheet-firewall.md`'s `wget` for `firewallme.sh` omits the real `/provision/` path segment — flagged, not fixed (out of scope for this section). |
 | 2026-07-19 | Added "Renumbering / Reworking Live Conventions" — a general checklist for any future change to a default/convention that already has live instances built against the old value (find every hardcoded copy including break-glass script mirrors, don't trust a grep match without reading the surrounding code, change every default together, confirm a recovery path independent of what's changing, migrate live instances one at a time, update docs in the same pass), with the 2026-07-19 WireGuard spoke tunnel IP change (`.2` → `.1`) as the first worked example — including a real trap hit while making it (`firewallme.sh`'s unrelated `SPOKE_TUNNEL_OCTET` legacy hub-building counter, which looked like the same convention on a bare grep and wasn't). |
 | 2026-07-24 | Reviewed "5. Proving WireGuard end-to-end" against a real live WireGuard debug session (`EXAFWLCLD001`/`EXAFWLBRT001`) — the core walkthrough was already accurate, but the verification step only checked tunnel-level health (`wg show`, ping the hub's own tunnel address), which is exactly what looked perfect for hours while a real bug (CLD's `nftables` black-site exclusion dropping all `wg0 → LAN` forward traffic, `19dd5da`) silently blocked every spoke from reaching anything behind the hub's LAN. Added a callout with the real LAN-client test that actually catches this class of bug, plus a short note on the tunnel-IP input validation added the same session (`6c3527b`). |
 | 2026-08-03 | Added "Real-World Invocations — Day 2: Already-Onboarded Hosts", three worked examples of the same playbooks used above but invoked against hosts that already exist, per Robert's request: a routine firewall re-run (`90-firewall.yml`, plus why `serial: 1` — added 2026-07-31 — matters the moment more than one host is targeted at once, not for a single `-e target=`); a domain controller re-run confirming the `windows_bootstrap` `[B0]` DefaultShell failsafe actually holds after its own `ansible_shell_type` bug was fixed (`00-preflight.yml`'s `bootstrap` tag has to run, so this is the full form, not `windows_dc/README.md`'s narrower "DC stages only"); and a full, untagged `bind9-dns.yml` rebuild of `EXADNSVRK001`, including the real `--tags zones,reload` trap hit this session (the old, superseded Play 1 — never reads `devices.csv`, so two freshly-added devices sat correctly generated but never made it into the live zone until the full run actually ran `zones-full`), with the real captured completion banner and `host` lookup proving it worked. |

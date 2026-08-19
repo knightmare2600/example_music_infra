@@ -38,7 +38,7 @@ Run on a Linux machine (or directly on a Proxmox node). Requires:
 
 ```bash
 # Debian/Ubuntu/Proxmox
-apt install dosfstools mtools
+apt install dosfstools mtools 7zip
 
 # Verify
 mkfs.fat --version
@@ -215,10 +215,13 @@ echo You can now access the SCSI disk and network.
 
 When a new VirtIO release is available:
 
-1. Download the new ISO from Fedora
+1. Download the new MSI from Fedora (`virtio-win-gt-x64.msi` — same as the Prerequisites step
+   above; `make-virtio-disk.sh` only accepts the `.msi`, not the `.iso`, since it 7za-extracts
+   the MSI's own flat `FILE_<driver>_<osver>_<arch>.<ext>` layout — passing it an `.iso` fails
+   the script's own sanity check)
 2. Run `make-virtio-disk.sh` with a versioned output filename:
    ```bash
-   ./make-virtio-disk.sh virtio-win-0.1.280.iso virtio-drivers-0.1.280.img
+   ./make-virtio-disk.sh virtio-win-gt-x64-0.1.280.msi virtio-drivers-0.1.280.img
    ```
 3. Copy to Proxmox storage
 4. At VM creation time, `create-vm.py` presents the image selection menu —

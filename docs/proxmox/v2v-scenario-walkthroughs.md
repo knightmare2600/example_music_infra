@@ -118,11 +118,14 @@ Key sections to capture:
 **Binary check output** — should show all green:
 ```
 [PENDING OUTPUT]
-Expected:
-  [+] virt-v2v     /usr/bin/virt-v2v   —  VMware→KVM guest conversion
-  [+] qemu-img     /usr/bin/qemu-img   —  VMDK inspection and fallback conversion
-  [+] scp          /usr/bin/scp        —  Upload converted disk to Proxmox
-  [+] ssh          /usr/bin/ssh        —  Remote command execution on Proxmox
+Expected (workstation mode — convert-v2v.py's real _BINARIES["workstation"] list, 7 binaries as of 2026-03-12, not the 4-binary set this doc originally showed):
+  [+] virt-v2v       /usr/bin/virt-v2v       —  VMware→KVM guest conversion
+  [+] virt-customize /usr/bin/virt-customize —  Post-conversion guest disk surgery (boot fixes)
+  [+] qemu-img       /usr/bin/qemu-img       —  VMDK inspection and fallback conversion
+  [+] qemu-nbd       /usr/bin/qemu-nbd       —  Expose VMDK as block device for NTFS dirty-flag check
+  [+] ntfsfix        /usr/bin/ntfsfix        —  Clear NTFS dirty flag before conversion
+  [+] scp            /usr/bin/scp            —  Upload converted disk to Proxmox
+  [+] ssh            /usr/bin/ssh            —  Remote command execution on Proxmox
   [+] All required binaries present
 ```
 
@@ -187,9 +190,12 @@ ansible@EXAPVECLD001:~> python3 convert-v2v.py --host 192.168.139.5 --user root@
   BINARY / DEPENDENCY CHECK
   ============================================================
 
-  [+] virt-v2v   /usr/bin/virt-v2v  —  VMware→KVM guest conversion
-  [+] qemu-img   /usr/bin/qemu-img  —  VMDK inspection and fallback conversion
-  [X] qm         NOT FOUND  —  Proxmox VM management (disk import, config)
+  [+] virt-v2v       /usr/bin/virt-v2v       —  VMware→KVM guest conversion
+  [+] virt-customize /usr/bin/virt-customize —  Post-conversion guest disk surgery (boot fixes)
+  [+] qemu-img       /usr/bin/qemu-img       —  VMDK inspection and fallback conversion
+  [+] qemu-nbd       /usr/bin/qemu-nbd       —  Expose VMDK as block device for NTFS dirty-flag check
+  [+] ntfsfix        /usr/bin/ntfsfix        —  Clear NTFS dirty flag before conversion
+  [X] qm             NOT FOUND  —  Proxmox VM management (disk import, config)
 
   The following required tools are missing:
 

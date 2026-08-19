@@ -183,10 +183,18 @@ All site data lives in `sites.csv` (single source of truth). To add a site or ch
    ```
 
    (`zones-full`, not `zones` — that's the tag that actually reads `devices.csv`; see `bind9-dns.yml`'s
-   own header comment.) If you're already SSH'd onto `EXADNSVRK001` itself, `sudo
-   /usr/local/sbin/regen-zone.sh` does the same regeneration locally — both call the same
-   `named-checkzone`/`rndc reload` sequence. `bindme.sh` is the break-glass fallback for when
-   Ansible can't reach this box at all.
+   own header comment.)
+
+   **`regen-zone.sh` is *not* the same as the command above, despite living on the same box —
+   don't use it as a shortcut.** It calls `bindme.sh --zone-only`, and `bindme.sh`'s zone
+   generation is `sites.csv` + a hardcoded `SUFFIX_MAP` only — it never reads `devices.csv` at
+   all. Concretely: `bindme.sh` still hardcodes the pre-2026-07-20 Rudder hostname
+   `exardrcld001`, where the real canonical name (used everywhere else, including the Ancillary
+   Hosts table below) is `exarudcld001`. Regenerating via `regen-zone.sh` produces the *same*
+   result as the plain `zones` tag, not `zones-full` — it will silently drop any `devices.csv`
+   exception and can reintroduce stale hostnames. Use it only as the break-glass fallback
+   `bindme.sh` itself is for — when Ansible genuinely can't reach this box — not as a
+   SSH-shortcut for a routine `zones-full` regen.
    
 3. Confirm the new records are visible:
 
