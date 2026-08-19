@@ -28,7 +28,7 @@ automatically, via WMI `Win32_ComputerSystem.Manufacturer` plus loaded-driver si
 | Detected | Action |
 |----------|--------|
 | `VMware` | Installs VMware Tools via Chocolatey |
-| `QEMU` / `Proxmox` | Installs QEMU guest agent via Chocolatey |
+| `KVM` | Installs QEMU guest agent via Chocolatey — real value for both QEMU and Proxmox VMs (driver signatures/manufacturer string `qemu`/`kvm` both resolve to the literal `"KVM"`, not `QEMU` or `Proxmox`) |
 | Physical / other | Skips guest tools — logs manufacturer string |
 
 > VMware builds are typically **Apple Silicon test VMs via VMware Fusion** (ARM64).  
@@ -57,13 +57,14 @@ today.
 | `busybox` | |
 | `vcredist-all` | |
 | `dotnetfx` | |
-| `sysinternals` | |
 | `windirstat` | |
 | `googlechrome` | GUI-conditional |
 | `firefox` | GUI-conditional |
 | `vlc` | GUI-conditional |
 | `windows-terminal` | GUI-conditional |
 | `dua-cli` | Disk usage — NOT a Chocolatey package; fetched directly from its GitHub release by `tasks/dua_cli.yml`, dropped at `C:\Windows\dua.exe` |
+
+`sysinternals` was removed from this list 2026-08-14 after a live SHA256 checksum-mismatch failure against `EXADCSLAX001` (upstream `download.sysinternals.com` zip updated in place without the Chocolatey package's checksum catching up). Individual Sysinternals tools (ProcExp, ADExplorer, etc.) are instead deployed as committed binaries under `ansible/playbooks/windows_bootstrap/playbooks/files/{x86_64,arm64}/` — same `50-binaries.yml` mechanism as `dua-cli` above.
 
 ### PowerShell 7 Modules
 | Module | Notes |

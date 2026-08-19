@@ -67,13 +67,14 @@ buildsheet's manual fallback below is for everything else (existing fleet, hand-
 
 ## Getting the installer onto the provisioning server / into the repo
 
-`bootstrap/web/windows/` is organised into per-architecture subfolders (`x86_64/`, `arm64/`,
-restructured 2026-08-10 — matches `50-binaries.yml`'s own `files/{x86_64,arm64}/` convention),
+`bootstrap/web/windows/` is organised into per-architecture subfolders (`amd64/`, `arm64/`,
+restructured 2026-08-10 — matches `50-binaries.yml`'s own `files/{x86_64,arm64}/` convention,
+though that one still genuinely uses `x86_64/` as its own subfolder name, a different namespace),
 each holding the real vendor/build filename directly, **committed to this repo**:
 
 | Arch | File | Version | Source |
 |---|---|---|---|
-| x86_64 | `bootstrap/web/windows/x86_64/Salt-Minion-3008.0-Py3-AMD64.msi` | 3008.0 | Official Salt Project release. SHA256 verified against Broadcom's own `X-Checksum-Sha256` response header (`842a03fa627ad51c6fd95fd0801cf771df05281cd8ea0eedf823a2d4f9ca7704`) before being placed here. |
+| x86_64 | `bootstrap/web/windows/amd64/Salt-Minion-3008.0-Py3-AMD64.msi` | 3008.0 | Official Salt Project release. SHA256 verified against Broadcom's own `X-Checksum-Sha256` response header (`842a03fa627ad51c6fd95fd0801cf771df05281cd8ea0eedf823a2d4f9ca7704`) before being placed here. |
 | arm64 | `bootstrap/web/windows/arm64/Salt-Minion-3008.0-Py3-ARM64.msi` | 3008.0 | Custom build, see the ARM64 callout below — **not** from Broadcom. |
 
 This is a deliberate exception to the usual "large binaries aren't committed" convention (see
@@ -131,7 +132,7 @@ To refresh the **x86_64** build when `salt_version_major` bumps:
     no longer serves current releases)
 2. Verify the SHA256 against the download response's own X-Checksum-Sha256 header (or
    packages.broadcom.com's published checksum) before trusting the file
-3. Place it under bootstrap/web/windows/x86_64/ using its real, unmodified filename
+3. Place it under bootstrap/web/windows/amd64/ using its real, unmodified filename
    (e.g. Salt-Minion-3008.0-Py3-AMD64.msi) and update
    82-salt-minion.yml's salt_minion_msi_filenames map to match
 4. Commit (LFS-tracked automatically via .gitattributes)
@@ -154,7 +155,7 @@ before `generate_inventory.py` is re-run to pick it up properly).
 # Run as Administrator. Fetch the MSI matching this machine's own architecture from wherever
 # it's reachable -- e.g. a share, or copy it over directly -- there is no HTTP endpoint
 # serving either (see above, this isn't fetched over the network by the automated path either).
-# Use bootstrap/web/windows/x86_64/Salt-Minion-3008.0-Py3-AMD64.msi or
+# Use bootstrap/web/windows/amd64/Salt-Minion-3008.0-Py3-AMD64.msi or
 # bootstrap/web/windows/arm64/Salt-Minion-3008.0-Py3-ARM64.msi as appropriate -- check
 # $env:PROCESSOR_ARCHITECTURE if unsure which this machine actually is.
 

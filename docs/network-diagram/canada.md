@@ -14,7 +14,7 @@
 > ⚠️ `EXADCRBRK001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (Canada) Inc. · **Landline:** +1 613 555 6xxx · **Mobile:** +1 613 555 6xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra — including BRK's own hub/spoke relay to the NA/APAC sites,

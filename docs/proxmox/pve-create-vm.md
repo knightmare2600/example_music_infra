@@ -4,6 +4,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-19 | 7 pre-existing staleness items fixed (part of the exhaustive docs re-audit, not new work): Command Line Flags table was missing `--bulk`/`--sites-csv`/`--role-codes-csv`; Hardware Defaults + Console tables were missing `ANS`/`RRY`/`RUD`/`SLT` from `SERIAL_CONSOLE_ROLES` and wrongly said those roles default to plain Serial (real default is VGA+Serial) and everyone else defaults to plain VGA (real default is SPICE); overstated SeaBIOS as "required" (OVMF fully supported); wrongly described ISO auto-select as matching a literal `ipxe.iso` filename (real logic is arch-aware substring match); Confirmation Flow claimed all prompts default No except NICs (backwards — only the final create/start prompts default No, everything upstream defaults Yes, and the NIC prompt itself isn't an "accept the layout" confirmation); Role Codes table was missing 15 real codes (`BMC`/`BUS`/`CAR`/`DCR`/`ESX`/`JET`/`MOO`/`MSH`/`RMM`/`RRY`/`RUD`/`SLT`/`TMP`/`TRK`/`VCT`) that existed in `role_codes.csv` since it went CSV-driven 2026-07-26. |
 | 2026-08-18 | arm64 host support implemented: `detect_node_arch()` (new) detects the target node's real architecture via `uname -m` once per session, `machine=virt` now sent to the API for arm64 targets (never sent at all before -- always inherited the node default, i440fx/q35, which don't exist on arm64 KVM). `select_bios_rom()`'s Dell-SLIC ROM menu (x86-only) is bypassed for arm64 in favour of a real seabios-vs-ovmf prompt -- both verified booting live on Robert's own arm64 PVE node (`qm create --machine virt --bios seabios\|ovmf` + `qm start` + `qm terminal`) before writing the code, not assumed. Original assumption going in was "arm64 KVM is UEFI-only" (real ARM hardware usually is) -- PVE's own schema and the live boot test disagreed, corrected before shipping. `select_iso()`'s auto-default now prefers the matching-arch iPXE ISO instead of always preferring amd64. Not yet run end-to-end through the script's own interactive flow against the arm64 node -- only the underlying `qm create`/`qm config`/`qm start` primitives were verified directly; confirm with `--dry-run` then a real create before relying on this for a real build. `convert-v2v.py` has the identical `machine=` gap plus hardcoded amd64-only driver paths -- deliberately out of scope for this pass |
 | 2026-08-15 | Documented an existing, previously-undocumented limitation: `create-vm.py` only ever creates x86_64 guests (no `--arch` flag, no `machine=` parameter, BIOS/firmware selection only knows SeaBIOS/OVMF-x86). Proxmox VE now supports arm64 hosts (PVE 9.2+) -- arm64 KVM guest creation is a real, parked TODO (needs `machine=virt`, OVMF-aarch64 firmware, and real hardware to test against). Not implemented yet, deliberately -- Robert's own call, needs testing against real arm64 Proxmox hardware first |
 | 2026-08-04 | Role/site codes table corrected — `SRV`/`SVR` had drifted from this doc's own 2026-03-03 entry below (a 2026-07-11 fix, commit `b00b376`, flipped the direction without updating this table; Robert then confirmed the final direction 2026-08-04). Current: `SVR` general purpose/current, `SRV` legacy — the 2026-03-03 row below is left as originally written, not edited, per this doc's own history-is-never-deleted convention |
@@ -69,7 +70,10 @@ python3 create-vm.py --help
 | `--password` | Password | Prompted if using password auth |
 | `--node` | Proxmox node name | Auto-detected or prompted |
 | `--dry-run` | Show config without creating anything | Off |
+| `--bulk` | Loop VM creation — prompts for another VM after each one (Ctrl+C to exit) | Off |
 | `--log` | Log file path | `~/pve-vm-create.log` |
+| `--sites-csv` | Path to `sites.csv` | Auto-detect alongside script or in cwd |
+| `--role-codes-csv` | Path to `role_codes.csv` | Auto-detect alongside script or in cwd |
 
 Any flag not supplied on the command line will be prompted at runtime. Nothing is hardcoded.
 
@@ -125,17 +129,23 @@ The script:
 |---|---|
 | `ANS` | Ansible Control Node |
 | `AST` | Atari ST (Retro Hardware) |
+| `BMC` | BMC / iDRAC / iLO / Redfish |
 | `BPS` | Badge Programming Station |
+| `BUS` | Tour bus |
 | `CAM` | Security Camera |
+| `CAR` | Car |
 | `CLK` | Time Clock / Punch Clock |
 | `COF` | Coffee Machine (Smart Appliance) |
+| `DCR` | Domain Controller (Legacy Naming — treated as DCS) |
 | `DCS` | Domain Controller |
 | `DNS` | DNS/BIND Server |
 | `DON` | Donut Vending Machine (Tim Hortons compatible) |
+| `ESX` | VMware ESXi Hypervisor (Legacy) |
 | `FCL` | Fairlight CMI Sampler |
 | `FWL` | Firewall Appliance |
 | `ILO` | Integrated Lights-Out (HP iLO) |
 | `IOT` | IoT / Miscellaneous Embedded Device |
+| `JET` | Jet |
 | `LAP` | Laptop (Windows) |
 | `LCD` | LCD Wallboard / Information Display |
 | `LIN` | LinnDrum Drum Machine |
@@ -143,6 +153,8 @@ The script:
 | `MBP` | MacBook Pro |
 | `MIC` | Microphone (IP/Dante Audio) |
 | `MID` | MIDI Sequencer / Workstation |
+| `MOO` | Moog synth |
+| `MSH` | MeshCentral (Remote Console/Desktop Platform) — RETIRED 2026-08-08, superseded by TacticalRMM's bundled instance |
 | `MUS` | Music Workstation / Studio System / Jukebox |
 | `NAS` | Network Attached Storage |
 | `NIX` | Unix/Linux/Solaris System |
@@ -156,8 +168,12 @@ The script:
 | `RAC` | Remote Access Controller (Dell iDRAC) |
 | `RAD` | Radio Transmitter / Broadcast |
 | `RDR` | Card Reader / Badge Reader |
+| `RMM` | TacticalRMM (Endpoint Monitoring/Inventory) |
+| `RRY` | Rudder Relay |
 | `RTR` | Router |
+| `RUD` | Rudder (Config Management) |
 | `SBC` | Session Border Controller |
+| `SLT` | Salt Master (Config Mgmt — All Windows Nodes) |
 | `SRV` | Server (Legacy) |
 | `SUR` | Microsoft Surface Device |
 | `SVR` | Server (General Purpose — Windows) |
@@ -166,9 +182,12 @@ The script:
 | `TAB` | Tablet |
 | `TAR` | Tape Archiver |
 | `TEA` | Internet Connected Tea/Coffee Machine (RFC2324) |
+| `TMP` | Temporary/Bootstrap-Only Provisioning Server |
+| `TRK` | Truck |
 | `TTY` | Teletype / Serial Terminal / VDU |
 | `TVS` | Television / Digital Signage |
 | `UFC` | UniFi Network Controller |
+| `VCT` | VMware vCenter (Legacy Cluster Management) |
 | `VCU` | Video Conferencing Unit |
 | `VND` | Vending Machine |
 | `WAP` | Wireless Access Point |
@@ -191,12 +210,12 @@ The script suggests sensible defaults based on role, which the technician can ov
 
 | Role Family | Default CPU | Default RAM | Default Disk | Console | Notes |
 |---|---|---|---|---|---|
-| FWL / RTR / SBC / PBX | 2 vCPU | 2048MB | 20GB | Serial | Appliance roles |
-| PVE | 4 vCPU | 8192MB | 120GB | VGA | Proxmox VE node |
-| SRV / SVR | 4 vCPU | 8192MB | 80GB | VGA | Windows servers |
-| NIX | 2 vCPU | 2048MB | 40GB | Serial | Unix/Linux/Solaris |
-| WKS / LAP / MBP / MAC / SUR | 2 vCPU | 4096MB | 80GB | VGA | Desktop/laptop |
-| All others | 2 vCPU | 2048MB | 32GB | VGA | |
+| FWL / RTR / SBC / PBX / ANS / RRY / RUD / SLT | 2 vCPU | 2048MB | 20GB | VGA + Serial | Appliance/console-managed roles (`SERIAL_CONSOLE_ROLES`) |
+| PVE | 4 vCPU | 8192MB | 120GB | SPICE | Proxmox VE node |
+| SRV / SVR | 4 vCPU | 8192MB | 80GB | SPICE | Windows servers |
+| NIX | 2 vCPU | 2048MB | 40GB | VGA + Serial | Unix/Linux/Solaris |
+| WKS / LAP / MBP / MAC / SUR | 2 vCPU | 4096MB | 80GB | SPICE | Desktop/laptop |
+| All others | 2 vCPU | 2048MB | 32GB | SPICE | |
 
 All VMs use `--cpu host` (full CPU pass-through) and have memory ballooning disabled.
 
@@ -229,23 +248,26 @@ the only backends that actually benefit from TRIM — matching
 
 | Role | Default Console | Connect With |
 |---|---|---|
-| FWL, RTR, SBC, PBX | Serial (ttyS0) | `qm terminal VMID` |
-| NIX | Serial (ttyS0) | `qm terminal VMID` |
-| All others | VGA | Proxmox web UI console |
+| ANS, FWL, NIX, PBX, RTR, RRY, RUD, SBC, SLT (`SERIAL_CONSOLE_ROLES`) | VGA + Serial (VGA for boot/iPXE, ttyS0 for OS) | `qm terminal VMID` for the OS console |
+| All others | SPICE (1 monitor) | Proxmox web UI console or `virt-viewer` |
 
-The technician can override the default at the console selection prompt. Serial console VMs behave like headless appliances — no VGA output, the serial port is the only console interface, exactly like a physical Cisco ASA or FortiGate with a rollover cable.
+The technician can override the default at the console selection prompt (4 choices: VGA only, VGA + Serial, Serial only, SPICE). No role defaults to plain Serial-only or plain VGA-only — those exist as manual override options, not defaults. A fully headless "Serial only" VM (no VGA output at all, like a physical Cisco ASA or FortiGate with a rollover cable) is available as override option 3, but isn't any role's default.
 
 ---
 
 ## Boot Order & iPXE
 
-All VMs are configured with SeaBIOS (required for iPXE compatibility) and boot in this order:
+VMs default to SeaBIOS, but this is a default, not a requirement — `select_bios_rom()` lets any
+x86_64 VM pick an OVMF/EFI ROM instead, iPXE works under either. All VMs boot in this order:
 
 1. `scsi0` — local disk (boots installed OS if present)
 2. `ide2` — iPXE ISO (CD-ROM)
 3. `net0` — PXE network boot
 
-The script scans the local ISO store for `ipxe.iso` and pre-selects it if found. The technician can select a different ISO or skip ISO attachment entirely.
+The script scans the local ISO store for an iPXE ISO matching the target node's architecture
+(`ipxe_amd64.iso`/`ipxe_arm64.iso` — substring + arch match, not a literal `ipxe.iso` filename)
+and pre-selects it if found, preferring `ipxe_amd64.iso` on an x86_64 node and `ipxe_arm64.iso`
+on an arm64 node. The technician can select a different ISO or skip ISO attachment entirely.
 
 This means a fresh VM with an empty disk will fall through to the iPXE ISO on second boot attempt, chainloading your boot menu from `192.168.139.50` automatically (Edinburgh; `172.16.124.1:8000` if the VM is on Fredericia Havn's provisioning network instead — `menu.ipxe`'s gateway detection picks the right one, nothing to configure per-VM).
 
@@ -278,16 +300,19 @@ If the technician declines the auto NIC layout, the VM is created without NICs a
 
 The script confirms at each major stage before proceeding:
 
-1. **Connection** — connects and shows node info
-2. **Hardware** — shows CPU/RAM/disk, asks to accept
-3. **Storage** — shows storage selection, asks to accept
-4. **ISO** — shows ISO selection, asks to accept
-5. **Console** — shows console type, asks to accept
-6. **Network** — shows NIC layout, asks to accept
-7. **Final summary** — shows complete VM config, asks to create
-8. **Start VM** — after creation, asks whether to start immediately
+1. **Connection** — connects and shows node info (no confirmation prompt)
+2. **Hardware** — shows CPU/RAM/disk, "Accept hardware settings?" — defaults **Yes**
+3. **Storage** — shows storage selection, "Accept storage selection?" — defaults **Yes**
+4. **ISO** — shows ISO selection, "Accept ISO selection?" — defaults **Yes**
+5. **Console** — shows console type, "Accept console selection?" — defaults **Yes**
+6. **Network** — "Configure NICs now?" **before** the layout is built, not an "accept the shown layout" confirmation — defaults **Yes**
+7. **Final summary** — shows complete VM config, "Create this VM?" — defaults **No**
+8. **Start VM** — after creation, "Start VM now?" — defaults **No**
 
-All confirmation prompts default to **No** except the NIC layout confirmation which defaults to Yes (since the auto layout is almost always correct).
+Only the final two (actually creating the VM, and starting it) default to No. Everything upstream
+of that (Hardware/Storage/ISO/Console accept, and the NIC configuration prompt) defaults to Yes —
+the opposite of "everything defaults to No except NICs." In bulk mode (`--bulk`), there's also a
+"Create another VM?" loop-continuation prompt after each VM, defaulting Yes.
 
 ---
 

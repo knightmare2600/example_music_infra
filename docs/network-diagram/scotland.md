@@ -14,7 +14,7 @@
 **PVE nodes:** 3 (hub) · **VPN parent:** CLD (primary head node)  
 **Entity:** Example Music (Scotland) Ltd · **Landline:** +44 1324 500 0xxx · **Mobile:** +44 7700 903 2xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Prototype only** — hand-built to agree the visual convention before generalising into
 > `generate_network_diagrams.py`. Right-angle edges, black/white boxes, three-line `<br/>` labels,
@@ -331,7 +331,7 @@ graph TD
 > ⚠️ `EXADCSEDI003` — DFSR stopped, C: drive at 5% free. Immediate action required.  
 **Entity:** Example Music (Scotland) Ltd · **Landline:** +44 131 496 0xxx · **Mobile:** +44 770 090 3xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Real hardware: ESXi (not Proxmox) with
 > a genuinely correct Dell iDRAC9 BMC (unlike FAL, `RAC` was right here — not every site made the
@@ -627,7 +627,7 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (Scotland) Ltd · **Landline:** +44 141 496 00xx · **Mobile:** +44 770 090 5xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
 > PVE; no SBC; no `RRY`; no WireGuard on old infra) — but CLY is a genuine exception to the first
@@ -778,7 +778,7 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (Scotland) Ltd · **Landline:** +44 163 249 60xx · **Mobile:** +44 770 090 82xx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
 > PVE; no SBC; no `RRY`; no WireGuard on old infra). Like CLY: real hardware was an HP ML310e +
@@ -1072,7 +1072,7 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (Scotland) Ltd · **Landline:** +44 1224 496 0xxx · **Mobile:** +44 7700 900 2xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
 > PVE; no SBC; no `RRY`; no WireGuard on old infra; `CAM TODO` now defaults to "not yet built,
