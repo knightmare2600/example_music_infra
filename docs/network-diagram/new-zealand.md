@@ -14,7 +14,7 @@
 > ⚠️ `EXADCRAKL001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (New Zealand) Tapui · **Landline:** +64 9 300 0xxx · **Mobile:** +64 21 900 2xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra). Real, working ESX on HP hardware, HPE iLO5-managed. The

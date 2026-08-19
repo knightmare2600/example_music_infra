@@ -13,7 +13,7 @@
 **PVE nodes:** 1 · **VPN parent:** ODE  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 00 000 xxx · **Mobile:** +45 2x xxx xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
 > PVE; no SBC; no `RRY`; no WireGuard on old infra). Real working ESX box confirmed
@@ -150,7 +150,7 @@ graph TD
 **PVE nodes:** 3 (EU hub) · **VPN parent:** CLD (EU backup)  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 00 000 xxx · **Mobile:** +45 2x xxx xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra — including ODE's own hub/spoke relay to the EU sites,
@@ -446,7 +446,7 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** ODE  
 **Entity:** Example Music (Danmark) ApS · **Landline:** +45 00 000 xxx · **Mobile:** +45 2x xxx xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra). Bare metal, same as KGE — no ESX layer.

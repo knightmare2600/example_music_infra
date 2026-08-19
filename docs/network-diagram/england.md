@@ -13,7 +13,7 @@
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 207 496 0xxx · **Mobile:** +44 770 090 0xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
 > PVE; no SBC; no `RRY`; no WireGuard on old infra). More unused hardware — the Dell iDRAC9
@@ -157,7 +157,7 @@ graph TD
 **PVE nodes:** 1 · **VPN parent:** FAL  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 121 496 0xxx · **Mobile:** +44 7700 900 2xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (ESX not
 > PVE; no SBC; no `RRY`; no WireGuard on old infra). BIR is the first England site with a
@@ -1136,7 +1136,7 @@ graph TD
 *Note: WAP/RTR-only site — minimal infrastructure.*  
 **Entity:** Example Music (England) Ltd · **Landline:** +44 247 765 0xxx · **Mobile:** +44 7700 901 2xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Robert: "COV only had a WAP/RTR
 > initially" — confirms the page's own "WAP/RTR-only site" note over the box's own fuller

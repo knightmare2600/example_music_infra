@@ -14,7 +14,7 @@
 > ⚠️ `EXADCRSYD001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (Australia) Pty Ltd · **Landline:** +61 2 9000 0xxx · **Mobile:** +61 400 900 2xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra). BMC confirmed Dell iDRAC9 (kept as documented — HP was a
@@ -201,7 +201,7 @@ graph TD
 > ⚠️ `EXADCRMEL001` — DNS, Netlogon and KDC services stopped.  
 **Entity:** Example Music (Australia) Pty Ltd · **Landline:** +61 3 9000 0xxx · **Mobile:** +61 400 901 2xxx
 
-### 🕰️ Old Network (legacy, hand restyled — prototype, not yet generated)
+### 🕰️ Old Network (legacy, machine-generated from devices.csv/legacy-devices.csv)
 
 > **Corrected against Robert's real facts, 2026-07-31.** Standing corrections applied (no SBC;
 > no `RRY`; no WireGuard on old infra). Real, working ESX (HPE iLO5-managed), replaced by a new

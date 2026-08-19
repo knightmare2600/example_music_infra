@@ -122,9 +122,15 @@ manual address instead.
 | Provisioning server reachable | `192.168.139.50` for Ansible key fetch |
 | DNS working | `jukebox.internal` resolves from the site |
 
-> **Fredericia Havn note:** `192.168.139.50` above is Edinburgh's provisioning server. At
-> Fredericia Havn it's `172.16.124.1:8000` (gateway `172.16.124.2`) — see
-> `docs/bootstrap/bootstrapping.md` §4.1a.
+> **Fredericia Havn note — this doesn't actually work yet, don't rely on it as written.**
+> `192.168.139.50` above is Edinburgh's provisioning server; at Fredericia Havn it's
+> `172.16.124.1:8000` (gateway `172.16.124.2`) — see `docs/bootstrap/bootstrapping.md` §4.1a.
+> But `rac-setup.sh` (line 197) hardcodes the Edinburgh IP unconditionally, with no gateway
+> detection like every other real bootstrap consumer (`late_command.sh`, `menu.ipxe`,
+> `first-boot.sh`) has — knowing the right IP doesn't help, the script never asks for it or
+> detects it. At Fredericia Havn, edit `rac-setup.sh`'s `wget` line to point at
+> `172.16.124.1:8000` before running it, or add the same gateway-detection pattern the other
+> scripts use. Not fixed here — this is a script change, out of scope for a docs-only pass.
 
 ---
 
