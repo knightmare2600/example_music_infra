@@ -28,6 +28,7 @@
 | 2026-07-27 | §2.3's `web/` directory tree and "not committed" table updated for the `debian/` split into `trixie/` (current-stable, fetched via `benarbejde/asset_manifest.json`) and `bookworm/` (3CX's installer kernel, confirmed genuine unmodified Debian and moved here rather than duplicated), plus a new `3cx/` entry (3CX Phone System's own installer, custom initrd + preseed, driving `menu.ipxe`'s new `:3cx-install` entry). Note: this section's older "already present"/"not committed" framing predates several since-completed sessions of `benarbejde/asset_manifest.json` fetch work (Spejder, klargoring, wimboot, OpenBSD, gparted now genuinely committed via git-lfs) and still shows stale detail elsewhere (e.g. OpenBSD `7.5`, `rocky/` vs the real `rockylinux/`) — not corrected in this pass, flagged for a full re-sweep of this table separately. |
 | 2026-07-27 | Follow-up to the above, same day: full re-sweep of §2.3's asset table against the real `bootstrap/web/` tree and `check_bootstrap_assets.py`'s live output, first since 2026-07-10. Fixed OpenBSD `7.5`→`7.9` and the `rocky/`/`rockylinux/` conflation (`rocky/` holds only a dead `install.ks`; the real, menu-referenced `rockylinux/` doesn't exist yet). Added rows for `proxmox/klargoring/` (present, wasn't in the table at all — post-dates the table's last edit) and corrected several "No"/blank statuses to reflect what's actually now committed via git-lfs (Spejder, klargoring, wimboot loaders, OpenBSD, GParted x86_64). Real find while re-verifying against the filesystem rather than trusting the table: `arch/x86_64/airootfs.sfs` and `initramfs-linux` are literal placeholder text files ("x86_64 airootfs.sfs goes here"), not real assets — only `vmlinuz-linux` is a genuine committed kernel — so the Arch entry was previously marked "already present" when it doesn't actually boot. Flagged in the table, not built (Robert's own custom airootfs, needs building not fetching — separate task). Confirmed `alpine`/`ubuntu` menu entries are Robert-confirmed obsolete, not a gap to fill. |
 | 2026-07-27 | Second follow-up, same day, acting on Robert's direct decisions rather than just flagging them: Arch Linux, Rocky Linux, and Ubuntu (Alpine dd-writer) removed entirely — `bootstrap/web/arch/`, `bootstrap/web/rocky/install.ks`, the Ubuntu apkovl-build script, the Arch PXE setup doc, and the corresponding `menu.ipxe` sections all deleted (`menu.ipxe` v2.10). Fixed a real, previously-undiagnosed bug in `:hdt` along the way — it chained to `pxelinux.0`, which needs TFTP for its own follow-up fetches, and this server has no TFTP daemon anywhere; switched to `lpxelinux.0` (SYSLINUX's HTTP-native PXELINUX build), added a `benarbejde/asset_manifest.json` archive entry for it plus `hdt.c32`/`libcom32.c32`/`libutil.c32` (SYSLINUX 6.03), and a local `bootstrap/web/hdt/pxelinux.cfg/default` auto-booting `hdt.c32`. This surfaced a second real gap: `archives[]` entries had no checksum-verification support at all in any of the 3 fetch scripts despite "every fetch is checksum-verified" being this repo's own stated principle (gparted's entry was already silently unverified) — added optional `checksum_file_url`/`checksum_file_entry` support to `fetch_archive`/`Invoke-ArchiveFetch` in all three scripts, wired it for the new hdt/ entry (real end-to-end test: fetch, checksum-verify, extract, all passed), left gparted's entry as a documented, pre-existing gap since SourceForge doesn't publish an equivalent checksum file. Also added `bootstrap/web/winpe/README.txt` explaining why the `.wim`s are never committed, so an empty `winpe/` doesn't read as a mistake. `gparted/arm64/` intentionally left alone — Robert is building a real arm64 image separately, not wired in until it exists and can be tested. §2.3's tree/table and §4.4's quoted menu transcript updated to match. |
+| 2026-08-19 | 4 findings fixed from the exhaustive docs re-audit. §8.2's stage-mapping table was completely wrong — the "22-stage... 6-11 software installation" table mapped stages 6-12 to entirely different tasks than what the script actually does at those numbers (confirmed by grepping every real `# ---------- Stage N: ... ----------` marker directly: the top stage is 23, not 22, and stages 6-22b cover power/locale/screenlock/wallpaper/darkmode *before* Chocolatey even runs at 11, not starting with it). Rebuilt the whole table against the real markers. §4.3's "verbatim" `bootstrap.ipxe` transcript was missing the 2026-07-11 gateway-detection block that this doc's own surrounding prose (§4.1a) already said was added — added it back, quoted from the real current file. `first-boot.sh`'s claimed "~145 lines" corrected to the real 214. §6.1's "Summary and next steps" block claimed to be printed "verbatim" but was actually discursive explanatory prose, contradicting §6.4's own genuinely-verbatim transcript of the same step a few sections later — reframed §6.1 as reasoning/commentary pointing at §6.4 for the real output, rather than a second, different "verbatim" claim. |
 
 ---
 
@@ -650,6 +651,18 @@ ifconf --timeout 15000 || goto dhcp_failed
 echo Got address: ${net0/ip}
 echo Gateway:     ${net0/gateway}
 echo
+
+## ------------------------------------------------------------
+## Gateway-based boot-ip detection (matches menu.ipxe's ${site-prefix}
+## logic exactly, added 2026-07-11). Only actually used if DNS fails
+## entirely below (try_ip) -- the ansible/www DNS names are tried first
+## and work from anywhere -- but when it IS used, it must point at
+## whichever datacentre this machine is actually booting from, not
+## always Edinburgh.
+## ------------------------------------------------------------
+iseq ${net0/gateway} 172.16.124.2 && set boot-ip 172.16.124.1:8000 || set boot-ip 192.168.139.50
+echo Boot-ip (DNS-failure fallback only): ${boot-ip}
+echo
 goto fetch_menu
 
 :dhcp_failed
@@ -1058,7 +1071,7 @@ The `first-boot.sh` is fetched and executed automatically by the PVE installer a
 > `40-scripts.yml` (dynamic MOTD), and `group_vars/pvenodes/main.yml` (the extra packages). kvm-group
 > membership and dotfiles/zsh were dropped from the script entirely rather than moved, since
 > `20-ansible-access.yml` and `playbooks/linux/tools.yml` already did them redundantly. The step list
-> below is quoted directly from the real, current `bootstrap/web/proxmox/first-boot.sh` (~145 lines,
+> below is quoted directly from the real, current `bootstrap/web/proxmox/first-boot.sh` (214 lines,
 > down from 576) — **this is the single most consequential correction in this document for anyone about
 > to actually run this script**, since the old version would have had you sitting at a keyboard waiting
 > for prompts and package installs that no longer happen here.
@@ -1081,40 +1094,32 @@ interactive prompt left in this script at all).
 
 **Summary and next steps**
 
-Prints a short summary (current DHCP IP, ansible user + key count) and — this is the important part —
-tells you exactly what to run next, verbatim:
+Prints a short summary (current DHCP IP, ansible user + key count) and a compact boxed "NEXT STEP"
+banner telling you exactly what to run next — see §6.4 below for the real, verbatim terminal
+output; the block previously shown here was explanatory prose ABOUT that step, not what the
+script actually prints (it's far more discursive than the script's terse boxed banner).
 
-```
-NEXT STEP: Ansible finishes this node's setup
+The reasoning behind that next command, in full (§6.4's banner states the command but not why it
+needs both extra flags): `-i configs/inventory` (a second, additional `-i` source, not a
+replacement) is needed purely so `group_vars/pvenodes/` — e.g. `pve_packages` — has a path to be
+found from at all; without it, later stages like `10-packages.yml` fail with `'pve_packages' is
+undefined`. `-e target=` (same address as the first `-i`) is needed because the full `site.yml`
+chain this now runs straight into (see below) resolves its own `hosts:` pattern before any task in
+the run executes, so it can't pick up the address from a fact set earlier in the same run — and
+without it, once `configs/inventory` is loaded, this playbook's own plays would otherwise match
+every real PVE node in the whole inventory, not just this one. Forgetting either fails fast (this
+playbook checks for the inventory source, and Ansible itself hard-fails immediately on a missing
+target) before anything is touched.
 
-This node still has its installer placeholder hostname and a DHCP IP -- that's expected. From
-the Ansible control node, run:
-
-  ansible-playbook -i "<this node's current DHCP IP>," -i configs/inventory \
-    -e target="<same DHCP IP>" playbooks/proxmox/bootstrap-new-node.yml
-
-Both extras are required. -i configs/inventory (a second, additional -i source, not a
-replacement) is needed purely so group_vars/pvenodes/ -- e.g. pve_packages -- has a path to be
-found from at all; without it, later stages like 10-packages.yml fail with "'pve_packages' is
-undefined". -e target= (same address as the first -i) is needed because the full site.yml chain
-this now runs straight into (see below) resolves its own hosts: pattern before any task in the
-run executes, so it can't pick up the address from a fact set earlier in the same run -- and
-without it, once configs/inventory is loaded, this playbook's own plays would otherwise match
-every real PVE node in the whole inventory, not just this one. Forgetting either fails fast
-(this playbook checks for the inventory source, and Ansible itself hard-fails immediately on a
-missing target) before anything is touched.
-
-You'll be prompted for this node's real hostname (from your build sheet, e.g. EXAPVEKGE001) --
+You'll be prompted for this node's real hostname (from your build sheet, e.g. `EXAPVEKGE001`) —
 it sets the real hostname and static network config, then continues straight into the full
-site.yml chain (packages incl. GRUB serial console, access setup, /etc/example-music/
+`site.yml` chain (packages incl. GRUB serial console, access setup, `/etc/example-music/`
 deployment, scripts, virt-tools, proxmorph, systemd units) in the same run, still connected via
-the DHCP IP throughout. Only once everything is done does it reboot -- once, at the very end,
-not before -- to apply the identity/network change. The SSH session on this DHCP IP will not
-survive that reboot -- reconnect via the new hostname/IP once it's back up (the site's PVE1 slot
-is already in configs/inventory/, generated active by default -- see generate_inventory.py --
-there is nothing to add by hand). At that point the node is fully onboarded; nothing further to
-run.
-```
+the DHCP IP throughout. Only once everything is done does it reboot — once, at the very end, not
+before — to apply the identity/network change. The SSH session on this DHCP IP will not survive
+that reboot — reconnect via the new hostname/IP once it's back up (the site's PVE1 slot is already
+in `configs/inventory/`, generated active by default — see `generate_inventory.py` — there is
+nothing to add by hand). At that point the node is fully onboarded; nothing further to run.
 
 **No reboot is required or performed automatically** — nothing left in this script needs one, so unlike
 the pre-2026-07-10 version there is no `y/N` reboot prompt at all any more.
@@ -1403,10 +1408,11 @@ path (`\\DC01\deploytools\`) — no `Z:` drive mapping, no credential environmen
 
 ### 8.2 Join-DomainAndBootstrap.ps1
 
-The PowerShell script runs as a 22-stage bootstrap (stages 0, 0b, 1 through 22, plus 17b and 22b —
-see the script's own `# ---------- Stage N: ... ----------` comments for the authoritative list; the
-"12-stage" figure previously stated here was wrong). A sentinel file at
-`C:\Windows\Temp\PostOOBE-Bootstrap.done` prevents re-running.
+The PowerShell script runs as a 27-label bootstrap (stages 0, 0b, 1 through 23, plus 17b and 22b —
+see the script's own `# ---------- Stage N: ... ----------` comments for the authoritative list;
+confirmed by grepping every stage marker directly 2026-08-19, the top stage is 23 not 22, and the
+"22-stage" figure previously stated here was itself wrong, as was the whole 6-12 mapping table
+below it). A sentinel file at `C:\Windows\Temp\PostOOBE-Bootstrap.done` prevents re-running.
 
 **Stage 1 — Hypervisor detection**
 
@@ -1428,18 +1434,34 @@ Queries AD via `System.DirectoryServices.DirectorySearcher` and lists available 
 
 Renames the computer if needed, then calls `Add-Computer` to join the domain into the selected OU using the credentials entered in Stage 4.
 
-**Stage 6–11 — Software installation**
+**Stage 6–22b — System configuration and software installation**
 
-| Stage | What is installed |
+Corrected 2026-08-19 against the script's own real `# ---------- Stage N: ... ----------` markers
+— the table below previously compressed stages 6-12 into a completely different, wrong mapping.
+
+| Stage | What happens |
 |---|---|
-| 6 | Chocolatey package manager |
-| 7 | VMware Tools *or* QEMU guest agent (platform-dependent) |
-| 8 | RustDesk (from local `DeployTools\utils\` copy if present, else Chocolatey) |
-| 9 | WinSCP, PuTTY, Hyper, Notepad++, PowerShell 7, 7-Zip, Far Manager, dua-cli |
-| 10 | RSAT: Active Directory, DNS, Group Policy tools |
-| 11 | PS7 modules: PSConsoleTools, PSWindowsUpdate, PSWriteColor, PSReadLine, Terminal-Icons, CompletionPredictor |
+| 6 | Power settings and pagefile configuration |
+| 7 | Locale |
+| 8 | Screen lock and inactivity timeout |
+| 9 | Corporate wallpaper |
+| 10 | Dark mode |
+| 11 | Chocolatey package manager |
+| 12 | VMware Tools *or* QEMU guest agent (platform-dependent) |
+| 13 | RustDesk (from local `DeployTools\utils\` copy if present, else Chocolatey) |
+| 14 | Baseline packages: WinSCP, PuTTY, Hyper, Notepad++, PowerShell 7, 7-Zip, Far Manager, dua-cli |
+| 15 | RSAT: Active Directory, DNS, Group Policy tools |
+| 16 | OpenSSH |
+| 17 | RDP |
+| 17b | Serial console / EMS / SAC |
+| 18 | PSWindowsUpdate |
+| 19 | PS7 modules: PSConsoleTools, PSWindowsUpdate, PSWriteColor, PSReadLine, Terminal-Icons, CompletionPredictor |
+| 20 | JetBrainsMono Nerd Font |
+| 21 | PS7 profile |
+| 22 | Hyper config |
+| 22b | Windows Terminal install + config |
 
-**Stage 12 — Finish**
+**Stage 23 — Finish**
 
 Writes the sentinel file and reboots after 20 seconds.
 

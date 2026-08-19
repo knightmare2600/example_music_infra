@@ -63,7 +63,9 @@ Fluxbox is used in preference to a full desktop environment such as XFCE in orde
 - Building the ISO
 - Extracting PXE boot files (`vmlinuz`, `initrd.img`, `filesystem.squashfs`) from the ISO
 - Deploying PXE files to the provisioning server
-- Updating `bootstrap.ipxe` to serve the arm64 GParted menu entry
+- Updating `menu.ipxe` to serve the arm64 GParted menu entry (`bootstrap.ipxe` has no OS menu
+  entries at all, only DHCP + fetching `menu.ipxe` — corrected 2026-08-19, was named wrong
+  throughout this doc's body)
 
 ### 2.2 Out of Scope
 
@@ -108,7 +110,7 @@ Fluxbox is used in preference to a full desktop environment such as XFCE in orde
 3. VM has at least **20 GB** free disk space for the build
 4. VM has at least **4 GB** RAM (8 GB recommended)
 5. SSH access to the provisioning server (`192.168.139.50`) from the build machine, or a method to transfer files (SCP/SFTP)
-6. `bootstrap.ipxe` on the provisioning server is the current version with `${arch}` support
+6. `menu.ipxe` on the provisioning server is the current version with `${arch}` support
 
 ### 4.1 VMware Fusion — Guest Setup Notes
 
@@ -893,16 +895,18 @@ All three should return `HTTP/1.1 200 OK`.
 
 ### 5.13 iPXE Boot Entry
 
-The `bootstrap.ipxe` GParted entry already uses `${arch}` for path selection. The arm64 entry resolves to:
+The `menu.ipxe` GParted entry (not `bootstrap.ipxe` — that file only does DHCP + fetches
+`menu.ipxe`, corrected 2026-08-19) already uses `${arch}` for path selection. The real current
+entry (quoted directly, `bootstrap/web/menu.ipxe`):
 
 ```ipxe
 :gparted
-kernel ${boot-url}/gparted/${arch}/vmlinuz boot=live components fetch=${boot-url}/gparted/${arch}/filesystem.squashfs
+kernel ${boot-url}/gparted/${arch}/vmlinuz boot=live union=overlay components ip=dhcp noswap fetch=${boot-url}/gparted/${arch}/filesystem.squashfs
 initrd ${boot-url}/gparted/${arch}/initrd.img
 boot
 ```
 
-No changes to `bootstrap.ipxe` are required once the files are deployed to the correct path.
+No changes to `menu.ipxe` are required once the files are deployed to the correct path.
 
 ---
 

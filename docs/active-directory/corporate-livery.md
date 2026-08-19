@@ -31,7 +31,9 @@ This document covers the configuration of the standard jukebox.internal user env
 It also covers deploying the Ansible SSH public key to both Windows and Linux nodes so that Ansible can authenticate without passwords —
 currently a manual bootstrap step, intended to be automated once Ansible itself is operational.
 
-**Ansible public key:** `ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCyEVQgZP5f3dSLQ/cK7CV1tjN152BhZGQ7evsOTARTG5o9AmMzn4xFurdvmkFli4dEr7HZ3Dp83jxAMbHJ7d0eVuYNHG1n7ktm4FwYPhzBS3Kni3UvM91TeB6kvNZU1jFVE3oaDlft/C104M5S72zUx9SIzI5XH3fUyssAQEGoEoLzW1u4Tj84pxdXoIdGAGJCZ/gZJJFoPGLNkn3m19ML5EQzIpD4sO6yhODVu7gc9RckFGJpTD1CgKa5q4RPWPMN2y3Xw/J95VTHV8+NCBNKGzoVGdxu1E94+aCV5UCaxvgtLGcjJfv4D8Yrnxd//ZTjFYmT+DdIc6XsgYDYvr7Eoanv+bg8mtVVKxhwsxD3XOoxVdLhvCfYlg9IjXPG65GoTDrZuRfkUA6e1YnEaC4wvyXtwcnMV5NaklwAiIH5VLLo6laK1lyxr1tZEVpYx0F0S9S+oVDRPdpoVH98zE8JkPGWI6xSwaekMUMrAu5fZ/7Dfw2LAwAG7dixMroAj3c= knightmare@ansible`  
+**Ansible public key:** fetch live, don't copy-paste a key from this doc — the literal key
+previously shown here (fixed 2026-08-19) didn't match the real file on the server at all, and any
+hardcoded copy will drift the next time the real key rotates. Always pull it fresh:
 **Key URL:** `http://192.168.139.50/ansible_sshkey.pub`
 
 > **Fredericia Havn note:** the key URL above is Edinburgh's. At Fredericia Havn it's
