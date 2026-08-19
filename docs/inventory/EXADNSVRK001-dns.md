@@ -31,7 +31,7 @@ It answers two types of query:
 - **Authoritative** — `jukebox.internal` names and reverse PTR lookups for all site subnets. Any client anywhere on any site subnet can query it for these.
 - **Recursive** — External names (e.g. `debian.org`) forwarded to `1.1.1.1` / `9.9.9.9`. Recursion is only permitted from `192.168.139.0/24` (the provisioning network). Site clients that need external resolution use their local firewall or ISP DNS.
 
-The zone content is generated entirely from `sites.csv` — the same single source of truth used by `firewallme.sh` and `site-inventory-audit.py`. You do not edit zone files by hand except to add one-off records at the bottom (see [Section 5](#5-adding-a-one-off-record)).
+The zone content is generated from `sites.csv` (every site's standard-role addresses) merged with `devices.csv` exceptions (the `zones-full` tag — see Section 3 below) — the same single source of truth used by `firewallme.sh` and `site-inventory-audit.py`. You do not edit zone files by hand except to add one-off records at the bottom (see [Section 5](#5-adding-a-one-off-record)).
 
 ---
 
@@ -54,6 +54,7 @@ Contains one A record per standard role address per site. The host-to-suffix map
 | `.7`   | EXAPVE   | `exapvegla003.jukebox.internal`   |
 | `.10`  | EXADCS   | `exadcsgla001.jukebox.internal`   |
 | `.11`  | EXADCS   | `exadcsgla002.jukebox.internal`   |
+| `.12`  | EXARRY   | `exarrygla001.jukebox.internal`   |
 | `.48`  | EXASBC   | `exasbcgla001.jukebox.internal`   |
 | `.250` | EXASWI   | `exaswigla001.jukebox.internal`   |
 | `.251` | EXASWI   | `exaswigla002.jukebox.internal`   |

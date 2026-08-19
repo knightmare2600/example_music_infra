@@ -30,8 +30,10 @@ Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.0.1
 ### Chocolatey Packages (choco install)
 ```
 7zip.install  notepadplusplus.install  hyper  putty.install  winscp.install  far  powershell-core
-rustdesk.install  edit  sdelete  wget  busybox  vcredist-all  dotnetfx  sysinternals  windirstat
+rustdesk.install  edit  sdelete  wget  busybox  vcredist-all  dotnetfx  windirstat
 ```
+
+`sysinternals` was removed from this list 2026-08-14 after a live SHA256 checksum-mismatch failure against `EXADCSLAX001` (upstream `download.sysinternals.com` zip updated in place without the Chocolatey package's checksum catching up). Individual Sysinternals tools (ProcExp, ADExplorer, etc.) are instead deployed as committed binaries under `ansible/playbooks/windows_bootstrap/playbooks/files/{x86_64,arm64}/`.
 
 > **RustDesk** is also pre-staged in `C:\DeployTools\utils\` on the WinPE image.  
 > Acknowledge at build time that RustDesk is installed and reachable before signing off.

@@ -5,6 +5,15 @@
 > copy — this file's own changelog never picked up the 2026-07-08/2026-07-12 fixes made to the
 > real one (CLD/VRK subnet corrections, FWL-before-PVE build order, FWL/.253 vs RTR/.1). Kept for
 > history, not deleted, but do not treat this as current — use `network-inventory.md`.
+>
+> **Also missing 8 real sites entirely (confirmed 2026-08-19 against the current `sites.csv`):**
+> AAR, BRT, DRS, DUS, FRE, NYB, SEA, SFO — none appear anywhere in the Global Site Summary below
+> or in any per-site section. Not backfilled here — this file is a frozen snapshot kept for
+> history, and reconstructing 8 sites' worth of data from current `sites.csv` would make it a
+> mix of genuinely historical and freshly-generated content, undermining the point of keeping it
+> as a snapshot at all. **`network-inventory.md` is missing the same 8 sites too** (checked
+> 2026-08-19, not assumed) — this isn't a gap unique to the superseded copy, it needs fixing at
+> the real, current file, not here.
 
 > **Classification:** Internal — Infrastructure
 > **Forest:** `jukebox.internal`

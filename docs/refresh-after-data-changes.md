@@ -67,7 +67,7 @@ After any edit to `benarbejde/sites.csv`/`devices.csv`/`role_codes.csv`/
 | If you're about to... | Re-run this first |
 |---|---|
 | Run `create-vm.py`, or anything else that reads `/etc/example-music/*` **directly on a Proxmox node** | `ansible-playbook playbooks/linux/tools.yml --limit <that PVE node>` |
-| Run any of the 12 gated playbooks listed above | Nothing extra — the gate catches a stale control-node copy for you |
+| Run any of the 14 gated playbooks listed above | Nothing extra — the gate catches a stale control-node copy for you |
 | Expect a new/changed device to resolve in DNS | `ansible-playbook playbooks/bind9/bind9-dns.yml --tags zones-full,reload` against `EXADNSVRK001` |
 | Run anything else, on any other host, that reads `/etc/example-music/*` directly (not via the control node) | `ansible-playbook playbooks/linux/tools.yml --limit <that host>` |
 
