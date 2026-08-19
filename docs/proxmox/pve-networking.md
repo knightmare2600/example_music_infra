@@ -133,7 +133,7 @@ A separate `vmbrX` per VLAN, each backed by a VLAN sub-interface (`eno1.76` for 
 
 ## Our Setup — Site Bridges
 
-Each site network maps to a VLAN ID (see VLAN Reference table above). All VMs for a given site are attached to the single VLAN-aware bridge `vmbr1` with their site's VLAN tag set on the NIC. The site firewall VM (e.g. `EXAFWLFAL001`) has two NICs — one on the site VLAN (LAN side) and one on VLAN 139 (provisioning/WAN side).
+Each site network maps to a VLAN ID (see VLAN Reference table above). All VMs for a given site are attached to the single VLAN-aware bridge `vmbr1` with their site's VLAN tag set on the NIC. The site firewall VM (e.g. `EXAFWLFAL001`) has two NICs — one on the site VLAN via `vmbr1` (LAN side) and one on `vmbr0`, untagged (provisioning/WAN side). The WAN NIC deliberately does **not** live on `vmbr1`/VLAN 139 — `vmbr0` physically sits on the real vRACK network already, so tagging VLAN 139 on `vmbr1` as well would double-tag frames (`create-vm.py`'s own 2026-07-08 changelog covers this exact bug and fix).
 
 ---
 
@@ -274,7 +274,9 @@ When creating or editing a VM, go to **Hardware → Network Device**. Set:
 
 The VM sees untagged traffic on its NIC. The bridge handles the tagging transparently. The VM does not need to know it's on a VLAN.
 
-For firewall VMs that need to see multiple VLANs (e.g. the WAN-side NIC on VLAN 139), leave the VLAN Tag field empty — the VM will behave as if plugged into a trunk port.
+The WAN-side NIC of a firewall VM is a different case — it goes on `vmbr0` (the management bridge), not `vmbr1` at all, and gets no VLAN tag (`vmbr0` is not VLAN-aware). See **Firewall VM Network Layout** below.
+
+For a firewall VM that also needs to see multiple site VLANs on its LAN-side NIC (routing between sites), leave the VLAN Tag field empty on that NIC within `vmbr1` — it will behave as if plugged into a trunk port.
 
 ---
 
@@ -329,9 +331,11 @@ Each site firewall VM (FortiGate, OPNsense, pfSense etc) will typically have two
 
 | NIC | Bridge | VLAN Tag | Purpose |
 |---|---|---|---|
-| `net0` | `vmbr1` | `139` | WAN / provisioning side |
+| `net0` | `vmbr0` | *(none — untagged)* | WAN / provisioning side |
 | `net1` | `vmbr1` | site octet (e.g. `76`) | LAN side — site subnet |
 | `net2` | `vmbr1` | *(empty — trunk)* | Optional: if FW needs to route between sites |
+
+`net0` goes on `vmbr0`, not `vmbr1` — `vmbr0` already sits on the real vRACK network, so this is the one case where a VM NIC uses the management bridge deliberately, not an oversight. Tagging VLAN 139 on `vmbr1` instead would double-tag the frames.
 
 The firewall VM handles DHCP for the site LAN. **Nothing on `vmbr1` itself has an IP address or requests DHCP** — the bridge is purely a frame-forwarding device.
 
@@ -434,7 +438,7 @@ VMs on this node are then configured as:
 
 | VM | NIC | Bridge | VLAN | IP (inside VM) |
 |---|---|---|---|---|
-| `EXAFWLFAL001` (FortiGate — WAN NIC) | net0 | vmbr1 | 139 | `192.168.139.x` |
+| `EXAFWLFAL001` (FortiGate — WAN NIC) | net0 | vmbr0 | *(untagged)* | `192.168.139.x` |
 | `EXAFWLFAL001` (FortiGate — LAN NIC) | net1 | vmbr1 | 76 | `192.168.76.1` |
 | `EXADCSFAL001` (Domain Controller) | net0 | vmbr1 | 76 | `192.168.76.10` |
 | `EXADCSFAL002` (Domain Controller) | net0 | vmbr1 | 76 | `192.168.76.21` |

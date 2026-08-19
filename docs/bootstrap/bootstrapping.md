@@ -1453,10 +1453,13 @@ moved out again before anything was built against it: the unattend XML sets `Com
 Salt minion would have registered under that random name — `EXASLTCLD001` would have
 accumulated one dead/renamed key per build, needing manual `salt-key` cleanup forever.
 
-The real install is `ansible/playbooks/windows_bootstrap/playbooks/82-salt-minion.yml`,
-running over SSH near the end of the normal windows_bootstrap chain — well after
-`00-preflight.yml`'s Phase G has already renamed the host to its final `EXA<ROLE><SITE><NNN>`
-hostname, so the minion's identity is always correct, first time. See
+The real install is `ansible/playbooks/windows_bootstrap/playbooks/82-salt-minion.yml`, run
+explicitly via `--tags salt` — it is **not** imported by `windows_bootstrap/site.yml`'s default
+chain, so a bare `site.yml` run does not install Salt at all. Its numbered position (82) exists
+purely for tidy ordering alongside the other playbooks, not because it's chained in. When it is
+run (via the `salt` tag), it happens well after `00-preflight.yml`'s Phase G has already renamed
+the host to its final `EXA<ROLE><SITE><NNN>` hostname, so the minion's identity is always correct,
+first time. See
 `docs/buildsheets/buildsheet-salt-minion.md` and `ansible/playbooks/salt/README.md` for the
 full mechanism, scope, and the manual fallback for endpoints that never go through
 windows_bootstrap at all.

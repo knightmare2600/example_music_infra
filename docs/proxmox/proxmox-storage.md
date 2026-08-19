@@ -247,9 +247,9 @@ Every provisioned PVE node has `/etc/example-music/nodeinfo.json` (read-only, mo
     "office_name": "Brockville Stadium",
     "street_address": "1876 Hope Street",
     "postal_code": "FK1 1AA",
-    "ansible_managed": false,
+    "ansible_managed": true,
     "bootstrapped_at": "2026-02-25T17:00:00Z",
-    "bootstrapped_by": "first-boot.sh",
+    "bootstrapped_by": "proxmox/site.yml",
     "environment": "production",
     "node_ip": "192.168.76.5",
     "gateway": "192.168.76.253"
@@ -258,7 +258,7 @@ Every provisioned PVE node has `/etc/example-music/nodeinfo.json` (read-only, mo
 
 `office_name` is blank (`""`) for most sites — only set where a site genuinely has a distinct venue/building name (see `benarbejde/sites.csv`'s own `OfficeName` column). FAL's shown here since it's one of the sites that does.
 
-`ansible_managed` is `false` when written by `first-boot.sh`. Ansible playbooks that subsequently manage the node should update it to `true`.
+This file is written entirely by Ansible (`ansible/tasks/nodeinfo.yml`, included from `proxmox/playbooks/30-example-music.yml`) — `ansible_managed` is hardcoded `true` from the very first write, and `bootstrapped_by` is always `"proxmox/site.yml"` for a PVE node. `bootstrap/web/proxmox/first-boot.sh` was trimmed on 2026-07-10 to user/SSH-key/sudoers setup only — it has no involvement with `nodeinfo.json` at all.
 
 Playbooks check for this file before running any destructive operations — prevents accidentally running hypervisor playbooks on routers or workstations. The guard is:
 

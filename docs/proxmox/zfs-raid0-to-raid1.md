@@ -36,13 +36,13 @@ node info file is written to `/etc/example-music/nodeinfo.json`, everything is r
 
 ## Prerequisites
 
-The following packages must be present (installed by first-boot.sh):
+The following packages must be present (installed via `pve_packages` in `ansible/configs/inventory/group_vars/pvenodes/main.yml`, applied by `proxmox/playbooks/10-packages.yml`):
 
 - `gdisk` — provides `sgdisk`
 - `parted` — provides `partprobe`
 - `smartmontools` — provides `smartctl`
 
-If running on a node provisioned before these were added to first-boot.sh:
+If running on a node provisioned before these were added to `pve_packages`, or before a `proxmox/site.yml` run:
 
 ```bash
 apt-get install -y gdisk parted smartmontools

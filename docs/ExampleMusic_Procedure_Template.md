@@ -61,8 +61,8 @@
 > 2026-07-11) — these are illustrative of what a helper *could* look like, not a real, runnable
 > tool. Look up values against `sites.csv` directly until/unless one gets built. The `Template`
 > columns in the CSV Reference table below are also illustrative, not real `sites.csv` columns
-> (the real file's header is `Site,City,Country,CountryCode,Province,Subnet,Gateway,DC,FW,
-> Landline,Mobile,Timezone,AnsibleRegion,Entity`).
+> (the real file's header is `Site,City,Country,CountryCode,Province,OfficeName,Street,
+> PostalCode,Subnet,Gateway,DC,FW,Landline,Mobile,Timezone,AnsibleRegion,Entity`).
 
 #### **Python**
 
