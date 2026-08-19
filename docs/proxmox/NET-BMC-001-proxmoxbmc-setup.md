@@ -388,7 +388,7 @@ Expected output from `pbmc list`:
 > specific bind IP chosen is bounded regardless. The firewall rule below has been corrected to
 > actually allow all three subnets, not just the one it happened to mention.
 
-By default, proxmoxbmc binds to `0.0.0.0` — meaning it listens on **all interfaces** on the Proxmox node, including the site LAN bridge. Any machine that can reach the Proxmox node's IP on the registered UDP port can send IPMI commands. The firewall rules below are therefore not optional — they are the primary access control mechanism.
+By default, proxmoxbmc binds to `::` (IPv6 any-address, dual-stack — accepts IPv4 connections too on Linux by default; confirmed against `pbmc.py`'s own `--address` argparse default) — meaning it listens on **all interfaces** on the Proxmox node, including the site LAN bridge. Any machine that can reach the Proxmox node's IP on the registered UDP port can send IPMI commands. The firewall rules below are therefore not optional — they are the primary access control mechanism.
 
 #### The `--address` parameter — binding to a specific interface
 
@@ -398,7 +398,7 @@ The IP you bind to determines which VLAN the BMC is reachable from:
 
 | Bind address | Reachable from |
 |--------------|---------------|
-| `0.0.0.0` (default) | All interfaces — site LAN, provisioning VLAN, everything |
+| `::` (default) | All interfaces — site LAN, provisioning VLAN, everything |
 | `192.168.139.5` (provisioning VLAN IP) | Provisioning VLAN only (`192.168.139.0/24`) |
 | `192.168.41.5` (site LAN IP) | Site LAN only (`192.168.41.0/24`) |
 | `127.0.0.1` | Proxmox node itself only — useful for testing |

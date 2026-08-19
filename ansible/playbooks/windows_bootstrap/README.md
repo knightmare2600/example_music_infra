@@ -46,17 +46,23 @@ already-bootstrapped host later without a full re-bootstrap:
 | `78-sac-ems.yml` | `sac_ems` | SAC/EMS serial console (Server OS only) |
 | `79-ps7-setup.yml` | `ps7_setup` | PS7 modules, fonts, profile, terminal config |
 | `80-domainjoin.yml` | `domainjoin` | Join JUKEBOX domain |
-| `82-salt-minion.yml` | `salt` | Salt minion install (all Windows nodes — WKS/LAP/SUR/SVR/DCS) — see `ansible/playbooks/salt/README.md` and `docs/buildsheets/buildsheet-salt-minion.md` |
 | `85-finish.yml` | `finish` | Remote-access summary + final reboot |
 
-A bare `site.yml` run with no `--tags` runs every play above in sequence —
+`82-salt-minion.yml` (tag `salt`, all Windows nodes — WKS/LAP/SUR/SVR/DCS) is deliberately **not**
+imported by `site.yml` — see `ansible/playbooks/salt/README.md` and
+`docs/buildsheets/buildsheet-salt-minion.md`. Its numbered position exists purely for tidy
+ordering alongside the plays above, not because it's chained in. Run it explicitly:
+`ansible-playbook playbooks/windows_bootstrap/site.yml --tags salt -e target=<host>`.
+
+A bare `site.yml` run with no `--tags` runs every play in the table above in sequence —
 this is deliberate, not a gap. Each play is idempotent (checks its own
 "already done" condition before acting), so a full run converges *any*
 host — freshly built or already bootstrapped — to the same known-good
 bootstrap state every time. That convergent state (renamed, packages
 installed, hardened, domain-joined) is the prerequisite for the next,
-separate step: DC promotion via `windows_dc/site.yml`, or any other
-module-specific action. Use `--tags <name>` to re-run or debug a single
+separate step: DC promotion via `windows_dc/site.yml`, Salt minion install
+(`--tags salt`, above), or any other module-specific action.
+Use `--tags <name>` to re-run or debug a single
 stage in isolation. `--tags bootstrap` only ever matches `00-preflight.yml`
 (each play has its own unique tag, there's no shared "early stages" group)
 — it is not a shorthand for "the minimal subset", just that one stage.
