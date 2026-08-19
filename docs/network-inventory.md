@@ -12,6 +12,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-08-19 | Global Site Summary was missing 8 real `sites.csv` sites entirely — AAR, BRT, DRS, DUS, FRE, NYB, SEA, SFO — found during the exhaustive docs re-audit while fixing the same gap in the superseded `network-inventory-merged.md` copy; this file (the real, current one) turned out to have the identical gap. Added all 8, diffed precisely against `sites.csv` afterward (53/53 exact match, zero missing/extra). Also added a separate `BER` row — the 2026-03-05 entry below claims "BRD renamed BER throughout", but the table still only had `BRD`, no `BER`, right up until this fix; `sites.csv` has both as genuinely separate rows (`BER` current, `BRD` an explicit legacy alias, same subnet) and the real tooling (`site-inventory-audit.py`) treats them that way, not as one having replaced the other. Cross-referenced both rows to each other. Also fixed `AKL` sitting out of alphabetical order at the very end of the table (after `VRK`) — moved to its correct position between `ABD` and `AMS`. `Domain` column values for the 9 new rows are inferred from the table's own overwhelming default (`example.net`, ~40 of 53 existing rows) — this column isn't derived from any current source (`sites.csv`, `devices.csv`, `ad_users.json` all lack it; likely a legacy pre-`jukebox.internal` entity-domain marker), so treat these 9 as reasonable defaults, not independently confirmed. |
 | 2026-07-20 | Added `EXASLTCLD001` (Salt master, `192.168.69.22`) to the CLD LAN table — added to `devices.csv` the same day, missing from this doc until now. Also reachable as `salt.jukebox.internal` (new CNAME, `benarbejde/role_codes.csv`'s `DNSAlias` column). |
 | 2026-07-20 | Rudder's role code split: `RDR` now means exclusively "Reader" (badge reader, physical, standard `.21` slot, new); the Rudder config-mgmt meaning moved to a new code, `RUD` — `EXARDRCLD001` is now `EXARUDCLD001`. Ironically reverses the 2026-07-08 entry below, which "fixed" `EXARUDCLD001` back to `EXARDRCLD001` as a typo — it wasn't; `RDR` just hadn't collided with badge readers yet at the time. Safe to do as a straight rename (not a live migration) since no Rudder infrastructure has actually been built yet — see `docs/proxmox/proxmox-dcm-pbs-planning.md` and `benarbejde/role_codes.csv` for the full rationale. |
 | 2026-07-12 | FAL's "Completion checklist" listed the firewall as installed before the Proxmox nodes — backwards, since the firewall is a VM hosted on Proxmox (see `buildsheets/buildsheet-firewall.md` Step 1). Reordered. |
@@ -118,23 +119,30 @@ the same site, see below) and every other Danish office gets. See
 
 | Code | Location | City & Country | LAN Subnet | Domain | Notes |
 |------|----------|---------|-----------|--------|-------|
+| AAR | Aarhus | Danmark | `192.168.86.0/24` | `example.net` |  |
 | ABD | Aberdeen | Scotland, UK | `192.168.224.0/24` | `example.org` | Satellite office |
+| AKL | Auckland | New Zealand | `192.168.93.0/24` | `example.net` | |
 | AMS | Amsterdam | Netherlands | `192.168.31.0/24` | `example.net` | |
 | ATL | Atlanta | USA | `192.168.33.0/24` | `example.net` | |
+| BER | Berlin | West Germany (FRG) | `192.168.113.0/24` | `example.net` | Real, current Berlin site -- BRD (West Berlin) is a legacy alias for this same site/subnet, kept for v2v/historical reasons, not a second office |
 | BIR | Birmingham | England, UK | `192.168.121.0/24` | `example.net` | |
 | BON | Bonn | West Germany (FRG) | `192.168.228.0/24` | `example.net` | Schema Master / Domain Naming Master |
-| BRD | West Berlin | West Germany (FRG) | `192.168.113.0/24` | `example.net` | Legacy site |
+| BRD | West Berlin | West Germany (FRG) | `192.168.113.0/24` | `example.net` | Legacy alias for BER above -- same site/subnet, not a second office |
 | BRK | Brockville | Ontario, Canada | `192.168.136.0/24` | `example.net` | |
+| BRT | Beirut | Lebanon | `192.168.169.0/24` | `example.net` |  |
 | CHI | Chicago | Illinois, USA | `192.168.214.0/24` | `example.net` | |
 | CLD | Cloud / Provisioning (LAN) | Korsbaek, DK | `192.168.69.0/24` | `<blank / NULL>` | DCs, Ansible, WAC, PBX, UniFi controller (Rudder present but dormant, not in active use) |
 | CLY | Clydebank | Scotland, UK | `192.168.41.0/24` | `example.net` | |
 | COV | Coventry | England, UK | `192.168.247.0/24` | `example.net` | WAP/RTR only |
 | CPH | København | Danmark | `192.168.231.0/24` | `example.com/net` | |
+| DRS | Dresden | West Germany (FRG) | `192.168.153.0/24` | `example.net` |  |
 | DUN | Dundee | Scotland, UK | `192.168.138.0/24` | `example.net` | |
+| DUS | Dusseldorf | West Germany (FRG) | `192.168.211.0/24` | `example.net` |  |
 | EDI | Edinburgh | Scotland, UK | `192.168.131.0/24` | `example.org/net` | Multiple DCs — check replication health |
 | FAL | Falkirk | Scotland, UK | `192.168.76.0/24` | `example.net` | **Head Office** — Brockville Stadium |
 | FAX | Faxe | Danmark | `192.168.246.0/24` | `example.net` | |
 | FRD | Fredericia Havn (CLD's DR sister site) | Danmark | `172.16.124.0/24` | `<blank / NULL>` | CLD's DR sister site — not `FRE`, the real Fredericia office. Started as VRK's standby provisioning network (still real — legal fiction run off a MacBook, `http.server`), broadened 2026-08-04 to the general failover role, with a real "site kit" too — NUC running Proxmox VE + a 48-port switch, see FRD row above |
+| FRE | Fredericia | Danmark | `192.168.75.0/24` | `example.net` | The real Fredericia office -- not FRD, CLD's DR sister site (see FRD row) |
 | GLA | Glasgow | Scotland, UK | `192.168.141.0/24` | `example.net` | Regional DC hub |
 | GOT | Gothenburg | Sweden | `192.168.46.0/24` | `example.net` | |
 | HAL | Halifax | England, UK | `192.168.142.0/24` | `example.net` | |
@@ -152,16 +160,18 @@ the same site, see below) and every other Danish office gets. See
 | MUN | Munich | West Germany (FRG) | `192.168.189.0/24` | `example.net` | |
 | NEW | Newcastle | England, UK | `192.168.191.0/24` | `example.org` | |
 | NJC | Camden, NJ | New Jersey, USA | `192.168.201.0/24` | `example.net` | |
+| NYB | Nyborg | Danmark | `192.168.90.0/24` | `example.net` |  |
 | NYC | New York | New York, USA | `192.168.212.0/24` | `example.net` | |
 | ODE | Odense | Danmark | `192.168.126.0/24` | `example.net` | PDC Emulator for DK |
 | OSL | Oslo | Norway | `192.168.47.0/24` | `example.net` | |
 | PER | Perth | Scotland, UK | `192.168.173.0/24` | `example.net` | Solaris archive server |
+| SEA | Seattle | Washington, USA | `192.168.206.0/24` | `example.net` |  |
+| SFO | San Francisco | California, USA | `192.168.145.0/24` | `example.net` |  |
 | SHE | Sheffield | England, UK | `192.168.114.0/24` | `example.net` | |
 | SYD | Sydney | NSW, Australia | `192.168.29.0/24` | `example.net` | |
 | TOR | Toronto | Ontario, Canada | `192.168.146.0/24` | `example.net` | |
 | VIE | Vienna | Austria | `192.168.78.0/24` | `example.net` | |
 | VRK | OVH vRACK (Edinburgh) | Scotland, UK | `192.168.139.0/24` | `<blank / NULL>` | Provisioning network — DNS, PXE/provisioning server, FWL WAN face. Not a real office |
-| AKL | Auckland | New Zealand | `192.168.93.0/24` | `example.net` | |
 
 ---
 
