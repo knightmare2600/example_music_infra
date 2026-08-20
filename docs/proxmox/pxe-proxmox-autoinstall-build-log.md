@@ -1,5 +1,15 @@
 # Proxmox VE 9 auto-install via PXE — build log and working notes
 
+> **Superseded as the current path, 2026-08-20 — kept for the record, not current guidance.**
+> Neither approach this document describes (BMC-ISO delivery, or its replacement
+> `select-pve-answer.sh`) is what the estate actually uses now. A third, different approach —
+> `klargoring`, a real PXE boot of Robert's own live-installer distro — was tested end-to-end
+> for the first time on `EXAPVEVRK002` and worked correctly. See
+> `docs/proxmox/NET-PVE-KLARGORING-001-klargoring-pve-install.md` for the current, confirmed
+> procedure. This document's own "Still open" section below, gating "polished procedure"
+> status on a successful end-to-end test boot, never actually got that test for the approaches
+> described here — `select-pve-answer.sh` remains genuinely untested to this day.
+
 Version history:
 - v1.0 — 2026-07-18 — initial draft, written up from the live working session that superseded `claude_prompts.md`
 - v1.1 — 2026-07-18 — BMC virtual media confirmed as the sole delivery method going forward (not the
