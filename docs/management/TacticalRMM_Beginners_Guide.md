@@ -12,6 +12,7 @@
 | Date       | Change                    |
 |------------|---------------------------|
 | 2026-08-08 | Initial version — companion to [ExampleMusic_Beginners_Guide.md](../ExampleMusic_Beginners_Guide.md), written the same way, for the same two people, after `EXAMSHCLD001` (standalone MeshCentral) was retired in favour of TacticalRMM's own bundled MeshCentral. |
+| 2026-08-20 | Added §7, Tags — this estate's convention for grouping agents by role (`role:WKS`, `role:DCS`, etc., matching `benarbejde/role_codes.csv`) across Client/Site boundaries, and the bulk-script-by-tag workflow this makes possible (e.g. pushing a Chocolatey package to every workstation regardless of site). Renumbered the old §7 Quick Reference to §8. |
 
 ---
 
@@ -144,11 +145,39 @@ Confirm `TacticalRMM` genuinely appears in the output before considering this fi
 
 ---
 
-## 7. Quick Reference
+## 7. Tags — Grouping Agents Across Client/Site by Role
+
+Client/Site is TacticalRMM's primary hierarchy, but it's a *location* axis, not a *role* one — every workstation across every site doesn't share a Site, so there's no way to target "all workstations, wherever they are" through Client/Site alone. Tags are TacticalRMM's own answer to this: a label on an agent, independent of Client/Site, usable to filter the Agents table and to scope bulk actions (including bulk script runs) across the whole estate at once.
+
+**This estate's convention: tag by role code, not ad-hoc names.** Use the same codes already defined in `benarbejde/role_codes.csv` — `role:WKS` for workstations, `role:DCS` for domain controllers, `role:SVR` for generic servers, `role:LAP` for laptops, `role:SUR` for Surface devices, and so on for whatever role codes actually get an RMM agent. Don't invent parallel names like "servercore" that don't map to anything else in the estate — the whole point of `role_codes.csv` being the single source of truth for role naming is that it stays the one place this vocabulary lives; a second, TacticalRMM-only naming scheme for the same concept is exactly the kind of duplicated-logic problem this estate avoids elsewhere.
+
+### Creating and assigning a tag
+
+1. Tags are managed under **Settings** in the web UI. Create the tag once (e.g. `role:WKS`) — exact menu wording may have moved since this was written, TacticalRMM upstream evolves independently of this doc; if it's not where you expect, check `https://docs.tacticalrmm.com` rather than assuming the feature's gone.
+2. **Per-agent**: open the agent's **Edit Agent** dialog (same one used to move Client/Site in §5) — there's a Tags field there to add one or more tags to that single agent.
+3. **In bulk**: from the Agents table, filter/search by hostname (e.g. `EXAWKS` to catch every workstation regardless of site — see §4's naming convention), multi-select the results, and use the bulk "Add Tag" action rather than tagging one at a time.
+
+### Using a tag for a bulk action (worked example: push a Chocolatey package to every workstation)
+
+1. Tag every `EXAWKS*` agent `role:WKS` (once, per the bulk step above — new agents get tagged individually going forward, or the next time you sweep the Agents table by hostname).
+2. Add the script once (Settings → Scripts → *Add Script*, PowerShell):
+   ```powershell
+   choco install winscp -y
+   ```
+   (Chocolatey itself doesn't need separate installing on estate-built workstations — it's already part of the standard Windows build, Stage 11 of `Join-DomainAndBootstrap.ps1`.)
+3. Agents table → filter by tag `role:WKS` → multi-select the results → bulk action → *Run Script* → pick the Chocolatey script → *Run Now*.
+4. Check the per-agent script-run history for exit code `0` before considering it done — same as any other bulk script run, don't assume success from the action just having fired.
+
+**Not yet confirmed, flagged rather than assumed**: whether a tag can be the *targeting* criterion for a recurring Automated Task inside a Policy — i.e. whether a brand-new `EXAWKS*` agent, tagged `role:WKS` the moment it's registered, would automatically inherit a standing "install winscp" task without anyone re-running the bulk action above. Policies in TacticalRMM fundamentally apply via Client/Site (and the built-in Server/Workstation agent-type split), and this estate's install tracks upstream `master`/`main` rather than a pinned release, so exact tag-scoped Automation Manager behaviour hasn't been checked against what's actually running on `EXARMMCLD001`. Until that's confirmed live, treat tags as reliable for **search, filtering, and bulk ad-hoc actions** (fully confirmed, used above) — not yet as a substitute for a real recurring Policy assignment.
+
+---
+
+## 8. Quick Reference
 
 | I need to… | Go to |
 |-----------|-------|
 | Deploy or move an agent, troubleshoot the mesh-agent bug | §4/§5/§6 above — this document is now the complete, self-contained reference for all of it |
+| Tag agents by role, or push something to every agent matching a role/tag | §7 above |
 | Understand how `EXARMMCLD001` was built, or rebuild it | `ansible/playbooks/tacticalrmm/README.md`, `ansible/playbooks/tacticalrmm/PLAN-tacticalrmmme.md` |
 | Learn the general TacticalRMM web UI (dashboards, alert policies, automated tasks) | `https://docs.tacticalrmm.com` — upstream, not this repo |
 | Understand why standalone MeshCentral (`EXAMSHCLD001`) is gone | `ansible/playbooks/tacticalrmm/README.md`'s "EXAMSHCLD001 — RETIRED" section |
