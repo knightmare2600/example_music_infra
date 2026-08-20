@@ -45,6 +45,37 @@
 # exact commands to review and apply, leaves the actual reload to the
 # operator.
 #
+# Adoption safety valve (added 2026-08-20, Robert): blockinfile only ever
+# recognises its OWN marker comments -- it has no way to notice that an
+# existing, unmarked vmbr1 stanza already does exactly what it would write.
+# EXAPVEVRK001 is a real example: its vmbr1 was hand-built from
+# pve-networking.md's manual worked example before this playbook existed
+# (2026-07-18), so it has no markers at all -- running this stage against it
+# unmodified would insert a second, separately-marked vmbr1 stanza alongside
+# the real one. Before the blockinfile task below, this stage now checks
+# for that specific situation and handles it three ways:
+#   1. Marker already present -> nothing to do here, blockinfile's own
+#      idempotency handles it exactly as before.
+#   2. No marker, no "iface vmbr1 inet manual" line at all -> nothing to do
+#      here either, blockinfile inserts fresh at EOF exactly as before.
+#   3. No marker, but an unmarked vmbr1 stanza exists -> extract its body
+#      (awk, indented lines following the iface line) and check it
+#      SEMANTICALLY against what this playbook expects (right
+#      bridge-ports NIC, bridge-vlan-aware yes, bridge-vids 2-4094) --
+#      deliberately not a byte-for-byte diff, since hand-written formatting
+#      (comments, line order, whitespace) doesn't need to match, only the
+#      settings that actually matter. If it matches: wrap the EXISTING
+#      lines with the marker comments in place (adopts, doesn't rewrite
+#      anything) -- the blockinfile task immediately after then normalises
+#      the content between the new markers to the canonical form on the
+#      same run, since blockinfile always makes its own block match
+#      byte-for-byte once markers exist. If it does NOT match (different
+#      NIC, missing VLAN settings, or anything else unexpected): fail
+#      loudly and leave the file untouched, the same caution this stage
+#      already applies to a missing pve_vmbr1_uplink_iface -- auto-
+#      reconciling a live network config that doesn't match expectations is
+#      exactly the wrong kind of clever here.
+#
 # Always runs -- writing the block is pure file placement (blockinfile
 # itself is idempotent; a no-op re-run reports unchanged), same reasoning
 # every other "Always" stage in this chain already uses. The one live-
@@ -60,10 +91,19 @@
 # human-verified worked example, not independently confirmed against a live
 # ifupdown2 config on this box's actual hardware. Confirm with
 # `ifreload -a --diff` (never applied automatically by this stage) before
-# running the real `ifreload -a`.
+# running the real `ifreload -a`. The adoption safety valve above is
+# similarly untested against a real hand-written stanza -- EXAPVEVRK001 is
+# the first real case that will exercise it.
 # =============================================================================
 # Changelog:
 #   2026-07-19  Initial file.
+#   2026-08-20  Added the adoption safety valve (detect + semantically match +
+#               wrap-in-place, or fail loudly on mismatch) for existing
+#               unmarked vmbr1 stanzas, so this stage can be run against
+#               EXAPVEVRK001's hand-built config without duplicating it.
+#               Robert's own idea, from a live discussion about bringing
+#               EXAPVEVRK001 under the same Ansible-managed config as
+#               EXAPVEVRK002 later.
 # =============================================================================
 
 - name: Proxmox VE — ensure vmbr1 (VLAN-aware VM bridge) exists
@@ -81,6 +121,107 @@
           explicitly in host_vars/{{ inventory_hostname }}.yml (verify the real interface name
           with `ip link show` on the node first) rather than guessed at. Not run.
       when: pve_vmbr1_uplink_iface is not defined or pve_vmbr1_uplink_iface | trim == ''
+      tags: vmbr1
+
+    - name: Detect existing Ansible-managed vmbr1 block
+      ansible.builtin.command:
+        argv:
+          - grep
+          - -Fq
+          - "ANSIBLE MANAGED BLOCK vmbr1 (playbooks/proxmox/playbooks/36-vmbr1.yml)"
+          - /etc/network/interfaces
+      register: _vmbr1_marker_present
+      changed_when: false
+      failed_when: false
+      tags: vmbr1
+
+    - name: Detect existing unmanaged vmbr1 stanza
+      ansible.builtin.command:
+        argv:
+          - grep
+          - -Fq
+          - "iface vmbr1 inet manual"
+          - /etc/network/interfaces
+      register: _vmbr1_unmanaged_present
+      changed_when: false
+      failed_when: false
+      tags: vmbr1
+
+    - name: Determine whether adoption needs checking
+      ansible.builtin.set_fact:
+        _vmbr1_needs_adoption_check: "{{ _vmbr1_marker_present.rc != 0 and _vmbr1_unmanaged_present.rc == 0 }}"
+      tags: vmbr1
+
+    - name: Extract existing unmanaged vmbr1 stanza body
+      ansible.builtin.command:
+        argv:
+          - awk
+          - '/^iface vmbr1 inet manual/{f=1;next} f && /^[^ \t]/{f=0} f'
+          - /etc/network/interfaces
+      register: _vmbr1_unmanaged_body
+      changed_when: false
+      when: _vmbr1_needs_adoption_check
+      tags: vmbr1
+
+    - name: Determine whether existing unmanaged stanza matches the expected config
+      ansible.builtin.set_fact:
+        _vmbr1_unmanaged_matches: >-
+          {{
+            (_vmbr1_unmanaged_body.stdout is search('bridge-ports\s+' ~ (pve_vmbr1_uplink_iface | regex_escape) ~ '\b'))
+            and (_vmbr1_unmanaged_body.stdout is search('bridge-vlan-aware\s+yes'))
+            and (_vmbr1_unmanaged_body.stdout is search('bridge-vids\s+2-4094'))
+          }}
+      when: _vmbr1_needs_adoption_check
+      tags: vmbr1
+
+    - name: Fail loudly if an existing unmanaged vmbr1 stanza does not match the expected config
+      ansible.builtin.fail:
+        msg: >-
+          An existing hand-written vmbr1 stanza was found in /etc/network/interfaces on
+          {{ inventory_hostname }}, but it does not match what this playbook expects
+          (bridge-ports {{ pve_vmbr1_uplink_iface }}, bridge-vlan-aware yes, bridge-vids
+          2-4094). Not touching it automatically -- this is deliberately NOT
+          auto-reconciled, the same caution this stage already applies to
+          pve_vmbr1_uplink_iface itself. Compare against docs/proxmox/pve-networking.md's
+          worked example and either fix the existing stanza by hand to match, or remove
+          it, before re-running this playbook.
+      when: _vmbr1_needs_adoption_check and not _vmbr1_unmanaged_matches
+      tags: vmbr1
+
+    - name: Compute adoption anchor (last line of the existing matching stanza)
+      ansible.builtin.set_fact:
+        _vmbr1_unmanaged_last_line: "{{ _vmbr1_unmanaged_body.stdout_lines | select('search', '\\S') | list | last }}"
+      when: _vmbr1_needs_adoption_check and _vmbr1_unmanaged_matches
+      tags: vmbr1
+
+    - name: Adopt existing hand-written vmbr1 stanza -- insert BEGIN marker
+      ansible.builtin.lineinfile:
+        path: /etc/network/interfaces
+        line: "# BEGIN ANSIBLE MANAGED BLOCK vmbr1 (playbooks/proxmox/playbooks/36-vmbr1.yml)"
+        insertbefore: '^auto vmbr1\s*$'
+        firstmatch: true
+      when: _vmbr1_needs_adoption_check and _vmbr1_unmanaged_matches
+      tags: vmbr1
+
+    - name: Adopt existing hand-written vmbr1 stanza -- insert END marker
+      ansible.builtin.lineinfile:
+        path: /etc/network/interfaces
+        line: "# END ANSIBLE MANAGED BLOCK vmbr1 (playbooks/proxmox/playbooks/36-vmbr1.yml)"
+        insertafter: "^{{ _vmbr1_unmanaged_last_line | regex_escape }}\\s*$"
+        firstmatch: true
+      register: _vmbr1_adopted
+      when: _vmbr1_needs_adoption_check and _vmbr1_unmanaged_matches
+      tags: vmbr1
+
+    - name: Report adoption of existing hand-written vmbr1 config
+      ansible.builtin.debug:
+        msg: >-
+          {{ _c.Y }}[!]{{ _c.NC }} Existing hand-written vmbr1 stanza on
+          {{ inventory_hostname }} already matched the expected config -- wrapped it with
+          Ansible's managed-block markers instead of inserting a duplicate. Nothing in the
+          stanza's content was changed by this step; the next task normalises formatting
+          inside the new markers if needed.
+      when: _vmbr1_adopted is defined and _vmbr1_adopted.changed
       tags: vmbr1
 
     - name: Write vmbr1 stanza in /etc/network/interfaces
