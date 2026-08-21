@@ -65,7 +65,8 @@ Don't just watch the installer reach 100% and call it done — confirm each of t
 **Node:** `EXAPVEVRK002`, site VRK, `192.168.139.6` — second PVE node at VRK, same Supermicro/Quanta chassis class as `EXAPVEVRK001`.
 
 **Pre-flight (item 1/2 of that build's own plan):**
-- BMC (`EXABMCVRK002`, `192.168.139.4`) shipped with default `admin`/`admin` credentials — reset via crash cart + GParted Live + `ipmitool`, the same procedure as `INC-2026-04-03-BMC-CREDS` (FAL, 2026-04-03). Independently cross-checked with `fyrtaarn` plus a separate `ipmitool` check from a different machine before being trusted for the build — second real-world confirmation this procedure generalises past the one incident it was originally written from.
+- BMC (`EXABMCVRK002`, `192.168.139.4`) shipped with default `admin`/`admin` credentials — reset via crash cart + GParted Live + `ipmitool`.
+  This is the same procedure as `INC-2026-04-03-BMC-CREDS`, the original incident (a different site) it was written from. Independently cross-checked with `fyrtaarn` plus a separate `ipmitool` check from a different machine before being trusted for the build — second real-world confirmation this procedure generalises past that one incident.
 - BIOS storage mode confirmed **AHCI** (matching `EXAPVEVRK001`'s own setting) — no hardware RAID/RST mode involved. Two 2TB WD hard drives visible in Bay #3/#4 at BIOS POST, no controller-side abstraction.
 
 **The klargoring run itself:**
