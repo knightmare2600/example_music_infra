@@ -81,6 +81,21 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-08-22  Robert, live: a Phase H IP-change reboot repeatedly reported as failed/errored,
+#               even though the box genuinely rebooted and came back up correctly on the new
+#               static IP every time -- not a real error, just reported as one. Root cause: the
+#               [H] reboot task fired `shutdown /r /t 0 /f` (zero-delay) wrapped async/poll:0.
+#               Fire-and-forget from Ansible's own polling perspective, but the underlying
+#               WinRM/SSH connection still needs to get an acknowledgment back that the command
+#               was accepted before the box actually goes down -- with zero delay that's a real
+#               race, and losing it reads as a connection failure even though the shutdown was
+#               issued correctly. Changed to `/t 5` -- long enough for the response to land
+#               before the box drops, short enough not to meaningfully lengthen the existing
+#               manual pause/reconnect wait right after it. Rest of the Phase H design (async
+#               fire-and-forget, set_fact ansible_host, operator-confirmed pause, then
+#               wait_for_connection) is unchanged -- this was a one-line race-condition fix, not
+#               a design problem. Swept the repo for the same `shutdown ... /t 0` pattern
+#               elsewhere -- this was the only occurrence.
 #   2026-07-28  Follow-up, later same day: full first-DC run against EXADCSCLD001 completed
 #               end to end for the first time ever (ok=143 changed=16 skipped=72 failed=0), but
 #               [B0] still showed the "PowerShell: not found" error masked by failed_when: false
@@ -734,7 +749,12 @@
       when: needs_reboot | bool
 
     - name: "[H] Reboot — IP change (async fire-and-forget)"
-      ansible.windows.win_shell: shutdown /r /t 0 /f
+      # /t 5, not /t 0 -- a zero-delay shutdown races the WinRM/SSH connection's own
+      # acknowledgment that the command was accepted, and losing that race reports as a
+      # connection failure even though the shutdown was issued correctly and the box comes
+      # back up fine. 5 seconds is enough slack for the response to land without meaningfully
+      # lengthening the manual pause/reconnect wait right after this. See 2026-08-22 changelog.
+      ansible.windows.win_shell: shutdown /r /t 5 /f
       async:   30
       poll:    0
       when:    ip_needs_change | bool
