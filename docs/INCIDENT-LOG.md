@@ -23,10 +23,60 @@ Newest incident at the top, oldest at the bottom — read bottom-to-top for chro
 
 | Incident ID | Date | Summary |
 |---|---|---|
+| [INC-2026-08-21-CTRLALTDEL](#inc-2026-08-21-ctrlaltdel--console-ctrlaltdelete-rebooted-a-live-firewall-node) | 2026-08-21 | A Ctrl+Alt+Del sent via the Proxmox console rebooted a live firewall node — Windows habit, not a Linux "unlock" gesture; molly-guard never saw it since it never touched SSH |
 | [INC-2026-08-11-SALT-DISK-FULL](#inc-2026-08-11-salt-disk-full--root-filesystem-filled-by-an-oversized-git-clone-on-the-salt-master) | 2026-08-11 | The Salt master's root filesystem filled completely, blocking all login, because its git-based state/pillar delivery was cloning the estate's entire infrastructure repository in full |
 | [INC-2026-07-16-ANSIBLE-LOCK](#inc-2026-07-16-ansible-lock--ansible-account-administratively-locked-out-on-a-live-firewall-node) | 2026-07-16 | The `ansible` account's administrative lock rejected every login method, not just password, on a live firewall node |
 | [INC-2026-07-12-SSH-KEY](#inc-2026-07-12-ssh-key--lost-ssh-keypair-delayed-pve-node-deployment-in-scandinavia) | 2026-07-12 | Lost/forgotten SSH keypair delayed PVE node deployment in Scandinavia |
 | [INC-2026-04-03-BMC-CREDS](#inc-2026-04-03-bmc-creds--mismatched-bmc-credentials-on-a-newly-delivered-fal-server) | 2026-04-03 | Vendor delivered the wrong physical chassis under otherwise-correct paperwork — documented BMC credentials didn't work on arrival at FAL |
+
+---
+
+## INC-2026-08-21-CTRLALTDEL — Console Ctrl+Alt+Delete rebooted a live firewall node
+
+### Incident Background
+
+**Date:** 21 August 2026, 18:34 BST (Friday, office closed)
+**Scope:** `EXAFWLLIV001` (Liverpool firewall) — a live production firewall VM
+**Cause (summary):** A console-delivered Ctrl+Alt+Del, sent out of Windows habit, is a real reboot signal on Linux, not a screen-unlock gesture — the firewall rebooted immediately.
+
+A junior engineer (PFY) was working alone late on a Friday, office already closed, doing routine console-based checks on `EXAFWLLIV001` via Proxmox's own web console (noVNC/xterm.js — not SSH). Muscle memory from years of Windows administration took over — Ctrl+Alt+Del to "wake up"/unlock the session, the way it works at a Windows logon or locked-workstation screen (the old `msgina.dll`-era secure attention sequence, still second nature to most Windows admins). Linux has no equivalent concept at all: the same keystroke, delivered to a real console, is systemd's literal reboot trigger (`ctrl-alt-del.target`, aliased to `reboot.target` by default). The firewall rebooted within seconds.
+
+### Root Cause & Mitigation
+
+Two separate things had to both be true for this to actually cause a reboot, and neither was in place:
+
+1. **`ctrl-alt-del.target` was not masked.** By default, every systemd host starts this target (which reboots the machine) the moment a console-level Ctrl+Alt+Del is received — a decades-old convention inherited from physical server-room access, where a live person at a physical console pressing that combination is assumed to know what they're doing. A VM's web-based console is functionally the same signal path, but without any of the physical-presence assumptions that made the convention reasonable in the first place.
+2. **Nothing here was reachable via SSH, so `molly-guard` (already deployed estate-wide, `common_packages`) never had a chance to intercept anything.** `molly-guard` wraps `reboot`/`shutdown`/`halt` when issued as commands over an interactive SSH session — it has no visibility at all into a raw keystroke sequence delivered through an out-of-band console. This was never a `molly-guard` gap; it was a class of input `molly-guard` was never positioned to see in the first place.
+
+The reboot itself was clean — a normal, graceful `reboot.target` run, not a crash — and the firewall came back up correctly on its own, WireGuard included, with no data loss and no configuration damage. The only real cost was a few minutes of downtime for one site's WAN/VPN path, during a period (Friday evening, office closed) where the impact was about as low as this class of mistake could ever land.
+
+**Fix**, added to the firewall role (`roles/firewall/tasks/12_console_hardening.yml`), covers both of the above, together — masking the target alone is not sufficient on its own:
+
+- `ctrl-alt-del.target` is masked outright — a single (or a few) Ctrl+Alt+Del keypresses now does nothing.
+- `CtrlAltDelBurstAction=none` is set in `/etc/systemd/system.conf.d/10-disable-ctrl-alt-del.conf`. This closes a real, separate gap: systemd has its own built-in "panic" override — 7 presses within 2 seconds bypasses the target mechanism entirely and forces an immediate, ungraceful reboot, specifically designed so an admin can still force a reboot even if the target is masked or broken. An anxious operator mashing the same key combination repeatedly because the first press "didn't do anything" is exactly the scenario this burst path exists for — and exactly the scenario that needed closing here too. Confirmed against `systemd`'s own documented behaviour before treating the target-mask alone as sufficient, rather than assuming it would cover both cases.
+
+Legitimate remote reboot/shutdown of these VMs is unaffected — Proxmox's own `qm reboot`/`qm shutdown` via `qemu-guest-agent` is a completely different, agent-mediated mechanism, not a console keystroke, and remains the preferred way to restart these nodes.
+
+### Lessons Learned
+
+- **Causation does not equal correlation, and everybody makes mistakes.** A single ordinary keystroke, applied out of well-worn habit in an unfamiliar context, was enough on its own — no chain of separate errors, no negligence, nothing that reflects on the person involved beyond being human. Treating it as anything other than that would itself be the wrong lesson to take from it.
+- **A protection that only covers one input path (SSH) can leave a completely different, equally real path (a console) wide open** — `molly-guard` was never wrong or incomplete at the one job it does; the gap was assuming SSH-based protection was protection against reboots in general, when it was only ever protection against reboots issued as SSH commands.
+- **Old muscle memory from a different operating system is a real, recurring risk category on mixed-OS estates**, not a one-off — anyone with years of Windows administration behind them will occasionally reach for a Windows reflex on a Linux box, especially late, alone, and outside normal hours. The fix for this category is removing the hazard from the system, not asking people to never make the mistake.
+- **A calm, blameless response is itself part of the fix, not just a courtesy.** The engineer was walked through what happened, given space to decompress, and reminded — with genuine warmth, not just words — that nobody died and no planes fell out of the sky. That matters operationally, not just kindly: an engineer who feels safe reporting "I think I just did something" reports it immediately, every time; one who fears blame hesitates, and that hesitation is where small incidents turn into bigger ones.
+
+### Improvements Made
+
+- `roles/firewall/tasks/12_console_hardening.yml` added to the firewall role — masks `ctrl-alt-del.target` and disables the `CtrlAltDelBurstAction` panic-reboot path on every firewall node, present and future, going forward automatically as part of normal provisioning.
+- **Immediate response, on the night:**
+  1. The PFY was gently taken out of the loop for a few minutes — not as any form of punishment, but specifically to avoid a second, compounding mistake landing on top of the first while still rattled. He went and made coffee for the team.
+  2. Given time to decompress, with good-natured banter rather than a dressing-down — reminded that Linux is not Windows, and reminded just as firmly that nobody died and no planes fell out of the sky.
+  3. The firewall was back within 3-4 minutes, WireGuard reconnected cleanly on its own. The PFY was allowed to finish his coffee and take a short breather before coming back.
+  4. A senior staff member shadowed him afterward and traded a couple of his own "IT war stories" — proof, from someone senior, that nobody is perfect and everyone has a story like this somewhere in their career.
+  5. The PFY was "fined" a symbolic £1, added to the estate's running "Should Box" — a light-hearted, well-established team tradition, not a real disciplinary record — and the incident was considered closed the same evening.
+
+### Executive Summary
+
+A junior engineer working alone on a Friday evening sent Ctrl+Alt+Del through a live firewall VM's Proxmox console, out of long-standing Windows habit — on Linux, that keystroke is a genuine reboot signal, not a screen-unlock gesture, and the firewall rebooted within seconds. `molly-guard`, already deployed estate-wide, offered no protection here, not because it failed, but because the input never touched SSH, the only path it was ever built to guard. The reboot itself was clean, the firewall came back up correctly on its own within a few minutes with no data loss, and the impact — a brief WAN/VPN gap at one site, during a quiet Friday evening with the office already closed — was about as low as this category of mistake could land. The response prioritised the engineer's wellbeing as much as the technical fix: a short break, warmth rather than blame, a senior colleague's own war stories, and a token, good-humoured £1 to the "Should Box" — closed out the same night with no lasting friction. The estate is now permanently better protected against this exact input on every firewall node: `ctrl-alt-del.target` is masked, and systemd's own separate "panic" burst-reboot override is disabled too, closing both the direct path and the escape hatch someone panicking might otherwise still trigger.
 
 ---
 

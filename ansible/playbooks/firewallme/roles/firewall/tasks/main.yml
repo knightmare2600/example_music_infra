@@ -35,10 +35,20 @@
 #   10_register_spoke_on_hub — spoke only: auto-register as a peer on its hub
 #                        (delegate_to the hub's IP), update wg_hub_topology
 #   11_ssh_hardening     — sshd_config, banners, authorized_keys
-#   12_cockpit           — cockpit.socket, self-signed cert
-#   13_finish            — ASCII art header, final summary, reboot prompt
+#   12_console_hardening — mask ctrl-alt-del.target, disable the systemd
+#                        Ctrl+Alt+Del burst/panic reboot (see
+#                        INC-2026-08-21-CTRLALTDEL) — closes the one gap
+#                        molly-guard can't reach, a console-issued keypress
+#   13_cockpit           — cockpit.socket, self-signed cert
+#   14_finish            — ASCII art header, final summary, reboot prompt
 #
 # Changelog:
+#   2026-08-26  Robert, after INC-2026-08-21-CTRLALTDEL (a console-sent
+#               Ctrl+Alt+Del rebooted a live firewall node): added
+#               12_console_hardening.yml, bumping the former 12/13
+#               (cockpit/finish) to 13/14 — same renumber-on-insert
+#               precedent as 10_register_spoke_on_hub.yml's own 2026-07-17
+#               entry below.
 #   2026-06-20  Initial file
 #   2026-06-20  Colour constants loaded via play vars_files in 90-firewall.yml
 #   2026-07-14  Robert: "vars_prompt do it now" -- restructured what was 00-04 into
@@ -103,8 +113,11 @@
 - import_tasks: 11_ssh_hardening.yml
   tags: [firewall, ssh]
 
-- import_tasks: 12_cockpit.yml
+- import_tasks: 12_console_hardening.yml
+  tags: [firewall, console_hardening]
+
+- import_tasks: 13_cockpit.yml
   tags: [firewall, cockpit]
 
-- import_tasks: 13_finish.yml
+- import_tasks: 14_finish.yml
   tags: [firewall, finish]
