@@ -1,0 +1,68 @@
+---
+# =============================================================================
+# roles/firewall/tasks/12_console_hardening.yml
+# Example Music Limited — Firewall role: console Ctrl+Alt+Del hardening
+# =============================================================================
+# Prevents a console-sent Ctrl+Alt+Del (e.g. via Proxmox's noVNC/xterm.js
+# console — out-of-band from SSH entirely) from rebooting a live firewall VM.
+# Added after INC-2026-08-21-CTRLALTDEL — see docs/INCIDENT-LOG.md for the
+# full incident this closes.
+#
+# Two separate protections, both genuinely needed — confirmed against
+# systemd's own documented behaviour, not assumed one would cover the other:
+#
+#   1. Mask ctrl-alt-del.target — stops systemd starting reboot.target
+#      (what ctrl-alt-del.target is aliased to) on a Ctrl+Alt+Del keypress.
+#   2. CtrlAltDelBurstAction=none in system.conf.d — systemd's OWN escape
+#      hatch for exactly the gap masking the target alone leaves open: 7
+#      presses within 2 seconds bypasses the target mechanism entirely and
+#      forces an immediate, ungraceful reboot by design, specifically so an
+#      admin can still force a reboot even if ctrl-alt-del.target is masked
+#      or broken. A masked target does NOT stop this burst path. Someone
+#      repeatedly pressing Ctrl+Alt+Del because the first press "didn't do
+#      anything" is exactly the scenario this burst protection exists for —
+#      and exactly the scenario that needs disabling here too.
+#
+# Deliberately does NOT touch legitimate remote reboot/shutdown paths.
+# Proxmox's own `qm reboot`/`qm shutdown` via qemu-guest-agent is a
+# completely different mechanism (agent-mediated guest request, not a
+# console keypress) and is unaffected — still the preferred way to reboot
+# these VMs. molly-guard (common_packages, group_vars/all/main.yml) already
+# covers the SSH-issued reboot/shutdown case; this closes the one gap that
+# was outside molly-guard's reach — an out-of-band console signal it never
+# sees at all.
+#
+# system.conf.d changes need a manager re-exec (not just daemon-reload) to
+# take effect — confirmed against ansible.builtin.systemd's own
+# documentation (daemon_reexec is a real, distinct parameter from
+# daemon_reload), matching `systemctl daemon-reexec` directly.
+#
+# Tags: firewall, console_hardening
+# =============================================================================
+# Changelog:
+#   2026-08-26  Initial file, following INC-2026-08-21-CTRLALTDEL.
+# =============================================================================
+
+- name: "[Console] Mask ctrl-alt-del.target"
+  ansible.builtin.systemd:
+    name: ctrl-alt-del.target
+    masked: true
+  tags: [firewall, console_hardening]
+
+- name: "[Console] Disable Ctrl+Alt+Del burst (panic) reboot"
+  ansible.builtin.copy:
+    dest: /etc/systemd/system.conf.d/10-disable-ctrl-alt-del.conf
+    content: |
+      [Manager]
+      CtrlAltDelBurstAction=none
+    owner: root
+    group: root
+    mode: '0644'
+  register: _console_hardening_conf
+  tags: [firewall, console_hardening]
+
+- name: "[Console] Re-exec systemd to apply system.conf.d changes"
+  ansible.builtin.systemd:
+    daemon_reexec: true
+  when: _console_hardening_conf.changed
+  tags: [firewall, console_hardening]

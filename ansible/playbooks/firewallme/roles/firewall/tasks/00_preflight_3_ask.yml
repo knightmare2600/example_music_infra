@@ -105,7 +105,7 @@
 # see ansible/tasks/nodeinfo_environment.yml (replaced the old standalone
 # /etc/.environment file 2026-07-10; fw_environment kept as the local alias
 # since 00_preflight_5_confirm.yml/07_nftables.yml/11_ssh_hardening.yml/
-# 13_finish.yml all already reference it by this name).
+# 14_finish.yml all already reference it by this name).
 
 - name: "[Ask] Resolve environment"
   ansible.builtin.include_tasks: ../../../../../tasks/nodeinfo_environment.yml

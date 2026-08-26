@@ -20,7 +20,7 @@
 # Now checks /etc/example-music/nodeinfo.json instead -- written only by
 # ansible/tasks/nodeinfo.yml, itself only ever called from within a full
 # site.yml-family run (proxmox/30-example-music.yml, linux/tools.yml,
-# firewallme's 13_finish.yml, rudder_server.yml). first-boot.sh never
+# firewallme's 14_finish.yml, rudder_server.yml). first-boot.sh never
 # touches /etc/example-music/ at all, so there's no equivalent collision
 # here. Existence alone isn't trusted, per Robert's explicit ask — the file
 # is read and parsed as JSON, and must contain a non-empty bootstrapped_by
