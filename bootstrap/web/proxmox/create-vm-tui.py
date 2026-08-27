@@ -711,14 +711,30 @@ class LoginModal(ModalScreen):
     }
     """
 
+    # F1/F9 mirror CreateVMApp's own priority Help/About bindings, purely
+    # for Footer display order -- see WizardScreen.BINDINGS for the full
+    # explanation of why this duplication is needed (Footer.compose()
+    # displays active_bindings in first-discovered order, and an App-only
+    # binding is always discovered last regardless of its own list
+    # position). The App's copies win any real keypress since they're
+    # priority=True; these delegate to the same action so they'd still be
+    # correct if that ever changed.
     BINDINGS = [
-        Binding("f10", "app_quit", "Quit", show=True),
+        Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "do_connect", "Connect", show=True),
+        Binding("f9", "show_about", "About", show=True),
+        Binding("f10", "app_quit", "Quit", show=True),
     ]
 
     def __init__(self, args):
         super().__init__()
         self._args = args
+
+    def action_show_help(self) -> None:
+        self.app.action_show_help()
+
+    def action_show_about(self) -> None:
+        self.app.action_show_about()
 
     def compose(self) -> ComposeResult:
         with Vertical(id="login-box"):
@@ -843,14 +859,25 @@ class NodeModal(ModalScreen):
     #node-title { text-style: bold; margin-bottom: 0; }
     """
 
+    # F1/F9 mirror CreateVMApp's own priority Help/About bindings, purely
+    # for Footer display order -- see WizardScreen.BINDINGS for the full
+    # explanation.
     BINDINGS = [
-        Binding("f10", "app_quit", "Quit", show=True),
+        Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "do_continue", "Continue", show=True),
+        Binding("f9", "show_about", "About", show=True),
+        Binding("f10", "app_quit", "Quit", show=True),
     ]
 
     def __init__(self, nodes):
         super().__init__()
         self._pve_nodes = nodes
+
+    def action_show_help(self) -> None:
+        self.app.action_show_help()
+
+    def action_show_about(self) -> None:
+        self.app.action_show_about()
 
     def compose(self) -> ComposeResult:
         with Vertical(id="node-box"):
@@ -1045,13 +1072,26 @@ class WizardScreen(Screen):
     STEP_TOTAL = 5
     STEP_TITLE = ""
 
-    # F1 is deliberately NOT bound here -- freed up app-wide for Help
-    # (CreateVMApp.action_show_help), since F1 is the traditional Help key
-    # and Back/Next used to sit on F1/F2. Back/Next shifted up one slot to
-    # F2/F3 instead of being dropped.
+    # F1/F9 duplicate CreateVMApp's own Help/About bindings -- the App's
+    # copies are priority=True (needed to reach through LoginModal/
+    # NodeModal, see CreateVMApp.BINDINGS) and will always intercept the
+    # keypress first, so these two never actually fire in practice. They
+    # exist here purely so the Footer displays them in the right position:
+    # Footer.compose() renders self.screen.active_bindings in whatever
+    # order those bindings were first discovered while walking the
+    # binding chain (confirmed by reading Footer's own compose() source,
+    # not assumed), and that chain is screen-first-then-App -- so an
+    # App-only binding always gets discovered LAST and displays LAST,
+    # regardless of where it sits in CreateVMApp.BINDINGS itself. Duplicating
+    # it here, in the position it should visually appear, is what actually
+    # controls footer ordering. Both delegate to the real App action
+    # (action_show_help/action_show_about above) so they're correct even
+    # in the hypothetical case they did fire, not just decorative.
     BINDINGS = [
+        Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "wizard_back", "Back", show=True),
         Binding("f3", "wizard_next", "Next", show=True),
+        Binding("f9", "show_about", "About", show=True),
         Binding("f10", "wizard_quit", "Quit", show=True),
         # Ctrl+P/Ctrl+N as a second Back/Next shortcut alongside F2/F3 --
         # not shown in the footer (F2/F3 already cover that) to avoid a
@@ -1144,6 +1184,17 @@ class WizardScreen(Screen):
         yield from ()
 
     def action_wizard_back(self) -> None:
+        # Step 1 (Identity) has nothing wizard-shaped underneath it to go
+        # back TO -- Login/Node are a separate connection phase already
+        # completed by this point, not part of the step numbering. Popping
+        # anyway lands the operator on the App's own bare default Screen:
+        # no Header, no Footer, no fields, no way back into the wizard --
+        # confirmed directly (not assumed) via a headless repro before
+        # this guard existed. The nav-back BUTTON was already correctly
+        # hidden for step 1; this closes the same hole for the F2/Ctrl+P
+        # keyboard shortcuts, which weren't gated the same way.
+        if self.STEP_NUM <= 1:
+            return
         self.app.pop_screen()
 
     def action_wizard_next(self) -> None:
@@ -1151,6 +1202,12 @@ class WizardScreen(Screen):
 
     def action_wizard_quit(self) -> None:
         self.app.exit()
+
+    def action_show_help(self) -> None:
+        self.app.action_show_help()
+
+    def action_show_about(self) -> None:
+        self.app.action_show_about()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "nav-back":
@@ -1698,8 +1755,10 @@ class ReviewScreen(WizardScreen):
     STEP_TITLE = "Review & Create"
 
     BINDINGS = [
+        Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "wizard_back", "Back", show=True),
         Binding("f3", "do_create", "Create", show=True),
+        Binding("f9", "show_about", "About", show=True),
         Binding("f10", "wizard_quit", "Quit", show=True),
         Binding("ctrl+p", "wizard_back", "Back", show=False),
         Binding("ctrl+n", "do_create", "Create", show=False),
@@ -1932,9 +1991,13 @@ class CreateVMApp(App):
     # untruncated chain and are checked App-down before the key is
     # forwarded to whatever's focused, so this reaches Help from anywhere,
     # including underneath a modal.
+    # F9 = About, same reasoning and same priority=True requirement as F1
+    # -- reachable directly (not just via Help's About button) from
+    # anywhere, including LoginModal/NodeModal.
     BINDINGS = [
         Binding("ctrl+c", "quit", "Quit"),
         Binding("f1", "show_help", "Help", show=True, priority=True),
+        Binding("f9", "show_about", "About", show=True, priority=True),
     ]
     # Textual reserves ctrl+p for its own command palette (App.
     # COMMAND_PALETTE_BINDING, wired in as a system binding -- it doesn't
@@ -2014,6 +2077,12 @@ class CreateVMApp(App):
         # F1 is pressed again while it's already open.
         if not isinstance(self.screen, HelpModal):
             self.push_screen(HelpModal())
+
+    def action_show_about(self) -> None:
+        # Same double-open guard as Help, and the same reasoning applies
+        # if F9 is pressed again while About is already showing.
+        if not isinstance(self.screen, AboutModal):
+            self.push_screen(AboutModal())
 
     def on_mount(self) -> None:
         self.push_screen(LoginModal(self.args), self._on_login_done)
