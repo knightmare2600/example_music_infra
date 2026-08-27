@@ -1262,56 +1262,24 @@ class IdentityScreen(WizardScreen):
         yield Checkbox("Same size for all disks", value=self.draft.same_disk_size, id="same-disk-size")
         yield Vertical(id="disk-sliders")
 
-        # Folded in from the old, separate Console & BIOS screen. Console
-        # type has no explicit "chosen yet" state at compose time the way
-        # role/site do (draft.console only gets a real value once this
-        # screen's commit() runs), so the role-based default it needs is
-        # computed here against the SAME effective role the Role Select
-        # itself defaults to, rather than waiting for a later commit() to
-        # set it -- otherwise the very first time this page is shown, none
-        # of the four options would come pre-selected.
-        effective_role = self.draft.role or sorted(ROLE_CODES)[0]
-        default_console = self.draft.console or ("both" if effective_role in SERIAL_CONSOLE_ROLES else "spice")
-        yield Label("Console Type", classes="field-label")
-        with RadioSet(id="console"):
-            yield RadioButton("VGA only", value=(default_console == "vga"), id="console-vga")
-            yield RadioButton("VGA + Serial", value=(default_console == "both"), id="console-both")
-            yield RadioButton("Serial only", value=(default_console == "serial"), id="console-serial")
-            yield RadioButton("SPICE", value=(default_console == "spice"), id="console-spice")
-
-        yield Label("BIOS", classes="field-label")
-        with RadioSet(id="bios-type"):
-            yield RadioButton("SeaBIOS", value=(self.draft.bios_type != "ovmf"), id="bios-seabios")
-            yield RadioButton("UEFI", value=(self.draft.bios_type == "ovmf"), id="bios-uefi")
-
-        if self.ctx.node_arch != "arm64":
-            yield Label("ROM Variant (x86_64 only)", classes="field-label")
-            yield Select([("Default (no custom ROM)", "")], id="bios-rom", allow_blank=False)
-        else:
-            yield Label("arm64 target — no SLIC ROM menu applies here.", classes="field-hint")
+        # Folded in from the old, separate Extras screen -- Resource Pool
+        # and bulk VM count are as much "what am I creating" as Name/Role/
+        # Site are, so they close out this page rather than sitting on
+        # their own screen near the end of the wizard. Windows driver-disk/
+        # VirtIO ISO stayed behind on Extras -- those are role-conditional
+        # (Windows only) and not every VM needs an opinion on them.
+        yield Label("Resource Pool (optional)", classes="field-label")
+        yield Select(
+            [("(none)", "")] + [(p, p) for p in self.ctx.pool_options],
+            id="pool", allow_blank=False, value=self.draft.pool or "",
+        )
+        yield Label("Number of VMs to create (bulk mode — this one counts as #1)", classes="field-label")
+        yield Input(value=str(self.draft.bulk_total), id="bulk-total", type="integer")
 
     async def on_mount(self) -> None:
         super().on_mount()
         self._suggest_if_blank()
-        self._update_rom_list()
         await self._rebuild_disk_sliders()
-
-    def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
-        if event.radio_set.id == "bios-type":
-            self._update_rom_list()
-
-    def _update_rom_list(self) -> None:
-        if self.ctx.node_arch == "arm64":
-            return
-        rom_select = self.query_one("#bios-rom", Select)
-        is_efi = self.query_one("#bios-uefi", RadioButton).value
-        matching = [r for r in KNOWN_ROMS if ("EFI" in r.upper()) == is_efi]
-        rom_select.set_options(
-            [("Default (no custom ROM)", "")]
-            + [(f"{r} — {_describe_rom(r)}", f"/usr/share/kvm/{r}") for r in matching]
-        )
-        if self.draft.bios_rom:
-            rom_select.value = self.draft.bios_rom
 
     async def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "disk-count":
@@ -1456,22 +1424,13 @@ class IdentityScreen(WizardScreen):
         self.draft.same_disk_size = same_size
         self.draft.disk_sizes = [slider_values[0]] * n if same_size else slider_values
 
-        if self.query_one("#console-serial", RadioButton).value:
-            self.draft.console = "serial"
-        elif self.query_one("#console-both", RadioButton).value:
-            self.draft.console = "both"
-        elif self.query_one("#console-spice", RadioButton).value:
-            self.draft.console = "spice"
-        else:
-            self.draft.console = "vga"
-
-        is_efi = self.query_one("#bios-uefi", RadioButton).value
-        self.draft.bios_type = "ovmf" if is_efi else "seabios"
-        if self.ctx.node_arch == "arm64":
-            self.draft.bios_rom = None
-        else:
-            rom_select = self.query_one("#bios-rom", Select)
-            self.draft.bios_rom = rom_select.value if rom_select.value not in (Select.BLANK, "") else None
+        pool_select = self.query_one("#pool", Select)
+        self.draft.pool = pool_select.value or None
+        try:
+            bulk_total = max(1, int(self.query_one("#bulk-total", Input).value))
+        except ValueError:
+            bulk_total = 1
+        self.draft.bulk_total = bulk_total
         return None
 
     def next_screen(self):
@@ -1533,9 +1492,54 @@ class NetworkScreen(WizardScreen):
         yield Input(value=str(default_count), id="nic-count", type="integer")
         yield Vertical(id="nic-rows")
 
+        # Folded in from the old, separate Console & BIOS screen -- grouped
+        # here with NICs at Robert's request rather than with Identity.
+        # Unlike when this lived on Identity, self.draft.role is always
+        # already set by the time NetworkScreen is reached (Identity is
+        # screen 1 and always commits first in this linear wizard), so the
+        # role-based console default can just read it directly -- no need
+        # for the compose-time "effective role" fallback Identity needed
+        # when Console sat on the same page as the Role dropdown itself.
+        default_console = self.draft.console or ("both" if self.draft.role in SERIAL_CONSOLE_ROLES else "spice")
+        yield Label("Console Type", classes="field-label")
+        with RadioSet(id="console"):
+            yield RadioButton("VGA only", value=(default_console == "vga"), id="console-vga")
+            yield RadioButton("VGA + Serial", value=(default_console == "both"), id="console-both")
+            yield RadioButton("Serial only", value=(default_console == "serial"), id="console-serial")
+            yield RadioButton("SPICE", value=(default_console == "spice"), id="console-spice")
+
+        yield Label("BIOS", classes="field-label")
+        with RadioSet(id="bios-type"):
+            yield RadioButton("SeaBIOS", value=(self.draft.bios_type != "ovmf"), id="bios-seabios")
+            yield RadioButton("UEFI", value=(self.draft.bios_type == "ovmf"), id="bios-uefi")
+
+        if self.ctx.node_arch != "arm64":
+            yield Label("ROM Variant (x86_64 only)", classes="field-label")
+            yield Select([("Default (no custom ROM)", "")], id="bios-rom", allow_blank=False)
+        else:
+            yield Label("arm64 target — no SLIC ROM menu applies here.", classes="field-hint")
+
     async def on_mount(self) -> None:
         super().on_mount()
+        self._update_rom_list()
         await self._rebuild_nic_rows()
+
+    def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
+        if event.radio_set.id == "bios-type":
+            self._update_rom_list()
+
+    def _update_rom_list(self) -> None:
+        if self.ctx.node_arch == "arm64":
+            return
+        rom_select = self.query_one("#bios-rom", Select)
+        is_efi = self.query_one("#bios-uefi", RadioButton).value
+        matching = [r for r in KNOWN_ROMS if ("EFI" in r.upper()) == is_efi]
+        rom_select.set_options(
+            [("Default (no custom ROM)", "")]
+            + [(f"{r} — {_describe_rom(r)}", f"/usr/share/kvm/{r}") for r in matching]
+        )
+        if self.draft.bios_rom:
+            rom_select.value = self.draft.bios_rom
 
     async def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "nic-count":
@@ -1609,6 +1613,23 @@ class NetworkScreen(WizardScreen):
             nics.append({"id": f"net{i}", "model": "virtio", "bridge": bridge,
                          "vlan": vlan, "mac": mac, "desc": desc})
         self.draft.nics = nics
+
+        if self.query_one("#console-serial", RadioButton).value:
+            self.draft.console = "serial"
+        elif self.query_one("#console-both", RadioButton).value:
+            self.draft.console = "both"
+        elif self.query_one("#console-spice", RadioButton).value:
+            self.draft.console = "spice"
+        else:
+            self.draft.console = "vga"
+
+        is_efi = self.query_one("#bios-uefi", RadioButton).value
+        self.draft.bios_type = "ovmf" if is_efi else "seabios"
+        if self.ctx.node_arch == "arm64":
+            self.draft.bios_rom = None
+        else:
+            rom_select = self.query_one("#bios-rom", Select)
+            self.draft.bios_rom = rom_select.value if rom_select.value not in (Select.BLANK, "") else None
         return None
 
     def next_screen(self):
@@ -1616,7 +1637,7 @@ class NetworkScreen(WizardScreen):
 
 
 # =============================================================================
-# 4. EXTRAS — pool, Windows driver disk/VirtIO ISO, bulk count
+# 4. EXTRAS — Windows driver disk / VirtIO ISO only
 # =============================================================================
 
 class ExtrasScreen(WizardScreen):
@@ -1627,12 +1648,10 @@ class ExtrasScreen(WizardScreen):
         return "Review >"
 
     def compose_fields(self) -> ComposeResult:
-        yield Label("Resource Pool (optional)", classes="field-label")
-        yield Select(
-            [("(none)", "")] + [(p, p) for p in self.ctx.pool_options],
-            id="pool", allow_blank=False, value=self.draft.pool or "",
-        )
-
+        # Resource Pool and bulk VM count moved onto Identity (page 1) at
+        # Robert's request. What's left here is genuinely role-conditional
+        # (Windows-only) -- for every other role this page is just Back/
+        # Next with a note, which is expected, not an oversight.
         if self.draft.role in WINDOWS_ROLES:
             yield Label("VirtIO Driver Disk (scsi1)", classes="field-label")
             yield Select(
@@ -1644,25 +1663,15 @@ class ExtrasScreen(WizardScreen):
                 [("(none)", "")] + [(v.split("/")[-1], v) for v in self.ctx.virtio_iso_options],
                 id="virtio-iso", allow_blank=False, value=self.draft.virtio_iso or "",
             )
-
-        yield Label("Number of VMs to create (bulk mode — this one counts as #1)", classes="field-label")
-        yield Input(value=str(self.draft.bulk_total), id="bulk-total", type="integer")
+        else:
+            yield Label("No extra options for this role.", classes="field-hint")
 
     def commit(self):
-        pool_select = self.query_one("#pool", Select)
-        self.draft.pool = pool_select.value or None
-
         if self.draft.role in WINDOWS_ROLES:
             dd = self.query_one("#driver-disk", Select).value
             self.draft.driver_disk = dd or None
             vi = self.query_one("#virtio-iso", Select).value
             self.draft.virtio_iso = vi or None
-
-        try:
-            bulk_total = max(1, int(self.query_one("#bulk-total", Input).value))
-        except ValueError:
-            bulk_total = 1
-        self.draft.bulk_total = bulk_total
         return None
 
     def next_screen(self):
