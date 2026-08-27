@@ -696,6 +696,9 @@ class LoginModal(ModalScreen):
         height: auto;
         min-height: 1;
     }
+    #login-actions {
+        height: auto;
+    }
     """
 
     BINDINGS = [
@@ -727,7 +730,13 @@ class LoginModal(ModalScreen):
             yield Label("Token value", classes="field-label", id="token-value-label")
             yield Input(password=True, id="token-value", disabled=True)
             yield Static("", id="login-error")
-            with Horizontal():
+            # id + explicit height:auto (see DEFAULT_CSS) matters here --
+            # Horizontal's own default CSS is height:1fr, and an fr-height
+            # child inside an auto-height parent (#login-box) makes the
+            # *parent* expand to fill the whole screen instead of
+            # shrink-wrapping its content -- this was the actual cause of
+            # the whole dialog running the full window height.
+            with Horizontal(id="login-actions"):
                 yield Button("Connect (F2)", variant="primary", id="connect")
                 yield Button("Quit (F10)", id="quit")
         yield Footer()
@@ -1023,13 +1032,29 @@ class LoadingScreen(Screen):
 
 class WizardScreen(Screen):
     STEP_NUM = 1
-    STEP_TOTAL = 7
+    STEP_TOTAL = 6
     STEP_TITLE = ""
 
     BINDINGS = [
         Binding("f1", "wizard_back", "Back", show=True),
         Binding("f2", "wizard_next", "Next", show=True),
         Binding("f10", "wizard_quit", "Quit", show=True),
+        # Ctrl+P/Ctrl+N as a second Back/Next shortcut alongside F1/F2 --
+        # not shown in the footer (F1/F2 already cover that) to avoid a
+        # cluttered duplicate entry. Landed on this pair after ruling out
+        # every more "obvious" candidate by actually checking what already
+        # claims it, not by assuming: plain Left/Right and PageUp/PageDown
+        # are both bound by VerticalScroll itself (every field on every
+        # screen sits inside one, for page/line scrolling) and would
+        # silently swallow the key before it ever reached this binding;
+        # PageUp/PageDown are also bound by Slider (±10 step) while it has
+        # focus; Ctrl+Left/Right are bound by Input for word-jump, and
+        # Input fields are half of what's on this page. Ctrl+N/Ctrl+P
+        # (checked against every widget class actually used in this file)
+        # are the first pair genuinely unclaimed everywhere, so they bubble
+        # straight up to this binding regardless of which field has focus.
+        Binding("ctrl+p", "wizard_back", "Back", show=False),
+        Binding("ctrl+n", "wizard_next", "Next", show=False),
     ]
 
     # MC-density spacing: no gap between a label and its own field, no gap
@@ -1057,6 +1082,17 @@ class WizardScreen(Screen):
     #step-error {
         color: $error;
         min-height: 1;
+    }
+    /* Same root cause as the login dialog stretch (see LoginModal's
+       #login-actions comment): a plain Vertical()'s own default CSS is
+       height:1fr, and an fr-height container inside the 1fr .step-body
+       greedily claims all remaining vertical space instead of sizing to
+       its actual rebuilt content -- pushing everything below it (BMC/IPMI,
+       the network extras) down into empty dead space. Both are dynamic
+       rebuild targets (_rebuild_disk_sliders/_rebuild_nic_rows), so their
+       true content height varies at runtime -- auto is what's wanted. */
+    #disk-sliders, #nic-rows {
+        height: auto;
     }
     .nav-row {
         height: 1;
@@ -1179,6 +1215,28 @@ class IdentityScreen(WizardScreen):
                     validators=[VMIDValidator(self.ctx.all_taken_ids)],
                     validate_on=["changed"])
 
+        # Folded in from the old, separate OS/Hardware screen -- these are
+        # all "who/what is this VM" essentials that belong with Name/Role/
+        # Site/VMID on one page now that MC-density fields are 1 row each;
+        # disk sizing stays on its own page (Storage & ISO) since it's a
+        # dynamic, potentially-multi-row section in its own right.
+        yield Label("Operating System", classes="field-label")
+        yield Select(
+            [(desc, ostype) for ostype, desc in OS_TYPES.items()],
+            id="ostype", value=self.draft.ostype, allow_blank=False,
+        )
+        yield Label("CPU Sockets", classes="field-label")
+        yield Input(value=str(self.draft.sockets), id="sockets", type="integer")
+        yield Label("CPU Cores per Socket", classes="field-label")
+        yield Input(value=str(self.draft.cores), id="cores", type="integer")
+        yield Label("RAM (Enter to type a value, ←/→ to nudge, PgUp/PgDn ×10)", classes="field-label")
+        yield Slider(256, 131072, value=self.draft.ram, step=256, suffix=" MB", id="ram")
+        yield Label("BMC / IPMI Emulation", classes="field-label")
+        with RadioSet(id="bmc-type"):
+            yield RadioButton("None", value=(self.draft.bmc_type is None), id="bmc-none")
+            yield RadioButton("KCS interface", value=(self.draft.bmc_type == "kcs"), id="bmc-kcs")
+            yield RadioButton("BT interface", value=(self.draft.bmc_type == "bt"), id="bmc-bt")
+
     def on_mount(self) -> None:
         super().on_mount()
         self._suggest_if_blank()
@@ -1251,50 +1309,71 @@ class IdentityScreen(WizardScreen):
             return "Fix the VM Name before continuing."
         if not vmid_input.is_valid:
             return "Fix the VM ID before continuing."
+        try:
+            sockets = int(self.query_one("#sockets", Input).value)
+            cores = int(self.query_one("#cores", Input).value)
+        except ValueError:
+            return "CPU sockets/cores must be whole numbers."
+        if sockets < 1 or cores < 1:
+            return "CPU sockets/cores must be at least 1."
+        total = sockets * cores
+        if total > 1 and total % 2 != 0:
+            return f"Total vCPUs ({cores} × {sockets} = {total}) must be even."
+
         self.draft.role = self.query_one("#role", Select).value
         self.draft.site = self.query_one("#site", Select).value
         self.draft.name = name_input.value.upper()
         self.draft.vmid = vmid_input.value
+        self.draft.ostype = self.query_one("#ostype", Select).value
+        self.draft.sockets = sockets
+        self.draft.cores = cores
+        self.draft.ram = self.query_one("#ram", Slider).value
+        if self.query_one("#bmc-kcs", RadioButton).value:
+            self.draft.bmc_type = "kcs"
+        elif self.query_one("#bmc-bt", RadioButton).value:
+            self.draft.bmc_type = "bt"
+        else:
+            self.draft.bmc_type = None
         if self.draft.console is None:
             self.draft.console = "both" if self.draft.role in SERIAL_CONSOLE_ROLES else "spice"
         return None
 
     def next_screen(self):
-        return OSHardwareScreen(self.draft, self.ctx)
+        return StorageISOScreen(self.draft, self.ctx)
 
 
 # =============================================================================
-# 2. OS + HARDWARE
+# 2. STORAGE + ISO
 # =============================================================================
 
-class OSHardwareScreen(WizardScreen):
+class StorageISOScreen(WizardScreen):
     STEP_NUM = 2
-    STEP_TITLE = "OS & Hardware"
+    STEP_TITLE = "Storage & ISO"
 
     def compose_fields(self) -> ComposeResult:
-        yield Label("Operating System", classes="field-label")
-        yield Select(
-            [(desc, ostype) for ostype, desc in OS_TYPES.items()],
-            id="ostype", value=self.draft.ostype, allow_blank=False,
-        )
-        yield Label("CPU Sockets", classes="field-label")
-        yield Input(value=str(self.draft.sockets), id="sockets", type="integer")
-        yield Label("CPU Cores per Socket", classes="field-label")
-        yield Input(value=str(self.draft.cores), id="cores", type="integer")
-        yield Label("RAM (use ←/→ to adjust, PgUp/PgDn for ×10)", classes="field-label")
-        yield Slider(256, 131072, value=self.draft.ram, step=256, suffix=" MB", id="ram")
+        yield Label("Storage Pool", classes="field-label")
+        if self.ctx.storage_options:
+            yield Select(
+                [(f"{name} ({stype})", name) for name, stype in self.ctx.storage_options],
+                id="storage", allow_blank=False,
+                value=self.draft.storage or self.ctx.storage_options[0][0],
+            )
+        else:
+            yield Select([("No image-capable storage found", "")], id="storage", allow_blank=False)
         yield Label("Number of Disks", classes="field-label")
         yield Input(value=str(self.draft.disk_count), id="disk-count", type="integer")
         yield Checkbox("Same size for all disks", value=self.draft.same_disk_size, id="same-disk-size")
         yield Vertical(id="disk-sliders")
-        yield Label("BMC / IPMI Emulation", classes="field-label")
-        with RadioSet(id="bmc-type"):
-            yield RadioButton("None", value=(self.draft.bmc_type is None), id="bmc-none")
-            yield RadioButton("KCS interface", value=(self.draft.bmc_type == "kcs"), id="bmc-kcs")
-            yield RadioButton("BT interface", value=(self.draft.bmc_type == "bt"), id="bmc-bt")
+        yield Label("iPXE ISO (optional — tick one, or leave blank)", classes="field-label")
+        iso_list = SelectionList(id="iso-list")
+        yield iso_list
 
     async def on_mount(self) -> None:
         super().on_mount()
+        iso_list = self.query_one("#iso-list", SelectionList)
+        for volid in self.ctx.iso_options:
+            name = volid.split("/")[-1] if "/" in volid else volid
+            iso_list.add_option(Selection(name, volid, volid == self.draft.iso))
         await self._rebuild_disk_sliders()
 
     async def on_input_changed(self, event: Input.Changed) -> None:
@@ -1334,72 +1413,6 @@ class OSHardwareScreen(WizardScreen):
                 await container.mount(Label(f"Disk {i + 1} size", classes="field-label"))
                 await container.mount(Slider(1, 8192, value=default, suffix=" GB", id=f"disk-size-{i}"))
 
-    def commit(self):
-        try:
-            sockets = int(self.query_one("#sockets", Input).value)
-            cores = int(self.query_one("#cores", Input).value)
-        except ValueError:
-            return "CPU sockets/cores must be whole numbers."
-        if sockets < 1 or cores < 1:
-            return "CPU sockets/cores must be at least 1."
-        total = sockets * cores
-        if total > 1 and total % 2 != 0:
-            return f"Total vCPUs ({cores} × {sockets} = {total}) must be even."
-
-        same_size = self.query_one("#same-disk-size", Checkbox).value
-        n = self._disk_count()
-        sliders = self.query_one("#disk-sliders", Vertical).query(Slider)
-        slider_values = [s.value for s in sliders]
-        disk_sizes = [slider_values[0]] * n if same_size else slider_values
-
-        self.draft.ostype = self.query_one("#ostype", Select).value
-        self.draft.sockets = sockets
-        self.draft.cores = cores
-        self.draft.ram = self.query_one("#ram", Slider).value
-        self.draft.disk_count = n
-        self.draft.same_disk_size = same_size
-        self.draft.disk_sizes = disk_sizes
-        if self.query_one("#bmc-kcs", RadioButton).value:
-            self.draft.bmc_type = "kcs"
-        elif self.query_one("#bmc-bt", RadioButton).value:
-            self.draft.bmc_type = "bt"
-        else:
-            self.draft.bmc_type = None
-        return None
-
-    def next_screen(self):
-        return StorageISOScreen(self.draft, self.ctx)
-
-
-# =============================================================================
-# 3. STORAGE + ISO
-# =============================================================================
-
-class StorageISOScreen(WizardScreen):
-    STEP_NUM = 3
-    STEP_TITLE = "Storage & ISO"
-
-    def compose_fields(self) -> ComposeResult:
-        yield Label("Storage Pool", classes="field-label")
-        if self.ctx.storage_options:
-            yield Select(
-                [(f"{name} ({stype})", name) for name, stype in self.ctx.storage_options],
-                id="storage", allow_blank=False,
-                value=self.draft.storage or self.ctx.storage_options[0][0],
-            )
-        else:
-            yield Select([("No image-capable storage found", "")], id="storage", allow_blank=False)
-        yield Label("iPXE ISO (optional — tick one, or leave blank)", classes="field-label")
-        iso_list = SelectionList(id="iso-list")
-        yield iso_list
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        iso_list = self.query_one("#iso-list", SelectionList)
-        for volid in self.ctx.iso_options:
-            name = volid.split("/")[-1] if "/" in volid else volid
-            iso_list.add_option(Selection(name, volid, volid == self.draft.iso))
-
     def on_selection_list_selection_toggled(self, event: SelectionList.SelectionToggled) -> None:
         # Single-select in spirit ("attach one, or none") even though
         # SelectionList itself is multi-select -- ticking a new entry
@@ -1417,6 +1430,15 @@ class StorageISOScreen(WizardScreen):
         if storage_select.value in (Select.BLANK, ""):
             return "Select a storage pool before continuing."
         self.draft.storage = storage_select.value
+
+        same_size = self.query_one("#same-disk-size", Checkbox).value
+        n = self._disk_count()
+        sliders = self.query_one("#disk-sliders", Vertical).query(Slider)
+        slider_values = [s.value for s in sliders]
+        self.draft.disk_count = n
+        self.draft.same_disk_size = same_size
+        self.draft.disk_sizes = [slider_values[0]] * n if same_size else slider_values
+
         selected = self.query_one("#iso-list", SelectionList).selected
         self.draft.iso = selected[0] if selected else None
         return None
@@ -1426,11 +1448,11 @@ class StorageISOScreen(WizardScreen):
 
 
 # =============================================================================
-# 4. CONSOLE + BIOS
+# 3. CONSOLE + BIOS
 # =============================================================================
 
 class ConsoleBIOSScreen(WizardScreen):
-    STEP_NUM = 4
+    STEP_NUM = 3
     STEP_TITLE = "Console & BIOS"
 
     def compose_fields(self) -> ComposeResult:
@@ -1497,11 +1519,11 @@ class ConsoleBIOSScreen(WizardScreen):
 
 
 # =============================================================================
-# 5. NETWORK
+# 4. NETWORK
 # =============================================================================
 
 class NetworkScreen(WizardScreen):
-    STEP_NUM = 5
+    STEP_NUM = 4
     STEP_TITLE = "Network"
 
     def compose_fields(self) -> ComposeResult:
@@ -1593,11 +1615,11 @@ class NetworkScreen(WizardScreen):
 
 
 # =============================================================================
-# 6. EXTRAS — pool, Windows driver disk/VirtIO ISO, bulk count
+# 5. EXTRAS — pool, Windows driver disk/VirtIO ISO, bulk count
 # =============================================================================
 
 class ExtrasScreen(WizardScreen):
-    STEP_NUM = 6
+    STEP_NUM = 5
     STEP_TITLE = "Extras"
 
     def next_button_label(self) -> str:
@@ -1647,17 +1669,19 @@ class ExtrasScreen(WizardScreen):
 
 
 # =============================================================================
-# 7. REVIEW + CREATE
+# 6. REVIEW + CREATE
 # =============================================================================
 
 class ReviewScreen(WizardScreen):
-    STEP_NUM = 7
+    STEP_NUM = 6
     STEP_TITLE = "Review & Create"
 
     BINDINGS = [
         Binding("f1", "wizard_back", "Back", show=True),
         Binding("f2", "do_create", "Create", show=True),
         Binding("f10", "wizard_quit", "Quit", show=True),
+        Binding("ctrl+p", "wizard_back", "Back", show=False),
+        Binding("ctrl+n", "do_create", "Create", show=False),
     ]
 
     def __init__(self, draft, ctx, vm_index=1):
@@ -1761,6 +1785,15 @@ class ReviewScreen(WizardScreen):
 class CreateVMApp(App):
     TITLE = "Proxmox VE — VM Creation (jukebox.internal)"
     BINDINGS = [Binding("ctrl+c", "quit", "Quit")]
+    # Textual reserves ctrl+p for its own command palette (App.
+    # COMMAND_PALETTE_BINDING, wired in as a system binding -- it doesn't
+    # show up in App.BINDINGS itself, only found by reading the source).
+    # This tool has no custom commands registered for it to search, and it
+    # was silently winning over the wizard's own Ctrl+P "Back" shortcut
+    # (confirmed empirically -- Ctrl+P was opening the palette instead of
+    # navigating). Disabled rather than picking yet another key, since the
+    # palette isn't a feature this tool uses.
+    ENABLE_COMMAND_PALETTE = False
 
     # Compact, Midnight-Commander-density widget sizing, applied app-wide.
     # Textual's stock Input/Select default to a "tall" (2-row) border, which
