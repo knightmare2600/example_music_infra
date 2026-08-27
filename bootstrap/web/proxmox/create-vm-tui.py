@@ -71,6 +71,7 @@ try:
     from textual.reactive import reactive
     from textual.screen import ModalScreen, Screen
     from textual.validation import ValidationResult, Validator
+    from textual.widget import Widget
     from textual.widgets import (
         Button,
         Checkbox,
@@ -504,22 +505,42 @@ class VMNameValidator(Validator):
 # Focusable, left/right/home/end adjust value within [min, max] by step.
 # =============================================================================
 
-class Slider(Static, can_focus=True):
-    """A minimal keyboard-driven slider. Value changes post a Slider.Changed message."""
+class Slider(Widget, can_focus=True):
+    """A minimal keyboard-driven slider. Arrow keys nudge the value;
+    Enter switches to a plain numeric Input for exact entry (confirm with
+    Enter again, cancel with Escape or by tabbing away) -- typed values are
+    clamped to [min_value, max_value] the same as arrow-key stepping, so a
+    daft value (69MB of RAM) can't actually be entered either way. Value
+    changes post a Slider.Changed message."""
 
     # Lean by design -- no border box (a boxed widget per field is exactly
     # the "crammed into massive boxes" look this was rebuilt away from).
     # Focus is shown with an underline instead, matching plain Input's own
     # focus style, so a slider reads as one more form field, not its own
-    # separate framed panel.
+    # separate framed panel. The nested edit Input reuses the app-wide
+    # compact Input styling (CreateVMApp.CSS) automatically, no separate
+    # rule needed for it here.
     DEFAULT_CSS = """
     Slider {
         height: 1;
+    }
+    Slider > #slider-bar {
+        height: 1;
+        width: 100%;
         color: $text;
     }
-    Slider:focus {
+    Slider:focus > #slider-bar {
         text-style: underline;
         color: $accent;
+    }
+    Slider > #slider-edit {
+        display: none;
+    }
+    Slider.-editing > #slider-bar {
+        display: none;
+    }
+    Slider.-editing > #slider-edit {
+        display: block;
     }
     """
 
@@ -530,6 +551,7 @@ class Slider(Static, can_focus=True):
         Binding("pagedown", "step(-10)", "−10", show=False),
         Binding("home", "to_min", "min", show=False),
         Binding("end", "to_max", "max", show=False),
+        Binding("enter", "start_edit", "Type value", show=False),
     ]
 
     value: reactive[int] = reactive(0)
@@ -541,17 +563,25 @@ class Slider(Static, can_focus=True):
             super().__init__()
 
     def __init__(self, min_value, max_value, value=None, step=1, suffix="", label="", id=None):
-        # markup=False -- the rendered bar contains literal '[' ']' characters
-        # (the bracket-and-block-glyph bar itself), which Textual's Static
-        # otherwise parses as Rich console markup and fails on. Found via
-        # the headless run_test() smoke test, not assumed safe.
-        super().__init__(markup=False, id=id)
+        super().__init__(id=id)
         self.min_value = min_value
         self.max_value = max_value
         self.step = step
         self.suffix = suffix
         self.label = label
-        self.value = self._clamp(value if value is not None else min_value)
+        self._initial_value = self._clamp(value if value is not None else min_value)
+
+    def compose(self) -> ComposeResult:
+        # markup=False -- the rendered bar contains literal '[' ']' characters
+        # (the bracket-and-block-glyph bar itself), which Textual's Static
+        # otherwise parses as Rich console markup and fails on. Found via
+        # the headless run_test() smoke test in the very first version of
+        # this widget, kept here for the same reason.
+        yield Static(id="slider-bar", markup=False)
+        yield Input(id="slider-edit", type="integer")
+
+    def on_mount(self) -> None:
+        self.value = self._initial_value
 
     def _clamp(self, value: int) -> int:
         return max(self.min_value, min(self.max_value, value))
@@ -560,14 +590,16 @@ class Slider(Static, can_focus=True):
         # Render only -- does NOT reassign self.value here. Reactive
         # watchers re-firing on their own attribute's assignment is exactly
         # the kind of recursive-update bug worth avoiding; every entry
-        # point that changes value (constructor, action_step, to_min/max)
-        # clamps via _clamp() before assigning instead.
+        # point that changes value (on_mount, action_step, to_min/max,
+        # _confirm_edit) clamps via _clamp() before assigning instead.
+        if not self.is_mounted:
+            return
         width = 20
         span = max(1, self.max_value - self.min_value)
         filled = int(width * (value - self.min_value) / span)
         bar = "█" * filled + "░" * (width - filled)
         prefix = f"{self.label}: " if self.label else ""
-        self.update(f"{prefix}{bar} {value}{self.suffix}")
+        self.query_one("#slider-bar", Static).update(f"{prefix}{bar} {value}{self.suffix}")
         self.post_message(self.Changed(self, value))
 
     def action_step(self, amount: int) -> None:
@@ -582,8 +614,44 @@ class Slider(Static, can_focus=True):
         if not self.disabled:
             self.value = self.max_value
 
-    def on_mount(self) -> None:
-        self.watch_value(self.value)
+    def action_start_edit(self) -> None:
+        if self.disabled:
+            return
+        self.add_class("-editing")
+        edit_input = self.query_one("#slider-edit", Input)
+        edit_input.value = str(self.value)
+        edit_input.focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "slider-edit":
+            self._confirm_edit(event.value)
+            event.stop()
+
+    def on_input_blurred(self, event: Input.Blurred) -> None:
+        # Losing focus without pressing Enter -- e.g. Tab to the next field
+        # -- is treated as a cancel, not a confirm, so an accidental Tab
+        # mid-edit can't silently commit a half-typed number.
+        if event.input.id == "slider-edit" and self.has_class("-editing"):
+            self._cancel_edit()
+
+    def on_key(self, event) -> None:
+        if self.has_class("-editing") and event.key == "escape":
+            self._cancel_edit()
+            event.stop()
+
+    def _confirm_edit(self, raw: str) -> None:
+        self.remove_class("-editing")
+        try:
+            typed = int(raw)
+        except ValueError:
+            self.focus()
+            return
+        self.value = self._clamp(typed)
+        self.focus()
+
+    def _cancel_edit(self) -> None:
+        self.remove_class("-editing")
+        self.focus()
 
 
 # =============================================================================
@@ -609,10 +677,10 @@ class LoginModal(ModalScreen):
         align: center middle;
     }
     #login-box {
-        width: 44;
+        width: 38;
         height: auto;
         border: round $primary;
-        padding: 0 2;
+        padding: 0 1;
         background: $surface;
     }
     #login-title {
@@ -648,12 +716,12 @@ class LoginModal(ModalScreen):
             yield Input(value=str(self._args.port), placeholder="8006", id="port")
             yield Label("Username", classes="field-label")
             yield Input(value=self._args.user or "root@pam", placeholder="root@pam", id="user")
+            yield Label("Password", classes="field-label", id="password-label")
+            yield Input(password=True, id="password")
             yield Label("Auth method", classes="field-label")
             with RadioSet(id="auth-method"):
                 yield RadioButton("Password", value=True, id="auth-password")
                 yield RadioButton("API Token", id="auth-token")
-            yield Label("Password", classes="field-label", id="password-label")
-            yield Input(password=True, id="password")
             yield Label("Token name", classes="field-label", id="token-name-label")
             yield Input(id="token-name", disabled=True)
             yield Label("Token value", classes="field-label", id="token-value-label")
@@ -750,8 +818,8 @@ class NodeModal(ModalScreen):
     DEFAULT_CSS = """
     NodeModal { align: center middle; }
     #node-box {
-        width: 44; height: auto; border: round $primary;
-        padding: 0 2; background: $surface;
+        width: 38; height: auto; border: round $primary;
+        padding: 0 1; background: $surface;
     }
     #node-title { text-style: bold; margin-bottom: 0; }
     """
@@ -991,7 +1059,8 @@ class WizardScreen(Screen):
         min-height: 1;
     }
     .nav-row {
-        height: 3;
+        height: 1;
+        margin-top: 1;
     }
     """
 
@@ -1063,7 +1132,35 @@ class IdentityScreen(WizardScreen):
     STEP_NUM = 1
     STEP_TITLE = "Identity"
 
+    # EXA<ROLE 2-4><SITE 3><NNN> -- same convention VMNameValidator checks,
+    # used here to parse Role/Site straight out of a typed name.
+    NAME_PATTERN = re.compile(r"^EXA([A-Z]{2,4})([A-Z]{3})(\d{3})$")
+
+    def __init__(self, draft, ctx):
+        super().__init__(draft, ctx)
+        # One-shot suppression flags guarding the two-way name<->role/site
+        # sync against re-triggering itself. Input.Changed/Select.Changed
+        # are POSTED messages (queued, dispatched on a later event-loop
+        # tick), not synchronous calls -- confirmed by reading Input's own
+        # _watch_value() source, not assumed. A naive "set True, do the
+        # assignment, set False" guard is therefore useless: by the time
+        # the queued handler actually runs, the flag is already back to
+        # False. Each flag here is instead consumed (reset) BY the handler
+        # itself, the one time it's actually meant to skip.
+        self._suppress_name_sync = False
+        self._suppress_role_site_sync = 0  # counter, not bool -- role AND
+        # site can both be reassigned in one _sync_role_site_from_name()
+        # call, each queuing its OWN separate Select.Changed message; a
+        # plain bool only suppresses the first of the two.
+
     def compose_fields(self) -> ComposeResult:
+        # Name first -- role/site/console/NIC defaults all flow from it, so
+        # it's the field everything else is downstream of, not an
+        # afterthought once role/site have already been picked.
+        yield Label("VM Name (role/site are parsed from this automatically)", classes="field-label")
+        yield Input(value=self.draft.name, id="name",
+                    validators=[VMNameValidator(self.ctx.all_taken_names)],
+                    validate_on=["changed"])
         yield Label("Role", classes="field-label")
         yield Select(
             [(f"{code} — {ROLE_CODES[code]}", code) for code in sorted(ROLE_CODES)],
@@ -1077,10 +1174,6 @@ class IdentityScreen(WizardScreen):
             id="site", allow_blank=False,
             value=self.draft.site or sorted(SITES)[0],
         )
-        yield Label("VM Name", classes="field-label")
-        yield Input(value=self.draft.name, id="name",
-                    validators=[VMNameValidator(self.ctx.all_taken_names)],
-                    validate_on=["changed"])
         yield Label("VM ID", classes="field-label")
         yield Input(value=self.draft.vmid, id="vmid",
                     validators=[VMIDValidator(self.ctx.all_taken_ids)],
@@ -1090,11 +1183,47 @@ class IdentityScreen(WizardScreen):
         super().on_mount()
         self._suggest_if_blank()
 
-    def on_select_changed(self, event: Select.Changed) -> None:
-        if event.select.id in ("role", "site"):
-            self._suggest_if_blank(force_role_site_change=True)
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if event.input.id != "name":
+            return
+        if self._suppress_name_sync:
+            self._suppress_name_sync = False
+            return
+        self._sync_role_site_from_name(event.value)
 
-    def _suggest_if_blank(self, force_role_site_change: bool = False) -> None:
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id not in ("role", "site"):
+            return
+        if self._suppress_role_site_sync > 0:
+            self._suppress_role_site_sync -= 1
+            return
+        self._suggest_if_blank()
+
+    def _sync_role_site_from_name(self, name: str) -> None:
+        """A fully-typed, valid name drives Role/Site, not the other way
+        round -- e.g. typing EXAFWLDRS001 directly sets Role=FWL, Site=DRS
+        without needing them picked from the dropdowns first."""
+        match = self.NAME_PATTERN.match(name.upper())
+        if not match:
+            return
+        role, site, _suffix = match.groups()
+        if role not in ROLE_CODES or site not in SITES:
+            return
+        role_select = self.query_one("#role", Select)
+        site_select = self.query_one("#site", Select)
+        if role_select.value != role:
+            self._suppress_role_site_sync += 1
+            role_select.value = role
+        if site_select.value != site:
+            self._suppress_role_site_sync += 1
+            site_select.value = site
+        # The name was just typed deliberately -- track it as "the last
+        # thing WE suggested" too, so a later role/site tweak that happens
+        # to still match this exact name is free to re-suggest, but doesn't
+        # clobber a genuinely different name the operator typed since.
+        self._last_auto_name = name.upper()
+
+    def _suggest_if_blank(self) -> None:
         role = self.query_one("#role", Select).value
         site = self.query_one("#site", Select).value
         name_input = self.query_one("#name", Input)
@@ -1107,6 +1236,7 @@ class IdentityScreen(WizardScreen):
         last_vmid = getattr(self, "_last_auto_vmid", None)
         if name_input.value in ("", last_name):
             suggested = f"EXA{role}{site}{next_free_name_suffix(self.ctx.all_taken_names(), role, site)}"
+            self._suppress_name_sync = True  # setting .value below would otherwise loop back into _sync_role_site_from_name
             name_input.value = suggested
             self._last_auto_name = suggested
         if vmid_input.value in ("", last_vmid):
@@ -1681,6 +1811,13 @@ class CreateVMApp(App):
     }
     Checkbox:focus {
         background: $boost;
+    }
+    Button {
+        height: 1;
+        min-width: 10;
+        border-top: none;
+        border-bottom: none;
+        padding: 0 1;
     }
     """
 
