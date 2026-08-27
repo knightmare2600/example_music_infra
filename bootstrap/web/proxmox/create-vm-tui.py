@@ -507,14 +507,19 @@ class VMNameValidator(Validator):
 class Slider(Static, can_focus=True):
     """A minimal keyboard-driven slider. Value changes post a Slider.Changed message."""
 
+    # Lean by design -- no border box (a boxed widget per field is exactly
+    # the "crammed into massive boxes" look this was rebuilt away from).
+    # Focus is shown with an underline instead, matching plain Input's own
+    # focus style, so a slider reads as one more form field, not its own
+    # separate framed panel.
     DEFAULT_CSS = """
     Slider {
         height: 1;
-        border: round $primary;
-        padding: 0 1;
+        color: $text;
     }
     Slider:focus {
-        border: round $accent;
+        text-style: underline;
+        color: $accent;
     }
     """
 
@@ -604,18 +609,32 @@ class LoginModal(ModalScreen):
         align: center middle;
     }
     #login-box {
-        width: 60;
+        width: 50;
         height: auto;
-        border: thick $primary;
+        border: round $primary;
         padding: 1 2;
         background: $surface;
+    }
+    #login-title {
+        text-style: bold;
+        margin-bottom: 1;
+    }
+    .field-label {
+        color: $text-muted;
+        margin-top: 1;
     }
     #login-error {
         color: $error;
         height: auto;
         min-height: 1;
+        margin-top: 1;
     }
     """
+
+    BINDINGS = [
+        Binding("f10", "app_quit", "Quit", show=True),
+        Binding("f2", "do_connect", "Connect", show=True),
+    ]
 
     def __init__(self, args):
         super().__init__()
@@ -623,27 +642,34 @@ class LoginModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="login-box"):
-            yield Label("Proxmox VE — Connect")
-            yield Label("Host / IP")
+            yield Label("Proxmox VE — Connect", id="login-title")
+            yield Label("Host / IP", classes="field-label")
             yield Input(value=self._args.host or "", placeholder="192.168.139.5", id="host")
-            yield Label("Port")
+            yield Label("Port", classes="field-label")
             yield Input(value=str(self._args.port), placeholder="8006", id="port")
-            yield Label("Username (e.g. root@pam)")
-            yield Input(value=self._args.user or "root@pam", id="user")
-            yield Label("Auth method")
+            yield Label("Username", classes="field-label")
+            yield Input(value=self._args.user or "root@pam", placeholder="root@pam", id="user")
+            yield Label("Auth method", classes="field-label")
             with RadioSet(id="auth-method"):
                 yield RadioButton("Password", value=True, id="auth-password")
                 yield RadioButton("API Token", id="auth-token")
-            yield Label("Password", id="password-label")
+            yield Label("Password", classes="field-label", id="password-label")
             yield Input(password=True, id="password")
-            yield Label("Token name", id="token-name-label")
+            yield Label("Token name", classes="field-label", id="token-name-label")
             yield Input(id="token-name", disabled=True)
-            yield Label("Token value", id="token-value-label")
+            yield Label("Token value", classes="field-label", id="token-value-label")
             yield Input(password=True, id="token-value", disabled=True)
             yield Static("", id="login-error")
             with Horizontal():
-                yield Button("Connect", variant="primary", id="connect")
-                yield Button("Quit", id="quit")
+                yield Button("Connect (F2)", variant="primary", id="connect")
+                yield Button("Quit (F10)", id="quit")
+        yield Footer()
+
+    def action_app_quit(self) -> None:
+        self.app.exit()
+
+    def action_do_connect(self) -> None:
+        self._try_connect()
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
         is_token = event.pressed.id == "auth-token"
@@ -725,10 +751,16 @@ class NodeModal(ModalScreen):
     DEFAULT_CSS = """
     NodeModal { align: center middle; }
     #node-box {
-        width: 50; height: auto; border: thick $primary;
+        width: 50; height: auto; border: round $primary;
         padding: 1 2; background: $surface;
     }
+    #node-title { text-style: bold; margin-bottom: 1; }
     """
+
+    BINDINGS = [
+        Binding("f10", "app_quit", "Quit", show=True),
+        Binding("f2", "do_continue", "Continue", show=True),
+    ]
 
     def __init__(self, nodes):
         super().__init__()
@@ -736,270 +768,144 @@ class NodeModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="node-box"):
-            yield Label("Select Proxmox node")
+            yield Label("Select Proxmox Node", id="node-title")
             with RadioSet(id="node-choice"):
                 for i, n in enumerate(self._pve_nodes):
                     status = n.get("status", "?")
                     yield RadioButton(f"{n['node']}  ({status})", value=(i == 0))
-            yield Button("Continue", variant="primary", id="continue")
+            yield Button("Continue (F2)", variant="primary", id="continue")
+        yield Footer()
+
+    def action_app_quit(self) -> None:
+        self.app.exit()
+
+    def action_do_continue(self) -> None:
+        self._continue()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        self._continue()
+
+    def _continue(self) -> None:
         radio_set = self.query_one("#node-choice", RadioSet)
         idx = radio_set.pressed_index if radio_set.pressed_index is not None else 0
         self.dismiss(self._pve_nodes[idx]["node"])
 
 
 # =============================================================================
-# MAIN VM FORM SCREEN
+# WIZARD — draft/context objects + a lean multi-screen flow, one focused
+# step per screen, rather than one long scrolling form. Rebuilt 2026-08-27
+# after Robert's direct feedback on the first version: unlabeled fields,
+# everything crammed into bordered boxes on one page, no visible F-key
+# navigation. Every field below has an explicit label; screens carry no
+# outer border (a modal dialog box is normal TUI language, a boxed *form
+# section* on every screen is not); Back/Next/Quit are real, visible
+# Footer-bound F-keys (F1/F2/F10) on every screen, not just Ctrl+C.
 # =============================================================================
 
-class VMFormScreen(Screen):
-    """One scrollable form covering identity/OS/hardware/storage/ISO/console/
-    network/BIOS/pool — grouped into bordered sections mirroring v1's own
-    section() groupings. Reused across bulk-mode VMs: subsequent VMs get
-    this same screen re-populated from the previous VM's settings, with
-    only Name/VMID freshly suggested."""
+class VMDraft:
+    """Everything collected across the wizard for one VM. Plain container,
+    not a dataclass, to match this file's existing style. Bulk mode reuses
+    one draft's values as the starting point for the next VM -- see
+    ReviewScreen._after_create()."""
 
-    DEFAULT_CSS = """
-    .section {
-        border: round $primary;
-        margin: 1 0;
-        padding: 1 2;
-    }
-    .section-title {
-        text-style: bold;
-        color: $accent;
-    }
-    .field-row {
-        height: auto;
-        margin-bottom: 1;
-    }
-    #summary-log {
-        height: 12;
-        border: round $secondary;
-    }
-    """
+    def __init__(self):
+        self.role = None
+        self.site = None
+        self.name = ""
+        self.vmid = ""
+        self.ostype = "l26"
+        self.sockets = 1
+        self.cores = 2
+        self.ram = 2048
+        self.disk_count = 1
+        self.same_disk_size = True
+        self.disk_sizes = [32]
+        self.bmc_type = None
+        self.storage = None
+        self.iso = None
+        self.console = None  # resolved from role default on first visit
+        self.nics = []
+        self.bios_type = "seabios"
+        self.bios_rom = None
+        self.pool = None
+        self.driver_disk = None
+        self.virtio_iso = None
+        self.bulk_total = 1
+        self.vm_index = 1
 
-    BINDINGS = [Binding("ctrl+c", "quit", "Quit")]
+    def clone_for_next_vm(self):
+        """VM #2..N starting point -- everything carries forward except
+        Name/VMID, which must be unique per VM and are reset to blank so
+        IdentityScreen re-suggests them fresh."""
+        import copy
+        new = copy.deepcopy(self)
+        new.name = ""
+        new.vmid = ""
+        new.vm_index = self.vm_index + 1
+        return new
 
-    def __init__(self, proxmox, node, node_arch, args, bulk_total=1, bulk_index=1,
-                 template_cfg=None, template_role=None, template_site=None,
-                 batch_names=None, batch_ids=None):
-        super().__init__()
+
+class WizardContext:
+    """Live state shared read-only-ish across every screen: the Proxmox
+    connection, the target node, and everything loaded from it once up
+    front (existing VMs, storage/ISO/pool/driver-disk options) -- so
+    individual screens never need their own loading spinner, they just
+    read already-populated lists."""
+
+    def __init__(self, proxmox, node, node_arch, args):
         self.proxmox = proxmox
         self.node = node
         self.node_arch = node_arch
         self.args = args
-        self.bulk_total = bulk_total
-        self.bulk_index = bulk_index
-        self.template_cfg = template_cfg  # previous VM's cfg dict, for bulk pre-population
-        self.template_role = template_role
-        self.template_site = template_site
-        # Carried forward across the whole bulk batch, not just this screen —
-        # see _create_current_vm()/_after_create() for how each new VM adds
-        # to these before the next screen is pushed.
-        self._inherited_batch_names = batch_names or set()
-        self._inherited_batch_ids = batch_ids or set()
-
-        # Local session-wide dupe tracking -- combined with live server state
-        # so two not-yet-created siblings in the same bulk batch can't
-        # collide with each other either. Seeded from every prior VM in this
-        # batch (passed down from the previous screen), not just this one.
-        self.batch_names = set(self._inherited_batch_names)
-        self.batch_ids = set(self._inherited_batch_ids)
 
         self.existing_vms = {}
         self.existing_ids = set()
         self.existing_names = set()
+        # Session-wide dupe tracking across a bulk batch -- combined with
+        # existing_ids/names so two not-yet-created siblings can't collide
+        # with each other either, not just with what's already on the node.
+        self.batch_ids = set()
+        self.batch_names = set()
 
-        self.storage_options = []   # list of (name, type) tuples
-        self.iso_options = []       # list of volid strings
-        self.pool_options = []      # list of poolid strings
+        self.storage_options = []   # [(name, type), ...]
+        self.iso_options = []       # [volid, ...]
+        self.pool_options = []      # [poolid, ...]
         self.driver_disk_options = []
         self.virtio_iso_options = []
-        self.selected_storage_type = None
-        self.selected_role = None
-        self.selected_site = None
-        self.disk_sliders = []      # list of Slider widgets, rebuilt on disk-count change
-        self._last_auto_name = None  # tracks the last auto-suggested Name, so role/site
-        self._last_auto_vmid = None  # changes keep re-suggesting until the user types their own
 
-    # ------------------------------------------------------------------
-    # Layout
-    # ------------------------------------------------------------------
-
-    def compose(self) -> ComposeResult:
-        yield Header(show_clock=False)
-        with VerticalScroll(id="form-scroll"):
-            yield Static(f"VM {self.bulk_index} of {self.bulk_total}", id="bulk-indicator")
-
-            with Vertical(classes="section"):
-                yield Label("IDENTITY", classes="section-title")
-                yield Label("Role")
-                yield Select(
-                    [(f"{code} — {ROLE_CODES[code]}", code) for code in sorted(ROLE_CODES)],
-                    id="role", allow_blank=False,
-                )
-                yield Label("Site")
-                yield Select(
-                    [(f"{code} — {SITES[code]['city']}, {SITES[code]['country']}", code)
-                     for code in sorted(SITES)],
-                    id="site", allow_blank=False,
-                )
-                yield Label("VM Name")
-                yield Input(id="name")
-                yield Label("VM ID")
-                yield Input(id="vmid", validators=[VMIDValidator(self._all_taken_ids)],
-                            validate_on=["changed"])
-                yield Static("", id="identity-error")
-
-            with Vertical(classes="section"):
-                yield Label("OPERATING SYSTEM", classes="section-title")
-                yield Select(
-                    [(desc, ostype) for ostype, desc in OS_TYPES.items()],
-                    id="ostype", value="l26", allow_blank=False,
-                )
-
-            with Vertical(classes="section"):
-                yield Label("HARDWARE", classes="section-title")
-                yield Label("CPU sockets")
-                yield Input(value="1", id="sockets", type="integer")
-                yield Label("Cores per socket")
-                yield Input(value="2", id="cores", type="integer")
-                yield Slider(256, 131072, value=2048, step=256, suffix="MB", label="RAM", id="ram")
-                yield Label("Number of disks")
-                yield Input(value="1", id="disk-count", type="integer")
-                yield Checkbox("Same size for all disks", value=True, id="same-disk-size")
-                yield Vertical(id="disk-sliders")
-                yield Label("BMC / IPMI emulation")
-                with RadioSet(id="bmc-type"):
-                    yield RadioButton("None", value=True, id="bmc-none")
-                    yield RadioButton("KCS interface", id="bmc-kcs")
-                    yield RadioButton("BT interface", id="bmc-bt")
-
-            with Vertical(classes="section"):
-                yield Label("STORAGE", classes="section-title")
-                yield Select([("Loading...", "")], id="storage", allow_blank=False)
-
-            with Vertical(classes="section"):
-                yield Label("iPXE ISO", classes="section-title")
-                yield SelectionList(id="iso-list")
-
-            with Vertical(classes="section"):
-                yield Label("CONSOLE", classes="section-title")
-                with RadioSet(id="console"):
-                    yield RadioButton("VGA only", id="console-vga")
-                    yield RadioButton("VGA + Serial", id="console-both")
-                    yield RadioButton("Serial only", id="console-serial")
-                    yield RadioButton("SPICE", value=True, id="console-spice")
-
-            with Vertical(classes="section"):
-                yield Label("NETWORK", classes="section-title")
-                yield Label("Number of NICs")
-                yield Input(value="1", id="nic-count", type="integer")
-                yield Vertical(id="nic-rows")
-
-            with Vertical(classes="section"):
-                yield Label("BIOS", classes="section-title")
-                with RadioSet(id="bios-type"):
-                    yield RadioButton("SeaBIOS", value=True, id="bios-seabios")
-                    yield RadioButton("UEFI", id="bios-uefi")
-                yield Label("ROM variant (x86_64 only)", id="rom-label")
-                yield Select([("Default (no custom ROM)", "")], id="bios-rom", allow_blank=False)
-
-            with Vertical(classes="section"):
-                yield Label("POOL", classes="section-title")
-                yield Select([("(none)", "")], id="pool", allow_blank=False)
-
-            with Vertical(classes="section", id="windows-section"):
-                yield Label("WINDOWS EXTRAS (driver disk / VirtIO ISO)", classes="section-title")
-                yield Label("VirtIO driver disk (scsi1)")
-                yield Select([("(none)", "")], id="driver-disk", allow_blank=False)
-                yield Label("VirtIO drivers ISO (ide2/ide3, optional)")
-                yield Select([("(none — postOOBE.cmd handles it)", "")], id="virtio-iso", allow_blank=False)
-
-            with Vertical(classes="section"):
-                yield Label("BULK MODE", classes="section-title")
-                yield Label("Number of VMs to create (this one counts as #1)")
-                yield Input(value=str(self.bulk_total), id="bulk-count", type="integer")
-
-            yield RichLog(id="summary-log", markup=True)
-
-            with Horizontal():
-                yield Button("Create VM", variant="primary", id="create")
-                yield Button("Quit", id="quit")
-        yield Footer()
-
-    # ------------------------------------------------------------------
-    # Mount / live data loading
-    # ------------------------------------------------------------------
-
-    async def on_mount(self) -> None:
-        self._log(f"Connected — node: {self.node} ({self.node_arch})", "info")
-        self._load_existing_vms()
-        self._load_live_options()
-        # Role/site must be set BEFORE the first _on_role_or_site_changed()
-        # call for a bulk-mode VM -- that method only fills Name/VMID when
-        # they're still blank, so if it ran once against the default
-        # role/site first, the (wrong) suggestion would already be set and
-        # never get corrected once the template's real role/site landed.
-        # Setting .value here queues its own on_select_changed (fires later,
-        # asynchronously, via Textual's message pump) -- harmless now that
-        # the rebuild methods below are properly awaited/idempotent, just a
-        # possible extra redundant run, not a crash risk like before.
-        if self.template_role:
-            self.query_one("#role", Select).value = self.template_role
-        if self.template_site:
-            self.query_one("#site", Select).value = self.template_site
-        # _on_role_or_site_changed() already awaits _rebuild_nic_rows()
-        # internally -- do not also call it directly here (that duplicate
-        # call, racing an un-awaited remove_children(), was the original
-        # DuplicateIds crash the run_test() smoke test caught).
-        await self._on_role_or_site_changed()
-        await self._rebuild_disk_sliders()
-        self._update_windows_section_visibility()
-        self._update_bios_rom_visibility()
-        if self.template_cfg:
-            await self._apply_template(self.template_cfg)
-
-    def _log(self, message: str, level: str = "info") -> None:
-        colours = {"ok": "green", "warn": "yellow", "error": "red", "step": "cyan", "info": "white"}
-        colour = colours.get(level, "white")
-        self.query_one("#summary-log", RichLog).write(f"[{colour}]{message}[/{colour}]")
-
-    def _all_taken_ids(self):
+    def all_taken_ids(self):
         return self.existing_ids | self.batch_ids
 
-    def _all_taken_names(self):
+    def all_taken_names(self):
         return self.existing_names | self.batch_names
 
-    def _load_existing_vms(self) -> None:
+    def load(self) -> None:
+        """Blocking -- call from a worker thread, not the UI thread."""
         self.existing_vms = get_existing_vms(self.proxmox, self.node)
         self.existing_ids = set(self.existing_vms.keys())
         self.existing_names = set(self.existing_vms.values())
 
-    @work(thread=True)
-    def _load_live_options(self) -> None:
         try:
             stores = self.proxmox.nodes(self.node).storage.get(content="images")
-            storage_opts = [(s["storage"], s.get("type", "?")) for s in sorted(stores, key=lambda s: s["storage"])]
+            self.storage_options = [(s["storage"], s.get("type", "?"))
+                                     for s in sorted(stores, key=lambda s: s["storage"])]
         except Exception:
-            storage_opts = []
+            self.storage_options = []
 
         try:
             isos = self.proxmox.nodes(self.node).storage("local").content.get(content="iso")
-            iso_opts = sorted((i.get("volid", "") for i in isos), key=str)
+            self.iso_options = sorted((i.get("volid", "") for i in isos), key=str)
         except Exception:
-            iso_opts = []
+            self.iso_options = []
 
         try:
             pools = self.proxmox.pools.get()
-            pool_opts = sorted(p["poolid"] for p in pools)
+            self.pool_options = sorted(p["poolid"] for p in pools)
         except Exception:
-            pool_opts = []
+            self.pool_options = []
 
-        driver_disk_opts = []
-        virtio_iso_opts = []
+        self.driver_disk_options = []
+        self.virtio_iso_options = []
         try:
             stores = self.proxmox.nodes(self.node).storage.get(content="iso")
             for store in stores:
@@ -1008,188 +914,484 @@ class VMFormScreen(Screen):
                     for item in items:
                         volid = item.get("volid", "")
                         if volid.lower().endswith(".img"):
-                            driver_disk_opts.append(volid)
+                            self.driver_disk_options.append(volid)
                         elif volid.lower().endswith(".iso"):
-                            virtio_iso_opts.append(volid)
+                            self.virtio_iso_options.append(volid)
                 except Exception:
                     pass
         except Exception:
             pass
 
-        self.app.call_from_thread(
-            self._on_live_options_loaded, storage_opts, iso_opts, pool_opts,
-            driver_disk_opts, virtio_iso_opts,
+
+class LoadingScreen(Screen):
+    """Brief interstitial while WizardContext.load() runs in a worker --
+    avoids a dead blank screen while storage/ISO/pool load."""
+
+    DEFAULT_CSS = """
+    LoadingScreen { align: center middle; }
+    #loading-label { text-style: bold; }
+    """
+
+    def __init__(self, ctx, on_done):
+        super().__init__()
+        self.ctx = ctx
+        self._on_done = on_done
+
+    def compose(self) -> ComposeResult:
+        yield Label("Loading node data…", id="loading-label")
+
+    def on_mount(self) -> None:
+        self._load()
+
+    @work(thread=True, exclusive=True)
+    def _load(self) -> None:
+        self.ctx.load()
+        self.app.call_from_thread(self._on_done, self.ctx)
+
+
+# =============================================================================
+# WIZARD SCREEN BASE — shared nav (F1 Back / F2 Next / F10 Quit, all real
+# Footer-visible bindings), shared lean CSS, shared step-title handling.
+# =============================================================================
+
+class WizardScreen(Screen):
+    STEP_NUM = 1
+    STEP_TOTAL = 7
+    STEP_TITLE = ""
+
+    BINDINGS = [
+        Binding("f1", "wizard_back", "Back", show=True),
+        Binding("f2", "wizard_next", "Next", show=True),
+        Binding("f10", "wizard_quit", "Quit", show=True),
+    ]
+
+    DEFAULT_CSS = """
+    WizardScreen {
+        layout: vertical;
+    }
+    .step-body {
+        padding: 1 3;
+        height: 1fr;
+    }
+    .field-label {
+        color: $text-muted;
+        margin-top: 1;
+    }
+    .field-hint {
+        color: $text-muted;
+        text-style: italic;
+    }
+    #step-error {
+        color: $error;
+        min-height: 1;
+        margin-top: 1;
+    }
+    .nav-row {
+        margin-top: 1;
+        height: 3;
+    }
+    """
+
+    def __init__(self, draft: VMDraft, ctx: WizardContext):
+        super().__init__()
+        self.draft = draft
+        self.ctx = ctx
+
+    def compose(self) -> ComposeResult:
+        yield Header(show_clock=False)
+        with VerticalScroll(classes="step-body"):
+            yield from self.compose_fields()
+            yield Static("", id="step-error")
+        with Horizontal(classes="nav-row"):
+            if self.STEP_NUM > 1:
+                yield Button("< Back", id="nav-back")
+            yield Button(self.next_button_label(), variant="primary", id="nav-next")
+        yield Footer()
+
+    def next_button_label(self) -> str:
+        return "Next >"
+
+    def on_mount(self) -> None:
+        self.sub_title = f"Step {self.STEP_NUM} of {self.STEP_TOTAL} — {self.STEP_TITLE}"
+
+    def compose_fields(self) -> ComposeResult:
+        yield from ()
+
+    def action_wizard_back(self) -> None:
+        self.app.pop_screen()
+
+    def action_wizard_next(self) -> None:
+        self._try_next()
+
+    def action_wizard_quit(self) -> None:
+        self.app.exit()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "nav-back":
+            self.action_wizard_back()
+        elif event.button.id == "nav-next":
+            self._try_next()
+
+    def _try_next(self) -> None:
+        error = self.commit()
+        if error:
+            self.query_one("#step-error", Static).update(error)
+            return
+        nxt = self.next_screen()
+        if nxt is not None:
+            self.app.push_screen(nxt)
+
+    def commit(self):
+        """Validate + write this screen's fields into self.draft.
+        Return an error string to block navigation, or None/'' to proceed."""
+        return None
+
+    def next_screen(self):
+        """Screen instance to push next -- each concrete screen names its
+        own successor directly, keeping the chain easy to follow."""
+        return None
+
+
+# =============================================================================
+# 1. IDENTITY
+# =============================================================================
+
+class IdentityScreen(WizardScreen):
+    STEP_NUM = 1
+    STEP_TITLE = "Identity"
+
+    def compose_fields(self) -> ComposeResult:
+        yield Label("Role", classes="field-label")
+        yield Select(
+            [(f"{code} — {ROLE_CODES[code]}", code) for code in sorted(ROLE_CODES)],
+            id="role", allow_blank=False,
+            value=self.draft.role or sorted(ROLE_CODES)[0],
         )
-
-    def _on_live_options_loaded(self, storage_opts, iso_opts, pool_opts, driver_disk_opts, virtio_iso_opts) -> None:
-        self.storage_options = storage_opts
-        self.iso_options = iso_opts
-        self.pool_options = pool_opts
-        self.driver_disk_options = driver_disk_opts
-        self.virtio_iso_options = virtio_iso_opts
-
-        storage_select = self.query_one("#storage", Select)
-        if storage_opts:
-            storage_select.set_options([(f"{name} ({stype})", name) for name, stype in storage_opts])
-            self.selected_storage_type = storage_opts[0][1]
-        else:
-            storage_select.set_options([("No image-capable storage found", "")])
-            self._log("No image-capable storage found on this node.", "warn")
-
-        iso_list = self.query_one("#iso-list", SelectionList)
-        iso_list.clear_options()
-        for volid in iso_opts:
-            name = volid.split("/")[-1] if "/" in volid else volid
-            iso_list.add_option(Selection(name, volid, False))
-
-        pool_select = self.query_one("#pool", Select)
-        pool_select.set_options([("(none)", "")] + [(p, p) for p in pool_opts])
-
-        driver_select = self.query_one("#driver-disk", Select)
-        driver_select.set_options(
-            [("(none)", "")] + [(v.split("/")[-1], v) for v in driver_disk_opts]
+        yield Label("Site", classes="field-label")
+        yield Select(
+            [(f"{code} — {SITES[code]['city']}, {SITES[code]['country']}", code)
+             for code in sorted(SITES)],
+            id="site", allow_blank=False,
+            value=self.draft.site or sorted(SITES)[0],
         )
-        virtio_select = self.query_one("#virtio-iso", Select)
-        virtio_select.set_options(
-            [("(none — postOOBE.cmd handles it)", "")] + [(v.split("/")[-1], v) for v in virtio_iso_opts]
-        )
+        yield Label("VM Name", classes="field-label")
+        yield Input(value=self.draft.name, id="name",
+                    validators=[VMNameValidator(self.ctx.all_taken_names)],
+                    validate_on=["changed"])
+        yield Label("VM ID", classes="field-label")
+        yield Input(value=self.draft.vmid, id="vmid",
+                    validators=[VMIDValidator(self.ctx.all_taken_ids)],
+                    validate_on=["changed"])
 
-        self._log(f"Loaded {len(storage_opts)} storage, {len(iso_opts)} ISO(s), "
-                   f"{len(pool_opts)} pool(s).", "ok")
+    def on_mount(self) -> None:
+        super().on_mount()
+        self._suggest_if_blank()
 
-    # ------------------------------------------------------------------
-    # Identity: role/site drive name+vmid suggestions; console default
-    # ------------------------------------------------------------------
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id in ("role", "site"):
+            self._suggest_if_blank(force_role_site_change=True)
 
-    async def _on_role_or_site_changed(self) -> None:
-        role_select = self.query_one("#role", Select)
-        site_select = self.query_one("#site", Select)
-        role = role_select.value if role_select.value != Select.BLANK else sorted(ROLE_CODES)[0]
-        site = site_select.value if site_select.value != Select.BLANK else sorted(SITES)[0]
-        self.selected_role = role
-        self.selected_site = site
-
-        # Re-suggest whenever the field is still blank OR still holds exactly
-        # what was last auto-suggested -- i.e. keep tracking role/site as
-        # long as the user hasn't actually typed something of their own.
-        # Found via the headless smoke test: a plain "if not value" guard
-        # (matching v1's one-shot CLI prompt) left a stale name/VMID in
-        # place after a *second* role/site change, since v1 never has this
-        # problem in the first place -- its prompts are strictly sequential,
-        # role and site are always already locked in before name is asked.
-        suggested_suffix = next_free_name_suffix(self._all_taken_names(), role, site)
-        suggested_name = f"EXA{role}{site}{suggested_suffix}"
+    def _suggest_if_blank(self, force_role_site_change: bool = False) -> None:
+        role = self.query_one("#role", Select).value
+        site = self.query_one("#site", Select).value
         name_input = self.query_one("#name", Input)
-        name_input.validators = [VMNameValidator(self._all_taken_names)]
-        name_input.validate_on = ["changed"]
-        if name_input.value in ("", self._last_auto_name):
-            name_input.value = suggested_name
-            self._last_auto_name = suggested_name
-
         vmid_input = self.query_one("#vmid", Input)
-        if vmid_input.value in ("", self._last_auto_vmid):
-            suggested_vmid = str(next_free_vmid(self._all_taken_ids()))
+
+        # Re-suggest whenever the field is blank OR still holds exactly the
+        # last thing this screen auto-suggested -- keeps tracking role/site
+        # right up until the operator types a name/VMID of their own.
+        last_name = getattr(self, "_last_auto_name", None)
+        last_vmid = getattr(self, "_last_auto_vmid", None)
+        if name_input.value in ("", last_name):
+            suggested = f"EXA{role}{site}{next_free_name_suffix(self.ctx.all_taken_names(), role, site)}"
+            name_input.value = suggested
+            self._last_auto_name = suggested
+        if vmid_input.value in ("", last_vmid):
+            suggested_vmid = str(next_free_vmid(self.ctx.all_taken_ids()))
             vmid_input.value = suggested_vmid
             self._last_auto_vmid = suggested_vmid
 
-        # Console default follows role, same as v1's select_console()
-        console_set = self.query_one("#console", RadioSet)
-        if role in SERIAL_CONSOLE_ROLES:
-            console_set.query_one("#console-both", RadioButton).value = True
-        else:
-            console_set.query_one("#console-spice", RadioButton).value = True
+    def commit(self):
+        name_input = self.query_one("#name", Input)
+        vmid_input = self.query_one("#vmid", Input)
+        if not name_input.is_valid:
+            return "Fix the VM Name before continuing."
+        if not vmid_input.is_valid:
+            return "Fix the VM ID before continuing."
+        self.draft.role = self.query_one("#role", Select).value
+        self.draft.site = self.query_one("#site", Select).value
+        self.draft.name = name_input.value.upper()
+        self.draft.vmid = vmid_input.value
+        if self.draft.console is None:
+            self.draft.console = "both" if self.draft.role in SERIAL_CONSOLE_ROLES else "spice"
+        return None
 
-        # NIC/BMC defaults follow role family, same as v1's prompt_hardware()/configure_network()
-        nic_count_input = self.query_one("#nic-count", Input)
-        nic_count_input.value = "2" if role in DUAL_NIC_ROLES else "1"
-        await self._rebuild_nic_rows()
+    def next_screen(self):
+        return OSHardwareScreen(self.draft, self.ctx)
 
-        self._update_windows_section_visibility()
 
-    async def on_select_changed(self, event: Select.Changed) -> None:
-        if event.select.id in ("role", "site"):
-            await self._on_role_or_site_changed()
-        elif event.select.id == "storage":
-            for name, stype in self.storage_options:
-                if name == event.value:
-                    self.selected_storage_type = stype
-                    break
+# =============================================================================
+# 2. OS + HARDWARE
+# =============================================================================
 
-    def _update_windows_section_visibility(self) -> None:
-        is_windows_role = self.selected_role in WINDOWS_ROLES
-        self.query_one("#windows-section", Vertical).display = is_windows_role
+class OSHardwareScreen(WizardScreen):
+    STEP_NUM = 2
+    STEP_TITLE = "OS & Hardware"
 
-    # ------------------------------------------------------------------
-    # Disks: count + "same size" checkbox drive how many sliders show
-    # ------------------------------------------------------------------
+    def compose_fields(self) -> ComposeResult:
+        yield Label("Operating System", classes="field-label")
+        yield Select(
+            [(desc, ostype) for ostype, desc in OS_TYPES.items()],
+            id="ostype", value=self.draft.ostype, allow_blank=False,
+        )
+        yield Label("CPU Sockets", classes="field-label")
+        yield Input(value=str(self.draft.sockets), id="sockets", type="integer")
+        yield Label("CPU Cores per Socket", classes="field-label")
+        yield Input(value=str(self.draft.cores), id="cores", type="integer")
+        yield Label("RAM (use ←/→ to adjust, PgUp/PgDn for ×10)", classes="field-label")
+        yield Slider(256, 131072, value=self.draft.ram, step=256, suffix=" MB", id="ram")
+        yield Label("Number of Disks", classes="field-label")
+        yield Input(value=str(self.draft.disk_count), id="disk-count", type="integer")
+        yield Checkbox("Same size for all disks", value=self.draft.same_disk_size, id="same-disk-size")
+        yield Vertical(id="disk-sliders")
+        yield Label("BMC / IPMI Emulation", classes="field-label")
+        with RadioSet(id="bmc-type"):
+            yield RadioButton("None", value=(self.draft.bmc_type is None), id="bmc-none")
+            yield RadioButton("KCS interface", value=(self.draft.bmc_type == "kcs"), id="bmc-kcs")
+            yield RadioButton("BT interface", value=(self.draft.bmc_type == "bt"), id="bmc-bt")
+
+    async def on_mount(self) -> None:
+        super().on_mount()
+        await self._rebuild_disk_sliders()
 
     async def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "disk-count":
             await self._rebuild_disk_sliders()
-        elif event.input.id == "nic-count":
-            await self._rebuild_nic_rows()
 
     async def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         if event.checkbox.id == "same-disk-size":
             await self._rebuild_disk_sliders()
 
     def _disk_count(self) -> int:
-        raw = self.query_one("#disk-count", Input).value
         try:
-            n = int(raw)
+            n = int(self.query_one("#disk-count", Input).value)
         except ValueError:
             n = 1
         return max(1, min(8, n))
 
     async def _rebuild_disk_sliders(self) -> None:
-        # async + awaited removal/mount throughout -- Widget.remove_children()/
-        # mount() both return awaitables rather than completing synchronously.
-        # Found live via the headless run_test() smoke test: calling this
-        # (and _rebuild_nic_rows) back-to-back as plain sync calls raced the
-        # removal, so the second rebuild tried to mount widgets with IDs the
-        # first rebuild's removal hadn't actually finished clearing yet --
-        # DuplicateIds crash. Every caller awaits this now, not fire-and-forget.
         container = self.query_one("#disk-sliders", Vertical)
-        old_values = [s.value for s in self.disk_sliders]
+        old_values = [s.value for s in container.query(Slider)]
         await container.remove_children()
-        self.disk_sliders = []
 
         n = self._disk_count()
         same_size = self.query_one("#same-disk-size", Checkbox).value
 
         if same_size:
-            default = old_values[0] if old_values else 32
-            slider = Slider(1, 8192, value=default, suffix="GB", label="Disk size (all disks)", id="disk-size-0")
-            self.disk_sliders.append(slider)
-            await container.mount(slider)
+            default = old_values[0] if old_values else (self.draft.disk_sizes[0] if self.draft.disk_sizes else 32)
+            await container.mount(Label("Disk size (all disks)", classes="field-label"))
+            await container.mount(Slider(1, 8192, value=default, suffix=" GB", id="disk-size-0"))
         else:
             for i in range(n):
-                default = old_values[i] if i < len(old_values) else (old_values[0] if old_values else 32)
-                slider = Slider(1, 8192, value=default, suffix="GB", label=f"Disk {i + 1} size", id=f"disk-size-{i}")
-                self.disk_sliders.append(slider)
-                await container.mount(slider)
+                default = old_values[i] if i < len(old_values) else (
+                    old_values[0] if old_values else (
+                        self.draft.disk_sizes[i] if i < len(self.draft.disk_sizes) else 32
+                    )
+                )
+                await container.mount(Label(f"Disk {i + 1} size", classes="field-label"))
+                await container.mount(Slider(1, 8192, value=default, suffix=" GB", id=f"disk-size-{i}"))
 
-    def _disk_sizes(self) -> list:
+    def commit(self):
+        try:
+            sockets = int(self.query_one("#sockets", Input).value)
+            cores = int(self.query_one("#cores", Input).value)
+        except ValueError:
+            return "CPU sockets/cores must be whole numbers."
+        if sockets < 1 or cores < 1:
+            return "CPU sockets/cores must be at least 1."
+        total = sockets * cores
+        if total > 1 and total % 2 != 0:
+            return f"Total vCPUs ({cores} × {sockets} = {total}) must be even."
+
         same_size = self.query_one("#same-disk-size", Checkbox).value
         n = self._disk_count()
-        if same_size:
-            size = self.disk_sliders[0].value if self.disk_sliders else 32
-            return [size] * n
-        return [s.value for s in self.disk_sliders]
+        sliders = self.query_one("#disk-sliders", Vertical).query(Slider)
+        slider_values = [s.value for s in sliders]
+        disk_sizes = [slider_values[0]] * n if same_size else slider_values
 
-    # ------------------------------------------------------------------
-    # NICs: dynamically-built rows, same defaulting logic as v1's
-    # configure_network()/_prompt_nic() (VRK native/untagged special case,
-    # dual-NIC WAN+LAN layout, CLD-VLAN fallback, vmbr0 auto-untag).
-    # ------------------------------------------------------------------
+        self.draft.ostype = self.query_one("#ostype", Select).value
+        self.draft.sockets = sockets
+        self.draft.cores = cores
+        self.draft.ram = self.query_one("#ram", Slider).value
+        self.draft.disk_count = n
+        self.draft.same_disk_size = same_size
+        self.draft.disk_sizes = disk_sizes
+        if self.query_one("#bmc-kcs", RadioButton).value:
+            self.draft.bmc_type = "kcs"
+        elif self.query_one("#bmc-bt", RadioButton).value:
+            self.draft.bmc_type = "bt"
+        else:
+            self.draft.bmc_type = None
+        return None
 
-    def _nic_defaults(self, idx: int, role: str, site: str):
+    def next_screen(self):
+        return StorageISOScreen(self.draft, self.ctx)
+
+
+# =============================================================================
+# 3. STORAGE + ISO
+# =============================================================================
+
+class StorageISOScreen(WizardScreen):
+    STEP_NUM = 3
+    STEP_TITLE = "Storage & ISO"
+
+    def compose_fields(self) -> ComposeResult:
+        yield Label("Storage Pool", classes="field-label")
+        if self.ctx.storage_options:
+            yield Select(
+                [(f"{name} ({stype})", name) for name, stype in self.ctx.storage_options],
+                id="storage", allow_blank=False,
+                value=self.draft.storage or self.ctx.storage_options[0][0],
+            )
+        else:
+            yield Select([("No image-capable storage found", "")], id="storage", allow_blank=False)
+        yield Label("iPXE ISO (optional — tick one, or leave blank)", classes="field-label")
+        iso_list = SelectionList(id="iso-list")
+        yield iso_list
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        iso_list = self.query_one("#iso-list", SelectionList)
+        for volid in self.ctx.iso_options:
+            name = volid.split("/")[-1] if "/" in volid else volid
+            iso_list.add_option(Selection(name, volid, volid == self.draft.iso))
+
+    def on_selection_list_selection_toggled(self, event: SelectionList.SelectionToggled) -> None:
+        # Single-select in spirit ("attach one, or none") even though
+        # SelectionList itself is multi-select -- ticking a new entry
+        # un-ticks whatever was previously ticked.
+        if event.selection_list.id != "iso-list":
+            return
+        iso_list = event.selection_list
+        if event.selection.value in iso_list.selected:
+            for volid in list(iso_list.selected):
+                if volid != event.selection.value:
+                    iso_list.deselect(volid)
+
+    def commit(self):
+        storage_select = self.query_one("#storage", Select)
+        if storage_select.value in (Select.BLANK, ""):
+            return "Select a storage pool before continuing."
+        self.draft.storage = storage_select.value
+        selected = self.query_one("#iso-list", SelectionList).selected
+        self.draft.iso = selected[0] if selected else None
+        return None
+
+    def next_screen(self):
+        return ConsoleBIOSScreen(self.draft, self.ctx)
+
+
+# =============================================================================
+# 4. CONSOLE + BIOS
+# =============================================================================
+
+class ConsoleBIOSScreen(WizardScreen):
+    STEP_NUM = 4
+    STEP_TITLE = "Console & BIOS"
+
+    def compose_fields(self) -> ComposeResult:
+        yield Label("Console Type", classes="field-label")
+        with RadioSet(id="console"):
+            yield RadioButton("VGA only", value=(self.draft.console == "vga"), id="console-vga")
+            yield RadioButton("VGA + Serial", value=(self.draft.console == "both"), id="console-both")
+            yield RadioButton("Serial only", value=(self.draft.console == "serial"), id="console-serial")
+            yield RadioButton("SPICE", value=(self.draft.console == "spice"), id="console-spice")
+
+        yield Label("BIOS", classes="field-label")
+        with RadioSet(id="bios-type"):
+            yield RadioButton("SeaBIOS", value=(self.draft.bios_type != "ovmf"), id="bios-seabios")
+            yield RadioButton("UEFI", value=(self.draft.bios_type == "ovmf"), id="bios-uefi")
+
+        if self.ctx.node_arch != "arm64":
+            yield Label("ROM Variant (x86_64 only)", classes="field-label")
+            yield Select([("Default (no custom ROM)", "")], id="bios-rom", allow_blank=False)
+        else:
+            yield Label("arm64 target — no SLIC ROM menu applies here.", classes="field-hint")
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        self._update_rom_list()
+
+    def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
+        if event.radio_set.id == "bios-type":
+            self._update_rom_list()
+
+    def _update_rom_list(self) -> None:
+        if self.ctx.node_arch == "arm64":
+            return
+        rom_select = self.query_one("#bios-rom", Select)
+        is_efi = self.query_one("#bios-uefi", RadioButton).value
+        matching = [r for r in KNOWN_ROMS if ("EFI" in r.upper()) == is_efi]
+        rom_select.set_options(
+            [("Default (no custom ROM)", "")]
+            + [(f"{r} — {_describe_rom(r)}", f"/usr/share/kvm/{r}") for r in matching]
+        )
+        if self.draft.bios_rom:
+            rom_select.value = self.draft.bios_rom
+
+    def commit(self):
+        if self.query_one("#console-serial", RadioButton).value:
+            self.draft.console = "serial"
+        elif self.query_one("#console-both", RadioButton).value:
+            self.draft.console = "both"
+        elif self.query_one("#console-spice", RadioButton).value:
+            self.draft.console = "spice"
+        else:
+            self.draft.console = "vga"
+
+        is_efi = self.query_one("#bios-uefi", RadioButton).value
+        self.draft.bios_type = "ovmf" if is_efi else "seabios"
+        if self.ctx.node_arch == "arm64":
+            self.draft.bios_rom = None
+        else:
+            rom_select = self.query_one("#bios-rom", Select)
+            self.draft.bios_rom = rom_select.value if rom_select.value not in (Select.BLANK, "") else None
+        return None
+
+    def next_screen(self):
+        return NetworkScreen(self.draft, self.ctx)
+
+
+# =============================================================================
+# 5. NETWORK
+# =============================================================================
+
+class NetworkScreen(WizardScreen):
+    STEP_NUM = 5
+    STEP_TITLE = "Network"
+
+    def compose_fields(self) -> ComposeResult:
+        default_count = len(self.draft.nics) or (2 if self.draft.role in DUAL_NIC_ROLES else 1)
+        yield Label("Number of NICs", classes="field-label")
+        yield Input(value=str(default_count), id="nic-count", type="integer")
+        yield Vertical(id="nic-rows")
+
+    async def on_mount(self) -> None:
+        super().on_mount()
+        await self._rebuild_nic_rows()
+
+    async def on_input_changed(self, event: Input.Changed) -> None:
+        if event.input.id == "nic-count":
+            await self._rebuild_nic_rows()
+
+    def _nic_defaults(self, idx: int):
+        role, site = self.draft.role, self.draft.site
         cld_vlan = SITES["CLD"]["octet"]
         vrk_octet = SITES["VRK"]["octet"]
         if site == "VRK":
             return "vmbr0", "", "vRACK (native, untagged)"
-        site_data = SITES[site]
-        vlan_id = site_data["octet"]
+        vlan_id = SITES[site]["octet"]
         dual_nic = role in DUAL_NIC_ROLES
         if dual_nic:
             if idx == 0:
@@ -1205,275 +1407,220 @@ class VMFormScreen(Screen):
         container = self.query_one("#nic-rows", Vertical)
         await container.remove_children()
 
-        raw = self.query_one("#nic-count", Input).value
         try:
-            n = max(1, min(10, int(raw)))
+            n = max(1, min(10, int(self.query_one("#nic-count", Input).value)))
         except ValueError:
             n = 1
 
-        role = self.selected_role or sorted(ROLE_CODES)[0]
-        site = self.selected_site or sorted(SITES)[0]
-
         for i in range(n):
-            bridge, vlan, desc = self._nic_defaults(i, role, site)
-            row = Horizontal(classes="field-row", id=f"nic-row-{i}")
-            await container.mount(row)
-            await row.mount(
-                Label(f"net{i}:"),
-                Input(value=bridge, id=f"nic-bridge-{i}", placeholder="vmbrN"),
-                Input(value=vlan, id=f"nic-vlan-{i}", placeholder="VLAN (blank=untagged)"),
-                Input(value=desc, id=f"nic-desc-{i}", placeholder="description"),
-                Input(id=f"nic-mac-{i}", placeholder="MAC (blank=auto)"),
-            )
+            if i < len(self.draft.nics):
+                nic = self.draft.nics[i]
+                bridge, vlan, desc = nic["bridge"], ("" if nic["vlan"] is None else str(nic["vlan"])), nic["desc"]
+                mac = nic.get("mac") or ""
+            else:
+                bridge, vlan, desc = self._nic_defaults(i)
+                mac = ""
+            await container.mount(Label(f"NIC net{i}", classes="field-label"))
+            await container.mount(Label("  Bridge", classes="field-hint"))
+            await container.mount(Input(value=bridge, id=f"nic-bridge-{i}", placeholder="vmbrN"))
+            await container.mount(Label("  VLAN (blank = untagged)", classes="field-hint"))
+            await container.mount(Input(value=vlan, id=f"nic-vlan-{i}"))
+            await container.mount(Label("  Description", classes="field-hint"))
+            await container.mount(Input(value=desc, id=f"nic-desc-{i}"))
+            await container.mount(Label("  MAC (blank = auto)", classes="field-hint"))
+            await container.mount(Input(value=mac, id=f"nic-mac-{i}"))
 
-    def _gather_nics(self) -> list:
+    def commit(self):
         cld_vlan = SITES["CLD"]["octet"]
         vrk_octet = SITES["VRK"]["octet"]
-        raw = self.query_one("#nic-count", Input).value
         try:
-            n = max(1, min(10, int(raw)))
+            n = max(1, min(10, int(self.query_one("#nic-count", Input).value)))
         except ValueError:
             n = 1
         nics = []
         for i in range(n):
             bridge = self.query_one(f"#nic-bridge-{i}", Input).value.strip() or "vmbr1"
+            if not re.match(r"^vmbr\d+$", bridge):
+                return f"NIC net{i}: bridge must be vmbrN (e.g. vmbr0, vmbr1)."
             vlan_raw = self.query_one(f"#nic-vlan-{i}", Input).value.strip()
             desc = self.query_one(f"#nic-desc-{i}", Input).value.strip()
             mac = self.query_one(f"#nic-mac-{i}", Input).value.strip() or None
             vlan = int(vlan_raw) if vlan_raw.isdigit() else None
-            # vmbr0 provisioning-bridge special case -- same collapse-to-untagged
-            # rule as v1's _prompt_nic() (an access port, tagging it double-tags frames)
             if bridge == "vmbr0" and vlan in (cld_vlan, vrk_octet, None):
                 vlan = None
             if mac and not re.match(r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$", mac):
                 mac = None
             nics.append({"id": f"net{i}", "model": "virtio", "bridge": bridge,
                          "vlan": vlan, "mac": mac, "desc": desc})
-        return nics
+        self.draft.nics = nics
+        return None
 
-    # ------------------------------------------------------------------
-    # BIOS: two-level -- SeaBIOS/UEFI radio, then a filtered ROM list.
-    # arm64 keeps v1's simpler seabios/ovmf-only choice, no ROM file.
-    # ------------------------------------------------------------------
+    def next_screen(self):
+        return ExtrasScreen(self.draft, self.ctx)
 
-    def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
-        if event.radio_set.id == "bios-type":
-            self._update_bios_rom_visibility()
 
-    def _update_bios_rom_visibility(self) -> None:
-        rom_label = self.query_one("#rom-label", Label)
-        rom_select = self.query_one("#bios-rom", Select)
+# =============================================================================
+# 6. EXTRAS — pool, Windows driver disk/VirtIO ISO, bulk count
+# =============================================================================
 
-        if self.node_arch == "arm64":
-            rom_label.display = False
-            rom_select.display = False
-            return
+class ExtrasScreen(WizardScreen):
+    STEP_NUM = 6
+    STEP_TITLE = "Extras"
 
-        rom_label.display = True
-        rom_select.display = True
-        is_efi = self.query_one("#bios-uefi", RadioButton).value
-        matching = [r for r in KNOWN_ROMS if ("EFI" in r.upper()) == is_efi]
-        rom_select.set_options(
-            [("Default (no custom ROM)", "")]
-            + [(f"{r} — {_describe_rom(r)}", f"/usr/share/kvm/{r}") for r in matching]
+    def next_button_label(self) -> str:
+        return "Review >"
+
+    def compose_fields(self) -> ComposeResult:
+        yield Label("Resource Pool (optional)", classes="field-label")
+        yield Select(
+            [("(none)", "")] + [(p, p) for p in self.ctx.pool_options],
+            id="pool", allow_blank=False, value=self.draft.pool or "",
         )
 
-    # ------------------------------------------------------------------
-    # Create / bulk flow
-    # ------------------------------------------------------------------
+        if self.draft.role in WINDOWS_ROLES:
+            yield Label("VirtIO Driver Disk (scsi1)", classes="field-label")
+            yield Select(
+                [("(none)", "")] + [(v.split("/")[-1], v) for v in self.ctx.driver_disk_options],
+                id="driver-disk", allow_blank=False, value=self.draft.driver_disk or "",
+            )
+            yield Label("VirtIO Drivers ISO (optional — postOOBE.cmd usually handles this)", classes="field-label")
+            yield Select(
+                [("(none)", "")] + [(v.split("/")[-1], v) for v in self.ctx.virtio_iso_options],
+                id="virtio-iso", allow_blank=False, value=self.draft.virtio_iso or "",
+            )
+
+        yield Label("Number of VMs to create (bulk mode — this one counts as #1)", classes="field-label")
+        yield Input(value=str(self.draft.bulk_total), id="bulk-total", type="integer")
+
+    def commit(self):
+        pool_select = self.query_one("#pool", Select)
+        self.draft.pool = pool_select.value or None
+
+        if self.draft.role in WINDOWS_ROLES:
+            dd = self.query_one("#driver-disk", Select).value
+            self.draft.driver_disk = dd or None
+            vi = self.query_one("#virtio-iso", Select).value
+            self.draft.virtio_iso = vi or None
+
+        try:
+            bulk_total = max(1, int(self.query_one("#bulk-total", Input).value))
+        except ValueError:
+            bulk_total = 1
+        self.draft.bulk_total = bulk_total
+        return None
+
+    def next_screen(self):
+        return ReviewScreen(self.draft, self.ctx, vm_index=self.draft.vm_index)
+
+
+# =============================================================================
+# 7. REVIEW + CREATE
+# =============================================================================
+
+class ReviewScreen(WizardScreen):
+    STEP_NUM = 7
+    STEP_TITLE = "Review & Create"
+
+    BINDINGS = [
+        Binding("f1", "wizard_back", "Back", show=True),
+        Binding("f2", "do_create", "Create", show=True),
+        Binding("f10", "wizard_quit", "Quit", show=True),
+    ]
+
+    def __init__(self, draft, ctx, vm_index=1):
+        super().__init__(draft, ctx)
+        self.vm_index = vm_index
+
+    def next_button_label(self) -> str:
+        return "Create VM (F2)"
+
+    def compose_fields(self) -> ComposeResult:
+        d = self.draft
+        disk_desc = (f"{d.disk_count} × {d.disk_sizes[0]}GB" if d.same_disk_size
+                     else " / ".join(f"{s}GB" for s in d.disk_sizes))
+        bmc_desc = {"kcs": "KCS", "bt": "BT"}.get(d.bmc_type, "None")
+        iso_desc = d.iso.split("/")[-1] if d.iso else "(none)"
+        nic_desc = ", ".join(f"{n['id']}={n['bridge']}"
+                              + (f"/vlan{n['vlan']}" if n['vlan'] else "/untagged")
+                              for n in d.nics) or "(none)"
+
+        yield Label(f"VM {self.vm_index} of {d.bulk_total}", classes="field-hint")
+        for line in [
+            f"Name        {d.name}    (VMID {d.vmid})",
+            f"Role / Site  {d.role} / {d.site}",
+            f"OS           {OS_TYPES.get(d.ostype, d.ostype)}",
+            f"CPU          {d.sockets} socket(s) × {d.cores} core(s)",
+            f"RAM          {d.ram} MB",
+            f"Disks        {disk_desc} on {d.storage}",
+            f"BMC          {bmc_desc}",
+            f"Console      {d.console}",
+            f"BIOS         {d.bios_type}" + (f" ({d.bios_rom.split('/')[-1]})" if d.bios_rom else ""),
+            f"ISO          {iso_desc}",
+            f"NICs         {nic_desc}",
+            f"Pool         {d.pool or '(none)'}",
+        ]:
+            yield Static(line)
+        yield RichLog(id="create-log", markup=True)
+
+    def commit(self):
+        return None
+
+    def next_screen(self):
+        return None
+
+    def action_do_create(self) -> None:
+        self._create()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "quit":
-            self.app.exit()
-        elif event.button.id == "create":
-            self._create_current_vm()
+        if event.button.id == "nav-back":
+            self.action_wizard_back()
+        elif event.button.id == "nav-next":
+            self._create()
 
-    def _collect_hw(self) -> dict:
-        def _int(id_, default):
-            try:
-                return int(self.query_one(f"#{id_}", Input).value)
-            except (ValueError, LookupError):
-                return default
+    def _log(self, message: str, level: str = "info") -> None:
+        colours = {"ok": "green", "warn": "yellow", "error": "red", "step": "cyan", "info": "white"}
+        self.query_one("#create-log", RichLog).write(f"[{colours.get(level, 'white')}]{message}[/{colours.get(level, 'white')}]")
 
-        sockets = _int("sockets", 1)
-        cores = _int("cores", 2)
-        ram = self.query_one("#ram", Slider).value
-        disk_count = self._disk_count()
-        disk_sizes = self._disk_sizes()
-
-        bmc_type = None
-        if self.query_one("#bmc-kcs", RadioButton).value:
-            bmc_type = "kcs"
-        elif self.query_one("#bmc-bt", RadioButton).value:
-            bmc_type = "bt"
-
-        return {
-            "sockets": sockets, "cores": cores, "ram": ram,
-            "disk": disk_sizes[0] if disk_sizes else 32,
-            "disk_sizes": disk_sizes, "disk_count": disk_count,
-            "bmc_type": bmc_type,
-        }
-
-    def _collect_console(self) -> str:
-        if self.query_one("#console-serial", RadioButton).value:
-            return "serial"
-        if self.query_one("#console-both", RadioButton).value:
-            return "both"
-        if self.query_one("#console-spice", RadioButton).value:
-            return "spice"
-        return "vga"
-
-    def _collect_bios(self):
-        is_efi = self.query_one("#bios-uefi", RadioButton).value
-        bios_type = "ovmf" if is_efi else "seabios"
-        if self.node_arch == "arm64":
-            return bios_type, None
-        rom_select = self.query_one("#bios-rom", Select)
-        rom_path = rom_select.value if rom_select.value not in (Select.BLANK, "") else None
-        return bios_type, rom_path
-
-    def on_selection_list_selection_toggled(self, event: SelectionList.SelectionToggled) -> None:
-        # The ISO list is single-select in spirit ("attach one, or none") even
-        # though SelectionList itself is a multi-select widget -- ticking a
-        # new entry un-ticks whatever was previously ticked, so "add it,
-        # remove it" behaves like a real single choice rather than silently
-        # keeping only the first-by-list-order item if two ended up checked.
-        if event.selection_list.id != "iso-list":
-            return
-        iso_list = event.selection_list
-        if event.selection.value in iso_list.selected:
-            for volid in list(iso_list.selected):
-                if volid != event.selection.value:
-                    iso_list.deselect(volid)
-
-    def _selected_iso(self):
-        iso_list = self.query_one("#iso-list", SelectionList)
-        selected = iso_list.selected
-        return selected[0] if selected else None
-
-    def _create_current_vm(self) -> None:
-        name_input = self.query_one("#name", Input)
-        vmid_input = self.query_one("#vmid", Input)
-
-        if not name_input.is_valid or not vmid_input.is_valid:
-            self._log("Fix the Name/VM ID errors above before creating.", "error")
-            return
-
-        vm_name = name_input.value.upper()
-        vmid = int(vmid_input.value)
-        role = self.selected_role
-        site = self.selected_site
-
-        ostype = self.query_one("#ostype", Select).value
-        hw = self._collect_hw()
-        console = self._collect_console()
-        bios_type, bios_rom = self._collect_bios()
-        nics = self._gather_nics()
-
-        storage_select = self.query_one("#storage", Select)
-        storage = storage_select.value if storage_select.value not in (Select.BLANK, "") else None
-        if not storage:
-            self._log("Select a storage pool before creating.", "error")
-            return
-
-        pool_select = self.query_one("#pool", Select)
-        pool = pool_select.value or None
-
-        driver_disk = None
-        virtio_iso = None
-        if role in WINDOWS_ROLES:
-            dd = self.query_one("#driver-disk", Select).value
-            driver_disk = dd or None
-            vi = self.query_one("#virtio-iso", Select).value
-            virtio_iso = vi or None
-
-        machine = "virt" if self.node_arch == "arm64" else None
-        ipxe_iso = self._selected_iso()
+    def _create(self) -> None:
+        d = self.draft
+        machine = "virt" if self.ctx.node_arch == "arm64" else None
+        hw = {"sockets": d.sockets, "cores": d.cores, "ram": d.ram,
+              "disk": d.disk_sizes[0] if d.disk_sizes else 32,
+              "disk_sizes": d.disk_sizes, "disk_count": d.disk_count,
+              "bmc_type": d.bmc_type}
+        storage_type = next((stype for name, stype in self.ctx.storage_options if name == d.storage), None)
 
         cfg = build_vm_config(
-            vmid=vmid, name=vm_name, role=role, site=site, hw=hw,
-            storage=storage, console=console, nics=nics, ostype=ostype,
-            ipxe_iso=ipxe_iso, pool=pool, driver_disk=driver_disk,
-            virtio_iso=virtio_iso, bios_type=bios_type, bios_rom=bios_rom,
-            storage_type=self.selected_storage_type, machine=machine,
+            vmid=int(d.vmid), name=d.name, role=d.role, site=d.site, hw=hw,
+            storage=d.storage, console=d.console, nics=d.nics, ostype=d.ostype,
+            ipxe_iso=d.iso, pool=d.pool, driver_disk=d.driver_disk,
+            virtio_iso=d.virtio_iso, bios_type=d.bios_type, bios_rom=d.bios_rom,
+            storage_type=storage_type, machine=machine,
         )
-
-        self.batch_names.add(vm_name)
-        self.batch_ids.add(vmid)
-
-        self._log(f"Submitting {vm_name} (VMID {vmid})...", "step")
+        self.ctx.batch_names.add(d.name)
+        self.ctx.batch_ids.add(int(d.vmid))
+        self._log(f"Submitting {d.name} (VMID {d.vmid})…", "step")
         self._run_create(cfg)
 
     @work(thread=True, exclusive=True)
     def _run_create(self, cfg: dict) -> None:
         def log_fn(msg, level):
             self.app.call_from_thread(self._log, msg, level)
-
-        success = create_vm(self.proxmox, self.node, cfg, log_fn, dry_run=self.args.dry_run)
+        success = create_vm(self.ctx.proxmox, self.ctx.node, cfg, log_fn, dry_run=self.ctx.args.dry_run)
         if success:
-            write_log(self.args.log, cfg, self.node, dry_run=self.args.dry_run)
-        self.app.call_from_thread(self._after_create, success, cfg)
+            write_log(self.ctx.args.log, cfg, self.ctx.node, dry_run=self.ctx.args.dry_run)
+        self.app.call_from_thread(self._after_create, success)
 
-    def _after_create(self, success: bool, cfg: dict) -> None:
+    def _after_create(self, success: bool) -> None:
         if not success:
-            self._log("VM creation failed — see log above. Fix and try again.", "error")
+            self._log("VM creation failed — see log above.", "error")
             return
-
-        self._log(f"VM {cfg['vmid']} ({cfg['name']}) done ({self.bulk_index}/{self.bulk_total}).", "ok")
-
-        try:
-            bulk_total = max(1, int(self.query_one("#bulk-count", Input).value))
-        except ValueError:
-            bulk_total = self.bulk_total
-
-        if self.bulk_index >= bulk_total:
+        self._log(f"Done ({self.vm_index}/{self.draft.bulk_total}).", "ok")
+        if self.vm_index >= self.draft.bulk_total:
             self._log("Bulk session complete.", "ok")
             return
-
-        # Next VM in the batch: same screen, re-populated from this cfg,
-        # only Name/VMID freshly suggested (and still independently
-        # editable/validated) -- see plan's "clone and repopulate" design.
-        # role/site and the running batch dupe-set are threaded through
-        # explicitly -- build_vm_config()'s cfg dict doesn't carry role/site
-        # at all (matches v1's shape, which never needed to), so they can't
-        # be recovered from cfg alone.
-        self.app.push_screen(
-            VMFormScreen(
-                self.proxmox, self.node, self.node_arch, self.args,
-                bulk_total=bulk_total, bulk_index=self.bulk_index + 1,
-                template_cfg=cfg, template_role=self.selected_role,
-                template_site=self.selected_site,
-                batch_names=self.batch_names, batch_ids=self.batch_ids,
-            )
-        )
-
-    async def _apply_template(self, cfg: dict) -> None:
-        """Pre-populate this (new VM #N) screen from the previous VM's cfg.
-        Name/VMID are deliberately NOT copied -- they're freshly suggested
-        by _on_role_or_site_changed() instead, and stay independently
-        editable/validated. Role/site are already set by on_mount() before
-        this runs, not here -- see that method's own comment for why the
-        ordering matters."""
-        self.query_one("#ostype", Select).value = cfg["ostype"]
-        self.query_one("#sockets", Input).value = str(cfg["sockets"])
-        self.query_one("#cores", Input).value = str(cfg["cores"])
-        self.query_one("#ram", Slider).value = cfg["memory"]
-        self.query_one("#disk-count", Input).value = str(cfg.get("disk_count", 1))
-        await self._rebuild_disk_sliders()
-        for i, size in enumerate(cfg.get("disk_sizes") or [cfg["disk_gb"]]):
-            if i < len(self.disk_sliders):
-                self.disk_sliders[i].value = size
-        console_ids = {"vga": "console-vga", "both": "console-both",
-                        "serial": "console-serial", "spice": "console-spice"}
-        self.query_one(f"#{console_ids.get(cfg['console'], 'console-spice')}", RadioButton).value = True
-        if cfg.get("bios") == "ovmf":
-            self.query_one("#bios-uefi", RadioButton).value = True
-        self._update_bios_rom_visibility()
-        if cfg.get("pool"):
-            self.query_one("#pool", Select).value = cfg["pool"]
-        self._log(f"Pre-populated from {cfg['name']} — set a new Name/VM ID for this one.", "info")
-
-
+        next_draft = self.draft.clone_for_next_vm()
+        self.app.push_screen(IdentityScreen(next_draft, self.ctx))
 # =============================================================================
 # APP — ties LoginModal -> (NodeModal if >1 node) -> VMFormScreen together.
 # =============================================================================
@@ -1524,10 +1671,15 @@ class CreateVMApp(App):
     @work(thread=True, exclusive=True)
     def _detect_arch_and_start(self, proxmox, node) -> None:
         arch = detect_node_arch(proxmox, node)
-        self.call_from_thread(self._start_form, proxmox, node, arch)
+        self.call_from_thread(self._start_loading, proxmox, node, arch)
 
-    def _start_form(self, proxmox, node, arch) -> None:
-        self.push_screen(VMFormScreen(proxmox, node, arch, self.args))
+    def _start_loading(self, proxmox, node, arch) -> None:
+        ctx = WizardContext(proxmox, node, arch, self.args)
+        self.push_screen(LoadingScreen(ctx, self._start_wizard))
+
+    def _start_wizard(self, ctx: WizardContext) -> None:
+        self.pop_screen()  # drop LoadingScreen
+        self.push_screen(IdentityScreen(VMDraft(), ctx))
 
 
 # =============================================================================
