@@ -35,6 +35,8 @@ pve_packages:
   - zsh
   - grc
   - python3-textual
+  - python3-textual-fastdatatable  # create-vm-tui.py -- fast DataTable widget backend
+  - python3-textual-textarea       # create-vm-tui.py -- Textual companion, available if needed
   - python3-pbr
   - python3-six
   - w3m
