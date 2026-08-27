@@ -665,6 +665,51 @@ class Slider(Widget, can_focus=True):
 
 
 # =============================================================================
+# THEME FOOTER — Textual's stock Footer plus a live "Current Theme: X"
+# indicator, used everywhere a plain Footer() used to be so it's
+# consistent across every screen (login, node picker, every wizard step,
+# Help, About) -- matching how F1/F7/F9 were made consistent everywhere
+# in earlier passes.
+# =============================================================================
+
+class ThemeFooter(Footer):
+    """Appends "| Current Theme: <name>" after the key-binding list.
+    Textual's Footer.compose() sets self.styles.grid_size_columns to
+    exactly the number of visible key bindings it renders (confirmed by
+    reading its source, not assumed) -- appending one more grid child
+    without bumping that count would just get clipped, so it's
+    incremented by 1 here to make room for the extra cell."""
+
+    DEFAULT_CSS = """
+    ThemeFooter > #footer-theme {
+        width: auto;
+        color: $footer-foreground;
+        background: $footer-background;
+        padding: 0 1;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        if not self._bindings_ready:
+            return
+        yield from super().compose()
+        self.styles.grid_size_columns += 1
+        yield Static(f"| Current Theme: {self.app.theme}", id="footer-theme")
+
+    def on_mount(self) -> None:
+        # Cross-widget reactive watch (Textual's own DOMNode.watch(), not
+        # hand-rolled) -- keeps the label live when F7 changes the theme
+        # without needing the whole screen to recompose. init=False: the
+        # label is already correct from compose() above, no need to fire
+        # once immediately on mount too.
+        self.watch(self.app, "theme", self._on_theme_changed, init=False)
+
+    def _on_theme_changed(self, old_value: str, new_value: str) -> None:
+        for label in self.query("#footer-theme"):
+            label.update(f"| Current Theme: {new_value}")
+
+
+# =============================================================================
 # LOGIN MODAL
 # =============================================================================
 
@@ -769,7 +814,7 @@ class LoginModal(ModalScreen):
             with Horizontal(id="login-actions"):
                 yield Button("Connect (F2)", variant="primary", id="connect")
                 yield Button("Quit (F10)", id="quit")
-        yield Footer()
+        yield ThemeFooter()
 
     def action_app_quit(self) -> None:
         self.app.exit()
@@ -895,7 +940,7 @@ class NodeModal(ModalScreen):
                     status = n.get("status", "?")
                     yield RadioButton(f"{n['node']}  ({status})", value=(i == 0))
             yield Button("Continue (F2)", variant="primary", id="continue")
-        yield Footer()
+        yield ThemeFooter()
 
     def action_app_quit(self) -> None:
         self.app.exit()
@@ -1181,7 +1226,7 @@ class WizardScreen(Screen):
             if self.STEP_NUM > 1:
                 yield Button("< Back (F2)", id="nav-back")
             yield Button(self.next_button_label(), variant="primary", id="nav-next")
-        yield Footer()
+        yield ThemeFooter()
 
     def next_button_label(self) -> str:
         return "Next > (F3)"
@@ -1910,7 +1955,7 @@ class AboutModal(ModalScreen):
             yield Static("jukebox.internal estate tooling.")
             yield Static("", id="about-egg", markup=False)
             yield Button("Close (Esc)", id="about-close")
-        yield Footer()
+        yield ThemeFooter()
 
     def action_close_about(self) -> None:
         self.dismiss()
@@ -1976,7 +2021,7 @@ class HelpModal(ModalScreen):
             with Horizontal(id="help-actions"):
                 yield Button("About", id="help-about")
                 yield Button("Close (Esc)", id="help-close")
-        yield Footer()
+        yield ThemeFooter()
 
     def action_close_help(self) -> None:
         self.dismiss()
