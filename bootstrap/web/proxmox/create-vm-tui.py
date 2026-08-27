@@ -2142,6 +2142,16 @@ class CreateVMApp(App):
     def __init__(self, args):
         super().__init__()
         self.args = args
+        # Textual's own built-in default already happens to be
+        # textual-dark (confirmed directly, not assumed) -- pinned here
+        # explicitly anyway so the choice is documented as deliberate
+        # rather than an accident of whatever Textual's upstream default
+        # happens to be in a given version. Robert's own preference, and
+        # it genuinely helps: better contrast for glaucoma and other
+        # visual impairments than a light theme. F7 still freely cycles
+        # away from it for the rest of the session as normal -- this only
+        # pins the starting point.
+        self.theme = "textual-dark"
 
     def action_show_help(self) -> None:
         # Guard against stacking a second Help modal on top of itself if
