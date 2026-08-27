@@ -19,12 +19,13 @@
 #
 # Also deploys the infrastructure-management provisioning scripts (source:
 # bootstrap/web/proxmox/ in the git checkout, not files/ above) directly to
-# /usr/local/bin/ -- create-vm.py, convert-v2v.py, manage-pool.py,
-# site-inventory-audit.py, bulk_iso_upload.py, pve-bootorder.py,
-# virt-v2v-vmdp.sh, create-pve-users.py, zfs-disk-replace.sh. These used to
-# be fetched by first-boot.sh over HTTP from the provisioning web server; now
-# they come straight from the control node's own checkout, same
-# single-source-of-truth pattern as sites.csv/devices.csv deployment.
+# /usr/local/bin/ -- create-vm.py, create-vm-tui.py, convert-v2v.py,
+# manage-pool.py, site-inventory-audit.py, bulk_iso_upload.py,
+# pve-bootorder.py, virt-v2v-vmdp.sh, create-pve-users.py,
+# zfs-disk-replace.sh. These used to be fetched by first-boot.sh over HTTP
+# from the provisioning web server; now they come straight from the control
+# node's own checkout, same single-source-of-truth pattern as
+# sites.csv/devices.csv deployment.
 #
 # create-pve-users.py and zfs-disk-replace.sh added 2026-08-01 (Robert, live
 # on EXAPVECLD001): both scripts already existed in the repo, unchanged, but
@@ -54,6 +55,12 @@
 # Tags: scripts
 # =============================================================================
 # Changelog:
+#   2026-08-27  Added create-vm-tui.py to the deploy loop -- the Textual TUI
+#               v2 of create-vm.py (bootstrap/web/proxmox/create-vm-tui.py),
+#               built alongside create-vm.py, not replacing it. Target nodes
+#               already have python3-textual + companions in pve_packages
+#               (group_vars/pvenodes/main.yml), added when the tool was
+#               first built.
 #   2026-08-01  Added create-pve-users.py and zfs-disk-replace.sh to the deploy loop --
 #               Robert, live on EXAPVECLD001: both already existed unchanged in the repo,
 #               but were never wired in here, so they'd only ever ended up on that one
@@ -99,6 +106,7 @@
         mode: '0755'
       loop:
         - create-vm.py
+        - create-vm-tui.py
         - convert-v2v.py
         - manage-pool.py
         - site-inventory-audit.py
