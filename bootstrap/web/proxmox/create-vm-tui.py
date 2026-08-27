@@ -711,9 +711,9 @@ class LoginModal(ModalScreen):
     }
     """
 
-    # F1/F9 mirror CreateVMApp's own priority Help/About bindings, purely
-    # for Footer display order -- see WizardScreen.BINDINGS for the full
-    # explanation of why this duplication is needed (Footer.compose()
+    # F1/F7/F9 mirror CreateVMApp's own priority Help/Theme/About bindings,
+    # purely for Footer display order -- see WizardScreen.BINDINGS for the
+    # full explanation of why this duplication is needed (Footer.compose()
     # displays active_bindings in first-discovered order, and an App-only
     # binding is always discovered last regardless of its own list
     # position). The App's copies win any real keypress since they're
@@ -722,6 +722,7 @@ class LoginModal(ModalScreen):
     BINDINGS = [
         Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "do_connect", "Connect", show=True),
+        Binding("f7", "cycle_theme", "Theme", show=True),
         Binding("f9", "show_about", "About", show=True),
         Binding("f10", "app_quit", "Quit", show=True),
     ]
@@ -735,6 +736,9 @@ class LoginModal(ModalScreen):
 
     def action_show_about(self) -> None:
         self.app.action_show_about()
+
+    def action_cycle_theme(self) -> None:
+        self.app.action_cycle_theme()
 
     def compose(self) -> ComposeResult:
         with Vertical(id="login-box"):
@@ -859,12 +863,13 @@ class NodeModal(ModalScreen):
     #node-title { text-style: bold; margin-bottom: 0; }
     """
 
-    # F1/F9 mirror CreateVMApp's own priority Help/About bindings, purely
-    # for Footer display order -- see WizardScreen.BINDINGS for the full
-    # explanation.
+    # F1/F7/F9 mirror CreateVMApp's own priority Help/Theme/About bindings,
+    # purely for Footer display order -- see WizardScreen.BINDINGS for the
+    # full explanation.
     BINDINGS = [
         Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "do_continue", "Continue", show=True),
+        Binding("f7", "cycle_theme", "Theme", show=True),
         Binding("f9", "show_about", "About", show=True),
         Binding("f10", "app_quit", "Quit", show=True),
     ]
@@ -872,6 +877,9 @@ class NodeModal(ModalScreen):
     def __init__(self, nodes):
         super().__init__()
         self._pve_nodes = nodes
+
+    def action_cycle_theme(self) -> None:
+        self.app.action_cycle_theme()
 
     def action_show_help(self) -> None:
         self.app.action_show_help()
@@ -1091,6 +1099,7 @@ class WizardScreen(Screen):
         Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "wizard_back", "Back", show=True),
         Binding("f3", "wizard_next", "Next", show=True),
+        Binding("f7", "cycle_theme", "Theme", show=True),
         Binding("f9", "show_about", "About", show=True),
         Binding("f10", "wizard_quit", "Quit", show=True),
         # Ctrl+P/Ctrl+N as a second Back/Next shortcut alongside F2/F3 --
@@ -1208,6 +1217,9 @@ class WizardScreen(Screen):
 
     def action_show_about(self) -> None:
         self.app.action_show_about()
+
+    def action_cycle_theme(self) -> None:
+        self.app.action_cycle_theme()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "nav-back":
@@ -1758,6 +1770,7 @@ class ReviewScreen(WizardScreen):
         Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "wizard_back", "Back", show=True),
         Binding("f3", "do_create", "Create", show=True),
+        Binding("f7", "cycle_theme", "Theme", show=True),
         Binding("f9", "show_about", "About", show=True),
         Binding("f10", "wizard_quit", "Quit", show=True),
         Binding("ctrl+p", "wizard_back", "Back", show=False),
@@ -1945,6 +1958,8 @@ class HelpModal(ModalScreen):
         "F1              Help (this screen)",
         "F2              Back",
         "F3              Next / Create",
+        "F7              Cycle colour theme",
+        "F9              About",
         "F10             Quit",
         "Ctrl+P / Ctrl+N Back / Next (alternate)",
         "Enter           On a slider: type an exact value",
@@ -1994,9 +2009,20 @@ class CreateVMApp(App):
     # F9 = About, same reasoning and same priority=True requirement as F1
     # -- reachable directly (not just via Help's About button) from
     # anywhere, including LoginModal/NodeModal.
+    # F7 = cycle colour theme -- steps through Textual's built-in themes
+    # (self.available_themes), wrapping round. Deliberately NOT using
+    # App.action_change_theme()/search_themes() -- that opens a full
+    # CommandPalette fuzzy-search overlay, a different interaction model
+    # entirely from "scroll through themes" one key at a time, and this
+    # app already turned the command palette off (ENABLE_COMMAND_PALETTE
+    # below) for the Ctrl+P conflict two passes ago; search_themes() would
+    # have worked around that (it's a separate code path from the
+    # App-level ctrl+p binding), but a direct cycle matches the ask and
+    # this app's whole keyboard-first, no-popup-search style better.
     BINDINGS = [
         Binding("ctrl+c", "quit", "Quit"),
         Binding("f1", "show_help", "Help", show=True, priority=True),
+        Binding("f7", "cycle_theme", "Theme", show=True, priority=True),
         Binding("f9", "show_about", "About", show=True, priority=True),
     ]
     # Textual reserves ctrl+p for its own command palette (App.
@@ -2083,6 +2109,12 @@ class CreateVMApp(App):
         # if F9 is pressed again while About is already showing.
         if not isinstance(self.screen, AboutModal):
             self.push_screen(AboutModal())
+
+    def action_cycle_theme(self) -> None:
+        names = sorted(self.available_themes)
+        current = self.theme
+        next_index = (names.index(current) + 1) % len(names) if current in names else 0
+        self.theme = names[next_index]
 
     def on_mount(self) -> None:
         self.push_screen(LoginModal(self.args), self._on_login_done)
