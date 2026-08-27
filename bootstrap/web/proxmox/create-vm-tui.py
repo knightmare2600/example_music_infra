@@ -1032,7 +1032,7 @@ class LoadingScreen(Screen):
 
 class WizardScreen(Screen):
     STEP_NUM = 1
-    STEP_TOTAL = 6
+    STEP_TOTAL = 5
     STEP_TITLE = ""
 
     BINDINGS = [
@@ -1057,11 +1057,15 @@ class WizardScreen(Screen):
         Binding("ctrl+n", "wizard_next", "Next", show=False),
     ]
 
-    # MC-density spacing: no gap between a label and its own field, no gap
-    # between one field-group and the next -- with Input/Select/Checkbox
-    # already collapsed to 1 row each (App.CSS above), this is what actually
-    # produces a tight, dense screen rather than a loose one padded out with
-    # blank rows that used to sit between every single field.
+    # Density lineage: fields themselves are still MC-tight (Input/Select/
+    # Checkbox collapsed to 1 row each via App.CSS, no gap between a label
+    # and its own field) -- but as more fields piled onto fewer pages
+    # across several merge rounds, that produced screens that read as one
+    # unbroken wall of fields ("squashed up"). margin-top:1 on .field-label/
+    # .field-hint puts exactly one blank row before each new field group
+    # (i.e. after the previous field's widget) -- header, field, blank
+    # line, next header -- without reintroducing the old multi-row-tall
+    # bordered-box padding this design moved away from in the first place.
     DEFAULT_CSS = """
     WizardScreen {
         layout: vertical;
@@ -1072,12 +1076,12 @@ class WizardScreen(Screen):
     }
     .field-label {
         color: $text-muted;
-        margin-top: 0;
+        margin-top: 1;
     }
     .field-hint {
         color: $text-muted;
         text-style: italic;
-        margin-top: 0;
+        margin-top: 1;
     }
     #step-error {
         color: $error;
@@ -1258,10 +1262,56 @@ class IdentityScreen(WizardScreen):
         yield Checkbox("Same size for all disks", value=self.draft.same_disk_size, id="same-disk-size")
         yield Vertical(id="disk-sliders")
 
+        # Folded in from the old, separate Console & BIOS screen. Console
+        # type has no explicit "chosen yet" state at compose time the way
+        # role/site do (draft.console only gets a real value once this
+        # screen's commit() runs), so the role-based default it needs is
+        # computed here against the SAME effective role the Role Select
+        # itself defaults to, rather than waiting for a later commit() to
+        # set it -- otherwise the very first time this page is shown, none
+        # of the four options would come pre-selected.
+        effective_role = self.draft.role or sorted(ROLE_CODES)[0]
+        default_console = self.draft.console or ("both" if effective_role in SERIAL_CONSOLE_ROLES else "spice")
+        yield Label("Console Type", classes="field-label")
+        with RadioSet(id="console"):
+            yield RadioButton("VGA only", value=(default_console == "vga"), id="console-vga")
+            yield RadioButton("VGA + Serial", value=(default_console == "both"), id="console-both")
+            yield RadioButton("Serial only", value=(default_console == "serial"), id="console-serial")
+            yield RadioButton("SPICE", value=(default_console == "spice"), id="console-spice")
+
+        yield Label("BIOS", classes="field-label")
+        with RadioSet(id="bios-type"):
+            yield RadioButton("SeaBIOS", value=(self.draft.bios_type != "ovmf"), id="bios-seabios")
+            yield RadioButton("UEFI", value=(self.draft.bios_type == "ovmf"), id="bios-uefi")
+
+        if self.ctx.node_arch != "arm64":
+            yield Label("ROM Variant (x86_64 only)", classes="field-label")
+            yield Select([("Default (no custom ROM)", "")], id="bios-rom", allow_blank=False)
+        else:
+            yield Label("arm64 target — no SLIC ROM menu applies here.", classes="field-hint")
+
     async def on_mount(self) -> None:
         super().on_mount()
         self._suggest_if_blank()
+        self._update_rom_list()
         await self._rebuild_disk_sliders()
+
+    def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
+        if event.radio_set.id == "bios-type":
+            self._update_rom_list()
+
+    def _update_rom_list(self) -> None:
+        if self.ctx.node_arch == "arm64":
+            return
+        rom_select = self.query_one("#bios-rom", Select)
+        is_efi = self.query_one("#bios-uefi", RadioButton).value
+        matching = [r for r in KNOWN_ROMS if ("EFI" in r.upper()) == is_efi]
+        rom_select.set_options(
+            [("Default (no custom ROM)", "")]
+            + [(f"{r} — {_describe_rom(r)}", f"/usr/share/kvm/{r}") for r in matching]
+        )
+        if self.draft.bios_rom:
+            rom_select.value = self.draft.bios_rom
 
     async def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "disk-count":
@@ -1392,8 +1442,6 @@ class IdentityScreen(WizardScreen):
             self.draft.bmc_type = "bt"
         else:
             self.draft.bmc_type = None
-        if self.draft.console is None:
-            self.draft.console = "both" if self.draft.role in SERIAL_CONSOLE_ROLES else "spice"
 
         storage_select = self.query_one("#storage", Select)
         if storage_select.value in (Select.BLANK, ""):
@@ -1407,6 +1455,23 @@ class IdentityScreen(WizardScreen):
         self.draft.disk_count = n
         self.draft.same_disk_size = same_size
         self.draft.disk_sizes = [slider_values[0]] * n if same_size else slider_values
+
+        if self.query_one("#console-serial", RadioButton).value:
+            self.draft.console = "serial"
+        elif self.query_one("#console-both", RadioButton).value:
+            self.draft.console = "both"
+        elif self.query_one("#console-spice", RadioButton).value:
+            self.draft.console = "spice"
+        else:
+            self.draft.console = "vga"
+
+        is_efi = self.query_one("#bios-uefi", RadioButton).value
+        self.draft.bios_type = "ovmf" if is_efi else "seabios"
+        if self.ctx.node_arch == "arm64":
+            self.draft.bios_rom = None
+        else:
+            rom_select = self.query_one("#bios-rom", Select)
+            self.draft.bios_rom = rom_select.value if rom_select.value not in (Select.BLANK, "") else None
         return None
 
     def next_screen(self):
@@ -1451,86 +1516,15 @@ class ISOScreen(WizardScreen):
         return None
 
     def next_screen(self):
-        return ConsoleBIOSScreen(self.draft, self.ctx)
-
-
-# =============================================================================
-# 3. CONSOLE + BIOS
-# =============================================================================
-
-class ConsoleBIOSScreen(WizardScreen):
-    STEP_NUM = 3
-    STEP_TITLE = "Console & BIOS"
-
-    def compose_fields(self) -> ComposeResult:
-        yield Label("Console Type", classes="field-label")
-        with RadioSet(id="console"):
-            yield RadioButton("VGA only", value=(self.draft.console == "vga"), id="console-vga")
-            yield RadioButton("VGA + Serial", value=(self.draft.console == "both"), id="console-both")
-            yield RadioButton("Serial only", value=(self.draft.console == "serial"), id="console-serial")
-            yield RadioButton("SPICE", value=(self.draft.console == "spice"), id="console-spice")
-
-        yield Label("BIOS", classes="field-label")
-        with RadioSet(id="bios-type"):
-            yield RadioButton("SeaBIOS", value=(self.draft.bios_type != "ovmf"), id="bios-seabios")
-            yield RadioButton("UEFI", value=(self.draft.bios_type == "ovmf"), id="bios-uefi")
-
-        if self.ctx.node_arch != "arm64":
-            yield Label("ROM Variant (x86_64 only)", classes="field-label")
-            yield Select([("Default (no custom ROM)", "")], id="bios-rom", allow_blank=False)
-        else:
-            yield Label("arm64 target — no SLIC ROM menu applies here.", classes="field-hint")
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        self._update_rom_list()
-
-    def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
-        if event.radio_set.id == "bios-type":
-            self._update_rom_list()
-
-    def _update_rom_list(self) -> None:
-        if self.ctx.node_arch == "arm64":
-            return
-        rom_select = self.query_one("#bios-rom", Select)
-        is_efi = self.query_one("#bios-uefi", RadioButton).value
-        matching = [r for r in KNOWN_ROMS if ("EFI" in r.upper()) == is_efi]
-        rom_select.set_options(
-            [("Default (no custom ROM)", "")]
-            + [(f"{r} — {_describe_rom(r)}", f"/usr/share/kvm/{r}") for r in matching]
-        )
-        if self.draft.bios_rom:
-            rom_select.value = self.draft.bios_rom
-
-    def commit(self):
-        if self.query_one("#console-serial", RadioButton).value:
-            self.draft.console = "serial"
-        elif self.query_one("#console-both", RadioButton).value:
-            self.draft.console = "both"
-        elif self.query_one("#console-spice", RadioButton).value:
-            self.draft.console = "spice"
-        else:
-            self.draft.console = "vga"
-
-        is_efi = self.query_one("#bios-uefi", RadioButton).value
-        self.draft.bios_type = "ovmf" if is_efi else "seabios"
-        if self.ctx.node_arch == "arm64":
-            self.draft.bios_rom = None
-        else:
-            rom_select = self.query_one("#bios-rom", Select)
-            self.draft.bios_rom = rom_select.value if rom_select.value not in (Select.BLANK, "") else None
-        return None
-
-    def next_screen(self):
         return NetworkScreen(self.draft, self.ctx)
 
 
 # =============================================================================
-# 4. NETWORK
+# 3. NETWORK
 # =============================================================================
 
 class NetworkScreen(WizardScreen):
-    STEP_NUM = 4
+    STEP_NUM = 3
     STEP_TITLE = "Network"
 
     def compose_fields(self) -> ComposeResult:
@@ -1622,11 +1616,11 @@ class NetworkScreen(WizardScreen):
 
 
 # =============================================================================
-# 5. EXTRAS — pool, Windows driver disk/VirtIO ISO, bulk count
+# 4. EXTRAS — pool, Windows driver disk/VirtIO ISO, bulk count
 # =============================================================================
 
 class ExtrasScreen(WizardScreen):
-    STEP_NUM = 5
+    STEP_NUM = 4
     STEP_TITLE = "Extras"
 
     def next_button_label(self) -> str:
@@ -1676,11 +1670,11 @@ class ExtrasScreen(WizardScreen):
 
 
 # =============================================================================
-# 6. REVIEW + CREATE
+# 5. REVIEW + CREATE
 # =============================================================================
 
 class ReviewScreen(WizardScreen):
-    STEP_NUM = 6
+    STEP_NUM = 5
     STEP_TITLE = "Review & Create"
 
     BINDINGS = [
