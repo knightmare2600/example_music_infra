@@ -1262,20 +1262,6 @@ class IdentityScreen(WizardScreen):
         yield Checkbox("Same size for all disks", value=self.draft.same_disk_size, id="same-disk-size")
         yield Vertical(id="disk-sliders")
 
-        # Folded in from the old, separate Extras screen -- Resource Pool
-        # and bulk VM count are as much "what am I creating" as Name/Role/
-        # Site are, so they close out this page rather than sitting on
-        # their own screen near the end of the wizard. Windows driver-disk/
-        # VirtIO ISO stayed behind on Extras -- those are role-conditional
-        # (Windows only) and not every VM needs an opinion on them.
-        yield Label("Resource Pool (optional)", classes="field-label")
-        yield Select(
-            [("(none)", "")] + [(p, p) for p in self.ctx.pool_options],
-            id="pool", allow_blank=False, value=self.draft.pool or "",
-        )
-        yield Label("Number of VMs to create (bulk mode — this one counts as #1)", classes="field-label")
-        yield Input(value=str(self.draft.bulk_total), id="bulk-total", type="integer")
-
     async def on_mount(self) -> None:
         super().on_mount()
         self._suggest_if_blank()
@@ -1423,14 +1409,6 @@ class IdentityScreen(WizardScreen):
         self.draft.disk_count = n
         self.draft.same_disk_size = same_size
         self.draft.disk_sizes = [slider_values[0]] * n if same_size else slider_values
-
-        pool_select = self.query_one("#pool", Select)
-        self.draft.pool = pool_select.value or None
-        try:
-            bulk_total = max(1, int(self.query_one("#bulk-total", Input).value))
-        except ValueError:
-            bulk_total = 1
-        self.draft.bulk_total = bulk_total
         return None
 
     def next_screen(self):
@@ -1518,6 +1496,17 @@ class NetworkScreen(WizardScreen):
             yield Select([("Default (no custom ROM)", "")], id="bios-rom", allow_blank=False)
         else:
             yield Label("arm64 target — no SLIC ROM menu applies here.", classes="field-hint")
+
+        # Folded in from Identity -- Resource Pool and bulk VM count were
+        # briefly on the bottom of the Identity page, now grouped here
+        # with Console/BIOS instead per Robert's request.
+        yield Label("Resource Pool (optional)", classes="field-label")
+        yield Select(
+            [("(none)", "")] + [(p, p) for p in self.ctx.pool_options],
+            id="pool", allow_blank=False, value=self.draft.pool or "",
+        )
+        yield Label("Number of VMs to create (bulk mode — this one counts as #1)", classes="field-label")
+        yield Input(value=str(self.draft.bulk_total), id="bulk-total", type="integer")
 
     async def on_mount(self) -> None:
         super().on_mount()
@@ -1630,6 +1619,14 @@ class NetworkScreen(WizardScreen):
         else:
             rom_select = self.query_one("#bios-rom", Select)
             self.draft.bios_rom = rom_select.value if rom_select.value not in (Select.BLANK, "") else None
+
+        pool_select = self.query_one("#pool", Select)
+        self.draft.pool = pool_select.value or None
+        try:
+            bulk_total = max(1, int(self.query_one("#bulk-total", Input).value))
+        except ValueError:
+            bulk_total = 1
+        self.draft.bulk_total = bulk_total
         return None
 
     def next_screen(self):
