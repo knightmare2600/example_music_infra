@@ -1237,17 +1237,75 @@ class IdentityScreen(WizardScreen):
             yield RadioButton("KCS interface", value=(self.draft.bmc_type == "kcs"), id="bmc-kcs")
             yield RadioButton("BT interface", value=(self.draft.bmc_type == "bt"), id="bmc-bt")
 
-    def on_mount(self) -> None:
+        # Folded in from the old, separate Storage & ISO screen -- storage
+        # pool + disk sizing are as much "what is this VM" as CPU/RAM are.
+        # ISO selection stays behind on its own page (now just ISOScreen):
+        # unlike the other fields here it isn't something every VM needs
+        # an opinion on, and the SelectionList itself can run to several
+        # rows, so keeping it separate is the deliberate "don't go
+        # overboard" line rather than an oversight.
+        yield Label("Storage Pool", classes="field-label")
+        if self.ctx.storage_options:
+            yield Select(
+                [(f"{name} ({stype})", name) for name, stype in self.ctx.storage_options],
+                id="storage", allow_blank=False,
+                value=self.draft.storage or self.ctx.storage_options[0][0],
+            )
+        else:
+            yield Select([("No image-capable storage found", "")], id="storage", allow_blank=False)
+        yield Label("Number of Disks", classes="field-label")
+        yield Input(value=str(self.draft.disk_count), id="disk-count", type="integer")
+        yield Checkbox("Same size for all disks", value=self.draft.same_disk_size, id="same-disk-size")
+        yield Vertical(id="disk-sliders")
+
+    async def on_mount(self) -> None:
         super().on_mount()
         self._suggest_if_blank()
+        await self._rebuild_disk_sliders()
 
-    def on_input_changed(self, event: Input.Changed) -> None:
+    async def on_input_changed(self, event: Input.Changed) -> None:
+        if event.input.id == "disk-count":
+            await self._rebuild_disk_sliders()
+            return
         if event.input.id != "name":
             return
         if self._suppress_name_sync:
             self._suppress_name_sync = False
             return
         self._sync_role_site_from_name(event.value)
+
+    async def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        if event.checkbox.id == "same-disk-size":
+            await self._rebuild_disk_sliders()
+
+    def _disk_count(self) -> int:
+        try:
+            n = int(self.query_one("#disk-count", Input).value)
+        except ValueError:
+            n = 1
+        return max(1, min(8, n))
+
+    async def _rebuild_disk_sliders(self) -> None:
+        container = self.query_one("#disk-sliders", Vertical)
+        old_values = [s.value for s in container.query(Slider)]
+        await container.remove_children()
+
+        n = self._disk_count()
+        same_size = self.query_one("#same-disk-size", Checkbox).value
+
+        if same_size:
+            default = old_values[0] if old_values else (self.draft.disk_sizes[0] if self.draft.disk_sizes else 32)
+            await container.mount(Label("Disk size (all disks)", classes="field-label"))
+            await container.mount(Slider(1, 8192, value=default, suffix=" GB", id="disk-size-0"))
+        else:
+            for i in range(n):
+                default = old_values[i] if i < len(old_values) else (
+                    old_values[0] if old_values else (
+                        self.draft.disk_sizes[i] if i < len(self.draft.disk_sizes) else 32
+                    )
+                )
+                await container.mount(Label(f"Disk {i + 1} size", classes="field-label"))
+                await container.mount(Slider(1, 8192, value=default, suffix=" GB", id=f"disk-size-{i}"))
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id not in ("role", "site"):
@@ -1336,82 +1394,44 @@ class IdentityScreen(WizardScreen):
             self.draft.bmc_type = None
         if self.draft.console is None:
             self.draft.console = "both" if self.draft.role in SERIAL_CONSOLE_ROLES else "spice"
+
+        storage_select = self.query_one("#storage", Select)
+        if storage_select.value in (Select.BLANK, ""):
+            return "Select a storage pool before continuing."
+        self.draft.storage = storage_select.value
+
+        same_size = self.query_one("#same-disk-size", Checkbox).value
+        n = self._disk_count()
+        sliders = self.query_one("#disk-sliders", Vertical).query(Slider)
+        slider_values = [s.value for s in sliders]
+        self.draft.disk_count = n
+        self.draft.same_disk_size = same_size
+        self.draft.disk_sizes = [slider_values[0]] * n if same_size else slider_values
         return None
 
     def next_screen(self):
-        return StorageISOScreen(self.draft, self.ctx)
+        return ISOScreen(self.draft, self.ctx)
 
 
 # =============================================================================
-# 2. STORAGE + ISO
+# 2. ISO
 # =============================================================================
 
-class StorageISOScreen(WizardScreen):
+class ISOScreen(WizardScreen):
     STEP_NUM = 2
-    STEP_TITLE = "Storage & ISO"
+    STEP_TITLE = "ISO"
 
     def compose_fields(self) -> ComposeResult:
-        yield Label("Storage Pool", classes="field-label")
-        if self.ctx.storage_options:
-            yield Select(
-                [(f"{name} ({stype})", name) for name, stype in self.ctx.storage_options],
-                id="storage", allow_blank=False,
-                value=self.draft.storage or self.ctx.storage_options[0][0],
-            )
-        else:
-            yield Select([("No image-capable storage found", "")], id="storage", allow_blank=False)
-        yield Label("Number of Disks", classes="field-label")
-        yield Input(value=str(self.draft.disk_count), id="disk-count", type="integer")
-        yield Checkbox("Same size for all disks", value=self.draft.same_disk_size, id="same-disk-size")
-        yield Vertical(id="disk-sliders")
         yield Label("iPXE ISO (optional — tick one, or leave blank)", classes="field-label")
         iso_list = SelectionList(id="iso-list")
         yield iso_list
 
-    async def on_mount(self) -> None:
+    def on_mount(self) -> None:
         super().on_mount()
         iso_list = self.query_one("#iso-list", SelectionList)
         for volid in self.ctx.iso_options:
             name = volid.split("/")[-1] if "/" in volid else volid
             iso_list.add_option(Selection(name, volid, volid == self.draft.iso))
-        await self._rebuild_disk_sliders()
-
-    async def on_input_changed(self, event: Input.Changed) -> None:
-        if event.input.id == "disk-count":
-            await self._rebuild_disk_sliders()
-
-    async def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
-        if event.checkbox.id == "same-disk-size":
-            await self._rebuild_disk_sliders()
-
-    def _disk_count(self) -> int:
-        try:
-            n = int(self.query_one("#disk-count", Input).value)
-        except ValueError:
-            n = 1
-        return max(1, min(8, n))
-
-    async def _rebuild_disk_sliders(self) -> None:
-        container = self.query_one("#disk-sliders", Vertical)
-        old_values = [s.value for s in container.query(Slider)]
-        await container.remove_children()
-
-        n = self._disk_count()
-        same_size = self.query_one("#same-disk-size", Checkbox).value
-
-        if same_size:
-            default = old_values[0] if old_values else (self.draft.disk_sizes[0] if self.draft.disk_sizes else 32)
-            await container.mount(Label("Disk size (all disks)", classes="field-label"))
-            await container.mount(Slider(1, 8192, value=default, suffix=" GB", id="disk-size-0"))
-        else:
-            for i in range(n):
-                default = old_values[i] if i < len(old_values) else (
-                    old_values[0] if old_values else (
-                        self.draft.disk_sizes[i] if i < len(self.draft.disk_sizes) else 32
-                    )
-                )
-                await container.mount(Label(f"Disk {i + 1} size", classes="field-label"))
-                await container.mount(Slider(1, 8192, value=default, suffix=" GB", id=f"disk-size-{i}"))
 
     def on_selection_list_selection_toggled(self, event: SelectionList.SelectionToggled) -> None:
         # Single-select in spirit ("attach one, or none") even though
@@ -1426,19 +1446,6 @@ class StorageISOScreen(WizardScreen):
                     iso_list.deselect(volid)
 
     def commit(self):
-        storage_select = self.query_one("#storage", Select)
-        if storage_select.value in (Select.BLANK, ""):
-            return "Select a storage pool before continuing."
-        self.draft.storage = storage_select.value
-
-        same_size = self.query_one("#same-disk-size", Checkbox).value
-        n = self._disk_count()
-        sliders = self.query_one("#disk-sliders", Vertical).query(Slider)
-        slider_values = [s.value for s in sliders]
-        self.draft.disk_count = n
-        self.draft.same_disk_size = same_size
-        self.draft.disk_sizes = [slider_values[0]] * n if same_size else slider_values
-
         selected = self.query_one("#iso-list", SelectionList).selected
         self.draft.iso = selected[0] if selected else None
         return None
