@@ -592,8 +592,18 @@ class Slider(Widget, can_focus=True):
         # the kind of recursive-update bug worth avoiding; every entry
         # point that changes value (on_mount, action_step, to_min/max,
         # _confirm_edit) clamps via _clamp() before assigning instead.
-        if not self.is_mounted:
-            return
+        #
+        # No is_mounted guard here (a prior version had one, speculatively,
+        # and it was a real bug: bars stayed blank until the operator's
+        # first interaction). Confirmed by reading Textual's own
+        # MessagePump._pre_process() -- it dispatches the Mount event
+        # (which runs on_mount()) BEFORE calling _post_mount() (which is
+        # what actually flips _is_mounted True). So the on_mount() call
+        # below (self.value = self._initial_value) always fires this
+        # watcher while is_mounted is still False, even though the child
+        # #slider-bar Static from compose() is already real and queryable
+        # by then -- an is_mounted check here was checking the wrong thing
+        # entirely, not a genuine safety net.
         width = 20
         span = max(1, self.max_value - self.min_value)
         filled = int(width * (value - self.min_value) / span)
@@ -1035,12 +1045,16 @@ class WizardScreen(Screen):
     STEP_TOTAL = 5
     STEP_TITLE = ""
 
+    # F1 is deliberately NOT bound here -- freed up app-wide for Help
+    # (CreateVMApp.action_show_help), since F1 is the traditional Help key
+    # and Back/Next used to sit on F1/F2. Back/Next shifted up one slot to
+    # F2/F3 instead of being dropped.
     BINDINGS = [
-        Binding("f1", "wizard_back", "Back", show=True),
-        Binding("f2", "wizard_next", "Next", show=True),
+        Binding("f2", "wizard_back", "Back", show=True),
+        Binding("f3", "wizard_next", "Next", show=True),
         Binding("f10", "wizard_quit", "Quit", show=True),
-        # Ctrl+P/Ctrl+N as a second Back/Next shortcut alongside F1/F2 --
-        # not shown in the footer (F1/F2 already cover that) to avoid a
+        # Ctrl+P/Ctrl+N as a second Back/Next shortcut alongside F2/F3 --
+        # not shown in the footer (F2/F3 already cover that) to avoid a
         # cluttered duplicate entry. Landed on this pair after ruling out
         # every more "obvious" candidate by actually checking what already
         # claims it, not by assuming: plain Left/Right and PageUp/PageDown
@@ -1116,12 +1130,12 @@ class WizardScreen(Screen):
             yield Static("", id="step-error")
         with Horizontal(classes="nav-row"):
             if self.STEP_NUM > 1:
-                yield Button("< Back", id="nav-back")
+                yield Button("< Back (F2)", id="nav-back")
             yield Button(self.next_button_label(), variant="primary", id="nav-next")
         yield Footer()
 
     def next_button_label(self) -> str:
-        return "Next >"
+        return "Next > (F3)"
 
     def on_mount(self) -> None:
         self.sub_title = f"Step {self.STEP_NUM} of {self.STEP_TOTAL} — {self.STEP_TITLE}"
@@ -1642,7 +1656,7 @@ class ExtrasScreen(WizardScreen):
     STEP_TITLE = "Extras"
 
     def next_button_label(self) -> str:
-        return "Review >"
+        return "Review > (F3)"
 
     def compose_fields(self) -> ComposeResult:
         # Resource Pool and bulk VM count moved onto Identity (page 1) at
@@ -1684,8 +1698,8 @@ class ReviewScreen(WizardScreen):
     STEP_TITLE = "Review & Create"
 
     BINDINGS = [
-        Binding("f1", "wizard_back", "Back", show=True),
-        Binding("f2", "do_create", "Create", show=True),
+        Binding("f2", "wizard_back", "Back", show=True),
+        Binding("f3", "do_create", "Create", show=True),
         Binding("f10", "wizard_quit", "Quit", show=True),
         Binding("ctrl+p", "wizard_back", "Back", show=False),
         Binding("ctrl+n", "do_create", "Create", show=False),
@@ -1696,7 +1710,7 @@ class ReviewScreen(WizardScreen):
         self.vm_index = vm_index
 
     def next_button_label(self) -> str:
-        return "Create VM (F2)"
+        return "Create VM (F3)"
 
     def compose_fields(self) -> ComposeResult:
         d = self.draft
@@ -1785,13 +1799,143 @@ class ReviewScreen(WizardScreen):
             return
         next_draft = self.draft.clone_for_next_vm()
         self.app.push_screen(IdentityScreen(next_draft, self.ctx))
+
+
+# =============================================================================
+# HELP + ABOUT MODALS — F1 opens Help from anywhere in the app; Help links
+# through to About rather than giving About its own dedicated shortcut.
+# =============================================================================
+
+class AboutModal(ModalScreen):
+    """A small About box. Its own easter egg: type 'ø' while this is open
+    and it reveals a Dannebrog (the Danish flag) -- confirmed via a
+    headless key-press test that Textual reports both event.key and
+    event.character as the literal 'ø' for this input, so a plain
+    character comparison in on_key() is enough; no special Unicode-key
+    binding syntax needed."""
+
+    DEFAULT_CSS = """
+    AboutModal { align: center middle; }
+    #about-box {
+        width: 48; height: auto; border: round $primary;
+        padding: 0 1; background: $surface;
+    }
+    #about-title { text-style: bold; margin-bottom: 0; }
+    #about-egg { color: $accent; text-style: bold; min-height: 1; }
+    """
+
+    BINDINGS = [
+        Binding("escape", "close_about", "Close", show=True),
+        Binding("f10", "close_about", "Close", show=False),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="about-box"):
+            yield Label("About", id="about-title")
+            yield Static("create-vm-tui.py — Proxmox VE VM creation wizard")
+            yield Static("Textual TUI v2 of create-vm.py.")
+            yield Static("EXA<ROLE><SITE><NNN> naming convention.")
+            yield Static("jukebox.internal estate tooling.")
+            yield Static("", id="about-egg", markup=False)
+            yield Button("Close (Esc)", id="about-close")
+        yield Footer()
+
+    def action_close_about(self) -> None:
+        self.dismiss()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "about-close":
+            self.dismiss()
+
+    def on_key(self, event) -> None:
+        if event.character == "ø":
+            self.query_one("#about-egg", Static).update("🇩🇰 Dannebrog!")
+
+
+class HelpModal(ModalScreen):
+    """Traditional F1-opens-help, reachable from any screen in the app
+    (LoginModal, NodeModal, every wizard step) since it's bound at the
+    App level, not per-screen. A quick reference, not full documentation
+    -- keeps this in step with the rest of the app's lean-modal style
+    rather than growing into its own multi-page thing."""
+
+    DEFAULT_CSS = """
+    HelpModal { align: center middle; }
+    #help-box {
+        width: 56; height: auto; border: round $primary;
+        padding: 0 1; background: $surface;
+    }
+    #help-title { text-style: bold; margin-bottom: 0; }
+    .help-line { color: $text; }
+    #help-actions { height: auto; margin-top: 1; }
+    """
+
+    # No F1-to-close binding here -- CreateVMApp's own F1 is priority=True
+    # (needed so F1 reaches Help from inside LoginModal/NodeModal, which
+    # are themselves modals and would otherwise truncate the normal
+    # bubble-up chain before it ever reached the App). A priority binding
+    # always wins the check before this screen's own bindings are even
+    # looked at, so an F1 binding here would just be dead code -- Escape/
+    # F10/the Close button are the real ways out of this modal.
+    BINDINGS = [
+        Binding("escape", "close_help", "Close", show=True),
+        Binding("f10", "close_help", "Close", show=False),
+    ]
+
+    HELP_LINES = [
+        "F1              Help (this screen)",
+        "F2              Back",
+        "F3              Next / Create",
+        "F10             Quit",
+        "Ctrl+P / Ctrl+N Back / Next (alternate)",
+        "Enter           On a slider: type an exact value",
+        "← / →           On a slider: nudge by 1 step",
+        "PgUp / PgDn     On a slider: nudge by 10 steps",
+        "Tab / Shift+Tab Move between fields",
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="help-box"):
+            yield Label("Keyboard Shortcuts", id="help-title")
+            for line in self.HELP_LINES:
+                yield Static(line, classes="help-line", markup=False)
+            with Horizontal(id="help-actions"):
+                yield Button("About", id="help-about")
+                yield Button("Close (Esc)", id="help-close")
+        yield Footer()
+
+    def action_close_help(self) -> None:
+        self.dismiss()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "help-close":
+            self.dismiss()
+        elif event.button.id == "help-about":
+            self.app.push_screen(AboutModal())
+
+
 # =============================================================================
 # APP — ties LoginModal -> (NodeModal if >1 node) -> VMFormScreen together.
 # =============================================================================
 
 class CreateVMApp(App):
     TITLE = "Proxmox VE — VM Creation (jukebox.internal)"
-    BINDINGS = [Binding("ctrl+c", "quit", "Quit")]
+    # F1 = Help, app-wide -- traditional Help key, freed up by moving
+    # wizard Back/Next off F1/F2 onto F2/F3 (see WizardScreen.BINDINGS).
+    # priority=True is load-bearing, not decoration: LoginModal/NodeModal
+    # are themselves ModalScreens, and Textual's normal (non-priority) key
+    # dispatch walks _modal_binding_chain, which truncates right at the
+    # first modal screen it finds -- meaning a plain App-level F1 binding
+    # would never even be checked while either of those two is showing
+    # (confirmed empirically: F1 silently did nothing from LoginModal
+    # until this was made priority). Priority bindings instead use the
+    # untruncated chain and are checked App-down before the key is
+    # forwarded to whatever's focused, so this reaches Help from anywhere,
+    # including underneath a modal.
+    BINDINGS = [
+        Binding("ctrl+c", "quit", "Quit"),
+        Binding("f1", "show_help", "Help", show=True, priority=True),
+    ]
     # Textual reserves ctrl+p for its own command palette (App.
     # COMMAND_PALETTE_BINDING, wired in as a system binding -- it doesn't
     # show up in App.BINDINGS itself, only found by reading the source).
@@ -1864,6 +2008,12 @@ class CreateVMApp(App):
     def __init__(self, args):
         super().__init__()
         self.args = args
+
+    def action_show_help(self) -> None:
+        # Guard against stacking a second Help modal on top of itself if
+        # F1 is pressed again while it's already open.
+        if not isinstance(self.screen, HelpModal):
+            self.push_screen(HelpModal())
 
     def on_mount(self) -> None:
         self.push_screen(LoginModal(self.args), self._on_login_done)
