@@ -609,25 +609,24 @@ class LoginModal(ModalScreen):
         align: center middle;
     }
     #login-box {
-        width: 50;
+        width: 44;
         height: auto;
         border: round $primary;
-        padding: 1 2;
+        padding: 0 2;
         background: $surface;
     }
     #login-title {
         text-style: bold;
-        margin-bottom: 1;
+        margin-bottom: 0;
     }
     .field-label {
         color: $text-muted;
-        margin-top: 1;
+        margin-top: 0;
     }
     #login-error {
         color: $error;
         height: auto;
         min-height: 1;
-        margin-top: 1;
     }
     """
 
@@ -751,10 +750,10 @@ class NodeModal(ModalScreen):
     DEFAULT_CSS = """
     NodeModal { align: center middle; }
     #node-box {
-        width: 50; height: auto; border: round $primary;
-        padding: 1 2; background: $surface;
+        width: 44; height: auto; border: round $primary;
+        padding: 0 2; background: $surface;
     }
-    #node-title { text-style: bold; margin-bottom: 1; }
+    #node-title { text-style: bold; margin-bottom: 0; }
     """
 
     BINDINGS = [
@@ -965,29 +964,33 @@ class WizardScreen(Screen):
         Binding("f10", "wizard_quit", "Quit", show=True),
     ]
 
+    # MC-density spacing: no gap between a label and its own field, no gap
+    # between one field-group and the next -- with Input/Select/Checkbox
+    # already collapsed to 1 row each (App.CSS above), this is what actually
+    # produces a tight, dense screen rather than a loose one padded out with
+    # blank rows that used to sit between every single field.
     DEFAULT_CSS = """
     WizardScreen {
         layout: vertical;
     }
     .step-body {
-        padding: 1 3;
+        padding: 0 2;
         height: 1fr;
     }
     .field-label {
         color: $text-muted;
-        margin-top: 1;
+        margin-top: 0;
     }
     .field-hint {
         color: $text-muted;
         text-style: italic;
+        margin-top: 0;
     }
     #step-error {
         color: $error;
         min-height: 1;
-        margin-top: 1;
     }
     .nav-row {
-        margin-top: 1;
         height: 3;
     }
     """
@@ -1628,6 +1631,58 @@ class ReviewScreen(WizardScreen):
 class CreateVMApp(App):
     TITLE = "Proxmox VE — VM Creation (jukebox.internal)"
     BINDINGS = [Binding("ctrl+c", "quit", "Quit")]
+
+    # Compact, Midnight-Commander-density widget sizing, applied app-wide.
+    # Textual's stock Input/Select default to a "tall" (2-row) border, which
+    # is what actually made every field look oversized -- a single-line
+    # Input renders as 3 real terminal rows (border-top + content +
+    # border-bottom) no matter which border *style* is used, tall/round/
+    # solid all cost the same 3 rows; the only way to genuinely collapse a
+    # single-line field to 1 row is no border at all. That drops Textual's
+    # only built-in invalid-state cue (a red border), so it's replaced here
+    # with a red background tint instead -- still an immediate, unambiguous
+    # visual signal, just not one that costs two extra rows to show.
+    CSS = """
+    Input {
+        height: 1;
+        border: none;
+        background: $boost;
+        padding: 0 1;
+    }
+    Input:focus {
+        background: $panel;
+    }
+    Input.-invalid {
+        background: $error 30%;
+    }
+    Input.-invalid:focus {
+        background: $error 50%;
+    }
+    Select > SelectCurrent {
+        height: 1;
+        border: none;
+        background: $boost;
+        padding: 0 1;
+    }
+    Select:focus > SelectCurrent {
+        background: $panel;
+    }
+    RadioSet {
+        border: none;
+        padding: 0;
+        background: transparent;
+        height: auto;
+    }
+    Checkbox {
+        border: none;
+        background: transparent;
+        padding: 0 1;
+        height: 1;
+    }
+    Checkbox:focus {
+        background: $boost;
+    }
+    """
 
     def __init__(self, args):
         super().__init__()
