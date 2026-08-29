@@ -25,19 +25,24 @@ before this enforced that.
 
 Fattened up the same day with a second, independent check after a
 follow-up finding: BRT and MIL's rows each had a genuinely
-comma-containing value (a Street address) inside proper CSV double
-quotes -- valid CSV, completely invisible to a real parser, but every
-break-glass script's `IFS=','` read has no concept of quoting at all
-and splits on that comma anyway, corrupting every field from that point
-onward for that one row, regardless of whether the field LIST itself is
-correctly positioned. MIL's instance was fixed by removing the comma
-from the data (Robert's call, once the tradeoff -- fix the data, or
-build a real CSV-quote-aware parser that also needs a dependency not
-guaranteed present this early in a fresh install -- was laid out); BRT's
-was deliberately left as-is. This check's second half exists so a
-*future* site with a comma in any field is caught before it ever reaches
-a live break-glass run, the same way the first half now catches a future
-schema change before it does.
+comma-containing value (a Street/OfficeName address) inside proper CSV
+double quotes -- valid CSV, completely invisible to a real parser, but
+every break-glass script's `IFS=','` read has no concept of quoting at
+all and splits on that comma anyway, corrupting every field from that
+point onward for that one row, regardless of whether the field LIST
+itself is correctly positioned. Both were fixed the same way, once
+Robert weighed the tradeoff -- fix the data (remove the comma, lose
+nothing real), or build a genuine CSV-quote-aware parser that also needs
+a dependency (e.g. python3) not guaranteed present this early in a fresh
+install: MIL's Street ("Piazza Armando Diaz, 2" -> "Piazza Armando Diaz
+2") first, BRT's OfficeName ("1st Floor, General Aviation Terminal" ->
+"1st Floor General Aviation Terminal") the same day once it turned out
+there was no real reason not to. As of this fix, KNOWN_NAIVE_SPLIT_
+EXCEPTIONS below is empty -- every row in sites.csv naive-splits
+correctly. This check's second half exists so a *future* site with a
+comma in any field is caught before it ever reaches a live break-glass
+run, the same way the first half now catches a future schema change
+before it does.
 
 What it does:
 1. Reads benarbejde/sites.csv's real header row, in order.
@@ -105,17 +110,17 @@ KNOWN_FIELDS = {
 
 # Known, individually-verified exceptions to the naive-split-safety check --
 # site codes with a genuinely, deliberately unresolved quoted-comma value
-# somewhere in their row. BRT's Street ("1st Floor, General Aviation
-# Terminal") is the one case as of writing -- Robert's explicit call,
-# 2026-08-29, after weighing it against building a real CSV-quote-aware
-# parser (which would need a dependency, e.g. python3, not guaranteed
-# present this early in a fresh Debian install). MIL had the identical
-# problem and was fixed by removing the comma from the data instead --
-# that's the preferred fix; this allowlist is for when that tradeoff has
-# been made deliberately, not a default place to silence a new finding.
-# Add to this only after actually confirming with Robert, the same way
-# this entry was, not to make a build pass.
-KNOWN_NAIVE_SPLIT_EXCEPTIONS = {"BRT"}
+# somewhere in their row. Empty as of 2026-08-29: BRT (the one case that
+# ever existed here) and MIL both had their embedded comma removed from
+# the underlying sites.csv data instead -- the preferred fix, since it
+# needs no code change and loses no real information (an address reads
+# fine without the comma). Kept as a real mechanism, not deleted, because
+# a future site could legitimately need this tradeoff again (e.g. an
+# address where the comma genuinely can't be dropped without changing its
+# meaning) -- add to it only after actually confirming with Robert first,
+# the same way BRT's entry was, not as a default way to silence a new
+# finding.
+KNOWN_NAIVE_SPLIT_EXCEPTIONS = set()
 
 # Matches `while IFS=',' read -r <names...>` (single or double-quoted IFS
 # value), capturing everything up to the first character that can't be
@@ -176,9 +181,11 @@ def check_naive_split_safety(header):
     corrupt every field from its first embedded comma onward for every
     script that reads it, regardless of whether the field-list POSITIONS
     are correct (the check above). Found live via BRT/MIL, 2026-08-29 --
-    MIL's own instance already fixed by removing the embedded comma from
-    its address; BRT's is a known, deliberately unresolved exception, so
-    this check is expected to keep flagging it until/unless that changes.
+    both fixed the same day by removing the embedded comma from the
+    address data itself (see KNOWN_NAIVE_SPLIT_EXCEPTIONS above, empty
+    as of this fix). Kept as its own permanent check, not removed once
+    the two known instances were cleared -- it exists to catch the next
+    one, not just the ones already found.
 
     Assumes no field in sites.csv spans multiple physical lines (true for
     every row as of writing -- a properly-quoted CSV field CAN legally
