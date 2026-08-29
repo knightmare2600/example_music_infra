@@ -23,27 +23,49 @@ evolution, not a mistake -- but every break-glass script's own copy of
 the column layout has to be caught up whenever it does, and nothing
 before this enforced that.
 
+Fattened up the same day with a second, independent check after a
+follow-up finding: BRT and MIL's rows each had a genuinely
+comma-containing value (a Street address) inside proper CSV double
+quotes -- valid CSV, completely invisible to a real parser, but every
+break-glass script's `IFS=','` read has no concept of quoting at all
+and splits on that comma anyway, corrupting every field from that point
+onward for that one row, regardless of whether the field LIST itself is
+correctly positioned. MIL's instance was fixed by removing the comma
+from the data (Robert's call, once the tradeoff -- fix the data, or
+build a real CSV-quote-aware parser that also needs a dependency not
+guaranteed present this early in a fresh install -- was laid out); BRT's
+was deliberately left as-is. This check's second half exists so a
+*future* site with a comma in any field is caught before it ever reaches
+a live break-glass run, the same way the first half now catches a future
+schema change before it does.
+
 What it does:
 1. Reads benarbejde/sites.csv's real header row, in order.
-2. Scans every git-tracked *.sh file under bootstrap/web/ for a
-   `while IFS=',' read -r <names...>` line that also references
+2. FIELD ALIGNMENT: scans every git-tracked *.sh file under bootstrap/web/
+   for a `while IFS=',' read -r <names...>` line that also references
    sites.csv somewhere in the same file (scoped narrowly on purpose --
    this repo has no other comma-split read loop shaped like this one,
    confirmed by grep before writing this check; a genuinely unrelated
    future one would need to avoid this exact shape to not be swept in,
    which is an acceptable false-positive direction to err in for a
-   check like this).
-3. For every KNOWN_FIELDS entry (the script's own lowercase/abbreviated
-   variable name -> the real CSV column name it's supposed to hold) that
-   appears in that script's field list, confirms its position in the
-   list matches that column's real position in sites.csv's header.
-   A script is free to only name a subset of columns (some don't
-   capture Province/OfficeName/Street/PostalCode at all, `_rest`-
-   discarding them via the overflow catch-all) -- only named fields are
-   checked; an unnamed/skipped column is not itself a finding.
+   check like this). For every KNOWN_FIELDS entry (the script's own
+   lowercase/abbreviated variable name -> the real CSV column name it's
+   supposed to hold) that appears in that script's field list, confirms
+   its position in the list matches that column's real position in
+   sites.csv's header. A script is free to only name a subset of columns
+   -- only named fields are checked; an unnamed/skipped column is not
+   itself a finding.
+3. NAIVE-SPLIT SAFETY: independent of any script, checks sites.csv
+   itself. For every data row, compares the field count from a real,
+   quote-aware CSV parse against the field count from a naive
+   `line.split(',')` -- the exact operation every break-glass script's
+   `IFS=','` read performs. Any row where these disagree contains a
+   properly-quoted comma that will corrupt every break-glass script's
+   parse of that row, no matter how correct the field list itself is.
 
-Exit code: 0 if every discovered break-glass script's named fields
-still line up with sites.csv's real current column order, 1 otherwise.
+Exit code: 0 if every discovered break-glass script's named fields line
+up with sites.csv's real current column order AND every row in
+sites.csv naive-splits the same way it quote-parses, 1 otherwise.
 """
 import csv
 import re
@@ -80,6 +102,20 @@ KNOWN_FIELDS = {
     "ansible_region": "AnsibleRegion",
     "entity": "Entity",
 }
+
+# Known, individually-verified exceptions to the naive-split-safety check --
+# site codes with a genuinely, deliberately unresolved quoted-comma value
+# somewhere in their row. BRT's Street ("1st Floor, General Aviation
+# Terminal") is the one case as of writing -- Robert's explicit call,
+# 2026-08-29, after weighing it against building a real CSV-quote-aware
+# parser (which would need a dependency, e.g. python3, not guaranteed
+# present this early in a fresh Debian install). MIL had the identical
+# problem and was fixed by removing the comma from the data instead --
+# that's the preferred fix; this allowlist is for when that tradeoff has
+# been made deliberately, not a default place to silence a new finding.
+# Add to this only after actually confirming with Robert, the same way
+# this entry was, not to make a build pass.
+KNOWN_NAIVE_SPLIT_EXCEPTIONS = {"BRT"}
 
 # Matches `while IFS=',' read -r <names...>` (single or double-quoted IFS
 # value), capturing everything up to the first character that can't be
@@ -132,6 +168,56 @@ def find_read_field_lists(text):
         yield line_no, fields
 
 
+def check_naive_split_safety(header):
+    """Every data row must produce the same field count whether parsed
+    properly (respecting CSV quoting, via Python's csv module) or split
+    naively on every literal comma -- the exact way every break-glass
+    script's `IFS=',' read` does it. A row that doesn't is guaranteed to
+    corrupt every field from its first embedded comma onward for every
+    script that reads it, regardless of whether the field-list POSITIONS
+    are correct (the check above). Found live via BRT/MIL, 2026-08-29 --
+    MIL's own instance already fixed by removing the embedded comma from
+    its address; BRT's is a known, deliberately unresolved exception, so
+    this check is expected to keep flagging it until/unless that changes.
+
+    Assumes no field in sites.csv spans multiple physical lines (true for
+    every row as of writing -- a properly-quoted CSV field CAN legally
+    contain a literal newline, which would break the naive
+    row-index-equals-physical-line-number correlation used here; if that
+    ever becomes genuinely needed, this check needs updating alongside
+    it, not silently trusted past that point).
+
+    Returns a list of (site, line_no, real_field_count, naive_field_count,
+    [culprit column names]) tuples, one per affected row.
+    """
+    raw_lines = SITES_CSV.read_text(encoding="utf-8").splitlines()
+    with SITES_CSV.open(encoding="utf-8", newline="") as f:
+        rows = list(csv.reader(f))
+
+    findings = []
+    for row_idx, real_fields in enumerate(rows):
+        if row_idx == 0:
+            continue  # header
+        line_no = row_idx + 1
+        if line_no > len(raw_lines):
+            continue  # shouldn't happen -- csv.reader() and splitlines() disagreeing on row count entirely is a different, more fundamental problem than this check is scoped to catch
+        naive_fields = raw_lines[line_no - 1].split(",")
+        if len(real_fields) == len(naive_fields):
+            continue
+        site = real_fields[0] if real_fields else "?"
+        # A field that survived proper CSV parsing with a literal comma
+        # still inside its value can only have gotten there via quoting
+        # -- that's the culprit column, found directly rather than
+        # guessed at from position arithmetic.
+        culprits = [
+            header[i] if i < len(header) else f"(column {i})"
+            for i, value in enumerate(real_fields)
+            if "," in value
+        ]
+        findings.append((site, line_no, len(real_fields), len(naive_fields), culprits))
+    return findings
+
+
 def main():
     header = load_header()
     header_index = {name: i for i, name in enumerate(header)}
@@ -176,15 +262,41 @@ def main():
     for rel in scanned:
         print(f"  {rel}")
 
+    ok = True
+
     if findings:
+        ok = False
         print(f"\n{len(findings)} field-position mismatch(es):")
         for rel, line_no, name, detail in findings:
             print(f"  {rel}:{line_no}: field '{name}' {detail}")
-        return 1
+    else:
+        print("\nEvery discovered break-glass script's named sites.csv fields are in sync "
+              "with the real current header.")
 
-    print("\nEvery discovered break-glass script's named sites.csv fields are in sync "
-          "with the real current header.")
-    return 0
+    all_split_findings = check_naive_split_safety(header)
+    split_findings = [f for f in all_split_findings if f[0] not in KNOWN_NAIVE_SPLIT_EXCEPTIONS]
+    known_split_findings = [f for f in all_split_findings if f[0] in KNOWN_NAIVE_SPLIT_EXCEPTIONS]
+
+    if split_findings:
+        ok = False
+        print(f"\n{len(split_findings)} row(s) with a quoted comma that will corrupt every "
+              f"break-glass script's naive IFS=',' parse of that row:")
+        for site, line_no, real_count, naive_count, culprits in split_findings:
+            culprit_desc = ", ".join(culprits) if culprits else "(not isolated -- check the row by hand)"
+            print(f"  benarbejde/sites.csv:{line_no}: site '{site}' has {real_count} real "
+                  f"field(s) but naive-splits into {naive_count} -- culprit column(s): {culprit_desc}")
+    else:
+        print("\nNo NEW rows with a quoted comma that would corrupt a break-glass script's "
+              "naive IFS=',' parse.")
+
+    if known_split_findings:
+        print(f"{len(known_split_findings)} known, deliberately-unresolved exception(s) "
+              f"(see KNOWN_NAIVE_SPLIT_EXCEPTIONS) -- not counted as a failure:")
+        for site, line_no, real_count, naive_count, culprits in known_split_findings:
+            culprit_desc = ", ".join(culprits) if culprits else "(not isolated -- check the row by hand)"
+            print(f"  benarbejde/sites.csv:{line_no}: site '{site}' -- culprit column(s): {culprit_desc}")
+
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
