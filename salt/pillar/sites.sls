@@ -94,7 +94,7 @@ sites:
     country: "Lebanon"
     country_code: "LB"
     entity: "Example Music (Lebanon) SAL"
-    office_name: "1st Floor, General Aviation Terminal"
+    office_name: "1st Floor General Aviation Terminal"
     street_address: "Beirut Rafic Hariri Intl Airport"
     postal_code: "2010-1001"
   CHI:
