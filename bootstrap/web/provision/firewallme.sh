@@ -135,6 +135,20 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              the enablement symlink, it doesn't start/stop/restart anything. Ansible's
 #              equivalent port already got this right (enables in both branches); this
 #              brings the shell script's break-glass path to parity with it.
+#  2026-08-29  BUG FIX, real live failure, EXAFWLCOV001: load_sites_csv()'s field list was
+#              never updated when sites.csv gained Province/OfficeName/Street/PostalCode
+#              (inserted between CountryCode and Subnet at some point after this script's
+#              parsing was last touched) -- every field from Subnet onward was silently
+#              reading the wrong column, so the derived octet came out empty for every site,
+#              not just COV (confirmed by reproducing the same failure from CLD's own row --
+#              this is also what caused the WireGuard step to bomb out, since a spoke's hub
+#              LAN/tunnel subnets are derived from the SAME broken lookup for CLD). Field list
+#              corrected to match the real current 17-column header. See load_sites_csv()'s own
+#              inline comment for the full detail. NOTE: BRT and MIL have genuinely
+#              comma-containing Street values (quoted CSV, e.g. "Piazza Armando Diaz, 2") that
+#              this naive IFS=',' read still can't handle correctly -- a narrower, separate,
+#              pre-existing limitation, not introduced by this fix and not fully addressed by
+#              it; flag before touching either site with this script.
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
@@ -184,7 +198,23 @@ load_sites_csv() {
   # BUG FIX: `while read` silently drops the last line of a file that has no trailing newline (read
   # returns non-zero so the loop exits before processing that iteration). The || [[ -n "$site" ]]
   # guard catches that final partial read and processes it normally.
-  while IFS=',' read -r site city country cc subnet gateway dc fw landline mobile tz ansible_region entity rest || [[ -n "$site" ]]; do
+  #
+  # BUG FIX 2026-08-29: this field list was written for an older, 13-column sites.csv and never
+  # updated when Province/OfficeName/Street/PostalCode were added between CountryCode and Subnet
+  # (real 2026-08-28 live failure, EXAFWLCOV001: derived WAN IP came out "192.168.139." and WG
+  # tunnel "10.0..1" -- every field from Subnet onward was silently reading the WRONG column, e.g.
+  # `subnet` held the Province value ("England" for COV) instead of a real dotted-quad, so
+  # `awk -F'.' '{print $3}'` on it produced an empty octet. This wasn't COV-specific -- every site's
+  # derivation was broken the same way, including the hub (CLD) lookup used for WG_HUB_LAN/
+  # WG_HUB_TUNNEL when configuring a spoke, which is what actually caused the WireGuard setup to
+  # bomb out after the WAN IP step (confirmed by reproducing the exact same "10.0..0/24"-shaped
+  # garbage from CLD's own row through this same broken read). Ansible's port of this logic
+  # (playbooks/firewallme/roles/firewall/tasks/00_preflight_1_derive.yml) was NOT affected -- it
+  # reads sites.csv via Ansible's read_csv module by column NAME (item.Subnet), not position, so
+  # column-order drift can't touch it. Four new field names inserted at their real current
+  # position; unused by this script beyond derivation, kept named (not `_`-discarded) so a future
+  # column-order change is easier to diff against the real header.
+  while IFS=',' read -r site city country cc province officename street postalcode subnet gateway dc fw landline mobile tz ansible_region entity rest || [[ -n "$site" ]]; do
     [[ "${first}" -eq 1 ]] && { first=0; continue; }
 
     site="${site// /}"
