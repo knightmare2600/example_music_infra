@@ -149,6 +149,14 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              this naive IFS=',' read still can't handle correctly -- a narrower, separate,
 #              pre-existing limitation, not introduced by this fix and not fully addressed by
 #              it; flag before touching either site with this script.
+#  2026-08-29  Follow-up to the above, same day (Robert): fixed the data instead of the parser
+#              for MIL -- sites.csv's MIL row had its Street value changed from the quoted
+#              "Piazza Armando Diaz, 2" to the unquoted Piazza Armando Diaz 2 (comma dropped).
+#              Deliberate, not a loss of information worth keeping: once the field contains no
+#              comma, it doesn't need CSV quoting at all, and this naive IFS=',' read handles it
+#              correctly with no further code change. BRT was NOT touched the same way (its own
+#              genuinely different address, not this one) -- still has the identical limitation,
+#              still flagged, not fixed.
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
