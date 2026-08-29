@@ -154,9 +154,13 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              "Piazza Armando Diaz, 2" to the unquoted Piazza Armando Diaz 2 (comma dropped).
 #              Deliberate, not a loss of information worth keeping: once the field contains no
 #              comma, it doesn't need CSV quoting at all, and this naive IFS=',' read handles it
-#              correctly with no further code change. BRT was NOT touched the same way (its own
-#              genuinely different address, not this one) -- still has the identical limitation,
-#              still flagged, not fixed.
+#              correctly with no further code change. BRT was NOT touched the same way at first
+#              (its own genuinely different address) -- but on review there was no real reason
+#              not to: BRT's OfficeName ("1st Floor, General Aviation Terminal") got the
+#              identical treatment the same day, comma dropped ("1st Floor General Aviation
+#              Terminal"), losing no real information either. Every row in sites.csv now
+#              naive-splits correctly -- the at_have_ryggen_fri harness's own
+#              check_breakglass_csv_fields.py (added the same day) confirms this on every run.
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
