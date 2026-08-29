@@ -314,6 +314,24 @@
 #      verboten here." EXAMSHCLD001 is a deliberate, narrow, documented
 #      exception -- retired 2026-08-08, dead code, its leftover hand-typed
 #      block was never converted and isn't worth the effort.
+#  40. check_windows_guest_tools_staging.py -- confirms Deploy-OpenSSH.cmd
+#      stages the required amd64 fallback KVM/Proxmox guest driver files
+#      (virtio-win-gt-x64.msi, qemu-ga-x86_64.msi) for both x86_64 and
+#      arm64, and that any vendored native arm64 MSIs actually staged are
+#      real git-lfs-resolved content, not unresolved pointer stubs.
+#  41. check_breakglass_csv_fields.py -- every break-glass bash script
+#      (firewallme.sh/bindme.sh/rudderme.sh/ansibleme.sh) parses
+#      benarbejde/sites.csv with a fixed, positional `while IFS=','
+#      read -r <names...>` line rather than reading by column name.
+#      Confirms every named field in each script's own list still sits at
+#      the same position as the matching column in sites.csv's real
+#      current header. Real live failure this exists to prevent from ever
+#      recurring silently: EXAFWLCOV001, 2026-08-29 -- sites.csv gained
+#      four columns (Province/OfficeName/Street/PostalCode) and every one
+#      of these four scripts' read lines went stale at the same time,
+#      unnoticed, because nothing checked them against the real header.
+#      Robert's own words: "we need harness checks because this is an
+#      operational gap."
 #
 # Nothing here touches a real host or needs a vault password. Two exceptions
 # to "network access beyond localhost": check 13 (check_mermaid.py) needs to
@@ -1396,6 +1414,20 @@ else
   echo "$out"
   fail "A KVM/Proxmox driver file isn't staged for an architecture it needs, or a vendored native arm64 MSI is missing/an unresolved git-lfs pointer -- see above."
   FAILED_CHECKS+=("check_windows_guest_tools_staging.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 41. Break-glass script sites.csv field alignment — check_breakglass_csv_fields.py
+# ------------------------------------------------------------------------------
+section "41. Break-glass sites.csv field alignment — check_breakglass_csv_fields.py"
+
+if out=$(python3 "${HERE}/check_breakglass_csv_fields.py"); then
+  echo "$out"
+  success "Every break-glass script's named sites.csv fields are in sync with the real current header."
+else
+  echo "$out"
+  fail "A break-glass script's sites.csv field list is out of sync with the real current header -- see above."
+  FAILED_CHECKS+=("check_breakglass_csv_fields.py")
 fi
 
 # ------------------------------------------------------------------------------
