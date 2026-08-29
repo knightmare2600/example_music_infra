@@ -225,6 +225,16 @@
 #                     /etc/.environment (matches the equivalent change in bindme.sh/firewallme.sh/
 #                     bind9-dns.yml the same day). jq is guaranteed installed by this point (part
 #                     of BOOTSTRAP_PKGS, installed before §1a runs).
+# v1.21.0 2026-08-29  BUG FIX, same root cause found and fixed in firewallme.sh the same day
+#                     (real live failure, EXAFWLCOV001): load_sites_csv()'s field list was
+#                     written for an older 13-column sites.csv and never updated when Province/
+#                     OfficeName/Street/PostalCode were inserted between CountryCode and Subnet
+#                     -- every field from Subnet onward was silently reading the wrong column,
+#                     so SITE_OCTET/SITE_DC/SITE_FW came out empty or wrong for every site.
+#                     Field list corrected to match the real current 17-column header; also
+#                     added the comma-in-Entity reconstruction firewallme.sh already has (this
+#                     script captured it into $_rest but never used it). See firewallme.sh's
+#                     own 2026-08-29 changelog entry for the full root-cause detail.
 #
 # ==============================================================================
 
@@ -304,11 +314,20 @@ load_sites_csv() {
   # that final iteration.  sites.csv has no trailing newline; VIE is the last
   # entry and was therefore never loaded.  The || [[ -n "$site" ]] guard catches
   # the partial read and processes it normally.
-  while IFS=',' read -r site city country cc subnet gateway dc fw landline mobile tz ansible_region entity _rest \
+  #
+  # BUG FIX 2026-08-29 (same root cause as firewallme.sh, see its own changelog): this
+  # field list matched an older 13-column sites.csv. Province/OfficeName/Street/
+  # PostalCode were inserted between CountryCode and Subnet since, shifting every field
+  # from Subnet onward. Corrected to the real current 17-column header.
+  while IFS=',' read -r site city country cc province officename street postalcode subnet gateway dc fw landline mobile tz ansible_region entity _rest \
       || [[ -n "$site" ]]; do
     [[ "${first}" -eq 1 ]] && { first=0; continue; }   # skip header row
     site="${site// /}"
     [[ -z "${site}" ]] && continue
+    # Same comma-in-Entity reconstruction firewallme.sh already has -- this field was
+    # previously captured into $_rest but never used, silently truncating any Entity
+    # value containing a comma.
+    [[ -n "${_rest}" ]] && entity="${entity},${_rest}"
     local octet
     octet=$(echo "${subnet}" | awk -F'.' '{print $3}')
     SITE_OCTET["${site}"]="${octet}"
