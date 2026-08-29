@@ -31,6 +31,16 @@ common_packages:
   - htop
   - jq
   - mc
+  # miller (binary: mlr) -- jq's CSV-native equivalent, added 2026-08-29
+  # (Robert). jq works on JSON; sites.csv/devices.csv/address_policy.csv
+  # are CSV, so mlr is the actual right tool for one-off inspection of
+  # those on a live box without writing a Python one-liner:
+  #   cat sites.csv | mlr --csv cat
+  # (--csv on both input and output; drop it and add --icsv --ojson etc.
+  # to convert formats). See "man mlr" or https://miller.readthedocs.io
+  # for the full DSL -- filter/put/sort/stats1 etc. all work the same way
+  # jq's own filters do, just CSV/TSV-shaped instead of JSON-shaped.
+  - miller
   - molly-guard
   - net-tools
   - nmap
