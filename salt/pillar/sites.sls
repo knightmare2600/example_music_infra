@@ -303,7 +303,7 @@ sites:
     country_code: "IT"
     entity: "Example Music (Italia) S.p.a."
     office_name: "First Italia Long Apartments"
-    street_address: "Piazza Armando Diaz, 2"
+    street_address: "Piazza Armando Diaz 2"
     postal_code: "20123"
   MTL:
     city: "Montreal"
