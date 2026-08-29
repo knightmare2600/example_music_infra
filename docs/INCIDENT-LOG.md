@@ -23,11 +23,50 @@ Newest incident at the top, oldest at the bottom — read bottom-to-top for chro
 
 | Incident ID | Date | Summary |
 |---|---|---|
+| [INC-2026-08-28-FIREWALLME-CSV](#inc-2026-08-28-firewallme-csv--compliance-driven-out-of-hours-rebuild-exposed-a-break-glass-provisioning-bug-broken-for-every-site) | 2026-08-28 | An out-of-hours Coventry firewall rebuild, prompted by premature Compliance pestering over a BCP test still a month away, exposed a break-glass provisioning script broken for every site in the estate |
 | [INC-2026-08-21-CTRLALTDEL](#inc-2026-08-21-ctrlaltdel--console-ctrlaltdelete-rebooted-a-live-firewall-node) | 2026-08-21 | A Ctrl+Alt+Del sent via the Proxmox console rebooted a live firewall node — Windows habit, not a Linux "unlock" gesture; molly-guard never saw it since it never touched SSH |
 | [INC-2026-08-11-SALT-DISK-FULL](#inc-2026-08-11-salt-disk-full--root-filesystem-filled-by-an-oversized-git-clone-on-the-salt-master) | 2026-08-11 | The Salt master's root filesystem filled completely, blocking all login, because its git-based state/pillar delivery was cloning the estate's entire infrastructure repository in full |
 | [INC-2026-07-16-ANSIBLE-LOCK](#inc-2026-07-16-ansible-lock--ansible-account-administratively-locked-out-on-a-live-firewall-node) | 2026-07-16 | The `ansible` account's administrative lock rejected every login method, not just password, on a live firewall node |
 | [INC-2026-07-12-SSH-KEY](#inc-2026-07-12-ssh-key--lost-ssh-keypair-delayed-pve-node-deployment-in-scandinavia) | 2026-07-12 | Lost/forgotten SSH keypair delayed PVE node deployment in Scandinavia |
 | [INC-2026-04-03-BMC-CREDS](#inc-2026-04-03-bmc-creds--mismatched-bmc-credentials-on-a-newly-delivered-fal-server) | 2026-04-03 | Vendor delivered the wrong physical chassis under otherwise-correct paperwork — documented BMC credentials didn't work on arrival at FAL |
+
+---
+
+## INC-2026-08-28-FIREWALLME-CSV — Compliance-driven out-of-hours rebuild exposed a break-glass provisioning bug broken for every site
+
+### Incident Background
+
+**Date:** 28 August 2026, out of hours
+**Scope:** `EXAFWLCOV001` (Coventry firewall) provisioning, and — as investigation showed — the site-data parsing in every one of the estate's four break-glass provisioning scripts (`firewallme.sh`, `bindme.sh`, `rudderme.sh`, `ansibleme.sh`)
+**Cause (summary):** `benarbejde/sites.csv` gained four new columns since these scripts' CSV field-parsing was last touched; none of the four had their hardcoded column positions updated to match, so every one of them silently derived garbage — or nothing at all — for every site's subnet-derived values.
+
+A Senior Technician was reached out of hours by the Compliance team, pressing for readiness confirmation ahead of an upcoming Business Continuity Plan (BCP) test that was, at the time, still a full month away. The Senior Technician's response is on record: *"A failure to plan on the part of the Compliance team does not constitute an emergency on his part."* Rather than engage further with a deadline that wasn't actually imminent, and already up dealing with a genuine, unrelated out-of-hours task of his own — bringing a newly-built firewall VM for Coventry (`EXAFWLCOV001`) into service — the Senior Technician used the moment to get that rebuild done via the estate's documented break-glass path (`firewallme.sh`) rather than wait for Ansible connectivity or normal working hours. That path had not been exercised end-to-end against the estate's current `sites.csv` schema in some time. Typing `COV` as the site code produced a derived WAN IP of `192.168.139.` and a WireGuard tunnel address of `10.0..1` — both missing their octet entirely.
+
+### Root Cause & Mitigation
+
+`firewallme.sh`'s `load_sites_csv()` reads `benarbejde/sites.csv` with a fixed, positional `while IFS=',' read -r <field names...>` line, written for an older, 13-column version of that file. `Province`/`OfficeName`/`Street`/`PostalCode` were added between `CountryCode` and `Subnet` at some point after that line was last touched, and every field from `Subnet` onward had been silently reading the wrong column since — not COV-specific, every site's derivation was affected the same way, confirmed by reproducing the identical failure directly from other sites' rows. The WireGuard step failing immediately afterward was the same bug again, one hop over: a spoke derives its hub's LAN/tunnel subnets from `CLD`'s own row through the identical broken read, so it was handed a malformed CIDR (`192.168..0/24`) and failed on it — one root cause, not two.
+
+The identical field list, byte-for-byte, was found in `bindme.sh`, `rudderme.sh`, and `ansibleme.sh` too — all three share obvious lineage with `firewallme.sh` (each one's own comments already cross-reference the others). Ansible's own port of this logic was confirmed unaffected: it reads `sites.csv` by column *name*, not position, so this exact class of drift can't touch it — the normal, actively-maintained path was never at risk.
+
+All four scripts' field lists were corrected to the real current column order. A separate, narrower issue was found during verification: two sites (`BRT`, `MIL`) have a genuinely comma-containing address inside properly double-quoted CSV, which none of these scripts' naive comma-splitting can respect regardless of field-list correctness. `MIL`'s was resolved by removing the comma from the address data itself (`"Piazza Armando Diaz, 2"` → `Piazza Armando Diaz 2`) rather than building a CSV-quote-aware parser — a real fix would need a dependency (e.g. Python) not guaranteed present this early in a fresh install, and the address itself lost nothing by losing the comma. `BRT`'s is left as a documented, deliberately accepted exception.
+
+### Lessons Learned
+
+- **A break-glass path needs the same ongoing scrutiny as the path it's a fallback for, not less.** This class of drift would have been caught immediately by any routine use of `firewallme.sh` — it went unnoticed for as long as it did precisely because the normal, Ansible-based path is the one actually exercised day to day, and the break-glass path sat untested until the one moment it was actually needed.
+- **A defensive assumption baked into a fixed-position parser has no way to notice the thing it's parsing has changed shape.** `sites.csv` gaining four columns was normal, expected schema evolution, not a mistake — the mistake was that nothing outside these four scripts' own heads knew their copy of the column layout needed to move with it.
+- **Two failure symptoms in the same run sharing one upstream cause is common enough to check for before assuming two separate bugs.** The WAN-IP failure and the WireGuard failure looked like unrelated problems until both were traced back to the exact same broken lookup, just applied to two different sites' rows.
+- **Urgency that originates from a missed deadline elsewhere is not the same thing as urgency in the system actually being paged about.** A BCP test a month out is a real, legitimate piece of work — it is not, on its own, a reason to interrupt an out-of-hours engineer outside of the process built for scheduling it. The estate is genuinely better off for the break-glass bug being found when it was; it is not better off for the manner in which the opportunity to find it arose.
+
+### Improvements Made
+
+- All four break-glass scripts' `sites.csv` field-parsing corrected to the real current column order, and verified against every site currently on record, not just the one that surfaced the problem.
+- `MIL`'s Street address corrected to remove the one embedded comma causing its own, separate parsing failure; `BRT`'s equivalent issue is recorded as a known, accepted exception rather than silently left unaddressed.
+- A new, permanent harness check (`at_have_ryggen_fri/check_breakglass_csv_fields.py`) now runs on every harness pass: it confirms every break-glass script's field list still matches `sites.csv`'s real column order, and independently confirms every row in `sites.csv` naive-comma-splits the same way it properly CSV-parses — the exact two ways this incident's root causes could recur. Robert's own words: *"we need harness checks because this is an operational gap."*
+- **Process, not just code:** Compliance-originated requests outside of a genuine live incident are now routed through the team's standard working-hours process rather than directly to whoever's reachable out of hours — formalising, calmly and after the fact, what the Senior Technician's response asserted informally in the moment. The Compliance team's own contribution to squaring things away was entirely voluntary and good-natured: pizza for the IT team, accepted in the same spirit it was offered.
+
+### Executive Summary
+
+An out-of-hours interruption from the Compliance team, over a Business Continuity Plan test that was not due for another month, coincided with a Senior Technician independently using the estate's documented break-glass provisioning path to bring a new Coventry firewall into service. That use surfaced a real, previously-undiscovered defect: all four of the estate's break-glass scripts had been silently deriving wrong or empty network addresses for every site, since `sites.csv` gained four columns their parsing was never updated to match. Ansible's own equivalent logic was unaffected throughout. All four scripts were corrected and verified against the estate's full current site list, one narrower related data-formatting issue was fixed at the source, and a new permanent harness check now guards against both the original defect and its narrower cousin ever recurring unnoticed. The organisational friction that led to the discovery was resolved the same way every other people-facing outcome in this log is — calmly, without blame, and with the Compliance team's own goodwill (pizza) closing the loop.
 
 ---
 
