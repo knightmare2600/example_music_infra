@@ -319,19 +319,31 @@
 #      (virtio-win-gt-x64.msi, qemu-ga-x86_64.msi) for both x86_64 and
 #      arm64, and that any vendored native arm64 MSIs actually staged are
 #      real git-lfs-resolved content, not unresolved pointer stubs.
-#  41. check_breakglass_csv_fields.py -- every break-glass bash script
-#      (firewallme.sh/bindme.sh/rudderme.sh/ansibleme.sh) parses
-#      benarbejde/sites.csv with a fixed, positional `while IFS=','
-#      read -r <names...>` line rather than reading by column name.
-#      Confirms every named field in each script's own list still sits at
-#      the same position as the matching column in sites.csv's real
-#      current header. Real live failure this exists to prevent from ever
-#      recurring silently: EXAFWLCOV001, 2026-08-29 -- sites.csv gained
-#      four columns (Province/OfficeName/Street/PostalCode) and every one
-#      of these four scripts' read lines went stale at the same time,
-#      unnoticed, because nothing checked them against the real header.
-#      Robert's own words: "we need harness checks because this is an
-#      operational gap."
+#  41. check_breakglass_csv_fields.py -- two checks against the break-glass
+#      bash scripts (firewallme.sh/bindme.sh/rudderme.sh/ansibleme.sh),
+#      each of which parses benarbejde/sites.csv with a fixed, positional
+#      `while IFS=',' read -r <names...>` line rather than reading by
+#      column name:
+#        1. FIELD ALIGNMENT -- every named field in each script's own
+#           list still sits at the same position as the matching column
+#           in sites.csv's real current header. Real live failure this
+#           exists to prevent from ever recurring silently: EXAFWLCOV001,
+#           2026-08-29 -- sites.csv gained four columns (Province/
+#           OfficeName/Street/PostalCode) and every one of these four
+#           scripts' read lines went stale at the same time, unnoticed.
+#           Robert's own words: "we need harness checks because this is
+#           an operational gap."
+#        2. NAIVE-SPLIT SAFETY -- independent of any script: every row in
+#           sites.csv naive-comma-splits into the same field count as a
+#           real, quote-aware CSV parse. A row that doesn't (a
+#           properly-quoted comma inside a field value, e.g. a Street
+#           address) corrupts every break-glass script's read of that row
+#           regardless of field-list correctness. Found live the same
+#           day, BRT and MIL -- MIL's fixed by removing the comma from
+#           the data; BRT is a documented, deliberate exception
+#           (KNOWN_NAIVE_SPLIT_EXCEPTIONS in the check itself) so this
+#           still catches any *future* site with the same problem without
+#           permanently failing over the one already-accepted case.
 #
 # Nothing here touches a real host or needs a vault password. Two exceptions
 # to "network access beyond localhost": check 13 (check_mermaid.py) needs to
