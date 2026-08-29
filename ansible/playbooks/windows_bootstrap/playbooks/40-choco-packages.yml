@@ -30,6 +30,11 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-08-29  Added miller (mlr) to choco_packages_common -- Robert's ask,
+#               same day as the equivalent addition to Linux's
+#               common_packages (group_vars/all/main.yml). jq's CSV-native
+#               equivalent, for one-off inspection of sites.csv/devices.csv/
+#               address_policy.csv from a Windows box.
 #   2026-08-14  Removed sysinternals. Live against EXADCSLAX001: `choco install
 #               sysinternals` failed with a SHA256 checksum mismatch against the
 #               real SysinternalsSuite.zip served from download.sysinternals.com
@@ -202,6 +207,15 @@
       - rustdesk.install
       - wget
       - busybox
+      # Miller (mlr) -- jq's CSV-native equivalent, added 2026-08-29 (Robert;
+      # also added to Linux's common_packages the same day). jq works on
+      # JSON; sites.csv/devices.csv/address_policy.csv are CSV, so mlr is
+      # the actual right tool for one-off inspection of those from a
+      # Windows box without writing a PowerShell one-liner:
+      #   Get-Content sites.csv | mlr --csv cat
+      # (--csv on both input and output; see "mlr --help" or
+      # https://miller.readthedocs.io for the full DSL).
+      - miller
       - vcredist-all
       - dotnetfx
       - windirstat
