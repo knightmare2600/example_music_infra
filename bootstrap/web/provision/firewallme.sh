@@ -161,6 +161,22 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              Terminal"), losing no real information either. Every row in sites.csv now
 #              naive-splits correctly -- the at_have_ryggen_fri harness's own
 #              check_breakglass_csv_fields.py (added the same day) confirms this on every run.
+#  2026-08-29  Added a real preflight section (Robert): ensures /etc/example-music/ +
+#              sites.csv + begyndelse.json actually exist before load_sites_csv() (and the
+#              inline begyndelse.json lookup further down) ever run, fetching whatever's
+#              missing from whichever provisioning server this box's own default gateway says
+#              it's on (VRK/Edinburgh or FRD/Fredericia Havn -- same detection
+#              bootstrap.ipxe/late_command.sh already use). Neither load function actually
+#              fetched anything before this, despite this file's own header comment claiming
+#              "manual wget... is the expected, supported path" -- they only ever checked
+#              three locations and died if none had the file. If a file genuinely can't be
+#              obtained, this now stops with one clear warning and exits 0 (not 1 -- this
+#              isn't a crash, and the script is always run interactively). Real bug caught
+#              while building/testing this: the wget call's --timeout=15 alone did NOT bound
+#              the wait to 15s against a genuinely unreachable server -- wget retries up to 20
+#              times by default, so a bad network path could hang for minutes despite the
+#              timeout flag. Fixed with --tries=1, and swept every other wget call in this
+#              file (and bindme.sh/rudderme.sh/ansibleme.sh) for the same missing flag.
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
@@ -171,6 +187,72 @@ success() { echo -e "${GREEN}[+]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[!]${NC} $*" >&2; }
 die()     { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 step()    { echo -e "${CYAN}[→]${NC} $*"; }
+
+# -------------------------------------------------------------------------------------------------
+# Preflight -- ensure /etc/example-music/ + sites.csv + begyndelse.json
+# -------------------------------------------------------------------------------------------------
+# Robert, 2026-08-29: "these break glass scripts will still need /etc/example-music and the
+# sites.csv... we can have the scripts do that with a 'preflight' section as the playbooks do."
+# Every load_*() function below (and the inline begyndelse.json lookup further down) already
+# CHECKS three locations for its file and dies if none have it -- despite this script's own
+# header comment above claiming "manual wget... is the expected, supported path", nothing in
+# the code actually fetched anything before this. This section is what actually does that.
+#
+# Detects which provisioning network this box is on from its own default gateway -- the exact
+# mechanism bootstrap.ipxe/late_command.sh already use (see bootstrap/web/late_command.sh's own
+# "Detect boot server by gateway IP" comment) -- not reinvented here, just reused. If a file
+# genuinely can't be obtained (box isn't on either provisioning network, or that server isn't
+# reachable right now), this stops with one clear warning instead of letting the first
+# downstream load_*() function die confusingly, wherever in the script that happens to be.
+# Exits 0, not 1 -- this isn't a crash, it's "here's what to do next", and this script is
+# always run interactively by a human watching the terminal, never wrapped in something that
+# inspects $?.
+
+PREFLIGHT_DIR="/etc/example-music"
+mkdir -p "${PREFLIGHT_DIR}" 2>/dev/null || true
+
+PREFLIGHT_GW=$(ip route 2>/dev/null | awk '/default/ {print $3; exit}')
+if [[ "${PREFLIGHT_GW}" == "172.16.124.2" ]]; then
+  PREFLIGHT_SERVER="http://172.16.124.1:8000"   # Fredericia Havn
+else
+  PREFLIGHT_SERVER="http://192.168.139.50"      # Edinburgh / vRACK (default)
+fi
+
+preflight_fetch() {
+  # Same 3-tier search every load_*() function below already does on its own --
+  # if the file's already somewhere sensible, there's nothing to fetch.
+  local filename="$1"
+  local dest="${PREFLIGHT_DIR}/${filename}"
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  [[ -f "${dest}" ]] && return 0
+  [[ -f "${script_dir}/${filename}" ]] && return 0
+
+  local url="${PREFLIGHT_SERVER}/proxmox/${filename}"
+  info "${filename} not found locally -- fetching from ${url} ..."
+  if wget -q --tries=1 --timeout=15 -O "${dest}" "${url}" 2>/dev/null && [[ -s "${dest}" ]]; then
+    success "Downloaded ${filename} to ${dest}."
+    return 0
+  fi
+  rm -f "${dest}" 2>/dev/null   # wget can leave a truncated/empty file behind on a failed fetch
+  return 1
+}
+
+PREFLIGHT_MISSING=()
+for PREFLIGHT_FILE in sites.csv begyndelse.json; do
+  preflight_fetch "${PREFLIGHT_FILE}" || PREFLIGHT_MISSING+=("${PREFLIGHT_FILE}")
+done
+
+if [[ ${#PREFLIGHT_MISSING[@]} -gt 0 ]]; then
+  warn "Could not obtain: ${PREFLIGHT_MISSING[*]}"
+  warn "This box may not be on a known provisioning network (checked gateway"
+  warn "'${PREFLIGHT_GW:-<none>}', tried ${PREFLIGHT_SERVER}), or that server isn't"
+  warn "reachable right now."
+  warn "Place the missing file(s) at ${PREFLIGHT_DIR}/ by hand and re-run, or fix"
+  warn "network connectivity first."
+  exit 0
+fi
 
 # -------------------------------------------------------------------------------------------------
 # Site data -- loaded from sites.csv (single source of truth). To add or change a site, edit
@@ -513,7 +595,7 @@ fi
 
 info "Installing Cockpit Navigator..."
 NAVIGATOR_DEB="/tmp/cockpit-navigator.deb"
-if wget -q --timeout=30 -O "${NAVIGATOR_DEB}" https://github.com/45Drives/cockpit-navigator/releases/download/v0.5.10/cockpit-navigator_0.5.10-1focal_all.deb; then
+if wget -q --tries=1 --timeout=30 -O "${NAVIGATOR_DEB}" https://github.com/45Drives/cockpit-navigator/releases/download/v0.5.10/cockpit-navigator_0.5.10-1focal_all.deb; then
   apt-get install -y -qq -o=Dpkg::Use-Pty=0 "${NAVIGATOR_DEB}" > /dev/null
   rm -f "${NAVIGATOR_DEB}"
   success "Cockpit Navigator installed."

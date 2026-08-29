@@ -235,6 +235,25 @@
 #                     added the comma-in-Entity reconstruction firewallme.sh already has (this
 #                     script captured it into $_rest but never used it). See firewallme.sh's
 #                     own 2026-08-29 changelog entry for the full root-cause detail.
+# v1.22.0 2026-08-29  Added a real preflight section (Robert): ensures /etc/example-music/ +
+#                     sites.csv + begyndelse.json actually exist before load_sites_csv() (and
+#                     the begyndelse.json "AD domain" lookup further down) ever run, fetching
+#                     whatever's missing from whichever provisioning server this box's own
+#                     default gateway says it's on (same VRK/FRD detection
+#                     bootstrap.ipxe/late_command.sh already use). This was a genuine,
+#                     load-bearing bug fix, not just an enhancement: the begyndelse.json lookup
+#                     had NOTHING fetching that file before it, and load_sites_csv() would
+#                     already have died on missing sites.csv long before Section 5b's own
+#                     later fetch-if-missing logic (devices.csv/sites.csv) was ever reached --
+#                     Section 5b's sites.csv branch was effectively dead code on a box that
+#                     didn't already have it. Section 5b itself left in place as a harmless
+#                     no-op fallback, its own two wget calls fixed for the same --tries=1 bug
+#                     found while building this (see firewallme.sh's own 2026-08-29 changelog
+#                     entry for the full detail) -- --timeout=15 alone did not bound the wait
+#                     to 15s against a genuinely unreachable server, wget retries up to 20
+#                     times by default. Same fix applied to this script's own separate
+#                     EXA_PRETTY_DEST fetch further down, unrelated to sites.csv but the exact
+#                     same latent hang risk.
 #
 # ==============================================================================
 
@@ -274,6 +293,74 @@ ip_in_use() {
 # Must run as root
 # ------------------------------------------------------------------------------
 [[ $EUID -ne 0 ]] && die "Run this script with sudo or as root."
+
+# ------------------------------------------------------------------------------
+# Preflight -- ensure /etc/example-music/ + sites.csv + begyndelse.json
+# ------------------------------------------------------------------------------
+# Robert, 2026-08-29: "these break glass scripts will still need /etc/example-music and the
+# sites.csv... we can have the scripts do that with a 'preflight' section as the playbooks do."
+#
+# Real, load-bearing bug fix, not just an enhancement: this script's own begyndelse.json lookup
+# (further down, "AD domain") had NOTHING fetching that file before it -- Section 5b later in
+# this script fetches sites.csv/devices.csv, but never begyndelse.json, and more importantly
+# load_sites_csv() below would already have died on missing sites.csv long before Section 5b's
+# own fetch-if-missing logic was ever reached. Section 5b was effectively dead code for its own
+# sites.csv branch on a box that didn't already have it. This preflight runs BEFORE any of that,
+# so every load/lookup downstream -- including Section 5b's, now redundant but left in place as
+# a harmless no-op fallback -- finds what it needs.
+#
+# Detects which provisioning network this box is on from its own default gateway -- the exact
+# mechanism bootstrap.ipxe/late_command.sh already use, not reinvented here. If a file genuinely
+# can't be obtained, this stops with one clear warning instead of a confusing die() wherever the
+# first thing that needed it happens to run. Exits 0, not 1 -- this isn't a crash, it's "here's
+# what to do next", and this script is always run interactively by a human watching the
+# terminal, never wrapped in something that inspects $?.
+
+PREFLIGHT_DIR="/etc/example-music"
+mkdir -p "${PREFLIGHT_DIR}" 2>/dev/null || true
+
+PREFLIGHT_GW=$(ip route 2>/dev/null | awk '/default/ {print $3; exit}')
+if [[ "${PREFLIGHT_GW}" == "172.16.124.2" ]]; then
+  PREFLIGHT_SERVER="http://172.16.124.1:8000"   # Fredericia Havn
+else
+  PREFLIGHT_SERVER="http://192.168.139.50"      # Edinburgh / vRACK (default)
+fi
+
+preflight_fetch() {
+  # Same 3-tier search load_sites_csv() below (and the begyndelse.json lookup further down)
+  # already do on their own -- if the file's already somewhere sensible, there's nothing to fetch.
+  local filename="$1"
+  local dest="${PREFLIGHT_DIR}/${filename}"
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  [[ -f "${dest}" ]] && return 0
+  [[ -f "${script_dir}/${filename}" ]] && return 0
+
+  local url="${PREFLIGHT_SERVER}/proxmox/${filename}"
+  info "${filename} not found locally -- fetching from ${url} ..."
+  if wget -q --tries=1 --timeout=15 -O "${dest}" "${url}" 2>/dev/null && [[ -s "${dest}" ]]; then
+    success "Downloaded ${filename} to ${dest}."
+    return 0
+  fi
+  rm -f "${dest}" 2>/dev/null   # wget can leave a truncated/empty file behind on a failed fetch
+  return 1
+}
+
+PREFLIGHT_MISSING=()
+for PREFLIGHT_FILE in sites.csv begyndelse.json; do
+  preflight_fetch "${PREFLIGHT_FILE}" || PREFLIGHT_MISSING+=("${PREFLIGHT_FILE}")
+done
+
+if [[ ${#PREFLIGHT_MISSING[@]} -gt 0 ]]; then
+  warn "Could not obtain: ${PREFLIGHT_MISSING[*]}"
+  warn "This box may not be on a known provisioning network (checked gateway"
+  warn "'${PREFLIGHT_GW:-<none>}', tried ${PREFLIGHT_SERVER}), or that server isn't"
+  warn "reachable right now."
+  warn "Place the missing file(s) at ${PREFLIGHT_DIR}/ by hand and re-run, or fix"
+  warn "network connectivity first."
+  exit 0
+fi
 
 # ------------------------------------------------------------------------------
 # Site data -- loaded from sites.csv (single source of truth)
@@ -870,6 +957,11 @@ success "Repo cloned and symlinked; runtime dirs created."
 # ------------------------------------------------------------------------------
 # 5b. Data files — sites.csv and devices.csv
 # ------------------------------------------------------------------------------
+# sites.csv is normally already present by this point -- the preflight section near the top
+# of this script fetches it before load_sites_csv() ever runs. The block below is left in
+# place as a harmless no-op fallback (its own [[ -f ]] check just short-circuits when the
+# file already exists) rather than removed -- devices.csv still only gets fetched here, since
+# nothing earlier in this script needs it for its own decisions the way sites.csv is needed.
 section "5b. Data files"
 
 CANONICAL_DIR="/etc/example-music"
@@ -883,7 +975,12 @@ if [[ -f "${DEVICES_CANONICAL}" ]]; then
   success "devices.csv found at ${DEVICES_CANONICAL}"
 else
   info "devices.csv not found at ${DEVICES_CANONICAL} — fetching from ${DEVICES_URL}..."
-  if wget -q --timeout=15 -O "${DEVICES_CANONICAL}" "${DEVICES_URL}" 2>/dev/null; then
+  # --tries=1 fix, 2026-08-29: without it, a --timeout=15 that's actually hit (e.g. a
+  # non-routable/blackholed VRACK_SERVER) doesn't cap the wait at 15s at all -- wget's
+  # default is up to 20 retries, multiplying the effective hang well past what --timeout
+  # implies. Found live while building/testing the new preflight section above, which had
+  # the identical bug in its own first draft -- same fix applied there and here.
+  if wget -q --tries=1 --timeout=15 -O "${DEVICES_CANONICAL}" "${DEVICES_URL}" 2>/dev/null; then
     success "Downloaded to ${DEVICES_CANONICAL}."
   else
     warn "Could not download devices.csv from ${DEVICES_URL}."
@@ -901,7 +998,7 @@ if [[ ! -f "${SITES_CANONICAL}" ]]; then
   else
     info "Fetching sites.csv from vRACK bootstrap server..."
     SITES_URL="http://${VRACK_SERVER}/proxmox/sites.csv"
-    if wget -q --timeout=15 -O "${SITES_CANONICAL}" "${SITES_URL}" 2>/dev/null; then
+    if wget -q --tries=1 --timeout=15 -O "${SITES_CANONICAL}" "${SITES_URL}" 2>/dev/null; then
       success "Downloaded sites.csv to ${SITES_CANONICAL}."
     else
       warn "Could not download sites.csv from ${SITES_URL} — already loaded from ${SITES_CSV:-/etc/example-music/sites.csv}."
@@ -1027,7 +1124,7 @@ section "6b. exa_pretty callback plugin"
 EXA_PRETTY_DEST="${CALLBACK_DIR}/exa_pretty.py"
 
 info "Downloading exa_pretty.py from GitHub..."
-if wget -q --timeout=30 -O "${EXA_PRETTY_DEST}" "${EXA_PRETTY_URL}" 2>/dev/null; then
+if wget -q --tries=1 --timeout=30 -O "${EXA_PRETTY_DEST}" "${EXA_PRETTY_URL}" 2>/dev/null; then
   chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${EXA_PRETTY_DEST}"
   chmod 644 "${EXA_PRETTY_DEST}"
   success "exa_pretty.py downloaded to ${EXA_PRETTY_DEST}"

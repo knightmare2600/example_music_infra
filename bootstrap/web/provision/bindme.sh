@@ -154,11 +154,82 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #            17-column header; also added the comma-in-Entity reconstruction firewallme.sh
 #            already has (this script captured it into $_rest but never used it). See
 #            firewallme.sh's own 2026-08-29 changelog entry for the full root-cause detail.
+# 2026-08-29 Added a real preflight section (Robert): ensures /etc/example-music/ + sites.csv
+#            + begyndelse.json actually exist before load_sites_csv()/load_begyndelse_json()
+#            ever run, fetching whatever's missing from whichever provisioning server this
+#            box's own default gateway says it's on (same VRK/FRD detection
+#            bootstrap.ipxe/late_command.sh already use). Neither load function actually
+#            fetched anything before this -- only checked three locations and died if none had
+#            the file. Exits 0 with a clear warning if a file genuinely can't be obtained, not
+#            1 -- see firewallme.sh's own 2026-08-29 changelog entry for the full detail,
+#            including the --tries=1 wget bug found and fixed while building this.
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()    { echo -e "${CYAN}[*]${NC} $*"; }
 success() { echo -e "${GREEN}[+]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[!]${NC} $*" >&2; }
 die()     { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
+
+# ---------------------------------------------------------------
+# Preflight -- ensure /etc/example-music/ + sites.csv + begyndelse.json
+# ---------------------------------------------------------------
+# Robert, 2026-08-29: "these break glass scripts will still need /etc/example-music and the
+# sites.csv... we can have the scripts do that with a 'preflight' section as the playbooks do."
+# load_sites_csv() and load_begyndelse_json() below already CHECK three locations each and die
+# if none have the file -- neither actually fetches anything before this. This section is what
+# actually does that.
+#
+# Detects which provisioning network this box is on from its own default gateway -- the exact
+# mechanism bootstrap.ipxe/late_command.sh already use, not reinvented here. If a file genuinely
+# can't be obtained, this stops with one clear warning instead of letting load_sites_csv() or
+# load_begyndelse_json() die confusingly later on. Exits 0, not 1 -- this isn't a crash, it's
+# "here's what to do next", and this script is always run interactively by a human watching the
+# terminal, never wrapped in something that inspects $?.
+
+PREFLIGHT_DIR="/etc/example-music"
+mkdir -p "${PREFLIGHT_DIR}" 2>/dev/null || true
+
+PREFLIGHT_GW=$(ip route 2>/dev/null | awk '/default/ {print $3; exit}')
+if [[ "${PREFLIGHT_GW}" == "172.16.124.2" ]]; then
+  PREFLIGHT_SERVER="http://172.16.124.1:8000"   # Fredericia Havn
+else
+  PREFLIGHT_SERVER="http://192.168.139.50"      # Edinburgh / vRACK (default)
+fi
+
+preflight_fetch() {
+  # Same 3-tier search load_sites_csv()/load_begyndelse_json() below already do on their
+  # own -- if the file's already somewhere sensible, there's nothing to fetch.
+  local filename="$1"
+  local dest="${PREFLIGHT_DIR}/${filename}"
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  [[ -f "${dest}" ]] && return 0
+  [[ -f "${script_dir}/${filename}" ]] && return 0
+
+  local url="${PREFLIGHT_SERVER}/proxmox/${filename}"
+  info "${filename} not found locally -- fetching from ${url} ..."
+  if wget -q --tries=1 --timeout=15 -O "${dest}" "${url}" 2>/dev/null && [[ -s "${dest}" ]]; then
+    success "Downloaded ${filename} to ${dest}."
+    return 0
+  fi
+  rm -f "${dest}" 2>/dev/null   # wget can leave a truncated/empty file behind on a failed fetch
+  return 1
+}
+
+PREFLIGHT_MISSING=()
+for PREFLIGHT_FILE in sites.csv begyndelse.json; do
+  preflight_fetch "${PREFLIGHT_FILE}" || PREFLIGHT_MISSING+=("${PREFLIGHT_FILE}")
+done
+
+if [[ ${#PREFLIGHT_MISSING[@]} -gt 0 ]]; then
+  warn "Could not obtain: ${PREFLIGHT_MISSING[*]}"
+  warn "This box may not be on a known provisioning network (checked gateway"
+  warn "'${PREFLIGHT_GW:-<none>}', tried ${PREFLIGHT_SERVER}), or that server isn't"
+  warn "reachable right now."
+  warn "Place the missing file(s) at ${PREFLIGHT_DIR}/ by hand and re-run, or fix"
+  warn "network connectivity first."
+  exit 0
+fi
 
 # ---------------------------------------------------------------
 # Site data -- loaded from sites.csv (single source of truth)
