@@ -292,6 +292,18 @@ def main():
             culprit_desc = ", ".join(culprits) if culprits else "(not isolated -- check the row by hand)"
             print(f"  benarbejde/sites.csv:{line_no}: site '{site}' has {real_count} real "
                   f"field(s) but naive-splits into {naive_count} -- culprit column(s): {culprit_desc}")
+        print(
+            "\n  This is a data question, not just a code one -- a human needs to look at "
+            "each row above and pick one:\n"
+            "    RECOMMENDED: remove the comma from the value (e.g. \"1 Main St, Suite 2\" -> "
+            "\"1 Main St Suite 2\"). Free-text address fields read fine without it, and this "
+            "needs no code change anywhere -- this is what MIL and BRT's own real addresses "
+            "both did (see this file's changelog / firewallme.sh's own).\n"
+            "    ALTERNATIVE: if the comma is genuinely load-bearing for this specific value "
+            "(not just habit), confirm that with Robert first, then add the site code to "
+            "KNOWN_NAIVE_SPLIT_EXCEPTIONS above with a comment explaining why -- same as any "
+            "other entry there, not a default way to make this pass."
+        )
     else:
         print("\nNo NEW rows with a quoted comma that would corrupt a break-glass script's "
               "naive IFS=',' parse.")
