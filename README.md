@@ -356,25 +356,26 @@ Pull requests submitted directly to other projects' own repositories — no sepa
 | Project | Pull Request | Description |
 |---|---|---|
 | [salt](https://github.com/saltstack/salt) | [#70003](https://github.com/saltstack/salt/pull/70003) | Add native Windows arm64 minion MSI support |
-| [relenv](https://github.com/saltstack/relenv) | [#318](https://github.com/saltstack/relenv/pull/318) | Windows arm64 support (Salt's own relocatable Python environment builder — a real dependency of the minion build pipeline) |
+| [relenv](https://github.com/saltstack/relenv) | [#328](https://github.com/saltstack/relenv/pull/328) | Windows arm64 support (Salt's own relocatable Python environment builder — a real dependency of the minion build pipeline) |
 | [pymssql](https://github.com/pymssql/pymssql) | [#1013](https://github.com/pymssql/pymssql/pull/1013) | Add native Windows arm64 wheel builds (a Salt dependency needed for the ARM64 build to complete at all) |
 
-All three are open, unmerged as of 2026-08-10 — together they're what made a native ARM64 Windows Salt minion build possible at all. Used here to produce a custom `Salt-Minion-3008.0-Py3-ARM64.msi` (see `docs/buildsheets/buildsheet-salt-minion.md`) ahead of any of this landing in an official upstream release.
+All three are open, unmerged as of 2026-08-31 — together they're what made a native ARM64 Windows Salt minion build possible at all. Used here to produce a custom `Salt-Minion-3008.0-Py3-ARM64.msi` (see `docs/buildsheets/buildsheet-salt-minion.md`) ahead of any of this landing in an official upstream release. relenv's PR was originally [#318](https://github.com/saltstack/relenv/pull/318) — accidentally auto-closed when its source fork was deleted, GitHub won't allow reopening a PR whose head repo is gone, so it was resubmitted as #328 with the same commits.
 
-| Project | Pull Request | Description |
-|---|---|---|
-| [clonezilla](https://github.com/stevenshiau/clonezilla) | [#187](https://github.com/stevenshiau/clonezilla/pull/187) | Add arm64 support to `create-gparted-live` (grub-efi-arm64, EFI-only image type, `bootaa64.efi` detection, ttyAMA0 serial console + autologin/systemd boot fixes) |
-| [virtio-win-guest-tools-installer](https://github.com/virtio-win/virtio-win-guest-tools-installer) | [#100](https://github.com/virtio-win/virtio-win-guest-tools-installer/pull/100) | Add native Windows arm64 VirtIO driver + QEMU guest agent MSI builds (8 WHQL-signed drivers, VSS-enabled qemu-ga, self-signed pvpanic, arch-detecting bundler) |
+| Project | Pull Request | Status | Description |
+|---|---|---|---|
+| [clonezilla](https://github.com/stevenshiau/clonezilla) | [#187](https://github.com/stevenshiau/clonezilla/pull/187) | Merged | Add arm64 support to `create-gparted-live` (grub-efi-arm64, EFI-only image type, `bootaa64.efi` detection, ttyAMA0 serial console + autologin/systemd boot fixes) |
+| [virtio-win-guest-tools-installer](https://github.com/virtio-win/virtio-win-guest-tools-installer) | [#100](https://github.com/virtio-win/virtio-win-guest-tools-installer/pull/100) | Closed, not merged | Add native Windows arm64 VirtIO driver + QEMU guest agent MSI builds (8 WHQL-signed drivers, VSS-enabled qemu-ga, self-signed pvpanic, arch-detecting bundler) |
 
-Both open, unmerged as of 2026-08-17 — verified for real (checksum + PE-header machine-code checks on every binary) and functionally tested (virtio-win's own PR notes a real Windows 11 ARM64 guest under Proxmox VE) ahead of landing upstream. Used here to produce `bootstrap/web/gparted/arm64/`'s GParted Live build and `bootstrap/web/windows/arm64/{virtio-win-gt-arm64.msi,qemu-ga-arm64.msi}` respectively.
+Both were verified for real (checksum + PE-header machine-code checks on every binary) and functionally tested (virtio-win's own PR notes a real Windows 11 ARM64 guest under Proxmox VE) ahead of landing upstream. clonezilla's merged 2026-08-29. virtio-win's was closed after the maintainers confirmed the project's current WiX v3.11 tooling can't produce a valid ARM64 MSI at all — real support is pending their own migration to WiX 4/6 (see [PR #99](https://github.com/virtio-win/virtio-win-guest-tools-installer/pull/99) and the `wix3-4-5` branch), so this isn't a rejection on merit, just blocked on upstream tooling. Used here to produce `bootstrap/web/gparted/arm64/`'s GParted Live build and `bootstrap/web/windows/arm64/{virtio-win-gt-arm64.msi,qemu-ga-arm64.msi}` respectively.
 
 | Project | Pull Request | Status | Description |
 |---|---|---|---|
 | [pvetui](https://github.com/devnullvoid/pvetui) | [#134](https://github.com/devnullvoid/pvetui/pull/134) | Merged | Add ARM (ARMv6/v7, Orange Pi) release targets to `.goreleaser.yaml` |
 | [dua-cli](https://github.com/Byron/dua-cli) | [#335](https://github.com/Byron/dua-cli/pull/335) | Closed, not merged | Native Windows arm64 CI build — maintainer couldn't review/test it and it inadvertently broke the auto-release-on-tag feature |
+| [dua-cli](https://github.com/Byron/dua-cli) | [#341](https://github.com/Byron/dua-cli/pull/341) | Merged | Follow-up fix to `release.yml` repairing the auto-release-on-tag workflow that #335 broke — the minimal change Byron was actually able to take |
 | [NTop](https://github.com/gsass1/NTop) | [#82](https://github.com/gsass1/NTop/pull/82) | Open | Native Windows arm64 CI build + release workflow |
 
-dua-cli and NTop are the same ARM64 work already maintained as forks under Porting Work above, submitted upstream to the real projects — one rejected, one still pending, neither merged, which is exactly why the forks above remain the actual source for this repo's own use. pvetui is unrelated to the Windows-arm64 theme running through the rest of this table (Orange Pi/ARMv6-v7 Linux release targets, not Windows) — included here as it's the same kind of standalone upstream PR, not part of any of this repo's own build chains.
+dua-cli and NTop are the same ARM64 work already maintained as forks under Porting Work above, submitted upstream to the real projects. dua-cli's original arm64 CI PR (#335) was closed unmerged, but the follow-up (#341) cleaning up the workflow damage it caused did land — neither PR gave dua-cli its own native arm64 CI build, which is exactly why the fork above remains the actual source for this repo's own use. NTop is still open, unmerged. pvetui is unrelated to the Windows-arm64 theme running through the rest of this table (Orange Pi/ARMv6-v7 Linux release targets, not Windows) — included here as it's the same kind of standalone upstream PR, not part of any of this repo's own build chains.
 
 ## Silly Season
 
