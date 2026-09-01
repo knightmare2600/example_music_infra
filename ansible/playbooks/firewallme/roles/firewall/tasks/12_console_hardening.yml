@@ -40,6 +40,16 @@
 # Tags: firewall, console_hardening
 # =============================================================================
 # Changelog:
+#   2026-09-01  Robert, live (EXAFWLATL001, genuine first-ever run): the copy task below
+#               failed outright -- "Destination directory /etc/systemd/system.conf.d does
+#               not exist" -- since that directory isn't shipped by default on a fresh
+#               Debian box and nothing here created it first. Every other custom systemd
+#               drop-in directory this role writes to (network-online.service.d,
+#               wg-quick@wg0.service.d, dnsmasq.service.d, cockpit.socket.d) already has
+#               its own file: state=directory task immediately before its copy/template --
+#               this file was the one outlier missing it, not a wider gap (swept every
+#               other copy/template dest: in the role to confirm). Added the matching
+#               file: state=directory task here too.
 #   2026-08-26  Initial file, following INC-2026-08-21-CTRLALTDEL.
 # =============================================================================
 
@@ -47,6 +57,15 @@
   ansible.builtin.systemd:
     name: ctrl-alt-del.target
     masked: true
+  tags: [firewall, console_hardening]
+
+- name: "[Console] Ensure /etc/systemd/system.conf.d exists"
+  ansible.builtin.file:
+    path: /etc/systemd/system.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
   tags: [firewall, console_hardening]
 
 - name: "[Console] Disable Ctrl+Alt+Del burst (panic) reboot"
