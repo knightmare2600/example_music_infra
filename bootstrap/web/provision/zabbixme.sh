@@ -94,6 +94,44 @@
 #                     .15, .16, .23, and most of the range above .82 excluding .250. Robert: pick
 #                     one and this script's suggested-default can be updated, or just answer the
 #                     prompt manually each run until role_codes.csv/devices.csv get a real ZBX row.
+# v1.1.0  2026-09-01  Robert: "8.0 folders are all messed up, switch it out for 7.0 -- Zabbix
+#                     flexibility means you can literally swap 8.0 for 7.0", and gave the real
+#                     product package URL (https://repo.zabbix.com/zabbix/7.0/debian/pool/main/z/
+#                     zabbix/) that v1.0.0's own version-history note above was speculating about.
+#                     Checked live: this fully explains the v1.0.0 finding rather than it being a
+#                     sandbox/proxy artefact after all -- 7.0 (and every older version, matching
+#                     the classic layout the original 2019-era reference script used) publishes
+#                     BOTH zabbix-release and the real product packages under a FLAT
+#                     zabbix/<version>/debian/pool/... path with NO "/release/" segment at all
+#                     (confirmed: repo.zabbix.com/zabbix/7.0/release/debian/ is a genuine 404).
+#                     8.0 is different -- it has a real, live "/release/" tree (the zabbix-release
+#                     pointer package installs fine from it, confirmed in v1.0.0) but that tree is
+#                     still sparsely populated (no binary-amd64/ for any Debian release, checked
+#                     directly), which is apparently a newer, not-yet-fully-populated URL scheme
+#                     Zabbix is transitioning to for 8.0, not a sandbox limitation as v1.0.0
+#                     guessed. Downloaded and inspected the real 7.0 zabbix-release package to
+#                     confirm its .sources content before changing anything here (not assumed to
+#                     match 8.0's): single file /etc/apt/sources.list.d/zabbix.sources (not the
+#                     three-file split 8.0 uses), URIs: https://repo.zabbix.com/zabbix/7.0/debian,
+#                     Suites: trixie, plus a pre-disabled (Enabled: no) 6.5 entry -- no
+#                     zabbix-unstable.sources at all for 7.0, so Section 8's "disable unstable"
+#                     step is now dead code for this version (left in place, harmless -- already
+#                     conditional on the file existing, silently no-ops now instead of doing
+#                     something). ZABBIX_MAJOR changed 8.0 -> 7.0; the release-package download
+#                     URL construction in Section 8 changed to the flat (no "/release/") path;
+#                     removed the now-provably-wrong "no binary-amd64 for ANY version" theory from
+#                     being treated as settled anywhere in this file. Confirmed real, current
+#                     package names for 7.0/debian13 directly from the pool listing while here:
+#                     zabbix-server-mysql, zabbix-frontend-php, zabbix-apache-conf,
+#                     zabbix-sql-scripts, zabbix-agent (classic, NOT zabbix-agent2 -- Robert was
+#                     explicit: "agent is agent not agent2, I am not using agent2") all exist for
+#                     debian13 up to at least 7.0.30 -- Section 8's package list already used
+#                     zabbix-agent, not agent2, so no change needed there. Also removed a dead,
+#                     unused ZBX_PKGS array left over from drafting (the real install list is
+#                     INSTALLABLE_ZBX_PKGS, built by checking each candidate individually) --
+#                     included a guessed php8.2-mysql entry that was never actually referenced
+#                     anywhere and isn't needed (apt resolves zabbix-frontend-php's own PHP
+#                     dependency automatically).
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -247,7 +285,7 @@ load_sites_csv
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-ZABBIX_MAJOR="8.0"
+ZABBIX_MAJOR="7.0"
 ZABBIX_ADMIN_USER="Admin"          # Zabbix's own built-in superadmin account name
 AUTOREG_GROUP_NAME="auto-registration"
 SENTINEL="/etc/.i_am_a_zabbix_server"
@@ -653,11 +691,17 @@ success "Database '${ZABBIX_DB_NAME}' and user '${ZABBIX_DB_USER}' ready."
 section "8. Zabbix ${ZABBIX_MAJOR} repository + packages"
 
 if ! dpkg -s zabbix-release &>/dev/null 2>&1; then
-  ZBX_RELEASE_URL="https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/release/debian/pool/main/z/zabbix-release/zabbix-release_latest_${ZABBIX_MAJOR}%2Bdebian${OS_RELEASE_NUM}_all.deb"
+  # 7.0 (and every older version) uses the classic FLAT layout -- no "/release/" segment at
+  # all, confirmed live 2026-09-01 (repo.zabbix.com/zabbix/7.0/release/debian/ is a genuine
+  # 404; the real product packages AND this pointer package both live directly under
+  # zabbix/7.0/debian/pool/...). This is a different URL shape than 8.0's newer "/release/"
+  # tree -- do not copy this construction back to 8.0 without re-checking, see v1.1.0's
+  # changelog entry above.
+  ZBX_RELEASE_URL="https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/debian/pool/main/z/zabbix-release/zabbix-release_latest_${ZABBIX_MAJOR}%2Bdebian${OS_RELEASE_NUM}_all.deb"
   info "Fetching zabbix-release package: ${ZBX_RELEASE_URL}"
   ZBX_RELEASE_DEB=$(mktemp /tmp/zabbix-release-XXXXXX.deb)
   if ! wget -q --tries=1 --timeout=30 -O "${ZBX_RELEASE_DEB}" "${ZBX_RELEASE_URL}"; then
-    die "Could not download zabbix-release for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}) from ${ZBX_RELEASE_URL} -- check the URL is still current at repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/release/debian/pool/main/z/zabbix-release/ (this exact filename pattern was verified live on 2026-09-01, but repo layouts do change)."
+    die "Could not download zabbix-release for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}) from ${ZBX_RELEASE_URL} -- check the URL is still current at repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/debian/pool/main/z/zabbix-release/ (this exact filename pattern was verified live on 2026-09-01, but repo layouts do change)."
   fi
   dpkg -i "${ZBX_RELEASE_DEB}"
   rm -f "${ZBX_RELEASE_DEB}"
@@ -666,9 +710,10 @@ else
   success "zabbix-release already installed."
 fi
 
-# The release package also enables a zabbix-unstable.sources pointing at pre-release/dev
-# builds -- not something a production monitoring server should pull from by default. Disabled
-# here rather than left silently live.
+# 7.0's release package writes a single zabbix.sources file (no separate unstable channel to
+# worry about, unlike 8.0) -- this check is now dead code for 7.0 specifically, left in place
+# harmlessly (already conditional on the file existing) in case a future version reintroduces
+# an unstable/dev channel the same way 8.0 has one.
 UNSTABLE_SOURCES="/etc/apt/sources.list.d/zabbix-unstable.sources"
 if [[ -f "${UNSTABLE_SOURCES}" ]] && ! grep -q "^Enabled: no" "${UNSTABLE_SOURCES}" 2>/dev/null; then
   info "Disabling zabbix-unstable repo (pre-release channel, not wanted here)..."
@@ -677,21 +722,20 @@ fi
 
 apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
 
-# Sanity check BEFORE the real install attempt -- see this file's own version-history note on
-# why this genuinely could come back empty (package availability for this exact Debian release
-# under the 8.0 release channel was not fully verifiable from the environment this script was
-# written in). Fail fast with an actionable message rather than a confusing mid-install error.
+# Sanity check BEFORE the real install attempt -- confirmed live 2026-09-01 that 7.0 genuinely
+# does publish zabbix-server-mysql for debian13/trixie (up to at least 7.0.30), so this is now
+# a belt-and-braces check rather than a known-uncertain one -- kept anyway, since a repo layout
+# can always change again, and failing fast here with a clear message beats a confusing error
+# halfway through a long install either way.
 if ! apt-cache policy zabbix-server-mysql 2>/dev/null | grep -q "Candidate:"; then
-  die "zabbix-server-mysql has no installable candidate after adding the ${ZABBIX_MAJOR} repo for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}). This may mean Zabbix ${ZABBIX_MAJOR} genuinely hasn't published packages for this Debian release yet -- check https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/release/debian/dists/${OS_CODENAME}/main/ by hand, or try 'apt-cache policy zabbix-server-mysql' yourself for the full picture. If it's not there, either wait for it to land or ask Robert which Zabbix version/Debian release combination to actually target."
+  die "zabbix-server-mysql has no installable candidate after adding the ${ZABBIX_MAJOR} repo for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}). Check https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/debian/pool/main/z/zabbix/ by hand, or try 'apt-cache policy zabbix-server-mysql' yourself for the full picture."
 fi
 CANDIDATE_VER=$(apt-cache policy zabbix-server-mysql 2>/dev/null | awk '/Candidate:/{print $2}')
 success "zabbix-server-mysql candidate found: ${CANDIDATE_VER}"
 
-ZBX_PKGS=(zabbix-server-mysql zabbix-frontend-php php8.2-mysql zabbix-nginx-conf zabbix-sql-scripts zabbix-agent)
-# zabbix-nginx-conf is listed for completeness only -- NOT installed if apt can't find it (some
-# Zabbix package sets only ship zabbix-apache-conf; we're using Apache per Robert's brief anyway,
-# see Section 11). Filtered down to what's actually resolvable before installing, rather than
-# assuming every name here exists in this exact package set.
+# zabbix-agent, NOT zabbix-agent2 -- Robert was explicit: "agent is agent not agent2, I am not
+# using agent2". Filtered down to what's actually resolvable before installing, rather than
+# assuming every name exists verbatim in this exact package set.
 INSTALLABLE_ZBX_PKGS=()
 for pkg in zabbix-server-mysql zabbix-frontend-php zabbix-sql-scripts zabbix-apache-conf zabbix-agent; do
   if apt-cache policy "$pkg" 2>/dev/null | grep -q "Candidate:"; then
@@ -731,8 +775,10 @@ section "9. Database schema + server config + housekeeping"
 
 # Schema location has moved across Zabbix versions (create.sql.gz under the -mysql package's
 # own doc dir historically, vs a dedicated zabbix-sql-scripts package with schema/images/data
-# split more recently) -- auto-detected rather than hardcoded to one layout this session
-# couldn't fully verify against the real 8.0 packaging.
+# split from ~6.4 onward) -- zabbix-sql-scripts is confirmed to exist as a real package for
+# 7.0/debian13, so the split layout is the expected path here, but auto-detected with the old
+# layout as a fallback rather than hardcoded, since the split file structure itself
+# (schema/images/data vs a single combined file) wasn't directly inspected.
 SCHEMA_IMPORTED_MARKER="/var/lib/mysql/${ZABBIX_DB_NAME}/.zabbixme_schema_imported"
 if [[ -f "${SCHEMA_IMPORTED_MARKER}" ]]; then
   success "Schema already imported (marker present) — skipping."
@@ -1044,10 +1090,9 @@ EOF
     # changed across major versions -- pre-6.4 used action.create with eventsource=2 for the
     # whole ruleset; 6.4+ split this into autoregistration.update (host-metadata matching rules)
     # plus a normal action.create (eventsource=2, "on registration" trigger -> add to group).
-    # This uses the 6.4+ shape, best-known at the time of writing, but has NOT been confirmed
-    # against the real Zabbix 8.0 API docs -- check Administration -> General -> Autoregistration
-    # in the UI after this runs to confirm it actually took effect, and adjust this section if
-    # the method name/params have moved again by 8.0.
+    # This uses the 6.4+ shape, which 7.0 (being newer than 6.4) is expected to still use, but
+    # has NOT been confirmed against the real Zabbix 7.0 API docs -- check Administration ->
+    # General -> Autoregistration in the UI after this runs to confirm it actually took effect.
     if [[ -n "${AUTOREG_GROUP_ID}" ]]; then
       info "Creating autoregistration action (new registrations -> ${AUTOREG_GROUP_NAME})..."
       curl -s -X POST -H 'Content-Type: application/json-rpc' \
