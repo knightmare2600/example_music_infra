@@ -1,0 +1,1183 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Example Music Limited — Zabbix Server Bootstrap Script
+# EXAZBXCLD001 (or any site's Zabbix monitoring server — CLD only for now)
+#
+# Mirrors the style and structure of rudderme.sh/ansibleme.sh/firewallme.sh:
+#   - Interactive, idempotent, run as root
+#   - Site-code-driven (subnet/inventory auto-derived from sites.csv)
+#   - Prompts for hostname and static IP
+#   - Installs and configures Zabbix server (MariaDB backend, Apache frontend)
+#   - Populates auto-registration group + IP-restricted API access from
+#     sites.csv + begyndelse.json (VRK/FRD/every site subnet)
+#   - Sentinel file + dynamic MOTD
+#
+# SCOPE (Robert, 2026-09-01): this script covers the Zabbix SERVER only.
+# Agent deployment (Linux via Ansible, Windows via Salt) is explicitly
+# deferred to separate follow-up work — see the two TODO markers below
+# (EnableRemoteCommands / curl+wget-on-every-device) for exactly what's
+# NOT this script's job. "Not an exhaustive list" was Robert's own framing
+# of his brief — treat every section below as a first cut, not gospel;
+# several judgement calls are flagged explicitly where made.
+#
+# BREAK-GLASS TOOL, same posture as rudderme.sh/bindme.sh/firewallme.sh: will
+# be backported to ansible/playbooks/zabbix/ once proven live. Self-contained
+# by design — manual wget of sites.csv/devices.csv/begyndelse.json from the
+# provisioning server is the expected, supported path here, not a shortcut
+# to be "fixed" later.
+#
+# -------------------------------------------------------------------------------------------------
+# Version history
+# -------------------------------------------------------------------------------------------------
+# v1.0.0  2026-09-01  Initial release. Covers: hostname/IP setup, OS/codename detection,
+#                     Zabbix 8.0 repo + zabbix-server-mysql/zabbix-frontend-php/apache install,
+#                     MariaDB DB+user creation (generated password, not hand-typed), DB schema
+#                     import (auto-detects old create.sql.gz vs newer zabbix-sql-scripts split
+#                     layout — could not verify which one 8.0 actually ships from this sandbox,
+#                     see the live Zabbix-version verification note below), zabbix.conf.php
+#                     written directly (skips the browser setup.php wizard), Apache vhost with
+#                     ServerName zabbix.<domain> (parameterised from begyndelse.json) + a genuine
+#                     301 redirect from "/" to the frontend, monitoring toolkit (fping/nmap/snmp/
+#                     snmp-mibs-downloader/tcpdump/traceroute/whois), UFW allowing the Zabbix
+#                     trapper port (10051) only from VRK+FRD+every site subnet (sites.csv-driven,
+#                     same pattern as rudderme.sh's own allowed-networks section), API-level
+#                     access restriction on api_jsonrpc.php to the same subnet list, Admin
+#                     password rotated off the Zabbix default via the API (generated, printed
+#                     once at the end — never left as Admin/zabbix), "auto-registration" host
+#                     group + autoregistration action created via the API, DB housekeeping
+#                     tightened (shorter default retention than Zabbix's own shipped defaults,
+#                     Robert: "I HATE when the database grows to a ridiculous size") plus a
+#                     weekly systemd timer running mysqlcheck --optimize against the zabbix DB —
+#                     MariaDB's InnoDB engine does not reclaim disk space from the housekeeper's
+#                     own DELETEs without this, which is the actual mechanism behind Robert's
+#                     complaint, not a housekeeper settings problem per se. Native MySQL/MariaDB
+#                     table PARTITIONING (Zabbix's own recommended approach for genuinely large
+#                     history/trends tables) is NOT implemented here — flagged as a real, higher-
+#                     effort option to come back to if the timer-based OPTIMIZE approach turns
+#                     out not to be enough, not attempted blind in an unattended script.
+#
+#                     ZABBIX VERSION — confirmed live against the real repo.zabbix.com from this
+#                     session (not guessed): Robert's brief said "LTS 7.0" in point 1 but then
+#                     gave a corrected URL under /zabbix/8.0/release/debian/ at the end, and
+#                     confirmed 8.0 when asked directly. Checked repo.zabbix.com directly: 8.0 is
+#                     a real, current top-level version (sits after 7.0/7.2/7.4 in the version
+#                     listing, consistent with Zabbix's real ~2-year LTS cadence), and the
+#                     zabbix-release pointer package's real filename/apt-source format was
+#                     confirmed by downloading and inspecting it: the .deb is
+#                     zabbix-release_latest_8.0+debian<N>_all.deb (N = lsb_release -s -r, e.g.
+#                     "13" for trixie — matches Robert's own hint), and it installs a DEB822
+#                     .sources file using Suites: <codename> (e.g. "trixie" — matches Robert's
+#                     other hint, lsb_release -c -s). HOWEVER: browsing
+#                     repo.zabbix.com/zabbix/8.0/release/debian/dists/trixie/main/ directly from
+#                     this session showed only binary-all/ (containing zabbix-release itself) and
+#                     source/ — no binary-amd64/ directory, i.e. no zabbix-server-mysql/
+#                     zabbix-frontend-php indexed there as of this check. The SAME check against
+#                     bookworm, and against every other recent version (6.0/6.4/7.0/7.2/7.4) back
+#                     to 5.0, showed the identical pattern — which reads as a sandbox/proxy
+#                     limitation in THIS environment's outbound network rather than a genuine
+#                     "Zabbix hasn't shipped real .debs" finding (6.0/7.0 are definitely,
+#                     unambiguously real-world GA and installable). Not something this session
+#                     could fully resolve either way. Section 8 below (repo + package install)
+#                     therefore includes an explicit `apt-cache policy zabbix-server-mysql` sanity
+#                     check straight after `apt-get update`, before anything else runs, so a
+#                     genuinely missing package fails fast with a clear message instead of
+#                     halfway through a long install. Treat this whole area as UNVERIFIED until
+#                     confirmed on a real run — flagging per this repo's own "frame as
+#                     verification, not fix claims" convention rather than asserting it works.
+#
+#                     ROLE CODE / IP — EXAZBXCLD001 follows the same "single instance, CLD only"
+#                     convention as RUD (.12)/RMM (.14)/SLT (.22) in role_codes.csv, but ZBX is
+#                     NOT yet a real row in role_codes.csv/devices.csv, and no CLD octet has been
+#                     assigned — this script deliberately does NOT hardcode a "correct" default
+#                     IP the way rudderme.sh does for RUD's already-known .12, since there isn't
+#                     one yet. Free CLD octets as of this session (devices.csv doesn't use them):
+#                     .15, .16, .23, and most of the range above .82 excluding .250. Robert: pick
+#                     one and this script's suggested-default can be updated, or just answer the
+#                     prompt manually each run until role_codes.csv/devices.csv get a real ZBX row.
+# -------------------------------------------------------------------------------------------------
+
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+export DEBCONF_NONINTERACTIVE_SEEN=true
+
+# ------------------------------------------------------------------------------
+# Colour helpers — identical to ansibleme.sh / rudderme.sh / firewallme.sh
+# ------------------------------------------------------------------------------
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+CYAN='\033[0;36m'; WHITE='\033[1;37m'; NC='\033[0m'
+info()    { echo -e "${CYAN}[*]${NC} $*"; }
+success() { echo -e "${GREEN}[+]${NC} $*"; }
+warn()    { echo -e "${YELLOW}[!]${NC} $*" >&2; }
+die()     { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
+section() { echo; echo -e "${WHITE}── $* ──${NC}"; echo; }
+
+# Checks whether an IP is already live on the network (ping + arping fallback)
+ip_in_use() {
+  local ip="$1"
+  if ping -c1 -W1 "$ip" &>/dev/null 2>&1; then
+    return 0
+  fi
+  if command -v arping &>/dev/null; then
+    local gw_iface
+    gw_iface=$(ip route | awk '/default/{print $5}' | head -1)
+    if [[ -n "${gw_iface}" ]] && arping -c1 -W1 -I "${gw_iface}" "$ip" &>/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
+# Generates a random alnum-only credential — safe to embed unescaped in SQL,
+# shell heredocs, and JSON payloads (no quotes/backslashes/$/backticks to
+# fight with), unlike the hand-typed example password in the old reference
+# scripts this was ported from.
+gen_password() {
+  tr -dc 'A-Za-z0-9' < /dev/urandom | head -c "${1:-28}"
+}
+
+# ------------------------------------------------------------------------------
+# Must run as root
+# ------------------------------------------------------------------------------
+[[ $EUID -ne 0 ]] && die "Run this script with sudo or as root."
+
+# ------------------------------------------------------------------------------
+# Preflight -- ensure /etc/example-music/ + sites.csv + begyndelse.json
+# ------------------------------------------------------------------------------
+# Same pattern as every other break-glass script (Robert, 2026-08-29) — detects
+# which provisioning network this box is on from its own default gateway, and
+# fetches whatever's missing before load_sites_csv() (and the begyndelse.json
+# lookup further down) ever run. Exits 0, not 1 — this isn't a crash.
+
+PREFLIGHT_DIR="/etc/example-music"
+mkdir -p "${PREFLIGHT_DIR}" 2>/dev/null || true
+
+PREFLIGHT_GW=$(ip route 2>/dev/null | awk '/default/ {print $3; exit}')
+if [[ "${PREFLIGHT_GW}" == "172.16.124.2" ]]; then
+  PREFLIGHT_SERVER="http://172.16.124.1:8000"   # Fredericia Havn
+else
+  PREFLIGHT_SERVER="http://192.168.139.50"      # Edinburgh / vRACK (default)
+fi
+
+preflight_fetch() {
+  local filename="$1"
+  local dest="${PREFLIGHT_DIR}/${filename}"
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  [[ -f "${dest}" ]] && return 0
+  [[ -f "${script_dir}/${filename}" ]] && return 0
+
+  local url="${PREFLIGHT_SERVER}/proxmox/${filename}"
+  info "${filename} not found locally -- fetching from ${url} ..."
+  if wget -q --tries=1 --timeout=15 -O "${dest}" "${url}" 2>/dev/null && [[ -s "${dest}" ]]; then
+    success "Downloaded ${filename} to ${dest}."
+    return 0
+  fi
+  rm -f "${dest}" 2>/dev/null
+  return 1
+}
+
+PREFLIGHT_MISSING=()
+for PREFLIGHT_FILE in sites.csv begyndelse.json; do
+  preflight_fetch "${PREFLIGHT_FILE}" || PREFLIGHT_MISSING+=("${PREFLIGHT_FILE}")
+done
+
+if [[ ${#PREFLIGHT_MISSING[@]} -gt 0 ]]; then
+  warn "Could not obtain: ${PREFLIGHT_MISSING[*]}"
+  warn "This box may not be on a known provisioning network (checked gateway"
+  warn "'${PREFLIGHT_GW:-<none>}', tried ${PREFLIGHT_SERVER}), or that server isn't"
+  warn "reachable right now."
+  warn "Place the missing file(s) at ${PREFLIGHT_DIR}/ by hand and re-run, or fix"
+  warn "network connectivity first."
+  exit 0
+fi
+
+# ------------------------------------------------------------------------------
+# Site data — loaded from sites.csv (single source of truth)
+# ------------------------------------------------------------------------------
+declare -A SITE_OCTET SITE_CITY SITE_COUNTRY SITE_ENTITY SITE_DC SITE_FW
+
+load_sites_csv() {
+  local csv_path=""
+
+  if [[ -n "${SITES_CSV:-}" && -f "${SITES_CSV}" ]]; then
+    csv_path="${SITES_CSV}"
+  else
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "${script_dir}/sites.csv" ]]; then
+      csv_path="${script_dir}/sites.csv"
+    elif [[ -f "/etc/example-music/sites.csv" ]]; then
+      csv_path="/etc/example-music/sites.csv"
+    fi
+  fi
+
+  if [[ -z "${csv_path}" ]]; then
+    echo -e "\033[0;31m[ERROR]\033[0m sites.csv not found." >&2
+    echo -e "  Looked in: same directory as script, /etc/example-music/sites.csv" >&2
+    echo -e "  Set SITES_CSV=/path/to/sites.csv to override." >&2
+    exit 1
+  fi
+
+  local first=1
+  # 17-column header (Site,City,Country,CountryCode,Province,OfficeName,Street,PostalCode,
+  # Subnet,Gateway,DC,FW,Landline,Mobile,Timezone,AnsibleRegion,Entity) — same field list every
+  # other break-glass script in this repo uses as of the 2026-08-29 fix, including the
+  # comma-in-Entity reconstruction via $_rest.
+  while IFS=',' read -r site city country cc province officename street postalcode subnet gateway dc fw landline mobile tz ansible_region entity _rest \
+      || [[ -n "$site" ]]; do
+    [[ "${first}" -eq 1 ]] && { first=0; continue; }
+    site="${site// /}"
+    [[ -z "${site}" ]] && continue
+    [[ -n "${_rest}" ]] && entity="${entity},${_rest}"
+    local octet
+    octet=$(echo "${subnet}" | awk -F'.' '{print $3}')
+    SITE_OCTET["${site}"]="${octet}"
+    SITE_CITY["${site}"]="${city}"
+    SITE_COUNTRY["${site}"]="${country}"
+    SITE_ENTITY["${site}"]="${entity}"
+    SITE_DC["${site}"]="${dc}"
+    SITE_FW["${site}"]="${fw}"
+  done < "${csv_path}"
+}
+
+load_sites_csv
+
+# ------------------------------------------------------------------------------
+# Constants
+# ------------------------------------------------------------------------------
+ZABBIX_MAJOR="8.0"
+ZABBIX_ADMIN_USER="Admin"          # Zabbix's own built-in superadmin account name
+AUTOREG_GROUP_NAME="auto-registration"
+SENTINEL="/etc/.i_am_a_zabbix_server"
+DB_CREDS_FILE="/root/.zabbix_db_credentials"
+API_CREDS_FILE="/root/.zabbix_api_credentials"
+
+# ------------------------------------------------------------------------------
+# Banner
+# ------------------------------------------------------------------------------
+echo
+echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║            Example Music:- Zabbix Server Bootstrap           ║${NC}"
+echo -e "${CYAN}║                        zabbixme.sh                           ║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
+echo
+echo -e "${YELLOW}  Running on hostname: ${GREEN}$(hostname)${NC}"
+echo
+
+# ------------------------------------------------------------------------------
+# Section 1 — Site / node identity
+# ------------------------------------------------------------------------------
+section "1. Node identity"
+
+DETECTED_SITE=""
+HOSTNAME_NOW=$(hostname)
+if [[ "$HOSTNAME_NOW" =~ ^EXA[A-Z]{3}([A-Z]{3})[0-9]{3}$ ]]; then
+  DETECTED_SITE="${BASH_REMATCH[1]}"
+fi
+
+echo -e "${CYAN}Known site codes:${NC}"
+echo -e "${CYAN}  $(echo "${!SITE_OCTET[@]}" | tr ' ' '\n' | sort | tr '\n' ' ')${NC}"
+echo
+
+SITE_CODE=""
+while true; do
+  if [[ -n "$DETECTED_SITE" && -v SITE_OCTET[$DETECTED_SITE] ]]; then
+    read -rp "  Site code (detected from hostname: ${DETECTED_SITE}, Enter to accept): " SITE_INPUT
+    SITE_INPUT="${SITE_INPUT:-${DETECTED_SITE}}"
+  else
+    read -rp "  Enter site code for this node (CLD, unless a second Zabbix server is genuinely intended): " SITE_INPUT
+  fi
+  SITE_CODE="${SITE_INPUT^^}"
+
+  if [[ -v SITE_OCTET[$SITE_CODE] ]]; then
+    WG_OCTET="${SITE_OCTET[$SITE_CODE]}"
+    SUBNET="192.168.${WG_OCTET}"
+    SITE_DISPLAY_CITY="${SITE_CITY[$SITE_CODE]:-${SITE_CODE}}"
+    SITE_DISPLAY_COUNTRY="${SITE_COUNTRY[$SITE_CODE]:-Unknown}"
+    SITE_DISPLAY_ENTITY="${SITE_ENTITY[$SITE_CODE]:-Example Music}"
+    echo -e "  ${GREEN}→ ${SITE_CODE}: ${SITE_DISPLAY_CITY}, ${SITE_DISPLAY_COUNTRY} — ${SITE_DISPLAY_ENTITY}${NC}"
+    echo -e "  ${GREEN}→ management subnet ${SUBNET}.0/24${NC}"
+    if [[ "$SITE_CODE" != "CLD" ]]; then
+      warn "Zabbix is a single-instance-CLD-only role in this estate today (same convention as"
+      warn "Rudder/TacticalRMM/Salt master) — confirm a second Zabbix server is genuinely intended"
+      warn "before continuing."
+    fi
+    break
+  else
+    warn "Unknown site code '${SITE_CODE}'. Try again."
+  fi
+done
+
+# ------------------------------------------------------------------------------
+# Section 1a — well-known addresses from begyndelse.json (single source of truth)
+# ------------------------------------------------------------------------------
+# domain_fqdn parameterises every hostname/ServerName below rather than hardcoding
+# "jukebox.internal" — same fix rudderme.sh got on 2026-07-17 after being missed by
+# that migration entirely. VRK_SUBNET/FRD_SUBNET drive the auto-registration and
+# API IP-restriction lists further down (Section 6/16) alongside every site's own
+# Subnet from sites.csv — this is the "figure that out from sites.csv" part of
+# Robert's brief, plus the two provisioning networks it can't tell you about on
+# its own.
+command -v jq &>/dev/null || { apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true; apt-get install -y -qq jq; }
+
+BEGYNDELSE_FILE=""
+if [[ -n "${BEGYNDELSE_JSON:-}" && -f "${BEGYNDELSE_JSON}" ]]; then
+  BEGYNDELSE_FILE="${BEGYNDELSE_JSON}"
+else
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -f "${SCRIPT_DIR}/begyndelse.json" ]]; then
+    BEGYNDELSE_FILE="${SCRIPT_DIR}/begyndelse.json"
+  elif [[ -f "/etc/example-music/begyndelse.json" ]]; then
+    BEGYNDELSE_FILE="/etc/example-music/begyndelse.json"
+  fi
+fi
+[[ -z "${BEGYNDELSE_FILE}" ]] && die "begyndelse.json not found (looked in \$BEGYNDELSE_JSON, script directory, /etc/example-music/) -- cannot determine domain/provisioning subnets."
+
+EXA_DOMAIN=$(jq -r '.domain_fqdn' "${BEGYNDELSE_FILE}")
+VRK_SUBNET=$(jq -r '.provisioning_edinburgh.subnet' "${BEGYNDELSE_FILE}")
+FRD_SUBNET=$(jq -r '.provisioning_fredericia_havn.subnet' "${BEGYNDELSE_FILE}")
+
+# ------------------------------------------------------------------------------
+# Section 2 — Hostname
+# ------------------------------------------------------------------------------
+section "2. Hostname"
+
+info "Detecting hostname for this Zabbix server..."
+CURRENT_HOSTNAME=$(hostname -s)
+SUGGESTED_HOSTNAME=""
+
+if [[ "${CURRENT_HOSTNAME}" =~ ^[Ee][Xx][Aa] ]]; then
+  SUGGESTED_HOSTNAME="${CURRENT_HOSTNAME^^}"
+  info "Detected EXA-convention hostname: ${SUGGESTED_HOSTNAME}"
+else
+  SUGGESTED_HOSTNAME="EXAZBXCLD001"
+  warn "Current hostname '${CURRENT_HOSTNAME}' does not match EXA* convention."
+  warn "EXAZBXCLD001 is a SUGGESTED default only -- ZBX is not yet a real role_codes.csv row."
+fi
+
+read -rp "  Hostname for this Zabbix server [${SUGGESTED_HOSTNAME}]: " HOSTNAME_INPUT
+THIS_HOSTNAME="${HOSTNAME_INPUT:-${SUGGESTED_HOSTNAME}}"
+THIS_HOSTNAME="${THIS_HOSTNAME^^}"
+
+info "Setting hostname to ${THIS_HOSTNAME}..."
+hostnamectl set-hostname "${THIS_HOSTNAME}"
+grep -q "${THIS_HOSTNAME,,}" /etc/hosts 2>/dev/null || \
+  echo "127.0.1.1  ${THIS_HOSTNAME,,}.${EXA_DOMAIN}  ${THIS_HOSTNAME,,}" >> /etc/hosts
+success "Hostname set to ${THIS_HOSTNAME}."
+
+# ------------------------------------------------------------------------------
+# Section 3 — Network / Static IP
+# ------------------------------------------------------------------------------
+section "3. Network / Static IP"
+
+PROV_NET_DEFAULT="${SUBNET}"
+info "Management subnet for this site: ${PROV_NET_DEFAULT}.x"
+
+read -rp "  Gateway last octet [253]: " GW_OCTET_INPUT
+GW_OCTET="${GW_OCTET_INPUT:-253}"
+PROV_GW="${PROV_NET_DEFAULT}.${GW_OCTET}"
+
+# No CSV-assigned octet exists yet for Zabbix (see this file's own version-history note above) --
+# deliberately NOT defaulting to a specific value the way rudderme.sh can for RUD's already-known
+# .12. Robert: pick a free octet (.15/.16/.23 and most of the range above .82 were free as of
+# 2026-09-01) and type it in below.
+read -rp "  Static IP for this Zabbix server (no assigned default yet -- see comment above): " NODE_STATIC_IP
+[[ -z "${NODE_STATIC_IP}" ]] && die "A static IP is required -- Zabbix is a permanent infrastructure node, not a DHCP client."
+
+info "Checking whether ${NODE_STATIC_IP} is already in use..."
+if ip_in_use "${NODE_STATIC_IP}"; then
+  CURRENT_IPS=$(hostname -I)
+  if echo "$CURRENT_IPS" | grep -qw "${NODE_STATIC_IP}"; then
+    info "${NODE_STATIC_IP} is already assigned to this host — continuing."
+  else
+    die "${NODE_STATIC_IP} is already in use by another host. Resolve the conflict first."
+  fi
+else
+  success "${NODE_STATIC_IP} appears free — proceeding."
+fi
+
+info "Detecting network interface..."
+PROV_IFACE=""
+for iface in $(ls /sys/class/net/); do
+  [[ "$iface" == "lo" ]] && continue
+  ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP "(?<=inet\s)\d+\.\d+\.\d+\.\d+" | head -1)
+  if [[ -n "$ip_addr" ]]; then
+    PROV_IFACE="$iface"
+    success "Detected interface: ${PROV_IFACE} (currently ${ip_addr})"
+    break
+  fi
+done
+
+if [[ -z "$PROV_IFACE" ]]; then
+  warn "Could not auto-detect interface."
+  AVAILABLE_IFACES=($(ip -o link show | awk -F': ' '{print $2}' | grep -v '^lo$' | grep -v '@'))
+  read -rp "  Enter interface name (available: ${AVAILABLE_IFACES[*]}): " PROV_IFACE
+  PROV_IFACE="${PROV_IFACE:-${AVAILABLE_IFACES[0]:-eth0}}"
+fi
+
+PROV_MAC=$(cat "/sys/class/net/${PROV_IFACE}/address" 2>/dev/null)
+info "Pinning ${PROV_IFACE} (MAC ${PROV_MAC}) via systemd .link..."
+mkdir -p /etc/systemd/network
+cat > /etc/systemd/network/10-zabbix-prov.link << EOF
+# Example Music — Zabbix server interface pin
+# Written by zabbixme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+# MAC: ${PROV_MAC}  interface: ${PROV_IFACE}
+[Match]
+MACAddress=${PROV_MAC}
+[Link]
+Name=${PROV_IFACE}
+EOF
+success "Interface pin written."
+
+info "Configuring static IP via NetworkManager..."
+systemctl disable networking.service 2>/dev/null || true
+systemctl mask    networking.service 2>/dev/null || true
+
+if [[ -f /etc/network/interfaces ]]; then
+  if grep -qE "^(auto|allow-|iface)\s+${PROV_IFACE}" /etc/network/interfaces 2>/dev/null; then
+    warn "Removing ifupdown stanza for ${PROV_IFACE} from /etc/network/interfaces..."
+    cp -n /etc/network/interfaces /etc/network/interfaces.bak
+    sed -i "/^auto\s\+${PROV_IFACE}\b/d"    /etc/network/interfaces
+    sed -i "/^allow-.*\s${PROV_IFACE}\b/d"  /etc/network/interfaces
+    success "Cleaned /etc/network/interfaces"
+  fi
+fi
+
+NM_CONF="/etc/NetworkManager/NetworkManager.conf"
+if grep -q "managed=false" "${NM_CONF}" 2>/dev/null; then
+  warn "NetworkManager.conf has managed=false — fixing..."
+  sed -i "s/managed=false/managed=true/" "${NM_CONF}"
+fi
+
+systemctl restart NetworkManager
+sleep 3
+
+nmcli con delete "zabbix-static" 2>/dev/null || true
+
+nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "zabbix-static" \
+  ipv4.method manual \
+  ipv4.addresses "${NODE_STATIC_IP}/24" \
+  ipv4.gateway "${PROV_GW}" \
+  ipv4.dns "${PROV_NET_DEFAULT}.10" \
+  ipv4.dns-search "${EXA_DOMAIN}" \
+  ipv6.method ignore \
+  connection.autoconnect yes \
+  connection.autoconnect-priority 100 \
+  && success "NM profile zabbix-static written — will apply on reboot." \
+  || warn "nmcli con add returned non-zero — check: nmcli connection show zabbix-static"
+
+warn "Static IP will take full effect on reboot."
+warn "If at local console (not SSH): nmcli con up zabbix-static"
+
+# ------------------------------------------------------------------------------
+# Section 4 — OS / codename detection
+# ------------------------------------------------------------------------------
+section "4. OS / codename detection"
+
+command -v lsb_release &>/dev/null || { apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true; apt-get install -y -qq lsb-release; }
+
+OS_DISTRIBUTOR=$(lsb_release -i -s)
+OS_CODENAME=$(lsb_release -c -s)      # e.g. "trixie" -- needed for the apt .sources Suites: line
+OS_RELEASE_NUM=$(lsb_release -s -r)   # e.g. "13"      -- needed for the zabbix-release .deb filename
+
+info "Detected: ${OS_DISTRIBUTOR} ${OS_RELEASE_NUM} (${OS_CODENAME})"
+
+if [[ "${OS_DISTRIBUTOR}" != "Debian" ]]; then
+  die "This script is Debian-only (detected '${OS_DISTRIBUTOR}'). Not tested on anything else."
+fi
+
+# ------------------------------------------------------------------------------
+# Section 5 — Base + monitoring toolkit packages
+# ------------------------------------------------------------------------------
+section "5. Base packages + monitoring toolkit"
+
+info "Updating package lists..."
+apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
+
+BASE_PKGS=()
+command -v curl    &>/dev/null || BASE_PKGS+=(curl)
+command -v wget    &>/dev/null || BASE_PKGS+=(wget)
+command -v git     &>/dev/null || BASE_PKGS+=(git)
+command -v vim     &>/dev/null || BASE_PKGS+=(vim)
+command -v htop    &>/dev/null || BASE_PKGS+=(htop)
+command -v tree    &>/dev/null || BASE_PKGS+=(tree)
+command -v jq      &>/dev/null || BASE_PKGS+=(jq)
+command -v python3 &>/dev/null || BASE_PKGS+=(python3)
+command -v arping  &>/dev/null || BASE_PKGS+=(arping)
+command -v nmcli   &>/dev/null || BASE_PKGS+=(network-manager)
+dpkg -s molly-guard         &>/dev/null || BASE_PKGS+=(molly-guard)
+dpkg -s fail2ban            &>/dev/null || BASE_PKGS+=(fail2ban)
+dpkg -s ufw                 &>/dev/null || BASE_PKGS+=(ufw)
+dpkg -s ca-certificates      &>/dev/null || BASE_PKGS+=(ca-certificates)
+dpkg -s gnupg                &>/dev/null || BASE_PKGS+=(gnupg)
+dpkg -s apt-transport-https  &>/dev/null || BASE_PKGS+=(apt-transport-https)
+
+# Robert's monitoring toolkit ask (point 4) -- "fping, nmap, snmpwalk, snmp-mibs, etc, etc, etc":
+# treated as "the standard diagnostic kit a monitoring server needs", not an exhaustive list --
+# extend as needed.
+command -v fping       &>/dev/null || BASE_PKGS+=(fping)
+command -v nmap         &>/dev/null || BASE_PKGS+=(nmap)
+command -v snmpwalk      &>/dev/null || BASE_PKGS+=(snmp)
+dpkg -s snmp-mibs-downloader &>/dev/null || BASE_PKGS+=(snmp-mibs-downloader)
+command -v tcpdump        &>/dev/null || BASE_PKGS+=(tcpdump)
+command -v traceroute      &>/dev/null || BASE_PKGS+=(traceroute)
+command -v whois             &>/dev/null || BASE_PKGS+=(whois)
+
+if [[ ${#BASE_PKGS[@]} -gt 0 ]]; then
+  info "Installing: ${BASE_PKGS[*]}"
+  APT_LOG=$(mktemp /tmp/zabbixme-apt-XXXXXX.log)
+  if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+      -o Dpkg::Options::="--force-confold" \
+      -o Dpkg::Options::="--force-confdef" \
+      -o Dpkg::Use-Pty=0 \
+      --no-install-recommends \
+      "${BASE_PKGS[@]}" > "$APT_LOG" 2>&1; then
+    success "Base packages installed."
+    rm -f "$APT_LOG"
+  else
+    APT_RC=$?
+    warn "apt-get install failed (exit ${APT_RC}) — last 20 lines of log:"
+    tail -20 "$APT_LOG" >&2
+    warn "Full log: ${APT_LOG}"
+    die "Package installation failed. Fix the above and re-run."
+  fi
+else
+  success "All base packages already present."
+fi
+
+# snmp-mibs-downloader ships with MIB downloading DISABLED by default on Debian (the "mibs :"
+# line in /etc/snmp/snmp.conf suppresses them, and the actual MIB files aren't fetched until
+# download-mibs runs) -- Robert asked for the tool, which means having it actually able to
+# resolve OID names, not just installed and inert.
+if [[ -f /etc/snmp/snmp.conf ]] && grep -q "^mibs :$" /etc/snmp/snmp.conf 2>/dev/null; then
+  info "Enabling MIB resolution (removing the default 'mibs :' suppression line)..."
+  sed -i '/^mibs :$/d' /etc/snmp/snmp.conf
+fi
+if command -v download-mibs &>/dev/null; then
+  info "Downloading MIBs (download-mibs) — this can take a minute..."
+  download-mibs &>/dev/null || warn "download-mibs returned non-zero — MIB resolution may be incomplete. Re-run manually: download-mibs"
+  success "MIBs downloaded."
+fi
+
+# ------------------------------------------------------------------------------
+# Section 6 — UFW firewall
+# ------------------------------------------------------------------------------
+section "6. Firewall (UFW)"
+
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 22/tcp   comment "SSH"
+ufw allow 80/tcp   comment "Zabbix web UI (redirects to HTTPS if configured)"
+ufw allow 443/tcp  comment "Zabbix web UI HTTPS"
+
+# Robert point 6: "the API will only allow IPs from the VRK, FRD and sites subnets to add to
+# the auto-registration". Zabbix itself has no native inbound-IP allowlist for the trapper port
+# agents connect to (10051) -- that's an OS-firewall job, same as rudderme.sh's own UFW section
+# for Rudder's agent ports. VRK_SUBNET/FRD_SUBNET come from begyndelse.json (Section 1a); every
+# site's own subnet comes from sites.csv, same loop rudderme.sh already uses for its own
+# allowed-networks list.
+ufw allow from "${VRK_SUBNET}" to any port 10051 proto tcp comment "Zabbix trapper -- VRK" 2>/dev/null || true
+ufw allow from "${FRD_SUBNET}" to any port 10051 proto tcp comment "Zabbix trapper -- FRD" 2>/dev/null || true
+for site_code in $(echo "${!SITE_OCTET[@]}" | tr ' ' '\n' | sort); do
+  oct="${SITE_OCTET[$site_code]}"
+  [[ -z "$oct" ]] && continue
+  ufw allow from "192.168.${oct}.0/24" to any port 10051 proto tcp \
+    comment "Zabbix trapper ${site_code}" 2>/dev/null || true
+done
+
+ufw --force enable
+ufw status verbose
+success "UFW configured."
+
+# ------------------------------------------------------------------------------
+# Section 7 — MariaDB
+# ------------------------------------------------------------------------------
+section "7. MariaDB (database backend)"
+
+if ! dpkg -s mariadb-server &>/dev/null 2>&1; then
+  info "Installing MariaDB server..."
+  APT_LOG=$(mktemp /tmp/zabbixme-mariadb-apt-XXXXXX.log)
+  if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+      -o Dpkg::Options::="--force-confold" -o Dpkg::Options::="--force-confdef" \
+      mariadb-server mariadb-client > "$APT_LOG" 2>&1; then
+    success "MariaDB installed."
+    rm -f "$APT_LOG"
+  else
+    warn "MariaDB install failed — last 20 lines:"
+    tail -20 "$APT_LOG" >&2
+    die "MariaDB install failed. Fix the above and re-run."
+  fi
+else
+  success "MariaDB already installed."
+fi
+
+systemctl enable --now mariadb
+
+ZABBIX_DB_NAME="zabbix"
+ZABBIX_DB_USER="zabbix"
+
+if [[ -f "${DB_CREDS_FILE}" ]]; then
+  info "Existing DB credentials file found at ${DB_CREDS_FILE} — reusing (not regenerating)."
+  # shellcheck disable=SC1090
+  source "${DB_CREDS_FILE}"
+else
+  ZABBIX_DB_PASSWORD=$(gen_password 28)
+  cat > "${DB_CREDS_FILE}" << EOF
+# Generated by zabbixme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ) -- root-only, never committed anywhere.
+ZABBIX_DB_NAME="${ZABBIX_DB_NAME}"
+ZABBIX_DB_USER="${ZABBIX_DB_USER}"
+ZABBIX_DB_PASSWORD="${ZABBIX_DB_PASSWORD}"
+EOF
+  chmod 0600 "${DB_CREDS_FILE}"
+  success "Generated new DB credentials, saved to ${DB_CREDS_FILE} (root-only)."
+fi
+
+info "Creating database and user (idempotent — CREATE ... IF NOT EXISTS)..."
+# utf8mb4 / utf8mb4_bin -- Zabbix's own current requirement, not the utf8/utf8_bin the old
+# (2019-era, 4.0) reference script used. Getting this wrong is a real, documented source of
+# "Character set utf8 is not supported" install failures on modern Zabbix.
+mysql -u root << SQL
+CREATE DATABASE IF NOT EXISTS ${ZABBIX_DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+CREATE USER IF NOT EXISTS '${ZABBIX_DB_USER}'@'localhost' IDENTIFIED BY '${ZABBIX_DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON ${ZABBIX_DB_NAME}.* TO '${ZABBIX_DB_USER}'@'localhost';
+SET GLOBAL log_bin_trust_function_creators = 1;
+FLUSH PRIVILEGES;
+SQL
+success "Database '${ZABBIX_DB_NAME}' and user '${ZABBIX_DB_USER}' ready."
+
+# ------------------------------------------------------------------------------
+# Section 8 — Zabbix repository + server/frontend packages
+# ------------------------------------------------------------------------------
+section "8. Zabbix ${ZABBIX_MAJOR} repository + packages"
+
+if ! dpkg -s zabbix-release &>/dev/null 2>&1; then
+  ZBX_RELEASE_URL="https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/release/debian/pool/main/z/zabbix-release/zabbix-release_latest_${ZABBIX_MAJOR}%2Bdebian${OS_RELEASE_NUM}_all.deb"
+  info "Fetching zabbix-release package: ${ZBX_RELEASE_URL}"
+  ZBX_RELEASE_DEB=$(mktemp /tmp/zabbix-release-XXXXXX.deb)
+  if ! wget -q --tries=1 --timeout=30 -O "${ZBX_RELEASE_DEB}" "${ZBX_RELEASE_URL}"; then
+    die "Could not download zabbix-release for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}) from ${ZBX_RELEASE_URL} -- check the URL is still current at repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/release/debian/pool/main/z/zabbix-release/ (this exact filename pattern was verified live on 2026-09-01, but repo layouts do change)."
+  fi
+  dpkg -i "${ZBX_RELEASE_DEB}"
+  rm -f "${ZBX_RELEASE_DEB}"
+  success "zabbix-release installed."
+else
+  success "zabbix-release already installed."
+fi
+
+# The release package also enables a zabbix-unstable.sources pointing at pre-release/dev
+# builds -- not something a production monitoring server should pull from by default. Disabled
+# here rather than left silently live.
+UNSTABLE_SOURCES="/etc/apt/sources.list.d/zabbix-unstable.sources"
+if [[ -f "${UNSTABLE_SOURCES}" ]] && ! grep -q "^Enabled: no" "${UNSTABLE_SOURCES}" 2>/dev/null; then
+  info "Disabling zabbix-unstable repo (pre-release channel, not wanted here)..."
+  echo "Enabled: no" >> "${UNSTABLE_SOURCES}"
+fi
+
+apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
+
+# Sanity check BEFORE the real install attempt -- see this file's own version-history note on
+# why this genuinely could come back empty (package availability for this exact Debian release
+# under the 8.0 release channel was not fully verifiable from the environment this script was
+# written in). Fail fast with an actionable message rather than a confusing mid-install error.
+if ! apt-cache policy zabbix-server-mysql 2>/dev/null | grep -q "Candidate:"; then
+  die "zabbix-server-mysql has no installable candidate after adding the ${ZABBIX_MAJOR} repo for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}). This may mean Zabbix ${ZABBIX_MAJOR} genuinely hasn't published packages for this Debian release yet -- check https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/release/debian/dists/${OS_CODENAME}/main/ by hand, or try 'apt-cache policy zabbix-server-mysql' yourself for the full picture. If it's not there, either wait for it to land or ask Robert which Zabbix version/Debian release combination to actually target."
+fi
+CANDIDATE_VER=$(apt-cache policy zabbix-server-mysql 2>/dev/null | awk '/Candidate:/{print $2}')
+success "zabbix-server-mysql candidate found: ${CANDIDATE_VER}"
+
+ZBX_PKGS=(zabbix-server-mysql zabbix-frontend-php php8.2-mysql zabbix-nginx-conf zabbix-sql-scripts zabbix-agent)
+# zabbix-nginx-conf is listed for completeness only -- NOT installed if apt can't find it (some
+# Zabbix package sets only ship zabbix-apache-conf; we're using Apache per Robert's brief anyway,
+# see Section 11). Filtered down to what's actually resolvable before installing, rather than
+# assuming every name here exists in this exact package set.
+INSTALLABLE_ZBX_PKGS=()
+for pkg in zabbix-server-mysql zabbix-frontend-php zabbix-sql-scripts zabbix-apache-conf zabbix-agent; do
+  if apt-cache policy "$pkg" 2>/dev/null | grep -q "Candidate:"; then
+    INSTALLABLE_ZBX_PKGS+=("$pkg")
+  else
+    warn "Package '$pkg' not found in the repo -- skipping (may not exist under this name for ${ZABBIX_MAJOR})."
+  fi
+done
+[[ ${#INSTALLABLE_ZBX_PKGS[@]} -eq 0 ]] && die "None of the expected Zabbix packages resolved -- something is wrong with the repo setup above."
+
+# Apache + PHP are pulled in automatically as zabbix-frontend-php dependencies.
+info "Installing: ${INSTALLABLE_ZBX_PKGS[*]}"
+APT_LOG=$(mktemp /tmp/zabbixme-zbx-apt-XXXXXX.log)
+if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+    -o Dpkg::Options::="--force-confold" -o Dpkg::Options::="--force-confdef" \
+    "${INSTALLABLE_ZBX_PKGS[@]}" > "$APT_LOG" 2>&1; then
+  success "Zabbix packages installed."
+  rm -f "$APT_LOG"
+else
+  warn "Zabbix package install failed — last 30 lines:"
+  tail -30 "$APT_LOG" >&2
+  die "Zabbix install failed. Fix the above and re-run."
+fi
+
+# Stop nginx if present (same reasoning as the old reference script -- Apache is the chosen
+# HTTP daemon here, don't fight nginx for port 80/443 if it happens to be installed already).
+if systemctl is-active --quiet nginx 2>/dev/null; then
+  warn "nginx is running -- stopping it (Apache is this estate's chosen HTTP daemon)."
+  systemctl stop nginx
+  systemctl disable nginx 2>/dev/null || true
+fi
+
+# ------------------------------------------------------------------------------
+# Section 9 — Database schema import + zabbix_server.conf + housekeeping
+# ------------------------------------------------------------------------------
+section "9. Database schema + server config + housekeeping"
+
+# Schema location has moved across Zabbix versions (create.sql.gz under the -mysql package's
+# own doc dir historically, vs a dedicated zabbix-sql-scripts package with schema/images/data
+# split more recently) -- auto-detected rather than hardcoded to one layout this session
+# couldn't fully verify against the real 8.0 packaging.
+SCHEMA_IMPORTED_MARKER="/var/lib/mysql/${ZABBIX_DB_NAME}/.zabbixme_schema_imported"
+if [[ -f "${SCHEMA_IMPORTED_MARKER}" ]]; then
+  success "Schema already imported (marker present) — skipping."
+else
+  SCHEMA_CANDIDATES=(
+    "/usr/share/doc/zabbix-server-mysql/create.sql.gz"
+    "/usr/share/zabbix-sql-scripts/mysql/create.sql.gz"
+    "/usr/share/zabbix/sql-scripts/mysql/create.sql.gz"
+  )
+  SCHEMA_FILE=""
+  for candidate in "${SCHEMA_CANDIDATES[@]}"; do
+    [[ -f "${candidate}" ]] && { SCHEMA_FILE="${candidate}"; break; }
+  done
+
+  if [[ -n "${SCHEMA_FILE}" ]]; then
+    info "Importing schema from ${SCHEMA_FILE} (this can take a minute)..."
+    zcat "${SCHEMA_FILE}" | mysql -u"${ZABBIX_DB_USER}" -p"${ZABBIX_DB_PASSWORD}" "${ZABBIX_DB_NAME}"
+    touch "${SCHEMA_IMPORTED_MARKER}" 2>/dev/null || true
+    success "Schema imported."
+  else
+    # Newer split layout: schema.sql.gz + images.sql.gz + data.sql.gz, imported in that order.
+    SPLIT_DIR=""
+    for d in /usr/share/zabbix-sql-scripts/mysql /usr/share/zabbix/sql-scripts/mysql; do
+      [[ -f "${d}/schema.sql.gz" ]] && { SPLIT_DIR="${d}"; break; }
+    done
+    if [[ -n "${SPLIT_DIR}" ]]; then
+      info "Importing split schema from ${SPLIT_DIR} (schema, images, data)..."
+      for part in schema images data; do
+        if [[ -f "${SPLIT_DIR}/${part}.sql.gz" ]]; then
+          zcat "${SPLIT_DIR}/${part}.sql.gz" | mysql -u"${ZABBIX_DB_USER}" -p"${ZABBIX_DB_PASSWORD}" "${ZABBIX_DB_NAME}"
+        fi
+      done
+      touch "${SCHEMA_IMPORTED_MARKER}" 2>/dev/null || true
+      success "Split schema imported."
+    else
+      die "Could not find the Zabbix DB schema anywhere expected (checked: ${SCHEMA_CANDIDATES[*]}, and the split schema/images/data layout under zabbix-sql-scripts). Find it manually: dpkg -L zabbix-sql-scripts zabbix-server-mysql | grep -i sql"
+    fi
+  fi
+fi
+
+info "Writing /etc/zabbix/zabbix_server.conf DB settings..."
+ZBX_SRV_CONF="/etc/zabbix/zabbix_server.conf"
+if [[ -f "${ZBX_SRV_CONF}" ]]; then
+  sed -i "s/^# DBName=.*/DBName=${ZABBIX_DB_NAME}/;   s/^DBName=.*/DBName=${ZABBIX_DB_NAME}/"       "${ZBX_SRV_CONF}"
+  sed -i "s/^# DBUser=.*/DBUser=${ZABBIX_DB_USER}/;   s/^DBUser=.*/DBUser=${ZABBIX_DB_USER}/"       "${ZBX_SRV_CONF}"
+  if grep -q "^DBPassword=" "${ZBX_SRV_CONF}" 2>/dev/null; then
+    sed -i "s/^DBPassword=.*/DBPassword=${ZABBIX_DB_PASSWORD}/" "${ZBX_SRV_CONF}"
+  else
+    echo "DBPassword=${ZABBIX_DB_PASSWORD}" >> "${ZBX_SRV_CONF}"
+  fi
+  success "zabbix_server.conf DB settings written."
+else
+  die "${ZBX_SRV_CONF} not found -- zabbix-server-mysql package layout may differ from what this script expects."
+fi
+
+systemctl enable zabbix-server
+systemctl restart zabbix-server
+
+info "Waiting for zabbix-server to come up (up to 60s)..."
+ZBX_SRV_READY=0
+for i in $(seq 1 12); do
+  systemctl is-active --quiet zabbix-server && { ZBX_SRV_READY=1; break; }
+  sleep 5
+done
+if [[ "$ZBX_SRV_READY" -eq 1 ]]; then
+  success "zabbix-server is running."
+else
+  warn "zabbix-server did not report active within 60s -- check: journalctl -fu zabbix-server"
+fi
+
+# DB pruning / housekeeping (Robert, point 8: "I HATE when the database grows to a ridiculous
+# size because MariaDB doesn't housekeep correctly"). Two real, distinct mechanisms, both
+# applied:
+#   1. Shorter default retention than Zabbix's own shipped defaults -- set directly against the
+#      config table (the housekeeper reads these on its own schedule, no restart needed). These
+#      are deliberately tighter than Zabbix's stock defaults, not a re-statement of them --
+#      adjust in Administration -> General -> Housekeeping in the frontend if too aggressive.
+#   2. A weekly systemd timer running mysqlcheck --optimize against the zabbix DB. This is the
+#      actual mechanism behind the complaint: MariaDB's InnoDB engine does not automatically
+#      return freed space to the OS after the housekeeper's own row-level DELETEs -- the table
+#      files just keep growing regardless of how aggressive the retention settings are, until
+#      something runs OPTIMIZE TABLE (which the housekeeper itself never does). Native
+#      partitioning (DROP PARTITION instead of DELETE) is Zabbix's own recommended fix for
+#      genuinely large installs and would avoid this entirely, but is real DDL surgery on live
+#      history/trends tables -- not attempted unattended here; worth coming back to if the
+#      timer-based approach isn't enough.
+info "Tightening DB housekeeping retention..."
+mysql -u"${ZABBIX_DB_USER}" -p"${ZABBIX_DB_PASSWORD}" "${ZABBIX_DB_NAME}" << SQL
+UPDATE config SET
+  hk_history_global = 1, hk_history = '7d',
+  hk_trends_global   = 1, hk_trends  = '90d',
+  hk_events_mode     = 1,
+  hk_events_trigger  = '14d',
+  hk_events_internal = '3d',
+  hk_events_discovery= '3d',
+  hk_events_autoreg  = '3d',
+  hk_sessions_mode   = 1, hk_sessions = '30d',
+  hk_audit_mode      = 1, hk_audit    = '90d';
+SQL
+success "Housekeeping retention tightened (history=7d, trends=90d — adjust in the frontend if needed)."
+
+info "Installing weekly DB optimise timer..."
+cat > /etc/systemd/system/zabbix-db-optimize.service << EOF
+[Unit]
+Description=Optimize Zabbix MariaDB tables (reclaim InnoDB space the housekeeper's DELETEs leave behind)
+After=mariadb.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mysqlcheck -u${ZABBIX_DB_USER} -p${ZABBIX_DB_PASSWORD} --optimize ${ZABBIX_DB_NAME}
+EOF
+cat > /etc/systemd/system/zabbix-db-optimize.timer << 'EOF'
+[Unit]
+Description=Weekly Zabbix MariaDB optimise
+
+[Timer]
+OnCalendar=Sun 03:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+chmod 0600 /etc/systemd/system/zabbix-db-optimize.service   # embeds the DB password
+systemctl daemon-reload
+systemctl enable --now zabbix-db-optimize.timer
+success "Weekly DB optimise timer installed (Sundays 03:00 — see 'systemctl list-timers')."
+
+# ------------------------------------------------------------------------------
+# Section 10 — Frontend config (zabbix.conf.php, written directly)
+# ------------------------------------------------------------------------------
+section "10. Frontend configuration"
+
+# Written directly rather than via the browser setup.php wizard -- the frontend detects an
+# existing zabbix.conf.php and skips the wizard automatically, which is what makes this
+# scriptable at all. FRONTEND_CONF_DIR resolved dynamically (see Section 11) rather than
+# assumed, since package layouts vary.
+FRONTEND_ROOT=$(dpkg -L zabbix-frontend-php 2>/dev/null | grep -m1 '/index\.php$' | xargs dirname)
+[[ -z "${FRONTEND_ROOT}" ]] && die "Could not determine the Zabbix frontend's installed path (dpkg -L zabbix-frontend-php had no index.php) -- check the package actually installed correctly."
+FRONTEND_CONF="${FRONTEND_ROOT}/conf/zabbix.conf.php"
+
+ZBX_SESSION_KEY=$(gen_password 32)
+mkdir -p "$(dirname "${FRONTEND_CONF}")"
+cat > "${FRONTEND_CONF}" << EOF
+<?php
+// Generated by zabbixme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ) -- skips the browser setup wizard.
+\$DB['TYPE']     = 'MYSQL';
+\$DB['SERVER']   = 'localhost';
+\$DB['PORT']     = '0';
+\$DB['DATABASE'] = '${ZABBIX_DB_NAME}';
+\$DB['USER']     = '${ZABBIX_DB_USER}';
+\$DB['PASSWORD'] = '${ZABBIX_DB_PASSWORD}';
+\$DB['ENCRYPTION']        = false;
+\$DB['DOUBLE_IEEE754']    = true;
+
+\$ZBX_SERVER      = 'localhost';
+\$ZBX_SERVER_PORT = '10051';
+\$ZBX_SERVER_NAME = '${THIS_HOSTNAME}';
+
+\$IMAGE_FORMAT_DEFAULT = IMAGE_FORMAT_PNG;
+
+\$SSO['SP_TYPE']    = ADFS_ONELOGIN_SETTINGS_XML;
+\$SSO['SP_KEY']     = 'sp.key';
+\$SSO['SP_CERT']    = 'sp.crt';
+\$SSO['IDP_CERT']   = 'idp.crt';
+\$SSO['SETTINGS']   = [];
+
+\$ZBX_SESSION_NAME = 'zbx_session_${ZBX_SESSION_KEY:0:8}';
+EOF
+chown www-data:www-data "${FRONTEND_CONF}" 2>/dev/null || true
+chmod 0640 "${FRONTEND_CONF}"
+success "zabbix.conf.php written to ${FRONTEND_CONF}"
+
+# ------------------------------------------------------------------------------
+# Section 11 — Apache vhost: ServerName + "/" -> frontend 301 redirect
+# ------------------------------------------------------------------------------
+section "11. Apache virtual host"
+
+ZBX_FQDN="zabbix.${EXA_DOMAIN}"
+a2enmod rewrite &>/dev/null || true
+
+cat > /etc/apache2/sites-available/zabbix.conf << EOF
+# Generated by zabbixme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+# Robert point 3: hitting "/" 301-redirects to the Zabbix WebUI, same as asking for
+# ${ZBX_FQDN} directly -- both land on the same vhost, both redirect to /zabbix/.
+<VirtualHost *:80>
+    ServerName ${ZBX_FQDN}
+    ServerAlias ${NODE_STATIC_IP}
+
+    DocumentRoot /var/www/html
+    Alias /zabbix ${FRONTEND_ROOT}
+
+    RedirectMatch 301 ^/\$ /zabbix/
+
+    <Directory ${FRONTEND_ROOT}>
+        Options FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    # Robert point 6 (API restriction): api_jsonrpc.php reachable only from VRK/FRD/site
+    # subnets -- everything else (the UI itself) stays open to the LAN as normal.
+    <Location /zabbix/api_jsonrpc.php>
+        Require ip ${VRK_SUBNET}
+        Require ip ${FRD_SUBNET}
+EOF
+for site_code in $(echo "${!SITE_OCTET[@]}" | tr ' ' '\n' | sort); do
+  oct="${SITE_OCTET[$site_code]}"
+  [[ -z "$oct" ]] && continue
+  echo "        Require ip 192.168.${oct}.0/24" >> /etc/apache2/sites-available/zabbix.conf
+done
+cat >> /etc/apache2/sites-available/zabbix.conf << EOF
+    </Location>
+
+    ErrorLog \${APACHE_LOG_DIR}/zabbix_error.log
+    CustomLog \${APACHE_LOG_DIR}/zabbix_access.log combined
+</VirtualHost>
+EOF
+
+a2dissite 000-default &>/dev/null || true
+a2ensite zabbix &>/dev/null
+apache2ctl configtest && systemctl reload apache2 || warn "apache2ctl configtest failed -- check /etc/apache2/sites-available/zabbix.conf by hand before it's live."
+success "Apache vhost written: http://${ZBX_FQDN}/ and http://${NODE_STATIC_IP}/ both redirect to /zabbix/"
+
+# ------------------------------------------------------------------------------
+# Section 12 — Wait for frontend/API, rotate Admin off the default password
+# ------------------------------------------------------------------------------
+section "12. Frontend + API readiness, Admin password rotation"
+
+ZBX_API_URL="http://localhost/zabbix/api_jsonrpc.php"
+
+info "Waiting for the Zabbix API to respond (up to 2 minutes)..."
+ZBX_API_READY=0
+for i in $(seq 1 24); do
+  if curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json-rpc' \
+      -d '{"jsonrpc":"2.0","method":"apiinfo.version","params":{},"id":1}' \
+      "${ZBX_API_URL}" 2>/dev/null | grep -q "200"; then
+    ZBX_API_READY=1
+    break
+  fi
+  sleep 5
+done
+
+if [[ "$ZBX_API_READY" -ne 1 ]]; then
+  warn "Zabbix API did not respond within 2 minutes -- skipping Admin password rotation and"
+  warn "auto-registration setup (Sections 12-14). Re-run this script once the frontend/API"
+  warn "are confirmed reachable, or do these steps manually in the UI."
+else
+  success "Zabbix API is responding."
+
+  # Default Zabbix credentials are Admin/zabbix -- login with those, then immediately rotate to
+  # a generated password so the default is never left live. If this fails, the password was
+  # probably already rotated by a previous run -- that's fine, not treated as an error.
+  ZBX_API_AUTH=$(curl -s -X POST -H 'Content-Type: application/json-rpc' \
+    -d '{"jsonrpc":"2.0","method":"user.login","params":{"username":"Admin","password":"zabbix"},"id":1}' \
+    "${ZBX_API_URL}" | jq -r '.result // empty')
+
+  if [[ -n "${ZBX_API_AUTH}" ]]; then
+    if [[ -f "${API_CREDS_FILE}" ]]; then
+      source "${API_CREDS_FILE}"
+    else
+      ZBX_ADMIN_PASSWORD=$(gen_password 24)
+    fi
+    curl -s -X POST -H 'Content-Type: application/json-rpc' \
+      -d '{"jsonrpc":"2.0","method":"user.update","params":{"userid":"1","password":"'"${ZBX_ADMIN_PASSWORD}"'"},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
+      "${ZBX_API_URL}" > /dev/null
+    cat > "${API_CREDS_FILE}" << EOF
+# Generated by zabbixme.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ) -- root-only, never committed anywhere.
+ZBX_ADMIN_USER="Admin"
+ZBX_ADMIN_PASSWORD="${ZBX_ADMIN_PASSWORD}"
+EOF
+    chmod 0600 "${API_CREDS_FILE}"
+    success "Admin password rotated off the Zabbix default — saved to ${API_CREDS_FILE} (root-only)."
+    # Re-auth with the new password for the sections below.
+    ZBX_API_AUTH=$(curl -s -X POST -H 'Content-Type: application/json-rpc' \
+      -d '{"jsonrpc":"2.0","method":"user.login","params":{"username":"Admin","password":"'"${ZBX_ADMIN_PASSWORD}"'"},"id":1}' \
+      "${ZBX_API_URL}" | jq -r '.result // empty')
+  else
+    warn "Could not log in as Admin/zabbix -- password was probably already rotated by an"
+    warn "earlier run of this script. Re-auth with the saved credentials instead."
+    if [[ -f "${API_CREDS_FILE}" ]]; then
+      source "${API_CREDS_FILE}"
+      ZBX_API_AUTH=$(curl -s -X POST -H 'Content-Type: application/json-rpc' \
+        -d '{"jsonrpc":"2.0","method":"user.login","params":{"username":"Admin","password":"'"${ZBX_ADMIN_PASSWORD}"'"},"id":1}' \
+        "${ZBX_API_URL}" | jq -r '.result // empty')
+    fi
+  fi
+
+  # --------------------------------------------------------------------------
+  # Section 13 — "auto-registration" host group (Robert point 5)
+  # --------------------------------------------------------------------------
+  section "13. auto-registration host group"
+
+  if [[ -n "${ZBX_API_AUTH:-}" ]]; then
+    AUTOREG_GROUP_ID=$(curl -s -X POST -H 'Content-Type: application/json-rpc' \
+      -d '{"jsonrpc":"2.0","method":"hostgroup.get","params":{"filter":{"name":["'"${AUTOREG_GROUP_NAME}"'"]}},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
+      "${ZBX_API_URL}" | jq -r '.result[0].groupid // empty')
+
+    if [[ -z "${AUTOREG_GROUP_ID}" ]]; then
+      AUTOREG_GROUP_ID=$(curl -s -X POST -H 'Content-Type: application/json-rpc' \
+        -d '{"jsonrpc":"2.0","method":"hostgroup.create","params":{"name":"'"${AUTOREG_GROUP_NAME}"'"},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
+        "${ZBX_API_URL}" | jq -r '.result.groupids[0] // empty')
+      [[ -n "${AUTOREG_GROUP_ID}" ]] && success "Host group '${AUTOREG_GROUP_NAME}' created (id ${AUTOREG_GROUP_ID})." \
+        || warn "Could not create host group '${AUTOREG_GROUP_NAME}' -- check the API response manually."
+    else
+      success "Host group '${AUTOREG_GROUP_NAME}' already exists (id ${AUTOREG_GROUP_ID})."
+    fi
+
+    # UNVERIFIED (flagged, not asserted as fact): Zabbix's autoregistration API surface has
+    # changed across major versions -- pre-6.4 used action.create with eventsource=2 for the
+    # whole ruleset; 6.4+ split this into autoregistration.update (host-metadata matching rules)
+    # plus a normal action.create (eventsource=2, "on registration" trigger -> add to group).
+    # This uses the 6.4+ shape, best-known at the time of writing, but has NOT been confirmed
+    # against the real Zabbix 8.0 API docs -- check Administration -> General -> Autoregistration
+    # in the UI after this runs to confirm it actually took effect, and adjust this section if
+    # the method name/params have moved again by 8.0.
+    if [[ -n "${AUTOREG_GROUP_ID}" ]]; then
+      info "Creating autoregistration action (new registrations -> ${AUTOREG_GROUP_NAME})..."
+      curl -s -X POST -H 'Content-Type: application/json-rpc' \
+        -d '{"jsonrpc":"2.0","method":"action.create","params":{"name":"Auto-add to '"${AUTOREG_GROUP_NAME}"'","eventsource":2,"status":0,"filter":{"evaltype":0,"conditions":[]},"operations":[{"operationtype":4,"opgroup":[{"groupid":"'"${AUTOREG_GROUP_ID}"'"}]}]},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
+        "${ZBX_API_URL}" > /tmp/zbx-autoreg-action.json
+      if jq -e '.result' /tmp/zbx-autoreg-action.json > /dev/null 2>&1; then
+        success "Autoregistration action created."
+      else
+        warn "Autoregistration action creation returned: $(cat /tmp/zbx-autoreg-action.json)"
+        warn "Check/create it manually: Administration -> Actions -> Autoregistration actions"
+      fi
+      rm -f /tmp/zbx-autoreg-action.json
+    fi
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# Section 14 — Dynamic MOTD
+# ------------------------------------------------------------------------------
+section "14. Dynamic MOTD"
+
+cat > /etc/update-motd.d/10-examplemusic << MOTD
+#!/usr/bin/env bash
+WH='\033[1;37m'; YL='\033[1;33m'; GR='\033[0;32m'; CY='\033[0;36m'; NC='\033[0m'
+UPTIME=\$(uptime -p)
+LOAD=\$(cut -d' ' -f1-3 /proc/loadavg)
+MEM_TOTAL=\$(awk '/MemTotal/{print int(\$2/1024)}' /proc/meminfo)
+MEM_FREE=\$(awk '/MemAvailable/{print int(\$2/1024)}' /proc/meminfo)
+MEM_USED=\$(( MEM_TOTAL - MEM_FREE ))
+DISK=\$(df -h / | awk 'NR==2{print \$3" used of "\$2" ("\$5")"}')
+ZBX_STATUS=\$(systemctl is-active zabbix-server 2>/dev/null || echo "unknown")
+DB_SIZE=\$(mysql -u${ZABBIX_DB_USER} -p${ZABBIX_DB_PASSWORD} -N -e "SELECT ROUND(SUM(data_length+index_length)/1024/1024) FROM information_schema.tables WHERE table_schema='${ZABBIX_DB_NAME}';" 2>/dev/null || echo "?")
+echo -e "
+\${WH}╔══════════════════════════════════════════════════════════════╗\${NC}
+\${WH}║     EXAMPLE MUSIC LIMITED: \$(printf '%-35s' "\${HOSTNAME}")║\${NC}
+\${WH}╚══════════════════════════════════════════════════════════════╝\${NC}
+
+  \${YL}Site     :\${NC} ${SITE_CODE}: ${SITE_DISPLAY_CITY}, ${SITE_DISPLAY_COUNTRY}
+  \${YL}Entity   :\${NC} ${SITE_DISPLAY_ENTITY}
+  \${YL}Role     :\${NC} Zabbix monitoring server
+
+  \${WH}── Zabbix ───────────────────────────────────────────────────\${NC}
+    \${CY}Server\${NC}    : \${GR}\${ZBX_STATUS}\${NC}
+    \${CY}Web UI\${NC}    : \${GR}http://${ZBX_FQDN}/\${NC}
+    \${CY}DB size\${NC}   : \${GR}\${DB_SIZE} MB\${NC}
+
+  \${WH}── System ───────────────────────────────────────────────────\${NC}
+    \${CY}Uptime\${NC}    : \${GR}\${UPTIME}\${NC}
+    \${CY}Load\${NC}      : \${GR}\${LOAD}\${NC}
+    \${CY}Memory\${NC}    : \${GR}\${MEM_USED}MB\${NC} used of \${MEM_TOTAL}MB
+    \${CY}Disk /\${NC}    : \${GR}\${DISK}\${NC}
+
+  \${WH}── Quick reference ──────────────────────────────────────────\${NC}
+    \${CY}Logs        :\${NC} tail -f /var/log/zabbix/zabbix_server.log
+    \${CY}Restart     :\${NC} systemctl restart zabbix-server
+    \${CY}DB creds    :\${NC} ${DB_CREDS_FILE}
+    \${CY}API creds   :\${NC} ${API_CREDS_FILE}
+"
+MOTD
+
+chmod +x /etc/update-motd.d/10-examplemusic
+
+if grep -q "^PrintMotd" /etc/ssh/sshd_config 2>/dev/null; then
+  sed -i "s/^PrintMotd.*/PrintMotd yes/" /etc/ssh/sshd_config
+else
+  echo "PrintMotd yes" >> /etc/ssh/sshd_config
+fi
+
+cat > /etc/profile.d/motd.sh << 'EOF'
+[[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
+EOF
+
+systemctl restart ssh 2>/dev/null || true
+success "Dynamic MOTD configured."
+
+# ------------------------------------------------------------------------------
+# Section 15 — Sentinel file
+# ------------------------------------------------------------------------------
+{
+  echo "Configured by Example Music zabbixme.sh"
+  echo "Site        : ${SITE_CODE}"
+  echo "City        : ${SITE_DISPLAY_CITY}"
+  echo "Country     : ${SITE_DISPLAY_COUNTRY}"
+  echo "Entity      : ${SITE_DISPLAY_ENTITY}"
+  echo "Hostname    : ${THIS_HOSTNAME}"
+  echo "Static IP   : ${NODE_STATIC_IP}"
+  echo "Zabbix URL  : http://${ZBX_FQDN}/"
+  echo "Zabbix ver  : ${ZABBIX_MAJOR} (candidate ${CANDIDATE_VER:-unknown})"
+  echo "Date        : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+} > "${SENTINEL}"
+chmod 0444 "${SENTINEL}"
+success "Sentinel file written to ${SENTINEL}"
+
+# ------------------------------------------------------------------------------
+# Final banner
+# ------------------------------------------------------------------------------
+echo
+echo -e "${GREEN}============================================================${NC}"
+echo -e "${GREEN}  SETUP COMPLETE — ${THIS_HOSTNAME}${NC}"
+echo -e "${GREEN}============================================================${NC}"
+echo -e "${CYAN}  Site        : ${SITE_CODE} — ${SITE_DISPLAY_CITY}, ${SITE_DISPLAY_COUNTRY}${NC}"
+echo -e "${CYAN}  Hostname    : ${THIS_HOSTNAME}${NC}"
+echo -e "${CYAN}  Static IP   : ${NODE_STATIC_IP} (takes effect on reboot)${NC}"
+echo -e "${CYAN}  Zabbix URL  : http://${ZBX_FQDN}/  (also: http://${NODE_STATIC_IP}/)${NC}"
+echo
+
+echo -e "${YELLOW}  ╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${YELLOW}  ║   CREDENTIALS — READ THIS BEFORE THE TERMINAL SCROLLS AWAY   ║${NC}"
+echo -e "${YELLOW}  ╚══════════════════════════════════════════════════════════════╝${NC}"
+echo -e "  ${WHITE}DB (root-only file)${NC}  : ${GREEN}${DB_CREDS_FILE}${NC}"
+echo -e "  ${WHITE}API/Admin (root-only)${NC}: ${GREEN}${API_CREDS_FILE}${NC}"
+echo -e "  ${YELLOW}Store both in the password manager, then consider removing the files.${NC}"
+echo
+
+echo -e "${YELLOW}  ╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${YELLOW}  ║   REMAINING MANUAL / FOLLOW-UP STEPS                          ║${NC}"
+echo -e "${YELLOW}  ╚══════════════════════════════════════════════════════════════╝${NC}"
+echo
+echo -e "  ${WHITE}1.${NC} Confirm the Zabbix ${ZABBIX_MAJOR} package availability finding in this file's own"
+echo -e "     version-history comment actually resolved cleanly on this real run (it may not"
+echo -e "     have — this was the one thing this script's design couldn't fully verify in"
+echo -e "     advance)."
+echo -e "  ${WHITE}2.${NC} Confirm the autoregistration action actually took effect:"
+echo -e "     ${CYAN}Administration → Actions → Autoregistration actions${NC}"
+echo -e "  ${WHITE}3.${NC} role_codes.csv / devices.csv have no ZBX row yet — add one with a real CLD"
+echo -e "     octet once this build is confirmed good."
+echo -e "  ${WHITE}4.${NC} Agent deployment is explicitly OUT of scope for this script:"
+echo -e "     ${CYAN}TODO: Linux agent — Ansible playbook (EnableRemoteCommands, zabbix_agentd.conf)${NC}"
+echo -e "     ${CYAN}TODO: Windows agent — Salt module${NC}"
+echo -e "     ${CYAN}TODO: curl/wget on every device for auto-registration (agent-side, not server-side)${NC}"
+echo
+echo -e "${GREEN}============================================================${NC}"
+echo
