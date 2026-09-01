@@ -1,12 +1,13 @@
 # Buildsheet — Windows Server 2022 (Non-DC)
 
 **Doc ID:** NET-BUILD-SRV-001  
-**Last Updated:** 2026-03-05  
+**Last Updated:** 2026-09-01  
 **Applies to:** WS2022 Standard / Core member servers — file servers, print servers, utility servers  
 **Cross-reference:** `buildsheet-domainControllers.md` for DC builds · `buildsheet-workstation.md` (NET-BUILD-WKS-001) for Win11 endpoints  
 **Deploy workflow:** unattend XML → OpenSSH reachable → `ansible/playbooks/windows_bootstrap/site.yml`
 (`preinit.cmd`/`SetupComplete.cmd`/`PostOOBE.cmd`/`Join-DomainAndBootstrap.ps1` are a
-historical, pre-Ansible artefact — see `docs/bootstrap/bootstrapping.md` — not the live path)
+historical, pre-Ansible artefact — see `docs/bootstrap/bootstrapping.md` — not the live path)  
+**First-ever run (box still on DHCP):** `ansible-playbook playbooks/windows_bootstrap/site.yml -i <dhcp-ip>, -e target_hosts=<dhcp-ip> --ask-vault-pass` — see `ansible/playbooks/windows_bootstrap/README.md`'s Usage section for the full detail and the named-inventory form used on every run after this one
 
 > ⚠️ **Autounattend files are in `C:\DeployTools\unattend_xml\`**  
 > DeployTools share: `\\EXADCSCPH001\DeployTools` (future: DFS `\\jukebox.internal\DeployTools`)

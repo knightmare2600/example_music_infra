@@ -69,10 +69,29 @@ stage in isolation. `--tags bootstrap` only ever matches `00-preflight.yml`
 
 ## Usage
 
-Run from the `ansible/` root:
+Run from the `ansible/` root. **A genuinely fresh Windows box comes up on DHCP** — same
+DHCP-first-then-static pattern every fresh node in this estate follows (see
+`docs/bootstrap/bootstrapping.md`'s Proxmox worked example, or `buildsheet-firewall.md`'s Step 3a
+for the equivalent firewall walkthrough). `00-preflight.yml`'s own `hosts:` line accepts either
+`target_hosts` (a raw IP, or comma-separated list) or `target` (a named inventory host) — for a
+box that isn't in inventory by its final hostname yet, `target_hosts` against a bare IP is the
+only one that can actually connect:
 
 ```
-# Full run
+# First-ever run — fresh box, still on its DHCP address, not yet in inventory
+ansible-playbook playbooks/windows_bootstrap/site.yml \
+  -i <dhcp-ip>, -e target_hosts=<dhcp-ip> --ask-vault-pass
+```
+
+Note the trailing comma on `-i <dhcp-ip>,` — without it Ansible tries to read `<dhcp-ip>` as an
+inventory *file* rather than a single bare host. `00-preflight.yml` applies the hostname and
+static IP (prompted interactively — see below), then Phase H2 dynamically registers the host
+into its permanent inventory group via `add_host` so `group_vars/windows*/` resolves correctly
+for the rest of this same run. From here on, once the box is on its permanent static IP and named
+correctly, every later run against it uses the normal named-inventory form instead:
+
+```
+# Subsequent runs — host already bootstrapped, named, and on its static IP
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
   -e target=<host> --ask-vault-pass
 
@@ -84,6 +103,11 @@ ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
   -e target=<host> --skip-tags bootstrap --ask-vault-pass
 ```
+
+`target_hosts` and `target` are **not interchangeable** — see
+`docs/ExampleMusic_Beginners_Guide.md`'s table of the 4 different, non-interchangeable
+`--limit`/`-e target=`/`-e target_hosts=` patterns used across playbook families in this repo
+before assuming one flavour works everywhere.
 
 ## Dependencies
 Install galaxy collections first:
