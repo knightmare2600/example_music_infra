@@ -124,11 +124,41 @@
 # this repo cannot redistribute it (Microsoft ADK licensing). See
 # .gitignore's matching exclusion for the hard technical guard against ever
 # committing one by accident.
-bootstrap/web/spejder/**             filter=lfs diff=lfs merge=lfs -text
-bootstrap/web/proxmox/klargoring/**  filter=lfs diff=lfs merge=lfs -text
-bootstrap/web/debian/**              filter=lfs diff=lfs merge=lfs -text
+#
+# 2026-08-31: spejder/, proxmox/klargoring/ and gparted/ REVERSED out of LFS
+# tracking entirely -- Robert's call. Both spejder and klargoring have a
+# real upstream home of their own (github.com/knightmare2600/{Spejder,
+# klargoring} releases -- see benarbejde/asset_manifest.json), and gparted
+# has the real upstream Live ISO (gparted.org) -- committing the built
+# artefacts here too was pure duplication, and the single largest
+# contributor to this repo blowing its LFS storage budget (2.54GB of the
+# total pending backlog, confirmed 2026-08-31). All three stay wired into
+# check_bootstrap_assets.py's Tier 2 + benarbejde/asset_manifest.json's
+# fetch-on-demand path (bootstrap/setup-workstation-{linux,macos}.sh /
+# Setup-Workstation.ps1) -- the harness flags them missing and fetchable,
+# nobody has to remember to run anything by hand.
+#
+# bootstrap/web/debian/** removed the same day, same reasoning, but ONLY
+# the 8 mini.iso-extracted kernel/initrd files (bookworm/trixie x
+# x86_64/arm64) -- all fully wired in the manifest to Debian's own netboot
+# mini.iso (fetch_archive()'s .iso/7z extraction path, checksum-verified
+# against Debian's real SHA256SUMS, verified live 2026-08-13).
+# late_command.sh and the two lvm-*.seed files stay plain git-tracked
+# below -- they're Robert's own hand-authored files with no upstream
+# source at all (late_command.sh is the preseed's post-install hook,
+# referenced from docs/bootstrap/bootstrapping.md; the seeds are actively
+# read by menu.ipxe's ${seed} variable), never covered by the manifest,
+# and were wrongly swept up by an earlier too-broad whole-directory
+# removal attempt this same day before being caught by check_doc_index.py
+# / check_bootstrap_assets.py and redone precisely.
+#
+# History rewritten (git-filter-repo, exact paths only -- not the whole
+# bootstrap/web/debian/ directory, which would have touched Initial Commit
+# itself, since a placeholder debian/{arm64,x86_64}/ existed there before
+# the 2026-07-27 bookworm/trixie split) to remove these -- nothing had
+# reached origin yet, confirmed before rewriting, so this was safe to do
+# locally rather than leaving dead weight in history forever.
 bootstrap/web/openbsd/**             filter=lfs diff=lfs merge=lfs -text
-bootstrap/web/gparted/**             filter=lfs diff=lfs merge=lfs -text
 bootstrap/web/winpe/**/wimboot*      filter=lfs diff=lfs merge=lfs -text
 bootstrap/web/3cx/**                 filter=lfs diff=lfs merge=lfs -text
 bootstrap/web/hdt/**                 filter=lfs diff=lfs merge=lfs -text
