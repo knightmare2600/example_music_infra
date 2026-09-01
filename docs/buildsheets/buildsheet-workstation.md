@@ -1,12 +1,13 @@
 # Buildsheet — Windows 11 Workstations & Laptops
 
 **Doc ID:** NET-BUILD-WKS-001  
-**Last Updated:** 2026-03-05  
+**Last Updated:** 2026-09-01  
 **Applies to:** Windows 11 Pro endpoints — office workstations, touring laptops, hot-desk machines  
 **Cross-reference:** `buildsheet-server.md` (NET-BUILD-SRV-001) for WS2022 non-DC nodes  
 **Deploy workflow:** unattend XML → OpenSSH reachable → `ansible/playbooks/windows_bootstrap/site.yml`
 (`preinit.cmd`/`SetupComplete.cmd`/`PostOOBE.cmd`/`Join-DomainAndBootstrap.ps1` are a
-historical, pre-Ansible artefact — see `docs/bootstrap/bootstrapping.md` — not the live path)
+historical, pre-Ansible artefact — see `docs/bootstrap/bootstrapping.md` — not the live path)  
+**First-ever run (box still on DHCP):** `ansible-playbook playbooks/windows_bootstrap/site.yml -i <dhcp-ip>, -e target_hosts=<dhcp-ip> --ask-vault-pass` — see `ansible/playbooks/windows_bootstrap/README.md`'s Usage section for the full detail and the named-inventory form used on every run after this one
 
 > ⚠️ **Autounattend files are in `C:\DeployTools\unattend_xml\`**  
 > Use `autounattend_win11.xml` for all Win11 builds.  
