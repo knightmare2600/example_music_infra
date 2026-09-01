@@ -417,7 +417,7 @@
       {{ _c.C }}║              WAN Interface Configuration             ║{{ _c.NC }}
       {{ _c.C }}╚══════════════════════════════════════════════════════╝{{ _c.NC }}
 
-      WAN mode — {{ _c.G }}DHCP{{ _c.NC }} or {{ _c.G }}static{{ _c.NC }}? [DHCP/static] (default: DHCP)
+      WAN mode — ({{ _c.G }}d{{ _c.NC }})hcp or ({{ _c.G }}s{{ _c.NC }})tatic? [default: DHCP]
   register: fw_wan_mode_prompt
   when:
     - not fw_is_black_site
@@ -429,6 +429,12 @@
 # address that can change under it. fw_wan_mode_override always wins outright either way,
 # interactive or not, so a batch run that genuinely wants DHCP everywhere still can with
 # -e fw_wan_mode_override=dhcp.
+#
+# 2026-09-01, Robert: single-letter prompt to match nodeinfo_environment.yml's
+# "(p)roduction, (s)taging, (d)evelopment" pattern, instead of demanding the full word
+# "static"/"dhcp" be typed. Checks the first character only, so "s"/"static"/"Static"
+# all resolve the same way -- anything else (including a blank Enter) still falls
+# through to dhcp, matching the prompt's own stated default.
 - name: "[Ask] Set WAN mode from prompt"
   ansible.builtin.set_fact:
     fw_wan_mode: >-
@@ -437,7 +443,7 @@
       {%- elif fw_noninteractive | default(false) | bool -%}
         static
       {%- else -%}
-        {{ 'static' if fw_wan_mode_prompt.user_input | default('') | lower | trim == 'static' else 'dhcp' }}
+        {{ 'static' if (fw_wan_mode_prompt.user_input | default('') | lower | trim | first | default('')) == 's' else 'dhcp' }}
       {%- endif -%}
   when: not fw_is_black_site
 
