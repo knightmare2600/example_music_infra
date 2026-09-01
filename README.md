@@ -345,7 +345,7 @@ Native ARM64 binaries for tools that either lacked them entirely or only offered
 | [dua-cli](https://github.com/knightmare2600/dua-cli) | Additional ARM64 ports of this disk usage analyser; Windows arm64 CI build also submitted upstream — see Upstream Contributions below |
 | [jq](https://github.com/knightmare2600/jq) | Native ARM64 binary for the indispensable JSON processor |
 | [NTop](https://github.com/knightmare2600/NTop) | Native ARM64 binaries for the `ntop` network monitor; Windows arm64 CI build also submitted upstream — see Upstream Contributions below |
-| [ColorEcho](https://github.com/knightmare2600/ColorEcho) | ARM64 port of `colorecho`; patches submitted and merged upstream |
+| [ColorEcho](https://github.com/knightmare2600/ColorEcho) | ARM64 port of `colorecho`; patch submitted upstream as [`cyotek/ColorEcho#1`](https://github.com/cyotek/ColorEcho/pull/1), open and unmerged |
 | [proxmoxbmc](https://github.com/knightmare2600/proxmoxbmc) | Fork adding Debian `.deb` packaging, which was conspicuously absent |
 | [ScreenRes](https://github.com/knightmare2600/ScreenRes) | WinPE native ARM64 binary — handy when travelling with an M1 MacBook |
 
