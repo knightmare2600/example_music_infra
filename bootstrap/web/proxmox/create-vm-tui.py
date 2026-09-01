@@ -796,10 +796,11 @@ class LoginModal(ModalScreen):
             yield Input(value=self._args.user or "root@pam", placeholder="root@pam", id="user")
             yield Label("Password", classes="field-label", id="password-label")
             yield Input(password=True, id="password")
-            yield Label("Auth method", classes="field-label")
-            with RadioSet(id="auth-method"):
-                yield RadioButton("Password", value=True, id="auth-password")
-                yield RadioButton("API Token", id="auth-token")
+            with Horizontal(classes="field-row"):
+                yield Label("Auth method:", classes="field-label")
+                with RadioSet(id="auth-method"):
+                    yield RadioButton("Password", value=True, id="auth-password")
+                    yield RadioButton("API Token", id="auth-token")
             yield Label("Token name", classes="field-label", id="token-name-label")
             yield Input(id="token-name", disabled=True)
             yield Label("Token value", classes="field-label", id="token-value-label")
@@ -1195,6 +1196,9 @@ class WizardScreen(Screen):
         width: auto;
         margin-right: 1;
     }
+    .field-row Select {
+        width: 1fr;
+    }
     .field-hint {
         color: $text-muted;
         text-style: italic;
@@ -1338,19 +1342,21 @@ class IdentityScreen(WizardScreen):
         yield Input(value=self.draft.name, id="name",
                     validators=[VMNameValidator(self.ctx.all_taken_names)],
                     validate_on=["changed"])
-        yield Label("Role", classes="field-label")
-        yield Select(
-            [(f"{code} — {ROLE_CODES[code]}", code) for code in sorted(ROLE_CODES)],
-            id="role", allow_blank=False,
-            value=self.draft.role or sorted(ROLE_CODES)[0],
-        )
-        yield Label("Site", classes="field-label")
-        yield Select(
-            [(f"{code} — {SITES[code]['city']}, {SITES[code]['country']}", code)
-             for code in sorted(SITES)],
-            id="site", allow_blank=False,
-            value=self.draft.site or sorted(SITES)[0],
-        )
+        with Horizontal(classes="field-row"):
+            yield Label("Role:", classes="field-label")
+            yield Select(
+                [(f"{code} — {ROLE_CODES[code]}", code) for code in sorted(ROLE_CODES)],
+                id="role", allow_blank=False,
+                value=self.draft.role or sorted(ROLE_CODES)[0],
+            )
+        with Horizontal(classes="field-row"):
+            yield Label("Site:", classes="field-label")
+            yield Select(
+                [(f"{code} — {SITES[code]['city']}, {SITES[code]['country']}", code)
+                 for code in sorted(SITES)],
+                id="site", allow_blank=False,
+                value=self.draft.site or sorted(SITES)[0],
+            )
         yield Label("VM ID", classes="field-label")
         yield Input(value=self.draft.vmid, id="vmid",
                     validators=[VMIDValidator(self.ctx.all_taken_ids)],
@@ -1361,11 +1367,12 @@ class IdentityScreen(WizardScreen):
         # Site/VMID on one page now that MC-density fields are 1 row each;
         # disk sizing stays on its own page (Storage & ISO) since it's a
         # dynamic, potentially-multi-row section in its own right.
-        yield Label("Operating System", classes="field-label")
-        yield Select(
-            [(desc, ostype) for ostype, desc in OS_TYPES.items()],
-            id="ostype", value=self.draft.ostype, allow_blank=False,
-        )
+        with Horizontal(classes="field-row"):
+            yield Label("Operating System:", classes="field-label")
+            yield Select(
+                [(desc, ostype) for ostype, desc in OS_TYPES.items()],
+                id="ostype", value=self.draft.ostype, allow_blank=False,
+            )
         yield Label("CPU Sockets", classes="field-label")
         yield Input(value=str(self.draft.sockets), id="sockets", type="integer")
         yield Label("CPU Cores per Socket", classes="field-label")
@@ -1386,15 +1393,16 @@ class IdentityScreen(WizardScreen):
         # an opinion on, and the SelectionList itself can run to several
         # rows, so keeping it separate is the deliberate "don't go
         # overboard" line rather than an oversight.
-        yield Label("Storage Pool", classes="field-label")
-        if self.ctx.storage_options:
-            yield Select(
-                [(f"{name} ({stype})", name) for name, stype in self.ctx.storage_options],
-                id="storage", allow_blank=False,
-                value=self.draft.storage or self.ctx.storage_options[0][0],
-            )
-        else:
-            yield Select([("No image-capable storage found", "")], id="storage", allow_blank=False)
+        with Horizontal(classes="field-row"):
+            yield Label("Storage Pool:", classes="field-label")
+            if self.ctx.storage_options:
+                yield Select(
+                    [(f"{name} ({stype})", name) for name, stype in self.ctx.storage_options],
+                    id="storage", allow_blank=False,
+                    value=self.draft.storage or self.ctx.storage_options[0][0],
+                )
+            else:
+                yield Select([("No image-capable storage found", "")], id="storage", allow_blank=False)
         yield Label("Number of Disks", classes="field-label")
         yield Input(value=str(self.draft.disk_count), id="disk-count", type="integer")
         yield Checkbox("Same size for all disks", value=self.draft.same_disk_size, id="same-disk-size")
@@ -1632,19 +1640,21 @@ class NetworkScreen(WizardScreen):
                 yield RadioButton("UEFI", value=(self.draft.bios_type == "ovmf"), id="bios-uefi")
 
         if self.ctx.node_arch != "arm64":
-            yield Label("ROM Variant (x86_64 only)", classes="field-label")
-            yield Select([("Default (no custom ROM)", "")], id="bios-rom", allow_blank=False)
+            with Horizontal(classes="field-row"):
+                yield Label("ROM Variant (x86_64 only):", classes="field-label")
+                yield Select([("Default (no custom ROM)", "")], id="bios-rom", allow_blank=False)
         else:
             yield Label("arm64 target — no SLIC ROM menu applies here.", classes="field-hint")
 
         # Folded in from Identity -- Resource Pool and bulk VM count were
         # briefly on the bottom of the Identity page, now grouped here
         # with Console/BIOS instead per Robert's request.
-        yield Label("Resource Pool (optional)", classes="field-label")
-        yield Select(
-            [("(none)", "")] + [(p, p) for p in self.ctx.pool_options],
-            id="pool", allow_blank=False, value=self.draft.pool or "",
-        )
+        with Horizontal(classes="field-row"):
+            yield Label("Resource Pool (optional):", classes="field-label")
+            yield Select(
+                [("(none)", "")] + [(p, p) for p in self.ctx.pool_options],
+                id="pool", allow_blank=False, value=self.draft.pool or "",
+            )
         yield Label("Number of VMs to create (bulk mode — this one counts as #1)", classes="field-label")
         yield Input(value=str(self.draft.bulk_total), id="bulk-total", type="integer")
 
@@ -1790,16 +1800,18 @@ class ExtrasScreen(WizardScreen):
         # (Windows-only) -- for every other role this page is just Back/
         # Next with a note, which is expected, not an oversight.
         if self.draft.role in WINDOWS_ROLES:
-            yield Label("VirtIO Driver Disk (scsi1)", classes="field-label")
-            yield Select(
-                [("(none)", "")] + [(v.split("/")[-1], v) for v in self.ctx.driver_disk_options],
-                id="driver-disk", allow_blank=False, value=self.draft.driver_disk or "",
-            )
-            yield Label("VirtIO Drivers ISO (optional — postOOBE.cmd usually handles this)", classes="field-label")
-            yield Select(
-                [("(none)", "")] + [(v.split("/")[-1], v) for v in self.ctx.virtio_iso_options],
-                id="virtio-iso", allow_blank=False, value=self.draft.virtio_iso or "",
-            )
+            with Horizontal(classes="field-row"):
+                yield Label("VirtIO Driver Disk (scsi1):", classes="field-label")
+                yield Select(
+                    [("(none)", "")] + [(v.split("/")[-1], v) for v in self.ctx.driver_disk_options],
+                    id="driver-disk", allow_blank=False, value=self.draft.driver_disk or "",
+                )
+            with Horizontal(classes="field-row"):
+                yield Label("VirtIO Drivers ISO (optional — postOOBE.cmd usually handles this):", classes="field-label")
+                yield Select(
+                    [("(none)", "")] + [(v.split("/")[-1], v) for v in self.ctx.virtio_iso_options],
+                    id="virtio-iso", allow_blank=False, value=self.draft.virtio_iso or "",
+                )
         else:
             yield Label("No extra options for this role.", classes="field-hint")
 
@@ -2133,12 +2145,12 @@ class CreateVMApp(App):
         background: transparent;
         height: auto;
     }
-    RadioSet#console, RadioSet#bmc-type, RadioSet#bios-type {
+    RadioSet#console, RadioSet#bmc-type, RadioSet#bios-type, RadioSet#auth-method {
         layout: horizontal;
         width: auto;
         height: 1;
     }
-    RadioSet#console > RadioButton, RadioSet#bmc-type > RadioButton, RadioSet#bios-type > RadioButton {
+    RadioSet#console > RadioButton, RadioSet#bmc-type > RadioButton, RadioSet#bios-type > RadioButton, RadioSet#auth-method > RadioButton {
         width: auto;
         margin-right: 2;
     }
