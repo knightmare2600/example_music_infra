@@ -1191,13 +1191,16 @@ class WizardScreen(Screen):
         height: 1;
         margin-top: 1;
     }
-    .field-row .field-label {
+    .field-row .field-label, .field-row .field-hint {
         margin-top: 0;
         width: auto;
         margin-right: 1;
     }
-    .field-row Select {
+    .field-row Select, .field-row Input {
         width: 1fr;
+    }
+    .field-row Input.field-input-narrow {
+        width: 20;
     }
     .field-hint {
         color: $text-muted;
@@ -1338,10 +1341,11 @@ class IdentityScreen(WizardScreen):
         # Name first -- role/site/console/NIC defaults all flow from it, so
         # it's the field everything else is downstream of, not an
         # afterthought once role/site have already been picked.
-        yield Label("VM Name (role/site are parsed from this automatically)", classes="field-label")
-        yield Input(value=self.draft.name, id="name",
-                    validators=[VMNameValidator(self.ctx.all_taken_names)],
-                    validate_on=["changed"])
+        with Horizontal(classes="field-row"):
+            yield Label("VM Name (role/site are parsed from this automatically):", classes="field-label")
+            yield Input(value=self.draft.name, id="name",
+                        validators=[VMNameValidator(self.ctx.all_taken_names)],
+                        validate_on=["changed"])
         with Horizontal(classes="field-row"):
             yield Label("Role:", classes="field-label")
             yield Select(
@@ -1357,10 +1361,12 @@ class IdentityScreen(WizardScreen):
                 id="site", allow_blank=False,
                 value=self.draft.site or sorted(SITES)[0],
             )
-        yield Label("VM ID", classes="field-label")
-        yield Input(value=self.draft.vmid, id="vmid",
-                    validators=[VMIDValidator(self.ctx.all_taken_ids)],
-                    validate_on=["changed"])
+        with Horizontal(classes="field-row"):
+            yield Label("VM ID:", classes="field-label")
+            yield Input(value=self.draft.vmid, id="vmid",
+                        classes="field-input-narrow",
+                        validators=[VMIDValidator(self.ctx.all_taken_ids)],
+                        validate_on=["changed"])
 
         # Folded in from the old, separate OS/Hardware screen -- these are
         # all "who/what is this VM" essentials that belong with Name/Role/
@@ -1373,10 +1379,12 @@ class IdentityScreen(WizardScreen):
                 [(desc, ostype) for ostype, desc in OS_TYPES.items()],
                 id="ostype", value=self.draft.ostype, allow_blank=False,
             )
-        yield Label("CPU Sockets", classes="field-label")
-        yield Input(value=str(self.draft.sockets), id="sockets", type="integer")
-        yield Label("CPU Cores per Socket", classes="field-label")
-        yield Input(value=str(self.draft.cores), id="cores", type="integer")
+        with Horizontal(classes="field-row"):
+            yield Label("CPU Sockets:", classes="field-label")
+            yield Input(value=str(self.draft.sockets), id="sockets", type="integer", classes="field-input-narrow")
+        with Horizontal(classes="field-row"):
+            yield Label("CPU Cores per Socket:", classes="field-label")
+            yield Input(value=str(self.draft.cores), id="cores", type="integer", classes="field-input-narrow")
         yield Label("RAM (Enter to type a value, ←/→ to nudge, PgUp/PgDn ×10)", classes="field-label")
         yield Slider(256, 131072, value=self.draft.ram, step=256, suffix=" MB", id="ram")
         with Horizontal(classes="field-row"):
@@ -1403,8 +1411,9 @@ class IdentityScreen(WizardScreen):
                 )
             else:
                 yield Select([("No image-capable storage found", "")], id="storage", allow_blank=False)
-        yield Label("Number of Disks", classes="field-label")
-        yield Input(value=str(self.draft.disk_count), id="disk-count", type="integer")
+        with Horizontal(classes="field-row"):
+            yield Label("Number of Disks:", classes="field-label")
+            yield Input(value=str(self.draft.disk_count), id="disk-count", type="integer", classes="field-input-narrow")
         yield Checkbox("Same size for all disks", value=self.draft.same_disk_size, id="same-disk-size")
         yield Vertical(id="disk-sliders")
 
@@ -1612,8 +1621,9 @@ class NetworkScreen(WizardScreen):
 
     def compose_fields(self) -> ComposeResult:
         default_count = len(self.draft.nics) or (2 if self.draft.role in DUAL_NIC_ROLES else 1)
-        yield Label("Number of NICs", classes="field-label")
-        yield Input(value=str(default_count), id="nic-count", type="integer")
+        with Horizontal(classes="field-row"):
+            yield Label("Number of NICs:", classes="field-label")
+            yield Input(value=str(default_count), id="nic-count", type="integer", classes="field-input-narrow")
         yield Vertical(id="nic-rows")
 
         # Folded in from the old, separate Console & BIOS screen -- grouped
@@ -1655,8 +1665,9 @@ class NetworkScreen(WizardScreen):
                 [("(none)", "")] + [(p, p) for p in self.ctx.pool_options],
                 id="pool", allow_blank=False, value=self.draft.pool or "",
             )
-        yield Label("Number of VMs to create (bulk mode — this one counts as #1)", classes="field-label")
-        yield Input(value=str(self.draft.bulk_total), id="bulk-total", type="integer")
+        with Horizontal(classes="field-row"):
+            yield Label("Number of VMs to create (bulk mode — this one counts as #1):", classes="field-label")
+            yield Input(value=str(self.draft.bulk_total), id="bulk-total", type="integer", classes="field-input-narrow")
 
     async def on_mount(self) -> None:
         super().on_mount()
@@ -1720,14 +1731,26 @@ class NetworkScreen(WizardScreen):
                 bridge, vlan, desc = self._nic_defaults(i)
                 mac = ""
             await container.mount(Label(f"NIC net{i}", classes="field-label"))
-            await container.mount(Label("  Bridge", classes="field-hint"))
-            await container.mount(Input(value=bridge, id=f"nic-bridge-{i}", placeholder="vmbrN"))
-            await container.mount(Label("  VLAN (blank = untagged)", classes="field-hint"))
-            await container.mount(Input(value=vlan, id=f"nic-vlan-{i}"))
-            await container.mount(Label("  Description", classes="field-hint"))
-            await container.mount(Input(value=desc, id=f"nic-desc-{i}"))
-            await container.mount(Label("  MAC (blank = auto)", classes="field-hint"))
-            await container.mount(Input(value=mac, id=f"nic-mac-{i}"))
+            await container.mount(Horizontal(
+                Label("  Bridge:", classes="field-hint"),
+                Input(value=bridge, id=f"nic-bridge-{i}", placeholder="vmbrN", classes="field-input-narrow"),
+                classes="field-row",
+            ))
+            await container.mount(Horizontal(
+                Label("  VLAN (blank = untagged):", classes="field-hint"),
+                Input(value=vlan, id=f"nic-vlan-{i}", classes="field-input-narrow"),
+                classes="field-row",
+            ))
+            await container.mount(Horizontal(
+                Label("  Description:", classes="field-hint"),
+                Input(value=desc, id=f"nic-desc-{i}"),
+                classes="field-row",
+            ))
+            await container.mount(Horizontal(
+                Label("  MAC (blank = auto):", classes="field-hint"),
+                Input(value=mac, id=f"nic-mac-{i}", classes="field-input-narrow"),
+                classes="field-row",
+            ))
 
     def commit(self):
         cld_vlan = SITES["CLD"]["octet"]
