@@ -16,6 +16,28 @@
 #       packages, network, nftables, dnsmasq, ssh, cockpit, finish
 #
 # Changelog:
+#   2026-09-01  Robert, live (EXAFWLATL001): a brand-new firewall's very first connection
+#               failed outright -- "REMOTE HOST IDENTIFICATION HAS CHANGED", Gathering Facts
+#               UNREACHABLE -- even though the SSH preflight play just below had already
+#               proven the key/user/network path all worked. Root cause: 192.168.139.90 (this
+#               box's temporary DHCP lease on the shared provisioning network) had a DIFFERENT,
+#               unrelated box's host key cached in known_hosts from some earlier point in time
+#               -- ansible.cfg's StrictHostKeyChecking=accept-new correctly refuses a CHANGED
+#               key (it only silently trusts a genuinely NEW one), and the preflight play's own
+#               connectivity test doesn't catch this at all -- it explicitly runs with
+#               StrictHostKeyChecking=no, so it can't see this failure mode by design.
+#               Robert's explicit instruction, a deliberate, narrow, firewall-only exception,
+#               not a general host-key bypass: firewalls are the first thing built at a site and
+#               land on a shared, DHCP-churned provisioning IP that has almost certainly
+#               belonged to a different box before -- a changed key there is expected noise, not
+#               a security signal. Every OTHER node type (DCS, Salt, RMM, etc.) is expected to
+#               already have a stable identity, so a changed host key there stays a hard,
+#               visible failure -- this fix lives here, in this play only, not in the shared
+#               ssh_preflight_with_fallback.yml that linux/tools.yml also imports for those
+#               other node types. Never silent either way: always prints a yellow warning
+#               naming exactly what happened and why it's being purged, before purging. Added
+#               a new play ("[Preflight] Probe for a stale/changed known_hosts entry...") right
+#               before the ssh_preflight_with_fallback.yml import below.
 #   2026-08-13  Batch-run + prompt-defaults feature (backlog item, picked up this date; see
 #               roles/firewall/tasks/00_preflight_3_ask.yml's own 2026-08-13 changelog entry
 #               for the full mechanism). This play's own two vars_prompt entries below
@@ -68,6 +90,46 @@
 #               below now excludes. Once connected, pre_tasks pushes the real key back
 #               and re-verifies it works, so a follow-up run won't need the fallback again.
 # =============================================================================
+
+- name: "[Preflight] Probe for a stale/changed known_hosts entry on this WAN IP (firewall-specific)"
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  serial: 1
+  tasks:
+    - name: "[Preflight] Test strict host-key verification (does NOT bypass it, unlike the SSH-key test below)"
+      ansible.builtin.command: >
+        ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new
+            -o Port={{ ansible_port | default(22) }}
+            -i {{ ansible_ssh_private_key_file | default(lookup('env', 'HOME') + '/ansible/configs/ansible-id_rsa') }}
+            {{ ansible_user | default('ansible') }}@{{ ansible_host | default(inventory_hostname) }}
+            true
+      register: _fwl_hostkey_probe
+      delegate_to: localhost
+      changed_when: false
+      failed_when: false
+      vars:
+        ansible_connection: local
+
+    - name: "[Preflight] WARNING — stale known_hosts entry, purging (firewall-only, see 2026-09-01 changelog above)"
+      ansible.builtin.debug:
+        msg: |
+          {{ _c.Y }}[!]{{ _c.NC }} SSH host key for {{ ansible_host | default(inventory_hostname) }} has
+          CHANGED since this address was last seen -- normally a real warning sign, but expected here:
+          this is a firewall's temporary DHCP lease on the shared provisioning network, which has almost
+          certainly belonged to a different, unrelated box before. Purging the stale known_hosts entry so
+          this run can continue.
+          This purge is scoped to FIREWALLS ONLY -- a changed host key on any other node type (DCS, Salt,
+          RMM, etc.) is never auto-purged and will still fail loudly, since those are expected to already
+          have a stable identity.
+      when: "'REMOTE HOST IDENTIFICATION HAS CHANGED' in _fwl_hostkey_probe.stderr"
+
+    - name: "[Preflight] Purge stale known_hosts entry"
+      ansible.builtin.command: >
+        ssh-keygen -f {{ lookup('env', 'HOME') }}/.ssh/known_hosts
+        -R {{ ansible_host | default(inventory_hostname) }}
+      delegate_to: localhost
+      changed_when: true
+      when: "'REMOTE HOST IDENTIFICATION HAS CHANGED' in _fwl_hostkey_probe.stderr"
 
 - import_playbook: ../../ssh_preflight_with_fallback.yml
 
