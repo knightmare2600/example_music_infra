@@ -58,6 +58,23 @@ the gate above only checks freshness, it doesn't deploy). It targets
 `groups['all']` (every managed host, PVE nodes included) minus
 `groups['ssh_preflight_skip']`.
 
+## Recommended — weekly control-node refresh
+
+Run this against the Ansible control node itself, on a regular schedule (weekly is a reasonable
+default), rather than only when the gate above actually catches a stale copy:
+
+```
+ansible-playbook playbooks/linux/tools.yml --limit EXAANSCLD001
+```
+
+The gate is a reactive backstop — it stops a run before it does anything wrong on stale data, but
+it only fires at the moment you happen to run one of the 14 gated playbooks. A live incident
+2026-09-01 (`EXAFWLATL001` firewall onboarding test) hit exactly this: the control node's own
+`sites.csv` had drifted stale from earlier `benarbejde/` edits made days before, and the gate
+correctly caught it — but only after the operator had already started the firewall run. Refreshing
+proactively on a routine cadence means the gate rarely has anything to catch in the first place,
+rather than being the thing that tells you mid-run.
+
 ## The checklist
 
 After any edit to `benarbejde/sites.csv`/`devices.csv`/`role_codes.csv`/
