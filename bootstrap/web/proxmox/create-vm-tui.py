@@ -1186,6 +1186,15 @@ class WizardScreen(Screen):
         color: $text-muted;
         margin-top: 1;
     }
+    .field-row {
+        height: 1;
+        margin-top: 1;
+    }
+    .field-row .field-label {
+        margin-top: 0;
+        width: auto;
+        margin-right: 1;
+    }
     .field-hint {
         color: $text-muted;
         text-style: italic;
@@ -1363,11 +1372,12 @@ class IdentityScreen(WizardScreen):
         yield Input(value=str(self.draft.cores), id="cores", type="integer")
         yield Label("RAM (Enter to type a value, ←/→ to nudge, PgUp/PgDn ×10)", classes="field-label")
         yield Slider(256, 131072, value=self.draft.ram, step=256, suffix=" MB", id="ram")
-        yield Label("BMC / IPMI Emulation", classes="field-label")
-        with RadioSet(id="bmc-type"):
-            yield RadioButton("None", value=(self.draft.bmc_type is None), id="bmc-none")
-            yield RadioButton("KCS interface", value=(self.draft.bmc_type == "kcs"), id="bmc-kcs")
-            yield RadioButton("BT interface", value=(self.draft.bmc_type == "bt"), id="bmc-bt")
+        with Horizontal(classes="field-row"):
+            yield Label("BMC / IPMI Emulation:", classes="field-label")
+            with RadioSet(id="bmc-type"):
+                yield RadioButton("None", value=(self.draft.bmc_type is None), id="bmc-none")
+                yield RadioButton("KCS interface", value=(self.draft.bmc_type == "kcs"), id="bmc-kcs")
+                yield RadioButton("BT interface", value=(self.draft.bmc_type == "bt"), id="bmc-bt")
 
         # Folded in from the old, separate Storage & ISO screen -- storage
         # pool + disk sizing are as much "what is this VM" as CPU/RAM are.
@@ -1607,17 +1617,19 @@ class NetworkScreen(WizardScreen):
         # for the compose-time "effective role" fallback Identity needed
         # when Console sat on the same page as the Role dropdown itself.
         default_console = self.draft.console or ("both" if self.draft.role in SERIAL_CONSOLE_ROLES else "spice")
-        yield Label("Console Type", classes="field-label")
-        with RadioSet(id="console"):
-            yield RadioButton("VGA only", value=(default_console == "vga"), id="console-vga")
-            yield RadioButton("VGA + Serial", value=(default_console == "both"), id="console-both")
-            yield RadioButton("Serial only", value=(default_console == "serial"), id="console-serial")
-            yield RadioButton("SPICE", value=(default_console == "spice"), id="console-spice")
+        with Horizontal(classes="field-row"):
+            yield Label("Console Type:", classes="field-label")
+            with RadioSet(id="console"):
+                yield RadioButton("VGA only", value=(default_console == "vga"), id="console-vga")
+                yield RadioButton("VGA + Serial", value=(default_console == "both"), id="console-both")
+                yield RadioButton("Serial only", value=(default_console == "serial"), id="console-serial")
+                yield RadioButton("SPICE", value=(default_console == "spice"), id="console-spice")
 
-        yield Label("BIOS", classes="field-label")
-        with RadioSet(id="bios-type"):
-            yield RadioButton("SeaBIOS", value=(self.draft.bios_type != "ovmf"), id="bios-seabios")
-            yield RadioButton("UEFI", value=(self.draft.bios_type == "ovmf"), id="bios-uefi")
+        with Horizontal(classes="field-row"):
+            yield Label("BIOS:", classes="field-label")
+            with RadioSet(id="bios-type"):
+                yield RadioButton("SeaBIOS", value=(self.draft.bios_type != "ovmf"), id="bios-seabios")
+                yield RadioButton("UEFI", value=(self.draft.bios_type == "ovmf"), id="bios-uefi")
 
         if self.ctx.node_arch != "arm64":
             yield Label("ROM Variant (x86_64 only)", classes="field-label")
