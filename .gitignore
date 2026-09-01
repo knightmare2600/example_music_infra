@@ -106,15 +106,61 @@ scratchpad*
 # but its initrd.gz was still silently caught by **/initrd* above until
 # found here 2026-07-27 -- same bug class this section already exists to
 # guard against, just a directory the original sweep hadn't reached yet.
+#
+# spejder/, proxmox/klargoring/, gparted/ and debian/'s kernel+initrd pairs
+# REMOVED from this carve-out 2026-08-31 -- see the hard-guard block below,
+# they're excluded outright now. debian/'s own late_command.sh and
+# lvm-*.seed stay covered by this file's general !**/*.seed rule above (and
+# late_command.sh was never caught by the Generated Linux boot files
+# patterns to begin with -- its name matches none of them) -- no special
+# case needed for either now that the ignore below is scoped to exact
+# kernel/initrd paths instead of the whole directory.
 ###############################################################################
 
-!bootstrap/web/spejder/**
-!bootstrap/web/proxmox/klargoring/**
 !bootstrap/web/openbsd/**
-!bootstrap/web/gparted/**
-!bootstrap/web/debian/**
 !bootstrap/web/winpe/**/wimboot*
 !bootstrap/web/3cx/**
+
+###############################################################################
+# spejder/, proxmox/klargoring/, gparted/, debian/'s mini.iso-extracted
+# kernel+initrd -- fetch-on-demand only, never committed here
+#
+# 2026-08-31, Robert's call: all of these have a real upstream home of
+# their own (github.com/knightmare2600/{Spejder,klargoring} releases;
+# gparted.org's own Live ISO; Debian's own netboot mini.iso), so
+# committing the built output here too was pure duplication -- and the
+# single largest contributor to this repo blowing its LFS storage budget
+# (2.54GB of a confirmed unpushed backlog, 2026-08-31). Same idiom as the
+# WinPE .wim guard below: explicit, named ignores rather than relying on
+# the generic vmlinuz*/initrd* patterns above, which don't cover every
+# filename in play here anyway (Spejder's kernel is named linux-{arch},
+# not vmlinuz; klargoring ships a KERNEL_VERSION metadata file; gparted's
+# filesystem.squashfs matches neither pattern; Debian's own kernel is
+# named literally "linux", which **/vmlinuz* doesn't match either).
+# debian/ is listed as 8 exact file paths, not a directory wildcard --
+# unlike the other three, this directory also holds late_command.sh and
+# lvm-{bios,efi}.seed, Robert's own hand-authored files with no upstream
+# source at all, which must stay plain-git-tracked. A blanket
+# bootstrap/web/debian/** ignore caught those too on the first attempt
+# this same day (found via check_doc_index.py / check_bootstrap_assets.py
+# flagging the fallout), redone precisely once caught.
+# check_bootstrap_assets.py's Tier 2 + benarbejde/asset_manifest.json
+# still know how to flag all of these as missing and fetch them on demand
+# via bootstrap/setup-workstation-{linux,macos}.sh / Setup-Workstation.ps1
+# -- this file governs what's committed, not what's available locally.
+###############################################################################
+
+bootstrap/web/spejder/**
+bootstrap/web/proxmox/klargoring/**
+bootstrap/web/gparted/**
+bootstrap/web/debian/bookworm/x86_64/linux
+bootstrap/web/debian/bookworm/x86_64/initrd.gz
+bootstrap/web/debian/bookworm/arm64/linux
+bootstrap/web/debian/bookworm/arm64/initrd.gz
+bootstrap/web/debian/trixie/x86_64/linux
+bootstrap/web/debian/trixie/x86_64/initrd.gz
+bootstrap/web/debian/trixie/arm64/linux
+bootstrap/web/debian/trixie/arm64/initrd.gz
 
 ###############################################################################
 # Generated WinPE output
