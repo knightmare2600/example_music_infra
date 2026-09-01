@@ -2,7 +2,7 @@
 
 **Document ID:** NET-BUILD-WIN-001  
 **Classification:** Internal — Network Operations  
-**Last Updated:** 2026-07-15  
+**Last Updated:** 2026-09-01  
 **Signed off by:** ___________________________  Date: ___________
 
 **Deploy workflow:** unattend XML (`C:\DeployTools\unattend_xml\` — DeployTools share
@@ -10,7 +10,8 @@
 `ansible/playbooks/windows_bootstrap/site.yml` — this is a `windows_server`-class node, built
 via the same Ansible chain as any other server. Chocolatey packages, PS7 modules, RSAT tools,
 and domain join below are all handled by that run; Windows Admin Centre install itself remains
-a manual step (no Ansible automation for it yet).
+a manual step (no Ansible automation for it yet).  
+**First-ever run (box still on DHCP):** `ansible-playbook playbooks/windows_bootstrap/site.yml -i <dhcp-ip>, -e target_hosts=<dhcp-ip> --ask-vault-pass` — see `ansible/playbooks/windows_bootstrap/README.md`'s Usage section for the full detail and the named-inventory form used on every run after this one
 
 ---
 
