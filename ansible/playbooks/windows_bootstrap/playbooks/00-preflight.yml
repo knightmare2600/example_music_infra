@@ -81,6 +81,17 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-09-01  Found during an audit prompted by the same-class bug live-fixed in
+#               firewallme/playbooks/90-firewall.yml the same day: the "Gate on
+#               /etc/example-music/* freshness" pre_task sat in this play's own pre_tasks,
+#               which runs AFTER vars_prompt (vars_prompt always evaluates before pre_tasks,
+#               regardless of file position) -- so a stale control node meant the operator
+#               sat through all 6 vars_prompt questions (including typing two passwords)
+#               before finding out the run would fail anyway. Moved into a new, separate
+#               early play ahead of this one, matching the firewall fix's own reasoning
+#               exactly: the gate is entirely control-node-side (delegate_to: localhost
+#               throughout) and never needed a live target connection or gathered facts to
+#               run at all.
 #   2026-08-22  Robert, live: a Phase H IP-change reboot repeatedly reported as failed/errored,
 #               even though the box genuinely rebooted and came back up correctly on the new
 #               static IP every time -- not a real error, just reported as one. Root cause: the
@@ -233,6 +244,24 @@
 #               run. Every other numbered play already used target-only.
 # =============================================================================
 
+- name: "[Preflight] Early check — control-node freshness (before any prompts)"
+  hosts:         "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts:  false
+  tasks:
+    # Moved here 2026-09-01 (see this file's own changelog below): vars_prompt always
+    # evaluates before pre_tasks runs, regardless of file position -- this gate used to sit
+    # in the main play's own pre_tasks, so a stale control node meant the operator sat
+    # through all 6 vars_prompt questions below (including typing two passwords) before
+    # finding out the run was going to fail anyway. This gate is entirely control-node-side
+    # (delegate_to: localhost throughout, see the shared task file itself), so it never
+    # needed a live target connection or gathered facts to run at all -- same fix, same
+    # reasoning, as firewallme/playbooks/90-firewall.yml's own 2026-09-01 changelog entry.
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../../.."
+
 - name: Pre-flight — credentials, hostname, IP, SSH
   hosts:         "{{ target_hosts | default(target | default('all')) }}"
   gather_facts:  false
@@ -281,13 +310,6 @@
     ansible_ssh_public_key_file:  "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa.pub"
     sites_csv: "/etc/example-music/sites.csv"
     dns_bind9: "192.168.139.8"   # CLD BIND9 — upstream resolver for jukebox.internal
-
-  pre_tasks:
-    - name: Gate on /etc/example-music/* freshness
-      include_tasks: ../../../tasks/example_music_freshness_gate.yml
-      vars:
-        example_music_gate_files: [sites.csv]
-        example_music_gate_repo_root: "{{ playbook_dir }}/../../../.."
 
   tasks:
 
