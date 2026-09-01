@@ -2121,6 +2121,15 @@ class CreateVMApp(App):
         background: transparent;
         height: auto;
     }
+    RadioSet#console, RadioSet#bmc-type, RadioSet#bios-type {
+        layout: horizontal;
+        width: auto;
+        height: 1;
+    }
+    RadioSet#console > RadioButton, RadioSet#bmc-type > RadioButton, RadioSet#bios-type > RadioButton {
+        width: auto;
+        margin-right: 2;
+    }
     Checkbox {
         border: none;
         background: transparent;
