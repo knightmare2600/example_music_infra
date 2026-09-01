@@ -48,6 +48,22 @@
 # harness before any of these 12 playbooks are even run.
 # =============================================================================
 # Changelog:
+#   2026-09-01  Robert, live (EXAANSCLD001, running against EXAFWLATL001): the gate correctly
+#               caught a stale control-node copy and correctly told him the exact fix command
+#               -- but that message was buried at the bottom of a huge wall of raw JSON stat/
+#               checksum output from the two tasks just above, easy to miss, and it fired AFTER
+#               17 interactive prompts had already been sat through in firewallme's own play,
+#               only to bomb out right at the end anyway. Two fixes: (1) this message is now
+#               wrapped in a loud, yellow-highlighted debug task ahead of the actual fail:, using
+#               the same _c.Y/_c.NC convention every other warning in this repo already uses, so
+#               it can't get lost in scrollback; also now reminds the operator to re-run their
+#               original command against {{ inventory_hostname }} once fixed, rather than leaving
+#               them to remember/scroll back for it. (2) callers that CAN run this gate before
+#               their own interactive prompts now should -- see firewallme/playbooks/
+#               90-firewall.yml's own 2026-09-01 changelog entry, which moved its copy of this
+#               gate into an early, pre-prompt play, since this file was already fully
+#               control-node-side (delegate_to: localhost throughout) and never actually needed
+#               gathered facts or a live target connection to run at all.
 #   2026-07-28  Robert, live (EXAANSCLD001, running against EXADCSCLD001): the two `stat` tasks
 #               below failed with "Module result deserialization failed: No start of json char
 #               found" / stderr "PowerShell: not found" -- the `windows_nodes` group sets
@@ -91,17 +107,31 @@
   loop: "{{ example_music_gate_files }}"
   register: _em_gate_source
 
-- name: "[example-music-gate] FAIL — missing or stale against benarbejde/"
+- name: "[example-music-gate] WARNING — missing or stale against benarbejde/, see fix below"
+  tags: always
+  ansible.builtin.debug:
+    msg: |
+      {{ _c.Y }}[!]{{ _c.NC }} /etc/example-music/{{ item.0 }} is missing or stale on the
+      Ansible control node, relative to benarbejde/{{ item.0 }} in this checkout. This is read
+      via delegate_to: localhost / lookup('file', ...), not from {{ inventory_hostname }} --
+      the TARGET host is fine, it's the CONTROL NODE's own served copy that's out of date.
+      {{ _c.C }}Fix it:{{ _c.NC }}
+        ansible-playbook ansible/playbooks/linux/tools.yml --limit EXAANSCLD001
+        (or whichever host you're actually running ansible-playbook from)
+      {{ _c.C }}Then re-run your original command against {{ inventory_hostname }}{{
+        ' (ansible_host=' + ansible_host + ')' if ansible_host is defined else '' }}.{{ _c.NC }}
+  loop: "{{ example_music_gate_files | zip(_em_gate_deployed.results, _em_gate_source.results) | list }}"
+  loop_control:
+    label: "{{ item.0 }}"
+  when: >-
+    not item.1.stat.exists or
+    not item.2.stat.exists or
+    item.1.stat.checksum != item.2.stat.checksum
+
+- name: "[example-music-gate] FAIL — missing or stale against benarbejde/ (see warning above)"
   tags: always
   ansible.builtin.fail:
-    msg: >-
-      /etc/example-music/{{ item.0 }} is missing or stale on the Ansible
-      control node relative to benarbejde/{{ item.0 }} in this checkout.
-      This is read via delegate_to: localhost / lookup('file', ...), not
-      from {{ inventory_hostname }} -- refresh the CONTROL NODE's copy:
-      ansible-playbook ansible/playbooks/linux/tools.yml --limit
-      EXAANSCLD001 (or whichever host you're actually running
-      ansible-playbook from).
+    msg: "/etc/example-music/{{ item.0 }} is stale on the control node -- see the warning printed just above for the exact fix."
   loop: "{{ example_music_gate_files | zip(_em_gate_deployed.results, _em_gate_source.results) | list }}"
   loop_control:
     label: "{{ item.0 }}"
