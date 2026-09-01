@@ -1,9 +1,11 @@
 # Buildsheet — Firewall / Router (EXAFWL\*001)
 
 **Doc ID:** NET-BUILD-FWL-001  
-**Last Updated:** 2026-07-12  
+**Last Updated:** 2026-09-01  
 **Applies to:** All site firewall/router VMs — CLD is the sole WireGuard hub; every other site, including FAL/ODE/BRK, is an ordinary spoke  
-**Playbook:** `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=<host> --ask-vault-pass` — the first-instance build/enforce path once the VM is Ansible-reachable (it comes up that way already, via the same `late_command.sh` ansible-user/SSH-key sliver every Debian install gets)  
+**Playbook (first-ever run, box still on its DHCP provisioning IP):** `ansible-playbook -i configs/inventory -e target=<host> -e ansible_host=<current-DHCP-IP> playbooks/firewallme/playbooks/90-firewall.yml --ask-vault-pass`  
+**Playbook (subsequent runs, box already on its permanent static IP):** `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=<host> --ask-vault-pass`  
+See Step 3a below for the full detail — proven live end-to-end against `EXAFWLATL001` on 2026-09-01, `failed=0`.  
 **Break-glass script:** `firewallme.sh` — hosted on bootstrap server at `http://192.168.139.50/provision/firewallme.sh`. Kept for when Ansible genuinely can't reach the box (dead/replaced firewall, or the very first firewall at a brand-new site with no Ansible control node reachable at all). Steps 4 onward below document this path — see `ansible/playbooks/firewallme/` for the normal one.  
 **Cross-reference:** `active-directory/ad-dc-wireguard-deployment.md` (NET-AD-DC-001, historical — see `ansible/playbooks/windows_dc/README.md` for the live procedure) · `buildsheet-pve.md` (NET-BUILD-PVE-001)
 
@@ -199,6 +201,57 @@ passwd
 ```
 
 > ⚠️ The default password set during preseed install **must be changed immediately**. See password manager for the current default and the required new credential pattern.
+
+---
+
+## Step 3a — Run the Ansible Playbook (normal path — preferred over Step 4)
+
+This is the normal onboarding path — use it unless Ansible genuinely can't reach the box (see
+Step 4 for that break-glass case instead). Proven live end-to-end against a genuinely fresh
+`EXAFWLATL001` on 2026-09-01 (`ok=195 changed=60 skipped=78 failed=0`).
+
+**The box is still on its DHCP provisioning IP at this point** — same DHCP-first-then-static
+pattern every fresh node in this estate follows (see `docs/bootstrap/bootstrapping.md`'s Proxmox
+worked example for the equivalent walkthrough). Its hostname is already set correctly by preseed
+(`EXAFWL<SITE>001`), but the inventory's `ansible_host` for that host is its future **static**
+IP, which isn't live yet — connecting needs an explicit override to the box's *current* DHCP
+address for this one run only:
+
+```bash
+ansible-playbook -i configs/inventory \
+  -e target=EXAFWL<SITE>001 \
+  -e ansible_host=<current-DHCP-IP> \
+  playbooks/firewallme/playbooks/90-firewall.yml \
+  --ask-vault-pass
+```
+
+`-e ansible_host=` always wins over the inventory file's own `ansible_host=` for that one run,
+without needing to edit the inventory just to reach a temporary address.
+
+**Before running this against a genuinely fresh box for the first time ever**, make sure the
+control node's own `/etc/example-music/*` is current — an early preflight play checks this
+automatically (before any interactive prompts) and fails with the exact fix command if it's
+stale, but if you already know it needs a refresh, run this first:
+
+```bash
+ansible-playbook ansible/playbooks/linux/tools.yml --limit EXAANSCLD001
+```
+
+**What to expect interactively:** site code, environment, WAN/LAN interface, WAN mode
+(`(d)hcp`/`(s)tatic`, single letter), WAN SSH, WireGuard role, and a final confirm-before-apply
+summary — same prompts `firewallme.sh` asks (see Step 4's table below), just as Ansible
+`pause` prompts instead of a bash script. Answer `spoke` for WireGuard role at any site other
+than CLD (CLD is forced to hub automatically). **Say no to WAN activation** if you're connected
+over the WAN interface yourself right now — the play writes every config regardless and defers
+bringing WAN up live to avoid dropping your own session; bring it up afterwards with
+`nmcli con up wan`, or just reboot (recommended anyway — the final prompt offers this).
+
+**Once the box is on its permanent static IP** (after that reboot), every later run against the
+same host drops the `ansible_host=` override entirely and just uses the inventory as normal:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=EXAFWL<SITE>001 --ask-vault-pass
+```
 
 ---
 
