@@ -250,6 +250,24 @@
 #                     last octet, defaulting to 13 (the real, confirmed, committed devices.csv/
 #                     role_codes.csv octet for CLD), matching firewallme.sh's own
 #                     Ansible/provisioning-octet prompt style.
+# v1.8.0  2026-09-02  Robert, live on EXAZABCLD001, sixth real run: deliberately answered "VRK"
+#                     at the Section 1 site-code prompt (overriding the detected default, CLD)
+#                     to test something, then noted Section 2's hostname suggestion still showed
+#                     EXAZABCLD001 -- completely ignoring the site just chosen. "If I pick a site
+#                     code, that would be the known source of truth, no?" -- yes, correctly
+#                     called out. SUGGESTED_HOSTNAME was derived purely from `hostname -s` (the
+#                     box's CURRENT hostname), with no reference to SITE_CODE (Section 1's own
+#                     operator choice) at all. Fixed: SITE_CODE is now authoritative -- if the
+#                     box's current hostname already encodes the same site chosen in Section 1,
+#                     nothing changes; if the operator picked a different site, the role/instance
+#                     segments are kept but the site segment is swapped to match what was
+#                     actually chosen (e.g. EXAZABCLD001 + site VRK -> suggests EXAZABVRK001).
+#                     Verified locally against 4 cases (matching site, differing site, a
+#                     non-EXA-convention hostname, and mixed-case input) before trusting it live.
+#                     Also fixed the non-EXA-convention fallback, which still said the ORIGINAL
+#                     suggested role code from before this got built ("EXAZBXCLD001"/"ZBX") --
+#                     stale since Robert actually built it as EXAZABCLD001/ZAB (committed to
+#                     role_codes.csv 2026-09-02) -- now correctly suggests EXAZAB<site>001.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -518,13 +536,30 @@ info "Detecting hostname for this Zabbix server..."
 CURRENT_HOSTNAME=$(hostname -s)
 SUGGESTED_HOSTNAME=""
 
-if [[ "${CURRENT_HOSTNAME}" =~ ^[Ee][Xx][Aa] ]]; then
-  SUGGESTED_HOSTNAME="${CURRENT_HOSTNAME^^}"
-  info "Detected EXA-convention hostname: ${SUGGESTED_HOSTNAME}"
+# BUG FIX (2026-09-02, Robert: "the hostname was CLD but I picked VRK and it doesn't 'honour'
+# the change... if I pick a site code, that would be the known source of truth, no?" -- yes,
+# correctly called out): this used to suggest whatever the box's CURRENT hostname already was,
+# completely independent of SITE_CODE (Section 1's own operator choice) -- so overriding the
+# site code there had no effect here at all. SITE_CODE is now the authoritative value: if the
+# box's current hostname already encodes the SAME site, nothing changes (still just confirming
+# what's already correct); if the operator picked a DIFFERENT site, the role/instance segments
+# are kept but the site segment is swapped to match what was actually chosen.
+if [[ "${CURRENT_HOSTNAME^^}" =~ ^EXA([A-Z]{3})([A-Z]{3})([0-9]{3})$ ]]; then
+  CURRENT_ROLE="${BASH_REMATCH[1]}"
+  CURRENT_SITE="${BASH_REMATCH[2]}"
+  CURRENT_NUM="${BASH_REMATCH[3]}"
+  if [[ "${CURRENT_SITE}" == "${SITE_CODE}" ]]; then
+    SUGGESTED_HOSTNAME="${CURRENT_HOSTNAME^^}"
+    info "Detected EXA-convention hostname: ${SUGGESTED_HOSTNAME}"
+  else
+    SUGGESTED_HOSTNAME="EXA${CURRENT_ROLE}${SITE_CODE}${CURRENT_NUM}"
+    warn "Current hostname '${CURRENT_HOSTNAME^^}' is for site ${CURRENT_SITE}, but ${SITE_CODE}"
+    warn "was chosen in Section 1 -- suggesting ${SUGGESTED_HOSTNAME} instead."
+  fi
 else
-  SUGGESTED_HOSTNAME="EXAZBXCLD001"
+  SUGGESTED_HOSTNAME="EXAZAB${SITE_CODE}001"
   warn "Current hostname '${CURRENT_HOSTNAME}' does not match EXA* convention."
-  warn "EXAZBXCLD001 is a SUGGESTED default only -- ZBX is not yet a real role_codes.csv row."
+  warn "${SUGGESTED_HOSTNAME} is a SUGGESTED default only."
 fi
 
 read -rp "  Hostname for this Zabbix server [${SUGGESTED_HOSTNAME}]: " HOSTNAME_INPUT
