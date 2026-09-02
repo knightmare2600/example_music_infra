@@ -458,6 +458,24 @@
 #                     was also missing and would have failed the same call even with passwd
 #                     spelled correctly. Fixed both: renamed password -> passwd and added
 #                     current_passwd:"zabbix" (the password this code path just logged in with).
+# v1.19.0 2026-09-02  Robert re-ran on EXAZABVRK001 with v1.18.0's passwd/current_passwd fix in
+#                     place -- password rotation succeeded ("Admin password rotated off the
+#                     Zabbix default"). Section 13's host group step correctly reported "already
+#                     exists" (idempotent, as designed), but the autoregistration action step
+#                     failed: {"code":-32602,"message":"Invalid params.","data":"Action \"Auto-add
+#                     to auto-registration\" already exists."} -- because the PREVIOUS run
+#                     (v1.18.0's test) had already created it successfully, and unlike the host
+#                     group step just above it (which does hostgroup.get before hostgroup.create),
+#                     the action step called action.create unconditionally every run with no
+#                     existence check first. Confirmed action.get's filter genuinely supports
+#                     filtering by "name" against the real Zabbix 7.0 API docs (action/get +
+#                     action/object reference pages) before relying on it. Fixed by adding the
+#                     same get-before-create pattern already used for the host group: action.get
+#                     filtered by name first, action.create only if not found. Also removed the
+#                     stale "UNVERIFIED" comment above this block -- two consecutive live runs
+#                     (v1.18.0 creating it, this run finding it already exists) now confirm the
+#                     action.create shape itself (eventsource=2, empty filter/conditions, a single
+#                     "add to host group" operation) genuinely works against real Zabbix 7.0.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -1612,25 +1630,30 @@ EOF
       success "Host group '${AUTOREG_GROUP_NAME}' already exists (id ${AUTOREG_GROUP_ID})."
     fi
 
-    # UNVERIFIED (flagged, not asserted as fact): Zabbix's autoregistration API surface has
-    # changed across major versions -- pre-6.4 used action.create with eventsource=2 for the
-    # whole ruleset; 6.4+ split this into autoregistration.update (host-metadata matching rules)
-    # plus a normal action.create (eventsource=2, "on registration" trigger -> add to group).
-    # This uses the 6.4+ shape, which 7.0 (being newer than 6.4) is expected to still use, but
-    # has NOT been confirmed against the real Zabbix 7.0 API docs -- check Administration ->
-    # General -> Autoregistration in the UI after this runs to confirm it actually took effect.
+    # Confirmed live against a real Zabbix 7.0 server (2026-09-02): this action.create shape
+    # (eventsource=2, empty filter/conditions, a single "add to host group" operation) is
+    # accepted and creates a working autoregistration action -- no longer unverified.
     if [[ -n "${AUTOREG_GROUP_ID}" ]]; then
-      info "Creating autoregistration action (new registrations -> ${AUTOREG_GROUP_NAME})..."
-      curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
-        -d '{"jsonrpc":"2.0","method":"action.create","params":{"name":"Auto-add to '"${AUTOREG_GROUP_NAME}"'","eventsource":2,"status":0,"filter":{"evaltype":0,"conditions":[]},"operations":[{"operationtype":4,"opgroup":[{"groupid":"'"${AUTOREG_GROUP_ID}"'"}]}]},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
-        "${ZBX_API_URL}" > /tmp/zbx-autoreg-action.json
-      if jq -e '.result' /tmp/zbx-autoreg-action.json > /dev/null 2>&1; then
-        success "Autoregistration action created."
+      AUTOREG_ACTION_NAME="Auto-add to ${AUTOREG_GROUP_NAME}"
+      AUTOREG_ACTION_ID=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
+        -d '{"jsonrpc":"2.0","method":"action.get","params":{"filter":{"name":["'"${AUTOREG_ACTION_NAME}"'"]}},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
+        "${ZBX_API_URL}" | jq -r '.result[0].actionid // empty')
+
+      if [[ -n "${AUTOREG_ACTION_ID}" ]]; then
+        success "Autoregistration action '${AUTOREG_ACTION_NAME}' already exists (id ${AUTOREG_ACTION_ID})."
       else
-        warn "Autoregistration action creation returned: $(cat /tmp/zbx-autoreg-action.json)"
-        warn "Check/create it manually: Administration -> Actions -> Autoregistration actions"
+        info "Creating autoregistration action (new registrations -> ${AUTOREG_GROUP_NAME})..."
+        curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
+          -d '{"jsonrpc":"2.0","method":"action.create","params":{"name":"'"${AUTOREG_ACTION_NAME}"'","eventsource":2,"status":0,"filter":{"evaltype":0,"conditions":[]},"operations":[{"operationtype":4,"opgroup":[{"groupid":"'"${AUTOREG_GROUP_ID}"'"}]}]},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
+          "${ZBX_API_URL}" > /tmp/zbx-autoreg-action.json
+        if jq -e '.result' /tmp/zbx-autoreg-action.json > /dev/null 2>&1; then
+          success "Autoregistration action created."
+        else
+          warn "Autoregistration action creation returned: $(cat /tmp/zbx-autoreg-action.json)"
+          warn "Check/create it manually: Administration -> Actions -> Autoregistration actions"
+        fi
+        rm -f /tmp/zbx-autoreg-action.json
       fi
-      rm -f /tmp/zbx-autoreg-action.json
     fi
   fi
 fi
