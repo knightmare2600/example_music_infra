@@ -189,6 +189,20 @@
 #                     and the classic sources.list format), then install just this one package
 #                     on its own -- a failure here warns and continues rather than dying, since
 #                     the rest of the script doesn't depend on it.
+# v1.5.0  2026-09-02  Robert, live on EXAZABCLD001, third real run: "it didn't error but it just
+#                     quit" right after MariaDB installed -- no [ERROR] message, just silently
+#                     back at the shell prompt. That's exactly where the first gen_password()
+#                     call sits (ZABBIX_DB_PASSWORD). Root cause, reproduced locally before
+#                     fixing: classic set -o pipefail trap -- `head -c N` reads exactly N bytes
+#                     then closes its input; `tr`, still writing into a closed pipe, gets
+#                     SIGPIPE-killed and exits 141; pipefail propagates that as the whole
+#                     pipeline's exit status; set -e aborts the script immediately with no
+#                     message at all (a SIGPIPE-killed process prints nothing). All three
+#                     gen_password() call sites (DB password, frontend session key, Admin API
+#                     password) were equally exposed -- the DB password just happened to be the
+#                     first one reached. Fixed with `|| true` on the whole pipeline, confirmed
+#                     locally afterward that the generated password is still the correct
+#                     length/content, not just that the script survives.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -227,8 +241,22 @@ ip_in_use() {
 # shell heredocs, and JSON payloads (no quotes/backslashes/$/backticks to
 # fight with), unlike the hand-typed example password in the old reference
 # scripts this was ported from.
+#
+# BUG FIX (2026-09-02, found live on EXAZABCLD001 -- Robert: "it didn't error but it just
+# quit" right after MariaDB installed, which is exactly where the first gen_password() call
+# sits): classic set -o pipefail trap. `head -c N` reads exactly N bytes then closes its
+# input; `tr`, still trying to write into a closed pipe, gets killed by SIGPIPE and exits
+# non-zero (141) -- with pipefail active, that becomes the WHOLE pipeline's exit status, and
+# under set -e the script aborts immediately with NO error message at all (a SIGPIPE-killed
+# process doesn't print anything). Reproduced locally to confirm before fixing: `bash -c 'set
+# -euo pipefail; tr -dc A-Za-z0-9 < /dev/urandom | head -c 28' ; echo $?` prints nothing and
+# exits 141. `|| true` on the whole pipeline swallows that specific failure (confirmed the
+# password still comes out correct length/content) without masking a genuine problem
+# elsewhere, since this line does nothing else that could fail. All three call sites (DB
+# password, frontend session key, Admin API password) were equally exposed -- the DB password
+# was just the first one reached.
 gen_password() {
-  tr -dc 'A-Za-z0-9' < /dev/urandom | head -c "${1:-28}"
+  tr -dc 'A-Za-z0-9' < /dev/urandom | head -c "${1:-28}" || true
 }
 
 # ------------------------------------------------------------------------------
