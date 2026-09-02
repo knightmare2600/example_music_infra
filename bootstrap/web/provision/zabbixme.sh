@@ -397,6 +397,33 @@
 #                     a section header and then nothing -- added an explicit warn block. Neither
 #                     fix resolves the login failure itself; both exist so the next live run
 #                     surfaces the real API error instead of another blind guess.
+# v1.16.0 2026-09-02  Robert re-ran on EXAZABCLD001 with v1.15.0's diagnostics in place -- the
+#                     real API error was: {"code":-32603,"message":"Internal error.","data":
+#                     "Undefined constant \"ADFS_ONELOGIN_SETTINGS_XML\""}. This was never a
+#                     credentials problem at all. Traced to the actual line, found by Robert
+#                     running `grep -rn ADFS_ONELOGIN_SETTINGS_XML /usr/share/zabbix/ /etc/zabbix/`
+#                     on the live box: Section 10's own generated zabbix.conf.php contained
+#                     `$SSO['SP_TYPE'] = ADFS_ONELOGIN_SETTINGS_XML;` with the value unquoted --
+#                     PHP 7 would have silently treated the bare word as a string (with a
+#                     deprecation warning); this box runs PHP 8.4 (confirmed via `php -v`), where
+#                     referencing an undefined bare constant is a hard fatal Error, not a warning.
+#                     Checked the real, official zabbix.conf.php.example shipped inside the
+#                     zabbix-frontend-php_7.0.30 package (downloaded and extracted directly, not
+#                     assumed) to find the actual correct content -- and `$SSO['SP_TYPE']` is not a
+#                     real Zabbix config key at all; it does not exist anywhere in the genuine
+#                     example file or the rest of the package. The real $SSO block only has
+#                     SP_KEY/SP_CERT/IDP_CERT/SETTINGS, and Zabbix ships all four commented out by
+#                     default (SAML/SSO is opt-in). While fixing this, also checked
+#                     `$DB['DOUBLE_IEEE754']` the same way against the real package -- also not a
+#                     genuine key anywhere in the real source (harmless as an ignored array entry,
+#                     but equally fabricated). Both lines were invented when this script was first
+#                     written and never checked against the real upstream template -- neither was
+#                     ever part of Robert's original brief, which never mentioned SAML/SSO at all.
+#                     Fixed by removing both fabricated lines and the entire $SSO block outright
+#                     (matches the real Zabbix default of no SSO configured). Section 10 rewrites
+#                     zabbix.conf.php unconditionally on every run (no idempotency marker), so
+#                     simply re-running this script regenerates the file correctly -- no manual
+#                     on-box edit needed.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -1336,19 +1363,12 @@ cat > "${FRONTEND_CONF}" << EOF
 \$DB['USER']     = '${ZABBIX_DB_USER}';
 \$DB['PASSWORD'] = '${ZABBIX_DB_PASSWORD}';
 \$DB['ENCRYPTION']        = false;
-\$DB['DOUBLE_IEEE754']    = true;
 
 \$ZBX_SERVER      = 'localhost';
 \$ZBX_SERVER_PORT = '10051';
 \$ZBX_SERVER_NAME = '${THIS_HOSTNAME}';
 
 \$IMAGE_FORMAT_DEFAULT = IMAGE_FORMAT_PNG;
-
-\$SSO['SP_TYPE']    = ADFS_ONELOGIN_SETTINGS_XML;
-\$SSO['SP_KEY']     = 'sp.key';
-\$SSO['SP_CERT']    = 'sp.crt';
-\$SSO['IDP_CERT']   = 'idp.crt';
-\$SSO['SETTINGS']   = [];
 
 \$ZBX_SESSION_NAME = 'zbx_session_${ZBX_SESSION_KEY:0:8}';
 EOF
