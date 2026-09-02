@@ -68,6 +68,19 @@
 #             "latest" (Robert's call, tracks whatever Rudder currently calls latest -- 9.1 as
 #             of this fix, confirmed multi-arch). Same bug, same fix, also applied to
 #             group_vars/rudder_servers/main.yml's rudder_version on the Ansible side.
+# 2026-09-02  BUG FIX, found live on EXAZABCLD001 running zabbixme.sh -- this script's own
+#             structure was the direct template for that one, and the identical bug was
+#             sitting here too, just never yet exercised: the old Section 3 (Network / Static
+#             IP) ran BEFORE the old Section 4 (Base packages, which installs network-manager
+#             if missing) -- on a box without NetworkManager already present, "systemctl
+#             restart NetworkManager" would fail outright ("Unit NetworkManager.service not
+#             found"). Reordered: Base packages is now Section 3, Network / Static IP is now
+#             Section 4, running after network-manager is guaranteed installed. Sections 5
+#             onward keep their numbers unchanged. Also added an explicit warning that the
+#             ip_in_use() "appears free" check is a live ping/arping probe only and can't see
+#             an octet that's allocated in sites.csv/devices.csv/cld.ini but not currently
+#             answering ICMP -- same live finding from the EXAZABCLD001 run (Zabbix was about
+#             to be given EXASLTCLD001's already-allocated .22).
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -361,9 +374,70 @@ grep -q "${THIS_HOSTNAME,,}" /etc/hosts 2>/dev/null || \
 success "Hostname set to ${THIS_HOSTNAME}."
 
 # ------------------------------------------------------------------------------
-# Section 3 — Static IP configuration
+# Section 3 — Base packages
 # ------------------------------------------------------------------------------
-section "3. Network / Static IP"
+# BUG FIX (2026-09-02, found live on EXAZABCLD001 running zabbixme.sh -- this script's own
+# structure was copied from here, and the identical bug was present in this file too, just
+# never yet exercised): this used to be Section 4, running AFTER the old Section 3 (Network /
+# Static IP) -- on a box without NetworkManager already present, the old Section 3's
+# "systemctl restart NetworkManager" failed outright ("Unit NetworkManager.service not found")
+# since nothing had installed it yet. Base packages (which installs network-manager if missing)
+# now runs first; Network / Static IP is now Section 4, see below. Section 5 onward keep their
+# numbers unchanged.
+section "3. Base packages"
+
+info "Updating package lists..."
+apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
+
+BASE_PKGS=()
+command -v curl   &>/dev/null || BASE_PKGS+=(curl)
+command -v wget   &>/dev/null || BASE_PKGS+=(wget)
+command -v git    &>/dev/null || BASE_PKGS+=(git)
+command -v vim    &>/dev/null || BASE_PKGS+=(vim)
+command -v htop   &>/dev/null || BASE_PKGS+=(htop)
+command -v tree   &>/dev/null || BASE_PKGS+=(tree)
+command -v jq     &>/dev/null || BASE_PKGS+=(jq)
+command -v python3 &>/dev/null || BASE_PKGS+=(python3)
+command -v arping  &>/dev/null || BASE_PKGS+=(arping)
+command -v nmcli   &>/dev/null || BASE_PKGS+=(network-manager)
+dpkg -s molly-guard &>/dev/null   || BASE_PKGS+=(molly-guard)
+dpkg -s fail2ban    &>/dev/null   || BASE_PKGS+=(fail2ban)
+dpkg -s ufw         &>/dev/null   || BASE_PKGS+=(ufw)
+dpkg -s apache2-utils &>/dev/null || BASE_PKGS+=(apache2-utils)
+dpkg -s ca-certificates &>/dev/null || BASE_PKGS+=(ca-certificates)
+dpkg -s gnupg       &>/dev/null   || BASE_PKGS+=(gnupg)
+dpkg -s lsb-release &>/dev/null   || BASE_PKGS+=(lsb-release)
+dpkg -s apt-transport-https &>/dev/null || BASE_PKGS+=(apt-transport-https)
+
+if [[ ${#BASE_PKGS[@]} -gt 0 ]]; then
+  info "Installing: ${BASE_PKGS[*]}"
+  APT_LOG=$(mktemp /tmp/rudderme-apt-XXXXXX.log)
+  if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+      -o Dpkg::Options::="--force-confold" \
+      -o Dpkg::Options::="--force-confdef" \
+      -o Dpkg::Use-Pty=0 \
+      --no-install-recommends \
+      "${BASE_PKGS[@]}" > "$APT_LOG" 2>&1; then
+    success "Base packages installed."
+    rm -f "$APT_LOG"
+  else
+    APT_RC=$?
+    warn "apt-get install failed (exit ${APT_RC}) — last 20 lines of log:"
+    tail -20 "$APT_LOG" >&2
+    warn "Full log: ${APT_LOG}"
+    die "Package installation failed. Fix the above and re-run."
+  fi
+else
+  success "All base packages already present."
+fi
+
+# ------------------------------------------------------------------------------
+# Section 4 — Static IP configuration
+# ------------------------------------------------------------------------------
+# Runs AFTER base packages (Section 3) on purpose -- network-manager is installed there. See
+# this file's own 2026-09-02 changelog entry for why this used to be Section 3 and broke on a
+# box without NetworkManager already present.
+section "4. Network / Static IP"
 
 # CLD note: The Rudder server lives in the cloud. IP collision checks use
 # ping + arping. If the cloud provider's network blocks ICMP from within the
@@ -384,6 +458,10 @@ NODE_STATIC_IP="${NODE_IP_INPUT:-${PROV_NET_DEFAULT}.12}"
 info "Checking whether ${NODE_STATIC_IP} is already in use..."
 warn "CLD note: ICMP may be filtered on the cloud provider's network."
 warn "If ping does not return results, this check may not be reliable."
+# Found live 2026-09-02 (zabbixme.sh, same underlying script family): this is a LIVE
+# ping/arping probe only -- it cannot see an octet that's already allocated in
+# sites.csv/devices.csv/cld.ini but not currently answering ICMP. "Appears free" is not proof
+# of no conflict -- cross-check the real allocation list yourself before accepting the default.
 
 if ip_in_use "${NODE_STATIC_IP}"; then
   CURRENT_IPS=$(hostname -I)
@@ -393,7 +471,7 @@ if ip_in_use "${NODE_STATIC_IP}"; then
     die "${NODE_STATIC_IP} is already in use by another host. Resolve the conflict first."
   fi
 else
-  success "${NODE_STATIC_IP} appears free — proceeding."
+  success "${NODE_STATIC_IP} appears free (live probe only -- not cross-checked against devices.csv/cld.ini) — proceeding."
 fi
 
 # Detect interface on the target subnet (or closest match)
@@ -475,56 +553,6 @@ nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "rudder-static" \
 # next reboot. If at console, run: nmcli con up rudder-static
 warn "Static IP will take full effect on reboot."
 warn "If at local console (not SSH): nmcli con up rudder-static"
-
-# ------------------------------------------------------------------------------
-# Section 4 — Base packages
-# ------------------------------------------------------------------------------
-section "4. Base packages"
-
-info "Updating package lists..."
-apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
-
-BASE_PKGS=()
-command -v curl   &>/dev/null || BASE_PKGS+=(curl)
-command -v wget   &>/dev/null || BASE_PKGS+=(wget)
-command -v git    &>/dev/null || BASE_PKGS+=(git)
-command -v vim    &>/dev/null || BASE_PKGS+=(vim)
-command -v htop   &>/dev/null || BASE_PKGS+=(htop)
-command -v tree   &>/dev/null || BASE_PKGS+=(tree)
-command -v jq     &>/dev/null || BASE_PKGS+=(jq)
-command -v python3 &>/dev/null || BASE_PKGS+=(python3)
-command -v arping  &>/dev/null || BASE_PKGS+=(arping)
-command -v nmcli   &>/dev/null || BASE_PKGS+=(network-manager)
-dpkg -s molly-guard &>/dev/null   || BASE_PKGS+=(molly-guard)
-dpkg -s fail2ban    &>/dev/null   || BASE_PKGS+=(fail2ban)
-dpkg -s ufw         &>/dev/null   || BASE_PKGS+=(ufw)
-dpkg -s apache2-utils &>/dev/null || BASE_PKGS+=(apache2-utils)
-dpkg -s ca-certificates &>/dev/null || BASE_PKGS+=(ca-certificates)
-dpkg -s gnupg       &>/dev/null   || BASE_PKGS+=(gnupg)
-dpkg -s lsb-release &>/dev/null   || BASE_PKGS+=(lsb-release)
-dpkg -s apt-transport-https &>/dev/null || BASE_PKGS+=(apt-transport-https)
-
-if [[ ${#BASE_PKGS[@]} -gt 0 ]]; then
-  info "Installing: ${BASE_PKGS[*]}"
-  APT_LOG=$(mktemp /tmp/rudderme-apt-XXXXXX.log)
-  if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-      -o Dpkg::Options::="--force-confold" \
-      -o Dpkg::Options::="--force-confdef" \
-      -o Dpkg::Use-Pty=0 \
-      --no-install-recommends \
-      "${BASE_PKGS[@]}" > "$APT_LOG" 2>&1; then
-    success "Base packages installed."
-    rm -f "$APT_LOG"
-  else
-    APT_RC=$?
-    warn "apt-get install failed (exit ${APT_RC}) — last 20 lines of log:"
-    tail -20 "$APT_LOG" >&2
-    warn "Full log: ${APT_LOG}"
-    die "Package installation failed. Fix the above and re-run."
-  fi
-else
-  success "All base packages already present."
-fi
 
 # ------------------------------------------------------------------------------
 # Section 5 — UFW firewall

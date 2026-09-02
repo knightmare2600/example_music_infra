@@ -153,6 +153,28 @@
 #                     throughout Section 8's URL construction instead of the hardcoded "debian"
 #                     path segment. Any other architecture dies with a clear message rather than
 #                     silently trying the wrong tree.
+# v1.3.0  2026-09-02  Robert, live on EXAZABCLD001, two real bugs found on the first genuine
+#                     test run:
+#                     1) "Failed to restart NetworkManager.service: Unit NetworkManager.service
+#                     not found." -- the old Section 3 (Network / Static IP) ran BEFORE the old
+#                     Section 5 (Base packages, which is what installs network-manager if
+#                     missing) -- on a box that didn't already have NetworkManager, this was
+#                     always going to fail. Reordered: OS/codename detection is now Section 3,
+#                     base packages (incl. network-manager) is now Section 4, and Network/Static
+#                     IP is now Section 5, running after network-manager is guaranteed installed.
+#                     Sections 6 onward keep their numbers unchanged. rudderme.sh (this script's
+#                     own template) has the IDENTICAL structural bug -- fixed there too the same
+#                     day, see its own changelog.
+#                     2) Robert was about to type in .22 as the static IP -- the script's
+#                     ip_in_use() said "appears free", but .22 is already EXASLTCLD001's
+#                     (Salt master) in both cld.ini and devices.csv. ip_in_use() is a live
+#                     ping/arping probe only -- it can't see an allocation that isn't currently
+#                     answering ICMP. Added an explicit warning comment directly above the IP
+#                     prompt (Section 5) and softened the "appears free" success message to make
+#                     clear it's a live-probe result, not a devices.csv/cld.ini cross-check --
+#                     this script still doesn't (and structurally can't, being a standalone
+#                     break-glass script with no inventory access) verify against the real
+#                     allocation list itself, so the operator has to.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -427,9 +449,125 @@ grep -q "${THIS_HOSTNAME,,}" /etc/hosts 2>/dev/null || \
 success "Hostname set to ${THIS_HOSTNAME}."
 
 # ------------------------------------------------------------------------------
-# Section 3 — Network / Static IP
+# Section 3 — OS / codename detection
 # ------------------------------------------------------------------------------
-section "3. Network / Static IP"
+# BUG FIX (2026-09-02, found live on EXAZABCLD001): this used to be Section 3, running BEFORE
+# base package install -- on a box without NetworkManager already present (this one didn't have
+# it), "systemctl restart NetworkManager" inside the old Section 3 failed outright ("Unit
+# NetworkManager.service not found") since nothing had installed it yet. Moved network
+# configuration to AFTER base package install (see the new Section 5 below, right after Section
+# 4 installs network-manager if missing) -- OS/codename detection and base packages have no
+# dependency on network config, so they move up here unchanged in spirit, just renumbered.
+section "3. OS / codename detection"
+
+command -v lsb_release &>/dev/null || { apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true; apt-get install -y -qq lsb-release; }
+
+OS_DISTRIBUTOR=$(lsb_release -i -s)
+OS_CODENAME=$(lsb_release -c -s)      # e.g. "trixie" -- needed for the apt .sources Suites: line
+OS_RELEASE_NUM=$(lsb_release -s -r)   # e.g. "13"      -- needed for the zabbix-release .deb filename
+
+info "Detected: ${OS_DISTRIBUTOR} ${OS_RELEASE_NUM} (${OS_CODENAME})"
+
+if [[ "${OS_DISTRIBUTOR}" != "Debian" ]]; then
+  die "This script is Debian-only (detected '${OS_DISTRIBUTOR}'). Not tested on anything else."
+fi
+
+# CPU architecture -- Zabbix ships genuinely SEPARATE apt repo trees per architecture
+# (.../debian for amd64, .../debian-arm64 for arm64), not one universal tree. Confirmed live
+# 2026-09-02 (Robert): downloaded the "_all.deb" zabbix-release package from both trees and
+# sha256sum'd them -- they are NOT identical (only the embedded .sources URI differs, pointing
+# at "debian" vs "debian-arm64"). "Architecture: all" here just means the .deb package format
+# itself has no compiled binaries and will dpkg-install on any host arch -- it does NOT mean the
+# two trees' CONTENT is interchangeable. Picking the wrong one silently points apt at the wrong
+# architecture's package set. ZBX_DEBIAN_TREE feeds every repo.zabbix.com URL from here on.
+HOST_ARCH=$(dpkg --print-architecture)
+case "${HOST_ARCH}" in
+  amd64) ZBX_DEBIAN_TREE="debian" ;;
+  arm64) ZBX_DEBIAN_TREE="debian-arm64" ;;
+  *) die "Unsupported architecture '${HOST_ARCH}' -- Zabbix ${ZABBIX_MAJOR}'s Debian repo only has confirmed trees for amd64 (debian) and arm64 (debian-arm64)." ;;
+esac
+info "Architecture: ${HOST_ARCH} -> using repo tree '${ZBX_DEBIAN_TREE}'"
+
+# ------------------------------------------------------------------------------
+# Section 4 — Base + monitoring toolkit packages
+# ------------------------------------------------------------------------------
+section "4. Base packages + monitoring toolkit"
+
+info "Updating package lists..."
+apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
+
+BASE_PKGS=()
+command -v curl    &>/dev/null || BASE_PKGS+=(curl)
+command -v wget    &>/dev/null || BASE_PKGS+=(wget)
+command -v git     &>/dev/null || BASE_PKGS+=(git)
+command -v vim     &>/dev/null || BASE_PKGS+=(vim)
+command -v htop    &>/dev/null || BASE_PKGS+=(htop)
+command -v tree    &>/dev/null || BASE_PKGS+=(tree)
+command -v jq      &>/dev/null || BASE_PKGS+=(jq)
+command -v python3 &>/dev/null || BASE_PKGS+=(python3)
+command -v arping  &>/dev/null || BASE_PKGS+=(arping)
+command -v nmcli   &>/dev/null || BASE_PKGS+=(network-manager)
+dpkg -s molly-guard         &>/dev/null || BASE_PKGS+=(molly-guard)
+dpkg -s fail2ban            &>/dev/null || BASE_PKGS+=(fail2ban)
+dpkg -s ufw                 &>/dev/null || BASE_PKGS+=(ufw)
+dpkg -s ca-certificates      &>/dev/null || BASE_PKGS+=(ca-certificates)
+dpkg -s gnupg                &>/dev/null || BASE_PKGS+=(gnupg)
+dpkg -s apt-transport-https  &>/dev/null || BASE_PKGS+=(apt-transport-https)
+
+# Robert's monitoring toolkit ask (point 4) -- "fping, nmap, snmpwalk, snmp-mibs, etc, etc, etc":
+# treated as "the standard diagnostic kit a monitoring server needs", not an exhaustive list --
+# extend as needed.
+command -v fping       &>/dev/null || BASE_PKGS+=(fping)
+command -v nmap         &>/dev/null || BASE_PKGS+=(nmap)
+command -v snmpwalk      &>/dev/null || BASE_PKGS+=(snmp)
+dpkg -s snmp-mibs-downloader &>/dev/null || BASE_PKGS+=(snmp-mibs-downloader)
+command -v tcpdump        &>/dev/null || BASE_PKGS+=(tcpdump)
+command -v traceroute      &>/dev/null || BASE_PKGS+=(traceroute)
+command -v whois             &>/dev/null || BASE_PKGS+=(whois)
+
+if [[ ${#BASE_PKGS[@]} -gt 0 ]]; then
+  info "Installing: ${BASE_PKGS[*]}"
+  APT_LOG=$(mktemp /tmp/zabbixme-apt-XXXXXX.log)
+  if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+      -o Dpkg::Options::="--force-confold" \
+      -o Dpkg::Options::="--force-confdef" \
+      -o Dpkg::Use-Pty=0 \
+      --no-install-recommends \
+      "${BASE_PKGS[@]}" > "$APT_LOG" 2>&1; then
+    success "Base packages installed."
+    rm -f "$APT_LOG"
+  else
+    APT_RC=$?
+    warn "apt-get install failed (exit ${APT_RC}) — last 20 lines of log:"
+    tail -20 "$APT_LOG" >&2
+    warn "Full log: ${APT_LOG}"
+    die "Package installation failed. Fix the above and re-run."
+  fi
+else
+  success "All base packages already present."
+fi
+
+# snmp-mibs-downloader ships with MIB downloading DISABLED by default on Debian (the "mibs :"
+# line in /etc/snmp/snmp.conf suppresses them, and the actual MIB files aren't fetched until
+# download-mibs runs) -- Robert asked for the tool, which means having it actually able to
+# resolve OID names, not just installed and inert.
+if [[ -f /etc/snmp/snmp.conf ]] && grep -q "^mibs :$" /etc/snmp/snmp.conf 2>/dev/null; then
+  info "Enabling MIB resolution (removing the default 'mibs :' suppression line)..."
+  sed -i '/^mibs :$/d' /etc/snmp/snmp.conf
+fi
+if command -v download-mibs &>/dev/null; then
+  info "Downloading MIBs (download-mibs) — this can take a minute..."
+  download-mibs &>/dev/null || warn "download-mibs returned non-zero — MIB resolution may be incomplete. Re-run manually: download-mibs"
+  success "MIBs downloaded."
+fi
+
+# ------------------------------------------------------------------------------
+# Section 5 — Network / Static IP
+# ------------------------------------------------------------------------------
+# Runs AFTER base packages (Section 4) on purpose -- network-manager is installed there. See
+# this file's own 2026-09-02 changelog entry for why this used to be Section 3 and broke on a
+# box without NetworkManager already present.
+section "5. Network / Static IP"
 
 PROV_NET_DEFAULT="${SUBNET}"
 info "Management subnet for this site: ${PROV_NET_DEFAULT}.x"
@@ -441,7 +579,12 @@ PROV_GW="${PROV_NET_DEFAULT}.${GW_OCTET}"
 # No CSV-assigned octet exists yet for Zabbix (see this file's own version-history note above) --
 # deliberately NOT defaulting to a specific value the way rudderme.sh can for RUD's already-known
 # .12. Robert: pick a free octet (.15/.16/.23 and most of the range above .82 were free as of
-# 2026-09-01) and type it in below.
+# 2026-09-01) and type it in below. IMPORTANT: the ip_in_use() check right below is a LIVE
+# ping/arping probe only -- it does NOT cross-check sites.csv/devices.csv for octets that are
+# already allocated on paper but not currently answering (e.g. EXASLTCLD001 at .22, which may
+# not respond to ICMP). A "appears free" result here is not proof the octet is actually
+# unclaimed -- check devices.csv/cld.ini yourself before typing one in, found live 2026-09-02
+# when EXAZABCLD001 was about to be given .22 (already EXASLTCLD001's).
 read -rp "  Static IP for this Zabbix server (no assigned default yet -- see comment above): " NODE_STATIC_IP
 [[ -z "${NODE_STATIC_IP}" ]] && die "A static IP is required -- Zabbix is a permanent infrastructure node, not a DHCP client."
 
@@ -454,7 +597,7 @@ if ip_in_use "${NODE_STATIC_IP}"; then
     die "${NODE_STATIC_IP} is already in use by another host. Resolve the conflict first."
   fi
 else
-  success "${NODE_STATIC_IP} appears free — proceeding."
+  success "${NODE_STATIC_IP} appears free (live probe only -- not cross-checked against devices.csv/cld.ini) — proceeding."
 fi
 
 info "Detecting network interface..."
@@ -529,112 +672,6 @@ nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "zabbix-static" \
 
 warn "Static IP will take full effect on reboot."
 warn "If at local console (not SSH): nmcli con up zabbix-static"
-
-# ------------------------------------------------------------------------------
-# Section 4 — OS / codename detection
-# ------------------------------------------------------------------------------
-section "4. OS / codename detection"
-
-command -v lsb_release &>/dev/null || { apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true; apt-get install -y -qq lsb-release; }
-
-OS_DISTRIBUTOR=$(lsb_release -i -s)
-OS_CODENAME=$(lsb_release -c -s)      # e.g. "trixie" -- needed for the apt .sources Suites: line
-OS_RELEASE_NUM=$(lsb_release -s -r)   # e.g. "13"      -- needed for the zabbix-release .deb filename
-
-info "Detected: ${OS_DISTRIBUTOR} ${OS_RELEASE_NUM} (${OS_CODENAME})"
-
-if [[ "${OS_DISTRIBUTOR}" != "Debian" ]]; then
-  die "This script is Debian-only (detected '${OS_DISTRIBUTOR}'). Not tested on anything else."
-fi
-
-# CPU architecture -- Zabbix ships genuinely SEPARATE apt repo trees per architecture
-# (.../debian for amd64, .../debian-arm64 for arm64), not one universal tree. Confirmed live
-# 2026-09-02 (Robert): downloaded the "_all.deb" zabbix-release package from both trees and
-# sha256sum'd them -- they are NOT identical (only the embedded .sources URI differs, pointing
-# at "debian" vs "debian-arm64"). "Architecture: all" here just means the .deb package format
-# itself has no compiled binaries and will dpkg-install on any host arch -- it does NOT mean the
-# two trees' CONTENT is interchangeable. Picking the wrong one silently points apt at the wrong
-# architecture's package set. ZBX_DEBIAN_TREE feeds every repo.zabbix.com URL from here on.
-HOST_ARCH=$(dpkg --print-architecture)
-case "${HOST_ARCH}" in
-  amd64) ZBX_DEBIAN_TREE="debian" ;;
-  arm64) ZBX_DEBIAN_TREE="debian-arm64" ;;
-  *) die "Unsupported architecture '${HOST_ARCH}' -- Zabbix ${ZABBIX_MAJOR}'s Debian repo only has confirmed trees for amd64 (debian) and arm64 (debian-arm64)." ;;
-esac
-info "Architecture: ${HOST_ARCH} -> using repo tree '${ZBX_DEBIAN_TREE}'"
-
-# ------------------------------------------------------------------------------
-# Section 5 — Base + monitoring toolkit packages
-# ------------------------------------------------------------------------------
-section "5. Base packages + monitoring toolkit"
-
-info "Updating package lists..."
-apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
-
-BASE_PKGS=()
-command -v curl    &>/dev/null || BASE_PKGS+=(curl)
-command -v wget    &>/dev/null || BASE_PKGS+=(wget)
-command -v git     &>/dev/null || BASE_PKGS+=(git)
-command -v vim     &>/dev/null || BASE_PKGS+=(vim)
-command -v htop    &>/dev/null || BASE_PKGS+=(htop)
-command -v tree    &>/dev/null || BASE_PKGS+=(tree)
-command -v jq      &>/dev/null || BASE_PKGS+=(jq)
-command -v python3 &>/dev/null || BASE_PKGS+=(python3)
-command -v arping  &>/dev/null || BASE_PKGS+=(arping)
-command -v nmcli   &>/dev/null || BASE_PKGS+=(network-manager)
-dpkg -s molly-guard         &>/dev/null || BASE_PKGS+=(molly-guard)
-dpkg -s fail2ban            &>/dev/null || BASE_PKGS+=(fail2ban)
-dpkg -s ufw                 &>/dev/null || BASE_PKGS+=(ufw)
-dpkg -s ca-certificates      &>/dev/null || BASE_PKGS+=(ca-certificates)
-dpkg -s gnupg                &>/dev/null || BASE_PKGS+=(gnupg)
-dpkg -s apt-transport-https  &>/dev/null || BASE_PKGS+=(apt-transport-https)
-
-# Robert's monitoring toolkit ask (point 4) -- "fping, nmap, snmpwalk, snmp-mibs, etc, etc, etc":
-# treated as "the standard diagnostic kit a monitoring server needs", not an exhaustive list --
-# extend as needed.
-command -v fping       &>/dev/null || BASE_PKGS+=(fping)
-command -v nmap         &>/dev/null || BASE_PKGS+=(nmap)
-command -v snmpwalk      &>/dev/null || BASE_PKGS+=(snmp)
-dpkg -s snmp-mibs-downloader &>/dev/null || BASE_PKGS+=(snmp-mibs-downloader)
-command -v tcpdump        &>/dev/null || BASE_PKGS+=(tcpdump)
-command -v traceroute      &>/dev/null || BASE_PKGS+=(traceroute)
-command -v whois             &>/dev/null || BASE_PKGS+=(whois)
-
-if [[ ${#BASE_PKGS[@]} -gt 0 ]]; then
-  info "Installing: ${BASE_PKGS[*]}"
-  APT_LOG=$(mktemp /tmp/zabbixme-apt-XXXXXX.log)
-  if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-      -o Dpkg::Options::="--force-confold" \
-      -o Dpkg::Options::="--force-confdef" \
-      -o Dpkg::Use-Pty=0 \
-      --no-install-recommends \
-      "${BASE_PKGS[@]}" > "$APT_LOG" 2>&1; then
-    success "Base packages installed."
-    rm -f "$APT_LOG"
-  else
-    APT_RC=$?
-    warn "apt-get install failed (exit ${APT_RC}) — last 20 lines of log:"
-    tail -20 "$APT_LOG" >&2
-    warn "Full log: ${APT_LOG}"
-    die "Package installation failed. Fix the above and re-run."
-  fi
-else
-  success "All base packages already present."
-fi
-
-# snmp-mibs-downloader ships with MIB downloading DISABLED by default on Debian (the "mibs :"
-# line in /etc/snmp/snmp.conf suppresses them, and the actual MIB files aren't fetched until
-# download-mibs runs) -- Robert asked for the tool, which means having it actually able to
-# resolve OID names, not just installed and inert.
-if [[ -f /etc/snmp/snmp.conf ]] && grep -q "^mibs :$" /etc/snmp/snmp.conf 2>/dev/null; then
-  info "Enabling MIB resolution (removing the default 'mibs :' suppression line)..."
-  sed -i '/^mibs :$/d' /etc/snmp/snmp.conf
-fi
-if command -v download-mibs &>/dev/null; then
-  info "Downloading MIBs (download-mibs) — this can take a minute..."
-  download-mibs &>/dev/null || warn "download-mibs returned non-zero — MIB resolution may be incomplete. Re-run manually: download-mibs"
-  success "MIBs downloaded."
-fi
 
 # ------------------------------------------------------------------------------
 # Section 6 — UFW firewall
