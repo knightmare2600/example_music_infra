@@ -201,6 +201,7 @@ section covers CLD specifically).
 - [ ] `EXANASCLD001` — Storage (NAS/SAN) online (`192.168.69.19`) — standard NAS slot
 - [ ] `EXARDRCLD001` — Badge reader online (`192.168.69.21`) — standard RDR slot
 - [ ] `EXASLTCLD001` — Salt master online (`192.168.69.22`) — manages all Windows nodes estate-wide, see `ansible/playbooks/salt/README.md`
+- [ ] `EXAZABCLD001` — Zabbix monitoring server (`192.168.69.13`, reused from the retired `EXAMSHCLD001` slot) — added 2026-09-02, Zabbix 7.0/MariaDB/Apache, built via `bootstrap/web/provision/zabbixme.sh` (break-glass); in progress as of this entry, Ansible backport and agent playbooks not yet started
 - [ ] `EXASVRCLD002` — Windows Admin Centre deployed (`192.168.69.20`)
 - [ ] `EXAPBXCLD001` — Central 3CX PBX online (`192.168.69.48`)
 - [ ] `EXAUFCCLD001` — UniFi Network Controller online (`192.168.69.82`, CLD's **LAN** — not vRACK; manages every site's WAPs)
