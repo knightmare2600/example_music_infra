@@ -203,6 +203,27 @@
 #                     first one reached. Fixed with `|| true` on the whole pipeline, confirmed
 #                     locally afterward that the generated password is still the correct
 #                     length/content, not just that the script survives.
+# v1.6.0  2026-09-02  Robert, live on EXAZABCLD001, fourth real run: "zabbix-server-mysql has no
+#                     installable candidate" -- straight after successfully installing
+#                     zabbix-release and with the repo genuinely correctly configured (Robert's
+#                     own manual `sudo apt update` moments later showed "Hit:
+#                     https://repo.zabbix.com/zabbix/7.0/debian trixie InRelease" and "All
+#                     packages are up to date"). Independently re-confirmed the package is
+#                     really there: fetched the real dists/trixie/main/binary-amd64/Packages
+#                     index directly, zabbix-server-mysql 7.0.18 through 7.0.30 for debian13 are
+#                     all genuinely listed. So this wasn't a repo/package problem at all --
+#                     apt-cache policy returned completely empty output (confirmed locally this
+#                     is specifically apt-cache's behaviour for a package name it doesn't yet
+#                     recognise -- a real "no candidate" case instead prints "Candidate: (none)",
+#                     which DOES contain the substring "Candidate:" and would NOT have tripped
+#                     the old check) immediately after dpkg -i + apt-get update inside the
+#                     script, even though the identical apt state was fine moments later when
+#                     Robert ran it by hand -- a timing/cache-settle race, not a genuine gap.
+#                     Changed the single sanity check into a retry loop: up to 2 retries
+#                     (apt-get update again, 2s apart) before finally dying, so a one-off
+#                     transient hiccup doesn't kill the run the way it did live. The per-package
+#                     INSTALLABLE_ZBX_PKGS filter just below runs after this loop has already
+#                     confirmed apt's cache is settled, so it didn't need the same treatment.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -920,14 +941,29 @@ fi
 
 apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
 
-# Sanity check BEFORE the real install attempt -- confirmed live 2026-09-01 that 7.0 genuinely
-# does publish zabbix-server-mysql for debian13/trixie (up to at least 7.0.30), so this is now
-# a belt-and-braces check rather than a known-uncertain one -- kept anyway, since a repo layout
-# can always change again, and failing fast here with a clear message beats a confusing error
-# halfway through a long install either way.
-if ! apt-cache policy zabbix-server-mysql 2>/dev/null | grep -q "Candidate:"; then
-  die "zabbix-server-mysql has no installable candidate after adding the ${ZABBIX_MAJOR} repo for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}, ${HOST_ARCH}). Check https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/${ZBX_DEBIAN_TREE}/pool/main/z/zabbix/ by hand, or try 'apt-cache policy zabbix-server-mysql' yourself for the full picture."
-fi
+# Sanity check BEFORE the real install attempt -- confirmed live (both 2026-09-01 by directly
+# fetching the real Packages index, and 2026-09-02 by watching Robert's own manual `apt update`
+# succeed straight after this same check failed inside the script) that 7.0 genuinely does
+# publish zabbix-server-mysql for debian13/trixie, and that the repo added above is genuinely
+# reachable and correctly configured. So a real "package doesn't exist" is NOT what this check
+# is actually guarding against any more -- what bit live on 2026-09-02 was apt-cache policy
+# returning completely empty output (no "Candidate:" line at all -- confirmed locally this is
+# apt-cache's behaviour for a name it doesn't yet recognise, not "Candidate: (none)", which
+# still contains the substring "Candidate:" and would NOT have tripped this check) immediately
+# after dpkg -i + apt-get update, even though the exact same command succeeded a few seconds
+# later when Robert ran it by hand -- a timing/cache-settle race, not a genuine repo problem.
+# Retries apt-get update up to twice more (2s apart) before finally dying, so a one-off
+# transient hiccup doesn't kill the whole run the way it did live.
+ZBX_CANDIDATE_TRIES=0
+while ! apt-cache policy zabbix-server-mysql 2>/dev/null | grep -q "Candidate:"; do
+  ZBX_CANDIDATE_TRIES=$((ZBX_CANDIDATE_TRIES + 1))
+  if [[ "${ZBX_CANDIDATE_TRIES}" -ge 3 ]]; then
+    die "zabbix-server-mysql has no installable candidate after adding the ${ZABBIX_MAJOR} repo for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}, ${HOST_ARCH}), even after ${ZBX_CANDIDATE_TRIES} apt-get update attempts. Check https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/${ZBX_DEBIAN_TREE}/pool/main/z/zabbix/ by hand, or try 'apt-cache policy zabbix-server-mysql' yourself for the full picture."
+  fi
+  warn "zabbix-server-mysql not visible to apt-cache yet (attempt ${ZBX_CANDIDATE_TRIES}/2) -- retrying apt-get update..."
+  sleep 2
+  apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
+done
 CANDIDATE_VER=$(apt-cache policy zabbix-server-mysql 2>/dev/null | awk '/Candidate:/{print $2}')
 success "zabbix-server-mysql candidate found: ${CANDIDATE_VER}"
 
