@@ -433,6 +433,7 @@ command -v jq       &>/dev/null || BOOTSTRAP_PKGS+=(jq)
 command -v grc      &>/dev/null || BOOTSTRAP_PKGS+=(grc)
 command -v zsh      &>/dev/null || BOOTSTRAP_PKGS+=(zsh zsh-autosuggestions zsh-syntax-highlighting)
 command -v bc       &>/dev/null || BOOTSTRAP_PKGS+=(bc)
+command -v locate   &>/dev/null || BOOTSTRAP_PKGS+=(mlocate)
 
 if [[ ${#BOOTSTRAP_PKGS[@]} -gt 0 ]]; then
   info "Installing: ${BOOTSTRAP_PKGS[*]}"
