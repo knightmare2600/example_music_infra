@@ -503,7 +503,7 @@ command -v yamllint     &>/dev/null || BOOTSTRAP_PKGS+=(yamllint)
 command -v gpg          &>/dev/null || BOOTSTRAP_PKGS+=(gpg)
 command -v arping       &>/dev/null || BOOTSTRAP_PKGS+=(arping)
 command -v nmcli        &>/dev/null || BOOTSTRAP_PKGS+=(network-manager)
-command -v locate       &>/dev/null || BOOTSTRAP_PKGS+=(mlocate)
+command -v locate       &>/dev/null || BOOTSTRAP_PKGS+=(plocate)
 # Python libs for Proxmox API and virt tools
 dpkg -s python3-proxmoxer  &>/dev/null || BOOTSTRAP_PKGS+=(python3-proxmoxer)
 dpkg -s python3-requests    &>/dev/null || BOOTSTRAP_PKGS+=(python3-requests)

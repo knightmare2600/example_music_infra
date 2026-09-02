@@ -408,7 +408,7 @@ dpkg -s ca-certificates &>/dev/null || BASE_PKGS+=(ca-certificates)
 dpkg -s gnupg       &>/dev/null   || BASE_PKGS+=(gnupg)
 dpkg -s lsb-release &>/dev/null   || BASE_PKGS+=(lsb-release)
 dpkg -s apt-transport-https &>/dev/null || BASE_PKGS+=(apt-transport-https)
-command -v locate   &>/dev/null || BASE_PKGS+=(mlocate)
+command -v locate   &>/dev/null || BASE_PKGS+=(plocate)
 
 if [[ ${#BASE_PKGS[@]} -gt 0 ]]; then
   info "Installing: ${BASE_PKGS[*]}"
