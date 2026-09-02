@@ -510,7 +510,8 @@ ip_in_use() {
   fi
   if command -v arping &>/dev/null; then
     local gw_iface
-    gw_iface=$(ip route | awk '/default/{print $5}' | head -1)
+    # || true: head/SIGPIPE/pipefail class -- see zabbixme.sh's 2026-09-02 gen_password() fix.
+    gw_iface=$(ip route | awk '/default/{print $5}' | head -1 || true)
     if arping -c1 -W1 -I "$gw_iface" "$ip" &>/dev/null 2>&1; then
       return 0
     fi
@@ -529,7 +530,8 @@ wait_for_wan() {
   info "Waiting for ${iface} to be fully online..."
 
   for ((i=1; i<=timeout; i++)); do
-    ip=$(nmcli -g IP4.ADDRESS dev show "$iface" | head -1 | cut -d/ -f1)
+    # || true: head/SIGPIPE/pipefail class -- see zabbixme.sh's 2026-09-02 gen_password() fix.
+    ip=$(nmcli -g IP4.ADDRESS dev show "$iface" | head -1 | cut -d/ -f1 || true)
 
     # Must have:
     # 1. IP address
@@ -810,7 +812,8 @@ echo -e "${CYAN}Scanning interfaces for provisioning network (192.168.139.x)...$
 for iface_path in /sys/class/net/*/; do
   iface=$(basename "$iface_path")
   [[ "$iface" == "lo" ]] && continue
-  ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)192\.168\.139\.\d+' | head -1)
+  # || true: head/SIGPIPE/pipefail class -- see zabbixme.sh's 2026-09-02 gen_password() fix.
+  ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)192\.168\.139\.\d+' | head -1 || true)
   if [[ -n "$ip_addr" ]]; then
     WAN_IFACE="$iface"
     WAN_MAC=$(cat "/sys/class/net/${iface}/address" 2>/dev/null)
@@ -873,7 +876,8 @@ LAN_DEFAULT="${LAN_CANDIDATES[0]:-ens34}"
 echo
 info "Remaining interfaces for LAN (WAN ${WAN_IFACE} excluded):"
 for iface in "${LAN_CANDIDATES[@]}"; do
-  IP=$(ip -4 addr show "$iface" 2>/dev/null | awk '/inet /{print $2}' | head -1)
+  # || true: head/SIGPIPE/pipefail class -- see zabbixme.sh's 2026-09-02 gen_password() fix.
+  IP=$(ip -4 addr show "$iface" 2>/dev/null | awk '/inet /{print $2}' | head -1 || true)
   echo -e "    ${CYAN}${iface}${NC}  ${IP:-no IP}"
 done
 echo

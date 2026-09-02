@@ -289,6 +289,30 @@
 #                     locate/updatedb commands. Same swap applied everywhere v1.9.0 added
 #                     mlocate: all five break-glass scripts and group_vars/all/main.yml's
 #                     common_packages.
+# v1.11.0 2026-09-02  Robert, live on EXAZABCLD001, eighth real run: Section 10's header printed
+#                     then nothing -- no [ERROR], straight back to the shell prompt. Exact same
+#                     signature as v1.5.0's gen_password() bug: `FRONTEND_ROOT=$(dpkg -L
+#                     zabbix-frontend-php | grep -m1 '/index\.php$' | xargs dirname)` -- `grep
+#                     -m1` closes its input as soon as it finds one match, and a real PHP
+#                     frontend package's file manifest (hundreds of files) is large enough to
+#                     still be mid-write when that happens, so `dpkg -L` gets SIGPIPE-killed;
+#                     pipefail propagates that as the whole substitution's exit status; set -e
+#                     aborts with zero output. Reproduced 3/3 times locally against a genuinely
+#                     large real package (dpkg's own ansible package, 23091 files) before
+#                     fixing, and confirmed the `|| true` fix not only survives but produces the
+#                     correct result every time, also 3/3. `|| true` is safe here specifically
+#                     because the very next line already checks `[[ -z "${FRONTEND_ROOT}" ]]` and
+#                     dies with a clear message for a genuine failure.
+#                     Swept the rest of this file and all four sibling break-glass scripts for
+#                     the same `| head -N` / `| grep -m1` pattern -- found and fixed 3 more
+#                     latent instances in this file alone (ip_in_use()'s gw_iface lookup, the
+#                     interface-detection loop's ip_addr lookup) plus 10 more across
+#                     ansibleme.sh/bindme.sh/rudderme.sh/firewallme.sh. Several other instances
+#                     across those files were already safe (had their own `|| echo
+#                     "fallback"`/`|| true`/`|| var=""` already) or turned out to be inside a
+#                     QUOTED heredoc (`<<'MOTD'`/`<<'EOF'`) -- those write a separate script that
+#                     executes later under its own shell, not this one's set -e/pipefail context,
+#                     so left untouched rather than "fixed" for no reason.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -315,7 +339,9 @@ ip_in_use() {
   fi
   if command -v arping &>/dev/null; then
     local gw_iface
-    gw_iface=$(ip route | awk '/default/{print $5}' | head -1)
+    # || true: same head/SIGPIPE/pipefail class as gen_password()'s 2026-09-02 fix -- low risk
+    # given ip route's small output, but defensive consistency after that live bug.
+    gw_iface=$(ip route | awk '/default/{print $5}' | head -1 || true)
     if [[ -n "${gw_iface}" ]] && arping -c1 -W1 -I "${gw_iface}" "$ip" &>/dev/null 2>&1; then
       return 0
     fi
@@ -798,7 +824,8 @@ info "Detecting network interface..."
 PROV_IFACE=""
 for iface in $(ls /sys/class/net/); do
   [[ "$iface" == "lo" ]] && continue
-  ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP "(?<=inet\s)\d+\.\d+\.\d+\.\d+" | head -1)
+  # || true: same head/SIGPIPE/pipefail class as gen_password()'s 2026-09-02 fix.
+  ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP "(?<=inet\s)\d+\.\d+\.\d+\.\d+" | head -1 || true)
   if [[ -n "$ip_addr" ]]; then
     PROV_IFACE="$iface"
     success "Detected interface: ${PROV_IFACE} (currently ${ip_addr})"
@@ -1195,7 +1222,21 @@ section "10. Frontend configuration"
 # existing zabbix.conf.php and skips the wizard automatically, which is what makes this
 # scriptable at all. FRONTEND_CONF_DIR resolved dynamically (see Section 11) rather than
 # assumed, since package layouts vary.
-FRONTEND_ROOT=$(dpkg -L zabbix-frontend-php 2>/dev/null | grep -m1 '/index\.php$' | xargs dirname)
+#
+# BUG FIX (2026-09-02, found live on EXAZABCLD001): same SIGPIPE/pipefail class as
+# gen_password()'s own 2026-09-02 fix -- `grep -m1` closes its input as soon as it finds one
+# match, and if `dpkg -L zabbix-frontend-php` (hundreds of files for a real PHP frontend
+# package, easily exceeding one pipe buffer) still has more to write at that moment, it gets
+# SIGPIPE-killed; pipefail propagates that as this whole command substitution's exit status;
+# set -e aborts with zero output, exactly matching what happened live (Section 10's header
+# printed, then nothing -- no [ERROR], straight back to the shell prompt). Reproduced locally
+# with `yes | grep -m1 ... | xargs ...` under set -euo pipefail before fixing (exit 141, no
+# output) -- a short/fast producer doesn't reliably reproduce it, which is why this wasn't
+# caught with a quick local test the first time around; the race depends on real output volume.
+# `|| true` is safe here specifically because the very next line already checks
+# `[[ -z "${FRONTEND_ROOT}" ]]` and dies with a clear message for a genuine failure -- this
+# only suppresses the SIGPIPE false-failure, not real ones.
+FRONTEND_ROOT=$(dpkg -L zabbix-frontend-php 2>/dev/null | grep -m1 '/index\.php$' | xargs dirname || true)
 [[ -z "${FRONTEND_ROOT}" ]] && die "Could not determine the Zabbix frontend's installed path (dpkg -L zabbix-frontend-php had no index.php) -- check the package actually installed correctly."
 FRONTEND_CONF="${FRONTEND_ROOT}/conf/zabbix.conf.php"
 
