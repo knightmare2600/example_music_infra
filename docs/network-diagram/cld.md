@@ -74,7 +74,7 @@ graph TD
     T_FWL["🧱 EXAFWLCLD001<br/>FWL 1<br/>192.168.69.253"]
     T_PVE --> T_ANS --> T_DCS --> T_SVR --> T_SLT --> T_PBX --> T_UFC --> T_FWL
     T_RMM["📊 EXARMMCLD001<br/>TacticalRMM<br/>192.168.69.14"]
-    T_ZAB["📈 EXAZABCLD001<br/>Zabbix Monitoring Server (Robert, 2026-09-02)<br/>192.168.69.13"]
+    T_ZAB["🔍 EXAZABCLD001<br/>Zabbix Monitoring Server (Robert, 2026-09-02)<br/>192.168.69.13"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
