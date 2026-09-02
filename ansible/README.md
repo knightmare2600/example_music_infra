@@ -474,7 +474,7 @@ ansible-playbook playbooks/rudder/rudder_onboard.yml \
 | `rudder_domain` | `jukebox.internal` | AD domain |
 | `rudder_dc_hostname` | `EXADCSCLD001` | AD DC hostname this server authenticates LDAP against — per-host override expected (a relay at another site uses its own site's DC) |
 | `rudder_dc_ip` | `192.168.69.10` | That DC's real IP — used for the `/etc/hosts` fallback entry written before this node's own DNS resolver is configured |
-| `rudder_version` | `8.x` | Rudder package stream |
+| `rudder_version` | `latest` | Rudder package stream — `8.x` was never a real path on repository.rudder.io (fixed 2026-09-02, confirmed live 404); `latest` tracks whatever Rudder currently calls latest (9.1 as of the fix) |
 | `rudder_admin_user` | `admin` | Rudder web UI local admin username |
 | `rudder_ldap_bind_dn` | `CN=Rudder LDAP Bind,...` | AD LDAP bind account DN |
 | `rudder_ldap_base` | `DC=jukebox,DC=internal` | LDAP search base |

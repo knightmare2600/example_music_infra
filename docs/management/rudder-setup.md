@@ -2,7 +2,7 @@
 
 **Document ID:** NET-MGMT-RUDDER-001  
 **Classification:** Internal — Network Operations  
-**Last Updated:** 2026-06-23  
+**Last Updated:** 2026-09-02  
 **Depends on:** NET-AD-DC-001, NET-BUILD-PVE-001, NET-VPN-WG-001
 
 ---
@@ -71,7 +71,7 @@
 |---------|-------|---------|
 | `create-vm.py` | EXAPVECLD001 (on-prem only) | VM provisioning |
 | Debian Trixie ISO or PXE | EXAPVECLD001 or cloud provider | OS install |
-| Rudder 8.x repository | Downloaded during install | Rudder server package |
+| Rudder `latest` repository | Downloaded during install | Rudder server package |
 | `rudderme.sh` | This repository | Automated Rudder server setup |
 | `sites.csv` | Same directory as `rudderme.sh` | Site/subnet data for allowed-networks population |
 
@@ -121,7 +121,7 @@ ufw allow from 10.0.0.0/8 to any port 5309 proto tcp comment "Rudder CFEngine"
 | Gateway | `192.168.69.253` |
 | DNS | `192.168.69.10` (EXADCSCLD001) |
 | Rudder web UI | `https://192.168.69.12/rudder` |
-| Rudder version | 8.x (current stable) |
+| Rudder version | `latest` (tracks Rudder's own "latest" alias — 9.1 as of 2026-09-02) |
 
 > **Disk sizing:** Rudder's PostgreSQL report database grows with managed nodes and retention period. The Rudder documentation estimates ~76–114 GB for 500 nodes with 50 directives each. At current `jukebox.internal` scale, 30 GB is adequate; plan to expand `/var` if the node count exceeds ~100.
 
@@ -305,14 +305,16 @@ id Administrator@jukebox.internal
 
 **Reference:** https://docs.rudder.io/reference/8.3/installation/server/debian.html
 
-Always install from the official Rudder repository. The current stable version for `jukebox.internal` is 8.x.
+Always install from the official Rudder repository. `jukebox.internal` tracks Rudder's own
+`latest` alias (9.1 as of 2026-09-02) — **not** `8.x`, which was never a real path on
+repository.rudder.io (found and fixed 2026-09-02, confirmed live 404 against the real server).
 
 ### Add Rudder Repository
 
 ```bash
 ansible@EXARUDCLD001[~]$ wget --quiet -O /etc/apt/keyrings/rudder_apt_key.gpg "https://repository.rudder.io/apt/rudder_apt_key.gpg"
 ansible@EXARUDCLD001[~]$ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/rudder_apt_key.gpg] \
-  http://repository.rudder.io/apt/8.x/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/rudder.list
+  http://repository.rudder.io/apt/latest/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/rudder.list
 ansible@EXARUDCLD001[~]$ apt update
 ```
 
@@ -583,7 +585,7 @@ RUDDER_SERVER="192.168.69.12"   # or relay IP for non-CLD sites
 
 wget -qO - https://repository.rudder.io/apt/rudder_apt_key.pub | sudo gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/rudder-archive-keyring.gpg] \
-  https://repository.rudder.io/apt/8.x/ trixie main" > /etc/apt/sources.list.d/rudder.list
+  https://repository.rudder.io/apt/latest/ trixie main" > /etc/apt/sources.list.d/rudder.list
 
 ansible@EXARUDCLD001[~]$ apt update
 ansible@EXARUDCLD001[~]$ apt install -y rudder-agent
@@ -751,7 +753,7 @@ RUDDER_SERVER="192.168.69.12"   # CLD root server
 ansible@EXARUDCLD001[~]$ wget -qO - https://repository.rudder.io/apt/rudder_apt_key.pub | sudo gpg --dearmor > /usr/share/keyrings/rudder-archive-keyring.gpg
 
 ansible@EXARUDCLD001[~]$ echo "deb [signed-by=/usr/share/keyrings/rudder-archive-keyring.gpg] \
-  https://repository.rudder.io/apt/8.x/ trixie main" > /etc/apt/sources.list.d/rudder.list
+  https://repository.rudder.io/apt/latest/ trixie main" > /etc/apt/sources.list.d/rudder.list
 
 ansible@EXARUDCLD001[~]$ apt update
 ansible@EXARUDCLD001[~]$ apt install -y rudder-server-relay   # relay package — not rudder-server, not rudder-agent
@@ -1172,7 +1174,7 @@ rudder_relay_uuid:
   vars:
     rudder_server: "192.168.69.12"
     rudder_apt_keyring: /usr/share/keyrings/rudder-archive-keyring.gpg
-    rudder_version: "8.x"
+    rudder_version: "latest"
 
   tasks:
 
@@ -1449,5 +1451,5 @@ This exemption is permanent and is not a future roadmap item.
 ---
 
 *Internal Use Only — Network Engineering — jukebox.internal*  
-*Rudder version: 8.x — https://www.rudder.io/documentation/*  
+*Rudder version: latest (9.1 as of 2026-09-02) — https://www.rudder.io/documentation/*  
 *Rudder API reference: https://docs.rudder.io/api/*

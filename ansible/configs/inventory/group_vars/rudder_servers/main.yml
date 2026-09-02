@@ -20,6 +20,13 @@
 #                     file's own changelog). Every rudder_servers host still needs its own
 #                     host_vars override for both -- this default is a fallback, not a
 #                     universally-correct value; see host_vars/EXARUDCLD001/main.yml.
+# v1.2.0  2026-09-02  BUG FIX, Robert (auditing third-party repos across the estate for arm64
+#                     awareness): rudder_version "8.x" was never a real path on
+#                     repository.rudder.io -- confirmed live, genuine 404 against
+#                     .../apt/8.x/dists/<codename>/InRelease. Changed to "latest" (Robert's
+#                     call -- tracks whatever Rudder currently calls latest, 9.1 as of this fix,
+#                     confirmed multi-arch: amd64/arm64/armhf/i386). Same bug, same fix, also
+#                     applied to rudderme.sh's own RUDDER_VERSION.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -33,7 +40,7 @@ rudder_dc_ip:        "192.168.69.10"
 # -----------------------------------------------------------------------------
 # Rudder version and package config
 # -----------------------------------------------------------------------------
-rudder_version:      "8.x"
+rudder_version:      "latest"
 rudder_admin_user:   "admin"
 
 # -----------------------------------------------------------------------------

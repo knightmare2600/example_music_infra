@@ -62,6 +62,12 @@
 #             including the --tries=1 wget bug found and fixed while building this (also
 #             applied here to this script's own RUDDER_GPG_URL fetch, which previously had no
 #             timeout at all).
+# 2026-09-02  BUG FIX, Robert (auditing third-party repos across the estate for arm64
+#             awareness after finding a real one in zabbixme.sh): RUDDER_VERSION="8.x" was never
+#             a real path on repository.rudder.io -- confirmed live, genuine 404. Changed to
+#             "latest" (Robert's call, tracks whatever Rudder currently calls latest -- 9.1 as
+#             of this fix, confirmed multi-arch). Same bug, same fix, also applied to
+#             group_vars/rudder_servers/main.yml's rudder_version on the Ansible side.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -230,7 +236,14 @@ load_sites_csv
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-RUDDER_VERSION="8.x"
+# BUG FIX (2026-09-02, found live while auditing third-party repos for arm64 awareness): "8.x"
+# was never a real path on repository.rudder.io -- confirmed directly (404 on
+# .../apt/8.x/dists/<codename>/InRelease; the real top-level listing only has actual versions
+# like 8.0-8.3/9.0-9.2, plus a genuine "latest" alias). Robert's call: track "latest" (currently
+# resolves to 9.1, confirmed multi-arch: amd64/arm64/armhf/i386) rather than pin to a specific
+# version -- matches the vague "8.x" pin's original apparent intent (auto-follow) more closely
+# than a hard pin would. This had presumably never actually been exercised on a real box.
+RUDDER_VERSION="latest"
 RUDDER_REPO_URL="https://repository.rudder.io/apt/${RUDDER_VERSION}/"
 RUDDER_GPG_URL="https://repository.rudder.io/apt/rudder_apt_key.pub"
 RUDDER_GPG_KEY="/usr/share/keyrings/rudder-archive-keyring.gpg"
