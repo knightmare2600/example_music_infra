@@ -254,6 +254,19 @@
 #                     times by default. Same fix applied to this script's own separate
 #                     EXA_PRETTY_DEST fetch further down, unrelated to sites.csv but the exact
 #                     same latent hang risk.
+# v1.23.0 2026-09-02  BUG FIX, Robert (found live while fixing the same gap in zabbixme.sh --
+#                     told repeatedly: "running things over SSH and dropping/upping the
+#                     interface kills the run either in ansible or scripts"): Section 1b ran
+#                     systemctl restart NetworkManager completely unconditionally, with no
+#                     gate at all -- unlike firewallme.sh, which has had a WAN activation
+#                     prompt for exactly this reason since 2026-04-25. The restart tears down
+#                     and re-evaluates every connection the daemon manages, including whichever
+#                     one the current SSH session is riding on. Added the same
+#                     "Activate the new static IP now? [y/N]" prompt (default N, matching
+#                     firewallme.sh's own wording/default) -- the NM profile is still written
+#                     either way, only the restart/activation is gated. Only the restart itself
+#                     moved; nmcli con delete (removing stale profiles) doesn't need a live
+#                     daemon restart first and stayed where it was.
 #
 # ==============================================================================
 
@@ -683,13 +696,12 @@ if [[ -f /etc/network/interfaces ]]; then
 fi
 
 NM_CONF="/etc/NetworkManager/NetworkManager.conf"
+NM_RESTART_REQUIRED=0
 if grep -q "managed=false" "${NM_CONF}" 2>/dev/null; then
   warn "NetworkManager.conf has managed=false -- fixing..."
   sed -i "s/managed=false/managed=true/" "${NM_CONF}"
+  NM_RESTART_REQUIRED=1
 fi
-
-systemctl restart NetworkManager
-sleep 3
 
 nmcli con delete "ansible-static" 2>/dev/null || true
 while IFS=: read -r profile device rest; do
@@ -719,11 +731,41 @@ nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "ansible-static" \
   ipv6.method ignore \
   connection.autoconnect yes \
   connection.autoconnect-priority 100 \
-  && success "NM profile ansible-static written — will apply on reboot." \
+  && success "NM profile ansible-static written." \
   || warn "nmcli con add returned non-zero — check: nmcli connection show ansible-static"
 
-warn "Static IP will take full effect on reboot."
-warn "If at local console (not SSH): nmcli con up ansible-static"
+# BUG FIX (2026-09-02, Robert: "running things over SSH and dropping/upping the interface kills
+# the run either in ansible or scripts" -- told repeatedly. Matches firewallme.sh's own WAN
+# activation prompt (same wording, same default). systemctl restart NetworkManager tears down
+# and re-evaluates every connection the daemon manages, including whichever one this SSH
+# session is riding on right now -- that's what actually causes the drop, not nmcli con add
+# itself (a profile written to disk doesn't activate on an interface with an already-live
+# connection). The profile above is written either way; only the restart/activation is gated.
+echo
+echo -e "${CYAN}╔══════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║              Interface Activation                    ║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════╝${NC}"
+echo
+warn "If you are connected via SSH over this interface, restarting NetworkManager"
+warn "now may drop your session. The connection profile above is written regardless --"
+warn "if you say N, bring it up yourself afterwards, or just reboot (autoconnect is set)."
+echo
+read -rp "Activate the new static IP now? [y/N] " NM_ACTIVATE_ANSWER
+if [[ "${NM_ACTIVATE_ANSWER,,}" == "y" ]]; then
+  info "Restarting NetworkManager to apply the new static IP..."
+  systemctl restart NetworkManager
+  sleep 3
+  nmcli con up ansible-static 2>/dev/null || true
+  success "NetworkManager restarted and ansible-static activated."
+elif [[ "${NM_RESTART_REQUIRED}" -eq 1 ]]; then
+  warn "Activation skipped. Note: NetworkManager.conf's managed=false fix above also needs a"
+  warn "restart to take effect, not just this new profile."
+  warn "Bring it up yourself later:  systemctl restart NetworkManager && nmcli con up ansible-static"
+  warn "Or just reboot — the profile is set to autoconnect."
+else
+  warn "Activation skipped — bring it up yourself with: nmcli con up ansible-static"
+  warn "Or just reboot — the profile is set to autoconnect."
+fi
 
 # ------------------------------------------------------------------------------
 # 1c. Hostname

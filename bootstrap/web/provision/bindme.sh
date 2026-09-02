@@ -163,6 +163,16 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #            the file. Exits 0 with a clear warning if a file genuinely can't be obtained, not
 #            1 -- see firewallme.sh's own 2026-08-29 changelog entry for the full detail,
 #            including the --tries=1 wget bug found and fixed while building this.
+# 2026-09-02 BUG FIX, Robert (found live while fixing the same gap in zabbixme.sh -- told
+#            repeatedly: "running things over SSH and dropping/upping the interface kills the
+#            run either in ansible or scripts"): the static-IP section ran systemctl restart
+#            NetworkManager completely unconditionally, with no gate at all -- unlike
+#            firewallme.sh, which has had a WAN activation prompt for exactly this reason since
+#            2026-04-25. The restart tears down and re-evaluates every connection the daemon
+#            manages, including whichever one the current SSH session is riding on. Added the
+#            same "Activate the new static IP now? [y/N]" prompt (default N, matching
+#            firewallme.sh's own wording/default) -- the NM profile is still written either
+#            way, only the restart/activation is gated.
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()    { echo -e "${CYAN}[*]${NC} $*"; }
 success() { echo -e "${GREEN}[+]${NC} $*"; }
@@ -779,13 +789,12 @@ fi
 # Critical: ensure NM is actually managing interfaces
 # Debian ships with managed=false in the [ifupdown] section
 NM_CONF="/etc/NetworkManager/NetworkManager.conf"
+NM_RESTART_REQUIRED=0
 if grep -q "managed=false" "${NM_CONF}" 2>/dev/null; then
   warn "NetworkManager.conf has managed=false -- fixing..."
   sed -i "s/managed=false/managed=true/" "${NM_CONF}"
+  NM_RESTART_REQUIRED=1
 fi
-
-systemctl restart NetworkManager
-sleep 3
 
 # Remove stale profiles
 nmcli con delete "prov-static" 2>/dev/null || true
@@ -801,8 +810,41 @@ done < <(nmcli -t -f NAME,DEVICE con show)
 nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "prov-static" ipv4.method manual \
   ipv4.addresses "${DNS_IP}/24" ipv4.gateway "${PROV_GW}" ipv4.dns "127.0.0.1" \
   ipv4.dns-search "${EXA_DOMAIN}" ipv6.method ignore \
-  && success "NM profile prov-static written -- will apply on reboot." \
+  && success "NM profile prov-static written." \
   || warn "nmcli con add returned non-zero -- check: nmcli connection show prov-static"
+
+# BUG FIX (2026-09-02, Robert: "running things over SSH and dropping/upping the interface kills
+# the run either in ansible or scripts" -- told repeatedly. Matches firewallme.sh's own WAN
+# activation prompt (same wording, same default). systemctl restart NetworkManager tears down
+# and re-evaluates every connection the daemon manages, including whichever one this SSH
+# session is riding on right now -- that's what actually causes the drop, not nmcli con add
+# itself (a profile written to disk doesn't activate on an interface with an already-live
+# connection). The profile above is written either way; only the restart/activation is gated.
+echo
+echo -e "${CYAN}╔══════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║              Interface Activation                    ║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════╝${NC}"
+echo
+warn "If you are connected via SSH over this interface, restarting NetworkManager"
+warn "now may drop your session. The connection profile above is written regardless --"
+warn "if you say N, bring it up yourself afterwards, or just reboot (autoconnect is set)."
+echo
+read -rp "Activate the new static IP now? [y/N] " NM_ACTIVATE_ANSWER
+if [[ "${NM_ACTIVATE_ANSWER,,}" == "y" ]]; then
+  info "Restarting NetworkManager to apply the new static IP..."
+  systemctl restart NetworkManager
+  sleep 3
+  nmcli con up prov-static 2>/dev/null || true
+  success "NetworkManager restarted and prov-static activated."
+elif [[ "${NM_RESTART_REQUIRED}" -eq 1 ]]; then
+  warn "Activation skipped. Note: NetworkManager.conf's managed=false fix above also needs a"
+  warn "restart to take effect, not just this new profile."
+  warn "Bring it up yourself later:  systemctl restart NetworkManager && nmcli con up prov-static"
+  warn "Or just reboot — the profile is set to autoconnect."
+else
+  warn "Activation skipped — bring it up yourself with: nmcli con up prov-static"
+  warn "Or just reboot — the profile is set to autoconnect."
+fi
 
 # ---------------------------------------------------------------
 # 5. Hostname
