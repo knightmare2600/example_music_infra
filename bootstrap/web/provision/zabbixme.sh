@@ -282,6 +282,13 @@
 #                     bindme.sh, rudderme.sh, firewallme.sh, zabbixme.sh's own base package
 #                     arrays, and group_vars/all/main.yml's common_packages (consumed by
 #                     linux/tools.yml).
+# v1.10.0 2026-09-02  Robert: "mlocate ought to be plocate". Confirmed against
+#                     packages.debian.org: mlocate genuinely doesn't exist on trixie ("Package
+#                     not available in this suite") -- Debian moved to plocate (a faster
+#                     reimplementation) as the real current package providing the same
+#                     locate/updatedb commands. Same swap applied everywhere v1.9.0 added
+#                     mlocate: all five break-glass scripts and group_vars/all/main.yml's
+#                     common_packages.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -651,7 +658,7 @@ dpkg -s ufw                 &>/dev/null || BASE_PKGS+=(ufw)
 dpkg -s ca-certificates      &>/dev/null || BASE_PKGS+=(ca-certificates)
 dpkg -s gnupg                &>/dev/null || BASE_PKGS+=(gnupg)
 dpkg -s apt-transport-https  &>/dev/null || BASE_PKGS+=(apt-transport-https)
-command -v locate            &>/dev/null || BASE_PKGS+=(mlocate)
+command -v locate            &>/dev/null || BASE_PKGS+=(plocate)
 
 # Robert's monitoring toolkit ask (point 4) -- "fping, nmap, snmpwalk, snmp-mibs, etc, etc, etc":
 # treated as "the standard diagnostic kit a monitoring server needs", not an exhaustive list --
