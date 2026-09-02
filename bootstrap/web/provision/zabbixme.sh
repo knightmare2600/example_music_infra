@@ -340,6 +340,19 @@
 #                     didn't respond instead of generic stale advice. Also fixed the file's own
 #                     top-of-file description header, which still said EXAZBXCLD001 -- the real
 #                     built hostname is EXAZABCLD001 (role code ZAB, not ZBX).
+# v1.13.0 2026-09-02  Robert: "could it be it's trying to connect to the new IP and since we
+#                     said no to bringing the interface up it flubbed? Ought it not to check the
+#                     *current* IP after install but before testing API?" Checked: ZBX_API_URL
+#                     is hardcoded to localhost, not NODE_STATIC_IP, so this specific check
+#                     can't be tripped up by the new interface not being live -- loopback
+#                     traffic doesn't depend on which external IP is currently active. Still a
+#                     genuinely good idea regardless of whether it was the cause here -- Section
+#                     12 now prints the box's real current IP(s) (hostname -I) and whether
+#                     Apache is actually listening on :80 (ss -tln) BEFORE the readiness loop
+#                     runs, plus an explicit note when the new static IP isn't live yet (matches
+#                     NM_ACTIVATE_ANSWER), so any future networking-adjacent failure is visible
+#                     directly in the transcript instead of needing a separate diagnostic pass
+#                     after the fact.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -1354,6 +1367,22 @@ success "Apache vhost written: http://${ZBX_FQDN}/ and http://${NODE_STATIC_IP}/
 # Section 12 — Wait for frontend/API, rotate Admin off the default password
 # ------------------------------------------------------------------------------
 section "12. Frontend + API readiness, Admin password rotation"
+
+# Robert, 2026-09-02: "could it be it's trying to connect to the new IP and since we said no to
+# bringing the interface up it flubbed? Ought it not to check the *current* IP after install but
+# before testing API?" -- ZBX_API_URL below is hardcoded to localhost, not NODE_STATIC_IP, so
+# this specific check can't be tripped up by the new interface not being live yet (loopback
+# traffic doesn't depend on which external IP is currently active). Still a genuinely good idea
+# regardless -- printing the box's real current state here, rather than only reacting after a
+# failure, makes any FUTURE networking-adjacent failure immediately visible in the transcript
+# instead of needing a separate diagnostic pass.
+info "Current live IP(s): $(hostname -I 2>/dev/null || echo 'none detected')"
+info "Apache listening on :80? $(ss -tln 2>/dev/null | grep -q ':80 ' && echo yes || echo NO)"
+if [[ "${NM_ACTIVATE_ANSWER,,}" != "y" ]]; then
+  info "Note: ${NODE_STATIC_IP} (the new static IP) is NOT live yet -- you said no to activating"
+  info "it. The API check below uses localhost, not ${NODE_STATIC_IP}, so this is unrelated to"
+  info "whether that check passes -- just a reminder the site above still reflects the OLD IP."
+fi
 
 ZBX_API_URL="http://localhost/zabbix/api_jsonrpc.php"
 
