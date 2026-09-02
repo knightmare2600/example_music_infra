@@ -476,6 +476,17 @@
 #                     (v1.18.0 creating it, this run finding it already exists) now confirm the
 #                     action.create shape itself (eventsource=2, empty filter/conditions, a single
 #                     "add to host group" operation) genuinely works against real Zabbix 7.0.
+# v1.20.0 2026-09-02  Robert re-ran on EXAZABVRK001 with v1.19.0's idempotency fix in place --
+#                     first genuinely clean, fully-idempotent run: every section passed,
+#                     including a correct "Could not log in as Admin/zabbix" warning (expected --
+#                     the previous run had already rotated the default password off) followed by
+#                     a silent, successful fallback to the saved credentials file, then Section 13
+#                     correctly finding the existing host group and action rather than recreating
+#                     either. The only thing worth polishing: the saved-credentials fallback path
+#                     had no success message of its own, so a working silent recovery looked, from
+#                     the terminal output alone, indistinguishable from something having quietly
+#                     failed. Added a success line for that path so future runs make the recovery
+#                     visible instead of implicit.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -1598,6 +1609,8 @@ EOF
       if [[ -z "${ZBX_API_AUTH}" ]]; then
         warn "Re-auth with saved credentials (${API_CREDS_FILE}) also failed. API response was:"
         warn "$(jq -c '.error // .' <<< "${ZBX_LOGIN_RESPONSE}" 2>/dev/null || echo "${ZBX_LOGIN_RESPONSE}")"
+      else
+        success "Re-authenticated with the saved credentials from a previous run."
       fi
     else
       warn "No saved credentials file at ${API_CREDS_FILE} either -- nothing to re-auth with."
