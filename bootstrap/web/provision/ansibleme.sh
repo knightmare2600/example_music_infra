@@ -294,7 +294,8 @@ ip_in_use() {
   fi
   if command -v arping &>/dev/null; then
     local gw_iface
-    gw_iface=$(ip route | awk '/default/{print $5}' | head -1)
+    # || true: head/SIGPIPE/pipefail class -- see zabbixme.sh's 2026-09-02 gen_password() fix.
+    gw_iface=$(ip route | awk '/default/{print $5}' | head -1 || true)
     if [[ -n "${gw_iface}" ]] && arping -c1 -W1 -I "$gw_iface" "$ip" &>/dev/null 2>&1; then
       return 0
     fi
@@ -633,8 +634,9 @@ info "Detecting interface on vRACK network (${VRACK_NET}.x)..."
 PROV_IFACE=""
 for iface in $(ls /sys/class/net/); do
   [[ "$iface" == "lo" ]] && continue
+  # || true: head/SIGPIPE/pipefail class -- see zabbixme.sh's 2026-09-02 gen_password() fix.
   ip_addr=$(ip -4 addr show "$iface" 2>/dev/null \
-    | grep -oP "(?<=inet\s)${VRACK_NET//./\\.}\.\d+" | head -1)
+    | grep -oP "(?<=inet\s)${VRACK_NET//./\\.}\.\d+" | head -1 || true)
   if [[ -n "$ip_addr" ]]; then
     PROV_IFACE="$iface"
     success "Detected vRACK interface: ${PROV_IFACE} (currently ${ip_addr})"
