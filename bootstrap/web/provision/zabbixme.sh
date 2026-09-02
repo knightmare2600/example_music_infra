@@ -373,6 +373,30 @@
 #                     connections) is sufficient to also allow genuine loopback traffic alongside
 #                     the existing VRK/FRD/site-subnet allowance for everyone else, no
 #                     <RequireAny> wrapper needed.
+# v1.15.0 2026-09-02  Robert, live on EXAZABVRK001, tenth real run: after v1.14.0's fix the API
+#                     readiness check finally passed ("Zabbix API is responding.") but the very
+#                     next step -- logging in as Admin/zabbix to rotate the default password --
+#                     failed ("Could not log in as Admin/zabbix"), and the fallback re-auth
+#                     against the saved credentials file then failed too with zero diagnostic
+#                     output (Section 13 printed only its header). Downloaded the real
+#                     zabbix-sql-scripts_7.0.30 package and extracted server.sql.gz to confirm the
+#                     schema genuinely does seed Admin with a bcrypt hash of "zabbix" (verified via
+#                     bcrypt.checkpw() in Python, not assumed) -- ruled out "wrong default
+#                     credentials" as the cause. Also confirmed against the real Zabbix 7.0 API
+#                     docs (zabbix.com/documentation/7.0/en/manual/api/reference/user/login) that
+#                     user.login's parameter is genuinely "username" (not the older "user"), which
+#                     the script was already using correctly. The actual root cause is still
+#                     unconfirmed -- but a real, separate bug was found while investigating: both
+#                     login-failure branches discarded the API's own ".error" field and kept only
+#                     ".result // empty", so every past run has been silently throwing away the one
+#                     piece of evidence that would explain WHY the login failed, forcing guesswork
+#                     instead. Fixed by capturing the full JSON-RPC response body and printing
+#                     ".error" on any login failure (initial Admin/zabbix attempt, and the saved-
+#                     credentials fallback). Also fixed Section 13's silent-skip: it had no `else`
+#                     on its `[[ -n "${ZBX_API_AUTH:-}" ]]` guard, so an empty auth token produced
+#                     a section header and then nothing -- added an explicit warn block. Neither
+#                     fix resolves the login failure itself; both exist so the next live run
+#                     surfaces the real API error instead of another blind guess.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -1452,9 +1476,10 @@ else
   # Default Zabbix credentials are Admin/zabbix -- login with those, then immediately rotate to
   # a generated password so the default is never left live. If this fails, the password was
   # probably already rotated by a previous run -- that's fine, not treated as an error.
-  ZBX_API_AUTH=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
+  ZBX_LOGIN_RESPONSE=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
     -d '{"jsonrpc":"2.0","method":"user.login","params":{"username":"Admin","password":"zabbix"},"id":1}' \
-    "${ZBX_API_URL}" | jq -r '.result // empty')
+    "${ZBX_API_URL}")
+  ZBX_API_AUTH=$(jq -r '.result // empty' <<< "${ZBX_LOGIN_RESPONSE}")
 
   if [[ -n "${ZBX_API_AUTH}" ]]; then
     if [[ -f "${API_CREDS_FILE}" ]]; then
@@ -1479,11 +1504,19 @@ EOF
   else
     warn "Could not log in as Admin/zabbix -- password was probably already rotated by an"
     warn "earlier run of this script. Re-auth with the saved credentials instead."
+    warn "API response was: $(jq -c '.error // .' <<< "${ZBX_LOGIN_RESPONSE}" 2>/dev/null || echo "${ZBX_LOGIN_RESPONSE}")"
     if [[ -f "${API_CREDS_FILE}" ]]; then
       source "${API_CREDS_FILE}"
-      ZBX_API_AUTH=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
+      ZBX_LOGIN_RESPONSE=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
         -d '{"jsonrpc":"2.0","method":"user.login","params":{"username":"Admin","password":"'"${ZBX_ADMIN_PASSWORD}"'"},"id":1}' \
-        "${ZBX_API_URL}" | jq -r '.result // empty')
+        "${ZBX_API_URL}")
+      ZBX_API_AUTH=$(jq -r '.result // empty' <<< "${ZBX_LOGIN_RESPONSE}")
+      if [[ -z "${ZBX_API_AUTH}" ]]; then
+        warn "Re-auth with saved credentials (${API_CREDS_FILE}) also failed. API response was:"
+        warn "$(jq -c '.error // .' <<< "${ZBX_LOGIN_RESPONSE}" 2>/dev/null || echo "${ZBX_LOGIN_RESPONSE}")"
+      fi
+    else
+      warn "No saved credentials file at ${API_CREDS_FILE} either -- nothing to re-auth with."
     fi
   fi
 
@@ -1491,6 +1524,12 @@ EOF
   # Section 13 — "auto-registration" host group (Robert point 5)
   # --------------------------------------------------------------------------
   section "13. auto-registration host group"
+
+  if [[ -z "${ZBX_API_AUTH:-}" ]]; then
+    warn "No valid API auth token -- skipping auto-registration host group and action setup."
+    warn "Log in to the Zabbix UI manually and create the '${AUTOREG_GROUP_NAME}' host group"
+    warn "plus its autoregistration action (Administration -> Actions -> Autoregistration actions)."
+  fi
 
   if [[ -n "${ZBX_API_AUTH:-}" ]]; then
     AUTOREG_GROUP_ID=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
