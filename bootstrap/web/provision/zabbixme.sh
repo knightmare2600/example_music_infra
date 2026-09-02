@@ -268,6 +268,20 @@
 #                     suggested role code from before this got built ("EXAZBXCLD001"/"ZBX") --
 #                     stale since Robert actually built it as EXAZABCLD001/ZAB (committed to
 #                     role_codes.csv 2026-09-02) -- now correctly suggests EXAZAB<site>001.
+# v1.9.0  2026-09-02  Robert, live on EXAZABCLD001, seventh real run: "Could not find the Zabbix
+#                     DB schema anywhere expected". Both previously guessed paths were wrong --
+#                     Robert ran `dpkg -L zabbix-sql-scripts | grep gz` on the real box and found
+#                     the actual file: /usr/share/zabbix-sql-scripts/mysql/server.sql.gz -- a
+#                     single combined file named "server", not "create" (guessed from older
+#                     Zabbix versions) and not split into schema/images/data (guessed as the
+#                     "newer" layout, which doesn't actually exist for 7.0 -- removed that whole
+#                     speculative code path). Real confirmed path is now first in
+#                     SCHEMA_CANDIDATES, both guessed names kept only as fallbacks.
+#                     Also, same session: "add mlocate to the package list for all break glass
+#                     scripts and the ansible linux tools playbook" -- added to ansibleme.sh,
+#                     bindme.sh, rudderme.sh, firewallme.sh, zabbixme.sh's own base package
+#                     arrays, and group_vars/all/main.yml's common_packages (consumed by
+#                     linux/tools.yml).
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -637,6 +651,7 @@ dpkg -s ufw                 &>/dev/null || BASE_PKGS+=(ufw)
 dpkg -s ca-certificates      &>/dev/null || BASE_PKGS+=(ca-certificates)
 dpkg -s gnupg                &>/dev/null || BASE_PKGS+=(gnupg)
 dpkg -s apt-transport-https  &>/dev/null || BASE_PKGS+=(apt-transport-https)
+command -v locate            &>/dev/null || BASE_PKGS+=(mlocate)
 
 # Robert's monitoring toolkit ask (point 4) -- "fping, nmap, snmpwalk, snmp-mibs, etc, etc, etc":
 # treated as "the standard diagnostic kit a monitoring server needs", not an exhaustive list --
@@ -1046,20 +1061,21 @@ fi
 # ------------------------------------------------------------------------------
 section "9. Database schema + server config + housekeeping"
 
-# Schema location has moved across Zabbix versions (create.sql.gz under the -mysql package's
-# own doc dir historically, vs a dedicated zabbix-sql-scripts package with schema/images/data
-# split from ~6.4 onward) -- zabbix-sql-scripts is confirmed to exist as a real package for
-# 7.0/debian13, so the split layout is the expected path here, but auto-detected with the old
-# layout as a fallback rather than hardcoded, since the split file structure itself
-# (schema/images/data vs a single combined file) wasn't directly inspected.
+# BUG FIX (2026-09-02, found live on EXAZABCLD001): the real file, confirmed directly via
+# `dpkg -L zabbix-sql-scripts | grep gz` on the actual box, is
+# /usr/share/zabbix-sql-scripts/mysql/server.sql.gz -- a single combined file named "server",
+# not "create" (guessed from older Zabbix versions) and not split into schema/images/data
+# (guessed as the "newer" layout, which doesn't actually exist for 7.0). Both previous guesses
+# removed; the real confirmed path is now first, with the two guessed names kept as fallbacks
+# only in case a future Zabbix version renames it again.
 SCHEMA_IMPORTED_MARKER="/var/lib/mysql/${ZABBIX_DB_NAME}/.zabbixme_schema_imported"
 if [[ -f "${SCHEMA_IMPORTED_MARKER}" ]]; then
   success "Schema already imported (marker present) — skipping."
 else
   SCHEMA_CANDIDATES=(
+    "/usr/share/zabbix-sql-scripts/mysql/server.sql.gz"
+    "/usr/share/zabbix/sql-scripts/mysql/server.sql.gz"
     "/usr/share/doc/zabbix-server-mysql/create.sql.gz"
-    "/usr/share/zabbix-sql-scripts/mysql/create.sql.gz"
-    "/usr/share/zabbix/sql-scripts/mysql/create.sql.gz"
   )
   SCHEMA_FILE=""
   for candidate in "${SCHEMA_CANDIDATES[@]}"; do
@@ -1072,23 +1088,7 @@ else
     touch "${SCHEMA_IMPORTED_MARKER}" 2>/dev/null || true
     success "Schema imported."
   else
-    # Newer split layout: schema.sql.gz + images.sql.gz + data.sql.gz, imported in that order.
-    SPLIT_DIR=""
-    for d in /usr/share/zabbix-sql-scripts/mysql /usr/share/zabbix/sql-scripts/mysql; do
-      [[ -f "${d}/schema.sql.gz" ]] && { SPLIT_DIR="${d}"; break; }
-    done
-    if [[ -n "${SPLIT_DIR}" ]]; then
-      info "Importing split schema from ${SPLIT_DIR} (schema, images, data)..."
-      for part in schema images data; do
-        if [[ -f "${SPLIT_DIR}/${part}.sql.gz" ]]; then
-          zcat "${SPLIT_DIR}/${part}.sql.gz" | mysql -u"${ZABBIX_DB_USER}" -p"${ZABBIX_DB_PASSWORD}" "${ZABBIX_DB_NAME}"
-        fi
-      done
-      touch "${SCHEMA_IMPORTED_MARKER}" 2>/dev/null || true
-      success "Split schema imported."
-    else
-      die "Could not find the Zabbix DB schema anywhere expected (checked: ${SCHEMA_CANDIDATES[*]}, and the split schema/images/data layout under zabbix-sql-scripts). Find it manually: dpkg -L zabbix-sql-scripts zabbix-server-mysql | grep -i sql"
-    fi
+    die "Could not find the Zabbix DB schema anywhere expected (checked: ${SCHEMA_CANDIDATES[*]}). Find it manually: dpkg -L zabbix-sql-scripts zabbix-server-mysql | grep -i sql"
   fi
 fi
 

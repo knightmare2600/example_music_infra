@@ -581,6 +581,7 @@ command -v jq          &>/dev/null || BOOTSTRAP_PKGS+=(jq)
 command -v vim         &>/dev/null || BOOTSTRAP_PKGS+=(vim)
 command -v bash-completion &>/dev/null || BOOTSTRAP_PKGS+=(bash-completion)
 command -v zsh         &>/dev/null || BOOTSTRAP_PKGS+=(zsh)
+command -v locate      &>/dev/null || BOOTSTRAP_PKGS+=(mlocate)
 # BUG FIX: zsh-autosuggestions and zsh-syntax-highlighting are shell plugin
 # files, not executables -- command -v will never find them regardless of
 # whether they are installed. Use dpkg -s instead.

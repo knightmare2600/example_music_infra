@@ -41,6 +41,9 @@ common_packages:
   # for the full DSL -- filter/put/sort/stats1 etc. all work the same way
   # jq's own filters do, just CSV/TSV-shaped instead of JSON-shaped.
   - miller
+  # mlocate (binary: locate/updatedb) -- added 2026-09-02 (Robert, found live while auditing
+  # zabbixme.sh's own package list). Same addition made across every break-glass script.
+  - mlocate
   - molly-guard
   - net-tools
   - nmap
