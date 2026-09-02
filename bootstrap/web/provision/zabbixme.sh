@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Example Music Limited — Zabbix Server Bootstrap Script
-# EXAZBXCLD001 (or any site's Zabbix monitoring server — CLD only for now)
+# EXAZABCLD001 (or any site's Zabbix monitoring server — CLD only for now)
 #
 # Mirrors the style and structure of rudderme.sh/ansibleme.sh/firewallme.sh:
 #   - Interactive, idempotent, run as root
@@ -313,6 +313,33 @@
 #                     QUOTED heredoc (`<<'MOTD'`/`<<'EOF'`) -- those write a separate script that
 #                     executes later under its own shell, not this one's set -e/pipefail context,
 #                     so left untouched rather than "fixed" for no reason.
+# v1.12.0 2026-09-02  Robert, live on EXAZABVRK001 (his own deliberate VRK test), ninth real run:
+#                     the script ran end to end for the first time -- genuine milestone -- but
+#                     Section 12's "Zabbix API did not respond within 2 minutes" fired, skipping
+#                     Admin password rotation and auto-registration setup. Investigated: verified
+#                     directly against the real zabbix-frontend-php package (downloaded and
+#                     extracted it) that Section 10's config write was NOT the cause -- ruled out
+#                     the leading theory (that /usr/share/zabbix/conf/zabbix.conf.php might be a
+#                     broken symlink to a not-yet-existing /etc/zabbix/web/) by confirming the
+#                     real package ships /etc/zabbix/web/ as a real directory itself, so the
+#                     write-through-symlink was correct all along. Separately found a genuine,
+#                     concrete bug while checking: NONE of the 8 curl calls across Sections
+#                     12-13 had a --max-time -- a single hung request (not a fast error, a real
+#                     stall) could silently consume the entire intended "24 attempts, 5s apart,
+#                     ~2 minutes" budget in one shot, making the actual wait far longer and less
+#                     predictable than advertised. Added --max-time 5 to the readiness-loop curl
+#                     and --max-time 10 to the other 7 (which only run after the API has already
+#                     proven responsive, so a later hang -- e.g. Zabbix crashing mid-run --
+#                     shouldn't be able to freeze the whole script either).
+#                     Also cleaned up stale text found while investigating: the final "REMAINING
+#                     MANUAL / FOLLOW-UP STEPS" banner still listed "confirm package availability"
+#                     (resolved across several live runs since v1.0.0/v1.1.0) and "devices.csv has
+#                     no ZBX row yet" (wrong role code -- it's ZAB -- AND already done, 2026-09-02)
+#                     as if still open. Replaced with a step that's conditional on this run's own
+#                     ZBX_API_READY, giving concrete diagnostic commands when the API genuinely
+#                     didn't respond instead of generic stale advice. Also fixed the file's own
+#                     top-of-file description header, which still said EXAZBXCLD001 -- the real
+#                     built hostname is EXAZABCLD001 (role code ZAB, not ZBX).
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -1330,10 +1357,19 @@ section "12. Frontend + API readiness, Admin password rotation"
 
 ZBX_API_URL="http://localhost/zabbix/api_jsonrpc.php"
 
+# BUG FIX (2026-09-02, found live on EXAZABVRK001): no curl call anywhere in this section had a
+# --max-time -- a single hung request (Apache accepted the TCP connection but the request
+# handling itself stalls, e.g. waiting on something that never returns) could silently consume
+# the entire intended "24 attempts, 5s apart, ~2 minutes total" budget in one go, making the
+# actual wait far longer and far less predictable than the "up to 2 minutes" message promised.
+# --max-time 5 here keeps each attempt honest; every other curl call in this section (which only
+# run AFTER the API has already proven it responds promptly) got --max-time 10 for the same
+# reason -- a hang later in the run (e.g. Zabbix crashing mid-section) shouldn't be able to
+# freeze the whole script indefinitely either.
 info "Waiting for the Zabbix API to respond (up to 2 minutes)..."
 ZBX_API_READY=0
 for i in $(seq 1 24); do
-  if curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json-rpc' \
+  if curl -s --max-time 5 -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json-rpc' \
       -d '{"jsonrpc":"2.0","method":"apiinfo.version","params":{},"id":1}' \
       "${ZBX_API_URL}" 2>/dev/null | grep -q "200"; then
     ZBX_API_READY=1
@@ -1352,7 +1388,7 @@ else
   # Default Zabbix credentials are Admin/zabbix -- login with those, then immediately rotate to
   # a generated password so the default is never left live. If this fails, the password was
   # probably already rotated by a previous run -- that's fine, not treated as an error.
-  ZBX_API_AUTH=$(curl -s -X POST -H 'Content-Type: application/json-rpc' \
+  ZBX_API_AUTH=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
     -d '{"jsonrpc":"2.0","method":"user.login","params":{"username":"Admin","password":"zabbix"},"id":1}' \
     "${ZBX_API_URL}" | jq -r '.result // empty')
 
@@ -1362,7 +1398,7 @@ else
     else
       ZBX_ADMIN_PASSWORD=$(gen_password 24)
     fi
-    curl -s -X POST -H 'Content-Type: application/json-rpc' \
+    curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
       -d '{"jsonrpc":"2.0","method":"user.update","params":{"userid":"1","password":"'"${ZBX_ADMIN_PASSWORD}"'"},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
       "${ZBX_API_URL}" > /dev/null
     cat > "${API_CREDS_FILE}" << EOF
@@ -1373,7 +1409,7 @@ EOF
     chmod 0600 "${API_CREDS_FILE}"
     success "Admin password rotated off the Zabbix default — saved to ${API_CREDS_FILE} (root-only)."
     # Re-auth with the new password for the sections below.
-    ZBX_API_AUTH=$(curl -s -X POST -H 'Content-Type: application/json-rpc' \
+    ZBX_API_AUTH=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
       -d '{"jsonrpc":"2.0","method":"user.login","params":{"username":"Admin","password":"'"${ZBX_ADMIN_PASSWORD}"'"},"id":1}' \
       "${ZBX_API_URL}" | jq -r '.result // empty')
   else
@@ -1381,7 +1417,7 @@ EOF
     warn "earlier run of this script. Re-auth with the saved credentials instead."
     if [[ -f "${API_CREDS_FILE}" ]]; then
       source "${API_CREDS_FILE}"
-      ZBX_API_AUTH=$(curl -s -X POST -H 'Content-Type: application/json-rpc' \
+      ZBX_API_AUTH=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
         -d '{"jsonrpc":"2.0","method":"user.login","params":{"username":"Admin","password":"'"${ZBX_ADMIN_PASSWORD}"'"},"id":1}' \
         "${ZBX_API_URL}" | jq -r '.result // empty')
     fi
@@ -1393,12 +1429,12 @@ EOF
   section "13. auto-registration host group"
 
   if [[ -n "${ZBX_API_AUTH:-}" ]]; then
-    AUTOREG_GROUP_ID=$(curl -s -X POST -H 'Content-Type: application/json-rpc' \
+    AUTOREG_GROUP_ID=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
       -d '{"jsonrpc":"2.0","method":"hostgroup.get","params":{"filter":{"name":["'"${AUTOREG_GROUP_NAME}"'"]}},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
       "${ZBX_API_URL}" | jq -r '.result[0].groupid // empty')
 
     if [[ -z "${AUTOREG_GROUP_ID}" ]]; then
-      AUTOREG_GROUP_ID=$(curl -s -X POST -H 'Content-Type: application/json-rpc' \
+      AUTOREG_GROUP_ID=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
         -d '{"jsonrpc":"2.0","method":"hostgroup.create","params":{"name":"'"${AUTOREG_GROUP_NAME}"'"},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
         "${ZBX_API_URL}" | jq -r '.result.groupids[0] // empty')
       [[ -n "${AUTOREG_GROUP_ID}" ]] && success "Host group '${AUTOREG_GROUP_NAME}' created (id ${AUTOREG_GROUP_ID})." \
@@ -1416,7 +1452,7 @@ EOF
     # General -> Autoregistration in the UI after this runs to confirm it actually took effect.
     if [[ -n "${AUTOREG_GROUP_ID}" ]]; then
       info "Creating autoregistration action (new registrations -> ${AUTOREG_GROUP_NAME})..."
-      curl -s -X POST -H 'Content-Type: application/json-rpc' \
+      curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
         -d '{"jsonrpc":"2.0","method":"action.create","params":{"name":"Auto-add to '"${AUTOREG_GROUP_NAME}"'","eventsource":2,"status":0,"filter":{"evaltype":0,"conditions":[]},"operations":[{"operationtype":4,"opgroup":[{"groupid":"'"${AUTOREG_GROUP_ID}"'"}]}]},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
         "${ZBX_API_URL}" > /tmp/zbx-autoreg-action.json
       if jq -e '.result' /tmp/zbx-autoreg-action.json > /dev/null 2>&1; then
@@ -1532,15 +1568,30 @@ echo -e "${YELLOW}  ╔═══════════════════
 echo -e "${YELLOW}  ║   REMAINING MANUAL / FOLLOW-UP STEPS                          ║${NC}"
 echo -e "${YELLOW}  ╚══════════════════════════════════════════════════════════════╝${NC}"
 echo
-echo -e "  ${WHITE}1.${NC} Confirm the Zabbix ${ZABBIX_MAJOR} package availability finding in this file's own"
-echo -e "     version-history comment actually resolved cleanly on this real run (it may not"
-echo -e "     have — this was the one thing this script's design couldn't fully verify in"
-echo -e "     advance)."
-echo -e "  ${WHITE}2.${NC} Confirm the autoregistration action actually took effect:"
-echo -e "     ${CYAN}Administration → Actions → Autoregistration actions${NC}"
-echo -e "  ${WHITE}3.${NC} role_codes.csv / devices.csv have no ZBX row yet — add one with a real CLD"
-echo -e "     octet once this build is confirmed good."
-echo -e "  ${WHITE}4.${NC} Agent deployment is explicitly OUT of scope for this script:"
+
+# BUG FIX (2026-09-02, found live on EXAZABCLD001/EXAZABVRK001): items 1 and 3 below were stale
+# leftovers from earlier in this script's own live-testing -- item 1 ("confirm package
+# availability") described genuine uncertainty from before Zabbix ${ZABBIX_MAJOR} was confirmed
+# to install cleanly across several real runs; item 3 ("devices.csv has no ZBX row yet") was
+# both the wrong role code (it's ZAB, not ZBX) and already done (role_codes.csv/devices.csv
+# both got a real row 2026-09-02). Both removed. Replaced with a conditional item reflecting
+# what ACTUALLY happened this run -- Section 12's own ZBX_API_READY, not a generic static list.
+STEP_N=1
+if [[ "${ZBX_API_READY:-0}" -ne 1 ]]; then
+  echo -e "  ${WHITE}${STEP_N}.${NC} ${YELLOW}The Zabbix API did not respond this run -- Sections 12-14 (Admin${NC}"
+  echo -e "     ${YELLOW}password rotation, auto-registration group + action) were SKIPPED.${NC}"
+  echo -e "     Check why the frontend/API isn't answering, then just re-run this script --"
+  echo -e "     every earlier section is idempotent and will skip straight through to here:"
+  echo -e "     ${CYAN}curl -v http://localhost/zabbix/api_jsonrpc.php${NC}"
+  echo -e "     ${CYAN}tail -50 /var/log/apache2/zabbix_error.log${NC}"
+  echo -e "     ${CYAN}tail -50 /var/log/zabbix/zabbix_server.log${NC}"
+  STEP_N=$((STEP_N + 1))
+else
+  echo -e "  ${WHITE}${STEP_N}.${NC} Confirm the autoregistration action actually took effect:"
+  echo -e "     ${CYAN}Administration → Actions → Autoregistration actions${NC}"
+  STEP_N=$((STEP_N + 1))
+fi
+echo -e "  ${WHITE}${STEP_N}.${NC} Agent deployment is explicitly OUT of scope for this script:"
 echo -e "     ${CYAN}TODO: Linux agent — Ansible playbook (EnableRemoteCommands, zabbix_agentd.conf)${NC}"
 echo -e "     ${CYAN}TODO: Windows agent — Salt module${NC}"
 echo -e "     ${CYAN}TODO: curl/wget on every device for auto-registration (agent-side, not server-side)${NC}"
