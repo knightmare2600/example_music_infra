@@ -80,7 +80,7 @@ diagram change in this repo.
 | MSH | 🖧 | MeshCentral (remote console/desktop platform) | RETIRED 2026-08-08 — was a single instance, CLD only (`EXAMSHCLD001`, `.13`), decommissioned once TacticalRMM's own bundled MeshCentral was confirmed as a full replacement (real use 2026-08-07/08). No live device uses this code anymore — kept defined in case a standalone instance is ever needed again |
 | RMM | 📊 | TacticalRMM (endpoint monitoring/inventory) | Added 2026-08-04 — single instance, CLD only (`EXARMMCLD001`, `.14`). Monitoring/alerting/dashboards/reporting only, explicitly not config mgmt or software deployment (Salt/Chocolatey stay responsible). Part of the remote management platform build |
 | SLT | 🧂 | Salt master (config mgmt — all Windows nodes) | CLD only (`EXASLTCLD001`, `.22`). Manages `WKS`/`LAP`/`SUR`/`SVR`/`DCS` — `TAB` only if genuinely Windows, `MAC`/`MBP` future plans. `FWL`/`PVE` stay Ansible-only, no Syndic tier at current scale |
-| ZAB | 📈 | Zabbix (monitoring server) | Added 2026-09-02 — single instance, CLD only (`EXAZABCLD001`, `.13`, reused from the retired `MSH` slot above). Zabbix 7.0, MariaDB backend, Apache frontend. Built via `bootstrap/web/provision/zabbixme.sh` (break-glass); Ansible backport and agent playbooks not yet started |
+| ZAB | 🔍 | Zabbix (monitoring server) | Added 2026-09-02 — single instance, CLD only (`EXAZABCLD001`, `.13`, reused from the retired `MSH` slot above). Zabbix 7.0, MariaDB backend, Apache frontend. Built via `bootstrap/web/provision/zabbixme.sh` (break-glass); Ansible backport and agent playbooks not yet started |
 | ANS | 🤖 | Ansible control node | |
 | PBX | 🔌 | Phone exchange (3CX PBX) | |
 | DNS | 🧭 | DNS server | |
