@@ -175,6 +175,20 @@
 #                     this script still doesn't (and structurally can't, being a standalone
 #                     break-glass script with no inventory access) verify against the real
 #                     allocation list itself, so the operator has to.
+# v1.4.0  2026-09-02  Robert, live on EXAZABCLD001, second real run: "E: Package
+#                     'snmp-mibs-downloader' has no installation candidate" -- confirmed live
+#                     against packages.debian.org: the package genuinely exists for trixie, but
+#                     lives in Debian's non-free component (MIB file licensing), and this
+#                     estate's preseed (bootstrap/web/debian/lvm-*.seed) never enables non-free/
+#                     contrib -- a standard Debian default, not a preseed bug. This was bundled
+#                     into the single Section 4 BASE_PKGS apt-get call, so this one unavailable
+#                     package failed the WHOLE batch -- curl/git/fping/nmap/tcpdump/etc. never
+#                     installed either, even though every one of them would have worked fine.
+#                     Split into its own best-effort install: enable non-free first (handles
+#                     both the DEB822 debian.sources format trixie's installer actually writes
+#                     and the classic sources.list format), then install just this one package
+#                     on its own -- a failure here warns and continues rather than dying, since
+#                     the rest of the script doesn't depend on it.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -516,11 +530,12 @@ dpkg -s apt-transport-https  &>/dev/null || BASE_PKGS+=(apt-transport-https)
 
 # Robert's monitoring toolkit ask (point 4) -- "fping, nmap, snmpwalk, snmp-mibs, etc, etc, etc":
 # treated as "the standard diagnostic kit a monitoring server needs", not an exhaustive list --
-# extend as needed.
+# extend as needed. snmp-mibs-downloader is deliberately NOT in this batch -- see below, it
+# lives in Debian's non-free component (not enabled by this estate's preseed) and needs its own
+# handling, not a blind apt-get install alongside everything else.
 command -v fping       &>/dev/null || BASE_PKGS+=(fping)
 command -v nmap         &>/dev/null || BASE_PKGS+=(nmap)
 command -v snmpwalk      &>/dev/null || BASE_PKGS+=(snmp)
-dpkg -s snmp-mibs-downloader &>/dev/null || BASE_PKGS+=(snmp-mibs-downloader)
 command -v tcpdump        &>/dev/null || BASE_PKGS+=(tcpdump)
 command -v traceroute      &>/dev/null || BASE_PKGS+=(traceroute)
 command -v whois             &>/dev/null || BASE_PKGS+=(whois)
@@ -545,6 +560,50 @@ if [[ ${#BASE_PKGS[@]} -gt 0 ]]; then
   fi
 else
   success "All base packages already present."
+fi
+
+# BUG FIX (2026-09-02, found live on EXAZABCLD001): snmp-mibs-downloader has no installation
+# candidate on a stock estate build -- confirmed live against packages.debian.org: the package
+# genuinely exists for trixie, but lives in Debian's non-free component (MIB file licensing),
+# and this estate's preseed (bootstrap/web/debian/lvm-*.seed) never enables non-free/contrib --
+# a completely standard Debian default, not a preseed bug to fix there. Previously bundled into
+# the single BASE_PKGS apt-get call above, which meant this ONE unavailable package failed the
+# WHOLE batch -- curl/git/fping/nmap/etc. never installed either, even though every one of them
+# would have worked fine. Split out into its own best-effort install: enable non-free first
+# (handles both the DEB822 debian.sources format trixie's installer actually writes, and the
+# classic sources.list format, in case this ever runs on an older/hand-built box), then install
+# just this one package on its own -- a failure here is a warning, not a die, since Robert's
+# broader ask (the monitoring toolkit) still needs the rest of this script to run either way.
+if ! dpkg -s snmp-mibs-downloader &>/dev/null; then
+  NONFREE_ENABLED=0
+  for SOURCES_FILE in /etc/apt/sources.list.d/debian.sources /etc/apt/sources.list; do
+    [[ -f "${SOURCES_FILE}" ]] || continue
+    if [[ "${SOURCES_FILE}" == *.sources ]]; then
+      # DEB822 format -- Components: line, space-separated.
+      if grep -qE "^Components:.*\bmain\b" "${SOURCES_FILE}" && ! grep -qE "^Components:.*\bnon-free\b" "${SOURCES_FILE}"; then
+        info "Enabling non-free component in ${SOURCES_FILE} (needed for snmp-mibs-downloader)..."
+        sed -i -E "s/^(Components:.*\bmain\b)(.*)$/\1 non-free\2/" "${SOURCES_FILE}"
+        NONFREE_ENABLED=1
+      fi
+    else
+      # Classic one-line-per-repo format -- append non-free to any "main"-only debian mirror line.
+      if grep -qE "^deb .*\bmain\b" "${SOURCES_FILE}" && ! grep -qE "^deb .*\bnon-free\b" "${SOURCES_FILE}"; then
+        info "Enabling non-free component in ${SOURCES_FILE} (needed for snmp-mibs-downloader)..."
+        sed -i -E "s/^(deb .*\bmain\b)(.*)$/\1 non-free\2/" "${SOURCES_FILE}"
+        NONFREE_ENABLED=1
+      fi
+    fi
+  done
+  if [[ "${NONFREE_ENABLED}" -eq 1 ]]; then
+    apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
+  fi
+  if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends snmp-mibs-downloader &>/dev/null; then
+    success "snmp-mibs-downloader installed."
+  else
+    warn "snmp-mibs-downloader still not installable -- skipping. snmpwalk/snmpget will work but"
+    warn "show numeric OIDs instead of resolved names. Install manually later if needed:"
+    warn "  apt-get install snmp-mibs-downloader"
+  fi
 fi
 
 # snmp-mibs-downloader ships with MIB downloading DISABLED by default on Debian (the "mibs :"
