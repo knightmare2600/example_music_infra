@@ -132,6 +132,27 @@
 #                     included a guessed php8.2-mysql entry that was never actually referenced
 #                     anywhere and isn't needed (apt resolves zabbix-frontend-php's own PHP
 #                     dependency automatically).
+# v1.2.0  2026-09-02  Robert: pointed at repo.zabbix.com/zabbix/7.0/debian-arm64/pool/main/z/
+#                     zabbix-release/ and asked to sha256sum the arm64 "_all.deb" against the
+#                     amd64 one this script already used, to confirm whether "Architecture: all"
+#                     really means one universal file. It doesn't: downloaded both, hashes and
+#                     file sizes differ. Extracted and diffed both -- the ONLY difference is the
+#                     embedded zabbix.sources file's URI (repo.zabbix.com/zabbix/7.0/debian vs
+#                     .../debian-arm64), everything else (keyring, changelog, copyright,
+#                     zabbix-tools.sources) is byte-identical. So "all" describes the .deb
+#                     PACKAGE FORMAT (no compiled binaries inside, installs fine on any dpkg
+#                     regardless of host CPU), not the repo TREE it configures -- picking the
+#                     wrong tree silently points apt at the wrong architecture's actual product
+#                     packages. This script was hardcoded to the amd64 ("debian") tree
+#                     unconditionally -- a real bug on an arm64 box, not previously exercised
+#                     since every live test so far (firewall/windows_bootstrap work earlier this
+#                     session) has been amd64. Confirmed live that debian-arm64 genuinely
+#                     publishes real arm64-native zabbix-server-mysql builds for debian13, not
+#                     just a placeholder tree. Fixed: Section 4 now runs `dpkg --print-architecture`
+#                     and sets ZBX_DEBIAN_TREE to "debian" (amd64) or "debian-arm64" (arm64), used
+#                     throughout Section 8's URL construction instead of the hardcoded "debian"
+#                     path segment. Any other architecture dies with a clear message rather than
+#                     silently trying the wrong tree.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -526,6 +547,22 @@ if [[ "${OS_DISTRIBUTOR}" != "Debian" ]]; then
   die "This script is Debian-only (detected '${OS_DISTRIBUTOR}'). Not tested on anything else."
 fi
 
+# CPU architecture -- Zabbix ships genuinely SEPARATE apt repo trees per architecture
+# (.../debian for amd64, .../debian-arm64 for arm64), not one universal tree. Confirmed live
+# 2026-09-02 (Robert): downloaded the "_all.deb" zabbix-release package from both trees and
+# sha256sum'd them -- they are NOT identical (only the embedded .sources URI differs, pointing
+# at "debian" vs "debian-arm64"). "Architecture: all" here just means the .deb package format
+# itself has no compiled binaries and will dpkg-install on any host arch -- it does NOT mean the
+# two trees' CONTENT is interchangeable. Picking the wrong one silently points apt at the wrong
+# architecture's package set. ZBX_DEBIAN_TREE feeds every repo.zabbix.com URL from here on.
+HOST_ARCH=$(dpkg --print-architecture)
+case "${HOST_ARCH}" in
+  amd64) ZBX_DEBIAN_TREE="debian" ;;
+  arm64) ZBX_DEBIAN_TREE="debian-arm64" ;;
+  *) die "Unsupported architecture '${HOST_ARCH}' -- Zabbix ${ZABBIX_MAJOR}'s Debian repo only has confirmed trees for amd64 (debian) and arm64 (debian-arm64)." ;;
+esac
+info "Architecture: ${HOST_ARCH} -> using repo tree '${ZBX_DEBIAN_TREE}'"
+
 # ------------------------------------------------------------------------------
 # Section 5 — Base + monitoring toolkit packages
 # ------------------------------------------------------------------------------
@@ -697,11 +734,18 @@ if ! dpkg -s zabbix-release &>/dev/null 2>&1; then
   # zabbix/7.0/debian/pool/...). This is a different URL shape than 8.0's newer "/release/"
   # tree -- do not copy this construction back to 8.0 without re-checking, see v1.1.0's
   # changelog entry above.
-  ZBX_RELEASE_URL="https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/debian/pool/main/z/zabbix-release/zabbix-release_latest_${ZABBIX_MAJOR}%2Bdebian${OS_RELEASE_NUM}_all.deb"
+  #
+  # ZBX_DEBIAN_TREE (Section 4) selects "debian" vs "debian-arm64" -- these are genuinely
+  # different repo trees, not just a path alias, confirmed live 2026-09-02 by sha256sum'ing
+  # the "_all.deb" zabbix-release package from both: different hashes, different sizes, only
+  # the embedded .sources URI differs (points at "debian" vs "debian-arm64"). The .deb
+  # FILENAME pattern itself is identical either way ("_all.deb", same naming), only the path
+  # segment changes.
+  ZBX_RELEASE_URL="https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/${ZBX_DEBIAN_TREE}/pool/main/z/zabbix-release/zabbix-release_latest_${ZABBIX_MAJOR}%2Bdebian${OS_RELEASE_NUM}_all.deb"
   info "Fetching zabbix-release package: ${ZBX_RELEASE_URL}"
   ZBX_RELEASE_DEB=$(mktemp /tmp/zabbix-release-XXXXXX.deb)
   if ! wget -q --tries=1 --timeout=30 -O "${ZBX_RELEASE_DEB}" "${ZBX_RELEASE_URL}"; then
-    die "Could not download zabbix-release for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}) from ${ZBX_RELEASE_URL} -- check the URL is still current at repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/debian/pool/main/z/zabbix-release/ (this exact filename pattern was verified live on 2026-09-01, but repo layouts do change)."
+    die "Could not download zabbix-release for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}, ${HOST_ARCH}) from ${ZBX_RELEASE_URL} -- check the URL is still current at repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/${ZBX_DEBIAN_TREE}/pool/main/z/zabbix-release/ (this exact filename pattern was verified live on 2026-09-01/02, but repo layouts do change)."
   fi
   dpkg -i "${ZBX_RELEASE_DEB}"
   rm -f "${ZBX_RELEASE_DEB}"
@@ -728,7 +772,7 @@ apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
 # can always change again, and failing fast here with a clear message beats a confusing error
 # halfway through a long install either way.
 if ! apt-cache policy zabbix-server-mysql 2>/dev/null | grep -q "Candidate:"; then
-  die "zabbix-server-mysql has no installable candidate after adding the ${ZABBIX_MAJOR} repo for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}). Check https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/debian/pool/main/z/zabbix/ by hand, or try 'apt-cache policy zabbix-server-mysql' yourself for the full picture."
+  die "zabbix-server-mysql has no installable candidate after adding the ${ZABBIX_MAJOR} repo for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}, ${HOST_ARCH}). Check https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/${ZBX_DEBIAN_TREE}/pool/main/z/zabbix/ by hand, or try 'apt-cache policy zabbix-server-mysql' yourself for the full picture."
 fi
 CANDIDATE_VER=$(apt-cache policy zabbix-server-mysql 2>/dev/null | awk '/Candidate:/{print $2}')
 success "zabbix-server-mysql candidate found: ${CANDIDATE_VER}"
