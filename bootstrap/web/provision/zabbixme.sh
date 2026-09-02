@@ -224,6 +224,32 @@
 #                     transient hiccup doesn't kill the run the way it did live. The per-package
 #                     INSTALLABLE_ZBX_PKGS filter just below runs after this loop has already
 #                     confirmed apt's cache is settled, so it didn't need the same treatment.
+# v1.7.0  2026-09-02  Robert, live on EXAZABCLD001, fifth real run: v1.6.0's retry loop STILL
+#                     failed after 3 attempts -- yet Robert's own `sudo apt install
+#                     zabbix-server-mysql`, run in a separate shell moments later, resolved and
+#                     offered the package correctly first try, dependencies and all. Robert's
+#                     read: "not sure why you think package isn't available, when it clearly
+#                     is, I suspect you're over-engineering your check" -- correct call. Removed
+#                     the apt-cache policy pre-check, the retry loop, AND the per-package
+#                     INSTALLABLE_ZBX_PKGS pre-filter entirely -- all three were built on the
+#                     same fragile assumption (that apt-cache policy's output reliably predicts
+#                     what apt-get install will actually do), which this live run disproved
+#                     twice over. Now just installs the full intended package list directly and
+#                     trusts apt-get install's own dependency resolution and error reporting
+#                     (already proven correct in Robert's own terminal). CANDIDATE_VER now comes
+#                     from dpkg-query AFTER a successful install instead of apt-cache policy
+#                     before one -- more reliable, and doesn't need internet-guessing about apt
+#                     cache timing at all.
+#                     Also, same live run: "the IP only needs to ask for the last octet since
+#                     other scripts, esp firewallme.sh, can deduce it and use the last octet" --
+#                     Section 5's static IP prompt asked for a full IP with no default, which is
+#                     also exactly how EXAZABCLD001 nearly ended up on the wrong subnet entirely
+#                     two runs ago (192.168.139.13 instead of 192.168.69.13) -- a last-octet-only
+#                     prompt structurally can't make that mistake, since the subnet prefix is
+#                     already fixed by the site chosen in Section 1. Now prompts for just the
+#                     last octet, defaulting to 13 (the real, confirmed, committed devices.csv/
+#                     role_codes.csv octet for CLD), matching firewallme.sh's own
+#                     Ansible/provisioning-octet prompt style.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -684,17 +710,20 @@ read -rp "  Gateway last octet [253]: " GW_OCTET_INPUT
 GW_OCTET="${GW_OCTET_INPUT:-253}"
 PROV_GW="${PROV_NET_DEFAULT}.${GW_OCTET}"
 
-# No CSV-assigned octet exists yet for Zabbix (see this file's own version-history note above) --
-# deliberately NOT defaulting to a specific value the way rudderme.sh can for RUD's already-known
-# .12. Robert: pick a free octet (.15/.16/.23 and most of the range above .82 were free as of
-# 2026-09-01) and type it in below. IMPORTANT: the ip_in_use() check right below is a LIVE
-# ping/arping probe only -- it does NOT cross-check sites.csv/devices.csv for octets that are
-# already allocated on paper but not currently answering (e.g. EXASLTCLD001 at .22, which may
-# not respond to ICMP). A "appears free" result here is not proof the octet is actually
-# unclaimed -- check devices.csv/cld.ini yourself before typing one in, found live 2026-09-02
-# when EXAZABCLD001 was about to be given .22 (already EXASLTCLD001's).
-read -rp "  Static IP for this Zabbix server (no assigned default yet -- see comment above): " NODE_STATIC_IP
-[[ -z "${NODE_STATIC_IP}" ]] && die "A static IP is required -- Zabbix is a permanent infrastructure node, not a DHCP client."
+# BUG FIX (2026-09-02, Robert: "the IP only needs to ask for the last octet since other
+# scripts, esp firewallme.sh, can deduce it and use the last octet"): was asking for a full IP
+# (and defaulting to nothing), which is also exactly how EXAZABCLD001 nearly ended up on
+# 192.168.139.13 instead of 192.168.69.13 -- typing a full address re-opens the door to
+# entering the wrong subnet entirely, something a last-octet-only prompt structurally can't do
+# (the subnet prefix is already fixed by the site chosen in Section 1). Matches
+# firewallme.sh's own last-octet prompt style (its Ansible/provisioning-octet prompt).
+# .13 is now the real, confirmed, committed devices.csv/role_codes.csv octet for CLD (see this
+# file's own version-history above) -- offered as the default, not silently assumed; still a
+# real prompt the operator can override for a different site/octet.
+read -rp "  Static IP last octet for this Zabbix server [13]: " NODE_OCTET_INPUT
+NODE_OCTET="${NODE_OCTET_INPUT:-13}"
+NODE_STATIC_IP="${PROV_NET_DEFAULT}.${NODE_OCTET}"
+info "Static IP: ${NODE_STATIC_IP}"
 
 info "Checking whether ${NODE_STATIC_IP} is already in use..."
 if ip_in_use "${NODE_STATIC_IP}"; then
@@ -941,51 +970,25 @@ fi
 
 apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
 
-# Sanity check BEFORE the real install attempt -- confirmed live (both 2026-09-01 by directly
-# fetching the real Packages index, and 2026-09-02 by watching Robert's own manual `apt update`
-# succeed straight after this same check failed inside the script) that 7.0 genuinely does
-# publish zabbix-server-mysql for debian13/trixie, and that the repo added above is genuinely
-# reachable and correctly configured. So a real "package doesn't exist" is NOT what this check
-# is actually guarding against any more -- what bit live on 2026-09-02 was apt-cache policy
-# returning completely empty output (no "Candidate:" line at all -- confirmed locally this is
-# apt-cache's behaviour for a name it doesn't yet recognise, not "Candidate: (none)", which
-# still contains the substring "Candidate:" and would NOT have tripped this check) immediately
-# after dpkg -i + apt-get update, even though the exact same command succeeded a few seconds
-# later when Robert ran it by hand -- a timing/cache-settle race, not a genuine repo problem.
-# Retries apt-get update up to twice more (2s apart) before finally dying, so a one-off
-# transient hiccup doesn't kill the whole run the way it did live.
-ZBX_CANDIDATE_TRIES=0
-while ! apt-cache policy zabbix-server-mysql 2>/dev/null | grep -q "Candidate:"; do
-  ZBX_CANDIDATE_TRIES=$((ZBX_CANDIDATE_TRIES + 1))
-  if [[ "${ZBX_CANDIDATE_TRIES}" -ge 3 ]]; then
-    die "zabbix-server-mysql has no installable candidate after adding the ${ZABBIX_MAJOR} repo for Debian ${OS_RELEASE_NUM} (${OS_CODENAME}, ${HOST_ARCH}), even after ${ZBX_CANDIDATE_TRIES} apt-get update attempts. Check https://repo.zabbix.com/zabbix/${ZABBIX_MAJOR}/${ZBX_DEBIAN_TREE}/pool/main/z/zabbix/ by hand, or try 'apt-cache policy zabbix-server-mysql' yourself for the full picture."
-  fi
-  warn "zabbix-server-mysql not visible to apt-cache yet (attempt ${ZBX_CANDIDATE_TRIES}/2) -- retrying apt-get update..."
-  sleep 2
-  apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
-done
-CANDIDATE_VER=$(apt-cache policy zabbix-server-mysql 2>/dev/null | awk '/Candidate:/{print $2}')
-success "zabbix-server-mysql candidate found: ${CANDIDATE_VER}"
-
+# BUG FIX (2026-09-02, Robert: "not sure why you think package isn't available, when it
+# clearly is, I suspect you're over-engineering your check"): removed the apt-cache
+# policy-based pre-check (and retry loop, and per-package pre-filter) entirely -- Robert was
+# right, it was fragile and second-guessing apt for no real benefit. Confirmed live: the
+# script's own check kept failing even after 3 apt-get update attempts, while Robert's own
+# `apt install zabbix-server-mysql` in a completely separate shell, run seconds later, resolved
+# and offered to install it correctly first try. apt-get install already has its own robust
+# dependency resolution and clear error reporting (proven right there in Robert's own terminal
+# output) -- trust it directly instead of re-implementing a worse version of the same check.
 # zabbix-agent, NOT zabbix-agent2 -- Robert was explicit: "agent is agent not agent2, I am not
-# using agent2". Filtered down to what's actually resolvable before installing, rather than
-# assuming every name exists verbatim in this exact package set.
-INSTALLABLE_ZBX_PKGS=()
-for pkg in zabbix-server-mysql zabbix-frontend-php zabbix-sql-scripts zabbix-apache-conf zabbix-agent; do
-  if apt-cache policy "$pkg" 2>/dev/null | grep -q "Candidate:"; then
-    INSTALLABLE_ZBX_PKGS+=("$pkg")
-  else
-    warn "Package '$pkg' not found in the repo -- skipping (may not exist under this name for ${ZABBIX_MAJOR})."
-  fi
-done
-[[ ${#INSTALLABLE_ZBX_PKGS[@]} -eq 0 ]] && die "None of the expected Zabbix packages resolved -- something is wrong with the repo setup above."
-
-# Apache + PHP are pulled in automatically as zabbix-frontend-php dependencies.
-info "Installing: ${INSTALLABLE_ZBX_PKGS[*]}"
+# using agent2".
+# Named distinctly from the old (dead, removed 2026-09-02) ZBX_PKGS array so the two don't get
+# confused against each other in this file's own changelog history.
+ZBX_INSTALL_PKGS=(zabbix-server-mysql zabbix-frontend-php zabbix-sql-scripts zabbix-apache-conf zabbix-agent)
+info "Installing: ${ZBX_INSTALL_PKGS[*]}"
 APT_LOG=$(mktemp /tmp/zabbixme-zbx-apt-XXXXXX.log)
 if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
     -o Dpkg::Options::="--force-confold" -o Dpkg::Options::="--force-confdef" \
-    "${INSTALLABLE_ZBX_PKGS[@]}" > "$APT_LOG" 2>&1; then
+    "${ZBX_INSTALL_PKGS[@]}" > "$APT_LOG" 2>&1; then
   success "Zabbix packages installed."
   rm -f "$APT_LOG"
 else
@@ -993,6 +996,7 @@ else
   tail -30 "$APT_LOG" >&2
   die "Zabbix install failed. Fix the above and re-run."
 fi
+CANDIDATE_VER=$(dpkg-query -W -f='${Version}' zabbix-server-mysql 2>/dev/null || echo "unknown")
 
 # Stop nginx if present (same reasoning as the old reference script -- Apache is the chosen
 # HTTP daemon here, don't fight nginx for port 80/443 if it happens to be installed already).
