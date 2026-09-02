@@ -353,6 +353,26 @@
 #                     NM_ACTIVATE_ANSWER), so any future networking-adjacent failure is visible
 #                     directly in the transcript instead of needing a separate diagnostic pass
 #                     after the fact.
+# v1.14.0 2026-09-02  Robert ran the curl -v command suggested off the back of v1.13.0's own
+#                     diagnostics -- and it found the REAL root cause of the "API did not
+#                     respond within 2 minutes" failure from v1.11.0/v1.12.0: a clean, fast "403
+#                     Forbidden" on every attempt, not a hang. curl -v showed it connecting via
+#                     "[::1]:80" -- curl resolves "localhost" to both ::1 and 127.0.0.1 and tries
+#                     IPv6 first by default. Every Require ip line in the
+#                     <Location /zabbix/api_jsonrpc.php> block (Section 11) is IPv4-only
+#                     (VRK/FRD/site subnets, dotted-quad CIDR) -- none of them match ::1, so
+#                     Apache correctly denied the request per its own (incomplete) config, on
+#                     every single one of the 24 retry attempts, which is exactly why retrying
+#                     never helped and why it took the full ~2 minutes to give up. Verified the
+#                     fix directly against the real, official Apache 2.4 docs before applying it
+#                     (not from memory): multiple bare Require directives at the same scope
+#                     combine as an implicit RequireAny (OR) by default -- confirmed on
+#                     httpd.apache.org/docs/2.4/mod/mod_authz_core.html -- so adding a single
+#                     "Require local" line (Apache's own built-in provider, confirmed on
+#                     mod_authz_host.html to match 127.0.0.0/8 AND ::1 AND same-address
+#                     connections) is sufficient to also allow genuine loopback traffic alongside
+#                     the existing VRK/FRD/site-subnet allowance for everyone else, no
+#                     <RequireAny> wrapper needed.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -1341,7 +1361,22 @@ cat > /etc/apache2/sites-available/zabbix.conf << EOF
 
     # Robert point 6 (API restriction): api_jsonrpc.php reachable only from VRK/FRD/site
     # subnets -- everything else (the UI itself) stays open to the LAN as normal.
+    #
+    # BUG FIX (2026-09-02, found live on EXAZABVRK001, Robert's own curl -v against localhost):
+    # this section's own readiness check (Section 12, curl against http://localhost/...) was
+    # getting a clean 403 Forbidden on every attempt, for the whole "2 minutes, no response"
+    # window -- not a hang, a real fast rejection every time, which is why the retry loop never
+    # helped. Root cause: curl resolves "localhost" to BOTH ::1 and 127.0.0.1 and tries IPv6
+    # first by default -- confirmed directly in Robert's own curl -v output ("Trying [::1]:80").
+    # Every Require ip line below is IPv4-only (VRK/FRD/site subnets, all dotted-quad CIDR) --
+    # none of them match ::1, so Apache correctly (from its own config's point of view) denied
+    # the request. Multiple bare Require lines at the same scope combine with OR by default in
+    # Apache 2.4 (equivalent to an implicit RequireAny) -- no <RequireAny> wrapper needed, just
+    # adding "Require local" (Apache's own built-in match for 127.0.0.0/8 AND ::1 AND Unix
+    # domain sockets) as one more line is sufficient to also allow genuine loopback traffic
+    # alongside the existing VRK/FRD/site-subnet allowance for everyone else.
     <Location /zabbix/api_jsonrpc.php>
+        Require local
         Require ip ${VRK_SUBNET}
         Require ip ${FRD_SUBNET}
 EOF
