@@ -648,13 +648,12 @@ if [[ -f /etc/network/interfaces ]]; then
 fi
 
 NM_CONF="/etc/NetworkManager/NetworkManager.conf"
+NM_RESTART_REQUIRED=0
 if grep -q "managed=false" "${NM_CONF}" 2>/dev/null; then
   warn "NetworkManager.conf has managed=false — fixing..."
   sed -i "s/managed=false/managed=true/" "${NM_CONF}"
+  NM_RESTART_REQUIRED=1
 fi
-
-systemctl restart NetworkManager
-sleep 3
 
 nmcli con delete "zabbix-static" 2>/dev/null || true
 
@@ -667,11 +666,42 @@ nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "zabbix-static" \
   ipv6.method ignore \
   connection.autoconnect yes \
   connection.autoconnect-priority 100 \
-  && success "NM profile zabbix-static written — will apply on reboot." \
+  && success "NM profile zabbix-static written." \
   || warn "nmcli con add returned non-zero — check: nmcli connection show zabbix-static"
 
-warn "Static IP will take full effect on reboot."
-warn "If at local console (not SSH): nmcli con up zabbix-static"
+# BUG FIX (2026-09-02, Robert: "running things over SSH and dropping/upping the interface kills
+# the run either in ansible or scripts" -- told repeatedly, this had never actually been fixed
+# here). Matches firewallme.sh's own WAN activation prompt exactly (same wording, same default).
+# systemctl restart NetworkManager tears down and re-evaluates every connection the daemon
+# manages, including whichever one this SSH session is riding on right now -- doing that
+# unconditionally is what actually causes the drop, not nmcli con add itself (writing a profile
+# to disk doesn't activate it on an interface that already has a live connection). The profile
+# above is written either way; only the restart/activation is gated.
+echo
+echo -e "${CYAN}╔══════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║              Interface Activation                    ║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════╝${NC}"
+echo
+warn "If you are connected via SSH over this interface, restarting NetworkManager"
+warn "now may drop your session. The connection profile above is written regardless --"
+warn "if you say N, bring it up yourself afterwards, or just reboot (autoconnect is set)."
+echo
+read -rp "Activate the new static IP now? [y/N] " NM_ACTIVATE_ANSWER
+if [[ "${NM_ACTIVATE_ANSWER,,}" == "y" ]]; then
+  info "Restarting NetworkManager to apply the new static IP..."
+  systemctl restart NetworkManager
+  sleep 3
+  nmcli con up zabbix-static 2>/dev/null || true
+  success "NetworkManager restarted and zabbix-static activated."
+elif [[ "${NM_RESTART_REQUIRED}" -eq 1 ]]; then
+  warn "Activation skipped. Note: NetworkManager.conf's managed=false fix above also needs a"
+  warn "restart to take effect, not just this new profile."
+  warn "Bring it up yourself later:  systemctl restart NetworkManager && nmcli con up zabbix-static"
+  warn "Or just reboot — the profile is set to autoconnect."
+else
+  warn "Activation skipped — bring it up yourself with: nmcli con up zabbix-static"
+  warn "Or just reboot — the profile is set to autoconnect."
+fi
 
 # ------------------------------------------------------------------------------
 # Section 6 — UFW firewall
