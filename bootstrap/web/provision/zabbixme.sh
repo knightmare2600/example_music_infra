@@ -443,6 +443,21 @@
 #                     auth entirely. Also added the same response-capture-and-error-print pattern
 #                     (already used elsewhere in this section per v1.15.0) to the post-rotation
 #                     re-auth call, which previously had no diagnostics of its own either.
+# v1.18.0 2026-09-02  Robert re-ran on EXAZABVRK001 with v1.17.0's diagnostics in place -- and
+#                     Section 13 (auto-registration host group + action) succeeded for the first
+#                     time ever. The rotation itself still failed, but now with a real error:
+#                     {"code":-32602,"message":"Invalid params.","data":"Invalid parameter
+#                     \"/1\": unexpected parameter \"password\"."}. Checked the real, official
+#                     Zabbix 7.0 API docs (zabbix.com/documentation/7.0/en/manual/api/reference/
+#                     user/update and .../user/object) rather than assume the param name was
+#                     right: the field is genuinely called "passwd", not "password" -- exactly
+#                     matching the API's own "unexpected parameter" complaint. The same docs also
+#                     say current_passwd is "required if passwd of User object is set and user
+#                     changes own user password" -- this call updates userid 1 (Admin) while
+#                     authenticated as Admin, i.e. changing its own password, so current_passwd
+#                     was also missing and would have failed the same call even with passwd
+#                     spelled correctly. Fixed both: renamed password -> passwd and added
+#                     current_passwd:"zabbix" (the password this code path just logged in with).
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -1527,7 +1542,7 @@ else
       ZBX_ADMIN_PASSWORD=$(gen_password 24)
     fi
     ZBX_UPDATE_RESPONSE=$(curl -s --max-time 10 -X POST -H 'Content-Type: application/json-rpc' \
-      -d '{"jsonrpc":"2.0","method":"user.update","params":{"userid":"1","password":"'"${ZBX_ADMIN_PASSWORD}"'"},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
+      -d '{"jsonrpc":"2.0","method":"user.update","params":{"userid":"1","passwd":"'"${ZBX_ADMIN_PASSWORD}"'","current_passwd":"zabbix"},"id":1,"auth":"'"${ZBX_API_AUTH}"'"}' \
       "${ZBX_API_URL}")
     if jq -e '.result' <<< "${ZBX_UPDATE_RESPONSE}" > /dev/null 2>&1; then
       cat > "${API_CREDS_FILE}" << EOF
