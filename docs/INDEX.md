@@ -203,6 +203,7 @@ Configuration management, automation, and orchestration.
 | [management/Example Music — Keeping Three Ansible Nodes in Sync.md](management/Example%20Music%20—%20Keeping%20Three%20Ansible%20Nodes%20in%20Sync.md) | NET-MGMT-ANS-001 | Ansible multi-node synchronisation patterns |
 | [management/TacticalRMM_Beginners_Guide.md](management/TacticalRMM_Beginners_Guide.md) | NET-MGMT-RMM-001 | TacticalRMM day-to-day usage — login, deploying/moving agents, troubleshooting the mesh-agent-download bug |
 | [management/Salt_Beginners_Guide.md](management/Salt_Beginners_Guide.md) | NET-MGMT-SLT-001 | Salt day-to-day usage — adding a minion (automated and manual/iwr paths), where minion state lives, accepting keys, why SaltGUI may look empty |
+| [management/zabbix-worldclocks-widget.md](management/zabbix-worldclocks-widget.md) | NET-MGMT-ZBXWC-001 | Zabbix 7.0 "World Clocks" custom dashboard widget — full source, install/enable steps, sites.csv timezone coverage audit (bundle: [zabbix-worldclocks-widget.zip](management/zabbix-worldclocks-widget.zip)) |
 
 ---
 
