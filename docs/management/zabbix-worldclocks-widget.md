@@ -76,20 +76,21 @@ this is a genuine, still-valid IANA zone — a backward-compatibility symlink to
 if anyone goes looking for it in a zone picker and doesn't find it listed as a distinct primary
 entry in some tools.
 
-### Real data bug found: `Europe/Aarhus` (AAR row) is not a valid IANA timezone
+### Real data bug found and fixed: `Europe/Aarhus` (AAR row) was not a valid IANA timezone
 
 Checked directly against the installed system tzdata (`python3 -c "import zoneinfo;
-zoneinfo.ZoneInfo('Europe/Aarhus')"`) — this raises `No time zone found with key Europe/Aarhus`.
-It is not a real IANA identifier; Denmark has exactly one IANA zone, `Europe/Copenhagen`, which
-every other Danish site in `sites.csv` (CPH, FAX, FRD, FRE, KGE, KOR, NYB, ODE) already
-correctly uses. `Europe/Aarhus` in the AAR row is genuinely broken — a call to `Intl.DateTimeFormat`
-or PHP's `DateTimeZone` with this string throws in both languages, not just an edge case.
+zoneinfo.ZoneInfo('Europe/Aarhus')"`) — this raised `No time zone found with key
+Europe/Aarhus`. It was not a real IANA identifier; Denmark has exactly one IANA zone,
+`Europe/Copenhagen`, which every other Danish site in `sites.csv` (CPH, FAX, FRD, FRE, KGE,
+KOR, NYB, ODE) already correctly uses. `Europe/Aarhus` in the AAR row was genuinely broken — a
+call to `Intl.DateTimeFormat` or PHP's `DateTimeZone` with this string throws in both
+languages, not just an edge case.
 
-**Not fixed here** — `sites.csv` is the estate's single source of truth and changing it wasn't
-part of this task; flagging it clearly rather than silently working around it or silently
-leaving it unmentioned. Worth a follow-up correcting the AAR row's `Timezone` column to
-`Europe/Copenhagen` and re-running the CSV → inventory regeneration pipeline
-(`docs/adding-a-new-device.md`) to propagate the fix.
+**Fixed** (commit `12fe77d`, confirmed by Robert): AAR's `Timezone` corrected to
+`Europe/Copenhagen` in `benarbejde/sites.csv`, full regeneration pipeline re-run per
+`docs/adding-a-new-device.md` — only `ansible/configs/inventory/aar.ini`'s header comment
+actually changed (nothing else surfaces this field), served `bootstrap/web/proxmox/sites.csv`
+copy synced, harness clean.
 
 ## Directory tree
 
