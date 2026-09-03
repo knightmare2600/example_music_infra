@@ -1,10 +1,12 @@
 # Zabbix "World Clocks" dashboard widget
 
-A native Zabbix 7.0 custom dashboard widget module showing a single horizontal row of live
-clocks. Built and verified against the real `zabbix-frontend-php_7.0.30-1+debian13` package
-downloaded directly from `repo.zabbix.com` — every manifest field, PHP class/namespace, and
-JavaScript lifecycle method below was checked against Zabbix's own shipped `widgets/clock` and
-`widgets/url` modules inside that package, not invented from general web-development habits.
+A native Zabbix 7.0 custom dashboard widget module showing a configurable row of live clocks —
+digital or analog, up to 8 of them, each independently set to any real IANA time zone, with
+selectable foreground/background colours. Built and verified against the real
+`zabbix-frontend-php_7.0.30-1+debian13` package downloaded directly from `repo.zabbix.com` —
+every manifest field, PHP class/namespace, and JavaScript lifecycle method below was checked
+against Zabbix's own shipped `widgets/clock`, `widgets/url`, and `widgets/tophosts` modules
+inside that package, not invented from general web-development habits.
 
 Installable bundle: [`zabbix-worldclocks-widget.zip`](zabbix-worldclocks-widget.zip) (same
 contents as the code blocks below, already arranged as `worldclocks/...`).
@@ -21,39 +23,58 @@ module with a class-name mismatch aborts loading of *every module after it*, not
 broken one), this took down every dashboard for every user, including Admin, not just this
 widget. **If you hit this: `sudo rm -rf /usr/share/zabbix/modules/worldclocks`, then
 Administration → General → Modules → Scan directory, and every dashboard recovers
-immediately** — do this before anything else. v1.1 below has the corrected namespace
-(`Modules\Worldclocks\...` in all three PHP files) and is safe to install.
+immediately** — do this before anything else, on any version.
 
-## Clocks shown
+**v2.0 — configurable, 2026-09-03:** v1.x hardcoded the seven clocks directly in
+`actions/WidgetView.php`; nothing was adjustable from the dashboard UI. v2.0 replaces that with
+a real widget configuration form:
 
-| Order | Label   | City         | IANA time zone          |
-|-------|---------|--------------|--------------------------|
-| 1     | PDT     | Los Angeles  | `America/Los_Angeles`   |
-| 2     | EDT     | New York     | `America/New_York`      |
-| 3     | BST/GMT | London       | `Europe/London`         |
-| 4     | CET     | Copenhagen   | `Europe/Copenhagen`     |
-| 5     | AET     | Sydney       | `Australia/Sydney`      |
-| 6     | AET     | Melbourne    | `Australia/Melbourne`   |
-| 7     | NZT     | Auckland     | `Pacific/Auckland`      |
+1. **Digital or analog** — a genuine radio choice. Analog mode reuses Zabbix's own native clock
+   face SVG markup (`CClock.php`, the same PHP helper class the built-in Clock widget itself
+   uses), so the dial/hands look and behave identically to Zabbix's own analog clock — this
+   widget just draws several of them, each independently ticking in its own time zone.
+2. **City/time zone selection, not hardcoded** — up to 8 clock slots, each with its own real
+   IANA time zone dropdown (Zabbix's own `CWidgetFieldTimeZone`, populated from PHP's actual
+   `DateTimeZone::listIdentifiers()` — the same underlying data source as the `sites.csv` audit
+   below), a City display name, and an optional Label override. Leave a slot's time zone set to
+   "(not used)" to hide it.
+3. **The BST/GMT problem** — every clock's Label defaults to blank now, which means the front
+   end computes the *live, technically-correct* zone abbreviation every second via
+   `Intl.DateTimeFormat`'s `timeZoneName` option, instead of a fixed string. London genuinely
+   shows `GMT` or `BST` depending on the actual date, not a permanent `BST/GMT` compromise. Type
+   something into a Label field to override this per-clock if you'd rather have fixed text.
+4. **Foreground/background colour pickers** — yes, genuinely possible, confirmed via Zabbix's
+   own `CWidgetFieldColor` field (the same one the native Clock widget itself uses). Applies
+   globally to the whole widget (all clocks share one foreground/background pair, not
+   per-clock — flagging this scope choice explicitly since it wasn't specified). Foreground
+   covers the moving/readable parts (digital digits, or analog hands + tick marks); background
+   covers the backdrop (digital cell background, or the analog clock-face circle). Leave either
+   blank to keep inheriting the active Zabbix theme's own colours, exactly like v1 always did.
+5. **Blinking colon** — a checkbox, digital mode only. Pure CSS `@keyframes` animation on the
+   colon characters (no JavaScript timing involved, so it can't drift out of sync with the
+   digits), toggleable independently of everything else.
 
-Labels are fixed literal text (matching the original brief for the first five), not dynamically
-recomputed — only the **time itself** shifts automatically with DST, via the IANA identifier.
-`AET`/`NZT` for Melbourne and Auckland follow the same generic-family-abbreviation convention
-already set by `AET` for Sydney (rather than the more precise but changing `AEDT`/`AEST`/
-`NZDT`/`NZST`) — flagging this choice explicitly since it wasn't specified; trivial to change in
-`actions/WidgetView.php` if a different label is wanted.
+**Design trade-off worth knowing:** Zabbix's only real "repeatable list" field type
+(`CWidgetFieldColumnsList`) is a heavyweight popup-editor subsystem built specifically for
+`tophosts`' table columns (thresholds, drag-reorder, its own controller action) — genuinely
+disproportionate for a small row of clocks. v2.0 uses a **fixed 8 slots** instead, each an
+ordinary field trio. This means "add a 9th clock" requires bumping
+`Widget::CLOCK_SLOT_COUNT` in code and adding the matching fields, not just clicking "add" in
+the UI — a real, deliberate limitation, not an oversight.
 
 ## Timezone coverage audit against `benarbejde/sites.csv`
 
 Checked the real source of truth (`benarbejde/sites.csv`, 54 site rows) for every distinct
 `Timezone` value actually in use, and cross-checked each one against the real installed IANA
 tzdata (`/usr/share/zoneinfo`, via Python's `zoneinfo` module) rather than assuming any of them
-are valid or already covered.
+are valid or already covered. This audit predates v2.0's configurability and remains accurate as
+a record of what was checked and why — v2.0 doesn't change which zones are covered by default,
+just makes it editable.
 
-**19 distinct timezone values in `sites.csv`.** After adding Melbourne and Auckland, this
-widget covers 5 of them (`America/Los_Angeles`, `America/New_York`, `Europe/London`,
-`Europe/Copenhagen`, `Australia/Sydney` — `Australia/Melbourne` and `Pacific/Auckland` are the
-same zones as Sydney/Auckland already listed above).
+**19 distinct timezone values in `sites.csv`.** The widget's default configuration (7 clocks,
+same as v1.1) covers 5 of them (`America/Los_Angeles`, `America/New_York`, `Europe/London`,
+`Europe/Copenhagen`, `Australia/Sydney` — `Australia/Melbourne` and `Pacific/Auckland` are
+additional zones of their own).
 
 ### No MDT (Mountain Time) sites
 
@@ -61,7 +82,7 @@ Checked every `Timezone` value in `sites.csv` for `America/Denver`, `America/Boi
 `America/Edmonton`, `America/Phoenix`, or any other Mountain-time zone: **none present.** No
 site in `sites.csv` is on Mountain Time.
 
-### Sites on timezones this widget does NOT cover
+### Sites on timezones not in the default configuration
 
 | Timezone              | Sites (Site code — City)                                              |
 |------------------------|-------------------------------------------------------------------------|
@@ -78,9 +99,8 @@ site in `sites.csv` is on Mountain Time.
 | `UTC`                  | CLD — CloudSite, VRK — VRack *(both infra-only "cloud sites", not staffed offices)* |
 | `Europe/Aarhus`        | AAR — Aarhus *(see bug flagged below — not a real zone at all)*         |
 
-None of these were added to the widget — they weren't requested, and 12 more clocks would no
-longer fit the "single horizontal row" brief. Listed here purely as the factual answer to "do we
-have any cities on timezones not covered."
+As of v2.0, adding any of these is a dashboard-edit-form change (pick a spare slot's time zone),
+not a code change — see "Configuring the clocks" below.
 
 **Note on `America/Montreal` (MTL):** confirmed via `readlink` on the real installed tzdata that
 this is a genuine, still-valid IANA zone — a backward-compatibility symlink to
@@ -135,15 +155,15 @@ worldclocks/
 	"type": "widget",
 	"name": "World Clocks",
 	"namespace": "Worldclocks",
-	"version": "1.1",
+	"version": "2.0",
 	"author": "Example Music Limited",
-	"description": "Displays a row of live clocks for Los Angeles, New York, London, Copenhagen, Sydney, Melbourne and Auckland.",
+	"description": "Configurable row of live analog or digital clocks for up to 8 IANA time zones, with selectable colours.",
 	"url": "",
 	"widget": {
 		"js_class": "CWidgetWorldClocks",
 		"size": {
 			"width": 36,
-			"height": 3
+			"height": 4
 		},
 		"refresh_rate": 0
 	},
@@ -159,9 +179,10 @@ worldclocks/
 }
 ```
 
-`refresh_rate: 0` is deliberate, matching Zabbix's own native URL widget's choice — nothing here
-ever needs a server round-trip after the first load, since the clocks tick client-side every
-second.
+`refresh_rate: 0` is still deliberate, matching Zabbix's own native URL widget's choice —
+nothing here ever needs a server round-trip after the first load, since every clock ticks
+client-side every second. Default height bumped from 3 to 4 (vs v1.x) to give analog mode's SVG
+faces a bit more room; digital mode just gets slightly more whitespace, harmless either way.
 
 ### `Widget.php`
 
@@ -177,6 +198,30 @@ use Zabbix\Core\CWidget;
 
 class Widget extends CWidget {
 
+	public const TYPE_DIGITAL = 0;
+	public const TYPE_ANALOG = 1;
+
+	// Zabbix has no generic "repeatable field group" type outside the heavyweight
+	// CWidgetFieldColumnsList (built for tophosts' table columns, not a fit here) -- a fixed
+	// number of optional slots, each a plain CWidgetFieldTimeZone + two CWidgetFieldTextBox
+	// fields, is the right-sized real API for a small, fixed-layout "row of clocks" widget.
+	public const CLOCK_SLOT_COUNT = 8;
+
+	// Pre-filled defaults for a freshly-added widget instance -- editable afterwards via the
+	// widget's own configuration form (includes/WidgetForm.php), not hardcoded at runtime.
+	// "label" left blank on every entry so the front end computes the live, DST-correct zone
+	// abbreviation via Intl.DateTimeFormat rather than a fixed string that can go stale twice a
+	// year (e.g. London showing "BST" through a UK winter).
+	public const DEFAULT_CLOCKS = [
+		['tz' => 'America/Los_Angeles', 'city' => 'Los Angeles', 'label' => ''],
+		['tz' => 'America/New_York',    'city' => 'New York',    'label' => ''],
+		['tz' => 'Europe/London',       'city' => 'London',      'label' => ''],
+		['tz' => 'Europe/Copenhagen',   'city' => 'Copenhagen',  'label' => ''],
+		['tz' => 'Australia/Sydney',    'city' => 'Sydney',      'label' => ''],
+		['tz' => 'Australia/Melbourne', 'city' => 'Melbourne',   'label' => ''],
+		['tz' => 'Pacific/Auckland',    'city' => 'Auckland',    'label' => '']
+	];
+
 	public function getDefaultName(): string {
 		return _('World Clocks');
 	}
@@ -189,26 +234,96 @@ class Widget extends CWidget {
 <?php declare(strict_types = 0);
 /**
  * World Clocks widget form.
- *
- * The seven clocks (time zone, label, city) are fixed in WidgetView.php rather than
- * user-configurable, so this form intentionally adds no fields of its own. Zabbix's core
- * CWidget::getForm() still adds the standard "Refresh interval" field automatically.
  */
 
 namespace Modules\Worldclocks\Includes;
 
 use Zabbix\Widgets\CWidgetForm;
 
+use Zabbix\Widgets\Fields\{
+	CWidgetFieldCheckBox,
+	CWidgetFieldColor,
+	CWidgetFieldRadioButtonList,
+	CWidgetFieldTextBox,
+	CWidgetFieldTimeZone
+};
+
+use CTimezoneHelper;
+
+use Modules\Worldclocks\Widget;
+
 class WidgetForm extends CWidgetForm {
 
+	public function validate(bool $strict = false): array {
+		$errors = parent::validate($strict);
+
+		if ($errors) {
+			return $errors;
+		}
+
+		$has_clock = false;
+
+		for ($i = 1; $i <= Widget::CLOCK_SLOT_COUNT; $i++) {
+			if ($this->getFieldValue('tz_'.$i) !== '') {
+				$has_clock = true;
+				break;
+			}
+		}
+
+		if (!$has_clock) {
+			$errors[] = _('At least one clock (time zone) must be configured.');
+		}
+
+		return $errors;
+	}
+
 	public function addFields(): self {
+		$this
+			->addField(
+				(new CWidgetFieldRadioButtonList('clock_type', _('Clock type'), [
+					Widget::TYPE_DIGITAL => _('Digital'),
+					Widget::TYPE_ANALOG => _('Analog')
+				]))->setDefault(Widget::TYPE_DIGITAL)
+			)
+			->addField(
+				(new CWidgetFieldCheckBox('blink_colon', _('Blink colon (digital only)')))->setDefault(0)
+			)
+			->addField(
+				(new CWidgetFieldColor('fg_color', _('Foreground colour')))->allowInherited()
+			)
+			->addField(
+				(new CWidgetFieldColor('bg_color', _('Background colour')))->allowInherited()
+			);
+
+		// Real IANA identifiers only (PHP's own DateTimeZone::listIdentifiers(), via
+		// CTimezoneHelper::getList()) -- deliberately omitting the "System default"/"Local
+		// default" entries CWidgetFieldTimeZone would otherwise add by default, since those are
+		// relative to the server/browser rather than a specific fixed city, which doesn't fit
+		// this widget's actual purpose.
+		$timezone_values = ['' => _('(not used)')] + CTimezoneHelper::getList();
+
+		for ($i = 1; $i <= Widget::CLOCK_SLOT_COUNT; $i++) {
+			$default = Widget::DEFAULT_CLOCKS[$i - 1] ?? ['tz' => '', 'city' => '', 'label' => ''];
+
+			$this
+				->addField(
+					(new CWidgetFieldTimeZone('tz_'.$i, _s('Clock %1$d — Time zone', $i), $timezone_values))
+						->setDefault($default['tz'])
+				)
+				->addField(
+					(new CWidgetFieldTextBox('city_'.$i, _s('Clock %1$d — City', $i)))
+						->setDefault($default['city'])
+				)
+				->addField(
+					(new CWidgetFieldTextBox('label_'.$i, _s('Clock %1$d — Label (blank = auto)', $i)))
+						->setDefault($default['label'])
+				);
+		}
+
 		return $this;
 	}
 }
 ```
-
-Confirmed against the real `CWidget::getForm()`: it always injects the "Refresh interval" field
-itself before calling `addFields()`, so an empty form here is genuinely valid, not a shortcut.
 
 ### `actions/WidgetView.php`
 
@@ -217,9 +332,9 @@ itself before calling `addFields()`, so an empty form here is genuinely valid, n
 /**
  * World Clocks widget view action.
  *
- * The clock list (IANA time zone, fixed label, city) is the single source of truth for the
- * widget's content -- defined once here in PHP and rendered into data-tz attributes; the
- * front-end JavaScript reads those attributes rather than duplicating this list.
+ * Reads the operator's configured clock slots (Widget::CLOCK_SLOT_COUNT of them, each a
+ * tz_N/city_N/label_N field trio) and passes only the populated ones down as a plain list --
+ * the front end never needs to know about the fixed slot count.
  */
 
 namespace Modules\Worldclocks\Actions;
@@ -227,31 +342,55 @@ namespace Modules\Worldclocks\Actions;
 use CControllerDashboardWidgetView,
 	CControllerResponseData;
 
+use Modules\Worldclocks\Widget;
+
 class WidgetView extends CControllerDashboardWidgetView {
 
 	protected function doAction(): void {
+		$clocks = [];
+
+		for ($i = 1; $i <= Widget::CLOCK_SLOT_COUNT; $i++) {
+			$tz = $this->fields_values['tz_'.$i];
+
+			if ($tz === '') {
+				continue;
+			}
+
+			$city = $this->fields_values['city_'.$i];
+
+			$clocks[] = [
+				'tz' => $tz,
+				'city' => $city !== '' ? $city : $this->deriveCityFromTimezone($tz),
+				'label' => $this->fields_values['label_'.$i]
+			];
+		}
+
 		$this->setResponse(new CControllerResponseData([
 			'name' => $this->getInput('name', $this->widget->getDefaultName()),
-			'clocks' => [
-				['tz' => 'America/Los_Angeles', 'label' => 'PDT',     'city' => 'Los Angeles'],
-				['tz' => 'America/New_York',    'label' => 'EDT',     'city' => 'New York'],
-				['tz' => 'Europe/London',       'label' => 'BST/GMT', 'city' => 'London'],
-				['tz' => 'Europe/Copenhagen',   'label' => 'CET',     'city' => 'Copenhagen'],
-				['tz' => 'Australia/Sydney',    'label' => 'AET',     'city' => 'Sydney'],
-				['tz' => 'Australia/Melbourne', 'label' => 'AET',     'city' => 'Melbourne'],
-				['tz' => 'Pacific/Auckland',    'label' => 'NZT',     'city' => 'Auckland']
-			],
+			'clocks' => $clocks,
+			'clock_type' => (int) $this->fields_values['clock_type'],
+			'blink_colon' => $this->fields_values['blink_colon'] == 1,
+			'fg_color' => $this->fields_values['fg_color'],
+			'bg_color' => $this->fields_values['bg_color'],
 			'user' => [
 				'debug_mode' => $this->getDebugMode()
 			]
 		]));
 	}
+
+	/**
+	 * Fallback city label when the operator leaves the City field blank -- the last path
+	 * segment of the IANA identifier with underscores turned into spaces, e.g.
+	 * "America/Los_Angeles" -> "Los Angeles".
+	 */
+	private function deriveCityFromTimezone(string $tz): string {
+		$pos = strrpos($tz, '/');
+		$name = $pos === false ? $tz : substr($tz, $pos + 1);
+
+		return str_replace('_', ' ', $name);
+	}
 }
 ```
-
-Adding or removing a clock only ever requires editing this one array — nothing else in the
-module needs to change (the view renders whatever's in `$data['clocks']`, and the JS is fully
-generic, driven entirely by each cell's own `data-tz` attribute).
 
 ### `views/widget.view.php`
 
@@ -260,23 +399,67 @@ generic, driven entirely by each cell's own `data-tz` attribute).
 /**
  * World Clocks widget view.
  *
- * Renders one .worldclocks-cell per configured clock. The time text is filled in and ticked
- * every second entirely client-side (assets/js/class.widget.js), so the "--:--:--" placeholder
- * here is only ever visible for the instant before JavaScript first runs.
+ * Renders one .worldclocks-cell per configured clock, digital or analog per $data['clock_type'].
+ * All ticking (time, and the auto-computed label when the operator left it blank) happens
+ * entirely client-side every second (assets/js/class.widget.js) -- this view only ever needs to
+ * render the initial static structure once.
  *
  * @var CView $this
  * @var array $data
  */
 
+use Modules\Worldclocks\Widget;
+
 $row = (new CDiv())->addClass('worldclocks-row');
+
+if ($data['fg_color'] !== '') {
+	$row->addStyle('--worldclocks-fg: #'.$data['fg_color'].';');
+}
+
+if ($data['bg_color'] !== '') {
+	$row->addStyle('--worldclocks-bg: #'.$data['bg_color'].';');
+}
+
+$is_analog = ($data['clock_type'] == Widget::TYPE_ANALOG);
+
+if ($is_analog) {
+	$row->addClass('worldclocks-analog');
+}
 
 foreach ($data['clocks'] as $clock) {
 	$cell = (new CDiv())
 		->addClass('worldclocks-cell')
 		->setAttribute('data-tz', $clock['tz']);
 
-	$cell->addItem((new CDiv($clock['label']))->addClass('worldclocks-label'));
-	$cell->addItem((new CDiv('--:--:--'))->addClass('worldclocks-time'));
+	if ($is_analog) {
+		$cell->addItem((new CClock())->setEnabled(true));
+	}
+	else {
+		$time = (new CDiv([
+			(new CSpan('--'))->addClass('worldclocks-h'),
+			(new CSpan(':'))->addClass('worldclocks-colon'),
+			(new CSpan('--'))->addClass('worldclocks-m'),
+			(new CSpan(':'))->addClass('worldclocks-colon'),
+			(new CSpan('--'))->addClass('worldclocks-s')
+		]))->addClass('worldclocks-time');
+
+		if ($data['blink_colon']) {
+			$time->addClass('worldclocks-blink');
+		}
+
+		$cell->addItem($time);
+	}
+
+	$label = (new CDiv($clock['label']))->addClass('worldclocks-label');
+
+	if ($clock['label'] === '') {
+		// No manual label -- assets/js/class.widget.js computes and fills this in every tick
+		// via Intl.DateTimeFormat's timeZoneName, so it stays correct across DST transitions
+		// (e.g. London genuinely shows GMT or BST depending on the date, not a fixed string).
+		$label->setAttribute('data-auto', '1');
+	}
+
+	$cell->addItem($label);
 	$cell->addItem((new CDiv($clock['city']))->addClass('worldclocks-city'));
 
 	$row->addItem($cell);
@@ -287,6 +470,10 @@ foreach ($data['clocks'] as $clock) {
 	->show();
 ```
 
+`CClock` is reused directly from Zabbix's own core (`include/classes/html/CClock.php`) — the
+exact same PHP class the native Clock widget uses to build its analog SVG face and hands, not a
+hand-rolled reimplementation.
+
 ### `views/widget.edit.php`
 
 ```php
@@ -294,15 +481,45 @@ foreach ($data['clocks'] as $clock) {
 /**
  * World Clocks widget edit form view.
  *
- * No custom fields -- the clocks are fixed (see actions/WidgetView.php). CWidgetFormView still
- * renders the standard "Refresh interval" field that Zabbix's core adds automatically to every
- * widget's form.
- *
  * @var CView $this
  * @var array $data
  */
 
-(new CWidgetFormView($data))
+use Modules\Worldclocks\Widget;
+
+$form = (new CWidgetFormView($data))
+	->addField(
+		new CWidgetFieldRadioButtonListView($data['fields']['clock_type'])
+	)
+	->addField(
+		new CWidgetFieldCheckBoxView($data['fields']['blink_colon'])
+	)
+	->addField(
+		new CWidgetFieldColorView($data['fields']['fg_color'])
+	)
+	->addField(
+		new CWidgetFieldColorView($data['fields']['bg_color'])
+	);
+
+$clocks_fieldset = new CWidgetFormFieldsetCollapsibleView(_('Clocks'));
+
+for ($i = 1; $i <= Widget::CLOCK_SLOT_COUNT; $i++) {
+	$clocks_fieldset->addFieldsGroup(
+		(new CWidgetFieldsGroupView(_s('Clock %1$d', $i)))
+			->addField(
+				new CWidgetFieldTimeZoneView($data['fields']['tz_'.$i])
+			)
+			->addField(
+				new CWidgetFieldTextBoxView($data['fields']['city_'.$i])
+			)
+			->addField(
+				new CWidgetFieldTextBoxView($data['fields']['label_'.$i])
+			)
+	);
+}
+
+$form
+	->addFieldset($clocks_fieldset)
 	->show();
 ```
 
@@ -313,18 +530,29 @@ foreach ($data['clocks'] as $clock) {
  * World Clocks widget front-end class.
  *
  * Lifecycle methods (onInitialize, processUpdateResponse, onDeactivate) match the pattern used
- * by Zabbix's own native Clock widget (widgets/clock/assets/js/class.widget.js): the server
- * renders the clock cells once (see views/widget.view.php), then this class finds them via
- * this._target and ticks their displayed time every second entirely client-side using
- * Intl.DateTimeFormat against each cell's data-tz attribute -- no further server round trips.
+ * by Zabbix's own native Clock widget. The server renders the clock cells once (see
+ * views/widget.view.php), then this class finds them via this._target and ticks every second
+ * entirely client-side using Intl.DateTimeFormat against each cell's data-tz attribute -- no
+ * further server round trips.
+ *
+ * Digital mode updates three <span> digit groups per cell (hour/minute/second) around two static
+ * colon characters, so the colon can blink via CSS without the digits themselves flickering.
+ * Analog mode rotates the same .clock-hand-h/-m/-s elements Zabbix's own native Clock widget
+ * uses (assets/css/widget.css reuses that exact SVG markup via CClock.php), computed per-cell in
+ * that cell's own time zone rather than the browser's local time.
  */
 class CWidgetWorldClocks extends CWidget {
+
+	static TYPE_DIGITAL = 0;
+	static TYPE_ANALOG = 1;
 
 	static UPDATE_INTERVAL_MS = 1000;
 
 	onInitialize() {
 		this._interval_id = null;
-		this._formatters = new Map();
+		this._clock_type = CWidgetWorldClocks.TYPE_DIGITAL;
+		this._time_formatters = new Map();
+		this._label_formatters = new Map();
 	}
 
 	onDeactivate() {
@@ -333,6 +561,8 @@ class CWidgetWorldClocks extends CWidget {
 
 	processUpdateResponse(response) {
 		super.processUpdateResponse(response);
+
+		this._clock_type = response.clock_type ?? CWidgetWorldClocks.TYPE_DIGITAL;
 
 		this._stopClock();
 		this._startClock();
@@ -351,16 +581,15 @@ class CWidgetWorldClocks extends CWidget {
 	}
 
 	/**
-	 * One Intl.DateTimeFormat instance per time zone, reused across ticks rather than
-	 * reconstructed every second.
+	 * One Intl.DateTimeFormat instance per time zone for the digits, reused across ticks.
 	 *
 	 * @param {string} time_zone  IANA time zone identifier, e.g. "Europe/London".
 	 *
 	 * @returns {Intl.DateTimeFormat}
 	 */
-	_getFormatter(time_zone) {
-		if (!this._formatters.has(time_zone)) {
-			this._formatters.set(time_zone, new Intl.DateTimeFormat('en-GB', {
+	_getTimeFormatter(time_zone) {
+		if (!this._time_formatters.has(time_zone)) {
+			this._time_formatters.set(time_zone, new Intl.DateTimeFormat('en-GB', {
 				timeZone: time_zone,
 				hourCycle: 'h23',
 				hour: '2-digit',
@@ -369,25 +598,47 @@ class CWidgetWorldClocks extends CWidget {
 			}));
 		}
 
-		return this._formatters.get(time_zone);
+		return this._time_formatters.get(time_zone);
 	}
 
 	/**
-	 * Builds a deterministic "HH:MM:SS" string for the given time zone, independent of the
-	 * browser's own locale punctuation/ordering -- formatToParts() is used (rather than trusting
-	 * the formatter's own formatted string) specifically so the separator and field order stay
-	 * fixed regardless of which locale the browser reports.
+	 * One Intl.DateTimeFormat instance per time zone for the auto-computed zone abbreviation
+	 * (used only for cells whose Label field was left blank -- see views/widget.view.php's
+	 * data-auto attribute). "short" asks ICU for e.g. "GMT"/"BST"/"PDT" rather than a fixed
+	 * offset; exact output depends on the browser's own ICU data, not something this code
+	 * controls.
 	 *
+	 * @param {string} time_zone
+	 *
+	 * @returns {Intl.DateTimeFormat}
+	 */
+	_getLabelFormatter(time_zone) {
+		if (!this._label_formatters.has(time_zone)) {
+			this._label_formatters.set(time_zone, new Intl.DateTimeFormat('en-GB', {
+				timeZone: time_zone,
+				timeZoneName: 'short',
+				hour: '2-digit'
+			}));
+		}
+
+		return this._label_formatters.get(time_zone);
+	}
+
+	/**
 	 * @param {string} time_zone
 	 * @param {Date}   now
 	 *
-	 * @returns {string}
+	 * @returns {{hour: number, minute: number, second: number}}
 	 */
-	_formatTime(time_zone, now) {
-		const parts = this._getFormatter(time_zone).formatToParts(now);
-		const get = type => parts.find(part => part.type === type)?.value ?? '--';
+	_getTimeParts(time_zone, now) {
+		const parts = this._getTimeFormatter(time_zone).formatToParts(now);
+		const get = type => parseInt(parts.find(part => part.type === type)?.value ?? '0', 10);
 
-		return `${get('hour')}:${get('minute')}:${get('second')}`;
+		return {
+			hour: get('hour'),
+			minute: get('minute'),
+			second: get('second')
+		};
 	}
 
 	_tick() {
@@ -395,19 +646,92 @@ class CWidgetWorldClocks extends CWidget {
 
 		for (const cell of this._target.querySelectorAll('.worldclocks-cell')) {
 			const time_zone = cell.dataset.tz;
-			const time_element = cell.querySelector('.worldclocks-time');
 
-			if (time_zone === undefined || time_element === null) {
+			if (time_zone === undefined) {
 				continue;
 			}
 
 			try {
-				time_element.textContent = this._formatTime(time_zone, now);
+				const time = this._getTimeParts(time_zone, now);
+
+				if (this._clock_type === CWidgetWorldClocks.TYPE_ANALOG) {
+					this._tickAnalog(cell, time);
+				}
+				else {
+					this._tickDigital(cell, time);
+				}
 			}
 			catch (error) {
-				// Invalid/unsupported IANA time zone identifier -- leave the placeholder in place.
-				time_element.textContent = '--:--:--';
+				// Invalid/unsupported IANA time zone identifier -- leave whatever was last shown.
 			}
+
+			this._tickLabel(cell, time_zone, now);
+		}
+	}
+
+	_tickDigital(cell, time) {
+		const pad = value => String(value).padStart(2, '0');
+
+		const h = cell.querySelector('.worldclocks-h');
+		const m = cell.querySelector('.worldclocks-m');
+		const s = cell.querySelector('.worldclocks-s');
+
+		if (h !== null) {
+			h.textContent = pad(time.hour);
+		}
+
+		if (m !== null) {
+			m.textContent = pad(time.minute);
+		}
+
+		if (s !== null) {
+			s.textContent = pad(time.second);
+		}
+	}
+
+	_tickAnalog(cell, time) {
+		const hand_h = cell.querySelector('.clock-hand-h');
+		const hand_m = cell.querySelector('.clock-hand-m');
+		const hand_s = cell.querySelector('.clock-hand-s');
+
+		const h = time.hour % 12;
+		const m = time.minute;
+		const s = time.second;
+
+		if (hand_h !== null) {
+			this._rotateHand(hand_h, 30 * (h + m / 60 + s / 3600));
+		}
+
+		if (hand_m !== null) {
+			this._rotateHand(hand_m, 6 * (m + s / 60));
+		}
+
+		if (hand_s !== null) {
+			this._rotateHand(hand_s, 6 * s);
+		}
+	}
+
+	_rotateHand(hand_element, degrees) {
+		hand_element.setAttribute('transform', `rotate(${degrees} 50 50)`);
+	}
+
+	_tickLabel(cell, time_zone, now) {
+		const label_element = cell.querySelector('.worldclocks-label[data-auto]');
+
+		if (label_element === null) {
+			return;
+		}
+
+		try {
+			const parts = this._getLabelFormatter(time_zone).formatToParts(now);
+			const zone_name = parts.find(part => part.type === 'timeZoneName')?.value;
+
+			if (zone_name !== undefined) {
+				label_element.textContent = zone_name;
+			}
+		}
+		catch (error) {
+			// Leave whatever label text (placeholder or previous tick's value) is already there.
 		}
 	}
 }
@@ -419,16 +743,14 @@ class CWidgetWorldClocks extends CWidget {
 /**
  * World Clocks widget styling.
  *
- * Deliberately does not set `color` or `background-color` anywhere -- Zabbix's compiled
- * per-theme stylesheets (blue-theme.css / dark-theme.css / hc-light.css / hc-dark.css) set text
- * colour once at the page root and the dashboard widget body (.dashboard-grid-widget-body) is a
- * plain `display: contents` wrapper with no colour of its own, so leaving colour unset here
- * means every element simply inherits whatever the active theme already has, automatically,
- * without needing per-theme overrides or invented CSS variables that Zabbix does not actually
- * expose for third-party module use.
+ * --worldclocks-fg / --worldclocks-bg are set inline on .worldclocks-row only when the operator
+ * actually picks a colour (views/widget.view.php) -- left unset, `var(--worldclocks-fg, inherit)`
+ * falls back to inheriting the active Zabbix theme's own text colour exactly as before, so an
+ * unconfigured widget looks identical to v1. Foreground covers everything "moving/readable"
+ * (digital digits, analog hands and tick lines); background covers the backdrop (digital cell
+ * background, analog clock-face circle).
  *
- * Responsiveness is pure CSS (container queries against the widget's own box, not the viewport)
- * -- no JavaScript resize handling is needed.
+ * Responsiveness is pure CSS (container queries against the widget's own box, not the viewport).
  */
 
 .worldclocks-row {
@@ -442,6 +764,8 @@ class CWidgetWorldClocks extends CWidget {
 	padding: 10px;
 	box-sizing: border-box;
 	gap: 8px 4px;
+	color: var(--worldclocks-fg, inherit);
+	background-color: var(--worldclocks-bg, transparent);
 }
 
 .worldclocks-cell {
@@ -461,6 +785,7 @@ class CWidgetWorldClocks extends CWidget {
 	letter-spacing: 0.05em;
 	opacity: 0.75;
 	white-space: nowrap;
+	min-height: 1em;
 }
 
 .worldclocks-time {
@@ -480,10 +805,48 @@ class CWidgetWorldClocks extends CWidget {
 	max-width: 100%;
 }
 
-/* Narrower widget: seven columns get tight, shrink the clock face before anything wraps. */
+/* Blinking colon -- pure CSS, no JS synchronisation needed. */
+@keyframes worldclocks-blink {
+	50% {
+		opacity: 0;
+	}
+}
+
+.worldclocks-blink .worldclocks-colon {
+	animation: worldclocks-blink 1s steps(1) infinite;
+}
+
+/* Analog mode -- reuses Zabbix's own native <svg class="clock-svg"> markup (CClock.php), so hand
+   rotation (assets/js/class.widget.js) and the underlying dial geometry are identical to the
+   built-in Clock widget's own analog face. Only the colours are overridden here. */
+.worldclocks-row.worldclocks-analog .worldclocks-cell {
+	gap: 4px;
+}
+
+.worldclocks-row.worldclocks-analog .clock-svg {
+	width: 100%;
+	max-width: 90px;
+	height: auto;
+}
+
+.worldclocks-row.worldclocks-analog .clock-face {
+	fill: var(--worldclocks-bg, #ebebeb);
+}
+
+.worldclocks-row.worldclocks-analog .clock-hand,
+.worldclocks-row.worldclocks-analog .clock-hand-sec,
+.worldclocks-row.worldclocks-analog .clock-lines {
+	fill: var(--worldclocks-fg, #1f2c33);
+}
+
+/* Narrower widget: shrink the clock face/digits before anything wraps. */
 @container (max-width: 620px) {
 	.worldclocks-time {
 		font-size: 1.25em;
+	}
+
+	.worldclocks-row.worldclocks-analog .clock-svg {
+		max-width: 70px;
 	}
 }
 
@@ -497,9 +860,13 @@ class CWidgetWorldClocks extends CWidget {
 	.worldclocks-time {
 		font-size: 1.05em;
 	}
+
+	.worldclocks-row.worldclocks-analog .clock-svg {
+		max-width: 54px;
+	}
 }
 
-/* Too narrow for seven in a row: let cells wrap onto further lines, still centred and readable. */
+/* Too narrow for every clock in one row: let cells wrap onto further lines, still centred. */
 @container (max-width: 320px) {
 	.worldclocks-cell {
 		flex: 1 1 45%;
@@ -517,8 +884,9 @@ third-party modules). This is **not** `widgets/` — that would work until the n
 of `zabbix-frontend-php` silently wipes it.
 
 ```bash
-# Remove any prior copy first (e.g. the broken v1.0) -- unzip won't overwrite a
-# differently-shaped existing tree cleanly on its own.
+# Remove any prior copy first -- unzip won't overwrite a differently-shaped existing tree
+# cleanly on its own, and v1.x's fields don't exist any more (this would break saved widget
+# instances anyway -- see "Upgrading from v1.x" below).
 sudo rm -rf /usr/share/zabbix/modules/worldclocks
 
 # Unzip directly into modules/ -- the zip already contains the worldclocks/ folder itself
@@ -550,6 +918,16 @@ sudo find /usr/share/zabbix/modules/worldclocks -type d -exec chmod 755 {} \;
 sudo find /usr/share/zabbix/modules/worldclocks -type f -exec chmod 644 {} \;
 ```
 
+### Upgrading from v1.x
+
+v1.x widget instances stored no configuration at all (everything was hardcoded), so any
+existing "World Clocks" widget already on a dashboard has none of v2.0's new fields saved
+against it. After upgrading the module files, **open each existing World Clocks widget's edit
+dialog and Apply/Save it once** — Zabbix fills in v2.0's field defaults (the same 7 clocks,
+Digital mode, no colours, blink off) at that point. Until you do this, the widget still renders
+using whatever cached response it last had; the module files themselves are safe to upgrade with
+dashboards open.
+
 ## Enabling the widget
 
 1. Log into the Zabbix web UI as Admin.
@@ -563,21 +941,34 @@ sudo find /usr/share/zabbix/modules/worldclocks -type f -exec chmod 644 {} \;
 1. Open or create a dashboard, click **Edit dashboard**.
 2. **Add widget** (or click an empty cell).
 3. **Type**: select **World Clocks**.
-4. It has no configurable fields beyond the standard **Refresh interval** (harmless here — leave
-   at Default; the clocks tick themselves regardless).
-5. **Add**, then **Save changes**.
+4. **Clock type**: Digital or Analog.
+5. **Blink colon**: only affects Digital mode.
+6. **Foreground colour** / **Background colour**: pick from the colour swatch, or leave blank to
+   keep following the active Zabbix theme.
+7. Expand the **Clocks** section — 8 numbered groups, each with a **Time zone** dropdown (search
+   by typing, e.g. "Beirut" or "Toronto"), a **City** text field (what's actually shown on the
+   dashboard — leave blank to fall back to the time zone's own city segment, e.g.
+   `America/New_York` → "New York"), and a **Label** text field (leave blank for the live
+   auto-computed abbreviation, e.g. GMT/BST for London; type something to fix it, e.g. `UTC`).
+   Set a slot's Time zone to **(not used)** to hide that clock entirely.
+8. **Add**, then **Save changes**.
 
 ## Expected appearance
 
+Digital, default 7-clock configuration (labels shown here are what the *auto* computation is
+expected to produce for these zones around the given moment — verify visually once installed,
+since exact ICU output depends on the browser):
+
 ```
-   PDT          EDT        BST/GMT       CET          AET          AET          NZT
+   PDT          EDT          GMT          CET          AEST         AEST         NZDT
  11:32:41     14:32:41     19:32:41    20:32:41     05:32:41     05:32:41     07:32:41
 Los Angeles   New York      London     Copenhagen    Sydney      Melbourne    Auckland
 ```
 
-Text colour follows whichever Zabbix theme is active (light/dark/high-contrast) automatically,
-since none is hardcoded. Narrowing the widget shrinks the clock font progressively, then wraps
-onto further rows if it gets too tight for seven columns.
+Colour follows whichever Zabbix theme is active (light/dark/high-contrast) automatically unless
+you've picked explicit foreground/background colours. Narrowing the widget shrinks the clock
+font (and, in Analog mode, the clock face size) progressively, then wraps onto further rows if
+it gets too tight for every configured clock in one line.
 
 ## Troubleshooting
 
@@ -593,7 +984,7 @@ onto further rows if it gets too tight for seven columns.
   aborts Zabbix's own module loader partway through, taking every other widget down with it,
   not just this one. **`sudo rm -rf /usr/share/zabbix/modules/worldclocks`**, then
   **Administration → General → Modules → Scan directory** — every dashboard recovers
-  immediately. Reinstall using the current (v1.1+) code from this doc/zip, not an older copy.
+  immediately. Reinstall using the current code from this doc/zip, not an older copy.
 
 **Administration → General → Modules shows "Wrong Widget.php class name for module located
 at modules/worldclocks":**
@@ -605,18 +996,30 @@ at modules/worldclocks":**
 - This is also treated as a fatal error state by Zabbix's own module loader — see the entry
   above if dashboards stopped working entirely rather than just this widget failing to appear.
 
+**Widget's edit dialog shows "At least one clock (time zone) must be configured":**
+- Every one of the 8 Time zone dropdowns is set to "(not used)". Pick a real zone for at least
+  one slot.
+
 **Widget shows a blank/broken tile on the dashboard (but other dashboards/widgets work fine):**
 - Check Apache's error log for a PHP fatal: `sudo tail -50 /var/log/apache2/error.log`
 - Turn on Zabbix's own frontend debug mode (**Administration → General → GUI → Debug mode**, or
   per-user in profile) to get a debug panel with PHP errors directly in the dashboard widget.
 
-**Clocks show `--:--:--` and never update:**
+**Clocks show `--` / never update, or analog hands don't move:**
 - Open browser DevTools → Console on the dashboard page — a JS error there will show directly.
 - Confirm the JS file is actually being served: DevTools → Network tab, look for
   `modules/worldclocks/assets/js/class.widget.js` — if it's 404, re-check the file was copied to
   the right path and is readable.
 - If it loads but nothing updates, check `manifest.json`'s `"js_class"` value matches the JS
   file's `class CWidgetWorldClocks` name exactly (case-sensitive).
+
+**A clock's label never shows an abbreviation (auto mode) or colours don't apply:**
+- Auto labels: some IANA zones don't have a well-known short abbreviation in every browser's
+  ICU data — a numeric offset (e.g. `GMT+1`) instead of a letter code (e.g. `CET`) is the
+  browser doing that, not a bug in this widget; type a fixed Label for that clock if you want a
+  specific string regardless.
+- Colours: confirm the hex value was actually saved (re-open the widget's edit dialog) — a blank
+  colour field means "inherit theme", which is correct default behaviour, not a fault.
 
 **CSS not applying / clocks look unstyled:**
 - Confirm `assets/css/widget.css` is listed under `"assets": {"css": [...]}` in `manifest.json`
