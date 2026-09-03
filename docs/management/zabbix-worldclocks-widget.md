@@ -9,8 +9,20 @@ JavaScript lifecycle method below was checked against Zabbix's own shipped `widg
 Installable bundle: [`zabbix-worldclocks-widget.zip`](zabbix-worldclocks-widget.zip) (same
 contents as the code blocks below, already arranged as `worldclocks/...`).
 
-**Not yet live-tested** — built and packaged 2026-09-02/03, verified only by source inspection
-against the real Zabbix 7.0 package. First live install/test is planned for this evening.
+**v1.1 — real bug found and fixed on first live test, 2026-09-03:** v1.0 used PHP namespace
+`Widgets\Worldclocks\...`, copied from Zabbix's own bundled `widgets/clock` module without
+adjusting it for this module's actual install location (`modules/worldclocks/`, correctly
+*not* `widgets/`). `CModuleManager.php` derives the required namespace prefix from whichever
+top-level directory the module sits in — `Modules\Worldclocks\...` for `modules/`, not
+`Widgets\Worldclocks\...`. The mismatch produced `Wrong Widget.php class name for module
+located at modules/worldclocks.` — and because Zabbix's own `initModules()` has a genuine bug
+(a bare `return;` inside a plain `foreach` loop, confirmed by reading the real source: any
+module with a class-name mismatch aborts loading of *every module after it*, not just the
+broken one), this took down every dashboard for every user, including Admin, not just this
+widget. **If you hit this: `sudo rm -rf /usr/share/zabbix/modules/worldclocks`, then
+Administration → General → Modules → Scan directory, and every dashboard recovers
+immediately** — do this before anything else. v1.1 below has the corrected namespace
+(`Modules\Worldclocks\...` in all three PHP files) and is safe to install.
 
 ## Clocks shown
 
@@ -123,7 +135,7 @@ worldclocks/
 	"type": "widget",
 	"name": "World Clocks",
 	"namespace": "Worldclocks",
-	"version": "1.0",
+	"version": "1.1",
 	"author": "Example Music Limited",
 	"description": "Displays a row of live clocks for Los Angeles, New York, London, Copenhagen, Sydney, Melbourne and Auckland.",
 	"url": "",
@@ -159,7 +171,7 @@ second.
  * World Clocks widget module.
  */
 
-namespace Widgets\Worldclocks;
+namespace Modules\Worldclocks;
 
 use Zabbix\Core\CWidget;
 
@@ -183,7 +195,7 @@ class Widget extends CWidget {
  * CWidget::getForm() still adds the standard "Refresh interval" field automatically.
  */
 
-namespace Widgets\Worldclocks\Includes;
+namespace Modules\Worldclocks\Includes;
 
 use Zabbix\Widgets\CWidgetForm;
 
@@ -210,7 +222,7 @@ itself before calling `addFields()`, so an empty form here is genuinely valid, n
  * front-end JavaScript reads those attributes rather than duplicating this list.
  */
 
-namespace Widgets\Worldclocks\Actions;
+namespace Modules\Worldclocks\Actions;
 
 use CControllerDashboardWidgetView,
 	CControllerResponseData;
@@ -505,6 +517,10 @@ third-party modules). This is **not** `widgets/` — that would work until the n
 of `zabbix-frontend-php` silently wipes it.
 
 ```bash
+# Remove any prior copy first (e.g. the broken v1.0) -- unzip won't overwrite a
+# differently-shaped existing tree cleanly on its own.
+sudo rm -rf /usr/share/zabbix/modules/worldclocks
+
 # Unzip directly into modules/ -- the zip already contains the worldclocks/ folder itself
 sudo unzip zabbix-worldclocks-widget.zip -d /usr/share/zabbix/modules/
 ```
@@ -572,11 +588,25 @@ onto further rows if it gets too tight for seven columns.
 - Confirm ownership/permissions as above — if Apache's PHP process can't read the files, the
   manifest silently fails to load (no error shown, it just won't appear in the list).
 
-**Widget shows a blank/broken tile on the dashboard:**
+**Every dashboard says "permission denied" (or similar), even for Admin:**
+- This is the exact symptom of the v1.0 bug above — a module with a mismatched class name
+  aborts Zabbix's own module loader partway through, taking every other widget down with it,
+  not just this one. **`sudo rm -rf /usr/share/zabbix/modules/worldclocks`**, then
+  **Administration → General → Modules → Scan directory** — every dashboard recovers
+  immediately. Reinstall using the current (v1.1+) code from this doc/zip, not an older copy.
+
+**Administration → General → Modules shows "Wrong Widget.php class name for module located
+at modules/worldclocks":**
+- Every `namespace` line in the PHP files must read exactly `Modules\Worldclocks...` (case
+  matters, must match `ucfirst("modules")` = `Modules`, plus the manifest's own `"namespace":
+  "Worldclocks"` value) — **not** `Widgets\Worldclocks...`, which is what a module installed
+  under `widgets/` would need, not `modules/`. Check all three: `Widget.php`,
+  `actions/WidgetView.php`, `includes/WidgetForm.php`.
+- This is also treated as a fatal error state by Zabbix's own module loader — see the entry
+  above if dashboards stopped working entirely rather than just this widget failing to appear.
+
+**Widget shows a blank/broken tile on the dashboard (but other dashboards/widgets work fine):**
 - Check Apache's error log for a PHP fatal: `sudo tail -50 /var/log/apache2/error.log`
-- Common cause: a typo in a `namespace` line — every namespace in the PHP files must read
-  exactly `Widgets\Worldclocks...` (case matters, must match `ucfirst("worldclocks")` =
-  `Worldclocks`).
 - Turn on Zabbix's own frontend debug mode (**Administration → General → GUI → Debug mode**, or
   per-user in profile) to get a debug panel with PHP errors directly in the dashboard widget.
 
