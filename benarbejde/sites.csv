@@ -1,5 +1,5 @@
 Site,City,Country,CountryCode,Province,OfficeName,Street,PostalCode,Subnet,Gateway,DC,FW,Landline,Mobile,Timezone,AnsibleRegion,Entity
-AAR,Aarhus,Denmark,DK,Nord Jyland,,Åboulevarden 22,8000,192.168.86.0/24,192.168.86.253,192.168.86.10,192.168.86.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Aarhus,dk_site,Example Music (Danmark) ApS
+AAR,Aarhus,Denmark,DK,Nord Jyland,,Åboulevarden 22,8000,192.168.86.0/24,192.168.86.253,192.168.86.10,192.168.86.253,+45 00 000 xxx,+45 2x xxx xxx,Europe/Copenhagen,dk_site,Example Music (Danmark) ApS
 ABD,Aberdeen,United Kingdom,UK,Scotland,,1903 Aderson Drive,AB15 4YY,192.168.224.0/24,192.168.224.253,192.168.224.10,192.168.224.253,+44 1224 496 0xxx,+44 7700 900 2xxx,Europe/London,uk_site,Example Music (Scotland) Ltd
 AKL,Auckland,New Zealand,NZ,,,111D Cliffs Road,9012,192.168.93.0/24,192.168.93.253,192.168.93.10,192.168.93.253,+64 9 300 0xxx,+64 21 900 2xxx,Pacific/Auckland,apac_site,Example Music (New Zealand) Tapui
 AMS,Amsterdam,Netherlands,NL,North Holland,,Stationsplein,1012 AB,192.168.31.0/24,192.168.31.253,192.168.31.10,192.168.31.253,N/A,N/A,Europe/Amsterdam,eu_site,Example Music (Nederland) B.V.
