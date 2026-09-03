@@ -10,6 +10,13 @@
  ** since Microsoft-Windows-Setup is itself an architecture-tagged component in the windowsPE pass). Real arm64       **
  ** Windows Server media confirmed available (A64FRE build, efi/boot/bootaa64.efi present) before writing this.       **
  **                                                                                                                   **
+ ** FIXED 2026-09-03 (same real defect as ../headlessunattend.xml, found live): DiskID was "1" in both <Disk> and     **
+ ** <ImageInstall><InstallTo> — Microsoft's own docs confirm DiskID is 0-indexed ("0 specifies the first disk, 1     **
+ ** the second"), so this targeted a second physical disk that doesn't exist on a single-disk target. Also added the **
+ ** missing <ModifyPartitions> block (Microsoft's own reference pairs every <CreatePartitions> with one that applies  **
+ ** <Format>/<Letter> to the partition just created — without it the partition was never formatted). Both fixed to   **
+ ** DiskID=0 + NTFS/C: format, matching the amd64 file's fix exactly.                                                **
+ **                                                                                                                  **
  ** VirtIO guest driver injection: NOT part of this unattend.xml, a manual WinPE step.                               **
  **                                                                                                                  **
  ** Sample answer file for headless deployment                                                                       **
@@ -129,15 +136,24 @@
                             <Type>Primary</Type>
                         </CreatePartition>
                     </CreatePartitions>
+                    <ModifyPartitions>
+                        <ModifyPartition wcm:action="add">
+                            <Order>1</Order>
+                            <PartitionID>1</PartitionID>
+                            <Label>Windows</Label>
+                            <Letter>C</Letter>
+                            <Format>NTFS</Format>
+                        </ModifyPartition>
+                    </ModifyPartitions>
                     <WillWipeDisk>true</WillWipeDisk>
-                    <DiskID>1</DiskID>
+                    <DiskID>0</DiskID>
                 </Disk>
                 <WillShowUI>Never</WillShowUI>
             </DiskConfiguration>
             <ImageInstall>
                 <OSImage>
                     <InstallTo>
-                        <DiskID>1</DiskID>
+                        <DiskID>0</DiskID>
                         <PartitionID>1</PartitionID>
                     </InstallTo>
                     <WillShowUI>OnError</WillShowUI>
