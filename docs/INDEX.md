@@ -100,6 +100,7 @@ Ansible usage and reference — day-to-day operation, not build procedures (thos
 |------|--------|-------------|
 | [ansible/beginners_guide_to_ansible.md](ansible/beginners_guide_to_ansible.md) | NET-ANS-BEGIN-001 | **Start here for Ansible** — inventory/group_vars architecture, `add_host`, idempotency, `ansible.cfg`, sudo/become |
 | [ansible/Ansible_Windows_Guide.md](ansible/Ansible_Windows_Guide.md) | NET-ANS-WIN-001 | Day-to-day operation of the Windows playbook set (`windows_bootstrap` chain) |
+| [ansible/zabbix-playbooks-plan.md](ansible/zabbix-playbooks-plan.md) | NET-ANS-ZBXPLAN-001 | PLAN (not yet built) — `zabbix_server.yml`/`zabbix_proxy.yml`/`zabbix_agent.yml` design: real Zabbix 7.0 template names, PSK/API host-creation approach, decisions and their grounding |
 
 ---
 
