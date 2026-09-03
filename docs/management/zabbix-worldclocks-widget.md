@@ -102,6 +102,32 @@ type (built for integer-keyed selects), so `->setSaveType(ZBX_WIDGET_FIELD_TYPE_
 explicitly so the string IANA keys round-trip correctly. `views/widget.edit.php` swapped
 `CWidgetFieldTimeZoneView` for the matching `CWidgetFieldSelectView`.
 
+**v2.2 — a second real fatal, found on the very next live test of the v2.1 fix, 2026-09-03:**
+same symptom (every dashboard 500s), same wrong-log-file trap avoided this time by checking
+`zabbix_error.log` straight away. The new fatal:
+
+```
+PHP Fatal error:  Uncaught Error: Call to protected method Zabbix\Widgets\CWidgetField::setSaveType()
+from scope Modules\Worldclocks\Includes\WidgetForm in .../WidgetForm.php:85
+```
+
+v2.1's fix called `->setSaveType(ZBX_WIDGET_FIELD_TYPE_STR)` directly on a `CWidgetFieldSelect`
+instance from inside `WidgetForm.php`. Checked the real source before shipping this fix (unlike
+v2.0/v2.1, which hadn't verified this specific point): `CWidgetField::setSaveType()` is declared
+`protected`. PHP only allows a `protected` method to be called from within the defining class or
+its subclasses — `WidgetForm` doesn't extend `CWidgetField`, so calling it on a field instance
+held from outside that hierarchy is exactly what PHP blocks, regardless of holding a live object
+reference. Grepped every native Zabbix widget for real usage of
+`ZBX_WIDGET_FIELD_TYPE_STR` first: **every single one** sets it from inside a small dedicated
+field subclass (`CWidgetFieldTimeZone`, `CWidgetFieldTimePeriod`, `CWidgetFieldMultiSelect`,
+`svggraph`'s `CWidgetFieldDataSet`, etc.) — never externally. **Fixed** by adding
+`includes/CWidgetFieldTimezoneSelect.php`, a minimal subclass whose constructor calls
+`setSaveType()` from inside the class hierarchy where it's actually permitted, following the
+exact same pattern Zabbix's own code uses everywhere else this need comes up. Also double-checked
+every other externally-called setter this module actually uses (`setDefault`, `allowInherited`)
+against the real source before shipping this fix — both confirmed `public`, no further landmines
+in the current field usage.
+
 ## Timezone coverage audit against `benarbejde/sites.csv`
 
 Checked the real source of truth (`benarbejde/sites.csv`, 54 site rows) for every distinct
@@ -173,7 +199,8 @@ worldclocks/
 ├── actions/
 │   └── WidgetView.php
 ├── includes/
-│   └── WidgetForm.php
+│   ├── WidgetForm.php
+│   └── CWidgetFieldTimezoneSelect.php
 ├── views/
 │   ├── widget.view.php
 │   └── widget.edit.php
@@ -195,7 +222,7 @@ worldclocks/
 	"type": "widget",
 	"name": "World Clocks",
 	"namespace": "Worldclocks",
-	"version": "2.1",
+	"version": "2.2",
 	"author": "Example Music Limited",
 	"description": "Configurable row of live analog or digital clocks for up to 8 IANA time zones, with selectable colours.",
 	"url": "",
@@ -285,7 +312,6 @@ use Zabbix\Widgets\Fields\{
 	CWidgetFieldCheckBox,
 	CWidgetFieldColor,
 	CWidgetFieldRadioButtonList,
-	CWidgetFieldSelect,
 	CWidgetFieldTextBox
 };
 
@@ -336,17 +362,21 @@ class WidgetForm extends CWidgetForm {
 				(new CWidgetFieldColor('bg_color', _('Background colour')))->allowInherited()
 			);
 
-		// Deliberately plain CWidgetFieldSelect, not Zabbix's own CWidgetFieldTimeZone --
-		// confirmed live (2026-09-03) that CWidgetFieldTimeZone's $values constructor
-		// parameter is non-functional: its constructor is `$values === null ? [built-in
-		// defaults] : null`, so passing a custom array actually results in `null` being passed
-		// to the parent CWidgetFieldSelect, which requires a non-nullable array -- a hard
-		// TypeError on every dashboard load. Real IANA identifiers only (PHP's own
-		// DateTimeZone::listIdentifiers(), via CTimezoneHelper::getList(), confirmed to return
-		// the flat ["Europe/London" => "(UTC+00:00) Europe/London", ...] shape CWidgetFieldSelect
-		// expects) plus our own "(not used)" sentinel -- CWidgetFieldSelect defaults to
-		// ZBX_WIDGET_FIELD_TYPE_INT32 save type, so it must be set to STR explicitly for string
-		// zone keys to round-trip correctly.
+		// Deliberately plain CWidgetFieldSelect (via the local CWidgetFieldTimezoneSelect
+		// subclass), not Zabbix's own CWidgetFieldTimeZone -- confirmed live (2026-09-03) that
+		// CWidgetFieldTimeZone's $values constructor parameter is non-functional: its
+		// constructor is `$values === null ? [built-in defaults] : null`, so passing a custom
+		// array actually results in `null` being passed to the parent CWidgetFieldSelect, which
+		// requires a non-nullable array -- a hard TypeError on every dashboard load. Real IANA
+		// identifiers only (PHP's own DateTimeZone::listIdentifiers(), via
+		// CTimezoneHelper::getList(), confirmed to return the flat ["Europe/London" =>
+		// "(UTC+00:00) Europe/London", ...] shape CWidgetFieldSelect expects) plus our own
+		// "(not used)" sentinel. CWidgetFieldTimezoneSelect (includes/CWidgetFieldTimezoneSelect.php)
+		// exists solely to set the STR save type from inside the class hierarchy -- also
+		// confirmed live: CWidgetField::setSaveType() is `protected`, so it cannot be called
+		// externally on a plain CWidgetFieldSelect instance from here (a second real fatal, on
+		// the fix for the first one). Every native Zabbix field needing a non-default save type
+		// follows the same small-subclass pattern, never an external ->setSaveType() call.
 		$timezone_values = ['' => _('(not used)')] + CTimezoneHelper::getList();
 
 		for ($i = 1; $i <= Widget::CLOCK_SLOT_COUNT; $i++) {
@@ -354,9 +384,8 @@ class WidgetForm extends CWidgetForm {
 
 			$this
 				->addField(
-					(new CWidgetFieldSelect('tz_'.$i, _s('Clock %1$d — Time zone', $i), $timezone_values))
+					(new CWidgetFieldTimezoneSelect('tz_'.$i, _s('Clock %1$d — Time zone', $i), $timezone_values))
 						->setDefault($default['tz'])
-						->setSaveType(ZBX_WIDGET_FIELD_TYPE_STR)
 				)
 				->addField(
 					(new CWidgetFieldTextBox('city_'.$i, _s('Clock %1$d — City', $i)))
@@ -372,6 +401,42 @@ class WidgetForm extends CWidgetForm {
 	}
 }
 ```
+
+### `includes/CWidgetFieldTimezoneSelect.php`
+
+```php
+<?php declare(strict_types = 0);
+/**
+ * A plain CWidgetFieldSelect whose only purpose is calling setSaveType(ZBX_WIDGET_FIELD_TYPE_STR)
+ * from within the class hierarchy.
+ *
+ * Confirmed live (2026-09-03): CWidgetField::setSaveType() is declared `protected`, so it cannot
+ * be called on a CWidgetFieldSelect instance from outside CWidgetField's own class hierarchy
+ * (e.g. not from WidgetForm.php, which doesn't extend CWidgetField) -- PHP fatals with
+ * "Call to protected method ... from scope ...". Every native Zabbix field that needs a
+ * non-default save type (CWidgetFieldTimeZone, CWidgetFieldTimePeriod, CWidgetFieldMultiSelect,
+ * svggraph's CWidgetFieldDataSet, etc.) follows this exact same pattern -- a small dedicated
+ * subclass, never an external ->setSaveType() call. This is that subclass for this widget's
+ * string-keyed (IANA identifier) time zone select.
+ */
+
+namespace Modules\Worldclocks\Includes;
+
+use Zabbix\Widgets\Fields\CWidgetFieldSelect;
+
+class CWidgetFieldTimezoneSelect extends CWidgetFieldSelect {
+
+	public function __construct(string $name, string $label, array $values) {
+		parent::__construct($name, $label, $values);
+
+		$this->setSaveType(ZBX_WIDGET_FIELD_TYPE_STR);
+	}
+}
+```
+
+Doesn't override `DEFAULT_VIEW`, so it inherits `CWidgetFieldSelect`'s own value
+(`CWidgetFieldSelectView`) automatically — the edit form renders it exactly like any other plain
+select, no separate view class needed.
 
 ### `actions/WidgetView.php`
 
@@ -949,6 +1014,7 @@ sudo vim /usr/share/zabbix/modules/worldclocks/manifest.json
 sudo vim /usr/share/zabbix/modules/worldclocks/Widget.php
 sudo vim /usr/share/zabbix/modules/worldclocks/actions/WidgetView.php
 sudo vim /usr/share/zabbix/modules/worldclocks/includes/WidgetForm.php
+sudo vim /usr/share/zabbix/modules/worldclocks/includes/CWidgetFieldTimezoneSelect.php
 sudo vim /usr/share/zabbix/modules/worldclocks/views/widget.view.php
 sudo vim /usr/share/zabbix/modules/worldclocks/views/widget.edit.php
 sudo vim /usr/share/zabbix/modules/worldclocks/assets/js/class.widget.js
