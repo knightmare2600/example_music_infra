@@ -128,6 +128,20 @@ every other externally-called setter this module actually uses (`setDefault`, `a
 against the real source before shipping this fix — both confirmed `public`, no further landmines
 in the current field usage.
 
+**v2.3 — colour pickers didn't render at all, 2026-09-03:** not a crash this time — Robert
+confirmed v2.2 fixed the 500s and the widget worked, but the Foreground/Background colour
+fields in the edit form showed no actual colour-picker swatch/popup. Checked the real
+`CWidgetFieldColorView` source: it renders each colour field with `->appendColorPickerJs(false)`
+— deliberately **not** including the JS that activates the interactive picker. That activation
+is left to each widget to do itself; the built-in Clock widget (which also has colour fields)
+does this in its own `views/widget.edit.js.php`, looping over every `.color-picker input` in its
+form and calling jQuery's `.colorpicker(...)` plugin on each. This widget never had that file at
+all — the fields rendered as plain (non-interactive) inputs the whole time, not a Zabbix
+bug, just a missing piece of this module. **Fixed** by adding `views/widget.edit.js.php`
+(adapted directly from Clock's own real code) and wiring it into `views/widget.edit.php` via
+`->includeJsFile('widget.edit.js.php')->addJavaScript('worldclocks_form.init();')` — the exact
+same chain Clock's own edit view ends with.
+
 ## Timezone coverage audit against `benarbejde/sites.csv`
 
 Checked the real source of truth (`benarbejde/sites.csv`, 54 site rows) for every distinct
@@ -203,7 +217,8 @@ worldclocks/
 │   └── CWidgetFieldTimezoneSelect.php
 ├── views/
 │   ├── widget.view.php
-│   └── widget.edit.php
+│   ├── widget.edit.php
+│   └── widget.edit.js.php
 └── assets/
     ├── js/
     │   └── class.widget.js
@@ -222,7 +237,7 @@ worldclocks/
 	"type": "widget",
 	"name": "World Clocks",
 	"namespace": "Worldclocks",
-	"version": "2.2",
+	"version": "2.3",
 	"author": "Example Music Limited",
 	"description": "Configurable row of live analog or digital clocks for up to 8 IANA time zones, with selectable colours.",
 	"url": "",
@@ -633,7 +648,40 @@ for ($i = 1; $i <= Widget::CLOCK_SLOT_COUNT; $i++) {
 
 $form
 	->addFieldset($clocks_fieldset)
+	->includeJsFile('widget.edit.js.php')
+	->addJavaScript('worldclocks_form.init();')
 	->show();
+```
+
+### `views/widget.edit.js.php`
+
+```php
+<?php declare(strict_types = 0);
+/**
+ * World Clocks widget form JS.
+ *
+ * Zabbix's own CWidgetFieldColorView deliberately renders each colour field with
+ * appendColorPickerJs(false) (confirmed live, 2026-09-03, by reading CColor.php/
+ * CWidgetFieldColorView.php directly) -- the interactive colour-picker popup is never activated
+ * automatically. Every native widget with a colour field (e.g. the built-in Clock widget) does
+ * this exact same manual activation itself in its own widget.edit.js.php; this is that file for
+ * this widget's fg_color/bg_color fields, adapted directly from Clock's own real code.
+ */
+?>
+
+window.worldclocks_form = new class {
+
+	init() {
+		const form = document.getElementById('widget-dialogue-form');
+
+		for (const colorpicker of form.querySelectorAll('.<?= ZBX_STYLE_COLOR_PICKER ?> input')) {
+			jQuery(colorpicker).colorpicker({
+				appendTo: '.overlay-dialogue-body',
+				use_default: true
+			});
+		}
+	}
+};
 ```
 
 ### `assets/js/class.widget.js`
@@ -1017,6 +1065,7 @@ sudo vim /usr/share/zabbix/modules/worldclocks/includes/WidgetForm.php
 sudo vim /usr/share/zabbix/modules/worldclocks/includes/CWidgetFieldTimezoneSelect.php
 sudo vim /usr/share/zabbix/modules/worldclocks/views/widget.view.php
 sudo vim /usr/share/zabbix/modules/worldclocks/views/widget.edit.php
+sudo vim /usr/share/zabbix/modules/worldclocks/views/widget.edit.js.php
 sudo vim /usr/share/zabbix/modules/worldclocks/assets/js/class.widget.js
 sudo vim /usr/share/zabbix/modules/worldclocks/assets/css/widget.css
 ```
