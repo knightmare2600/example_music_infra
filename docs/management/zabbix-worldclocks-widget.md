@@ -34,9 +34,12 @@ a real widget configuration form:
    uses), so the dial/hands look and behave identically to Zabbix's own analog clock — this
    widget just draws several of them, each independently ticking in its own time zone.
 2. **City/time zone selection, not hardcoded** — up to 8 clock slots, each with its own real
-   IANA time zone dropdown (Zabbix's own `CWidgetFieldTimeZone`, populated from PHP's actual
-   `DateTimeZone::listIdentifiers()` — the same underlying data source as the `sites.csv` audit
-   below), a City display name, and an optional Label override. Leave a slot's time zone set to
+   IANA time zone dropdown (`CWidgetFieldSelect`, populated from PHP's actual
+   `DateTimeZone::listIdentifiers()` via Zabbix's `CTimezoneHelper::getList()` — the same
+   underlying data source as the `sites.csv` audit below — see the v2.1 fix note further down for
+   why this is a plain `CWidgetFieldSelect` and not Zabbix's own, superficially more obvious,
+   `CWidgetFieldTimeZone`), a City display name, and an optional Label override. Leave a slot's
+   time zone set to
    "(not used)" to hide it.
 3. **The BST/GMT problem** — every clock's Label defaults to blank now, which means the front
    end computes the *live, technically-correct* zone abbreviation every second via
@@ -61,6 +64,43 @@ disproportionate for a small row of clocks. v2.0 uses a **fixed 8 slots** instea
 ordinary field trio. This means "add a 9th clock" requires bumping
 `Widget::CLOCK_SLOT_COUNT` in code and adding the matching fields, not just clicking "add" in
 the UI — a real, deliberate limitation, not an oversight.
+
+**v2.1 — real bug found and fixed on first live test of v2.0, 2026-09-03:** every dashboard
+returned a 500 the moment v2.0 was installed. Apache's *default* error log
+(`/var/log/apache2/error.log`) showed nothing — the custom Zabbix vhost from `zabbixme.sh` logs
+to its own file, `ErrorLog ${APACHE_LOG_DIR}/zabbix_error.log`, worth remembering for any future
+issue on this box. That log had the real PHP fatal:
+
+```
+PHP Fatal error:  Uncaught TypeError: Zabbix\Widgets\Fields\CWidgetFieldSelect::__construct():
+Argument #3 ($values) must be of type array, null given, called in
+.../CWidgetFieldTimeZone.php on line 27
+```
+
+v2.0 used Zabbix's own `CWidgetFieldTimeZone` field, passing it a custom `$values` array (a
+sentinel `"(not used)"` entry plus the real IANA list) to represent an empty/unused clock slot.
+That field's real constructor, read directly from the shipped source, is:
+
+```php
+public function __construct(string $name, ?string $label = null, ?array $values = null) {
+	parent::__construct($name, $label, $values === null
+		? [ /* built-in System default / Local default / full IANA list */ ]
+		: null
+	);
+```
+
+The ternary is inverted from what its signature suggests: supplying a custom `$values` array
+doesn't override the option list — it makes the constructor pass `null` to its own parent
+instead, which requires a non-nullable array, producing a hard fatal on every single dashboard
+load (this field gets built every time `CWidget::getForm()` runs, which happens for every widget
+on the page, not just this one). **Fixed** by using the plain `CWidgetFieldSelect` parent class
+directly instead of `CWidgetFieldTimeZone` — it takes a genuinely honoured `$values` array with
+no such inversion, populated the same way (`CTimezoneHelper::getList()`, confirmed to return the
+flat `["Europe/London" => "(UTC+00:00) Europe/London", ...]` shape this field expects) plus the
+`"(not used)"` sentinel. `CWidgetFieldSelect` defaults to `ZBX_WIDGET_FIELD_TYPE_INT32` save
+type (built for integer-keyed selects), so `->setSaveType(ZBX_WIDGET_FIELD_TYPE_STR)` is added
+explicitly so the string IANA keys round-trip correctly. `views/widget.edit.php` swapped
+`CWidgetFieldTimeZoneView` for the matching `CWidgetFieldSelectView`.
 
 ## Timezone coverage audit against `benarbejde/sites.csv`
 
@@ -155,7 +195,7 @@ worldclocks/
 	"type": "widget",
 	"name": "World Clocks",
 	"namespace": "Worldclocks",
-	"version": "2.0",
+	"version": "2.1",
 	"author": "Example Music Limited",
 	"description": "Configurable row of live analog or digital clocks for up to 8 IANA time zones, with selectable colours.",
 	"url": "",
@@ -203,8 +243,9 @@ class Widget extends CWidget {
 
 	// Zabbix has no generic "repeatable field group" type outside the heavyweight
 	// CWidgetFieldColumnsList (built for tophosts' table columns, not a fit here) -- a fixed
-	// number of optional slots, each a plain CWidgetFieldTimeZone + two CWidgetFieldTextBox
-	// fields, is the right-sized real API for a small, fixed-layout "row of clocks" widget.
+	// number of optional slots, each a plain CWidgetFieldSelect (time zone) + two
+	// CWidgetFieldTextBox fields, is the right-sized real API for a small, fixed-layout
+	// "row of clocks" widget.
 	public const CLOCK_SLOT_COUNT = 8;
 
 	// Pre-filled defaults for a freshly-added widget instance -- editable afterwards via the
@@ -244,8 +285,8 @@ use Zabbix\Widgets\Fields\{
 	CWidgetFieldCheckBox,
 	CWidgetFieldColor,
 	CWidgetFieldRadioButtonList,
-	CWidgetFieldTextBox,
-	CWidgetFieldTimeZone
+	CWidgetFieldSelect,
+	CWidgetFieldTextBox
 };
 
 use CTimezoneHelper;
@@ -295,11 +336,17 @@ class WidgetForm extends CWidgetForm {
 				(new CWidgetFieldColor('bg_color', _('Background colour')))->allowInherited()
 			);
 
-		// Real IANA identifiers only (PHP's own DateTimeZone::listIdentifiers(), via
-		// CTimezoneHelper::getList()) -- deliberately omitting the "System default"/"Local
-		// default" entries CWidgetFieldTimeZone would otherwise add by default, since those are
-		// relative to the server/browser rather than a specific fixed city, which doesn't fit
-		// this widget's actual purpose.
+		// Deliberately plain CWidgetFieldSelect, not Zabbix's own CWidgetFieldTimeZone --
+		// confirmed live (2026-09-03) that CWidgetFieldTimeZone's $values constructor
+		// parameter is non-functional: its constructor is `$values === null ? [built-in
+		// defaults] : null`, so passing a custom array actually results in `null` being passed
+		// to the parent CWidgetFieldSelect, which requires a non-nullable array -- a hard
+		// TypeError on every dashboard load. Real IANA identifiers only (PHP's own
+		// DateTimeZone::listIdentifiers(), via CTimezoneHelper::getList(), confirmed to return
+		// the flat ["Europe/London" => "(UTC+00:00) Europe/London", ...] shape CWidgetFieldSelect
+		// expects) plus our own "(not used)" sentinel -- CWidgetFieldSelect defaults to
+		// ZBX_WIDGET_FIELD_TYPE_INT32 save type, so it must be set to STR explicitly for string
+		// zone keys to round-trip correctly.
 		$timezone_values = ['' => _('(not used)')] + CTimezoneHelper::getList();
 
 		for ($i = 1; $i <= Widget::CLOCK_SLOT_COUNT; $i++) {
@@ -307,8 +354,9 @@ class WidgetForm extends CWidgetForm {
 
 			$this
 				->addField(
-					(new CWidgetFieldTimeZone('tz_'.$i, _s('Clock %1$d — Time zone', $i), $timezone_values))
+					(new CWidgetFieldSelect('tz_'.$i, _s('Clock %1$d — Time zone', $i), $timezone_values))
 						->setDefault($default['tz'])
+						->setSaveType(ZBX_WIDGET_FIELD_TYPE_STR)
 				)
 				->addField(
 					(new CWidgetFieldTextBox('city_'.$i, _s('Clock %1$d — City', $i)))
@@ -507,7 +555,7 @@ for ($i = 1; $i <= Widget::CLOCK_SLOT_COUNT; $i++) {
 	$clocks_fieldset->addFieldsGroup(
 		(new CWidgetFieldsGroupView(_s('Clock %1$d', $i)))
 			->addField(
-				new CWidgetFieldTimeZoneView($data['fields']['tz_'.$i])
+				new CWidgetFieldSelectView($data['fields']['tz_'.$i])
 			)
 			->addField(
 				new CWidgetFieldTextBoxView($data['fields']['city_'.$i])
@@ -1000,8 +1048,16 @@ at modules/worldclocks":**
 - Every one of the 8 Time zone dropdowns is set to "(not used)". Pick a real zone for at least
   one slot.
 
-**Widget shows a blank/broken tile on the dashboard (but other dashboards/widgets work fine):**
-- Check Apache's error log for a PHP fatal: `sudo tail -50 /var/log/apache2/error.log`
+**Whole dashboard 500s / widget shows a blank/broken tile:**
+- **Check the right error log.** The custom Zabbix vhost (from `zabbixme.sh`) logs to its own
+  file, not Apache's default: `grep -i errorlog /etc/apache2/sites-available/zabbix.conf` to
+  confirm the exact path (as of this writing: `/var/log/apache2/zabbix_error.log`), then
+  `sudo tail -150 /var/log/apache2/zabbix_error.log`. The default `/var/log/apache2/error.log`
+  will look completely clean even while this vhost is throwing fatals — confirmed live,
+  2026-09-03 (the v2.1 incident above).
+- If that's quiet too, check `/var/log/apache2/zabbix_access.log` for the actual HTTP status of
+  the request that failed, to confirm exactly which action 500'd and when, then cross-reference
+  the timestamp against the error log.
 - Turn on Zabbix's own frontend debug mode (**Administration → General → GUI → Debug mode**, or
   per-user in profile) to get a debug panel with PHP errors directly in the dashboard widget.
 
