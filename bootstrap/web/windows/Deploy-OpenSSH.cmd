@@ -63,6 +63,23 @@
 ::                      more of the same mistake, latent and untriggered so far since
 ::                      only x86_64 has been tested live. All three changed `::` -> REM,
 ::                      the only comment marker that's actually safe inside a block.
+:: 1.7.0   2026-09-04   Robert: deploy.cmd (a separate script covering WinPE-side driver
+::                      injection this file never did) was mostly duplicating this
+::                      script's own job, less robustly (hardcoded Y:/C: drives, no error
+::                      handling, no verification). Merged its two genuinely unique steps
+::                      in here and retired it: new Step 2 injects drivers into the
+::                      running WinPE environment itself (pnputil), and Step 9 now also
+::                      injects drivers into the offline target image via DISM,
+::                      immediately after the real detected target drive is confirmed --
+::                      critical for boot-time drivers (e.g. VirtIO storage) that must
+::                      already be present before Windows can even boot, which this
+::                      script's existing post-boot msiexec-based installs (Detect-
+::                      Platform.cmd/Install-OpenSSH.ps1, run by SetupComplete.cmd) can't
+::                      help with. Both assume X:\Tools\Drivers already exists in the
+::                      running WinPE session (same assumption deploy.cmd made) -- nothing
+::                      in this repo documents how that path gets staged onto the WinPE
+::                      boot media itself, presumed to be a manual step outside this
+::                      repo's tracked automation, flagged rather than guessed at.
 ::
 :: Purpose
 :: -------
@@ -72,19 +89,21 @@
 :: Sequence
 :: --------
 ::   1.  Arch detection
-::   2.  Find Windows installer media (Sources\Setup.exe)
-::   3.  Download headlessunattend.xml to %SYSTEMDRIVE%\ (WinPE RAM disk)
-::   4.  Launch Sources\Setup.exe /unattend /noreboot
-::   5.  PAUSE - PFY watches install and hits a key when complete
-::   6.  Enumerate drives for freshly installed Windows, excluding:
+::   2.  Inject drivers into the running WinPE environment (pnputil)
+::   3.  Find Windows installer media (Sources\Setup.exe)
+::   4.  Download headlessunattend.xml to %SYSTEMDRIVE%\ (WinPE RAM disk)
+::   5.  Launch Sources\Setup.exe /unattend /noreboot
+::   6.  PAUSE - PFY watches install and hits a key when complete
+::   7.  Enumerate drives for freshly installed Windows, excluding:
 ::         %SYSTEMDRIVE%                      - WinPE RAM disk
 ::         drives with \Sources\Setup.exe     - installer media
 ::         drives with \Sources\boot.wim      - WinPE CD/USB
-::   7.  Menu/confirm target drive
-::   8.  Create \Windows\Setup\Scripts\ and ProgramData\ExampleMusic\Drivers\
-::   9.  Download Detect-Platform.cmd, SetupComplete.cmd, Install-OpenSSH.ps1
-::  10.  Download arch-appropriate guest tool installers
-::  11.  Verify all files present
+::   8.  Menu/confirm target drive
+::   9.  Create \Windows\Setup\Scripts\ and ProgramData\ExampleMusic\Drivers\,
+::       inject drivers into the offline target image (DISM)
+::  10.  Download Detect-Platform.cmd, SetupComplete.cmd, Install-OpenSSH.ps1
+::  11.  Download arch-appropriate guest tool installers
+::  12.  Verify all files present
 ::
 :: Driver note
 :: -----------
@@ -135,7 +154,7 @@ setlocal EnableDelayedExpansion
 :: Script metadata
 :: ------------------------------------------------------------------------------
 set "SCRIPT_NAME=Deploy-OpenSSH.cmd"
-set "SCRIPT_VERSION=1.6.0"
+set "SCRIPT_VERSION=1.7.0"
 set "ORG_NAME=Example Music Limited"
 
 :: ------------------------------------------------------------------------------
@@ -179,7 +198,24 @@ cecho.exe {03} "[INFO] Architecture : %ARCH%" {\n}{##}
 echo+
 
 :: ------------------------------------------------------------------------------
-:: Step 2: Find Windows installer media
+:: Step 2: Inject drivers into the running WinPE environment
+::
+:: WinPE's own stock boot image doesn't natively include every storage/network
+:: driver real hardware needs -- without this, WinPE itself might not even see
+:: the installer media or target drive the next two steps scan for. Not treated
+:: as fatal (matches the source this was merged from, deploy.cmd 1.1.1): a
+:: pnputil failure here doesn't necessarily mean no usable drivers were found,
+:: and WinPE's own boot image already worked well enough to get this script
+:: running in the first place.
+:: ------------------------------------------------------------------------------
+cecho.exe {03} "[INFO] Injecting drivers into running WinPE (pnputil)..." {\n}{##}
+echo [%DATE% %TIME%] Injecting drivers into WinPE via pnputil >> "%LOGFILE%"
+pnputil /add-driver X:\Tools\Drivers\*.inf /subdirs /install >> "%LOGFILE%" 2>&1
+cecho.exe {0a} "[ OK ] WinPE driver injection complete" {\n}{##}
+echo+
+
+:: ------------------------------------------------------------------------------
+:: Step 3: Find Windows installer media
 :: Identified by the presence of \Sources\Setup.exe.
 :: See header note on why \Sources\Setup.exe and NOT \Setup.exe.
 :: ------------------------------------------------------------------------------
@@ -211,7 +247,7 @@ echo [%DATE% %TIME%] Installer media confirmed: %INSTALLDRIVE% >> "%LOGFILE%"
 echo+
 
 :: ------------------------------------------------------------------------------
-:: Step 3: Download headlessunattend.xml to WinPE RAM disk
+:: Step 4: Download headlessunattend.xml to WinPE RAM disk
 ::
 :: arm64 (2026-08-18, sweep item 3): headlessunattend.xml's <component> blocks are all
 :: processorArchitecture="amd64" -- Windows Setup silently skips any component that
@@ -239,7 +275,7 @@ echo [%DATE% %TIME%] %UNATTEND_SRC% saved to %SYSTEMDRIVE%\headlessunattend.xml 
 echo+
 
 :: ------------------------------------------------------------------------------
-:: Step 4: Launch Windows Setup
+:: Step 5: Launch Windows Setup
 ::
 :: IMPORTANT: \Sources\Setup.exe is the actual Windows Setup engine and is
 :: the only binary that accepts CLI parameters such as /unattend and /noreboot.
@@ -259,7 +295,7 @@ echo [%DATE% %TIME%] Launching: "%INSTALLDRIVE%:\Sources\Setup.exe" >> "%LOGFILE
 echo [%DATE% %TIME%] Setup.exe returned. Exit code: %ERRORLEVEL% >> "%LOGFILE%"
 
 :: ------------------------------------------------------------------------------
-:: Step 5: PAUSE - wait for PFY to confirm install is complete
+:: Step 6: PAUSE - wait for PFY to confirm install is complete
 :: ------------------------------------------------------------------------------
 echo+
 cecho.exe {0f} "  Windows Setup has returned." {\n}{##}
@@ -270,7 +306,7 @@ pause >nul
 echo [%DATE% %TIME%] Operator confirmed setup complete. Proceeding. >> "%LOGFILE%"
 
 :: ------------------------------------------------------------------------------
-:: Step 6: Enumerate drives for freshly installed Windows
+:: Step 7: Enumerate drives for freshly installed Windows
 ::
 :: Exclude:
 ::   %SYSTEMDRIVE%                       - WinPE RAM disk
@@ -312,7 +348,7 @@ if %FOUND_COUNT% EQU 0 (
 )
 
 :: ------------------------------------------------------------------------------
-:: Step 7a: Single install found - Y/N confirm
+:: Step 8a: Single install found - Y/N confirm
 :: ------------------------------------------------------------------------------
 if %FOUND_COUNT% EQU 1 (
   set "SELECTED_DRIVE=!WINDRIVE_1!"
@@ -331,7 +367,7 @@ if %FOUND_COUNT% EQU 1 (
 )
 
 :: ------------------------------------------------------------------------------
-:: Step 7b: Multiple installs found - numbered menu
+:: Step 8b: Multiple installs found - numbered menu
 :: ------------------------------------------------------------------------------
 :MENU
 cecho.exe {0f} "  Multiple Windows installations were found. Select the target:" {\n}{##}
@@ -377,7 +413,7 @@ if errorlevel 2 (
 echo [%DATE% %TIME%] Operator confirmed: !SELECTED_DRIVE! >> "%LOGFILE%"
 
 :: ------------------------------------------------------------------------------
-:: Step 8: Create directories on target
+:: Step 9: Create directories on target, inject drivers into offline image
 :: ------------------------------------------------------------------------------
 :DEPLOY
 echo+
@@ -395,6 +431,31 @@ if NOT exist "!SELECTED_DRIVE!\Windows\System32" (
   goto :ABORT
 )
 echo [%DATE% %TIME%] Target verified: !SELECTED_DRIVE! >> "%LOGFILE%"
+
+:: ------------------------------------------------------------------------------
+:: Inject drivers into the offline target image via DISM.
+::
+:: There is no in-target equivalent for this against an unbooted image (Windows
+:: Installer/msiexec needs a live OS) -- must run here, against the just-applied
+:: image, before the target ever reboots. Critical for boot-time drivers (e.g.
+:: VirtIO storage) that must already be present the moment Windows first
+:: starts; this script's later post-boot installs (Detect-Platform.cmd/
+:: Install-OpenSSH.ps1, run by SetupComplete.cmd) can't help with that, since
+:: the OS has to already be able to boot and reach its own storage first.
+:: Treated as fatal, unlike WinPE's own pnputil injection in Step 2 -- a
+:: missing boot-critical driver here risks an unbootable target, not just a
+:: WinPE inconvenience.
+:: ------------------------------------------------------------------------------
+cecho.exe {03} "[INFO] Injecting drivers into offline target image (DISM)..." {\n}{##}
+echo [%DATE% %TIME%] Running: dism /Image:!SELECTED_DRIVE!\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse >> "%LOGFILE%"
+dism /Image:!SELECTED_DRIVE!\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse >> "%LOGFILE%" 2>&1
+if errorlevel 1 (
+  echo [%DATE% %TIME%] ERROR: DISM driver injection into !SELECTED_DRIVE! failed. >> "%LOGFILE%"
+  cecho.exe {04} "[ERROR] DISM driver injection into !SELECTED_DRIVE! failed." {\n}{##}
+  goto :ABORT
+)
+cecho.exe {0a} "[ OK ] Offline image driver injection complete" {\n}{##}
+echo+
 
 if NOT exist "!TARGET_SCRIPTS!" (
   cecho.exe {03} "[INFO] Creating !TARGET_SCRIPTS!..." {\n}{##}
@@ -425,7 +486,7 @@ if NOT exist "!TARGET_DRIVERS!" (
 )
 
 :: ------------------------------------------------------------------------------
-:: Step 9: Download scripts to target
+:: Step 10: Download scripts to target
 :: ------------------------------------------------------------------------------
 cecho.exe {03} "[INFO] Downloading setup scripts..." {\n}{##}
 echo [%DATE% %TIME%] Fetching Detect-Platform.cmd >> "%LOGFILE%"
@@ -455,7 +516,7 @@ if errorlevel 1 (
 cecho.exe {0a} "[ OK ] Install-OpenSSH.ps1" {\n}{##}
 
 :: ------------------------------------------------------------------------------
-:: Step 10: Download arch-appropriate drivers to target
+:: Step 11: Download arch-appropriate drivers to target
 :: ------------------------------------------------------------------------------
 echo+
 cecho.exe {03} "[INFO] Downloading drivers for %ARCH%..." {\n}{##}
@@ -550,7 +611,7 @@ if "%ARCH%"=="arm64" (
 echo+
 
 :: ------------------------------------------------------------------------------
-:: Step 11: Verify all expected files landed on target
+:: Step 12: Verify all expected files landed on target
 :: ------------------------------------------------------------------------------
 echo [%DATE% %TIME%] Verifying files on target... >> "%LOGFILE%"
 set VERIFY_OK=1
