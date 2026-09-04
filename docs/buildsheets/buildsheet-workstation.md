@@ -13,6 +13,14 @@ historical, pre-Ansible artefact — see `docs/bootstrap/bootstrapping.md` — n
 > Use `autounattend_win11.xml` for all Win11 builds.  
 > DeployTools share: `\\EXADCSCPH001\DeployTools` (future: DFS `\\jukebox.internal\DeployTools`)
 
+> **Live WinPE step (2026-09-04):** before/during the install, run
+> `bootstrap/web/windows/Deploy-OpenSSH.cmd` from WinPE against the target — see that file's own
+> header for the full sequence and provisioning-server layout. It downloads the arch-appropriate
+> `headlessunattend*.xml`, runs `Sources\Setup.exe /unattend`, injects boot-critical drivers into
+> the offline image via DISM, and stages `Detect-Platform.cmd`/`SetupComplete.cmd`/
+> `Install-OpenSSH.ps1` so the box comes up OpenSSH-reachable at first boot — required before
+> `windows_bootstrap/site.yml` above can connect at all.
+
 ---
 
 ## Standard Build — Windows 11 Pro
