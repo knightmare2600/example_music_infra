@@ -816,6 +816,38 @@
     "Email": "arnelundemann@jukebox.internal"
   },
   {
+    "Name": "Roxy Music",
+    "Description": "English art rock band, early-1980s Avalon-era lineup, formed in London in 1970",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Bryan Ferry",
+    "Email": "roxymusic@jukebox.internal"
+  },
+  {
+    "Name": "Bryan Adams",
+    "Description": "Solo artist Bryan Adams from Kingston, Ontario",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Bryan Adams",
+    "Email": "bryanadams@jukebox.internal"
+  },
+  {
+    "Name": "Anita Baker",
+    "Description": "Solo artist Anita Baker from Detroit, Michigan",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Anita Baker",
+    "Email": "anitabaker@jukebox.internal"
+  },
+  {
+    "Name": "Dionne Warwick",
+    "Description": "Solo artist Dionne Warwick",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Dionne Warwick",
+    "Email": "dionnewarwick@jukebox.internal"
+  },
+  {
     "Name": "Sales",
     "Description": "Remote VPN users and road warriors in sales",
     "Type": "Security",
