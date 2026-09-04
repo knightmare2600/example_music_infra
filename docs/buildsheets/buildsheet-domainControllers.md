@@ -22,6 +22,17 @@ Use `autounattend2022.xml` or `autounattend_2022gui.xml` from `C:\DeployTools\un
 > this whole path is also a historical artefact, superseded by `windows_bootstrap`, not a live
 > build procedure any more.
 
+> **Live WinPE step (2026-09-04):** before/during the install, run
+> `bootstrap/web/windows/Deploy-OpenSSH.cmd` from WinPE against the target — see that file's own
+> header for the full sequence and provisioning-server layout. It downloads the arch-appropriate
+> `headlessunattend*.xml`, runs `Sources\Setup.exe /unattend`, injects boot-critical drivers into
+> the offline image via DISM, and stages `Detect-Platform.cmd`/`SetupComplete.cmd`/
+> `Install-OpenSSH.ps1` so the box comes up OpenSSH-reachable at first boot. For DCs specifically
+> this matters more than for a regular server/workstation build — `windows_dc`'s promotion
+> playbooks (see Promotion Status below) need SSH reachability to connect at all, so this step
+> can't be skipped or deferred the way it might be tempting to on a box you're about to RDP into
+> by hand instead.
+
 ### Windows Optional Features
 ```powershell
 Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.0.1
