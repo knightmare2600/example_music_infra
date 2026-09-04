@@ -41,7 +41,7 @@
  ** Y:\Sources\setup.exe /unattend:X:\headlessunattend.xml /noreboot                                                 **
  **                                                                                                                  **
  ** mkdir "%SCRIPTS%"                                                                                                **
- ** dism /Image:C:\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse                                                    **
+ ** dism /Image:C:\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse /ForceUnsigned                                     **
  ** certutil.exe -urlcache -f "%BASE%/SetupComplete.cmd" "%SCRIPTS%\SetupComplete.cmd"                               **
  ** certutil.exe -urlcache -f "%BASE%/Detect-Platform.cmd" "%SCRIPTS%\Detect-Platform.cmd"                           **
  ** certutil.exe -urlcache -f "%BASE%/Install-OpenSSH.ps1" "%SCRIPTS%\Install-OpenSSH.ps1"                           **
