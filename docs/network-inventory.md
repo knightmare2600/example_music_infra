@@ -12,6 +12,8 @@
 
 | Date | Change |
 |------|--------|
+| 2026-09-04 | KNG (Kingston, Ontario) and DET (Detroit, Michigan) added as new-build sites — `192.168.163.0/24` and `192.168.133.0/24`, no legacy infrastructure. Added to the Global Site Summary table and given their own Canada/United States detail sections, matching BRK/TOR/MTL and CHI/SEA/SFO/PHI's template. Also added to `docs/network-diagram/canada.md`/`united-states.md` and `benarbejde/sites.csv`. AD additions in the same batch: Roxy Music (London, early-1980s lineup — Bryan Ferry, Phil Manzanera, Andy Mackay active; Brian Eno flagged disabled/locked as a pre-1973 former member), Bryan Adams (solo, new KNG site), Anita Baker (solo, new DET site), Dionne Warwick (solo, existing NJC site). M-People checked and confirmed already fully present at MCR — no changes needed there. Tina Turner was briefly re-homed toward KNG then reverted back to LAX at Robert's request, keeping her existing 7-person band together rather than splitting it across two OUs. |
+| 2026-09-04 | PHI (Philadelphia, Pennsylvania) added as a new-build site — `192.168.215.0/24`, no legacy infrastructure. Added to the Global Site Summary table and given its own United States detail section (standard-slot infrastructure, matching CHI/SEA/SFO's template). Also added to `docs/network-diagram/united-states.md` (own section + generated topology sketch) and `benarbejde/sites.csv`/`ad_users.json` — the Hall & Oates band roster (previously OU'd under NYC as a placeholder) was re-homed onto this new site. |
 | 2026-08-19 | Removed the `Domain` column from the Global Site Summary and Domain Controllers — Summary tables, and the `**Domain:**` line from all ~44 per-site sections. Checked first: `ad_forest.json` confirms a single real join domain (`jukebox.internal`); `ad_users.json` confirms all 357 real users have a `@jukebox.internal` UPN, none `@example.*`; `ExampleMusic_UPN_DNS_dnsmasq_Procedure.md` confirms `example.net`/`.org`/`.com` are forest-wide alternate UPN suffixes and DNS alias zones, explicitly not tied to site or physical location. The removed column/lines weren't derived from any current source and didn't correspond to anything real. Header `**Domains:**` line reworded to `**UPN suffixes:**` with a pointer to the real procedure doc. While removing MCR's "PDC Emulator for example.org" note (part of the same fictional per-domain framing), found a much bigger pre-existing problem: the DC Summary table's `FSMO Roles` column claims PDC Emulator for six different DCs and Schema Master/Domain Naming Master for two — impossible in a single-domain forest (exactly one holder per role). `buildsheet-domainControllers.md:107` names `EXADCSFAL001` alone as the real "PDC EMULATOR / FSMO" holder, but doesn't cover the other 4 roles. **Not resolved in this pass** — flagged inline above the DC Summary table; needs a decision on the real per-role holders before the column can be corrected. |
 | 2026-08-19 | Global Site Summary was missing 8 real `sites.csv` sites entirely — AAR, BRT, DRS, DUS, FRE, NYB, SEA, SFO — found during the exhaustive docs re-audit while fixing the same gap in the superseded `network-inventory-merged.md` copy; this file (the real, current one) turned out to have the identical gap. Added all 8, diffed precisely against `sites.csv` afterward (53/53 exact match, zero missing/extra). Also added a separate `BER` row — the 2026-03-05 entry below claims "BRD renamed BER throughout", but the table still only had `BRD`, no `BER`, right up until this fix; `sites.csv` has both as genuinely separate rows (`BER` current, `BRD` an explicit legacy alias, same subnet) and the real tooling (`site-inventory-audit.py`) treats them that way, not as one having replaced the other. Cross-referenced both rows to each other. Also fixed `AKL` sitting out of alphabetical order at the very end of the table (after `VRK`) — moved to its correct position between `ABD` and `AMS`. `Domain` column values for the 9 new rows are inferred from the table's own overwhelming default (`example.net`, ~40 of 53 existing rows) — this column isn't derived from any current source (`sites.csv`, `devices.csv`, `ad_users.json` all lack it; likely a legacy pre-`jukebox.internal` entity-domain marker), so treat these 9 as reasonable defaults, not independently confirmed. |
 | 2026-07-20 | Added `EXASLTCLD001` (Salt master, `192.168.69.22`) to the CLD LAN table — added to `devices.csv` the same day, missing from this doc until now. Also reachable as `salt.jukebox.internal` (new CNAME, `benarbejde/role_codes.csv`'s `DNSAlias` column). |
@@ -136,6 +138,7 @@ the same site, see below) and every other Danish office gets. See
 | CLY | Clydebank | Scotland, UK | `192.168.41.0/24` | |
 | COV | Coventry | England, UK | `192.168.247.0/24` | WAP/RTR only |
 | CPH | København | Danmark | `192.168.231.0/24` | |
+| DET | Detroit | Michigan, USA | `192.168.133.0/24` | New-build site |
 | DRS | Dresden | West Germany (FRG) | `192.168.153.0/24` |  |
 | DUN | Dundee | Scotland, UK | `192.168.138.0/24` | |
 | DUS | Dusseldorf | West Germany (FRG) | `192.168.211.0/24` |  |
@@ -149,6 +152,7 @@ the same site, see below) and every other Danish office gets. See
 | HAL | Halifax | England, UK | `192.168.142.0/24` | |
 | HUL | Hull | England, UK | `192.168.148.0/24` | |
 | KGE | Køge | Danmark | `192.168.65.0/24` | DC replication WARNING |
+| KNG | Kingston | Ontario, Canada | `192.168.163.0/24` | New-build site |
 | KOR | Korsør | Danmark | `192.168.238.0/24` | |
 | LAX | Los Angeles | California, USA | `192.168.213.0/24` | |
 | LIV | Liverpool | England, UK | `192.168.151.0/24` | |
@@ -166,6 +170,7 @@ the same site, see below) and every other Danish office gets. See
 | ODE | Odense | Danmark | `192.168.126.0/24` | PDC Emulator for DK |
 | OSL | Oslo | Norway | `192.168.47.0/24` | |
 | PER | Perth | Scotland, UK | `192.168.173.0/24` | Solaris archive server |
+| PHI | Philadelphia | Pennsylvania, USA | `192.168.215.0/24` | New-build site |
 | SEA | Seattle | Washington, USA | `192.168.206.0/24` |  |
 | SFO | San Francisco | California, USA | `192.168.145.0/24` |  |
 | SHE | Sheffield | England, UK | `192.168.114.0/24` | |
@@ -1254,6 +1259,30 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 
 ---
 
+#### KNG — Kingston, Ontario
+**LAN:** `192.168.163.0/24`
+
+> New-build site. No legacy infrastructure ever existed here, see
+> `docs/network-diagram/canada.md`'s "New Build Location" box for KNG.
+
+**Infrastructure:**
+
+| Hostname | Role | OS / Model | IP | Notes |
+|----------|------|------------|----|-------|
+| `EXARTRKNG001` | Router | — | `192.168.163.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLKNG001` | Firewall | Debian Linux (PVE VM) | `192.168.163.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIKNG001` | Switch | — | `192.168.163.250` | Standard SWI slot 1 |
+| `EXABMCKNG001` | BMC | — | `192.168.163.2` | Standard BMC slot 1 |
+| `EXAPVEKNG001` | Proxmox | — | `192.168.163.5` | PVE node 1 |
+| `EXADCSKNG001` | DC | — | `192.168.163.10` | Domain Controller |
+| `EXASBCKNG001` | VOIP SBC | — | `192.168.163.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASKNG001` | NAS | — | `192.168.163.19` | Standard NAS slot |
+| `EXARDRKNG001` | Badge reader | — | `192.168.163.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPKNG001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+---
+
 ### 🇺🇸 United States
 
 ---
@@ -1460,6 +1489,54 @@ desktops, `.152`–`.153`), `EXAPRNMCR001` (printer, `.16`)
 | `EXARDRSFO001` | Badge reader | — | `192.168.145.21` | Standard RDR slot |
 
 **WAPs:** `EXAWAPSFO001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+---
+
+#### PHI — Philadelphia, Pennsylvania
+**LAN:** `192.168.215.0/24`
+
+> New-build site. No legacy infrastructure ever existed here, see
+> `docs/network-diagram/united-states.md`'s "New Build Location" box for PHI.
+
+**Infrastructure:**
+
+| Hostname | Role | OS / Model | IP | Notes |
+|----------|------|------------|----|-------|
+| `EXARTRPHI001` | Router | — | `192.168.215.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLPHI001` | Firewall | Debian Linux (PVE VM) | `192.168.215.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIPHI001` | Switch | — | `192.168.215.250` | Standard SWI slot 1 |
+| `EXABMCPHI001` | BMC | — | `192.168.215.2` | Standard BMC slot 1 |
+| `EXAPVEPHI001` | Proxmox | — | `192.168.215.5` | PVE node 1 |
+| `EXADCSPHI001` | DC | — | `192.168.215.10` | Domain Controller |
+| `EXASBCPHI001` | VOIP SBC | — | `192.168.215.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASPHI001` | NAS | — | `192.168.215.19` | Standard NAS slot |
+| `EXARDRPHI001` | Badge reader | — | `192.168.215.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPPHI001` · Ubiquiti UniFi U6-Pro — static, `.82`
+
+---
+
+#### DET — Detroit, Michigan
+**LAN:** `192.168.133.0/24`
+
+> New-build site. No legacy infrastructure ever existed here, see
+> `docs/network-diagram/united-states.md`'s "New Build Location" box for DET.
+
+**Infrastructure:**
+
+| Hostname | Role | OS / Model | IP | Notes |
+|----------|------|------------|----|-------|
+| `EXARTRDET001` | Router | — | `192.168.133.1` | WAN edge — vendor not yet confirmed |
+| `EXAFWLDET001` | Firewall | Debian Linux (PVE VM) | `192.168.133.253` | nftables + WireGuard — site-to-site VPN |
+| `EXASWIDET001` | Switch | — | `192.168.133.250` | Standard SWI slot 1 |
+| `EXABMCDET001` | BMC | — | `192.168.133.2` | Standard BMC slot 1 |
+| `EXAPVEDET001` | Proxmox | — | `192.168.133.5` | PVE node 1 |
+| `EXADCSDET001` | DC | — | `192.168.133.10` | Domain Controller |
+| `EXASBCDET001` | VOIP SBC | — | `192.168.133.48` | Trunks to `EXAPBXCLD001` |
+| `EXANASDET001` | NAS | — | `192.168.133.19` | Standard NAS slot |
+| `EXARDRDET001` | Badge reader | — | `192.168.133.21` | Standard RDR slot |
+
+**WAPs:** `EXAWAPDET001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
 ---
 

@@ -456,9 +456,21 @@ ALLOWED_IP_ALIASES = {
 
 ## BRD / BER are allowed to overlap (legacy vs modern naming)
 ## Mohrenstraße 37 10117, Berlin, 18:53 CET, Donnerstag 9th November 1989
+##
+## PHI / VRK, 2026-09-04: a genuinely different reason from BRD/BER above -- not one physical
+## device under two names, but a real coincidence. Every site's FWL1 gets a WAN-face address of
+## 192.168.139.<the site's own subnet octet> (see the FWL1/site_octet block below). PHI's octet
+## (215) happens to equal EXABMCVRK001's real, deliberate devices.csv deviation on VRK's own
+## subnet (192.168.139.215, "SuperMicro BMC for EXAPVEVRK001" -- Robert's call, kept as-is,
+## 2026-08-20). Robert's explicit decision after considering both alternatives (renumbering PHI,
+## or moving EXABMCVRK001 off its deviation): leave both exactly where they are and accept this
+## as a known, deliberate coincidence, same mechanism as BRD/BER even though the underlying
+## reason differs.
 ALLOWED_SITE_OVERLAP = {
   ("BRD", "BER"),
   ("BER", "BRD"),
+  ("PHI", "VRK"),
+  ("VRK", "PHI"),
 }
 
 ## Cloud/hub "black swan" sites (CLD, FRD — see site-inventory-audit.py's own black-swan
