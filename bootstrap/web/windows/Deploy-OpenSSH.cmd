@@ -52,6 +52,17 @@
 ::                      settings, processorArchitecture="arm64" throughout) -- same
 ::                      %ARCH% variable Step 1 already detects, destination path on the
 ::                      WinPE disk unchanged either way.
+:: 1.6.1   2026-09-04   Robert: live crash on a real x86_64 install --
+::                      ". was unexpected at this time." right after Step 10's driver
+::                      downloads. Root cause: CMD's parser tokenises an entire
+::                      parenthesised ( ... ) block before running any of it, and a `::`
+::                      comment inside one breaks that tokenisation -- `::` only works
+::                      as a comment at the top level, never nested inside a block. Step
+::                      11's x86_64 verification block had one (the exact block Robert
+::                      hit live); the arm64 driver-download block in Step 10 had two
+::                      more of the same mistake, latent and untriggered so far since
+::                      only x86_64 has been tested live. All three changed `::` -> REM,
+::                      the only comment marker that's actually safe inside a block.
 ::
 :: Purpose
 :: -------
@@ -489,14 +500,14 @@ if "%ARCH%"=="arm64" (
   )
   cecho.exe {0a} "[ OK ] VMware-tools-13.0.10-25056151-arm.exe" {\n}{##}
 
-  :: KVM/Proxmox on arm64: try the real native arm64 MSIs first (2026-08-15,
-  :: github.com/knightmare2600/virtio-win-guest-tools-installer arm64-preview-0.1.0
-  :: -- verified for real: SHA256 matched, PE header machine field of the binaries
-  :: inside confirmed genuine ARM64 code). Explicitly experimental/untested on real
-  :: hardware, so download failure here is NOT fatal, unlike every other download
-  :: in this script -- log and continue rather than :ABORT. Detect-Platform.cmd's
-  :: own `if exist` check (1.2.0 changelog entry) falls back to the amd64 builds
-  :: below if these never landed or the install itself fails on the box.
+  REM KVM/Proxmox on arm64: try the real native arm64 MSIs first (2026-08-15,
+  REM github.com/knightmare2600/virtio-win-guest-tools-installer arm64-preview-0.1.0
+  REM -- verified for real: SHA256 matched, PE header machine field of the binaries
+  REM inside confirmed genuine ARM64 code). Explicitly experimental/untested on real
+  REM hardware, so download failure here is NOT fatal, unlike every other download
+  REM in this script -- log and continue rather than :ABORT. Detect-Platform.cmd's
+  REM own `if exist` check (1.2.0 changelog entry) falls back to the amd64 builds
+  REM below if these never landed or the install itself fails on the box.
   echo [%DATE% %TIME%] Fetching virtio-win-gt-arm64.msi (native, experimental) >> "%LOGFILE%"
   certutil.exe -urlcache -f "%BASE_URL%/arm64/virtio-win-gt-arm64.msi" "!TARGET_DRIVERS!\virtio-win-gt-arm64.msi" >> "%LOGFILE%" 2>&1
   if errorlevel 1 (
@@ -515,9 +526,9 @@ if "%ARCH%"=="arm64" (
     cecho.exe {0a} "[ OK ] qemu-ga-arm64.msi (native, experimental)" {\n}{##}
   )
 
-  :: amd64 fallback builds -- always staged regardless of whether the native
-  :: arm64 downloads above succeeded, since Detect-Platform.cmd needs them
-  :: available either way (missing/failed native install falls back to these).
+  REM amd64 fallback builds -- always staged regardless of whether the native
+  REM arm64 downloads above succeeded, since Detect-Platform.cmd needs them
+  REM available either way (missing/failed native install falls back to these).
   echo [%DATE% %TIME%] Fetching qemu-ga-x86_64.msi (amd64 build, arm64 runs it under x64 emulation) >> "%LOGFILE%"
   certutil.exe -urlcache -f "%BASE_URL%/amd64/qemu-ga-x86_64.msi" "!TARGET_DRIVERS!\qemu-ga-x86_64.msi" >> "%LOGFILE%" 2>&1
   if errorlevel 1 (
@@ -551,8 +562,8 @@ if NOT exist "!TARGET_SCRIPTS!\Install-OpenSSH.ps1"  set VERIFY_OK=0
 if "%ARCH%"=="x86_64" (
   if NOT exist "!TARGET_DRIVERS!\qemu-ga-x86_64.msi"                    set VERIFY_OK=0
   if NOT exist "!TARGET_DRIVERS!\virtio-win-gt-x64.msi"                 set VERIFY_OK=0
-:: Certutil.exe being obtuse about exe files
-::  if NOT exist "!TARGET_DRIVERS!\VMware-tools-13.0.10-25056151-x64.exe" set VERIFY_OK=0
+REM Certutil.exe being obtuse about exe files
+REM  if NOT exist "!TARGET_DRIVERS!\VMware-tools-13.0.10-25056151-x64.exe" set VERIFY_OK=0
 echo+
 )
 
