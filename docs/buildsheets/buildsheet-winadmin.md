@@ -13,6 +13,14 @@ and domain join below are all handled by that run; Windows Admin Centre install 
 a manual step (no Ansible automation for it yet).  
 **First-ever run (box still on DHCP):** `ansible-playbook playbooks/windows_bootstrap/site.yml -i <dhcp-ip>, -e target_hosts=<dhcp-ip> --ask-vault-pass` — see `ansible/playbooks/windows_bootstrap/README.md`'s Usage section for the full detail and the named-inventory form used on every run after this one
 
+> **Live WinPE step (2026-09-04):** before/during the install, run
+> `bootstrap/web/windows/Deploy-OpenSSH.cmd` from WinPE against the target — see that file's own
+> header for the full sequence and provisioning-server layout. It downloads the arch-appropriate
+> `headlessunattend*.xml`, runs `Sources\Setup.exe /unattend`, injects boot-critical drivers into
+> the offline image via DISM, and stages `Detect-Platform.cmd`/`SetupComplete.cmd`/
+> `Install-OpenSSH.ps1` so the box comes up OpenSSH-reachable at first boot — required before
+> `windows_bootstrap/site.yml` above can connect at all.
+
 ---
 
 ## Standard Build Reference
