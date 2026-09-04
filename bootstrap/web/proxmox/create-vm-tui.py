@@ -430,6 +430,33 @@ def create_vm(proxmox, node, cfg, log_fn, dry_run=False):
                 nic_spec += f",macaddr={nic['mac']}"
             proxmox.nodes(node).qemu(vmid).config.put(**{nic["id"]: nic_spec})
             log_fn(f"{nic['id']}: {nic['bridge']} {nic.get('vlan') or 'untagged'}", "ok")
+
+            # Real checking logic (Robert, 2026-09-04, after EXAFWLGOT001's LAN NIC showed a
+            # VLAN in this TUI but had no tag on the actual VM until he set it by hand): the PUT
+            # above returning success does NOT guarantee Proxmox actually applied the tag --
+            # confirmed the raw mechanism itself is sound (qm set ...,tag=N is real, documented
+            # syntax, and a third-party tool's own near-identical "VLAN tag not set on update"
+            # report resolved to the same manual `qm set` working fine), but couldn't reproduce
+            # the drop locally to pin the exact trigger. Rather than guess a code change with no
+            # way to confirm it addresses the real cause, verify the tag actually landed by
+            # reading the config straight back, and retry once if it didn't.
+            if nic["vlan"]:
+                applied = proxmox.nodes(node).qemu(vmid).config.get().get(nic["id"], "")
+                if f"tag={nic['vlan']}" not in applied:
+                    log_fn(
+                        f"{nic['id']}: VLAN tag {nic['vlan']} was sent but Proxmox reports "
+                        f"'{applied}' -- it did not take. Retrying once...", "warn"
+                    )
+                    proxmox.nodes(node).qemu(vmid).config.put(**{nic["id"]: nic_spec})
+                    applied = proxmox.nodes(node).qemu(vmid).config.get().get(nic["id"], "")
+                    if f"tag={nic['vlan']}" in applied:
+                        log_fn(f"{nic['id']}: VLAN tag {nic['vlan']} confirmed on retry.", "ok")
+                    else:
+                        log_fn(
+                            f"{nic['id']}: VLAN tag {nic['vlan']} STILL not applied after retry "
+                            f"-- set it by hand: Proxmox UI -> {vmid} -> Hardware -> {nic['id']} -> Edit.",
+                            "warn"
+                        )
         except Exception as e:
             log_fn(f"Failed to configure {nic['id']}: {e}", "warn")
 
@@ -1145,6 +1172,7 @@ class WizardScreen(Screen):
         Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "wizard_back", "Back", show=True),
         Binding("f3", "wizard_next", "Next", show=True),
+        Binding("f4", "wizard_reset", "Reset", show=True),
         Binding("f7", "cycle_theme", "Theme", show=True),
         Binding("f9", "show_about", "About", show=True),
         Binding("f10", "wizard_quit", "Quit", show=True),
@@ -1232,6 +1260,7 @@ class WizardScreen(Screen):
         super().__init__()
         self.draft = draft
         self.ctx = ctx
+        self._reset_armed_timer = None
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=False)
@@ -1269,6 +1298,32 @@ class WizardScreen(Screen):
 
     def action_wizard_next(self) -> None:
         self._try_next()
+
+    def action_wizard_reset(self) -> None:
+        # Wipes every field on every page and returns to Step 1 -- genuinely
+        # destructive to whatever's currently typed in (though nothing is
+        # ever actually sent to Proxmox until VM creation, so there's no
+        # server-side harm either way). Deliberately requires a second F4
+        # press to confirm, matching Robert's own "be gentle" instruction --
+        # this is the one wizard action with no undo, unlike Back/Next.
+        if self._reset_armed_timer is None:
+            self.query_one("#step-error", Static).update(
+                "Press F4 again within 5 seconds to reset every field on every page and "
+                "return to Step 1. Nothing has been sent to Proxmox yet either way -- "
+                "just wait 5 seconds to cancel."
+            )
+            self._reset_armed_timer = self.set_timer(5, self._disarm_reset)
+            return
+
+        self._disarm_reset()
+        for _ in range(self.STEP_NUM):
+            self.app.pop_screen()
+        self.app.push_screen(IdentityScreen(VMDraft(), self.ctx))
+
+    def _disarm_reset(self) -> None:
+        if self._reset_armed_timer is not None:
+            self._reset_armed_timer.stop()
+            self._reset_armed_timer = None
 
     def action_wizard_quit(self) -> None:
         self.app.exit()
@@ -1862,6 +1917,7 @@ class ReviewScreen(WizardScreen):
         Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "wizard_back", "Back", show=True),
         Binding("f3", "do_create", "Create", show=True),
+        Binding("f4", "wizard_reset", "Reset", show=True),
         Binding("f7", "cycle_theme", "Theme", show=True),
         Binding("f9", "show_about", "About", show=True),
         Binding("f10", "wizard_quit", "Quit", show=True),
@@ -2050,6 +2106,7 @@ class HelpModal(ModalScreen):
         "F1              Help (this screen)",
         "F2              Back",
         "F3              Next / Create",
+        "F4              Reset (press twice) -- clears every page, back to Step 1",
         "F7              Cycle colour theme",
         "F9              About",
         "F10             Quit",
