@@ -773,6 +773,22 @@ class LoginModal(ModalScreen):
         color: $text-muted;
         margin-top: 0;
     }
+    /* The Auth-method row (a bare Horizontal wrapping the Label + RadioSet)
+       reuses the wizard screens' own ".field-row" class name for visual
+       consistency, but LoginModal is a ModalScreen, not a WizardScreen --
+       Screen-scoped DEFAULT_CSS doesn't cross screen-class boundaries in
+       Textual, so WizardScreen's own ".field-row { height: 1; }" rule never
+       actually reached this row. It silently fell back to Horizontal's own
+       default height:1fr, stretching #login-box (an auto-height parent) to
+       fill the whole screen -- confirmed via a headless region measurement
+       (height=32 instead of 1) rather than assumed from reading the CSS,
+       same root-cause *class* of bug -- an fr-height child inside an
+       auto-height parent -- already fixed once for #login-actions below,
+       just not covered by that fix since this row didn't exist yet at the
+       time (added later, when token-auth support was folded in). */
+    .field-row {
+        height: auto;
+    }
     #login-error {
         color: $error;
         height: auto;
