@@ -36,6 +36,14 @@
 ::    setup.exe -- C:\ProgramData\ExampleMusic doesn't exist as a real
 ::    path until the image has actually been applied to that partition,
 ::    so this was already structurally necessary, now made explicit.
+:: 1.1.1   2026-09-04   Fixed a bug introduced in 1.1.0 itself: the arm64
+::    fallback-builds comment, copied from Deploy-OpenSSH.cmd's own comment
+::    style, sat inside the `if "%ARCH%"=="arm64" ( ... )` block using `::`.
+::    CMD tokenises a whole parenthesised block before running it, and `::`
+::    only works as a comment at the top level -- nested inside a block it
+::    breaks the parser (". was unexpected at this time.", confirmed live
+::    against this exact mistake in Deploy-OpenSSH.cmd, same day). Changed
+::    to REM, the marker that's actually safe inside a block.
 ::
 :: Purpose
 :: -------
@@ -141,10 +149,10 @@ if "%ARCH%"=="x86_64" (
 if "%ARCH%"=="arm64" (
     certutil.exe -urlcache -f "%BASE%/arm64/qemu-ga-arm64.msi" C:\ProgramData\ExampleMusic\Drivers\qemu-ga-arm64.msi
     certutil.exe -urlcache -f "%BASE%/arm64/virtio-win-gt-arm64.msi" C:\ProgramData\ExampleMusic\Drivers\virtio-win-gt-arm64.msi
-    :: amd64 fallback builds -- Detect-Platform.cmd's own :KVM logic (1.2.0)
-    :: tries the native arm64 MSIs above first and falls back to these if
-    :: either is missing or fails, same as Deploy-OpenSSH.cmd already stages
-    :: both for the same reason.
+    REM amd64 fallback builds -- Detect-Platform.cmd's own :KVM logic (1.2.0)
+    REM tries the native arm64 MSIs above first and falls back to these if
+    REM either is missing or fails, same as Deploy-OpenSSH.cmd already stages
+    REM both for the same reason.
     certutil.exe -urlcache -f "%BASE%/amd64/qemu-ga-x86_64.msi" C:\ProgramData\ExampleMusic\Drivers\qemu-ga-x86_64.msi
     certutil.exe -urlcache -f "%BASE%/amd64/virtio-win-gt-x64.msi" C:\ProgramData\ExampleMusic\Drivers\virtio-win-gt-x64.msi
 )
