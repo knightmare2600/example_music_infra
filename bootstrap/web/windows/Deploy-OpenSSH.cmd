@@ -80,6 +80,13 @@
 ::                      in this repo documents how that path gets staged onto the WinPE
 ::                      boot media itself, presumed to be a manual step outside this
 ::                      repo's tracked automation, flagged rather than guessed at.
+:: 1.7.1   2026-09-04   Robert: Step 9's DISM call needs /ForceUnsigned -- some of the
+::                      kernel-mode drivers in X:\Tools\Drivers aren't WHQL-signed, and
+::                      DISM silently skips unsigned drivers rather than installing them
+::                      without it. Also updated to match the reference DISM command in
+::                      headlessunattend.xml/headlessunattend-arm64.xml's own header
+::                      comments, kept as source-of-truth documentation for this exact
+::                      command.
 ::
 :: Purpose
 :: -------
@@ -154,7 +161,7 @@ setlocal EnableDelayedExpansion
 :: Script metadata
 :: ------------------------------------------------------------------------------
 set "SCRIPT_NAME=Deploy-OpenSSH.cmd"
-set "SCRIPT_VERSION=1.7.0"
+set "SCRIPT_VERSION=1.7.1"
 set "ORG_NAME=Example Music Limited"
 
 :: ------------------------------------------------------------------------------
@@ -444,11 +451,13 @@ echo [%DATE% %TIME%] Target verified: !SELECTED_DRIVE! >> "%LOGFILE%"
 :: the OS has to already be able to boot and reach its own storage first.
 :: Treated as fatal, unlike WinPE's own pnputil injection in Step 2 -- a
 :: missing boot-critical driver here risks an unbootable target, not just a
-:: WinPE inconvenience.
+:: WinPE inconvenience. /ForceUnsigned (Robert, 2026-09-04): some of the
+:: kernel-mode drivers in X:\Tools\Drivers aren't WHQL-signed -- without it,
+:: DISM silently skips them rather than installing them.
 :: ------------------------------------------------------------------------------
 cecho.exe {03} "[INFO] Injecting drivers into offline target image (DISM)..." {\n}{##}
-echo [%DATE% %TIME%] Running: dism /Image:!SELECTED_DRIVE!\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse >> "%LOGFILE%"
-dism /Image:!SELECTED_DRIVE!\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse >> "%LOGFILE%" 2>&1
+echo [%DATE% %TIME%] Running: dism /Image:!SELECTED_DRIVE!\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse /ForceUnsigned >> "%LOGFILE%"
+dism /Image:!SELECTED_DRIVE!\ /Add-Driver /Driver:X:\Tools\Drivers /Recurse /ForceUnsigned >> "%LOGFILE%" 2>&1
 if errorlevel 1 (
   echo [%DATE% %TIME%] ERROR: DISM driver injection into !SELECTED_DRIVE! failed. >> "%LOGFILE%"
   cecho.exe {04} "[ERROR] DISM driver injection into !SELECTED_DRIVE! failed." {\n}{##}
