@@ -137,6 +137,14 @@ sites:
     office_name: "Folketinget Christiansborg"
     street_address: "Rigsdagsgården 4"
     postal_code: "1218"
+  DET:
+    city: "Detroit"
+    country: "United States"
+    country_code: "US"
+    entity: "Example Music (US) LLC."
+    office_name: ""
+    street_address: "2720 Grand River Ave"
+    postal_code: "48201"
   DRS:
     city: "Dresden"
     country: "Germany"
@@ -241,6 +249,14 @@ sites:
     office_name: "Køge Stadion"
     street_address: "Ved Stadion 4"
     postal_code: "4600"
+  KNG:
+    city: "Kingston"
+    country: "Canada"
+    country_code: "CA"
+    entity: "Example Music (Canada) Inc."
+    office_name: ""
+    street_address: "1800 John Counter Blvd"
+    postal_code: "K7M 7H3"
   KOR:
     city: "Korsor"
     country: "Denmark"
@@ -377,6 +393,14 @@ sites:
     office_name: ""
     street_address: "Scone Palace"
     postal_code: "PH2 6BD"
+  PHI:
+    city: "Philadelphia"
+    country: "United States"
+    country_code: "US"
+    entity: "Example Music (US) LLC."
+    office_name: ""
+    street_address: "2955 Market St"
+    postal_code: "19102"
   SEA:
     city: "Seattle"
     country: "United States"

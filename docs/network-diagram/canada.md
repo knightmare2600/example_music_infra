@@ -369,3 +369,59 @@ graph TD
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:MTL:END
 ```
+
+---
+
+## KNG — Kingston *(New Build)* 🏒
+
+**LAN:** `192.168.163.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
+**Entity:** Example Music (Canada) Inc. · **Landline:** +1 613 555 0xxx · **Mobile:** +1 613 555 2xxx
+
+> **New-build site.** No legacy infrastructure ever existed here — see the "New Build Location" box below in place of "Old Network." Standard-slot addresses are allocated in `benarbejde/address_policy.csv`/`sites.csv` the same as any other site, but no `devices.csv` exception rows exist yet.
+
+```mermaid
+%% GENERATED:TOPOLOGY:KNG:START
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
+    T_RTR["📡 EXARTRKNG001<br/>RTR<br/>192.168.163.1"]
+    T_VRK --> T_RTR
+    T_BMC["🔧 EXABMCKNG001<br/>BMC 1<br/>192.168.163.2"]
+    T_RTR --> T_BMC
+    T_PVE["🗂️ EXAPVEKNG001<br/>PVE 1<br/>192.168.163.5"]
+    T_RTR --> T_PVE
+    T_SWI["🔀 EXASWIKNG001<br/>SWI 1<br/>192.168.163.250"]
+    T_RTR --> T_SWI
+    T_SWI2["🔀 EXASWIKNG002<br/>SWI 2<br/>192.168.163.251"]
+    T_RTR --> T_SWI2
+    T_SWI3["🔀 EXASWIKNG003<br/>SWI 3<br/>192.168.163.252"]
+    T_RTR --> T_SWI3
+    T_NAS["🗃️ EXANASKNG001<br/>NAS<br/>192.168.163.19"]
+    T_RDR["🔐 EXARDRKNG001<br/>RDR<br/>192.168.163.21"]
+    T_WAP["📶 EXAWAPKNG001<br/>WAP 1<br/>192.168.163.82"]
+    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_DCS["🗝️ EXADCSKNG001<br/>DCS 1<br/>192.168.163.10"]
+    T_SBC["🛡️ EXASBCKNG001<br/>SBC<br/>192.168.163.48"]
+    T_FWL["🧱 EXAFWLKNG001<br/>LAN Face<br/>192.168.163.253"]
+    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:KNG:END
+```
+
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
+
+```mermaid
+```

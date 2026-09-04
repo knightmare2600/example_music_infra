@@ -735,3 +735,115 @@ graph TD
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:SFO:END
 ```
+
+---
+
+## PHI — Philadelphia *(New Build)* 🔔
+
+**LAN:** `192.168.215.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
+**Entity:** Example Music (US) LLC. · **Landline:** +1 215 555 0xxx · **Mobile:** +1 215 555 2xxx
+
+> **New-build site.** No legacy infrastructure ever existed here — see the "New Build Location" box below in place of "Old Network." Standard-slot addresses are allocated in `benarbejde/address_policy.csv`/`sites.csv` the same as any other site, but no `devices.csv` exception rows exist yet.
+
+```mermaid
+%% GENERATED:TOPOLOGY:PHI:START
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
+    T_RTR["📡 EXARTRPHI001<br/>RTR<br/>192.168.215.1"]
+    T_VRK --> T_RTR
+    T_BMC["🔧 EXABMCPHI001<br/>BMC 1<br/>192.168.215.2"]
+    T_RTR --> T_BMC
+    T_PVE["🗂️ EXAPVEPHI001<br/>PVE 1<br/>192.168.215.5"]
+    T_RTR --> T_PVE
+    T_SWI["🔀 EXASWIPHI001<br/>SWI 1<br/>192.168.215.250"]
+    T_RTR --> T_SWI
+    T_SWI2["🔀 EXASWIPHI002<br/>SWI 2<br/>192.168.215.251"]
+    T_RTR --> T_SWI2
+    T_SWI3["🔀 EXASWIPHI003<br/>SWI 3<br/>192.168.215.252"]
+    T_RTR --> T_SWI3
+    T_NAS["🗃️ EXANASPHI001<br/>NAS<br/>192.168.215.19"]
+    T_RDR["🔐 EXARDRPHI001<br/>RDR<br/>192.168.215.21"]
+    T_WAP["📶 EXAWAPPHI001<br/>WAP 1<br/>192.168.215.82"]
+    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_DCS["🗝️ EXADCSPHI001<br/>DCS 1<br/>192.168.215.10"]
+    T_SBC["🛡️ EXASBCPHI001<br/>SBC<br/>192.168.215.48"]
+    T_FWL["🧱 EXAFWLPHI001<br/>LAN Face<br/>192.168.215.253"]
+    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:PHI:END
+```
+
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
+
+```mermaid
+```
+
+---
+
+## DET — Detroit *(New Build)* 🚗
+
+**LAN:** `192.168.133.0/24` · **Domain:** `example.net`  
+**PVE nodes:** 1 (reserved — see notes below) · **VPN parent:** BRK  
+**Entity:** Example Music (US) LLC. · **Landline:** +1 313 555 0xxx · **Mobile:** +1 313 555 2xxx
+
+> **New-build site.** No legacy infrastructure ever existed here — see the "New Build Location" box below in place of "Old Network." Standard-slot addresses are allocated in `benarbejde/address_policy.csv`/`sites.csv` the same as any other site, but no `devices.csv` exception rows exist yet.
+
+```mermaid
+%% GENERATED:TOPOLOGY:DET:START
+%%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
+graph TD
+    T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
+    T_RTR["📡 EXARTRDET001<br/>RTR<br/>192.168.133.1"]
+    T_VRK --> T_RTR
+    T_BMC["🔧 EXABMCDET001<br/>BMC 1<br/>192.168.133.2"]
+    T_RTR --> T_BMC
+    T_PVE["🗂️ EXAPVEDET001<br/>PVE 1<br/>192.168.133.5"]
+    T_RTR --> T_PVE
+    T_SWI["🔀 EXASWIDET001<br/>SWI 1<br/>192.168.133.250"]
+    T_RTR --> T_SWI
+    T_SWI2["🔀 EXASWIDET002<br/>SWI 2<br/>192.168.133.251"]
+    T_RTR --> T_SWI2
+    T_SWI3["🔀 EXASWIDET003<br/>SWI 3<br/>192.168.133.252"]
+    T_RTR --> T_SWI3
+    T_NAS["🗃️ EXANASDET001<br/>NAS<br/>192.168.133.19"]
+    T_RDR["🔐 EXARDRDET001<br/>RDR<br/>192.168.133.21"]
+    T_WAP["📶 EXAWAPDET001<br/>WAP 1<br/>192.168.133.82"]
+    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_DCS["🗝️ EXADCSDET001<br/>DCS 1<br/>192.168.133.10"]
+    T_SBC["🛡️ EXASBCDET001<br/>SBC<br/>192.168.133.48"]
+    T_FWL["🧱 EXAFWLDET001<br/>LAN Face<br/>192.168.133.253"]
+    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+%% GENERATED:TOPOLOGY:DET:END
+```
+
+### 🗺️ Topology sketch (generated — see benarbejde/generate_network_diagrams.py)
+
+```mermaid
+```
