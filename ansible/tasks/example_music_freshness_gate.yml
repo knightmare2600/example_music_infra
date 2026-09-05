@@ -48,6 +48,17 @@
 # harness before any of these 12 playbooks are even run.
 # =============================================================================
 # Changelog:
+#   2026-09-05  Robert, live (EXAANSCLD001, running against EXAFWLGOT001): a custom stdout
+#               callback in this estate collapses debug-task output in normal (non-verbose)
+#               mode down to a bare "All items completed" line -- so the WARNING task's own
+#               fix command never actually reached the terminal. What was left on screen was
+#               genuinely circular: the WARNING task's name said "see fix below", the FAIL
+#               task's message said "see the warning printed just above" -- and neither
+#               direction actually had the fix visible. Made the FAIL task's own message
+#               self-contained (includes the same "ansible-playbook playbooks/linux/tools.yml
+#               --limit EXAANSCLD001" fix command directly, not just a pointer elsewhere) and
+#               dropped the "see fix below"/"see warning above" cross-references from both
+#               task names, since neither message depends on the other being visible any more.
 #   2026-09-01  Robert, live (EXAANSCLD001, running against EXAFWLATL001): the gate correctly
 #               caught a stale control-node copy and correctly told him the exact fix command
 #               -- but that message was buried at the bottom of a huge wall of raw JSON stat/
@@ -107,7 +118,7 @@
   loop: "{{ example_music_gate_files }}"
   register: _em_gate_source
 
-- name: "[example-music-gate] WARNING — missing or stale against benarbejde/, see fix below"
+- name: "[example-music-gate] WARNING — missing or stale against benarbejde/"
   tags: always
   ansible.builtin.debug:
     msg: |
@@ -128,10 +139,15 @@
     not item.2.stat.exists or
     item.1.stat.checksum != item.2.stat.checksum
 
-- name: "[example-music-gate] FAIL — missing or stale against benarbejde/ (see warning above)"
+- name: "[example-music-gate] FAIL — missing or stale against benarbejde/"
   tags: always
   ansible.builtin.fail:
-    msg: "/etc/example-music/{{ item.0 }} is stale on the control node -- see the warning printed just above for the exact fix."
+    msg: |
+      /etc/example-music/{{ item.0 }} is stale on the control node, relative to
+      benarbejde/{{ item.0 }} in this checkout. Fix it:
+        ansible-playbook playbooks/linux/tools.yml --limit EXAANSCLD001
+        (or whichever host you're actually running ansible-playbook from)
+      Then re-run your original command against {{ inventory_hostname }}.
   loop: "{{ example_music_gate_files | zip(_em_gate_deployed.results, _em_gate_source.results) | list }}"
   loop_control:
     label: "{{ item.0 }}"
