@@ -37,7 +37,7 @@ graph TD
     T_TMP["📦<br/>Provisioning Server<br/>192.168.139.50"]
     T_FWL["🧱 EXAFWLVRK001<br/>Firewall WAN Face, Same Physical Device As EXAFWLCLD001<br/>192.168.139.69"]
     T_PVE["🗂️ EXAPVEVRK001<br/>Quanta S210-X22RQ<br/>192.168.139.5"]
-    T_BMC["🔧 EXABMCVRK001<br/>SuperMicro BMC For EXAPVEVRK001 (Quanta S210-X22RQ Chassi...<br/>192.168.139.215"]
+    T_BMC["🔧 EXABMCVRK001<br/>SuperMicro BMC For EXAPVEVRK001 (Quanta S210-X22RQ Chassi...<br/>192.168.139.3"]
     T_PVE2["🗂️ EXAPVEVRK002<br/>Quanta 1S210-X12RS (asset Tag, Verified 2026-08-20)<br/>192.168.139.6"]
     T_BMC2["🔧 EXABMCVRK002<br/>SuperMicro BMC For EXAPVEVRK002<br/>192.168.139.4"]
     T_VRK --> T_DNS --> T_TMP --> T_FWL --> T_PVE --> T_BMC --> T_PVE2 --> T_BMC2
