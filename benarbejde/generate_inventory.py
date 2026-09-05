@@ -457,20 +457,20 @@ ALLOWED_IP_ALIASES = {
 ## BRD / BER are allowed to overlap (legacy vs modern naming)
 ## Mohrenstraße 37 10117, Berlin, 18:53 CET, Donnerstag 9th November 1989
 ##
-## PHI / VRK, 2026-09-04: a genuinely different reason from BRD/BER above -- not one physical
-## device under two names, but a real coincidence. Every site's FWL1 gets a WAN-face address of
-## 192.168.139.<the site's own subnet octet> (see the FWL1/site_octet block below). PHI's octet
-## (215) happens to equal EXABMCVRK001's real, deliberate devices.csv deviation on VRK's own
-## subnet (192.168.139.215, "SuperMicro BMC for EXAPVEVRK001" -- Robert's call, kept as-is,
-## 2026-08-20). Robert's explicit decision after considering both alternatives (renumbering PHI,
-## or moving EXABMCVRK001 off its deviation): leave both exactly where they are and accept this
-## as a known, deliberate coincidence, same mechanism as BRD/BER even though the underlying
-## reason differs.
+## PHI / VRK, 2026-09-04 -> REMOVED 2026-09-05: briefly needed here for a genuine coincidence,
+## not a legacy-naming case like BRD/BER above. PHI's site octet (215) happened to equal
+## EXABMCVRK002's devices.csv HostOctet at the time -- that device was actually still sitting on
+## a DHCP-era IP from before the estate-wide BMC-pool convention existed, not the deliberate,
+## permanent deviation it was believed to be when this entry was added (a same-day mix-up between
+## EXABMCVRK001/002 during a long session -- see INC-2026-09-04-BMC-VRK002-IP). Once
+## EXABMCVRK002 was corrected to its real, intended .4 slot, the collision this entry excused
+## no longer exists at all -- confirmed by removing the entry and re-running
+## check_duplicate_devices.py clean. Left removed rather than kept as a historical artifact:
+## keeping it would silently excuse any FUTURE genuine collision between PHI and anything else on
+## VRK's network, not just this resolved one.
 ALLOWED_SITE_OVERLAP = {
   ("BRD", "BER"),
   ("BER", "BRD"),
-  ("PHI", "VRK"),
-  ("VRK", "PHI"),
 }
 
 ## Cloud/hub "black swan" sites (CLD, FRD — see site-inventory-audit.py's own black-swan
