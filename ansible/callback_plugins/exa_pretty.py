@@ -142,6 +142,40 @@ def fmt_msg(msg, indent_width):
     return ("\n" + pad).join(lines)
   return msg if isinstance(msg, str) else str(msg)
 
+def _looped_item_msgs(result_dict):
+  """
+  For a looped task, ansible-core's own top-level result collapses every item's
+  outcome into a generic summary (msg: "All items completed" / "One or more
+  items failed") -- the real per-item messages live in result_dict["results"],
+  one dict per iteration, never surfaced by just reading the top-level "msg".
+  Confirmed live 2026-09-05 (Robert, EXAANSCLD001): a looped debug/fail task
+  (ansible/tasks/example_music_freshness_gate.yml's WARNING/FAIL tasks, both
+  loop:-driven) rendered as a bare "All items completed"/"One or more items
+  failed" line no matter what its msg actually said, because v2_runner_on_ok/
+  v2_runner_on_failed below only ever read the top-level msg.
+
+  Returns a list of "label: msg" strings for every item that actually has a
+  non-empty msg, or None if this isn't a looped result (or no item had
+  anything worth surfacing) -- callers fall back to the existing top-level msg
+  in that case, so a loop with no per-item messages (e.g. a plain loop of
+  copy:/file: tasks) keeps behaving exactly as it did before this fix.
+  """
+  results = result_dict.get("results")
+  if not isinstance(results, list):
+    return None
+  lines = []
+  for item in results:
+    if not isinstance(item, dict):
+      continue
+    item_msg = item.get("msg")
+    if not item_msg:
+      continue
+    if isinstance(item_msg, (list, tuple)):
+      item_msg = "\n".join(str(line) for line in item_msg)
+    label = item.get("_ansible_item_label", item.get("item", ""))
+    lines.append(f"{label}: {item_msg}" if label != "" else str(item_msg))
+  return lines or None
+
 class CallbackModule(CallbackBase):
   CALLBACK_VERSION = 2.0
   CALLBACK_TYPE    = "stdout"
@@ -233,7 +267,7 @@ class CallbackModule(CallbackBase):
 
     self._clear_counter()
     host    = result._host.get_name()
-    raw_msg = result._result.get("msg", "")
+    raw_msg = _looped_item_msgs(result._result) or result._result.get("msg", "")
     ip      = fmt_ip(host)
     # Host column width: "[+] " (4) + ip column width, so wrapped lines of a
     # multi-line msg align under the first line's text rather than under
@@ -250,7 +284,7 @@ class CallbackModule(CallbackBase):
   def v2_runner_on_failed(self, result, ignore_errors=False):
     self._clear_counter()
     host    = result._host.get_name()
-    raw_msg = result._result.get("msg", result._result.get("stderr", "unknown error"))
+    raw_msg = _looped_item_msgs(result._result) or result._result.get("msg", result._result.get("stderr", "unknown error"))
     ip      = fmt_ip(host)
     indent_width = 4 + len(ip) + 2
     msg = fmt_msg(raw_msg, indent_width)
