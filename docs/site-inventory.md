@@ -193,8 +193,8 @@ section covers CLD specifically).
 - [ ] `EXAPVECLD001` — Proxmox node online (`192.168.69.5`) · ZFS RAID1 — build this first, everything below except the provisioning server (`192.168.139.50`, bootstrap-only, no formal hostname)/`EXAANSCLD001` runs as a VM on top of it
 - [ ] `EXADNSVRK001` — DNS/BIND9 server online (`192.168.139.8`)
 - [ ] `EXAFWLVRK001` — Firewall / WireGuard hub online (`192.168.139.69`, WAN/vRACK face — same physical firewall as `EXAFWLCLD001`, whose LAN face is `192.168.69.253`)
-- [ ] `EXAPVEVRK001` — Proxmox VE node on the vRACK provisioning network (`192.168.139.5`) — Quanta S210-X22RQ
-- [ ] `EXABMCVRK001` — BMC for `EXAPVEVRK001` (`192.168.139.215`) — SuperMicro (chassis is Quanta, BMC card is SuperMicro)
+- [ ] `EXAPVEVRK001` — Proxmox VE node on the vRACK provisioning network (`192.168.139.5`) — Supermicro Relion 1800, baseboard S210-X12RS V2
+- [ ] `EXABMCVRK001` — BMC for `EXAPVEVRK001` (`192.168.139.3`) — SuperMicro
 - [ ] `EXADCSCLD001` — Domain Controller online (`192.168.69.10`) — first DC in the forest; see `windows_bootstrap/site.yml` then `windows_dc/site.yml`'s `dc_is_first_in_forest` prompt
 - [ ] Provisioning server online (`192.168.139.50` — bootstrap-only, no formal hostname)
 - [ ] `EXAANSCLD001` — Ansible control node online (`192.168.69.9`)

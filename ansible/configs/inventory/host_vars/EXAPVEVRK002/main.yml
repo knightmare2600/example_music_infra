@@ -1,0 +1,20 @@
+---
+# =============================================================================
+# host_vars/EXAPVEVRK002/main.yml
+# Example Music Limited — host-specific variables for EXAPVEVRK002
+# =============================================================================
+# pve_vmbr1_uplink_iface -- the physical NIC vmbr1's bridge-ports line binds
+# to on this specific node. Required by ansible/playbooks/proxmox/playbooks/
+# 36-vmbr1.yml; that playbook fails outright if it's not set (see its own
+# "Fail if pve_vmbr1_uplink_iface is not set for this node" task).
+#
+# Confirmed live 2026-09-05 via `ip -br a` on the node itself: eno1 is UP and
+# carries vmbr0 (the management bridge, 192.168.139.6); enp1s0f1 is the only
+# other real physical interface, currently DOWN -- the natural (and only)
+# candidate for vmbr1's uplink. vmbr1 itself was already present and UP on
+# this node (link-local IPv6 only, no IPv4) at the time this was checked,
+# so this value documents what's already there rather than something new
+# being brought up.
+# =============================================================================
+
+pve_vmbr1_uplink_iface: enp1s0f1
