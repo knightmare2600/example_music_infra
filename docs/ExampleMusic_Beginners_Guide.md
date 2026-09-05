@@ -186,8 +186,8 @@ The CLD IP table is reproduced here for reference. These are authoritative — v
 | `EXAFWLCLD002` | `192.168.69.254` | LAN | Secondary firewall — standard FWL slot 2, not yet built |
 | `EXADNSVRK001` | `192.168.139.8` | vRACK | BIND9 — authoritative DNS for `jukebox.internal` |
 | — (bootstrap-only, no formal hostname) | `192.168.139.50` | vRACK | Provisioning / PXE server (Edinburgh, primary) |
-| `EXAPVEVRK001` | `192.168.139.5` | vRACK | Proxmox VE node — Quanta S210-X22RQ (confirmed by Robert, 2026-08-01) |
-| `EXABMCVRK001` | `192.168.139.215` | vRACK | BMC for `EXAPVEVRK001` — SuperMicro card on the Quanta chassis (confirmed by Robert, 2026-08-01) |
+| `EXAPVEVRK001` | `192.168.139.5` | vRACK | Proxmox VE node — Supermicro Relion 1800, baseboard S210-X12RS V2 (confirmed live via dmidecode, 2026-09-05) |
+| `EXABMCVRK001` | `192.168.139.3` | vRACK | BMC for `EXAPVEVRK001`, standard BMC-pool slot (confirmed by Robert, 2026-09-05) |
 | `EXAANSCLD001` | `192.168.69.9` | LAN | Ansible control node |
 | `EXADCSCLD001` | `192.168.69.10` | LAN | Domain Controller — standard DCS slot 1 |
 | `EXARUDCLD001` | `192.168.69.12` | LAN | Rudder — **not in active use**, dormant, kept as reference code only |

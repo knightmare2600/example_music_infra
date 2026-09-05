@@ -81,8 +81,8 @@ the same site, see below) and every other Danish office gets. See
 | `EXAFWLVRK001` | Firewall / WireGuard hub | — | `192.168.139.1` | CNAME `ovhfwl.knight139.co.uk` — same physical firewall as `EXAFWLCLD001` |
 | `EXADNSVRK001` | DNS / BIND9 server | Debian | `192.168.139.8` | Authoritative DNS for `jukebox.internal` |
 | — (bootstrap-only, no formal hostname) | Provisioning / bootstrap | — | `192.168.139.50` | Serves Ansible keys, ISOs, scripts |
-| `EXAPVEVRK001` | Proxmox VE node | — | `192.168.139.5` | Quanta S210-X22RQ (confirmed by Robert, 2026-08-01) |
-| `EXABMCVRK001` | BMC | — | `192.168.139.215` | SuperMicro BMC for `EXAPVEVRK001` — chassis is Quanta, BMC card is SuperMicro (confirmed by Robert, 2026-08-01) |
+| `EXAPVEVRK001` | Proxmox VE node | — | `192.168.139.5` | Supermicro Relion 1800, baseboard S210-X12RS V2 (confirmed live via dmidecode, 2026-09-05 — corrects the Quanta S210-X22RQ this used to say, which nothing else in this repo ever corroborated) |
+| `EXABMCVRK001` | BMC | — | `192.168.139.3` | SuperMicro BMC for `EXAPVEVRK001`, standard BMC-pool slot (confirmed by Robert, 2026-09-05) |
 | `EXAFWLVRK001` (WAN face) | Firewall — vRACK WAN | — | `192.168.139.69` | Same device as `EXAFWLCLD001` (LAN face, `192.168.69.253`) |
 
 **CLD LAN — `CLD`, `192.168.69.0/24`**
