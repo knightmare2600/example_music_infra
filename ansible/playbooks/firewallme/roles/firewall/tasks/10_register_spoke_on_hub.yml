@@ -49,15 +49,25 @@
 # Endpoint value goes stale until re-run -- a real, known limitation of a
 # spoke-side peer entry, not a reason to omit it now.
 
-- name: "[Hub register] Get this spoke's current WireGuard listening port"
+- name: "[Hub register] Get this spoke's current WireGuard listening port (best-effort — wg0 may not be up yet)"
   ansible.builtin.command: wg show wg0 listen-port
   become: true
   register: fw_wg_listen_port_raw
   changed_when: false
+  failed_when: false
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
-    - fw_wan_activate
+
+- name: "[Hub register] Resolve listen port — live value if wg0 is up, else the standard default"
+  ansible.builtin.set_fact:
+    fw_wg_listen_port_resolved: >-
+      {{ fw_wg_listen_port_raw.stdout | trim
+         if (fw_wg_listen_port_raw.rc | default(1)) == 0 and (fw_wg_listen_port_raw.stdout | default('') | trim != '')
+         else '51820' }}
+  when:
+    - fw_wg_role == 'spoke'
+    - not fw_is_black_site
 
 # BUG FIX (2026-09-01, found live on EXAFWLATL001): every task in this file was
 # gated on fw_wg_role == 'spoke' and not fw_is_black_site, but NOT on
@@ -65,30 +75,31 @@
 # correctly deferred (see 06_network_manager.yml's own session-safety check),
 # wg0 never comes up at all this run, and the very first task above ("wg show
 # wg0 listen-port") crashed outright with "Unable to access interface: No such
-# device" instead of failing gracefully. Every previous live test of this
-# section happened to be either a re-run against an already-active firewall, or
-# a first run where the operator said yes to WAN activation -- this exact,
-# valid combination (first run + deferred activation) had never actually been
-# exercised until now. Added fw_wan_activate to every task's when: below,
-# matching this file's own existing per-task-repeated-condition style, plus a
-# NOTE (mirroring the existing "hub unreachable, deferred" one right below)
-# so a deferred run says so clearly instead of silently skipping or crashing.
-# There is nothing to register yet anyway when wg0 isn't live -- re-run this
-# playbook (or playbooks/add-wg-spoke.yml) after the operator's own reboot
-# brings WAN up for the first time.
-
-- name: "[Hub register] NOTE — WAN not activated this run, registration deferred"
-  ansible.builtin.debug:
-    msg: >-
-      {{ _c.Y }}[!]{{ _c.NC }} WAN was not activated this run — wg0 isn't live yet, so there's
-      nothing to register as a peer on {{ fw_wg_hub_site | default('the hub') }}. This will be
-      picked up automatically the next time this playbook runs against {{ fw_site_code }} once
-      WAN is actually up (after the operator's own reboot), or register manually in the
-      meantime via playbooks/add-wg-spoke.yml.
-  when:
-    - fw_wg_role == 'spoke'
-    - not fw_is_black_site
-    - not fw_wan_activate
+# device" instead of failing gracefully. Added fw_wan_activate to every task's
+# when: below at the time -- SUPERSEDED 2026-09-05, see that changelog entry.
+#
+# BUG FIX (2026-09-05, Robert, live on EXAFWLGOT001): the 2026-09-01 fix above
+# over-corrected -- it made the ENTIRE hub-registration step wait for the
+# spoke's own WAN activation, but registering the peer on the HUB genuinely
+# doesn't need the spoke's wg0 to be running at all. The hub is reached over
+# management SSH regardless of the spoke's own network state, and every value
+# the hub needs (PublicKey, PresharedKey, AllowedIPs) is already sitting on
+# disk from key generation in 09_wireguard_deploy.yml -- none of that depends
+# on wg0 being live locally. The ONLY genuine dependency was the Endpoint
+# port, since a spoke's wg0.conf leaves ListenPort unset (kernel picks a
+# random ephemeral one each start) -- fixed below by falling back to 51820
+# (the same fixed port the hub itself uses) when the live port can't be read
+# yet. This is safe, not a guess dressed up as a fix: per wg(8), a peer's
+# Endpoint is self-correcting -- "updated automatically to the most recent
+# source IP address and port of correctly authenticated packets from the
+# peer." The hub's placeholder-51820 keepalive attempts before the spoke ever
+# boots go nowhere useful, but the moment the spoke's wg0 actually starts (at
+# next boot, or a later run) and sends its own packet to the hub's fixed,
+# always-correct 51820, the hub silently learns the spoke's real port on its
+# own -- no re-run, no stale config, no correctness lost. fw_wan_activate
+# removed from every task below except the ones that were never about it in
+# the first place (hub reachability, still gated on that, not on the spoke's
+# own WAN state).
 
 # BUG FIX (2026-07-18): every task below this point delegates straight to the
 # hub with no check it's actually up -- a spoke provisioned before its hub (or
@@ -109,7 +120,6 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
-    - fw_wan_activate
 
 - name: "[Hub register] NOTE — hub unreachable, registration deferred"
   ansible.builtin.debug:
@@ -120,7 +130,6 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
-    - fw_wan_activate
     - fw_hub_reachable.failed | default(true)
 
 # BUG FIX (2026-07-24, found live on EXAFWLCLD001): all four tasks below already correctly
@@ -141,7 +150,7 @@
       [Peer]
       PublicKey    = {{ fw_wg_pubkey }}
       PresharedKey = {{ fw_wg_psk }}
-      Endpoint     = {{ fw_wan_static_ip }}:{{ fw_wg_listen_port_raw.stdout | trim }}
+      Endpoint     = {{ fw_wan_static_ip }}:{{ fw_wg_listen_port_resolved }}
       AllowedIPs   = {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(', ') }}
       PersistentKeepalive = 25
   delegate_to: "{{ fw_wg_hub_ip | default(inventory_hostname) }}"
@@ -150,7 +159,6 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
-    - fw_wan_activate
     - not (fw_hub_reachable.failed | default(true))
 
 - name: "[Hub register] Write PSK to tmpfile for wg set"
@@ -163,7 +171,6 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
-    - fw_wan_activate
     - fw_hub_peer_block.changed
 
 - name: "[Hub register] Live-add peer via wg set (no restart needed)"
@@ -177,7 +184,6 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
-    - fw_wan_activate
     - fw_hub_peer_block.changed
 
 - name: "[Hub register] Remove PSK tmpfile"
@@ -189,7 +195,6 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
-    - fw_wan_activate
     - fw_hub_peer_block.changed
 
 # BUG FIX (2026-07-17): used {{ playbook_dir }} here, which is caller-dependent
@@ -222,7 +227,6 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
-    - fw_wan_activate
     - not (fw_hub_reachable.failed | default(true))
 
 - name: "[Hub register] NOTE — wg_hub_topology updated, not committed"
@@ -234,7 +238,6 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
-    - fw_wan_activate
     - fw_hub_topology_update.changed
 
 - name: "[Hub register] Summary"
@@ -245,5 +248,4 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
-    - fw_wan_activate
     - not (fw_hub_reachable.failed | default(true))
