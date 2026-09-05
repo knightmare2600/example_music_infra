@@ -23,12 +23,92 @@ Newest incident at the top, oldest at the bottom — read bottom-to-top for chro
 
 | Incident ID | Date | Summary |
 |---|---|---|
+| [INC-2026-09-05-WG-HUB-GATE](#inc-2026-09-05-wg-hub-gate--wireguard-hub-registration-silently-skipped-alongside-a-safe-default-and-hidden-by-a-separate-output-formatting-defect) | 2026-09-05 | A new Gothenburg firewall's WireGuard peer never reached its hub because registration was needlessly tied to a safe, cautious default elsewhere in the same run — and a separate defect in the estate's own Ansible output formatting hid the message that would have explained why |
+| [INC-2026-09-04-BMC-VRK002-IP](#inc-2026-09-04-bmc-vrk002-ip--a-pre-convention-bmc-address-blocked-a-new-sites-planned-ip) | 2026-09-04 | A Proxmox BMC commissioned before the estate's addressing convention existed had never been retrofitted onto it, and its leftover address collided with a new site's planned IP |
 | [INC-2026-08-28-FIREWALLME-CSV](#inc-2026-08-28-firewallme-csv--compliance-driven-out-of-hours-rebuild-exposed-a-break-glass-provisioning-bug-broken-for-every-site) | 2026-08-28 | An out-of-hours Coventry firewall rebuild, prompted by premature Compliance pestering over a BCP test still a month away, exposed a break-glass provisioning script broken for every site in the estate |
 | [INC-2026-08-21-CTRLALTDEL](#inc-2026-08-21-ctrlaltdel--console-ctrlaltdelete-rebooted-a-live-firewall-node) | 2026-08-21 | A Ctrl+Alt+Del sent via the Proxmox console rebooted a live firewall node — Windows habit, not a Linux "unlock" gesture; molly-guard never saw it since it never touched SSH |
 | [INC-2026-08-11-SALT-DISK-FULL](#inc-2026-08-11-salt-disk-full--root-filesystem-filled-by-an-oversized-git-clone-on-the-salt-master) | 2026-08-11 | The Salt master's root filesystem filled completely, blocking all login, because its git-based state/pillar delivery was cloning the estate's entire infrastructure repository in full |
 | [INC-2026-07-16-ANSIBLE-LOCK](#inc-2026-07-16-ansible-lock--ansible-account-administratively-locked-out-on-a-live-firewall-node) | 2026-07-16 | The `ansible` account's administrative lock rejected every login method, not just password, on a live firewall node |
 | [INC-2026-07-12-SSH-KEY](#inc-2026-07-12-ssh-key--lost-ssh-keypair-delayed-pve-node-deployment-in-scandinavia) | 2026-07-12 | Lost/forgotten SSH keypair delayed PVE node deployment in Scandinavia |
 | [INC-2026-04-03-BMC-CREDS](#inc-2026-04-03-bmc-creds--mismatched-bmc-credentials-on-a-newly-delivered-fal-server) | 2026-04-03 | Vendor delivered the wrong physical chassis under otherwise-correct paperwork — documented BMC credentials didn't work on arrival at FAL |
+
+---
+
+## INC-2026-09-05-WG-HUB-GATE — WireGuard hub registration silently skipped alongside a safe default, and hidden by a separate output-formatting defect
+
+### Incident Background
+
+**Date:** 5 September 2026
+**Scope:** Initial WireGuard spoke registration for `EXAFWLGOT001` (Gothenburg) on the hub (`EXAFWLCLD001`); the underlying defects affect every spoke firewall's hub-registration step, and separately, the estate's custom Ansible output formatting used across every playbook run.
+**Cause (summary):** The automation step that registers a new spoke's WireGuard peer on its hub was gated behind the same safety flag as the spoke's own optional WAN activation — so declining to activate WAN live during a build (the correct, safety-conscious answer whenever the operator may be connected over that same interface) silently skipped hub registration too, with nothing on screen making that clear. A second, separate defect in the estate's own Ansible output formatting compounded the confusion: it was discarding the real content of any looped task's message, which is exactly the kind of message this gap needed to be diagnosed with.
+
+A Senior Technician built `EXAFWLGOT001` via the estate's `firewallme` automation. The run completed cleanly, with no errors, and correctly prompted for the WireGuard hub and generated a real peer key — but the peer never appeared on the hub. Nothing in the output explained why, because the one message that would have explained it wasn't rendering its own content.
+
+### Root Cause & Mitigation
+
+Two genuinely separate defects, found one after the other while investigating the same underlying symptom:
+
+**1. Hub registration was gated on the wrong condition.** `firewallme`'s WireGuard hub-registration task ran only if the spoke's own WAN interface had been actively brought up live during that same run — a flag that defaults to "no" specifically because bringing WAN up live, over the same interface an operator might be connected through, risks dropping their session. That default is correct and deliberate. What was wrong was tying an entirely separate, idempotent action — writing this spoke's public key onto the hub over management SSH, something that has nothing to do with the spoke's own network state — to the same flag. The one genuine technical dependency (the spoke's actual WireGuard listening port, only knowable once its tunnel interface is live) was real, but didn't require deferring the whole registration: WireGuard's own documented behaviour already treats a peer's recorded endpoint as self-correcting, updating automatically the moment it receives a real, authenticated packet from that peer. Registration was recoded to always run once the hub itself answers, using the estate's standard WireGuard port as a placeholder for that one value when the spoke's tunnel isn't live yet — the same value that self-corrects the moment it is.
+
+**2. The estate's own Ansible output formatting was hiding exactly the message needed to catch this sooner.** While improving the wording of the (until then, correctly silent) skip message, an attempt to make it clearer didn't change what appeared on screen at all. The estate's custom stdout formatting only ever reads a task's top-level result message — for any task run in a loop (as both the affected messages were), Ansible's own engine collapses that top-level message down to a generic "all items completed"/"one or more items failed" placeholder, and the real, useful message for each individual item is nested one level deeper, never read by the estate's formatting at all. This is a defect in the formatting itself, not specific to this one message — any looped task's debug or failure output anywhere in the estate's automation has been silently losing its real content the same way, for as long as this formatting has existed. Fixed by teaching the formatting to look for and surface that nested per-item content, falling back to its previous behaviour untouched for the much more common case of a loop with nothing item-specific to say.
+
+Both fixes were verified against a real, live rebuild of `EXAFWLGOT001`, deliberately repeating the exact scenario that exposed the gap (declining WAN activation) to confirm hub registration now completes anyway, and confirming the improved message renders its full content rather than the placeholder.
+
+### Lessons Learned
+
+- **An idempotent, safe action tied to the same flag as a genuinely risky one will be skipped along with it, even when there was never a reason to couple them.** WAN activation is rightly cautious by default; registering a public key on a management-reachable hub over SSH carries none of that risk, and shouldn't have inherited its caution.
+- **A tool that formats or summarises output for readability needs the same scrutiny as the thing it's reporting on.** The real defect here was findable the moment the run finished — the estate's own tooling for making that easier to see was quietly working against that goal instead, for every looped task, not just this one.
+- **Nobody noticed the coupling because nothing had exercised this exact combination before.** A first-ever build, with WAN activation genuinely and correctly deferred, simply hadn't come up in quite this shape until Gothenburg's build did. That's not bad luck to shrug off: reviewing what an automation step is actually gated on, and why, is squarely part of ongoing engineering ownership of that automation — which is where responsibility for this sits, without it being a fault-finding exercise over a gap that, by definition, nothing had caught yet.
+
+### Improvements Made
+
+- The WireGuard hub-registration task no longer depends on the spoke's own WAN activation state — only on the hub itself being reachable, which was always the genuine requirement.
+- The estate's custom Ansible output formatting now correctly surfaces a looped task's real per-item message, instead of a generic placeholder — a fix that benefits every looped debug or failure message across the whole estate's automation, not just this one.
+- Verified live end to end against a real rebuild of `EXAFWLGOT001`, deliberately reproducing the exact scenario that first exposed the gap.
+
+### Executive Summary
+
+Building a new firewall for Gothenburg surfaced two separate, previously-undiscovered gaps in the estate's own automation: a safe, idempotent step (registering a new site's WireGuard key on the central hub) was needlessly tied to the same cautious default as a genuinely risky one (bringing a network interface live during a session), so a correct, safety-conscious answer at one prompt silently skipped an unrelated step too — and separately, the estate's own tooling for making Ansible output easier to read was quietly discarding exactly the kind of detail that would have explained the first problem immediately. Neither had been caught before because nothing had previously exercised this precise combination. Both are now fixed, verified against a real rebuild of the affected firewall, and the output-formatting fix in particular protects every other looped task across the whole estate going forward, not just this one. Responsibility for closing a gap like this sits with ongoing ownership of the automation it lives in — not as blame for a gap nothing had yet caught, but because that ownership is exactly what closes gaps like this one for good.
+
+---
+
+## INC-2026-09-04-BMC-VRK002-IP — A pre-convention BMC address blocked a new site's planned IP
+
+### Incident Background
+
+**Date:** 4 September 2026, out of hours (21:00 BST)
+**Scope:** `EXABMCVRK002` — the second Proxmox VE node's BMC on the vRACK provisioning network, hosted at Pulsant, Edinburgh, Scotland
+**Cause (summary):** When this BMC was first commissioned, the network was still in its infancy and the estate-wide BMC addressing convention didn't yet exist for it to be onboarded against — it was left on its original DHCP-assigned address, `192.168.139.215`, rather than the standard BMC-pool slot it should eventually have moved into. That leftover address surfaced as a real, live-blocking collision only much later, while bringing a new site (Philadelphia) online.
+
+While adding new sites to the estate's records, a Senior Technician found that Philadelphia's planned firewall would need the exact address `EXABMCVRK002` had been sitting on since its original commissioning — a genuine, live IP collision on the shared provisioning network, not a documentation mismatch. Philadelphia's own build is scheduled for October and wasn't blocked by anything urgent in the moment, but the underlying address conflict needed resolving before that build could proceed as planned.
+
+### Root Cause & Mitigation
+
+`EXABMCVRK002` was commissioned before the estate had a formal, documented convention for where a site's BMC addresses should live. At the time, there was no gap in process to speak of — the convention simply didn't exist yet for this device to follow. As the estate's addressing conventions matured and were written down properly, this one node was never retroactively brought into line, and its original DHCP-era address quietly persisted, unnoticed, until a new site's planned address happened to need the exact same one.
+
+This is not treated as a failure of the original commissioning — the technician at the time had nothing to follow that would have told them otherwise, and hindsight isn't a fair basis for judging a decision made before the relevant convention existed. It's exactly the kind of retroactive correction the estate's own verification tooling exists to surface, and did: the collision was caught during ordinary record-keeping work — adding a new site to `sites.csv` and cross-checking it against `devices.csv` — not discovered live during an outage.
+
+Once found, the fix itself was small and deliberate: the Senior Technician went onto `EXABMCVRK002` out of hours, at 21:00 BST — chosen specifically because it falls within the site's own quiet period while still comfortably inside normal business hours on the US East Coast (16:00 EDT), so the change caused no disruption anywhere. The BMC's address was changed from `192.168.139.215` to its correct standing slot, `192.168.139.4`, on the estate's standard BMC-pool convention. The change itself took under ten minutes.
+
+Rather than trust a single check, the change was verified three independent ways — an `snmpwalk` against the new address, a plain web-browser login to the BMC's own interface, and an independent check via `fyrtaarn` — with a second engineer (a PFY) performing his own checks and counter-signing the result before it was considered done.
+
+### Lessons Learned
+
+- **A device commissioned before a convention existed isn't a mistake at the time — but it does need a way to be caught later, once the convention does exist.** Nothing about the original commissioning was wrong for its era; the gap was in not having a mechanism to flag it once the estate's own standards moved on without it.
+- **This is precisely the value of maintaining a real, checked source of truth and a verification harness, rather than trusting memory or paperwork.** The collision was found through ordinary, careful record-keeping — adding a new site — not through an outage. A single corrected address, caught this way, avoided a live blocker to bringing Philadelphia online on schedule.
+- **Out-of-hours timing chosen with the wider estate in mind, not just the local clock, avoids disruption for free.** 21:00 in Scotland being mid-afternoon on the US East Coast meant this change happened in a genuine quiet window without needing to coordinate around anyone's actual working day.
+- **A single verification method is one method too few for a change to shared infrastructure.** Three independent checks, plus a second engineer's own sign-off, is what "confirmed working" is supposed to mean here — not "the first check that happened to pass."
+
+### Improvements Made
+
+- `EXABMCVRK002` is now correctly on `192.168.139.4`, the estate's standard BMC-pool convention, verified three independent ways plus a second engineer's counter-check.
+- `benarbejde/devices.csv` — the estate's own source of truth for exactly this kind of fact — corrected to record the real current address, along with the device's genuine history, rather than either silently updating the number with no record or leaving stale documentation in place.
+- A related, unrelated-cause software fix uncovered during the same work — a network-diagram generator exception that had briefly been added to work around this exact address collision — was removed once the real address was corrected, rather than left in place as dead code that could mask a genuinely different future collision.
+- The Philadelphia site build, previously blocked by this exact address collision, is clear to proceed as scheduled in October.
+
+### Executive Summary
+
+A Proxmox BMC on the estate's shared provisioning network had been left on its original, DHCP-era address since before the estate had a formal convention for where such addresses belong — not a mistake at the time, simply a gap nothing had yet caught. It surfaced only when a new site's planned build needed the exact same address, found through the estate's own careful record-keeping rather than a live outage. The fix — moving one BMC to its correct, standard address — took under ten minutes, was scheduled for a genuine quiet period on both sides of the Atlantic, and was verified three independent ways plus a second engineer's counter-signed check before being considered complete. This is exactly the outcome the estate's verification tooling and source-of-truth records are there to produce: a small, calm, well-checked correction, made well ahead of the deadline it was protecting, rather than a scramble discovered too late.
 
 ---
 
