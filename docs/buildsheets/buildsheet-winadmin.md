@@ -45,7 +45,7 @@ Site nodes   : DHCP or static per site convention
 ```
 7zip.install  notepadplusplus.install  hyper  putty.install  winscp.install  far  powershell-core
 rustdesk.install  edit  sdelete  wget  busybox  vcredist-all  dotnetfx  windirstat
-googlechrome  firefox  vlc  windows-terminal
+googlechrome  firefox  vlc  microsoft-windows-terminal
 ```
 
 `sysinternals` was removed from this list 2026-08-14 after a live SHA256 checksum-mismatch failure against `EXADCSLAX001` (upstream `download.sysinternals.com` zip updated in place without the Chocolatey package's checksum catching up). Individual Sysinternals tools (ProcExp, ADExplorer, etc.) are instead deployed as committed binaries under `ansible/playbooks/windows_bootstrap/playbooks/files/{x86_64,arm64}/`.

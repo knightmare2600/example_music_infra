@@ -70,7 +70,7 @@ today.
 | `googlechrome` | GUI-conditional |
 | `firefox` | GUI-conditional |
 | `vlc` | GUI-conditional |
-| `windows-terminal` | GUI-conditional |
+| `microsoft-windows-terminal` | GUI-conditional |
 | `dua-cli` | Disk usage — NOT a Chocolatey package; fetched directly from its GitHub release by `tasks/dua_cli.yml`, dropped at `C:\Windows\dua.exe` |
 
 `sysinternals` was removed from this list 2026-08-14 after a live SHA256 checksum-mismatch failure against `EXADCSLAX001` (upstream `download.sysinternals.com` zip updated in place without the Chocolatey package's checksum catching up). Individual Sysinternals tools (ProcExp, ADExplorer, etc.) are instead deployed as committed binaries under `ansible/playbooks/windows_bootstrap/playbooks/files/{x86_64,arm64}/` — same `50-binaries.yml` mechanism as `dua-cli` above.
