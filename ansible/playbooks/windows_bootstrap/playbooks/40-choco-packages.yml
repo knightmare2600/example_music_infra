@@ -30,6 +30,16 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-09-15  Exclude microsoft-windows-terminal from choco_packages_gui on Windows
+#               Server 2025 -- Robert, live on a real Server 2025 box (same arm64
+#               arch-verification session as the ID fix below): it ships built-in by
+#               default there already, so a Chocolatey install of it is redundant (not
+#               broken, just unnecessary). Detected via the same registry key
+#               ("Detect Windows installation type and product name" task) already read
+#               for has_gui, extended to also capture ProductName rather than a second
+#               remote call -- is_server_2025 is true when ProductName contains "Windows
+#               Server 2025". Every other OS (Server 2019/2022, client Windows) still
+#               gets it installed as before.
 #   2026-09-15  Fixed choco_packages_gui: "windows-terminal" was never a real Chocolatey
 #               package ID -- confirmed live (arm64 Server 2025 test box, Robert):
 #               "windows-terminal not installed. The package was not found with the
@@ -242,16 +252,19 @@
 
   tasks:
 
-    - name: Detect Windows installation type (Client / Server / Server Core)
+    - name: Detect Windows installation type and product name
       ansible.windows.win_shell: |
-        (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').InstallationType
+        $key = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+        Write-Output $key.InstallationType
+        Write-Output $key.ProductName
       register: installation_type_check
       changed_when: false
       tags: choco_packages
 
-    - name: Set has_gui fact
+    - name: Set has_gui / is_server_2025 facts
       set_fact:
-        has_gui: "{{ installation_type_check.stdout | trim != 'Server Core' }}"
+        has_gui: "{{ installation_type_check.stdout_lines[0] | trim != 'Server Core' }}"
+        is_server_2025: "{{ 'Windows Server 2025' in (installation_type_check.stdout_lines[1] | default('')) }}"
       tags: choco_packages
 
     - name: Get currently installed Chocolatey packages (single local, no-network call)
@@ -276,7 +289,11 @@
     - name: Set missing-package facts (only what actually needs installing)
       set_fact:
         choco_packages_common_missing: "{{ choco_packages_common | reject('in', installed_choco_packages) | list }}"
-        choco_packages_gui_missing:    "{{ choco_packages_gui | reject('in', installed_choco_packages) | list }}"
+        choco_packages_gui_missing: >-
+          {{ choco_packages_gui
+             | reject('in', installed_choco_packages)
+             | reject('in', (['microsoft-windows-terminal'] if is_server_2025 | bool else []))
+             | list }}
       tags: choco_packages
 
     - name: Show package selection for this run
@@ -286,6 +303,7 @@
           - "Already installed: {{ installed_choco_packages | length }} package(s)"
           - "Common — missing : {{ (choco_packages_common_missing | join(', ')) if choco_packages_common_missing | length > 0 else '(none — all already present)' }}"
           - "GUI — missing    : {{ (choco_packages_gui_missing | join(', ') if choco_packages_gui_missing | length > 0 else '(none — all already present)') if has_gui | bool else '(skipped — no GUI)' }}"
+          - "GUI — excluded   : {{ 'microsoft-windows-terminal (ships built-in on Windows Server 2025)' if is_server_2025 | bool else '(none)' }}"
       tags: choco_packages
 
     - name: Install missing common Chocolatey packages
