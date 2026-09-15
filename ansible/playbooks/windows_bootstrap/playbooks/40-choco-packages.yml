@@ -8,6 +8,21 @@
 # Desktop Experience — skipped on Server Core). Safe to re-run — choco
 # install is idempotent when packages are already present.
 #
+# ARM64 DECISION (2026-09-15, Robert, confirmed live on a real arm64 Windows
+# Server 2025 box): several packages here (powershell-core, notepadplusplus.
+# install, rustdesk.install, vlc, firefox, far, 7zip.install, googlechrome)
+# have genuine native-arm64 Windows builds upstream, but the Chocolatey
+# packages for them still fetch the x64 artefact unconditionally and run it
+# under Windows' x64 emulation layer -- confirmed working, just not native.
+# Deliberately NOT bypassing Chocolatey to fetch native arm64 binaries
+# directly (the files/{x86_64,arm64}/ pattern used elsewhere in this repo
+# for dua-cli/Sysinternals) -- Robert's call: stay on whatever Chocolatey
+# itself resolves, x64-under-emulation included, and pick up native arm64
+# automatically whenever the Chocolatey packaging (not just upstream) adds
+# real arch detection, rather than maintaining a second, hand-rolled
+# per-package arch-selection mechanism here. Same "wait for the ecosystem,
+# don't build a workaround" call already made for arm64 GParted.
+#
 # DESIGN NOTE: This file is part of the windows_bootstrap chain, which by
 # design runs against a freshly PXE/WDS-built Windows host on its DHCP
 # address — the host has NO presence in any Ansible inventory file and
