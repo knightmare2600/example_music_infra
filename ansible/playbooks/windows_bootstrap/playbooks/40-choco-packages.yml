@@ -30,6 +30,16 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-09-15  Fixed choco_packages_gui: "windows-terminal" was never a real Chocolatey
+#               package ID -- confirmed live (arm64 Server 2025 test box, Robert):
+#               "windows-terminal not installed. The package was not found with the
+#               source(s) listed." Not an arm64-specific bug -- this ID was wrong for
+#               every architecture, just never actually exercised live before this run.
+#               The real ID, microsoft-windows-terminal, was already correctly in use
+#               elsewhere in this repo (Join-DomainAndBootstrap.ps1, Setup-Workstation.ps1
+#               -- the latter's own comment says "confirmed real package ID, 2026-07-27"),
+#               just never swept into this file. See also docs/buildsheets/
+#               buildsheet-workstation.md and buildsheet-winadmin.md, corrected same day.
 #   2026-08-29  Added miller (mlr) to choco_packages_common -- Robert's ask,
 #               same day as the equivalent addition to Linux's
 #               common_packages (group_vars/all/main.yml). jq's CSV-native
@@ -227,7 +237,7 @@
       - googlechrome
       - firefox
       - vlc
-      - windows-terminal
+      - microsoft-windows-terminal
       - winevdm
 
   tasks:
