@@ -283,6 +283,22 @@
 #                     own historical v1.15.0 changelog entry (2026-06-30, which introduced the
 #                     wrong URL) untouched -- it's an accurate record of what shipped then.
 #
+# v1.25.0 2026-09-17  BUG FIX, same live EXAANSFRD001 run as v1.24.0: Section 5b's devices.csv
+#                     fetch failed with "Could not download" -- VRACK_SERVER was independently
+#                     re-derived as "${VRACK_NET}.50" (the standard OVH vRACK convention, plain
+#                     port 80), a second, hand-rolled guess that disagreed with the newer
+#                     preflight block's PREFLIGHT_SERVER, which already correctly resolves this
+#                     same box's real bootstrap server via gateway detection -- including the
+#                     FRD special case (http://172.16.124.1:8000, nothing like ".50" on port
+#                     80). sites.csv loaded fine in the same run purely because the preflight
+#                     block had already fetched it correctly earlier and Section 5b's own
+#                     sites.csv fetch is a documented no-op once the file exists -- it had the
+#                     identical wrong URL underneath, just never exercised. Fixed by making
+#                     VRACK_SERVER reuse PREFLIGHT_SERVER directly instead of maintaining a
+#                     second derivation; DEVICES_URL/SITES_URL no longer prepend "http://"
+#                     since PREFLIGHT_SERVER already includes the scheme (and port, where one
+#                     applies).
+#
 # ==============================================================================
 
 set -euo pipefail
@@ -636,7 +652,20 @@ GW_OCTET="${GW_OCTET_INPUT:-${VRACK_GW_DEFAULT}}"
 VRACK_GW="${VRACK_NET}.${GW_OCTET}"
 
 # Bootstrap web server on the vRACK (serves devices.csv, sites.csv, etc.)
-VRACK_SERVER="${VRACK_NET}.50"
+#
+# BUG FIX 2026-09-17: this used to independently re-derive the server address as
+# "${VRACK_NET}.50" (the standard OVH vRACK convention, port 80 implied) -- a second,
+# hand-rolled guess that disagreed with the preflight block above's PREFLIGHT_SERVER,
+# which already correctly resolved this same box's real bootstrap server via gateway
+# detection (including the FRD special case, http://172.16.124.1:8000, nothing like
+# ".50" on port 80). Confirmed live on EXAANSFRD001: sites.csv loaded fine (preflight's
+# fetch, correct URL) while Section 5b's devices.csv fetch failed outright (this line's
+# wrong URL, http://172.16.124.50/proxmox/devices.csv -- nothing listening there).
+# PREFLIGHT_SERVER is the single, already-verified-reachable source of truth for this
+# box's bootstrap server -- reusing it here instead of maintaining a second, divergent
+# derivation. It already includes the http:// scheme (and a port where one applies), so
+# DEVICES_URL/SITES_URL below no longer prepend "http://" themselves.
+VRACK_SERVER="${PREFLIGHT_SERVER}"
 
 # EXAANSCLD001 lives at 192.168.69.9 on the CLD LAN, but its provisioning
 # (vRACK) interface also gets a static IP on 192.168.139.x for management.
@@ -1029,7 +1058,7 @@ mkdir -p "${CANONICAL_DIR}"
 
 # ── devices.csv ──────────────────────────────────────────────────────────────
 DEVICES_CANONICAL="${CANONICAL_DIR}/devices.csv"
-DEVICES_URL="http://${VRACK_SERVER}/proxmox/devices.csv"
+DEVICES_URL="${VRACK_SERVER}/proxmox/devices.csv"
 
 if [[ -f "${DEVICES_CANONICAL}" ]]; then
   success "devices.csv found at ${DEVICES_CANONICAL}"
@@ -1057,7 +1086,7 @@ if [[ ! -f "${SITES_CANONICAL}" ]]; then
     success "Installed sites.csv to ${SITES_CANONICAL} from ${SITES_CSV}."
   else
     info "Fetching sites.csv from vRACK bootstrap server..."
-    SITES_URL="http://${VRACK_SERVER}/proxmox/sites.csv"
+    SITES_URL="${VRACK_SERVER}/proxmox/sites.csv"
     if wget -q --tries=1 --timeout=15 -O "${SITES_CANONICAL}" "${SITES_URL}" 2>/dev/null; then
       success "Downloaded sites.csv to ${SITES_CANONICAL}."
     else
