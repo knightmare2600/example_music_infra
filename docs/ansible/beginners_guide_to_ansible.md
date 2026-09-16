@@ -304,7 +304,7 @@ sudo ./ansibleme.sh
 `ansibleme.sh` is self-contained and interactive. In order, it: reconfigures this box's own
 static IP (to `192.168.69.9`, per `devices.csv`'s `CLD,ANS,1,9` row — the same value
 `begyndelse.json`'s `ansible_control` entry already states); generates the estate's Ansible
-SSH keypair; clones this repo into `/home/ansible/example-music-infra` and symlinks
+SSH keypair; clones this repo into `/home/ansible/example_music_infra` and symlinks
 `ansible/` to `/home/ansible/ansible`; writes `ansible.cfg` and scaffolds
 `configs/inventory/`; and offers to onboard PVE nodes and run a discovery scan of the rest of
 the estate. Say no to both for now — those are the next two steps, done deliberately rather
