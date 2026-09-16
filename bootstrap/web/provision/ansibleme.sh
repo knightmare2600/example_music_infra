@@ -299,6 +299,18 @@
 #                     since PREFLIGHT_SERVER already includes the scheme (and port, where one
 #                     applies).
 #
+# v1.26.0 2026-09-17  BUG FIX, same family as v1.25.0, found live same day: Section 1b's DNS_IP
+#                     (from begyndelse.json, 192.168.139.8 -- EXADNSVRK001 on the real vRACK) is
+#                     correct for every genuine vRACK-connected site, but is unreachable from
+#                     FRD's isolated test subnet -- confirmed live, every DNS lookup on
+#                     EXAANSFRD001 hung until Robert manually pointed resolv.conf at a public
+#                     resolver (9.9.9.9). Added the same PREFLIGHT_GW-based FRD detection
+#                     VRACK_SERVER already uses: on the FRD test network, DNS_IP now falls back
+#                     to 9.9.9.9 instead of the unreachable internal address. EXADNSFRD001 is
+#                     planned (site convention: .8, matching EXADNSVRK001) but doesn't exist yet;
+#                     revisit this override once it does and FRD has a real production subnet,
+#                     rather than assuming this lab network becomes that subnet.
+#
 # ==============================================================================
 
 set -euo pipefail
@@ -768,6 +780,22 @@ for candidate in "${BEGYNDELSE_JSON:-}" "$(cd "$(dirname "${BASH_SOURCE[0]}")" &
   [[ -n "${candidate}" && -f "${candidate}" ]] && { DNS_IP=$(jq -r '.dns.ip' "${candidate}"); break; }
 done
 [[ -z "${DNS_IP}" ]] && die "begyndelse.json not found (looked in \$BEGYNDELSE_JSON, script directory, /etc/example-music/) -- cannot determine DNS IP."
+
+# BUG FIX 2026-09-17: same FRD-test-network problem as VRACK_SERVER above. begyndelse.json's
+# DNS IP (192.168.139.8, EXADNSVRK001 on the real vRACK) is correct for every genuine
+# vRACK-connected site, but is unreachable from FRD's isolated test subnet -- confirmed live,
+# EXAANSFRD001, resolv.conf pointed at it and every DNS lookup on the box hung. Robert's own
+# interim fix was pointing it at a public resolver (9.9.9.9) by hand; this makes that the
+# scripted default for this specific network rather than something to redo by hand every time.
+# EXADNSFRD001 is planned (site convention: .8 on FRD's own eventual real subnet, matching
+# EXADNSVRK001's role) but doesn't exist yet -- once it does, on FRD's real production subnet
+# (not this isolated lab network), this override will need revisiting, not just deleting --
+# check whether FRD is still using this same 172.16.124.x lab network at that point.
+if [[ "${PREFLIGHT_GW}" == "172.16.124.2" ]]; then
+  warn "FRD test network detected -- begyndelse.json's DNS IP (${DNS_IP}) is unreachable here."
+  warn "Falling back to a public resolver (9.9.9.9) instead. Revisit once EXADNSFRD001 exists."
+  DNS_IP="9.9.9.9"
+fi
 
 nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "ansible-static" \
   ipv4.method manual \
