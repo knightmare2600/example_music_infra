@@ -386,7 +386,10 @@ tunnel address `10.0.69.1`, ready to accept spokes.
 
 Create a Windows Server VM on `EXAPVECLD001`, install via the estate's unattend answer file
 (see `docs/bootstrap/bootstrapping.md`'s Windows section), and once it's reachable over
-WinRM after OOBE, run the DC onboarding chain from `EXAANSCLD001`:
+SSH after OOBE (this estate's real connection method for Windows hosts — see
+`group_vars/windows_nodes/connection.yml`; OpenSSH is installed and enabled automatically by
+`SetupComplete.cmd` → `Install-OpenSSH.ps1` as part of the unattend chain, not WinRM), run
+the DC onboarding chain from `EXAANSCLD001`:
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
@@ -406,6 +409,51 @@ over — `Install-ADDSForest`, not a join, since this is the forest root.
 
 **End state:** the `jukebox.internal` forest exists, with `EXADCSCLD001` as its first DC at
 `192.168.69.10`.
+
+### A gotcha: manually preparing a Windows box for Ansible (skipping the unattend chain)
+
+Every real, automated Windows build (autounattend → `SetupComplete.cmd` →
+`bootstrap/web/windows/Install-OpenSSH.ps1`) already installs OpenSSH Client and Server,
+starts `sshd`, **and** opens the Windows Firewall for inbound TCP/22 — all four steps,
+idempotently, every time.
+
+Sometimes you need a quick, one-off Windows box outside that chain — a manual test VM, a
+hand-built ARM64 install to test something specific, whatever — and it's tempting to just
+run the OpenSSH bits yourself in an interactive PowerShell session:
+
+```powershell
+Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+Set-Service -Name sshd -StartupType 'Automatic'
+Start-Service sshd
+```
+
+**This is not enough on its own.** Those four commands install and start `sshd`, but they do
+nothing to the Windows Firewall — by default, nothing allows inbound TCP/22, so `sshd` sits
+there listening and every connection attempt from outside the box is silently dropped at the
+firewall. From the Ansible control node's side this doesn't look like a clean "connection
+refused" — it can present as Ansible's own connection worker hanging and then crashing
+outright ("A worker was found in a dead state"), which sends you looking for bugs in
+`ansible-core`, `sshpass`, or the control node itself, when the real problem is one missing
+firewall rule on the target. Confirmed live, 2026-09-17, EXAANSFRD001 → a manually-built
+ARM64 Windows Server 2025 box on the FRD test network — exactly this symptom, exactly this
+cause. A plain manual `ssh` login from the control node (bypassing Ansible/`sshpass`
+entirely) is the fastest way to tell the two apart: if that hangs or is refused too, it's the
+firewall; if it connects fine but Ansible still dies, look elsewhere.
+
+The missing piece — the same rule `Install-OpenSSH.ps1` already creates automatically:
+
+```powershell
+if (!(Get-NetFirewallRule -Name "OpenSSH-Server-In-TCP" -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (sshd)' `
+      -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+}
+```
+
+If you're building a Windows box by hand outside the unattend chain, run
+`bootstrap/web/windows/Install-OpenSSH.ps1` directly instead of retyping the individual
+commands — it's idempotent, already includes the firewall rule, and is the same script the
+real automated path relies on.
 
 ### 5. Proving WireGuard end-to-end — `EXAFWLFAL001`
 
@@ -1252,6 +1300,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-07-19 | Added "Renumbering / Reworking Live Conventions" — a general checklist for any future change to a default/convention that already has live instances built against the old value (find every hardcoded copy including break-glass script mirrors, don't trust a grep match without reading the surrounding code, change every default together, confirm a recovery path independent of what's changing, migrate live instances one at a time, update docs in the same pass), with the 2026-07-19 WireGuard spoke tunnel IP change (`.2` → `.1`) as the first worked example — including a real trap hit while making it (`firewallme.sh`'s unrelated `SPOKE_TUNNEL_OCTET` legacy hub-building counter, which looked like the same convention on a bare grep and wasn't). |
 | 2026-07-24 | Reviewed "5. Proving WireGuard end-to-end" against a real live WireGuard debug session (`EXAFWLCLD001`/`EXAFWLBRT001`) — the core walkthrough was already accurate, but the verification step only checked tunnel-level health (`wg show`, ping the hub's own tunnel address), which is exactly what looked perfect for hours while a real bug (CLD's `nftables` black-site exclusion dropping all `wg0 → LAN` forward traffic, `19dd5da`) silently blocked every spoke from reaching anything behind the hub's LAN. Added a callout with the real LAN-client test that actually catches this class of bug, plus a short note on the tunnel-IP input validation added the same session (`6c3527b`). |
 | 2026-08-03 | Added "Real-World Invocations — Day 2: Already-Onboarded Hosts", three worked examples of the same playbooks used above but invoked against hosts that already exist, per Robert's request: a routine firewall re-run (`90-firewall.yml`, plus why `serial: 1` — added 2026-07-31 — matters the moment more than one host is targeted at once, not for a single `-e target=`); a domain controller re-run confirming the `windows_bootstrap` `[B0]` DefaultShell failsafe actually holds after its own `ansible_shell_type` bug was fixed (`00-preflight.yml`'s `bootstrap` tag has to run, so this is the full form, not `windows_dc/README.md`'s narrower "DC stages only"); and a full, untagged `bind9-dns.yml` rebuild of `EXADNSVRK001`, including the real `--tags zones,reload` trap hit this session (the old, superseded Play 1 — never reads `devices.csv`, so two freshly-added devices sat correctly generated but never made it into the live zone until the full run actually ran `zones-full`), with the real captured completion banner and `host` lookup proving it worked. |
+| 2026-09-17 | Corrected a stale claim in §4: Windows hosts become reachable over SSH after OOBE, not WinRM — this estate's real connection method since `Install-OpenSSH.ps1`/`connection.yml`, WinRM was never actually current. Added a new callout after §4, "A gotcha: manually preparing a Windows box for Ansible" — live, 2026-09-17, a manually-built ARM64 Windows Server 2025 test box (EXAANSFRD001's network) had OpenSSH installed and running by hand but no Windows Firewall rule for TCP/22, which presented as Ansible's own SSH connection worker crashing ("A worker was found in a dead state") rather than a clean connection-refused — misleading enough that it looked like an `ansible-core`/`sshpass` bug at first. The real automated path (`SetupComplete.cmd` → `Install-OpenSSH.ps1`) already creates this firewall rule; the gotcha only bites when someone runs the OpenSSH setup commands by hand instead. |
 
 ---
 
