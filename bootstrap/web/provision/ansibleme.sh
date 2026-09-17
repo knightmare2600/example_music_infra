@@ -350,6 +350,15 @@
 #                     from before this fix need `git lfs pull` (or a fresh clone) once git-lfs
 #                     is actually installed -- this fix only prevents the problem on new/re-runs,
 #                     it doesn't repair an already-broken checkout.
+# v1.29.0 2026-09-17  BUG FIX, found live same day, same box, onboarding EXAPVEFRD001 through
+#                     playbooks/proxmox/site.yml's 35-pools.yml stage: benarbejde/
+#                     generate_inventory.py (run on the control node, not the PVE target) failed
+#                     with `ModuleNotFoundError: No module named 'IPy'`. That script's own header
+#                     has documented "Requires an apt -y install python3-ipy to be run on your
+#                     ansible node" since it was written -- it was simply never added to
+#                     BOOTSTRAP_PKGS, so no control node bootstrapped through this script ever
+#                     actually got it. Added dpkg -s python3-ipy check alongside the other
+#                     Proxmox-related Python libs.
 #
 # ==============================================================================
 
@@ -593,6 +602,7 @@ command -v locate       &>/dev/null || BOOTSTRAP_PKGS+=(plocate)
 dpkg -s python3-proxmoxer  &>/dev/null || BOOTSTRAP_PKGS+=(python3-proxmoxer)
 dpkg -s python3-requests    &>/dev/null || BOOTSTRAP_PKGS+=(python3-requests)
 dpkg -s python3-virtualenv  &>/dev/null || BOOTSTRAP_PKGS+=(python3-virtualenv)
+dpkg -s python3-ipy         &>/dev/null || BOOTSTRAP_PKGS+=(python3-ipy)
 command -v jq               &>/dev/null || BOOTSTRAP_PKGS+=(jq)
 
 # NB: libguestfs-tools is intentionally NOT installed on the ansible node. It is
