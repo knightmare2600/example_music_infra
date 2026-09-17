@@ -17,6 +17,18 @@
 #
 # Version history:
 #
+#   v2.13  CORRECTION to v2.12, same day: Robert booted the new arm64 Bookworm entry live and it
+#          installed as Debian 13 (trixie), not Bookworm -- confirmed via `lsb_release -a` on the
+#          resulting system. Checked whether this was a broken/out-of-sync mirror before assuming
+#          otherwise: fetched Debian's own official SHA256SUMS for
+#          installer-arm64/current/images/netboot/debian-installer/arm64/ directly -- the
+#          downloaded files match Debian's own published checksums exactly (dated 2026-07-06), so
+#          this is genuinely what Debian itself serves under the Bookworm arm64 path today, not a
+#          mirror fault. Guarded all four :debian-bookworm-* entries to x86_64 only
+#          (:bookworm-arm64-msg explains why rather than a generic "not supported"), and updated
+#          the menu section header to say so. x86_64 Bookworm is unaffected -- not the same
+#          upstream issue, no evidence it's wrong.
+#
 #   v2.12  Added Bookworm as a selectable release alongside Trixie, both for general Debian
 #          installs and for 3CX (Robert, 2026-09-17): "menu,ipxe has no way to select bookworm
 #          or trixie, likewise for 3cx etc, we need to fix that." debian/bookworm/{x86_64,arm64}/
@@ -282,7 +294,7 @@ item debian-auto-s    Debian Trixie  Auto install  (ttyS0 serial)
 item debian-ssh-s     Debian Trixie  Auto install  (SSH + ttyS0 serial)
 item debian-test      Debian Trixie  [TEST] seed file relocation fix -- try this first
 item --gap --
-item --gap --         -- Debian (Bookworm) --
+item --gap --         -- Debian (Bookworm, x86_64 only -- Debian's own arm64 build installs Trixie) --
 item debian-bookworm-auto      Debian Bookworm  Auto install
 item debian-bookworm-ssh       Debian Bookworm  Auto install  (SSH console)
 item debian-bookworm-auto-s    Debian Bookworm  Auto install  (ttyS0 serial)
@@ -373,26 +385,49 @@ boot
 # is a real, fetch-on-demand asset_manifest.json entry (confirmed there before adding these),
 # previously only reachable internally via :3cx-install, never as a general-purpose install
 # choice. Added 2026-09-17, Robert's ask -- see v2.12 changelog entry at the top of this file.
+#
+# x86_64 only, as of 2026-09-17. Robert booted the arm64 build live and it installed as
+# Debian 13 (trixie), not Bookworm -- confirmed via `lsb_release -a` on the resulting system.
+# Checked against Debian's own OFFICIAL SHA256SUMS for installer-arm64/current/images/netboot/
+# (not a mirror-corruption issue -- the downloaded files match Debian's own published checksums
+# exactly, dated 2026-07-06). Whatever the reason on Debian's side, their published arm64
+# Bookworm netboot images genuinely do not install Bookworm any more. Guarded to x86_64 only
+# below rather than silently letting arm64 install the wrong release under a Bookworm label --
+# arm64 users get the (genuinely correct) Trixie entries instead. Revisit if Debian ever
+# corrects this upstream.
 # ===========================================================================
 :debian-bookworm-auto
+iseq ${arch} arm64 && goto bookworm-arm64-msg ||
 kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
 initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
 boot
 
 :debian-bookworm-ssh
+iseq ${arch} arm64 && goto bookworm-arm64-msg ||
 kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
 initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
 boot
 
 :debian-bookworm-auto-s
+iseq ${arch} arm64 && goto bookworm-arm64-msg ||
 kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
 initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
 boot
 
 :debian-bookworm-ssh-s
+iseq ${arch} arm64 && goto bookworm-arm64-msg ||
 kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
 initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
 boot
+
+# Shared: arm64 Bookworm is not genuinely available -- Debian's own official arm64 Bookworm
+# netboot images install Trixie instead (confirmed live, 2026-09-17 -- see comment above).
+:bookworm-arm64-msg
+echo Debian's own arm64 Bookworm netboot images actually install Trixie (confirmed live,
+echo 2026-09-17) -- not a mirror fault, matches Debian's own published checksums exactly.
+echo Use one of the Trixie entries instead.
+prompt Press any key to return to menu...
+goto main
 
 # ===========================================================================
 # 3CX PHONE SYSTEM
