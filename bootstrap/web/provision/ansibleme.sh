@@ -328,6 +328,30 @@
 #                     required, not optional, since trixie's own repo candidate is still
 #                     2.19.11 and would otherwise silently return on the next apt upgrade.
 #
+# v1.28.0 2026-09-17  MAJOR BUG FIX, found live same day while verifying v1.27.0: git-lfs was
+#                     never in BOOTSTRAP_PKGS at all, on any Debian release, ever -- confirmed
+#                     via `dpkg --list | grep git` on EXAANSFRD001, only plain git was present.
+#                     Without it, Section 5's `git clone` has no LFS smudge filter registered,
+#                     so every LFS-tracked file in this repo checks out as a few bytes of
+#                     pointer text (`version https://git-lfs.github.com/spec/v1`, `oid
+#                     sha256:...`) instead of the real binary content -- caught only because
+#                     ansible/trixie_debs/*.deb's checksum obviously didn't match what Robert
+#                     actually built. This affects every LFS-tracked asset this repo has ever
+#                     shipped (Salt minion MSIs, Windows arm64 tool binaries, OpenBSD/hdt/3cx
+#                     assets, etc.) on every box ever bootstrapped through this script, silently
+#                     -- nothing had ever checksum-verified one of these files against a known
+#                     value live before now. Added git-lfs to BOOTSTRAP_PKGS, plus a new
+#                     `git lfs install --system` call right after package install (unconditional
+#                     -- runs whether packages were just installed or already present, since it's
+#                     idempotent and the filter needs registering regardless). --system, not
+#                     per-user: Section 5's clone runs as root (this whole script requires EUID
+#                     0), but the repo is later chown'd to the ansible user, who may also
+#                     git pull/git lfs pull in that same directory later as themselves --
+#                     --system covers both without running this twice for two different users.
+#                     Existing clones from before this fix need `git lfs pull` (or a fresh
+#                     clone) once git-lfs is actually installed -- this fix only prevents the
+#                     problem on new/re-runs, it doesn't repair an already-broken checkout.
+#
 # ==============================================================================
 
 set -euo pipefail
@@ -549,6 +573,7 @@ apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
 BOOTSTRAP_PKGS=()
 # ansible is handled separately below (version strategy varies by Debian release)
 command -v git          &>/dev/null || BOOTSTRAP_PKGS+=(git)
+command -v git-lfs      &>/dev/null || BOOTSTRAP_PKGS+=(git-lfs)
 command -v ssh          &>/dev/null || BOOTSTRAP_PKGS+=(openssh-client)
 command -v sshpass      &>/dev/null || BOOTSTRAP_PKGS+=(sshpass)
 command -v python3      &>/dev/null || BOOTSTRAP_PKGS+=(python3)
@@ -633,6 +658,21 @@ if [[ ${#BOOTSTRAP_PKGS[@]} -gt 0 ]]; then
 else
   success "All required packages already present."
 fi
+
+# BUG FIX 2026-09-17: git-lfs was never in BOOTSTRAP_PKGS at all until the line above, and the
+# package alone isn't enough -- its smudge filter has to be registered in git config before a
+# clone will actually resolve LFS content, or every LFS-tracked file in the repo checks out as
+# a few bytes of pointer text (`version https://git-lfs.github.com/spec/v1`, `oid sha256:...`)
+# instead of the real binary. Confirmed live, EXAANSFRD001: this script's own Section 5 clone
+# had been silently doing exactly that, this whole time, on every box ever bootstrapped through
+# this script -- caught only because a freshly-added .deb's checksum obviously didn't match.
+# `--system` (writes /etc/gitconfig) rather than per-user: this script's own Section 5 clone
+# runs as root (this whole script requires EUID 0), but the repo is later chown'd to the
+# ansible user, who may also `git pull`/`git lfs pull` in that same directory later as
+# themselves -- --system covers both without needing this run twice for two different users.
+info "Registering git-lfs smudge filter (--system, covers root's clone below and any later"
+info "git pull as the ansible user in the same directory)..."
+git lfs install --system > /dev/null 2>&1 || warn "git lfs install --system failed -- LFS-tracked files may check out as pointer text, not real content."
 
 # ------------------------------------------------------------------------------
 # 1a. Environment
