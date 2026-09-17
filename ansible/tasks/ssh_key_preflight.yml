@@ -57,6 +57,20 @@
 # delegate_to, so this always resolves against the real original target.
 # =============================================================================
 # Changelog:
+#   2026-09-17  Added a second, independent sudo-heal section (Robert, live against
+#               EXAPVEFRD001 again, same day): the auth auto-heal below only ever runs when
+#               the key/auth connectivity test itself fails, so once the ansible user+key were
+#               already fixed (either by that auto-heal on a previous pass, or seeded some
+#               other way), SSH auth succeeded, auto-heal was skipped entirely -- including its
+#               sudo-install line -- and the very next play still failed with "sudo: not found",
+#               because this box's base image never got sudo installed in the first place.
+#               Robert's diagnosis, live: "it's in a catch-22 of trying to run sudo... while
+#               trying to sudo install sudo... ask for the root password and use SSH to connect
+#               in as root". New section checks for sudo over the already-working key-based SSH
+#               session (not gated on auth having failed), and only prompts for root's password
+#               if it's genuinely missing -- so it fires correctly whether or not the auth
+#               auto-heal ran on the same pass. Same masked-prompt/no_log-scoped-narrowly
+#               pattern as the auth auto-heal, for the same reasons.
 #   2026-09-17  Two real fixes to auto-heal (below), found live testing it the same day it was
 #               added, against the same EXAPVEFRD001: (1) it only created the user and SSH key
 #               trust, never sudo/sudoers -- confirmed live (-vvv): "sudo: not found" failed the
@@ -355,3 +369,176 @@
     - not (ssh_key_preflight_skip | default(false) | bool)
     - _sshpf_conn_test is not skipped
     - _sshpf_conn_test.rc | default(1) == 0
+
+# ── Sudo-heal: sudo binary missing on target, independent of key/auth state ──
+# Added 2026-09-17 (Robert, live against EXAPVEFRD001, second finding same day): the auto-heal
+# block above only ever runs when the KEY/AUTH connectivity test itself fails. On a re-run
+# where the ansible user + key already exist and work fine (e.g. auto-heal already fixed them
+# on a previous pass, or they were seeded some other way), that connectivity test passes, so
+# auto-heal is skipped entirely -- including the sudo-install line inside it -- even though the
+# box may still genuinely have no 'sudo' binary at all. That's exactly what happened here: SSH
+# key auth to ansible@172.16.124.5 succeeded, so nothing above ever ran, and the very next play
+# (become: true fact-gathering) failed with "sudo: not found" a second time. Robert's diagnosis,
+# live: "it's in a catch-22 of trying to run sudo... while trying to sudo install sudo... ask
+# for the root password and use SSH to connect in as root". This section does exactly that,
+# gated on whether sudo is actually present (checked over the already-working key-based SSH
+# session), not on whether auth failed -- so it fires correctly whether or not the auth
+# auto-heal above ran on this same pass.
+- name: "[ssh-preflight] Determine final connectivity result (post auto-heal, if any)"
+  ansible.builtin.set_fact:
+    _sshpf_ssh_ok: >-
+      {{ (_sshpf_conn_test.rc | default(1) == 0) or
+         (_sshpf_conn_test_retry is defined and _sshpf_conn_test_retry is not skipped and _sshpf_conn_test_retry.rc | default(1) == 0) }}
+  delegate_to: localhost
+  become: false
+  when: not (ssh_key_preflight_skip | default(false) | bool)
+
+- name: "[ssh-preflight] Check whether sudo is present on {{ _sshpf_target }}"
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ _sshpf_key_file }}"
+      - -p
+      - "{{ _sshpf_port }}"
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=5
+      - -o
+      - StrictHostKeyChecking=accept-new
+      - "{{ _sshpf_remote_user }}@{{ _sshpf_target }}"
+      - command -v sudo
+  register: _sshpf_sudo_check
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  ignore_errors: true
+  when:
+    - not (ssh_key_preflight_skip | default(false) | bool)
+    - _sshpf_ssh_ok | default(false)
+
+- name: "[ssh-preflight] WARN — sudo missing on {{ _sshpf_target }}, attempting sudo-heal"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _sshpf_remote_user }}@{{ _sshpf_target }} is reachable over SSH with the configured
+      key, but has no 'sudo' binary at all (rc={{ _sshpf_sudo_check.rc }}) — privilege
+      escalation for every later play will fail until this is fixed. This is independent of
+      the key/auth auto-heal above: SSH auth already works fine here, this is a package that
+      was never installed on this box's base image.
+  when:
+    - _sshpf_sudo_check is not skipped
+    - _sshpf_sudo_check.rc | default(1) != 0
+
+- name: "[ssh-preflight] Sudo-heal — prompt for {{ _sshpf_target }}'s root password"
+  ansible.builtin.pause:
+    prompt: >-
+      {{ _sshpf_remote_user }}@{{ _sshpf_target }} has no 'sudo' binary. Enter this node's
+      ROOT password to install it and write the {{ _sshpf_remote_user }} sudoers drop-in
+      (leave blank to skip sudo-heal and fail as before)
+    echo: no
+  register: _sshpf_sudo_root_pass_prompt
+  delegate_to: localhost
+  become: false
+  when:
+    - _sshpf_sudo_check is not skipped
+    - _sshpf_sudo_check.rc | default(1) != 0
+    - ssh_key_preflight_autoheal | default(true) | bool
+
+- name: "[ssh-preflight] Sudo-heal — install sudo + sudoers via root SSH"
+  ansible.builtin.command:
+    argv:
+      - sshpass
+      - -p
+      - "{{ _sshpf_sudo_root_pass_prompt.user_input }}"
+      - ssh
+      - -o
+      - StrictHostKeyChecking=accept-new
+      - -p
+      - "{{ _sshpf_port }}"
+      - "root@{{ _sshpf_target }}"
+      - >-
+        command -v sudo >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo);
+        echo "{{ _sshpf_remote_user }} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/{{ _sshpf_remote_user }};
+        chmod 0440 /etc/sudoers.d/{{ _sshpf_remote_user }}
+  register: _sshpf_sudo_remediate
+  delegate_to: localhost
+  become: false
+  no_log: true
+  changed_when: _sshpf_sudo_remediate.rc | default(1) == 0
+  failed_when: false
+  when:
+    - _sshpf_sudo_root_pass_prompt is defined
+    - _sshpf_sudo_root_pass_prompt is not skipped
+    - _sshpf_sudo_root_pass_prompt.user_input | default('') | length > 0
+
+- name: "[ssh-preflight] Sudo-heal — remediation result (safe fields only, no password)"
+  ansible.builtin.debug:
+    msg:
+      - "rc: {{ _sshpf_sudo_remediate.rc | default('n/a') }}"
+      - "stdout: {{ _sshpf_sudo_remediate.stdout | default('') }}"
+      - "stderr: {{ _sshpf_sudo_remediate.stderr | default('') }}"
+  when:
+    - _sshpf_sudo_remediate is defined
+    - _sshpf_sudo_remediate is not skipped
+
+- name: "[ssh-preflight] Sudo-heal — re-check sudo present"
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ _sshpf_key_file }}"
+      - -p
+      - "{{ _sshpf_port }}"
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=5
+      - -o
+      - StrictHostKeyChecking=accept-new
+      - "{{ _sshpf_remote_user }}@{{ _sshpf_target }}"
+      - command -v sudo
+  register: _sshpf_sudo_check_retry
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  ignore_errors: true
+  when:
+    - _sshpf_sudo_remediate is defined
+    - _sshpf_sudo_remediate is not skipped
+
+- name: "[ssh-preflight] Sudo-heal succeeded"
+  ansible.builtin.debug:
+    msg: >-
+      Sudo-heal installed 'sudo' on {{ _sshpf_target }} and wrote
+      /etc/sudoers.d/{{ _sshpf_remote_user }} — re-checked, present.
+  when:
+    - _sshpf_sudo_check_retry is defined
+    - _sshpf_sudo_check_retry is not skipped
+    - _sshpf_sudo_check_retry.rc | default(1) == 0
+
+- name: "[ssh-preflight] FAIL — sudo missing on target and could not be installed"
+  ansible.builtin.fail:
+    msg: >-
+      {{ _sshpf_remote_user }}@{{ _sshpf_target }} has no 'sudo' binary, and it could not be
+      installed automatically (rc={{ _sshpf_sudo_check.rc | default('n/a') }}). Every later
+      play in this chain uses become: true and will fail at fact-gathering with
+      "sudo: not found" until this is fixed.
+
+      {{ "Sudo-heal was attempted (root password entered) but the re-check still failed — the root password may be wrong, apt may have failed (no network route to the repo?), or something else is blocking it." if (_sshpf_sudo_remediate is defined and _sshpf_sudo_remediate is not skipped) else "Sudo-heal was not attempted — leave the root-password prompt blank to see this message, or pass -e ssh_key_preflight_autoheal=false to skip auto-heal deliberately." }}
+
+      Fix manually: SSH in as root (or use console access) and run
+      'apt-get install sudo' plus write /etc/sudoers.d/{{ _sshpf_remote_user }}
+      containing '{{ _sshpf_remote_user }} ALL=(ALL) NOPASSWD:ALL'. This is a
+      showstopper — nothing further will run against this host until it's fixed.
+  when:
+    - _sshpf_sudo_check is not skipped
+    - _sshpf_sudo_check.rc | default(1) != 0
+    - not (_sshpf_sudo_check_retry is defined and _sshpf_sudo_check_retry is not skipped and _sshpf_sudo_check_retry.rc | default(1) == 0)
+
+- name: "[ssh-preflight] Sudo present, confirmed"
+  ansible.builtin.debug:
+    msg: "sudo confirmed present on {{ _sshpf_remote_user }}@{{ _sshpf_target }}."
+  when:
+    - _sshpf_sudo_check is not skipped
+    - _sshpf_sudo_check.rc | default(1) == 0
