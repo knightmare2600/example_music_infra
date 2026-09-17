@@ -65,6 +65,16 @@
 # -e bootstrap_force=true if you genuinely mean to.
 # =============================================================================
 # Changelog:
+#   2026-09-17  Removed this file's own "Register into the pvenodes group" add_host task (was
+#               here since 2026-07-12) -- moved to playbooks/00-preflight.yml instead, since this
+#               file always chains straight into site.yml (which imports 00-preflight.yml first)
+#               and site.yml's own header documents running it standalone too. Found live
+#               (Robert, EXAPVEFRD001): a node whose hostname was already correct by hand, run
+#               via site.yml directly (skipping this file entirely, a supported path), never got
+#               the add_host at all and hit the exact same 'pve_packages' is undefined failure
+#               this task was added to fix in the first place. Keeping two copies of the same
+#               add_host in two files would just be the same fix drifting apart later -- one home
+#               now, that every entry point reaches.
 #   2026-07-12  Two fixes to the chained flow below, found on Robert's next
 #               real run against EXAPVEGOT001 (2nd attempt, past the target=
 #               fix): (1) 10-packages.yml's "Install management packages"
@@ -425,26 +435,6 @@
         --dns1 {{ _ad_forest.dns_forwarders[0] }} --dns2 {{ _ad_forest.dns_forwarders[1] }}
         --search {{ _ad_forest.domain_fqdn }}
       changed_when: true
-
-    - name: Register into the pvenodes group (site.yml's stages need its group_vars, e.g. pve_packages)
-      # group_vars only auto-loads for a group that's part of the LOADED inventory path (see
-      # at_have_ryggen_fri/add_host_probe/inventory.ini's own comment on this) -- a bare
-      # "-i "1.2.3.4,"" ad-hoc inventory has no path for Ansible to find
-      # configs/inventory/group_vars/pvenodes/ at all, regardless of group membership, which is
-      # why 10-packages.yml's "Install management packages" task failed with 'pve_packages' is
-      # undefined the first time this chained straight into site.yml (2026-07-12). Fixed by
-      # loading configs/inventory as a SECOND -i source (see this file's own header) so that
-      # group_vars actually exists to be found, and add_host-ing this specific host into the
-      # pvenodes group so it inherits it. Verified this combination -- explicit -e target=
-      # scoping (safe: matches only this one host, never the whole group, so this can never
-      # accidentally re-run against every other already-onboarded PVE node also in that group)
-      # PLUS add_host PLUS a second -i source -- actually resolves group_vars, empirically,
-      # before landing this.
-      ansible.builtin.add_host:
-        name: "{{ inventory_hostname }}"
-        groups: pvenodes
-      delegate_to: localhost
-      become: false
 
     - name: Identity rename complete — continuing into the full onboarding chain
       ansible.builtin.debug:
