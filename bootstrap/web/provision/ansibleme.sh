@@ -340,17 +340,16 @@
 #                     shipped (Salt minion MSIs, Windows arm64 tool binaries, OpenBSD/hdt/3cx
 #                     assets, etc.) on every box ever bootstrapped through this script, silently
 #                     -- nothing had ever checksum-verified one of these files against a known
-#                     value live before now. Added git-lfs to BOOTSTRAP_PKGS, plus a new
-#                     `git lfs install --system` call right after package install (unconditional
-#                     -- runs whether packages were just installed or already present, since it's
-#                     idempotent and the filter needs registering regardless). --system, not
-#                     per-user: Section 5's clone runs as root (this whole script requires EUID
-#                     0), but the repo is later chown'd to the ansible user, who may also
-#                     git pull/git lfs pull in that same directory later as themselves --
-#                     --system covers both without running this twice for two different users.
-#                     Existing clones from before this fix need `git lfs pull` (or a fresh
-#                     clone) once git-lfs is actually installed -- this fix only prevents the
-#                     problem on new/re-runs, it doesn't repair an already-broken checkout.
+#                     value live before now. Added git-lfs to BOOTSTRAP_PKGS. `git lfs install`
+#                     itself, plus the actual clone/pull, moved into Section 5 running AS the
+#                     ansible user (sudo -u -H, not root) -- see that section's own comment for
+#                     the full reasoning; superseded this changelog entry's original approach
+#                     (a root-run, --system-wide install right after package install) same day,
+#                     Robert's direct call: "run the git clone and git-lfs stuff as the ansible
+#                     user, sudo and such literally exist for this purpose." Existing clones
+#                     from before this fix need `git lfs pull` (or a fresh clone) once git-lfs
+#                     is actually installed -- this fix only prevents the problem on new/re-runs,
+#                     it doesn't repair an already-broken checkout.
 #
 # ==============================================================================
 
@@ -658,21 +657,6 @@ if [[ ${#BOOTSTRAP_PKGS[@]} -gt 0 ]]; then
 else
   success "All required packages already present."
 fi
-
-# BUG FIX 2026-09-17: git-lfs was never in BOOTSTRAP_PKGS at all until the line above, and the
-# package alone isn't enough -- its smudge filter has to be registered in git config before a
-# clone will actually resolve LFS content, or every LFS-tracked file in the repo checks out as
-# a few bytes of pointer text (`version https://git-lfs.github.com/spec/v1`, `oid sha256:...`)
-# instead of the real binary. Confirmed live, EXAANSFRD001: this script's own Section 5 clone
-# had been silently doing exactly that, this whole time, on every box ever bootstrapped through
-# this script -- caught only because a freshly-added .deb's checksum obviously didn't match.
-# `--system` (writes /etc/gitconfig) rather than per-user: this script's own Section 5 clone
-# runs as root (this whole script requires EUID 0), but the repo is later chown'd to the
-# ansible user, who may also `git pull`/`git lfs pull` in that same directory later as
-# themselves -- --system covers both without needing this run twice for two different users.
-info "Registering git-lfs smudge filter (--system, covers root's clone below and any later"
-info "git pull as the ansible user in the same directory)..."
-git lfs install --system > /dev/null 2>&1 || warn "git lfs install --system failed -- LFS-tracked files may check out as pointer text, not real content."
 
 # ------------------------------------------------------------------------------
 # 1a. Environment
@@ -1080,13 +1064,31 @@ section "5. Directory scaffold"
 REPO_DIR="${ANSIBLE_HOME}/example_music_infra"
 REPO_URL="https://github.com/knightmare2600/example_music_infra"
 
+# BUG FIX 2026-09-17: git clone and git lfs install now run AS the ansible user (sudo -u, not
+# root) -- there's no real reason either needs root privilege, ansible already owns its own
+# home directory (useradd --create-home in Section 4, which runs before this), and doing the
+# clone as ansible from the start means the repo is correctly owned from the moment it lands,
+# not root-owned-then-chown'd-after (see the removed chown -R below this block). -H
+# (--set-home) matters here: plain `sudo -u user` does NOT change $HOME by default, so without
+# it `git lfs install` would write to whatever $HOME this root-run script inherited (root's),
+# not /home/ansible/.gitconfig -- silently registering the LFS smudge filter for the wrong
+# user entirely. Robert's own call, live: "run the git clone and git-lfs stuff as the ansible
+# user, sudo and such literally exist for this purpose."
+#
+# git-lfs itself (found missing entirely, this same session -- see git-lfs's own addition to
+# BOOTSTRAP_PKGS above) needs its smudge filter registered before this clone, or every
+# LFS-tracked file in the repo checks out as a few bytes of pointer text instead of the real
+# binary content -- confirmed live, EXAANSFRD001, on every box ever bootstrapped through this
+# script until now.
+sudo -u "${ANSIBLE_USER}" -H git lfs install > /dev/null 2>&1 || warn "git lfs install failed for ${ANSIBLE_USER} -- LFS-tracked files may check out as pointer text, not real content."
+
 # ── Clone or update the repo ─────────────────────────────────────────────────
 if [[ -d "${REPO_DIR}/.git" ]]; then
   info "Repo already present at ${REPO_DIR} — pulling latest..."
-  git -C "${REPO_DIR}" pull --ff-only || warn "git pull failed; continuing with existing clone."
+  sudo -u "${ANSIBLE_USER}" -H git -C "${REPO_DIR}" pull --ff-only || warn "git pull failed; continuing with existing clone."
 else
   info "Cloning ${REPO_URL} into ${REPO_DIR}..."
-  git clone "${REPO_URL}" "${REPO_DIR}"
+  sudo -u "${ANSIBLE_USER}" -H git clone "${REPO_URL}" "${REPO_DIR}"
 fi
 
 # ── Symlink ansible/ subfolder ────────────────────────────────────────────────
@@ -1124,7 +1126,10 @@ mkdir -p \
   "${CONFIGS_DIR}/inventory/group_vars/windows_laptop" \
   "${CONFIGS_DIR}/inventory/group_vars/windows_dc"
 
-chown -R "${ANSIBLE_USER}:${ANSIBLE_USER}" "${REPO_DIR}"
+# REPO_DIR is NOT chown'd here any more -- it's already correctly owned by ansible from the
+# moment it was cloned above (sudo -u ansible, not root). CONFIGS_DIR/CALLBACK_DIR still need
+# it: the mkdir -p above them runs as root (this whole script's EUID), unrelated to the
+# git/LFS fix above.
 chown -R "${ANSIBLE_USER}:${ANSIBLE_USER}" "${CONFIGS_DIR}"
 [[ -d "${CALLBACK_DIR}" ]] && chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${CALLBACK_DIR}"
 success "Repo cloned and symlinked; runtime dirs created."
