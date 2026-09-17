@@ -208,3 +208,11 @@ bootstrap/web/windows/x86_64/**  filter=lfs diff=lfs merge=lfs -text
 # committed/LFS-tracked yet -- only this one file, which 82-salt-minion.yml already depends
 # on, needed fixing now. Broaden to a directory rule once amd64/ itself is ready to commit.
 bootstrap/web/windows/amd64/Salt-Minion-3008.0-Py3-AMD64.msi filter=lfs diff=lfs merge=lfs -text
+
+# Robert's own local rebuild of ansible-core/ansible from bookworm's source package, targeting
+# trixie (2026-09-17) -- fixes the real, confirmed ansible-core 2.19.11 crash bug documented in
+# docs/INCIDENT-LOG.md's INC-2026-09-17-FRD-CONTROL-NODE. No upstream fetch source (this is a
+# local rebuild, not a vendor download), same "genuinely custom, no manifest entry" precedent as
+# bootstrap/amt-sdk/**/bootstrap/starwindconverter.exe above -- LFS regardless of the small
+# combined size (~17.5MB), keeps this repo's normal git history free of binary .deb content.
+ansible/trixie_debs/*.deb filter=lfs diff=lfs merge=lfs -text
