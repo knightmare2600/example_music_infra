@@ -17,6 +17,22 @@
 #
 # Version history:
 #
+#   v2.12  Added Bookworm as a selectable release alongside Trixie, both for general Debian
+#          installs and for 3CX (Robert, 2026-09-17): "menu,ipxe has no way to select bookworm
+#          or trixie, likewise for 3cx etc, we need to fix that." debian/bookworm/{x86_64,arm64}/
+#          was already a real, fetch-on-demand asset_manifest.json entry (confirmed there before
+#          touching this file) -- just never reachable from the menu for a general install, only
+#          used internally by :3cx-install. Added debian-bookworm-auto/-ssh/-auto-s/-ssh-s as
+#          parallel entries to the existing trixie ones (Robert's explicit choice: flat parallel
+#          entries, not a release-selection submenu) -- existing trixie item labels/behaviour
+#          UNCHANGED, only their displayed text now says "Trixie" for clarity now that two
+#          releases coexist. Also added :3cx-install-trixie, reusing the exact same vendor-built
+#          3cx/initrd.gz and preseed against the trixie kernel instead of bookworm's -- Robert
+#          confirmed 3CX genuinely supports either release, but this specific combination (a
+#          bookworm-built vendor initrd against a trixie kernel) has never actually been tested,
+#          so it's labelled UNTESTED in the menu rather than presented as equally proven to the
+#          existing, vendor-checksum-confirmed bookworm path.
+#
 #   v2.11  :klargoring now supports arm64, following PVE 9.2's own arm64 release
 #          (https://pve.proxmox.com/wiki/Roadmap, Robert, 2026-08-06). klargoring's real
 #          GitHub release (github.com/knightmare2600/klargoring) publishes asymmetric
@@ -259,15 +275,22 @@ item --gap --         -- Default Selection --
 item localboot        Boot local disk  (default, 30s timeout)
 item spejder          Spejder Hardware Provisioning Runtime (Console and Serial ttyS0/COM1)
 item --gap --
-item --gap --         -- Debian --
-item debian-auto      Debian  Auto install
-item debian-ssh       Debian  Auto install  (SSH console)
-item debian-auto-s    Debian  Auto install  (ttyS0 serial)
-item debian-ssh-s     Debian  Auto install  (SSH + ttyS0 serial)
-item debian-test      Debian  [TEST] seed file relocation fix -- try this first
+item --gap --         -- Debian (Trixie) --
+item debian-auto      Debian Trixie  Auto install
+item debian-ssh       Debian Trixie  Auto install  (SSH console)
+item debian-auto-s    Debian Trixie  Auto install  (ttyS0 serial)
+item debian-ssh-s     Debian Trixie  Auto install  (SSH + ttyS0 serial)
+item debian-test      Debian Trixie  [TEST] seed file relocation fix -- try this first
+item --gap --
+item --gap --         -- Debian (Bookworm) --
+item debian-bookworm-auto      Debian Bookworm  Auto install
+item debian-bookworm-ssh       Debian Bookworm  Auto install  (SSH console)
+item debian-bookworm-auto-s    Debian Bookworm  Auto install  (ttyS0 serial)
+item debian-bookworm-ssh-s     Debian Bookworm  Auto install  (SSH + ttyS0 serial)
 item --gap --
 item --gap --         -- 3CX Phone System --
-item 3cx-install      3CX Phone System  Auto install  (Debian Bookworm base)
+item 3cx-install         3CX Phone System  Auto install  (Debian Bookworm base -- vendor-confirmed)
+item 3cx-install-trixie  3CX Phone System  Auto install  (Debian Trixie base -- UNTESTED)
 item --gap --
 item --gap --         -- OpenBSD --
 item openbsd-auto     OpenBSD 7.9  Auto install
@@ -305,7 +328,7 @@ initrd ${boot-url}/spejder/${arch}/initramfs-${arch}.cpio.zst
 boot
 
 # ===========================================================================
-# DEBIAN
+# DEBIAN (TRIXIE)
 # Common kernel parameters factored into comments for reference:
 #   auto=true url=... priority=high locale=en_GB.UTF-8 keymap=gb
 #   domain=jukebox.internal theme=dark lowmem/low=false
@@ -345,6 +368,33 @@ initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
 boot
 
 # ===========================================================================
+# DEBIAN (BOOKWORM)
+# Same parameters/seed files as the Trixie entries above -- debian/bookworm/{x86_64,arm64}/
+# is a real, fetch-on-demand asset_manifest.json entry (confirmed there before adding these),
+# previously only reachable internally via :3cx-install, never as a general-purpose install
+# choice. Added 2026-09-17, Robert's ask -- see v2.12 changelog entry at the top of this file.
+# ===========================================================================
+:debian-bookworm-auto
+kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
+initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
+boot
+
+:debian-bookworm-ssh
+kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
+initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
+boot
+
+:debian-bookworm-auto-s
+kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
+initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
+boot
+
+:debian-bookworm-ssh-s
+kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
+initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
+boot
+
+# ===========================================================================
 # 3CX PHONE SYSTEM
 # 3CX's own official netboot recipe (bootstrap/web/3cx/boot.txt, vendor-supplied
 # alongside this build), translated from isolinux APPEND syntax into iPXE's
@@ -368,10 +418,23 @@ boot
 # sits alongside the preseed in 3cx/ if this ever needs to be fully offline).
 #
 # x86_64 only -- 3CX does not publish an arm64 installer.
+#
+# :3cx-install-trixie added 2026-09-17 (Robert: 3CX genuinely supports either Debian release,
+# not just Bookworm). Reuses the exact same vendor-built 3cx/initrd.gz and preseed against the
+# Trixie kernel instead -- there is no separate Trixie-specific 3CX initrd asset, only the one
+# checksum-confirmed Bookworm build above. Unlike :3cx-install, this specific combination (a
+# Bookworm-built vendor initrd against a Trixie kernel) has never actually been tested end to
+# end -- labelled UNTESTED in the menu itself rather than presented as equally proven.
 # ===========================================================================
 :3cx-install
 iseq ${arch} arm64 && goto noarch-msg ||
 kernel ${boot-url}/debian/bookworm/x86_64/linux vga=788 ipv6.disable=1 auto=true priority=high url=${boot-url}/3cx/preseed_12.5.0_a29bc3d.txt --- quiet THREECXMARKER=DEBIAN-3CX-ISO
+initrd ${boot-url}/3cx/initrd.gz
+boot
+
+:3cx-install-trixie
+iseq ${arch} arm64 && goto noarch-msg ||
+kernel ${boot-url}/debian/trixie/x86_64/linux vga=788 ipv6.disable=1 auto=true priority=high url=${boot-url}/3cx/preseed_12.5.0_a29bc3d.txt --- quiet THREECXMARKER=DEBIAN-3CX-ISO
 initrd ${boot-url}/3cx/initrd.gz
 boot
 
