@@ -57,6 +57,23 @@
 # delegate_to, so this always resolves against the real original target.
 # =============================================================================
 # Changelog:
+#   2026-09-17  Added auto-heal (Robert, live against EXAPVEFRD001, a real arm64 PVE node
+#               onboarded by hand where the ansible key was never seeded -- the documented
+#               TOML-answer-file path does this automatically, but engineers occasionally skip
+#               or don't know about it). Previously this file only detected and reported a
+#               key/auth failure; it now also offers to fix it there and then, rather than
+#               requiring a human to SSH in as root and repair it manually every time --
+#               Robert's own framing: for a bare-metal hypervisor, unlike a VM, a broken
+#               onboarding can't just be solved by rebuilding, and Ansible existing specifically
+#               to avoid manual per-node cleanup makes not having this path a real gap. Prompts
+#               interactively for the target's root password (masked, never via -e/extra-vars,
+#               a real secret should never sit in shell history or a process listing), then
+#               creates/repairs the ansible user and installs whatever public key is CURRENTLY
+#               configured (read fresh from {{ _sshpf_key_file }}.pub every time, not a second,
+#               potentially-stale copy) via a one-off raw SSH command as root. Opt-out:
+#               -e ssh_key_preflight_autoheal=false. See this section's own inline comment for
+#               the full reasoning, including why a prompt (not a flag) is the right call here
+#               specifically for a credential, unlike this repo's usual flag-only convention.
 #   2026-07-12  Fixed the delegate_to/connection-var bug above --
 #               _sshpf_target/_sshpf_remote_user/the ssh -p port now all read
 #               via hostvars[inventory_hostname] instead of bare ansible_host/
@@ -146,6 +163,140 @@
     - _sshpf_key_file | length > 0
     - _sshpf_key_stat.stat.exists | default(false)
 
+- name: "[ssh-preflight] WARN — key/auth problem detected, attempting auto-heal"
+  ansible.builtin.debug:
+    msg: >-
+      SSH connectivity test to {{ _sshpf_remote_user }}@{{ _sshpf_target }}
+      using {{ _sshpf_key_file }} failed (rc={{ _sshpf_conn_test.rc }}).
+      This is a KEY/AUTH problem, not necessarily a network problem — port 22
+      may well be open. Real ssh stderr: {{ _sshpf_conn_test.stderr }}
+  when:
+    - not (ssh_key_preflight_skip | default(false) | bool)
+    - _sshpf_conn_test is not skipped
+    - _sshpf_conn_test.rc | default(1) != 0
+
+# ── Auto-heal: create/repair the ansible user and install the CURRENT public key ──
+# Added 2026-09-17 (Robert, live against EXAPVEFRD001): engineers are expected to onboard via
+# the TOML answer-file path, which seeds the ansible user + key automatically -- but when that
+# was skipped or missed by hand (as happened here), the estate was left with no way forward
+# except sending someone physically to the node. For a bare-metal hypervisor -- unlike a VM,
+# which can just be rebuilt -- that's a real, serious operational cost (Robert's own framing:
+# imagine this being a node in Sydney). Ansible existing specifically to avoid exactly this kind
+# of manual, in-person cleanup makes not having a self-heal path here a real gap, not just an
+# inconvenience.
+#
+# Prompted interactively (ansible.builtin.pause, echo: no -- masks the typed input), not via
+# -e/extra-vars: a root password is a genuine secret, and -e values are visible in shell history
+# and process listings on the control node. This is a deliberate, one-off exception to this
+# repo's usual "flag, not console prompt" convention (see 00-preflight.yml's own changelog on
+# the single-disk check) -- that precedent is about interactive ACKNOWLEDGEMENT gates, which a
+# boolean flag can replace safely; a credential is not something a flag should ever carry.
+#
+# The public key is read FRESH from disk each time ({{ _sshpf_key_file }}.pub), not hardcoded
+# anywhere -- if the configured keypair is ever rotated, this automatically picks up whatever is
+# actually configured now, matching the same "no stale second copy of the same fact" reasoning
+# this whole file already uses for _sshpf_key_file itself (see this file's own top-of-file
+# comment). no_log: true on the actual remote command -- the password is an argv element there
+# and must never appear in output/logs; rc/stdout/stderr remain available to later tasks for
+# branching even under no_log, only the console/log display is suppressed.
+#
+# Opt-out: -e ssh_key_preflight_autoheal=false, for any site where root password login is
+# disabled entirely and prompting would just waste time — matches the same explicit,
+# extra-var-driven override idiom as ssh_key_preflight_skip itself.
+
+- name: "[ssh-preflight] Auto-heal — prompt for {{ _sshpf_target }}'s root password"
+  ansible.builtin.pause:
+    prompt: >-
+      SSH key auth to {{ _sshpf_remote_user }}@{{ _sshpf_target }} failed. Enter this node's
+      ROOT password to create/repair the {{ _sshpf_remote_user }} user and install the
+      currently-configured Ansible public key (leave blank to skip auto-heal and fail as before)
+    echo: no
+  register: _sshpf_root_pass_prompt
+  delegate_to: localhost
+  become: false
+  when:
+    - not (ssh_key_preflight_skip | default(false) | bool)
+    - _sshpf_conn_test is not skipped
+    - _sshpf_conn_test.rc | default(1) != 0
+    - ssh_key_preflight_autoheal | default(true) | bool
+
+- name: "[ssh-preflight] Auto-heal — read current Ansible public key fresh from disk"
+  ansible.builtin.slurp:
+    src: "{{ _sshpf_key_file }}.pub"
+  register: _sshpf_pubkey_raw
+  delegate_to: localhost
+  become: false
+  when:
+    - _sshpf_root_pass_prompt is defined
+    - _sshpf_root_pass_prompt is not skipped
+    - _sshpf_root_pass_prompt.user_input | default('') | length > 0
+
+- name: "[ssh-preflight] Auto-heal — create/repair {{ _sshpf_remote_user }} and install the current key"
+  ansible.builtin.command:
+    argv:
+      - sshpass
+      - -p
+      - "{{ _sshpf_root_pass_prompt.user_input }}"
+      - ssh
+      - -o
+      - StrictHostKeyChecking=accept-new
+      - -p
+      - "{{ _sshpf_port }}"
+      - "root@{{ _sshpf_target }}"
+      - >-
+        id {{ _sshpf_remote_user }} >/dev/null 2>&1 || useradd --create-home --shell /bin/bash {{ _sshpf_remote_user }};
+        install -d -m 700 -o {{ _sshpf_remote_user }} -g {{ _sshpf_remote_user }} ~{{ _sshpf_remote_user }}/.ssh;
+        touch ~{{ _sshpf_remote_user }}/.ssh/authorized_keys;
+        grep -qxF "{{ _sshpf_pubkey_raw.content | b64decode | trim }}" ~{{ _sshpf_remote_user }}/.ssh/authorized_keys ||
+          echo "{{ _sshpf_pubkey_raw.content | b64decode | trim }}" >> ~{{ _sshpf_remote_user }}/.ssh/authorized_keys;
+        chmod 600 ~{{ _sshpf_remote_user }}/.ssh/authorized_keys;
+        chown {{ _sshpf_remote_user }}:{{ _sshpf_remote_user }} ~{{ _sshpf_remote_user }}/.ssh/authorized_keys
+  register: _sshpf_remediate
+  delegate_to: localhost
+  become: false
+  no_log: true
+  changed_when: true
+  failed_when: false
+  when:
+    - _sshpf_pubkey_raw is defined
+    - _sshpf_pubkey_raw is not skipped
+
+- name: "[ssh-preflight] Auto-heal — re-test connectivity after remediation"
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -i
+      - "{{ _sshpf_key_file }}"
+      - -p
+      - "{{ _sshpf_port }}"
+      - -o
+      - BatchMode=yes
+      - -o
+      - ConnectTimeout=5
+      - -o
+      - StrictHostKeyChecking=accept-new
+      - "{{ _sshpf_remote_user }}@{{ _sshpf_target }}"
+      - echo ryggen_fri_ssh_ok
+  register: _sshpf_conn_test_retry
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  ignore_errors: true
+  when:
+    - _sshpf_remediate is defined
+    - _sshpf_remediate is not skipped
+
+- name: "[ssh-preflight] Auto-heal succeeded"
+  ansible.builtin.debug:
+    msg: >-
+      Auto-heal repaired SSH access to {{ _sshpf_remote_user }}@{{ _sshpf_target }} —
+      {{ _sshpf_remote_user }} user confirmed/created, current public key installed,
+      connectivity re-verified using {{ _sshpf_key_file }}.
+  when:
+    - _sshpf_conn_test_retry is defined
+    - _sshpf_conn_test_retry is not skipped
+    - _sshpf_conn_test_retry.rc | default(1) == 0
+
 - name: "[ssh-preflight] FAIL — key present but connectivity test failed"
   ansible.builtin.fail:
     msg: >-
@@ -157,8 +308,10 @@
 
       {{ _sshpf_conn_test.stderr }}
 
+      {{ "Auto-heal was attempted (root password entered) but connectivity still failed afterward — the root password may be wrong, or something else is blocking access." if (_sshpf_remediate is defined and _sshpf_remediate is not skipped) else "Auto-heal was not attempted — leave the root-password prompt blank to see this message, or pass -e ssh_key_preflight_autoheal=false to skip auto-heal deliberately." }}
+
       Check: the public half of this key is actually in
-      {{ _sshpf_target }}'s ~ansible/.ssh/authorized_keys; the private key
+      {{ _sshpf_target }}'s ~{{ _sshpf_remote_user }}/.ssh/authorized_keys; the private key
       at {{ _sshpf_key_file }} matches it; and its permissions are 0600.
       This is a showstopper — nothing further will run against this host
       until it's fixed.
@@ -166,6 +319,7 @@
     - not (ssh_key_preflight_skip | default(false) | bool)
     - _sshpf_conn_test is not skipped
     - _sshpf_conn_test.rc | default(1) != 0
+    - not (_sshpf_conn_test_retry is defined and _sshpf_conn_test_retry is not skipped and _sshpf_conn_test_retry.rc | default(1) == 0)
 
 - name: "[ssh-preflight] Connectivity confirmed"
   ansible.builtin.debug:
