@@ -57,6 +57,20 @@
 # delegate_to, so this always resolves against the real original target.
 # =============================================================================
 # Changelog:
+#   2026-09-17  Two real fixes to auto-heal (below), found live testing it the same day it was
+#               added, against the same EXAPVEFRD001: (1) it only created the user and SSH key
+#               trust, never sudo/sudoers -- confirmed live (-vvv): "sudo: not found" failed the
+#               very next play's fact-gathering outright, because this minimal PVE base image
+#               doesn't ship sudo at all, not just an unconfigured sudoers entry. Now also
+#               installs sudo (apt, only if missing) and writes the standard
+#               "{{ remote_user }} ALL=(ALL) NOPASSWD:ALL" sudoers.d drop-in, matching every
+#               other onboarding path's own setup. (2) Robert's own correct pushback on the
+#               first version: no_log:true suppressed the ENTIRE task's output, including safe,
+#               useful rc/stdout/stderr diagnostics, when the only genuinely sensitive value in
+#               the whole command is the root password argument -- the public key and command
+#               result are not secret. Kept no_log on the task that actually carries the
+#               password (so it never appears in the displayed invocation), added a separate,
+#               non-no_log debug task right after that surfaces rc/stdout/stderr only.
 #   2026-09-17  Added auto-heal (Robert, live against EXAPVEFRD001, a real arm64 PVE node
 #               onboarded by hand where the ansible key was never seeded -- the documented
 #               TOML-answer-file path does this automatically, but engineers occasionally skip
@@ -231,7 +245,7 @@
     - _sshpf_root_pass_prompt is not skipped
     - _sshpf_root_pass_prompt.user_input | default('') | length > 0
 
-- name: "[ssh-preflight] Auto-heal — create/repair {{ _sshpf_remote_user }} and install the current key"
+- name: "[ssh-preflight] Auto-heal — create/repair {{ _sshpf_remote_user }}, sudo, and install the current key"
   ansible.builtin.command:
     argv:
       - sshpass
@@ -250,16 +264,29 @@
         grep -qxF "{{ _sshpf_pubkey_raw.content | b64decode | trim }}" ~{{ _sshpf_remote_user }}/.ssh/authorized_keys ||
           echo "{{ _sshpf_pubkey_raw.content | b64decode | trim }}" >> ~{{ _sshpf_remote_user }}/.ssh/authorized_keys;
         chmod 600 ~{{ _sshpf_remote_user }}/.ssh/authorized_keys;
-        chown {{ _sshpf_remote_user }}:{{ _sshpf_remote_user }} ~{{ _sshpf_remote_user }}/.ssh/authorized_keys
+        chown {{ _sshpf_remote_user }}:{{ _sshpf_remote_user }} ~{{ _sshpf_remote_user }}/.ssh/authorized_keys;
+        command -v sudo >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo);
+        echo "{{ _sshpf_remote_user }} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/{{ _sshpf_remote_user }};
+        chmod 0440 /etc/sudoers.d/{{ _sshpf_remote_user }}
   register: _sshpf_remediate
   delegate_to: localhost
   become: false
   no_log: true
-  changed_when: true
+  changed_when: _sshpf_remediate.rc | default(1) == 0
   failed_when: false
   when:
     - _sshpf_pubkey_raw is defined
     - _sshpf_pubkey_raw is not skipped
+
+- name: "[ssh-preflight] Auto-heal — remediation result (safe fields only, no password/no key content)"
+  ansible.builtin.debug:
+    msg:
+      - "rc: {{ _sshpf_remediate.rc | default('n/a') }}"
+      - "stdout: {{ _sshpf_remediate.stdout | default('') }}"
+      - "stderr: {{ _sshpf_remediate.stderr | default('') }}"
+  when:
+    - _sshpf_remediate is defined
+    - _sshpf_remediate is not skipped
 
 - name: "[ssh-preflight] Auto-heal — re-test connectivity after remediation"
   ansible.builtin.command:
