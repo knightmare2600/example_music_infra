@@ -311,6 +311,23 @@
 #                     revisit this override once it does and FRD has a real production subnet,
 #                     rather than assuming this lab network becomes that subnet.
 #
+# v1.27.0 2026-09-17  Real, confirmed bug found live same day, same box: trixie's own
+#                     ansible-core (2.19.11) crashes on any Windows-targeted ssh connection
+#                     using ansible_shell_type=powershell ("A worker was found in a dead
+#                     state") -- matches ansible/ansible GitHub #59642's fork/NSS-related bug
+#                     class. Full writeup: docs/INCIDENT-LOG.md's
+#                     INC-2026-09-17-FRD-CONTROL-NODE. Robert rebuilt bookworm's known-good
+#                     ansible-core 2.14.18 / ansible 7.7.0 source packages locally against
+#                     trixie (ansible/trixie_debs/*.deb, no bookworm-specific dependency pins
+#                     -- confirmed via dpkg -I -- so they resolve against trixie's own already-
+#                     correct compiled libraries, not bookworm's). Section 1's trixie branch no
+#                     longer installs "ansible" at all; new Section 5c (after the repo clone,
+#                     since the .deb files live inside it) installs the known-good rebuild via
+#                     `apt-get install ./file.deb` (resolves any missing dependency from
+#                     trixie's repos automatically) and apt-mark holds both packages --
+#                     required, not optional, since trixie's own repo candidate is still
+#                     2.19.11 and would otherwise silently return on the next apt upgrade.
+#
 # ==============================================================================
 
 set -euo pipefail
@@ -566,8 +583,9 @@ command -v jq               &>/dev/null || BOOTSTRAP_PKGS+=(jq)
 DEBIAN_VERSION=$(. /etc/os-release && echo "${VERSION_ID:-0}")
 
 if [[ "$DEBIAN_VERSION" -ge 13 ]] 2>/dev/null; then
-  info "Debian ${DEBIAN_VERSION} (trixie+): ansible available in main repo — no PPA needed."
-  BOOTSTRAP_PKGS+=(ansible)
+  info "Debian ${DEBIAN_VERSION} (trixie+): trixie's own ansible-core (2.19.11) has a confirmed"
+  info "bug (docs/INCIDENT-LOG.md's INC-2026-09-17-FRD-CONTROL-NODE) -- not installed here."
+  info "Section 5c installs a known-good local rebuild instead, once the repo is cloned."
 elif [[ "$DEBIAN_VERSION" == "12" ]]; then
   info "Debian 12 (bookworm): adding Ubuntu jammy PPA for a current ansible version..."
   if [[ ! -f /usr/share/keyrings/ansible-archive-keyring.gpg ]]; then
@@ -1119,6 +1137,56 @@ if [[ ! -f "${SITES_CANONICAL}" ]]; then
       success "Downloaded sites.csv to ${SITES_CANONICAL}."
     else
       warn "Could not download sites.csv from ${SITES_URL} — already loaded from ${SITES_CSV:-/etc/example-music/sites.csv}."
+    fi
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# 5c. Ansible package (trixie known-good rebuild)
+# ------------------------------------------------------------------------------
+# Debian 13 (trixie)'s own ansible-core 2.19.11 has a real, confirmed bug -- crashes on any
+# Windows-targeted ssh connection using ansible_shell_type=powershell ("A worker was found in
+# a dead state"), matches ansible/ansible GitHub #59642's fork/NSS-related bug class. Full
+# writeup: docs/INCIDENT-LOG.md's INC-2026-09-17-FRD-CONTROL-NODE.
+#
+# Robert rebuilt bookworm's known-good ansible-core 2.14.18 / ansible 7.7.0 source packages
+# locally against trixie (ansible/trixie_debs/*.deb, committed 2026-09-17, confirmed live to
+# fix the crash). These carry no bookworm-specific dependency pins (checked via dpkg -I before
+# committing), so they resolve against trixie's own already-correct compiled libraries
+# (python3-cryptography etc come from trixie's repos, not bookworm's) -- not a cross-suite ABI
+# risk the way a raw apt pin to bookworm's own packages would be.
+#
+# Only reachable here (not Section 1) because the .deb files live inside the repo this script
+# just cloned in Section 5 -- they don't exist yet earlier in the run. `apt-get install
+# ./file.deb` rather than `dpkg -i` so any missing dependency resolves from trixie's repos
+# automatically, without needing trixie's own "ansible" package to have been installed first
+# just to satisfy them (it never is now -- see Section 1's trixie branch, which deliberately
+# skips installing ansible at all).
+#
+# apt-mark hold afterwards is required, not optional: trixie's own repo candidate is still
+# 2.19.11 at priority 500 versus this locally-installed package's priority 100 (dpkg status
+# only, no repo backing it) -- a routine apt upgrade/full-upgrade would silently pull the
+# broken version straight back in otherwise. Confirmed live, 2026-09-17.
+if [[ "$DEBIAN_VERSION" -ge 13 ]] 2>/dev/null; then
+  section "5c. Ansible package (trixie known-good rebuild)"
+  TRIXIE_DEBS_DIR="${REPO_DIR}/ansible/trixie_debs"
+  CURRENT_ANSIBLE_CORE_VER=$(dpkg-query -W -f='${Version}' ansible-core 2>/dev/null || echo "")
+  if [[ "${CURRENT_ANSIBLE_CORE_VER}" == *"+trixie1"* ]]; then
+    success "ansible-core already on the known-good rebuild (${CURRENT_ANSIBLE_CORE_VER}) -- skipping."
+    apt-mark hold ansible ansible-core > /dev/null 2>&1 || true
+  elif [[ ! -d "${TRIXIE_DEBS_DIR}" ]]; then
+    warn "ansible/trixie_debs/ not found at ${TRIXIE_DEBS_DIR} -- skipping the known-good rebuild."
+    warn "ansible-core stays on trixie's own repo version, which has a confirmed bug -- see"
+    warn "docs/INCIDENT-LOG.md's INC-2026-09-17-FRD-CONTROL-NODE."
+  else
+    info "Installing known-good ansible-core/ansible rebuild from ${TRIXIE_DEBS_DIR}..."
+    if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${TRIXIE_DEBS_DIR}"/*.deb > /dev/null 2>&1; then
+      apt-mark hold ansible ansible-core > /dev/null
+      success "Installed and held: $(dpkg-query -W -f='${Package} ${Version}  ' ansible ansible-core)"
+    else
+      warn "Installing the known-good ansible-core rebuild failed -- staying on trixie's own"
+      warn "repo version, which has a confirmed bug. Check manually:"
+      warn "  apt-get install -y ${TRIXIE_DEBS_DIR}/*.deb"
     fi
   fi
 fi
