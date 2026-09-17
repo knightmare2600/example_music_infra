@@ -57,6 +57,19 @@
 # delegate_to, so this always resolves against the real original target.
 # =============================================================================
 # Changelog:
+#   2026-09-17  Fixed a real bug in BOTH the sudo-install one-liners above (auth auto-heal's and
+#               sudo-heal's), found live on the very first sudo-heal test against EXAPVEFRD001:
+#               `command -v sudo || (apt-get update -qq && apt-get install -y -qq sudo); echo ... ;
+#               chmod ...` is three `;`-separated statements, so the overall exit code was always
+#               chmod's, not the install's -- when `apt-get update` genuinely failed (this box's
+#               untouched pve-enterprise/ceph repos returning 401, no subscription key), the `&&`
+#               correctly skipped the install, but the task still reported rc=0/changed=true
+#               because chmod succeeded afterward, silently swallowing the real failure. Fixed by
+#               (1) making apt-get update non-fatal to the install attempt (`|| true` -- a broken
+#               enterprise repo doesn't invalidate the other repo lists that did fetch fine) and
+#               (2) ending both one-liners on an explicit `command -v sudo` check, so the task's
+#               rc genuinely reflects whether sudo exists afterward, not just whether the last
+#               unrelated statement ran.
 #   2026-09-17  Added a second, independent sudo-heal section (Robert, live against
 #               EXAPVEFRD001 again, same day): the auth auto-heal below only ever runs when
 #               the key/auth connectivity test itself fails, so once the ansible user+key were
@@ -279,9 +292,10 @@
           echo "{{ _sshpf_pubkey_raw.content | b64decode | trim }}" >> ~{{ _sshpf_remote_user }}/.ssh/authorized_keys;
         chmod 600 ~{{ _sshpf_remote_user }}/.ssh/authorized_keys;
         chown {{ _sshpf_remote_user }}:{{ _sshpf_remote_user }} ~{{ _sshpf_remote_user }}/.ssh/authorized_keys;
-        command -v sudo >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo);
+        command -v sudo >/dev/null 2>&1 || { apt-get update -qq || true; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo; };
         echo "{{ _sshpf_remote_user }} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/{{ _sshpf_remote_user }};
-        chmod 0440 /etc/sudoers.d/{{ _sshpf_remote_user }}
+        chmod 0440 /etc/sudoers.d/{{ _sshpf_remote_user }};
+        command -v sudo >/dev/null 2>&1
   register: _sshpf_remediate
   delegate_to: localhost
   become: false
@@ -458,9 +472,10 @@
       - "{{ _sshpf_port }}"
       - "root@{{ _sshpf_target }}"
       - >-
-        command -v sudo >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo);
+        command -v sudo >/dev/null 2>&1 || { apt-get update -qq || true; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo; };
         echo "{{ _sshpf_remote_user }} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/{{ _sshpf_remote_user }};
-        chmod 0440 /etc/sudoers.d/{{ _sshpf_remote_user }}
+        chmod 0440 /etc/sudoers.d/{{ _sshpf_remote_user }};
+        command -v sudo >/dev/null 2>&1
   register: _sshpf_sudo_remediate
   delegate_to: localhost
   become: false
