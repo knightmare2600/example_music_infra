@@ -37,6 +37,17 @@
 # Tags: preflight
 # =============================================================================
 # Changelog:
+#   2026-09-17  Added "Register into the pvenodes group" (add_host into group: pvenodes), moved
+#               here from bootstrap-new-node.yml (removed there, see its own changelog) -- that
+#               file only ever ran it because it always chains into this playbook via
+#               import_playbook, but this file's own header documents site.yml (which imports
+#               this first) as runnable standalone against a bare IP too. Found live (Robert,
+#               EXAPVEFRD001): a node with an already-correct hostname, onboarded via site.yml
+#               directly rather than via bootstrap-new-node.yml, never got the add_host and hit
+#               10-packages.yml's "Install management packages" failing with 'pve_packages' is
+#               undefined -- group_vars/pvenodes/ never loads for a bare ad-hoc "-i "1.2.3.4,""
+#               inventory unless the target is actually added to that group at runtime. Now
+#               applies regardless of entry point.
 #   2026-07-12  Single-disk check: added an interactive pause on top of
 #               -e pve_acknowledge_single_disk=true (not a replacement for
 #               it). Robert asked for this after hitting the check
@@ -135,6 +146,28 @@
     sites_csv_src: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
 
   tasks:
+
+    - name: Register into the pvenodes group (later stages need its group_vars, e.g. pve_packages)
+      # group_vars only auto-loads for a group that's part of the LOADED inventory path -- a bare
+      # "-i "1.2.3.4,"" ad-hoc inventory has no path for Ansible to find
+      # configs/inventory/group_vars/pvenodes/ at all, regardless of group membership. Originally
+      # only done in bootstrap-new-node.yml (which chains straight into this file via
+      # import_playbook), on the assumption site.yml would always be reached via that chain.
+      # Real bug, found live 2026-09-17 (Robert, EXAPVEFRD001): this node already had its correct
+      # hostname set by hand, so running site.yml directly against its DHCP IP (skipping
+      # bootstrap-new-node.yml entirely, which site.yml's own header explicitly documents as a
+      # supported standalone usage) never got this add_host at all -- 10-packages.yml's "Install
+      # management packages" task failed with 'pve_packages' is undefined. Moved here so it
+      # applies regardless of entry point. Safe to run unconditionally: matches
+      # bootstrap-new-node.yml's own reasoning -- explicit -e target= scoping means this only
+      # ever affects the one host actually being run against, and re-adding an already-real
+      # inventory member to a group it's already in is a harmless no-op.
+      ansible.builtin.add_host:
+        name: "{{ inventory_hostname }}"
+        groups: pvenodes
+      delegate_to: localhost
+      become: false
+      tags: preflight
 
     - name: Include hostname facts
       include_tasks: ../../../tasks/hostname_facts.yml
