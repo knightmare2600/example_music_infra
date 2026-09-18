@@ -359,6 +359,18 @@
 #                     BOOTSTRAP_PKGS, so no control node bootstrapped through this script ever
 #                     actually got it. Added dpkg -s python3-ipy check alongside the other
 #                     Proxmox-related Python libs.
+# v1.30.0 2026-09-18  BUG FIX, found live (Robert, EXAANSFRD001 -- first genuine bookworm run,
+#                     after fixing menu.ipxe's preseed bug, INC-2026-09-17-BOOKWORM-PRESEED):
+#                     `gpg: command not found` on Debian 12 (bookworm)'s Ubuntu-jammy-PPA branch.
+#                     gpg and wget are both correctly queued into BOOTSTRAP_PKGS earlier in this
+#                     section, but the Ansible-package-strategy block that USES them (to fetch and
+#                     dearmour the PPA's signing key) ran BEFORE the actual `apt-get install
+#                     "${BOOTSTRAP_PKGS[@]}"` call that installs them -- a real ordering bug, not a
+#                     missing dependency. Moved the whole Ansible-package-strategy block to run
+#                     AFTER that install instead, so gpg/wget/curl are guaranteed present by the
+#                     time it runs. `ansible` itself can no longer ride along in the same batched
+#                     BOOTSTRAP_PKGS install (that's already finished by then), so each branch now
+#                     installs it with its own dedicated apt-get call.
 #
 # ==============================================================================
 
@@ -610,33 +622,6 @@ command -v jq               &>/dev/null || BOOTSTRAP_PKGS+=(jq)
 # cloud_templates.yml playbooks. Installing here pulls in the full qemu/kvm pkgs
 # (100s of MB, kernel images) which can cause OOM on small nodes.
 
-# Ansible package strategy:
-#   Debian 13 (trixie) — ships ansible 12.0.0 / ansible-core 2.19 in main repo. No PPA needed.
-#   Debian 12 (bookworm) — ships ansible-core 2.14 which is too old; add Ubuntu jammy PPA.
-#   Anything else — attempt main repo; warn if version is old.
-DEBIAN_VERSION=$(. /etc/os-release && echo "${VERSION_ID:-0}")
-
-if [[ "$DEBIAN_VERSION" -ge 13 ]] 2>/dev/null; then
-  info "Debian ${DEBIAN_VERSION} (trixie+): trixie's own ansible-core (2.19.11) has a confirmed"
-  info "bug (docs/INCIDENT-LOG.md's INC-2026-09-17-FRD-CONTROL-NODE) -- not installed here."
-  info "Section 5c installs a known-good local rebuild instead, once the repo is cloned."
-elif [[ "$DEBIAN_VERSION" == "12" ]]; then
-  info "Debian 12 (bookworm): adding Ubuntu jammy PPA for a current ansible version..."
-  if [[ ! -f /usr/share/keyrings/ansible-archive-keyring.gpg ]]; then
-    wget -q -O /tmp/ansible.gpg "https://keyserver.ubuntu.com/pks/lookup?fingerprint=on&op=get&search=0x6125E2A8C77F2818FB7BD15B93C4A3FD7BB9C367"
-    gpg --dearmour -o /usr/share/keyrings/ansible-archive-keyring.gpg /tmp/ansible.gpg
-    rm -f /tmp/ansible.gpg
-  fi
-  if [[ ! -f /etc/apt/sources.list.d/ansible.list ]]; then
-    echo "deb [signed-by=/usr/share/keyrings/ansible-archive-keyring.gpg] http://ppa.launchpad.net/ansible/ansible/ubuntu jammy main" > /etc/apt/sources.list.d/ansible.list
-    apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
-  fi
-  BOOTSTRAP_PKGS+=(ansible)
-else
-  warn "Unknown Debian version '${DEBIAN_VERSION}'. Will attempt to install ansible from main repo."
-  BOOTSTRAP_PKGS+=(ansible)
-fi
-
 if [[ ${#BOOTSTRAP_PKGS[@]} -gt 0 ]]; then
   info "Installing: ${BOOTSTRAP_PKGS[*]}"
 
@@ -666,6 +651,64 @@ if [[ ${#BOOTSTRAP_PKGS[@]} -gt 0 ]]; then
   fi
 else
   success "All required packages already present."
+fi
+
+# Ansible package strategy. Moved to AFTER the BOOTSTRAP_PKGS install above (was
+# BEFORE it) -- real bug found live 2026-09-18 (Robert, EXAANSFRD001, genuine
+# bookworm this time): the bookworm branch below uses gpg + wget to add and verify
+# the Ubuntu jammy PPA, but both were only ever queued into BOOTSTRAP_PKGS, not
+# actually installed, until the block above runs -- `gpg: command not found` on a
+# fresh bookworm box that had neither preinstalled. Now guaranteed present by the
+# time this runs. `ansible` itself can no longer ride along in the same batched
+# BOOTSTRAP_PKGS install (that's already finished), so each branch below installs
+# it with its own dedicated apt-get call instead.
+#   Debian 13 (trixie) — ships ansible 12.0.0 / ansible-core 2.19 in main repo, but see
+#   docs/INCIDENT-LOG.md's INC-2026-09-17-FRD-CONTROL-NODE -- confirmed bug in that
+#   release. Not installed via apt at all; Section 5c installs a known-good local
+#   rebuild instead, once the repo is cloned.
+#   Debian 12 (bookworm) — ships ansible-core 2.14 which is too old; add Ubuntu jammy PPA.
+#   Anything else — attempt main repo; warn if version is old.
+DEBIAN_VERSION=$(. /etc/os-release && echo "${VERSION_ID:-0}")
+
+if [[ "$DEBIAN_VERSION" -ge 13 ]] 2>/dev/null; then
+  info "Debian ${DEBIAN_VERSION} (trixie+): trixie's own ansible-core (2.19.11) has a confirmed"
+  info "bug (docs/INCIDENT-LOG.md's INC-2026-09-17-FRD-CONTROL-NODE) -- not installed here."
+  info "Section 5c installs a known-good local rebuild instead, once the repo is cloned."
+elif [[ "$DEBIAN_VERSION" == "12" ]]; then
+  info "Debian 12 (bookworm): adding Ubuntu jammy PPA for a current ansible version..."
+  if [[ ! -f /usr/share/keyrings/ansible-archive-keyring.gpg ]]; then
+    wget -q -O /tmp/ansible.gpg "https://keyserver.ubuntu.com/pks/lookup?fingerprint=on&op=get&search=0x6125E2A8C77F2818FB7BD15B93C4A3FD7BB9C367"
+    gpg --dearmour -o /usr/share/keyrings/ansible-archive-keyring.gpg /tmp/ansible.gpg
+    rm -f /tmp/ansible.gpg
+  fi
+  if [[ ! -f /etc/apt/sources.list.d/ansible.list ]]; then
+    echo "deb [signed-by=/usr/share/keyrings/ansible-archive-keyring.gpg] http://ppa.launchpad.net/ansible/ansible/ubuntu jammy main" > /etc/apt/sources.list.d/ansible.list
+    apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true
+  fi
+  if ! dpkg -s ansible &>/dev/null; then
+    ANSIBLE_LOG=$(mktemp /tmp/ansibleme-ansible-XXXXXX.log)
+    if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ansible > "$ANSIBLE_LOG" 2>&1; then
+      success "ansible installed from the Ubuntu jammy PPA."
+      rm -f "$ANSIBLE_LOG"
+    else
+      warn "ansible install from the Ubuntu jammy PPA failed -- last 20 lines of log:"
+      tail -20 "$ANSIBLE_LOG" >&2
+      die "ansible installation failed. Fix the above and re-run."
+    fi
+  else
+    success "ansible already installed."
+  fi
+else
+  warn "Unknown Debian version '${DEBIAN_VERSION}'. Attempting to install ansible from main repo."
+  ANSIBLE_LOG=$(mktemp /tmp/ansibleme-ansible-XXXXXX.log)
+  if DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ansible > "$ANSIBLE_LOG" 2>&1; then
+    success "ansible installed from the main repo."
+    rm -f "$ANSIBLE_LOG"
+  else
+    warn "ansible install failed -- last 20 lines of log:"
+    tail -20 "$ANSIBLE_LOG" >&2
+    die "ansible installation failed. Fix the above and re-run."
+  fi
 fi
 
 # ------------------------------------------------------------------------------
