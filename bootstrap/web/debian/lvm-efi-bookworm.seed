@@ -111,6 +111,25 @@
 #                                        stable was for Trixie. Everything else  #
 #                                        in this file is unchanged from the      #
 #                                        Trixie original.                       #
+# Updated: 18/09/2026 v2.15 knightmare   BUG FIX, found live (Robert, EXAANSFRD001): root LV     #
+#                                        recipe was "5192 40 4096 ext4" -- a max_size (4096MB)   #
+#                                        SMALLER than its own min_size (5192MB), an invalid      #
+#                                        range. partman resolved this by capping root at ~6.8GB  #
+#                                        regardless of real disk size, leaving guided_size=100%  #
+#                                        totally undermined -- confirmed live: 18.8GB VG, only   #
+#                                        6.83GB allocated to root, 11.5GB VFree sitting unused.  #
+#                                        A full LFS-smudge clone of this repo (578MB .git alone, #
+#                                        plus every large binary asset) filled that 6.8GB root   #
+#                                        outright ("no space left on device") mid-clone. Fixed:  #
+#                                        max_size raised to 1000000 (MB, ~977GB -- effectively   #
+#                                        unbounded for any real disk) so root actually consumes  #
+#                                        whatever's left in the VG, as guided_size=100% already  #
+#                                        intended. Same bug, same fix, in all 4 lvm-*.seed files #
+#                                        -- inherited unchanged from the Trixie original's own   #
+#                                        04/05/2026 v2.5 (Dual BIOS/EFI support), never hit       #
+#                                        before because nothing had done a full LFS-smudge       #
+#                                        clone of this repo on a freshly-built box through this  #
+#                                        path until now.                                        #
 #--------------------------------------------------------------------------------#
 
 ### Locale (language + country)
@@ -242,7 +261,7 @@ d-i partman-auto/expert_recipe string        \
          method{ swap }                      \
          format{ }                           \
        .                                     \
-       5192 40 4096 ext4                     \
+       5192 40 1000000 ext4                  \
          $defaultignore{ }                   \
          $lvmok{ }                           \
          lv_name{ root }                     \
