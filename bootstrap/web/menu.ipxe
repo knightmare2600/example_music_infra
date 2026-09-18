@@ -17,6 +17,28 @@
 #
 # Version history:
 #
+#   v2.14  CORRECTION to v2.13's diagnosis, 2026-09-18: v2.13's arm64 guard (below) was based on
+#          a wrong root cause. Robert manually dropped genuinely checksum-verified Bookworm arm64
+#          netboot media (matching Debian's own published SHA256SUMS) into place and it STILL
+#          installed Trixie -- proving the boot media was never the problem. The real cause: the
+#          Bookworm entries (added v2.12) shared bootstrap/web/debian/lvm-{efi,bios}.seed with
+#          the Trixie entries, and that preseed unconditionally hardcodes
+#          `d-i mirror/suite string stable` + `d-i mirror/codename string trixie` (deliberate,
+#          documented tuning from months earlier, purely for Trixie -- see that file's own v2.7
+#          history) -- so every "Bookworm" install always installed Trixie regardless of which
+#          kernel/initrd booted. Fixed at the source: lvm-{efi,bios}.seed renamed to
+#          lvm-{efi,bios}-trixie.seed (unchanged otherwise), new lvm-{efi,bios}-bookworm.seed
+#          siblings created with `mirror/suite=oldstable` + `mirror/codename=bookworm` (oldstable
+#          confirmed live as Bookworm's real current alias via deb.debian.org: Suite: oldstable,
+#          Codename: bookworm, Version: 12.15 -- same choose-mirror symlink-probing trick as
+#          Trixie's own suite=stable/codename=trixie split). ${seed} replaced with two separate
+#          variables, ${seed-trixie}/${seed-bookworm}, set once by arch and referenced by the
+#          matching release's entries. v2.13's arm64 guard (:bookworm-arm64-msg, the
+#          `iseq ${arch} arm64 && goto bookworm-arm64-msg` lines, and the section header's
+#          "x86_64 only" caveat) is REMOVED -- arm64 Bookworm now uses its own correct preseed
+#          and works the same as x86_64. check_bootstrap_assets.py's KNOWN_VAR_VALUES updated to
+#          match the new seed-trixie/seed-bookworm variables instead of the retired seed one.
+#
 #   v2.13  CORRECTION to v2.12, same day: Robert booted the new arm64 Bookworm entry live and it
 #          installed as Debian 13 (trixie), not Bookworm -- confirmed via `lsb_release -a` on the
 #          resulting system. Checked whether this was a broken/out-of-sync mirror before assuming
@@ -225,12 +247,21 @@ iseq ${buildarch} arm64 && set arch arm64 || set arch x86_64
 echo Detected: ${buildarch} -- payload arch: ${arch}
 
 # ---------------------------------------------------------------------------
-# Preseed selection by architecture
-#    arm64 -> lvm-efi.seed  (EFI recipe, arm64 kernel, no biosgrub partition)
-#   x86_64 -> lvm-bios.seed (BIOS/GPT recipe, amd64 kernel, biosgrub partition)
+# Preseed selection by architecture AND release -- two separate variables, not
+# one shared ${seed}. Real bug found live 2026-09-18 (Robert): a single shared
+# ${seed} meant the "Debian Bookworm" menu entries (added 2026-09-17) silently
+# reused the Trixie-only preseed's hardcoded mirror/suite=stable +
+# mirror/codename=trixie, so every "Bookworm" install actually installed
+# Trixie regardless of which kernel/initrd was booted -- confirmed live even
+# with genuine, checksum-verified Bookworm arm64 netboot media manually
+# swapped in. See lvm-*-bookworm.seed's own changelog for the full story.
+#    arm64 -> lvm-efi-{trixie,bookworm}.seed  (EFI recipe, arm64 kernel, no biosgrub partition)
+#   x86_64 -> lvm-bios-{trixie,bookworm}.seed (BIOS/GPT recipe, amd64 kernel, biosgrub partition)
 # ---------------------------------------------------------------------------
-iseq ${arch} arm64 && set seed lvm-efi.seed || set seed lvm-bios.seed
-echo Preseed: ${seed}
+iseq ${arch} arm64 && set seed-trixie lvm-efi-trixie.seed || set seed-trixie lvm-bios-trixie.seed
+iseq ${arch} arm64 && set seed-bookworm lvm-efi-bookworm.seed || set seed-bookworm lvm-bios-bookworm.seed
+echo Preseed (Trixie): ${seed-trixie}
+echo Preseed (Bookworm): ${seed-bookworm}
 
 # ---------------------------------------------------------------------------
 # Gateway-based environment detection
@@ -294,7 +325,7 @@ item debian-auto-s    Debian Trixie  Auto install  (ttyS0 serial)
 item debian-ssh-s     Debian Trixie  Auto install  (SSH + ttyS0 serial)
 item debian-test      Debian Trixie  [TEST] seed file relocation fix -- try this first
 item --gap --
-item --gap --         -- Debian (Bookworm, x86_64 only -- Debian's own arm64 build installs Trixie) --
+item --gap --         -- Debian (Bookworm) --
 item debian-bookworm-auto      Debian Bookworm  Auto install
 item debian-bookworm-ssh       Debian Bookworm  Auto install  (SSH console)
 item debian-bookworm-auto-s    Debian Bookworm  Auto install  (ttyS0 serial)
@@ -348,22 +379,22 @@ boot
 #   netcfg/choose_interface=auto
 # ===========================================================================
 :debian-auto
-kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
+kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed-trixie} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
 initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
 boot
 
 :debian-ssh
-kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
+kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed-trixie} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
 initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
 boot
 
 :debian-auto-s
-kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
+kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed-trixie} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
 initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
 boot
 
 :debian-ssh-s
-kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
+kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed-trixie} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
 initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
 boot
 
@@ -375,7 +406,7 @@ boot
 # clearly-labelled test of the fix -- pick this one first; the four above
 # are untouched and should also now work identically once this is confirmed.
 :debian-test
-kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
+kernel ${boot-url}/debian/trixie/${arch}/linux auto=true url=${boot-url}/debian/${seed-trixie} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
 initrd ${boot-url}/debian/trixie/${arch}/initrd.gz
 boot
 
@@ -386,48 +417,36 @@ boot
 # previously only reachable internally via :3cx-install, never as a general-purpose install
 # choice. Added 2026-09-17, Robert's ask -- see v2.12 changelog entry at the top of this file.
 #
-# x86_64 only, as of 2026-09-17. Robert booted the arm64 build live and it installed as
-# Debian 13 (trixie), not Bookworm -- confirmed via `lsb_release -a` on the resulting system.
-# Checked against Debian's own OFFICIAL SHA256SUMS for installer-arm64/current/images/netboot/
-# (not a mirror-corruption issue -- the downloaded files match Debian's own published checksums
-# exactly, dated 2026-07-06). Whatever the reason on Debian's side, their published arm64
-# Bookworm netboot images genuinely do not install Bookworm any more. Guarded to x86_64 only
-# below rather than silently letting arm64 install the wrong release under a Bookworm label --
-# arm64 users get the (genuinely correct) Trixie entries instead. Revisit if Debian ever
-# corrects this upstream.
+# Re-enabled for arm64, 2026-09-18 (was x86_64-only 2026-09-17 -- v2.13's own arm64 guard,
+# below, is now REMOVED). Root cause was misdiagnosed at the time: the arm64 netboot media
+# itself was checked and genuinely matched Debian's own published Bookworm checksums, so the
+# guard concluded this was an unfixable upstream quirk. It wasn't -- the real cause was that
+# these entries shared lvm-{efi,bios}.seed with the Trixie entries, and that preseed hardcoded
+# mirror/suite=stable + mirror/codename=trixie unconditionally. Confirmed live: even manually
+# swapping in checksum-verified genuine Bookworm arm64 netboot media still installed Trixie,
+# because the boot media was never what determined the installed release -- the preseed was.
+# Now uses its own lvm-{efi,bios}-bookworm.seed (mirror/suite=oldstable, mirror/codename=bookworm)
+# instead of sharing the Trixie one -- see that file's own changelog for the full story.
 # ===========================================================================
 :debian-bookworm-auto
-iseq ${arch} arm64 && goto bookworm-arm64-msg ||
-kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
+kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed-bookworm} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto
 initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
 boot
 
 :debian-bookworm-ssh
-iseq ${arch} arm64 && goto bookworm-arm64-msg ||
-kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
+kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed-bookworm} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install
 initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
 boot
 
 :debian-bookworm-auto-s
-iseq ${arch} arm64 && goto bookworm-arm64-msg ||
-kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
+kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed-bookworm} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto console=ttyS0,115200n8
 initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
 boot
 
 :debian-bookworm-ssh-s
-iseq ${arch} arm64 && goto bookworm-arm64-msg ||
-kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
+kernel ${boot-url}/debian/bookworm/${arch}/linux auto=true url=${boot-url}/debian/${seed-bookworm} priority=high locale=en_GB.UTF-8 keymap=gb domain=jukebox.internal theme=dark lowmem/low=false timezone=Europe/London time/zone=Europe/London netcfg/choose_interface=auto anna/choose_modules=network-console network-console/password=install network-console/password-again=install console=tty0 console=ttyS0,115200n8
 initrd ${boot-url}/debian/bookworm/${arch}/initrd.gz
 boot
-
-# Shared: arm64 Bookworm is not genuinely available -- Debian's own official arm64 Bookworm
-# netboot images install Trixie instead (confirmed live, 2026-09-17 -- see comment above).
-:bookworm-arm64-msg
-echo Debian's own arm64 Bookworm netboot images actually install Trixie (confirmed live,
-echo 2026-09-17) -- not a mirror fault, matches Debian's own published checksums exactly.
-echo Use one of the Trixie entries instead.
-prompt Press any key to return to menu...
-goto main
 
 # ===========================================================================
 # 3CX PHONE SYSTEM
