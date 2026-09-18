@@ -34,11 +34,11 @@ via static-web-server.exe, so there's nothing fixed to detect):
   them, and this check is scoped to "assets menu.ipxe references."
 
 Tier 2's variable expansion only covers the small, enumerable set menu.ipxe
-actually uses (${arch}, ${alpine-arch}, ${seed}) plus ${base}/${winpe-boot}
-indirection (resolved from the nearby `set base ...`/`set winpe-boot ...`
-line(s) in the same file). Anything left with an unresolved ${...} after
-that (e.g. the autodeploy chain's ${mac:hexhyp}) is counted separately as
-skipped-dynamic, never failed -- same honesty-about-coverage philosophy as
+actually uses (${arch}, ${alpine-arch}, ${seed-trixie}, ${seed-bookworm}) plus
+${base}/${winpe-boot} indirection (resolved from the nearby `set base ...`/
+`set winpe-boot ...` line(s) in the same file). Anything left with an
+unresolved ${...} after that (e.g. the autodeploy chain's ${mac:hexhyp}) is
+counted separately as skipped-dynamic, never failed -- same honesty-about-coverage philosophy as
 check_references.py's own skipped_dynamic count. .toml paths are excluded
 from Tier 2 entirely -- that's Tier 1's domain, not a boot binary.
 
@@ -78,10 +78,14 @@ FETCH_SCRIPTS = [
 ]
 
 # The only enumerable iPXE variables menu.ipxe's asset paths actually use.
+# seed-trixie/seed-bookworm replaced a single shared "seed" 2026-09-18 -- the Bookworm menu
+# entries were silently reusing the Trixie-only preseed (see menu.ipxe's own v2.14 changelog),
+# so each release now gets its own pair of lvm-{efi,bios}-<release>.seed files.
 KNOWN_VAR_VALUES = {
     "arch": ["x86_64", "arm64"],
     "alpine-arch": ["x86_64", "aarch64"],
-    "seed": ["lvm-bios.seed", "lvm-efi.seed"],
+    "seed-trixie": ["lvm-bios-trixie.seed", "lvm-efi-trixie.seed"],
+    "seed-bookworm": ["lvm-bios-bookworm.seed", "lvm-efi-bookworm.seed"],
 }
 
 ASSET_LINE_RE = re.compile(r"^\s*(kernel|initrd|chain)\s+(.*)$")
