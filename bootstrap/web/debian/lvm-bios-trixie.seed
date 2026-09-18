@@ -10,8 +10,9 @@
 # put altenatives in if they might be useful.  E.g: ubuntu-minimal below.        #
 #                                                                                #
 # Variant: BIOS/x86_64 (legacy BIOS and UEFI x86_64 VMs)                         #
-# Served to x86_64 arch by menu.ipxe via ${seed} variable.                       #
-# For ARM64/EFI use lvm-efi.seed                                                 #
+# TRIXIE variant. Served to x86_64 arch by menu.ipxe via ${seed-trixie} var.     #
+# For ARM64/EFI use lvm-efi-trixie.seed. For Bookworm use lvm-bios-bookworm      #
+# .seed instead -- mirror/suite+codename differ, everything else is identical.  #
 #                                                                                #
 #--------------------------------------------------------------------------------#
 # Created: 24/09/2012 v1.0 knightmare    Initial Version mod of alternate seed   #
@@ -78,6 +79,26 @@
 #                                        grub-installer/bootdev set to default   #
 #                                        so grub installs to whichever disk      #
 #                                        the installer used                      #
+# Updated: 18/09/2026 v2.14 knightmare   Renamed lvm-bios.seed -> lvm-bios-trixie#
+#                                        .seed (was lvm-bios.seed/lvm-efi.seed). #
+#                                        Real bug found live (Robert): menu.ipxe #
+#                                        added a "Debian Bookworm" menu option   #
+#                                        2026-09-17 that reused this file        #
+#                                        unmodified -- but mirror/suite=stable + #
+#                                        mirror/codename=trixie below are        #
+#                                        unconditional, so every "Bookworm"      #
+#                                        install actually installed Trixie      #
+#                                        regardless of which kernel/initrd was   #
+#                                        booted. This file was always Trixie-    #
+#                                        only (see v2.7-v2.11 above); it now has #
+#                                        a proper name to match, and a real      #
+#                                        lvm-bios-bookworm.seed sibling exists   #
+#                                        with the correct oldstable/bookworm     #
+#                                        values instead of being silently        #
+#                                        reused. menu.ipxe now sets              #
+#                                        ${seed-trixie}/${seed-bookworm}         #
+#                                        separately rather than one shared       #
+#                                        ${seed}.                                #
 #--------------------------------------------------------------------------------#
 
 ### Locale (language + country)

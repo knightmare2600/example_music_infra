@@ -6,12 +6,13 @@
 # virtual server.  With UK keyboard and puppet which will then attempt to        #
 # check into {puppet|ansible}.example.com.                                       #
 #                                                                                #
-# Pretty please with sugar on top, comment lines to explain what they do, and    #
-# also put altenatives in if they might be useful.  E.g: ubuntu-minimal below.   #
+# Pretty please with sugar on top, comment lines to explain what they do, & also #
+# put altenatives in if they might be useful.  E.g: ubuntu-minimal below.        #
 #                                                                                #
-# Variant: EFI/ARM64 (VMware Fusion on Apple Silicon and EFI x86_64 VMs)         #
-# Served to arm64 arch by menu.ipxe via ${seed} variable.                        #
-# For BIOS/x86_64 use lvm-bios.seed                                              #
+# Variant: BIOS/x86_64 (legacy BIOS and UEFI x86_64 VMs)                         #
+# BOOKWORM variant. Served to x86_64 arch by menu.ipxe via ${seed-bookworm} var. #
+# For ARM64/EFI use lvm-efi-bookworm.seed. For Trixie use lvm-bios-trixie        #
+# .seed instead -- mirror/suite+codename differ, everything else is identical.  #
 #                                                                                #
 #--------------------------------------------------------------------------------#
 # Created: 24/09/2012 v1.0 knightmare    Initial Version mod of alternate seed   #
@@ -78,6 +79,38 @@
 #                                        grub-installer/bootdev set to default   #
 #                                        so grub installs to whichever disk      #
 #                                        the installer used                      #
+# Updated: 18/09/2026 v2.14 knightmare   NEW FILE, forked from lvm-bios-trixie   #
+#                                        .seed (itself renamed from lvm-bios     #
+#                                        .seed the same day). Real bug found     #
+#                                        live (Robert): menu.ipxe's "Debian      #
+#                                        Bookworm" menu option (added 2026-09-   #
+#                                        17) reused the Trixie-only preseed      #
+#                                        unmodified -- mirror/suite=stable +     #
+#                                        mirror/codename=trixie there are        #
+#                                        unconditional, so every "Bookworm"      #
+#                                        install actually installed Trixie,      #
+#                                        regardless of which kernel/initrd was   #
+#                                        booted (confirmed live: even manually   #
+#                                        swapping in checksum-verified genuine   #
+#                                        Bookworm arm64 netboot media still      #
+#                                        installed Trixie -- the boot media was  #
+#                                        never the problem, the preseed's        #
+#                                        hardcoded target suite was). Below,     #
+#                                        mirror/suite=oldstable + mirror/        #
+#                                        codename=bookworm replace stable/       #
+#                                        trixie -- oldstable is Bookworm's real  #
+#                                        current alias now that Trixie is       #
+#                                        stable, confirmed live against          #
+#                                        deb.debian.org (Suite: oldstable,       #
+#                                        Codename: bookworm, Version: 12.15)     #
+#                                        before landing this. Same choose-       #
+#                                        mirror symlink-probing workaround as    #
+#                                        Trixie's v2.9-v2.11 (see above) --      #
+#                                        oldstable is choose-mirror's           #
+#                                        resolvable symlink here, exactly as     #
+#                                        stable was for Trixie. Everything else  #
+#                                        in this file is unchanged from the      #
+#                                        Trixie original.                       #
 #--------------------------------------------------------------------------------#
 
 ### Locale (language + country)
@@ -104,26 +137,30 @@ d-i netcfg/get_domain string jukebox.internal
 d-i netcfg/get_domain seen true
 
 ## ftp.uk.debian.org is a direct mirror that responds correctly to all queries.
-## deb.debian.org CDN returns nothing for dists/stable/Release from inside the
-## arm64 installer - confirmed via vt4 syslog.
+## deb.debian.org CDN returns nothing for dists/oldstable/Release from inside
+## the arm64 installer - confirmed via vt4 syslog for dists/stable/ originally
+## (Trixie sibling, same issue) -- treated as the same class of CDN gap here.
 ##
 ## choose-mirror v2.133 ignores check-mirror=false and unconditionally probes
-## for suite symlinks. suite=stable has a symlink choose-mirror can find;
-## codename=trixie ensures correct package fetching.
+## for suite symlinks. suite=oldstable has a symlink choose-mirror can find
+## (Bookworm is oldstable now that Trixie is stable -- confirmed live against
+## deb.debian.org 2026-09-18: Suite: oldstable, Codename: bookworm, Version:
+## 12.15); codename=bookworm ensures correct package fetching regardless of
+## what oldstable happens to alias to in the future.
 ## check-mirror=false kept as belt-and-braces.
 d-i mirror/country string manual
 d-i mirror/http/hostname string ftp.uk.debian.org
 d-i mirror/http/directory string /debian
-d-i mirror/suite string stable
-d-i mirror/codename string trixie
+d-i mirror/suite string oldstable
+d-i mirror/codename string bookworm
 d-i choose-mirror/check-mirror boolean false
 #d-i mirror/http/proxy string http://proxy.example.com:3142
 ## Don't use a proxy - yes really this is how to do it
 d-i mirror/http/proxy string
 
-## Kernel to install - arm64 server kernel
-#d-i base-installer/kernel/image string linux-image-cloud-arm64
-d-i base-installer/kernel/image string linux-image-arm64
+## Kernel to install - amd64 server kernel
+#d-i base-installer/kernel/image string linux-image-cloud-amd64
+d-i base-installer/kernel/image string linux-image-amd64
 
 ## Don't ask about additional CDs
 d-i apt-setup/cdrom/set-first boolean false
@@ -165,30 +202,25 @@ d-i partman-lvm/confirm boolean true
 d-i partman-auto/choose_recipe select boot-root
 d-i partman-auto-lvm/guided_size string 100%
 
-## GPT required for EFI
+## GPT throughout - biosgrub partition handles GRUB2 on GPT+BIOS
 d-i partman-basicfilesystems/choose_label select gpt
 d-i partman-partitioning/default_label string gpt
 
 ## Set VG name to hostname and detect target disk dynamically.
 ## lsblk lists non-removable disks; we pick the first one found.
 ## This handles NVMe (/dev/nvme0n1), SCSI/SATA (/dev/sda), virtio (/dev/vda).
-## partman-auto/disk is then set to whatever disk is found.
+## Both partman-auto/disk and grub-installer/bootdev are set to the
+## detected disk so grub writes to the correct biosgrub partition.
 d-i partman/early_command string \
   VGHOSTNAME=$(hostname); \
   debconf-set partman-auto-lvm/new_vg_name "$VGHOSTNAME"; \
   DISK=$(lsblk -d -n -o NAME,RM | awk '$2==0 {print "/dev/" $1; exit}'); \
-  debconf-set partman-auto/disk "$DISK"
+  debconf-set partman-auto/disk "$DISK"; \
+  debconf-set grub-installer/bootdev "$DISK"
 
-## EFI recipe - 512MB ESP, /boot, swap, root LV
-## No biosgrub partition - ARM64 is EFI only, BIOS does not apply
 d-i partman-auto/expert_recipe string        \
      boot-root ::                            \
-       512 10 512 fat32                      \
-         $primary{ }                         \
-         method{ efi }                       \
-         format{ }                           \
-       .                                     \
-       768 20 1536 ext3                      \
+       384 10 1536 ext3                      \
          $primary{ }                         \
          $bootable{ }                        \
          method{ format }                    \
@@ -197,6 +229,10 @@ d-i partman-auto/expert_recipe string        \
          filesystem{ ext3 }                  \
          reserved_blocks{ 0 }               \
          mountpoint{ /boot }                 \
+       .                                     \
+       1 1 1 free                            \
+         $iflabel{ gpt }                     \
+         method{ biosgrub }                  \
        .                                     \
        512 30 512 swap                       \
          $defaultignore{ }                   \
@@ -230,7 +266,7 @@ d-i partman/confirm_nooverwrite boolean true
 popularity-contest popularity-contest/participate boolean false
 
 ## Install extra apps too
-d-i pkgsel/include string vim tofrodos gpm tmux openssh-server net-tools tree sudo zsh zsh-autosuggestions zsh-common zsh-syntax-highlighting
+d-i pkgsel/include string vim gpm tofrodos tmux openssh-server net-tools tree sudo zsh zsh-autosuggestions zsh-common zsh-syntax-highlighting
 
 ## Updates policy (install security updates automatically)
 d-i pkgsel/update-policy select unattended-upgrades
@@ -239,11 +275,12 @@ d-i preseed/early_command string . /usr/share/debconf/confmodule; db_get debconf
 ## Basic server with OpenSSH installed
 tasksel tasksel/first multiselect standard
 
-## Install Grub - grub-efi is selected automatically on EFI systems
-## bootdev=default tells the installer to use whichever disk it installed to
-## rather than hardcoding /dev/sda which breaks on NVMe systems
+## Install Grub to MBR/GPT
+## On BIOS systems grub must write to a specific disk (the biosgrub partition).
+## The disk is detected via lsblk in early_command above and set here.
+## 'default' is not reliable on BIOS systems unlike EFI.
 d-i grub-installer/only_debian boolean true
-d-i grub-installer/bootdev string default
+d-i grub-installer/bootdev string /dev/sda
 
 ## Set a Grub password
 ## (DOES NOT WORK WITH GRUB2)
