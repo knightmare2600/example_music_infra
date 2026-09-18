@@ -413,6 +413,23 @@
 #                     nodeinfo.json's pve_nodes field dropped (always duplicated the real
 #                     inventory); the final summary's "PVE nodes configured (N entries)" block
 #                     removed (nothing left to print).
+# v1.33.0 2026-09-18  BUG FIX, found live (Robert, EXAANSFRD001): a failed exa_pretty.py
+#                     download left a 0-byte file in place (wget -O creates/truncates the
+#                     destination immediately, even on failure) -- Ansible then imported it
+#                     fine as an empty Python module instead of failing to find the file,
+#                     producing a much less obvious error later ("module ... has no attribute
+#                     'CallbackModule'") at ansible-playbook run time, disconnected from the
+#                     real cause. Worse than the average missing-file case here specifically:
+#                     CALLBACK_DIR resolves through the ansible -> example_music_infra/ansible
+#                     symlink (Section 5) into the git-tracked file itself, so the empty
+#                     download clobbers the real, tracked copy in the repo clone, not a
+#                     separate deployed file -- confirmed live, `cp` from "the repo" to fix it
+#                     failed with "are the same file". Added `[[ -s ... ]]` to the success
+#                     check and `rm -f` on failure (same pattern already used in this repo's
+#                     own preflight fetchers, bindme.sh/firewallme.sh), and changed the
+#                     failure guidance from "cp from the repo" (there's only one file, this IS
+#                     it) to `git checkout -- ansible/callback_plugins/exa_pretty.py` -- zero
+#                     network cost, restores from git's own already-local objects.
 #
 # ==============================================================================
 
@@ -1467,15 +1484,28 @@ section "6b. exa_pretty callback plugin"
 EXA_PRETTY_DEST="${CALLBACK_DIR}/exa_pretty.py"
 
 info "Downloading exa_pretty.py from GitHub..."
-if wget -q --tries=1 --timeout=30 -O "${EXA_PRETTY_DEST}" "${EXA_PRETTY_URL}" 2>/dev/null; then
+if wget -q --tries=1 --timeout=30 -O "${EXA_PRETTY_DEST}" "${EXA_PRETTY_URL}" 2>/dev/null && [[ -s "${EXA_PRETTY_DEST}" ]]; then
   chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${EXA_PRETTY_DEST}"
   chmod 644 "${EXA_PRETTY_DEST}"
   success "exa_pretty.py downloaded to ${EXA_PRETTY_DEST}"
 else
+  # BUG FIX 2026-09-18, found live on EXAANSFRD001: wget -O creates/truncates the
+  # destination immediately, even on failure (DNS blip, timeout, etc) -- without this
+  # rm -f, a failed download here left a 0-byte exa_pretty.py in place, which Ansible
+  # then imported fine as an empty Python module ("has no attribute 'CallbackModule'")
+  # instead of failing to find the file at all. Worse than the average case: CALLBACK_DIR
+  # resolves through the ansible -> example_music_infra/ansible symlink (Section 5) into
+  # the git-tracked file itself, so the empty download had clobbered the real, tracked
+  # copy in the repo clone, not a separate deployed file -- `git checkout -- <path>`
+  # (zero network cost, no LFS budget spent) is the actual fix once this happens, not a
+  # re-copy from "the repo" (there's only one file, this IS it). Same class of bug
+  # already fixed elsewhere in this repo's own preflight fetchers (bindme.sh/
+  # firewallme.sh) -- rm -f on failure, so a partial/empty file never lingers.
+  rm -f "${EXA_PRETTY_DEST}" 2>/dev/null
   warn "Could not download exa_pretty.py from GitHub."
   warn "URL: ${EXA_PRETTY_URL}"
-  warn "Clone the repo and copy it manually:"
-  warn "  cp example_music_infra/ansible/callback_plugins/exa_pretty.py ${EXA_PRETTY_DEST}"
+  warn "Restore it from git instead (zero network cost, it's already tracked):"
+  warn "  git -C ${ANSIBLE_HOME}/example_music_infra checkout -- ansible/callback_plugins/exa_pretty.py"
   warn "ansible.cfg references this file — stdout_callback will fall back to default until it is present."
 fi
 
