@@ -23,6 +23,23 @@
 #             it has nothing to do with what OpenSSH's own DefaultShell is set
 #             to. See windows_bootstrap/playbooks/75-openssh.yml's own
 #             changelog for why DefaultShell must never be pwsh.exe here.
+# 2026-09-18  CORRECTION to the 2026-07-15 entry above: "it has nothing to do with
+#             what OpenSSH's own DefaultShell is set to" is wrong, demonstrated live
+#             (Robert, arm64 Windows Server 2025 test box). ansible_shell_type:
+#             powershell tells ANSIBLE to construct its exec command using PS5.1
+#             syntax (semicolon-separated statements, -EncodedCommand, etc) -- but
+#             whether that command is actually INTERPRETED correctly depends
+#             entirely on which shell OpenSSH's DefaultShell hands exec sessions to.
+#             With no DefaultShell override present at all (this box's genuine,
+#             untouched starting state -- Server 2025 ships OpenSSH pre-enabled,
+#             unlike 2022, so this combination had never been exercised in this
+#             estate before), sshd falls through to cmd.exe, which doesn't
+#             understand `;` as a statement separator and fails with "Parameter
+#             format not correct - ;". The two settings are two halves of the same
+#             requirement, not unrelated -- ansible_shell_type: powershell here is
+#             only correct when DefaultShell actually points at PowerShell 5.1 too.
+#             75-openssh.yml now explicitly sets it, rather than only ever removing
+#             a bad override -- see that file's own 2026-09-18 changelog entry.
 # ============================================================================
 
 ansible_connection: ssh
