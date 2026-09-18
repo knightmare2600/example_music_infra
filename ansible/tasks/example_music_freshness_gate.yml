@@ -48,6 +48,17 @@
 # harness before any of these 12 playbooks are even run.
 # =============================================================================
 # Changelog:
+#   2026-09-18  Robert, live (EXAANSFRD001, running against a Windows arm64 Server 2025 test
+#               box): both fix-command messages hardcoded "--limit EXAANSCLD001 (or whichever
+#               host you're actually running ansible-playbook from)" -- a real problem, not
+#               just cosmetic. Robert's own words: "if you are providing commands for people to
+#               run you are duty bound to make sure it's right, otherwise they will copy paste
+#               blindly." These tasks are delegate_to: localhost, so inventory_hostname (the
+#               play's TARGET) was never the right thing to suggest either -- the fix needs the
+#               CONTROL NODE's own real hostname, whichever box that actually is. Replaced the
+#               hardcoded example + hedge with {{ lookup('pipe', 'hostname') }}, which executes
+#               on the controller process itself regardless of delegate_to -- always the real,
+#               current control node, never a guess or a stale example.
 #   2026-09-05  Robert, live (EXAANSCLD001, running against EXAFWLGOT001): a custom stdout
 #               callback in this estate collapses debug-task output in normal (non-verbose)
 #               mode down to a bare "All items completed" line -- so the WARNING task's own
@@ -127,8 +138,7 @@
       via delegate_to: localhost / lookup('file', ...), not from {{ inventory_hostname }} --
       the TARGET host is fine, it's the CONTROL NODE's own served copy that's out of date.
       {{ _c.C }}Fix it:{{ _c.NC }}
-        ansible-playbook ansible/playbooks/linux/tools.yml --limit EXAANSCLD001
-        (or whichever host you're actually running ansible-playbook from)
+        ansible-playbook ansible/playbooks/linux/tools.yml --limit {{ lookup('pipe', 'hostname') }}
       {{ _c.C }}Then re-run your original command against {{ inventory_hostname }}{{
         ' (ansible_host=' + ansible_host + ')' if ansible_host is defined else '' }}.{{ _c.NC }}
   loop: "{{ example_music_gate_files | zip(_em_gate_deployed.results, _em_gate_source.results) | list }}"
@@ -145,8 +155,7 @@
     msg: |
       /etc/example-music/{{ item.0 }} is stale on the control node, relative to
       benarbejde/{{ item.0 }} in this checkout. Fix it:
-        ansible-playbook playbooks/linux/tools.yml --limit EXAANSCLD001
-        (or whichever host you're actually running ansible-playbook from)
+        ansible-playbook playbooks/linux/tools.yml --limit {{ lookup('pipe', 'hostname') }}
       Then re-run your original command against {{ inventory_hostname }}.
   loop: "{{ example_music_gate_files | zip(_em_gate_deployed.results, _em_gate_source.results) | list }}"
   loop_control:
