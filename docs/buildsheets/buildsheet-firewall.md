@@ -162,7 +162,7 @@ chain http://192.168.139.50/menu.ipxe
 
 **2b. The iPXE menu appears.** Select **Debian Install** (or equivalent entry in `menu.ipxe`).
 
-**2c. The installer runs unattended using `lvm-bios.seed`/`lvm-efi.seed`** (picked automatically by architecture — see `menu.ipxe` §4.1a in `docs/bootstrap/bootstrapping.md`). You will be prompted for:
+**2c. The installer runs unattended using `lvm-bios-trixie.seed`/`lvm-efi-trixie.seed`** (picked automatically by architecture and release — see `menu.ipxe` §4.1a in `docs/bootstrap/bootstrapping.md`). You will be prompted for:
 
 | Prompt | Value |
 |--------|-------|
@@ -574,7 +574,7 @@ see `docs/bootstrap/bootstrapping.md` §4.1a) serves:
 | `bootstrap.ipxe` | Embedded iPXE boot script (compiled into the iPXE binary) |
 | `menu.ipxe` | Full iPXE boot menu — OS install + rescue options, gateway-based datacentre detection |
 | `boot.ipxe`, `lvm.seed` | **Stale/superseded** — pre-rename leftovers, not part of the real boot chain (see each file's own 2026-07-11 note). Don't chain to `boot.ipxe`; use `menu.ipxe`. |
-| `debian/lvm-bios.seed`, `debian/lvm-efi.seed` | Debian preseed (arch-specific) — partitioning, locale, packages, late_command |
+| `debian/lvm-bios-trixie.seed`, `debian/lvm-efi-trixie.seed` | Debian preseed (arch-specific) — partitioning, locale, packages, late_command. Bookworm equivalents also exist (`lvm-{bios,efi}-bookworm.seed`) if a Bookworm build is ever needed instead |
 | `debian/late_command.sh` | Post-install chroot script — ansible user, SSH key, sudoers |
 | `ansible_sshkey.pub` | Ansible SSH public key — deployed to all nodes at install |
 | `provision/firewallme.sh` | Firewall/router setup script — run manually on first boot |
