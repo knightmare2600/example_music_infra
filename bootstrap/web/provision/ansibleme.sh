@@ -371,6 +371,19 @@
 #                     time it runs. `ansible` itself can no longer ride along in the same batched
 #                     BOOTSTRAP_PKGS install (that's already finished by then), so each branch now
 #                     installs it with its own dedicated apt-get call.
+# v1.31.0 2026-09-18  Polish, Robert's ask after watching a real Section 1b run on FRD: the
+#                     vRACK subnet/gateway prompts always showed the standard vRACK's
+#                     "192.168.139"/"254" as their default, even on FRD's isolated test
+#                     network, forcing the operator to type "172.16.124"/"2" by hand every
+#                     single time -- despite the script already knowing this from PREFLIGHT_GW
+#                     (this box's own detected default gateway, already used a few lines up to
+#                     pick the right bootstrap server, and again later for the DNS override).
+#                     VRACK_NET_DEFAULT/VRACK_GW_DEFAULT now derive from PREFLIGHT_GW directly
+#                     (falling back to the standard vRACK literals only if no default route was
+#                     found at all) -- same "detect it, don't make the operator retype it"
+#                     pattern firewallme.sh already uses for its own WAN IP suggestion. Still
+#                     just a suggestion, not trusted blindly -- the operator confirms or
+#                     overrides at the actual prompt, same as before.
 #
 # ==============================================================================
 
@@ -565,8 +578,24 @@ NODEINFO="/etc/example-music/nodeinfo.json"
 # vRACK — the OVH provisioning/bootstrap network (192.168.139.0/24)
 # This is NOT the CLD site LAN (192.168.69.0/24).
 # The bootstrap web server lives at VRACK_NET.50.
-VRACK_NET_DEFAULT="192.168.139"
-VRACK_GW_DEFAULT="254"   # vRACK gateway is .254
+#
+# Defaults derived from this box's own already-detected default gateway (PREFLIGHT_GW, set
+# above) rather than hardcoded literals. Real feedback, Robert 2026-09-18: on FRD's isolated
+# test network, Section 1b's prompts below used to always show "192.168.139"/"254" regardless
+# of what network the box was actually on, forcing the operator to type "172.16.124"/"2" by
+# hand every single time -- even though the script already knows this from PREFLIGHT_GW (used a
+# few lines up to pick the right bootstrap server, and again later for the DNS override). Same
+# "derive it, don't make the operator retype it" pattern firewallme.sh already uses for its own
+# WAN IP suggestion. Falls back to the standard vRACK literals if no default route was found at
+# all (PREFLIGHT_GW empty) -- still just a starting suggestion either way, never trusted
+# blindly: the operator confirms or overrides at the actual prompt in Section 1b.
+if [[ -n "$PREFLIGHT_GW" ]]; then
+  VRACK_NET_DEFAULT="${PREFLIGHT_GW%.*}"
+  VRACK_GW_DEFAULT="${PREFLIGHT_GW##*.}"
+else
+  VRACK_NET_DEFAULT="192.168.139"
+  VRACK_GW_DEFAULT="254"   # vRACK gateway is .254
+fi
 
 # GitHub raw URL for exa_pretty callback
 EXA_PRETTY_URL="https://raw.githubusercontent.com/knightmare2600/example_music_infra/refs/heads/main/ansible/callback_plugins/exa_pretty.py"
@@ -744,10 +773,12 @@ fi
 
 # ------------------------------------------------------------------------------
 # 1b. Network configuration
-# vRACK is the OVH provisioning/bootstrap network (192.168.139.0/24).
-# Gateway is .254 (OVH vRACK default).
-# Bootstrap web server lives at VRACK_NET.50.
-# This is separate from the CLD site LAN (192.168.69.0/24).
+# vRACK is the OVH provisioning/bootstrap network (192.168.139.0/24), gateway .254 by
+# convention, bootstrap web server at VRACK_NET.50 -- separate from the CLD site LAN
+# (192.168.69.0/24). The prompts below default to VRACK_NET_DEFAULT/VRACK_GW_DEFAULT,
+# derived from this box's own detected default gateway above, not hardcoded to the
+# standard vRACK -- correct out of the box on FRD's isolated test network too, still
+# just a suggestion the operator confirms or overrides.
 # ------------------------------------------------------------------------------
 section "1b. Network configuration (vRACK / provisioning)"
 
