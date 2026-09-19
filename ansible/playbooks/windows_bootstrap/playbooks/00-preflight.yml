@@ -81,6 +81,21 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-09-19  Robert's explicit follow-up ask after the dns_bind9 fix below: not a
+#               general per-site DNS mechanism (explicitly declined) -- just one named
+#               exception. FRD gets its own local DNS (EXADNSFRD001, 172.16.124.8, same
+#               octet convention as VRK's own .8) once it exists, instead of VRK's
+#               cross-site BIND9; every other site is completely unaffected. Added a new
+#               [A5] TCP-53 probe (same delegate_to:localhost/ansible_connection:local/
+#               ansible_shell_type:sh pattern the existing site-DC/hub-DC probes already
+#               use) gated to FRD only, and an _effective_dns_bind9 indirection so
+#               dns_bind9's three existing call sites (_primary/_secondary/_reason) all
+#               benefit automatically. EXADNSFRD001 doesn't exist yet as of this writing,
+#               so every current FRD build still silently falls through to dns_bind9
+#               (VRK) exactly as before -- verified the full 3-way logic (non-FRD site,
+#               FRD-not-yet-built, FRD-built-and-up) in isolation before applying it; every
+#               other site's _primary/_secondary/_reason output is byte-for-byte identical
+#               to before this change.
 #   2026-09-19  Third real bug found the same day, same build (EXADCSFRD001), pointed out
 #               directly by Robert after the Chocolatey/DNS-egress investigation: dns_bind9
 #               was a hardcoded "192.168.139.8" literal with a WRONG comment ("CLD BIND9" --
@@ -368,6 +383,15 @@
     # automatically flows through here; before this fix it would have silently diverged.
     dns_bind9: "{{ site_services.dns.ip }}"   # VRK BIND9 (EXADNSVRK001) — upstream resolver for jukebox.internal
 
+    # 2026-09-19 addition, Robert's explicit ask: FRD is the one exception to "everyone
+    # uses VRK's BIND9" -- EXADNSFRD001, once built, is FRD's own local DNS server at the
+    # same octet convention as VRK's own (.8, within FRD's own 172.16.124.0/24 rather than
+    # VRK's 192.168.139.0/24). Not a general per-site mechanism (explicitly NOT what was
+    # asked for) -- just this one named, hardcoded exception, probed for reachability
+    # below in [A5] before ever being trusted (EXADNSFRD001 doesn't exist yet as of this
+    # writing, so every current FRD build still falls through to dns_bind9 until it does).
+    frd_local_dns: "172.16.124.8"   # EXADNSFRD001 (FRD-local, not yet built) -- see [A5] probe below
+
   tasks:
 
     # =========================================================================
@@ -542,6 +566,24 @@
         - item.stdout | default('unreachable') | trim == 'reachable'
         - _hub_fallback_ip is not defined
 
+    - name: "[A5] Probe FRD-local DNS {{ frd_local_dns }} (EXADNSFRD001) — TCP 53"
+      command: >
+        bash -c 'timeout 3 bash -c "echo >/dev/tcp/{{ frd_local_dns }}/53" 2>/dev/null
+        && echo reachable || echo unreachable'
+      register: _frd_dns_probe
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+      when: host_site_code | upper == 'FRD'
+
+    - name: "[A5] Set FRD-local-DNS reachability fact"
+      set_fact:
+        _frd_dns_up: "{{ _frd_dns_probe.stdout | default('unreachable') | trim == 'reachable' }}"
+      when: host_site_code | upper == 'FRD'
+
     - name: "[A5] Apply DNS decision"
       set_fact:
         dns_primary:    "{{ _primary }}"
@@ -550,26 +592,33 @@
         dj_temp_dns_ip: "{{ _primary }}"
       vars:
         _is_forest_root: "{{ host_role_code | upper == 'DCS' and is_first_dc | bool }}"
+        _frd_local_dns_available: "{{ host_site_code | upper == 'FRD' and _frd_dns_up | default(false) | bool }}"
+        # Only real behaviour change vs. the pre-2026-09-19 logic: FRD substitutes its own
+        # local DNS (once built and actually reachable) everywhere dns_bind9 (VRK) would
+        # otherwise be used. Every other site's _primary/_secondary/_reason is byte-for-byte
+        # identical to before -- dns_bind9 unchanged, only referenced through this one
+        # extra indirection.
+        _effective_dns_bind9: "{{ frd_local_dns if _frd_local_dns_available | bool else dns_bind9 }}"
         _primary: >-
           {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
-            {{ dns_bind9 }}
+            {{ _effective_dns_bind9 }}
           {%- elif _site_dc_up | bool -%}
             {{ site_dc }}
           {%- elif _hub_fallback_ip is defined -%}
             {{ _hub_fallback_ip }}
           {%- else -%}
-            {{ dns_bind9 }}
+            {{ _effective_dns_bind9 }}
           {%- endif -%}
-        _secondary: "{{ '' if (host_role_code | upper == 'DCS' and is_first_dc | bool) else dns_bind9 }}"
+        _secondary: "{{ '' if (host_role_code | upper == 'DCS' and is_first_dc | bool) else _effective_dns_bind9 }}"
         _reason: >-
           {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
-            forest root — BIND9 only, no AD DNS until promotion completes
+            forest root — {{ 'EXADNSFRD001 (FRD-local)' if _frd_local_dns_available | bool else 'BIND9' }} only, no AD DNS until promotion completes
           {%- elif _site_dc_up | bool -%}
             site DC {{ site_dc }} is up — using local DC
           {%- elif _hub_fallback_ip is defined -%}
             site DC offline — {{ _hub_fallback_ip }} ({{ _hub_fallback_site }}) temporary primary
           {%- else -%}
-            no DC reachable — BIND9 only; domain join will likely fail
+            no DC reachable — {{ 'EXADNSFRD001 (FRD-local)' if _frd_local_dns_available | bool else 'BIND9' }} only; domain join will likely fail
           {%- endif -%}
 
     # ── A6 — Pre-flight summary and operator confirm ───────────────────────────
