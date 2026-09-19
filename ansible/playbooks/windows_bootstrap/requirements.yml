@@ -3,11 +3,27 @@
 # Install with: ansible-galaxy collection install -r requirements.yml
 #
 # These collections provide the Windows modules used by windows_bootstrap.yml.
-
+#
+# Changelog:
+#   2026-09-19  Robert, live (EXAANSFRD001): "couldn't resolve module/action
+#               'ansible.windows.win_timezone'" -- confirmed via the real
+#               ansible.windows CHANGELOG (not guessed): win_timezone was
+#               promoted from community.windows into ansible.windows at
+#               version 2.6.0 (same release that added Server 2025 support),
+#               with the community.windows copy deprecated/redirected after
+#               that point. This box had ansible.windows 2.5.0 -- satisfies
+#               the old ">=2.0.0" floor here but one version short of the
+#               module actually existing under this FQCN. tasks/
+#               locale_timezone.yml already uses the current
+#               ansible.windows.win_timezone name (correct going forward,
+#               not reverted) -- tightened the floor here instead so a stale
+#               install is caught by galaxy's own version resolution rather
+#               than failing at task-run time on whichever host has the
+#               oldest install.
 collections:
-  - name: ansible.windows        # win_regedit, win_copy, win_get_url, win_reboot, etc.
-    version: ">=2.0.0"
-  - name: community.windows      # win_timezone, win_firewall_rule, win_unzip
+  - name: ansible.windows        # win_regedit, win_copy, win_get_url, win_reboot, win_timezone (>=2.6.0), etc.
+    version: ">=2.6.0"
+  - name: community.windows      # win_firewall_rule, win_unzip
     version: ">=2.0.0"
   - name: microsoft.ad           # membership (domain join)
     version: ">=1.0.0"
