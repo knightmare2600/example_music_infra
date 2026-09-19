@@ -81,6 +81,18 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-09-19  Second real bug found the same day, same build (EXADCSFRD001), one play
+#               further into the chain: [H2]'s add_host registered a NEW host named
+#               target_hostname (the real EXA hostname), but import_playbook resolves
+#               every OTHER play's hosts: line at parse time, before this play's own
+#               add_host task has even run -- so no later chained play could ever see
+#               that new name, and kept targeting the original raw connection identifier
+#               with none of windows_nodes' group_vars attached, dying UNREACHABLE the
+#               moment this play's own inline connection vars went out of scope. Verified
+#               with an isolated two-play test harness before changing anything live.
+#               Fixed by registering under inventory_hostname (this play's own already-
+#               resolved identity) instead of target_hostname -- see [H2]'s own comment
+#               below for the full detail.
 #   2026-09-19  Real bug found live (Robert, EXADCSFRD001, resuming a build after an earlier
 #               IP change): the target_hostname vars_prompt's default pre-filled from
 #               target_hosts/target unconditionally -- fine when that value is already a
@@ -888,9 +900,28 @@
           the hostname, or add this role to _role_group_map above if it's a genuinely new one.
       when: _permanent_groups | length == 0
 
+    # 2026-09-19 fix, found live (Robert, EXADCSFRD001): registering a NEW host named
+    # target_hostname here only helps 00-preflight.yml's OWN remaining tasks -- every
+    # OTHER play in site.yml's chain is a SEPARATE import_playbook, and import_playbook
+    # resolves every play's hosts: line at PARSE TIME, before any play (including this
+    # one) has run a single task. A later play's hosts: "{{ target_hosts | default(target
+    # | default('all')) }}" can never see a host added mid-run under a DIFFERENT name --
+    # confirmed empirically with an isolated two-play test harness before changing this,
+    # same principle already documented in windows_dc/site.yml's own AD-population
+    # comment. Concretely: 15-locale-timezone.yml kept targeting the original raw
+    # connection IP with none of windows_nodes' group_vars (ansible_shell_type, SSH key
+    # path, etc.) applied, and died UNREACHABLE the moment 00-preflight.yml's own inline
+    # connection vars (set directly in this play's own vars: block above) were no longer
+    # in scope. Fixed by registering under inventory_hostname instead -- the identifier
+    # THIS SAME PLAY already resolved via that exact target_hosts/target expression, so
+    # every later chained play (using the identical expression, fed by the same
+    # unchanging CLI extra-vars) keeps matching the same host, now with the right
+    # group_vars actually attached to it. target_hostname is unaffected -- still used for
+    # the real EXA-format rename/role-code parsing above, just no longer as this add_host
+    # call's own identity.
     - name: "[H2] Register into {{ _permanent_groups | join(', ') }} for the rest of this run"
       add_host:
-        name:         "{{ target_hostname | upper }}"
+        name:         "{{ inventory_hostname }}"
         groups:       "{{ _permanent_groups }}"
         ansible_host: "{{ static_ip }}"
       delegate_to: localhost
