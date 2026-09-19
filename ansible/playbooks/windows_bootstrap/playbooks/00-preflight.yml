@@ -81,6 +81,20 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-09-19  Third real bug found the same day, same build (EXADCSFRD001), pointed out
+#               directly by Robert after the Chocolatey/DNS-egress investigation: dns_bind9
+#               was a hardcoded "192.168.139.8" literal with a WRONG comment ("CLD BIND9" --
+#               that address is EXADNSVRK001, confirmed via sites.csv's VRK row, not CLD's).
+#               It also duplicated a value that already has one real source of truth --
+#               group_vars/all/site_services.yml's own `dns` entry (generated from
+#               devices.csv), auto-loaded on every host already. Fixed to
+#               "{{ site_services.dns.ip }}" -- see dns_bind9's own vars: comment below.
+#               Swept the rest of windows_bootstrap/windows_dc for the same literal: found
+#               it duplicated again in 80-domainjoin.yml's dj_temp_dns_ip standalone-run
+#               fallback (fixed the same way) and the same wrong "CLD BIND9" comment a
+#               second time in windows_dc/playbooks/20-dc-promote.yml (comment only, no
+#               functional bug there -- the real forwarders list is already properly
+#               sourced from ad_forest.json, not hardcoded in playbook logic).
 #   2026-09-19  Second real bug found the same day, same build (EXADCSFRD001), one play
 #               further into the chain: [H2]'s add_host registered a NEW host named
 #               target_hostname (the real EXA hostname), but import_playbook resolves
@@ -343,7 +357,16 @@
     ansible_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa"
     ansible_ssh_public_key_file:  "{{ lookup('env', 'HOME') }}/ansible/configs/ansible-id_rsa.pub"
     sites_csv: "/etc/example-music/sites.csv"
-    dns_bind9: "192.168.139.8"   # CLD BIND9 — upstream resolver for jukebox.internal
+    # 2026-09-19 fix, Robert: this was a hardcoded literal with a WRONG comment ("CLD
+    # BIND9" -- 192.168.139.8 is EXADNSVRK001, confirmed via sites.csv's own VRK row,
+    # not CLD's). Worse than the wrong label: it duplicated a value that already has one
+    # real source of truth -- group_vars/all/site_services.yml's own `dns` entry, generated
+    # by generate_inventory.py from devices.csv's DNS role, auto-loaded on every host
+    # (including this one) with zero extra effort. Same bug class as the [ansiblehosts]/
+    # devices.csv fix earlier this session -- don't hand-roll a value a generator already
+    # owns. If VRK's DNS server IP ever changes, fixing its devices.csv row now
+    # automatically flows through here; before this fix it would have silently diverged.
+    dns_bind9: "{{ site_services.dns.ip }}"   # VRK BIND9 (EXADNSVRK001) — upstream resolver for jukebox.internal
 
   tasks:
 
