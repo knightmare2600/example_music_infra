@@ -295,19 +295,42 @@ the `ansible-playbook` process exiting:
 ```yaml
 - name: "[H2] Register into {{ _permanent_groups | join(', ') }} for the rest of this run"
   add_host:
-    name:         "{{ target_hostname | upper }}"
+    name:         "{{ inventory_hostname }}"
     groups:       "{{ _permanent_groups }}"
     ansible_host: "{{ static_ip }}"
   delegate_to: localhost
   become: false
 ```
 
-Two things make this actually useful rather than just a curiosity:
+**Corrected, 2026-09-19 — this section previously described `name: "{{ target_hostname |
+upper }}"` here** (registering the *real, resolved* `EXA...` hostname as a brand-new host)
+**and claimed that was "confirmed empirically" to let a later, separately-imported play's
+`hosts:` pattern pick it up. That claim was wrong, and a real `site.yml` run against
+`EXADCSFRD001` proved it wrong live**: `site.yml` chains every play with `import_playbook`,
+and `import_playbook` resolves every play's `hosts:` line **at parse time, before any play
+— including this one — has run a single task**. No `add_host` (or `set_fact`) partway
+through one play can ever change what a *later, separately-imported* play's `hosts:`
+pattern matches; that pattern was already fixed the moment `ansible-playbook` started.
+(`windows_dc/site.yml`'s own header makes the identical point about why AD population
+can't be chain-imported either — same underlying limitation, found independently there
+first.) Verified properly this time with an isolated two-play test harness *before*
+touching the real file: a play using `name: "{{ target_hostname | upper }}"` left a later
+chained play still matching the original raw connection identifier, with none of the new
+group's `group_vars` attached; changing it to `name: "{{ inventory_hostname }}"` — the
+identity *this play itself* already resolved via `hosts: "{{ target_hosts | default(target
+| default('all')) }}"` — fixed it, because every later play in the chain evaluates that
+exact same expression against the exact same, unchanging CLI extra-vars.
 
-1. **`delegate_to: localhost`** runs the `add_host` task on the control node (where the
-   in-memory inventory lives), not on the remote target — this is what lets a later,
-   separately-imported play's `hosts:` pattern see the new group membership, confirmed
-   empirically with a two-play test harness before trusting it in a real bootstrap chain.
+Two things make the corrected version work:
+
+1. **Registering under `inventory_hostname`, not a newly-resolved name.** Every play in
+   the chain shares the identical `hosts:` expression, fed by the same CLI extra-vars —
+   so registering group membership onto whatever identity *this* play already resolved to
+   guarantees every later play, using that same expression, keeps matching a host that
+   now actually has the right `group_vars` attached. `target_hostname` (the real,
+   validated `EXA...` name) is unaffected by this change — it's still used for the
+   rename task, role-code parsing, and every log message that displays it; it's just no
+   longer this one `add_host` call's own identity.
 2. **Registering into the most specific group is enough.** Adding a host to `windows_dc`
    correctly inherits every parent group's `group_vars` too (`windows_server` →
    `windows` → `windows_nodes`), including connection settings like
@@ -315,10 +338,22 @@ Two things make this actually useful rather than just a curiosity:
    also pass those as explicit `add_host` variables.
 
 This means a genuinely new host can be bootstrapped with nothing more than
-`-e target=<hostname> -e static_ip=<ip>` and correct group variables resolve from the very
-first task onward — no pre-editing an `.ini` file, no bare-IP inventory hack that bypasses
+`-e target_hosts=<ip>` and correct group variables resolve from this point in the chain
+onward — no pre-editing an `.ini` file, no bare-IP inventory hack that bypasses
 `group_vars` entirely. The host still gets added to `configs/inventory/<site>.ini` for real
-once bootstrap completes; `add_host` only covers the run that gets it there.
+once bootstrap completes; `add_host` only covers the run that gets it there. Its
+`inventory_hostname` stays whatever identifier the run started with (the raw IP, on first
+contact) for the rest of that run — cosmetic log lines further down the chain will show
+that IP rather than the real hostname; nothing functional depends on it changing mid-run.
+
+**Practical takeaway, general beyond this one bug:** when a chain uses `import_playbook`
+(static, resolved once at parse time) rather than `include_playbook`/`include_tasks`
+(dynamic, resolved at run time), nothing any play does at runtime can influence which
+hosts a *later* play in that same file targets. If a later stage needs to react to
+something only known once an earlier stage has actually run, either resolve it before the
+chain starts (extra-vars), or split it into a genuinely separate `ansible-playbook`
+invocation — don't reach for `add_host`/`set_fact` and assume a later imported play will
+see it, no matter how it's phrased.
 
 ---
 
@@ -1476,6 +1511,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-08-03 | Added "Real-World Invocations — Day 2: Already-Onboarded Hosts", three worked examples of the same playbooks used above but invoked against hosts that already exist, per Robert's request: a routine firewall re-run (`90-firewall.yml`, plus why `serial: 1` — added 2026-07-31 — matters the moment more than one host is targeted at once, not for a single `-e target=`); a domain controller re-run confirming the `windows_bootstrap` `[B0]` DefaultShell failsafe actually holds after its own `ansible_shell_type` bug was fixed (`00-preflight.yml`'s `bootstrap` tag has to run, so this is the full form, not `windows_dc/README.md`'s narrower "DC stages only"); and a full, untagged `bind9-dns.yml` rebuild of `EXADNSVRK001`, including the real `--tags zones,reload` trap hit this session (the old, superseded Play 1 — never reads `devices.csv`, so two freshly-added devices sat correctly generated but never made it into the live zone until the full run actually ran `zones-full`), with the real captured completion banner and `host` lookup proving it worked. |
 | 2026-09-17 | Corrected a stale claim in §4: Windows hosts become reachable over SSH after OOBE, not WinRM — this estate's real connection method since `Install-OpenSSH.ps1`/`connection.yml`, WinRM was never actually current. Added a new callout after §4, "A gotcha: manually preparing a Windows box for Ansible" — live, 2026-09-17, a manually-built ARM64 Windows Server 2025 test box (EXAANSFRD001's network) had OpenSSH installed and running by hand but no Windows Firewall rule for TCP/22, which presented as Ansible's own SSH connection worker crashing ("A worker was found in a dead state") rather than a clean connection-refused — misleading enough that it looked like an `ansible-core`/`sshpass` bug at first. The real automated path (`SetupComplete.cmd` → `Install-OpenSSH.ps1`) already creates this firewall rule; the gotcha only bites when someone runs the OpenSSH setup commands by hand instead. |
 | 2026-09-19 | **Corrected a stale, actively misleading claim** in "Idempotency": the previous account of a 2026-07-09 `target`/`target_hosts` fix did not match the real files as of this date (the actual state was the reverse of what was described, and it had never been fixed). Replaced with the real 2026-09-19 incident: every play in `windows_bootstrap/site.yml`'s chain except `00-preflight.yml` only checked `{{ target | default('all') }}`, a variable never set anywhere — a run invoked exactly as `site.yml`'s own header documents (`-e target_hosts=<ip>`) silently ran every play past preflight against `hosts: all`, the entire estate. Caught only because an unrelated bug (`ansible.windows.win_timezone`, next entry) happened to abort the run first. Fixed all 19 affected playbooks and pushed. Added "When `-i configs/inventory` fails to parse at all" under Inventory and group_vars — root-caused the same day via delta-debugging: this `ansible-core`'s default `INVENTORY_IGNORE_EXTS` includes `.ini`/`.cfg`, so a directory of nothing-but-`.ini` files silently parsed as empty; fixed by pinning the list explicitly in `ansible.cfg`. Added "A second, live example of the bare-IP inventory_hostname trap" — `main.ini`'s `[ansiblehosts]` group had the same bare-IP-plus-comment bug as the `rudder.ini` example already in this guide; fixed by sourcing from `devices.csv`'s `ANS` role row (already the real source of truth for this data) instead of hand-deriving it a second time. Added "Verifying Collection Versions" — `ansible.windows.win_timezone` failed to resolve because the installed collection (2.5.0) predated the version (2.6.0) that module was promoted into `ansible.windows` from `community.windows`; `requirements.yml`'s floor was too loose to catch it. |
+| 2026-09-19 | **Corrected a second, more serious stale claim**, in "Dynamic Inventory Registration — `add_host`": it previously showed `add_host: name: "{{ target_hostname \| upper }}"` and claimed (as "confirmed empirically") that this let a *later, separately-imported* play's `hosts:` pattern see the new registration. A real `site.yml` run against `EXADCSFRD001`, immediately after the `target_hosts` fix above, proved this false: `import_playbook` resolves every play's `hosts:` line at parse time, before any play — including the one doing the `add_host` — has run a single task, so no later chained play could ever see it; `15-locale-timezone.yml` kept targeting the original raw connection IP with none of `windows_nodes`' `group_vars` attached and died `UNREACHABLE`. Verified the actual fix (`add_host: name: "{{ inventory_hostname }}"` — the identity *that play itself* already resolved, which every later play's identical `hosts:` expression also resolves to) with an isolated two-play test harness before touching the real file, matching this guide's own "build the smallest possible reproduction" principle from the Inventory and group_vars section above. Rewrote the section's explanation and added a general takeaway about `import_playbook`'s parse-time host resolution applying beyond this one bug. |
 
 ---
 
