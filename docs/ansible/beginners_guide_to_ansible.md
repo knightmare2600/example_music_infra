@@ -196,6 +196,82 @@ python3 benarbejde/generate_inventory.py benarbejde/sites.csv \
   -o ansible/configs/inventory --devices benarbejde/devices.csv
 ```
 
+### When `-i configs/inventory` fails to parse at all
+
+Real incident, 2026-09-19, `EXAANSFRD001`: `ansible-inventory --list -i configs/inventory`
+returned `[WARNING]: Unable to parse ... as an inventory source` and an empty result — no
+hosts, no groups, nothing. Every individual `.ini` file, pointed at directly
+(`-i configs/inventory/frd.ini`), parsed perfectly. This looked exactly like the
+`group_vars`/`host_vars`-must-live-inside-the-loaded-path trap above, but it wasn't — this
+box's `group_vars`/`host_vars` genuinely already lived in the right place.
+
+**How this was actually root-caused, not guessed:** copying subsets of the real `.ini` files
+into a scratch directory and narrowing down which subset still failed (a technique called
+delta-debugging) found that a *single* file, alone in an otherwise-empty directory, still
+reproduced the exact same failure. That result rules out any theory about *combining*
+files — a bad interaction between two files, a duplicate group definition, `main.ini`'s
+content, anything cross-file. If one file alone in a directory fails the same way the whole
+directory does, the directory-scanning step itself is rejecting the file before any parsing
+plugin even sees its content.
+
+That pointed at one specific, checkable thing: `ansible-core`'s directory-based inventory
+loader skips files matching a configurable ignore list before handing anything to a parser
+plugin. Checking it directly settled it:
+
+```bash
+ansible-config dump 2>&1 | grep -i INVENTORY_IGNORE_EXTS
+# INVENTORY_IGNORE_EXTS(default) = ('.pyc', '.pyo', '.swp', '.bak', '~', '.rpm', '.md',
+#                                    '.txt', '.rst', '.orig', '.ini', '.cfg', '.retry')
+```
+
+`.ini` is in that list, on this build's default. Every file in `configs/inventory/` is
+named `*.ini` — pointing `-i` at the *directory* silently skipped every single one, leaving
+nothing to parse. Pointing `-i` at one specific file bypasses directory scanning entirely,
+which is exactly why single-file invocations never showed the problem and looked
+inconsistent with the directory failing. Confirmed version-dependent, not universal:
+reproduces on `ansible-core` 2.14.18 and 2.17.14, does not reproduce on 2.19.4 — a different
+default, not a difference in this repo's data.
+
+**Fixed** in the tracked `ansible/ansible.cfg` by pinning the list explicitly, with `.ini`/
+`.cfg` removed:
+
+```ini
+inventory_ignore_extensions = .pyc, .pyo, .swp, .bak, ~, .rpm, .md, .txt, .rst, .orig, .retry
+```
+
+**Practical takeaway:** `ansible-config dump` (optionally `--only-changed` to see only
+settings that differ from ansible-core's own built-in default) shows you what's actually in
+effect, not what you assume is in effect from reading `ansible.cfg` alone — a setting can be
+silently coming from `ansible-core`'s own defaults, and those defaults are not guaranteed
+identical across versions. If a directory-based `-i` mysteriously returns nothing and every
+individual file parses fine alone, check the ignore-extensions list before suspecting the
+file contents.
+
+### A second, live example of the bare-IP inventory_hostname trap
+
+The ["hostname must be the first token"](#inventory-and-group_vars--the-part-that-isnt-optional)
+rule above has bitten this repo twice, not once. `main.ini`'s `[ansiblehosts]` group
+(every Ansible control node in the estate — see the table above) was written as
+`192.168.69.9    # EXAANSCLD001` — a bare IP with the real hostname only in a trailing
+comment. `inventory_hostname` for that line was the literal string `192.168.69.9`, never
+`EXAANSCLD001`, because Ansible has no idea a `#`-comment carries any meaning at all — so
+`--limit EXAANSCLD001` could never have matched it, and neither would
+`host_vars/EXAANSCLD001/`.
+
+The fix wasn't just reformatting that one line — it was noticing that this data already had
+a real source of truth elsewhere, and using it instead of maintaining a second, hand-written
+copy. `benarbejde/devices.csv` has a role code for this (`ANS`, "Ansible control node" in
+`role_codes.csv`), and `generate_inventory.py` already turns an `ANS` row into a correct,
+hostname-first `[site_devices]` entry in that site's own `<site>.ini`. `CLD` had that row;
+`FRD` genuinely didn't — its control node had simply never been added to `devices.csv` at
+all, which is the real reason it had no correct entry anywhere, hand-written or generated.
+Added the missing row, regenerated, and `[ansiblehosts]` now copies the already-generated
+line verbatim instead of a script re-deriving hostname and IP independently from local shell
+state. See [Renumbering / Reworking Live Conventions](#renumbering--reworking-live-conventions)
+above, step 1 — "find every place the old value is hardcoded," applied to data, not just to
+code: before hand-writing a hostname+IP pair anywhere, check whether `devices.csv` already
+states it.
+
 ---
 
 ## Dynamic Inventory Registration — `add_host`
@@ -711,18 +787,64 @@ generally written to check state before changing it, but a playbook can still br
 idempotency if it's written carelessly (e.g. a `command:` task that isn't itself
 idempotent, or `hosts:` that resolves inconsistently between runs).
 
-A concrete example, found during a 2026-07-09 audit of the `windows_bootstrap` chain: two
-of its numbered plays (`10-rename.yml`, `40-choco-packages.yml`) had
-`hosts: "{{ target_hosts | default(target | default('all')) }}"`, while every other play in
-the chain used the simpler `hosts: "{{ target | default('all') }}"`. The difference matters:
-if an earlier play in the same run had set `target_hosts` as a fact (via `set_fact`), those
-two plays would keep targeting the stale value instead of picking up the
-[dynamically-registered](#dynamic-inventory-registration--add_host) group membership from
-`add_host` in `00-preflight.yml` — silently bootstrapping the wrong host, or none at all, on
-a re-run in the same process. The fix was mechanical (make the `hosts:` line consistent
-across every numbered play), but finding it required tracing exactly what each play's
-`hosts:` pattern resolves to on both a first run and a second, back-to-back run — not just
-reading each file in isolation.
+**Superseded, 2026-09-19 — the account that used to be here was wrong.** This section
+previously described a 2026-07-09 audit finding that only `10-rename.yml` and
+`40-choco-packages.yml` used the longer `hosts: "{{ target_hosts | default(target |
+default('all')) }}"` form, while every other play used the shorter `hosts: "{{ target |
+default('all') }}"`, and that the fix was making them consistent. A live incident on
+2026-09-19 found the *opposite* state in the real, committed files: `00-preflight.yml` was
+the only file using the longer form, and all 19 numbered plays (`10-rename.yml` through
+`85-finish.yml`) used the shorter one — either the 2026-07-09 fix was never actually applied
+to these files, or it was applied and silently lost in the 2026-07-06 standalone-play
+extraction. Whichever it was, the lesson from that old entry ("make the `hosts:` line
+consistent") was directionally right but the doc calling it done was wrong for over two
+months. Replaced with what actually happened, because it's a better and more serious
+worked example anyway:
+
+**The real incident.** `site.yml`'s own header has always documented `-e target_hosts=<ip>`
+as the correct way to scope a run to one host. `00-preflight.yml` — the first play in the
+chain — correctly checks `target_hosts` first. Every other play in the chain, all 19 of
+them, only checked a variable called `target`, which is **never set anywhere** in this
+whole chain (not by `set_fact`, not by `add_host`, nothing). Running `site.yml` exactly as
+documented (`-e target_hosts=<ip>`) therefore ran `00-preflight.yml` correctly against just
+the one target host, then silently ran *every subsequent play* against `hosts: all` — the
+entire estate, every OS and role, not just Windows nodes. Real captured output from the run
+that caught this, building `EXADCSFRD001`:
+
+```text
+── Windows — Locale and timezone
+[*] 10:19:02  Include locale and timezone tasks
+[+]   172.16.124.140    no change
+[+]   EXADCSFRD001      no change
+[+]   EXARUDCLD001      no change
+[+]   EXAANSCLD001      no change
+[+]   EXASLTCLD001      no change
+[+]   EXARMMCLD001      no change
+   ...(every other host in the estate follows, well over 200 lines)...
+ERROR! couldn't resolve module/action 'ansible.windows.win_timezone'.
+```
+
+That error is what actually stopped the run — a genuinely unrelated bug (`ansible.windows`
+2.5.0 predates the version `win_timezone` was promoted into that collection at, 2.6.0) —
+not anything that noticed the targeting was wrong. Had that module resolved cleanly, the
+*next* play (`20-registry.yml`, registry hardening) would have executed for real against
+every Windows host already in the estate. **The failure that saved this run had nothing to
+do with the bug that made it dangerous** — worth sitting with, because it means a clean,
+successful-looking run is not proof the targeting was correct; only reading what hosts a
+play actually lists itself against is.
+
+Fixed by making every play consistently check `"{{ target_hosts | default(target |
+default('all')) }}"`, matching `00-preflight.yml`'s own already-correct pattern — the
+90-firewall.yml gap. Finding it required actually reading the per-host list a running play
+printed, not just trusting that a `--limit`/`-e` flag on the command line was doing what its
+own name suggested.
+
+**Practical takeaway, sharper than before:** a playbook's own header documentation being
+correct does not mean the code inside actually reads the variable that documentation
+promises. If a chained, multi-play run ever shows more hosts scrolling past than you expect
+— even if every line says `no change` — stop and check each play's actual `hosts:` line
+before assuming the scoping is fine. "It didn't do anything to those hosts" is not the same
+guarantee as "it didn't touch those hosts at all."
 
 **Practical takeaway for a beginner:** it's always safe, and a good habit, to re-run a
 playbook you've already run — a healthy chain converges to the same state regardless of
@@ -1258,6 +1380,48 @@ This confirms that the sudo configuration remained functional after reboot.
 
 ---
 
+## Verifying Collection Versions
+
+Windows playbooks (`windows_bootstrap`, `windows_dc`, `windows_adschema`) depend on Ansible
+**collections** — `ansible.windows`, `community.windows`, `microsoft.ad`, etc. — not just
+`ansible-core` itself. Each playbook directory's own `requirements.yml` states the minimum
+version needed and can be installed/upgraded with:
+
+```bash
+ansible-galaxy collection install -r playbooks/windows_bootstrap/requirements.yml --upgrade
+```
+
+**A version floor that's too loose doesn't fail until a specific module is actually used.**
+Real incident, 2026-09-19: `tasks/locale_timezone.yml` calls `ansible.windows.win_timezone`.
+`requirements.yml` required `ansible.windows >=2.0.0` — which a genuinely installed `2.5.0`
+satisfied — but `win_timezone` wasn't promoted into `ansible.windows` from
+`community.windows` until version **2.6.0** (confirmed against the collection's own real
+changelog, not guessed). `2.5.0` predates the module existing under that name at all, so the
+task failed with `couldn't resolve module/action 'ansible.windows.win_timezone'` — a
+module-resolution error, not a connection or permissions problem, and easy to mistake for a
+typo in the task itself when the task is actually just fine.
+
+Check what's really installed, and where, before assuming a version constraint is doing its
+job:
+
+```bash
+ansible-galaxy collection list ansible.windows community.windows
+```
+
+This lists every location Ansible searches, in priority order (`~/.ansible/collections`
+before system-wide paths) — more than one copy of the same collection, at different
+versions, is normal and not itself a problem; what matters is which one wins. Fixed here by
+tightening `requirements.yml`'s floor to `>=2.6.0` and re-running the install command above
+with `--upgrade` (a bare `install` without `--upgrade` does not touch an already-satisfying,
+if outdated, existing install).
+
+**Practical takeaway:** when a task fails with "couldn't resolve module/action" against a
+module name that looks completely correctly spelled, suspect a collection version gap before
+suspecting the task file — check the collection's own changelog for when that module was
+added or moved, then check what's actually installed with `ansible-galaxy collection list`.
+
+---
+
 ## Recommended Workflow for New Administrators
 
 Before executing any unfamiliar playbook:
@@ -1284,6 +1448,16 @@ Always verify inventory, target hosts, become configuration, and sudo permission
   by default everywhere else, deliberately.
 - **A second run reporting unexpected `changed` tasks is worth investigating**, not
   re-running until it goes green — see [Idempotency](#idempotency--why-re-running-a-playbook-is-safe).
+- **On a multi-play chain (`site.yml`-style), watch which hosts actually scroll past on the
+  first play or two before trusting the rest.** A `-e target_hosts=<ip>`/`-e target=<host>`
+  flag being the officially documented way to scope a run does not guarantee every play in
+  the chain actually reads that variable — see the real incident in
+  [Idempotency](#idempotency--why-re-running-a-playbook-is-safe) above. More hosts in the
+  output than you expect is worth stopping for immediately, even if every line says
+  `no change`.
+- **If a task fails with "couldn't resolve module/action" against a correctly-spelled
+  module**, check installed collection versions before the task file — see
+  [Verifying Collection Versions](#verifying-collection-versions) above.
 
 ---
 
@@ -1301,6 +1475,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-07-24 | Reviewed "5. Proving WireGuard end-to-end" against a real live WireGuard debug session (`EXAFWLCLD001`/`EXAFWLBRT001`) — the core walkthrough was already accurate, but the verification step only checked tunnel-level health (`wg show`, ping the hub's own tunnel address), which is exactly what looked perfect for hours while a real bug (CLD's `nftables` black-site exclusion dropping all `wg0 → LAN` forward traffic, `19dd5da`) silently blocked every spoke from reaching anything behind the hub's LAN. Added a callout with the real LAN-client test that actually catches this class of bug, plus a short note on the tunnel-IP input validation added the same session (`6c3527b`). |
 | 2026-08-03 | Added "Real-World Invocations — Day 2: Already-Onboarded Hosts", three worked examples of the same playbooks used above but invoked against hosts that already exist, per Robert's request: a routine firewall re-run (`90-firewall.yml`, plus why `serial: 1` — added 2026-07-31 — matters the moment more than one host is targeted at once, not for a single `-e target=`); a domain controller re-run confirming the `windows_bootstrap` `[B0]` DefaultShell failsafe actually holds after its own `ansible_shell_type` bug was fixed (`00-preflight.yml`'s `bootstrap` tag has to run, so this is the full form, not `windows_dc/README.md`'s narrower "DC stages only"); and a full, untagged `bind9-dns.yml` rebuild of `EXADNSVRK001`, including the real `--tags zones,reload` trap hit this session (the old, superseded Play 1 — never reads `devices.csv`, so two freshly-added devices sat correctly generated but never made it into the live zone until the full run actually ran `zones-full`), with the real captured completion banner and `host` lookup proving it worked. |
 | 2026-09-17 | Corrected a stale claim in §4: Windows hosts become reachable over SSH after OOBE, not WinRM — this estate's real connection method since `Install-OpenSSH.ps1`/`connection.yml`, WinRM was never actually current. Added a new callout after §4, "A gotcha: manually preparing a Windows box for Ansible" — live, 2026-09-17, a manually-built ARM64 Windows Server 2025 test box (EXAANSFRD001's network) had OpenSSH installed and running by hand but no Windows Firewall rule for TCP/22, which presented as Ansible's own SSH connection worker crashing ("A worker was found in a dead state") rather than a clean connection-refused — misleading enough that it looked like an `ansible-core`/`sshpass` bug at first. The real automated path (`SetupComplete.cmd` → `Install-OpenSSH.ps1`) already creates this firewall rule; the gotcha only bites when someone runs the OpenSSH setup commands by hand instead. |
+| 2026-09-19 | **Corrected a stale, actively misleading claim** in "Idempotency": the previous account of a 2026-07-09 `target`/`target_hosts` fix did not match the real files as of this date (the actual state was the reverse of what was described, and it had never been fixed). Replaced with the real 2026-09-19 incident: every play in `windows_bootstrap/site.yml`'s chain except `00-preflight.yml` only checked `{{ target | default('all') }}`, a variable never set anywhere — a run invoked exactly as `site.yml`'s own header documents (`-e target_hosts=<ip>`) silently ran every play past preflight against `hosts: all`, the entire estate. Caught only because an unrelated bug (`ansible.windows.win_timezone`, next entry) happened to abort the run first. Fixed all 19 affected playbooks and pushed. Added "When `-i configs/inventory` fails to parse at all" under Inventory and group_vars — root-caused the same day via delta-debugging: this `ansible-core`'s default `INVENTORY_IGNORE_EXTS` includes `.ini`/`.cfg`, so a directory of nothing-but-`.ini` files silently parsed as empty; fixed by pinning the list explicitly in `ansible.cfg`. Added "A second, live example of the bare-IP inventory_hostname trap" — `main.ini`'s `[ansiblehosts]` group had the same bare-IP-plus-comment bug as the `rudder.ini` example already in this guide; fixed by sourcing from `devices.csv`'s `ANS` role row (already the real source of truth for this data) instead of hand-deriving it a second time. Added "Verifying Collection Versions" — `ansible.windows.win_timezone` failed to resolve because the installed collection (2.5.0) predated the version (2.6.0) that module was promoted into `ansible.windows` from `community.windows`; `requirements.yml`'s floor was too loose to catch it. |
 
 ---
 
