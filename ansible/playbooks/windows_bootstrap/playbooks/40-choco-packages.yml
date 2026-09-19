@@ -184,6 +184,16 @@
 #               Server Core) — Server Core is the only case without a GUI
 #               shell. choco_packages_common is unaffected (windirstat and
 #               hyper are confirmed to run fine on Server Core).
+#   2026-07-09  CORRECTED by the 2026-09-19 entry above -- the reasoning below assumed
+#               add_host's mid-run registration would be visible to THIS play once it
+#               switched to target-only, which is never true: import_playbook resolves
+#               every play's hosts: line at parse time, before any play (including
+#               00-preflight.yml itself) has run a single task. This was the actual origin
+#               of the hosts:-all bug fixed above, not a copy-paste drift -- this specific,
+#               deliberate (but mistaken) fix is what every other numbered play's hosts:
+#               line then matched. Also note the file header's own usage example (line
+#               ~42) said target_hosts the whole time -- documented usage and actual code
+#               disagreed here since this very fix, not something that crept in later.
 #   2026-07-09  Fixed hosts: back to target-only (matching every other
 #               numbered play except 00-preflight.yml itself). 00-preflight.yml
 #               now dynamically registers the host into its permanent
