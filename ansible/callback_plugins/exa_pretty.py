@@ -57,6 +57,20 @@
 #               implement -- every self._display.display() call already goes through
 #               Ansible's own Display object, which mirrors to a log file automatically
 #               once log_path is set, colour codes stripped, no plugin code involved.
+#   2026-09-19  Real gap found live (Robert, EXADCSFRD001, Chocolatey install failure):
+#               v2_runner_on_failed/v2_runner_on_unreachable only ever showed the terse
+#               top-level msg ("non-zero return code" and similar) at default verbosity --
+#               the full result dict (stdout/stderr/rc/cmd, the fields that actually
+#               explain a failure) only ever appeared via _maybe_show_verbose, gated
+#               behind -v. That's backwards: routine ok/changed/skipped lines being terse
+#               by default is the right call, but a FAILURE forcing a second, -v re-run
+#               just to see what broke is not -- the whole point of the previous entry's
+#               "-v shows full detail" feature was undermined the moment the case that
+#               most needs it (a failure) was gated the same as a routine success. Added
+#               _show_failure_detail() -- same _dump_results() call as
+#               _maybe_show_verbose, minus the verbosity gate -- and call it from
+#               v2_runner_on_failed and v2_runner_on_unreachable (when not suppressed)
+#               regardless of -v. ok/changed/skipped are unaffected, still verbosity-gated.
 # =================================================================================================
 
 from __future__ import absolute_import, division, print_function
@@ -235,10 +249,22 @@ class CallbackModule(CallbackBase):
     """
     if self._display.verbosity <= 0:
       return
+    self._dump_result_detail(result, colour=C.CYAN)
+
+  def _show_failure_detail(self, result):
+    """
+    Same dump as _maybe_show_verbose, but ALWAYS shown, never gated behind -v --
+    a failure/unreachable result is exactly the case where full detail (stdout,
+    stderr, rc, cmd) matters most, and forcing a second verbose re-run just to see
+    what actually broke defeats the point. See 2026-09-19 changelog entry above.
+    """
+    self._dump_result_detail(result, colour=C.RED)
+
+  def _dump_result_detail(self, result, colour):
     dump = self._dump_results(result._result, indent=2)
     pad = "      "
     for line in dump.splitlines():
-      self._display.display(f"{pad}{C.CYAN}{line}{C.RESET}")
+      self._display.display(f"{pad}{colour}{line}{C.RESET}")
 
   def v2_playbook_on_start(self, playbook):
     self._load_settings()
@@ -292,7 +318,7 @@ class CallbackModule(CallbackBase):
     self._display.display(err(f"  {C.WHITE}{ip}{C.RESET}  {msg}"))
     if ignore_errors:
       self._display.display(warn("  (ignored)"))
-    self._maybe_show_verbose(result)
+    self._show_failure_detail(result)
 
   def v2_runner_on_skipped(self, result):
     self._clear_counter()
@@ -313,9 +339,8 @@ class CallbackModule(CallbackBase):
     self._unreach_hosts[category].append(host)
     self._unreach_total += 1
     self._render_unreachable_line()
-    if self._display.verbosity > 0:
-      self._clear_counter()
-      self._maybe_show_verbose(result)
+    self._clear_counter()
+    self._show_failure_detail(result)
 
   def v2_playbook_on_stats(self, stats):
     self._clear_counter()
