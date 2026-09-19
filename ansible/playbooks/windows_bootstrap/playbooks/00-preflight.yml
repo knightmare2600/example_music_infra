@@ -81,6 +81,17 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-09-19  Real bug found live (Robert, EXADCSFRD001, resuming a build after an earlier
+#               IP change): the target_hostname vars_prompt's default pre-filled from
+#               target_hosts/target unconditionally -- fine when that value is already a
+#               real hostname, wrong when it's the IP address used to connect (which it
+#               always is on first contact, and still is when resuming against a box's new
+#               real address after 00-preflight.yml itself already renamed/re-IP'd it).
+#               Pressing Enter on "blank re-detects live" therefore silently accepted the
+#               literal IP as target_hostname, failing A3's format check instead of ever
+#               reaching A2's own live $env:COMPUTERNAME read. Default now only pre-fills
+#               when target_hosts/target already matches A3's own EXA-hostname regex --
+#               otherwise stays genuinely blank so A2's live-detection path actually fires.
 #   2026-09-01  Found during an audit prompted by the same-class bug live-fixed in
 #               firewallme/playbooks/90-firewall.yml the same day: the "Gate on
 #               /etc/example-music/* freshness" pre_task sat in this play's own pre_tasks,
@@ -288,7 +299,18 @@
       # retyping what was just given on the command line -- Enter accepts it, or clear
       # it and hit Enter for A2's own blank-triggers-live-$env:COMPUTERNAME-read path
       # below (still fully available, just no longer the only low-effort option).
-      default: "{{ target_hosts | default(target | default('')) }}"
+      #
+      # 2026-09-19 fix, found live (Robert, EXADCSFRD001, resuming a build): target_hosts/
+      # target is ALSO the connection identifier (-i "<ip>," / this play's own hosts:
+      # line), which on first contact -- or when resuming against a box's real current
+      # address after an earlier IP change -- is an IP address, not a hostname yet.
+      # Blindly pre-filling from it meant pressing Enter on "blank re-detects live"
+      # silently accepted the literal IP as target_hostname, failing A3's format check
+      # ("'172.16.124.10' is not a valid EXA hostname") instead of ever reaching A2's own
+      # live $env:COMPUTERNAME read. Now only pre-fills when target_hosts/target already
+      # looks like a real EXA hostname (same regex A3 validates against below) --
+      # otherwise this stays genuinely blank, so A2's live-read path actually fires.
+      default: "{{ (target_hosts | default(target | default(''))) if ((target_hosts | default(target | default(''))) | upper | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}[0-9]{3}$')) is not none else '' }}"
 
     - name: is_first_dc_input
       prompt: "Is this the FIRST domain controller being built for this site? (yes/no — no for all other host types)"
