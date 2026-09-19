@@ -55,6 +55,19 @@
 # own changelogs for the two real gaps found and fixed in that process).
 # =============================================================================
 # Changelog:
+#   2026-09-19  CRITICAL, found live (Robert, EXAANSFRD001 -- mid-EXADCSFRD001 build): every
+#               play in this chain except 00-preflight.yml only checked
+#               {{ target | default('all') }} in its own hosts: line -- "target" was never set
+#               anywhere, only the -e target_hosts=<ip> usage documented right here in this
+#               file's own header. A site.yml run invoked exactly as documented above therefore
+#               silently ran every play past preflight against hosts: all, the entire estate.
+#               Caught before real damage only because 15-locale-timezone.yml's win_timezone
+#               module happened to fail at resolution time before its own turn came up; the
+#               next play (20-registry.yml, registry hardening) would have run for real against
+#               every Windows host in the estate otherwise. Fixed all 19 affected playbooks to
+#               "{{ target_hosts | default(target | default('all')) }}", matching
+#               00-preflight.yml's own already-correct pattern -- the usage examples above were
+#               always right, the plays just weren't reading the variable they documented.
 #   2026-06-20  Initial file
 #   2026-06-20  Bootstrap added as entry point replacing Join-DomainAndBootstrap.ps1
 #   2026-07-02  Standalone management plays tagged [never, <name>] so a bare
