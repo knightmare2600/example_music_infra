@@ -1,5 +1,6 @@
 Site,Type,Number,HostOctet,OS,ConnectionType,Managed,Notes,SubnetSite,Legacy,Migrating,Planned
 CLD,ANS,1,9,Debian,ssh,,Ansible control node -- manages all sites,,no,,
+FRD,ANS,1,9,Debian,ssh,,"Second Ansible control node (fallback vRACK site) -- added 2026-09-19 after EXAANSFRD001 was found missing from devices.csv entirely, meaning it never got a proper site_devices entry in frd.ini the way EXAANSCLD001 already has in cld.ini. Same standard ANS octet (.9) as CLD.",,no,,
 CLD,SWI,1,250,TP-Link,snmp,,"48-port switch (Robert, 2026-08-04)",,no,,
 CLD,RUD,1,12,Debian,ssh,,Rudder configuration management server,,no,,
 CLD,RMM,1,14,Debian trixie,ssh,,"TacticalRMM -- endpoint inventory/monitoring/alerting/dashboards (Robert, 2026-08-04). Not config management or software deployment -- Salt/Chocolatey stay responsible for those. Remote management platform build, phase 1/3. Bundled MeshCentral confirmed 2026-08-08 as a full replacement for the standalone EXAMSHCLD001 build (RETIRED, was HostOctet 13 -- freed for reuse, see playbooks/tacticalrmm/README.md).",,no,,
