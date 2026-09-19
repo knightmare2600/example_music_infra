@@ -16,6 +16,20 @@
 # Tags: wallpaper
 # =============================================================================
 # Changelog:
+#   2026-09-19  CRITICAL, found live (Robert, EXAANSFRD001 -- mid-EXADCSFRD001 build): this
+#               play's hosts: line only checked {{ target | default('all') }} -- "target" is
+#               never set anywhere in this chain; only site.yml's own documented
+#               -e target_hosts=<ip> usage is. Every play past 00-preflight.yml (which already
+#               correctly checks target_hosts first) silently ran against hosts: all -- the
+#               entire estate, every OS/role -- on any site.yml run invoked exactly as
+#               documented. Caught before real damage only because 15-locale-timezone.yml's
+#               win_timezone module failed at resolution time before this play's own turn came
+#               up; 20-registry.yml (registry hardening) would have run for real against every
+#               Windows host in the estate otherwise. Fixed to
+#               "{{ target_hosts | default(target | default('all')) }}", matching
+#               00-preflight.yml's own already-correct pattern -- same fix applied identically
+#               across all 19 affected playbooks in this directory (82-salt-minion.yml's
+#               deliberate windows_nodes group targeting is unrelated and untouched).
 #   2026-06-20  Initial file
 #   2026-07-06  Folded in dark mode (Stage 10) — same "desktop theming"
 #               concern as wallpaper, tightly coupled by the original
@@ -38,7 +52,7 @@
 # =============================================================================
 
 - name: Windows — Corporate wallpaper and dark mode
-  hosts: "{{ target | default('all') }}"
+  hosts:         "{{ target_hosts | default(target | default('all')) }}"
   gather_facts: false
   tasks:
 
