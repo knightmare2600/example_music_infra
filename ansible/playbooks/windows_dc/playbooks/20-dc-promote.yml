@@ -25,7 +25,8 @@
 #   needed).
 #   After the post-promotion reboot, DNS is set to 127.0.0.1 (the DC now
 #   runs its own DNS) and forwarders are configured:
-#     192.168.139.8  — CLD BIND9 (upstream for internal zones we control)
+#     192.168.139.8  — VRK BIND9, EXADNSVRK001 (upstream for internal zones we control;
+#                      corrected 2026-09-19 -- this comment wrongly said "CLD BIND9")
 #     9.9.9.9        — Quad9 (public upstream)
 #     1.1.1.1        — Cloudflare (public upstream)
 #

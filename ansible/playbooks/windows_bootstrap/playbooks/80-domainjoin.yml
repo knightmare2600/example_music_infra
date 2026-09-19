@@ -32,6 +32,11 @@
 # Tags: domainjoin
 # =============================================================================
 # Changelog:
+#   2026-09-19  Robert, sweeping for the same hardcoded-VRK-DNS-literal bug found in
+#               00-preflight.yml's dns_bind9 var (see that file's own 2026-09-19 entry):
+#               dj_temp_dns_ip's standalone-run fallback here independently hardcoded the
+#               same '192.168.139.8' (EXADNSVRK001) literal a second time. Fixed to read
+#               group_vars/all/site_services.yml's own `dns` entry instead.
 #   2026-09-19  CRITICAL, found live (Robert, EXAANSFRD001 -- mid-EXADCSFRD001 build): this
 #               play's hosts: line only checked {{ target | default('all') }} -- "target" is
 #               never set anywhere in this chain; only site.yml's own documented
@@ -121,7 +126,13 @@
     # site.yml chain -- see this file's 2026-07-14 changelog entry. The
     # default here only matters when this file is run standalone, outside
     # that chain, where no such fact exists yet.
-    dj_temp_dns_ip: "{{ dj_temp_dns_ip | default('192.168.139.8') }}"
+    #
+    # 2026-09-19 fix, Robert: this used to hardcode the literal '192.168.139.8' here --
+    # same VRK BIND9 address (EXADNSVRK001) 00-preflight.yml's own dns_bind9 var used to
+    # hardcode too (see that file's 2026-09-19 changelog entry), independently duplicated
+    # a second time in this file. Both now read group_vars/all/site_services.yml's own
+    # `dns` entry (generated from devices.csv) instead of a hand-maintained literal.
+    dj_temp_dns_ip: "{{ dj_temp_dns_ip | default(site_services.dns.ip) }}"
 
   tasks:
 
