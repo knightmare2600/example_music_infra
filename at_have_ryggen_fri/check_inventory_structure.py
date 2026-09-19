@@ -38,7 +38,12 @@ INVENTORY = REPO_ROOT / "ansible" / "configs" / "inventory"
 # whole point of the 2026-07-09 consolidation was that every site should
 # now have the same group structure, not just those three.
 WINDOWS_DC_HOSTS = ["EXADCSCLD001", "EXADCSFAL001", "EXADCSLIV001", "EXADCSTOR001"]
-LINUX_HOST = "192.168.69.9"  # EXAANSCLD001 -- [ansiblehosts] in main.ini uses bare-IP inventory_hostnames
+LINUX_HOST = "EXAANSCLD001"  # 2026-09-19: [ansiblehosts] in main.ini used to use bare-IP
+# inventory_hostnames (this constant tracked that literally) -- fixed to the real
+# hostname-first EXAHOSTNAME ansible_host=IP convention every other .ini already used,
+# same bug class as feedback_inventory_hostname_must_be_the_hostname (rudder.ini,
+# 2026-07-20). A bare IP was never actually a valid inventory_hostname to spot-check
+# against; this constant just hadn't been corrected to match.
 
 
 def ansible_inventory_list():

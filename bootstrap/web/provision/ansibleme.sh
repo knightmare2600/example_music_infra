@@ -431,6 +431,33 @@
 #                     it) to `git checkout -- ansible/callback_plugins/exa_pretty.py` -- zero
 #                     network cost, restores from git's own already-local objects.
 #
+# v1.34.0 2026-09-19  Two real bugs, found live (Robert, EXAANSFRD001) chasing why a freshly
+#                     "registered" control node still didn't match --limit EXAANSFRD001:
+#                     (1) Root-caused the "[WARNING]: Unable to parse ... as an inventory
+#                     source" failure via delta-debugging, then confirmed directly with
+#                     `ansible-config dump | grep INVENTORY_IGNORE_EXTS`: this ansible-core
+#                     build's default ignore-extensions list for DIRECTORY-based inventory
+#                     sources includes '.ini'/'.cfg', so every file under configs/inventory/
+#                     (all *.ini) was silently skipped whenever -i pointed at the directory
+#                     rather than a specific file -- not a Python-version, main.ini-content,
+#                     or group_vars/host_vars-subdirectory issue (all three individually
+#                     disproven first). Fixed in the tracked ansible.cfg itself
+#                     (inventory_ignore_extensions, excluding .ini/.cfg), not here -- this
+#                     script doesn't write ansible.cfg's inventory settings.
+#                     (2) Section 10 below wrote a bare-IP-plus-comment [ansiblehosts] line
+#                     (same anti-pattern previously found+fixed in rudder.ini, 2026-07-20) --
+#                     inventory_hostname for that entry was the literal IP, never the
+#                     hostname, so --limit could never match it even once (1) was fixed.
+#                     Robert's own pushback while this was being fixed: this section was
+#                     independently re-deriving hostname+IP with $(hostname)/$NODE_STATIC_IP
+#                     when benarbejde/devices.csv (an ANS role_codes.csv row) already owns
+#                     that data and generate_inventory.py already emits it correctly into
+#                     this site's own <site>.ini [site_devices] section (cld.ini already had
+#                     EXAANSCLD001 this way; frd.ini's row for EXAANSFRD001 had simply never
+#                     been added to devices.csv). Reworked to require that generated entry
+#                     exist and copy it verbatim into main.ini's [ansiblehosts], instead of
+#                     reconstructing it a third time here.
+#
 # ==============================================================================
 
 set -euo pipefail
@@ -1736,11 +1763,38 @@ if [[ ! -f "$INVENTORY_FILE" ]]; then
   die "${INVENTORY_FILE} not found -- it ships with the repo clone (see main.ini's own header). Something is wrong with this checkout."
 fi
 
+# 2026-09-19 rework (Robert, live on EXAANSFRD001): this used to hand-derive the
+# hostname+IP itself ($(hostname)/${NODE_STATIC_IP}) and sed them straight into
+# main.ini -- a THIRD independent reconstruction of data that already has one real
+# source of truth: benarbejde/devices.csv's ANS role row for this site (HostOctet 9,
+# same convention NODE_STATIC_IP's own default above already assumes), which
+# generate_inventory.py turns into a proper [site_devices] entry in this site's own
+# <site>.ini (e.g. cld.ini already has EXAANSCLD001 this way). Hand-deriving a second,
+# separate copy here risked drifting from that any time devices.csv's Notes/format
+# changed. Now this section REQUIRES that entry to already exist and copies it
+# verbatim into [ansiblehosts] instead of reinventing it -- single source, no drift.
+SITE_INVENTORY_FILE="${CONFIGS_DIR}/inventory/${SITE_CODE,,}.ini"
+SITE_DEVICES_LINE=""
+if [[ -f "$SITE_INVENTORY_FILE" ]]; then
+  SITE_DEVICES_LINE="$(grep -F "ansible_host=${NODE_STATIC_IP} " "$SITE_INVENTORY_FILE" || true)"
+fi
+
+if [[ -z "$SITE_DEVICES_LINE" ]]; then
+  die "No [site_devices] entry for ansible_host=${NODE_STATIC_IP} found in ${SITE_INVENTORY_FILE}. \
+Add a '${SITE_CODE},ANS,1,${NODE_STATIC_IP##*.},Debian,ssh,,<notes>,,no,,' row to benarbejde/devices.csv \
+and regenerate inventory (see docs/adding-a-new-device.md) before re-running this script -- \
+[ansiblehosts] is sourced from that generated entry now, not derived independently here."
+fi
+
 if grep -qF "${NODE_STATIC_IP}" "$INVENTORY_FILE"; then
   success "This node (${NODE_STATIC_IP}) is already registered in [ansiblehosts] -- skipping."
 else
-  sed -i "/^\[ansiblehosts\]/a $(printf '%-15s' "${NODE_STATIC_IP}") # $(hostname)" "$INVENTORY_FILE"
-  success "Registered ${NODE_STATIC_IP} (# $(hostname)) in [ansiblehosts]."
+  # Hostname must be the FIRST token -- it IS inventory_hostname. A bare IP with the
+  # real hostname only as a trailing comment (the pre-2026-09-19 format here) is
+  # invisible to Ansible: --limit/host_vars auto-load key off inventory_hostname, never
+  # a comment. Same bug class previously found+fixed in rudder.ini (2026-07-20).
+  sed -i "/^\[ansiblehosts\]/a ${SITE_DEVICES_LINE}" "$INVENTORY_FILE"
+  success "Registered from ${SITE_INVENTORY_FILE}'s own [site_devices] entry: ${SITE_DEVICES_LINE}"
 fi
 
 # ------------------------------------------------------------------------------
