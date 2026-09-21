@@ -214,16 +214,32 @@
       loop_control:
         label: "{{ item.SamAccountName }}"
 
+    # 2026-09-21, found live: this domain's OU names include non-ASCII characters
+    # (e.g. OU=Mø, OU=Sydøst Jyland, OU=Västra Götaland -- real Danish/Swedish
+    # place/band names) -- the raw multi-line win_shell stdout capture this task
+    # originally used (Select-Object -ExpandProperty DistinguishedName, one DN per
+    # line, no explicit encoding) failed downstream with an opaque error against
+    # this exact dataset, while the JSON-based pattern below -- already proven
+    # working against this SAME 750-OU dataset, including these same accented
+    # names, earlier in this same run via 10-ad-schema.yml's identical query --
+    # did not. Switched to match: ConvertTo-Json -InputObject (not a pipe, see
+    # that file's own comment for why) forces well-defined UTF-8/escaped-unicode
+    # transport, sidestepping whatever raw-stdout encoding path was failing here.
     - name: "Query all existing OUs under the domain (single call, used to skip already-created band OUs below)"
       ansible.windows.win_shell: |
-        Get-ADOrganizationalUnit -Filter * -SearchBase "{{ _base_dn }}" |
-          Select-Object -ExpandProperty DistinguishedName
+        $results = @(Get-ADOrganizationalUnit -Filter * -SearchBase "{{ _base_dn }}" |
+          Select-Object -ExpandProperty DistinguishedName)
+        ConvertTo-Json -InputObject $results -Compress
       register: _existing_ous_raw
       changed_when: false
 
+    - name: "Parse existing OU DNs"
+      set_fact:
+        _existing_ou_dn_list: "{{ (_existing_ous_raw.stdout | trim | length > 0) | ternary(_existing_ous_raw.stdout | from_json, []) }}"
+
     - name: "Build lowercase set of existing OU DNs"
       set_fact:
-        _existing_ou_dns: "{{ _existing_ous_raw.stdout_lines | map('trim') | select('length') | map('lower') | list }}"
+        _existing_ou_dns: "{{ _existing_ou_dn_list | map('trim') | select('length') | map('lower') | list }}"
 
     - name: "Filter to band sub-OUs not already present"
       set_fact:
