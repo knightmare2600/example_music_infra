@@ -297,6 +297,21 @@
       when: host_site | upper == 'FRD'
       tags: dc_preflight
 
+    # 2026-09-21, found live re-running against EXADCSFRD001: frd_local_dns above is only
+    # a play-level `vars:` entry, never persisted as a real fact -- unlike _frd_dns_up
+    # (set via set_fact just above, which DOES persist), a bare vars: value is only ever
+    # visible during THIS play's own task execution. 20-dc-promote.yml's later, separate
+    # play died "'frd_local_dns' is undefined" the moment it tried to reference it in
+    # Stage 2. My own comment above ("facts persist across plays") was correct for
+    # set_fact values and wrong for this one specifically -- promoting it to a real fact
+    # here, unconditionally (every site needs it defined even though only FRD's Stage 2
+    # substitution actually uses it), fixes the gap without duplicating the literal a
+    # second time in 20-dc-promote.yml.
+    - name: "Persist frd_local_dns as a real fact (needed by 20-dc-promote.yml's later play)"
+      set_fact:
+        frd_local_dns: "{{ frd_local_dns }}"
+      tags: dc_preflight
+
     # ── Load sites.csv ────────────────────────────────────────────────────────
     # read_csv is a real module (not a lookup plugin) -- it dispatches through
     # whatever connection is configured for the delegated host, unlike
@@ -404,6 +419,7 @@
     - name: "DSRM password — write it down now"
       debug:
         msg:
+          - ""
           - "{{ _c.R }}╔═══════════════════════════════════════════════════════════════════╗{{ _c.NC }}"
           - "{{ _c.R }}║  DSRM PASSWORD — WRITE IT DOWN AND STORE IT SECURELY NOW          ║{{ _c.NC }}"
           - "{{ _c.R }}║  DSRM (Directory Services Restore Mode) is the ONLY recovery      ║{{ _c.NC }}"
