@@ -244,6 +244,108 @@
              | list | length }} band members;
           {{ _band_ous_todo | default([]) | length }} not already present.
 
+    # 2026-09-21, Robert's ask -- extending the same skip-existing-work pattern to
+    # Sections C/D/E below (group membership, manager, lockout state), NOT Section B
+    # (the 17-field user create itself -- Robert's explicit call: too much surface
+    # area/risk to compare robustly tonight, left on microsoft.ad.user's own full
+    # per-item idempotency). C/D/E are each a much narrower, single-purpose check
+    # per user, and E in particular currently calls "unlock" on literally every one
+    # of the 364 users on every single re-run regardless of whether they were ever
+    # locked (only ~9 genuinely are) -- one query here removes that dead weight.
+    # Group names are extracted from MemberOf DNs in PowerShell (far simpler and more
+    # robust than attempting DN-parsing in Jinja); Manager's DN is resolved back to a
+    # SamAccountName using this SAME query's own DistinguishedName/SamAccountName
+    # pairs, since a user's manager (if set) is itself one of these same 364 records.
+    - name: "Query existing user group memberships, manager, and lockout state (single call)"
+      ansible.windows.win_shell: |
+        $results = @(Get-ADUser -Filter * -Properties MemberOf,Manager,LockedOut |
+          Select-Object SamAccountName, DistinguishedName, LockedOut,
+            @{Name='ManagerDN';Expression={$_.Manager}},
+            @{Name='GroupNames';Expression={ @($_.MemberOf | ForEach-Object { ($_ -split ',',2)[0] -replace '^CN=','' }) }})
+        ConvertTo-Json -InputObject $results -Compress -Depth 4
+      register: _existing_user_state_raw
+      changed_when: false
+
+    - name: "Parse existing user state"
+      set_fact:
+        _existing_user_state: "{{ (_existing_user_state_raw.stdout | trim | length > 0) | ternary(_existing_user_state_raw.stdout | from_json, []) }}"
+
+    - name: "Build SamAccountName(lowercase) -> record lookup, and DistinguishedName(lowercase) -> SamAccountName(lowercase) lookup"
+      set_fact:
+        _existing_user_by_sam: >-
+          {{
+            dict(
+              _existing_user_state | map(attribute='SamAccountName') | map('lower') | list
+              | zip(_existing_user_state)
+            )
+          }}
+        _dn_to_sam: >-
+          {{
+            dict(
+              _existing_user_state | map(attribute='DistinguishedName') | map('lower') | list
+              | zip(_existing_user_state | map(attribute='SamAccountName') | map('lower') | list)
+            )
+          }}
+
+    - name: "Filter to group-membership adds not already fully present"
+      set_fact:
+        _group_add_todo: >-
+          {{
+            _group_add_todo | default([]) +
+            ([item] if (
+              item.Groups | length > 0
+              and (
+                item.SamAccountName | lower not in _existing_user_by_sam
+                or (item.Groups | map('lower') | list | difference(
+                     _existing_user_by_sam[item.SamAccountName | lower].GroupNames | default([]) | map('lower') | list
+                   ) | length > 0)
+              )
+            ) else [])
+          }}
+      loop: "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    - name: "Filter to manager updates not already correct"
+      set_fact:
+        _manager_todo: >-
+          {{
+            _manager_todo | default([]) +
+            ([item] if (
+              item.Manager | length > 0
+              and ((item.Manager ~ '|' ~ item.ad_ou) in _name_ou_to_sam or item.Manager in _name_to_sam)
+              and (
+                item.SamAccountName | lower not in _existing_user_by_sam
+                or (_dn_to_sam[(_existing_user_by_sam[item.SamAccountName | lower].ManagerDN | default('')) | lower] | default(''))
+                   != ((_name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager])) | lower)
+              )
+            ) else [])
+          }}
+      loop: "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    - name: "Filter to lockout state changes needed"
+      set_fact:
+        _lock_todo: >-
+          {{
+            _lock_todo | default([]) +
+            ([item] if (
+              item.SamAccountName | lower not in _existing_user_by_sam
+              or (_existing_user_by_sam[item.SamAccountName | lower].LockedOut | default(false)) != (item.Locked | default(false))
+            ) else [])
+          }}
+      loop: "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    - name: "Preflight | Report C/D/E work needed"
+      debug:
+        msg: >-
+          Group adds: {{ _group_add_todo | default([]) | length }} user(s) need at least one group added.
+          Manager: {{ _manager_todo | default([]) | length }} user(s) need a manager set/corrected.
+          Lockout: {{ _lock_todo | default([]) | length }} user(s) need a lock/unlock state change.
+
   tasks:
 
     # -------------------------------------------------------------------------
@@ -340,8 +442,7 @@
         groups:
           add: "{{ item.Groups }}"
         state: present
-      when:  item.Groups | length > 0
-      loop:  "{{ _users }}"
+      loop:  "{{ _group_add_todo | default([]) }}"
       loop_control:
         label: "{{ item.SamAccountName }} → {{ item.Groups | join(', ') }}"
       ignore_errors: true
@@ -364,10 +465,7 @@
         sam_account_name: "{{ item.SamAccountName }}"
         manager:          "{{ _name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager]) }}"
         state:            present
-      when:
-        - item.Manager | length > 0
-        - (item.Manager ~ '|' ~ item.ad_ou) in _name_ou_to_sam or item.Manager in _name_to_sam
-      loop: "{{ _users }}"
+      loop: "{{ _manager_todo | default([]) }}"
       loop_control:
         label: "{{ item.SamAccountName }} ← manager: {{ item.Manager }}"
 
@@ -393,6 +491,12 @@
     # module's own native account_locked: no, which IS fully supported.
     # -------------------------------------------------------------------------
 
+    # Both tasks below loop over _lock_todo (pre-filtered against live LockedOut
+    # state, see "Filter to lockout state changes needed" above), not all 364 users
+    # -- previously "Unlock" fired on literally every single user every re-run
+    # regardless of whether they were ever locked (only ~9 genuinely are), the single
+    # biggest avoidable round-trip in this whole file.
+
     - name: "E | Lock accounts (Locked=true in source data)"
       microsoft.ad.user:
         name:             "{{ item.Name }}"
@@ -404,7 +508,7 @@
               value: "{{ now(utc=true).strftime('%Y-%m-%dT%H:%M:%SZ') }}"
         state:            present
       when: item.Locked | default(false)
-      loop: "{{ _users }}"
+      loop: "{{ _lock_todo | default([]) }}"
       loop_control:
         label: "{{ item.SamAccountName }}"
 
@@ -415,6 +519,6 @@
         account_locked:   false
         state:            present
       when: not (item.Locked | default(false))
-      loop: "{{ _users }}"
+      loop: "{{ _lock_todo | default([]) }}"
       loop_control:
         label: "{{ item.SamAccountName }}"
