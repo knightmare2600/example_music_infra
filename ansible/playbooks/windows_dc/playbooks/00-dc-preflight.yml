@@ -283,6 +283,15 @@
       run_once: true
       vars:
         ansible_connection: local
+        # Second, separate override needed alongside ansible_connection: local --
+        # this play's own ansible_shell_type: powershell (line ~168) makes Ansible
+        # try to dispatch read_csv's underlying module invocation via PowerShell
+        # even while running locally on this Linux control node. Same bug class as
+        # windows_bootstrap/00-preflight.yml's 2026-07-28 [B0]/[A5] fix and this
+        # play's own dc_source_resolution.yml probe task -- both already carry this
+        # override; this task was the one gap. Found live 2026-09-21, EXADCSFRD001:
+        # "Load sites.csv" MODULE FAILURE, "/bin/sh: 1: PowerShell: not found".
+        ansible_shell_type: sh
       tags: dc_preflight
 
     - name: Build site → subnet lookup
