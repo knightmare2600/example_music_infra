@@ -81,6 +81,27 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-09-21  CRITICAL, found live (Robert, EXADCSFRD001): dns_primary correctly
+#               decided 172.16.124.8 (the 2026-09-19 FRD-local-DNS fix below worked
+#               exactly as designed) and the pre-flight summary correctly displayed it
+#               -- but ipconfig on the box still showed the stale 192.168.139.8. Root
+#               cause: the only code that ever WRITES DNS to the box (the netsh lines
+#               in [F]'s scheduled task) was gated entirely on ip_needs_change -- DNS
+#               only ever got applied as a side effect of an IP also needing to change.
+#               EXADCSFRD001 already had the correct IP from an earlier run, so [F] was
+#               skipped outright and DNS was never touched, despite Ansible's own facts
+#               being completely correct the whole time. Every prior build had
+#               coincidentally needed an IP change too, so this gap was never
+#               exercised before. Added current-DNS reading ([C1]) and a
+#               dns_needs_change fact ([C2], comparing against dns_primary/
+#               dns_secondary), made NIC detection ([D]) unconditional (previously
+#               ip_needs_change-only, but now needed for the DNS-only path too), and
+#               added [F2] -- applies DNS immediately via netsh when only DNS needs to
+#               change (no scheduled task/reboot needed, unlike an IP change, since
+#               changing DNS servers doesn't risk dropping the current SSH session).
+#               Verified the split filter and list-comparison logic in isolation
+#               (single/empty/multi-value DNS lists, both with and without a
+#               secondary) before applying.
 #   2026-09-19  Robert's explicit follow-up ask after the dns_bind9 fix below: not a
 #               general per-site DNS mechanism (explicitly declined) -- just one named
 #               exception. FRD gets its own local DNS (EXADNSFRD001, 172.16.124.8, same
@@ -764,20 +785,58 @@
       set_fact:
         current_ip: "{{ current_ip_raw.stdout | trim }}"
 
+    # 2026-09-21 addition, Robert (found live building EXADCSFRD001): the box's current
+    # DNS servers were never read or compared at all -- the only code that ever WRITES
+    # DNS (the netsh lines in [F] below) was gated entirely on ip_needs_change, so DNS
+    # only ever got applied as a side effect of an IP change. Every prior build had
+    # happened to need an IP change too, so this gap was never exercised. Confirmed
+    # live: EXADCSFRD001 already had the correct IP from an earlier run, so [F] was
+    # skipped entirely -- ipconfig still showed the stale 192.168.139.8 (VRK) even
+    # though this play's own pre-flight summary correctly said "DNS primary:
+    # 172.16.124.8" the whole time. Queried on the same primary-interface-selection
+    # logic current_ip above already uses, so this is always checking DNS on the
+    # interface whose IP was just checked, not a different one.
+    - name: "[C1] Get current DNS servers on primary NIC"
+      ansible.windows.win_shell: |
+        $ifIndex = (Get-NetIPAddress -AddressFamily IPv4 |
+          Where-Object { $_.IPAddress -notmatch '^(127\.|169\.)' } |
+          Sort-Object -Property PrefixLength -Descending |
+          Select-Object -First 1).InterfaceIndex
+        (Get-DnsClientServerAddress -InterfaceIndex $ifIndex -AddressFamily IPv4).ServerAddresses -join ','
+      register: current_dns_raw
+      changed_when: false
+
+    - name: "[C1] Set current DNS fact"
+      set_fact:
+        current_dns: "{{ current_dns_raw.stdout | trim }}"
+        current_dns_list: "{{ current_dns_raw.stdout | trim | split(',') | reject('equalto', '') | list }}"
+
     - name: "[C2] Set change-needed facts"
       set_fact:
         hostname_needs_change: "{{ current_hostname != target_hostname | upper }}"
         ip_needs_change:       "{{ target_ip | length > 0 and current_ip != target_ip }}"
+
+    - name: "[C2] Set DNS change-needed fact"
+      set_fact:
+        expected_dns_list: "{{ [dns_primary] + ((dns_secondary | length > 0) | ternary([dns_secondary], [])) }}"
+
+    - name: "[C2] Compare current vs. expected DNS"
+      set_fact:
+        dns_needs_change: "{{ (current_dns_list | sort) != (expected_dns_list | sort) }}"
 
     - name: "[C2] Show current state"
       debug:
         msg:
           - "  Hostname : {{ current_hostname }} → {{ target_hostname | upper }} ({{ 'CHANGE NEEDED' if hostname_needs_change else 'OK' }})"
           - "  IP       : {{ current_ip }} → {{ target_ip if target_ip | length > 0 else '(no change)' }} ({{ 'CHANGE NEEDED' if ip_needs_change else 'OK' }})"
+          - "  DNS      : {{ current_dns_list | join(', ') if current_dns_list | length > 0 else '(none)' }} → {{ expected_dns_list | join(', ') }} ({{ 'CHANGE NEEDED' if dns_needs_change else 'OK' }})"
 
     # =========================================================================
-    # PHASE D — NIC selection (ip_needs_change only)
+    # PHASE D — NIC selection
     # =========================================================================
+    # 2026-09-21: unconditional now (was ip_needs_change-only) -- [F2] below (a
+    # DNS-only change, no IP change) also needs target_nic, and NIC detection itself
+    # is cheap/harmless to always run.
 
     - name: "[D] Get first active NIC"
       ansible.windows.win_shell: >
@@ -785,12 +844,10 @@
           Sort-Object ifIndex | Select-Object -First 1 -ExpandProperty Name)
       register: nic
       changed_when: false
-      when: ip_needs_change | bool
 
     - name: "[D] Set target NIC fact"
       set_fact:
         target_nic: "{{ nic.stdout | trim }}"
-      when: ip_needs_change | bool
 
     # =========================================================================
     # PHASE E — Static IP facts
@@ -840,6 +897,27 @@
         Register-ScheduledTask -TaskName "EXA-ApplyStaticIP" -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force
       changed_when: true
       when: ip_needs_change | bool
+
+    # =========================================================================
+    # PHASE F2 — Apply DNS immediately (dns_needs_change, no IP change)
+    # =========================================================================
+    # 2026-09-21 addition, Robert (found live building EXADCSFRD001): when only DNS
+    # needs to change (IP is already correct), [F] above never fires at all, and
+    # nothing else ever applies dns_primary/dns_secondary to the box -- see [C1]'s own
+    # "Get current DNS servers" comment for the live incident this covers. Unlike an
+    # IP change, changing DNS servers doesn't risk dropping the current SSH session
+    # (the session isn't riding on the DNS server address), so this applies directly,
+    # immediately, no scheduled task or reboot needed. Deliberately mutually exclusive
+    # with [F] via the when: conditions -- if IP ALSO needs changing, [F]'s own netsh
+    # sequence already sets DNS as part of that same script, this would be redundant.
+    - name: "[F2] Apply DNS immediately (DNS-only change)"
+      ansible.windows.win_shell: |
+        netsh interface ip set dns name='{{ target_nic }}' static {{ dns_primary }}
+        {% if dns_secondary | length > 0 -%}
+        netsh interface ip add dns name='{{ target_nic }}' {{ dns_secondary }} index=2
+        {% endif -%}
+      changed_when: true
+      when: dns_needs_change | bool and not ip_needs_change | bool
 
     # =========================================================================
     # PHASE G — Rename computer (hostname_needs_change only)
