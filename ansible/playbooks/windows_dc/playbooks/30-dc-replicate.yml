@@ -146,7 +146,13 @@
         repadmin /showrepl 2>&1
       register: dc_presync_showrepl
       changed_when: false
-      ignore_errors: true
+      # 2026-09-21, found live on EXADCSFRD001 (forest root, zero replication
+      # partners by definition): repadmin returns non-zero when there are no
+      # replication links to show -- expected, not a real failure. ignore_errors
+      # alone still rendered as a misleading "[✗] non-zero return code" block;
+      # failed_when: false tells Ansible this outcome is genuinely fine, not
+      # just tolerated.
+      failed_when: false
       tags: dc_replicate
 
     - name: "[Stage 0] Run dcdiag /test:connectivity /test:replications"
@@ -234,17 +240,34 @@
           {{ inventory_hostname }} from {{ dc_replication_source | default('all partners') }}
       tags: dc_replicate
 
+    - name: "Skip — no replication source (forest root / lone DC)"
+      debug:
+        msg: >
+          {{ _c.C }}[*]{{ _c.NC }} {{ inventory_hostname }} has no replication source
+          (dc_replication_source is unset) — nothing to sync against yet. Skipping
+          repadmin /syncall.
+      when: dc_replication_source is not defined or dc_replication_source == ""
+      tags: dc_replicate
+
+    # 2026-09-21, found live on EXADCSFRD001 (forest root): this ran unconditionally
+    # even with zero replication partners, producing a confusing "Access is denied" /
+    # "naming context ... invalid" error every single forest-root build -- there is
+    # nothing for /syncall to sync against by definition when dc_replication_source is
+    # empty. Gated to match "Force replicate from specific source if known" below,
+    # which already correctly skipped on this exact condition.
     - name: Force replication of all partitions (repadmin /syncall)
       ansible.windows.win_shell: |
         repadmin /syncall /AdeP 2>&1
       register: dc_syncall
       changed_when: false
       ignore_errors: true
+      when: dc_replication_source is defined and dc_replication_source != ""
       tags: dc_replicate
 
     - name: Show syncall output
       debug:
         msg: "{{ dc_syncall.stdout_lines }}"
+      when: dc_replication_source is defined and dc_replication_source != ""
       tags: dc_replicate
 
     - name: Force replicate from specific source if known
@@ -321,7 +344,15 @@
     - name: Check for replication failures in summary
       ansible.windows.win_shell: |
         $out = repadmin /replsummary 2>&1
-        $failures = $out | Select-String -Pattern 'fail|error' -CaseSensitive:$false
+        # 2026-09-21, found live on EXADCSFRD001: repadmin's own column headers
+        # ("Source/Destination DSA   largest delta   fails/total %%   error")
+        # contain the literal words "fail" and "error" -- the un-filtered match
+        # below false-positives on every run's header row alone, even with zero
+        # actual data rows (a forest-root DC has no partners to summarise at
+        # all). "largest delta" only ever appears in those two header lines, so
+        # excluding it here catches genuine failure/error text without matching
+        # the headers themselves.
+        $failures = $out | Where-Object { $_ -notmatch 'largest delta' } | Select-String -Pattern 'fail|error' -CaseSensitive:$false
         if ($failures) {
           Write-Output "FAILURES_DETECTED"
           $failures | ForEach-Object { Write-Output $_.Line }
