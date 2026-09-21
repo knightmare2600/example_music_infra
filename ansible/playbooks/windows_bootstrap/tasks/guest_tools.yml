@@ -4,12 +4,33 @@
 # Example Music Limited — Guest tools installation (Stage 12)
 # Replicates Join-DomainAndBootstrap.ps1 Stage 12
 # =============================================================================
-# Installs VMware Tools or QEMU guest agent depending on detected
-# hypervisor, via Chocolatey. Skipped on Physical or Hyper-V hosts.
+# Installs QEMU guest agent on KVM/Proxmox hosts via Chocolatey. VMware hosts
+# need nothing here — see the 2026-09-21 changelog entry below. Skipped
+# entirely on Physical or Hyper-V hosts.
 #
 # Requires hypervisor (set by tasks/site_detection.yml).
 # =============================================================================
 # Changelog:
+#   2026-09-21  Robert, live (EXADCSFRD001): the VMware Tools Chocolatey install
+#               failed with exit 1602 ("User cancelled the installation") --
+#               root cause is the vmware-tools package's own install script
+#               invoking its installer as `/S /v /qn REBOOT=R` (note /v has
+#               nothing attached, so /qn REBOOT=R never actually reaches the
+#               inner MSI as intended) -- a genuine upstream packaging bug in
+#               the newly-released 13.1.5.25544008 version, not anything in
+#               this repo. Removed the task entirely rather than working
+#               around the upstream bug: Robert confirmed VMware Tools is
+#               already installed via the hypervisor's own mechanism --
+#               bootstrap/web/windows/UNATTEND.CMD + a pre-staged
+#               %TEMP%\upgrader.exe, picked up automatically by VMware's own
+#               "Install/Upgrade VMware Tools" trigger (mounting the Tools
+#               ISO) at the template/hypervisor layer, entirely outside
+#               Ansible -- confirmed that file uses the CORRECT silent-install
+#               syntax (`/s /v"/qr REBOOT=FORCE"`, properly quoted/attached),
+#               unlike the broken Chocolatey package. This task was always
+#               redundant work through a different, now-broken mechanism.
+#               KVM/Proxmox's qemu-guest-agent install below is unaffected --
+#               a completely separate hypervisor branch, not touched by this.
 #   2026-06-20  Initial file
 #   2026-07-06  Switched from asset-server download (with a Chocolatey
 #               fallback that was actually always the live path — the
@@ -18,22 +39,6 @@
 #               No longer needs host_arch.
 # =============================================================================
 
-# ── VMware ────────────────────────────────────────────────────────────────────
-
-- name: "[Stage 12] Install VMware Tools via Chocolatey"
-  chocolatey.chocolatey.win_chocolatey:
-    name: vmware-tools
-    state: present
-  register: vmware_install
-  when: hypervisor == "VMware"
-
-- name: "[Stage 12] Reboot after VMware Tools install"
-  ansible.windows.win_reboot:
-    reboot_timeout: 600
-  when:
-    - hypervisor == "VMware"
-    - vmware_install is changed
-
 # ── KVM / Proxmox ─────────────────────────────────────────────────────────────
 
 - name: "[Stage 12] Install QEMU guest agent via Chocolatey"
@@ -41,6 +46,16 @@
     name: qemu-guest-agent
     state: present
   when: hypervisor == "KVM"
+
+# ── VMware ────────────────────────────────────────────────────────────────────
+
+- name: "[Stage 12] Skip guest tools (VMware — installed by the hypervisor itself)"
+  debug:
+    msg: >-
+      Hypervisor is VMware — VMware Tools is installed via the hypervisor's own
+      mechanism (bootstrap/web/windows/UNATTEND.CMD + %TEMP%\upgrader.exe,
+      triggered by mounting the Tools ISO), not by this playbook.
+  when: hypervisor == "VMware"
 
 # ── Physical / Hyper-V ────────────────────────────────────────────────────────
 
