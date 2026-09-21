@@ -72,7 +72,7 @@
 #                     benarbejde/ad_forest.json (single source of truth).
 # =============================================================================
 
-- name: "Build AD users from TDF"
+- name: "Build AD users from ad_users.json"
   hosts: "{{ ad_target | default(hostvars['localhost']['ad_target'] | default('localhost')) }}"
   gather_facts: false
   become: false
@@ -183,7 +183,7 @@
     - name: "Preflight | Report user count"
       debug:
         msg: >-
-          Parsed {{ _users_all | length }} users from TDF;
+          Parsed {{ _users_all | length }} users from ad_users.json;
           {{ _users | length }} have resolvable OU paths
           ({{ _users | selectattr('Disabled') | list | length }} disabled,
            {{ _users | selectattr('Manager') | list | length }} have a manager set).

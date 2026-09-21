@@ -33,8 +33,8 @@
 # Playbook order:
 #   00-ad-preflight  Prompt for ad_target (skipped if populate_ad != yes)
 #   10-ad-schema     OU hierarchy from sites.csv
-#   20-ad-groups     Security groups from TDF
-#   30-ad-users      User accounts, band OUs, group membership, manager from TDF
+#   20-ad-groups     Security groups from ad_groups.json
+#   30-ad-users      User accounts, band OUs, group membership, manager from ad_users.json
 #   40-ad-computers  Computer accounts from ad_computers.json
 # =============================================================================
 # Changelog:

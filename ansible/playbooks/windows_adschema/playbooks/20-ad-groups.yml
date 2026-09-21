@@ -55,7 +55,7 @@
 #                     benarbejde/ad_forest.json (single source of truth).
 # =============================================================================
 
-- name: "Build AD groups from TDF"
+- name: "Build AD groups from ad_groups.json"
   hosts: "{{ ad_target | default(hostvars['localhost']['ad_target'] | default('localhost')) }}"
   gather_facts: false
   become: false
