@@ -344,6 +344,24 @@
 #           (KNOWN_NAIVE_SPLIT_EXCEPTIONS in the check itself) so this
 #           still catches any *future* site with the same problem without
 #           permanently failing over the one already-accepted case.
+#  42. check_breakglass_zone_file_collisions.py -- found live 2026-09-21, building
+#      EXADNSFRD001: bindme.sh's per-site reverse-zone generation writes to a file
+#      path derived from each site's own subnet prefix -- VRK's own subnet is
+#      numerically identical to the provisioning network, which already has its
+#      own separately-generated zone file at that exact path, but the per-site
+#      loop only excluded CLD, never VRK, so it silently truncated and overwrote
+#      the provisioning zone's real content on every single build (including
+#      every prior build/rebuild of EXADNSVRK001 itself -- named-checkzone/rndc
+#      zonestatus both reported the zone loading cleanly, only dig -x against a
+#      real PTR entry ever surfaced it, returning authoritative NXDOMAIN). This
+#      check cross-references sites.csv's real subnet data against bindme.sh's
+#      own per-site reverse-zone loops (found structurally, via their
+#      /etc/bind/db.${net3} file-path construction, not by matching comment
+#      wording) and fails if any site sharing a subnet prefix with a reserved,
+#      non-per-site zone file (VRK/provisioning, CLD/LAN) isn't excluded from
+#      every one of them -- verified against a reconstructed pre-fix bindme.sh to
+#      confirm it genuinely catches the exact bug found live, not just the
+#      general shape of one.
 #
 # Nothing here touches a real host or needs a vault password. Two exceptions
 # to "network access beyond localhost": check 13 (check_mermaid.py) needs to
@@ -1440,6 +1458,20 @@ else
   echo "$out"
   fail "A break-glass script's sites.csv field list is out of sync with the real current header -- see above."
   FAILED_CHECKS+=("check_breakglass_csv_fields.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 42. bindme.sh reverse-zone file collisions — check_breakglass_zone_file_collisions.py
+# ------------------------------------------------------------------------------
+section "42. bindme.sh reverse-zone file collisions — check_breakglass_zone_file_collisions.py"
+
+if out=$(python3 "${HERE}/check_breakglass_zone_file_collisions.py"); then
+  echo "$out"
+  success "No sites.csv subnet-prefix collisions, and every reserved zone (VRK/provisioning, CLD/LAN) is excluded from all of bindme.sh's per-site reverse-zone loops."
+else
+  echo "$out"
+  fail "A site's subnet prefix collides with another site or a reserved bindme.sh zone file, and/or a per-site reverse-zone loop doesn't exclude it -- see above. This is exactly the bug class that silently overwrote VRK's provisioning zone with its own per-site data, 2026-09-21."
+  FAILED_CHECKS+=("check_breakglass_zone_file_collisions.py")
 fi
 
 # ------------------------------------------------------------------------------
