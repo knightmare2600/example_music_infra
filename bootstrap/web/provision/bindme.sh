@@ -173,6 +173,19 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #            same "Activate the new static IP now? [y/N]" prompt (default N, matching
 #            firewallme.sh's own wording/default) -- the NM profile is still written either
 #            way, only the restart/activation is gated.
+# 2026-09-21 BUG FIX, Robert: building EXADNSFRD001 needs this script to correctly suggest
+#            FRD's own subnet/gateway (172.16.124.0/24, gateway .2), not VRK's. The
+#            "1. Network interface detection" prompts hardcoded PROV_NET_DEFAULT=
+#            "192.168.139" and the gateway default as "${PROV_NET}.254" unconditionally --
+#            wrong for any site other than VRK, even though this box's OWN real gateway is
+#            already correctly detected earlier (PREFLIGHT_GW, used since 2026-08-29 to
+#            pick the right preflight-fetch server for FRD vs everywhere else) and simply
+#            never reused here. Same fix pattern already applied to ansibleme.sh's vRACK
+#            prompt defaults (2026-09-18, v1.31.0) -- derive PROV_NET_DEFAULT/gateway-octet
+#            from PREFLIGHT_GW instead of hardcoding VRK's values. Also fixed the suggested
+#            DNS server IP: defaulted to "${PROV_NET}.10" (the DC-octet convention, not
+#            DNS) -- EXADNSVRK001's real address is .8 per devices.csv; corrected the
+#            default to match.
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()    { echo -e "${CYAN}[*]${NC} $*"; }
 success() { echo -e "${GREEN}[+]${NC} $*"; }
@@ -701,17 +714,31 @@ success "BIND management scripts + aliases written."
 # ---------------------------------------------------------------
 # 1. Network interface detection
 # ---------------------------------------------------------------
-PROV_NET_DEFAULT="192.168.139"
+# Defaults derived from THIS box's own real, already-detected default gateway
+# (PREFLIGHT_GW, set above) -- correct whether this is being run on VRK's network
+# (192.168.139.0/24, gateway .254) or FRD's (172.16.124.0/24, gateway .2), instead of
+# hardcoding VRK's values unconditionally. Still just a suggested default -- override
+# either prompt if building somewhere these two known sites' own gateway doesn't apply.
+if [[ -n "${PREFLIGHT_GW}" ]]; then
+  PROV_NET_DEFAULT="${PREFLIGHT_GW%.*}"
+  PROV_GW_OCTET_DEFAULT="${PREFLIGHT_GW##*.}"
+else
+  PROV_NET_DEFAULT="192.168.139"
+  PROV_GW_OCTET_DEFAULT="254"
+fi
 
 read -rp "Provisioning subnet [${PROV_NET_DEFAULT}]: " PROV_NET
 PROV_NET="${PROV_NET:-${PROV_NET_DEFAULT}}"
 
-read -rp "Provisioning Network gateway [${PROV_NET}.254]: " GW_OCTET
-GW_OCTET="${GW_OCTET:-254}"
+read -rp "Provisioning Network gateway [${PROV_NET}.${PROV_GW_OCTET_DEFAULT}]: " GW_OCTET
+GW_OCTET="${GW_OCTET:-${PROV_GW_OCTET_DEFAULT}}"
 PROV_GW="${PROV_NET}.${GW_OCTET}"
 
-read -rp "IP Address of this DNS server [${PROV_NET}.10]: " DNS_INPUT
-DNS_INPUT="${DNS_INPUT:-10}"
+# .8, not .10 -- .10 is the DC-octet convention (sites.csv's own DC column); EXADNSVRK001,
+# the one real precedent, is at .8 (devices.csv: VRK,DNS,1,8). Confirmed with Robert
+# 2026-09-21 for EXADNSFRD001 too -- same octet convention, different subnet.
+read -rp "IP Address of this DNS server [${PROV_NET}.8]: " DNS_INPUT
+DNS_INPUT="${DNS_INPUT:-8}"
 
 if [[ "$DNS_INPUT" =~ ^[0-9]+$ ]]; then
   DNS_IP="${PROV_NET}.${DNS_INPUT}"
