@@ -124,6 +124,57 @@
           ({{ _computers_all | length - _computers | length }} skipped —
           unknown site codes).
 
+    # 2026-09-21, Robert's ask -- same identity-and-content pattern as
+    # 10-ad-schema.yml/20-ad-groups.yml: one query up front instead of one
+    # microsoft.ad.computer round trip per computer every re-run. SamAccountName is
+    # unique per computer (unlike OU/group names, scoped by parent), so it's the
+    # natural identity key. Fetches Description/Enabled/DNSHostName/OperatingSystem/
+    # OperatingSystemVersion in the SAME call -- Section A below checks the first
+    # three (its own params beyond name/path); Sections B/C reuse the OS/OSVersion
+    # fields from this same result rather than querying again.
+    - name: "Query existing AD computers (single call, used to skip already-created/unchanged computers and OS attribute writes below)"
+      ansible.windows.win_shell: |
+        $results = @(Get-ADComputer -Filter * -SearchBase "{{ _base_dn }}" `
+            -Properties Description,Enabled,DNSHostName,OperatingSystem,OperatingSystemVersion |
+          Select-Object SamAccountName, Description, Enabled, DNSHostName, OperatingSystem, OperatingSystemVersion)
+        ConvertTo-Json -InputObject $results -Compress
+      register: _existing_computers_raw
+      changed_when: false
+
+    - name: "Parse existing computers"
+      set_fact:
+        _existing_computers: "{{ (_existing_computers_raw.stdout | trim | length > 0) | ternary(_existing_computers_raw.stdout | from_json, []) }}"
+
+    - name: "Build SamAccountName(lowercase) -> record lookup"
+      set_fact:
+        _existing_computers_by_sam: >-
+          {{
+            dict(
+              _existing_computers | map(attribute='SamAccountName') | map('lower') | list
+              | zip(_existing_computers)
+            )
+          }}
+
+    - name: "Filter to computers not already present or with a drifted Description/Enabled/DNSHostName"
+      set_fact:
+        _computers_todo: >-
+          {{
+            _computers_todo | default([]) +
+            ([item] if (
+              (item.SamAccountName | lower not in _existing_computers_by_sam)
+              or (_existing_computers_by_sam[item.SamAccountName | lower].Description | default('')) != item.Description
+              or (_existing_computers_by_sam[item.SamAccountName | lower].Enabled | default(true)) != item.Enabled
+              or (_existing_computers_by_sam[item.SamAccountName | lower].DNSHostName | default('')) != item.DNSHostName
+            ) else [])
+          }}
+      loop: "{{ _computers }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    - name: "Preflight | Report computers needing create/update"
+      debug:
+        msg: "{{ _computers_todo | default([]) | length }} of {{ _computers | length }} computer(s) need creating or a Description/Enabled/DNSHostName update."
+
   tasks:
 
     # -------------------------------------------------------------------------
@@ -143,7 +194,7 @@
         description:      "{{ item.Description }}"
         enabled:          "{{ item.Enabled }}"
         state:            present
-      loop: "{{ _computers }}"
+      loop: "{{ _computers_todo | default([]) }}"
       loop_control:
         label: "{{ item.SamAccountName }}"
 
@@ -159,6 +210,11 @@
     # untouched.
     # -------------------------------------------------------------------------
 
+    # B/C both reuse _existing_computers_by_sam (built once, above) rather than
+    # querying again -- the `or` short-circuits before the bracket-access ever runs
+    # for a genuinely new SamAccountName (verified in isolation before applying),
+    # so this is safe for computers Section A hasn't created yet in this same run too.
+
     - name: "B | Set operatingSystem attribute"
       microsoft.ad.computer:
         identity: "{{ item.SamAccountName }}"
@@ -166,7 +222,10 @@
         attributes:
           set:
             operatingSystem: "{{ item.OS }}"
-      when: item.OS | length > 0
+      when:
+        - item.OS | length > 0
+        - (item.SamAccountName | lower not in _existing_computers_by_sam)
+          or (_existing_computers_by_sam[item.SamAccountName | lower].OperatingSystem | default('')) != item.OS
       loop: "{{ _computers }}"
       loop_control:
         label: "{{ item.SamAccountName }}"
@@ -178,7 +237,10 @@
         attributes:
           set:
             operatingSystemVersion: "{{ item.OperatingSystemVersion }}"
-      when: item.OperatingSystemVersion | length > 0
+      when:
+        - item.OperatingSystemVersion | length > 0
+        - (item.SamAccountName | lower not in _existing_computers_by_sam)
+          or (_existing_computers_by_sam[item.SamAccountName | lower].OperatingSystemVersion | default('')) != item.OperatingSystemVersion
       loop: "{{ _computers }}"
       loop_control:
         label: "{{ item.SamAccountName }}"
