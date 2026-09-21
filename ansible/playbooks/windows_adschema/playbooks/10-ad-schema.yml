@@ -238,20 +238,46 @@
     # full DN identity comparison, not a count -- a count match can't tell a genuine "nothing
     # to do" apart from "same number of OUs, but one got renamed", which would then silently
     # skip a real, needed correction.
+    # Also fetches Description, not just DistinguishedName -- Section 4 (city OUs) below is
+    # the one stage that sets a field beyond name/path, so it needs to re-check content, not
+    # just existence, to keep self-correcting a drifted description on re-run. Every other
+    # section only ever uses _existing_ou_dns (identity alone), so this costs nothing extra
+    # for them -- one shared query either way.
     - name: "Query all existing OUs under the domain (single call, used to skip already-created OUs below)"
       ansible.windows.win_shell: |
-        Get-ADOrganizationalUnit -Filter * -SearchBase "{{ _base_dn }}" |
-          Select-Object -ExpandProperty DistinguishedName
+        $results = @(Get-ADOrganizationalUnit -Filter * -SearchBase "{{ _base_dn }}" -Properties Description |
+          Select-Object DistinguishedName, Description)
+        # ConvertTo-Json -InputObject (not a pipe) is required here, not just wrapping
+        # $results in @() -- piping an array into ConvertTo-Json unrolls it element by
+        # element, so a 0- or 1-item result serializes as "null"/a bare object instead of
+        # a JSON array, which | from_json below can't parse consistently. -InputObject
+        # passes the whole array as one argument, always producing an array (this box
+        # runs Windows PowerShell 5.1, not 7+, so the newer -AsArray switch isn't available).
+        ConvertTo-Json -InputObject $results -Compress
       register: _existing_ous_raw
       changed_when: false
 
+    - name: "Parse existing OUs (DN + Description)"
+      set_fact:
+        _existing_ous: "{{ (_existing_ous_raw.stdout | trim | length > 0) | ternary(_existing_ous_raw.stdout | from_json, []) }}"
+
     - name: "Build lowercase set of existing OU DNs"
       set_fact:
-        _existing_ou_dns: "{{ _existing_ous_raw.stdout_lines | map('trim') | select('length') | map('lower') | list }}"
+        _existing_ou_dns: "{{ _existing_ous | map(attribute='DistinguishedName') | map('lower') | list }}"
+
+    - name: "Build DN(lowercase) -> Description lookup"
+      set_fact:
+        _existing_ou_descriptions: >-
+          {{
+            dict(
+              _existing_ous | map(attribute='DistinguishedName') | map('lower') | list
+              | zip(_existing_ous | map(attribute='Description') | map('default', '', true) | list)
+            )
+          }}
 
     - name: "Preflight | Report existing OU count"
       debug:
-        msg: "{{ _existing_ou_dns | length }} OU(s) already exist under {{ _base_dn }} -- sections below only create what's missing."
+        msg: "{{ _existing_ou_dns | length }} OU(s) already exist under {{ _base_dn }} -- sections below only create/update what's missing or drifted."
 
     - name: "Attach continent and parent city path to each site"
       set_fact:
@@ -414,12 +440,23 @@
     # CLD is excluded — its leaf OUs go directly under Cloud Infrastructure.
     # -------------------------------------------------------------------------
 
-    - name: "4 | Filter to city OUs not already present"
+    # Unlike every other section, this one also re-checks content, not just existence --
+    # Section 4's own task below sets `description`, the one field any section here sets
+    # beyond name/path/protect_from_deletion. An item is included if its OU is missing OR
+    # if it already exists but its live Description doesn't match what this task would set,
+    # so a drifted description still self-corrects on re-run exactly as it did before this
+    # optimization -- the trade-off flagged when this was first built is closed for this
+    # field. (Robert's ask, 2026-09-21.)
+    - name: "4 | Filter to city OUs not already present or with a drifted description"
       set_fact:
         _s4_todo: >-
           {{
             _s4_todo | default([]) +
-            ([item] if ('ou=' + item.City + ',' + item._cpath) | lower not in _existing_ou_dns else [])
+            ([item] if (
+              ('ou=' + item.City + ',' + item._cpath) | lower not in _existing_ou_dns
+              or _existing_ou_descriptions[('ou=' + item.City + ',' + item._cpath) | lower] | default('')
+                 != (item.Site + ' — ' + item.Entity)
+            ) else [])
           }}
       loop: "{{ _sites | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list }}"
       loop_control:
