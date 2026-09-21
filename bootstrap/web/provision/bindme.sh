@@ -1117,11 +1117,28 @@ zone "69.168.192.in-addr.arpa" {
 
 NAMEDLOCAL
 
-# Append a reverse zone stanza for every site EXCEPT CLD.
-# CLD's subnet (192.168.139.0/24) is the provisioning network --
-# it is covered by the dedicated 139 zone above.
+# Append a reverse zone stanza for every site EXCEPT CLD and VRK.
+# CLD's subnet (192.168.69.0/24) has its own dedicated LAN zone (9c below).
+# VRK's subnet (192.168.139.0/24) IS the provisioning network -- it is covered by
+# the dedicated 139 zone above.
+#
+# 2026-09-21 fix, Robert (found live building EXADNSFRD001, dig -x returning NXDOMAIN
+# for real, previously-working PTR entries): this loop only excluded CLD, not VRK --
+# but VRK's own subnet is numerically identical to the provisioning network
+# (192.168.139.0/24), which already gets its own dedicated zone stanza/file earlier in
+# this same script. Every time this loop reached "VRK" it wrote a SECOND, duplicate
+# reverse-zone stanza for the exact same file/zone the provisioning zone already
+# owns -- and the FILE generator below (9b) truncates on every write, so whichever
+# ran last silently clobbered the other's content. Confirmed live: the file on disk
+# was VRK's own generic per-site PTR content, not the provisioning zone's real
+# ancillary-hosts/FWL-WAN data at all -- a real, previously-undiscovered bug that
+# predates today's SITE_NET3 changes entirely (it would have hit every build/rebuild
+# of EXADNSVRK001 itself too). VRK's own per-site device PTR records (its PVE/DCS/etc)
+# are not generated via this loop as a result -- same trade-off already accepted for
+# CLD, not a new regression (this collision meant they were never reliably served
+# before either).
 for site in "${SORTED_SITES[@]}"; do
-  [[ "${site}" == "CLD" ]] && continue
+  [[ "${site}" == "CLD" || "${site}" == "VRK" ]] && continue
   octet="${SITE_OCTET[$site]}"
   net3="${SITE_NET3[$site]}"
   IFS='.' read -r n1 n2 n3 <<< "${net3}"
@@ -1137,7 +1154,9 @@ zone "${n3}.${n2}.${n1}.in-addr.arpa" {
 
 ZONE_STANZA
 done
-non_cld_count=$(( ${#SITE_OCTET[@]} - 1 ))
+# 2026-09-21 fix: was "- 1" (CLD only) -- now excludes VRK too (see this loop's own
+# comment above), so the count must subtract both or this reports one zone too many.
+non_cld_count=$(( ${#SITE_OCTET[@]} - 2 ))
 success "named.conf.local written (1 forward + 1 provisioning + ${non_cld_count} site reverse zones)."
 
 # ---------------------------------------------------------------
@@ -1577,8 +1596,11 @@ declare -a REV_SUFFIX_MAP=(
 
 rev_zone_count=0
 for site in "${SORTED_SITES[@]}"; do
-  # CLD's subnet is the provisioning network -- handled by 9a above
-  [[ "${site}" == "CLD" ]] && continue
+  # CLD has its own dedicated LAN zone (9c); VRK's subnet IS the provisioning network
+  # -- handled by 9a above. See the matching named.conf.local loop's own 2026-09-21
+  # comment for why VRK must be excluded here too (whole-file collision, not a
+  # per-record one).
+  [[ "${site}" == "CLD" || "${site}" == "VRK" ]] && continue
 
   octet="${SITE_OCTET[$site]}"
   city="${SITE_CITY[$site]}"
@@ -1662,7 +1684,9 @@ fi
 info "Validating per-site reverse zones..."
 rev_errors=0
 for site in "${SORTED_SITES[@]}"; do
-  [[ "${site}" == "CLD" ]] && continue
+  # Same VRK/CLD exclusion as the generation loop above -- must match exactly, or this
+  # would validate a file/zone pair that generation never actually wrote.
+  [[ "${site}" == "CLD" || "${site}" == "VRK" ]] && continue
   net3="${SITE_NET3[$site]}"
   IFS='.' read -r n1 n2 n3 <<< "${net3}"
   rev_file="/etc/bind/db.${net3}"
