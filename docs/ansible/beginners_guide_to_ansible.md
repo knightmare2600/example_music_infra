@@ -500,23 +500,53 @@ Create a Windows Server VM on `EXAPVECLD001`, install via the estate's unattend 
 SSH after OOBE (this estate's real connection method for Windows hosts — see
 `group_vars/windows_nodes/connection.yml`; OpenSSH is installed and enabled automatically by
 `SetupComplete.cmd` → `Install-OpenSSH.ps1` as part of the unattend chain, not WinRM), run
-the DC onboarding chain from `EXAANSCLD001`:
+the DC onboarding chain from `EXAANSCLD001` — as **two separate `ansible-playbook`
+invocations**, not one. `windows_dc/site.yml` does not chain or include
+`windows_bootstrap/site.yml` in any way — they are entirely separate `import_playbook`
+chains, each with their own play. Running only the second command below skips rename,
+static-IP assignment, DNS, and every hardening/tooling stage entirely, leaving a broken,
+half-built DC. This two-step split is documented in `windows_dc/site.yml`'s own header, and
+was confirmed live end-to-end building `EXADCSFRD001`, 2026-09-21.
+
+**Step 1 — generic bootstrap** (rename, static IP, DNS, Chocolatey packages, hardening):
+
+```bash
+ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
+  -e target_hosts=<its-current-reachable-address>
+```
+
+`00-preflight.yml` asks for the real hostname (`EXADCSCLD001`) and the static IP to assign.
+That IP is `192.168.69.10` — `sites.csv`'s own `DC` column for CLD already states this
+directly, no derivation needed. Being first-in-forest means DNS resolution falls back to
+BIND9 (`192.168.139.8`, the estate's `EXADNSVRK001`) until this DC promotes itself and
+becomes its own DNS server. `00-preflight.yml`'s own `add_host` (see
+[Dynamic Inventory Registration](#dynamic-inventory-registration--add_host) above) registers
+the renamed box into `windows_nodes` (and its parent groups) so the *rest of this same
+`windows_bootstrap` run* — Chocolatey packages, hardening, guest tools, and so on — can
+target it correctly after the rename/reboot. That registration does not, and cannot, carry
+over into a later, separately-invoked `site.yml`; it only exists for the lifetime of this one
+process.
+
+> **Don't trust the pre-flight summary alone as proof a decision was applied.** A fact like
+> `dns_primary` being computed correctly by `00-preflight.yml` is not the same as it having
+> been *written* to the box — the task that actually calls `netsh interface ip set/add dns`
+> sits behind its own `when:` condition, and a real incident (2026-09-21, `EXADCSFRD001`)
+> had that condition gated on `ip_needs_change` alone, so a DNS-only change silently never
+> applied on a re-run where the IP was already correct. Always check the real, live state
+> (`ipconfig` on the box) before declaring a change successful, not just the summary that
+> decided it.
+
+**Step 2 — DC promotion**, once step 1 has finished and the box has rebooted under its final
+hostname/IP:
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
-  -e target=<its-current-reachable-address>
+  -e target=EXADCSCLD001
 ```
 
-`windows_bootstrap/playbooks/00-preflight.yml` (the same `add_host` mechanism described
-above, in the flesh) asks for the real hostname (`EXADCSCLD001`), whether this is the first
-DC in the forest (**yes** — nothing exists yet), and the static IP to assign. That last one
-is `192.168.69.10` — `sites.csv`'s own `DC` column for CLD already states this directly, no
-derivation needed. Being first-in-forest means DNS resolution falls back to BIND9
-(`192.168.139.8`, the estate's `EXADNSVRK001`) until this DC promotes itself and becomes its
-own DNS server. Once the rename/static-IP/reboot cycle completes,
-`add_host` registers the box into `windows_dc` (and its parent groups) for the rest of this
-same run, and the DC-specific stages (`windows_dc/playbooks/00-dc-preflight.yml` onward) take
-over — `Install-ADDSForest`, not a join, since this is the forest root.
+This chain asks whether this is the first DC in the forest (**yes** — nothing exists yet),
+then runs only the DC-specific stages (`windows_dc/playbooks/00-dc-preflight.yml` onward) —
+`Install-ADDSForest`, not a join, since this is the forest root.
 
 **End state:** the `jukebox.internal` forest exists, with `EXADCSCLD001` as its first DC at
 `192.168.69.10`.
@@ -658,29 +688,39 @@ batch either way); `serial: 1` only changes what happens the moment more than on
 targeted in the same invocation, turning that from a silent correctness bug into a proper
 one-host-at-a-time pass.
 
-### Domain controller — re-running to confirm a fix actually held
+### Windows bootstrap — re-running to confirm a fix actually held
+
+> **Correction, 2026-09-21**: this section previously showed `windows_dc/site.yml
+> --skip-tags bootstrap`/without it as the relevant re-run, implying `windows_dc/site.yml`
+> chains a `bootstrap` tag from `windows_bootstrap`. It doesn't, and never has —
+> `windows_dc/site.yml` only ever imports its own five DC-specific plays (see
+> [Section 4](#4-exadcscld001--the-first-domain-controller-forest-root) above, and
+> `windows_dc/README.md`'s matching correction the same day). The `[B0]` failsafe described
+> below lives in `windows_bootstrap/00-preflight.yml`, under the `bootstrap` tag that
+> actually exists there — so the re-run that exercises it is a re-run of
+> `windows_bootstrap/site.yml`, not `windows_dc/site.yml`.
 
 ```bash
-ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
-  -e target=EXADCSCLD001
+ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
+  -e target_hosts=EXADCSCLD001
 ```
 
-The full form (no `--skip-tags bootstrap`) — worth knowing *why* that matters here rather
-than the narrower "DC stages only" form from `windows_dc/README.md`: `windows_bootstrap`'s
-`00-preflight.yml` carries a failsafe (`[B0]`) for a recurring, never-fully-explained bug
-where a Windows box ends up with `DefaultShell=pwsh.exe` set, which breaks every
-module-based Ansible connection outright (`pwsh -SSHServerMode` doesn't parse Ansible's
-`-EncodedCommand` invocation the way PowerShell 5.1 does). B0 lives in the `bootstrap` tag —
-skip it, and a box already in that broken state has nothing left to rescue it.
+Worth knowing *why* re-running the full chain (not narrowing to specific tags) matters here:
+`windows_bootstrap`'s `00-preflight.yml` carries a failsafe (`[B0]`) for a recurring,
+never-fully-explained bug where a Windows box ends up with `DefaultShell=pwsh.exe` set, which
+breaks every module-based Ansible connection outright (`pwsh -SSHServerMode` doesn't parse
+Ansible's `-EncodedCommand` invocation the way PowerShell 5.1 does). B0 lives in the
+`bootstrap` tag, on by default — skip it (`--skip-tags bootstrap`), and a box already in that
+broken state has nothing left to rescue it.
 
 B0 itself had a real bug of its own for weeks: a `delegate_to: localhost` task doesn't reset
 `ansible_shell_type` back to local just because `ansible_connection: local` is set alongside
 it — the play's own Windows-target value leaked through, so B0's actual `ssh ... reg delete
 DefaultShell` command never executed at all, silently swallowed by its own `failed_when:
 false`. Fixed 2026-07-28. **Confirmed live for the first time 2026-08-01**: a real DC hit the
-broken `DefaultShell` state, this exact command's B0 stage caught it and corrected it, and a
-second run of the identical command afterward connected and completed cleanly — proof the
-fix holds, not just that the bug it used to have is gone.
+broken `DefaultShell` state, this stage caught it and corrected it, and a second run
+afterward connected and completed cleanly — proof the fix holds, not just that the bug it
+used to have is gone.
 
 ### Full BIND9 rebuild — `EXADNSVRK001`
 
@@ -1524,6 +1564,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-09-19 | **Corrected a stale, actively misleading claim** in "Idempotency": the previous account of a 2026-07-09 `target`/`target_hosts` fix did not match the real files as of this date (the actual state was the reverse of what was described, and it had never been fixed). Replaced with the real 2026-09-19 incident: every play in `windows_bootstrap/site.yml`'s chain except `00-preflight.yml` only checked `{{ target | default('all') }}`, a variable never set anywhere — a run invoked exactly as `site.yml`'s own header documents (`-e target_hosts=<ip>`) silently ran every play past preflight against `hosts: all`, the entire estate. Caught only because an unrelated bug (`ansible.windows.win_timezone`, next entry) happened to abort the run first. Fixed all 19 affected playbooks and pushed. Added "When `-i configs/inventory` fails to parse at all" under Inventory and group_vars — root-caused the same day via delta-debugging: this `ansible-core`'s default `INVENTORY_IGNORE_EXTS` includes `.ini`/`.cfg`, so a directory of nothing-but-`.ini` files silently parsed as empty; fixed by pinning the list explicitly in `ansible.cfg`. Added "A second, live example of the bare-IP inventory_hostname trap" — `main.ini`'s `[ansiblehosts]` group had the same bare-IP-plus-comment bug as the `rudder.ini` example already in this guide; fixed by sourcing from `devices.csv`'s `ANS` role row (already the real source of truth for this data) instead of hand-deriving it a second time. Added "Verifying Collection Versions" — `ansible.windows.win_timezone` failed to resolve because the installed collection (2.5.0) predated the version (2.6.0) that module was promoted into `ansible.windows` from `community.windows`; `requirements.yml`'s floor was too loose to catch it. |
 | 2026-09-19 | **Fixed a real gap in `exa_pretty` itself**, found live chasing a Chocolatey install failure that printed only `non-zero return code` with no further detail: "Verbose output and quiet mode" previously said the full result dict (stdout/stderr/rc/cmd) was shown at `-v` and above for ok/changed/failed/unreachable alike — true for ok/changed, but that meant a **failure** withheld the exact detail needed to diagnose it unless you already knew to re-run with `-v`. Fixed `callback_plugins/exa_pretty.py` so failed/unreachable results always show full detail with no `-v` needed; ok/changed are unaffected. Verified end-to-end with a real failing task before and after the fix. |
 | 2026-09-19 | **Corrected a second, more serious stale claim**, in "Dynamic Inventory Registration — `add_host`": it previously showed `add_host: name: "{{ target_hostname \| upper }}"` and claimed (as "confirmed empirically") that this let a *later, separately-imported* play's `hosts:` pattern see the new registration. A real `site.yml` run against `EXADCSFRD001`, immediately after the `target_hosts` fix above, proved this false: `import_playbook` resolves every play's `hosts:` line at parse time, before any play — including the one doing the `add_host` — has run a single task, so no later chained play could ever see it; `15-locale-timezone.yml` kept targeting the original raw connection IP with none of `windows_nodes`' `group_vars` attached and died `UNREACHABLE`. Verified the actual fix (`add_host: name: "{{ inventory_hostname }}"` — the identity *that play itself* already resolved, which every later play's identical `hosts:` expression also resolves to) with an isolated two-play test harness before touching the real file, matching this guide's own "build the smallest possible reproduction" principle from the Inventory and group_vars section above. Rewrote the section's explanation and added a general takeaway about `import_playbook`'s parse-time host resolution applying beyond this one bug. |
+| 2026-09-21 | Full read-through review ahead of the PFY building PHI and DET, per Robert's request. **Corrected two related, critical inaccuracies**, both stemming from the same wrong assumption that `windows_dc/site.yml` chains or includes `windows_bootstrap` stages — it never has, at any point in its git history; it is five `import_playbook`s of its own DC-specific plays only, full stop. (1) §4 (`EXADCSCLD001`) showed a single `windows_dc/site.yml` invocation as if it handled rename/static-IP/DNS *and* DC promotion together, describing `00-preflight.yml`'s `add_host` as running "in the flesh" as part of that command. Rewritten to show the real two-step sequence (`windows_bootstrap/site.yml` then `windows_dc/site.yml`, separate invocations), grounded in the `EXADCSFRD001` build completed live this same day (`failed=0`), plus a callout on not trusting a pre-flight summary's *decision* as proof of *application* (see the DNS-application-gap incident, same day — [[feedback_decision_correct_is_not_applied_confirmed]]). (2) The "Domain controller — re-running to confirm a fix actually held" example (added 2026-08-03) showed `windows_dc/site.yml --skip-tags bootstrap`/without it as exercising the `[B0]` DefaultShell failsafe — `windows_dc/site.yml` has no `bootstrap` tag and never did, so this was a silent no-op that happened to still complete successfully, masking the error. The `[B0]` failsafe actually lives in `windows_bootstrap/00-preflight.yml`'s own `bootstrap` tag; corrected the example to re-run `windows_bootstrap/site.yml` instead, retitled the section to match. Also found and fixed the same stale claim, independently, in `ansible/playbooks/windows_dc/README.md`'s "Playbook order" and "Usage" sections (its "Full run"/"DC stages only" examples referenced the same non-existent `bootstrap` tag) — confirmed via full git history back to the module's first commit that `site.yml` there never had one. Read the remainder of the document (Sudo/Become, Collection Versions, Recommended Workflow, Changelog) against current repo state — no further inaccuracies found. |
 
 ---
 
