@@ -6,9 +6,13 @@ Example Music Limited — JUKEBOX domain
 
 This module onboards a bare Windows Server host as an Additional Domain
 Controller in the AD forest defined by `ad_forest.json` (`jukebox.internal` /
-`JUKEBOX` at time of writing).  It mirrors the `windows_bootstrap` module for
-all generic stages (rename through OpenSSH), then adds DC-specific stages 00
-onwards.
+`JUKEBOX` at time of writing). **This module handles DC-specific stages
+only** — `site.yml` here does not chain, import, or otherwise invoke
+`windows_bootstrap/site.yml` in any way (confirmed against the file: it is
+five `import_playbook`s, `00-dc-preflight.yml` through `40-dc-summary.yml`,
+nothing else). Generic bootstrap (rename through OpenSSH) is a **separate,
+prior `ansible-playbook` invocation** of `windows_bootstrap/site.yml` — see
+Usage below.
 
 `sites.csv` remains the single source of truth for site codes, subnets and
 hub topology; `ad_forest.json` is the single source of truth for domain
@@ -33,11 +37,15 @@ The `DCS` role code is the canonical form — any legacy `DCR` entries in
 
 ## Playbook order
 
-Generic bootstrap (delegated to `windows_bootstrap/playbooks/`, no duplication here):
+Generic bootstrap runs first, as a **completely separate `ansible-playbook`
+invocation** of `windows_bootstrap/site.yml` — not delegated to or imported
+by anything in this module. Its own playbook order/tags are documented in
+`windows_bootstrap/site.yml`'s own header; the stages relevant before a DC
+build are (for reference only — this table does not run from here):
 
 | File                      | Tag            | Description                                    |
 |---------------------------|----------------|------------------------------------------------|
-| `windows_bootstrap/playbooks/00-preflight.yml` | `bootstrap`   | Full PostOOBE bootstrap (rename → join → tools) |
+| `windows_bootstrap/playbooks/00-preflight.yml` | `bootstrap`   | Full PostOOBE bootstrap (rename → static IP → DNS) |
 | `windows_bootstrap/playbooks/20-registry.yml`  | `registry`    | Registry hardening                             |
 | `windows_bootstrap/playbooks/30-chocolatey.yml`| `chocolatey`  | Chocolatey installation                        |
 | `windows_bootstrap/playbooks/40-choco-packages.yml` | `choco_packages` | Packages (RSAT + server set)          |
@@ -45,7 +53,7 @@ Generic bootstrap (delegated to `windows_bootstrap/playbooks/`, no duplication h
 | `windows_bootstrap/playbooks/75-openssh.yml`   | `openssh`     | OpenSSH + Ansible key                          |
 | `windows_bootstrap/playbooks/80-domainjoin.yml`| `domainjoin`  | Join JUKEBOX domain                            |
 
-DC-specific (this module — own 00-preflight/major-step-of-10 numbering, separate from bootstrap's above):
+DC-specific (this module's own `site.yml` — the only plays it actually imports; own 00-preflight/major-step-of-10 numbering, separate from bootstrap's above):
 
 | File                              | Tag            | Description                                    |
 |------------------------------------|----------------|------------------------------------------------|
@@ -71,19 +79,30 @@ ansible-galaxy collection install -r requirements.yml
 Run from the `ansible/` root. The DC onboarding inventory for each site lives in
 `configs/inventory/<site>.ini` (e.g. `configs/inventory/fal.ini`).
 
-### Full run (fresh build)
+### Fresh build (two separate invocations, in order)
+
+`windows_dc/site.yml` has no `bootstrap` tag and never has (verified against
+the file and its full git history) — there is nothing to skip. A fresh host
+needs generic bootstrap run first as its own invocation, then this module:
 
 ```bash
+# Step 1 — rename, static IP, DNS, tools, hardening
+ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
+  -e target=EXADCSFAL002 --ask-vault-pass
+
+# Step 2 — DC-specific stages only (this is everything site.yml here does)
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
   -e target=EXADCSFAL002
 ```
 
 ### DC stages only (host already bootstrapped and domain-joined)
 
+Every play in this module's own `site.yml` is already DC-specific — running
+it with no tags at all, as above, is already "DC stages only":
+
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
-  -e target=EXADCSFAL002 \
-  --skip-tags bootstrap
+  -e target=EXADCSFAL002
 ```
 
 ### DC promotion only
@@ -206,3 +225,18 @@ already covered by the suffix_map.
 - 2026-07-06  Forest-root confirmation ("Is this the first DC in the AD
   Forest?") moved from an interactive mid-play pause to a `dc_is_first_in_forest`
   vars_prompt answered upfront with the other operator prompts
+- 2026-09-21  **Corrected a stale, actively misleading claim**: "Playbook order"
+  and "Usage" described `site.yml` here as chaining/including `windows_bootstrap`
+  stages under a `bootstrap` tag it could skip with `--skip-tags bootstrap`.
+  Verified against the file and its full git history back to the module's
+  first commit — `site.yml` here has only ever imported its own five
+  DC-specific plays (`00-dc-preflight.yml` through `40-dc-summary.yml`); it
+  has never imported anything from `windows_bootstrap`, and no `bootstrap` tag
+  exists in this file at any point in its history. `--skip-tags bootstrap`
+  was a silent no-op (Ansible ignores skip-tags matching nothing), so the old
+  "Full run" and "DC stages only" examples ran identically and neither did
+  what its heading claimed. Found while reviewing `docs/ansible/
+  beginners_guide_to_ansible.md` against this README, ahead of a trainee
+  build of the PHI and DET sites; confirmed live-correct two-step sequence
+  the same day via a real `EXADCSFRD001` build (`windows_bootstrap/site.yml`
+  then `windows_dc/site.yml`, `failed=0`).
