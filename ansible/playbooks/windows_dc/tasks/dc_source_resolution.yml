@@ -84,10 +84,20 @@
             'ip':   (dc_sites_map[host_site] | default('')).rsplit('.', 1)[0] + '.10',
             'fqdn': 'exadcs' + host_site | lower + '001.' + dc_domain_name
           }]
-          if host_site in dc_sites_map else []
+          if (host_site in dc_sites_map and host_num != '001') else []
         )
       }}
   when: dc_site_role == 'standard'
+  # 2026-09-21, found live re-running against EXADCSFRD001 (this site's own FIRST DC,
+  # host_num=='001'): this appended candidate always hardcodes '...001' as the site's
+  # local DC, with no check for whether THIS host already IS that exact DC -- on a
+  # re-run of a site's own first DC, it probed itself over LDAP 389 (trivially
+  # reachable -- same box), selected itself as dc_replication_source, and every
+  # downstream repadmin call then failed ("Access is denied" / "naming context ...
+  # invalid" / "DsReplicaSync ... not replicated from the specified server") since a DC
+  # cannot replicate from itself. Excluding when host_num == '001' skips this candidate
+  # only in the genuine self-reference case; a real second/third DC at the same site
+  # (host_num '002'+) still correctly probes and replicates from its site's own first DC.
 
 - name: "[Source] Build hub candidate list for hub_primary site (FAL/ODE/BRK)"
   set_fact:
