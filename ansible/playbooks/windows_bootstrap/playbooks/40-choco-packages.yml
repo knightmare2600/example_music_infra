@@ -45,6 +45,15 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-09-21  Robert, live (EXADCSFRD001): googlechrome's Chocolatey package has a known,
+#               recurring, non-transient checksum-mismatch problem (Google serves whatever
+#               the current Chrome build is at a stable, unversioned URL, so the package's
+#               pinned checksum goes stale until the maintainer catches up -- confirmed via
+#               multiple long-running upstream issues, and confirmed live here too: retrying
+#               did not clear it, unlike vlc's genuinely transient Defender file-lock in the
+#               same batch). Robert's explicit call: ignore_checksums, scoped only to
+#               googlechrome via a per-item conditional -- every other GUI package still
+#               gets full checksum validation.
 #   2026-09-19  CRITICAL, found live (Robert, EXAANSFRD001 -- mid-EXADCSFRD001 build): this
 #               play's hosts: line only checked {{ target | default('all') }} -- "target" is
 #               never set anywhere in this chain; only site.yml's own documented
@@ -355,11 +364,24 @@
         label: "{{ item }}"
       tags: choco_packages
 
+    # 2026-09-21 fix, Robert (found live building EXADCSFRD001): googlechrome's own
+    # Chocolatey package has a known, recurring, NOT-transient checksum-mismatch problem
+    # -- Google serves whatever the current Chrome build is at a stable, unversioned
+    # "enterprise" MSI URL, so the package's pinned checksum goes stale every time Google
+    # pushes an update, until the package maintainer catches up (no fixed timescale,
+    # confirmed via multiple long-running upstream Chocolatey issues, not a one-off).
+    # Confirmed live: retrying did NOT clear it (vlc's failure in the same batch, a
+    # genuine transient Windows Defender file-lock, DID clear on retry -- this one
+    # didn't). Robert's explicit call: bypass checksum validation, scoped ONLY to
+    # googlechrome -- download is still direct HTTPS from dl.google.com, not a
+    # third-party mirror, so real-world risk is low, but this is still a deliberate,
+    # narrow integrity-check relaxation, not applied to any other package in this list.
     - name: Install missing GUI Chocolatey packages (Client OS, or Server with Desktop Experience)
       chocolatey.chocolatey.win_chocolatey:
-        name:   "{{ item }}"
-        state:  present
-        source: "{{ exa_choco_source }}"
+        name:             "{{ item }}"
+        state:            present
+        source:           "{{ exa_choco_source }}"
+        ignore_checksums: "{{ item == 'googlechrome' }}"
       loop: "{{ choco_packages_gui_missing }}"
       loop_control:
         label: "{{ item }}"
