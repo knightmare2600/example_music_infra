@@ -186,6 +186,44 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #            DNS server IP: defaulted to "${PROV_NET}.10" (the DC-octet convention, not
 #            DNS) -- EXADNSVRK001's real address is .8 per devices.csv; corrected the
 #            default to match.
+# 2026-09-21 MAJOR BUG FIX, Robert: the gateway-detection fix above only fixed the initial
+#            prompts -- building the actual EXADNSFRD001 zone data turned up a much bigger,
+#            active pattern: every per-site record-generation block (forward A records, the
+#            forward DHCP $GENERATE stanza, per-site reverse zone stanzas in
+#            named.conf.local, the reverse zone files themselves), named.conf.options'
+#            listen-on/allow-recursion, the forward zone's own "DNS server itself" A
+#            record, and the self-test all hardcoded 192.168.139/192.168.139.8
+#            unconditionally -- correct only because this script had never before built
+#            anything except EXADNSVRK001 itself. Confirmed live-active, not theoretical:
+#            the self-test "passed" specifically because it checked for "192.168.139.8"
+#            and the forward zone's own A record for EXADNSFRD001 was ALSO wrongly set to
+#            192.168.139.8 -- two bugs quietly masking each other. Most severe: listen-on
+#            only bound to 127.0.0.1 plus an address this box doesn't own, and
+#            allow-recursion only permitted 192.168.139.0/24, not FRD's own
+#            172.16.124.0/24 -- meaning EXADCSFRD001 querying its own local DNS server for
+#            an external name (e.g. community.chocolatey.org) would have been refused
+#            outright even once reachable. Added SITE_NET3[] (derived from each site's
+#            real subnet, already loaded from sites.csv) and threaded it through every one
+#            of those blocks instead of hardcoding "192.168.${octet}" -- verified
+#            byte-identical output for every existing 192.168.x site in isolation before
+#            applying, correct for FRD's genuinely different 172.16.124.0/24 for the first
+#            time. Also fixed the OPPOSITE case: the provisioning zone's own PTR record for
+#            .8 was wrongly using $THIS_HOSTNAME_LOWER (dynamic) when it should be
+#            hardcoded "exadnsvrk001" -- a permanent fact about VRK specifically, not about
+#            whichever box happens to be running this script. Deliberately NOT touched:
+#            the Firewall-WAN section's own 192.168.139.x-for-every-site assumption --
+#            ties into a separate, unresolved question about whether FRD's own (not yet
+#            built) firewall follows that pattern or gets a 172.16.124.x WAN instead.
+# 2026-09-21 BUG FIX, Robert (found live re-running against EXADNSFRD001 after the fix
+#            above): ip_in_use() had no self-exclusion at all -- re-running this script
+#            against a box that already holds DNS_IP from a previous run always looked
+#            like a conflict, since a ping/arping probe of your own address obviously
+#            succeeds. Ported the same self-match check (CURRENT_IPS=$(hostname -I) +
+#            grep -qw) ansibleme.sh's own IP collision check already uses. Also added,
+#            per Robert's explicit ask: when it genuinely isn't a self-match, don't hard
+#            die outright -- warn clearly about the real consequences of proceeding
+#            anyway (both hosts fighting over one address) and let the operator override,
+#            default N so a blind Enter doesn't walk into a real conflict.
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()    { echo -e "${CYAN}[*]${NC} $*"; }
 success() { echo -e "${GREEN}[+]${NC} $*"; }
@@ -780,11 +818,34 @@ fi
 # ---------------------------------------------------------------
 # 2. IP collision check
 # ---------------------------------------------------------------
+# 2026-09-21 fix, Robert (found live re-running against EXADNSFRD001): ip_in_use() has no
+# self-exclusion at all -- re-running this script against a box that already holds DNS_IP
+# from a previous run always looks like a conflict, since a ping/arping probe of your own
+# address obviously succeeds. Ported the same self-match check ansibleme.sh's own IP
+# collision check already uses (CURRENT_IPS=$(hostname -I) + grep -qw). Also added, per
+# Robert's explicit ask: when it genuinely isn't a self-match, don't hard die outright --
+# warn clearly about the real consequences of proceeding anyway (both hosts fighting over
+# one address) and let the operator override, default N so a blind Enter doesn't walk into
+# a real conflict.
 info "Checking whether ${DNS_IP} is already in use..."
 if ip_in_use "${DNS_IP}"; then
-  die "${DNS_IP} is already in use on the network. Resolve the conflict before continuing."
+  CURRENT_IPS=$(hostname -I)
+  if echo "$CURRENT_IPS" | grep -qw "${DNS_IP}"; then
+    info "${DNS_IP} is already assigned to this host -- continuing."
+  else
+    warn "${DNS_IP} responded to a ping/ARP probe from what looks like a DIFFERENT host."
+    warn "Proceeding anyway configures THIS box with an address another device may already"
+    warn "be using -- expect ARP flapping and unpredictable connectivity for BOTH hosts"
+    warn "until the real conflict is found and resolved."
+    read -rp "Override and proceed with ${DNS_IP} anyway? [y/N] " OVERRIDE_IP_CONFLICT
+    if [[ "${OVERRIDE_IP_CONFLICT,,}" != "y" ]]; then
+      die "${DNS_IP} is already in use by another host. Resolve the conflict first, or re-run and confirm the override."
+    fi
+    warn "Proceeding with ${DNS_IP} despite the detected conflict, per operator override."
+  fi
+else
+  success "${DNS_IP} is free -- proceeding."
 fi
-success "${DNS_IP} is free -- proceeding."
 
 # ---------------------------------------------------------------
 # 3. Pin interface name via systemd .link (survives reboots)
