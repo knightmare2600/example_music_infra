@@ -213,6 +213,15 @@
         # See windows_bootstrap/playbooks/00-preflight.yml's 2026-07-15
         # changelog for the live failure this exact pattern caused there.
         ansible_connection: local
+        # Second, separate override needed alongside ansible_connection: local --
+        # windows_nodes' inherited ansible_shell_type: powershell makes Ansible
+        # try to dispatch read_csv's underlying module invocation via PowerShell
+        # even while running locally on this Linux control node. Same bug class
+        # as ad_collection_check.yml's 2026-07-28 fix and windows_dc/
+        # 00-dc-preflight.yml's identically-shaped "Load sites.csv" task (found
+        # live 2026-09-21, EXADCSFRD001) -- this file's own copy of the same
+        # read_csv-from-localhost pattern had the identical gap.
+        ansible_shell_type: sh
 
     - name: "Compute base DN from domain"
       set_fact:
