@@ -98,11 +98,60 @@
       debug:
         msg: "Loaded {{ _groups | length }} groups from {{ ad_groups_json }} — proceeding."
 
+    # 2026-09-21, Robert's ask -- same identity-and-content pattern as 10-ad-schema.yml's OU
+    # sections: one query up front instead of one microsoft.ad.group round trip per group
+    # every re-run. scope/category are fixed constants for every item here (can't drift), so
+    # description is the only field worth re-checking beyond name/path -- same shape as
+    # 10-ad-schema.yml's Section 4 city-OU trade-off, closed the same way from the start here.
+    - name: "Query existing AD security groups (single call, used to skip already-created/unchanged groups below)"
+      ansible.windows.win_shell: |
+        $results = @(Get-ADGroup -Filter * -SearchBase "OU=Security Groups,OU=IT Groups,{{ _base_dn }}" -Properties Description |
+          Select-Object Name, Description)
+        ConvertTo-Json -InputObject $results -Compress
+      register: _existing_groups_raw
+      changed_when: false
+
+    - name: "Parse existing groups"
+      set_fact:
+        _existing_groups: "{{ (_existing_groups_raw.stdout | trim | length > 0) | ternary(_existing_groups_raw.stdout | from_json, []) }}"
+
+    - name: "Build lowercase Name set and Name -> Description lookup"
+      set_fact:
+        _existing_group_names: "{{ _existing_groups | map(attribute='Name') | map('lower') | list }}"
+        _existing_group_descriptions: >-
+          {{
+            dict(
+              _existing_groups | map(attribute='Name') | map('lower') | list
+              | zip(_existing_groups | map(attribute='Description') | map('default', '', true) | list)
+            )
+          }}
+
+    - name: "Filter to groups not already present or with a drifted description"
+      set_fact:
+        _groups_todo: >-
+          {{
+            _groups_todo | default([]) +
+            ([item] if (
+              item.Name | lower not in _existing_group_names
+              or _existing_group_descriptions[item.Name | lower] | default('') != item.Description
+            ) else [])
+          }}
+      loop: "{{ _groups }}"
+      loop_control:
+        label: "{{ item.Name }}"
+
+    - name: "Preflight | Report groups needing create/update"
+      debug:
+        msg: "{{ _groups_todo | default([]) | length }} of {{ _groups | length }} group(s) need creating or a description update."
+
   tasks:
 
     # -------------------------------------------------------------------------
     # All rawDemoGroups are Type=Security, Scope=Global.
     # They all land in OU=Security Groups,OU=IT Groups.
+    # Loop is pre-filtered against what already exists in AD (see "Filter to
+    # groups..." above) -- only creates what's missing or has a drifted
+    # description, not all 111+ groups on every re-run.
     # -------------------------------------------------------------------------
 
     - name: "Create AD security groups"
@@ -113,6 +162,6 @@
         scope:       global
         category:    security
         state:       present
-      loop:          "{{ _groups }}"
+      loop:          "{{ _groups_todo | default([]) }}"
       loop_control:
         label: "{{ item.Name }}"
