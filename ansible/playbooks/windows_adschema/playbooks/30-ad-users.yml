@@ -237,9 +237,19 @@
       set_fact:
         _existing_ou_dn_list: "{{ (_existing_ous_raw.stdout | trim | length > 0) | ternary(_existing_ous_raw.stdout | from_json, []) }}"
 
+    # 2026-09-21, found live, deterministic across 3 identical failures (ruled out
+    # connection timing first -- loosening ansible.cfg's SSH keepalive from 45s to
+    # 120s made zero difference, confirming this was never a flaky/timing issue):
+    # select('length') is invalid Jinja -- 'length' is a FILTER name, not a TEST
+    # name, and passing it to select() raises "No test named 'length'" every single
+    # time, unconditionally. Confirmed directly with a standalone Jinja2 render
+    # before touching this file. select() with no argument uses the default
+    # truthiness test instead, which is exactly what was actually wanted here --
+    # an empty/whitespace-only string is falsy in Python, so this correctly drops
+    # blank entries after map('trim') without needing a named test at all.
     - name: "Build lowercase set of existing OU DNs"
       set_fact:
-        _existing_ou_dns: "{{ _existing_ou_dn_list | map('trim') | select('length') | map('lower') | list }}"
+        _existing_ou_dns: "{{ _existing_ou_dn_list | map('trim') | select() | map('lower') | list }}"
 
     - name: "Filter to band sub-OUs not already present"
       set_fact:
