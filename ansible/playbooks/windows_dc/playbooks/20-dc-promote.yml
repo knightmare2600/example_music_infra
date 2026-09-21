@@ -365,7 +365,6 @@
     - name: "── Stage 2 — Post-promotion DNS and forwarder configuration ──"
       ansible.builtin.debug:
         msg: "{{ _c.C }}[*]{{ _c.NC }} Configuring DNS after promotion reboot..."
-      when: not dc_is_dc
       tags: dc_promote
 
     - name: Confirm host is now a DC post-reboot
@@ -386,13 +385,29 @@
         - dc_post_type.stdout | trim != '2'
       tags: dc_promote
 
+    # 2026-09-21, found live re-running against EXADCSFRD001: everything below in Stage 2
+    # used to be gated `when: not dc_is_dc` -- dc_is_dc reflects whether this host was
+    # ALREADY a DC at the start of THIS play run, not whether DNS/forwarders are
+    # currently correct. On a re-run against an already-promoted DC (dc_is_dc=true from
+    # the start), the entire Stage 2 block silently skipped -- including a same-day fix
+    # to the forwarders list -- so the live box kept its stale, wrong forwarder
+    # (192.168.139.8, unreachable from FRD) even after the fix landed and this playbook
+    # re-ran successfully. Set-DnsClientServerAddress/Set-DnsServerForwarder are both
+    # idempotent, safe to run on every invocation regardless of whether promotion just
+    # happened in this run or long ago -- removed the dc_is_dc gate from all of Stage 2
+    # so DNS/forwarder config is always brought back to the currently-correct state, not
+    # applied once and never revisited. Same underlying lesson as the DNS
+    # decision-vs-application gap found earlier this session in windows_bootstrap's
+    # 00-preflight.yml: a correct computed value is not proof it was ever applied, and a
+    # `when:` gate written for one purpose (skip promotion if already done) can silently
+    # gate something else (ongoing config maintenance) that should not share it.
+
     - name: "[Stage 2] Set NIC DNS to 127.0.0.1 (DC runs its own DNS now)"
       ansible.windows.win_shell: |
         $iface = (Get-NetRoute -DestinationPrefix '0.0.0.0/0' |
           Sort-Object RouteMetric |
           Select-Object -First 1).InterfaceAlias
         Set-DnsClientServerAddress -InterfaceAlias $iface -ServerAddresses "127.0.0.1"
-      when: not dc_is_dc
       tags: dc_promote
 
     - name: "[Stage 2] Set effective DNS forwarders fact"
@@ -412,7 +427,6 @@
             if (host_site | upper == 'FRD' and _frd_dns_up | default(false) | bool)
             else dc_dns_forwarders
           }}
-      when: not dc_is_dc
       tags: dc_promote
 
     - name: "[Stage 2] Configure DNS forwarders (upstream for non-local zones)"
@@ -422,14 +436,12 @@
           -IPAddress @("{{ _dc_effective_dns_forwarders | join('","') }}") `
           -PassThru
       register: dc_forwarder_result
-      when: not dc_is_dc
       tags: dc_promote
 
     - name: "[Stage 2] Show forwarder config"
       ansible.builtin.debug:
         msg: >
           {{ _c.G }}[+]{{ _c.NC }} DNS forwarders set: {{ _dc_effective_dns_forwarders | join(', ') }}
-      when: not dc_is_dc
       tags: dc_promote
 
     - name: Promotion confirmed
