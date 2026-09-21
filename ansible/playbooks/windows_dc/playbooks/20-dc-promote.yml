@@ -395,11 +395,31 @@
       when: not dc_is_dc
       tags: dc_promote
 
+    - name: "[Stage 2] Set effective DNS forwarders fact"
+      set_fact:
+        # 2026-09-21, Robert's explicit ask: dc_dns_forwarders (ad_forest.json) is one
+        # global, non-site-aware list -- always includes 192.168.139.8 (VRK BIND9).
+        # Found live building EXADCSFRD001: unreachable from FRD (no EXAFWLFRD001 yet),
+        # dcdiag DNS test failed a PTR query against it. Mirrors 00-preflight.yml's
+        # frd_local_dns pattern exactly -- substitute, don't add, and only for FRD when
+        # the probe (00-dc-preflight.yml) actually found it reachable. Every other
+        # site's forwarders are byte-for-byte unchanged.
+        _dc_effective_dns_forwarders: >-
+          {{
+            dc_dns_forwarders
+            | map('regex_replace', '^192\.168\.139\.8$', frd_local_dns)
+            | list
+            if (host_site | upper == 'FRD' and _frd_dns_up | default(false) | bool)
+            else dc_dns_forwarders
+          }}
+      when: not dc_is_dc
+      tags: dc_promote
+
     - name: "[Stage 2] Configure DNS forwarders (upstream for non-local zones)"
       ansible.windows.win_shell: |
         Import-Module DnsServer
         Set-DnsServerForwarder `
-          -IPAddress @("{{ dc_dns_forwarders | join('","') }}") `
+          -IPAddress @("{{ _dc_effective_dns_forwarders | join('","') }}") `
           -PassThru
       register: dc_forwarder_result
       when: not dc_is_dc
@@ -408,7 +428,7 @@
     - name: "[Stage 2] Show forwarder config"
       ansible.builtin.debug:
         msg: >
-          {{ _c.G }}[+]{{ _c.NC }} DNS forwarders set: {{ dc_dns_forwarders | join(', ') }}
+          {{ _c.G }}[+]{{ _c.NC }} DNS forwarders set: {{ _dc_effective_dns_forwarders | join(', ') }}
       when: not dc_is_dc
       tags: dc_promote
 

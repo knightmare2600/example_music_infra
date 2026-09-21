@@ -159,6 +159,16 @@
     # ad_domain_name, ad_netbios_name, dc_hub_sites, dc_cld_site,
     # dc_dns_forwarders → group_vars/windows_dc/vars.yml (single source of truth).
     # dc_hub_sources and dc_cld_source are built at runtime from sites.csv.
+    # 2026-09-21 addition, Robert's explicit ask: dc_dns_forwarders (from
+    # ad_forest.json) always includes 192.168.139.8 (VRK BIND9) as one global,
+    # non-site-aware literal, applied to every DC in the forest -- found live
+    # building EXADCSFRD001 (dcdiag DNS test failure, PTR query against
+    # 192.168.139.8 failed -- unreachable from FRD, no EXAFWLFRD001 yet).
+    # Mirrors windows_bootstrap/00-preflight.yml's frd_local_dns/[A5] pattern
+    # exactly: probed below, substituted into the forwarders list in
+    # 20-dc-promote.yml's Stage 2 ONLY when FRD and actually reachable -- every
+    # other site's forwarders are byte-for-byte unchanged.
+    frd_local_dns: "172.16.124.8"   # EXADNSFRD001 (FRD-local) -- see the probe below
     # ansible_connection/shell_type/port normally come from
     # group_vars/windows_nodes/connection.yml, but that's inventory-group-
     # gated like everything else — set explicitly so ungrouped/ad hoc runs
@@ -258,6 +268,33 @@
           DC onboarding only runs on EXADCS<SITE><NNN> hosts.
           Check the hostname or run the rename playbook first.
         success_msg: "{{ inventory_hostname }} confirmed as DC role ({{ host_role }})"
+      tags: dc_preflight
+
+    # ── FRD-local DNS probe (see frd_local_dns comment above) ───────────────────
+    # Set here, in preflight, and consumed later by 20-dc-promote.yml's Stage 2 --
+    # facts persist across plays in the same run for the same host (this is NOT
+    # the import_playbook parse-time hosts: limitation documented in
+    # windows_dc/site.yml's own header; that only affects which hosts a later
+    # play targets, not variable values read during task execution).
+
+    - name: "Probe FRD-local DNS {{ frd_local_dns }} (EXADNSFRD001) — TCP 53"
+      command: >
+        bash -c 'timeout 3 bash -c "echo >/dev/tcp/{{ frd_local_dns }}/53" 2>/dev/null
+        && echo reachable || echo unreachable'
+      register: _frd_dns_probe
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+      when: host_site | upper == 'FRD'
+      tags: dc_preflight
+
+    - name: "Set FRD-local-DNS reachability fact"
+      set_fact:
+        _frd_dns_up: "{{ _frd_dns_probe.stdout | default('unreachable') | trim == 'reachable' }}"
+      when: host_site | upper == 'FRD'
       tags: dc_preflight
 
     # ── Load sites.csv ────────────────────────────────────────────────────────
