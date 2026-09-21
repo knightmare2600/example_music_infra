@@ -188,27 +188,84 @@
           ({{ _users | selectattr('Disabled') | list | length }} disabled,
            {{ _users | selectattr('Manager') | list | length }} have a manager set).
 
+    # 2026-09-21, Robert's ask -- found live: this play's own "A | Create band sub-OUs" task
+    # was mid-loop (364 users, one microsoft.ad.ou call per band member) when a separate,
+    # unrelated dead-SSH-connection bug (see ansible.cfg's ServerAliveInterval fix) made it
+    # look hung for 90+ minutes. Independent of that fix, this loop was always doing far more
+    # work than it needed to: it iterates every USER, not every unique band, so e.g. all 4
+    # Roxy Music members triggered 4 identical microsoft.ad.ou calls for the same one OU.
+    # Deduplicating first (by the actual (name, parent) pair that gets created), then filtering
+    # out any that already exist in AD (same single-query, full-DN-identity approach as
+    # 10-ad-schema.yml, not just a count -- see that file's own comment for why), cuts this
+    # from up to 364 remote calls down to just the bands that are both unique and genuinely new.
+
+    - name: "Deduplicate band sub-OUs (many users share the same band)"
+      set_fact:
+        _band_ous_unique: >-
+          {{
+            _band_ous_unique | default([]) +
+            ([{'name': item.ad_band_ou_name, 'path': item.ad_band_parent}]
+             if item.ad_band_ou_name | length > 0
+             and {'name': item.ad_band_ou_name, 'path': item.ad_band_parent}
+                 not in (_band_ous_unique | default([]))
+             else [])
+          }}
+      loop: "{{ _users }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    - name: "Query all existing OUs under the domain (single call, used to skip already-created band OUs below)"
+      ansible.windows.win_shell: |
+        Get-ADOrganizationalUnit -Filter * -SearchBase "{{ _base_dn }}" |
+          Select-Object -ExpandProperty DistinguishedName
+      register: _existing_ous_raw
+      changed_when: false
+
+    - name: "Build lowercase set of existing OU DNs"
+      set_fact:
+        _existing_ou_dns: "{{ _existing_ous_raw.stdout_lines | map('trim') | select('length') | map('lower') | list }}"
+
+    - name: "Filter to band sub-OUs not already present"
+      set_fact:
+        _band_ous_todo: >-
+          {{
+            _band_ous_todo | default([]) +
+            ([item] if ('ou=' + item.name + ',' + item.path) | lower not in _existing_ou_dns else [])
+          }}
+      loop: "{{ _band_ous_unique | default([]) }}"
+      loop_control:
+        label: "OU={{ item.name }},{{ item.path }}"
+
+    - name: "Preflight | Report band sub-OU count"
+      debug:
+        msg: >-
+          {{ _band_ous_unique | default([]) | length }} unique band sub-OU(s) across
+          {{ _users | selectattr('ad_band_ou_name', 'defined') | selectattr('ad_band_ou_name', 'ne', '')
+             | list | length }} band members;
+          {{ _band_ous_todo | default([]) | length }} not already present.
+
   tasks:
 
     # -------------------------------------------------------------------------
     # Section A — Band sub-OUs
     # Create band/team OUs under each city's Users OU.
     # These are not created by 10-ad-schema.yml (schema only has the city OUs).
-    # The microsoft.ad.ou module is idempotent: re-running is safe.
-    # We iterate over all users; duplicate OU creation attempts are no-ops.
+    # The microsoft.ad.ou module is idempotent: re-running is safe. Loop is
+    # pre_tasks-deduplicated and pre-filtered against what already exists in AD
+    # (see "Deduplicate band sub-OUs"/"Filter to band sub-OUs" above) -- this no
+    # longer iterates all 364 users, only the unique bands genuinely missing.
     # -------------------------------------------------------------------------
 
     - name: "A | Create band sub-OUs under city Users OUs"
       microsoft.ad.ou:
-        name:                 "{{ item.ad_band_ou_name }}"
-        path:                 "{{ item.ad_band_parent }}"
+        name:                 "{{ item.name }}"
+        path:                 "{{ item.path }}"
         state:                present
         protect_from_deletion: true
-      when: item.ad_band_ou_name | length > 0
-      loop: "{{ _users }}"
+      loop: "{{ _band_ous_todo | default([]) }}"
       loop_control:
         label: >-
-          OU={{ item.ad_band_ou_name }},{{ item.ad_band_parent | regex_replace(',DC=.*$','') }}
+          OU={{ item.name }},{{ item.path | regex_replace(',DC=.*$','') }}
 
     # -------------------------------------------------------------------------
     # Section B — User accounts

@@ -227,6 +227,32 @@
       set_fact:
         _base_dn: "DC={{ ad_domain.split('.') | join(',DC=') }}"
 
+    # 2026-09-21, Robert's ask, found live re-running windows_adschema against EXADCSFRD001:
+    # every microsoft.ad.ou task below is already idempotent per-item, but on a re-run where
+    # almost everything already exists, that idempotency is only ever confirmed by actually
+    # dispatching a real remote call for EVERY item -- hundreds of individual SSH+PowerShell
+    # round trips even when nothing needs to change. One single query here, up front, gets the
+    # full set of OUs that already exist anywhere in the domain; each section below then only
+    # loops over the items whose computed DN isn't already in that set, so an already-built
+    # schema re-run skips straight past sections that have nothing left to do. Deliberately a
+    # full DN identity comparison, not a count -- a count match can't tell a genuine "nothing
+    # to do" apart from "same number of OUs, but one got renamed", which would then silently
+    # skip a real, needed correction.
+    - name: "Query all existing OUs under the domain (single call, used to skip already-created OUs below)"
+      ansible.windows.win_shell: |
+        Get-ADOrganizationalUnit -Filter * -SearchBase "{{ _base_dn }}" |
+          Select-Object -ExpandProperty DistinguishedName
+      register: _existing_ous_raw
+      changed_when: false
+
+    - name: "Build lowercase set of existing OU DNs"
+      set_fact:
+        _existing_ou_dns: "{{ _existing_ous_raw.stdout_lines | map('trim') | select('length') | map('lower') | list }}"
+
+    - name: "Preflight | Report existing OU count"
+      debug:
+        msg: "{{ _existing_ou_dns | length }} OU(s) already exist under {{ _base_dn }} -- sections below only create what's missing."
+
     - name: "Attach continent and parent city path to each site"
       set_fact:
         _sites: >-
@@ -286,21 +312,39 @@
     # Section 0 — Root OUs directly under the domain
     # -------------------------------------------------------------------------
 
-    - name: "0 | Create root OUs"
-      microsoft.ad.ou:
-        name: "{{ item }}"
-        path: "{{ _base_dn }}"
-        state: present
-        protect_from_deletion: true
+    - name: "0 | Filter to root OUs not already present"
+      set_fact:
+        _s0_todo: >-
+          {{
+            _s0_todo | default([]) +
+            ([item] if ('ou=' + item + ',' + _base_dn) | lower not in _existing_ou_dns else [])
+          }}
       loop:
         - Sites
         - IT Groups
         - Service Accounts
         - Disabled
 
+    - name: "0 | Create root OUs"
+      microsoft.ad.ou:
+        name: "{{ item }}"
+        path: "{{ _base_dn }}"
+        state: present
+        protect_from_deletion: true
+      loop: "{{ _s0_todo | default([]) }}"
+
     # -------------------------------------------------------------------------
     # Section 1 — Continent OUs under Sites
     # -------------------------------------------------------------------------
+
+    - name: "1 | Filter to continent OUs not already present"
+      set_fact:
+        _s1_todo: >-
+          {{
+            _s1_todo | default([]) +
+            ([item] if ('ou=' + item + ',ou=sites,' + _base_dn) | lower not in _existing_ou_dns else [])
+          }}
+      loop: "{{ _continents }}"
 
     - name: "1 | Create continent OUs"
       microsoft.ad.ou:
@@ -308,12 +352,24 @@
         path: "OU=Sites,{{ _base_dn }}"
         state: present
         protect_from_deletion: true
-      loop: "{{ _continents }}"
+      loop: "{{ _s1_todo | default([]) }}"
 
     # -------------------------------------------------------------------------
     # Section 2 — Country OUs
     # CLD (Country=Global) is handled separately in Section 7 — skip it here.
     # -------------------------------------------------------------------------
+
+    - name: "2 | Filter to country OUs not already present"
+      set_fact:
+        _s2_todo: >-
+          {{
+            _s2_todo | default([]) +
+            ([item] if ('ou=' + item.country + ',ou=' + item.continent + ',ou=sites,' + _base_dn) | lower
+              not in _existing_ou_dns else [])
+          }}
+      loop: "{{ _cc_pairs }}"
+      loop_control:
+        label: "{{ item.country }} / {{ item.continent }}"
 
     - name: "2 | Create country OUs"
       microsoft.ad.ou:
@@ -321,7 +377,7 @@
         path: "OU={{ item.continent }},OU=Sites,{{ _base_dn }}"
         state: present
         protect_from_deletion: true
-      loop: "{{ _cc_pairs }}"
+      loop: "{{ _s2_todo | default([]) }}"
       loop_control:
         label: "{{ item.country }} / {{ item.continent }}"
 
@@ -330,13 +386,25 @@
     # Scotland, England, Ontario, Quebec, US states (where Province is set).
     # -------------------------------------------------------------------------
 
+    - name: "3 | Filter to province OUs not already present"
+      set_fact:
+        _s3_todo: >-
+          {{
+            _s3_todo | default([]) +
+            ([item] if ('ou=' + item.province + ',ou=' + item.country + ',ou=' + item.continent
+                        + ',ou=sites,' + _base_dn) | lower not in _existing_ou_dns else [])
+          }}
+      loop: "{{ _ccp_triples }}"
+      loop_control:
+        label: "{{ item.province }}, {{ item.country }}"
+
     - name: "3 | Create province OUs"
       microsoft.ad.ou:
         name: "{{ item.province }}"
         path: "OU={{ item.country }},OU={{ item.continent }},OU=Sites,{{ _base_dn }}"
         state: present
         protect_from_deletion: true
-      loop: "{{ _ccp_triples }}"
+      loop: "{{ _s3_todo | default([]) }}"
       loop_control:
         label: "{{ item.province }}, {{ item.country }}"
 
@@ -346,6 +414,17 @@
     # CLD is excluded — its leaf OUs go directly under Cloud Infrastructure.
     # -------------------------------------------------------------------------
 
+    - name: "4 | Filter to city OUs not already present"
+      set_fact:
+        _s4_todo: >-
+          {{
+            _s4_todo | default([]) +
+            ([item] if ('ou=' + item.City + ',' + item._cpath) | lower not in _existing_ou_dns else [])
+          }}
+      loop: "{{ _sites | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list }}"
+      loop_control:
+        label: "{{ item.Site }} — {{ item.City }}"
+
     - name: "4 | Create city OUs"
       microsoft.ad.ou:
         name: "{{ item.City }}"
@@ -353,7 +432,7 @@
         state: present
         protect_from_deletion: true
         description: "{{ item.Site }} — {{ item.Entity }}"
-      loop: "{{ _sites | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list }}"
+      loop: "{{ _s4_todo | default([]) }}"
       loop_control:
         label: "{{ item.Site }} — {{ item.City }}"
 
@@ -361,11 +440,14 @@
     # Section 5 — Leaf OUs (Users, Devices, Groups) under each city
     # -------------------------------------------------------------------------
 
-    - name: "5 | Create city leaf OUs"
-      microsoft.ad.ou:
-        name: "{{ item.1 }}"
-        path: "OU={{ item.0.City }},{{ item.0._cpath }}"
-        state: present
+    - name: "5 | Filter to city leaf OUs not already present"
+      set_fact:
+        _s5_todo: >-
+          {{
+            _s5_todo | default([]) +
+            ([item] if ('ou=' + item.1 + ',ou=' + item.0.City + ',' + item.0._cpath) | lower
+              not in _existing_ou_dns else [])
+          }}
       loop: >-
         {{
           _sites
@@ -377,15 +459,27 @@
       loop_control:
         label: "OU={{ item.1 }} under {{ item.0.Site }}"
 
+    - name: "5 | Create city leaf OUs"
+      microsoft.ad.ou:
+        name: "{{ item.1 }}"
+        path: "OU={{ item.0.City }},{{ item.0._cpath }}"
+        state: present
+      loop: "{{ _s5_todo | default([]) }}"
+      loop_control:
+        label: "OU={{ item.1 }} under {{ item.0.Site }}"
+
     # -------------------------------------------------------------------------
     # Section 6 — Device sub-OUs under each city's Devices OU
     # -------------------------------------------------------------------------
 
-    - name: "6 | Create device sub-OUs"
-      microsoft.ad.ou:
-        name: "{{ item.1 }}"
-        path: "OU=Devices,OU={{ item.0.City }},{{ item.0._cpath }}"
-        state: present
+    - name: "6 | Filter to device sub-OUs not already present"
+      set_fact:
+        _s6_todo: >-
+          {{
+            _s6_todo | default([]) +
+            ([item] if ('ou=' + item.1 + ',ou=devices,ou=' + item.0.City + ',' + item.0._cpath) | lower
+              not in _existing_ou_dns else [])
+          }}
       loop: >-
         {{
           _sites
@@ -397,50 +491,97 @@
       loop_control:
         label: "OU={{ item.1 }} / Devices / {{ item.0.Site }}"
 
+    - name: "6 | Create device sub-OUs"
+      microsoft.ad.ou:
+        name: "{{ item.1 }}"
+        path: "OU=Devices,OU={{ item.0.City }},{{ item.0._cpath }}"
+        state: present
+      loop: "{{ _s6_todo | default([]) }}"
+      loop_control:
+        label: "OU={{ item.1 }} / Devices / {{ item.0.Site }}"
+
     # -------------------------------------------------------------------------
     # Section 7 — Cloud Infrastructure (CLD)
     # Leaf OUs sit directly under OU=Cloud Infrastructure — no city sub-level.
     # -------------------------------------------------------------------------
 
-    - name: "7 | Create Cloud Infrastructure leaf OUs"
-      microsoft.ad.ou:
-        name: "{{ item }}"
-        path: "OU=Cloud Infrastructure,OU=Sites,{{ _base_dn }}"
-        state: present
+    - name: "7 | Filter to Cloud Infrastructure leaf OUs not already present"
+      set_fact:
+        _s7a_todo: >-
+          {{
+            _s7a_todo | default([]) +
+            ([item] if ('ou=' + item + ',ou=cloud infrastructure,ou=sites,' + _base_dn) | lower
+              not in _existing_ou_dns else [])
+          }}
       loop:
         - Users
         - Devices
         - Groups
         - Service Accounts
 
+    - name: "7 | Create Cloud Infrastructure leaf OUs"
+      microsoft.ad.ou:
+        name: "{{ item }}"
+        path: "OU=Cloud Infrastructure,OU=Sites,{{ _base_dn }}"
+        state: present
+      loop: "{{ _s7a_todo | default([]) }}"
+
+    - name: "7 | Filter to Cloud Infrastructure device sub-OUs not already present"
+      set_fact:
+        _s7b_todo: >-
+          {{
+            _s7b_todo | default([]) +
+            ([item] if ('ou=' + item + ',ou=devices,ou=cloud infrastructure,ou=sites,' + _base_dn) | lower
+              not in _existing_ou_dns else [])
+          }}
+      loop: "{{ _device_sub_ous }}"
+
     - name: "7 | Create Cloud Infrastructure device sub-OUs"
       microsoft.ad.ou:
         name: "{{ item }}"
         path: "OU=Devices,OU=Cloud Infrastructure,OU=Sites,{{ _base_dn }}"
         state: present
-      loop: "{{ _device_sub_ous }}"
+      loop: "{{ _s7b_todo | default([]) }}"
 
     # -------------------------------------------------------------------------
     # Section 8 — Global OU sub-structure
     # -------------------------------------------------------------------------
+
+    - name: "8 | Filter to IT Groups sub-OUs not already present"
+      set_fact:
+        _s8a_todo: >-
+          {{
+            _s8a_todo | default([]) +
+            ([item] if ('ou=' + item + ',ou=it groups,' + _base_dn) | lower not in _existing_ou_dns else [])
+          }}
+      loop:
+        - Security Groups
+        - Distribution Groups
 
     - name: "8 | Create IT Groups sub-OUs"
       microsoft.ad.ou:
         name: "{{ item }}"
         path: "OU=IT Groups,{{ _base_dn }}"
         state: present
+      loop: "{{ _s8a_todo | default([]) }}"
+
+    - name: "8 | Filter to Disabled sub-OUs not already present"
+      set_fact:
+        _s8b_todo: >-
+          {{
+            _s8b_todo | default([]) +
+            ([item] if ('ou=' + item + ',ou=disabled,' + _base_dn) | lower not in _existing_ou_dns else [])
+          }}
       loop:
-        - Security Groups
-        - Distribution Groups
+        - Users
+        - Computers
 
     - name: "8 | Create Disabled sub-OUs"
       microsoft.ad.ou:
         name: "{{ item }}"
         path: "OU=Disabled,{{ _base_dn }}"
         state: present
-      loop:
-        - Users
-        - Computers
+      loop: "{{ _s8b_todo | default([]) }}"
 
     # -------------------------------------------------------------------------
     # Section 9 — UPN suffixes
