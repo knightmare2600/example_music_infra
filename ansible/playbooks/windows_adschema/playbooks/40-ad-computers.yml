@@ -155,21 +155,35 @@
             )
           }}
 
+    # 2026-09-22, Robert's ask, found live: this used to be a loop:-driven set_fact
+    # accumulator (_computers_todo | default([]) + [item], once per computer) --
+    # confirmed live on EXAANSFRD001 that this whole PATTERN (not just this task; see
+    # the other three in 30-ad-users.yml) genuinely OOM-kills the ansible-playbook
+    # worker process: `set_fact` inside `loop:` makes Ansible re-copy/re-template the
+    # ENTIRE host facts/vars dict on every single iteration, not just the one list
+    # being built -- with 364 users/computers plus everything already accumulated
+    # from earlier plays (750 OUs, 111 groups, ...), that's real quadratic memory
+    # growth, confirmed via `dmesg`: "Out of memory: Killed process ... (ansible-playboo)
+    # ... anon-rss:1395976kB" on a ~2GB control node. Rewritten as a single Jinja pass
+    # (one set_fact, no loop:) that builds the filtered list as JSON text via a plain
+    # {% for %}/{% if %} block captured with {% set x %}...{% endset %} (core Jinja2
+    # syntax since 2.10, no extensions needed -- confirmed NOT to need jinja2.ext.do,
+    # which is deprecated in ansible-core's own config schema), then a single
+    # regex_replace to drop the trailing comma before from_json. True O(n), and only
+    # ONE Ansible task execution instead of 364 -- verified locally against
+    # new/matching/drifted/empty-input cases before applying here.
     - name: "Filter to computers not already present or with a drifted Description/Enabled/DNSHostName"
       set_fact:
         _computers_todo: >-
-          {{
-            _computers_todo | default([]) +
-            ([item] if (
-              (item.SamAccountName | lower not in _existing_computers_by_sam)
-              or (_existing_computers_by_sam[item.SamAccountName | lower].Description | default('')) != item.Description
-              or (_existing_computers_by_sam[item.SamAccountName | lower].Enabled | default(true)) != item.Enabled
-              or (_existing_computers_by_sam[item.SamAccountName | lower].DNSHostName | default('')) != item.DNSHostName
-            ) else [])
-          }}
-      loop: "{{ _computers }}"
-      loop_control:
-        label: "{{ item.SamAccountName }}"
+          {%- set _rendered -%}
+          [{% for item in _computers %}{% if (
+            (item.SamAccountName | lower not in _existing_computers_by_sam)
+            or (_existing_computers_by_sam[item.SamAccountName | lower].Description | default('')) != item.Description
+            or (_existing_computers_by_sam[item.SamAccountName | lower].Enabled | default(true)) != item.Enabled
+            or (_existing_computers_by_sam[item.SamAccountName | lower].DNSHostName | default('')) != item.DNSHostName
+          ) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          {%- endset -%}
+          {{ _rendered | trim | regex_replace(',\s*\]$', ']') | from_json }}
 
     - name: "Preflight | Report computers needing create/update"
       debug:
