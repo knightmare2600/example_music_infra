@@ -431,46 +431,27 @@
     # combine() with a conditional empty-dict fallback instead, verified
     # locally (present and blank cases) against ansible-core 2.17.14's Templar
     # before applying.
-    - name: "B | Create user accounts"
-      microsoft.ad.user:
-        name:             "{{ item.Name }}"
-        sam_account_name: "{{ item.SamAccountName }}"
-        upn:              "{{ item.UserPrincipalName }}"
-        path:             "{{ item.ad_ou }}"
-        display_name:     "{{ item.Name }}"
-        firstname:        "{{ item.Name.split(' ')[0] }}"
-        surname:          "{{ (item.Name.split(' ')[1:] | join(' ')) or omit }}"
-        description:      "{{ item.Description }}"
-        email:            "{{ item.Email }}"
-        company:          "{{ item.Company }}"
-        street:           "{{ item.Street if item.Street else omit }}"
-        city:             "{{ item.City if item.City else omit }}"
-        postal_code:      "{{ item.PostalCode if item.PostalCode else omit }}"
-        # No if/else omit fallback needed here (unlike the fields above) --
-        # the "Fail — a user's CountryCode isn't in _country_lookup" pre_task
-        # already guarantees every item.CountryCode reaching this point is a
-        # valid key, so a fallback branch would be dead code (same class of
-        # thing Robert caught earlier tonight in 06_network_manager.yml).
-        # Also: `omit` only works as a whole parameter value, not buried
-        # inside a nested dict like attributes.set -- co below would have
-        # been broken by an else: omit fallback even if one were needed.
-        country: "{{ _country_lookup[item.CountryCode].code }}"
-        attributes:
-          set: >-
-            {{
-              {'co': _country_lookup[item.CountryCode].name, 'title': item.Title, 'department': item.Department}
-              | combine({'telephoneNumber': item.telephoneNumber} if item.telephoneNumber else {})
-              | combine({'mobile': item.mobile} if item.mobile else {})
-              | combine({'physicalDeliveryOfficeName': item.physicalDeliveryOfficeName} if item.physicalDeliveryOfficeName else {})
-            }}
-        enabled:          "{{ not item.Disabled }}"
-        password:         "{{ vault_ad_new_user_password }}"
-        update_password:  on_create
-        password_expired: "{{ item.MustChangePassword }}"
-        state:            present
-      loop: "{{ _users }}"
+    # 2026-09-22, Robert's ask: 364 serial microsoft.ad.user calls (one WinRM
+    # round-trip each) took over an hour on the full cold populate -- no
+    # errors in that time, good evidence the param-name fix above is correct,
+    # just slow. forks (ansible.cfg) doesn't help here -- it parallelises
+    # across HOSTS, not loop items on a single host. Batched async/poll:0
+    # instead (tasks/create_users_batch.yml): fires up to 20 creates at once,
+    # waits for that batch, then moves to the next -- same per-user module
+    # logic as before, unchanged, just dispatched differently. 20 is Robert's
+    # own number, chosen to stay comfortably under WinRM's default 30
+    # concurrent-shells-per-user cap without needing to raise anything on the
+    # DC first.
+    - name: "B | Split users into batches of 20 for capped-concurrency async creation"
+      set_fact:
+        _b_batches: "{{ _users | batch(20) | list }}"
+
+    - name: "B | Create user accounts, batches of 20"
+      include_tasks: ../tasks/create_users_batch.yml
+      loop: "{{ _b_batches }}"
       loop_control:
-        label: "{{ item.SamAccountName }}"
+        loop_var: _b_batch
+        label: "batch of {{ _b_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section C — Group membership
