@@ -137,7 +137,7 @@
           {%- set _rendered -%}
           [{% for item in _groups %}{% if (item.Name | lower not in _existing_group_names or _existing_group_descriptions[item.Name | lower] | default('') != item.Description) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered | trim | regex_replace(',\s*\]$', ']') | from_json }}
+          {{ _rendered }}
 
     - name: "Preflight | Report groups needing create/update"
       debug:
