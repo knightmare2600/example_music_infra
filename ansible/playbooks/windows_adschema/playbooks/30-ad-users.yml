@@ -499,14 +499,35 @@
     # correctly rejected since the SamAccountName genuinely already exists
     # elsewhere in the tree. Section B already sets path: and has never hit
     # this. Fixed by adding it here too.
-    - name: "F | Reset password and enable accounts stuck disabled with a non-compliant password"
+    # 2026-09-22, Robert's ask: the combined password+enable call above kept
+    # hanging with no error and zero footprint on the DC (confirmed via
+    # Get-WSManInstance/Get-Process wsmprovhost -- nothing running there at
+    # all, and the control node's ansible-playbook processes sitting near 0%
+    # CPU, SSH tunnel ESTAB but idle). Manually reproducing the SAME two
+    # operations as separate, plain cmdlets (Set-ADAccountPassword then
+    # Enable-ADAccount) worked instantly with zero issues -- split into two
+    # tasks here to match that proven-working shape exactly, rather than one
+    # bundled microsoft.ad.user call. Welcome2026! is a fixed, known initial
+    # password -- Robert's explicit call, dev environment only, not a
+    # production password policy decision.
+    - name: "F1 | Reset password for accounts stuck disabled with a non-compliant password"
+      microsoft.ad.user:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        path:             "{{ item.ad_ou }}"
+        password:         "Welcome2026!"
+        update_password:  always
+        state:            present
+      loop: "{{ _password_reset_todo | default([]) }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    - name: "F2 | Enable accounts stuck disabled with a non-compliant password"
       microsoft.ad.user:
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
         path:             "{{ item.ad_ou }}"
         enabled:          true
-        password:         "{{ vault_ad_new_user_password }}"
-        update_password:  always
         state:            present
       loop: "{{ _password_reset_todo | default([]) }}"
       loop_control:
