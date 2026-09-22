@@ -289,24 +289,22 @@
     # for the full writeup. This section's lists (sites, continents, countries) are far smaller
     # than the 364-user ones that actually crashed, but it's the same bug class and the same
     # mechanical fix, so applied here too rather than leaving a smaller latent copy behind.
+    # 2026-09-22, found live: EXAANSFRD001's installed ansible-core rejected the
+    # original multi-line/indented version of this task ("the field 'args' has an
+    # invalid value ... could not be converted to dict") -- the raw, UNRENDERED
+    # Jinja text came back in the error, meaning templating never even ran. This
+    # was the one task in the whole sweep written as multi-line indented Jinja
+    # inside a YAML folded (>-) scalar, relying on YAML's "more indented lines
+    # stay literal" folding behaviour -- every other rewritten task in this sweep
+    # kept its {% for %}/{% if %} on a single line. Confirmed this exact task DOES
+    # render correctly against ansible-core 2.19.4 locally, so this is a real
+    # version-sensitivity gap, not a logic error -- rewritten single-line to match
+    # every other task's proven style rather than chasing exact version parity.
     - name: "Attach continent and parent city path to each site"
       set_fact:
         _sites: >-
           {%- set _rendered -%}
-          [{% for item in _sites_raw.list %}
-            {%- set _cont = _region_continent[item.AnsibleRegion] -%}
-            {%- set _prov = item.Province | default('') -%}
-            {%- set _cpath = (
-              'OU=Cloud Infrastructure,OU=Sites,' + _base_dn
-              if _cont == 'Cloud Infrastructure'
-              else (
-                'OU=' + _prov + ',OU=' + item.Country + ',OU=' + _cont + ',OU=Sites,' + _base_dn
-                if _prov != ''
-                else 'OU=' + item.Country + ',OU=' + _cont + ',OU=Sites,' + _base_dn
-              )
-            ) -%}
-            {{ (item | combine({'_continent': _cont, '_prov': _prov, '_cpath': _cpath})) | to_json }},
-          {% endfor %}]
+          [{% for item in _sites_raw.list %}{% set _cont = _region_continent[item.AnsibleRegion] %}{% set _prov = item.Province | default('') %}{% set _cpath = ('OU=Cloud Infrastructure,OU=Sites,' + _base_dn if _cont == 'Cloud Infrastructure' else ('OU=' + _prov + ',OU=' + item.Country + ',OU=' + _cont + ',OU=Sites,' + _base_dn if _prov != '' else 'OU=' + item.Country + ',OU=' + _cont + ',OU=Sites,' + _base_dn)) %}{{ (item | combine({'_continent': _cont, '_prov': _prov, '_cpath': _cpath})) | to_json }},{% endfor %}]
           {%- endset -%}
           {{ _rendered | trim | regex_replace(',\s*\]$', ']') | from_json }}
 
@@ -318,8 +316,7 @@
       set_fact:
         _cc_keys: >-
           {%- set _rendered -%}
-          [{% for item in _sites | rejectattr('Country', 'equalto', 'Global')
-                                  | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list %}{{ (item._continent ~ '|' ~ item.Country) | to_json }},{% endfor %}]
+          [{% for item in _sites | rejectattr('Country', 'equalto', 'Global') | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list %}{{ (item._continent ~ '|' ~ item.Country) | to_json }},{% endfor %}]
           {%- endset -%}
           {{ (_rendered | trim | regex_replace(',\s*\]$', ']') | from_json) | unique | list }}
 
@@ -452,11 +449,7 @@
       set_fact:
         _s4_todo: >-
           {%- set _rendered -%}
-          [{% for item in _sites | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list %}{% if (
-            ('ou=' + item.City + ',' + item._cpath) | lower not in _existing_ou_dns
-            or _existing_ou_descriptions[('ou=' + item.City + ',' + item._cpath) | lower] | default('')
-               != (item.Site + ' — ' + item.Entity)
-          ) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in _sites | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list %}{% if (('ou=' + item.City + ',' + item._cpath) | lower not in _existing_ou_dns or _existing_ou_descriptions[('ou=' + item.City + ',' + item._cpath) | lower] | default('') != (item.Site + ' — ' + item.Entity)) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ _rendered | trim | regex_replace(',\s*\]$', ']') | from_json }}
 
