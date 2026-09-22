@@ -126,19 +126,21 @@
             )
           }}
 
+    # 2026-09-22, Robert's ask, found live: this used to be a loop:-driven set_fact
+    # accumulator -- confirmed via dmesg that this PATTERN genuinely OOM-kills the
+    # ansible-playbook worker (set_fact inside loop: re-copies the whole host facts/
+    # vars dict per iteration). Rewritten as a single Jinja pass, no loop: -- see
+    # 30-ad-users.yml's C/D/E filters for the full writeup of this fix, same pattern.
     - name: "Filter to groups not already present or with a drifted description"
       set_fact:
         _groups_todo: >-
-          {{
-            _groups_todo | default([]) +
-            ([item] if (
-              item.Name | lower not in _existing_group_names
-              or _existing_group_descriptions[item.Name | lower] | default('') != item.Description
-            ) else [])
-          }}
-      loop: "{{ _groups }}"
-      loop_control:
-        label: "{{ item.Name }}"
+          {%- set _rendered -%}
+          [{% for item in _groups %}{% if (
+            item.Name | lower not in _existing_group_names
+            or _existing_group_descriptions[item.Name | lower] | default('') != item.Description
+          ) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          {%- endset -%}
+          {{ _rendered | trim | regex_replace(',\s*\]$', ']') | from_json }}
 
     - name: "Preflight | Report groups needing create/update"
       debug:
