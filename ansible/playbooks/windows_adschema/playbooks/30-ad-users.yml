@@ -409,6 +409,28 @@
     # stage name with no space to split Name on). Guarded all 7 the same way
     # country already was.
 
+    # 2026-09-22, found live: this was Section B's first real execution ever
+    # against an actual AD server (every previous run died earlier from the
+    # OOM/templating bugs above before reaching it) -- surfaced that several
+    # of its own module param names were never valid for the installed
+    # microsoft.ad collection: "Unsupported parameters for (microsoft.ad.user)
+    # module: street_address, department, office, telephone_number, title,
+    # mobile_phone, given_name, email_address". Checked the real installed
+    # module's argspec directly (ansible-doc microsoft.ad.user, matching venv)
+    # rather than guess from the error text alone: firstname (not given_name),
+    # email (not email_address), street (not street_address) are real
+    # top-level params; surname was already correct (aliases: lastname, was
+    # never the problem). title/department/telephoneNumber/mobile/
+    # physicalDeliveryOfficeName have NO dedicated module param at all --
+    # moved into attributes.set alongside co, using their real LDAP attribute
+    # names (physicalDeliveryOfficeName already matched the ad_users.json
+    # field name used for office, confirming that was always the intent).
+    # `omit` doesn't work nested inside attributes.set (per the existing
+    # comment below on co) -- telephoneNumber/mobile/physicalDeliveryOfficeName
+    # can be blank per-user (e.g. Bryan Adams has no mobile), so built via
+    # combine() with a conditional empty-dict fallback instead, verified
+    # locally (present and blank cases) against ansible-core 2.17.14's Templar
+    # before applying.
     - name: "B | Create user accounts"
       microsoft.ad.user:
         name:             "{{ item.Name }}"
@@ -416,19 +438,14 @@
         upn:              "{{ item.UserPrincipalName }}"
         path:             "{{ item.ad_ou }}"
         display_name:     "{{ item.Name }}"
-        given_name:       "{{ item.Name.split(' ')[0] }}"
+        firstname:        "{{ item.Name.split(' ')[0] }}"
         surname:          "{{ (item.Name.split(' ')[1:] | join(' ')) or omit }}"
         description:      "{{ item.Description }}"
-        email_address:    "{{ item.Email }}"
+        email:            "{{ item.Email }}"
         company:          "{{ item.Company }}"
-        title:            "{{ item.Title }}"
-        department:       "{{ item.Department }}"
-        telephone_number: "{{ item.telephoneNumber if item.telephoneNumber else omit }}"
-        mobile_phone:     "{{ item.mobile if item.mobile else omit }}"
-        street_address:   "{{ item.Street if item.Street else omit }}"
+        street:           "{{ item.Street if item.Street else omit }}"
         city:             "{{ item.City if item.City else omit }}"
         postal_code:      "{{ item.PostalCode if item.PostalCode else omit }}"
-        office:           "{{ item.physicalDeliveryOfficeName if item.physicalDeliveryOfficeName else omit }}"
         # No if/else omit fallback needed here (unlike the fields above) --
         # the "Fail — a user's CountryCode isn't in _country_lookup" pre_task
         # already guarantees every item.CountryCode reaching this point is a
@@ -439,8 +456,13 @@
         # been broken by an else: omit fallback even if one were needed.
         country: "{{ _country_lookup[item.CountryCode].code }}"
         attributes:
-          set:
-            co: "{{ _country_lookup[item.CountryCode].name }}"
+          set: >-
+            {{
+              {'co': _country_lookup[item.CountryCode].name, 'title': item.Title, 'department': item.Department}
+              | combine({'telephoneNumber': item.telephoneNumber} if item.telephoneNumber else {})
+              | combine({'mobile': item.mobile} if item.mobile else {})
+              | combine({'physicalDeliveryOfficeName': item.physicalDeliveryOfficeName} if item.physicalDeliveryOfficeName else {})
+            }}
         enabled:          "{{ not item.Disabled }}"
         password:         "{{ vault_ad_new_user_password }}"
         update_password:  on_create
