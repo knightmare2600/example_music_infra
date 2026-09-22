@@ -63,6 +63,17 @@
     label: "{{ item.SamAccountName }}"
   register: _b_async
 
+# 2026-09-22, diagnostic only, temporary: the wait step below failed with
+# "'dict object' has no attribute 'finished'" on its first live attempt --
+# failed_when: false on that task was masking the real per-item error from
+# ansible.windows.async_status, and this dumps whether the fire step above
+# actually returned a real ansible_job_id per item (microsoft.ad.user's own
+# action plugin may not support async cleanly -- not confirmed either way
+# yet). Remove once the real cause is known.
+- name: "B | DEBUG -- dump fire-step job IDs"
+  debug:
+    msg: "{{ _b_async.results | map(attribute='ansible_job_id') | default('MISSING') | list }}"
+
 - name: "B | Create user accounts (batch, wait for completion)"
   ansible.windows.async_status:
     jid: "{{ item.ansible_job_id }}"
@@ -73,7 +84,6 @@
   loop: "{{ _b_async.results }}"
   loop_control:
     label: "{{ item.item.SamAccountName }}"
-  failed_when: false
 
 - name: "B | Fail on any batch item that errored"
   fail:
