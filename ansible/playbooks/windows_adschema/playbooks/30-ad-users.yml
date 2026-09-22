@@ -469,6 +469,35 @@
     # combine() with a conditional empty-dict fallback instead, verified
     # locally (present and blank cases) against ansible-core 2.17.14's Templar
     # before applying.
+    # -------------------------------------------------------------------------
+    # Section F — Recover accounts stuck disabled with a non-compliant password
+    # See "Filter to accounts stuck disabled with a non-compliant password"
+    # above (pre_tasks) for the full root-cause writeup. update_password:
+    # always is deliberately scoped to ONLY _password_reset_todo -- Section B
+    # below keeps update_password: on_create for everyone else, unchanged.
+    #
+    # 2026-09-22, found live: MUST run before Section B, not after -- Section
+    # B has no failure tolerance (no ignore_errors), so when it re-hits one of
+    # these already-broken accounts on a normal re-run, the whole play aborts
+    # right there and nothing after it (C/D/E, and F if F were positioned
+    # after B as originally written) ever runs at all. Moved ahead of B so
+    # these accounts are already fixed by the time B's own update pass
+    # reaches them, letting B's pass over them be a clean no-op instead of a
+    # repeat failure.
+    # -------------------------------------------------------------------------
+
+    - name: "F | Reset password and enable accounts stuck disabled with a non-compliant password"
+      microsoft.ad.user:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        enabled:          true
+        password:         "{{ vault_ad_new_user_password }}"
+        update_password:  always
+        state:            present
+      loop: "{{ _password_reset_todo | default([]) }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
     # 2026-09-22, Robert's ask: 364 serial microsoft.ad.user calls (one WinRM
     # round-trip each) took over an hour on the full cold populate -- no
     # errors in that time, good evidence the param-name fix above is correct,
@@ -584,25 +613,5 @@
         state:            present
       when: not (item.Locked | default(false))
       loop: "{{ _lock_todo | default([]) }}"
-      loop_control:
-        label: "{{ item.SamAccountName }}"
-
-    # -------------------------------------------------------------------------
-    # Section F — Recover accounts stuck disabled with a non-compliant password
-    # See "Filter to accounts stuck disabled with a non-compliant password"
-    # above (pre_tasks) for the full root-cause writeup. update_password:
-    # always is deliberately scoped to ONLY _password_reset_todo -- Section B
-    # above keeps update_password: on_create for everyone else, unchanged.
-    # -------------------------------------------------------------------------
-
-    - name: "F | Reset password and enable accounts stuck disabled with a non-compliant password"
-      microsoft.ad.user:
-        name:             "{{ item.Name }}"
-        sam_account_name: "{{ item.SamAccountName }}"
-        enabled:          true
-        password:         "{{ vault_ad_new_user_password }}"
-        update_password:  always
-        state:            present
-      loop: "{{ _password_reset_todo | default([]) }}"
       loop_control:
         label: "{{ item.SamAccountName }}"
