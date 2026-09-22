@@ -486,10 +486,24 @@
     # repeat failure.
     # -------------------------------------------------------------------------
 
+    # 2026-09-22, found live: "New-ADUser failed: The specified account
+    # already exists" -- Section F was missing path:. Confirmed by reading
+    # microsoft.ad's shared _ADObject.psm1 directly (Invoke-AnsibleADObject,
+    # ~line 1128): when identity: isn't set, the module builds its own
+    # existence-check DN as "CN=<name>,<path>" -- and when path: isn't set
+    # either, <path> falls back to the DOMAIN ROOT (defaultNamingContext),
+    # not the object's real OU. So the lookup searched for
+    # "CN=Wayne Norris,DC=jukebox,DC=internal" (wrong, doesn't exist) instead
+    # of the real "CN=Wayne Norris,OU=Builders,OU=Users,OU=Dresden,...",
+    # concluded the account was new, and called New-ADUser -- which AD then
+    # correctly rejected since the SamAccountName genuinely already exists
+    # elsewhere in the tree. Section B already sets path: and has never hit
+    # this. Fixed by adding it here too.
     - name: "F | Reset password and enable accounts stuck disabled with a non-compliant password"
       microsoft.ad.user:
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
+        path:             "{{ item.ad_ou }}"
         enabled:          true
         password:         "{{ vault_ad_new_user_password }}"
         update_password:  always
@@ -528,10 +542,20 @@
     # minimise mismatches.
     # -------------------------------------------------------------------------
 
+    # 2026-09-22, found live in Section F, swept here too: microsoft.ad.user's
+    # existence-check builds its own lookup DN as "CN=<name>,<path>" whenever
+    # identity: isn't set (confirmed by reading _ADObject.psm1's
+    # Invoke-AnsibleADObject, ~line 1128) -- without path: here, <path> falls
+    # back to the domain root instead of the real OU, the lookup finds
+    # nothing, and the module concludes the account is new. See Section F's
+    # comment below for the full writeup; this section had never actually run
+    # yet tonight (every prior run died earlier in the play), so the same bug
+    # hadn't surfaced here yet.
     - name: "C | Add users to groups"
       microsoft.ad.user:
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
+        path:             "{{ item.ad_ou }}"
         groups:
           add: "{{ item.Groups }}"
         state: present
@@ -556,6 +580,7 @@
       microsoft.ad.user:
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
+        path:             "{{ item.ad_ou }}"
         manager:          "{{ _name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager]) }}"
         state:            present
       loop: "{{ _manager_todo | default([]) }}"
@@ -594,6 +619,7 @@
       microsoft.ad.user:
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
+        path:             "{{ item.ad_ou }}"
         attributes:
           set:
             lockoutTime:
@@ -609,6 +635,7 @@
       microsoft.ad.user:
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
+        path:             "{{ item.ad_ou }}"
         account_locked:   false
         state:            present
       when: not (item.Locked | default(false))
