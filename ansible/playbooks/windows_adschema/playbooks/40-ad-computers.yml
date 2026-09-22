@@ -176,12 +176,7 @@
       set_fact:
         _computers_todo: >-
           {%- set _rendered -%}
-          [{% for item in _computers %}{% if (
-            (item.SamAccountName | lower not in _existing_computers_by_sam)
-            or (_existing_computers_by_sam[item.SamAccountName | lower].Description | default('')) != item.Description
-            or (_existing_computers_by_sam[item.SamAccountName | lower].Enabled | default(true)) != item.Enabled
-            or (_existing_computers_by_sam[item.SamAccountName | lower].DNSHostName | default('')) != item.DNSHostName
-          ) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in _computers %}{% if ((item.SamAccountName | lower not in _existing_computers_by_sam) or (_existing_computers_by_sam[item.SamAccountName | lower].Description | default('')) != item.Description or (_existing_computers_by_sam[item.SamAccountName | lower].Enabled | default(true)) != item.Enabled or (_existing_computers_by_sam[item.SamAccountName | lower].DNSHostName | default('')) != item.DNSHostName) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ _rendered | trim | regex_replace(',\s*\]$', ']') | from_json }}
 

@@ -342,15 +342,7 @@
       set_fact:
         _group_add_todo: >-
           {%- set _rendered -%}
-          [{% for item in _users %}{% if (
-            item.Groups | length > 0
-            and (
-              item.SamAccountName | lower not in _existing_user_by_sam
-              or (item.Groups | map('lower') | list | difference(
-                   _existing_user_by_sam[item.SamAccountName | lower].GroupNames | default([]) | map('lower') | list
-                 ) | length > 0)
-            )
-          ) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in _users %}{% if (item.Groups | length > 0 and (item.SamAccountName | lower not in _existing_user_by_sam or (item.Groups | map('lower') | list | difference(_existing_user_by_sam[item.SamAccountName | lower].GroupNames | default([]) | map('lower') | list) | length > 0))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ _rendered | trim | regex_replace(',\s*\]$', ']') | from_json }}
 
@@ -358,15 +350,7 @@
       set_fact:
         _manager_todo: >-
           {%- set _rendered -%}
-          [{% for item in _users %}{% if (
-            item.Manager | length > 0
-            and ((item.Manager ~ '|' ~ item.ad_ou) in _name_ou_to_sam or item.Manager in _name_to_sam)
-            and (
-              item.SamAccountName | lower not in _existing_user_by_sam
-              or (_dn_to_sam[(_existing_user_by_sam[item.SamAccountName | lower].ManagerDN | default('')) | lower] | default(''))
-                 != ((_name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager])) | lower)
-            )
-          ) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in _users %}{% if (item.Manager | length > 0 and ((item.Manager ~ '|' ~ item.ad_ou) in _name_ou_to_sam or item.Manager in _name_to_sam) and (item.SamAccountName | lower not in _existing_user_by_sam or (_dn_to_sam[(_existing_user_by_sam[item.SamAccountName | lower].ManagerDN | default('')) | lower] | default('')) != ((_name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager])) | lower))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ _rendered | trim | regex_replace(',\s*\]$', ']') | from_json }}
 
@@ -374,10 +358,7 @@
       set_fact:
         _lock_todo: >-
           {%- set _rendered -%}
-          [{% for item in _users %}{% if (
-            item.SamAccountName | lower not in _existing_user_by_sam
-            or (_existing_user_by_sam[item.SamAccountName | lower].LockedOut | default(false)) != (item.Locked | default(false))
-          ) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in _users %}{% if (item.SamAccountName | lower not in _existing_user_by_sam or (_existing_user_by_sam[item.SamAccountName | lower].LockedOut | default(false)) != (item.Locked | default(false))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ _rendered | trim | regex_replace(',\s*\]$', ']') | from_json }}
 
