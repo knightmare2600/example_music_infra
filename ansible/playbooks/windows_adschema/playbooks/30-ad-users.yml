@@ -293,10 +293,13 @@
     # robust than attempting DN-parsing in Jinja); Manager's DN is resolved back to a
     # SamAccountName using this SAME query's own DistinguishedName/SamAccountName
     # pairs, since a user's manager (if set) is itself one of these same 364 records.
+    # 2026-09-22, extended: also fetches Enabled now, used by the F | Recover
+    # section below -- same single call, one more -Properties/Select-Object
+    # field, costs nothing for the C/D/E filters which don't read it.
     - name: "Query existing user group memberships, manager, and lockout state (single call)"
       ansible.windows.win_shell: |
-        $results = @(Get-ADUser -Filter * -Properties MemberOf,Manager,LockedOut |
-          Select-Object SamAccountName, DistinguishedName, LockedOut,
+        $results = @(Get-ADUser -Filter * -Properties MemberOf,Manager,LockedOut,Enabled |
+          Select-Object SamAccountName, DistinguishedName, LockedOut, Enabled,
             @{Name='ManagerDN';Expression={$_.Manager}},
             @{Name='GroupNames';Expression={ @($_.MemberOf | ForEach-Object { ($_ -split ',',2)[0] -replace '^CN=','' }) }})
         ConvertTo-Json -InputObject $results -Compress -Depth 4
@@ -362,12 +365,47 @@
           {%- endset -%}
           {{ _rendered }}
 
+    # 2026-09-22, found live: a handful of accounts (Fiction Factory/Perth,
+    # Marillion+Proclaimers/Edinburgh) ended up stuck Enabled=False with a
+    # password that doesn't meet current domain policy -- confirmed via
+    # Get-ADUser mogletree: PasswordLastSet had a real recent value (a
+    # password WAS set) but Enabled was False. Root cause, most likely:
+    # fallout from Ctrl+C interrupting the earlier serial run mid-flight for
+    # these exact accounts, not something the async batching above
+    # introduced. update_password: on_create (used by B | Create user
+    # accounts) is a confirmed no-op for existing objects (verified by
+    # reading microsoft.ad.user's own password Set delegate --
+    # `on_create { $false }` returns immediately without calling
+    # Set-ADAccountPassword), so normal re-runs can never self-heal this --
+    # AD refuses to flip Enabled=True via Set-ADUser while the stored
+    # password doesn't satisfy policy, which is the literal
+    # "password does not meet length, complexity, or history requirement"
+    # error seen live (it's not about setting a NEW password, it's AD
+    # blocking the enable itself). Scoped narrowly to accounts that both (a)
+    # already exist and are Enabled=False, and (b) should be enabled per
+    # ad_users.json (item.Disabled == false) -- does not touch the other
+    # ~350+ users at all. F | below uses update_password: always for ONLY
+    # this list, which is safe here because microsoft.ad.user runs
+    # Set-ADAccountPassword (inline, per-property) before the deferred
+    # Set-ADUser call that applies Enabled=true in the same invocation --
+    # confirmed by reading the property definition/dispatch order in
+    # microsoft.ad's shared _ADObject.psm1 -- so the fresh, policy-compliant
+    # password lands before the enable attempt, in the same task run.
+    - name: "Filter to accounts stuck disabled with a non-compliant password"
+      set_fact:
+        _password_reset_todo: >-
+          {%- set _rendered -%}
+          [{% for item in _users %}{% if (not item.Disabled and item.SamAccountName | lower in _existing_user_by_sam and not (_existing_user_by_sam[item.SamAccountName | lower].Enabled | default(true))) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          {%- endset -%}
+          {{ _rendered }}
+
     - name: "Preflight | Report C/D/E work needed"
       debug:
         msg: >-
           Group adds: {{ _group_add_todo | default([]) | length }} user(s) need at least one group added.
           Manager: {{ _manager_todo | default([]) | length }} user(s) need a manager set/corrected.
           Lockout: {{ _lock_todo | default([]) | length }} user(s) need a lock/unlock state change.
+          Password reset: {{ _password_reset_todo | default([]) | length }} user(s) stuck disabled with a non-compliant password.
 
   tasks:
 
@@ -546,5 +584,25 @@
         state:            present
       when: not (item.Locked | default(false))
       loop: "{{ _lock_todo | default([]) }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
+    # -------------------------------------------------------------------------
+    # Section F — Recover accounts stuck disabled with a non-compliant password
+    # See "Filter to accounts stuck disabled with a non-compliant password"
+    # above (pre_tasks) for the full root-cause writeup. update_password:
+    # always is deliberately scoped to ONLY _password_reset_todo -- Section B
+    # above keeps update_password: on_create for everyone else, unchanged.
+    # -------------------------------------------------------------------------
+
+    - name: "F | Reset password and enable accounts stuck disabled with a non-compliant password"
+      microsoft.ad.user:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        enabled:          true
+        password:         "{{ vault_ad_new_user_password }}"
+        update_password:  always
+        state:            present
+      loop: "{{ _password_reset_todo | default([]) }}"
       loop_control:
         label: "{{ item.SamAccountName }}"
