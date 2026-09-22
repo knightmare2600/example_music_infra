@@ -63,28 +63,20 @@
     label: "{{ item.SamAccountName }}"
   register: _b_async
 
-# 2026-09-22, diagnostic only, temporary: job IDs confirmed real and
-# well-formed (j768593966713.5664 etc.) -- rules out microsoft.ad.user's
-# action plugin not supporting async. The wait step below still fails with
-# "'dict object' has no attribute 'finished'" even with failed_when: false
-# removed, which means the crash happens INSIDE the until: conditional's own
-# Jinja evaluation, before failed_when logic is ever reached -- failed_when
-# could never have masked this. This calls async_status on the FIRST job ID
-# only, unconditionally (no until/loop), to see the actual raw structure
-# ansible.windows.async_status returns here. Remove once the real cause is
-# known.
-- name: "B | DEBUG -- raw async_status on first job ID only"
-  ansible.windows.async_status:
-    jid: "{{ _b_async.results[0].ansible_job_id }}"
-  register: _b_debug_status
-  ignore_errors: true
-
-- name: "B | DEBUG -- dump raw result"
-  debug:
-    var: _b_debug_status
-
+# 2026-09-22, found live: "Get-AnsibleParam: Missing required argument:
+# _async_dir". Root cause confirmed by reading ansible-core's own
+# plugins/action/async_status.py: _async_dir is injected by ansible-core's
+# BUILTIN async_status ACTION PLUGIN (platform-agnostic by design -- it uses
+# the connection's own shell plugin to resolve the right path and dispatches
+# to ansible.legacy.async_status internally, so it already does the right
+# thing on Windows without needing a Windows-specific module invocation).
+# That action plugin is only registered under ansible.builtin.async_status --
+# calling ansible.windows.async_status directly (the natural-looking choice
+# for a Windows target) bypasses it entirely and falls through to a plain
+# module call with no _async_dir injection at all, which is exactly the
+# error seen live. Fixed to ansible.builtin.async_status.
 - name: "B | Create user accounts (batch, wait for completion)"
-  ansible.windows.async_status:
+  ansible.builtin.async_status:
     jid: "{{ item.ansible_job_id }}"
   register: _b_wait
   until: _b_wait.finished
