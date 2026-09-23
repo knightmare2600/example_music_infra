@@ -309,6 +309,18 @@
     # section below -- same single call, one more -Properties/Select-Object
     # field, costs nothing for the C/D/E filters which don't read it.
     #
+    # 2026-09-23, found live: GroupNames used to be @($_.MemberOf | ForEach-Object
+    # {...}) -- confirmed live (via a direct, isolated ConvertTo-Json test against
+    # one user, at BOTH -Depth 4 and -Depth 6 -- ruling out truncation) that
+    # PowerShell serializes this specific array shape as {"value":[...],"Count":N}
+    # instead of a plain JSON array, so from_json on the Ansible side parses
+    # GroupNames as an object, not a list -- every membership comparison using it
+    # (_group_add_todo below) saw a total mismatch for every single user, every
+    # run, no matter how correct the real AD state was. Fixed by joining to a
+    # single '|'-delimited string instead -- a plain string has no array-
+    # serialization ambiguity at all -- and splitting it back apart on the Jinja
+    # side (see _group_add_todo below). Real group names never contain '|'.
+    #
     # 2026-09-21's own note here originally excluded Section B (the 17-field
     # user create/update itself) from this pattern -- "too much surface area/
     # risk to compare robustly". Revisited 2026-09-23, Robert's explicit ask,
@@ -332,7 +344,7 @@
             UserPrincipalName, DisplayName, GivenName, Surname, Title, Department,
             telephoneNumber, mobile, physicalDeliveryOfficeName, PasswordExpired,
             @{Name='ManagerDN';Expression={$_.Manager}},
-            @{Name='GroupNames';Expression={ @($_.MemberOf | ForEach-Object { ($_ -split ',',2)[0] -replace '^CN=','' }) }})
+            @{Name='GroupNames';Expression={ ($_.MemberOf | ForEach-Object { ($_ -split ',',2)[0] -replace '^CN=','' }) -join '|' }})
         ConvertTo-Json -InputObject $results -Compress -Depth 4
       register: _existing_user_state_raw
       changed_when: false
@@ -376,7 +388,7 @@
       set_fact:
         _group_add_todo: >-
           {%- set _rendered -%}
-          [{% for item in _users %}{% if (item.Groups | length > 0 and (item.SamAccountName | lower not in _existing_user_by_sam or (item.Groups | map('lower') | list | difference(_existing_user_by_sam[item.SamAccountName | lower].GroupNames | default([]) | map('lower') | list) | length > 0))) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in _users %}{% set _existing_groups = (_existing_user_by_sam[item.SamAccountName | lower].GroupNames | default('', true)).split('|') | reject('equalto', '') | list %}{% if (item.Groups | length > 0 and (item.SamAccountName | lower not in _existing_user_by_sam or (item.Groups | map('lower') | list | difference(_existing_groups | map('lower') | list) | length > 0))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ _rendered }}
 
