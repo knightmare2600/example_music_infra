@@ -81,6 +81,7 @@
     ad_domain:       "{{ dc_domain_name | default(exa_domain) }}"
     ad_email_domain: "{{ ad_domain }}"
     ad_users_json:   "/etc/example-music/ad_users.json"
+    ad_groups_json:  "/etc/example-music/ad_groups.json"
 
     # BUG FIX (2026-07-17): the raw TDF CountryCode field is inconsistent --
     # "Canada" (1 user) vs "CA" (5), "USA" (32) vs "US" (35) -- and the
@@ -143,6 +144,45 @@
         _base_dn:   "DC={{ ad_domain.split('.') | join(',DC=') }}"
       delegate_to: localhost
       become: false
+
+    # 2026-09-24, found live: _group_add_todo (below) kept showing 8 users
+    # needing a group add on EVERY run, forever, even after confirming live
+    # their real AD membership was already correct. Root cause: Nena/Falco's
+    # SamAccountName was overridden away from their Name (see 20-ad-groups.yml's
+    # own writeup) so ad_users.json's Groups: [...] correctly says
+    # "Nena-Grp"/"Falco-Grp" (what groups: add: needs to resolve them), but
+    # this file's own existing-membership extraction pulls group CNs straight
+    # off MemberOf DNs -- which will always read "Nena"/"Falco" (the group's
+    # real, unchanged CN), never its SamAccountName override. Two different
+    # consumers of the same group needed two different identity conventions.
+    # Loaded here (not in 20-ad-groups.yml, which never reads ad_users.json)
+    # so _group_add_todo can translate a live CN back to its real effective
+    # SamAccountName before comparing against Groups: -- harmless before this
+    # fix (the module's own idempotency meant no real failure, just a wasted
+    # re-attempt every run for these 8 specifically), fixed so the preflight
+    # count and the skip-existing-work optimization are both trustworthy.
+    - name: "Load groups from ad_groups.json (for Name -> effective SamAccountName translation only)"
+      set_fact:
+        _groups_for_lookup: "{{ lookup('file', ad_groups_json) | from_json }}"
+      delegate_to: localhost
+      become: false
+
+    - name: "Build Name(lowercase) -> effective SamAccountName(lowercase) lookup"
+      set_fact:
+        _group_names_lower: >-
+          {%- set _rendered -%}
+          [{% for g in _groups_for_lookup %}{{ (g.Name | lower) | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ _rendered }}
+        _group_effective_sams_lower: >-
+          {%- set _rendered -%}
+          [{% for g in _groups_for_lookup %}{{ ((g.SamAccountName | default(g.Name)) | lower) | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ _rendered }}
+
+    - name: "Zip into Name -> effective SamAccountName dict"
+      set_fact:
+        _group_name_to_effective_sam: "{{ dict(_group_names_lower | zip(_group_effective_sams_lower)) }}"
 
     - name: "Filter out users with unresolvable OU paths"
       set_fact:
@@ -388,7 +428,7 @@
       set_fact:
         _group_add_todo: >-
           {%- set _rendered -%}
-          [{% for item in _users %}{% set _existing_groups = (_existing_user_by_sam[item.SamAccountName | lower].GroupNames | default('', true)).split('|') | reject('equalto', '') | list %}{% if (item.Groups | length > 0 and (item.SamAccountName | lower not in _existing_user_by_sam or (item.Groups | map('lower') | list | difference(_existing_groups | map('lower') | list) | length > 0))) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in _users %}{% set _existing_groups_raw = (_existing_user_by_sam[item.SamAccountName | lower].GroupNames | default('', true)).split('|') | reject('equalto', '') | list %}{% set _existing_groups %}[{% for g in _existing_groups_raw %}{{ (_group_name_to_effective_sam[g | lower] | default(g | lower)) | to_json }},{% endfor %}]{% endset %}{% if (item.Groups | length > 0 and (item.SamAccountName | lower not in _existing_user_by_sam or (item.Groups | map('lower') | list | difference(_existing_groups) | length > 0))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ _rendered }}
 
