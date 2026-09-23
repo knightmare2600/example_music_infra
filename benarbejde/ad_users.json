@@ -1650,7 +1650,8 @@
     "UserPrincipalName": "andy.cox@jukebox.internal",
     "Groups": [
       "Fine Young Cannibals",
-      "Guitarists"
+      "Guitarists",
+      "The Beat"
     ],
     "Title": "Guitarist",
     "Email": "andy.cox@jukebox.internal",
@@ -1679,7 +1680,8 @@
     "UserPrincipalName": "david.steele@jukebox.internal",
     "Groups": [
       "Fine Young Cannibals",
-      "Bassists"
+      "Bassists",
+      "The Beat"
     ],
     "Title": "Bassist",
     "Email": "david.steele@jukebox.internal",
@@ -1759,62 +1761,6 @@
     "ad_band_parent": "OU=Users,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
-    "Name": "Andy Cox",
-    "SamAccountName": "andy.cox.beat",
-    "UserPrincipalName": "andy.cox.beat@jukebox.internal",
-    "Groups": [
-      "The Beat"
-    ],
-    "Title": "Guitarist",
-    "Email": "andy.cox@jukebox.internal",
-    "Country": "UK",
-    "CountryCode": "GB",
-    "Manager": "Dave Wakeling",
-    "Disabled": true,
-    "Locked": false,
-    "MustChangePassword": false,
-    "Department": "Music",
-    "Company": "Example Music (England) Ltd",
-    "Description": "Former guitarist for The Beat; later Fine Young Cannibals",
-    "telephoneNumber": "+44 121 496 5203",
-    "mobile": "+44 7700 850003",
-    "Street": "Coventry Road",
-    "City": "Birmingham",
-    "PostalCode": "B10 0HF",
-    "physicalDeliveryOfficeName": "Birmingham Office",
-    "ad_ou": "OU=The Beat,OU=Users,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "The Beat",
-    "ad_band_parent": "OU=Users,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
-  },
-  {
-    "Name": "David Steele",
-    "SamAccountName": "david.steele.beat",
-    "UserPrincipalName": "david.steele.beat@jukebox.internal",
-    "Groups": [
-      "The Beat"
-    ],
-    "Title": "Bassist",
-    "Email": "david.steele@jukebox.internal",
-    "Country": "UK",
-    "CountryCode": "GB",
-    "Manager": "Dave Wakeling",
-    "Disabled": true,
-    "Locked": false,
-    "MustChangePassword": false,
-    "Department": "Music",
-    "Company": "Example Music (England) Ltd",
-    "Description": "Former bassist for The Beat; later Fine Young Cannibals",
-    "telephoneNumber": "+44 121 496 5204",
-    "mobile": "+44 7700 850004",
-    "Street": "Coventry Road",
-    "City": "Birmingham",
-    "PostalCode": "B10 0HF",
-    "physicalDeliveryOfficeName": "Birmingham Office",
-    "ad_ou": "OU=The Beat,OU=Users,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "The Beat",
-    "ad_band_parent": "OU=Users,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
-  },
-  {
     "Name": "Everett Morton",
     "SamAccountName": "everett.morton",
     "UserPrincipalName": "everett.morton@jukebox.internal",
@@ -1871,35 +1817,6 @@
     "ad_band_parent": "OU=Users,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
-    "Name": "Terry Hall",
-    "SamAccountName": "terry.hall",
-    "UserPrincipalName": "terry.hall@jukebox.internal",
-    "Groups": [
-      "The Specials",
-      "Ska"
-    ],
-    "Title": "Lead Vocalist",
-    "Email": "terry.hall@jukebox.internal",
-    "Country": "UK",
-    "CountryCode": "GB",
-    "Manager": "",
-    "Disabled": true,
-    "Locked": false,
-    "MustChangePassword": false,
-    "Department": "Music",
-    "Company": "Example Music (England) Ltd",
-    "Description": "Lead vocalist for The Specials (classic lineup)",
-    "telephoneNumber": "+44 2476 400001",
-    "mobile": "+44 7700 810001",
-    "Street": "Broadgate",
-    "City": "Coventry",
-    "PostalCode": "CV1 1FS",
-    "physicalDeliveryOfficeName": "Coventry Office",
-    "ad_ou": "OU=The Specials,OU=Users,OU=Coventry,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "The Specials",
-    "ad_band_parent": "OU=Users,OU=Coventry,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
-  },
-  {
     "Name": "Jerry Dammers",
     "SamAccountName": "jerry.dammers",
     "UserPrincipalName": "jerry.dammers@jukebox.internal",
@@ -1920,64 +1837,6 @@
     "Description": "Founder, keyboardist and principal songwriter of The Specials",
     "telephoneNumber": "+44 2476 400002",
     "mobile": "+44 7700 810002",
-    "Street": "Broadgate",
-    "City": "Coventry",
-    "PostalCode": "CV1 1FS",
-    "physicalDeliveryOfficeName": "Coventry Office",
-    "ad_ou": "OU=The Specials,OU=Users,OU=Coventry,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "The Specials",
-    "ad_band_parent": "OU=Users,OU=Coventry,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
-  },
-  {
-    "Name": "Neville Staple",
-    "SamAccountName": "neville.staple",
-    "UserPrincipalName": "neville.staple@jukebox.internal",
-    "Groups": [
-      "The Specials",
-      "Vocalists"
-    ],
-    "Title": "Toaster",
-    "Email": "neville.staple@jukebox.internal",
-    "Country": "UK",
-    "CountryCode": "GB",
-    "Manager": "",
-    "Disabled": true,
-    "Locked": false,
-    "MustChangePassword": false,
-    "Department": "Music",
-    "Company": "Example Music (England) Ltd",
-    "Description": "Vocalist and toaster for The Specials",
-    "telephoneNumber": "+44 2476 400003",
-    "mobile": "+44 7700 810003",
-    "Street": "Broadgate",
-    "City": "Coventry",
-    "PostalCode": "CV1 1FS",
-    "physicalDeliveryOfficeName": "Coventry Office",
-    "ad_ou": "OU=The Specials,OU=Users,OU=Coventry,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "The Specials",
-    "ad_band_parent": "OU=Users,OU=Coventry,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
-  },
-  {
-    "Name": "Lynval Golding",
-    "SamAccountName": "lynval.golding",
-    "UserPrincipalName": "lynval.golding@jukebox.internal",
-    "Groups": [
-      "The Specials",
-      "Guitarists"
-    ],
-    "Title": "Guitarist / Vocalist",
-    "Email": "lynval.golding@jukebox.internal",
-    "Country": "UK",
-    "CountryCode": "GB",
-    "Manager": "",
-    "Disabled": true,
-    "Locked": false,
-    "MustChangePassword": false,
-    "Department": "Music",
-    "Company": "Example Music (England) Ltd",
-    "Description": "Guitarist and vocalist for The Specials",
-    "telephoneNumber": "+44 2476 400004",
-    "mobile": "+44 7700 810004",
     "Street": "Broadgate",
     "City": "Coventry",
     "PostalCode": "CV1 1FS",
@@ -2046,11 +1905,13 @@
   },
   {
     "Name": "Terry Hall",
-    "SamAccountName": "terry.hall.fb3",
-    "UserPrincipalName": "terry.hall.fb3@jukebox.internal",
+    "SamAccountName": "terry.hall",
+    "UserPrincipalName": "terry.hall@jukebox.internal",
     "Groups": [
       "Fun Boy Three",
-      "Vocalists"
+      "Vocalists",
+      "The Specials",
+      "Ska"
     ],
     "Title": "Lead Vocalist",
     "Email": "terry.hall@jukebox.internal",
@@ -2075,11 +1936,12 @@
   },
   {
     "Name": "Neville Staple",
-    "SamAccountName": "neville.staple.fb3",
-    "UserPrincipalName": "neville.staple.fb3@jukebox.internal",
+    "SamAccountName": "neville.staple",
+    "UserPrincipalName": "neville.staple@jukebox.internal",
     "Groups": [
       "Fun Boy Three",
-      "Vocalists"
+      "Vocalists",
+      "The Specials"
     ],
     "Title": "Vocalist",
     "Email": "neville.staple@jukebox.internal",
@@ -2104,11 +1966,12 @@
   },
   {
     "Name": "Lynval Golding",
-    "SamAccountName": "lynval.golding.fb3",
-    "UserPrincipalName": "lynval.golding.fb3@jukebox.internal",
+    "SamAccountName": "lynval.golding",
+    "UserPrincipalName": "lynval.golding@jukebox.internal",
     "Groups": [
       "Fun Boy Three",
-      "Guitarists"
+      "Guitarists",
+      "The Specials"
     ],
     "Title": "Guitarist / Vocalist",
     "Email": "lynval.golding@jukebox.internal",
@@ -4207,7 +4070,8 @@
     "UserPrincipalName": "martyn.ware@jukebox.internal",
     "Groups": [
       "Human League",
-      "Artists"
+      "Artists",
+      "Heaven 17"
     ],
     "Title": "Synthesizer / Programmer",
     "Email": "martyn.ware@jukebox.internal",
@@ -4348,35 +4212,6 @@
     "ad_band_parent": "OU=Users,OU=Sheffield,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
-    "Name": "Martyn Ware",
-    "SamAccountName": "martyn.ware.h17",
-    "UserPrincipalName": "martyn.ware.h17@jukebox.internal",
-    "Groups": [
-      "Heaven 17",
-      "Artists"
-    ],
-    "Title": "Synthesizer / Programmer",
-    "Email": "martyn.ware@jukebox.internal",
-    "Country": "UK",
-    "CountryCode": "GB",
-    "Manager": "Glenn Gregory",
-    "Disabled": false,
-    "Locked": false,
-    "MustChangePassword": false,
-    "Department": "Music",
-    "Company": "Example Music (England) Ltd",
-    "Description": "Synthesizer and programmer for Heaven 17 (1981 era)",
-    "telephoneNumber": "+44 114 555 2002",
-    "mobile": "+44 7700 200002",
-    "Street": "West Street",
-    "City": "Sheffield",
-    "PostalCode": "S1 2ED",
-    "physicalDeliveryOfficeName": "Sheffield Studio",
-    "ad_ou": "OU=Heaven 17,OU=Users,OU=Sheffield,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "Heaven 17",
-    "ad_band_parent": "OU=Users,OU=Sheffield,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
-  },
-  {
     "Name": "Ian Craig Marsh",
     "SamAccountName": "ian.marsh",
     "UserPrincipalName": "ian.marsh@jukebox.internal",
@@ -4439,7 +4274,8 @@
     "SamAccountName": "paul.weller",
     "UserPrincipalName": "paul.weller@jukebox.internal",
     "Groups": [
-      "The Jam"
+      "The Jam",
+      "The Style Council"
     ],
     "Title": "Lead Vocalist / Guitarist",
     "Email": "paul.weller@jukebox.internal",
@@ -4516,34 +4352,6 @@
     "physicalDeliveryOfficeName": "Slough Studio",
     "ad_ou": "OU=The Jam,OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_band_ou_name": "The Jam",
-    "ad_band_parent": "OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
-  },
-  {
-    "Name": "Paul Weller",
-    "SamAccountName": "paul.weller.sc",
-    "UserPrincipalName": "paul.weller.sc@jukebox.internal",
-    "Groups": [
-      "The Style Council"
-    ],
-    "Title": "Vocalist / Guitarist",
-    "Email": "paul.weller@jukebox.internal",
-    "Country": "UK",
-    "CountryCode": "GB",
-    "Manager": "",
-    "Disabled": false,
-    "Locked": false,
-    "MustChangePassword": false,
-    "Department": "Music",
-    "Company": "Example Music (England) Ltd",
-    "Description": "Founder of The Style Council (formed 1983 after The Jam)",
-    "telephoneNumber": "+44 1753 555 301",
-    "mobile": "+44 7700 420301",
-    "Street": "High Street",
-    "City": "Slough",
-    "PostalCode": "SL1 1EL",
-    "physicalDeliveryOfficeName": "Slough Studio",
-    "ad_ou": "OU=Style Council,OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "Style Council",
     "ad_band_parent": "OU=Users,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
   },
   {
@@ -4871,7 +4679,9 @@
     "UserPrincipalName": "lars.pedersen@jukebox.internal",
     "Groups": [
       "Elmer",
-      "Drummers"
+      "Drummers",
+      "1000 Keys",
+      "Vocalists"
     ],
     "Title": "Drummer",
     "Email": "lars.pedersen@jukebox.internal",
@@ -5030,35 +4840,6 @@
     "Company": "Example Music (Danmark) ApS",
     "Description": "Keyboardist for 1000 Keys",
     "telephoneNumber": "+45 33 12 45 01",
-    "mobile": "",
-    "Street": "",
-    "City": "",
-    "PostalCode": "",
-    "physicalDeliveryOfficeName": "København Studio",
-    "ad_ou": "OU=1000 Keys,OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "1000 Keys",
-    "ad_band_parent": "OU=Users,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal"
-  },
-  {
-    "Name": "Lars Pedersen",
-    "SamAccountName": "lars.pedersen.1k",
-    "UserPrincipalName": "lars.pedersen.1k@jukebox.internal",
-    "Groups": [
-      "1000 Keys",
-      "Vocalists"
-    ],
-    "Title": "Lead Vocalist",
-    "Email": "lars.pedersen@jukebox.internal",
-    "Country": "DK",
-    "CountryCode": "DK",
-    "Manager": "",
-    "Disabled": false,
-    "Locked": false,
-    "MustChangePassword": false,
-    "Department": "Music",
-    "Company": "Example Music (Danmark) ApS",
-    "Description": "Lead vocalist for 1000 Keys",
-    "telephoneNumber": "+45 33 12 45 02",
     "mobile": "",
     "Street": "",
     "City": "",
@@ -9260,7 +9041,8 @@
     "Groups": [
       "Crowded House",
       "Vocalists",
-      "Songwriters"
+      "Songwriters",
+      "Split Enz"
     ],
     "Title": "Lead Vocalist / Guitarist",
     "Email": "neil.finn@jukebox.internal",
@@ -9347,7 +9129,8 @@
     "UserPrincipalName": "eddie.rayner@jukebox.internal",
     "Groups": [
       "Crowded House",
-      "Keyboardists"
+      "Keyboardists",
+      "Split Enz"
     ],
     "Title": "Keyboardist",
     "Email": "eddie.rayner@jukebox.internal",
@@ -9480,62 +9263,6 @@
     "Description": "Co-founder, lead vocalist and songwriter for Split Enz",
     "telephoneNumber": "+64 9 555 4001",
     "mobile": "+64 21 555 4001",
-    "Street": "Queen Street",
-    "City": "Auckland",
-    "PostalCode": "1010",
-    "physicalDeliveryOfficeName": "Auckland Studio",
-    "ad_ou": "OU=Split Enz,OU=Users,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "Split Enz",
-    "ad_band_parent": "OU=Users,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal"
-  },
-  {
-    "Name": "Neil Finn",
-    "SamAccountName": "neil.finn.se",
-    "UserPrincipalName": "neil.finn.se@jukebox.internal",
-    "Groups": [
-      "Split Enz"
-    ],
-    "Title": "Vocalist / Guitarist / Songwriter",
-    "Email": "neil.finn@jukebox.internal",
-    "Country": "NZ",
-    "CountryCode": "NZ",
-    "Manager": "Tim Finn",
-    "Disabled": false,
-    "Locked": false,
-    "MustChangePassword": false,
-    "Department": "Music",
-    "Company": "Example Music (New Zealand) Tāpui",
-    "Description": "Songwriter and vocalist; wrote “I Got You”",
-    "telephoneNumber": "+64 9 555 4002",
-    "mobile": "+64 21 555 4002",
-    "Street": "Queen Street",
-    "City": "Auckland",
-    "PostalCode": "1010",
-    "physicalDeliveryOfficeName": "Auckland Studio",
-    "ad_ou": "OU=Split Enz,OU=Users,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
-    "ad_band_ou_name": "Split Enz",
-    "ad_band_parent": "OU=Users,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal"
-  },
-  {
-    "Name": "Eddie Rayner",
-    "SamAccountName": "eddie.rayner.se",
-    "UserPrincipalName": "eddie.rayner.se@jukebox.internal",
-    "Groups": [
-      "Split Enz"
-    ],
-    "Title": "Keyboardist",
-    "Email": "eddie.rayner@jukebox.internal",
-    "Country": "NZ",
-    "CountryCode": "NZ",
-    "Manager": "Tim Finn",
-    "Disabled": false,
-    "Locked": false,
-    "MustChangePassword": false,
-    "Department": "Music",
-    "Company": "Example Music (New Zealand) Tāpui",
-    "Description": "Keyboardist; signature synth sound of Split Enz",
-    "telephoneNumber": "+64 9 555 4003",
-    "mobile": "+64 21 555 4003",
     "Street": "Queen Street",
     "City": "Auckland",
     "PostalCode": "1010",
