@@ -580,9 +580,19 @@
     # -------------------------------------------------------------------------
     # Section C — Group membership
     # Groups are added, not replaced (groups_action: add).
-    # Errors are ignored — some TDF group names don't match AD group names
-    # (e.g. 'Keyboardists' vs 'Keyboards'). Run 20-ad-groups.yml first to
-    # minimise mismatches.
+    #
+    # 2026-09-23: ignore_errors: true used to live here specifically because
+    # some ad_users.json Groups entries didn't match a real ad_groups.json
+    # name -- confirmed via a full audit of every Groups reference across all
+    # 354 users: 283 silent failures across 55 distinct non-existent group
+    # names, masked by this exact setting since the data was authored. Fixed
+    # at the source instead (10 duplicate-band accounts collapsed into one
+    # each with a unioned Groups list, 9 naming-mismatch references corrected
+    # to point at real groups, 44 genuinely-missing groups created) -- a full
+    # re-audit after those fixes confirms zero phantom references remain
+    # anywhere. Removed ignore_errors: true accordingly -- from here on, a
+    # failure in this task means something new and genuine, and should abort
+    # the play loudly, not accumulate silently the way this one did.
     # -------------------------------------------------------------------------
 
     # 2026-09-22, found live in Section F, swept here too: microsoft.ad.user's
@@ -605,7 +615,6 @@
       loop:  "{{ _group_add_todo | default([]) }}"
       loop_control:
         label: "{{ item.SamAccountName }} → {{ item.Groups | join(', ') }}"
-      ignore_errors: true
 
     # -------------------------------------------------------------------------
     # Section D — Manager
