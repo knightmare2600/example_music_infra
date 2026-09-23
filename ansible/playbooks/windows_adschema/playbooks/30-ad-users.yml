@@ -794,42 +794,43 @@
     # microsoft.ad.user's own docs that account_locked only accepts `false`
     # (unlock); the module deliberately has no way to SET a lockout, since
     # real AD lockouts are a side effect of failed logons, not an admin
-    # action. There is still a real, correct way to force it: AD represents
-    # lockout via the lockoutTime attribute directly, settable through the
-    # generic attributes: mechanism this file already uses nowhere else but
-    # 40-ad-computers.yml does for OS fields. 9 real users have Locked=true
-    # in the source data, including at least one (Alan Wilder) who is NOT
-    # also Disabled -- a genuinely distinct state this file dropped entirely
-    # before now.
+    # action.
     #
-    # Caveat worth knowing: unlike a real lockout, this doesn't expire on its
-    # own according to the domain's account lockout duration policy unless
-    # that policy is itself set to indefinite (0, common, but not universal)
-    # -- re-running with Locked=false in the source data clears it via the
-    # module's own native account_locked: no, which IS fully supported.
+    # 2026-09-23, found live and CONFIRMED, superseding the "genuinely
+    # correct way to force it" claim this comment used to carry: setting
+    # lockoutTime directly to a nonzero value is REJECTED by this AD, not
+    # just by this module. Verified natively, outside Ansible entirely --
+    # `Set-ADUser -Identity mick.macneil -Replace @{lockoutTime=...}` on the
+    # DC itself fails identically: "Set-ADUser : The parameter is incorrect
+    # ... ActiveDirectoryServer:87". Error 87 is ERROR_INVALID_PARAMETER --
+    # this AD enforces that a lockout is a side effect of real failed
+    # logons, not a directly client-settable value, full stop. Robert's
+    # call: dropped the attempt entirely rather than force it or mask a
+    # permanent, always-100%-reproducible failure behind ignore_errors:
+    # true (the exact anti-pattern Section C's own history in this file
+    # already shows the cost of). Locked:true in ad_users.json is data-only
+    # on this AD until/unless a genuine forced-lockout mechanism (repeated
+    # deliberately-wrong logon attempts up to the domain's real lockout
+    # threshold) is built -- not attempted here.
+    #
+    # The Unlock direction below is untouched and unaffected -- account_locked:
+    # false is the module's own NATIVE, fully-supported clear-lockout path
+    # (Set-ADUser -Replace @{lockoutTime=0} does work on real AD; only a
+    # nonzero value is rejected), confirmed working live all night.
     # -------------------------------------------------------------------------
 
-    # Both tasks below loop over _lock_todo (pre-filtered against live LockedOut
-    # state, see "Filter to lockout state changes needed" above), not all 364 users
-    # -- previously "Unlock" fired on literally every single user every re-run
-    # regardless of whether they were ever locked (only ~9 genuinely are), the single
-    # biggest avoidable round-trip in this whole file.
+    # Loops over _lock_todo (pre-filtered against live LockedOut state, see
+    # "Filter to lockout state changes needed" above), not all 364 users --
+    # previously "Unlock" fired on literally every single user every re-run
+    # regardless of whether they were ever locked (only ~9 genuinely are), the
+    # single biggest avoidable round-trip in this whole file.
 
-    - name: "E | Lock accounts (Locked=true in source data)"
-      microsoft.ad.user:
-        name:             "{{ item.Name }}"
-        sam_account_name: "{{ item.SamAccountName }}"
-        path:             "{{ item.ad_ou }}"
-        attributes:
-          set:
-            lockoutTime:
-              type:  date_time
-              value: "{{ now(utc=true).strftime('%Y-%m-%dT%H:%M:%SZ') }}"
-        state:            present
-      when: item.Locked | default(false)
-      loop: "{{ _lock_todo | default([]) }}"
-      loop_control:
-        label: "{{ item.SamAccountName }}"
+    - name: "E | Report unenforceable Locked:true accounts (data-only on this AD)"
+      debug:
+        msg: >-
+          {{ _users | selectattr('Locked', 'defined') | selectattr('Locked') | list | length }}
+          user(s) have Locked: true in ad_users.json -- informational only, this
+          AD rejects a directly-set lockoutTime (see Section E's header).
 
     - name: "E | Unlock accounts (Locked=false in source data)"
       microsoft.ad.user:
