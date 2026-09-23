@@ -920,14 +920,6 @@
     "Email": "bassists@jukebox.internal"
   },
   {
-    "Name": "Keyboardists",
-    "Description": "Keyboard and synthesizer players",
-    "Type": "Security",
-    "Scope": "Global",
-    "ManagedBy": "",
-    "Email": "keyboardists@jukebox.internal"
-  },
-  {
     "Name": "Producers",
     "Description": "Record producers",
     "Type": "Security",
@@ -1104,28 +1096,12 @@
     "Email": "lis-sorensen@jukebox.internal"
   },
   {
-    "Name": "Whigfield",
-    "Description": "Danish singer Whigfield (Sannie Charlotte Carlson)",
-    "Type": "Security",
-    "Scope": "Global",
-    "ManagedBy": "",
-    "Email": "whigfield@jukebox.internal"
-  },
-  {
     "Name": "Mo",
     "Description": "Danish singer MØ (Karen Ørsted)",
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "",
     "Email": "mo@jukebox.internal"
-  },
-  {
-    "Name": "Jan Hammer",
-    "Description": "Composer/keyboardist Jan Hammer",
-    "Type": "Security",
-    "Scope": "Global",
-    "ManagedBy": "",
-    "Email": "jan-hammer@jukebox.internal"
   },
   {
     "Name": "Ska",
