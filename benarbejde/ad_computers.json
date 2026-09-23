@@ -3062,7 +3062,7 @@
     "OS": "FortiGate",
     "OperatingSystemVersion": "7.x",
     "IPv4Address": "192.168.29.1",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -3076,7 +3076,7 @@
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.29.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -3090,7 +3090,7 @@
     "OS": "Cisco Catalyst 2960",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.29.3",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -3104,7 +3104,7 @@
     "OS": "Windows Server 2022",
     "OperatingSystemVersion": "21H2",
     "IPv4Address": "192.168.29.20",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -3118,7 +3118,7 @@
     "OS": "Dell iDRAC9",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.29.21",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -3132,7 +3132,7 @@
     "OS": "macOS Sonoma",
     "OperatingSystemVersion": "14.x",
     "IPv4Address": "192.168.29.40",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -3146,7 +3146,7 @@
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
     "IPv4Address": "192.168.29.41",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -3160,7 +3160,7 @@
     "OS": "Android",
     "OperatingSystemVersion": "14",
     "IPv4Address": "",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -3174,7 +3174,7 @@
     "OS": "iPadOS",
     "OperatingSystemVersion": "17.x",
     "IPv4Address": "192.168.29.60",
-    "ad_ou": "OU=Assets,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Assets,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Assets"
   },
   {
@@ -3188,7 +3188,7 @@
     "OS": "3CX SBC",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.29.50",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -3202,7 +3202,7 @@
     "OS": "LG Signage",
     "OperatingSystemVersion": "1.x",
     "IPv4Address": "192.168.29.70",
-    "ad_ou": "OU=AV,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=AV,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
   {
@@ -3216,7 +3216,7 @@
     "OS": "Brother Laser",
     "OperatingSystemVersion": "Firmware",
     "IPv4Address": "192.168.29.80",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -3230,7 +3230,7 @@
     "OS": "Ubiquiti UniFi",
     "OperatingSystemVersion": "6.x",
     "IPv4Address": "192.168.29.84",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -3244,7 +3244,7 @@
     "OS": "Hikvision",
     "OperatingSystemVersion": "Firmware",
     "IPv4Address": "192.168.29.82",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -3258,7 +3258,7 @@
     "OS": "Hikvision",
     "OperatingSystemVersion": "Firmware",
     "IPv4Address": "192.168.29.85",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -3272,7 +3272,7 @@
     "OS": "Smart Brewer",
     "OperatingSystemVersion": "1.x",
     "IPv4Address": "192.168.29.83",
-    "ad_ou": "OU=IoT,OU=Devices,OU=Sydney,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=IoT,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
   {
@@ -3286,7 +3286,7 @@
     "OS": "FortiGate",
     "OperatingSystemVersion": "7.x",
     "IPv4Address": "192.168.361.1",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -3300,7 +3300,7 @@
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.361.2",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -3314,7 +3314,7 @@
     "OS": "Cisco Catalyst 2960",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.361.3",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -3328,7 +3328,7 @@
     "OS": "Windows Server 2022",
     "OperatingSystemVersion": "21H2",
     "IPv4Address": "192.168.361.20",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -3342,7 +3342,7 @@
     "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.361.21",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -3356,7 +3356,7 @@
     "OS": "macOS Sonoma",
     "OperatingSystemVersion": "14.x",
     "IPv4Address": "192.168.361.40",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -3370,7 +3370,7 @@
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
     "IPv4Address": "192.168.361.41",
-    "ad_ou": "OU=Workstations,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
   {
@@ -3384,7 +3384,7 @@
     "OS": "iOS",
     "OperatingSystemVersion": "17.x",
     "IPv4Address": "",
-    "ad_ou": "OU=Telephony,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
@@ -3398,7 +3398,7 @@
     "OS": "iPadOS",
     "OperatingSystemVersion": "17.x",
     "IPv4Address": "192.168.361.60",
-    "ad_ou": "OU=Assets,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Assets,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Assets"
   },
   {
@@ -3412,7 +3412,7 @@
     "OS": "3CX SBC",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.361.50",
-    "ad_ou": "OU=Servers,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
   {
@@ -3426,7 +3426,7 @@
     "OS": "Samsung Signage",
     "OperatingSystemVersion": "1.x",
     "IPv4Address": "192.168.361.70",
-    "ad_ou": "OU=AV,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=AV,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
   {
@@ -3440,7 +3440,7 @@
     "OS": "HP LaserJet",
     "OperatingSystemVersion": "Firmware",
     "IPv4Address": "192.168.361.80",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
@@ -3454,7 +3454,7 @@
     "OS": "Synology DSM",
     "OperatingSystemVersion": "7.x",
     "IPv4Address": "192.168.361.81",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
