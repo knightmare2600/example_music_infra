@@ -418,6 +418,30 @@
           {%- endset -%}
           {{ _rendered }}
 
+    # 2026-09-23, found live: the enabled:false fix above (create_users_batch.yml)
+    # was NECESSARY but NOT SUFFICIENT -- it stops the enable-time race, but a
+    # live run afterward showed New-ADUser itself still fails
+    # "password does not meet ... complexity" when several genuinely-NEW
+    # accounts are created CONCURRENTLY, even with enabled:false passed (no
+    # object created at all this time -- distinguished_name/object_guid both
+    # null, not a stuck-disabled stub). Clean supporting evidence from the
+    # SAME run: ~38 batches / ~380 items of pure existing-account UPDATE
+    # traffic (no password ever touched, since update_password: on_create is
+    # a no-op on update) all succeeded with zero failures; the one batch that
+    # actually wrote passwords (this run's only 4 genuinely new users) failed
+    # 4-for-4. F1 above (also writes a real password, but serially, no
+    # async) succeeded cleanly for all 8 of its accounts the same run. So the
+    # race is in concurrent password WRITES specifically, not concurrent
+    # Set-ADUser/enable calls in general -- moved brand-new creates to their
+    # own serial pass (B0 below) rather than shrinking batch size again.
+    - name: "Filter to users needing genuine creation (not yet in AD at all)"
+      set_fact:
+        _new_creates_todo: >-
+          {%- set _rendered -%}
+          [{% for item in _users %}{% if (item.SamAccountName | lower not in _existing_user_by_sam) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          {%- endset -%}
+          {{ _rendered }}
+
     - name: "Preflight | Report C/D/E work needed"
       debug:
         msg: >-
@@ -426,6 +450,7 @@
           Lockout: {{ _lock_todo | default([]) | length }} user(s) need a lock/unlock state change.
           Password reset: {{ _password_reset_todo | default([]) | length }} user(s) stuck disabled with a non-compliant password.
           Enable: {{ _enable_todo | default([]) | length }} user(s) need an enabled-state change (includes brand-new creates from this run).
+          New creates: {{ _new_creates_todo | default([]) | length }} user(s) not yet in AD at all (created serially, see B0).
 
   tasks:
 
@@ -579,13 +604,61 @@
     # small, rotating subset of new-user creates within a batch failing with
     # "password does not meet the length, complexity, or history requirement"
     # on New-ADUser -- a different specific user each run, always clearing on
-    # a plain re-run, never the same one twice. UPDATE, same day: root cause
-    # now confirmed (see create_users_batch.yml's header) as a real
-    # concurrent enable-time-validation race in New-ADUser -Enabled $true,
-    # not random AD-side noise -- fixed at the source there (always creates
-    # disabled now) rather than by shrinking batch size further. Kept at 10
-    # since concurrency itself is no longer the risk once enabling is
-    # decoupled from creation.
+    # a plain re-run, never the same one twice. UPDATE, same day: two distinct
+    # real mechanisms found here, not one -- (1) a concurrent enable-time-
+    # validation race in New-ADUser -Enabled $true, fixed by always creating
+    # disabled (create_users_batch.yml) and enabling separately (Section B2);
+    # (2) concurrent New-ADUser -AccountPassword calls for genuinely NEW
+    # accounts can independently fail complexity even with enabled:false, not
+    # covered by fix (1) -- genuinely new creates now go through Section B0
+    # above instead, serially. This batched/async path (B) is proven safe at
+    # scale for what it actually still carries: existing-account UPDATE
+    # traffic only, which never touches a password at all.
+    # -------------------------------------------------------------------------
+    # Section B0 — Genuinely new accounts (serial, no async)
+    # See the "Filter to users needing genuine creation" pre_task above for
+    # the full root-cause writeup. Only accounts that don't exist in AD at
+    # all yet land here -- same per-item shape as B below (enabled: false,
+    # same fields), just dispatched one at a time like F1 already proved safe
+    # for password-writing calls, instead of async/poll:0. Runs BEFORE B so
+    # that by the time B's batched pass reaches these same items, they
+    # already exist and B's call is a harmless no-op update (no password
+    # touched, update_password: on_create is a no-op on update).
+    # -------------------------------------------------------------------------
+
+    - name: "B0 | Create genuinely new user accounts (serial)"
+      microsoft.ad.user:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        upn:              "{{ item.UserPrincipalName }}"
+        path:             "{{ item.ad_ou }}"
+        display_name:     "{{ item.Name }}"
+        firstname:        "{{ item.Name.split(' ')[0] }}"
+        surname:          "{{ (item.Name.split(' ')[1:] | join(' ')) or omit }}"
+        description:      "{{ item.Description }}"
+        email:            "{{ item.Email }}"
+        company:          "{{ item.Company }}"
+        street:           "{{ item.Street if item.Street else omit }}"
+        city:             "{{ item.City if item.City else omit }}"
+        postal_code:      "{{ item.PostalCode if item.PostalCode else omit }}"
+        country: "{{ _country_lookup[item.CountryCode].code }}"
+        attributes:
+          set: >-
+            {{
+              {'co': _country_lookup[item.CountryCode].name, 'title': item.Title, 'department': item.Department}
+              | combine({'telephoneNumber': item.telephoneNumber} if item.telephoneNumber else {})
+              | combine({'mobile': item.mobile} if item.mobile else {})
+              | combine({'physicalDeliveryOfficeName': item.physicalDeliveryOfficeName} if item.physicalDeliveryOfficeName else {})
+            }}
+        enabled:          false
+        password:         "{{ vault_ad_new_user_password }}"
+        update_password:  on_create
+        password_expired: "{{ item.MustChangePassword }}"
+        state:            present
+      loop: "{{ _new_creates_todo | default([]) }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
+
     - name: "B | Split users into batches of 10 for capped-concurrency async creation"
       set_fact:
         _b_batches: "{{ _users | batch(10) | list }}"
