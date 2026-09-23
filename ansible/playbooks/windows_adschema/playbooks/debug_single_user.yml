@@ -1,0 +1,123 @@
+# =============================================================================
+# playbooks/debug_single_user.yml
+# Example Music Limited — Isolated single-user microsoft.ad.user diagnostic
+# =============================================================================
+# NOT part of site.yml's chain -- standalone diagnostic only, run by hand.
+#
+# 2026-09-23, Robert's ask: repeated live runs of 30-ad-users.yml Section B
+# showed a small, different subset of new-user creates failing each run with
+# "password does not meet the length, complexity, or history requirement",
+# always clearing on a plain re-run. Genuine doubt raised, and fair --
+# tonight's session has found and fixed real bugs in this exact module
+# invocation repeatedly (wrong param names, missing path:, a UPN-collision
+# data bug), so "it's just AD-side flakiness" needs real, isolated proof, not
+# inference from a noisy 364-user batched run. This runs the EXACT SAME
+# microsoft.ad.user call Section B uses (same param list, same path:,
+# same attributes.set logic) against exactly ONE user, synchronously -- no
+# async, no batching, no other concurrent load from this playbook at all --
+# so a clean result here means the module/param logic itself is sound, and
+# whatever's still happening in the real batched run is downstream of
+# concurrency/load, not this file's own logic.
+#
+# Usage:
+#   ansible-playbook playbooks/windows_adschema/playbooks/debug_single_user.yml \
+#     -e ad_target=<host> -e test_sam=<SamAccountName> --ask-vault-pass
+#
+#   Run once with an already-created user's SamAccountName (exercises the
+#   UPDATE code path) and once with a genuinely not-yet-created one
+#   (exercises the CREATE code path) -- paste the full debug output from
+#   both runs.
+# =============================================================================
+
+- name: "DEBUG — isolated single-user microsoft.ad.user test"
+  hosts: "{{ ad_target }}"
+  gather_facts: false
+  become: false
+
+  vars:
+    ad_domain:       "{{ dc_domain_name | default(exa_domain) }}"
+    ad_email_domain: "{{ ad_domain }}"
+    ad_users_json:   "/etc/example-music/ad_users.json"
+
+    # Identical to 30-ad-users.yml's own _country_lookup -- kept in sync by
+    # hand since this is a standalone diagnostic file, not included from it.
+    _country_lookup:
+      AT:     { code: AT, name: Austria }
+      AU:     { code: AU, name: Australia }
+      CA:     { code: CA, name: Canada }
+      Canada: { code: CA, name: Canada }
+      DE:     { code: DE, name: Germany }
+      DK:     { code: DK, name: Denmark }
+      GB:     { code: GB, name: United Kingdom }
+      IT:     { code: IT, name: Italy }
+      LB:     { code: LB, name: Lebanon }
+      NL:     { code: NL, name: Netherlands }
+      "NO":   { code: "NO", name: Norway }
+      NZ:     { code: NZ, name: New Zealand }
+      SE:     { code: SE, name: Sweden }
+      US:     { code: US, name: United States }
+      USA:    { code: US, name: United States }
+
+  tasks:
+
+    - name: "Fail — test_sam not supplied"
+      fail:
+        msg: "Pass -e test_sam=<SamAccountName> (from ad_users.json) to select which user to test."
+      when: test_sam is not defined
+
+    - name: "Load users from ad_users.json"
+      set_fact:
+        _users_all: "{{ lookup('file', ad_users_json) | from_json }}"
+      delegate_to: localhost
+      become: false
+
+    - name: "Find the requested test user"
+      set_fact:
+        _test_user: "{{ _users_all | selectattr('SamAccountName', 'equalto', test_sam) | list | first | default(None) }}"
+
+    - name: "Fail — test_sam not found in ad_users.json"
+      fail:
+        msg: "No user with SamAccountName '{{ test_sam }}' found in {{ ad_users_json }}."
+      when: _test_user is none
+
+    - name: "Report which user and OU this test targets"
+      debug:
+        msg: "Testing {{ _test_user.Name }} ({{ _test_user.SamAccountName }}) at {{ _test_user.ad_ou }}"
+
+    # Exact same task shape as 30-ad-users.yml Section B / create_users_batch.yml,
+    # minus async/poll -- one synchronous call, full result below.
+    - name: "Create/update this one user, synchronously"
+      microsoft.ad.user:
+        name:             "{{ _test_user.Name }}"
+        sam_account_name: "{{ _test_user.SamAccountName }}"
+        upn:              "{{ _test_user.UserPrincipalName }}"
+        path:             "{{ _test_user.ad_ou }}"
+        display_name:     "{{ _test_user.Name }}"
+        firstname:        "{{ _test_user.Name.split(' ')[0] }}"
+        surname:          "{{ (_test_user.Name.split(' ')[1:] | join(' ')) or omit }}"
+        description:      "{{ _test_user.Description }}"
+        email:            "{{ _test_user.Email }}"
+        company:          "{{ _test_user.Company }}"
+        street:           "{{ _test_user.Street if _test_user.Street else omit }}"
+        city:             "{{ _test_user.City if _test_user.City else omit }}"
+        postal_code:      "{{ _test_user.PostalCode if _test_user.PostalCode else omit }}"
+        country: "{{ _country_lookup[_test_user.CountryCode].code }}"
+        attributes:
+          set: >-
+            {{
+              {'co': _country_lookup[_test_user.CountryCode].name, 'title': _test_user.Title, 'department': _test_user.Department}
+              | combine({'telephoneNumber': _test_user.telephoneNumber} if _test_user.telephoneNumber else {})
+              | combine({'mobile': _test_user.mobile} if _test_user.mobile else {})
+              | combine({'physicalDeliveryOfficeName': _test_user.physicalDeliveryOfficeName} if _test_user.physicalDeliveryOfficeName else {})
+            }}
+        enabled:          "{{ not _test_user.Disabled }}"
+        password:         "{{ vault_ad_new_user_password }}"
+        update_password:  on_create
+        password_expired: "{{ _test_user.MustChangePassword }}"
+        state:            present
+      register: _test_result
+
+    - name: "Full raw result"
+      debug:
+        var: _test_result
+        verbosity: 0
