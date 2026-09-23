@@ -180,6 +180,20 @@
       loop_control:
         label: "{{ item.SamAccountName }}"
 
+    # Single-pass dict/zip build, not a loop: + set_fact -- see the OOM
+    # writeup further down in this file (the "A worker was found in a dead
+    # state" comment) for why a loop:-driven set_fact accumulator is
+    # dangerous here; not reusing that pattern for a new lookup.
+    - name: "Build SamAccountName(lowercase) -> {Name, ad_ou} lookup for manager DN construction"
+      set_fact:
+        _sam_to_user: >-
+          {{
+            dict(
+              _users | map(attribute='SamAccountName') | map('lower') | list
+              | zip(_users)
+            )
+          }}
+
     - name: "Preflight | Report user count"
       debug:
         msg: >-
@@ -743,12 +757,31 @@
     # silently skipped by the 'when' condition.
     # -------------------------------------------------------------------------
 
+    # 2026-09-23, found live: "Unsupported parameters for (microsoft.ad.user)
+    # module: manager" -- manager: has never been a valid top-level param for
+    # the installed microsoft.ad version (confirmed against the error's own
+    # "Supported parameters" list). manager is a real, DN-valued LDAP
+    # attribute, so it goes through the generic attributes.set mechanism
+    # like title/department/telephoneNumber were fixed to earlier -- but
+    # attributes.set has no DN-resolution of its own (confirmed against its
+    # own module docs: raw string/int/bool/typed values only), so the target
+    # manager's DN has to be built here, not just their SamAccountName.
+    # Built from _sam_to_user (this file's own ad_users.json-derived Name/
+    # ad_ou data), not the live AD state snapshot, since a manager can
+    # legitimately be a brand-new create from Section B0 earlier in this
+    # SAME run and wouldn't be in that snapshot yet -- matches the same
+    # CN=<name>,<path> convention every other section in this file already
+    # relies on for existence-check DNs.
     - name: "D | Set manager attribute"
       microsoft.ad.user:
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
         path:             "{{ item.ad_ou }}"
-        manager:          "{{ _name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager]) }}"
+        attributes:
+          set:
+            manager: >-
+              {%- set _target_sam = (_name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager])) | lower -%}
+              CN={{ _sam_to_user[_target_sam].Name }},{{ _sam_to_user[_target_sam].ad_ou }}
         state:            present
       loop: "{{ _manager_todo | default([]) }}"
       loop_control:
