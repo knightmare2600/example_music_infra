@@ -1142,7 +1142,7 @@
     "Groups": [
       "Wet Wet Wet",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Lead Vocalist",
     "Email": "marti.pellow@jukebox.internal",
@@ -1172,7 +1172,7 @@
     "Groups": [
       "Wet Wet Wet",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Bassist",
     "Email": "graeme.clark@jukebox.internal",
@@ -1202,7 +1202,7 @@
     "Groups": [
       "Wet Wet Wet",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Drummer",
     "Email": "tommy.cunningham@jukebox.internal",
@@ -1232,7 +1232,7 @@
     "Groups": [
       "Wet Wet Wet",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Keyboardist",
     "Email": "neil.mitchell@jukebox.internal",
@@ -1262,7 +1262,7 @@
     "Groups": [
       "UB40",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Lead Vocalist",
     "Email": "ali.campbell@jukebox.internal",
@@ -1292,7 +1292,7 @@
     "Groups": [
       "UB40",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Guitarist",
     "Email": "robin.campbell@jukebox.internal",
@@ -1322,7 +1322,7 @@
     "Groups": [
       "UB40",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Saxophonist",
     "Email": "brian.travers@jukebox.internal",
@@ -1352,7 +1352,7 @@
     "Groups": [
       "UB40",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Bassist",
     "Email": "earl.falconer@jukebox.internal",
@@ -1382,7 +1382,7 @@
     "Groups": [
       "UB40",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Percussionist",
     "Email": "norman.hassan@jukebox.internal",
@@ -1412,7 +1412,7 @@
     "Groups": [
       "UB40",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Toaster / Trumpet",
     "Email": "astro.wilson@jukebox.internal",
@@ -1442,7 +1442,7 @@
     "Groups": [
       "UB40",
       "Sales",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Drummer",
     "Email": "james.brown@jukebox.internal",
@@ -1472,7 +1472,7 @@
     "Groups": [
       "Duran Duran",
       "Marketing",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Lead Vocalist",
     "Email": "simon.lebon@jukebox.internal",
@@ -1502,7 +1502,7 @@
     "Groups": [
       "Duran Duran",
       "Marketing",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Keyboardist",
     "Email": "nick.rhodes@jukebox.internal",
@@ -1532,7 +1532,7 @@
     "Groups": [
       "Duran Duran",
       "Marketing",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Bassist",
     "Email": "john.taylor@jukebox.internal",
@@ -1562,7 +1562,7 @@
     "Groups": [
       "Duran Duran",
       "Marketing",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Guitarist",
     "Email": "andy.taylor@jukebox.internal",
@@ -1592,7 +1592,7 @@
     "Groups": [
       "Duran Duran",
       "Marketing",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Drummer",
     "Email": "roger.taylor@jukebox.internal",
@@ -2173,7 +2173,7 @@
     "SamAccountName": "ian.mcculloch",
     "UserPrincipalName": "ian.mcculloch@jukebox.internal",
     "Groups": [
-      "Echo and The Bunnymen",
+      "Echo And The Bunnymen",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
@@ -2202,7 +2202,7 @@
     "SamAccountName": "will.sergeant",
     "UserPrincipalName": "will.sergeant@jukebox.internal",
     "Groups": [
-      "Echo and The Bunnymen",
+      "Echo And The Bunnymen",
       "Guitarists"
     ],
     "Title": "Guitarist",
@@ -2231,7 +2231,7 @@
     "SamAccountName": "les.pattinson",
     "UserPrincipalName": "les.pattinson@jukebox.internal",
     "Groups": [
-      "Echo and The Bunnymen",
+      "Echo And The Bunnymen",
       "Bassists"
     ],
     "Title": "Bass Guitarist",
@@ -2260,7 +2260,7 @@
     "SamAccountName": "pete.defreitas",
     "UserPrincipalName": "pete.defreitas@jukebox.internal",
     "Groups": [
-      "Echo and The Bunnymen",
+      "Echo And The Bunnymen",
       "Drummers"
     ],
     "Title": "Drummer",
@@ -4680,7 +4680,7 @@
     "Groups": [
       "Elmer",
       "Drummers",
-      "1000 Keys",
+      "1000-Keys",
       "Vocalists"
     ],
     "Title": "Drummer",
@@ -4825,7 +4825,7 @@
     "SamAccountName": "morten.jensen",
     "UserPrincipalName": "morten.jensen@jukebox.internal",
     "Groups": [
-      "1000 Keys",
+      "1000-Keys",
       "Keyboardists"
     ],
     "Title": "Keyboardist",
@@ -4854,7 +4854,7 @@
     "SamAccountName": "soren.hansen",
     "UserPrincipalName": "soren.hansen@jukebox.internal",
     "Groups": [
-      "1000 Keys",
+      "1000-Keys",
       "Drummers",
       "Artists"
     ],
@@ -4884,7 +4884,7 @@
     "SamAccountName": "peter.moller",
     "UserPrincipalName": "peter.moller@jukebox.internal",
     "Groups": [
-      "1000 Keys",
+      "1000-Keys",
       "Guitarists"
     ],
     "Title": "Guitarist",
@@ -6554,7 +6554,7 @@
     "SamAccountName": "rick.moranis",
     "UserPrincipalName": "rick.moranis@jukebox.internal",
     "Groups": [
-      "Great-White-North",
+      "Great White North",
       "Guest-Artists"
     ],
     "Title": "Comedian / Guest Vocalist",
@@ -6583,7 +6583,7 @@
     "SamAccountName": "dave.thomas",
     "UserPrincipalName": "dave.thomas@jukebox.internal",
     "Groups": [
-      "Great-White-North",
+      "Great White North",
       "Guest-Artists"
     ],
     "Title": "Comedian / Guest Vocalist",
@@ -7513,7 +7513,7 @@
     "SamAccountName": "nick.ceroli",
     "UserPrincipalName": "nick.ceroli@jukebox.internal",
     "Groups": [
-      "Herb Alpert And The Tijuana Brass"
+      "Herb Alpert & Tijuana Brass"
     ],
     "Title": "Drummer",
     "Email": "nick.ceroli@jukebox.internal",
@@ -9424,7 +9424,7 @@
     "Groups": [
       "Ancillary Staff",
       "Broadcast",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Continuity Announcer",
     "Email": "carol.hersee@jukebox.internal",
@@ -9454,7 +9454,7 @@
     "Groups": [
       "Ancillary Staff",
       "Journalists",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Journalist",
     "Email": "kate.adie@jukebox.internal",
@@ -9484,7 +9484,7 @@
     "Groups": [
       "Ancillary Staff",
       "Editors",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Europe Editor",
     "Email": "ulla.terkelsen@jukebox.internal",
@@ -9514,7 +9514,7 @@
     "Groups": [
       "Ancillary Staff",
       "Editors",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Senior Correspondent",
     "Email": "claus.togsvig@jukebox.internal",
@@ -9544,7 +9544,7 @@
     "Groups": [
       "Ancillary Staff",
       "Ceremonial",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Ceremonial Figure",
     "Email": "prins.knud@jukebox.internal",
@@ -9574,7 +9574,7 @@
     "Groups": [
       "Ancillary Staff",
       "Medical",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Company Accountant",
     "Email": "dr.hansen@jukebox.internal",
@@ -9604,7 +9604,7 @@
     "Groups": [
       "Staff",
       "Costumes",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Head of Costumes/Logistics",
     "Email": "mads.skaerne@jukebox.internal",
@@ -9634,7 +9634,7 @@
     "Groups": [
       "Staff",
       "Banking",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Bank Manager",
     "Email": "kristen.skjern@jukebox.internal",
@@ -9664,7 +9664,7 @@
     "Groups": [
       "Ancillary Staff",
       "Transport",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Company Transport",
     "Email": "helle.vikner@jukebox.internal",
@@ -9694,7 +9694,7 @@
     "Groups": [
       "Ancillary Staff",
       "Catering",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Company Caterer / Chef",
     "Email": "bodil.udsen@jukebox.internal",
@@ -9724,7 +9724,7 @@
     "Groups": [
       "Ancillary Staff",
       "Facilities",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Janitor",
     "Email": "meyer@jukebox.internal",
@@ -9754,7 +9754,7 @@
     "Groups": [
       "Ancillary Staff",
       "Legal",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Company Lawyer (Europe)",
     "Email": "axel.strobye@jukebox.internal",
@@ -9784,7 +9784,7 @@
     "Groups": [
       "Ancillary Staff",
       "Legal",
-      "VPN Users"
+      "VPN-Users"
     ],
     "Title": "Company Lawyer",
     "Email": "ian.hislop@jukebox.internal",
