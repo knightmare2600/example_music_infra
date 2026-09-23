@@ -1190,13 +1190,13 @@
     "ad_device_sub_ou": "IoT"
   },
   {
-    "Name": "EXASWICLY001",
-    "SamAccountName": "EXASWICLY001$",
+    "Name": "EXASWICLY002",
+    "SamAccountName": "EXASWICLY002$",
     "Role": "SWI",
     "Site": "CLY",
     "Description": "Cisco Catalyst 48-port",
     "Enabled": true,
-    "DNSHostName": "EXASWICLY001.jukebox.internal",
+    "DNSHostName": "EXASWICLY002.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.2",
