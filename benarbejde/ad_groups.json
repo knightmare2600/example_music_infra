@@ -886,5 +886,381 @@
     "Scope": "Global",
     "ManagedBy": "",
     "Email": ""
+  },
+  {
+    "Name": "Artists",
+    "Description": "General artists group -- performers not covered by a more specific instrument/role group",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "artists@jukebox.internal"
+  },
+  {
+    "Name": "Music",
+    "Description": "General music department staff",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "music@jukebox.internal"
+  },
+  {
+    "Name": "Drummers",
+    "Description": "Drummers and percussionists (kit)",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "drummers@jukebox.internal"
+  },
+  {
+    "Name": "Bassists",
+    "Description": "Bass players",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "bassists@jukebox.internal"
+  },
+  {
+    "Name": "Keyboardists",
+    "Description": "Keyboard and synthesizer players",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "keyboardists@jukebox.internal"
+  },
+  {
+    "Name": "Producers",
+    "Description": "Record producers",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "producers@jukebox.internal"
+  },
+  {
+    "Name": "Songwriters",
+    "Description": "Songwriters and composers",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "songwriters@jukebox.internal"
+  },
+  {
+    "Name": "Percussion",
+    "Description": "Hand percussion and auxiliary percussion players",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "percussion@jukebox.internal"
+  },
+  {
+    "Name": "Saxophonists",
+    "Description": "Saxophone players",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "saxophonists@jukebox.internal"
+  },
+  {
+    "Name": "Session Vocalists",
+    "Description": "Session/guest vocalists not on a band's permanent roster",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "session-vocalists@jukebox.internal"
+  },
+  {
+    "Name": "Backing Vocalists",
+    "Description": "Backing/harmony vocalists",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "backing-vocalists@jukebox.internal"
+  },
+  {
+    "Name": "Guest-Artists",
+    "Description": "Guest performers appearing on specific projects, not permanent band members",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "guest-artists@jukebox.internal"
+  },
+  {
+    "Name": "Featured Artists",
+    "Description": "Artists credited as featured/guest on another act's work",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "featured-artists@jukebox.internal"
+  },
+  {
+    "Name": "Legacy-Artists",
+    "Description": "Artists from earlier/legacy line-ups retained for historical reference",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "legacy-artists@jukebox.internal"
+  },
+  {
+    "Name": "Solo Artists",
+    "Description": "Solo performers not part of a permanent band",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "solo-artists@jukebox.internal"
+  },
+  {
+    "Name": "Programmers",
+    "Description": "Synth/sequencer programmers",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "programmers@jukebox.internal"
+  },
+  {
+    "Name": "Synth",
+    "Description": "Synthesizer specialists",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "synth@jukebox.internal"
+  },
+  {
+    "Name": "Horn Section",
+    "Description": "Brass and horn section players",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "horn-section@jukebox.internal"
+  },
+  {
+    "Name": "Founders",
+    "Description": "Founding members of their respective bands/projects",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "founders@jukebox.internal"
+  },
+  {
+    "Name": "Executives",
+    "Description": "Band/project founders acting in an executive/leadership capacity",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "executives@jukebox.internal"
+  },
+  {
+    "Name": "Managers",
+    "Description": "Artist and production managers",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "managers@jukebox.internal"
+  },
+  {
+    "Name": "Management",
+    "Description": "Company management",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "management@jukebox.internal"
+  },
+  {
+    "Name": "Propaganda",
+    "Description": "German new wave band Propaganda",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Ralf Dörper",
+    "Email": "propaganda@jukebox.internal"
+  },
+  {
+    "Name": "The-Passions",
+    "Description": "British post-punk band The Passions",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "the-passions@jukebox.internal"
+  },
+  {
+    "Name": "Pastis-51",
+    "Description": "Scottish band Pastis 51",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "pastis-51@jukebox.internal"
+  },
+  {
+    "Name": "Sandra",
+    "Description": "German singer Sandra and production team",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Michael Cretu",
+    "Email": "sandra@jukebox.internal"
+  },
+  {
+    "Name": "Lis Sørensen",
+    "Description": "Danish singer Lis Sørensen",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "lis-sorensen@jukebox.internal"
+  },
+  {
+    "Name": "Whigfield",
+    "Description": "Danish singer Whigfield (Sannie Charlotte Carlson)",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "whigfield@jukebox.internal"
+  },
+  {
+    "Name": "Mo",
+    "Description": "Danish singer MØ (Karen Ørsted)",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "mo@jukebox.internal"
+  },
+  {
+    "Name": "Jan Hammer",
+    "Description": "Composer/keyboardist Jan Hammer",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "jan-hammer@jukebox.internal"
+  },
+  {
+    "Name": "Ska",
+    "Description": "Ska genre tag, The Specials' classic lineup",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "ska@jukebox.internal"
+  },
+  {
+    "Name": "Ancillary Staff",
+    "Description": "Non-band support staff across sites (catering, facilities, legal, medical, transport etc.)",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "ancillary-staff@jukebox.internal"
+  },
+  {
+    "Name": "Staff",
+    "Description": "General staff group",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "staff@jukebox.internal"
+  },
+  {
+    "Name": "Studio Access",
+    "Description": "Recording studio physical/system access",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "studio-access@jukebox.internal"
+  },
+  {
+    "Name": "Editors",
+    "Description": "News editorial staff",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "editors@jukebox.internal"
+  },
+  {
+    "Name": "Creative Team",
+    "Description": "Creative/art department staff",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "creative-team@jukebox.internal"
+  },
+  {
+    "Name": "Esbjerg Office Access",
+    "Description": "Physical access to the Esbjerg studio/office",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "esbjerg-office@jukebox.internal"
+  },
+  {
+    "Name": "Warehouse Access",
+    "Description": "Warehouse physical access",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "warehouse-access@jukebox.internal"
+  },
+  {
+    "Name": "Touring",
+    "Description": "Touring staff and crew",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "touring@jukebox.internal"
+  },
+  {
+    "Name": "Broadcast",
+    "Description": "Broadcast/TV continuity staff",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "broadcast@jukebox.internal"
+  },
+  {
+    "Name": "Ceremonial",
+    "Description": "Ceremonial/royal duties",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "ceremonial@jukebox.internal"
+  },
+  {
+    "Name": "Medical",
+    "Description": "Medical staff",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "medical@jukebox.internal"
+  },
+  {
+    "Name": "Costumes",
+    "Description": "Costume and wardrobe department",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "costumes@jukebox.internal"
+  },
+  {
+    "Name": "Banking",
+    "Description": "Banking staff",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "banking@jukebox.internal"
+  },
+  {
+    "Name": "Transport",
+    "Description": "Company transport staff",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "transport@jukebox.internal"
+  },
+  {
+    "Name": "Catering",
+    "Description": "Catering staff",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "catering@jukebox.internal"
+  },
+  {
+    "Name": "Facilities",
+    "Description": "Facilities and janitorial staff",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "facilities@jukebox.internal"
   }
 ]
