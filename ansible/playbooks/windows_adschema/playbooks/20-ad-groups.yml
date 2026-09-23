@@ -174,8 +174,26 @@
     # person's own SamAccountName. Swept ad_groups.json against every user
     # SamAccountName case-insensitively -- exactly 2 collisions (Nena, Falco),
     # both fixed with an explicit SamAccountName field in ad_groups.json
-    # (Nena-Grp/Falco-Grp). Section C resolves group membership by Name, not
-    # SamAccountName, so this has no effect on group-add logic.
+    # (Nena-Grp/Falco-Grp).
+    #
+    # CORRECTION, same day: the claim this comment used to carry --
+    # "Section C resolves group membership by Name, not SamAccountName, so
+    # this has no effect on group-add logic" -- was WRONG and caused a real
+    # live failure ("An attempt was made to modify an object to include an
+    # attribute that is not legal for its class" for every user trying to
+    # join either group). Confirmed by reading microsoft.ad's own
+    # Get-AnsibleADObject (_ADObject.psm1): a groups: add: string is NOT
+    # looked up by Name/CN at all -- it defaults to Get-ADObject (any object
+    # class, not scoped to groups) and resolves via
+    # LDAPFilter = "(sAMAccountName=<value>)", case-insensitive. Once the
+    # group's SamAccountName became "Nena-Grp", the literal string "Nena" in
+    # ad_users.json's Groups: [...] no longer matched the group at all -- but
+    # it STILL case-insensitively matched the user "nena"'s SamAccountName,
+    # silently resolving to the wrong object (a user, not a group) and
+    # failing when the module tried to set a group-only attribute on it.
+    # Fixed by updating every "Nena"/"Falco" Groups: reference in
+    # ad_users.json to the group's real SamAccountName ("Nena-Grp"/
+    # "Falco-Grp") instead, so the same LDAP filter now matches unambiguously.
     - name: "Create AD security groups"
       microsoft.ad.group:
         name:              "{{ item.Name }}"

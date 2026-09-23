@@ -5644,7 +5644,7 @@
     "SamAccountName": "nena",
     "UserPrincipalName": "nena@jukebox.internal",
     "Groups": [
-      "Nena",
+      "Nena-Grp",
       "Vocalists"
     ],
     "Title": "Lead Vocalist",
@@ -5673,7 +5673,7 @@
     "SamAccountName": "carlo.karges",
     "UserPrincipalName": "carlo.karges@jukebox.internal",
     "Groups": [
-      "Nena",
+      "Nena-Grp",
       "Musicians"
     ],
     "Title": "Guitarist",
@@ -5702,7 +5702,7 @@
     "SamAccountName": "uwe.fahrenkrog",
     "UserPrincipalName": "uwe.fahrenkrog@jukebox.internal",
     "Groups": [
-      "Nena",
+      "Nena-Grp",
       "Musicians"
     ],
     "Title": "Keyboardist",
@@ -5731,7 +5731,7 @@
     "SamAccountName": "jurgen.dehmel",
     "UserPrincipalName": "jurgen.dehmel@jukebox.internal",
     "Groups": [
-      "Nena",
+      "Nena-Grp",
       "Musicians"
     ],
     "Title": "Bassist",
@@ -5760,7 +5760,7 @@
     "SamAccountName": "rolf.brendel",
     "UserPrincipalName": "rolf.brendel@jukebox.internal",
     "Groups": [
-      "Nena",
+      "Nena-Grp",
       "Musicians",
       "Percussionists"
     ],
@@ -6231,7 +6231,7 @@
     "SamAccountName": "falco",
     "UserPrincipalName": "falco@jukebox.internal",
     "Groups": [
-      "Falco",
+      "Falco-Grp",
       "Artists",
       "Studio Access",
       "Touring"
@@ -6262,7 +6262,7 @@
     "SamAccountName": "thomas.rabitsch",
     "UserPrincipalName": "thomas.rabitsch@jukebox.internal",
     "Groups": [
-      "Falco",
+      "Falco-Grp",
       "Musicians",
       "Studio Access"
     ],
@@ -6292,7 +6292,7 @@
     "SamAccountName": "walter.grassmann",
     "UserPrincipalName": "walter.grassmann@jukebox.internal",
     "Groups": [
-      "Falco",
+      "Falco-Grp",
       "Musicians"
     ],
     "Title": "Bassist",
