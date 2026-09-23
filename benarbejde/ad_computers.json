@@ -421,7 +421,7 @@
   },
   {
     "Name": "EXASWIEDI002",
-    "SamAccountName": "EXASWIEDI001$",
+    "SamAccountName": "EXASWIEDI002$",
     "Role": "SWI",
     "Site": "EDI",
     "Description": "Cisco Catalyst 48-port",
