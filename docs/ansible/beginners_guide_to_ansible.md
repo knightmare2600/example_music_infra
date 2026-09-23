@@ -129,6 +129,26 @@ it's useful for regenerating the demo data by hand, but it is deliberately *not*
 anything Ansible runs, so a change to that old PowerShell-literal format can never silently
 break a live playbook run.
 
+**Correct invocation to actually redeploy a `benarbejde/` fix to the control node itself**,
+confirmed live 2026-09-23 fixing a bad `ad_users.json` record:
+
+```
+ansible@EXAANSFRD001[~/ansible]$ git pull
+ansible@EXAANSFRD001[~/ansible]$ ansible-playbook playbooks/linux/tools.yml -i configs/inventory --limit EXAANSFRD001 --ask-vault-pass
+```
+
+`--limit EXAANSFRD001` targets just the control node — the file you edited only needs to
+reach the one host that's about to read it from `/etc/example-music/`, not the whole fleet.
+**The `git pull` first is not optional** — `tools.yml`'s "Deploy `ad_users.json` to
+`/etc/example-music`" task copies from the *local git checkout* at `~/ansible/benarbejde/`,
+not from GitHub directly. Skip the pull and the task copies whatever was already
+checked out, which — if that happens to already match what's currently deployed — reports
+**`no change`**, exactly as if the fix had already been applied. That "no change" on the one
+task you actually care about, right after editing that exact file, is the tell that the pull
+was missed, not confirmation the fix landed. Re-run `tools.yml` after pulling — the deploy
+task should then show a real change — before re-running whatever playbook actually consumes
+the fixed file.
+
 ---
 
 ## Inventory and `group_vars` — the part that isn't optional
@@ -1565,6 +1585,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-09-19 | **Fixed a real gap in `exa_pretty` itself**, found live chasing a Chocolatey install failure that printed only `non-zero return code` with no further detail: "Verbose output and quiet mode" previously said the full result dict (stdout/stderr/rc/cmd) was shown at `-v` and above for ok/changed/failed/unreachable alike — true for ok/changed, but that meant a **failure** withheld the exact detail needed to diagnose it unless you already knew to re-run with `-v`. Fixed `callback_plugins/exa_pretty.py` so failed/unreachable results always show full detail with no `-v` needed; ok/changed are unaffected. Verified end-to-end with a real failing task before and after the fix. |
 | 2026-09-19 | **Corrected a second, more serious stale claim**, in "Dynamic Inventory Registration — `add_host`": it previously showed `add_host: name: "{{ target_hostname \| upper }}"` and claimed (as "confirmed empirically") that this let a *later, separately-imported* play's `hosts:` pattern see the new registration. A real `site.yml` run against `EXADCSFRD001`, immediately after the `target_hosts` fix above, proved this false: `import_playbook` resolves every play's `hosts:` line at parse time, before any play — including the one doing the `add_host` — has run a single task, so no later chained play could ever see it; `15-locale-timezone.yml` kept targeting the original raw connection IP with none of `windows_nodes`' `group_vars` attached and died `UNREACHABLE`. Verified the actual fix (`add_host: name: "{{ inventory_hostname }}"` — the identity *that play itself* already resolved, which every later play's identical `hosts:` expression also resolves to) with an isolated two-play test harness before touching the real file, matching this guide's own "build the smallest possible reproduction" principle from the Inventory and group_vars section above. Rewrote the section's explanation and added a general takeaway about `import_playbook`'s parse-time host resolution applying beyond this one bug. |
 | 2026-09-21 | Full read-through review ahead of the PFY building PHI and DET, per Robert's request. **Corrected two related, critical inaccuracies**, both stemming from the same wrong assumption that `windows_dc/site.yml` chains or includes `windows_bootstrap` stages — it never has, at any point in its git history; it is five `import_playbook`s of its own DC-specific plays only, full stop. (1) §4 (`EXADCSCLD001`) showed a single `windows_dc/site.yml` invocation as if it handled rename/static-IP/DNS *and* DC promotion together, describing `00-preflight.yml`'s `add_host` as running "in the flesh" as part of that command. Rewritten to show the real two-step sequence (`windows_bootstrap/site.yml` then `windows_dc/site.yml`, separate invocations), grounded in the `EXADCSFRD001` build completed live this same day (`failed=0`), plus a callout on not trusting a pre-flight summary's *decision* as proof of *application* (see the DNS-application-gap incident, same day — [[feedback_decision_correct_is_not_applied_confirmed]]). (2) The "Domain controller — re-running to confirm a fix actually held" example (added 2026-08-03) showed `windows_dc/site.yml --skip-tags bootstrap`/without it as exercising the `[B0]` DefaultShell failsafe — `windows_dc/site.yml` has no `bootstrap` tag and never did, so this was a silent no-op that happened to still complete successfully, masking the error. The `[B0]` failsafe actually lives in `windows_bootstrap/00-preflight.yml`'s own `bootstrap` tag; corrected the example to re-run `windows_bootstrap/site.yml` instead, retitled the section to match. Also found and fixed the same stale claim, independently, in `ansible/playbooks/windows_dc/README.md`'s "Playbook order" and "Usage" sections (its "Full run"/"DC stages only" examples referenced the same non-existent `bootstrap` tag) — confirmed via full git history back to the module's first commit that `site.yml` there never had one. Read the remainder of the document (Sudo/Become, Collection Versions, Recommended Workflow, Changelog) against current repo state — no further inaccuracies found. |
+| 2026-09-23 | Added the correct `linux/tools.yml` invocation for redeploying a single fixed `benarbejde/` file to the control node itself, under "A worked example: `jukebox.example.tdf`" — found live fixing a bad `ad_users.json` record during the `EXADCSFRD001` `windows_adschema` population: the deploy task copies from the *local git checkout*, not GitHub, so running `tools.yml` without a preceding `git pull` silently redeploys the stale file and reports `no change` on the exact task you were relying on, indistinguishable at a glance from the fix having genuinely landed. |
 
 ---
 
