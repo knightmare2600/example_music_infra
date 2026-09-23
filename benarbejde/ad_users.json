@@ -2047,7 +2047,7 @@
   {
     "Name": "Terry Hall",
     "SamAccountName": "terry.hall.fb3",
-    "UserPrincipalName": "terry.hall@jukebox.internal",
+    "UserPrincipalName": "terry.hall.fb3@jukebox.internal",
     "Groups": [
       "Fun Boy Three",
       "Vocalists"
@@ -2076,7 +2076,7 @@
   {
     "Name": "Neville Staple",
     "SamAccountName": "neville.staple.fb3",
-    "UserPrincipalName": "neville.staple@jukebox.internal",
+    "UserPrincipalName": "neville.staple.fb3@jukebox.internal",
     "Groups": [
       "Fun Boy Three",
       "Vocalists"
@@ -2105,7 +2105,7 @@
   {
     "Name": "Lynval Golding",
     "SamAccountName": "lynval.golding.fb3",
-    "UserPrincipalName": "lynval.golding@jukebox.internal",
+    "UserPrincipalName": "lynval.golding.fb3@jukebox.internal",
     "Groups": [
       "Fun Boy Three",
       "Guitarists"
@@ -4350,7 +4350,7 @@
   {
     "Name": "Martyn Ware",
     "SamAccountName": "martyn.ware.h17",
-    "UserPrincipalName": "martyn.ware@jukebox.internal",
+    "UserPrincipalName": "martyn.ware.h17@jukebox.internal",
     "Groups": [
       "Heaven 17",
       "Artists"

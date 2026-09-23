@@ -72,6 +72,36 @@ Notes on demo-data quirks handled:
       adds another dual-band person, give the second occurrence the same
       treatment, or 30-ad-users.yml will silently create/manage only one of
       the two intended AD objects.
+    • UserPrincipalName needs the SAME disambiguating suffix as SamAccountName
+      for a dual-band person's second record, in the SAME local-part style
+      (e.g. terry.hall.fb3@example.net) -- NOT via a different sub-domain
+      (terry.hall@fb3.example.net), and NOT left off entirely. Found live
+      2026-09-23, two distinct authoring mistakes, same underlying bug class:
+      (a) Terry Hall, Neville Staple, and Lynval Golding (The Specials + Fun
+      Boy Three) had correctly disambiguated SamAccountName but were
+      authored with a sub-domain-based UPN instead -- _sub_email()/
+      _EMAIL_PATTERNS rewrites @fb3.example.net to the SAME final @{domain}
+      as everyone else, so both records ended up wanting the identical UPN.
+      (b) Martyn Ware (Human League + Heaven 17, martyn.ware.h17) simply had
+      the base record's UPN copy-pasted verbatim with no disambiguation
+      attempted at all. Both produce the same live failure: New-ADUser
+      fails with "UPN value provided for addition/modification is not
+      unique forest-wide" for the second record, every run. Fixed by editing
+      the .tdf source to match the five already-fixed people's style (plain
+      local-part suffix, e.g. martyn.ware.h17@example.net). The five
+      already-fixed ones never hit this because their UPN was already
+      authored as a local-part suffix from the start.
+      NOTE: as of 2026-09-23 this .tdf file and benarbejde/ad_users.json have
+      genuinely diverged -- 7 users (Roxy Music x4, Bryan Adams, Anita Baker,
+      Dionne Warwick) exist in ad_users.json but were never added here, from
+      earlier work that edited the JSON output directly rather than
+      round-tripping through this script. Confirmed via a real regeneration
+      attempt (364 records in ad_users.json vs 357 from this .tdf) --
+      do NOT regenerate ad_users.json from this file until that gap is
+      reconciled, or those 7 users will silently vanish. This UPN fix was
+      therefore also applied directly to ad_users.json by hand, matching
+      how those 7 users were added -- this file's own edit is for
+      documentation/consistency only, not because it was regenerated from.
     • Locked=$true accounts ARE reproduced (fixed 2026-07-17, was previously
       believed unfixable and documented as such here) -- 30-ad-users.yml
       Section E sets the lockoutTime attribute directly for Locked=true users
