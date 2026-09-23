@@ -79,10 +79,21 @@
           | combine({'mobile': item.mobile} if item.mobile else {})
           | combine({'physicalDeliveryOfficeName': item.physicalDeliveryOfficeName} if item.physicalDeliveryOfficeName else {})
         }}
-    # Always false here -- see the async/enable-race writeup above. The real
-    # desired state (not item.Disabled) is applied serially afterward by
-    # 30-ad-users.yml's Section B2, once this batch's creates have settled.
-    enabled:          false
+    # 2026-09-23, found live: enabled: false here used to be unconditional --
+    # this task runs for ALL 354 users every run (_b_batches is built from
+    # the unfiltered _users), not just new creates, so it was actively
+    # DISABLING every already-correctly-enabled account on every single run.
+    # Section B2's _enable_todo filter is built from a snapshot taken BEFORE
+    # this task runs, so an account that was already correctly enabled at
+    # snapshot time looked like "no change needed" and never got re-enabled
+    # afterward -- confirmed live via Get-ADUser showing Enabled=False on
+    # accounts that should have been True. omit entirely instead: this task
+    # no longer touches enabled: at all (whether creating or updating).
+    # Section B0 (30-ad-users.yml) already owns the disabled-at-creation
+    # behaviour for genuinely new accounts; Section B2 is now the sole owner
+    # of enabled: for every account, new or existing, via its own live
+    # pre-run snapshot -- this task must never set it again.
+    enabled:          "{{ omit }}"
     password:         "{{ vault_ad_new_user_password }}"
     update_password:  on_create
     password_expired: "{{ item.MustChangePassword }}"
