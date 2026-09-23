@@ -3,7 +3,7 @@
 # Example Music Limited — Create one batch of AD user accounts, capped concurrency
 # =============================================================================
 # Included in a loop over _b_batches (see 30-ad-users.yml Section B), once per
-# batch of up to 20 users. Fires every user in the batch as an async job
+# batch of up to 10 users. Fires every user in the batch as an async job
 # (poll: 0 — returns immediately with a job ID rather than waiting), then a
 # second task waits for the whole batch to finish before the next batch
 # starts. This caps real concurrent WinRM/AD load at the batch size instead of
@@ -19,8 +19,16 @@
 #
 # Real constraint, not guessed: WinRM caps concurrent shells per user at 30 by
 # default (MaxShellsPerUser) — an unbounded fire-all-364-at-once approach
-# would likely hit that limit. Batches of 20 (Robert's own number) stay
-# comfortably under it without needing to raise anything on the DC first.
+# would likely hit that limit. Batches of 20 (Robert's own number, originally)
+# stayed comfortably under it. Lowered to 10, 2026-09-23, Robert's ask: after
+# the UPN-collision fix, repeated live runs showed a small, different subset
+# of new-user creates failing each run with "password does not meet the
+# length, complexity, or history requirement", always clearing on a plain
+# re-run. Undetermined whether this is AD-side contention under concurrent
+# load or something about how heavily-loaded batches interact with this
+# module — halving batch size is a cheap, safe thing to try while that's
+# investigated properly (see the isolated single-user debug playbook)
+# without giving up on async entirely.
 #
 # async: 60 is a generous per-job timeout — a single AD user create/update
 # normally completes in low single-digit seconds; 60s gives real headroom for
