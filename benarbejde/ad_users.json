@@ -2813,7 +2813,7 @@
     "UserPrincipalName": "dusty.springfield@jukebox.internal",
     "Groups": [
       "Pet Shop Boys",
-      "Guests"
+      "Guest-Artists"
     ],
     "Title": "Guest Vocalist",
     "Email": "dusty.springfield@jukebox.internal",
@@ -5969,7 +5969,7 @@
     "Groups": [
       "Propaganda",
       "Artists",
-      "Backing-Vocalists"
+      "Backing Vocalists"
     ],
     "Title": "Backing Vocalist",
     "Email": "susanne.freytag@jukebox.internal",
