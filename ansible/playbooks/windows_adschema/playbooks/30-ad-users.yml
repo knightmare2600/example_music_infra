@@ -399,6 +399,25 @@
           {%- endset -%}
           {{ _rendered }}
 
+    # 2026-09-23, added alongside Section B2 (see create_users_batch.yml's
+    # header for the confirmed root-cause writeup): B now always creates with
+    # enabled: false to remove the concurrent enable-time-validation race,
+    # so the real desired enabled state has to be applied afterward, here.
+    # Same shape as _password_reset_todo above, but inverted to catch BOTH
+    # directions: items not yet in _existing_user_by_sam (brand new this run,
+    # just created disabled by B, default to Enabled=false for the compare)
+    # and items that already exist with the wrong Enabled state (covers the
+    # same stuck-account case _password_reset_todo does, redundantly but
+    # harmlessly -- by the time B2 reaches them Section F has already fixed
+    # the ones that were genuinely stuck, so this is a real no-op for those).
+    - name: "Filter to users needing an enabled-state change"
+      set_fact:
+        _enable_todo: >-
+          {%- set _rendered -%}
+          [{% for item in _users %}{% if ((not item.Disabled) != (_existing_user_by_sam[item.SamAccountName | lower].Enabled | default(false))) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          {%- endset -%}
+          {{ _rendered }}
+
     - name: "Preflight | Report C/D/E work needed"
       debug:
         msg: >-
@@ -406,6 +425,7 @@
           Manager: {{ _manager_todo | default([]) | length }} user(s) need a manager set/corrected.
           Lockout: {{ _lock_todo | default([]) | length }} user(s) need a lock/unlock state change.
           Password reset: {{ _password_reset_todo | default([]) | length }} user(s) stuck disabled with a non-compliant password.
+          Enable: {{ _enable_todo | default([]) | length }} user(s) need an enabled-state change (includes brand-new creates from this run).
 
   tasks:
 
@@ -559,13 +579,13 @@
     # small, rotating subset of new-user creates within a batch failing with
     # "password does not meet the length, complexity, or history requirement"
     # on New-ADUser -- a different specific user each run, always clearing on
-    # a plain re-run, never the same one twice. Genuinely undetermined
-    # whether this is AD-side contention under concurrent load or something
-    # about how heavily-loaded batches interact with this module -- halving
-    # the concurrency is a cheap, safe thing to try while that's investigated
-    # separately (see the isolated single-user debug playbook), still async
-    # (meaningfully faster than serial), just less concurrent pressure per
-    # batch than 20 was.
+    # a plain re-run, never the same one twice. UPDATE, same day: root cause
+    # now confirmed (see create_users_batch.yml's header) as a real
+    # concurrent enable-time-validation race in New-ADUser -Enabled $true,
+    # not random AD-side noise -- fixed at the source there (always creates
+    # disabled now) rather than by shrinking batch size further. Kept at 10
+    # since concurrency itself is no longer the risk once enabling is
+    # decoupled from creation.
     - name: "B | Split users into batches of 10 for capped-concurrency async creation"
       set_fact:
         _b_batches: "{{ _users | batch(10) | list }}"
@@ -576,6 +596,28 @@
       loop_control:
         loop_var: _b_batch
         label: "batch of {{ _b_batch | length }}"
+
+    # -------------------------------------------------------------------------
+    # Section B2 — Enabled state
+    # Serial, no async -- runs only after every batch in Section B above has
+    # fully completed, so there's no concurrent password-write activity left
+    # on the DC when each enable call happens. See create_users_batch.yml's
+    # header for the full root-cause writeup this closes. Pre-filtered
+    # against _enable_todo (built in pre_tasks) so this is a no-op round trip
+    # for the ~350 users whose enabled state already matches, not a full
+    # serial pass over all 354 -- same shape as Sections C/D/E.
+    # -------------------------------------------------------------------------
+
+    - name: "B2 | Set enabled state (serial, after batch creates have settled)"
+      microsoft.ad.user:
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        path:             "{{ item.ad_ou }}"
+        enabled:          "{{ not item.Disabled }}"
+        state:            present
+      loop: "{{ _enable_todo | default([]) }}"
+      loop_control:
+        label: "{{ item.SamAccountName }}"
 
     # -------------------------------------------------------------------------
     # Section C — Group membership

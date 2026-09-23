@@ -33,6 +33,26 @@
 # async: 60 is a generous per-job timeout — a single AD user create/update
 # normally completes in low single-digit seconds; 60s gives real headroom for
 # a slow moment without masking a genuinely hung job for too long.
+#
+# 2026-09-23, found live and now CONFIRMED (supersedes the "genuinely
+# undetermined" note this comment used to carry): New-ADUser -AccountPassword
+# ... -Enabled $true is not atomic -- AD writes the password first, then
+# performs a SEPARATE enable-time re-validation of that stored password
+# against policy. Confirmed directly: Get-ADUser -Properties Enabled,
+# PasswordLastSet against 7 accounts that failed together in one batch showed
+# every one of them with a real, valid PasswordLastSet (proving the password
+# write itself succeeded) but Enabled=False -- and their PasswordLastSet
+# timestamps were all within the same ~9-second window, matching this batch's
+# near-simultaneous async dispatch exactly. When several of these land on the
+# DC at once, the enable-time check spuriously rejects some of them, leaving
+# a permanently-stuck disabled stub (update_password: on_create means a plain
+# re-run can never fix this -- see Section F's writeup in 30-ad-users.yml for
+# the recovery path for accounts already stuck this way from a prior run).
+# Fixed at the source: this task now always creates with enabled: false,
+# removing the enable step from the concurrent/async path entirely. The real
+# desired enabled state is applied afterward by 30-ad-users.yml's Section B2,
+# serially, once every batch in this run has fully settled -- no more
+# concurrent enable-time validation calls, no more race.
 # =============================================================================
 
 - name: "B | Create user accounts (batch of {{ _b_batch | length }}, fire async)"
@@ -59,7 +79,10 @@
           | combine({'mobile': item.mobile} if item.mobile else {})
           | combine({'physicalDeliveryOfficeName': item.physicalDeliveryOfficeName} if item.physicalDeliveryOfficeName else {})
         }}
-    enabled:          "{{ not item.Disabled }}"
+    # Always false here -- see the async/enable-race writeup above. The real
+    # desired state (not item.Disabled) is applied serially afterward by
+    # 30-ad-users.yml's Section B2, once this batch's creates have settled.
+    enabled:          false
     password:         "{{ vault_ad_new_user_password }}"
     update_password:  on_create
     password_expired: "{{ item.MustChangePassword }}"
