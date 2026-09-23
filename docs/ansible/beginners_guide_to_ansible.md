@@ -1567,6 +1567,117 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 
 ---
 
+## AD (`windows_adschema`) Troubleshooting One-Liners
+
+These came out of one evening's live `populate_ad` debugging session against
+`EXADCSFRD001` (2026-09-23). Every one below is a generalised, reusable
+diagnostic *pattern* — not the literal commands from that session, which named
+specific users/groups/computers that won't matter to a future problem. Swap in
+whatever names are actually relevant. Each one answers a specific question you
+can't always answer just by reading a playbook's recap line.
+
+**Is this task genuinely hung, or just slow?**
+
+A task that's been running a long time with no completion line yet is
+ambiguous — Ansible gives you no "still working" signal. Check whether there's
+real activity on the target:
+
+```powershell
+Get-WSManInstance -ResourceURI shell -Enumerate | Select-Object ShellId, Owner, State, @{N='RunningSeconds';E={((Get-Date) -[datetime]$_.ShellRunTime).TotalSeconds}}
+Get-Process -Name wsmprovhost -ErrorAction SilentlyContinue | Select-Object Id, StartTime, CPU, @{N='RunningSeconds';E={((Get-Date) -$_.StartTime).TotalSeconds}}
+```
+
+Both empty means nothing is running remotely at all — a genuine hang, not just
+a slow task. If either shows real, growing CPU time, it's working, just slow.
+
+**Did a bug just disable (or enable) far more accounts than it should have?**
+
+A single mis-scoped `enabled:` in a batched task can silently flip every
+account's state on every run. This is the fastest way to catch it — compare
+the split against a known-good baseline count:
+
+```powershell
+Get-ADUser -Filter * -SearchBase "OU=Sites,DC=jukebox,DC=internal" -Properties Enabled | Group-Object Enabled | Select-Object Name, Count
+```
+
+**Is an account stuck disabled with a genuinely valid password (not actually a password problem)?**
+
+`New-ADUser`/`Set-ADUser` can fail with a password-complexity-flavoured error
+even when the real problem is a separate enable-time validation race, not the
+password itself. Checking `Enabled` and `PasswordLastSet` together tells you
+which:
+
+```powershell
+$affected = 'user1','user2','user3'   # whatever's actually stuck
+Get-ADUser -Filter * -Properties Enabled, PasswordLastSet |
+  Where-Object { $_.SamAccountName -in $affected } |
+  Select-Object SamAccountName, Enabled, PasswordLastSet
+```
+
+A real, recent `PasswordLastSet` with `Enabled: False` means the password
+write succeeded and something else is blocking the enable — not a bad
+password.
+
+**Does a group actually have the members it's supposed to (not just exist)?**
+
+A group can exist correctly, with the right name and attributes, and still be
+completely empty if the membership-add step never ran or targeted the wrong
+object:
+
+```powershell
+Get-ADGroup -Filter "SamAccountName -eq 'SomeGroup'" -Properties Members |
+  Select-Object Name, SamAccountName, @{N='MemberCount';E={$_.Members.Count}}
+```
+
+**A specific `Get-ADUser`/`Get-ADComputer -Filter "Name -eq '...'"` came back empty — did the object land somewhere else entirely?**
+
+Before concluding an object was never created, widen the search across *any*
+object class and *both* Name and SamAccountName — a naming/identity mismatch
+between what you expect and what actually exists is common enough to check
+first:
+
+```powershell
+Get-ADObject -Filter "Name -like '*PARTOFNAME*' -or SamAccountName -like '*PARTOFNAME*'" -Properties SamAccountName, ObjectClass |
+  Select-Object Name, ObjectClass, SamAccountName, DistinguishedName |
+  Format-Table -AutoSize -Wrap
+```
+
+**Is there a duplicate device/user hiding under a given OU subtree?**
+
+This is the live-AD complement to `at_have_ryggen_fri/check_ad_data_integrity.py`
+(harness section 43) — that check only catches a duplicate SamAccountName in
+the *source JSON* before it's ever pushed; this one catches it directly in
+live AD, useful when checking a subtree you suspect has drifted from the data
+for some other reason:
+
+```powershell
+Get-ADObject -Filter * -SearchBase "OU=SomeOU,OU=Users,...,DC=jukebox,DC=internal" -Properties ObjectClass |
+  Group-Object Name | Where-Object { $_.Count -gt 1 } | Select-Object Name, Count
+```
+
+**Did a manager/reference attribute actually resolve to the right object?**
+
+A DN-valued reference (manager, in this example) can silently point at the
+wrong object, or fail to resolve at all, without necessarily throwing an
+error every time:
+
+```powershell
+Get-ADUser -Identity someuser -Properties Manager |
+  Select-Object Name, @{N='Manager';E={ if ($_.Manager) { (Get-ADUser -Identity $_.Manager).Name } else { '(none)' } }}
+```
+
+**A general caution that produced most of the above**: a clean recap line
+(`failed=0`, "All items completed") is proof nothing *crashed* — it is not
+proof the change actually landed the way you intended. Every fix above got a
+real `Get-AD*` check against live AD before being trusted, not just a clean
+re-run. One of these checks was itself initially wrong because a multi-line
+paste broke a PowerShell command mid-flight without erroring loudly (a
+`-ErrorAction`/value pair got split across lines) — if a count looks
+suspicious (e.g. `0` where you expected a real number), re-run the exact
+command on one line before trusting it.
+
+---
+
 ## Changelog
 
 | Date | Change |
@@ -1586,6 +1697,7 @@ Always verify inventory, target hosts, become configuration, and sudo permission
 | 2026-09-19 | **Corrected a second, more serious stale claim**, in "Dynamic Inventory Registration — `add_host`": it previously showed `add_host: name: "{{ target_hostname \| upper }}"` and claimed (as "confirmed empirically") that this let a *later, separately-imported* play's `hosts:` pattern see the new registration. A real `site.yml` run against `EXADCSFRD001`, immediately after the `target_hosts` fix above, proved this false: `import_playbook` resolves every play's `hosts:` line at parse time, before any play — including the one doing the `add_host` — has run a single task, so no later chained play could ever see it; `15-locale-timezone.yml` kept targeting the original raw connection IP with none of `windows_nodes`' `group_vars` attached and died `UNREACHABLE`. Verified the actual fix (`add_host: name: "{{ inventory_hostname }}"` — the identity *that play itself* already resolved, which every later play's identical `hosts:` expression also resolves to) with an isolated two-play test harness before touching the real file, matching this guide's own "build the smallest possible reproduction" principle from the Inventory and group_vars section above. Rewrote the section's explanation and added a general takeaway about `import_playbook`'s parse-time host resolution applying beyond this one bug. |
 | 2026-09-21 | Full read-through review ahead of the PFY building PHI and DET, per Robert's request. **Corrected two related, critical inaccuracies**, both stemming from the same wrong assumption that `windows_dc/site.yml` chains or includes `windows_bootstrap` stages — it never has, at any point in its git history; it is five `import_playbook`s of its own DC-specific plays only, full stop. (1) §4 (`EXADCSCLD001`) showed a single `windows_dc/site.yml` invocation as if it handled rename/static-IP/DNS *and* DC promotion together, describing `00-preflight.yml`'s `add_host` as running "in the flesh" as part of that command. Rewritten to show the real two-step sequence (`windows_bootstrap/site.yml` then `windows_dc/site.yml`, separate invocations), grounded in the `EXADCSFRD001` build completed live this same day (`failed=0`), plus a callout on not trusting a pre-flight summary's *decision* as proof of *application* (see the DNS-application-gap incident, same day — [[feedback_decision_correct_is_not_applied_confirmed]]). (2) The "Domain controller — re-running to confirm a fix actually held" example (added 2026-08-03) showed `windows_dc/site.yml --skip-tags bootstrap`/without it as exercising the `[B0]` DefaultShell failsafe — `windows_dc/site.yml` has no `bootstrap` tag and never did, so this was a silent no-op that happened to still complete successfully, masking the error. The `[B0]` failsafe actually lives in `windows_bootstrap/00-preflight.yml`'s own `bootstrap` tag; corrected the example to re-run `windows_bootstrap/site.yml` instead, retitled the section to match. Also found and fixed the same stale claim, independently, in `ansible/playbooks/windows_dc/README.md`'s "Playbook order" and "Usage" sections (its "Full run"/"DC stages only" examples referenced the same non-existent `bootstrap` tag) — confirmed via full git history back to the module's first commit that `site.yml` there never had one. Read the remainder of the document (Sudo/Become, Collection Versions, Recommended Workflow, Changelog) against current repo state — no further inaccuracies found. |
 | 2026-09-23 | Added the correct `linux/tools.yml` invocation for redeploying a single fixed `benarbejde/` file to the control node itself, under "A worked example: `jukebox.example.tdf`" — found live fixing a bad `ad_users.json` record during the `EXADCSFRD001` `windows_adschema` population: the deploy task copies from the *local git checkout*, not GitHub, so running `tools.yml` without a preceding `git pull` silently redeploys the stale file and reports `no change` on the exact task you were relying on, indistinguishable at a glance from the fix having genuinely landed. |
+| 2026-09-24 | Added "AD (`windows_adschema`) Troubleshooting One-Liners" — 7 generalised `Get-AD*` diagnostic patterns (hung-vs-slow task check, domain-wide Enabled sanity check, stuck-disabled-with-valid-password check, real group membership count, broad any-class/any-name search, duplicate-object-under-a-subtree check, manager/reference resolution spot-check) distilled from one evening's live `populate_ad` debugging session that found and fixed 8 real bugs across `ad_users.json`/`ad_groups.json`/`ad_computers.json`/the playbooks themselves. Written as reusable templates, not the session's literal (incident-specific) commands. |
 
 ---
 
