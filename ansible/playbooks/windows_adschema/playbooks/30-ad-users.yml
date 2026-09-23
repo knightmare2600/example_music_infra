@@ -296,13 +296,11 @@
           {{ _band_ous_todo | default([]) | length }} not already present.
 
     # 2026-09-21, Robert's ask -- extending the same skip-existing-work pattern to
-    # Sections C/D/E below (group membership, manager, lockout state), NOT Section B
-    # (the 17-field user create itself -- Robert's explicit call: too much surface
-    # area/risk to compare robustly tonight, left on microsoft.ad.user's own full
-    # per-item idempotency). C/D/E are each a much narrower, single-purpose check
-    # per user, and E in particular currently calls "unlock" on literally every one
-    # of the 364 users on every single re-run regardless of whether they were ever
-    # locked (only ~9 genuinely are) -- one query here removes that dead weight.
+    # Sections C/D/E below (group membership, manager, lockout state). C/D/E are
+    # each a much narrower, single-purpose check per user, and E in particular
+    # currently calls "unlock" on literally every one of the 364 users on every
+    # single re-run regardless of whether they were ever locked (only ~9
+    # genuinely are) -- one query here removes that dead weight.
     # Group names are extracted from MemberOf DNs in PowerShell (far simpler and more
     # robust than attempting DN-parsing in Jinja); Manager's DN is resolved back to a
     # SamAccountName using this SAME query's own DistinguishedName/SamAccountName
@@ -310,10 +308,29 @@
     # 2026-09-22, extended: also fetches Enabled now, used by the F | Recover
     # section below -- same single call, one more -Properties/Select-Object
     # field, costs nothing for the C/D/E filters which don't read it.
+    #
+    # 2026-09-21's own note here originally excluded Section B (the 17-field
+    # user create/update itself) from this pattern -- "too much surface area/
+    # risk to compare robustly". Revisited 2026-09-23, Robert's explicit ask,
+    # given how much of every run tonight was spent on Section B batches that
+    # turned out to be pure no-ops (~38 batches over ~9 minutes touching
+    # accounts with nothing actually changed). Extended this SAME query with
+    # every field Section B's own task (create_users_batch.yml) sets, so
+    # _b_update_todo below can skip genuinely-unchanged accounts the same way
+    # C/D/E/B2 already do. Scoped conservatively: any comparison defaults to
+    # "needs update" rather than silently assuming a match, since the wrong
+    # failure mode here (silently never re-applying a real data change) is
+    # worse than the right one (an occasional unnecessary round trip).
     - name: "Query existing user group memberships, manager, and lockout state (single call)"
       ansible.windows.win_shell: |
-        $results = @(Get-ADUser -Filter * -Properties MemberOf,Manager,LockedOut,Enabled |
+        $results = @(Get-ADUser -Filter * -Properties MemberOf,Manager,LockedOut,Enabled,`
+            Description,EmailAddress,Company,StreetAddress,City,PostalCode,Country,co,`
+            UserPrincipalName,DisplayName,GivenName,Surname,Title,Department,`
+            telephoneNumber,mobile,physicalDeliveryOfficeName,PasswordExpired |
           Select-Object SamAccountName, DistinguishedName, LockedOut, Enabled,
+            Description, EmailAddress, Company, StreetAddress, City, PostalCode, Country, co,
+            UserPrincipalName, DisplayName, GivenName, Surname, Title, Department,
+            telephoneNumber, mobile, physicalDeliveryOfficeName, PasswordExpired,
             @{Name='ManagerDN';Expression={$_.Manager}},
             @{Name='GroupNames';Expression={ @($_.MemberOf | ForEach-Object { ($_ -split ',',2)[0] -replace '^CN=','' }) }})
         ConvertTo-Json -InputObject $results -Compress -Depth 4
@@ -376,6 +393,59 @@
         _lock_todo: >-
           {%- set _rendered -%}
           [{% for item in _users %}{% if (item.SamAccountName | lower not in _existing_user_by_sam or (_existing_user_by_sam[item.SamAccountName | lower].LockedOut | default(false)) != (item.Locked | default(false))) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          {%- endset -%}
+          {{ _rendered }}
+
+    # 2026-09-23, Robert's ask, extending the 2026-09-21 skip-existing-work
+    # pattern to Section B itself -- see this pre_task block's own header
+    # comment above ("Query existing user group memberships...") for the
+    # full writeup. Every field Section B's task (create_users_batch.yml)
+    # sets is compared here; string fields default missing/None to '' via
+    # default('', true) so a genuinely-blank AD value compares correctly
+    # against a genuinely-blank desired value, but a comparison against a
+    # user not yet in _existing_user_by_sam at all always falls through to
+    # "needs update" (the first or-clause) rather than risk a false "no
+    # change needed" for an account this snapshot never saw.
+    - name: "Filter to user create/update work not already correct"
+      set_fact:
+        _b_update_todo: >-
+          {%- set _rendered -%}
+          [{% for item in _users %}
+            {%- set _existing = _existing_user_by_sam[item.SamAccountName | lower] | default({}) -%}
+            {%- set _desired_street = item.Street if item.Street else '' -%}
+            {%- set _desired_city = item.City if item.City else '' -%}
+            {%- set _desired_postal = item.PostalCode if item.PostalCode else '' -%}
+            {%- set _desired_phone = item.telephoneNumber if item.telephoneNumber else '' -%}
+            {%- set _desired_mobile = item.mobile if item.mobile else '' -%}
+            {%- set _desired_office = item.physicalDeliveryOfficeName if item.physicalDeliveryOfficeName else '' -%}
+            {%- set _desired_firstname = item.Name.split(' ')[0] -%}
+            {%- set _desired_surname = (item.Name.split(' ')[1:] | join(' ')) -%}
+            {%- set _desired_country_code = _country_lookup[item.CountryCode].code -%}
+            {%- set _desired_country_name = _country_lookup[item.CountryCode].name -%}
+            {%- if (
+              item.SamAccountName | lower not in _existing_user_by_sam
+              or (_existing.Description | default('', true)) != item.Description
+              or (_existing.EmailAddress | default('', true)) != item.Email
+              or (_existing.Company | default('', true)) != item.Company
+              or (_existing.StreetAddress | default('', true)) != _desired_street
+              or (_existing.City | default('', true)) != _desired_city
+              or (_existing.PostalCode | default('', true)) != _desired_postal
+              or (_existing.Country | default('', true)) != _desired_country_code
+              or (_existing.co | default('', true)) != _desired_country_name
+              or (_existing.UserPrincipalName | default('', true)) != item.UserPrincipalName
+              or (_existing.DisplayName | default('', true)) != item.Name
+              or (_existing.GivenName | default('', true)) != _desired_firstname
+              or (_existing.Surname | default('', true)) != _desired_surname
+              or (_existing.Title | default('', true)) != item.Title
+              or (_existing.Department | default('', true)) != item.Department
+              or (_existing.telephoneNumber | default('', true)) != _desired_phone
+              or (_existing.mobile | default('', true)) != _desired_mobile
+              or (_existing.physicalDeliveryOfficeName | default('', true)) != _desired_office
+              or (_existing.PasswordExpired | default(false)) != (item.MustChangePassword | default(false))
+            ) -%}
+              {{ item | to_json }},
+            {%- endif -%}
+          {%- endfor %}]
           {%- endset -%}
           {{ _rendered }}
 
@@ -465,6 +535,7 @@
           Password reset: {{ _password_reset_todo | default([]) | length }} user(s) stuck disabled with a non-compliant password.
           Enable: {{ _enable_todo | default([]) | length }} user(s) need an enabled-state change (includes brand-new creates from this run).
           New creates: {{ _new_creates_todo | default([]) | length }} user(s) not yet in AD at all (created serially, see B0).
+          B update: {{ _b_update_todo | default([]) | length }} of {{ _users | length }} user(s) need a create/update pass in Section B.
 
   tasks:
 
@@ -673,9 +744,14 @@
       loop_control:
         label: "{{ item.SamAccountName }}"
 
+    # 2026-09-23, Robert's ask: now sourced from _b_update_todo (pre-filtered,
+    # see that filter's own header comment) instead of the full unfiltered
+    # _users -- on a stable re-run with nothing genuinely drifted, this list
+    # is empty/near-empty instead of always being all 354, cutting most of
+    # the ~9 minutes of pure no-op batches seen earlier tonight.
     - name: "B | Split users into batches of 10 for capped-concurrency async creation"
       set_fact:
-        _b_batches: "{{ _users | batch(10) | list }}"
+        _b_batches: "{{ (_b_update_todo | default([])) | batch(10) | list }}"
 
     - name: "B | Create user accounts, batches of 10"
       include_tasks: ../tasks/create_users_batch.yml
