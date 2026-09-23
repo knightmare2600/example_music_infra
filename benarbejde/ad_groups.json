@@ -433,6 +433,7 @@
   },
   {
     "Name": "Nena",
+    "SamAccountName": "Nena-Grp",
     "Description": "German Neue Deutsche Welle band from West-Berlin, formed 1982",
     "Type": "Security",
     "Scope": "Global",
@@ -481,6 +482,7 @@
   },
   {
     "Name": "Falco",
+    "SamAccountName": "Falco-Grp",
     "Description": "Falco – Austrian solo artist with classic 1980s backing band",
     "Type": "Security",
     "Scope": "Global",
