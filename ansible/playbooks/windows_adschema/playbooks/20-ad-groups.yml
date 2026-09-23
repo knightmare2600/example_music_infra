@@ -105,8 +105,8 @@
     # 10-ad-schema.yml's Section 4 city-OU trade-off, closed the same way from the start here.
     - name: "Query existing AD security groups (single call, used to skip already-created/unchanged groups below)"
       ansible.windows.win_shell: |
-        $results = @(Get-ADGroup -Filter * -SearchBase "OU=Security Groups,OU=IT Groups,{{ _base_dn }}" -Properties Description |
-          Select-Object Name, Description)
+        $results = @(Get-ADGroup -Filter * -SearchBase "OU=Security Groups,OU=IT Groups,{{ _base_dn }}" -Properties Description, SamAccountName |
+          Select-Object Name, Description, SamAccountName)
         ConvertTo-Json -InputObject $results -Compress
       register: _existing_groups_raw
       changed_when: false
@@ -115,7 +115,7 @@
       set_fact:
         _existing_groups: "{{ (_existing_groups_raw.stdout | trim | length > 0) | ternary(_existing_groups_raw.stdout | from_json, []) }}"
 
-    - name: "Build lowercase Name set and Name -> Description lookup"
+    - name: "Build lowercase Name set and Name -> Description/SamAccountName lookups"
       set_fact:
         _existing_group_names: "{{ _existing_groups | map(attribute='Name') | map('lower') | list }}"
         _existing_group_descriptions: >-
@@ -125,17 +125,30 @@
               | zip(_existing_groups | map(attribute='Description') | map('default', '', true) | list)
             )
           }}
+        _existing_group_sams: >-
+          {{
+            dict(
+              _existing_groups | map(attribute='Name') | map('lower') | list
+              | zip(_existing_groups | map(attribute='SamAccountName') | map('default', '', true) | list)
+            )
+          }}
 
     # 2026-09-22, Robert's ask, found live: this used to be a loop:-driven set_fact
     # accumulator -- confirmed via dmesg that this PATTERN genuinely OOM-kills the
     # ansible-playbook worker (set_fact inside loop: re-copies the whole host facts/
     # vars dict per iteration). Rewritten as a single Jinja pass, no loop: -- see
     # 30-ad-users.yml's C/D/E filters for the full writeup of this fix, same pattern.
-    - name: "Filter to groups not already present or with a drifted description"
+    #
+    # 2026-09-23, found live: this drift check only ever compared Description,
+    # so the Nena/Falco SamAccountName fix (see "Create AD security groups"
+    # below) would never actually reach already-created groups on a re-run --
+    # they'd be skipped as "already present, unchanged" forever. Added a
+    # SamAccountName drift check alongside Description for the same reason.
+    - name: "Filter to groups not already present or with a drifted description/SamAccountName"
       set_fact:
         _groups_todo: >-
           {%- set _rendered -%}
-          [{% for item in _groups %}{% if (item.Name | lower not in _existing_group_names or _existing_group_descriptions[item.Name | lower] | default('') != item.Description) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in _groups %}{% if (item.Name | lower not in _existing_group_names or _existing_group_descriptions[item.Name | lower] | default('') != item.Description or _existing_group_sams[item.Name | lower] | default('') != (item.SamAccountName | default(item.Name))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ _rendered }}
 
@@ -153,14 +166,25 @@
     # description, not all 111+ groups on every re-run.
     # -------------------------------------------------------------------------
 
+    # 2026-09-23, found live: New-ADUser failed for "nena" with "The specified
+    # group already exists" -- SamAccountName must be unique across ALL
+    # security principals (users, groups, computers), not just within users.
+    # microsoft.ad.group defaults sam_account_name to name: when not set, so a
+    # self-titled band's group (e.g. "Nena", "Falco") collides with that same
+    # person's own SamAccountName. Swept ad_groups.json against every user
+    # SamAccountName case-insensitively -- exactly 2 collisions (Nena, Falco),
+    # both fixed with an explicit SamAccountName field in ad_groups.json
+    # (Nena-Grp/Falco-Grp). Section C resolves group membership by Name, not
+    # SamAccountName, so this has no effect on group-add logic.
     - name: "Create AD security groups"
       microsoft.ad.group:
-        name:        "{{ item.Name }}"
-        path:        "OU=Security Groups,OU=IT Groups,{{ _base_dn }}"
-        description: "{{ item.Description }}"
-        scope:       global
-        category:    security
-        state:       present
+        name:              "{{ item.Name }}"
+        sam_account_name:  "{{ item.SamAccountName | default(item.Name) }}"
+        path:              "OU=Security Groups,OU=IT Groups,{{ _base_dn }}"
+        description:       "{{ item.Description }}"
+        scope:              global
+        category:           security
+        state:              present
       loop:          "{{ _groups_todo | default([]) }}"
       loop_control:
         label: "{{ item.Name }}"
