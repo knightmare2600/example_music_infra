@@ -510,6 +510,19 @@
     # bundled microsoft.ad.user call. Welcome2026! is a fixed, known initial
     # password -- Robert's explicit call, dev environment only, not a
     # production password policy decision.
+    # 2026-09-22, found live: once F1 has successfully set Welcome2026! for a
+    # user, re-running F1 against that SAME user again (still Enabled=False,
+    # since F2 hadn't run yet when the session ended) fails --
+    # Set-ADAccountPassword rejects "resetting" a password to the value it
+    # already IS, via AD's own history check (always index-0, rejected
+    # regardless of -Reset) -- confirmed via this exact mechanism live
+    # against the vault password earlier the same session. _password_reset_todo
+    # has no way to know F1 already succeeded for a given user (only tracks
+    # Enabled state, which F1 doesn't touch), so this WILL recur every re-run
+    # until F2 actually reaches and enables these accounts. ignore_errors here
+    # because the failure is harmless in outcome -- the end state (password =
+    # Welcome2026!) is identical whether this task "succeeds" or hits the
+    # already-set case.
     - name: "F1 | Reset password for accounts stuck disabled with a non-compliant password"
       microsoft.ad.user:
         name:             "{{ item.Name }}"
@@ -521,6 +534,7 @@
       loop: "{{ _password_reset_todo | default([]) }}"
       loop_control:
         label: "{{ item.SamAccountName }}"
+      ignore_errors: true
 
     - name: "F2 | Enable accounts stuck disabled with a non-compliant password"
       microsoft.ad.user:
