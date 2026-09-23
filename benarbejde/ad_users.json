@@ -6,7 +6,7 @@
     "Groups": [
       "Eurythmics",
       "Vocalists",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Lead Vocalist/Keyboardist",
     "Email": "annie.lennox@jukebox.internal",
@@ -849,7 +849,7 @@
     "UserPrincipalName": "alan.stewart@jukebox.internal",
     "Groups": [
       "Pastis-51",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Keyboardist",
     "Email": "alan.stewart@jukebox.internal",
@@ -2932,7 +2932,7 @@
     "Groups": [
       "Then Jerico",
       "Artists",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Keyboardist",
     "Email": "michael.oneill@jukebox.internal",
@@ -3607,7 +3607,7 @@
     "UserPrincipalName": "gillian.gilbert@jukebox.internal",
     "Groups": [
       "New Order",
-      "Keyboardists",
+      "Keyboards",
       "Guitarists"
     ],
     "Title": "Keyboardist & Guitarist",
@@ -3954,7 +3954,7 @@
     "UserPrincipalName": "alan.clark@jukebox.internal",
     "Groups": [
       "Dire Straits",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Keyboardist",
     "Email": "alan.clark@jukebox.internal",
@@ -3983,7 +3983,7 @@
     "UserPrincipalName": "guy.fletcher@jukebox.internal",
     "Groups": [
       "Dire Straits",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Keyboardist",
     "Email": "guy.fletcher@jukebox.internal",
@@ -4621,7 +4621,7 @@
     "UserPrincipalName": "sofie.moller@jukebox.internal",
     "Groups": [
       "Elmer",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Keyboardist",
     "Email": "sofie.moller@jukebox.internal",
@@ -4768,7 +4768,7 @@
     "UserPrincipalName": "henrik.moller@jukebox.internal",
     "Groups": [
       "Dodo-and-the-Dodos",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Keyboardist",
     "Email": "henrik.moller@jukebox.internal",
@@ -4826,7 +4826,7 @@
     "UserPrincipalName": "morten.jensen@jukebox.internal",
     "Groups": [
       "1000-Keys",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Keyboardist",
     "Email": "morten.jensen@jukebox.internal",
@@ -4943,7 +4943,7 @@
     "UserPrincipalName": "anne.sorensen@jukebox.internal",
     "Groups": [
       "News",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Keyboardist",
     "Email": "anne.sorensen@jukebox.internal",
@@ -5116,7 +5116,7 @@
     "SamAccountName": "whigfield",
     "UserPrincipalName": "whigfield@jukebox.internal",
     "Groups": [
-      "Whigfield",
+      "Whigfield Solo",
       "Warehouse Access"
     ],
     "Title": "Performer",
@@ -6145,7 +6145,7 @@
     "Groups": [
       "Sandra",
       "Producers",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Producer / Keyboardist",
     "Email": "michael.cretu@jukebox.internal",
@@ -6381,7 +6381,7 @@
     "SamAccountName": "jan.hammer",
     "UserPrincipalName": "jan.hammer@jukebox.internal",
     "Groups": [
-      "Jan Hammer"
+      "Jan Hammer Group"
     ],
     "Title": "Composer / Keyboardist",
     "Email": "jan.hammer@jukebox.internal",
@@ -6555,7 +6555,7 @@
     "UserPrincipalName": "rick.moranis@jukebox.internal",
     "Groups": [
       "Great White North",
-      "Guest-Artists"
+      "SCTV-Guest-Artists"
     ],
     "Title": "Comedian / Guest Vocalist",
     "Email": "rick.moranis@jukebox.internal",
@@ -6584,7 +6584,7 @@
     "UserPrincipalName": "dave.thomas@jukebox.internal",
     "Groups": [
       "Great White North",
-      "Guest-Artists"
+      "SCTV-Guest-Artists"
     ],
     "Title": "Comedian / Guest Vocalist",
     "Email": "dave.thomas@jukebox.internal",
@@ -7601,7 +7601,7 @@
     "UserPrincipalName": "david.paich@jukebox.internal",
     "Groups": [
       "Boz Scaggs",
-      "Keyboardists",
+      "Keyboards",
       "Songwriters"
     ],
     "Title": "Keyboardist / Backing Vocalist",
@@ -8171,7 +8171,7 @@
     "Groups": [
       "Hall and Oates",
       "Vocalists",
-      "Keyboardists",
+      "Keyboards",
       "Songwriters"
     ],
     "Title": "Lead Vocalist / Keyboardist",
@@ -8807,7 +8807,7 @@
     "UserPrincipalName": "andrew.farriss@jukebox.internal",
     "Groups": [
       "INXS",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Keyboardist / Guitarist",
     "Email": "andrew.farriss@jukebox.internal",
@@ -9129,7 +9129,7 @@
     "UserPrincipalName": "eddie.rayner@jukebox.internal",
     "Groups": [
       "Crowded House",
-      "Keyboardists",
+      "Keyboards",
       "Split Enz"
     ],
     "Title": "Keyboardist",
@@ -9160,7 +9160,7 @@
     "Groups": [
       "Thompson Twins",
       "Vocalists",
-      "Keyboardists"
+      "Keyboards"
     ],
     "Title": "Lead Vocalist / Keyboardist",
     "Email": "tom.bailey@jukebox.internal",
