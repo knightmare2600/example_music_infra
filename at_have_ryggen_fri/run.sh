@@ -362,6 +362,27 @@
 #      every one of them -- verified against a reconstructed pre-fix bindme.sh to
 #      confirm it genuinely catches the exact bug found live, not just the
 #      general shape of one.
+#  43. check_ad_data_integrity.py -- found live 2026-09-23, across one evening's
+#      windows_adschema populate_ad debugging: four distinct data bugs in
+#      ad_users.json/ad_groups.json/ad_computers.json, each only caught by a
+#      real AD run failing in a different way (New-ADUser "group already
+#      exists", a group-membership add silently resolving to the wrong
+#      object, New-ADComputer "account already exists", New-ADComputer
+#      "Directory object not found"). These files are documented as the
+#      "known source of truth" for the whole AD build but had nothing
+#      checking their own internal consistency. This check catches, from the
+#      files alone, no AD connection needed: duplicate SamAccountName within
+#      ad_users.json or ad_computers.json; a SamAccountName collision
+#      between any ad_groups.json group and any ad_users.json user
+#      (SamAccountName is unique across ALL security principal types, not
+#      just within one object class); an ad_users.json Groups: [...]
+#      reference that doesn't resolve to a real group's actual effective
+#      SamAccountName (catches referencing a group by its Name when that
+#      group has a different SamAccountName override, the exact shape that
+#      bit Nena/Falco); and an ad_ou missing its site's Province OU level
+#      when sites.csv defines one (the Sydney/Melbourne bug). Verified
+#      against all four bug classes reconstructed in memory from the
+#      now-fixed files, not just confirmed clean against current data.
 #
 # Nothing here touches a real host or needs a vault password. Two exceptions
 # to "network access beyond localhost": check 13 (check_mermaid.py) needs to
@@ -717,6 +738,20 @@
 #               case) and separately replaced it with a real LFS pointer
 #               stub's exact byte content (unresolved-checkout case), each
 #               confirmed exit 1 with the correct message, reverted, exit 0.
+#   2026-09-23  Added check_ad_data_integrity.py (section 43), Robert's
+#               explicit ask after a single evening's populate_ad debugging
+#               session found four distinct data bugs in ad_users.json/
+#               ad_groups.json/ad_computers.json (a group/user
+#               SamAccountName collision, a stale Groups: reference left
+#               over from fixing that collision, a duplicate-SamAccountName
+#               typo, and an ad_ou missing its site's Province OU level) --
+#               each one only surfaced by a real AD run failing differently,
+#               never caught beforehand despite these files being this
+#               repo's own documented "known source of truth". Verified
+#               against all four bug classes reconstructed in memory from
+#               the now-fixed files, not just confirmed clean against
+#               current data -- see the check's own header for the full
+#               writeup.
 # ==============================================================================
 set -uo pipefail
 
@@ -1472,6 +1507,20 @@ else
   echo "$out"
   fail "A site's subnet prefix collides with another site or a reserved bindme.sh zone file, and/or a per-site reverse-zone loop doesn't exclude it -- see above. This is exactly the bug class that silently overwrote VRK's provisioning zone with its own per-site data, 2026-09-21."
   FAILED_CHECKS+=("check_breakglass_zone_file_collisions.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 43. AD data integrity — check_ad_data_integrity.py
+# ------------------------------------------------------------------------------
+section "43. AD data integrity — check_ad_data_integrity.py"
+
+if out=$(python3 "${HERE}/check_ad_data_integrity.py"); then
+  echo "$out"
+  success "No duplicate SamAccountNames, group/user SamAccountName collisions, stale Groups: references, or ad_ou Province gaps found in ad_users.json/ad_groups.json/ad_computers.json."
+else
+  echo "$out"
+  fail "AD data integrity problem(s) found -- see above. These are exactly the bug classes that only ever surfaced as live New-ADUser/New-ADComputer failures on 2026-09-23; see the check's own header."
+  FAILED_CHECKS+=("check_ad_data_integrity.py")
 fi
 
 # ------------------------------------------------------------------------------
