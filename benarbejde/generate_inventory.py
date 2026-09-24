@@ -360,8 +360,20 @@ def load_address_policy(policy_path: Path, role_codes_path: Path = None):
   #     Network generator), not a live/current exception row -- exposing it here would surface
   #     historical vendor detail into the *current*-network .ini across ~19 sites, a separate,
   #     bigger decision than this fix, not something to fold in silently.
+  #   - FWL (exempted 2026-09-24): same bug class again, found working through the
+  #     missing-devices.csv-row backlog -- ABD/AKL/BIR/CLY/LAX/LND/SYD/MEL each have a real,
+  #     live FWL device (Cisco ASA, FortiGate, Palo Alto, etc., confirmed via ad_computers.json)
+  #     landing exactly on FWL's own standard octet (.253, single-firewall sites), so every one of
+  #     those real devices.csv rows was silently vanishing from load_devices()'s output --
+  #     invisible to check_ad_data_integrity.py's check I, which kept reporting them as
+  #     "no devices.csv row exists" even after the row was added. Unlike RTR, these are Legacy=no,
+  #     current, real devices, not historical data -- the RTR exclusion reasoning above doesn't
+  #     apply. Safe to exempt: build_ini()'s fwl1_line/fwl2_line already guard on
+  #     covered_by_real_device("FWL", ...), so a real row reaching site_devices correctly
+  #     suppresses the generic placeholder instead of duplicating it, the same mechanism WAP/SBC
+  #     etc. already rely on.
   STANDARD_OFFSETS.clear()
-  FULL_RENDER_TYPES = {"SWI", "NAS", "RDR", "BMC", "WAP", "SBC", "WKS", "LAP"}
+  FULL_RENDER_TYPES = {"SWI", "NAS", "RDR", "BMC", "WAP", "SBC", "WKS", "LAP", "FWL"}
   for role, offset in OFFSETS_SINGLE.items():
     if role in FULL_RENDER_TYPES:
       continue
@@ -467,6 +479,17 @@ ALLOWED_IP_ALIASES = {
   # physical device at the exact same octet, not a genuine collision.
   ("DCS", "Domain Controller"),
   ("Domain Controller", "DCS"),
+  # 2026-09-24: same shape again, surfaced by adding FWL to FULL_RENDER_TYPES above -- every site
+  # unconditionally registers sites.csv's own "Gateway"/"Firewall" columns (vals["GATEWAY"]/
+  # vals["FW"]) regardless of whether a real devices.csv FWL row also exists at that exact octet.
+  # ABD/AKL/BIR/CLY/LAX/LND/SYD/MEL's real FWL rows (added same day) register with role="FWL" (the
+  # raw Type code, from dev["type"]) rather than "Firewall" (the human label sites.csv's own
+  # registration uses) -- a literal-string mismatch, not a real collision, for the exact same
+  # physical device the site's own Gateway/Firewall columns already describe.
+  ("FWL", "Gateway"),
+  ("Gateway", "FWL"),
+  ("FWL", "Firewall"),
+  ("Firewall", "FWL"),
 }
 
 ## BRD / BER are allowed to overlap (legacy vs modern naming)

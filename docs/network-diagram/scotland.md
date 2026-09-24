@@ -650,7 +650,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRCLY001<br/>FortiOS 7.6.5 · WAN edge, router/firewall combo<br/>192.168.41.1"]
+    O_RTR["📡 EXARTRCLY001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.41.1"]
     O_SWI["🔀 EXASWICLY001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.41.250"]
     O_DCR1["🗝️ EXADCRCLY001<br/>DC Primary<br/>192.168.41.10"]
     O_DCR2["🗝️ EXADCRCLY002<br/>DC Secondary<br/>192.168.41.11"]
@@ -741,7 +741,7 @@ graph TD
     T_DCS["🗝️ EXADCSCLY001<br/>DCS 1<br/>192.168.41.10"]
     T_SVR["🗄️ EXASVRCLY001<br/>Oracle DB Server<br/>192.168.41.20"]
     T_SBC["🛡️ EXASBCCLY001<br/>SBC<br/>192.168.41.48"]
-    T_FWL["🧱 EXAFWLCLY001<br/>LAN Face<br/>192.168.41.253"]
+    T_FWL["🧱 EXAFWLCLY001<br/>Firewall / VPN Gateway<br/>192.168.41.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_ILO["🔧 EXAILOCLY001<br/>HP ILO<br/>192.168.41.3"]
     T_RAC["🔧 EXARACCLY001<br/>Dell IDRAC<br/>192.168.41.4"]
@@ -1094,7 +1094,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRABD001<br/>Cisco ASA 5506-X · WAN edge, router/firewall combo<br/>192.168.224.1"]
+    O_RTR["📡 EXARTRABD001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.224.1"]
     O_DCR["🗝️ EXADCRABD001<br/>DC · Windows Server 2008R2, bare metal, no ESX layer<br/>192.168.224.10"]
     O_RAC["🔧 EXARACABD001<br/>HP iLO on HP ML310e<br/>192.168.224.2"]
     O_MBP["💻 EXAMBPABD001-002<br/>2 x MacBook Pros<br/>192.168.224.124,137"]
@@ -1176,7 +1176,7 @@ graph TD
     T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSABD001<br/>DCS 1<br/>192.168.224.10"]
     T_SBC["🛡️ EXASBCABD001<br/>SBC<br/>192.168.224.48"]
-    T_FWL["🧱 EXAFWLABD001<br/>LAN Face<br/>192.168.224.253"]
+    T_FWL["🧱 EXAFWLABD001<br/>Enterprise Edge Firewall<br/>192.168.224.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_OTH_MBP["💻 EXAMBPABD001-002<br/>2 x MacBook Pros<br/>192.168.224.124,137"]
     T_OTH_PHN["📞 EXAPHNABD001-002<br/>2 x Office Phones<br/>No IP Address"]

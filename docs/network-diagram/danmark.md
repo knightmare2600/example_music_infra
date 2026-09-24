@@ -533,7 +533,8 @@ graph TD
     T_DCS["🗝️ EXADCSFAX001<br/>DCS 1<br/>192.168.246.10"]
     T_SBC["🛡️ EXASBCFAX001<br/>SBC<br/>192.168.246.48"]
     T_FWL["🧱 EXAFWLFAX001<br/>LAN Face<br/>192.168.246.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    T_FWL2["🧱 EXAFWLFAX002<br/>WAN Edge<br/>192.168.246.254"]
+    T_PVE --> T_DCS --> T_SBC --> T_FWL --> T_FWL2
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -548,6 +549,7 @@ graph TD
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:FAX:END
 ```
 

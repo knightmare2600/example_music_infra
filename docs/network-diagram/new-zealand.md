@@ -31,7 +31,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRAKL001<br/>FortiGate 7.x · WAN edge, router/firewall combo<br/>192.168.93.1"]
+    O_RTR["📡 EXARTRAKL001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.93.1"]
     O_SWI1["🔀 EXASWIAKL001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.93.250"]
     O_SWI2["🔀 EXASWIAKL002<br/>Cisco Catalyst 2960 · Access switch<br/>192.168.93.251"]
     O_CAM["🎥 EXACAMAKL001<br/>Axis · Camera<br/>192.168.93.82"]
@@ -152,7 +152,7 @@ graph TD
     T_DCS["🗝️ EXADCSAKL001<br/>DCS 1<br/>192.168.93.10"]
     T_SVR["🗄️ EXASVRAKL001<br/>Local Server<br/>192.168.93.20"]
     T_SBC["🛡️ EXASBCAKL001<br/>SBC<br/>192.168.93.48"]
-    T_FWL["🧱 EXAFWLAKL001<br/>LAN Face<br/>192.168.93.253"]
+    T_FWL["🧱 EXAFWLAKL001<br/>Site Firewall<br/>192.168.93.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_RAC["🔧 EXARACAKL001<br/>Real, Confirmed Via Ad_computers.json (EXARACAKL001, Enab...<br/>192.168.93.2"]
     T_WKS["🖥️ EXAWKSAKL001<br/>Workstation<br/>192.168.93.40"]
