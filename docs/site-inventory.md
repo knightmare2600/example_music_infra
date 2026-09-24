@@ -15,6 +15,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-09-24 | CLY/GLA corrections following the CLY/Glasgow subnet data-entry bug fix (`ad_computers.json`/`devices.csv`). CLY: added the real `EXASWICLY002` (Cisco Catalyst 48-port, `.2`), corrected `EXASWICLY001` to TPLink (was mislabelled Cisco 9300), removed the phantom `EXABMCCLY001` BMC line (`.2` is the real switch, no physical BMC here), corrected `EXAPHNCLY001` to Android (was "iOS device"), and fixed the stale `EXASURCLY002`/"Android tablet" endpoint line to `EXATABCLY001`/Surface (renamed+hardware-swapped, never updated here). GLA: added `EXASURGLA001` (Surface, pool device) and `EXAPHNGLA001` (iPhone 16 Pro Max, on-call "bat phone") — both genuinely missing, a copy-paste mistake had put GLA's own devices under CLY instead. |
 | 2026-07-31 | Full reconciliation against `check_doc_role_coverage.py` (check 28)'s 355 findings across 42 sites. Three fixes, in order: (1) renamed `EXARAC<SITE>001` → `EXABMC<SITE>001` estate-wide (41 sites) and deleted the fictional `EXARAC<SITE>002` "RAC emulator VM" line — never backed by real hardware on single/dual-node sites; FAL/ODE/BRK's genuine physical BMC2 (and BMC3) were restored under the new naming rather than deleted, confirmed real via their 3-PVE-node hub status. Also dropped the RAC-emulator-VM language from the per-site header summary line (38 sites) and the Quick Reference table's `.3` row. (2) Fixed `EXARTR<SITE>001`'s octet — every existing line read `.254` (FWL's real octet), ground truth is `.1`; the 2026-07-12 fix above only ever corrected FWL's line, never RTR's. (3) Renamed stale `EXADCR<SITE>001`/`002` → `EXADCS<SITE>001`/`002` on 6 sites (GLA, LND, BIR, MCR, LIV, NEW) with no real `devices.csv` DCR row backing them — distinct from EDI's and TOR's genuine DCR devices, which check 29 tracks separately and were left as DCR. With those three fixes applied, appended the remaining genuinely-missing standard-slot lines (second FWL, NAS, RDR, SWI, WAP, RTR, occasional DCS/one-offs) per site, sourced directly from `generate_inventory.py`'s real device list. Check 28 now passes clean (0/355 remaining). |
 | 2026-07-19 | `EXANASFAL001`/`EXANASPER001`/`EXANASMEL001` marked retired — replaced by the new standard `.19` NAS/SAN slot (TrueNAS), rolled out per site rather than the old ad-hoc addressing (`.32`/`.50`/none). See `README.md`'s Addressing table and `docs/proxmox/proxmox-dcm-pbs-planning.md` for the full rationale, including why `.15` PRV was retired in the same change. |
 | 2026-07-12 | Fixed a second error in the same 10 sites' checklists (plus CLD): the firewall's IP was given as `.1` throughout, which is actually `RTR` (upstream router) per `address_policy.json`'s `role_offsets` — the firewall's real offset is `.253`/`.254`. Corrected all 10 standard-site entries to `.253`, matching `network-inventory.md`. CLD's `EXAFWLVRK001` line needed a different fix, not `.253` — it's the dual-interface exception, WAN/vRACK face at `.69`, LAN face (`EXAFWLCLD001`) at `.253`; corrected to state both explicitly rather than reuse the standard-site pattern verbatim. |
@@ -381,6 +382,8 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAWKSGLA001` — Workstation (`192.168.141.150`) · Hot desk
 - [ ] `EXAWKSGLA002` — Workstation (`192.168.141.151`) · Hot desk
 - [ ] `EXALAPGLA001` — Laptop (`192.168.141.152`)
+- [ ] `EXASURGLA001` — Microsoft Surface, pool device (`192.168.141.153`, presumed — see `devices.csv`) · added 2026-09-24
+- [ ] `EXAPHNGLA001` — iPhone 16 Pro Max, on-call handset ("bat phone") · added 2026-09-24
 - [ ] `EXAPRNZGLA001` — HP LaserJet Pro (`192.168.141.16`)
 
 ### Site-Specific Equipment
@@ -391,12 +394,12 @@ kept as reference code only, not a build-checklist item.
 ## CLY — Clydebank
 
 **LAN:** `192.168.41.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 1 · **BMC pool:** `.2` physical
+**PVE nodes:** 1 · **BMC pool:** none physical — `.2` is `EXASWICLY002` (real Cisco Catalyst switch), standard BMC1 placeholder suppressed to match (2026-09-24)
 
 ### Infrastructure Checklist
-- [ ] `EXASWICLY001` — Core switch (`192.168.41.250`) · Cisco 9300
+- [ ] `EXASWICLY001` — TPLink 48-port managed switch (`192.168.41.250`) — Legacy/Migrating row, not yet reassigned (see `devices.csv`)
+- [ ] `EXASWICLY002` — Cisco Catalyst 48-port switch (`192.168.41.2`)
 - [ ] `EXARTRCLY001` — WAN edge router (`192.168.41.1`)
-- [ ] `EXABMCCLY001` — BMC node 1 (`192.168.41.2`) · HPE iLO5
 - [ ] `EXAPVECLY001` — Proxmox node 1 (`192.168.41.5`) · ZFS RAID1
 - [ ] `EXAFWLCLY001` — Firewall (`192.168.41.253`) · FortiOS 7.6.5
 - [ ] `EXADCSCLY001` — DC primary (`192.168.41.10`)
@@ -406,8 +409,7 @@ kept as reference code only, not a build-checklist item.
 - [ ] `EXAFWLCLY002` — Firewall secondary (`192.168.41.254`)
 - [ ] `EXANASCLY001` — Storage (NAS/SAN) — standard NAS slot (`192.168.41.19`)
 - [ ] `EXARDRCLY001` — Badge reader — standard RDR slot (`192.168.41.21`)
-- [ ] `EXASWICLY002` — Switch 2 (`192.168.41.251`)
-- [ ] `EXASWICLY003` — Switch 3 (`192.168.41.252`)
+- [ ] `EXASWICLY003` — Switch 3 — standard SWI slot, not yet a real device (`192.168.41.252`)
 - [ ] WireGuard tunnel verified
 - [ ] DHCP pool confirmed active
 - [ ] DNS resolving from site
@@ -420,8 +422,8 @@ kept as reference code only, not a build-checklist item.
 
 ### Endpoints Checklist
 - [ ] `EXASURCLY001` — Surface
-- [ ] `EXAPHNCLY001` — iOS device
-- [ ] `EXASURCLY002` — Android tablet
+- [ ] `EXAPHNCLY001` — Android device (touring handset) · corrected from "iOS device" 2026-09-24
+- [ ] `EXATABCLY001` — Surface, setlists service account (`192.168.41.62`) · was `EXASURCLY002`/Android tablet, hardware swapped and renamed, this line corrected 2026-09-24 to match
 - [ ] WAPs `EXAWAPCLY001`, `EXAWAPCLY002` — Ubiquiti UniFi U6-Pro — static, `.82`–`.94` range (see Standard IP Convention)
 
 ### Site-Specific Equipment
