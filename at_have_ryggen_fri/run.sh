@@ -1612,9 +1612,11 @@ fi
 # ------------------------------------------------------------------------------
 section "44. New-site boilerplate — check_new_site_boilerplate.py"
 
+NEW_SITE_COUNT=0
 if out=$(python3 "${HERE}/check_new_site_boilerplate.py"); then
   echo "$out"
   success "New-site boilerplate advisory complete (never fails — informational only)."
+  NEW_SITE_COUNT=$(echo "$out" | grep -oE '^[0-9]+ new site' | head -1 | grep -oE '^[0-9]+' || echo 0)
 else
   echo "$out"
   fail "check_new_site_boilerplate.py itself errored (not a data-quality finding — the script's own docstring says this should never fail on real data)."
@@ -1629,6 +1631,11 @@ section "Summary"
 if ! $NO_REPORT; then
   info "Full report written to: ${REPORT_FILE}"
   info "(also copied to: ${LATEST_FILE})"
+fi
+
+if [[ "${NEW_SITE_COUNT:-0}" -gt 0 ]]; then
+  warn "${NEW_SITE_COUNT} site(s) still have zero real equipment (see check 44 above for the full list) -- generate their boilerplate with:"
+  echo -e "    ${CYAN}python3 at_have_ryggen_fri/check_new_site_boilerplate.py --apply <SITE>${NC}"
 fi
 
 if [[ ${#FAILED_CHECKS[@]} -eq 0 ]]; then
