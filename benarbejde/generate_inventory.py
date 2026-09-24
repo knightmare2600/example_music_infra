@@ -1071,7 +1071,7 @@ DNS_MULTI_ALL_INSTANCES = {"FWL", "SWI"}
 DNS_MULTI_FIRST_INSTANCE_ONLY = {"DCS", "PVE", "BMC", "WAP"}
 
 def compute_standard_devices_for_site(site: str, net: IP, real_device_types: frozenset = frozenset(),
-                                       real_device_octets: dict = None):
+                                       real_device_hostnames: dict = None):
   """
   Returns every confirmed-real standard-slot device for one site as a flat list of dicts
   (Site, Hostname, HostOctet, Type, DNSAlias, Notes) — the same addresses build_ini() derives
@@ -1083,16 +1083,25 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
   placeholder for DNS_SINGLE_ROLES (RTR/SBC/NAS/RDR) -- these only ever have one instance, so
   "any real row for this type" and "this specific instance is real" are the same question there.
 
-  real_device_octets: {Type: frozenset(real octets)} -- the per-instance equivalent, used for
-  ROLE_OFFSETS roles (SWI/FWL/BMC/PVE/DCS/WAP) instead of real_device_types. Found live
-  2026-07-30, when SWI moved from first-instance-only to DNS_MULTI_ALL_INSTANCES (every site
-  always gets all 3 standard slots, matching FWL): the old blanket-per-role suppression silently
-  dropped ODE/BRK's auto-synthesized SWI1 the moment either site gained a real SWI2 row, because
-  it only ever checked "does this TYPE have any real row," never "does THIS octet have one."
-  A role not present in this dict gets no per-instance suppression at all (every offset
-  synthesizes) -- callers that only care about DNS_SINGLE_ROLES can omit this entirely.
+  real_device_hostnames: {Type: frozenset(real hostnames)} -- the per-instance equivalent, used
+  for ROLE_OFFSETS roles (SWI/FWL/BMC/PVE/DCS/WAP) instead of real_device_types. A role not
+  present in this dict gets no per-instance suppression at all (every offset synthesizes) --
+  callers that only care about DNS_SINGLE_ROLES can omit this entirely.
+
+  2026-07-30: originally keyed on real OCTET, not hostname (found live: SWI moved from
+  first-instance-only to DNS_MULTI_ALL_INSTANCES, and the old blanket-per-role suppression
+  silently dropped ODE/BRK's auto-synthesized SWI1 the moment either site gained a real SWI2
+  row, since it only checked "does this TYPE have any real row," never "does THIS octet have
+  one"). 2026-09-24: octet-keying itself turned out to be the wrong key entirely, found live
+  adding CLY,SWI,2 at a genuinely non-standard octet (.2, not SWI's own .251 slot 2 address) --
+  the real row's hostname (EXASWICLY002, Number=2) still collided with the STILL-synthesized
+  standard slot-2 placeholder (same hostname, computed independently by position), because
+  octet-matching only ever worked by coincidence when a real replacement happened to reuse its
+  slot's own generic address, which is not guaranteed and was never the actual invariant that
+  matters (build_ini()'s own covered_by_real_device() has always used hostname, never octet, for
+  exactly this reason). Re-keyed on hostname to match.
   """
-  real_device_octets = real_device_octets or {}
+  real_device_hostnames = real_device_hostnames or {}
   site_suppressed = SUPPRESSED_STANDARD_ROLES.get(site, set())
 
   devices = []
@@ -1110,11 +1119,12 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
   for role, offsets in ROLE_OFFSETS.items():
     if role in site_suppressed:
       continue
-    real_octets_here = real_device_octets.get(role, frozenset())
+    real_hostnames_here = real_device_hostnames.get(role, frozenset())
     if role in DNS_MULTI_ALL_INSTANCES:
-      selected = [(i, o) for i, o in enumerate(offsets, start=1) if o not in real_octets_here]
+      selected = [(i, o) for i, o in enumerate(offsets, start=1)
+                  if build_hostname(role, site, i) not in real_hostnames_here]
     elif role in DNS_MULTI_FIRST_INSTANCE_ONLY:
-      selected = [] if offsets[0] in real_octets_here else [(1, offsets[0])]
+      selected = [] if build_hostname(role, site, 1) in real_hostnames_here else [(1, offsets[0])]
     else:
       continue  # e.g. BMC — always commented/reference-only, never synthesized for DNS
     for i, offset in selected:
@@ -1206,6 +1216,14 @@ SUPPRESSED_STANDARD_ROLES = {
   "CLD": {"SBC", "WAP"},
   "AKL": {"WAP"},
   "SYD": {"WAP"},
+  # 2026-09-24: same WAP-on-CAM/SBC-on-PBX slot-reuse shape as above, just BMC-on-SWI --
+  # EXASWICLY002 (the real Cisco Catalyst switch added this session, fixing the CLY/GLA
+  # subnet data-entry bug) genuinely sits at .2, the same address BMC's own standard first
+  # slot always synthesizes to. check_duplicate_devices.py caught the resulting DNS
+  # collision (EXABMCCLY001 vs EXASWICLY002, both .2) live; CLY has no real BMC device.csv
+  # row of its own, so the synthesized placeholder is the one that's fictional here, not
+  # the switch's real, confirmed-live address.
+  "CLY": {"BMC"},
 }
 
 def emit_devices_for_dns(csv_path: Path, devices_path: Path):
@@ -1244,11 +1262,12 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
     site: {dev["type"] for dev in site_devices}
     for site, site_devices in devices_by_site.items()
   }
-  real_octets_by_site = {}
+  # real_hostnames_by_site: {site: {Type: frozenset(real hostnames)}} -- keyed on hostname, not
+  # octet (see real_octets_by_site's own 2026-09-24 retirement note below for why).
+  real_hostnames_by_site = {}
   for site, site_devices in devices_by_site.items():
     for dev in site_devices:
-      if dev["octet"] is not None:
-        real_octets_by_site.setdefault(site, {}).setdefault(dev["type"], set()).add(int(dev["octet"]))
+      real_hostnames_by_site.setdefault(site, {}).setdefault(dev["type"], set()).add(dev["hostname"])
 
   subnet_base = {}
   all_devices = []
@@ -1262,7 +1281,7 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
       continue  # e.g. VRK — no standard-convention devices, only its real devices.csv rows
     all_devices.extend(compute_standard_devices_for_site(
       r["Site"], net, real_device_types=real_types_by_site.get(r["Site"], frozenset()),
-      real_device_octets=real_octets_by_site.get(r["Site"], {}),
+      real_device_hostnames=real_hostnames_by_site.get(r["Site"], {}),
     ))
 
   for site, site_devices in devices_by_site.items():
