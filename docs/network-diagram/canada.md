@@ -142,16 +142,16 @@ graph TD
     T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEBRK001<br/>PVE 1<br/>192.168.136.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWIBRK001<br/>SWI 1<br/>192.168.136.250"]
+    T_SWI["🔀 EXASWIBRK003<br/>SWI 3<br/>192.168.136.252"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWIBRK003<br/>SWI 3<br/>192.168.136.252"]
+    T_SWI2["🔀 EXASWIBRK002<br/>Second Switch<br/>192.168.136.251"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWIBRK002<br/>Second Switch<br/>192.168.136.251"]
+    T_SWI3["🔀 EXASWIBRK001<br/>96-port Switch<br/>192.168.136.250"]
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASBRK001<br/>NAS<br/>192.168.136.19"]
     T_RDR["🔐 EXARDRBRK001<br/>RDR<br/>192.168.136.21"]
     T_WAP["📶 EXAWAPBRK001<br/>Wireless Access Point<br/>192.168.136.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSBRK001<br/>DCS 1<br/>192.168.136.10"]
     T_SBC["🛡️ EXASBCBRK001<br/>SBC<br/>192.168.136.48"]
     T_FWL["🧱 EXAFWLBRK001<br/>LAN Face<br/>192.168.136.253"]
