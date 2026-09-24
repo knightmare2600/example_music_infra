@@ -490,6 +490,13 @@ ALLOWED_IP_ALIASES = {
   ("Gateway", "FWL"),
   ("FWL", "Firewall"),
   ("Firewall", "FWL"),
+  # 2026-09-24: same shape again -- FAL,RTR,1,1 (Legacy=no, the real live FortiGate router,
+  # renamed from a mistaken EXAFWLFAL001 identity/subnet the same day) is the first Legacy=no RTR
+  # row to ever reach load_devices()'s output (see the new RTR/Legacy carve-out above), and every
+  # site unconditionally registers its own standard-template "Router" slot (vals["RTR"])
+  # regardless of whether a real devices.csv RTR row also exists there.
+  ("RTR", "Router"),
+  ("Router", "RTR"),
 }
 
 ## BRD / BER are allowed to overlap (legacy vs modern naming)
@@ -703,8 +710,18 @@ def load_devices(devices_path: Path):
     # frd.ini/vrk.ini's own unconditional dcs1_line (build_ini() computes that independently of
     # this function and was never affected). Root-caused live, Robert's call: fix via real
     # devices.csv rows (option a), not by narrowing NON_STANDARD_SITES's DNS-suppression itself.
+    # 2026-09-24: FAL,RTR,1,1 is a genuine live/current exception to the "every RTR row is
+    # Legacy=yes historical data" assumption the FULL_RENDER_TYPES comment above documents --
+    # it's FAL's real, Legacy=no FortiGate (confirmed live, replaced a decommissioned Cisco ISR
+    # 4331 that itself moved to EXARTRFAL002/Enabled:false). Blanket-adding RTR to
+    # FULL_RENDER_TYPES would surface ~19 other sites' genuinely-historical Legacy=yes RTR rows
+    # into the live .ini, exactly the bigger decision that comment already deferred -- so this
+    # carve-out is narrower: only a Legacy=no RTR row skips the standard-octet exclusion, using
+    # the real distinguishing signal (Legacy status) instead of Type alone.
+    legacy_flag = (r.get("Legacy") or "").strip().lower() in ("yes", "y", "true", "1")
     if (octet is not None and octet in STANDARD_OFFSETS.get(dtype, set())
-        and not (dtype in ("PVE", "DCS") and site in NON_STANDARD_SITES)):
+        and not (dtype in ("PVE", "DCS") and site in NON_STANDARD_SITES)
+        and not (dtype == "RTR" and not legacy_flag)):
       stats["excluded_standard"] += 1
       continue
 
