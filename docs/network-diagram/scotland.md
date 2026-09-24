@@ -575,7 +575,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRGLA001<br/>RTR<br/>192.168.141.1"]
+    T_RTR["📡 EXARTRGLA001<br/>WAN Edge Router<br/>192.168.141.1"]
     T_VRK --> T_RTR
     T_BMC["🔧 EXABMCGLA001<br/>BMC 1<br/>192.168.141.2"]
     T_RTR --> T_BMC
@@ -1016,7 +1016,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRPER001<br/>RTR<br/>192.168.173.1"]
+    T_RTR["📡 EXARTRPER001<br/>WAN Edge Router<br/>192.168.173.1"]
     T_VRK --> T_RTR
     T_BMC["🔧 EXABMCPER001<br/>BMC 1<br/>192.168.173.2"]
     T_RTR --> T_BMC

@@ -443,7 +443,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRMIA001<br/>RTR<br/>192.168.135.1"]
+    T_RTR["📡 EXARTRMIA001<br/>WAN Edge Router<br/>192.168.135.1"]
     T_VRK --> T_RTR
     T_BMC["🔧 EXABMCMIA001<br/>BMC 1<br/>192.168.135.2"]
     T_RTR --> T_BMC

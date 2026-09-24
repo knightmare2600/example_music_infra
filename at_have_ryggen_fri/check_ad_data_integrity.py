@@ -569,7 +569,16 @@ def check_minimum_standard_equipment(problems, computers):
     legitimately absent at plenty of real sites that just haven't been retrofitted yet
     -- see docs/proxmox/proxmox-dcm-pbs-planning.md's own NAS rollout notes. A site with
     ad_computers.json presence but ZERO real SWI or RTR records is a genuinely different,
-    much more concerning shape than "hasn't gotten a NAS yet.\""""
+    much more concerning shape than "hasn't gotten a NAS yet."
+
+    2026-09-24, same evening: SYD/MEL/ODE confirmed as a genuinely different shape again --
+    each has exactly one real edge device, a combo router/firewall unit (Role=FWL), and no
+    separate RTR ever existed (confirmed via devices.csv's own Legacy=yes RTR row at ODE,
+    whose OS matches its live FWL record exactly -- same evidence already used to resolve
+    ABD/AKL/BIR/CLY/LAX/LND/BRK's genuinely-separate RTR+FWL pairs the other way). Allow-
+    listed here rather than left as a standing, never-resolved "worth checking" message --
+    same reasoning as check_missing_devices_csv_row's OS-comparison fix earlier tonight."""
+    COMBO_ROUTER_FIREWALL_SITES = {"SYD", "MEL", "ODE"}
     by_site_role = defaultdict(set)
     for c in computers:
         site = (c.get("Site") or "").strip()
@@ -580,6 +589,8 @@ def check_minimum_standard_equipment(problems, computers):
         if site in gi.NON_STANDARD_SITES:
             continue
         missing = [r for r in ("SWI", "RTR") if r not in roles]
+        if "RTR" in missing and site in COMBO_ROUTER_FIREWALL_SITES and "FWL" in roles:
+            missing.remove("RTR")
         if missing:
             problems.append(
                 f"ad_computers.json: {site} has real device records but ZERO for "
