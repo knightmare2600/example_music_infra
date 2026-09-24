@@ -45,14 +45,28 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWIVIE003<br/>SWI 3<br/>192.168.78.252"]
     T_RTR --> T_SWI3
+    T_SWI["🔀 EXASWIVIE001<br/>SWI 1<br/>192.168.78.250 — planned"]
+    T_RTR --> T_SWI
+    T_PVE["🗂️ EXAPVEVIE001<br/>PVE 1<br/>192.168.78.5 — planned"]
+    T_RTR --> T_PVE
+    T_PVE2["🗂️ EXAPVEVIE002<br/>PVE 2<br/>192.168.78.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASVIE001<br/>NAS<br/>192.168.78.19"]
+    T_NAS["🗃️ EXANASVIE001<br/>NAS 1<br/>192.168.78.19 — planned"]
     T_RDR["🔐 EXARDRVIE001<br/>RDR<br/>192.168.78.21"]
+    T_RDR["🔐 EXARDRVIE001<br/>RDR 1<br/>192.168.78.21 — planned"]
     T_WAP["📶 EXAWAPVIE001<br/>WAP 1<br/>192.168.78.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_WAP["📶 EXAWAPVIE001<br/>WAP 1<br/>192.168.78.82 — planned"]
+    T_SWI --> T_NAS --> T_NAS --> T_RDR --> T_RDR --> T_WAP --> T_WAP
     T_DCS["🗝️ EXADCSVIE001<br/>DCS 1<br/>192.168.78.10"]
+    T_DCS["🗝️ EXADCSVIE001<br/>DCS 1<br/>192.168.78.10 — planned"]
     T_SBC["🛡️ EXASBCVIE001<br/>SBC<br/>192.168.78.48"]
+    T_SBC["🛡️ EXASBCVIE001<br/>SBC 1<br/>192.168.78.48 — planned"]
     T_FWL["🧱 EXAFWLVIE001<br/>LAN Face<br/>192.168.78.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    T_FWL["🧱 EXAFWLVIE001<br/>FWL 1<br/>192.168.78.253 — planned"]
+    T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_ILO["🔧 EXAILOVIE001<br/>ILO 1<br/>192.168.78.3 — planned"]
+    T_RAC["🔧 EXARACVIE002<br/>RAC 2<br/>192.168.78.4 — planned"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -60,11 +74,22 @@ graph TD
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:VIE:END
 ```
