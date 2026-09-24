@@ -83,8 +83,18 @@ in a different way, not by any check beforehand:
      ad_computers.json, never the reverse direction (a real ad_computers.json
      record with a policy-governed Type and no devices.csv counterpart at
      all).
+  10. Found live 2026-09-24, still resolving BIR: Robert, on EXARACBIR001's
+      claimed '.6' -- "is that a BMC address? No, .6 is a PVE host IP."
+      Devices.csv/ad_computers.json are ALSO missing BIR's real PVE nodes
+      entirely, and '.6' being genuinely, exactly PVE's own reserved second
+      slot is exactly why EXARACBIR001 ended up there -- a real, previously
+      invisible bug class: a record's address can be implausible for its
+      OWN Type while landing EXACTLY on a completely different Type's own
+      reserved territory, and nothing before this checked one record's
+      address against every OTHER role's convention, only its own role's
+      or another record sharing the identical IP.
 
-This checks nine independent surfaces, all from the files themselves, no AD
+This checks ten independent surfaces, all from the files themselves, no AD
 connection required:
   A. Duplicate SamAccountName within ad_users.json, and within
      ad_computers.json, case-insensitively (catches bug class 3's typo
@@ -137,6 +147,12 @@ connection required:
      devices.csv row and are correctly never flagged, avoiding the
      false-alarm risk that kept this check parked when it was first
      proposed (see [[project_criticality_alarm_2026_09_24]]).
+  J. No ad_computers.json record's claimed octet lands exactly on a DIFFERENT
+     Type's own address_policy.csv reserved slot while being implausible for
+     its OWN Type (catches bug class 10). Respects SUPPRESSED_STANDARD_ROLES
+     (generate_inventory.py's own record of deliberate, already-approved
+     slot reuse) so a genuinely intentional reuse is never misreported as a
+     collision.
 
 Exit code: 0 if nothing found, 1 otherwise.
 """
@@ -333,6 +349,71 @@ def policy_expected_octet(role, number):
     if role in ("ILO", "RAC") and "BMC" in gi.ROLE_OFFSETS:
         return ("pool", set(gi.ROLE_OFFSETS["BMC"]))
     return None
+
+
+def build_octet_role_map():
+    """octet -> set(roles) that reserve it, from OFFSETS_SINGLE + ROLE_OFFSETS. DHCP
+    deliberately excluded -- it's a pool marker, not a device Type, and "a static device
+    sits inside the dynamic pool range" is a different question from role-slot confusion,
+    not something this specific check is trying to answer."""
+    m = defaultdict(set)
+    for role, octet in gi.OFFSETS_SINGLE.items():
+        m[octet].add(role)
+    for role, octets in gi.ROLE_OFFSETS.items():
+        if role == "DHCP":
+            continue
+        for o in octets:
+            m[o].add(role)
+    return m
+
+
+def check_cross_role_collision(problems, computers, octet_role_map):
+    """Robert, 2026-09-24, live, on EXARACBIR001's claimed '.6': "is that a BMC address? No
+    -- .6 is a PVE host IP." A record's claimed octet can be implausible for its OWN Role
+    (fails policy_expected_octet()) while ALSO exactly matching a COMPLETELY DIFFERENT
+    role's own reserved range -- strong, independent evidence the address is simply wrong,
+    not merely unconfirmed. Never caught before: check F/G only ever compare a record
+    against another ad_computers.json record sharing the exact same IP, and EXARACBIR001's
+    '.6' doesn't collide with anything else in ad_computers.json at all -- a uniquely wrong
+    address is invisible to every same-IP-duplicate check by definition. Confirmed live:
+    devices.csv/ad_computers.json are ALSO missing BIR's real PVE nodes entirely (not just
+    ILO/RAC) -- exactly the device Type '.6' really belongs to -- so this check's own
+    "which role actually owns this address" signal is the only thing that caught it.
+    Respects SUPPRESSED_STANDARD_ROLES (generate_inventory.py's own record of deliberate,
+    already-approved slot reuse, e.g. CLY's real switch sitting on BMC's own '.2') -- a
+    documented, intentional reuse is never a collision."""
+    for c in computers:
+        sam = (c.get("SamAccountName") or "").rstrip("$")
+        role = (c.get("Role") or "").strip().upper()
+        site = (c.get("Site") or "").strip()
+        ip = (c.get("IPv4Address") or "").strip()
+        if not sam or not role or not ip:
+            continue
+        octet_str = ip.rsplit(".", 1)[-1]
+        if not octet_str.isdigit():
+            continue
+        octet = int(octet_str)
+        try:
+            number = int(sam[-3:])
+        except (ValueError, IndexError):
+            number = None
+        own_policy = policy_expected_octet(role, number) if number else None
+        own_plausible = own_policy and (
+            (own_policy[0] == "exact" and own_policy[1] == octet)
+            or (own_policy[0] == "pool" and octet in own_policy[1])
+        )
+        if own_plausible:
+            continue
+        colliding = octet_role_map.get(octet, set()) - {role}
+        colliding -= gi.SUPPRESSED_STANDARD_ROLES.get(site, set())
+        if colliding:
+            problems.append(
+                f"ad_computers.json: {sam} (Role={role}) claims IPv4Address '{ip}' -- "
+                f".{octet} doesn't match {role}'s own address_policy.csv convention, but "
+                f"it IS exactly {'/'.join(sorted(colliding))}'s own reserved slot at this "
+                f"site -- likely address confusion with a different device Type entirely, "
+                f"not just an unconfirmed value"
+            )
 
 
 def triangulate(c, real_addresses):
@@ -542,6 +623,9 @@ def main():
     if computers is not None:
         legacy_site_types = load_legacy_site_types(problems)
         check_missing_devices_csv_row(problems, computers, real_addresses, legacy_site_types)
+    if computers is not None:
+        octet_role_map = build_octet_role_map()
+        check_cross_role_collision(problems, computers, octet_role_map)
 
     print(
         f"Checked {len(users or [])} users, {len(groups or [])} groups, "
