@@ -151,7 +151,7 @@ graph TD
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2 --> T_WAP3
     T_DCS["🗝️ EXADCSAKL001<br/>DCS 1<br/>192.168.93.10"]
     T_SVR["🗄️ EXASVRAKL001<br/>Local Server<br/>192.168.93.20"]
-    T_SBC["🛡️ EXASBCAKL001<br/>SBC<br/>192.168.93.48"]
+    T_SBC["🛡️ EXASBCAKL001<br/>VoIP SBC<br/>192.168.93.48"]
     T_FWL["🧱 EXAFWLAKL001<br/>Site Firewall<br/>192.168.93.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_RAC["🔧 EXARACAKL001<br/>Real, Confirmed Via Ad_computers.json (EXARACAKL001, Enab...<br/>192.168.93.2"]

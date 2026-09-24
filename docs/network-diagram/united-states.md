@@ -147,13 +147,13 @@ graph TD
     T_MUS["💿 EXAMUSLAX001<br/>Synth<br/>192.168.213.70"]
     T_MUS2["💿 EXAMUSLAX002<br/>Drum Machine<br/>192.168.213.71"]
     T_MUS3["💿 EXAMUSLAX003<br/>Fairlight CMI<br/>192.168.213.72"]
-    T_WAP["📶 EXAWAPLAX001<br/>WAP 1<br/>192.168.213.82"]
+    T_WAP["📶 EXAWAPLAX001<br/>Wireless Access Point<br/>192.168.213.82"]
     T_WAP2["📶 EXAWAPLAX002<br/>Wireless Access Point<br/>192.168.213.83"]
     T_WAP3["📶 EXAWAPLAX003<br/>Wireless Access Point<br/>192.168.213.84"]
     T_SWI2 --> T_NAS --> T_RDR --> T_MUS --> T_MUS2 --> T_MUS3 --> T_WAP --> T_WAP2 --> T_WAP3
     T_DCS["🗝️ EXADCSLAX001<br/>DCS 1<br/>192.168.213.10"]
     T_SVR["🗄️ EXASVRLAX001<br/>Local Services DB<br/>192.168.213.20"]
-    T_SBC["🛡️ EXASBCLAX001<br/>SBC<br/>192.168.213.48"]
+    T_SBC["🛡️ EXASBCLAX001<br/>VoIP SBC<br/>192.168.213.48"]
     T_FWL["🧱 EXAFWLLAX001<br/>Site Firewall / VPN Gateway<br/>192.168.213.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_AST["🕹️ EXAASTLAX001<br/>Atari ST<br/>192.168.213.73"]
@@ -162,7 +162,8 @@ graph TD
     T_MBP["💻 EXAMBPLAX001<br/>MacBook Pro<br/>192.168.213.41"]
     T_TAB["📱 EXATABLAX001<br/>IPad<br/>192.168.213.61"]
     T_PHN["📞 EXAPHNLAX001<br/>Phone<br/>No IP Address"]
-    T_AST --> T_LCD --> T_TAB
+    T_RAC["🔧 EXARACLAX001<br/>Real, Confirmed Via Ad_computers.json (EXARACLAX001, Enab...<br/>192.168.213.30"]
+    T_AST --> T_LCD --> T_TAB --> T_RAC
     T_PAY --> T_MBP --> T_PHN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -189,6 +190,7 @@ graph TD
     style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:LAX:END
 ```
 
