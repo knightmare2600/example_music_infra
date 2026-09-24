@@ -1563,7 +1563,7 @@
     "DNSHostName": "EXASVRLIV001.jukebox.internal",
     "OS": "Windows Server 2022",
     "OperatingSystemVersion": "21H2",
-    "IPv4Address": "192.168.151.10",
+    "IPv4Address": "192.168.151.8",
     "ad_ou": "OU=Servers,OU=Devices,OU=Liverpool,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -2375,7 +2375,7 @@
     "DNSHostName": "EXASVRBRD001.jukebox.internal",
     "OS": "Windows Server 2019",
     "OperatingSystemVersion": "1809",
-    "IPv4Address": "192.168.30.21",
+    "IPv4Address": "192.168.113.8",
     "ad_ou": "OU=Servers,OU=Devices,OU=West Berlin (legacy alias for BER),OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -2557,7 +2557,7 @@
     "DNSHostName": "EXAVCUBON001.jukebox.internal",
     "OS": "Poly Studio X70",
     "OperatingSystemVersion": "POLY-X70-BON-772190",
-    "IPv4Address": "192.168.228.2",
+    "IPv4Address": "",
     "ad_ou": "OU=AV,OU=Devices,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
@@ -3117,7 +3117,7 @@
     "DNSHostName": "EXARACSYD001.jukebox.internal",
     "OS": "Dell iDRAC9",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.29.21",
+    "IPv4Address": "192.168.29.2",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3341,7 +3341,7 @@
     "DNSHostName": "EXARACMEL001.jukebox.internal",
     "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.361.21",
+    "IPv4Address": "192.168.61.2",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3523,7 +3523,7 @@
     "DNSHostName": "EXARACAKL001.jukebox.internal",
     "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.93.21",
+    "IPv4Address": "192.168.93.2",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3747,7 +3747,7 @@
     "DNSHostName": "EXAPHNBER001.jukebox.internal",
     "OS": "Motorola DynaTAC 8000X",
     "OperatingSystemVersion": "AMPS / SIP Gateway",
-    "IPv4Address": "192.168.88.11",
+    "IPv4Address": "",
     "ad_ou": "OU=IoT,OU=Devices,OU=Berlin,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
@@ -3761,7 +3761,7 @@
     "DNSHostName": "EXAWRKAAR001.jukebox.internal",
     "OS": "IBM PC AT",
     "OperatingSystemVersion": "MS-DOS 5.0",
-    "IPv4Address": "192.168.45.10",
+    "IPv4Address": "",
     "ad_ou": "OU=IoT,OU=Devices,OU=Aarhus,OU=Nord Jyland,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
@@ -3775,7 +3775,7 @@
     "DNSHostName": "EXAWRKHEL001.jukebox.internal",
     "OS": "IBM PC XT",
     "OperatingSystemVersion": "MS-DOS 5.0",
-    "IPv4Address": "192.168.46.10",
+    "IPv4Address": "",
     "ad_ou": "OU=IoT,OU=Devices,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },

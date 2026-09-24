@@ -82,6 +82,15 @@ ALLOWED_HOSTNAME_REUSE = {
   # RTR case above: a real historical device, not a fictional one, hostname reused after
   # decommission.
   ("FAL", "RAC", 1),
+  # 2026-09-24: SYD/MEL/AKL's old ESXi hosts (legacy-devices.csv's own ESX,1 rows) were each
+  # managed by a single real BMC -- HPE iLO5 at AKL/MEL, Dell iDRAC9 at SYD -- decommissioned
+  # when each site's real Proxmox buildout replaced the old ESXi host. The exact RAC,1 hostname
+  # genuinely reused by the new hardware's own BMC (devices.csv's new SYD/MEL/AKL RAC,1 rows,
+  # added the same day the real ILO/RAC pool-slot addresses were confirmed via
+  # ad_computers.json + suggest_free_ip.py). Same shape as the FAL,RAC,1 case above.
+  ("SYD", "RAC", 1),
+  ("MEL", "RAC", 1),
+  ("AKL", "RAC", 1),
 }
 
 
