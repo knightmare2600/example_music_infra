@@ -32,8 +32,24 @@ in a different way, not by any check beforehand:
      Ontario/Quebec/US states) that ad_users.json's own records for the
      same two sites already had correctly -- New-ADComputer failed:
      "Directory object not found" for every single one.
+  5. Found live 2026-09-24, chasing a CLY/GLA subnet data-entry bug:
+     ad_computers.json's IPv4Address values had silently drifted from
+     devices.csv's own real per-hostname address across 56 records at 17
+     sites (wrong subnet base, wrong octet, or both) -- Robert: "I thought
+     we had a json file for IP ranges and conventions, can we consult
+     that?" devices.csv (fed through the same load_devices()/build_hostname()
+     generate_inventory.py itself uses, not a second hand-rolled copy of the
+     convention) is exactly that source of truth for any hostname it
+     defines, and nothing previously cross-checked ad_computers.json against
+     it.
+  6. Same investigation surfaced real IPv4Address duplicates WITHIN
+     ad_computers.json itself, same site, two different real devices (e.g.
+     an HP iLO and a Dell DRAC both claiming CLY's `.30`, two Falkirk iDRACs
+     both claiming `.30`) -- devices.csv has no opinion on these (no real
+     row exists for either device), so bug class 5's check can't catch
+     them; a same-site duplicate-IP check catches this shape independently.
 
-This checks four independent surfaces, all from the files themselves, no AD
+This checks six independent surfaces, all from the files themselves, no AD
 connection required:
   A. Duplicate SamAccountName within ad_users.json, and within
      ad_computers.json, case-insensitively (catches bug class 3's typo
@@ -52,16 +68,24 @@ connection required:
      site's Province OU when sites.csv defines one for that site (catches
      bug class 4, and would catch the same gap for any future province-
      having site, not just re-verify Sydney/Melbourne specifically).
+  E. Every ad_computers.json record whose SamAccountName matches a real
+     devices.csv hostname has the exact same IPv4Address devices.csv itself
+     would generate (catches bug class 5).
+  F. No two ad_computers.json records at the same Site share a non-blank
+     IPv4Address (catches bug class 6).
 
 Exit code: 0 if nothing found, 1 otherwise.
 """
 import csv
 import json
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BENARBEJDE = REPO_ROOT / "benarbejde"
+sys.path.insert(0, str(BENARBEJDE))
+import generate_inventory as gi  # noqa: E402  -- load_devices()/build_hostname(), not a second copy
 
 
 def load_json(name, problems):
@@ -179,6 +203,69 @@ def check_ad_ou_province(problems, records, filename, provinces):
             )
 
 
+def load_real_addresses(problems):
+    """hostname -> real full IP, straight from devices.csv via the same
+    load_devices()/build_hostname() generate_inventory.py itself uses for
+    the .ini/DNS output -- not a second, separately-derived copy."""
+    try:
+        gi.load_address_policy(BENARBEJDE / "address_policy.csv")
+        devices_by_site, _ = gi.load_devices(BENARBEJDE / "devices.csv")
+        sites = {}
+        with (BENARBEJDE / "sites.csv").open(newline="") as f:
+            for row in csv.DictReader(f):
+                try:
+                    site = row["Site"].strip()
+                    base = ".".join(row["Subnet"].strip().split("/")[0].split(".")[:3])
+                    sites[site] = base
+                except Exception:
+                    continue
+        real = {}
+        for site, devs in devices_by_site.items():
+            base = sites.get(site)
+            if not base:
+                continue
+            for d in devs:
+                if d["octet"] is not None:
+                    real[d["hostname"]] = f"{base}.{d['octet']}"
+        return real
+    except Exception as e:
+        problems.append(f"devices.csv: could not derive real addresses -- {e}")
+        return {}
+
+
+def check_ip_matches_devices_csv(problems, computers, real_addresses):
+    for c in computers:
+        sam = (c.get("SamAccountName") or "").rstrip("$")
+        ip = (c.get("IPv4Address") or "").strip()
+        if not sam or not ip or sam not in real_addresses:
+            continue
+        if ip != real_addresses[sam]:
+            problems.append(
+                f"ad_computers.json: {sam}'s IPv4Address is '{ip}', but "
+                f"devices.csv's own real address for this exact hostname is "
+                f"'{real_addresses[sam]}' -- ad_computers.json has drifted "
+                f"from the source of truth"
+            )
+
+
+def check_duplicate_ip_within_site(problems, computers):
+    seen = defaultdict(list)
+    for c in computers:
+        site = c.get("Site")
+        ip = (c.get("IPv4Address") or "").strip()
+        if not site or not ip:
+            continue
+        seen[(site, ip)].append(c.get("Name", c.get("SamAccountName", "?")))
+    for (site, ip), names in seen.items():
+        if len(names) > 1:
+            problems.append(
+                f"ad_computers.json: {site}'s {', '.join(names)} all claim "
+                f"IPv4Address '{ip}' -- either the same physical device "
+                f"recorded twice, or two real devices that both need their "
+                f"own real address"
+            )
+
+
 def main():
     problems = []
 
@@ -186,6 +273,7 @@ def main():
     groups = load_json("ad_groups.json", problems)
     computers = load_json("ad_computers.json", problems)
     provinces = load_sites_provinces(problems)
+    real_addresses = load_real_addresses(problems)
 
     if users is not None:
         check_duplicate_sam(problems, users, "ad_users.json", "Name")
@@ -198,13 +286,19 @@ def main():
         check_ad_ou_province(problems, users, "ad_users.json", provinces)
     if computers is not None and provinces:
         check_ad_ou_province(problems, computers, "ad_computers.json", provinces)
+    if computers is not None and real_addresses:
+        check_ip_matches_devices_csv(problems, computers, real_addresses)
+    if computers is not None:
+        check_duplicate_ip_within_site(problems, computers)
 
     print(
         f"Checked {len(users or [])} users, {len(groups or [])} groups, "
         f"{len(computers or [])} computers for duplicate SamAccountNames, "
         f"group/user SamAccountName collisions, Groups: reference validity, "
-        f"and ad_ou Province consistency against {len(provinces)} "
-        f"province-having site(s) in sites.csv."
+        f"ad_ou Province consistency against {len(provinces)} "
+        f"province-having site(s) in sites.csv, IPv4Address agreement with "
+        f"devices.csv ({len(real_addresses)} real hostname(s) known), and "
+        f"same-site IPv4Address duplicates."
     )
 
     if problems:
