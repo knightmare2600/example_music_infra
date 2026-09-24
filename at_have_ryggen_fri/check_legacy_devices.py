@@ -72,7 +72,17 @@ ALLOWED_TYPES = {"RAC", "ESX", "VCT", "RTR"}
 # generate_inventory.py's STANDARD_OFFSETS dedup the same as every other site's real RTR row).
 # Robert confirmed this directly, 2026-08-04 -- add a new (Site, Type, Number) tuple here only for
 # an equally explicitly-confirmed case, never to silence a check result without that confirmation.
-ALLOWED_HOSTNAME_REUSE = {("FAL", "RTR", 1)}
+ALLOWED_HOSTNAME_REUSE = {
+  ("FAL", "RTR", 1),
+  # 2026-09-24: FAL's old legacy hardware (a single HP ML310e running ESXi) was managed by a
+  # single real HP iLO, EXARACFAL001 (see docs/network-diagram/scotland.md's own 2026-07-31
+  # correction) -- decommissioned when FAL was rebuilt as a real 2-node Proxmox cluster, and its
+  # exact hostname genuinely reused by the first of the two new Dell iDRACs (devices.csv's own
+  # FAL,RAC,1 row, added the same day RAC was un-excluded from generation). Same shape as the
+  # RTR case above: a real historical device, not a fictional one, hostname reused after
+  # decommission.
+  ("FAL", "RAC", 1),
+}
 
 
 def load_site_codes():
