@@ -617,7 +617,7 @@ graph TD
     T_WAP["📶 EXAWAPLIV001<br/>WAP 1<br/>192.168.151.82"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSLIV001<br/>DCS 1<br/>192.168.151.10"]
-    T_SVR["🗄️ EXASVRLIV001<br/>File Server<br/>No IP Address"]
+    T_SVR["🗄️ EXASVRLIV001<br/>File Server<br/>192.168.151.8"]
     T_SBC["🛡️ EXASBCLIV001<br/>SBC<br/>192.168.151.48"]
     T_FWL["🧱 EXAFWLLIV001<br/>LAN Face<br/>192.168.151.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL

@@ -138,8 +138,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRSYD001<br/>RTR<br/>192.168.29.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCSYD001<br/>BMC 1<br/>192.168.29.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVESYD001<br/>PVE 1<br/>192.168.29.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWISYD003<br/>SWI 3<br/>192.168.29.252"]
@@ -157,6 +155,7 @@ graph TD
     T_SBC["🛡️ EXASBCSYD001<br/>SBC<br/>192.168.29.48"]
     T_FWL["🧱 EXAFWLSYD001<br/>LAN Face<br/>192.168.29.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
+    T_RAC["🔧 EXARACSYD001<br/>Real, Confirmed Via Ad_computers.json (EXARACSYD001, Enab...<br/>192.168.29.2"]
     T_MBP["💻 EXAMBPSYD001<br/>MacBook Pro<br/>192.168.29.40"]
     T_WKS["🖥️ EXAWKSSYD001<br/>Workstation<br/>192.168.29.41"]
     T_PHN["📞 EXAPHNSYD001<br/>Phone<br/>No IP Address"]
@@ -165,11 +164,10 @@ graph TD
     T_PRN["🖨️ EXAPRNSYD001<br/>Laser Printer<br/>192.168.29.80"]
     T_OTH_CAM["🎥 EXACAMSYD001-002<br/>2 x CCTV Cameras<br/>192.168.29.82,85"]
     T_COF["🍵 EXACOFSYD001<br/>Coffee Machine<br/>192.168.29.83"]
+    T_RAC --> T_WKS --> T_TAB --> T_PRN --> T_COF
     T_MBP --> T_PHN --> T_LCD --> T_OTH_CAM
-    T_WKS --> T_TAB --> T_PRN --> T_COF
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -181,6 +179,7 @@ graph TD
     style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -315,8 +314,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRMEL001<br/>RTR<br/>192.168.61.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCMEL001<br/>BMC 1<br/>192.168.61.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEMEL001<br/>PVE 1<br/>192.168.61.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWIMEL003<br/>SWI 3<br/>192.168.61.252"]
@@ -334,17 +331,17 @@ graph TD
     T_SBC["🛡️ EXASBCMEL001<br/>SBC<br/>192.168.61.48"]
     T_FWL["🧱 EXAFWLMEL001<br/>LAN Face<br/>192.168.61.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
+    T_RAC["🔧 EXARACMEL001<br/>Real, Confirmed Via Ad_computers.json (EXARACMEL001, Enab...<br/>192.168.61.2"]
     T_MBP["💻 EXAMBPMEL001<br/>MacBook Pro<br/>192.168.61.40"]
     T_WKS["🖥️ EXAWKSMEL001<br/>Workstation<br/>192.168.61.41"]
     T_PHN["📞 EXAPHNMEL001<br/>Phone<br/>No IP Address"]
     T_TAB["📱 EXATABMEL001<br/>IPad<br/>192.168.61.60"]
     T_LCD["🖼️ EXALCDMEL001<br/>Signage Display<br/>192.168.61.70"]
     T_PRN["🖨️ EXAPRNMEL001<br/>LaserJet Printer<br/>192.168.61.80"]
+    T_RAC --> T_WKS --> T_TAB --> T_PRN
     T_MBP --> T_PHN --> T_LCD
-    T_WKS --> T_TAB --> T_PRN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -356,6 +353,7 @@ graph TD
     style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
