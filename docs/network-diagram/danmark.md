@@ -525,16 +525,25 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWIFAX001<br/>96-port Switch<br/>192.168.246.250"]
     T_RTR --> T_SWI3
+    T_PVE["🗂️ EXAPVEFAX001<br/>PVE 1<br/>192.168.246.5 — planned"]
+    T_RTR --> T_PVE
+    T_PVE2["🗂️ EXAPVEFAX002<br/>PVE 2<br/>192.168.246.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASFAX001<br/>NAS<br/>192.168.246.19"]
+    T_NAS["🗃️ EXANASFAX001<br/>NAS 1<br/>192.168.246.19 — planned"]
     T_RDR["🔐 EXARDRFAX001<br/>RDR<br/>192.168.246.21"]
+    T_RDR["🔐 EXARDRFAX001<br/>RDR 1<br/>192.168.246.21 — planned"]
     T_WAP["📶 EXAWAPFAX001<br/>Wireless Access Point<br/>192.168.246.82"]
     T_WAP2["📶 EXAWAPFAX002<br/>Wireless Access Point<br/>192.168.246.83"]
-    T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
+    T_SWI3 --> T_NAS --> T_NAS --> T_RDR --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSFAX001<br/>DCS 1<br/>192.168.246.10"]
     T_SBC["🛡️ EXASBCFAX001<br/>SBC<br/>192.168.246.48"]
+    T_SBC["🛡️ EXASBCFAX001<br/>SBC 1<br/>192.168.246.48 — planned"]
     T_FWL["🧱 EXAFWLFAX001<br/>LAN Face<br/>192.168.246.253"]
     T_FWL2["🧱 EXAFWLFAX002<br/>WAN Edge<br/>192.168.246.254"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL --> T_FWL2
+    T_PVE --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL2
+    T_ILO["🔧 EXAILOFAX001<br/>ILO 1<br/>192.168.246.3 — planned"]
+    T_RAC["🔧 EXARACFAX002<br/>RAC 2<br/>192.168.246.4 — planned"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -542,14 +551,21 @@ graph TD
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:FAX:END
 ```
 

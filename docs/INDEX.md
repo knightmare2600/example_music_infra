@@ -44,7 +44,7 @@
 | [site-inventory.md](site-inventory.md) | NET-SITE-001 | Per-site commissioning checklists — build tracking, ZFS status, endpoint and equipment sign-off |
 | [INCIDENT-LOG.md](INCIDENT-LOG.md) | OPS-INC-001 | Blameless incident log — chronological, oldest first; what went wrong, root cause, and what changed as a result |
 | [linux-recovery-runbook.md](linux-recovery-runbook.md) | OPS-RECOVERY-001 | Recovering a Linux node where the `ansible` account is rejected entirely (console and SSH both) — GRUB rescue mode, unlock, verify |
-| [adding-a-new-site.md](adding-a-new-site.md) | OPS-SITE-001 | Step-by-step workflow for adding a genuinely new site — sites.csv row, `check_new_site_boilerplate.py --apply` for the day-one boilerplate + full regeneration, harness verification |
+| [adding-a-new-site.md](adding-a-new-site.md) | OPS-SITE-001 | Step-by-step workflow for adding a genuinely new site — sites.csv row, `check_new_site_boilerplate.py --apply`/`--complete` for the day-one boilerplate + full regeneration, harness verification |
 | [adding-a-new-device.md](adding-a-new-device.md) | OPS-DEVICE-001 | Step-by-step workflow for adding a new device — role code, free-octet finder, devices.csv row, regenerating every derived artefact, harness verification |
 | [refresh-after-data-changes.md](refresh-after-data-changes.md) | OPS-REFRESH-001 | Which playbooks need re-running against which hosts after a `benarbejde/` data change — what the freshness gate already protects automatically vs. the real remaining gap (PVE nodes' own local `/etc/example-music/*` copy) |
 | [network-diagram/README.md](network-diagram/README.md) | — | Directory README — per-region diagram file split rationale, see NET-DIAG-001 below for the real index |
