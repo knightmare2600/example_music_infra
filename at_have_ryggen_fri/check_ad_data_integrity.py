@@ -93,8 +93,27 @@ in a different way, not by any check beforehand:
       reserved territory, and nothing before this checked one record's
       address against every OTHER role's convention, only its own role's
       or another record sharing the identical IP.
+  11. Found live 2026-09-24: Robert, on the RTR/FWL slot collision at
+      BIR/ABD -- "this would also be a thing the harness would look for --
+      multiple devices using same IP which is a recipe for disaster. Does
+      it already do that?" It didn't, for the cross-FILE shape specifically
+      -- check E only compares a record against devices.csv's row for its
+      OWN hostname, check F only compares ad_computers.json records against
+      each other. Neither catches an ad_computers.json record's IP silently
+      matching devices.csv's real address for a COMPLETELY DIFFERENT
+      hostname. Confirmed live, whole-estate scan: 4 real instances (e.g.
+      EXACLKCPH001 claiming the same IP as the real EXATVSBON001).
+  12. Same conversation, Robert's own proposed detection strategy: "if I
+      have 3 PVE nodes and only 2 RAC/ILOs then by definition one is
+      missing ... every site needs a minimum of one switch, one firewall."
+      PVE-vs-RAC/ILO ratio specifically isn't buildable from
+      ad_computers.json (confirmed live: zero sites have a PVE-Role record
+      in it at all -- Linux hypervisors were never going to be Windows AD
+      computer objects, so there's no baseline to compare against), but
+      SWI/RTR genuinely do vary and ARE reliably modelled when real --
+      confirmed via a real device-count scan across every standard site.
 
-This checks ten independent surfaces, all from the files themselves, no AD
+This checks twelve independent surfaces, all from the files themselves, no AD
 connection required:
   A. Duplicate SamAccountName within ad_users.json, and within
      ad_computers.json, case-insensitively (catches bug class 3's typo
@@ -153,6 +172,17 @@ connection required:
      (generate_inventory.py's own record of deliberate, already-approved
      slot reuse) so a genuinely intentional reuse is never misreported as a
      collision.
+  K. No ad_computers.json record's IPv4Address matches devices.csv's own
+     real address for a DIFFERENT hostname (catches bug class 11) -- two
+     real devices sharing one live IP is worse than either check E or F
+     alone catches, since it's a genuine network conflict, not just stale
+     data.
+  L. Every standard site (not in NON_STANDARD_SITES) with ANY real
+     ad_computers.json presence has at least one real SWI and one real RTR
+     record (catches bug class 12) -- deliberately narrow to these two, the
+     oldest/most universal standard-template categories; newer, still-
+     rolling-out categories (NAS/SBC/WAP) are legitimately absent at real
+     sites that haven't been retrofitted yet and would just add noise.
 
 Exit code: 0 if nothing found, 1 otherwise.
 """
@@ -328,6 +358,32 @@ def check_ip_matches_devices_csv(problems, computers, real_addresses):
             )
 
 
+def check_cross_file_ip_collision(problems, computers, real_addresses):
+    """Robert, 2026-09-24: "multiple devices using the same IP which is a recipe for
+    disaster. So... does it already do that or not?" It didn't -- check E only ever
+    compares a record against DEVICES.CSV'S ROW FOR THAT SAME HOSTNAME (catches drift),
+    and check F only compares ad_computers.json records against EACH OTHER. Neither
+    catches an ad_computers.json record's IP silently matching devices.csv's OWN real
+    address for a COMPLETELY DIFFERENT hostname -- two real, unrelated devices sharing
+    one live IP, worse than either bug class alone since it's a genuine network
+    conflict, not just stale data. Confirmed live, whole-estate scan: 4 real instances
+    (e.g. EXACLKCPH001 claims the same IP as the real EXATVSBON001) that nothing before
+    this ever surfaced."""
+    ip_to_devhost = {ip: hostname for hostname, ip in real_addresses.items()}
+    for c in computers:
+        sam = (c.get("SamAccountName") or "").rstrip("$")
+        ip = (c.get("IPv4Address") or "").strip()
+        if not sam or not ip or ip not in ip_to_devhost:
+            continue
+        devhost = ip_to_devhost[ip]
+        if devhost != sam:
+            problems.append(
+                f"ad_computers.json: {sam} claims IPv4Address '{ip}', but devices.csv's "
+                f"own real address book says that IP belongs to a DIFFERENT real device, "
+                f"{devhost} -- two real devices sharing one live IP, not just stale data"
+            )
+
+
 def policy_expected_octet(role, number):
     """address_policy.csv's own opinion of where a given Type's Nth instance belongs,
     straight from the same OFFSETS_SINGLE/ROLE_OFFSETS generate_inventory.py itself
@@ -413,6 +469,39 @@ def check_cross_role_collision(problems, computers, octet_role_map):
                 f"it IS exactly {'/'.join(sorted(colliding))}'s own reserved slot at this "
                 f"site -- likely address confusion with a different device Type entirely, "
                 f"not just an unconfirmed value"
+            )
+
+
+def check_minimum_standard_equipment(problems, computers):
+    """Robert, 2026-09-24: "we know every site needs a minimum of one switch, one
+    firewall ... there is methodology and scope in being able to find 'enough' standard
+    site equipment to catch 'big' errors that can take a site down." PVE specifically
+    can't be checked this way (see check K's own header -- ad_computers.json never
+    tracks it, for any site, so there is no baseline to compare against), but SWI/RTR
+    genuinely do vary site to site and ARE reliably modelled here when real -- confirmed
+    live, a real device-count scan across every standard site. Deliberately narrow (just
+    these two, the oldest and most universal standard-template categories) rather than
+    also checking newer, still-rolling-out categories like NAS/SBC/WAP, which are
+    legitimately absent at plenty of real sites that just haven't been retrofitted yet
+    -- see docs/proxmox/proxmox-dcm-pbs-planning.md's own NAS rollout notes. A site with
+    ad_computers.json presence but ZERO real SWI or RTR records is a genuinely different,
+    much more concerning shape than "hasn't gotten a NAS yet.\""""
+    by_site_role = defaultdict(set)
+    for c in computers:
+        site = (c.get("Site") or "").strip()
+        role = (c.get("Role") or "").strip().upper()
+        if site and role:
+            by_site_role[site].add(role)
+    for site, roles in by_site_role.items():
+        if site in gi.NON_STANDARD_SITES:
+            continue
+        missing = [r for r in ("SWI", "RTR") if r not in roles]
+        if missing:
+            problems.append(
+                f"ad_computers.json: {site} has real device records but ZERO for "
+                f"{'/'.join(missing)} -- every real, built site needs at least one "
+                f"switch and one router/firewall; a site missing either entirely in "
+                f"ad_computers.json is worth checking directly, not just noting"
             )
 
 
@@ -616,6 +705,7 @@ def main():
         check_ad_ou_province(problems, computers, "ad_computers.json", provinces)
     if computers is not None and real_addresses:
         check_ip_matches_devices_csv(problems, computers, real_addresses)
+        check_cross_file_ip_collision(problems, computers, real_addresses)
     if computers is not None:
         check_duplicate_ip_within_site(problems, computers, real_addresses)
     if computers is not None:
@@ -626,6 +716,8 @@ def main():
     if computers is not None:
         octet_role_map = build_octet_role_map()
         check_cross_role_collision(problems, computers, octet_role_map)
+    if computers is not None:
+        check_minimum_standard_equipment(problems, computers)
 
     print(
         f"Checked {len(users or [])} users, {len(groups or [])} groups, "
