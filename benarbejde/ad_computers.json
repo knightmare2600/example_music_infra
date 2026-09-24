@@ -373,7 +373,7 @@
     "DNSHostName": "EXAWKSEDI001.jukebox.internal",
     "OS": "Windows 10 Pro",
     "OperatingSystemVersion": "22H2",
-    "IPv4Address": "192.168.131.101",
+    "IPv4Address": "192.168.131.150",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1031,7 +1031,7 @@
     "DNSHostName": "EXARDRFAL001.jukebox.internal",
     "OS": "HID Signo Reader",
     "OperatingSystemVersion": "HID-SIGNO-LIV-338572",
-    "IPv4Address": "192.168.76.21",
+    "IPv4Address": "192.168.76.16",
     "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -1143,7 +1143,7 @@
     "DNSHostName": "EXAWKSGLA001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.141.101",
+    "IPv4Address": "192.168.141.150",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1171,7 +1171,7 @@
     "DNSHostName": "EXALAPGLA001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.141.102",
+    "IPv4Address": "192.168.141.152",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1199,7 +1199,7 @@
     "DNSHostName": "EXASWICLY002.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.41.251",
+    "IPv4Address": "192.168.41.2",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1269,7 +1269,7 @@
     "DNSHostName": "EXASURCLY001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
-    "IPv4Address": "192.168.41.102",
+    "IPv4Address": "192.168.41.51",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1479,7 +1479,7 @@
     "DNSHostName": "EXAWKSMCR001.jukebox.internal",
     "OS": "Windows 10 Enterprise",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.161.101",
+    "IPv4Address": "192.168.161.152",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1955,7 +1955,7 @@
     "DNSHostName": "EXAWKSLND001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.20.101",
+    "IPv4Address": "192.168.20.150",
     "ad_ou": "OU=Workstations,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2221,7 +2221,7 @@
     "DNSHostName": "EXAWAPKGE001.jukebox.internal",
     "OS": "Ubiquiti UniFi U6-Pro",
     "OperatingSystemVersion": "U6P-KGE-847392",
-    "IPv4Address": "192.168.56.82",
+    "IPv4Address": "192.168.65.82",
     "ad_ou": "OU=IoT,OU=Devices,OU=Koge,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
@@ -2263,7 +2263,7 @@
     "DNSHostName": "EXARACCPH001.jukebox.internal",
     "OS": "Dell iDRAC9",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.31.2",
+    "IPv4Address": "192.168.231.2",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2291,7 +2291,7 @@
     "DNSHostName": "EXASBCCPH001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.31.48",
+    "IPv4Address": "192.168.231.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -2445,7 +2445,7 @@
     "DNSHostName": "EXAWKSMUN001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.189.101",
+    "IPv4Address": "192.168.189.150",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2459,7 +2459,7 @@
     "DNSHostName": "EXALAPMUN001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.189.102",
+    "IPv4Address": "192.168.189.151",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2487,7 +2487,7 @@
     "DNSHostName": "EXAracMUN01.jukebox.internal",
     "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.89.2",
+    "IPv4Address": "192.168.189.2",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2515,7 +2515,7 @@
     "DNSHostName": "EXAsbcMUN01.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.89.48",
+    "IPv4Address": "192.168.189.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -2529,7 +2529,7 @@
     "DNSHostName": "EXAWKSBON001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.228.101",
+    "IPv4Address": "192.168.228.151",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -3145,7 +3145,7 @@
     "DNSHostName": "EXAWKSSYD001.jukebox.internal",
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.29.101",
+    "IPv4Address": "192.168.29.41",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -3369,7 +3369,7 @@
     "DNSHostName": "EXAWKSMEL001.jukebox.internal",
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.61.101",
+    "IPv4Address": "192.168.61.41",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -3537,7 +3537,7 @@
     "DNSHostName": "EXAWKSAKL001.jukebox.internal",
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.93.101",
+    "IPv4Address": "192.168.93.40",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
