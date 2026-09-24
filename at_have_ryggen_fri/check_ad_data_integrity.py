@@ -112,6 +112,15 @@ in a different way, not by any check beforehand:
       computer objects, so there's no baseline to compare against), but
       SWI/RTR genuinely do vary and ARE reliably modelled when real --
       confirmed via a real device-count scan across every standard site.
+  13. Same conversation: Robert's counter to bug class 12's PVE limitation --
+      "they can be made to authenticate to AD ... they could go in already
+      existing -- or new -- OUs for Firewalls, Telephony, Switches, etc."
+      Correct, and it reframes bug class 12 properly: PVE/FWL/DCS aren't
+      structurally UNABLE to be tracked (Proxmox genuinely supports an
+      LDAP/AD realm), they're just not tracked YET. Doesn't unlock a
+      per-site ratio check (the absence is estate-wide, no baseline
+      anywhere to compare against), but is worth a standing, one-time
+      advisory rather than silence.
 
 This checks twelve independent surfaces, all from the files themselves, no AD
 connection required:
@@ -505,6 +514,38 @@ def check_minimum_standard_equipment(problems, computers):
             )
 
 
+def check_ldap_trackable_advisory(computers):
+    """Robert, 2026-09-24: PVE/FWL aren't Windows and don't domain-join, but that's not
+    the same as "can never be represented" -- Proxmox genuinely supports an LDAP/AD
+    realm for its own auth, so there's no technical reason a PVE node (or a Linux
+    firewall) couldn't get an AD-adjacent entry the same way SWI/RTR already do,
+    existing Infrastructure OU or a new one. Confirmed live: right now, NONE of them do
+    -- zero PVE, FWL, or DCS Role records exist anywhere in ad_computers.json, not at
+    any single site. This is deliberately NOT a per-site "problem" (that would need a
+    real baseline elsewhere to compare against, which doesn't exist -- see check L's own
+    header) -- it's a one-time, whole-estate advisory: if/when this estate starts
+    LDAP-tracking these Types the way it already does switches and routers, checks
+    equivalent to K/L above would start working for them too, the same way they already
+    do for SWI/RTR."""
+    counts = defaultdict(int)
+    for c in computers:
+        role = (c.get("Role") or "").strip().upper()
+        if role in ("PVE", "FWL", "DCS"):
+            counts[role] += 1
+    zero = [r for r in ("PVE", "FWL", "DCS") if counts[r] == 0]
+    if not zero:
+        return None
+    return (
+        f"ADVISORY (not a failure): {', '.join(zero)} have ZERO records anywhere in "
+        f"ad_computers.json, at any site -- not a single-site gap, a whole-estate one. "
+        f"PVE nodes and Linux firewalls aren't domain-joined, but Proxmox does support "
+        f"LDAP/AD-realm auth, so there's no technical reason these couldn't be tracked "
+        f"the same way SWI/RTR already are (existing Infrastructure OU or a new one). "
+        f"If this estate starts doing that, checks K/L above would start covering these "
+        f"Types too -- right now there's no baseline anywhere to check them against."
+    )
+
+
 def triangulate(c, real_addresses):
     """One record's own three possible signals for what its real address should be --
     devices.csv (exact, when a real row exists), address_policy.csv (exact or pool,
@@ -719,6 +760,8 @@ def main():
     if computers is not None:
         check_minimum_standard_equipment(problems, computers)
 
+    advisory = check_ldap_trackable_advisory(computers) if computers is not None else None
+
     print(
         f"Checked {len(users or [])} users, {len(groups or [])} groups, "
         f"{len(computers or [])} computers for duplicate SamAccountNames, "
@@ -729,6 +772,9 @@ def main():
         f"same-site IPv4Address duplicates, duplicate DNSHostName values, and "
         f"policy-governed Types missing a devices.csv row."
     )
+
+    if advisory:
+        print(f"\n{advisory}")
 
     if problems:
         print(f"\n{len(problems)} problem(s) found:")
