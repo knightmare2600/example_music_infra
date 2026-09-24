@@ -37,7 +37,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRLAX001<br/>Palo Alto PAN-OS 10.x · WAN edge, router/firewall combo<br/>192.168.213.1"]
+    O_RTR["📡 EXARTRLAX001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.213.1"]
     O_SWI1["🔀 EXASWILAX001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.213.250"]
     O_SWI2["🔀 EXASWILAX002<br/>Cisco Catalyst 2960 · Access switch<br/>192.168.213.251"]
     O_DCR["🗝️ EXADCRLAX001<br/>DC · deployed, then physically disconnected<br/>192.168.213.10"]
@@ -154,7 +154,7 @@ graph TD
     T_DCS["🗝️ EXADCSLAX001<br/>DCS 1<br/>192.168.213.10"]
     T_SVR["🗄️ EXASVRLAX001<br/>Local Services DB<br/>192.168.213.20"]
     T_SBC["🛡️ EXASBCLAX001<br/>SBC<br/>192.168.213.48"]
-    T_FWL["🧱 EXAFWLLAX001<br/>LAN Face<br/>192.168.213.253"]
+    T_FWL["🧱 EXAFWLLAX001<br/>Site Firewall / VPN Gateway<br/>192.168.213.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_AST["🕹️ EXAASTLAX001<br/>Atari ST<br/>192.168.213.73"]
     T_PAY["☎️ EXAPAYLAX001<br/>Payphone<br/>192.168.213.74"]

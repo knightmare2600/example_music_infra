@@ -3285,7 +3285,7 @@
     "DNSHostName": "EXAFWLMEL001.jukebox.internal",
     "OS": "FortiGate",
     "OperatingSystemVersion": "7.x",
-    "IPv4Address": "192.168.361.253",
+    "IPv4Address": "192.168.61.253",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3411,7 +3411,7 @@
     "DNSHostName": "EXASBCMEL001.jukebox.internal",
     "OS": "3CX SBC",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.361.48",
+    "IPv4Address": "192.168.61.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -3453,7 +3453,7 @@
     "DNSHostName": "EXANASMEL001.jukebox.internal",
     "OS": "Synology DSM",
     "OperatingSystemVersion": "7.x",
-    "IPv4Address": "192.168.361.19",
+    "IPv4Address": "192.168.61.19",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },

@@ -153,7 +153,7 @@ graph TD
     T_DCS["🗝️ EXADCSSYD001<br/>DCS 1<br/>192.168.29.10"]
     T_SVR["🗄️ EXASVRSYD001<br/>Local Infra Server<br/>192.168.29.20"]
     T_SBC["🛡️ EXASBCSYD001<br/>SBC<br/>192.168.29.48"]
-    T_FWL["🧱 EXAFWLSYD001<br/>LAN Face<br/>192.168.29.253"]
+    T_FWL["🧱 EXAFWLSYD001<br/>Site Firewall<br/>192.168.29.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_RAC["🔧 EXARACSYD001<br/>Real, Confirmed Via Ad_computers.json (EXARACSYD001, Enab...<br/>192.168.29.2"]
     T_MBP["💻 EXAMBPSYD001<br/>MacBook Pro<br/>192.168.29.40"]
@@ -329,7 +329,7 @@ graph TD
     T_DCS["🗝️ EXADCSMEL001<br/>DCS 1<br/>192.168.61.10"]
     T_SVR["🗄️ EXASVRMEL001<br/>Local File And Print Server<br/>192.168.61.20"]
     T_SBC["🛡️ EXASBCMEL001<br/>SBC<br/>192.168.61.48"]
-    T_FWL["🧱 EXAFWLMEL001<br/>LAN Face<br/>192.168.61.253"]
+    T_FWL["🧱 EXAFWLMEL001<br/>Site Firewall<br/>192.168.61.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_RAC["🔧 EXARACMEL001<br/>Real, Confirmed Via Ad_computers.json (EXARACMEL001, Enab...<br/>192.168.61.2"]
     T_MBP["💻 EXAMBPMEL001<br/>MacBook Pro<br/>192.168.61.40"]
