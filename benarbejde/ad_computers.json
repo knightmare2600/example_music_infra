@@ -415,7 +415,7 @@
     "DNSHostName": "EXASWIEDI001.jukebox.internal",
     "OS": "Cisco Catalyst 2960X",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.131.5",
+    "IPv4Address": "192.168.131.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -429,7 +429,7 @@
     "DNSHostName": "EXASWIEDI002.jukebox.internal",
     "OS": "Cisco Catalyst 2960X",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.131.6",
+    "IPv4Address": "192.168.131.251",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -457,7 +457,7 @@
     "DNSHostName": "EXATEAEDI001.jukebox.internal",
     "OS": "Smart Bean to Cup Coffee Machine",
     "OperatingSystemVersion": "TP713GB9",
-    "IPv4Address": "192.168.131.16",
+    "IPv4Address": "192.168.131.60",
     "ad_ou": "OU=IoT,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
@@ -1409,7 +1409,7 @@
     "DNSHostName": "EXASWINEW001.jukebox.internal",
     "OS": "TP-Link JetStream",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.191.5",
+    "IPv4Address": "192.168.191.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Newcastle,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1535,7 +1535,7 @@
     "DNSHostName": "EXASWIMCR001.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.161.5",
+    "IPv4Address": "192.168.161.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1619,7 +1619,7 @@
     "DNSHostName": "EXASWILIV001.jukebox.internal",
     "OS": "Cisco Catalyst 9200",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.151.5",
+    "IPv4Address": "192.168.151.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Liverpool,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2025,7 +2025,7 @@
     "DNSHostName": "EXASWILND001.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.20.5",
+    "IPv4Address": "192.168.20.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2095,7 +2095,7 @@
     "DNSHostName": "EXAMACODE001.jukebox.internal",
     "OS": "MacOS Tahoe",
     "OperatingSystemVersion": "26.0.1",
-    "IPv4Address": "192.168.66.150",
+    "IPv4Address": "192.168.126.150",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Odense,OU=Fyn,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2109,7 +2109,7 @@
     "DNSHostName": "EXAMBPODE002.jukebox.internal",
     "OS": "MacOS Tahoe",
     "OperatingSystemVersion": "26.0.1",
-    "IPv4Address": "192.168.66.151",
+    "IPv4Address": "192.168.126.151",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Odense,OU=Fyn,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2123,7 +2123,7 @@
     "DNSHostName": "EXAMUSODE001.jukebox.internal",
     "OS": "Pureline 128V Retro Vinyl Jukebox",
     "OperatingSystemVersion": "PL128V-ODE-095823",
-    "IPv4Address": "192.168.66.18",
+    "IPv4Address": "192.168.126.60",
     "ad_ou": "OU=IoT,OU=Devices,OU=Odense,OU=Fyn,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
@@ -2235,7 +2235,7 @@
     "DNSHostName": "EXAPRNKGE001.jukebox.internal",
     "OS": "HP LaserJet Enterprise MFP M528",
     "OperatingSystemVersion": "HPM528-KGE-193847",
-    "IPv4Address": "192.168.56.16",
+    "IPv4Address": "192.168.65.16",
     "ad_ou": "OU=IoT,OU=Devices,OU=Koge,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
@@ -2277,7 +2277,7 @@
     "DNSHostName": "EXASWICPH001.jukebox.internal",
     "OS": "TP-Link JetStream",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.31.5",
+    "IPv4Address": "192.168.231.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2305,7 +2305,7 @@
     "DNSHostName": "EXATVSCPH001.jukebox.internal",
     "OS": "Bella Kronik 42X",
     "OperatingSystemVersion": "BTV-042001",
-    "IPv4Address": "192.168.31.17",
+    "IPv4Address": "192.168.231.17",
     "ad_ou": "OU=AV,OU=Devices,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
@@ -2445,7 +2445,7 @@
     "DNSHostName": "EXAWKSMUN001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.89.150",
+    "IPv4Address": "192.168.189.150",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2459,7 +2459,7 @@
     "DNSHostName": "EXALAPMUN001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.89.151",
+    "IPv4Address": "192.168.189.151",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2473,7 +2473,7 @@
     "DNSHostName": "EXALAPMUN002.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.89.152",
+    "IPv4Address": "192.168.189.152",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2501,7 +2501,7 @@
     "DNSHostName": "EXAswiMUN01.jukebox.internal",
     "OS": "Cisco Catalyst 9200",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.89.5",
+    "IPv4Address": "192.168.189.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2585,7 +2585,7 @@
     "DNSHostName": "EXATVSBON001.jukebox.internal",
     "OS": "Samsung Business TV 65\"",
     "OperatingSystemVersion": "SAMS65-BON-771992",
-    "IPv4Address": "192.168.151.18",
+    "IPv4Address": "192.168.228.18",
     "ad_ou": "OU=AV,OU=Devices,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
@@ -2613,7 +2613,7 @@
     "DNSHostName": "EXASWIBON001.jukebox.internal",
     "OS": "Cisco Catalyst 2960X",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.228.5",
+    "IPv4Address": "192.168.228.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2795,7 +2795,7 @@
     "DNSHostName": "EXASWILAX001.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.213.2",
+    "IPv4Address": "192.168.213.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2907,7 +2907,7 @@
     "DNSHostName": "EXASWILAX002.jukebox.internal",
     "OS": "Cisco Catalyst 2960",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.213.5",
+    "IPv4Address": "192.168.213.251",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2921,7 +2921,7 @@
     "DNSHostName": "EXALCDLAX001.jukebox.internal",
     "OS": "NEC PlasmaSync",
     "OperatingSystemVersion": "1.x",
-    "IPv4Address": "192.168.213.30",
+    "IPv4Address": "192.168.213.75",
     "ad_ou": "OU=AV,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
@@ -3075,7 +3075,7 @@
     "DNSHostName": "EXASWISYD001.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.29.2",
+    "IPv4Address": "192.168.29.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3089,7 +3089,7 @@
     "DNSHostName": "EXASWISYD002.jukebox.internal",
     "OS": "Cisco Catalyst 2960",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.29.3",
+    "IPv4Address": "192.168.29.251",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3299,7 +3299,7 @@
     "DNSHostName": "EXASWIMEL001.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.361.2",
+    "IPv4Address": "192.168.61.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3313,7 +3313,7 @@
     "DNSHostName": "EXASWIMEL002.jukebox.internal",
     "OS": "Cisco Catalyst 2960",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.361.3",
+    "IPv4Address": "192.168.61.251",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3327,7 +3327,7 @@
     "DNSHostName": "EXASVRMEL001.jukebox.internal",
     "OS": "Windows Server 2022",
     "OperatingSystemVersion": "21H2",
-    "IPv4Address": "192.168.361.20",
+    "IPv4Address": "192.168.61.20",
     "ad_ou": "OU=Servers,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -3355,7 +3355,7 @@
     "DNSHostName": "EXAMBPMEL001.jukebox.internal",
     "OS": "macOS Sonoma",
     "OperatingSystemVersion": "14.x",
-    "IPv4Address": "192.168.361.40",
+    "IPv4Address": "192.168.61.40",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -3369,7 +3369,7 @@
     "DNSHostName": "EXAWKSMEL001.jukebox.internal",
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.361.41",
+    "IPv4Address": "192.168.61.41",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -3397,7 +3397,7 @@
     "DNSHostName": "EXATABMEL001.jukebox.internal",
     "OS": "iPadOS",
     "OperatingSystemVersion": "17.x",
-    "IPv4Address": "192.168.361.60",
+    "IPv4Address": "192.168.61.60",
     "ad_ou": "OU=Assets,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Assets"
   },
@@ -3425,7 +3425,7 @@
     "DNSHostName": "EXALCDMEL001.jukebox.internal",
     "OS": "Samsung Signage",
     "OperatingSystemVersion": "1.x",
-    "IPv4Address": "192.168.361.70",
+    "IPv4Address": "192.168.61.70",
     "ad_ou": "OU=AV,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
@@ -3439,7 +3439,7 @@
     "DNSHostName": "EXAPRNMEL001.jukebox.internal",
     "OS": "HP LaserJet",
     "OperatingSystemVersion": "Firmware",
-    "IPv4Address": "192.168.361.80",
+    "IPv4Address": "192.168.61.80",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3481,7 +3481,7 @@
     "DNSHostName": "EXASWIAKL001.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.93.2",
+    "IPv4Address": "192.168.93.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3495,7 +3495,7 @@
     "DNSHostName": "EXASWIAKL002.jukebox.internal",
     "OS": "Cisco Catalyst 2960",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.93.3",
+    "IPv4Address": "192.168.93.251",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
