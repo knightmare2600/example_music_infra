@@ -432,7 +432,7 @@ def build_octet_role_map():
     return m
 
 
-def check_cross_role_collision(problems, computers, octet_role_map):
+def check_cross_role_collision(problems, computers, octet_role_map, real_addresses):
     """Robert, 2026-09-24, live, on EXARACBIR001's claimed '.6': "is that a BMC address? No
     -- .6 is a PVE host IP." A record's claimed octet can be implausible for its OWN Role
     (fails policy_expected_octet()) while ALSO exactly matching a COMPLETELY DIFFERENT
@@ -446,13 +446,24 @@ def check_cross_role_collision(problems, computers, octet_role_map):
     "which role actually owns this address" signal is the only thing that caught it.
     Respects SUPPRESSED_STANDARD_ROLES (generate_inventory.py's own record of deliberate,
     already-approved slot reuse, e.g. CLY's real switch sitting on BMC's own '.2') -- a
-    documented, intentional reuse is never a collision."""
+    documented, intentional reuse is never a collision.
+
+    Also checks devices.csv's own real address for this exact hostname, not just the
+    generic address_policy.csv convention -- found live, 2026-09-24: FAL genuinely has 3
+    real workstations at consecutive octets .100/.101/.102 (devices.csv-confirmed real
+    rows), which doesn't match address_policy.csv's own single-instance WKS convention
+    (.101, assuming only one WKS per site) at all -- without this, EXAWKSFAL001 (.100)
+    would false-flag as a cross-role collision candidate purely because the GENERIC
+    policy doesn't cover a legitimate, real, site-specific exception devices.csv already
+    confirms."""
     for c in computers:
         sam = (c.get("SamAccountName") or "").rstrip("$")
         role = (c.get("Role") or "").strip().upper()
         site = (c.get("Site") or "").strip()
         ip = (c.get("IPv4Address") or "").strip()
         if not sam or not role or not ip:
+            continue
+        if real_addresses.get(sam) == ip:
             continue
         octet_str = ip.rsplit(".", 1)[-1]
         if not octet_str.isdigit():
@@ -756,7 +767,7 @@ def main():
         check_missing_devices_csv_row(problems, computers, real_addresses, legacy_site_types)
     if computers is not None:
         octet_role_map = build_octet_role_map()
-        check_cross_role_collision(problems, computers, octet_role_map)
+        check_cross_role_collision(problems, computers, octet_role_map, real_addresses)
     if computers is not None:
         check_minimum_standard_equipment(problems, computers)
 
