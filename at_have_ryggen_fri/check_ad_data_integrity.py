@@ -65,7 +65,26 @@ in a different way, not by any check beforehand:
      "don't fix any of them for now, just write or expand the checking
      harness's checks" instruction.
 
-This checks seven independent surfaces, all from the files themselves, no AD
+  8. Found live 2026-09-24, resolving BIR's ILO/RAC pair: EXAILOBIR001 and
+     EXARACBIR001 are two DIFFERENT real devices (an HP iLO and a Dell
+     DRAC) at two DIFFERENT IPs (.30 and .6) -- so check F's same-IP
+     duplicate check never saw them as related at all. But both records'
+     DNSHostName field says "EXARACBIR001.jukebox.internal" -- the exact
+     same string, on two different records. Two records both claiming to
+     BE the same DNS name is a real bug independent of whether their IPs
+     also happen to collide; nothing before this checked DNSHostName
+     duplication on its own terms.
+  9. Same investigation: neither EXAILOBIR001 nor EXARACBIR001 has ANY
+     benarbejde/devices.csv row at all, for a Type (ILO/RAC) that
+     address_policy.csv DOES have a real addressing convention for (the
+     .2-.4 BMC pool) -- devices.csv is missing real data the harness had no
+     way to notice, because every previous check only ever looked for
+     devices.csv rows that DO exist and checked them against
+     ad_computers.json, never the reverse direction (a real ad_computers.json
+     record with a policy-governed Type and no devices.csv counterpart at
+     all).
+
+This checks nine independent surfaces, all from the files themselves, no AD
 connection required:
   A. Duplicate SamAccountName within ad_users.json, and within
      ad_computers.json, case-insensitively (catches bug class 3's typo
@@ -101,6 +120,23 @@ connection required:
      bug class 5's already-clear cases twice (those are devices.csv-backed
      outright, check E already reports them) -- this is purely for the
      harder cases check E and F together can't already settle.
+  H. No two ad_computers.json records share the same DNSHostName value,
+     regardless of whether their IPv4Address also matches (catches bug
+     class 8 -- a strictly harder-to-spot shape than check F's, since two
+     records can genuinely claim the same DNS identity while sitting at two
+     different, non-colliding IPs).
+  I. Every ad_computers.json record whose Role has a real
+     address_policy.csv addressing convention (any Type in
+     OFFSETS_SINGLE/ROLE_OFFSETS, or ILO/RAC sharing BMC's pool) has a
+     matching devices.csv row (catches bug class 9 -- devices.csv silently
+     missing real data, the reverse direction from check E). Deliberately
+     scoped to policy-governed Types only, using the exact same
+     policy_expected_octet() this file's own check G already relies on --
+     ad hoc Types with no policy convention at all (VCU, LCD, SVR, and pure
+     Linux control-plane infrastructure) are never expected to have a
+     devices.csv row and are correctly never flagged, avoiding the
+     false-alarm risk that kept this check parked when it was first
+     proposed (see [[project_criticality_alarm_2026_09_24]]).
 
 Exit code: 0 if nothing found, 1 otherwise.
 """
@@ -374,6 +410,109 @@ def check_duplicate_ip_within_site(problems, computers, real_addresses):
         )
 
 
+def check_duplicate_dns_hostname(problems, computers):
+    """Found live 2026-09-24 resolving BIR's ILO/RAC pair: EXAILOBIR001 (.30) and
+    EXARACBIR001 (.6) never shared an IP, so check F never related them -- but both
+    records' DNSHostName says "EXARACBIR001.jukebox.internal", the identical string.
+    Two records both claiming the same DNS identity is a real bug on its own terms,
+    independent of whether their addresses also happen to collide."""
+    seen = defaultdict(list)
+    for c in computers:
+        dns = (c.get("DNSHostName") or "").strip()
+        if not dns:
+            continue
+        seen[dns.lower()].append(c)
+    for dns_lower, members in seen.items():
+        if len(members) <= 1:
+            continue
+        sams = [(c.get("SamAccountName") or "").rstrip("$") for c in members]
+        self_owner = [s for s in sams if s.lower() == dns_lower.split(".")[0]]
+        problems.append(
+            f"ad_computers.json: {', '.join(sams)} all have DNSHostName "
+            f"'{members[0].get('DNSHostName')}' -- only "
+            f"{self_owner[0] if self_owner else 'none of them'} actually owns that "
+            f"identity; the other(s) need their own real DNSHostName "
+            f"({', '.join(s for s in sams if s not in self_owner)}.jukebox.internal, "
+            f"unless they're a genuinely different device that needs a different "
+            f"hostname entirely)"
+        )
+
+
+def load_legacy_site_types(problems):
+    """Site -> set(Type), for devices.csv rows SPECIFICALLY marked Legacy=yes -- not
+    "any row of this Type exists" (a live row for a different instance Number, e.g.
+    BIR's real WAP,2, says nothing about whether WAP,1 has ITS OWN row, Legacy or
+    otherwise, and conflating the two would misreport a genuinely-missing row as
+    "explained by a legacy entry" when it isn't). A raw CSV read, deliberately NOT
+    going through load_devices(), because load_devices() drops Legacy rows before
+    check_missing_devices_csv_row() would ever see they existed at all. Found live
+    2026-09-24: ABD's real RTR/FWL pair and BIR's own EXAFWLBIR001 both have a real
+    devices.csv row (matching OS/octet) that's excluded purely for being Legacy=yes --
+    without this, check I would call them "no row exists at all", which overstates the
+    gap (a real, if old, row DOES exist, it's just not live-generation-eligible)."""
+    try:
+        by_site = defaultdict(set)
+        with (BENARBEJDE / "devices.csv").open(newline="") as f:
+            for row in csv.DictReader(f):
+                site = (row.get("Site") or "").strip()
+                dtype = (row.get("Type") or "").strip().upper()
+                legacy = (row.get("Legacy") or "").strip().lower()
+                if site and dtype and legacy in ("yes", "y", "true", "1"):
+                    by_site[site].add(dtype)
+        return by_site
+    except Exception as e:
+        problems.append(f"devices.csv: could not do a raw Legacy-aware read -- {e}")
+        return {}
+
+
+def check_missing_devices_csv_row(problems, computers, real_addresses, legacy_site_types):
+    """Found live 2026-09-24, same BIR investigation: neither EXAILOBIR001 nor
+    EXARACBIR001 has ANY devices.csv row at all, despite ILO/RAC being a Type
+    address_policy.csv DOES have a real addressing convention for (the BMC pool).
+    Every previous check only ever verified a devices.csv row that DOES exist against
+    ad_computers.json -- never the reverse: a real, policy-governed ad_computers.json
+    record with NO devices.csv counterpart. Deliberately scoped to policy_expected_octet()
+    returning non-None (the same function check G already uses) -- ad hoc Types with no
+    policy convention at all are never expected to have a devices.csv row and are
+    correctly never flagged here."""
+    for c in computers:
+        sam = (c.get("SamAccountName") or "").rstrip("$")
+        role = (c.get("Role") or "").strip().upper()
+        site = (c.get("Site") or "").strip()
+        if not sam or sam in real_addresses:
+            continue
+        try:
+            number = int(sam[-3:])
+        except (ValueError, IndexError):
+            continue
+        policy = policy_expected_octet(role, number)
+        if policy is None:
+            continue
+        pool_or_exact = (
+            "pool " + str(sorted(policy[1])) if policy[0] == "pool" else "." + str(policy[1])
+        )
+        if role in legacy_site_types.get(site, set()):
+            problems.append(
+                f"devices.csv: {sam} (Role={role}) has no LIVE devices.csv row (it "
+                f"would need one for address_policy.csv's {pool_or_exact} convention to "
+                f"apply), but a devices.csv row for {site}/{role} DOES exist -- it's "
+                f"just Legacy=yes (old-network data, correctly excluded from live "
+                f"generation). Worth checking whether that legacy row actually "
+                f"describes THIS device (matching OS/Description) before assuming it's "
+                f"unrelated -- see ABD's EXARTRABD001/EXAFWLABD001 for a confirmed "
+                f"example of exactly this shape"
+            )
+        else:
+            problems.append(
+                f"devices.csv: no row exists for {sam} (Role={role}) at all, not even a "
+                f"Legacy one, but address_policy.csv has a real addressing convention "
+                f"for this Type ({pool_or_exact}) -- devices.csv is missing real data "
+                f"the harness had no other way to notice, since this is the reverse "
+                f"direction of check E (a real ad_computers.json record with no "
+                f"devices.csv counterpart, not the other way round)"
+            )
+
+
 def main():
     problems = []
 
@@ -398,6 +537,11 @@ def main():
         check_ip_matches_devices_csv(problems, computers, real_addresses)
     if computers is not None:
         check_duplicate_ip_within_site(problems, computers, real_addresses)
+    if computers is not None:
+        check_duplicate_dns_hostname(problems, computers)
+    if computers is not None:
+        legacy_site_types = load_legacy_site_types(problems)
+        check_missing_devices_csv_row(problems, computers, real_addresses, legacy_site_types)
 
     print(
         f"Checked {len(users or [])} users, {len(groups or [])} groups, "
@@ -405,8 +549,9 @@ def main():
         f"group/user SamAccountName collisions, Groups: reference validity, "
         f"ad_ou Province consistency against {len(provinces)} "
         f"province-having site(s) in sites.csv, IPv4Address agreement with "
-        f"devices.csv ({len(real_addresses)} real hostname(s) known), and "
-        f"same-site IPv4Address duplicates."
+        f"devices.csv ({len(real_addresses)} real hostname(s) known), "
+        f"same-site IPv4Address duplicates, duplicate DNSHostName values, and "
+        f"policy-governed Types missing a devices.csv row."
     )
 
     if problems:
