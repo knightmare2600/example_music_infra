@@ -65,7 +65,7 @@
     "DNSHostName": "EXARTRABD001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-ABD-552901",
-    "IPv4Address": "192.168.224.254",
+    "IPv4Address": "192.168.224.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -107,7 +107,7 @@
     "DNSHostName": "EXAFWLABD001.jukebox.internal",
     "OS": "Cisco ASA 5506-X",
     "OperatingSystemVersion": "ASA5506X-ABD-847392",
-    "IPv4Address": "192.168.224.254",
+    "IPv4Address": "192.168.224.253",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -205,7 +205,7 @@
     "DNSHostName": "EXARTRDUN001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-DUN-552901",
-    "IPv4Address": "192.168.138.254",
+    "IPv4Address": "192.168.138.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Dundee,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -233,7 +233,7 @@
     "DNSHostName": "EXASBCPER001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.173.30",
+    "IPv4Address": "192.168.173.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -261,7 +261,7 @@
     "DNSHostName": "EXANASPER001.jukebox.internal",
     "OS": "Synology DSM 7.1",
     "OperatingSystemVersion": "7.1",
-    "IPv4Address": "192.168.173.50",
+    "IPv4Address": "192.168.173.19",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Perth,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -373,7 +373,7 @@
     "DNSHostName": "EXAWKSEDI001.jukebox.internal",
     "OS": "Windows 10 Pro",
     "OperatingSystemVersion": "22H2",
-    "IPv4Address": "192.168.131.150",
+    "IPv4Address": "192.168.131.101",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -443,7 +443,7 @@
     "DNSHostName": "EXASBCEDI001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.131.49",
+    "IPv4Address": "192.168.131.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -499,7 +499,7 @@
     "DNSHostName": "EXARTREDI001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-EDI-552901",
-    "IPv4Address": "192.168.131.254",
+    "IPv4Address": "192.168.131.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Edinburgh,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -639,7 +639,7 @@
     "DNSHostName": "EXASBCFAL001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.76.49",
+    "IPv4Address": "192.168.76.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -891,7 +891,7 @@
     "DNSHostName": "EXAPHNFAL001.jukebox.internal",
     "OS": "iOS / Android",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.76.90",
+    "IPv4Address": "",
     "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
@@ -905,7 +905,7 @@
     "DNSHostName": "EXAPHNFAL002.jukebox.internal",
     "OS": "iOS / Android",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.76.91",
+    "IPv4Address": "",
     "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
@@ -919,7 +919,7 @@
     "DNSHostName": "EXAPHNFAL003.jukebox.internal",
     "OS": "iOS / Android",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.76.92",
+    "IPv4Address": "",
     "ad_ou": "OU=Telephony,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
@@ -933,7 +933,7 @@
     "DNSHostName": "EXATABFAL001.jukebox.internal",
     "OS": "iOS / Android",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.76.93",
+    "IPv4Address": "",
     "ad_ou": "OU=Assets,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Assets"
   },
@@ -1031,7 +1031,7 @@
     "DNSHostName": "EXARDRFAL001.jukebox.internal",
     "OS": "HID Signo Reader",
     "OperatingSystemVersion": "HID-SIGNO-LIV-338572",
-    "IPv4Address": "192.168.76.16",
+    "IPv4Address": "192.168.76.21",
     "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -1129,7 +1129,7 @@
     "DNSHostName": "EXARTRFAL001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-FAL-552901",
-    "IPv4Address": "192.168.76.254",
+    "IPv4Address": "192.168.76.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1143,7 +1143,7 @@
     "DNSHostName": "EXAWKSGLA001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.141.150",
+    "IPv4Address": "192.168.141.101",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1171,7 +1171,7 @@
     "DNSHostName": "EXALAPGLA001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.141.152",
+    "IPv4Address": "192.168.141.102",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1199,21 +1199,21 @@
     "DNSHostName": "EXASWICLY002.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.41.2",
+    "IPv4Address": "192.168.41.251",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
   {
     "Name": "EXAFWLCLY001",
     "SamAccountName": "EXAFWLCLY001$",
-    "Role": "RTR",
+    "Role": "FWL",
     "Site": "CLY",
     "Description": "Firewall / VPN Gateway",
     "Enabled": true,
     "DNSHostName": "EXAFWLCLY001.jukebox.internal",
     "OS": "FortiOS",
     "OperatingSystemVersion": "7.6.5 build 3651",
-    "IPv4Address": "192.168.41.1",
+    "IPv4Address": "192.168.41.253",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1255,7 +1255,7 @@
     "DNSHostName": "EXASBCCLY001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.41.49",
+    "IPv4Address": "192.168.41.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -1269,7 +1269,7 @@
     "DNSHostName": "EXASURCLY001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
-    "IPv4Address": "192.168.41.51",
+    "IPv4Address": "192.168.41.102",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1367,7 +1367,7 @@
     "DNSHostName": "EXARTRCLY001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-CLY-552901",
-    "IPv4Address": "192.168.41.254",
+    "IPv4Address": "192.168.41.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1423,7 +1423,7 @@
     "DNSHostName": "EXASBCNEW001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.191.49",
+    "IPv4Address": "192.168.191.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Newcastle,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -1451,7 +1451,7 @@
     "DNSHostName": "EXALAPMCR001.jukebox.internal",
     "OS": "Windows 11 Enterprise",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.228.19",
+    "IPv4Address": "192.168.228.102",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1479,7 +1479,7 @@
     "DNSHostName": "EXAWKSMCR001.jukebox.internal",
     "OS": "Windows 10 Enterprise",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.161.152",
+    "IPv4Address": "192.168.161.101",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1549,7 +1549,7 @@
     "DNSHostName": "EXASBCMCR001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.161.49",
+    "IPv4Address": "192.168.161.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Manchester,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -1633,7 +1633,7 @@
     "DNSHostName": "EXASBCLIV001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.151.49",
+    "IPv4Address": "192.168.151.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Liverpool,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -1654,14 +1654,14 @@
   {
     "Name": "EXAFWLBIR001",
     "SamAccountName": "EXAFWLBIR001$",
-    "Role": "RTR",
+    "Role": "FWL",
     "Site": "BIR",
     "Description": "Palo Alto Site Firewall / VPN Gateway",
     "Enabled": true,
     "DNSHostName": "EXAFWLBIR001.jukebox.internal",
     "OS": "Palo Alto PanOS",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.121.1",
+    "IPv4Address": "192.168.121.253",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1703,7 +1703,7 @@
     "DNSHostName": "EXASBCBIR001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "3CX Debian",
-    "IPv4Address": "192.168.121.49",
+    "IPv4Address": "192.168.121.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -1899,7 +1899,7 @@
     "DNSHostName": "EXARTRBIR001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-BIR-552901",
-    "IPv4Address": "192.168.121.254",
+    "IPv4Address": "192.168.121.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1941,7 +1941,7 @@
     "DNSHostName": "EXARTRCOV001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-COV-552901",
-    "IPv4Address": "192.168.247.254",
+    "IPv4Address": "192.168.247.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Coventry,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1955,7 +1955,7 @@
     "DNSHostName": "EXAWKSLND001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.20.150",
+    "IPv4Address": "192.168.20.101",
     "ad_ou": "OU=Workstations,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1983,7 +1983,7 @@
     "DNSHostName": "EXARTRLND001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-LND-552901",
-    "IPv4Address": "192.168.20.254",
+    "IPv4Address": "192.168.20.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1997,7 +1997,7 @@
     "DNSHostName": "EXAFWLLND001.jukebox.internal",
     "OS": "Cisco ASA 5516-X",
     "OperatingSystemVersion": "ASA5516-LND-884210",
-    "IPv4Address": "192.168.20.1",
+    "IPv4Address": "192.168.20.253",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2039,7 +2039,7 @@
     "DNSHostName": "EXASBCLND001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.20.49",
+    "IPv4Address": "192.168.20.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=London,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -2165,7 +2165,7 @@
     "DNSHostName": "EXAFWLODE001.jukebox.internal",
     "OS": "Cisco ASA 5506-X",
     "OperatingSystemVersion": "ASA5506X-ODE-847392",
-    "IPv4Address": "192.168.126.254",
+    "IPv4Address": "192.168.126.253",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Odense,OU=Fyn,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2207,7 +2207,7 @@
     "DNSHostName": "EXARTRFAX001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-FAX-552901",
-    "IPv4Address": "192.168.246.254",
+    "IPv4Address": "192.168.246.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Faxe,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2291,7 +2291,7 @@
     "DNSHostName": "EXASBCCPH001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.31.49",
+    "IPv4Address": "192.168.31.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -2361,7 +2361,7 @@
     "DNSHostName": "EXARTRCPH001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-CPH-552901",
-    "IPv4Address": "192.168.231.254",
+    "IPv4Address": "192.168.231.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2431,7 +2431,7 @@
     "DNSHostName": "EXARTRBRD001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-BRD-552901",
-    "IPv4Address": "192.168.113.254",
+    "IPv4Address": "192.168.113.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=West Berlin (legacy alias for BER),OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2445,7 +2445,7 @@
     "DNSHostName": "EXAWKSMUN001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.189.150",
+    "IPv4Address": "192.168.189.101",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2459,7 +2459,7 @@
     "DNSHostName": "EXALAPMUN001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "10.0.22631",
-    "IPv4Address": "192.168.189.151",
+    "IPv4Address": "192.168.189.102",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2515,7 +2515,7 @@
     "DNSHostName": "EXAsbcMUN01.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.89.49",
+    "IPv4Address": "192.168.89.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Munich,OU=Bayern,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -2529,7 +2529,7 @@
     "DNSHostName": "EXAWKSBON001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.228.151",
+    "IPv4Address": "192.168.228.101",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2627,7 +2627,7 @@
     "DNSHostName": "EXASBCBON001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.228.49",
+    "IPv4Address": "192.168.228.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -2669,7 +2669,7 @@
     "DNSHostName": "EXARTRBON001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-BON-552901",
-    "IPv4Address": "192.168.228.254",
+    "IPv4Address": "192.168.228.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Bonn,OU=Germany,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2711,7 +2711,7 @@
     "DNSHostName": "EXALAPBRK001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
-    "IPv4Address": "10.20.10.21",
+    "IPv4Address": "10.20.10.102",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Brockville,OU=Ontario,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2725,7 +2725,7 @@
     "DNSHostName": "EXALAPMIA001.jukebox.internal",
     "OS": "macOS Sonoma",
     "OperatingSystemVersion": "25.2",
-    "IPv4Address": "10.30.10.21",
+    "IPv4Address": "10.30.10.102",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Miami,OU=Florida,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -2739,7 +2739,7 @@
     "DNSHostName": "EXARTRBRK001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-BRK-552901",
-    "IPv4Address": "192.168.136.254",
+    "IPv4Address": "192.168.136.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Brockville,OU=Ontario,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2781,7 +2781,7 @@
     "DNSHostName": "EXARTRATL001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-ATL-552901",
-    "IPv4Address": "192.168.33.254",
+    "IPv4Address": "192.168.33.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Atlanta,OU=Georgia,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2809,7 +2809,7 @@
     "DNSHostName": "EXAFWLLAX001.jukebox.internal",
     "OS": "Palo Alto PAN-OS",
     "OperatingSystemVersion": "10.x",
-    "IPv4Address": "192.168.213.1",
+    "IPv4Address": "192.168.213.253",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -2851,7 +2851,7 @@
     "DNSHostName": "EXASBCLAX001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.213.49",
+    "IPv4Address": "192.168.213.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -3005,7 +3005,7 @@
     "DNSHostName": "EXARTRLAX001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-LAX-552901",
-    "IPv4Address": "192.168.213.254",
+    "IPv4Address": "192.168.213.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Los Angeles,OU=California,OU=United States,OU=North America,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3061,7 +3061,7 @@
     "DNSHostName": "EXAFWLSYD001.jukebox.internal",
     "OS": "FortiGate",
     "OperatingSystemVersion": "7.x",
-    "IPv4Address": "192.168.29.1",
+    "IPv4Address": "192.168.29.253",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3145,7 +3145,7 @@
     "DNSHostName": "EXAWKSSYD001.jukebox.internal",
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.29.41",
+    "IPv4Address": "192.168.29.101",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -3187,7 +3187,7 @@
     "DNSHostName": "EXASBCSYD001.jukebox.internal",
     "OS": "3CX SBC",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.29.50",
+    "IPv4Address": "192.168.29.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Sydney,OU=New South Wales,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -3285,7 +3285,7 @@
     "DNSHostName": "EXAFWLMEL001.jukebox.internal",
     "OS": "FortiGate",
     "OperatingSystemVersion": "7.x",
-    "IPv4Address": "192.168.361.1",
+    "IPv4Address": "192.168.361.253",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3369,7 +3369,7 @@
     "DNSHostName": "EXAWKSMEL001.jukebox.internal",
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.61.41",
+    "IPv4Address": "192.168.61.101",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -3411,7 +3411,7 @@
     "DNSHostName": "EXASBCMEL001.jukebox.internal",
     "OS": "3CX SBC",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.361.50",
+    "IPv4Address": "192.168.361.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -3453,7 +3453,7 @@
     "DNSHostName": "EXANASMEL001.jukebox.internal",
     "OS": "Synology DSM",
     "OperatingSystemVersion": "7.x",
-    "IPv4Address": "192.168.361.81",
+    "IPv4Address": "192.168.361.19",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Melbourne,OU=Victoria,OU=Australia,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3467,7 +3467,7 @@
     "DNSHostName": "EXAFWLAKL001.jukebox.internal",
     "OS": "FortiGate",
     "OperatingSystemVersion": "7.x",
-    "IPv4Address": "192.168.93.1",
+    "IPv4Address": "192.168.93.253",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -3537,7 +3537,7 @@
     "DNSHostName": "EXAWKSAKL001.jukebox.internal",
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.93.40",
+    "IPv4Address": "192.168.93.101",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -3593,7 +3593,7 @@
     "DNSHostName": "EXASBCAKL001.jukebox.internal",
     "OS": "3CX SBC",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.93.50",
+    "IPv4Address": "192.168.93.48",
     "ad_ou": "OU=Servers,OU=Devices,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -3705,7 +3705,7 @@
     "DNSHostName": "EXARTRAKL001.jukebox.internal",
     "OS": "Cisco ISR 4331",
     "OperatingSystemVersion": "ISR4331-AKL-552901",
-    "IPv4Address": "192.168.93.254",
+    "IPv4Address": "192.168.93.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Auckland,OU=New Zealand,OU=Asia Pacific,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
