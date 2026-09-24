@@ -458,6 +458,40 @@
 #                     exist and copy it verbatim into main.ini's [ansiblehosts], instead of
 #                     reconstructing it a third time here.
 #
+# v1.35.0 2026-09-24  Idempotency audit, Robert's ask, going section-by-section for real
+#                     re-run safety rather than assuming it. Most of the script already did
+#                     the right thing (see the ansibleme_idempotency_audit memory for the full
+#                     confirmed-fine list); three real gaps found and fixed:
+#                     (1) Section 15 (sentinel file) unconditionally overwrote bootstrapped_at/
+#                     bootstrapped_by with the current run's values every single re-run,
+#                     silently destroying the one fact those fields exist to record. Same bug,
+#                     same day, in ansible/tasks/nodeinfo.yml (the Ansible-side equivalent
+#                     write, shared by 6 playbooks) -- fixed there too. Now reads the existing
+#                     file first and preserves both fields; only a genuine first-ever run sets
+#                     them fresh. Added a new field, last_ansible_run, Robert's explicit ask:
+#                     "the time when it was last touched by ansible, which is not the same as
+#                     bootstrapped_by". This script is bash, not Ansible -- it never sets this
+#                     field itself (there is no "ansible run" for it to record, on a first run
+#                     or a re-run), it only ever preserves whatever value a later, genuine
+#                     Ansible run (via the now-fixed nodeinfo.yml) already set.
+#                     (2) Section 6b used to unconditionally re-download exa_pretty.py from
+#                     GitHub raw on every run -- genuinely redundant, not just non-idempotent:
+#                     the file is git-tracked and already provided, kept current, by Section
+#                     5's own clone/pull. Re-fetching from a second, independent network source
+#                     added a real failure mode (spurious warnings on any network-isolated/
+#                     black-site box) with no benefit. Now just verifies the clone provided it.
+#                     (3) Section 14 (dynamic MOTD) unconditionally ran systemctl restart ssh
+#                     on every run, regardless of whether sshd_config's PrintMotd setting
+#                     actually needed changing -- the MOTD script and /etc/profile.d/motd.sh
+#                     need no restart either way (read fresh each session, not cached by a
+#                     running sshd). Now only restarts when PrintMotd genuinely wasn't already
+#                     "yes". Verified all three fixes: the nodeinfo.yml logic via a real
+#                     ansible-playbook render against synthetic existing/first-run data, this
+#                     script's own jq/bash preserve-on-rerun logic via an isolated two-run
+#                     simulation, and the sshd_config change-detection via all three real input
+#                     shapes (no PrintMotd line, PrintMotd no, PrintMotd already yes) -- not
+#                     just read back and assumed correct.
+#
 # ==============================================================================
 
 set -euo pipefail
@@ -669,9 +703,6 @@ else
   VRACK_NET_DEFAULT="192.168.139"
   VRACK_GW_DEFAULT="254"   # vRACK gateway is .254
 fi
-
-# GitHub raw URL for exa_pretty callback
-EXA_PRETTY_URL="https://raw.githubusercontent.com/knightmare2600/example_music_infra/refs/heads/main/ansible/callback_plugins/exa_pretty.py"
 
 # ------------------------------------------------------------------------------
 # Banner
@@ -1504,34 +1535,33 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 6b. Download exa_pretty callback plugin from GitHub
+# 6b. exa_pretty callback plugin
 # ------------------------------------------------------------------------------
+# BUG FIX 2026-09-24, Robert's ask (idempotency audit): this used to unconditionally
+# re-download exa_pretty.py from GitHub raw on every single run -- genuinely
+# redundant, not just non-idempotent. The file is git-tracked and CALLBACK_DIR
+# already resolves through the ansible -> example_music_infra/ansible symlink
+# (Section 5) into that exact tracked copy, which Section 5's own git clone/pull
+# --ff-only already keeps current on every run, from a source (the repo itself)
+# this script already depends on existing. Re-fetching the identical content from
+# a SECOND, independent network source (GitHub raw, not the vRACK/vRACK-adjacent
+# bootstrap server everything else in this script uses) added a real failure mode
+# with no corresponding benefit: on any network-isolated box (a black site with
+# vRACK-only reachability, no GitHub egress), this warned/failed every single run
+# even though the file was already correct from the clone. Now just verifies the
+# clone actually provided it -- if it's missing or empty, that's a real problem
+# with the clone itself (see Section 5's own output), not something a second
+# network fetch would fix.
 section "6b. exa_pretty callback plugin"
 
 EXA_PRETTY_DEST="${CALLBACK_DIR}/exa_pretty.py"
 
-info "Downloading exa_pretty.py from GitHub..."
-if wget -q --tries=1 --timeout=30 -O "${EXA_PRETTY_DEST}" "${EXA_PRETTY_URL}" 2>/dev/null && [[ -s "${EXA_PRETTY_DEST}" ]]; then
-  chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${EXA_PRETTY_DEST}"
-  chmod 644 "${EXA_PRETTY_DEST}"
-  success "exa_pretty.py downloaded to ${EXA_PRETTY_DEST}"
+if [[ -s "${EXA_PRETTY_DEST}" ]]; then
+  success "exa_pretty.py present at ${EXA_PRETTY_DEST} (from the repo clone)."
 else
-  # BUG FIX 2026-09-18, found live on EXAANSFRD001: wget -O creates/truncates the
-  # destination immediately, even on failure (DNS blip, timeout, etc) -- without this
-  # rm -f, a failed download here left a 0-byte exa_pretty.py in place, which Ansible
-  # then imported fine as an empty Python module ("has no attribute 'CallbackModule'")
-  # instead of failing to find the file at all. Worse than the average case: CALLBACK_DIR
-  # resolves through the ansible -> example_music_infra/ansible symlink (Section 5) into
-  # the git-tracked file itself, so the empty download had clobbered the real, tracked
-  # copy in the repo clone, not a separate deployed file -- `git checkout -- <path>`
-  # (zero network cost, no LFS budget spent) is the actual fix once this happens, not a
-  # re-copy from "the repo" (there's only one file, this IS it). Same class of bug
-  # already fixed elsewhere in this repo's own preflight fetchers (bindme.sh/
-  # firewallme.sh) -- rm -f on failure, so a partial/empty file never lingers.
-  rm -f "${EXA_PRETTY_DEST}" 2>/dev/null
-  warn "Could not download exa_pretty.py from GitHub."
-  warn "URL: ${EXA_PRETTY_URL}"
-  warn "Restore it from git instead (zero network cost, it's already tracked):"
+  warn "exa_pretty.py missing or empty at ${EXA_PRETTY_DEST} -- it ships with the repo clone"
+  warn "(Section 5), so this means something is wrong with that checkout, not a network issue."
+  warn "Restore it from git (zero network cost, it's already tracked):"
   warn "  git -C ${ANSIBLE_HOME}/example_music_infra checkout -- ansible/callback_plugins/exa_pretty.py"
   warn "ansible.cfg references this file — stdout_callback will fall back to default until it is present."
 fi
@@ -1949,9 +1979,9 @@ echo -e "${CYAN}  NOTE: configs/inventory/*.ini and configs/inventory/group_vars
 echo -e "${CYAN}  ship with the repo clone as of 2026-07-09. This script only fills in what's${NC}"
 echo -e "${CYAN}  missing (e.g. a brand-new per-site .ini) — it does not overwrite tracked content.${NC}"
 echo
-echo -e "${CYAN}  The exa_pretty callback was downloaded to:${NC}"
+echo -e "${CYAN}  The exa_pretty callback ships with the repo clone at:${NC}"
 echo -e "${GREEN}  ${CALLBACK_DIR}/exa_pretty.py${NC}"
-echo -e "${CYAN}  If it failed, re-run: wget -O ${CALLBACK_DIR}/exa_pretty.py ${EXA_PRETTY_URL}${NC}"
+echo -e "${CYAN}  If missing, restore it: git -C ${ANSIBLE_HOME}/example_music_infra checkout -- ansible/callback_plugins/exa_pretty.py${NC}"
 echo
 
 # ------------------------------------------------------------------------------
@@ -2043,17 +2073,35 @@ MOTD
 
 chmod +x /etc/update-motd.d/10-examplemusic
 
-if grep -q "^PrintMotd" /etc/ssh/sshd_config 2>/dev/null; then
+# BUG FIX 2026-09-24, Robert's ask (idempotency audit): "if the files are not
+# changed, we don't need a restart". This used to unconditionally
+# systemctl restart ssh on every single run, regardless of whether
+# sshd_config actually changed -- the MOTD script and /etc/profile.d/motd.sh
+# below need no restart at all either way (both are read fresh on the next
+# login/session, not cached by a running sshd), so the only thing a restart
+# was ever really for is PrintMotd actually flipping in sshd_config. Now only
+# restarts when that line genuinely didn't already say "yes".
+SSHD_CONFIG_CHANGED=0
+if grep -q "^PrintMotd yes" /etc/ssh/sshd_config 2>/dev/null; then
+  : # already correct -- nothing to do
+elif grep -q "^PrintMotd" /etc/ssh/sshd_config 2>/dev/null; then
   sed -i "s/^PrintMotd.*/PrintMotd yes/" /etc/ssh/sshd_config
+  SSHD_CONFIG_CHANGED=1
 else
   echo "PrintMotd yes" >> /etc/ssh/sshd_config
+  SSHD_CONFIG_CHANGED=1
 fi
 
 cat > /etc/profile.d/motd.sh <<'EOF'
 [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
 EOF
 
-systemctl restart ssh 2>/dev/null || true
+if [[ "${SSHD_CONFIG_CHANGED}" -eq 1 ]]; then
+  info "sshd_config's PrintMotd setting changed -- restarting ssh to apply..."
+  systemctl restart ssh 2>/dev/null || true
+else
+  info "sshd_config already had PrintMotd yes -- no restart needed."
+fi
 success "Dynamic MOTD configured."
 
 # ------------------------------------------------------------------------------
@@ -2062,7 +2110,35 @@ success "Dynamic MOTD configured."
 # pve_nodes field dropped 2026-09-18, alongside retiring the PVE_NODES bash array
 # (Section 7) -- it always duplicated the real inventory anyway; see
 # configs/inventory/main.ini's own header for the full story.
+#
+# BUG FIX 2026-09-24, Robert's ask (idempotency audit): this used to unconditionally
+# write bootstrapped_at/bootstrapped_by fresh on every single run, silently destroying
+# the one fact those fields exist to record (when this node was genuinely first built,
+# and by what) on every re-run of this script -- the exact same bug found and fixed
+# the same day in ansible/tasks/nodeinfo.yml (the equivalent write on the Ansible
+# side, shared by linux/tools.yml and 5 other playbooks). Now reads the existing file
+# first, if present, and preserves its real bootstrapped_at/bootstrapped_by -- only a
+# genuine first-ever run (no existing nodeinfo.json) sets them fresh.
+#
+# last_ansible_run is a DIFFERENT fact, Robert's explicit ask: "the time when it was
+# last touched by ansible, which is not the same as bootstrapped_by". This script is
+# bash, not Ansible -- it never sets this field itself, on a first run OR a re-run
+# (there is no "ansible run" for it to record). It only ever preserves whatever value
+# is already present, so a re-run of this script never blanks out a real timestamp
+# that ansible/tasks/nodeinfo.yml legitimately set on a later, genuine Ansible run.
 mkdir -p /etc/example-music
+
+NODEINFO_BOOTSTRAPPED_AT=""
+NODEINFO_BOOTSTRAPPED_BY=""
+NODEINFO_LAST_ANSIBLE_RUN=""
+if [[ -s "$NODEINFO" ]]; then
+  NODEINFO_BOOTSTRAPPED_AT="$(jq -r '.bootstrapped_at // empty' "$NODEINFO" 2>/dev/null)"
+  NODEINFO_BOOTSTRAPPED_BY="$(jq -r '.bootstrapped_by // empty' "$NODEINFO" 2>/dev/null)"
+  NODEINFO_LAST_ANSIBLE_RUN="$(jq -r '.last_ansible_run // empty' "$NODEINFO" 2>/dev/null)"
+fi
+NODEINFO_BOOTSTRAPPED_AT="${NODEINFO_BOOTSTRAPPED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+NODEINFO_BOOTSTRAPPED_BY="${NODEINFO_BOOTSTRAPPED_BY:-ansibleme.sh}"
+
 jq -n \
   --arg hostname       "$(hostname -s)" \
   --arg role           "ansible" \
@@ -2070,8 +2146,9 @@ jq -n \
   --arg city           "${SITE_DISPLAY_CITY}" \
   --arg country        "${SITE_DISPLAY_COUNTRY}" \
   --arg entity         "${SITE_DISPLAY_ENTITY}" \
-  --arg bootstrapped_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --arg bootstrapped_by "ansibleme.sh" \
+  --arg bootstrapped_at "${NODEINFO_BOOTSTRAPPED_AT}" \
+  --arg bootstrapped_by "${NODEINFO_BOOTSTRAPPED_BY}" \
+  --arg last_ansible_run "${NODEINFO_LAST_ANSIBLE_RUN}" \
   --arg environment    "${ENV_LONG}" \
   --arg ansible_dir    "${ANSIBLE_DIR}" \
   --arg inventory      "${CONFIGS_DIR}/inventory" \
@@ -2086,6 +2163,7 @@ jq -n \
     ansible_managed: false,
     bootstrapped_at: $bootstrapped_at,
     bootstrapped_by: $bootstrapped_by,
+    last_ansible_run: (if $last_ansible_run == "" then null else $last_ansible_run end),
     environment:     $environment,
     ansible_dir:     $ansible_dir,
     inventory:       $inventory,
