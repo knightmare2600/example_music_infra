@@ -63,14 +63,20 @@ import generate_inventory as gi  # noqa: E402
 
 
 def load_sites(problems):
+    """Reads via DictReader specifically -- an earlier plain csv.reader() version
+    matched row[0] against nothing but a blank check, which let the header row
+    itself ("Site,City,Country,...") through as if it were a real site named
+    "Site" with subnet "Subnet". Found live 2026-09-24 asking the check to list
+    its own findings out loud -- DictReader consumes the header line itself and
+    can never make this mistake."""
     sites = {}
     try:
         with (BENARBEJDE / "sites.csv").open(newline="") as f:
-            for row in csv.reader(f):
-                if not row or not row[0].strip():
+            for row in csv.DictReader(f):
+                site = (row.get("Site") or "").strip()
+                subnet = (row.get("Subnet") or "").strip()
+                if not site or not subnet:
                     continue
-                site = row[0].strip()
-                subnet = row[8].strip()
                 base = ".".join(subnet.split("/")[0].split(".")[:3])
                 sites[site] = base
     except Exception as e:
