@@ -15,6 +15,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-09-24 | FAL corrected: this entry's "PVE nodes: 3 (AD hub) · BMC pool .2/.3/.4 all physical" was fictional — `docs/network-diagram/scotland.md`'s own 2026-07-31 correction already debunked a "3-node Proxmox + 3x Dell iDRAC9" claim for FAL's legacy hardware, and `docs/network-inventory.md`'s 2026-03-05 changelog independently confirms exactly 2 (`.5`/`.6` PVE, `.2`/`.3` RAC) — this doc alone never picked up either correction. Fixed to 2 nodes, renamed the two real BMC-pool devices from generic `EXABMCFAL001/002` to `EXARACFAL001/002` (confirmed real Dell iDRACs, per today's RAC/ILO/BMC naming convention), removed the phantom third node/iDRAC entirely. |
 | 2026-09-24 | CLY/GLA corrections following the CLY/Glasgow subnet data-entry bug fix (`ad_computers.json`/`devices.csv`). CLY: added the real `EXASWICLY002` (Cisco Catalyst 48-port, `.2`), corrected `EXASWICLY001` to TPLink (was mislabelled Cisco 9300), removed the phantom `EXABMCCLY001` BMC line (`.2` is the real switch, no physical BMC here), corrected `EXAPHNCLY001` to Android (was "iOS device"), and fixed the stale `EXASURCLY002`/"Android tablet" endpoint line to `EXATABCLY001`/Surface (renamed+hardware-swapped, never updated here). GLA: added `EXASURGLA001` (Surface, pool device) and `EXAPHNGLA001` (iPhone 16 Pro Max, on-call "bat phone") — both genuinely missing, a copy-paste mistake had put GLA's own devices under CLY instead. |
 | 2026-07-31 | Full reconciliation against `check_doc_role_coverage.py` (check 28)'s 355 findings across 42 sites. Three fixes, in order: (1) renamed `EXARAC<SITE>001` → `EXABMC<SITE>001` estate-wide (41 sites) and deleted the fictional `EXARAC<SITE>002` "RAC emulator VM" line — never backed by real hardware on single/dual-node sites; FAL/ODE/BRK's genuine physical BMC2 (and BMC3) were restored under the new naming rather than deleted, confirmed real via their 3-PVE-node hub status. Also dropped the RAC-emulator-VM language from the per-site header summary line (38 sites) and the Quick Reference table's `.3` row. (2) Fixed `EXARTR<SITE>001`'s octet — every existing line read `.254` (FWL's real octet), ground truth is `.1`; the 2026-07-12 fix above only ever corrected FWL's line, never RTR's. (3) Renamed stale `EXADCR<SITE>001`/`002` → `EXADCS<SITE>001`/`002` on 6 sites (GLA, LND, BIR, MCR, LIV, NEW) with no real `devices.csv` DCR row backing them — distinct from EDI's and TOR's genuine DCR devices, which check 29 tracks separately and were left as DCR. With those three fixes applied, appended the remaining genuinely-missing standard-slot lines (second FWL, NAS, RDR, SWI, WAP, RTR, occasional DCS/one-offs) per site, sourced directly from `generate_inventory.py`'s real device list. Check 28 now passes clean (0/355 remaining). |
 | 2026-07-19 | `EXANASFAL001`/`EXANASPER001`/`EXANASMEL001` marked retired — replaced by the new standard `.19` NAS/SAN slot (TrueNAS), rolled out per site rather than the old ad-hoc addressing (`.32`/`.50`/none). See `README.md`'s Addressing table and `docs/proxmox/proxmox-dcm-pbs-planning.md` for the full rationale, including why `.15` PRV was retired in the same change. |
@@ -236,18 +237,16 @@ kept as reference code only, not a build-checklist item.
 **Address:** Brockville Stadium, Hope Street, Falkirk  
 **Entity:** Example Music (Scotland) Ltd  
 **LAN:** `192.168.76.0/24` · **VPN:** `10.0.76.0/24` · **Domain:** `example.net`  
-**PVE nodes:** 3 (AD hub) · **BMC pool:** `.2` `.3` `.4` all physical
+**PVE nodes:** 2 (AD hub) · **BMC pool:** `.2` `.3` physical (real Dell iDRAC9s, `.4` free) · corrected 2026-09-24 — this line previously said 3 nodes/3 iDRACs, a fictional count that had already been debunked for the *old* legacy hardware in `docs/network-diagram/scotland.md`'s own 2026-07-31 correction, but never fixed here; `docs/network-inventory.md`'s 2026-03-05 changelog independently confirms 2 (`.5`/`.6` PVE, `.2`/`.3` RAC)
 
 ### Infrastructure Checklist
 - [ ] `EXASWIFAL001` — Core switch 1 (`192.168.76.250`)
 - [ ] `EXASWIFAL002` — Core switch 2 (`192.168.76.251`)
 - [ ] `EXARTRFAL001` — WAN edge router (`192.168.76.1`)
-- [ ] `EXABMCFAL001` — BMC node 1 (`192.168.76.2`) · Dell iDRAC9
-- [ ] `EXABMCFAL002` — BMC node 2 (`192.168.76.3`) · Dell iDRAC9
-- [ ] `EXABMCFAL003` — BMC node 3 (`192.168.76.4`) · Dell iDRAC9
+- [ ] `EXARACFAL001` — Dell iDRAC for Proxmox node 1 (`192.168.76.2`)
+- [ ] `EXARACFAL002` — Dell iDRAC for Proxmox node 2 (`192.168.76.3`)
 - [ ] `EXAPVEFAL001` — Proxmox node 1 (`192.168.76.5`) · ZFS RAID1
 - [ ] `EXAPVEFAL002` — Proxmox node 2 (`192.168.76.6`) · ZFS RAID1
-- [ ] `EXAPVEFAL003` — Proxmox node 3 (`192.168.76.7`) · ZFS RAID1
 - [ ] `EXAFWLFAL001` — Firewall online (`192.168.76.253`) · FortiOS
 - [ ] `EXADCSFAL001` — DC primary (`192.168.76.10`) · PDC Emulator
 - [ ] `EXADCSFAL002` — DC secondary (`192.168.76.11`)
