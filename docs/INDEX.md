@@ -46,6 +46,7 @@
 | [linux-recovery-runbook.md](linux-recovery-runbook.md) | OPS-RECOVERY-001 | Recovering a Linux node where the `ansible` account is rejected entirely (console and SSH both) — GRUB rescue mode, unlock, verify |
 | [adding-a-new-device.md](adding-a-new-device.md) | OPS-DEVICE-001 | Step-by-step workflow for adding a new device — role code, free-octet finder, devices.csv row, regenerating every derived artefact, harness verification |
 | [refresh-after-data-changes.md](refresh-after-data-changes.md) | OPS-REFRESH-001 | Which playbooks need re-running against which hosts after a `benarbejde/` data change — what the freshness gate already protects automatically vs. the real remaining gap (PVE nodes' own local `/etc/example-music/*` copy) |
+| [network-diagram/README.md](network-diagram/README.md) | — | Directory README — per-region diagram file split rationale, see NET-DIAG-001 below for the real index |
 | [network-diagram.md](network-diagram.md) | NET-DIAG-001 | Per-site network diagrams index — Visual Standard, emoji legend, links to every region file below. Split from one 51-diagram file into per-region files 2026-07-13 (GitHub's mermaid renderer got unreliable with that many diagrams on one page) |
 | [network-diagram/cld.md](network-diagram/cld.md) | NET-DIAG-001-CLD | Cloud (CLD) network diagram |
 | [network-diagram/vrk.md](network-diagram/vrk.md) | NET-DIAG-001-VRK | vRACK (VRK) network diagram — special case, only 3 real devices, no standard-slot synthesis |
@@ -81,6 +82,7 @@ Active Directory configuration, tooling, and DNS management.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [active-directory/README.md](active-directory/README.md) | — | Directory README — points back here |
 | [active-directory/ad-dc-wireguard-deployment.md](active-directory/ad-dc-wireguard-deployment.md) | NET-AD-DC-001 | **Historical artefact** — manual PowerShell DC promotion + WireGuard procedure predating `windows_dc`/firewall Ansible roles; forensic record only, not a live path |
 | [active-directory/corporate-livery.md](active-directory/corporate-livery.md) | NET-AD-LIV-001 | GPO-based corporate branding and livery deployment |
 | [active-directory/easyDNS-TUI-QuickStart.md](active-directory/easyDNS-TUI-QuickStart.md) | NET-AD-DNS-001 | easyDNS TUI quick start — Windows AD DNS management |
@@ -98,6 +100,7 @@ Ansible usage and reference — day-to-day operation, not build procedures (thos
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [ansible/README.md](ansible/README.md) | — | Directory README — points back here |
 | [ansible/beginners_guide_to_ansible.md](ansible/beginners_guide_to_ansible.md) | NET-ANS-BEGIN-001 | **Start here for Ansible** — inventory/group_vars architecture, `add_host`, idempotency, `ansible.cfg`, sudo/become |
 | [ansible/Ansible_Windows_Guide.md](ansible/Ansible_Windows_Guide.md) | NET-ANS-WIN-001 | Day-to-day operation of the Windows playbook set (`windows_bootstrap` chain) |
 | [ansible/zabbix-playbooks-plan.md](ansible/zabbix-playbooks-plan.md) | NET-ANS-ZBXPLAN-001 | PLAN (not yet built) — `zabbix_server.yml`/`zabbix_proxy.yml`/`zabbix_agent.yml` design: real Zabbix 7.0 template names, PSK/API host-creation approach, decisions and their grounding |
@@ -110,6 +113,7 @@ Procedures for provisioning new sites and nodes from scratch.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [bootstrap/README.md](bootstrap/README.md) | — | Directory README — points back here |
 | [bootstrap/ipxe-build.md](bootstrap/ipxe-build.md) | NET-BOOT-IPXE-001 | iPXE build and configuration for network booting |
 | [bootstrap/TFTPD64_Debian_Headless_Rescue_Guide.md](bootstrap/TFTPD64_Debian_Headless_Rescue_Guide.md) | NET-BOOT-TFTP-001 | TFTPD64 setup on Debian for headless PXE rescue |
 | [bootstrap/WinPE ARM64 Build Procedure.md](bootstrap/WinPE%20ARM64%20Build%20Procedure.md) | NET-BOOT-WINPE-001 | WinPE ARM64 build — deployment and recovery media |
@@ -144,6 +148,7 @@ a buildsheet feeds up to the commissioning record in `site-inventory.md`.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [buildsheets/README.md](buildsheets/README.md) | — | Directory README — points back here |
 | [buildsheets/buildsheet-domainControllers.md](buildsheets/buildsheet-domainControllers.md) | NET-BUILD-DCS-001 | DC build checklist — all sites, grouped by region · references NET-AD-DC-001 |
 | [buildsheets/buildsheet-workstation.md](buildsheets/buildsheet-workstation.md) | NET-BUILD-WKS-001 | Win11 Pro workstation and laptop build checklist — all sites |
 | [buildsheets/buildsheet-server.md](buildsheets/buildsheet-server.md) | NET-BUILD-SRV-001 | WS2022 Standard / Core member server build checklist |
@@ -160,12 +165,26 @@ a buildsheet feeds up to the commissioning record in `site-inventory.md`.
 
 ---
 
+## `firewalls/`
+
+Reserved for firewall-specific documentation — currently empty (a `placeholder` file only).
+Firewall build/operation docs that exist today live in
+[buildsheets/buildsheet-firewall.md](buildsheets/buildsheet-firewall.md) and
+[wireguard/](wireguard/) instead.
+
+| File | Doc ID | Description |
+|------|--------|-------------|
+| [firewalls/README.md](firewalls/README.md) | — | Directory README — explains the placeholder |
+
+---
+
 ## `hardware/`
 
 Vendor documentation and hardware reference.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [hardware/README.md](hardware/README.md) | — | Directory README — points back here |
 | [hardware/S210-X12RS_UG.pdf](hardware/S210-X12RS_UG.pdf) | HW-REF-001 | Supermicro S210-X12RS user guide |
 | [hardware/ExampleMusic_ASAv_Proxmox_Procedure.md](hardware/ExampleMusic_ASAv_Proxmox_Procedure.md) | HW-REF-002 | Cisco ASAv QEMU VM on Proxmox |
 | [hardware/ExampleMusic_Intel_vPro_AMT_NUC_Procedure.md](hardware/ExampleMusic_Intel_vPro_AMT_NUC_Procedure.md) | HW-REF-003 | Enabling Intel vPro AMT (incl. KVM) on `EXAPVEFRD001`'s 7th-gen NUC — planned, not yet exercised |
@@ -179,6 +198,7 @@ the device's IP/commissioning record rather than duplicating it.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [inventory/README.md](inventory/README.md) | — | Directory README — notes `old/` holds archived, superseded inventory-doc copies |
 | [inventory/EXADNSVRK001-dns.md](inventory/EXADNSVRK001-dns.md) | NET-INV-DNS-001 | `EXADNSVRK001` — BIND9 DNS server operations guide |
 
 ---
@@ -189,6 +209,7 @@ Lab, wargaming, and test environment tooling. Not for production use.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [lab/README.md](lab/README.md) | — | Directory README — points back here |
 | [lab/rac-emulator.md](lab/rac-emulator.md) | NET-RAC-001 | HPE iLO Redfish emulator runbook — setup, API reference, Ansible usage · full Redfish endpoint appendix |
 | [lab/rac-setup.sh](lab/rac-setup.sh) | — | Automated setup script for `EXARAC<SITE>00N` RAC emulator VMs — dynamically allocates BMC pool IP |
 
@@ -200,6 +221,7 @@ Configuration management, automation, and orchestration.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [management/README.md](management/README.md) | — | Directory README — points back here |
 | [management/rudder-setup.md](management/rudder-setup.md) | NET-MGMT-RUDDER-001 | Rudder full configuration guide — techniques, rules, node management |
 | [management/Example Music — Keeping Three Ansible Nodes in Sync.md](management/Example%20Music%20—%20Keeping%20Three%20Ansible%20Nodes%20in%20Sync.md) | NET-MGMT-ANS-001 | Ansible multi-node synchronisation patterns |
 | [management/TacticalRMM_Beginners_Guide.md](management/TacticalRMM_Beginners_Guide.md) | NET-MGMT-RMM-001 | TacticalRMM day-to-day usage — login, deploying/moving agents, troubleshooting the mesh-agent-download bug |
@@ -214,6 +236,7 @@ Proxmox VE administration, storage, networking, and planning documents.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [proxmox/README.md](proxmox/README.md) | — | Directory README — points back here |
 | [proxmox/pve-create-vm.md](proxmox/pve-create-vm.md) | NET-PVE-VM-001 | VM creation procedure — includes `create-vm.py` usage |
 | [proxmox/pve-networking.md](proxmox/pve-networking.md) | NET-PVE-NET-001 | Proxmox networking configuration — bridges, VLANs, WireGuard |
 | [proxmox/pve-letsencrypt.md](proxmox/pve-letsencrypt.md) | NET-PVE-LE-001 | Let's Encrypt certificate setup for Proxmox web UI |
@@ -244,8 +267,11 @@ standalone bundle — see `zabbix_vms_on_wrong_pool/` for the canonical shape.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [proxmox_zabbix_cleanup/README.md](proxmox_zabbix_cleanup/README.md) | — | Directory README — points back here |
 | [pve-maintenance-automation.md](pve-maintenance-automation.md) | NET-PVE-ZBX-HOOVER-001 | PVE maintenance automation setup — monthly hoover (journals/temps/coredumps/old kernels), Zabbix monitoring. Deployment bundle (`.service`/`.timer`/script) lives in `proxmox_zabbix_cleanup/kernels/` |
+| [proxmox_zabbix_cleanup/kernels/README.md](proxmox_zabbix_cleanup/kernels/README.md) | — | Directory README — the monthly-hoover deployment bundle itself; procedure doc is the row above |
 | [proxmox_zabbix_cleanup/zabbix_vms_on_wrong_pool/README.md](proxmox_zabbix_cleanup/zabbix_vms_on_wrong_pool/README.md) | NET-PVE-ZBX-POOL-001 | ZFS VM pool-placement audit setup |
+| [proxmox_zabbix_cleanup/pve-snapshot-check/README.md](proxmox_zabbix_cleanup/pve-snapshot-check/README.md) | — | Directory README — the snapshot-check deployment bundle itself; procedure doc is the row below |
 | [proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md](proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md) | NET-PVE-ZBX-SNAP-001 | PVE snapshot check automation setup |
 
 > **Resolved 2026-07-15, per Robert:** `pve-maintenance-automation.md` above is the one exception
@@ -275,6 +301,7 @@ Not indexed above (deployment assets — `.xml`/`.yaml` Zabbix template files, n
 — same carve-out as `proxmox_zabbix_cleanup/`'s script bundles). Real, consumed files, listed
 here for discoverability:
 
+- [`zabbix_templates/README.md`](zabbix_templates/README.md) — directory README, same content as this section
 - `WindowsHygiene.xml` — triggers `ansible/playbooks/windows_hygiene/site.yml --tags pagefile`
   by name. See `ansible/playbooks/windows_hygiene/README.md`'s "Zabbix integration" section.
 - `zabbix_template_proxmox_nicguard.yaml` — monitors the NIC-guard units deployed by
@@ -287,7 +314,7 @@ here for discoverability:
 
 Not indexed above (reference photos, not documentation — same carve-out as `zabbix_templates/`
 above). Real, consumed files, listed here for discoverability: reference photos for the
-curveball/novelty devices in `benarbejde/devices.csv` (see `vehicles/README.md`).
+curveball/novelty devices in `benarbejde/devices.csv` (see [`vehicles/README.md`](vehicles/README.md)).
 [`non-it-equipment.md`](vehicles/non-it-equipment.md) is real documentation, not a bare photo
 carve-out — real company assets with no IT/network footprint (no `devices.csv` row).
 
@@ -315,6 +342,7 @@ WireGuard VPN configuration and troubleshooting.
 
 | File | Doc ID | Description |
 |------|--------|-------------|
+| [wireguard/README.md](wireguard/README.md) | — | Directory README — points back here |
 | [wireguard/NET-VPN-WG-001-wireguard-routing.md](wireguard/NET-VPN-WG-001-wireguard-routing.md) | NET-VPN-WG-001 | **Historical artefact (2026-07-19)** — describes the retired FAL/ODE/BRK three-hub mesh, not the current CLD-only topology. See `ansible/README.md`'s "WireGuard topology" section for the live model. |
 | [wireguard/wireguard-troubleshooting.md](wireguard/wireguard-troubleshooting.md) | NET-VPN-WG-002 | WireGuard troubleshooting guide — tunnel diagnostics, re-keying, common failures |
 | [wireguard/Troubleshooting-fwl-post-v2v.md](wireguard/Troubleshooting-fwl-post-v2v.md) | NET-FW-TROUBLESHOOT-001 | Firewall recovery after V2V migration — nftables/NetworkManager on Proxmox VE |
