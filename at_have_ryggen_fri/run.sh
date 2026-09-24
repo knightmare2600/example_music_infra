@@ -395,6 +395,18 @@
 #      when sites.csv defines one (the Sydney/Melbourne bug). Verified
 #      against all four bug classes reconstructed in memory from the
 #      now-fixed files, not just confirmed clean against current data.
+#  44. check_new_site_boilerplate.py -- Robert, 2026-09-24, on PHI/DET (real
+#      sites.csv entries with zero real equipment anywhere): "the harness
+#      needs to look for and identify new sites which do not have any
+#      devices... you know the IPs, the subnets, the other stuff." A
+#      genuinely new site (zero rows in devices.csv AND zero records in
+#      ad_computers.json, distinct from check 43's much narrower
+#      per-device-type gaps) now gets its full day-one boilerplate printed
+#      as an ADVISORY -- real, computed hostnames and IPs for the RTR/FWL/
+#      SWI/WAP/SBC/RDR/NAS/two-PVE-plus-BMCs/DCS set every standard site is
+#      confirmed to get (see benarbejde/standard_site_boilerplate.json).
+#      Never fails the harness -- informational only, same shape as check
+#      43's own check_pve_inference_advisory.
 #
 # Nothing here touches a real host or needs a vault password. Two exceptions
 # to "network access beyond localhost": check 13 (check_mermaid.py) needs to
@@ -1593,6 +1605,20 @@ else
   echo "$out"
   fail "AD data integrity problem(s) found -- see above. These are exactly the bug classes that only ever surfaced as live New-ADUser/New-ADComputer failures on 2026-09-23; see the check's own header."
   FAILED_CHECKS+=("check_ad_data_integrity.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 44. New-site boilerplate — check_new_site_boilerplate.py
+# ------------------------------------------------------------------------------
+section "44. New-site boilerplate — check_new_site_boilerplate.py"
+
+if out=$(python3 "${HERE}/check_new_site_boilerplate.py"); then
+  echo "$out"
+  success "New-site boilerplate advisory complete (never fails — informational only)."
+else
+  echo "$out"
+  fail "check_new_site_boilerplate.py itself errored (not a data-quality finding — the script's own docstring says this should never fail on real data)."
+  FAILED_CHECKS+=("check_new_site_boilerplate.py")
 fi
 
 # ------------------------------------------------------------------------------
