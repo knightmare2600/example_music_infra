@@ -407,6 +407,20 @@
 #      confirmed to get (see benarbejde/standard_site_boilerplate.json).
 #      Never fails the harness -- informational only, same shape as check
 #      43's own check_pve_inference_advisory.
+#  45. check_jinja_test_names.py -- found live 2026-09-21: select('length')
+#      in 30-ad-users.yml, a real Jinja token used as the wrong KIND of
+#      thing -- 'length' is a real FILTER name, not a TEST name, so
+#      select() (which expects a test) only fails at render time
+#      ("No test named 'length'"), not at parse/compile time. Verified
+#      live: neither ansible-lint (even -p production) nor
+#      ansible-playbook --syntax-check catches this -- both validate
+#      syntax/formatting, never attempt to actually render. This check
+#      greps every select()/reject()/selectattr()/rejectattr() call for a
+#      quoted test-name argument and flags any name that isn't a real,
+#      currently-registered Jinja test -- queried live via
+#      'ansible-doc -t test -l' against this control node's own installed
+#      ansible-core plus every collection this repo's own requirements.yml
+#      files declare, not a hardcoded snapshot that could drift.
 #
 # Nothing here touches a real host or needs a vault password. Two exceptions
 # to "network access beyond localhost": check 13 (check_mermaid.py) needs to
@@ -1621,6 +1635,20 @@ else
   echo "$out"
   fail "check_new_site_boilerplate.py itself errored (not a data-quality finding — the script's own docstring says this should never fail on real data)."
   FAILED_CHECKS+=("check_new_site_boilerplate.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 45. Jinja test-name validity — check_jinja_test_names.py
+# ------------------------------------------------------------------------------
+section "45. Jinja test-name validity — check_jinja_test_names.py"
+
+if out=$(python3 "${HERE}/check_jinja_test_names.py"); then
+  echo "$out"
+  success "No select()/reject()/selectattr()/rejectattr() calls using an invalid Jinja test name."
+else
+  echo "$out"
+  fail "Invalid Jinja test name(s) found -- see above. This is the select('length') bug class: a real Jinja token used as the wrong KIND of thing (a filter name where a test name is expected) -- valid syntax, so neither ansible-lint nor --syntax-check catches it; only fails at render time."
+  FAILED_CHECKS+=("check_jinja_test_names.py")
 fi
 
 # ------------------------------------------------------------------------------
