@@ -269,6 +269,13 @@ This table is also encoded as data in `benarbejde/address_policy.csv` — see [d
 >   (`ALWAYS_EXCLUDE_TYPES`), which also accidentally blocked the *current*, still-valid
 >   Dell-vendor usage from ever getting a real `devices.csv` row — fixed 2026-09-24, matching
 >   `ILO`'s own 2026-07-26 precedent exactly (see `role_codes.csv`).
+> - **Standard two-server boilerplate uses `.3`/`.4`, deliberately skipping `.2` (2026-09-24,
+>   Robert).** A brand-new site's two standard PVE nodes are HP first / Dell second by
+>   convention — `EXAPVE<SITE>001` is the HP node, its BMC is `ILO` at `.3`;
+>   `EXAPVE<SITE>002` is the Dell node, its BMC is `RAC` at `.4`. `.2` is left deliberately
+>   free, reserved as a slot for a second/legacy `RTR` if one is ever needed — keeps `.1` and
+>   `.254` as the estate's traditional "gateway" bookends, with `.2` sitting adjacent to `.1`
+>   for that purpose rather than being claimed by BMC pool devices first.
 
 ### Naming
 
@@ -324,6 +331,17 @@ The vRACK (`VRK`) is an OVH product providing 256 statically routed IPs. Treat t
 **`FRD` (`172.16.124.0/24`) — Fredericia Havn, the vRACK's standby provisioning network.** Not to be confused with `FRE`, the real Fredericia office. See `docs/ExampleMusic_Beginners_Guide.md` §4.2 for the full picture.
 
 For full architectural details see `docs/ExampleMusic_Beginners_Guide.md` (NET-BEGIN-001).
+
+### FRD Special Case (2026-09-24, Robert)
+
+FRD (Fredericia Havn, `172.16.124.0/24`) is the vRACK's standby/fallback provisioning network,
+same role as CLD's own vRACK but at a different real-world site: **Jesper Banksvej 18, 7000
+Fredericia**, hosted by **A.P. Moller - Maersk A/S Datacentres**. Same shape as CLD's own
+OVH/Pulsant arrangement — the datacentre and its network equipment are the provider's, not
+ours; we get a network drop to plug into. FRD's real gateway is `172.16.124.2` — this is the
+other reason `.2` is deliberately skipped in the standard `.2–.4` BMC pool convention (see
+[Addressing](#addressing) above): at FRD specifically, `.2` is already a real, physically
+distinct gateway address, not just a reserved slot.
 
 ---
 
