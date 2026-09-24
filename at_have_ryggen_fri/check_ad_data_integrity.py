@@ -577,8 +577,19 @@ def check_minimum_standard_equipment(problems, computers):
     whose OS matches its live FWL record exactly -- same evidence already used to resolve
     ABD/AKL/BIR/CLY/LAX/LND/BRK's genuinely-separate RTR+FWL pairs the other way). Allow-
     listed here rather than left as a standing, never-resolved "worth checking" message --
-    same reasoning as check_missing_devices_csv_row's OS-comparison fix earlier tonight."""
+    same reasoning as check_missing_devices_csv_row's OS-comparison fix earlier tonight.
+
+    2026-09-24, same evening: BER is a third, different shape again -- Robert: "BER is the
+    new re-unified post-1990 Berlin site, but the old equipment is still there, and yes the
+    router is currently on .1." BER and BRD (West Berlin, devices.csv's own "legacy alias
+    for BER" ad_ou comment) are the SAME physical site/equipment under two site codes, not
+    two locations each needing their own switch/router -- EXASWIBRD001/EXARTRBRD001 already
+    ARE the real, confirmed devices Robert is describing. Modelled as a lookup
+    (SHARES_INFRASTRUCTURE_WITH) rather than duplicating BRD's records under BER too, since
+    the consolidation itself is explicitly still pending (devices.csv's own BRD notes:
+    "possible decommission after the move" -- future tense, not done yet)."""
     COMBO_ROUTER_FIREWALL_SITES = {"SYD", "MEL", "ODE"}
+    SHARES_INFRASTRUCTURE_WITH = {"BER": "BRD"}
     by_site_role = defaultdict(set)
     for c in computers:
         site = (c.get("Site") or "").strip()
@@ -588,7 +599,8 @@ def check_minimum_standard_equipment(problems, computers):
     for site, roles in by_site_role.items():
         if site in gi.NON_STANDARD_SITES:
             continue
-        missing = [r for r in ("SWI", "RTR") if r not in roles]
+        effective_roles = roles | by_site_role.get(SHARES_INFRASTRUCTURE_WITH.get(site), set())
+        missing = [r for r in ("SWI", "RTR") if r not in effective_roles]
         if "RTR" in missing and site in COMBO_ROUTER_FIREWALL_SITES and "FWL" in roles:
             missing.remove("RTR")
         if missing:
