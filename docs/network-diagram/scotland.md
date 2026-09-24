@@ -656,7 +656,6 @@ graph TD
     O_DCR1["🗝️ EXADCRCLY001<br/>DC Primary<br/>192.168.41.10"]
     O_DCR2["🗝️ EXADCRCLY002<br/>DC Secondary<br/>192.168.41.11"]
     O_PHN["📞 EXAPHNCLY001<br/>Android · Phone<br/>No IP Address"]
-    O_RAC["🔧 EXARACCLY001<br/>HPE iLO5 · no host ever built<br/>192.168.41.2"]
     O_SUR["🖊️ EXASURCLY001<br/>Windows 11 · Surface<br/>192.168.41.51"]
     O_SVR["🗄️ EXASVRCLY001<br/>Rocky Linux · Oracle DB server<br/>192.168.41.20"]
     O_TAB["📱 EXATABCLY001<br/>Windows 11 Pro · Android tablet<br/>192.168.41.62"]
@@ -664,8 +663,6 @@ graph TD
     O_RTR --> O_SWI
     O_SWI --> O_DCR2
     O_SWI --> O_PHN
-    O_SWI --> O_RAC
-    O_RAC -.->|"manages"| O_DCR1
     O_SWI --> O_SUR
     O_SWI --> O_SVR
     O_SWI --> O_TAB
@@ -676,7 +673,6 @@ graph TD
     style O_DCR1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DCR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -748,10 +744,13 @@ graph TD
     T_SBC["🛡️ EXASBCCLY001<br/>SBC<br/>192.168.41.48"]
     T_FWL["🧱 EXAFWLCLY001<br/>LAN Face<br/>192.168.41.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
+    T_ILO["🔧 EXAILOCLY001<br/>HP ILO<br/>192.168.41.3"]
+    T_RAC["🔧 EXARACCLY001<br/>Dell IDRAC<br/>192.168.41.4"]
     T_SUR["🖊️ EXASURCLY001<br/>Surface<br/>192.168.41.51"]
     T_PHN["📞 EXAPHNCLY001<br/>Phone<br/>No IP Address"]
     T_TAB["📱 EXATABCLY001<br/>Android Tablet<br/>192.168.41.62"]
-    T_SUR --> T_TAB
+    T_ILO --> T_SUR --> T_TAB
+    T_RAC --> T_PHN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -766,6 +765,8 @@ graph TD
     style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF

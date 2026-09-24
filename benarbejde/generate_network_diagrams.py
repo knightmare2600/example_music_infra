@@ -184,12 +184,16 @@ def build_site_devices(site: str, net, devices_by_site: dict):
   # octet-keyed check.
   real_types = {dev["type"] for dev in devices_by_site.get(site, [])}
   real_hostnames = {}
+  real_bmc_pool_octets = set()
   for dev in devices_by_site.get(site, []):
     real_hostnames.setdefault(dev["type"], set()).add(dev["hostname"])
+    if dev["type"] in ("BMC", "ILO", "RAC") and dev["octet"] is not None:
+      real_bmc_pool_octets.add(int(dev["octet"]))
 
   if site not in gi.NON_STANDARD_SITES:
     for d in gi.compute_standard_devices_for_site(
-        site, net, real_device_types=real_types, real_device_hostnames=real_hostnames):
+        site, net, real_device_types=real_types, real_device_hostnames=real_hostnames,
+        real_bmc_pool_octets=real_bmc_pool_octets):
       dtype = re.match(r'EXA([A-Z]{3})', d["Hostname"]).group(1)
       if dtype == 'RTR' and site in gi.NO_STANDARD_ROUTER_SITES:
         continue  # documentation-only placeholder for DNS purposes, not a real device here
