@@ -599,7 +599,10 @@ graph TD
     T_PRN["🖨️ EXAPRNGLA001<br/>Main Floor Printer<br/>192.168.141.16"]
     T_OTH_WKS["🖥️ EXAWKSGLA001-002<br/>2 x Workstations<br/>192.168.141.150-151"]
     T_LAP["💻 EXALAPGLA001<br/>Pool Laptop<br/>192.168.141.152"]
-    T_PRN --> T_LAP
+    T_PHN["📞 EXAPHNGLA001<br/>IPhone 16 Pro Max<br/>No IP Address"]
+    T_SUR["🖊️ EXASURGLA001<br/>Microsoft Surface<br/>192.168.141.153"]
+    T_PRN --> T_LAP --> T_SUR
+    T_OTH_WKS --> T_PHN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -616,6 +619,8 @@ graph TD
     style T_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_OTH_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:GLA:END
 ```
 
@@ -650,11 +655,11 @@ graph TD
     O_SWI["🔀 EXASWICLY001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.41.250"]
     O_DCR1["🗝️ EXADCRCLY001<br/>DC Primary<br/>192.168.41.10"]
     O_DCR2["🗝️ EXADCRCLY002<br/>DC Secondary<br/>192.168.41.11"]
-    O_PHN["📞 EXAPHNCLY001<br/>iOS · Phone<br/>No IP Address"]
+    O_PHN["📞 EXAPHNCLY001<br/>Android · Phone<br/>No IP Address"]
     O_RAC["🔧 EXARACCLY001<br/>HPE iLO5 · no host ever built<br/>192.168.41.2"]
     O_SUR["🖊️ EXASURCLY001<br/>Windows 11 · Surface<br/>192.168.41.51"]
     O_SVR["🗄️ EXASVRCLY001<br/>Rocky Linux · Oracle DB server<br/>192.168.41.20"]
-    O_TAB["📱 EXATABCLY001<br/>Android · Android tablet<br/>No IP Address"]
+    O_TAB["📱 EXATABCLY001<br/>Windows 11 Pro · Android tablet<br/>192.168.41.62"]
     O_INET --> O_RTR
     O_RTR --> O_SWI
     O_SWI --> O_DCR2
@@ -745,7 +750,7 @@ graph TD
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_SUR["🖊️ EXASURCLY001<br/>Surface<br/>192.168.41.51"]
     T_PHN["📞 EXAPHNCLY001<br/>Phone<br/>No IP Address"]
-    T_TAB["📱 EXATABCLY001<br/>Android Tablet<br/>No IP Address"]
+    T_TAB["📱 EXATABCLY001<br/>Android Tablet<br/>192.168.41.62"]
     T_SUR --> T_TAB
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
