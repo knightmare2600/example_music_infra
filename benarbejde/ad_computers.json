@@ -1274,29 +1274,29 @@
     "ad_device_sub_ou": "Workstations"
   },
   {
-    "Name": "EXAPHNGLA001",
+    "Name": "EXAPHNCLY001",
     "SamAccountName": "EXAPHNCLY001$",
     "Role": "PHN",
     "Site": "CLY",
     "Description": "Android phone – touring handset",
     "Enabled": true,
     "DNSHostName": "EXAPHNCLY001.jukebox.internal",
-    "OS": "Apple iOS",
-    "OperatingSystemVersion": "26.1",
+    "OS": "Android",
+    "OperatingSystemVersion": "14",
     "IPv4Address": "",
     "ad_ou": "OU=Telephony,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Telephony"
   },
   {
-    "Name": "EXASURGLA001",
+    "Name": "EXATABCLY001",
     "SamAccountName": "EXATABCLY001$",
     "Role": "SUR",
     "Site": "CLY",
-    "Description": "Android tablet – setlists (service account)",
+    "Description": "Surface – setlists (service account)",
     "Enabled": true,
     "DNSHostName": "EXATABCLY001.jukebox.internal",
-    "OS": "Apple iOD",
-    "OperatingSystemVersion": "26.2",
+    "OS": "Windows 11 Pro",
+    "OperatingSystemVersion": "24H2",
     "IPv4Address": "192.168.41.62",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
@@ -3778,5 +3778,33 @@
     "IPv4Address": "192.168.46.10",
     "ad_ou": "OU=IoT,OU=Devices,OU=Copenhagen,OU=Denmark,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
+  },
+  {
+    "Name": "EXAPHNGLA001",
+    "SamAccountName": "EXAPHNGLA001$",
+    "Role": "PHN",
+    "Site": "GLA",
+    "Description": "iPhone 16 Pro Max – on-call handset (\"bat phone\")",
+    "Enabled": true,
+    "DNSHostName": "EXAPHNGLA001.jukebox.internal",
+    "OS": "iOS",
+    "OperatingSystemVersion": "18.x",
+    "IPv4Address": "",
+    "ad_ou": "OU=Telephony,OU=Devices,OU=Glasgow,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_device_sub_ou": "Telephony"
+  },
+  {
+    "Name": "EXASURGLA001",
+    "SamAccountName": "EXASURGLA001$",
+    "Role": "SUR",
+    "Site": "GLA",
+    "Description": "Microsoft Surface – pool device",
+    "Enabled": true,
+    "DNSHostName": "EXASURGLA001.jukebox.internal",
+    "OS": "Windows 11 Pro",
+    "OperatingSystemVersion": "24H2",
+    "IPv4Address": "192.168.141.153",
+    "ad_ou": "OU=Workstations,OU=Devices,OU=Glasgow,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
+    "ad_device_sub_ou": "Workstations"
   }
 ]
