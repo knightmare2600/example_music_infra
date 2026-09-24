@@ -1,0 +1,29 @@
+{
+  "_comment": "Day-one equipment boilerplate for a genuinely new, standard site -- confirmed live with Robert, 2026-09-24. Octets/counts themselves are NOT duplicated here -- they already live in address_policy.csv (the real source of truth generate_inventory.py itself reads). This file adds only what address_policy.csv doesn't carry: which Types are universal (every standard site gets one) vs optional/headcount-driven, and the vendor conventions for a brand-new build where no real hardware has been chosen yet.",
+
+  "excluded_sites": ["CLD", "VRK", "FRD"],
+  "excluded_sites_notes": {
+    "CLD": "Fully custom -- see README.md's own 'CLD Special Case' section. Its gateway (.254) is Pulsant/OVH's own datacentre equipment, not a site device we own.",
+    "VRK": "OVH vRACK -- a network product, not a physical site. No standard equipment of its own.",
+    "FRD": "Fredericia Havn -- the vRACK's standby provisioning network, hosted by A.P. Moller - Maersk A/S Datacentres (Jesper Banksvej 18, 7000 Fredericia). Real gateway is .2, not a site device -- see README.md's 'FRD Special Case' section."
+  },
+
+  "boilerplate_types": ["RTR", "FWL", "SWI", "WAP", "SBC", "RDR", "NAS", "PVE", "DCS"],
+  "boilerplate_types_notes": "One of each (PVE gets two, see pve_convention below). WKS/LAP deliberately excluded -- headcount-driven, not site-driven; a brand-new site doesn't get a 'standard' workstation the way it gets a standard switch.",
+
+  "vendor_defaults": {
+    "RTR": "FortiGate",
+    "SWI": "Cisco Catalyst 9300",
+    "WAP": "Ubiquiti UniFi U6-Pro",
+    "SBC": "3CX SBC",
+    "NAS": "Synology DSM",
+    "RDR": "HID Signo"
+  },
+  "vendor_defaults_notes": "FWL's vendor genuinely varies per site (Cisco ASA, FortiGate, Palo Alto, etc. -- confirmed across the real estate 2026-09-24), so it has no single default here. SWI's Cisco Catalyst 9300 and the others above are the estate's own dominant existing convention, not a hard rule -- flag as a default pick when actually building the record, same as every other boilerplate device added this session.",
+
+  "pve_convention": {
+    "1": {"vendor": "HP", "bmc_type": "ILO"},
+    "2": {"vendor": "Dell", "bmc_type": "RAC"}
+  },
+  "pve_convention_notes": "Server 1 is always HP (BMC type ILO), server 2 is always Dell (BMC type RAC) -- Robert, 2026-09-24. This is the reason the BMC pool's own '.2' slot is deliberately skipped (see README.md Addressing section) -- ILO/RAC land on .3/.4, not .2/.3."
+}
