@@ -121,6 +121,23 @@ in a different way, not by any check beforehand:
       per-site ratio check (the absence is estate-wide, no baseline
       anywhere to compare against), but is worth a standing, one-time
       advisory rather than silence.
+  14. Found live 2026-09-24, same conversation, after resolving SYD/MEL/AKL's
+      RAC addresses directly: Robert -- "every site has one [PVE], and each
+      of those would have a RAC or ILO, for sites with more ILO/RACs that
+      means they also have more PVEs ... since you clearly see a RAC/ILO it
+      must have a PVE attached to it by design ... I'm sure the harness can
+      'catch' such things and print a 'hey I found XYZ thing' for the user."
+      Bug class 12 couldn't build a PVE-vs-RAC/ILO ratio check because
+      ad_computers.json has literally zero PVE records anywhere to compare
+      against -- but the same 1:1 hardware convention runs the other way
+      round just as reliably: a real ILO/RAC record's mere existence implies
+      a real PVE node behind it (each BMC belongs to exactly one hypervisor
+      host, by design), even though nothing currently tracks that host
+      itself. Confirmed live: 15 sites currently carry real ILO/RAC records
+      (1 each at most, 2 each at BIR/CLY/FAL -- matching FAL's own
+      already-confirmed 2-node Proxmox cluster exactly), so this is a
+      genuinely useful inferred baseline for the still-open "how do we bring
+      PVE in" question, not just a repeat of bug class 12/13's absence note.
 
 This checks twelve independent surfaces, all from the files themselves, no AD
 connection required:
@@ -192,6 +209,14 @@ connection required:
      oldest/most universal standard-template categories; newer, still-
      rolling-out categories (NAS/SBC/WAP) are legitimately absent at real
      sites that haven't been retrofitted yet and would just add noise.
+
+Two non-failing, whole-estate ADVISORIES also run (they never affect exit
+code): check_ldap_trackable_advisory (bug class 13 -- PVE/FWL/DCS are
+LDAP-trackable in principle but currently have zero records anywhere) and
+check_pve_inference_advisory (bug class 14 -- per site, infers a real PVE
+node's existence from real ILO/RAC record(s) already present, since the BMC
+count is a reliable 1:1 proxy for hypervisor host count even though PVE
+itself is never tracked).
 
 Exit code: 0 if nothing found, 1 otherwise.
 """
@@ -557,6 +582,37 @@ def check_ldap_trackable_advisory(computers):
     )
 
 
+def check_pve_inference_advisory(computers):
+    """Robert, 2026-09-24: "every site has one [PVE], and each of those would
+    have a RAC or ILO, for sites with more ILO/RACs that means they also have
+    more PVEs ... since you clearly see a RAC/ILO it must have a PVE attached
+    to it by design." The reverse of check_ldap_trackable_advisory's absence
+    note: PVE itself is never tracked, but a real ILO/RAC record is a
+    reliable 1:1 proxy for a real hypervisor host behind it, so its mere
+    presence is a genuinely useful inferred baseline rather than nothing at
+    all. Deliberately per-site and additive-only -- an inferred count, never
+    a "problem," and never compared against anything else since there is
+    still no independently-tracked PVE figure anywhere to check it against."""
+    counts = defaultdict(int)
+    for c in computers:
+        role = (c.get("Role") or "").strip().upper()
+        site = (c.get("Site") or "").strip()
+        if role in ("ILO", "RAC") and site:
+            counts[site] += 1
+    if not counts:
+        return None
+    lines = [
+        f"  - {site}: {n} real ILO/RAC record(s) -- implies {n} real PVE "
+        f"node(s), none currently tracked in ad_computers.json"
+        for site, n in sorted(counts.items())
+    ]
+    return (
+        "ADVISORY (not a failure): inferred PVE node count by site, from "
+        "real ILO/RAC records already present (each BMC implies one real "
+        "hypervisor host behind it, by design):\n" + "\n".join(lines)
+    )
+
+
 def triangulate(c, real_addresses):
     """One record's own three possible signals for what its real address should be --
     devices.csv (exact, when a real row exists), address_policy.csv (exact or pool,
@@ -772,6 +828,7 @@ def main():
         check_minimum_standard_equipment(problems, computers)
 
     advisory = check_ldap_trackable_advisory(computers) if computers is not None else None
+    pve_advisory = check_pve_inference_advisory(computers) if computers is not None else None
 
     print(
         f"Checked {len(users or [])} users, {len(groups or [])} groups, "
@@ -786,6 +843,9 @@ def main():
 
     if advisory:
         print(f"\n{advisory}")
+
+    if pve_advisory:
+        print(f"\n{pve_advisory}")
 
     if problems:
         print(f"\n{len(problems)} problem(s) found:")
