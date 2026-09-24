@@ -378,3 +378,15 @@ KGE,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge router -- real, confirmed 2026-09-2
 MUN,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge router -- real, confirmed 2026-09-24 (Robert: every site also has a router, same as the switch rule). Vendor defaulted to the estate's own dominant convention, not separately confirmed.",,no,,
 MIA,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge router -- real, confirmed 2026-09-24 (Robert: every site also has a router, same as the switch rule). Vendor defaulted to the estate's own dominant convention, not separately confirmed.",,no,,
 AAR,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge router -- real, confirmed 2026-09-24 (Robert: every site also has a router, same as the switch rule). Vendor defaulted to the estate's own dominant convention, not separately confirmed.",,no,,
+AMS,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
+AMS,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+AMS,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
+AMS,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
+AMS,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
+AMS,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
+AMS,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
+AMS,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
+AMS,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
+AMS,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
+AMS,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
+AMS,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
