@@ -33,6 +33,16 @@ A bare run is an ADVISORY only -- it never fails the harness (always exits
 then have a command line option to actually go add it... release the
 'safety valve' to make changes... explicitly." --apply <SITE> is that
 valve -- see apply_boilerplate() below.
+
+--apply refuses outright on any site with existing devices.csv rows --
+deliberately, so it never has to guess whether an existing row already
+covers part of the boilerplate. That leaves a real gap for a site that's
+PARTIALLY built (real equipment already on record, but not the full set)
+-- Robert, 2026-09-24, asking directly whether an already-started site like
+FAX has everything: confirmed live it doesn't (missing SBC/RDR/NAS/both
+PVE+BMC pairs/a real DCS). --complete <SITE> fills in exactly the missing
+Types, Planned=yes, leaving everything already on record untouched -- see
+complete_boilerplate() below.
 """
 import csv
 import json
@@ -118,6 +128,30 @@ def load_boilerplate(problems):
         return None
 
 
+def load_site_types(site, problems):
+    """Every distinct Type this site already has at least one real devices.csv
+    row for, regardless of Number/octet/Legacy/Planned status -- used by
+    --complete to decide what's genuinely missing vs already represented
+    under a Number the pure boilerplate template wouldn't have picked (e.g.
+    a real FWL sitting at Number=2 still counts as "this site has a
+    firewall"). DCR counts as DCS -- role_codes.csv's own stated convention
+    ("devices.csv rows using DCR are typos and treated as DCS")."""
+    types = set()
+    try:
+        with DEVICES_CSV.open(newline="") as f:
+            for row in csv.DictReader(f):
+                if (row.get("Site") or "").strip() != site:
+                    continue
+                rtype = (row.get("Type") or "").strip().upper()
+                if rtype == "DCR":
+                    rtype = "DCS"
+                if rtype:
+                    types.add(rtype)
+    except Exception as e:
+        problems.append(f"devices.csv: could not load -- {e}")
+    return types
+
+
 def build_boilerplate_rows(site, boilerplate):
     """One dict per day-one device a brand-new standard site gets, using
     address_policy.csv's own octets (via generate_inventory.py's already-loaded
@@ -167,6 +201,114 @@ def print_advisory(site, base, rows):
         print(f"    {hostname}  {base}.{r['octet']}{vendor_str}{note_str}")
 
 
+def write_rows_and_regenerate(site, rows):
+    """Shared by --apply and --complete: writes Planned=yes rows for exactly
+    the given list, syncs the bootstrap/web/proxmox/ mirror, and regenerates
+    every derived artefact in the same run (Robert, 2026-09-24: skipping
+    that "leaves operational gaps", so it's folded in here, not left as a
+    separate manual step). Deliberately does NOT touch ad_computers.json --
+    see docs/adding-a-new-site.md's Phase 2."""
+    with DEVICES_CSV.open("a", newline="") as f:
+        writer = csv.writer(f)
+        for r in rows:
+            vendor_note = (
+                f"{r['note']}. Vendor '{r['vendor']}' is a default pick, not confirmed."
+                if r["vendor"] and r["note"]
+                else f"Vendor '{r['vendor']}' is a default pick, not confirmed." if r["vendor"]
+                else r["note"] or "Standard boilerplate, not yet built."
+            )
+            writer.writerow([
+                site, r["role"], r["number"], r["octet"], r["vendor"],
+                CONNECTION_TYPES.get(r["role"], "ssh"), "",
+                f"PLANNED -- new-site boilerplate ({vendor_note})",
+                "", "no", "", "yes",
+            ])
+
+    PROXMOX_DEVICES_CSV.write_bytes(DEVICES_CSV.read_bytes())
+    print(f"  Wrote devices.csv rows, synced {PROXMOX_DEVICES_CSV.relative_to(REPO_ROOT)}.")
+
+    print("Regenerating derived artefacts...")
+    commands = [
+        (["bash", "-c",
+          f"yes | python3 {BENARBEJDE / 'generate_inventory.py'} {BENARBEJDE / 'sites.csv'} "
+          f"-o {REPO_ROOT / 'ansible' / 'configs' / 'inventory'} --devices {DEVICES_CSV}"],
+         "inventory .ini files"),
+        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
+          "--emit-group-vars", "--devices", str(DEVICES_CSV)], "group_vars"),
+        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
+          "--emit-begyndelse-json", "--devices", str(DEVICES_CSV)], "begyndelse.json"),
+        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
+          "--emit-site-grains-pillar", "--devices", str(DEVICES_CSV)], "Salt site-grains pillar"),
+        ([sys.executable, str(BENARBEJDE / "generate_network_diagrams.py"), "--write"],
+         "network diagrams"),
+    ]
+    for cmd, label in commands:
+        result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"  [ERROR] Regenerating {label} failed:\n{result.stdout}\n{result.stderr}")
+            return False
+        print(f"  Regenerated {label}.")
+    return True
+
+
+def complete_boilerplate(site, sites, boilerplate, problems):
+    """Fills in exactly the boilerplate Types this site doesn't already have
+    -- Robert, 2026-09-24, asking whether an already-started site like FAX
+    has everything: it doesn't. Unlike --apply, requires the site to
+    already have at least one real row (an empty site should use --apply
+    instead, which is stricter about starting from nothing)."""
+    excluded = set(boilerplate.get("excluded_sites", []))
+
+    if site not in sites:
+        print(f"[ERROR] '{site}' is not a real site in sites.csv -- refusing to complete.")
+        return 1
+    if site in excluded:
+        print(f"[ERROR] '{site}' is architecturally special ({', '.join(excluded)}) -- "
+              f"refusing to apply the standard boilerplate. See standard_site_boilerplate.json's "
+              f"own excluded_sites_notes.")
+        return 1
+
+    existing_types = load_site_types(site, problems)
+    if problems:
+        print("\n".join(problems))
+        return 1
+    if not existing_types:
+        print(f"[ERROR] '{site}' has zero existing devices.csv rows -- use --apply instead, "
+              f"not --complete (this is specifically for filling gaps in an already-started site).")
+        return 1
+
+    all_rows = build_boilerplate_rows(site, boilerplate)
+    incomplete = [r for r in all_rows if r["octet"] is None]
+    if incomplete:
+        print(f"[ERROR] Could not compute an octet for: "
+              f"{', '.join(r['role'] + str(r['number']) for r in incomplete)} -- "
+              f"address_policy.csv may be missing a convention. Aborting, nothing written.")
+        return 1
+
+    have = [r for r in all_rows if r["role"] in existing_types]
+    missing = [r for r in all_rows if r["role"] not in existing_types]
+
+    print(f"'{site}' already has: {', '.join(sorted({r['role'] for r in have})) or '(none)'}")
+    if not missing:
+        print(f"'{site}' already has every boilerplate Type represented -- nothing to add.")
+        return 0
+
+    print(f"'{site}' is missing: {', '.join(sorted({r['role'] for r in missing}))}")
+    print(f"Completing '{site}' -- writing {len(missing)} Planned=yes devices.csv row(s) for "
+          f"exactly the missing Types (leaving the {len(have)} already-represented one(s) "
+          f"untouched)...")
+
+    if not write_rows_and_regenerate(site, missing):
+        return 1
+
+    print(
+        f"\nDone. '{site}' now has its full boilerplate -- the {len(have)} Type(s) it already "
+        f"had are untouched, the {len(missing)} missing one(s) are now Planned=yes. Run "
+        f"bash at_have_ryggen_fri/run.sh to confirm clean, then commit."
+    )
+    return 0
+
+
 def apply_boilerplate(site, sites, devices_sites, boilerplate):
     """The 'safety valve' -- Robert, 2026-09-24: normal runs stay read-only/
     advisory; this is the explicit, deliberate opt-in to actually write.
@@ -206,46 +348,8 @@ def apply_boilerplate(site, sites, devices_sites, boilerplate):
     print(f"Applying standard boilerplate to '{site}' -- writing {len(rows)} Planned=yes "
           f"devices.csv row(s)...")
 
-    with DEVICES_CSV.open("a", newline="") as f:
-        writer = csv.writer(f)
-        for r in rows:
-            vendor_note = (
-                f"{r['note']}. Vendor '{r['vendor']}' is a default pick, not confirmed."
-                if r["vendor"] and r["note"]
-                else f"Vendor '{r['vendor']}' is a default pick, not confirmed." if r["vendor"]
-                else r["note"] or "Standard boilerplate for a new site, not yet built."
-            )
-            writer.writerow([
-                site, r["role"], r["number"], r["octet"], r["vendor"],
-                CONNECTION_TYPES.get(r["role"], "ssh"), "",
-                f"PLANNED -- new-site boilerplate ({vendor_note})",
-                "", "no", "", "yes",
-            ])
-
-    PROXMOX_DEVICES_CSV.write_bytes(DEVICES_CSV.read_bytes())
-    print(f"  Wrote devices.csv rows, synced {PROXMOX_DEVICES_CSV.relative_to(REPO_ROOT)}.")
-
-    print("Regenerating derived artefacts...")
-    commands = [
-        (["bash", "-c",
-          f"yes | python3 {BENARBEJDE / 'generate_inventory.py'} {BENARBEJDE / 'sites.csv'} "
-          f"-o {REPO_ROOT / 'ansible' / 'configs' / 'inventory'} --devices {DEVICES_CSV}"],
-         "inventory .ini files"),
-        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
-          "--emit-group-vars", "--devices", str(DEVICES_CSV)], "group_vars"),
-        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
-          "--emit-begyndelse-json", "--devices", str(DEVICES_CSV)], "begyndelse.json"),
-        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
-          "--emit-site-grains-pillar", "--devices", str(DEVICES_CSV)], "Salt site-grains pillar"),
-        ([sys.executable, str(BENARBEJDE / "generate_network_diagrams.py"), "--write"],
-         "network diagrams"),
-    ]
-    for cmd, label in commands:
-        result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
-        if result.returncode != 0:
-            print(f"  [ERROR] Regenerating {label} failed:\n{result.stdout}\n{result.stderr}")
-            return 1
-        print(f"  Regenerated {label}.")
+    if not write_rows_and_regenerate(site, rows):
+        return 1
 
     print(
         f"\nDone. '{site}' now has its full boilerplate as Planned=yes devices.csv rows, and "
@@ -256,15 +360,25 @@ def apply_boilerplate(site, sites, devices_sites, boilerplate):
     return 0
 
 
+def _get_target(flag):
+    if flag not in sys.argv:
+        return None, None
+    idx = sys.argv.index(flag)
+    if idx + 1 >= len(sys.argv):
+        return None, f"[ERROR] {flag} requires a site code, e.g. {flag} DET"
+    return sys.argv[idx + 1].strip().upper(), None
+
+
 def main():
     problems = []
-    apply_target = None
-    if "--apply" in sys.argv:
-        idx = sys.argv.index("--apply")
-        if idx + 1 >= len(sys.argv):
-            print("[ERROR] --apply requires a site code, e.g. --apply DET")
-            return 1
-        apply_target = sys.argv[idx + 1].strip().upper()
+    apply_target, apply_err = _get_target("--apply")
+    complete_target, complete_err = _get_target("--complete")
+    if apply_err or complete_err:
+        print(apply_err or complete_err)
+        return 1
+    if apply_target and complete_target:
+        print("[ERROR] --apply and --complete are mutually exclusive -- pick one.")
+        return 1
 
     sites = load_sites(problems)
     devices_sites = load_devices_sites(problems)
@@ -273,12 +387,14 @@ def main():
 
     if problems:
         print("\n".join(problems))
-        return 0 if apply_target is None else 1
+        return 0 if not (apply_target or complete_target) else 1
 
     gi.load_address_policy(BENARBEJDE / "address_policy.csv")
 
     if apply_target:
         return apply_boilerplate(apply_target, sites, devices_sites, boilerplate)
+    if complete_target:
+        return complete_boilerplate(complete_target, sites, boilerplate, problems)
 
     excluded = set(boilerplate.get("excluded_sites", []))
     new_sites = sorted(
@@ -293,7 +409,11 @@ def main():
     )
 
     if not new_sites:
-        print("No genuinely new (zero-equipment) sites found.")
+        print(
+            "No genuinely new (zero-equipment) sites found. Note: this doesn't mean every "
+            "site's boilerplate is complete -- a partially-built site can still be missing "
+            "some Types. Run --complete <SITE> to check/fill gaps in a specific site."
+        )
         return 0
 
     print(
