@@ -45,14 +45,28 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWIAMS003<br/>SWI 3<br/>192.168.31.252"]
     T_RTR --> T_SWI3
+    T_SWI["🔀 EXASWIAMS001<br/>SWI 1<br/>192.168.31.250 — planned"]
+    T_RTR --> T_SWI
+    T_PVE["🗂️ EXAPVEAMS001<br/>PVE 1<br/>192.168.31.5 — planned"]
+    T_RTR --> T_PVE
+    T_PVE2["🗂️ EXAPVEAMS002<br/>PVE 2<br/>192.168.31.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASAMS001<br/>NAS<br/>192.168.31.19"]
+    T_NAS["🗃️ EXANASAMS001<br/>NAS 1<br/>192.168.31.19 — planned"]
     T_RDR["🔐 EXARDRAMS001<br/>RDR<br/>192.168.31.21"]
+    T_RDR["🔐 EXARDRAMS001<br/>RDR 1<br/>192.168.31.21 — planned"]
     T_WAP["📶 EXAWAPAMS001<br/>WAP 1<br/>192.168.31.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_WAP["📶 EXAWAPAMS001<br/>WAP 1<br/>192.168.31.82 — planned"]
+    T_SWI --> T_NAS --> T_NAS --> T_RDR --> T_RDR --> T_WAP --> T_WAP
     T_DCS["🗝️ EXADCSAMS001<br/>DCS 1<br/>192.168.31.10"]
+    T_DCS["🗝️ EXADCSAMS001<br/>DCS 1<br/>192.168.31.10 — planned"]
     T_SBC["🛡️ EXASBCAMS001<br/>SBC<br/>192.168.31.48"]
+    T_SBC["🛡️ EXASBCAMS001<br/>SBC 1<br/>192.168.31.48 — planned"]
     T_FWL["🧱 EXAFWLAMS001<br/>LAN Face<br/>192.168.31.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    T_FWL["🧱 EXAFWLAMS001<br/>FWL 1<br/>192.168.31.253 — planned"]
+    T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_ILO["🔧 EXAILOAMS001<br/>ILO 1<br/>192.168.31.3 — planned"]
+    T_RAC["🔧 EXARACAMS002<br/>RAC 2<br/>192.168.31.4 — planned"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -60,11 +74,22 @@ graph TD
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:AMS:END
 ```

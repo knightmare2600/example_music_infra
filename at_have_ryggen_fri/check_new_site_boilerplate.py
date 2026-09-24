@@ -27,18 +27,37 @@ Deliberately excludes WKS/LAP (headcount-driven, not site-driven) and
 CLD/VRK/FRD (each architecturally special -- see
 standard_site_boilerplate.json's own excluded_sites_notes).
 
-This is an ADVISORY only -- it never fails the harness (always exits 0).
-It doesn't create any file or record; it's a "here's what to build" report,
-the same non-committal shape as check_ad_data_integrity.py's own
-check_pve_inference_advisory.
+A bare run is an ADVISORY only -- it never fails the harness (always exits
+0) and never writes anything. Robert, 2026-09-24, on doing this by hand:
+"invariably a[sic] human error mistakes... the harness ought to flag it
+then have a command line option to actually go add it... release the
+'safety valve' to make changes... explicitly." --apply <SITE> is that
+valve -- see apply_boilerplate() below.
 """
 import csv
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BENARBEJDE = REPO_ROOT / "benarbejde"
+DEVICES_CSV = BENARBEJDE / "devices.csv"
+PROXMOX_DEVICES_CSV = REPO_ROOT / "bootstrap" / "web" / "proxmox" / "devices.csv"
+DEVICES_CSV_COLUMNS = [
+    "Site", "Type", "Number", "HostOctet", "OS", "ConnectionType", "Managed",
+    "Notes", "SubnetSite", "Legacy", "Migrating", "Planned",
+]
+# Matches this file's own real, established devices.csv convention per Type --
+# confirmed by grepping existing rows, not role_codes.csv's ConnectionMethod column
+# alone (WAP in particular is documented there as snmp but every real devices.csv
+# WAP row actually uses http -- match reality, not the aspirational policy doc).
+CONNECTION_TYPES = {
+    "RTR": "telnet", "FWL": "telnet", "SWI": "snmp", "WAP": "http",
+    "SBC": "ssh", "RDR": "ssh", "NAS": "ssh", "ILO": "snmp", "RAC": "snmp",
+    "PVE": "ssh", "DCS": "ssh",
+}
+
 sys.path.insert(0, str(BENARBEJDE))
 import generate_inventory as gi  # noqa: E402
 
@@ -62,7 +81,7 @@ def load_sites(problems):
 def load_devices_sites(problems):
     sites = set()
     try:
-        with (BENARBEJDE / "devices.csv").open(newline="") as f:
+        with DEVICES_CSV.open(newline="") as f:
             for row in csv.DictReader(f):
                 site = (row.get("Site") or "").strip()
                 if site:
@@ -93,19 +112,20 @@ def load_boilerplate(problems):
         return None
 
 
-def build_boilerplate_list(site, base, boilerplate):
-    """Real hostname + IP for every day-one device a brand-new standard site
-    gets, using address_policy.csv's own octets (via generate_inventory.py's
-    already-loaded OFFSETS_SINGLE/ROLE_OFFSETS) plus this file's vendor
-    conventions for anything address_policy.csv doesn't specify."""
-    lines = []
+def build_boilerplate_rows(site, boilerplate):
+    """One dict per day-one device a brand-new standard site gets, using
+    address_policy.csv's own octets (via generate_inventory.py's already-loaded
+    OFFSETS_SINGLE/ROLE_OFFSETS) plus this file's vendor conventions for
+    anything address_policy.csv doesn't specify. Structured so it can feed
+    both the advisory print-out and a real devices.csv write."""
+    rows = []
     vendors = boilerplate.get("vendor_defaults", {})
 
     def add(role, number, octet, vendor=None, note=""):
-        hostname = gi.build_hostname(role, site, number)
-        vendor_str = f" ({vendor})" if vendor else ""
-        note_str = f" -- {note}" if note else ""
-        lines.append(f"    {hostname}  {base}.{octet}{vendor_str}{note_str}")
+        rows.append({
+            "role": role, "number": number, "octet": octet,
+            "vendor": vendor or "", "note": note,
+        })
 
     add("RTR", 1, gi.OFFSETS_SINGLE.get("RTR", 1), vendors.get("RTR"))
     add("FWL", 1, gi.ROLE_OFFSETS.get("FWL", [253])[0], note="vendor varies per site, no default")
@@ -122,18 +142,123 @@ def build_boilerplate_list(site, base, boilerplate):
     usable_bmc_octets = [o for o in bmc_octets if o != 2]
     for i, (num_str, conv) in enumerate(sorted(pve_conv.items())):
         num = int(num_str)
-        pve_octet = pve_octets[num - 1] if num - 1 < len(pve_octets) else "?"
-        bmc_octet = usable_bmc_octets[i] if i < len(usable_bmc_octets) else "?"
+        pve_octet = pve_octets[num - 1] if num - 1 < len(pve_octets) else None
+        bmc_octet = usable_bmc_octets[i] if i < len(usable_bmc_octets) else None
         add("PVE", num, pve_octet, conv.get("vendor"))
         add(conv.get("bmc_type", "BMC"), num, bmc_octet, note=f"BMC for PVE{num}")
 
     add("DCS", 1, gi.OFFSETS_SINGLE.get("DCS") or (gi.ROLE_OFFSETS.get("DCS", [10])[0]))
 
-    return lines
+    return rows
+
+
+def print_advisory(site, base, rows):
+    print(f"\n  {site} ({base}.0/24):")
+    for r in rows:
+        hostname = gi.build_hostname(r["role"], site, r["number"])
+        vendor_str = f" ({r['vendor']})" if r["vendor"] else ""
+        note_str = f" -- {r['note']}" if r["note"] else ""
+        print(f"    {hostname}  {base}.{r['octet']}{vendor_str}{note_str}")
+
+
+def apply_boilerplate(site, sites, devices_sites, boilerplate):
+    """The 'safety valve' -- Robert, 2026-09-24: normal runs stay read-only/
+    advisory; this is the explicit, deliberate opt-in to actually write.
+    Writes real devices.csv rows (Planned=yes -- the same convention already
+    used estate-wide for confirmed-but-not-yet-built hardware, e.g. ODE's
+    second firewall), then regenerates every derived artefact (.ini files,
+    group_vars, diagrams) in the same run -- Robert, same conversation:
+    skipping that "leaves operational gaps", so it's not a separate step
+    here. Deliberately does NOT touch ad_computers.json -- that file drives
+    real New-ADComputer creation, and writing planned/unbuilt hardware into
+    it would try to create real AD objects for equipment that doesn't exist
+    yet (see docs/adding-a-new-site.md's Phase 2)."""
+    excluded = set(boilerplate.get("excluded_sites", []))
+
+    if site not in sites:
+        print(f"[ERROR] '{site}' is not a real site in sites.csv -- refusing to apply.")
+        return 1
+    if site in excluded:
+        print(f"[ERROR] '{site}' is architecturally special ({', '.join(excluded)}) -- "
+              f"refusing to apply the standard boilerplate. See standard_site_boilerplate.json's "
+              f"own excluded_sites_notes.")
+        return 1
+    if site in devices_sites:
+        print(f"[ERROR] '{site}' already has real devices.csv row(s) -- refusing to apply. "
+              f"This is specifically for a genuinely brand-new site with zero existing rows, "
+              f"not a way to bulk-append to one already in progress.")
+        return 1
+
+    rows = build_boilerplate_rows(site, boilerplate)
+    incomplete = [r for r in rows if r["octet"] is None]
+    if incomplete:
+        print(f"[ERROR] Could not compute an octet for: "
+              f"{', '.join(r['role'] + str(r['number']) for r in incomplete)} -- "
+              f"address_policy.csv may be missing a convention. Aborting, nothing written.")
+        return 1
+
+    print(f"Applying standard boilerplate to '{site}' -- writing {len(rows)} Planned=yes "
+          f"devices.csv row(s)...")
+
+    with DEVICES_CSV.open("a", newline="") as f:
+        writer = csv.writer(f)
+        for r in rows:
+            vendor_note = (
+                f"{r['note']}. Vendor '{r['vendor']}' is a default pick, not confirmed."
+                if r["vendor"] and r["note"]
+                else f"Vendor '{r['vendor']}' is a default pick, not confirmed." if r["vendor"]
+                else r["note"] or "Standard boilerplate for a new site, not yet built."
+            )
+            writer.writerow([
+                site, r["role"], r["number"], r["octet"], r["vendor"],
+                CONNECTION_TYPES.get(r["role"], "ssh"), "",
+                f"PLANNED -- new-site boilerplate ({vendor_note})",
+                "", "no", "", "yes",
+            ])
+
+    PROXMOX_DEVICES_CSV.write_bytes(DEVICES_CSV.read_bytes())
+    print(f"  Wrote devices.csv rows, synced {PROXMOX_DEVICES_CSV.relative_to(REPO_ROOT)}.")
+
+    print("Regenerating derived artefacts...")
+    commands = [
+        (["bash", "-c",
+          f"yes | python3 {BENARBEJDE / 'generate_inventory.py'} {BENARBEJDE / 'sites.csv'} "
+          f"-o {REPO_ROOT / 'ansible' / 'configs' / 'inventory'} --devices {DEVICES_CSV}"],
+         "inventory .ini files"),
+        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
+          "--emit-group-vars", "--devices", str(DEVICES_CSV)], "group_vars"),
+        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
+          "--emit-begyndelse-json", "--devices", str(DEVICES_CSV)], "begyndelse.json"),
+        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
+          "--emit-site-grains-pillar", "--devices", str(DEVICES_CSV)], "Salt site-grains pillar"),
+        ([sys.executable, str(BENARBEJDE / "generate_network_diagrams.py"), "--write"],
+         "network diagrams"),
+    ]
+    for cmd, label in commands:
+        result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"  [ERROR] Regenerating {label} failed:\n{result.stdout}\n{result.stderr}")
+            return 1
+        print(f"  Regenerated {label}.")
+
+    print(
+        f"\nDone. '{site}' now has its full boilerplate as Planned=yes devices.csv rows, and "
+        f"every derived artefact is regenerated. Run bash at_have_ryggen_fri/run.sh to confirm "
+        f"clean, then commit. See docs/adding-a-new-site.md's Phase 2 for what happens as real "
+        f"hardware actually gets built."
+    )
+    return 0
 
 
 def main():
     problems = []
+    apply_target = None
+    if "--apply" in sys.argv:
+        idx = sys.argv.index("--apply")
+        if idx + 1 >= len(sys.argv):
+            print("[ERROR] --apply requires a site code, e.g. --apply DET")
+            return 1
+        apply_target = sys.argv[idx + 1].strip().upper()
 
     sites = load_sites(problems)
     devices_sites = load_devices_sites(problems)
@@ -142,9 +267,12 @@ def main():
 
     if problems:
         print("\n".join(problems))
-        return 0
+        return 0 if apply_target is None else 1
 
     gi.load_address_policy(BENARBEJDE / "address_policy.csv")
+
+    if apply_target:
+        return apply_boilerplate(apply_target, sites, devices_sites, boilerplate)
 
     excluded = set(boilerplate.get("excluded_sites", []))
     new_sites = sorted(
@@ -164,13 +292,12 @@ def main():
 
     print(
         f"\n{len(new_sites)} new site(s) found with zero real equipment -- "
-        f"day-one boilerplate for each (ADVISORY, not a failure):"
+        f"day-one boilerplate for each (ADVISORY, not a failure -- run with "
+        f"--apply <SITE> to actually write it):"
     )
     for site in new_sites:
         base = sites[site]
-        print(f"\n  {site} ({base}.0/24):")
-        for line in build_boilerplate_list(site, base, boilerplate):
-            print(line)
+        print_advisory(site, base, build_boilerplate_rows(site, boilerplate))
 
     return 0
 
