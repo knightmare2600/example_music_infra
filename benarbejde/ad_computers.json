@@ -513,7 +513,7 @@
     "DNSHostName": "EXANASFAL001.jukebox.internal",
     "OS": "FreeNAS",
     "OperatingSystemVersion": "13.0-U6",
-    "IPv4Address": "192.168.76.32",
+    "IPv4Address": "192.168.76.19",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -527,7 +527,7 @@
     "DNSHostName": "EXAWKSFAL001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.76.10",
+    "IPv4Address": "192.168.76.100",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -541,7 +541,7 @@
     "DNSHostName": "EXAWKSFAL002.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.76.11",
+    "IPv4Address": "192.168.76.101",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -555,7 +555,7 @@
     "DNSHostName": "EXAWKSFAL003.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.76.12",
+    "IPv4Address": "192.168.76.102",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -569,7 +569,7 @@
     "DNSHostName": "EXALAPFAL001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.76.20",
+    "IPv4Address": "192.168.76.103",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -583,7 +583,7 @@
     "DNSHostName": "EXASWIFAL001.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "16.12",
-    "IPv4Address": "192.168.76.18",
+    "IPv4Address": "192.168.76.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -737,7 +737,7 @@
     "DNSHostName": "EXASWIFAL002.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.141.2",
+    "IPv4Address": "192.168.76.251",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -863,7 +863,7 @@
     "DNSHostName": "EXAVNDFAL005.jukebox.internal",
     "OS": "NT4 Embedded",
     "OperatingSystemVersion": "v4.0",
-    "IPv4Address": "192.168.76.65",
+    "IPv4Address": "192.168.76.66",
     "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
@@ -947,7 +947,7 @@
     "DNSHostName": "EXASURFAL001.jukebox.internal",
     "OS": "Windows 11",
     "OperatingSystemVersion": "23H2",
-    "IPv4Address": "192.168.76.94",
+    "IPv4Address": "192.168.76.104",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -989,7 +989,7 @@
     "DNSHostName": "EXATARFAL001.jukebox.internal",
     "OS": "Embedded Firmware",
     "OperatingSystemVersion": "1.02",
-    "IPv4Address": "192.168.76.30",
+    "IPv4Address": "192.168.76.33",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1003,7 +1003,7 @@
     "DNSHostName": "EXAMUSFAL001.jukebox.internal",
     "OS": "Pureline 128V Retro Vinyl Jukebox",
     "OperatingSystemVersion": "PL128V-ODE-095823",
-    "IPv4Address": "192.168.66.18",
+    "IPv4Address": "192.168.76.67",
     "ad_ou": "OU=IoT,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "IoT"
   },
@@ -1017,7 +1017,7 @@
     "DNSHostName": "EXAVCUFAL001.jukebox.internal",
     "OS": "Poly Studio X70",
     "OperatingSystemVersion": "POLY-X70-BON-772190",
-    "IPv4Address": "192.168.228.2",
+    "IPv4Address": "192.168.76.51",
     "ad_ou": "OU=AV,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
@@ -1031,7 +1031,7 @@
     "DNSHostName": "EXARDRFAL001.jukebox.internal",
     "OS": "HID Signo Reader",
     "OperatingSystemVersion": "HID-SIGNO-LIV-338572",
-    "IPv4Address": "192.168.31.16",
+    "IPv4Address": "192.168.76.16",
     "ad_ou": "OU=Servers,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -1227,7 +1227,7 @@
     "DNSHostName": "EXASVRCLY001.jukebox.internal",
     "OS": "Rocky Linux",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.141.20",
+    "IPv4Address": "192.168.41.20",
     "ad_ou": "OU=Servers,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -1311,7 +1311,7 @@
     "DNSHostName": "EXASWICLY001.jukebox.internal",
     "OS": "TP-Link JetStream",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.141.20",
+    "IPv4Address": "192.168.41.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1577,7 +1577,7 @@
     "DNSHostName": "EXARDRLIV002.jukebox.internal",
     "OS": "HID Signo Reader",
     "OperatingSystemVersion": "HID-SIGNO-LIV-338572",
-    "IPv4Address": "192.168.31.16",
+    "IPv4Address": "192.168.151.21",
     "ad_ou": "OU=Servers,OU=Devices,OU=Liverpool,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
