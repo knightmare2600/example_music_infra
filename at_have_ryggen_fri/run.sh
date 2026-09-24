@@ -8,6 +8,18 @@
 # Runs everything this repo has learned it needs to check the hard way, in one
 # place, so the next change doesn't silently reintroduce a bug already found
 # and fixed once:
+#
+#   CRITICALITY ALARM — check_criticality_alarm.py. Runs FIRST, before
+#     everything below, and behaves nothing like the other 43 checks: if
+#     devices.csv and ad_computers.json (two files this repo both treats as a
+#     real source of truth) actively disagree about which real device owns a
+#     given hostname, this stops the ENTIRE run immediately — no other
+#     section executes, nothing gets a tidy pass/fail summary. Named after a
+#     nuclear plant's own criticality alarm (Robert, 2026-09-24) — the point
+#     isn't "another bug to fix," it's "we don't actually know the truth
+#     right now, stop and get a human." See that script's own header for the
+#     concrete PER/EXACVNDER001 case that prompted it.
+#
 #   1. YAML validity        -- every git-tracked *.yml/*.yaml in the whole repo
 #      parses (via git ls-files, not a directory walk -- automatically covers
 #      new files anywhere, not just ansible/).
@@ -752,6 +764,32 @@
 #               the now-fixed files, not just confirmed clean against
 #               current data -- see the check's own header for the full
 #               writeup.
+#   2026-09-24  Added the CRITICALITY ALARM (check_criticality_alarm.py),
+#               Robert's explicit ask after confirming that ad_computers.json's
+#               EXACVNDER001 ("Scone Palace vending machine") and
+#               devices.csv's own real PER,VND,1 row ARE genuinely two
+#               different real devices -- meaning "EXAVNDPER001" is a
+#               hostname both files' data implicates, via EXACVNDER001's own
+#               DNSHostName field, and nothing before this caught that as a
+#               problem. Robert's framing: when two files this repo both
+#               treats as a source of truth actively conflict, that's not an
+#               ordinary bug to log and fix later -- stop dead, loudly, and
+#               get a human, same idea as a nuclear plant's own criticality
+#               alarm. This is why it's wired in as the very first thing
+#               run.sh does, and why (unlike every other check here) it
+#               exits the whole script immediately on failure instead of
+#               adding to FAILED_CHECKS and continuing. First real run
+#               caught the PER case it was built for, plus one genuinely new
+#               one neither of us had found yet (EXAPRNLND002's DNSHostName
+#               wrongly claiming EXAPRNLND001) and PER's own 4-way phone
+#               duplicate, already known from the wider IP-drift backlog but
+#               not previously visible as a DNSHostName-level conflict too.
+#               Missing-counterpart detection (a real devices.csv row with
+#               NO ad_computers.json record at all, or vice versa) is
+#               deliberately NOT implemented yet -- see the check's own
+#               header for why a naive version of that would likely alarm
+#               on legitimate Linux-infrastructure gaps on its very first
+#               run, which is a bad way to introduce a hard-stop mechanism.
 # ==============================================================================
 set -uo pipefail
 
@@ -809,6 +847,40 @@ command -v ansible-playbook >/dev/null || die "ansible-playbook not found on PAT
 command -v python3         >/dev/null || die "python3 not found on PATH"
 
 FAILED_CHECKS=()
+
+# ------------------------------------------------------------------------------
+# CRITICALITY ALARM — check_criticality_alarm.py
+# ------------------------------------------------------------------------------
+# Runs FIRST, before every other section, and unlike every other check in this
+# harness, a failure here does not add to FAILED_CHECKS and keep going — it
+# stops the whole run dead, immediately. Robert, 2026-09-24 (named after a
+# nuclear plant's own criticality alarm): this repo treats more than one file
+# as a real source of truth (devices.csv, ad_computers.json) — when two of
+# them turn out to actively disagree about which real device owns a given
+# hostname, nothing else this harness checks can be trusted until a human
+# resolves which file is actually right. Running 40+ more checks against
+# data that might be wrong at the root, and reporting a tidy "all clear" at
+# the end regardless, would be worse than not checking at all. See the
+# script's own header for the concrete PER/EXACVNDER001 case that prompted
+# this.
+echo -e "${WHITE}══════════════════════════════════════════════════════════════${NC}"
+echo -e "${WHITE}  CRITICALITY ALARM — check_criticality_alarm.py${NC}"
+echo -e "${WHITE}══════════════════════════════════════════════════════════════${NC}"
+echo
+
+if out=$(python3 "${HERE}/check_criticality_alarm.py"); then
+  echo "$out"
+  success "No source-of-truth conflicts found between devices.csv and ad_computers.json."
+else
+  echo "$out"
+  echo
+  fail "CRITICALITY ALARM — devices.csv and ad_computers.json actively disagree about which real device owns at least one hostname (see above). This is not an ordinary check failure: nothing downstream of either file can be trusted until a human resolves which one is right. STOPPING HERE — no other check in this harness has run."
+  if ! $NO_REPORT; then
+    info "Full report written to: ${REPORT_FILE}"
+    info "(also copied to: ${LATEST_FILE})"
+  fi
+  exit 1
+fi
 
 # ------------------------------------------------------------------------------
 # 1. YAML validity

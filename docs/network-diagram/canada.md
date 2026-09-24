@@ -158,7 +158,7 @@ graph TD
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_DON["🍩 EXADONBRK001<br/>Donut Vending<br/>192.168.136.60"]
     T_LAP["💻 EXALAPBRK001<br/>Tour Laptop<br/>No IP Address"]
-    T_VND["🍫 EXAVNDBRK001<br/>Vending Machine<br/>No IP Address"]
+    T_VND["🍫 EXAVNDBRK001<br/>Maple Syrup Vending Unit<br/>192.168.136.61"]
     T_DON --> T_VND
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
