@@ -1647,7 +1647,7 @@
     "DNSHostName": "EXASWIBIR001.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.121.2",
+    "IPv4Address": "192.168.121.250",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1686,10 +1686,10 @@
     "Site": "BIR",
     "Description": "HP iLO in Birmingham (Administrator:Ay3L0w@)",
     "Enabled": true,
-    "DNSHostName": "EXARACBIR001.jukebox.internal",
+    "DNSHostName": "EXAILOBIR001.jukebox.internal",
     "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.121.30",
+    "IPv4Address": "192.168.121.2",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1759,7 +1759,7 @@
     "DNSHostName": "EXASWIBIR002.jukebox.internal",
     "OS": "",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.121.20",
+    "IPv4Address": "192.168.121.251",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1771,9 +1771,9 @@
     "Description": "Dell DRAC Birmingham",
     "Enabled": true,
     "DNSHostName": "EXARACBIR001.jukebox.internal",
-    "OS": "",
+    "OS": "Dell iDRAC9",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.121.6",
+    "IPv4Address": "192.168.121.3",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1787,7 +1787,7 @@
     "DNSHostName": "EXALCDBIR001.jukebox.internal",
     "OS": "NEC PlasmaSync 42MP1",
     "OperatingSystemVersion": "PlasmaSync v1.x",
-    "IPv4Address": "192.168.121.30",
+    "IPv4Address": "192.168.121.75",
     "ad_ou": "OU=AV,OU=Devices,OU=Birmingham,OU=England,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "AV"
   },
