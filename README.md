@@ -228,7 +228,7 @@ Unless explicitly stated otherwise, all deployments MUST conform to these conven
 | Offset | Role |
 |--------|------|
 | `.1` | RTR — upstream / ISP gateway |
-| `.2–.4` | BMC / RAC — iDRAC, iLO, Redfish |
+| `.2–.4` | BMC / ILO / RAC — out-of-band management (iDRAC, iLO, Redfish) — see note below |
 | `.5–.7` | PVE — Proxmox VE nodes |
 | `.10–.11` | DCS — Domain Controllers |
 | `.19` | NAS — storage (NAS/SAN, e.g. TrueNAS) |
@@ -248,6 +248,27 @@ This table is also encoded as data in `benarbejde/address_policy.csv` — see [d
 > centralised at VRK/FRD, not per-site. `.19` NAS is new, for site storage (TrueNAS) — a real
 > per-site rollout, replacing 3 retired legacy NAS boxes at FAL/PER/MEL that used to sit at
 > inconsistent ad-hoc addresses.
+
+> **BMC vs ILO vs RAC (clarified 2026-09-24, Robert).** All three share the same `.2–.4` pool
+> and the same 🔧 symbol — they're the same *kind* of thing (an out-of-band management
+> interface), named by how much is known about the real hardware:
+> - **`BMC`** — the generic, vendor-unknown placeholder. Not a real `devices.csv` Type; it's
+>   what `generate_inventory.py` synthesizes automatically for a site's `.2`/`.3`/`.4` slots
+>   when no real device row claims them yet.
+> - **`ILO`** — a real, built device that's genuinely HP/HPE hardware (`EXAILO<SITE><NNN>`).
+> - **`RAC`** — a real, built device that's genuinely Dell hardware, i.e. iDRAC
+>   (`EXARAC<SITE><NNN>`). The vendor is what decides the name, nothing else — a site with one
+>   HP server and one Dell server legitimately has both an `ILO` and a `RAC` record, each with
+>   its **own** distinct address in the `.2–.4` pool; they must never share one (two real
+>   physical interfaces sharing an address is always a data bug, not a valid shared-slot
+>   pattern — see `at_have_ryggen_fri/check_ad_data_integrity.py`, sub-checks E/F).
+> - `RAC` predates this convention as a *different*, now-retired thing (a generic BMC-slot
+>   synonym, same idea as today's `BMC`) — those old rows were swept to `EXABMC<SITE>NNN`
+>   estate-wide 2026-07-31 (see that changelog entry above). `RAC` was excluded from
+>   `devices.csv` generation as part of retiring that old generic usage
+>   (`ALWAYS_EXCLUDE_TYPES`), which also accidentally blocked the *current*, still-valid
+>   Dell-vendor usage from ever getting a real `devices.csv` row — fixed 2026-09-24, matching
+>   `ILO`'s own 2026-07-26 precedent exactly (see `role_codes.csv`).
 
 ### Naming
 
