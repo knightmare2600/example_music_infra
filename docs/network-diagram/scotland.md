@@ -232,8 +232,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRFAL001<br/>RTR<br/>192.168.76.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCFAL001<br/>BMC 1<br/>192.168.76.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEFAL001<br/>PVE 1<br/>192.168.76.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWIFAL003<br/>SWI 3<br/>192.168.76.252"]
@@ -270,6 +268,7 @@ graph TD
     T_OTH_WKS["🖥️ EXAWKSFAL001-003<br/>3 x Workstations<br/>192.168.76.100-102"]
     T_LAP["💻 EXALAPFAL001<br/>Production Laptop<br/>192.168.76.103"]
     T_SUR["🖊️ EXASURFAL001<br/>Microsoft Surface<br/>192.168.76.104"]
+    T_OTH_RAC["🔧 EXARACFAL001-002<br/>2 x Dell IDRACs<br/>192.168.76.2-3"]
     T_OTH_PHN["📞 EXAPHNFAL001-003,006-007<br/>5 x Office Phones<br/>No IP Address"]
     T_TAB["📱 EXATABFAL001<br/>Tablet<br/>No IP Address"]
     T_TTY["⌨️ EXATTYFAL001<br/>VT320 Serial Terminal<br/>No IP Address"]
@@ -277,11 +276,10 @@ graph TD
     T_OTH_CAR["🚗 EXACARFAL001-005<br/>5 x Cars<br/>No IP Address"]
     T_OTH_TRK["🚚 EXATRKFAL001-005<br/>5 x Trucks<br/>No IP Address"]
     T_OTH_JET["✈️ EXAJETFAL001-005<br/>5 x Jets<br/>No IP Address"]
-    T_TAR --> T_VCU --> T_TEA --> T_OTH_VND --> T_CLK --> T_OTH_WKS --> T_SUR --> T_TAB --> T_OTH_BUS --> T_OTH_TRK
-    T_LCD --> T_PMP --> T_DON --> T_OTH_CAM --> T_PAY --> T_LAP --> T_OTH_PHN --> T_TTY --> T_OTH_CAR --> T_OTH_JET
+    T_TAR --> T_VCU --> T_TEA --> T_OTH_VND --> T_CLK --> T_OTH_WKS --> T_SUR --> T_OTH_PHN --> T_TTY --> T_OTH_CAR --> T_OTH_JET
+    T_LCD --> T_PMP --> T_DON --> T_OTH_CAM --> T_PAY --> T_LAP --> T_OTH_RAC --> T_TAB --> T_OTH_BUS --> T_OTH_TRK
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -312,6 +310,7 @@ graph TD
     style T_OTH_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SUR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_OTH_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_OTH_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TTY fill:#000000,stroke:#FFFFFF,color:#FFFFFF
