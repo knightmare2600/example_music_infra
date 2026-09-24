@@ -60,7 +60,48 @@
 #               effort. bind9-dns.yml also gained street_address/postal_code/office_name/
 #               country_code for the first time here -- it never passed the address fields
 #               at all before this, a separate pre-existing gap found while doing this sweep.
+#   2026-09-24  BUG FIX, Robert's ask (ansibleme.sh idempotency audit): this task
+#               unconditionally set bootstrapped_at to the CURRENT run's timestamp
+#               every single time it ran, on every one of its 6 callers -- silently
+#               destroying the one fact the field exists to record (when the node
+#               was genuinely first built) on every routine re-run of linux/tools.yml,
+#               proxmox/site.yml, firewallme, rudder_server.yml, bind9-dns.yml, or
+#               truenas. Now reads the existing file first (same stat+slurp pattern
+#               already used by nodeinfo_environment.yml right above this file) and
+#               preserves its real bootstrapped_at/bootstrapped_by if present --
+#               only a genuine first-ever write sets them fresh. Added a new field,
+#               last_ansible_run, always set to this run's own timestamp -- the
+#               "when was this node last touched by Ansible" fact bootstrapped_at
+#               was never meant to answer and now doesn't have to.
 # =============================================================================
+
+- name: "[nodeinfo] Check for existing /etc/example-music/nodeinfo.json"
+  tags: always
+  ansible.builtin.stat:
+    path: /etc/example-music/nodeinfo.json
+  register: _nodeinfo_existing_file
+
+- name: "[nodeinfo] Read existing nodeinfo.json"
+  tags: always
+  ansible.builtin.slurp:
+    src: /etc/example-music/nodeinfo.json
+  register: _nodeinfo_existing_content
+  when: _nodeinfo_existing_file.stat.exists
+  changed_when: false
+
+- name: "[nodeinfo] Preserve bootstrapped_at/bootstrapped_by from the existing file, if any"
+  tags: always
+  ansible.builtin.set_fact:
+    _nodeinfo_bootstrapped_at: "{{ (_nodeinfo_existing_content.content | b64decode | from_json).bootstrapped_at | default(ansible_date_time.iso8601) }}"
+    _nodeinfo_bootstrapped_by: "{{ (_nodeinfo_existing_content.content | b64decode | from_json).bootstrapped_by | default(nodeinfo_bootstrapped_by) }}"
+  when: _nodeinfo_existing_file.stat.exists
+
+- name: "[nodeinfo] Default bootstrapped_at/bootstrapped_by (no existing file -- genuine first write)"
+  tags: always
+  ansible.builtin.set_fact:
+    _nodeinfo_bootstrapped_at: "{{ ansible_date_time.iso8601 }}"
+    _nodeinfo_bootstrapped_by: "{{ nodeinfo_bootstrapped_by }}"
+  when: not _nodeinfo_existing_file.stat.exists
 
 - name: "Write /etc/example-music/nodeinfo.json"
   tags: always
@@ -84,8 +125,9 @@
           'street_address':   nodeinfo_street_address | default(''),
           'postal_code':      nodeinfo_postal_code | default(''),
           'ansible_managed':  true,
-          'bootstrapped_at':  ansible_date_time.iso8601,
-          'bootstrapped_by':  nodeinfo_bootstrapped_by,
+          'bootstrapped_at':  _nodeinfo_bootstrapped_at,
+          'bootstrapped_by':  _nodeinfo_bootstrapped_by,
+          'last_ansible_run': ansible_date_time.iso8601,
           'environment':      nodeinfo_environment | default('production'),
         } | combine(nodeinfo_extra | default({}))
       }}
