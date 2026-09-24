@@ -68,10 +68,26 @@ isn't in `sites.csv`, is one of the architecturally-special sites (CLD/VRK/FRD),
 has any real `devices.csv` rows — this is specifically for a genuinely brand-new site, not
 a way to bulk-append to one already in progress.
 
-**Deliberately does NOT touch `ad_computers.json`.** That file drives real `New-ADComputer`
-creation — writing planned/unbuilt hardware into it would try to create real AD objects for
-equipment that doesn't exist yet. AD records only get added once hardware is actually
-confirmed built (Phase 2, below).
+**A partially-built site — already has some real equipment, just not all of it** — needs a
+different command:
+
+```bash
+python3 at_have_ryggen_fri/check_new_site_boilerplate.py --complete <SITE>
+```
+
+Checks every boilerplate Type against what the site already has on record (any real row of
+that Type counts, regardless of Number/octet — a firewall sitting at a non-standard Number
+still counts as "this site has a firewall"), then writes `Planned=yes` rows for exactly the
+missing Types, leaving everything already there untouched. Refuses if the site has zero
+existing rows at all (use `--apply` instead) or is architecturally special. Found live
+2026-09-24 asking whether an already-started site (FAX) had everything — it didn't (missing
+SBC/badge-reader/NAS/both Proxmox+BMC pairs/a real DCS, despite already having a router,
+firewall, switch and WAPs).
+
+**Both deliberately do NOT touch `ad_computers.json`.** That file drives real
+`New-ADComputer` creation — writing planned/unbuilt hardware into it would try to create
+real AD objects for equipment that doesn't exist yet. AD records only get added once
+hardware is actually confirmed built (Phase 2, below).
 
 ## 3. Run the harness
 
