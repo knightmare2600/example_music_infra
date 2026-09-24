@@ -48,8 +48,24 @@ in a different way, not by any check beforehand:
      both claiming `.30`) -- devices.csv has no opinion on these (no real
      row exists for either device), so bug class 5's check can't catch
      them; a same-site duplicate-IP check catches this shape independently.
+  7. Found live 2026-09-24, working through the remaining ABD/BIR/BON/LAX
+     duplicate-IP pairs bug class 6 leaves unresolved when devices.csv also
+     has no opinion: Robert's own proposed fix -- "we need a third known
+     source of truth ... taking BIRSWI as our example, it documents
+     switches at 251". Confirmed live: `address_policy.csv`'s own
+     Type-and-instance-number convention (the same `OFFSETS_SINGLE`/
+     `ROLE_OFFSETS` generate_inventory.py itself uses) is a genuinely
+     THIRD, independent signal -- devices.csv's BIR,SWI,2 row (`.251`) and
+     address_policy.csv's own SWI-slot-2 convention (`.251`) agree with
+     each other and disagree with ad_computers.json's `.20`; 2-of-3
+     agreeing makes the outlier obvious without a human needing to guess.
+     Robert's framing, verbatim: "if all three disagree we print a message
+     and then the user has to decide. This is called failsafe." Explicitly
+     diagnostic only -- this check never edits data, matching Robert's
+     "don't fix any of them for now, just write or expand the checking
+     harness's checks" instruction.
 
-This checks six independent surfaces, all from the files themselves, no AD
+This checks seven independent surfaces, all from the files themselves, no AD
 connection required:
   A. Duplicate SamAccountName within ad_users.json, and within
      ad_computers.json, case-insensitively (catches bug class 3's typo
@@ -73,6 +89,18 @@ connection required:
      would generate (catches bug class 5).
   F. No two ad_computers.json records at the same Site share a non-blank
      IPv4Address (catches bug class 6).
+  G. FAILSAFE TRIANGULATION (Robert's own naming, 2026-09-24) -- for every
+     pair check F flags where devices.csv has no answer for at least one
+     side, brings in address_policy.csv's own Type-and-instance-number
+     convention as a third, independent signal and reports a verdict per
+     record: RESOLVABLE (2 of the up-to-3 signals agree, names the
+     outlier), PLAUSIBLE (only a pool-membership check available, e.g.
+     ILO/RAC's shared .2-.4 range, not a majority vote), or AMBIGUOUS
+     (devices.csv silent AND address_policy.csv has no convention at all
+     for this Type -- a genuinely ad hoc device like VCU). Never resolves
+     bug class 5's already-clear cases twice (those are devices.csv-backed
+     outright, check E already reports them) -- this is purely for the
+     harder cases check E and F together can't already settle.
 
 Exit code: 0 if nothing found, 1 otherwise.
 """
@@ -248,22 +276,102 @@ def check_ip_matches_devices_csv(problems, computers, real_addresses):
             )
 
 
-def check_duplicate_ip_within_site(problems, computers):
+def policy_expected_octet(role, number):
+    """address_policy.csv's own opinion of where a given Type's Nth instance belongs,
+    straight from the same OFFSETS_SINGLE/ROLE_OFFSETS generate_inventory.py itself
+    uses -- not a second, hand-rolled copy of the convention.
+
+    Returns ("exact", octet) when the Type+Number maps to one specific address (every
+    OFFSETS_SINGLE/ROLE_OFFSETS Type, including BMC itself); ("pool", {octets}) for
+    ILO/RAC, which share BMC's pool but have no fixed per-instance position (a real
+    ILO/RAC can legitimately sit at whichever pool slot was physically free -- CLY's own
+    real ILO/RAC landed on .3/.4, not .2/.3, see [[project_ilo_rac_bmc_convention_2026_09_24]]);
+    or None when address_policy.csv has no convention for this Type at all (ad hoc
+    device classes like VCU, LCD, SVR -- devices.csv's own real row, when one exists, is
+    the only source of truth for these, and check E already covers that case).
+    """
+    if number == 1 and role in gi.OFFSETS_SINGLE:
+        return ("exact", gi.OFFSETS_SINGLE[role])
+    if role in gi.ROLE_OFFSETS and 1 <= number <= len(gi.ROLE_OFFSETS[role]):
+        return ("exact", gi.ROLE_OFFSETS[role][number - 1])
+    if role in ("ILO", "RAC") and "BMC" in gi.ROLE_OFFSETS:
+        return ("pool", set(gi.ROLE_OFFSETS["BMC"]))
+    return None
+
+
+def triangulate(c, real_addresses):
+    """One record's own three possible signals for what its real address should be --
+    devices.csv (exact, when a real row exists), address_policy.csv (exact or pool,
+    when this Type has a convention), or neither (genuinely ad hoc, no independent
+    opinion at all). Never guesses a Number from anything other than the hostname's own
+    trailing NNN -- the same convention build_hostname()/EXA<ROLE><SITE><NNN> already
+    uses estate-wide."""
+    sam = (c.get("SamAccountName") or "").rstrip("$")
+    role = (c.get("Role") or "").strip().upper()
+    try:
+        number = int(sam[-3:])
+    except (ValueError, IndexError):
+        number = None
+    devices_octet = None
+    if sam in real_addresses:
+        devices_octet = real_addresses[sam].rsplit(".", 1)[-1]
+    policy = policy_expected_octet(role, number) if (role and number) else None
+    return sam, devices_octet, policy
+
+
+def check_duplicate_ip_within_site(problems, computers, real_addresses):
     seen = defaultdict(list)
     for c in computers:
         site = c.get("Site")
         ip = (c.get("IPv4Address") or "").strip()
         if not site or not ip:
             continue
-        seen[(site, ip)].append(c.get("Name", c.get("SamAccountName", "?")))
-    for (site, ip), names in seen.items():
-        if len(names) > 1:
-            problems.append(
-                f"ad_computers.json: {site}'s {', '.join(names)} all claim "
-                f"IPv4Address '{ip}' -- either the same physical device "
-                f"recorded twice, or two real devices that both need their "
-                f"own real address"
-            )
+        seen[(site, ip)].append(c)
+    for (site, ip), members in seen.items():
+        if len(members) <= 1:
+            continue
+        names = [c.get("Name", c.get("SamAccountName", "?")) for c in members]
+        claimed_octet = ip.rsplit(".", 1)[-1]
+        verdicts = []
+        for c in members:
+            sam, devices_octet, policy = triangulate(c, real_addresses)
+            if devices_octet and devices_octet != claimed_octet:
+                verdicts.append(
+                    f"{sam}: devices.csv's own real address for this hostname is "
+                    f".{devices_octet}, not .{claimed_octet} -- RESOLVABLE, see the "
+                    f"separate IPv4Address-drift finding for this hostname above"
+                )
+            elif policy and policy[0] == "exact" and str(policy[1]) != claimed_octet:
+                verdicts.append(
+                    f"{sam}: address_policy.csv's own convention for this Type/"
+                    f"instance is .{policy[1]}, not .{claimed_octet}, and devices.csv "
+                    f"has no row for it -- RESOLVABLE (policy vs. claimed IP disagree, "
+                    f"devices.csv silent -- {sam}'s real address is very likely "
+                    f".{policy[1]})"
+                )
+            elif policy and policy[0] == "pool":
+                in_pool = claimed_octet.isdigit() and int(claimed_octet) in policy[1]
+                verdicts.append(
+                    f"{sam}: devices.csv has no row for it; address_policy.csv only "
+                    f"confirms {sam}'s Type shares the .{{{','.join(str(o) for o in sorted(policy[1]))}}} "
+                    f"pool, not a specific instance -- PLAUSIBLE" if in_pool else
+                    f"{sam}: devices.csv has no row for it, and its claimed .{claimed_octet} "
+                    f"falls OUTSIDE its Type's expected .{{{','.join(str(o) for o in sorted(policy[1]))}}} "
+                    f"pool entirely -- AMBIGUOUS, likely a stale/placeholder address"
+                )
+            else:
+                verdicts.append(
+                    f"{sam}: devices.csv has no row for it, and address_policy.csv has "
+                    f"no addressing convention for this Type at all -- AMBIGUOUS, "
+                    f"needs a real answer from Robert, not an automated guess"
+                )
+        problems.append(
+            f"ad_computers.json: {site}'s {', '.join(names)} all claim IPv4Address "
+            f"'{ip}' -- either the same physical device recorded twice, or two real "
+            f"devices that both need their own real address. FAILSAFE TRIANGULATION "
+            f"(devices.csv + address_policy.csv as two more independent signals): "
+            + "; ".join(verdicts)
+        )
 
 
 def main():
@@ -289,7 +397,7 @@ def main():
     if computers is not None and real_addresses:
         check_ip_matches_devices_csv(problems, computers, real_addresses)
     if computers is not None:
-        check_duplicate_ip_within_site(problems, computers)
+        check_duplicate_ip_within_site(problems, computers, real_addresses)
 
     print(
         f"Checked {len(users or [])} users, {len(groups or [])} groups, "
