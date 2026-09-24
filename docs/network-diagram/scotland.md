@@ -230,7 +230,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRFAL001<br/>Current Live WAN Edge Router<br/>192.168.76.1"]
+    T_RTR["📡 EXARTRFAL001<br/>Current Live WAN Edge Router/firewall<br/>192.168.76.1"]
     T_VRK --> T_RTR
     T_PVE["🗂️ EXAPVEFAL001<br/>PVE 1<br/>192.168.76.5"]
     T_RTR --> T_PVE

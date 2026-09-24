@@ -207,7 +207,8 @@ connection required:
      its OWN Type (catches bug class 10). Respects SUPPRESSED_STANDARD_ROLES
      (generate_inventory.py's own record of deliberate, already-approved
      slot reuse) so a genuinely intentional reuse is never misreported as a
-     collision.
+     collision. Also skips Enabled:false records entirely -- a decommissioned
+     device's address is historical record-keeping, never a live collision.
   K. No ad_computers.json record's IPv4Address matches devices.csv's own
      real address for a DIFFERENT hostname (catches bug class 11) -- two
      real devices sharing one live IP is worse than either check E or F
@@ -519,8 +520,16 @@ def check_cross_role_collision(problems, computers, octet_role_map, real_address
     (.101, assuming only one WKS per site) at all -- without this, EXAWKSFAL001 (.100)
     would false-flag as a cross-role collision candidate purely because the GENERIC
     policy doesn't cover a legitimate, real, site-specific exception devices.csv already
-    confirms."""
+    confirms.
+
+    2026-09-24, same evening: also skips Enabled:false records -- found via
+    EXARTRFAL002 (FAL's decommissioned Cisco ISR 4331, Robert-confirmed retired and
+    replaced by a Debian VM, IP set to .254 which happens to be FWL's own reserved slot
+    at that site). A disabled device's address is historical record-keeping, not a live
+    claim on network territory -- it can never actually collide with anything real."""
     for c in computers:
+        if c.get("Enabled") is False:
+            continue
         sam = (c.get("SamAccountName") or "").rstrip("$")
         role = (c.get("Role") or "").strip().upper()
         site = (c.get("Site") or "").strip()
