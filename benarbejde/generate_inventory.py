@@ -452,6 +452,13 @@ SPECIAL_SITES = {
 ALLOWED_IP_ALIASES = {
   ("Gateway", "Firewall"),
   ("Firewall", "Gateway"),
+  # 2026-09-24: every site unconditionally registers its standard-template "Domain Controller"
+  # slot (vals["DC"], sites.csv's own DC column) regardless of whether a real devices.csv DCS row
+  # exists there too -- same shape as Gateway/Firewall above, just for FRD/VRK's newly-added real
+  # DCS rows (see devices.csv's own 2026-09-24 changelog note): both describe the exact same
+  # physical device at the exact same octet, not a genuine collision.
+  ("DCS", "Domain Controller"),
+  ("Domain Controller", "DCS"),
 }
 
 ## BRD / BER are allowed to overlap (legacy vs modern naming)
@@ -656,8 +663,17 @@ def load_devices(devices_path: Path):
     # this check to be deduplicating against there -- without this, FRD's real EXAPVEFRD001 at
     # octet 5 was silently vanishing here, having already survived the ALWAYS_EXCLUDE_TYPES check
     # just above.
+    # 2026-09-24: DCS added to the same carve-out, same bug, found the same way. EXADCSFRD001
+    # (built 2026-09-19, forest root, dcdiag all-PASS) and EXADCSVRK001 both sit at DCS's own
+    # standard octet (.10) -- with no carve-out, a real devices.csv row for either would vanish
+    # right here (STANDARD_OFFSETS['DCS'] includes 10 regardless of site), meaning neither ever
+    # reached emit_devices_for_dns()'s all_devices list, so BIND9 has never had an A record for
+    # either DC despite both being live and Ansible-managed via a hand-known ansible_host in
+    # frd.ini/vrk.ini's own unconditional dcs1_line (build_ini() computes that independently of
+    # this function and was never affected). Root-caused live, Robert's call: fix via real
+    # devices.csv rows (option a), not by narrowing NON_STANDARD_SITES's DNS-suppression itself.
     if (octet is not None and octet in STANDARD_OFFSETS.get(dtype, set())
-        and not (dtype == "PVE" and site in NON_STANDARD_SITES)):
+        and not (dtype in ("PVE", "DCS") and site in NON_STANDARD_SITES)):
       stats["excluded_standard"] += 1
       continue
 
