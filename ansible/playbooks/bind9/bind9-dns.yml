@@ -1,18 +1,33 @@
 ---
 # =============================================================================
 # Example Music Limited -- BIND9 DNS Server Playbook
-# Target      : EXADNSVRK001  (exadnsvrk001.jukebox.internal)
-# Role        : Authoritative DNS -- jukebox.internal
+# Target      : EXADNSVRK001  (exadnsvrk001.jukebox.internal) -- master, default
+#               EXADNSFRD001  (exadnsfrd001.jukebox.internal) -- secondary/replica
+# Role        : Authoritative DNS (master) or secondary/replica (slave) -- jukebox.internal
 # OS          : Debian trixie
-# IP          : 192.168.139.8/24  (provisioning network)
+# IP          : 192.168.139.8/24 (VRK, provisioning network) or
+#               172.16.124.8/24 (FRD, its own current sites.csv subnet)
 #
-# This playbook mirrors bindme.sh exactly.  It is the idempotent,
-# Ansible-managed equivalent -- suitable for ongoing configuration
-# management and CI enforcement.  bindme.sh is the bootstrapper;
-# this playbook is the enforcer.
+# This playbook mirrors bindme.sh exactly for the master role. It is the
+# idempotent, Ansible-managed equivalent -- suitable for ongoing
+# configuration management and CI enforcement. bindme.sh is the
+# bootstrapper; this playbook is the enforcer. bindme.sh does NOT yet have
+# a matching secondary/slave mode -- that's a follow-up, not blocking this
+# (the Ansible path is the documented "normal path" for every other
+# playbook family in this repo; break-glass bash scripts are always
+# secondary).
+#
+# 2026-09-24: Play 1 (this play) now supports EXADNSFRD001 as a genuine
+# secondary/replica of this same zone (Robert, confirmed: not a separate
+# authoritative sub-zone, not a caching-only forwarder) -- see
+# docs/adding-a-new-site.md for the full context. Play 2 (zone generation
+# from devices.csv, below) stays master-only by design and always targets
+# EXADNSVRK001 -- a secondary never generates zone content locally, BIND9
+# pulls and caches it automatically via AXFR/IXFR from the master.
 #
 # Prerequisites:
-#   - Host reachable on 192.168.139.8 via SSH as ansible user
+#   - Host reachable via SSH as ansible user (192.168.139.8 for VRK,
+#     172.16.124.8 for FRD)
 #   - sites.csv present at {{ sites_csv_path }} on the control node
 #   - Python 3 on the target (standard Debian trixie)
 #
@@ -20,20 +35,41 @@
 #   sites_csv_path   -- path to sites.csv on the control node
 #                       default: /etc/example-music/sites.csv
 #   dns_ip           -- static IP for this server
-#                       default: 192.168.139.8
-#   dns_gateway      -- provisioning network gateway
-#                       default: 192.168.139.254
+#                       default: derived from ansible_host (the real
+#                       inventory address for whichever -e target= host)
+#   dns_role         -- master (default) or slave
+#   dns_secondary_ip -- master only: the real secondary's IP, so
+#                       allow-transfer/notify are scoped to it. Leave unset
+#                       for a master with no secondary (today's behaviour).
+#   dns_master_ip    -- slave only: the real master's IP to replicate from.
+#                       REQUIRED when dns_role=slave -- no safe default,
+#                       the preflight task fails loudly if omitted.
+#   dns_gateway      -- this site's real gateway (see sites.csv). Defaults
+#                       to VRK's 192.168.139.254 only when target is the
+#                       default EXADNSVRK001 -- REQUIRED via -e for any
+#                       other target, the preflight task fails loudly
+#                       otherwise (VRK's gateway is meaningless elsewhere).
 #   dns_interface    -- NIC name (detected if omitted)
-#                       default: "" (autodetect via 192.168.139.x)
+#                       default: "" (autodetect via dns_ip's own subnet)
 #   zone_ttl         -- zone TTL in seconds
 #                       default: 300
 #   zone_serial      -- override SOA serial (YYYYMMDDnn format)
 #                       default: auto (ansible_date_time.date + "01")
 #
 # Usage (run from ansible/ root):
+#   # Master (VRK) -- unchanged, defaults to today's exact behaviour:
 #   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml
 #   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --tags zones-full
 #   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --tags zones-full,reload
+#
+#   # Master, once a secondary exists -- scopes allow-transfer/notify to it:
+#   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml \
+#     -e dns_secondary_ip=172.16.124.8
+#
+#   # Secondary (FRD) -- first-ever run, fresh box on its own subnet already:
+#   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml \
+#     -e target=EXADNSFRD001 -e dns_role=slave \
+#     -e dns_master_ip=192.168.139.8 -e dns_gateway=172.16.124.2
 #
 # IMPORTANT: `zones` (Play 1, below) and `zones-full` (Play 2) are NOT
 # interchangeable. Play 1's zone generation is superseded by Play 2 (see
@@ -43,6 +79,7 @@
 # `--tags zones,reload` on its own regenerates zones from Play 1's old
 # SUFFIX_MAP/hardcoded-hosts logic ONLY, without ever reading devices.csv.
 # Always use `zones-full` (not `zones`) to pick up a devices.csv change.
+# Play 2 is master-only regardless -- never run it against a slave target.
 #
 # Tags:
 #   packages    -- apt install
@@ -197,20 +234,43 @@
 #               named-checkconf tools, no hyphen -- a different package) unaffected.
 # =============================================================================
 
-- name: EXADNSVRK001 -- BIND9 DNS server
-  hosts: EXADNSVRK001
+- name: BIND9 DNS server (master or secondary)
+  hosts: "{{ target | default('EXADNSVRK001') }}"
   become: true
 
   vars:
-    dns_ip: "192.168.139.8"
-    dns_gateway: "192.168.139.254"
+    # 2026-09-24: dns_ip/this_hostname derived from the real inventory instead of
+    # hardcoded to VRK -- Robert confirmed EXADNSFRD001 as a genuine secondary/replica
+    # of this same zone (see docs/adding-a-new-site.md), which needs this playbook able
+    # to target either host. ansible_host/inventory_hostname already resolve correctly
+    # for whichever host -e target= points at, once devices.csv has a real DNS row for
+    # it (FRD,DNS,1,8 added 2026-09-24) -- no second, hand-maintained IP/hostname pair.
+    dns_ip: "{{ ansible_host }}"
+    this_hostname: "{{ inventory_hostname }}"
+    # dns_role: master (default, VRK's own current behaviour, unchanged) or slave.
+    # A slave never generates zone content locally -- Play 2 below refuses to run
+    # against one (see its own preflight task).
+    dns_role: "{{ dns_role | default('master') }}"
+    # Only meaningful when dns_role=master: the real secondary's IP, so allow-transfer
+    # is scoped to it specifically (never 'any') and NOTIFY is enabled. Leave unset for
+    # a master with no secondary yet -- allow-transfer stays 'none', matching today's
+    # behaviour exactly.
+    dns_secondary_ip: "{{ dns_secondary_ip | default('') }}"
+    # Only meaningful when dns_role=slave: the real master's IP to replicate from.
+    # No safe default -- a slave pointed at the wrong master would silently serve
+    # someone else's zone data, so this must be passed explicitly (-e dns_master_ip=...)
+    # or the preflight task below fails loudly rather than guess.
+    dns_master_ip: "{{ dns_master_ip | default('') }}"
+    # dns_gateway has no safe cross-site default (VRK's 192.168.139.254 is meaningless
+    # on FRD's 172.16.124.0/24) -- required explicitly via -e for any target other than
+    # the historical VRK default, the preflight task below fails loudly otherwise.
+    dns_gateway: "{{ dns_gateway | default('192.168.139.254' if (target | default('EXADNSVRK001')) == 'EXADNSVRK001' else '') }}"
     dns_interface: ""          # autodetected below if blank
     zone_ttl: 300
     zone_serial: "{{ ansible_date_time.date | replace('-', '') }}01"
     sites_csv_path: "/etc/example-music/sites.csv"
     devices_csv_path: "/etc/example-music/devices.csv"
     bind_zone_dir: "/etc/bind"
-    this_hostname: "EXADNSVRK001"
     ad_forest_json_path: "/etc/example-music/ad_forest.json"
     domain: "{{ (lookup('file', ad_forest_json_path) | from_json).domain_fqdn }}"
 
@@ -244,6 +304,23 @@
       - { suffix: 253, prefix: "exafwl", seq: 1 }
 
   pre_tasks:
+    - name: Preflight -- refuse to guess a role-specific value that has no safe default
+      tags: always
+      assert:
+        that:
+          - not (dns_role == 'slave' and dns_master_ip == '')
+          - not (dns_gateway == '')
+        fail_msg: >-
+          {{
+            "dns_role=slave needs -e dns_master_ip=<real master IP> -- no safe default, a
+            slave pointed at the wrong master would silently serve someone else's zone
+            data."
+            if (dns_role == 'slave' and dns_master_ip == '')
+            else
+            "dns_gateway has no safe default for target=" ~ (target | default('EXADNSVRK001'))
+            ~ " -- pass -e dns_gateway=<this site's real gateway> explicitly (see sites.csv)."
+          }}
+
     - name: Gate on /etc/example-music/* freshness
       tags: always
       include_tasks: ../../tasks/example_music_freshness_gate.yml
@@ -344,12 +421,20 @@
         # regardless of its real interface -- only surfaced now because this box's real
         # interface (ens18) isn't literally named ens33, so the later ansible_facts[dns_interface]
         # lookup had no such key and crashed. Single backslash is correct in a block scalar.
+        #
+        # BUG FIX (2026-09-24): the subnet prefix itself was hardcoded to VRK's own
+        # 192.168.139.x, which would never match on any other target (e.g. FRD's real
+        # 172.16.124.x) -- silently falling back to 'ens33' there too, the exact same
+        # failure mode the 2026-07-21 fix above was written to catch. Derived from dns_ip's
+        # own first 3 octets instead (regex_escape'd -- dns_ip is a plain dotted-decimal
+        # value, never a real regex, but escaping the literal dots is still correct practice)
+        # so this works for whichever real target -e target= points at, not just VRK.
         dns_interface: >-
           {{
             ansible_interfaces
             | map('extract', ansible_facts)
             | selectattr('ipv4.address', 'defined')
-            | selectattr('ipv4.address', 'match', '^192\.168\.139\.')
+            | selectattr('ipv4.address', 'match', '^' ~ (dns_ip.split('.')[:3] | join('.') | regex_escape) ~ '\.')
             | map(attribute='device')
             | first
             | default('ens33')
