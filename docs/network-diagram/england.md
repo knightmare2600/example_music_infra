@@ -29,7 +29,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRLND001<br/>Cisco ASA 5516-X · WAN edge, router/firewall combo<br/>192.168.20.1"]
+    O_RTR["📡 EXARTRLND001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.20.1"]
     O_SWI["🔀 EXASWILND001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.20.250"]
     O_DCR["🗝️ EXADCRLND001<br/>DC · RID/Infra Master<br/>192.168.20.10"]
     O_MIC["🎤 EXAMICLND001<br/>Shure SM7 via Dante audio<br/>192.168.20.81"]
@@ -121,7 +121,7 @@ graph TD
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSLND001<br/>DCS 1<br/>192.168.20.10"]
     T_SBC["🛡️ EXASBCLND001<br/>SBC<br/>192.168.20.48"]
-    T_FWL["🧱 EXAFWLLND001<br/>LAN Face<br/>192.168.20.253"]
+    T_FWL["🧱 EXAFWLLND001<br/>Perimeter Firewall And VPN Gateway<br/>192.168.20.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_RAD["📻 EXARADLND001<br/>BBC Office Radio Mk II<br/>192.168.20.80"]
     T_MIC["🎤 EXAMICLND001<br/>Shure SM7 Via Dante Audio<br/>192.168.20.81"]
@@ -173,7 +173,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBIR001<br/>Palo Alto PanOS · WAN edge, router/firewall combo<br/>192.168.121.1"]
+    O_RTR["📡 EXARTRBIR001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.121.1"]
     O_SWI1["🔀 EXASWIBIR001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.121.250"]
     O_SWI2["🔀 EXASWIBIR002<br/>Cisco Catalyst 48-port · Access switch<br/>192.168.121.251"]
     O_AST["🕹️ EXAASTBIR001<br/>TOS 1.04 · Atari ST<br/>192.168.121.73"]
@@ -303,7 +303,7 @@ graph TD
     T_DCS["🗝️ EXADCSBIR001<br/>DCS 1<br/>192.168.121.10"]
     T_SVR["🗄️ EXASVRBIR001<br/>Oracle DB<br/>192.168.121.20"]
     T_SBC["🛡️ EXASBCBIR001<br/>SBC<br/>192.168.121.48"]
-    T_FWL["🧱 EXAFWLBIR001<br/>LAN Face<br/>192.168.121.253"]
+    T_FWL["🧱 EXAFWLBIR001<br/>Palo Alto Site Firewall / VPN Gateway<br/>192.168.121.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_MOO["🎹 EXAMOOBIR001<br/>Moog Synth<br/>192.168.121.70"]
     T_LIN["🥁 EXALINBIR001<br/>Drum Machine<br/>192.168.121.71"]

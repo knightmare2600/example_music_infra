@@ -138,8 +138,18 @@ in a different way, not by any check beforehand:
       already-confirmed 2-node Proxmox cluster exactly), so this is a
       genuinely useful inferred baseline for the still-open "how do we bring
       PVE in" question, not just a repeat of bug class 12/13's absence note.
+  15. Found live 2026-09-24, cross-referencing MEL's real FWL/SBC/NAS records
+      while working through the missing-devices.csv-row backlog: three MEL
+      records (EXAFWLMEL001, EXASBCMEL001, EXANASMEL001) had IPv4Address
+      values in a subnet that doesn't exist -- '192.168.361.x', an extra
+      stray digit against MEL's real, sites.csv-confirmed '192.168.61.0/24'
+      base. A whole-estate scan confirmed this is isolated to these 3
+      records, no wider pattern. Nothing before this validated an
+      IPv4Address's basic shape at all -- every previous IP-related check
+      (E/F/G/J/K) compares one real value against another, which silently
+      assumes both sides are at least well-formed.
 
-This checks twelve independent surfaces, all from the files themselves, no AD
+This checks thirteen independent surfaces, all from the files themselves, no AD
 connection required:
   A. Duplicate SamAccountName within ad_users.json, and within
      ad_computers.json, case-insensitively (catches bug class 3's typo
@@ -209,6 +219,11 @@ connection required:
      oldest/most universal standard-template categories; newer, still-
      rolling-out categories (NAS/SBC/WAP) are legitimately absent at real
      sites that haven't been retrofitted yet and would just add noise.
+  M. Every ad_computers.json record's IPv4Address, when non-blank, is a
+     structurally valid IPv4 address -- four numeric octets, each 0-255
+     (catches bug class 15). Runs before any comparison-based check (E/F/G/
+     J/K), which all silently assume both sides of a comparison are
+     well-formed to begin with.
 
 Two non-failing, whole-estate ADVISORIES also run (they never affect exit
 code): check_ldap_trackable_advisory (bug class 13 -- PVE/FWL/DCS are
@@ -344,6 +359,30 @@ def check_ad_ou_province(problems, records, filename, provinces):
                 f"is at Site={site}, which sites.csv says has Province="
                 f"'{province}', but its ad_ou doesn't contain "
                 f"'{expected_fragment}': {ad_ou}"
+            )
+
+
+def check_malformed_ipv4(problems, computers):
+    """Found live 2026-09-24, cross-referencing MEL's EXAFWLMEL001 for a
+    devices.csv row: its IPv4Address was '192.168.361.253' -- octet '361' is
+    not a valid IPv4 octet (0-255) at all, an extra stray digit against the
+    site's own real subnet base (192.168.61.0/24, confirmed via sites.csv and
+    every other MEL record). No previous check validates IPv4Address's basic
+    shape -- check E only compares against devices.csv when a row exists,
+    which these MEL records didn't have (that's exactly why this was
+    invisible until now). A malformed octet can't be a stale-data drift
+    question -- it was never a valid address to begin with."""
+    for c in computers:
+        ip = (c.get("IPv4Address") or "").strip()
+        if not ip:
+            continue
+        parts = ip.split(".")
+        if len(parts) != 4 or not all(p.isdigit() and 0 <= int(p) <= 255 for p in parts):
+            problems.append(
+                f"ad_computers.json: {c.get('SamAccountName', c.get('Name', '?'))}'s "
+                f"IPv4Address '{ip}' is not a valid IPv4 address (an octet is "
+                f"missing, non-numeric, or out of the 0-255 range) -- this was "
+                f"never a valid address, not just stale data"
             )
 
 
@@ -811,6 +850,8 @@ def main():
         check_ad_ou_province(problems, users, "ad_users.json", provinces)
     if computers is not None and provinces:
         check_ad_ou_province(problems, computers, "ad_computers.json", provinces)
+    if computers is not None:
+        check_malformed_ipv4(problems, computers)
     if computers is not None and real_addresses:
         check_ip_matches_devices_csv(problems, computers, real_addresses)
         check_cross_file_ip_collision(problems, computers, real_addresses)
