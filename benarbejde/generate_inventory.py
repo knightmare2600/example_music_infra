@@ -376,10 +376,18 @@ def load_address_policy(policy_path: Path, role_codes_path: Path = None):
 # ==================================================================================================
 # devices.csv columns: Site, Type, Number, HostOctet, OS, ConnectionType, Managed, Notes
 
-# Excluded unconditionally, regardless of octet (per longstanding operator instruction — RAC is
-# being decommissioned in favour of BMC; real PVE nodes are handled by the standard template +
-# group_vars/pvenodes/, not by the devices.csv exception path).
-ALWAYS_EXCLUDE_TYPES = {"RAC", "PVE"}
+# Excluded unconditionally, regardless of octet: real PVE nodes are handled by the standard
+# template + group_vars/pvenodes/, not by the devices.csv exception path.
+#
+# RAC removed from this set 2026-09-24 (Robert). It was excluded for retiring RAC's OLD meaning
+# (a generic BMC-slot synonym, same idea as today's BMC row -- those old rows were swept to
+# EXABMC<SITE>NNN estate-wide 2026-07-31), but RAC ALSO has a current, still-valid meaning that
+# exclusion was silently blocking too: a real, built device that's genuinely Dell hardware,
+# exactly parallel to ILO (which was never excluded) for HP hardware -- see README.md's
+# Addressing section and role_codes.csv's RAC/ILO/BMC rows for the full convention. Found live
+# investigating why EXARACCLY001/EXARACFAL001/002's real IPs kept coming out wrong -- there was
+# no devices.csv path for a real RAC device to get a governed address at all.
+ALWAYS_EXCLUDE_TYPES = {"PVE"}
 
 # Known Type -> existing inventory group, for devices.csv rows that ARE Ansible-managed. Anything
 # manageable but not in this map (e.g. a one-off NAS or Rudder relay) falls into a generic
@@ -770,7 +778,16 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
   # 2026-07-20 for the same reason -- BMC now flows through the normal site_devices path (see
   # FULL_RENDER_TYPES) if a real row is ever added, so this generic 3-line placeholder must not
   # also list the same octet, or the same physical device shows up twice.
-  real_bmc_octets = {dev["octet"] for dev in site_devices if dev["type"] == "BMC"}
+  # 2026-09-24: widened from Type=="BMC" alone to EVERY real device's octet, regardless of Type --
+  # first found with ILO/RAC (a real, vendor-known BMC interface occupies the exact same .2-.4
+  # pool under its own name, not a generic "BMC" label), then found AGAIN with CLY's real
+  # EXASWICLY002 switch sitting at .2 (a still-phantom "EXABMCCLY001 .2" placeholder kept
+  # showing even after the ILO/RAC fix, since a switch is neither BMC, ILO, nor RAC) -- same bug
+  # class as wap_block's own real_wap_octets below (AKL/SYD's real cameras at .82/.85 have the
+  # identical gap, a WAP placeholder phantom-showing over a real CAM device). Any real device at
+  # all sitting on one of these octets makes the generic "you could put one here" suggestion
+  # wrong, regardless of what Type it happens to be -- not narrowed to a specific Type list.
+  real_bmc_octets = {dev["octet"] for dev in site_devices}
   bmc_offsets = ROLE_OFFSETS.get("BMC", [])
   bmc_lines = "\n".join(
     f"# {hostnames[f'BMC{i}']}  {vals[f'BMC{i}']}"
@@ -805,7 +822,12 @@ def build_ini(site, row, vals, hostnames, net, site_devices):
     # above) -- WAP rows now render fully via the normal site_devices path below, so listing the
     # same octet again here as a generic "you might put one here" placeholder would just
     # duplicate it.
-    real_wap_octets = {dev["octet"] for dev in site_devices if dev["type"] == "WAP"}
+    # 2026-09-24: widened from Type=="WAP" alone to every real device's octet -- found live,
+    # AKL/SYD's own real cameras (Type=CAM, not WAP) sit at .82 (AKL) and .82/.85 (SYD), the
+    # exact octets their own devices.csv comments describe as "WAP1 reused by CAM" -- but this
+    # check never actually hid the phantom WAP1 placeholder there, because CAM != WAP. Same fix,
+    # same reasoning, as bmc_block's own real_bmc_octets above.
+    real_wap_octets = {dev["octet"] for dev in site_devices}
     wap_offsets = ROLE_OFFSETS.get("WAP", [])
     wap_lines = "\n".join(
       f"# {hostnames[f'WAP{i}']}  {vals[f'WAP{i}']}"
@@ -1071,7 +1093,8 @@ DNS_MULTI_ALL_INSTANCES = {"FWL", "SWI"}
 DNS_MULTI_FIRST_INSTANCE_ONLY = {"DCS", "PVE", "BMC", "WAP"}
 
 def compute_standard_devices_for_site(site: str, net: IP, real_device_types: frozenset = frozenset(),
-                                       real_device_hostnames: dict = None):
+                                       real_device_hostnames: dict = None,
+                                       real_bmc_pool_octets: frozenset = frozenset()):
   """
   Returns every confirmed-real standard-slot device for one site as a flat list of dicts
   (Site, Hostname, HostOctet, Type, DNSAlias, Notes) — the same addresses build_ini() derives
@@ -1100,6 +1123,15 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
   slot's own generic address, which is not guaranteed and was never the actual invariant that
   matters (build_ini()'s own covered_by_real_device() has always used hostname, never octet, for
   exactly this reason). Re-keyed on hostname to match.
+
+  real_bmc_pool_octets: frozenset(real octets) from devices.csv rows Typed BMC/ILO/RAC combined --
+  BMC's own synthesized placeholder is the ONE role where the hostname check above is structurally
+  wrong, not just historically wrong like SWI's octet-keying was. A real HP ILO or Dell RAC device
+  occupies the exact same .2-.4 pool as the generic "BMC" placeholder under a genuinely different
+  hostname (EXAILO<SITE>001, not EXABMC<SITE>001) -- see README.md's Addressing section -- so
+  hostname-matching can never detect the overlap; only the shared octet does. Sites with a real
+  ILO/RAC device but no explicit SUPPRESSED_STANDARD_ROLES entry for BMC rely on this parameter
+  instead (found live 2026-09-24, fixing EXAILOCLY001/EXARACCLY001).
   """
   real_device_hostnames = real_device_hostnames or {}
   site_suppressed = SUPPRESSED_STANDARD_ROLES.get(site, set())
@@ -1123,10 +1155,14 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
     if role in DNS_MULTI_ALL_INSTANCES:
       selected = [(i, o) for i, o in enumerate(offsets, start=1)
                   if build_hostname(role, site, i) not in real_hostnames_here]
+    elif role == "BMC":
+      # Octet-based, not hostname-based -- see this function's own docstring on
+      # real_bmc_pool_octets for why BMC alone needs this instead of the hostname check below.
+      selected = [] if offsets[0] in real_bmc_pool_octets else [(1, offsets[0])]
     elif role in DNS_MULTI_FIRST_INSTANCE_ONLY:
       selected = [] if build_hostname(role, site, 1) in real_hostnames_here else [(1, offsets[0])]
     else:
-      continue  # e.g. BMC — always commented/reference-only, never synthesized for DNS
+      continue  # role not in either set above -- no per-instance suppression path defined
     for i, offset in selected:
       # FWL1's bare hostname is the VRK/provisioning-network WAN address, not the site's own
       # LAN slot -- matching build_ini()'s own vals["FWL1"] convention exactly (Ansible itself
@@ -1265,9 +1301,15 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
   # real_hostnames_by_site: {site: {Type: frozenset(real hostnames)}} -- keyed on hostname, not
   # octet (see real_octets_by_site's own 2026-09-24 retirement note below for why).
   real_hostnames_by_site = {}
+  # real_bmc_pool_octets_by_site: {site: frozenset(real octets)} from BMC/ILO/RAC combined --
+  # see compute_standard_devices_for_site()'s own docstring for why BMC alone needs this
+  # separate, octet-keyed lookup instead of the hostname one above.
+  real_bmc_pool_octets_by_site = {}
   for site, site_devices in devices_by_site.items():
     for dev in site_devices:
       real_hostnames_by_site.setdefault(site, {}).setdefault(dev["type"], set()).add(dev["hostname"])
+      if dev["type"] in ("BMC", "ILO", "RAC") and dev["octet"] is not None:
+        real_bmc_pool_octets_by_site.setdefault(site, set()).add(int(dev["octet"]))
 
   subnet_base = {}
   all_devices = []
@@ -1282,6 +1324,7 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
     all_devices.extend(compute_standard_devices_for_site(
       r["Site"], net, real_device_types=real_types_by_site.get(r["Site"], frozenset()),
       real_device_hostnames=real_hostnames_by_site.get(r["Site"], {}),
+      real_bmc_pool_octets=real_bmc_pool_octets_by_site.get(r["Site"], frozenset()),
     ))
 
   for site, site_devices in devices_by_site.items():
