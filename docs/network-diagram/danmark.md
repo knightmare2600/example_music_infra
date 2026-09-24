@@ -875,14 +875,16 @@ graph TD
 graph TD
     T_FRD["☁️ FRD — Fredericia Havn network fabric, 172.16.124.0/24"]
     T_ANS["🤖 EXAANSFRD001<br/>Second Ansible Control Node (fallback VRACK Site)<br/>172.16.124.9"]
+    T_DCS["🗝️ EXADCSFRD001<br/>Forest Root DC<br/>172.16.124.10"]
     T_TMP["📦<br/>Provisioning Server (PXE, Port 8000)<br/>172.16.124.1"]
     T_PVE["🗂️ EXAPVEFRD001<br/>Small Intel NUC Running Proxmox VE<br/>172.16.124.5"]
     T_SWI["🔀 EXASWIFRD001<br/>48-port Switch<br/>172.16.124.250"]
     T_PBX["🔌 EXAPBXCLD002<br/>Secondary 3CX PBX (hostnamed Under CLD)<br/>172.16.124.48"]
     T_FWL["🧱 EXAFWLFRD001<br/>FWL 1<br/>172.16.124.253 — planned"]
-    T_FRD --> T_ANS --> T_TMP --> T_PVE --> T_SWI --> T_PBX --> T_FWL
+    T_FRD --> T_ANS --> T_DCS --> T_TMP --> T_PVE --> T_SWI --> T_PBX --> T_FWL
     style T_FRD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_ANS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TMP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
