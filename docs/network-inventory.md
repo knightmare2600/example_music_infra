@@ -12,6 +12,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-09-24 | CLY/GLA corrections following the CLY/Glasgow subnet data-entry bug fix (`ad_computers.json`/`devices.csv`). CLY: added `EXASWICLY002` (real Cisco Catalyst 48-port, `.2`), corrected `EXASWICLY001` to TPLink, removed the phantom `EXABMCCLY001` BMC row (no physical BMC — `.2` is the real switch), and fixed the Endpoints line's stale OS labels (`EXAPHNCLY001` iOS→Android, `EXATABCLY001` Android tablet→Surface, hardware swapped and renamed). GLA: added `EXASURGLA001` (Surface, pool device, IP presumed) and `EXAPHNGLA001` (iPhone 16 Pro Max, on-call "bat phone") — both genuinely missing, a copy-paste mistake had put GLA's own devices under CLY instead. |
 | 2026-09-04 | KNG (Kingston, Ontario) and DET (Detroit, Michigan) added as new-build sites — `192.168.163.0/24` and `192.168.133.0/24`, no legacy infrastructure. Added to the Global Site Summary table and given their own Canada/United States detail sections, matching BRK/TOR/MTL and CHI/SEA/SFO/PHI's template. Also added to `docs/network-diagram/canada.md`/`united-states.md` and `benarbejde/sites.csv`. AD additions in the same batch: Roxy Music (London, early-1980s lineup — Bryan Ferry, Phil Manzanera, Andy Mackay active; Brian Eno flagged disabled/locked as a pre-1973 former member), Bryan Adams (solo, new KNG site), Anita Baker (solo, new DET site), Dionne Warwick (solo, existing NJC site). M-People checked and confirmed already fully present at MCR — no changes needed there. Tina Turner was briefly re-homed toward KNG then reverted back to LAX at Robert's request, keeping her existing 7-person band together rather than splitting it across two OUs. |
 | 2026-09-04 | PHI (Philadelphia, Pennsylvania) added as a new-build site — `192.168.215.0/24`, no legacy infrastructure. Added to the Global Site Summary table and given its own United States detail section (standard-slot infrastructure, matching CHI/SEA/SFO's template). Also added to `docs/network-diagram/united-states.md` (own section + generated topology sketch) and `benarbejde/sites.csv`/`ad_users.json` — the Hall & Oates band roster (previously OU'd under NYC as a placeholder) was re-homed onto this new site. |
 | 2026-08-19 | Removed the `Domain` column from the Global Site Summary and Domain Controllers — Summary tables, and the `**Domain:**` line from all ~44 per-site sections. Checked first: `ad_forest.json` confirms a single real join domain (`jukebox.internal`); `ad_users.json` confirms all 357 real users have a `@jukebox.internal` UPN, none `@example.*`; `ExampleMusic_UPN_DNS_dnsmasq_Procedure.md` confirms `example.net`/`.org`/`.com` are forest-wide alternate UPN suffixes and DNS alias zones, explicitly not tied to site or physical location. The removed column/lines weren't derived from any current source and didn't correspond to anything real. Header `**Domains:**` line reworded to `**UPN suffixes:**` with a pointer to the real procedure doc. While removing MCR's "PDC Emulator for example.org" note (part of the same fictional per-domain framing), found a much bigger pre-existing problem: the DC Summary table's `FSMO Roles` column claims PDC Emulator for six different DCs and Schema Master/Domain Naming Master for two — impossible in a single-domain forest (exactly one holder per role). `buildsheet-domainControllers.md:107` names `EXADCSFAL001` alone as the real "PDC EMULATOR / FSMO" holder, but doesn't cover the other 4 roles. **Not resolved in this pass** — flagged inline above the DC Summary table; needs a decision on the real per-role holders before the column can be corrected. |
@@ -387,6 +388,8 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 | `EXAWKSGLA001` | Workstation | Windows 11 Pro | `192.168.141.150` | Hot desk |
 | `EXAWKSGLA002` | Workstation | Windows 11 Pro | `192.168.141.151` | Hot desk |
 | `EXALAPGLA001` | Laptop | Windows 11 Pro | `192.168.141.152` | Pool device |
+| `EXASURGLA001` | Surface | Windows 11 Pro | `192.168.141.153` | Pool device — IP presumed, added 2026-09-24 |
+| `EXAPHNGLA001` | Phone | iOS | — | On-call handset ("bat phone"), iPhone 16 Pro Max — added 2026-09-24 |
 
 **WAPs:** `EXAWAPGLA001` · Ubiquiti UniFi U6-Pro — static, `.82`
 
@@ -406,8 +409,8 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 |----------|------|------------|----|-------|
 | `EXARTRCLY001` | Router | FortiOS 7.6.5 | `192.168.41.1` | WAN edge |
 | `EXAFWLCLY001` | Firewall | Debian Linux (PVE VM) | `192.168.41.253` | nftables + WireGuard — site-to-site VPN |
-| `EXASWICLY001` | Switch | Cisco Catalyst 9300 | `192.168.41.250` | Core switch |
-| `EXABMCCLY001` | BMC | — | `192.168.41.2` | Standard BMC slot 1 |
+| `EXASWICLY001` | Switch | TPLink 48-port | `192.168.41.250` | Legacy/Migrating — not yet reassigned |
+| `EXASWICLY002` | Switch | Cisco Catalyst 9300 | `192.168.41.2` | Real switch, `.2` — no physical BMC at this site |
 | `EXAPVECLY001` | Proxmox | — | `192.168.41.5` | PVE node 1 |
 | `EXADCSCLY001` | DC | — | `192.168.41.10` | Domain Controller |
 | `EXASVRCLY001` | Server | Rocky Linux | `192.168.41.20` | Oracle DB |
@@ -417,7 +420,7 @@ See the [Cloud / Provisioning Network — CLD / VRK / FRD](#cloud--provisioning-
 
 **WAPs:** `EXAWAPCLY001–002` · Ubiquiti UniFi U6-Pro — static, `.82`–`.83`
 
-**Endpoints:** `EXASURCLY001` (Surface), `EXAPHNCLY001` (iOS), `EXATABCLY001` (Android tablet)
+**Endpoints:** `EXASURCLY001` (Surface), `EXAPHNCLY001` (Android), `EXATABCLY001` (Surface — renamed+hardware-swapped, was `EXASURCLY002`/Android tablet)
 
 ---
 
