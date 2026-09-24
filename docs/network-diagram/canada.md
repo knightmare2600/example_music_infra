@@ -150,7 +150,7 @@ graph TD
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASBRK001<br/>NAS<br/>192.168.136.19"]
     T_RDR["🔐 EXARDRBRK001<br/>RDR<br/>192.168.136.21"]
-    T_WAP["📶 EXAWAPBRK001<br/>WAP 1<br/>192.168.136.82"]
+    T_WAP["📶 EXAWAPBRK001<br/>Wireless Access Point<br/>192.168.136.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSBRK001<br/>DCS 1<br/>192.168.136.10"]
     T_SBC["🛡️ EXASBCBRK001<br/>SBC<br/>192.168.136.48"]

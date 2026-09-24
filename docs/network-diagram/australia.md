@@ -152,7 +152,7 @@ graph TD
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSSYD001<br/>DCS 1<br/>192.168.29.10"]
     T_SVR["🗄️ EXASVRSYD001<br/>Local Infra Server<br/>192.168.29.20"]
-    T_SBC["🛡️ EXASBCSYD001<br/>SBC<br/>192.168.29.48"]
+    T_SBC["🛡️ EXASBCSYD001<br/>VoIP SBC<br/>192.168.29.48"]
     T_FWL["🧱 EXAFWLSYD001<br/>Site Firewall<br/>192.168.29.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_RAC["🔧 EXARACSYD001<br/>Real, Confirmed Via Ad_computers.json (EXARACSYD001, Enab...<br/>192.168.29.2"]
@@ -322,13 +322,13 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWIMEL002<br/>Access Switch<br/>192.168.61.251"]
     T_RTR --> T_SWI3
-    T_NAS["🗃️ EXANASMEL001<br/>NAS<br/>192.168.61.19"]
+    T_NAS["🗃️ EXANASMEL001<br/>Local NAS<br/>192.168.61.19"]
     T_RDR["🔐 EXARDRMEL001<br/>RDR<br/>192.168.61.21"]
     T_WAP["📶 EXAWAPMEL001<br/>WAP 1<br/>192.168.61.82"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSMEL001<br/>DCS 1<br/>192.168.61.10"]
     T_SVR["🗄️ EXASVRMEL001<br/>Local File And Print Server<br/>192.168.61.20"]
-    T_SBC["🛡️ EXASBCMEL001<br/>SBC<br/>192.168.61.48"]
+    T_SBC["🛡️ EXASBCMEL001<br/>VoIP SBC<br/>192.168.61.48"]
     T_FWL["🧱 EXAFWLMEL001<br/>Site Firewall<br/>192.168.61.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_RAC["🔧 EXARACMEL001<br/>Real, Confirmed Via Ad_computers.json (EXARACMEL001, Enab...<br/>192.168.61.2"]

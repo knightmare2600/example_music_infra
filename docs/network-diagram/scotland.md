@@ -252,7 +252,7 @@ graph TD
     T_SWI2 --> T_NAS --> T_RDR --> T_MUS --> T_WAP --> T_WAP2 --> T_WAP3 --> T_WAP4 --> T_WAP5 --> T_WAP6
     T_DCS["🗝️ EXADCSFAL001<br/>DCS 1<br/>192.168.76.10"]
     T_SVR["🗄️ EXASVRFAL001<br/>Reserved<br/>192.168.76.20"]
-    T_SBC["🛡️ EXASBCFAL001<br/>SBC<br/>192.168.76.48"]
+    T_SBC["🛡️ EXASBCFAL001<br/>VoIP SBC<br/>192.168.76.48"]
     T_FWL["🧱 EXAFWLFAL001<br/>LAN Face<br/>192.168.76.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_TAR["💽 EXATARFAL001<br/>Legacy Tape Archive<br/>192.168.76.33"]
@@ -436,8 +436,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTREDI001<br/>RTR<br/>192.168.131.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCEDI001<br/>BMC 1<br/>192.168.131.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEEDI001<br/>PVE 1<br/>192.168.131.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWIEDI003<br/>SWI 3<br/>192.168.131.252"]
@@ -448,20 +446,21 @@ graph TD
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASEDI001<br/>NAS<br/>192.168.131.19"]
     T_RDR["🔐 EXARDREDI001<br/>RDR<br/>192.168.131.21"]
-    T_WAP["📶 EXAWAPEDI001<br/>WAP 1<br/>192.168.131.82"]
+    T_WAP["📶 EXAWAPEDI001<br/>Wireless Access Point<br/>192.168.131.82"]
     T_WAP2["📶 EXAWAPEDI002<br/>Wireless Access Point<br/>192.168.131.83"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSEDI001<br/>DCS 1<br/>192.168.131.10"]
-    T_SBC["🛡️ EXASBCEDI001<br/>SBC<br/>192.168.131.48"]
+    T_SBC["🛡️ EXASBCEDI001<br/>VoIP SBC<br/>192.168.131.48"]
     T_FWL["🧱 EXAFWLEDI001<br/>LAN Face<br/>192.168.131.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_WKS["🖥️ EXAWKSEDI001<br/>Shared Desktop<br/>192.168.131.150"]
     T_LAP["💻 EXALAPEDI098<br/>Pool Laptop<br/>192.168.131.108"]
     T_TEA["🫖 EXATEAEDI001<br/>Coffee Machine<br/>192.168.131.60"]
+    T_RAC["🔧 EXARACEDI001<br/>Real, Confirmed Via Ad_computers.json (EXARACEDI001, Enab...<br/>192.168.131.2"]
     T_WKS --> T_TEA
+    T_LAP --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -476,6 +475,7 @@ graph TD
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TEA fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:EDI:END
 ```
 
@@ -735,12 +735,12 @@ graph TD
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASCLY001<br/>NAS<br/>192.168.41.19"]
     T_RDR["🔐 EXARDRCLY001<br/>RDR<br/>192.168.41.21"]
-    T_WAP["📶 EXAWAPCLY001<br/>WAP 1<br/>192.168.41.82"]
+    T_WAP["📶 EXAWAPCLY001<br/>Wireless Access Point<br/>192.168.41.82"]
     T_WAP2["📶 EXAWAPCLY002<br/>Wireless Access Point<br/>192.168.41.83"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSCLY001<br/>DCS 1<br/>192.168.41.10"]
     T_SVR["🗄️ EXASVRCLY001<br/>Oracle DB Server<br/>192.168.41.20"]
-    T_SBC["🛡️ EXASBCCLY001<br/>SBC<br/>192.168.41.48"]
+    T_SBC["🛡️ EXASBCCLY001<br/>VoIP SBC<br/>192.168.41.48"]
     T_FWL["🧱 EXAFWLCLY001<br/>Firewall / VPN Gateway<br/>192.168.41.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_ILO["🔧 EXAILOCLY001<br/>HP ILO<br/>192.168.41.3"]
@@ -877,7 +877,7 @@ graph TD
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASDUN001<br/>NAS<br/>192.168.138.19"]
     T_RDR["🔐 EXARDRDUN001<br/>RDR<br/>192.168.138.21"]
-    T_WAP["📶 EXAWAPDUN001<br/>WAP 1<br/>192.168.138.82"]
+    T_WAP["📶 EXAWAPDUN001<br/>Wireless Access Point<br/>192.168.138.82"]
     T_WAP2["📶 EXAWAPDUN002<br/>Wireless Access Point<br/>192.168.138.83"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSDUN001<br/>DCS 1<br/>192.168.138.10"]
@@ -1028,12 +1028,12 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWIPER003<br/>SWI 3<br/>192.168.173.252"]
     T_RTR --> T_SWI3
-    T_NAS["🗃️ EXANASPER001<br/>NAS<br/>192.168.173.19"]
+    T_NAS["🗃️ EXANASPER001<br/>File Storage For User Profiles & Music Archive<br/>192.168.173.19"]
     T_RDR["🔐 EXARDRPER001<br/>RDR<br/>192.168.173.21"]
     T_WAP["📶 EXAWAPPER001<br/>WAP 1<br/>192.168.173.82"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSPER001<br/>DCS 1<br/>192.168.173.10"]
-    T_SBC["🛡️ EXASBCPER001<br/>SBC<br/>192.168.173.48"]
+    T_SBC["🛡️ EXASBCPER001<br/>VoIP SBC<br/>192.168.173.48"]
     T_FWL["🧱 EXAFWLPER001<br/>LAN Face<br/>192.168.173.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_NIX["🐧 EXANIXPER001<br/>MIDI Archive<br/>192.168.173.40"]
@@ -1171,7 +1171,7 @@ graph TD
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASABD001<br/>NAS<br/>192.168.224.19"]
     T_RDR["🔐 EXARDRABD001<br/>RDR<br/>192.168.224.21"]
-    T_WAP["📶 EXAWAPABD001<br/>WAP 1<br/>192.168.224.82"]
+    T_WAP["📶 EXAWAPABD001<br/>Wireless Access Point<br/>192.168.224.82"]
     T_WAP2["📶 EXAWAPABD002<br/>Wireless Access Point<br/>192.168.224.83"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSABD001<br/>DCS 1<br/>192.168.224.10"]

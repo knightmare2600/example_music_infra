@@ -91,6 +91,20 @@ ALLOWED_HOSTNAME_REUSE = {
   ("SYD", "RAC", 1),
   ("MEL", "RAC", 1),
   ("AKL", "RAC", 1),
+  # 2026-09-24: same shape again, found working through the missing-devices.csv-row backlog --
+  # BIR/BON/CPH/EDI/LAX/LIV/MCR/NEW each have a real ad_computers.json RAC/ILO record with a real
+  # devices.csv row now added, landing on the exact hostname legacy-devices.csv's own old
+  # decommissioned-ESXi-host BMC row already used. LND's own legacy RAC row was NOT added here --
+  # its Notes said "no host ever built" (genuinely fictional, same as the EXAFWLFAL001 case
+  # itself), so that row was removed from legacy-devices.csv instead of allow-listed.
+  ("BIR", "RAC", 1),
+  ("BON", "RAC", 1),
+  ("CPH", "RAC", 1),
+  ("EDI", "RAC", 1),
+  ("LAX", "RAC", 1),
+  ("LIV", "RAC", 1),
+  ("MCR", "RAC", 1),
+  ("NEW", "RAC", 1),
 }
 
 

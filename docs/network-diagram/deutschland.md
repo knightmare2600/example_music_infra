@@ -107,8 +107,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRBON001<br/>RTR<br/>192.168.228.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCBON001<br/>BMC 1<br/>192.168.228.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEBON001<br/>PVE 1<br/>192.168.228.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWIBON002<br/>SWI 2<br/>192.168.228.251"]
@@ -119,11 +117,11 @@ graph TD
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASBON001<br/>NAS<br/>192.168.228.19"]
     T_RDR["🔐 EXARDRBON001<br/>RDR<br/>192.168.228.21"]
-    T_WAP["📶 EXAWAPBON001<br/>WAP 1<br/>192.168.228.82"]
+    T_WAP["📶 EXAWAPBON001<br/>Wireless Access Point<br/>192.168.228.82"]
     T_WAP2["📶 EXAWAPBON002<br/>Wireless Access Point<br/>192.168.228.83"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSBON001<br/>DCS 1<br/>192.168.228.10"]
-    T_SBC["🛡️ EXASBCBON001<br/>SBC<br/>192.168.228.48"]
+    T_SBC["🛡️ EXASBCBON001<br/>VoIP SBC<br/>192.168.228.48"]
     T_FWL["🧱 EXAFWLBON001<br/>LAN Face<br/>192.168.228.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_OTH_LAP["💻 EXALAPBON001-002<br/>2 x Laptops<br/>192.168.228.153"]
@@ -131,11 +129,11 @@ graph TD
     T_VCU["🎧 EXAVCUBON001<br/>Boardroom Video Conferencing<br/>No IP Address"]
     T_CAM["🎥 EXACAMBON001<br/>CCTV Camera<br/>192.168.228.17"]
     T_TVS["📺 EXATVSBON001<br/>Display<br/>192.168.228.18"]
+    T_RAC["🔧 EXARACBON001<br/>Real, Confirmed Via Ad_computers.json (EXARACBON001, Enab...<br/>192.168.228.2"]
     T_OTH_LAP --> T_VCU --> T_TVS
-    T_WKS --> T_CAM
+    T_WKS --> T_CAM --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -152,6 +150,7 @@ graph TD
     style T_VCU fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TVS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:BON:END
 ```
 
@@ -356,8 +355,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRMUN001<br/>RTR<br/>192.168.189.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCMUN001<br/>BMC 1<br/>192.168.189.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEMUN001<br/>PVE 1<br/>192.168.189.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWIMUN002<br/>SWI 2<br/>192.168.189.251"]
@@ -371,14 +368,15 @@ graph TD
     T_WAP["📶 EXAWAPMUN001<br/>WAP 1<br/>192.168.189.82"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSMUN001<br/>DCS 1<br/>192.168.189.10"]
-    T_SBC["🛡️ EXASBCMUN001<br/>SBC<br/>192.168.189.48"]
+    T_SBC["🛡️ EXASBCMUN001<br/>VoIP SBC<br/>192.168.189.48"]
     T_FWL["🧱 EXAFWLMUN001<br/>LAN Face<br/>192.168.189.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_WKS["🖥️ EXAWKSMUN001<br/>Hot Desk Workstation<br/>192.168.189.150"]
     T_OTH_LAP["💻 EXALAPMUN001-002<br/>2 x Laptops<br/>192.168.189.151-152"]
+    T_RAC["🔧 EXARACMUN001<br/>Real, Confirmed Via Ad_computers.json (EXARACMUN001, Enab...<br/>192.168.189.2"]
+    T_WKS --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -391,6 +389,7 @@ graph TD
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_OTH_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:MUN:END
 ```
 
