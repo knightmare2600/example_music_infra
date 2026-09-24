@@ -347,14 +347,28 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWINJC003<br/>SWI 3<br/>192.168.201.252"]
     T_RTR --> T_SWI3
+    T_SWI["🔀 EXASWINJC001<br/>SWI 1<br/>192.168.201.250 — planned"]
+    T_RTR --> T_SWI
+    T_PVE["🗂️ EXAPVENJC001<br/>PVE 1<br/>192.168.201.5 — planned"]
+    T_RTR --> T_PVE
+    T_PVE2["🗂️ EXAPVENJC002<br/>PVE 2<br/>192.168.201.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASNJC001<br/>NAS<br/>192.168.201.19"]
+    T_NAS["🗃️ EXANASNJC001<br/>NAS 1<br/>192.168.201.19 — planned"]
     T_RDR["🔐 EXARDRNJC001<br/>RDR<br/>192.168.201.21"]
+    T_RDR["🔐 EXARDRNJC001<br/>RDR 1<br/>192.168.201.21 — planned"]
     T_WAP["📶 EXAWAPNJC001<br/>WAP 1<br/>192.168.201.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_WAP["📶 EXAWAPNJC001<br/>WAP 1<br/>192.168.201.82 — planned"]
+    T_SWI --> T_NAS --> T_NAS --> T_RDR --> T_RDR --> T_WAP --> T_WAP
     T_DCS["🗝️ EXADCSNJC001<br/>DCS 1<br/>192.168.201.10"]
+    T_DCS["🗝️ EXADCSNJC001<br/>DCS 1<br/>192.168.201.10 — planned"]
     T_SBC["🛡️ EXASBCNJC001<br/>SBC<br/>192.168.201.48"]
+    T_SBC["🛡️ EXASBCNJC001<br/>SBC 1<br/>192.168.201.48 — planned"]
     T_FWL["🧱 EXAFWLNJC001<br/>LAN Face<br/>192.168.201.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    T_FWL["🧱 EXAFWLNJC001<br/>FWL 1<br/>192.168.201.253 — planned"]
+    T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_ILO["🔧 EXAILONJC001<br/>ILO 1<br/>192.168.201.3 — planned"]
+    T_RAC["🔧 EXARACNJC002<br/>RAC 2<br/>192.168.201.4 — planned"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -362,12 +376,23 @@ graph TD
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:NJC:END
 ```
 
@@ -592,14 +617,28 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWICHI003<br/>SWI 3<br/>192.168.214.252"]
     T_RTR --> T_SWI3
+    T_SWI["🔀 EXASWICHI001<br/>SWI 1<br/>192.168.214.250 — planned"]
+    T_RTR --> T_SWI
+    T_PVE["🗂️ EXAPVECHI001<br/>PVE 1<br/>192.168.214.5 — planned"]
+    T_RTR --> T_PVE
+    T_PVE2["🗂️ EXAPVECHI002<br/>PVE 2<br/>192.168.214.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASCHI001<br/>NAS<br/>192.168.214.19"]
+    T_NAS["🗃️ EXANASCHI001<br/>NAS 1<br/>192.168.214.19 — planned"]
     T_RDR["🔐 EXARDRCHI001<br/>RDR<br/>192.168.214.21"]
+    T_RDR["🔐 EXARDRCHI001<br/>RDR 1<br/>192.168.214.21 — planned"]
     T_WAP["📶 EXAWAPCHI001<br/>WAP 1<br/>192.168.214.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_WAP["📶 EXAWAPCHI001<br/>WAP 1<br/>192.168.214.82 — planned"]
+    T_SWI --> T_NAS --> T_NAS --> T_RDR --> T_RDR --> T_WAP --> T_WAP
     T_DCS["🗝️ EXADCSCHI001<br/>DCS 1<br/>192.168.214.10"]
+    T_DCS["🗝️ EXADCSCHI001<br/>DCS 1<br/>192.168.214.10 — planned"]
     T_SBC["🛡️ EXASBCCHI001<br/>SBC<br/>192.168.214.48"]
+    T_SBC["🛡️ EXASBCCHI001<br/>SBC 1<br/>192.168.214.48 — planned"]
     T_FWL["🧱 EXAFWLCHI001<br/>LAN Face<br/>192.168.214.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    T_FWL["🧱 EXAFWLCHI001<br/>FWL 1<br/>192.168.214.253 — planned"]
+    T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_ILO["🔧 EXAILOCHI001<br/>ILO 1<br/>192.168.214.3 — planned"]
+    T_RAC["🔧 EXARACCHI002<br/>RAC 2<br/>192.168.214.4 — planned"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -607,12 +646,23 @@ graph TD
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:CHI:END
 ```
 
@@ -653,14 +703,28 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWISEA003<br/>SWI 3<br/>192.168.206.252"]
     T_RTR --> T_SWI3
+    T_SWI["🔀 EXASWISEA001<br/>SWI 1<br/>192.168.206.250 — planned"]
+    T_RTR --> T_SWI
+    T_PVE["🗂️ EXAPVESEA001<br/>PVE 1<br/>192.168.206.5 — planned"]
+    T_RTR --> T_PVE
+    T_PVE2["🗂️ EXAPVESEA002<br/>PVE 2<br/>192.168.206.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASSEA001<br/>NAS<br/>192.168.206.19"]
+    T_NAS["🗃️ EXANASSEA001<br/>NAS 1<br/>192.168.206.19 — planned"]
     T_RDR["🔐 EXARDRSEA001<br/>RDR<br/>192.168.206.21"]
+    T_RDR["🔐 EXARDRSEA001<br/>RDR 1<br/>192.168.206.21 — planned"]
     T_WAP["📶 EXAWAPSEA001<br/>WAP 1<br/>192.168.206.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_WAP["📶 EXAWAPSEA001<br/>WAP 1<br/>192.168.206.82 — planned"]
+    T_SWI --> T_NAS --> T_NAS --> T_RDR --> T_RDR --> T_WAP --> T_WAP
     T_DCS["🗝️ EXADCSSEA001<br/>DCS 1<br/>192.168.206.10"]
+    T_DCS["🗝️ EXADCSSEA001<br/>DCS 1<br/>192.168.206.10 — planned"]
     T_SBC["🛡️ EXASBCSEA001<br/>SBC<br/>192.168.206.48"]
+    T_SBC["🛡️ EXASBCSEA001<br/>SBC 1<br/>192.168.206.48 — planned"]
     T_FWL["🧱 EXAFWLSEA001<br/>LAN Face<br/>192.168.206.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    T_FWL["🧱 EXAFWLSEA001<br/>FWL 1<br/>192.168.206.253 — planned"]
+    T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_ILO["🔧 EXAILOSEA001<br/>ILO 1<br/>192.168.206.3 — planned"]
+    T_RAC["🔧 EXARACSEA002<br/>RAC 2<br/>192.168.206.4 — planned"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -668,12 +732,23 @@ graph TD
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:SEA:END
 ```
 
@@ -714,14 +789,28 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWISFO003<br/>SWI 3<br/>192.168.145.252"]
     T_RTR --> T_SWI3
+    T_SWI["🔀 EXASWISFO001<br/>SWI 1<br/>192.168.145.250 — planned"]
+    T_RTR --> T_SWI
+    T_PVE["🗂️ EXAPVESFO001<br/>PVE 1<br/>192.168.145.5 — planned"]
+    T_RTR --> T_PVE
+    T_PVE2["🗂️ EXAPVESFO002<br/>PVE 2<br/>192.168.145.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASSFO001<br/>NAS<br/>192.168.145.19"]
+    T_NAS["🗃️ EXANASSFO001<br/>NAS 1<br/>192.168.145.19 — planned"]
     T_RDR["🔐 EXARDRSFO001<br/>RDR<br/>192.168.145.21"]
+    T_RDR["🔐 EXARDRSFO001<br/>RDR 1<br/>192.168.145.21 — planned"]
     T_WAP["📶 EXAWAPSFO001<br/>WAP 1<br/>192.168.145.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_WAP["📶 EXAWAPSFO001<br/>WAP 1<br/>192.168.145.82 — planned"]
+    T_SWI --> T_NAS --> T_NAS --> T_RDR --> T_RDR --> T_WAP --> T_WAP
     T_DCS["🗝️ EXADCSSFO001<br/>DCS 1<br/>192.168.145.10"]
+    T_DCS["🗝️ EXADCSSFO001<br/>DCS 1<br/>192.168.145.10 — planned"]
     T_SBC["🛡️ EXASBCSFO001<br/>SBC<br/>192.168.145.48"]
+    T_SBC["🛡️ EXASBCSFO001<br/>SBC 1<br/>192.168.145.48 — planned"]
     T_FWL["🧱 EXAFWLSFO001<br/>LAN Face<br/>192.168.145.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    T_FWL["🧱 EXAFWLSFO001<br/>FWL 1<br/>192.168.145.253 — planned"]
+    T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_ILO["🔧 EXAILOSFO001<br/>ILO 1<br/>192.168.145.3 — planned"]
+    T_RAC["🔧 EXARACSFO002<br/>RAC 2<br/>192.168.145.4 — planned"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -729,12 +818,23 @@ graph TD
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:SFO:END
 ```
 
@@ -765,14 +865,28 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWIPHI003<br/>SWI 3<br/>192.168.215.252"]
     T_RTR --> T_SWI3
+    T_SWI["🔀 EXASWIPHI001<br/>SWI 1<br/>192.168.215.250 — planned"]
+    T_RTR --> T_SWI
+    T_PVE["🗂️ EXAPVEPHI001<br/>PVE 1<br/>192.168.215.5 — planned"]
+    T_RTR --> T_PVE
+    T_PVE2["🗂️ EXAPVEPHI002<br/>PVE 2<br/>192.168.215.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASPHI001<br/>NAS<br/>192.168.215.19"]
+    T_NAS["🗃️ EXANASPHI001<br/>NAS 1<br/>192.168.215.19 — planned"]
     T_RDR["🔐 EXARDRPHI001<br/>RDR<br/>192.168.215.21"]
+    T_RDR["🔐 EXARDRPHI001<br/>RDR 1<br/>192.168.215.21 — planned"]
     T_WAP["📶 EXAWAPPHI001<br/>WAP 1<br/>192.168.215.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_WAP["📶 EXAWAPPHI001<br/>WAP 1<br/>192.168.215.82 — planned"]
+    T_SWI --> T_NAS --> T_NAS --> T_RDR --> T_RDR --> T_WAP --> T_WAP
     T_DCS["🗝️ EXADCSPHI001<br/>DCS 1<br/>192.168.215.10"]
+    T_DCS["🗝️ EXADCSPHI001<br/>DCS 1<br/>192.168.215.10 — planned"]
     T_SBC["🛡️ EXASBCPHI001<br/>SBC<br/>192.168.215.48"]
+    T_SBC["🛡️ EXASBCPHI001<br/>SBC 1<br/>192.168.215.48 — planned"]
     T_FWL["🧱 EXAFWLPHI001<br/>LAN Face<br/>192.168.215.253"]
-    T_PVE --> T_DCS --> T_SBC --> T_FWL
+    T_FWL["🧱 EXAFWLPHI001<br/>FWL 1<br/>192.168.215.253 — planned"]
+    T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_ILO["🔧 EXAILOPHI001<br/>ILO 1<br/>192.168.215.3 — planned"]
+    T_RAC["🔧 EXARACPHI002<br/>RAC 2<br/>192.168.215.4 — planned"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -780,12 +894,23 @@ graph TD
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:PHI:END
 ```
 
