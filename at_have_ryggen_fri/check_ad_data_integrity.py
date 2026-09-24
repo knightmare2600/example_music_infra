@@ -756,7 +756,7 @@ def check_duplicate_dns_hostname(problems, computers):
 
 
 def load_legacy_site_types(problems):
-    """Site -> set(Type), for devices.csv rows SPECIFICALLY marked Legacy=yes -- not
+    """Site -> {Type: OS}, for devices.csv rows SPECIFICALLY marked Legacy=yes -- not
     "any row of this Type exists" (a live row for a different instance Number, e.g.
     BIR's real WAP,2, says nothing about whether WAP,1 has ITS OWN row, Legacy or
     otherwise, and conflating the two would misreport a genuinely-missing row as
@@ -766,16 +766,23 @@ def load_legacy_site_types(problems):
     2026-09-24: ABD's real RTR/FWL pair and BIR's own EXAFWLBIR001 both have a real
     devices.csv row (matching OS/octet) that's excluded purely for being Legacy=yes --
     without this, check I would call them "no row exists at all", which overstates the
-    gap (a real, if old, row DOES exist, it's just not live-generation-eligible)."""
+    gap (a real, if old, row DOES exist, it's just not live-generation-eligible).
+
+    2026-09-24, same evening: originally returned Type as a bare set, so
+    check_missing_devices_csv_row's "worth checking" message kept firing forever, even
+    after 15 RTR sites and 3 LAP sites were manually confirmed (same evening) to have a
+    Legacy row whose OS genuinely matches the real record. Widened to carry each row's
+    own OS string too, so the caller can compare it directly instead of leaving every
+    Legacy row as a standing, never-resolved prompt."""
     try:
-        by_site = defaultdict(set)
+        by_site = defaultdict(dict)
         with (BENARBEJDE / "devices.csv").open(newline="") as f:
             for row in csv.DictReader(f):
                 site = (row.get("Site") or "").strip()
                 dtype = (row.get("Type") or "").strip().upper()
                 legacy = (row.get("Legacy") or "").strip().lower()
                 if site and dtype and legacy in ("yes", "y", "true", "1"):
-                    by_site[site].add(dtype)
+                    by_site[site][dtype] = (row.get("OS") or "").strip()
         return by_site
     except Exception as e:
         problems.append(f"devices.csv: could not do a raw Legacy-aware read -- {e}")
@@ -791,7 +798,15 @@ def check_missing_devices_csv_row(problems, computers, real_addresses, legacy_si
     record with NO devices.csv counterpart. Deliberately scoped to policy_expected_octet()
     returning non-None (the same function check G already uses) -- ad hoc Types with no
     policy convention at all are never expected to have a devices.csv row and are
-    correctly never flagged here."""
+    correctly never flagged here.
+
+    2026-09-24, same evening: a Legacy row's OS is now compared directly against the
+    real record's own OS (case-insensitive prefix match -- devices.csv's OS field is
+    always the bare model, e.g. "Cisco ISR 4331", while ad_computers.json's is the same
+    model plus a serial-style suffix, e.g. "Cisco ISR 4331 ISR4331-ABD-552901").
+    Confirmed matching is no longer reported at all (same standard check E already
+    applies to a live row) -- only a genuine mismatch, or a Legacy row with no OS to
+    compare, still gets the "worth checking" treatment."""
     for c in computers:
         sam = (c.get("SamAccountName") or "").rstrip("$")
         role = (c.get("Role") or "").strip().upper()
@@ -808,16 +823,19 @@ def check_missing_devices_csv_row(problems, computers, real_addresses, legacy_si
         pool_or_exact = (
             "pool " + str(sorted(policy[1])) if policy[0] == "pool" else "." + str(policy[1])
         )
-        if role in legacy_site_types.get(site, set()):
+        if role in legacy_site_types.get(site, {}):
+            legacy_os = legacy_site_types[site][role]
+            real_os = (c.get("OS") or "").strip()
+            if legacy_os and real_os and real_os.lower().startswith(legacy_os.lower()):
+                continue
             problems.append(
                 f"devices.csv: {sam} (Role={role}) has no LIVE devices.csv row (it "
                 f"would need one for address_policy.csv's {pool_or_exact} convention to "
-                f"apply), but a devices.csv row for {site}/{role} DOES exist -- it's "
-                f"just Legacy=yes (old-network data, correctly excluded from live "
-                f"generation). Worth checking whether that legacy row actually "
-                f"describes THIS device (matching OS/Description) before assuming it's "
-                f"unrelated -- see ABD's EXARTRABD001/EXAFWLABD001 for a confirmed "
-                f"example of exactly this shape"
+                f"apply), and a devices.csv row for {site}/{role} DOES exist (Legacy=yes) "
+                f"but its OS ('{legacy_os}') doesn't match this record's own OS "
+                f"('{real_os}') -- worth checking whether that legacy row actually "
+                f"describes THIS device before assuming it's unrelated -- see ABD's "
+                f"EXARTRABD001/EXAFWLABD001 for a confirmed example of exactly this shape"
             )
         else:
             problems.append(

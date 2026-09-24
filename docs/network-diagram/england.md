@@ -33,15 +33,12 @@ graph TD
     O_SWI["🔀 EXASWILND001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.20.250"]
     O_DCR["🗝️ EXADCRLND001<br/>DC · RID/Infra Master<br/>192.168.20.10"]
     O_MIC["🎤 EXAMICLND001<br/>Shure SM7 via Dante audio<br/>192.168.20.81"]
-    O_RAC["🔧 EXARACLND001<br/>Dell iDRAC9 · no host ever built<br/>192.168.20.2"]
     O_RAD["📻 EXARADLND001<br/>BBC Office Radio Mk II<br/>192.168.20.80"]
     O_WKS["🖥️ EXAWKSLND001<br/>Windows 11 · Workstation<br/>192.168.20.150"]
     O_PRN["🖨️ EXAPRNLND001-002<br/>2 x Printers<br/>192.168.20.16"]
     O_INET --> O_RTR
     O_RTR --> O_SWI
     O_SWI --> O_MIC
-    O_SWI --> O_RAC
-    O_RAC -.->|"manages"| O_DCR
     O_SWI --> O_RAD
     O_SWI --> O_WKS
     O_SWI --> O_PRN
@@ -51,7 +48,6 @@ graph TD
     style O_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DCR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_MIC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RAD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -105,8 +101,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRLND001<br/>RTR<br/>192.168.20.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCLND001<br/>BMC 1<br/>192.168.20.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVELND001<br/>PVE 1<br/>192.168.20.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWILND002<br/>SWI 2<br/>192.168.20.251"]
@@ -120,18 +114,18 @@ graph TD
     T_WAP["📶 EXAWAPLND001<br/>WAP 1<br/>192.168.20.82"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSLND001<br/>DCS 1<br/>192.168.20.10"]
-    T_SBC["🛡️ EXASBCLND001<br/>SBC<br/>192.168.20.48"]
+    T_SBC["🛡️ EXASBCLND001<br/>VoIP SBC<br/>192.168.20.48"]
     T_FWL["🧱 EXAFWLLND001<br/>Perimeter Firewall And VPN Gateway<br/>192.168.20.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_RAD["📻 EXARADLND001<br/>BBC Office Radio Mk II<br/>192.168.20.80"]
     T_MIC["🎤 EXAMICLND001<br/>Shure SM7 Via Dante Audio<br/>192.168.20.81"]
     T_WKS["🖥️ EXAWKSLND001<br/>Workstation<br/>192.168.20.150"]
     T_OTH_PRN["🖨️ EXAPRNLND001-002<br/>2 x Printers<br/>192.168.20.16"]
-    T_RAD --> T_WKS
+    T_RAC["🔧 EXARACLND001<br/>Real, Confirmed Via Ad_computers.json (EXARACLND001, Enab...<br/>192.168.20.2"]
+    T_RAD --> T_WKS --> T_RAC
     T_MIC --> T_OTH_PRN
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -146,6 +140,7 @@ graph TD
     style T_MIC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_OTH_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:LND:END
 ```
 
@@ -285,8 +280,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRBIR001<br/>RTR<br/>192.168.121.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCBIR001<br/>BMC 1<br/>192.168.121.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEBIR001<br/>PVE 1<br/>192.168.121.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWIBIR003<br/>SWI 3<br/>192.168.121.252"]
@@ -297,12 +290,12 @@ graph TD
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASBIR001<br/>NAS<br/>192.168.121.19"]
     T_RDR["🔐 EXARDRBIR001<br/>RDR<br/>192.168.121.21"]
-    T_WAP["📶 EXAWAPBIR001<br/>WAP 1<br/>192.168.121.82"]
+    T_WAP["📶 EXAWAPBIR001<br/>Wireless Access Point<br/>192.168.121.82"]
     T_WAP2["📶 EXAWAPBIR002<br/>Wireless Access Point<br/>192.168.121.83"]
     T_SWI2 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSBIR001<br/>DCS 1<br/>192.168.121.10"]
     T_SVR["🗄️ EXASVRBIR001<br/>Oracle DB<br/>192.168.121.20"]
-    T_SBC["🛡️ EXASBCBIR001<br/>SBC<br/>192.168.121.48"]
+    T_SBC["🛡️ EXASBCBIR001<br/>VoIP SBC<br/>192.168.121.48"]
     T_FWL["🧱 EXAFWLBIR001<br/>Palo Alto Site Firewall / VPN Gateway<br/>192.168.121.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_MOO["🎹 EXAMOOBIR001<br/>Moog Synth<br/>192.168.121.70"]
@@ -314,11 +307,12 @@ graph TD
     T_MBP["💻 EXAMBPBIR001<br/>MacBook<br/>192.168.121.41"]
     T_TAB["📱 EXATABBIR001<br/>Galaxy Tab<br/>192.168.121.61"]
     T_PHN["📞 EXAPHNBIR001<br/>Samsung S25<br/>No IP Address"]
-    T_MOO --> T_FCL --> T_PAY --> T_MBP --> T_PHN
-    T_LIN --> T_AST --> T_LCD --> T_TAB
+    T_RAC["🔧 EXARACBIR001<br/>Real, Confirmed Via Ad_computers.json (EXARACBIR001, Enab...<br/>192.168.121.3"]
+    T_ILO["🔧 EXAILOBIR001<br/>Real, Confirmed Via Ad_computers.json (EXAILOBIR001, Enab...<br/>192.168.121.2"]
+    T_MOO --> T_FCL --> T_PAY --> T_MBP --> T_PHN --> T_ILO
+    T_LIN --> T_AST --> T_LCD --> T_TAB --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -340,6 +334,8 @@ graph TD
     style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:BIR:END
 ```
 
@@ -455,8 +451,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRMCR001<br/>RTR<br/>192.168.161.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCMCR001<br/>BMC 1<br/>192.168.161.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEMCR001<br/>PVE 1<br/>192.168.161.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWIMCR002<br/>SWI 2<br/>192.168.161.251"]
@@ -470,16 +464,17 @@ graph TD
     T_WAP["📶 EXAWAPMCR001<br/>WAP 1<br/>192.168.161.82"]
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSMCR001<br/>DCS 1<br/>192.168.161.10"]
-    T_SBC["🛡️ EXASBCMCR001<br/>SBC<br/>192.168.161.48"]
+    T_SBC["🛡️ EXASBCMCR001<br/>VoIP SBC<br/>192.168.161.48"]
     T_FWL["🧱 EXAFWLMCR001<br/>LAN Face<br/>192.168.161.253"]
     T_PVE --> T_DCS --> T_SBC --> T_FWL
     T_OTH_LAP["💻 EXALAPMCR001-002<br/>2 x Laptops<br/>192.168.161.150"]
     T_OTH_WKS["🖥️ EXAWKSMCR001-002<br/>2 x Workstations<br/>192.168.161.152-153"]
     T_PRN["🖨️ EXAPRNMCR001<br/>Printer<br/>192.168.161.16"]
+    T_RAC["🔧 EXARACMCR001<br/>Real, Confirmed Via Ad_computers.json (EXARACMCR001, Enab...<br/>192.168.161.2"]
     T_OTH_LAP --> T_PRN
+    T_OTH_WKS --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -493,6 +488,7 @@ graph TD
     style T_OTH_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_OTH_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:MCR:END
 ```
 
@@ -602,8 +598,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRLIV001<br/>RTR<br/>192.168.151.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCLIV001<br/>BMC 1<br/>192.168.151.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVELIV001<br/>PVE 1<br/>192.168.151.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWILIV002<br/>SWI 2<br/>192.168.151.251"]
@@ -618,16 +612,17 @@ graph TD
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSLIV001<br/>DCS 1<br/>192.168.151.10"]
     T_SVR["🗄️ EXASVRLIV001<br/>File Server<br/>192.168.151.8"]
-    T_SBC["🛡️ EXASBCLIV001<br/>SBC<br/>192.168.151.48"]
+    T_SBC["🛡️ EXASBCLIV001<br/>VoIP SBC<br/>192.168.151.48"]
     T_FWL["🧱 EXAFWLLIV001<br/>LAN Face<br/>192.168.151.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_MBP["💻 EXAMBPLIV001<br/>MacBook Pro<br/>No IP Address"]
     T_MAC["🍎 EXAMACLIV001<br/>IMac DISABLED<br/>No IP Address"]
     T_BPS["🪪 EXABPSLIV001<br/>Badge Programming Workstation<br/>192.168.151.17"]
+    T_RAC["🔧 EXARACLIV001<br/>Real, Confirmed Via Ad_computers.json (EXARACLIV001, Enab...<br/>192.168.151.2"]
     T_MBP --> T_BPS
+    T_MAC --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -642,6 +637,7 @@ graph TD
     style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BPS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:LIV:END
 ```
 
@@ -748,8 +744,6 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRNEW001<br/>RTR<br/>192.168.191.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCNEW001<br/>BMC 1<br/>192.168.191.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVENEW001<br/>PVE 1<br/>192.168.191.5"]
     T_RTR --> T_PVE
     T_SWI["🔀 EXASWINEW002<br/>SWI 2<br/>192.168.191.251"]
@@ -764,13 +758,13 @@ graph TD
     T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSNEW001<br/>DCS 1<br/>192.168.191.10"]
     T_SVR["🗄️ EXASVRNEW001<br/>File/print Server<br/>No IP Address"]
-    T_SBC["🛡️ EXASBCNEW001<br/>SBC<br/>192.168.191.48"]
+    T_SBC["🛡️ EXASBCNEW001<br/>VoIP SBC<br/>192.168.191.48"]
     T_FWL["🧱 EXAFWLNEW001<br/>LAN Face<br/>192.168.191.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
     T_WKS["🖥️ EXAWKSNEW099<br/>LAPS Password Expired<br/>192.168.191.161"]
+    T_RAC["🔧 EXARACNEW001<br/>Real, Confirmed Via Ad_computers.json (EXARACNEW001, Enab...<br/>192.168.191.2"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -783,6 +777,7 @@ graph TD
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:NEW:END
 ```
 
@@ -1207,7 +1202,7 @@ graph TD
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASCOV001<br/>NAS<br/>192.168.247.19"]
     T_RDR["🔐 EXARDRCOV001<br/>RDR<br/>192.168.247.21"]
-    T_WAP["📶 EXAWAPCOV001<br/>WAP 1<br/>192.168.247.82"]
+    T_WAP["📶 EXAWAPCOV001<br/>Wireless Access Point<br/>192.168.247.82"]
     T_WAP2["📶 EXAWAPCOV002<br/>Wireless Access Point<br/>192.168.247.83"]
     T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSCOV001<br/>DCS 1<br/>192.168.247.10"]
