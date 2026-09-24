@@ -285,6 +285,15 @@ def complete_boilerplate(site, sites, boilerplate, problems):
               f"address_policy.csv may be missing a convention. Aborting, nothing written.")
         return 1
 
+    # Combo router/firewall sites (confirmed live evidence, not a guess -- see
+    # standard_site_boilerplate.json's own combo_router_firewall_sites_notes) genuinely
+    # have no separate RTR at all -- treat it as already-satisfied for these, not missing.
+    # Found live 2026-09-24: without this, a whole-estate --complete sweep wrote an
+    # incorrect Planned RTR row for SYD/MEL before this existed.
+    combo_sites = set(boilerplate.get("combo_router_firewall_sites", []))
+    if site in combo_sites:
+        existing_types = existing_types | {"RTR"}
+
     have = [r for r in all_rows if r["role"] in existing_types]
     missing = [r for r in all_rows if r["role"] not in existing_types]
 
