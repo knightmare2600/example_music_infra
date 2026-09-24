@@ -1199,7 +1199,7 @@
     "DNSHostName": "EXASWICLY002.jukebox.internal",
     "OS": "Cisco Catalyst 9300",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.141.2",
+    "IPv4Address": "192.168.41.2",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1213,7 +1213,7 @@
     "DNSHostName": "EXAFWLCLY001.jukebox.internal",
     "OS": "FortiOS",
     "OperatingSystemVersion": "7.6.5 build 3651",
-    "IPv4Address": "192.168.141.1",
+    "IPv4Address": "192.168.41.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   },
@@ -1255,7 +1255,7 @@
     "DNSHostName": "EXASBCCLY001.jukebox.internal",
     "OS": "3CX SBC Debian",
     "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.141.49",
+    "IPv4Address": "192.168.41.49",
     "ad_ou": "OU=Servers,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Servers"
   },
@@ -1269,7 +1269,7 @@
     "DNSHostName": "EXASURCLY001.jukebox.internal",
     "OS": "Windows 11 Pro",
     "OperatingSystemVersion": "24H2",
-    "IPv4Address": "192.168.141.51",
+    "IPv4Address": "192.168.41.51",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1297,7 +1297,7 @@
     "DNSHostName": "EXATABCLY001.jukebox.internal",
     "OS": "Apple iOD",
     "OperatingSystemVersion": "26.2",
-    "IPv4Address": "192.168.141.62",
+    "IPv4Address": "192.168.41.62",
     "ad_ou": "OU=Workstations,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Workstations"
   },
@@ -1309,7 +1309,7 @@
     "Description": "TPLink 48port managed switch",
     "Enabled": true,
     "DNSHostName": "EXASWICLY001.jukebox.internal",
-    "OS": "Cisco Catalyst 9300",
+    "OS": "TP-Link JetStream",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.141.20",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Clydebank,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",

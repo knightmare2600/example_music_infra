@@ -176,18 +176,20 @@ def build_site_devices(site: str, net, devices_by_site: dict):
   # Which Types this site already has a real devices.csv row for -- passed to
   # compute_standard_devices_for_site() so it doesn't synthesize a generic "Standard SWI slot 1"
   # placeholder that would duplicate/shadow a real, more-informative devices.csv SWI entry (see
-  # that function's own docstring; matters for SWI today, 2026-07-14). real_octets is the
-  # per-instance version (added 2026-07-30 alongside SWI's move to DNS_MULTI_ALL_INSTANCES) --
-  # without it, a site with a real SWI2 row would lose its still-synthesized SWI1 too.
+  # that function's own docstring; matters for SWI today, 2026-07-14). real_hostnames is the
+  # per-instance version (added 2026-07-30 alongside SWI's move to DNS_MULTI_ALL_INSTANCES,
+  # re-keyed from octet to hostname 2026-09-24 -- see compute_standard_devices_for_site()'s own
+  # docstring for why octet-keying broke live on CLY's real SWI2 row) -- without it, a site with
+  # a real SWI2 row would lose its still-synthesized SWI1 too, or collide with it under the old
+  # octet-keyed check.
   real_types = {dev["type"] for dev in devices_by_site.get(site, [])}
-  real_octets = {}
+  real_hostnames = {}
   for dev in devices_by_site.get(site, []):
-    if dev["octet"] is not None:
-      real_octets.setdefault(dev["type"], set()).add(int(dev["octet"]))
+    real_hostnames.setdefault(dev["type"], set()).add(dev["hostname"])
 
   if site not in gi.NON_STANDARD_SITES:
     for d in gi.compute_standard_devices_for_site(
-        site, net, real_device_types=real_types, real_device_octets=real_octets):
+        site, net, real_device_types=real_types, real_device_hostnames=real_hostnames):
       dtype = re.match(r'EXA([A-Z]{3})', d["Hostname"]).group(1)
       if dtype == 'RTR' and site in gi.NO_STANDARD_ROUTER_SITES:
         continue  # documentation-only placeholder for DNS purposes, not a real device here

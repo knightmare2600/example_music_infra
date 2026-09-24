@@ -725,15 +725,13 @@ graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
     T_RTR["📡 EXARTRCLY001<br/>RTR<br/>192.168.41.1"]
     T_VRK --> T_RTR
-    T_BMC["🔧 EXABMCCLY001<br/>BMC 1<br/>192.168.41.2"]
-    T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVECLY001<br/>PVE 1<br/>192.168.41.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWICLY002<br/>SWI 2<br/>192.168.41.251"]
+    T_SWI["🔀 EXASWICLY003<br/>SWI 3<br/>192.168.41.252"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWICLY003<br/>SWI 3<br/>192.168.41.252"]
+    T_SWI2["🔀 EXASWICLY001<br/>Core Switch<br/>192.168.41.250"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWICLY001<br/>Core Switch<br/>192.168.41.250"]
+    T_SWI3["🔀 EXASWICLY002<br/>Cisco Catalyst 48-port<br/>192.168.41.2"]
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASCLY001<br/>NAS<br/>192.168.41.19"]
     T_RDR["🔐 EXARDRCLY001<br/>RDR<br/>192.168.41.21"]
@@ -751,7 +749,6 @@ graph TD
     T_SUR --> T_TAB
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
