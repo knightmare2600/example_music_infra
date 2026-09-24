@@ -587,6 +587,10 @@ def check_minimum_standard_equipment(problems, computers):
     ABD/AKL/BIR/CLY/LAX/LND/BRK's genuinely-separate RTR+FWL pairs the other way). Allow-
     listed here rather than left as a standing, never-resolved "worth checking" message --
     same reasoning as check_missing_devices_csv_row's OS-comparison fix earlier tonight.
+    List itself lives in benarbejde/standard_site_boilerplate.json
+    (combo_router_firewall_sites), not hardcoded here a second time -- found live the hard
+    way when check_new_site_boilerplate.py's own --complete briefly wrote an incorrect
+    Planned RTR row for SYD/MEL before the two checks shared one source of truth.
 
     2026-09-24, same evening: BER is a third, different shape again -- Robert: "BER is the
     new re-unified post-1990 Berlin site, but the old equipment is still there, and yes the
@@ -597,7 +601,12 @@ def check_minimum_standard_equipment(problems, computers):
     (SHARES_INFRASTRUCTURE_WITH) rather than duplicating BRD's records under BER too, since
     the consolidation itself is explicitly still pending (devices.csv's own BRD notes:
     "possible decommission after the move" -- future tense, not done yet)."""
-    COMBO_ROUTER_FIREWALL_SITES = {"SYD", "MEL", "ODE"}
+    try:
+        boilerplate = json.loads((BENARBEJDE / "standard_site_boilerplate.json").read_text())
+        COMBO_ROUTER_FIREWALL_SITES = set(boilerplate.get("combo_router_firewall_sites", []))
+    except Exception as e:
+        problems.append(f"standard_site_boilerplate.json: could not load -- {e}")
+        COMBO_ROUTER_FIREWALL_SITES = set()
     SHARES_INFRASTRUCTURE_WITH = {"BER": "BRD"}
     by_site_role = defaultdict(set)
     for c in computers:

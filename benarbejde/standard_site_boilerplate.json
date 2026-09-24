@@ -25,5 +25,8 @@
     "1": {"vendor": "HP", "bmc_type": "ILO"},
     "2": {"vendor": "Dell", "bmc_type": "RAC"}
   },
-  "pve_convention_notes": "Server 1 is always HP (BMC type ILO), server 2 is always Dell (BMC type RAC) -- Robert, 2026-09-24. This is the reason the BMC pool's own '.2' slot is deliberately skipped (see README.md Addressing section) -- ILO/RAC land on .3/.4, not .2/.3."
+  "pve_convention_notes": "Server 1 is always HP (BMC type ILO), server 2 is always Dell (BMC type RAC) -- Robert, 2026-09-24. This is the reason the BMC pool's own '.2' slot is deliberately skipped (see README.md Addressing section) -- ILO/RAC land on .3/.4, not .2/.3.",
+
+  "combo_router_firewall_sites": ["SYD", "MEL", "ODE"],
+  "combo_router_firewall_sites_notes": "Confirmed, not guessed: each of these three has exactly ONE real edge device, a combo router/firewall unit (Role=FWL), and no separate RTR ever existed -- ODE's own Legacy=yes RTR row's OS matches its live FWL record exactly, the same evidence pattern used to resolve ABD/AKL/BIR/CLY/LAX/LND/BRK's genuinely-separate RTR+FWL pairs the other way. A site in this list is NOT missing its RTR -- treat RTR as already-satisfied for these three specifically, same as check_ad_data_integrity.py's own check_minimum_standard_equipment does (both read this same list, added 2026-09-24 after check_new_site_boilerplate.py's own --complete briefly wrote incorrect Planned RTR rows for SYD/MEL before this existed -- single source of truth from here on, not two hardcoded copies)."
 }

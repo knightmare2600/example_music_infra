@@ -146,10 +146,16 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWISYD002<br/>Access Switch<br/>192.168.29.251"]
     T_RTR --> T_SWI3
+    T_PVE["🗂️ EXAPVESYD001<br/>PVE 1<br/>192.168.29.5 — planned"]
+    T_RTR --> T_PVE
+    T_PVE2["🗂️ EXAPVESYD002<br/>PVE 2<br/>192.168.29.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASSYD001<br/>NAS<br/>192.168.29.19"]
+    T_NAS["🗃️ EXANASSYD001<br/>NAS 1<br/>192.168.29.19 — planned"]
     T_RDR["🔐 EXARDRSYD001<br/>RDR<br/>192.168.29.21"]
+    T_RDR["🔐 EXARDRSYD001<br/>RDR 1<br/>192.168.29.21 — planned"]
     T_WAP["📶 EXAWAPSYD001<br/>Wireless Access Point<br/>192.168.29.84"]
-    T_SWI2 --> T_NAS --> T_RDR --> T_WAP
+    T_SWI2 --> T_NAS --> T_NAS --> T_RDR --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSSYD001<br/>DCS 1<br/>192.168.29.10"]
     T_SVR["🗄️ EXASVRSYD001<br/>Local Infra Server<br/>192.168.29.20"]
     T_SBC["🛡️ EXASBCSYD001<br/>VoIP SBC<br/>192.168.29.48"]
@@ -164,15 +170,20 @@ graph TD
     T_PRN["🖨️ EXAPRNSYD001<br/>Laser Printer<br/>192.168.29.80"]
     T_OTH_CAM["🎥 EXACAMSYD001-002<br/>2 x CCTV Cameras<br/>192.168.29.82,85"]
     T_COF["🍵 EXACOFSYD001<br/>Coffee Machine<br/>192.168.29.83"]
+    T_ILO["🔧 EXAILOSYD001<br/>ILO 1<br/>192.168.29.3 — planned"]
     T_RAC --> T_WKS --> T_TAB --> T_PRN --> T_COF
-    T_MBP --> T_PHN --> T_LCD --> T_OTH_CAM
+    T_MBP --> T_PHN --> T_LCD --> T_OTH_CAM --> T_ILO
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -188,6 +199,7 @@ graph TD
     style T_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_OTH_CAM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_COF fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:SYD:END
 ```
 
@@ -322,10 +334,16 @@ graph TD
     T_RTR --> T_SWI2
     T_SWI3["🔀 EXASWIMEL002<br/>Access Switch<br/>192.168.61.251"]
     T_RTR --> T_SWI3
+    T_PVE["🗂️ EXAPVEMEL001<br/>PVE 1<br/>192.168.61.5 — planned"]
+    T_RTR --> T_PVE
+    T_PVE2["🗂️ EXAPVEMEL002<br/>PVE 2<br/>192.168.61.6 — planned"]
+    T_RTR --> T_PVE2
     T_NAS["🗃️ EXANASMEL001<br/>Local NAS<br/>192.168.61.19"]
     T_RDR["🔐 EXARDRMEL001<br/>RDR<br/>192.168.61.21"]
+    T_RDR["🔐 EXARDRMEL001<br/>RDR 1<br/>192.168.61.21 — planned"]
     T_WAP["📶 EXAWAPMEL001<br/>WAP 1<br/>192.168.61.82"]
-    T_SWI2 --> T_NAS --> T_RDR --> T_WAP
+    T_WAP["📶 EXAWAPMEL001<br/>WAP 1<br/>192.168.61.82 — planned"]
+    T_SWI2 --> T_NAS --> T_RDR --> T_RDR --> T_WAP --> T_WAP
     T_DCS["🗝️ EXADCSMEL001<br/>DCS 1<br/>192.168.61.10"]
     T_SVR["🗄️ EXASVRMEL001<br/>Local File And Print Server<br/>192.168.61.20"]
     T_SBC["🛡️ EXASBCMEL001<br/>VoIP SBC<br/>192.168.61.48"]
@@ -338,16 +356,21 @@ graph TD
     T_TAB["📱 EXATABMEL001<br/>IPad<br/>192.168.61.60"]
     T_LCD["🖼️ EXALCDMEL001<br/>Signage Display<br/>192.168.61.70"]
     T_PRN["🖨️ EXAPRNMEL001<br/>LaserJet Printer<br/>192.168.61.80"]
+    T_ILO["🔧 EXAILOMEL001<br/>ILO 1<br/>192.168.61.3 — planned"]
     T_RAC --> T_WKS --> T_TAB --> T_PRN
-    T_MBP --> T_PHN --> T_LCD
+    T_MBP --> T_PHN --> T_LCD --> T_ILO
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI3 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PVE2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_NAS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RDR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -360,5 +383,6 @@ graph TD
     style T_TAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_LCD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PRN fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:MEL:END
 ```
