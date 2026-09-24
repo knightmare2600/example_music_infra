@@ -449,7 +449,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRMCR001<br/>RTR<br/>192.168.161.1"]
+    T_RTR["📡 EXARTRMCR001<br/>WAN Edge Router<br/>192.168.161.1"]
     T_VRK --> T_RTR
     T_PVE["🗂️ EXAPVEMCR001<br/>PVE 1<br/>192.168.161.5"]
     T_RTR --> T_PVE
@@ -596,7 +596,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRLIV001<br/>RTR<br/>192.168.151.1"]
+    T_RTR["📡 EXARTRLIV001<br/>WAN Edge Router<br/>192.168.151.1"]
     T_VRK --> T_RTR
     T_PVE["🗂️ EXAPVELIV001<br/>PVE 1<br/>192.168.151.5"]
     T_RTR --> T_PVE
@@ -742,7 +742,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     T_VRK["☁️ VRK — vRACK, 192.168.139.0/24"]
-    T_RTR["📡 EXARTRNEW001<br/>RTR<br/>192.168.191.1"]
+    T_RTR["📡 EXARTRNEW001<br/>WAN Edge Router<br/>192.168.191.1"]
     T_VRK --> T_RTR
     T_PVE["🗂️ EXAPVENEW001<br/>PVE 1<br/>192.168.191.5"]
     T_RTR --> T_PVE
