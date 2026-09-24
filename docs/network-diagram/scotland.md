@@ -581,16 +581,16 @@ graph TD
     T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEGLA001<br/>PVE 1<br/>192.168.141.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWIGLA001<br/>SWI 1<br/>192.168.141.250"]
+    T_SWI["🔀 EXASWIGLA002<br/>SWI 2<br/>192.168.141.251"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWIGLA002<br/>SWI 2<br/>192.168.141.251"]
+    T_SWI2["🔀 EXASWIGLA003<br/>SWI 3<br/>192.168.141.252"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWIGLA003<br/>SWI 3<br/>192.168.141.252"]
+    T_SWI3["🔀 EXASWIGLA001<br/>96-port Switch<br/>192.168.141.250"]
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASGLA001<br/>NAS<br/>192.168.141.19"]
     T_RDR["🔐 EXARDRGLA001<br/>RDR<br/>192.168.141.21"]
     T_WAP["📶 EXAWAPGLA001<br/>WAP 1<br/>192.168.141.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSGLA001<br/>DCS 1<br/>192.168.141.10"]
     T_SBC["🛡️ EXASBCGLA001<br/>SBC<br/>192.168.141.48"]
     T_FWL["🧱 EXAFWLGLA001<br/>LAN Face<br/>192.168.141.253"]
@@ -869,17 +869,17 @@ graph TD
     T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEDUN001<br/>PVE 1<br/>192.168.138.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWIDUN001<br/>SWI 1<br/>192.168.138.250"]
+    T_SWI["🔀 EXASWIDUN002<br/>SWI 2<br/>192.168.138.251"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWIDUN002<br/>SWI 2<br/>192.168.138.251"]
+    T_SWI2["🔀 EXASWIDUN003<br/>SWI 3<br/>192.168.138.252"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWIDUN003<br/>SWI 3<br/>192.168.138.252"]
+    T_SWI3["🔀 EXASWIDUN001<br/>96-port Switch<br/>192.168.138.250"]
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASDUN001<br/>NAS<br/>192.168.138.19"]
     T_RDR["🔐 EXARDRDUN001<br/>RDR<br/>192.168.138.21"]
     T_WAP["📶 EXAWAPDUN001<br/>Wireless Access Point<br/>192.168.138.82"]
     T_WAP2["📶 EXAWAPDUN002<br/>Wireless Access Point<br/>192.168.138.83"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
+    T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSDUN001<br/>DCS 1<br/>192.168.138.10"]
     T_SBC["🛡️ EXASBCDUN001<br/>SBC<br/>192.168.138.48"]
     T_FWL["🧱 EXAFWLDUN001<br/>LAN Face<br/>192.168.138.253"]
@@ -1022,16 +1022,16 @@ graph TD
     T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEPER001<br/>PVE 1<br/>192.168.173.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWIPER001<br/>SWI 1<br/>192.168.173.250"]
+    T_SWI["🔀 EXASWIPER002<br/>SWI 2<br/>192.168.173.251"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWIPER002<br/>SWI 2<br/>192.168.173.251"]
+    T_SWI2["🔀 EXASWIPER003<br/>SWI 3<br/>192.168.173.252"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWIPER003<br/>SWI 3<br/>192.168.173.252"]
+    T_SWI3["🔀 EXASWIPER001<br/>96-port Switch<br/>192.168.173.250"]
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASPER001<br/>File Storage For User Profiles & Music Archive<br/>192.168.173.19"]
     T_RDR["🔐 EXARDRPER001<br/>RDR<br/>192.168.173.21"]
     T_WAP["📶 EXAWAPPER001<br/>WAP 1<br/>192.168.173.82"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP
+    T_SWI3 --> T_NAS --> T_RDR --> T_WAP
     T_DCS["🗝️ EXADCSPER001<br/>DCS 1<br/>192.168.173.10"]
     T_SBC["🛡️ EXASBCPER001<br/>VoIP SBC<br/>192.168.173.48"]
     T_FWL["🧱 EXAFWLPER001<br/>LAN Face<br/>192.168.173.253"]
@@ -1163,17 +1163,17 @@ graph TD
     T_RTR --> T_BMC
     T_PVE["🗂️ EXAPVEABD001<br/>PVE 1<br/>192.168.224.5"]
     T_RTR --> T_PVE
-    T_SWI["🔀 EXASWIABD001<br/>SWI 1<br/>192.168.224.250"]
+    T_SWI["🔀 EXASWIABD002<br/>SWI 2<br/>192.168.224.251"]
     T_RTR --> T_SWI
-    T_SWI2["🔀 EXASWIABD002<br/>SWI 2<br/>192.168.224.251"]
+    T_SWI2["🔀 EXASWIABD003<br/>SWI 3<br/>192.168.224.252"]
     T_RTR --> T_SWI2
-    T_SWI3["🔀 EXASWIABD003<br/>SWI 3<br/>192.168.224.252"]
+    T_SWI3["🔀 EXASWIABD001<br/>96-port Switch<br/>192.168.224.250"]
     T_RTR --> T_SWI3
     T_NAS["🗃️ EXANASABD001<br/>NAS<br/>192.168.224.19"]
     T_RDR["🔐 EXARDRABD001<br/>RDR<br/>192.168.224.21"]
     T_WAP["📶 EXAWAPABD001<br/>Wireless Access Point<br/>192.168.224.82"]
     T_WAP2["📶 EXAWAPABD002<br/>Wireless Access Point<br/>192.168.224.83"]
-    T_SWI --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
+    T_SWI3 --> T_NAS --> T_RDR --> T_WAP --> T_WAP2
     T_DCS["🗝️ EXADCSABD001<br/>DCS 1<br/>192.168.224.10"]
     T_SBC["🛡️ EXASBCABD001<br/>SBC<br/>192.168.224.48"]
     T_FWL["🧱 EXAFWLABD001<br/>Enterprise Edge Firewall<br/>192.168.224.253"]
