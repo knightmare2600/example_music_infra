@@ -670,7 +670,13 @@
     # All site, DNS, and role information is now resolved — operator sees
     # the complete picture before confirming.
 
-    - name: "[A6] Pre-flight summary — confirm before connecting"
+    # Short name deliberately -- ansible-core's own pause action plugin (not exa_pretty,
+    # confirmed by reading the real installed pause.py) always echoes "[<task name>]" as
+    # the first line of the prompt itself, in addition to exa_pretty's own per-task
+    # header line above it. A long descriptive name here doubled up visually (found live,
+    # Robert, EXADCSGOT001); the "── Pre-flight summary ──" header inside prompt: below
+    # already carries the description, so the name only needs to identify the stage.
+    - name: "[A6]"
       ansible.builtin.pause:
         prompt: |-
 
@@ -993,7 +999,8 @@
         ansible_host: "{{ static_ip }}"
       when: ip_needs_change | bool
 
-    - name: "[H] Wait — confirm VM is back up before continuing"
+    # Short name -- see [A6]'s own comment above; same ansible-core pause.py double-echo.
+    - name: "[H]"
       ansible.builtin.pause:
         prompt: |-
 
