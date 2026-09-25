@@ -438,6 +438,15 @@ DEVICE_GROUP_MAP = {
   # node already gets -- without this it would fall into the generic site_devices catch-all
   # and silently miss all of that.
   "PVE": "pvenodes",
+  # DNS (2026-09-25, Robert): both EXADNSVRK001 and EXADNSFRD001 were falling into the
+  # generic per-site [site_devices] catch-all, same gap PVE/NAS closed above -- meant
+  # ansible/playbooks/bind9/bind9-dns.yml's hosts: line had nothing group-based to target,
+  # so it defaulted straight to a single hardcoded hostname instead of following the
+  # "hosts: {{ target | default('<group>') }} + --limit <hostname>" pattern every other
+  # playbook family (pvenodes, firewalls, windows_dc...) already uses. A real [dns] group
+  # now spans both sites (INI groups union across files the same way pvenodes/firewalls
+  # already do) so --limit works exactly the same way here as everywhere else.
+  "DNS": "dns",
 }
 
 # Manageability default when devices.csv's own Managed column is blank (true for every row at the
