@@ -1027,13 +1027,29 @@
     # correctly without requiring the operator to hand-edit configs/inventory
     # before the very first bootstrap run — add_host only affects this one
     # process's in-memory inventory, it doesn't touch the .ini files on disk.
-    # Requires -i configs/inventory (not a bare IP) so the windows_dc/
-    # windows_server/windows/windows_nodes :children hierarchy already exists
-    # for the new host to inherit into — confirmed empirically, add_host into
-    # just the most specific group (e.g. windows_dc) correctly inherits every
-    # parent group's group_vars, including group_vars/windows_nodes/
-    # connection.yml (SSH user/key/shell), with no need to also pass
-    # connection vars to add_host directly.
+    #
+    # 2026-09-25 CORRECTION, live bug found onboarding EXADCSGOT001: the
+    # comment below used to claim this "requires -i configs/inventory (not a
+    # bare IP)" and stopped there -- true as far as it went, but this
+    # playbook's own documented Usage (README) is `-i <dhcp-ip>, -e
+    # target_hosts=<dhcp-ip>` for a genuinely new box, which is an ad-hoc
+    # inventory with no directory at all, so group_vars/windows_nodes/
+    # connection.yml never loads. Confirmed live: 15-locale-timezone.yml
+    # (the very next play in site.yml's chain) died "Permission denied
+    # (publickey,password,keyboard-interactive)" against the newly-registered
+    # host, because it inherited no ansible_user/ansible_ssh_private_key_file/
+    # ansible_shell_type at all -- same root cause as the site_services fix
+    # earlier this file, different mechanism (group_vars-via-add_host instead
+    # of group_vars-via-vars:), reproduced the same way (a scratch repro
+    # confirmed add_host's group membership only inherits group_vars that live
+    # next to the loaded inventory source or the running playbook -- neither
+    # is true here, since configs/inventory/group_vars/ is neither). Fixed by
+    # passing the connection vars explicitly below, exactly the same
+    # workaround windows_dc/playbooks/20-dc-promote.yml already uses for this
+    # identical limitation ("set here too since group_vars/windows_nodes/
+    # connection.yml is inventory-group-gated and won't apply on ungrouped/ad
+    # hoc runs") -- every value passed is one this same play already resolved
+    # itself (vars_prompt/vars: above), not a second hardcoded copy.
     #
     # Still add the host to configs/inventory/<site>.ini for real once
     # bootstrap completes, same as before — this only covers the current run.
@@ -1094,9 +1110,19 @@
     # call's own identity.
     - name: "[H2] Register into {{ _permanent_groups | join(', ') }} for the rest of this run"
       add_host:
-        name:         "{{ inventory_hostname }}"
-        groups:       "{{ _permanent_groups }}"
-        ansible_host: "{{ static_ip }}"
+        name:                         "{{ inventory_hostname }}"
+        groups:                       "{{ _permanent_groups }}"
+        ansible_host:                 "{{ static_ip }}"
+        # Explicit, not relied on via group_vars/windows_nodes/connection.yml
+        # inheritance -- see this task's own comment above. Every value here
+        # is one this play already resolved for its own connection, so this
+        # is not a second, independently-hand-maintained copy.
+        ansible_connection:           "{{ ansible_connection }}"
+        ansible_shell_type:           "{{ ansible_shell_type }}"
+        ansible_user:                 "{{ ansible_user }}"
+        ansible_port:                 22
+        ansible_ssh_private_key_file: "{{ ansible_ssh_private_key_file }}"
+        ansible_ssh_extra_args:       "{{ ansible_ssh_extra_args }}"
       delegate_to: localhost
       become: false
 
