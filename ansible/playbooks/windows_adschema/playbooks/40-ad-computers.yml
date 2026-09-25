@@ -198,20 +198,28 @@
     # "EXAPHNABD001$"), matching the identity-lookup convention microsoft.ad.
     # computer expects — see Section B/C below, which look these accounts
     # back up by the same value.
+    #
+    # 2026-09-25, Robert's ask, live: "298 of 298 computer(s) need creating or
+    # a ... update" -- same fully serial shape 30-ad-users.yml's Sections C/D
+    # had before being batched the same evening (see that file's own
+    # changelog). microsoft.ad.computer never sets a password (machine
+    # account passwords are AD/domain-join-managed, not a module param here
+    # at all), so there's no equivalent of the concurrent-password-write race
+    # that keeps 30-ad-users.yml's Sections B0/F1 genuinely serial -- safe to
+    # batch async from the start. See tasks/create_computers_batch.yml's own
+    # header for the full writeup.
     # -------------------------------------------------------------------------
 
-    - name: "A | Create computer accounts"
-      microsoft.ad.computer:
-        name:             "{{ item.Name }}"
-        sam_account_name: "{{ item.SamAccountName }}"
-        dns_hostname:     "{{ item.DNSHostName }}"
-        path:             "{{ item.ad_ou }}"
-        description:      "{{ item.Description }}"
-        enabled:          "{{ item.Enabled }}"
-        state:            present
-      loop: "{{ _computers_todo | default([]) }}"
+    - name: "A | Split computer creates/updates into batches of 10 for capped-concurrency async dispatch"
+      set_fact:
+        _a_batches: "{{ (_computers_todo | default([])) | batch(10) | list }}"
+
+    - name: "A | Create computer accounts, batches of 10"
+      include_tasks: ../tasks/create_computers_batch.yml
+      loop: "{{ _a_batches }}"
       loop_control:
-        label: "{{ item.SamAccountName }}"
+        loop_var: _a_batch
+        label: "batch of {{ _a_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section B/C — Operating system attributes

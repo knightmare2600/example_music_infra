@@ -1,0 +1,58 @@
+# =============================================================================
+# tasks/create_computers_batch.yml
+# Example Music Limited — Create one batch of AD computer accounts, capped concurrency
+# =============================================================================
+# Included in a loop over _a_batches (see 40-ad-computers.yml Section A), once
+# per batch of up to 10 computers. Same async/poll:0 + wait + fail-check shape
+# as tasks/create_users_batch.yml (windows_adschema/playbooks/30-ad-users.yml
+# Section B) -- see that file's own header for the full write-up of why
+# async/poll:0 (not forks, which parallelises across hosts not loop items) and
+# why batches of 10 (WinRM's MaxShellsPerUser=30 default, plus the same safety
+# margin already settled on there).
+#
+# 2026-09-25, Robert's ask, live (EXADCSGOT001): "298 of 298 computer(s) need
+# creating or a Description/Enabled/DNSHostName update" -- same fully serial,
+# one-microsoft.ad.computer-call-per-item shape 30-ad-users.yml's Sections C
+# and D had (see that file's own 2026-09-25 changelog entry) before being
+# batched the same evening. Unlike user creation (Sections B0/F1 in
+# 30-ad-users.yml), microsoft.ad.computer never touches a password at all --
+# machine account passwords are generated and managed by AD/the domain-join
+# process itself, never set by this task -- so there is no equivalent
+# concurrent-write race to avoid here. Safe to batch async from the start,
+# it just hadn't been done yet.
+# =============================================================================
+
+- name: "A | Create computer accounts (batch of {{ _a_batch | length }}, fire async)"
+  microsoft.ad.computer:
+    name:             "{{ item.Name }}"
+    sam_account_name: "{{ item.SamAccountName }}"
+    dns_hostname:     "{{ item.DNSHostName }}"
+    path:             "{{ item.ad_ou }}"
+    description:      "{{ item.Description }}"
+    enabled:          "{{ item.Enabled }}"
+    state:            present
+  async: 60
+  poll: 0
+  loop: "{{ _a_batch }}"
+  loop_control:
+    label: "{{ item.SamAccountName }}"
+  register: _a_async
+
+- name: "A | Create computer accounts (batch, wait for completion)"
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: _a_wait
+  until: _a_wait.finished
+  retries: 30
+  delay: 2
+  loop: "{{ _a_async.results }}"
+  loop_control:
+    label: "{{ item.item.SamAccountName }}"
+
+- name: "A | Fail on any batch item that errored"
+  fail:
+    msg: "{{ item.item.item.SamAccountName }} failed: {{ item.msg | default('unknown error') }}"
+  loop: "{{ _a_wait.results }}"
+  loop_control:
+    label: "{{ item.item.item.SamAccountName }}"
+  when: item.failed | default(false)
