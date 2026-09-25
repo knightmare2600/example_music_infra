@@ -17,6 +17,14 @@
 ; Added 2026-07-20 -- see benarbejde/generate_inventory.py's TYPE_DNS_ALIAS. Only a couple of
 ; single-instance CLD-only services have one; most devices have none at all.
 ;
+; 2026-09-25 fix: the DNSAlias loop only claims the alias for the FIRST device it finds with
+; that Type (sites processed alphabetically, so today that's CLD) -- a second real device of
+; an aliased Type (ANS: EXAANSFRD001 added 2026-09-19 alongside EXAANSCLD001) used to emit a
+; second CNAME for the identical name, which BIND rejects outright at load time ("multiple
+; RRs of singleton type", confirmed live). Every currently-aliased Type (RMM/SLT/ZAB) is
+; still genuinely single-instance and unaffected; this only changes behaviour the moment a
+; Type legitimately grows a second instance, same as ANS just did.
+;
 ; A device needing MORE than one friendly name (DNSAlias is one-per-role-code) gets its extras
 ; from bind9-dns.yml's own bind9_extra_cnames var instead -- see the "Extra CNAMEs" section
 ; near the bottom of this template. Added 2026-08-04 for TacticalRMM's api/mesh subdomains
@@ -76,6 +84,7 @@ $TTL {{ zone_ttl }}
 ; ── Per-site device records ───────────────────────────────────
 ; Grouped by site, sorted by HostOctet within each site.
 ; Devices without a HostOctet are documented as comments.
+{% set ns = namespace(claimed_aliases=[]) %}
 {% set site_codes = all_devices | map(attribute='Site') | unique | sort | list %}
 {% for site_code in site_codes %}
 {% set site_devs = all_devices | selectattr('Site', 'equalto', site_code) | list %}
@@ -92,7 +101,17 @@ $TTL {{ zone_ttl }}
 {% if dev.HostOctet != '' %}
 {{ "%-45s" | format(dev.Hostname | lower) }} IN  A  {{ dev.full_ip }}{{ '   ; ' + dev.Notes if dev.Notes else '' }}
 {% if dev.DNSAlias %}
+{% if dev.DNSAlias not in ns.claimed_aliases %}
 {{ "%-45s" | format(dev.DNSAlias) }} IN  CNAME  {{ dev.Hostname | lower }}.{{ domain }}.   ; friendly alias, role_codes.csv's DNSAlias column
+{% set ns.claimed_aliases = ns.claimed_aliases + [dev.DNSAlias] %}
+{% else %}
+; {{ dev.DNSAlias }} alias already points at an earlier site's device for this Type -- see
+; the DNSAlias header comment above (one-alias-per-role-code was built single-instance-only;
+; skipping here rather than emitting a second CNAME, which BIND rejects outright -- "multiple
+; RRs of singleton type", confirmed live 2026-09-25 the moment ANS genuinely became two
+; instances (CLD + FRD)). {{ site_code }}'s own {{ dev.Hostname | lower }} is still a real,
+; resolvable A record above -- only the friendly alias is single-claim.
+{% endif %}
 {% endif %}
 {% else %}
 ; NO-IP  {{ dev.Hostname | lower }}{{ '  -- ' + dev.Notes if dev.Notes else '' }}
