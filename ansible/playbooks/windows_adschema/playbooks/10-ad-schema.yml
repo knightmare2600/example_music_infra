@@ -300,13 +300,43 @@
     # render correctly against ansible-core 2.19.4 locally, so this is a real
     # version-sensitivity gap, not a logic error -- rewritten single-line to match
     # every other task's proven style rather than chasing exact version parity.
+    #
+    # 2026-09-25 CORRECTION, found live (Robert, EXADCSGOT001, control node
+    # EXAANSCLD001): commit 23f83fd (2026-09-22) removed `| trim | regex_replace(...)
+    # | from_json` from every {% set %}...{% endset %} capture in this file (and
+    # 20-ad-groups.yml/30-ad-users.yml/40-ad-computers.yml, 30 occurrences total),
+    # reasoning that ansible-core auto-converts a capture that looks like a JSON/
+    # Python literal into a native list -- confirmed true, but ONLY verified against
+    # an isolated venv matching EXAANSFRD001's specific ansible-core 2.17.14. Every
+    # live run that "fully verified" this whole populate_ad chain afterwards also ran
+    # from EXAANSFRD001 -- so the removal was never actually exercised on any OTHER
+    # control node's ansible-core version until tonight, the first time populate_ad
+    # ran from EXAANSCLD001 (ansible-core 2.19.4) instead. Reproduced directly: on
+    # 2.19.4, a capture block does NOT auto-convert -- it stays a plain string
+    # (confirmed via the real error, "access to attribute '__class__' of
+    # '_AnsibleTaggedStr' object is unsafe") -- so map(attribute=...) on it fails with
+    # "object of type 'str' has no attribute '<name>'", exactly what broke live on
+    # _continents below. Plain `from_json` alone doesn't work either on that string:
+    # the generated JSON always has a trailing comma before the closing ']' (harmless
+    # to Python's own native-literal parser, which 2.17.14 was implicitly using, but
+    # rejected outright by a strict JSON parser) -- confirmed live, "Illegal trailing
+    # comma before end of array". Fixed with a version-agnostic conditional instead of
+    # re-adding the unconditional trim|regex_replace|from_json chain 23f83fd removed:
+    # `(_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is
+    # string) else _rendered` -- parses the string correctly on 2.19.4, and on a
+    # control node where the capture DOES come back already-native (2.17.14), the
+    # `is string` check is false so the value passes through completely untouched,
+    # avoiding the exact `trim`-coerces-a-native-list-back-to-repr()-text bug 23f83fd
+    # was originally fixing. Verified directly (scratch repros, not committed) against
+    # both the string case and a simulated already-native case, plus the genuinely
+    # empty-list edge case, before applying across all 30 occurrences in the 4 files.
     - name: "Attach continent and parent city path to each site"
       set_fact:
         _sites: >-
           {%- set _rendered -%}
           [{% for item in _sites_raw.list %}{% set _cont = _region_continent[item.AnsibleRegion] %}{% set _prov = item.Province | default('') %}{% set _cpath = ('OU=Cloud Infrastructure,OU=Sites,' + _base_dn if _cont == 'Cloud Infrastructure' else ('OU=' + _prov + ',OU=' + item.Country + ',OU=' + _cont + ',OU=Sites,' + _base_dn if _prov != '' else 'OU=' + item.Country + ',OU=' + _cont + ',OU=Sites,' + _base_dn)) %}{{ (item | combine({'_continent': _cont, '_prov': _prov, '_cpath': _cpath})) | to_json }},{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "Build unique continent list"
       set_fact:
@@ -318,7 +348,7 @@
           {%- set _rendered -%}
           [{% for item in _sites | rejectattr('Country', 'equalto', 'Global') | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list %}{{ (item._continent ~ '|' ~ item.Country) | to_json }},{% endfor %}]
           {%- endset -%}
-          {{ _rendered | unique | list }}
+          {{ ((_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered) | unique | list }}
 
     - name: "Rebuild continent-country pairs from deduplicated keys"
       set_fact:
@@ -326,7 +356,7 @@
           {%- set _rendered -%}
           [{% for k in _cc_keys %}{{ {'continent': k.split('|', 1)[0], 'country': k.split('|', 1)[1]} | to_json }},{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "Build unique continent-country-province keys (single pass, dedup via unique filter)"
       set_fact:
@@ -334,7 +364,7 @@
           {%- set _rendered -%}
           [{% for item in _sites %}{% if item._prov != '' %}{{ (item._continent ~ '|' ~ item.Country ~ '|' ~ item._prov) | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered | unique | list }}
+          {{ ((_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered) | unique | list }}
 
     - name: "Rebuild continent-country-province triples from deduplicated keys"
       set_fact:
@@ -342,7 +372,7 @@
           {%- set _rendered -%}
           [{% for k in _ccp_keys %}{{ {'continent': k.split('|')[0], 'country': k.split('|')[1], 'province': k.split('|')[2]} | to_json }},{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
   tasks:
 
@@ -356,7 +386,7 @@
           {%- set _rendered -%}
           [{% for item in ['Sites', 'IT Groups', 'Service Accounts', 'Disabled'] %}{% if ('ou=' + item + ',' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "0 | Create root OUs"
       microsoft.ad.ou:
@@ -376,7 +406,7 @@
           {%- set _rendered -%}
           [{% for item in _continents %}{% if ('ou=' + item + ',ou=sites,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "1 | Create continent OUs"
       microsoft.ad.ou:
@@ -397,7 +427,7 @@
           {%- set _rendered -%}
           [{% for item in _cc_pairs %}{% if ('ou=' + item.country + ',ou=' + item.continent + ',ou=sites,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "2 | Create country OUs"
       microsoft.ad.ou:
@@ -420,7 +450,7 @@
           {%- set _rendered -%}
           [{% for item in _ccp_triples %}{% if ('ou=' + item.province + ',ou=' + item.country + ',ou=' + item.continent + ',ou=sites,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "3 | Create province OUs"
       microsoft.ad.ou:
@@ -451,7 +481,7 @@
           {%- set _rendered -%}
           [{% for item in _sites | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list %}{% if (('ou=' + item.City + ',' + item._cpath) | lower not in _existing_ou_dns or _existing_ou_descriptions[('ou=' + item.City + ',' + item._cpath) | lower] | default('') != (item.Site + ' — ' + item.Entity)) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "4 | Create city OUs"
       microsoft.ad.ou:
@@ -474,7 +504,7 @@
           {%- set _rendered -%}
           [{% for item in _sites | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list | product(['Users', 'Devices', 'Groups']) | list %}{% if ('ou=' + item.1 + ',ou=' + item.0.City + ',' + item.0._cpath) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "5 | Create city leaf OUs"
       microsoft.ad.ou:
@@ -495,7 +525,7 @@
           {%- set _rendered -%}
           [{% for item in _sites | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list | product(_device_sub_ous) | list %}{% if ('ou=' + item.1 + ',ou=devices,ou=' + item.0.City + ',' + item.0._cpath) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "6 | Create device sub-OUs"
       microsoft.ad.ou:
@@ -517,7 +547,7 @@
           {%- set _rendered -%}
           [{% for item in ['Users', 'Devices', 'Groups', 'Service Accounts'] %}{% if ('ou=' + item + ',ou=cloud infrastructure,ou=sites,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "7 | Create Cloud Infrastructure leaf OUs"
       microsoft.ad.ou:
@@ -532,7 +562,7 @@
           {%- set _rendered -%}
           [{% for item in _device_sub_ous %}{% if ('ou=' + item + ',ou=devices,ou=cloud infrastructure,ou=sites,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "7 | Create Cloud Infrastructure device sub-OUs"
       microsoft.ad.ou:
@@ -551,7 +581,7 @@
           {%- set _rendered -%}
           [{% for item in ['Security Groups', 'Distribution Groups'] %}{% if ('ou=' + item + ',ou=it groups,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "8 | Create IT Groups sub-OUs"
       microsoft.ad.ou:
@@ -566,7 +596,7 @@
           {%- set _rendered -%}
           [{% for item in ['Users', 'Computers'] %}{% if ('ou=' + item + ',ou=disabled,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "8 | Create Disabled sub-OUs"
       microsoft.ad.ou:

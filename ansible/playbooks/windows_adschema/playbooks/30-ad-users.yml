@@ -167,18 +167,23 @@
       delegate_to: localhost
       become: false
 
+    # 2026-09-25: every {% set %}...{% endset %} capture in this file has its
+    # from_json handling restored (version-agnostic this time) after breaking live
+    # on EXAANSCLD001 -- full root cause and fix writeup in 10-ad-schema.yml's
+    # "Attach continent and parent city path to each site" task, same shape at
+    # every one of this file's own 12 occurrences (30 total across all 4 files).
     - name: "Build Name(lowercase) -> effective SamAccountName(lowercase) lookup"
       set_fact:
         _group_names_lower: >-
           {%- set _rendered -%}
           [{% for g in _groups_for_lookup %}{{ (g.Name | lower) | to_json }},{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
         _group_effective_sams_lower: >-
           {%- set _rendered -%}
           [{% for g in _groups_for_lookup %}{{ ((g.SamAccountName | default(g.Name)) | lower) | to_json }},{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "Zip into Name -> effective SamAccountName dict"
       set_fact:
@@ -272,7 +277,7 @@
           {%- set _rendered -%}
           [{% for item in _users %}{% if item.ad_band_ou_name | length > 0 %}{{ (item.ad_band_ou_name ~ '|' ~ item.ad_band_parent) | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered | unique | list }}
+          {{ ((_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered) | unique | list }}
 
     - name: "Rebuild band sub-OU dicts from deduplicated keys"
       set_fact:
@@ -280,7 +285,7 @@
           {%- set _rendered -%}
           [{% for k in _band_ous_keys %}{{ {'name': k.split('|', 1)[0], 'path': k.split('|', 1)[1]} | to_json }},{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     # 2026-09-21, found live: this domain's OU names include non-ASCII characters
     # (e.g. OU=Mø, OU=Sydøst Jyland, OU=Västra Götaland -- real Danish/Swedish
@@ -325,7 +330,7 @@
           {%- set _rendered -%}
           [{% for item in _band_ous_unique | default([]) %}{% if ('ou=' + item.name + ',' + item.path) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "Preflight | Report band sub-OU count"
       debug:
@@ -430,7 +435,7 @@
           {%- set _rendered -%}
           [{% for item in _users %}{% set _existing_groups_raw = (_existing_user_by_sam[item.SamAccountName | lower].GroupNames | default('', true)).split('|') | reject('equalto', '') | list %}{% set _existing_groups %}[{% for g in _existing_groups_raw %}{{ (_group_name_to_effective_sam[g | lower] | default(g | lower)) | to_json }},{% endfor %}]{% endset %}{% if (item.Groups | length > 0 and (item.SamAccountName | lower not in _existing_user_by_sam or (item.Groups | map('lower') | list | difference(_existing_groups) | length > 0))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "Filter to manager updates not already correct"
       set_fact:
@@ -438,7 +443,7 @@
           {%- set _rendered -%}
           [{% for item in _users %}{% if (item.Manager | length > 0 and ((item.Manager ~ '|' ~ item.ad_ou) in _name_ou_to_sam or item.Manager in _name_to_sam) and (item.SamAccountName | lower not in _existing_user_by_sam or (_dn_to_sam[(_existing_user_by_sam[item.SamAccountName | lower].ManagerDN | default('')) | lower] | default('')) != ((_name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager])) | lower))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "Filter to lockout state changes needed"
       set_fact:
@@ -446,7 +451,7 @@
           {%- set _rendered -%}
           [{% for item in _users %}{% if (item.SamAccountName | lower not in _existing_user_by_sam or (_existing_user_by_sam[item.SamAccountName | lower].LockedOut | default(false)) != (item.Locked | default(false))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     # 2026-09-23, Robert's ask, extending the 2026-09-21 skip-existing-work
     # pattern to Section B itself -- see this pre_task block's own header
@@ -499,7 +504,7 @@
             {%- endif -%}
           {%- endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     # 2026-09-22, found live: a handful of accounts (Fiction Factory/Perth,
     # Marillion+Proclaimers/Edinburgh) ended up stuck Enabled=False with a
@@ -533,7 +538,7 @@
           {%- set _rendered -%}
           [{% for item in _users %}{% if (not item.Disabled and item.SamAccountName | lower in _existing_user_by_sam and not (_existing_user_by_sam[item.SamAccountName | lower].Enabled | default(true))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     # 2026-09-23, added alongside Section B2 (see create_users_batch.yml's
     # header for the confirmed root-cause writeup): B now always creates with
@@ -552,7 +557,7 @@
           {%- set _rendered -%}
           [{% for item in _users %}{% if ((not item.Disabled) != (_existing_user_by_sam[item.SamAccountName | lower].Enabled | default(false))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     # 2026-09-23, found live: the enabled:false fix above (create_users_batch.yml)
     # was NECESSARY but NOT SUFFICIENT -- it stops the enable-time race, but a
@@ -576,7 +581,7 @@
           {%- set _rendered -%}
           [{% for item in _users %}{% if (item.SamAccountName | lower not in _existing_user_by_sam) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "Preflight | Report C/D/E work needed"
       debug:
