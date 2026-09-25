@@ -12,6 +12,15 @@
 #   2026-06-20  Initial file (inline in 05-bootstrap.yml)
 #   2026-07-06  Extracted into a shared task file so 05-bootstrap.yml and
 #               playbooks/45-rsat.yml share one source of truth.
+#   2026-09-25  Robert, found live (EXADCSGOT001, forest-root build): Server Manager
+#               refused a subset of RSAT features with "One or several parent features
+#               are disabled so current feature can not be enabled" (0xc004000d) --
+#               a genuine Windows feature-dependency quirk on a fresh box, not a
+#               playbook bug. RSAT is client-side management tooling, never consumed by
+#               windows_dc's own AD-DS role install, so this shouldn't block the rest of
+#               site.yml. Both tasks now register + ignore_errors, with a follow-up
+#               warning task that only fires on real failure -- visible, not silent,
+#               just not fatal.
 # =============================================================================
 
 - name: "[Stage 15] Install RSAT via Server Manager (Server OS)"
@@ -24,6 +33,24 @@
       - GPMC
     state: present
   when: is_server
+  register: _rsat_server_result
+  # 2026-09-25, Robert (found live, EXADCSGOT001, forest-root build): Server Manager can
+  # refuse a subset of these with "One or several parent features are disabled so current
+  # feature can not be enabled" (0xc004000d) on a genuinely fresh box -- RSAT is
+  # client-side management tooling, not load-bearing for the actual AD-DS role
+  # windows_dc's own playbooks install, so a failure here shouldn't block the rest of
+  # site.yml. Not silent, though: the warning task below only fires when this one
+  # actually failed, so a real regression here still shows up, it just doesn't halt.
+  ignore_errors: true
+
+- name: "[Stage 15] WARNING — RSAT (Server Manager) install failed, continuing anyway"
+  ansible.builtin.debug:
+    msg: >-
+      RSAT install failed ({{ _rsat_server_result.msg | default('see task output above') }}) --
+      non-fatal, RSAT is management tooling only, not required for AD-DS itself. Install
+      manually later if needed: Install-WindowsFeature RSAT-AD-PowerShell,RSAT-AD-AdminCenter,
+      RSAT-ADDS-Tools,RSAT-DNS-Server,GPMC
+  when: is_server and _rsat_server_result is failed
 
 - name: "[Stage 15] Install RSAT via Windows Capabilities (Desktop OS)"
   ansible.windows.win_optional_feature:
@@ -34,3 +61,13 @@
     - Rsat.Dns.Tools~~~~0.0.1.0
     - Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0
   when: is_workstation
+  register: _rsat_desktop_result
+  ignore_errors: true
+
+- name: "[Stage 15] WARNING — RSAT (Windows Capabilities) install failed, continuing anyway"
+  ansible.builtin.debug:
+    msg: >-
+      RSAT install failed for one or more capabilities -- non-fatal, RSAT is management
+      tooling only, not required for AD-DS itself. Install manually later if needed via
+      Settings > Optional Features, or Add-WindowsCapability -Online -Name <name>.
+  when: is_workstation and _rsat_desktop_result is failed
