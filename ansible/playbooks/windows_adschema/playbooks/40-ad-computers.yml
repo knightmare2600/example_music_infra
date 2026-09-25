@@ -172,13 +172,19 @@
     # regex_replace to drop the trailing comma before from_json. True O(n), and only
     # ONE Ansible task execution instead of 364 -- verified locally against
     # new/matching/drifted/empty-input cases before applying here.
+    #
+    # 2026-09-25: the regex_replace/from_json described above was removed entirely by
+    # commit 23f83fd (2026-09-22), then restored here (version-agnostic this time)
+    # after breaking live on EXAANSCLD001. Full root cause and fix writeup in
+    # 10-ad-schema.yml's "Attach continent and parent city path to each site" task --
+    # same shape here and in 20-ad-groups.yml/30-ad-users.yml (30 occurrences total).
     - name: "Filter to computers not already present or with a drifted Description/Enabled/DNSHostName"
       set_fact:
         _computers_todo: >-
           {%- set _rendered -%}
           [{% for item in _computers %}{% if ((item.SamAccountName | lower not in _existing_computers_by_sam) or (_existing_computers_by_sam[item.SamAccountName | lower].Description | default('')) != item.Description or (_existing_computers_by_sam[item.SamAccountName | lower].Enabled | default(true)) != item.Enabled or (_existing_computers_by_sam[item.SamAccountName | lower].DNSHostName | default('')) != item.DNSHostName) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "Preflight | Report computers needing create/update"
       debug:
