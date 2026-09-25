@@ -32,6 +32,19 @@
 #   EXA<ROLE><SITE><NNN>
 # ==================================================================================================
 # Changelog:
+#  2026-09-25  emit_devices_for_dns()'s output now carries a real "Real" boolean per device --
+#              true for a genuine devices.csv row, false for a compute_standard_devices_for_site()
+#              standard-slot placeholder (a site's assumed-but-not-yet-built equipment). Found
+#              live: windows_dc/tasks/dc_source_resolution.yml's new devices.csv-driven DC
+#              replication-source candidate list initially used this function's combined output
+#              unfiltered, and would have probed every site's synthesized-but-never-built DCS
+#              slot as a real AD candidate (56 entries, only 2 -- FRD/VRK -- genuinely real).
+#              Previously only inferable indirectly, by pattern-matching Notes against "Standard
+#              <Type> slot" -- reliable in practice since that text is code-controlled, not
+#              free-form, but a real field is what any future consumer needing this distinction
+#              should check instead. Planned=yes rows still never reach this function at all
+#              (load_devices() excludes them upstream, unrelated question -- "planned but not
+#              built" vs. "real but for a site variant that never got a devices.csv exception").
 #  2026-07-26  Robert's explicit policy call: NAS/RDR/BMC/WAP joined DNS_MULTI_FIRST_INSTANCE_ONLY
 #              (matching SWI's existing "every site has one, even if not physically racked yet"
 #              treatment) -- previously excluded 2026-07-20 on "not universally deployed yet"
@@ -1196,6 +1209,7 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
       "Type": role,
       "DNSAlias": TYPE_DNS_ALIAS.get(role, ""),
       "Notes": f"Standard {role} slot",
+      "Real": False,
     })
   for role, offsets in ROLE_OFFSETS.items():
     if role in site_suppressed:
@@ -1239,6 +1253,7 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
           "Notes": f"Standard {role} slot {i} -- WAN/provisioning-network face, matches "
                    f"Ansible's own inventory convention for this hostname; LAN face is "
                    f"{build_hostname(role, site, i)}-LAN",
+          "Real": False,
         })
         devices.append({
           "Site": site,
@@ -1248,6 +1263,7 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
           "DNSAlias": "",
           "Notes": f"Standard {role} slot {i} -- LAN face (this is what the bare hostname "
                    f"meant before 2026-07-26)",
+          "Real": False,
         })
         continue
       devices.append({
@@ -1257,6 +1273,7 @@ def compute_standard_devices_for_site(site: str, net: IP, real_device_types: fro
         "Type": role,
         "DNSAlias": TYPE_DNS_ALIAS.get(role, ""),
         "Notes": f"Standard {role} slot {i}",
+        "Real": False,
       })
   return devices
 
@@ -1394,6 +1411,20 @@ def emit_devices_for_dns(csv_path: Path, devices_path: Path):
         "Type": dev["type"],
         "DNSAlias": TYPE_DNS_ALIAS.get(dev["type"], ""),
         "Notes": dev["notes"],
+        # 2026-09-25: distinguishes a genuine devices.csv row (Real: true) from a
+        # standard-slot placeholder compute_standard_devices_for_site() synthesizes for
+        # a site that hasn't built this Type yet (Real: false, set at each of that
+        # function's own devices.append() calls). Added after windows_dc/tasks/
+        # dc_source_resolution.yml nearly probed every site's synthesized-but-unbuilt
+        # DCS slot as a real AD replication-source candidate -- Planned=yes rows are
+        # already excluded upstream by load_devices() (never reach this function at
+        # all), but that alone doesn't distinguish "real device" from "assumed standard
+        # equipment for a fully-built site", which is a different question. Previously
+        # only inferable by pattern-matching Notes against "Standard <Type> slot" --
+        # correct in practice (that text is code-controlled, not free-form), but
+        # indirect; a real field is what any future consumer needing this distinction
+        # should actually check.
+        "Real": True,
       })
 
   for d in all_devices:

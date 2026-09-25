@@ -66,6 +66,18 @@
 # Tags: dc_preflight
 # =============================================================================
 # Changelog:
+#   2026-09-25  Robert: questioned why replication-source candidates were a hardcoded
+#               [CLD, FAL, ODE, BRK] site list at all, given AD's own multi-master
+#               nature -- any real DC can serve as a replication source, order doesn't
+#               matter. Confirmed live: EXADCSCLD001 was never promoted at all
+#               (DomainRole=2, AD-Domain-Services feature not installed) -- the
+#               hardcoded list assumed infrastructure that was never built, and had no
+#               path to EXADCSFRD001 (the only DC in the estate with confirmed dcdiag
+#               PASS), the exact gap that blocked EXADCSGOT001's own promotion.
+#               Retired dc_hub_sources/dc_cld_source (and the sites.csv-only
+#               dc_sites_raw/dc_sites_map lookup that fed the old self-site candidate)
+#               entirely -- candidate list is now built directly from devices.csv's real
+#               DCS rows in dc_source_resolution.yml, see that file's own changelog.
 #   2026-06-25  Initial file
 #   2026-06-29  Remove ANSI codes from vars_prompt strings (exa_pretty handles
 #               colouring); add default: "" to password prompts; standardise
@@ -155,10 +167,13 @@
   gather_facts: false
 
   vars:
-    sites_csv: "/etc/example-music/sites.csv"
+    sites_csv:   "/etc/example-music/sites.csv"
+    devices_csv: "/etc/example-music/devices.csv"
     # ad_domain_name, ad_netbios_name, dc_hub_sites, dc_cld_site,
     # dc_dns_forwarders → group_vars/windows_dc/vars.yml (single source of truth).
-    # dc_hub_sources and dc_cld_source are built at runtime from sites.csv.
+    # 2026-09-25: dc_hub_sources/dc_cld_source (a hardcoded [CLD,FAL,ODE,BRK] candidate
+    # list) retired -- see dc_source_resolution.yml's own changelog. Replication-source
+    # candidates now come directly from devices.csv's real DCS rows instead.
     # 2026-09-21 addition, Robert's explicit ask: dc_dns_forwarders (from
     # ad_forest.json) always includes 192.168.139.8 (VRK BIND9) as one global,
     # non-site-aware literal, applied to every DC in the forest -- found live
@@ -312,53 +327,12 @@
         frd_local_dns: "{{ frd_local_dns }}"
       tags: dc_preflight
 
-    # ── Load sites.csv ────────────────────────────────────────────────────────
-    # read_csv is a real module (not a lookup plugin) -- it dispatches through
-    # whatever connection is configured for the delegated host, unlike
-    # lookup('file', ...) which always evaluates on the controller regardless.
-    # This play's own vars: sets ansible_connection: ssh for every host in the
-    # play (line ~167, needed for the real Windows target) -- that overrides
-    # implicit localhost's own ansible_connection: local default, so without
-    # an explicit override here Ansible would try to SSH from the control node
-    # to itself as the Windows Administrator user, failing outright as a
-    # connection error rather than a task failure. Same bug found and fixed
-    # 2026-07-15 in windows_bootstrap/playbooks/00-preflight.yml (its [B0]
-    # failsafe and two [A4] probe tasks) -- fixed here too before this play
-    # ever gets its first live run.
-
-    - name: Load sites.csv
-      read_csv:
-        path: "{{ sites_csv }}"
-      register: dc_sites_raw
-      delegate_to: localhost
-      become: false
-      run_once: true
-      vars:
-        ansible_connection: local
-        # Second, separate override needed alongside ansible_connection: local --
-        # this play's own ansible_shell_type: powershell (line ~168) makes Ansible
-        # try to dispatch read_csv's underlying module invocation via PowerShell
-        # even while running locally on this Linux control node. Same bug class as
-        # windows_bootstrap/00-preflight.yml's 2026-07-28 [B0]/[A5] fix and this
-        # play's own dc_source_resolution.yml probe task -- both already carry this
-        # override; this task was the one gap. Found live 2026-09-21, EXADCSFRD001:
-        # "Load sites.csv" MODULE FAILURE, "/bin/sh: 1: PowerShell: not found".
-        ansible_shell_type: sh
-      tags: dc_preflight
-
-    - name: Build site → subnet lookup
-      set_fact:
-        dc_sites_map: >-
-          {{
-            dc_sites_raw.list
-            | rejectattr('Site', 'equalto', 'BRD')
-            | rejectattr('Subnet', 'equalto', 'N/A')
-            | items2dict(key_name='Site', value_name='Subnet')
-          }}
-      run_once: true
-      tags: dc_preflight
-
     # ── Determine this site's role ────────────────────────────────────────────
+    # (informational only as of 2026-09-25 -- no longer gates which replication-source
+    # candidates get probed, see dc_source_resolution.yml's own changelog. The
+    # sites.csv-based dc_sites_raw/dc_sites_map lookup this section used to feed is gone
+    # too -- its only consumer was the old per-site candidate list, now replaced by a
+    # devices.csv-driven one.)
 
     - name: Set dc_site_role fact
       set_fact:
@@ -376,26 +350,9 @@
           site={{ host_site }}  role={{ dc_site_role }}
       tags: dc_preflight
 
-    # ── Build replication source list from sites.csv ──────────────────────────
-    # IPs come from the DC column of sites.csv (loaded above) so sites.csv is
-    # the single source of truth — no IPs hardcoded in playbooks.
-    # FQDNs use the operator-confirmed dc_domain_name from the prompt.
-
-    - name: Build hub DC sources from sites.csv DC column and chosen domain name
-      set_fact:
-        dc_hub_sources:
-          - { site: "FAL", ip: "{{ _dc_ips['FAL'] | default('192.168.76.10')  }}", fqdn: "{{ 'exadcsfal001.' + dc_domain_name }}" }
-          - { site: "ODE", ip: "{{ _dc_ips['ODE'] | default('192.168.126.10') }}", fqdn: "{{ 'exadcsode001.' + dc_domain_name }}" }
-          - { site: "BRK", ip: "{{ _dc_ips['BRK'] | default('192.168.136.10') }}", fqdn: "{{ 'exadcsbrk001.' + dc_domain_name }}" }
-        dc_cld_source:
-          site: "CLD"
-          ip:   "{{ _dc_ips['CLD'] | default('192.168.69.10') }}"
-          fqdn: "{{ 'exadcscld001.' + dc_domain_name }}"
-      vars:
-        _dc_ips: "{{ dc_sites_raw.list | items2dict(key_name='Site', value_name='DC') }}"
-      tags: dc_preflight
-
     # ── Probe candidate replication sources ───────────────────────────────────
+    # Candidate list itself is built inside dc_source_resolution.yml, directly from
+    # devices.csv's real DCS rows -- see that file's own 2026-09-25 changelog entry.
 
     - name: Include replication source resolution
       include_tasks: ../tasks/dc_source_resolution.yml
