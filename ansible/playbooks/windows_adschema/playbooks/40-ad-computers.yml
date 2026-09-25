@@ -237,33 +237,51 @@
     # querying again -- the `or` short-circuits before the bracket-access ever runs
     # for a genuinely new SamAccountName (verified in isolation before applying),
     # so this is safe for computers Section A hasn't created yet in this same run too.
+    #
+    # 2026-09-25, Robert's ask, live: both sections used to loop the FULL
+    # _computers list (one microsoft.ad.computer call per item, gated by a
+    # when: drift-check) rather than a pre-filtered todo list -- correct, but
+    # meant a stable re-run with nothing genuinely drifted still dispatched
+    # (and Ansible-side skipped) all ~298 items serially, one round trip
+    # each, before ever reaching an item that needed real work. Same fix as
+    # Section A: pre-filter to a real todo list first (same condition, moved
+    # from when: into the filter itself), then batch async the same way --
+    # see tasks/set_computer_os_batch.yml / set_computer_osversion_batch.yml.
 
-    - name: "B | Set operatingSystem attribute"
-      microsoft.ad.computer:
-        identity: "{{ item.SamAccountName }}"
-        name:     "{{ item.Name }}"
-        attributes:
-          set:
-            operatingSystem: "{{ item.OS }}"
-      when:
-        - item.OS | length > 0
-        - (item.SamAccountName | lower not in _existing_computers_by_sam)
-          or (_existing_computers_by_sam[item.SamAccountName | lower].OperatingSystem | default('')) != item.OS
-      loop: "{{ _computers }}"
-      loop_control:
-        label: "{{ item.SamAccountName }}"
+    - name: "B | Filter to computers needing an operatingSystem update"
+      set_fact:
+        _os_todo: >-
+          {%- set _rendered -%}
+          [{% for item in _computers %}{% if (item.OS | length > 0 and ((item.SamAccountName | lower not in _existing_computers_by_sam) or (_existing_computers_by_sam[item.SamAccountName | lower].OperatingSystem | default('')) != item.OS)) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
-    - name: "C | Set operatingSystemVersion attribute"
-      microsoft.ad.computer:
-        identity: "{{ item.SamAccountName }}"
-        name:     "{{ item.Name }}"
-        attributes:
-          set:
-            operatingSystemVersion: "{{ item.OperatingSystemVersion }}"
-      when:
-        - item.OperatingSystemVersion | length > 0
-        - (item.SamAccountName | lower not in _existing_computers_by_sam)
-          or (_existing_computers_by_sam[item.SamAccountName | lower].OperatingSystemVersion | default('')) != item.OperatingSystemVersion
-      loop: "{{ _computers }}"
+    - name: "B | Split into batches of 10 for capped-concurrency async dispatch"
+      set_fact:
+        _b_batches: "{{ _os_todo | batch(10) | list }}"
+
+    - name: "B | Set operatingSystem attribute, batches of 10"
+      include_tasks: ../tasks/set_computer_os_batch.yml
+      loop: "{{ _b_batches }}"
       loop_control:
-        label: "{{ item.SamAccountName }}"
+        loop_var: _b_batch
+        label: "batch of {{ _b_batch | length }}"
+
+    - name: "C | Filter to computers needing an operatingSystemVersion update"
+      set_fact:
+        _osversion_todo: >-
+          {%- set _rendered -%}
+          [{% for item in _computers %}{% if (item.OperatingSystemVersion | length > 0 and ((item.SamAccountName | lower not in _existing_computers_by_sam) or (_existing_computers_by_sam[item.SamAccountName | lower].OperatingSystemVersion | default('')) != item.OperatingSystemVersion)) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "C | Split into batches of 10 for capped-concurrency async dispatch"
+      set_fact:
+        _c_batches: "{{ _osversion_todo | batch(10) | list }}"
+
+    - name: "C | Set operatingSystemVersion attribute, batches of 10"
+      include_tasks: ../tasks/set_computer_osversion_batch.yml
+      loop: "{{ _c_batches }}"
+      loop_control:
+        loop_var: _c_batch
+        label: "batch of {{ _c_batch | length }}"

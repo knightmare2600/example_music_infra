@@ -1,0 +1,42 @@
+# =============================================================================
+# tasks/set_computer_osversion_batch.yml
+# Example Music Limited — Set operatingSystemVersion for one batch of computers, capped concurrency
+# =============================================================================
+# Included in a loop over _c_batches (see 40-ad-computers.yml Section C). Same
+# async/poll:0 + wait + fail-check shape as tasks/set_computer_os_batch.yml
+# (Section B) -- see that file's own header, or tasks/create_users_batch.yml,
+# for the full write-up of async/poll:0 vs forks and batches of 10.
+# =============================================================================
+
+- name: "C | Set operatingSystemVersion attribute (batch of {{ _c_batch | length }}, fire async)"
+  microsoft.ad.computer:
+    identity: "{{ item.SamAccountName }}"
+    name:     "{{ item.Name }}"
+    attributes:
+      set:
+        operatingSystemVersion: "{{ item.OperatingSystemVersion }}"
+  async: 60
+  poll: 0
+  loop: "{{ _c_batch }}"
+  loop_control:
+    label: "{{ item.SamAccountName }}"
+  register: _c_async
+
+- name: "C | Set operatingSystemVersion attribute (batch, wait for completion)"
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: _c_wait
+  until: _c_wait.finished
+  retries: 30
+  delay: 2
+  loop: "{{ _c_async.results }}"
+  loop_control:
+    label: "{{ item.item.SamAccountName }}"
+
+- name: "C | Fail on any batch item that errored"
+  fail:
+    msg: "{{ item.item.item.SamAccountName }} failed: {{ item.msg | default('unknown error') }}"
+  loop: "{{ _c_wait.results }}"
+  loop_control:
+    label: "{{ item.item.item.SamAccountName }}"
+  when: item.failed | default(false)
