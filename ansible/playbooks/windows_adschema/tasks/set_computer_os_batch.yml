@@ -1,0 +1,50 @@
+# =============================================================================
+# tasks/set_computer_os_batch.yml
+# Example Music Limited — Set operatingSystem for one batch of computers, capped concurrency
+# =============================================================================
+# Included in a loop over _b_batches (see 40-ad-computers.yml Section B). Same
+# async/poll:0 + wait + fail-check shape as tasks/create_computers_batch.yml
+# (Section A) -- see that file's own header, or tasks/create_users_batch.yml,
+# for the full write-up of async/poll:0 vs forks and batches of 10.
+#
+# 2026-09-25, Robert's ask, live: same latent serial-with-no-safety-reason
+# shape as Section A had -- microsoft.ad.computer never sets a password, so
+# there's nothing here that needs to stay serial. Previously ungated by a
+# pre-filtered todo list at all (looped over the full _computers list with a
+# when: drift-check per item) -- now pre-filtered the same way Section A's
+# _computers_todo already is, so a stable re-run with nothing genuinely
+# drifted dispatches zero batches instead of looping (and skipping) all ~298.
+# =============================================================================
+
+- name: "B | Set operatingSystem attribute (batch of {{ _b_batch | length }}, fire async)"
+  microsoft.ad.computer:
+    identity: "{{ item.SamAccountName }}"
+    name:     "{{ item.Name }}"
+    attributes:
+      set:
+        operatingSystem: "{{ item.OS }}"
+  async: 60
+  poll: 0
+  loop: "{{ _b_batch }}"
+  loop_control:
+    label: "{{ item.SamAccountName }}"
+  register: _b_async
+
+- name: "B | Set operatingSystem attribute (batch, wait for completion)"
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: _b_wait
+  until: _b_wait.finished
+  retries: 30
+  delay: 2
+  loop: "{{ _b_async.results }}"
+  loop_control:
+    label: "{{ item.item.SamAccountName }}"
+
+- name: "B | Fail on any batch item that errored"
+  fail:
+    msg: "{{ item.item.item.SamAccountName }} failed: {{ item.msg | default('unknown error') }}"
+  loop: "{{ _b_wait.results }}"
+  loop_control:
+    label: "{{ item.item.item.SamAccountName }}"
+  when: item.failed | default(false)
