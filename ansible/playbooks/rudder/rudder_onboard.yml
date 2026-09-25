@@ -81,7 +81,16 @@
     rudder_root_server:    "192.168.69.12"
     rudder_url:            "https://{{ rudder_root_server }}"
     rudder_apt_keyring:    "/usr/share/keyrings/rudder-archive-keyring.gpg"
-    site_code:             "{{ site_code | default('CLD') }}"
+    # site_code is NOT declared here as "site_code: {{ site_code | default('CLD') }}" --
+    # confirmed live 2026-09-25 (see bind9-dns.yml's own changelog for the full root
+    # cause) that this idiom throws "Recursive loop detected in template: maximum
+    # recursion depth exceeded" the moment it's actually resolved without an -e
+    # override present, since a vars: entry gives the name real precedence, making it
+    # resolve itself first. Every documented invocation of this playbook passes
+    # --extra-vars site_code=<code> explicitly (see header), so this was never hit in
+    # practice, but the same latent crash exists here if it's ever omitted -- resolved
+    # instead via a pre_tasks set_fact below (a one-shot task, not a play-level vars:
+    # declaration, so the identical default() expression is safe).
 
     # Relay assignment map — site code → relay policy server.
     # CLD nodes connect directly to the root server (no entry needed) — CLD is
@@ -102,6 +111,10 @@
       # CLD: omitted — CLD nodes point at the root server directly
 
   pre_tasks:
+
+    - name: "Resolve optional site_code override (set_fact, not vars: -- see vars: comment above)"
+      set_fact:
+        site_code: "{{ site_code | default('CLD') }}"
 
     - name: "Validate API token is set"
       assert:
