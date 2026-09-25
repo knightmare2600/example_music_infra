@@ -135,36 +135,46 @@
 
     # ── Print summary ─────────────────────────────────────────────────────────
 
+    # 2026-09-25, Robert, live (EXADCSGOT001): the closed-box style below (╔/╠/╚ borders)
+    # never actually closed on the right -- every content line only ever had the left ║,
+    # no matching right-side wall or padding, so it rendered as a box missing its whole
+    # right side. A real right wall here would need per-line padding computed against
+    # RENDERED length (dc_info.OSVersion, dcdiag output text, etc. all vary a lot, and the
+    # _c.* ANSI colour codes interleaved in most lines count toward Jinja's own string
+    # length without taking any visible width, so naive padding math would be wrong too).
+    # Switched to the same open-rule style windows_bootstrap/00-preflight.yml's own
+    # "[I] Pre-flight complete" summary already uses successfully for exactly this kind of
+    # variable-width content -- no right wall to keep in sync, so it can't misalign.
     - name: DC build summary
       debug:
         msg:
           - ""
-          - "{{ _c.C }}╔══════════════════════════════════════════════════════════════╗{{ _c.NC }}"
-          - "{{ _c.C }}║{{ _c.NC }}  {{ _c.W }}Domain Controller Build Summary{{ _c.NC }}"
-          - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
-          - "{{ _c.C }}║{{ _c.NC }}  Host            : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
-          - "{{ _c.C }}║{{ _c.NC }}  Site            : {{ host_site }}"
-          - "{{ _c.C }}║{{ _c.NC }}  IP              : {{ dc_info.IPv4 | default('unknown') }}"
-          - "{{ _c.C }}║{{ _c.NC }}  AD Site         : {{ dc_info.Site | default('unknown') }}"
-          - "{{ _c.C }}║{{ _c.NC }}  Global Catalog  : {{ _c.G if dc_info.IsGC | default(false) else _c.Y }}{{ dc_info.IsGC | default('unknown') }}{{ _c.NC }}"
-          - "{{ _c.C }}║{{ _c.NC }}  Read-Only DC    : {{ dc_info.IsReadOnly | default('unknown') }}"
-          - "{{ _c.C }}║{{ _c.NC }}  OS              : {{ dc_info.OSVersion | default('unknown') }}"
-          - "{{ _c.C }}║{{ _c.NC }}  Domain          : {{ dc_info.Domain | default('unknown') }}"
-          - "{{ _c.C }}║{{ _c.NC }}  Repl source     : {{ dc_replication_source | default('N/A — forest root or run standalone') }}"
-          - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
-          - "{{ _c.C }}║{{ _c.NC }}  {{ _c.W }}Health Checks{{ _c.NC }}"
-          - "{{ _c.C }}║{{ _c.NC }}  dcdiag failures : {{ _c.G if dc_dcdiag_fail_count | int == 0 else _c.R }}{{ dc_dcdiag_fail_count }}{{ _c.NC }}"
-          - "{{ _c.C }}║{{ _c.NC }}  DNS SRV record  : {{ _c.G if dc_dns_srv.stdout | trim == 'OK' else _c.Y }}{{ dc_dns_srv.stdout | trim }}{{ _c.NC }}"
-          - "{{ _c.C }}║{{ _c.NC }}  SYSVOL/Policies : {{ _c.G if dc_sysvol_content.stdout | trim | regex_search('^OK') else _c.R }}{{ dc_sysvol_content.stdout | trim }}{{ _c.NC }}"
-          - "{{ _c.C }}╠══════════════════════════════════════════════════════════════╣{{ _c.NC }}"
-          - "{{ _c.C }}║{{ _c.NC }}  {{ _c.Y }}Next steps{{ _c.NC }}"
-          - "{{ _c.C }}║{{ _c.NC }}  1. Verify in ADUC / AD Sites & Services"
-          - "{{ _c.C }}║{{ _c.NC }}  2. Confirm subnet {{ host_site }} mapped to correct AD site object"
-          - "{{ _c.C }}║{{ _c.NC }}  3. Review FSMO placement if this is a hub site"
-          - "{{ _c.C }}║{{ _c.NC }}  4. If this is a 2nd+ DC at this site, add it to devices.csv"
-          - "{{ _c.C }}║{{ _c.NC }}     (a site's 1st DC is auto-derived, no devices.csv row needed)"
-          - "{{ _c.C }}║{{ _c.NC }}  5. Update BIND9 DNS (run bind9-dns.yml --tags zones-full,reload)"
-          - "{{ _c.C }}╚══════════════════════════════════════════════════════════════╝{{ _c.NC }}"
+          - "{{ _c.C }}════════════════════════════════════════════════════════════{{ _c.NC }}"
+          - "  {{ _c.W }}Domain Controller Build Summary{{ _c.NC }}"
+          - "{{ _c.C }}════════════════════════════════════════════════════════════{{ _c.NC }}"
+          - "  Host            : {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
+          - "  Site            : {{ host_site }}"
+          - "  IP              : {{ dc_info.IPv4 | default('unknown') }}"
+          - "  AD Site         : {{ dc_info.Site | default('unknown') }}"
+          - "  Global Catalog  : {{ _c.G if dc_info.IsGC | default(false) else _c.Y }}{{ dc_info.IsGC | default('unknown') }}{{ _c.NC }}"
+          - "  Read-Only DC    : {{ dc_info.IsReadOnly | default('unknown') }}"
+          - "  OS              : {{ dc_info.OSVersion | default('unknown') }}"
+          - "  Domain          : {{ dc_info.Domain | default('unknown') }}"
+          - "  Repl source     : {{ dc_replication_source | default('N/A — forest root or run standalone') }}"
+          - "{{ _c.C }}────────────────────────────────────────────────────────────{{ _c.NC }}"
+          - "  {{ _c.W }}Health Checks{{ _c.NC }}"
+          - "  dcdiag failures : {{ _c.G if dc_dcdiag_fail_count | int == 0 else _c.R }}{{ dc_dcdiag_fail_count }}{{ _c.NC }}"
+          - "  DNS SRV record  : {{ _c.G if dc_dns_srv.stdout | trim == 'OK' else _c.Y }}{{ dc_dns_srv.stdout | trim }}{{ _c.NC }}"
+          - "  SYSVOL/Policies : {{ _c.G if dc_sysvol_content.stdout | trim | regex_search('^OK') else _c.R }}{{ dc_sysvol_content.stdout | trim }}{{ _c.NC }}"
+          - "{{ _c.C }}────────────────────────────────────────────────────────────{{ _c.NC }}"
+          - "  {{ _c.Y }}Next steps{{ _c.NC }}"
+          - "  1. Verify in ADUC / AD Sites & Services"
+          - "  2. Confirm subnet {{ host_site }} mapped to correct AD site object"
+          - "  3. Review FSMO placement if this is a hub site"
+          - "  4. If this is a 2nd+ DC at this site, add it to devices.csv"
+          - "     (a site's 1st DC is auto-derived, no devices.csv row needed)"
+          - "  5. Update BIND9 DNS (run bind9-dns.yml --tags zones-full,reload)"
+          - "{{ _c.C }}════════════════════════════════════════════════════════════{{ _c.NC }}"
       tags: dc_summary
 
     - name: Full dcdiag output (review if failures above)

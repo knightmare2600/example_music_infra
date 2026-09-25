@@ -381,7 +381,7 @@
           - "{{ _c.R }}║  DSRM PASSWORD — WRITE IT DOWN AND STORE IT SECURELY NOW          ║{{ _c.NC }}"
           - "{{ _c.R }}║  DSRM (Directory Services Restore Mode) is the ONLY recovery      ║{{ _c.NC }}"
           - "{{ _c.R }}║  path if this domain loses all its DCs or AD becomes corrupted.   ║{{ _c.NC }}"
-          - "{{ _c.R }}║  If you lose this password and there is no other working DC,       ║{{ _c.NC }}"
+          - "{{ _c.R }}║  If you lose this password and there is no other working DC,      ║{{ _c.NC }}"
           - "{{ _c.R }}║  the domain is gone. There is no recovery path. Write it down.    ║{{ _c.NC }}"
           - "{{ _c.R }}╚═══════════════════════════════════════════════════════════════════╝{{ _c.NC }}"
       tags: dc_preflight
