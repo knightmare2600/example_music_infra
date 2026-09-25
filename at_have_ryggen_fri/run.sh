@@ -421,6 +421,24 @@
 #      'ansible-doc -t test -l' against this control node's own installed
 #      ansible-core plus every collection this repo's own requirements.yml
 #      files declare, not a hardcoded snapshot that could drift.
+#  46. check_vault_placeholders.py -- found live 2026-09-25: populate_ad's
+#      New-ADUser calls against EXADCSGOT001 failed "password does not meet
+#      ... complexity" -- vault_ad_new_user_password (group_vars/windows_dc/
+#      vault.yml) was still the literal placeholder "CHANGEME", never
+#      actually set. Had evidently worked once before against the now-
+#      decommissioned EXADCSFRD001 test forest (likely a relaxed password
+#      policy there), so the unfilled placeholder itself was never caught
+#      until a genuinely fresh forest's standard policy rejected it. Swept
+#      further and found 4 more CHANGEME values (group_vars/all/vault.yml)
+#      and a different placeholder convention entirely (REPLACE_WITH_.../
+#      UNSET, group_vars/truenas_servers+rudder_servers/vault.yml) that
+#      hadn't been hit live yet either. Also confirmed via `ansible-vault
+#      view` and git history that none of this repo's vault.yml files have
+#      ever actually been ansible-vault encrypted -- this check parses them
+#      as plain YAML (skipping, not failing, any that genuinely are
+#      encrypted in the future) and flags any value matching a known
+#      placeholder convention, so the next unfilled one fails the harness
+#      instead of the first live playbook that reaches it.
 #
 # Nothing here touches a real host or needs a vault password. Two exceptions
 # to "network access beyond localhost": check 13 (check_mermaid.py) needs to
@@ -1649,6 +1667,20 @@ else
   echo "$out"
   fail "Invalid Jinja test name(s) found -- see above. This is the select('length') bug class: a real Jinja token used as the wrong KIND of thing (a filter name where a test name is expected) -- valid syntax, so neither ansible-lint nor --syntax-check catches it; only fails at render time."
   FAILED_CHECKS+=("check_jinja_test_names.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 46. Vault placeholder values — check_vault_placeholders.py
+# ------------------------------------------------------------------------------
+section "46. Vault placeholder values — check_vault_placeholders.py"
+
+if out=$(python3 "${HERE}/check_vault_placeholders.py"); then
+  echo "$out"
+  success "No unfilled placeholder values found in any plain-text vault.yml."
+else
+  echo "$out"
+  fail "Unfilled vault placeholder value(s) found -- see above. Each one will fail the first time a live playbook actually tries to use it, the same way vault_ad_new_user_password's unset CHANGEME did against EXADCSGOT001 -- set a real value now instead of waiting to hit it live."
+  FAILED_CHECKS+=("check_vault_placeholders.py")
 fi
 
 # ------------------------------------------------------------------------------
