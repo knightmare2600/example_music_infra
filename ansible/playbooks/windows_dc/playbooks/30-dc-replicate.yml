@@ -16,6 +16,18 @@
 # Tags: dc_replicate
 # =============================================================================
 # Changelog:
+#   2026-09-25  Robert, live (EXADCSGOT001): Stage 4 used to only WARN when a DC landed
+#               under Default-First-Site-Name instead of its real site -- there was no
+#               actual fix anywhere in this repo, just a message telling the operator to
+#               go do it by hand in AD Sites and Services. Since every new site's first DC
+#               build hits this exact same gap (Install-ADDSForest/
+#               Install-ADDSDomainController always land a DC in Default-First-Site-Name
+#               unless a matching Subnet-to-Site mapping already existed beforehand, which
+#               it structurally can't for a site's own first DC), this is now a real,
+#               idempotent fix: ensure the AD Site object exists, ensure a Subnet object
+#               for this site's real sites.csv subnet exists and is associated with it,
+#               then move the DC's server object into it -- only when a mismatch is
+#               actually found, verified again afterwards rather than assumed.
 #   2026-06-25  Initial file
 #   2026-06-29  Add Stage 0 pre-sync health checks (DNS, ProductType, SYSVOL,
 #               repadmin /showrepl, dcdiag) with operator confirmation pause
@@ -59,6 +71,7 @@
   gather_facts: false
 
   vars:
+    sites_csv:              "/etc/example-music/sites.csv"
     dc_sysvol_wait_retries: 20
     dc_sysvol_wait_delay:   30     # seconds between retries (total up to 10 min)
 
@@ -396,23 +409,98 @@
       changed_when: false
       tags: dc_replicate
 
-    - name: Warn — DC registered under unexpected site
-      debug:
-        msg: >
-          {{ _c.Y }}[!]{{ _c.NC }} {{ inventory_hostname }} is registered
-          under AD site '{{ dc_site_registration.stdout | trim }}'
-          but hostname implies site '{{ host_site }}'.
-          Review AD Sites and Services — the DC may need its subnet
-          mapped to the correct site object.
+    - name: "[Site fix] Correct AD site registration"
       when: dc_site_registration.stdout | trim != host_site
+      tags: dc_replicate
+      block:
+        - name: "[Site fix] DC registered under the wrong AD site — will correct"
+          debug:
+            msg: >
+              {{ _c.Y }}[!]{{ _c.NC }} {{ inventory_hostname }} is registered
+              under AD site '{{ dc_site_registration.stdout | trim }}'
+              but hostname implies site '{{ host_site }}' — fixing.
+
+        # sites.csv is the single source of truth for this site's real subnet -- not
+        # re-derived from the DC's own IP, which would be correct by convention for
+        # every ordinary site but isn't the actual authoritative value.
+        - name: "[Site fix] Load sites.csv for this site's real subnet"
+          read_csv:
+            path: "{{ sites_csv }}"
+          register: dc_replicate_sites_raw
+          delegate_to: localhost
+          become: false
+          vars:
+            ansible_connection: local
+            ansible_shell_type: sh
+
+        - name: "[Site fix] Look up this site's subnet"
+          set_fact:
+            dc_replicate_site_subnet: >-
+              {{
+                (dc_replicate_sites_raw.list | selectattr('Site', 'equalto', host_site) | map(attribute='Subnet') | first)
+              }}
+
+        - name: "[Site fix] Ensure AD Site + Subnet objects exist, then move the DC"
+          ansible.windows.win_shell: |
+            Import-Module ActiveDirectory
+            $siteName = "{{ host_site }}"
+            $subnet   = "{{ dc_replicate_site_subnet }}"
+
+            $existingSite = Get-ADReplicationSite -Filter "Name -eq '$siteName'" -ErrorAction SilentlyContinue
+            if (-not $existingSite) {
+              New-ADReplicationSite -Name $siteName | Out-Null
+              Write-Output "site=created"
+            } else {
+              Write-Output "site=already existed"
+            }
+
+            $existingSubnet = Get-ADReplicationSubnet -Filter "Name -eq '$subnet'" -ErrorAction SilentlyContinue
+            if (-not $existingSubnet) {
+              New-ADReplicationSubnet -Name $subnet -Site $siteName | Out-Null
+              Write-Output "subnet=created"
+            } elseif ($existingSubnet.Site -notmatch [regex]::Escape($siteName)) {
+              Set-ADReplicationSubnet -Identity $subnet -Site $siteName
+              Write-Output "subnet=reassigned"
+            } else {
+              Write-Output "subnet=already correct"
+            }
+
+            Move-ADDirectoryServer -Identity "{{ inventory_hostname }}" -Site $siteName -Confirm:$false
+            Write-Output "server=moved"
+          register: dc_site_fix_result
+
+        - name: "[Site fix] Show what changed"
+          debug:
+            msg: "{{ _c.C }}[*]{{ _c.NC }} {{ dc_site_fix_result.stdout_lines | join(', ') }}"
+
+        - name: "[Site fix] Re-check DC AD site registration"
+          ansible.windows.win_shell: |
+            Import-Module ActiveDirectory
+            $dc = Get-ADDomainController -Identity $env:COMPUTERNAME -ErrorAction SilentlyContinue
+            if ($dc) {
+              Write-Output $dc.Site
+            } else {
+              Write-Output "NOT_FOUND"
+            }
+          register: dc_site_registration_after_fix
+          changed_when: false
+
+    - name: "[Site fix] FAIL — still not registered under the correct site after fix"
+      fail:
+        msg: >
+          {{ inventory_hostname }} is still registered under AD site
+          '{{ dc_site_registration_after_fix.stdout | trim }}' after attempting to
+          move it to '{{ host_site }}' -- check the [Site fix] task output above.
+      when:
+        - dc_site_registration.stdout | trim != host_site
+        - dc_site_registration_after_fix.stdout | trim != host_site
       tags: dc_replicate
 
     - name: AD site registration confirmed
       debug:
         msg: >
           {{ _c.G }}[+]{{ _c.NC }} {{ inventory_hostname }} registered
-          in AD site: {{ dc_site_registration.stdout | trim }}
-      when: dc_site_registration.stdout | trim == host_site
+          in AD site: {{ (dc_site_registration_after_fix.stdout | default(dc_site_registration.stdout)) | trim }}
       tags: dc_replicate
 
     # ── Stage 5 — FSMO role check (hub/special-sauce sites) ──────────────────
