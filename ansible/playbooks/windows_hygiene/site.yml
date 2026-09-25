@@ -8,6 +8,9 @@
 #
 # Playbook order (00 = preflight, "before take off"; major steps of 10):
 #   00-preflight               Chassis/OS detection (is_laptop, is_server)
+#   05-example-music-files     Deploy sites.csv/devices.csv/etc + nodeinfo.json
+#                              to C:\ProgramData\ExampleMusic\Config (Robert's
+#                              ask, 2026-09-25 -- see that file's own header)
 #   10-dism                    DISM component store cleanup + ResetBase
 #   20-hibernation-pagefile    Hibernation by chassis type + pagefile clear
 #   30-choco                   Chocolatey upgrade all + WinDirStat + SDelete
@@ -41,9 +44,18 @@
 # (20-hibernation-pagefile.yml and 50-summary.yml need 00-preflight.yml's
 # facts — run those together, or via site.yml, rather than standalone.)
 #
-# Tags: preflight, dism, hibernation, pagefile, choco, winupdate, summary
+# Tags: preflight, example_music_files, dism, hibernation, pagefile, choco, winupdate, summary
 # =============================================================================
 # Changelog:
+#   2026-09-25  Added 05-example-music-files.yml (Robert's ask): Windows nodes had
+#               no equivalent of what linux/tools.yml already gives every Linux
+#               host -- a local copy of sites.csv/devices.csv/etc plus
+#               nodeinfo.json. Deliberately at 05 (between preflight and dism),
+#               not appended at the end, since it's foundational reference data
+#               other stages could plausibly want, not a cleanup/maintenance
+#               step. Placement doesn't currently matter functionally (no other
+#               stage here reads these files yet), but keeping it early avoids
+#               relying on that staying true.
 #   2026-07-02  Initial file
 #   2026-07-06  Add Chocolatey upgrade, WinDirStat, SDelete, PSWindowsUpdate/Windows Update
 #   2026-07-06  Split the single monolithic play into numbered standalone
@@ -57,6 +69,9 @@
 
 - import_playbook: playbooks/00-preflight.yml
   tags: preflight
+
+- import_playbook: playbooks/05-example-music-files.yml
+  tags: example_music_files
 
 - import_playbook: playbooks/10-dism.yml
   tags: dism

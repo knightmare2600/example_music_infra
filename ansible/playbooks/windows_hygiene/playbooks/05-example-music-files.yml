@@ -1,0 +1,183 @@
+---
+# =============================================================================
+# playbooks/05-example-music-files.yml
+# Example Music Limited — deploy reference files + nodeinfo.json to Windows nodes
+# =============================================================================
+# Windows has never had an equivalent of what linux/tools.yml already gives every
+# Linux host: a local copy of the estate's own reference data (sites.csv,
+# devices.csv, role_codes.csv, address_policy.csv, ad_forest.json, ad_groups.json,
+# ad_users.json, ad_computers.json) plus nodeinfo.json (hostname/site/role/
+# bootstrapped-by tracking). Robert's ask, 2026-09-25, after confirming no
+# Windows node has ever had a nodeinfo.json anywhere.
+#
+# C:\ProgramData\ExampleMusic\ is NOT a new convention invented here -- it's
+# already established by the WinPE/first-boot provisioning chain
+# (bootstrap/web/windows/Detect-Platform.cmd, Install-OpenSSH.ps1,
+# Deploy-OpenSSH.cmd), which already writes Drivers\ and Logs\ under this
+# exact path (same casing) before Ansible ever touches the box. This adds a
+# Config\ subdirectory alongside those for the reference files + nodeinfo.json,
+# matching the existing "group by purpose under one shared root" pattern
+# rather than inventing a differently-named or differently-cased folder.
+#
+# nodeinfo.json here is a deliberate addition, not a duplicate of Salt's own
+# custom grains (salt/states/grains/init.sls), which already give every
+# Windows node (including DCs -- Salt's own documented scope covers ALL
+# Windows) the same site/city/country/entity metadata -- see that file's own
+# 2026-08-04 changelog entry, where Robert previously decided NOT to add a
+# second file for exactly that reason. This time the ask is broader: the
+# actual reference CSV/JSON files themselves (which grains never provided,
+# only computed metadata), plus nodeinfo.json alongside them this time for
+# manual inspection and tooling consistency with the Linux convention.
+#
+# Schema matches ansible/tasks/nodeinfo.yml's own Linux nodeinfo.json exactly
+# (same field names/shape) so nothing consuming either file needs to know
+# which OS wrote it. That shared task file can't be reused directly here --
+# its stat/slurp/copy tasks are ansible.builtin, which only work against a
+# Linux/POSIX target -- so this is a parallel implementation of the same
+# schema via ansible.windows.win_stat/win_copy, not an extension of it.
+#
+# Tags: example_music_files
+# =============================================================================
+# Changelog:
+#   2026-09-25  Initial file (Robert's ask).
+# =============================================================================
+
+- name: Windows hygiene — deploy example-music reference files + nodeinfo.json
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: true
+
+  vars:
+    example_music_dir: 'C:\ProgramData\ExampleMusic\Config'
+    sites_csv_src:      "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
+    devices_csv_src:    "{{ playbook_dir }}/../../../../benarbejde/devices.csv"
+    role_codes_csv_src: "{{ playbook_dir }}/../../../../benarbejde/role_codes.csv"
+    address_policy_src: "{{ playbook_dir }}/../../../../benarbejde/address_policy.csv"
+    ad_forest_src:      "{{ playbook_dir }}/../../../../benarbejde/ad_forest.json"
+    ad_groups_src:      "{{ playbook_dir }}/../../../../benarbejde/ad_groups.json"
+    ad_users_src:       "{{ playbook_dir }}/../../../../benarbejde/ad_users.json"
+    ad_computers_src:   "{{ playbook_dir }}/../../../../benarbejde/ad_computers.json"
+
+  tasks:
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: always
+
+    - name: Include hostname facts
+      include_tasks: ../../../tasks/hostname_facts.yml
+      tags: always
+
+    - name: Ensure C:\ProgramData\ExampleMusic\Config exists
+      ansible.windows.win_file:
+        path: "{{ example_music_dir }}"
+        state: directory
+
+    - name: Deploy sites.csv
+      ansible.windows.win_copy:
+        src:  "{{ sites_csv_src }}"
+        dest: "{{ example_music_dir }}\\sites.csv"
+
+    - name: Deploy devices.csv
+      ansible.windows.win_copy:
+        src:  "{{ devices_csv_src }}"
+        dest: "{{ example_music_dir }}\\devices.csv"
+
+    - name: Deploy role_codes.csv
+      ansible.windows.win_copy:
+        src:  "{{ role_codes_csv_src }}"
+        dest: "{{ example_music_dir }}\\role_codes.csv"
+
+    - name: Deploy address_policy.csv
+      ansible.windows.win_copy:
+        src:  "{{ address_policy_src }}"
+        dest: "{{ example_music_dir }}\\address_policy.csv"
+
+    - name: Deploy ad_forest.json
+      ansible.windows.win_copy:
+        src:  "{{ ad_forest_src }}"
+        dest: "{{ example_music_dir }}\\ad_forest.json"
+
+    - name: Deploy ad_groups.json
+      ansible.windows.win_copy:
+        src:  "{{ ad_groups_src }}"
+        dest: "{{ example_music_dir }}\\ad_groups.json"
+
+    - name: Deploy ad_users.json
+      ansible.windows.win_copy:
+        src:  "{{ ad_users_src }}"
+        dest: "{{ example_music_dir }}\\ad_users.json"
+
+    - name: Deploy ad_computers.json
+      ansible.windows.win_copy:
+        src:  "{{ ad_computers_src }}"
+        dest: "{{ example_music_dir }}\\ad_computers.json"
+
+    # -------------------------------------------------------------------------
+    # nodeinfo.json -- same schema as ansible/tasks/nodeinfo.yml's Linux version
+    # (see this file's own header for why that shared task can't be reused
+    # directly), including the same "preserve bootstrapped_at/by across
+    # reruns, only last_ansible_run always updates" behaviour that file's own
+    # 2026-09-24 changelog entry added for Linux.
+    # -------------------------------------------------------------------------
+    - name: Load sites.csv for nodeinfo enrichment
+      ansible.builtin.read_csv:
+        path: "{{ sites_csv_src }}"
+      register: _winhygiene_sites_raw
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+
+    - name: Look up this host's site row
+      ansible.builtin.set_fact:
+        _winhygiene_site_row: "{{ _winhygiene_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
+
+    - name: "[nodeinfo] Check for existing nodeinfo.json"
+      ansible.windows.win_stat:
+        path: "{{ example_music_dir }}\\nodeinfo.json"
+      register: _winhygiene_nodeinfo_existing_file
+
+    - name: "[nodeinfo] Read existing nodeinfo.json"
+      ansible.windows.win_shell: "Get-Content -Raw '{{ example_music_dir }}\\nodeinfo.json'"
+      register: _winhygiene_nodeinfo_existing_content
+      when: _winhygiene_nodeinfo_existing_file.stat.exists
+      changed_when: false
+
+    - name: "[nodeinfo] Preserve bootstrapped_at/bootstrapped_by from the existing file, if any"
+      ansible.builtin.set_fact:
+        _winhygiene_bootstrapped_at: "{{ (_winhygiene_nodeinfo_existing_content.stdout | from_json).bootstrapped_at | default(ansible_date_time.iso8601) }}"
+        _winhygiene_bootstrapped_by: "{{ (_winhygiene_nodeinfo_existing_content.stdout | from_json).bootstrapped_by | default('windows_hygiene/site.yml') }}"
+      when: _winhygiene_nodeinfo_existing_file.stat.exists
+
+    - name: "[nodeinfo] Default bootstrapped_at/bootstrapped_by (no existing file -- genuine first write)"
+      ansible.builtin.set_fact:
+        _winhygiene_bootstrapped_at: "{{ ansible_date_time.iso8601 }}"
+        _winhygiene_bootstrapped_by: "windows_hygiene/site.yml"
+      when: not _winhygiene_nodeinfo_existing_file.stat.exists
+
+    - name: "[nodeinfo] Write nodeinfo.json"
+      ansible.windows.win_copy:
+        dest: "{{ example_music_dir }}\\nodeinfo.json"
+        content: "{{ _winhygiene_nodeinfo | to_nice_json }}\r\n"
+      vars:
+        _winhygiene_nodeinfo: >-
+          {{
+            {
+              'hostname':         inventory_hostname,
+              'fqdn':             ansible_fqdn | default(inventory_hostname),
+              'role':             host_role | lower,
+              'site':             host_site,
+              'city':             _winhygiene_site_row.City | default(''),
+              'country':          _winhygiene_site_row.Country | default(''),
+              'country_code':     _winhygiene_site_row.CountryCode | default(''),
+              'entity':           _winhygiene_site_row.Entity | default(''),
+              'office_name':      _winhygiene_site_row.OfficeName | default(''),
+              'street_address':   _winhygiene_site_row.Street | default(''),
+              'postal_code':      _winhygiene_site_row.PostalCode | default(''),
+              'ansible_managed':  true,
+              'bootstrapped_at':  _winhygiene_bootstrapped_at,
+              'bootstrapped_by':  _winhygiene_bootstrapped_by,
+              'last_ansible_run': ansible_date_time.iso8601,
+              'environment':      'production',
+            }
+          }}
