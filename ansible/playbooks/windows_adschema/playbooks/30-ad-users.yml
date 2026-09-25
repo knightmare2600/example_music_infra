@@ -865,18 +865,42 @@
     # nothing, and the module concludes the account is new. See Section F's
     # comment below for the full writeup; this section had never actually run
     # yet tonight (every prior run died earlier in the play), so the same bug
-    # hadn't surfaced here yet.
-    - name: "C | Add users to groups"
-      microsoft.ad.user:
-        name:             "{{ item.Name }}"
-        sam_account_name: "{{ item.SamAccountName }}"
-        path:             "{{ item.ad_ou }}"
-        groups:
-          add: "{{ item.Groups }}"
-        state: present
-      loop:  "{{ _group_add_todo | default([]) }}"
+    # hadn't surfaced here yet. (Superseded by the 2026-09-25 rework below --
+    # this section is now group-centric via microsoft.ad.group, which has no
+    # path:/identity-fallback trap of this shape, but the history stays here
+    # since it explains why path: matters throughout this whole file.)
+    #
+    # 2026-09-25, Robert's ask, live: reworked from "one microsoft.ad.user
+    # call per USER needing a group added" (354 potential calls) to "one
+    # microsoft.ad.group call per GROUP needing new members" (up to 111,
+    # almost always far fewer), each call carrying every user that group
+    # needs this run in one members.add list -- see
+    # tasks/add_group_members_batch.yml's own header for the full writeup
+    # (why identity: not name:, why this is safe, ansible-doc confirmation
+    # that members.add genuinely accepts a list). Batched async/poll:0 on
+    # top, same proven-safe mechanism as Section B's create_users_batch.yml.
+    - name: "C | Build flat (SamAccountName, group) pairs needing a group add"
+      set_fact:
+        _group_pairs: >-
+          {%- set _rendered -%}
+          [{% for u in _group_add_todo | default([]) %}{% for grp in u.Groups %}{{ {'sam': u.SamAccountName, 'group': grp} | to_json }},{% endfor %}{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "C | Group pairs by group name -- one bulk add per group instead of one per user"
+      set_fact:
+        _group_membership_todo: "{{ _group_pairs | groupby('group') }}"
+
+    - name: "C | Split group adds into batches of 10 for capped-concurrency async dispatch"
+      set_fact:
+        _c_batches: "{{ _group_membership_todo | batch(10) | list }}"
+
+    - name: "C | Add members to groups, batches of 10"
+      include_tasks: ../tasks/add_group_members_batch.yml
+      loop: "{{ _c_batches }}"
       loop_control:
-        label: "{{ item.SamAccountName }} → {{ item.Groups | join(', ') }}"
+        loop_var: _c_batch
+        label: "batch of {{ _c_batch | length }} group(s)"
 
     # -------------------------------------------------------------------------
     # Section D — Manager
@@ -905,20 +929,28 @@
     # SAME run and wouldn't be in that snapshot yet -- matches the same
     # CN=<name>,<path> convention every other section in this file already
     # relies on for existence-check DNs.
-    - name: "D | Set manager attribute"
-      microsoft.ad.user:
-        name:             "{{ item.Name }}"
-        sam_account_name: "{{ item.SamAccountName }}"
-        path:             "{{ item.ad_ou }}"
-        attributes:
-          set:
-            manager: >-
-              {%- set _target_sam = (_name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager])) | lower -%}
-              CN={{ _sam_to_user[_target_sam].Name }},{{ _sam_to_user[_target_sam].ad_ou }}
-        state:            present
-      loop: "{{ _manager_todo | default([]) }}"
+    #
+    # 2026-09-25, Robert's ask, live: this used to be a single fully serial
+    # loop, unlike Section B's own async/poll:0 batching -- no safety reason
+    # for that (manager: never touches a password, so the concurrent-
+    # password-write race Sections B0/F1 exist to avoid doesn't apply here).
+    # Batched the same proven-safe way as Section B/C instead of the
+    # riskier "one raw PowerShell call per manager" consolidation Section
+    # C's group-membership rework used -- see
+    # tasks/set_manager_batch.yml's own header for why: microsoft.ad.user
+    # has no bulk-target equivalent of microsoft.ad.group's members.add, so
+    # that would mean hand-rolling a foreach-in-one-win_shell script instead
+    # of reusing this exact, already-debugged per-item resolution logic.
+    - name: "D | Split manager updates into batches of 10 for capped-concurrency async dispatch"
+      set_fact:
+        _d_batches: "{{ (_manager_todo | default([])) | batch(10) | list }}"
+
+    - name: "D | Set manager attribute, batches of 10"
+      include_tasks: ../tasks/set_manager_batch.yml
+      loop: "{{ _d_batches }}"
       loop_control:
-        label: "{{ item.SamAccountName }} ← manager: {{ item.Manager }}"
+        loop_var: _d_batch
+        label: "batch of {{ _d_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section E — Account lockout state

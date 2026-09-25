@@ -1,0 +1,74 @@
+# =============================================================================
+# tasks/add_group_members_batch.yml
+# Example Music Limited — Add members to one batch of groups, capped concurrency
+# =============================================================================
+# Included in a loop over _c_batches (see 30-ad-users.yml Section C), once per
+# batch of up to 10 groups. Same async/poll:0 + wait + fail-check shape as
+# tasks/create_users_batch.yml (Section B) -- see that file's own header for
+# the full write-up of why async/poll:0 (not forks, which parallelises across
+# hosts not loop items) and why batches of 10 specifically (WinRM's
+# MaxShellsPerUser=30 default, plus the same safety margin Section B already
+# settled on after a real live incident).
+#
+# 2026-09-25, Robert's ask, live (EXADCSGOT001): Section C used to loop over
+# every USER needing a group added (354 potential items, one
+# microsoft.ad.user call each) -- Robert's own observation: "we literally
+# have a bunch of users all going into their specific groups... esp group
+# membership". microsoft.ad.group's own members.add parameter genuinely
+# accepts a LIST (confirmed via ansible-doc microsoft.ad.group -- "Add
+# members to the group, preserving existing membership" example passes
+# multiple members in one call), so this is now GROUP-centric instead of
+# USER-centric: one call per group needing new members, each call carrying
+# every user that group needs added this run, instead of one call per user
+# repeating the same group name over and over. Reduces total AD calls from
+# "one per user" to "one per group with pending adds" (up to 111 groups
+# total, almost always far fewer needing changes on a given run) -- on top
+# of the same batch/async concurrency Section B already proved safe.
+#
+# Group identity: uses `identity:`, not `name:` -- microsoft.ad.group's own
+# docs are explicit that `name:` is the LDAP cn, not the sAMAccountName,
+# but every _group_membership_todo entry's group name here is a value taken
+# directly from ad_users.json's own Groups: [...] list, which is a
+# SamAccountName-resolving identifier by design (see this same file's own
+# 2026-09-23 "Group/user SamAccountName collision" writeup -- Nena-Grp/
+# Falco-Grp exist specifically because their real cn ("Nena"/"Falco")
+# collided with a same-named solo artist's own SamAccountName, so their
+# effective SamAccountName differs from their cn). identity: resolves via
+# GUID/UPN/sAMAccountName/objectSid/DN -- the same mechanism
+# microsoft.ad.user's own groups: parameter already relies on for these
+# same values (confirmed live, 2026-09-23: "groups: add: resolves identity
+# via Get-ADObject (any class) + LDAPFilter = '(sAMAccountName=<value>)'"),
+# so this is the same identity contract Section C already trusted, just
+# applied to microsoft.ad.group instead of microsoft.ad.user.
+# =============================================================================
+
+- name: "C | Add members to groups (batch of {{ _c_batch | length }}, fire async)"
+  microsoft.ad.group:
+    identity: "{{ item[0] }}"
+    members:
+      add: "{{ item[1] | map(attribute='sam') | list }}"
+  async: 60
+  poll: 0
+  loop: "{{ _c_batch }}"
+  loop_control:
+    label: "{{ item[0] }} ← {{ item[1] | map(attribute='sam') | join(', ') }}"
+  register: _c_async
+
+- name: "C | Add members to groups (batch, wait for completion)"
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: _c_wait
+  until: _c_wait.finished
+  retries: 30
+  delay: 2
+  loop: "{{ _c_async.results }}"
+  loop_control:
+    label: "{{ item.item[0] }}"
+
+- name: "C | Fail on any batch item that errored"
+  fail:
+    msg: "{{ item.item.item[0] }} failed: {{ item.msg | default('unknown error') }}"
+  loop: "{{ _c_wait.results }}"
+  loop_control:
+    label: "{{ item.item.item[0] }}"
+  when: item.failed | default(false)
