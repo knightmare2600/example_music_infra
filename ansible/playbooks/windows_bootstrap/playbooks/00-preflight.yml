@@ -1126,6 +1126,43 @@
       delegate_to: localhost
       become: false
 
+    # 2026-09-25, live bug found onboarding EXADCSGOT001, right after the connection-vars
+    # fix above got this far: 20-registry.yml crashed "'registry_common' is undefined" --
+    # registry_common lives in group_vars/windows/vars.yml, not a connection var, so the
+    # fix above (deliberately scoped to just SSH connectivity) never touched it. This is
+    # the exact bug class the 2026-07-09 Phase H2 changelog entry above already named
+    # (registry_common, domain_ou_role, both confirmed undefined-variable crashes) and
+    # explicitly said it wanted to avoid re-litigating file by file -- but that entry's own
+    # closing words ("provided -i configs/inventory is the loaded inventory source so these
+    # groups already exist") already admitted add_host's group-membership route only works
+    # for the OTHER invocation mode, not the bare-IP one this whole file exists to serve.
+    # Every later playbook file in site.yml's chain that reads ANY group_vars/<group>/*.yml
+    # value (registry_common here, domain_ou_role in 80-domainjoin.yml, and whatever
+    # hasn't been hit yet -- 70-hibernation.yml/25-deadvertise.yml silently default to
+    # "off" instead of crashing, so those wouldn't even surface this way) would keep
+    # failing one at a time under a bare-IP run, so this loads the real content directly
+    # instead of patching each symptom individually.
+    #
+    # include_vars (not add_host, not a second vars: block) because: (a) it can read an
+    # entire directory of files in one task, matching what native group_vars auto-loading
+    # already does per group, so nothing about the *content* needs restating here, and
+    # (b) confirmed empirically (scratch reproduction, inv_repro3, not committed) that
+    # include_vars set on a host DOES persist across separate chained import_playbook
+    # files the same way set_fact/host facts do -- it is not discarded at the end of this
+    # one play, so 20-registry.yml/80-domainjoin.yml (later, separate playbook files in
+    # the same site.yml run) see it correctly.
+    #
+    # Loop order is deliberate: 'all' first, then _permanent_groups reversed (least
+    # specific to most specific -- windows_nodes/windows/windows_server before
+    # windows_dc), so a later, more-specific group's value for the same key wins, matching
+    # Ansible's own native group_vars precedence (child group overrides parent).
+    - name: "[H2] Load group_vars/{all,{{ _permanent_groups | join(',') }}}/*.yml directly (ad-hoc inventory never auto-loads these)"
+      include_vars:
+        dir: "{{ playbook_dir }}/../../../configs/inventory/group_vars/{{ item }}"
+      loop: "{{ ['all'] + (_permanent_groups | reverse | list) }}"
+      delegate_to: localhost
+      become: false
+
     # =========================================================================
     # PHASE I — Summary and hand-off
     # =========================================================================
