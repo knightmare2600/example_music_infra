@@ -94,7 +94,13 @@
     # dj_temp_dns_ip, fixed 2026-07-14). Falls back to blank (skip DNS
     # override) if this stage is ever run standalone. -e dc_temp_dns_ip=<ip>
     # still overrides, same as before -- extra-vars always win.
-    dc_temp_dns_ip: "{{ dc_temp_dns_ip | default(dc_replication_source_ip | default('')) }}"
+    #
+    # 2026-09-25: NOT declared here as "dc_temp_dns_ip: {{ dc_temp_dns_ip | default(...)
+    # }}" -- confirmed live (see bind9-dns.yml's own changelog for the full root cause)
+    # that idiom throws "Recursive loop detected in template: maximum recursion depth
+    # exceeded" the moment it's resolved with no fact/override already present, which
+    # is exactly the standalone case this default exists to support. Resolved instead
+    # via a set_fact as the first task below.
     # dc_db_path, dc_log_path, dc_sysvol, dc_dns_forwarders → group_vars/windows_dc/vars.yml
     # ansible_connection/shell_type/port: see 00-dc-preflight.yml — set here
     # too since group_vars/windows_nodes/connection.yml is inventory-group-
@@ -106,6 +112,11 @@
     ansible_password:   "{{ dc_local_password }}"
 
   tasks:
+    - name: "Resolve dc_temp_dns_ip if not already set by 00-dc-preflight.yml (set_fact, not vars: -- see vars: comment above)"
+      set_fact:
+        dc_temp_dns_ip: "{{ dc_temp_dns_ip | default(dc_replication_source_ip | default('')) }}"
+      tags: dc_promote
+
     - name: Include colour fallback
       include_tasks: ../../../tasks/colour_fallback.yml
       tags: dc_promote

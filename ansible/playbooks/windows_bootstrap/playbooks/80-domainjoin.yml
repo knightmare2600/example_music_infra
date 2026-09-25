@@ -132,9 +132,19 @@
     # hardcode too (see that file's 2026-09-19 changelog entry), independently duplicated
     # a second time in this file. Both now read group_vars/all/site_services.yml's own
     # `dns` entry (generated from devices.csv) instead of a hand-maintained literal.
-    dj_temp_dns_ip: "{{ dj_temp_dns_ip | default(site_services.dns.ip) }}"
+    #
+    # 2026-09-25: NOT declared here as "dj_temp_dns_ip: {{ dj_temp_dns_ip | default(...)
+    # }}" -- confirmed live (see bind9-dns.yml's own changelog for the full root cause)
+    # that idiom throws "Recursive loop detected in template: maximum recursion depth
+    # exceeded" the moment it's resolved with no fact/override already present, which
+    # is exactly the standalone case this default exists to support. Resolved instead
+    # via a set_fact as the first real task below.
 
   tasks:
+    - name: "Resolve dj_temp_dns_ip if not already set by 00-preflight.yml (set_fact, not vars: -- see vars: comment above)"
+      set_fact:
+        dj_temp_dns_ip: "{{ dj_temp_dns_ip | default(site_services.dns.ip) }}"
+      tags: domainjoin
 
     # ── Stage 0: DNS resolution ────────────────────────────────────────────────
     # A fresh VM may have DHCP/ISP DNS that cannot resolve jukebox.internal.
