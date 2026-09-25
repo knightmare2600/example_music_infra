@@ -252,6 +252,30 @@
 #               instead: the real, always-correct signal for "which host is this play
 #               actually running on", regardless of whether it got there via hosts:'s own
 #               default, --limit, or an explicit -e target=.
+#   2026-09-25  LIVE BUG, found the moment the above --limit fix was actually run against
+#               EXADNSVRK001 for the first time: the preflight assert failed immediately
+#               with "Recursive loop detected in template: maximum recursion depth
+#               exceeded" while resolving fail_msg. Root cause: dns_role/dns_secondary_ip/
+#               dns_master_ip/dns_gateway were declared in vars: as "x: {{ x | default(...)
+#               }}" -- a common idiom for "optional -e override, else compute a default",
+#               but only safe when the name being tested is NOT itself declared at play-var
+#               precedence (e.g. hosts:'s "target | default(...)" above works precisely
+#               because target has no vars: entry -- it's a real extra-var or genuinely
+#               Undefined, never self-referencing). Declaring it in vars: gives the name
+#               real precedence, so resolving it means resolving itself first, with no
+#               external override present in the common no -e case -- true infinite
+#               self-reference, not merely a lint smell; ansible-core 2.19.4 detects this
+#               and aborts rather than hang. This was never caught by --syntax-check (which
+#               never templates jinja values, only parses YAML/Jinja syntax) or the two
+#               template unit-tests done on 2026-09-24 (those passed real dicts straight to
+#               jinja2.Environment, bypassing Ansible's own vars:-precedence resolution
+#               entirely) -- confirmed live-only. Fixed by moving all four to a pre_tasks
+#               set_fact (tags: always, runs before the preflight assert) instead: a
+#               one-shot task assignment, not a play-level vars: declaration, so the same
+#               right-hand-side default() expressions resolve cleanly (extra-var if passed,
+#               else genuinely Undefined -> default() -- no self-reference), and the
+#               resulting facts outrank vars: for every task/template after it, so nothing
+#               downstream (the assert, both .j2 templates) needed to change at all.
 # =============================================================================
 
 - name: BIND9 DNS server (master or secondary)
@@ -268,27 +292,19 @@
     # IP/hostname pair.
     dns_ip: "{{ ansible_host }}"
     this_hostname: "{{ inventory_hostname }}"
-    # dns_role: master (default, VRK's own current behaviour, unchanged) or slave.
-    # A slave never generates zone content locally -- Play 2 below refuses to run
-    # against one (see its own preflight task).
-    dns_role: "{{ dns_role | default('master') }}"
-    # Only meaningful when dns_role=master: the real secondary's IP, so allow-transfer
-    # is scoped to it specifically (never 'any') and NOTIFY is enabled. Leave unset for
-    # a master with no secondary yet -- allow-transfer stays 'none', matching today's
-    # behaviour exactly.
-    dns_secondary_ip: "{{ dns_secondary_ip | default('') }}"
-    # Only meaningful when dns_role=slave: the real master's IP to replicate from.
-    # No safe default -- a slave pointed at the wrong master would silently serve
-    # someone else's zone data, so this must be passed explicitly (-e dns_master_ip=...)
-    # or the preflight task below fails loudly rather than guess.
-    dns_master_ip: "{{ dns_master_ip | default('') }}"
-    # dns_gateway has no safe cross-site default (VRK's 192.168.139.254 is meaningless
-    # on FRD's 172.16.124.0/24) -- required explicitly via -e for any host other than
-    # EXADNSVRK001 itself, the preflight task below fails loudly otherwise. Branches on
-    # inventory_hostname (the real, always-correct "which host is this" signal), not a
-    # separately hand-carried target var -- correct whether this host was selected via
-    # hosts:'s own group default, --limit, or an explicit -e target=.
-    dns_gateway: "{{ dns_gateway | default('192.168.139.254' if inventory_hostname == 'EXADNSVRK001' else '') }}"
+    # dns_role/dns_secondary_ip/dns_master_ip/dns_gateway are deliberately NOT declared
+    # here as "x: {{ x | default(...) }}" -- confirmed live (2026-09-25) that this
+    # idiom, which works fine in hosts:/task-level templating (see target in hosts:
+    # above), causes ansible-core to throw "Recursive loop detected in template:
+    # maximum recursion depth exceeded" once anything actually resolves the value at
+    # play level: a vars: entry gives the name real precedence, so templating it
+    # requires resolving itself first, with no external override present in the
+    # common case (no -e passed) -- infinite self-reference. A pre_tasks set_fact
+    # (below, "Resolve optional dns_* overrides") does not have this problem: it's a
+    # one-shot task, not a play-level vars: declaration, and the resulting facts
+    # outrank the play's own vars: block for every task/template after it, so the
+    # rest of this play (and both .j2 templates) reference dns_role/dns_secondary_ip/
+    # dns_master_ip/dns_gateway completely unchanged.
     dns_interface: ""          # autodetected below if blank
     zone_ttl: 300
     zone_serial: "{{ ansible_date_time.date | replace('-', '') }}01"
@@ -328,6 +344,14 @@
       - { suffix: 253, prefix: "exafwl", seq: 1 }
 
   pre_tasks:
+    - name: "Resolve optional dns_* overrides (set_fact, not vars: -- see vars: comment above)"
+      tags: always
+      set_fact:
+        dns_role: "{{ dns_role | default('master') }}"
+        dns_secondary_ip: "{{ dns_secondary_ip | default('') }}"
+        dns_master_ip: "{{ dns_master_ip | default('') }}"
+        dns_gateway: "{{ dns_gateway | default('192.168.139.254' if inventory_hostname == 'EXADNSVRK001' else '') }}"
+
     - name: Preflight -- refuse to guess a role-specific value that has no safe default
       tags: always
       assert:
