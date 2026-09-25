@@ -19,6 +19,7 @@ across the whole fleet.
 | File | Tag(s) | Description |
 |------|--------|-------------|
 | `playbooks/00-preflight.yml` | `preflight` | Chassis/OS detection (`is_laptop`, `is_server`) via WMI |
+| `playbooks/05-example-music-files.yml` | `example_music_files` | Deploy `sites.csv`/`devices.csv`/`role_codes.csv`/`address_policy.csv`/`ad_forest.json`/`ad_groups.json`/`ad_users.json`/`ad_computers.json` + `nodeinfo.json` to `C:\ProgramData\ExampleMusic\Config` |
 | `playbooks/10-dism.yml` | `dism` | DISM component-store cleanup + `ResetBase` |
 | `playbooks/20-hibernation-pagefile.yml` | `hibernation`, `pagefile` | Hibernation policy by chassis type + pagefile clear |
 | `playbooks/30-choco.yml` | `choco` | Chocolatey `upgrade all` + WinDirStat + SDelete |
