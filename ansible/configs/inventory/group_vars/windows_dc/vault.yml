@@ -29,4 +29,4 @@ vault_dc_dsrm_password:      ""
 vault_dc_admin_password:     ""
 
 # Required by windows_adschema/playbooks/30-ad-users.yml (demo AD user creation).
-vault_ad_new_user_password:  "CHANGEME"
+vault_ad_new_user_password:  "Welcome2026!"
