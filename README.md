@@ -345,6 +345,41 @@ distinct gateway address, not just a reserved slot.
 
 ---
 
+## Security & Credentials — Test/Demo Network
+
+**This repository models a fictional company's infrastructure for demonstration, testing, and
+learning purposes.** No real production secret has ever lived here. Every `vault.yml` under
+`ansible/configs/inventory/group_vars/*/` is deliberately committed as **plain, unencrypted
+YAML** with placeholder values (`CHANGEME`, `UNSET`, `REPLACE_WITH_...`) — this is a conscious
+choice for a test/play network, not an oversight. It keeps the repo fully self-contained and
+readable from a fresh clone without needing an out-of-band vault password just to see what's
+expected to be filled in, and every playbook's own `--ask-vault-pass` flag is genuinely a
+no-op against these files as they stand (confirmed live, 2026-09-25 — `ansible-vault view`
+refuses to open them at all: "Input is not vault encrypted data").
+
+`at_have_ryggen_fri/check_vault_placeholders.py` (harness check 46) enforces that every one of
+these placeholders gets a real value before use, so an unfilled one fails the harness instead
+of the first live playbook that reaches it.
+
+**If you're adapting this repository as a template for a real production estate, the
+plain-text convention above is not appropriate.** Real secrets must never sit in cleartext in
+version control. Before going anywhere near production:
+
+1. Fill in every placeholder in `ansible/configs/inventory/group_vars/*/vault.yml` with a real
+   value — `check_vault_placeholders.py` keeps flagging any you miss.
+2. Encrypt each file in place: `ansible-vault encrypt ansible/configs/inventory/group_vars/<group>/vault.yml`.
+   Every playbook already invokes with `--ask-vault-pass`, so this "just works" the moment the
+   files are actually encrypted — nothing else in the repo needs to change.
+3. Store the vault password itself outside version control (a password manager, a
+   `--vault-password-file` pointed at a file excluded via `.gitignore`, or your organisation's
+   own secrets-management tooling) — never commit it.
+4. Rotate anything that was ever committed in plain text, including a placeholder that got
+   overwritten with a real value and accidentally committed during setup — git history keeps
+   it forever once pushed, deleting the commit later does not remove it from clones already
+   taken.
+
+---
+
 ## Requirements
 
 - Ansible 2.14+
