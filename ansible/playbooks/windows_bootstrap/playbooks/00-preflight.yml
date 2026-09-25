@@ -419,6 +419,29 @@
     # PHASE A — Control-node tasks (no SSH connection to target)
     # =========================================================================
 
+    # ── A0 — site_services (real fact, not relying on group_vars auto-load) ────
+    # LIVE BUG, found 2026-09-25 onboarding EXADCSGOT001: dns_bind9 below (vars:)
+    # reads site_services.dns.ip on the assumption that group_vars/all/
+    # site_services.yml is "auto-loaded on every host with zero extra effort" --
+    # true only when the run's inventory source is a directory Ansible can find
+    # a co-located group_vars/ next to (i.e. -i configs/inventory). This
+    # playbook's own documented, correct invocation for a genuinely new DHCP
+    # box is `-i <dhcp-ip>, -e target_hosts=<dhcp-ip>` (README's own Usage
+    # section) -- an ad-hoc comma-list inventory has no associated directory at
+    # all, so group_vars/all/ never loads, and dns_bind9 crashed with "'{{
+    # 'site_services' }}' is undefined" the first time this path was actually
+    # exercised against a fresh box. Fixed by reading site_services.yml
+    # directly off the control node instead, the same lookup('file', ...)
+    # pattern already used for sites_csv/ad_forest_json_path elsewhere in this
+    # repo -- deterministic regardless of which -i source(s) were passed. Set
+    # as a fact (not a second vars: entry) so it also persists correctly for
+    # any later playbook file in the same site.yml chain that needs it
+    # (80-domainjoin.yml's own dj_temp_dns_ip default, 82-salt-minion.yml's
+    # MASTER= line) without each one repeating this same file read.
+    - name: "[A0] Resolve site_services directly from the control node (works for any -i source)"
+      set_fact:
+        site_services: "{{ (lookup('file', playbook_dir + '/../../../configs/inventory/group_vars/all/site_services.yml') | from_yaml).site_services }}"
+
     # ── A1 — is_first_dc and fact persistence ─────────────────────────────────
 
     - name: "[A1] Set is_first_dc fact from vars_prompt"
