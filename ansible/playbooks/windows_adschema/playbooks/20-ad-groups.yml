@@ -144,13 +144,18 @@
     # below) would never actually reach already-created groups on a re-run --
     # they'd be skipped as "already present, unchanged" forever. Added a
     # SamAccountName drift check alongside Description for the same reason.
+    #
+    # 2026-09-25: this capture's own from_json handling was restored (version-agnostic
+    # this time) after breaking live on EXAANSCLD001 -- full root cause and fix writeup
+    # in 10-ad-schema.yml's "Attach continent and parent city path to each site" task,
+    # same shape here and in 30-ad-users.yml/40-ad-computers.yml (30 occurrences total).
     - name: "Filter to groups not already present or with a drifted description/SamAccountName"
       set_fact:
         _groups_todo: >-
           {%- set _rendered -%}
           [{% for item in _groups %}{% if (item.Name | lower not in _existing_group_names or _existing_group_descriptions[item.Name | lower] | default('') != item.Description or _existing_group_sams[item.Name | lower] | default('') != (item.SamAccountName | default(item.Name))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
-          {{ _rendered }}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
     - name: "Preflight | Report groups needing create/update"
       debug:
