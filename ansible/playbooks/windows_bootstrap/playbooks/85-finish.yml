@@ -20,7 +20,17 @@
 #   domain_ou_path                — 80-domainjoin.yml (only set if this run
 #                                    actually joined the domain; falls back to
 #                                    "already joined" otherwise, same as
-#                                    05-bootstrap.yml's Stage 23 did)
+#                                    05-bootstrap.yml's Stage 23 did -- except
+#                                    for a first-DC build, which falls back to
+#                                    "not yet built -- first-DC" instead (found
+#                                    live, Robert, EXADCSGOT001: showing
+#                                    "already joined" right next to the
+#                                    separate "domain NOT joined" banner below
+#                                    was self-contradictory -- a first-DC build
+#                                    was never actually joined to anything,
+#                                    it's building the forest, so the same
+#                                    genuinely-idempotent-rerun fallback text
+#                                    was wrong for this specific case)
 #   sac_sol_verify_needed          — 78-sac-ems.yml (tasks/sac_ems.yml, Server
 #                                    OS only; absent/false on workstations —
 #                                    defaulted, not required)
@@ -116,7 +126,7 @@
           - " SSH   : ssh Administrator@{{ host_ip }} (port 22)"
           - " RDP   : {{ host_ip }}:3389"
           - " SAC   : {{ 'Enabled on COM1/115200 (SOL)' if is_server else 'N/A (not a server OS)' }}"
-          - " Domain: {{ exa_domain }} / OU: {{ domain_ou_path | default('already joined') }}"
+          - " Domain: {{ exa_domain }} / OU: {{ domain_ou_path | default('not yet built — first-DC') if is_first_dc | default(false) | bool else domain_ou_path | default('already joined') }}"
           - "{{ '!! FIRST-DC BUILD — domain NOT joined. Run windows_dc/site.yml next !!' if is_first_dc | default(false) | bool else '' }}"
           - " Site  : {{ host_site }}"
           - " Arch  : {{ host_arch }}"
