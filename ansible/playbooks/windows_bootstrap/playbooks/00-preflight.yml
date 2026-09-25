@@ -81,6 +81,21 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-09-25  Robert, live (EXADCSGOT001): dns_reason/the DNS-2nd fallback said
+#               "forest root" for ANY DCS-role first-DC-at-a-site build (is_first_dc=true
+#               is a per-site concept -- see its own vars_prompt, "for this site"), not
+#               only when this box is actually going to become jukebox.internal's forest
+#               root (already EXADCSFRD001's role). This genuinely confused a live
+#               review of a GOT DC build into suspecting windows_dc/site.yml might be
+#               about to create a second, separate forest -- traced through
+#               windows_dc/playbooks/00-dc-preflight.yml's own dc_is_forest_root logic to
+#               confirm it's a SEPARATE, independently-decided flag with its own
+#               reachability safety net (a reachable CLD/FAL/ODE/BRK DC always wins
+#               regardless of the operator's answer), so this was a wording problem only,
+#               not a real risk -- but the wording itself needed fixing since it's exactly
+#               the kind of ambiguous language that causes real mistakes. Both strings now
+#               say "new DC, not yet promoted" / "(none — pre-promotion)" instead of
+#               claiming forest-root status this stage has no way of actually knowing.
 #   2026-09-21  CRITICAL, found live (Robert, EXADCSFRD001): dns_primary correctly
 #               decided 172.16.124.8 (the 2026-09-19 FRD-local-DNS fix below worked
 #               exactly as designed) and the pre-flight summary correctly displayed it
@@ -656,7 +671,7 @@
         _secondary: "{{ '' if (host_role_code | upper == 'DCS' and is_first_dc | bool) else _effective_dns_bind9 }}"
         _reason: >-
           {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
-            forest root — {{ 'EXADNSFRD001 (FRD-local)' if _frd_local_dns_available | bool else 'BIND9' }} only, no AD DNS until promotion completes
+            new DC, not yet promoted — {{ 'EXADNSFRD001 (FRD-local)' if _frd_local_dns_available | bool else 'BIND9' }} only until promotion decides forest-root vs. additional DC
           {%- elif _site_dc_up | bool -%}
             site DC {{ site_dc }} is up — using local DC
           {%- elif _hub_fallback_ip is defined -%}
@@ -689,7 +704,7 @@
             Subnet      : {{ site_subnet }}   Gateway: {{ site_gateway }}
             Target IP   : {{ target_ip if target_ip | length > 0 else '(blank — no IP change)' }}
             DNS primary : {{ dns_primary }}
-            DNS 2nd     : {{ dns_secondary if dns_secondary | length > 0 else '(none — forest root build)' }}
+            DNS 2nd     : {{ dns_secondary if dns_secondary | length > 0 else '(none — pre-promotion)' }}
             DNS reason  : {{ dns_reason }}
           ─────────────────────────────────────────────────────────────────────
           Confirm (Enter to proceed, Ctrl+C → A to abort)
@@ -1183,7 +1198,7 @@
           - "  Site        : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
           - "  IP          : {{ static_ip }}"
           - "  DNS primary : {{ dns_primary }}"
-          - "  DNS 2nd     : {{ dns_secondary if dns_secondary | length > 0 else '(none — forest root build)' }}"
+          - "  DNS 2nd     : {{ dns_secondary if dns_secondary | length > 0 else '(none — pre-promotion)' }}"
           - "  DNS reason  : {{ dns_reason }}"
           - "  SSH         : running, auto-start, Ansible key deployed"
           - "  First DC    : {{ is_first_dc }}"
