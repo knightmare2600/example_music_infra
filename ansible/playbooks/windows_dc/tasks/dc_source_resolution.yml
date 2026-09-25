@@ -3,27 +3,23 @@
 # tasks/dc_source_resolution.yml
 # Example Music Limited — DC replication source resolution
 # =============================================================================
-# Probes candidate DCs in priority order and sets:
+# Probes candidate DCs and sets:
 #   dc_replication_source  — FQDN or IP to replicate from
 #   dc_source_site         — 3-letter site code of chosen source
 #   dc_is_forest_root      — true only when NO DC is reachable anywhere AND
 #                            the operator confirms this is genuinely the
 #                            first DC ever built for the forest. This is
 #                            NOT tied to site — any site can be the forest
-#                            root; the site name only decides probe order.
+#                            root; the site name has no bearing on it.
 #
-# Candidate probe order by site role (who to check, NOT who may be forest root):
-#
-#   standard (non-hub, non-CLD):
-#     Probe in order: CLD → FAL → ODE → BRK
-#     If none reachable, probe any DC listed in sites.csv for this site (.10)
-#
-#   hub_primary (FAL, ODE, BRK):
-#     Probe CLD DC first (preferred — datacenter is canonical)
-#     Then probe other hubs in order, skipping self
-#
-#   hub_cld (CLD):
-#     Probe FAL, then ODE, then BRK
+# Candidates (2026-09-25 rework, see this file's own changelog): every real
+# (non-Planned) devices.csv DCS row, excluding self, probed in devices.csv's own
+# order -- no site-role-based priority any more. AD is multi-master: any reachable,
+# already-promoted DC is a valid replication source, so there's nothing to encode
+# about which site "should" be preferred, and hardcoding one (the pre-2026-09-25
+# version of this file assumed CLD/FAL/ODE/BRK, none of which turned out to
+# actually be promoted) just recreates a single point of failure that doesn't
+# reflect real AD semantics.
 #
 # If none of a site's candidates are reachable, dc_is_forest_root is decided
 # from dc_is_first_in_forest — answered upfront at the vars_prompt in
@@ -39,6 +35,23 @@
 # the target DC has Ansible connectivity.
 # =============================================================================
 # Changelog:
+#   2026-09-25  Robert, questioning why this was hardcoded at all: retired the
+#               site-role-gated [CLD,FAL,ODE,BRK] candidate list entirely. Confirmed live
+#               (EXADCSCLD001: DomainRole=2, AD-Domain-Services not installed) that the
+#               assumed hub DCs were never actually built -- meaning EXADCSFRD001 (the
+#               only DC in the estate with confirmed dcdiag PASS) was structurally
+#               unreachable as a candidate for any other site's promotion, since it never
+#               appeared in dc_hub_sources/dc_cld_source at all. Candidates are now built
+#               directly from devices.csv's real DCS rows (generate_inventory.py
+#               --emit-devices-json, same merged-device-list mechanism bind9-dns.yml
+#               already uses, so this can never disagree with DNS about which DCs are
+#               real) -- self excluded by exact Hostname match rather than the old
+#               host_num=='001' heuristic, which is both simpler and more correct (it
+#               only ever protected the "standard site's own local DC" case; a hub site
+#               re-promoting itself had no equivalent guard, just accidentally never hit
+#               it because of how dc_hub_sources/dc_cld_source happened to be assembled
+#               per role). dc_site_role is now informational only -- see
+#               00-dc-preflight.yml's own changelog.
 #   2026-07-28  Added ansible_shell_type: sh alongside the existing ansible_connection: local
 #               override -- found live, same bug class as
 #               ansible/tasks/example_music_freshness_gate.yml's own changelog: the connection
@@ -73,45 +86,49 @@
 
 # ── Build candidate list based on site role ───────────────────────────────────
 
-- name: "[Source] Build hub candidate list for standard site"
+- name: "[Source] Compute merged device list via generate_inventory.py"
+  command: >
+    python3 {{ playbook_dir }}/../../../../benarbejde/generate_inventory.py
+    {{ sites_csv }} --devices {{ devices_csv }} --emit-devices-json
+  register: _dc_all_devices_raw
+  changed_when: false
+  delegate_to: localhost
+  become: false
+  vars:
+    # Same connection/shell_type override every other delegate_to: localhost task in
+    # this play family needs -- see "[Source] Probe each candidate DC" below, or
+    # windows_bootstrap/00-preflight.yml's 2026-07-15/2026-07-28 changelog entries for
+    # the underlying bug class (windows_nodes' ansible_shell_type: powershell otherwise
+    # leaks into this task even though it runs locally on the Linux control node).
+    ansible_connection: local
+    ansible_shell_type: sh
+
+- name: "[Source] Build candidate list from devices.csv's real DCS rows"
   set_fact:
     dc_candidates: >-
-      {{
-        [dc_cld_source]
-        + dc_hub_sources
-        + ([{
-            'site': host_site,
-            'ip':   (dc_sites_map[host_site] | default('')).rsplit('.', 1)[0] + '.10',
-            'fqdn': 'exadcs' + host_site | lower + '001.' + dc_domain_name
-          }]
-          if (host_site in dc_sites_map and host_num != '001') else []
-        )
-      }}
-  when: dc_site_role == 'standard'
-  # 2026-09-21, found live re-running against EXADCSFRD001 (this site's own FIRST DC,
-  # host_num=='001'): this appended candidate always hardcodes '...001' as the site's
-  # local DC, with no check for whether THIS host already IS that exact DC -- on a
-  # re-run of a site's own first DC, it probed itself over LDAP 389 (trivially
-  # reachable -- same box), selected itself as dc_replication_source, and every
-  # downstream repadmin call then failed ("Access is denied" / "naming context ...
-  # invalid" / "DsReplicaSync ... not replicated from the specified server") since a DC
-  # cannot replicate from itself. Excluding when host_num == '001' skips this candidate
-  # only in the genuine self-reference case; a real second/third DC at the same site
-  # (host_num '002'+) still correctly probes and replicates from its site's own first DC.
-
-- name: "[Source] Build hub candidate list for hub_primary site (FAL/ODE/BRK)"
-  set_fact:
-    dc_candidates: >-
-      {{
-        [dc_cld_source]
-        + (dc_hub_sources | rejectattr('site', 'equalto', host_site) | list)
-      }}
-  when: dc_site_role == 'hub_primary'
-
-- name: "[Source] Build hub candidate list for CLD"
-  set_fact:
-    dc_candidates: "{{ dc_hub_sources }}"
-  when: dc_site_role == 'hub_cld'
+      {{ dc_candidates | default([]) + [{
+        'site': item.Site,
+        'ip':   item.full_ip,
+        'fqdn': (item.Hostname | lower) + '.' + dc_domain_name
+      }] }}
+  loop: >-
+    {{
+      (_dc_all_devices_raw.stdout | from_json)
+      | selectattr('Type', 'equalto', 'DCS')
+      | selectattr('Real', 'equalto', true)
+      | rejectattr('Hostname', 'equalto', inventory_hostname | upper)
+      | list
+    }}
+  # selectattr('Real', 'equalto', true) is load-bearing, not defensive-only: DCS is a
+  # standard-slot type (every site is assumed to eventually have one at .10), so
+  # --emit-devices-json's output is EVERY site's DCS entry, 56 of them at the time this
+  # was written -- only 2 (FRD, VRK) genuinely real. Without this filter, GOT's own
+  # promotion probed 54 doomed candidates before ever reaching a real one -- caught by
+  # actually rendering this against real production devices.csv data before wiring it
+  # in, not assumed. See generate_inventory.py's own 2026-09-25 changelog entry for the
+  # "Real" field this depends on.
+  loop_control:
+    label: "{{ item.Hostname }}"
 
 - name: "[Source] Show candidate list"
   debug:
