@@ -1,0 +1,77 @@
+# =============================================================================
+# tasks/set_manager_batch.yml
+# Example Music Limited — Set manager attribute for one batch of users, capped concurrency
+# =============================================================================
+# Included in a loop over _d_batches (see 30-ad-users.yml Section D), once per
+# batch of up to 10 users. Same async/poll:0 + wait + fail-check shape as
+# tasks/create_users_batch.yml (Section B) and tasks/add_group_members_batch.yml
+# (Section C) -- see create_users_batch.yml's own header for the full write-up
+# of async/poll:0 vs forks, and why batches of 10.
+#
+# 2026-09-25, Robert's ask, live (EXADCSGOT001): Section D used to loop over
+# every user needing a manager set/corrected (210 potential items), one
+# fully serial microsoft.ad.user call each -- no async at all, unlike
+# Section B. Unlike Sections B0/F1 (which write PASSWORDS and genuinely
+# need serial dispatch -- see this file's own 2026-09-23 writeup on the
+# concurrent-password-write race), setting the manager attribute never
+# touches a password at all, so there was never a safety reason for this
+# one to be serial -- it just hadn't been converted to the same
+# async/poll:0 pattern Section B already uses for its own non-password
+# UPDATE traffic.
+#
+# Deliberately NOT reworked into a "one call per manager, all reports at
+# once" shape the way Section C's group-membership rework was: unlike
+# microsoft.ad.group's members.add (a real, documented list parameter),
+# microsoft.ad.user has no equivalent "set this attribute on N different
+# user objects in one call" mechanism -- manager is a per-object DN
+# attribute, not a membership list. Achieving that would mean hand-rolling
+# a raw PowerShell script (a foreach loop over Set-ADUser calls inside one
+# win_shell task) instead of using the module's own per-item
+# identity/attribute resolution -- a materially bigger, riskier rewrite of
+# already-carefully-debugged logic (see this same task's manager: attribute
+# comment in 30-ad-users.yml's own Section D for the DN-resolution history)
+# for a smaller estate (~210 users, dozens of distinct managers, not
+# hundreds) than Section C's group consolidation was solving. Batching the
+# EXISTING per-user call async instead keeps 100% of that resolution logic
+# untouched and still gets the same real speedup mechanism Section B/C
+# already rely on -- lower risk for comparable wall-clock benefit at this
+# scale. Revisit the per-manager consolidation specifically if this batched
+# version still isn't fast enough in practice.
+# =============================================================================
+
+- name: "D | Set manager attribute (batch of {{ _d_batch | length }}, fire async)"
+  microsoft.ad.user:
+    name:             "{{ item.Name }}"
+    sam_account_name: "{{ item.SamAccountName }}"
+    path:             "{{ item.ad_ou }}"
+    attributes:
+      set:
+        manager: >-
+          {%- set _target_sam = (_name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager])) | lower -%}
+          CN={{ _sam_to_user[_target_sam].Name }},{{ _sam_to_user[_target_sam].ad_ou }}
+    state:            present
+  async: 60
+  poll: 0
+  loop: "{{ _d_batch }}"
+  loop_control:
+    label: "{{ item.SamAccountName }} ← manager: {{ item.Manager }}"
+  register: _d_async
+
+- name: "D | Set manager attribute (batch, wait for completion)"
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: _d_wait
+  until: _d_wait.finished
+  retries: 30
+  delay: 2
+  loop: "{{ _d_async.results }}"
+  loop_control:
+    label: "{{ item.item.SamAccountName }}"
+
+- name: "D | Fail on any batch item that errored"
+  fail:
+    msg: "{{ item.item.item.SamAccountName }} failed: {{ item.msg | default('unknown error') }}"
+  loop: "{{ _d_wait.results }}"
+  loop_control:
+    label: "{{ item.item.item.SamAccountName }}"
+  when: item.failed | default(false)
