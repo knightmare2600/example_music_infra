@@ -36,16 +36,18 @@ graph TD
     T_DNS["🧭 EXADNSVRK001<br/>DNS/BIND Server<br/>192.168.139.8"]
     T_DCS["🗝️ EXADCSVRK001<br/>Domain Controller<br/>192.168.139.10"]
     T_TMP["📦<br/>Provisioning Server<br/>192.168.139.50"]
+    T_RTR["📡 EXARTRVRK001<br/>Black Box<br/>192.168.139.254"]
     T_FWL["🧱 EXAFWLVRK001<br/>Firewall WAN Face, Same Physical Device As EXAFWLCLD001<br/>192.168.139.69"]
     T_PVE["🗂️ EXAPVEVRK001<br/>Supermicro Relion 1800, Baseboard S210-X12RS V2 (confirme...<br/>192.168.139.5"]
     T_BMC["🔧 EXABMCVRK001<br/>SuperMicro BMC For EXAPVEVRK001 (Supermicro Relion 1800,...<br/>192.168.139.3"]
     T_PVE2["🗂️ EXAPVEVRK002<br/>Supermicro Relion 1800, Baseboard S210-X12RS (asset Tag,...<br/>192.168.139.6"]
     T_BMC2["🔧 EXABMCVRK002<br/>SuperMicro BMC For EXAPVEVRK002<br/>192.168.139.4"]
-    T_VRK --> T_DNS --> T_DCS --> T_TMP --> T_FWL --> T_PVE --> T_BMC --> T_PVE2 --> T_BMC2
+    T_VRK --> T_DNS --> T_DCS --> T_TMP --> T_RTR --> T_FWL --> T_PVE --> T_BMC --> T_PVE2 --> T_BMC2
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DNS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TMP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
