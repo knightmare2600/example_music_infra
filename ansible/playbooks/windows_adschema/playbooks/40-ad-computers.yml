@@ -72,6 +72,40 @@
 #                     Also fixed stale "30-ad-computers.yml" references in
 #                     this header (copy-paste leftover from 30-ad-users.yml
 #                     — a file of that name never existed in this repo).
+# v2.1.0  2026-09-26  CRITICAL FIX, found live: a populate_ad run against
+#                     EXADCSGOT001 disabled EXADCSGOT001's OWN computer
+#                     account in AD. Root cause: ad_computers.json's
+#                     EXADCSGOT001 record was a generic new-site-boilerplate
+#                     entry (Enabled: false, matching devices.csv's GOT DCS
+#                     row still saying Planned=yes -- never updated once GOT
+#                     was actually built/promoted for real) with no
+#                     exclusion anywhere in this file for a computer that
+#                     happens to BE a live Domain Controller. Section A's
+#                     create_computers_batch.yml sets enabled: "{{
+#                     item.Enabled }}" unconditionally -- so this ran
+#                     `Set-ADComputer -Enabled $false` against
+#                     EXADCSGOT001$, its own live secure-channel account.
+#                     The break was silent (an already-established session
+#                     doesn't re-validate its secure channel) until a
+#                     reboot forced Netlogon to re-authenticate, which is
+#                     when "the security database does not have a computer
+#                     account for this workstation" first surfaced --
+#                     hours/a day after the actual disabling action, not at
+#                     the time of the run that caused it.
+#                     Fixed structurally, not just for GOT: a Domain
+#                     Controller's own computer account is created and
+#                     managed exclusively by Install-ADDSForest/
+#                     Install-ADDSDomainController during promotion
+#                     (windows_dc/playbooks/20-dc-promote.yml) -- it must
+#                     NEVER be touched by this generic per-device sync,
+#                     for ANY site, not just the one currently targeted.
+#                     Every Role: DCS record is now excluded from
+#                     _computers entirely (the single upstream filter all
+#                     of Sections A/B/C read from), unconditionally, no
+#                     flag needed to opt in to the protection -- there is
+#                     no legitimate case where this file should ever
+#                     create/enable/disable/move/set-OS-attributes-on a DC's
+#                     own computer object.
 # =============================================================================
 
 - name: "Build AD computer accounts from JSON"
@@ -112,17 +146,26 @@
       delegate_to: localhost
       become: false
 
-    - name: "Filter out computers with unresolvable OU paths"
+    # 2026-09-26, CRITICAL FIX (see this file's own v2.1.0 changelog entry
+    # above for the full incident writeup): Role: DCS records are excluded
+    # HERE, at the single upstream point every section below reads _computers
+    # from, rather than duplicating the condition in each section's own
+    # filter -- a Domain Controller's own computer account is never
+    # legitimately managed by this generic per-device sync, for any site.
+    - name: "Filter out computers with unresolvable OU paths, and Domain Controllers (never generically managed here — see v2.1.0 changelog)"
       set_fact:
-        _computers: "{{ _computers_all | selectattr('ad_ou', 'ne', '') | list }}"
+        _computers: "{{ _computers_all | selectattr('ad_ou', 'ne', '') | rejectattr('Role', 'equalto', 'DCS') | list }}"
+        _computers_dcs_excluded_count: "{{ _computers_all | selectattr('ad_ou', 'ne', '') | selectattr('Role', 'equalto', 'DCS') | list | length }}"
 
     - name: "Preflight | Report computer count"
       debug:
         msg: >-
           Parsed {{ _computers_all | length }} computers from JSON;
-          {{ _computers | length }} have resolvable OU paths
-          ({{ _computers_all | length - _computers | length }} skipped —
-          unknown site codes).
+          {{ _computers | length }} have resolvable OU paths and are eligible
+          for management here ({{ _computers_all | length - _computers | length - _computers_dcs_excluded_count | int }}
+          skipped — unknown site codes; {{ _computers_dcs_excluded_count }}
+          skipped — Role: DCS, a Domain Controller's own computer account is
+          never touched by this generic sync).
 
     # 2026-09-21, Robert's ask -- same identity-and-content pattern as
     # 10-ad-schema.yml/20-ad-groups.yml: one query up front instead of one
