@@ -98,15 +98,73 @@
       debug:
         msg: "Loaded {{ _groups | length }} groups from {{ ad_groups_json }} — proceeding."
 
+    # 2026-09-26, Robert's ask: "in the security groups, can we not do what we
+    # do in the other OUs and have them by location... instead of just 'IT
+    # Groups > Security Groups > 100s of groups' in a mess?" ad_groups.json
+    # has no location field of its own -- benarbejde/compute_group_sites.py
+    # (a separate, one-off/re-runnable tool, see its own header) added a real
+    # "Site" field (a 3-letter code, matching devices.csv/ad_computers.json's
+    # own convention) to every group it could unambiguously place from real
+    # ad_users.json membership, plus Robert's own explicit picks for the 6
+    # bands split evenly across two cities. A group with no Site field (most
+    # role/department groups -- Bassists, VPN-Users, Sales, etc. -- genuinely
+    # have members everywhere, no single home) stays in the existing central
+    # OU, unchanged. Read here fresh from sites.csv (not devices.csv) since a
+    # group's site is about geography, not real equipment.
+    - name: "Read sites.csv from control node (for group site-placement)"
+      read_csv:
+        path: "{{ sites_csv_path | default('/etc/example-music/sites.csv') }}"
+      register: _group_sites_raw
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+
+    # Same _region_continent mapping as 10-ad-schema.yml's own (copied, not
+    # imported -- there's no clean way to share a plain Jinja dict literal
+    # across separate playbook files without a custom filter plugin, which
+    # would be more machinery than one small lookup table warrants). Keep in
+    # sync if 10-ad-schema.yml's own mapping ever changes.
+    - name: "Build Site(code) -> Groups-OU-path lookup"
+      set_fact:
+        _site_group_ou_path: >-
+          {%- set _rendered -%}
+          {{ '{' }}{% for s in _group_sites_raw.list %}{% set _region_continent = {'uk_site': 'Europe', 'de_site': 'Europe', 'dk_site': 'Europe', 'eu_site': 'Europe', 'lb_site': 'Middle East', 'us_site': 'North America', 'ca_site': 'North America', 'apac_site': 'Asia Pacific', 'cloud_site': 'Cloud Infrastructure'} %}{% set _continent = _region_continent[s.AnsibleRegion] %}{% set _prov = s.Province | default('') %}{% set _cpath = ('OU=Groups,OU=Cloud Infrastructure,OU=Sites,' + _base_dn) if _continent == 'Cloud Infrastructure' else (('OU=Groups,OU=' + s.City + ',OU=' + _prov + ',OU=' + s.Country + ',OU=' + _continent + ',OU=Sites,' + _base_dn) if _prov != '' else ('OU=Groups,OU=' + s.City + ',OU=' + s.Country + ',OU=' + _continent + ',OU=Sites,' + _base_dn)) %}{{ s.Site | to_json }}: {{ _cpath | to_json }},{% endfor %}{{ '}' }}
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\}$', '}') | from_json) if (_rendered is string) else _rendered }}
+
+    # Annotates every group with its real target OU path -- Non-Music (a
+    # fixed sub-OU under Security Groups, not a real site -- Broadcasters/
+    # 2FA Users/Disabled Users specifically), a real site (via the lookup
+    # above), or the existing central default for everything else, unchanged.
+    - name: "Compute each group's target OU path"
+      set_fact:
+        _groups: >-
+          {%- set _rendered -%}
+          [{% for item in _groups %}{% set _target_path = ('OU=Non-Music,OU=Security Groups,OU=IT Groups,' + _base_dn) if (item.NonMusicGroup | default(false)) else ((_site_group_ou_path[item.Site] | default('OU=Security Groups,OU=IT Groups,' + _base_dn)) if (item.Site is defined) else ('OU=Security Groups,OU=IT Groups,' + _base_dn)) %}{{ (item | combine({'_target_path': _target_path})) | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
     # 2026-09-21, Robert's ask -- same identity-and-content pattern as 10-ad-schema.yml's OU
     # sections: one query up front instead of one microsoft.ad.group round trip per group
     # every re-run. scope/category are fixed constants for every item here (can't drift), so
     # description is the only field worth re-checking beyond name/path -- same shape as
     # 10-ad-schema.yml's Section 4 city-OU trade-off, closed the same way from the start here.
+    #
+    # 2026-09-26, Robert's ask (groups by location): SearchBase widened from the
+    # old central-only "OU=Security Groups,OU=IT Groups" to the WHOLE domain --
+    # groups now legitimately live scattered across many per-site Groups OUs
+    # plus the new Non-Music OU, so a central-only search would see a group
+    # already moved to its real site on a previous run as "not present" and
+    # attempt a bogus re-create (the exact same collision class fixed for
+    # microsoft.ad.user/computer's identity: gap, just via a different cause
+    # here). Also added DistinguishedName, needed to detect a group sitting in
+    # the wrong OU (see "Build ... lookups" and the drift filter below).
     - name: "Query existing AD security groups (single call, used to skip already-created/unchanged groups below)"
       ansible.windows.win_shell: |
-        $results = @(Get-ADGroup -Filter * -SearchBase "OU=Security Groups,OU=IT Groups,{{ _base_dn }}" -Properties Description, SamAccountName |
-          Select-Object Name, Description, SamAccountName)
+        $results = @(Get-ADGroup -Filter * -SearchBase "{{ _base_dn }}" -Properties Description, SamAccountName, DistinguishedName |
+          Select-Object Name, Description, SamAccountName, DistinguishedName)
         ConvertTo-Json -InputObject $results -Compress
       register: _existing_groups_raw
       changed_when: false
@@ -115,7 +173,10 @@
       set_fact:
         _existing_groups: "{{ (_existing_groups_raw.stdout | trim | length > 0) | ternary(_existing_groups_raw.stdout | from_json, []) }}"
 
-    - name: "Build lowercase Name set and Name -> Description/SamAccountName lookups"
+    # _existing_group_paths: Name(lower) -> current PARENT path, i.e. the
+    # group's DistinguishedName with its own leading "CN=<Name>," stripped off
+    # -- directly comparable against each item's computed _target_path.
+    - name: "Build lowercase Name set and Name -> Description/SamAccountName/current-path lookups"
       set_fact:
         _existing_group_names: "{{ _existing_groups | map(attribute='Name') | map('lower') | list }}"
         _existing_group_descriptions: >-
@@ -130,6 +191,13 @@
             dict(
               _existing_groups | map(attribute='Name') | map('lower') | list
               | zip(_existing_groups | map(attribute='SamAccountName') | map('default', '', true) | list)
+            )
+          }}
+        _existing_group_paths: >-
+          {{
+            dict(
+              _existing_groups | map(attribute='Name') | map('lower') | list
+              | zip(_existing_groups | map(attribute='DistinguishedName') | map('regex_replace', '^CN=[^,]+,', '') | list)
             )
           }}
 
@@ -149,11 +217,18 @@
     # this time) after breaking live on EXAANSCLD001 -- full root cause and fix writeup
     # in 10-ad-schema.yml's "Attach continent and parent city path to each site" task,
     # same shape here and in 30-ad-users.yml/40-ad-computers.yml (30 occurrences total).
-    - name: "Filter to groups not already present or with a drifted description/SamAccountName"
+    #
+    # 2026-09-26, Robert's ask (groups by location): added a path-drift check
+    # alongside Description/SamAccountName -- a group whose real current OU
+    # doesn't match its freshly-computed _target_path (e.g. one of the ~129
+    # groups just given a Site/NonMusicGroup field, still sitting in the old
+    # central OU from before this feature existed) now correctly shows up as
+    # needing work, same "re-run converges it" shape as everything else here.
+    - name: "Filter to groups not already present or with a drifted description/SamAccountName/path"
       set_fact:
         _groups_todo: >-
           {%- set _rendered -%}
-          [{% for item in _groups %}{% if (item.Name | lower not in _existing_group_names or _existing_group_descriptions[item.Name | lower] | default('') != item.Description or _existing_group_sams[item.Name | lower] | default('') != (item.SamAccountName | default(item.Name))) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in _groups %}{% if (item.Name | lower not in _existing_group_names or _existing_group_descriptions[item.Name | lower] | default('') != item.Description or _existing_group_sams[item.Name | lower] | default('') != (item.SamAccountName | default(item.Name)) or _existing_group_paths[item.Name | lower] | default('') | lower != item._target_path | lower) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
@@ -199,11 +274,27 @@
     # Fixed by updating every "Nena"/"Falco" Groups: reference in
     # ad_users.json to the group's real SamAccountName ("Nena-Grp"/
     # "Falco-Grp") instead, so the same LDAP filter now matches unambiguously.
+    #
+    # 2026-09-26, Robert's ask (groups by location): path: is now the
+    # per-item computed _target_path, not a hardcoded constant -- moving ~129
+    # existing groups into their new per-site/Non-Music OUs. Added identity:,
+    # same fix and same reason as microsoft.ad.user/computer got earlier this
+    # session -- confirmed via `ansible-doc microsoft.ad.group` that it has
+    # the identical requirement ("must be specified if... trying to move the
+    # object into a different path"): without it, the module builds its own
+    # lookup DN as CN={{ name }},{{ path }}, which only matches a group
+    # already SITTING at the new path -- a group still at its old, real
+    # location is invisible to that lookup, so the module concludes "doesn't
+    # exist" and attempts New-ADGroup, colliding with that same group's own
+    # SamAccountName at its real location. identity: (SamAccountName, unique
+    # and location-independent) makes the lookup find the real object
+    # wherever it currently sits, then move it.
     - name: "Create AD security groups"
       microsoft.ad.group:
+        identity:          "{{ item.SamAccountName | default(item.Name) }}"
         name:              "{{ item.Name }}"
         sam_account_name:  "{{ item.SamAccountName | default(item.Name) }}"
-        path:              "OU=Security Groups,OU=IT Groups,{{ _base_dn }}"
+        path:              "{{ item._target_path }}"
         description:       "{{ item.Description }}"
         scope:              global
         category:           security
