@@ -113,7 +113,10 @@
         enabled:          "{{ not _test_user.Disabled }}"
         password:         "{{ vault_ad_new_user_password }}"
         update_password:  on_create
-        password_expired: "{{ _test_user.MustChangePassword }}"
+        # true, hardcoded -- kept in sync with 30-ad-users.yml/create_users_batch.yml's
+        # own 2026-09-26 compliance fix, so this isolated debug tool models the same
+        # real behaviour as the actual pipeline.
+        password_expired: true
         state:            present
       register: _test_result
 

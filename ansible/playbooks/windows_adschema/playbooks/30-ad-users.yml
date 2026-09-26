@@ -47,7 +47,18 @@
 #
 # Notes:
 #   • Users with Disabled=true are created disabled (enabled: false).
-#   • MustChangePassword is honoured from the TDF data.
+#   • password_expired (must change password at next logon) is forced true
+#     unconditionally for every account, everywhere in this file and in
+#     tasks/create_users_batch.yml -- 2026-09-26, Robert's compliance ask.
+#     ad_users.json's own MustChangePassword field is NOT consulted for this
+#     any more: every account this pipeline ever creates or repairs shares
+#     the exact same non-unique vault_ad_new_user_password value (there is
+#     no per-user password anywhere in this design), so a per-user flag
+#     driven by frozen legacy TDF data could leave a known, shared password
+#     usable indefinitely on some accounts -- a real compliance gap, not a
+#     hypothetical one. See this file's own 2026-09-26 changelog entry for
+#     the full sweep (B0b, B, F1, and the B/update drift filter all touch
+#     this).
 #   • Groups with names that don't match any AD group are silently skipped
 #     (ignore_errors on group assignment task). Run 20-ad-groups.yml first.
 #   • 357 user accounts from rawUsers as of 2026-07-17 (353 at v1.0.0 release,
@@ -498,7 +509,7 @@
               or (_existing.telephoneNumber | default('', true)) != _desired_phone
               or (_existing.mobile | default('', true)) != _desired_mobile
               or (_existing.physicalDeliveryOfficeName | default('', true)) != _desired_office
-              or (_existing.PasswordExpired | default(false)) != (item.MustChangePassword | default(false))
+              or (_existing.PasswordExpired | default(false)) != true
             ) -%}
               {{ item | to_json }},
             {%- endif -%}
@@ -710,13 +721,25 @@
     # because the failure is harmless in outcome -- the end state (password =
     # Welcome2026!) is identical whether this task "succeeds" or hits the
     # already-set case.
+    # 2026-09-26: two fixes alongside Robert's compliance ask (see this file's own
+    # header Notes section) --
+    #   1. password_expired: true added -- this task writes the same shared
+    #      vault_ad_new_user_password as every other path here, and had no
+    #      must-change flag at all until now, a real gap for this narrow
+    #      stuck-disabled-account path specifically.
+    #   2. password: was a literal "Welcome2026!" string, not
+    #      vault_ad_new_user_password -- a hand duplicate of the vault value
+    #      that would have silently gone stale the moment that value is ever
+    #      rotated. Single-sourced now, matching every other password-writing
+    #      task in this file.
     - name: "F1 | Reset password for accounts stuck disabled with a non-compliant password"
       microsoft.ad.user:
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
         path:             "{{ item.ad_ou }}"
-        password:         "Welcome2026!"
+        password:         "{{ vault_ad_new_user_password }}"
         update_password:  always
+        password_expired: true
         state:            present
       loop: "{{ _password_reset_todo | default([]) }}"
       loop_control:
@@ -801,12 +824,18 @@
     # was considered and rejected -- its own docs say it "will not work if
     # the account is not enabled", and these accounts are still enabled:
     # false at this point (Section B2 hasn't run yet).
+    # password_expired: true, hardcoded, not item.MustChangePassword -- 2026-09-26,
+    # Robert's compliance ask. Every account gets the exact same shared,
+    # non-unique vault_ad_new_user_password value, so "must change at next
+    # logon" cannot be optional per-user here regardless of what the frozen
+    # TDF data says for this specific field -- see this file's own header
+    # Notes section for the full reasoning.
     - name: "B0b | Set password for genuinely new accounts (serial -- password writes must never be concurrent)"
       microsoft.ad.user:
         identity:         "{{ item.SamAccountName }}"
         password:         "{{ vault_ad_new_user_password }}"
         update_password:  always
-        password_expired: "{{ item.MustChangePassword }}"
+        password_expired: true
         state:            present
       loop: "{{ _new_creates_todo | default([]) }}"
       loop_control:
