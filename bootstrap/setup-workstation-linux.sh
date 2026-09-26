@@ -318,6 +318,15 @@ fetch_archive() {
 # and a bumped pin needs to actually take effect on the next run without a
 # manual `rm` first. Verifies the INSTALLED binary's checksum against the
 # manifest's pinned tag/asset every run and only reinstalls on mismatch.
+#
+# 2026-09-26: openrsat's linux-* assets are real .deb packages, not raw
+# executables like every entry before it (fyrtaarn) -- a downloaded .deb
+# can't just be `install -m 0755`'d into place the way a raw binary can, and
+# a package's installed state isn't one file at a fixed path, so the
+# raw-binary idempotency check below (comparing install_path's own sha256)
+# doesn't apply to it either. Branch on the asset filename's own extension
+# rather than adding a new manifest field -- the format is already fully
+# determined by what upstream actually published, nothing new to track.
 install_workstation_tools() {
   if [[ ! -f "$MANIFEST" ]]; then
     msg_error "Manifest not found: ${MANIFEST}"
@@ -347,6 +356,8 @@ install_workstation_tools() {
 
     local install_dir="/usr/local/bin"
     local install_path="${install_dir}/${name}"
+    local is_deb=false
+    [[ "$asset_name" == *.deb ]] && is_deb=true
 
     msg_info "Checking ${name} (${repo}@${tag}, ${platform_key})..."
 
@@ -363,7 +374,19 @@ install_workstation_tools() {
       continue
     fi
 
-    if [[ -f "$install_path" ]]; then
+    if $is_deb; then
+      # No single file at a fixed path to hash the way a raw binary has --
+      # dpkg's own installed-version record is the real state to check
+      # instead. tag is "vX.Y.Z", dpkg's Version field is "X.Y.Z" (confirmed
+      # live against the real openrsat .deb, 2026-09-26) -- strip the 'v'.
+      local expected_version installed_version
+      expected_version="${tag#v}"
+      installed_version="$(dpkg-query -W -f='${Version}' "$name" 2>/dev/null || true)"
+      if [[ "$installed_version" == "$expected_version" ]]; then
+        msg_ok "  ${name} already at ${tag} (dpkg version ${installed_version})"
+        continue
+      fi
+    elif [[ -f "$install_path" ]]; then
       local current_hash
       current_hash="$(sha256sum "$install_path" | cut -d' ' -f1)"
       if [[ "$current_hash" == "$expected_hash" ]]; then
@@ -376,7 +399,6 @@ install_workstation_tools() {
     local download_url
     download_url="$(jq -r --arg n "$asset_name" '.assets[] | select(.name == $n) | .browser_download_url' <<<"$meta")"
 
-    sudo mkdir -p "$install_dir"
     local tmp_path
     tmp_path="$(mktemp)"
     curl -fsSL -o "$tmp_path" "$download_url"
@@ -389,9 +411,24 @@ install_workstation_tools() {
       continue
     fi
 
-    sudo install -m 0755 "$tmp_path" "$install_path"
-    rm -f "$tmp_path"
-    msg_ok "  ${name} installed to ${install_path} (${tag}, sha256:${actual_hash})"
+    if $is_deb; then
+      # apt's own local-file detection is extension-based as much as
+      # path-based in places -- rename explicitly rather than lean on that,
+      # so this is unambiguous to both apt and anyone reading it later.
+      # apt (not dpkg -i) deliberately, so real declared deps (confirmed
+      # live: openrsat's own .deb Depends on libgtk2.0-0) get resolved
+      # instead of left as a half-configured package.
+      local tmp_deb_path="${tmp_path}.deb"
+      mv "$tmp_path" "$tmp_deb_path"
+      sudo apt-get install -y "$tmp_deb_path"
+      rm -f "$tmp_deb_path"
+      msg_ok "  ${name} installed via apt (${tag}, sha256:${actual_hash})"
+    else
+      sudo mkdir -p "$install_dir"
+      sudo install -m 0755 "$tmp_path" "$install_path"
+      rm -f "$tmp_path"
+      msg_ok "  ${name} installed to ${install_path} (${tag}, sha256:${actual_hash})"
+    fi
   done < <(jq -r '.workstation_tools[] | [.name, .repo, .tag] | @tsv' "$MANIFEST")
 }
 
