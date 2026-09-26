@@ -96,7 +96,17 @@
     enabled:          "{{ omit }}"
     password:         "{{ vault_ad_new_user_password }}"
     update_password:  on_create
-    password_expired: "{{ item.MustChangePassword }}"
+    # true, hardcoded, not item.MustChangePassword -- 2026-09-26, Robert's
+    # compliance ask (see 30-ad-users.yml's own header Notes section for the
+    # full reasoning). password_expired isn't gated by update_password: on_create
+    # the way the password VALUE is (confirmed via ansible-doc microsoft.ad.user --
+    # it's documented as its own independent property, no on_create/always/
+    # when_changed coupling mentioned at all) -- this task runs for every item in
+    # _b_update_todo on EVERY invocation, existing accounts included, so leaving
+    # this as item.MustChangePassword would silently re-flip B0b's password_expired:
+    # true back down to false on the very next run for any account whose frozen
+    # TDF data says MustChangePassword: false.
+    password_expired: true
     state:            present
   async: 60
   poll: 0
