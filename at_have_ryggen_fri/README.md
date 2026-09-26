@@ -206,6 +206,9 @@ cd at_have_ryggen_fri
 
 # Skip writing a report file (see "Report file" below):
 ./run.sh --no-report
+
+# Apply demurred.yml's explicit known-issue allowlist (see below):
+./run.sh --demur
 ```
 
 Exit code 0 if every check passes, 1 otherwise. Colour-coded output follows
@@ -218,6 +221,22 @@ for "does the repo make sense" but wrong for "am I actually ready to deploy" —
 use `--strict` for the latter. Added 2026-07-10 after 20 missing ARM64/x86_64
 binaries were found buried in a generic yellow warning line instead of being
 front and centre.
+
+**`--demur`** applies `demurred.yml`, an explicit, itemized allowlist of
+specific known-and-accepted findings — never a whole check. Added 2026-09-26,
+Robert: *"'ignoring errors' de facto becomes 'ignore them all the time'...
+by having to go out of your way to do it, you accept the 'penalty' that
+you're undercutting the harness... a managed risk."* Two things both have
+to be true for anything to actually get demurred: an entry has to exist in
+`demurred.yml` (see that file's own header for the schema), **and** `--demur`
+has to be passed on that specific run — an entry sitting in the file changes
+nothing on its own, and the flag alone does nothing without a matching entry.
+Matching is per-finding, not per-check: a check with some findings covered
+and one genuinely new one still fails for real, so a new problem can never
+hide behind an old, already-accepted one. Never silent when it does apply —
+the summary always prints a distinct `DEMURRED` line, and the final "Ryggen
+er fri" success line only ever means a genuinely clean run; a run with
+anything demurred says so explicitly instead.
 
 ### Report file
 
