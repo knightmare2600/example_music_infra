@@ -48,6 +48,25 @@
     is_workstation: "{{ preflight_product_type.stdout | trim == '1' }}"
     product_type:   "{{ preflight_product_type.stdout | trim }}"
 
+# Server Core detection -- ported from Join-DomainAndBootstrap.ps1 Stage 8's
+# own $IsServerCore check (2026-09-26, added alongside tasks/rsat.yml's
+# OpenRSAT fallback for Server Core -- see that file's own changelog).
+# Get-WindowsFeature only exists on Server OSes at all, so this only runs
+# when is_server -- a workstation just keeps is_server_core: false via the
+# set_fact's own default below, same as the source script's own
+# "$GuiFeature -and ..." short-circuit (a null $GuiFeature never sets it true).
+- name: "[Preflight] Detect Server-Gui-Shell feature state (Server Core check)"
+  ansible.windows.win_shell: |
+    $f = Get-WindowsFeature Server-Gui-Shell -ErrorAction SilentlyContinue
+    if ($f) { $f.Installed } else { '' }
+  register: preflight_gui_shell
+  changed_when: false
+  when: is_server
+
+- name: "[Preflight] Set is_server_core fact"
+  set_fact:
+    is_server_core: "{{ is_server and (preflight_gui_shell.stdout | default('') | trim == 'False') }}"
+
 - name: "[Preflight] Detect chassis type"
   ansible.windows.win_shell: |
     (Get-WmiObject Win32_SystemEnclosure).ChassisTypes[0]
@@ -224,7 +243,7 @@
 - name: "[Preflight] Summary"
   debug:
     msg:
-      - "OS product type : {{ product_type }} ({{ 'Server/DC' if is_server else 'Workstation' }})"
+      - "OS product type : {{ product_type }} ({{ 'Server Core' if is_server_core else ('Server/DC' if is_server else 'Workstation') }})"
       - "Chassis         : {{ preflight_chassis.stdout | trim }} ({{ 'Laptop/Tablet' if is_laptop else 'Desktop/Server' }})"
       - "Subnet octet    : {{ host_subnet_octet }}"
       - "Primary DC      : 192.168.{{ host_subnet_octet }}.10 {{ '[OK]' if preflight_dc.stdout | trim == 'ok' else ('[FIRST DC BUILD]' if is_first_dc | bool else '[UNREACHABLE]') }}"

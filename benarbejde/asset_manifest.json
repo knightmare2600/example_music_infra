@@ -116,7 +116,26 @@
     "            SHA256SUMS.txt, all digests cross-verified against the GitHub API's own per-asset",
     "            digest field before this entry was written). Robert: 'use that inside of those",
     "            deployment scripts we wrote, and also have the harness check for new versions,",
-    "            verify checksums, all the usual spangly stuff.'"
+    "            verify checksums, all the usual spangly stuff.'",
+    "2026-09-26  Added openrsat (github.com/tranquilit/OpenRSAT, third-party -- not Robert's own",
+    "            tool, unlike every other workstation_tools[] entry so far) -- pinned v0.4.519.",
+    "            Robert tested it live: 'server core can run it, which means we don't need to",
+    "            mess around with RSAT tools on core.' First entry whose assets aren't uniformly",
+    "            raw executables -- linux-*/darwin-* point at a real .deb/.dmg (Robert's own",
+    "            explicit choice, not raw linux-x64/darwin binaries also published upstream),",
+    "            windows-amd64 stays a plain portable .exe like every fyrtaarn asset. Verified",
+    "            live before writing this entry: downloaded the real .deb (dpkg-deb -f: package",
+    "            'openrsat', version matches the '0.4.519' half of the pinned tag exactly -- used",
+    "            for install_workstation_tools()'s dpkg-based idempotency check in both",
+    "            setup-workstation-linux.sh and setup-workstation-macos.sh's Linux-format-only",
+    "            .deb branch) and the real .dmg (7z l: a standard OpenRSAT.app + /Applications",
+    "            symlink bundle -- but its Info.plist hardcodes CFBundleShortVersionString to",
+    "            '0.0.0' regardless of the real release version, so macOS's own idempotency check",
+    "            can only be existence-based, not version-drift-based like Linux's -- a genuine",
+    "            upstream limitation, not something worth working around by hashing the whole",
+    "            .app bundle on every run). No windows-arm64 asset exists upstream at all (only",
+    "            windows-x64/windows-x86) -- the existing 'no asset for this platform_key' warning",
+    "            path already handles that gracefully, no code change needed for it."
   ],
 
   "assets": [
@@ -226,6 +245,20 @@
         "darwin-arm64": "fyrtaarn-darwin-arm64",
         "windows-amd64": "fyrtaarn-windows-amd64.exe",
         "windows-arm64": "fyrtaarn-windows-arm64.exe"
+      }
+    },
+    {
+      "name": "openrsat",
+      "_comment": "Third-party (tranquilit/OpenRSAT, not Robert's own tool) -- a portable, cross-platform RSAT alternative that runs as a standalone app rather than a Windows Feature/Capability install, so it works on Server Core, where the native RSAT-* Windows Features/Capabilities can fail outright (see windows_bootstrap/tasks/rsat.yml's own 2026-09-25 changelog entry: 'One or several parent features are disabled'). Robert tested it live, confirmed working. linux-*/darwin-* assets are the real .deb/.dmg (Robert's explicit choice over the also-published raw linux-x64/darwin binaries) -- see this file's own 2026-09-26 changelog entry for why install_workstation_tools() in setup-workstation-linux.sh/setup-workstation-macos.sh needed a format-aware branch for those two, unlike every other entry here so far. windows-amd64 is a plain portable .exe, installed the same way as every fyrtaarn Windows asset -- no code change needed for that platform.",
+      "repo": "tranquilit/OpenRSAT",
+      "tag": "v0.4.519",
+      "assets": {
+        "linux-amd64": "OpenRSAT-0.4.519-amd64.deb",
+        "linux-arm64": "OpenRSAT-0.4.519-arm64.deb",
+        "linux-armv7": "OpenRSAT-0.4.519-armhf.deb",
+        "darwin-amd64": "OpenRSAT-darwin-x64.dmg",
+        "darwin-arm64": "OpenRSAT-darwin-arm.dmg",
+        "windows-amd64": "OpenRSAT-windows-x64.exe"
       }
     }
   ]

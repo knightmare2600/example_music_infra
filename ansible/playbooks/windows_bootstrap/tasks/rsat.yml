@@ -21,9 +21,25 @@
 #               site.yml. Both tasks now register + ignore_errors, with a follow-up
 #               warning task that only fires on real failure -- visible, not silent,
 #               just not fatal.
+#   2026-09-26  Robert: "server core can run [OpenRSAT], which means we don't need to mess
+#               around with RSAT tools on core." Server Core is exactly the case the
+#               2026-09-25 entry above found failing (Server-AD-AdminCenter/GPMC are
+#               Desktop-Experience-only GUI tools -- their "parent features disabled" error
+#               is expected there, not a fluke), so this file no longer even attempts the
+#               native Server Manager path on Server Core -- it fetches
+#               tranquilit/OpenRSAT (benarbejde/asset_manifest.json's workstation_tools[]
+#               "openrsat" entry -- single source of truth for repo/tag/asset name, same
+#               manifest the 3 setup-workstation scripts already read) instead, a portable
+#               app that needs no Windows Feature/Capability at all. Downloaded and
+#               checksum-verified on the CONTROL NODE (delegate_to: localhost), then pushed
+#               to the target via win_copy -- matching this repo's existing binary-delivery
+#               pattern (see 82-salt-minion.yml) rather than assuming a Server Core DC has
+#               outbound internet access of its own, which nothing else in this estate does.
+#               Requires is_server_core (tasks/preflight.yml or playbooks/45-rsat.yml's own
+#               inline detection, both added the same day).
 # =============================================================================
 
-- name: "[Stage 15] Install RSAT via Server Manager (Server OS)"
+- name: "[Stage 15] Install RSAT via Server Manager (Server OS, not Server Core)"
   ansible.windows.win_feature:
     name:
       - RSAT-AD-PowerShell
@@ -32,7 +48,7 @@
       - RSAT-DNS-Server
       - GPMC
     state: present
-  when: is_server
+  when: is_server and not is_server_core
   register: _rsat_server_result
   # 2026-09-25, Robert (found live, EXADCSGOT001, forest-root build): Server Manager can
   # refuse a subset of these with "One or several parent features are disabled so current
@@ -50,7 +66,51 @@
       non-fatal, RSAT is management tooling only, not required for AD-DS itself. Install
       manually later if needed: Install-WindowsFeature RSAT-AD-PowerShell,RSAT-AD-AdminCenter,
       RSAT-ADDS-Tools,RSAT-DNS-Server,GPMC
-  when: is_server and _rsat_server_result is failed
+  when: is_server and not is_server_core and _rsat_server_result is failed
+
+# ---------------------------------------------------------------------------
+# Server Core -- OpenRSAT instead of native RSAT (2026-09-26, see changelog above)
+# ---------------------------------------------------------------------------
+
+- name: "[Stage 15] OpenRSAT — resolve manifest entry (Server Core RSAT fallback)"
+  set_fact:
+    _openrsat: >-
+      {{ (lookup('file', playbook_dir + '/../../../../benarbejde/asset_manifest.json') | from_json).workstation_tools
+         | selectattr('name', 'equalto', 'openrsat') | first }}
+  when: is_server_core
+
+- name: "[Stage 15] OpenRSAT — query GitHub release metadata"
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ _openrsat.repo }}/releases/tags/{{ _openrsat.tag }}"
+    return_content: true
+  register: _openrsat_release
+  delegate_to: localhost
+  when: is_server_core
+
+- name: "[Stage 15] OpenRSAT — resolve Windows asset's checksum + download URL"
+  set_fact:
+    _openrsat_asset: "{{ _openrsat_release.json.assets | selectattr('name', 'equalto', _openrsat.assets['windows-amd64']) | first }}"
+  when: is_server_core
+
+- name: "[Stage 15] OpenRSAT — download + checksum-verify on the control node"
+  ansible.builtin.get_url:
+    url: "{{ _openrsat_asset.browser_download_url }}"
+    dest: "/tmp/example-music-openrsat-cache/{{ _openrsat.assets['windows-amd64'] }}"
+    checksum: "{{ _openrsat_asset.digest }}"
+  delegate_to: localhost
+  when: is_server_core
+
+- name: "[Stage 15] OpenRSAT — ensure C:\\Tools\\OpenRSAT exists"
+  ansible.windows.win_file:
+    path: 'C:\Tools\OpenRSAT'
+    state: directory
+  when: is_server_core
+
+- name: "[Stage 15] OpenRSAT — copy to Server Core target"
+  ansible.windows.win_copy:
+    src: "/tmp/example-music-openrsat-cache/{{ _openrsat.assets['windows-amd64'] }}"
+    dest: 'C:\Tools\OpenRSAT\OpenRSAT.exe'
+  when: is_server_core
 
 - name: "[Stage 15] Install RSAT via Windows Capabilities (Desktop OS)"
   ansible.windows.win_optional_feature:
