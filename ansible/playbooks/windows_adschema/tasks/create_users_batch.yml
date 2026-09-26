@@ -57,6 +57,16 @@
 
 - name: "B | Create user accounts (batch of {{ _b_batch | length }}, fire async)"
   microsoft.ad.user:
+    # identity: required whenever path: might move an EXISTING object -- see
+    # tasks/create_computers_batch.yml's own 2026-09-26 changelog entry for
+    # the full write-up (a real, live "already exists" failure on the
+    # computer side of this exact same gap). This task runs for every one of
+    # 354 users every run via _b_update_todo, including any whose ad_ou ever
+    # changes -- latent here (no user's ad_ou happened to change the day the
+    # computer-side bug was found), but the same fix applies for the same
+    # reason: identity: does a location-independent lookup+move,
+    # sam_account_name alone does not.
+    identity:         "{{ item.SamAccountName }}"
     name:             "{{ item.Name }}"
     sam_account_name: "{{ item.SamAccountName }}"
     upn:              "{{ item.UserPrincipalName }}"
