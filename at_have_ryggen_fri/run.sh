@@ -440,6 +440,19 @@
 #      placeholder convention, so the next unfilled one fails the harness
 #      instead of the first live playbook that reaches it.
 #
+# --demur / demurred.yml -- Robert, 2026-09-26, after the same 2 known
+#      findings (debug_single_user.yml's --syntax-check, both vault-
+#      placeholder groups above) sat red on every single run: "'ignoring
+#      errors' de facto becomes 'ignore them all the time'... by having to
+#      go out of your way to do it, you accept the 'penalty' that you're
+#      undercutting the harness... a managed risk." demurred.yml is an
+#      itemized, per-FINDING allowlist (never per-check) that only takes
+#      effect when --demur is explicitly passed -- see that file's own
+#      header for the full contract, and this script's own check_demurred()
+#      function for the matching logic. The summary always says so
+#      explicitly when anything was demurred; "Ryggen er fri" alone only
+#      ever means a genuinely clean run.
+#
 # Nothing here touches a real host or needs a vault password. Two exceptions
 # to "network access beyond localhost": check 13 (check_mermaid.py) needs to
 # reach kroki.io to render-test every mermaid diagram, and check 37
@@ -451,6 +464,9 @@
 #
 # Usage:
 #   ./run.sh
+#   ./run.sh --strict      # promote informational/expected warnings to real failures
+#   ./run.sh --demur       # apply demurred.yml's explicit known-issue allowlist (see above)
+#   ./run.sh --no-report   # skip writing reports/*.log, terminal output only
 #
 # Changelog:
 #   2026-07-10  Initial version.
@@ -848,11 +864,25 @@ set -uo pipefail
 # yet.
 # --no-report: skip writing the report file (see below) -- for callers that
 # only want the terminal output (e.g. piping into something else already).
+# --demur: Robert's ask, 2026-09-26, after noticing the same 2 known findings
+# (debug_single_user.yml's --syntax-check, 8 unfilled vault placeholders)
+# sitting red every single run: "'ignoring errors' de facto becomes 'ignore
+# them all the time'... by having to go out of your way to do it, you accept
+# the 'penalty' that you're undercutting the harness... a managed risk."
+# Consults demurred.yml (see that file's own header for the full schema and
+# guarantees) -- an itemized, per-FINDING allowlist, not a per-check one.
+# Without --demur, demurred.yml is inert; run.sh behaves exactly as if it
+# didn't exist. Deliberate: writing an entry into that file is only half of
+# "going out of your way" -- passing this flag every single run is the other
+# half, so tolerating known risk is a conscious, repeated choice, never a
+# permanent silent downgrade.
 STRICT=false
 NO_REPORT=false
+DEMUR=false
 for arg in "$@"; do
   [[ "$arg" == "--strict" ]] && STRICT=true
   [[ "$arg" == "--no-report" ]] && NO_REPORT=true
+  [[ "$arg" == "--demur" ]] && DEMUR=true
 done
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -891,6 +921,84 @@ command -v ansible-playbook >/dev/null || die "ansible-playbook not found on PAT
 command -v python3         >/dev/null || die "python3 not found on PATH"
 
 FAILED_CHECKS=()
+DEMURRED_CHECKS=()
+DEMURRED_FILE="${HERE}/demurred.yml"
+
+# check_demurred <check_name> <problem_lines>
+#
+# <problem_lines> is a newline-separated list of this check's own individual
+# findings, one per line -- the caller decides what counts as one finding
+# (a failing file's path, a single "path: key = value" line, etc.), not this
+# function. See demurred.yml's own header for the full contract; summary:
+#
+#   - Only ever does anything when --demur was passed. Otherwise always
+#     returns 1 (not demurred) so every check behaves exactly as if this
+#     mechanism didn't exist.
+#   - Every line in <problem_lines> must match at least one demurred.yml
+#     entry for this exact check name (substring match against that entry's
+#     own `match` field) for the WHOLE check to be treated as demurred. One
+#     unmatched line -- a genuinely new finding -- fails the check for real,
+#     even if every other line is a long-accepted one.
+#   - Prints which findings ARE covered and which (if any) are NOT, so a
+#     partial-demur situation is never ambiguous from the output alone.
+check_demurred() {
+  local check_name="$1"
+  local problem_lines="$2"
+
+  if ! $DEMUR || [[ ! -f "$DEMURRED_FILE" ]] || [[ -z "$problem_lines" ]]; then
+    return 1
+  fi
+
+  local matches
+  matches=$(DEMUR_CHECK_NAME="$check_name" python3 -c "
+import os, yaml
+name = os.environ['DEMUR_CHECK_NAME']
+try:
+    data = yaml.safe_load(open('${DEMURRED_FILE}')) or []
+except Exception:
+    data = []
+for e in data:
+    if isinstance(e, dict) and e.get('check') == name:
+        print(e.get('match', ''))
+")
+  [[ -z "$matches" ]] && return 1
+
+  local all_matched=true
+  local unmatched=()
+  local covered=()
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    local hit=""
+    while IFS= read -r m; do
+      [[ -z "$m" ]] && continue
+      if [[ "$line" == *"$m"* ]]; then
+        hit="$m"
+        break
+      fi
+    done <<< "$matches"
+    if [[ -n "$hit" ]]; then
+      covered+=("$line")
+    else
+      all_matched=false
+      unmatched+=("$line")
+    fi
+  done <<< "$problem_lines"
+
+  if $all_matched; then
+    warn "DEMURRED: every finding for '${check_name}' matches an explicit, accepted entry in demurred.yml (see that file for who/why/when). --demur is downgrading this check from a failure, on purpose, this run only:"
+    for c in "${covered[@]}"; do
+      echo "    demurred: $c"
+    done
+    DEMURRED_CHECKS+=("$check_name")
+    return 0
+  else
+    warn "'${check_name}' has ${#covered[@]} demurred finding(s), but ${#unmatched[@]} NOT covered by demurred.yml -- treating as a real failure. A newly-added finding never hides behind an already-accepted one:"
+    for u in "${unmatched[@]}"; do
+      echo "    NOT demurred: $u"
+    done
+    return 1
+  fi
+}
 
 # ------------------------------------------------------------------------------
 # CRITICALITY ALARM — check_criticality_alarm.py
@@ -969,6 +1077,7 @@ section "2. ansible-playbook --syntax-check"
 
 syntax_errors=0
 syntax_checked=0
+syntax_fail_paths=()
 while IFS= read -r -d '' f; do
   # Only files with a top-level "hosts:" key are real playbooks -- task
   # fragment files (included via include_tasks) aren't valid --syntax-check
@@ -996,12 +1105,15 @@ while IFS= read -r -d '' f; do
     fail "$(realpath --relative-to="$REPO_ROOT" "$f")"
     echo "$out" | sed 's/^/      /'
     (( syntax_errors++ ))
+    syntax_fail_paths+=("$(realpath --relative-to="$REPO_ROOT" "$f")")
   fi
 done < <(find "$ANSIBLE_DIR/playbooks" -name "*.yml" -print0)
 
 info "Syntax-checked $syntax_checked playbook file(s)."
 if [[ $syntax_errors -eq 0 ]]; then
   success "All playbooks pass --syntax-check."
+elif check_demurred "ansible-playbook --syntax-check" "$(printf '%s\n' "${syntax_fail_paths[@]}")"; then
+  :
 else
   fail "$syntax_errors playbook(s) failed --syntax-check."
   FAILED_CHECKS+=("ansible-playbook --syntax-check")
@@ -1679,8 +1791,17 @@ if out=$(python3 "${HERE}/check_vault_placeholders.py"); then
   success "No unfilled placeholder values found in any plain-text vault.yml."
 else
   echo "$out"
-  fail "Unfilled vault placeholder value(s) found -- see above. Each one will fail the first time a live playbook actually tries to use it, the same way vault_ad_new_user_password's unset CHANGEME did against EXADCSGOT001 -- set a real value now instead of waiting to hit it live."
-  FAILED_CHECKS+=("check_vault_placeholders.py")
+  # One finding per "  path: key = 'value'" line -- see that script's own
+  # print(f"  {rel}: {key} = {value!r}") -- isolated from the surrounding
+  # prose so check_demurred matches against individual keys, not the whole
+  # block.
+  vault_finding_lines="$(echo "$out" | grep -E '^  .+: .+ = ')"
+  if check_demurred "check_vault_placeholders.py" "$vault_finding_lines"; then
+    :
+  else
+    fail "Unfilled vault placeholder value(s) found -- see above. Each one will fail the first time a live playbook actually tries to use it, the same way vault_ad_new_user_password's unset CHANGEME did against EXADCSGOT001 -- set a real value now instead of waiting to hit it live."
+    FAILED_CHECKS+=("check_vault_placeholders.py")
+  fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -1698,8 +1819,19 @@ if [[ "${NEW_SITE_COUNT:-0}" -gt 0 ]]; then
   echo -e "    ${CYAN}python3 at_have_ryggen_fri/check_new_site_boilerplate.py --apply <SITE>${NC}"
 fi
 
+if [[ ${#DEMURRED_CHECKS[@]} -gt 0 ]]; then
+  warn "${#DEMURRED_CHECKS[@]} check(s) DEMURRED via --demur (see demurred.yml for who/why/when) -- not a real pass:"
+  for c in "${DEMURRED_CHECKS[@]}"; do
+    echo -e "  ${YELLOW}~${NC} $c"
+  done
+fi
+
 if [[ ${#FAILED_CHECKS[@]} -eq 0 ]]; then
-  success "Ryggen er fri — all checks passed."
+  if [[ ${#DEMURRED_CHECKS[@]} -eq 0 ]]; then
+    success "Ryggen er fri — all checks passed."
+  else
+    success "All checks passed or were explicitly demurred (see above) — not the same thing as a clean run."
+  fi
   exit 0
 else
   fail "${#FAILED_CHECKS[@]} check(s) failed:"

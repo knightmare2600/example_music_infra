@@ -1,0 +1,106 @@
+# =============================================================================
+# at_have_ryggen_fri/demurred.yml
+# Example Music Limited — explicit, itemized "known and accepted" harness findings
+# =============================================================================
+# Robert, 2026-09-26: "'ignoring errors' de facto becomes 'ignore them all the
+# time'... can we add an option to the harness maybe --demur or such which
+# explicitly allows those errors not to show? By having to go out of your way
+# to do it, you then accept the 'penalty' that you're undercutting the
+# harness... because you accept it as a 'managed risk.'"
+#
+# This file is that "going out of your way." Each entry names ONE SPECIFIC
+# finding, never a whole check -- and run.sh's own --demur flag is the OTHER
+# half of the requirement. An entry sitting here changes NOTHING on its own.
+# --demur must be passed EVERY run for any of this to take effect at all --
+# deliberate, not an oversight: this is not a permanent, silent downgrade you
+# set once and forget, it's a conscious, repeated choice each time you choose
+# to run the harness in a mode that tolerates specific known risk.
+#
+# What "demurred" actually does (run.sh's own check_demurred() function):
+#   - Only ever consulted when --demur is passed. Without it, every check
+#     behaves exactly as if this file didn't exist.
+#   - Matches per-FINDING, not per-check. check_vault_placeholders.py's 8
+#     entries below are 8 separate acceptances -- demurring one unfilled
+#     vault key never silently demurs a different one, or a new one added
+#     later that happens to share a check name with an already-accepted one.
+#   - A check with SOME but not ALL of its findings matched here still FAILS
+#     the run -- every real finding needs its own explicit entry, or the
+#     check stays red. This is what stops a genuinely new problem from ever
+#     hiding behind an old, already-accepted one.
+#   - Never silent even when it does apply -- the summary always prints a
+#     visible "DEMURRED" line naming the check and pointing back at this
+#     file, distinct from a real pass. The final "Ryggen er fri" line only
+#     ever means "all checks passed, nothing demurred" -- a run with any
+#     demurred entry applied says so explicitly instead.
+#
+# Fields:
+#   check       Exact check name as run.sh's own FAILED_CHECKS array records
+#               it (e.g. "ansible-playbook --syntax-check",
+#               "check_vault_placeholders.py").
+#   match       A substring that must appear in that finding's own printed
+#               line for this entry to apply. Keep it specific -- a filename
+#               or key name, not a generic word that could accidentally
+#               match something unrelated later.
+#   reason      Why this is accepted, not a bug.
+#   accepted_by Who made the call.
+#   date        When.
+# =============================================================================
+
+- check: "ansible-playbook --syntax-check"
+  match: "debug_single_user.yml"
+  reason: >
+    Standalone diagnostic tool (windows_adschema/playbooks/debug_single_user.yml)
+    -- declares hosts: "{{ ad_target }}" with no default, by design, since it's
+    only ever meant to be run directly with -e ad_target=<host>. A bare
+    --syntax-check sweep with no extra vars will always fail this one file;
+    expected, not a regression.
+  accepted_by: "Robert"
+  date: "2026-09-26"
+
+- check: "check_vault_placeholders.py"
+  match: "vault_local_admin_password"
+  reason: "Not yet needed live -- no playbook run has required a real value yet."
+  accepted_by: "Robert"
+  date: "2026-09-26"
+
+- check: "check_vault_placeholders.py"
+  match: "vault_domain_join_password"
+  reason: "Not yet needed live -- no playbook run has required a real value yet."
+  accepted_by: "Robert"
+  date: "2026-09-26"
+
+- check: "check_vault_placeholders.py"
+  match: "vault_winrm_password"
+  reason: "Not yet needed live -- no playbook run has required a real value yet."
+  accepted_by: "Robert"
+  date: "2026-09-26"
+
+- check: "check_vault_placeholders.py"
+  match: "vault_snmp_write_community"
+  reason: "Not yet needed live -- no playbook run has required a real value yet."
+  accepted_by: "Robert"
+  date: "2026-09-26"
+
+- check: "check_vault_placeholders.py"
+  match: "rudder_admin_password"
+  reason: "Rudder onboarding not started yet."
+  accepted_by: "Robert"
+  date: "2026-09-26"
+
+- check: "check_vault_placeholders.py"
+  match: "rudder_api_token"
+  reason: "Rudder onboarding not started yet."
+  accepted_by: "Robert"
+  date: "2026-09-26"
+
+- check: "check_vault_placeholders.py"
+  match: "rudder_ldap_bind_pass"
+  reason: "Rudder onboarding not started yet."
+  accepted_by: "Robert"
+  date: "2026-09-26"
+
+- check: "check_vault_placeholders.py"
+  match: "truenas_rest_bootstrap_password"
+  reason: "TrueNAS install not started yet."
+  accepted_by: "Robert"
+  date: "2026-09-26"
