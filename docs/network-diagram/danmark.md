@@ -1016,16 +1016,18 @@ graph TD
     T_DCS["🗝️ EXADCSFRD001<br/>Forest Root DC<br/>172.16.124.10"]
     T_TMP["📦<br/>Provisioning Server (PXE, Port 8000)<br/>172.16.124.1"]
     T_DNS["🧭 EXADNSFRD001<br/>DNS/BIND Secondary<br/>172.16.124.8"]
+    T_RTR["📡 EXARTRFRD001<br/>Black Box<br/>172.16.124.2"]
     T_PVE["🗂️ EXAPVEFRD001<br/>Small Intel NUC Running Proxmox VE<br/>172.16.124.5"]
     T_SWI["🔀 EXASWIFRD001<br/>48-port Switch<br/>172.16.124.250"]
     T_PBX["🔌 EXAPBXCLD002<br/>Secondary 3CX PBX (hostnamed Under CLD)<br/>172.16.124.48"]
     T_FWL["🧱 EXAFWLFRD001<br/>FWL 1<br/>172.16.124.253 — planned"]
-    T_FRD --> T_ANS --> T_DCS --> T_TMP --> T_DNS --> T_PVE --> T_SWI --> T_PBX --> T_FWL
+    T_FRD --> T_ANS --> T_DCS --> T_TMP --> T_DNS --> T_RTR --> T_PVE --> T_SWI --> T_PBX --> T_FWL
     style T_FRD fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_ANS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DCS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_TMP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DNS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PBX fill:#000000,stroke:#FFFFFF,color:#FFFFFF

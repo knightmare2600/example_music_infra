@@ -519,6 +519,15 @@ ALLOWED_IP_ALIASES = {
   # regardless of whether a real devices.csv RTR row also exists there.
   ("RTR", "Router"),
   ("Router", "RTR"),
+  # 2026-09-26: different shape from the RTR/Router pair above -- that one is RTR vs the
+  # standard-template placeholder, which FRD/VRK never even reach (NON_STANDARD_SITES skips
+  # compute_standard_devices_for_site() entirely for them). FRD's real black-box upstream
+  # router (Robert, 2026-09-26: "we have a router, just not one under our control... same
+  # in FRD, hence why it uses .2") sits at sites.csv's own Gateway address (172.16.124.2),
+  # registered unconditionally for every site regardless of NON_STANDARD_SITES -- the new
+  # devices.csv FRD,RTR,1 row describing that same real, physical device collided with it.
+  ("RTR", "Gateway"),
+  ("Gateway", "RTR"),
 }
 
 ## BRD / BER are allowed to overlap (legacy vs modern naming)

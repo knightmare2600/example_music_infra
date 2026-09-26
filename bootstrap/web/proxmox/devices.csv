@@ -44,7 +44,7 @@ FAL,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch 1,,yes,yes,
 FAL,SWI,2,251,Cisco Catalyst 9300,snmp,,Core switch 2,,yes,yes,
 FAL,RTR,1,1,Debian 12,ssh,,"Current live WAN edge router/firewall -- a Debian VM (Robert, 2026-09-24: replaced the decommissioned Cisco ISR 4331, corrects this row's own earlier wrong vendor guess of FortiGate). Originally hostnamed EXARTRFAL02 (2-digit, non-standard) at 192.168.79.1/24 -- renamed to EXARTRFAL001 and moved onto FAL's own subnet at 192.168.76.1 when it took over primary-router duty from the decommissioned Cisco ISR 4331 (Robert, 2026-08-04, now EXARTRFAL002/Enabled:false). That old Cisco's own historical EXARTRFAL001 identity is recorded separately in legacy-devices.csv -- same hostname, different physical device, reused after decommission.",,no,,
 FAL,RAC,1,2,Dell iDRAC9,snmp,,"Dell iDRAC for Proxmox node 1 -- real, confirmed 2 nodes (Robert, 2026-09-24; matches network-inventory.md's own 2026-03-05 changelog entry, 'FAL RAC corrected to .2/.3', and the network diagram's 2026-07-31 correction debunking a fictional 3-node/3-iDRAC claim that had crept into docs/site-inventory.md separately). Added as a real devices.csv row 2026-09-24 -- RAC couldn't get one until RAC was removed from ALWAYS_EXCLUDE_TYPES the same day.",,no,,
-FAL,RAC,2,3,Dell iDRAC9,snmp,,"Dell iDRAC for Proxmox node 2 -- see Number=1 row above for the confirmed-2-nodes evidence.",,no,,
+FAL,ILO,1,3,HPE iLO5,snmp,,"HP iLO for Proxmox node 2 -- corrected 2026-09-26, Robert: FAL's 2 PVE nodes are one Dell (node 1, RAC,1 above) and one HP (this one), not both Dell as the 2026-09-24 entry assumed. Supersedes the old 'PLANNED -- new-site boilerplate (BMC for PVE1)' ILO row at this same octet, which was a generic pre-vendor-confirmation guess and never corresponded to a real device once the actual vendor split was known.",,no,,
 FAL,PHN,1,,Yealink T58A,http,,Phone 1,,yes,yes,
 FAL,PHN,2,,Yealink T58A,http,,Phone 2,,yes,yes,
 FAL,PHN,3,,Yealink T58A,http,,Phone 3,,yes,yes,
@@ -244,6 +244,7 @@ CLD,PVE,2,6,,none,,"Not yet built -- planned expansion slot (2026-07-30, Robert)
 ODE,FWL,1,253,Cisco ASA 5506-X,telnet,,"Enterprise edge firewall -- real, confirmed via ad_computers.json (EXAFWLODE001, Enabled:true)",,no,,
 ODE,FWL,2,254,,none,,"Not yet built -- planned second firewall (2026-07-30, Robert)",,no,,yes
 FRD,FWL,1,253,,none,,"Not yet built -- planned first firewall for this fallback vRACK site (2026-07-30, Robert)",,no,,yes
+FRD,RTR,1,2,,none,,"Black box -- no access, upstream provider equipment, not a router we manage or can query (Robert, 2026-09-26). Real gateway, not the standard .1 RTR slot -- confirmed independently two ways already in this file: sites.csv's own Gateway field (172.16.124.2), and this file's own FRD,TMP,1 row, whose Notes already referenced this same address as the real iPXE-detected gateway (menu.ipxe/late_command.sh) back on 2026-07-21, before this row existed to own it.",,no,,
 FRD,PVE,1,5,,ssh,,"Small Intel NUC running Proxmox VE -- part of the site kit alongside the 48-port switch, despite FRD being otherwise a legal-fiction single-MacBook provisioning network (2026-07-30, Robert). Vendor/model TBD.",,no,,
 FRD,SWI,1,250,,snmp,,"48-port switch -- part of the site kit alongside the NUC (2026-07-30, Robert). Vendor/model TBD.",,no,,
 ODE,SWI,1,250,Cisco Catalyst 9300,snmp,,"96-port switch -- real, confirmed 2026-09-24 (Robert: every site has a minimum of one 96-port switch). Vendor defaulted to the estate's own dominant convention, not separately confirmed.",,no,,
@@ -704,9 +705,8 @@ EDI,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default p
 EDI,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 EDI,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 FAL,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
-FAL,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
-FAL,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
-FAL,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
+FAL,PVE,1,5,Dell,ssh,,"Vendor corrected 2026-09-26 to match node 1's real, confirmed RAC,1 (Dell iDRAC) -- was 'HP' as a generic, never-confirmed new-site-boilerplate default pick, backwards from the real hardware.",,no,,yes
+FAL,PVE,2,6,HP,ssh,,"Vendor corrected 2026-09-26 to match node 2's real, confirmed BMC (HPE iLO5, ILO,1 above) -- was 'Dell' as a generic, never-confirmed new-site-boilerplate default pick, backwards from the real hardware.",,no,,yes
 GLA,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 GLA,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 GLA,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
