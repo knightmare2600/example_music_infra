@@ -62,9 +62,10 @@
       include_tasks: ../../../tasks/colour_fallback.yml
       tags: always
 
-    - name: Include hostname facts
-      include_tasks: ../../../tasks/hostname_facts.yml
-      tags: always
+    # hostname_facts.yml is no longer included directly here -- 2026-09-26,
+    # nothing else in this file uses host_site/host_role now that the
+    # nodeinfo.json block below was extracted into nodeinfo_windows.yml,
+    # which calls it itself.
 
     - name: Ensure C:\ProgramData\ExampleMusic\Config exists
       ansible.windows.win_file:
@@ -112,72 +113,14 @@
         dest: "{{ example_music_dir }}\\ad_computers.json"
 
     # -------------------------------------------------------------------------
-    # nodeinfo.json -- same schema as ansible/tasks/nodeinfo.yml's Linux version
-    # (see this file's own header for why that shared task can't be reused
-    # directly), including the same "preserve bootstrapped_at/by across
-    # reruns, only last_ansible_run always updates" behaviour that file's own
-    # 2026-09-24 changelog entry added for Linux.
+    # nodeinfo.json -- 2026-09-26: extracted into the shared
+    # ansible/tasks/nodeinfo_windows.yml (this file was the only copy of this
+    # logic until today; see that file's own header for the full writeup and
+    # why windows_bootstrap/windows_dc/windows_adschema now use it too).
     # -------------------------------------------------------------------------
-    - name: Load sites.csv for nodeinfo enrichment
-      ansible.builtin.read_csv:
-        path: "{{ sites_csv_src }}"
-      register: _winhygiene_sites_raw
-      delegate_to: localhost
-      become: false
+    - name: Write nodeinfo.json
+      include_tasks: ../../../tasks/nodeinfo_windows.yml
       vars:
-        ansible_connection: local
-        ansible_shell_type: sh
-
-    - name: Look up this host's site row
-      ansible.builtin.set_fact:
-        _winhygiene_site_row: "{{ _winhygiene_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
-
-    - name: "[nodeinfo] Check for existing nodeinfo.json"
-      ansible.windows.win_stat:
-        path: "{{ example_music_dir }}\\nodeinfo.json"
-      register: _winhygiene_nodeinfo_existing_file
-
-    - name: "[nodeinfo] Read existing nodeinfo.json"
-      ansible.windows.win_shell: "Get-Content -Raw '{{ example_music_dir }}\\nodeinfo.json'"
-      register: _winhygiene_nodeinfo_existing_content
-      when: _winhygiene_nodeinfo_existing_file.stat.exists
-      changed_when: false
-
-    - name: "[nodeinfo] Preserve bootstrapped_at/bootstrapped_by from the existing file, if any"
-      ansible.builtin.set_fact:
-        _winhygiene_bootstrapped_at: "{{ (_winhygiene_nodeinfo_existing_content.stdout | from_json).bootstrapped_at | default(ansible_date_time.iso8601) }}"
-        _winhygiene_bootstrapped_by: "{{ (_winhygiene_nodeinfo_existing_content.stdout | from_json).bootstrapped_by | default('windows_hygiene/site.yml') }}"
-      when: _winhygiene_nodeinfo_existing_file.stat.exists
-
-    - name: "[nodeinfo] Default bootstrapped_at/bootstrapped_by (no existing file -- genuine first write)"
-      ansible.builtin.set_fact:
-        _winhygiene_bootstrapped_at: "{{ ansible_date_time.iso8601 }}"
-        _winhygiene_bootstrapped_by: "windows_hygiene/site.yml"
-      when: not _winhygiene_nodeinfo_existing_file.stat.exists
-
-    - name: "[nodeinfo] Write nodeinfo.json"
-      ansible.windows.win_copy:
-        dest: "{{ example_music_dir }}\\nodeinfo.json"
-        content: "{{ _winhygiene_nodeinfo | to_nice_json }}\r\n"
-      vars:
-        _winhygiene_nodeinfo: >-
-          {{
-            {
-              'hostname':         inventory_hostname,
-              'fqdn':             ansible_fqdn | default(inventory_hostname),
-              'role':             host_role | lower,
-              'site':             host_site,
-              'city':             _winhygiene_site_row.City | default(''),
-              'country':          _winhygiene_site_row.Country | default(''),
-              'country_code':     _winhygiene_site_row.CountryCode | default(''),
-              'entity':           _winhygiene_site_row.Entity | default(''),
-              'office_name':      _winhygiene_site_row.OfficeName | default(''),
-              'street_address':   _winhygiene_site_row.Street | default(''),
-              'postal_code':      _winhygiene_site_row.PostalCode | default(''),
-              'ansible_managed':  true,
-              'bootstrapped_at':  _winhygiene_bootstrapped_at,
-              'bootstrapped_by':  _winhygiene_bootstrapped_by,
-              'last_ansible_run': ansible_date_time.iso8601,
-              'environment':      'production',
-            }
-          }}
+        nodeinfo_bootstrapped_by: "windows_hygiene/site.yml"
+        nodeinfo_repo_root: "{{ playbook_dir }}/../../../.."
+        nodeinfo_windows_dir: "{{ example_music_dir }}"

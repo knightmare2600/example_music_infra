@@ -302,3 +302,36 @@
       loop_control:
         loop_var: _c_batch
         label: "batch of {{ _c_batch | length }}"
+
+    # 2026-09-26, Robert's ask: "I want every playbook to update that JSON
+    # field" -- windows_adschema never wrote nodeinfo.json at all before
+    # this. See ansible/tasks/nodeinfo_windows.yml's own header for the
+    # shared implementation.
+    #
+    # block/rescue, not ignore_errors: on the include -- verified directly
+    # (windows_bootstrap/85-finish.yml's own 2026-09-26 changelog entry has
+    # the full repro) that ignore_errors: true on an include_tasks: line
+    # does not protect the included file's own tasks. Especially important
+    # here, more so than windows_bootstrap/windows_dc's own copies of this
+    # same block -- ad_target (this file's own hosts:) is explicitly
+    # documented as "Domain Controller name OR IP" at the 00-ad-preflight.yml
+    # prompt, and hostname_facts.yml (which this include calls internally)
+    # hard-asserts the EXA[ROLE][SITE][NNN] convention -- an IP-based
+    # ad_target would fail that assert. nodeinfo.json is an observability
+    # convenience; it must never block a real AD population run that's
+    # already this far through.
+    - name: "Write nodeinfo.json (non-fatal)"
+      block:
+        - name: "Write nodeinfo.json"
+          include_tasks: ../../../tasks/nodeinfo_windows.yml
+          vars:
+            nodeinfo_bootstrapped_by: "windows_adschema/site.yml"
+            nodeinfo_repo_root: "{{ playbook_dir }}/../../../.."
+      rescue:
+        - name: "WARNING — nodeinfo.json write failed, continuing anyway"
+          debug:
+            msg: >-
+              nodeinfo.json write failed ({{ ansible_failed_result.msg | default('see task output above') }}) --
+              non-fatal, nodeinfo.json is an observability convenience, not required for AD population itself.
+              Common cause: ad_target was given as a bare IP, not a hostname matching the
+              EXA[ROLE][SITE][NNN] convention.

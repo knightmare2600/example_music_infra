@@ -1,0 +1,145 @@
+---
+# =============================================================================
+# ansible/tasks/nodeinfo_windows.yml
+# Example Music Limited — Write C:\ProgramData\ExampleMusic\Config\nodeinfo.json
+# =============================================================================
+# The Windows counterpart to ansible/tasks/nodeinfo.yml -- same schema, same
+# "preserve bootstrapped_at/by across reruns, always refresh last_ansible_run"
+# behaviour -- but ansible.windows.win_stat/win_shell/win_copy throughout,
+# since the Linux file's ansible.builtin.stat/slurp/copy only work against a
+# POSIX target.
+#
+# Extracted 2026-09-26 from windows_hygiene/playbooks/05-example-music-files.yml
+# (until now the ONLY Windows nodeinfo.json writer) so windows_bootstrap/
+# windows_dc/windows_adschema can all write/refresh the same file without each
+# hand-duplicating the same ~30-line block a 4th, 5th, 6th time. Robert's ask:
+# "I want every playbook to update that field... since EVERY playbook does it
+# we can 'move' the functionality so we don't have to keep re-adding it."
+#
+# Ansible has no mechanism to inject a task into a play the play itself
+# doesn't reference at all -- group_vars/host_vars carry data, never task
+# logic, and there's no config-only "run this everywhere" switch. This file
+# is the closest real answer: every caller's own wiring shrinks to two lines
+# (set nodeinfo_bootstrapped_by, include this file) instead of ~30. The other
+# half of "don't let this quietly go missing again" is
+# at_have_ryggen_fri/check_nodeinfo_coverage.py, added the same day -- it
+# fails if any current or future site.yml/standalone entrypoint doesn't
+# reference either this file or the Linux one.
+#
+# Self-contained deliberately: calls hostname_facts.yml itself rather than
+# assuming an earlier play in the same chain already did (found live,
+# 2026-09-26: windows_bootstrap/85-finish.yml relies on 80-domainjoin.yml
+# having called it earlier in the SAME run and left host_site/host_role set --
+# true today, but fragile to depend on for a NEW caller). Redundant re-parsing
+# is cheap (a regex + an assert, no I/O) -- safe to call again even if an
+# earlier task in the same play already did.
+#
+# Required vars (set by the caller before including this file):
+#   nodeinfo_bootstrapped_by   which playbook wrote this, e.g. "windows_bootstrap/site.yml"
+#   nodeinfo_repo_root         absolute path to the repo root -- NOT a
+#                              playbook_dir-relative expression computed IN
+#                              HERE. This file is included from callers at
+#                              different nesting depths (windows_bootstrap/
+#                              playbooks/, windows_dc/playbooks/,
+#                              windows_adschema/playbooks/, windows_hygiene/
+#                              playbooks/) -- a relative path resolved inside
+#                              this shared file would need a different
+#                              hop-count per caller. Each caller already knows
+#                              its own correct depth; this file must not
+#                              guess it (see this whole repo's own recurring
+#                              playbook_dir hop-count bug class).
+#
+# Optional vars:
+#   nodeinfo_windows_dir   default: 'C:\ProgramData\ExampleMusic\Config'
+#
+# Does NOT require gather_facts: true on the caller's own play -- deliberately
+# uses now(utc=true) instead of ansible_date_time.iso8601, since
+# windows_dc/windows_adschema/windows_bootstrap's later stages all run with
+# gather_facts: false (WinRM fact-gathering is slow and these stages don't
+# otherwise need it) -- ansible_date_time would simply be undefined there.
+# ansible_fqdn already degrades gracefully via its own | default(inventory_hostname).
+# =============================================================================
+# Changelog:
+#   2026-09-26  Extracted from windows_hygiene/playbooks/05-example-music-files.yml
+#               (the only prior copy) so windows_bootstrap/windows_dc/
+#               windows_adschema can share it instead of each hand-copying a
+#               4th/5th/6th near-identical block. windows_hygiene itself
+#               switched to include this file rather than its own inline
+#               copy -- output is byte-for-byte identical (same field
+#               names/order), only the timestamp source changed from
+#               ansible_date_time.iso8601 to now(utc=true) (that play already
+#               gathers facts, so this is a no-op for it specifically, done
+#               purely for one shared implementation instead of two).
+# =============================================================================
+
+- name: "[nodeinfo] Include hostname facts"
+  include_tasks: hostname_facts.yml
+
+- name: "[nodeinfo] Ensure {{ nodeinfo_windows_dir | default('C:\\ProgramData\\ExampleMusic\\Config') }} exists"
+  ansible.windows.win_file:
+    path: "{{ nodeinfo_windows_dir | default('C:\\ProgramData\\ExampleMusic\\Config') }}"
+    state: directory
+
+- name: "[nodeinfo] Load sites.csv for nodeinfo enrichment"
+  ansible.builtin.read_csv:
+    path: "{{ nodeinfo_repo_root }}/benarbejde/sites.csv"
+  register: _nodeinfo_win_sites_raw
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
+
+- name: "[nodeinfo] Look up this host's site row"
+  ansible.builtin.set_fact:
+    _nodeinfo_win_site_row: "{{ _nodeinfo_win_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
+
+- name: "[nodeinfo] Check for existing nodeinfo.json"
+  ansible.windows.win_stat:
+    path: "{{ nodeinfo_windows_dir | default('C:\\ProgramData\\ExampleMusic\\Config') }}\\nodeinfo.json"
+  register: _nodeinfo_win_existing_file
+
+- name: "[nodeinfo] Read existing nodeinfo.json"
+  ansible.windows.win_shell: "Get-Content -Raw '{{ nodeinfo_windows_dir | default('C:\\ProgramData\\ExampleMusic\\Config') }}\\nodeinfo.json'"
+  register: _nodeinfo_win_existing_content
+  when: _nodeinfo_win_existing_file.stat.exists
+  changed_when: false
+
+- name: "[nodeinfo] Preserve bootstrapped_at/bootstrapped_by from the existing file, if any"
+  ansible.builtin.set_fact:
+    _nodeinfo_win_bootstrapped_at: "{{ (_nodeinfo_win_existing_content.stdout | from_json).bootstrapped_at | default(now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}"
+    _nodeinfo_win_bootstrapped_by: "{{ (_nodeinfo_win_existing_content.stdout | from_json).bootstrapped_by | default(nodeinfo_bootstrapped_by) }}"
+  when: _nodeinfo_win_existing_file.stat.exists
+
+- name: "[nodeinfo] Default bootstrapped_at/bootstrapped_by (no existing file -- genuine first write)"
+  ansible.builtin.set_fact:
+    _nodeinfo_win_bootstrapped_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+    _nodeinfo_win_bootstrapped_by: "{{ nodeinfo_bootstrapped_by }}"
+  when: not _nodeinfo_win_existing_file.stat.exists
+
+- name: "[nodeinfo] Write nodeinfo.json"
+  ansible.windows.win_copy:
+    dest: "{{ nodeinfo_windows_dir | default('C:\\ProgramData\\ExampleMusic\\Config') }}\\nodeinfo.json"
+    content: "{{ _nodeinfo_win | to_nice_json }}\r\n"
+  vars:
+    _nodeinfo_win: >-
+      {{
+        {
+          'hostname':         inventory_hostname,
+          'fqdn':             ansible_fqdn | default(inventory_hostname),
+          'role':             host_role | lower,
+          'site':             host_site,
+          'city':             _nodeinfo_win_site_row.City | default(''),
+          'country':          _nodeinfo_win_site_row.Country | default(''),
+          'country_code':     _nodeinfo_win_site_row.CountryCode | default(''),
+          'entity':           _nodeinfo_win_site_row.Entity | default(''),
+          'office_name':      _nodeinfo_win_site_row.OfficeName | default(''),
+          'street_address':   _nodeinfo_win_site_row.Street | default(''),
+          'postal_code':      _nodeinfo_win_site_row.PostalCode | default(''),
+          'ansible_managed':  true,
+          'bootstrapped_at':  _nodeinfo_win_bootstrapped_at,
+          'bootstrapped_by':  _nodeinfo_win_bootstrapped_by,
+          'last_ansible_run': now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ'),
+          'environment':      'production',
+        }
+      }}

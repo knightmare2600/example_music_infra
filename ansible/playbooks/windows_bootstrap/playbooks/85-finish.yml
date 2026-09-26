@@ -202,3 +202,32 @@
         msg: "No pending reboot detected -- skipping (either nothing changed this run, or whatever did doesn't require one)."
       when: _finish_reboot_pending.stdout | trim != 'True'
       tags: finish
+
+    # 2026-09-26, Robert's ask: "I want every playbook to update that JSON
+    # field" (nodeinfo.json's last_ansible_run) -- windows_bootstrap never
+    # wrote nodeinfo.json at all before this, despite being the single most
+    # significant Windows playbook family (fresh-box setup). See
+    # ansible/tasks/nodeinfo_windows.yml's own header for the shared
+    # implementation this now uses.
+    #
+    # block/rescue, not ignore_errors: on the include -- verified directly
+    # (a standalone repro) that ignore_errors: true on an include_tasks:
+    # line does NOT propagate into the included file's own tasks the way it
+    # does for a single module task; a real failure inside the include still
+    # hard-failed the whole play in testing. block/rescue is the mechanism
+    # that actually catches it. nodeinfo.json is an observability
+    # convenience, never something worth failing a real bootstrap over.
+    - name: "[Finish] Write nodeinfo.json (non-fatal)"
+      tags: finish
+      block:
+        - name: "[Finish] Write nodeinfo.json"
+          include_tasks: ../../../tasks/nodeinfo_windows.yml
+          vars:
+            nodeinfo_bootstrapped_by: "windows_bootstrap/site.yml"
+            nodeinfo_repo_root: "{{ playbook_dir }}/../../../.."
+      rescue:
+        - name: "[Finish] WARNING — nodeinfo.json write failed, continuing anyway"
+          debug:
+            msg: >-
+              nodeinfo.json write failed ({{ ansible_failed_result.msg | default('see task output above') }}) --
+              non-fatal, nodeinfo.json is an observability convenience, not required for the bootstrap itself.
