@@ -403,7 +403,26 @@ def check_malformed_ipv4(problems, computers):
 def load_real_addresses(problems):
     """hostname -> real full IP, straight from devices.csv via the same
     load_devices()/build_hostname() generate_inventory.py itself uses for
-    the .ini/DNS output -- not a second, separately-derived copy."""
+    the .ini/DNS output -- not a second, separately-derived copy.
+
+    2026-09-26, found live via benarbejde/merge_ad_computers.py's first real
+    devices.csv-sourced additions: EXAPBXCLD002 (CLD,PBX,2, a real SubnetSite=FRD
+    override -- "physically at Fredericia Havn, hostnamed under CLD... Real IP
+    stays on FRD's own subnet via SubnetSite", devices.csv's own Notes field)
+    got flagged as drifted, computed against CLD's subnet (192.168.69.x) instead
+    of FRD's (172.16.124.x) -- merge_ad_computers.py's own IP computation
+    already correctly applies SubnetSite (same effective-site pattern
+    suggest_free_ip.py established), so the new AD record was right and this
+    check was wrong. Root cause: load_devices() DOES carry each device's own
+    subnet_site field (confirmed against generate_inventory.py's own dev dict,
+    and against the OTHER function there that gets this right -- "base =
+    subnet_base.get(d.get('SubnetSite') or d['Site'], ...)"), but this
+    function's own base lookup used the outer per-site loop's `site` (the
+    device's nominal, hostname site) unconditionally, never checking the
+    device's own subnet_site override at all. Fixed to the same
+    subnet_site-or-site fallback the DNS-facing code already uses -- this
+    was a real, pre-existing gap in this check specifically, not something
+    the SubnetSite mechanism itself ever got wrong."""
     try:
         gi.load_address_policy(BENARBEJDE / "address_policy.csv")
         devices_by_site, _ = gi.load_devices(BENARBEJDE / "devices.csv")
@@ -418,12 +437,11 @@ def load_real_addresses(problems):
                     continue
         real = {}
         for site, devs in devices_by_site.items():
-            base = sites.get(site)
-            if not base:
-                continue
             for d in devs:
-                if d["octet"] is not None:
-                    real[d["hostname"]] = f"{base}.{d['octet']}"
+                base = sites.get(d.get("subnet_site") or site)
+                if not base or d["octet"] is None:
+                    continue
+                real[d["hostname"]] = f"{base}.{d['octet']}"
         return real
     except Exception as e:
         problems.append(f"devices.csv: could not derive real addresses -- {e}")
@@ -456,11 +474,19 @@ def check_cross_file_ip_collision(problems, computers, real_addresses):
     conflict, not just stale data. Confirmed live, whole-estate scan: 4 real instances
     (e.g. EXACLKCPH001 claims the same IP as the real EXATVSBON001) that nothing before
     this ever surfaced."""
+    # 2026-09-26, found live via merge_ad_computers.py's BER/BRD additions: BER and BRD
+    # are the same physical site under two site codes (see check_minimum_standard_equipment's
+    # own SHARES_INFRASTRUCTURE_WITH) -- BER's own switch/WAP are still Planned=yes (BER
+    # currently shares BRD's real ones), so their new Enabled: false pre-staged
+    # ad_computers.json records compute to the SAME subnet/IP as BRD's already-real
+    # equipment, purely because the two sites share one physical subnet. That's expected,
+    # not a conflict -- a disabled, not-yet-installed placeholder can't actually be
+    # occupying a live IP on the wire. Genuine collisions need both sides live.
     ip_to_devhost = {ip: hostname for hostname, ip in real_addresses.items()}
     for c in computers:
         sam = (c.get("SamAccountName") or "").rstrip("$")
         ip = (c.get("IPv4Address") or "").strip()
-        if not sam or not ip or ip not in ip_to_devhost:
+        if not sam or not ip or ip not in ip_to_devhost or c.get("Enabled") is False:
             continue
         devhost = ip_to_devhost[ip]
         if devhost != sam:
