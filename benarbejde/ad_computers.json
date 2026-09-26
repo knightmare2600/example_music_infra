@@ -616,14 +616,14 @@
     "ad_device_sub_ou": "Infrastructure"
   },
   {
-    "Name": "EXARACFAL002",
-    "SamAccountName": "EXARACFAL002$",
-    "Role": "RAC",
+    "Name": "EXAILOFAL001",
+    "SamAccountName": "EXAILOFAL001$",
+    "Role": "ILO",
     "Site": "FAL",
-    "Description": "iDRAC for Proxmox node 2",
+    "Description": "HP iLO for Proxmox node 2 (corrected 2026-09-26 -- was recorded as a second Dell iDRAC; FAL's 2 PVE nodes are one Dell, one HP)",
     "Enabled": true,
-    "DNSHostName": "EXARACFAL002.jukebox.internal",
-    "OS": "Dell iDRAC9",
+    "DNSHostName": "EXAILOFAL001.jukebox.internal",
+    "OS": "HPE iLO5",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.76.3",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
@@ -10038,20 +10038,6 @@
     "ad_device_sub_ou": "Infrastructure"
   },
   {
-    "Name": "EXAILOFAL001",
-    "SamAccountName": "EXAILOFAL001$",
-    "Role": "ILO",
-    "Site": "FAL",
-    "Description": "PLANNED -- new-site boilerplate (BMC for PVE1) (Planned -- pending installation)",
-    "Enabled": false,
-    "DNSHostName": "EXAILOFAL001.jukebox.internal",
-    "OS": "",
-    "OperatingSystemVersion": "",
-    "IPv4Address": "192.168.76.3",
-    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Falkirk,OU=Scotland,OU=United Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal",
-    "ad_device_sub_ou": "Infrastructure"
-  },
-  {
     "Name": "EXAPVEFAL002",
     "SamAccountName": "EXAPVEFAL002$",
     "Role": "PVE",
@@ -12247,6 +12233,20 @@
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.146.4",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Toronto,OU=Ontario,OU=Canada,OU=North America,OU=Sites,DC=jukebox,DC=internal",
+    "ad_device_sub_ou": "Infrastructure"
+  },
+  {
+    "Name": "EXARTRFRD001",
+    "SamAccountName": "EXARTRFRD001$",
+    "Role": "RTR",
+    "Site": "FRD",
+    "Description": "Black box -- no access, upstream provider equipment, not a router we manage or can query (Robert, 2026-09-26). Real gateway, not the standard .1 RTR slot -- confirmed independently two ways already in this file: sites.csv's own Gateway field (172.16.124.2), and this file's own FRD,TMP,1 row, whose Notes already referenced this same address as the real iPXE-detected gateway (menu.ipxe/late_command.sh) back on 2026-07-21, before this row existed to own it.",
+    "Enabled": true,
+    "DNSHostName": "EXARTRFRD001.jukebox.internal",
+    "OS": "",
+    "OperatingSystemVersion": "",
+    "IPv4Address": "172.16.124.2",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Cloud Infrastructure,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
   }
 ]
