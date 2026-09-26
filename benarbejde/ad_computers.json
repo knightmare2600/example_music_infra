@@ -12248,5 +12248,19 @@
     "IPv4Address": "172.16.124.2",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Cloud Infrastructure,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
+  },
+  {
+    "Name": "EXARTRCLD001",
+    "SamAccountName": "EXARTRCLD001$",
+    "Role": "RTR",
+    "Site": "CLD",
+    "Description": "Real router at the standard .1 slot, same as every other real site -- Robert, 2026-09-26: \"CLD has the router at .1... it's the same as the other sites, CLD mirrors sites like FAL and ODE\" (i.e. NOT the FRD black-box/no-access case -- that's a genuinely different, provider-controlled device at a non-standard address). Vendor/model not yet confirmed -- ConnectionType defaults to role_codes.csv's own RTR convention (telnet) pending real detail.",
+    "Enabled": true,
+    "DNSHostName": "EXARTRCLD001.jukebox.internal",
+    "OS": "",
+    "OperatingSystemVersion": "",
+    "IPv4Address": "192.168.69.1",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Cloud Infrastructure,OU=Sites,DC=jukebox,DC=internal",
+    "ad_device_sub_ou": "Infrastructure"
   }
 ]
