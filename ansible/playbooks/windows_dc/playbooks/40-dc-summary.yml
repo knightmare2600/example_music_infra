@@ -197,3 +197,29 @@
           - "{{ _c.W }}      -e populate_ad=yes -e ad_target={{ inventory_hostname }} --ask-vault-pass{{ _c.NC }}"
       when: (populate_ad | default('no')) | lower in ['yes', 'y']
       tags: dc_summary
+
+    # 2026-09-26, Robert's ask: "I want every playbook to update that JSON
+    # field" -- windows_dc never wrote nodeinfo.json at all before this. See
+    # ansible/tasks/nodeinfo_windows.yml's own header for the shared
+    # implementation.
+    #
+    # block/rescue, not ignore_errors: on the include -- verified directly
+    # (windows_bootstrap/85-finish.yml's own 2026-09-26 changelog entry has
+    # the full repro) that ignore_errors: true on an include_tasks: line
+    # does not protect the included file's own tasks. nodeinfo.json is an
+    # observability convenience, never worth failing a real DC-promotion
+    # summary over.
+    - name: "Write nodeinfo.json (non-fatal)"
+      tags: dc_summary
+      block:
+        - name: "Write nodeinfo.json"
+          include_tasks: ../../../tasks/nodeinfo_windows.yml
+          vars:
+            nodeinfo_bootstrapped_by: "windows_dc/site.yml"
+            nodeinfo_repo_root: "{{ playbook_dir }}/../../../.."
+      rescue:
+        - name: "WARNING — nodeinfo.json write failed, continuing anyway"
+          debug:
+            msg: >-
+              nodeinfo.json write failed ({{ ansible_failed_result.msg | default('see task output above') }}) --
+              non-fatal, nodeinfo.json is an observability convenience, not required for DC promotion itself.
