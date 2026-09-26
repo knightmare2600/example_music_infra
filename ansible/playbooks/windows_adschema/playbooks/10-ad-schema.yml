@@ -51,6 +51,7 @@
 #   │       └── OU=Service Accounts
 #   ├── OU=IT Groups
 #   │   ├── OU=Security Groups
+#   │   │   └── OU=Non-Music  (Broadcasters/2FA Users/Disabled Users -- not real bands, no site)
 #   │   └── OU=Distribution Groups
 #   ├── OU=Service Accounts
 #   ├── OU=Disabled
@@ -138,6 +139,14 @@
 #                     touched. OU creation itself stays fully serial (no async/poll:0
 #                     batching, unlike users/computers) -- appropriate given the much
 #                     smaller volume (dozens of OUs estate-wide, not hundreds).
+# v1.4.2  2026-09-26  Added OU=Non-Music under OU=Security Groups -- Robert's ask,
+#                     alongside the bigger group-reorg this same day (see
+#                     20-ad-groups.yml's own changelog for the full writeup):
+#                     "just Security Groups and an OU under it called
+#                     'Non-Music'... just the 'no music' guys for now, we'll
+#                     come back to others later." Home for Broadcasters/2FA
+#                     Users/Disabled Users specifically -- not real bands, no
+#                     real-world site to move to a per-city Groups OU instead.
 # =============================================================================
 
 - name: Build Active Directory OU schema
@@ -658,6 +667,35 @@
         path: "OU=IT Groups,{{ _base_dn }}"
         state: present
       loop: "{{ _s8a_todo | default([]) }}"
+
+    # 2026-09-26, Robert's ask: "in the security groups, can we not do what
+    # we do in the other OUs and have them by location... instead of just
+    # 'IT Groups > Security Groups > 100s of groups' in a mess?" Two-part
+    # answer -- genuinely single-city groups (bands whose members are all
+    # at one site) move to that site's own Groups OU (see Section 5 above),
+    # but a handful of groups (Broadcasters, 2FA Users, Disabled Users)
+    # aren't bands at all and have no real-world site to move to -- Robert's
+    # own call: a new Non-Music sub-OU under Security Groups for exactly
+    # these, not a real site. Depends on "Security Groups" already existing
+    # -- created by the task immediately above, in this same play.
+    - name: "8 | Filter to Non-Music sub-OU not already present"
+      set_fact:
+        _s8c_todo: >-
+          {%- set _rendered -%}
+          [{% if ('ou=non-music,ou=security groups,ou=it groups,' + _base_dn) | lower not in _existing_ou_dns %}{{ 'Non-Music' | to_json }}{% endif %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "8 | Report Non-Music sub-OU work needed"
+      debug:
+        msg: "{{ _s8c_todo | default([]) | length }} Non-Music sub-OU(s) missing."
+
+    - name: "8 | Create Non-Music sub-OU under Security Groups"
+      microsoft.ad.ou:
+        name: "{{ item }}"
+        path: "OU=Security Groups,OU=IT Groups,{{ _base_dn }}"
+        state: present
+      loop: "{{ _s8c_todo | default([]) }}"
 
     - name: "8 | Filter to Disabled sub-OUs not already present"
       set_fact:
