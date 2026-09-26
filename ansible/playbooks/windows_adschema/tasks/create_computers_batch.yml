@@ -24,6 +24,20 @@
 
 - name: "A | Create computer accounts (batch of {{ _a_batch | length }}, fire async)"
   microsoft.ad.computer:
+    # identity: required whenever path: might move an EXISTING object --
+    # confirmed live, 2026-09-26 (GOT): "New-ADComputer failed: The specified
+    # account already exists" for EXAPBXFAL001/EXANIXBRD002/EXAWKSMUN001,
+    # all 3 relocated to a new ad_ou today. ansible-doc microsoft.ad.computer
+    # is explicit: identity "must be specified if... trying to move the
+    # object into a different path" -- without it, the module builds its own
+    # lookup DN as CN={{ name }},{{ path }}, which only matches an object
+    # already sitting at the NEW path. An object still at its OLD real
+    # location is invisible to that lookup, so the module concludes "doesn't
+    # exist" and tries New-ADComputer, colliding with the real object's
+    # SamAccountName elsewhere in the domain. sam_account_name alone does NOT
+    # cover this -- confirmed against the module's own docs, only identity:
+    # does the location-independent lookup+move.
+    identity:         "{{ item.SamAccountName }}"
     name:             "{{ item.Name }}"
     sam_account_name: "{{ item.SamAccountName }}"
     dns_hostname:     "{{ item.DNSHostName }}"

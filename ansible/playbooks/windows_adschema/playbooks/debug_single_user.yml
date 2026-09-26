@@ -88,6 +88,9 @@
     # minus async/poll -- one synchronous call, full result below.
     - name: "Create/update this one user, synchronously"
       microsoft.ad.user:
+        # identity: kept in sync with create_users_batch.yml's own 2026-09-26
+        # fix, so this isolated debug tool models the same real behaviour.
+        identity:         "{{ _test_user.SamAccountName }}"
         name:             "{{ _test_user.Name }}"
         sam_account_name: "{{ _test_user.SamAccountName }}"
         upn:              "{{ _test_user.UserPrincipalName }}"

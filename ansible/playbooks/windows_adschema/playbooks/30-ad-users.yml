@@ -440,11 +440,36 @@
     # no extensions), same pattern applied throughout this sweep -- verified locally
     # against new/matching/drifted-case mock data for all three conditions before
     # applying here, including the manager one's nested DN/lookup resolution.
+    # 2026-09-26, found live against GOT (a genuinely cold forest root -- 154 of
+    # 155 groups already existed, Section C's own async batches reported zero
+    # errors every run, yet "Group adds: 354 user(s)" reappeared on every single
+    # run, never converging): _existing_groups was built via a nested
+    # {% set X %}[...]{% endset %} capture -- which, like the outer _rendered
+    # capture this whole file already knows to re-parse, ALWAYS yields a raw
+    # STRING, never a real list. Unlike _rendered, this one was never converted
+    # back via from_json before being handed to difference(). Confirmed directly
+    # (a standalone Python repro of ansible's own difference() filter, which is
+    # a plain set(a) - set(b)): set() on a JSON-LOOKING STRING decomposes it into
+    # individual CHARACTERS, not the group names it's built from -- so
+    # `item.Groups | difference(_existing_groups)` could never remove a real,
+    # already-present group name (a multi-character string can never equal a
+    # single character), meaning every user's FULL Groups list showed as
+    # "missing" every run, regardless of true AD state. Section C's own
+    # microsoft.ad.group members: add: calls were never actually wrong or
+    # silently failing -- they kept correctly (and harmlessly, since AD group
+    # membership adds are idempotent) re-adding memberships that were already
+    # there, forever, because the PREFLIGHT COMPARISON that decided whether
+    # they were needed was broken from the start. Swept the other 3 files in
+    # this family for the same nested-capture-without-from_json shape --
+    # confirmed this is the only occurrence anywhere in windows_adschema/.
+    # Fixed the same way the outer _rendered capture already is throughout
+    # this file: parse the captured JSON text back into a real list before
+    # using it.
     - name: "Filter to group-membership adds not already fully present"
       set_fact:
         _group_add_todo: >-
           {%- set _rendered -%}
-          [{% for item in _users %}{% set _existing_groups_raw = (_existing_user_by_sam[item.SamAccountName | lower].GroupNames | default('', true)).split('|') | reject('equalto', '') | list %}{% set _existing_groups %}[{% for g in _existing_groups_raw %}{{ (_group_name_to_effective_sam[g | lower] | default(g | lower)) | to_json }},{% endfor %}]{% endset %}{% if (item.Groups | length > 0 and (item.SamAccountName | lower not in _existing_user_by_sam or (item.Groups | map('lower') | list | difference(_existing_groups) | length > 0))) %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in _users %}{% set _existing_groups_raw = (_existing_user_by_sam[item.SamAccountName | lower].GroupNames | default('', true)).split('|') | reject('equalto', '') | list %}{% set _existing_groups_str %}[{% for g in _existing_groups_raw %}{{ (_group_name_to_effective_sam[g | lower] | default(g | lower)) | to_json }},{% endfor %}]{% endset %}{% set _existing_groups = (_existing_groups_str | regex_replace(',\s*\]$', ']') | from_json) if (_existing_groups_str is string) else _existing_groups_str %}{% if (item.Groups | length > 0 and (item.SamAccountName | lower not in _existing_user_by_sam or (item.Groups | map('lower') | list | difference(_existing_groups) | length > 0))) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
@@ -734,6 +759,9 @@
     #      task in this file.
     - name: "F1 | Reset password for accounts stuck disabled with a non-compliant password"
       microsoft.ad.user:
+        # identity: required whenever path: might move an EXISTING object --
+        # see tasks/create_computers_batch.yml's own 2026-09-26 changelog entry.
+        identity:         "{{ item.SamAccountName }}"
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
         path:             "{{ item.ad_ou }}"
@@ -748,6 +776,7 @@
 
     - name: "F2 | Enable accounts stuck disabled with a non-compliant password"
       microsoft.ad.user:
+        identity:         "{{ item.SamAccountName }}"
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
         path:             "{{ item.ad_ou }}"
@@ -870,6 +899,7 @@
 
     - name: "B2 | Set enabled state (serial, after batch creates have settled)"
       microsoft.ad.user:
+        identity:         "{{ item.SamAccountName }}"
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
         path:             "{{ item.ad_ou }}"
@@ -1039,6 +1069,7 @@
 
     - name: "E | Unlock accounts (Locked=false in source data)"
       microsoft.ad.user:
+        identity:         "{{ item.SamAccountName }}"
         name:             "{{ item.Name }}"
         sam_account_name: "{{ item.SamAccountName }}"
         path:             "{{ item.ad_ou }}"

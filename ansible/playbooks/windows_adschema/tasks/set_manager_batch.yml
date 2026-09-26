@@ -41,6 +41,9 @@
 
 - name: "D | Set manager attribute (batch of {{ _d_batch | length }}, fire async)"
   microsoft.ad.user:
+    # identity: required whenever path: might move an EXISTING object -- see
+    # tasks/create_computers_batch.yml's own 2026-09-26 changelog entry.
+    identity:         "{{ item.SamAccountName }}"
     name:             "{{ item.Name }}"
     sam_account_name: "{{ item.SamAccountName }}"
     path:             "{{ item.ad_ou }}"
