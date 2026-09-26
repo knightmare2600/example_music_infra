@@ -256,6 +256,19 @@
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
+    # 2026-09-26, Robert, live (GOT): "is the operatingSystem thing also
+    # enumerating everyone who needs changes, or just YOLOing it every time?"
+    # The filter itself was already correctly scoped (a plain string
+    # comparison, not the nested-capture-without-from_json shape that broke
+    # 30-ad-users.yml's group-add filter the same day) -- but unlike Section
+    # A, this section had no count reported before it started running, so
+    # there was no way to tell "large backlog, expected" apart from "silently
+    # broken" just from batch cadence. Added, matching Section A's own
+    # "Preflight | Report computers needing create/update" pattern.
+    - name: "B | Report operatingSystem work needed"
+      debug:
+        msg: "{{ _os_todo | default([]) | length }} of {{ _computers | length }} computer(s) need an operatingSystem update."
+
     - name: "B | Split into batches of 10 for capped-concurrency async dispatch"
       set_fact:
         _b_batches: "{{ _os_todo | batch(10) | list }}"
@@ -274,6 +287,10 @@
           [{% for item in _computers %}{% if (item.OperatingSystemVersion | length > 0 and ((item.SamAccountName | lower not in _existing_computers_by_sam) or (_existing_computers_by_sam[item.SamAccountName | lower].OperatingSystemVersion | default('')) != item.OperatingSystemVersion)) %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "C | Report operatingSystemVersion work needed"
+      debug:
+        msg: "{{ _osversion_todo | default([]) | length }} of {{ _computers | length }} computer(s) need an operatingSystemVersion update."
 
     - name: "C | Split into batches of 10 for capped-concurrency async dispatch"
       set_fact:
