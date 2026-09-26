@@ -45,6 +45,9 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-09-26  Added elinks (text-mode web browser) to choco_packages_common --
+#               Robert's ask, same "CLI/sysadmin tools" theme as far/edit/busybox/wget
+#               already on this list.
 #   2026-09-21  Robert, live (EXADCSFRD001): googlechrome's Chocolatey package has a known,
 #               recurring, non-transient checksum-mismatch problem (Google serves whatever
 #               the current Chrome build is at a stable, unversioned URL, so the package's
@@ -275,6 +278,7 @@
       - rustdesk.install
       - wget
       - busybox
+      - elinks
       # Miller (mlr) -- jq's CSV-native equivalent, added 2026-08-29 (Robert;
       # also added to Linux's common_packages the same day). jq works on
       # JSON; sites.csv/devices.csv/address_policy.csv are CSV, so mlr is
