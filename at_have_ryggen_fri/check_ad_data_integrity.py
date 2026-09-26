@@ -121,23 +121,18 @@ in a different way, not by any check beforehand:
       per-site ratio check (the absence is estate-wide, no baseline
       anywhere to compare against), but is worth a standing, one-time
       advisory rather than silence.
-  14. Found live 2026-09-24, same conversation, after resolving SYD/MEL/AKL's
-      RAC addresses directly: Robert -- "every site has one [PVE], and each
-      of those would have a RAC or ILO, for sites with more ILO/RACs that
-      means they also have more PVEs ... since you clearly see a RAC/ILO it
-      must have a PVE attached to it by design ... I'm sure the harness can
-      'catch' such things and print a 'hey I found XYZ thing' for the user."
-      Bug class 12 couldn't build a PVE-vs-RAC/ILO ratio check because
-      ad_computers.json has literally zero PVE records anywhere to compare
-      against -- but the same 1:1 hardware convention runs the other way
-      round just as reliably: a real ILO/RAC record's mere existence implies
-      a real PVE node behind it (each BMC belongs to exactly one hypervisor
-      host, by design), even though nothing currently tracks that host
-      itself. Confirmed live: 15 sites currently carry real ILO/RAC records
-      (1 each at most, 2 each at BIR/CLY/FAL -- matching FAL's own
-      already-confirmed 2-node Proxmox cluster exactly), so this is a
-      genuinely useful inferred baseline for the still-open "how do we bring
-      PVE in" question, not just a repeat of bug class 12/13's absence note.
+  14. RETIRED 2026-09-26. Was: found live 2026-09-24, an advisory that inferred a real
+      PVE node's presence from a real ILO/RAC record next to it, since ad_computers.json
+      had literally zero PVE records anywhere to check directly -- see this file's own
+      git history for the original writeup if needed. Superseded outright, not just
+      patched: benarbejde/merge_ad_computers.py (2026-09-26, Robert's "no operational
+      gaps" ask) now gives every real devices.csv PVE node its own direct
+      ad_computers.json record. Inferring PVE presence from ILO/RAC was a workaround for
+      PVE being architecturally untracked -- now that it IS tracked, the inference is not
+      just redundant, it's actively wrong (it would still say "none currently tracked in
+      ad_computers.json" at every site, which stopped being true the moment this
+      landed). check_ldap_trackable_advisory below needed no equivalent fix -- it already
+      self-suppresses once PVE/FWL/DCS each have at least one record, which they now do.
   15. Found live 2026-09-24, cross-referencing MEL's real FWL/SBC/NAS records
       while working through the missing-devices.csv-row backlog: three MEL
       records (EXAFWLMEL001, EXASBCMEL001, EXANASMEL001) had IPv4Address
@@ -346,11 +341,29 @@ def check_group_references(problems, groups, users):
                 )
 
 
+# 2026-09-26: 4 new flat, global top-level OUs (see 10-ad-schema.yml v1.4.0 and
+# benarbejde/merge_ad_computers.py) that deliberately don't follow the normal
+# per-site Sites>Continent>Country>Province>City hierarchy at all -- Vending
+# Machines/Field Equipment/Vintage IT/decommissioned devices are cross-cutting
+# categories, not site-local equipment, by Robert's own explicit design. A
+# record filed under one of these has no Province to check by construction,
+# not a drifted one -- without this, every one of them would falsely report
+# "doesn't contain OU=<its site's Province>", since they were never meant to.
+PROVINCE_EXEMPT_OU_PREFIXES = (
+    "OU=Vending Machines,",
+    "OU=Field Equipment,",
+    "OU=Vintage IT,",
+    "OU=Computers,OU=Disabled,",
+)
+
+
 def check_ad_ou_province(problems, records, filename, provinces):
     for r in records:
         site = r.get("Site")
         ad_ou = r.get("ad_ou", "")
         if not site or site not in provinces or not ad_ou:
+            continue
+        if ad_ou.startswith(PROVINCE_EXEMPT_OU_PREFIXES):
             continue
         province = provinces[site]
         expected_fragment = f"OU={province},"
@@ -662,37 +675,6 @@ def check_ldap_trackable_advisory(computers):
     )
 
 
-def check_pve_inference_advisory(computers):
-    """Robert, 2026-09-24: "every site has one [PVE], and each of those would
-    have a RAC or ILO, for sites with more ILO/RACs that means they also have
-    more PVEs ... since you clearly see a RAC/ILO it must have a PVE attached
-    to it by design." The reverse of check_ldap_trackable_advisory's absence
-    note: PVE itself is never tracked, but a real ILO/RAC record is a
-    reliable 1:1 proxy for a real hypervisor host behind it, so its mere
-    presence is a genuinely useful inferred baseline rather than nothing at
-    all. Deliberately per-site and additive-only -- an inferred count, never
-    a "problem," and never compared against anything else since there is
-    still no independently-tracked PVE figure anywhere to check it against."""
-    counts = defaultdict(int)
-    for c in computers:
-        role = (c.get("Role") or "").strip().upper()
-        site = (c.get("Site") or "").strip()
-        if role in ("ILO", "RAC") and site:
-            counts[site] += 1
-    if not counts:
-        return None
-    lines = [
-        f"  - {site}: {n} real ILO/RAC record(s) -- implies {n} real PVE "
-        f"node(s), none currently tracked in ad_computers.json"
-        for site, n in sorted(counts.items())
-    ]
-    return (
-        "ADVISORY (not a failure): inferred PVE node count by site, from "
-        "real ILO/RAC records already present (each BMC implies one real "
-        "hypervisor host behind it, by design):\n" + "\n".join(lines)
-    )
-
-
 def triangulate(c, real_addresses):
     """One record's own three possible signals for what its real address should be --
     devices.csv (exact, when a real row exists), address_policy.csv (exact or pool,
@@ -830,7 +812,37 @@ def load_legacy_site_types(problems):
         return {}
 
 
-def check_missing_devices_csv_row(problems, computers, real_addresses, legacy_site_types):
+def load_planned_hostnames(problems):
+    """Set of hostnames devices.csv marks Planned=yes -- warehouse stock, not yet
+    installed. 2026-09-26, Robert's ask: these now DO get a real, pre-staged
+    ad_computers.json record (Enabled: false, a "(Planned -- pending
+    installation)" Description suffix) via benarbejde/merge_ad_computers.py --
+    a deliberate, new exception to this repo's otherwise-consistent "Planned
+    isn't real yet" rule. That rule still holds everywhere else (DNS/inventory
+    .ini generation via gi.load_devices() correctly keep excluding Planned rows
+    -- you can't have a working DNS record for a machine that isn't on the
+    network yet), so this is a raw, separate CSV read rather than a change to
+    load_devices() itself. Without this, check I would flag every one of the
+    ~488 Planned rows' new AD records as "devices.csv is missing real data",
+    when they're intentional, Robert-confirmed placeholders, not a gap."""
+    try:
+        hostnames = set()
+        with (BENARBEJDE / "devices.csv").open(newline="") as f:
+            for row in csv.DictReader(f):
+                if (row.get("Planned") or "").strip().lower() != "yes":
+                    continue
+                site = (row.get("Site") or "").strip()
+                dtype = (row.get("Type") or "").strip()
+                number = (row.get("Number") or "").strip()
+                if site and dtype and number.isdigit():
+                    hostnames.add(gi.build_hostname(dtype, site, int(number)))
+        return hostnames
+    except Exception as e:
+        problems.append(f"devices.csv: could not do a raw Planned-aware read -- {e}")
+        return set()
+
+
+def check_missing_devices_csv_row(problems, computers, real_addresses, legacy_site_types, planned_hostnames):
     """Found live 2026-09-24, same BIR investigation: neither EXAILOBIR001 nor
     EXARACBIR001 has ANY devices.csv row at all, despite ILO/RAC being a Type
     address_policy.csv DOES have a real addressing convention for (the BMC pool).
@@ -852,7 +864,7 @@ def check_missing_devices_csv_row(problems, computers, real_addresses, legacy_si
         sam = (c.get("SamAccountName") or "").rstrip("$")
         role = (c.get("Role") or "").strip().upper()
         site = (c.get("Site") or "").strip()
-        if not sam or sam in real_addresses:
+        if not sam or sam in real_addresses or sam in planned_hostnames:
             continue
         try:
             number = int(sam[-3:])
@@ -920,7 +932,10 @@ def main():
         check_duplicate_dns_hostname(problems, computers)
     if computers is not None:
         legacy_site_types = load_legacy_site_types(problems)
-        check_missing_devices_csv_row(problems, computers, real_addresses, legacy_site_types)
+        planned_hostnames = load_planned_hostnames(problems)
+        check_missing_devices_csv_row(
+            problems, computers, real_addresses, legacy_site_types, planned_hostnames
+        )
     if computers is not None:
         octet_role_map = build_octet_role_map()
         check_cross_role_collision(problems, computers, octet_role_map, real_addresses)
@@ -928,7 +943,6 @@ def main():
         check_minimum_standard_equipment(problems, computers)
 
     advisory = check_ldap_trackable_advisory(computers) if computers is not None else None
-    pve_advisory = check_pve_inference_advisory(computers) if computers is not None else None
 
     print(
         f"Checked {len(users or [])} users, {len(groups or [])} groups, "
@@ -943,9 +957,6 @@ def main():
 
     if advisory:
         print(f"\n{advisory}")
-
-    if pve_advisory:
-        print(f"\n{pve_advisory}")
 
     if problems:
         print(f"\n{len(problems)} problem(s) found:")

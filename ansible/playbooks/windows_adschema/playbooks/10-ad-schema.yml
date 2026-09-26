@@ -53,9 +53,12 @@
 #   │   ├── OU=Security Groups
 #   │   └── OU=Distribution Groups
 #   ├── OU=Service Accounts
-#   └── OU=Disabled
-#       ├── OU=Users
-#       └── OU=Computers
+#   ├── OU=Disabled
+#   │   ├── OU=Users
+#   │   └── OU=Computers
+#   ├── OU=Vending Machines
+#   ├── OU=Field Equipment
+#   └── OU=Vintage IT
 #
 # Usage:
 #   # Normal path — run via site.yml, prompted once by 00-ad-preflight.yml:
@@ -115,6 +118,15 @@
 #                     sites.csv, so the ~21 users placed at country level for
 #                     Atlanta/NYC are a property of that frozen demo data, not
 #                     this schema gap.
+# v1.4.0  2026-09-26  Added 3 new global root OUs -- Vending Machines, Field
+#                     Equipment, Vintage IT -- Robert's ask, after
+#                     benarbejde/audit_ad_computers_drift.py surfaced that
+#                     ad_computers.json (generated from a legacy, hand-authored
+#                     jukebox.example.tdf, never reconciled against devices.csv)
+#                     was missing 89 real devices and had 11 entries with no
+#                     devices.csv counterpart. See benarbejde/merge_ad_computers.py
+#                     for the full reconciliation this enables -- ad_computers.json's
+#                     computer entries are no longer sourced from parse_tdf.py alone.
 # =============================================================================
 
 - name: Build Active Directory OU schema
@@ -380,11 +392,17 @@
     # Section 0 — Root OUs directly under the domain
     # -------------------------------------------------------------------------
 
+    # 'Vending Machines'/'Field Equipment'/'Vintage IT' added 2026-09-26, Robert's
+    # ask -- global, one per category, not per-site, since the devices in each
+    # (novelty/travel/retro-tech items) span multiple sites and don't belong to
+    # any one of them specifically. Same flat top-level shape as Sites/IT
+    # Groups/Service Accounts/Disabled -- see benarbejde/merge_ad_computers.py
+    # for which real devices land in each.
     - name: "0 | Filter to root OUs not already present"
       set_fact:
         _s0_todo: >-
           {%- set _rendered -%}
-          [{% for item in ['Sites', 'IT Groups', 'Service Accounts', 'Disabled'] %}{% if ('ou=' + item + ',' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
+          [{% for item in ['Sites', 'IT Groups', 'Service Accounts', 'Disabled', 'Vending Machines', 'Field Equipment', 'Vintage IT'] %}{% if ('ou=' + item + ',' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 

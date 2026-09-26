@@ -4,9 +4,21 @@ parse_tdf.py — Convert jukebox.example.tdf sections to JSON for Ansible.
 
 *** LEGACY / DEFUNCT TOOL — READ BEFORE USING ***
 This is old code kept around because the demo data it produces (ad_users.json,
-ad_groups.json, ad_computers.json) is still genuinely useful, not because this
-is the current, actively-developed approach to anything. It is a manual,
-offline, run-by-hand tool ONLY:
+ad_groups.json) is still genuinely useful, not because this is the current,
+actively-developed approach to anything. It is a manual, offline, run-by-hand
+tool ONLY:
+
+    *** DO NOT run `--section computers` and overwrite ad_computers.json with
+    it any more. *** 2026-09-26: ad_computers.json's computer entries are now
+    reconciled against benarbejde/devices.csv (the real, live per-site
+    equipment inventory) by benarbejde/merge_ad_computers.py, not sourced from
+    this script's frozen $Script:rawComputers data alone -- see that script's
+    own header for the full reconciliation (89 real devices this data never
+    had, 11 legacy-only entries relocated to dedicated OUs, 12 placement
+    fixes). Re-running `parse_tdf.py --section computers` would silently
+    discard all of that. users/groups are unaffected -- devices.csv has no
+    people/band data to reconcile against, so those two sections are still
+    this script's own, unchanged.
     - No Ansible playbook or task invokes this script, or reads
       jukebox.example.tdf, at any point, directly or indirectly. Only the
       JSON files this script produces are ever read by Ansible (by
