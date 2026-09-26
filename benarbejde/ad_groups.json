@@ -1213,14 +1213,6 @@
     "Site": "FRE"
   },
   {
-    "Name": "Mo",
-    "Description": "Danish singer MØ (Karen Ørsted)",
-    "Type": "Security",
-    "Scope": "Global",
-    "ManagedBy": "",
-    "Email": "mo@jukebox.internal"
-  },
-  {
     "Name": "Ska",
     "Description": "Ska genre tag, The Specials' classic lineup",
     "Type": "Security",
