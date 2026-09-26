@@ -160,6 +160,41 @@
 #               write-up if the disk cost becomes a live problem again --
 #               don't reach for gitcli + depth again without a confirmed
 #               upstream fix for the HEAD-construction bug found here.
+#   2026-09-26  Real live GitHub LFS quota exhaustion, root-caused to this
+#               file -- Robert: "i've exhausted my github LFS storage again
+#               this month, so there's obviously a wayward job running
+#               stuff." GitHub Actions/webhooks on the repo were checked
+#               first (gh workflow list / gh run list / gh api .../hooks --
+#               all empty, ruled out). Traced instead to gitfs_update_interval
+#               and git_pillar_update_interval never having been set anywhere
+#               in this file -- both default to 60 seconds (confirmed against
+#               Salt's own docs), so this master has been re-running its
+#               gitfs/git_pillar update cycle roughly 1,440 times/day since
+#               2026-07-20, never once explicitly slowed down. INC-2026-08-11-
+#               SALT-DISK-FULL already found, and accepted as a disk-only
+#               inefficiency, that one of the two gitpython-backed caches
+#               "checks out far more of the repository than it strictly
+#               needs, and does not fully honour the 'don't download
+#               large-file content' setting for that broader checkout" -- at
+#               the time this was verified stable/non-growing on disk and
+#               left as-is, but nobody connected it to GitHub LFS BANDWIDTH
+#               quota specifically, which is consumed by every fetch that
+#               transfers real LFS content, not just by what's retained
+#               locally afterwards. At the default 60s interval, even a
+#               partial re-fetch of this repo's ~670MB of current LFS
+#               content on that broader checkout, repeated ~1,440 times a
+#               day, exhausts a 10GB/month quota easily. Set both intervals
+#               to 3600s (1 hour) here as an immediate, low-risk mitigation
+#               regardless of root cause -- a 60x reduction in update
+#               frequency, and states/pillar data in this estate genuinely
+#               doesn't change more than a handful of times a day even
+#               during active live-debug sessions. This does NOT fix the
+#               underlying "doesn't honour skip-smudge" gap from the
+#               2026-08-11 incident -- that still needs live verification on
+#               EXASLTCLD001 itself (checking for real, multi-MB files under
+#               whichever of /var/cache/salt/master/{gitfs,git_pillar} is the
+#               broader one, not just pointer-sized text) before it can be
+#               called root-caused rather than merely correlated.
 # =============================================================================
 
 - name: Salt master — install and configure
@@ -668,10 +703,15 @@
           # simply never reached before, every earlier live attempt failed at
           # an earlier step in the chain. Confirmed against Salt's own docs:
           # "the master branch is implicitly mapped to the base environment."
+          # gitfs_update_interval: 3600 (2026-09-26 -- default is 60s,
+          # never overridden before now, see this file's own changelog for
+          # the full GitHub LFS quota write-up). Don't drop this back to
+          # Salt's default without re-reading that entry first.
           fileserver_backend:
             - gitfs
           gitfs_provider: gitpython
           gitfs_base: main
+          gitfs_update_interval: 3600
           gitfs_remotes:
             - {{ salt_gitfs_repo_url }}:
               - root: salt/states
@@ -689,7 +729,10 @@
           # country lookup would silently render blank instead of failing
           # loudly, since grains/init.sls's own Jinja uses safe .get()
           # fallbacks throughout.
+          # git_pillar_update_interval: 3600 -- same reasoning and same
+          # 2026-09-26 changelog entry as gitfs_update_interval above.
           git_pillar_provider: gitpython
+          git_pillar_update_interval: 3600
           ext_pillar:
             - git:
               - main {{ salt_gitfs_repo_url }}:
