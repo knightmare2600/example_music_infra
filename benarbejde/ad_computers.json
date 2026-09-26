@@ -12262,5 +12262,19 @@
     "IPv4Address": "192.168.69.1",
     "ad_ou": "OU=Infrastructure,OU=Devices,OU=Cloud Infrastructure,OU=Sites,DC=jukebox,DC=internal",
     "ad_device_sub_ou": "Infrastructure"
+  },
+  {
+    "Name": "EXARTRVRK001",
+    "SamAccountName": "EXARTRVRK001$",
+    "Role": "RTR",
+    "Site": "VRK",
+    "Description": "Black box -- no access, upstream provider equipment, not a router we manage or can query (Robert, 2026-09-26, same shape as FRD's own RTR added the same day). Real gateway (sites.csv's own Gateway field, 192.168.139.254), different from VRK's own Firewall address (.253) -- historically CLD and VRK were run together on one subnet before being split into CLD's own 192.168.69.0/24 and VRK's own 192.168.139.0/24 (with FRD as VRK's partner site on 172.16.124.0/24), which is likely why this one, like FRD's, was never given its own devices.csv row until now.",
+    "Enabled": true,
+    "DNSHostName": "EXARTRVRK001.jukebox.internal",
+    "OS": "",
+    "OperatingSystemVersion": "",
+    "IPv4Address": "192.168.139.254",
+    "ad_ou": "OU=Infrastructure,OU=Devices,OU=Cloud Infrastructure,OU=Sites,DC=jukebox,DC=internal",
+    "ad_device_sub_ou": "Infrastructure"
   }
 ]
