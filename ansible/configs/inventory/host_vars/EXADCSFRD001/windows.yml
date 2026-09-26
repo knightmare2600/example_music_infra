@@ -1,0 +1,28 @@
+---
+# =============================================================================
+# host_vars/EXADCSFRD001/windows.yml
+# Example Music Limited — host-specific connection override, promoted DC
+#
+# Overrides group_vars/windows_nodes/connection.yml's ansible_user: Administrator
+# for this host only. Everything else (ansible_shell_type, ansible_port,
+# ansible_ssh_private_key_file, ansible_ssh_extra_args) still inherits from
+# that group file unchanged.
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-09-26  Initial release. Same fix as host_vars/EXADCSGOT001/
+#                     windows.yml's own changelog explains in full -- see that
+#                     file for the root-cause writeup (a promoted DC has no
+#                     local SAM database, so the bare local "Administrator"
+#                     account group_vars/windows_nodes/connection.yml defaults
+#                     every Windows node to no longer exists once a box is a
+#                     real DC). EXADCSFRD001 is the forest root, confirmed live
+#                     with dcdiag all-PASS since 2026-09-19/21 -- applying the
+#                     same override here pre-emptively rather than waiting to
+#                     hit the identical "Connection reset" failure against it
+#                     too. Not yet independently re-verified live against THIS
+#                     specific host (only against EXADCSGOT001, where the bug
+#                     was actually found) -- confirm on next use.
+# =============================================================================
+
+ansible_user: 'JUKEBOX\Administrator'

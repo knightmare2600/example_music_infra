@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# host_vars/EXADCSGOT001/windows.yml
+# Example Music Limited — host-specific connection override, promoted DC
+#
+# Overrides group_vars/windows_nodes/connection.yml's ansible_user: Administrator
+# for this host only. Everything else (ansible_shell_type, ansible_port,
+# ansible_ssh_private_key_file, ansible_ssh_extra_args) still inherits from
+# that group file unchanged.
+# =============================================================================
+# Version history
+# =============================================================================
+# v1.0.0  2026-09-26  Initial release. Found live: windows_adschema's populate_ad
+#                     run against EXADCSGOT001 died with "Connection reset by
+#                     192.168.46.10 port 22" right at SSH2_MSG_USERAUTH_REQUEST
+#                     (confirmed via a hand-run `ssh -vvv` -- got past kex/
+#                     service_accept, reset the instant auth was attempted).
+#                     Root cause: EXADCSGOT001 is a promoted Domain Controller
+#                     -- promotion removes the local SAM database, so the bare
+#                     local "Administrator" account group_vars/windows_nodes/
+#                     connection.yml defaults every Windows node to no longer
+#                     exists here. Only the domain's own Administrator account
+#                     is valid post-promotion. Robert: "we've been feeding it
+#                     Administrator or JUKEBOX\Administrator to log in for
+#                     onboarding and Setting up AD" -- this had been done by
+#                     hand (-e ansible_user=...) each run rather than persisted
+#                     anywhere, which is why it was missed on this run.
+#                     NOT independently verified that the existing
+#                     administrators_authorized_keys trust (same
+#                     ansible_ssh_private_key_file as every other Windows node)
+#                     carries over cleanly for a domain identity rather than a
+#                     local one -- Win32-OpenSSH's administrators_authorized_keys
+#                     mechanism keys off local-Administrators-group membership,
+#                     and JUKEBOX\Administrator is presumed (standard AD
+#                     behaviour: the domain Administrator is a Domain Admins
+#                     member, and Domain Admins is a member of the DC's own
+#                     Builtin\Administrators group) to satisfy that -- confirm
+#                     on the next live run.
+# =============================================================================
+
+ansible_user: 'JUKEBOX\Administrator'
