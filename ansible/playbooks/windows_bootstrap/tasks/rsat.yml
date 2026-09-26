@@ -37,6 +37,16 @@
 #               outbound internet access of its own, which nothing else in this estate does.
 #               Requires is_server_core (tasks/preflight.yml or playbooks/45-rsat.yml's own
 #               inline detection, both added the same day).
+#   2026-09-26  Later the same day, Robert's own call, live: installed straight to
+#               C:\Windows\System32\OpenRSAT.exe instead of this repo's usual
+#               C:\Tools\<name>\ convention (sidesteps needing a machine-PATH-add step --
+#               System32 is unconditionally on PATH already), plus a dsa.exe symlink
+#               alongside it so typing the bare "dsa" launches it. Deliberately NOT named
+#               dsa.msc -- .msc is resolved purely by file-extension association
+#               (mmc.exe "%1"), so even a symlink literally named dsa.msc would still get
+#               handed to mmc.exe and fail to open, regardless of what it points at.
+#               Deliberately a symlink, not a hard link -- see the task's own comment for
+#               why a hard link would silently go stale across future win_copy updates.
 # =============================================================================
 
 - name: "[Stage 15] Install RSAT via Server Manager (Server OS, not Server Core)"
@@ -100,16 +110,40 @@
   delegate_to: localhost
   when: is_server_core
 
-- name: "[Stage 15] OpenRSAT — ensure C:\\Tools\\OpenRSAT exists"
-  ansible.windows.win_file:
-    path: 'C:\Tools\OpenRSAT'
-    state: directory
-  when: is_server_core
-
 - name: "[Stage 15] OpenRSAT — copy to Server Core target"
   ansible.windows.win_copy:
     src: "/tmp/example-music-openrsat-cache/{{ _openrsat.assets['windows-amd64'] }}"
-    dest: 'C:\Tools\OpenRSAT\OpenRSAT.exe'
+    dest: 'C:\Windows\System32\OpenRSAT.exe'
+  when: is_server_core
+  # Robert's own call, live (2026-09-26): straight into System32, not
+  # C:\Tools\OpenRSAT\ (this repo's usual convention for fyrtaarn etc.) --
+  # System32 is unconditionally on PATH already, so this also sidesteps
+  # needing a separate machine-PATH-add step the way Setup-Workstation.ps1's
+  # own Install-WorkstationTools needs for C:\Tools\<name>\.
+
+# dsa.msc itself can't be the trigger here, regardless of what it points at
+# -- Windows resolves .msc purely by file-extension association (mmc.exe
+# "%1"), so even a symlink literally named dsa.msc would still get handed
+# to mmc.exe, which expects an MMC console XML document, not a PE
+# executable, and would fail to open it. .exe sits ahead of .msc in the
+# default PATHEXT search order, so a symlink named dsa.exe means typing the
+# bare command "dsa" (how dsa.msc is normally invoked day to day -- nobody
+# actually types the .msc) resolves to this instead. Symlink, not a hard
+# link: a hard link ties dsa.exe to today's specific on-disk data, and the
+# task above re-fetches OpenRSAT.exe via win_copy on future version bumps,
+# which writes a new file rather than editing in place -- that would
+# silently orphan a hard link at the old, stale binary. A symlink follows
+# the name, so it keeps resolving correctly after every update.
+- name: "[Stage 15] OpenRSAT — create dsa.exe symlink (System32)"
+  ansible.windows.win_shell: |
+    if (Test-Path 'C:\Windows\System32\dsa.exe') {
+      Write-Output 'unchanged'
+    } else {
+      New-Item -ItemType SymbolicLink -Path 'C:\Windows\System32\dsa.exe' -Target 'C:\Windows\System32\OpenRSAT.exe' | Out-Null
+      Write-Output 'changed'
+    }
+  register: _openrsat_symlink
+  changed_when: "'changed' in _openrsat_symlink.stdout"
   when: is_server_core
 
 - name: "[Stage 15] Install RSAT via Windows Capabilities (Desktop OS)"
