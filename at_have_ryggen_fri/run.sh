@@ -439,6 +439,16 @@
 #      encrypted in the future) and flags any value matching a known
 #      placeholder convention, so the next unfilled one fails the harness
 #      instead of the first live playbook that reaches it.
+#  47. check_nodeinfo_coverage.py -- Robert, 2026-09-26: "I want every
+#      playbook to update that JSON field" (nodeinfo.json's last_ansible_run).
+#      windows_bootstrap/windows_dc/windows_adschema never wrote nodeinfo.json
+#      at all until this same day. Fails if any playbook family that manages
+#      a real host doesn't reference ansible/tasks/nodeinfo.yml or
+#      nodeinfo_windows.yml anywhere in its own file tree -- meshcentral
+#      (dead/retired), snmp (targets network devices, not hosts with a
+#      filesystem), and ssh_preflight_with_fallback.yml (pre-connectivity
+#      utility) are the only exemptions, and they're explicit, not
+#      overlooked.
 #
 # --demur / demurred.yml -- Robert, 2026-09-26, after the same 2 known
 #      findings (debug_single_user.yml's --syntax-check, both vault-
@@ -1802,6 +1812,20 @@ else
     fail "Unfilled vault placeholder value(s) found -- see above. Each one will fail the first time a live playbook actually tries to use it, the same way vault_ad_new_user_password's unset CHANGEME did against EXADCSGOT001 -- set a real value now instead of waiting to hit it live."
     FAILED_CHECKS+=("check_vault_placeholders.py")
   fi
+fi
+
+# ------------------------------------------------------------------------------
+# 47. nodeinfo.json coverage — check_nodeinfo_coverage.py
+# ------------------------------------------------------------------------------
+section "47. nodeinfo.json coverage — check_nodeinfo_coverage.py"
+
+if out=$(python3 "${HERE}/check_nodeinfo_coverage.py"); then
+  echo "$out"
+  success "Every playbook family writes/refreshes nodeinfo.json somewhere in its own file tree."
+else
+  echo "$out"
+  fail "One or more playbook families never write nodeinfo.json at all -- see above. Robert's ask, 2026-09-26: \"I want every playbook to update that JSON field.\""
+  FAILED_CHECKS+=("check_nodeinfo_coverage.py")
 fi
 
 # ------------------------------------------------------------------------------
