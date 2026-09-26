@@ -355,6 +355,18 @@ fetch_archive() {
 # and a bumped pin needs to actually take effect on the next run without a
 # manual `rm` first. Verifies the INSTALLED binary's checksum against the
 # manifest's pinned tag/asset every run and only reinstalls on mismatch.
+#
+# 2026-09-26: openrsat's darwin-* assets are real .dmg disk images, not raw
+# executables like every entry before it (fyrtaarn) -- installing means
+# mounting, copying the .app bundle to /Applications, and unmounting, not a
+# plain `install -m 0755`. Branch on the asset filename's own extension
+# rather than adding a new manifest field -- same reasoning as the Linux
+# script's .deb branch (see that file's own 2026-09-26 comment). Checked
+# live before writing this: OpenRSAT's own Info.plist hardcodes
+# CFBundleShortVersionString to "0.0.0" regardless of the real release
+# version, so unlike Linux's dpkg-version check, this can only be an
+# existence check -- a genuine upstream limitation, not a gap worth closing
+# by hashing the whole .app bundle on every run.
 install_workstation_tools() {
   if [[ ! -f "$MANIFEST" ]]; then
     msg_error "Manifest not found: ${MANIFEST}"
@@ -383,6 +395,8 @@ install_workstation_tools() {
 
     local install_dir="/usr/local/bin"
     local install_path="${install_dir}/${name}"
+    local is_dmg=false
+    [[ "$asset_name" == *.dmg ]] && is_dmg=true
 
     msg_info "Checking ${name} (${repo}@${tag}, ${platform_key})..."
 
@@ -399,7 +413,21 @@ install_workstation_tools() {
       continue
     fi
 
-    if [[ -f "$install_path" ]]; then
+    if $is_dmg; then
+      # No pinned-version signal available -- OpenRSAT's own Info.plist
+      # hardcodes CFBundleShortVersionString to "0.0.0" regardless of the
+      # real release version (confirmed live, 2026-09-26), so this can only
+      # be an existence check, not the version-drift check the raw-binary
+      # and .deb paths both get. Bundle name is discovered from the mounted
+      # volume rather than assumed, in case a future .dmg entry's app name
+      # doesn't match its manifest "name" field's casing.
+      local existing_app
+      existing_app="$(find /Applications -maxdepth 1 -iname "*${name}*.app" 2>/dev/null | head -1)"
+      if [[ -n "$existing_app" ]]; then
+        msg_ok "  ${name} already installed (${existing_app}) -- pinned-version drift can't be detected for this tool, see comment above."
+        continue
+      fi
+    elif [[ -f "$install_path" ]]; then
       local current_hash
       current_hash="$(sha256_of "$install_path")"
       if [[ "$current_hash" == "$expected_hash" ]]; then
@@ -411,17 +439,6 @@ install_workstation_tools() {
 
     local download_url
     download_url="$(jq -r --arg n "$asset_name" '.assets[] | select(.name == $n) | .browser_download_url' <<<"$meta")"
-
-    # /usr/local/bin's ownership is inconsistent across Macs, unlike Linux
-    # (always root-owned there): Homebrew on Intel chowns it to the current
-    # user so `brew install` never needs sudo; Homebrew on Apple Silicon
-    # uses /opt/homebrew instead and leaves /usr/local/bin root-owned.
-    # Detect rather than assume either way.
-    local use_sudo=""
-    if [[ ! -d "$install_dir" ]] || [[ ! -w "$install_dir" ]]; then
-      use_sudo="sudo"
-    fi
-    $use_sudo mkdir -p "$install_dir"
 
     local tmp_path
     tmp_path="$(mktemp)"
@@ -435,9 +452,38 @@ install_workstation_tools() {
       continue
     fi
 
-    $use_sudo install -m 0755 "$tmp_path" "$install_path"
-    rm -f "$tmp_path"
-    msg_ok "  ${name} installed to ${install_path} (${tag}, sha256:${actual_hash})"
+    if $is_dmg; then
+      local mount_point app_path
+      mount_point="$(mktemp -d)"
+      hdiutil attach "$tmp_path" -mountpoint "$mount_point" -nobrowse -quiet
+      app_path="$(find "$mount_point" -maxdepth 1 -iname '*.app' | head -1)"
+      if [[ -z "$app_path" ]]; then
+        msg_error "  No .app bundle found in ${asset_name} -- skipping install."
+        hdiutil detach "$mount_point" -quiet || true
+        rm -f "$tmp_path"
+        rmdir "$mount_point" 2>/dev/null || true
+        continue
+      fi
+      cp -R "$app_path" /Applications/
+      hdiutil detach "$mount_point" -quiet
+      rmdir "$mount_point" 2>/dev/null || true
+      rm -f "$tmp_path"
+      msg_ok "  ${name} installed to /Applications/$(basename "$app_path") (${tag}, sha256:${actual_hash})"
+    else
+      # /usr/local/bin's ownership is inconsistent across Macs, unlike Linux
+      # (always root-owned there): Homebrew on Intel chowns it to the current
+      # user so `brew install` never needs sudo; Homebrew on Apple Silicon
+      # uses /opt/homebrew instead and leaves /usr/local/bin root-owned.
+      # Detect rather than assume either way.
+      local use_sudo=""
+      if [[ ! -d "$install_dir" ]] || [[ ! -w "$install_dir" ]]; then
+        use_sudo="sudo"
+      fi
+      $use_sudo mkdir -p "$install_dir"
+      $use_sudo install -m 0755 "$tmp_path" "$install_path"
+      rm -f "$tmp_path"
+      msg_ok "  ${name} installed to ${install_path} (${tag}, sha256:${actual_hash})"
+    fi
   done < <(jq -r '.workstation_tools[] | [.name, .repo, .tag] | @tsv' "$MANIFEST")
 }
 
