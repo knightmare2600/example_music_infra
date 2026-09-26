@@ -757,44 +757,55 @@
     # scale for what it actually still carries: existing-account UPDATE
     # traffic only, which never touches a password at all.
     # -------------------------------------------------------------------------
-    # Section B0 — Genuinely new accounts (serial, no async)
+    # Section B0 — Genuinely new accounts
     # See the "Filter to users needing genuine creation" pre_task above for
     # the full root-cause writeup. Only accounts that don't exist in AD at
-    # all yet land here -- same per-item shape as B below (enabled: false,
-    # same fields), just dispatched one at a time like F1 already proved safe
-    # for password-writing calls, instead of async/poll:0. Runs BEFORE B so
-    # that by the time B's batched pass reaches these same items, they
-    # already exist and B's call is a harmless no-op update (no password
-    # touched, update_password: on_create is a no-op on update).
+    # all yet land here. Runs BEFORE B so that by the time B's batched pass
+    # reaches these same items, they already exist and B's call is a
+    # harmless no-op update (no password touched, update_password: on_create
+    # is a no-op on update).
+    #
+    # 2026-09-26, Robert's ask, live: split into two phases -- B0a creates
+    # the object WITHOUT a password (batched async, same mechanism as
+    # Section B/C/D), B0b sets the password afterward (still genuinely
+    # serial -- password writes are still the one proven-unsafe-to-
+    # concurrent-ize operation here). See tasks/create_users_no_password_
+    # batch.yml's own header for the full reasoning (module docs confirming
+    # password is optional at creation, and why this is believed safe based
+    # on this file's own existing evidence about what specifically causes
+    # the race). Narrows what has to run serially rather than eliminating
+    # it -- B0b is still one round trip per new account, just a much
+    # smaller one than the old combined create+password call.
     # -------------------------------------------------------------------------
 
-    - name: "B0 | Create genuinely new user accounts (serial)"
+    - name: "B0a | Split genuinely-new creates into batches of 10 for capped-concurrency async dispatch"
+      set_fact:
+        _b0a_batches: "{{ (_new_creates_todo | default([])) | batch(10) | list }}"
+
+    - name: "B0a | Create user accounts WITHOUT a password, batches of 10"
+      include_tasks: ../tasks/create_users_no_password_batch.yml
+      loop: "{{ _b0a_batches }}"
+      loop_control:
+        loop_var: _b0a_batch
+        label: "batch of {{ _b0a_batch | length }}"
+
+    # update_password: always (not on_create) is deliberate and safe here --
+    # on_create only fires when the object is created in THIS SAME task
+    # invocation (confirmed via ansible-doc microsoft.ad.user), but B0a
+    # already created these objects in a separate, earlier task, so from
+    # this task's own perspective they're pre-existing, not new. always is
+    # only safe because this loop is scoped to _new_creates_todo -- by
+    # construction, every item here was confirmed absent from the pre-run
+    # AD snapshot (see that filter's own definition above), so this can
+    # never reach an already-passworded account and reset it. when_changed
+    # was considered and rejected -- its own docs say it "will not work if
+    # the account is not enabled", and these accounts are still enabled:
+    # false at this point (Section B2 hasn't run yet).
+    - name: "B0b | Set password for genuinely new accounts (serial -- password writes must never be concurrent)"
       microsoft.ad.user:
-        name:             "{{ item.Name }}"
-        sam_account_name: "{{ item.SamAccountName }}"
-        upn:              "{{ item.UserPrincipalName }}"
-        path:             "{{ item.ad_ou }}"
-        display_name:     "{{ item.Name }}"
-        firstname:        "{{ item.Name.split(' ')[0] }}"
-        surname:          "{{ (item.Name.split(' ')[1:] | join(' ')) or omit }}"
-        description:      "{{ item.Description }}"
-        email:            "{{ item.Email }}"
-        company:          "{{ item.Company }}"
-        street:           "{{ item.Street if item.Street else omit }}"
-        city:             "{{ item.City if item.City else omit }}"
-        postal_code:      "{{ item.PostalCode if item.PostalCode else omit }}"
-        country: "{{ _country_lookup[item.CountryCode].code }}"
-        attributes:
-          set: >-
-            {{
-              {'co': _country_lookup[item.CountryCode].name, 'title': item.Title, 'department': item.Department}
-              | combine({'telephoneNumber': item.telephoneNumber} if item.telephoneNumber else {})
-              | combine({'mobile': item.mobile} if item.mobile else {})
-              | combine({'physicalDeliveryOfficeName': item.physicalDeliveryOfficeName} if item.physicalDeliveryOfficeName else {})
-            }}
-        enabled:          false
+        identity:         "{{ item.SamAccountName }}"
         password:         "{{ vault_ad_new_user_password }}"
-        update_password:  on_create
+        update_password:  always
         password_expired: "{{ item.MustChangePassword }}"
         state:            present
       loop: "{{ _new_creates_todo | default([]) }}"
