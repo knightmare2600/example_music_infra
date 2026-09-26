@@ -127,6 +127,17 @@
 #                     devices.csv counterpart. See benarbejde/merge_ad_computers.py
 #                     for the full reconciliation this enables -- ad_computers.json's
 #                     computer entries are no longer sourced from parse_tdf.py alone.
+# v1.4.1  2026-09-26  Robert, live (running populate_ad against GOT): every section
+#                     here jumped straight from its own "Filter to X not already
+#                     present" set_fact to "Create X" with no indication of HOW MANY
+#                     items that create task was actually about to process -- unlike
+#                     30-ad-users.yml/40-ad-computers.yml, which both report a count
+#                     before doing any real work. Added a "N | Report X work needed"
+#                     debug task after each of the 11 filter tasks, matching that
+#                     established pattern -- purely additive, no filter/create logic
+#                     touched. OU creation itself stays fully serial (no async/poll:0
+#                     batching, unlike users/computers) -- appropriate given the much
+#                     smaller volume (dozens of OUs estate-wide, not hundreds).
 # =============================================================================
 
 - name: Build Active Directory OU schema
@@ -406,6 +417,10 @@
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
+    - name: "0 | Report root OU work needed"
+      debug:
+        msg: "{{ _s0_todo | default([]) | length }} root OU(s) missing."
+
     - name: "0 | Create root OUs"
       microsoft.ad.ou:
         name: "{{ item }}"
@@ -425,6 +440,10 @@
           [{% for item in _continents %}{% if ('ou=' + item + ',ou=sites,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "1 | Report continent OU work needed"
+      debug:
+        msg: "{{ _s1_todo | default([]) | length }} continent OU(s) missing."
 
     - name: "1 | Create continent OUs"
       microsoft.ad.ou:
@@ -446,6 +465,10 @@
           [{% for item in _cc_pairs %}{% if ('ou=' + item.country + ',ou=' + item.continent + ',ou=sites,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "2 | Report country OU work needed"
+      debug:
+        msg: "{{ _s2_todo | default([]) | length }} country OU(s) missing."
 
     - name: "2 | Create country OUs"
       microsoft.ad.ou:
@@ -469,6 +492,10 @@
           [{% for item in _ccp_triples %}{% if ('ou=' + item.province + ',ou=' + item.country + ',ou=' + item.continent + ',ou=sites,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "3 | Report province OU work needed"
+      debug:
+        msg: "{{ _s3_todo | default([]) | length }} province OU(s) missing."
 
     - name: "3 | Create province OUs"
       microsoft.ad.ou:
@@ -501,6 +528,10 @@
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
+    - name: "4 | Report city OU work needed"
+      debug:
+        msg: "{{ _s4_todo | default([]) | length }} city OU(s) missing or with a drifted description."
+
     - name: "4 | Create city OUs"
       microsoft.ad.ou:
         name: "{{ item.City }}"
@@ -524,6 +555,10 @@
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
+    - name: "5 | Report city leaf OU work needed"
+      debug:
+        msg: "{{ _s5_todo | default([]) | length }} city leaf OU(s) (Users/Devices/Groups) missing."
+
     - name: "5 | Create city leaf OUs"
       microsoft.ad.ou:
         name: "{{ item.1 }}"
@@ -544,6 +579,10 @@
           [{% for item in _sites | rejectattr('_continent', 'equalto', 'Cloud Infrastructure') | list | product(_device_sub_ous) | list %}{% if ('ou=' + item.1 + ',ou=devices,ou=' + item.0.City + ',' + item.0._cpath) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "6 | Report device sub-OU work needed"
+      debug:
+        msg: "{{ _s6_todo | default([]) | length }} device sub-OU(s) missing."
 
     - name: "6 | Create device sub-OUs"
       microsoft.ad.ou:
@@ -567,6 +606,10 @@
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
+    - name: "7 | Report Cloud Infrastructure leaf OU work needed"
+      debug:
+        msg: "{{ _s7a_todo | default([]) | length }} Cloud Infrastructure leaf OU(s) missing."
+
     - name: "7 | Create Cloud Infrastructure leaf OUs"
       microsoft.ad.ou:
         name: "{{ item }}"
@@ -581,6 +624,10 @@
           [{% for item in _device_sub_ous %}{% if ('ou=' + item + ',ou=devices,ou=cloud infrastructure,ou=sites,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "7 | Report Cloud Infrastructure device sub-OU work needed"
+      debug:
+        msg: "{{ _s7b_todo | default([]) | length }} Cloud Infrastructure device sub-OU(s) missing."
 
     - name: "7 | Create Cloud Infrastructure device sub-OUs"
       microsoft.ad.ou:
@@ -601,6 +648,10 @@
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
+    - name: "8 | Report IT Groups sub-OU work needed"
+      debug:
+        msg: "{{ _s8a_todo | default([]) | length }} IT Groups sub-OU(s) missing."
+
     - name: "8 | Create IT Groups sub-OUs"
       microsoft.ad.ou:
         name: "{{ item }}"
@@ -615,6 +666,10 @@
           [{% for item in ['Users', 'Computers'] %}{% if ('ou=' + item + ',ou=disabled,' + _base_dn) | lower not in _existing_ou_dns %}{{ item | to_json }},{% endif %}{% endfor %}]
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "8 | Report Disabled sub-OU work needed"
+      debug:
+        msg: "{{ _s8b_todo | default([]) | length }} Disabled sub-OU(s) missing."
 
     - name: "8 | Create Disabled sub-OUs"
       microsoft.ad.ou:
