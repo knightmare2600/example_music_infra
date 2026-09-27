@@ -69,3 +69,18 @@
   become: false
   changed_when: false
   failed_when: false
+  vars:
+    # 2026-09-27, found live rebuilding EXADCSGOT001: delegate_to: localhost does
+    # NOT switch connection type by itself -- without this override it inherits
+    # whatever the CALLING play already set (windows_bootstrap/00-preflight.yml's
+    # own ansible_connection: ssh / ansible_user: Administrator), so this task
+    # tried to SSH into the control node itself as Administrator@localhost and
+    # failed outright ("Permission denied"). Same trap already documented
+    # repeatedly elsewhere in this repo (10-ad-schema.yml's "Read sites.csv from
+    # control node", ad_collection_check.yml, 00-dc-preflight.yml's "Load
+    # sites.csv") -- ansible_shell_type: sh is needed alongside ansible_connection:
+    # local for the identical second reason: the calling play's inherited
+    # ansible_shell_type: powershell would otherwise mis-dispatch this local,
+    # plain-Linux command too.
+    ansible_connection: local
+    ansible_shell_type: sh
