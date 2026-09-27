@@ -5,15 +5,32 @@
 # =============================================================================
 # Prompts for the Domain Controller name or IP to build/populate the AD
 # schema against, and stores it in hostvars['localhost']['ad_target'] for
-# every later stage in this site.yml run to read back.
+# every later stage in this site.yml run to read back. Also prompts for
+# exclude_dc_computer_accounts (see 2026-09-27 changelog below) using the
+# exact same publish-to-hostvars['localhost'] pattern, for the same reason:
+# every prompt this chain needs, asked once, up front, not scattered across
+# whichever numbered stage happens to need the answer.
 #
 # hosts: resolves to an empty list when populate_ad != yes, so this play —
-# and its prompt — is skipped entirely on a run where AD population wasn't
+# and its prompts — are skipped entirely on a run where AD population wasn't
 # requested at 00-dc-preflight.yml. No behaviour change for that case.
 #
-# Skip the prompt on any run by supplying -e ad_target=<host> directly.
+# Skip the prompts on any run by supplying -e ad_target=<host> and/or
+# -e exclude_dc_computer_accounts=<yes|no> directly.
 # =============================================================================
 # Changelog:
+#   2026-09-27  Robert's ask, found live (EXADCSGOT001): exclude_dc_computer_accounts
+#               (see 40-ad-computers.yml's own v2.2.0 changelog for the full
+#               feature writeup, commit 1adb6e1) was added as that file's own
+#               vars_prompt -- the LAST play in this chain (00 -> 10 -> 20 -> 30 -> 40),
+#               not bundled up front here alongside ad_target the way every other
+#               prompt-driven chain in this repo works (00-preflight.yml,
+#               00-dc-preflight.yml both bundle everything their whole chain needs at
+#               the very start). Moved here, published to hostvars['localhost'] the
+#               same way ad_target already is -- 40-ad-computers.yml now reads it back
+#               from there (with the same yes-default fallback) instead of prompting
+#               for it itself. Purely a placement fix -- the prompt text, default, and
+#               downstream behaviour are all unchanged.
 #   2026-07-04  Initial file — split out of ad_schema.yml (was inline there,
 #               causing a hardcoded EXADCSFAL001 default to leak in as a
 #               fallback). windows_adschema now follows the windows_bootstrap
@@ -31,6 +48,14 @@
       private: false
       default: ""
 
+    - name: exclude_dc_computer_accounts
+      prompt: >-
+        Exclude Domain Controllers' own computer accounts (Role: DCS) from
+        this run's create/enable/disable/OS-attribute management?
+        [yes -- STRONGLY recommended, see 2026-09-26 EXADCSGOT001 incident]
+      private: false
+      default: "yes"
+
   tasks:
     - name: Save target Domain Controller
       ansible.builtin.set_fact:
@@ -42,7 +67,8 @@
           No Domain Controller name or IP was entered. Re-run and supply one, or pass -e ad_target=<host> to skip the prompt.
       when: ad_target | trim == ''
 
-    - name: Publish ad_target
+    - name: Publish ad_target and exclude_dc_computer_accounts
       set_fact:
         ad_target: "{{ ad_target }}"
+        exclude_dc_computer_accounts: "{{ exclude_dc_computer_accounts }}"
 
