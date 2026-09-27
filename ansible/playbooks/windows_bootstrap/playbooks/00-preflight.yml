@@ -81,6 +81,34 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-09-27  CRITICAL FIX, found live rebuilding EXADCSGOT001 (see
+#               docs/INCIDENT-LOG.md, INC-2026-09-26-GOT-DC-DISABLE): the
+#               DHCP address handed to the fresh install had previously
+#               belonged to a different device, whose host key was still in
+#               the control node's known_hosts -- the first real connection
+#               failed with "Using a SSH password instead of a key is not
+#               possible because Host Key checking is enabled" (sshpass exit
+#               6, a CHANGED key, confirmed by reading ansible-core's own
+#               ssh.py), reproduced identically with a plain manual `ssh`
+#               ("REMOTE HOST IDENTIFICATION HAS CHANGED"). This play's own
+#               vars: already set ansible_ssh_extra_args='-o
+#               StrictHostKeyChecking=no' -- confirmed by direct empirical
+#               testing that this NEVER actually worked against a changed
+#               key: Ansible appends ssh_extra_args AFTER ansible.cfg's own
+#               ssh_args (which sets StrictHostKeyChecking=accept-new, a
+#               deliberate MITM safeguard), and OpenSSH uses
+#               first-occurrence-wins for a repeated -o flag on one command
+#               line -- so accept-new always won, silently, on this or any
+#               other Windows host, not just this one. Added a new shared
+#               task, tasks/clear_stale_known_hosts.yml, run here before any
+#               real connection is attempted, clearing any existing
+#               known_hosts entry for both target_hosts/target (the current
+#               connection address) and target_ip (the address this run is
+#               about to move to) via ssh-keygen -R -- confirmed idempotent
+#               (exits 0 whether the address was present or not) via direct
+#               testing. StrictHostKeyChecking itself stays accept-new,
+#               untouched -- this fixes the actual gap instead of relaxing
+#               the safeguard it was never really providing.
 #   2026-09-25  Robert, live (EXADCSGOT001): dns_reason/the DNS-2nd fallback said
 #               "forest root" for ANY DCS-role first-DC-at-a-site build (is_first_dc=true
 #               is a per-site concept -- see its own vars_prompt, "for this site"), not
@@ -429,6 +457,25 @@
     frd_local_dns: "172.16.124.8"   # EXADNSFRD001 (FRD-local, not yet built) -- see [A5] probe below
 
   tasks:
+
+    # 2026-09-27, CRITICAL FIX, found live rebuilding EXADCSGOT001 (see
+    # docs/INCIDENT-LOG.md, INC-2026-09-26-GOT-DC-DISABLE, and
+    # ansible/tasks/clear_stale_known_hosts.yml's own header for the full
+    # writeup): a DHCP-recycled address, or the target_ip a previous, now
+    # rebuilt machine used to hold, can carry a stale known_hosts entry from
+    # whatever device had it before. StrictHostKeyChecking=accept-new
+    # (ansible.cfg, a deliberate MITM safeguard) correctly refuses a CHANGED
+    # key -- the ansible_ssh_extra_args='-o StrictHostKeyChecking=no' set
+    # below in this play's own vars: never actually overrode that, since
+    # OpenSSH uses first-occurrence-wins for a repeated -o flag and
+    # ansible.cfg's ssh_args is applied before this play's extra_args on the
+    # constructed command line. Clearing both addresses here, before the
+    # first real connection anywhere in this chain, is the actual fix --
+    # not relaxing StrictHostKeyChecking itself.
+    - name: "[Preflight] Clear stale known_hosts entries for the connection address and intended static IP"
+      include_tasks: ../../../tasks/clear_stale_known_hosts.yml
+      vars:
+        _clear_known_hosts_for: "{{ [target_hosts | default(target | default(''))] + [target_ip | default('')] }}"
 
     # =========================================================================
     # PHASE A — Control-node tasks (no SSH connection to target)

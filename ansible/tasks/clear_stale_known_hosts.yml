@@ -1,0 +1,71 @@
+# =============================================================================
+# ansible/tasks/clear_stale_known_hosts.yml
+# Example Music Limited — clear stale known_hosts entries before first connect
+# =============================================================================
+# Trigger, 2026-09-27: rebuilding EXADCSGOT001 (see docs/INCIDENT-LOG.md,
+# INC-2026-09-26-GOT-DC-DISABLE) hit "Using a SSH password instead of a key is
+# not possible because Host Key checking is enabled" the moment
+# windows_bootstrap/00-preflight.yml made its first real connection -- a
+# sshpass exit code 6 (confirmed by reading ansible-core's own ssh.py
+# connection plugin source, not guessed), which specifically means a CHANGED
+# host key, not merely an unknown one. Confirmed live seconds later with a
+# manual `ssh Administrator@<dhcp-ip>`: "REMOTE HOST IDENTIFICATION HAS
+# CHANGED". Root cause: the DHCP lease address handed to the fresh install had
+# previously belonged to a different device, whose host key was still sitting
+# in ~/.ssh/known_hosts on the control node.
+#
+# Why this wasn't already covered by ansible_ssh_extra_args:
+# 'StrictHostKeyChecking=no' (set both in group_vars/windows_nodes/
+# connection.yml and, redundantly, in this exact play's own vars:) --
+# confirmed empirically (throwaway local sshd, host key swapped mid-test):
+# Ansible builds its ssh command line as [ssh_connection] ssh_args (from
+# ansible.cfg, which deliberately sets StrictHostKeyChecking=accept-new --
+# see docs/ansible/beginners_guide_to_ansible.md's own reasoning for why that
+# specific value was chosen, a real MITM safeguard) FIRST, then appends
+# ansible_ssh_extra_args AFTER it. OpenSSH's client uses first-occurrence-wins
+# semantics when the same -o option is repeated on one command line --
+# verified directly (two -o StrictHostKeyChecking flags, same command,
+# earlier one wins) -- so the later 'no' was ALWAYS silently ineffective
+# against a genuinely changed key, on this or any other Windows host, not
+# just this ad-hoc bootstrap case. accept-new only ever tolerated a brand-new
+# address it had never seen before; a changed key for an address it already
+# had on file was never actually protected against, contrary to what the
+# ansible_ssh_extra_args override was believed to do. This is a real,
+# estate-wide gap this file closes at the one point it actually needs
+# closing -- before the first connection attempt, not by relaxing
+# StrictHostKeyChecking itself (which stays accept-new, a deliberate choice,
+# untouched).
+#
+# What this does: removes any existing known_hosts entry for each address in
+# _clear_known_hosts_for (a plain list of IPs/hostnames, caller-supplied) via
+# ssh-keygen -R, run locally on the control node. Confirmed via direct testing
+# that ssh-keygen -R exits 0 whether the address was present (and removed) or
+# never existed at all -- genuinely idempotent, safe to run on every bootstrap
+# regardless of whether that specific address has ever collided before.
+#
+# Usage: set _clear_known_hosts_for to a list of addresses before including,
+# e.g. in windows_bootstrap/00-preflight.yml:
+#   - include_tasks: ../../../tasks/clear_stale_known_hosts.yml
+#     vars:
+#       _clear_known_hosts_for: "{{ [target_hosts | default(target | default(''))] + [target_ip | default('')] }}"
+# Blank/undefined entries are filtered out automatically -- safe to pass
+# target_ip even when it's genuinely blank (no IP change requested).
+# =============================================================================
+
+- name: "[known_hosts] Determine real addresses to clear (drop blanks, dedupe)"
+  ansible.builtin.set_fact:
+    _clear_known_hosts_real: "{{ _clear_known_hosts_for | select() | unique | list }}"
+
+- name: "[known_hosts] Clear stale known_hosts entry, if any (before first SSH connection)"
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -f
+      - "{{ lookup('env', 'HOME') }}/.ssh/known_hosts"
+      - -R
+      - "{{ item }}"
+  loop: "{{ _clear_known_hosts_real }}"
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  failed_when: false
