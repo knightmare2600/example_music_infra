@@ -13,6 +13,11 @@
 # Tags: rsat
 # =============================================================================
 # Changelog:
+#   2026-09-27  CRITICAL FIX -- see tasks/preflight.yml's own changelog for the full
+#               live incident (EXADCSGOT001, Server 2022 Server Core, 20+ minute hang
+#               from a false is_server_core: false). Same fix applied here since this
+#               playbook has its own separate copy of the detection logic: replaced
+#               Get-WindowsFeature Server-Gui-Shell with the ServerLevels registry key.
 #   2026-09-19  CRITICAL, found live (Robert, EXAANSFRD001 -- mid-EXADCSFRD001 build): this
 #               play's hosts: line only checked {{ target | default('all') }} -- "target" is
 #               never set anywhere in this chain; only site.yml's own documented
@@ -58,18 +63,26 @@
         is_workstation: "{{ rsat_product_type.stdout | trim == '1' }}"
       tags: rsat
 
-    - name: Detect Server-Gui-Shell feature state (Server Core check)
+    # 2026-09-27, CRITICAL FIX -- see tasks/preflight.yml's own changelog for
+    # the full live incident writeup (EXADCSGOT001, Server 2022 Server Core,
+    # 20+ minute hang). Get-WindowsFeature Server-Gui-Shell is a Server
+    # 2012 R2-era check, unreliable once a Server Core image's GUI feature
+    # packages are stripped from the component store entirely (the default,
+    # not an edge case, on every Server Core install since 2016). Replaced
+    # with the ServerLevels registry key, written by setup itself and
+    # independent of the component store's own feature-catalog state.
+    - name: "Detect Server Core via the ServerLevels registry key (Get-WindowsFeature Server-Gui-Shell is unreliable once GUI packages are stripped from the component store, which is the default on every Server Core install)"
       ansible.windows.win_shell: |
-        $f = Get-WindowsFeature Server-Gui-Shell -ErrorAction SilentlyContinue
-        if ($f) { $f.Installed } else { '' }
-      register: rsat_gui_shell
+        $sl = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Server\ServerLevels' -ErrorAction SilentlyContinue
+        if ($sl -and $sl.ServerCore -eq 1) { 'True' } else { 'False' }
+      register: rsat_server_core_check
       changed_when: false
       when: is_server
       tags: rsat
 
     - name: Set is_server_core fact
       set_fact:
-        is_server_core: "{{ is_server and (rsat_gui_shell.stdout | default('') | trim == 'False') }}"
+        is_server_core: "{{ is_server and (rsat_server_core_check.stdout | default('') | trim == 'True') }}"
       tags: rsat
 
     - name: Include RSAT tasks

@@ -31,6 +31,21 @@
 #   2026-07-09  DNS check now uses exa_domain (from benarbejde/ad_forest.json via
 #               group_vars/all/vars.yml) instead of a hardcoded "jukebox.internal"
 #               literal -- this was executable PowerShell, not just a comment.
+#   2026-09-27  CRITICAL FIX, found live (EXADCSGOT001, Server 2022 Server Core
+#               rebuild): Server Core detection via Get-WindowsFeature
+#               Server-Gui-Shell (added 2026-09-26, ported from
+#               Join-DomainAndBootstrap.ps1's Server-2012-R2-era check)
+#               returned is_server_core: false for a genuine Server Core box,
+#               sending it down the native-RSAT-via-Server-Manager path
+#               instead of OpenRSAT -- which then hung 20+ minutes. Replaced
+#               with the ServerLevels registry key (HKLM:\SOFTWARE\Microsoft\
+#               Windows NT\CurrentVersion\Server\ServerLevels, ServerCore=1),
+#               confirmed via Microsoft's own documentation to be the
+#               reliable mechanism once a Server Core image's GUI feature
+#               packages are stripped from the component store entirely --
+#               the default state on every Server Core install since 2016,
+#               not an edge case Get-WindowsFeature happens to mishandle
+#               occasionally.
 # =============================================================================
 
 - name: "[Preflight] Gather facts"
@@ -51,21 +66,35 @@
 # Server Core detection -- ported from Join-DomainAndBootstrap.ps1 Stage 8's
 # own $IsServerCore check (2026-09-26, added alongside tasks/rsat.yml's
 # OpenRSAT fallback for Server Core -- see that file's own changelog).
-# Get-WindowsFeature only exists on Server OSes at all, so this only runs
-# when is_server -- a workstation just keeps is_server_core: false via the
-# set_fact's own default below, same as the source script's own
-# "$GuiFeature -and ..." short-circuit (a null $GuiFeature never sets it true).
-- name: "[Preflight] Detect Server-Gui-Shell feature state (Server Core check)"
+#
+# 2026-09-27, CRITICAL FIX, found live (Robert, EXADCSGOT001 rebuild): a
+# genuine Server Core Server 2022 install was detected as is_server_core:
+# false, sending it down "Install RSAT via Server Manager (Server OS, not
+# Server Core)" instead -- which then hung 20+ minutes, consistent with a
+# GUI-oriented Server Manager feature-install path that doesn't work
+# correctly on a box with no GUI components in its component store at all.
+# Root cause: Get-WindowsFeature Server-Gui-Shell -- the exact check ported
+# from Join-DomainAndBootstrap.ps1 -- is a Server 2012 R2-era mechanism.
+# Confirmed via Microsoft's own documentation: once a Server Core image's GUI
+# feature packages are stripped from the component store entirely (the
+# default on every Server Core install since 2016, not just an edge case),
+# Get-WindowsFeature can no longer reliably report that feature's state at
+# all -- exactly what this box's live behaviour showed. The reliable, current
+# mechanism Microsoft documents instead is the ServerLevels registry key,
+# written by setup itself and independent of the component store's own
+# feature-catalog state: HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\
+# Server\ServerLevels, where ServerCore=1 means Server Core.
+- name: "[Preflight] Detect Server Core via the ServerLevels registry key (Get-WindowsFeature Server-Gui-Shell is unreliable once GUI packages are stripped from the component store, which is the default on every Server Core install)"
   ansible.windows.win_shell: |
-    $f = Get-WindowsFeature Server-Gui-Shell -ErrorAction SilentlyContinue
-    if ($f) { $f.Installed } else { '' }
-  register: preflight_gui_shell
+    $sl = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Server\ServerLevels' -ErrorAction SilentlyContinue
+    if ($sl -and $sl.ServerCore -eq 1) { 'True' } else { 'False' }
+  register: preflight_server_core_check
   changed_when: false
   when: is_server
 
 - name: "[Preflight] Set is_server_core fact"
   set_fact:
-    is_server_core: "{{ is_server and (preflight_gui_shell.stdout | default('') | trim == 'False') }}"
+    is_server_core: "{{ is_server and (preflight_server_core_check.stdout | default('') | trim == 'True') }}"
 
 - name: "[Preflight] Detect chassis type"
   ansible.windows.win_shell: |
