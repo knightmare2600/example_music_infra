@@ -677,22 +677,22 @@
     # longer iterates all 364 users, only the unique bands genuinely missing.
     # -------------------------------------------------------------------------
 
-    # 2026-09-27, Robert's ask, live (EXADCSGOT001): still a fully serial,
-    # one-microsoft.ad.ou-call-per-item loop -- batched async the same way
-    # 10-ad-schema.yml's own OU-creation sections were the same session. Already
-    # in the exact {name, path} shape ansible/tasks/create_ou_batch.yml expects
-    # (this file's own 2026-09-21/22 dedup work already produces it), so no
-    # normalization step is needed here, straight to batching.
-    - name: "A | Split band sub-OUs into batches of 10"
-      set_fact:
-        _band_ous_batches: "{{ (_band_ous_todo | default([])) | batch(10) | list }}"
-
-    - name: "A | Create band sub-OUs under city Users OUs, batches of 10"
-      include_tasks: ../../../tasks/create_ou_batch.yml
-      loop: "{{ _band_ous_batches }}"
+    # 2026-09-28, Robert's ask, live (EXADCSGOT001): reverted from async/
+    # batch(10) back to plain serial -- see 10-ad-schema.yml's "0 | Create
+    # root OUs" / "6 | Create device sub-OUs" for the full measured writeup
+    # (~1.76x slower on this connection type, independent of batch size).
+    # tasks/create_ou_batch.yml was removed entirely -- git history has
+    # the full async attempt.
+    - name: "A | Create band sub-OUs under city Users OUs"
+      microsoft.ad.ou:
+        name:                 "{{ item.name }}"
+        path:                 "{{ item.path }}"
+        state:                present
+        protect_from_deletion: true
+      loop: "{{ _band_ous_todo | default([]) }}"
       loop_control:
-        loop_var: _ou_batch
-        label: "batch of {{ _ou_batch | length }}"
+        label: >-
+          OU={{ item.name }},{{ item.path | regex_replace(',DC=.*$','') }}
 
     # -------------------------------------------------------------------------
     # Section B — User accounts
@@ -879,16 +879,61 @@
     # vs ALL accounts) -- no logic change anywhere, text only.
     # -------------------------------------------------------------------------
 
-    - name: "B0a | NEW accounts only, step 1/3 — split into batches of 10 for capped-concurrency async dispatch"
-      set_fact:
-        _b0a_batches: "{{ (_new_creates_todo | default([])) | batch(10) | list }}"
-
-    - name: "B0a | NEW accounts only, step 1/3 — create bare account (no password yet), batches of 10"
-      include_tasks: ../tasks/create_users_no_password_batch.yml
-      loop: "{{ _b0a_batches }}"
+    # 2026-09-28, Robert's ask, live (EXADCSGOT001): reverted from async/
+    # batch(10) back to plain serial. Measured live, this exact night: fire
+    # ~10.1 sec/item + wait ~6.0 sec/item = ~16.1 sec/item for the async
+    # form, vs ~9.17 sec/item for a plain serial loop (B0b's own confirmed
+    # rate) -- async is ~1.76x SLOWER here, not faster. Root cause: on this
+    # connection type (SSH-to-Windows-PowerShell), per-call connection/
+    # dispatch overhead dominates over actual module work time, and
+    # async/poll:0 still pays that full dispatch cost just to START the
+    # background job -- it doesn't skip it, unlike on a connection type
+    # where dispatch is cheap and only the work itself is slow. Splitting
+    # one round trip into "fire" + "check" then costs MORE than doing the
+    # work directly and synchronously, batch size notwithstanding (confirmed
+    # separately: total time is items x (fire+check), independent of how
+    # many items are grouped into a batch -- 10, 15, or 20 makes no
+    # difference). Safe to revert: this task never touches password or
+    # enabled: at all (enabled: false unconditionally, no password param),
+    # so the concurrent-write race that originally justified async here
+    # never actually applied to this task's own content -- see
+    # tasks/create_users_no_password_batch.yml's own history for that
+    # reasoning, which was about the object being created for the first
+    # time landing on the DC at once, not about this task's specific
+    # fields. tasks/create_users_no_password_batch.yml itself was
+    # removed entirely -- git history has the full async attempt, including
+    # why it was tried and what it cost, if a faster connection type ever
+    # makes it worth revisiting.
+    - name: "B0a | NEW accounts only, step 1/3 — create bare account (no password yet)"
+      microsoft.ad.user:
+        identity:         "{{ item.SamAccountName }}"
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        upn:              "{{ item.UserPrincipalName }}"
+        path:             "{{ item.ad_ou }}"
+        display_name:     "{{ item.Name }}"
+        firstname:        "{{ item.Name.split(' ')[0] }}"
+        surname:          "{{ (item.Name.split(' ')[1:] | join(' ')) or omit }}"
+        description:      "{{ item.Description }}"
+        email:            "{{ item.Email }}"
+        company:          "{{ item.Company }}"
+        street:           "{{ item.Street if item.Street else omit }}"
+        city:             "{{ item.City if item.City else omit }}"
+        postal_code:      "{{ item.PostalCode if item.PostalCode else omit }}"
+        country: "{{ _country_lookup[item.CountryCode].code }}"
+        attributes:
+          set: >-
+            {{
+              {'co': _country_lookup[item.CountryCode].name, 'title': item.Title, 'department': item.Department}
+              | combine({'telephoneNumber': item.telephoneNumber} if item.telephoneNumber else {})
+              | combine({'mobile': item.mobile} if item.mobile else {})
+              | combine({'physicalDeliveryOfficeName': item.physicalDeliveryOfficeName} if item.physicalDeliveryOfficeName else {})
+            }}
+        enabled: false
+        state:   present
+      loop: "{{ _new_creates_todo | default([]) }}"
       loop_control:
-        loop_var: _b0a_batch
-        label: "batch of {{ _b0a_batch | length }}"
+        label: "{{ item.SamAccountName }}"
 
     # update_password: always (not on_create) is deliberate and safe here --
     # on_create only fires when the object is created in THIS SAME task
@@ -924,16 +969,50 @@
     # _users -- on a stable re-run with nothing genuinely drifted, this list
     # is empty/near-empty instead of always being all 354, cutting most of
     # the ~9 minutes of pure no-op batches seen earlier tonight.
-    - name: "B | ALL users (new accounts' step 3/3, existing accounts' only step) — split into batches of 10"
-      set_fact:
-        _b_batches: "{{ (_b_update_todo | default([])) | batch(10) | list }}"
-
-    - name: "B | ALL users (new accounts' step 3/3, existing accounts' only step) — set full account details (name/email/address/title/etc.), batches of 10"
-      include_tasks: ../tasks/create_users_batch.yml
-      loop: "{{ _b_batches }}"
+    # 2026-09-28, Robert's ask, live (EXADCSGOT001): reverted from async/
+    # batch(10) back to plain serial -- same measured finding as B0a above
+    # (~16.1 sec/item async vs ~9.17 sec/item plain serial, ~1.76x slower on
+    # this connection type). Safe to revert: this task never touches
+    # password (update_password: on_create only fires on genuine creation,
+    # and B0a already owns that; this task only ever finds existing objects
+    # by identity:) or enabled: (omit, unconditionally, since 2026-09-23 --
+    # see that entry below), so the original concurrent-write race this
+    # task's async form was built to survive doesn't apply to what this
+    # task itself actually writes. tasks/create_users_batch.yml was removed
+    # entirely -- git history has the full async attempt.
+    - name: "B | ALL users (new accounts' step 3/3, existing accounts' only step) — set full account details (name/email/address/title/etc.)"
+      microsoft.ad.user:
+        identity:         "{{ item.SamAccountName }}"
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        upn:              "{{ item.UserPrincipalName }}"
+        path:             "{{ item.ad_ou }}"
+        display_name:     "{{ item.Name }}"
+        firstname:        "{{ item.Name.split(' ')[0] }}"
+        surname:          "{{ (item.Name.split(' ')[1:] | join(' ')) or omit }}"
+        description:      "{{ item.Description }}"
+        email:            "{{ item.Email }}"
+        company:          "{{ item.Company }}"
+        street:           "{{ item.Street if item.Street else omit }}"
+        city:             "{{ item.City if item.City else omit }}"
+        postal_code:      "{{ item.PostalCode if item.PostalCode else omit }}"
+        country: "{{ _country_lookup[item.CountryCode].code }}"
+        attributes:
+          set: >-
+            {{
+              {'co': _country_lookup[item.CountryCode].name, 'title': item.Title, 'department': item.Department}
+              | combine({'telephoneNumber': item.telephoneNumber} if item.telephoneNumber else {})
+              | combine({'mobile': item.mobile} if item.mobile else {})
+              | combine({'physicalDeliveryOfficeName': item.physicalDeliveryOfficeName} if item.physicalDeliveryOfficeName else {})
+            }}
+        enabled:          "{{ omit }}"
+        password:         "{{ vault_ad_new_user_password }}"
+        update_password:  on_create
+        password_expired: true
+        state:            present
+      loop: "{{ _b_update_todo | default([]) }}"
       loop_control:
-        loop_var: _b_batch
-        label: "batch of {{ _b_batch | length }}"
+        label: "{{ item.SamAccountName }}"
 
     # -------------------------------------------------------------------------
     # Section B2 — Enabled state
@@ -1010,16 +1089,22 @@
       set_fact:
         _group_membership_todo: "{{ _group_pairs | groupby('group') }}"
 
-    - name: "C | Split group adds into batches of 10 for capped-concurrency async dispatch"
-      set_fact:
-        _c_batches: "{{ _group_membership_todo | batch(10) | list }}"
-
-    - name: "C | Add members to groups, batches of 10"
-      include_tasks: ../tasks/add_group_members_batch.yml
-      loop: "{{ _c_batches }}"
+    # 2026-09-28, Robert's ask, live (EXADCSGOT001): reverted from async/
+    # batch(10) back to plain serial -- see Section B0a's own writeup above
+    # for the full measured finding (~1.76x slower on this connection type,
+    # regardless of batch size). Groups never had a password/race concern in
+    # the first place (see tasks/add_group_members_batch.yml's own header),
+    # so this was always a pure speed optimization, never a safety one --
+    # and on this connection type it wasn't actually faster. That file was
+    # removed entirely -- git history has the full async attempt.
+    - name: "C | Add members to groups"
+      microsoft.ad.group:
+        identity: "{{ item[0] }}"
+        members:
+          add: "{{ item[1] | map(attribute='sam') | list }}"
+      loop: "{{ _group_membership_todo | default([]) }}"
       loop_control:
-        loop_var: _c_batch
-        label: "batch of {{ _c_batch | length }} group(s)"
+        label: "{{ item[0] }} ← {{ item[1] | map(attribute='sam') | join(', ') }}"
 
     # -------------------------------------------------------------------------
     # Section D — Manager
@@ -1060,16 +1145,29 @@
     # has no bulk-target equivalent of microsoft.ad.group's members.add, so
     # that would mean hand-rolling a foreach-in-one-win_shell script instead
     # of reusing this exact, already-debugged per-item resolution logic.
-    - name: "D | Split manager updates into batches of 10 for capped-concurrency async dispatch"
-      set_fact:
-        _d_batches: "{{ (_manager_todo | default([])) | batch(10) | list }}"
-
-    - name: "D | Set manager attribute, batches of 10"
-      include_tasks: ../tasks/set_manager_batch.yml
-      loop: "{{ _d_batches }}"
+    # 2026-09-28, Robert's ask, live (EXADCSGOT001): reverted from async/
+    # batch(10) back to plain serial -- see Section B0a's own writeup above
+    # for the full measured finding. Never touched a password either (same
+    # as C), so this was always a pure speed optimization, never a safety
+    # one. tasks/set_manager_batch.yml was removed entirely -- git history
+    # has the full async attempt, including its own note about why per-
+    # manager consolidation (like Section C's group rework) wasn't
+    # attempted here.
+    - name: "D | Set manager attribute"
+      microsoft.ad.user:
+        identity:         "{{ item.SamAccountName }}"
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        path:             "{{ item.ad_ou }}"
+        attributes:
+          set:
+            manager: >-
+              {%- set _target_sam = (_name_ou_to_sam[item.Manager ~ '|' ~ item.ad_ou] | default(_name_to_sam[item.Manager])) | lower -%}
+              CN={{ _sam_to_user[_target_sam].Name }},{{ _sam_to_user[_target_sam].ad_ou }}
+        state:            present
+      loop: "{{ _manager_todo | default([]) }}"
       loop_control:
-        loop_var: _d_batch
-        label: "batch of {{ _d_batch | length }}"
+        label: "{{ item.SamAccountName }} ← manager: {{ item.Manager }}"
 
     # -------------------------------------------------------------------------
     # Section E — Account lockout state
