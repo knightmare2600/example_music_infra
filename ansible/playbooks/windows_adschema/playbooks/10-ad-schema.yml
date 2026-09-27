@@ -430,13 +430,32 @@
       debug:
         msg: "{{ _s0_todo | default([]) | length }} root OU(s) missing."
 
-    - name: "0 | Create root OUs"
-      microsoft.ad.ou:
-        name: "{{ item }}"
-        path: "{{ _base_dn }}"
-        state: present
-        protect_from_deletion: true
-      loop: "{{ _s0_todo | default([]) }}"
+    # 2026-09-27, Robert's ask, live (EXADCSGOT001): every microsoft.ad.ou
+    # creation loop in this file was still fully serial, one call per item --
+    # at the ~9 sec/item rate this exercise itself established, the larger
+    # sections (53/159/371 items) took 8-55 minutes each. Batched async the
+    # same way 20-ad-groups.yml's own group creation was the same session --
+    # see ansible/tasks/create_ou_batch.yml's own header for the full
+    # writeup (why an OU is safe to batch, and the async_status
+    # ignore_errors: true fix found while building it).
+    - name: "0 | Build normalized {name, path} list for batching"
+      set_fact:
+        _s0_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s0_todo | default([]) %}{{ {'name': item, 'path': _base_dn} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "0 | Split into batches of 10"
+      set_fact:
+        _s0_batches: "{{ _s0_ou_list | batch(10) | list }}"
+
+    - name: "0 | Create root OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s0_batches }}"
+      loop_control:
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section 1 — Continent OUs under Sites
@@ -454,13 +473,24 @@
       debug:
         msg: "{{ _s1_todo | default([]) | length }} continent OU(s) missing."
 
-    - name: "1 | Create continent OUs"
-      microsoft.ad.ou:
-        name: "{{ item }}"
-        path: "OU=Sites,{{ _base_dn }}"
-        state: present
-        protect_from_deletion: true
-      loop: "{{ _s1_todo | default([]) }}"
+    - name: "1 | Build normalized {name, path} list for batching"
+      set_fact:
+        _s1_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s1_todo | default([]) %}{{ {'name': item, 'path': 'OU=Sites,' + _base_dn} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "1 | Split into batches of 10"
+      set_fact:
+        _s1_batches: "{{ _s1_ou_list | batch(10) | list }}"
+
+    - name: "1 | Create continent OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s1_batches }}"
+      loop_control:
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section 2 — Country OUs
@@ -479,15 +509,24 @@
       debug:
         msg: "{{ _s2_todo | default([]) | length }} country OU(s) missing."
 
-    - name: "2 | Create country OUs"
-      microsoft.ad.ou:
-        name: "{{ item.country }}"
-        path: "OU={{ item.continent }},OU=Sites,{{ _base_dn }}"
-        state: present
-        protect_from_deletion: true
-      loop: "{{ _s2_todo | default([]) }}"
+    - name: "2 | Build normalized {name, path} list for batching"
+      set_fact:
+        _s2_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s2_todo | default([]) %}{{ {'name': item.country, 'path': 'OU=' + item.continent + ',OU=Sites,' + _base_dn} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "2 | Split into batches of 10"
+      set_fact:
+        _s2_batches: "{{ _s2_ou_list | batch(10) | list }}"
+
+    - name: "2 | Create country OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s2_batches }}"
       loop_control:
-        label: "{{ item.country }} / {{ item.continent }}"
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section 3 — Province OUs
@@ -506,15 +545,24 @@
       debug:
         msg: "{{ _s3_todo | default([]) | length }} province OU(s) missing."
 
-    - name: "3 | Create province OUs"
-      microsoft.ad.ou:
-        name: "{{ item.province }}"
-        path: "OU={{ item.country }},OU={{ item.continent }},OU=Sites,{{ _base_dn }}"
-        state: present
-        protect_from_deletion: true
-      loop: "{{ _s3_todo | default([]) }}"
+    - name: "3 | Build normalized {name, path} list for batching"
+      set_fact:
+        _s3_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s3_todo | default([]) %}{{ {'name': item.province, 'path': 'OU=' + item.country + ',OU=' + item.continent + ',OU=Sites,' + _base_dn} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "3 | Split into batches of 10"
+      set_fact:
+        _s3_batches: "{{ _s3_ou_list | batch(10) | list }}"
+
+    - name: "3 | Create province OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s3_batches }}"
       loop_control:
-        label: "{{ item.province }}, {{ item.country }}"
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section 4 — City OUs
@@ -541,16 +589,24 @@
       debug:
         msg: "{{ _s4_todo | default([]) | length }} city OU(s) missing or with a drifted description."
 
-    - name: "4 | Create city OUs"
-      microsoft.ad.ou:
-        name: "{{ item.City }}"
-        path: "{{ item._cpath }}"
-        state: present
-        protect_from_deletion: true
-        description: "{{ item.Site }} — {{ item.Entity }}"
-      loop: "{{ _s4_todo | default([]) }}"
+    - name: "4 | Build normalized {name, path, description} list for batching"
+      set_fact:
+        _s4_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s4_todo | default([]) %}{{ {'name': item.City, 'path': item._cpath, 'description': item.Site + ' — ' + item.Entity} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "4 | Split into batches of 10"
+      set_fact:
+        _s4_batches: "{{ _s4_ou_list | batch(10) | list }}"
+
+    - name: "4 | Create city OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s4_batches }}"
       loop_control:
-        label: "{{ item.Site }} — {{ item.City }}"
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section 5 — Leaf OUs (Users, Devices, Groups) under each city
@@ -568,14 +624,24 @@
       debug:
         msg: "{{ _s5_todo | default([]) | length }} city leaf OU(s) (Users/Devices/Groups) missing."
 
-    - name: "5 | Create city leaf OUs"
-      microsoft.ad.ou:
-        name: "{{ item.1 }}"
-        path: "OU={{ item.0.City }},{{ item.0._cpath }}"
-        state: present
-      loop: "{{ _s5_todo | default([]) }}"
+    - name: "5 | Build normalized {name, path} list for batching"
+      set_fact:
+        _s5_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s5_todo | default([]) %}{{ {'name': item.1, 'path': 'OU=' + item.0.City + ',' + item.0._cpath} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "5 | Split into batches of 10"
+      set_fact:
+        _s5_batches: "{{ _s5_ou_list | batch(10) | list }}"
+
+    - name: "5 | Create city leaf OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s5_batches }}"
       loop_control:
-        label: "OU={{ item.1 }} under {{ item.0.Site }}"
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section 6 — Device sub-OUs under each city's Devices OU
@@ -593,14 +659,24 @@
       debug:
         msg: "{{ _s6_todo | default([]) | length }} device sub-OU(s) missing."
 
-    - name: "6 | Create device sub-OUs"
-      microsoft.ad.ou:
-        name: "{{ item.1 }}"
-        path: "OU=Devices,OU={{ item.0.City }},{{ item.0._cpath }}"
-        state: present
-      loop: "{{ _s6_todo | default([]) }}"
+    - name: "6 | Build normalized {name, path} list for batching"
+      set_fact:
+        _s6_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s6_todo | default([]) %}{{ {'name': item.1, 'path': 'OU=Devices,OU=' + item.0.City + ',' + item.0._cpath} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "6 | Split into batches of 10"
+      set_fact:
+        _s6_batches: "{{ _s6_ou_list | batch(10) | list }}"
+
+    - name: "6 | Create device sub-OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s6_batches }}"
       loop_control:
-        label: "OU={{ item.1 }} / Devices / {{ item.0.Site }}"
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section 7 — Cloud Infrastructure (CLD)
@@ -619,12 +695,24 @@
       debug:
         msg: "{{ _s7a_todo | default([]) | length }} Cloud Infrastructure leaf OU(s) missing."
 
-    - name: "7 | Create Cloud Infrastructure leaf OUs"
-      microsoft.ad.ou:
-        name: "{{ item }}"
-        path: "OU=Cloud Infrastructure,OU=Sites,{{ _base_dn }}"
-        state: present
-      loop: "{{ _s7a_todo | default([]) }}"
+    - name: "7 | Build normalized {name, path} list for batching"
+      set_fact:
+        _s7a_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s7a_todo | default([]) %}{{ {'name': item, 'path': 'OU=Cloud Infrastructure,OU=Sites,' + _base_dn} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "7 | Split into batches of 10"
+      set_fact:
+        _s7a_batches: "{{ _s7a_ou_list | batch(10) | list }}"
+
+    - name: "7 | Create Cloud Infrastructure leaf OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s7a_batches }}"
+      loop_control:
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     - name: "7 | Filter to Cloud Infrastructure device sub-OUs not already present"
       set_fact:
@@ -638,12 +726,24 @@
       debug:
         msg: "{{ _s7b_todo | default([]) | length }} Cloud Infrastructure device sub-OU(s) missing."
 
-    - name: "7 | Create Cloud Infrastructure device sub-OUs"
-      microsoft.ad.ou:
-        name: "{{ item }}"
-        path: "OU=Devices,OU=Cloud Infrastructure,OU=Sites,{{ _base_dn }}"
-        state: present
-      loop: "{{ _s7b_todo | default([]) }}"
+    - name: "7 | Build normalized {name, path} list for batching (device sub-OUs)"
+      set_fact:
+        _s7b_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s7b_todo | default([]) %}{{ {'name': item, 'path': 'OU=Devices,OU=Cloud Infrastructure,OU=Sites,' + _base_dn} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "7 | Split into batches of 10 (device sub-OUs)"
+      set_fact:
+        _s7b_batches: "{{ _s7b_ou_list | batch(10) | list }}"
+
+    - name: "7 | Create Cloud Infrastructure device sub-OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s7b_batches }}"
+      loop_control:
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section 8 — Global OU sub-structure
@@ -661,12 +761,24 @@
       debug:
         msg: "{{ _s8a_todo | default([]) | length }} IT Groups sub-OU(s) missing."
 
-    - name: "8 | Create IT Groups sub-OUs"
-      microsoft.ad.ou:
-        name: "{{ item }}"
-        path: "OU=IT Groups,{{ _base_dn }}"
-        state: present
-      loop: "{{ _s8a_todo | default([]) }}"
+    - name: "8 | Build normalized {name, path} list for batching (IT Groups sub-OUs)"
+      set_fact:
+        _s8a_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s8a_todo | default([]) %}{{ {'name': item, 'path': 'OU=IT Groups,' + _base_dn} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "8 | Split into batches of 10 (IT Groups sub-OUs)"
+      set_fact:
+        _s8a_batches: "{{ _s8a_ou_list | batch(10) | list }}"
+
+    - name: "8 | Create IT Groups sub-OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s8a_batches }}"
+      loop_control:
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # 2026-09-26, Robert's ask: "in the security groups, can we not do what
     # we do in the other OUs and have them by location... instead of just
@@ -690,12 +802,24 @@
       debug:
         msg: "{{ _s8c_todo | default([]) | length }} Non-Music sub-OU(s) missing."
 
-    - name: "8 | Create Non-Music sub-OU under Security Groups"
-      microsoft.ad.ou:
-        name: "{{ item }}"
-        path: "OU=Security Groups,OU=IT Groups,{{ _base_dn }}"
-        state: present
-      loop: "{{ _s8c_todo | default([]) }}"
+    - name: "8 | Build normalized {name, path} list for batching (Non-Music sub-OU)"
+      set_fact:
+        _s8c_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s8c_todo | default([]) %}{{ {'name': item, 'path': 'OU=Security Groups,OU=IT Groups,' + _base_dn} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "8 | Split into batches of 10 (Non-Music sub-OU)"
+      set_fact:
+        _s8c_batches: "{{ _s8c_ou_list | batch(10) | list }}"
+
+    - name: "8 | Create Non-Music sub-OU under Security Groups, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s8c_batches }}"
+      loop_control:
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     - name: "8 | Filter to Disabled sub-OUs not already present"
       set_fact:
@@ -709,12 +833,24 @@
       debug:
         msg: "{{ _s8b_todo | default([]) | length }} Disabled sub-OU(s) missing."
 
-    - name: "8 | Create Disabled sub-OUs"
-      microsoft.ad.ou:
-        name: "{{ item }}"
-        path: "OU=Disabled,{{ _base_dn }}"
-        state: present
-      loop: "{{ _s8b_todo | default([]) }}"
+    - name: "8 | Build normalized {name, path} list for batching (Disabled sub-OUs)"
+      set_fact:
+        _s8b_ou_list: >-
+          {%- set _rendered -%}
+          [{% for item in _s8b_todo | default([]) %}{{ {'name': item, 'path': 'OU=Disabled,' + _base_dn} | to_json }},{% endfor %}]
+          {%- endset -%}
+          {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
+
+    - name: "8 | Split into batches of 10 (Disabled sub-OUs)"
+      set_fact:
+        _s8b_batches: "{{ _s8b_ou_list | batch(10) | list }}"
+
+    - name: "8 | Create Disabled sub-OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _s8b_batches }}"
+      loop_control:
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section 9 — UPN suffixes

@@ -1,0 +1,70 @@
+# =============================================================================
+# ansible/tasks/create_ou_batch.yml
+# Example Music Limited — Create one batch of AD OUs, capped concurrency
+# =============================================================================
+# Shared by every microsoft.ad.ou creation loop across windows_adschema
+# (10-ad-schema.yml's Sections 0/1/2/3/4/5/6/7a/7b/8a/8b/8c, and
+# 30-ad-users.yml's band sub-OU section) -- same async/poll:0 + wait +
+# fail-check shape as tasks/create_computers_batch.yml/
+# windows_adschema/tasks/create_groups_batch.yml, same reasoning: an OU has
+# no password at all, so there's no concurrent-write race to avoid, and
+# these were simply never batched yet rather than deliberately kept serial.
+#
+# 2026-09-27, Robert's ask, live (EXADCSGOT001): 53 city OUs took ~8 minutes,
+# 159 city leaf OUs took ~23.5 minutes, 371 device sub-OUs was underway at
+# the same ~9 sec/item rate (~55 minutes) when this was raised -- every one
+# of these loops is (was) a plain, fully serial microsoft.ad.ou call, one
+# item at a time.
+#
+# Callers pass a caller-built _ou_batch: a list of {name, path} dicts, plus
+# optional description (Section 4 city OUs is the only caller that sets one
+# today -- omitted entirely for every other section, matching their
+# existing, unchanged behaviour exactly). protect_from_deletion is always
+# explicitly true here, matching microsoft.ad.ou's own documented default
+# when omitted (confirmed via `ansible-doc microsoft.ad.ou`: "When an OU is
+# created, protect_from_deletion defaults to True if not specified") --
+# every section already behaved this way whether it said so explicitly
+# (0-4) or relied on the default (5-8), so this changes nothing for any of
+# them, it just makes the now-shared behaviour explicit in one place.
+#
+# ignore_errors: true on the async_status wait task, NOT failed_when: false
+# -- see windows_adschema/tasks/create_groups_batch.yml's own header for the
+# full writeup of why failed_when: false is the wrong fix (it silently
+# forces item.failed to always read false, defeating the fail-check task
+# below too) and why this exact bug existed, undetected, in every async-
+# batch task file in this repo until found live building that file.
+# =============================================================================
+
+- name: "Create OUs (batch of {{ _ou_batch | length }}, fire async)"
+  microsoft.ad.ou:
+    name:                  "{{ item.name }}"
+    path:                  "{{ item.path }}"
+    state:                 present
+    protect_from_deletion: true
+    description:           "{{ item.description | default(omit) }}"
+  async: 60
+  poll: 0
+  loop: "{{ _ou_batch }}"
+  loop_control:
+    label: "{{ item.name }} / {{ item.path }}"
+  register: _ou_async
+
+- name: "Create OUs (batch, wait for completion)"
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: _ou_wait
+  until: _ou_wait.finished
+  retries: 30
+  delay: 2
+  ignore_errors: true
+  loop: "{{ _ou_async.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+- name: "Fail on any batch item that errored"
+  fail:
+    msg: "{{ item.item.item.name }} ({{ item.item.item.path }}) failed: {{ item.msg | default('unknown error') }}"
+  loop: "{{ _ou_wait.results }}"
+  loop_control:
+    label: "{{ item.item.item.name }}"
+  when: item.failed | default(false)
