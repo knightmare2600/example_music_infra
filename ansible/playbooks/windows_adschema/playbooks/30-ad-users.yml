@@ -677,16 +677,22 @@
     # longer iterates all 364 users, only the unique bands genuinely missing.
     # -------------------------------------------------------------------------
 
-    - name: "A | Create band sub-OUs under city Users OUs"
-      microsoft.ad.ou:
-        name:                 "{{ item.name }}"
-        path:                 "{{ item.path }}"
-        state:                present
-        protect_from_deletion: true
-      loop: "{{ _band_ous_todo | default([]) }}"
+    # 2026-09-27, Robert's ask, live (EXADCSGOT001): still a fully serial,
+    # one-microsoft.ad.ou-call-per-item loop -- batched async the same way
+    # 10-ad-schema.yml's own OU-creation sections were the same session. Already
+    # in the exact {name, path} shape ansible/tasks/create_ou_batch.yml expects
+    # (this file's own 2026-09-21/22 dedup work already produces it), so no
+    # normalization step is needed here, straight to batching.
+    - name: "A | Split band sub-OUs into batches of 10"
+      set_fact:
+        _band_ous_batches: "{{ (_band_ous_todo | default([])) | batch(10) | list }}"
+
+    - name: "A | Create band sub-OUs under city Users OUs, batches of 10"
+      include_tasks: ../../../tasks/create_ou_batch.yml
+      loop: "{{ _band_ous_batches }}"
       loop_control:
-        label: >-
-          OU={{ item.name }},{{ item.path | regex_replace(',DC=.*$','') }}
+        loop_var: _ou_batch
+        label: "batch of {{ _ou_batch | length }}"
 
     # -------------------------------------------------------------------------
     # Section B — User accounts
