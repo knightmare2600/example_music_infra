@@ -289,16 +289,21 @@
     # SamAccountName at its real location. identity: (SamAccountName, unique
     # and location-independent) makes the lookup find the real object
     # wherever it currently sits, then move it.
-    - name: "Create AD security groups"
-      microsoft.ad.group:
-        identity:          "{{ item.SamAccountName | default(item.Name) }}"
-        name:              "{{ item.Name }}"
-        sam_account_name:  "{{ item.SamAccountName | default(item.Name) }}"
-        path:              "{{ item._target_path }}"
-        description:       "{{ item.Description }}"
-        scope:              global
-        category:           security
-        state:              present
-      loop:          "{{ _groups_todo | default([]) }}"
+    # 2026-09-27, Robert's ask, found live (EXADCSGOT001): this was still a fully
+    # serial, one-call-per-item loop -- unlike 30-ad-users.yml's/
+    # 40-ad-computers.yml's own sections, both batched async the night before.
+    # At the ~9 sec/item rate this same run's own OU-creation sections had
+    # already established, 154 groups took ~23 minutes. Same safe-to-batch
+    # reasoning as computers: microsoft.ad.group never touches a password at
+    # all, so there's no concurrent-write race to avoid -- see
+    # tasks/create_groups_batch.yml's own header for the full writeup.
+    - name: "Split group creates/updates into batches of 10 for capped-concurrency async dispatch"
+      set_fact:
+        _groups_batches: "{{ (_groups_todo | default([])) | batch(10) | list }}"
+
+    - name: "Create AD security groups, batches of 10"
+      include_tasks: ../tasks/create_groups_batch.yml
+      loop: "{{ _groups_batches }}"
       loop_control:
-        label: "{{ item.Name }}"
+        loop_var: _groups_batch
+        label: "batch of {{ _groups_batch | length }}"

@@ -54,6 +54,10 @@
     label: "{{ item[0] }} ← {{ item[1] | map(attribute='sam') | join(', ') }}"
   register: _c_async
 
+# 2026-09-27, found live building create_groups_batch.yml -- see that file's own
+# header for the full writeup: without ignore_errors: true here, a genuine
+# per-item failure hard-aborts the play at THIS task, before the fail-check
+# task below ever runs its own clearer, correctly-attributed message.
 - name: "C | Add members to groups (batch, wait for completion)"
   ansible.builtin.async_status:
     jid: "{{ item.ansible_job_id }}"
@@ -61,6 +65,7 @@
   until: _c_wait.finished
   retries: 30
   delay: 2
+  ignore_errors: true
   loop: "{{ _c_async.results }}"
   loop_control:
     label: "{{ item.item[0] }}"
