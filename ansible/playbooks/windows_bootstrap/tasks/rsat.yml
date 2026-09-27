@@ -9,6 +9,18 @@
 # see playbooks/45-rsat.yml).
 # =============================================================================
 # Changelog:
+#   2026-09-27  Fixed live (EXADCSGOT001 rebuild, the first time this OpenRSAT path ever
+#               genuinely ran -- Server Core detection was broken until moments earlier
+#               this same session): get_url doesn't create its own destination directory,
+#               so the download failed outright ("Destination /tmp/example-music-openrsat-cache
+#               does not exist") the very first time this code path executed. Added an
+#               explicit directory-creation task first, same lesson 82-salt-minion.yml's own
+#               "Ensure minion.d config drop-in directory exists" already documents. Also
+#               added explicit ansible_connection: local / ansible_shell_type: sh overrides
+#               to all three delegate_to: localhost tasks in this block -- didn't actually
+#               fail here, but cheap defensive insurance against the exact trap
+#               feedback_delegate_localhost_connection_override has recurred from repeatedly
+#               elsewhere in this repo.
 #   2026-06-20  Initial file (inline in 05-bootstrap.yml)
 #   2026-07-06  Extracted into a shared task file so 05-bootstrap.yml and
 #               playbooks/45-rsat.yml share one source of truth.
@@ -96,11 +108,40 @@
   register: _openrsat_release
   delegate_to: localhost
   when: is_server_core
+  vars:
+    # 2026-09-27: explicit override, defensive -- see this file's own
+    # 2026-09-27 changelog entry and feedback_delegate_localhost_connection_override
+    # for the full trap this repo has hit repeatedly. Didn't actually fail here
+    # (this play currently has no non-local connection vars active), but a real
+    # module dispatched via delegate_to: localhost should never rely on that
+    # happening to be true -- cheap insurance against a future caller of this
+    # shared task file that does set them.
+    ansible_connection: local
+    ansible_shell_type: sh
 
 - name: "[Stage 15] OpenRSAT — resolve Windows asset's checksum + download URL"
   set_fact:
     _openrsat_asset: "{{ _openrsat_release.json.assets | selectattr('name', 'equalto', _openrsat.assets['windows-amd64']) | first }}"
   when: is_server_core
+
+# 2026-09-27, found live (EXADCSGOT001 rebuild): get_url does not create its own
+# destination directory -- "Destination /tmp/example-music-openrsat-cache does
+# not exist" the very first time this path was ever actually exercised (Server
+# Core detection was broken until moments earlier this same session, so this
+# whole OpenRSAT fallback had never genuinely run before). Same lesson
+# 82-salt-minion.yml's own "Ensure minion.d config drop-in directory exists"
+# task already documents: never assume a destination directory exists, create
+# it explicitly first.
+- name: "[Stage 15] OpenRSAT — ensure the control-node cache directory exists"
+  ansible.builtin.file:
+    path: /tmp/example-music-openrsat-cache
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  when: is_server_core
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
 
 - name: "[Stage 15] OpenRSAT — download + checksum-verify on the control node"
   ansible.builtin.get_url:
@@ -109,6 +150,9 @@
     checksum: "{{ _openrsat_asset.digest }}"
   delegate_to: localhost
   when: is_server_core
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
 
 - name: "[Stage 15] OpenRSAT — copy to Server Core target"
   ansible.windows.win_copy:
