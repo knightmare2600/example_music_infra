@@ -52,6 +52,14 @@
     label: "{{ item.SamAccountName }}"
   register: _a_async
 
+# 2026-09-27, found live building create_groups_batch.yml (this file's own
+# sibling): without ignore_errors: true here, a genuine per-item failure hard-
+# aborts the whole play right at THIS task, before "A | Fail on any batch
+# item that errored" below ever runs -- so its own clearer, correctly-
+# attributed message never surfaces, the raw async_status crash does
+# instead. Never caught here specifically since nothing has ever actually
+# failed in this file yet -- full writeup + why failed_when: false is the
+# WRONG fix in create_groups_batch.yml's own header.
 - name: "A | Create computer accounts (batch, wait for completion)"
   ansible.builtin.async_status:
     jid: "{{ item.ansible_job_id }}"
@@ -59,6 +67,7 @@
   until: _a_wait.finished
   retries: 30
   delay: 2
+  ignore_errors: true
   loop: "{{ _a_async.results }}"
   loop_control:
     label: "{{ item.item.SamAccountName }}"
