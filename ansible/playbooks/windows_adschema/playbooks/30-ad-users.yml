@@ -869,13 +869,21 @@
     # the race). Narrows what has to run serially rather than eliminating
     # it -- B0b is still one round trip per new account, just a much
     # smaller one than the old combined create+password call.
+    #
+    # 2026-09-27, Robert's ask, live: B0a's and B's task names both said
+    # "Create user accounts", read live at 22:38 after a very long session
+    # as "wait, is it making users again?" when B0a/B0b had already finished
+    # and it was actually B's separate, unrelated attribute-fill pass on the
+    # SAME accounts. Reworded every task name in this B0a/B0b/B sequence to
+    # say plainly which step it is and who it applies to (NEW accounts only,
+    # vs ALL accounts) -- no logic change anywhere, text only.
     # -------------------------------------------------------------------------
 
-    - name: "B0a | Split genuinely-new creates into batches of 10 for capped-concurrency async dispatch"
+    - name: "B0a | NEW accounts only, step 1/3 — split into batches of 10 for capped-concurrency async dispatch"
       set_fact:
         _b0a_batches: "{{ (_new_creates_todo | default([])) | batch(10) | list }}"
 
-    - name: "B0a | Create user accounts WITHOUT a password, batches of 10"
+    - name: "B0a | NEW accounts only, step 1/3 — create bare account (no password yet), batches of 10"
       include_tasks: ../tasks/create_users_no_password_batch.yml
       loop: "{{ _b0a_batches }}"
       loop_control:
@@ -900,7 +908,7 @@
     # logon" cannot be optional per-user here regardless of what the frozen
     # TDF data says for this specific field -- see this file's own header
     # Notes section for the full reasoning.
-    - name: "B0b | Set password for genuinely new accounts (serial -- password writes must never be concurrent)"
+    - name: "B0b | NEW accounts only, step 2/3 — set password (serial, password writes must never be concurrent)"
       microsoft.ad.user:
         identity:         "{{ item.SamAccountName }}"
         password:         "{{ vault_ad_new_user_password }}"
@@ -916,11 +924,11 @@
     # _users -- on a stable re-run with nothing genuinely drifted, this list
     # is empty/near-empty instead of always being all 354, cutting most of
     # the ~9 minutes of pure no-op batches seen earlier tonight.
-    - name: "B | Split users into batches of 10 for capped-concurrency async creation"
+    - name: "B | ALL users (new accounts' step 3/3, existing accounts' only step) — split into batches of 10"
       set_fact:
         _b_batches: "{{ (_b_update_todo | default([])) | batch(10) | list }}"
 
-    - name: "B | Create user accounts, batches of 10"
+    - name: "B | ALL users (new accounts' step 3/3, existing accounts' only step) — set full account details (name/email/address/title/etc.), batches of 10"
       include_tasks: ../tasks/create_users_batch.yml
       loop: "{{ _b_batches }}"
       loop_control:

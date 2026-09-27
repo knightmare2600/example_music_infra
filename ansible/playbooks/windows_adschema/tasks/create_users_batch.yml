@@ -55,7 +55,7 @@
 # concurrent enable-time validation calls, no more race.
 # =============================================================================
 
-- name: "B | Create user accounts (batch of {{ _b_batch | length }}, fire async)"
+- name: "B | ALL users (new accounts' step 3/3, existing accounts' only step) — set full account details (batch of {{ _b_batch | length }}, fire async)"
   microsoft.ad.user:
     # identity: required whenever path: might move an EXISTING object -- see
     # tasks/create_computers_batch.yml's own 2026-09-26 changelog entry for
@@ -141,7 +141,7 @@
 # header for the full writeup: without ignore_errors: true here, a genuine
 # per-item failure hard-aborts the play at THIS task, before the fail-check
 # task below ever runs its own clearer, correctly-attributed message.
-- name: "B | Create user accounts (batch, wait for completion)"
+- name: "B | ALL users (new accounts' step 3/3, existing accounts' only step) — set full account details (batch, wait for completion)"
   ansible.builtin.async_status:
     jid: "{{ item.ansible_job_id }}"
   register: _b_wait
