@@ -52,6 +52,15 @@
 # Tags: finish
 # =============================================================================
 # Changelog:
+#   2026-09-27  Robert's ask, live (EXADCSGOT001): the pending-reboot check's own
+#               output line always shows "no change" (changed_when: false, correctly --
+#               it's read-only), which told the operator nothing about which way the
+#               check actually came out, and looked confusingly like "no reboot needed"
+#               when a genuine reboot then fired right after it. Added an explicit
+#               "[Finish] Report pending-reboot check result" debug line stating the
+#               real result in plain words before either branch fires. No change to the
+#               decision logic itself -- same three registry locations, same when:
+#               conditions.
 #   2026-09-19  CRITICAL, found live (Robert, EXAANSFRD001 -- mid-EXADCSFRD001 build): this
 #               play's hosts: line only checked {{ target | default('all') }} -- "target" is
 #               never set anywhere in this chain; only site.yml's own documented
@@ -187,6 +196,21 @@
         Write-Output $pending
       register: _finish_reboot_pending
       changed_when: false
+      tags: finish
+
+    # 2026-09-27, Robert's ask: the check task above always shows "no change" (it's
+    # read-only, changed_when: false), which tells the operator nothing about which
+    # way it actually came out -- easy to misread "no change" as "no reboot needed"
+    # when what it actually means is "this check didn't modify anything." Added this
+    # explicit line so the real result is stated in plain words, before either branch
+    # below fires -- no change to the decision logic itself (still exactly the same
+    # three registry locations, still the same when: conditions further down).
+    - name: "[Finish] Report pending-reboot check result"
+      debug:
+        msg: >-
+          Windows {{ 'DOES' if (_finish_reboot_pending.stdout | trim == 'True') else 'does NOT' }}
+          report a pending reboot (checked: Component Based Servicing RebootPending,
+          Windows Update RebootRequired, PendingFileRenameOperations).
       tags: finish
 
     - name: "[Finish] Final reboot (only if Windows is actually reporting one pending)"
