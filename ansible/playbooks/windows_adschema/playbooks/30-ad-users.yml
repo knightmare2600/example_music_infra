@@ -81,6 +81,26 @@
 # v1.3.0  2026-07-09  ad_domain's fallback changed from a hardcoded
 #                     'jukebox.internal' literal to exa_domain, derived from
 #                     benarbejde/ad_forest.json (single source of truth).
+# v1.4.0  2026-09-27  Robert's ask, for peace of mind after the 2026-09-26
+#                     EXADCSGOT001 computer-account incident (see
+#                     40-ad-computers.yml's own v2.1.0/v2.2.0 changelog for
+#                     the full writeup -- a different object class, same
+#                     root cause: generic per-device/per-user sync touching
+#                     an object it categorically never should). Confirmed
+#                     ad_users.json has no Administrator/krbtgt/Guest record
+#                     today -- nothing was actually at risk from this file
+#                     specifically -- but added an unconditional, hardcoded
+#                     exclusion anyway, same single-upstream-filter shape as
+#                     the computer fix: any record whose SamAccountName
+#                     case-insensitively matches Administrator, krbtgt, or
+#                     Guest (the three well-known built-in AD security
+#                     principals in this same risk category) is rejected
+#                     from _users entirely, before Sections A onward ever
+#                     see it. Unconditional, no prompt/flag -- unlike the DC
+#                     computer-account exclusion, there is no operator
+#                     scenario where managing a real domain's actual
+#                     built-in Administrator/krbtgt/Guest through this
+#                     generic JSON-driven sync is ever the right call.
 # =============================================================================
 
 - name: "Build AD users from ad_users.json"
@@ -200,9 +220,24 @@
       set_fact:
         _group_name_to_effective_sam: "{{ dict(_group_names_lower | zip(_group_effective_sams_lower)) }}"
 
-    - name: "Filter out users with unresolvable OU paths"
+    # 2026-09-27, Robert's ask, peace of mind after the 2026-09-26
+    # EXADCSGOT001 computer-account incident (see this file's own v1.4.0
+    # changelog entry above, and 40-ad-computers.yml's v2.1.0/v2.2.0, for the
+    # full writeup) -- unconditional, no prompt/flag needed: there is no
+    # legitimate case where this generic JSON-driven sync should ever create,
+    # disable, reset, or move a real domain's built-in Administrator/krbtgt/
+    # Guest account. ad_users.json has no such record today (confirmed), so
+    # this excludes nothing right now -- it's a standing guard against one
+    # ever being added by mistake later (bad data generation, a copy-paste,
+    # a future TDF import), same defense-in-depth shape as the DC-computer
+    # fix, at the same single upstream filter point every section below
+    # reads _users from.
+    - name: "Filter out users with unresolvable OU paths, and built-in AD security principals (never managed here)"
       set_fact:
-        _users: "{{ _users_all | selectattr('ad_ou', 'ne', '') | list }}"
+        _users: >-
+          {{ _users_all | selectattr('ad_ou', 'ne', '')
+             | rejectattr('SamAccountName', 'in', ['Administrator', 'administrator', 'krbtgt', 'KRBTGT', 'Guest', 'guest'])
+             | list }}
 
     - name: "Fail — a user's CountryCode isn't in _country_lookup"
       fail:

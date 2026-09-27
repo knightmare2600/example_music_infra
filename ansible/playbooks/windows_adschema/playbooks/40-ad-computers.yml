@@ -106,12 +106,40 @@
 #                     no legitimate case where this file should ever
 #                     create/enable/disable/move/set-OS-attributes-on a DC's
 #                     own computer object.
+# v2.2.0  2026-09-27  Robert's ask, morning after the v2.1.0 incident: the
+#                     DC exclusion was correct but invisible -- a silent,
+#                     hardcoded rejectattr the operator has no way to see is
+#                     even happening. Added a new vars_prompt,
+#                     exclude_dc_computer_accounts, default "yes" -- a
+#                     single Enter keeps the exact same v2.1.0 protection,
+#                     visibly. Typing "no" explicitly is the one path that
+#                     both disables it AND prints a loud warning naming
+#                     every real DC computer account (forest-wide, not just
+#                     this run's own ad_target) now exposed and unprotected
+#                     for that run -- so overriding the safe default can
+#                     never happen silently.
 # =============================================================================
 
 - name: "Build AD computer accounts from JSON"
   hosts: "{{ ad_target | default(hostvars['localhost']['ad_target'] | default('localhost')) }}"
   gather_facts: false
   become: false
+
+  # 2026-09-27, Robert's ask: the v2.1.0 DC-exclusion fix (see changelog above)
+  # was a silent, hardcoded rejectattr -- correct, but invisible to the
+  # operator. Made it an explicit, visible, prompted choice instead, same
+  # "bundled prompt up front" convention as 00-preflight.yml/00-dc-preflight.yml
+  # elsewhere in this repo -- default "yes" keeps last night's protection on
+  # with a single Enter; only an explicit "no" disables it, and that's the one
+  # path that prints the loud warning below naming exactly what's now exposed.
+  vars_prompt:
+    - name: exclude_dc_computer_accounts
+      prompt: >-
+        Exclude Domain Controllers' own computer accounts (Role: DCS) from
+        this run's create/enable/disable/OS-attribute management?
+        [yes -- STRONGLY recommended, see 2026-09-26 EXADCSGOT001 incident]
+      private: false
+      default: "yes"
 
   vars:
     ad_domain:         "{{ dc_domain_name | default(exa_domain) }}"
@@ -152,10 +180,44 @@
     # from, rather than duplicating the condition in each section's own
     # filter -- a Domain Controller's own computer account is never
     # legitimately managed by this generic per-device sync, for any site.
-    - name: "Filter out computers with unresolvable OU paths, and Domain Controllers (never generically managed here — see v2.1.0 changelog)"
+    #
+    # 2026-09-27, v2.2.0: made the exclusion an explicit, prompted choice
+    # (exclude_dc_computer_accounts, see this play's own vars_prompt above)
+    # instead of an unconditional hardcoded rule -- default "yes" keeps the
+    # exact same protection as v2.1.0 with a single Enter; typing "no" is the
+    # one path that both disables it AND prints the loud warning below,
+    # naming every real DC computer account (forest-wide, not just this
+    # run's own ad_target) that is now exposed and unprotected for this run.
+    - name: "Determine DC computer accounts present in ad_computers.json (forest-wide, independent of the exclusion choice)"
       set_fact:
-        _computers: "{{ _computers_all | selectattr('ad_ou', 'ne', '') | rejectattr('Role', 'equalto', 'DCS') | list }}"
-        _computers_dcs_excluded_count: "{{ _computers_all | selectattr('ad_ou', 'ne', '') | selectattr('Role', 'equalto', 'DCS') | list | length }}"
+        _computers_dcs_all: "{{ _computers_all | selectattr('ad_ou', 'ne', '') | selectattr('Role', 'equalto', 'DCS') | list }}"
+
+    - name: "WARNING — DC computer-account protection DISABLED for this run"
+      debug:
+        msg: |
+          ⚠ DC computer-account protection DISABLED for this run
+            (exclude_dc_computer_accounts={{ exclude_dc_computer_accounts }}).
+          The following DC(s) will now be fully managed like any other
+          computer record -- including Enabled/OU/Description changes:
+            {{ _computers_dcs_all | map(attribute='SamAccountName') | join(', ') }}
+          This is exactly what caused the 2026-09-26 EXADCSGOT001 incident
+          (a stale Enabled: false in ad_computers.json disabled a live DC's
+          own secure-channel account). Proceed only if you are certain this
+          run genuinely needs to manage a DC's own computer object.
+      when:
+        - (exclude_dc_computer_accounts | default('yes')) | lower not in ['yes', 'y']
+        - _computers_dcs_all | length > 0
+
+    - name: "Filter out computers with unresolvable OU paths, and (unless explicitly disabled above) Domain Controllers"
+      set_fact:
+        _computers: >-
+          {{ (_computers_all | selectattr('ad_ou', 'ne', '') | rejectattr('Role', 'equalto', 'DCS') | list)
+             if ((exclude_dc_computer_accounts | default('yes')) | lower in ['yes', 'y'])
+             else (_computers_all | selectattr('ad_ou', 'ne', '') | list) }}
+        _computers_dcs_excluded_count: >-
+          {{ (_computers_dcs_all | length)
+             if ((exclude_dc_computer_accounts | default('yes')) | lower in ['yes', 'y'])
+             else 0 }}
 
     - name: "Preflight | Report computer count"
       debug:
@@ -165,7 +227,7 @@
           for management here ({{ _computers_all | length - _computers | length - _computers_dcs_excluded_count | int }}
           skipped — unknown site codes; {{ _computers_dcs_excluded_count }}
           skipped — Role: DCS, a Domain Controller's own computer account is
-          never touched by this generic sync).
+          excluded by default from this generic sync).
 
     # 2026-09-21, Robert's ask -- same identity-and-content pattern as
     # 10-ad-schema.yml/20-ad-groups.yml: one query up front instead of one
