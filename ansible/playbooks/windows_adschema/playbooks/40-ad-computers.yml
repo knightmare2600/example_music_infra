@@ -118,6 +118,18 @@
 #                     this run's own ad_target) now exposed and unprotected
 #                     for that run -- so overriding the safe default can
 #                     never happen silently.
+# v2.2.1  2026-09-27  Robert's ask, found live: v2.2.0's vars_prompt lived on THIS
+#                     play -- the LAST one in the chain (00 -> 10 -> 20 -> 30 -> 40) --
+#                     so the operator sat through OU schema, groups, and users
+#                     before ever being asked, breaking this repo's own "bundle
+#                     every prompt up front" convention (00-preflight.yml,
+#                     00-dc-preflight.yml both do this correctly). Moved the actual
+#                     vars_prompt to 00-ad-preflight.yml, alongside ad_target's own
+#                     -- published to hostvars['localhost'] the same way, read back
+#                     here via this play's own vars: with the same yes-default
+#                     fallback chain. Prompt text, default, and downstream
+#                     enable/warn/exclude behaviour are all unchanged -- placement
+#                     only.
 # =============================================================================
 
 - name: "Build AD computer accounts from JSON"
@@ -132,18 +144,18 @@
   # elsewhere in this repo -- default "yes" keeps last night's protection on
   # with a single Enter; only an explicit "no" disables it, and that's the one
   # path that prints the loud warning below naming exactly what's now exposed.
-  vars_prompt:
-    - name: exclude_dc_computer_accounts
-      prompt: >-
-        Exclude Domain Controllers' own computer accounts (Role: DCS) from
-        this run's create/enable/disable/OS-attribute management?
-        [yes -- STRONGLY recommended, see 2026-09-26 EXADCSGOT001 incident]
-      private: false
-      default: "yes"
-
+  #
+  # v2.2.1, 2026-09-27, found live: the vars_prompt itself used to live HERE --
+  # the LAST play in this chain (00 -> 10 -> 20 -> 30 -> 40) -- so the operator
+  # sat through OU schema, groups, and users before ever being asked, breaking
+  # this repo's own "bundle every prompt up front" convention. Moved to
+  # 00-ad-preflight.yml (same file ad_target's own prompt already lives in),
+  # published to hostvars['localhost'] the same way -- read back here with the
+  # same fallback-chain shape ad_target's own hosts: line already uses.
   vars:
     ad_domain:         "{{ dc_domain_name | default(exa_domain) }}"
     ad_computers_json: "/etc/example-music/ad_computers.json"
+    exclude_dc_computer_accounts: "{{ exclude_dc_computer_accounts | default(hostvars['localhost']['exclude_dc_computer_accounts'] | default('yes')) }}"
 
   pre_tasks:
 
