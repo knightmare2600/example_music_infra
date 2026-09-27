@@ -327,16 +327,30 @@
     # header for the full writeup.
     # -------------------------------------------------------------------------
 
-    - name: "A | Split computer creates/updates into batches of 10 for capped-concurrency async dispatch"
-      set_fact:
-        _a_batches: "{{ (_computers_todo | default([])) | batch(10) | list }}"
-
-    - name: "A | Create computer accounts, batches of 10"
-      include_tasks: ../tasks/create_computers_batch.yml
-      loop: "{{ _a_batches }}"
+    # 2026-09-28, Robert's ask, live (EXADCSGOT001): reverted from async/
+    # batch(10) back to plain serial. Measured live: async's fire+check
+    # round-trip pair costs ~16.1 sec/item on this connection type vs ~9.17
+    # sec/item plain serial -- ~1.76x slower, not faster (see
+    # 30-ad-users.yml's Section B0a for the full measured writeup; same
+    # connection, same dispatch-overhead-dominates cause, applies
+    # identically here). Computer accounts never had a password/race concern
+    # in the first place (see tasks/create_computers_batch.yml's own
+    # header), so this was always a pure speed optimization -- and on this
+    # connection type it wasn't actually faster. That file was removed entirely --
+    # git history has the full async attempt.
+    - name: "A | Create computer accounts"
+      microsoft.ad.computer:
+        identity:         "{{ item.SamAccountName }}"
+        name:             "{{ item.Name }}"
+        sam_account_name: "{{ item.SamAccountName }}"
+        dns_hostname:     "{{ item.DNSHostName }}"
+        path:             "{{ item.ad_ou }}"
+        description:      "{{ item.Description }}"
+        enabled:          "{{ item.Enabled }}"
+        state:            present
+      loop: "{{ _computers_todo | default([]) }}"
       loop_control:
-        loop_var: _a_batch
-        label: "batch of {{ _a_batch | length }}"
+        label: "{{ item.SamAccountName }}"
 
     # -------------------------------------------------------------------------
     # Section B/C — Operating system attributes
@@ -386,16 +400,21 @@
       debug:
         msg: "{{ _os_todo | default([]) | length }} of {{ _computers | length }} computer(s) need an operatingSystem update."
 
-    - name: "B | Split into batches of 10 for capped-concurrency async dispatch"
-      set_fact:
-        _b_batches: "{{ _os_todo | batch(10) | list }}"
-
-    - name: "B | Set operatingSystem attribute, batches of 10"
-      include_tasks: ../tasks/set_computer_os_batch.yml
-      loop: "{{ _b_batches }}"
+    # 2026-09-28, Robert's ask, live (EXADCSGOT001): reverted from async/
+    # batch(10) back to plain serial -- same measured finding as Section A
+    # above (~1.76x slower on this connection type). Never a password
+    # concern here either. tasks/set_computer_os_batch.yml was removed entirely --
+    # git history has the full async attempt.
+    - name: "B | Set operatingSystem attribute"
+      microsoft.ad.computer:
+        identity: "{{ item.SamAccountName }}"
+        name:     "{{ item.Name }}"
+        attributes:
+          set:
+            operatingSystem: "{{ item.OS }}"
+      loop: "{{ _os_todo | default([]) }}"
       loop_control:
-        loop_var: _b_batch
-        label: "batch of {{ _b_batch | length }}"
+        label: "{{ item.SamAccountName }}"
 
     - name: "C | Filter to computers needing an operatingSystemVersion update"
       set_fact:
@@ -409,16 +428,20 @@
       debug:
         msg: "{{ _osversion_todo | default([]) | length }} of {{ _computers | length }} computer(s) need an operatingSystemVersion update."
 
-    - name: "C | Split into batches of 10 for capped-concurrency async dispatch"
-      set_fact:
-        _c_batches: "{{ _osversion_todo | batch(10) | list }}"
-
-    - name: "C | Set operatingSystemVersion attribute, batches of 10"
-      include_tasks: ../tasks/set_computer_osversion_batch.yml
-      loop: "{{ _c_batches }}"
+    # 2026-09-28, Robert's ask, live (EXADCSGOT001): reverted from async/
+    # batch(10) back to plain serial -- same measured finding as Sections A/B
+    # above. tasks/set_computer_osversion_batch.yml was removed entirely --
+    # git history has the full async attempt.
+    - name: "C | Set operatingSystemVersion attribute"
+      microsoft.ad.computer:
+        identity: "{{ item.SamAccountName }}"
+        name:     "{{ item.Name }}"
+        attributes:
+          set:
+            operatingSystemVersion: "{{ item.OperatingSystemVersion }}"
+      loop: "{{ _osversion_todo | default([]) }}"
       loop_control:
-        loop_var: _c_batch
-        label: "batch of {{ _c_batch | length }}"
+        label: "{{ item.SamAccountName }}"
 
     # 2026-09-26, Robert's ask: "I want every playbook to update that JSON
     # field" -- windows_adschema never wrote nodeinfo.json at all before
