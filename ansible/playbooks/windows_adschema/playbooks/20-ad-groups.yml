@@ -297,13 +297,33 @@
     # reasoning as computers: microsoft.ad.group never touches a password at
     # all, so there's no concurrent-write race to avoid -- see
     # tasks/create_groups_batch.yml's own header for the full writeup.
-    - name: "Split group creates/updates into batches of 10 for capped-concurrency async dispatch"
-      set_fact:
-        _groups_batches: "{{ (_groups_todo | default([])) | batch(10) | list }}"
-
-    - name: "Create AD security groups, batches of 10"
-      include_tasks: ../tasks/create_groups_batch.yml
-      loop: "{{ _groups_batches }}"
+    # 2026-09-28, Robert's ask, live (EXADCSGOT001): reverted from async/
+    # batch(10) back to plain serial less than an hour after being batched
+    # the night before. Measured live, this exact night: async's fire+check
+    # round-trip pair costs ~16.1 sec/item on this connection type vs ~9.17
+    # sec/item plain serial -- ~1.76x SLOWER, not faster, and independent of
+    # batch size (confirmed: total time is items x per-item-cost regardless
+    # of how items are grouped into batches). Root cause: on this connection
+    # type (SSH-to-Windows-PowerShell), per-call connection/dispatch
+    # overhead dominates over actual module work time; async/poll:0 still
+    # pays that full dispatch cost just to START the background job, so
+    # splitting one round trip into "fire" + "check" costs MORE here than
+    # doing the work directly and synchronously. Groups never had a
+    # password/race concern in the first place (see
+    # tasks/create_groups_batch.yml's own header) -- this was always a pure
+    # speed optimization, and on this connection type it wasn't one. That
+    # file was removed entirely -- git history has the full async attempt
+    # if a faster connection type ever makes it worth revisiting.
+    - name: "Create AD security groups"
+      microsoft.ad.group:
+        identity:          "{{ item.SamAccountName | default(item.Name) }}"
+        name:              "{{ item.Name }}"
+        sam_account_name:  "{{ item.SamAccountName | default(item.Name) }}"
+        path:              "{{ item._target_path }}"
+        description:       "{{ item.Description }}"
+        scope:              global
+        category:           security
+        state:              present
+      loop: "{{ _groups_todo | default([]) }}"
       loop_control:
-        loop_var: _groups_batch
-        label: "batch of {{ _groups_batch | length }}"
+        label: "{{ item.Name }}"
