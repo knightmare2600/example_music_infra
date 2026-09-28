@@ -477,7 +477,6 @@ GOT,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default p
 GOT,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 GOT,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 GOT,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
-GOT,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 KNG,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
 KNG,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 KNG,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes

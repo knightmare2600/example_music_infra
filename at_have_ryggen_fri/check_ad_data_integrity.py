@@ -885,7 +885,17 @@ def check_missing_devices_csv_row(problems, computers, real_addresses, legacy_si
     model plus a serial-style suffix, e.g. "Cisco ISR 4331 ISR4331-ABD-552901").
     Confirmed matching is no longer reported at all (same standard check E already
     applies to a live row) -- only a genuine mismatch, or a Legacy row with no OS to
-    compare, still gets the "worth checking" treatment."""
+    compare, still gets the "worth checking" treatment.
+
+    2026-09-28, GOT: building EXADCSGOT001 for real (Enabled: true, OS Windows Server
+    2022) surfaced a genuine third category this check never had -- a standard site's
+    own DCS (or PVE, or a Legacy=no RTR) never gets an explicit devices.csv row at all,
+    built or not, because its real address comes purely from the standard-site
+    synthesis mechanism (confirmed against FAL/CLY/GLA: none of the three has ever had
+    a DCS row in either file). That's a different shape from "genuinely missing data" --
+    it's architecturally never going to have a row, so it's checked against
+    gi.is_standard_synthesis_excluded() (the exact same rule load_devices() itself uses
+    to drop a would-be-duplicate row), not flagged as a gap."""
     for c in computers:
         sam = (c.get("SamAccountName") or "").rstrip("$")
         role = (c.get("Role") or "").strip().upper()
@@ -898,6 +908,8 @@ def check_missing_devices_csv_row(problems, computers, real_addresses, legacy_si
             continue
         policy = policy_expected_octet(role, number)
         if policy is None:
+            continue
+        if policy[0] == "exact" and gi.is_standard_synthesis_excluded(role, site, policy[1]):
             continue
         pool_or_exact = (
             "pool " + str(sorted(policy[1])) if policy[0] == "pool" else "." + str(policy[1])
