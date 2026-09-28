@@ -654,16 +654,20 @@
           {%- endset -%}
           {{ (_rendered | regex_replace(',\s*\]$', ']') | from_json) if (_rendered is string) else _rendered }}
 
+    # 2026-09-28, Robert's ask: this used to be a single folded (>-) scalar,
+    # which YAML joins into one long run-on line -- reads fine in a file but
+    # is hard to scan live in the terminal. A plain list gives one line per
+    # category instead, same content, no logic change.
     - name: "Preflight | Report C/D/E work needed"
       debug:
-        msg: >-
-          Group adds: {{ _group_add_todo | default([]) | length }} user(s) need at least one group added.
-          Manager: {{ _manager_todo | default([]) | length }} user(s) need a manager set/corrected.
-          Lockout: {{ _lock_todo | default([]) | length }} user(s) need a lock/unlock state change.
-          Password reset: {{ _password_reset_todo | default([]) | length }} user(s) stuck disabled with a non-compliant password.
-          Enable: {{ _enable_todo | default([]) | length }} user(s) need an enabled-state change (includes brand-new creates from this run).
-          New creates: {{ _new_creates_todo | default([]) | length }} user(s) not yet in AD at all (created serially, see B0).
-          B update: {{ _b_update_todo | default([]) | length }} of {{ _users | length }} user(s) need a create/update pass in Section B.
+        msg:
+          - "Group adds:     {{ _group_add_todo | default([]) | length }} user(s) need at least one group added."
+          - "Manager:        {{ _manager_todo | default([]) | length }} user(s) need a manager set/corrected."
+          - "Lockout:        {{ _lock_todo | default([]) | length }} user(s) need a lock/unlock state change."
+          - "Password reset: {{ _password_reset_todo | default([]) | length }} user(s) stuck disabled with a non-compliant password."
+          - "Enable:         {{ _enable_todo | default([]) | length }} user(s) need an enabled-state change (includes brand-new creates from this run)."
+          - "New creates:    {{ _new_creates_todo | default([]) | length }} user(s) not yet in AD at all (created serially, see B0)."
+          - "B update:       {{ _b_update_todo | default([]) | length }} of {{ _users | length }} user(s) need a create/update pass in Section B."
 
   tasks:
 
