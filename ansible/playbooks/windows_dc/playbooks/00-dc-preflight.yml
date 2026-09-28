@@ -55,6 +55,10 @@
 # Required extra-vars:
 #   sites_csv          — path to sites.csv on the control node
 #                        default: /etc/example-music/sites.csv
+#   ad_computers_json  — path to ad_computers.json on the control node (same file
+#                        40-ad-computers.yml reads) -- second source of real DCS
+#                        replication-source candidates, see dc_source_resolution.yml
+#                        default: /etc/example-music/ad_computers.json
 #
 # Sets facts consumed by 20-dc-promote.yml:
 #   dc_replication_source   — FQDN or IP of the source DC
@@ -167,13 +171,19 @@
   gather_facts: false
 
   vars:
-    sites_csv:   "/etc/example-music/sites.csv"
-    devices_csv: "/etc/example-music/devices.csv"
+    sites_csv:        "/etc/example-music/sites.csv"
+    devices_csv:      "/etc/example-music/devices.csv"
+    ad_computers_json: "/etc/example-music/ad_computers.json"
     # ad_domain_name, ad_netbios_name, dc_hub_sites, dc_cld_site,
     # dc_dns_forwarders → group_vars/windows_dc/vars.yml (single source of truth).
     # 2026-09-25: dc_hub_sources/dc_cld_source (a hardcoded [CLD,FAL,ODE,BRK] candidate
     # list) retired -- see dc_source_resolution.yml's own changelog. Replication-source
     # candidates now come directly from devices.csv's real DCS rows instead.
+    # 2026-09-28: devices.csv's "real DCS row" signal alone stopped being sufficient the
+    # moment a standard site's own DCS (GOT) stopped carrying an explicit row at all --
+    # see dc_source_resolution.yml's own 2026-09-28 changelog entry. ad_computers_json
+    # (same deployed path 40-ad-computers.yml already reads) is now a second source for
+    # the same candidate list.
     # 2026-09-21 addition, Robert's explicit ask: dc_dns_forwarders (from
     # ad_forest.json) always includes 192.168.139.8 (VRK BIND9) as one global,
     # non-site-aware literal, applied to every DC in the forest -- found live
