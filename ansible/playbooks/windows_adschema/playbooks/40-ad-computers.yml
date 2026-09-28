@@ -152,16 +152,35 @@
   # 00-ad-preflight.yml (same file ad_target's own prompt already lives in),
   # published to hostvars['localhost'] the same way -- read back here with the
   # same fallback-chain shape ad_target's own hosts: line already uses.
+  #
+  # v2.2.2, 2026-09-28, CRITICAL FIX, found live (EXADCSGOT001): "Recursive
+  # loop detected in template: maximum recursion depth exceeded" the first
+  # time this play actually referenced exclude_dc_computer_accounts. Root
+  # cause: declaring exclude_dc_computer_accounts: "{{ exclude_dc_computer_accounts
+  # | default(...) }}" in this play's own vars: gives that name real
+  # precedence, so resolving it means resolving itself first -- genuine
+  # infinite self-reference, with no external override present (this play's
+  # own hosts:, EXADCSGOT001, never had it set as a host fact of its own).
+  # This is the EXACT bug already found and fixed in this repo two nights
+  # earlier (97a884b, bind9-dns.yml's dns_role/dns_secondary_ip/etc.) --
+  # walked straight into the identical trap writing this file's own v2.2.1
+  # fix, despite that commit's own writeup being right there. Fixed the
+  # same proven way: moved out of vars: into a one-shot pre_tasks set_fact
+  # below (not a play-level vars: declaration), so the identical default()
+  # expression resolves cleanly.
   vars:
     ad_domain:         "{{ dc_domain_name | default(exa_domain) }}"
     ad_computers_json: "/etc/example-music/ad_computers.json"
-    exclude_dc_computer_accounts: "{{ exclude_dc_computer_accounts | default(hostvars['localhost']['exclude_dc_computer_accounts'] | default('yes')) }}"
 
   pre_tasks:
 
     - name: "Skip — populate_ad not requested"
       meta: end_play
       when: (populate_ad | default('no')) | lower not in ['yes', 'y']
+
+    - name: "Resolve exclude_dc_computer_accounts (set_fact, not vars: -- see this play's own 2026-09-28 changelog above)"
+      set_fact:
+        exclude_dc_computer_accounts: "{{ exclude_dc_computer_accounts | default(hostvars['localhost']['exclude_dc_computer_accounts'] | default('yes')) }}"
 
     - name: Gate on /etc/example-music/* freshness
       include_tasks: ../../../tasks/example_music_freshness_gate.yml
