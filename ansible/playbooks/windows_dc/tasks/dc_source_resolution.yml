@@ -21,6 +21,12 @@
 # actually be promoted) just recreates a single point of failure that doesn't
 # reflect real AD semantics.
 #
+# 2026-09-28: devices.csv's real-DCS-row signal alone stopped covering every genuine
+# DC the moment a standard site's own DCS (first case: GOT) stopped carrying an
+# explicit row at all once built -- see this file's own 2026-09-28 changelog entry
+# below. Candidates are now the UNION of devices.csv's real DCS rows and
+# ad_computers.json's Enabled: true DCS records, deduped by site.
+#
 # If none of a site's candidates are reachable, dc_is_forest_root is decided
 # from dc_is_first_in_forest — answered upfront at the vars_prompt in
 # 00-dc-preflight.yml, not asked interactively mid-play here. "yes" sets
@@ -35,6 +41,17 @@
 # the target DC has Ansible connectivity.
 # =============================================================================
 # Changelog:
+#   2026-09-28  Found live, checking this file before CLD's own DC build: GOT's own
+#               devices.csv row was retired the same day (matching FAL/CLY/GLA's
+#               convention that a standard site's own DCS never gets an explicit row --
+#               see check_ad_data_integrity.py's matching fix), which silently dropped
+#               GOT out of --emit-devices-json's "Real": true set entirely (confirmed:
+#               a fresh run showed GOT as "Real": false despite being a genuine,
+#               dcdiag-confirmed DC). Added a second candidate source, ad_computers.json's
+#               own Enabled: true DCS records (the same file 40-ad-computers.yml already
+#               treats as authoritative) -- FRD/VRK/GOT all carry one regardless of
+#               whether devices.csv has a row for them, so this covers every real DC
+#               again without reintroducing a devices.csv row nothing else needs.
 #   2026-09-25  Robert, questioning why this was hardcoded at all: retired the
 #               site-role-gated [CLD,FAL,ODE,BRK] candidate list entirely. Confirmed live
 #               (EXADCSCLD001: DomainRole=2, AD-Domain-Services not installed) that the
@@ -129,6 +146,51 @@
   # "Real" field this depends on.
   loop_control:
     label: "{{ item.Hostname }}"
+
+# 2026-09-28: devices.csv's "Real" flag alone is no longer sufficient -- it comes only from
+# an explicit devices.csv row, and a standard site's own DCS (GOT, and any future non-
+# NON_STANDARD_SITES build) deliberately never gets one once built (see
+# generate_inventory.is_standard_synthesis_excluded(), added the same day, and
+# check_ad_data_integrity.py's matching fix). GOT's own devices.csv row was retired as
+# part of that fix, which silently dropped it out of --emit-devices-json's "Real": true
+# set entirely -- found live, before it could bite CLD's own promotion, by checking a
+# fresh --emit-devices-json run showed GOT as "Real": false despite being a genuine,
+# dcdiag-confirmed DC. ad_computers.json (the same file 40-ad-computers.yml already
+# treats as authoritative) is the second, correct source for this: FRD/VRK/GOT all carry
+# Enabled: true DCS records there regardless of whether devices.csv has a row for them.
+- name: "[Source] Load ad_computers.json (same file 40-ad-computers.yml treats as authoritative)"
+  set_fact:
+    _dc_ad_computers: "{{ lookup('file', ad_computers_json) | from_json }}"
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
+
+- name: "[Source] Add ad_computers.json's own real (Enabled: true) DCS records as candidates too"
+  set_fact:
+    dc_candidates: >-
+      {{ dc_candidates + [{
+        'site': item.Site,
+        'ip':   item.IPv4Address,
+        'fqdn': item.DNSHostName | lower
+      }] }}
+  loop: >-
+    {{
+      _dc_ad_computers
+      | selectattr('Role', 'equalto', 'DCS')
+      | selectattr('Enabled', 'equalto', true)
+      | rejectattr('Name', 'equalto', inventory_hostname | upper)
+      | rejectattr('Site', 'in', dc_candidates | map(attribute='site') | list)
+      | list
+    }}
+  # rejectattr('Site', 'in', ...) dedupes against the devices.csv-derived list above --
+  # FRD/VRK appear in both sources (they have a real devices.csv row AND an Enabled:
+  # true ad_computers.json record), and this list is evaluated once, up front, against
+  # dc_candidates' pre-loop value, so it correctly skips them here rather than adding a
+  # second, duplicate candidate for the same site.
+  loop_control:
+    label: "{{ item.Name }}"
 
 - name: "[Source] Show candidate list"
   debug:
