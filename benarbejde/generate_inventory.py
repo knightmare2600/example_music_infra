@@ -677,6 +677,29 @@ def needs_review(row: dict) -> bool:
     return False
   return not (row.get("OS", "") or "").strip()
 
+def is_standard_synthesis_excluded(dtype: str, site: str, octet, legacy_flag: bool = False) -> bool:
+  """True when a devices.csv row at this exact Type/Site/octet would be excluded by
+  load_devices() below as a duplicate of the automatic per-site standard-boilerplate
+  synthesis (i.e. no explicit devices.csv row is expected or needed for this device at
+  all -- its real address/identity comes purely from the standard template). Extracted
+  2026-09-28 from load_devices()'s own inline exclusion condition (previously the only
+  copy of this rule) so at_have_ryggen_fri/check_ad_data_integrity.py's
+  check_missing_devices_csv_row() can ask the same question in the other direction (a
+  real ad_computers.json record with no devices.csv row) without hand-rolling a second
+  copy of this exact three-clause condition -- see that check's own 2026-09-28 changelog
+  for the GOT DCS case that surfaced the gap: EXADCSGOT001 (Enabled: true, real OS) has
+  no devices.csv row at all once GOT's own new-site-boilerplate Planned=yes placeholder
+  row is retired on build, exactly like every other standard site's own DCS never having
+  one (FAL/CLY/GLA confirmed, none of the three has ever had an explicit DCS row in
+  either file) -- that absence is correct, not a gap, and this function is the single
+  place both load_devices() and the check now agree on that."""
+  return (
+    octet is not None and octet in STANDARD_OFFSETS.get(dtype, set())
+    and not (dtype in ("PVE", "DCS") and site in NON_STANDARD_SITES)
+    and not (dtype == "RTR" and not legacy_flag)
+  )
+
+
 def load_devices(devices_path: Path):
   """
   Reads devices.csv and returns (devices_by_site, stats) where devices_by_site maps
@@ -750,9 +773,7 @@ def load_devices(devices_path: Path):
     # carve-out is narrower: only a Legacy=no RTR row skips the standard-octet exclusion, using
     # the real distinguishing signal (Legacy status) instead of Type alone.
     legacy_flag = (r.get("Legacy") or "").strip().lower() in ("yes", "y", "true", "1")
-    if (octet is not None and octet in STANDARD_OFFSETS.get(dtype, set())
-        and not (dtype in ("PVE", "DCS") and site in NON_STANDARD_SITES)
-        and not (dtype == "RTR" and not legacy_flag)):
+    if is_standard_synthesis_excluded(dtype, site, octet, legacy_flag):
       stats["excluded_standard"] += 1
       continue
 
