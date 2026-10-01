@@ -46,7 +46,6 @@ complete_boilerplate() below.
 """
 import csv
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -54,6 +53,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 BENARBEJDE = REPO_ROOT / "benarbejde"
 DEVICES_CSV = BENARBEJDE / "devices.csv"
 PROXMOX_DEVICES_CSV = REPO_ROOT / "bootstrap" / "web" / "proxmox" / "devices.csv"
+
+sys.path.insert(0, str(BENARBEJDE))
+import regenerate_all as ra  # noqa: E402  -- the one shared "regenerate everything" implementation,
+# also used standalone (python3 benarbejde/regenerate_all.py) -- not a second copy
 DEVICES_CSV_COLUMNS = [
     "Site", "Type", "Number", "HostOctet", "OS", "ConnectionType", "Managed",
     "Notes", "SubnetSite", "Legacy", "Migrating", "Planned",
@@ -207,7 +210,13 @@ def write_rows_and_regenerate(site, rows):
     every derived artefact in the same run (Robert, 2026-09-24: skipping
     that "leaves operational gaps", so it's folded in here, not left as a
     separate manual step). Deliberately does NOT touch ad_computers.json --
-    see docs/adding-a-new-site.md's Phase 2."""
+    see docs/adding-a-new-site.md's Phase 2.
+
+    2026-10-01: the regeneration step itself now calls benarbejde/regenerate_all.py's
+    shared regenerate_all() instead of keeping its own private copy of the same five
+    commands -- that function was extracted FROM this one (the two were identical), so
+    this is now the only caller of the one real implementation, not a parallel copy that
+    could drift from it."""
     with DEVICES_CSV.open("a", newline="") as f:
         writer = csv.writer(f)
         for r in rows:
@@ -228,27 +237,7 @@ def write_rows_and_regenerate(site, rows):
     print(f"  Wrote devices.csv rows, synced {PROXMOX_DEVICES_CSV.relative_to(REPO_ROOT)}.")
 
     print("Regenerating derived artefacts...")
-    commands = [
-        (["bash", "-c",
-          f"yes | python3 {BENARBEJDE / 'generate_inventory.py'} {BENARBEJDE / 'sites.csv'} "
-          f"-o {REPO_ROOT / 'ansible' / 'configs' / 'inventory'} --devices {DEVICES_CSV}"],
-         "inventory .ini files"),
-        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
-          "--emit-group-vars", "--devices", str(DEVICES_CSV)], "group_vars"),
-        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
-          "--emit-begyndelse-json", "--devices", str(DEVICES_CSV)], "begyndelse.json"),
-        ([sys.executable, str(BENARBEJDE / "generate_inventory.py"), str(BENARBEJDE / "sites.csv"),
-          "--emit-site-grains-pillar", "--devices", str(DEVICES_CSV)], "Salt site-grains pillar"),
-        ([sys.executable, str(BENARBEJDE / "generate_network_diagrams.py"), "--write"],
-         "network diagrams"),
-    ]
-    for cmd, label in commands:
-        result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
-        if result.returncode != 0:
-            print(f"  [ERROR] Regenerating {label} failed:\n{result.stdout}\n{result.stderr}")
-            return False
-        print(f"  Regenerated {label}.")
-    return True
+    return ra.regenerate_all(REPO_ROOT, DEVICES_CSV, BENARBEJDE / "sites.csv")
 
 
 def complete_boilerplate(site, sites, boilerplate, problems):
