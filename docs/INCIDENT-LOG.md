@@ -34,6 +34,7 @@ Newest incident at the top, oldest at the bottom — read bottom-to-top for chro
 | [INC-2026-08-11-SALT-DISK-FULL](#inc-2026-08-11-salt-disk-full--root-filesystem-filled-by-an-oversized-git-clone-on-the-salt-master) | 2026-08-11 | The Salt master's root filesystem filled completely, blocking all login, because its git-based state/pillar delivery was cloning the estate's entire infrastructure repository in full |
 | [INC-2026-07-16-ANSIBLE-LOCK](#inc-2026-07-16-ansible-lock--ansible-account-administratively-locked-out-on-a-live-firewall-node) | 2026-07-16 | The `ansible` account's administrative lock rejected every login method, not just password, on a live firewall node |
 | [INC-2026-07-12-SSH-KEY](#inc-2026-07-12-ssh-key--lost-ssh-keypair-delayed-pve-node-deployment-in-scandinavia) | 2026-07-12 | Lost/forgotten SSH keypair delayed PVE node deployment in Scandinavia |
+| [INC-2026-05-04-KEEPASS-LOCKOUT](#inc-2026-05-04-keepass-lockout--a-corrupted-automation-password-locked-the-keepass-vault-recovered-only-by-luck) | 2026-05-04 | A single corrupted character — most likely a CR/LF mismatch — silently broke the KeePass automation's own copy of the vault's master password, locking the vault; recovered only because an older, still-valid copy happened to still be on disk. Logged and the harness hardened 2026-10-01, during a broader KeePass automation review |
 | [INC-2026-04-03-BMC-CREDS](#inc-2026-04-03-bmc-creds--mismatched-bmc-credentials-on-a-newly-delivered-fal-server) | 2026-04-03 | Vendor delivered the wrong physical chassis under otherwise-correct paperwork — documented BMC credentials didn't work on arrival at FAL |
 
 ---
@@ -578,6 +579,43 @@ To keep the affected build moving, the engineer generated a fresh keypair direct
 ### Executive Summary
 
 A gap in how SSH keypairs move from creation to actual use let a key go missing without anyone knowing, until a live deployment in Scandinavia needed it and lost time as a result. Nothing was lost that couldn't be regenerated, and the affected node was recovered the same day using existing, documented fallback access. The automation and its safety checks have both been updated so this specific failure mode is now caught immediately, with a clear explanation, instead of surfacing as an unexplained delay. This is how these incidents work: something exposes a gap nobody had reason to look for yet, it gets fixed, and the fix becomes a permanent part of how the estate protects itself going forward.
+
+---
+
+## INC-2026-05-04-KEEPASS-LOCKOUT — A corrupted automation password locked the KeePass vault, recovered only by luck
+
+### Incident Background
+
+**Date:** 4 May 2026
+**Scope:** `benarbejde/.keepassxc_master_password` — the KeePass automation's own machine-readable copy of the credential vault's unlock password — and the script that uses it to file credentials into the vault without a human present.
+**Cause (summary):** The automation's on-disk copy of the vault's master password had stopped matching the real password the vault was actually encrypted with, most likely corrupted by a single stray character picked up at some earlier save or copy. The mismatch was completely invisible until the file was actually relied on for a real unlock.
+
+A senior engineer was preparing to use the automation to file a freshly-generated batch of Directory Services Restore Mode (DSRM) passwords into the vault — the approach in use for that kind of one-off credential at the time; it has since been replaced with a purely manual, prompt-based flow (see `ansible/playbooks/windows_dc/playbooks/00-dc-preflight.yml`) specifically because of the caution this incident taught. The script failed outright: the vault would not unlock at all.
+
+### Root Cause & Mitigation
+
+With the automated path refusing to unlock the vault, the only reason this didn't become a full incident requiring every credential in the vault to be individually rotated was luck — an older copy of the master password, predating whatever had corrupted the live one, happened to still be available on disk. That older value opened the vault without any trouble, and was used to restore working access by hand the same day.
+
+Comparing the working and non-working values byte for byte (`xxd -p`) pointed to the difference being a single stray or missing character, consistent with a CR/LF line-ending mismatch — an extra carriage return, or a missing line feed, that would read identically to a human looking at the password as plain text but makes it a genuinely different string to anything that reads the file exactly as stored. This was the working conclusion reached from the evidence available at the time, not something independently re-proven byte-for-byte after the fact — most plausibly introduced by an editor or copy/paste step that handled line endings differently than whatever originally wrote the file.
+
+Nothing before this incident checked the master password file's own basic shape — whether it was genuinely one line, free of stray characters — before anything trusted it for a real unlock. The unlock failing was the first and only sign anything was wrong.
+
+### Lessons Learned
+
+- A machine-readable secret file can look completely correct to a human reading it as text while being byte-for-byte wrong in a way that stays invisible until the exact moment something tries to use it for real.
+- Having a second, independent copy of a critical value — even an old, otherwise-superseded one — turned what could have been a full credential-rotation event into a same-day fix. This is exactly why the vault's master password already has two separate storage mechanisms (a sealed physical backup, and this automation copy) rather than relying on just one.
+- Nothing in this estate's automation or its verification harness checked this file's own integrity before relying on it, and that gap sat completely unexamined for months after this incident — until a later, broader review of the KeePass automation finally found and closed it.
+
+### Improvements Made
+
+- The verification harness now reads the master password file's own raw bytes directly — not just what a forgiving reader sees after the trailing whitespace it already strips away — specifically checking for a stray carriage return, more than one line, or other non-printable corruption, before anything trusts it for a live unlock.
+- The same review sharpened how a failed unlock is actually reported: a wrong master password now produces one specific, unambiguous message naming the file as the likely cause, instead of a generic dump of raw command output that gave no hint where to even start looking.
+- The same review also closed a related gap: the automation's own "is this credential already in the vault" check only ever confirmed an entry existed, never that its stored value was actually correct. The harness now reads back every credential's real value from the live vault and compares it against what it should be.
+- Any future return to automated, on-demand credential generation for values like DSRM passwords will check the live vault directly before ever generating a new one, specifically so a corrupted or stale credential can never be silently duplicated or overwritten the way this incident showed was possible.
+
+### Executive Summary
+
+A single corrupted character — most likely an errant line ending from an earlier edit or copy — silently turned the KeePass automation's own stored copy of the vault's master password into a value that could no longer actually open the vault. The only reason this didn't force a full rotation of every credential in the vault was that an older, still-valid copy of the password happened to still be available and was used to restore access by hand the same day. Nothing checked this file's own basic integrity at the time, and the gap went unaddressed for months until a later, broader hardening of the KeePass automation found and closed it: the harness now checks this file's actual contents directly, and verifies every stored credential's value is genuinely correct, not just present.
 
 ---
 
