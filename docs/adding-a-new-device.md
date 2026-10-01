@@ -90,7 +90,23 @@ covers automatically (a site's router, DCs, Proxmox nodes, SBC, firewalls).
 ## 4. Regenerate everything downstream
 
 Nothing here writes itself — every generated artefact needs an explicit
-regeneration command after `devices.csv`/`role_codes.csv` changes.
+regeneration after `devices.csv`/`role_codes.csv` changes. Run the single
+orchestrator rather than the commands by hand:
+
+```bash
+python3 benarbejde/regenerate_all.py
+# or, to also run the full harness immediately afterward:
+python3 benarbejde/regenerate_all.py --verify
+```
+
+This is the one real implementation of the regeneration sequence — the exact
+same commands `at_have_ryggen_fri/check_new_site_boilerplate.py`'s own
+`--apply`/`--complete <SITE>` already use for the new-site-boilerplate
+workflow, extracted into `benarbejde/regenerate_all.py` so there's a single
+general entry point for any `benarbejde/` edit, not just that one case.
+
+<details>
+<summary>What it runs internally, if a step fails and you need to debug it directly</summary>
 
 ```bash
 # Inventory .ini files -- MUST pass -o explicitly. The default -o is
@@ -119,6 +135,13 @@ python3 benarbejde/generate_inventory.py benarbejde/sites.csv --emit-site-grains
 # writes docs/network-diagram/*.md in place.
 python3 benarbejde/generate_network_diagrams.py --write
 ```
+
+These five commands can't be combined into fewer calls — `generate_inventory.py`'s
+own flags are deliberately kept mutually exclusive per its 2026-07-30 changelog
+(an additive-flags attempt broke `check_generated_freshness.py`'s process
+isolation and leaked 52 stray `.ini` files into a default path). `regenerate_all.py`
+above runs them as genuinely separate subprocesses for exactly this reason.
+</details>
 
 `bootstrap/web/proxmox/`'s mirror copies of `sites.csv`/`devices.csv`/
 `address_policy.csv`/`role_codes.csv` do **not** need a manual copy step —
