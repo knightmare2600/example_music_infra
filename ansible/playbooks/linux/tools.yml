@@ -230,6 +230,8 @@
     devices_csv_src:   "{{ playbook_dir }}/../../../benarbejde/devices.csv"
     role_codes_csv_src: "{{ playbook_dir }}/../../../benarbejde/role_codes.csv"
     address_policy_src: "{{ playbook_dir }}/../../../benarbejde/address_policy.csv"
+    ad_site_topology_src: "{{ playbook_dir }}/../../../benarbejde/ad_site_topology.csv"
+    ad_hub_links_src:  "{{ playbook_dir }}/../../../benarbejde/ad_hub_links.csv"
     ad_forest_src:     "{{ playbook_dir }}/../../../benarbejde/ad_forest.json"
     ad_groups_src:     "{{ playbook_dir }}/../../../benarbejde/ad_groups.json"
     ad_users_src:      "{{ playbook_dir }}/../../../benarbejde/ad_users.json"
@@ -409,6 +411,25 @@
       ansible.builtin.copy:
         src:   "{{ address_policy_src }}"
         dest:  /etc/example-music/address_policy.csv
+        owner: root
+        group: root
+        mode:  '0644'
+
+    # Added 2026-10-01 alongside windows_dc/playbooks/30-dc-replicate.yml's new Stage 4b
+    # (ports Configure-ADSites.ps1's estate-wide AD Sites topology into Ansible) -- same
+    # deploy pattern as every other benarbejde/ CSV this control node needs read access to.
+    - name: Deploy ad_site_topology.csv to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ ad_site_topology_src }}"
+        dest:  /etc/example-music/ad_site_topology.csv
+        owner: root
+        group: root
+        mode:  '0644'
+
+    - name: Deploy ad_hub_links.csv to /etc/example-music
+      ansible.builtin.copy:
+        src:   "{{ ad_hub_links_src }}"
+        dest:  /etc/example-music/ad_hub_links.csv
         owner: root
         group: root
         mode:  '0644'

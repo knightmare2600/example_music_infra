@@ -60,7 +60,7 @@ DC-specific (this module's own `site.yml` — the only plays it actually imports
 | `playbooks/00-dc-preflight.yml`       | `dc_preflight` | Replication source resolution + cred prompt |
 | `playbooks/10-dc-install-features.yml`| `dc_features`  | AD-DS/DNS/GPMC feature install              |
 | `playbooks/20-dc-promote.yml`         | `dc_promote`   | Install-ADDSDomainController (or Forest)    |
-| `playbooks/30-dc-replicate.yml`       | `dc_replicate` | Force replication + SYSVOL + health check   |
+| `playbooks/30-dc-replicate.yml`       | `dc_replicate` | Force replication + SYSVOL + health check + estate-wide AD Sites topology (FAL/ODE/BRK/CLD only) |
 | `playbooks/40-dc-summary.yml`         | `dc_summary`   | dcdiag + colourised build report            |
 
 `00` is always the preflight ("before take off"); major steps increment by 10.
@@ -170,24 +170,16 @@ This is an operator-confirmed fact, not something inferred from the site
 code — a non-CLD site being built first (e.g. before CLD exists yet, or in
 a disconnected environment) is expected to answer "yes" too.
 
-### CLD (Datacenter)
+### Replication source — corrected 2026-10-01
 
-CLD probes FAL, then ODE, then BRK.
-
-### FAL (Head office)
-
-FAL DCs prefer to replicate from CLD if reachable.  If not, they replicate
-from ODE or BRK.
-
-### ODE and BRK (Regional hubs)
-
-Same logic as FAL — CLD first, then other hubs (skipping self).
-
-### Standard sites
-
-Standard site DCs probe CLD → FAL → ODE → BRK in order.  If none is
-reachable, the play falls back to any existing DC at `.10` for that site's
-subnet.
+The hardcoded CLD/FAL/ODE/BRK probe order described in earlier versions of this
+section was retired 2026-09-25 — confirmed live that none of those sites had
+actually been promoted at the time, making the hardcoded list itself unreachable.
+`tasks/dc_source_resolution.yml` now builds its candidate list dynamically from
+every real DCS record across `devices.csv` **and** `ad_computers.json` (added
+2026-10-01, see that file's own changelog), probing each over TCP/389 and taking
+the first reachable one — no site-role-based priority at all. Any already-promoted
+DC anywhere in the forest is a valid source; this just finds one that's actually up.
 
 ---
 
@@ -198,6 +190,18 @@ FSMO placement is **reported** in `30-dc-replicate.yml` for hub sites but
 
 Use `ntdsutil` or `Move-ADDirectoryServerOperationMasterRole` manually after
 reviewing the summary output.
+
+## AD Sites topology (estate-wide)
+
+`30-dc-replicate.yml`'s "Stage 4b" ensures the full estate's AD Sites topology —
+every site's AD Site + LAN/VPN subnet objects, spoke site links to its hub, and
+the FAL-ODE/FAL-BRK hub-to-hub links — driven by `benarbejde/ad_site_topology.csv`
+(Site,Hub,Cost,Freq) and `ad_hub_links.csv`. Runs only when the DC being
+replicated is at FAL, ODE, BRK or CLD (same gate as the FSMO check above), since
+those are the sites this was originally meant to be run from. Idempotent, ~99
+AD object checks per run — ports `bootstrap/web/windows/Configure-ADSites.ps1`,
+which is marked superseded pending live confirmation (see that file's own
+header).
 
 ---
 
