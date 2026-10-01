@@ -33,9 +33,33 @@ clone will never have, so only the JSON side can be a hard, always-on check.
     matching check_ssh_keys.py's Tier 2 precedent exactly -- this tier is
     silently skipped (not failed) when they're absent.
 
-Exit code: 0 unless a Tier 1 (JSON-side) check fails. Tier 2 drift is printed
-and counted but never fails the run by itself -- run.sh's --strict flag
-escalates it the same way it already does for check_ssh_keys.py.
+  Tier 2b, added 2026-10-01 -- master-password file hygiene (host-local,
+  informational, runs whenever the file exists regardless of whether the live
+  vault does): Robert described a real vault lockout -- a master password "off
+  by one character, maybe an LF/CR issue," recovered only by luck, finding an
+  old working copy, never logged anywhere. Checks the file's own raw bytes for
+  the shapes that actually cause this: an embedded \r (CRLF corruption), more
+  than one line, or non-printable junk -- cheap, file-only, no live vault
+  needed. Also sharpens the existing Tier 2 dry-run failure path: a wrong
+  master password makes keepassxc-cli fail with a specific, recognisable
+  "Invalid credentials" message -- previously dumped as a generic "unexpected
+  output," now called out explicitly so this exact incident is unmistakable
+  next time instead of a confusing dead end.
+
+  Tier 2c, added 2026-10-01 -- live value verification (host-local,
+  informational, same preconditions as Tier 2): push_credentials_to_keepass.py's
+  own "already present" check only confirms an entry EXISTS at a path --
+  never that its stored password is actually correct (confirmed directly:
+  dedup is by `keepassxc-cli ls -R` path/hostname presence only, no `show`-
+  and-compare step anywhere in that script). For every entry Tier 2 already
+  confirms is present, does a read-only `keepassxc-cli show -s -a Password`
+  and compares the live vault's actual stored value against
+  extracted_credentials.json's own recorded value -- closes the real "was it
+  ever actually added AND correct" gap this whole mechanism used to have.
+
+Exit code: 0 unless a Tier 1 (JSON-side) check fails. Tier 2/2b/2c drift is
+printed and counted but never fails the run by itself -- run.sh's --strict
+flag escalates it the same way it already does for check_ssh_keys.py.
 """
 import json
 import re
@@ -50,6 +74,9 @@ PUSH_SCRIPT = BENARBEJDE_DIR / "push_credentials_to_keepass.py"
 MASTER_PASSWORD_FILE = BENARBEJDE_DIR / ".keepassxc_master_password"
 DEFAULT_DB = Path.home() / "KeePassXC" / "ExampleMusic.kdbx"
 
+sys.path.insert(0, str(BENARBEJDE_DIR))
+import push_credentials_to_keepass as pck  # noqa: E402 -- reuse GROUP_FOR_ROLE, not a second copy
+
 REQUIRED_FIELDS = ("hostname", "site", "role", "credential")
 # Kept in sync by hand with push_credentials_to_keepass.py's GROUP_FOR_ROLE --
 # both files agree this is a known, small, deliberately-curated set.
@@ -57,19 +84,22 @@ KNOWN_ROLES = {"RAC", "ILO", "SWI", "RTR", "FWL", "SBC", "PHN", "RMM"}
 
 
 def check_credentials_json():
-    """Tier 1: extracted_credentials.json is well-formed and internally consistent."""
+    """Tier 1: extracted_credentials.json is well-formed and internally consistent.
+    Returns (failures, entries) -- entries is None if the file couldn't even be loaded
+    as a JSON array, otherwise the parsed list (2026-10-01: also returned now, not just
+    failures, so Tier 2c can reuse this one load instead of a second, separate read)."""
     failures = []
 
     if not CREDENTIALS_JSON.exists():
-        return [f"{CREDENTIALS_JSON.relative_to(REPO_ROOT)} does not exist."]
+        return [f"{CREDENTIALS_JSON.relative_to(REPO_ROOT)} does not exist."], None
 
     try:
         entries = json.loads(CREDENTIALS_JSON.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        return [f"{CREDENTIALS_JSON.relative_to(REPO_ROOT)} is not valid JSON: {exc}"]
+        return [f"{CREDENTIALS_JSON.relative_to(REPO_ROOT)} is not valid JSON: {exc}"], None
 
     if not isinstance(entries, list):
-        return [f"{CREDENTIALS_JSON.relative_to(REPO_ROOT)} must be a JSON array at the top level."]
+        return [f"{CREDENTIALS_JSON.relative_to(REPO_ROOT)} must be a JSON array at the top level."], None
 
     seen = set()
     for i, entry in enumerate(entries):
@@ -102,7 +132,7 @@ def check_credentials_json():
             failures.append(f"{label}: duplicate (hostname, role) pair {key} -- would collide on push.")
         seen.add(key)
 
-    return failures
+    return failures, entries
 
 
 def check_live_vault_freshness():
@@ -133,6 +163,22 @@ def check_live_vault_freshness():
 
     m = re.search(r"^(\d+) added,", result.stdout, re.MULTILINE)
     if not m:
+        # 2026-10-01: confirmed live (a real throwaway test vault) that keepassxc-cli's own
+        # wrong-password error is always this exact substring -- call it out by name instead of
+        # dumping a generic "unexpected output" block, so a corrupted .keepassxc_master_password
+        # (the real incident this check exists to prevent a repeat of) is unmistakable rather than
+        # a confusing dead end that takes luck to diagnose.
+        if "Invalid credentials were provided" in result.stderr:
+            issues.append(
+                f"{MASTER_PASSWORD_FILE.relative_to(REPO_ROOT)} does NOT unlock the live vault -- "
+                f"keepassxc-cli rejected it outright (\"Invalid credentials were provided\"). This "
+                f"is exactly the shape of a real past incident: the file's content doesn't match "
+                f"the vault's actual current master password (stale, corrupted, or never updated "
+                f"after a rotation). Verify by hand: "
+                f"keepassxc-cli ls {DEFAULT_DB} < {MASTER_PASSWORD_FILE.relative_to(REPO_ROOT)} -- "
+                f"do not wait until a live credential push or DC build depends on this working."
+            )
+            return issues, info
         issues.append(
             f"{PUSH_SCRIPT.relative_to(REPO_ROOT)} --dry-run produced unexpected output -- couldn't "
             f"find the summary line. Output:\n{result.stdout}\n{result.stderr}"
@@ -152,9 +198,153 @@ def check_live_vault_freshness():
     return issues, info
 
 
+def check_master_password_file_hygiene():
+    """Tier 2b, 2026-10-01: cheap, file-only checks on .keepassxc_master_password's own
+    raw bytes, independent of whether the live vault is even present on this host --
+    catches a corrupted/malformed master-password file before anything ever tries to use
+    it for a real unlock. Robert: a real vault lockout happened from a password that was
+    "off by one character, maybe an LF/CR issue" -- recovered only by luck, finding an old
+    working copy, never logged or checked for anywhere. Reads raw bytes, not read_text(),
+    deliberately -- push_credentials_to_keepass.py's own load_master_password() already
+    does read_text().strip(), which silently absorbs a trailing \\n/\\r\\n and would never
+    surface this class of corruption at all; this check looks at what's actually ON DISK."""
+    issues = []
+    info = []
+
+    if not MASTER_PASSWORD_FILE.exists():
+        info.append(
+            f"{MASTER_PASSWORD_FILE.relative_to(REPO_ROOT)} not found on this host -- Tier 2b "
+            f"skipped (local-only, gitignored automation copy)."
+        )
+        return issues, info
+
+    raw = MASTER_PASSWORD_FILE.read_bytes()
+    rel = MASTER_PASSWORD_FILE.relative_to(REPO_ROOT)
+
+    if b"\r" in raw:
+        issues.append(
+            f"{rel} contains a carriage return (\\r) -- a classic CRLF-corruption shape "
+            f"(a Windows-sourced copy/paste, or an editor that saved with CRLF line endings). "
+            f"The real master password almost certainly does not include this character -- "
+            f"this is exactly the kind of one-character-off difference that caused a real "
+            f"lockout before. Re-save this file with LF-only line endings."
+        )
+
+    text = raw.decode("utf-8", errors="replace")
+    non_empty_lines = [line for line in text.splitlines() if line != ""]
+
+    if not non_empty_lines:
+        issues.append(f"{rel} is empty -- no master password recorded at all.")
+        return issues, info
+
+    if len(non_empty_lines) > 1:
+        issues.append(
+            f"{rel} has {len(non_empty_lines)} non-empty lines -- the master password must be "
+            f"exactly one line. Extra lines suggest a paste error (e.g. pasting a multi-line "
+            f"clipboard, or appending instead of overwriting on a rotation)."
+        )
+
+    value = non_empty_lines[0]
+    non_printable = sorted({c for c in value if not c.isprintable()})
+    if non_printable:
+        issues.append(
+            f"{rel}'s first line contains non-printable character(s) "
+            f"({', '.join(hex(ord(c)) for c in non_printable)}) -- worth confirming this is "
+            f"genuinely part of the real password and not leftover corruption."
+        )
+
+    if not issues:
+        info.append(f"{rel}: single line, LF-only, no non-printable characters -- hygiene OK.")
+
+    return issues, info
+
+
+def check_live_vault_values(credentials):
+    """Tier 2c, 2026-10-01: for every extracted_credentials.json entry the live vault
+    already has AN entry for, read back its actual stored password (read-only --
+    `keepassxc-cli show -s -a Password`, never add/edit) and compare it against the
+    JSON's own recorded value. push_credentials_to_keepass.py's own "already present"
+    check (list_existing_entries(), `keepassxc-cli ls -R`) only confirms a path EXISTS --
+    confirmed directly, there is no show-and-compare step anywhere in that script, so a
+    stale, manually-edited, or never-correctly-pushed value would report as "already
+    present" forever and nothing would ever notice. This is the direct fix for Robert's
+    "unsure if passwords were ever added AND correct" -- from here on, this check would
+    notice. Same preconditions/gating as check_live_vault_freshness() -- only called when
+    both the live vault and the master-password file already exist."""
+    issues = []
+    info = []
+    password = MASTER_PASSWORD_FILE.read_text().strip()
+    checked = 0
+    mismatches = 0
+
+    for entry in credentials:
+        if not isinstance(entry, dict):
+            continue
+        role = entry.get("role")
+        group_tmpl = pck.GROUP_FOR_ROLE.get(role)
+        if group_tmpl is None:
+            continue  # unmapped role -- Tier 1 already reports this
+        site = entry.get("site")
+        hostname = entry.get("hostname")
+        cred = entry.get("credential") or ""
+        if not site or not hostname or " / " not in cred:
+            continue  # malformed -- Tier 1 already reports this
+        group = group_tmpl.format(site=site)
+        path = f"{group}/{hostname}"
+        _, expected_password = cred.split(" / ", 1)
+
+        try:
+            result = subprocess.run(
+                ["keepassxc-cli", "show", "-s", "-a", "Password", str(DEFAULT_DB), path],
+                input=(password + "\n").encode(), capture_output=True, timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            issues.append(f"{path}: could not run keepassxc-cli show to verify -- {exc}")
+            continue
+
+        if result.returncode != 0:
+            stderr = result.stderr.decode(errors="replace")
+            if "Could not find entry" in stderr:
+                # Not pushed yet -- check_live_vault_freshness() (Tier 2) already reports
+                # this via its own "would add" count. Not this check's job to repeat it.
+                continue
+            issues.append(f"{path}: could not read back to verify -- {stderr.strip()}")
+            continue
+
+        actual_password = result.stdout.decode(errors="replace").strip()
+        checked += 1
+        if actual_password != expected_password:
+            mismatches += 1
+            issues.append(
+                f"{path}: the password STORED in the live vault does not match "
+                f"extracted_credentials.json's own recorded value for {hostname} -- either "
+                f"the vault entry was manually edited/rotated without updating the JSON, or "
+                f"the wrong value was pushed in the first place. This is exactly the gap "
+                f"push_credentials_to_keepass.py's existence-only check can never catch on "
+                f"its own."
+            )
+
+    if checked and not mismatches:
+        info.append(
+            f"Verified {checked} live vault password(s) against extracted_credentials.json's "
+            f"own recorded values -- all match."
+        )
+
+    return issues, info
+
+
 def main():
+    # 2026-10-01: run.sh's own `grep -oE '^[0-9]+ local-only issue'` extracts exactly ONE
+    # count from this script's stdout for its --strict arithmetic comparison -- confirmed
+    # by reading run.sh directly before adding Tier 2b/2c, rather than printing a second/
+    # third "N local-only issue(s)" line and silently breaking that contract. All
+    # host-local, informational findings across every 2-tier accumulate into one combined
+    # list; each tier still prints its own detail, but the summary line run.sh depends on
+    # is printed exactly once, at the end, with the true total.
+    all_local_issues = []
+
     print("-- Tier 1: benarbejde/extracted_credentials.json structure --")
-    json_failures = check_credentials_json()
+    json_failures, entries = check_credentials_json()
     if json_failures:
         print(f"{len(json_failures)} problem(s):")
         for f in json_failures:
@@ -167,10 +357,37 @@ def main():
     local_issues, local_info = check_live_vault_freshness()
     for line in local_info:
         print(f"  {line}")
-    if local_issues:
-        print(f"{len(local_issues)} local-only issue(s) (informational; --strict fails on this):")
-        for issue in local_issues:
+    for issue in local_issues:
+        print(f"  {issue}")
+    all_local_issues += local_issues
+
+    print()
+    print("-- Tier 2b: .keepassxc_master_password file hygiene (host-local, informational) --")
+    hygiene_issues, hygiene_info = check_master_password_file_hygiene()
+    for line in hygiene_info:
+        print(f"  {line}")
+    for issue in hygiene_issues:
+        print(f"  {issue}")
+    all_local_issues += hygiene_issues
+
+    print()
+    print("-- Tier 2c: live vault value verification (host-local, informational) --")
+    if entries and DEFAULT_DB.exists() and MASTER_PASSWORD_FILE.exists():
+        value_issues, value_info = check_live_vault_values(entries)
+        for line in value_info:
+            print(f"  {line}")
+        for issue in value_issues:
             print(f"  {issue}")
+        all_local_issues += value_issues
+    else:
+        print("  Skipped -- needs Tier 1's entries plus both the live vault and master-password file.")
+
+    print()
+    if all_local_issues:
+        print(
+            f"{len(all_local_issues)} local-only issue(s) across Tiers 2/2b/2c "
+            f"(informational; --strict fails on this)."
+        )
 
     if json_failures:
         return 1

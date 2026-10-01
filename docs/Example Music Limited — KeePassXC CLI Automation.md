@@ -282,6 +282,15 @@ if __name__ == "__main__":
 > were never affected by this particular bug — but nobody would have known that using this script
 > as written, which is the whole reason to actually run a doc's code before trusting it.)
 
+> **Correction (2026-10-01):** the vault file itself was later renamed from `Example Music.kdbx`
+> (as it genuinely was named at the time the two correction notes above were written) to
+> `ExampleMusic.kdbx` — no space — per `benarbejde/push_credentials_to_keepass.py`'s own
+> 2026-08-07 changelog entry (a space in the filename is a shell-escaping hazard). Both scripts'
+> own `DEFAULT_DB` now expect the no-space name; the live file on disk already matches. The two
+> notes above are left as-written (they're accurate for what the file was actually called when
+> each was recorded) rather than silently edited, per this repo's own "additions and corrections
+> only" convention — read `Example Music.kdbx` above as historical, not current.
+
 ------
 
 # 6. Usage Examples
