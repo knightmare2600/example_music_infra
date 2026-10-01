@@ -700,6 +700,33 @@ def is_standard_synthesis_excluded(dtype: str, site: str, octet, legacy_flag: bo
   )
 
 
+def policy_expected_octet(role, number):
+  """address_policy.csv's own opinion of where a given Type's Nth instance belongs, from
+  this module's own OFFSETS_SINGLE/ROLE_OFFSETS -- moved here 2026-10-01 from
+  at_have_ryggen_fri/check_ad_data_integrity.py (where it was first written) so
+  check_criticality_alarm.py can reuse it too, for the exact same reason
+  is_standard_synthesis_excluded() was already moved here 2026-09-28: no existing
+  convention in this harness has one check script import from another, so the real
+  shared home for "a pure function over generate_inventory.py's own address-policy data"
+  is generate_inventory.py itself, not whichever check happened to need it first.
+
+  Returns ("exact", octet) when the Type+Number maps to one specific address (every
+  OFFSETS_SINGLE/ROLE_OFFSETS Type, including BMC itself); ("pool", {octets}) for
+  ILO/RAC, which share BMC's pool but have no fixed per-instance position (a real
+  ILO/RAC can legitimately sit at whichever pool slot was physically free -- CLY's own
+  real ILO/RAC landed on .3/.4, not .2/.3, see [[project_ilo_rac_bmc_convention_2026_09_24]]);
+  or None when address_policy.csv has no convention for this Type at all (ad hoc
+  device classes like VCU, LCD, SVR -- devices.csv's own real row, when one exists, is
+  the only source of truth for these)."""
+  if number == 1 and role in OFFSETS_SINGLE:
+    return ("exact", OFFSETS_SINGLE[role])
+  if role in ROLE_OFFSETS and 1 <= number <= len(ROLE_OFFSETS[role]):
+    return ("exact", ROLE_OFFSETS[role][number - 1])
+  if role in ("ILO", "RAC") and "BMC" in ROLE_OFFSETS:
+    return ("pool", set(ROLE_OFFSETS["BMC"]))
+  return None
+
+
 def load_devices(devices_path: Path):
   """
   Reads devices.csv and returns (devices_by_site, stats) where devices_by_site maps
