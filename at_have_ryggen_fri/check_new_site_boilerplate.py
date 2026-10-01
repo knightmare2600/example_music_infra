@@ -123,6 +123,43 @@ def load_ad_computers_sites(problems):
     return sites
 
 
+def load_real_ad_computer_types(site, problems):
+    """Every distinct Role this site has at least one Enabled: true ad_computers.json
+    record for -- a second, independent source of "is this boilerplate Type already
+    represented," alongside load_site_types()'s own devices.csv-only view.
+
+    Needed because devices.csv is NOT the only source of truth for "is this Type real" --
+    a built standard site's own DCS (and potentially other Types, if the same treatment is
+    ever applied to them) deliberately gets NO devices.csv row at all once real, relying
+    entirely on generate_inventory.py's standard-slot synthesis instead -- see
+    generate_inventory.is_standard_synthesis_excluded() and
+    [[project_got_dc_computer_account_incident_2026_09_26]]'s own 2026-09-28 resolution.
+    load_site_types() alone can never see a Type that's real SPECIFICALLY BECAUSE its
+    devices.csv row was correctly retired -- it would look identical to a Type that was
+    never built at all.
+
+    Found live 2026-10-01: complete_boilerplate() re-wrote a stale Planned=yes DCS row for
+    GOT (whose real devices.csv row had been deliberately removed days earlier) because
+    this cross-check didn't exist yet -- caught via git diff before committing, reverted.
+    This is a general fix, not a DCS special-case: several other boilerplate Types (SWI,
+    RTR, FWL, WAP, ...) already get real ad_computers.json records too, so the same blind
+    spot could recur for any of them, not just DCS."""
+    types = set()
+    try:
+        computers = json.loads((BENARBEJDE / "ad_computers.json").read_text())
+        for c in computers:
+            if (c.get("Site") or "").strip() != site:
+                continue
+            if not c.get("Enabled"):
+                continue
+            role = (c.get("Role") or "").strip().upper()
+            if role:
+                types.add(role)
+    except Exception as e:
+        problems.append(f"ad_computers.json: could not load -- {e}")
+    return types
+
+
 def load_boilerplate(problems):
     try:
         return json.loads((BENARBEJDE / "standard_site_boilerplate.json").read_text())
@@ -245,7 +282,11 @@ def complete_boilerplate(site, sites, boilerplate, problems):
     -- Robert, 2026-09-24, asking whether an already-started site like FAX
     has everything: it doesn't. Unlike --apply, requires the site to
     already have at least one real row (an empty site should use --apply
-    instead, which is stricter about starting from nothing)."""
+    instead, which is stricter about starting from nothing).
+
+    2026-10-01: "already have" now means devices.csv OR a real (Enabled: true)
+    ad_computers.json record -- see load_real_ad_computer_types()'s own docstring for the
+    live incident (a stale Planned=yes DCS row re-written for GOT) that found this gap."""
     excluded = set(boilerplate.get("excluded_sites", []))
 
     if site not in sites:
@@ -265,6 +306,16 @@ def complete_boilerplate(site, sites, boilerplate, problems):
         print(f"[ERROR] '{site}' has zero existing devices.csv rows -- use --apply instead, "
               f"not --complete (this is specifically for filling gaps in an already-started site).")
         return 1
+
+    # devices.csv alone is not sufficient -- see load_real_ad_computer_types()'s own
+    # docstring for why (a built standard site's DCS, and potentially other Types later,
+    # deliberately has no devices.csv row at all once real).
+    real_ad_types = load_real_ad_computer_types(site, problems)
+    if problems:
+        print("\n".join(problems))
+        return 1
+    covered_via_ad_only = real_ad_types - existing_types
+    existing_types = existing_types | real_ad_types
 
     all_rows = build_boilerplate_rows(site, boilerplate)
     incomplete = [r for r in all_rows if r["octet"] is None]
@@ -287,6 +338,10 @@ def complete_boilerplate(site, sites, boilerplate, problems):
     missing = [r for r in all_rows if r["role"] not in existing_types]
 
     print(f"'{site}' already has: {', '.join(sorted({r['role'] for r in have})) or '(none)'}")
+    covered_in_have = covered_via_ad_only & {r["role"] for r in have}
+    if covered_in_have:
+        print(f"  (of those, covered via a real ad_computers.json record with no devices.csv "
+              f"row at all -- this is expected, not a gap: {', '.join(sorted(covered_in_have))})")
     if not missing:
         print(f"'{site}' already has every boilerplate Type represented -- nothing to add.")
         return 0
