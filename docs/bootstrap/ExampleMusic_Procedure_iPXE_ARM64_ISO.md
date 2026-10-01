@@ -349,6 +349,28 @@ The ISO is then used directly in VMware Fusion — attach as a CD/DVD drive in t
 
 ---
 
+### Secure Boot variant — no build required
+
+A UEFI Secure Boot-capable arm64 iPXE build (`ipxe-arm64-sb.iso`) cannot be custom-built at
+all — Secure Boot is specifically designed to prevent exactly that (see `ipxe.org/secboot`)
+— so Steps 1–6 above don't apply to it. It's an official, pre-built, signed release asset
+from `ipxe/ipxe`'s own GitHub releases, fetched on demand by
+`bootstrap/setup-workstation-linux.sh`/`-macos.sh`/`Setup-Workstation.ps1` via
+`benarbejde/asset_manifest.json` (same `github_release` mechanism as `wimboot`, verified
+against the GitHub API's own per-asset digest — not vendored into the repo or LFS at all).
+Lands at `bootstrap/web/ipxe/arm64/ipxe-arm64-sb.iso` once fetched, same `ipxe/arm64/`
+convention as the custom-built ISO above.
+
+This file is missing several features a normal iPXE build has (forbidden under Secure
+Boot), so it is a genuinely different image, not an alternate filename for the same thing
+— `bootstrap/web/proxmox/create-vm.py`'s `select_iso()` deliberately never auto-pre-selects
+it (see that function's own 2026-10-01 changelog entry), even when it's the only other
+arm64 iPXE ISO present in Proxmox local storage. Pick it explicitly from the numbered list
+when a VM genuinely needs Secure Boot; use the plain `ipxe_arm64.iso`/`ipxe-arm64.iso`
+otherwise.
+
+---
+
 ## Troubleshooting
 
 ### Fusion says "No bootable media"
@@ -396,6 +418,7 @@ On Fredericia (VMware Fusion NAT), the gateway is `172.16.124.2` and the boot se
 |------|----------------------|---------|
 | `ipxe-arm64.iso` | `ipxe/arm64/` | Bootable ISO for VMware Fusion ARM64 VMs |
 | `bin-arm64-efi/ipxe.efi` | Build artefact only | ARM64 iPXE EFI binary (embedded in ISO) |
+| `ipxe-arm64-sb.iso` | `ipxe/arm64/` | Secure Boot-capable variant — fetched on demand, not built (see above) |
 
 ---
 

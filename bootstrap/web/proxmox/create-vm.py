@@ -845,18 +845,30 @@ def select_iso(proxmox, node, node_arch="x86_64", label="ISO", required=True):
     # target node — wrong on an arm64 node, where ipxe_amd64.iso can't even boot (i440fx/
     # q35 don't exist there). Now driven by node_arch, detected once per session via
     # detect_node_arch().
+    #
+    # 2026-10-01: a Secure-Boot-signed iPXE build (ipxe-arm64-sb.iso, fetched on demand via
+    # asset_manifest.json -- see its own entry) is a genuinely different, more restricted
+    # image than the plain arm64 ISO (SB builds are missing several features UEFI Secure
+    # Boot forbids), not just an alternate filename for the same thing -- this script has
+    # no concept of "this VM actually has Secure Boot enabled" at all (only a seabios/ovmf
+    # choice, see select_bios_rom()), so there is no correct signal to decide FOR the
+    # operator which one a given VM needs. Found before it could bite anyone: once both
+    # ISOs exist together in local storage, isos' own alphabetical sort (ipxe-arm64-sb.iso
+    # before ipxe_arm64.iso, hyphen < underscore) would have made the SB build the silent
+    # new default for every arm64 VM, Secure Boot or not. Excluded from auto-pre-select
+    # entirely -- still listed and manually selectable, just never assumed.
     other_arch = "amd64" if node_arch == "arm64" else "arm64"
     this_arch  = "arm64" if node_arch == "arm64" else "amd64"
     default = None
     volids  = [(i, iso.get("volid", "").lower()) for i, iso in enumerate(isos, 1)]
     for i, volid in volids:
-        if "ipxe" in volid and this_arch in volid:
+        if "ipxe" in volid and this_arch in volid and "-sb" not in volid and "_sb" not in volid:
             default = str(i)
             info(f"ipxe_{this_arch} ISO detected — pre-selected as option {i}")
             break
     if default is None:
         for i, volid in volids:
-            if "ipxe" in volid and other_arch not in volid:
+            if "ipxe" in volid and other_arch not in volid and "-sb" not in volid and "_sb" not in volid:
                 default = str(i)
                 info(f"iPXE ISO detected — pre-selected as option {i}")
                 break
