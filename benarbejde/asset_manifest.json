@@ -135,7 +135,24 @@
     "            upstream limitation, not something worth working around by hashing the whole",
     "            .app bundle on every run). No windows-arm64 asset exists upstream at all (only",
     "            windows-x64/windows-x86) -- the existing 'no asset for this platform_key' warning",
-    "            path already handles that gracefully, no code change needed for it."
+    "            path already handles that gracefully, no code change needed for it.",
+    "2026-10-01  Added ipxe-arm64-sb.iso (ipxe/ipxe, pinned v2.0.0) -- the official, Secure-",
+    "            Boot-signed arm64 iPXE build, parked 2026-09-16 pending Robert's return from",
+    "            Denmark. Deliberately fetched on demand rather than committed (this repo's",
+    "            arm64 ISO set otherwise lives as a plain committed binary under bootstrap/",
+    "            arm64/ -- not here, not LFS -- Robert's explicit call: avoid adding to that",
+    "            footprint for a file with a real, stable upstream). Confirmed live via the",
+    "            GitHub API that the real release asset is named exactly 'ipxe-arm64-sb.iso'",
+    "            and its digest matches the checksum Robert captured by hand in 2026-09-16's",
+    "            session (8ae8d7d9...e65526). Serves two consumers from the one fetched file:",
+    "            HTTP-served from bootstrap/web/ipxe/arm64/ for VMware Fusion arm64 VMs (same",
+    "            convention ExampleMusic_Procedure_iPXE_ARM64_ISO.md already documents for the",
+    "            hyphenated, custom-built ipxe-arm64.iso), and as bulk_iso_upload.py's own",
+    "            --directory input for pushing into Proxmox local ISO storage, where create-",
+    "            vm.py's select_iso() picks it up -- see that function's own 2026-10-01",
+    "            changelog entry for why it's excluded from auto-pre-select there (a real,",
+    "            not just cosmetic, functional difference from the non-SB build, not safe to",
+    "            silently default to)."
   ],
 
   "assets": [
@@ -154,6 +171,8 @@
     { "dest": "winpe/x86_64/wimboot", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot" },
     { "dest": "winpe/x86_64/wimboot.i386", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot.i386" },
     { "dest": "winpe/arm64/wimboot.arm64", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot.arm64" },
+
+    { "dest": "ipxe/arm64/ipxe-arm64-sb.iso", "source_type": "github_release", "repo": "ipxe/ipxe", "tag": "v2.0.0", "asset_name": "ipxe-arm64-sb.iso" },
 
     { "dest": "openbsd/7.9/x86_64/bsd.rd", "source_type": "url_with_checksum_file",
       "url": "https://cdn.openbsd.org/pub/OpenBSD/7.9/amd64/bsd.rd",
