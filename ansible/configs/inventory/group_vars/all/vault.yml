@@ -21,7 +21,11 @@
 #               config level, not just in this playbook's own allow-list.
 # =============================================================================
 
-vault_local_admin_password:   "CHANGEME"
+vault_local_admin_password:   "CHANGEME"  # 2026-10-01: confirmed unused (grepped -- zero
+# {{ vault_local_admin_password }} references anywhere in this repo). Left unfilled
+# deliberately, not an oversight -- see at_have_ryggen_fri/demurred.yml's own entry for
+# check_vault_placeholders.py ("Not yet needed live -- no playbook run has required a
+# real value yet", Robert, 2026-09-26). Fill in only once something actually consumes it.
 vault_domain_join_password:   "CHANGEME"
 vault_winrm_password:         "CHANGEME"
 vault_snmp_write_community:   "CHANGEME"
