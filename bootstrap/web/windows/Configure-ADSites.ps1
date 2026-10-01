@@ -2,6 +2,18 @@
 .SYNOPSIS
   Configure AD Sites, Subnets and Site Links for jukebox.internal
 
+  SUPERSEDED, 2026-10-01, PENDING LIVE CONFIRMATION: this script's own logic (topology,
+  subnet derivation, idempotent site/subnet/link creation) has been ported into
+  ansible/playbooks/windows_dc/playbooks/30-dc-replicate.yml's new "Stage 4b", driven
+  by benarbejde/ad_site_topology.csv + ad_hub_links.csv instead of this file's own
+  hardcoded $SiteTopology table (which also never had a row for CLD/FRD/VRK or 12 other
+  sites added since this script was last touched -- see those two CSVs' own files for the
+  corrected, complete topology). Runs automatically on every FAL/ODE/BRK/CLD DC build or
+  replication-health run, so this script no longer needs to be run by hand from
+  EXADCSFAL001. Kept here, not yet deleted, until the Ansible port is confirmed live
+  against a real DC -- once that happens, retire this file entirely rather than leaving
+  it as a banner-only stub (see [[feedback_dont_leave_superseded_content_banner_only]]).
+
 .DESCRIPTION
   Creates AD replication sites, LAN and VPN subnets, and site links
   that mirror the WireGuard hub topology. Idempotent — skips objects

@@ -72,6 +72,8 @@
 
   vars:
     sites_csv:              "/etc/example-music/sites.csv"
+    dc_site_topology_csv:   "/etc/example-music/ad_site_topology.csv"
+    dc_hub_links_csv:       "/etc/example-music/ad_hub_links.csv"
     dc_sysvol_wait_retries: 20
     dc_sysvol_wait_delay:   30     # seconds between retries (total up to 10 min)
 
@@ -92,6 +94,20 @@
     ansible_port:       22
     ansible_user:       "{{ dc_local_user }}"
     ansible_password:   "{{ dc_local_password }}"
+
+  # 2026-10-01: this file reads sites.csv directly (Stage 4's own "[Site fix]" task, long-
+  # standing) and now ad_site_topology.csv/ad_hub_links.csv too (new Stage 4b) via
+  # delegate_to: localhost against /etc/example-music/* -- none of that had freshness-gate
+  # protection before (this playbook was never in docs/refresh-after-data-changes.md's own
+  # 14-playbook gated list), unlike every sibling file in this same windows_dc family.
+  # Closes that pre-existing gap for sites.csv at the same time as covering the two new
+  # files, rather than leaving it half-fixed.
+  pre_tasks:
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv, ad_site_topology.csv, ad_hub_links.csv]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../../.."
 
   tasks:
 
@@ -501,6 +517,233 @@
         msg: >
           {{ _c.G }}[+]{{ _c.NC }} {{ inventory_hostname }} registered
           in AD site: {{ (dc_site_registration_after_fix.stdout | default(dc_site_registration.stdout)) | trim }}
+      tags: dc_replicate
+
+    # ── Stage 4b — Estate-wide AD Sites topology (hub/special-sauce sites only) ──
+    # 2026-10-01: ports bootstrap/web/windows/Configure-ADSites.ps1 into Ansible (Robert's
+    # explicit call, see [[project_ad_sites_topology_rework_deferred_2026_09_25]]) -- that
+    # script already has the full estate-wide replication topology (hub costs/frequencies,
+    # a second VPN subnet per site, real site links) that Stage 4 above never touched; Stage
+    # 4 only ever ensures THIS host's own site/subnet exist. Deliberately gated the same way
+    # Stage 5's own FSMO check already is (hub sites + CLD only) -- these are the sites the
+    # original script was meant to be run from/triggers naturally when any of them gets
+    # built or replicated, not every ordinary spoke site's own DC build. Topology data now
+    # lives in benarbejde/ad_site_topology.csv (Site,Hub,Cost,Freq -- one row per site, Hub
+    # blank for FAL/ODE/BRK themselves) and benarbejde/ad_hub_links.csv (the 2 genuine
+    # hub-to-hub links) -- matches this repo's "everything derives from a CSV" convention
+    # rather than a hand-maintained PowerShell table. CPH's own hub link is already covered
+    # by its own spoke-link row (Hub=FAL) in ad_site_topology.csv -- the original script's
+    # $HubLinks also listed "FAL-CPH" a second time with the identical name/cost/freq, which
+    # Exists-Link already made a harmless no-op skip there; not carried forward here, same
+    # effective behaviour, one fewer redundant entry to maintain.
+    #
+    # 15 of 56 sites.csv sites had no row at all in the original script's own topology table
+    # (most were simply added after it was last touched): CLD, FRD, VRK — the sites with
+    # real/imminent DCs — plus 12 not-yet-built sites. Robert's call, 2026-10-01: CLD/FRD/VRK
+    # all link directly to FAL (cost=10, freq=15, matching the original script's own CPH
+    # precedent) -- the old "primary/secondary cloud location" framing doesn't map onto AD
+    # site-link design any more. The other 12 (all not-yet-built) were assigned by inferring
+    # from the same region convention their geographic neighbours already use in this same
+    # table (UK→FAL, EU→ODE, NA/Pacific→BRK) -- BRT (Beirut) is the one genuine guess with no
+    # clear regional anchor in the existing table at all, flagged here as lower-confidence;
+    # everything else follows a real, unambiguous existing pattern.
+    #
+    # Runs ~99 idempotent win_shell calls when it fires (56 sites + ~41 spoke links + 2 hub
+    # links) -- deliberately plain, serial, one AD object per call, matching this codebase's
+    # own hard-learned 2026-09-28 lesson that batching/async here costs more than it saves
+    # on this connection type (see the populate_ad async-to-serial reversion, same week).
+    # Expect this stage to take several minutes the first time it runs against a given
+    # forest; every subsequent run only touches what's actually missing or wrong.
+
+    - name: "── Stage 4b — Estate-wide AD Sites topology (hub/CLD builds only) ──"
+      debug:
+        msg: >
+          {{ _c.C }}[*]{{ _c.NC }} Ensuring the full estate-wide AD Sites topology
+          (sites, subnets, site links) from benarbejde/ad_site_topology.csv +
+          ad_hub_links.csv...
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+      tags: dc_replicate
+
+    - name: "[Topology] Load ad_site_topology.csv"
+      read_csv:
+        path: "{{ dc_site_topology_csv }}"
+      register: dc_topology_raw
+      delegate_to: localhost
+      become: false
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+      tags: dc_replicate
+
+    - name: "[Topology] Load ad_hub_links.csv"
+      read_csv:
+        path: "{{ dc_hub_links_csv }}"
+      register: dc_hub_links_raw
+      delegate_to: localhost
+      become: false
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+      tags: dc_replicate
+
+    - name: "[Topology] Load sites.csv (LAN subnets)"
+      read_csv:
+        path: "{{ sites_csv }}"
+      register: dc_topology_sites_raw
+      delegate_to: localhost
+      become: false
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+      tags: dc_replicate
+
+    # LAN comes from sites.csv (single source of truth for subnets); VPN mirrors
+    # Configure-ADSites.ps1's own derivation exactly ($subnet.Split('.')[2] -- the LAN
+    # subnet's own third octet becomes the VPN subnet's third octet, 10.0.<octet>.0/24).
+    - name: "[Topology] Build full site-data list (join topology + sites.csv subnets)"
+      set_fact:
+        dc_full_topology: >-
+          {{ dc_full_topology | default([]) + [{
+            'Site': item.Site,
+            'Hub':  item.Hub,
+            'Cost': item.Cost,
+            'Freq': item.Freq,
+            'LAN':  _lan,
+            'VPN':  '10.0.' ~ (_lan.split('.')[2]) ~ '.0/24'
+          }] }}
+      vars:
+        _lan: "{{ (dc_topology_sites_raw.list | selectattr('Site', 'equalto', item.Site) | map(attribute='Subnet') | first | default('')) }}"
+      loop: "{{ dc_topology_raw.list }}"
+      loop_control:
+        label: "{{ item.Site }}"
+      when:
+        - host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+        - _lan != ''
+      tags: dc_replicate
+
+    - name: "[Topology] WARN — topology row(s) with no matching sites.csv subnet"
+      debug:
+        msg: >
+          {{ _c.Y }}[!]{{ _c.NC }} {{ item.Site }}: in ad_site_topology.csv but has
+          no Subnet in sites.csv -- skipped (site/subnet objects not created for it
+          this run).
+      vars:
+        _lan: "{{ (dc_topology_sites_raw.list | selectattr('Site', 'equalto', item.Site) | map(attribute='Subnet') | first | default('')) }}"
+      loop: "{{ dc_topology_raw.list }}"
+      loop_control:
+        label: "{{ item.Site }}"
+      when:
+        - host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+        - _lan == ''
+      tags: dc_replicate
+
+    - name: "[Topology] Step 1 — Remove DEFAULTIPSITELINK"
+      ansible.windows.win_shell: |
+        Import-Module ActiveDirectory
+        $link = Get-ADReplicationSiteLink -Filter "Name -eq 'DEFAULTIPSITELINK'" -ErrorAction SilentlyContinue
+        if ($link) {
+          Remove-ADReplicationSiteLink -Identity "DEFAULTIPSITELINK" -Confirm:$false
+          Write-Output "removed"
+        } else {
+          Write-Output "already removed"
+        }
+      register: dc_topology_default_link
+      changed_when: "'removed' in dc_topology_default_link.stdout"
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+      tags: dc_replicate
+
+    - name: "[Topology] Step 2+3 — Ensure AD Site + LAN/VPN Subnet objects exist"
+      ansible.windows.win_shell: |
+        Import-Module ActiveDirectory
+        $siteName = "{{ item.Site }}"
+
+        $existingSite = Get-ADReplicationSite -Filter "Name -eq '$siteName'" -ErrorAction SilentlyContinue
+        if (-not $existingSite) {
+          New-ADReplicationSite -Name $siteName | Out-Null
+          Write-Output "site=created"
+        } else {
+          Write-Output "site=already existed"
+        }
+
+        foreach ($subnet in @("{{ item.LAN }}", "{{ item.VPN }}")) {
+          $existingSubnet = Get-ADReplicationSubnet -Filter "Name -eq '$subnet'" -ErrorAction SilentlyContinue
+          if (-not $existingSubnet) {
+            New-ADReplicationSubnet -Name $subnet -Site $siteName | Out-Null
+            Write-Output "subnet=created:$subnet"
+          } elseif ($existingSubnet.Site -notmatch [regex]::Escape($siteName)) {
+            Set-ADReplicationSubnet -Identity $subnet -Site $siteName
+            Write-Output "subnet=reassigned:$subnet"
+          } else {
+            Write-Output "subnet=already correct:$subnet"
+          }
+        }
+      register: dc_topology_site_result
+      changed_when: "'created' in dc_topology_site_result.stdout or 'reassigned' in dc_topology_site_result.stdout"
+      loop: "{{ dc_full_topology | default([]) }}"
+      loop_control:
+        label: "{{ item.Site }}"
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+      tags: dc_replicate
+
+    - name: "[Topology] Step 4 — Ensure spoke site links (Hub-Site) exist"
+      ansible.windows.win_shell: |
+        Import-Module ActiveDirectory
+        $linkName = "{{ item.Hub }}-{{ item.Site }}"
+        $existing = Get-ADReplicationSiteLink -Filter "Name -eq '$linkName'" -ErrorAction SilentlyContinue
+        if ($existing) {
+          Write-Output "already existed"
+        } else {
+          New-ADReplicationSiteLink -Name $linkName -SitesIncluded @("{{ item.Hub }}", "{{ item.Site }}") `
+            -Cost {{ item.Cost }} -ReplicationFrequencyInMinutes {{ item.Freq }}
+          Write-Output "created"
+        }
+      register: dc_topology_link_result
+      changed_when: "'created' in dc_topology_link_result.stdout"
+      loop: "{{ (dc_full_topology | default([])) | rejectattr('Hub', 'equalto', '') | list }}"
+      loop_control:
+        label: "{{ item.Hub }}-{{ item.Site }}"
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+      tags: dc_replicate
+
+    - name: "[Topology] Step 5 — Ensure hub-to-hub site links exist"
+      ansible.windows.win_shell: |
+        Import-Module ActiveDirectory
+        $existing = Get-ADReplicationSiteLink -Filter "Name -eq '{{ item.Name }}'" -ErrorAction SilentlyContinue
+        if ($existing) {
+          Write-Output "already existed"
+        } else {
+          New-ADReplicationSiteLink -Name "{{ item.Name }}" -SitesIncluded @("{{ item.SiteA }}", "{{ item.SiteB }}") `
+            -Cost {{ item.Cost }} -ReplicationFrequencyInMinutes {{ item.Freq }}
+          Write-Output "created"
+        }
+      register: dc_topology_hublink_result
+      changed_when: "'created' in dc_topology_hublink_result.stdout"
+      loop: "{{ dc_hub_links_raw.list | default([]) }}"
+      loop_control:
+        label: "{{ item.Name }}"
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+      tags: dc_replicate
+
+    - name: "[Topology] Summary"
+      ansible.windows.win_shell: |
+        Import-Module ActiveDirectory
+        Write-Output "Sites   : $((Get-ADReplicationSite -Filter * | Measure-Object).Count)"
+        Write-Output "Subnets : $((Get-ADReplicationSubnet -Filter * | Measure-Object).Count)"
+        Write-Output "Links   : $((Get-ADReplicationSiteLink -Filter * | Measure-Object).Count)"
+      register: dc_topology_summary
+      changed_when: false
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
+      tags: dc_replicate
+
+    - name: "[Topology] Show summary"
+      debug:
+        msg:
+          - "{{ _c.G }}[+]{{ _c.NC }} AD Sites topology ensured."
+          - "{{ dc_topology_summary.stdout_lines | default([]) }}"
+      when: host_site in (dc_hub_sites | default(['FAL', 'ODE', 'BRK'])) or host_site == 'CLD'
       tags: dc_replicate
 
     # ── Stage 5 — FSMO role check (hub/special-sauce sites) ──────────────────
