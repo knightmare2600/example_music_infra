@@ -269,6 +269,13 @@ The script scans the local ISO store for an iPXE ISO matching the target node's 
 and pre-selects it if found, preferring `ipxe_amd64.iso` on an x86_64 node and `ipxe_arm64.iso`
 on an arm64 node. The technician can select a different ISO or skip ISO attachment entirely.
 
+A Secure Boot-capable arm64 build (`ipxe-arm64-sb.iso` — see
+`docs/bootstrap/ExampleMusic_Procedure_iPXE_ARM64_ISO.md`'s Secure Boot variant section) is
+deliberately excluded from this auto-pre-select, even on an arm64 node where it's the only
+other iPXE ISO present — it's missing features a normal build has (forbidden under Secure
+Boot), so there's no safe way to assume a given VM wants it. It still appears in the numbered
+list; pick it explicitly when a VM genuinely needs Secure Boot.
+
 This means a fresh VM with an empty disk will fall through to the iPXE ISO on second boot attempt, chainloading your boot menu from `192.168.139.50` automatically (Edinburgh; `172.16.124.1:8000` if the VM is on Fredericia Havn's provisioning network instead — `menu.ipxe`'s gateway detection picks the right one, nothing to configure per-VM).
 
 ---
