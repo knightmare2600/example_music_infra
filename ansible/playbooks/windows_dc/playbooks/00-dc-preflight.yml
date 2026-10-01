@@ -43,14 +43,19 @@
 #   priority order FAL > ODE > BRK (skipping self).
 #
 # vars_prompt:
-#   dc_domain_name        — AD domain FQDN
-#   dc_netbios_name       — AD NetBIOS name
-#   dc_is_first_in_forest — yes/no; only consulted if no source is reachable
-#   dc_dsrm_password      — DSRM password
-#   dc_admin_user         — Domain Admin username  (e.g. JUKEBOX\Administrator)
-#   dc_admin_password     — Domain Admin password
-#   dc_local_user         — Local Administrator username
-#   dc_local_password     — Local Administrator password
+#   dc_domain_name            — AD domain FQDN
+#   dc_netbios_name           — AD NetBIOS name
+#   dc_is_first_in_forest     — yes/no; only consulted if no source is reachable
+#   dc_generate_dsrm_password — yes/no; only takes effect if dc_dsrm_password is left
+#                               blank AND nothing already exists for it in
+#                               extracted_credentials.json/vault.yml/the live KeePass
+#                               vault (see "Phase F" tasks below) — default "no"
+#   dc_dsrm_password          — DSRM password (leave blank + answer yes above to
+#                               generate one instead of typing it)
+#   dc_admin_user             — Domain Admin username  (e.g. JUKEBOX\Administrator)
+#   dc_admin_password         — Domain Admin password
+#   dc_local_user             — Local Administrator username
+#   dc_local_password         — Local Administrator password
 #
 # Required extra-vars:
 #   sites_csv          — path to sites.csv on the control node
@@ -70,6 +75,20 @@
 # Tags: dc_preflight
 # =============================================================================
 # Changelog:
+#   2026-10-01  Phase F, Robert's own ask after the KeePass automation hardening pass
+#               (check_keepass_freshness.py Tiers 2b/2c/2d, commits 75d772f/276cb56):
+#               opt-in, triple-checked random DSRM password generation. New
+#               dc_generate_dsrm_password vars_prompt; only takes effect if
+#               dc_dsrm_password is left blank, and only if extracted_credentials.json,
+#               vault_dc_dsrm_password, and the live KeePass vault (read-only
+#               keepassxc-cli show) all confirm nothing already exists for it -- never
+#               silent, matches "we can't just go off making hell like we did with
+#               those machine accounts" (the GOT DC-computer-account incident). Ansible
+#               still never writes to the vault -- generates, uses in-run, prints once,
+#               tells the operator the exact kpcli_wrapper.py command to file it
+#               themselves, same pattern already proven in tacticalrmm_server.yml/
+#               20-saltgui.yml. New KeePass path convention for this (nothing existing
+#               to defer to): Infrastructure/{site}/{hostname}-dsrm.
 #   2026-09-25  Robert: questioned why replication-source candidates were a hardcoded
 #               [CLD, FAL, ODE, BRK] site list at all, given AD's own multi-master
 #               nature -- any real DC can serve as a replication source, order doesn't
@@ -174,6 +193,15 @@
     sites_csv:        "/etc/example-music/sites.csv"
     devices_csv:      "/etc/example-music/devices.csv"
     ad_computers_json: "/etc/example-music/ad_computers.json"
+    # 2026-10-01, Phase F (opt-in, triple-checked DSRM password generation): the live
+    # vault path, overridable since it's a real host path that could differ -- benarbejde/
+    # extracted_credentials.json and .keepassxc_master_password are NOT in that deployed-
+    # copy set at all (confirmed against ansible/playbooks/linux/tools.yml's own deploy
+    # list -- neither file is ever synced to /etc/example-music/, and the master-password
+    # file is gitignored, never deployed anywhere) -- read directly from the control
+    # node's own git checkout via playbook_dir, same convention
+    # dc_source_resolution.yml's own generate_inventory.py call already uses.
+    dc_keepass_db: "/home/ansible/KeePassXC/ExampleMusic.kdbx"
     # ad_domain_name, ad_netbios_name, dc_hub_sites, dc_cld_site,
     # dc_dns_forwarders → group_vars/windows_dc/vars.yml (single source of truth).
     # 2026-09-25: dc_hub_sources/dc_cld_source (a hardcoded [CLD,FAL,ODE,BRK] candidate
@@ -235,8 +263,20 @@
       private: false
       default: "no"
 
+    - name: dc_generate_dsrm_password
+      prompt: >-
+        Generate a random DSRM password instead of typing one? (yes/no)
+        (only takes effect if you leave the NEXT prompt blank, and only if nothing
+        already exists for it in extracted_credentials.json, vault.yml, or the live
+        KeePass vault -- a typed password always wins over this)
+      private: false
+      default: "no"
+
     - name: dc_dsrm_password
-      prompt: "DSRM (Directory Services Restore Mode) password"
+      prompt: >-
+        DSRM (Directory Services Restore Mode) password
+        (leave BLANK and answer "yes" above to have one generated and triple-checked
+        instead of typing it)
       private: true
       default: "{{ vault_dc_dsrm_password | default('') }}"
 
@@ -368,6 +408,155 @@
       include_tasks: ../tasks/dc_source_resolution.yml
       tags: dc_preflight
 
+    # ── Phase F: opt-in, triple-checked DSRM password generation ─────────────
+    # 2026-10-01, Robert's own ask, built after the KeePass hardening pass
+    # (check_keepass_freshness.py Tiers 2b/2c/2d, commits 75d772f/276cb56) proved the
+    # foundation this relies on. Generates a random DSRM password ONLY when the
+    # operator explicitly left the password prompt blank AND answered "yes" to
+    # generate above, AND all three plausible sources confirm nothing already exists
+    # for it: extracted_credentials.json, vault_dc_dsrm_password itself, and the live
+    # KeePass vault. Never silent, never a fallback -- matches "we can't just go off
+    # making hell like we did with those machine accounts"
+    # ([[project_got_dc_computer_account_incident_2026_09_26]]). Ansible still never
+    # WRITES to the vault at any point here -- the live check is read-only
+    # (keepassxc-cli show), the exact same pattern already proven safe in
+    # check_keepass_freshness.py's own Tier 2c.
+    #
+    # extracted_credentials.json's own schema (hostname/site/role/credential, role one
+    # of RAC/ILO/SWI/RTR/FWL/SBC/PHN/RMM) has no DSRM shape at all -- this check will
+    # always currently report "not found" for DSRM specifically. Included anyway, on
+    # purpose, so all three sources Robert asked for are genuinely checked, not two
+    # plus an assumption -- and it's the right check for any future *device*-shaped
+    # generated credential this same pattern might extend to.
+    #
+    # KeePass path convention for this (new, nothing existing to defer to -- Robert's
+    # own call): Infrastructure/{site}/{hostname}-dsrm, matching kpcli_wrapper.py's own
+    # one-off-credential convention exactly (20-saltgui.yml's own saltgui entry uses
+    # the identical shape).
+
+    - name: "[DSRM generate] Check extracted_credentials.json for an existing DSRM entry"
+      set_fact:
+        _dsrm_in_credentials_json: >-
+          {{
+            (lookup('file', playbook_dir ~ '/../../../../benarbejde/extracted_credentials.json') | from_json)
+            | selectattr('hostname', 'equalto', inventory_hostname)
+            | selectattr('role', 'equalto', 'DSRM')
+            | list | length > 0
+          }}
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+      when:
+        - (dc_generate_dsrm_password | default('no') | lower) in ['yes', 'y']
+        - dc_dsrm_password == ''
+      tags: dc_preflight
+
+    - name: "[DSRM generate] Read the KeePass automation master password"
+      set_fact:
+        _dsrm_keepass_master_password: >-
+          {{ lookup('file', playbook_dir ~ '/../../../../benarbejde/.keepassxc_master_password') | trim }}
+      delegate_to: localhost
+      become: false
+      no_log: true
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+      when:
+        - (dc_generate_dsrm_password | default('no') | lower) in ['yes', 'y']
+        - dc_dsrm_password == ''
+      tags: dc_preflight
+
+    - name: "[DSRM generate] Check the live KeePass vault for an existing DSRM entry (read-only)"
+      command: >
+        keepassxc-cli show -s -a Password {{ dc_keepass_db }}
+        Infrastructure/{{ host_site }}/{{ inventory_hostname }}-dsrm
+      args:
+        stdin: "{{ _dsrm_keepass_master_password }}\n"
+      register: _dsrm_keepass_check
+      changed_when: false
+      failed_when: false
+      no_log: true
+      delegate_to: localhost
+      become: false
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+      when:
+        - (dc_generate_dsrm_password | default('no') | lower) in ['yes', 'y']
+        - dc_dsrm_password == ''
+      tags: dc_preflight
+
+    - name: "[DSRM generate] Interpret the live KeePass check result"
+      set_fact:
+        _dsrm_in_keepass: "{{ _dsrm_keepass_check.rc == 0 }}"
+        # rc=1 with "Could not find entry" is a genuine, confirmed absence -- any OTHER
+        # non-zero outcome (wrong master password, unreachable vault, etc.) must NOT be
+        # silently treated as "safe to generate". Checked explicitly, not assumed.
+        _dsrm_keepass_check_failed_unexpectedly: >-
+          {{ _dsrm_keepass_check.rc != 0 and 'Could not find entry' not in (_dsrm_keepass_check.stderr | default('')) }}
+      when:
+        - (dc_generate_dsrm_password | default('no') | lower) in ['yes', 'y']
+        - dc_dsrm_password == ''
+      tags: dc_preflight
+
+    - name: "[DSRM generate] FAIL — could not reliably check the live KeePass vault"
+      fail:
+        msg: >
+          Could not confirm whether a DSRM credential already exists in the live KeePass
+          vault for {{ inventory_hostname }} -- keepassxc-cli failed in an unexpected way
+          (not a simple "entry not found"). Refusing to generate a password without being
+          sure nothing already exists. Check benarbejde/.keepassxc_master_password is
+          correct and the vault is reachable (at_have_ryggen_fri/check_keepass_freshness.py's
+          Tiers 2b/2d can help diagnose this on the control node directly), then re-run.
+      when:
+        - (dc_generate_dsrm_password | default('no') | lower) in ['yes', 'y']
+        - dc_dsrm_password == ''
+        - _dsrm_keepass_check_failed_unexpectedly | default(false)
+      tags: dc_preflight
+
+    - name: "[DSRM generate] Determine if any of the three sources already has a value"
+      set_fact:
+        _dsrm_already_exists: >-
+          {{ (_dsrm_in_credentials_json | default(false))
+             or ((vault_dc_dsrm_password | default('')) != '')
+             or (_dsrm_in_keepass | default(false)) }}
+      when:
+        - (dc_generate_dsrm_password | default('no') | lower) in ['yes', 'y']
+        - dc_dsrm_password == ''
+        - not (_dsrm_keepass_check_failed_unexpectedly | default(false))
+      tags: dc_preflight
+
+    - name: "[DSRM generate] FAIL — a DSRM credential already exists somewhere"
+      fail:
+        msg: >
+          Refusing to generate a random DSRM password for {{ inventory_hostname }} --
+          {{ 'extracted_credentials.json already has an entry for it' if (_dsrm_in_credentials_json | default(false))
+             else ('vault_dc_dsrm_password is already set in group_vars/windows_dc/vault.yml' if (vault_dc_dsrm_password | default('')) != ''
+             else 'the live KeePass vault already has an entry at Infrastructure/' ~ host_site ~ '/' ~ inventory_hostname ~ '-dsrm') }}.
+          Use that existing value instead of generating a new one -- generating here would
+          risk a second, different password nobody can reconcile against whatever already
+          exists.
+      when:
+        - (dc_generate_dsrm_password | default('no') | lower) in ['yes', 'y']
+        - dc_dsrm_password == ''
+        - not (_dsrm_keepass_check_failed_unexpectedly | default(false))
+        - _dsrm_already_exists | default(false)
+      tags: dc_preflight
+
+    - name: "[DSRM generate] All three sources confirmed empty — generating a random password"
+      set_fact:
+        dc_dsrm_password: "{{ lookup('password', '/dev/null', length=24, chars=['ascii_letters', 'digits']) }}"
+        _dsrm_password_was_generated: true
+      no_log: true
+      when:
+        - (dc_generate_dsrm_password | default('no') | lower) in ['yes', 'y']
+        - dc_dsrm_password == ''
+        - not (_dsrm_keepass_check_failed_unexpectedly | default(false))
+        - not (_dsrm_already_exists | default(false))
+      tags: dc_preflight
+
     # ── Credential store (passed forward to promote playbook) ─────────────────
 
     - name: Store credentials and flags as facts for downstream playbooks
@@ -394,6 +583,29 @@
           - "{{ _c.R }}║  If you lose this password and there is no other working DC,      ║{{ _c.NC }}"
           - "{{ _c.R }}║  the domain is gone. There is no recovery path. Write it down.    ║{{ _c.NC }}"
           - "{{ _c.R }}╚═══════════════════════════════════════════════════════════════════╝{{ _c.NC }}"
+      tags: dc_preflight
+
+    # 2026-10-01: only fires when Phase F actually generated this run's DSRM password --
+    # a manually-typed one is never printed back (the operator already knows it). Shown
+    # exactly once, same "generate, use in-run, print once, tell the human to file it"
+    # pattern already proven safe in tacticalrmm_server.yml/20-saltgui.yml. Ansible still
+    # never writes to the vault -- this is the one-time human hand-off.
+    - name: "DSRM password was generated this run — file it into KeePass now"
+      debug:
+        msg:
+          - ""
+          - "{{ _c.G }}════════════════════════════════════════════════════════════════{{ _c.NC }}"
+          - "{{ _c.G }}  GENERATED DSRM PASSWORD — shown once, nothing here writes to KeePass{{ _c.NC }}"
+          - "{{ _c.G }}  Password : {{ dc_dsrm_password }}{{ _c.NC }}"
+          - "{{ _c.G }}════════════════════════════════════════════════════════════════{{ _c.NC }}"
+          - "  File it yourself:"
+          - ""
+          - "    python3 benarbejde/kpcli_wrapper.py {{ dc_keepass_db }} \\"
+          - "      add \"Infrastructure/{{ host_site }}/{{ inventory_hostname }}-dsrm\" dsrm"
+          - ""
+          - "  (prompts for the vault password, then this entry's password — enter the"
+          - "   one shown above)"
+      when: _dsrm_password_was_generated | default(false)
       tags: dc_preflight
 
     # ── Pre-promotion checks ──────────────────────────────────────────────────

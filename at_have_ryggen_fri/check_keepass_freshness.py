@@ -57,12 +57,28 @@ clone will never have, so only the JSON side can be a hard, always-on check.
   extracted_credentials.json's own recorded value -- closes the real "was it
   ever actually added AND correct" gap this whole mechanism used to have.
 
-Exit code: 0 unless a Tier 1 (JSON-side) check fails. Tier 2/2b/2c drift is
+  Tier 2d, added 2026-10-01 -- can the 'ansible' user actually read the
+  master-password file (host-local, informational, runs whenever the file
+  exists)? Scoping Phase F (opt-in, triple-checked DSRM password generation --
+  see ansible/playbooks/windows_dc/playbooks/00-dc-preflight.yml) surfaced a
+  real prerequisite: that feature needs Ansible, which runs as the 'ansible'
+  user on the real control node, never root, to read this file for a live
+  KeePass check. Robert: "on EXAANSCLD001 it is readable I think but add
+  something to the harness to flag it" -- this is that flag, checked for
+  real rather than assumed. Silently skipped (not failed) when no 'ansible'
+  system user exists on this host at all (expected on a developer
+  workstation, not the real control node).
+
+Exit code: 0 unless a Tier 1 (JSON-side) check fails. Tier 2/2b/2c/2d drift is
 printed and counted but never fails the run by itself -- run.sh's --strict
 flag escalates it the same way it already does for check_ssh_keys.py.
 """
+import grp
 import json
+import os
+import pwd
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -259,6 +275,68 @@ def check_master_password_file_hygiene():
     return issues, info
 
 
+def check_master_password_file_ansible_access():
+    """Tier 2d, 2026-10-01: can the 'ansible' user actually READ
+    .keepassxc_master_password on this host? Scoping Phase F (opt-in DSRM password
+    generation) surfaced this as a real prerequisite -- that feature needs Ansible
+    (which runs as 'ansible' on the real control node, never root) to read this file
+    for a live, read-only KeePass check. Robert: "on EXAANSCLD001 it is readable I
+    think but add something to the harness to flag it" -- checked for real, not
+    assumed. Uses os.getgrouplist() for group membership (primary AND supplementary),
+    not just the file's own primary gid, since a user's real read access depends on
+    all the groups they belong to, not just one."""
+    issues = []
+    info = []
+
+    if not MASTER_PASSWORD_FILE.exists():
+        return issues, info  # Tier 2/2b already report this skip, don't repeat it
+
+    try:
+        ansible_pw = pwd.getpwnam("ansible")
+    except KeyError:
+        info.append(
+            "No 'ansible' system user on this host -- skipping the ansible-readability "
+            "check (expected on a developer workstation, not the real control node)."
+        )
+        return issues, info
+
+    rel = MASTER_PASSWORD_FILE.relative_to(REPO_ROOT)
+    st = MASTER_PASSWORD_FILE.stat()
+    mode = stat.S_IMODE(st.st_mode)
+    owner_readable = bool(mode & stat.S_IRUSR)
+    group_readable = bool(mode & stat.S_IRGRP)
+    other_readable = bool(mode & stat.S_IROTH)
+
+    owner_name = pwd.getpwuid(st.st_uid).pw_name
+    file_group_name = grp.getgrgid(st.st_gid).gr_name
+    ansible_groups = set(os.getgrouplist(ansible_pw.pw_name, ansible_pw.pw_gid))
+
+    if st.st_uid == ansible_pw.pw_uid and owner_readable:
+        info.append(f"{rel}: owned by 'ansible' and owner-readable -- Phase F's live KeePass check can read it.")
+    elif st.st_gid in ansible_groups and group_readable:
+        info.append(
+            f"{rel}: group-readable, and 'ansible' belongs to group '{file_group_name}' -- "
+            f"Phase F's live KeePass check can read it."
+        )
+    elif other_readable:
+        issues.append(
+            f"{rel} is readable by 'ansible' only via its world-readable bit (owner="
+            f"{owner_name}, group={file_group_name}, mode={oct(mode)}) -- 'ansible' CAN read "
+            f"it, but so can every other user on this host. Worth tightening to owner-or-"
+            f"group-only (chgrp ansible {rel} && chmod 640 {rel}, adjusted for this host's "
+            f"real group name) once Phase F is live, rather than relying on this."
+        )
+    else:
+        issues.append(
+            f"{rel} is NOT readable by 'ansible' (owner={owner_name}, group={file_group_name}, "
+            f"mode={oct(mode)}) -- Phase F's live KeePass pre-check would fail outright on "
+            f"this host. Fix: chgrp ansible {rel} && chmod 640 {rel} (adjusted for this host's "
+            f"real ansible group name)."
+        )
+
+    return issues, info
+
+
 def check_live_vault_values(credentials):
     """Tier 2c, 2026-10-01: for every extracted_credentials.json entry the live vault
     already has AN entry for, read back its actual stored password (read-only --
@@ -383,9 +461,18 @@ def main():
         print("  Skipped -- needs Tier 1's entries plus both the live vault and master-password file.")
 
     print()
+    print("-- Tier 2d: 'ansible' user can read the master-password file (host-local, informational) --")
+    access_issues, access_info = check_master_password_file_ansible_access()
+    for line in access_info:
+        print(f"  {line}")
+    for issue in access_issues:
+        print(f"  {issue}")
+    all_local_issues += access_issues
+
+    print()
     if all_local_issues:
         print(
-            f"{len(all_local_issues)} local-only issue(s) across Tiers 2/2b/2c "
+            f"{len(all_local_issues)} local-only issue(s) across Tiers 2/2b/2c/2d "
             f"(informational; --strict fails on this)."
         )
 
