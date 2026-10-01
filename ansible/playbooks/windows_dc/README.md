@@ -60,7 +60,7 @@ DC-specific (this module's own `site.yml` — the only plays it actually imports
 | `playbooks/00-dc-preflight.yml`       | `dc_preflight` | Replication source resolution + cred prompt |
 | `playbooks/10-dc-install-features.yml`| `dc_features`  | AD-DS/DNS/GPMC feature install              |
 | `playbooks/20-dc-promote.yml`         | `dc_promote`   | Install-ADDSDomainController (or Forest)    |
-| `playbooks/30-dc-replicate.yml`       | `dc_replicate` | Force replication + SYSVOL + health check + estate-wide AD Sites topology (FAL/ODE/BRK/CLD only) |
+| `playbooks/30-dc-replicate.yml`       | `dc_replicate` | Force replication + SYSVOL + health check + estate-wide AD Sites topology (any site) |
 | `playbooks/40-dc-summary.yml`         | `dc_summary`   | dcdiag + colourised build report            |
 
 `00` is always the preflight ("before take off"); major steps increment by 10.
@@ -196,12 +196,15 @@ reviewing the summary output.
 `30-dc-replicate.yml`'s "Stage 4b" ensures the full estate's AD Sites topology —
 every site's AD Site + LAN/VPN subnet objects, spoke site links to its hub, and
 the FAL-ODE/FAL-BRK hub-to-hub links — driven by `benarbejde/ad_site_topology.csv`
-(Site,Hub,Cost,Freq) and `ad_hub_links.csv`. Runs only when the DC being
-replicated is at FAL, ODE, BRK or CLD (same gate as the FSMO check above), since
-those are the sites this was originally meant to be run from. Idempotent, ~99
-AD object checks per run — ports `bootstrap/web/windows/Configure-ADSites.ps1`,
-which is marked superseded pending live confirmation (see that file's own
-header).
+(Site,Hub,Cost,Freq) and `ad_hub_links.csv`. Runs on **every** `dc_replicate`
+call, from any site — AD Sites/Subnets/Site Links are forest-wide objects, not
+site-scoped, so there's no technical reason to restrict which DC can ensure
+them (an earlier version of this gated it to FAL/ODE/BRK/CLD only, mirroring
+`Configure-ADSites.ps1`'s own "Run on: EXADCSFAL001" note — that was only ever
+where someone happened to run it from, not a requirement; removed 2026-10-01).
+Idempotent, ~99 AD object checks per run — ports
+`bootstrap/web/windows/Configure-ADSites.ps1`, which is marked superseded
+pending live confirmation (see that file's own header).
 
 ---
 
