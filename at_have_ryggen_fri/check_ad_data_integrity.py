@@ -497,27 +497,9 @@ def check_cross_file_ip_collision(problems, computers, real_addresses):
             )
 
 
-def policy_expected_octet(role, number):
-    """address_policy.csv's own opinion of where a given Type's Nth instance belongs,
-    straight from the same OFFSETS_SINGLE/ROLE_OFFSETS generate_inventory.py itself
-    uses -- not a second, hand-rolled copy of the convention.
-
-    Returns ("exact", octet) when the Type+Number maps to one specific address (every
-    OFFSETS_SINGLE/ROLE_OFFSETS Type, including BMC itself); ("pool", {octets}) for
-    ILO/RAC, which share BMC's pool but have no fixed per-instance position (a real
-    ILO/RAC can legitimately sit at whichever pool slot was physically free -- CLY's own
-    real ILO/RAC landed on .3/.4, not .2/.3, see [[project_ilo_rac_bmc_convention_2026_09_24]]);
-    or None when address_policy.csv has no convention for this Type at all (ad hoc
-    device classes like VCU, LCD, SVR -- devices.csv's own real row, when one exists, is
-    the only source of truth for these, and check E already covers that case).
-    """
-    if number == 1 and role in gi.OFFSETS_SINGLE:
-        return ("exact", gi.OFFSETS_SINGLE[role])
-    if role in gi.ROLE_OFFSETS and 1 <= number <= len(gi.ROLE_OFFSETS[role]):
-        return ("exact", gi.ROLE_OFFSETS[role][number - 1])
-    if role in ("ILO", "RAC") and "BMC" in gi.ROLE_OFFSETS:
-        return ("pool", set(gi.ROLE_OFFSETS["BMC"]))
-    return None
+# policy_expected_octet() moved to generate_inventory.py 2026-10-01 (gi.policy_expected_octet)
+# so check_criticality_alarm.py's own Check B can reuse it too -- see that function's own
+# docstring there for why. Call sites below updated to gi.policy_expected_octet(...).
 
 
 def build_octet_role_map():
@@ -585,7 +567,7 @@ def check_cross_role_collision(problems, computers, octet_role_map, real_address
             number = int(sam[-3:])
         except (ValueError, IndexError):
             number = None
-        own_policy = policy_expected_octet(role, number) if number else None
+        own_policy = gi.policy_expected_octet(role, number) if number else None
         own_plausible = own_policy and (
             (own_policy[0] == "exact" and own_policy[1] == octet)
             or (own_policy[0] == "pool" and octet in own_policy[1])
@@ -717,7 +699,7 @@ def triangulate(c, real_addresses):
     devices_octet = None
     if sam in real_addresses:
         devices_octet = real_addresses[sam].rsplit(".", 1)[-1]
-    policy = policy_expected_octet(role, number) if (role and number) else None
+    policy = gi.policy_expected_octet(role, number) if (role and number) else None
     return sam, devices_octet, policy
 
 
@@ -804,139 +786,14 @@ def check_duplicate_dns_hostname(problems, computers):
         )
 
 
-def load_legacy_site_types(problems):
-    """Site -> {Type: OS}, for devices.csv rows SPECIFICALLY marked Legacy=yes -- not
-    "any row of this Type exists" (a live row for a different instance Number, e.g.
-    BIR's real WAP,2, says nothing about whether WAP,1 has ITS OWN row, Legacy or
-    otherwise, and conflating the two would misreport a genuinely-missing row as
-    "explained by a legacy entry" when it isn't). A raw CSV read, deliberately NOT
-    going through load_devices(), because load_devices() drops Legacy rows before
-    check_missing_devices_csv_row() would ever see they existed at all. Found live
-    2026-09-24: ABD's real RTR/FWL pair and BIR's own EXAFWLBIR001 both have a real
-    devices.csv row (matching OS/octet) that's excluded purely for being Legacy=yes --
-    without this, check I would call them "no row exists at all", which overstates the
-    gap (a real, if old, row DOES exist, it's just not live-generation-eligible).
-
-    2026-09-24, same evening: originally returned Type as a bare set, so
-    check_missing_devices_csv_row's "worth checking" message kept firing forever, even
-    after 15 RTR sites and 3 LAP sites were manually confirmed (same evening) to have a
-    Legacy row whose OS genuinely matches the real record. Widened to carry each row's
-    own OS string too, so the caller can compare it directly instead of leaving every
-    Legacy row as a standing, never-resolved prompt."""
-    try:
-        by_site = defaultdict(dict)
-        with (BENARBEJDE / "devices.csv").open(newline="") as f:
-            for row in csv.DictReader(f):
-                site = (row.get("Site") or "").strip()
-                dtype = (row.get("Type") or "").strip().upper()
-                legacy = (row.get("Legacy") or "").strip().lower()
-                if site and dtype and legacy in ("yes", "y", "true", "1"):
-                    by_site[site][dtype] = (row.get("OS") or "").strip()
-        return by_site
-    except Exception as e:
-        problems.append(f"devices.csv: could not do a raw Legacy-aware read -- {e}")
-        return {}
-
-
-def load_planned_hostnames(problems):
-    """Set of hostnames devices.csv marks Planned=yes -- warehouse stock, not yet
-    installed. 2026-09-26, Robert's ask: these now DO get a real, pre-staged
-    ad_computers.json record (Enabled: false, a "(Planned -- pending
-    installation)" Description suffix) via benarbejde/merge_ad_computers.py --
-    a deliberate, new exception to this repo's otherwise-consistent "Planned
-    isn't real yet" rule. That rule still holds everywhere else (DNS/inventory
-    .ini generation via gi.load_devices() correctly keep excluding Planned rows
-    -- you can't have a working DNS record for a machine that isn't on the
-    network yet), so this is a raw, separate CSV read rather than a change to
-    load_devices() itself. Without this, check I would flag every one of the
-    ~488 Planned rows' new AD records as "devices.csv is missing real data",
-    when they're intentional, Robert-confirmed placeholders, not a gap."""
-    try:
-        hostnames = set()
-        with (BENARBEJDE / "devices.csv").open(newline="") as f:
-            for row in csv.DictReader(f):
-                if (row.get("Planned") or "").strip().lower() != "yes":
-                    continue
-                site = (row.get("Site") or "").strip()
-                dtype = (row.get("Type") or "").strip()
-                number = (row.get("Number") or "").strip()
-                if site and dtype and number.isdigit():
-                    hostnames.add(gi.build_hostname(dtype, site, int(number)))
-        return hostnames
-    except Exception as e:
-        problems.append(f"devices.csv: could not do a raw Planned-aware read -- {e}")
-        return set()
-
-
-def check_missing_devices_csv_row(problems, computers, real_addresses, legacy_site_types, planned_hostnames):
-    """Found live 2026-09-24, same BIR investigation: neither EXAILOBIR001 nor
-    EXARACBIR001 has ANY devices.csv row at all, despite ILO/RAC being a Type
-    address_policy.csv DOES have a real addressing convention for (the BMC pool).
-    Every previous check only ever verified a devices.csv row that DOES exist against
-    ad_computers.json -- never the reverse: a real, policy-governed ad_computers.json
-    record with NO devices.csv counterpart. Deliberately scoped to policy_expected_octet()
-    returning non-None (the same function check G already uses) -- ad hoc Types with no
-    policy convention at all are never expected to have a devices.csv row and are
-    correctly never flagged here.
-
-    2026-09-24, same evening: a Legacy row's OS is now compared directly against the
-    real record's own OS (case-insensitive prefix match -- devices.csv's OS field is
-    always the bare model, e.g. "Cisco ISR 4331", while ad_computers.json's is the same
-    model plus a serial-style suffix, e.g. "Cisco ISR 4331 ISR4331-ABD-552901").
-    Confirmed matching is no longer reported at all (same standard check E already
-    applies to a live row) -- only a genuine mismatch, or a Legacy row with no OS to
-    compare, still gets the "worth checking" treatment.
-
-    2026-09-28, GOT: building EXADCSGOT001 for real (Enabled: true, OS Windows Server
-    2022) surfaced a genuine third category this check never had -- a standard site's
-    own DCS (or PVE, or a Legacy=no RTR) never gets an explicit devices.csv row at all,
-    built or not, because its real address comes purely from the standard-site
-    synthesis mechanism (confirmed against FAL/CLY/GLA: none of the three has ever had
-    a DCS row in either file). That's a different shape from "genuinely missing data" --
-    it's architecturally never going to have a row, so it's checked against
-    gi.is_standard_synthesis_excluded() (the exact same rule load_devices() itself uses
-    to drop a would-be-duplicate row), not flagged as a gap."""
-    for c in computers:
-        sam = (c.get("SamAccountName") or "").rstrip("$")
-        role = (c.get("Role") or "").strip().upper()
-        site = (c.get("Site") or "").strip()
-        if not sam or sam in real_addresses or sam in planned_hostnames:
-            continue
-        try:
-            number = int(sam[-3:])
-        except (ValueError, IndexError):
-            continue
-        policy = policy_expected_octet(role, number)
-        if policy is None:
-            continue
-        if policy[0] == "exact" and gi.is_standard_synthesis_excluded(role, site, policy[1]):
-            continue
-        pool_or_exact = (
-            "pool " + str(sorted(policy[1])) if policy[0] == "pool" else "." + str(policy[1])
-        )
-        if role in legacy_site_types.get(site, {}):
-            legacy_os = legacy_site_types[site][role]
-            real_os = (c.get("OS") or "").strip()
-            if legacy_os and real_os and real_os.lower().startswith(legacy_os.lower()):
-                continue
-            problems.append(
-                f"devices.csv: {sam} (Role={role}) has no LIVE devices.csv row (it "
-                f"would need one for address_policy.csv's {pool_or_exact} convention to "
-                f"apply), and a devices.csv row for {site}/{role} DOES exist (Legacy=yes) "
-                f"but its OS ('{legacy_os}') doesn't match this record's own OS "
-                f"('{real_os}') -- worth checking whether that legacy row actually "
-                f"describes THIS device before assuming it's unrelated -- see ABD's "
-                f"EXARTRABD001/EXAFWLABD001 for a confirmed example of exactly this shape"
-            )
-        else:
-            problems.append(
-                f"devices.csv: no row exists for {sam} (Role={role}) at all, not even a "
-                f"Legacy one, but address_policy.csv has a real addressing convention "
-                f"for this Type ({pool_or_exact}) -- devices.csv is missing real data "
-                f"the harness had no other way to notice, since this is the reverse "
-                f"direction of check E (a real ad_computers.json record with no "
-                f"devices.csv counterpart, not the other way round)"
-            )
+# load_legacy_site_types()/load_planned_hostnames()/check_missing_devices_csv_row() --
+# CONSOLIDATED into check_criticality_alarm.py 2026-10-01 as that check's own Check B2
+# (Robert's explicit choice: one real implementation at the severity this direction
+# actually deserves, not two copies of the same logic at two different severities).
+# See check_criticality_alarm.py's own docstring/changelog for the full history this
+# function accumulated here (2026-09-24 BIR investigation, the Legacy-OS-comparison
+# refinement, the 2026-09-28 GOT standard-synthesis-exclusion fix) -- not re-duplicated
+# in this comment, read it there.
 
 
 def main():
@@ -969,12 +826,6 @@ def main():
     if computers is not None:
         check_duplicate_dns_hostname(problems, computers)
     if computers is not None:
-        legacy_site_types = load_legacy_site_types(problems)
-        planned_hostnames = load_planned_hostnames(problems)
-        check_missing_devices_csv_row(
-            problems, computers, real_addresses, legacy_site_types, planned_hostnames
-        )
-    if computers is not None:
         octet_role_map = build_octet_role_map()
         check_cross_role_collision(problems, computers, octet_role_map, real_addresses)
     if computers is not None:
@@ -989,8 +840,9 @@ def main():
         f"ad_ou Province consistency against {len(provinces)} "
         f"province-having site(s) in sites.csv, IPv4Address agreement with "
         f"devices.csv ({len(real_addresses)} real hostname(s) known), "
-        f"same-site IPv4Address duplicates, duplicate DNSHostName values, and "
-        f"policy-governed Types missing a devices.csv row."
+        f"same-site IPv4Address duplicates, and duplicate DNSHostName values. "
+        f"(Policy-governed Types missing a devices.csv row moved to "
+        f"check_criticality_alarm.py's own Check B2, 2026-10-01.)"
     )
 
     if advisory:
