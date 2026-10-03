@@ -561,6 +561,41 @@
         host_site_code: "{{ target_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first }}"
         host_role_code: "{{ target_hostname | upper | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\\1') | first }}"
 
+    # ── KeePass check-defer-write: Local Admin / Domain Admin passwords ────────
+    # 2026-10-01, Robert's explicit, confirmed-via-AskUserQuestion reversal of the
+    # one-way KeePass flow (see [[project_keepass_automation_hardening_2026_10_01]] and
+    # the plan this shipped from). Must run after [A3] (host_site_code/target_hostname
+    # are known by then) and before Phase B's first real password-authenticated
+    # connection ([B1] -- [B0] itself is key-based, not password-based, so it's safe to
+    # run this between A3 and B0). Deliberately the SAME KeePass path
+    # windows_dc/00-dc-preflight.yml's own dc_local_password/dc_admin_password sync
+    # uses for the same host, so the two playbooks can never create two different
+    # "local admin"/"Domain Admin" truths for one machine.
+
+    - name: "[KeePass sync] Domain Admin password (vault_domain_join_password)"
+      include_tasks: ../../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../../.."
+        kcs_keepass_path:           "Infrastructure/{{ host_site_code }}/{{ target_hostname | upper }}-admin"
+        kcs_username:               "{{ host_site_code | upper }}\\Administrator"
+        kcs_current_value:          "{{ vault_domain_join_password }}"
+        kcs_can_generate:           true
+        kcs_credentials_json_role:  "DOMAIN_ADMIN"
+        kcs_hostname:               "{{ target_hostname | upper }}"
+        kcs_result_var:             "vault_domain_join_password"
+
+    - name: "[KeePass sync] Local Administrator password (ansible_password)"
+      include_tasks: ../../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../../.."
+        kcs_keepass_path:           "Infrastructure/{{ host_site_code }}/{{ target_hostname | upper }}-local"
+        kcs_username:               "{{ ansible_user }}"
+        kcs_current_value:          "{{ ansible_password }}"
+        kcs_can_generate:           true
+        kcs_credentials_json_role:  "LOCAL_ADMIN"
+        kcs_hostname:               "{{ target_hostname | upper }}"
+        kcs_result_var:             "ansible_password"
+
     # ── A4 — Read sites.csv and derive network details ─────────────────────────
 
     - name: "[A4] Read sites.csv from control node"
