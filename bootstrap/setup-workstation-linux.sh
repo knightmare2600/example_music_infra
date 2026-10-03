@@ -51,6 +51,26 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-10-03  configure_pwsh_profile() also adds Enable-/Disable-LsCompatibilityMode --
+#               Robert noticed `ls` doesn't get Terminal-Icons decoration here the way it
+#               does on Windows. Confirmed live, not guessed: `Get-Command ls -All` shows
+#               `ls` as a plain Application (the real /bin/ls) on this platform -- unlike
+#               Windows, PowerShell deliberately doesn't alias ls -> Get-ChildItem on
+#               Linux/macOS, specifically so it doesn't shadow the pre-existing native
+#               tool. OFF by default (preserves that deliberate upstream choice unless
+#               opted into); the toggle defines/removes a global `ls` function wrapping
+#               Get-ChildItem. On Windows, both functions just print a gentle reminder
+#               (warning emoji) that there's nothing to toggle there, rather than erroring.
+#   2026-10-03  Added configure_pwsh_profile() -- Robert, live: PSReadLine's own default
+#               Parameter/Operator colour (ANSI code 90) renders invisible against this
+#               estate's Solarized Dark terminal scheme (same root cause, same fix as
+#               ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 22, fixed
+#               same day for Windows target nodes). This is the control-node-side
+#               equivalent -- gracefully skips if pwsh isn't installed (this script
+#               doesn't install it; confirmed via this estate's own control node that
+#               it's genuinely sometimes installed by hand, outside this script's own
+#               package list). Idempotent, append-if-missing -- verified live on a real
+#               control node, including a second run proving the skip path.
 #   2026-08-13  Robert's idea: archives[] can now be a .iso (7z extraction),
 #               not just .zip -- see benarbejde/asset_manifest.json's own
 #               2026-08-13 changelog entry for the full reasoning (debian/
@@ -432,6 +452,80 @@ install_workstation_tools() {
   done < <(jq -r '.workstation_tools[] | [.name, .repo, .tag] | @tsv' "$MANIFEST")
 }
 
+# Example Music Limited -- PSReadLine's own default Parameter/Operator colour
+# (ANSI code 90, "bright black") renders invisible against this estate's Solarized
+# Dark terminal scheme, which maps that exact ANSI slot to the background colour
+# itself (#002B36) -- see docs/solarized-dark-terminal-setup.md. Same fix as
+# ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 22 profile
+# (2026-10-03) for the Windows-target side -- this is the control-node-side
+# equivalent, since pwsh is confirmed installed on a real control node already
+# (not by this script -- it was installed by hand; this only configures its
+# profile IF pwsh is already present, same graceful-skip pattern
+# Setup-Workstation.ps1's own Set-PowerShellProfiles uses). True-RGB escape, not
+# another ANSI slot number, so this is correct regardless of which terminal is
+# actually connecting (iTerm2, Windows Terminal, PuTTY, a local TTY, ...).
+configure_pwsh_profile() {
+  if ! command -v pwsh &>/dev/null; then
+    msg_info "pwsh not found on PATH -- skipping PowerShell Core profile configuration (not installed by this script; install it by hand first if you want this)."
+    return
+  fi
+
+  local profile_path
+  profile_path="$(pwsh -NoLogo -NoProfile -Command '$PROFILE')"
+  local profile_dir
+  profile_dir="$(dirname "$profile_path")"
+  local marker="Example Music Limited -- PSReadLine Parameter/Operator colour fix"
+
+  mkdir -p "$profile_dir"
+
+  if [[ -f "$profile_path" ]] && grep -qF "$marker" "$profile_path"; then
+    msg_info "${profile_path}: PSReadLine colour fix already present, skipping."
+    return
+  fi
+
+  cat >> "$profile_path" <<'EOF'
+
+# Example Music Limited -- PSReadLine Parameter/Operator colour fix
+# Added by bootstrap/setup-workstation-linux.sh -- safe to remove or edit freely.
+if (Get-Module -ListAvailable PSReadLine) {
+    Import-Module PSReadLine
+    Set-PSReadLineOption -Colors @{
+        Parameter = "$([char]0x1b)[38;2;88;110;117m"   # Solarized base01, #586E75
+        Operator  = "$([char]0x1b)[38;2;88;110;117m"   # same root cause, same fix
+    }
+}
+
+# Example Music Limited -- ls/Get-ChildItem maximum-compatibility toggle.
+# On Windows, PowerShell aliases ls -> Get-ChildItem by default (no native ls.exe
+# exists to conflict with). On Linux/macOS, PowerShell deliberately does NOT
+# create that alias -- ls resolves to the real native binary instead, by design,
+# specifically so it doesn't shadow a pre-existing Unix tool. Terminal-Icons only
+# decorates Get-ChildItem's own output, so ls never shows icons here unless you
+# opt in. OFF by default -- call Enable-LsCompatibilityMode to turn it on for
+# this session, Disable-LsCompatibilityMode to go back to the native binary.
+function Enable-LsCompatibilityMode {
+    if ($IsWindows) {
+        Write-Host "⚠️  Enable-LsCompatibilityMode has no effect on Windows -- ls is already Get-ChildItem natively here. Continuing without changes." -ForegroundColor Yellow
+        return
+    }
+    function global:ls { Get-ChildItem @args }
+    Write-Host "ls compatibility mode ON -- ls now calls Get-ChildItem (Terminal-Icons decoration included). Run Disable-LsCompatibilityMode to revert." -ForegroundColor Green
+}
+
+function Disable-LsCompatibilityMode {
+    if ($IsWindows) {
+        Write-Host "⚠️  Disable-LsCompatibilityMode has no effect on Windows -- ls is always Get-ChildItem there." -ForegroundColor Yellow
+        return
+    }
+    if (Test-Path Function:\ls) {
+        Remove-Item Function:\ls
+    }
+    Write-Host "ls compatibility mode OFF -- ls resolves to the native binary again." -ForegroundColor Green
+}
+EOF
+  msg_ok "${profile_path}: PSReadLine colour fix + ls compatibility toggle added."
+}
+
 fetch_assets() {
   if [[ ! -f "$MANIFEST" ]]; then
     msg_error "Manifest not found: ${MANIFEST}"
@@ -472,6 +566,7 @@ fetch_assets() {
 main() {
   $DO_DEPS && install_deps
   $DO_DEPS && install_workstation_tools
+  $DO_DEPS && configure_pwsh_profile
   $DO_ASSETS && fetch_assets
   msg_ok "Done."
 }

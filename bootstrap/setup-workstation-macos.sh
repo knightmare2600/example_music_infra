@@ -71,6 +71,16 @@
 # .iso rather than .zip (currently just the debian/ mini.iso entries).
 # ==============================================================================
 # Changelog:
+#   2026-10-03  configure_pwsh_profile() also adds Enable-/Disable-LsCompatibilityMode --
+#               same real finding and fix as setup-workstation-linux.sh's own, same day
+#               (`Get-Command ls -All` confirmed `ls` resolves to the native binary here
+#               too, not the Get-ChildItem alias Windows gets by default). OFF by default,
+#               gentle Windows no-op reminder included, same as the Linux sibling.
+#   2026-10-03  Added configure_pwsh_profile() -- same PSReadLine Parameter/Operator
+#               colour fix as setup-workstation-linux.sh's own (same day) -- this
+#               script had no profile-writing logic at all before now, not just a
+#               missing colour fix. Gracefully skips if pwsh isn't installed, same
+#               pattern as the Linux sibling.
 #   2026-08-13  Robert's idea: archives[] can now be a .iso (7z extraction),
 #               not just .zip -- see benarbejde/asset_manifest.json's own
 #               2026-08-13 changelog entry for the full reasoning (debian/
@@ -487,6 +497,80 @@ install_workstation_tools() {
   done < <(jq -r '.workstation_tools[] | [.name, .repo, .tag] | @tsv' "$MANIFEST")
 }
 
+# Example Music Limited -- PSReadLine's own default Parameter/Operator colour
+# (ANSI code 90, "bright black") renders invisible against this estate's Solarized
+# Dark terminal scheme, which maps that exact ANSI slot to the background colour
+# itself (#002B36) -- see docs/solarized-dark-terminal-setup.md. Same fix as
+# ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 22 profile
+# (2026-10-03) for the Windows-target side, and
+# bootstrap/setup-workstation-linux.sh's own configure_pwsh_profile(), same day --
+# this is the macOS-side equivalent (same iTerm2 Solarized Dark scheme this was
+# actually first noticed in). Gracefully skips if pwsh isn't installed -- this
+# script's own install_deps() doesn't currently install it; confirmed this is the
+# one gap here, the Linux/Windows siblings have the identical logic.
+configure_pwsh_profile() {
+  if ! command -v pwsh &>/dev/null; then
+    msg_info "pwsh not found on PATH -- skipping PowerShell Core profile configuration (not installed by this script; install it by hand first if you want this)."
+    return
+  fi
+
+  local profile_path
+  profile_path="$(pwsh -NoLogo -NoProfile -Command '$PROFILE')"
+  local profile_dir
+  profile_dir="$(dirname "$profile_path")"
+  local marker="Example Music Limited -- PSReadLine Parameter/Operator colour fix"
+
+  mkdir -p "$profile_dir"
+
+  if [[ -f "$profile_path" ]] && grep -qF "$marker" "$profile_path"; then
+    msg_info "${profile_path}: PSReadLine colour fix already present, skipping."
+    return
+  fi
+
+  cat >> "$profile_path" <<'EOF'
+
+# Example Music Limited -- PSReadLine Parameter/Operator colour fix
+# Added by bootstrap/setup-workstation-macos.sh -- safe to remove or edit freely.
+if (Get-Module -ListAvailable PSReadLine) {
+    Import-Module PSReadLine
+    Set-PSReadLineOption -Colors @{
+        Parameter = "$([char]0x1b)[38;2;88;110;117m"   # Solarized base01, #586E75
+        Operator  = "$([char]0x1b)[38;2;88;110;117m"   # same root cause, same fix
+    }
+}
+
+# Example Music Limited -- ls/Get-ChildItem maximum-compatibility toggle.
+# On Windows, PowerShell aliases ls -> Get-ChildItem by default (no native ls.exe
+# exists to conflict with). On Linux/macOS (this is the macOS case -- iTerm2's own
+# Solarized scheme is where this was first noticed), PowerShell deliberately does
+# NOT create that alias -- ls resolves to the real native binary instead, by
+# design, specifically so it doesn't shadow a pre-existing Unix tool.
+# Terminal-Icons only decorates Get-ChildItem's own output, so ls never shows
+# icons here unless you opt in. OFF by default -- call Enable-LsCompatibilityMode
+# to turn it on for this session, Disable-LsCompatibilityMode to revert.
+function Enable-LsCompatibilityMode {
+    if ($IsWindows) {
+        Write-Host "⚠️  Enable-LsCompatibilityMode has no effect on Windows -- ls is already Get-ChildItem natively here. Continuing without changes." -ForegroundColor Yellow
+        return
+    }
+    function global:ls { Get-ChildItem @args }
+    Write-Host "ls compatibility mode ON -- ls now calls Get-ChildItem (Terminal-Icons decoration included). Run Disable-LsCompatibilityMode to revert." -ForegroundColor Green
+}
+
+function Disable-LsCompatibilityMode {
+    if ($IsWindows) {
+        Write-Host "⚠️  Disable-LsCompatibilityMode has no effect on Windows -- ls is always Get-ChildItem there." -ForegroundColor Yellow
+        return
+    }
+    if (Test-Path Function:\ls) {
+        Remove-Item Function:\ls
+    }
+    Write-Host "ls compatibility mode OFF -- ls resolves to the native binary again." -ForegroundColor Green
+}
+EOF
+  msg_ok "${profile_path}: PSReadLine colour fix + ls compatibility toggle added."
+}
+
 fetch_assets() {
   if [[ ! -f "$MANIFEST" ]]; then
     msg_error "Manifest not found: ${MANIFEST}"
@@ -527,6 +611,7 @@ fetch_assets() {
 main() {
   $DO_DEPS && install_deps
   $DO_DEPS && install_workstation_tools
+  $DO_DEPS && configure_pwsh_profile
   $DO_ASSETS && fetch_assets
   msg_ok "Done."
 }
