@@ -9,6 +9,19 @@
 # Reworking Live Conventions" section.
 # =============================================================================
 # Changelog:
+#   2026-10-03  Stage 22's profile now explicitly sets PSReadLine's Parameter/Operator
+#               colours (Solarized base01, #586E75, via a true-RGB escape). Robert, live:
+#               PSReadLine's own default for both (ANSI code 90, "bright black") renders
+#               invisible against this estate's Solarized Dark terminal scheme, which maps
+#               that exact ANSI slot to the background colour itself -- confirmed most
+#               noticeable SSHing from iTerm2 into a Windows PS7 session
+#               ("Get-ADUser -Filter *" -- the -Filter parameter unreadable). True-RGB
+#               rather than another ANSI slot number, so it's not fragile to whichever
+#               terminal/profile happens to be connecting. Verified live: parsed with
+#               zero syntax errors, then actually executed -- ParameterColor/
+#               OperatorColor both resolve to the expected escape sequence afterward.
+#               Applies on the NEXT bootstrap run of a Windows node, not retroactively --
+#               an already-built host needs this stage re-run to pick it up.
 #   2026-06-20  Initial file
 #   2026-07-06  Stage 21 now includes tasks/fonts.yml instead of downloading
 #               font files individually from the internal asset server
@@ -76,6 +89,22 @@
           Set-PSReadLineOption -PredictionSource HistoryAndPlugin
           Set-PSReadLineOption -PredictionViewStyle ListView
           Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
+
+          # Example Music Limited -- PSReadLine's own default Parameter/Operator
+          # colour (ANSI code 90, "bright black") renders invisible against this
+          # estate's Solarized Dark terminal scheme, which maps that exact ANSI
+          # slot to the background colour itself (#002B36) -- see
+          # docs/solarized-dark-terminal-setup.md. Confirmed live, 2026-10-03:
+          # most noticeable over SSH from iTerm2 (macOS) into a Windows PS7
+          # session, e.g. "Get-ADUser -Filter *" -- the -Filter parameter was
+          # unreadable. True-RGB escapes here, not another ANSI slot number, so
+          # this renders correctly regardless of which terminal/profile is
+          # actually connecting (iTerm2 over SSH, Windows Terminal locally,
+          # PuTTY, etc.) rather than being fragile to yet another slot remapping.
+          Set-PSReadLineOption -Colors @{
+              Parameter = "$([char]0x1b)[38;2;88;110;117m"   # Solarized base01, #586E75
+              Operator  = "$([char]0x1b)[38;2;88;110;117m"   # same root cause, same fix
+          }
       }
 
       # Terminal-Icons
