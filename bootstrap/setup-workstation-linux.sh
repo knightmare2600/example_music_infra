@@ -51,6 +51,10 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-10-03  Enable-/Disable-LsCompatibilityMode now carry real comment-based help
+#               (SYNOPSIS/DESCRIPTION/EXAMPLE) -- Robert ran `help Enable-LsCompatibilityMode`
+#               and got nothing useful back. Verified live: `Get-Help
+#               Enable-LsCompatibilityMode -Full` now returns proper output.
 #   2026-10-03  configure_pwsh_profile() also adds Enable-/Disable-LsCompatibilityMode --
 #               Robert noticed `ls` doesn't get Terminal-Icons decoration here the way it
 #               does on Windows. Confirmed live, not guessed: `Get-Command ls -All` shows
@@ -504,6 +508,20 @@ if (Get-Module -ListAvailable PSReadLine) {
 # opt in. OFF by default -- call Enable-LsCompatibilityMode to turn it on for
 # this session, Disable-LsCompatibilityMode to go back to the native binary.
 function Enable-LsCompatibilityMode {
+    <#
+    .SYNOPSIS
+    Turns on ls/Get-ChildItem compatibility mode for this session.
+    .DESCRIPTION
+    PowerShell aliases ls -> Get-ChildItem by default on Windows, but deliberately
+    does not on Linux/macOS, so it doesn't shadow the real native ls binary that's
+    already there. This opts in anyway, for anyone who wants ls to behave the same
+    way here as it does in a Windows PS7 session, including Terminal-Icons
+    decoration. Session-scoped only -- not persisted, and has no effect on
+    Windows, where this is already the default.
+    .EXAMPLE
+    Enable-LsCompatibilityMode
+    Turns the override on; ls now calls Get-ChildItem for the rest of this session.
+    #>
     if ($IsWindows) {
         Write-Host "⚠️  Enable-LsCompatibilityMode has no effect on Windows -- ls is already Get-ChildItem natively here. Continuing without changes." -ForegroundColor Yellow
         return
@@ -513,6 +531,17 @@ function Enable-LsCompatibilityMode {
 }
 
 function Disable-LsCompatibilityMode {
+    <#
+    .SYNOPSIS
+    Turns off ls/Get-ChildItem compatibility mode, restoring the native ls binary.
+    .DESCRIPTION
+    Reverses Enable-LsCompatibilityMode by removing the global ls function
+    override, so ls resolves to the real native binary again instead of
+    Get-ChildItem. Has no effect on Windows, where ls is always Get-ChildItem.
+    .EXAMPLE
+    Disable-LsCompatibilityMode
+    Removes the override; ls goes back to the native binary.
+    #>
     if ($IsWindows) {
         Write-Host "⚠️  Disable-LsCompatibilityMode has no effect on Windows -- ls is always Get-ChildItem there." -ForegroundColor Yellow
         return

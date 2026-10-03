@@ -102,6 +102,12 @@ isn't, rather than failing partway through with a confusing permissions
 error.
 ==============================================================================
 Changelog:
+  2026-10-03  Deliberately NOT given the Enable-/Disable-LsCompatibilityMode toggle
+              added the same day to bootstrap/setup-workstation-linux.sh and
+              setup-workstation-macos.sh. On Windows, PowerShell already aliases
+              ls -> Get-ChildItem natively (no competing ls.exe), so the toggle would
+              be dead code here with no functional purpose -- its absence is by
+              design, not a missed sweep.
   2026-10-03  Set-PowerShellProfiles' own profileSnippet now also fixes PSReadLine's
               invisible Parameter/Operator colour (Solarized base01, same fix as
               ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 22 and
