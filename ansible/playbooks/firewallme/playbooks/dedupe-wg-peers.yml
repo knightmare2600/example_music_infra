@@ -1,0 +1,159 @@
+---
+# =============================================================================
+# playbooks/dedupe-wg-peers.yml
+# Example Music Limited — remove unmanaged, duplicate WireGuard [Peer] blocks
+# =============================================================================
+# Does exactly one thing: on a WireGuard hub (hub-primary/hub-regional), finds any
+# [Peer] block in /etc/wireguard/wg0.conf that is NOT inside a
+# "# BEGIN/END ANSIBLE MANAGED BLOCK <site>" marker pair, but whose PublicKey is
+# byte-identical to one that IS inside such a pair -- a leftover from
+# bootstrap/web/provision/firewallme.sh's own interactive "Add spoke peer?" loop
+# (writes a plain, unmarked block), superseded later by add-wg-spoke.yml's
+# blockinfile-managed registration of the same site, which has no way to find or
+# remove the earlier unmarked one (blockinfile only ever manages its own marker).
+#
+# Confirmed safe (EXAFWLCLD001, 2026-10-02): WireGuard treats two [Peer] stanzas
+# sharing one PublicKey as one peer -- the kernel applies whichever is encountered
+# LAST when the file loads, which is already the managed (correct, PresharedKey-
+# bearing) block. The unmanaged copy is dead text; removing it changes nothing live.
+#
+# Does ONLY this. Never touches a managed block, [Interface], or anything else.
+# Only applies to hub-role firewalls -- a spoke's wg0.conf is written in full by
+# 09_wireguard_deploy.yml's ansible.builtin.copy (whole-file overwrite every run),
+# which structurally cannot accumulate this kind of duplicate the way a hub's
+# blockinfile-based, incrementally-added peer list can.
+#
+# Usage:
+#   # Preview only -- always runs first, never writes:
+#   ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/dedupe-wg-peers.yml \
+#     -e target=EXAFWLCLD001
+#
+#   # Preview, then prompts "type CONFIRM" before actually removing anything found:
+#   ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/dedupe-wg-peers.yml \
+#     -e target=EXAFWLCLD001 -e apply=true
+#
+# Idempotent: zero duplicates found -> reports that, changes nothing, safe to run
+# any time against any hub, not just after a known incident.
+#
+# Changelog:
+#   2026-10-02  Initial version. Robert, after a live-confirmed duplicate on
+#               EXAFWLCLD001 (FAL/ODE/LIV) -- built as a real, idempotent, reusable
+#               mechanism rather than a one-off manual edit, since this estate
+#               manages its infrastructure through Ansible, not by hand. See
+#               roles/firewall/files/dedupe_wg_peers.py for the actual logic.
+# =============================================================================
+
+- name: "Example Music — Remove duplicate unmanaged WireGuard peer blocks"
+  hosts: "{{ target }}"
+  gather_facts: false
+  become: true
+  serial: 1
+
+  pre_tasks:
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../../.."
+
+  tasks:
+
+    - name: "[dedupe-wg-peers] Confirm wg0.conf exists on this host"
+      ansible.builtin.stat:
+        path: /etc/wireguard/wg0.conf
+      register: _wg_conf_stat
+
+    - name: "[dedupe-wg-peers] FAIL — no wg0.conf on this host"
+      ansible.builtin.fail:
+        msg: "{{ inventory_hostname }} has no /etc/wireguard/wg0.conf -- nothing to do."
+      when: not _wg_conf_stat.stat.exists
+
+    - name: "[dedupe-wg-peers] Preview — scan for unmanaged duplicate peer blocks (always runs, never writes)"
+      ansible.builtin.script: "{{ playbook_dir }}/../roles/firewall/files/dedupe_wg_peers.py /etc/wireguard/wg0.conf --check"
+      register: _dedupe_preview
+      changed_when: false
+
+    - name: "[dedupe-wg-peers] Preview result"
+      ansible.builtin.debug:
+        msg: "{{ _dedupe_preview.stdout_lines }}"
+
+    - name: "[dedupe-wg-peers] Set found-duplicates fact"
+      ansible.builtin.set_fact:
+        _dedupe_found: "{{ _dedupe_preview.stdout is search('DEDUPE_COUNT=([1-9][0-9]*)') }}"
+
+    - name: "[dedupe-wg-peers] NOTE — nothing to do"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: no unmanaged duplicate peer blocks found. Nothing to do."
+      when: not _dedupe_found
+
+    - name: "[dedupe-wg-peers] NOTE — preview only, re-run with -e apply=true to remove the block(s) shown above"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: duplicate(s) found above. Re-run with -e apply=true to remove them."
+      when:
+        - _dedupe_found
+        - not (apply | default(false) | bool)
+
+    - name: "[dedupe-wg-peers] Confirm before applying"
+      ansible.builtin.pause:
+        prompt: |
+
+          ── {{ inventory_hostname }}: duplicate peer block(s) found, shown above ──
+          Only the plain, unmarked block(s) listed above will be removed. Every
+          "# BEGIN/END ANSIBLE MANAGED BLOCK" section is left completely untouched.
+          A timestamped-by-content backup is written to wg0.conf.bak-dedupe first.
+
+          Type CONFIRM to remove them now, or Ctrl+C to abort.
+      register: _dedupe_confirm
+      when:
+        - _dedupe_found
+        - apply | default(false) | bool
+
+    - name: "[dedupe-wg-peers] FAIL — confirmation not given"
+      ansible.builtin.fail:
+        msg: "Confirmation not given (expected CONFIRM) -- nothing changed."
+      when:
+        - _dedupe_found
+        - apply | default(false) | bool
+        - (_dedupe_confirm.user_input | default('')) != 'CONFIRM'
+
+    - name: "[dedupe-wg-peers] Apply — remove the confirmed duplicate block(s)"
+      ansible.builtin.script: "{{ playbook_dir }}/../roles/firewall/files/dedupe_wg_peers.py /etc/wireguard/wg0.conf"
+      register: _dedupe_apply
+      changed_when: "'DEDUPE_COUNT=0' not in _dedupe_apply.stdout"
+      when:
+        - _dedupe_found
+        - apply | default(false) | bool
+        - (_dedupe_confirm.user_input | default('')) == 'CONFIRM'
+
+    - name: "[dedupe-wg-peers] Apply result"
+      ansible.builtin.debug:
+        msg: "{{ _dedupe_apply.stdout_lines }}"
+      when: _dedupe_apply is not skipped
+
+    - name: "[dedupe-wg-peers] Re-sync live WireGuard state from the cleaned file (no restart, no downtime)"
+      ansible.builtin.shell: wg syncconf wg0 <(wg-quick strip /etc/wireguard/wg0.conf)
+      args:
+        executable: /bin/bash
+      when:
+        - _dedupe_apply is not skipped
+        - _dedupe_apply.changed
+
+    - name: "[dedupe-wg-peers] Show live peer state after sync"
+      ansible.builtin.command: wg show wg0
+      register: _wg_show_after
+      changed_when: false
+      when:
+        - _dedupe_apply is not skipped
+        - _dedupe_apply.changed
+
+    - name: "[dedupe-wg-peers] Post-cleanup live state"
+      ansible.builtin.debug:
+        msg: "{{ _wg_show_after.stdout_lines }}"
+      when: _wg_show_after is not skipped
+
+    - name: "[dedupe-wg-peers] Done — removed, backup at wg0.conf.bak-dedupe"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: cleanup complete."
+      when:
+        - _dedupe_apply is not skipped
+        - _dedupe_apply.changed
