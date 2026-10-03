@@ -102,6 +102,11 @@ isn't, rather than failing partway through with a confusing permissions
 error.
 ==============================================================================
 Changelog:
+  2026-10-03  Set-PowerShellProfiles' own profileSnippet now also fixes PSReadLine's
+              invisible Parameter/Operator colour (Solarized base01, same fix as
+              ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 22 and
+              bootstrap/setup-workstation-linux.sh's configure_pwsh_profile(), same day) --
+              this script's own workstation profile had the identical unfixed gap.
   2026-10-03  Robert ran job 3 (asset fetch) for real on real Windows for the first time --
               see this file's own header for the full result (22 of 22 manifest entries,
               zero errors). First run (no -Refresh) silently skipped every already-present
@@ -237,6 +242,23 @@ function Set-PowerShellProfiles {
 # Example Music Limited -- Nerd Font glyph support for Windows Terminal.
 # Added by bootstrap/Setup-Workstation.ps1 -- safe to remove or edit freely.
 $OutputEncoding = [System.Text.Encoding]::UTF8
+
+# Example Music Limited -- PSReadLine Parameter/Operator colour fix.
+# PSReadLine's own default colour for both (ANSI code 90, "bright black")
+# renders invisible against this estate's Solarized Dark terminal scheme,
+# which maps that exact ANSI slot to the background colour itself
+# (#002B36) -- see docs/solarized-dark-terminal-setup.md. Same fix as
+# ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 22 profile
+# (2026-10-03) for managed Windows target nodes -- this is the engineer-
+# workstation-side equivalent. True-RGB escape, not another ANSI slot
+# number, so it's correct regardless of which terminal is connecting.
+if (Get-Module -ListAvailable PSReadLine) {
+    Import-Module PSReadLine
+    Set-PSReadLineOption -Colors @{
+        Parameter = "$([char]0x1b)[38;2;88;110;117m"   # Solarized base01, #586E75
+        Operator  = "$([char]0x1b)[38;2;88;110;117m"   # same root cause, same fix
+    }
+}
 '@
 
     # $PROFILE here resolves to WHICHEVER host this script is currently
