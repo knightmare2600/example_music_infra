@@ -67,6 +67,42 @@ either (checked, not guessed -- only `snmpb`, an unrelated MIB browser, came
 up) -- the install line points at net-snmp's own Windows binaries instead of
 inventing a package-manager one-liner that doesn't exist.
 
+sshpass/gitleaks/IPy/proxmoxer (added 2026-10-03, from a full control-node
+dependency audit -- static scan of every subprocess.run()/shutil.which()
+call in benarbejde/*.py and at_have_ryggen_fri/*.py, every control-node-side
+Ansible command:/shell: task, cross-checked against a real ~/.bash_history
+and resolved against a real node via dpkg -S/apt-cache, not recalled from
+memory):
+  - sshpass was a genuine, previously-uncaught gap -- it's literally how
+    `ansible_password` triggers password-based SSH instead of key-based
+    (confirmed in windows_dc/00-dc-preflight.yml's and
+    windows_dc/30-dc-replicate.yml's own comments: "Requires sshpass
+    installed on the control node"), and ansible/tasks/ssh_key_preflight.yml's
+    auto-heal path invokes it directly. Nothing was checking for it before now.
+  - gitleaks is already named in this file's OWN docstring above as one of
+    the motivating per-tool patterns (check_gitleaks.py/check 33) but was
+    never actually migrated into REQUIRED_TOOLS -- fixed. Also corrects a
+    standing assumption: Debian/Trixie genuinely packages `gitleaks`
+    (confirmed via `apt-cache search`/`apt-cache show`, not assumed absent
+    just because the Windows side fetches a release zip) -- older
+    (8.16.0 in Trixie vs. 8.30.1 on the Windows side), not identical, but a
+    real apt package, not pip/manual-only.
+  - IPy and proxmoxer are the two genuinely non-standard Python modules this
+    audit found -- `yaml`/`jinja2` are deliberately NOT added here even
+    though benarbejde/*.py imports them too, since ansible-core itself
+    already depends on both as its own hard dependencies (installing
+    ansible-core via apt already pulls them in) -- adding a check for
+    something that's already a transitive dependency of a tool this whole
+    estate assumes is present would be noise, not a real gap.
+  git/git-lfs/curl/wget/jq/ansible-core/ssh-keygen (openssh-client) were all
+  found in the same audit but deliberately NOT added -- they're baseline
+  tools `bootstrap/setup-workstation-linux.sh` (and its macOS/Windows
+  siblings) already install as a matter of course, not estate-specific
+  extras the way keepassxc-cli/passlib/snmp/sshpass/gitleaks/IPy/proxmoxer
+  are. Keeping this list to genuine, easy-to-miss extras, not every tool a
+  working dev box happens to need, is the same "deliberately small and
+  curated" choice already made for passlib/snmp above.
+
 Exit code: 0 unless a required tool is missing (informational; --strict
 promotes any missing tool to a hard failure).
 """
@@ -123,6 +159,68 @@ REQUIRED_TOOLS = {
             "Darwin": "brew install net-snmp (keg-only -- add $(brew --prefix net-snmp)/bin to PATH)",
             "Windows": "no Chocolatey package confirmed -- download the Windows binaries "
                        "directly from https://net-snmp.sourceforge.io/download.html",
+        },
+    },
+    "sshpass": {
+        "check_type": "binary",
+        "required_by": [
+            "ansible/tasks/ssh_key_preflight.yml (auto-heal path -- sshpass -p ... ssh ...)",
+            "ansible_password-driven SSH auth generally (windows_dc/00-dc-preflight.yml, "
+            "windows_dc/30-dc-replicate.yml, windows_bootstrap/00-preflight.yml -- Ansible's "
+            "SSH connection plugin shells out to sshpass whenever ansible_password is set, "
+            "instead of key-based auth)",
+        ],
+        "install": {
+            "Linux": "apt install sshpass",
+            "Darwin": "not in homebrew-core (Homebrew excludes it on principle) -- needs a "
+                      "third-party tap, e.g. brew install https://raw.githubusercontent.com/"
+                      "kadwanev/bigboybrew/master/Library/Formula/sshpass.rb, or build from "
+                      "source",
+            "Windows": "no standard package confirmed -- this mechanism is for connecting "
+                       "*to* Windows targets, not running Ansible *from* Windows, so this is "
+                       "unlikely to actually be needed on a Windows control node",
+        },
+    },
+    "gitleaks": {
+        "check_type": "binary",
+        "required_by": [
+            "at_have_ryggen_fri/check_gitleaks.py (check 33)",
+        ],
+        "install": {
+            "Linux": "apt install gitleaks (packaged in Debian Trixie, confirmed -- the "
+                     "apt version lags upstream (8.16.0 vs. the 8.30.1 release the Windows "
+                     "asset manifest fetches), not identical but genuinely real)",
+            "Darwin": "brew install gitleaks",
+            "Windows": "see benarbejde/asset_manifest.json's own workstation_tools[] entry, "
+                       "or https://github.com/gitleaks/gitleaks/releases directly",
+        },
+    },
+    "IPy": {
+        "check_type": "python_module",
+        "required_by": [
+            "benarbejde/generate_inventory.py (IP/subnet arithmetic)",
+        ],
+        "install": {
+            "Linux": "apt install python3-ipy",
+            "Darwin": "brew install python3 && python3 -m pip install --user IPy "
+                      "(no Homebrew formula for the module itself)",
+            "Windows": "python -m pip install --user IPy",
+        },
+    },
+    "proxmoxer": {
+        "check_type": "python_module",
+        "required_by": [
+            "bootstrap/web/proxmox/create-vm.py and its siblings (create-vm-tui.py, "
+            "convert-v2v.py, manage-pool.py, pve-bootorder.py, bulk_iso_upload.py, "
+            "create-pve-users.py, site-inventory-audit.py), when run from the control "
+            "node rather than a PVE node itself -- PVE nodes get it automatically via "
+            "pve_packages in group_vars/pvenodes/main.yml",
+        ],
+        "install": {
+            "Linux": "apt install python3-proxmoxer (pulls in python3-requests too)",
+            "Darwin": "brew install python3 && python3 -m pip install --user proxmoxer "
+                      "requests (no Homebrew formula for the module itself)",
+            "Windows": "python -m pip install --user proxmoxer requests",
         },
     },
 }
