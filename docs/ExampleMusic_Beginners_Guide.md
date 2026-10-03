@@ -12,6 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-10-03 | §11.1 — added a real, verified transcript of `Setup-Workstation.ps1 -AssetsOnly -Refresh` run live on real Windows by Robert, the first genuine real-Windows confirmation of job 3 (asset fetch) rather than just PowerShell Core on Linux. All 22 manifest entries (16 `assets[]` + 6 `archives[]`) fetched and checksum-verified with zero errors. Also fixed a real gap the first (non-`-Refresh`) run exposed: already-present assets were skipped completely silently, with no log line at all, making a correct run look incomplete — `Setup-Workstation.ps1` now prints a line on every skip. |
 | 2026-08-08 | Added §7.4 — bootstrapping a standalone Linux management server (Salt/Rudder/TacticalRMM). Real live incident: `linux/tools.yml -e target=<host>` silently ran against the entire Linux fleet instead of one host (`target` does nothing for that playbook — it targets `groups['all']` unless `--limit` is passed), and failed on an unrelated unreachable host. Documents that `linux/tools.yml` never sets hostname/static IP (confirmed by watching a full real run), the actual role-specific commands for Salt/TacticalRMM/Rudder, that `--ask-vault-pass` is needed for every playbook in this repo (`group_vars/all/vault.yml` always auto-loads), and a verified table of the 4 different, non-interchangeable `--limit`/`-e target=`/`-e target_hosts=` patterns actually used across playbook families. |
 | 2026-08-04 | §4.2 broadened — FRD isn't just VRK's provisioning backup, it's CLD's DR sister site generally (Robert: think of CLD as "cloud site #1", FRD as the site the estate falls over to if CLD becomes unreachable, `EXAPBXCLD002`/`EXAPBXFRD001` standing in for CLD's own PBX being the concrete real example, not hypothetical). The provisioning-network redundancy already documented here is the first piece of that relationship, not the whole of it. `network-inventory.md`, `site-inventory.md`, and `network-diagram/danmark.md` updated to match. |
 | 2026-07-30 | §4.2/FRD's IP table updated — FRD has a real "site kit" alongside its legal-fiction MacBook: a small Intel NUC running Proxmox VE (`EXAPVEFRD001`) and a 48-port switch (`EXASWIFRD001`), confirmed by Robert. Previously described as "physically the same MacBook" with no other real hardware, now corrected — same drift class as the CLD NAS/RDR/BMC gaps fixed the same day. |
@@ -914,6 +915,79 @@ playbook). Safe to re-run any time — every step skips anything already correct
 
 Pass `-DepsOnly`/`--deps-only` or `-AssetsOnly`/`--assets-only` (flag spelling matches the
 platform's own convention) to run just one half.
+
+**Confirmed live on real Windows, 2026-10-03** (`-AssetsOnly -Refresh`, every manifest
+entry forced regardless of what already existed, to get a genuine first full confirmation
+of all three fetch strategies — GitHub Release API, URL + external checksum file, and
+ISO/zip archive extraction — on real Windows rather than just PowerShell Core on Linux):
+
+```
+PS C:\...\example_music_infra\bootstrap> .\Setup-Workstation.ps1 -AssetsOnly -Refresh
+[*] Reading C:\...\example_music_infra\benarbejde\asset_manifest.json...
+[*] Fetching spejder/x86_64/linux-x86_64 (knightmare2600/Spejder@latest)...
+[+]   spejder/x86_64/linux-x86_64 (sha256:e3b18c3f...)
+[*] Fetching spejder/arm64/linux-arm64 (knightmare2600/Spejder@latest)...
+[+]   spejder/arm64/linux-arm64 (sha256:12f830df...)
+[*] Fetching spejder/x86_64/initramfs-x86_64.cpio.zst (knightmare2600/Spejder@latest)...
+[+]   spejder/x86_64/initramfs-x86_64.cpio.zst (sha256:acb5a367...)
+[*] Fetching spejder/arm64/initramfs-arm64.cpio.zst (knightmare2600/Spejder@latest)...
+[+]   spejder/arm64/initramfs-arm64.cpio.zst (sha256:43fa79e3...)
+[*] Fetching proxmox/klargoring/amd64/vmlinuz (knightmare2600/klargoring@latest)...
+[+]   proxmox/klargoring/amd64/vmlinuz (sha256:e7667ff9...)
+[*] Fetching proxmox/klargoring/amd64/installer-initrd.img (knightmare2600/klargoring@latest)...
+[+]   proxmox/klargoring/amd64/installer-initrd.img (sha256:1cb7d61c...)
+[*] Fetching proxmox/klargoring/amd64/KERNEL_VERSION (knightmare2600/klargoring@latest)...
+[+]   proxmox/klargoring/amd64/KERNEL_VERSION (sha256:6047e4c5...)
+[*] Fetching proxmox/klargoring/arm64/vmlinuz-arm64 (knightmare2600/klargoring@latest)...
+[+]   proxmox/klargoring/arm64/vmlinuz-arm64 (sha256:cbe59a02...)
+[*] Fetching proxmox/klargoring/arm64/installer-initrd-arm64.img (knightmare2600/klargoring@latest)...
+[+]   proxmox/klargoring/arm64/installer-initrd-arm64.img (sha256:c380a59d...)
+[*] Fetching proxmox/klargoring/arm64/KERNEL_VERSION-arm64 (knightmare2600/klargoring@latest)...
+[+]   proxmox/klargoring/arm64/KERNEL_VERSION-arm64 (sha256:c99a1bf5...)
+[*] Fetching winpe/x86_64/wimboot (ipxe/wimboot@v2.9.0)...
+[+]   winpe/x86_64/wimboot (sha256:5f067ccd...)
+[*] Fetching winpe/x86_64/wimboot.i386 (ipxe/wimboot@v2.9.0)...
+[+]   winpe/x86_64/wimboot.i386 (sha256:b770ad4f...)
+[*] Fetching winpe/arm64/wimboot.arm64 (ipxe/wimboot@v2.9.0)...
+[+]   winpe/arm64/wimboot.arm64 (sha256:b1440c63...)
+[*] Fetching ipxe/arm64/ipxe-arm64-sb.iso (ipxe/ipxe@v2.0.0)...
+[+]   ipxe/arm64/ipxe-arm64-sb.iso (sha256:8ae8d7d9...)
+[*] Fetching openbsd/7.9/x86_64/bsd.rd...
+[+]   openbsd/7.9/x86_64/bsd.rd (sha256:6f0974bf...)
+[*] Fetching openbsd/7.9/arm64/bsd.rd...
+[+]   openbsd/7.9/arm64/bsd.rd (sha256:ca9da7ec...)
+[*] Fetching archive mini.iso...
+[+]   debian/trixie/x86_64/linux (from mini.iso)
+[+]   debian/trixie/x86_64/initrd.gz (from mini.iso)
+[*] Fetching archive mini.iso...
+[+]   debian/trixie/arm64/linux (from mini.iso)
+[+]   debian/trixie/arm64/initrd.gz (from mini.iso)
+[*] Fetching archive mini.iso...
+[+]   debian/bookworm/x86_64/linux (from mini.iso)
+[+]   debian/bookworm/x86_64/initrd.gz (from mini.iso)
+[*] Fetching archive mini.iso...
+[+]   debian/bookworm/arm64/linux (from mini.iso)
+[+]   debian/bookworm/arm64/initrd.gz (from mini.iso)
+[*] Fetching archive gparted-live-1.8.1-3-amd64.zip...
+[+]   gparted/x86_64/vmlinuz (from gparted-live-1.8.1-3-amd64.zip)
+[+]   gparted/x86_64/initrd.img (from gparted-live-1.8.1-3-amd64.zip)
+[+]   gparted/x86_64/filesystem.squashfs (from gparted-live-1.8.1-3-amd64.zip)
+[*] Fetching archive syslinux-6.03.zip...
+[+]   hdt/lpxelinux.0 (from syslinux-6.03.zip)
+[+]   hdt/hdt.c32 (from syslinux-6.03.zip)
+[+]   hdt/libcom32.c32 (from syslinux-6.03.zip)
+[+]   hdt/libutil.c32 (from syslinux-6.03.zip)
+[+] Asset fetch complete.
+[+] Done.
+```
+
+All 16 `assets[]` entries and all 6 `archives[]` entries in the manifest — 22 of 22,
+covering every one of the three fetch strategies (GitHub Release API, URL + external
+checksum file, ISO/zip archive extraction) — fetched and checksum-verified with zero
+errors. A plain `-AssetsOnly` run (no `-Refresh`) skips anything already present, silently
+before 2026-10-03's logging fix, with a `"... already present -- skipping"` line since —
+re-run with `-Refresh` if you want to force a full re-fetch and confirm every source is
+still reachable, same as above.
 
 Each script's own header comment is the authoritative, detailed reference for exactly what it
 installs and how the asset fetch works — read it before wondering "what does this actually do."

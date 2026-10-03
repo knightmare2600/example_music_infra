@@ -29,31 +29,27 @@ strategies, NOT redesigned from scratch. Companion scripts:
 Deliberately a separate file, not folded into either bash script, despite
 the real logical overlap -- Robert's explicit instruction.
 
-*** IMPORTANT -- NO WINDOWS AVAILABLE, BUT THE FETCH LOGIC WAS REAL-TESTED ***
-This environment has no Windows at all -- but PowerShell Core (`pwsh`) turns
-out to be installed on the Linux box that built this, and PowerShell Core
-is genuinely cross-platform, so the asset-fetch functions below (JSON
-manifest parsing, GitHub Release API calls, checksum-file extraction,
-Get-FileHash verification, Expand-Archive) were actually parsed
-(`[System.Management.Automation.Language.Parser]::ParseFile`, zero syntax
-errors) AND executed for real against live sources -- fetched and
-correctly SHA256-verified the real wimboot binary via `Invoke-RestMethod` +
-`Get-FileHash`, extracted the correct hash from OpenBSD's real BSD-format
-checksum file, and round-tripped a synthetic multi-member zip through
-`Expand-Archive` end to end, all producing byte-correct results. This is
-real execution proof for the fetch logic, not just careful reasoning.
+*** JOB 3 (ASSET FETCH) CONFIRMED LIVE ON REAL WINDOWS, 2026-10-03 ***
+Originally written with no Windows available at all to test against -- see this file's
+own 2026-07-27 changelog entry for how far pwsh-on-Linux execution could get it before
+then (real execution of the fetch logic's building blocks, but never the whole script,
+never on real Windows). Robert ran `.\Setup-Workstation.ps1 -AssetsOnly -Refresh` for
+real on a real Windows box, 2026-10-03: all 16 `assets[]` entries (GitHub Release API +
+SHA256, and URL + external checksum-file sources) and all 6 `archives[]` entries (ISO/zip
+extraction, with and without archive-level checksum verification) fetched and verified
+correctly -- 22 of 22 manifest entries, zero errors, zero checksum mismatches. `curl.exe`
+(not the `curl` alias) worked as designed. Job 3's fetch logic is now genuinely, fully
+confirmed on real Windows, not just reasoned about.
 
-What's still genuinely unverified, because it's Windows-only and nothing
-here can exercise it: the actual Chocolatey install/package steps, the
-`curl.exe`-vs-`curl`-alias distinction (Linux has no `curl.exe` to test
-against), the elevation check (`WindowsIdentity`/`WindowsPrincipal` throw
-`PlatformNotSupportedException` outside Windows), and the real
-`$env:LOCALAPPDATA`/Windows Terminal settings paths. Chocolatey package IDs
-were checked against Chocolatey's own package pages/search results, not
-guessed from memory, but the actual `choco install` runs themselves are
-unexercised. Malcolm, Jamie, or Robert: please run this for real on real
-Windows and report back anything in the Windows-only parts that doesn't
-match.
+What's STILL genuinely unverified, because job 3 alone doesn't exercise it: job 1 (the
+actual Chocolatey install/package steps) and the elevation check
+(`WindowsIdentity`/`WindowsPrincipal`, which throws `PlatformNotSupportedException`
+outside Windows so could never be tested off-Windows either) -- both need a run WITHOUT
+`-AssetsOnly` to confirm. Chocolatey package IDs were checked against Chocolatey's own
+package pages/search results, not guessed from memory, but the actual `choco install`
+runs themselves are still unexercised. Malcolm, Jamie, or Robert: please run the full,
+unflagged script (needs an elevated/Administrator PowerShell) and report back anything in
+job 1 that doesn't match.
 
 Presumes Windows PowerShell 5.1 (built into every Windows 10/11 box, no
 install needed to reach that starting point) as the shell this is first
@@ -106,6 +102,18 @@ isn't, rather than failing partway through with a confusing permissions
 error.
 ==============================================================================
 Changelog:
+  2026-10-03  Robert ran job 3 (asset fetch) for real on real Windows for the first time --
+              see this file's own header for the full result (22 of 22 manifest entries,
+              zero errors). First run (no -Refresh) silently skipped every already-present
+              asset/archive with no log line at all (Invoke-GithubReleaseFetch/
+              Invoke-UrlWithChecksumFileFetch/Invoke-ArchiveFetch's own
+              Test-Path-and-return-early checks) -- looked incomplete even though it was
+              working correctly, which is exactly the "a safety/status mechanism that works
+              silently is only half as good as one that works visibly" lesson already
+              learned once this estate ([[project_got_dc_computer_account_incident]]'s own
+              Improvements Made section). Added a one-line Write-Info on every skip path in
+              all three functions so a partial-looking run is now self-explanatory instead
+              of ambiguous between "already done" and "silently broken."
   2026-08-13  Robert's idea: archives[] can now be a .iso (extracted via
               Mount-DiskImage, native, no extra dependency), not just .zip
               -- see benarbejde/asset_manifest.json's own 2026-08-13
@@ -397,7 +405,10 @@ function Invoke-GithubReleaseFetch {
     param([string]$Dest, [string]$Repo, [string]$Tag, [string]$AssetName)
 
     $fullDest = Join-Path $WebDir $Dest
-    if (-not $ForceRefresh -and (Test-Path $fullDest)) { return }
+    if (-not $ForceRefresh -and (Test-Path $fullDest)) {
+        Write-Info "$Dest already present -- skipping (use -Refresh to force)."
+        return
+    }
 
     $apiUrl = if ($Tag -eq 'latest') {
         "https://api.github.com/repos/$Repo/releases/latest"
@@ -433,7 +444,10 @@ function Invoke-UrlWithChecksumFileFetch {
     param([string]$Dest, [string]$Url, [string]$ChecksumFileUrl, [string]$ChecksumFileEntry)
 
     $fullDest = Join-Path $WebDir $Dest
-    if (-not $ForceRefresh -and (Test-Path $fullDest)) { return }
+    if (-not $ForceRefresh -and (Test-Path $fullDest)) {
+        Write-Info "$Dest already present -- skipping (use -Refresh to force)."
+        return
+    }
 
     Write-Info "Fetching $Dest..."
 
@@ -476,7 +490,10 @@ function Invoke-ArchiveFetch {
     foreach ($m in $Members) {
         if (-not (Test-Path (Join-Path $WebDir $m.dest))) { $anyMissing = $true }
     }
-    if (-not $ForceRefresh -and -not $anyMissing) { return }
+    if (-not $ForceRefresh -and -not $anyMissing) {
+        Write-Info "$($Members.dest -join ', ') already present -- skipping (use -Refresh to force)."
+        return
+    }
 
     # SourceForge (and some other hosts) serve real download links ending in
     # a trailing /download segment, not a filename -- strip it before
