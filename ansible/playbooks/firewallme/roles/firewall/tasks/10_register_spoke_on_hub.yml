@@ -58,6 +58,17 @@
   when:
     - fw_wg_role == 'spoke'
     - not fw_is_black_site
+    # 2026-10-03, Robert, live (EXAFWLDET001): this is the one task in this file that
+    # genuinely needs wg0 to be up locally -- the rest of hub registration deliberately
+    # doesn't (see the 2026-09-05 changelog entry above). When fw_wan_activate is false
+    # (deliberately deferred, e.g. a site build where WAN is intentionally not brought up
+    # this run), wg0 doesn't exist yet -- `wg show wg0` was still attempted every time,
+    # genuinely failing at the OS level ("Unable to access interface: No such device")
+    # even though failed_when: false kept it from failing the play. Confusing noise for no
+    # benefit: the very next task already falls back to the standard 51820 port whenever
+    # this one can't produce a value, so skipping the doomed attempt outright changes
+    # nothing about the result, only removes the pointless failure.
+    - fw_wan_activate
 
 - name: "[Hub register] Resolve listen port — live value if wg0 is up, else the standard default"
   ansible.builtin.set_fact:
@@ -100,6 +111,19 @@
 # removed from every task below except the ones that were never about it in
 # the first place (hub reachability, still gated on that, not on the spoke's
 # own WAN state).
+#
+# BUG FIX (2026-10-03, Robert, live on EXAFWLDET001): the 2026-09-05 fix above correctly
+# stopped gating the whole hub-registration step on fw_wan_activate, but missed that the
+# very first task (the live listen-port read) is still a genuine, direct `wg show wg0`
+# against the spoke's OWN interface -- the one thing in this file that really does need
+# wg0 up locally. With WAN deliberately not activated this run (a real, correct choice,
+# not a mistake), that task still ran every time and genuinely failed at the OS level
+# ("Unable to access interface: No such device"), masked from failing the play only by
+# its own failed_when: false. Added fw_wan_activate back to just that one task's when: --
+# confirmed safe in isolation (a skipped, register:-targeted task still resolves the next
+# task's `| default(...)` chain to the standard 51820 fallback, not an undefined-variable
+# error) -- every other task in this file is unaffected, matching the 2026-09-05 fix's own
+# intent exactly rather than reverting it.
 
 # BUG FIX (2026-07-18): every task below this point delegates straight to the
 # hub with no check it's actually up -- a spoke provisioned before its hub (or
