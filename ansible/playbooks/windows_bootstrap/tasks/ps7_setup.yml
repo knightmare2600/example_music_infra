@@ -9,6 +9,12 @@
 # Reworking Live Conventions" section.
 # =============================================================================
 # Changelog:
+#   2026-10-03  Deliberately NOT given the Enable-/Disable-LsCompatibilityMode toggle
+#               added the same day to bootstrap/setup-workstation-linux.sh and
+#               setup-workstation-macos.sh (control-node/workstation profiles). On
+#               Windows, PowerShell already aliases ls -> Get-ChildItem natively (no
+#               competing ls.exe), so the toggle would be dead code here with no
+#               functional purpose -- its absence is by design, not a missed sweep.
 #   2026-10-03  Stage 22's profile now explicitly sets PSReadLine's Parameter/Operator
 #               colours (Solarized base01, #586E75, via a true-RGB escape). Robert, live:
 #               PSReadLine's own default for both (ANSI code 90, "bright black") renders
