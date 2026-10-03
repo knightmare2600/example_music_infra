@@ -5,7 +5,7 @@
 
 Editing `benarbejde/sites.csv`/`devices.csv`/`role_codes.csv`/`address_policy.csv`
 and regenerating the repo's own derived files (see
-[adding-a-new-device.md](adding-a-new-device.md)) only fixes what's committed to
+[adding-new-sites-bands-devices-and-subnets.md](adding-new-sites-bands-devices-and-subnets.md)) only fixes what's committed to
 git. Several hosts keep their **own separate deployed copy** of that data on
 disk, and nothing refreshes those automatically — Robert, 2026-08-06, after a
 live DNS/PVE mix-up this week that traced back to exactly this: "it needs a
@@ -27,6 +27,7 @@ original 2026-07-26 incident did:
 - `ansible/playbooks/tacticalrmm/tacticalrmm_server.yml`
 - `ansible/playbooks/firewallme/playbooks/90-firewall.yml`
 - `ansible/playbooks/firewallme/playbooks/add-wg-spoke.yml`
+- `ansible/playbooks/firewallme/playbooks/dedupe-wg-peers.yml`
 - `ansible/playbooks/linux/rename-host.yml`
 - `ansible/playbooks/salt/playbooks/10-master.yml`
 - `ansible/playbooks/windows_adschema/playbooks/10-ad-schema.yml`
@@ -69,7 +70,7 @@ ansible-playbook playbooks/linux/tools.yml --limit EXAANSCLD001
 ```
 
 The gate is a reactive backstop — it stops a run before it does anything wrong on stale data, but
-it only fires at the moment you happen to run one of the 15 gated playbooks. A live incident
+it only fires at the moment you happen to run one of the 16 gated playbooks. A live incident
 2026-09-01 (`EXAFWLATL001` firewall onboarding test) hit exactly this: the control node's own
 `sites.csv` had drifted stale from earlier `benarbejde/` edits made days before, and the gate
 correctly caught it — but only after the operator had already started the firewall run. Refreshing
@@ -80,12 +81,12 @@ rather than being the thing that tells you mid-run.
 
 After any edit to `benarbejde/sites.csv`/`devices.csv`/`role_codes.csv`/
 `address_policy.csv` (and the regeneration steps in
-[adding-a-new-device.md](adding-a-new-device.md)):
+[adding-new-sites-bands-devices-and-subnets.md](adding-new-sites-bands-devices-and-subnets.md)):
 
 | If you're about to... | Re-run this first |
 |---|---|
 | Run `create-vm.py`, or anything else that reads `/etc/example-music/*` **directly on a Proxmox node** | `ansible-playbook playbooks/linux/tools.yml --limit <that PVE node>` |
-| Run any of the 15 gated playbooks listed above | Nothing extra — the gate catches a stale control-node copy for you |
+| Run any of the 16 gated playbooks listed above | Nothing extra — the gate catches a stale control-node copy for you |
 | Expect a new/changed device to resolve in DNS | `ansible-playbook playbooks/bind9/bind9-dns.yml --tags zones-full,reload` against `EXADNSVRK001` |
 | Run anything else, on any other host, that reads `/etc/example-music/*` directly (not via the control node) | `ansible-playbook playbooks/linux/tools.yml --limit <that host>` |
 
