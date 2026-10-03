@@ -26,6 +26,7 @@ ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall
 |------|---------------|
 | `playbooks/90-firewall.yml` | Full firewall build/reconfigure — the Ansible port of `firewallme.sh` (see below) |
 | `playbooks/add-wg-spoke.yml` | Registers a new WireGuard spoke peer on a hub — SSH-fetches the spoke's live PublicKey/PSK, writes the `[Peer]` block via `blockinfile` (idempotent, per-site marker), live-applies with `wg set`. Run from the hub side: `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/add-wg-spoke.yml -e "target=<hub-host> spoke_site=<CODE> spoke_host=<spoke-host>"` |
+| `playbooks/dedupe-wg-peers.yml` | Removes a hub's leftover, unmarked `[Peer]` blocks left over from `firewallme.sh`'s interactive bootstrap loop, where the same site was later also registered properly via `add-wg-spoke.yml` (`blockinfile` can't see or remove the earlier unmarked copy). Idempotent, preview-first, only ever touches unmanaged duplicates. `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/dedupe-wg-peers.yml -e target=<hub-host>` (add `-e apply=true` to actually remove what the preview finds, after typing `CONFIRM`) |
 
 ## Tags
 `firewall`, `preflight`, `interfaces`, `wan`, `wireguard`, `confirm`,
