@@ -207,6 +207,45 @@
           --extra-vars.
         success_msg: "All required variables present — proceeding."
 
+    # ── KeePass check-defer: Rudder API token / LDAP bind password ────────────
+    # 2026-10-01, Robert's explicit, confirmed-via-AskUserQuestion reversal of the
+    # one-way KeePass flow -- externally-sourced-only credentials get check-and-defer
+    # ONLY (kcs_can_generate: false), no generation offered, since Ansible has no way
+    # to produce these itself (the API token is created by hand in the Rudder UI, the
+    # LDAP bind password via a separate New-ADUser command). Falls through to exactly
+    # today's existing behaviour (the WARNING/skip guards below, unchanged) if KeePass
+    # has nothing either. rudder_admin_password is deliberately NOT included here --
+    # it's stored/consumed as a bcrypt hash, not a plaintext password, so comparing it
+    # against a plaintext KeePass entry would always read as "different" and spuriously
+    # write a conflict entry every run. Flagged to Robert, not wired, pending his call
+    # on how that one should actually work.
+    # Shared, forest-wide path convention (Infrastructure/_shared/<name>) -- Rudder is
+    # a single service, not a per-host credential.
+
+    - name: "[KeePass sync] Rudder API token"
+      include_tasks: ../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../.."
+        kcs_keepass_path:           "Infrastructure/_shared/rudder-api-token"
+        kcs_username:               "rudder-api-token"
+        kcs_current_value:          "{{ rudder_api_token | default('') }}"
+        kcs_can_generate:           false
+        kcs_credentials_json_role:  "RUDDER_API_TOKEN"
+        kcs_hostname:               "{{ rudder_hostname }}"
+        kcs_result_var:             "rudder_api_token"
+
+    - name: "[KeePass sync] Rudder LDAP bind password"
+      include_tasks: ../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../.."
+        kcs_keepass_path:           "Infrastructure/_shared/rudder-ldap-bind"
+        kcs_username:               "rudder-ldap-bind"
+        kcs_current_value:          "{{ rudder_ldap_bind_pass | default('') }}"
+        kcs_can_generate:           false
+        kcs_credentials_json_role:  "RUDDER_LDAP_BIND"
+        kcs_hostname:               "{{ rudder_hostname }}"
+        kcs_result_var:             "rudder_ldap_bind_pass"
+
     - name: "Derive site data from static IP"
       set_fact:
         _site_octet: "{{ rudder_static_ip.split('.')[2] }}"

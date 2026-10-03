@@ -557,6 +557,45 @@
         - not (_dsrm_already_exists | default(false))
       tags: dc_preflight
 
+    # ── KeePass check-defer-write: Domain Admin / Local Admin passwords ───────
+    # 2026-10-01, Robert's explicit, confirmed-via-AskUserQuestion reversal of the
+    # one-way KeePass flow (see [[project_keepass_automation_hardening_2026_10_01]] and
+    # the plan this shipped from) -- applied here per my own flagged presumption (not a
+    # separately-asked point): these are real, device-shaped, per-host credentials
+    # exactly like DSRM was before DSRM's own fail-loudly exception was carved out, so
+    # they get the FULL new pattern (check-defer AND generate-if-not-found), not DSRM's
+    # now-exceptional stricter behaviour. DSRM itself, just above, is explicitly NOT
+    # touched -- Robert's call, kept exactly as shipped in Phase F (f6ae7ad).
+    #
+    # Deliberately the SAME KeePass path windows_bootstrap/00-preflight.yml's own
+    # ansible_password/vault_domain_join_password sync uses for the same host -- so the
+    # two playbooks can never create two different "local admin"/"Domain Admin" truths
+    # for one machine.
+
+    - name: "[KeePass sync] Domain Admin password"
+      include_tasks: ../../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../../.."
+        kcs_keepass_path:           "Infrastructure/{{ host_site }}/{{ inventory_hostname }}-admin"
+        kcs_username:               "{{ dc_admin_user }}"
+        kcs_current_value:          "{{ dc_admin_password }}"
+        kcs_can_generate:           true
+        kcs_credentials_json_role:  "DOMAIN_ADMIN"
+        kcs_result_var:             "dc_admin_password"
+      tags: dc_preflight
+
+    - name: "[KeePass sync] Local Administrator password"
+      include_tasks: ../../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../../.."
+        kcs_keepass_path:           "Infrastructure/{{ host_site }}/{{ inventory_hostname }}-local"
+        kcs_username:               "{{ dc_local_user }}"
+        kcs_current_value:          "{{ dc_local_password }}"
+        kcs_can_generate:           true
+        kcs_credentials_json_role:  "LOCAL_ADMIN"
+        kcs_result_var:             "dc_local_password"
+      tags: dc_preflight
+
     # ── Credential store (passed forward to promote playbook) ─────────────────
 
     - name: Store credentials and flags as facts for downstream playbooks

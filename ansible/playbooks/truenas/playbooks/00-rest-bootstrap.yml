@@ -289,6 +289,43 @@
 
   tasks:
 
+    # ── KeePass check-defer: REST bootstrap password ──────────────────────────
+    # 2026-10-01, Robert's explicit, confirmed-via-AskUserQuestion reversal of the
+    # one-way KeePass flow -- externally-sourced-only credential, check-and-defer
+    # ONLY (kcs_can_generate: false), no generation offered: this password is set
+    # externally during TrueNAS's own first-boot wizard, Ansible has no way to
+    # produce it. Runs ahead of the existing vault-placeholder check below, so a
+    # real KeePass value is deferred to and the prompt is skipped entirely; falls
+    # through to exactly today's existing pause-prompt behaviour, unchanged, if
+    # KeePass has nothing either. host_site isn't set in this play (that normally
+    # comes from hostname_facts.yml, included in the second play below, not this
+    # one) -- derived directly from inventory_hostname here instead, same regex
+    # windows_bootstrap/00-preflight.yml's own [A3] task uses.
+    #
+    # kcs_current_value deliberately treats the known vault placeholder
+    # ("REPLACE_WITH_TRUENAS_ADMIN_PASSWORD") as blank, same test
+    # _truenas_vault_configured below already uses -- otherwise a KeePass-empty
+    # run would file the literal placeholder string into KeePass as if it were a
+    # real credential.
+
+    - name: "[KeePass sync] Derive site code from inventory_hostname (host_site isn't set in this play)"
+      ansible.builtin.set_fact:
+        _truenas_site_code: "{{ inventory_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first }}"
+
+    - name: "[KeePass sync] TrueNAS REST bootstrap password"
+      include_tasks: ../../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../../.."
+        kcs_keepass_path:           "Infrastructure/{{ _truenas_site_code }}/{{ inventory_hostname | upper }}-rest-bootstrap"
+        kcs_username:               "{{ truenas_rest_bootstrap_user | default('truenas_admin') }}"
+        kcs_current_value: >-
+          {{ truenas_rest_bootstrap_password
+             if (truenas_rest_bootstrap_password | default('') not in ['', 'REPLACE_WITH_TRUENAS_ADMIN_PASSWORD'])
+             else '' }}
+        kcs_can_generate:           false
+        kcs_credentials_json_role:  "TRUENAS_REST_BOOTSTRAP"
+        kcs_result_var:             "truenas_rest_bootstrap_password"
+
     - name: "Determine whether the vault actually has real credentials"
       ansible.builtin.set_fact:
         _truenas_vault_configured: >-
