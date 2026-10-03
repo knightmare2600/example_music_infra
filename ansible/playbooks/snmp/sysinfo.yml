@@ -74,6 +74,31 @@
         label: "{{ item.item }}"
       when: item.rc != 0
 
+    # ── KeePass check-defer: SNMP write community ─────────────────────────────
+    # 2026-10-01, Robert's explicit, confirmed-via-AskUserQuestion reversal of the
+    # one-way KeePass flow -- shared (non-per-host) secret, check-and-defer ONLY
+    # (kcs_can_generate: false), new path convention Infrastructure/_shared/<name>.
+    # Runs ahead of the existing hard-fail guard below, so a real KeePass value is
+    # deferred to and the fail never fires; falls through to exactly today's
+    # existing hard-fail behaviour, unchanged, if KeePass has nothing either.
+    # vault_snmp_write_community's own placeholder ("CHANGEME") is treated as
+    # blank here, same test the fail guard below already uses, so a KeePass-empty
+    # run doesn't file the literal placeholder string as if it were real.
+
+    - name: "[KeePass sync] SNMP write community"
+      include_tasks: ../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../.."
+        kcs_keepass_path:           "Infrastructure/_shared/snmp-write-community"
+        kcs_username:               "snmp-write-community"
+        kcs_current_value: >-
+          {{ vault_snmp_write_community
+             if (vault_snmp_write_community | default('CHANGEME') != 'CHANGEME')
+             else '' }}
+        kcs_can_generate:           false
+        kcs_credentials_json_role:  "SNMP_WRITE_COMMUNITY"
+        kcs_result_var:             "vault_snmp_write_community"
+
     - name: FAIL — vault_snmp_write_community not set
       ansible.builtin.fail:
         msg: >-
