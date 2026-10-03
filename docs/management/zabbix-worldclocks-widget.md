@@ -200,7 +200,7 @@ languages, not just an edge case.
 
 **Fixed** (commit `12fe77d`, confirmed by Robert): AAR's `Timezone` corrected to
 `Europe/Copenhagen` in `benarbejde/sites.csv`, full regeneration pipeline re-run per
-`docs/adding-a-new-device.md` — only `ansible/configs/inventory/aar.ini`'s header comment
+`docs/adding-new-sites-bands-devices-and-subnets.md` — only `ansible/configs/inventory/aar.ini`'s header comment
 actually changed (nothing else surfaces this field), served `bootstrap/web/proxmox/sites.csv`
 copy synced, harness clean.
 

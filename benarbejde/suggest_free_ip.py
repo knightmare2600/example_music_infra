@@ -12,7 +12,7 @@ instead of a hand grep of the generated inventory (or worse, a guess).
 
 SUGGESTS ONLY -- never writes to any file. Adding the chosen row to
 benarbejde/devices.csv (and picking which octet from the list to actually
-use) stays a human decision every time -- see docs/adding-a-new-device.md for
+use) stays a human decision every time -- see docs/adding-new-sites-bands-devices-and-subnets.md for
 the full workflow this feeds into.
 
 Two sources combine to compute "occupied":
@@ -152,7 +152,7 @@ def main():
     print()
     print("Advisory only -- nothing here writes to any file. Confirm the choice with Robert, "
           "then add the row to benarbejde/devices.csv yourself. See "
-          "docs/adding-a-new-device.md for the full workflow.")
+          "docs/adding-new-sites-bands-devices-and-subnets.md for the full workflow.")
     return 0
 
 

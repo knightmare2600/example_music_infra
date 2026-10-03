@@ -247,7 +247,7 @@ def write_rows_and_regenerate(site, rows):
     every derived artefact in the same run (Robert, 2026-09-24: skipping
     that "leaves operational gaps", so it's folded in here, not left as a
     separate manual step). Deliberately does NOT touch ad_computers.json --
-    see docs/adding-a-new-site.md's Phase 2.
+    see docs/adding-new-sites-bands-devices-and-subnets.md's Phase 2.
 
     2026-10-01: the regeneration step itself now calls benarbejde/regenerate_all.py's
     shared regenerate_all() instead of keeping its own private copy of the same five
@@ -373,7 +373,7 @@ def apply_boilerplate(site, sites, devices_sites, boilerplate):
     here. Deliberately does NOT touch ad_computers.json -- that file drives
     real New-ADComputer creation, and writing planned/unbuilt hardware into
     it would try to create real AD objects for equipment that doesn't exist
-    yet (see docs/adding-a-new-site.md's Phase 2)."""
+    yet (see docs/adding-new-sites-bands-devices-and-subnets.md's Phase 2)."""
     excluded = set(boilerplate.get("excluded_sites", []))
 
     if site not in sites:
@@ -407,7 +407,7 @@ def apply_boilerplate(site, sites, devices_sites, boilerplate):
     print(
         f"\nDone. '{site}' now has its full boilerplate as Planned=yes devices.csv rows, and "
         f"every derived artefact is regenerated. Run bash at_have_ryggen_fri/run.sh to confirm "
-        f"clean, then commit. See docs/adding-a-new-site.md's Phase 2 for what happens as real "
+        f"clean, then commit. See docs/adding-new-sites-bands-devices-and-subnets.md's Phase 2 for what happens as real "
         f"hardware actually gets built."
     )
     return 0

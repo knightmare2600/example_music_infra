@@ -12,8 +12,8 @@ Researched before building (2026-10-01): most of that vision already exists --
 at_have_ryggen_fri's freshness checks already regenerate every derived artefact into a
 scratch copy and diff it against committed state, automatically, on every harness run.
 What was still missing was a single command that actually APPLIES the regeneration --
-docs/adding-a-new-device.md's own step 4 is five separate commands, run by hand, every
-time. This file is that one command. It does not change how any of the five commands
+docs/adding-new-sites-bands-devices-and-subnets.md's own Part B step 4 is five separate
+commands, run by hand, every time. This file is that one command. It does not change how any of the five commands
 work internally -- generate_inventory.py's own flags are deliberately NOT combined into
 fewer calls (see that file's own 2026-07-30 changelog: an additive-flags attempt broke
 check_generated_freshness.py's process isolation and leaked 52 stray .ini files into a

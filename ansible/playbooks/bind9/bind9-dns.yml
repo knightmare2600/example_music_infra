@@ -20,7 +20,7 @@
 # 2026-09-24: Play 1 (this play) now supports EXADNSFRD001 as a genuine
 # secondary/replica of this same zone (Robert, confirmed: not a separate
 # authoritative sub-zone, not a caching-only forwarder) -- see
-# docs/adding-a-new-site.md for the full context. Play 2 (zone generation
+# docs/adding-new-sites-bands-devices-and-subnets.md for the full context. Play 2 (zone generation
 # from devices.csv, below) stays master-only by design and always targets
 # EXADNSVRK001 -- a secondary never generates zone content locally, BIND9
 # pulls and caches it automatically via AXFR/IXFR from the master.
@@ -285,7 +285,7 @@
   vars:
     # 2026-09-24: dns_ip/this_hostname derived from the real inventory instead of
     # hardcoded to VRK -- Robert confirmed EXADNSFRD001 as a genuine secondary/replica
-    # of this same zone (see docs/adding-a-new-site.md), which needs this playbook able
+    # of this same zone (see docs/adding-new-sites-bands-devices-and-subnets.md), which needs this playbook able
     # to target either host. ansible_host/inventory_hostname already resolve correctly
     # for whichever host --limit (or -e target=) selects, once devices.csv has a real
     # DNS row for it (FRD,DNS,1,8 added 2026-09-24) -- no second, hand-maintained
