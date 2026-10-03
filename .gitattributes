@@ -175,6 +175,15 @@ bootstrap/amt-sdk/**                 filter=lfs diff=lfs merge=lfs -text
 # a new subdirectory of its own -- not reorganising a file the way Robert placed it without asking.
 bootstrap/starwindconverter.exe      filter=lfs diff=lfs merge=lfs -text
 
+# VMware VDDK (Virtual Disk Development Kit), dropped directly in bootstrap/web/ (2026-10-03,
+# Robert), ~113MB -- same ESX-to-PVE migration tooling family as starwindconverter.exe above
+# (virt-v2v's own VDDK transport mode). vddk_sha256sum.txt (727 bytes, plain text) is tracked
+# through LFS alongside it at Robert's explicit request, even though this repo's own convention
+# elsewhere (e.g. debian/'s late_command.sh/.seed files) keeps small text files plain-tracked
+# next to LFS binaries -- flagged, not silently deviated from without saying so.
+bootstrap/web/vddk.tb2               filter=lfs diff=lfs merge=lfs -text
+bootstrap/web/vddk_sha256sum.txt     filter=lfs diff=lfs merge=lfs -text
+
 # Salt Windows minion installers, dropped directly in bootstrap/web/windows/ (2026-08-10) -- the
 # x86_64 one is an official Salt Project release (45MB), the arm64 one is Robert's own custom
 # build tracking 3 still-unmerged upstream PRs (70MB, see docs/buildsheets/
