@@ -209,6 +209,7 @@
 
   tasks:
     - name: "Resolve environment (asked up front, one host at a time so the prompt is reliable)"
+      tags: always
       include_tasks: ../../tasks/nodeinfo_environment.yml
 
 - name: Deploy common tools
@@ -490,9 +491,11 @@
             _tools_site_row: "{{ _tools_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
 
         - name: Resolve environment
+          tags: always
           include_tasks: ../../tasks/nodeinfo_environment.yml
 
         - name: Write nodeinfo.json
+          tags: always
           include_tasks: ../../tasks/nodeinfo.yml
           vars:
             nodeinfo_role: "{{ host_role | lower }}"

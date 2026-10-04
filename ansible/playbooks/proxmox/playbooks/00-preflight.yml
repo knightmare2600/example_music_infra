@@ -240,7 +240,7 @@
 
     - name: "[Preflight] Resolve environment"
       ansible.builtin.include_tasks: ../../../tasks/nodeinfo_environment.yml
-      tags: preflight
+      tags: [preflight, always]
 
     - name: "[Preflight] Set pve_environment"
       ansible.builtin.set_fact:

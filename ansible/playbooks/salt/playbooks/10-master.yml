@@ -747,6 +747,7 @@
   # ---------------------------------------------------------------------------
 
     - name: "7 | Resolve environment"
+      tags: always
       include_tasks: ../../../tasks/nodeinfo_environment.yml
 
     - name: "7 | Set salt_environment"
@@ -760,6 +761,7 @@
         mode: "0755"
 
     - name: "7 | Write /etc/example-music/nodeinfo.json"
+      tags: always
       include_tasks: ../../../tasks/nodeinfo.yml
       vars:
         nodeinfo_hostname: "{{ salt_hostname }}"

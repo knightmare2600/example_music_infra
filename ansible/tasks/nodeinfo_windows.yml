@@ -60,6 +60,25 @@
 # ansible_fqdn already degrades gracefully via its own | default(inventory_hostname).
 # =============================================================================
 # Changelog:
+#   2026-10-04  BUG FIX, found live (Robert, EXADCSGOT001): this file's own tasks never got
+#               the `tags: always` fix ansible/tasks/nodeinfo.yml's Linux equivalent already
+#               has (its own 2026-07-26 changelog entry) -- confirmed empirically via
+#               `ansible-playbook --list-tasks --tags ps7_setup` against
+#               windows_bootstrap/site.yml: the "[Finish] Write nodeinfo.json" task (wrapped
+#               in `tags: finish` by its caller, 85-finish.yml) doesn't appear at all under a
+#               --tags filter that doesn't include `finish` -- last_ansible_run silently never
+#               refreshes on a tag-scoped run (e.g. the `--tags ps7_setup` form documented in
+#               docs/ansible/beginners_guide_to_ansible.md), exactly matching what was
+#               observed live: a nodeinfo.json showing a stale last_ansible_run days after a
+#               real, successful bootstrap run. Every task here now tagged `always`, matching
+#               nodeinfo.yml exactly -- re-verified via the same --list-tasks check, the write
+#               task now appears under every tag filter tested.
+#   2026-10-04  Added `last_ansible_play` -- Robert's ask: a distinct, NEVER-frozen fact
+#               (unlike bootstrapped_by, which is deliberately frozen at first write) recording
+#               which playbook most recently ran against this host, refreshed every run
+#               alongside last_ansible_run -- intended as a future Zabbix-alertable field so a
+#               problem can be traced to the specific play that caused it, independent of which
+#               play originally built the box.
 #   2026-09-26  Extracted from windows_hygiene/playbooks/05-example-music-files.yml
 #               (the only prior copy) so windows_bootstrap/windows_dc/
 #               windows_adschema can share it instead of each hand-copying a
@@ -73,14 +92,17 @@
 # =============================================================================
 
 - name: "[nodeinfo] Include hostname facts"
+  tags: always
   include_tasks: hostname_facts.yml
 
 - name: "[nodeinfo] Ensure {{ nodeinfo_windows_dir | default('C:\\ProgramData\\ExampleMusic\\Config') }} exists"
+  tags: always
   ansible.windows.win_file:
     path: "{{ nodeinfo_windows_dir | default('C:\\ProgramData\\ExampleMusic\\Config') }}"
     state: directory
 
 - name: "[nodeinfo] Load sites.csv for nodeinfo enrichment"
+  tags: always
   ansible.builtin.read_csv:
     path: "{{ nodeinfo_repo_root }}/benarbejde/sites.csv"
   register: _nodeinfo_win_sites_raw
@@ -91,33 +113,39 @@
     ansible_shell_type: sh
 
 - name: "[nodeinfo] Look up this host's site row"
+  tags: always
   ansible.builtin.set_fact:
     _nodeinfo_win_site_row: "{{ _nodeinfo_win_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
 
 - name: "[nodeinfo] Check for existing nodeinfo.json"
+  tags: always
   ansible.windows.win_stat:
     path: "{{ nodeinfo_windows_dir | default('C:\\ProgramData\\ExampleMusic\\Config') }}\\nodeinfo.json"
   register: _nodeinfo_win_existing_file
 
 - name: "[nodeinfo] Read existing nodeinfo.json"
+  tags: always
   ansible.windows.win_shell: "Get-Content -Raw '{{ nodeinfo_windows_dir | default('C:\\ProgramData\\ExampleMusic\\Config') }}\\nodeinfo.json'"
   register: _nodeinfo_win_existing_content
   when: _nodeinfo_win_existing_file.stat.exists
   changed_when: false
 
 - name: "[nodeinfo] Preserve bootstrapped_at/bootstrapped_by from the existing file, if any"
+  tags: always
   ansible.builtin.set_fact:
     _nodeinfo_win_bootstrapped_at: "{{ (_nodeinfo_win_existing_content.stdout | from_json).bootstrapped_at | default(now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}"
     _nodeinfo_win_bootstrapped_by: "{{ (_nodeinfo_win_existing_content.stdout | from_json).bootstrapped_by | default(nodeinfo_bootstrapped_by) }}"
   when: _nodeinfo_win_existing_file.stat.exists
 
 - name: "[nodeinfo] Default bootstrapped_at/bootstrapped_by (no existing file -- genuine first write)"
+  tags: always
   ansible.builtin.set_fact:
     _nodeinfo_win_bootstrapped_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
     _nodeinfo_win_bootstrapped_by: "{{ nodeinfo_bootstrapped_by }}"
   when: not _nodeinfo_win_existing_file.stat.exists
 
 - name: "[nodeinfo] Write nodeinfo.json"
+  tags: always
   ansible.windows.win_copy:
     dest: "{{ nodeinfo_windows_dir | default('C:\\ProgramData\\ExampleMusic\\Config') }}\\nodeinfo.json"
     content: "{{ _nodeinfo_win | to_nice_json }}\r\n"
@@ -139,7 +167,8 @@
           'ansible_managed':  true,
           'bootstrapped_at':  _nodeinfo_win_bootstrapped_at,
           'bootstrapped_by':  _nodeinfo_win_bootstrapped_by,
-          'last_ansible_run': now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ'),
+          'last_ansible_run':  now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ'),
+          'last_ansible_play': nodeinfo_bootstrapped_by,
           'environment':      'production',
         }
       }}
