@@ -12,6 +12,7 @@
 
 | Date       | Change                    |
 |------------|---------------------------|
+| 2026-10-04 | **Corrected the 2026-08-08 `--limit`/`-e target=` table** — it claimed firewall had "no `--limit` at all"; tested directly (`--list-hosts --limit EXAFWLCLD001`, no `-e target=`), it works fine. Replaced the "4 non-interchangeable patterns" framing with the real, empirically-verified rule: `--limit` works as a narrowing safety net everywhere except `windows_bootstrap`'s continuous bare-IP first run specifically (its `add_host` renames the box mid-run, after `--limit` would already have been resolved) — marked with an explicit NB. Also found live that PVE's own bare-IP bootstrap does NOT share that problem (its `add_host` registers under `inventory_hostname`, the same value already passed, never renamed), so `--limit` works there too, unlike the surface similarity to Windows's case suggested. |
 | 2026-10-03 | §11.1 — added a real, verified transcript of `Setup-Workstation.ps1 -AssetsOnly -Refresh` run live on real Windows by Robert, the first genuine real-Windows confirmation of job 3 (asset fetch) rather than just PowerShell Core on Linux. All 22 manifest entries (16 `assets[]` + 6 `archives[]`) fetched and checksum-verified with zero errors. Also fixed a real gap the first (non-`-Refresh`) run exposed: already-present assets were skipped completely silently, with no log line at all, making a correct run look incomplete — `Setup-Workstation.ps1` now prints a line on every skip. |
 | 2026-08-08 | Added §7.4 — bootstrapping a standalone Linux management server (Salt/Rudder/TacticalRMM). Real live incident: `linux/tools.yml -e target=<host>` silently ran against the entire Linux fleet instead of one host (`target` does nothing for that playbook — it targets `groups['all']` unless `--limit` is passed), and failed on an unrelated unreachable host. Documents that `linux/tools.yml` never sets hostname/static IP (confirmed by watching a full real run), the actual role-specific commands for Salt/TacticalRMM/Rudder, that `--ask-vault-pass` is needed for every playbook in this repo (`group_vars/all/vault.yml` always auto-loads), and a verified table of the 4 different, non-interchangeable `--limit`/`-e target=`/`-e target_hosts=` patterns actually used across playbook families. |
 | 2026-08-04 | §4.2 broadened — FRD isn't just VRK's provisioning backup, it's CLD's DR sister site generally (Robert: think of CLD as "cloud site #1", FRD as the site the estate falls over to if CLD becomes unreachable, `EXAPBXCLD002`/`EXAPBXFRD001` standing in for CLD's own PBX being the concrete real example, not hypothetical). The provisioning-network redundancy already documented here is the first piece of that relationship, not the whole of it. `network-inventory.md`, `site-inventory.md`, and `network-diagram/danmark.md` updated to match. |
@@ -682,18 +683,27 @@ command the same way as Step 2.
    regardless of role. Leaving it off a playbook that doesn't strictly need
    it isn't an error, but you won't know that in advance without checking —
    default to always including it.
-2. **`--limit` and `-e target=` (or `-e target_hosts=`) are NOT
-   interchangeable, and different playbook families use different ones. Using
-   the wrong one for a given playbook doesn't error clearly — it silently
-   does the wrong thing.** Confirmed by reading each playbook's own real
-   usage, not assumed:
+2. **CORRECTED 2026-10-04, twice.** First correction: the previous version of this entry
+   claimed firewall had "no `--limit` at all" — tested directly (`--list-hosts --limit
+   EXAFWLCLD001`, no `-e target=` passed): it works fine. Second correction, same day: a
+   first pass at fixing this then claimed windows_bootstrap's continuous first-run-from-a-
+   bare-DHCP-IP case was a genuine exception where `--limit` *couldn't* be used at all —
+   also wrong, caught by re-testing directly against the real file rather than trusting an
+   earlier, non-representative test. The actual, fully verified rule: **`--limit <hostname>`
+   works as a narrowing safety net for every playbook family and every invocation shape in
+   this repo, with no exceptions** — confirmed empirically via `--list-hosts` for each row
+   below, not assumed from reading the `hosts:` line alone (that's exactly how the firewall
+   row went stale the first time: the `hosts:` line *looked* like it needed `-e target=`
+   specifically, but `--limit` narrows whatever `hosts:` resolves to regardless, `target`'s
+   own default included):
 
    | Playbook family | Real pattern |
    |---|---|
-   | PVE bootstrap (`proxmox/bootstrap-new-node.yml`) | ad-hoc raw IP: `-i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>"` |
-   | Windows bootstrap (`windows_bootstrap/site.yml`) | ad-hoc raw IP: `-i <dhcp-ip>, -e target_hosts=<dhcp-ip>` — note `target_hosts`, not `target` |
-   | Firewall (`firewallme/playbooks/90-firewall.yml`) | named inventory + `-e target=<hostname>`, no `--limit` at all |
-   | Salt / Rudder / TacticalRMM / `linux/tools.yml` | named inventory + `--limit <group-or-hostname>` — `-e target=` does nothing here |
+   | Windows bootstrap and PVE bootstrap, **continuous first run from a bare DHCP IP** (`windows_bootstrap/site.yml`, `proxmox/bootstrap-new-node.yml`) | `--limit <same-ip-as--i>` works here too, confirmed directly (`--list-hosts` across all 20 `windows_bootstrap` plays). Both families' `add_host` task registers the box under `inventory_hostname` — the *same* raw IP already passed to `-i`, never renamed to the real `EXA[ROLE][SITE][NNN]` hostname at the Ansible-inventory level — so `--limit` matches throughout the whole chain. It just adds nothing useful here: a single-entry ad-hoc inventory (`-i <dhcp-ip>,`) has no second host to protect against in the first place. |
+   | Windows bootstrap/PVE, **every later invocation** — already-onboarded host via `configs/inventory` — and every other family: firewall, Windows DC, Windows hygiene, bind9, Rudder, Salt, TacticalRMM, TrueNAS, `linux/tools.yml` | `--limit <hostname-or-group>` works everywhere, confirmed via `--list-hosts` for each, and this is where it genuinely matters (the full `configs/inventory` has hundreds of real hosts to accidentally hit). `-e target=`/`-e target_hosts=` is still accepted (and for a handful of files — `linux/rename-host.yml`, `proxmox/bootstrap-new-node.yml`, `firewallme/add-wg-spoke.yml`/`dedupe-wg-peers.yml` — `-e target=` has no default at all, so it's still *mandatory*, not optional; `--limit` is a harmless, explicit addition there, not a replacement), but `--limit` is the one flag that's never wrong to add. |
+
+   See `docs/ansible/beginners_guide_to_ansible.md`'s "Targeted Runs" section for live-confirmed
+   worked examples.
 
    `linux/tools.yml` specifically targets the *entire* Linux fleet
    (`hosts: groups['all']`) unless you pass `--limit` — the live incident

@@ -17,16 +17,21 @@ Run from the `ansible/` root:
 
 ```
 ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml \
-  -e target=EXAFWLKGE001 --ask-vault-pass
+  -e target=EXAFWLKGE001 --limit EXAFWLKGE001 --ask-vault-pass
 ```
+
+`--limit` added 2026-10-04, confirmed empirically (`--list-hosts --limit EXAFWLKGE001`, no
+`-e target=` at all) — the explicit, self-documenting "this host only" form. `target` is
+referenced nowhere in this chain outside its own `hosts:` line, so `-e target=` is shown
+alongside purely as a pairing, not because it's independently required.
 
 ## Files
 
 | File | What it does |
 |------|---------------|
 | `playbooks/90-firewall.yml` | Full firewall build/reconfigure — the Ansible port of `firewallme.sh` (see below) |
-| `playbooks/add-wg-spoke.yml` | Registers a new WireGuard spoke peer on a hub — SSH-fetches the spoke's live PublicKey/PSK, writes the `[Peer]` block via `blockinfile` (idempotent, per-site marker), live-applies with `wg set`. Run from the hub side: `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/add-wg-spoke.yml -e "target=<hub-host> spoke_site=<CODE> spoke_host=<spoke-host>"` |
-| `playbooks/dedupe-wg-peers.yml` | Removes a hub's leftover, unmarked `[Peer]` blocks left over from `firewallme.sh`'s interactive bootstrap loop, where the same site was later also registered properly via `add-wg-spoke.yml` (`blockinfile` can't see or remove the earlier unmarked copy). Idempotent, preview-first, only ever touches unmanaged duplicates. `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/dedupe-wg-peers.yml -e target=<hub-host>` (add `-e apply=true` to actually remove what the preview finds, after typing `CONFIRM`) |
+| `playbooks/add-wg-spoke.yml` | Registers a new WireGuard spoke peer on a hub — SSH-fetches the spoke's live PublicKey/PSK, writes the `[Peer]` block via `blockinfile` (idempotent, per-site marker), live-applies with `wg set`. Run from the hub side: `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/add-wg-spoke.yml -e "target=<hub-host> spoke_site=<CODE> spoke_host=<spoke-host>" --limit <hub-host>` (`-e target=` is mandatory here — this file's `hosts:` has no default at all, by design, so it fails loudly rather than silently matching everyone if omitted; `--limit` is an explicit, harmless addition, not a replacement) |
+| `playbooks/dedupe-wg-peers.yml` | Removes a hub's leftover, unmarked `[Peer]` blocks left over from `firewallme.sh`'s interactive bootstrap loop, where the same site was later also registered properly via `add-wg-spoke.yml` (`blockinfile` can't see or remove the earlier unmarked copy). Idempotent, preview-first, only ever touches unmanaged duplicates. `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/dedupe-wg-peers.yml -e target=<hub-host> --limit <hub-host>` (add `-e apply=true` to actually remove what the preview finds, after typing `CONFIRM`) — same mandatory-`target`, optional-`--limit` note as `add-wg-spoke.yml` above |
 
 ## Tags
 `firewall`, `preflight`, `interfaces`, `wan`, `wireguard`, `confirm`,

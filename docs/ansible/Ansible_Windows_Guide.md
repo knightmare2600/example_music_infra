@@ -22,12 +22,12 @@ All commands below are run from the `ansible/` root of the repository.
 
 | Task | Command |
 |------|---------|
-| Full bootstrap (new host) | `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml -e target=<host> --ask-vault-pass` |
-| Single stage | `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml -e target=<host> --tags registry --ask-vault-pass` |
-| Single playbook, standalone | `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml -e target=<host> --ask-vault-pass` |
-| Dry run | `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml -e target=<host> --check --ask-vault-pass` |
+| Full bootstrap (new host) | `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml -e target=<host> --limit <host> --ask-vault-pass` |
+| Single stage | `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml -e target=<host> --limit <host> --tags registry --ask-vault-pass` |
+| Single playbook, standalone | `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml -e target=<host> --limit <host> --ask-vault-pass` |
+| Dry run | `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml -e target=<host> --limit <host> --check --ask-vault-pass` |
 | Ad-hoc connectivity test | `ansible -i configs/inventory <host> -m ansible.windows.win_ping` |
-| Domain join only | `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/80-domainjoin.yml -e target=<host> --ask-vault-pass` |
+| Domain join only | `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/80-domainjoin.yml -e target=<host> --limit <host> --ask-vault-pass` |
 
 A full run with no `--tags` runs every play in the chain, in order — this is deliberate, not a shorthand for "just the essentials". Every play is idempotent, so it's always safe to re-run the whole chain against an already-bootstrapped host; it converges to the same known-good state regardless of starting point. See [Running the Bootstrap](#running-the-bootstrap-new-host) below. DC promotion is a separate module (`windows_dc/site.yml`) run afterward, not part of this chain.
 
@@ -164,7 +164,7 @@ Every playbook accepts a `target` variable that limits execution to a single hos
 
 ```bash
 # Single host
-ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml -e target=EXAWKSMCR001
+ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml -e target=EXAWKSMCR001 --limit EXAWKSMCR001
 
 # All hosts in a group
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml -e target=windows_desktop
@@ -214,7 +214,7 @@ ansible@EXAANSCLD001:~> ansible-vault rekey group_vars/all/vault.yml
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target=EXADCSMCR001 --ask-vault-pass
+  -e target=EXADCSMCR001 --limit EXADCSMCR001 --ask-vault-pass
 Vault password:
 ```
 
@@ -237,7 +237,7 @@ After this, no `--ask-vault-pass` flag is needed. The vault password file must b
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/80-domainjoin.yml \
-  -e target=EXADCSMCR001 \
+  -e target=EXADCSMCR001 --limit EXADCSMCR001 \
   -e vault_domain_join_password="YourPassword"
 ```
 
@@ -323,6 +323,16 @@ ansible@EXAANSCLD001:~> ansible-playbook -i 192.168.161.147, playbooks/windows_b
   -e target_hosts=192.168.161.147 --ask-vault-pass
 ```
 
+*Correction, 2026-10-04: `--limit 192.168.161.147` (same value as `-i`) also works on this
+first-ever run, verified directly against this real file (`--list-hosts` across all 20 plays)
+— `00-preflight.yml`'s `[H2]` `add_host` task registers the box under `inventory_hostname`,
+the same bare-IP identity it was loaded as, never renaming it to the real
+`EXA[ROLE][SITE][NNN]` hostname at the Ansible-inventory level. It just adds nothing here: a
+single-entry ad-hoc inventory has no second host to protect against in the first place. Once
+the box is on its permanent static IP and named correctly, every later run against it uses
+`-i configs/inventory` with `--limit <host>` added explicitly, where it genuinely matters —
+see the Quick Reference table above and the Day-2 examples below.*
+
 ### The Preflight Prompts
 
 `00-preflight.yml`'s `vars_prompt` asks for six values, in this order:
@@ -390,7 +400,7 @@ Each numbered playbook is independent and can be run on its own — this is the 
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml \
-  -e target=EXAWKSMCR001 --ask-vault-pass
+  -e target=EXAWKSMCR001 --limit EXAWKSMCR001 --ask-vault-pass
 ```
 
 Expected output:
@@ -426,14 +436,14 @@ The upgrade task is tagged `choco_upgrade` and marked `never` — it does not ru
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/40-choco-packages.yml \
-  -e target=EXAWKSMCR001 --tags choco_upgrade --ask-vault-pass
+  -e target=EXAWKSMCR001 --limit EXAWKSMCR001 --tags choco_upgrade --ask-vault-pass
 ```
 
 ### Domain join only (host already renamed and in inventory)
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/80-domainjoin.yml \
-  -e target=EXADCSMCR001 --ask-vault-pass
+  -e target=EXADCSMCR001 --limit EXADCSMCR001 --ask-vault-pass
 ```
 
 Prompts once for a DNS override (only used if the domain can't already be resolved), then checks whether the host is already joined, skips cleanly for `is_first_dc` builds (nothing to join — the domain doesn't exist yet), and otherwise joins using the OU derived from `domain_ou_role` (group_vars) + the host's parsed site.
@@ -470,7 +480,7 @@ Ansible's `--check` flag runs the playbook in read-only mode — it connects to 
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml \
-  -e target=EXAWKSMCR001 --check --ask-vault-pass
+  -e target=EXAWKSMCR001 --limit EXAWKSMCR001 --check --ask-vault-pass
 ```
 
 Output shows `changed` for tasks that would make changes, and `ok` for tasks already in the desired state — identical to a real run except nothing is written. Useful before touching production hosts.
@@ -481,7 +491,7 @@ Add `--diff` to also show the before/after diff for registry and file changes:
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml \
-  -e target=EXAWKSMCR001 --check --diff --ask-vault-pass
+  -e target=EXAWKSMCR001 --limit EXAWKSMCR001 --check --diff --ask-vault-pass
 ```
 
 ---
@@ -541,14 +551,14 @@ Run only `00-preflight.yml`:
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target=EXAWKSMCR001 --tags bootstrap --ask-vault-pass
+  -e target=EXAWKSMCR001 --limit EXAWKSMCR001 --tags bootstrap --ask-vault-pass
 ```
 
 Run only the registry stage:
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target=EXAWKSMCR001 --tags registry --ask-vault-pass
+  -e target=EXAWKSMCR001 --limit EXAWKSMCR001 --tags registry --ask-vault-pass
 ```
 
 List all tags in the chain without running it:
@@ -599,7 +609,7 @@ Add `-v`, `-vv`, or `-vvv` to any command. `-vvv` shows the full SSH/WinRM hands
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/20-registry.yml \
-  -e target=EXAWKSMCR001 -vvv --ask-vault-pass
+  -e target=EXAWKSMCR001 --limit EXAWKSMCR001 -vvv --ask-vault-pass
 ```
 
 ### A Task Says `changed` Every Run
@@ -612,7 +622,7 @@ Ansible stops at the first failure by default. Fix the cause, then re-run the wh
 
 ```bash
 ansible@EXAANSCLD001:~> ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target=EXAWKSMCR001 \
+  -e target=EXAWKSMCR001 --limit EXAWKSMCR001 \
   --start-at-task "[Preflight] Check chocolatey.org reachable" \
   --ask-vault-pass
 ```
@@ -752,6 +762,7 @@ ansible@EXAANSCLD001:~> ansible-vault encrypt group_vars/all/vault.yml
 |------|--------|
 | 2026-06-20 | Initial document |
 | 2026-07-09 | Full rewrite — the document had drifted badly from reality: it referenced a `00-bootstrap.yml` monolith that hadn't existed under that name for some time, described an interactive "Stage 3/Stage 4" hostname-confirm and LDAP OU-selection flow that no longer exists in the current chain, used `inventory/<site>.ini`/bare `playbooks/*.yml` paths instead of the real `configs/inventory`/`playbooks/windows_bootstrap/playbooks/*.yml` paths, and was missing more than half the current numbered stages (`15-`, `22-`, `35-`, `45-`, `48-`, `77-`, `78-`, `79-`, `85-`) entirely. Rewritten against the actual current `00-preflight.yml` prompts, `80-domainjoin.yml` behaviour, and `85-finish.yml` summary output. |
+| 2026-10-04 | Added `--limit <host>` explicitly alongside every single-host `-e target=<host>` example (confirmed empirically correct for every one, since `target` is only ever read from this family's own `hosts:` line, never elsewhere) — left the two group-targeted examples (`-e target=windows_desktop`) unchanged, since `--limit` on a group target doesn't add anything there. Added a bold/italic/underlined NB on the genuine bare-DHCP-IP first-run example (`-e target_hosts=192.168.161.147`) explaining why `--limit` cannot be substituted there specifically — `00-preflight.yml`'s `add_host` renames the box mid-run, after `--limit` would already have been resolved. |
 
 ---
 

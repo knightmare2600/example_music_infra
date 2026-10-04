@@ -83,31 +83,44 @@ ansible-playbook playbooks/windows_bootstrap/site.yml \
   -i <dhcp-ip>, -e target_hosts=<dhcp-ip> --ask-vault-pass
 ```
 
+*Correction, 2026-10-04: an earlier version of this note wrongly claimed `--limit` couldn't be
+used on this first-ever run at all. Verified directly against this real file: `--limit
+<dhcp-ip>` (the same value already in `-i`) works fine across all 20 plays —
+`00-preflight.yml`'s `[H2]` `add_host` task registers the box under `inventory_hostname`, the
+same bare-IP identity it was loaded as, and never renames it to the real
+`EXA[ROLE][SITE][NNN]` hostname at the Ansible-inventory level. It just adds nothing here: a
+single-entry ad-hoc inventory (`-i <dhcp-ip>,`) has no second host to protect against in the
+first place. `--limit <host>` is what genuinely matters on every later, named-inventory run
+against this same box.*
+
 Note the trailing comma on `-i <dhcp-ip>,` — without it Ansible tries to read `<dhcp-ip>` as an
 inventory *file* rather than a single bare host. `00-preflight.yml` applies the hostname and
 static IP (prompted interactively — see below), then Phase H2 dynamically registers the host
 into its permanent inventory group via `add_host` so `group_vars/windows*/` resolves correctly
 for the rest of this same run. From here on, once the box is on its permanent static IP and named
-correctly, every later run against it uses the normal named-inventory form instead:
+correctly, every later run against it uses the normal named-inventory form instead, with
+`--limit` added explicitly — confirmed empirically, 2026-10-04, that it resolves correctly here
+(the host now has a real inventory entry before the playbook even starts, so there's nothing
+left for `--limit` to fail to match):
 
 ```
 # Subsequent runs — host already bootstrapped, named, and on its static IP
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target=<host> --ask-vault-pass
+  -e target=<host> --limit <host> --ask-vault-pass
 
 # Single stage
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target=<host> --tags registry --ask-vault-pass
+  -e target=<host> --limit <host> --tags registry --ask-vault-pass
 
 # Skip bootstrap (host already onboarded)
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target=<host> --skip-tags bootstrap --ask-vault-pass
+  -e target=<host> --limit <host> --skip-tags bootstrap --ask-vault-pass
 ```
 
-`target_hosts` and `target` are **not interchangeable** — see
-`docs/ExampleMusic_Beginners_Guide.md`'s table of the 4 different, non-interchangeable
-`--limit`/`-e target=`/`-e target_hosts=` patterns used across playbook families in this repo
-before assuming one flavour works everywhere.
+`target_hosts` and `target` are **not interchangeable**, and only the bare-IP first run above
+genuinely needs either of them instead of `--limit` — see `docs/ExampleMusic_Beginners_Guide.md`'s
+`--limit`/`-e target=`/`-e target_hosts=` table (corrected 2026-10-04) for the full, verified
+picture across every playbook family in this repo.
 
 ## Dependencies
 Install galaxy collections first:

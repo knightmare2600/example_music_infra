@@ -218,7 +218,7 @@ Packages, `/etc/example-music/`, and scripts still refresh normally — only acc
 ### Forcing a full re-onboard of an already-onboarded node
 
 ```bash
-ansible-playbook playbooks/proxmox/site.yml -i configs/inventory -e target=<node-ip-or-hostname> -e pve_force_full_onboard=true
+ansible-playbook playbooks/proxmox/site.yml -i configs/inventory -e target=<node-ip-or-hostname> --limit <node-ip-or-hostname> -e pve_force_full_onboard=true
 ```
 
 Use this when the SSH key was rotated, sudoers content changed, or a systemd unit file changed and you want it reloaded/restarted on a live node. Since this restarts `zabbix-agent` and reloads systemd, prefer running it outside of any active maintenance/backup window.

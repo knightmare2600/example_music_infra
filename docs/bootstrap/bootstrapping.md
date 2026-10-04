@@ -1133,7 +1133,7 @@ the pre-2026-07-10 version there is no `y/N` reboot prompt at all any more.
 
 **What happens to hostname/rename/static-IP now:** none of it happens in this script any more (unchanged
 from the 2026-07-07 trim). The node stays on its DHCP-assigned IP with the Proxmox installer's placeholder
-hostname (`pve-install`) until you run `ansible-playbook -i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml`
+hostname (`pve-install`) until you run `ansible-playbook -i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>" --limit "<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml`
 from the Ansible control node, per the script's own on-screen instructions above. That single invocation now
 does everything this script used to do on real hardware, plus the entire site.yml chain, plus one final reboot
 -- previously a separate, manual second step.
@@ -1288,6 +1288,7 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
   |    ansible-playbook -i "192.168.139.87," \            |
   |      -i configs/inventory \                            |
   |      -e target="192.168.139.87" \                     |
+  |      --limit "192.168.139.87" \                       |
   |      playbooks/proxmox/bootstrap-new-node.yml         |
   |                                                       |
   |  You'll be prompted for this node's real hostname     |
@@ -1306,7 +1307,7 @@ root@pve-install:~# bash /var/lib/proxmox-first-boot/proxmox-first-boot
 **The single most important thing in that output, for the PFY's plan:** the node never gets a real
 hostname or static IP from this script — it stays on its DHCP lease with the Proxmox installer's
 placeholder hostname the whole time. The very next command to run, from the Ansible control node, is
-printed on-screen at the end: `ansible-playbook -i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml`
+printed on-screen at the end: `ansible-playbook -i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>" --limit "<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml`
 Both extras are required — `-i configs/inventory` (additional, not a replacement) so
 `group_vars/pvenodes/` (e.g. `pve_packages`) has a path to be found from at all, and
 `-e target=` because the full `site.yml` chain this now runs straight into resolves its own
@@ -1553,7 +1554,7 @@ After changing `bootstrap.ipxe`, the iPXE binary must be recompiled and redistri
    prompts — it only creates the `ansible` user and ensures `sshd` is present (see §6.1)
 6. **Verify** — SSH to the node as `ansible` using the key from `ansible_sshkey.pub`; check `pvesh get /nodes` to confirm API is up
 7. **ZFS** — if degraded install, add second disk: `zpool attach rpool sda sdb` once the disk arrives
-8. **Proceed** — run `ansible-playbook -i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml` per `first-boot.sh`'s own on-screen instructions (§6.1) — node is not fully onboarded until this completes
+8. **Proceed** — run `ansible-playbook -i "<dhcp-ip>," -i configs/inventory -e target="<dhcp-ip>" --limit "<dhcp-ip>" playbooks/proxmox/bootstrap-new-node.yml` per `first-boot.sh`'s own on-screen instructions (§6.1) — node is not fully onboarded until this completes
 
 ---
 

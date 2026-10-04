@@ -40,17 +40,26 @@ Run from the `ansible/` root.
 
 ```bash
 # Full hygiene pass, single host
-ansible-playbook playbooks/windows_hygiene/site.yml -i <host>, -e target_hosts=<host>
+ansible-playbook playbooks/windows_hygiene/site.yml -i configs/inventory --limit <host>
 
 # Full hygiene pass, inventory group
 ansible-playbook playbooks/windows_hygiene/site.yml -i configs/inventory -e target_hosts=windows_servers
 
 # DISM only
-ansible-playbook playbooks/windows_hygiene/site.yml -i <host>, -e target_hosts=<host> --tags dism
+ansible-playbook playbooks/windows_hygiene/site.yml -i configs/inventory --limit <host> --tags dism
 
 # Quick pass, skip the slower DISM cleanup
-ansible-playbook playbooks/windows_hygiene/site.yml -i <host>, -e target_hosts=<host> --skip-tags dism
+ansible-playbook playbooks/windows_hygiene/site.yml -i configs/inventory --limit <host> --skip-tags dism
 ```
+
+**Corrected 2026-10-04**: the single-host examples above previously showed
+`-i <host>, -e target_hosts=<host>` — the same ad-hoc-inventory form
+`windows_bootstrap` genuinely needs for its bare-DHCP-IP first run. This family
+has no equivalent day-0 case of its own (it only ever runs against hosts
+already bootstrapped and in `configs/inventory`), so that form was just
+copied convention, not a real requirement — confirmed empirically
+(`--list-hosts --limit <a-real-host>`, no `-e target_hosts=` at all) that
+plain `-i configs/inventory --limit <host>` works correctly and is simpler.
 
 Standalone plays can also be run directly without `site.yml`, e.g.:
 
@@ -83,3 +92,7 @@ rename them without updating the template too.
   `windows_bootstrap`
 - 2026-07-15  Added this README — the module had zero doc coverage anywhere in the repo until
   now (found during a docs-drift audit)
+- 2026-10-04  Corrected the single-host Usage examples — they copied `windows_bootstrap`'s
+  genuine bare-DHCP-IP ad-hoc-inventory form (`-i <host>, -e target_hosts=<host>`) despite
+  this family having no day-0 case of its own (it only runs against already-onboarded hosts).
+  Switched to `-i configs/inventory --limit <host>`, confirmed empirically correct.

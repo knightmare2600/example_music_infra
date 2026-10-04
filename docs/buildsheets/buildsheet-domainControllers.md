@@ -91,7 +91,7 @@ site-specific replication-source logic. Run from the `ansible/` root:
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
-  -e target=<hostname>
+  -e target=<hostname> --limit <hostname>
 ```
 
 The `DC` checkbox below confirms this run completed cleanly (`failed=0`) — including

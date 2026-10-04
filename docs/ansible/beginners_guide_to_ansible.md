@@ -535,6 +535,14 @@ ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
   -e target_hosts=<its-current-reachable-address>
 ```
 
+*Correction, 2026-10-04: an earlier version of this note wrongly claimed `--limit` couldn't be
+used on this first-ever run at all. Verified directly: `--limit <dhcp-ip>` (the same value
+already in `-i`) works fine here too — `00-preflight.yml`'s `add_host` task keeps the box
+under its original bare-IP identity throughout this run, never renaming it to the real
+hostname at the Ansible-inventory level. It just adds nothing: a single-entry ad-hoc inventory
+has no second host to protect against in the first place. See the "Targeted Runs" section
+below for the day-2 form, where `--limit` genuinely matters.*
+
 `00-preflight.yml` asks for the real hostname (`EXADCSCLD001`) and the static IP to assign.
 That IP is `192.168.69.10` — `sites.csv`'s own `DC` column for CLD already states this
 directly, no derivation needed. Being first-in-forest means DNS resolution falls back to
@@ -777,7 +785,7 @@ correctly (`ok=14 changed=2 skipped=6 failed=0`).
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target_hosts=EXADCSCLD001
+  -e target_hosts=EXADCSCLD001 --limit EXADCSCLD001
 ```
 
 Worth knowing *why* re-running the full chain (not narrowing to specific tags) matters here:
@@ -806,7 +814,7 @@ correctly built. `ps7_setup.yml` carries its own `ps7_setup` tag for exactly thi
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target=EXADCSGOT001 --tags ps7_setup --ask-vault-pass
+  -e target=EXADCSGOT001 --limit EXADCSGOT001 --tags ps7_setup --ask-vault-pass
 ```
 
 Always pass `-e target=<hostname>` explicitly, even for a tag-scoped run — the play's own
@@ -899,7 +907,7 @@ lives in the same play, tagged `choco_packages`:
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target=EXADCSGOT001 --tags choco_packages --skip-tags choco_upgrade --ask-vault-pass
+  -e target=EXADCSGOT001 --limit EXADCSGOT001 --tags choco_packages --skip-tags choco_upgrade --ask-vault-pass
 ```
 
 **The `--skip-tags choco_upgrade` is not optional.** `--tags choco_packages` alone also
@@ -916,6 +924,34 @@ idempotent package-presence checks) remains.
 "HKCU\Software\SimonTatham\PuTTY\Sessions\Default%20Settings" /s` on the box itself showed
 all four values exactly as intended — `Font REG_SZ JetBrainsMonoNL NFM Thin`, `FontHeight
 REG_DWORD 0xe`, `TerminalType REG_SZ xterm-256color`, `BlinkCur REG_DWORD 0x1`.
+
+### Refreshing `/etc/example-music`'s CSVs/JSONs on the control node — `--tags example_music`
+
+Our recurring one: after any change to `benarbejde/sites.csv`/`devices.csv`/
+`address_policy.csv`/`role_codes.csv`/`ad_site_topology.csv`/`ad_hub_links.csv`/
+`ad_forest.json`/`ad_groups.json`/`ad_users.json`/`ad_computers.json`,
+`EXAANSCLD001`'s own deployed copies under `/etc/example-music/` need redeploying — this is
+the actual *fix* for drift; `at_have_ryggen_fri/check_control_node_freshness.py` (the
+2026-08-14 MOTD/systemd-timer reminder, wired into `linux/tools.yml`'s own
+"Deploy common tools" play) only ever *detects* it, never corrects it. None of these 11
+deploy tasks carried any tag at all before 2026-10-04, so the only way to refresh them was
+running the whole "Deploy common tools" play — user accounts, package installs, SSH
+hardening, dotfiles, all of it — just to re-copy a handful of files. Every one of them now
+carries `example_music` (matching the tag already used for the same class of task in
+`proxmox/playbooks/30-example-music.yml`):
+
+```bash
+ansible-playbook -i configs/inventory playbooks/linux/tools.yml \
+  --tags example_music --limit EXAANSCLD001 --ask-vault-pass
+```
+
+`linux/tools.yml` scopes to one host via `--limit`, not `-e target=` — it targets
+`groups['all']` by default (every Linux host), unlike the `target`/`target_hosts` pattern the
+Windows families use. Deliberately excludes the nodeinfo.json block (independently correct
+already — see the nodeinfo fix above) and the freshness-reminder MOTD/systemd-timer
+deployment itself (one-time tooling setup, not something run often the way the data refresh
+is) — confirmed via `--list-tasks --tags example_music` that only the 11 real deploy tasks
+(plus the always-tagged nodeinfo refresh, harmlessly along for the ride) are in scope.
 
 ---
 
@@ -1839,6 +1875,8 @@ command on one line before trusting it.
 | 2026-09-24 | Added "AD (`windows_adschema`) Troubleshooting One-Liners" — 7 generalised `Get-AD*` diagnostic patterns (hung-vs-slow task check, domain-wide Enabled sanity check, stuck-disabled-with-valid-password check, real group membership count, broad any-class/any-name search, duplicate-object-under-a-subtree check, manager/reference resolution spot-check) distilled from one evening's live `populate_ad` debugging session that found and fixed 8 real bugs across `ad_users.json`/`ad_groups.json`/`ad_computers.json`/the playbooks themselves. Written as reusable templates, not the session's literal (incident-specific) commands. |
 | 2026-10-04 | Added two new "Real-World Invocations — Day 2" subsections. "WireGuard duplicate peer cleanup — preview, then apply" — `dedupe-wg-peers.yml`'s real preview/apply/`CONFIRM` sequence against `EXAFWLCLD001`, with real captured output (3 unmanaged duplicate peer blocks — `FAL`/`ODE`/`LIV` — found and removed, `ok=14 changed=2 skipped=6 failed=0`). "Picking up just the PS7 profile fix — `--tags ps7_setup`" — the narrower, tag-scoped `windows_bootstrap` re-run for an already-built box that only needs `ps7_setup.yml`'s own content reapplied (e.g. the 2026-10-03 Solarized colour fix); explicitly notes the live confirmation that day actually came from a full, untagged run against `EXADCSGOT001`, not this tag-scoped form in isolation. |
 | 2026-10-04 | **Corrected the previous entry's own "not yet independently live-tested" caveat** on the `--tags ps7_setup` form — it since was, confirming `last_ansible_run`/the new `last_ansible_play` field both moved correctly while `bootstrapped_at`/`bootstrapped_by` stayed frozen, against `EXADCSGOT001`. Added a new top-level section, "Targeted Runs — Reapplying One Specific Fix Without a Full Rebuild", at Robert's request ("that is exactly the kind of thing someone can break, then we need a 'targeted' ansible run") — the general `--list-tasks`-first discipline, a cross-reference to the PS7 example above, and a full worked example for the PuTTY Default Settings fix (`--tags choco_packages --skip-tags choco_upgrade`), including the real gotcha found live: `--tags choco_packages` alone also matches "Upgrade all Chocolatey packages", since Ansible's `never` tag only blocks an *untagged* run, not an explicitly-tagged one — confirmed via `--list-tasks` before ever advising the command, then live-confirmed via `reg query ... /s` against `EXADCSGOT001` showing all 4 registry values correctly set. |
+| 2026-10-04 | Added `--limit <host>` explicitly throughout this document (both Targeted Runs examples and the day-0/day-2 bootstrapping walkthrough) — Robert's ask, preferring `--limit`'s explicit "this host only" statement. Added a bold/italic/underlined NB on both genuine bare-IP first-run examples (`EXADCSCLD001`'s forest-root build, and the general first-ever-run form) explaining why `--limit` cannot substitute for `-e target_hosts=` there specifically. See `docs/ExampleMusic_Beginners_Guide.md`'s corrected `--limit` table for the full, repo-wide picture. |
+| 2026-10-04 | Added a third "Targeted Runs" worked example: refreshing `/etc/example-music`'s CSVs/JSONs on `EXAANSCLD001` (`--tags example_music --limit EXAANSCLD001`) -- Robert's follow-up ask, recognising this as "our old friend" the control-node freshness drift he'd already hit before. None of `linux/tools.yml`'s 11 benarbejde-file deploy tasks carried any tag at all until now; tagged them all `example_music`, matching the existing convention in `proxmox/playbooks/30-example-music.yml`. Confirmed via `--list-tasks` that only the real deploy tasks (plus the always-tagged nodeinfo refresh) are in scope -- deliberately excludes the one-time freshness-reminder MOTD/systemd-timer deployment, which only detects staleness, never fixes it. |
 
 ---
 
