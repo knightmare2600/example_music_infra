@@ -814,10 +814,12 @@ Always pass `-e target=<hostname>` explicitly, even for a tag-scoped run — the
 comment is missing this, which would run against every Windows host in inventory if copied
 literally.
 
-The 2026-10-04 live confirmation of the colour fix itself came from a full, untagged
-`windows_bootstrap/site.yml` run against `EXADCSGOT001` (`ok=11 changed=2 skipped=9
-failed=0`, reaching "Bootstrap finish") — the `--tags ps7_setup` form above is the documented
-equivalent for an already-built box, not yet independently live-tested in isolation.
+**Live-confirmed in this exact tag-scoped form**, 2026-10-04, against `EXADCSGOT001`: before
+this command could be trusted, `ansible-playbook ... --list-tasks --tags ps7_setup` was used
+first to prove `[Finish] Write nodeinfo.json` actually appears under this tag (it originally
+didn't — see "Targeted Runs" below for why). The real run afterward showed `last_ansible_run`
+move to today's date and the new `last_ansible_play` field read back as
+`"windows_bootstrap/site.yml"`, with `bootstrapped_at`/`bootstrapped_by` correctly unchanged.
 
 ### Full BIND9 rebuild — `EXADNSVRK001`
 
@@ -854,6 +856,66 @@ Real captured output from that run, confirming success:
 $ host exapvevrk001 192.168.139.8
 exapvevrk001.jukebox.internal has address 192.168.139.5
 ```
+
+---
+
+## Targeted Runs — Reapplying One Specific Fix Without a Full Rebuild
+
+The same shape of problem keeps recurring: something specific breaks, or gets fixed in the
+repo, on an already-built host — and re-running the entire chain is both unnecessary and
+slower than it needs to be. Both examples below are real, live-confirmed fixes from
+2026-10-04, and both follow the same two-step discipline — worth treating as the standard
+pattern for any future "just fix this one thing" situation, not just these two:
+
+1. **Verify first, for free, with `--list-tasks`** — before running anything live, confirm
+   the exact task you care about actually appears under the tag combination you're about to
+   use. This touches no real host:
+   ```bash
+   ansible-playbook -i configs/inventory <playbook> --list-tasks --tags <tag>
+   ```
+   This is how the nodeinfo bug below was actually proven, not guessed — `[Finish] Write
+   nodeinfo.json` was confirmed *missing* from this output under `--tags ps7_setup` before
+   the fix, then confirmed *present* after it.
+2. **Watch for tags that don't do what the name suggests** — a task can carry more tags than
+   the one you asked for, and Ansible's special `never` tag only blocks an *untagged* run, not
+   one where you explicitly named one of that task's other tags. Always re-run `--list-tasks`
+   with your real intended `--tags`/`--skip-tags` combination before trusting it, not just the
+   single tag you think is relevant.
+
+### PS7 profile fix only — `--tags ps7_setup`
+
+See "Picking up just the PS7 profile fix" above, under Real-World Invocations — the full
+write-up, including the live confirmation and the `-e target=` gotcha in `ps7_setup.yml`'s own
+`Usage:` comment, lives there.
+
+### PuTTY Default Settings fix only — `--tags choco_packages --skip-tags choco_upgrade`
+
+`putty.install` lives in `40-choco-packages.yml`'s `choco_packages_common` list, so every
+target node gets its own local PuTTY — and the `[PuTTY] Set sane Default Settings` task that
+fixes its Courier-New-by-default font gap (added 2026-10-04, same root cause as
+`bootstrap/Setup-Workstation.ps1`'s `Set-PuttyDefaults` for operator workstations — see
+`docs/solarized-dark-terminal-setup.md`'s "PuTTY / PuTTY-ND" section for the full writeup)
+lives in the same play, tagged `choco_packages`:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
+  -e target=EXADCSGOT001 --tags choco_packages --skip-tags choco_upgrade --ask-vault-pass
+```
+
+**The `--skip-tags choco_upgrade` is not optional.** `--tags choco_packages` alone also
+matches "Upgrade all Chocolatey packages" — that task carries `[choco_packages,
+choco_upgrade, never]`, and `never` only skips it on a plain, untagged run; explicitly
+requesting `choco_packages` matches it too, which would upgrade every installed package on
+the box, a much bigger and riskier operation than intended. Confirmed via `--list-tasks`
+before ever advising this command live — with the plain tag it's in the list, with
+`--skip-tags choco_upgrade` added it drops out and only the PuTTY task (plus the already-
+idempotent package-presence checks) remains.
+
+**Live-confirmed**, 2026-10-04, against `EXADCSGOT001`: the task ran and reported
+`All items completed` (changed), and a follow-up `reg query
+"HKCU\Software\SimonTatham\PuTTY\Sessions\Default%20Settings" /s` on the box itself showed
+all four values exactly as intended — `Font REG_SZ JetBrainsMonoNL NFM Thin`, `FontHeight
+REG_DWORD 0xe`, `TerminalType REG_SZ xterm-256color`, `BlinkCur REG_DWORD 0x1`.
 
 ---
 
@@ -1776,6 +1838,7 @@ command on one line before trusting it.
 | 2026-09-23 | Added the correct `linux/tools.yml` invocation for redeploying a single fixed `benarbejde/` file to the control node itself, under "A worked example: `jukebox.example.tdf`" — found live fixing a bad `ad_users.json` record during the `EXADCSFRD001` `windows_adschema` population: the deploy task copies from the *local git checkout*, not GitHub, so running `tools.yml` without a preceding `git pull` silently redeploys the stale file and reports `no change` on the exact task you were relying on, indistinguishable at a glance from the fix having genuinely landed. |
 | 2026-09-24 | Added "AD (`windows_adschema`) Troubleshooting One-Liners" — 7 generalised `Get-AD*` diagnostic patterns (hung-vs-slow task check, domain-wide Enabled sanity check, stuck-disabled-with-valid-password check, real group membership count, broad any-class/any-name search, duplicate-object-under-a-subtree check, manager/reference resolution spot-check) distilled from one evening's live `populate_ad` debugging session that found and fixed 8 real bugs across `ad_users.json`/`ad_groups.json`/`ad_computers.json`/the playbooks themselves. Written as reusable templates, not the session's literal (incident-specific) commands. |
 | 2026-10-04 | Added two new "Real-World Invocations — Day 2" subsections. "WireGuard duplicate peer cleanup — preview, then apply" — `dedupe-wg-peers.yml`'s real preview/apply/`CONFIRM` sequence against `EXAFWLCLD001`, with real captured output (3 unmanaged duplicate peer blocks — `FAL`/`ODE`/`LIV` — found and removed, `ok=14 changed=2 skipped=6 failed=0`). "Picking up just the PS7 profile fix — `--tags ps7_setup`" — the narrower, tag-scoped `windows_bootstrap` re-run for an already-built box that only needs `ps7_setup.yml`'s own content reapplied (e.g. the 2026-10-03 Solarized colour fix); explicitly notes the live confirmation that day actually came from a full, untagged run against `EXADCSGOT001`, not this tag-scoped form in isolation. |
+| 2026-10-04 | **Corrected the previous entry's own "not yet independently live-tested" caveat** on the `--tags ps7_setup` form — it since was, confirming `last_ansible_run`/the new `last_ansible_play` field both moved correctly while `bootstrapped_at`/`bootstrapped_by` stayed frozen, against `EXADCSGOT001`. Added a new top-level section, "Targeted Runs — Reapplying One Specific Fix Without a Full Rebuild", at Robert's request ("that is exactly the kind of thing someone can break, then we need a 'targeted' ansible run") — the general `--list-tasks`-first discipline, a cross-reference to the PS7 example above, and a full worked example for the PuTTY Default Settings fix (`--tags choco_packages --skip-tags choco_upgrade`), including the real gotcha found live: `--tags choco_packages` alone also matches "Upgrade all Chocolatey packages", since Ansible's `never` tag only blocks an *untagged* run, not an explicitly-tagged one — confirmed via `--list-tasks` before ever advising the command, then live-confirmed via `reg query ... /s` against `EXADCSGOT001` showing all 4 registry values correctly set. |
 
 ---
 
