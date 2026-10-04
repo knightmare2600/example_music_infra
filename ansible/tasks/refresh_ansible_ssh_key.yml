@@ -39,6 +39,16 @@
 # same recovery path again.
 # =============================================================================
 # Changelog:
+#   2026-10-04  Added the missing ansible_shell_type: sh override alongside the existing
+#               ansible_connection: local on the re-verify task's vars: -- same bug class as
+#               ps7_setup.yml/dc_source_resolution.yml/ad_collection_check.yml/rsat.yml/
+#               nodeinfo_windows.yml/example_music_freshness_gate.yml/
+#               clear_stale_known_hosts.yml, found during a repo-wide sweep triggered by two
+#               orphaned local AnsiballZ_command.ps1/AnsiballZ_stat.ps1 files on EXAANSCLD001
+#               (confirmed stale, predating this file's original 2026-07-26 build and the
+#               2026-07-28 fix of the same bug class elsewhere -- not a currently-live hit on
+#               this file, since it's Linux-only today). Pre-emptive, so the same bug can't
+#               recur the day this task is ever wired into a Windows-targeting play.
 #   2026-07-26  Same port fix as ssh_preflight_with_fallback.yml's own
 #               changelog explains -- the new re-verify command below had
 #               the identical gap (never included -o Port=), caught testing
@@ -73,7 +83,22 @@
   changed_when: false
   failed_when: false
   vars:
+    # Same connection/shell_type override every other delegate_to: localhost
+    # command/shell task in this estate needs (see e.g.
+    # playbooks/windows_dc/tasks/dc_source_resolution.yml's own comment) --
+    # ansible_connection: local alone doesn't reset ansible_shell_type, and an
+    # inherited ansible_shell_type: powershell (from windows_nodes/windows_dc
+    # group_vars, if this task is ever wired into a Windows-targeting play)
+    # makes Ansible dispatch this task as if to a PowerShell target even
+    # while running locally -- the control node then builds the module's
+    # temp path using Windows/PowerShell conventions and writes it straight
+    # into the current working directory, since the connection really is
+    # local. Added pre-emptively, not from a live hit yet -- this file is
+    # Linux-only today (linux/tools.yml, firewallme), but there is no
+    # Linux-only guarantee against the same bug the day someone wires it
+    # into a Windows-targeting play.
     ansible_connection: local
+    ansible_shell_type: sh
   when: (ansible_password | default('')) | length > 0
 
 - name: "[Preflight] Report re-verify result"
