@@ -45,6 +45,11 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-10-04  Added "[Hyper] Set font to match PuTTY" right after the PuTTY defaults task
+#               above -- Robert's ask, same day: Hyper (also in choco_packages_common) should
+#               use the identical JetBrainsMonoNL NFM Thin font PuTTY now does, not its own
+#               Menlo/DejaVu/Lucida default. Needs the matching font file actually installed
+#               -- see group_vars/all/vars.yml's exa_font_files, extended the same day.
 #   2026-10-04  Added "[PuTTY] Set sane Default Settings" right after the common-packages
 #               install (putty.install lives in choco_packages_common, so every target node
 #               gets its own local PuTTY too) -- same Default%20Settings gap found live on
@@ -399,6 +404,60 @@
         - { name: BlinkCur,     data: 1,                          type: dword }
       loop_control:
         label: "{{ item.name }}"
+      tags: choco_packages
+
+    - name: "[Hyper] Set font to match PuTTY (JetBrainsMonoNL NFM Thin)"
+      # hyper is also in choco_packages_common -- Robert's ask, same day as the PuTTY fix
+      # above: Hyper should use the identical font PuTTY now does, not its own default
+      # (Menlo/DejaVu Sans Mono/Lucida Console/monospace). Hyper's config (.hyper.js) is a
+      # JS module, not JSON/registry -- no dedicated Ansible module for it, so this does a
+      # targeted regex line-replace via win_shell rather than rewriting the whole file
+      # (same "can't safely rewrite a file whose full structure we don't control" caution
+      # as bootstrap/Setup-Workstation.ps1's own Set-WindowsTerminalFont). Requires the
+      # JetBrainsMonoNLNerdFontMono-Thin.ttf font file itself actually be installed --
+      # see group_vars/all/vars.yml's exa_font_files, deployed by tasks/fonts.yml
+      # elsewhere in this chain.
+      ansible.windows.win_shell:
+        # Explicit cmd: (not a bare string) -- Ansible's own free-form argument
+        # splitter chokes on this script's quote nesting ("unbalanced jinja2 block
+        # or quotes") otherwise; cmd: takes the whole block literally, no parsing.
+        cmd: |
+          $hyperConfigPath = Join-Path $env:APPDATA 'Hyper\.hyper.js'
+          # One single-quoted JS string holding the whole comma-separated font stack, the
+          # font name double-quoted inside it because it contains spaces -- same convention
+          # Hyper's own default/documented examples use (e.g. '"Fira Code", Menlo, ..., monospace').
+          $fontFamily = "'`"JetBrainsMonoNL NFM Thin`", monospace'"
+
+          if (-not (Test-Path $hyperConfigPath)) {
+              # Hyper itself creates a default .hyper.js on first launch -- nothing exists
+              # yet on a box where it's never been opened. Write a minimal one; Hyper
+              # merges a partial config object with its own defaults for everything else.
+              $hyperDir = Split-Path -Parent $hyperConfigPath
+              New-Item -ItemType Directory -Path $hyperDir -Force | Out-Null
+              "module.exports = {`n  config: {`n    fontFamily: $fontFamily,`n  },`n};`n" |
+                Set-Content -Path $hyperConfigPath -Encoding UTF8
+              Write-Output "CHANGED: wrote fresh $hyperConfigPath"
+              exit 0
+          }
+
+          # Match/replace the WHOLE single-quoted value (open quote to the next one), not
+          # up to the first comma -- the value itself is a comma-separated font stack, so
+          # an internal comma (e.g. the stock 'Menlo, DejaVu Sans Mono, Lucida Console,
+          # monospace') would otherwise truncate the match or the replacement mid-value.
+          $content = Get-Content -Path $hyperConfigPath -Raw
+          if ($content -match "fontFamily\s*:\s*'[^']*JetBrainsMonoNL NFM Thin") {
+              Write-Output "OK: font already set"
+              exit 0
+          }
+          if ($content -notmatch "fontFamily\s*:\s*'[^']*'") {
+              Write-Output "WARN: existing config has no recognisable fontFamily value -- not touching it, set by hand: fontFamily: $fontFamily,"
+              exit 0
+          }
+          $newContent = $content -replace "fontFamily\s*:\s*'[^']*'", "fontFamily: $fontFamily"
+          Set-Content -Path $hyperConfigPath -Value $newContent -NoNewline -Encoding UTF8
+          Write-Output "CHANGED: font updated"
+      register: _hyper_font_result
+      changed_when: "'CHANGED' in _hyper_font_result.stdout"
       tags: choco_packages
 
     # 2026-09-21 fix, Robert (found live building EXADCSFRD001): googlechrome's own

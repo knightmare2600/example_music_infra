@@ -102,6 +102,15 @@ isn't, rather than failing partway through with a confusing permissions
 error.
 ==============================================================================
 Changelog:
+  2026-10-04  Added 'hyper' to the package list (was on every target node via
+              windows_bootstrap's choco_packages_common already, never here), plus
+              Install-JetBrainsMonoNLFont (the "NL"/No Ligatures Nerd Font Mono variant
+              PuTTY/Hyper are configured for here, confirmed to already live inside the
+              same upstream zip ansible/playbooks/windows_bootstrap/tasks/fonts.yml
+              fetches -- no new download source needed) and Set-HyperFont (matches
+              Hyper's font to PuTTY's, same targeted-regex caution as
+              Set-WindowsTerminalFont -- Hyper's .hyper.js is a JS module, not
+              JSON/registry). Robert's ask, same day as the PuTTY Default Settings work.
   2026-10-03  Deliberately NOT given the Enable-/Disable-LsCompatibilityMode toggle
               added the same day to bootstrap/setup-workstation-linux.sh and
               setup-workstation-macos.sh. On Windows, PowerShell already aliases
@@ -229,7 +238,12 @@ function Install-Dependencies {
         'microsoft-windows-terminal',   # confirmed real package ID, 2026-07-27
         'nerd-fonts-jetbrainsmono',      # confirmed real package ID, 2026-07-27 -- NOT the deprecated JetBrainsMonoNF
         'powershell-core',
-        'winevdm'                        # 16-bit Windows app compatibility layer, Robert's ask, 2026-08-10
+        'winevdm',                       # 16-bit Windows app compatibility layer, Robert's ask, 2026-08-10
+        'hyper'                          # added 2026-10-04 -- already on every target node via
+                                          # windows_bootstrap's choco_packages_common, but never on
+                                          # workstations until now; Robert's ask, same day, when asking
+                                          # for Hyper's font to match PuTTY's -- can't fix a font on an
+                                          # app that was never actually installed here.
     )
     choco install -y @packages
 
@@ -239,6 +253,8 @@ function Install-Dependencies {
     Set-PowerShellProfiles
     Set-WindowsTerminalFont
     Set-PuttyDefaults
+    Install-JetBrainsMonoNLFont
+    Set-HyperFont
 }
 
 function Set-PowerShellProfiles {
@@ -379,6 +395,88 @@ function Set-PuttyDefaults {
     } else {
         Write-Info "  PuTTY Default Settings: already correct, skipping."
     }
+}
+
+function Install-JetBrainsMonoNLFont {
+    # choco's nerd-fonts-jetbrainsmono package (already installed above) is fine as far as
+    # it goes -- Robert's own words, 2026-10-04, don't touch it -- but it doesn't include
+    # the "NL" (No Ligatures) Nerd Font Mono variant PuTTY/Hyper are configured for here
+    # ("JetBrainsMonoNL NFM"/"JetBrainsMonoNL NFM Thin"). No new download source needed:
+    # both files already live inside the exact same upstream release
+    # ansible/playbooks/windows_bootstrap/tasks/fonts.yml fetches for target nodes --
+    # confirmed directly, 2026-10-04, by downloading the real zip and listing its contents
+    # -- just two more filenames to extract from it, here on the workstation side.
+    $fontFiles = @('JetBrainsMonoNLNerdFontMono-Regular.ttf', 'JetBrainsMonoNLNerdFontMono-Thin.ttf')
+    $fontsDir = Join-Path $env:WINDIR 'Fonts'
+
+    $missing = $fontFiles | Where-Object { -not (Test-Path (Join-Path $fontsDir $_)) }
+    if (-not $missing) {
+        Write-Info "  JetBrainsMonoNL Nerd Font Mono: already installed, skipping."
+        return
+    }
+
+    Write-Info "Installing JetBrainsMonoNL Nerd Font Mono (Regular + Thin)..."
+    $zipPath = Join-Path $CacheDir 'JetBrainsMono-nerdfont.zip'
+    $extractPath = Join-Path $CacheDir 'JetBrainsMono-nerdfont-extracted'
+    New-Item -ItemType Directory -Path $CacheDir -Force | Out-Null
+
+    & curl.exe -fsSL -o $zipPath "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip"
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+
+    foreach ($f in $missing) {
+        Copy-Item -Path (Join-Path $extractPath $f) -Destination (Join-Path $fontsDir $f) -Force
+        $fontName = ($f -replace '\.ttf$', '') + ' (TrueType)'
+        New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' `
+            -Name $fontName -Value $f -PropertyType String -Force | Out-Null
+    }
+
+    Remove-Item -Path $zipPath -Force
+    Remove-Item -Path $extractPath -Recurse -Force
+    Write-Ok "  Installed: $($missing -join ', ')."
+}
+
+function Set-HyperFont {
+    # Hyper's config (.hyper.js) is a JS module, not JSON/registry -- no structured way to
+    # patch just one field safely, so this does a targeted regex line-replace rather than
+    # risk rewriting a file whose full contents (plugins, themes, etc.) aren't known, same
+    # caution as Set-WindowsTerminalFont above. Robert's ask, 2026-10-04: Hyper should match
+    # PuTTY's font exactly, not its own Menlo/DejaVu/Lucida default.
+    $hyperConfigPath = Join-Path $env:APPDATA 'Hyper\.hyper.js'
+    # One single-quoted JS string holding the whole comma-separated font stack, the font
+    # name itself double-quoted inside it because it contains spaces -- same convention
+    # Hyper's own default/documented examples use (e.g. '"Fira Code", Menlo, ..., monospace').
+    $fontFamily = "'`"JetBrainsMonoNL NFM Thin`", monospace'"
+
+    if (-not (Test-Path $hyperConfigPath)) {
+        # Hyper itself creates a default .hyper.js on first launch -- nothing exists yet on
+        # a machine where it's never been opened. Write a minimal one; Hyper merges a
+        # partial config object with its own defaults for everything else.
+        Write-Info "No existing Hyper config -- writing a fresh one with the PuTTY-matching font set."
+        $hyperDir = Split-Path -Parent $hyperConfigPath
+        New-Item -ItemType Directory -Path $hyperDir -Force | Out-Null
+        "module.exports = {`n  config: {`n    fontFamily: $fontFamily,`n  },`n};`n" |
+            Set-Content -Path $hyperConfigPath -Encoding UTF8
+        Write-Ok "  Wrote ${hyperConfigPath}."
+        return
+    }
+
+    $content = Get-Content -Path $hyperConfigPath -Raw
+    # Match/replace the WHOLE single-quoted value (open quote to the next one), not up to
+    # the first comma -- the value itself is a comma-separated font stack, so an
+    # internal comma (e.g. the stock 'Menlo, DejaVu Sans Mono, Lucida Console, monospace')
+    # would otherwise truncate the match or the replacement mid-value.
+    if ($content -match "fontFamily\s*:\s*'[^']*JetBrainsMonoNL NFM Thin") {
+        Write-Info "  Hyper config: font already set, skipping."
+        return
+    }
+    if ($content -notmatch "fontFamily\s*:\s*'[^']*'") {
+        Write-Warn2 "Hyper config exists but has no recognisable fontFamily value -- NOT touching it automatically."
+        Write-Warn2 "Set it by hand: fontFamily: $fontFamily,"
+        return
+    }
+    $newContent = $content -replace "fontFamily\s*:\s*'[^']*'", "fontFamily: $fontFamily"
+    Set-Content -Path $hyperConfigPath -Value $newContent -NoNewline -Encoding UTF8
+    Write-Ok "  Hyper config: font set to JetBrainsMonoNL NFM Thin."
 }
 
 # ==============================================================================
