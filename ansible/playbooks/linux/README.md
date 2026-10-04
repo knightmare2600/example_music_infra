@@ -45,11 +45,24 @@ ansible-playbook playbooks/linux/tools.yml -i configs/inventory
 Prompts for optional usernames to create (space-separated, blank to skip) if any are needed on
 top of the standard `ansible`/role-specific accounts.
 
-`rename-host.yml` is invoked separately, deliberately, against one host at a time:
+**This targets the entire Linux fleet by design** (`hosts: groups['all']`) — that's the
+intended default for a routine, repo-wide pass, not an oversight. To refresh just one host
+(e.g. after a `benarbejde/` data change — see "Refreshing `/etc/example-music`'s CSVs/JSONs"
+in `docs/ansible/beginners_guide_to_ansible.md`'s Targeted Runs section), add `--limit`
+explicitly — this is the real, live incident `docs/ExampleMusic_Beginners_Guide.md` §7.4
+documents (`-e target=<host>` does nothing here, it silently ran against everyone):
+
+```bash
+ansible-playbook playbooks/linux/tools.yml -i configs/inventory --limit <host>
+```
+
+`rename-host.yml` is invoked separately, deliberately, against one host at a time — `target`
+has no default at all here, so `-e target=` is mandatory, not optional (omitting it fails
+loudly rather than matching everyone); `--limit` is a harmless, explicit addition on top:
 
 ```bash
 ansible-playbook playbooks/linux/rename-host.yml -i configs/inventory \
-  -e target=EXADNSCLD001 -e new_hostname=EXADNSVRK001
+  -e target=EXADNSCLD001 --limit EXADNSCLD001 -e new_hostname=EXADNSVRK001
 ```
 
 ---
@@ -60,3 +73,7 @@ ansible-playbook playbooks/linux/rename-host.yml -i configs/inventory \
   a docs-drift audit). See `tools.yml`'s own header changelog for the file's full history.
 - 2026-07-21  Added `rename-host.yml` — built after a live host was found running under the
   wrong hostname (see the file's own header for the full story). Not yet live-tested.
+- 2026-10-04  Added an explicit `--limit <host>` example for `tools.yml` (alongside a note that
+  fleet-wide is the deliberate default, not an oversight) and to `rename-host.yml`'s existing
+  `-e target=` example — Robert's ask, preferring `--limit`'s explicit "this host only"
+  statement.

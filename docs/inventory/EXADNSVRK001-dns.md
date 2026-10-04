@@ -180,7 +180,7 @@ All site data lives in `sites.csv` (single source of truth). To add a site or ch
 2. From the Ansible control node, regenerate zones the normal way:
 
    ```
-   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --tags zones-full,reload
+   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --tags zones-full,reload --limit EXADNSVRK001
    ```
 
    (`zones-full`, not `zones` — that's the tag that actually reads `devices.csv`; see `bind9-dns.yml`'s
