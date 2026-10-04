@@ -899,8 +899,8 @@ write-up, including the live confirmation and the `-e target=` gotcha in `ps7_se
 ### PuTTY Default Settings fix only — `--tags choco_packages --skip-tags choco_upgrade`
 
 `putty.install` lives in `40-choco-packages.yml`'s `choco_packages_common` list, so every
-target node gets its own local PuTTY — and the `[PuTTY] Set sane Default Settings` task that
-fixes its Courier-New-by-default font gap (added 2026-10-04, same root cause as
+target node gets its own local PuTTY — and the `[PuTTY] Deploy full Default Settings
+template` task that fixes its Courier-New-by-default font gap (same root cause as
 `bootstrap/Setup-Workstation.ps1`'s `Set-PuttyDefaults` for operator workstations — see
 `docs/solarized-dark-terminal-setup.md`'s "PuTTY / PuTTY-ND" section for the full writeup)
 lives in the same play, tagged `choco_packages`:
@@ -919,11 +919,21 @@ before ever advising this command live — with the plain tag it's in the list, 
 `--skip-tags choco_upgrade` added it drops out and only the PuTTY task (plus the already-
 idempotent package-presence checks) remains.
 
-**Live-confirmed**, 2026-10-04, against `EXADCSGOT001`: the task ran and reported
-`All items completed` (changed), and a follow-up `reg query
-"HKCU\Software\SimonTatham\PuTTY\Sessions\Default%20Settings" /s` on the box itself showed
-all four values exactly as intended — `Font REG_SZ JetBrainsMonoNL NFM Thin`, `FontHeight
-REG_DWORD 0xe`, `TerminalType REG_SZ xterm-256color`, `BlinkCur REG_DWORD 0x1`.
+**The task itself was corrected the same day, after an initial version looked
+live-confirmed but wasn't.** First version set just 4 named registry values (`Font`,
+`FontHeight`, `TerminalType`, `BlinkCur`) via `win_regedit`, and a run against
+`EXADCSGOT001` showed exactly those 4 values correctly set via `reg query ... /s` — looked
+like full proof. It wasn't: PuTTY's `Default Settings` is a **complete session record**
+(PuTTY's own GUI only ever writes complete ones, ~200 values), not a sparse overlay merged
+with PuTTY's own defaults for anything missing — the 4-value key left `Font` genuinely
+installed and even selectable by hand in PuTTY's own Font dialog, but silently unapplied to
+a brand-new session, since real companion values (`FontCharSet`, `FontIsBold`,
+`FontQuality`, `FontVTMode`) were entirely absent, not just defaulted. Caught only because
+Robert actually opened a fresh PuTTY window and checked, rather than trusting the registry
+read-back alone. Fixed by reproducing a genuinely working key by hand (PuTTY's own "Save"
+from the Session dialog) and exporting it — that's the real source of truth now, committed
+at `ansible/playbooks/windows_bootstrap/playbooks/files/putty_default_settings.reg`, and
+the task does a full `reg import` of it instead of a 4-value reconstruction.
 
 ### Refreshing `/etc/example-music`'s CSVs/JSONs on the control node — `--tags example_music`
 
@@ -1877,6 +1887,7 @@ command on one line before trusting it.
 | 2026-10-04 | **Corrected the previous entry's own "not yet independently live-tested" caveat** on the `--tags ps7_setup` form — it since was, confirming `last_ansible_run`/the new `last_ansible_play` field both moved correctly while `bootstrapped_at`/`bootstrapped_by` stayed frozen, against `EXADCSGOT001`. Added a new top-level section, "Targeted Runs — Reapplying One Specific Fix Without a Full Rebuild", at Robert's request ("that is exactly the kind of thing someone can break, then we need a 'targeted' ansible run") — the general `--list-tasks`-first discipline, a cross-reference to the PS7 example above, and a full worked example for the PuTTY Default Settings fix (`--tags choco_packages --skip-tags choco_upgrade`), including the real gotcha found live: `--tags choco_packages` alone also matches "Upgrade all Chocolatey packages", since Ansible's `never` tag only blocks an *untagged* run, not an explicitly-tagged one — confirmed via `--list-tasks` before ever advising the command, then live-confirmed via `reg query ... /s` against `EXADCSGOT001` showing all 4 registry values correctly set. |
 | 2026-10-04 | Added `--limit <host>` explicitly throughout this document (both Targeted Runs examples and the day-0/day-2 bootstrapping walkthrough) — Robert's ask, preferring `--limit`'s explicit "this host only" statement. Added a bold/italic/underlined NB on both genuine bare-IP first-run examples (`EXADCSCLD001`'s forest-root build, and the general first-ever-run form) explaining why `--limit` cannot substitute for `-e target_hosts=` there specifically. See `docs/ExampleMusic_Beginners_Guide.md`'s corrected `--limit` table for the full, repo-wide picture. |
 | 2026-10-04 | Added a third "Targeted Runs" worked example: refreshing `/etc/example-music`'s CSVs/JSONs on `EXAANSCLD001` (`--tags example_music --limit EXAANSCLD001`) -- Robert's follow-up ask, recognising this as "our old friend" the control-node freshness drift he'd already hit before. None of `linux/tools.yml`'s 11 benarbejde-file deploy tasks carried any tag at all until now; tagged them all `example_music`, matching the existing convention in `proxmox/playbooks/30-example-music.yml`. Confirmed via `--list-tasks` that only the real deploy tasks (plus the always-tagged nodeinfo refresh) are in scope -- deliberately excludes the one-time freshness-reminder MOTD/systemd-timer deployment, which only detects staleness, never fixes it. |
+| 2026-10-04 | **Corrected the PuTTY Default Settings "Targeted Runs" example's own "Live-confirmed" claim** -- it was real but incomplete: the 4-value registry read-back it cited genuinely matched, but Robert actually opening a fresh PuTTY window afterward found the font still hadn't taken. Root cause: PuTTY's Default Settings is a complete session record (PuTTY's own GUI only ever writes complete ones, ~200 values), not a sparse overlay merged with PuTTY's own defaults for anything missing -- the 4-value key left Font genuinely installed and even selectable by hand in PuTTY's own Font dialog, but silently unapplied to a brand-new session, since real companion values (FontCharSet, FontIsBold, FontQuality, FontVTMode) were entirely absent. Fixed by reproducing a genuinely working key by hand and exporting it, now committed as `ansible/playbooks/windows_bootstrap/playbooks/files/putty_default_settings.reg` -- the task does a full `reg import` of it instead of a 4-value reconstruction. |
 
 ---
 

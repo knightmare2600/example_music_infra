@@ -45,6 +45,15 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-10-04  CORRECTED the PuTTY Default Settings task from a 4-value win_regedit loop to
+#               a full `reg import` of files/putty_default_settings.reg -- found live,
+#               EXADCSGOT001: Default Settings is a complete session record PuTTY's own GUI
+#               always writes in full, not a sparse overlay; the 4-value version left Font
+#               genuinely installed and selectable by hand but silently unapplied to a
+#               brand-new session, since real companion values (FontCharSet, FontIsBold,
+#               FontQuality, FontVTMode) were entirely absent, not just defaulted. See the
+#               task's own comment and files/putty_default_settings.reg's header for the
+#               full writeup.
 #   2026-10-04  Added "[Hyper] Set font to match PuTTY" right after the PuTTY defaults task
 #               above -- Robert's ask, same day: Hyper (also in choco_packages_common) should
 #               use the identical JetBrainsMonoNL NFM Thin font PuTTY now does, not its own
@@ -380,31 +389,51 @@
         label: "{{ item }}"
       tags: choco_packages
 
-    - name: "[PuTTY] Set sane Default Settings (font, terminal type, blinking cursor)"
+    - name: "[PuTTY] Check current Default Settings font"
+      ansible.windows.win_reg_stat:
+        path: 'HKCU:\Software\SimonTatham\PuTTY\Sessions\Default%20Settings'
+        name: Font
+      register: _putty_font_check
+      tags: choco_packages
+
+    - name: "[PuTTY] Deploy full Default Settings template"
       # putty.install above is in choco_packages_common -- every target node this
       # playbook touches gets its own local PuTTY too, same Default%20Settings gap
       # found live on workstations the same day (bootstrap/Setup-Workstation.ps1's
       # own Set-PuttyDefaults): a brand-new PuTTY session on THIS box would fall
       # back to Courier New, with none of the Nerd Font glyphs this estate's PS7
-      # profiles need. Values/types confirmed against a real working PuTTY session
-      # via `reg query ... /s`, not assumed -- see
-      # docs/solarized-dark-terminal-setup.md's "PuTTY / PuTTY-ND" section for the
-      # full writeup. Idempotent -- win_regedit only sets these 4 named values,
-      # never touches the rest of the key (Cipher, KEX, Colour14/15, etc., which
-      # may carry real deliberate customisation already).
-      ansible.windows.win_regedit:
-        path: 'HKCU:\Software\SimonTatham\PuTTY\Sessions\Default%20Settings'
-        name: "{{ item.name }}"
-        data: "{{ item.data }}"
-        type: "{{ item.type }}"
-      loop:
-        - { name: Font,         data: "JetBrainsMonoNL NFM Thin", type: string }
-        - { name: FontHeight,   data: 14,                         type: dword }
-        - { name: TerminalType, data: "xterm-256color",           type: string }
-        - { name: BlinkCur,     data: 1,                          type: dword }
-      loop_control:
-        label: "{{ item.name }}"
+      # profiles need.
+      #
+      # 2026-10-04 CORRECTION: this used to be a 4-value win_regedit loop (Font/
+      # FontHeight/TerminalType/BlinkCur only), on the assumption Default Settings
+      # is a sparse overlay merged with PuTTY's own built-in defaults for anything
+      # missing. Found live, Robert, EXADCSGOT001: it isn't -- Default Settings is
+      # a COMPLETE session record, and PuTTY's own GUI only ever writes complete
+      # ones. The 4-value version left Font genuinely installed and even
+      # selectable by hand in PuTTY's own Font dialog, but silently not applied to
+      # a brand-new session -- its real companion values (FontCharSet, FontIsBold,
+      # FontQuality, FontVTMode) were entirely absent from the key, not just
+      # defaulted, and PuTTY doesn't apply Font correctly without them. Confirmed
+      # by reproducing a genuinely working Default Settings key by hand (PuTTY's
+      # own "Save" from the Session dialog) and exporting it -- see
+      # files/putty_default_settings.reg's own header for the full writeup and
+      # files/README.md for why nothing in it is sensitive. `reg import` of the
+      # whole thing, not a second hand-reconstruction of ~200 values here.
+      when: not (_putty_font_check.exists | default(false)) or _putty_font_check.value != 'JetBrainsMonoNL NFM Thin'
       tags: choco_packages
+      block:
+        - name: "[PuTTY] Copy Default Settings template"
+          ansible.windows.win_copy:
+            src: putty_default_settings.reg
+            dest: 'C:\Windows\Temp\putty_default_settings.reg'
+
+        - name: "[PuTTY] Import Default Settings template"
+          ansible.windows.win_command: reg import C:\Windows\Temp\putty_default_settings.reg
+
+        - name: "[PuTTY] Clean up Default Settings template"
+          ansible.windows.win_file:
+            path: 'C:\Windows\Temp\putty_default_settings.reg'
+            state: absent
 
     - name: "[Hyper] Set font to match PuTTY (JetBrainsMonoNL NFM Thin)"
       # hyper is also in choco_packages_common -- Robert's ask, same day as the PuTTY fix

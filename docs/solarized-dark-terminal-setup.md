@@ -136,32 +136,38 @@ Right-click → Export → save as .reg
 
 Import on a new machine with a double-click.
 
-### Default Settings — font, terminal type, blinking cursor
+### Default Settings — font, terminal type, blinking cursor, and everything else
 
 The colours above are per-saved-session. Separately, PuTTY/putty-nd's **`Default Settings`**
 session (stored as the literal registry subkey `Default%20Settings` — PuTTY's own escaping
-for the space, not a real space) is what every *brand-new* session is created from. Found
-live, 2026-10-04: a `Default Settings` key that already had `TerminalType`/`BlinkCur` set
-correctly (from past per-machine manual tweaking) but no `Font`/`FontHeight` at all — so a
-new session on a fresh workstation falls back to PuTTY's hardcoded Courier New, with none of
-the Nerd Font glyphs this estate's PS7 profiles rely on (Terminal-Icons, etc.) rendering —
-exactly what made a GOT `pwsh` session's `ls` output unreadable over SSH.
+for the space, not a real space) is what every *brand-new* session is created from.
 
-`bootstrap/Setup-Workstation.ps1`'s `Set-PuttyDefaults` function sets this automatically on
-every workstation setup run (idempotent — only touches these four named values, never the
-rest of the key). To do it by hand instead, run this in PowerShell (values and registry
-*types* both confirmed against a real working PuTTY session via `reg query ... /s`, not
-assumed from general PuTTY documentation):
+**Correction, 2026-10-04**: this section originally said to set just 4 named values (`Font`,
+`FontHeight`, `TerminalType`, `BlinkCur`) via `New-ItemProperty`, on the assumption `Default
+Settings` is a sparse overlay merged with PuTTY's own built-in defaults for anything missing.
+Found live, Robert, EXADCSGOT001: it isn't — `Default Settings` is a **complete session
+record**, and PuTTY's own GUI only ever writes complete ones. The 4-value version left `Font`
+genuinely installed and even selectable by hand in PuTTY's own Font dialog, but silently not
+applied to a brand-new session — its real companion values (`FontCharSet`, `FontIsBold`,
+`FontQuality`, `FontVTMode`) were entirely absent from the key, not just defaulted, and PuTTY
+doesn't apply `Font` correctly without them.
+
+Confirmed by reproducing a genuinely working `Default Settings` key by hand (PuTTY's own
+"Save" from the Session dialog, after manually setting font + size) and exporting it — that
+export (`Font` changed to `JetBrainsMonoNL NFM Thin`, matching every other session on this
+estate) is now the single source of truth, committed at
+`ansible/playbooks/windows_bootstrap/playbooks/files/putty_default_settings.reg` (nothing
+sensitive in it — `ProxyPassword`/`UserName`/`PublicKeyFile` etc. are all blank, same as any
+fresh PuTTY install).
+
+`bootstrap/Setup-Workstation.ps1`'s `Set-PuttyDefaults` function imports this file
+automatically on every workstation setup run (idempotent — checks the current `Font` value
+first, skips if already correct). `ansible/playbooks/windows_bootstrap/playbooks/
+40-choco-packages.yml`'s `[PuTTY] Deploy full Default Settings template` task does the same
+for every target node. To do it by hand instead:
 
 ```powershell
-$registryPath = 'HKCU:\Software\SimonTatham\PuTTY\Sessions\Default%20Settings'
-if (-not (Test-Path $registryPath)) {
-    New-Item -Path $registryPath -Force | Out-Null
-}
-New-ItemProperty -Path $registryPath -Name 'Font'         -Value 'JetBrainsMonoNL NFM Thin' -PropertyType String -Force | Out-Null
-New-ItemProperty -Path $registryPath -Name 'FontHeight'   -Value 14                          -PropertyType DWord  -Force | Out-Null
-New-ItemProperty -Path $registryPath -Name 'TerminalType' -Value 'xterm-256color'            -PropertyType String -Force | Out-Null
-New-ItemProperty -Path $registryPath -Name 'BlinkCur'     -Value 1                           -PropertyType DWord  -Force | Out-Null
+reg import "<path-to-checkout>\ansible\playbooks\windows_bootstrap\playbooks\files\putty_default_settings.reg"
 ```
 
 ---
