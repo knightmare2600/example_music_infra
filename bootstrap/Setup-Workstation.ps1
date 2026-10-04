@@ -238,6 +238,7 @@ function Install-Dependencies {
     Write-Ok "Dependencies installed/confirmed: $($packages -join ', ')."
     Set-PowerShellProfiles
     Set-WindowsTerminalFont
+    Set-PuttyDefaults
 }
 
 function Set-PowerShellProfiles {
@@ -326,6 +327,58 @@ function Set-WindowsTerminalFont {
     }
     $freshSettings | ConvertTo-Json -Depth 5 | Set-Content -Path $settingsPath -Encoding UTF8
     Write-Ok "  Wrote ${settingsPath}."
+}
+
+function Set-PuttyDefaults {
+    # PuTTY/putty-nd store every saved session, INCLUDING the "Default Settings"
+    # session every brand-new session is created from, under
+    # HKCU:\Software\SimonTatham\PuTTY\Sessions\<name> -- '%20' is PuTTY's own
+    # literal escaping for the space in "Default Settings" (confirmed: it's a
+    # literal registry subkey named "Default%20Settings", not a real space).
+    # Found live, 2026-10-04: Robert's own Default Settings already had
+    # TerminalType/BlinkCur set correctly (from past manual tweaking) but no
+    # Font/FontHeight at all, so a brand-new PuTTY session -- e.g. on a new
+    # workstation, or a PFY's first login -- falls back to PuTTY's hardcoded
+    # Courier New, which has none of the Nerd Font glyphs this estate's PS7
+    # profiles rely on (Terminal-Icons etc.) -- the exact bug that made
+    # EXADCSGOT001's `ls` output unreadable over SSH. Values and registry
+    # TYPES both confirmed against Robert's own already-working session
+    # (`tmp#:22`, via `reg query ... /s`) rather than assumed from general
+    # PuTTY documentation.
+    #
+    # Only sets these 4 named values -- never recreates or touches the rest of
+    # the Default Settings key (Cipher, KEX, Colour14/15, DataVersion, etc.),
+    # which may carry real, deliberate customisation already.
+    Write-Info "Configuring PuTTY Default Settings (font, terminal type, cursor)..."
+
+    $registryPath = 'HKCU:\Software\SimonTatham\PuTTY\Sessions\Default%20Settings'
+    if (-not (Test-Path $registryPath)) {
+        New-Item -Path $registryPath -Force | Out-Null
+    }
+
+    $values = @{
+        Font         = 'JetBrainsMonoNL NFM Thin'
+        FontHeight   = 14
+        TerminalType = 'xterm-256color'
+        BlinkCur     = 1
+    }
+
+    $changedAny = $false
+    foreach ($name in $values.Keys) {
+        $desired = $values[$name]
+        $current = (Get-ItemProperty -Path $registryPath -Name $name -ErrorAction SilentlyContinue).$name
+        if ($current -ne $desired) {
+            $propertyType = if ($desired -is [int]) { 'DWord' } else { 'String' }
+            New-ItemProperty -Path $registryPath -Name $name -Value $desired -PropertyType $propertyType -Force | Out-Null
+            $changedAny = $true
+        }
+    }
+
+    if ($changedAny) {
+        Write-Ok "  PuTTY Default Settings: Font/FontHeight/TerminalType/BlinkCur set (JetBrainsMonoNL NFM Thin, 14pt, xterm-256color, blinking cursor)."
+    } else {
+        Write-Info "  PuTTY Default Settings: already correct, skipping."
+    }
 }
 
 # ==============================================================================
