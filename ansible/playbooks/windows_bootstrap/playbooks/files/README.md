@@ -18,6 +18,26 @@ mattered to him, not open-source-licence purism.
 
 ## files/ (top level)
 
+- `putty_default_settings.reg` — PuTTY's `Default Settings` session, used by
+  `40-choco-packages.yml`'s `[PuTTY] Set sane Default Settings` task (`reg
+  import`, not a handful of `win_regedit` calls). **Why a full, ~200-value
+  export and not just the 4 values that actually matter** (`Font`,
+  `FontHeight`, `TerminalType`, `BlinkCur`) — found live, 2026-10-04: PuTTY's
+  `Default Settings` key isn't a sparse overlay merged with PuTTY's own
+  built-in defaults for anything missing — it's a complete session record,
+  and PuTTY's own GUI only ever writes complete ones. A `win_regedit`-based
+  task that set only those 4 values left `Font` visibly selectable in the
+  dialog (the font itself genuinely was installed) but silently not applied
+  to a brand-new session, because its real companion values (`FontCharSet`,
+  `FontIsBold`, `FontQuality`, `FontVTMode`) were entirely absent from the
+  key, not just defaulted. Confirmed by Robert reproducing a real, working
+  `Default Settings` key by hand (PuTTY's own "Save" from the Session
+  dialog) and exporting it — this file is that export, `Font` changed to
+  `JetBrainsMonoNL NFM Thin` (Robert's explicit choice, matching every other
+  session on this estate already using the Thin weight; the live export
+  itself had picked up Regular). No secrets in it — `ProxyPassword`,
+  `UserName`, `PublicKeyFile` etc. are all blank, same as any fresh PuTTY
+  install.
 - `ExampleMusicWallpaper.png` — the corporate wallpaper image, used by
   `60-wallpaper.yml`. Platform-agnostic (same PNG regardless of CPU
   architecture), so it lives at the top level, not under an arch subfolder.
