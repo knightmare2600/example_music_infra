@@ -45,6 +45,13 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-10-04  Added "[PuTTY] Set sane Default Settings" right after the common-packages
+#               install (putty.install lives in choco_packages_common, so every target node
+#               gets its own local PuTTY too) -- same Default%20Settings gap found live on
+#               workstations the same day (bootstrap/Setup-Workstation.ps1's own
+#               Set-PuttyDefaults, Robert's ask: "good place to put it is after the choco
+#               stuff, no?"). See docs/solarized-dark-terminal-setup.md's "PuTTY / PuTTY-ND"
+#               section for the full writeup and confirmed values/registry types.
 #   2026-09-26  Added elinks (text-mode web browser) to choco_packages_common --
 #               Robert's ask, same "CLI/sysadmin tools" theme as far/edit/busybox/wget
 #               already on this list.
@@ -366,6 +373,32 @@
       loop: "{{ choco_packages_common_missing }}"
       loop_control:
         label: "{{ item }}"
+      tags: choco_packages
+
+    - name: "[PuTTY] Set sane Default Settings (font, terminal type, blinking cursor)"
+      # putty.install above is in choco_packages_common -- every target node this
+      # playbook touches gets its own local PuTTY too, same Default%20Settings gap
+      # found live on workstations the same day (bootstrap/Setup-Workstation.ps1's
+      # own Set-PuttyDefaults): a brand-new PuTTY session on THIS box would fall
+      # back to Courier New, with none of the Nerd Font glyphs this estate's PS7
+      # profiles need. Values/types confirmed against a real working PuTTY session
+      # via `reg query ... /s`, not assumed -- see
+      # docs/solarized-dark-terminal-setup.md's "PuTTY / PuTTY-ND" section for the
+      # full writeup. Idempotent -- win_regedit only sets these 4 named values,
+      # never touches the rest of the key (Cipher, KEX, Colour14/15, etc., which
+      # may carry real deliberate customisation already).
+      ansible.windows.win_regedit:
+        path: 'HKCU:\Software\SimonTatham\PuTTY\Sessions\Default%20Settings'
+        name: "{{ item.name }}"
+        data: "{{ item.data }}"
+        type: "{{ item.type }}"
+      loop:
+        - { name: Font,         data: "JetBrainsMonoNL NFM Thin", type: string }
+        - { name: FontHeight,   data: 14,                         type: dword }
+        - { name: TerminalType, data: "xterm-256color",           type: string }
+        - { name: BlinkCur,     data: 1,                          type: dword }
+      loop_control:
+        label: "{{ item.name }}"
       tags: choco_packages
 
     # 2026-09-21 fix, Robert (found live building EXADCSFRD001): googlechrome's own
