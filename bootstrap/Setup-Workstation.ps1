@@ -102,6 +102,14 @@ isn't, rather than failing partway through with a confusing permissions
 error.
 ==============================================================================
 Changelog:
+  2026-10-04  CORRECTED Set-PuttyDefaults from a 4-value New-ItemProperty loop to a full
+              `reg import` of ansible/playbooks/windows_bootstrap/playbooks/files/
+              putty_default_settings.reg -- found live, EXADCSGOT001: PuTTY's Default
+              Settings is a complete session record, not a sparse overlay; the 4-value
+              version left Font genuinely installed and selectable by hand but silently
+              unapplied to a brand-new session, since real companion values (FontCharSet,
+              FontIsBold, FontQuality, FontVTMode) were entirely absent, not just
+              defaulted. See that file's own header for the full writeup.
   2026-10-04  Added 'hyper' to the package list (was on every target node via
               windows_bootstrap's choco_packages_common already, never here), plus
               Install-JetBrainsMonoNLFont (the "NL"/No Ligatures Nerd Font Mono variant
@@ -351,50 +359,41 @@ function Set-PuttyDefaults {
     # HKCU:\Software\SimonTatham\PuTTY\Sessions\<name> -- '%20' is PuTTY's own
     # literal escaping for the space in "Default Settings" (confirmed: it's a
     # literal registry subkey named "Default%20Settings", not a real space).
-    # Found live, 2026-10-04: Robert's own Default Settings already had
-    # TerminalType/BlinkCur set correctly (from past manual tweaking) but no
-    # Font/FontHeight at all, so a brand-new PuTTY session -- e.g. on a new
-    # workstation, or a PFY's first login -- falls back to PuTTY's hardcoded
-    # Courier New, which has none of the Nerd Font glyphs this estate's PS7
-    # profiles rely on (Terminal-Icons etc.) -- the exact bug that made
-    # EXADCSGOT001's `ls` output unreadable over SSH. Values and registry
-    # TYPES both confirmed against Robert's own already-working session
-    # (`tmp#:22`, via `reg query ... /s`) rather than assumed from general
-    # PuTTY documentation.
     #
-    # Only sets these 4 named values -- never recreates or touches the rest of
-    # the Default Settings key (Cipher, KEX, Colour14/15, DataVersion, etc.),
-    # which may carry real, deliberate customisation already.
-    Write-Info "Configuring PuTTY Default Settings (font, terminal type, cursor)..."
+    # 2026-10-04 CORRECTION: this used to set just 4 named values (Font/
+    # FontHeight/TerminalType/BlinkCur) via New-ItemProperty, on the assumption
+    # Default Settings is a sparse overlay merged with PuTTY's own built-in
+    # defaults for anything missing. Found live, Robert, EXADCSGOT001: it
+    # isn't -- Default Settings is a COMPLETE session record, and PuTTY's own
+    # GUI only ever writes complete ones. The 4-value version left Font
+    # genuinely installed and even selectable by hand in PuTTY's own Font
+    # dialog, but silently not applied to a brand-new session -- its real
+    # companion values (FontCharSet, FontIsBold, FontQuality, FontVTMode) were
+    # entirely absent from the key, not just defaulted, and PuTTY doesn't
+    # apply Font correctly without them. Confirmed by reproducing a genuinely
+    # working Default Settings key by hand (PuTTY's own "Save" from the
+    # Session dialog) and exporting it -- that export, Font changed to
+    # JetBrainsMonoNL NFM Thin, is now the single source of truth, committed
+    # at ansible/playbooks/windows_bootstrap/playbooks/files/putty_default_settings.reg
+    # (see that file's own header and its directory's README.md for the full
+    # writeup and why nothing in it is sensitive). `reg import` of the whole
+    # thing now, not a second hand-reconstruction of ~200 values here.
+    $regFile = Join-Path $RepoRoot 'ansible\playbooks\windows_bootstrap\playbooks\files\putty_default_settings.reg'
+    if (-not (Test-Path $regFile)) {
+        Write-Warn2 "PuTTY Default Settings template not found at $regFile -- skipping (repo checkout may be stale/incomplete)."
+        return
+    }
 
     $registryPath = 'HKCU:\Software\SimonTatham\PuTTY\Sessions\Default%20Settings'
-    if (-not (Test-Path $registryPath)) {
-        New-Item -Path $registryPath -Force | Out-Null
-    }
-
-    $values = @{
-        Font         = 'JetBrainsMonoNL NFM Thin'
-        FontHeight   = 14
-        TerminalType = 'xterm-256color'
-        BlinkCur     = 1
-    }
-
-    $changedAny = $false
-    foreach ($name in $values.Keys) {
-        $desired = $values[$name]
-        $current = (Get-ItemProperty -Path $registryPath -Name $name -ErrorAction SilentlyContinue).$name
-        if ($current -ne $desired) {
-            $propertyType = if ($desired -is [int]) { 'DWord' } else { 'String' }
-            New-ItemProperty -Path $registryPath -Name $name -Value $desired -PropertyType $propertyType -Force | Out-Null
-            $changedAny = $true
-        }
-    }
-
-    if ($changedAny) {
-        Write-Ok "  PuTTY Default Settings: Font/FontHeight/TerminalType/BlinkCur set (JetBrainsMonoNL NFM Thin, 14pt, xterm-256color, blinking cursor)."
-    } else {
+    $currentFont = (Get-ItemProperty -Path $registryPath -Name Font -ErrorAction SilentlyContinue).Font
+    if ($currentFont -eq 'JetBrainsMonoNL NFM Thin') {
         Write-Info "  PuTTY Default Settings: already correct, skipping."
+        return
     }
+
+    Write-Info "Configuring PuTTY Default Settings (font, terminal type, cursor, and the rest of a real session record)..."
+    reg import $regFile
+    Write-Ok "  PuTTY Default Settings: imported from $regFile."
 }
 
 function Install-JetBrainsMonoNLFont {
