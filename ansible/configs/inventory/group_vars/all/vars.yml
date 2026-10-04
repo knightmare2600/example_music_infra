@@ -20,6 +20,12 @@
 #               see ansible/tasks/ad_forest_facts.yml. Jinja here is evaluated lazily by
 #               Ansible the first time either var is actually referenced in a task, so no
 #               explicit task-file include is needed for group_vars/all to pick this up.
+#   2026-10-04  Added the two "NL" (No Ligatures) Nerd Font Mono files -- Robert's ask: PuTTY/
+#               Hyper on this estate are configured for "JetBrainsMonoNL NFM"/"JetBrainsMonoNL
+#               NFM Thin" specifically, not any of the 5 files already here (all WITH
+#               ligatures). Both new files confirmed already present in the same upstream zip
+#               tasks/fonts.yml fetches -- no new download source needed, just two more names
+#               in this selective-deploy list.
 # =============================================================================
 
 # Path to ad_forest.json on the Ansible control node. Mirrors sites_csv_path's
@@ -71,3 +77,13 @@ exa_font_files:
   - JetBrainsMonoNerdFont-BoldItalic.ttf
   - JetBrainsMonoNerdFont-Italic.ttf
   - JetBrainsMonoNerdFontMono-Regular.ttf
+  # Added 2026-10-04, Robert's ask: PuTTY/Hyper's config on this estate uses
+  # "JetBrainsMonoNL NFM"/"JetBrainsMonoNL NFM Thin" specifically (the "No
+  # Ligatures" Nerd Font Mono variant) -- NOT one of the 5 files above, which
+  # are all the WITH-ligatures variant. No new download source needed: both
+  # files already live inside the SAME upstream zip tasks/fonts.yml already
+  # fetches (confirmed directly, 2026-10-04, by downloading
+  # https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip
+  # and listing its real contents) -- they just weren't in this selective list.
+  - JetBrainsMonoNLNerdFontMono-Regular.ttf
+  - JetBrainsMonoNLNerdFontMono-Thin.ttf
