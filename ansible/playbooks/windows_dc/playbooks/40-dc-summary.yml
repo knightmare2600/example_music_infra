@@ -210,7 +210,11 @@
     # observability convenience, never worth failing a real DC-promotion
     # summary over.
     - name: "Write nodeinfo.json (non-fatal)"
-      tags: dc_summary
+      # Both tags, not just always -- see windows_bootstrap/85-finish.yml's own
+      # 2026-10-04 changelog/comment for the full empirical writeup of why
+      # `always` has to be on this wrapping block itself, not just on the tasks
+      # inside tasks/nodeinfo_windows.yml.
+      tags: [dc_summary, always]
       block:
         - name: "Write nodeinfo.json"
           include_tasks: ../../../tasks/nodeinfo_windows.yml

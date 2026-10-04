@@ -101,6 +101,15 @@
       tags: example_music
 
     - name: Write /etc/example-music/nodeinfo.json
+      # Both tags, not just always -- this task already had its own tags: example_music
+      # much further down (after its vars: block, removed from there 2026-10-04) -- a
+      # genuine duplicate YAML key within one task, silently resolved to "last one wins"
+      # by the YAML loader, which is exactly how an earlier same-day edit here (adding
+      # `tags: always` right after this task's own name:) got silently overridden without
+      # any error -- caught only because check_nodeinfo_coverage.py's own 2026-10-04
+      # extension actually parses task structure instead of just grepping for the
+      # include_tasks line's presence.
+      tags: [example_music, always]
       include_tasks: ../../../tasks/nodeinfo.yml
       vars:
         nodeinfo_role: "proxmox"
@@ -125,4 +134,3 @@
           # _derived_ip is never defined.
           node_ip: "{{ _derived_ip | default(ansible_default_ipv4.address | default('')) }}"
           gateway: "{{ _gateway | default(pve_site_row.Gateway | default(ansible_default_ipv4.gateway | default(''))) }}"
-      tags: example_music

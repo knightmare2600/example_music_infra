@@ -101,6 +101,7 @@
         mode: "0755"
 
     - name: "3 | Write /etc/example-music/nodeinfo.json"
+      tags: always
       include_tasks: ../../../tasks/nodeinfo.yml
       vars:
         nodeinfo_hostname: "{{ nas_hostname }}"

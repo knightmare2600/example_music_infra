@@ -242,7 +242,15 @@
     # that actually catches it. nodeinfo.json is an observability
     # convenience, never something worth failing a real bootstrap over.
     - name: "[Finish] Write nodeinfo.json (non-fatal)"
-      tags: finish
+      # Both tags, not just `always` -- `finish` keeps it reachable by a deliberate
+      # `--tags finish` run same as every other task in this block, `always` is what
+      # actually guarantees it runs under ANY --tags filter. Confirmed empirically,
+      # 2026-10-04: tagging only this block `finish` (as it originally was) made the
+      # nodeinfo write vanish entirely from `--list-tasks --tags ps7_setup` output, even
+      # after tagging every task inside tasks/nodeinfo_windows.yml itself `always` --
+      # `always` on a child task doesn't override a non-matching tag on its own parent
+      # block, it has to be on the block (or include) actually gating entry into it too.
+      tags: [finish, always]
       block:
         - name: "[Finish] Write nodeinfo.json"
           include_tasks: ../../../tasks/nodeinfo_windows.yml

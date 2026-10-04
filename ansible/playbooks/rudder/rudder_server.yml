@@ -949,6 +949,7 @@
     # prompted -- see ansible/tasks/nodeinfo_environment.yml (replaced the
     # old standalone /etc/.environment file 2026-07-10).
     - name: "11 | Resolve environment"
+      tags: always
       include_tasks: ../../tasks/nodeinfo_environment.yml
 
     - name: "11 | Set rudder_environment"
@@ -962,6 +963,7 @@
         mode: "0755"
 
     - name: "11 | Write /etc/example-music/nodeinfo.json"
+      tags: always
       include_tasks: ../../tasks/nodeinfo.yml
       vars:
         nodeinfo_hostname: "{{ rudder_hostname }}"
