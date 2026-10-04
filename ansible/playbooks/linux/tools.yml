@@ -183,6 +183,20 @@
 #               users are reminded... if time is a factor." Matches this repo's own established
 #               systemd-timer convention (proxmox/playbooks/50-systemd-units.yml), not a new
 #               cron-based pattern this repo doesn't otherwise use.
+#   2026-10-04  Tagged every /etc/example-music CSV/JSON deploy task `example_music` (none had
+#               any tag at all before this) -- Robert's ask, same "targeted run" pattern as
+#               ps7_setup/choco_packages the same day: refreshing these files on the control
+#               node (the actual mechanism behind the 2026-08-14 freshness-reminder entry
+#               above, which only detects staleness, never fixes it) previously meant running
+#               this whole "Deploy common tools" play -- users, packages, SSH work and all --
+#               just to re-copy a handful of CSVs/JSONs. Matches the existing `example_music`
+#               tag convention already used for the same class of task in
+#               proxmox/playbooks/30-example-music.yml. See
+#               docs/ansible/beginners_guide_to_ansible.md's "Targeted Runs" section for the
+#               worked example. Deliberately NOT applied to the nodeinfo.json block just below
+#               (independently correct already, tagged `always` for its own reasons) or the
+#               freshness-reminder MOTD/systemd-timer deployment above (one-time tooling
+#               setup, not something run often the way the data refresh itself is).
 
 - import_playbook: ../ssh_preflight_with_fallback.yml
 
@@ -379,6 +393,7 @@
         owner: root
         group: root
         mode:  '0755'
+      tags: example_music
 
     - name: Deploy sites.csv to /etc/example-music
       ansible.builtin.copy:
@@ -387,6 +402,7 @@
         owner: root
         group: root
         mode:  '0644'
+      tags: example_music
 
     - name: Deploy devices.csv to /etc/example-music
       ansible.builtin.copy:
@@ -395,6 +411,7 @@
         owner: root
         group: root
         mode:  '0644'
+      tags: example_music
 
     # Added 2026-07-26 alongside create-vm.py's ROLE_CODES switching from a hardcoded dict
     # to loading role_codes.csv -- this is the Ansible-managed half of that fix's search
@@ -407,6 +424,7 @@
         owner: root
         group: root
         mode:  '0644'
+      tags: example_music
 
     - name: Deploy address_policy.csv to /etc/example-music
       ansible.builtin.copy:
@@ -415,6 +433,7 @@
         owner: root
         group: root
         mode:  '0644'
+      tags: example_music
 
     # Added 2026-10-01 alongside windows_dc/playbooks/30-dc-replicate.yml's new Stage 4b
     # (ports Configure-ADSites.ps1's estate-wide AD Sites topology into Ansible) -- same
@@ -426,6 +445,7 @@
         owner: root
         group: root
         mode:  '0644'
+      tags: example_music
 
     - name: Deploy ad_hub_links.csv to /etc/example-music
       ansible.builtin.copy:
@@ -434,6 +454,7 @@
         owner: root
         group: root
         mode:  '0644'
+      tags: example_music
 
     - name: Deploy ad_forest.json to /etc/example-music
       ansible.builtin.copy:
@@ -442,6 +463,7 @@
         owner: root
         group: root
         mode:  '0644'
+      tags: example_music
 
     - name: Deploy ad_groups.json to /etc/example-music
       ansible.builtin.copy:
@@ -450,6 +472,7 @@
         owner: root
         group: root
         mode:  '0644'
+      tags: example_music
 
     - name: Deploy ad_users.json to /etc/example-music
       ansible.builtin.copy:
@@ -458,6 +481,7 @@
         owner: root
         group: root
         mode:  '0644'
+      tags: example_music
 
     - name: Deploy ad_computers.json to /etc/example-music
       ansible.builtin.copy:
@@ -466,6 +490,7 @@
         owner: root
         group: root
         mode:  '0644'
+      tags: example_music
 
     # -------------------------------------------------------------------------
     # nodeinfo.json — best-effort: needs an already-conformant EXA[ROLE][SITE][NNN]
