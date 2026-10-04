@@ -52,18 +52,24 @@ walkthrough. Quick reference:
 ```bash
 # Brand-new node (first ever run against it)
 ansible-playbook playbooks/proxmox/bootstrap-new-node.yml \
-  -i configs/inventory -i "<dhcp-ip>," -e target=<hostname-from-buildsheet>
+  -i configs/inventory -i "<dhcp-ip>," -e target=<hostname-from-buildsheet> --limit <hostname-from-buildsheet>
 
 # Routine refresh of an already-onboarded node
-ansible-playbook playbooks/proxmox/site.yml -i configs/inventory -e target=<hostname>
+ansible-playbook playbooks/proxmox/site.yml -i configs/inventory -e target=<hostname> --limit <hostname>
 
 # Force a full re-onboard (re-touches access + systemd/Zabbix state)
 ansible-playbook playbooks/proxmox/site.yml -i configs/inventory \
-  -e target=<hostname> -e pve_force_full_onboard=true
+  -e target=<hostname> --limit <hostname> -e pve_force_full_onboard=true
 
 # Build cloud-init VM templates
 ansible-playbook playbooks/proxmox/cloud_templates.yml -i configs/inventory --limit pvenodes
 ```
+
+`--limit` added throughout 2026-10-04. Worth knowing, unlike `windows_bootstrap`'s similar-looking
+bare-IP case: PVE's own `add_host` (`00-preflight.yml`) registers the host under
+`inventory_hostname` — the *same* value already passed via `-e target=`/`-e "<dhcp-ip>,"`, never
+renamed — so `--limit` genuinely works here even on the brand-new-node line above, confirmed by
+reading that `add_host` task directly rather than assumed from the surface similarity.
 
 ---
 
@@ -72,3 +78,7 @@ ansible-playbook playbooks/proxmox/cloud_templates.yml -i configs/inventory --li
 - 2026-07-15  Added this README — the directory had no directory-level doc coverage (found
   during a docs-drift audit; the full procedure was already well-documented in
   `docs/proxmox/Procedure-PVE-Node-Onboarding.md`, just not cross-referenced from here).
+- 2026-10-04  Added `--limit <hostname>` explicitly throughout, including the bare-IP
+  brand-new-node line — confirmed this family's own `add_host` (`00-preflight.yml`) registers
+  under `inventory_hostname`, the same value already passed, never renamed mid-run, so unlike
+  `windows_bootstrap`'s similar-looking case, `--limit` genuinely works here even on day 0.

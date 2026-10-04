@@ -3,8 +3,8 @@
 **Doc ID:** NET-BUILD-FWL-001  
 **Last Updated:** 2026-09-01  
 **Applies to:** All site firewall/router VMs — CLD is the sole WireGuard hub; every other site, including FAL/ODE/BRK, is an ordinary spoke  
-**Playbook (first-ever run, box still on its DHCP provisioning IP):** `ansible-playbook -i configs/inventory -e target=<host> -e ansible_host=<current-DHCP-IP> playbooks/firewallme/playbooks/90-firewall.yml --ask-vault-pass`  
-**Playbook (subsequent runs, box already on its permanent static IP):** `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=<host> --ask-vault-pass`  
+**Playbook (first-ever run, box still on its DHCP provisioning IP):** `ansible-playbook -i configs/inventory -e target=<host> --limit <host> -e ansible_host=<current-DHCP-IP> playbooks/firewallme/playbooks/90-firewall.yml --ask-vault-pass`  
+**Playbook (subsequent runs, box already on its permanent static IP):** `ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=<host> --limit <host> --ask-vault-pass`  
 See Step 3a below for the full detail — proven live end-to-end against `EXAFWLATL001` on 2026-09-01, `failed=0`.  
 **Break-glass script:** `firewallme.sh` — hosted on bootstrap server at `http://192.168.139.50/provision/firewallme.sh`. Kept for when Ansible genuinely can't reach the box (dead/replaced firewall, or the very first firewall at a brand-new site with no Ansible control node reachable at all). Steps 4 onward below document this path — see `ansible/playbooks/firewallme/` for the normal one.  
 **Cross-reference:** `active-directory/ad-dc-wireguard-deployment.md` (NET-AD-DC-001, historical — see `ansible/playbooks/windows_dc/README.md` for the live procedure) · `buildsheet-pve.md` (NET-BUILD-PVE-001)
@@ -220,6 +220,7 @@ address for this one run only:
 ```bash
 ansible-playbook -i configs/inventory \
   -e target=EXAFWL<SITE>001 \
+  --limit EXAFWL<SITE>001 \
   -e ansible_host=<current-DHCP-IP> \
   playbooks/firewallme/playbooks/90-firewall.yml \
   --ask-vault-pass
@@ -250,7 +251,7 @@ bringing WAN up live to avoid dropping your own session; bring it up afterwards 
 same host drops the `ansible_host=` override entirely and just uses the inventory as normal:
 
 ```bash
-ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=EXAFWL<SITE>001 --ask-vault-pass
+ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/90-firewall.yml -e target=EXAFWL<SITE>001 --limit EXAFWL<SITE>001 --ask-vault-pass
 ```
 
 ---

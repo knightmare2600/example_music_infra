@@ -88,11 +88,11 @@ needs generic bootstrap run first as its own invocation, then this module:
 ```bash
 # Step 1 — rename, static IP, DNS, tools, hardening
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
-  -e target=EXADCSFAL002 --ask-vault-pass
+  -e target=EXADCSFAL002 --limit EXADCSFAL002 --ask-vault-pass
 
 # Step 2 — DC-specific stages only (this is everything site.yml here does)
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
-  -e target=EXADCSFAL002
+  -e target=EXADCSFAL002 --limit EXADCSFAL002
 ```
 
 ### DC stages only (host already bootstrapped and domain-joined)
@@ -102,14 +102,14 @@ it with no tags at all, as above, is already "DC stages only":
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
-  -e target=EXADCSFAL002
+  -e target=EXADCSFAL002 --limit EXADCSFAL002
 ```
 
 ### DC promotion only
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
-  -e target=EXADCSFAL002 \
+  -e target=EXADCSFAL002 --limit EXADCSFAL002 \
   --tags dc_preflight,dc_features,dc_promote,dc_replicate,dc_summary
 ```
 
@@ -117,9 +117,16 @@ ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
-  -e target=EXADCSFAL002 \
+  -e target=EXADCSFAL002 --limit EXADCSFAL002 \
   --tags dc_replicate,dc_summary
 ```
+
+`--limit EXADCSFAL002` added throughout, 2026-10-04 — confirmed empirically
+(`--list-hosts --limit EXADCSFAL002`, no `-e target=` at all) that `--limit`
+alone is already sufficient; `target` is referenced nowhere in this family
+outside its own `hosts:` line. `-e target=` is shown alongside purely as the
+explicit, self-documenting "this host only" pairing — drop it if you prefer,
+`--limit` on its own does the same job.
 
 ---
 
@@ -247,3 +254,9 @@ already covered by the suffix_map.
   build of the PHI and DET sites; confirmed live-correct two-step sequence
   the same day via a real `EXADCSFRD001` build (`windows_bootstrap/site.yml`
   then `windows_dc/site.yml`, `failed=0`).
+- 2026-10-04  Added `--limit <host>` explicitly to every invocation in this README, alongside
+  the existing `-e target=` — Robert's ask, preferring `--limit` as the explicit,
+  self-documenting "this host only" statement. Confirmed empirically
+  (`--list-hosts --limit <host>`, no `-e target=` at all) that `--limit` alone is already
+  sufficient here; `target` is referenced nowhere in this family outside its own `hosts:`
+  line.

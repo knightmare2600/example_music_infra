@@ -112,7 +112,7 @@ cp /var/lib/pve-cluster/config.db  /root/pve-config-db-backup-$(date +%F).db
 11. Reboot when prompted (or run: ifreload -a to apply network without reboot)
 12. Reconnect on site LAN IP — verify web UI at https://<ip>:8006
 13. Install ipmitool, set BMC password via ipmitool
-14. Run `ansible-playbook -i "<node-ip>," -i configs/inventory -e target="<node-ip>" playbooks/proxmox/bootstrap-new-node.yml`
+14. Run `ansible-playbook -i "<node-ip>," -i configs/inventory -e target="<node-ip>" --limit "<node-ip>" playbooks/proxmox/bootstrap-new-node.yml`
     (the ad-hoc `-i "<node-ip>,"` source is required — the node's fresh DHCP IP isn't in
     `configs/inventory` yet, and without it `hosts: "{{ target }}"` matches zero hosts and the
     play silently does nothing; see `bootstrap-new-node.yml`'s own header for the full reasoning.

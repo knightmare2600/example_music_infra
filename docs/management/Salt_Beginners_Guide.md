@@ -322,7 +322,7 @@ Both should return real output. If either is missing, `10-master.yml`'s Section 
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/salt/playbooks/10-master.yml \
-  --ask-vault-pass --start-at-task="5 | Install git-lfs"
+  --limit EXASLTCLD001 --ask-vault-pass --start-at-task="5 | Install git-lfs"
 ```
 
 **2. `gitfs_base`/`env: base` not set.** Check `/etc/salt/master` for these two lines:
@@ -335,7 +335,7 @@ grep -A1 'gitfs_base\|env: base' /etc/salt/master
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/salt/playbooks/10-master.yml \
-  --ask-vault-pass --start-at-task="6 | Write /etc/salt/master"
+  --limit EXASLTCLD001 --ask-vault-pass --start-at-task="6 | Write /etc/salt/master"
 ```
 
 **3. `gitfs_provider`/`git_pillar_provider: gitcli`, and shallow clone.** Do **not** use these together — `gitcli` has a confirmed real bug (2026-08-11) where its bare clone never points `HEAD` at the branch it actually fetched, leaving it dangling at a branch this repo doesn't have. This makes listing operations work (they resolve via explicit branch config) while individual file fetches silently fail (they rely on `HEAD` implicitly). `10-master.yml` pins `gitfs_provider`/`git_pillar_provider: gitpython` specifically to avoid this — if you ever see `gitcli` in `/etc/salt/master`, that's a regression, not a valid alternative. Neither `gitpython` nor `pygit2` support shallow clones (`gitfs_depth`/`git_pillar_depth`) at all — that's `gitcli`-only, and `gitcli` isn't safe to use here until this is fixed upstream.
@@ -402,7 +402,7 @@ Look for a `[CRITICAL]` line near the bottom — Salt's own pre-flight checks ar
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/salt/playbooks/10-master.yml \
-  --ask-vault-pass --start-at-task="6 | Write /etc/salt/master"
+  --limit EXASLTCLD001 --ask-vault-pass --start-at-task="6 | Write /etc/salt/master"
 sudo systemctl status salt-master   # confirm it's genuinely staying up, not just restarting once
 ```
 

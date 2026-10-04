@@ -7,7 +7,8 @@
 **Deploy workflow:** unattend XML → OpenSSH reachable → `ansible/playbooks/windows_bootstrap/site.yml`
 (`preinit.cmd`/`SetupComplete.cmd`/`PostOOBE.cmd`/`Join-DomainAndBootstrap.ps1` are a
 historical, pre-Ansible artefact — see `docs/bootstrap/bootstrapping.md` — not the live path)  
-**First-ever run (box still on DHCP):** `ansible-playbook playbooks/windows_bootstrap/site.yml -i <dhcp-ip>, -e target_hosts=<dhcp-ip> --ask-vault-pass` — see `ansible/playbooks/windows_bootstrap/README.md`'s Usage section for the full detail and the named-inventory form used on every run after this one
+**First-ever run (box still on DHCP):** `ansible-playbook playbooks/windows_bootstrap/site.yml -i <dhcp-ip>, -e target_hosts=<dhcp-ip> --ask-vault-pass` — see `ansible/playbooks/windows_bootstrap/README.md`'s Usage section for the full detail and the named-inventory form used on every run after this one  
+*Correction, 2026-10-04: `--limit <dhcp-ip>` (same value as `-i`) also works on this first-ever run, verified directly — the box keeps its original bare-IP identity throughout, never renamed at the Ansible-inventory level, so a single-entry ad-hoc inventory simply has no second host to protect against. `--limit <host>` is what genuinely matters on every run after this one.*
 
 > ⚠️ **Autounattend files are in `C:\DeployTools\unattend_xml\`**  
 > DeployTools share: `\\EXADCSCPH001\DeployTools` (future: DFS `\\jukebox.internal\DeployTools`)
