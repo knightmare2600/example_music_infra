@@ -108,6 +108,7 @@
 # 14_finish.yml all already reference it by this name).
 
 - name: "[Ask] Resolve environment"
+  tags: always
   ansible.builtin.include_tasks: ../../../../../tasks/nodeinfo_environment.yml
 
 - name: "[Ask] Set fw_environment"

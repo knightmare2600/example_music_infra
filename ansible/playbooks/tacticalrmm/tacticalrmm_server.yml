@@ -740,6 +740,7 @@
   # ---------------------------------------------------------------------------
 
     - name: "6 | Resolve environment"
+      tags: always
       include_tasks: ../../tasks/nodeinfo_environment.yml
 
     - name: "6 | Set rmm_environment"
@@ -753,6 +754,7 @@
         mode: "0755"
 
     - name: "6 | Write /etc/example-music/nodeinfo.json"
+      tags: always
       include_tasks: ../../tasks/nodeinfo.yml
       vars:
         nodeinfo_hostname: "{{ rmm_hostname }}"

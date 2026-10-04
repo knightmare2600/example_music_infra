@@ -480,6 +480,11 @@
     # convenience; it must never block a real AD population run that's
     # already this far through.
     - name: "Write nodeinfo.json (non-fatal)"
+      # Tagged always -- see windows_bootstrap/85-finish.yml's own 2026-10-04
+      # changelog/comment for the full empirical writeup of why this has to be on
+      # the wrapping block itself, not just on the tasks inside
+      # tasks/nodeinfo_windows.yml.
+      tags: always
       block:
         - name: "Write nodeinfo.json"
           include_tasks: ../../../tasks/nodeinfo_windows.yml

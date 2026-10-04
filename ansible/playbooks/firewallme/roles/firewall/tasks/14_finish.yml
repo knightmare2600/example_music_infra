@@ -52,6 +52,7 @@
     mode: '0755'
 
 - name: "[Finish] Write /etc/example-music/nodeinfo.json"
+  tags: always
   include_tasks: ../../../../../tasks/nodeinfo.yml
   vars:
     nodeinfo_role: "firewall"

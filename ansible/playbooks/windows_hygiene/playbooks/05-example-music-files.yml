@@ -119,6 +119,7 @@
     # why windows_bootstrap/windows_dc/windows_adschema now use it too).
     # -------------------------------------------------------------------------
     - name: Write nodeinfo.json
+      tags: always
       include_tasks: ../../../tasks/nodeinfo_windows.yml
       vars:
         nodeinfo_bootstrapped_by: "windows_hygiene/site.yml"
