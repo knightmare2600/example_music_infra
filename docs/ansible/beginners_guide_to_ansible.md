@@ -708,6 +708,61 @@ batch either way); `serial: 1` only changes what happens the moment more than on
 targeted in the same invocation, turning that from a silent correctness bug into a proper
 one-host-at-a-time pass.
 
+### WireGuard duplicate peer cleanup — preview, then apply
+
+`dedupe-wg-peers.yml` always previews first and never writes until told to — worth seeing the
+real two-step shape in full rather than just described. Preview (safe to run any time, never
+writes):
+
+```bash
+ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/dedupe-wg-peers.yml \
+  -e target=EXAFWLCLD001 --ask-vault-pass
+```
+
+Real captured output, live against `EXAFWLCLD001`, 2026-10-04 — three unmanaged duplicate
+peer blocks found (`FAL`, `ODE`, `LIV`), nothing written:
+
+```text
+[+]   EXAFWLCLD001      -- would remove: ## FAL (yxYnCsZwxDmv6WrduGTC7pnW3sUxob1GGYpttPfGbmk=) --
+                        ## FAL
+                        [Peer]
+                        PublicKey = yxYnCsZwxDmv6WrduGTC7pnW3sUxob1GGYpttPfGbmk=
+                        Endpoint = 192.168.139.76:51820
+                        AllowedIPs = 10.0.76.0/24, 192.168.76.0/24
+                        PersistentKeepalive = 25
+                        -- end --
+                        [... ODE, LIV follow the same shape ...]
+                        DEDUPE_COUNT=3 (check mode, nothing written)
+[+]   EXAFWLCLD001      EXAFWLCLD001: duplicate(s) found above. Re-run with -e apply=true to remove them.
+```
+
+Applying needs the same `-e apply=true` plus typing `CONFIRM` at the prompt — the gate the
+preview run's own `FAIL — confirmation not given` task enforces whenever `apply=true` is
+passed without it:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/dedupe-wg-peers.yml \
+  -e target=EXAFWLCLD001 -e apply=true --ask-vault-pass
+```
+
+```text
+[[dedupe-wg-peers] Confirm before applying]
+
+── EXAFWLCLD001: duplicate peer block(s) found, shown above ──
+Only the plain, unmarked block(s) listed above will be removed. Every
+"# BEGIN/END ANSIBLE MANAGED BLOCK" section is left completely untouched.
+A timestamped-by-content backup is written to wg0.conf.bak-dedupe first.
+
+Type CONFIRM to remove them now, or Ctrl+C to abort.
+: CONFIRM
+```
+
+Confirmed live: the three duplicates were removed, a timestamped `wg0.conf.bak-dedupe` backup
+written first, WireGuard re-synced from the cleaned file with no restart/downtime, and the
+post-cleanup `wg show` output confirmed every remaining peer — including `FAL`/`ODE`/`LIV`
+themselves, now present only once each via their real managed block — still handshaking
+correctly (`ok=14 changed=2 skipped=6 failed=0`).
+
 ### Windows bootstrap — re-running to confirm a fix actually held
 
 > **Correction, 2026-09-21**: this section previously showed `windows_dc/site.yml
@@ -741,6 +796,28 @@ false`. Fixed 2026-07-28. **Confirmed live for the first time 2026-08-01**: a re
 broken `DefaultShell` state, this stage caught it and corrected it, and a second run
 afterward connected and completed cleanly — proof the fix holds, not just that the bug it
 used to have is gone.
+
+### Picking up just the PS7 profile fix — `--tags ps7_setup`
+
+Re-running the whole `windows_bootstrap/site.yml` chain above is correct, but heavier than
+necessary when the only thing that changed is Stage 22's PS7 profile content itself (e.g. the
+Solarized Parameter/Operator colour fix, 2026-10-03) and the box is otherwise already
+correctly built. `ps7_setup.yml` carries its own `ps7_setup` tag for exactly this case:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
+  -e target=EXADCSGOT001 --tags ps7_setup --ask-vault-pass
+```
+
+Always pass `-e target=<hostname>` explicitly, even for a tag-scoped run — the play's own
+`hosts:` line has no fallback other than `all`, and `ps7_setup.yml`'s own in-file `Usage:`
+comment is missing this, which would run against every Windows host in inventory if copied
+literally.
+
+The 2026-10-04 live confirmation of the colour fix itself came from a full, untagged
+`windows_bootstrap/site.yml` run against `EXADCSGOT001` (`ok=11 changed=2 skipped=9
+failed=0`, reaching "Bootstrap finish") — the `--tags ps7_setup` form above is the documented
+equivalent for an already-built box, not yet independently live-tested in isolation.
 
 ### Full BIND9 rebuild — `EXADNSVRK001`
 
@@ -1698,6 +1775,7 @@ command on one line before trusting it.
 | 2026-09-21 | Full read-through review ahead of the PFY building PHI and DET, per Robert's request. **Corrected two related, critical inaccuracies**, both stemming from the same wrong assumption that `windows_dc/site.yml` chains or includes `windows_bootstrap` stages — it never has, at any point in its git history; it is five `import_playbook`s of its own DC-specific plays only, full stop. (1) §4 (`EXADCSCLD001`) showed a single `windows_dc/site.yml` invocation as if it handled rename/static-IP/DNS *and* DC promotion together, describing `00-preflight.yml`'s `add_host` as running "in the flesh" as part of that command. Rewritten to show the real two-step sequence (`windows_bootstrap/site.yml` then `windows_dc/site.yml`, separate invocations), grounded in the `EXADCSFRD001` build completed live this same day (`failed=0`), plus a callout on not trusting a pre-flight summary's *decision* as proof of *application* (see the DNS-application-gap incident, same day — [[feedback_decision_correct_is_not_applied_confirmed]]). (2) The "Domain controller — re-running to confirm a fix actually held" example (added 2026-08-03) showed `windows_dc/site.yml --skip-tags bootstrap`/without it as exercising the `[B0]` DefaultShell failsafe — `windows_dc/site.yml` has no `bootstrap` tag and never did, so this was a silent no-op that happened to still complete successfully, masking the error. The `[B0]` failsafe actually lives in `windows_bootstrap/00-preflight.yml`'s own `bootstrap` tag; corrected the example to re-run `windows_bootstrap/site.yml` instead, retitled the section to match. Also found and fixed the same stale claim, independently, in `ansible/playbooks/windows_dc/README.md`'s "Playbook order" and "Usage" sections (its "Full run"/"DC stages only" examples referenced the same non-existent `bootstrap` tag) — confirmed via full git history back to the module's first commit that `site.yml` there never had one. Read the remainder of the document (Sudo/Become, Collection Versions, Recommended Workflow, Changelog) against current repo state — no further inaccuracies found. |
 | 2026-09-23 | Added the correct `linux/tools.yml` invocation for redeploying a single fixed `benarbejde/` file to the control node itself, under "A worked example: `jukebox.example.tdf`" — found live fixing a bad `ad_users.json` record during the `EXADCSFRD001` `windows_adschema` population: the deploy task copies from the *local git checkout*, not GitHub, so running `tools.yml` without a preceding `git pull` silently redeploys the stale file and reports `no change` on the exact task you were relying on, indistinguishable at a glance from the fix having genuinely landed. |
 | 2026-09-24 | Added "AD (`windows_adschema`) Troubleshooting One-Liners" — 7 generalised `Get-AD*` diagnostic patterns (hung-vs-slow task check, domain-wide Enabled sanity check, stuck-disabled-with-valid-password check, real group membership count, broad any-class/any-name search, duplicate-object-under-a-subtree check, manager/reference resolution spot-check) distilled from one evening's live `populate_ad` debugging session that found and fixed 8 real bugs across `ad_users.json`/`ad_groups.json`/`ad_computers.json`/the playbooks themselves. Written as reusable templates, not the session's literal (incident-specific) commands. |
+| 2026-10-04 | Added two new "Real-World Invocations — Day 2" subsections. "WireGuard duplicate peer cleanup — preview, then apply" — `dedupe-wg-peers.yml`'s real preview/apply/`CONFIRM` sequence against `EXAFWLCLD001`, with real captured output (3 unmanaged duplicate peer blocks — `FAL`/`ODE`/`LIV` — found and removed, `ok=14 changed=2 skipped=6 failed=0`). "Picking up just the PS7 profile fix — `--tags ps7_setup`" — the narrower, tag-scoped `windows_bootstrap` re-run for an already-built box that only needs `ps7_setup.yml`'s own content reapplied (e.g. the 2026-10-03 Solarized colour fix); explicitly notes the live confirmation that day actually came from a full, untagged run against `EXADCSGOT001`, not this tag-scoped form in isolation. |
 
 ---
 
