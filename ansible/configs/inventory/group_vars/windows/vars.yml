@@ -4,6 +4,12 @@
 # Example Music Limited — Variables for all Windows hosts
 # =============================================================================
 # Changelog:
+#   2026-10-04  Added LegalNoticeCaption/LegalNoticeText to registry_common -- Interactive
+#               logon legal notice/banner, values sourced from exa_legal_notice_caption/
+#               exa_legal_notice_text (group_vars/all/vars.yml). Server-Core-safe (win_regedit,
+#               no GUI/secpol.msc), idempotent, same mechanism as every other entry in this
+#               list -- no new task needed, playbooks/20-registry.yml's existing loop picks
+#               these up automatically.
 #   2026-06-20  Initial file
 #   2026-07-06  Added rustdesk, wget, busybox (all previously binaries
 #               pulled from the asset server, which doesn't host them);
@@ -52,6 +58,8 @@ registry_common:
   - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',              name: ConsentPromptBehaviorAdmin,   data: 2,  type: dword }
   - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',              name: InactivityTimeoutSecs,        data: "{{ exa_lock_timeout_secs }}", type: dword }
   - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',              name: AutoAdminLogon,               data: "0", type: string }
+  - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',              name: LegalNoticeCaption,           data: "{{ exa_legal_notice_caption }}", type: string }
+  - { path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System',              name: LegalNoticeText,              data: "{{ exa_legal_notice_text }}",    type: string }
   - { path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server',                       name: fDenyTSConnections,           data: 0,  type: dword }
   - { path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp',  name: UserAuthentication,           data: 1,  type: dword }
   - { path: 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU',                  name: NoAutoUpdate,                 data: 1,  type: dword }

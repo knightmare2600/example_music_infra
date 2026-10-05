@@ -4,6 +4,10 @@
 # Example Music Limited — Variables common to all managed hosts
 # =============================================================================
 # Changelog:
+#   2026-10-04  Added exa_legal_notice_caption/exa_legal_notice_text -- Interactive logon
+#               legal notice (LegalNoticeCaption/LegalNoticeText), consumed by
+#               registry_common (group_vars/windows/vars.yml) via playbooks/20-registry.yml.
+#               No reboot needed -- winlogon.exe reads these at each logon attempt, not cached.
 #   2026-07-15  Robert, mid live windows_bootstrap run against EXADCSCLD001: asked
 #               whether SSH key rotation is actually checked/updated anywhere. Found
 #               exa_ansible_pub_key was a hardcoded literal, and a completely
@@ -56,6 +60,12 @@ exa_choco_source:    "https://community.chocolatey.org/api/v2/"
 
 # Screen lock timeout (seconds)
 exa_lock_timeout_secs: 3600
+
+# Interactive logon legal notice (Policies\System -- same key as above).
+# Site-specific banner: override in a more specific group_vars/host_vars file,
+# same pattern as every other exa_ default here.
+exa_legal_notice_caption: "WARNING: AUTHORISED ACCESS ONLY"
+exa_legal_notice_text:    "This system is restricted to authorised users. All activity may be monitored and recorded."
 
 # SSH / Ansible
 # Was a hardcoded literal (a completely different, stale key -- confirmed

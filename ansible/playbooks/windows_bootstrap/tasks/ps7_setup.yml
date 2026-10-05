@@ -9,6 +9,24 @@
 # Reworking Live Conventions" section.
 # =============================================================================
 # Changelog:
+#   2026-10-04  Robert's catch: PS7 itself is cross-platform, so the banner's nodeinfo.json
+#               path should branch on $IsWindows/$IsLinux rather than hardcode the Windows
+#               path -- real automatic PS7 variables, not something invented for this file.
+#               Works cleanly because nodeinfo.yml (Linux) and nodeinfo_windows.yml write
+#               identical field names -- confirmed directly against both files -- so the
+#               same rendering code needs no further branching, only the path does. Also
+#               removes the need for a hand-maintained sed-substituted copy for local
+#               testing on a Linux control node (this exact file now just works there).
+#   2026-10-04  Stage 22's profile now also prints a MOTD-style banner (hostname/role/site/
+#               office/environment/last Ansible run) from the existing nodeinfo.json
+#               (nodeinfo_windows.yml already writes/refreshes it -- no new data source).
+#               Robert's ask was originally "when users SSH in" -- SSH's own DefaultShell is
+#               PS5.1, not PS7 (playbooks/75-openssh.yml), so a PS5.1 AllUsersAllHosts profile
+#               was built and live-checked first, then reverted on Robert's explicit call:
+#               reuse this already-proven PS7 profile mechanism instead of opening new
+#               territory on PS5.1's own profile. Real consequence of that choice: the banner
+#               now fires when a user runs `pwsh` (opt-in), not at raw `ssh <host>` connect --
+#               confirmed with Robert before making the swap, not assumed equivalent.
 #   2026-10-03  Deliberately NOT given the Enable-/Disable-LsCompatibilityMode toggle
 #               added the same day to bootstrap/setup-workstation-linux.sh and
 #               setup-workstation-macos.sh (control-node/workstation profiles). On
@@ -126,6 +144,72 @@
       # NerdFonts
       if (Get-Module -ListAvailable NerdFonts) {
           Import-Module NerdFonts
+      }
+
+      # MOTD banner -- nodeinfo.json, same file nodeinfo_windows.yml already writes/refreshes.
+      # No automated caller anywhere in this repo ever shells out to pwsh.exe (checked), so this
+      # only ever runs when a human actually types `pwsh` -- [Console]::IsInputRedirected below
+      # is cheap defense-in-depth for that anyway, same reasoning as every other guard in this
+      # estate's profile/startup scripts.
+      if (-not [Console]::IsInputRedirected) {
+          # PS7 itself is cross-platform -- $IsWindows/$IsLinux are real PowerShell 7
+          # automatic variables, not something specific to this profile. The field names
+          # are identical either way (nodeinfo.yml and nodeinfo_windows.yml write the same
+          # schema), so the same rendering code below works unmodified on either OS --
+          # only the path differs.
+          $nodeinfoPath = if ($IsWindows) {
+              'C:\ProgramData\ExampleMusic\Config\nodeinfo.json'
+          } else {
+              '/etc/example-music/nodeinfo.json'
+          }
+          if (Test-Path $nodeinfoPath) {
+              try {
+                  $ni = Get-Content -Raw $nodeinfoPath | ConvertFrom-Json
+
+                  # Windows-flag-style logo (official 4-colour palette, plain 7-bit ASCII only --
+                  # deliberately NOT Unicode block chars (U+2588), which render as flat,
+                  # undifferentiated squares under some fonts/weights -- same font-rendering risk
+                  # class as this estate's whole PuTTY font saga, avoided here on purpose. True-RGB
+                  # ANSI, same escape pattern already proven safe in this file's own PSReadLine
+                  # -Colors block above. Blank row between the two halves is deliberate -- without
+                  # it the four quadrants visually merge into two tall two-toned bars.
+                  $esc    = [char]0x1b
+                  $red    = "$esc[38;2;242;82;34m"    # #F25022
+                  $green  = "$esc[38;2;127;186;0m"    # #7FBA00
+                  $blue   = "$esc[38;2;0;164;239m"     # #00A4EF
+                  $yellow = "$esc[38;2;255;185;0m"    # #FFB900
+                  $reset  = "$esc[0m"
+
+                  $logoLines = @(
+                      "$red########$reset $green########$reset"
+                      "$red########$reset $green########$reset"
+                      "$red########$reset $green########$reset"
+                      ""
+                      "$blue########$reset $yellow########$reset"
+                      "$blue########$reset $yellow########$reset"
+                      "$blue########$reset $yellow########$reset"
+                  )
+                  $infoLines = @(
+                      "$($ni.hostname)  [$($ni.role) / $($ni.site)]"
+                      "$($ni.fqdn)"
+                      "$($ni.office_name), $($ni.city), $($ni.country)  ($($ni.entity))"
+                      ""
+                      "Environment: $($ni.environment)"
+                      "Built: $($ni.bootstrapped_at.ToString('yyyy-MM-ddTHH:mm:ssZ')) ($($ni.bootstrapped_by))"
+                      "Last run: $($ni.last_ansible_run.ToString('yyyy-MM-ddTHH:mm:ssZ')) ($($ni.last_ansible_play))"
+                  )
+
+                  Write-Host ""
+                  for ($i = 0; $i -lt $logoLines.Count; $i++) {
+                      Write-Host "  $($logoLines[$i])   $($infoLines[$i])"
+                  }
+                  Write-Host ""
+              } catch {
+                  # Malformed/partial nodeinfo.json -- never block a real pwsh launch over this.
+              }
+          }
+          # No "else" if nodeinfoPath is missing -- genuinely possible mid-bootstrap, before
+          # 85-finish.yml (which writes nodeinfo.json) has run. Silent, not an error.
       }
   when: ps7_check.stat.exists
 
