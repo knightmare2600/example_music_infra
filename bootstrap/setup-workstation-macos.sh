@@ -71,6 +71,51 @@
 # .iso rather than .zip (currently just the debian/ mini.iso entries).
 # ==============================================================================
 # Changelog:
+#   2026-10-06  REAL BUG, found live (Jamie's actual run, previously-pushed version, pasted by
+#               Robert): "Manifest not found: /Users/jamie/benarbejde/asset_manifest.json" --
+#               hard `exit 1` killed the whole script after install_deps() finished cleanly.
+#               Root cause, confirmed by tracing the path derivation, not guessed: Jamie
+#               downloaded just this standalone .sh file into ~/Downloads rather than cloning
+#               the full repo first (the doc says to clone, but grabbing one script is a
+#               completely natural thing to do) -- REPO_ROOT derives as one directory up from
+#               wherever the script itself lives, landing on /Users/jamie, so benarbejde/ was
+#               never going to be found there regardless. This would ALSO have silently
+#               prevented today's new install_pwsh_modules()/configure_pwsh_profile() work
+#               from ever running, since install_workstation_tools() sits before them in
+#               main() and `exit 1` kills the whole script, not just that one function.
+#               Changed both this and fetch_assets()'s identical check from a hard exit to a
+#               graceful msg_warn + return 0, with an actionable message (clone the repo, or
+#               ignore if --deps-only was all that was wanted) -- same real failure mode, now
+#               a warning instead of a crash, and no longer blocks anything after it in main().
+#               Everything else in that same run was a clean pass: all 9 casks + 21 formulae
+#               installed correctly, sshpass via the perkons tap worked (Homebrew's newer
+#               "tap trust" warning fired but didn't actually block the install -- genuinely
+#               new behaviour, not a failure, nothing to fix there).
+#   2026-10-06  Robert's ask: install PowerShell Core itself (job 1 never did -- the existing
+#               configure_pwsh_profile() only ever configured pwsh IF something else had
+#               already installed it by hand) and deploy the same profile/plugins built for
+#               Windows (ps7_setup.yml Stage 20/22) rather than just the narrower colour-fix-
+#               only version this file already had. `brew install --cask powershell` (every
+#               older guide's answer) is dead -- deprecated+disabled 2026-09-01, fails
+#               Gatekeeper; the tap that superseded it is ALSO dead now. Confirmed directly
+#               against formulae.brew.sh: PowerShell is a plain homebrew-core FORMULA now,
+#               `brew install powershell`. Third time today this exact mistake class
+#               surfaced (vmware-fusion, virt-viewer, now this). Added install_pwsh_modules()
+#               (same 7-module list as Stage 20, CurrentUser scope not AllUsers -- single-user
+#               machine) and replaced configure_pwsh_profile()'s content with Stage 22's full
+#               profile verbatim (PSReadLine Emacs/prediction/colours, Terminal-Icons,
+#               CompletionPredictor, NerdFonts, nodeinfo.json MOTD banner), keeping the
+#               ls-compatibility-toggle functions already here (deliberately absent from the
+#               Windows version, see that file's own 2026-10-03 entry). New, more specific
+#               idempotency marker -- a machine that already had the old narrower profile gets
+#               the new block appended too (one-time harmless redundant colour-set, not worth
+#               an old-block-removal mechanism for a single transition). Flagged honestly, not
+#               silently: the MOTD banner reads nodeinfo.json, which Ansible writes to MANAGED
+#               hosts it provisions, never to an engineer's own laptop -- on a real Mac this
+#               prints nothing, same graceful no-op the code already has for "ran before
+#               nodeinfo.json exists yet." setup-workstation-linux.sh has the identical
+#               narrower gap (colour-fix-only profile, same day's fix) -- not touched here,
+#               flagged to Robert rather than silently left behind or silently expanded into.
 #   2026-10-06  Jamie's first real run on a vanilla macOS VM (pasted transcript, Robert):
 #               two real bugs found. (1) `-h`/`--help` both gave "Unknown argument" and
 #               exited 2 -- this file documented a Usage: block in its own header comment
@@ -174,10 +219,10 @@ done
 # -- Colour helpers (matches this repo's existing CY/GN/YW/RD convention, --
 # -- see e.g. bootstrap/web/proxmox/select-pve-answer.sh) ---------------------
 RD='\033[0;31m'; GN='\033[0;32m'; YW='\033[1;33m'; CY='\033[0;36m'; NC='\033[0m'
-msg_info()  { printf "${CY}[*]${NC} %s\n" "$1"; }
-msg_ok()    { printf "${GN}[+]${NC} %s\n" "$1"; }
-msg_warn()  { printf "${YW}[!]${NC} %s\n" "$1"; }
-msg_error() { printf "${RD}[x]${NC} %s\n" "$1"; }
+msg_info()  { printf "${CY}[*]${NC} %s\n" "$*"; }
+msg_ok()    { printf "${GN}[+]${NC} %s\n" "$*"; }
+msg_warn()  { printf "${YW}[!]${NC} %s\n" "$*"; }
+msg_error() { printf "${RD}[x]${NC} %s\n" "$*"; }
 
 # ==============================================================================
 # 1. Dependency install
@@ -250,6 +295,17 @@ install_deps() {
   brew tap perkons/sshpass
   brew install sshpass
 
+  # PowerShell Core -- a FORMULA, not a cask. `brew install --cask powershell`
+  # (what every older guide says) was deprecated and disabled 2026-09-01 --
+  # fails macOS Gatekeeper. The homebrew/tap/powershell-lts tap that superseded
+  # it is now ALSO dead (same confusion shows up across search results). Current
+  # reality, confirmed directly against formulae.brew.sh: PowerShell is
+  # published straight to homebrew-core now, plain `brew install powershell`
+  # (7.6.6 at last check). Third time today this exact mistake class has
+  # surfaced (vmware-fusion, virt-viewer, now this) -- always verify the
+  # package/cask split against the real source, never assume either way.
+  brew install powershell
+
   git lfs install
 
   msg_ok "Dependencies installed/confirmed: iTerm2, KeePassXC (GUI + CLI), Wireshark," \
@@ -257,7 +313,7 @@ install_deps() {
          "Adobe Acrobat Reader, git, git-lfs, jq, unzip, p7zip (7z, for .iso archives[] entries)," \
          "ansible, ipcalc, wireguard-tools, mc, htop, minicom, fastfetch, tree, wget, w3m, links," \
          "tmux, zsh-autocomplete, zsh-autosuggestions, zsh-completions, zsh-syntax-highlighting," \
-         "sshpass (via perkons/homebrew-sshpass tap)."
+         "sshpass (via perkons/homebrew-sshpass tap), PowerShell Core (pwsh)."
   msg_info "OpenSSH is pre-installed on macOS -- nothing to do."
   msg_info "curl and whois are also pre-installed on macOS -- nothing to do for either."
   msg_warn "VMware Fusion can no longer be installed via Homebrew -- its cask was disabled" \
@@ -472,8 +528,13 @@ fetch_archive() {
 # by hashing the whole .app bundle on every run.
 install_workstation_tools() {
   if [[ ! -f "$MANIFEST" ]]; then
-    msg_error "Manifest not found: ${MANIFEST}"
-    exit 1
+    msg_warn "Manifest not found: ${MANIFEST} -- skipping workstation_tools install."
+    msg_warn "This almost always means the script was downloaded standalone, not run from" \
+             "inside a full clone of this repo (REPO_ROOT is derived as one directory up" \
+             "from wherever this script itself lives). Clone the repo properly to get this" \
+             "job too: git clone https://github.com/knightmare2600/example_music_infra/" \
+             "-- or ignore this if --deps-only (packages) was all you wanted."
+    return 0
   fi
 
   local goos goarch platform_key
@@ -590,17 +651,63 @@ install_workstation_tools() {
   done < <(jq -r '.workstation_tools[] | [.name, .repo, .tag] | @tsv' "$MANIFEST")
 }
 
-# Example Music Limited -- PSReadLine's own default Parameter/Operator colour
-# (ANSI code 90, "bright black") renders invisible against this estate's Solarized
-# Dark terminal scheme, which maps that exact ANSI slot to the background colour
-# itself (#002B36) -- see docs/solarized-dark-terminal-setup.md. Same fix as
-# ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 22 profile
-# (2026-10-03) for the Windows-target side, and
-# bootstrap/setup-workstation-linux.sh's own configure_pwsh_profile(), same day --
-# this is the macOS-side equivalent (same iTerm2 Solarized Dark scheme this was
-# actually first noticed in). Gracefully skips if pwsh isn't installed -- this
-# script's own install_deps() doesn't currently install it; confirmed this is the
-# one gap here, the Linux/Windows siblings have the identical logic.
+# Same module set as ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's
+# Stage 20 (AllUsers scope there; this is a single-user machine, so plain
+# CurrentUser scope here is the equivalent, not a deliberate difference).
+# PSWindowsUpdate is Windows-only (wraps Windows Update's own COM APIs) -- left
+# in the list anyway rather than special-cased out, because Install-Module's
+# existing -ErrorAction SilentlyContinue already degrades it to a harmless no-op
+# on a platform it doesn't support; same mechanism, no new logic needed.
+install_pwsh_modules() {
+  if ! command -v pwsh &>/dev/null; then
+    msg_info "pwsh not found on PATH -- skipping PS7 module install."
+    return
+  fi
+
+  msg_info "Installing PS7 console modules (CurrentUser scope)..."
+  pwsh -NoLogo -NoProfile -Command '
+    $modules = @(
+      "PSConsoleTools",
+      "PSWindowsUpdate",
+      "PSWriteColor",
+      "PSReadLine",
+      "Terminal-Icons",
+      "CompletionPredictor",
+      "NerdFonts"
+    )
+    foreach ($m in $modules) {
+      if (-not (Get-Module -ListAvailable -Name $m)) {
+        Install-Module $m -Scope CurrentUser -Force -SkipPublisherCheck -ErrorAction SilentlyContinue
+        Write-Output "Installed: $m"
+      } else {
+        Write-Output "Already present: $m"
+      }
+    }
+  '
+  msg_ok "PS7 modules checked/installed."
+}
+
+# Example Music Limited -- full PS7 profile parity with
+# ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 22 (PSReadLine
+# Emacs mode + Solarized Parameter/Operator colours, Terminal-Icons,
+# CompletionPredictor, NerdFonts, and the nodeinfo.json MOTD banner -- see that
+# file's own 2026-10-03/2026-10-04 changelog entries for the full history of
+# each). Robert's ask, 2026-10-06: "deploy that profile and those plugins...
+# we worked on before" -- this is the same content, not a re-derived summary of
+# it, copied from the one real source (ps7_setup.yml) rather than retyped by
+# hand. Plus the ls/Get-ChildItem compatibility toggle below, which is
+# deliberately NOT in the Windows version (Windows already aliases ls natively,
+# see that file's own 2026-10-03 entry) -- this macOS-only addition predates
+# today's change and is kept as-is.
+#
+# One real caveat, not swept under the rug: the MOTD banner reads
+# /etc/example-music/nodeinfo.json (the $IsWindows/$IsLinux branch's "else" --
+# $IsMacOS falls into it too, same path). That file is written by Ansible to
+# MANAGED hosts it provisions (DCs, firewalls, Proxmox nodes, etc.) -- never to
+# an engineer's own laptop. So on a real Mac this banner block will find
+# nothing there and silently print nothing, same graceful no-op already built
+# in for "ran mid-bootstrap before nodeinfo.json exists yet." Not an error,
+# just worth knowing the banner itself has nothing to show here currently.
 configure_pwsh_profile() {
   if ! command -v pwsh &>/dev/null; then
     msg_info "pwsh not found on PATH -- skipping PowerShell Core profile configuration (not installed by this script; install it by hand first if you want this)."
@@ -611,24 +718,109 @@ configure_pwsh_profile() {
   profile_path="$(pwsh -NoLogo -NoProfile -Command '$PROFILE')"
   local profile_dir
   profile_dir="$(dirname "$profile_path")"
-  local marker="Example Music Limited -- PSReadLine Parameter/Operator colour fix"
+  # New, more specific marker than the old "PSReadLine Parameter/Operator colour
+  # fix" one -- deliberate: a machine that already ran the OLD, narrower version
+  # of this profile won't match this marker, so it gets the new block appended
+  # too (a harmless, one-time redundant PSReadLine colour-set, not a conflict --
+  # not worth a full old-block-removal mechanism for a one-time transition).
+  local marker="Example Music Limited -- PS7 profile (PSReadLine/Terminal-Icons/CompletionPredictor/NerdFonts/MOTD)"
 
   mkdir -p "$profile_dir"
 
   if [[ -f "$profile_path" ]] && grep -qF "$marker" "$profile_path"; then
-    msg_info "${profile_path}: PSReadLine colour fix already present, skipping."
+    msg_info "${profile_path}: PS7 profile already present, skipping."
     return
   fi
 
   cat >> "$profile_path" <<'EOF'
 
-# Example Music Limited -- PSReadLine Parameter/Operator colour fix
-# Added by bootstrap/setup-workstation-macos.sh -- safe to remove or edit freely.
+# Example Music Limited -- PS7 profile (PSReadLine/Terminal-Icons/CompletionPredictor/NerdFonts/MOTD)
+# Added by bootstrap/setup-workstation-macos.sh -- same content as
+# ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 22 -- safe to
+# remove or edit freely.
+
+# PSReadLine -- Emacs mode required for correct paste behaviour over SSH
 if (Get-Module -ListAvailable PSReadLine) {
     Import-Module PSReadLine
+    Set-PSReadLineOption -EditMode Emacs
+    Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+    Set-PSReadLineOption -PredictionViewStyle ListView
+    Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
+
+    # PSReadLine's own default Parameter/Operator colour (ANSI code 90, "bright
+    # black") renders invisible against this estate's Solarized Dark terminal
+    # scheme -- see docs/solarized-dark-terminal-setup.md. True-RGB escapes, not
+    # another ANSI slot number, so this renders correctly regardless of which
+    # terminal is actually connecting.
     Set-PSReadLineOption -Colors @{
         Parameter = "$([char]0x1b)[38;2;88;110;117m"   # Solarized base01, #586E75
         Operator  = "$([char]0x1b)[38;2;88;110;117m"   # same root cause, same fix
+    }
+}
+
+# Terminal-Icons
+if (Get-Module -ListAvailable Terminal-Icons) {
+    Import-Module Terminal-Icons
+}
+
+# CompletionPredictor
+if (Get-Module -ListAvailable CompletionPredictor) {
+    Import-Module CompletionPredictor
+}
+
+# NerdFonts
+if (Get-Module -ListAvailable NerdFonts) {
+    Import-Module NerdFonts
+}
+
+# MOTD banner -- nodeinfo.json. On a real workstation this is usually absent
+# (nodeinfo.json is written by Ansible to MANAGED hosts it provisions, not to
+# an engineer's own laptop) -- this silently prints nothing in that case, same
+# as the "ran before nodeinfo.json exists yet" case on a managed host.
+if (-not [Console]::IsInputRedirected) {
+    $nodeinfoPath = if ($IsWindows) {
+        'C:\ProgramData\ExampleMusic\Config\nodeinfo.json'
+    } else {
+        '/etc/example-music/nodeinfo.json'
+    }
+    if (Test-Path $nodeinfoPath) {
+        try {
+            $ni = Get-Content -Raw $nodeinfoPath | ConvertFrom-Json
+
+            $esc    = [char]0x1b
+            $red    = "$esc[38;2;242;82;34m"    # #F25022
+            $green  = "$esc[38;2;127;186;0m"    # #7FBA00
+            $blue   = "$esc[38;2;0;164;239m"     # #00A4EF
+            $yellow = "$esc[38;2;255;185;0m"    # #FFB900
+            $reset  = "$esc[0m"
+
+            $logoLines = @(
+                "$red########$reset $green########$reset"
+                "$red########$reset $green########$reset"
+                "$red########$reset $green########$reset"
+                ""
+                "$blue########$reset $yellow########$reset"
+                "$blue########$reset $yellow########$reset"
+                "$blue########$reset $yellow########$reset"
+            )
+            $infoLines = @(
+                "$($ni.hostname)  [$($ni.role) / $($ni.site)]"
+                "$($ni.fqdn)"
+                "$($ni.office_name), $($ni.city), $($ni.country)  ($($ni.entity))"
+                ""
+                "Environment: $($ni.environment)"
+                "Built: $($ni.bootstrapped_at.ToString('yyyy-MM-ddTHH:mm:ssZ')) ($($ni.bootstrapped_by))"
+                "Last run: $($ni.last_ansible_run.ToString('yyyy-MM-ddTHH:mm:ssZ')) ($($ni.last_ansible_play))"
+            )
+
+            Write-Host ""
+            for ($i = 0; $i -lt $logoLines.Count; $i++) {
+                Write-Host "  $($logoLines[$i])   $($infoLines[$i])"
+            }
+            Write-Host ""
+        } catch {
+            # Malformed/partial nodeinfo.json -- never block a real pwsh launch over this.
+        }
     }
 }
 
@@ -686,13 +878,17 @@ function Disable-LsCompatibilityMode {
     Write-Host "ls compatibility mode OFF -- ls resolves to the native binary again." -ForegroundColor Green
 }
 EOF
-  msg_ok "${profile_path}: PSReadLine colour fix + ls compatibility toggle added."
+  msg_ok "${profile_path}: PS7 profile (PSReadLine/Terminal-Icons/CompletionPredictor/NerdFonts/MOTD) + ls compatibility toggle added."
 }
 
 fetch_assets() {
   if [[ ! -f "$MANIFEST" ]]; then
-    msg_error "Manifest not found: ${MANIFEST}"
-    exit 1
+    msg_warn "Manifest not found: ${MANIFEST} -- skipping asset fetch."
+    msg_warn "Same cause as install_workstation_tools()'s own warning above, if you saw it:" \
+             "this script needs to run from inside a full clone of this repo, not standalone." \
+             "git clone https://github.com/knightmare2600/example_music_infra/ -- or ignore" \
+             "this if --deps-only (packages) was all you wanted."
+    return 0
   fi
   msg_info "Reading ${MANIFEST}..."
 
@@ -729,6 +925,7 @@ fetch_assets() {
 main() {
   $DO_DEPS && install_deps
   $DO_DEPS && install_workstation_tools
+  $DO_DEPS && install_pwsh_modules
   $DO_DEPS && configure_pwsh_profile
   $DO_ASSETS && fetch_assets
   msg_ok "Done."
