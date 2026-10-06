@@ -79,6 +79,14 @@
 # .iso rather than .zip (currently just the debian/ mini.iso entries).
 # ==============================================================================
 # Changelog:
+#   2026-10-06  REAL BUG, found live on the actual re-run (Jamie): configure_iterm2_font()
+#               used `mktemp --suffix=.json` -- a GNU coreutils long option. macOS ships
+#               BSD mktemp, which doesn't support it at all: "unrecognized option
+#               `--suffix=.json'". Swept this whole file for the same mistake class first
+#               -- confirmed the only instance, the other two `mktemp` calls already used
+#               the universal bare/`-d` forms. Fixed to the plain template form (trailing
+#               X's + a literal suffix), the original mktemp interface that works
+#               identically on both BSD and GNU -- verified directly rather than assumed.
 #   2026-10-06  Corrected both font name strings above using REAL data, not guesses --
 #               Robert/Jamie ran a battery of read-only verification commands against real
 #               macOS before anything was trusted, same discipline as the PuTTY saga.
@@ -1079,8 +1087,12 @@ configure_iterm2_font() {
              "please fully quit and relaunch iTerm2 afterward to actually test this."
   fi
 
+  # mktemp --suffix=... is GNU-only -- macOS ships BSD mktemp, which doesn't support that
+  # long option at all (confirmed live, 2026-10-06: "unrecognized option `--suffix=.json'").
+  # The plain template form (trailing X's + a literal suffix) is the original, universal
+  # mktemp interface and works identically on both BSD and GNU -- verified directly.
   local json_tmp
-  json_tmp="$(mktemp --suffix=.json)"
+  json_tmp="$(mktemp "${TMPDIR:-/tmp}/iterm2_prefs.XXXXXX.json")"
   plutil -convert json -o "$json_tmp" "$plist_path"
 
   local font_string="${font_family_name} 14"
