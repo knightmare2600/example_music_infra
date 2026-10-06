@@ -71,6 +71,23 @@
 # .iso rather than .zip (currently just the debian/ mini.iso entries).
 # ==============================================================================
 # Changelog:
+#   2026-10-06  REAL BUG, found live (Jamie's second run, pasted by Robert): the profile got
+#               written to ~/.config/powershell/Microsoft.PowerShell_profile.ps1, not
+#               profile.ps1. Root cause confirmed directly against pwsh: bare $PROFILE
+#               resolves to CurrentUserCurrentHost, which is per-HOST (only the raw pwsh
+#               console, not VS Code's integrated terminal or any other PS7 host) -- this
+#               function has used bare $PROFILE since it was first written 2026-08-08, so
+#               the bug predates today, just never mattered until the profile actually
+#               carried something worth having everywhere. Fixed to
+#               $PROFILE.CurrentUserAllHosts, the actually-intended broader scope (same one
+#               already correctly used for local testing on the Linux control node days
+#               earlier). Added a one-time cleanup: if the old wrong-scope file exists and
+#               carries this script's own "Added by bootstrap/setup-workstation-macos.sh"
+#               marker (so a genuine Jamie customisation is never touched), it's removed --
+#               otherwise both files would load on every pwsh start, doubling the MOTD
+#               banner and module imports. Verified end-to-end: recreated Jamie's exact
+#               stray-file scenario locally, confirmed the real extracted function detects
+#               and removes it, writes the correct file, and a second run is a clean no-op.
 #   2026-10-06  REAL BUG, found live (Jamie's actual run, previously-pushed version, pasted by
 #               Robert): "Manifest not found: /Users/jamie/benarbejde/asset_manifest.json" --
 #               hard `exit 1` killed the whole script after install_deps() finished cleanly.
@@ -714,10 +731,28 @@ configure_pwsh_profile() {
     return
   fi
 
+  # Bare $PROFILE resolves to CurrentUserCurrentHost (Microsoft.PowerShell_profile.ps1),
+  # which is per-HOST -- only the raw pwsh console, not VS Code's integrated terminal or
+  # any other PS7 host. $PROFILE.CurrentUserAllHosts (profile.ps1) is the broader, actually-
+  # intended scope -- confirmed live, 2026-10-06: Jamie's run wrote to
+  # Microsoft.PowerShell_profile.ps1, not profile.ps1, exactly this bug.
   local profile_path
-  profile_path="$(pwsh -NoLogo -NoProfile -Command '$PROFILE')"
+  profile_path="$(pwsh -NoLogo -NoProfile -Command '$PROFILE.CurrentUserAllHosts')"
   local profile_dir
   profile_dir="$(dirname "$profile_path")"
+
+  # Clean up a stray file from the bare-$PROFILE bug above, if a previous run of
+  # THIS script (not a Jamie customisation -- only removed if it carries one of
+  # our own markers) already wrote the wrong-scope CurrentUserCurrentHost file.
+  local old_wrong_scope_path
+  old_wrong_scope_path="$(pwsh -NoLogo -NoProfile -Command '$PROFILE.CurrentUserCurrentHost')"
+  # "Added by bootstrap/setup-workstation-macos.sh" is in both the old (pre-2026-10-06,
+  # colour-fix-only) and new content -- catches either version, not just today's.
+  if [[ -f "$old_wrong_scope_path" ]] && grep -qF "Added by bootstrap/setup-workstation-macos.sh" "$old_wrong_scope_path" 2>/dev/null; then
+    rm -f "$old_wrong_scope_path"
+    msg_info "Removed stray profile at ${old_wrong_scope_path} (wrong-scope CurrentUserCurrentHost -- a previous run's bug, fixed 2026-10-06; this script now correctly uses CurrentUserAllHosts instead)."
+  fi
+
   # New, more specific marker than the old "PSReadLine Parameter/Operator colour
   # fix" one -- deliberate: a machine that already ran the OLD, narrower version
   # of this profile won't match this marker, so it gets the new block appended
