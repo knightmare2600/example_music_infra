@@ -3,6 +3,13 @@
 ###############################################################################
 # HISTORY / CHANGES                                                           #
 #                                                                             #
+# v2.1 (2026-10)                                                              #
+# - msg_info/msg_ok/msg_error fixed to print "$*" not "$1" -- same latent bug #
+#   found live in setup-workstation-macos.sh (multi-line calls silently      #
+#   dropped everything past the first line); this file had zero live        #
+#   multi-arg call sites so it was never actually triggered, fixed anyway   #
+#   as the same shared CY/GN/YW/RD helper pattern, same mistake class       #
+#                                                                             #
 # v2.0 (2026-05)                                                              #
 # - Introduced feature flags (non-interactive automation support)             #
 # - Added optional etckeeper-friendly structure awareness                     #
@@ -44,9 +51,9 @@ YW=$'\033[33m'
 GN=$'\033[1;92m'
 CL=$'\033[m'
 
-msg_info() { echo -e " ${YW}[*]${CL} $1"; }
-msg_ok()   { echo -e " ${GN}[OK]${CL} $1"; }
-msg_error(){ echo -e " ${RD}[ERR]${CL} $1"; }
+msg_info() { echo -e " ${YW}[*]${CL} $*"; }
+msg_ok()   { echo -e " ${GN}[OK]${CL} $*"; }
+msg_error(){ echo -e " ${RD}[ERR]${CL} $*"; }
 
 # Optional telemetry (safe fallback)
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/api.func) 2>/dev/null || true

@@ -51,6 +51,16 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-10-06  REAL BUG, found while fixing the identical one in setup-workstation-macos.sh
+#               (Jamie's real run there showed msg_ok truncating after the first line):
+#               msg_info/msg_ok/msg_warn/msg_error here only ever printed "$1", silently
+#               dropping every other argument on a multi-line call -- confirmed this file's
+#               own 2 multi-arg call sites (install_deps()'s summary, the VMware
+#               Fusion/iTerm2 skip notice) were affected too. Fixed to "$*" (join all args
+#               with a space) in all four functions, matching the fix applied to this file's
+#               macOS sibling and bootstrap/web/proxmox/select-pve-answer.sh and pveme.sh --
+#               same shared CY/GN/YW/RD helper pattern, same mistake, swept across every
+#               original (non-vendored) file that defines it.
 #   2026-10-03  Enable-/Disable-LsCompatibilityMode now carry real comment-based help
 #               (SYNOPSIS/DESCRIPTION/EXAMPLE) -- Robert ran `help Enable-LsCompatibilityMode`
 #               and got nothing useful back. Verified live: `Get-Help
@@ -123,10 +133,10 @@ done
 # -- Colour helpers (matches this repo's existing CY/GN/YW/RD convention, --
 # -- see e.g. bootstrap/web/proxmox/select-pve-answer.sh) ---------------------
 RD='\033[0;31m'; GN='\033[0;32m'; YW='\033[1;33m'; CY='\033[0;36m'; NC='\033[0m'
-msg_info()  { printf "${CY}[*]${NC} %s\n" "$1"; }
-msg_ok()    { printf "${GN}[+]${NC} %s\n" "$1"; }
-msg_warn()  { printf "${YW}[!]${NC} %s\n" "$1"; }
-msg_error() { printf "${RD}[x]${NC} %s\n" "$1"; }
+msg_info()  { printf "${CY}[*]${NC} %s\n" "$*"; }
+msg_ok()    { printf "${GN}[+]${NC} %s\n" "$*"; }
+msg_warn()  { printf "${YW}[!]${NC} %s\n" "$*"; }
+msg_error() { printf "${RD}[x]${NC} %s\n" "$*"; }
 
 # ==============================================================================
 # 1. Dependency install

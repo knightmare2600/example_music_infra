@@ -55,10 +55,14 @@ YW='\033[1;33m'
 CY='\033[0;36m'
 NC='\033[0m'
 
-msg_info()  { printf "${CY}[*]${NC} %s\n" "$1"; }
-msg_ok()    { printf "${GN}[+]${NC} %s\n" "$1"; }
-msg_warn()  { printf "${YW}[!]${NC} %s\n" "$1"; }
-msg_error() { printf "${RD}[x]${NC} %s\n" "$1"; }
+# 2026-10-06: "$*" not "$1" -- same latent bug found live in
+# setup-workstation-macos.sh (multi-line calls silently dropped everything
+# past the first line). No live multi-arg call site in this file today, fixed
+# anyway as the same shared helper pattern, same mistake class.
+msg_info()  { printf "${CY}[*]${NC} %s\n" "$*"; }
+msg_ok()    { printf "${GN}[+]${NC} %s\n" "$*"; }
+msg_warn()  { printf "${YW}[!]${NC} %s\n" "$*"; }
+msg_error() { printf "${RD}[x]${NC} %s\n" "$*"; }
 
 printf "${CY}==============================================================${NC}\n"
 printf "${CY} Example Music Limited -- Proxmox VE answer-file selector${NC}\n"
