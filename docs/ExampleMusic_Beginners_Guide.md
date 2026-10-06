@@ -1007,7 +1007,7 @@ rather not run it.
 
 | Tool | Purpose | Install |
 |------|---------|---------|
-| VMware Fusion | ARM64 VM for testing firewall and Debian builds locally before touching production | `brew install --cask vmware-fusion` |
+| VMware Fusion | ARM64 VM for testing firewall and Debian builds locally before touching production | **Manual download, not Homebrew** — Homebrew disabled this cask 2025-06-23 (Broadcom now gates the download behind an authenticated account, which a cask can't automate). Free personal/commercial use: `support.broadcom.com/group/ecx/free-downloads` → My Downloads → Free Downloads → VMware Fusion. See §11.4 |
 | iTerm2 | Terminal — colour support, split panes, profile support | `brew install --cask iterm2` |
 | KeePassXC | Credential database — every password for every system lives here | `brew install --cask keepassxc` |
 | `keepassxc-cli` | The real KeePassXC CLI — retrieve/add credentials in scripts without opening the GUI. `kpcli` is a *different*, older, Linux-only tool with partial KDBX4 support and no regex search — fallback only, not this. See `docs/Example Music Limited — KeePassXC CLI Automation.md` | `brew install keepassxc` (macOS) / `sudo apt install keepassxc` (Linux) |
@@ -1016,10 +1016,30 @@ rather not run it.
 | WinSCP | SFTP transfers to/from Windows machines | Windows-only — no macOS build exists, Homebrew or otherwise. Run from a Windows admin box, or use `brew install --cask filezilla`/`cyberduck`/the built-in `scp`/`sftp` CLI for this from a Mac instead |
 | Wireshark | Packet capture — for when you need to prove a negative at L2/L3 | `brew install --cask wireshark` |
 | ipcalc | Subnet calculator | `brew install ipcalc` |
-| Virt-viewer | SPICE viewer for VM console access via Proxmox | `brew install virt-viewer` |
+| Virt-viewer | SPICE viewer for VM console access via Proxmox | **Not available** — confirmed never actually in official Homebrew (only via third-party taps, e.g. `vanhecke/virt-manager`). Not installed by the setup script (Robert's call, 2026-10-06) — use the Proxmox web UI's own noVNC/SPICE console instead |
 | `jq` | JSON parsing — useful for Proxmox API and `nodeinfo.json` queries | `brew install jq` |
 | `wg` | WireGuard tools — key generation, peer inspection | `brew install wireguard-tools` |
 | `ansible` | Run playbooks directly from your own machine, not just via `EXAANSCLD001` | `brew install ansible` |
+| `mc` (midnight-commander) | Dual-pane terminal file manager | `brew install midnight-commander` — the formula name, not `mc` (that's just the binary) |
+| `htop` | Interactive process viewer | `brew install htop` |
+| `minicom` | Serial/modem terminal — SAC/EMS console access | `brew install minicom` |
+| `fastfetch` | System info summary at shell startup | `brew install fastfetch` |
+| `tree` | Directory tree listing | `brew install tree` |
+| `wget` | File retrieval (curl's usual companion) | `brew install wget` |
+| `w3m` / `links` | Text-mode web browsers — reading docs/APIs over SSH with no GUI | `brew install w3m links` |
+| `tmux` | Terminal multiplexer — persistent sessions over SSH | `brew install tmux` |
+| `curl` / `whois` | HTTP client / domain lookup | pre-installed on macOS — no brew install needed for either |
+| zsh-autocomplete, zsh-autosuggestions, zsh-completions, zsh-syntax-highlighting | Shell completion/suggestion/highlighting plugins — same set `bindme.sh`/`firewallme.sh` already install on Linux targets | `brew install zsh-autocomplete zsh-autosuggestions zsh-completions zsh-syntax-highlighting` |
+| `sshpass` | Non-interactive password-based SSH (scripting/testing only) | Deliberately excluded from homebrew-core (Homebrew's own security-policy stance). `brew tap perkons/sshpass && brew install sshpass` — the other commonly-cited tap, `hudochenkov`, was archived by its owner in 2020, not used here |
+| Sublime Text | Text/code editor | `brew install --cask sublime-text` |
+| Shottr | Screenshot capture + annotation | `brew install --cask shottr` |
+| Zettlr | Markdown editor | `brew install --cask zettlr` |
+| UTM | VM frontend for QEMU — lightweight alternative to VMware Fusion for non-x86/ARM64 guest testing | `brew install --cask utm` |
+| Google Chrome | Browser | `brew install --cask google-chrome` |
+| muCommander | Dual-pane GUI file manager | `brew install --cask mucommander` |
+| VLC | Media playback | `brew install --cask vlc` |
+| XQuartz | X11 server — needed by some Linux-GUI-over-SSH workflows | `brew install --cask xquartz` |
+| Adobe Acrobat Reader | PDF viewing/annotation | `brew install --cask adobe-acrobat-reader` |
 
 Linux swaps Homebrew for `apt` and drops VMware Fusion/iTerm2 (no Linux equivalent — use whatever
 terminal your distro ships). Windows swaps Homebrew for Chocolatey and adds PuTTY, WinSCP, PSTools,
@@ -1080,6 +1100,10 @@ ssh ansible@192.168.139.9   # EXAANSCLD001
 ```
 
 ### 11.4 VMware Fusion — testing locally
+
+**2026-10-06: install this manually, not via `setup-workstation-macos.sh`/Homebrew** — see
+§11.1's table row for why (Broadcom now gates the download behind an authenticated account,
+which Homebrew's cask can't automate). Everything else below is unaffected once it's installed.
 
 Both MacBook Pros run VMware Fusion on Apple Silicon (ARM64). The provisioning pipeline supports ARM64 — the iPXE ISO has an ARM64 build, and the Debian netboot images are amd64 but run under emulation in Fusion (acceptable for lab/test — MUST NOT be used in production).
 

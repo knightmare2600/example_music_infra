@@ -71,6 +71,33 @@
 # .iso rather than .zip (currently just the debian/ mini.iso entries).
 # ==============================================================================
 # Changelog:
+#   2026-10-06  Jamie's first real run on a vanilla macOS VM (pasted transcript, Robert):
+#               two real bugs found. (1) `-h`/`--help` both gave "Unknown argument" and
+#               exited 2 -- this file documented a Usage: block in its own header comment
+#               but never actually implemented it; added a real usage() + -h/--help case.
+#               (2) `brew install --cask vmware-fusion` failed outright ("No Cask with this
+#               name exists") -- confirmed via research, not guessed: Homebrew disabled this
+#               cask 2025-06-23 because Broadcom now gates the VMware Fusion download behind
+#               an authenticated account, which a cask can't automate. Removed from the
+#               scripted install, replaced with a msg_warn pointing at the real manual
+#               download path. While fixing that, swept for the same mistake class
+#               elsewhere in this file per standing practice and found a SECOND, pre-existing
+#               instance: `virt-viewer` was never actually in official Homebrew either (only
+#               via third-party taps) -- this had been silently broken the whole time, not
+#               something Jamie's run happened to hit. Robert's call: drop virt-viewer rather
+#               than add a tap for it (Proxmox web UI's own console covers the same need).
+#               Also added every formula/cask Robert asked for from the same session, each
+#               name verified against formulae.brew.sh directly rather than typed from memory
+#               (midnight-commander, htop, minicom, fastfetch, tree, wget, w3m, links, tmux,
+#               zsh-autocomplete, zsh-autosuggestions, zsh-completions, zsh-syntax-highlighting,
+#               sublime-text, shottr, zettlr, utm, google-chrome, mucommander, vlc, xquartz,
+#               adobe-acrobat-reader). jq and ipcalc were already present -- not duplicated.
+#               curl and whois are both macOS-native, no brew install needed for either --
+#               noted explicitly rather than silently adding a redundant formula. sshpass is
+#               deliberately excluded from homebrew-core (Homebrew's own security-policy
+#               stance), added via the still-actively-maintained perkons/homebrew-sshpass tap
+#               (the other commonly-cited one, hudochenkov's, was archived by its owner in
+#               2020 -- checked before picking either).
 #   2026-10-03  Enable-/Disable-LsCompatibilityMode now carry real comment-based help
 #               (SYNOPSIS/DESCRIPTION/EXAMPLE) -- Robert ran `help Enable-LsCompatibilityMode`
 #               and got nothing useful back. Verified live: `Get-Help
@@ -118,6 +145,19 @@ MANIFEST="${REPO_ROOT}/benarbejde/asset_manifest.json"
 WEB_DIR="${REPO_ROOT}/bootstrap/web"
 CACHE_DIR="${REPO_ROOT}/.cache/bootstrap_asset_fetch"
 
+usage() {
+  cat <<EOF
+Usage: $(basename "${BASH_SOURCE[0]}") [--deps-only] [--assets-only] [--refresh] [-h|--help]
+
+  --deps-only    Install/confirm Homebrew-based dependencies only, skip asset fetch.
+  --assets-only  Fetch bootstrap/web/ assets only, skip dependency install.
+  --refresh      Force re-fetch every asset/archive, even if its dest file(s) already exist.
+  -h, --help     Show this help and exit.
+
+With no arguments, does both: deps + assets. See this file's own header comment for full detail.
+EOF
+}
+
 DO_DEPS=true
 DO_ASSETS=true
 FORCE_REFRESH=false
@@ -126,7 +166,8 @@ for arg in "$@"; do
     --deps-only)   DO_ASSETS=false ;;
     --assets-only) DO_DEPS=false ;;
     --refresh)     FORCE_REFRESH=true ;;
-    *) echo "Unknown argument: $arg" >&2; exit 2 ;;
+    -h|--help)     usage; exit 0 ;;
+    *) echo "Unknown argument: $arg" >&2; usage >&2; exit 2 ;;
   esac
 done
 
@@ -158,30 +199,78 @@ install_deps() {
   fi
 
   # -- Casks (GUI apps) -- matches docs/ExampleMusic_Beginners_Guide.md §11.1
+  # vmware-fusion deliberately NOT here -- see msg_warn below, it can't be scripted any more.
   brew install --cask \
-    vmware-fusion \
     iterm2 \
     keepassxc \
-    wireshark
+    wireshark \
+    sublime-text \
+    shottr \
+    zettlr \
+    utm \
+    google-chrome \
+    mucommander \
+    vlc \
+    xquartz \
+    adobe-acrobat-reader
 
   # -- Formulae (CLI tools) --
   # keepassxc (formula, not cask) is a SEPARATE package from the cask above --
   # the cask installs the GUI .app, this formula installs keepassxc-cli.
   # Both are required; this is not a duplicate. See §11.1's own table.
+  # NOTE: midnight-commander is the real formula name -- `mc` is just the binary
+  # it installs, `brew install mc` fails. Confirmed directly against
+  # formulae.brew.sh before writing this, same mistake class as vmware-fusion
+  # below and virt-viewer's own removal (see 2026-10-06 changelog entry).
   brew install \
     git git-lfs jq unzip p7zip \
     ansible \
     keepassxc \
     ipcalc \
-    virt-viewer \
-    wireguard-tools
+    wireguard-tools \
+    midnight-commander \
+    htop \
+    minicom \
+    fastfetch \
+    tree \
+    wget \
+    w3m \
+    links \
+    tmux \
+    zsh-autocomplete \
+    zsh-autosuggestions \
+    zsh-completions \
+    zsh-syntax-highlighting
+
+  # sshpass is deliberately excluded from homebrew-core (Homebrew's own stated
+  # policy: it makes scripted password-based SSH too easy to misuse) -- needs a
+  # third-party tap. perkons/homebrew-sshpass confirmed still actively
+  # maintained; hudochenkov/homebrew-sshpass (the other commonly-cited one) was
+  # archived by its own owner in 2020 and is not used here for that reason.
+  brew tap perkons/sshpass
+  brew install sshpass
 
   git lfs install
 
-  msg_ok "Dependencies installed/confirmed: VMware Fusion, iTerm2, KeePassXC (GUI + CLI)," \
-         "Wireshark, git, git-lfs, jq, unzip, p7zip (7z, for .iso archives[] entries)," \
-         "ansible, ipcalc, virt-viewer, wireguard-tools."
+  msg_ok "Dependencies installed/confirmed: iTerm2, KeePassXC (GUI + CLI), Wireshark," \
+         "Sublime Text, Shottr, Zettlr, UTM, Google Chrome, muCommander, VLC, XQuartz," \
+         "Adobe Acrobat Reader, git, git-lfs, jq, unzip, p7zip (7z, for .iso archives[] entries)," \
+         "ansible, ipcalc, wireguard-tools, mc, htop, minicom, fastfetch, tree, wget, w3m, links," \
+         "tmux, zsh-autocomplete, zsh-autosuggestions, zsh-completions, zsh-syntax-highlighting," \
+         "sshpass (via perkons/homebrew-sshpass tap)."
   msg_info "OpenSSH is pre-installed on macOS -- nothing to do."
+  msg_info "curl and whois are also pre-installed on macOS -- nothing to do for either."
+  msg_warn "VMware Fusion can no longer be installed via Homebrew -- its cask was disabled" \
+           "2025-06-23 because Broadcom now gates the download behind an authenticated account," \
+           "which a cask can't automate. Download manually (free personal/commercial use):" \
+           "https://support.broadcom.com/group/ecx/free-downloads -- My Downloads > Free" \
+           "Downloads > VMware Fusion. See docs/ExampleMusic_Beginners_Guide.md §11.4."
+  msg_warn "virt-viewer is NOT available in official Homebrew either (confirmed -- this was a" \
+           "pre-existing bug in this script, same mistake class as vmware-fusion, found while" \
+           "fixing that) -- only via third-party taps (e.g. vanhecke/virt-manager). Not installed" \
+           "here; Robert's call 2026-10-06 was to skip the tap rather than add it. Use the" \
+           "Proxmox web UI's own noVNC/SPICE console instead, or add the tap by hand if you" \
+           "specifically need a native SPICE client."
   msg_info "WinSCP has no macOS build at all (Windows-only) -- use the built-in scp/sftp CLI," \
            "or 'brew install --cask filezilla'/'cyberduck' if a GUI SFTP client is wanted."
 }
