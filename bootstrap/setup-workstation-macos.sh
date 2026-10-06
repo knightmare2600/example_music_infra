@@ -79,6 +79,51 @@
 # .iso rather than .zip (currently just the debian/ mini.iso entries).
 # ==============================================================================
 # Changelog:
+#   2026-10-06  Corrected both font name strings above using REAL data, not guesses --
+#               Robert/Jamie ran a battery of read-only verification commands against real
+#               macOS before anything was trusted, same discipline as the PuTTY saga.
+#               Confirmed: the cask installs JetBrainsMonoNLNerdFontMono-Thin.ttf exactly
+#               where assumed (~/Library/Fonts/); `mdls`/`system_profiler` both came back
+#               null even after forcing a Font Book preview (caching/indexing gap, not a
+#               real problem); reading the .ttf's own binary name table directly (a small
+#               Python/struct script, verified first against a known-real font before
+#               trusting it) gave the real ground truth: family name "JetBrainsMonoNL NFM
+#               Thin" (matches Robert's original PuTTY-era instruction exactly) and
+#               PostScript name "JetBrainsMonoNLNFM-Thin" -- NEITHER matches the filename
+#               this code originally guessed from (JetBrainsMonoNLNerdFontMono-Thin).
+#               iTerm2's own live "Normal Font" value ("Monaco 12") confirmed it wants the
+#               family-style name; Terminal.app's own live response to a GET
+#               ("SFMonoTerminal-Regular") confirmed it wants the PostScript-style name --
+#               two different fields, two different real naming conventions, both now
+#               fixed to the values actually confirmed on real macOS.
+#   2026-10-06  Robert's ask: also make iTerm2 and Terminal.app actually USE the font just
+#               installed, not just have the file present. Added configure_iterm2_font()
+#               (plutil + jq round-trip against com.googlecode.iterm2.plist's "New Bookmarks"
+#               array, matched against the real "Default Bookmark Guid" -- confirmed via
+#               research that Dynamic Profiles, the officially-documented safer-looking
+#               mechanism, explicitly cannot update an existing profile by Guid, so this is
+#               the actual real mechanism) and configure_terminal_app_font() (AppleScript).
+#               *** BOTH UNVERIFIED ON REAL macOS *** -- same risk category as the PuTTY
+#               Default Settings saga (editing a live, structured preferences store the app
+#               itself manages), no macOS available here to test either. Each verifies the
+#               real installed font file exists first and refuses to guess blindly if it
+#               doesn't, rather than writing a plausible-looking wrong value. Robert's own
+#               offer: test and report back, same workflow as the PuTTY fix.
+#   2026-10-06  Robert's catch: this script never actually installed the JetBrainsMono
+#               Nerd Font at all -- today's earlier PS7 profile work referenced NerdFonts
+#               (a PowerShell module that provides font-name helper cmdlets) and was
+#               silently conflated with the actual font FILES, a real gap, not just an
+#               unclear changelog note. Added font-jetbrains-mono-nerd-font to the cask
+#               list -- confirmed directly against formulae.brew.sh, same verify-before-
+#               trusting discipline as every other package added today: maintained by the
+#               same upstream ryanoasis/nerd-fonts project already trusted for the Windows
+#               side, bundles the full family including the exact NLNerdFontMono-Thin
+#               variant ("JetBrainsMonoNL NFM Thin") this estate already standardises on
+#               for PuTTY/Hyper/Windows Terminal. Deliberately NOT wired into iTerm2's own
+#               default font -- that needs a com.googlecode.iterm2.plist edit, the same
+#               category of risk as the PuTTY Default Settings saga earlier this week, and
+#               wasn't what was actually asked for; flagged as a manual one-time pick
+#               instead.
 #   2026-10-06  Robert's catch: install_deps() called `brew install`/`brew install --cask`
 #               unconditionally on the full package list every run, and `brew tap
 #               perkons/sshpass` unconditionally too -- none of these fail when already
@@ -302,7 +347,7 @@ install_deps() {
   # re-run, for every package, which is real noise on an idempotent "safe to re-run" script.
   local all_casks=(
     iterm2 keepassxc wireshark sublime-text shottr zettlr utm google-chrome
-    mucommander vlc xquartz adobe-acrobat-reader
+    mucommander vlc xquartz adobe-acrobat-reader font-jetbrains-mono-nerd-font
   )
   # Counted separately rather than relying on ${#missing_casks[@]} under `set -u` --
   # macOS's stock bash 3.2 (this file's own stated target) has a known bug where
@@ -381,10 +426,16 @@ install_deps() {
 
   msg_ok "Dependencies installed/confirmed: iTerm2, KeePassXC (GUI + CLI), Wireshark," \
          "Sublime Text, Shottr, Zettlr, UTM, Google Chrome, muCommander, VLC, XQuartz," \
-         "Adobe Acrobat Reader, git, git-lfs, jq, unzip, p7zip (7z, for .iso archives[] entries)," \
-         "ansible, ipcalc, wireguard-tools, mc, htop, minicom, fastfetch, tree, wget, w3m, links," \
-         "tmux, zsh-autocomplete, zsh-autosuggestions, zsh-completions, zsh-syntax-highlighting," \
+         "Adobe Acrobat Reader, JetBrainsMono Nerd Font, git, git-lfs, jq, unzip, p7zip" \
+         "(7z, for .iso archives[] entries), ansible, ipcalc, wireguard-tools, mc, htop," \
+         "minicom, fastfetch, tree, wget, w3m, links, tmux, zsh-autocomplete," \
+         "zsh-autosuggestions, zsh-completions, zsh-syntax-highlighting," \
          "sshpass (via perkons/homebrew-sshpass tap), PowerShell Core (pwsh)."
+  msg_info "JetBrainsMono Nerd Font installed, but NOT yet set as iTerm2's default font --" \
+           "that needs its own com.googlecode.iterm2.plist edit (same category of change as" \
+           "the PuTTY/Hyper font work on the Windows side), not done here. Pick" \
+           "'JetBrainsMonoNL Nerd Font Mono' (Thin weight, matching every other terminal on" \
+           "this estate) by hand in iTerm2 > Settings > Profiles > Text for now."
   msg_info "OpenSSH is pre-installed on macOS -- nothing to do."
   msg_info "curl and whois are also pre-installed on macOS -- nothing to do for either."
   msg_warn "VMware Fusion can no longer be installed via Homebrew -- its cask was disabled" \
@@ -970,6 +1021,114 @@ EOF
   msg_ok "${profile_path}: PS7 profile (PSReadLine/Terminal-Icons/CompletionPredictor/NerdFonts/MOTD) + ls compatibility toggle added."
 }
 
+# *** UNVERIFIED ON REAL macOS -- same risk category as the PuTTY Default Settings saga ***
+# (editing a live, structured preferences store the app itself manages) -- no macOS available
+# here to test either of this and configure_terminal_app_font() below. Robert's own offer,
+# 2026-10-06: "if you need me to do something, ask me, I'll check/test it". This needs that.
+#
+# Mechanism, confirmed via research before writing this (not guessed):
+# - iTerm2's "Default Bookmark Guid" (a top-level preference key) names which entry in the
+#   "New Bookmarks" array is the actual default profile -- NOT a fixed string like "Default",
+#   a real per-install UUID. Dynamic Profiles (the officially-documented, safer-looking JSON-
+#   file mechanism) explicitly CANNOT update an existing profile by Guid -- iTerm2's own docs:
+#   "A Dynamic Profile with a Guid equal to an existing Guid of a regular profile will be
+#   ignored." So Dynamic Profiles can only create new, separate, not-actually-default profiles
+#   -- not what's needed here. Editing the live plist's matching array entry directly is the
+#   real mechanism, via plutil (binary <-> JSON, a genuine Apple-native tool) + jq (already a
+#   dependency of this script) rather than hand-parsing NSKeyedArchiver-style binary data.
+# - Font string format ("<PostScript name> <size>") confirmed from iTerm2's own example
+#   syntax. The exact PostScript name of the Thin weight inside the Homebrew-cask-installed
+#   font is NOT independently confirmed here (no macOS to check Font Book/fc-list against) --
+#   this function verifies it against the real installed font file first and refuses to guess
+#   blindly if the expected name isn't found.
+configure_iterm2_font() {
+  local plist_path="${HOME}/Library/Preferences/com.googlecode.iterm2.plist"
+  if [[ ! -f "$plist_path" ]]; then
+    msg_info "iTerm2 preferences not found (launch iTerm2 at least once first) -- skipping font config."
+    return
+  fi
+
+  # "JetBrainsMonoNL NFM Thin" -- the font's real FAMILY name (with spaces), confirmed
+  # 2026-10-06 by parsing the actual installed .ttf's own binary name table directly on
+  # real macOS (Robert/Jamie) -- NOT the filename (JetBrainsMonoNLNerdFontMono-Thin,
+  # which is a different string entirely) and NOT its PostScript name either
+  # (JetBrainsMonoNLNFM-Thin, used by configure_terminal_app_font() below instead -- the
+  # two fields expect genuinely different naming conventions, confirmed, not assumed).
+  # iTerm2's own existing "Normal Font" value on the real test machine was "Monaco 12" --
+  # a family-style name, same convention this uses.
+  local font_family_name="JetBrainsMonoNL NFM Thin"
+  local font_file="${HOME}/Library/Fonts/JetBrainsMonoNLNerdFontMono-Thin.ttf"
+  if [[ ! -f "$font_file" ]]; then
+    msg_warn "Expected font file not found at ${font_file} -- the cask may install under a" \
+             "different filename than assumed. Skipping iTerm2 font config rather than guess;" \
+             "run 'ls ~/Library/Fonts/ | grep -i jetbrains' and report back what's actually there."
+    return
+  fi
+
+  local default_guid
+  default_guid="$(defaults read com.googlecode.iterm2 "Default Bookmark Guid" 2>/dev/null || true)"
+  if [[ -z "$default_guid" ]]; then
+    msg_warn "Could not read iTerm2's Default Bookmark Guid -- skipping font config."
+    return
+  fi
+
+  if command -v osascript &>/dev/null && osascript -e 'tell application "System Events" to (name of processes) contains "iTerm2"' 2>/dev/null | grep -qi true; then
+    msg_warn "iTerm2 appears to be running -- quit it fully (Cmd-Q, not just close the window)" \
+             "before this takes effect reliably; macOS's preferences daemon can otherwise" \
+             "overwrite this on-disk change with its own cached copy. Continuing anyway, but" \
+             "please fully quit and relaunch iTerm2 afterward to actually test this."
+  fi
+
+  local json_tmp
+  json_tmp="$(mktemp --suffix=.json)"
+  plutil -convert json -o "$json_tmp" "$plist_path"
+
+  local font_string="${font_family_name} 14"
+  local updated_json
+  updated_json="$(jq --arg guid "$default_guid" --arg font "$font_string" \
+    '.["New Bookmarks"] |= map(if .Guid == $guid then ."Normal Font" = $font else . end)' \
+    "$json_tmp")"
+  printf '%s' "$updated_json" > "$json_tmp"
+  plutil -convert binary1 -o "$plist_path" "$json_tmp"
+  rm -f "$json_tmp"
+
+  msg_ok "iTerm2's default profile (Guid ${default_guid}) font set to ${font_string}."
+  msg_warn "UNVERIFIED -- please fully quit and relaunch iTerm2, confirm the font actually" \
+           "changed (Settings > Profiles > Text), and report back, same as the PuTTY font work."
+}
+
+# Confirmed real, 2026-10-06 (Robert/Jamie, live): `osascript -e 'tell application
+# "Terminal" to get font name of default settings'` returned "SFMonoTerminal-Regular" --
+# a PostScript-style name, a genuinely different naming convention from iTerm2's own
+# family-style "Monaco 12". The PostScript name used below (JetBrainsMonoNLNFM-Thin) was
+# read directly from the installed .ttf's own binary name table (nameID 6), not guessed
+# from the filename -- confirmed different from both the filename
+# (JetBrainsMonoNLNerdFontMono-Thin) and the family name
+# (JetBrainsMonoNL NFM Thin, used by configure_iterm2_font() instead).
+configure_terminal_app_font() {
+  local font_file="${HOME}/Library/Fonts/JetBrainsMonoNLNerdFontMono-Thin.ttf"
+  if [[ ! -f "$font_file" ]]; then
+    msg_warn "Expected font file not found at ${font_file} -- skipping Terminal.app font config."
+    return
+  fi
+
+  local font_postscript_name="JetBrainsMonoNLNFM-Thin"
+  if osascript -e "tell application \"Terminal\" to set font name of default settings to \"${font_postscript_name}\"" \
+       -e "tell application \"Terminal\" to set font size of default settings to 14" &>/dev/null; then
+    msg_ok "Terminal.app's default settings font set to ${font_postscript_name} 14 (AppleScript)."
+  else
+    msg_warn "Terminal.app AppleScript font-set failed or isn't supported the way this assumed" \
+             "-- reasoned from Terminal's general AppleScript scripting dictionary, not" \
+             "independently confirmed. Set it by hand instead: Terminal > Settings > Profiles" \
+             "> [profile] > Text > Change Font, and report back what actually happened."
+    return
+  fi
+  msg_warn "UNVERIFIED -- please open a new Terminal.app window, confirm the font actually" \
+           "changed, and report back, same as the PuTTY font work. iTerm2 is this estate's" \
+           "actual documented terminal (§11.1) -- Terminal.app is just the OS-stock fallback," \
+           "lower priority than iTerm2 if only one needs to work today."
+}
+
 fetch_assets() {
   if [[ ! -f "$MANIFEST" ]]; then
     msg_warn "Manifest not found: ${MANIFEST} -- skipping asset fetch."
@@ -1016,6 +1175,8 @@ main() {
   $DO_DEPS && install_workstation_tools
   $DO_DEPS && install_pwsh_modules
   $DO_DEPS && configure_pwsh_profile
+  $DO_DEPS && configure_iterm2_font
+  $DO_DEPS && configure_terminal_app_font
   $DO_ASSETS && fetch_assets
   msg_ok "Done."
 }
