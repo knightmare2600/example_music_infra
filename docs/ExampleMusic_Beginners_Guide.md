@@ -1040,6 +1040,7 @@ rather not run it.
 | VLC | Media playback | `brew install --cask vlc` |
 | XQuartz | X11 server — needed by some Linux-GUI-over-SSH workflows | `brew install --cask xquartz` |
 | Adobe Acrobat Reader | PDF viewing/annotation | `brew install --cask adobe-acrobat-reader` |
+| JetBrainsMono Nerd Font | Estate-standard terminal font (same family/weight as PuTTY/Hyper/Windows Terminal — `JetBrainsMonoNL NFM Thin`) | `brew install --cask font-jetbrains-mono-nerd-font` — installs the font file only; pick "JetBrainsMonoNL Nerd Font Mono" (Thin) by hand in iTerm2 > Settings > Profiles > Text, not automated |
 
 Linux swaps Homebrew for `apt` and drops VMware Fusion/iTerm2 (no Linux equivalent — use whatever
 terminal your distro ships). Windows swaps Homebrew for Chocolatey and adds PuTTY, WinSCP, PSTools,

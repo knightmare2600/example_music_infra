@@ -51,6 +51,25 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-10-06  Robert's ask: bring this file up to parity with today's macOS work -- install
+#               PowerShell Core itself (official Microsoft apt repo, packages-microsoft-prod.deb,
+#               confirmed against learn.microsoft.com directly, not guessed), the same 7-module
+#               set (install_pwsh_modules(), Stage 20 parity), the full profile port (Stage 22:
+#               PSReadLine Emacs/prediction/colours, Terminal-Icons, CompletionPredictor,
+#               NerdFonts, nodeinfo.json MOTD banner) replacing the old colour-fix-only version,
+#               and the JetBrainsMono Nerd Font (install_fonts() -- no official Debian/Ubuntu
+#               apt package ships the Nerd-Font-patched variant, confirmed; same direct-GitHub-
+#               zip source as ansible/playbooks/windows_bootstrap/tasks/fonts.yml, byte-for-byte
+#               parity with what Windows targets get). configure_pwsh_profile() correctly uses
+#               $PROFILE.CurrentUserAllHosts from the start here -- NOT bare $PROFILE, which the
+#               macOS sibling used for weeks before today's bug was found live; fixed on this
+#               file's very first real profile-scope implementation rather than repeating it.
+#               Also added configure_gnome_terminal_font() (gsettings-based, Robert's explicit
+#               choice of GNOME Terminal specifically, since Linux workstation terminal use is
+#               otherwise genuinely unstandardized here) -- mechanism confirmed via research,
+#               explicitly flagged as NOT independently verified on a real GNOME Terminal (no
+#               GUI environment available where this was written), same category of risk as the
+#               PuTTY Default Settings saga -- needs a real test and report-back before trusting.
 #   2026-10-06  REAL BUG, found while fixing the identical one in setup-workstation-macos.sh
 #               (Jamie's real run there showed msg_ok truncating after the first line):
 #               msg_info/msg_ok/msg_warn/msg_error here only ever printed "$1", silently
@@ -171,11 +190,129 @@ install_deps() {
 
   git lfs install
 
+  # PowerShell Core -- official Microsoft apt repo (packages-microsoft-prod.deb), confirmed
+  # directly against Microsoft's own current docs (learn.microsoft.com/powershell/scripting/
+  # install/install-debian) before writing this, same verify-before-trusting discipline as
+  # every package added to the macOS sibling today. Microsoft's own docs note this only
+  # works for Debian versions with a published package -- if dpkg/apt fails below on an
+  # unsupported release, the manual .deb-from-GitHub-releases method in that same doc is
+  # the fallback (not auto-implemented here; report back if this hits that case).
+  if ! command -v pwsh &>/dev/null; then
+    msg_info "pwsh not found -- adding Microsoft's official apt repo and installing PowerShell."
+    local debian_version_id ms_prod_deb
+    debian_version_id="$(. /etc/os-release && echo "$VERSION_ID")"
+    ms_prod_deb="$(mktemp --suffix=.deb)"
+    curl -fsSL -o "$ms_prod_deb" "https://packages.microsoft.com/config/debian/${debian_version_id}/packages-microsoft-prod.deb"
+    sudo dpkg -i "$ms_prod_deb"
+    rm -f "$ms_prod_deb"
+    sudo apt-get update
+    sudo apt-get install -y powershell
+  fi
+
   msg_ok "Dependencies installed/confirmed: git, git-lfs, curl, jq, unzip, 7zip (7z, for .iso" \
          "archives[] entries), ansible, keepassxc (keepassxc-cli bundled on Debian)," \
-         "wireguard-tools, virt-viewer, wireshark, ipcalc."
+         "wireguard-tools, virt-viewer, wireshark, ipcalc, PowerShell Core (pwsh)."
   msg_info "No native Linux equivalent for VMware Fusion or iTerm2 -- skipped (macOS-only tools," \
            "see docs/ExampleMusic_Beginners_Guide.md §11)."
+}
+
+# Same 7-module list as ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 20 and
+# bootstrap/setup-workstation-macos.sh's own install_pwsh_modules(), CurrentUser scope (single-
+# user machine, same reasoning as the macOS sibling). PSWindowsUpdate is Windows-only
+# (wraps Windows Update's own COM APIs) but left in the list anyway -- Install-Module's
+# -ErrorAction SilentlyContinue already degrades it to a harmless no-op on a platform it
+# doesn't support, confirmed live on macOS earlier today (it actually installed cleanly
+# there too, just wouldn't do anything useful if imported).
+install_pwsh_modules() {
+  if ! command -v pwsh &>/dev/null; then
+    msg_info "pwsh not found on PATH -- skipping PS7 module install."
+    return
+  fi
+
+  msg_info "Installing PS7 console modules (CurrentUser scope)..."
+  pwsh -NoLogo -NoProfile -Command '
+    $modules = @(
+      "PSConsoleTools",
+      "PSWindowsUpdate",
+      "PSWriteColor",
+      "PSReadLine",
+      "Terminal-Icons",
+      "CompletionPredictor",
+      "NerdFonts"
+    )
+    foreach ($m in $modules) {
+      if (-not (Get-Module -ListAvailable -Name $m)) {
+        Install-Module $m -Scope CurrentUser -Force -SkipPublisherCheck -ErrorAction SilentlyContinue
+        Write-Output "Installed: $m"
+      } else {
+        Write-Output "Already present: $m"
+      }
+    }
+  '
+  msg_ok "PS7 modules checked/installed."
+}
+
+# JetBrainsMono Nerd Font -- same source Windows targets already get
+# (ansible/playbooks/windows_bootstrap/tasks/fonts.yml), same exact URL/version, deliberately
+# NOT a different font source for byte-for-byte parity across the estate. No official Debian/
+# Ubuntu apt package ships the Nerd-Font-patched variant (confirmed: `fonts-jetbrains-mono` is
+# the plain, unpatched font, no icon glyphs) -- same direct-GitHub-zip approach as fonts.yml,
+# just extracting to ~/.local/share/fonts/ (user-level, no sudo) instead of C:\Windows\Fonts.
+install_fonts() {
+  local font_dir="${HOME}/.local/share/fonts"
+  local thin_font="${font_dir}/JetBrainsMonoNLNerdFontMono-Thin.ttf"
+  local regular_font="${font_dir}/JetBrainsMonoNLNerdFontMono-Regular.ttf"
+
+  if [[ -f "$thin_font" && -f "$regular_font" ]]; then
+    msg_info "JetBrainsMono Nerd Font already installed -- skipping."
+    return
+  fi
+
+  msg_info "Installing JetBrainsMono Nerd Font..."
+  mkdir -p "$font_dir"
+  local tmp_zip tmp_extract
+  tmp_zip="$(mktemp --suffix=.zip)"
+  tmp_extract="$(mktemp -d)"
+  curl -fsSL -o "$tmp_zip" "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip"
+  unzip -q -o "$tmp_zip" -d "$tmp_extract"
+  cp "${tmp_extract}/JetBrainsMonoNLNerdFontMono-Thin.ttf" "$thin_font"
+  cp "${tmp_extract}/JetBrainsMonoNLNerdFontMono-Regular.ttf" "$regular_font"
+  rm -rf "$tmp_zip" "$tmp_extract"
+
+  if command -v fc-cache &>/dev/null; then
+    fc-cache -f "$font_dir" >/dev/null
+  fi
+  msg_ok "JetBrainsMono Nerd Font installed to ${font_dir} (Thin + Regular)."
+}
+
+# GNOME Terminal only -- Robert's call, 2026-10-06, since Linux workstation terminal use is
+# genuinely unstandardized here (this file's own header: "a tech with a Linux laptop is a
+# rarity, but do cater for it"). Mechanism confirmed via research, NOT independently tested
+# on a real GNOME Terminal (no GUI/desktop environment available in the environment that
+# wrote this) -- gsettings/dconf keys under the current default profile's own UUID, same
+# approach several real-world dotfiles repos use. Gracefully skips on any other desktop
+# (KDE/XFCE/Alacritty/a Linux box with no GUI at all, which is the actual common case for a
+# control node) rather than erroring.
+configure_gnome_terminal_font() {
+  if ! command -v gsettings &>/dev/null; then
+    msg_info "gsettings not found -- not a GNOME desktop, skipping GNOME Terminal font config."
+    return
+  fi
+
+  local profile_id
+  profile_id="$(gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'")"
+  if [[ -z "$profile_id" ]]; then
+    msg_info "No default GNOME Terminal profile found -- skipping font config."
+    return
+  fi
+
+  local profile_path="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_id}/"
+  gsettings set "$profile_path" use-system-font false
+  gsettings set "$profile_path" font "JetBrainsMonoNL Nerd Font Mono 12"
+  msg_ok "GNOME Terminal default profile (${profile_id}) font set to JetBrainsMonoNL Nerd Font Mono 12."
+  msg_warn "NOT independently verified on a real GNOME Terminal -- please confirm this actually" \
+           "took effect (open a new GNOME Terminal window) and report back, same as the PuTTY" \
+           "font work earlier this week."
 }
 
 # ==============================================================================
@@ -484,28 +621,123 @@ configure_pwsh_profile() {
     return
   fi
 
+  # $PROFILE.CurrentUserAllHosts, NOT bare $PROFILE -- bare $PROFILE resolves to
+  # CurrentUserCurrentHost (Microsoft.PowerShell_profile.ps1), which is per-HOST
+  # (only the raw pwsh console, not any other PS7 host). Confirmed live on the
+  # macOS sibling, 2026-10-06: it used bare $PROFILE for weeks and wrote to the
+  # wrong, narrower-scoped file without anyone noticing until the profile
+  # actually carried something worth having everywhere. Fixed here from the
+  # start rather than repeating that mistake.
   local profile_path
-  profile_path="$(pwsh -NoLogo -NoProfile -Command '$PROFILE')"
+  profile_path="$(pwsh -NoLogo -NoProfile -Command '$PROFILE.CurrentUserAllHosts')"
   local profile_dir
   profile_dir="$(dirname "$profile_path")"
-  local marker="Example Music Limited -- PSReadLine Parameter/Operator colour fix"
 
   mkdir -p "$profile_dir"
 
+  # New, more specific marker than the old "PSReadLine Parameter/Operator colour
+  # fix" one -- same reasoning as the macOS sibling's own 2026-10-06 fix: a
+  # machine that already ran the OLD, narrower version of this profile won't
+  # match this marker, so it gets the new block appended too (harmless,
+  # one-time redundant PSReadLine colour-set, not worth a full old-block-removal
+  # mechanism for a one-time transition).
+  local marker="Example Music Limited -- PS7 profile (PSReadLine/Terminal-Icons/CompletionPredictor/NerdFonts/MOTD)"
+
   if [[ -f "$profile_path" ]] && grep -qF "$marker" "$profile_path"; then
-    msg_info "${profile_path}: PSReadLine colour fix already present, skipping."
+    msg_info "${profile_path}: PS7 profile already present, skipping."
     return
   fi
 
   cat >> "$profile_path" <<'EOF'
 
-# Example Music Limited -- PSReadLine Parameter/Operator colour fix
-# Added by bootstrap/setup-workstation-linux.sh -- safe to remove or edit freely.
+# Example Music Limited -- PS7 profile (PSReadLine/Terminal-Icons/CompletionPredictor/NerdFonts/MOTD)
+# Added by bootstrap/setup-workstation-linux.sh -- same content as
+# ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 22 -- safe to
+# remove or edit freely.
+
+# PSReadLine -- Emacs mode required for correct paste behaviour over SSH
 if (Get-Module -ListAvailable PSReadLine) {
     Import-Module PSReadLine
+    Set-PSReadLineOption -EditMode Emacs
+    Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+    Set-PSReadLineOption -PredictionViewStyle ListView
+    Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
+
+    # PSReadLine's own default Parameter/Operator colour (ANSI code 90, "bright
+    # black") renders invisible against this estate's Solarized Dark terminal
+    # scheme -- see docs/solarized-dark-terminal-setup.md. True-RGB escapes, not
+    # another ANSI slot number, so this renders correctly regardless of which
+    # terminal is actually connecting.
     Set-PSReadLineOption -Colors @{
         Parameter = "$([char]0x1b)[38;2;88;110;117m"   # Solarized base01, #586E75
         Operator  = "$([char]0x1b)[38;2;88;110;117m"   # same root cause, same fix
+    }
+}
+
+# Terminal-Icons
+if (Get-Module -ListAvailable Terminal-Icons) {
+    Import-Module Terminal-Icons
+}
+
+# CompletionPredictor
+if (Get-Module -ListAvailable CompletionPredictor) {
+    Import-Module CompletionPredictor
+}
+
+# NerdFonts
+if (Get-Module -ListAvailable NerdFonts) {
+    Import-Module NerdFonts
+}
+
+# MOTD banner -- nodeinfo.json. A real control node (unlike a pure engineer
+# workstation) may genuinely have this -- linux/tools.yml writes
+# /etc/example-music/nodeinfo.json to every Ansible-managed Linux host,
+# including this one if it's EXAANSCLD001 or similar. Silently prints nothing
+# if absent, same graceful no-op as the macOS/Windows versions.
+if (-not [Console]::IsInputRedirected) {
+    $nodeinfoPath = if ($IsWindows) {
+        'C:\ProgramData\ExampleMusic\Config\nodeinfo.json'
+    } else {
+        '/etc/example-music/nodeinfo.json'
+    }
+    if (Test-Path $nodeinfoPath) {
+        try {
+            $ni = Get-Content -Raw $nodeinfoPath | ConvertFrom-Json
+
+            $esc    = [char]0x1b
+            $red    = "$esc[38;2;242;82;34m"    # #F25022
+            $green  = "$esc[38;2;127;186;0m"    # #7FBA00
+            $blue   = "$esc[38;2;0;164;239m"     # #00A4EF
+            $yellow = "$esc[38;2;255;185;0m"    # #FFB900
+            $reset  = "$esc[0m"
+
+            $logoLines = @(
+                "$red########$reset $green########$reset"
+                "$red########$reset $green########$reset"
+                "$red########$reset $green########$reset"
+                ""
+                "$blue########$reset $yellow########$reset"
+                "$blue########$reset $yellow########$reset"
+                "$blue########$reset $yellow########$reset"
+            )
+            $infoLines = @(
+                "$($ni.hostname)  [$($ni.role) / $($ni.site)]"
+                "$($ni.fqdn)"
+                "$($ni.office_name), $($ni.city), $($ni.country)  ($($ni.entity))"
+                ""
+                "Environment: $($ni.environment)"
+                "Built: $($ni.bootstrapped_at.ToString('yyyy-MM-ddTHH:mm:ssZ')) ($($ni.bootstrapped_by))"
+                "Last run: $($ni.last_ansible_run.ToString('yyyy-MM-ddTHH:mm:ssZ')) ($($ni.last_ansible_play))"
+            )
+
+            Write-Host ""
+            for ($i = 0; $i -lt $logoLines.Count; $i++) {
+                Write-Host "  $($logoLines[$i])   $($infoLines[$i])"
+            }
+            Write-Host ""
+        } catch {
+            # Malformed/partial nodeinfo.json -- never block a real pwsh launch over this.
+        }
     }
 }
 
@@ -562,7 +794,7 @@ function Disable-LsCompatibilityMode {
     Write-Host "ls compatibility mode OFF -- ls resolves to the native binary again." -ForegroundColor Green
 }
 EOF
-  msg_ok "${profile_path}: PSReadLine colour fix + ls compatibility toggle added."
+  msg_ok "${profile_path}: PS7 profile (PSReadLine/Terminal-Icons/CompletionPredictor/NerdFonts/MOTD) + ls compatibility toggle added."
 }
 
 fetch_assets() {
@@ -605,7 +837,10 @@ fetch_assets() {
 main() {
   $DO_DEPS && install_deps
   $DO_DEPS && install_workstation_tools
+  $DO_DEPS && install_pwsh_modules
   $DO_DEPS && configure_pwsh_profile
+  $DO_DEPS && install_fonts
+  $DO_DEPS && configure_gnome_terminal_font
   $DO_ASSETS && fetch_assets
   msg_ok "Done."
 }
