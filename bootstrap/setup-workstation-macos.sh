@@ -28,16 +28,24 @@
 # Deliberately separate files, not one shared macOS/Linux script, despite
 # the real overlap in fetch logic -- Robert's explicit instruction.
 #
-# *** IMPORTANT — UNTESTED ON REAL macOS ***
-# This was written and reasoned through carefully, but the environment that
-# built it has no macOS available to execute it on at all. The Linux twin's
-# fetch logic (github_release / url_with_checksum_file / archive_extract)
-# was live-tested end to end against every real source this manifest
-# covers, so that PART is proven correct in bash generally -- but the
-# macOS-specific substitutions below (Homebrew, shasum instead of
-# sha256sum, BSD vs GNU sed/grep dialect) are reasoned about, not executed.
-# Malcolm/Jamie/Robert: please run this for real and report back anything
-# that doesn't match before relying on it.
+# *** STATUS, 2026-10-06: Job 1 LIVE-CONFIRMED on real macOS. Jobs 2/3 still not. ***
+# Job 1 (dependency install) has now run for real, twice, on a real macOS VM (Jamie,
+# pasted by Robert) -- every cask and formula installed correctly, and that testing
+# found and fixed 4 real bugs along the way (the dead vmware-fusion cask, the
+# pre-existing virt-viewer-never-in-Homebrew bug, a repo-wide message-truncation bug,
+# and a PowerShell profile-scope bug). This environment originally had no macOS
+# available to execute any of it on at all -- that's no longer true for job 1.
+#
+# Jobs 2 and 3 (install_workstation_tools/fetch_assets -- the checksum-verified fyrtaarn
+# install and the whole asset-fetch pipeline) have NOT been exercised on real macOS yet.
+# Both real runs so far used a standalone-downloaded copy of this one file, not a full
+# repo clone, so benarbejde/asset_manifest.json was never present and both jobs skipped
+# themselves (gracefully, as of today's fix) before ever reaching their own logic. The
+# macOS-specific substitutions those jobs rely on (shasum -a 256 instead of sha256sum,
+# BSD vs GNU sed/grep dialect) are still reasoned about, not executed -- same original
+# caveat, just narrower in scope than before. Malcolm/Jamie/Robert: run this from inside
+# a real clone of the repo to exercise jobs 2/3 for the first time, and report back
+# anything that doesn't match.
 #
 # Real, known macOS differences from the Linux version, handled below:
 #   - macOS has no `sha256sum` by default at all (that's a GNU coreutils
@@ -71,6 +79,31 @@
 # .iso rather than .zip (currently just the debian/ mini.iso entries).
 # ==============================================================================
 # Changelog:
+#   2026-10-06  Robert's catch: install_deps() called `brew install`/`brew install --cask`
+#               unconditionally on the full package list every run, and `brew tap
+#               perkons/sshpass` unconditionally too -- none of these fail when already
+#               installed/tapped, but none are no-ops either: every re-run printed a full
+#               "Warning: Not upgrading X, the latest version is already installed" (or
+#               "X is already installed and up-to-date") block per package, plus the whole
+#               "taps are not trusted" advisory again for the tap -- confirmed directly in
+#               Jamie's second real run, ~35 lines of pure noise on an otherwise-clean
+#               re-run. Filtered every cask/formula through `brew list --cask`/`brew list
+#               --formula` first and only call `brew install` with what's actually missing
+#               (skips the call entirely if nothing is); `brew tap` (no args, lists current
+#               taps) gates the sshpass tap the same way. Branches on a plain integer
+#               counter, not `${#missing_casks[@]}`, specifically because macOS's stock
+#               bash 3.2 (this file's own stated target) has a known bug where expanding an
+#               empty array under `set -u` throws "unbound variable", not fixed until bash
+#               4.4 -- no real bash 3.2 available to confirm the exact failure mode
+#               directly, so sidestepped the question entirely rather than risk it.
+#               Verified the whole filtering logic (both the already-tapped and
+#               not-yet-tapped cases) against a stubbed `brew` before shipping -- confirmed
+#               only genuinely-missing packages ever reach a real `brew install` call.
+#               Homebrew's own existence check (`command -v brew`) deliberately left as-is
+#               -- that's the right tool for "is this binary on PATH," `brew list` is the
+#               right tool for "is this specific package installed via brew"; conflating
+#               the two would be circular (brew list can't answer anything if brew itself
+#               isn't installed yet) and isn't actually what was broken here.
 #   2026-10-06  REAL BUG, found live (Jamie's second run, pasted by Robert): the profile got
 #               written to ~/.config/powershell/Microsoft.PowerShell_profile.ps1, not
 #               profile.ps1. Root cause confirmed directly against pwsh: bare $PROFILE
@@ -262,19 +295,35 @@ install_deps() {
 
   # -- Casks (GUI apps) -- matches docs/ExampleMusic_Beginners_Guide.md §11.1
   # vmware-fusion deliberately NOT here -- see msg_warn below, it can't be scripted any more.
-  brew install --cask \
-    iterm2 \
-    keepassxc \
-    wireshark \
-    sublime-text \
-    shottr \
-    zettlr \
-    utm \
-    google-chrome \
-    mucommander \
-    vlc \
-    xquartz \
-    adobe-acrobat-reader
+  # Checked via `brew list --cask` first and filtered down to only what's actually missing --
+  # Robert's catch, 2026-10-06: calling `brew install --cask` unconditionally on something
+  # already installed doesn't fail, but it's not a no-op either -- it prints a full
+  # "Warning: Not upgrading X, the latest version is already installed" block every single
+  # re-run, for every package, which is real noise on an idempotent "safe to re-run" script.
+  local all_casks=(
+    iterm2 keepassxc wireshark sublime-text shottr zettlr utm google-chrome
+    mucommander vlc xquartz adobe-acrobat-reader
+  )
+  # Counted separately rather than relying on ${#missing_casks[@]} under `set -u` --
+  # macOS's stock bash 3.2 (this file's own stated target) has a known bug where
+  # expanding an empty array under nounset throws "unbound variable", fixed only in
+  # bash 4.4+. Branching on a plain integer sidesteps the question entirely: by the
+  # time "${missing_casks[@]}" is ever expanded below, missing_count already
+  # guarantees it's non-empty.
+  local missing_casks=()
+  local missing_count=0
+  local c
+  for c in "${all_casks[@]}"; do
+    if ! brew list --cask "$c" &>/dev/null; then
+      missing_casks+=("$c")
+      missing_count=$((missing_count + 1))
+    fi
+  done
+  if [[ $missing_count -gt 0 ]]; then
+    brew install --cask "${missing_casks[@]}"
+  else
+    msg_info "All casks already installed -- skipping."
+  fi
 
   # -- Formulae (CLI tools) --
   # keepassxc (formula, not cask) is a SEPARATE package from the cask above --
@@ -284,33 +333,38 @@ install_deps() {
   # it installs, `brew install mc` fails. Confirmed directly against
   # formulae.brew.sh before writing this, same mistake class as vmware-fusion
   # below and virt-viewer's own removal (see 2026-10-06 changelog entry).
-  brew install \
-    git git-lfs jq unzip p7zip \
-    ansible \
-    keepassxc \
-    ipcalc \
-    wireguard-tools \
-    midnight-commander \
-    htop \
-    minicom \
-    fastfetch \
-    tree \
-    wget \
-    w3m \
-    links \
-    tmux \
-    zsh-autocomplete \
-    zsh-autosuggestions \
-    zsh-completions \
-    zsh-syntax-highlighting
+  # Same check-first-and-filter treatment as the casks above, same reason.
+  local all_formulae=(
+    git git-lfs jq unzip p7zip ansible keepassxc ipcalc wireguard-tools
+    midnight-commander htop minicom fastfetch tree wget w3m links tmux
+    zsh-autocomplete zsh-autosuggestions zsh-completions zsh-syntax-highlighting
+  )
+  local missing_formulae=()
+  local missing_formula_count=0
+  local f
+  for f in "${all_formulae[@]}"; do
+    if ! brew list --formula "$f" &>/dev/null; then
+      missing_formulae+=("$f")
+      missing_formula_count=$((missing_formula_count + 1))
+    fi
+  done
+  if [[ $missing_formula_count -gt 0 ]]; then
+    brew install "${missing_formulae[@]}"
+  else
+    msg_info "All formulae already installed -- skipping."
+  fi
 
   # sshpass is deliberately excluded from homebrew-core (Homebrew's own stated
   # policy: it makes scripted password-based SSH too easy to misuse) -- needs a
   # third-party tap. perkons/homebrew-sshpass confirmed still actively
   # maintained; hudochenkov/homebrew-sshpass (the other commonly-cited one) was
   # archived by its own owner in 2020 and is not used here for that reason.
-  brew tap perkons/sshpass
-  brew install sshpass
+  # Both the tap and the install are check-first -- re-tapping an already-tapped
+  # repo re-prints the same "taps are not trusted" advisory every run otherwise.
+  if ! brew tap | grep -qx "perkons/sshpass"; then
+    brew tap perkons/sshpass
+  fi
+  brew list --formula sshpass &>/dev/null || brew install sshpass
 
   # PowerShell Core -- a FORMULA, not a cask. `brew install --cask powershell`
   # (what every older guide says) was deprecated and disabled 2026-09-01 --
@@ -321,7 +375,7 @@ install_deps() {
   # (7.6.6 at last check). Third time today this exact mistake class has
   # surfaced (vmware-fusion, virt-viewer, now this) -- always verify the
   # package/cask split against the real source, never assume either way.
-  brew install powershell
+  brew list --formula powershell &>/dev/null || brew install powershell
 
   git lfs install
 
