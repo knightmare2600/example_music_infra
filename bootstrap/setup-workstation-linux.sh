@@ -51,6 +51,21 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-10-07  Robert's catch, caught before any real run hit it: two real gaps in
+#               install_deps(). (1) No sudo check at all -- this file fires `sudo apt-get`/
+#               `sudo dpkg` repeatedly and just let each one fail (or hang prompting for a
+#               password) wherever it happened to land, rather than failing fast with a
+#               clear message up front. Added `sudo -v` as the very first thing, with an
+#               actionable error (add the user to the sudo group) if it fails. (2) curl
+#               itself may not be pre-installed on a minimal/fresh Debian image, and the
+#               very next block (git-lfs's packagecloud repo setup) pipes curl's output
+#               into sudo gpg BEFORE the main `apt-get install` line further down would
+#               otherwise install curl -- a genuine chicken-and-egg ordering bug, same
+#               category as jq on the macOS sibling (that file's own header already
+#               documents this exact class of gap for jq specifically). Added a standalone
+#               curl-presence check + install, ahead of anything that needs it. Verified
+#               the control-flow ordering (sudo -v, then curl-install-if-missing, in that
+#               order, before the git-lfs block) against a stubbed sudo/apt-get/curl.
 #   2026-10-06  Robert's ask: bring this file up to parity with today's macOS work -- install
 #               PowerShell Core itself (official Microsoft apt repo, packages-microsoft-prod.deb,
 #               confirmed against learn.microsoft.com directly, not guessed), the same 7-module
@@ -166,6 +181,31 @@ install_deps() {
   if ! command -v apt-get >/dev/null 2>&1; then
     msg_error "apt-get not found -- this script presumes a Debian-flavour distro. Aborting."
     exit 1
+  fi
+
+  # sudo -v validates/refreshes credentials and fails fast with a clear exit code if this
+  # user genuinely isn't in the sudo group, rather than letting the first of this script's
+  # many `sudo apt-get`/`sudo dpkg` calls fail confusingly deep into a run, or hang
+  # prompting for a password that was never going to work. Robert's catch, 2026-10-07 --
+  # no check existed at all before this.
+  if ! sudo -v; then
+    msg_error "sudo access is required (apt-get install, PowerShell repo setup, etc.) and" \
+              "this user doesn't have it, or authentication failed. Add this user to the" \
+              "sudo group first (sudo usermod -aG sudo \$USER, then log out/in) and re-run."
+    exit 1
+  fi
+
+  # curl itself may not be pre-installed on a minimal/fresh Debian image -- and the
+  # git-lfs repo-setup block immediately below needs curl BEFORE the main apt-get install
+  # line (further down) would otherwise install it. No reasonable bootstrap order avoids
+  # this except installing curl first, standalone -- same category of chicken-and-egg gap
+  # as jq on the macOS sibling (see that file's own header comment). Robert's catch,
+  # 2026-10-07 -- confirmed by reading the actual ordering, not assumed.
+  if ! command -v curl >/dev/null 2>&1; then
+    msg_info "curl not found -- installing it first (this script's own fetch logic needs it" \
+             "before the main dependency install below would otherwise provide it)."
+    sudo apt-get update
+    sudo apt-get install -y curl
   fi
 
   # git-lfs isn't in every distro's default apt repo at a current version --
