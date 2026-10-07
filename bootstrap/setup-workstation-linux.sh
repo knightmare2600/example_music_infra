@@ -407,7 +407,9 @@ configure_gnome_terminal_font() {
 # come back EMPTY even on a normal install (dconf only reports explicitly-set values, never
 # schema defaults), so this falls back to the literal "default" profile ID -- which every
 # stock MATE Terminal install has via schema default -- rather than failing if the list
-# happens to be empty.
+# happens to be empty. LIVE-CONFIRMED, 2026-10-07: Robert opened a fresh MATE Terminal
+# window after running this exact gsettings command and confirmed the font actually
+# renders correctly, not just a successful write/read-back.
 configure_mate_terminal_font() {
   if ! command -v gsettings &>/dev/null; then
     msg_info "gsettings not found -- skipping MATE Terminal font config."
@@ -429,10 +431,6 @@ configure_mate_terminal_font() {
   local profile_path="org.mate.terminal.profile:/org/mate/terminal/profiles/${profile_id}/"
   gsettings set "$profile_path" font "JetBrainsMonoNL NFM Thin 12"
   msg_ok "MATE Terminal profile (${profile_id}) font set to JetBrainsMonoNL NFM Thin 12."
-  msg_warn "Confirmed via a real round-trip on the actual test machine (gsettings set + get" \
-           "back matched), but please open a NEW MATE Terminal window and confirm the font" \
-           "actually RENDERS correctly -- a successful write/read-back isn't proof of that," \
-           "same lesson as the PuTTY saga."
 }
 
 # ==============================================================================
