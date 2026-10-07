@@ -1044,11 +1044,14 @@ EOF
 #   -- not what's needed here. Editing the live plist's matching array entry directly is the
 #   real mechanism, via plutil (binary <-> JSON, a genuine Apple-native tool) + jq (already a
 #   dependency of this script) rather than hand-parsing NSKeyedArchiver-style binary data.
-# - Font string format ("<PostScript name> <size>") confirmed from iTerm2's own example
-#   syntax. The exact PostScript name of the Thin weight inside the Homebrew-cask-installed
-#   font is NOT independently confirmed here (no macOS to check Font Book/fc-list against) --
-#   this function verifies it against the real installed font file first and refuses to guess
-#   blindly if the expected name isn't found.
+# - Font string format ("<family name> <size>") confirmed from iTerm2's own live example
+#   value ("Monaco 12", read directly off the real test machine). The family name itself
+#   ("JetBrainsMonoNL NFM Thin") is ALSO now independently confirmed, not guessed -- Robert
+#   parsed the real installed .ttf's own binary name table directly (2026-10-06) after
+#   mdls/system_profiler both came back empty for a freshly-installed font. What's still
+#   genuinely unverified is the WRITE itself: this function has never actually run against
+#   a real iTerm2 plist and been confirmed to change what iTerm2 renders -- that's the
+#   actual open piece, not the font name.
 configure_iterm2_font() {
   local plist_path="${HOME}/Library/Preferences/com.googlecode.iterm2.plist"
   if [[ ! -f "$plist_path" ]]; then
