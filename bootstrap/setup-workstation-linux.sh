@@ -51,6 +51,27 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-10-07  Robert's real test: font showed "installed" in a font viewer but wasn't
+#               selectable in mate-terminal. Checked properly rather than guessing which of
+#               two possible causes it was -- `fc-list` confirmed the font IS correctly
+#               installed and fontconfig-indexed (ruling that out); `which mate-terminal
+#               gnome-terminal` confirmed only mate-terminal exists -- gnome-terminal was
+#               never installed, so configure_gnome_terminal_font() (targets
+#               org.gnome.Terminal's schema specifically) silently skipped and never got a
+#               chance to configure anything. Added configure_mate_terminal_font()
+#               (org.mate.terminal.profile schema) -- confirmed real, both via research and
+#               a live round-trip Robert ran directly on the actual test machine before this
+#               was ever wired into the script. org.mate.terminal.global profile-list
+#               returned ['default'] there; falls back to the literal "default" profile ID
+#               if that list ever comes back empty (reportedly possible on a normal install,
+#               since dconf only reports explicitly-set values, never schema defaults).
+#               Verified the schema-detection, profile-list-parsing, and graceful-skip-on-
+#               non-MATE-systems logic against stubs before shipping. Also corrected
+#               configure_gnome_terminal_font()'s own font string while touching this --
+#               it predated the real confirmed family name and used the ambiguous
+#               "JetBrainsMonoNL Nerd Font Mono" alias (shared across every weight) instead
+#               of "JetBrainsMonoNL NFM Thin" (confirmed specific to this weight, same value
+#               now used consistently everywhere -- macOS, GNOME Terminal, MATE Terminal).
 #   2026-10-07  REAL BUG, found live (Jamie's actual run, pasted by Robert): everything
 #               through PowerShell install worked cleanly, then "[x] Manifest not found:
 #               /home/benarbejde/asset_manifest.json" killed the ENTIRE script via the old
@@ -361,13 +382,57 @@ configure_gnome_terminal_font() {
     return
   fi
 
+  # "JetBrainsMonoNL NFM Thin" -- the font's real family name, confirmed twice independently
+  # (2026-10-06, parsing the macOS .ttf's own binary name table directly; 2026-10-07, this
+  # very file's install_fonts(), via `fc-list` on real Debian: "JetBrainsMonoNL Nerd Font
+  # Mono,JetBrainsMonoNL NFM,JetBrainsMonoNL NFM Thin:style=Thin,Regular"). NOT
+  # "JetBrainsMonoNL Nerd Font Mono" (this function's own original value) -- that alias is
+  # shared across every weight in the family, not specific to Thin.
   local profile_path="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_id}/"
   gsettings set "$profile_path" use-system-font false
-  gsettings set "$profile_path" font "JetBrainsMonoNL Nerd Font Mono 12"
-  msg_ok "GNOME Terminal default profile (${profile_id}) font set to JetBrainsMonoNL Nerd Font Mono 12."
+  gsettings set "$profile_path" font "JetBrainsMonoNL NFM Thin 12"
+  msg_ok "GNOME Terminal default profile (${profile_id}) font set to JetBrainsMonoNL NFM Thin 12."
   msg_warn "NOT independently verified on a real GNOME Terminal -- please confirm this actually" \
            "took effect (open a new GNOME Terminal window) and report back, same as the PuTTY" \
            "font work earlier this week."
+}
+
+# MATE Terminal -- added 2026-10-07 after Robert's real test showed only mate-terminal
+# installed (gnome-terminal absent), so configure_gnome_terminal_font() above silently
+# skipped and never had a chance to configure anything. Confirmed real mechanism via
+# research AND a live round-trip Robert ran directly (gsettings set ... font '...'; gsettings
+# get ... font came back with the exact value set, no error) before this was ever wired into
+# the script -- same discipline as the PuTTY/iTerm2 work. org.mate.terminal.global
+# profile-list came back ['default'] on the real test machine; profile-list can reportedly
+# come back EMPTY even on a normal install (dconf only reports explicitly-set values, never
+# schema defaults), so this falls back to the literal "default" profile ID -- which every
+# stock MATE Terminal install has via schema default -- rather than failing if the list
+# happens to be empty.
+configure_mate_terminal_font() {
+  if ! command -v gsettings &>/dev/null; then
+    msg_info "gsettings not found -- skipping MATE Terminal font config."
+    return
+  fi
+
+  if ! gsettings list-schemas 2>/dev/null | grep -qx "org.mate.terminal.profile"; then
+    msg_info "org.mate.terminal.profile schema not found -- not a MATE desktop, skipping."
+    return
+  fi
+
+  local profile_id
+  profile_id="$(gsettings get org.mate.terminal.global profile-list 2>/dev/null \
+    | tr -d "[]' " | cut -d',' -f1)"
+  if [[ -z "$profile_id" ]]; then
+    profile_id="default"
+  fi
+
+  local profile_path="org.mate.terminal.profile:/org/mate/terminal/profiles/${profile_id}/"
+  gsettings set "$profile_path" font "JetBrainsMonoNL NFM Thin 12"
+  msg_ok "MATE Terminal profile (${profile_id}) font set to JetBrainsMonoNL NFM Thin 12."
+  msg_warn "Confirmed via a real round-trip on the actual test machine (gsettings set + get" \
+           "back matched), but please open a NEW MATE Terminal window and confirm the font" \
+           "actually RENDERS correctly -- a successful write/read-back isn't proof of that," \
+           "same lesson as the PuTTY saga."
 }
 
 # ==============================================================================
@@ -905,6 +970,7 @@ main() {
   $DO_DEPS && configure_pwsh_profile
   $DO_DEPS && install_fonts
   $DO_DEPS && configure_gnome_terminal_font
+  $DO_DEPS && configure_mate_terminal_font
   $DO_ASSETS && fetch_assets
   msg_ok "Done."
 }
