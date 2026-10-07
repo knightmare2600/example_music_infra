@@ -79,6 +79,15 @@
 # .iso rather than .zip (currently just the debian/ mini.iso entries).
 # ==============================================================================
 # Changelog:
+#   2026-10-07  LIVE-CONFIRMED on real macOS, both iTerm2 and Terminal.app -- Robert tested
+#               and confirmed the font actually renders correctly in each, same as the
+#               MATE Terminal confirmation on the Linux sibling earlier the same day. Added
+#               a closing note from main() (same as the Linux sibling) since a full app
+#               restart, not just a new window, was needed to see the change -- same
+#               app-level caching behaviour as MATE Terminal, now independently confirmed
+#               here too, not just by analogy. Swept the whole file for every remaining
+#               "UNVERIFIED"/"NOT independently confirmed" marker written before this
+#               confirmation landed and updated them all.
 #   2026-10-06  REAL BUG, found live on the actual re-run (Jamie): configure_iterm2_font()
 #               used `mktemp --suffix=.json` -- a GNU coreutils long option. macOS ships
 #               BSD mktemp, which doesn't support it at all: "unrecognized option
@@ -111,12 +120,12 @@
 #               research that Dynamic Profiles, the officially-documented safer-looking
 #               mechanism, explicitly cannot update an existing profile by Guid, so this is
 #               the actual real mechanism) and configure_terminal_app_font() (AppleScript).
-#               *** BOTH UNVERIFIED ON REAL macOS *** -- same risk category as the PuTTY
-#               Default Settings saga (editing a live, structured preferences store the app
-#               itself manages), no macOS available here to test either. Each verifies the
-#               real installed font file exists first and refuses to guess blindly if it
-#               doesn't, rather than writing a plausible-looking wrong value. Robert's own
-#               offer: test and report back, same workflow as the PuTTY fix.
+#               Same risk category as the PuTTY Default Settings saga (editing a live,
+#               structured preferences store the app itself manages) -- both since
+#               LIVE-CONFIRMED on real macOS, 2026-10-07 (see that day's changelog entry).
+#               Each verifies the real installed font file exists first and refuses to
+#               guess blindly if it doesn't, rather than writing a plausible-looking wrong
+#               value.
 #   2026-10-06  Robert's catch: this script never actually installed the JetBrainsMono
 #               Nerd Font at all -- today's earlier PS7 profile work referenced NerdFonts
 #               (a PowerShell module that provides font-name helper cmdlets) and was
@@ -1029,10 +1038,11 @@ EOF
   msg_ok "${profile_path}: PS7 profile (PSReadLine/Terminal-Icons/CompletionPredictor/NerdFonts/MOTD) + ls compatibility toggle added."
 }
 
-# *** UNVERIFIED ON REAL macOS -- same risk category as the PuTTY Default Settings saga ***
-# (editing a live, structured preferences store the app itself manages) -- no macOS available
-# here to test either of this and configure_terminal_app_font() below. Robert's own offer,
-# 2026-10-06: "if you need me to do something, ask me, I'll check/test it". This needs that.
+# *** LIVE-CONFIRMED on real macOS, 2026-10-07 *** -- same risk category as the PuTTY
+# Default Settings saga (editing a live, structured preferences store the app itself
+# manages), per Robert's own offer, 2026-10-06: "if you need me to do something, ask me,
+# I'll check/test it" -- he did, for this and configure_terminal_app_font() below, and
+# confirmed the font actually renders correctly in both after a full quit/relaunch.
 #
 # Mechanism, confirmed via research before writing this (not guessed):
 # - iTerm2's "Default Bookmark Guid" (a top-level preference key) names which entry in the
@@ -1049,9 +1059,9 @@ EOF
 #   ("JetBrainsMonoNL NFM Thin") is ALSO now independently confirmed, not guessed -- Robert
 #   parsed the real installed .ttf's own binary name table directly (2026-10-06) after
 #   mdls/system_profiler both came back empty for a freshly-installed font. What's still
-#   genuinely unverified is the WRITE itself: this function has never actually run against
-#   a real iTerm2 plist and been confirmed to change what iTerm2 renders -- that's the
-#   actual open piece, not the font name.
+#   genuinely was unverified until now is the WRITE itself -- confirmed, 2026-10-07: this
+#   function ran against a real iTerm2 plist and Robert confirmed it changed what iTerm2
+#   actually renders, not just the stored preference value.
 configure_iterm2_font() {
   local plist_path="${HOME}/Library/Preferences/com.googlecode.iterm2.plist"
   if [[ ! -f "$plist_path" ]]; then
@@ -1108,8 +1118,6 @@ configure_iterm2_font() {
   rm -f "$json_tmp"
 
   msg_ok "iTerm2's default profile (Guid ${default_guid}) font set to ${font_string}."
-  msg_warn "UNVERIFIED -- please fully quit and relaunch iTerm2, confirm the font actually" \
-           "changed (Settings > Profiles > Text), and report back, same as the PuTTY font work."
 }
 
 # Confirmed real, 2026-10-06 (Robert/Jamie, live): `osascript -e 'tell application
@@ -1119,7 +1127,10 @@ configure_iterm2_font() {
 # read directly from the installed .ttf's own binary name table (nameID 6), not guessed
 # from the filename -- confirmed different from both the filename
 # (JetBrainsMonoNLNerdFontMono-Thin) and the family name
-# (JetBrainsMonoNL NFM Thin, used by configure_iterm2_font() instead).
+# (JetBrainsMonoNL NFM Thin, used by configure_iterm2_font() instead). The SET itself (not
+# just the GET that confirmed the property name) is LIVE-CONFIRMED too, 2026-10-07 -- Robert
+# ran this function for real and confirmed Terminal.app actually rendered the font correctly
+# after a full quit/relaunch.
 configure_terminal_app_font() {
   local font_file="${HOME}/Library/Fonts/JetBrainsMonoNLNerdFontMono-Thin.ttf"
   if [[ ! -f "$font_file" ]]; then
@@ -1138,10 +1149,6 @@ configure_terminal_app_font() {
              "> [profile] > Text > Change Font, and report back what actually happened."
     return
   fi
-  msg_warn "UNVERIFIED -- please open a new Terminal.app window, confirm the font actually" \
-           "changed, and report back, same as the PuTTY font work. iTerm2 is this estate's" \
-           "actual documented terminal (§11.1) -- Terminal.app is just the OS-stock fallback," \
-           "lower priority than iTerm2 if only one needs to work today."
 }
 
 fetch_assets() {
@@ -1193,6 +1200,13 @@ main() {
   $DO_DEPS && configure_iterm2_font
   $DO_DEPS && configure_terminal_app_font
   $DO_ASSETS && fetch_assets
+  if $DO_DEPS; then
+    msg_info "Terminal font and shell profile changes above don't retroactively apply to" \
+             "already-open windows/sessions -- confirmed live, 2026-10-07 (both iTerm2 and" \
+             "Terminal.app): fully quitting (Cmd-Q) and relaunching was needed to actually" \
+             "see the new font, not just opening a new window. Do that, and open a new pwsh" \
+             "session, to pick everything up."
+  fi
   msg_ok "Done."
 }
 

@@ -51,6 +51,17 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-10-07  Robert's ask: print a closing note from main() when $DO_DEPS ran -- he had
+#               to restart mate-terminal (not just open a new window) for the font change
+#               to actually show, confirmed expected live. Same applies to a pwsh profile --
+#               an already-running session won't pick up a new profile.ps1 either. Gated on
+#               $DO_DEPS specifically, since none of what it's warning about happens under
+#               --assets-only.
+#   2026-10-07  Robert's ask: install_fonts()'s fc-cache call switched from `-f >/dev/null`
+#               (force, output discarded) to `-fv` (force + verbose, output left visible) --
+#               confirmed `-fv` is a real, valid flag combination before shipping. Trades
+#               the earlier "keep normal runs quiet" preference for direct visibility into
+#               what fc-cache actually did on this specific run, by explicit request.
 #   2026-10-07  Robert's real test: font showed "installed" in a font viewer but wasn't
 #               selectable in mate-terminal. Checked properly rather than guessing which of
 #               two possible causes it was -- `fc-list` confirmed the font IS correctly
@@ -356,7 +367,7 @@ install_fonts() {
   rm -rf "$tmp_zip" "$tmp_extract"
 
   if command -v fc-cache &>/dev/null; then
-    fc-cache -f "$font_dir" >/dev/null
+    fc-cache -fv "$font_dir"
   fi
   msg_ok "JetBrainsMono Nerd Font installed to ${font_dir} (Thin + Regular)."
 }
@@ -970,6 +981,13 @@ main() {
   $DO_DEPS && configure_gnome_terminal_font
   $DO_DEPS && configure_mate_terminal_font
   $DO_ASSETS && fetch_assets
+  if $DO_DEPS; then
+    msg_info "Terminal font and shell profile changes above don't retroactively apply to" \
+             "already-open windows/sessions -- confirmed live, 2026-10-07: restarting" \
+             "mate-terminal (not just opening a new window in it) was needed to actually" \
+             "see the new font. Restart your terminal application and open a new pwsh" \
+             "session to pick everything up."
+  fi
   msg_ok "Done."
 }
 
