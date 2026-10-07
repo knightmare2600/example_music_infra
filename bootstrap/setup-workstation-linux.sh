@@ -51,6 +51,21 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-10-07  REAL BUG, found live (Jamie's actual run, pasted by Robert): everything
+#               through PowerShell install worked cleanly, then "[x] Manifest not found:
+#               /home/benarbejde/asset_manifest.json" killed the ENTIRE script via the old
+#               hard `exit 1` -- meaning install_pwsh_modules()/configure_pwsh_profile()/
+#               install_fonts()/configure_gnome_terminal_font(), all added yesterday, never
+#               got a chance to run at all. Same root cause as the macOS sibling's own
+#               2026-10-06 fix (Jamie running the standalone downloaded script from his own
+#               home directory, not a repo clone -- REPO_ROOT resolved one level above
+#               /home/jamie, i.e. /home, giving /home/benarbejde/... exactly as seen) -- but
+#               that exact fix was never ported to THIS file at the time, a real gap, not a
+#               new bug. Fixed identically: both install_workstation_tools() and
+#               fetch_assets()'s manifest-missing checks now msg_warn + return 0 instead of
+#               msg_error + exit 1, with the real git-clone command. Verified by extracting
+#               the real function and running it against the exact path from Jamie's
+#               transcript -- confirms it now warns and the script continues past it.
 #   2026-10-07  Robert's catch, caught before any real run hit it: two real gaps in
 #               install_deps(). (1) No sudo check at all -- this file fires `sudo apt-get`/
 #               `sudo dpkg` repeatedly and just let each one fail (or hang prompting for a
@@ -540,8 +555,13 @@ fetch_archive() {
 # determined by what upstream actually published, nothing new to track.
 install_workstation_tools() {
   if [[ ! -f "$MANIFEST" ]]; then
-    msg_error "Manifest not found: ${MANIFEST}"
-    exit 1
+    msg_warn "Manifest not found: ${MANIFEST} -- skipping workstation_tools install."
+    msg_warn "This almost always means the script was downloaded standalone, not run from" \
+             "inside a full clone of this repo (REPO_ROOT is derived as one directory up" \
+             "from wherever this script itself lives). Clone the repo properly to get this" \
+             "job too: git clone https://github.com/knightmare2600/example_music_infra/" \
+             "-- or ignore this if --deps-only (packages) was all you wanted."
+    return 0
   fi
 
   local goos goarch platform_key
@@ -839,8 +859,12 @@ EOF
 
 fetch_assets() {
   if [[ ! -f "$MANIFEST" ]]; then
-    msg_error "Manifest not found: ${MANIFEST}"
-    exit 1
+    msg_warn "Manifest not found: ${MANIFEST} -- skipping asset fetch."
+    msg_warn "Same cause as install_workstation_tools()'s own warning above, if you saw it:" \
+             "this script needs to run from inside a full clone of this repo, not standalone." \
+             "git clone https://github.com/knightmare2600/example_music_infra/ -- or ignore" \
+             "this if --deps-only (packages) was all you wanted."
+    return 0
   fi
   msg_info "Reading ${MANIFEST}..."
 
