@@ -864,3 +864,15 @@ TOR,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default p
 TOR,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 TOR,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 TOR,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
+MRS,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
+MRS,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+MRS,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
+MRS,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
+MRS,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
+MRS,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
+MRS,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
+MRS,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
+MRS,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
+MRS,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
+MRS,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
+MRS,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate, not yet built.)",,no,,yes

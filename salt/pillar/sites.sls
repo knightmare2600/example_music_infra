@@ -321,6 +321,14 @@ sites:
     office_name: "First Italia Long Apartments"
     street_address: "Piazza Armando Diaz 2"
     postal_code: "20123"
+  MRS:
+    city: "Marseille"
+    country: "France"
+    country_code: "FR"
+    entity: "Example Music (France) SARL"
+    office_name: ""
+    street_address: "Bâtiment 6 Sq. Narvik"
+    postal_code: "13232"
   MTL:
     city: "Montreal"
     country: "Canada"
