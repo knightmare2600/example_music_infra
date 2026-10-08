@@ -1361,5 +1361,37 @@
     "ManagedBy": "",
     "Email": "facilities@jukebox.internal",
     "Site": "CPH"
+  },
+  {
+    "Name": "Violinists",
+    "Description": "Violin players",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "violinists@jukebox.internal"
+  },
+  {
+    "Name": "Violists",
+    "Description": "Viola players",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "violists@jukebox.internal"
+  },
+  {
+    "Name": "Cellists",
+    "Description": "Cello players",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "",
+    "Email": "cellists@jukebox.internal"
+  },
+  {
+    "Name": "Penguin Cafe Orchestra",
+    "Description": "English chamber-pop and minimalist ensemble founded by Simon Jeffes in London in 1972, known for Perpetuum Mobile from Signs of Life (1987)",
+    "Type": "Security",
+    "Scope": "Global",
+    "ManagedBy": "Simon Jeffes",
+    "Email": "penguincafeorchestra@jukebox.internal"
   }
 ]
