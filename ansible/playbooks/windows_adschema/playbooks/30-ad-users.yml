@@ -131,6 +131,7 @@
       Canada: { code: CA, name: Canada }
       DE:     { code: DE, name: Germany }
       DK:     { code: DK, name: Denmark }
+      FR:     { code: FR, name: France }
       GB:     { code: GB, name: United Kingdom }
       IT:     { code: IT, name: Italy }
       LB:     { code: LB, name: Lebanon }
