@@ -1,0 +1,74 @@
+---
+# =============================================================================
+# cloudpanel/site.yml
+# Example Music Limited — CloudPanel install entry point
+# =============================================================================
+# Ansible conversion of CloudPanel's own install.sh (checksum-verified before
+# conversion, 2026-10-07:
+#   8146dbe0a488e7088b04071b0c34d59aa0ab1fe9dcec382d395fd155c9e6c476
+# ), following that script's own real chronology exactly -- see each numbered
+# playbook's own header for which original function(s) it replaces.
+#
+# Playbook order (00 = preflight, matches proxmox/windows_bootstrap/salt/
+# truenas's own convention):
+#   00-preflight   apt update/upgrade/curl/wget/sudo (Robert's own pasted
+#                  prerequisite) + install.sh's setOSInfo()/checkRequirements()
+#   10-packages    install.sh's setupRequiredPackages()/generateLocales()/
+#                  removeUnnecessaryPackages()
+#   20-database    install.sh's addAptSourceList()/installMySQL()
+#   30-cloudpanel  install.sh's setupCloudPanel()/showSuccessMessage()
+#   40-admin-user  NOT in the original script (its own first-run flow is manual --
+#                  browse to https://<ip>:8443 and fill in a form) -- clpctl user:add
+#                  for the admin account + clpctl db:show:master-credentials for the
+#                  database master account CloudPanel generates itself, both filed
+#                  into KeePass. Robert's ask, 2026-10-07.
+#   50-cleanup     install.sh's cleanUp()
+#
+# Usage -- full run, first time on a fresh box:
+#   ansible-playbook playbooks/cloudpanel/site.yml \
+#     -i configs/inventory --limit <hostname>
+#
+# Usage -- choose a database engine (install.sh's own DB_ENGINE env var,
+# default MYSQL_8.4 if not set -- see group_vars/cloudpanel_servers/main.yml
+# for every supported combination):
+#   ansible-playbook playbooks/cloudpanel/site.yml \
+#     -i configs/inventory --limit <hostname> -e cloudpanel_db_engine=MARIADB_12.3
+#
+# Standalone plays can also be run directly without site.yml, e.g.:
+#   ansible-playbook playbooks/cloudpanel/playbooks/20-database.yml -i configs/inventory --limit <hostname>
+# (20-database.yml/30-cloudpanel.yml/40-admin-user.yml/50-cleanup.yml are all
+# self-contained -- each re-derives whatever facts it needs rather than
+# assuming an earlier play in the same run already set them.)
+#
+# Inventory -- add to configs/inventory, group [cloudpanel_servers]:
+#   [cloudpanel_servers]
+#   EXACLP<SITE>001   ansible_host=<address>
+#
+# Tags: preflight, packages, database, install, admin-user, cleanup
+#
+# NOT YET RUN end-to-end against a real box -- this is a straight conversion
+# of a real, checksum-verified upstream script, not yet live-tested.
+# =============================================================================
+# Changelog:
+#   2026-10-07  Initial file. Robert's ask: convert CloudPanel's install.sh to
+#               a proper Ansible playbook family, following the script's own
+#               chronology, split into 00/10/20/etc stages as sensible.
+# =============================================================================
+
+- import_playbook: playbooks/00-preflight.yml
+  tags: preflight
+
+- import_playbook: playbooks/10-packages.yml
+  tags: packages
+
+- import_playbook: playbooks/20-database.yml
+  tags: database
+
+- import_playbook: playbooks/30-cloudpanel.yml
+  tags: install
+
+- import_playbook: playbooks/40-admin-user.yml
+  tags: admin-user
+
+- import_playbook: playbooks/50-cleanup.yml
+  tags: cleanup

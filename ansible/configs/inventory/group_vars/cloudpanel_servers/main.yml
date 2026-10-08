@@ -1,0 +1,181 @@
+---
+# =============================================================================
+# group_vars/cloudpanel_servers/main.yml
+# Example Music Limited — CloudPanel defaults + database-engine install matrix
+# =============================================================================
+# Every value below is transcribed directly from CloudPanel's own real
+# installer (checksum-verified before conversion, 2026-10-07):
+#   curl -sS https://installer.cloudpanel.io/ce/v2/install.sh -o install.sh
+#   sha256sum: 8146dbe0a488e7088b04071b0c34d59aa0ab1fe9dcec382d395fd155c9e6c476
+# Nothing here is invented -- every repo URL, package name, and GPG key URL
+# matches that script's own checkDatabaseEngine()/installMySQL() functions
+# exactly. See ansible/playbooks/cloudpanel/README.md for the full mapping
+# back to the original script's function names.
+# =============================================================================
+# Changelog:
+#   2026-10-07  Added cloudpanel_admin_* defaults for playbooks/40-admin-user.yml
+#               (clpctl user:add) -- Robert's ask: wire the admin account CloudPanel
+#               itself has no automated-creation story for (the real first-run flow is
+#               browsing to https://<ip>:8443 and filling in a form) into KeePass, same
+#               check-defer-write pattern as every other in-scope credential
+#               (ansible/tasks/keepass_credential_sync.yml). clpctl user:add IS real and
+#               confirmed (cloudpanel.io/docs/v2/cloudpanel-cli/root-user-commands/) --
+#               Robert's own guess (curl against the web UI) wasn't quite right, but the
+#               real mechanism turned out even simpler: a root-local CLI command, no HTTP
+#               involved at all.
+#   2026-10-07  Initial file. Robert's ask: convert CloudPanel's install.sh to
+#               a proper Ansible playbook family, following the script's own
+#               chronology.
+# =============================================================================
+
+# -- CloudPanel admin account -- playbooks/40-admin-user.yml, clpctl user:add -----
+# Confirmed real via CloudPanel's own docs (cloudpanel.io/docs/v2/cloudpanel-cli/
+# root-user-commands/), not guessed: user:add's --role/--timezone/--status are all
+# required flags, not optional -- defaults below are sensible, not fabricated personal
+# data (this is a service account, not a real person).
+cloudpanel_admin_username: "admin"
+cloudpanel_admin_email: "admin@{{ exa_domain }}"
+cloudpanel_admin_first_name: "CloudPanel"
+cloudpanel_admin_last_name: "Admin"
+cloudpanel_admin_timezone: "UTC"
+
+# -- Top-level knobs -- matches install.sh's own DB_ENGINE/SWAP env vars ------
+cloudpanel_db_engine: "MYSQL_8.4"   # install.sh's own default when DB_ENGINE is unset
+cloudpanel_swap_enabled: true        # install.sh's own default when SWAP is unset
+cloudpanel_swap_file: /home/.swap
+cloudpanel_swap_size_mb: 2048
+
+# install.sh's checkRootPartitionSize() -- 6000000 KB, i.e. 6GB, hardcoded in the
+# original script
+cloudpanel_min_root_free_kb: 6000000
+
+# install.sh's checkPortConflicts() -- lsof -i:80 -i:443 -i:3306
+cloudpanel_conflict_ports:
+  - 80
+  - 443
+  - 3306
+
+# -- CloudPanel's own apt repo -- install.sh's addAptSourceList() ------------
+# ARCH-dependent ORIGIN, confirmed from the real script (arm64 gets its own
+# mirror host, everything else shares the x86_64 one).
+cloudpanel_apt_origin_amd64: "d17k9fuiwb52nc.cloudfront.net"
+cloudpanel_apt_origin_arm64: "d2xpdm4jldf31f.cloudfront.net"
+cloudpanel_apt_key_url: "https://d17k9fuiwb52nc.cloudfront.net/key.gpg"
+# Every component CloudPanel's own repo carries, per install.sh's own
+# CLOUDPANEL_SOURCE_LIST heredoc -- main is the one this playbook actually
+# installs from directly; the rest (nginx/php-*/proftpd/varnish-7) are pulled
+# in by the cloudpanel package's own dependencies, not installed individually
+# here, same as the original script never does either.
+cloudpanel_apt_components:
+  - main
+  - nginx
+  - php-7.1
+  - php-7.2
+  - php-7.3
+  - php-7.4
+  - php-8.0
+  - php-8.1
+  - php-8.2
+  - php-8.3
+  - php-8.4
+  - php-8.5
+  - proftpd
+  - varnish-7
+
+# -- MariaDB's own official repo -- used by every "mariadb_org_repo" entry below
+cloudpanel_mariadb_key_url: "https://mariadb.org/mariadb_release_signing_key.asc"
+
+# Identical in every install.sh case that needs it (MariaDB 11.4/11.8/12.3 on
+# Debian, 11.8/12.3 on Ubuntu -- NOT 11.4 on Ubuntu, see the matrix below) --
+# defined once here instead of repeating the same 25 lines per matrix entry.
+# mysql -> mariadb-* symlinks, needed because CloudPanel's own tooling (and a
+# lot of PHP apps) still shell out to the mysql* binary names.
+cloudpanel_mariadb_symlinks:
+  - { src: /usr/bin/mariadb,                         dest: /usr/bin/mysql }
+  - { src: /usr/bin/mariadb-access,                  dest: /usr/bin/mysqlaccess }
+  - { src: /usr/bin/mariadb-admin,                   dest: /usr/bin/mysqladmin }
+  - { src: /usr/bin/mariadb-check,                   dest: /usr/bin/mysqlanalyze }
+  - { src: /usr/bin/mariadb-binlog,                  dest: /usr/bin/mysqlbinlog }
+  - { src: /usr/bin/mariadb-check,                   dest: /usr/bin/mysqlcheck }
+  - { src: /usr/bin/mariadb-convert-table-format,     dest: /usr/bin/mysql_convert_table_format }
+  - { src: /usr/bin/mariadbd-multi,                  dest: /usr/bin/mysqld_multi }
+  - { src: /usr/bin/mariadbd-safe,                   dest: /usr/bin/mysqld_safe }
+  - { src: /usr/bin/mariadbd-safe-helper,            dest: /usr/bin/mysqld_safe_helper }
+  - { src: /usr/bin/mariadb-dump,                     dest: /usr/bin/mysqldump }
+  - { src: /usr/bin/mariadb-dumpslow,                 dest: /usr/bin/mysqldumpslow }
+  - { src: /usr/bin/mariadb-find-rows,                dest: /usr/bin/mysql_find_rows }
+  - { src: /usr/bin/mariadb-fix-extensions,           dest: /usr/bin/mysql_fix_extensions }
+  - { src: /usr/bin/mariadb-hotcopy,                  dest: /usr/bin/mysqlhotcopy }
+  - { src: /usr/bin/mariadb-import,                   dest: /usr/bin/mysqlimport }
+  - { src: /usr/bin/mariadb-install-db,               dest: /usr/bin/mysql_install_db }
+  - { src: /usr/bin/mariadb-check,                    dest: /usr/bin/mysqloptimize }
+  - { src: /usr/bin/mariadb-plugin,                   dest: /usr/bin/mysql_plugin }
+  - { src: /usr/bin/mariadb-check,                    dest: /usr/bin/mysqlrepair }
+  - { src: /usr/bin/mariadb-report,                   dest: /usr/bin/mysqlreport }
+  - { src: /usr/bin/mariadb-secure-installation,      dest: /usr/bin/mysql_secure_installation }
+  - { src: /usr/bin/mariadb-setpermission,            dest: /usr/bin/mysql_setpermission }
+  - { src: /usr/bin/mariadb-show,                     dest: /usr/bin/mysqlshow }
+  - { src: /usr/bin/mariadb-slap,                     dest: /usr/bin/mysqlslap }
+  - { src: /usr/bin/mariadb-tzinfo-to-sql,            dest: /usr/bin/mysql_tzinfo_to_sql }
+  - { src: /usr/bin/mariadb-upgrade,                  dest: /usr/bin/mysql_upgrade }
+  - { src: /usr/bin/mariadb-waitpid,                  dest: /usr/bin/mysql_waitpid }
+
+# -- Database engine install matrix -- install.sh's installMySQL()/checkDatabaseEngine() --
+# One entry per (os_name, os_version, db_engine) combination the real script supports.
+# "mechanism" tells 20-database.yml which task block to run:
+#   cloudpanel_repo     -- one-line sources.list.d entry against CloudPanel's OWN apt
+#                           repo (already added for the "main" component), a
+#                           percona-server-server-X.Y component specifically
+#   percona_release_deb -- download+dpkg -i percona's own percona-release .deb, then
+#                           `percona-release enable-only ps-84-lts release` +
+#                           `percona-release enable tools release`, then apt install
+#   mariadb_org_repo    -- mariadb.org's own official repo, codename-specific
+#   native_apt           -- no custom repo at all, straight from the OS's own repos
+#
+# Real, deliberate asymmetry preserved exactly as the original script has it, not
+# "fixed": MariaDB 11.4 gets the mysql->mariadb symlinks on Debian (12) but NOT on
+# Ubuntu (22.04 or 24.04) -- confirmed by reading install.sh's own installMySQL()
+# directly, not assumed to be consistent across OSes.
+cloudpanel_db_matrix:
+  # ---- Debian 11 (bullseye) ----
+  - { os_name: Debian, os_version: "11", db_engine: MYSQL_5.7,     mechanism: cloudpanel_repo,     repo_component: percona-server-server-5.7, packages: [percona-server-client-5.7, percona-server-server-5.7], needs_symlinks: false }
+  - { os_name: Debian, os_version: "11", db_engine: MYSQL_8.0,     mechanism: cloudpanel_repo,     repo_component: percona-server-server-8.0, packages: [percona-server-client, percona-server-server], needs_symlinks: false }
+  - { os_name: Debian, os_version: "11", db_engine: MARIADB_10.6,  mechanism: mariadb_org_repo,    mariadb_series: "10.6",  repo_codename: bullseye, packages: [mariadb-server], needs_symlinks: false }
+  - { os_name: Debian, os_version: "11", db_engine: MARIADB_10.11, mechanism: mariadb_org_repo,    mariadb_series: "10.11", repo_codename: bullseye, packages: [mariadb-server], needs_symlinks: false }
+  - { os_name: Debian, os_version: "11", db_engine: MARIADB_11.4,  mechanism: mariadb_org_repo,    mariadb_series: "11.4",  repo_codename: bullseye, packages: [mariadb-server], needs_symlinks: true }
+  - { os_name: Debian, os_version: "11", db_engine: MARIADB_11.8,  mechanism: mariadb_org_repo,    mariadb_series: "11.8",  repo_codename: bullseye, packages: [mariadb-server], needs_symlinks: true }
+
+  # ---- Debian 12 (bookworm) ----
+  - { os_name: Debian, os_version: "12", db_engine: MYSQL_8.4,     mechanism: percona_release_deb, packages: [percona-server-server], needs_symlinks: false }
+  - { os_name: Debian, os_version: "12", db_engine: MYSQL_8.0,     mechanism: cloudpanel_repo,     repo_component: percona-server-server-8.0, packages: [percona-server-client, percona-server-server], needs_symlinks: false }
+  - { os_name: Debian, os_version: "12", db_engine: MARIADB_10.11, mechanism: native_apt,          packages: [mariadb-server], needs_symlinks: false }
+  - { os_name: Debian, os_version: "12", db_engine: MARIADB_11.4,  mechanism: mariadb_org_repo,    mariadb_series: "11.4",  repo_codename: bookworm, packages: [mariadb-server], needs_symlinks: true }
+  - { os_name: Debian, os_version: "12", db_engine: MARIADB_11.8,  mechanism: mariadb_org_repo,    mariadb_series: "11.8",  repo_codename: bookworm, packages: [mariadb-server], needs_symlinks: true }
+  - { os_name: Debian, os_version: "12", db_engine: MARIADB_12.3,  mechanism: mariadb_org_repo,    mariadb_series: "12.3",  repo_codename: bookworm, packages: [mariadb-server], needs_symlinks: true }
+
+  # ---- Debian 13 (trixie) ----
+  - { os_name: Debian, os_version: "13", db_engine: MYSQL_8.4,     mechanism: percona_release_deb, packages: [percona-server-server], needs_symlinks: false }
+  - { os_name: Debian, os_version: "13", db_engine: MYSQL_8.0,     mechanism: cloudpanel_repo,     repo_component: percona-server-server-8.0, packages: [percona-server-client, percona-server-server], needs_symlinks: false }
+  - { os_name: Debian, os_version: "13", db_engine: MARIADB_11.8,  mechanism: mariadb_org_repo,    mariadb_series: "11.8",  repo_codename: trixie, packages: [mariadb-server], needs_symlinks: true }
+  - { os_name: Debian, os_version: "13", db_engine: MARIADB_12.3,  mechanism: mariadb_org_repo,    mariadb_series: "12.3",  repo_codename: trixie, packages: [mariadb-server], needs_symlinks: true }
+
+  # ---- Ubuntu 22.04 (jammy) ----
+  - { os_name: Ubuntu, os_version: "22.04", db_engine: MYSQL_8.0,     mechanism: native_apt,       packages: [mysql-client-8.0, mysql-server-8.0], needs_symlinks: false }
+  - { os_name: Ubuntu, os_version: "22.04", db_engine: MARIADB_10.6,  mechanism: native_apt,       packages: [mariadb-server], needs_symlinks: false }
+  - { os_name: Ubuntu, os_version: "22.04", db_engine: MARIADB_10.11, mechanism: mariadb_org_repo, mariadb_series: "10.11", repo_codename: jammy, packages: [mariadb-server], needs_symlinks: false }
+  - { os_name: Ubuntu, os_version: "22.04", db_engine: MARIADB_11.4,  mechanism: mariadb_org_repo, mariadb_series: "11.4",  repo_codename: jammy, packages: [mariadb-server], needs_symlinks: false }
+  - { os_name: Ubuntu, os_version: "22.04", db_engine: MARIADB_11.8,  mechanism: mariadb_org_repo, mariadb_series: "11.8",  repo_codename: jammy, packages: [mariadb-server], needs_symlinks: true }
+
+  # ---- Ubuntu 24.04 (noble) ----
+  - { os_name: Ubuntu, os_version: "24.04", db_engine: MYSQL_8.4,     mechanism: percona_release_deb, packages: [percona-server-server], needs_symlinks: false }
+  - { os_name: Ubuntu, os_version: "24.04", db_engine: MYSQL_8.0,     mechanism: cloudpanel_repo,     repo_component: percona-server-server-8.0, packages: [percona-server-client, percona-server-server], needs_symlinks: false }
+  - { os_name: Ubuntu, os_version: "24.04", db_engine: MARIADB_10.11, mechanism: native_apt,          packages: [mariadb-server], needs_symlinks: false }
+  - { os_name: Ubuntu, os_version: "24.04", db_engine: MARIADB_11.4,  mechanism: mariadb_org_repo,    mariadb_series: "11.4",  repo_codename: noble, packages: [mariadb-server], needs_symlinks: false }
+  - { os_name: Ubuntu, os_version: "24.04", db_engine: MARIADB_11.8,  mechanism: mariadb_org_repo,    mariadb_series: "11.8",  repo_codename: noble, packages: [mariadb-server], needs_symlinks: true }
+  - { os_name: Ubuntu, os_version: "24.04", db_engine: MARIADB_12.3,  mechanism: mariadb_org_repo,    mariadb_series: "12.3",  repo_codename: noble, packages: [mariadb-server], needs_symlinks: true }
+
+  # ---- Ubuntu 26.04 (codename not yet known upstream -- install.sh itself uses
+  #      $OS_CODE_NAME dynamically here rather than a hardcoded name, same as below) ----
+  - { os_name: Ubuntu, os_version: "26.04", db_engine: MYSQL_8.4,     mechanism: native_apt,       packages: [mysql-client, mysql-server], needs_symlinks: false }
+  - { os_name: Ubuntu, os_version: "26.04", db_engine: MARIADB_11.8,  mechanism: mariadb_org_repo, mariadb_series: "11.8",  repo_codename: "{{ ansible_distribution_release }}", packages: [mariadb-server], needs_symlinks: true }
+  - { os_name: Ubuntu, os_version: "26.04", db_engine: MARIADB_12.3,  mechanism: mariadb_org_repo, mariadb_series: "12.3",  repo_codename: "{{ ansible_distribution_release }}", packages: [mariadb-server], needs_symlinks: true }

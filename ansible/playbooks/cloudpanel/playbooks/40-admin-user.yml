@@ -1,0 +1,169 @@
+---
+# =============================================================================
+# playbooks/40-admin-user.yml
+# Example Music Limited — CloudPanel admin account + KeePass sync
+# =============================================================================
+# NOT a conversion of anything in the original install.sh -- that script has no
+# admin-account creation of its own at all. CloudPanel's real first-run flow is
+# manual: browse to https://<ip>:8443 and fill in a form. Robert's ask,
+# 2026-10-07: automate that account creation and file the resulting credential
+# into KeePass, same check-defer-write pattern as every other in-scope
+# credential (ansible/tasks/keepass_credential_sync.yml).
+#
+# Real mechanism, confirmed via CloudPanel's own docs
+# (cloudpanel.io/docs/v2/cloudpanel-cli/root-user-commands/) before writing
+# this, not guessed -- Robert's own instinct (curl against the web UI) wasn't
+# quite right, but the actual answer is even simpler: `clpctl user:add`, a
+# root-local CLI command, no HTTP request involved at all.
+#   clpctl user:add --userName='...' --email='...' --firstName='...' \
+#     --lastName='...' --password='...' --role='admin' --timezone='...' \
+#     --status='1'
+#
+# clpctl user:list exists and is used here to check whether the account
+# already exists BEFORE calling user:add -- the real behaviour of user:add
+# against an existing username (error vs silent update vs duplicate) isn't
+# documented anywhere findable, so this sidesteps that unknown entirely
+# rather than relying on it, same "verify, don't guess" discipline as the
+# rest of this estate.
+#
+# Also wires up `clpctl db:show:master-credentials` -- CloudPanel generates
+# its own MySQL/MariaDB master account during the cloudpanel package install
+# (20-database.yml), a second real credential this service produces that
+# Robert didn't explicitly ask about but is the same category of gap.
+# *** The exact output format of db:show:master-credentials is NOT
+# independently confirmed here *** -- docs confirm it shows Host/User Name/
+# Password/Port/a Connect Command, but not the precise text layout. The
+# parsing regex below is a reasonable first attempt, clearly flagged, not
+# presented as verified -- needs a real run against a real box to confirm,
+# same as the font-naming work earlier this week.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/cloudpanel/playbooks/40-admin-user.yml --limit <host>
+#
+# Tags: admin-user
+# =============================================================================
+# Changelog:
+#   2026-10-07  Initial file. Robert's ask.
+# =============================================================================
+
+- name: CloudPanel — Admin account + KeePass sync
+  hosts: cloudpanel_servers
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    - name: Include hostname facts
+      include_tasks: ../../../tasks/hostname_facts.yml
+      tags: admin-user
+
+    # ======================================================================
+    # Admin account password -- check-defer-write against KeePass, generate
+    # if nothing exists anywhere (this is a brand new account, there's no
+    # pre-existing value to defer to on a first run).
+    # ======================================================================
+
+    - name: "[Admin] KeePass sync — admin account password"
+      include_tasks: ../../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root: "{{ playbook_dir }}/../../../.."
+        kcs_keepass_path: "Infrastructure/{{ host_site }}/{{ inventory_hostname }}-cloudpanel-admin"
+        kcs_username: "{{ cloudpanel_admin_username }}"
+        kcs_current_value: ""
+        kcs_can_generate: true
+        kcs_generate_length: 24
+        kcs_credentials_json_role: "CLOUDPANEL"
+        kcs_result_var: clp_admin_password
+      tags: admin-user
+
+    # ======================================================================
+    # Create the account itself, only if it doesn't already exist --
+    # idempotent by checking first, not by relying on user:add's own
+    # (unconfirmed) behaviour against a duplicate username.
+    # ======================================================================
+
+    - name: "[Admin] List existing CloudPanel users"
+      ansible.builtin.command: clpctl user:list
+      register: clp_user_list
+      changed_when: false
+      tags: admin-user
+
+    - name: "[Admin] Create the admin account (clpctl user:add)"
+      ansible.builtin.command: >
+        clpctl user:add
+        --userName="{{ cloudpanel_admin_username }}"
+        --email="{{ cloudpanel_admin_email }}"
+        --firstName="{{ cloudpanel_admin_first_name }}"
+        --lastName="{{ cloudpanel_admin_last_name }}"
+        --password="{{ clp_admin_password }}"
+        --role="admin"
+        --timezone="{{ cloudpanel_admin_timezone }}"
+        --status="1"
+      no_log: true
+      when: cloudpanel_admin_username not in clp_user_list.stdout
+      tags: admin-user
+
+    - name: "[Admin] Admin account summary"
+      debug:
+        msg: "CloudPanel admin account '{{ cloudpanel_admin_username }}' -- password filed in KeePass at Infrastructure/{{ host_site }}/{{ inventory_hostname }}-cloudpanel-admin"
+      tags: admin-user
+
+    # ======================================================================
+    # Database master credentials -- CloudPanel generates this itself during
+    # install (20-database.yml); this retrieves and files it, it does NOT
+    # generate anything (kcs_can_generate: false -- there's nothing for
+    # Ansible to generate here, only something to go and read).
+    # ======================================================================
+
+    - name: "[Admin] Retrieve the database master credentials"
+      ansible.builtin.command: clpctl db:show:master-credentials
+      register: clp_db_master_raw
+      changed_when: false
+      no_log: true
+      tags: admin-user
+
+    # *** UNVERIFIED output format -- see this file's own header *** --
+    # reasonable-attempt regex, not confirmed against a real box. Excludes "|"
+    # from the captured value deliberately -- tested locally against a plain
+    # "Password: x" format, a padded "Password       : x" format, and a
+    # box-drawn ASCII table format (a plausible CLI output style this hasn't
+    # been confirmed to use or not use) -- an earlier, simpler version of this
+    # regex silently captured a bare "|" instead of failing against that last
+    # one, which would have filed garbage into KeePass rather than failing
+    # loudly. Still needs confirming against the REAL output, this only proves
+    # the regex behaves sanely against several plausible guesses at it.
+    - name: "[Admin] Parse the master password out of clpctl's output"
+      set_fact:
+        clp_db_master_password: "{{ clp_db_master_raw.stdout | regex_search('Password\\s*[:|]?\\s*([^\\s|]+)', '\\1') | first | default('') }}"
+      no_log: true
+      tags: admin-user
+
+    - name: "[Admin] FAIL — could not parse the database master password"
+      fail:
+        msg: >
+          clpctl db:show:master-credentials ran successfully but the password could not
+          be parsed out of its output with the regex this file currently uses -- the
+          real output format was never independently confirmed (see this file's own
+          header). Run `clpctl db:show:master-credentials` by hand, paste the real
+          output back, and the regex above needs correcting to match it exactly.
+      when: clp_db_master_password == ''
+      tags: admin-user
+
+    - name: "[Admin] KeePass sync — database master credentials"
+      include_tasks: ../../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root: "{{ playbook_dir }}/../../../.."
+        kcs_keepass_path: "Infrastructure/{{ host_site }}/{{ inventory_hostname }}-cloudpanel-db-master"
+        kcs_username: "cloudpanel-db-master"
+        kcs_current_value: "{{ clp_db_master_password }}"
+        kcs_can_generate: false
+        kcs_credentials_json_role: "CLOUDPANEL"
+        kcs_result_var: clp_db_master_password_synced
+      when: clp_db_master_password != ''
+      tags: admin-user
+
+    - name: "[Admin] Database master credentials summary"
+      debug:
+        msg: "CloudPanel database master credentials filed in KeePass at Infrastructure/{{ host_site }}/{{ inventory_hostname }}-cloudpanel-db-master"
+      when: clp_db_master_password != ''
+      tags: admin-user

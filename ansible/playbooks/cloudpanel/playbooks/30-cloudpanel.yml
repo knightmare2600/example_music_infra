@@ -1,0 +1,57 @@
+---
+# =============================================================================
+# playbooks/30-cloudpanel.yml
+# Example Music Limited — CloudPanel install
+# =============================================================================
+# Ansible conversion of install.sh's setupCloudPanel() + showSuccessMessage().
+#
+# ONE DELIBERATE DEVIATION from the original script, flagged plainly rather
+# than silently changed: install.sh's own setIp() calls out to a public
+# CloudFront endpoint (https://d3qnd54q8gb3je.cloudfront.net/) purely to learn
+# this box's own PUBLIC IP, for display in the final access-URL message --
+# CloudPanel itself never uses that value for anything functional (it binds
+# 0.0.0.0:8443 regardless). On this estate (jukebox.internal, VRK/WAN
+# addressing, no public-facing boxes by default) that's both the wrong
+# address to show AND an unnecessary external dependency for a cosmetic
+# message. Uses ansible_host (the address Ansible is actually managing this
+# box over) instead -- say if a different address should be shown here.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/cloudpanel/playbooks/30-cloudpanel.yml --limit <host>
+#
+# Tags: install
+# =============================================================================
+# Changelog:
+#   2026-10-07  Initial file. Converted from CloudPanel's own install.sh,
+#               Robert's ask.
+# =============================================================================
+
+- name: CloudPanel — Install
+  hosts: cloudpanel_servers
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    - name: "[Install] Install CloudPanel"
+      ansible.builtin.apt:
+        name: cloudpanel
+        state: present
+        dpkg_options: "force-overwrite"
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      tags: install
+
+    - name: "[Install] Assert CloudPanel is actually listening on 8443"
+      ansible.builtin.wait_for:
+        port: 8443
+        state: started
+        timeout: 60
+      tags: install
+
+    - name: "[Install] Show access URL"
+      debug:
+        msg:
+          - "The installation of CloudPanel is complete!"
+          - "CloudPanel can be accessed now: https://{{ ansible_host | default(inventory_hostname) }}:8443"
+      tags: install

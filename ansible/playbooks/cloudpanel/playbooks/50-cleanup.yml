@@ -1,0 +1,37 @@
+---
+# =============================================================================
+# playbooks/50-cleanup.yml
+# Example Music Limited — CloudPanel cleanup
+# =============================================================================
+# Ansible conversion of install.sh's cleanUp() -- the final step in the
+# original script's own call order (setOSInfo -> checkRequirements -> setIp
+# -> setupRequiredPackages -> generateLocales -> removeUnnecessaryPackages ->
+# installMySQL -> setupCloudPanel -> cleanUp).
+#
+# history -c has no real Ansible equivalent worth reaching for -- it clears
+# the INTERACTIVE shell history of whatever session happened to run the
+# installer by hand, which doesn't apply to a task executed over SSH in the
+# first place. Not reproduced; apt clean is the one part of this that
+# actually does something regardless of how the box got here.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/cloudpanel/playbooks/50-cleanup.yml --limit <host>
+#
+# Tags: cleanup
+# =============================================================================
+# Changelog:
+#   2026-10-07  Initial file. Converted from CloudPanel's own install.sh,
+#               Robert's ask.
+# =============================================================================
+
+- name: CloudPanel — Cleanup
+  hosts: cloudpanel_servers
+  become: true
+  gather_facts: false
+
+  tasks:
+
+    - name: "[Cleanup] apt clean"
+      ansible.builtin.command: apt clean
+      changed_when: true
+      tags: cleanup
