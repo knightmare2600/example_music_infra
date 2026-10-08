@@ -13,9 +13,24 @@
 #   2026-06-29  Fix | default placement — must wrap list before | first
 #   2026-06-29  Use target_hostname > ansible_hostname > inventory_hostname
 #               so bare-IP inventory runs parse the correct hostname
+#   2026-10-08  Tagged the two real tasks `always` directly. Proxmox's
+#               00-preflight.yml tags its own include_tasks call
+#               `[preflight, always]` on the (correct) assumption that a
+#               narrow --tags run (e.g. --tags pools) still needs host_site
+#               for 30-example-music.yml's always-tagged nodeinfo write --
+#               but tags on the include statement don't propagate to
+#               untagged children for a dynamic include_tasks, confirmed on
+#               real ansible-core (same root cause already documented in
+#               nodeinfo_environment.yml's own 2026-07-26 changelog entry,
+#               which this reproduces independently). Reproduced live,
+#               2026-10-08: `--tags pools` against EXAPVEVRK001 still failed
+#               with "'host_site' is undefined" even after the include-line
+#               tag fix landed. Each task needs `always` directly, same as
+#               that file's own fix.
 # =============================================================================
 
 - name: Parse role from hostname
+  tags: always
   set_fact:
     host_role: >-
       {{ (target_hostname | default(ansible_hostname | default(inventory_hostname)))
@@ -34,6 +49,7 @@
          | default(['001']) | first }}
 
 - name: Validate hostname convention
+  tags: always
   assert:
     that:
       - host_role != 'UNKNOWN'
