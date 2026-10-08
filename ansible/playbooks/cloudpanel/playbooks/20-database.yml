@@ -1,0 +1,206 @@
+---
+# =============================================================================
+# playbooks/20-database.yml
+# Example Music Limited — CloudPanel apt repo + database engine
+# =============================================================================
+# Ansible conversion of install.sh's addAptSourceList() + installMySQL().
+#
+# installMySQL()'s own ~400-line nested case statement (Debian 11/12/13 x
+# Ubuntu 22.04/24.04/26.04, each against up to 6 database engine options) is
+# replaced by one lookup against group_vars/cloudpanel_servers/main.yml's
+# cloudpanel_db_matrix (the same matrix 00-preflight.yml already validated
+# against) and four generic task blocks, one per real "mechanism" the
+# original script actually uses:
+#   cloudpanel_repo     -- CloudPanel's own apt repo, percona-server-server-X.Y
+#                           component
+#   percona_release_deb -- Percona's own percona-release .deb bootstrap
+#   mariadb_org_repo    -- MariaDB's own official repo
+#   native_apt           -- no custom repo, straight from the OS's own repos
+# Every URL/package name below is transcribed directly from the real script,
+# nothing invented -- see group_vars/cloudpanel_servers/main.yml's own header
+# for the checksum this was converted from.
+#
+# Self-contained deliberately -- re-derives clp_db_recipe fresh rather than
+# assuming 00-preflight.yml ran earlier in the same invocation, same
+# "redundant re-parsing is cheap, safe to call standalone" pattern this
+# repo's other services already use (e.g. nodeinfo_windows.yml).
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/cloudpanel/playbooks/20-database.yml --limit <host>
+#
+# Tags: database
+# =============================================================================
+# Changelog:
+#   2026-10-07  Initial file. Converted from CloudPanel's own install.sh,
+#               Robert's ask.
+# =============================================================================
+
+- name: CloudPanel — Apt repo + database engine
+  hosts: cloudpanel_servers
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    - name: "[Database] Re-derive the database recipe for this OS/version/engine"
+      set_fact:
+        clp_db_recipe: >-
+          {{ cloudpanel_db_matrix
+             | selectattr('os_name', 'equalto', ansible_distribution)
+             | selectattr('os_version', 'equalto', ansible_distribution_version)
+             | selectattr('db_engine', 'equalto', cloudpanel_db_engine)
+             | list | first | default({}) }}
+      tags: database
+
+    - name: "[Database] Assert a matching recipe was found (same check as 00-preflight.yml)"
+      assert:
+        that:
+          - clp_db_recipe != {}
+        fail_msg: >-
+          Database Engine {{ cloudpanel_db_engine }} is not supported on
+          {{ ansible_distribution }} {{ ansible_distribution_version }} --
+          run 00-preflight.yml first, it checks this same thing before
+          anything is touched.
+      tags: database
+
+    - name: "[Database] Resolve CloudPanel apt origin for this architecture"
+      set_fact:
+        clp_apt_origin: "{{ cloudpanel_apt_origin_arm64 if ansible_architecture == 'aarch64' else cloudpanel_apt_origin_amd64 }}"
+      tags: database
+
+    # ======================================================================
+    # addAptSourceList() -- CloudPanel's own apt repo, always added regardless
+    # of which database engine mechanism is actually used below (several
+    # mechanisms depend on it already being present: cloudpanel_repo directly,
+    # and setupCloudPanel in 30-cloudpanel.yml needs it for the cloudpanel
+    # package itself).
+    # ======================================================================
+
+    - name: "[Database] Fetch + dearmor CloudPanel's apt signing key"
+      ansible.builtin.shell: >
+        curl -fsSL {{ cloudpanel_apt_key_url }}
+        | gpg --yes --dearmor -o /etc/apt/trusted.gpg.d/cloudpanel-keyring.gpg
+      args:
+        creates: /etc/apt/trusted.gpg.d/cloudpanel-keyring.gpg
+      tags: database
+
+    - name: "[Database] Write CloudPanel apt sources list"
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/packages.cloudpanel.io.list
+        content: |
+          {% for component in cloudpanel_apt_components %}
+          deb https://{{ clp_apt_origin }}/ {{ ansible_distribution_release }} {{ component }}
+          {% endfor %}
+        mode: "0644"
+      tags: database
+
+    - name: "[Database] Write CloudPanel apt pin preferences"
+      ansible.builtin.copy:
+        dest: /etc/apt/preferences.d/00packages.cloudpanel.io.pref
+        content: |
+          Package: *
+          Pin: origin {{ clp_apt_origin }}
+          Pin-Priority: 1000
+        mode: "0644"
+      tags: database
+
+    - name: "[Database] apt update (CloudPanel repo added)"
+      ansible.builtin.apt:
+        update_cache: true
+      tags: database
+
+    # ======================================================================
+    # installMySQL() -- one block per real mechanism, driven by clp_db_recipe
+    # ======================================================================
+
+    # -- mechanism: cloudpanel_repo --
+    - name: "[Database] Write CloudPanel-hosted database repo entry"
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/percona-mysql.list
+        content: "deb https://{{ clp_apt_origin }}/ {{ ansible_distribution_release }} {{ clp_db_recipe.repo_component }}\n"
+        mode: "0644"
+      when: clp_db_recipe.mechanism == 'cloudpanel_repo'
+      tags: database
+
+    # -- mechanism: percona_release_deb --
+    - name: "[Database] Download Percona's own percona-release .deb"
+      ansible.builtin.get_url:
+        url: https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+        dest: /tmp/percona-release_latest.generic_all.deb
+        mode: "0644"
+      when: clp_db_recipe.mechanism == 'percona_release_deb'
+      tags: database
+
+    - name: "[Database] Install percona-release"
+      ansible.builtin.apt:
+        deb: /tmp/percona-release_latest.generic_all.deb
+      when: clp_db_recipe.mechanism == 'percona_release_deb'
+      tags: database
+
+    - name: "[Database] Enable Percona's ps-84-lts + tools repos"
+      ansible.builtin.command: "percona-release {{ item }}"
+      loop:
+        - "enable-only ps-84-lts release"
+        - "enable tools release"
+      changed_when: true
+      when: clp_db_recipe.mechanism == 'percona_release_deb'
+      tags: database
+
+    - name: "[Database] Remove the downloaded percona-release .deb"
+      ansible.builtin.file:
+        path: /tmp/percona-release_latest.generic_all.deb
+        state: absent
+      when: clp_db_recipe.mechanism == 'percona_release_deb'
+      tags: database
+
+    # -- mechanism: mariadb_org_repo --
+    - name: "[Database] Fetch + dearmor MariaDB's apt signing key"
+      ansible.builtin.shell: >
+        wget -qO- {{ cloudpanel_mariadb_key_url }}
+        | gpg --dearmor > /etc/apt/trusted.gpg.d/mariadb.gpg
+      args:
+        creates: /etc/apt/trusted.gpg.d/mariadb.gpg
+      when: clp_db_recipe.mechanism == 'mariadb_org_repo'
+      tags: database
+
+    - name: "[Database] Write MariaDB's official apt repo entry"
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/mariadb.list
+        content: >-
+          deb [arch=amd64,arm64]
+          https://mirror.mariadb.org/repo/{{ clp_db_recipe.mariadb_series }}/{{ ansible_distribution | lower }}
+          {{ clp_db_recipe.repo_codename }} main
+        mode: "0644"
+      when: clp_db_recipe.mechanism == 'mariadb_org_repo'
+      tags: database
+
+    # -- apt update is needed before EVERY mechanism except native_apt installs
+    #    its very first package, but running it unconditionally once more here
+    #    is cheap and simpler than threading a per-mechanism skip through --
+    - name: "[Database] apt update (database repo added, if any)"
+      ansible.builtin.apt:
+        update_cache: true
+      tags: database
+
+    - name: "[Database] Install the database engine packages"
+      ansible.builtin.apt:
+        name: "{{ clp_db_recipe.packages }}"
+        state: present
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      tags: database
+
+    # -- the mysql* -> mariadb-* symlinks, only for the specific MariaDB
+    # versions install.sh itself symlinks (see cloudpanel_mariadb_symlinks'
+    # own header comment for the real, preserved Debian/Ubuntu asymmetry) --
+    - name: "[Database] Create mysql -> mariadb-* compatibility symlinks"
+      ansible.builtin.file:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        state: link
+        force: true
+      loop: "{{ cloudpanel_mariadb_symlinks }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      when: clp_db_recipe.needs_symlinks | default(false)
+      tags: database

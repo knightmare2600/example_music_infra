@@ -1,0 +1,98 @@
+---
+# =============================================================================
+# playbooks/10-packages.yml
+# Example Music Limited — CloudPanel base packages
+# =============================================================================
+# Ansible conversion of install.sh's setupRequiredPackages(), generateLocales(),
+# and removeUnnecessaryPackages() -- run in that exact order, matching the
+# original script's own bottom-of-file call sequence.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/cloudpanel/playbooks/10-packages.yml --limit <host>
+#
+# Tags: packages
+# =============================================================================
+# Changelog:
+#   2026-10-07  Initial file. Converted from CloudPanel's own install.sh,
+#               Robert's ask.
+# =============================================================================
+
+- name: CloudPanel — Base packages
+  hosts: cloudpanel_servers
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    # -- setupRequiredPackages() --
+    - name: "[Packages] apt upgrade (install.sh's own setupRequiredPackages())"
+      ansible.builtin.apt:
+        upgrade: yes
+      tags: packages
+
+    - name: "[Packages] Install required base packages"
+      ansible.builtin.apt:
+        name:
+          - gnupg
+          - gpgv
+          - apt-transport-https
+          - debsums
+          - chrony
+          - redis-server
+        state: present
+      tags: packages
+
+    - name: "[Packages] Install postfix"
+      ansible.builtin.apt:
+        name: postfix
+        state: present
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      tags: packages
+
+    - name: "[Packages] Write dphys-swapfile config"
+      ansible.builtin.copy:
+        dest: /etc/dphys-swapfile
+        content: |
+          CONF_SWAPFILE={{ cloudpanel_swap_file }}
+          CONF_SWAPSIZE={{ cloudpanel_swap_size_mb }}
+          CONF_MAXSWAP={{ cloudpanel_swap_size_mb }}
+        mode: "0644"
+      when: cloudpanel_swap_enabled
+      tags: packages
+
+    - name: "[Packages] Install dphys-swapfile"
+      ansible.builtin.apt:
+        name: dphys-swapfile
+        state: present
+        dpkg_options: "force-confdef,force-confnew"
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      when: cloudpanel_swap_enabled
+      tags: packages
+
+    # -- generateLocales() --
+    - name: "[Packages] Install locales packages"
+      ansible.builtin.apt:
+        name: [locales, locales-all]
+        state: present
+      tags: packages
+
+    - name: "[Packages] Generate en_US / en_US.UTF-8 locales"
+      ansible.builtin.command: "/usr/sbin/locale-gen {{ item }}"
+      loop:
+        - en_US
+        - en_US.UTF-8
+      changed_when: true
+      tags: packages
+
+    # -- removeUnnecessaryPackages() -- install.sh silences this one's output
+    # entirely (&> /dev/null); failed_when: false matches that same
+    # "never let this block the install" intent for a package that may not
+    # even be present to begin with.
+    - name: "[Packages] Purge any pre-existing mysql* packages"
+      ansible.builtin.shell: "apt -y --purge remove 'mysql*'"
+      register: clp_purge_mysql
+      changed_when: "'Removing' in clp_purge_mysql.stdout"
+      failed_when: false
+      tags: packages
