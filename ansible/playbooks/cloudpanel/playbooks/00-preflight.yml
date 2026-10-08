@@ -1,0 +1,164 @@
+---
+# =============================================================================
+# playbooks/00-preflight.yml
+# Example Music Limited — CloudPanel preflight
+# =============================================================================
+# Ansible conversion of install.sh's own setOSInfo() + checkRequirements()
+# (checkOperatingSystem/checkPortConflicts/checkDatabaseEngine/
+# checkIfHostnameResolves/checkRootPartitionSize), plus Robert's own pasted
+# pre-install prerequisite:
+#   apt update && apt -y upgrade && apt -y install curl wget sudo
+#
+# setOSInfo()'s own uname/lsb-release parsing is NOT reproduced here --
+# Ansible's gathered facts already give the same three values directly
+# (ansible_distribution/ansible_distribution_version/ansible_distribution_
+# release), more reliably than re-parsing /etc/os-release by hand.
+#
+# checkDatabaseEngine()'s big per-OS/version case statement is replaced by a
+# single lookup against group_vars/cloudpanel_servers/main.yml's own
+# cloudpanel_db_matrix -- same validation intent (fail before touching
+# anything if this OS/version/engine combination isn't supported), same real
+# supported combinations, just one source of truth instead of re-deriving
+# the check from the same data every time.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/cloudpanel/playbooks/00-preflight.yml --limit <host>
+#
+# Tags: preflight
+# =============================================================================
+# Changelog:
+#   2026-10-07  Initial file. Converted from CloudPanel's own install.sh
+#               (checksum 8146dbe0a488e7088b04071b0c34d59aa0ab1fe9dcec382d395fd155c9e6c476),
+#               Robert's ask.
+# =============================================================================
+
+- name: CloudPanel — Preflight
+  hosts: cloudpanel_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    sites_csv_src: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
+
+  tasks:
+
+    # -- Robert's own pasted prerequisite, run first, before anything else cares
+    #    what OS/version this is --
+    - name: "[Preflight] apt update"
+      ansible.builtin.apt:
+        update_cache: true
+      tags: preflight
+
+    - name: "[Preflight] apt upgrade (full, as explicitly specified)"
+      ansible.builtin.apt:
+        upgrade: full
+      tags: preflight
+
+    - name: "[Preflight] Ensure curl, wget, sudo are present"
+      ansible.builtin.apt:
+        name: [curl, wget, sudo]
+        state: present
+      tags: preflight
+
+    # -- Hostname/site facts, same convention as every other service playbook here --
+    - name: Include hostname facts
+      include_tasks: ../../../tasks/hostname_facts.yml
+      tags: preflight
+
+    - name: Load sites.csv
+      read_csv:
+        path: "{{ sites_csv_src }}"
+      register: clp_sites_raw
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags: preflight
+
+    - name: Look up this node's site row
+      set_fact:
+        clp_site_row: "{{ clp_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
+      tags: preflight
+
+    - name: "[Preflight] Resolve environment"
+      ansible.builtin.include_tasks: ../../../tasks/nodeinfo_environment.yml
+      tags: [preflight, always]
+
+    # -- install.sh's checkOperatingSystem() --
+    - name: "[Preflight] Assert supported OS/version (install.sh's own checkOperatingSystem())"
+      assert:
+        that:
+          - ansible_distribution in ['Debian', 'Ubuntu']
+          - >-
+            (ansible_distribution == 'Debian' and ansible_distribution_version in ['11', '12', '13'])
+            or
+            (ansible_distribution == 'Ubuntu' and ansible_distribution_version in ['22.04', '24.04', '26.04'])
+        fail_msg: >-
+          Unsupported OS: {{ ansible_distribution }} {{ ansible_distribution_version }}.
+          install.sh supports Debian 11/12/13 or Ubuntu 22.04/24.04/26.04 LTS only.
+        success_msg: "OS supported: {{ ansible_distribution }} {{ ansible_distribution_version }} ({{ ansible_distribution_release }})"
+      tags: preflight
+
+    # -- install.sh's checkDatabaseEngine() -- one lookup against the matrix instead
+    #    of re-deriving the same validation from a parallel case statement --
+    - name: "[Preflight] Look up this OS/version/engine in the database matrix"
+      set_fact:
+        clp_db_recipe: >-
+          {{ cloudpanel_db_matrix
+             | selectattr('os_name', 'equalto', ansible_distribution)
+             | selectattr('os_version', 'equalto', ansible_distribution_version)
+             | selectattr('db_engine', 'equalto', cloudpanel_db_engine)
+             | list | first | default({}) }}
+      tags: preflight
+
+    - name: "[Preflight] Assert a matching database-engine recipe was found"
+      assert:
+        that:
+          - clp_db_recipe != {}
+        fail_msg: >-
+          Database Engine {{ cloudpanel_db_engine }} is not supported on
+          {{ ansible_distribution }} {{ ansible_distribution_version }} -- see
+          group_vars/cloudpanel_servers/main.yml's cloudpanel_db_matrix for every
+          combination install.sh itself actually supports.
+        success_msg: "Database Engine {{ cloudpanel_db_engine }} supported via {{ clp_db_recipe.mechanism }}."
+      tags: preflight
+
+    # -- install.sh's checkPortConflicts() -- wait_for's own state:stopped check IS
+    #    "assert nothing is listening", not a wait-for-it-to-start -- a short timeout
+    #    makes it fail fast rather than hang if something genuinely is listening --
+    - name: "[Preflight] Assert ports 80/443/3306 aren't already in use"
+      ansible.builtin.wait_for:
+        port: "{{ item }}"
+        state: stopped
+        timeout: 3
+      loop: "{{ cloudpanel_conflict_ports }}"
+      loop_control:
+        label: "port {{ item }}"
+      tags: preflight
+
+    # -- install.sh's checkIfHostnameResolves() -- same getent mechanism, not a
+    #    from-scratch rewrite --
+    - name: "[Preflight] Check this host's own hostname resolves (getent hosts)"
+      ansible.builtin.command: "getent hosts {{ ansible_hostname }}"
+      register: clp_hostname_resolves
+      changed_when: false
+      failed_when: clp_hostname_resolves.rc != 0 or clp_hostname_resolves.stdout == ""
+      tags: preflight
+
+    # -- install.sh's checkRootPartitionSize() -- 6GB free on / --
+    - name: "[Preflight] Assert enough free space on /"
+      assert:
+        that:
+          - (ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | default(0)) | int
+            >= (cloudpanel_min_root_free_kb * 1024)
+        fail_msg: "At least 6GB of free hard disk space is required on / (install.sh's own checkRootPartitionSize())."
+        success_msg: "Root partition has enough free space."
+      tags: preflight
+
+    - name: Show preflight summary
+      debug:
+        msg:
+          - "Host        : {{ inventory_hostname }} (site={{ host_site }})"
+          - "OS          : {{ ansible_distribution }} {{ ansible_distribution_version }} ({{ ansible_distribution_release }})"
+          - "DB engine   : {{ cloudpanel_db_engine }} (mechanism: {{ clp_db_recipe.mechanism }})"
+          - "Environment : {{ resolved_environment }}"
+      tags: preflight
