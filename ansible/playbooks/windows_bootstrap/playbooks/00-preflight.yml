@@ -1316,6 +1316,16 @@
           Add-MpPreference -ExclusionPath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell_ise.exe" -ErrorAction SilentlyContinue
           Add-MpPreference -ExclusionProcess 'powershell.exe' -ErrorAction SilentlyContinue
           Add-MpPreference -ExclusionProcess 'choco.exe' -ErrorAction SilentlyContinue
+          # Path/process exclusions alone didn't stop this -- confirmed live, 2026-10-08
+          # (Robert, EXADCSDET001): Get-MpThreatDetection showed ThreatID 2147840094
+          # (Trojan:Win32/Commando.A!ml, Defender's Cloud ML heuristic on -encodedcommand
+          # PowerShell invocations) still firing and remediating the process even after
+          # the exclusions above ran and reported changed. Tamper Protection confirmed
+          # off, ruled out separately. Allow the specific ThreatID outright -- Microsoft's
+          # own documented mechanism for a known false-positive detection, rather than
+          # relying on path/process exclusions which don't reliably suppress a Cloud ML
+          # behavioural detection the same way.
+          Set-MpPreference -ThreatIDDefaultAction_Ids 2147840094 -ThreatIDDefaultAction_Actions Allow -ErrorAction SilentlyContinue
           "applied"
         } else {
           "no-defender"
