@@ -242,6 +242,73 @@ The authoritative source for site subnet allocations is `benarbejde/sites.csv` (
 
 This table is also encoded as data in `benarbejde/address_policy.csv` — see [devices.csv is exceptions-only](#devices-csv-is-exceptions-only) above for how it's used.
 
+#### Legal Entities
+
+Every site trades under a real-shaped legal entity (`sites.csv`'s own `Entity` column — the
+authoritative source; this table is a convenience reference, not a second source of truth).
+CLD/FRD/VRK trade directly under the parent `Example Music Limited`, not a local subsidiary —
+see [CLD Special Case](#cld-special-case) below.
+
+| Site | City | Country | Entity |
+|------|------|---------|--------|
+| `AAR` | Aarhus | Denmark | Example Music (Danmark) ApS |
+| `ABD` | Aberdeen | United Kingdom | Example Music (Scotland) Ltd |
+| `AKL` | Auckland | New Zealand | Example Music (New Zealand) Tapui |
+| `AMS` | Amsterdam | Netherlands | Example Music (Nederland) B.V. |
+| `ATL` | Atlanta | United States | Example Music (US) LLC. |
+| `BER` | Berlin | Germany | Example Music (Deutschland) GmbH |
+| `BIR` | Birmingham | United Kingdom | Example Music (England) Ltd |
+| `BON` | Bonn | Germany | Example Music (Deutschland) GmbH |
+| `BRD` | West Berlin (legacy alias for BER) | Germany | Example Music (Deutschland) GmbH |
+| `BRK` | Brockville | Canada | Example Music (Canada) Inc. |
+| `BRT` | Beirut | Lebanon | Example Music (Lebanon) SAL |
+| `CHI` | Chicago | United States | Example Music (US) LLC. |
+| `CLD` | CloudSite | Global | Example Music Limited |
+| `CLY` | Clydebank | United Kingdom | Example Music (Scotland) Ltd |
+| `COV` | Coventry | United Kingdom | Example Music (England) Ltd |
+| `CPH` | Copenhagen | Denmark | Example Music (Danmark) ApS |
+| `DET` | Detroit | United States | Example Music (US) LLC. |
+| `DRS` | Dresden | Germany | Example Music (Deutschland) GmbH |
+| `DUN` | Dundee | United Kingdom | Example Music (Scotland) Ltd |
+| `DUS` | Dusseldorf | Germany | Example Music (Deutschland) GmbH |
+| `EDI` | Edinburgh | United Kingdom | Example Music (Scotland) Ltd |
+| `FAL` | Falkirk | United Kingdom | Example Music (Scotland) Ltd |
+| `FAX` | Faxe | Denmark | Example Music (Danmark) ApS |
+| `FRD` | Fredericia Havn | Denmark | Example Music Limited |
+| `FRE` | Fredericia | Denmark | Example Music (Danmark) ApS |
+| `GLA` | Glasgow | United Kingdom | Example Music (Scotland) Ltd |
+| `GOT` | Gothenburg | Sweden | Example Music (Sverige) AB |
+| `HAL` | Halifax | United Kingdom | Example Music (England) Ltd |
+| `HUL` | Hull | United Kingdom | Example Music (England) Ltd |
+| `KGE` | Koge | Denmark | Example Music (Danmark) ApS |
+| `KNG` | Kingston | Canada | Example Music (Canada) Inc. |
+| `KOR` | Korsor | Denmark | Example Music (Danmark) ApS |
+| `LAX` | Los Angeles | United States | Example Music (US) LLC. |
+| `LIV` | Liverpool | United Kingdom | Example Music (England) Ltd |
+| `LND` | London | United Kingdom | Example Music (England) Ltd |
+| `MCR` | Manchester | United Kingdom | Example Music (England) Ltd |
+| `MEL` | Melbourne | Australia | Example Music (Australia) Pty Ltd |
+| `MIA` | Miami | United States | Example Music (US) LLC. |
+| `MIL` | Milan | Italy | Example Music (Italia) S.p.a. |
+| `MRS` | Marseille | France | Example Music (France) SARL |
+| `MTL` | Montreal | Canada | Example Music (Canada) Inc. |
+| `MUN` | Munich | Germany | Example Music (Deutschland) GmbH |
+| `NEW` | Newcastle | United Kingdom | Example Music (England) Ltd |
+| `NJC` | Camden | United States | Example Music (US) LLC. |
+| `NYB` | Nyborg | Denmark | Example Music (Danmark) ApS |
+| `NYC` | New York City | United States | Example Music (US) LLC. |
+| `ODE` | Odense | Denmark | Example Music (Danmark) ApS |
+| `OSL` | Oslo | Norway | Example Music (Norge) ASA |
+| `PER` | Perth | United Kingdom | Example Music (Scotland) Ltd |
+| `PHI` | Philadelphia | United States | Example Music (US) LLC. |
+| `SEA` | Seattle | United States | Example Music (US) LLC. |
+| `SFO` | San Francisco | United States | Example Music (US) LLC. |
+| `SHE` | Sheffield | United Kingdom | Example Music (England) Ltd |
+| `SYD` | Sydney | Australia | Example Music (Australia) Pty Ltd |
+| `TOR` | Toronto | Canada | Example Music (Canada) Inc. |
+| `VIE` | Vienna | Austria | Example Music (Osterreich) GmbH |
+| `VRK` | VRack | Global | Example Music Limited |
+
 > **`.15` PRV retired 2026-07-19.** It was never real for any ordinary site — confirmed via a
 > real generation run that all 51 non-VRK/FRD sites were getting a synthesized
 > `EXAPRV<SITE>001` DNS record for a device that has never existed; provisioning is genuinely
