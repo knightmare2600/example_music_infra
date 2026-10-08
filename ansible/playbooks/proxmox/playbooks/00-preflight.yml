@@ -171,7 +171,15 @@
 
     - name: Include hostname facts
       include_tasks: ../../../tasks/hostname_facts.yml
-      tags: preflight
+      # Both tags, not just preflight -- 30-example-music.yml's nodeinfo write task is
+      # tags: [example_music, always] specifically so nodeinfo.json stays current no matter
+      # which --tags filter a run uses, but it references host_site directly with no
+      # default() fallback (unlike pve_city/pve_country/pve_entity below, which degrade to
+      # blank on purpose). A narrow run like --tags pools skips this whole play (tags:
+      # preflight) entirely, so host_site was never set -- real failure hit live 2026-10-08
+      # running `--tags pools` against EXAPVEVRK001 ("'host_site' is undefined"). Matches the
+      # exact precedent already set for nodeinfo_environment.yml's own include below.
+      tags: [preflight, always]
 
     - name: Load sites.csv
       read_csv:
