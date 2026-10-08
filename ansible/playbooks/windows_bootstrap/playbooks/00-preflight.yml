@@ -762,13 +762,24 @@
         # Windows genuinely refuses a DNS server listed twice. Secondary is only ever
         # meaningful as a genuinely DIFFERENT server from primary -- empty in both
         # branches where primary itself already IS _effective_dns_bind9.
+        #
+        # The two empty branches below MUST print the literal {{ '' }} rather than
+        # nothing at all -- found live immediately after the fix above shipped
+        # (Robert, same host, same day): a branch with zero printed characters makes
+        # ansible-core's native-type templating resolve the whole var to a real Python
+        # None instead of an empty string, and [A6]'s own prompt: does
+        # `dns_secondary | length > 0`, which throws "object of type 'NoneType' has no
+        # len()". Confirmed directly against real ansible-core (not plain Jinja2, which
+        # doesn't reproduce this) before trusting either version.
         _secondary: >-
           {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
+            {{ '' }}
           {%- elif _site_dc_up | bool -%}
             {{ _effective_dns_bind9 }}
           {%- elif _hub_fallback_ip is defined -%}
             {{ _effective_dns_bind9 }}
           {%- else -%}
+            {{ '' }}
           {%- endif -%}
         _reason: >-
           {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
