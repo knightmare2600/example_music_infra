@@ -1298,6 +1298,41 @@
       become: false
 
     # =========================================================================
+    # PHASE H3 — Windows Defender exclusions
+    # =========================================================================
+    # Robert's explicit call, 2026-10-08: Defender has repeatedly interfered with
+    # Chocolatey operations on this estate (the vlc transient file-lock noted in
+    # 40-choco-packages.yml's own changelog, and 30-chocolatey.yml's "Install
+    # Chocolatey" step itself). Exclude the paths/processes Chocolatey actually
+    # uses, up front, before anything downstream touches them. Add-MpPreference
+    # may not exist (Server Core without the Defender PowerShell module, or
+    # Defender simply absent) -- checked for first rather than assumed present.
+
+    - name: "[H3] Exclude Chocolatey + PowerShell from Windows Defender scanning"
+      ansible.windows.win_shell: |
+        if (Get-Command Add-MpPreference -ErrorAction SilentlyContinue) {
+          Add-MpPreference -ExclusionPath 'C:\ProgramData\chocolatey' -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionPath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionPath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell_ise.exe" -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionProcess 'powershell.exe' -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionProcess 'choco.exe' -ErrorAction SilentlyContinue
+          "applied"
+        } else {
+          "no-defender"
+        }
+      register: _defender_exclusions
+      changed_when: _defender_exclusions.stdout | trim == "applied"
+      tags: preflight
+
+    - name: "[H3] Report Defender exclusion result"
+      debug:
+        msg: >-
+          {{ 'Defender exclusions applied for Chocolatey/PowerShell.'
+             if (_defender_exclusions.stdout | trim == 'applied')
+             else 'Add-MpPreference not available on this host -- no Defender exclusions to apply.' }}
+      tags: preflight
+
+    # =========================================================================
     # PHASE I — Summary and hand-off
     # =========================================================================
 
