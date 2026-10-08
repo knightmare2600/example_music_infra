@@ -82,7 +82,33 @@
 #               last_ansible_run, always set to this run's own timestamp -- the
 #               "when was this node last touched by Ansible" fact bootstrapped_at
 #               was never meant to answer and now doesn't have to.
+#   2026-10-08  BUG FIX, found live: proxmox/site.yml --tags pools against
+#               EXAPVEVRK001 failed with "'ansible_date_time' is undefined" even
+#               with every task in this file correctly tagged `always` (the
+#               2026-07-26 fix above). Root cause is one layer up, in
+#               ansible-core itself, not the tags here: when an EARLIER play in
+#               the same run (00-preflight.yml) has every one of its own
+#               non-always tasks filtered out by --tags, its gather_facts: true
+#               effectively gets skipped too -- and confirmed live (minimal
+#               2-play repro against real ansible-core) that this incorrectly
+#               poisons a LATER play's own independent gather_facts: true into
+#               also being skipped, even though that later play has an
+#               always-tagged task that still runs and needs the facts. Fixed
+#               defensively here rather than in every caller: an explicit,
+#               always-tagged, conditional `setup` call, so this file no longer
+#               depends on whatever the caller's own gather_facts setting
+#               happens to survive under a --tags-filtered multi-play run.
+#               `when: ansible_date_time is not defined` keeps it a no-op on
+#               every normal (untagged or fully-tagged) run.
 # =============================================================================
+
+- name: "[nodeinfo] Ensure ansible_date_time/ansible_fqdn are available"
+  # Defensive, not redundant -- see 2026-10-08 changelog entry above for why a
+  # caller's own gather_facts: true isn't reliably enough under a --tags filter.
+  tags: always
+  ansible.builtin.setup:
+    gather_subset: min
+  when: ansible_date_time is not defined
 
 - name: "[nodeinfo] Check for existing /etc/example-music/nodeinfo.json"
   tags: always
