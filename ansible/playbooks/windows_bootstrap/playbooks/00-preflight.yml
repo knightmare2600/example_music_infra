@@ -750,7 +750,26 @@
           {%- else -%}
             {{ _effective_dns_bind9 }}
           {%- endif -%}
-        _secondary: "{{ '' if (host_role_code | upper == 'DCS' and is_first_dc | bool) else _effective_dns_bind9 }}"
+        # Must mirror _primary's own four-way branching, not just its first (is_first_dc)
+        # branch -- _primary's own LAST branch (nothing reachable: not first-DC, site DC
+        # down, no hub reachable either) also resolves to _effective_dns_bind9, same as
+        # the is_first_dc branch. The old two-way ternary here only excluded the
+        # is_first_dc case, so that last branch produced primary == secondary (BIND9
+        # listed as both) -- a real duplicate, found live 2026-10-08 (Robert,
+        # EXADCSDET001): [C2] showed "192.168.139.8 → 192.168.139.8, 192.168.139.8
+        # (CHANGE NEEDED)" against an already-correct single-entry DNS config, and [F2]'s
+        # netsh add dns failed outright with "The object is already in the list" --
+        # Windows genuinely refuses a DNS server listed twice. Secondary is only ever
+        # meaningful as a genuinely DIFFERENT server from primary -- empty in both
+        # branches where primary itself already IS _effective_dns_bind9.
+        _secondary: >-
+          {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
+          {%- elif _site_dc_up | bool -%}
+            {{ _effective_dns_bind9 }}
+          {%- elif _hub_fallback_ip is defined -%}
+            {{ _effective_dns_bind9 }}
+          {%- else -%}
+          {%- endif -%}
         _reason: >-
           {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
             new DC, not yet promoted — {{ 'EXADNSFRD001 (FRD-local)' if _frd_local_dns_available | bool else 'BIND9' }} only until promotion decides forest-root vs. additional DC
