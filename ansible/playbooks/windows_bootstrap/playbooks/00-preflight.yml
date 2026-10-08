@@ -1322,7 +1322,18 @@
         }
       register: _defender_exclusions
       changed_when: _defender_exclusions.stdout | trim == "applied"
-      tags: preflight
+      # Both tags, not just preflight -- found live, 2026-10-08, same day this task was
+      # added: Robert's real invocations use a narrow --tags chocolatey (not
+      # --tags preflight,chocolatey), so this task never ran at all and the exclusions
+      # were still empty on a later check (Get-MpPreference ExclusionPath/ExclusionProcess
+      # both blank) -- confirmed via Get-MpThreatDetection that Defender's Cloud ML
+      # heuristic (Trojan:Win32/Commando.A!ml, a well-known false-positive on
+      # -encodedcommand PowerShell invocations -- exactly Ansible's own win_shell
+      # invocation shape) was genuinely remediating ("Action: Remove") the process this
+      # whole time, which is why CreateProcess kept failing downstream. Same exact
+      # tags: preflight-only mistake already fixed the same way in hostname_facts.yml
+      # earlier today.
+      tags: [preflight, always]
 
     - name: "[H3] Report Defender exclusion result"
       debug:
@@ -1330,7 +1341,7 @@
           {{ 'Defender exclusions applied for Chocolatey/PowerShell.'
              if (_defender_exclusions.stdout | trim == 'applied')
              else 'Add-MpPreference not available on this host -- no Defender exclusions to apply.' }}
-      tags: preflight
+      tags: [preflight, always]
 
     # =========================================================================
     # PHASE I — Summary and hand-off
