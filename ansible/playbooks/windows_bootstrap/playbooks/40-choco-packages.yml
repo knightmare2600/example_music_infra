@@ -300,6 +300,7 @@
       - wget
       - busybox
       - elinks
+      - fastfetch
       # Miller (mlr) -- jq's CSV-native equivalent, added 2026-08-29 (Robert;
       # also added to Linux's common_packages the same day). jq works on
       # JSON; sites.csv/devices.csv/address_policy.csv are CSV, so mlr is
