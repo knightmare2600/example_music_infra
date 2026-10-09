@@ -188,6 +188,32 @@
       log-dhcp
   notify: restart dnsmasq
 
+# BUG FIX (2026-10-09, found live on EXAFWLCLD001, Robert): leases on a site originally
+# built via firewallme.sh (before the Ansible port) kept handing out the bare domain
+# (jukebox.internal) instead of the site-prefixed one (cld.jukebox.internal), even
+# after exa-firewall.conf above was confirmed byte-correct on disk and dnsmasq was
+# force-reloaded. Root cause: firewallme.sh's own /etc/dnsmasq.d/lan.conf (line ~1767,
+# `dhcp-option=15,${EXA_DOMAIN}` -- option 15 IS domain-name) was never cleaned up by
+# the Ansible port, and dnsmasq loads /etc/dnsmasq.d/*.conf alphabetically --
+# lan.conf's own unprefixed value loads AFTER exa-firewall.conf's correct one and wins.
+# Every other directive lan.conf ever had (interface/upstream servers/dhcp-range/ipxe
+# tagging) is already fully replicated above -- confirmed by direct comparison against
+# firewallme.sh's own heredoc before removing this, not assumed. A brand-new,
+# Ansible-only-built site never had this file in the first place, which is why only
+# sites built before the Ansible port are affected.
+# NOT touching /etc/dnsmasq.d/local-records.conf (the OTHER pre-Ansible-port leftover
+# in the same directory) -- it provides real address=/cname= DNS records
+# (ansible.<domain>, www./tftp. aliases) that the current exa-firewall.conf does NOT
+# yet replicate anywhere, and it carries no domain=/dhcp-option=15 directive of its
+# own, so it isn't part of this specific bug. Removing it would be a separate,
+# destructive, out-of-scope action -- flagged for Robert as a genuine gap to decide on
+# later, not fixed here.
+- name: "[dnsmasq] Remove legacy lan.conf from the pre-Ansible-port firewallme.sh (superseded by exa-firewall.conf above)"
+  ansible.builtin.file:
+    path: /etc/dnsmasq.d/lan.conf
+    state: absent
+  notify: restart dnsmasq
+
 - name: "[dnsmasq] Create lease file directory"
   ansible.builtin.file:
     path: /var/lib/misc
