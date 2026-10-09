@@ -177,6 +177,20 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              times by default, so a bad network path could hang for minutes despite the
 #              timeout flag. Fixed with --tries=1, and swept every other wget call in this
 #              file (and bindme.sh/rudderme.sh/ansibleme.sh) for the same missing flag.
+#  2026-10-09  BUG FIX, found live on EXAFWLCLD001 via the Ansible-ported firewall role
+#              (Robert): DHCP leases handed out the bare domain (jukebox.internal) instead
+#              of the site-prefixed one (cld.jukebox.internal) -- this script's own
+#              dhcp-option=15 (domain-name) used ${EXA_DOMAIN} directly, with no site
+#              prefix, anywhere in this file. Not a regression introduced by the Ansible
+#              port -- that port added the site-prefixed behaviour as a genuine improvement
+#              this script never had, then the SAME unprefixed bug turned up again as a
+#              leftover /etc/dnsmasq.d/lan.conf this script had written on an
+#              already-provisioned box, loading after (and overriding) the Ansible role's
+#              own correctly-prefixed exa-firewall.conf. Fixed here too so a future
+#              break-glass run of this script (see check_breakglass_csv_fields.py/
+#              check_breakglass_zone_file_collisions.py, both of which already treat this
+#              file as a real fallback path) produces output consistent with the current
+#              Ansible role, not a silent regression to the old behaviour.
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
@@ -1764,7 +1778,7 @@ dhcp-option=3,${LAN_IP}
 # CLD DNS intentionally omitted from client list — clients on LAN subnets
 # may not have a route to 192.168.139.0/24 until WireGuard is up.
 dhcp-option=6,${DC_DNS},${INET_DNS}
-dhcp-option=15,${EXA_DOMAIN}
+dhcp-option=15,${SITE,,}.${EXA_DOMAIN}
 
 dhcp-vendorclass=set:ipxe-client,iPXE
 dhcp-option=tag:ipxe-client,6,${LAN_IP}
