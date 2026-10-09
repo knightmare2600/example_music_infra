@@ -335,6 +335,28 @@
         success_msg: "{{ inventory_hostname }} confirmed as DC role ({{ host_role }})"
       tags: dc_preflight
 
+    # Robert's ask, 2026-10-09: nodeinfo.json previously only got written at
+    # 40-dc-summary.yml, the very end of this chain -- meaning it didn't exist
+    # at all for the entire duration of a DC build/promotion. Writing it here
+    # too, right after hostname/site resolution, gives real visibility into an
+    # in-progress build. The existing write at 40-dc-summary.yml is
+    # deliberately left in place, not removed -- it's what refreshes
+    # last_ansible_run/last_ansible_play to reflect genuine completion.
+    - name: "Write nodeinfo.json early (visibility during a long-running build)"
+      tags: [dc_preflight, always]
+      block:
+        - name: "Write nodeinfo.json"
+          include_tasks: ../../../tasks/nodeinfo_windows.yml
+          vars:
+            nodeinfo_bootstrapped_by: "windows_dc/site.yml"
+            nodeinfo_repo_root: "{{ playbook_dir }}/../../../.."
+      rescue:
+        - name: "WARNING — nodeinfo.json write failed, continuing anyway"
+          debug:
+            msg: >-
+              nodeinfo.json write failed ({{ ansible_failed_result.msg | default('see task output above') }}) --
+              non-fatal, nodeinfo.json is an observability convenience, not required for DC promotion itself.
+
     # ── FRD-local DNS probe (see frd_local_dns comment above) ───────────────────
     # Set here, in preflight, and consumed later by 20-dc-promote.yml's Stage 2 --
     # facts persist across plays in the same run for the same host (this is NOT
