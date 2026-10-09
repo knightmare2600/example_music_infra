@@ -988,6 +988,36 @@
           - "  DNS      : {{ current_dns_list | join(', ') if current_dns_list | length > 0 else '(none)' }} → {{ expected_dns_list | join(', ') }} ({{ 'CHANGE NEEDED' if dns_needs_change else 'OK' }})"
 
     # =========================================================================
+    # PHASE C2b — Early nodeinfo.json write
+    # =========================================================================
+    # Robert's ask, 2026-10-09: nodeinfo.json previously only got written at
+    # [I]/85-finish.yml, the very end of this whole chain -- meaning it didn't
+    # exist at all for the entire duration of a bootstrap run, unlike several
+    # Linux families (truenas/tacticalrmm/proxmox) which write it partway
+    # through. Writing it here too, right after hostname/site resolution
+    # (target_hostname is already known from the vars_prompt at the top of
+    # this file, so nodeinfo_windows.yml's own internal hostname_facts.yml
+    # call resolves host_site/host_role correctly here regardless of whether
+    # the box has actually been renamed yet) gives real visibility into an
+    # in-progress build. The existing write at [I]/85-finish.yml is
+    # deliberately left in place, not removed -- it's what refreshes
+    # last_ansible_run/last_ansible_play to reflect genuine completion.
+    - name: "[C2b] Write nodeinfo.json early (visibility during a long-running build)"
+      tags: [preflight, always]
+      block:
+        - name: "[C2b] Write nodeinfo.json"
+          include_tasks: ../../../tasks/nodeinfo_windows.yml
+          vars:
+            nodeinfo_bootstrapped_by: "windows_bootstrap/site.yml"
+            nodeinfo_repo_root: "{{ playbook_dir }}/../../../.."
+      rescue:
+        - name: "[C2b] WARNING — nodeinfo.json write failed, continuing anyway"
+          debug:
+            msg: >-
+              nodeinfo.json write failed ({{ ansible_failed_result.msg | default('see task output above') }}) --
+              non-fatal, nodeinfo.json is an observability convenience, not required for the bootstrap itself.
+
+    # =========================================================================
     # PHASE D — NIC selection
     # =========================================================================
     # 2026-09-21: unconditional now (was ip_needs_change-only) -- [F2] below (a
