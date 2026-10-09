@@ -25,6 +25,7 @@ common_packages:
   - bind9-dnsutils
   - bind9-host
   - curl
+  - fastfetch
   - git
   - git-lfs
   - grc
