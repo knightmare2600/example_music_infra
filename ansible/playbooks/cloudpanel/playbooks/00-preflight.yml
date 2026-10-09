@@ -83,6 +83,36 @@
       ansible.builtin.include_tasks: ../../../tasks/nodeinfo_environment.yml
       tags: [preflight, always]
 
+    # Mandatory estate-wide, 2026-10-09 (Robert): every Ansible module, Windows or
+    # Linux, writes/refreshes nodeinfo.json -- for auditing purposes, not optional.
+    # cloudpanel was the one family check_nodeinfo_coverage.py found with zero
+    # coverage at all. Written here, right after hostname/site resolution --
+    # matches the same "early, not just at finish" placement windows_bootstrap/
+    # windows_dc just got, and this family currently has only one real stage
+    # (no separate "finish" playbook) so there's nothing later to also refresh it.
+    - name: "[Preflight] Ensure /etc/example-music directory exists"
+      tags: [preflight, always]
+      ansible.builtin.file:
+        path: /etc/example-music
+        state: directory
+        mode: "0755"
+
+    - name: "[Preflight] Write nodeinfo.json"
+      tags: [preflight, always]
+      include_tasks: ../../../tasks/nodeinfo.yml
+      vars:
+        nodeinfo_role: "cloudpanel"
+        nodeinfo_site: "{{ host_site }}"
+        nodeinfo_city: "{{ clp_site_row.City | default('') }}"
+        nodeinfo_country: "{{ clp_site_row.Country | default('') }}"
+        nodeinfo_country_code: "{{ clp_site_row.CountryCode | default('') }}"
+        nodeinfo_entity: "{{ clp_site_row.Entity | default('') }}"
+        nodeinfo_office_name: "{{ clp_site_row.OfficeName | default('') }}"
+        nodeinfo_street_address: "{{ clp_site_row.Street | default('') }}"
+        nodeinfo_postal_code: "{{ clp_site_row.PostalCode | default('') }}"
+        nodeinfo_environment: "{{ resolved_environment | default('production') }}"
+        nodeinfo_bootstrapped_by: "cloudpanel/site.yml"
+
     # -- install.sh's checkOperatingSystem() --
     - name: "[Preflight] Assert supported OS/version (install.sh's own checkOperatingSystem())"
       assert:
