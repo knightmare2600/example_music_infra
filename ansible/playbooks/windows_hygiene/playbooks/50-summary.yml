@@ -4,10 +4,10 @@
 # Example Music Limited — Windows hygiene: summary
 # =============================================================================
 # Prints a summary of what the hygiene run did. Relies on facts/registered
-# vars set by earlier stages (chassis_raw, is_laptop, win_update_result) —
-# run via site.yml, or after 00-preflight.yml + whichever other stages you
-# ran, in the same ansible-playbook invocation (facts persist across
-# chained plays for the same host).
+# vars set by earlier stages (chassis_raw, is_laptop, win_update_result,
+# winupdate_policy_confirmed) — run via site.yml, or after 00-preflight.yml +
+# whichever other stages you ran, in the same ansible-playbook invocation
+# (facts persist across chained plays for the same host).
 #
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/windows_hygiene/site.yml
@@ -15,6 +15,11 @@
 # Tags: summary
 # =============================================================================
 # Changelog:
+#   2026-10-10  Added the {{ _c }} colour-coded [*]/[+]/[!] convention already used
+#               throughout windows_dc/windows_bootstrap/proxmox -- this whole module had
+#               never adopted it (Robert, sweep across every file in this family). Also
+#               added a "WU policy" summary line reflecting 35-winupdate-policy.yml,
+#               the one stage this summary didn't yet account for.
 #   2026-07-06  Initial file — extracted from site.yml (was a single
 #               monolithic play) for consistency with the numbered
 #               00-preflight/major-step-of-10 convention used by
@@ -26,16 +31,21 @@
   gather_facts: false
   tasks:
 
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: always
+
     - name: Hygiene complete — summary
       debug:
         msg:
-          - "════════════════════════════════════════════════════════════════"
-          - "  Hygiene complete — {{ inventory_hostname }}"
+          - "{{ _c.G }}════════════════════════════════════════════════════════════════{{ _c.NC }}"
+          - "{{ _c.G }}[+]{{ _c.NC }} Hygiene complete — {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}"
           - "  Chassis     : {{ chassis_raw.stdout | trim }} ({{ 'Laptop/Tablet' if is_laptop | bool else 'Desktop/Server/VM' }})"
           - "  Hibernation : {{ 'ENABLED' if is_laptop | bool else 'DISABLED' }}"
           - "  Page file   : clear at shutdown (set)"
           - "  DISM        : StartComponentCleanup /ResetBase complete"
           - "  Chocolatey  : upgraded all; WinDirStat + SDelete present"
+          - "  WU policy   : {{ 'manual download/install set' if winupdate_policy_confirmed | default(false) else 'not set this run (declined or stage skipped)' }}"
           - "  Win Update  : {{ 'updates applied (reboot may be required)' if win_update_result is defined and 'KB' in (win_update_result.stdout | default('')) else 'no updates applied or stage skipped' }}"
-          - "════════════════════════════════════════════════════════════════"
+          - "{{ _c.G }}════════════════════════════════════════════════════════════════{{ _c.NC }}"
       tags: summary

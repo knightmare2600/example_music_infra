@@ -39,6 +39,10 @@
 # Tags: example_music_files
 # =============================================================================
 # Changelog:
+#   2026-10-10  Added the {{ _c }} colour-coded [*]/[+]/[!] convention (sweep across every
+#               file in this module, Robert's ask) -- this file already included
+#               colour_fallback.yml but never actually used _c anywhere; added a real status
+#               line matching every other stage's own "── Section ──" + [*] pattern.
 #   2026-09-25  Initial file (Robert's ask).
 # =============================================================================
 
@@ -61,6 +65,11 @@
     - name: Include colour fallback
       include_tasks: ../../../tasks/colour_fallback.yml
       tags: always
+
+    - name: "── Reference files + nodeinfo.json ──"
+      debug:
+        msg: "{{ _c.C }}[*]{{ _c.NC }} Deploying sites.csv/devices.csv/role_codes.csv/address_policy.csv/ad_*.json + nodeinfo.json..."
+      tags: example_music_files
 
     # hostname_facts.yml is no longer included directly here -- 2026-09-26,
     # nothing else in this file uses host_site/host_role now that the

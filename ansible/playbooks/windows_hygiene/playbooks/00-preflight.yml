@@ -17,6 +17,9 @@
 # Tags: preflight
 # =============================================================================
 # Changelog:
+#   2026-10-10  Added the {{ _c }} colour-coded [*]/[+]/[!] convention already used
+#               throughout windows_dc/windows_bootstrap/proxmox -- this whole module had
+#               never adopted it (Robert, sweep across every file in this family).
 #   2026-07-06  Initial file — extracted from site.yml (was a single
 #               monolithic play) for consistency with the numbered
 #               00-preflight/major-step-of-10 convention used by
@@ -27,6 +30,10 @@
   hosts: "{{ target_hosts | default(target | default('all')) }}"
   gather_facts: false
   tasks:
+
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: always
 
     - name: Detect chassis type
       ansible.windows.win_shell: |
@@ -55,7 +62,7 @@
     - name: Show detected platform
       debug:
         msg: >-
-          Chassis: {{ chassis_raw.stdout | trim }}
+          {{ _c.C }}[*]{{ _c.NC }} Chassis: {{ chassis_raw.stdout | trim }}
           ({{ 'Laptop/Tablet' if is_laptop | bool else 'Desktop/Server/VM' }})
           | OS product type: {{ product_type_raw.stdout | trim }}
           ({{ 'Server/DC' if is_server | bool else 'Workstation' }})
