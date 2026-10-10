@@ -23,6 +23,7 @@ across the whole fleet.
 | `playbooks/10-dism.yml` | `dism` | DISM component-store cleanup + `ResetBase` |
 | `playbooks/20-hibernation-pagefile.yml` | `hibernation`, `pagefile` | Hibernation policy by chassis type + pagefile clear |
 | `playbooks/30-choco.yml` | `choco` | Chocolatey `upgrade all` + WinDirStat + SDelete |
+| `playbooks/35-winupdate-policy.yml` | `winupdate_policy` | Set Windows Update to manual download + manual install, and never force a reboot while a user is logged on |
 | `playbooks/40-winupdate.yml` | `winupdate` | PSWindowsUpdate module + Windows Update |
 | `playbooks/50-summary.yml` | `summary` | Print summary |
 
@@ -50,7 +51,17 @@ ansible-playbook playbooks/windows_hygiene/site.yml -i configs/inventory --limit
 
 # Quick pass, skip the slower DISM cleanup
 ansible-playbook playbooks/windows_hygiene/site.yml -i configs/inventory --limit <host> --skip-tags dism
+
+# Windows Update policy fix only -- safe to re-run against an already-built box,
+# never triggers 40-winupdate.yml's own actual update-install run as a side effect
+ansible-playbook playbooks/windows_hygiene/site.yml -i configs/inventory --limit <host> --tags winupdate_policy
 ```
+
+**Why a separate tag from `winupdate`**: `--tags winupdate_policy` only ever matches
+`35-winupdate-policy.yml`'s own tasks. `40-winupdate.yml` (actively running Windows Update
+via PSWindowsUpdate) carries the separate `winupdate` tag deliberately — re-applying the
+manual-update policy to an already-built, working box must never also kick off a real
+update install as an unrelated side effect.
 
 **Corrected 2026-10-04**: the single-host examples above previously showed
 `-i <host>, -e target_hosts=<host>` — the same ad-hoc-inventory form
@@ -96,3 +107,12 @@ rename them without updating the template too.
   genuine bare-DHCP-IP ad-hoc-inventory form (`-i <host>, -e target_hosts=<host>`) despite
   this family having no day-0 case of its own (it only runs against already-onboarded hosts).
   Switched to `-i configs/inventory --limit <host>`, confirmed empirically correct.
+- 2026-10-10  Added `35-winupdate-policy.yml` (Robert's ask): sets Windows Update to manual
+  download + manual install (the same registry policy Group Policy's "Configure Automatic
+  Updates" writes) and stops forced reboots while a user is logged on — background Windows
+  Update behaviour was interfering with Ansible runs. Deliberately its own tag
+  (`winupdate_policy`), not folded into `winupdate`, so it can be re-applied to an
+  already-built box on its own without also triggering `40-winupdate.yml`'s real
+  update-install run. Also found and fixed the same stale `-i <host>, -e target_hosts=<host>`
+  pattern this entry already corrected here, still present in `site.yml`'s own header —
+  fixed there too while adding the new tag to its usage examples.

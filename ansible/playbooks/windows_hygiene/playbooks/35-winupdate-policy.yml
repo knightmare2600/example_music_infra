@@ -1,0 +1,175 @@
+---
+# =============================================================================
+# playbooks/35-winupdate-policy.yml
+# Example Music Limited — Windows hygiene: Windows Update set to manual
+# =============================================================================
+# Robert's ask: Windows's own background Automatic Updates behaviour (silent
+# download, silent install, and the reboot that sometimes follows) interferes
+# with Ansible runs — a box can start installing/rebooting on its own schedule
+# mid-onboarding, independent of anything this estate's automation is doing.
+# This stage sets the OS-level policy so download and install both require an
+# explicit, manual trigger, instead of disabling update CHECKING altogether
+# (the box still notices updates exist — it just won't act on them by itself).
+#
+# This is deliberately NOT the same thing as 40-winupdate.yml. That stage
+# actively RUNS Windows Update on demand (PSWindowsUpdate's own
+# Install-WindowsUpdate call, bypassing the OS's automatic-update path
+# entirely). This stage only changes the OS's own unattended behaviour — the
+# two are complementary, not overlapping: this stops the box from updating
+# itself behind your back; 40-winupdate.yml is how you trigger an update on
+# purpose, whenever you decide to.
+#
+# Registry policy (HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU)
+# — the same values Group Policy's "Configure Automatic Updates" writes, read
+# directly by the Windows Update Agent (wuaueng.dll) without needing a real
+# GPO or gpedit.msc, confirmed (against Microsoft's own policy reference —
+# not yet against a real box in this estate, see the NOT YET TESTED note
+# below) still honoured on Windows 10/11/Server 2022+ Pro/Enterprise/Server
+# editions (every build in this estate — Home can't domain-join anyway):
+#   NoAutoUpdate                  = 0  — AU policy stays enabled (not disabled
+#                                        outright — see note below on why
+#                                        notify-only was chosen over turning
+#                                        checking off completely)
+#   AUOptions                     = 2  — "Notify for download and notify for
+#                                        install" — exactly manual download
+#                                        AND manual install, Microsoft's own
+#                                        literal wording for this setting
+#   NoAutoRebootWithLoggedOnUsers = 1  — never force a reboot out from under a
+#                                        logged-on session (the other half of
+#                                        "interfering with Ansible" — an
+#                                        unattended reboot mid-run)
+# wuauserv is restarted after writing these so the new policy takes effect
+# immediately, rather than waiting for the service's own next poll interval.
+#
+# NoAutoUpdate=1 (fully disable checking) was deliberately NOT used — it goes
+# further than asked (hides that updates exist at all) and would need
+# reverting the day someone actually wants visibility into pending updates.
+# AUOptions=2 keeps checking/notification alive while removing all of the
+# unattended behaviour that actually causes the interference.
+#
+# Opt-in via vars_prompt, default YES — Robert's own ask ("explicitly prompts
+# ... defaulting to yes"). Every other file in this module runs unconditionally
+# with no prompt at all; this one is the deliberate exception, since it's an
+# OS-wide policy change rather than a package install/cleanup step.
+#
+# Separate tag (winupdate_policy) from 40-winupdate.yml's own (winupdate) is
+# deliberate and load-bearing — Robert's own ask: a box that already exists
+# and is already correctly built needs to be able to pick up JUST this policy
+# fix via --tags winupdate_policy, without --tags winupdate also matching and
+# triggering 40-winupdate.yml's actual Install-WindowsUpdate run as a side
+# effect (the same "a task can carry more tags than you think" trap already
+# documented in the beginners guide's own "Targeted Runs" section, for the
+# choco_packages/choco_upgrade pair in windows_bootstrap).
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/playbooks/35-winupdate-policy.yml
+#
+#   Re-run against an already-built box, this fix only, nothing else touched:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/site.yml \
+#     --limit <host> --tags winupdate_policy
+#
+# Tags: winupdate_policy
+#
+# NOT YET TESTED against a real Windows target — the registry path/value
+# names are Microsoft's own documented "Configure Automatic Updates" GPO
+# mapping, not guessed, but this hasn't been confirmed live against a real
+# box in this estate yet. Confirm after the first real run with a direct
+# `reg query` of the path above, and check Settings > Windows Update shows
+# updates as "managed by your organization" with no auto-download toggle.
+# =============================================================================
+# Changelog:
+#   2026-10-10  Retrofitted the {{ _c }} colour-coded [*]/[+]/[!] convention immediately
+#               after this file was first written, during the same-day sweep that added it
+#               across the rest of this module (Robert's ask).
+#   2026-10-10  Initial file.
+# =============================================================================
+
+- name: Windows hygiene — Windows Update policy (manual download/install)
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: false
+
+  vars_prompt:
+    - name: winupdate_policy_confirm
+      prompt: >-
+        Set Windows Update to manual download + manual install on this host?
+        (yes/no — stops unattended background download/install/reboot;
+        the box still notices updates exist, it just won't act on them alone)
+      private: false
+      default: "yes"
+
+  tasks:
+
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: always
+
+    - name: Set winupdate_policy_confirmed fact
+      set_fact:
+        winupdate_policy_confirmed: "{{ (winupdate_policy_confirm | default('yes') | trim | lower) in ['y', 'yes'] }}"
+      tags: winupdate_policy
+
+    - name: "── Windows Update policy ──"
+      debug:
+        msg:
+          - "{{ _c.C }}── Windows Update policy ──{{ _c.NC }}"
+          - >-
+            {{ (_c.C + '[*]' + _c.NC + ' Setting Windows Update to manual download + manual install (AUOptions=2), and disabling forced reboot while a user is logged on...')
+               if winupdate_policy_confirmed else
+               (_c.Y + '[!]' + _c.NC + ' Declined at prompt -- leaving Windows Update policy unchanged on this host.') }}
+      tags: winupdate_policy
+
+    - name: Ensure AU policy key exists
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+        state: present
+      when: winupdate_policy_confirmed
+      tags: winupdate_policy
+
+    - name: Ensure AU policy is enabled (not disabled outright)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+        name: NoAutoUpdate
+        data: 0
+        type: dword
+        state: present
+      when: winupdate_policy_confirmed
+      tags: winupdate_policy
+
+    - name: Set AUOptions=2 (notify for download, notify for install -- manual both ways)
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+        name: AUOptions
+        data: 2
+        type: dword
+        state: present
+      when: winupdate_policy_confirmed
+      tags: winupdate_policy
+
+    - name: Never force a reboot while a user is logged on
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+        name: NoAutoRebootWithLoggedOnUsers
+        data: 1
+        type: dword
+        state: present
+      when: winupdate_policy_confirmed
+      tags: winupdate_policy
+
+    - name: Restart wuauserv so the new policy takes effect immediately
+      ansible.windows.win_service:
+        name: wuauserv
+        state: restarted
+      when: winupdate_policy_confirmed
+      tags: winupdate_policy
+
+    - name: Report applied policy
+      debug:
+        msg:
+          - "{{ _c.G }}[+]{{ _c.NC }} Windows Update set to manual on {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}:"
+          - "  Download : manual (notify only, never auto-downloads)"
+          - "  Install  : manual (notify only, never auto-installs)"
+          - "  Reboot   : never forced while a user is logged on"
+          - "Verify in Settings > Windows Update -- it should show as managed by your"
+          - "organization, with the automatic-download toggle unavailable."
+      when: winupdate_policy_confirmed
+      tags: winupdate_policy
