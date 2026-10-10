@@ -32,6 +32,20 @@
 # Tags: domainjoin
 # =============================================================================
 # Changelog:
+#   2026-10-10  Follow-up fix to the same day's _dj_genuine_forest_root change, real live
+#               incident: "[Stage 0] Fail — domain still unresolvable after DNS override"'s
+#               own `when: dj_dns_recheck is defined` never actually protected against the
+#               re-check task being skipped -- a skipped registered task still registers a
+#               real dict (changed: False, skipped: True, ...), so "is defined" is true
+#               regardless, and Ansible's list-form when: does not short-circuit before
+#               evaluating `dj_dns_recheck.stdout` on the next line. Never hit before because
+#               the exact flow combination that exposes it (domain resolves cleanly on the
+#               first try, via the new deterministic DNS-set task above) never occurred prior
+#               to today's fix. Reproduced in an isolated two-task test harness before fixing,
+#               confirmed the fix (`is not skipped`, already used correctly elsewhere in this
+#               repo) resolves it cleanly. Also caught this exact task still checking the old
+#               `is_first_dc` directly instead of `_dj_genuine_forest_root` -- missed in the
+#               same day's earlier sweep -- fixed alongside.
 #   2026-10-10  CRITICAL FIX, real live incident (Robert, EXADCSCLD001): every DNS-check and
 #               join task here used to skip purely on is_first_dc -- a per-SITE vars_prompt
 #               answer ("first DC built for THIS site"), not a per-FOREST one. Real
@@ -289,8 +303,17 @@
           {{ exa_domain }} still cannot be resolved after setting DNS to {{ dj_temp_dns_ip }}.
           Verify that {{ dj_temp_dns_ip }} is reachable and serves {{ exa_domain }}.
       when:
-        - not (is_first_dc | default(false) | bool)
+        - not _dj_genuine_forest_root
+        # 2026-10-10, real live incident (EXADCSCLD001): "is defined" alone does NOT mean
+        # "this task actually ran" -- a SKIPPED registered task still registers a real dict
+        # (changed: False, skipped: True, ...), so "is defined" is true even when the task
+        # above never executed and .stdout was never set, and Ansible's list-form when: does
+        # NOT short-circuit before evaluating the next condition -- confirmed by reproducing
+        # this exact failure in an isolated two-task test harness before fixing it here, not
+        # guessed. "is not skipped" is the actual, correct test (already used correctly
+        # elsewhere in this repo, e.g. tasks/ssh_key_preflight.yml's own _sshpf_* checks).
         - dj_dns_recheck is defined
+        - dj_dns_recheck is not skipped
         - dj_dns_recheck.stdout | trim == "unresolvable"
       tags: domainjoin
 
