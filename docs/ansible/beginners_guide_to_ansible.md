@@ -794,6 +794,33 @@ netdom query fsmo      # should still show the EXISTING forest's DC for all 5 ro
 repadmin /showrepl     # confirm a clean two-way replication partner link
 ```
 
+### Filing a generated or typed DSRM password into KeePass
+
+Step 2's DSRM prompt only ever shows a generated password **once**, and Ansible itself
+never writes to the KeePass vault — a standing, deliberate rule in this estate (Ansible
+reads KeePass, a human writes to it), confirmed by the DSRM banner's own on-screen
+instructions. The actual filing is a separate, human-run step,
+using `benarbejde/kpcli_wrapper.py` — confirmed against the real script before writing
+this (it's interactive-only by design: never accepts the database password or the entry's
+own password as a CLI argument, so neither ever lands in shell history or a process list):
+
+```bash
+python3 benarbejde/kpcli_wrapper.py /home/ansible/KeePassXC/ExampleMusic.kdbx \
+  add "Infrastructure/<SITE>/<HOSTNAME>-dsrm" dsrm
+```
+
+It prompts **twice**, in this order:
+
+1. `Enter KeePass password:` — the vault's own master password (not the DSRM one)
+2. `Entry password:` — the actual DSRM password, typed or pasted here
+
+Both use `getpass` (hidden input, nothing echoed). `add_entry` checks whether that exact
+path already exists first (`show`, then `edit` if found, `add` if not) — meaning a second
+run against the *same* path will silently overwrite whatever's there rather than refusing,
+unlike `00-dc-preflight.yml`'s own Phase F KeePass-sync mechanism (which always adds a new,
+separately-marked entry instead of overwriting). Confirmed live, 2026-10-10, filing
+`EXADCSCLD001`'s own DSRM password this way for the first time.
+
 ### What's deliberately not covered here
 
 **Transferring FSMO roles to the new DC.** That is a separate, manual,
@@ -2057,6 +2084,7 @@ command on one line before trusting it.
 | 2026-10-10 | Added a fourth "Targeted Runs" worked example: "Proxmox theme/sensor refresh only -- `--tags proxmorph`" -- Robert's ask, re-running `proxmox/site.yml` against `EXAPVEVRK001` (now explicitly a production hypervisor with live VMs) to pick up ProxMorph theme updates without touching anything else. Read all 10 `proxmox/playbooks/*.yml` stage files in full before answering, plus fetched and read the real, current upstream `install.sh` (unpinned, fetched fresh from `main` every run by this repo's own design) to confirm it only ever restarts `pveproxy` (backgrounded, web-UI/API only -- never qemu/pve-cluster/corosync) and takes its own backup before patching `Nodes.pm`. Also confirmed `00-preflight.yml`'s already-onboarded detection gates off the two genuinely live-state-touching stages (`20-ansible-access.yml`, `50-systemd-units.yml`) by default. Live-confirmed clean afterward: ran fine, refreshed only the proxmorph stage. |
 | 2026-10-10 | Added a new top-level section, "Adding Additional Domain Controllers" -- Robert's ask, building `EXADCSCLD001` as a second DC onto the already-running `jukebox.internal` forest (`EXADCSGOT001` holds it), distinct from Section 4's forest-root walkthrough. Covers the manual OpenSSH bootstrap step needed for a plain GUI install (skips the autounattend chain entirely), the real meaning of `windows_bootstrap`'s per-*site* "first DC for this site" prompt versus `windows_dc`'s separate per-*forest* one, how `dc_source_resolution.yml`'s dual-source (`devices.csv` + `ad_computers.json`) candidate lookup resolves the existing forest's DC automatically over TCP/389, and verification commands (`netdom query fsmo`, `repadmin /showrepl`) rather than trusting a clean recap. Explicitly scopes out FSMO transfer (separate, manual, change-controlled, never automated here) and flags the `exclude_dc_computer_accounts` safeguard for any later `populate_ad` run, referencing the real `INC-2026-09-26-GOT-DC-DISABLE` incident that guard exists because of. Verified every claim against the real current `00-dc-preflight.yml`/`dc_source_resolution.yml`/`sites.csv` before writing, not from memory. |
 | 2026-10-10 | **Fixed a real command gap, hit live building `EXADCSCLD001` the same day**: both Section 4's Step 1 and this same day's new "Adding Additional Domain Controllers" Step 1 showed `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml -e target_hosts=<ip>` with no comma-form `-i "<ip>,"` -- `windows_bootstrap/site.yml` chains every play via `import_playbook`, which resolves `hosts:` once at parse time for the whole chain, so a raw IP not already a real inventory host never matches anything; the real run printed `[WARNING]: Could not match supplied host pattern, ignoring: <ip>` once and silently ran all 19 plays against zero hosts -- every play header printed, every `vars_prompt` question got asked, `PLAY RECAP` came back blank, nothing on the box changed at all. The command's own existing 2026-10-04 correction note ("`--limit <dhcp-ip>`, the same value already in `-i`") was itself a tell this was missing -- that phrase only makes sense if an earlier version of the command actually had the IP in `-i`. Fixed both commands to the two-`-i` form `windows_bootstrap/site.yml`'s own header usage comment has documented the whole time (`-i <ip>, -e target_hosts=<ip>`), and added an explicit callout at each site explaining why the comma is load-bearing, not cosmetic. |
+| 2026-10-10 | Added "Filing a generated or typed DSRM password into KeePass" under "Adding Additional Domain Controllers" -- Robert's ask, filing `EXADCSCLD001`'s own real DSRM password for the first time. Verified the exact `kpcli_wrapper.py` invocation and prompt order against the real script before writing it (interactive-only by design, never accepts either password as a CLI argument), and flagged a real asymmetry worth knowing: `add_entry` overwrites an existing entry at the same path on a second run (`show` then `edit`-if-found), unlike `00-dc-preflight.yml`'s own Phase F KeePass-sync mechanism, which always adds a new, separately-marked entry instead. |
 
 ---
 
