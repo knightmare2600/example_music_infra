@@ -1,0 +1,165 @@
+---
+# =============================================================================
+# ansible/tasks/discover_real_dcs.yml
+# Example Music Limited — discover whether any real DC is reachable anywhere
+# =============================================================================
+# Robert's ask, live incident, 2026-10-10: windows_bootstrap's own DNS decision
+# and domain-join logic both collapsed "is this the first DC built for THIS
+# SITE" (is_first_dc, a per-site vars_prompt answer) into "does the domain/
+# forest exist at all" -- true for every DC this estate had built so far, but
+# false the moment a genuinely new SITE'S first DC is built onto an ALREADY-
+# EXISTING forest (EXADCSCLD001 onto jukebox.internal, which EXADCSGOT001
+# already runs). Real consequence: DNS got set to BIND9-only (no AD SRV
+# records) and the domain-join step was skipped outright, both purely because
+# the operator correctly answered "yes" to the per-site question -- there was
+# no check of whether a real DC actually exists before deciding that.
+#
+# windows_dc/tasks/dc_source_resolution.yml already solved exactly this
+# problem, correctly, for DC promotion itself: probe every real candidate DC
+# first, and let a reachable one always win over the operator's own
+# first-in-forest answer. This file is the same real-candidate-discovery half
+# of that logic (devices.csv's real DCS rows UNION ad_computers.json's
+# Enabled: true DCS records, excluding self, probed on TCP/389), extracted so
+# windows_bootstrap can use the identical, already-proven mechanism instead of
+# its own separate, hardcoded FAL/ODE/BRK-only candidate list (which never
+# included GOT, VRK, or FRD at all -- confirmed by reading the real code
+# before writing this, not assumed).
+#
+# Deliberately NOT a refactor of dc_source_resolution.yml itself -- that file
+# is proven, working, and mid-use in a live DC promotion as this is written;
+# touching it right now would be the wrong moment to introduce risk into
+# something that isn't broken. This is its own independent file for
+# windows_bootstrap, built from the same real logic. Unifying the two into one
+# shared implementation is a reasonable future cleanup, not an urgent one.
+#
+# Inputs (vars, all optional with sensible defaults):
+#   discover_dc_sites_csv         default: /etc/example-music/sites.csv
+#   discover_dc_devices_csv       default: /etc/example-music/devices.csv
+#   discover_dc_ad_computers_json default: /etc/example-music/ad_computers.json
+#   discover_dc_domain_name       default: exa_domain (windows_bootstrap's own
+#                                  domain var) — used to build each candidate's fqdn
+#   discover_dc_self_hostname     default: inventory_hostname | upper — excluded
+#                                  from its own candidate list
+#
+# Outputs (real, persisted facts — not play vars — so they survive into a
+# LATER, separately-imported play in the same site.yml run):
+#   _real_dc_candidates        — list of {site, ip, fqdn}
+#   _any_real_dc_reachable     — bool
+#   _real_dc_reachable_ip      — string, blank if none reachable
+#   _real_dc_reachable_fqdn    — string, blank if none reachable
+#   _real_dc_reachable_site    — string, blank if none reachable
+#
+# Probing is done from the Ansible control node (delegate_to: localhost,
+# ansible_connection: local, ansible_shell_type: sh — the exact override this
+# repo's own beginners guide documents as needed alongside delegate_to:
+# localhost whenever the calling play's own connection isn't already local).
+# =============================================================================
+# Changelog:
+#   2026-10-10  Initial file, extracted from windows_dc/tasks/dc_source_resolution.yml's
+#               own 2026-09-25/2026-09-28 candidate-building logic (real live incident,
+#               EXADCSCLD001).
+# =============================================================================
+
+- name: "[discover-dcs] Compute merged device list via generate_inventory.py"
+  command: >
+    python3 {{ playbook_dir }}/../../../../benarbejde/generate_inventory.py
+    {{ discover_dc_sites_csv | default('/etc/example-music/sites.csv') }}
+    --devices {{ discover_dc_devices_csv | default('/etc/example-music/devices.csv') }}
+    --emit-devices-json
+  register: _discover_dcs_devices_raw
+  changed_when: false
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
+
+- name: "[discover-dcs] Build candidate list from devices.csv's real DCS rows"
+  set_fact:
+    _real_dc_candidates: >-
+      {{ (_real_dc_candidates | default([])) + [{
+        'site': item.Site,
+        'ip':   item.full_ip,
+        'fqdn': (item.Hostname | lower) + '.' + (discover_dc_domain_name | default(exa_domain | default('')))
+      }] }}
+  loop: >-
+    {{
+      (_discover_dcs_devices_raw.stdout | from_json)
+      | selectattr('Type', 'equalto', 'DCS')
+      | selectattr('Real', 'equalto', true)
+      | rejectattr('Hostname', 'equalto', (discover_dc_self_hostname | default(inventory_hostname | upper)))
+      | list
+    }}
+  loop_control:
+    label: "{{ item.Hostname }}"
+
+- name: "[discover-dcs] Load ad_computers.json (same file 40-ad-computers.yml treats as authoritative)"
+  set_fact:
+    _discover_dcs_ad_computers: "{{ lookup('file', discover_dc_ad_computers_json | default('/etc/example-music/ad_computers.json')) | from_json }}"
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
+
+- name: "[discover-dcs] Add ad_computers.json's own real (Enabled: true) DCS records as candidates too"
+  set_fact:
+    _real_dc_candidates: >-
+      {{ _real_dc_candidates + [{
+        'site': item.Site,
+        'ip':   item.IPv4Address,
+        'fqdn': item.DNSHostName | lower
+      }] }}
+  loop: >-
+    {{
+      _discover_dcs_ad_computers
+      | selectattr('Role', 'equalto', 'DCS')
+      | selectattr('Enabled', 'equalto', true)
+      | rejectattr('Name', 'equalto', (discover_dc_self_hostname | default(inventory_hostname | upper)))
+      | rejectattr('Site', 'in', _real_dc_candidates | map(attribute='site') | list)
+      | list
+    }}
+  loop_control:
+    label: "{{ item.Name }}"
+
+- name: "[discover-dcs] Probe each candidate DC — LDAP port 389"
+  command: >
+    bash -c 'timeout 3 bash -c "echo >/dev/tcp/{{ item.ip }}/389" 2>/dev/null
+    && echo reachable || echo unreachable'
+  register: _discover_dcs_probe
+  loop: "{{ _real_dc_candidates }}"
+  loop_control:
+    label: "{{ item.site }} ({{ item.ip }})"
+  changed_when: false
+  delegate_to: localhost
+  become: false
+  ignore_errors: true
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
+
+- name: "[discover-dcs] Select first reachable candidate"
+  set_fact:
+    _real_dc_reachable_ip:   "{{ item.item.ip }}"
+    _real_dc_reachable_fqdn: "{{ item.item.fqdn }}"
+    _real_dc_reachable_site: "{{ item.item.site }}"
+  loop: "{{ _discover_dcs_probe.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.site | default('?') }}"
+  when:
+    - item.stdout | default('unreachable') | trim == 'reachable'
+    - _real_dc_reachable_ip is not defined
+
+- name: "[discover-dcs] Set any-reachable fact"
+  set_fact:
+    _any_real_dc_reachable: "{{ _real_dc_reachable_ip is defined }}"
+    _real_dc_reachable_ip:   "{{ _real_dc_reachable_ip | default('') }}"
+    _real_dc_reachable_fqdn: "{{ _real_dc_reachable_fqdn | default('') }}"
+    _real_dc_reachable_site: "{{ _real_dc_reachable_site | default('') }}"
+
+- name: "[discover-dcs] Show result"
+  debug:
+    msg: >-
+      {{ 'Real DC reachable: ' ~ _real_dc_reachable_fqdn ~ ' (site=' ~ _real_dc_reachable_site ~ ')'
+         if _any_real_dc_reachable
+         else 'No real DC reachable anywhere (probed ' ~ (_real_dc_candidates | length | string) ~ ' candidate(s)).' }}
