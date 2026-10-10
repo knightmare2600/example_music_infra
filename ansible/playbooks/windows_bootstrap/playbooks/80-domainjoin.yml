@@ -32,6 +32,20 @@
 # Tags: domainjoin
 # =============================================================================
 # Changelog:
+#   2026-10-10  Third fix, same incident, same day (EXADCSCLD001): the join itself started
+#               failing with "The system cannot find the file specified... Check
+#               domain_ou_path" once the previous two fixes got far enough for a real join
+#               attempt. group_vars/windows_dc/vars.yml's domain_ou_role ("DomainControllers",
+#               one word) targeted an OU that has never existed anywhere in this forest --
+#               confirmed live against EXADCSGOT001 directly
+#               (Get-ADOrganizationalUnit -Filter "Name -eq 'DomainControllers'" returns
+#               nothing, for any site). The real, built-in OU AD itself always creates is
+#               "Domain Controllers" (with a space), directly at the domain root -- confirmed
+#               from GOT's own real computer object DN
+#               (CN=EXADCSGOT001,OU=Domain Controllers,DC=jukebox,DC=internal). DCS-role hosts
+#               now go there directly in "Build target OU path", bypassing the per-site
+#               OU=<SITE> nesting entirely -- every other role (Workstations/Laptops/Servers)
+#               is completely unchanged, verified in an isolated test harness before shipping.
 #   2026-10-10  Follow-up fix to the same day's _dj_genuine_forest_root change, real live
 #               incident: "[Stage 0] Fail — domain still unresolvable after DNS override"'s
 #               own `when: dj_dns_recheck is defined` never actually protected against the
@@ -348,9 +362,24 @@
         - _dj_genuine_forest_root
       tags: domainjoin
 
+    # 2026-10-10, real live incident (Robert, EXADCSCLD001): group_vars/windows_dc/vars.yml's
+    # domain_ou_role ("DomainControllers", one word) targeted an OU that has never existed
+    # anywhere in this forest -- confirmed live against EXADCSGOT001 directly
+    # (Get-ADOrganizationalUnit -Filter "Name -eq 'DomainControllers'" returns nothing).
+    # The real, built-in OU AD itself always creates is "Domain Controllers" (with a space),
+    # directly at the domain root, never nested under a per-site OU -- confirmed from GOT's
+    # own real computer object DN (Get-ADDomainController -Filter * |
+    # Select ComputerObjectDN -> CN=EXADCSGOT001,OU=Domain Controllers,DC=jukebox,DC=internal).
+    # DCS-role hosts now go there directly, bypassing the per-site OU=<SITE> nesting entirely
+    # -- every other role (Workstations/Laptops/Servers) is completely unchanged.
     - name: Build target OU path
       set_fact:
-        domain_ou_path: "OU={{ domain_ou_role }},OU={{ host_site }},{{ 'DC=' + exa_domain.split('.') | join(',DC=') }}"
+        domain_ou_path: >-
+          {%- if host_role_code | upper == 'DCS' -%}
+            OU=Domain Controllers,{{ 'DC=' + exa_domain.split('.') | join(',DC=') }}
+          {%- else -%}
+            OU={{ domain_ou_role }},OU={{ host_site }},{{ 'DC=' + exa_domain.split('.') | join(',DC=') }}
+          {%- endif -%}
       when:
         - domain_check.stdout | trim | lower != 'true'
         - not _dj_genuine_forest_root
