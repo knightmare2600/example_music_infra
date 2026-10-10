@@ -16,6 +16,9 @@
 # Tags: choco
 # =============================================================================
 # Changelog:
+#   2026-10-10  Added the {{ _c }} colour-coded [*]/[+]/[!] convention already used
+#               throughout windows_dc/windows_bootstrap/proxmox -- this whole module had
+#               never adopted it (Robert, sweep across every file in this family).
 #   2026-07-06  Initial file — extracted from site.yml (was a single
 #               monolithic play) for consistency with the numbered
 #               00-preflight/major-step-of-10 convention used by
@@ -27,9 +30,15 @@
   gather_facts: false
   tasks:
 
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: always
+
     - name: "── Chocolatey packages ──"
       debug:
-        msg: "Upgrading all Chocolatey packages and installing WinDirStat and SDelete..."
+        msg:
+          - "{{ _c.C }}── Chocolatey packages ──{{ _c.NC }}"
+          - "{{ _c.C }}[*]{{ _c.NC }} Upgrading all Chocolatey packages and installing WinDirStat and SDelete..."
       tags: choco
 
     - name: Upgrade all Chocolatey packages to latest
