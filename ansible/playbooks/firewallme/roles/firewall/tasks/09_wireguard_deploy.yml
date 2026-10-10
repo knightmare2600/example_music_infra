@@ -70,6 +70,14 @@
 #               narrow, correct pattern (confirmed live-working, EXAFWLBRT001's wg-quick log
 #               this same session) -- the hub's version was the one that diverged, not the
 #               spoke's.
+#   2026-10-10  Cosmetic only, Robert, live output (EXAFWLDET001): "Display public key" split
+#               the label and the key itself across two separate debug msg list items, so the
+#               key printed on its own line below "Public key for <host>:" instead of after
+#               it. Merged onto one line. Not fixed: the lone trailing ":" seen elsewhere in
+#               the same output (e.g. after a pasted hub key in 00_preflight_3_ask.yml) --
+#               that's ansible.builtin.pause's own hardcoded format string
+#               ("[%s]\n%s:" % (task_name, prompt), confirmed against the real installed
+#               pause.py), not something this repo's YAML controls.
 # =============================================================================
 
 - name: "[WireGuard] Skip — not applicable (role=none or black site not bootstrapping)"
@@ -121,8 +129,7 @@
 - name: "[WireGuard] Display public key (needed for hub peer registration)"
   ansible.builtin.debug:
     msg:
-      - "Public key for {{ inventory_hostname }}:"
-      - "{{ fw_wg_pubkey }}"
+      - "Public key for {{ inventory_hostname }}: {{ fw_wg_pubkey }}"
       - ""
       - "Register this as a peer on {{ fw_wg_hub_site | default('the hub') }}"
       - "  wg set wg0 peer {{ fw_wg_pubkey }} allowed-ips {{ fw_wg_tunnel_ip }}/32,{{ fw_subnet }}.0/24"
