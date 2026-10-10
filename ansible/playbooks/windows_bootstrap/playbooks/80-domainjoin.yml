@@ -371,11 +371,16 @@
     # own real computer object DN (Get-ADDomainController -Filter * |
     # Select ComputerObjectDN -> CN=EXADCSGOT001,OU=Domain Controllers,DC=jukebox,DC=internal).
     # DCS-role hosts now go there directly, bypassing the per-site OU=<SITE> nesting entirely
-    # -- every other role (Workstations/Laptops/Servers) is completely unchanged.
+    # -- every other role (Workstations/Laptops/Servers) is completely unchanged. Checks
+    # host_role (set by hostname_facts.yml, included above in this same file) -- NOT
+    # host_role_code, a separate, independently-computed fact that only exists in
+    # 00-preflight.yml's own context. Caught this exact mismatch before it ever ran live
+    # (Robert hadn't pulled yet when this file was first tested) -- would have failed with
+    # "host_role_code is undefined" the moment this task actually executed.
     - name: Build target OU path
       set_fact:
         domain_ou_path: >-
-          {%- if host_role_code | upper == 'DCS' -%}
+          {%- if host_role | upper == 'DCS' -%}
             OU=Domain Controllers,{{ 'DC=' + exa_domain.split('.') | join(',DC=') }}
           {%- else -%}
             OU={{ domain_ou_role }},OU={{ host_site }},{{ 'DC=' + exa_domain.split('.') | join(',DC=') }}
