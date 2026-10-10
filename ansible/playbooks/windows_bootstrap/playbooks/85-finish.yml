@@ -52,6 +52,19 @@
 # Tags: finish
 # =============================================================================
 # Changelog:
+#   2026-10-10  Cosmetic only, real live incident, same EXADCSCLD001 build: "Remote access
+#               summary" still printed "!! FIRST-DC BUILD — domain NOT joined !!" gated
+#               purely on is_first_dc, the exact same per-site/per-forest conflation already
+#               fixed for real in 00-preflight.yml/80-domainjoin.yml this same day -- a real
+#               DC was reachable (GOT), the join actually ran and succeeded, but the summary
+#               still claimed it hadn't. No when: gate was affected (purely misleading text),
+#               but fixed properly anyway: added a direct, fresh domain-join check
+#               (Get-WmiObject Win32_ComputerSystem).PartOfDomain) right before the summary,
+#               and the warning line now distinguishes a genuine forest-root build
+#               (_dj_genuine_forest_root, nothing to join yet) from an actual failed join
+#               (domain not joined and NOT genuine-forest-root) instead of conflating them.
+#               Verified all three branches (joined / genuine forest-root / genuinely failed)
+#               in an isolated test harness before shipping.
 #   2026-10-10  Cosmetic only, Robert, live output (EXADCSCLD001): "Remote access summary"'s
 #               conditional FIRST-DC-BUILD warning line was missing the single leading space
 #               every other content line in this banner has, so it sat one column further
@@ -130,7 +143,25 @@
         msg: "Bootstrap complete. Printing summary..."
       tags: finish
 
+    # 2026-10-10, real live incident (EXADCSCLD001): the warning line below used to gate
+    # purely on is_first_dc (a per-SITE vars_prompt answer), the same conflation already
+    # fixed for real in 00-preflight.yml/80-domainjoin.yml -- is_first_dc=true does NOT mean
+    # "domain not joined" the moment a real DC is reachable elsewhere (80-domainjoin.yml's own
+    # _dj_genuine_forest_root already attempts the join in that case, and it can genuinely
+    # succeed, as it did here). This was purely cosmetic (no when: gate was affected, just
+    # misleading summary text) but worth fixing properly -- checking the box's OWN actual
+    # current domain-membership state directly, not a stale per-site flag from an earlier
+    # play. Matches the standing "verify the actual effect, not a proxy for it" principle.
+    - name: "[Finish] Check current domain-join state (for the summary banner below)"
+      ansible.windows.win_shell: |
+        (Get-WmiObject Win32_ComputerSystem).PartOfDomain
+      register: _finish_domain_check
+      changed_when: false
+      tags: finish
+
     - name: "[Finish] Remote access summary"
+      vars:
+        _finish_domain_joined: "{{ _finish_domain_check.stdout | trim | lower == 'true' }}"
       debug:
         msg:
           - "══════════════════════════════════════════════════════════"
@@ -139,8 +170,12 @@
           - " SSH   : ssh Administrator@{{ host_ip }} (port 22)"
           - " RDP   : {{ host_ip }}:3389"
           - " SAC   : {{ 'Enabled on COM1/115200 (SOL)' if is_server else 'N/A (not a server OS)' }}"
-          - " Domain: {{ exa_domain }} / OU: {{ domain_ou_path | default('not yet built — first-DC') if is_first_dc | default(false) | bool else domain_ou_path | default('already joined') }}"
-          - "{{ ' !! FIRST-DC BUILD — domain NOT joined. Run windows_dc/site.yml next !!' if is_first_dc | default(false) | bool else '' }}"
+          - " Domain: {{ exa_domain }} / OU: {{ domain_ou_path | default('already joined') if _finish_domain_joined else domain_ou_path | default('not yet built — forest root') }}"
+          - >-
+            {{ ' !! FOREST-ROOT BUILD — domain NOT joined (none exists yet). Run windows_dc/site.yml next !!'
+               if (not _finish_domain_joined) and (_dj_genuine_forest_root | default(false) | bool)
+               else (' !! Domain NOT joined — the join did not succeed this run. Check the Join domain task output above !!'
+               if not _finish_domain_joined else '') }}
           - " Site  : {{ host_site }}"
           - " Arch  : {{ host_arch }}"
           - " Hyper : {{ hypervisor }}"
