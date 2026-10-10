@@ -531,9 +531,25 @@ was confirmed live end-to-end building `EXADCSFRD001`, 2026-09-21.
 **Step 1 — generic bootstrap** (rename, static IP, DNS, Chocolatey packages, hardening):
 
 ```bash
-ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
+ansible-playbook -i "<its-current-reachable-address>," -i configs/inventory playbooks/windows_bootstrap/site.yml \
   -e target_hosts=<its-current-reachable-address>
 ```
+
+**The trailing-comma `-i "<ip>,"` is not optional.** `windows_bootstrap/site.yml` chains
+every play via `import_playbook`, which resolves each play's `hosts:` line once, at parse
+time, for the whole file (the same parse-time behaviour documented under
+[Dynamic Inventory Registration](#dynamic-inventory-registration--add_host) below). `-e
+target_hosts=<ip>` only sets a variable — with just `-i configs/inventory` loaded, a raw
+IP that isn't already a real inventory host never matches anything, so Ansible prints
+`[WARNING]: Could not match supplied host pattern, ignoring: <ip>` once and **every single
+play in the chain silently matches zero hosts** — a run that looks complete (every play
+header prints, every `vars_prompt` question gets asked) but touches nothing at all, with a
+blank `PLAY RECAP`. Real live incident, 2026-10-10, building `EXADCSCLD001`: this exact gap
+(command missing the comma-IP form) produced precisely that — a clean-looking full run that
+changed nothing on the box. `-i "<ip>,"` is what actually registers the raw IP as a real,
+matchable host; `-i configs/inventory` alongside it is still needed for `group_vars/` to
+resolve. `windows_bootstrap/site.yml`'s own header usage comment has documented this exact
+two-`-i` form the whole time — this section's command had drifted from it.
 
 *Correction, 2026-10-04: an earlier version of this note wrongly claimed `--limit` couldn't be
 used on this first-ever run at all. Verified directly: `--limit <dhcp-ip>` (the same value
@@ -680,6 +696,120 @@ were invented), `add_host` resolving group membership for a host that doesn't ex
 `.ini` file yet, and the same core idea — a fresh box reachable only by its temporary address
 becoming a fully-managed, correctly-configured estate member — playing out identically
 across a Debian firewall, a Debian hypervisor, and a Windows domain controller.
+
+---
+
+## Adding Additional Domain Controllers
+
+[Section 4](#4-exadcscld001--the-first-domain-controller-forest-root) above builds the
+*first* DC for a brand-new forest. This section covers the different, more common case:
+a site needs its own DC, and the domain **already exists**, built and running elsewhere.
+Real worked example, `EXADCSCLD001` being added to `jukebox.internal` while
+`EXADCSGOT001` already holds the forest.
+
+**Worth being honest about up front**: this is not read-only against the existing forest.
+Promoting an additional DC means the DC you replicate from receives real inbound AD
+replication (the new DC's own computer account, SPNs, and so on) — normal multi-master AD
+behaviour, not a bug, but a genuine write on the existing DC, not nothing. If you're
+snapshotting the existing DC first as a safety net before doing this, that's the right
+instinct, not overcaution.
+
+### Step 0 — manual OpenSSH bootstrap (plain GUI installs only)
+
+If the box went through the real autounattend → `SetupComplete.cmd` chain (see
+[Bootstrapping the Base Nodes](#bootstrapping-the-base-nodes--a-worked-example-from-nothing)
+above), OpenSSH is already installed and listening — skip to Step 1. A **plain, manual GUI
+install** skips that chain entirely, so nothing has installed OpenSSH yet and Ansible has
+no way to reach the box at all. On the box's own console or RDP, in an elevated PowerShell:
+
+```powershell
+Invoke-WebRequest -Uri http://192.168.139.50/windows/Install-OpenSSH.ps1 -OutFile C:\Install-OpenSSH.ps1
+powershell.exe -ExecutionPolicy Bypass -File C:\Install-OpenSSH.ps1
+ipconfig   # note the current DHCP address -- needed for Step 1
+```
+
+This is the exact same, self-contained, idempotent script the automated path already runs
+(see ["A gotcha" above](#a-gotcha-manually-preparing-a-windows-box-for-ansible-skipping-the-unattend-chain)
+for why retyping the four commands by hand instead isn't enough — it never opens the
+firewall rule on its own).
+
+### Step 1 — generic bootstrap
+
+```bash
+ansible-playbook -i "<the-DHCP-address-from-ipconfig>," -i configs/inventory playbooks/windows_bootstrap/site.yml \
+  -e target_hosts=<the-DHCP-address-from-ipconfig> --ask-vault-pass
+```
+
+**The `-i "<ip>,"` (trailing comma) is required, not decoration.** Without it, the raw
+DHCP IP never matches as a real host and the whole chain silently runs against zero
+hosts — see the real incident callout under Section 4's own Step 1 above, where this
+exact gap hit live building this same host.
+
+Two prompts worth knowing the real meaning of, specific to this scenario:
+
+- **"Is this the FIRST domain controller being built for this site?"** — this is a
+  per-*site* DNS decision (see `00-preflight.yml`'s own "DNS decision" header comment), not
+  a per-forest one. Answer **yes** if the target site has never had its own DC before
+  (true for CLD here) — it only decides whether this run temporarily uses BIND9-only DNS
+  or an existing hub DC's DNS until promotion sorts out real AD DNS. It does **not** make
+  this host a forest root; that's a completely separate question, asked in Step 2.
+- **Static IP to assign** — use the site's own `DC` column in `sites.csv`, not a guess
+  (`192.168.69.10` for CLD, confirmed directly against the real file before advising it).
+
+### Step 2 — DC promotion
+
+```bash
+ansible-playbook -i configs/inventory playbooks/windows_dc/site.yml \
+  -e target=<hostname> --ask-vault-pass
+```
+
+- **"Is this the first DC in the AD Forest?"** — answer **no** here, truthfully, since a
+  real forest already exists elsewhere. This only matters if nothing reachable is found —
+  `dc_source_resolution.yml` probes every real DC in `devices.csv`/`ad_computers.json` on
+  TCP/389 first, and a reachable candidate **always** wins over this answer regardless, with
+  a loud warning printed if you answered "yes" anyway and one turned up. Candidates come
+  from the union of `devices.csv`'s real DCS rows and `ad_computers.json`'s `Enabled: true`
+  DCS records — this dual-source lookup exists specifically because a *standard* site's own
+  DCS (GOT included) deliberately never gets a `devices.csv` row once built, only
+  `ad_computers.json` does (see `dc_source_resolution.yml`'s own 2026-09-28 changelog entry
+  for the live incident that found this gap, caught before it could block this exact kind
+  of build).
+- Promotion runs `Install-ADDSDomainController` (an additional DC), never
+  `Install-ADDSForest`, as long as a source was found — `20-dc-promote.yml` branches on
+  `dc_is_forest_root`, which `dc_source_resolution.yml` only ever sets `true` when nothing
+  was reachable at all.
+- `30-dc-replicate.yml` forces a full sync (`repadmin /syncall /AdeP`) and reports FSMO
+  placement — **report only, it never moves a role**. `40-dc-summary.yml` runs
+  `dcdiag /test:replications /test:dns /test:fsmo /test:netlogons` as the final health
+  check.
+
+### Step 3 — verify, don't just trust a clean recap
+
+A clean `failed=0` recap is proof nothing crashed, not proof FSMO placement is still what
+you expect (see the [AD Troubleshooting](#ad-windows_adschema-troubleshooting-one-liners)
+section's own closing caution — the same discipline applies here):
+
+```powershell
+netdom query fsmo      # should still show the EXISTING forest's DC for all 5 roles
+repadmin /showrepl     # confirm a clean two-way replication partner link
+```
+
+### What's deliberately not covered here
+
+**Transferring FSMO roles to the new DC.** That is a separate, manual,
+change-controlled step for once the new DC's health is independently confirmed over time —
+this codebase never automates it (`30-dc-replicate.yml`'s own output says so explicitly:
+use `ntdsutil`/`Move-ADDirectoryServerOperationMasterRole` by hand). Don't fold it into the
+same session as the promotion above.
+
+**Populating AD with demo data (`populate_ad`).** Answer "no" at the Step 2 prompt and run
+it later, separately, if wanted — it's additive-only and never auto-chained. If you do run
+it later against a DC, leave `40-ad-computers.yml`'s `exclude_dc_computer_accounts` prompt
+at its default ("yes") — a real incident (`docs/INCIDENT-LOG.md`'s
+`INC-2026-09-26-GOT-DC-DISABLE`) disabled a live DC's own computer account by running
+`populate_ad` without this guard, which silently broke that DC's secure channel until its
+next reboot. The default now protects every DC's own computer account unconditionally;
+typing "no" there is the only way to turn that protection off.
 
 ---
 
@@ -962,6 +1092,42 @@ already — see the nodeinfo fix above) and the freshness-reminder MOTD/systemd-
 deployment itself (one-time tooling setup, not something run often the way the data refresh
 is) — confirmed via `--list-tasks --tags example_music` that only the 11 real deploy tasks
 (plus the always-tagged nodeinfo refresh, harmlessly along for the ride) are in scope.
+
+### Proxmox theme/sensor refresh only — `--tags proxmorph`
+
+`proxmox/playbooks/46-proxmorph.yml` installs/refreshes ProxMorph's PVE web-UI themes and
+optional hardware-sensor monitoring (see its own header). It's always-on in the full chain,
+but reaching for the whole `proxmox/site.yml` just to pick up a new theme release is more
+than you need — and against a **production hypervisor with live VMs** (the real case this
+was asked for, `EXAPVEVRK001`), it's worth scoping down deliberately rather than running
+every stage:
+
+```bash
+cd ansible
+ansible-playbook -i configs/inventory playbooks/proxmox/site.yml --tags proxmorph -e target=EXAPVEVRK001
+```
+
+Why this is safe to run against an already-onboarded, live node, checked stage-by-stage
+before advising it rather than assumed:
+
+- `00-preflight.yml` detects the node is already onboarded (`/etc/example-music/nodeinfo.json`
+  exists) and sets `pve_run_full_onboard: false` — this is what keeps the two genuinely
+  live-state-touching stages (`20-ansible-access.yml`, `50-systemd-units.yml`) gated off by
+  default. Neither carries the `proxmorph` tag anyway, so `--tags proxmorph` alone wouldn't
+  reach them even without the gate — the gate matters for a full, untagged `site.yml` run.
+- `46-proxmorph.yml` itself never touches VM configuration, qemu, pve-cluster, or corosync.
+  Its upstream `install.sh` (fetched fresh from the project's `main` branch every run, by this
+  repo's own deliberate design — see the file's header) only ever restarts **`pveproxy`**, the
+  web-UI/API daemon, backgrounded (`nohup systemctl restart pveproxy &`) — confirmed by
+  fetching and reading the real script rather than trusting an old changelog note about a
+  different code path. A `pveproxy` restart briefly interrupts web-UI/API sessions, nothing
+  running under `qemu`/`pvedaemon`.
+- Its one `Nodes.pm` Perl patch (for the optional sensor-monitoring API hook) takes its own
+  backup first (`/root/.proxmorph-backup/`) with a documented rollback
+  (`apt-get reinstall proxmox-widget-toolkit`) if the patch fails.
+
+**Live-confirmed**, 2026-10-10, against `EXAPVEVRK001`: ran clean, refreshed only the
+proxmorph stage, nothing else on the box was touched.
 
 ---
 
@@ -1888,6 +2054,9 @@ command on one line before trusting it.
 | 2026-10-04 | Added `--limit <host>` explicitly throughout this document (both Targeted Runs examples and the day-0/day-2 bootstrapping walkthrough) — Robert's ask, preferring `--limit`'s explicit "this host only" statement. Added a bold/italic/underlined NB on both genuine bare-IP first-run examples (`EXADCSCLD001`'s forest-root build, and the general first-ever-run form) explaining why `--limit` cannot substitute for `-e target_hosts=` there specifically. See `docs/ExampleMusic_Beginners_Guide.md`'s corrected `--limit` table for the full, repo-wide picture. |
 | 2026-10-04 | Added a third "Targeted Runs" worked example: refreshing `/etc/example-music`'s CSVs/JSONs on `EXAANSCLD001` (`--tags example_music --limit EXAANSCLD001`) -- Robert's follow-up ask, recognising this as "our old friend" the control-node freshness drift he'd already hit before. None of `linux/tools.yml`'s 11 benarbejde-file deploy tasks carried any tag at all until now; tagged them all `example_music`, matching the existing convention in `proxmox/playbooks/30-example-music.yml`. Confirmed via `--list-tasks` that only the real deploy tasks (plus the always-tagged nodeinfo refresh) are in scope -- deliberately excludes the one-time freshness-reminder MOTD/systemd-timer deployment, which only detects staleness, never fixes it. |
 | 2026-10-04 | **Corrected the PuTTY Default Settings "Targeted Runs" example's own "Live-confirmed" claim** -- it was real but incomplete: the 4-value registry read-back it cited genuinely matched, but Robert actually opening a fresh PuTTY window afterward found the font still hadn't taken. Root cause: PuTTY's Default Settings is a complete session record (PuTTY's own GUI only ever writes complete ones, ~200 values), not a sparse overlay merged with PuTTY's own defaults for anything missing -- the 4-value key left Font genuinely installed and even selectable by hand in PuTTY's own Font dialog, but silently unapplied to a brand-new session, since real companion values (FontCharSet, FontIsBold, FontQuality, FontVTMode) were entirely absent. Fixed by reproducing a genuinely working key by hand and exporting it, now committed as `ansible/playbooks/windows_bootstrap/playbooks/files/putty_default_settings.reg` -- the task does a full `reg import` of it instead of a 4-value reconstruction. |
+| 2026-10-10 | Added a fourth "Targeted Runs" worked example: "Proxmox theme/sensor refresh only -- `--tags proxmorph`" -- Robert's ask, re-running `proxmox/site.yml` against `EXAPVEVRK001` (now explicitly a production hypervisor with live VMs) to pick up ProxMorph theme updates without touching anything else. Read all 10 `proxmox/playbooks/*.yml` stage files in full before answering, plus fetched and read the real, current upstream `install.sh` (unpinned, fetched fresh from `main` every run by this repo's own design) to confirm it only ever restarts `pveproxy` (backgrounded, web-UI/API only -- never qemu/pve-cluster/corosync) and takes its own backup before patching `Nodes.pm`. Also confirmed `00-preflight.yml`'s already-onboarded detection gates off the two genuinely live-state-touching stages (`20-ansible-access.yml`, `50-systemd-units.yml`) by default. Live-confirmed clean afterward: ran fine, refreshed only the proxmorph stage. |
+| 2026-10-10 | Added a new top-level section, "Adding Additional Domain Controllers" -- Robert's ask, building `EXADCSCLD001` as a second DC onto the already-running `jukebox.internal` forest (`EXADCSGOT001` holds it), distinct from Section 4's forest-root walkthrough. Covers the manual OpenSSH bootstrap step needed for a plain GUI install (skips the autounattend chain entirely), the real meaning of `windows_bootstrap`'s per-*site* "first DC for this site" prompt versus `windows_dc`'s separate per-*forest* one, how `dc_source_resolution.yml`'s dual-source (`devices.csv` + `ad_computers.json`) candidate lookup resolves the existing forest's DC automatically over TCP/389, and verification commands (`netdom query fsmo`, `repadmin /showrepl`) rather than trusting a clean recap. Explicitly scopes out FSMO transfer (separate, manual, change-controlled, never automated here) and flags the `exclude_dc_computer_accounts` safeguard for any later `populate_ad` run, referencing the real `INC-2026-09-26-GOT-DC-DISABLE` incident that guard exists because of. Verified every claim against the real current `00-dc-preflight.yml`/`dc_source_resolution.yml`/`sites.csv` before writing, not from memory. |
+| 2026-10-10 | **Fixed a real command gap, hit live building `EXADCSCLD001` the same day**: both Section 4's Step 1 and this same day's new "Adding Additional Domain Controllers" Step 1 showed `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml -e target_hosts=<ip>` with no comma-form `-i "<ip>,"` -- `windows_bootstrap/site.yml` chains every play via `import_playbook`, which resolves `hosts:` once at parse time for the whole chain, so a raw IP not already a real inventory host never matches anything; the real run printed `[WARNING]: Could not match supplied host pattern, ignoring: <ip>` once and silently ran all 19 plays against zero hosts -- every play header printed, every `vars_prompt` question got asked, `PLAY RECAP` came back blank, nothing on the box changed at all. The command's own existing 2026-10-04 correction note ("`--limit <dhcp-ip>`, the same value already in `-i`") was itself a tell this was missing -- that phrase only makes sense if an earlier version of the command actually had the IP in `-i`. Fixed both commands to the two-`-i` form `windows_bootstrap/site.yml`'s own header usage comment has documented the whole time (`-i <ip>, -e target_hosts=<ip>`), and added an explicit callout at each site explaining why the comma is load-bearing, not cosmetic. |
 
 ---
 
