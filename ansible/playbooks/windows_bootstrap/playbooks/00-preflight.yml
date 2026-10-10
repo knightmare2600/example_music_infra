@@ -81,6 +81,17 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-10-10  Cosmetic only, Robert, live output (EXADCSCLD001): "[H] Warn operator --
+#               reboot imminent" used a single `>-` folded-scalar msg with a {% if %}/
+#               {% endif %} block inside it -- YAML's `>` folding joins same-indentation
+#               lines with a single space, not a newline, so "════...════ Rebooting now to
+#               apply changes. !! IP CHANGE ... !! The EXA-ApplyStaticIP scheduled task will
+#               set:" all ran together on one line (only the more-indented DNS sub-lines
+#               kept their own line breaks), and the closing border line picked up a stray
+#               leading space from the {% endif %} boundary. Split into two separate tasks
+#               (ip_needs_change true/false), each a plain msg: list -- the same pattern
+#               already used everywhere else in this codebase for multi-line debug banners,
+#               never a folded scalar with embedded Jinja control blocks.
 #   2026-09-27  CRITICAL FIX, found live rebuilding EXADCSGOT001 (see
 #               docs/INCIDENT-LOG.md, INC-2026-09-26-GOT-DC-DISABLE): the
 #               DHCP address handed to the fresh install had previously
@@ -1123,22 +1134,27 @@
       set_fact:
         needs_reboot: "{{ hostname_needs_change | bool or ip_needs_change | bool }}"
 
-    - name: "[H] Warn operator — reboot imminent"
+    - name: "[H] Warn operator — reboot imminent (IP change)"
       debug:
-        msg: >-
-          ════════════════════════════════════════════════════════════════
-          Rebooting now to apply changes.
-          {% if ip_needs_change | bool %}
-          !! IP CHANGE — Ansible will reconnect on {{ static_ip }} !!
-          The EXA-ApplyStaticIP scheduled task will set:
-            Primary DNS : {{ dns_primary }}
-            Secondary   : {{ dns_secondary if dns_secondary | length > 0 else '(none)' }}
-            Reason      : {{ dns_reason }}
-          {% else %}
-          IP unchanged — reconnecting on {{ current_ip }}
-          {% endif %}
-          ════════════════════════════════════════════════════════════════
-      when: needs_reboot | bool
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "Rebooting now to apply changes."
+          - "!! IP CHANGE — Ansible will reconnect on {{ static_ip }} !!"
+          - "The EXA-ApplyStaticIP scheduled task will set:"
+          - "  Primary DNS : {{ dns_primary }}"
+          - "  Secondary   : {{ dns_secondary if dns_secondary | length > 0 else '(none)' }}"
+          - "  Reason      : {{ dns_reason }}"
+          - "════════════════════════════════════════════════════════════════"
+      when: needs_reboot | bool and ip_needs_change | bool
+
+    - name: "[H] Warn operator — reboot imminent (no IP change)"
+      debug:
+        msg:
+          - "════════════════════════════════════════════════════════════════"
+          - "Rebooting now to apply changes."
+          - "IP unchanged — reconnecting on {{ current_ip }}"
+          - "════════════════════════════════════════════════════════════════"
+      when: needs_reboot | bool and not (ip_needs_change | bool)
 
     - name: "[H] Reboot — IP change (async fire-and-forget)"
       # /t 5, not /t 0 -- a zero-delay shutdown races the WinRM/SSH connection's own

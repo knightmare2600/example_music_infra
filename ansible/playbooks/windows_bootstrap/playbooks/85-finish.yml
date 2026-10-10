@@ -52,6 +52,10 @@
 # Tags: finish
 # =============================================================================
 # Changelog:
+#   2026-10-10  Cosmetic only, Robert, live output (EXADCSCLD001): "Remote access summary"'s
+#               conditional FIRST-DC-BUILD warning line was missing the single leading space
+#               every other content line in this banner has, so it sat one column further
+#               left than everything else. Added it.
 #   2026-09-27  Robert's ask, live (EXADCSGOT001): the pending-reboot check's own
 #               output line always shows "no change" (changed_when: false, correctly --
 #               it's read-only), which told the operator nothing about which way the
@@ -136,7 +140,7 @@
           - " RDP   : {{ host_ip }}:3389"
           - " SAC   : {{ 'Enabled on COM1/115200 (SOL)' if is_server else 'N/A (not a server OS)' }}"
           - " Domain: {{ exa_domain }} / OU: {{ domain_ou_path | default('not yet built — first-DC') if is_first_dc | default(false) | bool else domain_ou_path | default('already joined') }}"
-          - "{{ '!! FIRST-DC BUILD — domain NOT joined. Run windows_dc/site.yml next !!' if is_first_dc | default(false) | bool else '' }}"
+          - "{{ ' !! FIRST-DC BUILD — domain NOT joined. Run windows_dc/site.yml next !!' if is_first_dc | default(false) | bool else '' }}"
           - " Site  : {{ host_site }}"
           - " Arch  : {{ host_arch }}"
           - " Hyper : {{ hypervisor }}"
