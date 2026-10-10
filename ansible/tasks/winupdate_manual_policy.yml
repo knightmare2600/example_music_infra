@@ -1,0 +1,92 @@
+---
+# =============================================================================
+# ansible/tasks/winupdate_manual_policy.yml
+# Example Music Limited — set Windows Update to manual download/install
+# =============================================================================
+# Shared mechanics behind windows_hygiene/playbooks/35-winupdate-policy.yml,
+# extracted so windows_bootstrap can apply the same policy early (before its
+# own ~45-minute package-install chain gives background Automatic Updates
+# time to silently kick in) without duplicating the same five
+# win_regedit/win_service tasks in two places.
+#
+# Deliberately contains NO debug/report messaging and NO opt-in prompt of its
+# own -- each caller's own established style differs (windows_hygiene uses
+# the {{ _c }} colour convention and a default-yes vars_prompt; windows_bootstrap
+# uses plain-text banners and applies estate-wide policy unconditionally, the
+# same way it already does for its Defender exclusions) -- so each caller
+# wraps this include with its own intro/report lines and its own decision of
+# whether to ask first.
+#
+# See windows_hygiene/playbooks/35-winupdate-policy.yml's own header for the
+# full reasoning behind AUOptions=2 over NoAutoUpdate=1, and why this is
+# deliberately NOT the same thing as actually running Windows Update
+# (40-winupdate.yml's own job).
+#
+# Inputs:
+#   winupdate_policy_task_tags — list, the tag(s) each of these tasks should carry,
+#     default ['winupdate_policy']. Pass this explicitly from the caller's own
+#     include_tasks `vars:` to get a different tag set (e.g. windows_bootstrap's
+#     00-preflight.yml passes [preflight, always], matching its own Defender-exclusion
+#     task right next to it). Confirmed empirically before relying on this: a templated
+#     tags: value on an included task's own `tags:` key IS resolved per call-site from
+#     the include's own `vars:`, not frozen to whatever the file's own default says --
+#     verified live with an isolated two-call-site test harness (four --tags scenarios,
+#     each showing the correct run/skip behaviour) before trusting it here, the same
+#     "build the smallest possible reproduction first" discipline this repo's own
+#     beginners guide already documents for tag-propagation questions.
+#
+# Uses ansible_user's own elevated connection, the same as every other
+# ansible.windows task in whichever play includes this.
+#
+# NOT YET TESTED against a real Windows target — same caveat as the
+# windows_hygiene stage this was extracted from.
+# =============================================================================
+# Changelog:
+#   2026-10-10  Extracted from windows_hygiene/playbooks/35-winupdate-policy.yml
+#               (Robert's ask, live incident: EXADCSCLD001's own windows_bootstrap run
+#               hit a win_reboot timeout after a ~45-minute bootstrap gave background
+#               Windows Update unsupervised time to run) so windows_bootstrap can apply
+#               the same policy early, before its own long package-install chain, not
+#               just after the fact via windows_hygiene. windows_hygiene's own
+#               35-winupdate-policy.yml refactored to call this too, rather than keep a
+#               second, duplicate copy of the same five tasks.
+# =============================================================================
+
+- name: "[winupdate-policy] Ensure AU policy key exists"
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+    state: present
+  tags: "{{ winupdate_policy_task_tags | default(['winupdate_policy']) }}"
+
+- name: "[winupdate-policy] Ensure AU policy is enabled (not disabled outright)"
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+    name: NoAutoUpdate
+    data: 0
+    type: dword
+    state: present
+  tags: "{{ winupdate_policy_task_tags | default(['winupdate_policy']) }}"
+
+- name: "[winupdate-policy] Set AUOptions=2 (notify for download, notify for install -- manual both ways)"
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+    name: AUOptions
+    data: 2
+    type: dword
+    state: present
+  tags: "{{ winupdate_policy_task_tags | default(['winupdate_policy']) }}"
+
+- name: "[winupdate-policy] Never force a reboot while a user is logged on"
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+    name: NoAutoRebootWithLoggedOnUsers
+    data: 1
+    type: dword
+    state: present
+  tags: "{{ winupdate_policy_task_tags | default(['winupdate_policy']) }}"
+
+- name: "[winupdate-policy] Restart wuauserv so the new policy takes effect immediately"
+  ansible.windows.win_service:
+    name: wuauserv
+    state: restarted
+  tags: "{{ winupdate_policy_task_tags | default(['winupdate_policy']) }}"

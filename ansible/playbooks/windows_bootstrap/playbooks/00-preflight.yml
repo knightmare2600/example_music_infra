@@ -41,6 +41,10 @@
 #            group (add_host) so group_vars/windows*/ resolve correctly for
 #            the rest of this run — requires -i configs/inventory (not a
 #            bare IP) so the group hierarchy already exists to register into
+# PHASE H3 — Windows Defender exclusions (Chocolatey/PowerShell) and Windows
+#            Update set to manual download/install — both unconditional, no
+#            prompt, "get the box into a clean, Ansible-friendly state before
+#            the long package-install chain starts" steps
 # PHASE I — Summary and hand-off to the rest of site.yml's chain
 #
 # ─────────────────────────────────────────────────────────────────────────────
@@ -81,6 +85,17 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-10-10  Added "[H3] Set Windows Update to manual download/install" right after the
+#               Defender-exclusion task (Robert's ask, live incident: EXADCSCLD001's own
+#               final win_reboot in 85-finish.yml timed out, partly attributable to
+#               background Windows Update having had ~45 unsupervised minutes during this
+#               chain's own package-install run, since windows_hygiene/
+#               35-winupdate-policy.yml -- which already set this -- only runs AFTER
+#               windows_bootstrap, too late to help here). Applied unconditionally, no
+#               prompt, matching the Defender-exclusion task's own precedent immediately
+#               above. Delegates to the new shared ansible/tasks/winupdate_manual_policy.yml
+#               (also used by windows_hygiene now) rather than duplicating the same five
+#               registry/service tasks a second time.
 #   2026-10-10  Cosmetic only, Robert, live output (EXADCSCLD001): "[H] Warn operator --
 #               reboot imminent" used a single `>-` folded-scalar msg with a {% if %}/
 #               {% endif %} block inside it -- YAML's `>` folding joins same-indentation
@@ -1399,6 +1414,29 @@
              else 'Add-MpPreference not available on this host -- no Defender exclusions to apply.' }}
       tags: [preflight, always]
 
+    # 2026-10-10, Robert's ask, live incident (EXADCSCLD001): this chain's own long
+    # package-install run (15-locale-timezone.yml through 85-finish.yml, ~45 minutes on
+    # this build) gave background Windows Update unsupervised time to do its own thing --
+    # confirmed as a real contributing factor when 85-finish.yml's own final win_reboot
+    # timed out waiting for the box to come back. windows_hygiene/35-winupdate-policy.yml
+    # already sets this, but only runs AFTER windows_bootstrap -- too late to protect this
+    # chain's own run. Applied here too, unconditionally (no prompt, matching [H3]'s own
+    # Defender-exclusion precedent immediately above -- this is a "get the box into a
+    # clean, Ansible-friendly state" step, not an optional extra), early enough to cover
+    # every later stage in this chain. See ansible/tasks/winupdate_manual_policy.yml's own
+    # header for the full AUOptions=2 reasoning (shared with windows_hygiene, not
+    # duplicated here).
+    - name: "[H3] Set Windows Update to manual download/install (stop background interference during this run)"
+      include_tasks: ../../../tasks/winupdate_manual_policy.yml
+      vars:
+        winupdate_policy_task_tags: [preflight, always]
+      tags: [preflight, always]
+
+    - name: "[H3] Report Windows Update policy result"
+      debug:
+        msg: "Windows Update set to manual download/install (notify only) -- will not interfere with the rest of this run."
+      tags: [preflight, always]
+
     # =========================================================================
     # PHASE I — Summary and hand-off
     # =========================================================================
@@ -1415,6 +1453,7 @@
           - "  DNS 2nd     : {{ dns_secondary if dns_secondary | length > 0 else '(none — pre-promotion)' }}"
           - "  DNS reason  : {{ dns_reason }}"
           - "  SSH         : running, auto-start, Ansible key deployed"
+          - "  WU policy   : manual download/install set (notify only)"
           - "  First DC    : {{ is_first_dc }}"
           - "  Handing off to the rest of site.yml's chain (10-rename.yml onward)..."
           - "════════════════════════════════════════════════════════════════"
