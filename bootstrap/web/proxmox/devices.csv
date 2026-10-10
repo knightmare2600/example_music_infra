@@ -243,6 +243,7 @@ CLD,UFC,1,82,Debian trixie,snmp,,UniFi Network Controller -- manages WAPs across
 TOR,DCR,28,,Windows Server 2003,,no,"Undocumented legacy AD install found on site, no-one on record knew it existed -- running on a Dell PowerEdge 1950, no iDRAC/out-of-band card at all (real problem 3,000 miles from Falkirk). Not in benarbejde/ad_computers.json (the TDF-era AD export) -- confirmed real by Robert directly, not from that export. Slated for full replacement, not just decommission. HostOctet/ConnectionType genuinely unknown -- needs on-site discovery before this can be more than a placeholder row.",,yes,no,
 CLD,BMC,2,3,,none,,"Not yet built -- planned expansion slot (2026-07-30, Robert)",,no,,yes
 CLD,PVE,2,6,,none,,"Not yet built -- planned expansion slot (2026-07-30, Robert)",,no,,yes
+CLD,NIX,1,40,,ssh,,"CloudPanel test host (Robert, 2026-10-10) -- first live test of the cloudpanel playbook conversion. Octet matches the sibling NIX precedent at PER (EXANIXPER001). OS/exact role TBD.",,no,,
 ODE,FWL,1,253,Cisco ASA 5506-X,telnet,,"Enterprise edge firewall -- real, confirmed via ad_computers.json (EXAFWLODE001, Enabled:true)",,no,,
 ODE,FWL,2,254,,none,,"Not yet built -- planned second firewall (2026-07-30, Robert)",,no,,yes
 FRD,FWL,1,253,,none,,"Not yet built -- planned first firewall for this fallback vRACK site (2026-07-30, Robert)",,no,,yes
