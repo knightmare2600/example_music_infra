@@ -13,6 +13,12 @@
 # Tags: winupdate
 # =============================================================================
 # Changelog:
+#   2026-10-10  Added the {{ _c }} colour-coded [*]/[+]/[!] convention already used
+#               throughout windows_dc/windows_bootstrap/proxmox -- this whole module had
+#               never adopted it (Robert, sweep across every file in this family). Raw
+#               captured stdout ("Show Windows Update results") left uncoloured, matching
+#               the existing convention elsewhere (e.g. windows_dc's raw dcdiag output) of
+#               never wrapping literal tool output in colour codes, only authored status text.
 #   2026-07-06  Initial file — extracted from site.yml (was a single
 #               monolithic play) for consistency with the numbered
 #               00-preflight/major-step-of-10 convention used by
@@ -24,9 +30,15 @@
   gather_facts: false
   tasks:
 
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: always
+
     - name: "── Windows Update ──"
       debug:
-        msg: "Installing PSWindowsUpdate module and running Windows updates (no auto-reboot)..."
+        msg:
+          - "{{ _c.C }}── Windows Update ──{{ _c.NC }}"
+          - "{{ _c.C }}[*]{{ _c.NC }} Installing PSWindowsUpdate module and running Windows updates (no auto-reboot)..."
       tags: winupdate
 
     - name: Install PSWindowsUpdate module (Scope AllUsers, persists across reboots)

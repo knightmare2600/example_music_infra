@@ -14,6 +14,12 @@
 # Tags: dism
 # =============================================================================
 # Changelog:
+#   2026-10-10  Added the {{ _c }} colour-coded [*]/[+]/[!] convention already used
+#               throughout windows_dc/windows_bootstrap/proxmox -- this whole module had
+#               never adopted it (Robert, sweep across every file in this family). The
+#               section header stays in the colour-coded debug msg content, not the task's
+#               own name: -- every real precedent elsewhere in the repo does it that way,
+#               never the reverse (checked before committing to this, not assumed).
 #   2026-07-06  Initial file — extracted from site.yml (was a single
 #               monolithic play) for consistency with the numbered
 #               00-preflight/major-step-of-10 convention used by
@@ -25,9 +31,15 @@
   gather_facts: false
   tasks:
 
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: always
+
     - name: "── DISM — component cleanup + ResetBase ──"
       debug:
-        msg: "Running DISM StartComponentCleanup /ResetBase — this can take 10-30 minutes. Do not interrupt."
+        msg:
+          - "{{ _c.C }}── DISM — component cleanup + ResetBase ──{{ _c.NC }}"
+          - "{{ _c.Y }}[!]{{ _c.NC }} Running DISM StartComponentCleanup /ResetBase — this can take 10-30 minutes. Do not interrupt."
       tags: dism
 
     - name: Run DISM component cleanup and ResetBase
