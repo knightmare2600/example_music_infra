@@ -14,6 +14,9 @@
 #   10-dism                    DISM component store cleanup + ResetBase
 #   20-hibernation-pagefile    Hibernation by chassis type + pagefile clear
 #   30-choco                   Chocolatey upgrade all + WinDirStat + SDelete
+#   35-winupdate-policy        Set Windows Update to manual download/install
+#                              (Robert's ask, 2026-10-10 -- stops background
+#                              updates/reboots interfering with Ansible runs)
 #   40-winupdate               PSWindowsUpdate module + Windows Update
 #   50-summary                 Print summary
 #
@@ -22,9 +25,12 @@
 # Laptop chassis types: 9 (Laptop), 10 (Notebook), 14 (Sub-Notebook),
 #                       30 (Tablet), 31 (Convertible), 32 (Detachable)
 #
-# Usage:
+# Usage (this family has no day-0/bare-IP case of its own -- it only ever
+# runs against hosts already bootstrapped and in configs/inventory, so plain
+# -i configs/inventory --limit <host> is correct and sufficient; confirmed
+# empirically, see README.md's 2026-10-04 changelog entry):
 #   ansible-playbook playbooks/windows_hygiene/site.yml \
-#     -i <host>, -e target_hosts=<host>
+#     -i configs/inventory --limit <host>
 #
 #   Or against inventory group:
 #   ansible-playbook playbooks/windows_hygiene/site.yml \
@@ -32,11 +38,16 @@
 #
 #   DISM only:
 #   ansible-playbook playbooks/windows_hygiene/site.yml \
-#     -i <host>, -e target_hosts=<host> --tags dism
+#     -i configs/inventory --limit <host> --tags dism
+#
+#   Windows Update policy fix only (safe re-run against an existing box,
+#   never triggers 40-winupdate.yml's own actual update-install run):
+#   ansible-playbook playbooks/windows_hygiene/site.yml \
+#     -i configs/inventory --limit <host> --tags winupdate_policy
 #
 #   Skip DISM (quick hygiene pass):
 #   ansible-playbook playbooks/windows_hygiene/site.yml \
-#     -i <host>, -e target_hosts=<host> --skip-tags dism
+#     -i configs/inventory --limit <host> --skip-tags dism
 #
 # Standalone plays can also be run directly without site.yml, e.g.:
 #   ansible-playbook playbooks/windows_hygiene/playbooks/30-choco.yml \
@@ -44,9 +55,19 @@
 # (20-hibernation-pagefile.yml and 50-summary.yml need 00-preflight.yml's
 # facts — run those together, or via site.yml, rather than standalone.)
 #
-# Tags: preflight, example_music_files, dism, hibernation, pagefile, choco, winupdate, summary
+# Tags: preflight, example_music_files, dism, hibernation, pagefile, choco,
+#       winupdate_policy, winupdate, summary
 # =============================================================================
 # Changelog:
+#   2026-10-10  Added 35-winupdate-policy.yml (Robert's ask): background Windows Update
+#               downloads/installs/reboots were interfering with Ansible runs. New stage
+#               sets Windows Update to manual download + manual install (AUOptions=2,
+#               the same registry policy Group Policy's "Configure Automatic Updates"
+#               writes) and disables forced reboot while a user is logged on. Own tag
+#               (winupdate_policy) deliberately separate from 40-winupdate.yml's own
+#               (winupdate) so re-running against an already-built box with
+#               --tags winupdate_policy never also triggers an actual Windows Update
+#               install run as a side effect.
 #   2026-09-25  Added 05-example-music-files.yml (Robert's ask): Windows nodes had
 #               no equivalent of what linux/tools.yml already gives every Linux
 #               host -- a local copy of sites.csv/devices.csv/etc plus
@@ -81,6 +102,9 @@
 
 - import_playbook: playbooks/30-choco.yml
   tags: choco
+
+- import_playbook: playbooks/35-winupdate-policy.yml
+  tags: winupdate_policy
 
 - import_playbook: playbooks/40-winupdate.yml
   tags: winupdate
