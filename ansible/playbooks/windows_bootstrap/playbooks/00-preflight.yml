@@ -85,6 +85,22 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-10-10  CRITICAL FIX, real live incident (Robert, EXADCSCLD001): Phase A5's own DNS
+#               decision used to short-circuit to BIND9-only the moment is_first_dc was
+#               answered "yes" at the earlier vars_prompt -- is_first_dc is a per-SITE
+#               question ("first DC built for THIS site"), not a per-FOREST one, so this
+#               fired even when the forest genuinely already existed elsewhere (EXADCSGOT001
+#               already runs jukebox.internal) -- a real, new-site-onto-existing-forest DC
+#               build, exactly this one. The hub-candidate list this depended on
+#               (_hub_candidates, hardcoded FAL/ODE/BRK) never included GOT/VRK/FRD at all
+#               either. Replaced with ansible/tasks/discover_real_dcs.yml, the same real
+#               devices.csv+ad_computers.json candidate discovery
+#               windows_dc/tasks/dc_source_resolution.yml already uses, run unconditionally
+#               now (never skipped because of is_first_dc) -- a reachable real DC always
+#               wins over the per-site answer. See discover_real_dcs.yml's own header for
+#               why windows_dc's already-proven, currently-in-live-use file was deliberately
+#               left untouched rather than refactored at the same time. 80-domainjoin.yml
+#               fixed the same way, same day, same incident -- see its own changelog.
 #   2026-10-10  Added "[H3] Set Windows Update to manual download/install" right after the
 #               Defender-exclusion task (Robert's ask, live incident: EXADCSCLD001's own
 #               final win_reboot in 85-finish.yml timed out, partly attributable to
@@ -669,19 +685,18 @@
     # this -- lookup() always evaluates on the controller regardless of
     # connection, only command/shell dispatch through the connection plugin.
 
-    - name: "[A5] Build hub DC candidate list from sites.csv"
-      set_fact:
-        _hub_candidates:
-          - site: "FAL"
-            ip: "{{ (site_data | selectattr('Site', 'equalto', 'FAL') | list | first | default({})).DC | default('192.168.76.10') }}"
-          - site: "ODE"
-            ip: "{{ (site_data | selectattr('Site', 'equalto', 'ODE') | list | first | default({})).DC | default('192.168.126.10') }}"
-          - site: "BRK"
-            ip: "{{ (site_data | selectattr('Site', 'equalto', 'BRK') | list | first | default({})).DC | default('192.168.136.10') }}"
-      delegate_to: localhost
-      become: false
-
     - name: "[A5] Probe site DC {{ site_dc }} — TCP 389 (LDAP)"
+      # 2026-10-10, Robert's ask, real live incident (EXADCSCLD001): this probe (and the
+      # discover_real_dcs.yml include right after it) used to be SKIPPED ENTIRELY whenever
+      # is_first_dc was answered "yes" -- is_first_dc is a per-SITE question ("first DC for
+      # this site"), not a per-FOREST one, so skipping all real-DC discovery on "yes" meant
+      # a genuinely new site's first DC, onto an ALREADY-EXISTING forest (this exact case --
+      # EXADCSGOT001 already runs jukebox.internal), got DNS forced to BIND9-only (no AD SRV
+      # records) and 80-domainjoin.yml skipped the join outright, both purely because of the
+      # per-site answer, with no check of whether a real DC actually exists. Now ALWAYS
+      # probes, regardless of is_first_dc -- a reachable real DC always wins, matching
+      # windows_dc/tasks/dc_source_resolution.yml's own already-proven "a reachable candidate
+      # always wins over the operator's answer" philosophy.
       command: >
         bash -c 'timeout 3 bash -c "echo >/dev/tcp/{{ site_dc }}/389" 2>/dev/null
         && echo reachable || echo unreachable'
@@ -697,41 +712,22 @@
         # locally -- found live 2026-07-28, same bug class as [B0] below and
         # ansible/tasks/example_music_freshness_gate.yml's own changelog.
         ansible_shell_type: sh
-      when: not (host_role_code | upper == 'DCS' and is_first_dc | bool)
 
     - name: "[A5] Set site DC reachability fact"
       set_fact:
         _site_dc_up: "{{ _site_dc_probe.stdout | default('unreachable') | trim == 'reachable' }}"
 
-    - name: "[A5] Probe hub DCs — TCP 389 (fallback when site DC not reachable)"
-      command: >
-        bash -c 'timeout 3 bash -c "echo >/dev/tcp/{{ item.ip }}/389" 2>/dev/null
-        && echo reachable || echo unreachable'
-      register: _hub_probe
-      loop: "{{ _hub_candidates }}"
-      loop_control:
-        label: "{{ item.site }} ({{ item.ip }})"
-      changed_when: false
-      delegate_to: localhost
-      become: false
-      vars:
-        ansible_connection: local
-        ansible_shell_type: sh
-      when:
-        - not _site_dc_up | bool
-        - not (host_role_code | upper == 'DCS' and is_first_dc | bool)
-
-    - name: "[A5] Select first reachable hub DC as primary fallback"
-      set_fact:
-        _hub_fallback_ip:   "{{ item.item.ip }}"
-        _hub_fallback_site: "{{ item.item.site }}"
-      loop: "{{ _hub_probe.results | default([]) }}"
-      loop_control:
-        label: "{{ item.item.site | default('?') }}"
-      when:
-        - not (_hub_probe is skipped)
-        - item.stdout | default('unreachable') | trim == 'reachable'
-        - _hub_fallback_ip is not defined
+    # 2026-10-10: replaces the old hardcoded FAL/ODE/BRK-only _hub_candidates list, which
+    # never included GOT, VRK, or FRD at all -- confirmed by reading the real code before
+    # this fix, not assumed. Same real-candidate-discovery mechanism
+    # windows_dc/tasks/dc_source_resolution.yml already uses (devices.csv's real DCS rows
+    # UNION ad_computers.json's Enabled: true DCS records), extracted into its own shared
+    # file rather than touching that already-proven, currently-in-live-use file. Sets
+    # _any_real_dc_reachable / _real_dc_reachable_ip / _real_dc_reachable_site as real,
+    # persisted facts -- see this task's own header for why that matters for a later,
+    # separately-imported play (80-domainjoin.yml) in the same site.yml run.
+    - name: "[A5] Discover whether any real DC is reachable anywhere (not just the hardcoded hub list)"
+      include_tasks: ../../../tasks/discover_real_dcs.yml
 
     - name: "[A5] Probe FRD-local DNS {{ frd_local_dns }} (EXADNSFRD001) — TCP 53"
       command: >
@@ -752,13 +748,22 @@
       when: host_site_code | upper == 'FRD'
 
     - name: "[A5] Apply DNS decision"
+      # 2026-10-10 rework (Robert's ask, real live incident, EXADCSCLD001): the old first
+      # branch here ("Role=DCS AND is_first_dc=yes -> BIND9, unconditionally") short-circuited
+      # before ever checking whether a real DC exists -- is_first_dc is a per-SITE answer, not
+      # a per-FOREST one, so it fired even when the forest genuinely already existed elsewhere
+      # (GOT, in this case). Real DC reachability (_any_real_dc_reachable, from
+      # discover_real_dcs.yml above, probed unconditionally now) is now the thing that
+      # actually decides -- is_first_dc no longer gates this at all. When nothing real is
+      # reachable, the end state is identical to before (BIND9-only) -- the fix only changes
+      # behaviour for the case that was actually wrong: a reachable real DC existing despite
+      # is_first_dc=yes.
       set_fact:
         dns_primary:    "{{ _primary }}"
         dns_secondary:  "{{ _secondary }}"
         dns_reason:     "{{ _reason }}"
         dj_temp_dns_ip: "{{ _primary }}"
       vars:
-        _is_forest_root: "{{ host_role_code | upper == 'DCS' and is_first_dc | bool }}"
         _frd_local_dns_available: "{{ host_site_code | upper == 'FRD' and _frd_dns_up | default(false) | bool }}"
         # Only real behaviour change vs. the pre-2026-09-19 logic: FRD substitutes its own
         # local DNS (once built and actually reachable) everywhere dns_bind9 (VRK) would
@@ -767,55 +772,38 @@
         # extra indirection.
         _effective_dns_bind9: "{{ frd_local_dns if _frd_local_dns_available | bool else dns_bind9 }}"
         _primary: >-
-          {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
-            {{ _effective_dns_bind9 }}
-          {%- elif _site_dc_up | bool -%}
+          {%- if _site_dc_up | bool -%}
             {{ site_dc }}
-          {%- elif _hub_fallback_ip is defined -%}
-            {{ _hub_fallback_ip }}
+          {%- elif _any_real_dc_reachable | default(false) | bool -%}
+            {{ _real_dc_reachable_ip }}
           {%- else -%}
             {{ _effective_dns_bind9 }}
           {%- endif -%}
-        # Must mirror _primary's own four-way branching, not just its first (is_first_dc)
-        # branch -- _primary's own LAST branch (nothing reachable: not first-DC, site DC
-        # down, no hub reachable either) also resolves to _effective_dns_bind9, same as
-        # the is_first_dc branch. The old two-way ternary here only excluded the
-        # is_first_dc case, so that last branch produced primary == secondary (BIND9
-        # listed as both) -- a real duplicate, found live 2026-10-08 (Robert,
-        # EXADCSDET001): [C2] showed "192.168.139.8 → 192.168.139.8, 192.168.139.8
-        # (CHANGE NEEDED)" against an already-correct single-entry DNS config, and [F2]'s
-        # netsh add dns failed outright with "The object is already in the list" --
-        # Windows genuinely refuses a DNS server listed twice. Secondary is only ever
-        # meaningful as a genuinely DIFFERENT server from primary -- empty in both
-        # branches where primary itself already IS _effective_dns_bind9.
-        #
-        # The two empty branches below MUST print the literal {{ '' }} rather than
-        # nothing at all -- found live immediately after the fix above shipped
-        # (Robert, same host, same day): a branch with zero printed characters makes
-        # ansible-core's native-type templating resolve the whole var to a real Python
-        # None instead of an empty string, and [A6]'s own prompt: does
-        # `dns_secondary | length > 0`, which throws "object of type 'NoneType' has no
-        # len()". Confirmed directly against real ansible-core (not plain Jinja2, which
-        # doesn't reproduce this) before trusting either version.
+        # Secondary is only ever meaningful as a genuinely DIFFERENT server from primary --
+        # empty whenever primary itself already IS _effective_dns_bind9 (the only remaining
+        # branch where that can happen now is "nothing reachable at all"). The empty branch
+        # below MUST print the literal {{ '' }} rather than nothing at all -- found live
+        # 2026-10-08 (Robert, EXADCSDET001): a branch with zero printed characters makes
+        # ansible-core's native-type templating resolve the whole var to a real Python None
+        # instead of an empty string, and [A6]'s own prompt: does `dns_secondary | length > 0`,
+        # which throws "object of type 'NoneType' has no len()". Confirmed directly against
+        # real ansible-core (not plain Jinja2, which doesn't reproduce this) before trusting
+        # either version.
         _secondary: >-
-          {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
-            {{ '' }}
-          {%- elif _site_dc_up | bool -%}
+          {%- if _site_dc_up | bool -%}
             {{ _effective_dns_bind9 }}
-          {%- elif _hub_fallback_ip is defined -%}
+          {%- elif _any_real_dc_reachable | default(false) | bool -%}
             {{ _effective_dns_bind9 }}
           {%- else -%}
             {{ '' }}
           {%- endif -%}
         _reason: >-
-          {%- if host_role_code | upper == 'DCS' and is_first_dc | bool -%}
-            new DC, not yet promoted — {{ 'EXADNSFRD001 (FRD-local)' if _frd_local_dns_available | bool else 'BIND9' }} only until promotion decides forest-root vs. additional DC
-          {%- elif _site_dc_up | bool -%}
+          {%- if _site_dc_up | bool -%}
             site DC {{ site_dc }} is up — using local DC
-          {%- elif _hub_fallback_ip is defined -%}
-            site DC offline — {{ _hub_fallback_ip }} ({{ _hub_fallback_site }}) temporary primary
+          {%- elif _any_real_dc_reachable | default(false) | bool -%}
+            no local DC yet — {{ _real_dc_reachable_ip }} ({{ _real_dc_reachable_site }}) is a real, reachable DC; using it as temporary primary (domain already exists)
           {%- else -%}
-            no DC reachable — {{ 'EXADNSFRD001 (FRD-local)' if _frd_local_dns_available | bool else 'BIND9' }} only; domain join will likely fail
+            no DC reachable anywhere — {{ 'EXADNSFRD001 (FRD-local)' if _frd_local_dns_available | bool else 'BIND9' }} only; forest-root build or domain join will likely fail
           {%- endif -%}
 
     # ── A6 — Pre-flight summary and operator confirm ───────────────────────────

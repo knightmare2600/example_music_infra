@@ -32,6 +32,20 @@
 # Tags: domainjoin
 # =============================================================================
 # Changelog:
+#   2026-10-10  CRITICAL FIX, real live incident (Robert, EXADCSCLD001): every DNS-check and
+#               join task here used to skip purely on is_first_dc -- a per-SITE vars_prompt
+#               answer ("first DC built for THIS site"), not a per-FOREST one. Real
+#               consequence: a genuinely new site's first DC, built onto an already-existing
+#               forest (EXADCSGOT001 already runs jukebox.internal), had is_first_dc=true
+#               (correctly, per the question's own wording) and so skipped the ENTIRE domain
+#               join outright, with this file's own comment insisting "the domain doesn't
+#               exist yet" when it genuinely did, just not at this site. Added
+#               _dj_genuine_forest_root (true only when is_first_dc=true AND
+#               ansible/tasks/discover_real_dcs.yml -- same real-candidate-discovery
+#               mechanism windows_dc/tasks/dc_source_resolution.yml already uses -- found
+#               nothing reachable anywhere) and replaced every is_first_dc check in this file
+#               with it. A real, reachable DC now always wins over the per-site answer, same
+#               as 00-preflight.yml's own matching fix, same incident, same day.
 #   2026-09-19  Robert, sweeping for the same hardcoded-VRK-DNS-literal bug found in
 #               00-preflight.yml's dns_bind9 var (see that file's own 2026-09-19 entry):
 #               dj_temp_dns_ip's standalone-run fallback here independently hardcoded the
@@ -146,6 +160,30 @@
         dj_temp_dns_ip: "{{ dj_temp_dns_ip | default(site_services.dns.ip) }}"
       tags: domainjoin
 
+    # 2026-10-10, Robert's ask, real live incident (EXADCSCLD001): matches
+    # 00-preflight.yml's own 2026-10-10 fix (see its [A5] changelog entry for the full
+    # story) -- re-discover here too if run standalone (outside the site.yml chain), same
+    # "already set upstream, else fall back" pattern dj_temp_dns_ip itself already uses.
+    - name: "Re-discover real DC reachability if not already set by 00-preflight.yml (standalone runs)"
+      include_tasks: ../../../tasks/discover_real_dcs.yml
+      vars:
+        discover_dc_domain_name: "{{ exa_domain }}"
+      when: _any_real_dc_reachable is not defined
+      tags: domainjoin
+
+    # is_first_dc is a per-SITE vars_prompt answer ("first DC for THIS site"), not a
+    # per-FOREST one -- it does NOT by itself mean the domain doesn't exist. A genuinely
+    # new site's first DC, built onto an already-existing forest (this exact scenario --
+    # EXADCSGOT001 already runs the domain), has is_first_dc=true but a real, reachable DC
+    # elsewhere. _dj_genuine_forest_root is the actual signal every task below needs:
+    # true only when BOTH the operator said this is a first-DC build AND no real DC was
+    # found reachable anywhere. Real DC reachability always wins over the per-site answer,
+    # matching windows_dc/tasks/dc_source_resolution.yml's own already-proven philosophy.
+    - name: "Set _dj_genuine_forest_root fact"
+      set_fact:
+        _dj_genuine_forest_root: "{{ (is_first_dc | default(false) | bool) and not (_any_real_dc_reachable | default(false) | bool) }}"
+      tags: domainjoin
+
     # ── Stage 0: DNS resolution ────────────────────────────────────────────────
     # A fresh VM may have DHCP/ISP DNS that cannot resolve jukebox.internal.
     # Check first; only override if needed.  Windows updates NIC DNS itself
@@ -157,9 +195,28 @@
     - name: "[Stage 0] Skip — first-DC build, nothing to resolve yet"
       debug:
         msg: >
-          {{ inventory_hostname }} is a first-DC build (is_first_dc=true) — skipping the DNS
-          pre-check, there's no existing domain to resolve against yet.
-      when: is_first_dc | default(false) | bool
+          {{ inventory_hostname }} is a genuine forest-root build (no real DC reachable
+          anywhere) — skipping the DNS pre-check, there's no existing domain to resolve
+          against yet.
+      when: _dj_genuine_forest_root
+      tags: domainjoin
+
+    # 2026-10-10, same incident, same fix: don't rely on the resolve-check below to decide
+    # whether DNS needs correcting -- it queries whatever DNS is CURRENTLY configured on the
+    # box, which may still be wrong (e.g. still BIND9-only, set by an earlier run before this
+    # fix existed) and whether a bare-apex "Resolve-DnsName jukebox.internal" happens to
+    # succeed against BIND9 says nothing about whether real AD SRV records are available --
+    # the actual join below needs those regardless. When a real DC was discovered, point DNS
+    # at it deterministically, unconditionally, before ever running the resolve-check --
+    # idempotent (Set-DnsClientServerAddress to the same value twice is a no-op), so this is
+    # safe to run even when DNS already happens to be correct.
+    - name: "Point DNS at the discovered real DC before attempting the join"
+      ansible.windows.win_shell: |
+        $nic = (Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric | Select-Object -First 1).InterfaceAlias
+        Set-DnsClientServerAddress -InterfaceAlias $nic -ServerAddresses "{{ _real_dc_reachable_ip }}"
+      when:
+        - not _dj_genuine_forest_root
+        - _any_real_dc_reachable | default(false) | bool
       tags: domainjoin
 
     - name: "[Stage 0] Check domain resolves"
@@ -172,7 +229,7 @@
         }
       register: dj_dns_check
       changed_when: false
-      when: not (is_first_dc | default(false) | bool)
+      when: not _dj_genuine_forest_root
       tags: domainjoin
 
     - name: "[Stage 0] Fail — domain unresolvable and no DNS override provided"
@@ -182,7 +239,7 @@
           Re-run with -e dj_temp_dns_ip=<ip> (e.g. 192.168.139.8) — this file no longer
           prompts for it; see 00-preflight.yml's Phase A5 DNS decision output.
       when:
-        - not (is_first_dc | default(false) | bool)
+        - not _dj_genuine_forest_root
         - dj_dns_check.stdout | trim == "unresolvable"
         - dj_temp_dns_ip | length == 0
       tags: domainjoin
@@ -194,7 +251,7 @@
       register: dj_nic_alias
       changed_when: false
       when:
-        - not (is_first_dc | default(false) | bool)
+        - not _dj_genuine_forest_root
         - dj_dns_check.stdout | trim == "unresolvable"
         - dj_temp_dns_ip | length > 0
       tags: domainjoin
@@ -205,7 +262,7 @@
           -InterfaceAlias "{{ dj_nic_alias.stdout | trim }}" `
           -ServerAddresses "{{ dj_temp_dns_ip }}"
       when:
-        - not (is_first_dc | default(false) | bool)
+        - not _dj_genuine_forest_root
         - dj_dns_check.stdout | trim == "unresolvable"
         - dj_temp_dns_ip | length > 0
       tags: domainjoin
@@ -221,7 +278,7 @@
       register: dj_dns_recheck
       changed_when: false
       when:
-        - not (is_first_dc | default(false) | bool)
+        - not _dj_genuine_forest_root
         - dj_dns_check.stdout | trim == "unresolvable"
         - dj_temp_dns_ip | length > 0
       tags: domainjoin
@@ -256,15 +313,16 @@
       when: domain_check.stdout | trim | lower == 'true'
       tags: domainjoin
 
-    - name: Skip — first-DC build, domain doesn't exist yet
+    - name: Skip — genuine forest-root build, domain doesn't exist yet
       debug:
         msg: >
-          {{ inventory_hostname }} is a first-DC build (is_first_dc=true) — the domain doesn't
-          exist yet, so there's nothing to join. Run windows_dc/site.yml next to create the
-          forest; this host will then already be the DC, not something that joins it afterward.
+          {{ inventory_hostname }} is a genuine forest-root build (is_first_dc=true AND no
+          real DC reachable anywhere) — the domain doesn't exist yet, so there's nothing to
+          join. Run windows_dc/site.yml next to create the forest; this host will then
+          already be the DC, not something that joins it afterward.
       when:
         - domain_check.stdout | trim | lower != 'true'
-        - is_first_dc | default(false) | bool
+        - _dj_genuine_forest_root
       tags: domainjoin
 
     - name: Build target OU path
@@ -272,7 +330,7 @@
         domain_ou_path: "OU={{ domain_ou_role }},OU={{ host_site }},{{ 'DC=' + exa_domain.split('.') | join(',DC=') }}"
       when:
         - domain_check.stdout | trim | lower != 'true'
-        - not (is_first_dc | default(false) | bool)
+        - not _dj_genuine_forest_root
       tags: domainjoin
 
     - name: Show domain join target
@@ -282,7 +340,7 @@
           OU: {{ domain_ou_path }}
       when:
         - domain_check.stdout | trim | lower != 'true'
-        - not (is_first_dc | default(false) | bool)
+        - not _dj_genuine_forest_root
       tags: domainjoin
 
     - name: Join domain
@@ -296,7 +354,7 @@
       register: join_result
       when:
         - domain_check.stdout | trim | lower != 'true'
-        - not (is_first_dc | default(false) | bool)
+        - not _dj_genuine_forest_root
       tags: domainjoin
 
     - name: Reboot after domain join
