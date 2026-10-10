@@ -75,6 +75,17 @@
 # Tags: dc_preflight
 # =============================================================================
 # Changelog:
+#   2026-10-10  Real live incident (EXADCSCLD001): leaving both DSRM prompts at their
+#               defaults (generate=no, password=blank) reached promotion with an empty
+#               dc_dsrm_password, with nothing catching it here -- the real failure
+#               surfaced ~5 minutes later in 20-dc-promote.yml as a cryptic "unknown error",
+#               additionally hidden by that task's own correct no_log: true. Confirmed the
+#               actual mechanism directly rather than guessed (an earlier, wrong guess this
+#               same incident blamed Windows Defender): ConvertTo-SecureString "" -AsPlainText
+#               -Force throws immediately, before Install-ADDSDomainController is ever
+#               called, consistent with no dcpromo.log being written either. Added a loud,
+#               immediate fail right here instead, with a clear message pointing at the two
+#               real fixes (type a password, or answer yes to generate one).
 #   2026-10-01  Phase F, Robert's own ask after the KeePass automation hardening pass
 #               (check_keepass_freshness.py Tiers 2b/2c/2d, commits 75d772f/276cb56):
 #               opt-in, triple-checked random DSRM password generation. New
@@ -577,6 +588,29 @@
         - dc_dsrm_password == ''
         - not (_dsrm_keepass_check_failed_unexpectedly | default(false))
         - not (_dsrm_already_exists | default(false))
+      tags: dc_preflight
+
+    # 2026-10-10, real live incident (Robert, EXADCSCLD001): leaving BOTH the "Generate a
+    # random DSRM password?" prompt (default "no") and the DSRM password prompt itself
+    # (default blank) at their defaults reaches this point with dc_dsrm_password still
+    # empty, with nothing having caught it. The actual failure then surfaces ~5 minutes
+    # later, in a completely different file (20-dc-promote.yml), as a cryptic "unknown
+    # error" additionally hidden by that task's own (correct, deliberate) no_log: true --
+    # confirmed directly, not guessed: ConvertTo-SecureString "" -AsPlainText -Force throws
+    # "Cannot bind argument to parameter 'String' because it is an empty string" immediately,
+    # before Install-ADDSDomainController is ever actually called (no dcpromo.log is written
+    # either, consistent with this). Fail here instead, loudly, immediately, with a clear
+    # message pointing at the actual two ways to fix it.
+    - name: "FAIL — DSRM password is blank and generation was not requested"
+      fail:
+        msg: >
+          DSRM password is blank, and "Generate a random DSRM password instead of typing
+          one?" was answered no (or left at its default). Install-ADDSDomainController will
+          reject an empty SafeModeAdministratorPassword outright -- confirmed directly:
+          ConvertTo-SecureString "" -AsPlainText -Force throws immediately, before the real
+          promotion cmdlet ever runs. Re-run and either type a real DSRM password at the
+          prompt, or answer "yes" to generate one instead.
+      when: dc_dsrm_password | default('') | length == 0
       tags: dc_preflight
 
     # ── KeePass check-defer-write: Domain Admin / Local Admin passwords ───────
