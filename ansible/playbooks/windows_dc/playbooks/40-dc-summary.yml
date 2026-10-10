@@ -10,6 +10,21 @@
 # Tags: dc_summary
 # =============================================================================
 # Changelog:
+#   2026-10-10  Real live false positive, EXADCSCLD001's first build summary: "Count dcdiag
+#               failures" used a plain (?i)failed|error substring match, which caught
+#               "Warning: Failed to add the test record dcdiag-test-record in zone
+#               <domain>" -- a common, benign Dynamic Update sub-test warning (the
+#               enterprise DNS test immediately after it still reports an overall PASS),
+#               not a real failure. Confirmed directly against the real captured dcdiag
+#               output before fixing. Narrowed to match dcdiag's own real failure phrase
+#               ("failed test <Name>") plus a separate "error" check that excludes
+#               "Warning:"-prefixed lines. Caught and fixed a second bug while verifying
+#               this in isolation: Jinja's `|` binds tighter than `+`, so the first draft
+#               ("A + B | length") parsed as "A + (B | length)" -- list-plus-int, a hard
+#               error -- not "(A + B) | length" as intended. Fixed with explicit
+#               parentheses around the whole addition; verified both the false-positive
+#               case (now 0) and a real-failure case (still counts correctly) in an
+#               isolated test harness before shipping.
 #   2026-06-25  Initial file
 #   2026-07-04  Connect via SSH as Local Administrator (dc_local_user/
 #               dc_local_password) instead of the ansible service account —
@@ -67,13 +82,22 @@
       ignore_errors: true
       tags: dc_summary
 
+    # 2026-10-10, real live incident (EXADCSCLD001): the old (?i)failed|error regex
+    # matched ANY line containing those substrings, including "Warning: Failed to add the
+    # test record dcdiag-test-record in zone <domain>" -- a common, benign Dynamic Update
+    # sub-test warning (the enterprise DNS test still reports an overall PASS right after
+    # it), not a real failure. Confirmed directly against real captured dcdiag output
+    # before fixing, not assumed. dcdiag's own real failure lines follow a distinct,
+    # narrower pattern ("failed test <Name>"); matching that phrase specifically, plus a
+    # dedicated line for "error" that excludes "Warning:"-prefixed lines, avoids this exact
+    # false positive without losing real failure detection.
     - name: Count dcdiag failures
       set_fact:
         dc_dcdiag_fail_count: >-
           {{
-            dc_dcdiag.stdout_lines
-            | select('search', '(?i)failed|error')
-            | list | length
+            ((dc_dcdiag.stdout_lines | select('search', '(?i)failed test') | list)
+            + (dc_dcdiag.stdout_lines | reject('search', '(?i)^\s*warning:') | select('search', '(?i)error') | list))
+            | length
           }}
       tags: dc_summary
 
