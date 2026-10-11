@@ -41,10 +41,11 @@
 #            group (add_host) so group_vars/windows*/ resolve correctly for
 #            the rest of this run — requires -i configs/inventory (not a
 #            bare IP) so the group hierarchy already exists to register into
-# PHASE H3 — Windows Defender exclusions (Chocolatey/PowerShell) and Windows
-#            Update set to manual download/install — both unconditional, no
-#            prompt, "get the box into a clean, Ansible-friendly state before
-#            the long package-install chain starts" steps
+# PHASE H3 — Windows Defender exclusions (Chocolatey/PowerShell), Windows
+#            Update set to manual download/install, and Shutdown/Restart shown
+#            on the login screen — all unconditional, no prompt, "get the box
+#            into a clean, Ansible-friendly, estate-standard state before the
+#            long package-install chain starts" steps
 # PHASE I — Summary and hand-off to the rest of site.yml's chain
 #
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1425,6 +1426,24 @@
         msg: "Windows Update set to manual download/install (notify only) -- will not interfere with the rest of this run."
       tags: [preflight, always]
 
+    # 2026-10-11, Robert's ask: Windows Server hides Shutdown/Restart on the login
+    # screen by default, unlike client/desktop Windows. Applied here too (same
+    # unconditional, no-prompt treatment as the Defender exclusion and Windows
+    # Update policy immediately above -- a "get the box into the estate's standard
+    # state" step, not an optional extra), not just via
+    # windows_hygiene/36-shutdown-without-logon.yml, which only runs AFTER
+    # windows_bootstrap and wouldn't help anyone needing this during initial build.
+    - name: "[H3] Allow shutdown from the login screen without logging on"
+      include_tasks: ../../../tasks/allow_shutdown_without_logon.yml
+      vars:
+        allow_shutdown_without_logon_task_tags: [preflight, always]
+      tags: [preflight, always]
+
+    - name: "[H3] Report shutdown-without-logon policy result"
+      debug:
+        msg: "Shutdown/Restart now shown on the login screen without logging on first."
+      tags: [preflight, always]
+
     # =========================================================================
     # PHASE I — Summary and hand-off
     # =========================================================================
@@ -1442,6 +1461,7 @@
           - "  DNS reason  : {{ dns_reason }}"
           - "  SSH         : running, auto-start, Ansible key deployed"
           - "  WU policy   : manual download/install set (notify only)"
+          - "  Shutdown    : shown on login screen without logging on"
           - "  First DC    : {{ is_first_dc }}"
           - "  Handing off to the rest of site.yml's chain (10-rename.yml onward)..."
           - "  ════════════════════════════════════════════════════════════════"

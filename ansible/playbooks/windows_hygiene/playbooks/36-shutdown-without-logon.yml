@@ -1,0 +1,90 @@
+---
+# =============================================================================
+# playbooks/36-shutdown-without-logon.yml
+# Example Music Limited — Windows hygiene: allow shutdown from the login screen
+# =============================================================================
+# Robert's ask. Windows Server hides the Shutdown/Restart option on the login
+# screen by default (unlike client/desktop Windows) -- this stage shows it,
+# via the registry backing for the Local Security Policy setting "Shutdown:
+# Allow system to be shut down without having to log on".
+#
+# Registry policy (HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System)
+# — the same value secpol.msc/Local Policies\Security Options writes, read
+# directly by winlogon without needing a real GPO:
+#   ShutdownWithoutLogon = 1  — show Shutdown/Restart on the login screen
+#
+# Opt-in via vars_prompt, default YES -- same convention as
+# 35-winupdate-policy.yml immediately before this stage (an OS-wide security
+# policy change, not a package install/cleanup step, so it gets a prompt
+# where most of this module's other stages don't).
+#
+# Own tag (shutdown_without_logon), same reasoning as 35-winupdate-policy.yml's
+# own winupdate_policy tag -- lets this one fix be re-applied to an
+# already-built box narrowly, via --tags shutdown_without_logon.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/playbooks/36-shutdown-without-logon.yml
+#
+#   Re-run against an already-built box, this fix only, nothing else touched:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/site.yml \
+#     --limit <host> --tags shutdown_without_logon
+#
+# Tags: shutdown_without_logon
+#
+# NOT YET TESTED against a real Windows target -- the registry path/value is
+# Microsoft's own documented Local Security Policy mapping, not guessed, but
+# this hasn't been confirmed live against a real box in this estate yet.
+# Confirm after the first real run by locking the screen (Win+L) and checking
+# the Shutdown/Restart button is now visible without logging on.
+# =============================================================================
+# Changelog:
+#   2026-10-11  Initial file.
+# =============================================================================
+
+- name: Windows hygiene — allow shutdown from the login screen
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: false
+
+  vars_prompt:
+    - name: shutdown_without_logon_confirm
+      prompt: >-
+        Show Shutdown/Restart on the login screen without logging on? (yes/no —
+        Windows Server hides this by default; client/desktop Windows already shows it)
+      private: false
+      default: "yes"
+
+  tasks:
+
+    - name: Include colour fallback
+      include_tasks: ../../../tasks/colour_fallback.yml
+      tags: always
+
+    - name: Set shutdown_without_logon_confirmed fact
+      set_fact:
+        shutdown_without_logon_confirmed: "{{ (shutdown_without_logon_confirm | default('yes') | trim | lower) in ['y', 'yes'] }}"
+      tags: shutdown_without_logon
+
+    - name: "── Shutdown without logon ──"
+      debug:
+        msg:
+          - "{{ _c.C }}── Shutdown without logon ──{{ _c.NC }}"
+          - >-
+            {{ (_c.C + '[*]' + _c.NC + ' Showing Shutdown/Restart on the login screen without logging on...')
+               if shutdown_without_logon_confirmed else
+               (_c.Y + '[!]' + _c.NC + ' Declined at prompt -- leaving the login screen unchanged on this host.') }}
+      tags: shutdown_without_logon
+
+    - name: Apply the shared shutdown-without-logon task
+      include_tasks: ../../../tasks/allow_shutdown_without_logon.yml
+      vars:
+        allow_shutdown_without_logon_task_tags: [shutdown_without_logon]
+      when: shutdown_without_logon_confirmed
+      tags: shutdown_without_logon
+
+    - name: Report applied policy
+      debug:
+        msg:
+          - "{{ _c.G }}[+]{{ _c.NC }} Shutdown/Restart now shown on the login screen on {{ _c.W }}{{ inventory_hostname }}{{ _c.NC }}, without needing to log on first."
+          - "Verify by locking the screen (Win+L) -- the power button bottom-right should now offer Shutdown/Restart."
+      when: shutdown_without_logon_confirmed
+      tags: shutdown_without_logon

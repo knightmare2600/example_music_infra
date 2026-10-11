@@ -1,0 +1,37 @@
+---
+# =============================================================================
+# ansible/tasks/allow_shutdown_without_logon.yml
+# Example Music Limited — show Shutdown/Restart on the login screen (Server OS)
+# =============================================================================
+# Windows Server hides the Shutdown/Restart option on the login screen by
+# default (unlike client/desktop Windows) -- this is the registry backing for
+# the Local Security Policy setting "Shutdown: Allow system to be shut down
+# without having to log on" (Computer Configuration > Windows Settings >
+# Security Settings > Local Policies > Security Options), read directly by
+# winlogon without needing a real GPO or secpol.msc.
+#
+# Same shared-task shape as ansible/tasks/winupdate_manual_policy.yml -- see
+# that file's own header for the reasoning behind this pattern (one include,
+# both windows_hygiene and windows_bootstrap call it, each with its own
+# tags/prompt style rather than duplicating the single task twice).
+#
+# Inputs:
+#   allow_shutdown_without_logon_task_tags — list, the tag(s) this task should
+#     carry, default ['shutdown_without_logon']. Pass explicitly from the
+#     caller's own include_tasks vars: for a different tag set, matching the
+#     same templated-tags pattern already proven live for
+#     winupdate_manual_policy.yml's winupdate_policy_task_tags.
+# =============================================================================
+# Changelog:
+#   2026-10-11  Initial file -- Robert's ask, added to both windows_hygiene
+#               and windows_bootstrap.
+# =============================================================================
+
+- name: "[shutdown-without-logon] Allow shutdown from the login screen without logging on"
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: ShutdownWithoutLogon
+    data: 1
+    type: dword
+    state: present
+  tags: "{{ allow_shutdown_without_logon_task_tags | default(['shutdown_without_logon']) }}"
