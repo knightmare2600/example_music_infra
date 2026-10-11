@@ -611,7 +611,7 @@
           MESH_STATUS=$(systemctl is-active meshcentral 2>/dev/null || echo "unknown")
           echo -e "
           ${WH}╔══════════════════════════════════════════════════════════════╗${NC}
-          ${WH}║     EXAMPLE MUSIC LIMITED: $(printf '%-35s' "${HOSTNAME}")║${NC}
+          ${WH}║     EXAMPLE MUSIC LIMITED: $(printf '%-34s' "${HOSTNAME}")║${NC}
           ${WH}╚══════════════════════════════════════════════════════════════╝${NC}
 
             ${YL}Site     :${NC} {{ mesh_site_code }}: {{ mesh_site_city }}, {{ mesh_site_country }}
