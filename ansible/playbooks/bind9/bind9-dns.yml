@@ -1004,7 +1004,7 @@
 
           echo -e "
           ${WH}╔══════════════════════════════════════════════════════════════╗${RS}
-          ${WH}║           EXAMPLE MUSIC LIMITED: $(printf '%-24s' "${HOSTNAME}")║${RS}
+          ${WH}║           EXAMPLE MUSIC LIMITED: $(printf '%-28s' "${HOSTNAME}")║${RS}
           ${WH}╚══════════════════════════════════════════════════════════════╝${RS}
 
             ${YL}Role     :${RS} DNS Server -- {{ domain }}

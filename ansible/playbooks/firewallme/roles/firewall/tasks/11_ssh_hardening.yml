@@ -67,17 +67,30 @@
   ansible.builtin.copy:
     dest: /etc/issue
     mode: '0644'
-    content: |
+    # 2026-10-11, real bug found during the repo-wide box-header sweep (same class as the
+    # PVE MOTD fix, 18e6d07/b8580e7): Host/Site/Environment had NO dynamic padding at all --
+    # fixed trailing spaces sized for one specific set of values, off by 10-15 chars for any
+    # other hostname/site/environment. Switched to the same adaptive `plain|length`-based
+    # padding already proven in 00_preflight_5_confirm.yml and 14_finish.yml's summary boxes,
+    # so it self-corrects regardless of how long inventory_hostname/fw_site_code/
+    # fw_environment actually are.
+    content: |-
+      {%- set _title = "EXAMPLE MUSIC LIMITED — AUTHORISED ACCESS ONLY" -%}
+      {%- set _lp = (66 - _title|length) // 2 -%}
+      {%- set _rp = 66 - _title|length - _lp -%}
+      {%- set _host_plain = "   Host        : " + inventory_hostname -%}
+      {%- set _site_plain = "   Site        : " + fw_site_code -%}
+      {%- set _env_plain  = "   Environment : " + fw_environment -%}
 
       ╔══════════════════════════════════════════════════════════════════╗
-      ║   EXAMPLE MUSIC LIMITED — AUTHORISED ACCESS ONLY                ║
+      ║{{ ' ' * _lp }}{{ _title }}{{ ' ' * _rp }}║
       ║                                                                  ║
-      ║   Host        : {{ inventory_hostname }}                         ║
-      ║   Site        : {{ fw_site_code }}                               ║
-      ║   Environment : {{ fw_environment }}                             ║
+      ║{{ _host_plain }}{{ ' ' * (66 - _host_plain|length) }}║
+      ║{{ _site_plain }}{{ ' ' * (66 - _site_plain|length) }}║
+      ║{{ _env_plain }}{{ ' ' * (66 - _env_plain|length) }}║
       ║                                                                  ║
-      ║   Unauthorised access to this system is a criminal offence.     ║
-      ║   All connections are logged and monitored.                     ║
+      ║   Unauthorised access to this system is a criminal offence.      ║
+      ║   All connections are logged and monitored.                      ║
       ╚══════════════════════════════════════════════════════════════════╝
 
 - name: "[SSH] Write /etc/issue.net (SSH pre-auth banner)"
@@ -210,7 +223,7 @@
       ⠀⠀⠀⠈⣙⠓⠒⠚⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀${NC}
 
       ${WH}╔══════════════════════════════════════════════════════════════╗${NC}
-      ${WH}║              EXAMPLE MUSIC LIMITED: $(printf '%-24s' "${HOSTNAME}")║${NC}
+      ${WH}║              EXAMPLE MUSIC LIMITED: $(printf '%-25s' "${HOSTNAME}")║${NC}
       ${WH}╚══════════════════════════════════════════════════════════════╝${NC}
 
         ${YL}Site     :${NC} ${SITE}: ${CITY}, ${COUNTRY}
