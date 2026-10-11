@@ -852,20 +852,20 @@ NIC_ADVISORY = """
   {Y}|{NC}                                                                      {Y}|{NC}
   {Y}|{NC}  REMEDIATION OPTIONS (choose one):                                   {Y}|{NC}
   {Y}|{NC}                                                                      {Y}|{NC}
-  {Y}|{NC}  1. {W}Force old-style names{NC} — add to GRUB before converting:         {Y}|{NC}
-  {Y}|{NC}     Edit /etc/default/grub on the SOURCE VM:                        {Y}|{NC}
-  {Y}|{NC}     GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"                {Y}|{NC}
-  {Y}|{NC}     Then: update-grub                                               {Y}|{NC}
-  {Y}|{NC}     This restores eth0/eth1 naming — best if scripts hardcode NICs  {Y}|{NC}
+  {Y}|{NC}  1. {W}Force old-style names{NC} — add to GRUB before converting:           {Y}|{NC}
+  {Y}|{NC}     Edit /etc/default/grub on the SOURCE VM:                         {Y}|{NC}
+  {Y}|{NC}     GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"                 {Y}|{NC}
+  {Y}|{NC}     Then: update-grub                                                {Y}|{NC}
+  {Y}|{NC}     This restores eth0/eth1 naming — best if scripts hardcode NICs   {Y}|{NC}
   {Y}|{NC}                                                                      {Y}|{NC}
-  {Y}|{NC}  2. {W}Fix after migration{NC} — on first boot via console:               {Y}|{NC}
-  {Y}|{NC}     ip link show   (find new name)                                  {Y}|{NC}
-  {Y}|{NC}     sed -i 's/ens33/enp6s18/g' /etc/network/interfaces             {Y}|{NC}
-  {Y}|{NC}     systemctl restart networking                                    {Y}|{NC}
+  {Y}|{NC}  2. {W}Fix after migration{NC} — on first boot via console:                 {Y}|{NC}
+  {Y}|{NC}     ip link show   (find new name)                                   {Y}|{NC}
+  {Y}|{NC}     sed -i 's/ens33/enp6s18/g' /etc/network/interfaces               {Y}|{NC}
+  {Y}|{NC}     systemctl restart networking                                     {Y}|{NC}
   {Y}|{NC}                                                                      {Y}|{NC}
-  {Y}|{NC}  3. {W}WireGuard / firewallme.sh users{NC} — also update the systemd      {Y}|{NC}
-  {Y}|{NC}     drop-in override.conf BindsTo= and After= interface names.      {Y}|{NC}
-  {Y}|{NC}     See NET-VPN-WG-001 for the full procedure.                      {Y}|{NC}
+  {Y}|{NC}  3. {W}WireGuard / firewallme.sh users{NC} — also update the systemd        {Y}|{NC}
+  {Y}|{NC}     drop-in override.conf BindsTo= and After= interface names.       {Y}|{NC}
+  {Y}|{NC}     See NET-VPN-WG-001 for the full procedure.                       {Y}|{NC}
   {Y}|{NC}                                                                      {Y}|{NC}
   {Y}+----------------------------------------------------------------------+{NC}
 """
@@ -3566,7 +3566,8 @@ def convert_one(args, proxmox, node, host, mode):
     # ── Done ──────────────────────────────────────────────────────────────────
     print()
     print(f"{C.G}  +============================================================+{C.NC}")
-    print(f"{C.G}  |{C.W}  {'[DRY RUN] ' if args.dry_run else ''}CONVERSION COMPLETE{'':<43}{C.G}|{C.NC}")
+    _done_msg = f"  {'[DRY RUN] ' if args.dry_run else ''}CONVERSION COMPLETE"
+    print(f"{C.G}  |{C.W}{_done_msg:<60}{C.G}|{C.NC}")
     print(f"{C.G}  +============================================================+{C.NC}")
     print()
     if not args.dry_run:
@@ -3585,12 +3586,12 @@ def main():
 
     print()
     print(f"{C.CY}  +============================================================+{C.NC}")
-    print(f"{C.CY}  |{C.W}      PROXMOX VE — VMware V2V CONVERSION                  {C.CY}|{C.NC}")
-    print(f"{C.CY}  |{C.D}             jukebox.internal                              {C.CY}|{C.NC}")
+    print(f"{C.CY}  |{C.W}      PROXMOX VE — VMware V2V CONVERSION                    {C.CY}|{C.NC}")
+    print(f"{C.CY}  |{C.D}             jukebox.internal                               {C.CY}|{C.NC}")
     if args.dry_run:
-        print(f"{C.CY}  |{C.B}             *** DRY RUN — NO CHANGES ***               {C.CY}|{C.NC}")
+        print(f"{C.CY}  |{C.B}             *** DRY RUN — NO CHANGES ***                   {C.CY}|{C.NC}")
     if args.bulk:
-        print(f"{C.CY}  |{C.B}             *** BULK MODE — Ctrl+C to exit ***         {C.CY}|{C.NC}")
+        print(f"{C.CY}  |{C.B}             *** BULK MODE — Ctrl+C to exit ***             {C.CY}|{C.NC}")
     print(f"{C.CY}  +============================================================+{C.NC}")
     print()
 

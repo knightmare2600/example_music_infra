@@ -106,7 +106,7 @@ clear 2>/dev/null || true
 echo
 echo -e "${C}  +======================================================+${NC}"
 echo -e "${C}  |${W}        PROXMOX VE - NODE PROVISIONING                ${C}|${NC}"
-echo -e "${C}  |${D}              jukebox.internal                         ${C}|${NC}"
+echo -e "${C}  |${D}              jukebox.internal                        ${C}|${NC}"
 echo -e "${C}  +======================================================+${NC}"
 echo
 
@@ -178,7 +178,7 @@ ok "Sudoers configured"
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo
 echo -e "${G}  +======================================================+${NC}"
-echo -e "${G}  |${W}  ANSIBLE-BOOTSTRAP COMPLETE                           ${G}|${NC}"
+echo -e "${G}  |${W}  ANSIBLE-BOOTSTRAP COMPLETE                          ${G}|${NC}"
 echo -e "${G}  +======================================================+${NC}"
 echo
 CURRENT_IP=$(ip -4 addr show vmbr0 2>/dev/null | awk '/inet /{print $2}' | head -1)
@@ -191,24 +191,24 @@ echo -e "  ${G}[+]${NC}  $(printf '%-18s' 'Ansible user :') ${W}${ANSIBLE_USER} 
 echo
 echo -e "${C}  +------------------------------------------------------+${NC}"
 echo -e "${C}  |  NEXT STEP: Ansible finishes this node's setup       |${NC}"
-echo -e "${C}  |                                                       |${NC}"
+echo -e "${C}  |                                                      |${NC}"
 echo -e "${C}  |  This node still has its installer placeholder       |${NC}"
-echo -e "${C}  |  hostname and a DHCP IP -- that's expected. From      |${NC}"
+echo -e "${C}  |  hostname and a DHCP IP -- that's expected. From     |${NC}"
 echo -e "${C}  |  the Ansible control node, run:                      |${NC}"
-echo -e "${C}  |                                                       |${NC}"
-echo -e "${C}  |    ansible-playbook -i \"${CURRENT_IP},\" \\               |${NC}"
-echo -e "${C}  |      -i configs/inventory \\                            |${NC}"
-echo -e "${C}  |      -e target=\"${CURRENT_IP}\" \\                        |${NC}"
-echo -e "${C}  |      playbooks/proxmox/bootstrap-new-node.yml         |${NC}"
-echo -e "${C}  |                                                       |${NC}"
-echo -e "${C}  |  You'll be prompted for this node's real hostname     |${NC}"
-echo -e "${C}  |  (from your build sheet, e.g. EXAPVEKGE001) -- it     |${NC}"
-echo -e "${C}  |  sets the real hostname/network, then continues       |${NC}"
-echo -e "${C}  |  straight into the full site.yml chain (packages,     |${NC}"
-echo -e "${C}  |  access, systemd units, etc.) in this same run.       |${NC}"
-echo -e "${C}  |  One reboot at the very end applies it all -- the     |${NC}"
-echo -e "${C}  |  SSH session on this DHCP IP will not survive that.   |${NC}"
-echo -e "${C}  |  Reconnect via the new hostname/IP once it is back up.|${NC}"
+echo -e "${C}  |                                                      |${NC}"
+echo -e "${C}  |    ansible-playbook -i \"${CURRENT_IP},\" \\$(printf '%*s' $(( 25 - ${#CURRENT_IP} )) '')|${NC}"
+echo -e "${C}  |      -i configs/inventory \\                         |${NC}"
+echo -e "${C}  |      -e target=\"${CURRENT_IP}\" \\$(printf '%*s' $(( 34 - ${#CURRENT_IP} )) '')|${NC}"
+echo -e "${C}  |      playbooks/proxmox/bootstrap-new-node.yml        |${NC}"
+echo -e "${C}  |                                                      |${NC}"
+echo -e "${C}  |  You'll be prompted for this node's real hostname    |${NC}"
+echo -e "${C}  |  (from your build sheet, e.g. EXAPVEKGE001) -- it    |${NC}"
+echo -e "${C}  |  sets the real hostname/network, then continues      |${NC}"
+echo -e "${C}  |  straight into the full site.yml chain (packages,    |${NC}"
+echo -e "${C}  |  access, systemd units, etc.) in this same run.      |${NC}"
+echo -e "${C}  |  One reboot at the very end applies it all -- the    |${NC}"
+echo -e "${C}  |  SSH session on this DHCP IP will not survive that.  |${NC}"
+echo -e "${C}  |  Reconnect via the new hostname/IP once it is back up|${NC}"
 echo -e "${C}  +------------------------------------------------------+${NC}"
 echo
 info "No reboot is required by this script -- nothing here needs one."
