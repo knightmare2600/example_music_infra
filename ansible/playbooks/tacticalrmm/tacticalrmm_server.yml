@@ -729,11 +729,16 @@
       notify: Restart SSH
 
     - name: "5 | Write MOTD profile.d hook"
+      # 2026-10-11, same bug class as the PVE MOTD fix (ansible/playbooks/proxmox/
+      # playbooks/40-scripts.yml, 18e6d07), confirmed live double-printing on
+      # EXADNSFRD001 which has the identical unguarded pattern: $SSH_TTY is set by
+      # sshd for every real interactive SSH session (pam_motd already shown the
+      # banner there), so skip there and only fall through for su/console logins.
       copy:
         dest: /etc/profile.d/motd.sh
         mode: "0755"
         content: |
-          [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
+          [[ -z "$SSH_TTY" ]] && [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
 
   # ---------------------------------------------------------------------------
   # Section 6 — Node info file
