@@ -991,9 +991,16 @@
           MEM_USED=$(free -m  | awk '/^Mem:/{print $3}')
           DISK=$(df -h / | awk 'NR==2{print $3" used of "$2" ("$5")"}')
 
-          DNS_IP=$(ip -4 addr show \
+          # 2026-10-11, real bug found live on EXADNSFRD001: this only ever matched
+          # 192.168.139.x (the shared provisioning network), so it showed "unknown" on
+          # any DNS host whose real address is on its own site LAN instead (here,
+          # 172.16.124.8) -- same bug class as the earlier Proxmox NODE_IP gap (a
+          # narrower assumption than the real estate actually has). "scope global"
+          # naturally excludes loopback (scope host) and link-local (scope link)
+          # without hardcoding any particular subnet, so it picks up whichever real
+          # address this host actually has.
+          DNS_IP=$(ip -4 addr show scope global \
             | awk '/inet /{print $2}' \
-            | grep '192\.168\.139\.' \
             | cut -d/ -f1 | head -1)
           ZONE_SERIAL=$(grep -oP '(?<=;\s)serial.*' \
             /etc/bind/db.{{ domain }} 2>/dev/null \
