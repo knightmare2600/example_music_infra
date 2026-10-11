@@ -690,8 +690,19 @@
   # ---------------------------------------------------------------------------
   # 4. Zone files
   # ---------------------------------------------------------------------------
+  # 2026-10-11, real bug found live on EXADNSFRD001 running as a genuine slave
+  # (-e dns_role=slave): none of these 4 tasks were gated on dns_role at all, so every
+  # run unconditionally overwrote BIND's own AXFR-managed slave zone file with a static,
+  # human-authored master-format file at the exact path named.conf.local's own `type
+  # slave; file "...";` declaration expects to own. Confirmed via the real journal:
+  # "zone jukebox.internal/IN: (primary) removed" then "loading from master file
+  # /etc/bind/db.jukebox.internal failed: not implemented" -- BIND tried to read
+  # Ansible's plain-text file back as its own cached slave-transfer data and couldn't.
+  # A slave zone should start from nothing (or BIND's own prior transfer), never a
+  # static write -- these 4 tasks only make sense for an actual master.
     - name: Write forward zone -- {{ domain }}
       tags: zones
+      when: dns_role != 'slave'
       template:
         src: templates/db.forward-zone.j2
         dest: "{{ bind_zone_dir }}/db.{{ domain }}"
@@ -703,6 +714,7 @@
 
     - name: Write provisioning reverse zone (db.192.168.139)
       tags: zones
+      when: dns_role != 'slave'
       template:
         src: templates/db.192.168.139.j2
         dest: "{{ bind_zone_dir }}/db.192.168.139"
@@ -714,6 +726,7 @@
 
     - name: Write CLD LAN reverse zone (db.192.168.69)
       tags: zones
+      when: dns_role != 'slave'
       template:
         src: templates/db.192.168.69.j2
         dest: "{{ bind_zone_dir }}/db.192.168.69"
@@ -725,6 +738,7 @@
 
     - name: Write per-site reverse zone files (excluding CLD)
       tags: zones
+      when: dns_role != 'slave'
       template:
         src: templates/db.site-reverse.j2
         dest: "{{ bind_zone_dir }}/db.192.168.{{ item.octet }}"
