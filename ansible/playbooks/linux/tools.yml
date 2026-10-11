@@ -264,6 +264,21 @@
         update_cache: true
         cache_valid_time: 3600
 
+    - name: "Install the right fetch tool for this distro"
+      # 2026-10-11, Robert found live: EXAANSFRD001 is Debian 12 (bookworm), where
+      # fastfetch doesn't exist in apt at all ("apt-cache search fetch" shows only
+      # neofetch) -- fastfetch was only packaged for Debian starting with trixie (13).
+      # Confirmed the reverse the same day on a real trixie host: neofetch isn't a known
+      # package there either (upstream archived it in 2024; fastfetch is its designated
+      # replacement, and Debian dropped neofetch from trixie's repos entirely). This
+      # estate runs a genuine mix of both releases, so one hardcoded package name in
+      # common_packages (group_vars/all/main.yml) would always break on one or the other.
+      apt:
+        name: "{{ 'fastfetch' if ansible_distribution_release == 'trixie' else 'neofetch' }}"
+        state: latest
+        update_cache: true
+        cache_valid_time: 3600
+
     # -------------------------------------------------------------------------
     # BUG FIX (2026-07-26, found live on EXAPVEVRK001): both tasks below used to run
     # unconditionally, regardless of whether the unattended-upgrades package was actually
