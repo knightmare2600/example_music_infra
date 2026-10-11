@@ -191,9 +191,17 @@
       tags: scripts
 
     - name: Deploy MOTD profile.d hook
+      # 2026-10-11, real live bug found on EXAPVEFRD001: the banner printed TWICE on a
+      # normal SSH login, disproving this file's own 2026-07-10 changelog assumption
+      # above ("profile.d/motd.sh covers non-interactive/su cases" -- it does, but it was
+      # ALSO firing on the exact interactive-SSH case pam_motd's own update-motd.d
+      # processing already covers). $SSH_TTY is set by sshd for every real interactive
+      # SSH session -- pam_motd has already shown the banner by the time this hook runs
+      # in that case, so skip it there and only fall through for the su/console logins
+      # this hook actually exists for.
       ansible.builtin.copy:
         content: |
-          [[ -x /etc/update-motd.d/10-pve ]] && /etc/update-motd.d/10-pve
+          [[ -z "$SSH_TTY" ]] && [[ -x /etc/update-motd.d/10-pve ]] && /etc/update-motd.d/10-pve
         dest: /etc/profile.d/motd.sh
         owner: root
         group: root
