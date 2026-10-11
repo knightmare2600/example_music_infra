@@ -25,7 +25,14 @@ common_packages:
   - bind9-dnsutils
   - bind9-host
   - curl
-  - fastfetch
+  # fastfetch/neofetch deliberately NOT listed here -- 2026-10-11, Robert found live
+  # (EXAANSFRD001 is Debian 12/bookworm, not trixie): fastfetch was only packaged for
+  # Debian starting with trixie (13); bookworm's repos have neofetch instead (upstream
+  # neofetch was archived in 2024, fastfetch is its designated trixie-era replacement --
+  # confirmed both ways via `apt-cache search` on real bookworm and trixie hosts, not
+  # assumed). A single hardcoded name here would break `apt install` on whichever major
+  # version doesn't have it. See linux/tools.yml's "Install the right fetch tool for this
+  # distro" task, which picks the correct package per-host via ansible_distribution_release.
   - git
   - git-lfs
   - grc
