@@ -1149,19 +1149,42 @@
     # lower -- standard DNS zone-file convention, unrelated to this_hostname's own uppercase
     # box-identity convention above) -- lowercase this_hostname here to match what's actually
     # in the zone, rather than a case-sensitive Jinja substring check silently failing.
+    # 2026-10-11, Robert's ask after a real live incident (EXADNSFRD001, master
+    # 192.168.139.8 down): these two hard-failed the whole play on a transient external
+    # condition this playbook has no control over -- a down master blocking AXFR
+    # shouldn't stop zone/MOTD/sshd/etc. from being correctly configured, which happen
+    # earlier in this same play and already succeeded by this point. Both now warn
+    # instead of failing; _dns_selftest_ok (below) drives the Summary's own real
+    # pass/fail text instead of its previous hardcoded "both passed" claim.
     - name: Self-test DNS -- forward lookup
       tags: service, reload
       command: "dig @127.0.0.1 +short {{ this_hostname | lower }}.{{ domain }}"
       register: dig_result
       changed_when: false
-      failed_when: dns_ip not in dig_result.stdout
+      failed_when: false
 
     - name: Self-test DNS -- PTR lookup for this server
       tags: service, reload
       command: "dig @127.0.0.1 +short -x {{ dns_ip }}"
       register: dig_ptr
       changed_when: false
-      failed_when: this_hostname | lower not in dig_ptr.stdout
+      failed_when: false
+
+    - name: Set DNS self-test result facts
+      tags: service, reload
+      set_fact:
+        _dns_selftest_fwd_ok: "{{ dns_ip in dig_result.stdout }}"
+        _dns_selftest_ptr_ok: "{{ this_hostname | lower in dig_ptr.stdout }}"
+
+    - name: WARN -- DNS self-test did not resolve correctly
+      tags: service, reload
+      debug:
+        msg: >-
+          [!] Self-test {{ 'partially ' if _dns_selftest_fwd_ok or _dns_selftest_ptr_ok else '' }}failed for
+          {{ this_hostname }} -- forward lookup {{ 'OK' if _dns_selftest_fwd_ok else 'FAILED (dig @127.0.0.1 ' ~ this_hostname | lower ~ '.' ~ domain ~ ' did not return ' ~ dns_ip ~ ')' }},
+          PTR lookup {{ 'OK' if _dns_selftest_ptr_ok else 'FAILED (dig @127.0.0.1 -x ' ~ dns_ip ~ ' did not return ' ~ (this_hostname | lower) ~ ')' }}.
+          {{ 'If this is a slave zone, check the real master is reachable (see journalctl -u named for "refresh: failure" / "host down") -- a transient master outage will self-heal once it is back and AXFR completes.' if dns_role == 'slave' else 'Check named is running and the zone loaded cleanly (named-checkconf / journalctl -u named).' }}
+      when: not (_dns_selftest_fwd_ok and _dns_selftest_ptr_ok)
 
   # ---------------------------------------------------------------------------
   # Post-run summary
@@ -1178,7 +1201,7 @@
           - "════════════════════════════════════════════════════════════════"
           - "  Zone        : {{ domain }}"
           - "  DNS IP      : {{ dns_ip }} ({{ 'active' if not _prov_activate_would_strand_session | default(false) else 'active on next reboot, or run: nmcli connection up prov-static' }})"
-          - "  Self-test   : forward + PTR lookups both passed"
+          - "  Self-test   : {{ 'forward + PTR lookups both passed' if (_dns_selftest_fwd_ok and _dns_selftest_ptr_ok) else 'FAILED -- see WARNING above (forward: ' + ('OK' if _dns_selftest_fwd_ok else 'FAILED') + ', PTR: ' + ('OK' if _dns_selftest_ptr_ok else 'FAILED') + ')' }}"
           - "════════════════════════════════════════════════════════════════"
 
   # ---------------------------------------------------------------------------
