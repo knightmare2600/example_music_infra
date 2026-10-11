@@ -100,6 +100,21 @@
         mode:  '0644'
       tags: example_music
 
+    - name: "[nodeinfo] Ensure ansible_default_ipv4 is available (node_ip)"
+      # 2026-10-11, real live bug found on EXAPVEFRD001: the MOTD banner's Web UI line
+      # showed a blank IP despite the Network section right above it showing vmbr0's
+      # address correctly -- the same confirmed-live --tags-filtering quirk documented in
+      # ansible/tasks/nodeinfo.yml's own 2026-10-08 changelog entry (an earlier play's
+      # gather_facts: true getting skipped under a narrow --tags filter poisons a LATER
+      # play's independent gather_facts: true too), but THAT file's own defensive fix only
+      # re-gathers gather_subset: min (ansible_date_time/ansible_fqdn) -- node_ip below
+      # needs ansible_default_ipv4, which is in the 'network' subset, still undefined
+      # after that fix. Same defensive pattern, different subset.
+      tags: [example_music, always]
+      ansible.builtin.setup:
+        gather_subset: network
+      when: ansible_default_ipv4 is not defined
+
     - name: Write /etc/example-music/nodeinfo.json
       # Both tags, not just always -- this task already had its own tags: example_music
       # much further down (after its vars: block, removed from there 2026-10-04) -- a

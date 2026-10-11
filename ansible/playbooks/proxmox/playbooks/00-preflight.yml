@@ -188,12 +188,21 @@
       delegate_to: localhost
       become: false
       run_once: true
-      tags: preflight
+      # Both tags, not just preflight -- same bug class as hostname_facts.yml's own fix
+      # directly above, found live 2026-10-11 on EXAPVEFRD001 via --tags proxmorph: this
+      # task's own 2026-10-08-era comment called degrading to blank city/country/entity
+      # under a narrow tag filter "on purpose", but the live MOTD banner then printed
+      # those genuinely-blank nodeinfo.json fields verbatim with no fallback (see
+      # files/10-pve-motd's own 2026-10-11 changelog) -- "degrades on purpose" was fine
+      # as a design note, but nothing downstream was actually built to tolerate it.
+      # Tagging these always, matching 30-example-music.yml's nodeinfo write, so the
+      # enrichment facts are present on every run that writes nodeinfo.json.
+      tags: [preflight, always]
 
     - name: Look up this node's site row
       set_fact:
         pve_site_row: "{{ pve_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
-      tags: preflight
+      tags: [preflight, always]
 
     - name: WARN — site code not found in sites.csv
       debug:
@@ -202,7 +211,7 @@
           '{{ inventory_hostname }}') was not found in sites.csv.
           nodeinfo.json city/country/entity fields will be blank.
       when: pve_site_row == {}
-      tags: preflight
+      tags: [preflight, always]
 
     - name: Set site enrichment facts
       set_fact:
@@ -213,7 +222,7 @@
         pve_office_name: "{{ pve_site_row.OfficeName | default('') }}"
         pve_street: "{{ pve_site_row.Street | default('') }}"
         pve_postal_code: "{{ pve_site_row.PostalCode | default('') }}"
-      tags: preflight
+      tags: [preflight, always]
 
     - name: Check whether this node has already been onboarded
       include_tasks: ../../../tasks/onboarded_check.yml
