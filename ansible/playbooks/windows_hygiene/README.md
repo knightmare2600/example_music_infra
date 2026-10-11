@@ -24,6 +24,7 @@ across the whole fleet.
 | `playbooks/20-hibernation-pagefile.yml` | `hibernation`, `pagefile` | Hibernation policy by chassis type + pagefile clear |
 | `playbooks/30-choco.yml` | `choco` | Chocolatey `upgrade all` + WinDirStat + SDelete |
 | `playbooks/35-winupdate-policy.yml` | `winupdate_policy` | Set Windows Update to manual download + manual install, and never force a reboot while a user is logged on |
+| `playbooks/36-shutdown-without-logon.yml` | `shutdown_without_logon` | Show Shutdown/Restart on the login screen without logging on (Server OS hides this by default) |
 | `playbooks/40-winupdate.yml` | `winupdate` | PSWindowsUpdate module + Windows Update |
 | `playbooks/50-summary.yml` | `summary` | Print summary |
 
@@ -55,6 +56,9 @@ ansible-playbook playbooks/windows_hygiene/site.yml -i configs/inventory --limit
 # Windows Update policy fix only -- safe to re-run against an already-built box,
 # never triggers 40-winupdate.yml's own actual update-install run as a side effect
 ansible-playbook playbooks/windows_hygiene/site.yml -i configs/inventory --limit <host> --tags winupdate_policy
+
+# Shutdown-without-logon fix only -- safe to re-run against an already-built box
+ansible-playbook playbooks/windows_hygiene/site.yml -i configs/inventory --limit <host> --tags shutdown_without_logon
 ```
 
 **Why a separate tag from `winupdate`**: `--tags winupdate_policy` only ever matches
@@ -116,3 +120,10 @@ rename them without updating the template too.
   update-install run. Also found and fixed the same stale `-i <host>, -e target_hosts=<host>`
   pattern this entry already corrected here, still present in `site.yml`'s own header —
   fixed there too while adding the new tag to its usage examples.
+- 2026-10-11  Added `36-shutdown-without-logon.yml` (Robert's ask): shows Shutdown/Restart
+  on the login screen without logging on first (`ShutdownWithoutLogon=1`, the same registry
+  value Local Security Policy's "Shutdown: Allow system to be shut down without having to
+  log on" writes) — Windows Server hides this by default, unlike client/desktop Windows.
+  Own tag (`shutdown_without_logon`) for the same narrow-re-apply reason as
+  `winupdate_policy`. Same fix also added to `windows_bootstrap/00-preflight.yml`'s `[H3]`
+  phase, applied unconditionally during initial build rather than only after the fact.
