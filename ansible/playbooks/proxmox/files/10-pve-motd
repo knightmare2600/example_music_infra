@@ -44,7 +44,12 @@ STORAGE_INFO=""
 if command -v pvesm &>/dev/null; then
   while IFS= read -r line; do
     STORAGE_INFO="${STORAGE_INFO}    ${CY}${line}${NC}\n"
-  done < <(pvesm status 2>/dev/null | tail -n +2 | awk '{printf "%-20s %s used of %s (%s%%)\n", $1, $4, $3, $6}' || true)
+  # 2026-10-11, real live bug found on EXAPVEFRD001: pvesm status's real column order is
+  # Name Type Status Total Used Available % -- this used $4 (Total)/$3 (Status)/$6
+  # (Available) where it meant $5 (Used)/$4 (Total)/$7 (Percent), producing garbage like
+  # "8730792 used of active (818904%)" (the literal word "active" being $3, the Status
+  # column, confirmed the exact off-by-columns mapping). Fixed to the real columns.
+  done < <(pvesm status 2>/dev/null | tail -n +2 | awk '{printf "%-20s %s used of %s (%s%%)\n", $1, $5, $4, $7}' || true)
 fi
 
 UPTIME=$(uptime -p 2>/dev/null | sed 's/up //')
