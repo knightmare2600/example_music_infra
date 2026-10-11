@@ -37,7 +37,7 @@ zone "{{ name }}" {
   type master;
   file "{{ bind_zone_dir }}/{{ filename }}";
   allow-query   { any; };
-  allow-transfer { {{ dns_secondary_ip | default('none') }}; };
+  allow-transfer { {{ dns_secondary_ip | default('none', true) }}; };
   notify {{ 'yes' if dns_secondary_ip is defined and dns_secondary_ip else 'no' }};
 {% endif %}
 };
