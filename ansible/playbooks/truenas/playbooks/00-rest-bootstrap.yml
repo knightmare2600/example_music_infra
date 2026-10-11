@@ -695,11 +695,11 @@
     - name: Summary
       ansible.builtin.debug:
         msg:
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  REST BOOTSTRAP COMPLETE — {{ inventory_hostname }}"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  TrueNAS version : {{ _truenas_system_info.json.version | default('unknown') }}"
           - "  SSH service     : state={{ _truenas_ssh_service.state }} enable={{ _truenas_ssh_service.enable }} (before this run)"
           - "  IP alignment    : {{ 'already on ' ~ truenas_target_ip ~ ', nothing to do' if truenas_ip_already_aligned | bool else (truenas_current_ip ~ ' -> ' ~ truenas_target_ip ~ ' (checked in)' if not ansible_check_mode else 'not run in check mode') }}"
           - "  Next stage      : re-run as truenas_admin+password over SSH (-k) to continue via 00-preflight.yml/10-access.yml"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"

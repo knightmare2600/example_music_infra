@@ -1397,15 +1397,15 @@
     - name: "Summary"
       debug:
         msg:
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  SETUP COMPLETE — {{ rudder_hostname }}"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  Site        : {{ rudder_site_code }} — {{ rudder_site_city }}, {{ rudder_site_country }}"
           - "  Hostname    : {{ rudder_hostname }}"
           - "  Static IP   : {{ rudder_static_ip }} ({{ 'active' if not _rudder_activate_would_strand_session | default(false) else 'active on next reboot, or run: nmcli connection up rudder-static' }})"
           - "  Rudder URL  : https://{{ rudder_static_ip }}/rudder"
           - "  Cockpit URL : https://{{ rudder_static_ip }}:9090"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  Remaining manual steps:"
           - "    1. Log in to https://{{ rudder_static_ip }}/rudder"
           - "    2. Create API token: Administration → API accounts"
@@ -1413,7 +1413,7 @@
           - "    4. Create svc_rudder_ldap + GRP_Rudder_Admins in AD"
           - "    5. Fill rudder_ldap_bind_pass in vault, re-run"
           - "    6. Install agents: ansible-playbook playbooks/rudder/rudder_onboard.yml"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
 
   # ---------------------------------------------------------------------------
   # Handlers
