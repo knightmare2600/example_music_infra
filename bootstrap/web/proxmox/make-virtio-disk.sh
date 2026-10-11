@@ -84,8 +84,8 @@ declare -A DRIVER_MAP=(
 # -----------------------------------------------------------------------------
 echo
 echo -e "${CY}  +======================================================+${NC}"
-echo -e "${CY}  |${W}  VirtIO Driver Disk Builder                         ${CY}|${NC}"
-echo -e "${CY}  |${NC}  Example Music Limited                              ${CY}|${NC}"
+echo -e "${CY}  |${W}  VirtIO Driver Disk Builder                          ${CY}|${NC}"
+echo -e "${CY}  |${NC}  Example Music Limited                               ${CY}|${NC}"
 echo -e "${CY}  +======================================================+${NC}"
 echo
 
@@ -242,7 +242,7 @@ set DRVDRV=%~d0
 
 echo.
 echo   +======================================================+
-echo   ^|  VirtIO Driver Loader — Example Music Limited       ^|
+echo   ^|  VirtIO Driver Loader — Example Music Limited        ^|
 echo   +======================================================+
 echo.
 echo   Driver disk detected at: %DRVDRV%
