@@ -1024,12 +1024,23 @@
               ${CY}Aliases${RS}  : reloadbind  checkbind  editzone  bindstatus  bindlog
           "
 
-    - name: Ensure PrintMotd yes in sshd_config
+    - name: Ensure PrintMotd no in sshd_config
+      # 2026-10-11, real bug found live on EXADNSFRD001: PrintMotd yes made sshd ALSO
+      # print /etc/motd via its own native code path, on top of what pam_motd.so's
+      # "noupdate" session line (/etc/pam.d/sshd) already prints -- the static legal
+      # text ("The programs included...") showed up twice on every login. Debian's own
+      # shipped sshd_config default is PrintMotd no specifically because pam_motd.so
+      # already handles both the dynamic update-motd.d output (motd=/run/motd.dynamic)
+      # and the static /etc/motd text (noupdate) -- confirmed matching
+      # firewallme/roles/firewall/tasks/11_ssh_hardening.yml, which already had this
+      # right. The dynamic banner box itself never doubled from this specific bug --
+      # sshd's native PrintMotd mechanism only knows about /etc/motd, not
+      # /run/motd.dynamic.
       tags: motd
       lineinfile:
         path: /etc/ssh/sshd_config
         regexp: "^#?PrintMotd"
-        line: "PrintMotd yes"
+        line: "PrintMotd no"
         state: present
       notify: Restart sshd
 
