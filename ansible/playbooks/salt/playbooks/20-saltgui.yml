@@ -231,9 +231,9 @@
     - name: "Summary"
       debug:
         msg:
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  SALTGUI SETUP COMPLETE — {{ salt_hostname }}"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  URL          : http://{{ salt_static_ip }}:{{ salt_saltgui_port }}"
           - "  Login user   : {{ salt_saltgui_user }}"
           - "  Login pass   : {{ salt_saltgui_password }}"
@@ -244,10 +244,10 @@
           - ""
           - "  (prompts for the vault password, then this entry's password — enter"
           - "   the one shown above)"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  NOT DONE: TLS. disable_ssl: true for now — see this file's own"
           - "  header. Do not expose this port beyond VPN/LAN before revisiting."
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
 
   handlers:
 
