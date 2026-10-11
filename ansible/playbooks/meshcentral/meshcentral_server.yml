@@ -635,11 +635,17 @@
               ${CY}Config      :${NC} {{ mesh_install_dir }}/meshcentral-data/config.json
           "
 
-    - name: "9 | Enable MOTD in sshd_config"
+    - name: "9 | Ensure PrintMotd no in sshd_config"
+      # 2026-10-11, same real bug found live on EXADNSFRD001 (bind9-dns.yml, identical
+      # pattern): PrintMotd yes makes sshd ALSO print /etc/motd via its own native code
+      # path, on top of what pam_motd.so's "noupdate" session line already prints --
+      # doubles the static legal text on every login. Debian's own shipped default is
+      # PrintMotd no specifically because pam_motd.so already handles both the dynamic
+      # update-motd.d output and the static /etc/motd text.
       lineinfile:
         path: /etc/ssh/sshd_config
         regexp: "^#?PrintMotd"
-        line: "PrintMotd yes"
+        line: "PrintMotd no"
         state: present
       notify: Restart SSH
 
