@@ -278,8 +278,19 @@
 #               downstream (the assert, both .j2 templates) needed to change at all.
 # =============================================================================
 
+# 2026-10-11, Robert's ask: this file never imported the ssh_preflight_with_fallback.yml
+# / refresh_ansible_ssh_key.yml self-healing pair that linux/tools.yml and
+# firewallme/playbooks/90-firewall.yml already use -- hit live on EXADNSFRD001 the same
+# day (key rejected, "Permission denied (publickey,password)", no password-fallback
+# prompt at all, just an outright unreachable failure). Same relative path depth as
+# linux/tools.yml (playbooks/<module>/<file>.yml, one level under playbooks/), so the
+# same "../..." depth applies. :!ssh_preflight_skip on hosts: matches the established
+# convention (see ssh_preflight_with_fallback.yml's own header) for cleanly skipping a
+# host that had no working key and no password given, rather than failing the whole run.
+- import_playbook: ../ssh_preflight_with_fallback.yml
+
 - name: BIND9 DNS server (master or secondary)
-  hosts: "{{ target | default('dns') }}"
+  hosts: "{{ target | default('dns') }}:!ssh_preflight_skip"
   become: true
 
   vars:
@@ -344,6 +355,9 @@
       - { suffix: 253, prefix: "exafwl", seq: 1 }
 
   pre_tasks:
+    - name: "[Preflight] Refresh SSH key + heal locked account"
+      ansible.builtin.include_tasks: ../../tasks/refresh_ansible_ssh_key.yml
+
     - name: "Resolve optional dns_* overrides (set_fact, not vars: -- see vars: comment above)"
       tags: always
       set_fact:
