@@ -1035,11 +1035,18 @@
 
     - name: Source MOTD from /etc/profile.d
       tags: motd
+      # 2026-10-11, same bug class as the PVE MOTD fix (ansible/playbooks/proxmox/
+      # playbooks/40-scripts.yml, 18e6d07): unguarded, this unconditionally re-runs
+      # 10-examplemusic on every login shell, duplicating pam_motd's own automatic
+      # run of /etc/update-motd.d/* for a real interactive SSH session -- confirmed
+      # live double-printing on EXADNSFRD001. $SSH_TTY is set by sshd for every real
+      # interactive SSH session, so skip there and only fall through for su/console
+      # logins pam_motd doesn't cover.
       copy:
         dest: /etc/profile.d/motd.sh
         mode: "0644"
         content: |
-          [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
+          [[ -z "$SSH_TTY" ]] && [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
 
   # ---------------------------------------------------------------------------
   # 8. Node info file
