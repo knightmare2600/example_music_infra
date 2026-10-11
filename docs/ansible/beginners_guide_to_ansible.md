@@ -1120,6 +1120,40 @@ deployment itself (one-time tooling setup, not something run often the way the d
 is) — confirmed via `--list-tasks --tags example_music` that only the 11 real deploy tasks
 (plus the always-tagged nodeinfo refresh, harmlessly along for the ride) are in scope.
 
+### Recognizing this when it bites you mid-run
+
+`git pull` on the control node updates `benarbejde/sites.csv`/`devices.csv`/etc. in the
+checkout — it does **not** touch `/etc/example-music/`'s deployed copies on that same
+control node. Those are a separate step (the `--tags example_music` run above), so any
+playbook that reads `/etc/example-music/sites.csv` via `delegate_to: localhost` can drift
+silently for weeks after a `git pull`, then fail loudly the next time something actually
+exercises the freshness gate. It looks like this (real failure, 2026-10-11, running
+`bind9-dns.yml` against `EXADNSFRD001` — note the gate fires on the **control node**'s own
+copy; the target host, `EXADNSFRD001`, was never the problem):
+
+```
+[*]   [example-music-gate] FAIL — missing or stale against benarbejde/
+[✗]   EXADNSFRD001      sites.csv: /etc/example-music/sites.csv is stale on the control node, relative to
+benarbejde/sites.csv in this checkout. Fix it:
+  ansible-playbook playbooks/linux/tools.yml --limit EXAANSFRD001
+Then re-run your original command against EXADNSFRD001.
+```
+
+The error message already tells you the fix — it's the same `--tags example_music` run
+from the section above, just against whichever host is actually acting as your control
+node (here `EXAANSFRD001`, not `EXAANSCLD001` — every site's own control node serves its
+own `/etc/example-music/` copy):
+
+```bash
+ansible-playbook -i configs/inventory playbooks/linux/tools.yml \
+  --tags example_music --limit EXAANSFRD001
+```
+
+Then re-run whatever you were originally trying to do. **Habit worth forming**: after any
+`git pull` on a control node, if the pulled commits touched anything under `benarbejde/`,
+run the `example_music` refresh there before doing anything else — don't wait for a gate
+to fail first.
+
 ### Proxmox theme/sensor refresh only — `--tags proxmorph`
 
 `proxmox/playbooks/46-proxmorph.yml` installs/refreshes ProxMorph's PVE web-UI themes and
@@ -2085,6 +2119,7 @@ command on one line before trusting it.
 | 2026-10-10 | Added a new top-level section, "Adding Additional Domain Controllers" -- Robert's ask, building `EXADCSCLD001` as a second DC onto the already-running `jukebox.internal` forest (`EXADCSGOT001` holds it), distinct from Section 4's forest-root walkthrough. Covers the manual OpenSSH bootstrap step needed for a plain GUI install (skips the autounattend chain entirely), the real meaning of `windows_bootstrap`'s per-*site* "first DC for this site" prompt versus `windows_dc`'s separate per-*forest* one, how `dc_source_resolution.yml`'s dual-source (`devices.csv` + `ad_computers.json`) candidate lookup resolves the existing forest's DC automatically over TCP/389, and verification commands (`netdom query fsmo`, `repadmin /showrepl`) rather than trusting a clean recap. Explicitly scopes out FSMO transfer (separate, manual, change-controlled, never automated here) and flags the `exclude_dc_computer_accounts` safeguard for any later `populate_ad` run, referencing the real `INC-2026-09-26-GOT-DC-DISABLE` incident that guard exists because of. Verified every claim against the real current `00-dc-preflight.yml`/`dc_source_resolution.yml`/`sites.csv` before writing, not from memory. |
 | 2026-10-10 | **Fixed a real command gap, hit live building `EXADCSCLD001` the same day**: both Section 4's Step 1 and this same day's new "Adding Additional Domain Controllers" Step 1 showed `ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml -e target_hosts=<ip>` with no comma-form `-i "<ip>,"` -- `windows_bootstrap/site.yml` chains every play via `import_playbook`, which resolves `hosts:` once at parse time for the whole chain, so a raw IP not already a real inventory host never matches anything; the real run printed `[WARNING]: Could not match supplied host pattern, ignoring: <ip>` once and silently ran all 19 plays against zero hosts -- every play header printed, every `vars_prompt` question got asked, `PLAY RECAP` came back blank, nothing on the box changed at all. The command's own existing 2026-10-04 correction note ("`--limit <dhcp-ip>`, the same value already in `-i`") was itself a tell this was missing -- that phrase only makes sense if an earlier version of the command actually had the IP in `-i`. Fixed both commands to the two-`-i` form `windows_bootstrap/site.yml`'s own header usage comment has documented the whole time (`-i <ip>, -e target_hosts=<ip>`), and added an explicit callout at each site explaining why the comma is load-bearing, not cosmetic. |
 | 2026-10-10 | Added "Filing a generated or typed DSRM password into KeePass" under "Adding Additional Domain Controllers" -- Robert's ask, filing `EXADCSCLD001`'s own real DSRM password for the first time. Verified the exact `kpcli_wrapper.py` invocation and prompt order against the real script before writing it (interactive-only by design, never accepts either password as a CLI argument), and flagged a real asymmetry worth knowing: `add_entry` overwrites an existing entry at the same path on a second run (`show` then `edit`-if-found), unlike `00-dc-preflight.yml`'s own Phase F KeePass-sync mechanism, which always adds a new, separately-marked entry instead. |
+| 2026-10-11 | Added "Recognizing this when it bites you mid-run" under "Refreshing `/etc/example-music`'s CSVs/JSONs" -- Robert's ask ("this has caught me before"), after hitting the real `[example-music-gate] FAIL` error live running `bind9-dns.yml` against `EXADNSFRD001` from `EXAANSFRD001`. The gate fires on the *control node*'s own `/etc/example-music/` copy (via `delegate_to: localhost`), not the target host -- confirmed from the real pasted output, which showed `EXADNSFRD001` as perfectly reachable while the failure was entirely about `EXAANSFRD001`'s stale served files. `git pull` alone never refreshes those; added the real error text verbatim (so it's recognisable/searchable next time) plus the fix command and a "form the habit" callout to run the `example_music` refresh after any pull that touches `benarbejde/`. |
 
 ---
 
