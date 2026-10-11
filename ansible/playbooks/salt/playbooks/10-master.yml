@@ -788,15 +788,15 @@
     - name: "Summary"
       debug:
         msg:
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  SALT MASTER SETUP COMPLETE — {{ salt_hostname }}"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  Site        : {{ salt_site_code }} — {{ salt_site_city }}, {{ salt_site_country }}"
           - "  Hostname    : {{ salt_hostname }}"
           - "  Static IP   : {{ salt_static_ip }} ({{ 'active' if not _salt_activate_would_strand_session | default(false) else 'active on next reboot, or run: nmcli connection up salt-static' }})"
           - "  Salt version: {{ salt_version_major }}.x (pinned)"
           - "  Ports       : 4505/tcp (publish), 4506/tcp (return)"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  Remaining manual steps:"
           - "    1. Confirm bootstrap/web/windows/{x86_64,arm64}/Salt-Minion-*.msi"
           - "       are the matching {{ salt_version_major }}.x build (buildsheet-salt-minion.md --"
@@ -806,7 +806,7 @@
           - "    4. salt-key -a <minion-name> to accept it"
           - "    5. salt '<minion-name>' test.ping to confirm check-in"
           - "  Next stage: playbooks/salt/playbooks/20-saltgui.yml (salt-api + SaltGUI)"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
 
   # ---------------------------------------------------------------------------
   # Handlers

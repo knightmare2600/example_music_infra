@@ -1196,13 +1196,13 @@
     - name: "Summary"
       debug:
         msg:
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  BIND9 DNS SETUP COMPLETE — {{ this_hostname }}"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  Zone        : {{ domain }}"
           - "  DNS IP      : {{ dns_ip }} ({{ 'active' if not _prov_activate_would_strand_session | default(false) else 'active on next reboot, or run: nmcli connection up prov-static' }})"
           - "  Self-test   : {{ 'forward + PTR lookups both passed' if (_dns_selftest_fwd_ok and _dns_selftest_ptr_ok) else 'FAILED -- see WARNING above (forward: ' + ('OK' if _dns_selftest_fwd_ok else 'FAILED') + ', PTR: ' + ('OK' if _dns_selftest_ptr_ok else 'FAILED') + ')' }}"
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
 
   # ---------------------------------------------------------------------------
   # Handlers

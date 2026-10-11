@@ -1432,7 +1432,7 @@
     - name: "[I] Pre-flight complete — summary"
       debug:
         msg:
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
           - "  Pre-flight complete"
           - "  Hostname    : {{ target_hostname | upper }}"
           - "  Site        : {{ host_site_code }} — {{ site_city }}, {{ site_country }}"
@@ -1444,4 +1444,4 @@
           - "  WU policy   : manual download/install set (notify only)"
           - "  First DC    : {{ is_first_dc }}"
           - "  Handing off to the rest of site.yml's chain (10-rename.yml onward)..."
-          - "════════════════════════════════════════════════════════════════"
+          - "  ════════════════════════════════════════════════════════════════"
