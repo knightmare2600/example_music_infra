@@ -75,6 +75,20 @@
 # Tags: dc_preflight
 # =============================================================================
 # Changelog:
+#   2026-10-12  Robert's explicit reversal of Phase F's own 2026-10-01 "Ansible never
+#               writes DSRM to KeePass" decision -- but only for the write itself. The
+#               read-only three-source check and refuse-to-generate-if-anything-exists
+#               fail-loudly logic are completely unchanged; a new step right after the
+#               blank-password guard now files the finalised value (typed or generated)
+#               into KeePass via the shared ansible/tasks/keepass_credential_sync.yml
+#               (kcs_can_generate: false -- this call never generates, only files what
+#               Phase F already decided). Robert's own stated worry driving this: never
+#               risk losing/overwriting a real DSRM credential -- "better to have two
+#               records than none" -- which is exactly what that shared task's existing
+#               add-not-overwrite conflict handling already does. Same change also
+#               upgraded that shared file's conflict-suffix from date-only to
+#               date+time, to avoid a same-day collision if DSRM ever conflicts twice
+#               in one day.
 #   2026-10-10  Real live incident (EXADCSCLD001): leaving both DSRM prompts at their
 #               defaults (generate=no, password=blank) reached promotion with an empty
 #               dc_dsrm_password, with nothing catching it here -- the real failure
@@ -613,6 +627,33 @@
       when: dc_dsrm_password | default('') | length == 0
       tags: dc_preflight
 
+    # ── File the finalised DSRM password into KeePass ─────────────────────────
+    # 2026-10-12, Robert's explicit reversal of the 2026-10-01 "DSRM is excluded"
+    # decision -- but ONLY for this write step. Everything above (the three-source
+    # read-only check, the refuse-to-generate-if-anything-already-exists fail-loudly
+    # logic) is completely untouched -- by the time this task runs, dc_dsrm_password is
+    # guaranteed non-blank (the FAIL task immediately above hard-stops otherwise), and
+    # is either what the operator typed or what Phase F generated. kcs_can_generate:
+    # false is deliberate, not incidental -- this call must never generate anything
+    # itself, only file whatever Phase F already decided on. Same KeePass path the
+    # existing read-only check above already looks at, so this is filing at the exact
+    # place that check will find it next time, not a new, disconnected location.
+    # Robert's own stated worry (never risk losing/overwriting a real DSRM credential)
+    # is why this reuses keepass_credential_sync.yml's existing add-not-overwrite
+    # conflict handling rather than a plain keepassxc-cli add -- "better to have two
+    # records than none," his own words, is exactly what that shared task already does.
+    - name: "[KeePass sync] DSRM password"
+      include_tasks: ../../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../../.."
+        kcs_keepass_path:           "Infrastructure/{{ host_site }}/{{ inventory_hostname }}-dsrm"
+        kcs_username:               "dsrm"
+        kcs_current_value:          "{{ dc_dsrm_password }}"
+        kcs_can_generate:           false
+        kcs_credentials_json_role:  "DSRM"
+        kcs_result_var:             "dc_dsrm_password"
+      tags: dc_preflight
+
     # ── KeePass check-defer-write: Domain Admin / Local Admin passwords ───────
     # 2026-10-01, Robert's explicit, confirmed-via-AskUserQuestion reversal of the
     # one-way KeePass flow (see [[project_keepass_automation_hardening_2026_10_01]] and
@@ -682,24 +723,25 @@
 
     # 2026-10-01: only fires when Phase F actually generated this run's DSRM password --
     # a manually-typed one is never printed back (the operator already knows it). Shown
-    # exactly once, same "generate, use in-run, print once, tell the human to file it"
-    # pattern already proven safe in tacticalrmm_server.yml/20-saltgui.yml. Ansible still
-    # never writes to the vault -- this is the one-time human hand-off.
-    - name: "DSRM password was generated this run — file it into KeePass now"
+    # exactly once, same "generate, use in-run, print once" pattern already proven safe
+    # in tacticalrmm_server.yml/20-saltgui.yml.
+    # 2026-10-12: text updated -- this used to tell the operator "nothing here writes to
+    # KeePass, file it yourself" with the manual kpcli_wrapper.py command. That's no
+    # longer true: the "[KeePass sync] DSRM password" task above this one in the same
+    # play now files it automatically. Still shown on-screen once (worth seeing/noting
+    # directly, not just trusting it landed in the vault), now confirming it was filed
+    # rather than instructing a manual step that would just duplicate what already ran.
+    - name: "DSRM password was generated this run — confirming it was filed into KeePass"
       debug:
         msg:
           - ""
           - "{{ _c.G }}════════════════════════════════════════════════════════════════{{ _c.NC }}"
-          - "{{ _c.G }}  GENERATED DSRM PASSWORD — shown once, nothing here writes to KeePass{{ _c.NC }}"
+          - "{{ _c.G }}  GENERATED DSRM PASSWORD — filed into KeePass automatically this run{{ _c.NC }}"
           - "{{ _c.G }}  Password : {{ dc_dsrm_password }}{{ _c.NC }}"
           - "{{ _c.G }}════════════════════════════════════════════════════════════════{{ _c.NC }}"
-          - "  File it yourself:"
-          - ""
-          - "    python3 benarbejde/kpcli_wrapper.py {{ dc_keepass_db }} \\"
-          - "      add \"Infrastructure/{{ host_site }}/{{ inventory_hostname }}-dsrm\" dsrm"
-          - ""
-          - "  (prompts for the vault password, then this entry's password — enter the"
-          - "   one shown above)"
+          - "  Already filed at Infrastructure/{{ host_site }}/{{ inventory_hostname }}-dsrm --"
+          - "  see the [KeePass sync] DSRM password task's own output above for"
+          - "  write-verified confirmation. No manual filing step needed."
       when: _dsrm_password_was_generated | default(false)
       tags: dc_preflight
 
