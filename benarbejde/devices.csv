@@ -90,7 +90,7 @@ GLA,SUR,1,153,Windows 11 Pro,winrm,,"Microsoft Surface -- pool device. Added 202
 CLY,SVR,1,20,Rocky Linux,ssh,,Oracle DB server,,yes,yes,
 CLY,SWI,1,250,Cisco Catalyst 9300,snmp,,"Core switch -- Legacy/Migrating, left as-is 2026-09-24: this Number=1 slot's own octet/vendor don't match either real AD-tracked switch (EXASWICLY001 TPLink .20, EXASWICLY002 Cisco Catalyst .2 -- see the new Number=2 row below), and reassigning EXASWICLY001's hostname to this row is blocked on a real IP collision with EXASVRCLY001 (both show .20 in ad_computers.json) that needs Robert's own call, not a guessed octet. Not touched pending that decision.",,yes,yes,
 CLY,SWI,2,2,Cisco Catalyst 9300,snmp,,"Cisco Catalyst 48-port -- real, live, Ansible-tracked switch confirmed via ad_computers.json (EXASWICLY002, Enabled:true). Added 2026-09-24 as part of fixing the Clydebank/Glasgow subnet data-entry bug (192.168.141.x -> 192.168.41.x, Robert confirmed CLY is 192.168.41.0/24) -- this octet (.2) had no collision once corrected, unlike the Number=1 row above.",,no,,
-CLY,FWL,1,253,FortiOS 7.6.5,telnet,,"Firewall / VPN Gateway",,no,,
+CLY,FWL,1,253,FortiOS 7.6.5,ssh,,"Firewall / VPN Gateway",,no,,
 CLY,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge",,yes,yes,
 CLY,ILO,1,3,HPE iLO5,snmp,,"HP iLO -- real, live BMC interface. Added 2026-09-24 alongside RAC's own row below: both were previously only in ad_computers.json with no devices.csv row, sharing a bogus duplicate IP (.30) as a result -- RAC couldn't get a real row until RAC was removed from ALWAYS_EXCLUDE_TYPES the same day (see generate_inventory.py's own changelog). .2 is taken by EXASWICLY002 (see SWI,2 row above); .3/.4 are the next free BMC-pool slots.",,no,,
 CLY,RAC,1,4,Dell iDRAC9,snmp,,"Dell iDRAC -- real, live BMC interface, distinct physical device from the ILO row above (per Robert: vendor decides ILO vs RAC, a site can genuinely have both). Added 2026-09-24, same fix as ILO's row above.",,no,,
@@ -111,7 +111,7 @@ PER,PHN,3,,Yealink T46G,http,,Phone 3,,yes,yes,
 PER,PHN,4,,Yealink T46G,http,,Phone 4,,yes,yes,
 PER,PRN,1,20,HP MFP,snmp,no,Printer,,yes,yes,
 PER,VND,1,,Embedded SP100,none,,"Vending machine -- NOT the same device as AD Name=EXACVNDER001 (a different, real Scone Palace donut vending device whose DNSHostName coincidentally matches this hostname) -- confirmed by Robert 2026-07-14, genuinely new/current, not legacy",,no,,
-ABD,FWL,1,253,Cisco ASA 5506-X,telnet,,"Enterprise edge firewall",,no,,
+ABD,FWL,1,253,Cisco ASA 5506-X,ssh,,"Enterprise edge firewall",,no,,
 ABD,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge",,yes,yes,
 ABD,MBP,1,137,macOS,ssh,no,MacBook,,yes,yes,
 ABD,MBP,2,124,macOS,ssh,no,MacBook,,yes,yes,
@@ -120,7 +120,7 @@ ABD,PHN,2,,iOS,http,,iPhone,,yes,yes,
 LND,RAD,1,80,,none,,BBC Office Radio Mk II,,yes,yes,
 LND,MIC,1,81,,none,,Shure SM7 via Dante audio,,yes,yes,
 LND,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes,yes,
-LND,FWL,1,253,Cisco ASA 5516-X,telnet,,"Perimeter firewall and VPN gateway",,no,,
+LND,FWL,1,253,Cisco ASA 5516-X,ssh,,"Perimeter firewall and VPN gateway",,no,,
 LND,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge",,yes,yes,
 LND,WKS,1,150,Windows 11,winrm,,Workstation,,yes,yes,
 LND,PRN,1,16,Xerox WorkCentre,snmp,no,Printer,,yes,yes,
@@ -134,7 +134,7 @@ BIR,PAY,1,74,,none,,Payphone,,yes,yes,
 BIR,LCD,1,75,NEC PlasmaSync,http,,NOC display,,yes,yes,
 BIR,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes,yes,
 BIR,SWI,2,251,Cisco Catalyst 48-port,snmp,,Access switch,,yes,yes,
-BIR,FWL,1,253,Palo Alto PanOS,telnet,,"Palo Alto Site Firewall / VPN Gateway",,no,,
+BIR,FWL,1,253,Palo Alto PanOS,ssh,,"Palo Alto Site Firewall / VPN Gateway",,no,,
 BIR,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge",,yes,yes,
 BIR,MBP,1,41,macOS,ssh,no,MacBook,,yes,yes,
 BIR,TAB,1,61,Android,winrm,no,Galaxy Tab,,yes,yes,
@@ -193,7 +193,7 @@ LAX,PAY,1,74,,none,,Payphone,,yes,yes,
 LAX,LCD,1,75,NEC PlasmaSync,http,,Status wallboard,,yes,yes,
 LAX,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes,yes,
 LAX,SWI,2,251,Cisco Catalyst 2960,snmp,,Access switch,,yes,yes,
-LAX,FWL,1,253,Palo Alto PAN-OS 10.x,telnet,,"Site firewall / VPN gateway",,no,,
+LAX,FWL,1,253,Palo Alto PAN-OS 10.x,ssh,,"Site firewall / VPN gateway",,no,,
 LAX,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge",,yes,yes,
 LAX,MBP,1,41,macOS,ssh,no,MacBook Pro,,yes,yes,
 LAX,TAB,1,61,iPadOS,winrm,no,iPad,,yes,yes,
@@ -228,7 +228,7 @@ MEL,PRN,1,80,HP,snmp,no,LaserJet printer,,yes,yes,
 AKL,SVR,1,20,Windows Server 2022,ssh,,Local server,,yes,yes,
 AKL,SWI,1,250,Cisco Catalyst 9300,snmp,,Core switch,,yes,yes,
 AKL,SWI,2,251,Cisco Catalyst 2960,snmp,,Access switch,,yes,yes,
-AKL,FWL,1,253,FortiGate 7.x,telnet,,"Site firewall",,no,,
+AKL,FWL,1,253,FortiGate 7.x,ssh,,"Site firewall",,no,,
 AKL,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge",,yes,yes,
 AKL,RAC,1,2,Dell iDRAC9,snmp,,"Real, confirmed via ad_computers.json (EXARACAKL001, Enabled:true). Added 2026-09-24 -- .2 confirmed free (no other real device, not devices.csv-occupied) via suggest_free_ip.py.",,no,,
 AKL,WKS,1,40,Windows 11,winrm,no,Workstation,,yes,yes,
@@ -244,7 +244,7 @@ TOR,DCR,28,,Windows Server 2003,,no,"Undocumented legacy AD install found on sit
 CLD,BMC,2,3,,none,,"Not yet built -- planned expansion slot (2026-07-30, Robert)",,no,,yes
 CLD,PVE,2,6,,none,,"Not yet built -- planned expansion slot (2026-07-30, Robert)",,no,,yes
 CLD,NIX,1,40,,ssh,,"CloudPanel test host (Robert, 2026-10-10) -- first live test of the cloudpanel playbook conversion. Octet matches the sibling NIX precedent at PER (EXANIXPER001). OS/exact role TBD.",,no,,
-ODE,FWL,1,253,Cisco ASA 5506-X,telnet,,"Enterprise edge firewall -- real, confirmed via ad_computers.json (EXAFWLODE001, Enabled:true)",,no,,
+ODE,FWL,1,253,Cisco ASA 5506-X,ssh,,"Enterprise edge firewall -- real, confirmed via ad_computers.json (EXAFWLODE001, Enabled:true)",,no,,
 ODE,FWL,2,254,,none,,"Not yet built -- planned second firewall (2026-07-30, Robert)",,no,,yes
 FRD,FWL,1,253,,none,,"Not yet built -- planned first firewall for this fallback vRACK site (2026-07-30, Robert)",,no,,yes
 FRD,RTR,1,2,,none,,"Black box -- no access, upstream provider equipment, not a router we manage or can query (Robert, 2026-09-26). Real gateway, not the standard .1 RTR slot -- confirmed independently two ways already in this file: sites.csv's own Gateway field (172.16.124.2), and this file's own FRD,TMP,1 row, whose Notes already referenced this same address as the real iPXE-detected gateway (menu.ipxe/late_command.sh) back on 2026-07-21, before this row existed to own it.",,no,,
@@ -384,7 +384,7 @@ MUN,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge router -- real, confirmed 2026-09-2
 MIA,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge router -- real, confirmed 2026-09-24 (Robert: every site also has a router, same as the switch rule). Vendor defaulted to the estate's own dominant convention, not separately confirmed.",,no,,
 AAR,RTR,1,1,Cisco ISR 4331,telnet,,"WAN edge router -- real, confirmed 2026-09-24 (Robert: every site also has a router, same as the switch rule). Vendor defaulted to the estate's own dominant convention, not separately confirmed.",,no,,
 AMS,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-AMS,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+AMS,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 AMS,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 AMS,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 AMS,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -396,7 +396,7 @@ AMS,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 AMS,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 AMS,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 DET,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-DET,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+DET,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 DET,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 DET,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 DET,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -408,7 +408,7 @@ DET,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 DET,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 DET,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 BRT,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-BRT,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+BRT,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 BRT,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 BRT,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 BRT,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -420,7 +420,7 @@ BRT,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 BRT,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 BRT,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 CHI,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-CHI,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+CHI,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 CHI,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 CHI,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 CHI,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -432,7 +432,7 @@ CHI,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 CHI,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 CHI,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 DRS,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-DRS,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+DRS,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 DRS,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 DRS,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 DRS,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -444,7 +444,7 @@ DRS,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 DRS,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 DRS,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 DUS,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-DUS,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+DUS,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 DUS,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 DUS,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 DUS,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -456,7 +456,7 @@ DUS,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 DUS,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 DUS,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 FRE,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-FRE,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+FRE,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 FRE,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 FRE,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 FRE,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -468,7 +468,7 @@ FRE,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 FRE,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 FRE,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 GOT,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-GOT,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+GOT,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 GOT,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 GOT,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 GOT,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -479,7 +479,7 @@ GOT,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 GOT,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 GOT,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 KNG,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-KNG,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+KNG,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 KNG,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 KNG,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 KNG,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -491,7 +491,7 @@ KNG,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 KNG,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 KNG,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 MIL,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-MIL,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+MIL,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 MIL,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 MIL,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 MIL,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -503,7 +503,7 @@ MIL,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 MIL,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 MIL,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 MTL,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-MTL,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+MTL,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 MTL,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 MTL,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 MTL,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -515,7 +515,7 @@ MTL,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 MTL,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 MTL,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 NJC,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-NJC,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+NJC,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 NJC,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 NJC,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 NJC,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -527,7 +527,7 @@ NJC,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 NJC,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 NJC,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 NYB,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-NYB,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+NYB,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 NYB,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 NYB,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 NYB,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -539,7 +539,7 @@ NYB,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 NYB,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 NYB,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 OSL,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-OSL,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+OSL,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 OSL,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 OSL,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 OSL,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -551,7 +551,7 @@ OSL,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 OSL,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 OSL,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 PHI,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-PHI,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+PHI,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 PHI,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 PHI,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 PHI,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -563,7 +563,7 @@ PHI,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 PHI,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 PHI,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 SEA,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-SEA,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+SEA,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 SEA,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 SEA,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 SEA,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -575,7 +575,7 @@ SEA,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 SEA,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 SEA,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 SFO,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-SFO,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+SFO,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 SFO,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 SFO,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 SFO,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -587,7 +587,7 @@ SFO,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a defau
 SFO,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 SFO,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate for a new site, not yet built.)",,no,,yes
 VIE,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-VIE,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+VIE,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 VIE,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 VIE,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 VIE,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -605,7 +605,7 @@ FAX,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default p
 FAX,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 FAX,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 FAX,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
-AAR,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+AAR,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 AAR,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 AAR,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
 AAR,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
@@ -626,7 +626,7 @@ AKL,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synolog
 AKL,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
 AKL,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 AKL,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
-ATL,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+ATL,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 ATL,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 ATL,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
 ATL,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
@@ -636,7 +636,7 @@ ATL,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 ATL,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 ATL,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 ATL,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate, not yet built.)",,no,,yes
-BER,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+BER,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 BER,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 BER,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 BER,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -650,13 +650,13 @@ BIR,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vend
 BIR,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
 BIR,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
 BIR,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
-BON,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+BON,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 BON,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 BON,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
 BON,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
 BON,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 BON,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
-BRD,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+BRD,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 BRD,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
 BRD,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 BRD,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
@@ -665,7 +665,7 @@ BRD,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 BRD,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 BRD,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 BRD,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate, not yet built.)",,no,,yes
-BRK,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+BRK,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 BRK,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
 BRK,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 BRK,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
@@ -677,7 +677,7 @@ CLY,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vend
 CLY,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
 CLY,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
 CLY,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
-COV,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+COV,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 COV,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
 COV,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 COV,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
@@ -686,13 +686,13 @@ COV,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 COV,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 COV,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 COV,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate, not yet built.)",,no,,yes
-CPH,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+CPH,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 CPH,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 CPH,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
 CPH,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
 CPH,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 CPH,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
-DUN,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+DUN,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 DUN,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
 DUN,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 DUN,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
@@ -700,16 +700,16 @@ DUN,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default p
 DUN,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 DUN,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 DUN,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
-EDI,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+EDI,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 EDI,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 EDI,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
 EDI,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
 EDI,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 EDI,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
-FAL,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+FAL,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 FAL,PVE,1,5,Dell,ssh,,"Vendor corrected 2026-09-26 to match node 1's real, confirmed RAC,1 (Dell iDRAC) -- was 'HP' as a generic, never-confirmed new-site-boilerplate default pick, backwards from the real hardware.",,no,,yes
 FAL,PVE,2,6,HP,ssh,,"Vendor corrected 2026-09-26 to match node 2's real, confirmed BMC (HPE iLO5, ILO,1 above) -- was 'Dell' as a generic, never-confirmed new-site-boilerplate default pick, backwards from the real hardware.",,no,,yes
-GLA,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+GLA,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 GLA,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 GLA,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
 GLA,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
@@ -719,7 +719,7 @@ GLA,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 GLA,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 GLA,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 HAL,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-HAL,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+HAL,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 HAL,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 HAL,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 HAL,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -730,7 +730,7 @@ HAL,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 HAL,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 HAL,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 HUL,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-HUL,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+HUL,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 HUL,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 HUL,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 HUL,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -740,7 +740,7 @@ HUL,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default p
 HUL,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 HUL,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 HUL,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
-KGE,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+KGE,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 KGE,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
 KGE,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 KGE,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
@@ -749,7 +749,7 @@ KGE,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 KGE,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 KGE,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 KOR,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-KOR,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+KOR,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 KOR,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 KOR,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 KOR,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -764,7 +764,7 @@ LAX,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synolog
 LAX,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
 LAX,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 LAX,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
-LIV,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+LIV,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 LIV,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 LIV,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
 LIV,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
@@ -776,7 +776,7 @@ LND,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synolog
 LND,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
 LND,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 LND,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
-MCR,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+MCR,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 MCR,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 MCR,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 MCR,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
@@ -788,7 +788,7 @@ MEL,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vend
 MEL,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
 MEL,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 MEL,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
-MIA,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+MIA,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 MIA,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 MIA,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
 MIA,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
@@ -798,7 +798,7 @@ MIA,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 MIA,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 MIA,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 MIA,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate, not yet built.)",,no,,yes
-MUN,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+MUN,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 MUN,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 MUN,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 MUN,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
@@ -806,7 +806,7 @@ MUN,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default p
 MUN,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 MUN,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 MUN,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate, not yet built.)",,no,,yes
-NEW,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+NEW,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 NEW,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 NEW,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 NEW,NAS,1,19,Synology DSM,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Synology DSM' is a default pick, not confirmed.)",,no,,yes
@@ -814,7 +814,7 @@ NEW,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default p
 NEW,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 NEW,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 NYC,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-NYC,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+NYC,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 NYC,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 NYC,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 NYC,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -831,7 +831,7 @@ ODE,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default p
 ODE,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 ODE,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 ODE,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
-PER,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+PER,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 PER,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 PER,RDR,1,21,HID Signo,ssh,,"PLANNED -- new-site boilerplate (badge reader. Vendor 'HID Signo' is a default pick, not confirmed.)",,no,,yes
 PER,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default pick, not confirmed.)",,no,,yes
@@ -839,7 +839,7 @@ PER,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 PER,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 PER,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 SHE,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-SHE,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+SHE,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 SHE,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 SHE,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 SHE,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -855,7 +855,7 @@ SYD,PVE,1,5,HP,ssh,,"PLANNED -- new-site boilerplate (Vendor 'HP' is a default p
 SYD,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 SYD,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 TOR,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-TOR,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+TOR,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 TOR,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 TOR,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 TOR,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
@@ -866,7 +866,7 @@ TOR,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 TOR,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 TOR,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 MRS,RTR,1,1,FortiGate,telnet,,"PLANNED -- new-site boilerplate (Vendor 'FortiGate' is a default pick, not confirmed.)",,no,,yes
-MRS,FWL,1,253,,telnet,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
+MRS,FWL,1,253,,ssh,,"PLANNED -- new-site boilerplate (vendor varies per site, no default)",,no,,yes
 MRS,SWI,1,250,Cisco Catalyst 9300,snmp,,"PLANNED -- new-site boilerplate (96-port. Vendor 'Cisco Catalyst 9300' is a default pick, not confirmed.)",,no,,yes
 MRS,WAP,1,82,Ubiquiti UniFi U6-Pro,http,,"PLANNED -- new-site boilerplate (Vendor 'Ubiquiti UniFi U6-Pro' is a default pick, not confirmed.)",,no,,yes
 MRS,SBC,1,48,3CX SBC,ssh,,"PLANNED -- new-site boilerplate (Vendor '3CX SBC' is a default pick, not confirmed.)",,no,,yes
