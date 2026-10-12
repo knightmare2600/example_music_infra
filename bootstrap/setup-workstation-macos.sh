@@ -960,10 +960,15 @@ if (-not [Console]::IsInputRedirected) {
                 "$blue########$reset $yellow########$reset"
                 "$blue########$reset $yellow########$reset"
             )
+            # office_name is genuinely blank for sites with no physical office (CLD, the
+            # cloud hub, confirmed via its real sites.csv row) -- filter blanks rather than
+            # join unconditionally, or a blank field leaves a stray leading/double ", ".
+            $locationParts = @($ni.office_name, $ni.city, $ni.country) |
+                Where-Object { $_ -and $_.Trim() -ne '' }
             $infoLines = @(
                 "$($ni.hostname)  [$($ni.role) / $($ni.site)]"
                 "$($ni.fqdn)"
-                "$($ni.office_name), $($ni.city), $($ni.country)  ($($ni.entity))"
+                "$($locationParts -join ', ')  ($($ni.entity))"
                 ""
                 "Environment: $($ni.environment)"
                 "Built: $($ni.bootstrapped_at.ToString('yyyy-MM-ddTHH:mm:ssZ')) ($($ni.bootstrapped_by))"
