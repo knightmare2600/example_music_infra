@@ -526,6 +526,21 @@
 #                     independently blocks for input, so that would have asked twice instead
 #                     of printing one two-line question.
 #
+# v1.38.0 2026-10-12  Real live bug, EXAANSCLD001, found by Robert: an ODE firewall run
+#                     failed with "the connection plugin 'community.general.telnet' was
+#                     not found" -- re-running `ansible-galaxy collection install` for
+#                     every requirements.yml reported all collections already installed,
+#                     ruling out the obvious fix. Real cause: Python 3.13 (PEP 594)
+#                     removed `telnetlib` from its own standard library; community.general's
+#                     telnet connection plugin still imports it, so the plugin FILE is
+#                     present (hence "already installed") but silently fails to load on
+#                     any distro shipping 3.13+ (Debian trixie included). `apt-cache
+#                     search` found `python3-zombie-telnetlib` (a packaged copy of the
+#                     removed module) -- added a check for this (actually attempting the
+#                     import, not just checking the Python version, so it's a no-op on
+#                     any older distro that still ships telnetlib natively) to
+#                     BOOTSTRAP_PKGS alongside the existing python3-lib checks.
+#
 # ==============================================================================
 
 set -euo pipefail
@@ -783,6 +798,15 @@ dpkg -s python3-requests    &>/dev/null || BOOTSTRAP_PKGS+=(python3-requests)
 dpkg -s python3-virtualenv  &>/dev/null || BOOTSTRAP_PKGS+=(python3-virtualenv)
 dpkg -s python3-ipy         &>/dev/null || BOOTSTRAP_PKGS+=(python3-ipy)
 command -v jq               &>/dev/null || BOOTSTRAP_PKGS+=(jq)
+# telnetlib was removed from Python's own standard library in 3.13 (PEP 594) --
+# community.general's telnet connection plugin still imports it, so on any distro
+# shipping Python 3.13+ (Debian trixie included) that plugin silently fails to load
+# ("connection plugin 'community.general.telnet' was not found", confirmed live on
+# EXAANSCLD001 -- ansible-galaxy reported the collection itself as already installed,
+# since the plugin FILE is present, it just can't import). Checked by actually trying
+# the import, not just the Python version, so this is a no-op on any older distro that
+# still ships telnetlib natively.
+python3 -c "import telnetlib" &>/dev/null || BOOTSTRAP_PKGS+=(python3-zombie-telnetlib)
 
 # NB: libguestfs-tools is intentionally NOT installed on the ansible node. It is
 # only needed on PVE nodes, and is deployed there via the proxmox/site.yml and
