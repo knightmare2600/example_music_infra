@@ -43,6 +43,17 @@
 # Tags: dc_promote
 # =============================================================================
 # Changelog:
+#   2026-10-12  Stage 0's DNS checks (both FAIL tasks, the temp-DNS set, and the
+#               recheck) only ever gated on `not dc_is_dc`, never on
+#               dc_is_forest_root -- so a genuine forest-root build (no DNS zone
+#               for dc_domain_name exists ANYWHERE yet, since AD-integrated DNS
+#               is only created by Install-ADDSForest itself) hit the "not
+#               resolvable and no temp DNS supplied" FAIL every time, live on
+#               EXADCSFRD001. Added `not dc_is_forest_root | default(false) |
+#               bool` to every Stage 0 task's when:, plus a new "[Stage 0] Skip
+#               -- forest root build" banner explaining why it's skipped, so
+#               forest-root promotion no longer requires -e dc_temp_dns_ip as a
+#               workaround for a check that was never applicable to it.
 #   2026-07-15  Robert asked for an alignment check against windows_bootstrap's
 #               2026-07-14 prompt-timing lessons, before running windows_dc/site.yml
 #               live for the first time. Found: this file's own vars_prompt for
@@ -163,10 +174,23 @@
     # Stage 0 — Temporary DNS (ensure {{ dc_domain_name }} is resolvable)
     # =========================================================================
 
+    - name: "[Stage 0] Skip — forest root build, no DNS zone exists anywhere yet"
+      ansible.builtin.debug:
+        msg: >
+          {{ _c.C }}[*]{{ _c.NC }} Skipping DNS preparation — this is a forest-root
+          build, so {{ dc_domain_name }} is not expected to resolve anywhere until
+          Install-ADDSForest creates the AD-integrated zone.
+      when:
+        - not dc_is_dc
+        - dc_is_forest_root | default(false) | bool
+      tags: dc_promote
+
     - name: "── Stage 0 — DNS preparation ──"
       ansible.builtin.debug:
         msg: "{{ _c.C }}[*]{{ _c.NC }} Checking DNS resolution of {{ dc_domain_name }}..."
-      when: not dc_is_dc
+      when:
+        - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
       tags: dc_promote
 
     - name: "[Stage 0] Check if {{ dc_domain_name }} is already resolvable"
@@ -179,7 +203,9 @@
         }
       register: dc_dns_check
       changed_when: false
-      when: not dc_is_dc
+      when:
+        - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
       tags: dc_promote
 
     - name: "[Stage 0] Get default-route NIC alias (for DNS override)"
@@ -191,6 +217,7 @@
       changed_when: false
       when:
         - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
         - dc_dns_check.stdout | trim == 'unresolvable'
         - dc_temp_dns_ip | length > 0
       tags: dc_promote
@@ -202,6 +229,7 @@
           -ServerAddresses "{{ dc_temp_dns_ip }}"
       when:
         - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
         - dc_dns_check.stdout | trim == 'unresolvable'
         - dc_temp_dns_ip | length > 0
       tags: dc_promote
@@ -218,6 +246,7 @@
       changed_when: false
       when:
         - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
         - dc_dns_check.stdout | trim == 'unresolvable'
         - dc_temp_dns_ip | length > 0
       tags: dc_promote
@@ -231,6 +260,7 @@
           the site firewall is not blocking UDP/TCP 53.
       when:
         - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
         - dc_dns_check.stdout | trim == 'unresolvable'
         - dc_temp_dns_ip | length > 0
         - dc_dns_recheck.stdout | trim == 'unresolvable'
@@ -245,6 +275,7 @@
           Re-run with -e dc_temp_dns_ip=<ip> pointing at a reachable DC.
       when:
         - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
         - dc_dns_check.stdout | trim == 'unresolvable'
         - dc_temp_dns_ip | length == 0
       tags: dc_promote
@@ -253,7 +284,9 @@
       ansible.builtin.debug:
         msg: >
           {{ _c.G }}[+]{{ _c.NC }} {{ dc_domain_name }} is resolvable — DNS preparation complete.
-      when: not dc_is_dc
+      when:
+        - not dc_is_dc
+        - not dc_is_forest_root | default(false) | bool
       tags: dc_promote
 
     # =========================================================================
