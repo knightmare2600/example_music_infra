@@ -52,6 +52,11 @@
 # Tags: finish
 # =============================================================================
 # Changelog:
+#   2026-10-12  Real live incident, EXADCSCLD001: the final reboot's own reboot_timeout
+#               (600s) wasn't enough -- timed out at 646s elapsed waiting for the
+#               post-reboot responsiveness check, even though the reboot itself completed
+#               (changed=true, rebooted=true). Bumped to 900s, Robert's own ask -- no hard
+#               ceiling anywhere in Ansible/win_reboot, just this task's own parameter.
 #   2026-10-12  Real live incident, EXADCSCLD001: "[Finish] Remote access summary" hard
 #               crashed ("'target_hostname' is undefined") under a narrow --tags finish
 #               run (re-applying a sites.csv change via the shared, always-tagged nodeinfo
@@ -285,7 +290,7 @@
 
     - name: "[Finish] Final reboot (only if Windows is actually reporting one pending)"
       ansible.windows.win_reboot:
-        reboot_timeout:    600
+        reboot_timeout:    900
         post_reboot_delay: 30
         msg:               "Ansible bootstrap complete — final reboot"
       when: _finish_reboot_pending.stdout | trim == 'True'
