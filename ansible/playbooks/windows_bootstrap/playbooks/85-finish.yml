@@ -52,6 +52,14 @@
 # Tags: finish
 # =============================================================================
 # Changelog:
+#   2026-10-12  Real live incident, EXADCSCLD001: "[Finish] Remote access summary" hard
+#               crashed ("'target_hostname' is undefined") under a narrow --tags finish
+#               run (re-applying a sites.csv change via the shared, always-tagged nodeinfo
+#               write, which itself succeeded fine). That banner depends on facts from six
+#               different earlier files, none of which run without "bootstrap" also in
+#               --tags. Gated the full banner on target_hostname being defined, added a
+#               lighter fallback summary message for the narrow-tag-run case instead of
+#               reconstructing all six facts from always-available equivalents.
 #   2026-10-10  Cosmetic only, real live incident, same EXADCSCLD001 build: "Remote access
 #               summary" still printed "!! FIRST-DC BUILD — domain NOT joined !!" gated
 #               purely on is_first_dc, the exact same per-site/per-forest conflation already
@@ -180,6 +188,29 @@
           - " Arch  : {{ host_arch }}"
           - " Hyper : {{ hypervisor }}"
           - "══════════════════════════════════════════════════════════"
+      when: target_hostname is defined
+      tags: finish
+
+    # 2026-10-12, real live incident (EXADCSCLD001): this task's full banner above depends
+    # on facts from SIX different earlier files (target_hostname/00-preflight.yml,
+    # host_ip+hypervisor/35-guest-tools.yml, host_arch/50-binaries.yml,
+    # host_site/tasks/hostname_facts.yml, is_server/tasks/preflight.yml,
+    # domain_ou_path/80-domainjoin.yml) -- none of which run under a narrow --tags finish
+    # (or any other tag combination that excludes "bootstrap"). Hard-crashed with "'
+    # target_hostname' is undefined" the moment someone ran exactly that, to re-apply a
+    # sites.csv change via the shared nodeinfo write -- which itself succeeded fine (it's
+    # tagged always), only this purely cosmetic closing banner failed. Reconstructing all
+    # six facts from always-available equivalents would be a much bigger change than this
+    # banner is worth; gate the full banner on target_hostname being defined instead, with
+    # a lighter fallback message so a narrow-tag run still finishes cleanly.
+    - name: "[Finish] Remote access summary (narrow/tag-scoped run — full banner unavailable)"
+      debug:
+        msg: >-
+          Bootstrap finish tasks completed for {{ inventory_hostname }}. Full remote-access
+          summary skipped -- this run's --tags didn't include "bootstrap", so
+          00-preflight.yml (and several other files) never set the facts the full banner
+          needs. Nothing wrong; this is expected for a narrow, tag-scoped run.
+      when: target_hostname is not defined
       tags: finish
 
     - name: "[Finish] SAC/EMS verification note"
