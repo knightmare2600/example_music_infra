@@ -12264,6 +12264,20 @@
     "ad_device_sub_ou": "Infrastructure"
   },
   {
+    "Name": "EXANIXCLD001",
+    "SamAccountName": "EXANIXCLD001$",
+    "Role": "NIX",
+    "Site": "CLD",
+    "Description": "CloudPanel test host (Robert, 2026-10-10) -- first live test of the cloudpanel playbook conversion. Octet matches the sibling NIX precedent at PER (EXANIXPER001).",
+    "Enabled": true,
+    "DNSHostName": "EXANIXCLD001.jukebox.internal",
+    "OS": "",
+    "OperatingSystemVersion": "",
+    "IPv4Address": "192.168.69.40",
+    "ad_ou": "OU=Servers,OU=Devices,OU=Cloud Infrastructure,OU=Sites,DC=jukebox,DC=internal",
+    "ad_device_sub_ou": "Servers"
+  },
+  {
     "Name": "EXARTRVRK001",
     "SamAccountName": "EXARTRVRK001$",
     "Role": "RTR",
