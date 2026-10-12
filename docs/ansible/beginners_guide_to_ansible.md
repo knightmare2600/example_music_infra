@@ -829,13 +829,75 @@ same-day collision, instead of overwriting). Confirmed live, 2026-10-10, filing
 `EXADCSCLD001`'s own DSRM password this way for the first time, back when this was still
 a manual-only step.
 
-### What's deliberately not covered here
+### Transferring FSMO roles to an existing, healthy DC
 
-**Transferring FSMO roles to the new DC.** That is a separate, manual,
-change-controlled step for once the new DC's health is independently confirmed over time —
-this codebase never automates it (`30-dc-replicate.yml`'s own output says so explicitly:
-use `ntdsutil`/`Move-ADDirectoryServerOperationMasterRole` by hand). Don't fold it into the
-same session as the promotion above.
+Still deliberately manual, change-controlled, and never automated here — same reasoning
+as above, don't fold it into the same session as a fresh promotion. Real worked example,
+2026-10-12: all 5 FSMO roles moved from `EXADCSGOT001` to `EXADCSCLD001` (both already
+healthy, established DCs; CLD had been promoted and running for two days by this point,
+not a same-session promotion+transfer).
+
+**Verify health on both DCs first — don't rush straight to the transfer.** At minimum:
+
+```powershell
+netdom query fsmo        # on the current holder -- confirms who holds what today
+repadmin /showrepl       # on BOTH DCs -- confirms clean, recent, two-way replication
+dcdiag /q                # on BOTH DCs
+```
+
+If either DC was recently rebooted, give it time and re-check rather than transferring
+onto (or off) an unstable box — a real post-crash recovery hit CLD during this exact
+session: an unclean reboot caused a genuine, confirmed clock-skew-driven Kerberos failure
+(`KRB_AP_ERR_TKT_NYV`, "ticket not yet valid") that broke replication in both directions
+for roughly 20 minutes until Windows Time self-corrected from the domain hierarchy
+(`w32tm /query /status` showed `Source: <PDC>`, confirm a recent `Last Successful Sync
+Time`). `DFSR` was also found `Stopped` on the then-PDC-holder post-reboot — worth an
+explicit `Get-Service DFSR` check and a `Start-Service DFSR` if so; a healthy DC should
+never show this stopped.
+
+**One known, benign anomaly to expect and not be alarmed by**: `dcdiag`'s
+`KnowsOfRoleHolders` test (and, by extension, `RidManager`/`LocatorCheck`) may fail with
+`DsBindWithSpnEx() failed with error 5, Access is denied` between these two specific DCs,
+in **both directions**, regardless of which one currently holds which role. Confirmed
+live: SPNs were intact (`setspn -L <hostname>`, including the DRS GUID-based SPN),
+`setspn -X -F` found zero duplicate SPNs forest-wide, and `ADWS`/`NTDS`/`Netlogon`/`kdc`
+were all confirmed `Running` on both sides throughout. This is a narrow legacy RPC-bind
+path, not a real health problem — `repadmin`'s own replication check (the thing that
+actually matters) stayed clean the entire time this was present. A fresh logon session
+does not clear it, ruling out a stale cached Kerberos ticket as the cause; root cause
+remains genuinely unconfirmed.
+
+**The safe way to confirm the modern transfer path isn't affected by that legacy quirk**:
+probe with one low-impact role first, rather than all 5 at once:
+
+```powershell
+Move-ADDirectoryServerOperationMasterRole -Identity <NEW-HOLDER-HOSTNAME> -OperationMasterRole RIDMaster
+```
+
+It prompts for confirmation — read it, don't `-Force` through it. Verify on **both** DCs
+before continuing:
+
+```powershell
+netdom query fsmo
+dcdiag /q
+```
+
+Confirmed live: `Move-ADDirectoryServerOperationMasterRole` (ADWS-based) completed cleanly
+and was correctly reflected on both DCs — including each DC's own internal FSMO-ownership
+bookkeeping (the role no longer appeared in the losing DC's `KnowsOfRoleHolders` warning
+list) — **despite** the legacy `DsBindWithSpnEx` anomaly above being present throughout.
+That cmdlet does not use the same legacy RPC path `dcdiag` exercises for that specific
+test. Once confirmed, transfer the rest the same way:
+
+```powershell
+Move-ADDirectoryServerOperationMasterRole -Identity <NEW-HOLDER-HOSTNAME> `
+  -OperationMasterRole SchemaMaster,DomainNamingMaster,PDCEmulator,InfrastructureMaster
+```
+
+Final verification, on both DCs: `netdom query fsmo` should show the new holder for all 5
+roles, `repadmin /showrepl` should stay clean, and the former holder should remain a
+normal, healthy, replicating DC — no demotion, no decommission, nothing else changes
+about it.
 
 **Populating AD with demo data (`populate_ad`).** Answer "no" at the Step 2 prompt and run
 it later, separately, if wanted — it's additive-only and never auto-chained. If you do run
@@ -2196,6 +2258,7 @@ command on one line before trusting it.
 | 2026-10-11 | Added "Recognizing this when it bites you mid-run" under "Refreshing `/etc/example-music`'s CSVs/JSONs" -- Robert's ask ("this has caught me before"), after hitting the real `[example-music-gate] FAIL` error live running `bind9-dns.yml` against `EXADNSFRD001` from `EXAANSFRD001`. The gate fires on the *control node*'s own `/etc/example-music/` copy (via `delegate_to: localhost`), not the target host -- confirmed from the real pasted output, which showed `EXADNSFRD001` as perfectly reachable while the failure was entirely about `EXAANSFRD001`'s stale served files. `git pull` alone never refreshes those; added the real error text verbatim (so it's recognisable/searchable next time) plus the fix command and a "form the habit" callout to run the `example_music` refresh after any pull that touches `benarbejde/`. |
 | 2026-10-12 | **Updated "Filing a generated or typed DSRM password into KeePass"**: Robert's explicit reversal of Phase F's own 2026-10-01 "Ansible never writes DSRM to KeePass" decision -- now files the finalised value automatically via `keepass_credential_sync.yml`, same add-not-overwrite mechanism, driven by Robert's own stated worry about never risking an overwritten/lost DSRM credential ("better to have two records than none"). The three-source check-then-refuse-to-generate decision logic itself is unchanged. Kept the manual `kpcli_wrapper.py` path documented below as a still-valid fallback for older runs, rather than deleting it. Same change upgraded `keepass_credential_sync.yml`'s conflict-suffix from date-only to date+time, to avoid a same-day collision if a credential conflicts twice in one day -- benefits every existing caller of that shared task, not DSRM-specific. |
 | 2026-10-12 | Added "Setting up KeePass automation on an additional control node" -- found live rebuilding `EXADCSFRD001` from `EXAANSFRD001`: the KeePass sync automation needs a local master-password copy and the vault itself, neither ever set up on a control node other than the main one, surfacing as a `no_log`-censored "unknown error". Documents `ansibleme.sh`'s new Section 6c (same day) and gives the equivalent manual commands for a fresh, standalone vault, verified end-to-end against real throwaway paths before writing them up. Explicitly flagged this is never a way to rotate an existing shared vault's password. Also corrects a real mistake made live the same session: `~/benarbejde/...` was checked first and wrongly assumed to be the right path -- `~/ansible` is a symlink into `~/example_music_infra/ansible`, but there is no equivalent symlink for `benarbejde/`, which only exists at the real repo root (`~/example_music_infra/benarbejde/`). |
+| 2026-10-12 | Replaced "What's deliberately not covered here" (FSMO transfer) with a real worked example -- all 5 roles moved `EXADCSGOT001` → `EXADCSCLD001` live, confirmed via `netdom query fsmo` on both DCs. Documents: verifying health/replication first; a real post-reboot clock-skew incident on CLD (`KRB_AP_ERR_TKT_NYV`, self-corrected by Windows Time once network access to the PDC was restored) and a `DFSR` found `Stopped`; a known-benign `dcdiag` `KnowsOfRoleHolders`/`DsBindWithSpnEx` "Access is denied" anomaly confirmed bidirectional between these two DCs with SPNs/services all otherwise healthy, root cause still genuinely unconfirmed; and the probe-one-role-first approach that confirmed `Move-ADDirectoryServerOperationMasterRole` (ADWS-based) isn't affected by that legacy RPC quirk before transferring the remaining 4 roles. |
 
 ---
 
