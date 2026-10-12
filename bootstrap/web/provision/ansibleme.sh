@@ -491,6 +491,19 @@
 #                     simulation, and the sshd_config change-detection via all three real input
 #                     shapes (no PrintMotd line, PrintMotd no, PrintMotd already yes) -- not
 #                     just read back and assumed correct.
+# v1.36.0 2026-10-12  Added Section 6c (KeePass automation files), Robert's ask -- found live
+#                     on EXAANSFRD001: this script never set up a control node for the KeePass
+#                     check-defer-write automation at all (benarbejde/.keepassxc_master_password
+#                     and KeePassXC/ExampleMusic.kdbx), surfacing as a no_log-censored "unknown
+#                     error" the first time that control node ran a playbook touching
+#                     keepass_credential_sync.yml. Optional (defaults to not set up -- most
+#                     control nodes never run a credential-generating playbook), prompts for the
+#                     master password directly (hidden input, same style as Section 6's own SSH
+#                     keypair prompt) and writes it with chmod 600; gives manual copy
+#                     instructions for ExampleMusic.kdbx itself, which this script cannot
+#                     generate or safely fetch. Verified: bash -n syntax-clean, and the new
+#                     banner's border/content alignment checked by rendering it with real
+#                     variable substitution before shipping, not just eyeballed.
 #
 # ==============================================================================
 
@@ -1564,6 +1577,101 @@ else
   warn "Restore it from git (zero network cost, it's already tracked):"
   warn "  git -C ${ANSIBLE_HOME}/example_music_infra checkout -- ansible/callback_plugins/exa_pretty.py"
   warn "ansible.cfg references this file — stdout_callback will fall back to default until it is present."
+fi
+
+# ------------------------------------------------------------------------------
+# 6c. KeePass automation files
+# ------------------------------------------------------------------------------
+# 2026-10-12, Robert's ask -- found live on EXAANSFRD001: this file never actually set
+# up a control node for the KeePass check-defer-write automation
+# (ansible/tasks/keepass_credential_sync.yml) at all. EXAANSFRD001's own first
+# windows_bootstrap run hit "unknown error" (censored by the task's own correct
+# no_log: true) trying to read benarbejde/.keepassxc_master_password, which simply
+# never existed on that box -- this script's own header explicitly scoped a second
+# control node as "a different scenario, not what this script is for," but nothing
+# else actually covers it either. Two genuinely different things needed here, so
+# handled differently:
+#   - The master password itself is a short string -- safe to prompt for directly
+#     (hidden input, matching Section 6's own SSH-keypair prompting style) and write
+#     straight to the correct file, same chmod 600/owner-only pattern already used
+#     for KEY_FILE above.
+#   - ExampleMusic.kdbx is the actual credential vault, already populated with every
+#     real secret in the estate -- this script cannot generate or safely fetch it
+#     itself. Mirrors Section 6's own "option 2: paste existing SSH key" pattern
+#     exactly: print clear manual-copy instructions and pause for acknowledgment,
+#     rather than silently continuing with automation half-configured. Deliberately
+#     does NOT name a specific source host to copy from -- which machine holds the
+#     canonical copy is the operator's own call (see docs/Example Music
+#     Limited — KeePassXC CLI Automation.md §8a.4's "managed risk" reasoning for why
+#     this file's distribution is deliberately manual, never scripted).
+# Entirely optional, defaulting to NOT set up -- most control nodes never run a
+# credential-generating/prompting playbook at all, and this asks for a real secret,
+# so it should never be the silent default the way Section 1's package install is.
+section "6c. KeePass automation files"
+
+KEEPASS_MASTER_PW_FILE="${REPO_DIR}/benarbejde/.keepassxc_master_password"
+KEEPASS_KDBX_DIR="${ANSIBLE_HOME}/KeePassXC"
+KEEPASS_KDBX_FILE="${KEEPASS_KDBX_DIR}/ExampleMusic.kdbx"
+KEEPASS_AUTOMATION_WANTED="n"
+
+if [[ -f "${KEEPASS_MASTER_PW_FILE}" ]]; then
+  success "KeePass automation master-password file already present at ${KEEPASS_MASTER_PW_FILE}."
+  KEEPASS_AUTOMATION_WANTED="y"
+else
+  echo
+  echo -e "  ${CYAN}This control node can optionally run playbooks that check/file credentials"
+  echo -e "  into the KeePassXC vault automatically (the KeePass reverse-flow pattern --"
+  echo -e "  see docs/Example Music Limited — KeePassXC CLI Automation.md §8a.4). This"
+  echo -e "  needs a local, unattended-readable copy of the vault's own master password.${NC}"
+  echo
+  read -rp "  Set up KeePass automation access on this control node? [y/N] " SETUP_KEEPASS_ANSWER
+  KEEPASS_AUTOMATION_WANTED="${SETUP_KEEPASS_ANSWER,,}"
+  if [[ "${KEEPASS_AUTOMATION_WANTED}" == "y" ]]; then
+    read -rsp "  Enter the KeePassXC vault master password: " KEEPASS_MASTER_PW
+    echo
+    if [[ -z "${KEEPASS_MASTER_PW}" ]]; then
+      warn "No password entered -- skipping. Re-run this script, or create"
+      warn "${KEEPASS_MASTER_PW_FILE} manually (chmod 600, owner ${ANSIBLE_USER})."
+      KEEPASS_AUTOMATION_WANTED="n"
+    else
+      mkdir -p "$(dirname "${KEEPASS_MASTER_PW_FILE}")"
+      printf '%s\n' "${KEEPASS_MASTER_PW}" > "${KEEPASS_MASTER_PW_FILE}"
+      chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${KEEPASS_MASTER_PW_FILE}"
+      chmod 600 "${KEEPASS_MASTER_PW_FILE}"
+      unset KEEPASS_MASTER_PW
+      success "Master-password file written to ${KEEPASS_MASTER_PW_FILE} (chmod 600)."
+    fi
+  else
+    info "Skipped -- this control node will not be able to check or file KeePass"
+    info "credentials automatically. Playbooks that need it will fail loudly, not silently."
+  fi
+fi
+
+if [[ "${KEEPASS_AUTOMATION_WANTED}" == "y" ]]; then
+  mkdir -p "${KEEPASS_KDBX_DIR}"
+  chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${KEEPASS_KDBX_DIR}"
+  if [[ -f "${KEEPASS_KDBX_FILE}" ]]; then
+    success "Vault database already present at ${KEEPASS_KDBX_FILE}."
+  else
+    echo
+    echo -e "${YELLOW}  +==========================================================================+${NC}"
+    echo -e "${YELLOW}  |  VAULT DATABASE REQUIRED — copy it manually                              |${NC}"
+    echo -e "${YELLOW}  +==========================================================================+${NC}"
+    echo -e "${YELLOW}  |${NC}  ExampleMusic.kdbx is the real credential vault -- this script cannot"
+    echo -e "${YELLOW}  |${NC}  create or fetch it. Copy your own canonical copy to:"
+    echo -e "${YELLOW}  |${NC}"
+    echo -e "${YELLOW}  |${NC}    ${WHITE}${KEEPASS_KDBX_FILE}${NC}"
+    echo -e "${YELLOW}  |${NC}"
+    echo -e "${YELLOW}  |${NC}  e.g.:"
+    echo -e "${YELLOW}  |${NC}    ${WHITE}scp -i configs/ansible-id_rsa ${ANSIBLE_USER}@<source-host>:KeePassXC/ExampleMusic.kdbx \\${NC}"
+    echo -e "${YELLOW}  |${NC}      ${WHITE}${KEEPASS_KDBX_FILE}${NC}"
+    echo -e "${YELLOW}  |${NC}"
+    echo -e "${YELLOW}  |${NC}  Then: ${WHITE}chown ${ANSIBLE_USER}:${ANSIBLE_USER} ${KEEPASS_KDBX_FILE} && chmod 600 ${KEEPASS_KDBX_FILE}${NC}"
+    echo -e "${YELLOW}  +==========================================================================+${NC}"
+    echo
+    read -rp "  Press Enter once you understand and will complete this step manually... " _ACK
+    warn "Continuing setup. KeePass sync tasks will NOT work until ${KEEPASS_KDBX_FILE} is in place."
+  fi
 fi
 
 # ------------------------------------------------------------------------------
