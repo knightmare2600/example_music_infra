@@ -39,8 +39,11 @@
 #                       inventory address for whichever host --limit selects)
 #   dns_role         -- master (default) or slave
 #   dns_secondary_ip -- master only: the real secondary's IP, so
-#                       allow-transfer/notify are scoped to it. Leave unset
-#                       for a master with no secondary (today's behaviour).
+#                       allow-transfer/notify are scoped to it. 2026-10-12:
+#                       auto-derived from devices.csv's own Type=DNS rows if
+#                       left unset (see pre_tasks) -- blank only means "no
+#                       real secondary exists in devices.csv yet". Still
+#                       overridable via -e for a one-off/pre-devices.csv case.
 #   dns_master_ip    -- slave only: the real master's IP to replicate from.
 #                       REQUIRED when dns_role=slave -- no safe default,
 #                       the preflight task fails loudly if omitted.
@@ -65,9 +68,10 @@
 #   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --limit EXADNSVRK001 --tags zones-full
 #   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --limit EXADNSVRK001 --tags zones-full,reload
 #
-#   # Master, once a secondary exists -- scopes allow-transfer/notify to it:
+#   # Master, with a real secondary already in devices.csv (EXADNSFRD001 today) --
+#   # dns_secondary_ip is now auto-derived, -e no longer needed for this case:
 #   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --limit EXADNSVRK001 \
-#     -e dns_secondary_ip=172.16.124.8
+#     --tags zones-full,reload
 #
 #   # Secondary (FRD) -- first-ever run, fresh box on its own subnet already:
 #   ansible-playbook -i configs/inventory playbooks/bind9/bind9-dns.yml --limit EXADNSFRD001 \
@@ -276,6 +280,18 @@
 #               else genuinely Undefined -> default() -- no self-reference), and the
 #               resulting facts outrank vars: for every task/template after it, so nothing
 #               downstream (the assert, both .j2 templates) needed to change at all.
+#   2026-10-12  dns_secondary_ip had no persistent default anywhere -- a plain -e
+#               extra-var only, every single run, despite EXADNSFRD001 already being a
+#               real, permanent secondary in devices.csv. Forgetting -e
+#               dns_secondary_ip=<ip> on a routine master run would silently REVOKE the
+#               secondary's AXFR permission (named.conf.local.j2's allow-transfer
+#               defaults to `none` when blank) -- confirmed this would have happened
+#               live, having given Robert the exact command without it. Added a
+#               pre_tasks set_fact that auto-derives it from devices.csv's own Type=DNS
+#               rows (excluding this master's own site) when dns_role == 'master' and
+#               nothing was explicitly passed -- -e dns_secondary_ip=<ip> still
+#               overrides when needed (e.g. onboarding a new secondary before its
+#               devices.csv row exists yet).
 # =============================================================================
 
 # 2026-10-11, Robert's ask: this file never imported the ssh_preflight_with_fallback.yml
@@ -469,6 +485,37 @@
       tags: always
       set_fact:
         all_devices: "{{ all_devices_raw.stdout | from_json }}"
+
+    # 2026-10-12, real bug found live: dns_secondary_ip had no persistent default
+    # anywhere (confirmed via grep -- plain -e extra-var only, every single run) despite
+    # EXADNSFRD001 already being a real, permanent secondary in devices.csv. Forgetting
+    # -e dns_secondary_ip=<ip> on a routine master run isn't a missed optimisation --
+    # named.conf.local.j2's allow-transfer defaults to `none` when it's blank, so the
+    # very next `--tags zones-full,reload` against EXADNSVRK001 without that flag would
+    # silently REVOKE the secondary's AXFR permission outright, not just skip the NOTIFY
+    # push. devices.csv is already the real source of truth for "which DNS devices exist
+    # at which site" (Type=DNS rows) -- derive it from there instead of relying on a
+    # flag nobody will reliably remember forever, same reasoning as every other
+    # devices.csv-derived fix this session. Still fully overridable via -e
+    # dns_secondary_ip=<ip> (e.g. onboarding a brand-new secondary before its devices.csv
+    # row exists yet) -- only auto-derives when nothing was explicitly passed. Joining
+    # with "; " also already produces valid BIND ACL syntax if a second real secondary
+    # is ever added (e.g. "ip1; ip2" plus the template's own trailing ";").
+    - name: "[site] Auto-derive dns_secondary_ip from devices.csv's own DNS-role rows, if not explicitly overridden"
+      tags: always
+      set_fact:
+        dns_secondary_ip: >-
+          {{
+            all_devices
+            | selectattr('Type', 'equalto', 'DNS')
+            | rejectattr('Site', 'equalto', _dns_own_site_code)
+            | map(attribute='full_ip')
+            | list
+            | join('; ')
+          }}
+      when:
+        - dns_role == 'master'
+        - dns_secondary_ip == ''
 
     # A forward zone is just hostname->IP; it doesn't care what subnet an A record's IP is
     # on (that's a reverse-zone concern). CLD (its own LAN), VRK (the vRACK) and FRD (the
