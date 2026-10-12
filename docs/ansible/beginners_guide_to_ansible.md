@@ -846,6 +846,72 @@ at its default ("yes") — a real incident (`docs/INCIDENT-LOG.md`'s
 next reboot. The default now protects every DC's own computer account unconditionally;
 typing "no" there is the only way to turn that protection off.
 
+### Setting up KeePass automation on an additional control node
+
+Found live, 2026-10-12, rebuilding `EXADCSFRD001` from `EXAANSFRD001`: the KeePass
+check-defer-write automation (`ansible/tasks/keepass_credential_sync.yml`, used by
+`windows_dc`/`windows_bootstrap`'s own KeePass sync tasks) needs a local, unattended-readable
+copy of the vault's master password and the vault itself —
+`benarbejde/.keepassxc_master_password` and `KeePassXC/ExampleMusic.kdbx`. Neither is
+git-tracked (both are correctly gitignored, deliberately manual per
+`docs/Example Music Limited — KeePassXC CLI Automation.md` §8a.4), and neither was ever set
+up on `EXAANSFRD001` — a control node other than the main one — so the very first playbook
+run that touched a KeePass-sync task failed with a `no_log`-censored "unknown error" trying
+to read a file that simply didn't exist.
+
+`bootstrap/web/provision/ansibleme.sh`'s Section 6c (added the same day) now handles this
+during normal control-node bootstrap, offering two paths: type in an existing vault's master
+password (if a real vault already exists elsewhere and gets copied here separately), or —
+only when explicitly confirmed no vault exists anywhere in the estate yet — generate a fresh
+password and create a brand new, empty vault right there with `keepassxc-cli`. **This is
+never a way to rotate an existing shared vault's password** — doing that would break every
+other control node's own copy of it until each one is manually updated to match; the
+generate path only ever creates a genuinely new, standalone vault.
+
+If you need to do this by hand (re-running the whole bootstrap script just for this one
+section is overkill, and the manual commands are useful for understanding what Section 6c
+actually does), for a fresh, standalone vault on this control node specifically:
+
+```bash
+# Confirm keepassxc-cli is actually available first
+keepassxc-cli --version
+
+# Generate a strong master password
+MASTER_PW=$(keepassxc-cli generate -L 32 -l -U -n -s --exclude-similar)
+
+# Ensure both directories exist
+mkdir -p ~/example_music_infra/benarbejde ~/KeePassXC
+
+# Create the new, empty vault (prompts for password twice internally, piped here)
+printf '%s\n%s\n' "$MASTER_PW" "$MASTER_PW" | keepassxc-cli db-create -p ~/KeePassXC/ExampleMusic.kdbx
+
+# File the master password alongside it
+printf '%s\n' "$MASTER_PW" > ~/example_music_infra/benarbejde/.keepassxc_master_password
+chmod 600 ~/example_music_infra/benarbejde/.keepassxc_master_password ~/KeePassXC/ExampleMusic.kdbx
+
+# Show it once so you can write it down now -- this is the only time it's displayed
+echo "New vault master password: $MASTER_PW"
+
+# Verify it actually unlocks before trusting it
+cat ~/example_music_infra/benarbejde/.keepassxc_master_password | keepassxc-cli ls ~/KeePassXC/ExampleMusic.kdbx
+
+unset MASTER_PW
+```
+
+The final `keepassxc-cli ls` should print nothing — an empty, freshly created vault has no
+entries yet, which is success, not a failure. Both file paths use `~/example_music_infra/`,
+not `~/benarbejde/` — `~/ansible` is a symlink into `~/example_music_infra/ansible` (see
+[Bootstrapping the Base Nodes](#bootstrapping-the-base-nodes--a-worked-example-from-nothing)
+above), but there is no equivalent symlink for `benarbejde/`; it only ever exists at the
+real repo root. Checking the wrong path here was a real mistake made live the same day,
+caught before it caused further confusion — worth remembering if a `ls ~/benarbejde/...`
+ever reports "No such file or directory" and looks like a missing file rather than a
+wrong path.
+
+If a vault *already* exists elsewhere in the estate and should be copied here instead of
+generating a new one, how you transfer those two files across is your own call given how
+sensitive they are — not something to automate without thinking about it first.
+
 ---
 
 ## Real-World Invocations — Day 2: Already-Onboarded Hosts
@@ -2129,6 +2195,7 @@ command on one line before trusting it.
 | 2026-10-10 | Added "Filing a generated or typed DSRM password into KeePass" under "Adding Additional Domain Controllers" -- Robert's ask, filing `EXADCSCLD001`'s own real DSRM password for the first time. Verified the exact `kpcli_wrapper.py` invocation and prompt order against the real script before writing it (interactive-only by design, never accepts either password as a CLI argument), and flagged a real asymmetry worth knowing: `add_entry` overwrites an existing entry at the same path on a second run (`show` then `edit`-if-found), unlike `00-dc-preflight.yml`'s own Phase F KeePass-sync mechanism, which always adds a new, separately-marked entry instead. |
 | 2026-10-11 | Added "Recognizing this when it bites you mid-run" under "Refreshing `/etc/example-music`'s CSVs/JSONs" -- Robert's ask ("this has caught me before"), after hitting the real `[example-music-gate] FAIL` error live running `bind9-dns.yml` against `EXADNSFRD001` from `EXAANSFRD001`. The gate fires on the *control node*'s own `/etc/example-music/` copy (via `delegate_to: localhost`), not the target host -- confirmed from the real pasted output, which showed `EXADNSFRD001` as perfectly reachable while the failure was entirely about `EXAANSFRD001`'s stale served files. `git pull` alone never refreshes those; added the real error text verbatim (so it's recognisable/searchable next time) plus the fix command and a "form the habit" callout to run the `example_music` refresh after any pull that touches `benarbejde/`. |
 | 2026-10-12 | **Updated "Filing a generated or typed DSRM password into KeePass"**: Robert's explicit reversal of Phase F's own 2026-10-01 "Ansible never writes DSRM to KeePass" decision -- now files the finalised value automatically via `keepass_credential_sync.yml`, same add-not-overwrite mechanism, driven by Robert's own stated worry about never risking an overwritten/lost DSRM credential ("better to have two records than none"). The three-source check-then-refuse-to-generate decision logic itself is unchanged. Kept the manual `kpcli_wrapper.py` path documented below as a still-valid fallback for older runs, rather than deleting it. Same change upgraded `keepass_credential_sync.yml`'s conflict-suffix from date-only to date+time, to avoid a same-day collision if a credential conflicts twice in one day -- benefits every existing caller of that shared task, not DSRM-specific. |
+| 2026-10-12 | Added "Setting up KeePass automation on an additional control node" -- found live rebuilding `EXADCSFRD001` from `EXAANSFRD001`: the KeePass sync automation needs a local master-password copy and the vault itself, neither ever set up on a control node other than the main one, surfacing as a `no_log`-censored "unknown error". Documents `ansibleme.sh`'s new Section 6c (same day) and gives the equivalent manual commands for a fresh, standalone vault, verified end-to-end against real throwaway paths before writing them up. Explicitly flagged this is never a way to rotate an existing shared vault's password. Also corrects a real mistake made live the same session: `~/benarbejde/...` was checked first and wrongly assumed to be the right path -- `~/ansible` is a symlink into `~/example_music_infra/ansible`, but there is no equivalent symlink for `benarbejde/`, which only exists at the real repo root (`~/example_music_infra/benarbejde/`). |
 
 ---
 
