@@ -2,7 +2,7 @@
 """
 check_site_data.py -- part of at_have_ryggen_fri.
 
-Two checks against benarbejde/sites.csv (the estate's single source of
+Four checks against benarbejde/sites.csv (the estate's single source of
 truth for site identity/addressing), run fresh against whatever's
 currently committed there every time this harness runs -- so a change to
 sites.csv (or a doc that goes stale relative to it) is caught the next
@@ -45,8 +45,19 @@ run, not just the day someone happened to audit by hand:
    instead of EXAPBXCLD001, found 2026-07-11 in 4 docs and one Ansible
    Jinja2 template comment) as well as a fabricated site segment.
 
+4. OFFICE NAME COMPLETENESS: every site's OfficeName column is non-blank.
+   Robert's own rule (2026-10-12): OfficeName is never supposed to be
+   blank -- CLD and FRD were found and fixed live this way (both are
+   cloud/vRACK hub sites with no physical office, which still got a real
+   value: "Beazer Homes Building" / "Mads Skjern Building"), which is
+   what surfaced that this is a widespread, pre-existing gap across many
+   other real sites too, not unique to those two. No "this site is
+   allowed to be blank" exception list -- if a genuinely office-less site
+   needs one, Robert decides and supplies a real value, same as CLD/FRD.
+
 Exit code: 0 if every site code is covered, no octet mismatch is found,
-and every hostname's site segment is real, 1 otherwise.
+every hostname's site segment is real, and every OfficeName is filled
+in, 1 otherwise.
 """
 import csv
 import re
@@ -171,6 +182,7 @@ def main():
                     mismatches.append((doc, lineno, code, f"{base}.{o2}.{o3}", expected_base, expected_octet))
 
     missing = [code for code in sites if not re.search(r"\b" + re.escape(code) + r"\b", all_text)]
+    missing_office_name = [code for code in sites if not sites[code]["row"]["OfficeName"].strip()]
 
     print(f"Loaded {len(sites)} site(s) from benarbejde/sites.csv.")
     print(f"Scanned {len(docs)} git-tracked docs/*.md file(s) (excluding docs/inventory/old/).")
@@ -204,6 +216,15 @@ def main():
             print(f"  {rel}:{lineno}: {hostname} -- \"{site_seg}\" is not a real sites.csv code")
     else:
         print("Every EXA<ROLE><SITE><NNN> hostname's site segment is real.")
+
+    if missing_office_name:
+        ok = False
+        print(f"\n{len(missing_office_name)} site(s) with a blank OfficeName:")
+        for code in sorted(missing_office_name):
+            row = sites[code]["row"]
+            print(f"  {code} ({row['City']}, {row['Country']})")
+    else:
+        print("Every site has an OfficeName set.")
 
     return 0 if ok else 1
 
