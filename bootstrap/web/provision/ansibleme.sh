@@ -504,6 +504,27 @@
 #                     generate or safely fetch. Verified: bash -n syntax-clean, and the new
 #                     banner's border/content alignment checked by rendering it with real
 #                     variable substitution before shipping, not just eyeballed.
+# v1.37.0 2026-10-12  Section 6c follow-up, same day, Robert's ask: also offer to GENERATE
+#                     the master password (keepassxc-cli generate) and create a brand new,
+#                     empty vault with it (keepassxc-cli db-create) -- but ONLY for a
+#                     genuinely new vault, confirmed with Robert via AskUserQuestion this is
+#                     explicitly NOT a way to rotate the existing shared vault's password
+#                     (which would break every other control node's own copy until each one
+#                     is manually updated). Double-gated: first asks whether a vault already
+#                     exists anywhere in the estate (default yes, the common case), then a
+#                     second explicit confirm with a clear warning before actually creating
+#                     anything, since picking wrong here means a second, split vault for the
+#                     estate, not just a local mistake. Verified end-to-end against real
+#                     throwaway paths (never the real vault): generate produces a real
+#                     strong password, db-create's stdin-piped password-twice flow works,
+#                     and -- not just trusting a zero exit code -- the newly created vault
+#                     was confirmed to actually unlock with the exact password just filed to
+#                     disk. Also tested the existing-vault (typed password) and declined
+#                     paths both still behave correctly after this change. Caught and fixed
+#                     a real bug in my own first draft before testing: two separate `read`
+#                     calls where one single multi-line prompt was intended -- each `read`
+#                     independently blocks for input, so that would have asked twice instead
+#                     of printing one two-line question.
 #
 # ==============================================================================
 
@@ -1607,12 +1628,25 @@ fi
 # Entirely optional, defaulting to NOT set up -- most control nodes never run a
 # credential-generating/prompting playbook at all, and this asks for a real secret,
 # so it should never be the silent default the way Section 1's package install is.
+#
+# 2026-10-12, same day, Robert's follow-up ask: also offer to GENERATE the master
+# password (via keepassxc-cli generate, verified live against a real throwaway
+# database before trusting it here) and have keepassxc-cli create a brand new,
+# empty vault with it -- but ONLY for a genuinely new vault that doesn't exist
+# anywhere in the estate yet. Explicitly NOT a way to rotate the existing shared
+# vault's password -- confirmed with Robert via AskUserQuestion: doing that would
+# break every OTHER control node's own copy of the master password until each one
+# is manually updated to match, a real, deliberate, estate-wide action this script
+# has no business taking on its own say-so. Double-gated (which path, then an
+# explicit confirm before actually creating anything) since picking the wrong
+# answer here means a second, split vault for the estate, not just a local mistake.
 section "6c. KeePass automation files"
 
 KEEPASS_MASTER_PW_FILE="${REPO_DIR}/benarbejde/.keepassxc_master_password"
 KEEPASS_KDBX_DIR="${ANSIBLE_HOME}/KeePassXC"
 KEEPASS_KDBX_FILE="${KEEPASS_KDBX_DIR}/ExampleMusic.kdbx"
 KEEPASS_AUTOMATION_WANTED="n"
+KEEPASS_NEW_VAULT_CREATED="n"
 
 if [[ -f "${KEEPASS_MASTER_PW_FILE}" ]]; then
   success "KeePass automation master-password file already present at ${KEEPASS_MASTER_PW_FILE}."
@@ -1627,19 +1661,66 @@ else
   read -rp "  Set up KeePass automation access on this control node? [y/N] " SETUP_KEEPASS_ANSWER
   KEEPASS_AUTOMATION_WANTED="${SETUP_KEEPASS_ANSWER,,}"
   if [[ "${KEEPASS_AUTOMATION_WANTED}" == "y" ]]; then
-    read -rsp "  Enter the KeePassXC vault master password: " KEEPASS_MASTER_PW
     echo
-    if [[ -z "${KEEPASS_MASTER_PW}" ]]; then
-      warn "No password entered -- skipping. Re-run this script, or create"
-      warn "${KEEPASS_MASTER_PW_FILE} manually (chmod 600, owner ${ANSIBLE_USER})."
-      KEEPASS_AUTOMATION_WANTED="n"
+    echo -e "  ${CYAN}Does a KeePassXC vault (ExampleMusic.kdbx) already exist ANYWHERE in this estate?${NC}"
+    read -rp "  [Y/n] " VAULT_EXISTS_ANSWER
+    VAULT_EXISTS_ANSWER="${VAULT_EXISTS_ANSWER:-y}"
+
+    if [[ "${VAULT_EXISTS_ANSWER,,}" != "n" ]]; then
+      read -rsp "  Enter the KeePassXC vault master password: " KEEPASS_MASTER_PW
+      echo
+      if [[ -z "${KEEPASS_MASTER_PW}" ]]; then
+        warn "No password entered -- skipping. Re-run this script, or create"
+        warn "${KEEPASS_MASTER_PW_FILE} manually (chmod 600, owner ${ANSIBLE_USER})."
+        KEEPASS_AUTOMATION_WANTED="n"
+      else
+        mkdir -p "$(dirname "${KEEPASS_MASTER_PW_FILE}")"
+        printf '%s\n' "${KEEPASS_MASTER_PW}" > "${KEEPASS_MASTER_PW_FILE}"
+        chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${KEEPASS_MASTER_PW_FILE}"
+        chmod 600 "${KEEPASS_MASTER_PW_FILE}"
+        unset KEEPASS_MASTER_PW
+        success "Master-password file written to ${KEEPASS_MASTER_PW_FILE} (chmod 600)."
+      fi
     else
-      mkdir -p "$(dirname "${KEEPASS_MASTER_PW_FILE}")"
-      printf '%s\n' "${KEEPASS_MASTER_PW}" > "${KEEPASS_MASTER_PW_FILE}"
-      chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${KEEPASS_MASTER_PW_FILE}"
-      chmod 600 "${KEEPASS_MASTER_PW_FILE}"
-      unset KEEPASS_MASTER_PW
-      success "Master-password file written to ${KEEPASS_MASTER_PW_FILE} (chmod 600)."
+      echo
+      echo -e "${RED}  +==========================================================================+${NC}"
+      echo -e "${RED}  |  ABOUT TO CREATE A BRAND NEW, EMPTY VAULT                                |${NC}"
+      echo -e "${RED}  +==========================================================================+${NC}"
+      echo -e "${RED}  |${NC}  This is only correct if NO KeePassXC vault exists anywhere else in this"
+      echo -e "${RED}  |${NC}  estate yet. If one already exists and you are not certain, answer no"
+      echo -e "${RED}  |${NC}  below and copy that existing vault here instead -- creating a second,"
+      echo -e "${RED}  |${NC}  separate vault would split the estate's credential store in two."
+      echo -e "${RED}  +==========================================================================+${NC}"
+      echo
+      read -rp "  Confirm: generate a new password and create a new, empty vault here? [y/N] " CONFIRM_NEW_VAULT
+      if [[ "${CONFIRM_NEW_VAULT,,}" == "y" ]]; then
+        info "Generating a new master password (keepassxc-cli generate)..."
+        KEEPASS_MASTER_PW=$(keepassxc-cli generate -L 32 -l -U -n -s --exclude-similar)
+        mkdir -p "$(dirname "${KEEPASS_MASTER_PW_FILE}")" "${KEEPASS_KDBX_DIR}"
+        if printf '%s\n%s\n' "${KEEPASS_MASTER_PW}" "${KEEPASS_MASTER_PW}" \
+             | keepassxc-cli db-create -p "${KEEPASS_KDBX_FILE}" > /dev/null; then
+          printf '%s\n' "${KEEPASS_MASTER_PW}" > "${KEEPASS_MASTER_PW_FILE}"
+          chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${KEEPASS_MASTER_PW_FILE}" "${KEEPASS_KDBX_FILE}" "${KEEPASS_KDBX_DIR}"
+          chmod 600 "${KEEPASS_MASTER_PW_FILE}" "${KEEPASS_KDBX_FILE}"
+          success "New vault created at ${KEEPASS_KDBX_FILE}; master password filed at ${KEEPASS_MASTER_PW_FILE}."
+          echo
+          echo -e "${GREEN}  ════════════════════════════════════════════════════════════════${NC}"
+          echo -e "${GREEN}  NEW VAULT MASTER PASSWORD — shown once, back it up now${NC}"
+          echo -e "${GREEN}  Password : ${KEEPASS_MASTER_PW}${NC}"
+          echo -e "${GREEN}  ════════════════════════════════════════════════════════════════${NC}"
+          echo -e "  This also needs the same sealed-envelope physical backup treatment as any"
+          echo -e "  other master password -- see docs/Example Music Limited — KeePassXC CLI"
+          echo -e "  Automation.md §8a.2. This is the only on-screen copy; it will not be shown again."
+          KEEPASS_NEW_VAULT_CREATED="y"
+        else
+          warn "keepassxc-cli db-create failed -- no vault created, no master password filed."
+          KEEPASS_AUTOMATION_WANTED="n"
+        fi
+        unset KEEPASS_MASTER_PW
+      else
+        info "Declined -- not creating a new vault. Skipping KeePass automation setup for now."
+        KEEPASS_AUTOMATION_WANTED="n"
+      fi
     fi
   else
     info "Skipped -- this control node will not be able to check or file KeePass"
@@ -1650,8 +1731,8 @@ fi
 if [[ "${KEEPASS_AUTOMATION_WANTED}" == "y" ]]; then
   mkdir -p "${KEEPASS_KDBX_DIR}"
   chown "${ANSIBLE_USER}:${ANSIBLE_USER}" "${KEEPASS_KDBX_DIR}"
-  if [[ -f "${KEEPASS_KDBX_FILE}" ]]; then
-    success "Vault database already present at ${KEEPASS_KDBX_FILE}."
+  if [[ "${KEEPASS_NEW_VAULT_CREATED}" == "y" ]] || [[ -f "${KEEPASS_KDBX_FILE}" ]]; then
+    [[ "${KEEPASS_NEW_VAULT_CREATED}" != "y" ]] && success "Vault database already present at ${KEEPASS_KDBX_FILE}."
   else
     echo
     echo -e "${YELLOW}  +==========================================================================+${NC}"
