@@ -541,6 +541,17 @@
 #                     any older distro that still ships telnetlib natively) to
 #                     BOOTSTRAP_PKGS alongside the existing python3-lib checks.
 #
+# v1.39.0 2026-10-12  Real live gap, Robert's ask: this script cloned the repo but never
+#                     installed a single Ansible collection for any playbook family --
+#                     left the user to manually run `ansible-galaxy collection install -r`
+#                     against every requirements.yml themselves before any playbook could
+#                     actually run. Added new Section 12b, right after the repo-status
+#                     check: globs every real playbooks/*/requirements.yml (not a
+#                     hand-maintained list -- caught that windows_adschema's own
+#                     requirements.yml would have been missed by one) and installs each,
+#                     reporting per-family success/failure without aborting the rest of
+#                     the script on one failure.
+#
 # ==============================================================================
 
 set -euo pipefail
@@ -2195,6 +2206,45 @@ echo
 echo -e "${CYAN}  The exa_pretty callback ships with the repo clone at:${NC}"
 echo -e "${GREEN}  ${CALLBACK_DIR}/exa_pretty.py${NC}"
 echo -e "${CYAN}  If missing, restore it: git -C ${ANSIBLE_HOME}/example_music_infra checkout -- ansible/callback_plugins/exa_pretty.py${NC}"
+echo
+
+# ------------------------------------------------------------------------------
+# 12b. Ansible collections
+# ------------------------------------------------------------------------------
+section "12b. Ansible collections"
+
+# 2026-10-12, real live gap found by Robert: this script never installed a single
+# Ansible collection for any playbook family -- the user got a working control
+# NODE (ansible itself, git, the repo clone) but not a working control node for
+# actually RUNNING any of this estate's own playbooks, since every family's
+# requirements.yml needs `ansible-galaxy collection install -r` run against it
+# first. Discovered via a real glob (every playbooks/*/requirements.yml), not a
+# hand-maintained list -- a hand-maintained list would have missed
+# windows_adschema's own requirements.yml, confirmed by comparing against the
+# real `find` output before writing this.
+if [[ -d "${PLAYBOOKS_DIR}" ]]; then
+  REQ_FILES=("${PLAYBOOKS_DIR}"/*/requirements.yml)
+  if [[ -e "${REQ_FILES[0]}" ]]; then
+    info "Installing Ansible collections for ${#REQ_FILES[@]} playbook famil$([[ ${#REQ_FILES[@]} -eq 1 ]] && echo y || echo ies)..."
+    GALAXY_FAILED=()
+    for req in "${REQ_FILES[@]}"; do
+      family="$(basename "$(dirname "${req}")")"
+      if ansible-galaxy collection install -r "${req}" &>"/tmp/ansible-galaxy-${family}.log"; then
+        echo -e "${GREEN}  ✔  ${family}${NC}"
+      else
+        echo -e "${RED}  ✘  ${family} -- see /tmp/ansible-galaxy-${family}.log${NC}"
+        GALAXY_FAILED+=("${family}")
+      fi
+    done
+    if [[ ${#GALAXY_FAILED[@]} -gt 0 ]]; then
+      warn "Collection install failed for: ${GALAXY_FAILED[*]} -- re-run manually once network/registry access is confirmed."
+    fi
+  else
+    warn "No requirements.yml files found under ${PLAYBOOKS_DIR} -- skipping collection install."
+  fi
+else
+  warn "${PLAYBOOKS_DIR} does not exist yet -- skipping collection install (see Section 12 above)."
+fi
 echo
 
 # ------------------------------------------------------------------------------
