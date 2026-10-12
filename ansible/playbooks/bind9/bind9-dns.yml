@@ -427,6 +427,29 @@
         label: "{{ item.Site }}"
       run_once: true
 
+    # 2026-10-12, real bug found live on EXADNSFRD001: nothing in this file ever computed
+    # "which site is THIS DNS host actually on" -- the one place that needed it (the old
+    # "Look up CLD's site row for nodeinfo enrichment" task, section 8 below) hardcoded the
+    # literal string "CLD" regardless of which site was really running, and
+    # named.conf.options' own allow-recursion ACL only ever allowed the shared provisioning
+    # network (192.168.139.0/24), never this host's own local site subnet -- so a DNS box
+    # on any site other than the provisioning network itself refuses recursive (external
+    # domain) lookups from hosts on its own LAN, confirmed live: `host chocolatey.org
+    # 172.16.124.8` from EXAANSFRD001 (172.16.124.x, FRD's own subnet) returned REFUSED.
+    # Derived here, early (before named.conf.options is written), from this_hostname via
+    # the same hostname-parsing regex already proven elsewhere in this estate, so both the
+    # ACL fix and the nodeinfo fix below can reuse one real lookup instead of each getting
+    # their own (one hardcoded-wrong, the other about to be added).
+    - name: "[site] Parse this host's own site code from its hostname"
+      tags: always
+      set_fact:
+        _dns_own_site_code: "{{ this_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first }}"
+
+    - name: "[site] Look up this host's own site row"
+      tags: always
+      set_fact:
+        _dns_own_site_row: "{{ sites | selectattr('Site', 'equalto', _dns_own_site_code) | list | first | default({}) }}"
+
     # -------------------------------------------------------------------------
     # Merged device list -- single source for both this play's cld_black_swan_hosts
     # (below) and Play 2's own zone generation, computed once here (tags: always)
@@ -675,7 +698,18 @@
 
             // ── Access control ────────────────────────────────────────
             allow-query   { any; };
-            allow-recursion { 192.168.139.0/24; localhost; };
+            // 2026-10-12, real bug found live on EXADNSFRD001: this only ever allowed the
+            // shared provisioning network -- a DNS box's own local site subnet was never
+            // included, so hosts on its own LAN (e.g. EXADCSFRD001, on FRD's 172.16.124.0/24)
+            // got REFUSED on recursive (external-domain) lookups. _dns_own_site_row is
+            // empty for EXADNSVRK001 itself (VRK is deliberately excluded from the sites
+            // list -- it IS the provisioning network, already covered by the entry above),
+            // so the extra line is only added when there's a real local subnet to add.
+            allow-recursion { 192.168.139.0/24; localhost;
+            {% if _dns_own_site_row.Subnet | default('') != '' %}
+              {{ _dns_own_site_row.Subnet }};
+            {% endif %}
+            };
 
             // ── Listen ────────────────────────────────────────────────
             listen-on     { 127.0.0.1; {{ dns_ip }}; };
@@ -1116,10 +1150,10 @@
         state: directory
         mode: "0755"
 
-    - name: Look up CLD's site row for nodeinfo enrichment
-      tags: always
-      set_fact:
-        _dns_site_row: "{{ sites | selectattr('Site', 'equalto', 'CLD') | list | first | default({}) }}"
+    # 2026-10-12: used to be its own task here, hardcoded to look up CLD's row regardless
+    # of which site was actually running this play -- removed in favour of
+    # _dns_own_site_code/_dns_own_site_row, computed once, early, right after `sites` is
+    # built (see that task's own comment for the full incident this came from).
 
     - name: Write /etc/example-music/nodeinfo.json
       tags: always
@@ -1127,14 +1161,14 @@
       vars:
         nodeinfo_hostname: "{{ this_hostname }}"
         nodeinfo_role: "dns"
-        nodeinfo_site: "CLD"
-        nodeinfo_city: "{{ _dns_site_row.City | default('') }}"
-        nodeinfo_country: "{{ _dns_site_row.Country | default('') }}"
-        nodeinfo_country_code: "{{ _dns_site_row.CountryCode | default('') }}"
-        nodeinfo_entity: "{{ _dns_site_row.Entity | default('') }}"
-        nodeinfo_office_name: "{{ _dns_site_row.OfficeName | default('') }}"
-        nodeinfo_street_address: "{{ _dns_site_row.Street | default('') }}"
-        nodeinfo_postal_code: "{{ _dns_site_row.PostalCode | default('') }}"
+        nodeinfo_site: "{{ _dns_own_site_code }}"
+        nodeinfo_city: "{{ _dns_own_site_row.City | default('') }}"
+        nodeinfo_country: "{{ _dns_own_site_row.Country | default('') }}"
+        nodeinfo_country_code: "{{ _dns_own_site_row.CountryCode | default('') }}"
+        nodeinfo_entity: "{{ _dns_own_site_row.Entity | default('') }}"
+        nodeinfo_office_name: "{{ _dns_own_site_row.OfficeName | default('') }}"
+        nodeinfo_street_address: "{{ _dns_own_site_row.Street | default('') }}"
+        nodeinfo_postal_code: "{{ _dns_own_site_row.PostalCode | default('') }}"
         nodeinfo_environment: "{{ dns_environment | default('production') }}"
         nodeinfo_bootstrapped_by: "bind9-dns.yml"
         nodeinfo_extra:
