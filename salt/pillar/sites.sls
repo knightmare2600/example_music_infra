@@ -14,7 +14,7 @@ sites:
     country: "Denmark"
     country_code: "DK"
     entity: "Example Music (Danmark) ApS"
-    office_name: ""
+    office_name: "Jyland Kommune Plads"
     street_address: "Åboulevarden 22"
     postal_code: "8000"
   ABD:
@@ -22,7 +22,7 @@ sites:
     country: "United Kingdom"
     country_code: "UK"
     entity: "Example Music (Scotland) Ltd"
-    office_name: ""
+    office_name: "Pittodrie Stadium"
     street_address: "1903 Aderson Drive"
     postal_code: "AB15 4YY"
   AKL:
@@ -30,7 +30,7 @@ sites:
     country: "New Zealand"
     country_code: "NZ"
     entity: "Example Music (New Zealand) Tapui"
-    office_name: ""
+    office_name: "Auckland Cental Business District"
     street_address: "111D Cliffs Road"
     postal_code: "9012"
   AMS:
@@ -38,7 +38,7 @@ sites:
     country: "Netherlands"
     country_code: "NL"
     entity: "Example Music (Nederland) B.V."
-    office_name: ""
+    office_name: "Centraal Stadion Building"
     street_address: "Stationsplein"
     postal_code: "1012 AB"
   ATL:
@@ -46,7 +46,7 @@ sites:
     country: "United States"
     country_code: "US"
     entity: "Example Music (US) LLC."
-    office_name: ""
+    office_name: "Waver D's Building"
     street_address: "1016 East Broad St"
     postal_code: "30601"
   BER:
@@ -54,7 +54,7 @@ sites:
     country: "Germany"
     country_code: "DE"
     entity: "Example Music (Deutschland) GmbH"
-    office_name: ""
+    office_name: "Brandenburg Gate Platz"
     street_address: "Bernauer Straße 119"
     postal_code: "13355"
   BIR:
@@ -78,7 +78,7 @@ sites:
     country: "Germany"
     country_code: "DE"
     entity: "Example Music (Deutschland) GmbH"
-    office_name: ""
+    office_name: "Brandenburg Gate Vest Platz"
     street_address: "Bernauer Straße 111"
     postal_code: "13355"
   BRK:
@@ -86,7 +86,7 @@ sites:
     country: "Canada"
     country_code: "CA"
     entity: "Example Music (Canada) Inc."
-    office_name: ""
+    office_name: "CN Main Building Brockville Campus"
     street_address: "141 Perth Street"
     postal_code: "K6V 5E4"
   BRT:
@@ -102,7 +102,7 @@ sites:
     country: "United States"
     country_code: "US"
     entity: "Example Music (US) LLC."
-    office_name: ""
+    office_name: "Sears Tower upper mezzanine floor"
     street_address: "567 W. Lake Street"
     postal_code: "60661"
   CLD:
@@ -110,7 +110,7 @@ sites:
     country: "Global"
     country_code: "N/A"
     entity: "Example Music Limited"
-    office_name: ""
+    office_name: "Beazer Homes Building"
     street_address: "7 Claylands Road"
     postal_code: "EH28 8LF"
   CLY:
@@ -118,7 +118,7 @@ sites:
     country: "United Kingdom"
     country_code: "UK"
     entity: "Example Music (Scotland) Ltd"
-    office_name: ""
+    office_name: "Kilbowie Park"
     street_address: "112 Second Ave"
     postal_code: "G81 3AZ"
   COV:
@@ -126,7 +126,7 @@ sites:
     country: "United Kingdom"
     country_code: "UK"
     entity: "Example Music (England) Ltd"
-    office_name: ""
+    office_name: "Highfield Road Stadium"
     street_address: "Highfield Road"
     postal_code: "CV2 4GF"
   CPH:
@@ -142,7 +142,7 @@ sites:
     country: "United States"
     country_code: "US"
     entity: "Example Music (US) LLC."
-    office_name: ""
+    office_name: "Ford Stadium Business District"
     street_address: "2720 Grand River Ave"
     postal_code: "48201"
   DRS:
@@ -150,7 +150,7 @@ sites:
     country: "Germany"
     country_code: "DE"
     entity: "Example Music (Deutschland) GmbH"
-    office_name: ""
+    office_name: "Hut 4 (Beco Buildings)"
     street_address: "Wiener Platz 4"
     postal_code: "01069"
   DUN:
@@ -158,7 +158,7 @@ sites:
     country: "United Kingdom"
     country_code: "UK"
     entity: "Example Music (Scotland) Ltd"
-    office_name: ""
+    office_name: "Tannadice Road Business Park"
     street_address: "Tannadice St"
     postal_code: "DD3 7JW"
   DUS:
@@ -166,7 +166,7 @@ sites:
     country: "Germany"
     country_code: "DE"
     entity: "Example Music (Deutschland) GmbH"
-    office_name: ""
+    office_name: "Autobahn Büro"
     street_address: "Konrad-Adenauer-Platz 14"
     postal_code: "40210"
   EDI:
@@ -174,7 +174,7 @@ sites:
     country: "United Kingdom"
     country_code: "UK"
     entity: "Example Music (Scotland) Ltd"
-    office_name: ""
+    office_name: "The John Napier Building"
     street_address: "Castlehill"
     postal_code: "EH1 2NG"
   FAL:
@@ -190,7 +190,7 @@ sites:
     country: "Denmark"
     country_code: "DK"
     entity: "Example Music (Danmark) ApS"
-    office_name: ""
+    office_name: "Faxe Bryggeri"
     street_address: "Faxe Allé 1"
     postal_code: "4640"
   FRD:
@@ -198,7 +198,7 @@ sites:
     country: "Denmark"
     country_code: "DK"
     entity: "Example Music Limited"
-    office_name: ""
+    office_name: "Mads Skjern Building"
     street_address: "Vesthavnsvej 33"
     postal_code: "DK-7000"
   FRE:
@@ -214,7 +214,7 @@ sites:
     country: "United Kingdom"
     country_code: "UK"
     entity: "Example Music (Scotland) Ltd"
-    office_name: ""
+    office_name: "Trongate Buildings"
     street_address: "16 Royal Exchange Square"
     postal_code: "G1 3AG"
   GOT:
@@ -222,7 +222,7 @@ sites:
     country: "Sweden"
     country_code: "SE"
     entity: "Example Music (Sverige) AB"
-    office_name: ""
+    office_name: "Fika Piazza"
     street_address: "Drottningtorget 5"
     postal_code: "411 03"
   HAL:
@@ -230,7 +230,7 @@ sites:
     country: "United Kingdom"
     country_code: "UK"
     entity: "Example Music (England) Ltd"
-    office_name: ""
+    office_name: "Mortgage Buildings (Bank Campus)"
     street_address: "6 Trinity Rd"
     postal_code: "HX1 2RG"
   HUL:
@@ -254,7 +254,7 @@ sites:
     country: "Canada"
     country_code: "CA"
     entity: "Example Music (Canada) Inc."
-    office_name: ""
+    office_name: "Cataraqui Building"
     street_address: "1800 John Counter Blvd"
     postal_code: "K7M 7H3"
   KOR:
@@ -262,7 +262,7 @@ sites:
     country: "Denmark"
     country_code: "DK"
     entity: "Example Music (Danmark) ApS"
-    office_name: ""
+    office_name: "Skælskør Kontroblok"
     street_address: "Skælskør Banegård"
     postal_code: "4230"
   LAX:
@@ -270,7 +270,7 @@ sites:
     country: "United States"
     country_code: "US"
     entity: "Example Music (US) LLC."
-    office_name: ""
+    office_name: "West Pico Street Offices"
     street_address: "2632 W Pico Blvd"
     postal_code: "90006"
   LIV:
@@ -286,7 +286,7 @@ sites:
     country: "United Kingdom"
     country_code: "UK"
     entity: "Example Music (England) Ltd"
-    office_name: ""
+    office_name: "Camden Archways Building"
     street_address: "20 Old Bailey"
     postal_code: "EC4M 7AN"
   MCR:
@@ -302,7 +302,7 @@ sites:
     country: "Australia"
     country_code: "AU"
     entity: "Example Music (Australia) Pty Ltd"
-    office_name: ""
+    office_name: "The Crowded House Building"
     street_address: "26 Acland St"
     postal_code: "3182"
   MIA:
@@ -326,7 +326,7 @@ sites:
     country: "France"
     country_code: "FR"
     entity: "Example Music (France) SARL"
-    office_name: ""
+    office_name: "Bureaux 12"
     street_address: "Bâtiment 6 Sq. Narvik"
     postal_code: "13232"
   MTL:
@@ -334,7 +334,7 @@ sites:
     country: "Canada"
     country_code: "CA"
     entity: "Example Music (Canada) Inc."
-    office_name: ""
+    office_name: "Les Qubec Magasin Building"
     street_address: "895 de la Gauchetiere West"
     postal_code: "H3B 4G1"
   MUN:
@@ -342,7 +342,7 @@ sites:
     country: "Germany"
     country_code: "DE"
     entity: "Example Music (Deutschland) GmbH"
-    office_name: ""
+    office_name: "Bürogebäude"
     street_address: "Spiridon-Louis-Ring 21"
     postal_code: "80809"
   NEW:
@@ -358,7 +358,7 @@ sites:
     country: "United States"
     country_code: "US"
     entity: "Example Music (US) LLC."
-    office_name: ""
+    office_name: "Newark Airport Business Park"
     street_address: "100 South Broadway"
     postal_code: "08103"
   NYB:
@@ -366,7 +366,7 @@ sites:
     country: "Denmark"
     country_code: "DK"
     entity: "Example Music (Danmark) ApS"
-    office_name: ""
+    office_name: "Den Bastionen"
     street_address: "Storebæltsbroen"
     postal_code: "5800"
   NYC:
@@ -374,7 +374,7 @@ sites:
     country: "United States"
     country_code: "US"
     entity: "Example Music (US) LLC."
-    office_name: ""
+    office_name: "Chrysler Building"
     street_address: "Marriot Square"
     postal_code: "10048"
   ODE:
@@ -382,7 +382,7 @@ sites:
     country: "Denmark"
     country_code: "DK"
     entity: "Example Music (Danmark) ApS"
-    office_name: ""
+    office_name: "H C Anderssen Bibliotek"
     street_address: "1887 Ove Sprogøe plads"
     postal_code: "5000"
   OSL:
@@ -390,7 +390,7 @@ sites:
     country: "Norway"
     country_code: "NO"
     entity: "Example Music (Norge) ASA"
-    office_name: ""
+    office_name: "Bane Buildings"
     street_address: "Jernbanetorget 1"
     postal_code: "0154"
   PER:
@@ -398,7 +398,7 @@ sites:
     country: "United Kingdom"
     country_code: "UK"
     entity: "Example Music (Scotland) Ltd"
-    office_name: ""
+    office_name: "Muirton Park business Estate"
     street_address: "Scone Palace"
     postal_code: "PH2 6BD"
   PHI:
@@ -406,7 +406,7 @@ sites:
     country: "United States"
     country_code: "US"
     entity: "Example Music (US) LLC."
-    office_name: ""
+    office_name: "Cheesesteak Building"
     street_address: "2955 Market St"
     postal_code: "19102"
   SEA:
@@ -414,7 +414,7 @@ sites:
     country: "United States"
     country_code: "US"
     entity: "Example Music (US) LLC."
-    office_name: ""
+    office_name: "The Waterworks Complex"
     street_address: "400 Broad St"
     postal_code: "98109"
   SFO:
@@ -422,7 +422,7 @@ sites:
     country: "United States"
     country_code: "US"
     entity: "Example Music (US) LLC."
-    office_name: ""
+    office_name: "Chinatwown Business Park"
     street_address: "Pan American Building"
     postal_code: "94128"
   SHE:
@@ -438,7 +438,7 @@ sites:
     country: "Australia"
     country_code: "AU"
     entity: "Example Music (Australia) Pty Ltd"
-    office_name: ""
+    office_name: "Harbour Bridge View"
     street_address: "3 Cumberland Street"
     postal_code: "2000"
   TOR:
@@ -446,7 +446,7 @@ sites:
     country: "Canada"
     country_code: "CA"
     entity: "Example Music (Canada) Inc."
-    office_name: ""
+    office_name: "CN Tower Office Block"
     street_address: "290 Bremner Blvd"
     postal_code: "M5V 3L9"
   VIE:
@@ -454,7 +454,7 @@ sites:
     country: "Austria"
     country_code: "AT"
     entity: "Example Music (Osterreich) GmbH"
-    office_name: ""
+    office_name: "Wolfgang Amadeus Mozart Shared Office Space"
     street_address: "1010 Michaelerplatz"
     postal_code: "1010"
   VRK:
@@ -462,6 +462,6 @@ sites:
     country: "Global"
     country_code: "N/A"
     entity: "Example Music Limited"
-    office_name: ""
+    office_name: "Planet Earth"
     street_address: "2 Rue Kellermann"
     postal_code: "59100"
