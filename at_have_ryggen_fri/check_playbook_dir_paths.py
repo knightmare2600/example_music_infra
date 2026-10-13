@@ -39,10 +39,11 @@ and the bug (every one but bind9-dns.yml was off by exactly one level
 short) was invisible to this check the whole time it existed. Caught live,
 not by this harness -- windows_bootstrap/site.yml crashed against a real
 control node with a "missing benarbejde/sites.csv" false positive. Added
-GATE_ROOT_PATTERN below to close this specific instance of the gap: any
-bare "{{ playbook_dir }}" plus one or more /.. segments, assigned to
-example_music_gate_repo_root, is resolved and confirmed to contain a real
-benarbejde/ directory (the one suffix this variable is ever actually
+GATE_ROOT_PATTERN (generalised 2026-10-13 to REPO_ROOT_PATTERN -- see that
+pattern's own comment) below to close this specific instance of the gap: any
+bare "{{ playbook_dir }}" plus one or more /.. segments, assigned to any
+*_repo_root variable, is resolved and confirmed to contain a real
+benarbejde/ directory (the one suffix this convention is ever actually
 combined with). Both patterns skip comment lines (a leading # after
 stripping whitespace) -- example_music_freshness_gate.yml's own header has
 a worked usage example containing this exact literal string, which would
@@ -100,11 +101,17 @@ def path_exists(base_dir, tail):
 TAIL = r"(?:[^\s\"'{}]|\{\{[^{}]*\}\})+"
 PATTERN = re.compile(r"\{\{\s*playbook_dir\s*\}\}((?:/\.\.)+)/(" + TAIL + r")")
 
-# example_music_gate_repo_root: "{{ playbook_dir }}(/..)+ " -- bare, no
-# trailing path fragment, only ever combined with /benarbejde later inside
-# ansible/tasks/example_music_freshness_gate.yml itself.
-GATE_ROOT_PATTERN = re.compile(
-    r"example_music_gate_repo_root:\s*[\"']\{\{\s*playbook_dir\s*\}\}((?:/\.\.)+)[\"']"
+# <anything>_repo_root: "{{ playbook_dir }}(/..)+" -- bare, no trailing path fragment,
+# only ever combined with /benarbejde later inside the shared tasks file that consumes
+# it (example_music_freshness_gate.yml's example_music_gate_repo_root,
+# keepass_credential_sync.yml's kcs_repo_root, discover_real_dcs.yml's
+# discover_dc_repo_root, 2026-10-13 -- the established convention for any tasks file
+# that needs its OWN repo-root, resolved by the CALLER rather than assumed from this
+# file's own on-disk location, now generalised instead of re-hardcoded per variable
+# name each time a new one is added -- same bug class as PATTERN above, found a third
+# time on discover_dc_repo_root before being generalised here).
+REPO_ROOT_PATTERN = re.compile(
+    r"\w*_repo_root:\s*[\"']\{\{\s*playbook_dir\s*\}\}((?:/\.\.)+)[\"']"
 )
 
 
@@ -127,7 +134,7 @@ def main():
                 if not exists:
                     failures.append((rel, match.group(0), levels, resolved))
 
-            for match in GATE_ROOT_PATTERN.finditer(line):
+            for match in REPO_ROOT_PATTERN.finditer(line):
                 up_segments = match.group(1)
                 checked += 1
                 levels = up_segments.count("/..")

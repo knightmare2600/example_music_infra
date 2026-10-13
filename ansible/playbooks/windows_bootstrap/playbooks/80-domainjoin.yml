@@ -195,6 +195,7 @@
     - name: "Re-discover real DC reachability if not already set by 00-preflight.yml (standalone runs)"
       include_tasks: ../../../tasks/discover_real_dcs.yml
       vars:
+        discover_dc_repo_root: "{{ playbook_dir }}/../../../.."
         discover_dc_domain_name: "{{ exa_domain }}"
       when: _any_real_dc_reachable is not defined
       tags: domainjoin
