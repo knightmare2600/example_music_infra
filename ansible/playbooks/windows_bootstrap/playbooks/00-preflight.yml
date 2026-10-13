@@ -729,6 +729,8 @@
     # separately-imported play (80-domainjoin.yml) in the same site.yml run.
     - name: "[A5] Discover whether any real DC is reachable anywhere (not just the hardcoded hub list)"
       include_tasks: ../../../tasks/discover_real_dcs.yml
+      vars:
+        discover_dc_repo_root: "{{ playbook_dir }}/../../../.."
 
     - name: "[A5] Probe FRD-local DNS {{ frd_local_dns }} (EXADNSFRD001) — TCP 53"
       command: >

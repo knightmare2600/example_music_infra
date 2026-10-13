@@ -33,6 +33,17 @@
 # shared implementation is a reasonable future cleanup, not an urgent one.
 #
 # Inputs (vars, all optional with sensible defaults):
+#   discover_dc_repo_root         default: {{ playbook_dir }}/../../../.. -- the caller's
+#                                 OWN correctly-computed repo root, same convention as
+#                                 keepass_credential_sync.yml's kcs_repo_root and
+#                                 example_music_freshness_gate.yml's
+#                                 example_music_gate_repo_root. Pass this explicitly from
+#                                 any caller at a DIFFERENT depth than
+#                                 playbooks/<module>/playbooks/ (this file's own two real
+#                                 callers today) -- the default only holds for that one
+#                                 depth, same off-by-one bug class already hit twice
+#                                 elsewhere in this repo (see check_playbook_dir_paths.py's
+#                                 own header).
 #   discover_dc_sites_csv         default: /etc/example-music/sites.csv
 #   discover_dc_devices_csv       default: /etc/example-music/devices.csv
 #   discover_dc_ad_computers_json default: /etc/example-music/ad_computers.json
@@ -55,6 +66,21 @@
 # localhost whenever the calling play's own connection isn't already local).
 # =============================================================================
 # Changelog:
+#   2026-10-13  check_playbook_dir_paths.py flagged this file's hardcoded 4-level
+#               "{{ playbook_dir }}/../../../.." as unresolvable -- the check (correctly,
+#               for genuine playbook files) resolves playbook_dir-relative paths against
+#               the scanned file's OWN location, but this is a pure tasks file, always
+#               include_tasks'd from a deeper play (00-preflight.yml/80-domainjoin.yml,
+#               both at playbooks/windows_bootstrap/playbooks/) -- playbook_dir at
+#               runtime tracks THEIR location, not this file's own
+#               (ansible/tasks/), so the hardcoded value was runtime-correct for both
+#               real callers despite the check's false positive. Still fixed properly
+#               rather than left as a known-false-positive: moved to a caller-supplied
+#               discover_dc_repo_root var (default preserves the old 4-level value for
+#               backward compat), same convention as kcs_repo_root/
+#               example_music_gate_repo_root -- makes a future caller at a different
+#               depth safe by construction instead of repeating the exact bug class
+#               check_playbook_dir_paths.py's own header already documents twice.
 #   2026-10-10  Initial file, extracted from windows_dc/tasks/dc_source_resolution.yml's
 #               own 2026-09-25/2026-09-28 candidate-building logic (real live incident,
 #               EXADCSCLD001).
@@ -62,7 +88,7 @@
 
 - name: "[discover-dcs] Compute merged device list via generate_inventory.py"
   command: >
-    python3 {{ playbook_dir }}/../../../../benarbejde/generate_inventory.py
+    python3 {{ discover_dc_repo_root | default(playbook_dir ~ '/../../../..') }}/benarbejde/generate_inventory.py
     {{ discover_dc_sites_csv | default('/etc/example-music/sites.csv') }}
     --devices {{ discover_dc_devices_csv | default('/etc/example-music/devices.csv') }}
     --emit-devices-json
