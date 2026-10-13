@@ -12264,13 +12264,13 @@
     "ad_device_sub_ou": "Infrastructure"
   },
   {
-    "Name": "EXANIXCLD001",
-    "SamAccountName": "EXANIXCLD001$",
-    "Role": "NIX",
+    "Name": "EXACLPCLD001",
+    "SamAccountName": "EXACLPCLD001$",
+    "Role": "CLP",
     "Site": "CLD",
-    "Description": "CloudPanel test host (Robert, 2026-10-10) -- first live test of the cloudpanel playbook conversion. Octet matches the sibling NIX precedent at PER (EXANIXPER001).",
+    "Description": "CloudPanel test host (Robert, 2026-10-10) -- first live test of the cloudpanel playbook conversion. Renamed 2026-10-13 from EXANIXCLD001/Type NIX to the real CLP role -- NIX was a placeholder borrowed from the MIDI-archive role, not a real classification.",
     "Enabled": true,
-    "DNSHostName": "EXANIXCLD001.jukebox.internal",
+    "DNSHostName": "EXACLPCLD001.jukebox.internal",
     "OS": "",
     "OperatingSystemVersion": "",
     "IPv4Address": "192.168.69.40",

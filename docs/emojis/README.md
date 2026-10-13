@@ -86,6 +86,7 @@ diagram change in this repo.
 | DNS | 🧭 | DNS server | |
 | TMP | 📦 | Temporary/bootstrap-only provisioning server | VRK/FRD only — IP-referenced, no formal `EXA<ROLE><SITE><NNN>` hostname or DNS record |
 | NAS | 🗃️ | Network storage | |
+| CLP | ☁️ | CloudPanel server | Added 2026-10-13. First real device `EXACLPCLD001`, renamed from `EXANIXCLD001`/Type `NIX` — `NIX` was a placeholder borrowed from the MIDI-archive role, not a real classification |
 | SBC | 🛡️ | Session Border Controller | "Border controller" — a boundary/edge device |
 | UFC | 🎛️ | UniFi Network Controller (WiFi mgmt) | |
 | RAC | 🔧 | BMC / iDRAC / iLO | |

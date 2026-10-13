@@ -75,8 +75,8 @@ graph TD
     T_PVE --> T_ANS --> T_DCS --> T_SVR --> T_SLT --> T_PBX --> T_UFC --> T_FWL
     T_RMM["📊 EXARMMCLD001<br/>TacticalRMM<br/>192.168.69.14"]
     T_ZAB["🔍 EXAZABCLD001<br/>Zabbix Monitoring Server (Robert, 2026-09-02)<br/>192.168.69.13"]
-    T_NIX["🐧 EXANIXCLD001<br/>CloudPanel Test Host (Robert, 2026-10-10)<br/>192.168.69.40"]
-    T_RMM --> T_NIX
+    T_CLP["☁️ EXACLPCLD001<br/>CloudPanel Test Host (Robert, 2026-10-10)<br/>192.168.69.40"]
+    T_RMM --> T_CLP
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -97,6 +97,6 @@ graph TD
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RMM fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_ZAB fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_NIX fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_CLP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:CLD:END
 ```
